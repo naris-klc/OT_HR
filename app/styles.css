@@ -344,7 +344,13 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .chip {
   display: inline-block; padding: 4px 10px; border-radius: 20px;
   font: 600 11.5px/1.5 var(--sans); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
+/* The two tones a card header uses on every summary screen: what was counted,
+   then the figure it came to. Named here rather than written inline at each
+   card, so one department's badge cannot drift from the next one's. */
+.chip.muted { background: var(--neutral-wash); color: var(--muted); }
+.chip.green { background: var(--green-bg); color: var(--green-dark); }
 .badge {
   display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 6px;
   background: var(--danger); color: #fff; border-radius: 9px;
@@ -439,6 +445,36 @@ th {
 }
 td { padding: 12px; border-bottom: 1px solid var(--line-softer); font: 400 14px/1.5 var(--sans); vertical-align: middle; }
 td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* A running line number is an index, not a figure to be compared down the
+   column, so it centres — heading and cell together, the way the paper prints
+   ลำดับที่. Right-aligning the cells and leaving the heading where th puts it
+   was the one place in a table where the two disagreed. */
+th.seq, td.seq {
+  text-align: center;
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+}
+
+/* Fixed geometry, declared by the table's own <colgroup>.
+   A screen that stacks one card per department draws the same table several
+   times, and left to size itself each copy puts its columns somewhere slightly
+   different — one department's 1.50 sitting where the next one's รวม does. That
+   is what makes a stack of the same form read as a pile of different ones. The
+   min-width keeps the columns from being squeezed on a narrow screen, where
+   .table-wrap scrolls rather than compressing. */
+table.fixed { table-layout: fixed; min-width: 820px; }
+table.fixed td { overflow-wrap: anywhere; }
+
+/* The second line inside a cell — an employee code, a flag on the row. Sized
+   and coloured in one place so the same kind of note is the same note in every
+   table. Codes go in mono, like every other figure and metadata line here:
+   they are read down the column, and proportional digits do not line up. */
+.cell-sub {
+  margin-top: 2px;
+  font: 400 12px/1.45 var(--mono); font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.cell-note { margin-top: 3px; font: 400 11.5px/1.45 var(--sans); color: var(--amber); }
 tbody tr:hover { background: var(--green-wash); }
 tbody tr:last-child td { border-bottom: none; }
 tfoot td { font-weight: 600; border-top: 1px solid var(--line); background: var(--neutral-wash); }
@@ -594,6 +630,10 @@ tfoot tr.grand td {
   main { padding: 0 !important; }
   .shell { display: block; }
   .card { border: none; box-shadow: none; }
+  /* Screen tables carry a declared geometry so the cards stack straight; paper
+     is a different width, and holding pixel columns on it only overflows. */
   table { min-width: 0 !important; }
+  table.fixed { table-layout: auto !important; }
+  table.fixed col { width: auto !important; }
   * { animation: none !important; transition: none !important; box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

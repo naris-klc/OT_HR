@@ -182,20 +182,27 @@ function DepartmentCard({ dept, period, index }) {
           </div>
         </div>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-          <span className="chip" style={{ background: 'var(--neutral-wash)', color: 'var(--muted)' }}>
-            {t.headcount} คนมี OT
-          </span>
-          <span className="chip" style={{ background: 'var(--green-bg)', color: 'var(--green-dark)' }}>
-            รวม {hours(t.otHours)} ชม.
-          </span>
+          <span className="chip muted">{t.headcount} คนมี OT</span>
+          <span className="chip green">รวม {hours(t.otHours)} ชม.</span>
         </div>
       </div>
 
       <div className="table-wrap">
-        <table>
+        {/* Declared widths rather than whatever this department's names happen
+            to measure: the cards stack, and a column has to land in the same
+            place in every one of them for the stack to be read down. */}
+        <table className="fixed">
+          <colgroup>
+            <col style={{ width: 74 }} />
+            <col />
+            <col style={{ width: 240 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 124 }} />
+          </colgroup>
           <thead>
             <tr>
-              <th style={{ width: 70 }}>ลำดับที่</th>
+              <th className="seq">ลำดับที่</th>
               <th>ชื่อ-นามสกุล</th>
               <th>บริษัท</th>
               <th className="num">1.50</th>
@@ -206,15 +213,15 @@ function DepartmentCard({ dept, period, index }) {
           <tbody>
             {dept.rows.map((row, i) => (
               <tr key={row.employee.id}>
-                <td className="num">{i + 1}</td>
+                <td className="seq">{i + 1}</td>
                 <td>
                   {row.employee.name}
-                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
+                  <div className="cell-sub">{row.employee.code}</div>
                 </td>
                 <td>
                   <span style={{ color: 'var(--muted)' }}>{row.companyLabel}</span>
                   {row.pendingCount > 0 && (
-                    <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>
+                    <div className="cell-note">
                       ค้างอนุมัติ {row.pendingCount} รายการ · ไม่นับรวม
                     </div>
                   )}
@@ -245,13 +252,40 @@ function DepartmentCard({ dept, period, index }) {
 function AllDepartments({ departments, total }) {
   return (
     <div className="card" style={{ marginTop: 18 }}>
-      <h2>รวมทุกแผนก</h2>
-      <div className="hint">ยอดรวมของทุกแผนกและทั้งสองบริษัท — หน้าสุดท้ายของแบบฟอร์มที่พิมพ์</div>
+      {/* The same head the department cards carry — kicker, title, one line of
+          context, figures on the right. It is the last sheet of the same
+          bundle, so it should not announce itself in a different shape. */}
+      <div className="card-head" style={{ marginBottom: 14 }}>
+        <div>
+          <div className="kicker-sm">สรุปรวม</div>
+          <div className="t">รวมทุกแผนก</div>
+          <div className="hint" style={{ margin: 0 }}>
+            ยอดรวมของทุกแผนกและทั้งสองบริษัท — หน้าสุดท้ายของแบบฟอร์มที่พิมพ์
+          </div>
+        </div>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="chip muted">{departments.length} แผนก</span>
+          <span className="chip muted">{total.headcount} คนมี OT</span>
+          <span className="chip green">รวม {hours(total.otHours)} ชม.</span>
+        </div>
+      </div>
       <div className="table-wrap">
-        <table>
+        {/* ลำดับที่ and the three figure columns keep the widths they have on
+            the department cards, so the bundle's last sheet lines up with the
+            sheets it totals. Only the middle differs: one wide column for the
+            department name where the cards carry name and บริษัท. */}
+        <table className="fixed">
+          <colgroup>
+            <col style={{ width: 74 }} />
+            <col />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 124 }} />
+          </colgroup>
           <thead>
             <tr>
-              <th style={{ width: 70 }}>ลำดับที่</th>
+              <th className="seq">ลำดับที่</th>
               <th>แผนก</th>
               <th className="num">จำนวนคน</th>
               <th className="num">1.50</th>
@@ -262,7 +296,7 @@ function AllDepartments({ departments, total }) {
           <tbody>
             {departments.map((d, i) => (
               <tr key={d.id}>
-                <td className="num">{i + 1}</td>
+                <td className="seq">{i + 1}</td>
                 <td>{d.name}</td>
                 <td className="num">{d.totals.headcount}</td>
                 <td className="num">{cell(d.totals.ot15Hours)}</td>
