@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(3000,3100,3200,4000 | ForEach-Object { $c = Get-NetTCPConnection -LocalPort $_ -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $p = Get-Process -Id $c[0].OwningProcess -ErrorAction SilentlyContinue; \"$_ : IN USE \\($\\($p.ProcessName\\) PID $\\($p.Id\\)\\)\" } else { \"$_ : free\" } })",
+      "Bash(npx next *)",
+      "PowerShell(3000,3100 | ForEach-Object { $c = Get-NetTCPConnection -LocalPort $_ -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $p = Get-Process -Id $c[0].OwningProcess -ErrorAction SilentlyContinue; \"$_ : IN USE \\($\\($p.ProcessName\\) PID $\\($p.Id\\)\\)\" } else { \"$_ : free\" } })",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(ls \"/c/Program Files/Google/Chrome/Application/chrome.exe\" \"/c/Program Files \\(x86\\)/Google/Chrome/Application/chrome.exe\" \"/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe\" 2>/dev/null)",
+      "Read(//c/Program Files/Google/Chrome/Application/**)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --user-data-dir=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/4dbb2bc8-7ce9-4a22-a0ae-dacb1b9500f7/scratchpad/prof\" --print-to-pdf=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/4dbb2bc8-7ce9-4a22-a0ae-dacb1b9500f7/scratchpad/out.pdf\" --virtual-time-budget=3000 \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/4dbb2bc8-7ce9-4a22-a0ae-dacb1b9500f7/scratchpad/t.html\")",
+      "PowerShell(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne '127.0.0.1' } | ForEach-Object { $a = Get-NetAdapter -InterfaceIndex $_.InterfaceIndex -ErrorAction SilentlyContinue; \"{0,-16} {1,-30} {2}\" -f $_.IPAddress, $a.InterfaceDescription, $a.Status })",
+      "PowerShell(Get-NetConnectionProfile | Select-Object Name, InterfaceAlias, NetworkCategory | Format-Table -AutoSize | Out-String; \"--- rule profiles ---\"; Get-NetFirewallRule -DisplayName \"Node.js JavaScript Runtime\" | Select-Object Profile, Action, @{n='Proto';e={\\($_ | Get-NetFirewallPortFilter\\).Protocol}} | Format-Table -AutoSize | Out-String)",
+      "Bash(curl -s -m 3 -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -m 3 -o /dev/null -w \"%{http_code}\\\\n\" http://192.168.109.127:3000/)",
+      "Bash(ls \"/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe\" \"/c/Program Files/Google/Chrome/Application/chrome.exe\" 2>&1)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --screenshot=shot.png --window-size=900,1400 --hide-scrollbars \"file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/preview.html\")",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --user-data-dir=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/cprof\" --screenshot=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/shot.png\" --window-size=900,1450 --hide-scrollbars \"file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/preview.html\")",
+      "Bash(node -e ' *)",
+      "Bash(python -c ' *)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --user-data-dir=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/cprof\" --screenshot=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/shot2.png\" --window-size=900,780 --hide-scrollbars \"file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/preview2.html\")",
+      "Bash(sed '$d')",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --user-data-dir=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/cprof\" --allow-file-access-from-files --screenshot=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/shot2.png\" --window-size=900,820 --hide-scrollbars \"file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/preview2.html\")",
+      "Bash(mv tmp.css otdept.css)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --user-data-dir=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/cprof\" --screenshot=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/shot3.png\" --window-size=900,400 --hide-scrollbars \"file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/preview2.html\")"
+    ]
+  }
+}

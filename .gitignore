@@ -1,0 +1,8 @@
+node_modules/
+web/node_modules/
+web/dist/
+.env
+*.log
+
+.next/
+next-env.d.ts

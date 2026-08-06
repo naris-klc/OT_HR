@@ -1,0 +1,150 @@
+import { route, query, csvResponse, fail } from '@/lib/http.js';
+import { requireAuth, requireRole } from '@/lib/session.js';
+import { accountingReport } from '@/lib/accounting.js';
+import { BUCKETS } from '@/src/lib/otEngine.js';
+import { toCsv } from '@/src/lib/csv.js';
+import { PERIOD_RE, thaiMonth } from '@/lib/reports.js';
+import { COMPANY_KEYS } from '@/src/config/companies.js';
+
+/**
+ * The file HR sends to accounting.
+ *
+ * Same numbers as the screen, in the same columns and the same order — both
+ * come out of `accountingReport()`, and the layout mirrors the table on
+ * สรุป OT ส่งบัญชี line for line: employees under their company, then that
+ * company's departments, then the company, then the grand total when more than
+ * one company is in the file.
+ *
+ * Those subtotal rows are in the data rather than on a separate sheet on
+ * purpose. This file is read by a person reconciling it against a signed
+ * submission form, not pivoted; the รวม lines are what they check. They are
+ * labelled in the ชื่อ-สกุล column and carry no employee code, so a filter on
+ * รหัสพนักงาน still isolates the employee rows.
+ *
+ * UTF-8 BOM via toCsv (§10), without which Excel on Thai Windows renders every
+ * ชื่อ-สกุล as mojibake.
+ */
+export const GET = route(async (req) => {
+  requireRole(await requireAuth(req), 'hr', 'admin');
+  const q = query(req);
+
+  const period = String(q.period || '');
+  if (!PERIOD_RE.test(period)) return fail('ต้องระบุ period เป็น YYYY-MM', 400);
+  if (q.company && q.company !== 'all' && !COMPANY_KEYS.includes(q.company)) {
+    return fail('บริษัทไม่ถูกต้อง', 400);
+  }
+
+  const report = await accountingReport(period, {
+    company: q.company,
+    includeZero: q.includeZero === '1' || q.includeZero === 'true',
+  });
+
+  // Column for column what the screen shows, in the same order — including
+  // the ×1.5 split, which the screen keeps because it is ตรวจสอบรายเดือน's
+  // table. The printed form is the one that follows the paper and adds the
+  // two ×1.5 buckets into a single 1.50 column; anyone reconciling the file
+  // against it adds these two.
+  const headers = [
+    'บริษัท', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก',
+    'OT x1.5 วันปกติ', 'OT x1.5 วันหยุด', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ',
+  ];
+
+  const rows = [];
+  for (const company of report.companies) {
+    for (const row of company.rows) {
+      rows.push([
+        company.shortTh,
+        row.employee.code,
+        row.employee.name,
+        row.department?.name || '',
+        cell(row.buckets[BUCKETS.OT15_WEEKDAY]),
+        cell(row.buckets[BUCKETS.OT15_HOLIDAY]),
+        cell(row.buckets[BUCKETS.OT3_HOLIDAY]),
+        cell(row.otHours),
+        note(row),
+      ]);
+    }
+
+    // The screen's summary block, in the same order it appears there.
+    for (const d of company.departments) {
+      rows.push(summaryRow(
+        company.shortTh,
+        'รวมแผนก',
+        d.department?.name || '',
+        d.totals,
+        `${d.totals.headcount} คนมี OT`,
+        // A department that worked no OT reads as blank, like the people in
+        // it. Only the company line below always prints a figure.
+        cell,
+      ));
+    }
+    rows.push(summaryRow(
+      company.shortTh,
+      'รวมทั้งหมด',
+      company.shortTh,
+      company.totals,
+      tail(company.totals, company.pending, period),
+    ));
+  }
+
+  if (report.companies.length > 1) {
+    rows.push(summaryRow(
+      '', 'รวมทุกบริษัท', '', report.grandTotal,
+      tail(report.grandTotal, report.pending, period),
+    ));
+  }
+
+  const suffix = report.company === 'all' ? 'all' : report.company;
+  return csvResponse(
+    `OT-accounting-${period}-${suffix}.csv`,
+    toCsv(headers, rows),
+  );
+});
+
+/**
+ * A รวม line, mirroring the screen's foot rows: `label` goes where the name
+ * goes and `subject` where the department goes — exactly the two cells the
+ * screen repurposes. Every other column still holds what its header says, so
+ * the three hour columns stack under the figures they add up and a filter on
+ * รหัสพนักงาน still isolates the employee rows.
+ *
+ * `format` is `fmt` for a line that is signed for — a blank where the total
+ * belongs reads as "not filled in" — and `cell` for a subtotal, which follows
+ * the employee rows in printing nothing when there is nothing.
+ */
+function summaryRow(companyLabel, label, subject, totals, remark, format = fmt) {
+  return [
+    companyLabel, '', label, subject,
+    format(totals.buckets[BUCKETS.OT15_WEEKDAY]),
+    format(totals.buckets[BUCKETS.OT15_HOLIDAY]),
+    format(totals.buckets[BUCKETS.OT3_HOLIDAY]),
+    format(totals.otHours),
+    remark,
+  ];
+}
+
+/** The หมายเหตุ on a company-level รวม line. */
+function tail(totals, pending, period) {
+  const parts = [
+    `ประจำเดือน ${thaiMonth(period)}`,
+    `${totals.headcount} คนมี OT`,
+    `${totals.entryCount} รายการ`,
+  ];
+  if (pending.count > 0) {
+    parts.push(`ยังค้างอนุมัติ ${pending.count} รายการ (${fmt(pending.hours)} ชม. ไม่นับรวม)`);
+  }
+  return parts.join(' · ');
+}
+
+/** Why a row reads the way it does — the column accounting queries HR about. */
+function note(row) {
+  const parts = [];
+  if (row.entryCount === 0) parts.push('ไม่มี OT');
+  if (row.pendingCount > 0) parts.push(`ค้างอนุมัติ ${row.pendingCount} รายการ (${fmt(row.pendingHours)} ชม. ไม่นับรวม)`);
+  return parts.join(' · ');
+}
+
+const fmt = (n) => (n == null ? '' : String(Math.round(Number(n) * 100) / 100));
+
+/** Blank, not 0.00, for somebody with no hours — the same rule the screen uses. */
+const cell = (n) => (n ? fmt(n) : '');

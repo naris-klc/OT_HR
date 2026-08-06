@@ -1,0 +1,172 @@
+import mongoose from 'mongoose';
+import { model } from './model.js';
+import { BUCKETS } from '../lib/otEngine.js';
+
+export const STATUSES = ['pending_mgr', 'pending_hr', 'approved', 'rejected', 'cancelled'];
+
+export const STATUS_LABEL_TH = Object.freeze({
+  pending_mgr: 'รอหัวหน้า',
+  pending_hr: 'รอ HR',
+  approved: 'อนุมัติ',
+  rejected: 'ไม่อนุมัติ',
+  cancelled: 'ยกเลิก',
+});
+
+/**
+ * §12.1 — one entry, multiple rate buckets. `hours` cannot be a single number,
+ * so each entry carries the computed segments plus per-bucket totals.
+ *
+ * These are DENORMALISED results from src/lib/otEngine.js. They are recomputed
+ * on every write (and by `npm run recompute`) rather than trusted from the
+ * client, so a change to the holiday calendar or to a policy flag can be
+ * replayed across historic entries.
+ */
+const segmentSchema = new mongoose.Schema(
+  {
+    date: { type: String, required: true },        // 'YYYY-MM-DD'
+    start: { type: String, required: true },       // 'HH:MM'
+    end: { type: String, required: true },         // 'HH:MM'
+    dayType: { type: String, enum: ['workday', 'holiday'], required: true },
+    bucket: { type: String, enum: Object.values(BUCKETS), required: true },
+    multiplier: { type: Number, required: true },  // bucket label, not a rate
+    minutes: { type: Number, required: true },
+    hours: { type: Number, required: true },
+  },
+  { _id: false },
+);
+
+const historySchema = new mongoose.Schema(
+  {
+    at: { type: Date, default: Date.now },
+    by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+    byName: String,
+    action: {
+      type: String,
+      // 'edit' is the employee correcting their own request while it is still
+      // pending_mgr; 'hr_edit' is HR correcting one at any live status.
+      // 'resubmit' is no longer written — a rejected request is re-filed as a
+      // new one — but entries from before that rule still carry it, and a
+      // value dropped from this list would make those entries fail validation
+      // the next time anything touched them.
+      enum: [
+        'submit', 'resubmit', 'approve_mgr', 'reject_mgr', 'approve_hr', 'reject_hr',
+        'cancel', 'edit', 'hr_edit', 'recompute',
+      ],
+      required: true,
+    },
+    note: String,
+    fromStatus: String,
+    toStatus: String,
+  },
+  { _id: false },
+);
+
+const otEntrySchema = new mongoose.Schema(
+  {
+    employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true, index: true },
+    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true, index: true },
+
+    // ── §12.2: sessions cross midnight ──────────────────────────────────────
+    // Wall-clock fields are the source of truth: no timezone can move them,
+    // and they map one-to-one onto a row of the paper form. `endsNextDay`
+    // replaces the old "end must be after start" rule.
+    /** วันที่ the session STARTS. 'YYYY-MM-DD'. */
+    workDate: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/, index: true },
+    /** จาก — 'HH:MM'. */
+    startTime: { type: String, required: true, match: /^\d{2}:\d{2}$/ },
+    /** ถึง — 'HH:MM'. May be earlier than startTime when endsNextDay is set. */
+    endTime: { type: String, required: true, match: /^\d{2}:\d{2}$/ },
+    endsNextDay: { type: Boolean, default: false },
+
+    /** ไม่พักเที่ยง — skip the break deduction (§3). New in v1 per §12. */
+    noBreakTaken: { type: Boolean, default: false },
+
+    /**
+     * รายละเอียดงานที่ทำ — prints in the form's description column.
+     *
+     * New text is capped at DESCRIPTION_MAX_CHARS on the way in (see
+     * `normaliseDescription` in lib/entries.js). This limit is deliberately
+     * looser: Mongoose validates the whole document on save, so tightening it
+     * here would make every entry written before the cap unsaveable — you
+     * could no longer approve, cancel or recompute a historic month.
+     */
+    description: { type: String, required: true, trim: true, maxlength: 500 },
+
+    // ── computed ────────────────────────────────────────────────────────────
+    segments: { type: [segmentSchema], default: [] },
+    buckets: {
+      [BUCKETS.OT15_WEEKDAY]: { type: Number, default: 0 },
+      [BUCKETS.OT15_HOLIDAY]: { type: Number, default: 0 },
+      [BUCKETS.OT3_HOLIDAY]: { type: Number, default: 0 },
+    },
+    totals: {
+      otHours: { type: Number, default: 0 },
+      weightedHours: { type: Number, default: 0 },
+      ot15Hours: { type: Number, default: 0 },
+      ot3Hours: { type: Number, default: 0 },
+      clockHours: { type: Number, default: 0 },
+      breakHours: { type: Number, default: 0 },
+    },
+    /** e.g. NORMAL_HOURS_IGNORED, RAISED_TO_MINIMUM — shown to reviewers. */
+    warnings: { type: [{ code: String, message: String, minutes: Number }], default: [] },
+
+    // ── approval flow (§6) ──────────────────────────────────────────────────
+    status: { type: String, enum: STATUSES, default: 'pending_mgr', required: true, index: true },
+    /** 'YYYY-MM' — the month this entry rolls up into. Derived from workDate. */
+    period: { type: String, required: true, index: true },
+
+    managerDecision: {
+      by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+      at: Date,
+      note: String,
+    },
+    hrDecision: {
+      by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+      at: Date,
+      note: String,
+    },
+    rejectionReason: String,
+
+    /**
+     * [OPEN 8] Set when the entry pushed its department over the monthly cap
+     * and policy.capBehaviour is 'warn'. HR sees the flag and decides.
+     */
+    capExceeded: { type: Boolean, default: false },
+    capSnapshot: {
+      capHours: Number,
+      usedHoursBefore: Number,
+      basis: String,
+    },
+    /** HR or Admin waiving the cap for this entry (§7). */
+    capOverride: {
+      by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+      at: Date,
+      reason: String,
+    },
+
+    history: { type: [historySchema], default: [] },
+  },
+  { timestamps: true },
+);
+
+otEntrySchema.pre('validate', function setPeriod(next) {
+  if (this.workDate) this.period = this.workDate.slice(0, 7);
+  next();
+});
+
+/** The monthly review and the printed form both query by these. */
+otEntrySchema.index({ employee: 1, period: 1, status: 1 });
+otEntrySchema.index({ department: 1, status: 1, workDate: 1 });
+
+otEntrySchema.methods.log = function log(actor, action, note, fromStatus) {
+  this.history.push({
+    by: actor?._id,
+    byName: actor?.name,
+    action,
+    note,
+    fromStatus,
+    toStatus: this.status,
+  });
+};
+
+export default model('OtEntry', otEntrySchema);

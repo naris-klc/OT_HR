@@ -1,0 +1,490 @@
+/**
+ * F-HR-027 Rev.4 — must print cleanly on A4 portrait (§10).
+ *
+ * Sizes are in millimetres so the layout is the paper, not the screen. The
+ * sheet is the paper form cell for cell: three header rows, 31 date rows,
+ * สรุปรวม, the dashed เฉพาะฝ่ายบุคคล box and the ผู้ตรวจสอบ block have to fit
+ * one side, which is why the row height is 5.5mm and the type is 7.2pt.
+ *
+ * Cells state their own box-sizing rather than inherit it: whether the row is
+ * 5.5mm or 5.5mm-plus-padding decides whether the month fits the page, and
+ * that is not something to leave to a global rule in styles.css. Measured, the
+ * 31-row sheet comes to ~242mm against the 277mm A4 gives you — the slack is
+ * there because a date with two sessions adds a row, and five still fit.
+ */
+
+@page {
+  size: A4 portrait;
+  margin: 10mm 8mm;
+}
+
+.f027 {
+  width: 194mm;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  font-family: 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
+  font-size: 8pt;
+  line-height: 1.25;
+}
+
+.f027-title {
+  font-size: 11pt;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 3mm;
+}
+
+/* ชื่อ-สกุล · แผนก · ประจำเดือน sit on one line above the grid, each on its
+   own rule, exactly as they are typed on the paper form.
+
+   `fld`, not `item`, and `amt`, not `box`, further down: styles.css styles
+   those two names globally (`.item` gets a hover tint and a bottom rule, `.box`
+   a radius and a fill), and both would land inside this form. */
+.f027-meta { display: flex; margin-bottom: 1.5mm; font-size: 8.5pt; }
+.f027-meta .fld { display: flex; gap: 2mm; align-items: baseline; flex: 1; }
+.f027-meta .fld:nth-child(2) { flex: 1.1; }
+.f027-meta .label { white-space: nowrap; }
+.f027-meta .value {
+  flex: 1; border-bottom: 0.25mm solid #000; min-width: 30mm;
+  padding: 0 2mm; font-weight: 600;
+}
+
+.f027 table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+/* styles.css dresses every `th` in the app for the screen — uppercase, mono,
+   letter-spacing, and white-space:nowrap. Inherited into a fixed-width form
+   those overflow the cell and print on top of the neighbouring column, so the
+   form states its own type rather than assuming what it is given. */
+.f027 th, .f027 td {
+  border: 0.25mm solid #000;
+  padding: 0.6mm 1mm;
+  font: 400 7.2pt/1.15 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: break-word;
+  background: none;
+  color: #000;
+  box-sizing: border-box;
+  height: 5.5mm;
+  vertical-align: middle;
+}
+.f027 th {
+  text-align: center; font-weight: 600; height: auto; padding: 1mm 0.5mm;
+}
+/* …including `tbody tr:last-child td { border-bottom: none }`, which would rub
+   out the bottom rule of the สรุปรวม row, and the screen row-hover tint. */
+.f027 table tbody tr:last-child td { border-bottom: 0.25mm solid #000; }
+.f027 table tbody tr:hover { background: none; }
+
+/* The three จำนวนชั่วโมง headings are highlighted yellow on the paper form.
+   Browsers drop background colour when printing unless told otherwise. */
+.f027 th.hl {
+  font-size: 6.4pt;
+  background: #ffff00;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* วันที่ on top, Date on the baseline — one merged cell, two anchored lines. */
+.f027 th.dateh { padding: 1mm 0; }
+.f027 th.dateh .t { display: block; }
+.f027 th.dateh .b { display: block; margin-top: 6mm; font-size: 6.8pt; }
+
+.f027 td.c { text-align: center; }
+.f027 td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.f027 td.day { font-weight: 600; }
+.f027 td.desc { font-size: 6.8pt; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* The three yellow headings are the only fill on the sheet — holidays are not
+   tinted, exactly as on the paper form. */
+.f027 tr.total td { font-weight: 700; }
+/* สรุปรวม runs from จาก to the last hour column — either side is open paper. */
+.f027 tr.total td.blank { border: 0; }
+
+/* --- footer: dashed HR box on the left, ผู้ตรวจสอบ on the right ---------- */
+
+.f027-foot {
+  display: flex;
+  align-items: flex-end;
+  gap: 6mm;
+  margin-top: 6mm;
+}
+
+/* Built from boxes rather than a table because the paper mixes rules: only
+   เฉพาะฝ่ายบุคคล is boxed solid and everything else is dashed, and a collapsed
+   table border cannot be solid on one side of a line and dashed on the other.
+   Every part is border-box, so the two ×1.5 boxes stack to exactly the height
+   of the รวม box beside them. */
+.f027-hr { display: flex; align-items: stretch; font-size: 9pt; }
+
+.f027-hr .who {
+  box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  width: 11mm; padding: 0 0.5mm; border: 0.3mm solid #000;
+  font-size: 6.8pt; line-height: 1.3; text-align: center;
+}
+
+/* 30mm label + 19mm boxes + 19mm รวม, over a 14mm ×1.5 row (two 7mm boxes)
+   and a 10.5mm ×3 row. Cells and rules are placed against those numbers. */
+.f027-hr .grid { position: relative; width: 68mm; height: 24.5mm; }
+.f027-hr .cell {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+}
+.f027-hr .lbl15 { left: 0; top: 0; width: 30mm; height: 14mm; }
+.f027-hr .lbl3 { left: 0; top: 14mm; width: 30mm; height: 10.5mm; }
+.f027-hr .v15a, .f027-hr .v15b, .f027-hr .v3 {
+  left: 30mm; width: 19mm; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.f027-hr .v15a { top: 0; height: 7mm; }
+.f027-hr .v15b { top: 7mm; height: 7mm; }
+.f027-hr .v3 { top: 14mm; height: 10.5mm; }
+
+.f027-hr .tot { left: 49mm; top: 0; width: 19mm; height: 14mm; flex-direction: column; }
+.f027-hr .tot .cap { font-size: 7pt; text-decoration: underline; margin-bottom: 0.8mm; }
+.f027-hr .tot .amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* One element per rule: h1 the top edge, h2 the ×1.5/×3 divide, h3 the bottom
+   (which stops before รวม), h4 the วันปกติ/วันหยุด split, c1–c3 the uprights. */
+.f027-hr .rule { position: absolute; display: block; }
+.f027-hr .h1, .f027-hr .h2, .f027-hr .h3, .f027-hr .h4 {
+  height: 0; border-top: 0.3mm dashed #000;
+}
+.f027-hr .c1, .f027-hr .c2, .f027-hr .c3 {
+  width: 0; border-left: 0.3mm dashed #000;
+}
+.f027-hr .h1 { left: 0; top: 0; width: 68mm; }
+.f027-hr .h2 { left: 0; top: 14mm; width: 68mm; }
+.f027-hr .h3 { left: 0; top: 24.5mm; width: 49mm; }
+.f027-hr .h4 { left: 30mm; top: 7mm; width: 19mm; }
+.f027-hr .c1 { left: 30mm; top: 0; height: 24.5mm; }
+.f027-hr .c2 { left: 49mm; top: 0; height: 24.5mm; }
+.f027-hr .c3 { left: 68mm; top: 0; height: 14mm; }
+
+/* ฝ่ายบุคคล sits centred under the rule, ผู้ตรวจสอบ centred under that again;
+   only the form code breaks out to the right edge of the sheet. */
+.f027-check { flex: 1; min-width: 0; text-align: center; font-size: 8.5pt; }
+.f027-check .line { border-bottom: 0.3mm solid #000; height: 9mm; }
+.f027-check .role { margin-top: 2mm; }
+.f027-check .by { margin-top: 4mm; white-space: nowrap; }
+
+.f027-code {
+  flex: none; align-self: flex-end;
+  font-size: 8.5pt; font-weight: 700; letter-spacing: 0.2mm; white-space: nowrap;
+}
+
+/* On screen the sheet sits on a grey page with a shadow, so what you see is
+   the paper. Printing strips all of that. */
+.f027-screen { background: #e8ebe9; padding: 16px; }
+.f027-screen .f027 { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 10mm 8mm; }
+
+@media print {
+  .f027-screen { background: #fff; padding: 0; }
+  .f027-screen .f027 { box-shadow: none; padding: 0; }
+  /* A month with enough split sessions outgrows the sheet. Let it run onto a
+     second page with the column headings repeated, rather than forcing the
+     whole form onto one page and having the browser shrink or clip it. */
+  .f027 tr, .f027-foot { page-break-inside: avoid; }
+  .f027 thead { display: table-header-group; }
+}
+
+/* ══ สรุปค่าล่วงเวลา (OT) ส่งบัญชี ═══════════════════════════════════════════
+ *
+ * The submission sheet HR sends to accounting, and it is a table and nothing
+ * else: รหัส, ชื่อ-นามสกุล, and the two rate columns under one ประจำเดือน
+ * banner, with the margin the remarks are written in. No title, no subtitle,
+ * no subtotals, no signature block — the paper carries none, and the banner
+ * names the month, so the grid identifies itself. Same @page as F-HR-027
+ * above — A4 portrait, printed at 100%.
+ *
+ * A roster runs to whatever length it runs to, so unlike F-HR-027 this sheet
+ * is not built to fit one side: the row height is set for legibility and the
+ * table breaks across pages with its headings repeated. What IS fixed is one
+ * company per sheet — the two file separately, and a page carrying both would
+ * have to be cut up by hand.
+ */
+
+.acct {
+  width: 194mm;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  font-family: 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
+  font-size: 9pt;
+  line-height: 1.3;
+}
+.acct + .acct { break-before: page; page-break-before: always; }
+
+/* 24 + 54 + 17 + 17mm. Deliberately narrower than the page: on the paper the
+   grid stops after 3.00 and the rest of the line is white, which is where the
+   remarks ("วันเกิด") get written by hand. A full-width table would take that
+   space away. */
+.acct table { width: 112mm; border-collapse: collapse; table-layout: fixed; }
+
+/* styles.css dresses every `th` in the app for the screen — uppercase, mono,
+   letter-spaced and nowrap — which overflows a fixed-width print cell. As in
+   .f027, the sheet states its own type rather than assuming what it is given. */
+.acct th, .acct td {
+  border: 0.25mm solid #000;
+  padding: 0.8mm 1.5mm;
+  font: 400 9pt/1.25 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: break-word;
+  background: none;
+  color: #000;
+  box-sizing: border-box;
+  height: 7mm;
+  vertical-align: middle;
+}
+.acct th { text-align: center; font-weight: 600; }
+/* …including `tbody tr:last-child td { border-bottom: none }`, which would rub
+   out the rule that closes the grid, and the screen row-hover tint. */
+.acct table tbody tr:last-child td { border-bottom: 0.25mm solid #000; }
+.acct table tbody tr:hover { background: none; }
+
+/* The ประจำเดือน banner is filled solid on the paper sheet and the two columns
+   under it carry a light tint, which is what marks off "this month's figures"
+   from the roster beside them. Browsers drop background colour when printing
+   unless told otherwise — and the sheet still reads correctly without it,
+   because the rules carry the structure and the fill only groups columns. */
+.acct th.hl, .acct th.rate, .acct td.n {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.acct th.hl { background: #5b9bd5; }
+.acct th.rate, .acct td.n { background: #deeaf6; }
+
+/* Codes read down the left edge like the names beside them; only the figures
+   are centred in their column. */
+.acct td.code { text-align: left; font-variant-numeric: tabular-nums; }
+.acct td.n { text-align: center; font-variant-numeric: tabular-nums; }
+
+/* Every body row is exactly one line, so a page holds exactly ROWS_PER_PAGE of
+   them and the blank rows that fill the last page land where they should. A
+   name allowed to wrap would take two lines, that page would hold one row
+   fewer, and the count the filler is computed from would be wrong from there
+   on. The column has room: 54mm less padding is 51mm of text, and the longest
+   name on the roster measures 44.9mm at 9pt. `ellipsis` is the backstop for a
+   name longer than any of them — visibly cut rather than silently overlapping
+   the 1.50 column, which is what fixed table layout would otherwise do. */
+.acct tbody td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The page margin, carried by the two blank rows in thead and tfoot rather
+   than by @page or by padding — the only way every page gets the same one.
+   Height on the tr as well as the td because an empty cell has nothing to
+   hold the row open with. */
+.acct tr.pad, .acct tr.pad td {
+  height: 10mm;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+}
+.acct tfoot tr.pad, .acct tfoot tr.pad td { height: 12mm; }
+
+/* On screen the sheet sits on a grey page with a shadow, so what you see is
+   the paper. Vertical spacing is left to the pad rows so the preview and the
+   print agree; only the side margins are padding here. */
+.acct-screen { background: #e8ebe9; padding: 16px; }
+.acct-screen .acct { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 0 8mm; }
+.acct-screen .acct + .acct { margin-top: 16px; }
+
+@media print {
+  .acct-screen { background: #fff; padding: 0; }
+  .acct-screen .acct { box-shadow: none; }
+  .acct-screen .acct + .acct { margin-top: 0; }
+  /* A name must not be split across the fold. */
+  .acct tr { page-break-inside: avoid; }
+  /* Both groups repeat on every page: thead carries the column headings and
+     the top margin above them, tfoot the bottom margin. */
+  .acct thead { display: table-header-group; }
+  .acct tfoot { display: table-footer-group; }
+}
+
+/* ══ สรุปชั่วโมงทำ OT แยกแผนก ════════════════════════════════════════════════
+ *
+ * The departmental sheet: ลำดับที่, ชื่อ-นามสกุล, 1.50, 3.00 under a green
+ * banner naming the department, closed by รวมชั่วโมงทำOT. One department per
+ * side, the departments of a company printed as one document, and the
+ * company's own sheet last. Same @page as the two forms above — A4 portrait,
+ * printed at 100%.
+ *
+ * Fill carries meaning on this form and is not decoration, which is why every
+ * colour below is repeated in the @media print block at the foot of this file:
+ * green says which department the page belongs to, blue heads the two columns
+ * that are written in, and the yellow cell is the one figure the sheet is
+ * signed against. A page that printed them grey would still be readable, but
+ * it would no longer be the same form.
+ */
+
+.otdept {
+  width: 194mm;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  font-family: 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.3;
+}
+.otdept + .otdept { break-before: page; page-break-before: always; }
+
+/* 18 + 58 + 24 + 24mm of grid, then the 28mm the yellow total hangs in. The
+   10mm indent is the paper's: the grid starts in from the left edge, not at
+   it, and the block itself is already 8mm in (194mm centred on 210mm). */
+.otdept table {
+  width: 152mm;
+  margin-left: 10mm;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* styles.css dresses every `th` in the app for the screen — uppercase, mono,
+   letter-spaced and nowrap — which overflows a fixed-width print cell. As in
+   .acct and .f027, the sheet states its own type rather than assuming what it
+   is given. */
+.otdept th, .otdept td {
+  border: 0.25mm solid #000;
+  padding: 0.8mm 1.5mm;
+  font: 400 9.5pt/1.25 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: break-word;
+  background: none;
+  color: #000;
+  box-sizing: border-box;
+  height: 7.5mm;
+  vertical-align: middle;
+}
+.otdept th { text-align: center; font-weight: 600; }
+/* …including `tbody tr:last-child td { border-bottom: none }`, which would rub
+   out the rule under รวมชั่วโมงทำOT, and the screen row-hover tint. */
+.otdept table tbody tr:last-child td { border-bottom: 0.25mm solid #000; }
+.otdept table tbody tr:hover { background: none; }
+
+.otdept th.banner { height: 9mm; font-size: 11pt; font-weight: 700; background: #a9d08e; }
+.otdept th.seq, .otdept td.seq { text-align: center; }
+.otdept th.rate { background: #9dc3e6; font-weight: 700; }
+
+/* The tint marks off the two hour columns from the roster beside them, and it
+   marks the whole column top to bottom: a figure, the blank where a figure
+   would have gone, and the total the column adds up to all sit on the same
+   fill. The eye reads one band down the page, a name with no OT is a gap in it
+   rather than a differently-coloured cell, and the รวมชั่วโมงทำOT figures are
+   plainly the foot of the columns above them rather than something arriving
+   from elsewhere. The yellow cell is the one deliberate break, and it is
+   outside the grid. */
+.otdept td.n { text-align: center; font-variant-numeric: tabular-nums; background: #d6dce4; }
+
+.otdept tr.total td { font-weight: 700; text-align: center; }
+.otdept tr.total td.grand {
+  background: #ffff00;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The fifth column is open paper on every row but the last: the grand total
+   hangs OUTSIDE the grid, so the column it hangs in has no rule and no fill
+   above it. */
+.otdept td.gap { border: 0; background: none; }
+
+/* Every body row is exactly one line, so the grid stays on the pitch the paper
+   is ruled at. 58mm less padding is 55mm of text, and the longest name on the
+   roster measures 47mm at 9.5pt; `ellipsis` is the backstop for a longer one —
+   visibly cut rather than silently overlapping the 1.50 column, which is what
+   fixed table layout would otherwise do. */
+.otdept tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.otdept tbody tr.total td { white-space: normal; }
+
+/* The page margin, carried by blank thead/tfoot rows rather than by @page or
+   by padding — the only way every page gets the same one. Height on the tr as
+   well as the td because an empty cell has nothing to hold the row open. */
+.otdept tr.pad, .otdept tr.pad td {
+  height: 12mm;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+}
+
+.otdept-screen { background: #e8ebe9; padding: 16px; }
+.otdept-screen .otdept { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 0 8mm; }
+.otdept-screen .otdept + .otdept { margin-top: 16px; }
+
+@media print {
+  .otdept-screen { background: #fff; padding: 0; }
+  .otdept-screen .otdept { box-shadow: none; }
+  .otdept-screen .otdept + .otdept { margin-top: 0; }
+  /* A name must not be split across the fold — but a department is a page, so
+     in practice nothing here breaks at all. */
+  .otdept tr { page-break-inside: avoid; }
+  .otdept thead { display: table-header-group; }
+  .otdept tfoot { display: table-footer-group; }
+}
+
+/* ══ กระดาษเปล่า: เหลือแต่ตาราง ══════════════════════════════════════════════
+ *
+ * Last block in the last stylesheet, so it settles what the paper looks like
+ * after both forms above have had their say.
+ *
+ * The browser's own header and footer — 6/8/69, the <title>, localhost:3000,
+ * 1/1 — are NOT page content and no CSS property switches them off. What they
+ * are is painted into the @page margin box, so a page with no margin has
+ * nowhere to put them and Chrome, Edge and Firefox all drop them.
+ *
+ * The margin that buys has to be given back, and it has to be given back the
+ * same on every page. Padding on the sheet will not do it — a block is padded
+ * once, at its start and its end, so page 1 would be spaced and page 2 would
+ * start hard against the paper edge. The accounting sheet therefore carries
+ * its margin in blank thead/tfoot rows, which the browser repeats on every
+ * page (see the .acct tr.pad rules above). F-HR-027 is a one-side form, so
+ * padding is the right tool there.
+ */
+@page { margin: 0; }
+
+@media print {
+  /* One page by design, so start and end of the block IS every page. */
+  .f027-screen .f027 { padding: 10mm 0; }
+
+  /* The grey is `.shell`, which paints var(--bg) (#EEF1EE) over the whole
+     viewport — and `* { print-color-adjust: exact }` in styles.css makes sure
+     it is printed rather than dropped. Clearing html/body is not enough; the
+     fill is on the shell and on the cards inside it. */
+  html, body, .shell, main, .acct-screen, .f027-screen, .card {
+    background: #fff;
+    border: none;
+    box-shadow: none;
+  }
+
+  /* Screen furniture. The amber bar is `.box.warn` — the ค้างอนุมัติ notice —
+     and the rest is filters, chips, buttons and hints: context for HR while
+     they close the month, none of it part of the document accounting files.
+     Listed by class rather than left to `.no-print` so a block added later
+     without that class still cannot reach the paper. */
+  .box, .alert, .chip, .hint, .kicker-sm, .seg, .btn, .check,
+  .empty, .table-wrap > .empty, .card-head .row {
+    display: none;
+  }
+
+  /* One exception to the no-fill rule: the ประจำเดือน banner and the two rate
+     columns under it. The tint is what marks off this month's figures from the
+     roster beside them, so it is the sheet, not decoration. */
+  .acct th.hl { background: #5b9bd5; }
+  .acct th.rate, .acct td.n { background: #deeaf6; }
+
+  /* Same exception on the departmental sheet, where the fill carries more:
+     which department the page belongs to, which columns are written in, and
+     which single figure the sheet is signed against. */
+  .otdept th.banner { background: #a9d08e; }
+  .otdept th.rate { background: #9dc3e6; }
+  .otdept td.n { background: #d6dce4; }
+  .otdept tr.total td.grand { background: #ffff00; }
+  .otdept td.gap { background: none; }
+}

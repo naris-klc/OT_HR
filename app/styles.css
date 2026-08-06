@@ -1,0 +1,599 @@
+/**
+ * Design system — ported from the Claude Design project "OT tracking system
+ * design" (OT System.dc.html).
+ *
+ * Two type families do different jobs there and the distinction is load-bearing:
+ * IBM Plex Sans Thai carries Thai prose, IBM Plex Mono carries every number,
+ * field label and metadata line. Hours are read down a column and compared, so
+ * they are tabular figures, never proportional.
+ *
+ * The mobile breakpoint is 860px, taken from the design's own note: "ดีไซน์
+ * เดียวกัน ปรับเป็นแถบเมนูล่าง + ปุ่มลอยเมื่อจอแคบกว่า 860px".
+ */
+
+:root {
+  /* ── ink & surface ───────────────────────────────────────────────────── */
+  --ink: #14201A;          /* text, sidebar, hero card */
+  --ink-2: #3C4A42;
+  --muted: #5B6B62;
+  --muted-2: #7E8F85;
+  --muted-3: #8B998F;
+  --muted-4: #9AA8A0;
+
+  --bg: #EEF1EE;
+  --card: #ffffff;
+  --line: #E2E7E3;
+  --line-soft: #EEF1EE;
+  --line-softer: #F2F5F3;
+  --input-line: #DDE4DF;
+
+  /* ── brand ───────────────────────────────────────────────────────────── */
+  --green: #0F8A46;
+  --green-lift: #12A053;
+  --green-dark: #0B6E37;
+  --green-bg: #E8F4ED;
+  --green-tint: #F3FAF5;
+  --green-wash: #F7FAF8;
+  --neutral-wash: #F6F8F6;
+
+  /* ── on dark ─────────────────────────────────────────────────────────── */
+  --on-dark: #8FA298;
+  --on-dark-2: #B9C6BE;
+  --on-dark-3: #D6E0DA;
+
+  /* ── status ──────────────────────────────────────────────────────────── */
+  --danger: #E4572E;
+  --danger-ink: #B4402F;
+  --danger-bg: #FBEAE7;
+  --amber: #A8791A;
+  --amber-bg: #FBF1E0;
+  --info: #2A6099;
+  --info-bg: #E7F0FA;
+
+  --radius-lg: 16px;
+  --radius: 14px;
+  --radius-sm: 11px;
+  --radius-xs: 9px;
+
+  --sans: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --latin: 'IBM Plex Sans', system-ui, sans-serif;
+
+  font-family: var(--sans);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+body { font-size: 14.5px; line-height: 1.55; }
+
+button, input, select, textarea { font-family: inherit; color: inherit; }
+a { color: var(--green); }
+a:hover { color: var(--green-dark); }
+
+/* Numbers are compared down a column, so they must not shift width. */
+.num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+@keyframes otfade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes otslide { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #CBD4CD; border-radius: 8px; border: 3px solid var(--bg); }
+
+/* ══ shell ═══════════════════════════════════════════════════════════════ */
+
+.shell { min-height: 100vh; display: flex; background: var(--bg); }
+
+.sidebar {
+  width: 248px; flex: none;
+  background: var(--ink); color: #fff;
+  padding: 22px 16px;
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+}
+
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 22px; }
+.brand .mark {
+  width: 34px; height: 34px; flex: none; border-radius: 8px;
+  background: var(--green); display: grid; place-items: center;
+  font: 700 16px/1 var(--latin);
+}
+.brand .name { font: 600 13px/1.1 var(--latin); letter-spacing: .14em; }
+.brand .kicker { font: 400 10.5px/1.4 var(--mono); color: var(--muted-2); letter-spacing: .08em; }
+
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav button {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; padding: 10px 12px;
+  border: none; background: transparent; color: var(--on-dark-2);
+  border-radius: var(--radius-xs); cursor: pointer;
+  font: 500 14px/1 var(--sans); text-align: left;
+}
+.nav button:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.nav button.active { background: var(--green); color: #fff; }
+.nav .icon { font: 400 15px/1 var(--mono); width: 18px; text-align: center; opacity: .9; flex: none; }
+.nav .label { flex: 1; text-align: left; }
+
+/* Count badges are alarms, not decoration — one colour, used only here. */
+.count {
+  min-width: 20px; height: 20px; padding: 0 6px; flex: none;
+  border-radius: 10px; background: var(--danger); color: #fff;
+  font: 600 11px/20px var(--mono); text-align: center;
+}
+
+.sidebar-foot { margin-top: auto; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .09); }
+.whoami { display: flex; align-items: center; gap: 11px; padding: 8px; }
+.avatar {
+  width: 34px; height: 34px; flex: none; border-radius: 50%;
+  background: var(--green); color: #fff; display: grid; place-items: center;
+  font: 600 13px/1 var(--mono); border: none;
+}
+.whoami .n { font: 500 13px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.whoami .r { font: 400 11px/1.4 var(--sans); color: var(--muted-2); }
+
+.signout {
+  width: 100%; margin-top: 6px; padding: 9px;
+  border: 1px solid rgba(255, 255, 255, .14); background: transparent;
+  color: var(--on-dark-2); border-radius: 8px;
+  font: 500 12.5px/1 var(--sans); cursor: pointer;
+}
+.signout:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+
+.body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.appbar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(255, 255, 255, .92); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  padding: 0 clamp(16px, 3vw, 32px); height: 62px;
+  display: flex; align-items: center; gap: 14px;
+}
+.appbar .title { font: 600 16px/1.25 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.appbar .meta { font: 400 11.5px/1.3 var(--mono); color: var(--muted-2); letter-spacing: .04em; }
+.appbar .grow { flex: 1; min-width: 0; }
+.appbar .mark-sm {
+  width: 30px; height: 30px; flex: none; border-radius: 7px;
+  background: var(--green); color: #fff; display: grid; place-items: center;
+  font: 700 14px/1 var(--latin);
+}
+/* The logo and avatar in the bar are the mobile stand-ins for the sidebar,
+   which still shows both. They appear only once the sidebar is gone. */
+.appbar .mark-sm, .appbar .avatar { display: none; }
+
+main { padding: clamp(16px, 3vw, 28px); flex: 1; }
+.page { max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
+
+/* ══ hero ════════════════════════════════════════════════════════════════ */
+
+.stack { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
+
+.hero {
+  background: var(--ink); color: #fff;
+  border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 28px);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 22px; align-items: end;
+}
+.hero .cap { font: 400 11.5px/1 var(--mono); letter-spacing: .14em; color: var(--on-dark); }
+.hero .big { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
+.hero .big span:first-child { font: 600 46px/1 var(--mono); letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
+.hero .big .unit { font: 400 15px/1 var(--sans); color: var(--on-dark); }
+.hero .mid { font: 600 30px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.hero .sub { font: 400 12px/1.5 var(--sans); color: var(--on-dark); margin-top: 6px; }
+
+.meter { margin-top: 14px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .13); overflow: hidden; }
+.meter > i { display: block; height: 100%; border-radius: 3px; background: var(--green-lift); transition: width .3s ease; }
+.meter.over > i { background: var(--danger); }
+
+.hero-actions { display: flex; flex-direction: column; gap: 8px; }
+
+/* ══ stat cards ══════════════════════════════════════════════════════════ */
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.stat .label { font: 400 11.5px/1 var(--mono); letter-spacing: .1em; color: var(--muted-2); }
+.stat .value { display: flex; align-items: baseline; gap: 7px; margin-top: 9px; }
+.stat .value > span:first-child { font: 600 26px/1 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.stat .value .unit { font: 400 13px/1 var(--sans); color: var(--muted); }
+.stat .note { margin-top: 7px; font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); }
+
+/* The ×1.5 / ×3 breakdown (components/common.jsx → BucketSplit): the engine's
+   answer to "which column does this session land in", read side by side. Laid
+   out on the same auto-fit grid as .stat above — the boxes are the same idea
+   at a smaller size, and they wrap to one per line on a phone rather than
+   squeezing four columns into 360px. */
+.split {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 10px; margin: 12px 0;
+}
+/* .box is the alert-shaped block further down; inside a split it is a figure,
+   so it drops the vertical margin and takes a surface of its own. The total
+   box states its own green fill inline and keeps it. */
+.split .box {
+  margin: 0; padding: 12px 13px;
+  background: var(--neutral-wash); border-color: var(--line);
+}
+.split .box .k {
+  font: 400 11px/1.35 var(--mono); letter-spacing: .05em; color: var(--muted-2);
+}
+.split .box .v {
+  margin-top: 7px;
+  font: 600 20px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink);
+}
+
+/* ══ card ════════════════════════════════════════════════════════════════ */
+
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); padding: 18px; margin-bottom: 16px;
+}
+.card h2 { font: 600 15px/1.3 var(--sans); margin-bottom: 4px; }
+.card .hint { font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); margin-bottom: 14px; }
+.card.flush { padding: 0; overflow: hidden; }
+.card.flush > h2, .card.flush > .card-head { padding: 16px 18px; border-bottom: 1px solid var(--line-soft); margin: 0; }
+
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.card-head .t { font: 600 15px/1 var(--sans); }
+/* Which of the two payroll entities this card is — sits above its name, in the
+   same mono voice the appbar uses for a page's kicker. */
+.kicker-sm {
+  font: 500 10.5px/1.4 var(--mono); letter-spacing: .12em;
+  color: var(--muted-2); text-transform: uppercase; margin-bottom: 3px;
+}
+
+/* Bare month picker used in card headers, without the stacked label. */
+.period-input {
+  border: 1px solid var(--input-line); border-radius: var(--radius-xs);
+  padding: 7px 10px; background: #fff;
+  font: 500 13px/1 var(--mono); color: var(--ink);
+}
+.period-input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(15, 138, 70, .13); }
+
+/* ══ rows / list items ═══════════════════════════════════════════════════ */
+
+.item {
+  width: 100%; text-align: left; display: flex; align-items: center; gap: 14px;
+  padding: 15px 18px; border: none; border-bottom: 1px solid var(--line-softer);
+  background: var(--card); cursor: pointer;
+}
+.item:hover { background: var(--green-wash); }
+.item:last-child { border-bottom: none; }
+
+/* The date chip is the anchor of every row — day number over weekday. */
+.date {
+  width: 46px; height: 46px; flex: none; border-radius: 10px;
+  background: var(--green-bg); color: var(--green-dark);
+  display: grid; place-items: center; align-content: center;
+  font-family: var(--mono); text-align: center;
+}
+.date .n { font: 600 17px/1 var(--mono); }
+.date .c { font: 400 10px/1.4 var(--mono); letter-spacing: .06em; }
+.date.holiday { background: var(--amber-bg); color: var(--amber); }
+
+/* ══ buttons ═════════════════════════════════════════════════════════════ */
+
+.btn {
+  padding: 12px 18px; border: none; border-radius: var(--radius-sm);
+  background: var(--green); color: #fff;
+  font: 600 14.5px/1 var(--sans); cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 138, 70, .28);
+  transition: background .16s, transform .16s, box-shadow .16s;
+}
+.btn:hover:not(:disabled) { background: var(--green-lift); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+
+.btn.ghost {
+  background: #fff; color: var(--ink-2);
+  border: 1px solid var(--line); box-shadow: none; font-weight: 500;
+}
+.btn.ghost:hover:not(:disabled) { background: var(--green-tint); border-color: var(--green); color: var(--green-dark); }
+
+.btn.danger { background: var(--danger); box-shadow: 0 6px 18px rgba(228, 87, 46, .28); }
+.btn.danger:hover:not(:disabled) { background: var(--danger-ink); }
+
+.btn.sm { padding: 9px 13px; font-size: 13px; border-radius: var(--radius-xs); box-shadow: none; }
+.btn.on-dark { border: 1px solid rgba(255, 255, 255, .18); background: transparent; color: var(--on-dark-3); box-shadow: none; font-weight: 500; }
+.btn.on-dark:hover:not(:disabled) { background: rgba(255, 255, 255, .07); color: #fff; }
+
+.link {
+  border: none; background: none; color: var(--green);
+  font: 500 13px/1 var(--sans); cursor: pointer; padding: 0;
+}
+.link:hover { color: var(--green-dark); text-decoration: underline; }
+
+/* Keyboard focus. Inputs already ring on :focus; every button in the app had
+   nothing, so tabbing through it was invisible — and the approve / reject
+   buttons are the ones you least want pressed by a guess. :focus-visible, so
+   the ring appears for the keyboard and not around a button just clicked.
+   Inside the dark sidebar the ring goes inward, where there is contrast. */
+.btn:focus-visible, .link:focus-visible, .seg button:focus-visible {
+  outline: 2px solid var(--green); outline-offset: 2px;
+}
+.nav button:focus-visible, .signout:focus-visible, .mobile-nav button:focus-visible {
+  outline: 2px solid var(--green-lift); outline-offset: -2px;
+}
+
+/* ══ fields ══════════════════════════════════════════════════════════════ */
+
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 7px; min-width: 150px; flex: 1; }
+
+/* Mono + tracking on labels: the design pairs Thai with an English key. */
+.field label { font: 600 12px/1 var(--mono); letter-spacing: .09em; color: var(--muted); text-transform: uppercase; }
+.field input, .field select, .field textarea {
+  border: 1px solid var(--input-line); border-radius: var(--radius-sm);
+  padding: 12px 14px; background: #fff; width: 100%;
+  font: 500 15px/1.3 var(--mono); color: var(--ink);
+}
+.field textarea { font: 400 14.5px/1.55 var(--sans); resize: vertical; min-height: 64px; }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(15, 138, 70, .13);
+}
+.field .check { flex-direction: row; align-items: center; gap: 9px; }
+
+.check { display: flex; align-items: center; gap: 9px; font: 400 14px/1.4 var(--sans); cursor: pointer; }
+.check input { width: 17px; height: 17px; accent-color: var(--green); }
+
+/* ══ chips & alerts ══════════════════════════════════════════════════════ */
+
+.chip {
+  display: inline-block; padding: 4px 10px; border-radius: 20px;
+  font: 600 11.5px/1.5 var(--sans); white-space: nowrap;
+}
+.badge {
+  display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 6px;
+  background: var(--danger); color: #fff; border-radius: 9px;
+  font: 600 11px/18px var(--mono); text-align: center;
+}
+
+/* Segmented control — a filter over one screen's contents, not navigation, so
+   it is a strip of pills inside the card rather than another row of tabs. Used
+   by สรุป OT ส่งบัญชี to switch payroll entity. */
+.seg {
+  display: inline-flex; gap: 3px; padding: 3px; flex-wrap: wrap;
+  background: var(--neutral-wash); border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.seg button {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border: none; border-radius: var(--radius-xs);
+  background: transparent; color: var(--muted); cursor: pointer;
+  font: 500 13.5px/1.2 var(--sans); white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+}
+.seg button:hover { background: var(--green-tint); color: var(--green-dark); }
+.seg button.active { background: var(--green); color: #fff; }
+.seg button.active:hover { background: var(--green-lift); color: #fff; }
+.seg .n {
+  font: 500 12px/1 var(--mono); font-variant-numeric: tabular-nums;
+  opacity: .68; letter-spacing: -.01em;
+}
+
+.box {
+  padding: 13px 15px; border-radius: var(--radius-sm); margin: 12px 0;
+  font: 400 13.5px/1.6 var(--sans);
+  border: 1px solid transparent;
+}
+.box.warn { background: var(--amber-bg); color: var(--amber); border-color: #EFDCB6; }
+.box.error { background: var(--danger-bg); color: var(--danger-ink); border-color: #F3CFC7; }
+.box.ok { background: var(--green-bg); color: var(--green-dark); border-color: #C4E3D2; }
+.box.info { background: var(--info-bg); color: var(--info); border-color: #C9DCF0; }
+
+/* An alert is a .box that speaks: same four palettes, plus a mark in the mono
+   voice the sidebar icons use, so "ไม่อนุมัติเพราะ…" is not mistaken for the
+   caption of whatever sits above it. Every error and every confirmation in the
+   app comes through here (components/common.jsx → Alert). */
+.alert {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 12px 14px; border-radius: var(--radius-sm); margin: 12px 0;
+  font: 400 13.5px/1.6 var(--sans);
+  border: 1px solid transparent;
+}
+.alert::before {
+  flex: none; width: 17px; height: 17px; margin-top: 1px;
+  display: grid; place-items: center; border-radius: 50%;
+  font: 600 11px/1 var(--mono); color: #fff;
+}
+.alert.warn { background: var(--amber-bg); color: var(--amber); border-color: #EFDCB6; }
+.alert.warn::before { content: '!'; background: var(--amber); }
+.alert.error { background: var(--danger-bg); color: var(--danger-ink); border-color: #F3CFC7; }
+.alert.error::before { content: '!'; background: var(--danger); }
+.alert.ok { background: var(--green-bg); color: var(--green-dark); border-color: #C4E3D2; }
+.alert.ok::before { content: '✓'; background: var(--green); }
+.alert.info { background: var(--info-bg); color: var(--info); border-color: #C9DCF0; }
+.alert.info::before { content: 'i'; background: var(--info); }
+
+/* How the engine cut a session up — one line per segment, times and hours, so
+   it is mono throughout. The green stub on the left ties each line back to the
+   session above it rather than letting them read as separate notes. */
+.seg-list { list-style: none; margin: 12px 0 0; display: flex; flex-direction: column; gap: 3px; }
+.seg-list li {
+  padding: 6px 11px; background: var(--neutral-wash);
+  border-left: 2px solid var(--green); border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  font: 400 12.5px/1.5 var(--mono); font-variant-numeric: tabular-nums; color: var(--muted);
+}
+
+.empty {
+  padding: 40px 20px; text-align: center; color: var(--muted-2);
+  font: 400 14px/1.6 var(--sans);
+}
+
+.hint { font: 400 12.5px/1.55 var(--sans); color: var(--muted-2); }
+.note { font: 400 12.5px/1.55 var(--sans); color: var(--muted); }
+
+/* ══ tables ══════════════════════════════════════════════════════════════ */
+
+.table-wrap { overflow-x: auto; border-radius: var(--radius); }
+
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left; padding: 11px 12px;
+  font: 600 11.5px/1.4 var(--mono); letter-spacing: .07em; color: var(--muted-2);
+  text-transform: uppercase; border-bottom: 1px solid var(--line);
+  white-space: nowrap; background: var(--neutral-wash);
+}
+td { padding: 12px; border-bottom: 1px solid var(--line-softer); font: 400 14px/1.5 var(--sans); vertical-align: middle; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+tbody tr:hover { background: var(--green-wash); }
+tbody tr:last-child td { border-bottom: none; }
+tfoot td { font-weight: 600; border-top: 1px solid var(--line); background: var(--neutral-wash); }
+/* Several summary rows can stack in one foot — per department, then the whole
+   company. The last one is the figure that gets signed for, so it is the one
+   that reads as a total rather than as another subtotal. */
+tfoot tr + tr td { border-top: none; }
+tfoot tr.grand td {
+  border-top: 1.5px solid var(--line);
+  background: var(--green-bg); color: var(--green-dark);
+}
+
+/* ══ modal / bottom sheet ════════════════════════════════════════════════ */
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 80;
+  background: rgba(20, 32, 26, .5);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal {
+  background: #fff; border-radius: var(--radius-lg);
+  width: min(620px, 100%); max-height: 88vh; overflow: auto;
+  box-shadow: 0 26px 60px rgba(20, 32, 26, .28);
+  animation: otfade .16s ease both;
+}
+.modal > h2, .modal-head {
+  padding: 18px 22px; border-bottom: 1px solid var(--line-soft);
+  position: sticky; top: 0; background: #fff; z-index: 2;
+  font: 600 17px/1.3 var(--sans);
+}
+.modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; }
+.modal-foot {
+  padding: 14px 22px; border-top: 1px solid var(--line-soft);
+  display: flex; gap: 10px; justify-content: flex-end;
+  position: sticky; bottom: 0; background: #fff;
+}
+
+/* ══ login ═══════════════════════════════════════════════════════════════ */
+
+.login-split {
+  min-height: 100vh; display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  background: var(--ink);
+}
+.login-brand {
+  padding: 56px 48px; display: flex; flex-direction: column; justify-content: space-between;
+  background: var(--green);
+  background-image: linear-gradient(160deg, var(--green-lift) 0%, var(--green-dark) 100%);
+  color: #fff; min-height: 280px;
+}
+.login-brand .kicker { font: 500 12px/1 var(--mono); letter-spacing: .18em; opacity: .75; margin-bottom: 18px; }
+.login-brand h1 { font: 700 clamp(28px, 4vw, 40px)/1.2 var(--sans); letter-spacing: -.5px; margin-bottom: 14px; text-wrap: pretty; }
+.login-brand p { font: 400 15px/1.65 var(--sans); opacity: .85; max-width: 420px; text-wrap: pretty; }
+.login-brand .ver { font: 400 12px/1.5 var(--mono); opacity: .6; }
+.login-brand .lockup { display: flex; align-items: center; gap: 12px; }
+.login-brand .lockup .mark {
+  width: 40px; height: 40px; border-radius: 9px; background: #fff; color: var(--green);
+  display: grid; place-items: center; font: 700 19px/1 var(--latin); letter-spacing: -.5px;
+}
+.login-brand .lockup .word { font: 600 15px/1.2 var(--latin); letter-spacing: .14em; }
+
+.login-form { background: #fff; padding: 56px 48px; display: flex; flex-direction: column; justify-content: center; }
+.login-form .inner { width: 100%; max-width: 400px; margin: 0 auto; }
+.login-form h2 { font: 600 24px/1.3 var(--sans); margin-bottom: 6px; }
+.login-form .lede { font: 400 14px/1.5 var(--sans); color: var(--muted); margin-bottom: 28px; }
+.login-form .foot {
+  margin-top: 24px; padding: 14px 16px; border-radius: 10px;
+  background: var(--neutral-wash); font: 400 12.5px/1.6 var(--sans); color: var(--muted);
+}
+
+/* ══ mobile — the design's own 860px breakpoint ══════════════════════════ */
+
+.mobile-nav, .fab { display: none; }
+
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .appbar .mark-sm { display: grid; }
+  .appbar .avatar { display: grid; width: 38px; height: 38px; cursor: pointer; }
+
+  main { padding: 14px 12px; }
+
+  /* Clears the fixed bottom bar so the last row is never trapped under it. */
+  .mobile-nav-spacer { height: 74px; }
+
+  .mobile-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+    display: flex;
+    background: rgba(255, 255, 255, .96); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+  .mobile-nav button {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    border: none; background: none; cursor: pointer; padding: 6px 2px;
+    color: var(--muted-2);
+  }
+  .mobile-nav button.active { color: var(--green); }
+  .mobile-nav .icon { position: relative; font: 400 17px/1 var(--mono); }
+  .mobile-nav .label { font: 500 11px/1 var(--sans); }
+  .mobile-nav .count {
+    position: absolute; top: -4px; right: -11px;
+    min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 8px; font: 600 10px/16px var(--mono);
+  }
+
+  .fab {
+    display: grid; place-items: center;
+    position: fixed; right: 18px; bottom: 92px; z-index: 35;
+    width: 58px; height: 58px; border-radius: 50%;
+    border: none; background: var(--green); color: #fff;
+    font: 300 30px/1 var(--latin); cursor: pointer;
+    box-shadow: 0 10px 26px rgba(15, 138, 70, .42);
+  }
+
+  /* A form on a phone is a bottom sheet: it rises from the thumb, not the middle. */
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .modal {
+    width: 100%; max-width: none; max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    animation: otslide .22s ease both;
+  }
+
+  .login-split { grid-template-columns: 1fr; }
+  .login-brand { padding: 32px 24px; min-height: 0; gap: 22px; }
+  .login-brand .ver { display: none; }
+  .login-form { padding: 32px 24px; }
+
+  .hero { grid-template-columns: 1fr; gap: 18px; }
+  .hero .big span:first-child { font-size: 38px; }
+
+  .row { gap: 10px; }
+  .field { min-width: 100%; }
+  .card { padding: 15px; border-radius: var(--radius); }
+}
+
+/* Every tab change fades the page in and the bottom sheet slides. Somebody who
+   has asked their system for less motion gets the same screens without it. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ══ print — the app chrome is not part of the document ══════════════════ */
+
+@page { size: A4; margin: 12mm; }
+
+@media print {
+  html, body { background: #fff; }
+  .no-print, .sidebar, .appbar, .mobile-nav, .mobile-nav-spacer, .fab { display: none !important; }
+  main { padding: 0 !important; }
+  .shell { display: block; }
+  .card { border: none; box-shadow: none; }
+  table { min-width: 0 !important; }
+  * { animation: none !important; transition: none !important; box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

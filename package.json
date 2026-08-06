@@ -1,0 +1,33 @@
+{
+  "name": "primus-ot-system",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "OT approval system for Primus Instrument Co., Ltd. — replaces paper form F-HR-027 Rev.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "test": "node --test \"test/**/*.test.js\"",
+    "seed": "node src/seed.js",
+    "migrate:company": "node src/migrate-company.js",
+    "setup": "npm install",
+    "legacy:dev": "node --watch src/server.js",
+    "legacy:start": "node src/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "multer": "^2.0.2",
+    "next": "^16.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  }
+}

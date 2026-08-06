@@ -1,0 +1,17 @@
+import { route, csvResponse } from '@/lib/http.js';
+import { requireAuth, requireRole } from '@/lib/session.js';
+import { toCsv } from '@/src/lib/csv.js';
+
+export const GET = route(async (req) => {
+  requireRole(await requireAuth(req), 'admin');
+  const csv = toCsv(
+    ['code', 'name', 'email', 'position', 'department', 'role', 'company'],
+    [
+      // `company` may be left blank — the importer reads PM… as primus and
+      // THT… as themtech. Fill it in only where the code does not say.
+      ['PM00412', 'สมชาย ใจดี', 'somchai@primus.co.th', 'ช่างเทคนิค', 'ENG', 'employee', 'primus'],
+      ['THT0074', 'สุจินดา แรงกสิวิทย์', '', 'เจ้าหน้าที่ผลิต', 'PROD', 'employee', 'themtech'],
+    ],
+  );
+  return csvResponse('employee-import-template.csv', csv);
+});
