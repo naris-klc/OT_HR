@@ -181,6 +181,17 @@ export default function HrView({ user }) {
               {' '}รวม {hours(data.hrSection.total)} ชม.
               {data.hrSection.basis === 'raw' ? ' (ชั่วโมงดิบ ยังไม่คูณอัตรา)' : ' (คูณอัตราแล้ว)'}
             </div>
+
+            {/* Same rule as the printed form, said on the screen the form is
+                reached from — so a total here and a total there never differ
+                without an explanation attached to both. */}
+            {data.supersededCount > 0 && (
+              <div className="hint" style={{ marginTop: 6 }}>
+                ไม่นับ {data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม ·
+                {' '}เมื่อกรอกวันและเวลาเดียวกันซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุด ·
+                {' '}เปิดใบ F-HR-027 ของพนักงานเพื่อดูว่าเป็นรายการใด
+              </div>
+            )}
           </>
         )}
       </div>

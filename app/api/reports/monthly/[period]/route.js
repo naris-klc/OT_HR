@@ -3,7 +3,7 @@ import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { summariseEntries, hrSummary, capUsage } from '@/src/lib/otEngine.js';
-import { PERIOD_RE } from '@/lib/reports.js';
+import { PERIOD_RE, latestPerSession } from '@/lib/reports.js';
 
 /** HR's monthly review: every employee's totals for a period, in one table. */
 export const GET = route(async (req, { params }) => {
@@ -21,10 +21,15 @@ export const GET = route(async (req, { params }) => {
   else if (q.department) filter.department = q.department;
   filter.status = { $in: String(q.status || 'approved,pending_hr,pending_mgr').split(',') };
 
-  const entries = await OtEntry.find(filter)
+  const all = await OtEntry.find(filter)
     .populate('employee', 'code name position')
     .populate('department', 'code name nameTh monthlyCapHours')
     .lean();
+
+  // A session filed twice is one session. Only the latest filing counts, here
+  // and on the printed form, so a total on this screen can be checked against
+  // the sheet it prints without the two ever disagreeing.
+  const { shown: entries, hidden } = latestPerSession(all);
 
   const byEmployee = new Map();
   for (const entry of entries) {
@@ -51,5 +56,12 @@ export const GET = route(async (req, { params }) => {
   }).sort((a, b) => a.employee.code.localeCompare(b.employee.code));
 
   const grand = summariseEntries(entries);
-  return json({ period, employees, grandTotal: grand, hrSection: hrSummary(grand, policy) });
+  return json({
+    period,
+    employees,
+    grandTotal: grand,
+    hrSection: hrSummary(grand, policy),
+    /** Superseded filings left out of every figure above — reported, not silent. */
+    supersededCount: hidden.length,
+  });
 });

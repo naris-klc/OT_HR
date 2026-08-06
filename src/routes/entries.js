@@ -6,6 +6,12 @@ import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { OtValidationError } from '../lib/otEngine.js';
 import { normaliseDescription } from '../config/policy.js';
 import { compute, applyComputation, checkCap, loadContext, monthlyUsage } from '../services/otService.js';
+// `pickSession` and `stampCap` below are this file's own copies, from before the
+// split. `sameSession` is not copied: it decides whether an edit keeps the
+// version it replaced, and a second copy that drifted would lose forms rather
+// than merely disagree about them. lib/entries.js imports nothing, so plain
+// node can load it as happily as Next can.
+import { sameSession } from '../../lib/entries.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -177,6 +183,9 @@ router.patch('/:id', wrap(async (req, res) => {
     });
   }
 
+  // What the entry says now, captured before anything overwrites it.
+  const before = entry.snapshot();
+
   const session = pickSession({ ...entry.toObject(), ...req.body });
   const ctx = await loadContext([session.workDate]);
   const result = await compute(session, ctx);
@@ -206,7 +215,8 @@ router.patch('/:id', wrap(async (req, res) => {
 
   // status untouched either way — HR's edit keeps the approvals already
   // collected, and the employee's entry has none to keep.
-  entry.log(req.user, isHr ? 'hr_edit' : 'edit', reason || null, entry.status);
+  const changed = !sameSession(before, entry.snapshot());
+  entry.log(req.user, isHr ? 'hr_edit' : 'edit', reason || null, entry.status, changed ? before : null);
   await entry.save();
 
   return res.json({ entry: await entry.populate(POPULATE), cap });

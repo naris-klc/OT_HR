@@ -3,6 +3,7 @@ import { route, query, csvResponse } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
+import { latestPerSession } from '@/lib/reports.js';
 
 /**
  * §10 data export — for HR to hand to whoever runs payroll.
@@ -30,11 +31,16 @@ export const GET = route(async (req) => {
   if (user.role === 'manager') filter.department = user.department?._id;
   else if (q.department) filter.department = q.department;
 
-  const entries = await OtEntry.find(filter)
+  const all = await OtEntry.find(filter)
     .populate('employee', 'code name position')
     .populate('department', 'code name nameTh')
     .sort({ 'employee.code': 1, workDate: 1 })
     .lean();
+
+  // One row per session, not per filing. This file is a list rather than a
+  // total, but it is a list somebody sums: leaving a superseded filing in it
+  // would put the discarded hours back into payroll by way of a spreadsheet.
+  const { shown: entries } = latestPerSession(all);
 
   const headers = [
     'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก', 'วันที่', 'จาก', 'ถึง', 'ข้ามคืน', 'ไม่พักเที่ยง',

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
-import { StatusChip, Alert, Empty } from './common.jsx';
+import { StatusChip, Alert, Empty, EditedMark, EntryHistory, editsOf } from './common.jsx';
 import OtForm from './OtForm.jsx';
 
 export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
@@ -13,6 +13,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   const [editing, setEditing] = useState(null); // own entry, still pending_mgr
   const [showForm, setShowForm] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [showHistory, setShowHistory] = useState(null); // entry id, in the full table
   const [error, setError] = useState('');
 
   async function load() {
@@ -237,7 +238,8 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                 </thead>
                 <tbody>
                   {monthEntries.map((e) => (
-                    <tr key={e._id}>
+                    <React.Fragment key={e._id}>
+                    <tr>
                       <td>
                         {thaiDate(e.workDate)}
                         <div className="hint">วัน{dayName(e.workDate)}</div>
@@ -253,6 +255,9 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                       <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
                       <td style={{ maxWidth: 260 }}>
                         {e.description}
+                        {editsOf(e).length > 0 && (
+                          <div style={{ marginTop: 4 }}><EditedMark entry={e} /></div>
+                        )}
                         {e.rejectionReason && (
                           <div style={{ fontSize: 12, color: 'var(--danger-ink)' }}>
                             เหตุผล: {e.rejectionReason}
@@ -279,8 +284,33 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                             ส่งใหม่
                           </button>
                         )}
+                        {/* Offered only on rows that were actually rewritten —
+                            on the rest there is no earlier version to show, and
+                            a button that opens "ยื่นคำขอ" alone is noise. */}
+                        {editsOf(e).length > 0 && (
+                          <button
+                            className="btn ghost sm"
+                            style={{ marginLeft: 6 }}
+                            onClick={() => setShowHistory(showHistory === e._id ? null : e._id)}
+                          >
+                            {showHistory === e._id ? 'ซ่อนข้อมูลเดิม' : 'ข้อมูลเดิม'}
+                          </button>
+                        )}
                       </td>
                     </tr>
+                    {showHistory === e._id && (
+                      <tr>
+                        <td colSpan={9} style={{ background: 'var(--neutral-wash)' }}>
+                          <strong style={{ fontSize: 13 }}>ประวัติการแก้ไข</strong>
+                          <div className="hint" style={{ margin: '2px 0 0' }}>
+                            แถวด้านบนคือข้อมูลล่าสุด ซึ่งเป็นข้อมูลที่พิมพ์ลงใบ F-HR-027 ·
+                            ด้านล่างนี้คือข้อมูลเดิมที่เคยกรอกไว้ก่อนการแก้ไขแต่ละครั้ง
+                          </div>
+                          <EntryHistory entry={e} />
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>

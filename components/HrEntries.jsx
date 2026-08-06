@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
-import { Alert, Empty, StatusChip } from './common.jsx';
+import { Alert, Empty, EditedMark, EntryHistory, StatusChip, editsOf } from './common.jsx';
 import OtForm from './OtForm.jsx';
 
 /**
@@ -17,6 +17,7 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
   const [entries, setEntries] = useState(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
+  const [showHistory, setShowHistory] = useState(null); // entry id
 
   async function load() {
     try {
@@ -77,11 +78,15 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
             </thead>
             <tbody>
               {entries.map((e) => {
-                const lastHrEdit = [...(e.history || [])].reverse()
-                  .find((h) => h.action === 'hr_edit');
+                // The last correction of any kind, not only HR's: an employee
+                // who revised the request before the manager saw it changed the
+                // hours in this row just as surely, and HR reconciling against
+                // the paper needs to know that as much as its own edits.
+                const lastEdit = [...editsOf(e)].pop();
                 const closed = ['rejected', 'cancelled'].includes(e.status);
                 return (
-                  <tr key={e._id}>
+                  <React.Fragment key={e._id}>
+                  <tr>
                     <td>
                       {thaiDate(e.workDate)}
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(e.workDate)}</div>
@@ -98,10 +103,13 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                     <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
                     <td>
                       {e.description}
-                      {lastHrEdit && (
-                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                          แก้ไขโดย {lastHrEdit.byName || 'ฝ่ายบุคคล'}
-                          {lastHrEdit.note ? ` — ${lastHrEdit.note}` : ''}
+                      {lastEdit && (
+                        <div style={{ marginTop: 4 }}>
+                          <EditedMark entry={e} />
+                          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                            โดย {lastEdit.byName || '—'}
+                            {lastEdit.note ? ` — ${lastEdit.note}` : ''}
+                          </div>
                         </div>
                       )}
                     </td>
@@ -111,14 +119,40 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                         <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>เกินเพดาน</div>
                       )}
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
                       {closed ? (
                         <span style={{ fontSize: 12, color: 'var(--muted)' }}>แก้ไขไม่ได้</span>
                       ) : (
                         <button className="btn ghost sm" onClick={() => setEditing(e)}>แก้ไข</button>
                       )}
+                      {/* Reconciling a month against the signed paper means
+                          reading what the row used to say, not only what it
+                          says now — which is the one thing the printed form
+                          cannot tell HR. */}
+                      {lastEdit && (
+                        <button
+                          className="btn ghost sm"
+                          style={{ marginLeft: 6 }}
+                          onClick={() => setShowHistory(showHistory === e._id ? null : e._id)}
+                        >
+                          {showHistory === e._id ? 'ซ่อนข้อมูลเดิม' : 'ข้อมูลเดิม'}
+                        </button>
+                      )}
                     </td>
                   </tr>
+                  {showHistory === e._id && (
+                    <tr>
+                      <td colSpan={9} style={{ background: 'var(--neutral-wash)' }}>
+                        <strong style={{ fontSize: 13 }}>ประวัติการแก้ไข</strong>
+                        <div className="hint" style={{ margin: '2px 0 0' }}>
+                          แถวด้านบนคือข้อมูลล่าสุดที่พิมพ์ลงใบ F-HR-027 ·
+                          ด้านล่างนี้คือข้อมูลเดิมก่อนการแก้ไขแต่ละครั้ง
+                        </div>
+                        <EntryHistory entry={e} />
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 );
               })}
             </tbody>

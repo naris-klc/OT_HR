@@ -21,7 +21,24 @@
       "Bash(sed '$d')",
       "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --user-data-dir=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/cprof\" --allow-file-access-from-files --screenshot=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/shot2.png\" --window-size=900,820 --hide-scrollbars \"file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/preview2.html\")",
       "Bash(mv tmp.css otdept.css)",
-      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --user-data-dir=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/cprof\" --screenshot=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/shot3.png\" --window-size=900,400 --hide-scrollbars \"file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/preview2.html\")"
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --no-sandbox --user-data-dir=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/cprof\" --screenshot=\"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/shot3.png\" --window-size=900,400 --hide-scrollbars \"file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/12de5d6e-4376-4bf8-8e33-a25778877b2a/scratchpad/preview2.html\")",
+      "Bash(grep -roh \"devtools-config[^\\\\\"']\\\\{0,40\\\\}\\\\|\\\\.next[/-]devtools[a-z.-]*\\\\|devtools\\\\.json\" dist/)",
+      "Bash(grep -roh \"Toggle[^\\\\\"'<]\\\\{0,40\\\\}\\\\|⌘[^\\\\\"'<]\\\\{0,20\\\\}\\\\|metaKey[^,;\\)]\\\\{0,60\\\\}\" dist/compiled/next-devtools/index.js)",
+      "Bash(grep -roh \"hideShortcut[^;]\\\\{0,200\\\\}\" dist/compiled/next-devtools/index.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/__nextjs_server_status)",
+      "Bash(curl -s http://localhost:3000/__nextjs_server_status)",
+      "Bash(curl -s -X POST http://localhost:3000/__nextjs_devtools_config -H \"Content-Type: application/json\" -d '{\"hideShortcut\":\"Shift+KeyN\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -X POST http://localhost:3000/__nextjs_restart_dev -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(npm test *)",
+      "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/check.mjs\")",
+      "Bash(sed -i \"s/^const err = entry.validateSync\\(\\);/entry.period = entry.workDate.slice\\(0, 7\\); \\\\/\\\\/ the pre\\('validate'\\) hook does not run under validateSync\\\\nconst err = entry.validateSync\\(\\);/\" check.mjs)",
+      "Bash(sed -i \"s/  startTime: '17:00', endTime: '19:00', description: 'งานเก่า', status: 'approved',/  startTime: '17:00', endTime: '19:00', description: 'งานเก่า', status: 'approved', period: '2026-07',/\" check.mjs)",
+      "Bash(node check.mjs)",
+      "Bash(node --check src/routes/entries.js)",
+      "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/inspect.mjs\")",
+      "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/which.mjs\")",
+      "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/verify.mjs\")",
+      "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/allpaths.mjs\")"
     ]
   }
 }

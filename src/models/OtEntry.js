@@ -35,6 +35,40 @@ const segmentSchema = new mongoose.Schema(
   { _id: false },
 );
 
+/**
+ * What an entry said BEFORE an edit rewrote it.
+ *
+ * `history` has always recorded who changed an entry and why, but never WHAT it
+ * used to say: an edit overwrites วันที่/เวลา/รายละเอียด in place, and the
+ * version the employee originally filed was gone. F-HR-027 printing the latest
+ * values is right — the form is what payroll pays against — but the manager who
+ * approved different hours, and HR reconciling a month against the signed
+ * paper, both need to see what those values replaced.
+ *
+ * Every field here is optional, on purpose. Mongoose validates the whole
+ * document on save, so a `required` field would make every entry written before
+ * this schema existed unsaveable — you could no longer approve, cancel or
+ * recompute a historic month.
+ */
+const snapshotSchema = new mongoose.Schema(
+  {
+    workDate: String,
+    startTime: String,
+    endTime: String,
+    endsNextDay: Boolean,
+    noBreakTaken: Boolean,
+    description: String,
+    /** The hours those values computed to — what the form printed at the time. */
+    buckets: {
+      [BUCKETS.OT15_WEEKDAY]: Number,
+      [BUCKETS.OT15_HOLIDAY]: Number,
+      [BUCKETS.OT3_HOLIDAY]: Number,
+    },
+    otHours: Number,
+  },
+  { _id: false },
+);
+
 const historySchema = new mongoose.Schema(
   {
     at: { type: Date, default: Date.now },
@@ -57,6 +91,15 @@ const historySchema = new mongoose.Schema(
     note: String,
     fromStatus: String,
     toStatus: String,
+
+    /**
+     * The entry as it stood immediately before this action, written only by the
+     * actions that rewrite it ('edit', 'hr_edit') and only when something
+     * actually changed. Absent everywhere else — including on every edit
+     * recorded before this field existed, which is why readers must treat it as
+     * optional rather than as "nothing changed".
+     */
+    before: snapshotSchema,
   },
   { _id: false },
 );
@@ -158,7 +201,29 @@ otEntrySchema.pre('validate', function setPeriod(next) {
 otEntrySchema.index({ employee: 1, period: 1, status: 1 });
 otEntrySchema.index({ department: 1, status: 1, workDate: 1 });
 
-otEntrySchema.methods.log = function log(actor, action, note, fromStatus) {
+/**
+ * The fields the employee filled in, plus the hours they computed to — the
+ * shape `history.before` keeps. Call it before overwriting an entry to capture
+ * the version being replaced.
+ */
+otEntrySchema.methods.snapshot = function snapshot() {
+  return {
+    workDate: this.workDate,
+    startTime: this.startTime,
+    endTime: this.endTime,
+    endsNextDay: Boolean(this.endsNextDay),
+    noBreakTaken: Boolean(this.noBreakTaken),
+    description: this.description,
+    buckets: {
+      [BUCKETS.OT15_WEEKDAY]: this.buckets?.[BUCKETS.OT15_WEEKDAY] ?? 0,
+      [BUCKETS.OT15_HOLIDAY]: this.buckets?.[BUCKETS.OT15_HOLIDAY] ?? 0,
+      [BUCKETS.OT3_HOLIDAY]: this.buckets?.[BUCKETS.OT3_HOLIDAY] ?? 0,
+    },
+    otHours: this.totals?.otHours ?? 0,
+  };
+};
+
+otEntrySchema.methods.log = function log(actor, action, note, fromStatus, before) {
   this.history.push({
     by: actor?._id,
     byName: actor?.name,
@@ -166,6 +231,9 @@ otEntrySchema.methods.log = function log(actor, action, note, fromStatus) {
     note,
     fromStatus,
     toStatus: this.status,
+    // `undefined` rather than `null`: mongoose stores an explicit null as a
+    // subdocument, and a reader cannot tell that from a real empty snapshot.
+    before: before || undefined,
   });
 };
 

@@ -7,7 +7,9 @@ import {
   BUCKETS, BUCKET_LABEL_TH, summariseEntries, hrSummary, capUsage, makeIsHoliday,
 } from '@/src/lib/otEngine.js';
 import { loadHolidaySet } from '@/src/services/otService.js';
-import { PERIOD_RE, previousPeriod, thaiMonth, min, max } from '@/lib/reports.js';
+import {
+  PERIOD_RE, previousPeriod, thaiMonth, min, max, latestPerSession,
+} from '@/lib/reports.js';
 
 /**
  * The data behind the printable F-HR-027 Rev.4 — one employee, one month (§10).
@@ -55,8 +57,14 @@ export const GET = route(async (req, { params }) => {
   }
   const byDate = new Map(rows.map((r) => [r.date, r]));
 
+  // Two filings of one session print as one row — the newest. This runs before
+  // the row and summary loop rather than after it, so สรุปรวม counts exactly
+  // what the rows above it show; a total that included a hidden row would be a
+  // figure the sheet cannot be checked against.
+  const { shown, hidden } = latestPerSession(entries);
+
   const inPeriod = [];
-  for (const entry of entries) {
+  for (const entry of shown) {
     for (const seg of entry.segments || []) {
       const row = byDate.get(seg.date);
       if (!row) continue; // segment belongs to the neighbouring month
@@ -103,6 +111,21 @@ export const GET = route(async (req, { params }) => {
         [BUCKETS.OT3_HOLIDAY]: BUCKET_LABEL_TH[BUCKETS.OT3_HOLIDAY],
       },
       rows,
+      /**
+       * Duplicate filings kept off the sheet. Not printed — the paper form has
+       * no place for them — but returned so the screen can name the hours it
+       * dropped rather than let them vanish between two documents.
+       */
+      hidden: hidden.filter((e) => (e.segments || []).some((s) => byDate.has(s.date))).map((e) => ({
+        id: String(e._id),
+        workDate: e.workDate,
+        from: e.startTime,
+        to: e.endTime,
+        description: e.description,
+        otHours: e.totals?.otHours ?? 0,
+        status: e.status,
+        statusLabel: STATUS_LABEL_TH[e.status],
+      })),
       /** สรุปรวม — one total per hour column. */
       summary: summary.buckets,
       totalHours: summary.otHours,

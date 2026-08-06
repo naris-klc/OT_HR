@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, hours, BUCKETS } from '@/lib/api.js';
+import { api, hours, thaiDate, BUCKETS } from '@/lib/api.js';
 import { Alert } from './common.jsx';
 
 /**
@@ -48,6 +48,30 @@ export default function PrintForm({ employeeId, period, onClose }) {
             : 'ช่องเฉพาะฝ่ายบุคคล: เป็นชั่วโมงดิบ ยังไม่คูณอัตรา'}
         </div>
       </div>
+
+      {/* Inside no-print, deliberately. The sheet shows the latest filing of a
+          session and nothing else — that is what was asked of it — but hours
+          that exist in the database and not on the paper cannot go unsaid to
+          the person holding both. */}
+      {form.hidden?.length > 0 && (
+        <div className="no-print" style={{ marginBottom: 12 }}>
+          <Alert kind="warn">
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+              ซ่อน {form.hidden.length} รายการที่ซ้ำช่วงเวลาเดิม — ใบฟอร์มแสดงเฉพาะรายการที่กรอกล่าสุดของแต่ละช่วงเวลา
+            </div>
+            {form.hidden.map((h) => (
+              <div key={h.id} style={{ fontSize: 12.5 }}>
+                {thaiDate(h.workDate)} {h.from}–{h.to} · {hours(h.otHours)} ชม. ·
+                {' '}{h.statusLabel} · {h.description}
+              </div>
+            ))}
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              ชั่วโมงเหล่านี้ไม่ถูกนับใน สรุปรวม ของใบนี้ แต่ยังคงอยู่ในรายงานรายเดือนและไฟล์ส่งบัญชี ·
+              หากเป็นรายการที่กรอกผิด ให้ยกเลิกรายการนั้นเพื่อให้ยอดทั้งสองฝั่งตรงกัน
+            </div>
+          </Alert>
+        </div>
+      )}
 
       <div className="f027-screen">
         <div className="f027">

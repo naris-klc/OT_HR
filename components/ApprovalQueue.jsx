@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, BUCKETS } from '@/lib/api.js';
-import { Alert, Empty, Modal, SegmentList } from './common.jsx';
+import { Alert, Empty, EditedMark, EntryHistory, Modal, SegmentList, editsOf } from './common.jsx';
 
 /**
  * Manager review (daily) and HR confirmation (monthly) are the same table with
@@ -110,6 +110,12 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
                     <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
                     <td style={{ maxWidth: 240 }}>
                       {e.description}
+                      {/* The row above is the request as it stands now. This
+                          says it has not always said that — the values being
+                          approved are a revision. */}
+                      {editsOf(e).length > 0 && (
+                        <div style={{ marginTop: 4 }}><EditedMark entry={e} /></div>
+                      )}
                       {e.capExceeded && (
                         <div style={{ fontSize: 12, color: 'var(--amber)' }}>
                           ⚠ เกินเพดานแผนก ({e.capSnapshot?.capHours} ชม.)
@@ -149,14 +155,13 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
                       <td colSpan={9} style={{ background: '#fafbfa' }}>
                         <strong style={{ fontSize: 13 }}>การแบ่งช่วงเวลา</strong>
                         <SegmentList segments={e.segments} />
-                        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
-                          {e.history?.map((h, i) => (
-                            <div key={i}>
-                              {new Date(h.at).toLocaleString('th-TH')} · {h.action} · {h.byName}
-                              {h.note ? ` · ${h.note}` : ''}
-                            </div>
-                          ))}
-                        </div>
+                        {/* The row above shows the hours as they stand now.
+                            This is where a reviewer sees whether they stood
+                            somewhere else when the request was filed. */}
+                        <strong style={{ fontSize: 13, display: 'block', marginTop: 12 }}>
+                          ประวัติรายการ
+                        </strong>
+                        <EntryHistory entry={e} />
                       </td>
                     </tr>
                   )}

@@ -388,6 +388,9 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
    then the figure it came to. Named here rather than written inline at each
    card, so one department's badge cannot drift from the next one's. */
 .chip.muted { background: var(--neutral-wash); color: var(--muted); }
+/* แก้ไขแล้ว — amber, the same "needs a second look" tone รอหัวหน้า carries,
+   because that is what it is asking of the reader rather than a warning. */
+.chip.edited { background: #FBF1E0; color: #A8791A; }
 .chip.green { background: var(--green-bg); color: var(--green-dark); }
 .badge {
   display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 6px;
@@ -460,6 +463,40 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
   padding: 6px 11px; background: var(--neutral-wash);
   border-left: 2px solid var(--green); border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
   font: 400 12.5px/1.5 var(--mono); font-variant-numeric: tabular-nums; color: var(--muted);
+}
+
+/* ประวัติรายการ — the actions on an entry, newest last, reading as one column
+   so an edit and the values it replaced stay visibly attached to each other. */
+.entry-history { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.entry-history > li { padding-left: 11px; border-left: 2px solid var(--line); }
+.entry-history .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.entry-history .act { font: 600 12.5px/1.5 var(--sans); color: var(--ink); }
+.entry-history .who { font: 400 12.5px/1.5 var(--sans); color: var(--muted); }
+.entry-history .when {
+  font: 400 11.5px/1.5 var(--mono); color: var(--muted-2); font-variant-numeric: tabular-nums;
+}
+.entry-history .note { font: 400 12.5px/1.55 var(--sans); color: var(--muted); }
+
+/* เดิม → ใหม่. The old value is struck through rather than only greyed: on a
+   printed-out screen colour is the first thing to go, and which side is which
+   is the whole point of the row. */
+.entry-diff { list-style: none; margin: 5px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.entry-diff li {
+  display: grid; grid-template-columns: minmax(80px, auto) 1fr auto 1fr;
+  align-items: baseline; gap: 4px 8px;
+  padding: 5px 9px; background: var(--neutral-wash); border-radius: var(--radius-xs);
+  font: 400 12.5px/1.5 var(--sans);
+}
+.entry-diff .k { font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2); }
+.entry-diff .was { color: var(--muted-2); text-decoration: line-through; }
+.entry-diff .to { color: var(--muted-2); }
+.entry-diff .now { color: var(--ink); font-weight: 500; }
+
+@media (max-width: 640px) {
+  /* Four columns cannot hold a description at phone width — stack the pair. */
+  .entry-diff li { grid-template-columns: 1fr; }
+  .entry-diff .to { display: none; }
+  .entry-diff .was::after { content: ' →'; text-decoration: none; }
 }
 
 .empty {

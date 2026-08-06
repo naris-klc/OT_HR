@@ -15,6 +15,7 @@ import {
   capUsage,
   addDays,
 } from '../lib/otEngine.js';
+import { latestPerSession } from '../../lib/reports.js';
 
 /** Holiday dates are read per request; the set is tiny (tens of rows a year). */
 export async function loadHolidaySet(years = []) {
@@ -67,8 +68,14 @@ export async function monthlyUsage(employeeId, period, { excludeId = null, polic
   };
   if (excludeId) query._id = { $ne: excludeId };
 
-  const entries = await OtEntry.find(query).select('buckets totals').lean();
-  const summary = summariseEntries(entries);
+  // The session fields come along so a superseded filing can be dropped: the
+  // cap is a count of hours worked, and counting a discarded version twice
+  // would push a department over a limit it never reached.
+  const entries = await OtEntry.find(query)
+    .select('buckets totals employee workDate startTime endTime endsNextDay createdAt')
+    .lean();
+  const { shown } = latestPerSession(entries);
+  const summary = summariseEntries(shown);
   return { summary, usedHours: capUsage(summary, p), basis: p.capBasis };
 }
 

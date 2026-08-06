@@ -2,7 +2,9 @@ import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, applyComputation, checkCap, loadContext } from '@/src/services/otService.js';
-import { POPULATE, scopeFor, pickSession, stampCap, editPermission } from '@/lib/entries.js';
+import {
+  POPULATE, scopeFor, pickSession, stampCap, editPermission, sameSession,
+} from '@/lib/entries.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req, { params }) => {
@@ -26,6 +28,10 @@ export const PATCH = route(async (req, { params }) => {
   const reason = String(payload.note || '').trim();
   const may = editPermission(user, entry, reason);
   if (!may.ok) return fail(may.error, may.status);
+
+  // What the entry says now, captured before anything overwrites it. F-HR-027
+  // prints the latest values; this is how the ones they replace survive.
+  const before = entry.snapshot();
 
   const session = pickSession({ ...entry.toObject(), ...payload });
   const ctx = await loadContext([session.workDate]);
@@ -60,7 +66,12 @@ export const PATCH = route(async (req, { params }) => {
 
   // status untouched either way — HR's edit keeps the approvals already
   // collected, and the employee's entry has none to keep.
-  entry.log(user, may.action, reason || null, entry.status);
+  //
+  // The snapshot rides along only when the save actually moved something: a
+  // form opened and closed unchanged is still worth logging as "looked at",
+  // but filing a `before` identical to the after would bury the real edits.
+  const changed = !sameSession(before, entry.snapshot());
+  entry.log(user, may.action, reason || null, entry.status, changed ? before : null);
   await entry.save();
 
   return json({ entry: await entry.populate(POPULATE), cap });
