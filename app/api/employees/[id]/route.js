@@ -9,10 +9,13 @@ export const PATCH = route(async (req, { params }) => {
   const employee = await Employee.findById(params.id);
   if (!employee) return fail('ไม่พบพนักงาน', 404);
 
-  const { name, email, position, department, role, company, active, password } = await body(req);
+  const { name, email, position, birthDate, department, role, company, active, password } = await body(req);
   if (name != null) employee.name = name;
   if (email !== undefined) employee.email = email || undefined;
   if (position != null) employee.position = position;
+  // `undefined` means "not mentioned"; '' means "clear it". Storing '' instead
+  // would fail the schema's YYYY-MM-DD match.
+  if (birthDate !== undefined) employee.birthDate = birthDate || undefined;
   if (department != null) employee.department = department;
   if (role != null) {
     if (!ROLES.includes(role)) return fail('บทบาทไม่ถูกต้อง', 400);

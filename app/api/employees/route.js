@@ -25,7 +25,7 @@ export const GET = route(async (req) => {
 
 export const POST = route(async (req) => {
   requireRole(await requireAuth(req), 'admin');
-  const { code, name, email, position, department, role, company, password } = await body(req);
+  const { code, name, email, position, birthDate, department, role, company, password } = await body(req);
 
   if (!code || !name || !department) {
     return fail('ต้องระบุรหัสพนักงาน ชื่อ-สกุล และแผนก', 400);
@@ -38,6 +38,9 @@ export const POST = route(async (req) => {
   const employee = new Employee({
     code, name, email: email || undefined, position, department, role: role || 'employee',
     company: company || undefined,
+    // Optional. An empty string must become undefined, not '', or the schema's
+    // YYYY-MM-DD match rejects the whole save.
+    birthDate: birthDate || undefined,
   });
   await employee.setPassword(password || defaultPassword(code));
   await employee.save();

@@ -9,6 +9,7 @@ import HrView from './HrView.jsx';
 import AccountingView from './AccountingView.jsx';
 import DepartmentView from './DepartmentView.jsx';
 import AdminView from './AdminView.jsx';
+import ProfileView from './ProfileView.jsx';
 import PrintForm from './PrintForm.jsx';
 
 export default function App() {
@@ -115,6 +116,7 @@ const PAGE = {
   departments: ['สรุป OT แยกแผนก', 'DEPARTMENT SUMMARY'],
   form: ['ใบ F-HR-027', 'PRINTABLE FORM'],
   admin: ['ตั้งค่าระบบ', 'SETTINGS & POLICY'],
+  profile: ['ข้อมูลส่วนตัว', 'MY PROFILE'],
 };
 
 function Shell({ session, onLogout }) {
@@ -183,13 +185,21 @@ function Shell({ session, onLogout }) {
         </nav>
 
         <div className="sidebar-foot">
-          <div className="whoami">
+          {/* The whoami block is the way into ข้อมูลส่วนตัว — no nav entry of
+              its own, since it is where a person already looks for themselves. */}
+          <button
+            type="button"
+            className={`whoami ${tab === 'profile' ? 'active' : ''}`}
+            onClick={() => setTab('profile')}
+            title="ข้อมูลส่วนตัว"
+          >
             <div className="avatar">{initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="n">{user.name}</div>
               <div className="r">{ROLE_LABEL[user.role]} · {user.department?.name || '—'}</div>
             </div>
-          </div>
+            <span className="chev">›</span>
+          </button>
           <button className="signout" onClick={logout}>ออกจากระบบ</button>
         </div>
       </aside>
@@ -201,7 +211,10 @@ function Shell({ session, onLogout }) {
             <div className="title">{title}</div>
             <div className="meta">{meta}</div>
           </div>
-          <button className="avatar" onClick={logout} title="ออกจากระบบ">{initials}</button>
+          {/* On mobile the sidebar is gone, so this is the way to ข้อมูลส่วนตัว —
+              and to ออกจากระบบ, which now lives on that page rather than one
+              mistap away here. */}
+          <button className="avatar" onClick={() => setTab('profile')} title="ข้อมูลส่วนตัว">{initials}</button>
         </header>
 
         <main>
@@ -214,6 +227,7 @@ function Shell({ session, onLogout }) {
             {tab === 'departments' && <DepartmentView />}
             {tab === 'form' && <MyForm />}
             {tab === 'admin' && <AdminView user={user} />}
+            {tab === 'profile' && <ProfileView user={user} onLogout={logout} />}
           </div>
         </main>
 

@@ -158,7 +158,8 @@ function Employees() {
   const [rows, setRows] = useState([]);
   const [depts, setDepts] = useState([]);
   const [form, setForm] = useState({
-    code: '', name: '', position: '', department: '', role: 'employee', company: '', password: '',
+    code: '', name: '', position: '', birthDate: '', department: '', role: 'employee',
+    company: '', password: '',
   });
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
@@ -178,7 +179,8 @@ function Employees() {
     try {
       await api.post('/employees', form);
       setForm({
-        code: '', name: '', position: '', department: '', role: 'employee', company: '', password: '',
+        code: '', name: '', position: '', birthDate: '', department: '', role: 'employee',
+        company: '', password: '',
       });
       load();
     } catch (err) { setError(err.message); }
@@ -207,6 +209,8 @@ function Employees() {
         เพิ่มทีละคน หรือนำเข้าเป็นไฟล์ CSV — รองรับทั้งสองแบบ จึงไม่ต้องรอคำตอบว่า HR จะส่งรายชื่อมาแบบไหน
         · ช่อง “บริษัท” ระบุว่าพนักงานคนนี้อยู่ในบัญชีเงินเดือนของบริษัทใด
         เว้นว่างได้ ระบบจะเดาจากรหัส (PM… = ไพรมัส, THT… = เดอะเอ็มเทค)
+        · “วันเกิด” ไม่บังคับ และแก้ไขได้จากหน้านี้เท่านั้น —
+        พนักงานเห็นได้ในหน้าข้อมูลส่วนตัวแต่แก้เองไม่ได้ (ในไฟล์ CSV ใช้รูปแบบ YYYY-MM-DD เป็น ค.ศ.)
       </div>
       {error && <Alert kind="error">{error}</Alert>}
 
@@ -255,6 +259,14 @@ function Employees() {
           <input value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} />
         </div>
         <div className="field" style={{ maxWidth: 160 }}>
+          <label>วันเกิด</label>
+          <input
+            type="date"
+            value={form.birthDate}
+            onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+          />
+        </div>
+        <div className="field" style={{ maxWidth: 160 }}>
           <label>แผนก</label>
           <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} required>
             <option value="">— เลือก —</option>
@@ -284,7 +296,7 @@ function Employees() {
         <table>
           <thead>
             <tr>
-              <th>รหัส</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>แผนก</th>
+              <th>รหัส</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>วันเกิด</th><th>แผนก</th>
               <th>บทบาท</th><th>บริษัท</th><th>สถานะ</th>
             </tr>
           </thead>
@@ -294,6 +306,15 @@ function Employees() {
                 <td>{p.code}</td>
                 <td>{p.name}</td>
                 <td>{p.position}</td>
+                {/* Editable here and nowhere else — the employee sees it on
+                    ข้อมูลส่วนตัว but cannot change it. */}
+                <td>
+                  <input
+                    type="date"
+                    value={p.birthDate || ''}
+                    onChange={(e) => update(p._id, { birthDate: e.target.value })}
+                  />
+                </td>
                 <td>{p.department?.nameTh || p.department?.name}</td>
                 <td>{p.role}</td>
                 <td>

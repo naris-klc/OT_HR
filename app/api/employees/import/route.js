@@ -41,6 +41,14 @@ export const POST = route(async (req) => {
       const role = (pick(row, 'role', 'บทบาท') || 'employee').toLowerCase();
       if (!ROLES.includes(role)) { errors.push({ line, error: `บทบาทไม่ถูกต้อง "${role}"` }); continue; }
 
+      // Optional, and rejected loudly rather than silently dropped — a birthday
+      // written 12/05/2532 is a mistake worth showing HR, not worth guessing at.
+      const birthDate = pick(row, 'birthDate', 'วันเกิด', 'birth_date');
+      if (birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+        errors.push({ line, error: `วันเกิดต้องเป็นรูปแบบ YYYY-MM-DD (พ.ศ. ค.ศ. ใช้ ค.ศ.) — ได้รับ "${birthDate}"` });
+        continue;
+      }
+
       // Which of the two payrolls this person belongs to. Stated in the file
       // wins; otherwise the code prefix decides (PM… / THT…). A code matching
       // neither is not an error — HR-001 and ADMIN are real — but it IS a
@@ -61,6 +69,9 @@ export const POST = route(async (req) => {
         existing.name = name;
         existing.position = pick(row, 'position', 'ตำแหน่ง') || existing.position;
         existing.email = pick(row, 'email', 'อีเมล') || existing.email;
+        // Blank leaves what is stored alone, so a roster file without the
+        // column does not wipe birthdays Admin filled in by hand.
+        if (birthDate) existing.birthDate = birthDate;
         existing.department = department._id;
         existing.role = role;
         // On an update, only a stated or a derivable company overwrites what is
@@ -75,6 +86,7 @@ export const POST = route(async (req) => {
           name,
           position: pick(row, 'position', 'ตำแหน่ง'),
           email: pick(row, 'email', 'อีเมล') || undefined,
+          birthDate: birthDate || undefined,
           department: department._id,
           role,
           company,

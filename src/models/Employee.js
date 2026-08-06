@@ -24,6 +24,20 @@ const employeeSchema = new mongoose.Schema(
     email: { type: String, trim: true, lowercase: true, sparse: true, unique: true },
     position: { type: String, trim: true },
 
+    /**
+     * วันเกิด, 'YYYY-MM-DD'. A string for the same reason Holiday.date is one:
+     * a birthday is a calendar date, not an instant, and a Date would let the
+     * server's timezone move it a day either way.
+     *
+     * HR master data — the employee sees it on their profile but cannot change
+     * it; only Admin can, on the พนักงาน screen. Nothing in the OT arithmetic
+     * or on F-HR-027 reads it.
+     */
+    birthDate: {
+      type: String,
+      match: [/^\d{4}-\d{2}-\d{2}$/, 'birthDate must be YYYY-MM-DD'],
+    },
+
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
     role: { type: String, enum: ROLES, default: 'employee', required: true },
 
