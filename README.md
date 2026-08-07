@@ -22,6 +22,11 @@ npm run dev            # UI + API together on :3000
 Upgrading a database seeded before the two-company split? Run
 `npm run migrate:company` once — see [Two companies](#two-companies-primus--themtech).
 
+Upgrading a database from before policy versioning? Run
+`npm run migrate:policy-version` once — see
+[Which rules produced this figure](#which-rules-produced-this-figure). It writes
+only version pointers; no entry's hours or status is touched.
+
 Requires **Node 20+** and a MongoDB instance. For production, `npm run build`
 then `npm start`.
 
@@ -46,14 +51,22 @@ src/config/policy.js      every [OPEN] item as a named flag — start here
 src/config/companies.js   the two payroll entities and the code-prefix rule
 src/lib/otEngine.js       the arithmetic: segmentation, buckets, break, rounding
 src/lib/csv.js            CSV in/out, UTF-8 BOM on the way out
-src/models/               Department, Employee, Holiday, OtEntry, Setting
+src/models/               Department, Employee, Holiday, OtEntry, PolicyVersion,
+                          Setting
 src/services/otService.js engine ↔ database: compute, cap check, replay
 src/migrate-company.js    one-off: fill `company` on a pre-split database
+src/migrate-policy-version.js
+                          one-off: record the rules in force and point every
+                          existing entry at them
 app/api/                  the HTTP layer — auth, entries, departments,
                           employees, holidays, reports, exports, settings
 app/layout.js, page.js    the shell; styles.css + print.css live here
 components/               React UI + the three printable A4 forms
 lib/                      request plumbing: db, session, http, route helpers
+lib/policyVersion.js      what a rule set is, whether two of them compute the
+                          same, and who a replay may touch — pure
+lib/policySave.js         record the rules, then replay against them; shared by
+                          both servers' settings routes
 lib/accounting.js         สรุป OT ส่งบัญชี, shared by its report and its CSV
 lib/departmentSummary.js  the same month regrouped by แผนก, both companies in
                           one count — shared by its screen, its CSV and its
@@ -134,6 +147,61 @@ the employee or department record, and the engine needs a per-day shift lookup
 rather than two constants. That is a schema change. It is the one open item
 that can still cause structural rework, which is why the doc's own "answered
 maybe" is worth pushing on.
+
+---
+
+## Which rules produced this figure
+
+Answering an [OPEN] item mid-month is the point of these being runtime flags,
+and it has a cost the flags alone cannot pay. Entries still in flight are
+replayed through the engine; approved ones deliberately are not. So a single
+month legitimately holds hours arrived at two different ways, the sheet balances
+against itself either way, and until this existed there was no way — then or
+ever afterwards — to tell which row was which.
+
+**`otPolicyVersions` is append-only.** Every save that changes the policy
+records the whole rule set as a new row; nothing is ever updated in place. Every
+field on the model is `immutable`, so the guarantee is enforced by mongoose
+rather than by everyone remembering. A version an entry points at means the same
+thing in December that it meant in March, which is the only reason the pointer
+is worth having.
+
+**Every entry carries `policyVersionId`**, stamped by `applyComputation()` — the
+one place engine output lands on a document, so submit, employee edit, hr_edit
+and replay all get it without four separate things to remember. `otEngine.js` is
+untouched by any of this and stays a pure function of `(session, policy)`: the
+caller resolves the policy and hands it over, exactly as before. That purity is
+what makes a replay reproducible three months later, and
+[`test/policyReplay.test.js`](test/policyReplay.test.js) pins it.
+
+**An approved entry is not replayed.** The rule lives in `planRecompute()` in
+[`lib/policyVersion.js`](lib/policyVersion.js) rather than only in each caller's
+query filter, because a filter is something every future caller has to remember
+and this is a rule. `recompute: 'all'` is still there for HR deciding a whole
+month should be restated — but it is never a default, it requires a `note`
+saying why, and every approved entry whose hours actually move keeps a `before`
+snapshot, so a restated figure turns up in **ประวัติการแก้ไข** beside the
+ordinary corrections instead of nowhere.
+
+**The screens say so.** ตรวจสอบรายเดือน carries a กฎที่ใช้ column and a banner
+when the month is not uniform; ดู / แก้ไขรายการ carries it per entry;
+ประวัติการแก้ไข prints `เวอร์ชัน 2 → เวอร์ชัน 3` against a correction that
+crossed a boundary. The banner distinguishes three cases rather than firing on
+all of them — flags that move numbers, flags that only move permissions, and
+rows whose rules were never recorded — because a banner that fires when
+`hrMayReject` was flipped trains HR to dismiss the one that fires when the
+rounding rule changed mid-month.
+
+**Upgrading an existing database:** `npm run migrate:policy-version` records the
+rules in force as version 1 and points every unstamped entry at it. It is the
+single, deliberate exception to "an approved entry is never touched" — and it
+writes a pointer and nothing else; no hours are recomputed by it. Idempotent on
+two separate terms: an origin version is minted only when the collection is
+empty, and an entry that already has a pointer is never rewritten, so a second
+run reports nothing to do. `--dry` prints the plan; where the database's saved
+overrides differ from the shipped defaults it prints the difference and stops
+until you re-run with `--yes`, because version 1 records what the stored entries
+were *actually* computed with and that is not always what is in the file.
 
 ---
 

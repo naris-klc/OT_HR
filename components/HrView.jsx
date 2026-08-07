@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import { Alert, Empty } from './common.jsx';
+import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
 import PrintForm from './PrintForm.jsx';
 import HrEntries from './HrEntries.jsx';
 import HrEdits from './HrEdits.jsx';
@@ -124,6 +125,11 @@ export default function HrView({ user }) {
           <Empty>ไม่มีรายการในเดือนนี้</Empty>
         ) : (
           <>
+            {/* Above the table, not beside a row: what it warns about is the
+                total at the bottom of it, and a reviewer who has started
+                reading rows has already begun trusting them. */}
+            <PolicyVersionBanner spread={data.policy} />
+
             <div className="table-wrap">
               <table>
                 <thead>
@@ -136,6 +142,7 @@ export default function HrView({ user }) {
                     <th className="num">รวม ชม.</th>
                     <th className="num">รายการ</th>
                     <th className="num">แก้ไข</th>
+                    <th>กฎที่ใช้</th>
                     <th>เพดาน</th>
                     <th />
                   </tr>
@@ -180,6 +187,11 @@ export default function HrView({ user }) {
                           </div>
                         )}
                       </td>
+                      {/* Per person as well as per month: the month banner says
+                          the sheet is not uniform, this says whose rows to open.
+                          A version that spans one employee's own total is the
+                          case HR can actually do something about. */}
+                      <td><PolicyVersionSummaryCell spread={row.policy} /></td>
                       <td>
                         {row.cap.capHours == null ? (
                           <span style={{ color: 'var(--muted)' }}>ไม่กำหนด</span>
@@ -213,7 +225,7 @@ export default function HrView({ user }) {
                     <td className="num"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
                     <td className="num"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>
                     <td className="num"><strong>{hours(data.grandTotal.otHours)}</strong></td>
-                    <td colSpan={4} />
+                    <td colSpan={5} />
                   </tr>
                 </tbody>
               </table>

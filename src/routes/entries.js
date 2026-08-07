@@ -141,7 +141,7 @@ router.post('/', wrap(async (req, res) => {
     description,
     status: 'pending_mgr',
   });
-  applyComputation(entry, result);
+  applyComputation(entry, result, ctx);
   stampCap(entry, cap);
   entry.log(req.user, 'submit', null, null);
   await entry.save();
@@ -210,7 +210,7 @@ router.patch('/:id', wrap(async (req, res) => {
   });
   if (cap.blocked) return res.status(409).json({ error: `เกินเพดาน ${cap.capHours} ชม./เดือน ของแผนก`, cap });
 
-  applyComputation(entry, result);
+  applyComputation(entry, result, ctx);
   stampCap(entry, cap);
 
   // status untouched either way — HR's edit keeps the approvals already

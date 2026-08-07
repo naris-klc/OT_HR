@@ -500,15 +500,30 @@ const POLICY_FIELDS = [
 function Policy({ user }) {
   const [policy, setPolicy] = useState(null);
   const [overrides, setOverrides] = useState([]);
+  const [versions, setVersions] = useState(null);
+  const [unversioned, setUnversioned] = useState(0);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * Why the rules are changing, typed before the change is made.
+   *
+   * Optional for an ordinary save and the reason it is offered at all: a
+   * version row with no note is a date and a diff, and six months later the
+   * diff is the only thing left explaining a month that does not add up.
+   */
+  const [note, setNote] = useState('');
 
   async function load() {
     try {
-      const res = await api.get('/settings');
+      const [res, history] = await Promise.all([
+        api.get('/settings'),
+        api.get('/settings/policy-versions'),
+      ]);
       setPolicy(res.policy);
       setOverrides(res.overrides);
+      setVersions(history.versions);
+      setUnversioned(history.unversionedEntryCount || 0);
     } catch (err) { setError(err.message); }
   }
   useEffect(() => { load(); }, []);
@@ -517,11 +532,19 @@ function Policy({ user }) {
     setBusy(true);
     setError('');
     try {
-      const res = await api.patch('/settings/policy', { policy: { [key]: value } });
+      const res = await api.patch('/settings/policy', { policy: { [key]: value }, note });
       setPolicy(res.policy);
+
+      // Named rather than counted. "5 รายการ" says work happened; the version
+      // is what a reader can go and look at afterwards, and what the rows those
+      // 5 entries now carry will say.
+      const stamped = res.versionCreated && res.policyVersion
+        ? ` · บันทึกเป็นเวอร์ชัน ${res.policyVersion.seq}`
+        : '';
       setMsg(res.recomputed?.updated
-        ? `บันทึกแล้ว · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ`
-        : 'บันทึกแล้ว');
+        ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ`
+        : `บันทึกแล้ว${stamped}`);
+      setNote('');
       load();
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
@@ -539,6 +562,20 @@ function Policy({ user }) {
       </div>
       {error && <Alert kind="error">{error}</Alert>}
       {msg && <Alert kind="ok">{msg}</Alert>}
+
+      {/* Typed before the dropdown is touched, because changing a dropdown IS
+          the save — there is no button to attach a reason to afterwards. */}
+      {canEdit && (
+        <div className="field" style={{ maxWidth: 520 }}>
+          <label>เหตุผลของการเปลี่ยนแปลง (ไม่บังคับ แต่จะถูกบันทึกไว้กับเวอร์ชัน)</label>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="เช่น ฝ่ายบุคคลตอบ OPEN 3 ในที่ประชุม 5 ส.ค."
+            disabled={busy}
+          />
+        </div>
+      )}
 
       <div className="table-wrap">
         <table>
@@ -575,6 +612,129 @@ function Policy({ user }) {
         OPEN 6 (กะงานต่างกันรายแผนก) ไม่ได้อยู่ในหน้านี้ — ถ้าคำตอบคือ “มี” จะต้องแก้โครงสร้างข้อมูล
         ไม่ใช่แค่ปรับค่า · OPEN 10 และ 11 รองรับทั้งไฟล์และการกรอกเองอยู่แล้ว
       </div>
+
+      <PolicyHistory versions={versions} unversioned={unversioned} />
     </div>
+  );
+}
+
+const CHANGE_LABEL = Object.fromEntries(POLICY_FIELDS.map((f) => [f.key, f.label]));
+
+/**
+ * Every rule set the system has computed with, and what changed when each
+ * arrived.
+ *
+ * Append-only, so this is a record rather than a view of the current state —
+ * which is the whole reason it is worth putting on a screen. The table above
+ * answers "what are the rules"; this answers "what were they in March", which
+ * is the question a monthly review raises and nothing else in the system could
+ * previously answer.
+ *
+ * A version's `entryCount` is here for the same reason: the first thing anyone
+ * asks about a rule set they have never seen is whether it touched anything
+ * real, and one that was in force for ten minutes and computed nothing is not
+ * the same object as one a whole month hangs off.
+ */
+function PolicyHistory({ versions, unversioned }) {
+  if (!versions) return null;
+
+  return (
+    <div style={{ marginTop: 22 }}>
+      <h3>ประวัติเวอร์ชันนโยบาย</h3>
+      <div className="hint">
+        ทุกครั้งที่คำตอบเปลี่ยน ระบบจะบันทึกกฎทั้งชุดไว้เป็นเวอร์ชันใหม่ ไม่เขียนทับของเดิม ·
+        {' '}ใบ OT ทุกใบเก็บไว้ว่าคำนวณด้วยเวอร์ชันใด
+      </div>
+
+      {/* Said here rather than left for a report to discover: entries with no
+          version are the reason a monthly banner will refuse to say whether the
+          figures compare, and this page is where the fix is run from. */}
+      {unversioned > 0 && (
+        <Alert kind="warn">
+          มีใบ OT {unversioned} ใบที่ยังไม่ได้กำกับเวอร์ชัน (ยื่นก่อนระบบเริ่มบันทึก) ·
+          {' '}รัน <code>npm run migrate:policy-version</code> หนึ่งครั้งเพื่อกำกับให้ครบ ·
+          {' '}สคริปต์เขียนเฉพาะเลขเวอร์ชัน ไม่แตะชั่วโมงหรือสถานะของใบใด
+        </Alert>
+      )}
+
+      {versions.length === 0 ? (
+        <Empty>ยังไม่มีเวอร์ชันที่บันทึกไว้ — รัน npm run migrate:policy-version เพื่อสร้างเวอร์ชันแรก</Empty>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>เวอร์ชัน</th>
+                <th>บันทึกเมื่อ</th>
+                <th>โดย / เหตุผล</th>
+                <th className="num">ใบที่ใช้</th>
+                <th>สิ่งที่เปลี่ยนจากเวอร์ชันก่อนหน้า</th>
+              </tr>
+            </thead>
+            <tbody>
+              {versions.map((v) => (
+                <tr key={v._id}>
+                  <td><strong>{v.seq}</strong></td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {v.createdAt ? new Date(v.createdAt).toLocaleString('th-TH') : '—'}
+                  </td>
+                  <td>
+                    {v.createdByName || <span style={{ color: 'var(--muted)' }}>ระบบ</span>}
+                    {v.note && (
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{v.note}</div>
+                    )}
+                  </td>
+                  <td className="num">{v.entryCount}</td>
+                  <td><PolicyChanges changes={v.changes} seq={v.seq} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What moved between two versions.
+ *
+ * Flags that change hours are marked, because they are the ones that make a
+ * month's figures incomparable — the rest are a different decision recorded on
+ * the same day, and a reader scanning for "why did the numbers move" should be
+ * able to skip them.
+ *
+ * `null` changes means the version before this one was not loaded, which is not
+ * the same as nothing having changed and does not print as it.
+ */
+function PolicyChanges({ changes, seq }) {
+  if (changes == null) {
+    return <span style={{ color: 'var(--muted)' }}>ไม่ได้โหลดเวอร์ชันก่อนหน้ามาเทียบ</span>;
+  }
+  if (!changes.length) return <span style={{ color: 'var(--muted)' }}>—</span>;
+  if (seq === 1) {
+    return (
+      <span style={{ color: 'var(--muted)' }}>
+        เวอร์ชันต้นทาง — บันทึกกฎทั้งชุด {changes.length} ข้อไว้เป็นจุดเริ่ม
+      </span>
+    );
+  }
+
+  return (
+    <ul className="entry-diff">
+      {changes.map((c) => (
+        <li key={c.key}>
+          <span className="k">{CHANGE_LABEL[c.key] || c.key}</span>
+          <span className="was">{JSON.stringify(c.from)}</span>
+          <span className="to">→</span>
+          <span className="now">{JSON.stringify(c.to)}</span>
+          {c.arithmetic && (
+            <span style={{ color: 'var(--amber)', fontSize: 11.5, marginLeft: 6 }}>
+              มีผลต่อชั่วโมง
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -3,10 +3,18 @@
 import React, { useEffect, useState } from 'react';
 import { api, thaiDate, dayName, periodLabel } from '@/lib/api.js';
 import { Alert, Empty, Changes, StatusChip, editsOf } from './common.jsx';
+import { PolicyVersionChange } from './PolicyVersion.jsx';
 
 const ACTION_LABEL = {
   edit: 'พนักงานแก้ไข',
   hr_edit: 'ฝ่ายบุคคลแก้ไข',
+  /**
+   * A replay only reaches this list when it kept a `before` — which is only
+   * when it moved an already-approved entry's hours. It is not a correction
+   * anybody typed, and reading it as one would put a person's name against a
+   * change they did not make, so it is named for what it was.
+   */
+  recompute: 'คำนวณใหม่ตามนโยบาย',
 };
 
 /**
@@ -83,6 +91,7 @@ export default function HrEdits({ employee, period, status, onClose }) {
                   <th>แก้ไขเมื่อ</th>
                   <th>ผู้แก้ไข</th>
                   <th>เหตุผล</th>
+                  <th>กฎที่ใช้</th>
                   <th>สิ่งที่เปลี่ยน</th>
                 </tr>
               </thead>
@@ -109,6 +118,12 @@ export default function HrEdits({ employee, period, status, onClose }) {
                         request the manager has not seen yet is not asked for
                         one, so a blank here is expected rather than missing. */}
                     <td>{h.note || <span style={{ color: 'var(--muted)' }}>—</span>}</td>
+                    {/* Which rules each side of the change was computed under.
+                        An edit and a policy change both move the hours in this
+                        row; only this column tells them apart, and a correction
+                        that crossed a version boundary changed two things at
+                        once whether whoever made it meant to or not. */}
+                    <td><PolicyVersionChange before={h.before} after={h.after} /></td>
                     <td>
                       <Changes before={h.before} after={h.after} />
                     </td>

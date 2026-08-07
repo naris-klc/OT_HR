@@ -148,7 +148,7 @@ export const POST = route(async (req) => {
     status: 'pending_mgr',
     refiledFrom,
   });
-  applyComputation(entry, result);
+  applyComputation(entry, result, ctx);
   stampCap(entry, cap);
   entry.log(user, 'submit', null, null);
 

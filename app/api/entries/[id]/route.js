@@ -61,7 +61,7 @@ export const PATCH = route(async (req, { params }) => {
   });
   if (cap.blocked) return fail(`เกินเพดาน ${cap.capHours} ชม./เดือน ของแผนก`, 409, { cap });
 
-  applyComputation(entry, result);
+  applyComputation(entry, result, ctx);
   stampCap(entry, cap);
 
   // status untouched either way — HR's edit keeps the approvals already

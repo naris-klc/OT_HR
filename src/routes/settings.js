@@ -3,6 +3,7 @@ import Setting from '../models/Setting.js';
 import { DEFAULT_POLICY } from '../config/policy.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { recomputeEntries } from '../services/otService.js';
+import { savePolicy } from '../../lib/policySave.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -29,35 +30,22 @@ router.get('/', wrap(async (req, res) => {
  * entries mean, so entries still in flight are replayed through the engine.
  * Approved entries are left alone by default — they have been signed off, and
  * silently restating a signed number is worse than an inconsistency. Pass
- * `recompute: 'all'` to replay those too.
+ * `recompute: 'all'`, with a `note`, to replay those too.
+ *
+ * The sequence — record the rule set, then replay against it — is shared with
+ * the App Router route in lib/policySave.js. Two copies of it would be two
+ * chances for a policy to be saved without a version written, and an entry
+ * computed under an unrecorded rule set can never be explained afterwards.
  */
 router.patch('/policy', requireRole('admin', 'hr'), wrap(async (req, res) => {
-  const incoming = req.body?.policy || {};
-  const unknown = Object.keys(incoming).filter((k) => !(k in DEFAULT_POLICY));
-  if (unknown.length) return res.status(400).json({ error: `ไม่รู้จักค่านโยบาย: ${unknown.join(', ')}` });
-
-  const doc = await Setting.load();
-  doc.policy = { ...(doc.policy || {}), ...incoming };
-  doc.markModified('policy');
-  await doc.save();
-
-  const ARITHMETIC_KEYS = [
-    'breakMode', 'breakWindowStartMinute', 'breakWindowEndMinute', 'breakMinutes',
-    'breakThresholdHours', 'breakPerCalendarDay', 'roundingMode',
-    'roundingIncrementMinutes', 'roundingScope', 'belowMinimum', 'minimumHours',
-    'coreStartMinute', 'coreEndMinute', 'weekendDays',
-  ];
-  const touchesArithmetic = Object.keys(incoming).some((k) => ARITHMETIC_KEYS.includes(k));
-
-  let recomputed = { updated: 0, failed: [] };
-  if (touchesArithmetic) {
-    const filter = req.body?.recompute === 'all'
-      ? {}
-      : { status: { $in: ['pending_mgr', 'pending_hr'] } };
-    recomputed = await recomputeEntries(filter, req.user);
-  }
-
-  return res.json({ policy: await Setting.effectivePolicy(), recomputed });
+  const result = await savePolicy({
+    incoming: req.body?.policy || {},
+    actor: req.user,
+    recompute: req.body?.recompute,
+    note: req.body?.note,
+  });
+  if (result.error) return res.status(result.status).json({ error: result.error });
+  return res.json(result);
 }));
 
 router.patch('/', requireRole('admin'), wrap(async (req, res) => {
@@ -70,12 +58,25 @@ router.patch('/', requireRole('admin'), wrap(async (req, res) => {
   res.json({ settings: doc });
 }));
 
-/** Manual replay — useful after a bulk holiday import or a data fix. */
+/**
+ * Manual replay — useful after a bulk holiday import or a data fix.
+ *
+ * Approved entries are skipped unless `includeApproved` is asked for with a
+ * `note`, and the response names the ones it left rather than reporting a
+ * smaller number with no explanation.
+ */
 router.post('/recompute', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const filter = {};
   if (req.body?.period) filter.period = req.body.period;
   if (req.body?.status) filter.status = { $in: String(req.body.status).split(',') };
-  res.json(await recomputeEntries(filter, req.user));
+
+  const includeApproved = Boolean(req.body?.includeApproved);
+  const note = req.body?.note;
+  if (includeApproved && !String(note || '').trim()) {
+    return res.status(400).json({ error: 'การคำนวณใหม่ที่รวมรายการที่อนุมัติแล้ว กรุณาระบุเหตุผล' });
+  }
+
+  return res.json(await recomputeEntries(filter, req.user, { includeApproved, note }));
 }));
 
 export default router;

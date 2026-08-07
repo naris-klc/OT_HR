@@ -6,6 +6,8 @@ import {
   Alert, Empty, EditedMark, EntryHistory, RequestTrail, StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail } from '@/lib/entries.js';
+import { versionSpread } from '@/lib/policyVersion.js';
+import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
 import OtForm from './OtForm.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -65,6 +67,18 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
   useEffect(() => { setOpen(new Set()); }, [employee._id, period]);
 
   const auditable = (entries || []).filter(hasAuditTrail);
+
+  /**
+   * Computed from the rows on screen rather than fetched.
+   *
+   * `policyVersionId` arrives populated on each entry, so the spread is already
+   * in hand — and taking it from the same array the table renders is what stops
+   * the banner describing a month the list below it no longer shows. The
+   * snapshots themselves are not here, so `arithmeticMixed` is null and the
+   * banner says it cannot tell whether the numbers compare; the month-level
+   * banner on ตรวจสอบรายเดือน has the snapshots and answers that.
+   */
+  const spread = versionSpread(entries || []);
   const allOpen = auditable.length > 0 && auditable.every((e) => open.has(e._id));
 
   const toggle = (id) => setOpen((prev) => {
@@ -107,6 +121,8 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
         <Empty>ไม่มีรายการในเดือนนี้</Empty>
       ) : (
         <>
+        <PolicyVersionBanner spread={spread} />
+
         {/* One press to read the whole month at once, which is what closing it
             actually involves — the per-row buttons are for following a single
             figure that looks wrong. Disabled rather than hidden when no row in
@@ -152,6 +168,7 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                 <th className="num">×3</th>
                 <th className="num">รวม</th>
                 <th>รายละเอียดงานที่ทำ</th>
+                <th>กฎที่ใช้</th>
                 <th>สถานะ</th>
                 <th />
               </tr>
@@ -193,6 +210,11 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                         </div>
                       )}
                     </td>
+                    {/* The row this screen exists to answer questions about.
+                        Beside the hours rather than in the drawer: which rules
+                        produced a figure is part of reading it, not part of
+                        investigating it. */}
+                    <td><PolicyVersionCell version={e.policyVersionId} /></td>
                     <td>
                       <StatusChip status={e.status} />
                       {e.capExceeded && (
@@ -230,7 +252,7 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                   </tr>
                   {open.has(e._id) && (
                     <tr className="audit-row">
-                      <td colSpan={9}>
+                      <td colSpan={10}>
                         <div className="audit-drawer">
                           <strong>ประวัติการแก้ไข</strong>
                           <div className="hint" style={{ margin: '2px 0 0' }}>

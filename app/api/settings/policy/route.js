@@ -1,8 +1,6 @@
-import Setting from '@/src/models/Setting.js';
-import { DEFAULT_POLICY } from '@/src/config/policy.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
-import { recomputeEntries } from '@/src/services/otService.js';
+import { savePolicy } from '@/lib/policySave.js';
 
 /**
  * Answering an [OPEN] item at runtime.
@@ -11,36 +9,27 @@ import { recomputeEntries } from '@/src/services/otService.js';
  * entries mean, so entries still in flight are replayed through the engine.
  * Approved entries are left alone by default — they have been signed off, and
  * silently restating a signed number is worse than an inconsistency. Pass
- * `recompute: 'all'` to replay those too.
+ * `recompute: 'all'`, with a `note`, to replay those too.
+ *
+ * Either way the rules themselves are recorded first: every save that changes
+ * the policy appends a row to otPolicyVersions, and every entry computed from
+ * then on carries its id. That is what makes "which rules produced this figure"
+ * answerable in December about a figure written in March — the flags in this
+ * document only ever describe the present.
+ *
+ * The sequence lives in lib/policySave.js, shared with the Express router.
  */
 export const PATCH = route(async (req) => {
   const user = requireRole(await requireAuth(req), 'admin', 'hr');
   const payload = await body(req);
 
-  const incoming = payload?.policy || {};
-  const unknown = Object.keys(incoming).filter((k) => !(k in DEFAULT_POLICY));
-  if (unknown.length) return fail(`ไม่รู้จักค่านโยบาย: ${unknown.join(', ')}`, 400);
+  const result = await savePolicy({
+    incoming: payload?.policy || {},
+    actor: user,
+    recompute: payload?.recompute,
+    note: payload?.note,
+  });
+  if (result.error) return fail(result.error, result.status);
 
-  const doc = await Setting.load();
-  doc.policy = { ...(doc.policy || {}), ...incoming };
-  doc.markModified('policy');
-  await doc.save();
-
-  const ARITHMETIC_KEYS = [
-    'breakMode', 'breakWindowStartMinute', 'breakWindowEndMinute', 'breakMinutes',
-    'breakThresholdHours', 'breakPerCalendarDay', 'roundingMode',
-    'roundingIncrementMinutes', 'roundingScope', 'belowMinimum', 'minimumHours',
-    'coreStartMinute', 'coreEndMinute', 'weekendDays',
-  ];
-  const touchesArithmetic = Object.keys(incoming).some((k) => ARITHMETIC_KEYS.includes(k));
-
-  let recomputed = { updated: 0, failed: [] };
-  if (touchesArithmetic) {
-    const filter = payload?.recompute === 'all'
-      ? {}
-      : { status: { $in: ['pending_mgr', 'pending_hr'] } };
-    recomputed = await recomputeEntries(filter, user);
-  }
-
-  return json({ policy: await Setting.effectivePolicy(), recomputed });
+  return json(result);
 });

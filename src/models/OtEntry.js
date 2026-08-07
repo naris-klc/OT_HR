@@ -65,6 +65,12 @@ const snapshotSchema = new mongoose.Schema(
       [BUCKETS.OT3_HOLIDAY]: Number,
     },
     otHours: Number,
+    /**
+     * And which rule set produced them. Without it a `before` block says the
+     * hours moved but not whether the session did — an edit and a policy change
+     * leave the same trace, and only one of them is the employee's doing.
+     */
+    policyVersionId: { type: mongoose.Schema.Types.ObjectId, ref: 'PolicyVersion' },
   },
   { _id: false },
 );
@@ -152,6 +158,31 @@ const otEntrySchema = new mongoose.Schema(
     },
     /** e.g. NORMAL_HOURS_IGNORED, RAISED_TO_MINIMUM — shown to reviewers. */
     warnings: { type: [{ code: String, message: String, minutes: Number }], default: [] },
+
+    /**
+     * The rule set the figures above were produced by — stamped by
+     * `applyComputation` on every path that writes them, and never on its own.
+     *
+     * The [OPEN] answers can change mid-month, and when one does only entries
+     * still in flight are replayed (see app/api/settings/policy). That is the
+     * right call — restating a signed number silently is worse than an
+     * inconsistency — but it leaves a month holding hours arrived at two
+     * different ways, and until this field existed there was no way to tell
+     * which row was which, then or ever afterwards.
+     *
+     * Optional, and it stays optional, for the reason `description`'s limit is
+     * loose and every field in `snapshotSchema` is: mongoose validates the whole
+     * document on save, so a `required` pointer would make every entry written
+     * before the migration ran unsaveable — you could no longer approve, cancel
+     * or recompute a historic month. A null here means "filed before the rules
+     * were being recorded", which is a fact about the entry, not a broken one.
+     */
+    policyVersionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PolicyVersion',
+      default: null,
+      index: true,
+    },
 
     // ── approval flow (§6) ──────────────────────────────────────────────────
     status: { type: String, enum: STATUSES, default: 'pending_mgr', required: true, index: true },
@@ -267,6 +298,7 @@ otEntrySchema.methods.snapshot = function snapshot() {
       [BUCKETS.OT3_HOLIDAY]: this.buckets?.[BUCKETS.OT3_HOLIDAY] ?? 0,
     },
     otHours: this.totals?.otHours ?? 0,
+    policyVersionId: this.policyVersionId || undefined,
   };
 };
 

@@ -166,6 +166,10 @@ const currentOf = (entry) => ({
   noBreakTaken: entry.noBreakTaken,
   description: entry.description,
   otHours: entry.totals?.otHours,
+  // Carried so that a `before` → `after` pair can be read for a change of rules
+  // as well as a change of hours. `snapshot()` on the model puts it in every
+  // `before`; this is the same field for the version that has not been replaced.
+  policyVersionId: entry.policyVersionId,
 });
 
 /**

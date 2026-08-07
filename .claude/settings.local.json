@@ -61,7 +61,12 @@
       "Bash(sed -i \"s#'c:/Users/suwan/OneDrive/เอกสาร/OT_HR/src/models/model.js'#'./src/models/model.js'#\" _modelguard.mjs)",
       "Bash(node _modelguard.mjs)",
       "Bash(rm -f _modelguard.mjs)",
-      "Bash(node --test test/description.test.js)"
+      "Bash(node --test test/description.test.js)",
+      "Bash(perl -0pi -e 's/  applyComputation\\\\\\(entry, result\\\\\\);\\\\n  stampCap\\\\\\(entry, cap\\\\\\);/  applyComputation\\(entry, result, ctx\\);\\\\n  stampCap\\(entry, cap\\);/g' src/routes/entries.js)",
+      "Bash(perl -0pi -e 's/    applyComputation\\\\\\(entry, result\\\\\\);\\\\n    entry\\\\.log\\\\\\(author/    applyComputation\\(entry, result, ctx\\);\\\\n    entry.log\\(author/' src/seed.js)",
+      "Bash(npx next *)",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(grep -n \"^## \\\\|^---$\" README.md)"
     ],
     "additionalDirectories": [
       "c:\\Users\\suwan\\OneDrive\\เอกสาร\\OT_HR"

@@ -168,7 +168,7 @@ async function run() {
       description: ex.description,
       status: ex.status,
     });
-    applyComputation(entry, result);
+    applyComputation(entry, result, ctx);
     entry.log(author, 'submit', `worked example ${ex.label}`, null);
     if (ex.status !== 'pending_mgr') {
       entry.managerDecision = { by: manager._id, at: new Date(), note: 'ตรวจสอบแล้ว' };
