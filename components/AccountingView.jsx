@@ -148,7 +148,7 @@ export default function AccountingView() {
               company={c}
               period={period}
               // Numbered against the full list, not the filtered one, so
-              // เดอะเอ็มเทค is "บริษัทที่ 2" on its own tab as well.
+              // เดมเทค is "บริษัทที่ 2" on its own tab as well.
               index={data.companies.findIndex((x) => x.key === c.key) + 1}
             />
           ))}

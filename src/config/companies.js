@@ -28,9 +28,9 @@ export const COMPANIES = Object.freeze([
   }),
   Object.freeze({
     key: 'themtech',
-    nameTh: 'บริษัท เดอะเอ็มเทค จำกัด',
+    nameTh: 'บริษัท เดมเทค จำกัด',
     nameEn: 'Themtech Co., Ltd.',
-    shortTh: 'เดอะเอ็มเทค',
+    shortTh: 'เดมเทค',
     shortEn: 'Themtech',
     codePrefixes: Object.freeze(['THT']),
   }),
