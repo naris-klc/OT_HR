@@ -12,6 +12,8 @@ import {
   OtValidationError,
 } from '../src/lib/otEngine.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
+import { formDayTypes } from '../lib/reports.js';
+import { ARITHMETIC_KEYS, COSMETIC_KEYS, sameArithmetic } from '../lib/policyVersion.js';
 
 /**
  * วันเกิดพนักงานเป็นวันหยุด "เฉพาะคนนั้น".
@@ -319,6 +321,122 @@ test('resolveDayTypes ตอบทุกวันที่ที่ถูกถ�
   assert.deepEqual(map['2026-08-04'], { type: 'holiday', reason: DAY_REASONS.BIRTHDAY });
   assert.deepEqual(map['2026-08-08'], { type: 'holiday', reason: DAY_REASONS.WEEKEND });
   assert.deepEqual(map['2026-08-12'], { type: 'holiday', reason: DAY_REASONS.COMPANY_HOLIDAY });
+});
+
+// ── ใบพิมพ์ F-HR-027: ตารางปฏิทินต้องไม่ขัดกับชั่วโมงข้างๆ ────────────────────
+
+/**
+ * The grid down the left of the sheet, for one employee's month.
+ *
+ * Only August is built: 4 Aug is the birthday Tuesday, 8 Aug a Saturday and
+ * 12 Aug the company holiday, so one month covers all three reasons a date can
+ * be วันหยุด and the ordinary weekdays in between.
+ */
+const AUGUST = Array.from({ length: 31 }, (_, i) => `2026-08-${String(i + 1).padStart(2, '0')}`);
+const gridFor = (policy, birthDate = '1994-08-04') => formDayTypes(AUGUST, {
+  isHoliday, birthDate, policy,
+});
+
+const FORM_ON = { ...ON, birthdayReasonOnForm: true };
+const FORM_OFF = { ...ON, birthdayReasonOnForm: false };
+
+test('birthdayReasonOnForm เปิด — วันเกิดในตารางเป็นวันหยุด และบอกเหตุผลว่าวันเกิด', () => {
+  const grid = gridFor(FORM_ON);
+
+  assert.deepEqual(grid['2026-08-04'], { type: 'holiday', reason: DAY_REASONS.BIRTHDAY });
+
+  // …which is the row the ot15_holiday hours are printed against. Same date,
+  // same person, same policy: the sheet agrees with itself.
+  const worked = run(
+    { workDate: '2026-08-04', startTime: '08:00', endTime: '17:00' },
+    { birthDate: '1994-08-04', policy: FORM_ON },
+  );
+  assert.equal(worked.buckets[BUCKETS.OT15_HOLIDAY], 8);
+  assert.equal(grid['2026-08-04'].type, worked.segments[0].dayType);
+
+  assert.equal(DEFAULT_POLICY.birthdayReasonOnForm, true, 'ค่าเริ่มต้นคือเปิด');
+});
+
+test('birthdayReasonOnForm ปิด — ตารางกลับไปใช้ปฏิทินบริษัทอย่างเดียว', () => {
+  const grid = gridFor(FORM_OFF);
+
+  assert.deepEqual(grid['2026-08-04'], { type: 'workday', reason: null });
+
+  // The contradiction the flag exists to choose: the hours are still in the
+  // holiday column, because they were computed from the entry's own day types
+  // and this flag never reaches the arithmetic.
+  const worked = run(
+    { workDate: '2026-08-04', startTime: '08:00', endTime: '17:00' },
+    { birthDate: '1994-08-04', policy: FORM_OFF },
+  );
+  assert.equal(worked.buckets[BUCKETS.OT15_HOLIDAY], 8);
+});
+
+test('เปิดหรือปิด birthdayReasonOnForm — ชั่วโมงทุกช่องเท่าเดิมเป๊ะ', () => {
+  const sessions = [
+    // The birthday Tuesday, in and out of core hours.
+    { workDate: '2026-08-04', startTime: '08:00', endTime: '17:00' },
+    { workDate: '2026-08-04', startTime: '17:00', endTime: '20:00' },
+    { workDate: '2026-08-04', startTime: '06:00', endTime: '08:00' },
+    // The birthday Tuesday running into an ordinary Wednesday.
+    { workDate: '2026-08-04', startTime: '22:00', endTime: '02:00', endsNextDay: true },
+    // A weekend, a company holiday and an ordinary weekday, for good measure.
+    { workDate: '2026-08-08', startTime: '08:00', endTime: '17:00' },
+    { workDate: '2026-08-12', startTime: '08:00', endTime: '17:00' },
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '21:30' },
+  ];
+
+  for (const session of sessions) {
+    const on = run(session, { birthDate: '1994-08-04', policy: FORM_ON });
+    const off = run(session, { birthDate: '1994-08-04', policy: FORM_OFF });
+    assert.deepEqual(
+      off,
+      on,
+      `${session.workDate} ${session.startTime}–${session.endTime}: ชั่วโมงต้องไม่ขยับตามค่าที่พิมพ์บนกระดาษ`,
+    );
+  }
+});
+
+test('birthdayReasonOnForm เป็น cosmetic — เปลี่ยนแล้วต้องไม่ trigger replay', () => {
+  assert.ok(
+    COSMETIC_KEYS.includes('birthdayReasonOnForm'),
+    'อยู่ใน COSMETIC_KEYS เพราะไม่กระทบชั่วโมง',
+  );
+  assert.ok(
+    !ARITHMETIC_KEYS.includes('birthdayReasonOnForm'),
+    'ถ้าหลุดเข้า ARITHMETIC_KEYS การเปลี่ยนหมายเหตุบนกระดาษจะสั่งคำนวณใบทั้งเดือนใหม่',
+  );
+
+  // What savePolicy actually asks before it replays anything.
+  assert.equal(sameArithmetic(FORM_ON, FORM_OFF), true);
+
+  // And the guard the other way round: this is what a flag that DOES move
+  // hours looks like, so the assertion above is not passing for free.
+  assert.equal(sameArithmetic(ON, OFF), false);
+});
+
+test('วันอื่นในตารางไม่ขยับตาม birthdayReasonOnForm', () => {
+  const on = gridFor(FORM_ON);
+  const off = gridFor(FORM_OFF);
+
+  for (const date of AUGUST) {
+    if (date === '2026-08-04') continue;
+    assert.deepEqual(off[date], on[date], `${date} ไม่ควรเปลี่ยนตามค่าของใบพิมพ์`);
+  }
+
+  // Named individually, because "everything else is equal" also passes when
+  // the grid resolves nothing at all.
+  assert.deepEqual(on['2026-08-08'], { type: 'holiday', reason: DAY_REASONS.WEEKEND });
+  assert.deepEqual(on['2026-08-12'], { type: 'holiday', reason: DAY_REASONS.COMPANY_HOLIDAY });
+  assert.deepEqual(on['2026-08-05'], { type: 'workday', reason: null });
+});
+
+test('กฎวันเกิดปิดอยู่ — เปิด birthdayReasonOnForm ก็ไม่ทำให้วันเกิดเป็นวันหยุดบนกระดาษ', () => {
+  // The note describes a holiday the arithmetic granted. With the rule off
+  // there is none, and a sheet marking หยุด beside ×1.5 weekday hours would be
+  // the same contradiction pointing the other way.
+  const grid = gridFor({ ...OFF, birthdayReasonOnForm: true });
+  assert.deepEqual(grid['2026-08-04'], { type: 'workday', reason: null });
 });
 
 test('resolveDayTypes ไม่แตะปฏิทินวันหยุดบริษัท — วันเกิดไม่เคยกลายเป็นวันหยุดของคนอื่น', () => {

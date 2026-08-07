@@ -75,7 +75,12 @@
       "Bash(time npm test)",
       "Bash(perl -0pi -e ' *)",
       "Bash(node --test test/otBirthday.test.js)",
-      "Bash(node --test test/policyReplay.test.js)"
+      "Bash(node --test test/policyReplay.test.js)",
+      "Bash(node --check \"app/api/reports/form/[period]/route.js\")",
+      "Bash(node --check src/routes/reports.js)",
+      "Bash(node --check lib/reports.js)",
+      "Bash(node --check src/config/policy.js)",
+      "Bash(node --check lib/policyVersion.js)"
     ],
     "additionalDirectories": [
       "c:\\Users\\suwan\\OneDrive\\เอกสาร\\OT_HR"

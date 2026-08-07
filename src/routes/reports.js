@@ -5,9 +5,9 @@ import Setting from '../models/Setting.js';
 import { requireAuth, wrap } from '../middleware/auth.js';
 import {
   BUCKETS, BUCKET_LABEL_TH, summariseEntries, hrSummary, capUsage, makeIsHoliday,
-  resolveDayTypes,
 } from '../lib/otEngine.js';
 import { loadHolidaySet } from '../services/otService.js';
+import { formDayTypes } from '../../lib/reports.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -56,7 +56,7 @@ router.get('/form/:period', wrap(async (req, res) => {
   for (let day = 1; day <= daysInMonth; day++) {
     dates.push(`${period}-${String(day).padStart(2, '0')}`);
   }
-  const dayTypes = resolveDayTypes(dates, {
+  const dayTypes = formDayTypes(dates, {
     isHoliday: makeIsHoliday(holidays, policy),
     birthDate: employee.birthDate,
     policy,

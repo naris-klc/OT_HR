@@ -5,11 +5,10 @@ import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
   BUCKETS, BUCKET_LABEL_TH, summariseEntries, hrSummary, capUsage, makeIsHoliday,
-  resolveDayTypes,
 } from '@/src/lib/otEngine.js';
 import { loadHolidaySet } from '@/src/services/otService.js';
 import {
-  PERIOD_RE, previousPeriod, thaiMonth, min, max, latestPerSession,
+  PERIOD_RE, previousPeriod, thaiMonth, min, max, latestPerSession, formDayTypes,
 } from '@/lib/reports.js';
 
 /**
@@ -59,12 +58,17 @@ export const GET = route(async (req, { params }) => {
    * marked วันทำงาน. The reason rides along so the row can say why — this is
    * the employee's own form, and a day marked หยุด with no explanation is the
    * thing that generates the phone call.
+   *
+   * Whether the birthday half is resolved at all is `birthdayReasonOnForm`,
+   * read inside `formDayTypes`. Nothing below this line depends on it: the
+   * hours come from `entry.segments`, and this map only decides what the grid
+   * beside them says.
    */
   const dates = [];
   for (let day = 1; day <= daysInMonth; day++) {
     dates.push(`${period}-${String(day).padStart(2, '0')}`);
   }
-  const dayTypes = resolveDayTypes(dates, {
+  const dayTypes = formDayTypes(dates, {
     isHoliday: makeIsHoliday(holidays, policy),
     birthDate: employee.birthDate,
     policy,
