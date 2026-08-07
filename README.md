@@ -211,6 +211,26 @@ typo, which is how a month stops closing on time. The price of that wider reach
 is an audit trail: HR must give a reason, and the edit is stamped as `hr_edit`
 with the name and the reason, shown under the description.
 
+**Reading the corrections back, per person.** The audit trail is only worth
+keeping if it can be found. Every edit stores the version it replaced
+(`history.before`), and per entry that has always been readable behind
+**ข้อมูลเดิม** — but only by someone who already suspected that row. HR
+reconciling a closed month against the signed paper asks the question the other
+way round: *was anything in this person's month changed after it was filed?*
+
+So ตรวจสอบรายเดือน carries a **แก้ไข** column — the number of corrections in
+that person's month, with HR's own count under it — and the number opens
+**ประวัติการแก้ไข** (`components/HrEdits.jsx`): one row per correction, newest
+first, saying which OT day it touched, when, by whom, the reason HR gave, and
+เดิม → ใหม่ for every field that moved. Rows are the edits rather than the
+entries carrying them, so three changes to one day read as three events.
+
+The count is tallied over every entry in the month at the status filter in use
+(`editTally`, `lib/reports.js`) — **including filings superseded by a later one
+for the same session**. Those never reach anybody's hours, but they were still
+corrected, and a count that disagreed with the list it opens would be worse
+than no count at all.
+
 Entries that are rejected or cancelled are refused to both — those are closed.
 A rejected request is not edited and resubmitted; the employee presses
 **ส่งใหม่**, which fills a blank form from the old row and files a *new*

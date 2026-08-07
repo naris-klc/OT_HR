@@ -179,7 +179,11 @@ function Shell({ session, onLogout }) {
             >
               <span className="icon">{t.icon}</span>
               <span className="label">{t.label}</span>
-              {t.badge > 0 && <span className="count">{t.badge}</span>}
+              {/* Keyed on the number: React remounts the span when the count
+                  moves, which replays the CSS pop. The queue emptying is the
+                  one change worth noticing out of the corner of an eye, and
+                  at 0 the badge leaves instead. */}
+              {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
             </button>
           ))}
         </nav>
@@ -242,7 +246,7 @@ function Shell({ session, onLogout }) {
             >
               <span className="icon">
                 {t.icon}
-                {t.badge > 0 && <span className="count">{t.badge}</span>}
+                {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
               </span>
               <span className="label">{t.label}</span>
             </button>

@@ -75,8 +75,31 @@ const FIELD = {
   description: ['รายละเอียดงานที่ทำ', (v) => v || '—'],
 };
 
-/** Every action that kept the version it replaced, oldest first. */
-export const editsOf = (entry) => (entry?.history || []).filter((h) => h.before);
+/**
+ * Every action that rewrote the entry, oldest first, paired with the values it
+ * produced.
+ *
+ * A snapshot only records the BEFORE side, so the after side has to be
+ * inferred: whatever an edit produced stood until the next edit replaced it,
+ * which means the next snapshot down the list IS this one's result — and the
+ * most recent edit's result is the entry as it stands now, the version
+ * F-HR-027 prints. Walking backwards from the current values pairs them up in
+ * one pass.
+ *
+ * `index` is the edit's place in `entry.history`, so a caller rendering the
+ * full history can look its result up again without repeating the walk.
+ */
+export function editsOf(entry) {
+  const items = entry?.history || [];
+  const edits = [];
+  let after = currentOf(entry);
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (!items[i].before) continue;
+    edits.unshift({ ...items[i], index: i, after });
+    after = items[i].before;
+  }
+  return edits;
+}
 
 /**
  * แก้ไขแล้ว — this row was rewritten after it was filed.
@@ -118,23 +141,12 @@ const currentOf = (entry) => ({
 /**
  * ประวัติรายการ — every action on an entry, and for the ones that rewrote it,
  * what it used to say.
- *
- * A snapshot only records the BEFORE side, so the after side has to be inferred:
- * whatever an edit produced stood until the next edit replaced it, which means
- * the next snapshot down the list IS this one's result — and the most recent
- * edit's result is the entry as it stands now, the version F-HR-027 prints.
- * Walking backwards from the current values pairs them up in one pass.
  */
 export function EntryHistory({ entry }) {
   const items = entry?.history || [];
   if (!items.length) return null;
 
-  const afters = [];
-  let next = currentOf(entry);
-  for (let i = items.length - 1; i >= 0; i--) {
-    afters[i] = next;
-    if (items[i].before) next = items[i].before;
-  }
+  const afters = new Map(editsOf(entry).map((e) => [e.index, e.after]));
 
   return (
     <ol className="entry-history">
@@ -146,7 +158,7 @@ export function EntryHistory({ entry }) {
             {h.at && <span className="when">{new Date(h.at).toLocaleString('th-TH')}</span>}
           </div>
           {h.note && <div className="note">{h.note}</div>}
-          <Changes before={h.before} after={afters[i]} />
+          <Changes before={h.before} after={afters.get(i)} />
         </li>
       ))}
     </ol>
@@ -154,7 +166,7 @@ export function EntryHistory({ entry }) {
 }
 
 /** เดิม → ใหม่, one line per field that moved. */
-function Changes({ before, after }) {
+export function Changes({ before, after }) {
   if (!before || !after) return null;
 
   const moved = ENTERED_FIELDS.filter((k) => !sameValue(before[k], after[k]));
@@ -185,13 +197,37 @@ function Changes({ before, after }) {
   );
 }
 
-export function Modal({ title, onClose, children, footer }) {
+/**
+ * Head / body / foot, so the head and the buttons stay put while a long body
+ * scrolls under them — the reason a รายละเอียด pop-up can be long at all.
+ *
+ * Escape closes it. A dialog that can only be dismissed by finding the ✕ is one
+ * a reviewer stops opening.
+ */
+export function Modal({ title, subtitle, onClose, children, footer, wide = false }) {
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ marginBottom: 12 }}>{title}</h2>
-        {children}
-        <div className="row" style={{ marginTop: 16, justifyContent: 'flex-end' }}>{footer}</div>
+      <div
+        className={wide ? 'modal wide' : 'modal'}
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="t">{title}</div>
+            {subtitle && <div className="s">{subtitle}</div>}
+          </div>
+          <button type="button" className="modal-x" onClick={onClose} aria-label="ปิด">×</button>
+        </div>
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-foot">{footer}</div>}
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { summariseEntries, hrSummary, capUsage } from '@/src/lib/otEngine.js';
-import { PERIOD_RE, latestPerSession } from '@/lib/reports.js';
+import { PERIOD_RE, latestPerSession, editTally } from '@/lib/reports.js';
 
 /** HR's monthly review: every employee's totals for a period, in one table. */
 export const GET = route(async (req, { params }) => {
@@ -40,6 +40,18 @@ export const GET = route(async (req, { params }) => {
     byEmployee.get(key).entries.push(entry);
   }
 
+  // Edits are tallied over `all`, not over the deduplicated `entries`: the
+  // count leads to a list of this employee's corrections, and that list is
+  // every entry of theirs in the month. A superseded filing never appears in
+  // anybody's hours, but it was still corrected, and hiding the correction
+  // would leave the count and the list it opens disagreeing.
+  const filedByEmployee = new Map();
+  for (const entry of all) {
+    const key = String(entry.employee?._id);
+    if (!filedByEmployee.has(key)) filedByEmployee.set(key, []);
+    filedByEmployee.get(key).push(entry);
+  }
+
   const employees = [...byEmployee.values()].map((group) => {
     const summary = summariseEntries(group.entries);
     const capHours = group.department?.monthlyCapHours ?? null;
@@ -49,6 +61,8 @@ export const GET = route(async (req, { params }) => {
       department: group.department,
       entryCount: group.entries.length,
       pendingCount: group.entries.filter((e) => e.status !== 'approved').length,
+      /** { count, hrCount, lastAt } — corrections made after filing (§6). */
+      edits: editTally(filedByEmployee.get(String(group.employee?._id)) || []),
       summary,
       hrSection: hrSummary(summary, policy),
       cap: { capHours, usedHours: used, exceeded: capHours != null && used > capHours, basis: policy.capBasis },

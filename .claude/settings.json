@@ -38,7 +38,8 @@
       "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/inspect.mjs\")",
       "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/which.mjs\")",
       "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/verify.mjs\")",
-      "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/allpaths.mjs\")"
+      "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/allpaths.mjs\")",
+      "Bash(npm run *)"
     ]
   }
 }

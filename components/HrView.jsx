@@ -5,6 +5,7 @@ import { api, hours, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import { Alert, Empty } from './common.jsx';
 import PrintForm from './PrintForm.jsx';
 import HrEntries from './HrEntries.jsx';
+import HrEdits from './HrEdits.jsx';
 
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({ user }) {
@@ -14,6 +15,7 @@ export default function HrView({ user }) {
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(null);
   const [opened, setOpened] = useState(null); // employee whose entries HR is in
+  const [auditing, setAuditing] = useState(null); // employee whose edits HR is reading
 
   async function load() {
     try {
@@ -32,6 +34,17 @@ export default function HrView({ user }) {
         employeeId={printing.employeeId}
         period={period}
         onClose={() => setPrinting(null)}
+      />
+    );
+  }
+
+  if (auditing) {
+    return (
+      <HrEdits
+        employee={auditing}
+        period={period}
+        status={statusFilter}
+        onClose={() => setAuditing(null)}
       />
     );
   }
@@ -114,6 +127,7 @@ export default function HrView({ user }) {
                     <th className="num">×3</th>
                     <th className="num">รวม ชม.</th>
                     <th className="num">รายการ</th>
+                    <th className="num">แก้ไข</th>
                     <th>เพดาน</th>
                     <th />
                   </tr>
@@ -134,6 +148,28 @@ export default function HrView({ user }) {
                         {row.entryCount}
                         {row.pendingCount > 0 && (
                           <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>ค้าง {row.pendingCount}</div>
+                        )}
+                      </td>
+                      {/* A row of hours says nothing about whether they are the
+                          ones the employee filed. This is where a month that
+                          was corrected after the fact announces itself, before
+                          HR signs anything off. */}
+                      <td className="num">
+                        {row.edits?.count ? (
+                          <button
+                            className="btn ghost sm"
+                            onClick={() => setAuditing(row.employee)}
+                            title="ดูว่าแก้ไขอะไร โดยใคร และค่าเดิมคืออะไร"
+                          >
+                            {row.edits.count} ครั้ง
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--muted)' }}>—</span>
+                        )}
+                        {row.edits?.hrCount > 0 && (
+                          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                            ฝ่ายบุคคล {row.edits.hrCount}
+                          </div>
                         )}
                       </td>
                       <td>
@@ -169,7 +205,7 @@ export default function HrView({ user }) {
                     <td className="num"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
                     <td className="num"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>
                     <td className="num"><strong>{hours(data.grandTotal.otHours)}</strong></td>
-                    <td colSpan={3} />
+                    <td colSpan={4} />
                   </tr>
                 </tbody>
               </table>
