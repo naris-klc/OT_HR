@@ -581,6 +581,16 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .req .hrs { font: 600 13px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
 .req .entry-history { margin-top: 10px; }
 
+/* The refusal in words, for the entries whose timeline does not carry it.
+   Red-inked rather than muted: it is the reason the request below it stopped,
+   and on a block that is otherwise a list of neutral events it has to read as
+   the answer to "why is there a second request at all". */
+.req-reason {
+  margin-top: 9px; padding: 7px 10px;
+  font: 400 12.5px/1.6 var(--sans); color: var(--danger-ink);
+  background: var(--danger-bg); border-radius: var(--radius-xs);
+}
+
 /* What the re-filing actually changed — no snapshot records it, so it is
    computed between the two documents. Sits under the block header because
    that is where a reader asks "and what is different about this one". */

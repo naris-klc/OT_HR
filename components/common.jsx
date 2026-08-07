@@ -320,6 +320,20 @@ export function RequestTrail({ requests, liveStatus }) {
                 : <StatusChip status={r.status} />}
             </header>
 
+            {/* Why it was refused, in words.
+                Normally the reject_mgr line in the timeline below carries the
+                same sentence as its note and this stays quiet — printing it
+                twice would be worse than not printing it at all. It exists for
+                the entries that have no such note: everything refused before
+                the reason was logged, and anything HR rejected under a policy
+                that recorded the decision without one. That reason is the
+                whole point of the block once the refused request has no row of
+                its own on the table. */}
+            {r.status === 'rejected' && r.rejectionReason
+              && !(r.history || []).some((h) => h.note === r.rejectionReason) && (
+              <div className="req-reason">เหตุผลที่ไม่อนุมัติ: “{r.rejectionReason}”</div>
+            )}
+
             {/* What the employee actually changed when they re-filed.
                 No `before` snapshot records this — a snapshot is written when
                 one document is rewritten, and these are two documents. The
@@ -380,6 +394,7 @@ export function trailOf(entry) {
     noBreakTaken: e.noBreakTaken,
     description: e.description,
     status: e.status,
+    rejectionReason: e.rejectionReason,
     totals: e.totals,
     history: e.history || [],
   });

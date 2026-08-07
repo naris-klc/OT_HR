@@ -3,14 +3,14 @@ import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, applyComputation, checkCap, loadContext } from '@/src/services/otService.js';
-import { POPULATE, scopeFor, pickSession, stampCap } from '@/lib/entries.js';
+import { POPULATE, scopeFor, pickSession, stampCap, latestPerChain } from '@/lib/entries.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 // ── list ────────────────────────────────────────────────────────────────────
 
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
-  const { status, period, employee, department, from, to, limit } = query(req);
+  const { status, period, employee, department, from, to, limit, replaced } = query(req);
   const q = { ...scopeFor(user) };
 
   if (status) q.status = { $in: String(status).split(',') };
@@ -23,13 +23,30 @@ export const GET = route(async (req) => {
     if (to) q.workDate.$lte = to;
   }
 
-  const entries = await OtEntry.find(q)
+  const found = await OtEntry.find(q)
     .populate(POPULATE)
     .sort({ workDate: -1, createdAt: -1 })
     .limit(Number(limit) || 500)
     .lean();
 
-  return json({ entries });
+  /**
+   * `replaced=hide` — one row per line of filing rather than one per document.
+   *
+   * Opt-in rather than the default, because the two readers of this list want
+   * opposite things from a replaced request. HR closing a month wants the
+   * duplicate gone: the live request stands for the whole chain and its drawer
+   * carries the rest. The employee's own history wants it kept, marked
+   * “ส่งใหม่แล้ว”, because that row is the evidence their one chance was spent
+   * and the reason the button beside it is locked.
+   *
+   * Folded here rather than in the component so that a screen's rows and the
+   * count it prints beside them can never come from two different lists.
+   */
+  const { shown: entries, hidden } = replaced === 'hide'
+    ? latestPerChain(found)
+    : { shown: found, hidden: [] };
+
+  return json({ entries, replacedCount: hidden.length });
 });
 
 // ── submit ──────────────────────────────────────────────────────────────────

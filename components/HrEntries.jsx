@@ -19,6 +19,15 @@ import { useBackHandler } from './nav.jsx';
  */
 export default function HrEntries({ employee, period, onClose, onChanged }) {
   const [entries, setEntries] = useState(null);
+  /**
+   * How many refused requests this month's rows stand in for.
+   *
+   * The list has already dropped them (`replaced=hide`), and a table that
+   * silently returns fewer rows than the database holds is a table nobody can
+   * check. Kept beside `entries` and written in the same breath, so the figure
+   * can never describe a list that has since been reloaded.
+   */
+  const [replacedCount, setReplacedCount] = useState(0);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
   /**
@@ -32,8 +41,16 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
   async function load() {
     try {
       setEntries(null);
-      const res = await api.get(`/entries?employee=${employee._id}&period=${period}`);
+      // One row per line of filing. A request the employee re-filed after a
+      // refusal is represented by the request that replaced it — the same
+      // evening listed twice, once closed and once live, is the thing this
+      // screen is least able to afford. Nothing is lost: the drawer on the
+      // surviving row draws both requests in full.
+      const res = await api.get(
+        `/entries?employee=${employee._id}&period=${period}&replaced=hide`,
+      );
       setEntries(res.entries);
+      setReplacedCount(res.replacedCount || 0);
       setError('');
     } catch (err) { setError(err.message); }
   }
@@ -111,6 +128,18 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
               : 'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'}
           </span>
         </div>
+
+        {/* Said on the screen rather than left as a gap in the table. The rows
+            are not deleted and not merely filtered — each one is folded into
+            the request that replaced it, and the sentence points at the button
+            that opens it. */}
+        {replacedCount > 0 && (
+          <div className="hint" style={{ marginTop: 6 }}>
+            ซ่อน {replacedCount} คำขอเดิมที่ถูกไม่อนุมัติและพนักงานส่งใหม่แล้ว ·
+            {' '}ตารางนี้แสดงคำขอล่าสุดของแต่ละเรื่องเพียงแถวเดียว ·
+            {' '}กด “ดูข้อมูลเดิม” ที่แถวนั้นเพื่อดูคำขอเดิม เวลาเดิม และเหตุผลที่ไม่อนุมัติ
+          </div>
+        )}
 
         <div className="table-wrap">
           <table>
