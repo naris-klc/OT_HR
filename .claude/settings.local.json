@@ -80,7 +80,24 @@
       "Bash(node --check src/routes/reports.js)",
       "Bash(node --check lib/reports.js)",
       "Bash(node --check src/config/policy.js)",
-      "Bash(node --check lib/policyVersion.js)"
+      "Bash(node --check lib/policyVersion.js)",
+      "Bash(node --test \"test/reportColumns.test.js\")",
+      "Bash(node --test \"test/policyConfirmation.test.js\")",
+      "Bash(./web/node_modules/.bin/esbuild --loader=jsx --jsx=automatic components/AdminView.jsx --outfile=/dev/null)",
+      "Bash(node -e \"import\\('./src/config/policy.js'\\).then\\(m=>{console.log\\(m.HR_UNCONFIRMED.map\\(i=>i.id\\)\\); console.log\\(m.DEFAULT_POLICY.belowMinimum, m.DEFAULT_POLICY.roundingIncrementMinutes, m.DEFAULT_POLICY.minimumHours\\);}\\)\")",
+      "Bash(node -e \"import\\('./lib/policyConfirmations.js'\\).then\\(\\(\\)=>console.log\\('lib OK'\\)\\)\")",
+      "Bash(./web/node_modules/.bin/esbuild --loader=jsx --jsx=automatic components/AdminView.jsx --outfile=C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/e0f5d125-fe5d-40c0-994d-957b32c86b24/scratchpad/adminview.js)",
+      "Bash(./web/node_modules/.bin/esbuild --loader:.jsx=jsx --jsx=automatic components/AdminView.jsx --outfile=C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/e0f5d125-fe5d-40c0-994d-957b32c86b24/scratchpad/adminview.js)",
+      "Bash(node -e \"import\\('./lib/accounting.js'\\).then\\(\\(\\)=>console.log\\('importable'\\)\\).catch\\(e=>console.log\\('NOT importable:', e.message.split\\('\\\\n'\\)[0]\\)\\)\")",
+      "Bash(sed -i 's#'\\\\''C:/Users/suwan/Documents/OT_HR/#'\\\\''file:///C:/Users/suwan/Documents/OT_HR/#g' C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/e0f5d125-fe5d-40c0-994d-957b32c86b24/scratchpad/probe.mjs)",
+      "Bash(node --import C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/e0f5d125-fe5d-40c0-994d-957b32c86b24/scratchpad/alias.mjs C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/e0f5d125-fe5d-40c0-994d-957b32c86b24/scratchpad/probe.mjs)",
+      "Bash(node --import file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/e0f5d125-fe5d-40c0-994d-957b32c86b24/scratchpad/alias.mjs C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/e0f5d125-fe5d-40c0-994d-957b32c86b24/scratchpad/probe.mjs)",
+      "Bash(node --import file:///C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/e0f5d125-fe5d-40c0-994d-957b32c86b24/scratchpad/alias.mjs ./.probe.tmp.mjs)",
+      "Bash(node --test \"test/accountingReconciliation.test.js\")",
+      "Bash(sed -i \"7s/import { Alert, Empty } from '.\\\\/common.jsx';/import { Alert, Empty, UnaccountedHours } from '.\\\\/common.jsx';/\" components/AccountingView.jsx)",
+      "Bash(sed -i \"6s/import { Alert, Empty } from '.\\\\/common.jsx';/import { Alert, Empty, UnaccountedHours } from '.\\\\/common.jsx';/\" components/DepartmentView.jsx)",
+      "Bash(sed -i \"5s/import { Alert } from '.\\\\/common.jsx';/import { Alert, UnaccountedHours } from '.\\\\/common.jsx';/\" components/AccountingPrint.jsx)",
+      "Bash(sed -i \"6s/import { Alert } from '.\\\\/common.jsx';/import { Alert, UnaccountedHours } from '.\\\\/common.jsx';/\" components/DepartmentPrint.jsx)"
     ],
     "additionalDirectories": [
       "c:\\Users\\suwan\\OneDrive\\เอกสาร\\OT_HR"

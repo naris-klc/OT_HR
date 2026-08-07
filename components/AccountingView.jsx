@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES, accountingLabel,
 } from '@/lib/api.js';
-import { Alert, Empty } from './common.jsx';
+import { Alert, Empty, UnaccountedHours } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -124,6 +124,11 @@ export default function AccountingView() {
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}
+
+      {/* Above the backlog notice, because it outranks it: a month with
+          requests still in the queue is unfinished, a month with hours nobody
+          can see is wrong. */}
+      <UnaccountedHours unaccounted={data?.unaccounted} />
 
       {pending?.count > 0 && (
         <div className="box warn no-print">

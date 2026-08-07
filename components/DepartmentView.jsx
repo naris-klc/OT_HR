@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, withHours, currentPeriod, periodLabel } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
-import { Alert, Empty } from './common.jsx';
+import { Alert, Empty, UnaccountedHours } from './common.jsx';
 import DepartmentPrint from './DepartmentPrint.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -131,6 +131,12 @@ export default function DepartmentView() {
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}
+
+      {/* Same report, same shortfall: this sheet regroups the very rows สรุป OT
+          ส่งบัญชี prints, so an entry that reached no row there reaches none
+          here either — and every department total is short with nothing on the
+          page saying so. */}
+      <UnaccountedHours unaccounted={data?.unaccounted} />
 
       {data?.pending?.count > 0 && (
         <div className="box warn no-print">

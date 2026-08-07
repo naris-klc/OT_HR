@@ -533,9 +533,73 @@ const POLICY_FIELDS = [
   },
 ];
 
+/**
+ * The badge, and the one button that removes it.
+ *
+ * Amber rather than red: nothing is broken, and the hours on every screen in
+ * the system are as correct as they were a minute ago. What it says is that the
+ * rule producing them was our reading of the old paper and not anybody's
+ * answer — a different claim from ค่าเริ่มต้น, which every row on this page
+ * could wear.
+ *
+ * ยืนยัน writes a name and a date beside the item and does nothing else. It is
+ * spelled out under the button because "confirm" beside a rule that moves hours
+ * reads, reasonably, as though it might apply something.
+ */
+function Unconfirmed({ item, canEdit, busy, onConfirm }) {
+  if (!item || item.confirmed) return null;
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <span
+        style={{
+          display: 'inline-block',
+          fontSize: 11,
+          fontWeight: 700,
+          padding: '1px 7px',
+          borderRadius: 999,
+          background: 'var(--amber-bg, #fdf0d5)',
+          color: 'var(--amber-dark, #8a5a00)',
+          border: '1px solid var(--amber, #d99b1c)',
+        }}
+      >
+        รอ HR ยืนยัน
+      </span>
+      <div className="hint" style={{ marginTop: 4 }}>
+        ค่าที่ใช้อยู่: <strong>{item.reading}</strong> · ตั้งตามพฤติกรรมเดิม ณ {item.since} ยังไม่มีใครใน HR ตอบข้อนี้
+        {item.note && <div style={{ marginTop: 2 }}>{item.note}</div>}
+      </div>
+      {canEdit && (
+        <div style={{ marginTop: 4 }}>
+          <button className="btn ghost sm" disabled={busy} onClick={() => onConfirm(item.id)}>
+            ยืนยันว่าเป็นคำตอบของ HR
+          </button>
+          <span className="hint" style={{ marginLeft: 8 }}>
+            บันทึกชื่อผู้ยืนยันและวันที่เท่านั้น · ไม่เปลี่ยนค่า และไม่คำนวณใบใดใหม่
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Who signed an item off, once somebody has. */
+function ConfirmedBy({ item }) {
+  if (!item?.confirmed) return null;
+  const { byName, at } = item.confirmed;
+  return (
+    <div className="hint" style={{ marginTop: 4, color: 'var(--green-dark)' }}>
+      HR ยืนยันแล้ว{byName ? ` โดย ${byName}` : ''}
+      {at ? ` · ${thaiDate(String(at).slice(0, 10))}` : ''}
+    </div>
+  );
+}
+
 function Policy({ user }) {
   const [policy, setPolicy] = useState(null);
   const [overrides, setOverrides] = useState([]);
+  /** The rules HR has not agreed to — see lib/policyConfirmations.js. */
+  const [unconfirmed, setUnconfirmed] = useState([]);
   const [versions, setVersions] = useState(null);
   const [unversioned, setUnversioned] = useState(0);
   /** Whether the rules in force are ones the system has on record — see below. */
@@ -560,6 +624,7 @@ function Policy({ user }) {
       ]);
       setPolicy(res.policy);
       setOverrides(res.overrides);
+      setUnconfirmed(res.unconfirmed || []);
       setVersions(history.versions);
       setUnversioned(history.unversionedEntryCount || 0);
       setLive(history.live || null);
@@ -587,6 +652,21 @@ function Policy({ user }) {
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
   useEffect(() => { load(); }, []);
+
+  /**
+   * Sign one rule off. Its own endpoint, not `save()` — that one PATCHes a
+   * policy value, which records a version and replays every entry in flight.
+   * A sign-off must reach neither, so it does not go through it.
+   */
+  async function confirm(id) {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post('/settings/policy-confirmations', { id });
+      setUnconfirmed(res.items || []);
+      setMsg('บันทึกการยืนยันของ HR แล้ว · ไม่มีค่าใดเปลี่ยน และไม่มีใบใดถูกคำนวณใหม่');
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  }
 
   async function save(key, value) {
     setBusy(true);
@@ -659,6 +739,14 @@ function Policy({ user }) {
                   {f.hint && (
                     <div className="hint" style={{ marginTop: 4 }}>{f.hint}</div>
                   )}
+                  {/* One question can cover more than one flag, so a row can
+                      wear more than one badge. */}
+                  {unconfirmed.filter((u) => u.keys.includes(f.key)).map((u) => (
+                    <React.Fragment key={u.id}>
+                      <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />
+                      <ConfirmedBy item={u} />
+                    </React.Fragment>
+                  ))}
                 </td>
                 <td>
                   <select
@@ -671,6 +759,30 @@ function Policy({ user }) {
                       <option key={String(v)} value={String(v)}>{l}</option>
                     ))}
                   </select>
+                </td>
+              </tr>
+            ))}
+
+            {/* A question about a rule the engine has but the policy has no
+                flag for. It gets a row of its own rather than being left off
+                the page: the badge is a record of what has not been agreed,
+                and an item with no dropdown is if anything the one most worth
+                showing — nobody can find it by reading the settings. The
+                คำตอบปัจจุบัน cell states what the code does today, in words,
+                because there is no control whose value could state it. */}
+            {unconfirmed.filter((u) => u.keys.length === 0).map((u) => (
+              <tr key={u.id}>
+                <td>—</td>
+                <td>
+                  {u.label}
+                  <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />
+                  <ConfirmedBy item={u} />
+                </td>
+                <td>
+                  {u.reading}
+                  <div className="hint" style={{ marginTop: 4 }}>
+                    ไม่มีค่าตั้งให้เลือก — เปลี่ยนคำตอบข้อนี้ต้องแก้ตัวคำนวณ
+                  </div>
                 </td>
               </tr>
             ))}

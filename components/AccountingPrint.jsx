@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, THAI_MONTHS, accountingLabel } from '@/lib/api.js';
-import { Alert } from './common.jsx';
+import { Alert, UnaccountedHours } from './common.jsx';
 
 /**
  * สรุป OT ส่งบัญชี rendered for print — one sheet per company, A4 portrait.
@@ -58,8 +58,12 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
         </div>
       </div>
 
-      {/* The backlog warning belongs on the screen, not on the sheet — the sheet
-          is the table and nothing else. */}
+      {/* Both notices belong on the screen, not on the sheet — the sheet is the
+          table and nothing else. This one is here rather than only on the
+          report screen because the print view is opened straight from the nav,
+          and a sheet sent to accounting while it is showing is short. */}
+      <UnaccountedHours unaccounted={data.unaccounted} />
+
       {data.pending?.count > 0 && (
         <div className="box warn no-print">
           เดือนนี้ยังมีรายการค้างอนุมัติ {data.pending.count} รายการ ซึ่ง<strong>ไม่ถูกนับ</strong>ในใบนี้

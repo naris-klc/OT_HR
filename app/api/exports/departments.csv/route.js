@@ -77,6 +77,23 @@ export const GET = route(async (req) => {
   const total = sumRows(departments.flatMap((d) => d.rows));
   rows.push(summaryRow('', 'รวมทุกแผนก', total, tail(total, report.pending, period, departments)));
 
+  /**
+   * Hours no department could claim — an entry whose employee no longer
+   * resolves, so it has no row, no department and no company.
+   *
+   * Nought in every ordinary month, and written only when it is not, for the
+   * same reason as in accounting.csv: a spreadsheet carries only what is in it,
+   * and a file whose totals are short while every figure in it still adds up is
+   * a file nobody can check.
+   */
+  if (report.unaccounted?.count > 0) {
+    rows.push([
+      '', '', '', 'ไม่ถูกนับ', '', '', '',
+      fmt(report.unaccounted.hours),
+      `${report.unaccounted.count} รายการอ้างถึงพนักงานที่หาไม่พบ — ยอดรวมข้างบนขาดไปเท่านี้`,
+    ]);
+  }
+
   return csvResponse(`OT-departments-${period}.csv`, toCsv(headers, rows));
 });
 

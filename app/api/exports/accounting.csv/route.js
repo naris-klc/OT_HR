@@ -110,6 +110,26 @@ export const GET = route(async (req) => {
     ));
   }
 
+  /**
+   * Hours this file could not put on any row — nought in every ordinary month.
+   *
+   * The file is the one surface where the shortfall has nowhere else to show:
+   * the screens carry a banner, and a spreadsheet carries only what is in it.
+   * Without this line the totals above are short and every one of them still
+   * adds up, which is precisely the state whoever opens the file cannot detect.
+   *
+   * Last, after the grand total, and only when there is something to say — a
+   * row that is absent in every normal month cannot break a lookup built on the
+   * ones above it.
+   */
+  if (report.unaccounted?.count > 0) {
+    rows.push([
+      '', '', '', 'ไม่ถูกนับ', '', '', '', '',
+      fmt(report.unaccounted.hours),
+      `${report.unaccounted.count} รายการอ้างถึงพนักงานที่หาไม่พบ — ยอดรวมข้างบนขาดไปเท่านี้`,
+    ]);
+  }
+
   const suffix = report.company === 'all' ? 'all' : report.company;
   return csvResponse(
     `OT-accounting-${period}-${suffix}.csv`,

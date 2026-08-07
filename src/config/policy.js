@@ -51,7 +51,14 @@ export const DEFAULT_POLICY = Object.freeze({
   // ── [OPEN 3] Round down, up, or to nearest 30 minutes? ─────────────────────
   /** 'floor' | 'ceil' | 'nearest'. Default 'floor': never over-reports hours. */
   roundingMode: 'floor',
-  /** Increment in minutes. 30 per the requirements doc. */
+  /**
+   * Increment in minutes.
+   *
+   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ตั้งตามพฤติกรรมเดิม. 30 is what the
+   * requirements doc says and what every figure in the database was computed
+   * with; it is NOT an answer anybody in HR has given. See HR_UNCONFIRMED
+   * below: until they answer, this is a reading of the old paper, not a rule.
+   */
   roundingIncrementMinutes: 30,
   /**
    * 'bucket'  — round each rate bucket independently (DEFAULT). Bucket totals
@@ -63,8 +70,30 @@ export const DEFAULT_POLICY = Object.freeze({
   roundingScope: 'bucket',
 
   // ── [OPEN 4] Session under the 1-hour minimum: reject or round up? ─────────
-  /** 'raise' — pad up to minimumHours. 'reject' — refuse the entry. */
-  belowMinimum: 'raise',
+  /**
+   * 'raise' — pad up to minimumHours. 'reject' — refuse the entry.
+   *
+   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ตั้งตามพฤติกรรมเดิม. The shipped default
+   * used to be 'raise' while the live database carried a 'reject' override, so
+   * every entry ever computed here was rejected below the minimum and the file
+   * said otherwise. Pinning it to 'reject' does not change a single stored
+   * figure; it stops the file and the database disagreeing about what the
+   * system has been doing. HR has still not answered [OPEN 4] — see
+   * HR_UNCONFIRMED below.
+   */
+  belowMinimum: 'reject',
+  /**
+   * The minimum, in hours.
+   *
+   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ตั้งตามพฤติกรรมเดิม.
+   *
+   * WHAT IS UNCONFIRMED IS NOT ONLY THE NUMBER. The engine applies this to the
+   * SESSION total — one entry, one minimum, whatever mix of buckets it lands in
+   * (see `computeSession`, where `totalMinutes` is summed across every bucket
+   * before the comparison). "ต่อใบ", in other words. Whether HR means that or
+   * one minimum per rate column is the open question, and there is no flag for
+   * the other reading because nothing in the system implements it.
+   */
   minimumHours: 1,
 
   // ── [OPEN 5] Does OT begin at 17:00 or 17:01? ──────────────────────────────
@@ -172,6 +201,86 @@ export const DEFAULT_POLICY = Object.freeze({
    */
   hrSummaryBasis: 'raw',
 });
+
+/**
+ * The rules the system is running on that NOBODY IN HR HAS AGREED TO.
+ *
+ * Every value in DEFAULT_POLICY is a default, and saying so on the settings
+ * page — as its subtitle already does — tells a reader nothing, because it is
+ * equally true of the twenty flags HR has no opinion about. These three are
+ * different in kind: they were reverse-engineered from how the old paper
+ * appears to have been filled in, they each move hours, and no one has
+ * confirmed any of them. A default nobody chose and a default somebody read off
+ * a stack of 2025 timesheets both print as "ค่าเริ่มต้น" and only one of them
+ * is a liability.
+ *
+ * So the state is recorded rather than described in prose: the badge on the
+ * settings page is generated from this list, and pressing ยืนยัน on an item
+ * writes who confirmed it and when.
+ *
+ * COSMETIC, and structurally so — nothing here is a policy key. The
+ * confirmations are stored on the Setting document OUTSIDE `policy` (see
+ * src/models/Setting.js), so they never reach `canonicalPolicy`, never mint a
+ * version, and can never replay an entry. Confirming an item changes no value:
+ * it records that the value it already had is now somebody's answer rather
+ * than our guess.
+ *
+ * `keys` places the badge — a settings row wearing it is a row this question is
+ * about. Empty `keys` is a real case and the reason `reading` exists: the
+ * minimum's scope is a rule the engine has but the policy has no flag for, so
+ * there is no dropdown to hang a badge on and the current behaviour has to be
+ * stated in words.
+ */
+export const HR_UNCONFIRMED_SINCE = '2026-08-07';
+
+export const HR_UNCONFIRMED = Object.freeze([
+  Object.freeze({
+    id: 'roundingIncrement',
+    label: 'ปัดเศษชั่วโมง OT ทีละกี่นาที',
+    keys: Object.freeze(['roundingMode']),
+    reading: (policy) => `ทีละ ${policy.roundingIncrementMinutes} นาที`,
+    note: 'ค่าที่ใช้อยู่คือ 30 นาที (ครึ่งชั่วโมง) ตามเอกสารข้อกำหนดและตามที่ทุกใบในระบบถูกคำนวณมา '
+      + '· ถ้าคำตอบคือชั่วโมงเต็ม ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
+  }),
+  Object.freeze({
+    /**
+     * Not 'belowMinimum'. An id that collides with a policy key makes
+     * `{ [id]: {...} }` read as a policy override to anything scanning the
+     * settings document loosely — see test/policyConfirmation.test.js, which
+     * is what caught it.
+     */
+    id: 'belowMinimumAction',
+    label: 'ต่ำกว่าขั้นต่ำ 1 ชม. ให้ปัดขึ้นหรือไม่รับ',
+    keys: Object.freeze(['belowMinimum']),
+    reading: (policy) => (policy.belowMinimum === 'reject' ? 'ไม่รับรายการ' : 'ปัดขึ้นเป็น 1 ชม.'),
+    note: 'ค่าที่ใช้อยู่คือ “ไม่รับรายการ” ซึ่งเป็นสิ่งที่ระบบทำมาตลอด '
+      + '(ฐานข้อมูลตั้ง reject ทับไว้ ทั้งที่ไฟล์เขียนว่า raise — ตอนนี้ตรงกันแล้ว)',
+  }),
+  Object.freeze({
+    id: 'minimumScope',
+    label: 'ขั้นต่ำ 1 ชม. นับต่อใบหรือต่อช่อง',
+    /** No flag exists for the other reading, so no dropdown wears this badge. */
+    keys: Object.freeze([]),
+    reading: () => 'ต่อใบ (รวมทุกช่องก่อนเทียบกับขั้นต่ำ)',
+    note: 'ระบบนับต่อใบ — รวมชั่วโมงทุกช่องในใบนั้นก่อน แล้วจึงเทียบกับ 1 ชม. '
+      + '· ยังไม่มีค่าตั้งสำหรับการนับต่อช่อง ถ้าคำตอบคือต่อช่อง ต้องแก้ตัวคำนวณ ไม่ใช่แก้ค่า',
+  }),
+]);
+
+/** One item's current answer, read off the live policy rather than restated. */
+export function readUnconfirmed(item, policy = DEFAULT_POLICY) {
+  return typeof item.reading === 'function' ? item.reading(policy) : String(item.reading ?? '');
+}
+
+/** Every settings-page key that some unconfirmed question is about. */
+export function unconfirmedKeys(confirmations = {}) {
+  const keys = new Set();
+  for (const item of HR_UNCONFIRMED) {
+    if (confirmations?.[item.id]) continue;
+    for (const key of item.keys) keys.add(key);
+  }
+  return keys;
+}
 
 /**
  * รายละเอียดงานที่ทำ — how much text may be entered, in characters.

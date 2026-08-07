@@ -159,8 +159,11 @@ test('[OPEN 3] bucket scope keeps the three columns summing to the total', () =>
 
 // ── [OPEN 4] the 1-hour minimum ─────────────────────────────────────────────
 
-test('[OPEN 4] raise (default): a 20-minute session becomes 1 h', () => {
-  const r = run({ workDate: '2026-08-05', startTime: '17:00', endTime: '17:20' });
+// `raise` is no longer the shipped default — see the [OPEN 4] comment in
+// src/config/policy.js — so the mode under test is now stated rather than
+// assumed. What it is expected to produce has not moved.
+test('[OPEN 4] raise: a 20-minute session becomes 1 h', () => {
+  const r = run({ workDate: '2026-08-05', startTime: '17:00', endTime: '17:20' }, { belowMinimum: 'raise' });
   assert.equal(r.totals.otHours, 1);
   assert.ok(r.warnings.some((w) => w.code === 'RAISED_TO_MINIMUM'));
 });

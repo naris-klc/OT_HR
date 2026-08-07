@@ -5,23 +5,39 @@ import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { recomputeEntries } from '../services/otService.js';
 import { savePolicy } from '../../lib/policySave.js';
 import { authorizeReplay } from '../../lib/policyVersion.js';
+import { unconfirmedState } from '../../lib/policyConfirmations.js';
+import { confirmPolicyItem } from '../../lib/policyConfirmSave.js';
 
 const router = Router();
 router.use(requireAuth);
 
 router.get('/', wrap(async (req, res) => {
   const doc = await Setting.load();
+  const policy = await Setting.effectivePolicy();
   res.json({
     settings: {
       companyName: doc.companyName,
       companyNameEn: doc.companyNameEn,
       formCode: doc.formCode,
     },
-    policy: await Setting.effectivePolicy(),
+    policy,
     defaults: DEFAULT_POLICY,
     /** Which keys have been overridden away from the shipped defaults. */
     overrides: Object.keys(doc.policy || {}),
+    /** Which rules HR has still not agreed to — see lib/policyConfirmations.js. */
+    unconfirmed: unconfirmedState(policy, doc.policyConfirmations || {}),
   });
+}));
+
+/**
+ * HR signing off a rule the system was already running on. Changes no value and
+ * replays nothing — the whole sequence is in lib/policyConfirmations.js, shared
+ * with the App Router so this server cannot be the lenient way in.
+ */
+router.post('/policy-confirmations', requireRole('admin', 'hr'), wrap(async (req, res) => {
+  const result = await confirmPolicyItem({ id: req.body?.id, actor: req.user });
+  if (result.error) return res.status(result.status).json({ error: result.error });
+  return res.json(result);
 }));
 
 /**

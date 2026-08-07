@@ -15,6 +15,50 @@ export function Alert({ kind = 'warn', children }) {
   return <div className={`alert ${kind}`}>{children}</div>;
 }
 
+/**
+ * Approved hours that reached no row on the sheet.
+ *
+ * The one shortfall สรุป OT ส่งบัญชี and สรุป OT แยกแผนก cannot show by being
+ * read carefully: an entry whose employee no longer resolves is left out of
+ * every figure on both, and every figure still agrees with every other one. The
+ * rows add up to the subtotals, the subtotals to the grand total, and the two
+ * reports to each other — all of them short by the same amount.
+ *
+ * So the count comes out of the report itself (`unaccounted`) and is printed
+ * here rather than inferred. `kind="error"` and not the amber the other two
+ * notices use: a backlog means the month is not finished, which is ordinary,
+ * and a superseded filing means the system did its job. This means hours exist
+ * that nobody can see, which is a database inconsistency and not a workflow
+ * state.
+ *
+ * `no-print` on every screen that uses it. It is a message to whoever is
+ * holding the screen, not a line on a sheet accounting files — and a sheet
+ * printed while this is showing is a sheet that should not be filed at all.
+ */
+export function UnaccountedHours({ unaccounted, hint = true }) {
+  if (!unaccounted?.count) return null;
+
+  return (
+    <div className="box error no-print">
+      <strong>
+        มี {unaccounted.count} ใบ ({hours(unaccounted.hours)} ชม.) ที่ไม่ถูกนับในสรุปนี้
+      </strong>
+      {' '}— ใบเหล่านี้อ้างถึงพนักงานที่หาไม่พบในระบบ จึงไม่มีแถวให้ลง
+      {hint && (
+        <div style={{ marginTop: 4, fontSize: 12.5 }}>
+          ยอดรวมทุกช่องในใบนี้จะ<strong>ขาดไปเท่าจำนวนนั้น</strong> ทั้งที่ตัวเลขทุกตัวยังตรงกันเอง
+          {' '}· อย่าเพิ่งส่งบัญชี — ตรวจทะเบียนพนักงานก่อน
+          {unaccounted.entryIds?.length > 0 && (
+            <div style={{ marginTop: 2, fontFamily: 'var(--mono, monospace)', fontSize: 11.5 }}>
+              รหัสใบ: {unaccounted.entryIds.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** The three form columns, side by side. */
 export function BucketSplit({ buckets, total, label = 'รวม' }) {
   if (!buckets) return null;

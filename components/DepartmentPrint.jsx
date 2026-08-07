@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
-import { Alert } from './common.jsx';
+import { Alert, UnaccountedHours } from './common.jsx';
 
 /**
  * สรุปชั่วโมงทำ OT แยกแผนก — the departmental sheet, cell for cell.
@@ -62,6 +62,10 @@ export default function DepartmentPrint({ period, onClose }) {
           หนึ่งแผนกต่อหนึ่งหน้า · ปิดท้ายด้วยใบรวมทุกแผนก · ชั่วโมงในช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา
         </div>
       </div>
+
+      {/* On the screen above the sheets, never on the paper — see
+          AccountingPrint.jsx. */}
+      <UnaccountedHours unaccounted={data.unaccounted} />
 
       {data.pending?.count > 0 && (
         <div className="box warn no-print">

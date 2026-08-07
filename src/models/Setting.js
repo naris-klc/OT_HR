@@ -14,6 +14,22 @@ const settingSchema = new mongoose.Schema(
     key: { type: String, default: 'singleton', unique: true, immutable: true },
     /** Sparse overrides on DEFAULT_POLICY. Unset keys fall back to the file. */
     policy: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+    /**
+     * Which of the HR_UNCONFIRMED items somebody in HR has now signed off, as
+     * `{ [id]: { by, byName, at } }`.
+     *
+     * A SIBLING of `policy`, never a member of it, and that placement is the
+     * whole guarantee. `Setting.effectivePolicy()` spreads `policy` and nothing
+     * else, so a confirmation cannot reach `canonicalPolicy`, cannot change a
+     * `policyHash`, cannot mint a version and cannot make `sameArithmetic`
+     * false — which is what "COSMETIC" has to mean here to be worth anything.
+     * Put inside `policy` it would also be an unclassified key and fail the
+     * ARITHMETIC/COSMETIC completeness test in test/policyVersion.test.js.
+     *
+     * Keyed by the item id rather than by policy key: one question can cover
+     * more than one flag, and one of them covers no flag at all.
+     */
+    policyConfirmations: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
     companyName: { type: String, default: 'บริษัท ไพรมัส อินสตรูเมนท์ จำกัด' },
     companyNameEn: { type: String, default: 'Primus Instrument Co., Ltd.' },
     formCode: { type: String, default: 'F-HR-027 Rev.4' },

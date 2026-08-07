@@ -61,15 +61,31 @@ const SESSIONS = [
   { workDate: '2026-08-17', startTime: '17:00', endTime: '17:20', endsNextDay: false },
 ];
 
+/**
+ * What the engine did with a session — the figures, or the refusal.
+ *
+ * A refusal is an outcome like any other and has to reproduce like one. Under
+ * the shipped `belowMinimum: 'reject'` the last session below is not a filable
+ * entry at all, and replaying it against the rules that refused it must refuse
+ * it again for the same stated reason. Comparing only successful results would
+ * quietly skip that case rather than check it.
+ */
+const outcomeOf = (session, version) => {
+  try {
+    return { result: computeSession(session, contextOf(version, session)) };
+  } catch (err) {
+    return { code: err.code };
+  }
+};
+
 test('replaying against the version an entry names reproduces its hours exactly', () => {
   for (const session of SESSIONS) {
-    const filed = computeSession(session, contextOf(V1, session));
+    const filed = outcomeOf(session, V1);
 
     // Three months later, from the stored snapshot alone.
     for (let i = 0; i < 3; i++) {
-      const replayed = computeSession(session, contextOf(V1, session));
       assert.deepEqual(
-        replayed,
+        outcomeOf(session, V1),
         filed,
         `${session.workDate} ${session.startTime}–${session.endTime} did not reproduce`,
       );
@@ -90,7 +106,9 @@ test('the same session under a different version is a different figure — which
 
 test('a version snapshot is not disturbed by computing against it', () => {
   const before = JSON.stringify(V1.policy);
-  for (const session of SESSIONS) computeSession(session, contextOf(V1, session));
+  // Refusals included: a policy that a rejected session mutated on its way out
+  // would be exactly as broken as one a successful session mutated.
+  for (const session of SESSIONS) outcomeOf(session, V1);
   assert.equal(JSON.stringify(V1.policy), before);
   assert.equal(samePolicy(V1.policy, DEFAULT_POLICY), true);
 });
