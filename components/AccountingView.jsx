@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES } from '@/lib/api.js';
+import {
+  api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES, accountingLabel,
+} from '@/lib/api.js';
 import { Alert, Empty } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { useBackHandler } from './nav.jsx';
@@ -88,7 +90,7 @@ export default function AccountingView() {
                 <option key={c.key} value={c.key}>
                   {/* `?? 0` only once the month has arrived: a company with
                       nothing approved reads 0.0 ชม., not as still loading. */}
-                  {withHours(c.label, data && (data.companies.find((x) => x.key === c.key)?.totals.otHours ?? 0))}
+                  {withHours(accountingLabel(c), data && (data.companies.find((x) => x.key === c.key)?.totals.otHours ?? 0))}
                 </option>
               ))}
             </select>
@@ -184,11 +186,20 @@ function CompanySheet({ company, period, index }) {
   return (
     <div className="card" style={{ marginTop: 18 }}>
       <div className="card-head" style={{ marginBottom: 14 }}>
+        {/* The code leads the heading because this is the sheet accounting
+            reconciles against, and PM / THT is what their own records are keyed
+            on. The full legal name stays underneath it — the figures are still
+            signed for by a company, not by a code. */}
         <div>
           <div className="kicker-sm">บริษัทที่ {index}</div>
-          <div className="t">{company.nameTh}</div>
+          <div className="t">
+            {company.accountingCode && (
+              <span style={{ color: 'var(--muted)' }}>{company.accountingCode} · </span>
+            )}
+            {company.shortTh}
+          </div>
           <div className="hint" style={{ margin: 0 }}>
-            {company.nameEn} · {periodLabel(period)}
+            {company.nameTh} · {company.nameEn} · {periodLabel(period)}
           </div>
         </div>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
@@ -260,7 +271,7 @@ function CompanySheet({ company, period, index }) {
                 ))}
                 <tr className="grand">
                   <td>รวมทั้งหมด</td>
-                  <td>{company.shortTh}</td>
+                  <td>{company.accountingCode ? `${company.accountingCode} · ${company.shortTh}` : company.shortTh}</td>
                   <td className="num">{hours(t.buckets[BUCKETS.OT15_WEEKDAY])}</td>
                   <td className="num">{hours(t.buckets[BUCKETS.OT15_HOLIDAY])}</td>
                   <td className="num">{hours(t.buckets[BUCKETS.OT3_HOLIDAY])}</td>
@@ -299,8 +310,10 @@ function AllCompanies({ data }) {
             {data.companies.map((c, i) => (
               <tr key={c.key}>
                 <td>
-                  บริษัทที่ {i + 1} · {c.shortTh}
-                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.nameEn}</div>
+                  {c.accountingCode ? `${c.accountingCode} · ` : ''}{c.shortTh}
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                    บริษัทที่ {i + 1} · {c.nameEn}
+                  </div>
                 </td>
                 <td className="num">{c.totals.headcount}</td>
                 <td className="num">{cell(c.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>

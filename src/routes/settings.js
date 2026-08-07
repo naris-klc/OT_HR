@@ -4,6 +4,7 @@ import { DEFAULT_POLICY } from '../config/policy.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { recomputeEntries } from '../services/otService.js';
 import { savePolicy } from '../../lib/policySave.js';
+import { authorizeReplay } from '../../lib/policyVersion.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -61,9 +62,10 @@ router.patch('/', requireRole('admin'), wrap(async (req, res) => {
 /**
  * Manual replay — useful after a bulk holiday import or a data fix.
  *
- * Approved entries are skipped unless `includeApproved` is asked for with a
- * `note`, and the response names the ones it left rather than reporting a
- * smaller number with no explanation.
+ * Approved entries are skipped unless an admin asks for `includeApproved` with
+ * a `note` — `authorizeReplay`, shared with the App Router so the retired
+ * server cannot be the lenient way in — and the response names the ones it left
+ * rather than reporting a smaller number with no explanation.
  */
 router.post('/recompute', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const filter = {};
@@ -72,11 +74,13 @@ router.post('/recompute', requireRole('admin', 'hr'), wrap(async (req, res) => {
 
   const includeApproved = Boolean(req.body?.includeApproved);
   const note = req.body?.note;
-  if (includeApproved && !String(note || '').trim()) {
-    return res.status(400).json({ error: 'การคำนวณใหม่ที่รวมรายการที่อนุมัติแล้ว กรุณาระบุเหตุผล' });
-  }
 
-  return res.json(await recomputeEntries(filter, req.user, { includeApproved, note }));
+  const allowed = authorizeReplay({ actor: req.user, includeApproved, note });
+  if (!allowed.ok) return res.status(allowed.status).json({ error: allowed.error });
+
+  return res.json(await recomputeEntries(filter, req.user, {
+    includeApproved, note, source: 'manual',
+  }));
 }));
 
 export default router;

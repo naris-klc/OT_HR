@@ -52,7 +52,7 @@ src/config/companies.js   the two payroll entities and the code-prefix rule
 src/lib/otEngine.js       the arithmetic: segmentation, buckets, break, rounding
 src/lib/csv.js            CSV in/out, UTF-8 BOM on the way out
 src/models/               Department, Employee, Holiday, OtEntry, PolicyVersion,
-                          Setting
+                          PolicyReplayRun, Setting
 src/services/otService.js engine ↔ database: compute, cap check, replay
 src/migrate-company.js    one-off: fill `company` on a pre-split database
 src/migrate-policy-version.js
@@ -177,11 +177,34 @@ what makes a replay reproducible three months later, and
 **An approved entry is not replayed.** The rule lives in `planRecompute()` in
 [`lib/policyVersion.js`](lib/policyVersion.js) rather than only in each caller's
 query filter, because a filter is something every future caller has to remember
-and this is a rule. `recompute: 'all'` is still there for HR deciding a whole
-month should be restated — but it is never a default, it requires a `note`
-saying why, and every approved entry whose hours actually move keeps a `before`
-snapshot, so a restated figure turns up in **ประวัติการแก้ไข** beside the
-ordinary corrections instead of nowhere.
+and this is a rule. `recompute: 'all'` is still there for a whole month being
+restated — but it is never a default, it is **admin only**, and it requires a
+`note` saying why. Both conditions are `authorizeReplay()`, one function shared
+by all four ways in (the settings page and the manual replay, each on the App
+Router and on the retired Express server), because a rule that has to be
+remembered in four places will hold in three. HR answers the [OPEN] items; that
+is what the settings page is for. Redoing a month somebody has signed off is a
+different act from answering a question, and the person who signed it should not
+also be the only person who can quietly redo it.
+
+**What a replay leaves behind, at two levels.** Per entry: an approved entry
+whose figures actually move keeps a `before` snapshot, so a restated figure
+turns up in **ประวัติการแก้ไข** beside the ordinary corrections. "Actually
+move" is `figuresMoved()`, compared **per bucket** rather than on the session
+total — a rule change can push hours from ×1.5 into ×3 one for one, leaving
+`otHours` identical while payroll pays a different amount against it, and read
+on the total alone that entry looks untouched exactly where the change was
+material. Snapshots stay quiet otherwise: a corrections column that fills with
+two hundred rows which moved nothing is a column HR stops reading.
+
+Per run: every replay is recorded in `otPolicyReplayRuns` — who ordered it,
+when, under what note, from which versions to which, how many rows scanned,
+replayed, changed, skipped, failed — **including the runs that changed
+nothing**. That is the half the snapshots cannot cover. Without it, "the
+recompute ran and the figures held" and "the recompute was never run" leave
+identical traces, and those call for opposite reactions at month end. Also
+append-only, and logged last so that losing the audit row can never lose the
+recompute.
 
 **The screens say so.** ตรวจสอบรายเดือน carries a กฎที่ใช้ column and a banner
 when the month is not uniform; ดู / แก้ไขรายการ carries it per entry;
@@ -191,6 +214,38 @@ all of them — flags that move numbers, flags that only move permissions, and
 rows whose rules were never recorded — because a banner that fires when
 `hrMayReject` was flipped trains HR to dismiss the one that fires when the
 rounding rule changed mid-month.
+
+**When the live rules are not on record, the settings page says so.** An entry
+is stamped only when the policy in force matches the newest recorded version
+exactly — a pointer to rules that did not produce the hours would be worse than
+no pointer. The cost is that the mismatch is otherwise silent: a deploy that
+changes a value in `src/config/policy.js` moves the effective policy with
+nothing saved through the settings page, no version is written, and from that
+moment every new entry is filed unstamped with no error anywhere. It would
+surface weeks later as a monthly banner saying the figures cannot be compared —
+the wrong problem, at the wrong time, to the wrong person. So
+`GET /api/settings/policy-versions` returns a `live` block comparing the two,
+and **นโยบายการคำนวณ** prints the drift with one button that records the
+current rules as a version. That button changes no policy value and recomputes
+nothing; entries already filed unstamped are the migration's job.
+
+**`policyHash`** is an FNV-1a fingerprint of the canonical policy, stored on
+each version for lookup and for printing beside the number so two people on a
+phone can be sure they mean the same rule set. It is **not** what decides
+whether a new version is needed — that stays `samePolicy()` on the canonical
+string. 32 bits collide, and a collision consulted as an equality test would
+swallow a real policy change: no version written, and a month of entries
+attributed to rules that did not produce them. Wrong in that direction is
+invisible and permanent; the string comparison it would replace costs nothing.
+
+**Every policy flag must be classified** as arithmetic or cosmetic —
+`ARITHMETIC_KEYS` or `COSMETIC_KEYS`, checked against `DEFAULT_POLICY` by a
+test that fails on any key in neither. `sameArithmetic()` only compares the keys
+it has been told about, so an unregistered flag that moves hours is not compared
+at all: two versions differing by exactly that flag report as computing
+identically and the monthly banner goes green saying the figures compare when
+every one of them moved. There is no way to detect that afterwards, which is why
+it is caught in the commit that adds the flag.
 
 **Upgrading an existing database:** `npm run migrate:policy-version` records the
 rules in force as version 1 and points every unstamped entry at it. It is the
@@ -381,6 +436,24 @@ The **paper form** is the accounting sheet: รหัส | ชื่อ-นา�
 reconciling the CSV against it adds those two columns. That is the only place
 the two representations differ, and it differs because the paper is what gets
 signed.
+
+**The company is headed the way accounting names it — `PM · ไพรมัส`,
+`THT · เดมเทค`.** The code leads because this is the one sheet another
+department reconciles against and their records are keyed on it; the full legal
+name stays underneath, because the figures are signed for by a company and not
+by a code. `accountingCode` lives on `src/config/companies.js` as its own field
+rather than reusing `codePrefixes`: the prefix is a convention the roster
+follows and this is a label accounting has committed to, and if either moves it
+should not drag the other with it. Nowhere else in the system is renamed — the
+employee form, the profile and the department report are read by people who know
+the company by name.
+
+The CSV gains a **`company_code` column beside บริษัท**, not instead of it.
+Replacing the Thai column would break every sheet and lookup already built on
+the file; leaving it out would mean accounting mapping "ไพรมัส" to PM by hand
+every month, which is a step that goes wrong quietly. Both columns, and neither
+side has to change anything. Its header is unlocalised ASCII because it is what
+their system matches on, not something a person reads.
 
 **Summary rows sit in the foot of the same table** — one per department, then
 the company — rather than in a second table beside it, so every figure is read

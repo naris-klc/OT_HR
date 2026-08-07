@@ -502,6 +502,8 @@ function Policy({ user }) {
   const [overrides, setOverrides] = useState([]);
   const [versions, setVersions] = useState(null);
   const [unversioned, setUnversioned] = useState(0);
+  /** Whether the rules in force are ones the system has on record — see below. */
+  const [live, setLive] = useState(null);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -524,7 +526,29 @@ function Policy({ user }) {
       setOverrides(res.overrides);
       setVersions(history.versions);
       setUnversioned(history.unversionedEntryCount || 0);
+      setLive(history.live || null);
     } catch (err) { setError(err.message); }
+  }
+
+  /**
+   * Put the rules in force on the record, without changing any of them.
+   *
+   * One click, because the alternative when this happens is a change of value
+   * somewhere — re-saving a dropdown to what it already says — and that is a
+   * fix nobody should have to think their way to at the moment they find out
+   * that entries have stopped being stamped.
+   */
+  async function recordLive() {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post('/settings/policy-versions', { note: note || undefined });
+      setMsg(res.created
+        ? `บันทึกกฎที่ใช้อยู่เป็นเวอร์ชัน ${res.version.seq} แล้ว · ใบที่ยื่นต่อจากนี้จะถูกกำกับเวอร์ชันตามปกติ`
+        : `กฎที่ใช้อยู่ตรงกับเวอร์ชัน ${res.version.seq} อยู่แล้ว`);
+      setNote('');
+      load();
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
   useEffect(() => { load(); }, []);
 
@@ -562,6 +586,8 @@ function Policy({ user }) {
       </div>
       {error && <Alert kind="error">{error}</Alert>}
       {msg && <Alert kind="ok">{msg}</Alert>}
+
+      <UnrecordedPolicy live={live} canEdit={canEdit} busy={busy} onRecord={recordLive} />
 
       {/* Typed before the dropdown is touched, because changing a dropdown IS
           the save — there is no button to attach a reason to afterwards. */}
@@ -613,8 +639,71 @@ function Policy({ user }) {
         ไม่ใช่แค่ปรับค่า · OPEN 10 และ 11 รองรับทั้งไฟล์และการกรอกเองอยู่แล้ว
       </div>
 
-      <PolicyHistory versions={versions} unversioned={unversioned} />
+      <PolicyHistory versions={versions} unversioned={unversioned} live={live} />
     </div>
+  );
+}
+
+/**
+ * The rules in force are not the rules on record — said here, once, loudly.
+ *
+ * The system stamps a new entry with a version only when the live policy
+ * matches the newest recorded one exactly. That is the right rule: a pointer to
+ * rules that did not produce the hours would be worse than no pointer at all.
+ * What it costs is that the mismatch is silent. A deploy that changes a value in
+ * src/config/policy.js moves the effective policy with nothing saved on this
+ * page, so no version is written, and from that moment every entry is filed
+ * unstamped — no error, no failed request, nothing on any screen. It surfaces
+ * weeks later as a monthly banner saying the figures cannot be compared, which
+ * names the wrong problem at the wrong time to the wrong person.
+ *
+ * The fix is one button and it changes no policy value: record what is already
+ * in force, so the pointer can resume. It is put next to the diff because
+ * "record these rules" is only an obvious thing to press once you can see which
+ * rules drifted.
+ */
+function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
+  if (!live || live.recorded) return null;
+
+  const first = live.latestSeq == null;
+
+  return (
+    <Alert kind="warn">
+      <strong>
+        {first
+          ? 'กฎที่ใช้อยู่ยังไม่เคยถูกบันทึกเป็นเวอร์ชัน'
+          : `กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน ${live.latestSeq} ซึ่งเป็นเวอร์ชันล่าสุดที่บันทึกไว้`}
+      </strong>
+      <div style={{ marginTop: 4, fontSize: 12.5 }}>
+        ระหว่างนี้ <strong>ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน</strong> — ระบบไม่ยอมกำกับด้วยเวอร์ชันที่ให้ตัวเลขไม่ตรงกับที่คำนวณจริง
+        {' '}และจะไม่มีอะไรฟ้องจนกว่าจะปิดเดือน
+        {!first && ' · มักเกิดจากการ deploy ที่แก้ค่าตั้งต้นในไฟล์ โดยไม่ได้บันทึกผ่านหน้านี้'}
+      </div>
+
+      {live.drift?.length > 0 && (
+        <div style={{ marginTop: 8, fontSize: 12.5 }}>
+          <div style={{ color: 'var(--muted)' }}>ต่างจากเวอร์ชันล่าสุด:</div>
+          {live.drift.map((c) => (
+            <div key={c.key}>
+              {CHANGE_LABEL[c.key] || c.key}: {JSON.stringify(c.from)} → {JSON.stringify(c.to)}
+              {c.arithmetic && <span style={{ color: 'var(--amber)' }}> (มีผลต่อการคำนวณ)</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canEdit && (
+        <div style={{ marginTop: 10 }}>
+          <button className="btn" onClick={onRecord} disabled={busy}>
+            บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่
+          </button>
+          <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 4 }}>
+            บันทึกกฎที่ใช้อยู่ตามเดิมทุกข้อ ไม่เปลี่ยนค่าใด และไม่คำนวณใบใดใหม่ ·
+            {' '}ใบที่ยื่นไปแล้วแบบไม่มีเวอร์ชัน ใช้ <code>npm run migrate:policy-version</code> กำกับย้อนหลัง
+          </div>
+        </div>
+      )}
+    </Alert>
   );
 }
 
@@ -635,7 +724,7 @@ const CHANGE_LABEL = Object.fromEntries(POLICY_FIELDS.map((f) => [f.key, f.label
  * real, and one that was in force for ten minutes and computed nothing is not
  * the same object as one a whole month hangs off.
  */
-function PolicyHistory({ versions, unversioned }) {
+function PolicyHistory({ versions, unversioned, live }) {
   if (!versions) return null;
 
   return (
@@ -644,6 +733,9 @@ function PolicyHistory({ versions, unversioned }) {
       <div className="hint">
         ทุกครั้งที่คำตอบเปลี่ยน ระบบจะบันทึกกฎทั้งชุดไว้เป็นเวอร์ชันใหม่ ไม่เขียนทับของเดิม ·
         {' '}ใบ OT ทุกใบเก็บไว้ว่าคำนวณด้วยเวอร์ชันใด
+        {/* The same eight characters the migration script prints, so the two can
+            be checked against each other without opening the database. */}
+        {live?.hash && <> · ลายนิ้วมือกฎที่ใช้อยู่ <code>{live.hash}</code></>}
       </div>
 
       {/* Said here rather than left for a report to discover: entries with no

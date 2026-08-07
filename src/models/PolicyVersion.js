@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { model } from './model.js';
-import { samePolicy } from '../../lib/policyVersion.js';
+import { samePolicy, policyHash } from '../../lib/policyVersion.js';
 
 /**
  * Every set of calculation rules the system has ever computed with, kept.
@@ -29,6 +29,17 @@ const policyVersionSchema = new mongoose.Schema(
     /** DEFAULT_POLICY with the overrides of the moment applied — the whole thing. */
     policy: { type: mongoose.Schema.Types.Mixed, required: true, immutable: true },
 
+    /**
+     * Fingerprint of `policy`, for finding a version by its rules and for
+     * printing beside the number so two people on a phone call can be sure they
+     * are looking at the same one.
+     *
+     * NOT what `append` below decides equality on — see `policyHash` in
+     * lib/policyVersion.js for why a 32-bit digest must never be the thing that
+     * says "no new version needed".
+     */
+    policyHash: { type: String, required: true, immutable: true, index: true },
+
     /** Why the rules changed. Free text from the settings page. */
     note: { type: String, immutable: true },
 
@@ -44,6 +55,16 @@ const policyVersionSchema = new mongoose.Schema(
   // carrying an empty one would invite somebody to fill it in.
   { timestamps: { createdAt: true, updatedAt: false }, collection: 'otPolicyVersions' },
 );
+
+/**
+ * Derived here rather than at each call site, so there is no way to write a
+ * version row whose fingerprint does not match its own policy — including from
+ * the migration, which creates one directly.
+ */
+policyVersionSchema.pre('validate', function setHash(next) {
+  if (this.policy && !this.policyHash) this.policyHash = policyHash(this.policy);
+  next();
+});
 
 /** Newest first — the version anything computed right now would be stamped with. */
 policyVersionSchema.statics.latest = function latest() {

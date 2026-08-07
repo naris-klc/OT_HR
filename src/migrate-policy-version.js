@@ -31,7 +31,7 @@ import OtEntry from './models/OtEntry.js';
 import PolicyVersion from './models/PolicyVersion.js';
 import Setting from './models/Setting.js';
 import { DEFAULT_POLICY } from './config/policy.js';
-import { planBackfill, diffPolicy } from '../lib/policyVersion.js';
+import { planBackfill, diffPolicy, policyHash } from '../lib/policyVersion.js';
 
 const dryRun = process.argv.includes('--dry');
 const confirmed = process.argv.includes('--yes');
@@ -110,7 +110,10 @@ async function run() {
     })
     : plan.genesis;
 
-  console.log(`\nเวอร์ชันต้นทาง: เวอร์ชัน ${genesis.seq} (${genesis._id})`);
+  // The fingerprint is printed so that whoever ran this can check the settings
+  // page afterwards and see the same eight characters — the one-line
+  // confirmation that the version on record is the policy actually in force.
+  console.log(`\nเวอร์ชันต้นทาง: เวอร์ชัน ${genesis.seq} (${genesis._id}) · ลายนิ้วมือกฎ ${genesis.policyHash || policyHash(genesis.policy)}`);
 
   if (!plan.backfill.length) {
     console.log('ไม่มีใบที่ต้อง backfill');

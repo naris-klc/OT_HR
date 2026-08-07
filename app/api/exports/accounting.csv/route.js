@@ -44,8 +44,21 @@ export const GET = route(async (req) => {
   // table. The printed form is the one that follows the paper and adds the
   // two ×1.5 buckets into a single 1.50 column; anyone reconciling the file
   // against it adds these two.
+  /**
+   * `company_code` is added BESIDE บริษัท, not instead of it.
+   *
+   * The report header on the screen now names each company the way accounting
+   * does — PM and THT — and a file that still said only "ไพรมัส" would leave
+   * them mapping the two by hand every month. Replacing the Thai column instead
+   * would break every sheet and lookup already built on this file, which is the
+   * more expensive half of the same mistake. Both columns, and neither side has
+   * to change anything.
+   *
+   * Its name is ASCII and unlocalised because it is the column their system
+   * matches on, not one a person reads.
+   */
   const headers = [
-    'บริษัท', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก',
+    'บริษัท', 'company_code', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก',
     'OT x1.5 วันปกติ', 'OT x1.5 วันหยุด', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ',
   ];
 
@@ -54,6 +67,7 @@ export const GET = route(async (req) => {
     for (const row of company.rows) {
       rows.push([
         company.shortTh,
+        company.accountingCode,
         row.employee.code,
         row.employee.name,
         row.department?.name || '',
@@ -68,7 +82,7 @@ export const GET = route(async (req) => {
     // The screen's summary block, in the same order it appears there.
     for (const d of company.departments) {
       rows.push(summaryRow(
-        company.shortTh,
+        company,
         'รวมแผนก',
         d.department?.name || '',
         d.totals,
@@ -79,7 +93,7 @@ export const GET = route(async (req) => {
       ));
     }
     rows.push(summaryRow(
-      company.shortTh,
+      company,
       'รวมทั้งหมด',
       company.shortTh,
       company.totals,
@@ -88,8 +102,10 @@ export const GET = route(async (req) => {
   }
 
   if (report.companies.length > 1) {
+    // The grand total belongs to no company, so both company columns are blank
+    // — the same rule the รหัสพนักงาน column already follows on รวม lines.
     rows.push(summaryRow(
-      '', 'รวมทุกบริษัท', '', report.grandTotal,
+      null, 'รวมทุกบริษัท', '', report.grandTotal,
       tail(report.grandTotal, report.pending, period),
     ));
   }
@@ -108,13 +124,17 @@ export const GET = route(async (req) => {
  * the three hour columns stack under the figures they add up and a filter on
  * รหัสพนักงาน still isolates the employee rows.
  *
+ * Takes the company object rather than its label so that both company columns
+ * are filled from one place; `null` for the grand total, which belongs to
+ * neither.
+ *
  * `format` is `fmt` for a line that is signed for — a blank where the total
  * belongs reads as "not filled in" — and `cell` for a subtotal, which follows
  * the employee rows in printing nothing when there is nothing.
  */
-function summaryRow(companyLabel, label, subject, totals, remark, format = fmt) {
+function summaryRow(company, label, subject, totals, remark, format = fmt) {
   return [
-    companyLabel, '', label, subject,
+    company?.shortTh || '', company?.accountingCode || '', '', label, subject,
     format(totals.buckets[BUCKETS.OT15_WEEKDAY]),
     format(totals.buckets[BUCKETS.OT15_HOLIDAY]),
     format(totals.buckets[BUCKETS.OT3_HOLIDAY]),

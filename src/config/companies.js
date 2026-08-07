@@ -24,6 +24,14 @@ export const COMPANIES = Object.freeze([
     nameEn: 'Primus Instrument Co., Ltd.',
     shortTh: 'ไพรมัส',
     shortEn: 'Primus',
+    /**
+     * What accounting calls this company on their own sheets. Identical to the
+     * employee-code prefix today and kept as its own field regardless: the
+     * prefix is a convention the roster follows, and this is a label another
+     * department has committed to. If the roster ever gains a second prefix,
+     * or accounting renames a company, only one of the two moves.
+     */
+    accountingCode: 'PM',
     codePrefixes: Object.freeze(['PM']),
   }),
   Object.freeze({
@@ -32,6 +40,7 @@ export const COMPANIES = Object.freeze([
     nameEn: 'Themtech Co., Ltd.',
     shortTh: 'เดมเทค',
     shortEn: 'Themtech',
+    accountingCode: 'THT',
     codePrefixes: Object.freeze(['THT']),
   }),
 ]);
@@ -49,6 +58,23 @@ export const DEFAULT_COMPANY = 'primus';
 export const companyByKey = (key) => COMPANIES.find((c) => c.key === key) || null;
 
 export const companyLabel = (key) => companyByKey(key)?.shortTh || key || '';
+
+/**
+ * How a company is named on สรุป OT ส่งบัญชี — "PM · ไพรมัส".
+ *
+ * The code leads because accounting reads the code and matches on it; the Thai
+ * name follows because HR reads that and is the one holding the sheet up to the
+ * screen. Everywhere else in the system — the employee form, the profile, the
+ * department report — keeps the plain name: this is the label one department
+ * asked for on one report, not a rename.
+ */
+export const accountingCodeOf = (key) => companyByKey(key)?.accountingCode || '';
+
+export const accountingLabel = (key) => {
+  const meta = companyByKey(key);
+  if (!meta) return key || '';
+  return meta.accountingCode ? `${meta.accountingCode} · ${meta.shortTh}` : meta.shortTh;
+};
 
 /**
  * Infer the company from an employee code — 'PM00002' and 'PM-0412' are both

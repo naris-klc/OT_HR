@@ -3,13 +3,18 @@ import assert from 'node:assert/strict';
 
 import {
   ARITHMETIC_KEYS,
+  COSMETIC_KEYS,
   arithmeticOf,
+  authorizeReplay,
   canonicalPolicy,
   diffPolicy,
+  figuresMoved,
   planBackfill,
   planRecompute,
+  policyHash,
   samePolicy,
   sameArithmetic,
+  summariseReplay,
   versionIdOf,
   versionSpread,
 } from '../lib/policyVersion.js';
@@ -238,4 +243,208 @@ test('a system with no entries at all still records its origin', () => {
   const plan = planBackfill({ existingVersions: [], entries: [] });
   assert.equal(plan.createGenesis, true);
   assert.deepEqual(plan.backfill, []);
+});
+
+// ── classification: the check with no other symptom ─────────────────────────
+
+/**
+ * Every flag must be declared arithmetic or cosmetic, and the declaration has
+ * to be made by whoever adds the flag.
+ *
+ * This is the test that makes the banner trustworthy. `sameArithmetic` compares
+ * only the keys in ARITHMETIC_KEYS, so a new flag that moves hours and was
+ * never registered is not compared at all — two versions differing by exactly
+ * that flag report as computing identically, and the monthly banner goes green
+ * saying the figures compare when every one of them moved. Nothing fails,
+ * nothing logs, and the wrong answer is the reassuring one.
+ *
+ * There is no way to detect that afterwards, so it is caught at the only moment
+ * anybody can act on it: the commit that adds the flag.
+ */
+test('every policy flag is classified as either arithmetic or cosmetic', () => {
+  const declared = [...ARITHMETIC_KEYS, ...COSMETIC_KEYS].sort();
+  const actual = Object.keys(DEFAULT_POLICY).sort();
+
+  const unclassified = actual.filter((k) => !declared.includes(k));
+  assert.deepEqual(
+    unclassified,
+    [],
+    `นโยบายมี key ที่ยังไม่ได้จัดประเภท: ${unclassified.join(', ')} — `
+    + 'เพิ่มลง ARITHMETIC_KEYS ถ้ามีผลต่อการคำนวณชั่วโมง หรือ COSMETIC_KEYS ถ้าไม่มี '
+    + '(lib/policyVersion.js)',
+  );
+
+  const stale = declared.filter((k) => !actual.includes(k));
+  assert.deepEqual(stale, [], 'มี key ที่จัดประเภทไว้แต่ไม่มีอยู่ใน DEFAULT_POLICY แล้ว');
+});
+
+test('a flag cannot be both — the two lists never overlap', () => {
+  const both = ARITHMETIC_KEYS.filter((k) => COSMETIC_KEYS.includes(k));
+  assert.deepEqual(both, []);
+});
+
+// ── the fingerprint ─────────────────────────────────────────────────────────
+
+test('the same answers fingerprint the same, whatever order they were written in', () => {
+  const a = { roundingMode: 'floor', breakMode: 'lunchWindow', minimumHours: 1 };
+  const b = { minimumHours: 1, breakMode: 'lunchWindow', roundingMode: 'floor' };
+  assert.equal(policyHash(a), policyHash(b));
+});
+
+test('one changed answer fingerprints differently', () => {
+  const hash = policyHash(DEFAULT_POLICY);
+  assert.notEqual(hash, policyHash({ ...DEFAULT_POLICY, roundingMode: 'ceil' }));
+  assert.notEqual(hash, policyHash({ ...DEFAULT_POLICY, hrMayReject: false }));
+});
+
+test('a fingerprint is eight hex characters — short enough to read out loud', () => {
+  assert.match(policyHash(DEFAULT_POLICY), /^[0-9a-f]{8}$/);
+});
+
+/**
+ * The rule the model depends on: a fingerprint narrows a search, it does not
+ * settle a comparison. `PolicyVersion.append` must keep deciding on
+ * `samePolicy`, because 32 bits collide and a collision consulted as equality
+ * would swallow a real policy change — no version written, and a month of
+ * entries pointing at rules that did not produce them.
+ */
+test('the fingerprint is not the equality test — samePolicy is', () => {
+  const a = { ...DEFAULT_POLICY };
+  const b = { ...DEFAULT_POLICY, minimumHours: 2 };
+  assert.equal(samePolicy(a, b), false);
+  assert.equal(
+    canonicalPolicy(a) === canonicalPolicy(b),
+    false,
+    'canonical strings are what append() compares — they must differ here',
+  );
+});
+
+// ── who may restate a signed-off figure ─────────────────────────────────────
+
+test('an ordinary replay needs no permission — it touches nothing signed off', () => {
+  assert.deepEqual(authorizeReplay({ actor: { role: 'hr' }, includeApproved: false }), { ok: true });
+  assert.deepEqual(authorizeReplay({}), { ok: true });
+});
+
+test('HR cannot restate approved hours, however good the reason', () => {
+  const result = authorizeReplay({
+    actor: { role: 'hr' }, includeApproved: true, note: 'ฝ่ายบุคคลตอบ OPEN 3 แล้ว',
+  });
+  assert.equal(result.ok, undefined);
+  assert.equal(result.status, 403);
+});
+
+test('an admin with no reason cannot either', () => {
+  const result = authorizeReplay({ actor: { role: 'admin' }, includeApproved: true, note: '  ' });
+  assert.equal(result.status, 400);
+});
+
+test('an admin who says why may', () => {
+  assert.deepEqual(
+    authorizeReplay({ actor: { role: 'admin' }, includeApproved: true, note: 'OPEN 3' }),
+    { ok: true },
+  );
+});
+
+test('nobody at all is still nobody', () => {
+  assert.equal(authorizeReplay({ actor: null, includeApproved: true, note: 'x' }).status, 403);
+  assert.equal(
+    authorizeReplay({ actor: { role: 'employee' }, includeApproved: true, note: 'x' }).status,
+    403,
+  );
+});
+
+// ── did the replay actually restate anything ────────────────────────────────
+
+const snapshotOf = (weekday, holiday15, holiday3) => ({
+  buckets: { ot15_weekday: weekday, ot15_holiday: holiday15, ot3_holiday: holiday3 },
+  otHours: weekday + holiday15 + holiday3,
+});
+
+test('a replay that lands on the same figures has restated nothing', () => {
+  assert.equal(figuresMoved(snapshotOf(3, 0, 0), snapshotOf(3, 0, 0)), false);
+});
+
+test('a changed total is a change', () => {
+  assert.equal(figuresMoved(snapshotOf(3, 0, 0), snapshotOf(3.5, 0, 0)), true);
+});
+
+/**
+ * The case a comparison on `otHours` alone cannot see, and the reason this
+ * function exists. Moving the core-hours boundary turns ×1.5 hours into ×3
+ * hours one for one: the session total holds at 8, and payroll pays a different
+ * amount against it. Read on the total, that entry looks untouched and its
+ * `before` snapshot is never written — the audit trail goes missing exactly
+ * where the change was material.
+ */
+test('hours crossing between rate columns is a change even when the total holds', () => {
+  const before = snapshotOf(0, 8, 0);
+  const after = snapshotOf(0, 0, 8);
+  assert.equal(before.otHours, after.otHours, 'the totals must match, or this proves nothing');
+  assert.equal(figuresMoved(before, after), true);
+});
+
+test('a pending entry has no before snapshot to compare, and that is not a change', () => {
+  assert.equal(figuresMoved(null, snapshotOf(3, 0, 0)), false);
+});
+
+// ── the operation log ───────────────────────────────────────────────────────
+
+/**
+ * A run is recorded whether or not it moved anything — the per-entry snapshots
+ * cannot say "a replay happened and changed nothing", and the absence of
+ * evidence would otherwise be indistinguishable from evidence of absence.
+ */
+test('a replay that changed nothing is still a replay that happened', () => {
+  const summary = summariseReplay({
+    scanned: [{ status: 'pending_hr', policyVersionId: 'v1' }],
+    replay: [{ status: 'pending_hr' }],
+    changed: [],
+    toVersionId: 'v2',
+  });
+  assert.equal(summary.scanned, 1);
+  assert.equal(summary.replayed, 1);
+  assert.equal(summary.changed, 0);
+  assert.equal(summary.toVersion, 'v2');
+});
+
+test('the versions a month was carrying are counted, not just listed', () => {
+  const summary = summariseReplay({
+    scanned: [
+      { status: 'approved', policyVersionId: 'v1' },
+      { status: 'pending_hr', policyVersionId: 'v1' },
+      { status: 'pending_mgr', policyVersionId: 'v2' },
+      { status: 'pending_mgr', policyVersionId: null },
+    ],
+    replay: [{ status: 'pending_hr' }, { status: 'pending_mgr' }, { status: 'pending_mgr' }],
+    skipped: [{ id: 'a', reason: 'approved' }],
+    toVersionId: 'v3',
+  });
+
+  assert.deepEqual(summary.fromVersions, [
+    { version: 'v1', count: 2 },
+    { version: 'v2', count: 1 },
+    { version: null, count: 1 },
+  ]);
+  assert.equal(summary.skipped, 1);
+  assert.equal(summary.approvedReplayed, 0, 'the approved one was held back, not replayed');
+});
+
+test('a run that was allowed to touch signed-off hours says how many', () => {
+  const summary = summariseReplay({
+    scanned: [{ status: 'approved', policyVersionId: 'v1' }],
+    replay: [{ status: 'approved' }],
+    changed: ['a'],
+    toVersionId: 'v2',
+  });
+  assert.equal(summary.approvedReplayed, 1);
+  assert.equal(summary.changed, 1);
+});
+
+test('an empty run is a fact too, not an error', () => {
+  const summary = summariseReplay();
+  assert.equal(summary.scanned, 0);
+  assert.equal(summary.replayed, 0);
+  assert.deepEqual(summary.fromVersions, []);
+  assert.equal(summary.toVersion, null);
 });

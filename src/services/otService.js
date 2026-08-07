@@ -16,8 +16,11 @@ import {
   capUsage,
   addDays,
 } from '../lib/otEngine.js';
+import PolicyReplayRun from '../models/PolicyReplayRun.js';
 import { latestPerSession } from '../../lib/reports.js';
-import { planRecompute, samePolicy } from '../../lib/policyVersion.js';
+import {
+  planRecompute, samePolicy, figuresMoved, summariseReplay,
+} from '../../lib/policyVersion.js';
 
 /** Holiday dates are read per request; the set is tiny (tens of rows a year). */
 export async function loadHolidaySet(years = []) {
@@ -173,23 +176,43 @@ export async function checkCap({ employee, department, period, result, excludeId
  *
  * `includeApproved` is the escape hatch for HR answering an [OPEN] item late
  * and deciding the whole month should be restated. It is never a default, the
- * caller must supply a `note` saying why, and every approved entry it moves
+ * caller must supply a `note` saying why, and every approved entry it MOVES
  * keeps a `before` snapshot — so a restated figure appears in ประวัติการแก้ไข
  * beside the ordinary corrections, which is the only place anybody would go
  * looking for it.
+ *
+ * The run itself is logged either way, to otPolicyReplayRuns. Snapshots record
+ * what changed and would drown if they also recorded what did not; the run
+ * record is what says a replay happened at all. See PolicyReplayRun.js.
+ *
+ * The authorisation half of the escape hatch — admin only, note required — is
+ * `authorizeReplay` in lib/policyVersion.js and belongs to the routes, which can
+ * turn a refusal into a status code. The check kept here is the backstop for a
+ * caller that never asked: a script, a future route, the seed.
  */
 export async function recomputeEntries(filter = {}, actor = null, options = {}) {
-  const { includeApproved = false, note = null } = options;
+  const { includeApproved = false, note = null, source = 'manual' } = options;
   if (includeApproved && !String(note || '').trim()) {
     throw new Error('การคำนวณใหม่ที่รวมรายการที่อนุมัติแล้ว ต้องระบุเหตุผล');
   }
 
   const found = await OtEntry.find(filter);
   const { replay, skipped } = planRecompute(found, { includeApproved });
-  if (!replay.length) return { updated: 0, failed: [], skipped };
 
-  const ctx = await loadContext(replay.map((e) => e.workDate));
+  /**
+   * Captured before anything is recomputed. `applyComputation` overwrites
+   * `policyVersionId`, so reading the "from" versions afterwards would report
+   * the version everything was replayed INTO as the one it came from.
+   */
+  const scannedBefore = found.map((e) => ({
+    status: e.status,
+    policyVersionId: e.policyVersionId,
+  }));
+  const replayBefore = replay.map((e) => ({ status: e.status }));
+
+  const ctx = replay.length ? await loadContext(replay.map((e) => e.workDate)) : null;
   const failed = [];
+  const changed = [];
   let updated = 0;
 
   for (const entry of replay) {
@@ -209,10 +232,14 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
       );
       applyComputation(entry, result, ctx);
 
-      // Only when it actually moved: a replay that lands on the same hours has
-      // restated nothing, and filing a `before` identical to the after would
-      // bury the ones that did move under the ones that did not.
-      const moved = before && before.otHours !== entry.totals.otHours;
+      // Only when it actually moved: a replay that lands on the same figures
+      // has restated nothing, and filing a `before` identical to the after
+      // would bury the ones that did move under the ones that did not.
+      // Compared per bucket — hours can cross between columns while the session
+      // total holds, and that is a change payroll pays differently for.
+      const moved = figuresMoved(before, entry.snapshot());
+      if (moved) changed.push(String(entry._id));
+
       entry.log(
         actor,
         'recompute',
@@ -226,5 +253,53 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
       failed.push({ id: String(entry._id), error: err.message });
     }
   }
-  return { updated, failed, skipped };
+
+  const summary = summariseReplay({
+    scanned: scannedBefore,
+    replay: replayBefore,
+    changed,
+    skipped,
+    failed,
+    toVersionId: ctx?.policyVersionId || null,
+  });
+
+  /**
+   * Logged last and never allowed to fail the run: the entries are already
+   * saved by this point, and losing the recompute over its own audit row would
+   * be the wrong trade. A run that could not be logged says so on the way out
+   * instead.
+   */
+  let run = null;
+  try {
+    run = await PolicyReplayRun.create({
+      source,
+      by: actor?._id,
+      byName: actor?.name,
+      note: note || undefined,
+      filter,
+      includeApproved,
+      toVersion: ctx?.policyVersionId || undefined,
+      fromVersions: summary.fromVersions
+        .filter((f) => f.version)
+        .map((f) => ({ version: f.version, count: f.count })),
+      scanned: summary.scanned,
+      replayed: summary.replayed,
+      changed: summary.changed,
+      skipped: summary.skipped,
+      failed: summary.failed,
+      approvedReplayed: summary.approvedReplayed,
+      failures: failed.map((f) => ({ entry: f.id, error: f.error })),
+    });
+  } catch (err) {
+    console.error('replay run not logged', err);
+  }
+
+  return {
+    updated,
+    failed,
+    skipped,
+    /** What the run record says, for a caller that wants to show it. */
+    changed: changed.length,
+    runId: run ? String(run._id) : null,
+  };
 }
