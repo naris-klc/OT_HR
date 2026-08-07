@@ -3,7 +3,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate } from '@/lib/api.js';
-import { ENTERED_FIELDS, sameValue } from '@/lib/entries.js';
+import { ENTERED_FIELDS, sameSession, sameValue } from '@/lib/entries.js';
 
 export function StatusChip({ status }) {
   const s = STATUS[status] || { label: status, bg: '#eee', fg: '#555' };
@@ -148,7 +148,16 @@ export function EditedMark({ entry }) {
   );
 }
 
-/** The live entry in the shape `history.before` stores. */
+/**
+ * The live entry in the shape `history.before` stores.
+ *
+ * Exported because the same shape answers a second question: what one request
+ * changed relative to the request it replaced. That comparison has no snapshot
+ * behind it — the two versions are separate documents — so it is computed from
+ * their current values instead.
+ */
+export const snapshotOf = (entry) => currentOf(entry);
+
 const currentOf = (entry) => ({
   workDate: entry.workDate,
   startTime: entry.startTime,
@@ -296,21 +305,38 @@ export function RequestTrail({ requests, liveStatus }) {
   if (!requests?.length) return null;
   return (
     <div className="req-trail">
-      {requests.map((r) => (
-        <section key={r._id} className={r.isCurrent ? 'req current' : 'req'}>
-          <header>
-            <span className="seq">คำขอที่ {r.seq}</span>
-            <span className="when">
-              {thaiDate(r.workDate)} · {r.startTime}–{r.endTime}
-            </span>
-            <span className="hrs">{hours(r.totals?.otHours)} ชม.</span>
-            {r.isCurrent
-              ? <span className="chip green">คำขอปัจจุบัน</span>
-              : <StatusChip status={r.status} />}
-          </header>
-          <EntryHistory entry={r} />
-        </section>
-      ))}
+      {requests.map((r, i) => {
+        const prev = i > 0 ? requests[i - 1] : null;
+        return (
+          <section key={r._id} className={r.isCurrent ? 'req current' : 'req'}>
+            <header>
+              <span className="seq">คำขอที่ {r.seq}</span>
+              <span className="when">
+                {thaiDate(r.workDate)} · {r.startTime}–{r.endTime}
+              </span>
+              <span className="hrs">{hours(r.totals?.otHours)} ชม.</span>
+              {r.isCurrent
+                ? <span className="chip green">คำขอปัจจุบัน</span>
+                : <StatusChip status={r.status} />}
+            </header>
+
+            {/* What the employee actually changed when they re-filed.
+                No `before` snapshot records this — a snapshot is written when
+                one document is rewritten, and these are two documents. The
+                date moving from 8 ส.ค. to 1 ส.ค. is the most consequential
+                edit a re-filing can carry and the only place it can be read
+                is by comparing the two directly. */}
+            {prev && changedBetween(prev, r) && (
+              <div className="req-diff">
+                <div className="kicker-sm">แก้จากคำขอที่ {prev.seq}</div>
+                <Changes before={snapshotOf(prev)} after={snapshotOf(r)} />
+              </div>
+            )}
+
+            <EntryHistory entry={r} />
+          </section>
+        );
+      })}
       {/* Where the chain has got to right now — the timeline ends on the
           present rather than trailing off after the last thing anyone did. */}
       {liveStatus && (
@@ -321,6 +347,44 @@ export function RequestTrail({ requests, liveStatus }) {
       )}
     </div>
   );
+}
+
+/** Mirrors what Changes will actually draw, so the heading above it is never
+    left standing over nothing. */
+function changedBetween(a, b) {
+  if (!sameSession(snapshotOf(a), snapshotOf(b))) return true;
+  return hours(a.totals?.otHours) !== hours(b.totals?.otHours);
+}
+
+/**
+ * The two requests behind a re-filed entry, in the shape RequestTrail draws —
+ * built from what the list endpoint already populated, so opening a drawer
+ * costs no request. Null when this entry replaced nothing.
+ *
+ * The trail API remains the source for the review pop-up, which loads one
+ * entry at a time and can afford the round trip. A month's table cannot: HR
+ * pressing "แสดงประวัติทั้งหมด" would fire one request per row.
+ */
+export function trailOf(entry) {
+  const parent = entry?.refiledFrom;
+  if (!parent || typeof parent !== 'object') return null;
+
+  const shape = (e, seq, isCurrent) => ({
+    _id: e._id,
+    seq,
+    isCurrent,
+    workDate: e.workDate,
+    startTime: e.startTime,
+    endTime: e.endTime,
+    endsNextDay: e.endsNextDay,
+    noBreakTaken: e.noBreakTaken,
+    description: e.description,
+    status: e.status,
+    totals: e.totals,
+    history: e.history || [],
+  });
+
+  return [shape(parent, 1, false), shape(entry, 2, true)];
 }
 
 export function Modal({

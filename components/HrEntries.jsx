@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
-import { Alert, Empty, EditedMark, EntryHistory, StatusChip, editsOf } from './common.jsx';
+import {
+  Alert, Empty, EditedMark, EntryHistory, RequestTrail, StatusChip, editsOf, trailOf,
+} from './common.jsx';
+import { hasAuditTrail } from '@/lib/entries.js';
 import OtForm from './OtForm.jsx';
 
 /**
@@ -17,7 +20,13 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
   const [entries, setEntries] = useState(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
-  const [showHistory, setShowHistory] = useState(null); // entry id
+  /**
+   * Which rows have their history drawer open — a Set rather than a single id,
+   * because closing a month means comparing rows against each other, and a
+   * toggle that shuts the last row every time you open the next one makes that
+   * impossible. It is also what lets one press open all of them.
+   */
+  const [open, setOpen] = useState(() => new Set());
 
   async function load() {
     try {
@@ -29,6 +38,21 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
   }
 
   useEffect(() => { load(); }, [employee._id, period]);
+
+  // A drawer left open over a row that no longer exists — a different month,
+  // a reloaded list — would never be closed by anything.
+  useEffect(() => { setOpen(new Set()); }, [employee._id, period]);
+
+  const auditable = (entries || []).filter(hasAuditTrail);
+  const allOpen = auditable.length > 0 && auditable.every((e) => open.has(e._id));
+
+  const toggle = (id) => setOpen((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const toggleAll = () => setOpen(allOpen ? new Set() : new Set(auditable.map((e) => e._id)));
 
   if (editing) {
     return (
@@ -61,7 +85,30 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
       ) : entries.length === 0 ? (
         <Empty>ไม่มีรายการในเดือนนี้</Empty>
       ) : (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <>
+        {/* One press to read the whole month at once, which is what closing it
+            actually involves — the per-row buttons are for following a single
+            figure that looks wrong. Disabled rather than hidden when no row in
+            the month has anything to show, so the control does not appear and
+            disappear between months. */}
+        <div className="audit-bar">
+          <label className={auditable.length ? 'check' : 'check off'}>
+            <input
+              type="checkbox"
+              checked={allOpen}
+              disabled={!auditable.length}
+              onChange={toggleAll}
+            />
+            แสดงประวัติการแก้ไขทั้งหมด
+          </label>
+          <span className="hint">
+            {auditable.length
+              ? `${auditable.length} จาก ${entries.length} รายการมีประวัติให้ดู`
+              : 'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'}
+          </span>
+        </div>
+
+        <div className="table-wrap">
           <table>
             <thead>
               <tr>
@@ -128,27 +175,43 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                       {/* Reconciling a month against the signed paper means
                           reading what the row used to say, not only what it
                           says now — which is the one thing the printed form
-                          cannot tell HR. */}
-                      {lastEdit && (
+                          cannot tell HR.
+                          A row that has only ever been filed says so rather
+                          than losing its button: an absent control reads as a
+                          screen that forgot, a disabled one as an answer. */}
+                      {hasAuditTrail(e) ? (
                         <button
-                          className="btn ghost sm"
+                          className={open.has(e._id) ? 'btn ghost sm on' : 'btn ghost sm'}
                           style={{ marginLeft: 6 }}
-                          onClick={() => setShowHistory(showHistory === e._id ? null : e._id)}
+                          onClick={() => toggle(e._id)}
+                          aria-expanded={open.has(e._id)}
                         >
-                          {showHistory === e._id ? 'ซ่อนข้อมูลเดิม' : 'ข้อมูลเดิม'}
+                          {open.has(e._id) ? 'ซ่อนข้อมูลเดิม' : 'ดูข้อมูลเดิม'}
+                        </button>
+                      ) : (
+                        <button className="btn ghost sm" style={{ marginLeft: 6 }} disabled>
+                          ไม่มีประวัติการแก้ไข
                         </button>
                       )}
                     </td>
                   </tr>
-                  {showHistory === e._id && (
-                    <tr>
-                      <td colSpan={9} style={{ background: 'var(--neutral-wash)' }}>
-                        <strong style={{ fontSize: 13 }}>ประวัติการแก้ไข</strong>
-                        <div className="hint" style={{ margin: '2px 0 0' }}>
-                          แถวด้านบนคือข้อมูลล่าสุดที่พิมพ์ลงใบ F-HR-027 ·
-                          ด้านล่างนี้คือข้อมูลเดิมก่อนการแก้ไขแต่ละครั้ง
+                  {open.has(e._id) && (
+                    <tr className="audit-row">
+                      <td colSpan={9}>
+                        <div className="audit-drawer">
+                          <strong>ประวัติการแก้ไข</strong>
+                          <div className="hint" style={{ margin: '2px 0 0' }}>
+                            แถวด้านบนคือข้อมูลล่าสุดที่พิมพ์ลงใบ F-HR-027 ·
+                            ด้านล่างนี้คือทุกครั้งที่รายการนี้ถูกแตะ พร้อมค่าเดิมก่อนแก้แต่ละครั้ง
+                            {e.refiledFrom && ' · รวมคำขอเดิมที่ถูกไม่อนุมัติ'}
+                          </div>
+                          {/* A re-filed request's own log starts at submit and
+                              explains nothing. The refusal that produced it is
+                              in the parent, already populated on this row. */}
+                          {trailOf(e)
+                            ? <RequestTrail requests={trailOf(e)} liveStatus={e.status} />
+                            : <EntryHistory entry={e} />}
                         </div>
-                        <EntryHistory entry={e} />
                       </td>
                     </tr>
                   )}
@@ -158,6 +221,7 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <div className="hint" style={{ marginTop: 12 }}>

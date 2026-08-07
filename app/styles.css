@@ -558,6 +558,54 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .req .hrs { font: 600 13px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
 .req .entry-history { margin-top: 10px; }
 
+/* What the re-filing actually changed — no snapshot records it, so it is
+   computed between the two documents. Sits under the block header because
+   that is where a reader asks "and what is different about this one". */
+.req-diff { margin-top: 10px; }
+.req-diff .kicker-sm { margin-bottom: 5px; }
+
+/* ── inline audit drawer ────────────────────────────────────────────────── */
+
+/* The one-press control for reading a whole month at once, over the table it
+   opens. Above rather than inside the scroll area — the table scrolls
+   sideways on a narrow screen and a control that scrolls away with it is a
+   control nobody finds twice. */
+.audit-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin: 12px 0 0; padding: 11px 13px;
+  background: var(--neutral-wash); border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+}
+.audit-bar .check { font: 500 13.5px/1.4 var(--sans); }
+.audit-bar .check.off { color: var(--muted-2); cursor: default; }
+.audit-bar .hint { margin-left: auto; }
+
+/* The open state of a toggle has to differ by more than the word on it —
+   a column of identical grey buttons gives no sense of what is expanded. */
+.btn.ghost.sm.on {
+  background: var(--ink); border-color: var(--ink); color: #fff;
+}
+.btn.ghost.sm.on:hover:not(:disabled) {
+  background: var(--ink-2); border-color: var(--ink-2); color: #fff;
+}
+
+.audit-row > td { padding: 0; background: var(--neutral-wash); }
+.audit-row:hover > td { background: var(--neutral-wash); }
+.audit-drawer {
+  padding: 14px 16px 16px;
+  border-left: 3px solid var(--green);
+  animation: otdrawer .18s ease both;
+}
+.audit-drawer > strong { font: 600 13px/1.5 var(--sans); }
+
+/* Grows from the row it belongs to rather than appearing whole, so the eye
+   keeps hold of which row opened. Suppressed by the reduced-motion rule at
+   the foot of this file, like everything else here. */
+@keyframes otdrawer {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
 .trail-now {
   display: flex; align-items: center; gap: 8px; padding-left: 13px;
   font: 400 12.5px/1.5 var(--sans); color: var(--muted-2);

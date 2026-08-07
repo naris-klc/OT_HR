@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
-import { StatusChip, Alert, Empty, EditedMark, EntryHistory, Modal, editsOf } from './common.jsx';
+import {
+  StatusChip, Alert, Empty, EditedMark, EntryHistory, Modal, RequestTrail, editsOf, trailOf,
+} from './common.jsx';
 import { refileState } from '@/lib/entries.js';
 import OtForm from './OtForm.jsx';
 
@@ -317,10 +319,11 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                         {refileState(e) === 'final' && (
                           <span className="chip final-rejected">ไม่อนุมัติ (สิ้นสุด)</span>
                         )}
-                        {/* Offered only on rows that were actually rewritten —
-                            on the rest there is no earlier version to show, and
-                            a button that opens "ยื่นคำขอ" alone is noise. */}
-                        {editsOf(e).length > 0 && (
+                        {/* Offered on rows with something earlier to show —
+                            a rewrite, or the refused request this one replaced.
+                            On the rest a button that opens "ยื่นคำขอ" alone is
+                            noise. */}
+                        {(editsOf(e).length > 0 || e.refiledFrom) && (
                           <button
                             className="btn ghost sm"
                             style={{ marginLeft: 6 }}
@@ -338,8 +341,11 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                           <div className="hint" style={{ margin: '2px 0 0' }}>
                             แถวด้านบนคือข้อมูลล่าสุด ซึ่งเป็นข้อมูลที่พิมพ์ลงใบ F-HR-027 ·
                             ด้านล่างนี้คือข้อมูลเดิมที่เคยกรอกไว้ก่อนการแก้ไขแต่ละครั้ง
+                            {e.refiledFrom && ' · รวมคำขอเดิมที่ถูกไม่อนุมัติ'}
                           </div>
-                          <EntryHistory entry={e} />
+                          {trailOf(e)
+                            ? <RequestTrail requests={trailOf(e)} liveStatus={e.status} />
+                            : <EntryHistory entry={e} />}
                         </td>
                       </tr>
                     )}
