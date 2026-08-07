@@ -184,6 +184,9 @@ export async function checkCap({ employee, department, period, result, excludeId
  * The run itself is logged either way, to otPolicyReplayRuns. Snapshots record
  * what changed and would drown if they also recorded what did not; the run
  * record is what says a replay happened at all. See PolicyReplayRun.js.
+ * Writing it cannot fail the replay, so the return carries `auditLogged` to say
+ * whether it got written — a replay with no record of itself is worth saying,
+ * not worth undoing.
  *
  * The authorisation half of the escape hatch — admin only, note required — is
  * `authorizeReplay` in lib/policyVersion.js and belongs to the routes, which can
@@ -267,7 +270,15 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
    * Logged last and never allowed to fail the run: the entries are already
    * saved by this point, and losing the recompute over its own audit row would
    * be the wrong trade. A run that could not be logged says so on the way out
-   * instead.
+   * instead — `auditLogged` below, and a console line carrying what the row
+   * would have carried.
+   *
+   * The console line is the only surviving record when this fails, so it holds
+   * the four things the row was for: who ordered the replay, which rules it
+   * moved the entries from and to, and how much it touched. Without them a
+   * swallowed failure leaves "some replay happened at some point", which is
+   * indistinguishable from no replay at all — the exact ambiguity the run
+   * record exists to close.
    */
   let run = null;
   try {
@@ -291,7 +302,23 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
       failures: failed.map((f) => ({ entry: f.id, error: f.error })),
     });
   } catch (err) {
-    console.error('replay run not logged', err);
+    console.error('replay run not logged', {
+      source,
+      actor: actor ? `${actor.code || actor._id || '?'} · ${actor.name || '—'}` : null,
+      fromVersions: summary.fromVersions
+        .map((f) => `${f.version ? String(f.version) : 'ไม่ระบุ'} × ${f.count}`)
+        .join(', ') || '—',
+      toVersion: summary.toVersion || 'ไม่ระบุ',
+      scanned: summary.scanned,
+      replayed: summary.replayed,
+      changed: summary.changed,
+      skipped: summary.skipped,
+      failed: summary.failed,
+      approvedReplayed: summary.approvedReplayed,
+      includeApproved,
+      note: note || null,
+      filter,
+    }, err);
   }
 
   return {
@@ -301,5 +328,12 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
     /** What the run record says, for a caller that wants to show it. */
     changed: changed.length,
     runId: run ? String(run._id) : null,
+    /**
+     * False when the run itself could not be filed. The entries were still
+     * recomputed — this says only that nothing in otPolicyReplayRuns will ever
+     * show it happened, which is a thing the caller's screen should say out
+     * loud rather than leave to somebody noticing the gap months later.
+     */
+    auditLogged: Boolean(run),
   };
 }

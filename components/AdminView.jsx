@@ -11,8 +11,15 @@ const SECTIONS = [
   { key: 'policy', label: 'นโยบายการคำนวณ' },
 ];
 
-export default function AdminView({ user }) {
-  const [section, setSection] = useState('departments');
+/**
+ * `initialSection` is for arriving from somewhere else with a section already
+ * in mind — the policy drift strip on the approval queues links here, and
+ * landing on แผนกและเพดาน with a warning about นโยบายการคำนวณ still on screen
+ * behind you is a link that did not go anywhere. Every ordinary entry passes
+ * nothing and starts where it always did.
+ */
+export default function AdminView({ user, initialSection }) {
+  const [section, setSection] = useState(initialSection || 'departments');
   return (
     <>
       <div className="card">

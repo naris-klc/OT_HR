@@ -130,6 +130,12 @@ function Shell({ session, onLogout }) {
   const home = defaultTab(user.role);
   const [tab, setTab] = useState(home);
   const [counts, setCounts] = useState({ pendingMgr: 0, pendingHr: 0 });
+  /**
+   * Which section ตั้งค่าระบบ should open on, when something sent us there.
+   * Cleared on leaving the tab (below), so it steers the one arrival it was set
+   * for and the next plain click on the nav lands where it always does.
+   */
+  const [adminSection, setAdminSection] = useState(null);
   // Bumped by the mobile FAB; EmployeeView opens its form when it changes.
   const [formSignal, setFormSignal] = useState(0);
 
@@ -137,6 +143,7 @@ function Shell({ session, onLogout }) {
     try { setCounts(await api.get('/entries/queue-summary')); } catch { /* not fatal */ }
   }
   useEffect(() => { refreshCounts(); }, [tab]);
+  useEffect(() => { if (tab !== 'admin') setAdminSection(null); }, [tab]);
 
   /**
    * Rows just left a queue. Take them off the badge now and ask the server
@@ -175,6 +182,16 @@ function Shell({ session, onLogout }) {
     if (next === tab) return;
     setTrail((t) => [...t.slice(-7), tab]);
     setTab(next);
+  }
+
+  /**
+   * Where the policy drift strip on the approval queues points. It is only ever
+   * rendered for the roles that have this tab (see PolicyDriftBanner), so this
+   * does not need a guard of its own.
+   */
+  function openPolicy() {
+    setAdminSection('policy');
+    goTab('admin');
   }
 
   const canGoBack = subDepth > 0 || trail.length > 0;
@@ -298,13 +315,13 @@ function Shell({ session, onLogout }) {
         <main>
           <div className="page">
             {tab === 'mine' && <EmployeeView user={user} onChanged={refreshCounts} openSignal={formSignal} />}
-            {tab === 'approve' && <ApprovalQueue user={user} stage="pending_mgr" onChanged={queueDone} />}
-            {tab === 'confirm' && <ApprovalQueue user={user} stage="pending_hr" onChanged={queueDone} />}
+            {tab === 'approve' && <ApprovalQueue user={user} stage="pending_mgr" onChanged={queueDone} onOpenPolicy={openPolicy} />}
+            {tab === 'confirm' && <ApprovalQueue user={user} stage="pending_hr" onChanged={queueDone} onOpenPolicy={openPolicy} />}
             {tab === 'monthly' && <HrView user={user} />}
             {tab === 'accounting' && <AccountingView />}
             {tab === 'departments' && <DepartmentView />}
             {tab === 'form' && <MyForm />}
-            {tab === 'admin' && <AdminView user={user} />}
+            {tab === 'admin' && <AdminView user={user} initialSection={adminSection} />}
             {tab === 'profile' && <ProfileView user={user} onLogout={logout} />}
           </div>
         </main>

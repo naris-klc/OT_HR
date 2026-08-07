@@ -14,7 +14,9 @@ import { authorizeReplay } from '@/lib/policyVersion.js';
  * can see where it went.
  *
  * Every run is recorded in otPolicyReplayRuns, including the ones that changed
- * nothing — see recomputeEntries.
+ * nothing — see recomputeEntries. The write is not allowed to fail the replay,
+ * so the response carries `auditLogged`: false means the entries moved and
+ * nothing in the operation log will ever show it.
  */
 export const POST = route(async (req) => {
   const user = requireRole(await requireAuth(req), 'admin', 'hr');

@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { api } from '@/lib/api.js';
 import { Alert } from './common.jsx';
 
 /**
@@ -111,6 +112,79 @@ export function PolicyVersionSummaryCell({ spread }) {
         <div style={{ fontSize: 11.5 }}>ปนกัน</div>
       )}
     </span>
+  );
+}
+
+/**
+ * The live rules are not on record — said on the screens people actually open.
+ *
+ * The condition and its cost are UnrecordedPolicy's in AdminView.jsx: while the
+ * live policy differs from the newest recorded version, every entry filed is
+ * filed unstamped, silently. What that component cannot do is be seen. It lives
+ * on ตั้งค่าระบบ → นโยบายการคำนวณ, a page opened when somebody has a policy
+ * question — roughly once a month — and the drift starts on a deploy. So the
+ * warning and the entries it is about miss each other by weeks, which is the
+ * same failure the whole mechanism exists to prevent, moved one screen along.
+ *
+ * This is the same fact on the queues, which are opened daily. One strip, and
+ * deliberately less than the full banner: no per-item diff, no record button.
+ * Both are on นโยบายการคำนวณ and both need reading before they are pressed, so
+ * repeating them here would put a policy decision on a screen somebody is
+ * halfway through approving a day's overtime on. This says what is wrong and
+ * where it is fixed; that page says what changed and fixes it.
+ *
+ * Fetched once, when the screen mounts. It is a fact about a deploy, not about
+ * the queue under it, so it cannot become true while somebody is reading — and
+ * the endpoint counts every entry in the database by version, which is not a
+ * thing to poll behind a page that is doing something else.
+ *
+ * Only for hr and admin: GET /settings/policy-versions is theirs (see the
+ * route), so a manager's request would be a 403 on every load of รออนุมัติ.
+ * That is the right answer rather than a gap to close — a manager cannot open
+ * นโยบายการคำนวณ, has no tab leading to it, and cannot record a version, so the
+ * strip would name a problem they can neither check nor fix.
+ */
+export function PolicyDriftBanner({ user, onOpenPolicy }) {
+  const [live, setLive] = useState(null);
+  const mayRead = ['hr', 'admin'].includes(user?.role);
+
+  useEffect(() => {
+    if (!mayRead) return undefined;
+    let alive = true;
+    // limit=1 — `live` is computed against the newest version alone, and the
+    // version list itself is นโยบายการคำนวณ's business, not this strip's.
+    api.get('/settings/policy-versions?limit=1')
+      .then((res) => { if (alive) setLive(res.live || null); })
+      // Silent: this is a warning about something else. A queue that will not
+      // load its own rows says so; one that could not check the policy version
+      // must not push that in front of the work.
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [mayRead]);
+
+  if (!live || live.recorded) return null;
+
+  // One child, not three: .alert is a flex row whose first item is the icon,
+  // so every element passed in becomes another column beside it.
+  return (
+    <Alert kind="warn">
+      <div>
+        <strong>
+          {live.latestSeq == null
+            ? 'กฎที่ใช้อยู่ยังไม่เคยถูกบันทึกเป็นเวอร์ชัน'
+            : `กฎที่ใช้อยู่ไม่ตรงกับเวอร์ชัน ${live.latestSeq} ซึ่งเป็นเวอร์ชันล่าสุดที่บันทึกไว้`}
+        </strong>
+        {' — ใบ OT ที่ยื่นใหม่จะไม่ถูกกำกับเวอร์ชัน'}
+        {onOpenPolicy && (
+          <>
+            {' · '}
+            <button type="button" className="link" onClick={onOpenPolicy}>
+              ดูรายละเอียดที่หน้านโยบายการคำนวณ
+            </button>
+          </>
+        )}
+      </div>
+    </Alert>
   );
 }
 

@@ -1,18 +1,28 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, THAI_MONTHS } from '@/lib/api.js';
+import { api, THAI_MONTHS, accountingLabel } from '@/lib/api.js';
 import { Alert } from './common.jsx';
 
 /**
  * สรุป OT ส่งบัญชี rendered for print — one sheet per company, A4 portrait.
  *
- * The sheet IS the table and nothing else: รหัส, ชื่อ-นามสกุล, then the two
- * rate columns headed 1.50 and 3.00 under one ประจำเดือน banner. No title, no
- * subtitle, no subtotal or total rows, no note, no signature block — the paper
- * accounting receives carries none of them, and anything extra is one more
- * thing to reconcile against a sheet that does not have it. The month is
- * already named in the banner, so the sheet identifies itself.
+ * The sheet is the table and one line above it: the company, then รหัส,
+ * ชื่อ-นามสกุล and the two rate columns headed 1.50 and 3.00 under one
+ * ประจำเดือน banner. No subtitle, no subtotal or total rows, no note, no
+ * signature block — the paper accounting receives carries none of them, and
+ * anything extra is one more thing to reconcile against a sheet that does not
+ * have it.
+ *
+ * The company line is the exception, and it is not decoration. This prints one
+ * company per sheet and the two file separately, so the moment a page leaves
+ * the stapled set there is nothing on it saying which payroll it belongs to —
+ * the banner names the month, the grid names the people, and รหัส is the only
+ * clue, read off a column of codes rather than stated. It is headed the way
+ * accounting names a company, `PM · ไพรมัส`, the same accountingLabel() the
+ * screen uses, because the sheet and the screen being read against each other
+ * is the normal case. In thead, so a roster running past one side repeats it on
+ * every page rather than only on the first.
  *
  * Hours print to two decimals (8.00, not 8) because that is how the paper
  * reads. Every roster member is listed, including the ones with no OT — a
@@ -99,14 +109,19 @@ function Sheet({ company, period }) {
           <col style={{ width: '17mm' }} />
           <col style={{ width: '17mm' }} />
         </colgroup>
-        {/* The blank first row is the top margin, and the tfoot is the bottom
-            one. Page margins have to come from somewhere the browser repeats,
-            and with @page margin at 0 (see print.css — that is what suppresses
-            the browser's own header and footer) the only things that repeat on
+        {/* The first row is the top margin, and the tfoot is the bottom one.
+            Page margins have to come from somewhere the browser repeats, and
+            with @page margin at 0 (see print.css — that is what suppresses the
+            browser's own header and footer) the only things that repeat on
             every page are thead and tfoot. Padding on the sheet would space
-            page 1 and leave page 2 starting hard against the paper edge. */}
+            page 1 and leave page 2 starting hard against the paper edge.
+
+            The company sits IN that margin row rather than in a row of its own:
+            a new row would take 7mm off every page, and ROWS_PER_PAGE below is
+            counted against a page that does not have it. The band is already
+            10mm of white above the grid, which is where a heading goes anyway. */}
         <thead>
-          <tr className="pad" aria-hidden="true"><td colSpan={4} /></tr>
+          <tr className="pad"><td className="co" colSpan={4}>{accountingLabel(company)}</td></tr>
           <tr>
             <th rowSpan={2}>รหัส</th>
             <th rowSpan={2}>ชื่อ-นามสกุล</th>

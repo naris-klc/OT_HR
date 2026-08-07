@@ -8,6 +8,7 @@ import {
   Alert, Empty, EditedMark, EntryHistory, Modal, RefiledNote, RequestTrail,
   SegmentList, StatusChip, editsOf,
 } from './common.jsx';
+import { PolicyDriftBanner } from './PolicyVersion.jsx';
 import { useToast } from './Toast.jsx';
 
 /**
@@ -24,7 +25,7 @@ import { useToast } from './Toast.jsx';
  * What is NOT batched: rejection. A refusal carries a reason the employee will
  * read, so even the batch path stops for one to be typed.
  */
-export default function ApprovalQueue({ user, stage, onChanged }) {
+export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) {
   const isHr = stage === 'pending_hr';
   const verb = isHr ? 'ยืนยัน' : 'อนุมัติ';
   const toast = useToast();
@@ -213,6 +214,14 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
             {filtered ? `${shown.length} / ${entries.length}` : entries.length} รายการ
           </span>
         )}
+      </div>
+
+      {/* Directly under the heading and above the filters, in the same gutter
+          the error alert below uses — it is about the rules every figure in
+          this queue was computed under, so it is read before the rows and not
+          alongside one of them. Renders nothing unless the rules have drifted. */}
+      <div style={{ padding: '0 18px' }}>
+        <PolicyDriftBanner user={user} onOpenPolicy={onOpenPolicy} />
       </div>
 
       {/* ── filter bar ─────────────────────────────────────────────────────── */}
