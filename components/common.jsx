@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate } from '@/lib/api.js';
 import { ENTERED_FIELDS, sameValue } from '@/lib/entries.js';
 
@@ -52,17 +53,37 @@ export function SegmentList({ segments }) {
 
 // ── history ─────────────────────────────────────────────────────────────────
 
-const ACTION_LABEL = {
-  submit: 'ยื่นคำขอ',
-  resubmit: 'ยื่นใหม่',
-  approve_mgr: 'หัวหน้าอนุมัติ',
-  reject_mgr: 'หัวหน้าไม่อนุมัติ',
-  approve_hr: 'ฝ่ายบุคคลยืนยัน',
-  reject_hr: 'ฝ่ายบุคคลไม่อนุมัติ',
-  cancel: 'ยกเลิก',
-  edit: 'พนักงานแก้ไข',
-  hr_edit: 'ฝ่ายบุคคลแก้ไข',
-  recompute: 'คำนวณใหม่ตามนโยบาย',
+/**
+ * Every action the entry records, with the colour it reads as.
+ *
+ * Five tones, because five things happen to a request and they are not equally
+ * interesting to someone auditing a month:
+ *
+ *   file  น้ำเงิน — it was filed. The start of a chain.
+ *   ok    เขียว   — somebody signed for it.
+ *   no    แดง     — somebody refused it.
+ *   edit  ส้ม     — the numbers were rewritten AFTER it was filed. This is the
+ *                   one an auditor is scanning for, and the only tone that
+ *                   also carries a เดิม → ใหม่ block underneath it.
+ *   off   เทา     — withdrawn, or the system recalculating. Neither is a
+ *                   judgement about the request, so neither competes for
+ *                   attention with the three that are.
+ *
+ * The label says WHO as well as what — 'แก้ไข' alone leaves a reader working
+ * out whether the employee revised their own request or ฝ่ายบุคคล corrected it
+ * later, which is the difference the row exists to show.
+ */
+const ACTION_META = {
+  submit: { label: 'ยื่นคำขอ', tone: 'file' },
+  resubmit: { label: 'ยื่นคำขอใหม่', tone: 'file' },
+  edit: { label: 'พนักงานแก้ไขคำขอ', tone: 'edit' },
+  approve_mgr: { label: 'หัวหน้างานอนุมัติ', tone: 'ok' },
+  reject_mgr: { label: 'หัวหน้างานไม่อนุมัติ', tone: 'no' },
+  hr_edit: { label: 'ฝ่ายบุคคลแก้ไขข้อมูล', tone: 'edit' },
+  approve_hr: { label: 'ฝ่ายบุคคลยืนยัน', tone: 'ok' },
+  reject_hr: { label: 'ฝ่ายบุคคลไม่อนุมัติ', tone: 'no' },
+  cancel: { label: 'พนักงานยกเลิกคำขอ', tone: 'off' },
+  recompute: { label: 'ระบบคำนวณใหม่ตามนโยบาย', tone: 'off' },
 };
 
 /** Labels and formatting for the entered fields, in the order the form asks. */
@@ -150,17 +171,32 @@ export function EntryHistory({ entry }) {
 
   return (
     <ol className="entry-history">
-      {items.map((h, i) => (
-        <li key={i}>
-          <div className="head">
-            <span className="act">{ACTION_LABEL[h.action] || h.action}</span>
-            {h.byName && <span className="who">{h.byName}</span>}
-            {h.at && <span className="when">{new Date(h.at).toLocaleString('th-TH')}</span>}
-          </div>
-          {h.note && <div className="note">{h.note}</div>}
-          <Changes before={h.before} after={afters.get(i)} />
-        </li>
-      ))}
+      {items.map((h, i) => {
+        const meta = ACTION_META[h.action] || { label: h.action, tone: 'off' };
+        // The status the entry was in, and the one this action put it in. Both
+        // have been stored since the first version and neither was ever shown;
+        // a queue moving pending_mgr → pending_hr is the fact that explains why
+        // the request turned up on someone else's screen.
+        const moved = h.fromStatus && h.toStatus && h.fromStatus !== h.toStatus;
+        return (
+          <li key={i} className={meta.tone}>
+            <div className="head">
+              <span className="act">{meta.label}</span>
+              {h.byName && <span className="who">โดย {h.byName}</span>}
+              {h.at && <span className="when">{new Date(h.at).toLocaleString('th-TH')}</span>}
+            </div>
+            {moved && (
+              <div className="flow">
+                <StatusChip status={h.fromStatus} />
+                <span className="arr">→</span>
+                <StatusChip status={h.toStatus} />
+              </div>
+            )}
+            {h.note && <div className="note">“{h.note}”</div>}
+            <Changes before={h.before} after={afters.get(i)} />
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -197,39 +233,138 @@ export function Changes({ before, after }) {
   );
 }
 
+const FOCUSABLE = [
+  'a[href]', 'button:not([disabled])', 'input:not([disabled])',
+  'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+let modalSeq = 0;
+
 /**
- * Head / body / foot, so the head and the buttons stay put while a long body
- * scrolls under them — the reason a รายละเอียด pop-up can be long at all.
+ * Head / body / foot, where the BODY is the only thing that scrolls.
  *
- * Escape closes it. A dialog that can only be dismissed by finding the ✕ is one
- * a reviewer stops opening.
+ * The head and the buttons used to hold their place with `position: sticky`
+ * inside a scrolling box, which works right up until something in the content
+ * stacks above them — a full-size image, a dropdown — and then the name of the
+ * person being decided about slides away under it. Three flex rows cannot come
+ * apart that way: the head and foot simply are not in the scroll area.
+ *
+ * `dirty` is for the panels that hold typing. Closing this by tapping the
+ * backdrop is a gesture people make without deciding to, and on a phone it is
+ * one badly-aimed thumb away at all times. When something is unsaved the close
+ * has to be asked for twice.
  */
-export function Modal({ title, subtitle, onClose, children, footer, wide = false }) {
+export function Modal({
+  title, subtitle, meta, onClose, children, footer, wide = false,
+  dirty = false, dirtyPrompt = 'ยังมีข้อมูลที่กรอกไว้และยังไม่ได้บันทึก ปิดหน้าต่างนี้เลยหรือไม่',
+}) {
+  const boxRef = React.useRef(null);
+  const bodyRef = React.useRef(null);
+  const [scrolled, setScrolled] = React.useState(false);
+  const [closeAsked, setCloseAsked] = React.useState(false);
+  const titleId = React.useMemo(() => `modal-title-${++modalSeq}`, []);
+
+  const requestClose = React.useCallback(() => {
+    if (dirty) setCloseAsked(true);
+    else onClose?.();
+  }, [dirty, onClose]);
+
+  // Focus goes in on open and comes back out on close, and the page behind
+  // stops scrolling while it is up — on a phone that background scroll is what
+  // makes a bottom sheet feel like it is sliding around under the thumb.
+  //
+  // Runs once, deliberately: hang this off anything that changes while the
+  // dialog is open — `dirty`, say — and it re-runs mid-sentence and drags the
+  // caret out of the box being typed into.
   React.useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    const returnTo = document.activeElement;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const first = boxRef.current?.querySelector(FOCUSABLE);
+    (first || boxRef.current)?.focus?.({ preventScroll: true });
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      returnTo?.focus?.({ preventScroll: true });
+    };
+  }, []);
+
+  React.useEffect(() => {
+    // defaultPrevented means something inside already answered the key — a
+    // full-size image over the pop-up closes itself rather than taking the
+    // whole review down with it.
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) requestClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [requestClose]);
 
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
+  /** Tab cycles inside the dialog rather than wandering into the table behind it. */
+  function trapTab(e) {
+    if (e.key !== 'Tab') return;
+    const nodes = [...(boxRef.current?.querySelectorAll(FOCUSABLE) || [])]
+      .filter((n) => n.offsetParent !== null);
+    if (!nodes.length) return;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+
+  // Rendered against <body>, not where it was written.
+  //
+  // `position: fixed` means "against the viewport" only until some ancestor
+  // holds a transform — and .page carries an animation that does, so every
+  // dialog in the app was being positioned against the page column and then
+  // clipped by `.card.flush { overflow: hidden }` on the way out. Nothing in
+  // the modal's own CSS can win that argument; the only fix is to stop being a
+  // descendant. A portal also settles z-index and clipping for good, so a
+  // dialog opened from inside any future card behaves the same way.
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="modal-backdrop" onClick={requestClose}>
       <div
+        ref={boxRef}
         className={wide ? 'modal wide' : 'modal'}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={trapTab}
       >
-        <div className="modal-head">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="t">{title}</div>
+        <div className={scrolled ? 'modal-head scrolled' : 'modal-head'}>
+          <div className="who">
+            <div className="t" id={titleId}>{title}</div>
             {subtitle && <div className="s">{subtitle}</div>}
           </div>
-          <button type="button" className="modal-x" onClick={onClose} aria-label="ปิด">×</button>
+          {meta}
+          <button type="button" className="modal-x" onClick={requestClose} aria-label="ปิด">×</button>
         </div>
-        <div className="modal-body">{children}</div>
-        {footer && <div className="modal-foot">{footer}</div>}
+
+        <div
+          className="modal-body"
+          ref={bodyRef}
+          onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
+        >
+          {children}
+        </div>
+
+        {closeAsked ? (
+          <div className="modal-foot asking">
+            <div className="ask">{dirtyPrompt}</div>
+            <button className="btn ghost" onClick={() => setCloseAsked(false)}>กลับไปแก้ต่อ</button>
+            <button className="btn danger" onClick={() => { setCloseAsked(false); onClose?.(); }}>
+              ปิดโดยไม่บันทึก
+            </button>
+          </div>
+        ) : footer && <div className="modal-foot">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -39,7 +39,21 @@
       "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/which.mjs\")",
       "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/verify.mjs\")",
       "Bash(node \"C:/Users/suwan/AppData/Local/Temp/claude/c--Users-suwan-Documents-OT-HR/acd729de-3363-423b-8b99-136bdc8b9822/scratchpad/allpaths.mjs\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"page: %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"api:  %{http_code}\\\\n\" http://localhost:3000/api/auth/me)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"attendance-check: %{http_code} \\(401=route exists+auth guard, 404=not registered\\)\\\\n\" -X POST http://localhost:3000/api/entries/000000000000000000000000/attendance-check -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl -s -o /dev/null -w \"preview:          %{http_code}\\\\n\" -X POST http://localhost:3000/api/entries/preview -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl -s -o /dev/null -w \"dev server still ok: %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(python3 -)",
+      "Bash(awk 'NR>=1875 && NR<=1912' RS='}' ORS='}\\\\n' /tmp/served.css 2>/dev/null | head -5; echo \"=== via sed on expanded ===\"; tr '}' '}\\\\n' < /tmp/served.css | sed -n '1880,1912p')",
+      "Bash(curl -s -D - -o /dev/null http://localhost:3000/_next/static/chunks/app_0bgotus._.css)",
+      "Bash(rm -rf \"app/api/entries/[id]/attendance-check\" && echo \"ลบ route แล้ว\"; ls \"app/api/entries/[id]/\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\suwan\\Documents\\OT_HR\\app\\api\\entries\\[id]\\attendance-check"
     ]
   }
 }

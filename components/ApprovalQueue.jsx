@@ -7,6 +7,7 @@ import {
 import {
   Alert, Empty, EditedMark, EntryHistory, Modal, SegmentList, StatusChip, editsOf,
 } from './common.jsx';
+import { useToast } from './Toast.jsx';
 
 /**
  * Manager review (daily) and HR confirmation (monthly) are the same table with
@@ -25,10 +26,10 @@ import {
 export default function ApprovalQueue({ user, stage, onChanged }) {
   const isHr = stage === 'pending_hr';
   const verb = isHr ? 'ยืนยัน' : 'อนุมัติ';
+  const toast = useToast();
 
   const [entries, setEntries] = useState(null);
   const [error, setError] = useState('');
-  const [flash, setFlash] = useState('');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null); // { done, total } during a batch
 
@@ -43,7 +44,7 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
 
   // ── modals ────────────────────────────────────────────────────────────────
   const [confirming, setConfirming] = useState(null); // entry[]
-  const [rejecting, setRejecting] = useState(null);   // entry[]
+  const [rejecting, setRejecting] = useState(null);   // entry[] — batch only
   const [overriding, setOverriding] = useState(null); // entry
   const [detail, setDetail] = useState(null);         // entry
 
@@ -56,7 +57,8 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
       const res = await api.get(`/entries?status=${stage}`);
       setEntries(res.entries);
       if (res.entries.length) everHadRows.current = true;
-    } catch (err) { setError(err.message); }
+      return res.entries;
+    } catch (err) { setError(err.message); return null; }
   }
 
   useEffect(() => {
@@ -132,7 +134,6 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
   async function run(list, act, done) {
     setBusy(true);
     setError('');
-    setFlash('');
     setProgress({ done: 0, total: list.length });
     const failed = [];
     for (const e of list) {
@@ -146,16 +147,26 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
     setProgress(null);
     setSelected(new Set());
     await load();
-    onChanged?.();
     setBusy(false);
-    if (failed.length) setError(`ทำรายการไม่สำเร็จ ${failed.length} รายการ · ${failed.join(' · ')}`);
-    else setFlash(done(list.length));
+
+    const ok = list.length - failed.length;
+    if (ok > 0) {
+      onChanged?.(stage, ok);
+      toast(done(ok, list));
+    }
+    if (failed.length) {
+      const msg = `ทำรายการไม่สำเร็จ ${failed.length} รายการ · ${failed.join(' · ')}`;
+      setError(msg);
+      toast(`ทำรายการไม่สำเร็จ ${failed.length} รายการ — ดูรายละเอียดด้านบนตาราง`, 'error');
+    }
   }
 
   const approve = (list) => run(
     list,
     (e) => api.post(`/entries/${e._id}/approve`),
-    (n) => `${verb}แล้ว ${n} รายการ${isHr ? ' — เข้าสู่รายงานส่งออกแล้ว' : ''}`,
+    (n, all) => (n === 1
+      ? `${verb}รายการ OT ของ ${all[0].employee?.name} เรียบร้อยแล้ว`
+      : `${verb} ${n} รายการเรียบร้อยแล้ว${isHr ? ' — เข้าสู่รายงานส่งออกแล้ว' : ''}`),
   );
 
   // The landing status is a policy flag (hrRejectReturnsTo), so the message
@@ -164,7 +175,9 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
   const reject = (list, reason, notify) => run(
     list,
     (e) => api.post(`/entries/${e._id}/reject`, { reason, notify }),
-    (n) => `ไม่อนุมัติ ${n} รายการ · บันทึกเหตุผลไว้ในรายการแล้ว`,
+    (n, all) => (n === 1
+      ? `ไม่อนุมัติรายการของ ${all[0].employee?.name} · บันทึกเหตุผลแล้ว`
+      : `ไม่อนุมัติ ${n} รายการ · บันทึกเหตุผลไว้ในทุกรายการแล้ว`),
   );
 
   const override = (entry, reason) => run(
@@ -172,6 +185,14 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
     (e) => api.post(`/entries/${e._id}/cap-override`, { reason }),
     () => 'บันทึกการอนุมัติเกินเพดานแล้ว',
   );
+
+  /** A row rewritten from inside the pop-up: refresh the table under it, and
+      keep the pop-up itself showing the version that was just saved. */
+  async function afterEntryChange(updated, message) {
+    setDetail(updated);
+    await load();
+    if (message) toast(message);
+  }
 
   // ── render ────────────────────────────────────────────────────────────────
 
@@ -217,9 +238,9 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
             </div>
           )}
           <div className="field">
-            <label>งวดเดือน</label>
+            <label>เดือน</label>
             <select value={per} onChange={(e) => setPer(e.target.value)}>
-              <option value="">ทุกงวด</option>
+              <option value="">ทุกเดือน</option>
               {periods.map((p) => (
                 <option key={p.value} value={p.value}>{p.label} ({p.count})</option>
               ))}
@@ -267,10 +288,7 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
         </div>
       )}
 
-      <div style={{ padding: '0 18px' }}>
-        {error && <Alert kind="error">{error}</Alert>}
-        {flash && <Alert kind="ok">{flash}</Alert>}
-      </div>
+      {error && <div style={{ padding: '0 18px' }}><Alert kind="error">{error}</Alert></div>}
 
       {/* ── table ──────────────────────────────────────────────────────────── */}
       {!entries ? (
@@ -423,15 +441,16 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
           verb={verb}
           busy={busy}
           onClose={() => setDetail(null)}
-          onApprove={() => { const e = detail; setDetail(null); setConfirming([e]); }}
-          onReject={() => { const e = detail; setDetail(null); setRejecting([e]); }}
+          onApprove={() => { const e = detail; setDetail(null); approve([e]); }}
+          onReject={(reason, notify) => { const e = detail; setDetail(null); reject([e], reason, notify); }}
+          onEntryChanged={afterEntryChange}
         />
       )}
     </div>
   );
 }
 
-// ── modals ──────────────────────────────────────────────────────────────────
+// ── batch modals ────────────────────────────────────────────────────────────
 
 /**
  * ยืนยัน is one click away from payroll, so it gets a stop — but a short one.
@@ -479,11 +498,10 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
   );
 }
 
-/** ไม่อนุมัติ — the reason is required, because the employee reads it. */
+/** ไม่อนุมัติ from the table or the batch bar. The in-pop-up path uses the same
+    fields without a second dialog — see RejectFields. */
 function RejectModal({ entries, busy, onClose, onReject }) {
-  const [reason, setReason] = useState('');
-  const [toEmployee, setToEmployee] = useState(true);
-  const [toManager, setToManager] = useState(false);
+  const [state, setState] = useState({ reason: '', notify: { employee: true, manager: false } });
   const many = entries.length > 1;
 
   return (
@@ -491,51 +509,21 @@ function RejectModal({ entries, busy, onClose, onReject }) {
       title={many ? `ไม่อนุมัติ ${entries.length} รายการ` : 'ไม่อนุมัติรายการนี้'}
       subtitle={many ? 'เหตุผลเดียวกันนี้จะถูกบันทึกในทุกรายการที่เลือก' : undefined}
       onClose={onClose}
+      dirty={state.reason.trim().length > 0}
       footer={(
         <>
           <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
           <button
             className="btn danger"
-            disabled={busy || !reason.trim()}
-            onClick={() => onReject(reason.trim(), { employee: toEmployee, manager: toManager })}
+            disabled={busy || !state.reason.trim()}
+            onClick={() => onReject(state.reason.trim(), state.notify)}
           >
             ยืนยันไม่อนุมัติ
           </button>
         </>
       )}
     >
-      <div className="field">
-        <label>เหตุผลที่ไม่อนุมัติ *</label>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="เช่น เวลาที่ขอไม่ตรงกับเวลาสแกนนิ้ว · รายละเอียดงานไม่ชัดเจน"
-          autoFocus
-        />
-        <div className={`field-note${reason.trim() ? '' : ' error'}`}>
-          {reason.trim() ? 'พนักงานจะเห็นข้อความนี้และยื่นใหม่ได้' : 'ต้องกรอกเหตุผลก่อนจึงจะไม่อนุมัติได้'}
-        </div>
-      </div>
-
-      <div>
-        <div className="kicker-sm" style={{ marginBottom: 8 }}>แจ้งกลับไปยัง</div>
-        <label className="check">
-          <input type="checkbox" checked={toEmployee} onChange={(e) => setToEmployee(e.target.checked)} />
-          พนักงานผู้ยื่นคำขอ
-        </label>
-        <label className="check" style={{ marginTop: 8 }}>
-          <input type="checkbox" checked={toManager} onChange={(e) => setToManager(e.target.checked)} />
-          หัวหน้างานผู้อนุมัติ
-        </label>
-        {/* The reason lands on the entry either way — that part is real. The
-            push channel is not built yet, and a tick box that quietly does
-            nothing is worse on this screen than one that says so. */}
-        <Alert kind="info">
-          เหตุผลจะปรากฏบนรายการในระบบเสมอ ·
-          {' '}ยังไม่ได้เชื่อมต่อการแจ้งเตือนทางอีเมล/LINE — ตัวเลือกนี้จะมีผลเมื่อเปิดใช้งานระบบแจ้งเตือน
-        </Alert>
-      </div>
-
+      <RejectFields value={state} onChange={setState} many={many} />
       <EntryPeek entries={entries} collapsed={many} />
     </Modal>
   );
@@ -549,6 +537,7 @@ function OverrideModal({ entry, busy, onClose, onSave }) {
       title="อนุมัติเกินเพดานแผนก"
       subtitle={`${entry.employee?.name} · ${thaiDate(entry.workDate)}`}
       onClose={onClose}
+      dirty={reason.trim().length > 0}
       footer={(
         <>
           <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
@@ -570,153 +559,372 @@ function OverrideModal({ entry, busy, onClose, onSave }) {
   );
 }
 
+/** The reason and the notification choice, shared by the batch dialog and the
+    in-pop-up refusal so the two cannot drift apart. */
+function RejectFields({ value, onChange, many }) {
+  const set = (patch) => onChange({ ...value, ...patch });
+  return (
+    <>
+      <div className="field">
+        <label>เหตุผลที่ไม่อนุมัติ *</label>
+        <textarea
+          value={value.reason}
+          onChange={(e) => set({ reason: e.target.value })}
+          placeholder="เช่น เวลาที่ขอไม่ตรงกับเวลาสแกนนิ้ว · รายละเอียดงานไม่ชัดเจน"
+          autoFocus
+        />
+        <div className={`field-note${value.reason.trim() ? '' : ' error'}`}>
+          {value.reason.trim()
+            ? `พนักงานจะเห็นข้อความนี้และยื่นใหม่ได้${many ? ' · ใช้กับทุกรายการที่เลือก' : ''}`
+            : 'ต้องกรอกเหตุผลก่อนจึงจะไม่อนุมัติได้'}
+        </div>
+      </div>
+
+      <div>
+        <div className="kicker-sm" style={{ marginBottom: 8 }}>แจ้งกลับไปยัง</div>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={value.notify.employee}
+            onChange={(e) => set({ notify: { ...value.notify, employee: e.target.checked } })}
+          />
+          พนักงานผู้ยื่นคำขอ
+        </label>
+        <label className="check" style={{ marginTop: 8 }}>
+          <input
+            type="checkbox"
+            checked={value.notify.manager}
+            onChange={(e) => set({ notify: { ...value.notify, manager: e.target.checked } })}
+          />
+          หัวหน้างานผู้อนุมัติ
+        </label>
+        {/* The reason lands on the entry either way — that part is real. The
+            push channel is not built yet, and a tick box that quietly does
+            nothing is worse on this screen than one that says so. */}
+        <Alert kind="info">
+          เหตุผลจะปรากฏบนรายการในระบบเสมอ ·
+          {' '}ยังไม่ได้เชื่อมต่อการแจ้งเตือนทางอีเมล/LINE — ตัวเลือกนี้จะมีผลเมื่อเปิดใช้งานระบบแจ้งเตือน
+        </Alert>
+      </div>
+    </>
+  );
+}
+
+// ── the detail pop-up ───────────────────────────────────────────────────────
+
 /**
  * รายละเอียด — everything the row had no room for, in the order a reviewer
- * asks for it: what was requested, how the engine split it, who approved it
- * below, what the clock says, and what the request used to say.
+ * asks for it: what was requested, how the engine split it, what the clock
+ * says, who approved it below, and what the request used to say.
+ *
+ * It is also where the decision gets made, including refusing: sending the
+ * reviewer to a second dialog to type a reason takes away the times, the
+ * history and the scan comparison at the exact moment they are being explained
+ * in writing. The refusal happens here, over the top of the same header.
  */
-function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject }) {
+function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEntryChanged }) {
+  const [mode, setMode] = useState('view'); // 'view' | 'rejecting'
+  const [rejectState, setRejectState] = useState({
+    reason: '', notify: { employee: true, manager: false },
+  });
+  const [editing, setEditing] = useState(false);
+  const [editDirty, setEditDirty] = useState(false);
+
   const filed = lastAction(e, 'submit');
   const mgr = lastAction(e, 'approve_mgr');
+
+  const footer = mode === 'rejecting' ? (
+    <>
+      <button className="btn ghost" onClick={() => setMode('view')}>ย้อนกลับ</button>
+      <button
+        className="btn danger"
+        disabled={busy || !rejectState.reason.trim()}
+        onClick={() => onReject(rejectState.reason.trim(), rejectState.notify)}
+      >
+        ยืนยันไม่อนุมัติ
+      </button>
+    </>
+  ) : (
+    <>
+      <button className="btn ghost" onClick={onClose}>ปิด</button>
+      {/* Both decisions are shut while the hours are open for editing: a
+          correction half-typed is not a basis for either one. */}
+      <button className="btn ghost danger" disabled={busy || editing} onClick={() => setMode('rejecting')}>
+        ไม่อนุมัติ
+      </button>
+      <button className="btn" disabled={busy || editing} onClick={onApprove}>{verb}</button>
+    </>
+  );
 
   return (
     <Modal
       wide
-      title={`${e.employee?.name} · ${thaiDate(e.workDate)}`}
-      subtitle={`${e.employee?.code} · ${e.department?.nameTh || e.department?.name} · วัน${dayName(e.workDate)}`}
-      onClose={onClose}
-      footer={(
-        <>
-          <button className="btn ghost" onClick={onClose}>ปิด</button>
-          <button className="btn ghost danger" disabled={busy} onClick={onReject}>ไม่อนุมัติ</button>
-          <button className="btn" disabled={busy} onClick={onApprove}>{verb}</button>
-        </>
-      )}
-    >
-      <Section title="คำขอ">
-        <dl className="fact-grid">
-          <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}${e.endsNextDay ? ' (ข้ามคืน)' : ''}`} />
-          <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
-          <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />
-          <Fact k="สถานะ" v={<StatusChip status={e.status} />} />
-        </dl>
-        <div className="split" style={{ marginTop: 12 }}>
-          {Object.values(BUCKETS).map((b) => (
-            <div className="box" key={b}>
-              <div className="k">{BUCKET_LABEL[b]}</div>
-              <div className="v">{hours(e.buckets?.[b])}</div>
-            </div>
-          ))}
-          <div className="box" style={{ background: 'var(--green-bg)', borderColor: '#C4E3D2' }}>
-            <div className="k">รวม</div>
-            <div className="v">{hours(e.totals?.otHours)}</div>
+      title={e.employee?.name}
+      subtitle={`${e.employee?.code} · ${e.department?.nameTh || e.department?.name} · ${thaiDate(e.workDate)} (วัน${dayName(e.workDate)})`}
+      /* The number being decided about, kept out of the scroll area — it is
+         the one thing that must not move while the body does, and the one
+         Quick Edit changes. */
+      meta={(
+        <div className="head-meta">
+          <div className="total">
+            <span className="k">รวม</span>
+            <span className="v">{hours(e.totals?.otHours)}</span>
+            <span className="u">ชม.</span>
           </div>
+          <StatusChip status={e.status} />
         </div>
-        <p className="note" style={{ marginTop: 10 }}>{e.description}</p>
-      </Section>
+      )}
+      onClose={onClose}
+      dirty={editDirty || (mode === 'rejecting' && rejectState.reason.trim().length > 0)}
+      footer={footer}
+    >
+      {mode === 'rejecting' ? (
+        <>
+          <div className="box warn">
+            กำลังไม่อนุมัติรายการนี้ — {e.startTime}–{e.endTime} · {hours(e.totals?.otHours)} ชม.
+          </div>
+          <RejectFields value={rejectState} onChange={setRejectState} many={false} />
+        </>
+      ) : (
+        <>
+          <Section title="คำขอ">
+            <dl className="fact-grid">
+              <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}${e.endsNextDay ? ' (ข้ามคืน)' : ''}`} />
+              <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
+              <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />
+              <Fact k="เกินเพดานแผนก" v={e.capExceeded ? `ใช่ (${e.capSnapshot?.capHours} ชม.)` : 'ไม่'} />
+            </dl>
+            <div className="split" style={{ marginTop: 12 }}>
+              {Object.values(BUCKETS).map((b) => (
+                <div className="box" key={b}>
+                  <div className="k">{BUCKET_LABEL[b]}</div>
+                  <div className="v">{hours(e.buckets?.[b])}</div>
+                </div>
+              ))}
+              <div className="box" style={{ background: 'var(--green-bg)', borderColor: '#C4E3D2' }}>
+                <div className="k">รวม</div>
+                <div className="v">{hours(e.totals?.otHours)}</div>
+              </div>
+            </div>
+            <p className="note" style={{ marginTop: 10 }}>{e.description}</p>
+          </Section>
 
-      <Section title="การแบ่งช่วงเวลา">
-        <SegmentList segments={e.segments} />
-        {e.warnings?.map((w) => <div key={w.code} className="hint">{w.message}</div>)}
-      </Section>
+          <Section
+            title="การแบ่งช่วงเวลา"
+            action={!editing && (
+              <button className="btn ghost sm" onClick={() => setEditing(true)}>
+                แก้ไขชั่วโมง
+              </button>
+            )}
+          >
+            {editing ? (
+              <QuickEdit
+                entry={e}
+                onDirty={setEditDirty}
+                onCancel={() => { setEditing(false); setEditDirty(false); }}
+                onSaved={(updated) => {
+                  setEditing(false);
+                  setEditDirty(false);
+                  onEntryChanged(updated, `แก้ไขชั่วโมงของ ${updated.employee?.name} แล้ว — ${hours(updated.totals?.otHours)} ชม.`);
+                }}
+              />
+            ) : (
+              <>
+                <SegmentList segments={e.segments} />
+                {e.warnings?.map((w) => <div key={w.code} className="hint">{w.message}</div>)}
+              </>
+            )}
+          </Section>
 
-      <Section title="เวลาสแกนนิ้วเทียบกับเวลาที่ขอ">
-        <ClockCompare entry={e} />
-      </Section>
+          <Section title="ผู้อนุมัติ">
+            <dl className="fact-grid">
+              <Fact k="ยื่นคำขอโดย" v={filed?.byName || e.employee?.name} sub={stamp(filed?.at)} />
+              <Fact
+                k="หัวหน้างานอนุมัติ"
+                v={mgr?.byName || 'ยังไม่ผ่านหัวหน้างาน'}
+                sub={mgr ? stamp(mgr.at) : undefined}
+              />
+            </dl>
+            {mgr?.note && <p className="note" style={{ marginTop: 8 }}>บันทึกจากหัวหน้างาน — {mgr.note}</p>}
+          </Section>
 
-      <Section title="ผู้อนุมัติ">
-        <dl className="fact-grid">
-          <Fact k="ยื่นคำขอโดย" v={filed?.byName || e.employee?.name} sub={stamp(filed?.at)} />
-          <Fact
-            k="หัวหน้างานอนุมัติ"
-            v={mgr?.byName || 'ยังไม่ผ่านหัวหน้างาน'}
-            sub={mgr ? stamp(mgr.at) : undefined}
-          />
-        </dl>
-        {mgr?.note && <p className="note" style={{ marginTop: 8 }}>บันทึกจากหัวหน้างาน — {mgr.note}</p>}
-      </Section>
-
-      <Section title="เอกสารแนบ">
-        <Attachments entry={e} />
-      </Section>
-
-      {(e.history || []).length > 0 && (
-        <Section title="ประวัติรายการ">
-          <EntryHistory entry={e} />
-        </Section>
+          {(e.history || []).length > 0 && (
+            <Section title="ประวัติรายการ">
+              <EntryHistory entry={e} />
+            </Section>
+          )}
+        </>
       )}
     </Modal>
   );
 }
 
+// ── quick edit ──────────────────────────────────────────────────────────────
+
 /**
- * The scan against the request.
+ * แก้ไขชั่วโมง — the correction HR would otherwise have to refuse the request
+ * to get.
  *
- * The entry model holds no attendance data — nothing in this system reads the
- * fingerprint terminal yet. Rather than draw an empty comparison that looks
- * broken, this says so, and lights up on its own the day an entry arrives
- * carrying `attendance: { clockIn, clockOut }`.
+ * A scan that says the employee left at 20:15 against a request that says
+ * 21:00 does not mean the request was dishonest; it means one field is wrong.
+ * Rejecting it sends the whole thing back through the manager for a typo. This
+ * fixes the field, keeps the approvals already collected, and leaves the old
+ * values in the history where HR can see what they replaced.
+ *
+ * Saving does NOT confirm the entry. Correcting a number and vouching for it
+ * are two decisions, and they get two presses.
  */
-function ClockCompare({ entry: e }) {
-  const a = e.attendance;
-  if (!a?.clockIn && !a?.clockOut) {
-    return (
-      <div className="box info">
-        ยังไม่ได้เชื่อมต่อข้อมูลเครื่องสแกนนิ้วกับระบบนี้ ·
-        {' '}ตรวจเทียบกับรายงานเวลาเข้า–ออกจากเครื่องบันทึกเวลาไปก่อน
+function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
+  const [form, setForm] = useState(() => ({
+    startTime: entry.startTime,
+    endTime: entry.endTime,
+    endsNextDay: Boolean(entry.endsNextDay),
+    noBreakTaken: Boolean(entry.noBreakTaken),
+  }));
+  const [note, setNote] = useState('');
+  const [preview, setPreview] = useState(null);
+  const [err, setErr] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const moved = form.startTime !== entry.startTime
+    || form.endTime !== entry.endTime
+    || form.endsNextDay !== Boolean(entry.endsNextDay)
+    || form.noBreakTaken !== Boolean(entry.noBreakTaken);
+
+  useEffect(() => { onDirty?.(moved || note.trim().length > 0); }, [moved, note]);
+
+  // The engine decides what the hours are, not the form — so the form asks it,
+  // and shows the answer before anything is written.
+  useEffect(() => {
+    if (!moved) { setPreview(null); setErr(''); return undefined; }
+    const id = setTimeout(async () => {
+      try {
+        const res = await api.post('/entries/preview', {
+          workDate: entry.workDate,
+          ...form,
+          employeeId: entry.employee?._id,
+          entryId: entry._id, // keeps this entry's own hours out of the cap figure
+        });
+        setPreview(res);
+        setErr('');
+      } catch (e2) {
+        setPreview(null);
+        setErr(e2.message);
+      }
+    }, 300);
+    return () => clearTimeout(id);
+  }, [form, moved]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await api.patch(`/entries/${entry._id}`, { ...form, note: note.trim() });
+      onSaved(res.entry);
+    } catch (e2) {
+      setErr(e2.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const nextHours = preview?.result?.totals?.otHours;
+
+  return (
+    <div className="quick-edit">
+      <div className="row">
+        <div className="field">
+          <label>เวลาเริ่ม</label>
+          <input type="time" value={form.startTime} onChange={(ev) => set({ startTime: ev.target.value })} />
+        </div>
+        <div className="field">
+          <label>เวลาสิ้นสุด</label>
+          <input type="time" value={form.endTime} onChange={(ev) => set({ endTime: ev.target.value })} />
+        </div>
       </div>
-    );
-  }
-  return (
-    <table className="mini">
-      <thead>
-        <tr><th /><th>เวลาที่ขอ OT</th><th>เวลาสแกนนิ้ว</th><th className="num">ต่าง</th></tr>
-      </thead>
-      <tbody>
-        <ClockRow label="เข้า" asked={e.startTime} actual={a.clockIn} />
-        <ClockRow label="ออก" asked={e.endTime} actual={a.clockOut} />
-      </tbody>
-    </table>
-  );
-}
 
-function ClockRow({ label, asked, actual }) {
-  const diff = minutesBetween(asked, actual);
-  return (
-    <tr>
-      <td>{label}</td>
-      <td className="num">{asked || '—'}</td>
-      <td className="num">{actual || '—'}</td>
-      <td className="num" style={{ color: diff && Math.abs(diff) > 15 ? 'var(--danger-ink)' : 'inherit' }}>
-        {diff == null ? '—' : `${diff > 0 ? '+' : ''}${diff} น.`}
-      </td>
-    </tr>
-  );
-}
+      <div className="checks">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={form.endsNextDay}
+            onChange={(ev) => set({ endsNextDay: ev.target.checked })}
+          />
+          ข้ามคืน
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={form.noBreakTaken}
+            onChange={(ev) => set({ noBreakTaken: ev.target.checked })}
+          />
+          ไม่พักเที่ยง
+        </label>
+      </div>
 
-/** Same contract as ClockCompare: renders whatever `attachments` the API sends. */
-function Attachments({ entry: e }) {
-  if (!e.attachments?.length) {
-    return <div className="box">ไม่มีเอกสารแนบกับรายการนี้</div>;
-  }
-  return (
-    <ul className="attach-list">
-      {e.attachments.map((f) => (
-        <li key={f.url || f.name}>
-          <a className="link" href={f.url} target="_blank" rel="noreferrer">{f.name}</a>
-          {f.size != null && <span className="hint"> · {Math.round(f.size / 1024)} KB</span>}
-        </li>
-      ))}
-    </ul>
+      {moved && (
+        <div className="edit-preview">
+          <div className="kicker-sm">ผลหลังแก้ไข</div>
+          {preview ? (
+            <>
+              <div className="delta">
+                <span className="was">{hours(entry.totals?.otHours)} ชม.</span>
+                <span className="to">→</span>
+                <span className="now">{hours(nextHours)} ชม.</span>
+              </div>
+              <SegmentList segments={preview.result?.segments} />
+              {preview.result?.warnings?.map((w) => (
+                <div key={w.code} className="hint">{w.message}</div>
+              ))}
+              {preview.cap?.exceeded && (
+                <Alert kind="warn">
+                  แก้แล้วเกินเพดานแผนก {preview.cap.capHours} ชม./เดือน
+                  {' '}(ใช้ไปแล้ว {hours(preview.cap.usedHoursBefore)} ชม.)
+                </Alert>
+              )}
+            </>
+          ) : !err && <div className="hint">กำลังคำนวณ…</div>}
+        </div>
+      )}
+
+      <div className="field">
+        <label>เหตุผลการแก้ไข *</label>
+        <textarea
+          value={note}
+          onChange={(ev) => setNote(ev.target.value)}
+          placeholder="เช่น ปรับตามเวลาสแกนออกจริง 20:15"
+        />
+        {/* Not a house rule — the server refuses an HR edit without one, so the
+            button stays shut rather than letting the save fail. */}
+        <div className={`field-note${note.trim() ? '' : ' error'}`}>
+          {note.trim() ? 'บันทึกไว้ในประวัติรายการ พร้อมค่าเดิมก่อนแก้' : 'ต้องระบุเหตุผลก่อนบันทึก'}
+        </div>
+      </div>
+
+      {err && <Alert kind="error">{err}</Alert>}
+
+      <div className="quick-edit-foot">
+        <button className="btn ghost" onClick={onCancel} disabled={saving}>ยกเลิก</button>
+        <button className="btn" onClick={save} disabled={saving || !moved || !note.trim()}>
+          {saving ? 'กำลังบันทึก…' : 'บันทึกชั่วโมงใหม่'}
+        </button>
+      </div>
+      <div className="hint">
+        การแก้ไขจะคำนวณชั่วโมงใหม่ทันทีและคงสถานะการอนุมัติเดิมไว้ · ยังต้องกด “{'ยืนยัน'}” อีกครั้งเพื่อรับรองรายการ
+      </div>
+    </div>
   );
 }
 
 // ── small parts ─────────────────────────────────────────────────────────────
 
-function Section({ title, children }) {
+function Section({ title, action, children }) {
   return (
     <section className="detail-sec">
-      <div className="kicker-sm">{title}</div>
+      <div className="sec-head">
+        <div className="kicker-sm">{title}</div>
+        {action}
+      </div>
       {children}
     </section>
   );
@@ -805,13 +1013,3 @@ function lastAction(entry, action) {
 }
 
 const stamp = (at) => (at ? new Date(at).toLocaleString('th-TH') : undefined);
-
-/** actual − asked, in minutes. Null unless both are 'HH:MM'. */
-function minutesBetween(asked, actual) {
-  const toMin = (t) => (/^\d{2}:\d{2}$/.test(t || '')
-    ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
-    : null);
-  const a = toMin(asked);
-  const b = toMin(actual);
-  return a == null || b == null ? null : b - a;
-}

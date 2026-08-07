@@ -178,16 +178,31 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
         </span>
       </div>
 
-      {hrEdit && (
+      {/* Asked on every correction of a stored request, not only ฝ่ายบุคคล's.
+          An employee revising their own request before the manager sees it
+          still moves the hours, and the ประวัติรายการ shows that it moved —
+          this is the only chance to record why.
+          Required of ฝ่ายบุคคล and optional for the employee, matching the
+          server rule in lib/entries.js: at pending_mgr there is no decision
+          standing on the old values yet, so the reason is worth having and
+          not worth blocking on. */}
+      {entry && (
         <div className="field" style={{ marginTop: 14 }}>
-          <label>เหตุผลการแก้ไข</label>
+          <label>เหตุผลการแก้ไข{hrEdit ? ' *' : ''}</label>
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
-            placeholder="เช่น พนักงานแจ้งเวลาเลิกงานผิด ตรวจสอบกับหัวหน้าแล้ว"
-            required
+            placeholder={hrEdit
+              ? 'เช่น พนักงานแจ้งเวลาเลิกงานผิด ตรวจสอบกับหัวหน้าแล้ว'
+              : 'เช่น กรอกเวลาเลิกงานผิด'}
+            required={hrEdit}
           />
+          <span className="field-note">
+            {hrEdit
+              ? 'บันทึกในประวัติรายการคู่กับค่าเดิมก่อนแก้'
+              : 'ไม่บังคับ — ถ้ากรอก จะบันทึกในประวัติรายการคู่กับค่าเดิมก่อนแก้'}
+          </span>
         </div>
       )}
 

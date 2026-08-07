@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
 import { Alert } from './common.jsx';
+import { ToastHost } from './Toast.jsx';
 import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
 import HrView from './HrView.jsx';
@@ -25,7 +26,11 @@ export default function App() {
 
   if (loading) return <div className="empty">กำลังโหลด…</div>;
   if (!session) return <Login onLogin={setSession} />;
-  return <Shell session={session} onLogout={() => setSession(null)} />;
+  return (
+    <ToastHost>
+      <Shell session={session} onLogout={() => setSession(null)} />
+    </ToastHost>
+  );
 }
 
 // ── login ───────────────────────────────────────────────────────────────────
@@ -131,6 +136,19 @@ function Shell({ session, onLogout }) {
   }
   useEffect(() => { refreshCounts(); }, [tab]);
 
+  /**
+   * Rows just left a queue. Take them off the badge now and ask the server
+   * after: the toast has already said it worked, and a number that sits
+   * unchanged for the length of a round trip reads as the system not having
+   * noticed. The refresh behind it is what makes the count right again when
+   * somebody else was working the same queue.
+   */
+  function queueDone(stage, n = 1) {
+    const key = stage === 'pending_hr' ? 'pendingHr' : 'pendingMgr';
+    setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] || 0) - n) }));
+    refreshCounts();
+  }
+
   const tabs = [];
   if (user.maySubmitOt) tabs.push({ key: 'mine', label: 'OT ของฉัน', icon: '◧' });
   if (user.role === 'manager') tabs.push({ key: 'approve', label: 'รออนุมัติ', icon: '◔', badge: counts.pendingMgr });
@@ -224,8 +242,8 @@ function Shell({ session, onLogout }) {
         <main>
           <div className="page">
             {tab === 'mine' && <EmployeeView user={user} onChanged={refreshCounts} openSignal={formSignal} />}
-            {tab === 'approve' && <ApprovalQueue user={user} stage="pending_mgr" onChanged={refreshCounts} />}
-            {tab === 'confirm' && <ApprovalQueue user={user} stage="pending_hr" onChanged={refreshCounts} />}
+            {tab === 'approve' && <ApprovalQueue user={user} stage="pending_mgr" onChanged={queueDone} />}
+            {tab === 'confirm' && <ApprovalQueue user={user} stage="pending_hr" onChanged={queueDone} />}
             {tab === 'monthly' && <HrView user={user} />}
             {tab === 'accounting' && <AccountingView />}
             {tab === 'departments' && <DepartmentView />}

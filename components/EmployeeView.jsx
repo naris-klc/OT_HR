@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
-import { StatusChip, Alert, Empty, EditedMark, EntryHistory, editsOf } from './common.jsx';
+import { StatusChip, Alert, Empty, EditedMark, EntryHistory, Modal, editsOf } from './common.jsx';
 import OtForm from './OtForm.jsx';
 
 export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
@@ -14,6 +14,8 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   const [showForm, setShowForm] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [showHistory, setShowHistory] = useState(null); // entry id, in the full table
+  const [cancelling, setCancelling] = useState(null);   // own entry being withdrawn
+  const [cancelNote, setCancelNote] = useState('');
   const [error, setError] = useState('');
 
   async function load() {
@@ -34,10 +36,17 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   // The mobile FAB lives in the shell, so it asks for the form by bumping a counter.
   useEffect(() => { if (openSignal > 0) setShowForm(true); }, [openSignal]);
 
-  async function cancel(entry) {
-    if (!confirm('ยกเลิกรายการนี้?')) return;
+  /**
+   * Withdrawing a request is a step in its history, not a delete — the row
+   * stays, marked ยกเลิก. The reason rides along so the ประวัติรายการ can say
+   * why it stopped rather than only that it did, and asking for it takes the
+   * place of a bare confirm() that explained nothing either way.
+   */
+  async function cancel() {
     try {
-      await api.post(`/entries/${entry._id}/cancel`);
+      await api.post(`/entries/${cancelling._id}/cancel`, { note: cancelNote.trim() || undefined });
+      setCancelling(null);
+      setCancelNote('');
       await load();
       onChanged?.();
     } catch (err) { setError(err.message); }
@@ -272,7 +281,11 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                         {e.status === 'pending_mgr' && (
                           <>
                             <button className="btn ghost sm" onClick={() => setEditing(e)}>แก้ไข</button>
-                            <button className="btn ghost sm" style={{ marginLeft: 6 }} onClick={() => cancel(e)}>
+                            <button
+                              className="btn ghost sm"
+                              style={{ marginLeft: 6 }}
+                              onClick={() => { setCancelling(e); setCancelNote(''); }}
+                            >
                               ยกเลิก
                             </button>
                           </>
@@ -317,6 +330,37 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
             </div>
           )}
         </div>
+      )}
+
+      {cancelling && (
+        <Modal
+          title="ยกเลิกคำขอนี้"
+          subtitle={`${thaiDate(cancelling.workDate)} · ${cancelling.startTime}–${cancelling.endTime} · ${hours(cancelling.totals?.otHours)} ชม.`}
+          onClose={() => setCancelling(null)}
+          dirty={cancelNote.trim().length > 0}
+          footer={(
+            <>
+              <button className="btn ghost" onClick={() => setCancelling(null)}>ไม่ยกเลิกแล้ว</button>
+              <button className="btn danger" onClick={cancel}>ยืนยันการยกเลิก</button>
+            </>
+          )}
+        >
+          <div className="field">
+            <label>เหตุผลที่ยกเลิก</label>
+            <input
+              value={cancelNote}
+              onChange={(e) => setCancelNote(e.target.value)}
+              maxLength={500}
+              placeholder="เช่น หัวหน้าให้เลื่อนงานไปวันอื่น"
+              autoFocus
+            />
+            <span className="field-note">ไม่บังคับ — ถ้ากรอก จะบันทึกไว้ในประวัติรายการ</span>
+          </div>
+          <div className="hint">
+            รายการจะยังอยู่ในตารางโดยขึ้นสถานะ “ยกเลิก” ไม่ได้ถูกลบทิ้ง ·
+            {' '}หากต้องการขอ OT ช่วงเวลานี้อีกครั้ง ให้บันทึกคำขอใหม่
+          </div>
+        </Modal>
       )}
     </div>
   );
