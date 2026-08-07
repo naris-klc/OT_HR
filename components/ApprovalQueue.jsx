@@ -5,7 +5,8 @@ import {
   api, hours, thaiDate, dayName, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, Modal, SegmentList, StatusChip, editsOf,
+  Alert, Empty, EditedMark, EntryHistory, Modal, RefiledNote, RequestTrail,
+  SegmentList, StatusChip, editsOf,
 } from './common.jsx';
 import { useToast } from './Toast.jsx';
 
@@ -360,6 +361,13 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
                     {editsOf(e).length > 0 && (
                       <div style={{ marginTop: 4 }}><EditedMark entry={e} /></div>
                     )}
+                    {/* Spotted before the row is opened: this one has been
+                        refused once already, under a different date. */}
+                    {e.refiledFrom && (
+                      <div style={{ marginTop: 4 }}>
+                        <span className="chip refiled">ส่งใหม่จากที่ไม่อนุมัติ</span>
+                      </div>
+                    )}
                     {e.capExceeded && (
                       <div className="cell-note">
                         ⚠ เกินเพดานแผนก ({e.capSnapshot?.capHours} ชม.)
@@ -629,9 +637,28 @@ function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEnt
   });
   const [editing, setEditing] = useState(false);
   const [editDirty, setEditDirty] = useState(false);
+  const [trail, setTrail] = useState(null);
 
   const filed = lastAction(e, 'submit');
   const mgr = lastAction(e, 'approve_mgr');
+
+  /**
+   * Only fetched when there is a chain to fetch. A request nobody re-filed is
+   * its own whole story, and it is already loaded — asking the server to
+   * confirm that on every pop-up would be a round trip per row.
+   */
+  // Keyed on the parent's id rather than the populated object: saving a quick
+  // edit hands back a fresh entry whose refiledFrom is a new object with the
+  // same contents, and identity alone would refetch the trail every time.
+  const parentId = e.refiledFrom?._id || e.refiledFrom || null;
+  useEffect(() => {
+    if (!parentId) { setTrail(null); return undefined; }
+    let live = true;
+    api.get(`/entries/${e._id}/trail`)
+      .then((res) => { if (live) setTrail(res); })
+      .catch(() => { if (live) setTrail(null); }); // the row's own history still shows
+    return () => { live = false; };
+  }, [e._id, parentId]);
 
   const footer = mode === 'rejecting' ? (
     <>
@@ -687,6 +714,9 @@ function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEnt
         </>
       ) : (
         <>
+          {/* Above the hours on purpose — see RefiledNote. */}
+          <RefiledNote parent={e.refiledFrom} />
+
           <Section title="คำขอ">
             <dl className="fact-grid">
               <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}${e.endsNextDay ? ' (ข้ามคืน)' : ''}`} />
@@ -748,7 +778,20 @@ function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEnt
             {mgr?.note && <p className="note" style={{ marginTop: 8 }}>บันทึกจากหัวหน้างาน — {mgr.note}</p>}
           </Section>
 
-          {(e.history || []).length > 0 && (
+          {/* One request's history, or the whole chain when this one replaced
+              a refused request. The trail arrives a moment after the pop-up
+              does, so until it lands this row's own history stands in rather
+              than the section flickering empty. */}
+          {trail?.requests?.length > 1 ? (
+            <Section title="ประวัติรายการ (รวมคำขอเดิม)">
+              <RequestTrail requests={trail.requests} liveStatus={e.status} />
+              {trail.truncated && (
+                <div className="hint">
+                  แสดงย้อนหลังได้สูงสุด 20 คำขอ · อาจมีคำขอเก่ากว่านี้ที่ไม่ได้แสดง
+                </div>
+              )}
+            </Section>
+          ) : (e.history || []).length > 0 && (
             <Section title="ประวัติรายการ">
               <EntryHistory entry={e} />
             </Section>

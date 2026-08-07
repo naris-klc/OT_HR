@@ -71,12 +71,30 @@ export const POST = route(async (req) => {
     );
   }
 
+  // §6 — "ส่งใหม่" files a fresh request to replace one that was refused. The
+  // claim is checked rather than trusted: it must be a real entry, the
+  // caller's own, and actually rejected. An unverified pointer would let a
+  // request borrow somebody else's refusal history.
+  let refiledFrom = null;
+  if (payload.refiledFrom) {
+    const parent = await OtEntry.findById(payload.refiledFrom).select('employee status').lean();
+    if (!parent) return fail('ไม่พบคำขอเดิมที่อ้างอิงถึง', 404);
+    if (String(parent.employee) !== String(user._id)) {
+      return fail('อ้างอิงได้เฉพาะคำขอเดิมของตนเอง', 403);
+    }
+    if (parent.status !== 'rejected') {
+      return fail('ส่งใหม่ได้เฉพาะคำขอที่ถูกไม่อนุมัติ', 409);
+    }
+    refiledFrom = parent._id;
+  }
+
   const entry = new OtEntry({
     employee: user._id,
     department: user.department._id,
     ...session,
     description,
     status: 'pending_mgr',
+    refiledFrom,
   });
   applyComputation(entry, result);
   stampCap(entry, cap);

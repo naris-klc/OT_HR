@@ -502,6 +502,55 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .entry-history > li.edit .act { background: var(--amber-bg); color: var(--amber); }
 .entry-history > li.off { border-left-color: var(--line); }
 
+/* ── refiled requests ───────────────────────────────────────────────────── */
+
+/* "แก้มาจากคำขอเดิมที่ไม่อนุมัติ" — the first thing in the pop-up, because a
+   manager who has to scroll to learn they already refused this will have
+   approved it by then. Amber rather than red: it is a thing to know before
+   deciding, not a fault in the request. */
+.refiled-note {
+  display: flex; align-items: flex-start; gap: 11px; flex-wrap: wrap;
+  padding: 13px 15px; border-radius: var(--radius-sm);
+  background: var(--amber-bg); border: 1px solid #EFDCB6;
+}
+.refiled-note .mark {
+  flex: none; padding: 3px 9px; border-radius: 20px;
+  background: var(--amber); color: #fff;
+  font: 600 11px/1.5 var(--sans); white-space: nowrap;
+}
+.refiled-note .body { flex: 1; min-width: 180px; }
+.refiled-note strong { font: 600 13.5px/1.5 var(--sans); color: var(--ink); }
+.refiled-note .s { font: 400 12.5px/1.6 var(--sans); color: var(--amber); margin-top: 2px; }
+
+.chip.refiled { background: var(--amber-bg); color: var(--amber); }
+
+/* One block per request in the chain, oldest first. The boundary between two
+   blocks is the point a refusal ended one request and the employee filed
+   another — flattening them into a single stream would read as one request
+   that was rejected and then un-rejected. */
+.req-trail { display: flex; flex-direction: column; gap: 14px; }
+.req {
+  border: 1px solid var(--line); border-radius: var(--radius-xs);
+  padding: 12px 14px; background: var(--neutral-wash);
+}
+.req.current { background: #fff; border-color: var(--green); }
+.req > header {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding-bottom: 9px; border-bottom: 1px dashed var(--line);
+}
+.req .seq {
+  font: 600 10.5px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted-2);
+}
+.req .when { flex: 1; min-width: 130px; font: 500 13px/1.4 var(--sans); }
+.req .hrs { font: 600 13px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
+.req .entry-history { margin-top: 10px; }
+
+.trail-now {
+  display: flex; align-items: center; gap: 8px; padding-left: 13px;
+  font: 400 12.5px/1.5 var(--sans); color: var(--muted-2);
+}
+
 /* เดิม → ใหม่. The old value is struck through rather than only greyed: on a
    printed-out screen colour is the first thing to go, and which side is which
    is the whole point of the row. */

@@ -82,7 +82,13 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
       // server decides whether this caller is allowed to. Without it (a blank
       // form, or one filled from `template`) this writes a new request.
       if (entry) await api.patch(`/entries/${entry._id}`, { ...form, note });
-      else await api.post('/entries', form);
+      else {
+        // A blank form writes a plain request. One filled from a REJECTED row
+        // writes a request that points back at it, so the manager reviewing
+        // this one can see they have refused it before and what they said.
+        const refiledFrom = template?.status === 'rejected' ? template._id : undefined;
+        await api.post('/entries', { ...form, refiledFrom });
+      }
       onSaved();
     } catch (err) {
       setError(err.message);

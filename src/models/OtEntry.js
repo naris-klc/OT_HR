@@ -180,6 +180,32 @@ const otEntrySchema = new mongoose.Schema(
       usedHoursBefore: Number,
       basis: String,
     },
+    /**
+     * The rejected request this one was filed to replace.
+     *
+     * A refusal ends a request for good — the employee re-files rather than
+     * reopening it, so the corrected version is a genuinely new document with
+     * its own history starting at `submit`. Read on its own, that history says
+     * a request appeared out of nowhere on a date nobody asked about, and the
+     * manager reviewing it has no way to know they already refused it once or
+     * what they said at the time.
+     *
+     * One pointer, child → parent, set once at creation and never rewritten.
+     * The reverse direction is a query (`{ refiledFrom: id }`) rather than a
+     * second field, because two pointers can disagree and an audit trail that
+     * contradicts itself is worse than one that costs a lookup.
+     *
+     * NOT to be confused with the superseded-entry rule in lib/reports.js:
+     * that is about the same session being FILED twice and only the latest
+     * counting. This is one request replacing a refused one.
+     */
+    refiledFrom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'OtEntry',
+      default: null,
+      index: true,
+    },
+
     /** HR or Admin waiving the cap for this entry (§7). */
     capOverride: {
       by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },

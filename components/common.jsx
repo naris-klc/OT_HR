@@ -254,6 +254,75 @@ let modalSeq = 0;
  * one badly-aimed thumb away at all times. When something is unsaved the close
  * has to be asked for twice.
  */
+/**
+ * “รายการนี้แก้มาจากคำขอเดิมที่ไม่อนุมัติ” — said at the top, before anything
+ * else.
+ *
+ * The refusal that produced this request lives in a different document, at the
+ * bottom of a timeline, several sections down. A manager who has to scroll to
+ * find out they have seen this before will approve it first. So it goes above
+ * the hours, where a decision has not been formed yet.
+ */
+export function RefiledNote({ parent, onOpenTrail }) {
+  if (!parent) return null;
+  return (
+    <div className="refiled-note">
+      <span className="mark">ส่งใหม่</span>
+      <div className="body">
+        <strong>รายการนี้แก้มาจากคำขอเดิมที่ไม่อนุมัติ</strong>
+        <div className="s">
+          คำขอเดิม {thaiDate(parent.workDate)} · {parent.startTime}–{parent.endTime}
+          {parent.rejectionReason && <> · เหตุผลเดิม: “{parent.rejectionReason}”</>}
+        </div>
+      </div>
+      {onOpenTrail && (
+        <button type="button" className="link" onClick={onOpenTrail}>ดูไทม์ไลน์ทั้งหมด</button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Every request in the chain, oldest filing first, each keeping its own
+ * history.
+ *
+ * Deliberately NOT one flat list of events. Two requests refused and re-filed
+ * are two documents, and a single stream of rows would read as one request
+ * that was rejected and then somehow un-rejected — which is not what happened
+ * and not what the hours say. Grouping keeps the order chronological while the
+ * boundary stays visible: this ended, that began.
+ */
+export function RequestTrail({ requests, liveStatus }) {
+  if (!requests?.length) return null;
+  return (
+    <div className="req-trail">
+      {requests.map((r) => (
+        <section key={r._id} className={r.isCurrent ? 'req current' : 'req'}>
+          <header>
+            <span className="seq">คำขอที่ {r.seq}</span>
+            <span className="when">
+              {thaiDate(r.workDate)} · {r.startTime}–{r.endTime}
+            </span>
+            <span className="hrs">{hours(r.totals?.otHours)} ชม.</span>
+            {r.isCurrent
+              ? <span className="chip green">คำขอปัจจุบัน</span>
+              : <StatusChip status={r.status} />}
+          </header>
+          <EntryHistory entry={r} />
+        </section>
+      ))}
+      {/* Where the chain has got to right now — the timeline ends on the
+          present rather than trailing off after the last thing anyone did. */}
+      {liveStatus && (
+        <div className="trail-now">
+          <StatusChip status={liveStatus} />
+          <span>ปัจจุบัน</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Modal({
   title, subtitle, meta, onClose, children, footer, wide = false,
   dirty = false, dirtyPrompt = 'ยังมีข้อมูลที่กรอกไว้และยังไม่ได้บันทึก ปิดหน้าต่างนี้เลยหรือไม่',
