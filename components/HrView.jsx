@@ -6,6 +6,7 @@ import { Alert, Empty } from './common.jsx';
 import PrintForm from './PrintForm.jsx';
 import HrEntries from './HrEntries.jsx';
 import HrEdits from './HrEdits.jsx';
+import { useBackHandler } from './nav.jsx';
 
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({ user }) {
@@ -27,6 +28,13 @@ export default function HrView({ user }) {
   }
 
   useEffect(() => { load(); }, [period, statusFilter]);
+
+  // Three sub-views, all reached from this table and all closed the same
+  // way. Mutually exclusive by the early returns below, so registering each
+  // separately cannot stack them.
+  useBackHandler(Boolean(printing), () => setPrinting(null));
+  useBackHandler(Boolean(auditing), () => setAuditing(null));
+  useBackHandler(Boolean(opened), () => setOpened(null));
 
   if (printing) {
     return (

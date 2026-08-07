@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES } from '@/lib/api.js';
 import { Alert, Empty } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
+import { useBackHandler } from './nav.jsx';
 
 /**
  * สรุป OT ส่งบัญชี — the month's approved hours, ready to hand to accounting.
@@ -25,6 +26,9 @@ export default function AccountingView() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(false);
+
+  // The header mark leaves the print sheet before it leaves the tab.
+  useBackHandler(printing, () => setPrinting(false));
 
   useEffect(() => {
     let live = true;

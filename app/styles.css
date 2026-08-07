@@ -169,10 +169,33 @@ a:hover { color: var(--green-dark); }
   width: 30px; height: 30px; flex: none; border-radius: 7px;
   background: var(--green); color: #fff; display: grid; place-items: center;
   font: 700 14px/1 var(--latin);
+  transition: opacity .14s;
 }
 /* The logo and avatar in the bar are the mobile stand-ins for the sidebar,
    which still shows both. They appear only once the sidebar is gone. */
-.appbar .mark-sm, .appbar .avatar { display: none; }
+.appbar .mark-btn, .appbar .avatar { display: none; }
+
+/* The mark is the only fixed thing on a phone screen, so it carries "back".
+   The badge stays 30px because that is the brand; the button around it is 44
+   so the finger has something to hit — a hit area smaller than that is the
+   difference between a control and a target practice.
+   The negative margin keeps the badge on the same left edge it sat on before
+   the button existed, so nothing in the bar visibly moved. */
+.appbar .mark-btn {
+  flex: none; width: 44px; height: 44px; margin-left: -7px;
+  align-items: center; justify-content: center;
+  padding: 0; border: none; background: none; border-radius: 12px;
+  cursor: pointer;
+  transition: background .14s, transform .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.appbar .mark-btn:hover { background: var(--neutral-wash); }
+.appbar .mark-btn:hover .mark-sm { opacity: .82; }
+/* Presses register on the badge itself, so the feedback is visible on a phone
+   where nothing hovers and the finger covers the button. */
+.appbar .mark-btn:active { transform: scale(.94); }
+.appbar .mark-btn:active .mark-sm { opacity: .7; }
+.appbar .mark-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
 main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .page { max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
@@ -1030,10 +1053,36 @@ table.mini tbody tr:hover { background: none; }
 
 @media (max-width: 860px) {
   .sidebar { display: none; }
-  .appbar .mark-sm { display: grid; }
-  .appbar .avatar { display: grid; width: 38px; height: 38px; cursor: pointer; }
 
-  main { padding: 14px 12px; }
+  /* viewport-fit: cover lets the page run under the notch and the rounded
+     corners, so everything pinned to a screen edge keeps clear of them. `max`
+     rather than `+`: on a phone with no inset these stay exactly the padding
+     they had before. */
+  .appbar {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .mobile-nav {
+    padding-left: max(6px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
+  }
+  .fab { right: max(18px, env(safe-area-inset-right)); }
+  .toast-host {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+  }
+  .modal-foot {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .appbar .mark-btn { display: flex; }
+  /* 44px here too — the way to ข้อมูลส่วนตัว and to ออกจากระบบ. */
+  .appbar .avatar { display: grid; width: 44px; height: 44px; cursor: pointer; }
+
+  main {
+    padding: 14px max(12px, env(safe-area-inset-left)) 14px max(12px, env(safe-area-inset-right));
+  }
 
   /* Clears the fixed bottom bar so the last row is never trapped under it. */
   .mobile-nav-spacer { height: 74px; }

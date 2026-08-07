@@ -7,6 +7,7 @@ import {
 } from './common.jsx';
 import { refileState } from '@/lib/entries.js';
 import OtForm from './OtForm.jsx';
+import { useBackHandler } from './nav.jsx';
 
 export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   const [entries, setEntries] = useState([]);
@@ -38,6 +39,11 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
 
   // The mobile FAB lives in the shell, so it asks for the form by bumping a counter.
   useEffect(() => { if (openSignal > 0) setShowForm(true); }, [openSignal]);
+
+  // The header mark closes the form before it leaves the tab.
+  useBackHandler(Boolean(showForm || reusing || editing), () => {
+    setShowForm(false); setReusing(null); setEditing(null);
+  });
 
   /**
    * Withdrawing a request is a step in its history, not a delete — the row

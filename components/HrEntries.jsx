@@ -7,6 +7,7 @@ import {
 } from './common.jsx';
 import { hasAuditTrail } from '@/lib/entries.js';
 import OtForm from './OtForm.jsx';
+import { useBackHandler } from './nav.jsx';
 
 /**
  * One employee's entries for one month, with HR's correction path.
@@ -38,6 +39,9 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
   }
 
   useEffect(() => { load(); }, [employee._id, period]);
+
+  // The header mark unwinds this before the tab underneath it.
+  useBackHandler(Boolean(editing), () => setEditing(null));
 
   // A drawer left open over a row that no longer exists — a different month,
   // a reloaded list — would never be closed by anything.

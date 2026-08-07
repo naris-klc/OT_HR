@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
 import { Alert } from './common.jsx';
 import { ToastHost } from './Toast.jsx';
+import { BackProvider } from './nav.jsx';
 import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
 import HrView from './HrView.jsx';
@@ -126,7 +127,8 @@ const PAGE = {
 
 function Shell({ session, onLogout }) {
   const { user } = session;
-  const [tab, setTab] = useState(() => defaultTab(user.role));
+  const home = defaultTab(user.role);
+  const [tab, setTab] = useState(home);
   const [counts, setCounts] = useState({ pendingMgr: 0, pendingHr: 0 });
   // Bumped by the mobile FAB; EmployeeView opens its form when it changes.
   const [formSignal, setFormSignal] = useState(0);
@@ -147,6 +149,45 @@ function Shell({ session, onLogout }) {
     const key = stage === 'pending_hr' ? 'pendingHr' : 'pendingMgr';
     setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] || 0) - n) }));
     refreshCounts();
+  }
+
+  // ── back stack ────────────────────────────────────────────────────────────
+  // Two layers, unwound innermost first: sub-views open inside the current tab
+  // (registered by the screens themselves, see nav.jsx), then the tabs visited
+  // before this one. When both are empty, back means the first screen of this
+  // person's role.
+  const subViews = useRef([]);
+  const [subDepth, setSubDepth] = useState(0); // mirrors the ref, to re-render
+  const [trail, setTrail] = useState([]);
+
+  const register = useCallback((fn) => {
+    subViews.current = [...subViews.current, fn];
+    setSubDepth(subViews.current.length);
+    return () => {
+      subViews.current = subViews.current.filter((h) => h !== fn);
+      setSubDepth(subViews.current.length);
+    };
+  }, []);
+
+  /** Switch tabs, remembering where we came from. Bounded, because a trail
+      longer than a few steps stops matching anyone's idea of "back". */
+  function goTab(next) {
+    if (next === tab) return;
+    setTrail((t) => [...t.slice(-7), tab]);
+    setTab(next);
+  }
+
+  const canGoBack = subDepth > 0 || trail.length > 0;
+
+  function goBack() {
+    const open = subViews.current;
+    if (open.length) { open[open.length - 1](); return; }
+    if (trail.length) {
+      setTab(trail[trail.length - 1]);
+      setTrail((t) => t.slice(0, -1));
+      return;
+    }
+    setTab(home);
   }
 
   const tabs = [];
@@ -178,6 +219,7 @@ function Shell({ session, onLogout }) {
   const initials = (user.code || '').replace(/[^A-Za-z0-9]/g, '').slice(-2).toUpperCase();
 
   return (
+    <BackProvider register={register}>
     <div className="shell">
       <aside className="sidebar no-print">
         <div className="brand">
@@ -193,7 +235,7 @@ function Shell({ session, onLogout }) {
             <button
               key={t.key}
               className={tab === t.key ? 'active' : ''}
-              onClick={() => setTab(t.key)}
+              onClick={() => goTab(t.key)}
             >
               <span className="icon">{t.icon}</span>
               <span className="label">{t.label}</span>
@@ -212,7 +254,7 @@ function Shell({ session, onLogout }) {
           <button
             type="button"
             className={`whoami ${tab === 'profile' ? 'active' : ''}`}
-            onClick={() => setTab('profile')}
+            onClick={() => goTab('profile')}
             title="ข้อมูลส่วนตัว"
           >
             <div className="avatar">{initials}</div>
@@ -228,7 +270,21 @@ function Shell({ session, onLogout }) {
 
       <div className="body">
         <header className="appbar no-print">
-          <div className="mark-sm">Pm</div>
+          {/* On a phone there is no sidebar and no browser chrome worth
+              tapping, so the mark is the only fixed thing on screen — which
+              makes it the natural place to put "out of here". It unwinds one
+              screen at a time and, with nothing left to unwind, returns to the
+              first screen of this person's role. The label says which of the
+              two it is about to do rather than naming the logo. */}
+          <button
+            type="button"
+            className="mark-btn"
+            onClick={goBack}
+            aria-label={canGoBack ? 'ย้อนกลับ' : 'กลับหน้าหลัก'}
+            title={canGoBack ? 'ย้อนกลับ' : 'กลับหน้าหลัก'}
+          >
+            <span className="mark-sm" aria-hidden="true">Pm</span>
+          </button>
           <div className="grow">
             <div className="title">{title}</div>
             <div className="meta">{meta}</div>
@@ -236,7 +292,7 @@ function Shell({ session, onLogout }) {
           {/* On mobile the sidebar is gone, so this is the way to ข้อมูลส่วนตัว —
               and to ออกจากระบบ, which now lives on that page rather than one
               mistap away here. */}
-          <button className="avatar" onClick={() => setTab('profile')} title="ข้อมูลส่วนตัว">{initials}</button>
+          <button className="avatar" onClick={() => goTab('profile')} title="ข้อมูลส่วนตัว">{initials}</button>
         </header>
 
         <main>
@@ -260,7 +316,7 @@ function Shell({ session, onLogout }) {
             <button
               key={t.key}
               className={tab === t.key ? 'active' : ''}
-              onClick={() => setTab(t.key)}
+              onClick={() => goTab(t.key)}
             >
               <span className="icon">
                 {t.icon}
@@ -282,6 +338,7 @@ function Shell({ session, onLogout }) {
         )}
       </div>
     </div>
+    </BackProvider>
   );
 }
 

@@ -9,6 +9,17 @@ export const metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
+  /**
+   * Without this, `env(safe-area-inset-*)` resolves to 0 — on every device,
+   * silently. The bottom sheet's buttons and the mobile nav bar both pad
+   * themselves past the home indicator on iOS and the gesture bar on Android,
+   * and neither was doing anything.
+   *
+   * It also lets the page run under the rounded corners and the notch, so
+   * everything anchored to a screen edge takes the horizontal insets too —
+   * see the 860px block in styles.css.
+   */
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }) {

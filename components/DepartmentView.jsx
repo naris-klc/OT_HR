@@ -5,6 +5,7 @@ import { api, hours, withHours, currentPeriod, periodLabel } from '@/lib/api.js'
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
 import { Alert, Empty } from './common.jsx';
 import DepartmentPrint from './DepartmentPrint.jsx';
+import { useBackHandler } from './nav.jsx';
 
 /**
  * สรุป OT แยกแผนก — the month's approved hours counted department by
@@ -30,6 +31,9 @@ export default function DepartmentView() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(false);
+
+  // The header mark leaves the print sheet before it leaves the tab.
+  useBackHandler(printing, () => setPrinting(false));
 
   useEffect(() => {
     let live = true;
