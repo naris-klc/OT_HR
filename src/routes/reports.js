@@ -5,6 +5,7 @@ import Setting from '../models/Setting.js';
 import { requireAuth, wrap } from '../middleware/auth.js';
 import {
   BUCKETS, BUCKET_LABEL_TH, summariseEntries, hrSummary, capUsage, makeIsHoliday,
+  resolveDayTypes,
 } from '../lib/otEngine.js';
 import { loadHolidaySet } from '../services/otService.js';
 
@@ -48,13 +49,26 @@ router.get('/form/:period', wrap(async (req, res) => {
   const [year, month] = period.split('-').map(Number);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const holidays = await loadHolidaySet([year]);
-  const isHoliday = makeIsHoliday(holidays, policy);
 
-  const rows = [];
+  // Resolved for this employee, so the grid agrees with the hours beside it —
+  // see the App Router copy of this route for why.
+  const dates = [];
   for (let day = 1; day <= daysInMonth; day++) {
-    const date = `${period}-${String(day).padStart(2, '0')}`;
-    rows.push({ day, date, isHoliday: isHoliday(date), sessions: [] });
+    dates.push(`${period}-${String(day).padStart(2, '0')}`);
   }
+  const dayTypes = resolveDayTypes(dates, {
+    isHoliday: makeIsHoliday(holidays, policy),
+    birthDate: employee.birthDate,
+    policy,
+  });
+
+  const rows = dates.map((date, i) => ({
+    day: i + 1,
+    date,
+    isHoliday: dayTypes[date].type === 'holiday',
+    dayReason: dayTypes[date].reason,
+    sessions: [],
+  }));
   const byDate = new Map(rows.map((r) => [r.date, r]));
 
   const inPeriod = [];

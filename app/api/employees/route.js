@@ -2,7 +2,7 @@ import Employee, { ROLES } from '@/src/models/Employee.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
-import { defaultPassword } from '@/lib/employees.js';
+import { defaultPassword, publicEmployee } from '@/lib/employees.js';
 
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
@@ -20,7 +20,9 @@ export const GET = route(async (req) => {
     .populate('department', 'code name nameTh monthlyCapHours')
     .sort({ code: 1 })
     .lean();
-  return json({ employees });
+  // `.lean()` hands back the whole document, birthDate included. A manager
+  // listing their department must not receive their team's dates of birth.
+  return json({ employees: employees.map((e) => publicEmployee(e, user)) });
 });
 
 export const POST = route(async (req) => {

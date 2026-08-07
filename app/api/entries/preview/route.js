@@ -10,23 +10,29 @@ export const POST = route(async (req) => {
   const payload = await body(req);
 
   const session = pickSession(payload);
-  const ctx = await loadContext([session.workDate]);
+
+  // Loaded BEFORE the computation, not after it as the cap check used to need.
+  // The preview is what the employee sees while filling the form in, and a
+  // birthday moves the hours between columns — a preview computed without the
+  // person it is for would disagree with what submitting the same form saves.
+  const employeeId = user.role === 'employee' ? user._id : payload.employeeId;
+  const employee = employeeId
+    ? await Employee.findById(employeeId).populate('department')
+    : null;
+
+  const ctx = await loadContext([session.workDate], { employee });
   const result = await compute(session, ctx);
 
-  const employeeId = user.role === 'employee' ? user._id : payload.employeeId;
-  let cap = null;
-  if (employeeId) {
-    const employee = await Employee.findById(employeeId).populate('department');
-    if (employee) {
-      cap = await checkCap({
-        employee,
-        department: employee.department,
-        period: session.workDate.slice(0, 7),
-        result,
-        excludeId: payload.entryId || null,
-        policy: ctx.policy,
-      });
-    }
-  }
+  const cap = employee
+    ? await checkCap({
+      employee,
+      department: employee.department,
+      period: session.workDate.slice(0, 7),
+      result,
+      excludeId: payload.entryId || null,
+      policy: ctx.policy,
+    })
+    : null;
+
   return json({ result, cap });
 });

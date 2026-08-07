@@ -5,6 +5,7 @@ import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
   BUCKETS, BUCKET_LABEL_TH, summariseEntries, hrSummary, capUsage, makeIsHoliday,
+  resolveDayTypes,
 } from '@/src/lib/otEngine.js';
 import { loadHolidaySet } from '@/src/services/otService.js';
 import {
@@ -48,13 +49,35 @@ export const GET = route(async (req, { params }) => {
   const [year, month] = period.split('-').map(Number);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const holidays = await loadHolidaySet([year]);
-  const isHoliday = makeIsHoliday(holidays, policy);
 
-  const rows = [];
+  /**
+   * The calendar down the left of the sheet, resolved for THIS employee.
+   *
+   * It has to be the same resolution the hours were computed from, or the sheet
+   * contradicts itself: a birthday Tuesday carries ot15_holiday hours, and a
+   * grid drawn from the company calendar alone would print them against a row
+   * marked วันทำงาน. The reason rides along so the row can say why — this is
+   * the employee's own form, and a day marked หยุด with no explanation is the
+   * thing that generates the phone call.
+   */
+  const dates = [];
   for (let day = 1; day <= daysInMonth; day++) {
-    const date = `${period}-${String(day).padStart(2, '0')}`;
-    rows.push({ day, date, isHoliday: isHoliday(date), sessions: [] });
+    dates.push(`${period}-${String(day).padStart(2, '0')}`);
   }
+  const dayTypes = resolveDayTypes(dates, {
+    isHoliday: makeIsHoliday(holidays, policy),
+    birthDate: employee.birthDate,
+    policy,
+  });
+
+  const rows = dates.map((date, i) => ({
+    day: i + 1,
+    date,
+    isHoliday: dayTypes[date].type === 'holiday',
+    /** 'weekend' | 'companyHoliday' | 'birthday' | null. */
+    dayReason: dayTypes[date].reason,
+    sessions: [],
+  }));
   const byDate = new Map(rows.map((r) => [r.date, r]));
 
   // Two filings of one session print as one row — the newest. This runs before

@@ -483,6 +483,24 @@ const POLICY_FIELDS = [
     options: [[true, '17:00 (นับเต็ม 3 ชม. สำหรับ 17:00–20:00)'], [false, '17:01']],
   },
   {
+    key: 'birthdayHolidayEnabled', label: 'วันเกิดพนักงานเป็นวันหยุดของคนนั้น', bool: true,
+    options: [
+      [true, 'ใช่ — วันเกิดที่ตรงจันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น'],
+      [false, 'ไม่ — วันเกิดเป็นวันทำงานปกติ (ค่าเริ่มต้น)'],
+    ],
+    hint: 'เปิดแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ '
+      + '· วันเกิดที่ตรงเสาร์–อาทิตย์หรือวันหยุดบริษัทอยู่แล้ว ไม่มีผลเพิ่ม '
+      + '· พนักงานที่ยังไม่มีวันเกิดในระบบจะขึ้นเตือนในหน้าตรวจสอบรายเดือน',
+  },
+  {
+    key: 'birthdayLeapFallback', label: 'วันเกิด 29 ก.พ. ในปีที่ไม่ใช่อธิกสุรทิน',
+    options: [
+      ['feb28', '28 ก.พ. (ค่าเริ่มต้น)'],
+      ['mar01', '1 มี.ค.'],
+      ['none', 'ไม่มีวันหยุดวันเกิดในปีนั้น'],
+    ],
+  },
+  {
     key: 'hrMayReject', open: 7, label: 'HR ปฏิเสธรายการที่หัวหน้าอนุมัติแล้วได้หรือไม่', bool: true,
     options: [[true, 'ได้'], [false, 'ไม่ได้']],
   },
@@ -617,12 +635,20 @@ function Policy({ user }) {
             {POLICY_FIELDS.map((f) => (
               <tr key={f.key}>
                 <td>
-                  OPEN {f.open}
+                  {/* Rules that arrived after the twelve [OPEN] items have no
+                      number to carry, and printing "OPEN undefined" beside one
+                      would make it look like an item somebody forgot. */}
+                  {f.open ? `OPEN ${f.open}` : '—'}
                   {overrides.includes(f.key) && (
                     <div style={{ fontSize: 11.5, color: 'var(--green-dark)' }}>HR ตอบแล้ว</div>
                   )}
                 </td>
-                <td>{f.label}</td>
+                <td>
+                  {f.label}
+                  {f.hint && (
+                    <div className="hint" style={{ marginTop: 4 }}>{f.hint}</div>
+                  )}
+                </td>
                 <td>
                   <select
                     disabled={!canEdit || busy}

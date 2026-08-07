@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeSession, makeIsHoliday } from '../src/lib/otEngine.js';
+import {
+  computeSession, makeIsHoliday, resolveDayTypes, sessionDates,
+} from '../src/lib/otEngine.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
 import { planRecompute, samePolicy } from '../lib/policyVersion.js';
 
@@ -35,10 +37,20 @@ const V2 = {
 
 const HOLIDAYS = new Set(['2026-08-12']);
 
-/** What otService.loadContext builds, with the policy taken from a version row. */
-const contextOf = (version) => ({
+/**
+ * What otService.contextFor builds, with the policy taken from a version row.
+ *
+ * Per session rather than per version, because day types are resolved against
+ * the dates a particular session touches — and, once the birthday rule is on,
+ * against whose session it is.
+ */
+const contextOf = (version, session, birthDate = null) => ({
   policy: version.policy,
-  isHoliday: makeIsHoliday(HOLIDAYS, version.policy),
+  dayTypes: resolveDayTypes(sessionDates(session), {
+    isHoliday: makeIsHoliday(HOLIDAYS, version.policy),
+    birthDate,
+    policy: version.policy,
+  }),
 });
 
 const SESSIONS = [
@@ -51,11 +63,11 @@ const SESSIONS = [
 
 test('replaying against the version an entry names reproduces its hours exactly', () => {
   for (const session of SESSIONS) {
-    const filed = computeSession(session, contextOf(V1));
+    const filed = computeSession(session, contextOf(V1, session));
 
     // Three months later, from the stored snapshot alone.
     for (let i = 0; i < 3; i++) {
-      const replayed = computeSession(session, contextOf(V1));
+      const replayed = computeSession(session, contextOf(V1, session));
       assert.deepEqual(
         replayed,
         filed,
@@ -67,8 +79,8 @@ test('replaying against the version an entry names reproduces its hours exactly'
 
 test('the same session under a different version is a different figure — which is the point', () => {
   const session = SESSIONS[2];
-  const under1 = computeSession(session, contextOf(V1));
-  const under2 = computeSession(session, contextOf(V2));
+  const under1 = computeSession(session, contextOf(V1, session));
+  const under2 = computeSession(session, contextOf(V2, session));
   assert.notEqual(
     under1.totals.otHours,
     under2.totals.otHours,
@@ -78,7 +90,7 @@ test('the same session under a different version is a different figure — which
 
 test('a version snapshot is not disturbed by computing against it', () => {
   const before = JSON.stringify(V1.policy);
-  for (const session of SESSIONS) computeSession(session, contextOf(V1));
+  for (const session of SESSIONS) computeSession(session, contextOf(V1, session));
   assert.equal(JSON.stringify(V1.policy), before);
   assert.equal(samePolicy(V1.policy, DEFAULT_POLICY), true);
 });
@@ -100,14 +112,14 @@ test('changing a policy moves the entries in flight and leaves the signed-off on
     { _id: 'c', status: 'approved', session: SESSIONS[2], policyVersionId: V1._id },
   ];
   // The hours each one carries, all computed under version 1.
-  for (const e of month) e.otHours = computeSession(e.session, contextOf(V1)).totals.otHours;
+  for (const e of month) e.otHours = computeSession(e.session, contextOf(V1, e.session)).totals.otHours;
   const filed = month.map((e) => e.otHours);
 
   const { replay, skipped } = planRecompute(month);
 
   // HR answers OPEN 3. The replay runs against version 2 and stamps it.
   for (const entry of replay) {
-    entry.otHours = computeSession(entry.session, contextOf(V2)).totals.otHours;
+    entry.otHours = computeSession(entry.session, contextOf(V2, entry.session)).totals.otHours;
     entry.policyVersionId = V2._id;
   }
 
@@ -121,17 +133,82 @@ test('changing a policy moves the entries in flight and leaves the signed-off on
   assert.deepEqual(skipped, [{ id: 'c', reason: 'approved' }]);
 });
 
+/**
+ * The same rule, for the one policy flag whose answer differs per employee.
+ *
+ * Worth its own case rather than trusting the general one above: every other
+ * [OPEN] answer moves every entry the same way, so a replay that lost track of
+ * WHO an entry belongs to would still look right. This one does not. The
+ * birthday holiday moves one person's Tuesday and nobody else's, and an entry
+ * replayed against the wrong employee's day types comes out plausible and
+ * wrong — which is why `recomputeEntries` resolves them per entry rather than
+ * once per run.
+ */
+test('เปิดกฎวันเกิด — ใบ pending ถูก replay ได้ version ใหม่ ใบ approved ไม่ขยับ', () => {
+  const BIRTHDAY_OFF = { _id: 'v3', seq: 3, policy: { ...DEFAULT_POLICY } };
+  const BIRTHDAY_ON = {
+    _id: 'v4',
+    seq: 4,
+    policy: { ...DEFAULT_POLICY, birthdayHolidayEnabled: true },
+  };
+
+  // A Tuesday evening. 4 Aug 2026 is the birthday of one of these two people.
+  const session = { workDate: '2026-08-04', startTime: '17:00', endTime: '20:00' };
+  const BIRTHDAY_PERSON = '1994-08-04';
+  const COLLEAGUE = '1990-11-23';
+
+  const month = [
+    { _id: 'a', status: 'pending_mgr', session, birthDate: BIRTHDAY_PERSON, policyVersionId: 'v3' },
+    { _id: 'b', status: 'pending_hr', session, birthDate: COLLEAGUE, policyVersionId: 'v3' },
+    { _id: 'c', status: 'approved', session, birthDate: BIRTHDAY_PERSON, policyVersionId: 'v3' },
+  ];
+  for (const e of month) {
+    e.buckets = computeSession(e.session, contextOf(BIRTHDAY_OFF, e.session, e.birthDate)).buckets;
+  }
+  const filed = month.map((e) => ({ ...e.buckets }));
+
+  // Everybody's hours start in the ordinary weekday evening column.
+  for (const e of month) assert.equal(e.buckets.ot15_weekday, 3);
+
+  // HR turns the rule on. Only what is still in flight is replayed.
+  const { replay, skipped } = planRecompute(month);
+  for (const entry of replay) {
+    entry.buckets = computeSession(
+      entry.session,
+      contextOf(BIRTHDAY_ON, entry.session, entry.birthDate),
+    ).buckets;
+    entry.policyVersionId = 'v4';
+  }
+
+  const [a, b, c] = month;
+
+  // The pending entry belonging to the birthday employee moved columns.
+  assert.equal(a.policyVersionId, 'v4');
+  assert.equal(a.buckets.ot3_holiday, 3);
+  assert.equal(a.buckets.ot15_weekday, 0);
+
+  // Their colleague, same date, same hours, same replay — unchanged. This is
+  // the assertion a per-run context would fail.
+  assert.equal(b.policyVersionId, 'v4');
+  assert.deepEqual(b.buckets, filed[1], 'a colleague on the same Tuesday did not move');
+
+  // And the signed-off one did not move at all, birthday or not.
+  assert.equal(c.policyVersionId, 'v3', 'an approved entry kept its original version');
+  assert.deepEqual(c.buckets, filed[2], 'an approved entry kept its original hours');
+  assert.deepEqual(skipped, [{ id: 'c', reason: 'approved' }]);
+});
+
 test('and the approved entry still reproduces from the version it kept', () => {
   const session = SESSIONS[2];
   const approved = {
     status: 'approved',
     policyVersionId: V1._id,
-    otHours: computeSession(session, contextOf(V1)).totals.otHours,
+    otHours: computeSession(session, contextOf(V1, session)).totals.otHours,
   };
   const versions = new Map([[V1._id, V1], [V2._id, V2]]);
 
   // Months later, HR asks where the number came from. The answer is the
   // snapshot the pointer names — not the policy in force by then.
   const named = versions.get(approved.policyVersionId);
-  assert.equal(computeSession(session, contextOf(named)).totals.otHours, approved.otHours);
+  assert.equal(computeSession(session, contextOf(named, session)).totals.otHours, approved.otHours);
 });

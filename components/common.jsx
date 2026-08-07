@@ -36,6 +36,16 @@ export function BucketSplit({ buckets, total, label = 'รวม' }) {
   );
 }
 
+/**
+ * Why a date counted as a holiday — shown only for a birthday.
+ *
+ * Saturdays, Sundays and the company calendar explain themselves; a Tuesday in
+ * the วันหยุด column does not, and "the system got it wrong" is the reasonable
+ * first assumption. Absent on segments computed before the reason was recorded,
+ * which is why this reads as "no label" rather than "no reason".
+ */
+const DAY_REASON_LABEL = { birthday: 'วันเกิด' };
+
 /** Shows how the engine cut the session up — the ×1.5 / ×3 split, per day. */
 export function SegmentList({ segments }) {
   if (!segments?.length) return null;
@@ -43,7 +53,8 @@ export function SegmentList({ segments }) {
     <ul className="seg-list">
       {segments.map((s, i) => (
         <li key={i}>
-          {s.date} {s.start}–{s.end} · {s.dayType === 'holiday' ? 'วันหยุด' : 'วันทำงาน'} ·
+          {s.date} {s.start}–{s.end} · {s.dayType === 'holiday' ? 'วันหยุด' : 'วันทำงาน'}
+          {DAY_REASON_LABEL[s.dayReason] ? ` (${DAY_REASON_LABEL[s.dayReason]})` : ''} ·
           {' '}×{s.multiplier} · {hours(s.hours)} ชม.
         </li>
       ))}

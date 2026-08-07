@@ -62,7 +62,9 @@ export const POST = route(async (req) => {
   const { value: description, error: descriptionError } = normaliseDescription(payload.description);
   if (descriptionError) return fail(descriptionError, 400);
 
-  const ctx = await loadContext([session.workDate]);
+  // The employee is the caller here, and `user` is a full document, so their
+  // birthDate is already in hand — no extra query to resolve their day types.
+  const ctx = await loadContext([session.workDate], { employee: user });
   const result = await compute(session, ctx);
 
   if (result.totals.otHours <= 0) {

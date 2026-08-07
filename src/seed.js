@@ -16,7 +16,7 @@ import Employee from './models/Employee.js';
 import Holiday from './models/Holiday.js';
 import OtEntry from './models/OtEntry.js';
 import Setting from './models/Setting.js';
-import { loadContext, compute, applyComputation } from './services/otService.js';
+import { loadCalendar, contextFor, compute, applyComputation } from './services/otService.js';
 
 const PASSWORD = process.env.SEED_PASSWORD || 'primus123';
 
@@ -148,7 +148,9 @@ async function run() {
 
   const hr = people.get('HR-001');
   const manager = people.get('PM-0100');
-  const ctx = await loadContext(ALL_EXAMPLES.map((e) => e.workDate));
+  // One calendar for the run, day types per example: the author differs between
+  // them and a birthday is a holiday for one person only.
+  const calendar = await loadCalendar(ALL_EXAMPLES.map((e) => e.workDate));
 
   for (const ex of ALL_EXAMPLES) {
     const author = people.get(ex.by || 'PM-0412');
@@ -159,6 +161,7 @@ async function run() {
       endsNextDay: Boolean(ex.endsNextDay),
       noBreakTaken: Boolean(ex.noBreakTaken),
     };
+    const ctx = contextFor(calendar, session, author);
     const result = await compute(session, ctx);
 
     const entry = new OtEntry({

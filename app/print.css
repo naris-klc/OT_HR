@@ -95,6 +95,9 @@
 .f027 td.c { text-align: center; }
 .f027 td.n { text-align: right; font-variant-numeric: tabular-nums; }
 .f027 td.day { font-weight: 600; }
+/* Why a weekday row is carrying วันหยุด hours. Small enough not to disturb the
+   day column's width, which the whole grid is measured from. */
+.f027 td.day .daynote { font-weight: 400; font-size: 6.5pt; line-height: 1.1; }
 .f027 td.desc { font-size: 6.8pt; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* The three yellow headings are the only fill on the sheet — holidays are not
    tinted, exactly as on the paper form. */

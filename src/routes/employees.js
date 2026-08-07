@@ -4,6 +4,7 @@ import Employee, { ROLES } from '../models/Employee.js';
 import Department from '../models/Department.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../lib/csv.js';
+import { publicEmployee } from '../../lib/employees.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
@@ -22,7 +23,9 @@ router.get('/', wrap(async (req, res) => {
     .populate('department', 'code name nameTh monthlyCapHours')
     .sort({ code: 1 })
     .lean();
-  res.json({ employees });
+  // Same rule as the App Router roster — `.lean()` carries birthDate and a
+  // manager listing their department must not receive it.
+  res.json({ employees: employees.map((e) => publicEmployee(e, req.user)) });
 }));
 
 router.post('/', requireRole('admin'), wrap(async (req, res) => {

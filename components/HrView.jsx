@@ -248,6 +248,25 @@ export default function HrView({ user }) {
                 {' '}เปิดใบ F-HR-027 ของพนักงานเพื่อดูว่าเป็นรายการใด
               </div>
             )}
+
+            {/* An employee with no วันเกิด on record is computed as though no
+                weekday of theirs was ever a holiday, which looks identical to
+                an employee whose birthday fell on a Sunday. Only HR can tell
+                the two apart, and only if the gap is named. Louder when the
+                rule is actually on — the figures below are affected by then. */}
+            {data.birthDates?.missing > 0 && (
+              <Alert kind={data.birthDates.ruleEnabled ? 'warn' : 'info'}>
+                {data.birthDates.ruleEnabled
+                  ? `กฎวันหยุดวันเกิดเปิดอยู่ แต่ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — ชั่วโมงของคนเหล่านี้คำนวณเหมือนไม่มีวันเกิด`
+                  : `ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — กรอกให้ครบก่อนเปิดกฎวันหยุดวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง`}
+                <div style={{ marginTop: 4 }}>
+                  {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 11.5 }}>
+                  เพิ่มวันเกิดได้ที่หน้า ผู้ดูแลระบบ › พนักงาน (เฉพาะ Admin)
+                </div>
+              </Alert>
+            )}
           </>
         )}
       </div>

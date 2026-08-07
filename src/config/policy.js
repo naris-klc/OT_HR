@@ -76,6 +76,37 @@ export const DEFAULT_POLICY = Object.freeze({
    */
   otStartsAtCoreEnd: true,
 
+  // ── วันเกิดพนักงานเป็นวันหยุดของคนนั้น ──────────────────────────────────────
+  /**
+   * false — a birthday is an ordinary working day (DEFAULT).
+   * true  — an employee's birthday falling Mon–Fri is a holiday FOR THAT PERSON
+   *         ONLY: 08:00–17:00 goes to ot15_holiday and the hours either side to
+   *         ot3_holiday, exactly as a company holiday would. A birthday that
+   *         already lands on a weekend or a company holiday adds nothing.
+   *
+   * Off by default because it is a benefit somebody has to decide to grant, and
+   * because turning it on restates every entry still in flight — see
+   * ARITHMETIC_KEYS in lib/policyVersion.js. Signed-off entries do not move.
+   *
+   * This is the one policy flag whose answer depends on WHO worked, which is why
+   * day types are resolved by the caller and handed to the engine as a map.
+   * `resolveDayTypes` in src/lib/otEngine.js is the whole rule; the engine
+   * itself never learns that birthdays exist.
+   */
+  birthdayHolidayEnabled: false,
+  /**
+   * Which day a 29 February birthday falls on in a year that has no 29 February.
+   *
+   * 'feb28' — 28 February (DEFAULT: the day the birthday would have been).
+   * 'mar01' — 1 March (the day after the 28th, i.e. "the next day that exists").
+   * 'none'  — no birthday holiday at all in a non-leap year.
+   *
+   * A flag rather than a constant: this is a choice about somebody's day off,
+   * three defensible answers exist, and whichever is chosen changes hours — so
+   * it is recorded as part of the rule set like every other answer here.
+   */
+  birthdayLeapFallback: 'feb28',
+
   // ── [OPEN 6] Different rules per department or shift? ──────────────────────
   /**
    * false — one day model for everybody (DEFAULT). If HR answers "yes", this

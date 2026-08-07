@@ -1,7 +1,9 @@
 import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { compute, applyComputation, checkCap, loadContext } from '@/src/services/otService.js';
+import {
+  compute, applyComputation, checkCap, loadContext, birthDateOf,
+} from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, editPermission, sameSession,
 } from '@/lib/entries.js';
@@ -34,7 +36,14 @@ export const PATCH = route(async (req, { params }) => {
   const before = entry.snapshot();
 
   const session = pickSession({ ...entry.toObject(), ...payload });
-  const ctx = await loadContext([session.workDate]);
+
+  // The day types belong to whoever the entry is FOR, which is not the actor
+  // when HR is the one editing. `POPULATE` deliberately does not carry
+  // birthDate — it feeds every entry list the API returns — so it is fetched
+  // here, used, and never put on the response.
+  const ctx = await loadContext([session.workDate], {
+    employee: { birthDate: await birthDateOf(entry.employee?._id || entry.employee) },
+  });
   const result = await compute(session, ctx);
   if (result.totals.otHours <= 0) {
     return fail('ช่วงเวลานี้อยู่ในเวลาทำงานปกติทั้งหมด จึงไม่นับเป็น OT', 400);

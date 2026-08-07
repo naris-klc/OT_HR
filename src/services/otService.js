@@ -4,6 +4,7 @@
  * department cap.
  */
 
+import Employee from '../models/Employee.js';
 import Holiday from '../models/Holiday.js';
 import OtEntry from '../models/OtEntry.js';
 import PolicyVersion from '../models/PolicyVersion.js';
@@ -12,6 +13,8 @@ import {
   BUCKETS,
   computeSession,
   makeIsHoliday,
+  resolveDayTypes,
+  sessionDates,
   summariseEntries,
   capUsage,
   addDays,
@@ -52,7 +55,15 @@ export async function currentPolicyVersion(policy) {
   return samePolicy(latest.policy, policy) ? latest : null;
 }
 
-export async function loadContext(workDates = []) {
+/**
+ * Everything that is the same for everybody: the live policy, the company
+ * holiday calendar, and which recorded rule set the policy corresponds to.
+ *
+ * Split out from `loadContext` because a replay covers many employees and the
+ * birthday rule makes the day type depend on which one. The calendar is loaded
+ * once per run; only the per-employee half is redone per entry.
+ */
+export async function loadCalendar(workDates = []) {
   const years = [...new Set(workDates.flatMap((d) => [d.slice(0, 4), addDays(d, 1).slice(0, 4)]))];
   const [policy, holidays] = await Promise.all([
     Setting.effectivePolicy(),
@@ -71,6 +82,92 @@ export async function loadContext(workDates = []) {
      */
     policyVersionId: version?._id || null,
   };
+}
+
+/**
+ * The calendar, narrowed to one person and one session.
+ *
+ * This is where the employee's birthDate enters the calculation and the only
+ * place it does. `computeSession` receives a plain date → day-type map and
+ * never learns whose birthday it was, which is what keeps the engine a pure
+ * function of (session, policy, dayTypes) and its tests free of a database.
+ *
+ * Resolved over `sessionDates`, not over `workDate` alone: a session that runs
+ * past midnight puts minutes into two dates, and those can be two different
+ * kinds of day — a birthday Friday running into an ordinary Saturday is the
+ * case that has to be right.
+ */
+export function contextFor(calendar, session, employee = null) {
+  return {
+    ...calendar,
+    dayTypes: resolveDayTypes(sessionDates(session), {
+      isHoliday: calendar.isHoliday,
+      birthDate: employee?.birthDate || null,
+      policy: calendar.policy,
+    }),
+  };
+}
+
+/**
+ * Calendar plus day types, for a caller holding one session and one employee.
+ *
+ * `employee` is optional and its absence is not the same as an employee with no
+ * birthDate — it is a caller that has not been taught about the rule. Both
+ * compute the same hours while `birthdayHolidayEnabled` is off, which is why
+ * every call site was updated rather than left to fall through: the day the
+ * flag is turned on, a forgotten one would quietly go on computing the old
+ * answer. The monthly review reports employees with no birthDate on record for
+ * the same reason (see the monthly report route) — a birthday rule that is on
+ * and a roster that is half filled in must not look like a rule that is off.
+ *
+ * Day types are resolved for each workDate AND the day after it, which covers
+ * any session starting on one of those dates whether or not it runs past
+ * midnight.
+ */
+export async function loadContext(workDates = [], { employee = null } = {}) {
+  const calendar = await loadCalendar(workDates);
+  const dates = [...new Set(workDates.flatMap((d) => [d, addDays(d, 1)]))];
+  return {
+    ...calendar,
+    dayTypes: resolveDayTypes(dates, {
+      isHoliday: calendar.isHoliday,
+      birthDate: employee?.birthDate || null,
+      policy: calendar.policy,
+    }),
+  };
+}
+
+/**
+ * The birthDate of whoever an entry is FOR.
+ *
+ * A separate query rather than a field on `POPULATE`: that projection feeds
+ * every entry list the API returns, and a birthday is personal data that a
+ * colleague — including the manager approving the request — has no business
+ * receiving. It is loaded here, used to resolve one map, and never leaves the
+ * server. See `publicEmployee` in lib/employees.js for the other half.
+ */
+export async function birthDateOf(employeeId) {
+  if (!employeeId) return null;
+  const doc = await Employee.findById(employeeId).select('birthDate').lean();
+  return doc?.birthDate || null;
+}
+
+/**
+ * The same thing for a batch of entries, as a Map keyed by employee id.
+ *
+ * One query for a whole replay. A month's worth of entries belongs to a few
+ * dozen people at most, so this is smaller than the entries themselves — and a
+ * per-entry lookup inside the replay loop would turn one policy change into a
+ * few hundred round trips.
+ */
+export async function birthDatesFor(entries = []) {
+  const ids = [...new Set(
+    entries.map((e) => String(e.employee?._id || e.employee || '')).filter(Boolean),
+  )];
+  if (!ids.length) return new Map();
+
+  const docs = await Employee.find({ _id: { $in: ids } }).select('birthDate').lean();
+  return new Map(docs.map((d) => [String(d._id), d.birthDate || null]));
 }
 
 /** Compute one session. Throws OtValidationError on bad input. */
@@ -213,7 +310,18 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
   }));
   const replayBefore = replay.map((e) => ({ status: e.status }));
 
-  const ctx = replay.length ? await loadContext(replay.map((e) => e.workDate)) : null;
+  /**
+   * The calendar is one query for the whole run; the day types are not.
+   *
+   * Before the birthday rule a single context served every entry, because every
+   * entry's day types were the same. They are not any more — a Tuesday is a
+   * holiday for the one person born on it — so the shared half is loaded once
+   * and the per-employee half is resolved per entry, from birthDates fetched in
+   * a single query rather than one lookup per row.
+   */
+  const calendar = replay.length ? await loadCalendar(replay.map((e) => e.workDate)) : null;
+  const birthDates = await birthDatesFor(replay);
+
   const failed = [];
   const changed = [];
   let updated = 0;
@@ -223,16 +331,18 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
       const signedOff = entry.status === 'approved';
       const before = signedOff ? entry.snapshot() : null;
 
-      const result = computeSession(
-        {
-          workDate: entry.workDate,
-          startTime: entry.startTime,
-          endTime: entry.endTime,
-          endsNextDay: entry.endsNextDay,
-          noBreakTaken: entry.noBreakTaken,
-        },
-        ctx,
-      );
+      const session = {
+        workDate: entry.workDate,
+        startTime: entry.startTime,
+        endTime: entry.endTime,
+        endsNextDay: entry.endsNextDay,
+        noBreakTaken: entry.noBreakTaken,
+      };
+      const ctx = contextFor(calendar, session, {
+        birthDate: birthDates.get(String(entry.employee?._id || entry.employee)) || null,
+      });
+
+      const result = computeSession(session, ctx);
       applyComputation(entry, result, ctx);
 
       // Only when it actually moved: a replay that lands on the same figures
@@ -263,7 +373,7 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
     changed,
     skipped,
     failed,
-    toVersionId: ctx?.policyVersionId || null,
+    toVersionId: calendar?.policyVersionId || null,
   });
 
   /**
@@ -289,7 +399,7 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
       note: note || undefined,
       filter,
       includeApproved,
-      toVersion: ctx?.policyVersionId || undefined,
+      toVersion: calendar?.policyVersionId || undefined,
       fromVersions: summary.fromVersions
         .filter((f) => f.version)
         .map((f) => ({ version: f.version, count: f.count })),

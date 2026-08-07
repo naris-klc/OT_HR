@@ -23,8 +23,18 @@ export const GET = route(async (req, { params }) => {
   else if (q.department) filter.department = q.department;
   filter.status = { $in: String(q.status || 'approved,pending_hr,pending_mgr').split(',') };
 
+  /**
+   * `birthDate` is selected but never returned — see `withoutBirthDate` below.
+   *
+   * It is pulled only to answer one yes/no question: is this person's birthday
+   * on record at all. With the birthday rule on, an employee with no birthDate
+   * is computed as though no weekday of theirs was ever a holiday, and that
+   * looks exactly like an employee whose birthday simply fell on a Sunday. The
+   * difference is that one of them is right and the other is a gap in the
+   * roster, and only HR can close it.
+   */
   const all = await OtEntry.find(filter)
-    .populate('employee', 'code name position')
+    .populate('employee', 'code name position birthDate')
     .populate('department', 'code name nameTh monthlyCapHours')
     .lean();
 
@@ -69,12 +79,26 @@ export const GET = route(async (req, { params }) => {
       .select('seq policy note createdAt createdByName').lean()
     : [];
 
+  /**
+   * This screen is open to managers as well as HR, and a manager has no
+   * business receiving their team's dates of birth — the same rule as the
+   * roster endpoint (`publicEmployee` in lib/employees.js). What leaves here is
+   * the boolean, never the date.
+   */
+  const withoutBirthDate = (employee) => {
+    if (!employee) return employee;
+    const { birthDate, ...rest } = employee;
+    return rest;
+  };
+
   const employees = [...byEmployee.values()].map((group) => {
     const summary = summariseEntries(group.entries);
     const capHours = group.department?.monthlyCapHours ?? null;
     const used = capUsage(summary, policy);
     return {
-      employee: group.employee,
+      employee: withoutBirthDate(group.employee),
+      /** No วันเกิด on record — their weekdays can never become holidays. */
+      birthDateMissing: !group.employee?.birthDate,
       department: group.department,
       entryCount: group.entries.length,
       pendingCount: group.entries.filter((e) => e.status !== 'approved').length,
@@ -96,6 +120,23 @@ export const GET = route(async (req, { params }) => {
     hrSection: hrSummary(grand, policy),
     /** Superseded filings left out of every figure above — reported, not silent. */
     supersededCount: hidden.length,
+    /**
+     * The roster gap the birthday rule creates, counted so the screen can say
+     * it out loud.
+     *
+     * Reported whether or not the rule is on, because HR filling the dates in
+     * BEFORE it is turned on is the only way to avoid a month that has to be
+     * replayed afterwards. `ruleEnabled` is what decides whether the screen
+     * treats it as a warning or as housekeeping.
+     */
+    birthDates: {
+      ruleEnabled: Boolean(policy.birthdayHolidayEnabled),
+      missing: employees.filter((e) => e.birthDateMissing).length,
+      /** Who, so HR has a list to work from rather than a number. */
+      missingFor: employees
+        .filter((e) => e.birthDateMissing)
+        .map((e) => ({ code: e.employee?.code, name: e.employee?.name })),
+    },
     /**
      * The month as a whole. Two employees each computed consistently under a
      * different version is still a month that does not add up the same way

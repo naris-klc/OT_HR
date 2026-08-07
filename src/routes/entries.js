@@ -5,7 +5,9 @@ import Setting from '../models/Setting.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { OtValidationError } from '../lib/otEngine.js';
 import { normaliseDescription } from '../config/policy.js';
-import { compute, applyComputation, checkCap, loadContext, monthlyUsage } from '../services/otService.js';
+import {
+  compute, applyComputation, checkCap, loadContext, monthlyUsage, birthDateOf,
+} from '../services/otService.js';
 // `pickSession` and `stampCap` below are this file's own copies, from before the
 // split. `sameSession` is not copied: it decides whether an edit keeps the
 // version it replaced, and a second copy that drifted would lose forms rather
@@ -73,24 +75,28 @@ router.get('/:id', wrap(async (req, res) => {
 
 router.post('/preview', wrap(async (req, res) => {
   const session = pickSession(req.body);
-  const ctx = await loadContext([session.workDate]);
+
+  // Loaded before the computation: day types depend on whose birthday it is, so
+  // a preview computed without the employee would disagree with the submit.
+  const employeeId = req.user.role === 'employee' ? req.user._id : req.body.employeeId;
+  const employee = employeeId
+    ? await Employee.findById(employeeId).populate('department')
+    : null;
+
+  const ctx = await loadContext([session.workDate], { employee });
   const result = await compute(session, ctx);
 
-  const employeeId = req.user.role === 'employee' ? req.user._id : req.body.employeeId;
-  let cap = null;
-  if (employeeId) {
-    const employee = await Employee.findById(employeeId).populate('department');
-    if (employee) {
-      cap = await checkCap({
-        employee,
-        department: employee.department,
-        period: session.workDate.slice(0, 7),
-        result,
-        excludeId: req.body.entryId || null,
-        policy: ctx.policy,
-      });
-    }
-  }
+  const cap = employee
+    ? await checkCap({
+      employee,
+      department: employee.department,
+      period: session.workDate.slice(0, 7),
+      result,
+      excludeId: req.body.entryId || null,
+      policy: ctx.policy,
+    })
+    : null;
+
   res.json({ result, cap });
 }));
 
@@ -107,7 +113,7 @@ router.post('/', wrap(async (req, res) => {
   const { value: description, error: descriptionError } = normaliseDescription(req.body.description);
   if (descriptionError) return res.status(400).json({ error: descriptionError });
 
-  const ctx = await loadContext([session.workDate]);
+  const ctx = await loadContext([session.workDate], { employee: req.user });
   const result = await compute(session, ctx);
 
   if (result.totals.otHours <= 0) {
@@ -187,7 +193,10 @@ router.patch('/:id', wrap(async (req, res) => {
   const before = entry.snapshot();
 
   const session = pickSession({ ...entry.toObject(), ...req.body });
-  const ctx = await loadContext([session.workDate]);
+  // Whoever the entry is FOR, which is not the actor when HR is editing.
+  const ctx = await loadContext([session.workDate], {
+    employee: { birthDate: await birthDateOf(entry.employee?._id || entry.employee) },
+  });
   const result = await compute(session, ctx);
   if (result.totals.otHours <= 0) {
     return res.status(400).json({ error: 'ช่วงเวลานี้อยู่ในเวลาทำงานปกติทั้งหมด จึงไม่นับเป็น OT' });

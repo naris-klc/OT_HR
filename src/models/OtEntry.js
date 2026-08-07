@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { model } from './model.js';
-import { BUCKETS } from '../lib/otEngine.js';
+import { BUCKETS, DAY_REASONS } from '../lib/otEngine.js';
 
 export const STATUSES = ['pending_mgr', 'pending_hr', 'approved', 'rejected', 'cancelled'];
 
@@ -27,6 +27,17 @@ const segmentSchema = new mongoose.Schema(
     start: { type: String, required: true },       // 'HH:MM'
     end: { type: String, required: true },         // 'HH:MM'
     dayType: { type: String, enum: ['workday', 'holiday'], required: true },
+    /**
+     * Why it was that kind of day. Optional and unvalidated against a required
+     * list, for the reason every field in `snapshotSchema` is optional:
+     * mongoose validates the whole document on save, and every segment written
+     * before this field existed would otherwise make its entry unsaveable.
+     *
+     * Absent means "not recorded", NOT "no reason" — an old holiday segment is
+     * still a holiday segment. Readers must treat it as a label they may or may
+     * not have, which is also why nothing in the arithmetic reads it.
+     */
+    dayReason: { type: String, enum: [...Object.values(DAY_REASONS), null] },
     bucket: { type: String, enum: Object.values(BUCKETS), required: true },
     multiplier: { type: Number, required: true },  // bucket label, not a rate
     minutes: { type: Number, required: true },

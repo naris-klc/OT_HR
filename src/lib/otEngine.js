@@ -32,6 +32,33 @@ export const BUCKET_LABEL_TH = Object.freeze({
   [BUCKETS.OT3_HOLIDAY]: 'OT วันหยุด (17.01–07.59)',
 });
 
+/**
+ * What a calendar date is, for the person whose session is being computed.
+ *
+ * Two values only, and deliberately so: `dayType` is stored on every segment
+ * and on the printed form, and a third value would have to mean something to
+ * `bucketFor`, which has exactly two branches. A birthday holiday is a holiday.
+ */
+export const DAY_TYPES = Object.freeze({ WORKDAY: 'workday', HOLIDAY: 'holiday' });
+
+/**
+ * WHY a date is what it is — carried alongside `dayType`, never instead of it.
+ *
+ * The engine does nothing with this: two segments with the same `dayType` land
+ * in the same bucket whatever the reason. It exists because the reason is not
+ * recoverable afterwards and somebody always asks. An overnight session that
+ * starts on an employee's birthday Friday and runs into Saturday produces two
+ * ot3_holiday segments that are identical on the sheet and arrived there by
+ * different rules — one because HR turned the birthday rule on, one because
+ * Saturday has always been a holiday. Only the first moves if the rule is
+ * turned off again.
+ */
+export const DAY_REASONS = Object.freeze({
+  WEEKEND: 'weekend',
+  COMPANY_HOLIDAY: 'companyHoliday',
+  BIRTHDAY: 'birthday',
+});
+
 const MINUTES_PER_DAY = 1440;
 
 export class OtValidationError extends Error {
@@ -110,6 +137,164 @@ export function makeIsHoliday(holidayDates = [], policy = DEFAULT_POLICY) {
   const set = holidayDates instanceof Set ? holidayDates : new Set(holidayDates);
   const weekend = new Set(policy.weekendDays);
   return (dateStr) => set.has(dateStr) || weekend.has(dayOfWeek(dateStr));
+}
+
+// ── day types ───────────────────────────────────────────────────────────────
+
+/**
+ * Every calendar date a session can put minutes into.
+ *
+ * The caller resolves day types ahead of time and this is the list to resolve.
+ * It mirrors `computeSession`'s own segmentation exactly — an overnight session
+ * spans two dates that may be different kinds of day, and a caller that
+ * resolved only `workDate` would hand the engine a map with a hole in it.
+ *
+ * Lenient where `computeSession` is strict: a session whose end is not after
+ * its start is rejected there, with a message about the form. Throwing a
+ * different error here, one step earlier, would replace it with a worse one.
+ */
+export function sessionDates(session) {
+  const { workDate, startTime, endTime } = session || {};
+  parseDate(workDate);
+  const startMin = parseTime(startTime);
+  let endMin = parseTime(endTime);
+  if (session.endsNextDay) endMin += MINUTES_PER_DAY;
+
+  const lastDay = Math.floor((Math.max(endMin, startMin + 1) - 1) / MINUTES_PER_DAY);
+  const dates = [];
+  for (let day = 0; day <= lastDay; day++) dates.push(addDays(workDate, day));
+  return dates;
+}
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/**
+ * The date an employee's birthday falls on in a given year, or null.
+ *
+ * 29 February is the only day of the year that does not exist in every year,
+ * and what to do about it is `policy.birthdayLeapFallback` rather than a
+ * constant, because it is a choice about somebody's day off and not an
+ * arithmetic fact. 'none' is a real answer too: a leap-day birthday gets the
+ * holiday in leap years only.
+ *
+ * A birthDate that is not a real date throws. It can only be read at all when
+ * HR has turned the birthday rule ON — see `resolveDayTypes` — so a typo in the
+ * roster surfaces at the moment it starts changing hours, rather than quietly
+ * granting or withholding a holiday nobody can see the reason for.
+ */
+export function birthdayInYear(birthDate, year, policy = DEFAULT_POLICY) {
+  if (!birthDate) return null;
+
+  const m = DATE_RE.exec(String(birthDate));
+  // Catches 31 April and 30 February in the roster. Once the birthDate itself
+  // is a real date, the same day-of-month is real in every other year too —
+  // except 29 February, which is the whole point of the branch below.
+  let valid = Boolean(m);
+  if (valid) {
+    try { parseDate(birthDate); } catch { valid = false; }
+  }
+  if (!valid) throw new OtValidationError('BAD_BIRTH_DATE', `วันเกิดไม่ถูกต้อง: ${birthDate}`);
+
+  const [, , month, day] = m;
+  const y = String(year).padStart(4, '0');
+
+  if (month === '02' && day === '29' && !isLeapYear(Number(year))) {
+    if (policy.birthdayLeapFallback === 'none') return null;
+    if (policy.birthdayLeapFallback === 'mar01') return `${y}-03-01`;
+    return `${y}-02-28`;
+  }
+
+  return `${y}-${month}-${day}`;
+}
+
+/**
+ * The map `computeSession` reads: date → what kind of day it was FOR THIS
+ * PERSON.
+ *
+ * Pure, and separate from the engine's own segmentation on purpose. The
+ * birthday rule makes the day type depend on WHO worked, which the engine has
+ * no business knowing — it takes a session and a policy, and a database lookup
+ * inside it would be a database lookup inside every test. So the caller loads
+ * the holiday calendar and the employee's birthDate, resolves the handful of
+ * dates the session touches, and hands over the answer.
+ *
+ * Order matters: a birthday that already falls on a Saturday, a Sunday or a
+ * company holiday adds nothing. The day was already a holiday, the hours were
+ * already in the holiday buckets, and reporting the reason as 'birthday' would
+ * claim the new rule moved figures it did not.
+ *
+ * Values come out in the `{ type, reason }` form. `computeSession` also accepts
+ * a bare 'workday' / 'holiday' string per date, which is what a hand-written
+ * map in a test looks like.
+ */
+export function resolveDayTypes(dates = [], options = {}) {
+  const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
+  const isHoliday = options.isHoliday || makeIsHoliday([], policy);
+  const birthDate = options.birthDate || null;
+  const weekend = new Set(policy.weekendDays);
+
+  // One session spans at most two dates, but a replay resolves a month at a
+  // time and the same year comes round on every one of them.
+  const birthdayByYear = new Map();
+  const birthdayFor = (year) => {
+    if (!birthdayByYear.has(year)) {
+      birthdayByYear.set(year, birthdayInYear(birthDate, year, policy));
+    }
+    return birthdayByYear.get(year);
+  };
+
+  const out = {};
+  for (const date of dates) {
+    parseDate(date);
+
+    if (isHoliday(date)) {
+      out[date] = {
+        type: DAY_TYPES.HOLIDAY,
+        reason: weekend.has(dayOfWeek(date)) ? DAY_REASONS.WEEKEND : DAY_REASONS.COMPANY_HOLIDAY,
+      };
+      continue;
+    }
+
+    const birthday = policy.birthdayHolidayEnabled && birthDate
+      && birthdayFor(Number(date.slice(0, 4))) === date;
+
+    out[date] = birthday
+      ? { type: DAY_TYPES.HOLIDAY, reason: DAY_REASONS.BIRTHDAY }
+      : { type: DAY_TYPES.WORKDAY, reason: null };
+  }
+  return out;
+}
+
+/**
+ * One date's entry, in either accepted form.
+ *
+ * A missing date is an error and never a default. Guessing 'workday' would put
+ * an employee's holiday hours in the ×1.5 weekday column and there would be
+ * nothing on the entry, the form or the audit trail to say a guess was made —
+ * the figure would simply be wrong and look computed. The caller knows which
+ * dates it is asking about (`sessionDates`); not knowing what one of them is
+ * means the resolution step was skipped, which is a bug in the caller.
+ */
+function readDayType(dayTypes, dateStr) {
+  const raw = dayTypes instanceof Map
+    ? dayTypes.get(dateStr)
+    : (Object.prototype.hasOwnProperty.call(dayTypes || {}, dateStr) ? dayTypes[dateStr] : undefined);
+
+  if (raw == null) {
+    throw new OtValidationError(
+      'MISSING_DAY_TYPE',
+      `ไม่ทราบว่า ${dateStr} เป็นวันทำงานหรือวันหยุด — ผู้เรียกต้องส่ง dayTypes ของทุกวันที่ที่ช่วงเวลานี้พาดถึง`,
+    );
+  }
+
+  const type = typeof raw === 'string' ? raw : raw.type;
+  const reason = typeof raw === 'string' ? null : (raw.reason ?? null);
+  if (type !== DAY_TYPES.WORKDAY && type !== DAY_TYPES.HOLIDAY) {
+    throw new OtValidationError('BAD_DAY_TYPE', `ชนิดของวันไม่ถูกต้องสำหรับ ${dateStr}: ${type}`);
+  }
+  return { type, reason };
 }
 
 // ── rounding ────────────────────────────────────────────────────────────────
@@ -218,13 +403,26 @@ function applyFlatDeduction(segments, deductMinutes) {
  * @param {string} session.endTime       'HH:MM'
  * @param {boolean} [session.endsNextDay] session runs past midnight
  * @param {boolean} [session.noBreakTaken] ไม่พักเที่ยง — skip the deduction
- * @param {object} [options]
- * @param {(dateStr: string) => boolean} [options.isHoliday]
+ * @param {object} options
+ * @param {object|Map} options.dayTypes  date → 'workday' | 'holiday' | { type, reason }.
+ *   Resolved by the caller, because the birthday rule makes the answer depend
+ *   on which employee worked and this module reads no database. Must cover
+ *   every date in `sessionDates(session)`; a gap throws rather than defaulting.
  * @param {object} [options.policy]
  */
 export function computeSession(session, options = {}) {
   const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
-  const isHoliday = options.isHoliday || makeIsHoliday([], policy);
+
+  // A caller still passing the old predicate would otherwise get silently
+  // correct answers for everyone with no birthday and silently wrong ones for
+  // everyone else. Louder to refuse it.
+  if (options.isHoliday && !options.dayTypes) {
+    throw new OtValidationError(
+      'MISSING_DAY_TYPE',
+      'computeSession รับ dayTypes ไม่ใช่ isHoliday — เรียก resolveDayTypes(sessionDates(session), { isHoliday, birthDate, policy }) ก่อน',
+    );
+  }
+  const dayTypes = options.dayTypes || {};
 
   const { workDate, startTime, endTime } = session;
   const endsNextDay = Boolean(session.endsNextDay);
@@ -267,8 +465,8 @@ export function computeSession(session, options = {}) {
       const dayIndex = Math.floor(a / MINUTES_PER_DAY);
       const dateStr = addDays(workDate, dayIndex);
       const minuteOfDay = a - dayIndex * MINUTES_PER_DAY;
-      const holiday = isHoliday(dateStr);
-      const bucket = bucketFor(holiday, minuteOfDay, policy);
+      const { type, reason } = readDayType(dayTypes, dateStr);
+      const bucket = bucketFor(type === DAY_TYPES.HOLIDAY, minuteOfDay, policy);
       if (!bucket) { nonOtMinutes += b - a; continue; }
       segments.push({
         date: dateStr,
@@ -277,7 +475,9 @@ export function computeSession(session, options = {}) {
         // the paper form's ถึง column has to read "17:00 – 24:00" for the
         // first night of an overnight session, or the row is unreadable.
         end: b % MINUTES_PER_DAY === 0 ? '24:00' : formatTime(b),
-        dayType: holiday ? 'holiday' : 'workday',
+        dayType: type,
+        /** Why it was that kind of day. Never read by the arithmetic. */
+        dayReason: reason,
         bucket,
         multiplier: BUCKET_MULTIPLIER[bucket],
         minutes: b - a,

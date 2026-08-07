@@ -18,6 +18,8 @@ import {
   BUCKETS,
   computeSession,
   makeIsHoliday,
+  resolveDayTypes,
+  sessionDates,
   summariseEntries,
   hrSummary,
   capUsage,
@@ -29,7 +31,16 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
 const HOLIDAYS = ['2026-08-12'];
 const isHoliday = makeIsHoliday(HOLIDAYS);
 
-const run = (session, policy) => computeSession(session, { isHoliday, policy });
+/**
+ * The engine takes day types resolved by its caller, so the tests resolve them
+ * the same way `otService.contextFor` does. No birthDate here on purpose: these
+ * are the §4 worked examples, and they are the same for everybody. The birthday
+ * rule has its own file, test/otBirthday.test.js.
+ */
+const run = (session, policy) => computeSession(session, {
+  policy,
+  dayTypes: resolveDayTypes(sessionDates(session), { isHoliday, policy }),
+});
 
 // ── §4 worked examples ──────────────────────────────────────────────────────
 
