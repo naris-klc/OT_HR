@@ -206,6 +206,27 @@ const otEntrySchema = new mongoose.Schema(
       index: true,
     },
 
+    /**
+     * The one request filed to replace this one — and the lock that makes
+     * "once only" true.
+     *
+     * `refiledFrom` alone already describes the chain, and a reverse pointer
+     * purely for navigation would be redundant. This one is not for
+     * navigation. A limit of one re-filing cannot be enforced by reading
+     * whether a child exists and then writing one: two taps on a slow
+     * connection both read "no child yet" and both write. Claiming this field
+     * with a single conditional update is the only version of the rule that
+     * two requests cannot both win.
+     *
+     * Written by findOneAndUpdate guarded on `resubmittedTo: null`, and
+     * cleared again if the child then fails to save — see app/api/entries.
+     */
+    resubmittedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'OtEntry',
+      default: null,
+    },
+
     /** HR or Admin waiving the cap for this entry (§7). */
     capOverride: {
       by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },

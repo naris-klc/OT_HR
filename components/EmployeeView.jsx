@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import { StatusChip, Alert, Empty, EditedMark, EntryHistory, Modal, editsOf } from './common.jsx';
+import { refileState } from '@/lib/entries.js';
 import OtForm from './OtForm.jsx';
 
 export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
@@ -218,7 +219,8 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
               <div className="hint" style={{ margin: 0 }}>
                 แก้ไขวันที่ เวลา และรายละเอียดเองได้เฉพาะรายการที่ยังรอหัวหน้าอนุมัติ ·
                 เมื่อหัวหน้าหรือฝ่ายบุคคลอนุมัติแล้ว ต้องให้ฝ่ายบุคคลเป็นผู้แก้ไข ·
-                รายการที่ไม่อนุมัติ กด “ส่งใหม่” เพื่อยื่นคำขอใหม่จากข้อมูลเดิมได้
+                รายการที่ไม่อนุมัติ กด “ส่งใหม่” เพื่อยื่นคำขอใหม่จากข้อมูลเดิมได้ <strong>1 ครั้ง</strong> ·
+                {' '}หากคำขอที่ส่งใหม่ถูกไม่อนุมัติอีก ต้องบันทึก OT เป็นคำขอใหม่ตั้งแต่ต้น
               </div>
             </div>
             <div className="field" style={{ maxWidth: 180, flex: 'none' }}>
@@ -291,11 +293,29 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                           </>
                         )}
                         {/* Not an edit: it fills a blank form from this row and
-                            submits a new request. The rejected one stays put. */}
-                        {e.status === 'rejected' && (
-                          <button className="btn ghost sm" style={{ marginLeft: 6 }} onClick={() => setReusing(e)}>
-                            ส่งใหม่
+                            submits a new request. The rejected one stays put.
+                            The right is spent once — see refileState. */}
+                        {refileState(e) === 'open' && (
+                          <span className="refile-offer">
+                            <button className="btn ghost sm" onClick={() => setReusing(e)}>
+                              ส่งใหม่
+                            </button>
+                            <span className="warn">สิทธิ์ยื่นแก้ตัวครั้งสุดท้าย</span>
+                          </span>
+                        )}
+                        {refileState(e) === 'used' && (
+                          <button
+                            className="btn ghost sm"
+                            disabled
+                            title="คำขอนี้ใช้สิทธิ์ส่งใหม่ไปแล้ว — ดูคำขอที่ยื่นแทนได้ในตารางนี้"
+                          >
+                            ส่งใหม่แล้ว
                           </button>
+                        )}
+                        {/* The replacement was refused too. No third attempt —
+                            a fresh OT request starts from a blank form. */}
+                        {refileState(e) === 'final' && (
+                          <span className="chip final-rejected">ไม่อนุมัติ (สิ้นสุด)</span>
                         )}
                         {/* Offered only on rows that were actually rewritten —
                             on the rest there is no earlier version to show, and

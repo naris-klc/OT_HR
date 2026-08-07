@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
@@ -71,24 +72,58 @@ export const POST = route(async (req) => {
     );
   }
 
-  // §6 — "ส่งใหม่" files a fresh request to replace one that was refused. The
-  // claim is checked rather than trusted: it must be a real entry, the
-  // caller's own, and actually rejected. An unverified pointer would let a
-  // request borrow somebody else's refusal history.
+  // §6 — "ส่งใหม่" files a fresh request to replace one that was refused, and
+  // the right to do that is spent once.
+  //
+  // The whole rule is in the filter of one update. Every clause is a way the
+  // claim can be wrong, and checking them in a read first would leave a gap
+  // between the read and the write that a second tap fits through:
+  //
+  //   employee        — it has to be the caller's own request
+  //   status rejected — only a refused request is re-filed
+  //   refiledFrom null— a replacement cannot itself be replaced (2 levels)
+  //   resubmittedTo null — the one chance has not been taken yet
+  //
+  // Whoever's update matches first owns the claim; everyone after it matches
+  // nothing and is turned away.
   let refiledFrom = null;
+  let claimedParent = null;
+  const childId = new mongoose.Types.ObjectId();
+
   if (payload.refiledFrom) {
-    const parent = await OtEntry.findById(payload.refiledFrom).select('employee status').lean();
-    if (!parent) return fail('ไม่พบคำขอเดิมที่อ้างอิงถึง', 404);
-    if (String(parent.employee) !== String(user._id)) {
-      return fail('อ้างอิงได้เฉพาะคำขอเดิมของตนเอง', 403);
+    const parent = await OtEntry.findOneAndUpdate(
+      {
+        _id: payload.refiledFrom,
+        employee: user._id,
+        status: 'rejected',
+        refiledFrom: null,
+        resubmittedTo: null,
+      },
+      { $set: { resubmittedTo: childId } },
+      { new: false },
+    ).select('status refiledFrom resubmittedTo employee').lean();
+
+    if (!parent) {
+      // One filter, several reasons — read the row back to say which.
+      const seen = await OtEntry.findById(payload.refiledFrom)
+        .select('employee status refiledFrom resubmittedTo').lean();
+      if (!seen) return fail('ไม่พบคำขอเดิมที่อ้างอิงถึง', 404);
+      if (String(seen.employee) !== String(user._id)) {
+        return fail('อ้างอิงได้เฉพาะคำขอเดิมของตนเอง', 403);
+      }
+      if (seen.status !== 'rejected') return fail('ส่งใหม่ได้เฉพาะคำขอที่ถูกไม่อนุมัติ', 409);
+      if (seen.refiledFrom) {
+        return fail('คำขอนี้เป็นการส่งใหม่อยู่แล้ว และถูกไม่อนุมัติเป็นครั้งที่สอง — กรุณาบันทึก OT เป็นคำขอใหม่', 409);
+      }
+      return fail('คำขอนี้ใช้สิทธิ์ส่งใหม่ไปแล้ว 1 ครั้ง', 409);
     }
-    if (parent.status !== 'rejected') {
-      return fail('ส่งใหม่ได้เฉพาะคำขอที่ถูกไม่อนุมัติ', 409);
-    }
-    refiledFrom = parent._id;
+
+    refiledFrom = payload.refiledFrom;
+    claimedParent = payload.refiledFrom;
   }
 
   const entry = new OtEntry({
+    _id: childId,
     employee: user._id,
     department: user.department._id,
     ...session,
@@ -99,7 +134,18 @@ export const POST = route(async (req) => {
   applyComputation(entry, result);
   stampCap(entry, cap);
   entry.log(user, 'submit', null, null);
-  await entry.save();
+
+  try {
+    await entry.save();
+  } catch (err) {
+    // The claim was taken on the promise of a child that never arrived. Give
+    // it back, or the employee loses the one chance to a failure that was not
+    // theirs.
+    if (claimedParent) {
+      await OtEntry.updateOne({ _id: claimedParent, resubmittedTo: childId }, { $set: { resubmittedTo: null } });
+    }
+    throw err;
+  }
 
   return json({ entry: await entry.populate(POPULATE), cap }, 201);
 });

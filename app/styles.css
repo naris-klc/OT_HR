@@ -523,6 +523,18 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .refiled-note .s { font: 400 12.5px/1.6 var(--sans); color: var(--amber); margin-top: 2px; }
 
 .chip.refiled { background: var(--amber-bg); color: var(--amber); }
+/* The end of the road for this request. Grey rather than red: the refusal was
+   already said in red on the row above, and this only adds that there is
+   nothing further to try. */
+.chip.final-rejected {
+  background: var(--neutral-wash); color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+/* One chance, said next to the button that spends it — not in a tooltip that
+   only appears if you happen to hover, and never on a phone. */
+.refile-offer { display: inline-flex; align-items: center; gap: 7px; margin-left: 6px; }
+.refile-offer .warn { font: 500 11.5px/1.4 var(--sans); color: var(--amber); white-space: nowrap; }
 
 /* One block per request in the chain, oldest first. The boundary between two
    blocks is the point a refusal ended one request and the employee filed
