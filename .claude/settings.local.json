@@ -71,7 +71,8 @@
       "Read(//c/Users/suwan/.claude/projects/c--Users-suwan-Documents-OT-HR/**)",
       "Bash(git add *)",
       "Bash(git commit -m '@ *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(time npm test)"
     ],
     "additionalDirectories": [
       "c:\\Users\\suwan\\OneDrive\\เอกสาร\\OT_HR"
