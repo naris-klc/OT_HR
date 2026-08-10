@@ -30,6 +30,33 @@ import { Alert, UnaccountedHours } from './common.jsx';
  * missed, which is why this always fetches `includeZero=1` regardless of the
  * screen's checkbox. Sheets after the first start on a new page.
  */
+/**
+ * "มีใบที่ไม่ถูกนับ …" — on the paper, not only on the screen.
+ *
+ * The screen banner is seen by whoever pressed print. The person who signs the
+ * sheet is often not that person, and a sheet that is 3.5 hours short with
+ * nothing on it saying so gets signed as correct — which is the whole failure,
+ * because every figure on the page still agrees with every other one.
+ *
+ * IT COSTS NO ROW. It is rendered inside the thead margin band, beside the
+ * company name, so `ROWS_PER_PAGE` is untouched and the filler arithmetic below
+ * cannot be thrown out by it — the same reasoning that put the company name
+ * there rather than in a row of its own. `nowrap` on the band keeps it to one
+ * line, so the band's 10mm does not grow either. Absent entirely in an ordinary
+ * month: nothing renders, and the sheet is byte for byte what it was.
+ *
+ * In thead, so a roster running to several sides repeats it on every one of
+ * them. A page that comes loose from the set still carries the warning.
+ */
+function PaperFlag({ unaccounted }) {
+  if (!unaccounted?.count) return null;
+  return (
+    <span className="flag">
+      {' '}· ไม่ถูกนับ {unaccounted.count} ใบ {Number(unaccounted.hours).toFixed(2)} ชม.
+    </span>
+  );
+}
+
 export default function AccountingPrint({ period, company = 'all', onClose }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -74,7 +101,7 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
         {data.companies.length === 0 ? (
           <div className="empty">ไม่มีข้อมูลสำหรับเดือนนี้</div>
         ) : data.companies.map((c) => (
-          <Sheet key={c.key} company={c} period={period} />
+          <Sheet key={c.key} company={c} period={period} unaccounted={data.unaccounted} />
         ))}
       </div>
     </>
@@ -89,7 +116,7 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
  */
 const ROWS_PER_PAGE = 37;
 
-function Sheet({ company, period }) {
+function Sheet({ company, period, unaccounted }) {
   // The grid ends on the same line on the last page as on every other one.
   // Without this the roster simply stops wherever it runs out and the closing
   // page reads as a different form from the ones before it — which is the
@@ -125,7 +152,12 @@ function Sheet({ company, period }) {
             counted against a page that does not have it. The band is already
             10mm of white above the grid, which is where a heading goes anyway. */}
         <thead>
-          <tr className="pad"><td className="co" colSpan={4}>{accountingLabel(company)}</td></tr>
+          <tr className="pad">
+            <td className="co" colSpan={4}>
+              {accountingLabel(company)}
+              <PaperFlag unaccounted={unaccounted} />
+            </td>
+          </tr>
           <tr>
             <th rowSpan={2}>รหัส</th>
             <th rowSpan={2}>ชื่อ-นามสกุล</th>

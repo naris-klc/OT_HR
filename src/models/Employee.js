@@ -57,6 +57,21 @@ const employeeSchema = new mongoose.Schema(
     company: { type: String, enum: COMPANY_KEYS, required: true },
 
     passwordHash: { type: String, required: true, select: false },
+
+    /**
+     * The password on this account was set by somebody else.
+     *
+     * True from the moment HR creates the account or resets its password, false
+     * again the moment the person holding it sets their own (POST
+     * /api/employees/me/password). While it is true the client lets the account
+     * do exactly one thing: change the password.
+     *
+     * Defaults false, so nobody already on the roster is asked to re-do
+     * something they did months ago — this marks passwords HR issued from here
+     * on, not every password whose history is unknown.
+     */
+    mustChangePassword: { type: Boolean, default: false },
+
     active: { type: Boolean, default: true },
   },
   { timestamps: true },

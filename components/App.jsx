@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
+import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
 import { Alert } from './common.jsx';
 import { ToastHost } from './Toast.jsx';
 import { BackProvider } from './nav.jsx';
@@ -11,7 +12,7 @@ import HrView from './HrView.jsx';
 import AccountingView from './AccountingView.jsx';
 import DepartmentView from './DepartmentView.jsx';
 import AdminView from './AdminView.jsx';
-import ProfileView from './ProfileView.jsx';
+import ProfileView, { ChangePassword } from './ProfileView.jsx';
 import PrintForm from './PrintForm.jsx';
 
 export default function App() {
@@ -25,12 +26,71 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function signOut() {
+    await api.post('/auth/logout').catch(() => {});
+    setSession(null);
+  }
+
   if (loading) return <div className="empty">กำลังโหลด…</div>;
   if (!session) return <Login onLogin={setSession} />;
+  // An account whose password ฝ่ายบุคคล set gets exactly one screen until the
+  // person holding it has replaced that password. Placed here rather than
+  // inside the shell on purpose: there is no tab to wander off to, no queue
+  // loading behind it, and no version of this that can be dismissed.
+  if (session.user.mustChangePassword) {
+    return (
+      <FirstLogin
+        user={session.user}
+        onDone={async () => setSession(await api.get('/auth/me'))}
+        onLogout={signOut}
+      />
+    );
+  }
   return (
     <ToastHost>
       <Shell session={session} onLogout={() => setSession(null)} />
     </ToastHost>
+  );
+}
+
+// ── first login ─────────────────────────────────────────────────────────────
+
+/**
+ * ตั้งรหัสผ่านของคุณเอง — the gate between an HR-issued password and the rest
+ * of the system.
+ *
+ * The initial password is derived from the employee code, which is printed on
+ * every form in the building, so anybody who has seen a roster can log in as
+ * anybody who never changed it. The gate is what makes "แล้วค่อยให้พนักงาน
+ * เปลี่ยนรหัสผ่านทีหลัง" a step that actually happens rather than one everyone
+ * means to get around to.
+ *
+ * ออกจากระบบ is the only other way out, and it leaves the flag set — coming
+ * back lands here again.
+ */
+function FirstLogin({ user, onDone, onLogout }) {
+  return (
+    <div className="page">
+      <div className="stack">
+        <div className="card">
+          <h2>ตั้งรหัสผ่านของคุณ</h2>
+          <div className="hint" style={{ marginBottom: 0 }}>
+            สวัสดี {user.name} · รหัสผ่านที่ใช้อยู่ตอนนี้เป็นรหัสที่ฝ่ายบุคคลตั้งให้
+            {' '}จึงมีคนอื่นทราบด้วย — กรุณาตั้งรหัสผ่านของคุณเองก่อนเริ่มใช้งาน
+          </div>
+        </div>
+        <ChangePassword
+          onDone={onDone}
+          hint={<>
+            “รหัสผ่านเดิม” คือรหัสที่ฝ่ายบุคคลแจ้งให้ทราบ
+            {' '}· รหัสผ่านใหม่ต้องยาวอย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร และต้องไม่ซ้ำกับรหัสเดิม
+          </>}
+        />
+        <div className="card">
+          <button className="btn ghost" onClick={onLogout}>ออกจากระบบ</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -224,8 +284,11 @@ function Shell({ session, onLogout }) {
   }
   if (user.role === 'manager') tabs.push({ key: 'monthly', label: 'สรุปทีม', icon: '▤' });
   if (user.maySubmitOt) tabs.push({ key: 'form', label: 'ใบ F-HR-027', icon: '▦' });
-  if (user.role === 'admin') tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: '⚙' });
-  if (user.role === 'hr') tabs.push({ key: 'admin', label: 'นโยบายและวันหยุด', icon: '⚙' });
+  // One label for both now that ฝ่ายบุคคล maintains ทะเบียนพนักงาน here as
+  // well — "นโยบายและวันหยุด" named the two sections HR could use back when the
+  // roster was Admin's alone, and a tab that undersells what is behind it is
+  // how HR ends up asking IT to add a new hire.
+  if (['hr', 'admin'].includes(user.role)) tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: '⚙' });
 
   async function logout() {
     await api.post('/auth/logout');

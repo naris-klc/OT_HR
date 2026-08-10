@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { api, thaiDate, dayName, COMPANIES } from '@/lib/api.js';
-import { Alert, Empty } from './common.jsx';
+import { HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, defaultPassword } from '@/lib/employees.js';
+import { Alert, Empty, Modal } from './common.jsx';
 
 const SECTIONS = [
   { key: 'departments', label: 'แผนกและเพดาน' },
@@ -36,7 +37,7 @@ export default function AdminView({ user, initialSection }) {
         </div>
       </div>
       {section === 'departments' && <Departments />}
-      {section === 'employees' && <Employees />}
+      {section === 'employees' && <Employees user={user} />}
       {section === 'holidays' && <Holidays />}
       {section === 'policy' && <Policy user={user} />}
     </>
@@ -161,16 +162,38 @@ function Departments() {
 
 // ── employees ───────────────────────────────────────────────────────────────
 
-function Employees() {
+const ROLE_OPTIONS = [
+  { value: 'employee', label: 'พนักงาน' },
+  { value: 'manager', label: 'หัวหน้างาน' },
+  { value: 'hr', label: 'ฝ่ายบุคคล' },
+  { value: 'admin', label: 'ผู้ดูแลระบบ' },
+];
+
+const BLANK = {
+  code: '', name: '', position: '', birthDate: '', department: '', role: 'employee',
+  company: '', password: '',
+};
+
+function Employees({ user }) {
   const [rows, setRows] = useState([]);
   const [depts, setDepts] = useState([]);
-  const [form, setForm] = useState({
-    code: '', name: '', position: '', birthDate: '', department: '', role: 'employee',
-    company: '', password: '',
-  });
+  const [form, setForm] = useState(BLANK);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  /** The password just issued, and who for — the one moment it is readable. */
+  const [issued, setIssued] = useState(null);
+  /** The row whose password is being reset, if any. */
+  const [resetting, setResetting] = useState(null);
   const fileRef = useRef(null);
+
+  // Mirrors rosterPermission() on the server. Not a substitute for it — the
+  // server is what enforces this — but an option nobody may pick is better not
+  // offered, and a disabled button explains itself where a 403 does not.
+  const isAdmin = user?.role === 'admin';
+  const roleOptions = isAdmin
+    ? ROLE_OPTIONS
+    : ROLE_OPTIONS.filter((o) => HR_ASSIGNABLE_ROLES.includes(o.value));
+  const mayEdit = (row) => isAdmin || row.role !== 'admin';
 
   async function load() {
     try {
@@ -183,12 +206,14 @@ function Employees() {
 
   async function create(e) {
     e.preventDefault();
+    setError('');
     try {
-      await api.post('/employees', form);
-      setForm({
-        code: '', name: '', position: '', birthDate: '', department: '', role: 'employee',
-        company: '', password: '',
-      });
+      const res = await api.post('/employees', form);
+      // Shown once, from the response — the server stores only the hash, so
+      // this is the last time anyone can read it off a screen. HR reads it to
+      // the new employee, who is made to replace it at first login.
+      setIssued({ code: form.code, name: form.name, password: res.password });
+      setForm(BLANK);
       load();
     } catch (err) { setError(err.message); }
   }
@@ -218,8 +243,26 @@ function Employees() {
         เว้นว่างได้ ระบบจะเดาจากรหัส (PM… = ไพรมัส, THT… = เดมเทค)
         · “วันเกิด” ไม่บังคับ และแก้ไขได้จากหน้านี้เท่านั้น —
         พนักงานเห็นได้ในหน้าข้อมูลส่วนตัวแต่แก้เองไม่ได้ (ในไฟล์ CSV ใช้รูปแบบ YYYY-MM-DD เป็น ค.ศ.)
+        · ทุกบัญชีที่สร้างจากหน้านี้จะถูกบังคับให้ตั้งรหัสผ่านใหม่เมื่อเข้าระบบครั้งแรก
+        {!isAdmin && ' · บทบาท “ผู้ดูแลระบบ” ตั้งได้โดยผู้ดูแลระบบเท่านั้น'}
       </div>
       {error && <Alert kind="error">{error}</Alert>}
+
+      {/* The password, once. Dismissed by hand rather than by the next action:
+          it is the thing HR has to write down or read out, and a notice that
+          clears itself while somebody is reaching for a pen is a password
+          nobody can recover — only reset. */}
+      {issued && (
+        <Alert kind="ok">
+          สร้างบัญชี {issued.code} · {issued.name} แล้ว
+          {' '}— รหัสผ่านเริ่มต้นคือ <strong style={{ fontFamily: 'var(--mono, monospace)' }}>{issued.password}</strong>
+          <div style={{ marginTop: 4, fontSize: 12.5 }}>
+            แจ้งรหัสนี้ให้พนักงาน · ระบบจะบังคับให้ตั้งรหัสผ่านใหม่เมื่อเข้าระบบครั้งแรก
+            {' '}· รหัสนี้แสดงเพียงครั้งเดียว หากลืมให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตารางด้านล่าง
+          </div>
+          <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setIssued(null)}>รับทราบ</button>
+        </Alert>
+      )}
 
       <div className="row" style={{ marginBottom: 14 }}>
         <button
@@ -283,10 +326,7 @@ function Employees() {
         <div className="field" style={{ maxWidth: 130 }}>
           <label>บทบาท</label>
           <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            <option value="employee">พนักงาน</option>
-            <option value="manager">หัวหน้างาน</option>
-            <option value="hr">ฝ่ายบุคคล</option>
-            <option value="admin">ผู้ดูแลระบบ</option>
+            {roleOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <div className="field" style={{ maxWidth: 170 }}>
@@ -296,6 +336,18 @@ function Employees() {
             {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
         </div>
+        {/* Left blank this is defaultPassword(code) — shown as the placeholder
+            so HR can see what they will be reading out before they decide
+            whether to type something else. */}
+        <div className="field" style={{ maxWidth: 200 }}>
+          <label>รหัสผ่านเริ่มต้น</label>
+          <input
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            placeholder={form.code ? defaultPassword(form.code) : 'เว้นว่าง = ตั้งจากรหัสพนักงาน'}
+            minLength={PASSWORD_MIN_LENGTH}
+          />
+        </div>
         <button className="btn">เพิ่ม</button>
       </form>
 
@@ -304,7 +356,7 @@ function Employees() {
           <thead>
             <tr>
               <th>รหัส</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>วันเกิด</th><th>แผนก</th>
-              <th>บทบาท</th><th>บริษัท</th><th>สถานะ</th>
+              <th>บทบาท</th><th>บริษัท</th><th>สถานะ</th><th>รหัสผ่าน</th>
             </tr>
           </thead>
           <tbody>
@@ -320,25 +372,119 @@ function Employees() {
                     type="date"
                     value={p.birthDate || ''}
                     onChange={(e) => update(p._id, { birthDate: e.target.value })}
+                    disabled={!mayEdit(p)}
                   />
                 </td>
                 <td>{p.department?.nameTh || p.department?.name}</td>
-                <td>{p.role}</td>
+                <td>{ROLE_OPTIONS.find((o) => o.value === p.role)?.label || p.role}</td>
                 <td>
                   <select
                     value={p.company || ''}
                     onChange={(e) => update(p._id, { company: e.target.value })}
+                    disabled={!mayEdit(p)}
                   >
                     {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
                 </td>
                 <td>{p.active ? 'ใช้งาน' : 'ปิด'}</td>
+                <td>
+                  {/* ลืมรหัสผ่าน has no self-service path — no email is on file
+                      for most of the roster — so this is the whole of the
+                      recovery story, and it belongs on the row rather than
+                      behind an edit screen nobody opens for one field. */}
+                  <button
+                    className="btn ghost"
+                    onClick={() => setResetting(p)}
+                    disabled={!mayEdit(p)}
+                    title={mayEdit(p) ? 'ตั้งรหัสผ่านใหม่ให้พนักงานคนนี้' : 'บัญชีผู้ดูแลระบบตั้งรหัสใหม่ได้โดยผู้ดูแลระบบเท่านั้น'}
+                  >
+                    ตั้งรหัสใหม่
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {resetting && (
+        <ResetPassword
+          employee={resetting}
+          onClose={() => setResetting(null)}
+          onDone={(password) => {
+            setResetting(null);
+            setIssued({ code: resetting.code, name: resetting.name, password });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * ตั้งรหัสผ่านใหม่ให้พนักงาน — the counterpart to creating the account, for the
+ * day somebody forgets.
+ *
+ * The suggested value is the same one a new account gets, because the shape HR
+ * has to read down the phone should not depend on whether this is the first
+ * time or the third. Whatever is set here comes back with the same obligation:
+ * the employee cannot reach any other screen until they have replaced it.
+ */
+function ResetPassword({ employee, onClose, onDone }) {
+  const suggestion = defaultPassword(employee.code);
+  const [password, setPassword] = useState(suggestion);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const ready = password.length >= PASSWORD_MIN_LENGTH;
+
+  async function submit() {
+    setError('');
+    setBusy(true);
+    try {
+      await api.patch(`/employees/${employee._id}`, { password });
+      onDone(password);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="ตั้งรหัสผ่านใหม่"
+      subtitle={`${employee.code} · ${employee.name}`}
+      onClose={onClose}
+      dirty={password !== suggestion && !busy}
+      footer={<>
+        <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
+        <button className="btn" onClick={submit} disabled={busy || !ready}>
+          {busy ? 'กำลังบันทึก…' : 'ตั้งรหัสผ่านใหม่'}
+        </button>
+      </>}
+    >
+      <div className="hint">
+        รหัสผ่านเดิมของพนักงานคนนี้จะใช้ไม่ได้ทันที
+        {' '}· เมื่อเข้าระบบด้วยรหัสใหม่ ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองก่อนใช้งาน
+      </div>
+      {error && <Alert kind="error">{error}</Alert>}
+      <div className="field">
+        <label>รหัสผ่านใหม่</label>
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          minLength={PASSWORD_MIN_LENGTH}
+          autoComplete="off"
+        />
+        {!ready && (
+          <div className="field-note error">ต้องยาวอย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร</div>
+        )}
+      </div>
+      {password !== suggestion && (
+        <button className="btn ghost" onClick={() => setPassword(suggestion)}>
+          ใช้รหัสเริ่มต้น ({suggestion})
+        </button>
+      )}
+    </Modal>
   );
 }
 

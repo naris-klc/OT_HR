@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
+import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
 import { Alert } from './common.jsx';
 
 const ROLE_LABEL = {
@@ -71,9 +72,16 @@ function Details({ user }) {
 
 // ── password ────────────────────────────────────────────────────────────────
 
-const MIN_LENGTH = 6; // matches POST /api/employees/me/password
+const MIN_LENGTH = PASSWORD_MIN_LENGTH; // one number, shared with the server
 
-function ChangePassword() {
+/**
+ * เปลี่ยนรหัสผ่าน — the same form on ข้อมูลส่วนตัว and on the first-login gate.
+ *
+ * `onDone` is how the gate finds out it can let go: it re-reads /auth/me, sees
+ * mustChangePassword cleared, and the shell appears. On the profile page nobody
+ * passes it and the form simply says it worked.
+ */
+export function ChangePassword({ onDone, hint }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -85,7 +93,11 @@ function ChangePassword() {
   // so a typo in it is only catchable on this side.
   const mismatch = confirm.length > 0 && next !== confirm;
   const tooShort = next.length > 0 && next.length < MIN_LENGTH;
-  const ready = current && next.length >= MIN_LENGTH && next === confirm;
+  // Re-typing the issued password would clear mustChangePassword without
+  // changing anything, so the server refuses it — said here too, before the
+  // round trip, where the typing is still on screen.
+  const unchanged = next.length > 0 && next === current;
+  const ready = current && next.length >= MIN_LENGTH && next === confirm && !unchanged;
 
   async function submit(e) {
     e.preventDefault();
@@ -98,6 +110,7 @@ function ChangePassword() {
       setNext('');
       setConfirm('');
       setOk('เปลี่ยนรหัสผ่านแล้ว · ครั้งต่อไปให้เข้าสู่ระบบด้วยรหัสผ่านใหม่');
+      await onDone?.();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -109,8 +122,10 @@ function ChangePassword() {
     <div className="card">
       <h2>เปลี่ยนรหัสผ่าน</h2>
       <div className="hint">
-        รหัสผ่านใหม่ต้องยาวอย่างน้อย {MIN_LENGTH} ตัวอักษร
-        · เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
+        {hint || <>
+          รหัสผ่านใหม่ต้องยาวอย่างน้อย {MIN_LENGTH} ตัวอักษร
+          · เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
+        </>}
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}
@@ -139,6 +154,7 @@ function ChangePassword() {
             required
           />
           {tooShort && <div className="field-note error">สั้นเกินไป — ต้องยาวอย่างน้อย {MIN_LENGTH} ตัวอักษร</div>}
+          {unchanged && <div className="field-note error">รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม</div>}
         </div>
 
         <div className="field">

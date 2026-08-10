@@ -3,7 +3,7 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { toCsv } from '@/src/lib/csv.js';
 
 export const GET = route(async (req) => {
-  requireRole(await requireAuth(req), 'admin');
+  requireRole(await requireAuth(req), 'admin', 'hr');
   const csv = toCsv(
     ['code', 'name', 'email', 'position', 'birthDate', 'department', 'role', 'company'],
     [

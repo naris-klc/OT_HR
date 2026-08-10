@@ -2,9 +2,9 @@ import Employee, { ROLES } from '@/src/models/Employee.js';
 import Department from '@/src/models/Department.js';
 import { COMPANY_KEYS, DEFAULT_COMPANY, companyFromCode } from '@/src/config/companies.js';
 import { route, uploadText, json, fail } from '@/lib/http.js';
-import { requireAuth, requireRole } from '@/lib/session.js';
+import { requireAuth } from '@/lib/session.js';
 import { parseCsv, pick } from '@/src/lib/csv.js';
-import { defaultPassword } from '@/lib/employees.js';
+import { defaultPassword, rosterPermission } from '@/lib/employees.js';
 
 // ── [OPEN 11] roster import ─────────────────────────────────────────────────
 // Built regardless of HR's answer: if they hand over a file, use the upload;
@@ -12,7 +12,9 @@ import { defaultPassword } from '@/lib/employees.js';
 // blocks v1.
 
 export const POST = route(async (req) => {
-  requireRole(await requireAuth(req), 'admin');
+  const actor = await requireAuth(req);
+  const may = rosterPermission(actor);
+  if (!may.ok) return fail(may.error, may.status);
 
   const text = await uploadText(req, 2 * 1024 * 1024);
   if (!text.trim()) return fail('ไม่พบไฟล์หรือข้อมูล CSV', 400);
@@ -65,6 +67,13 @@ export const POST = route(async (req) => {
       }
 
       const existing = await Employee.findOne({ code });
+
+      // The same rule the form is held to, applied per row — a CSV is the one
+      // way to write hundreds of roster rows at once, and a rule the form
+      // enforces but the upload does not is not a rule.
+      const rowMay = rosterPermission(actor, { target: existing, role });
+      if (!rowMay.ok) { errors.push({ line, error: rowMay.error }); continue; }
+
       if (existing) {
         existing.name = name;
         existing.position = pick(row, 'position', 'ตำแหน่ง') || existing.position;
@@ -92,6 +101,8 @@ export const POST = route(async (req) => {
           company,
         });
         await employee.setPassword(pick(row, 'password') || defaultPassword(code));
+        // Issued by whoever wrote the file, so the same obligation as the form.
+        employee.mustChangePassword = true;
         await employee.save();
         created.push(code);
       }

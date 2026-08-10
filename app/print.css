@@ -315,6 +315,20 @@
   white-space: nowrap;
 }
 
+/* "· ไม่ถูกนับ 1 ใบ 3.50 ชม." — inline, on the company's own line.
+
+   Inline and `nowrap`-inherited on purpose: the band it sits in is a fixed
+   10mm that ROWS_PER_PAGE has been counted against, so this must not be able
+   to add a second line to it. Lighter weight than the company name beside it,
+   and the only red on the sheet, which is the whole job — a signature is about
+   to go on a total that this says is short. */
+.acct thead tr.pad td.co .flag {
+  font-weight: 400;
+  color: #c00;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 /* On screen the sheet sits on a grey page with a shadow, so what you see is
    the paper. Vertical spacing is left to the pad rows so the preview and the
    print agree; only the side margins are padding here. */
@@ -420,6 +434,21 @@
    hangs OUTSIDE the grid, so the column it hangs in has no rule and no fill
    above it. */
 .otdept td.gap { border: 0; background: none; }
+
+/* The one line under รวมชั่วโมงทำOT, present only when hours went missing.
+
+   Left-aligned and unfilled, so it does not read as another figure in the
+   columns above it — it is a note about the total, not part of the grid's
+   arithmetic. Red for the same reason as on the accounting sheet: it is the
+   only thing on the page telling whoever signs it that the total is short. */
+.otdept tr.flagrow td {
+  text-align: left;
+  font-weight: 600;
+  color: #c00;
+  white-space: normal;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
 
 /* Every body row is exactly one line, so the grid stays on the pitch the paper
    is ruled at. 58mm less padding is 55mm of text, and the longest name on the

@@ -55,6 +55,7 @@ export function publicUser(user) {
     role: user.role,
     position: user.position,
     maySubmitOt: user.role === 'employee',
+    mustChangePassword: Boolean(user.mustChangePassword),
     department: user.department
       ? {
         id: String(user.department._id),

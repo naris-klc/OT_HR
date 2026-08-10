@@ -47,11 +47,60 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
       {hint && (
         <div style={{ marginTop: 4, fontSize: 12.5 }}>
           ยอดรวมทุกช่องในใบนี้จะ<strong>ขาดไปเท่าจำนวนนั้น</strong> ทั้งที่ตัวเลขทุกตัวยังตรงกันเอง
-          {' '}· อย่าเพิ่งส่งบัญชี — ตรวจทะเบียนพนักงานก่อน
-          {unaccounted.entryIds?.length > 0 && (
-            <div style={{ marginTop: 2, fontFamily: 'var(--mono, monospace)', fontSize: 11.5 }}>
-              รหัสใบ: {unaccounted.entryIds.join(', ')}
-            </div>
+          {' '}· อย่าเพิ่งส่งบัญชี
+          {/*
+            Said outright, because the alternative is worse than saying
+            nothing. There is no screen in this system that can re-point an
+            entry at an employee — `entry.employee` is written once, when the
+            request is filed, and no route touches it afterwards. A banner that
+            merely said "check the employee register" would send somebody
+            looking for a button that does not exist, and a warning that cannot
+            be acted on is one that gets dismissed by the second month.
+          */}
+          <div style={{ marginTop: 4 }}>
+            <strong>แก้ในหน้าจอไม่ได้</strong> — ใบ OT ผูกกับพนักงานตอนยื่นครั้งเดียว
+            {' '}ไม่มีหน้าไหนเปลี่ยนเจ้าของใบได้ ต้องให้ผู้ดูแลระบบแก้ที่ฐานข้อมูล
+            {' '}· ชื่อผู้ยื่นด้านล่างมาจากประวัติในใบเอง จึงยังอ่านได้แม้ทะเบียนพนักงานจะหายไปแล้ว
+          </div>
+          {/*
+            What to hand the person who does that. `employeeId` is the dangling
+            reference the entry still carries — the thing to search a backup
+            with — and it is here rather than an employee code because the
+            entry never stored a code: when the employee document goes, the id
+            is the only identity left. วันที่ and แผนก narrow it down.
+          */}
+          {unaccounted.entries?.length > 0 && (
+            <table style={{ marginTop: 6, fontSize: 11.5, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['ผู้ยื่น (จากประวัติใบ)', 'วันที่', 'แผนก', 'ชม.', 'รหัสใบ (_id)', 'อ้างถึงรหัสภายใน'].map((h) => (
+                    <th key={h} style={{ textAlign: 'left', padding: '2px 10px 2px 0', fontWeight: 600 }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {unaccounted.entries.map((e) => (
+                  <tr key={e.id}>
+                    {/* First, because it is the only cell somebody can act on
+                        without opening the database. The name is a copy taken
+                        when the request was filed, so it survives the employee
+                        record going missing. */}
+                    <td style={{ padding: '2px 10px 2px 0' }}>
+                      <strong>{e.filedBy?.name || '—'}</strong>
+                    </td>
+                    <td style={{ padding: '2px 10px 2px 0' }}>{e.workDate || '—'}</td>
+                    <td style={{ padding: '2px 10px 2px 0' }}>{e.department || '—'}</td>
+                    <td style={{ padding: '2px 10px 2px 0' }}>{hours(e.otHours)}</td>
+                    <td style={{ padding: '2px 10px 2px 0', fontFamily: 'monospace' }}>{e.id}</td>
+                    <td style={{ padding: '2px 10px 2px 0', fontFamily: 'monospace' }}>
+                      {e.employeeId || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       )}

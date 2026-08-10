@@ -97,7 +97,14 @@
       "Bash(sed -i \"7s/import { Alert, Empty } from '.\\\\/common.jsx';/import { Alert, Empty, UnaccountedHours } from '.\\\\/common.jsx';/\" components/AccountingView.jsx)",
       "Bash(sed -i \"6s/import { Alert, Empty } from '.\\\\/common.jsx';/import { Alert, Empty, UnaccountedHours } from '.\\\\/common.jsx';/\" components/DepartmentView.jsx)",
       "Bash(sed -i \"5s/import { Alert } from '.\\\\/common.jsx';/import { Alert, UnaccountedHours } from '.\\\\/common.jsx';/\" components/AccountingPrint.jsx)",
-      "Bash(sed -i \"6s/import { Alert } from '.\\\\/common.jsx';/import { Alert, UnaccountedHours } from '.\\\\/common.jsx';/\" components/DepartmentPrint.jsx)"
+      "Bash(sed -i \"6s/import { Alert } from '.\\\\/common.jsx';/import { Alert, UnaccountedHours } from '.\\\\/common.jsx';/\" components/DepartmentPrint.jsx)",
+      "Bash(sed -i \"3a import { unaccountedCsvRow } from '@/lib/accountingRows.js';\" app/api/exports/accounting.csv/route.js)",
+      "Bash(sed -i \"4a import { unaccountedCsvRow } from '@/lib/accountingRows.js';\" app/api/exports/departments.csv/route.js)",
+      "Bash(node --test \"test/printFlagLayout.test.js\")",
+      "Bash(node -e \"console.log\\(require\\('fs'\\).existsSync\\('node_modules/playwright'\\)||require\\('fs'\\).existsSync\\('node_modules/puppeteer'\\)\\)\")",
+      "Bash(git diff *)",
+      "Bash(grep -vE \"^\\\\+\\\\s*\\(\\\\*|/\\\\*|//\\)\")",
+      "Bash(git check-ignore *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\suwan\\OneDrive\\เอกสาร\\OT_HR"

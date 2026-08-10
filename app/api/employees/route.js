@@ -1,8 +1,10 @@
 import Employee, { ROLES } from '@/src/models/Employee.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
-import { requireAuth, requireRole } from '@/lib/session.js';
-import { defaultPassword, publicEmployee } from '@/lib/employees.js';
+import { requireAuth } from '@/lib/session.js';
+import {
+  PASSWORD_MIN_LENGTH, defaultPassword, publicEmployee, rosterPermission,
+} from '@/lib/employees.js';
 
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
@@ -26,7 +28,7 @@ export const GET = route(async (req) => {
 });
 
 export const POST = route(async (req) => {
-  requireRole(await requireAuth(req), 'admin');
+  const actor = await requireAuth(req);
   const { code, name, email, position, birthDate, department, role, company, password } = await body(req);
 
   if (!code || !name || !department) {
@@ -34,6 +36,17 @@ export const POST = route(async (req) => {
   }
   if (role && !ROLES.includes(role)) return fail('บทบาทไม่ถูกต้อง', 400);
   if (company && !COMPANY_KEYS.includes(company)) return fail('บริษัทไม่ถูกต้อง', 400);
+
+  // ฝ่ายบุคคล owns the roster; Admin still owns who may administer the system.
+  const may = rosterPermission(actor, { role: role || 'employee' });
+  if (!may.ok) return fail(may.error, may.status);
+
+  // A password HR types is one they are about to read out, so the only check it
+  // gets is the one the employee's own change is held to. Left blank it becomes
+  // defaultPassword(), which is longer than this anyway.
+  if (password && String(password).length < PASSWORD_MIN_LENGTH) {
+    return fail(`รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`, 400);
+  }
 
   // company left out on purpose falls to the model's pre-validate hook, which
   // reads it off the code prefix.
@@ -44,8 +57,19 @@ export const POST = route(async (req) => {
     // YYYY-MM-DD match rejects the whole save.
     birthDate: birthDate || undefined,
   });
-  await employee.setPassword(password || defaultPassword(code));
+  const issued = password || defaultPassword(code);
+  await employee.setPassword(issued);
+  // Somebody else knows this password — it is not the employee's until they
+  // have replaced it, and until then the client will not let the account
+  // anywhere else.
+  employee.mustChangePassword = true;
   await employee.save();
 
-  return json({ employee: await employee.populate('department', 'code name nameTh') }, 201);
+  // The issued password comes back so the screen that created the account can
+  // show HR what to hand over. It is never readable again: only the hash is
+  // stored, and every roster read goes through publicEmployee().
+  return json({
+    employee: await employee.populate('department', 'code name nameTh'),
+    password: issued,
+  }, 201);
 });

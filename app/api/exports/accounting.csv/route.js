@@ -1,6 +1,7 @@
 import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { accountingReport } from '@/lib/accounting.js';
+import { unaccountedCsvRow } from '@/lib/accountingRows.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
 import { PERIOD_RE, thaiMonth } from '@/lib/reports.js';
@@ -123,11 +124,7 @@ export const GET = route(async (req) => {
    * ones above it.
    */
   if (report.unaccounted?.count > 0) {
-    rows.push([
-      '', '', '', 'ไม่ถูกนับ', '', '', '', '',
-      fmt(report.unaccounted.hours),
-      `${report.unaccounted.count} รายการอ้างถึงพนักงานที่หาไม่พบ — ยอดรวมข้างบนขาดไปเท่านี้`,
-    ]);
+    rows.push(unaccountedCsvRow(headers, report.unaccounted));
   }
 
   const suffix = report.company === 'all' ? 'all' : report.company;

@@ -94,6 +94,18 @@ export default function DepartmentPrint({ period, onClose }) {
                 bundle, which is not something to write in by hand. */}
             <Sheet
               title="รวมทุกแผนก"
+              /**
+               * The flag goes on this sheet and no other.
+               *
+               * An unaccounted entry belongs to no department — that is what
+               * makes it unaccounted — so printing it under แผนกผลิต 1's total
+               * would say that department is short, which is not known and
+               * probably false. This is the closing sheet, it is always
+               * printed, its รวมชั่วโมงทำOT is the figure the bundle is signed
+               * against, and it is the one total the missing hours are
+               * genuinely missing from.
+               */
+              unaccounted={data.unaccounted}
               // The one column heading that changes: this sheet's lines are
               // departments, not people, and a column of แผนก under a
               // ชื่อ-นามสกุล heading is simply mislabelled.
@@ -107,6 +119,27 @@ export default function DepartmentPrint({ period, onClose }) {
       </div>
     </>
   );
+}
+
+/**
+ * Who filed the entries that reached no row, for the one line on the paper.
+ *
+ * From `history[0].byName`, a copy of the name taken when the request was
+ * filed — the employee record it would otherwise be read from is exactly the
+ * one that has gone missing. Empty when none of them recorded a name, in which
+ * case the line stays a count and the screen carries the ids.
+ *
+ * Two names at most: this is a single line on a ruled form, and a fourth name
+ * would wrap it into the row below.
+ */
+function namesOf(unaccounted) {
+  const names = [...new Set(
+    (unaccounted?.entries || []).map((e) => e.filedBy?.name).filter(Boolean),
+  )];
+  if (!names.length) return '';
+  return names.length > 2
+    ? `${names.slice(0, 2).join(', ')} และอีก ${names.length - 2} คน`
+    : names.join(', ');
 }
 
 /**
@@ -124,7 +157,7 @@ const SPARE_ROWS = 2;
  * the right of 3.00, and only on the รวมชั่วโมงทำOT row. Every other row
  * carries that column as open paper — no rule, no fill.
  */
-function Sheet({ title, lines, spare, totals, of = 'ชื่อ-นามสกุล' }) {
+function Sheet({ title, lines, spare, totals, of = 'ชื่อ-นามสกุล', unaccounted = null }) {
   return (
     <div className="otdept">
       <table>
@@ -182,6 +215,25 @@ function Sheet({ title, lines, spare, totals, of = 'ชื่อ-นามสก
             <td className="n">{totals.ot3Hours.toFixed(2)}</td>
             <td className="grand">{totals.otHours.toFixed(2)}</td>
           </tr>
+          {/* One line under the total, and only when there is something to say
+              — in an ordinary month this renders nothing at all and the sheet
+              is exactly what it was. It sits BELOW รวมชั่วโมงทำOT rather than
+              above it because it is a note about that figure: the total is
+              correct for the rows printed, and short by this much. */}
+          {unaccounted?.count > 0 && (
+            <tr className="flagrow">
+              <td colSpan={4}>
+                มีใบที่ไม่ถูกนับ {unaccounted.count} ใบ {Number(unaccounted.hours).toFixed(2)} ชม.
+                {' '}— ยอดข้างบนขาดไปเท่านี้
+                {/* Named where the names are known. On a sheet somebody is
+                    about to sign, "3.50 ชม. หายไป" is a question and
+                    "ของสมชาย ใจดี" is the start of an answer. Capped, because
+                    this is one line on a form and not a list. */}
+                {namesOf(unaccounted) && ` (${namesOf(unaccounted)})`}
+              </td>
+              <td className="gap" />
+            </tr>
+          )}
         </tbody>
         <tfoot>
           <tr className="pad" aria-hidden="true"><td colSpan={5} /></tr>

@@ -4,7 +4,9 @@ import Employee, { ROLES } from '../models/Employee.js';
 import Department from '../models/Department.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../lib/csv.js';
-import { publicEmployee } from '../../lib/employees.js';
+import {
+  PASSWORD_MIN_LENGTH, defaultPassword, publicEmployee, rosterPermission,
+} from '../../lib/employees.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
@@ -28,35 +30,54 @@ router.get('/', wrap(async (req, res) => {
   res.json({ employees: employees.map((e) => publicEmployee(e, req.user)) });
 }));
 
-router.post('/', requireRole('admin'), wrap(async (req, res) => {
+router.post('/', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const { code, name, email, position, department, role, password } = req.body || {};
   if (!code || !name || !department) {
     return res.status(400).json({ error: 'ต้องระบุรหัสพนักงาน ชื่อ-สกุล และแผนก' });
   }
   if (role && !ROLES.includes(role)) return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง' });
 
+  const may = rosterPermission(req.user, { role: role || 'employee' });
+  if (!may.ok) return res.status(may.status).json({ error: may.error });
+  if (password && String(password).length < PASSWORD_MIN_LENGTH) {
+    return res.status(400).json({ error: `รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` });
+  }
+
   const employee = new Employee({ code, name, email: email || undefined, position, department, role: role || 'employee' });
-  await employee.setPassword(password || defaultPassword(code));
+  const issued = password || defaultPassword(code);
+  await employee.setPassword(issued);
+  employee.mustChangePassword = true;
   await employee.save();
 
-  res.status(201).json({ employee: await employee.populate('department', 'code name nameTh') });
+  res.status(201).json({
+    employee: await employee.populate('department', 'code name nameTh'),
+    password: issued,
+  });
 }));
 
-router.patch('/:id', requireRole('admin'), wrap(async (req, res) => {
+router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const employee = await Employee.findById(req.params.id);
   if (!employee) return res.status(404).json({ error: 'ไม่พบพนักงาน' });
 
   const { name, email, position, department, role, active, password } = req.body || {};
+  if (role != null && !ROLES.includes(role)) return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง' });
+
+  const may = rosterPermission(req.user, { target: employee, role: role ?? null });
+  if (!may.ok) return res.status(may.status).json({ error: may.error });
+  if (password && String(password).length < PASSWORD_MIN_LENGTH) {
+    return res.status(400).json({ error: `รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` });
+  }
+
   if (name != null) employee.name = name;
   if (email !== undefined) employee.email = email || undefined;
   if (position != null) employee.position = position;
   if (department != null) employee.department = department;
-  if (role != null) {
-    if (!ROLES.includes(role)) return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง' });
-    employee.role = role;
-  }
+  if (role != null) employee.role = role;
   if (active != null) employee.active = Boolean(active);
-  if (password) await employee.setPassword(password);
+  if (password) {
+    await employee.setPassword(password);
+    employee.mustChangePassword = true;
+  }
 
   await employee.save();
   return res.json({ employee: await employee.populate('department', 'code name nameTh') });
@@ -65,13 +86,19 @@ router.patch('/:id', requireRole('admin'), wrap(async (req, res) => {
 /** Change own password. */
 router.post('/me/password', wrap(async (req, res) => {
   const { current, next } = req.body || {};
-  if (!next || String(next).length < 6) return res.status(400).json({ error: 'รหัสผ่านใหม่ต้องยาวอย่างน้อย 6 ตัวอักษร' });
+  if (!next || String(next).length < PASSWORD_MIN_LENGTH) {
+    return res.status(400).json({ error: `รหัสผ่านใหม่ต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` });
+  }
+  if (String(next) === String(current || '')) {
+    return res.status(400).json({ error: 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม' });
+  }
 
   const me = await Employee.findById(req.user._id).select('+passwordHash');
   if (!(await me.verifyPassword(String(current || '')))) {
     return res.status(401).json({ error: 'รหัสผ่านเดิมไม่ถูกต้อง' });
   }
   await me.setPassword(String(next));
+  me.mustChangePassword = false;
   await me.save();
   return res.json({ ok: true });
 }));
@@ -81,7 +108,7 @@ router.post('/me/password', wrap(async (req, res) => {
 // if they read names down the phone, Admin uses the form above. Neither
 // answer blocks v1.
 
-router.get('/import/template', requireRole('admin'), (req, res) => {
+router.get('/import/template', requireRole('admin', 'hr'), (req, res) => {
   const body = toCsv(
     ['code', 'name', 'email', 'position', 'department', 'role'],
     [['PM-0412', 'สมชาย ใจดี', 'somchai@primus.co.th', 'ช่างเทคนิค', 'ENG', 'employee']],
@@ -91,7 +118,7 @@ router.get('/import/template', requireRole('admin'), (req, res) => {
   res.send(Buffer.from(body, 'utf8'));
 });
 
-router.post('/import', requireRole('admin'), upload.single('file'), wrap(async (req, res) => {
+router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(async (req, res) => {
   const text = req.file ? req.file.buffer.toString('utf8') : String(req.body?.csv || '');
   if (!text.trim()) return res.status(400).json({ error: 'ไม่พบไฟล์หรือข้อมูล CSV' });
 
@@ -118,6 +145,10 @@ router.post('/import', requireRole('admin'), upload.single('file'), wrap(async (
       if (!ROLES.includes(role)) { errors.push({ line, error: `บทบาทไม่ถูกต้อง "${role}"` }); continue; }
 
       const existing = await Employee.findOne({ code });
+
+      const rowMay = rosterPermission(req.user, { target: existing, role });
+      if (!rowMay.ok) { errors.push({ line, error: rowMay.error }); continue; }
+
       if (existing) {
         existing.name = name;
         existing.position = pick(row, 'position', 'ตำแหน่ง') || existing.position;
@@ -136,6 +167,7 @@ router.post('/import', requireRole('admin'), upload.single('file'), wrap(async (
           role,
         });
         await employee.setPassword(pick(row, 'password') || defaultPassword(code));
+        employee.mustChangePassword = true;
         await employee.save();
         created.push(code);
       }
@@ -146,13 +178,5 @@ router.post('/import', requireRole('admin'), upload.single('file'), wrap(async (
 
   res.json({ created: created.length, updated: updated.length, errors, codes: { created, updated } });
 }));
-
-/**
- * First-login password when none is supplied. Everyone must change it — see
- * POST /api/employees/me/password.
- */
-function defaultPassword(code) {
-  return `Primus@${String(code).replace(/\W/g, '')}`;
-}
 
 export default router;
