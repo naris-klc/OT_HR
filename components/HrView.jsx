@@ -267,9 +267,15 @@ export default function HrView({ user }) {
                 </div>
               </Alert>
             )}
+
+            {/* Proposing the month's unclaimed birthday ใบ used to sit here. It
+                moved to รอ HR ยืนยัน — HR opens that queue daily and this screen
+                once a month, and a reminder to file something belongs where the
+                filing gets done. See BirthdayProposals in ApprovalQueue.jsx. */}
           </>
         )}
       </div>
     </>
   );
 }
+

@@ -3,7 +3,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate } from '@/lib/api.js';
-import { ENTERED_FIELDS, isProxyFiled, sameSession, sameValue } from '@/lib/entries.js';
+import { ENTERED_FIELDS, isProxyFiled, isSystemFiled, sameSession, sameValue } from '@/lib/entries.js';
 
 export function StatusChip({ status }) {
   const s = STATUS[status] || { label: status, bg: '#eee', fg: '#555' };
@@ -184,6 +184,11 @@ const ACTION_META = {
   // says who, `toStatus` says where it went, and the note says why when the
   // manager's step was skipped.
   submit_proxy: { label: 'หัวหน้างานบันทึกแทนพนักงาน', tone: 'file' },
+  // Nobody filled a form in. The label says so plainly rather than borrowing the
+  // one above it: "บันทึกแทน" means a person typed this for another person, and
+  // reading it on a row the system generated is how a reader concludes the wrong
+  // thing about who checked the hours.
+  submit_birthday: { label: 'ระบบสร้างใบวันเกิด (ฝ่ายบุคคลสั่ง)', tone: 'file' },
   resubmit: { label: 'ยื่นคำขอใหม่', tone: 'file' },
   edit: { label: 'พนักงานแก้ไขคำขอ', tone: 'edit' },
   approve_mgr: { label: 'หัวหน้างานอนุมัติ', tone: 'ok' },
@@ -192,6 +197,7 @@ const ACTION_META = {
   approve_hr: { label: 'ฝ่ายบุคคลยืนยัน', tone: 'ok' },
   reject_hr: { label: 'ฝ่ายบุคคลไม่อนุมัติ', tone: 'no' },
   cancel: { label: 'พนักงานยกเลิกคำขอ', tone: 'off' },
+  void: { label: 'ฝ่ายบุคคลถอนใบที่ระบบสร้าง', tone: 'off' },
   recompute: { label: 'ระบบคำนวณใหม่ตามนโยบาย', tone: 'off' },
 };
 
@@ -270,17 +276,45 @@ export function EditedMark({ entry }) {
  * It names the หัวหน้า rather than only stating the fact — "somebody filed this
  * for you" is the half of the sentence that produces the phone call.
  */
+/**
+ * Who, in the words that are true of them.
+ *
+ * The chip used to say หัวหน้าบันทึกแทน unconditionally, which was accurate for
+ * as long as a หัวหน้า was the only person who could file for somebody else. A
+ * birthday request is ordered by ฝ่ายบุคคล and typed by nobody, and both halves
+ * of that sentence would have been wrong.
+ */
+const FILER_LABEL = {
+  manager: 'หัวหน้าบันทึกแทน',
+  hr: 'ฝ่ายบุคคลบันทึกแทน',
+  admin: 'ผู้ดูแลระบบบันทึกแทน',
+};
+
 export function ProxyMark({ entry }) {
-  if (!isProxyFiled(entry)) return null;
+  const generated = isSystemFiled(entry);
+  if (!generated && !isProxyFiled(entry)) return null;
+
   const name = entry.filedBy?.name;
+  if (generated) {
+    return (
+      <span
+        className="chip proxy"
+        title={`ระบบสร้างรายการนี้จากกฎวันหยุดวันเกิด${name ? ` ตามคำสั่งของ ${name}` : ''} `
+          + '— ไม่มีใครกรอกแบบฟอร์ม และยังรอฝ่ายบุคคลยืนยัน ใบนี้เป็นของพนักงานตามเดิม'}
+      >
+        ระบบสร้างใบวันเกิด{name ? ` · ${name}` : ''}
+      </span>
+    );
+  }
+
   return (
     <span
       className="chip proxy"
       title={name
         ? `${name} เป็นผู้บันทึกรายการนี้แทนพนักงาน — ใบนี้ยังเป็นของพนักงานตามเดิม`
-        : 'รายการนี้บันทึกโดยหัวหน้างาน ไม่ใช่พนักงานเจ้าของรายการ'}
+        : 'รายการนี้บันทึกโดยผู้อื่น ไม่ใช่พนักงานเจ้าของรายการ'}
     >
-      หัวหน้าบันทึกแทน{name ? ` · ${name}` : ''}
+      {FILER_LABEL[entry.filedBy?.role] || 'บันทึกแทน'}{name ? ` · ${name}` : ''}
     </span>
   );
 }

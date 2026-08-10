@@ -6,7 +6,7 @@ import {
   Alert, Empty, EditedMark, EntryHistory, ProxyMark, RequestTrail, StatusChip,
   editsOf, trailOf,
 } from './common.jsx';
-import { hasAuditTrail, isProxyFiled } from '@/lib/entries.js';
+import { hasAuditTrail, isProxyFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
 import { describeBreaches } from '@/lib/caps.js';
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
@@ -90,6 +90,19 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
   });
 
   const toggleAll = () => setOpen(allOpen ? new Set() : new Set(auditable.map((e) => e._id)));
+
+  /**
+   * ถอนใบวันเกิด — through the same `/cancel` endpoint an employee withdraws
+   * their own request with. The server decides which of the two acts it is and
+   * logs `void` rather than `cancel`; this screen only has to ask.
+   */
+  async function voidEntry(entry) {
+    try {
+      await api.post(`/entries/${entry._id}/cancel`, { note: 'ถอนใบวันเกิดที่ระบบสร้าง' });
+      await load();
+      onChanged?.();
+    } catch (err) { setError(err.message); }
+  }
 
   if (editing) {
     return (
@@ -242,6 +255,22 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                         <span style={{ fontSize: 12, color: 'var(--muted)' }}>แก้ไขไม่ได้</span>
                       ) : (
                         <button className="btn ghost sm" onClick={() => setEditing(e)}>แก้ไข</button>
+                      )}
+                      {/* A row the system wrote and nobody has touched: the one
+                          approved entry HR may take off the books, because it is
+                          a proposal they accepted rather than an account anybody
+                          gave of hours worked. The button disappears the moment
+                          the row is edited or signed — see
+                          `isUntouchedSystemFiling`. */}
+                      {isUntouchedSystemFiling(e) && (
+                        <button
+                          className="btn ghost sm"
+                          style={{ marginLeft: 6 }}
+                          onClick={() => voidEntry(e)}
+                          title="ถอนใบวันเกิดที่ระบบสร้าง — ชั่วโมงนี้จะไม่ถูกนับในใบส่งบัญชี"
+                        >
+                          ถอนใบวันเกิด
+                        </button>
                       )}
                       {/* Reconciling a month against the signed paper means
                           reading what the row used to say, not only what it

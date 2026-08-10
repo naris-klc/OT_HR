@@ -2,10 +2,11 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  api, hours, thaiDate, dayName, periodLabel, BUCKETS, BUCKET_LABEL,
+  api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
 import { describeBreaches } from '@/lib/caps.js';
 import { isProxyFiled } from '@/lib/entries.js';
+import { SKIP_REASONS, BIRTHDAY_START, BIRTHDAY_END } from '@/lib/birthdayEntries.js';
 import {
   Alert, Empty, EditedMark, EntryHistory, Modal, ProxyMark, RefiledNote, RequestTrail,
   SegmentList, StatusChip, TeamMark, editsOf,
@@ -313,6 +314,22 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
       <div style={{ padding: '0 18px' }}>
         <PolicyDriftBanner user={user} onOpenPolicy={onOpenPolicy} />
       </div>
+
+      {/* Birthdays that have happened and have no ใบ yet — proposals, not rows.
+          This is the queue HR works, so it is where a missing request has to
+          appear; ตรวจสอบรายเดือน is read once a month and a reminder there is a
+          reminder nobody sees until the month is closed. HR's queue only. */}
+      {isHr && !delegatedOnly && (
+        <div style={{ padding: '0 18px' }}>
+          <BirthdayProposals
+            onFiled={async (n) => {
+              await load();
+              onChanged?.(stage, 0);
+              toast(`ลงใบวันเกิดแล้ว ${n} ใบ · ยืนยันเรียบร้อย`);
+            }}
+          />
+        </div>
+      )}
 
       {/* ── filter bar ─────────────────────────────────────────────────────── */}
       {entries?.length > 0 && (
@@ -1117,6 +1134,136 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
 }
 
 // ── small parts ─────────────────────────────────────────────────────────────
+
+/**
+ * “วันเกิดที่ยังไม่ได้ลงใบ” — the month's unclaimed birthday holidays, offered
+ * where HR already works.
+ *
+ * NOT QUEUE ROWS. Nothing exists in the database yet: these are people whose
+ * birthday has passed on a working day with no ใบ against it, and the row is an
+ * offer to write one. Rendered as an amber block above the queue rather than
+ * mixed into the table, because a proposal and a request are different things and
+ * the table's ticks, filters and batch bar all act on documents that exist.
+ *
+ * ONE PRESS. ยืนยันและลงใบ creates the request and confirms it in the same call
+ * (see app/api/entries/birthday/[period]/route.js) — ฝ่ายบุคคล choosing the name
+ * IS the confirmation, and it lands in the month's approved hours immediately.
+ * The row then vanishes from here, because the date now has a ใบ.
+ *
+ * TWO MONTHS, because a month is closed after it ends: on 3 September HR is
+ * still finishing August, and a proposal that only ever covered "this month"
+ * would drop somebody's birthday the moment the calendar turned.
+ *
+ * ข้ามคนนี้ hides a row for as long as the screen is open and stores nothing.
+ * That is deliberate: a dismissal that persisted would need somewhere to live and
+ * would silently withhold the offer next month too, and the honest alternative —
+ * writing a refused request for hours nobody claimed — puts a rejection on an
+ * employee's record for having taken a day off. A reload brings it back, and the
+ * offer stops when the ใบ exists.
+ */
+function BirthdayProposals({ onFiled }) {
+  const [rows, setRows] = useState(null);
+  const [hidden, setHidden] = useState(() => new Set());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const periods = useMemo(() => {
+    const now = currentPeriod();
+    const [y, m] = now.split('-').map(Number);
+    const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+    return [prev, now];
+  }, []);
+
+  async function load() {
+    try {
+      const answers = await Promise.all(periods.map((p) => api.get(`/entries/birthday/${p}`)));
+      // Oldest first: the unfinished month is the one with a deadline on it.
+      setRows(answers.flatMap((a) => a.eligible).sort((a, b) => a.date.localeCompare(b.date)));
+      setError('');
+    } catch (err) { setError(err.message); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function file(candidates) {
+    setBusy(true);
+    setError('');
+    try {
+      // The endpoint is per month and these rows can span two, so they are filed
+      // by the month each one belongs to.
+      const byPeriod = new Map();
+      for (const c of candidates) {
+        const period = c.date.slice(0, 7);
+        byPeriod.set(period, [...(byPeriod.get(period) || []), c.employeeId]);
+      }
+      let created = 0;
+      for (const [period, employeeIds] of byPeriod) {
+        const res = await api.post(`/entries/birthday/${period}`, { employeeIds });
+        created += res.created.length;
+        if (res.skipped.length) {
+          setError(`ข้ามไป ${res.skipped.length} คน: ${res.skipped
+            .map((s) => `${s.code || s.employeeId} (${SKIP_REASONS[s.reason] || s.reason})`)
+            .join(' · ')}`);
+        }
+      }
+      await load();
+      await onFiled?.(created);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  }
+
+  if (error && !rows) return <Alert kind="error">{error}</Alert>;
+  const shown = (rows || []).filter((c) => !hidden.has(c.employeeId + c.date));
+  if (shown.length === 0) return error ? <Alert kind="warn">{error}</Alert> : null;
+
+  return (
+    <Alert kind="warn">
+      <div style={{ fontWeight: 600 }}>
+        วันเกิดที่ยังไม่ได้ลงใบ {shown.length} คน
+      </div>
+      <div style={{ fontSize: 12.5, marginTop: 2 }}>
+        วันเกิดของพนักงานเป็นวันหยุดของคนนั้น มาทำงานวันนั้นจึงเป็น OT วันหยุด ·
+        {' '}ระบบรู้แค่ว่าใครมีวันเกิดวันไหน <strong>ไม่รู้ว่าใครมาทำงาน</strong> —
+        {' '}กด “ยืนยันและลงใบ” เฉพาะคนที่มาทำงานวันนั้น
+        {' '}(ลงเป็น {BIRTHDAY_START}–{BIRTHDAY_END} ยืนยันในคำสั่งเดียว ถอนคืนได้ถ้ากดผิด)
+      </div>
+
+      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {shown.map((c) => (
+          <div key={c.employeeId + c.date} className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <span style={{ minWidth: 260 }}>
+              <strong>{c.code}</strong> {c.name}
+              <span style={{ color: 'var(--muted)' }}>
+                {' '}· {thaiDate(c.date)} (วัน{dayName(c.date)})
+                {c.department ? ` · ${c.department}` : ''}
+              </span>
+            </span>
+            <button className="btn sm" disabled={busy} onClick={() => file([c])}>
+              ยืนยันและลงใบ
+            </button>
+            <button
+              className="btn ghost sm"
+              disabled={busy}
+              onClick={() => setHidden((was) => new Set(was).add(c.employeeId + c.date))}
+              title="ไม่ได้มาทำงานวันนั้น — ซ่อนไว้ก่อน (กลับมาเมื่อรีเฟรชหน้า)"
+            >
+              ไม่ได้มา
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {shown.length > 1 && (
+        <div style={{ marginTop: 8 }}>
+          <button className="btn sm" disabled={busy} onClick={() => file(shown)}>
+            {busy ? 'กำลังลงใบ…' : `ยืนยันและลงใบทั้ง ${shown.length} คน`}
+          </button>
+        </div>
+      )}
+
+      {error && <div style={{ marginTop: 6, fontSize: 12.5 }}>{error}</div>}
+    </Alert>
+  );
+}
 
 function Section({ title, action, children }) {
   return (

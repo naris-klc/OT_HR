@@ -338,6 +338,102 @@ shown. `birthDate` itself is not colleague-visible: `publicEmployee()` filters i
 out of the roster for everyone except the person, HR and admin — managers
 included.
 
+### ใบ OT วันเกิด — the system proposes, ฝ่ายบุคคล disposes
+
+The benefit was being granted and not claimed. This system replaces a paper
+request form, so it knows who **filed** and never who came in — and the request
+a birthday needs is one for **08:00–17:00**, an ordinary working day, which is
+exactly the request nobody thinks to file. Months passed with
+`birthdayHolidayEnabled` on and no `dayReason: 'birthday'` segment anywhere in
+the database.
+
+So the direction is reversed, and the offer appears **on รอ HR ยืนยัน** — the
+queue HR opens daily, rather than ตรวจสอบรายเดือน, which is read once a month and
+therefore the wrong place to be reminded to file something. A birthday that has
+passed with no ใบ against it shows up above the queue as a proposal — not a row,
+because nothing exists in the database yet — and **ยืนยันและลงใบ** writes the
+request and confirms it in one press. The system proposes from data it has (a date
+of birth and a calendar); a person disposes with knowledge it does not have (who
+turned up). There is no attendance or time-clock data in this system and this
+feature does not pretend otherwise.
+
+| | |
+|---|---|
+| Rules | [`lib/birthdayEntries.js`](lib/birthdayEntries.js) — pure. `birthdayCandidates()` returns `eligible` **and** `skipped` with a reason per name |
+| Endpoint | `GET/POST /api/entries/birthday/[period]` — HR and Admin only |
+| Screen | รอ HR ยืนยัน (`components/ApprovalQueue.jsx` → `BirthdayProposals`), above the filter bar |
+| Created entry | 08:00–17:00, `description` “ทำงานในวันเกิด…”, **`approved`** in the same press, `filedBy` = the HR user, history **`submit_birthday` → `approve_hr`** |
+| Undo | `POST /api/entries/[id]/cancel` — logged as **`void`**, allowed while `isUntouchedSystemFiling()` |
+
+**Two months, and nothing in the future.** The block covers the current period
+**and the previous one**, because a month is closed after it ends — on 3
+September HR is still finishing August, and a proposal scoped to "this month"
+would drop somebody's birthday the moment the calendar turned. A birthday that has
+not happened yet is never offered: `birthdayCandidates()` takes `today` and
+**throws if it is not given**, for the reason `computeSession` throws on a date
+missing from its `dayTypes` map — a default would switch the guard off in exactly
+the case it exists for, and the entry it would write is approved on the spot.
+
+**A reason beside every name that is not proposed** — `noBirthDate`,
+`badBirthDate`, `otherMonth`, `notYet`, `alreadyHoliday` (the day is วันหยุด for
+everybody already, so the birthday adds nothing), `alreadyFiled`, `leapSkipped`,
+and at write time `noHours` and `capBlocked`. HR is asking whether the month is
+complete, and a list of three out of eighteen answers that only if the other
+fifteen are accounted for.
+
+**ไม่ได้มา hides a row and stores nothing.** It comes back on reload, and that is
+the honest version: a dismissal that persisted would need somewhere to live and
+would withhold the offer next year too, and the alternative — writing a *refused*
+request for hours nobody claimed — puts a rejection on somebody's record for
+having taken their birthday off. The offer stops for good when the ใบ exists.
+
+**What it may be asked for.** `POST` takes **employee ids and nothing else** —
+no date, no times, no hours. It re-derives the candidates server-side and keeps
+the ticked ones, so a client cannot name a shift or a day that is not somebody's
+birthday. Each entry then goes through `computeSession`, the department ceiling
+and `applyComputation` like every other filing, and is refused if the engine says
+those hours are not OT.
+
+**Created and confirmed in one press, with a way back out.** There is no
+ขั้นหัวหน้า and no second visit to รอ HR ยืนยัน: ฝ่ายบุคคล ticking a name **is**
+the confirmation, and the same person pressing the same button again about the
+same list checks nothing the first press did not. (It was also a dead end — the
+rule in `approvalPermission` that nobody signs off their own filing meant the
+person who created the batch could not confirm it, so in an office with one
+ฝ่ายบุคคล it stalled.) Both events are still logged, `submit_birthday` then
+`approve_hr`, carrying one name and one timestamp rather than posing as two
+independent checks. Pressing the button twice creates nothing the second time —
+`alreadyFiled` is keyed per person per date.
+
+What replaces the queue as the safeguard is **ถอนใบวันเกิด**, and it is the
+better one: an approved entry can otherwise be removed by nobody —
+`approvalPermission` acts only on `pending_*`, `cancelPermission` only before the
+first signature, and the API has no delete — so confirming on creation would make
+one mis-ticked checkbox a permanent figure. `isUntouchedSystemFiling()` in
+[`lib/entries.js`](lib/entries.js) opens that door for exactly as long as the row
+is still what the system wrote: a `hr_edit`, an `edit`, a manager's signature, and
+it closes, because withdrawing would then throw away somebody's work. A
+`recompute` does not close it — a policy replay is not a person. The button is
+**ถอนใบวันเกิด** on ตรวจสอบรายเดือน › a person's รายการ, and the withdrawal is
+logged as `void`, never as the employee's own `cancel`.
+
+The failure mode this design takes seriously is not a wrong rate — the engine
+computes those — it is **a person who was not at work that day**, which no data
+in this system can rule out. So the answer is a fast correction rather than a
+ceremonial second approval.
+
+**`submit_birthday` is its own history action** so that "nobody filled a form in"
+is machine-readable, and `isSystemFiled()` in `lib/entries.js` keeps the screen
+marks honest: a generated row reads **ระบบสร้างใบวันเกิด** rather than
+บันทึกแทน, which would credit a check no person made. `ProxyMark` also stopped
+saying หัวหน้า about everybody — it now names the filer's role, since ฝ่ายบุคคล
+can be the one on the row.
+
+Those hours carry `dayReason: 'birthday'`, which is what puts “วันเกิด” in the
+strip beside the row on สรุป OT ส่งบัญชี. That is the whole loop: the rule grants
+the day, one press files and confirms it, and the submission sheet says why the
+figure reads the way it does.
+
 ### Getting the birthday into the system — the file is the unit, not the row
 
 HR types `1998-03-05`. Excel displays `05/03/1998`, and saving the file writes

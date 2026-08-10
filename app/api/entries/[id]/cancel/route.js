@@ -33,7 +33,12 @@ export const POST = route(async (req, { params }) => {
 
   const from = entry.status;
   entry.status = 'cancelled';
-  entry.log(user, 'cancel', payload?.note, from);
+  // Same outcome, two different events: the employee withdrawing their own
+  // request, and ฝ่ายบุคคล retracting a row the system wrote for them. The
+  // action comes from the rule that allowed it rather than from the caller's
+  // role, so the trail cannot say พนักงานยกเลิก about something a person in HR
+  // did — or the reverse.
+  entry.log(user, allowed.action === 'void' ? 'void' : 'cancel', payload?.note, from);
   await entry.save();
   return json({ entry: await entry.populate(POPULATE) });
 });

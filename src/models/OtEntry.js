@@ -125,9 +125,18 @@ const historySchema = new mongoose.Schema(
       // new one — but entries from before that rule still carry it, and a
       // value dropped from this list would make those entries fail validation
       // the next time anything touched them.
+      // 'submit_birthday' is the request the system wrote because HR pressed
+      // สร้างใบวันเกิดของเดือนนี้ — nobody filled a form in, which is a fact
+      // about the row that only its history can carry. See
+      // lib/birthdayEntries.js.
+      // 'void' is ฝ่ายบุคคล retracting a generated row that nobody has touched —
+      // the way back out of an entry that was confirmed on creation. Its own
+      // action, not a 'cancel', because 'cancel' means the employee withdrew
+      // their own request and that is a different event with a different actor.
       enum: [
-        'submit', 'submit_proxy', 'resubmit', 'approve_mgr', 'reject_mgr',
-        'approve_hr', 'reject_hr', 'cancel', 'edit', 'hr_edit', 'recompute',
+        'submit', 'submit_proxy', 'submit_birthday', 'resubmit',
+        'approve_mgr', 'reject_mgr', 'approve_hr', 'reject_hr',
+        'cancel', 'void', 'edit', 'hr_edit', 'recompute',
       ],
       required: true,
     },
