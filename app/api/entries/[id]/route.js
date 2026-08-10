@@ -7,12 +7,15 @@ import {
 import {
   POPULATE, scopeFor, pickSession, stampCap, editPermission, sameSession,
 } from '@/lib/entries.js';
+import { coveredDepartments } from '@/lib/delegationQuery.js';
+import { scopeWidening } from '@/lib/delegation.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req, { params }) => {
   const user = await requireAuth(req);
-  const entry = await OtEntry.findOne({ _id: params.id, ...scopeFor(user) }).populate(POPULATE);
+  const scope = scopeFor(user, scopeWidening(user, await coveredDepartments(user)));
+  const entry = await OtEntry.findOne({ _id: params.id, ...scope }).populate(POPULATE);
   if (!entry) return fail('ไม่พบรายการ', 404);
   return json({ entry });
 });

@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, RequestTrail, StatusChip, editsOf, trailOf,
+  Alert, Empty, EditedMark, EntryHistory, ProxyMark, RequestTrail, StatusChip,
+  editsOf, trailOf,
 } from './common.jsx';
-import { hasAuditTrail } from '@/lib/entries.js';
+import { hasAuditTrail, isProxyFiled } from '@/lib/entries.js';
 import { describeBreaches } from '@/lib/caps.js';
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
@@ -201,6 +202,14 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                     <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
                     <td>
                       {e.description}
+                      {/* ฝ่ายบุคคล reconciling a month against the signed paper
+                          are asking who stands behind each row. A request the
+                          หัวหน้า wrote and the employee never touched is a
+                          different thing to check than one the employee filed,
+                          and the two are indistinguishable without this. */}
+                      {isProxyFiled(e) && (
+                        <div style={{ marginTop: 4 }}><ProxyMark entry={e} /></div>
+                      )}
                       {lastEdit && (
                         <div style={{ marginTop: 4 }}>
                           <EditedMark entry={e} />

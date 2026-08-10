@@ -105,6 +105,21 @@
 /* สรุปรวม runs from จาก to the last hour column — either side is open paper. */
 .f027 tr.total td.blank { border: 0; }
 
+/* --- หมายเหตุ: who filed and who signed on somebody's behalf -------------
+   Between the grid and the footer, and only on the months that have one — the
+   component returns null otherwise, so an ordinary sheet has no element here
+   at all and its spacing is untouched. Plain text at the form's own small
+   size, no rule and no fill: F-HR-027 is a controlled form and this is a note
+   on it, not a new box added to it. */
+
+.f027-acting {
+  margin-top: 3mm;
+  font-size: 7.5pt;
+  line-height: 1.5;
+}
+.f027-acting .t { font-weight: 700; }
+.f027-acting .l { white-space: nowrap; }
+
 /* --- footer: dashed HR box on the left, ผู้ตรวจสอบ on the right ---------- */
 
 .f027-foot {
@@ -188,7 +203,7 @@
   /* A month with enough split sessions outgrows the sheet. Let it run onto a
      second page with the column headings repeated, rather than forcing the
      whole form onto one page and having the browser shrink or clip it. */
-  .f027 tr, .f027-foot { page-break-inside: avoid; }
+  .f027 tr, .f027-foot, .f027-acting { page-break-inside: avoid; }
   .f027 thead { display: table-header-group; }
 }
 

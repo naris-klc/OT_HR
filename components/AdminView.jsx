@@ -6,12 +6,17 @@ import { HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, defaultPassword } from '@/lib
 import { parseCsv } from '@/src/lib/csv.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { Alert, Empty, Modal } from './common.jsx';
+import Delegation from './Delegation.jsx';
 
 const SECTIONS = [
   { key: 'departments', label: 'แผนกและเพดาน' },
   { key: 'employees', label: 'พนักงาน' },
   { key: 'holidays', label: 'วันหยุดบริษัท' },
   { key: 'policy', label: 'นโยบายการคำนวณ' },
+  // Here as well as on the manager's own ข้อมูลส่วนตัว, and this is the copy
+  // that matters: the case the feature exists for is a หัวหน้า taken ill
+  // suddenly enough that they cannot log in to nominate anybody themselves.
+  { key: 'delegation', label: 'ผู้รับช่วงอนุมัติ' },
 ];
 
 /**
@@ -42,6 +47,7 @@ export default function AdminView({ user, initialSection }) {
       {section === 'employees' && <Employees user={user} />}
       {section === 'holidays' && <Holidays />}
       {section === 'policy' && <Policy user={user} />}
+      {section === 'delegation' && <Delegation user={user} scope="all" />}
     </>
   );
 }

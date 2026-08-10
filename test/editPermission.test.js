@@ -9,8 +9,25 @@ const MANAGER = { _id: 'mgr-1', role: 'manager' };
 const HR = { _id: 'hr-1', role: 'hr' };
 const ADMIN = { _id: 'adm-1', role: 'admin' };
 
-/** As the route sees it: `employee` populated to a document. */
-const entry = (status) => ({ status, employee: { _id: 'emp-1' } });
+/**
+ * As the route sees it: `employee` populated to a document.
+ *
+ * `pending_hr` is the one status that needs saying which kind it is. An entry
+ * normally reaches it by a manager approving, and carries their decision; one a
+ * หัวหน้า filed on somebody's behalf starts there with nobody having approved
+ * anything at all. The employee's rights differ between the two, so the fixture
+ * makes the decision explicit rather than letting a missing field decide by
+ * accident.
+ */
+const APPROVED_BY_MGR = { by: 'mgr-1', at: new Date('2026-08-03T10:00:00Z') };
+const entry = (status, over = {}) => ({
+  status,
+  employee: { _id: 'emp-1' },
+  ...(status === 'pending_hr' || status === 'approved'
+    ? { managerDecision: APPROVED_BY_MGR }
+    : {}),
+  ...over,
+});
 
 test('the employee may correct their own request while it waits for the manager', () => {
   const may = editPermission(OWNER, entry('pending_mgr'));
@@ -28,6 +45,43 @@ test('the first approval ends it: the employee is out from pending_hr onwards', 
     assert.equal(may.status, 409);
     assert.match(may.error, /ฝ่ายบุคคล/);
   }
+});
+
+/**
+ * The one case where `pending_hr` and "somebody has approved this" come apart.
+ *
+ * A request a หัวหน้า filed for one of their team skips the step they would
+ * have signed themselves and is created at `pending_hr` — with no
+ * managerDecision on it, because nobody decided anything. The rule the old
+ * spelling stood for is "until the first signature", and there has not been
+ * one, so the employee still owns their own request. Reading the status
+ * literally would have locked them out of it from the moment it existed.
+ */
+test('a request filed for the employee that skipped the manager is still theirs', () => {
+  const skipped = { status: 'pending_hr', employee: { _id: 'emp-1' }, filedBy: { _id: 'mgr-1' } };
+  assert.deepEqual(editPermission(OWNER, skipped), { ok: true, action: 'edit' });
+});
+
+test('but once a manager has actually signed, pending_hr is closed to them again', () => {
+  const signed = {
+    status: 'pending_hr',
+    employee: { _id: 'emp-1' },
+    filedBy: { _id: 'mgr-1' },
+    managerDecision: APPROVED_BY_MGR,
+  };
+  const may = editPermission(OWNER, signed);
+  assert.equal(may.ok, false);
+  assert.equal(may.status, 409);
+});
+
+/**
+ * Widening this rule must not have widened it for anybody else. A colleague
+ * looking at a skipped request is exactly as far out as they always were.
+ */
+test('the skip opens the door for the owner only', () => {
+  const skipped = { status: 'pending_hr', employee: { _id: 'emp-1' }, filedBy: { _id: 'mgr-1' } };
+  assert.equal(editPermission(OTHER, skipped).status, 403);
+  assert.equal(editPermission(MANAGER, skipped).status, 403);
 });
 
 test('rejected and cancelled are closed to the employee, who re-files instead', () => {

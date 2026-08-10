@@ -14,7 +14,20 @@ import { countsTowardCap } from '../lib/caps.js';
 const employee = { _id: 'emp-1', role: 'employee' };
 const other = { _id: 'emp-2', role: 'employee' };
 
-const entry = (over = {}) => ({ employee: 'emp-1', status: 'pending_mgr', ...over });
+/** A manager's signature, for the statuses that only exist because of one. */
+const APPROVED_BY_MGR = { by: 'mgr-1', at: new Date('2026-08-03T10:00:00Z') };
+
+const entry = (over = {}) => {
+  const status = over.status || 'pending_mgr';
+  return {
+    employee: 'emp-1',
+    status: 'pending_mgr',
+    ...(status === 'pending_hr' || status === 'approved'
+      ? { managerDecision: APPROVED_BY_MGR }
+      : {}),
+    ...over,
+  };
+};
 
 test('the employee may withdraw their own request while it waits for the manager', () => {
   assert.deepEqual(cancelPermission(employee, entry()), { ok: true });
@@ -25,6 +38,18 @@ test('the first approval ends it — pending_hr is out of the employee’s hands
   assert.equal(result.ok, false);
   assert.equal(result.status, 409);
   assert.match(result.error, /ฝ่ายบุคคล/, 'the message has to say where to go instead');
+});
+
+/**
+ * The skipped case, kept in step with `editPermission`. A request a หัวหน้า
+ * filed for somebody sits at `pending_hr` approved by nobody, and withdrawing
+ * it takes no signed-off figure off the books because there is no signature.
+ */
+test('a request that skipped the manager may still be withdrawn by its owner', () => {
+  assert.deepEqual(
+    cancelPermission(employee, { employee: 'emp-1', status: 'pending_hr', filedBy: 'mgr-1' }),
+    { ok: true },
+  );
 });
 
 test('an approved request is not withdrawn by the person it belongs to', () => {
@@ -55,12 +80,21 @@ test('an unpopulated employee id resolves the same as a populated document', () 
  * check that they have not drifted apart at the one point they share.
  */
 test('withdrawing and editing open and close at the same moment', () => {
-  for (const status of ['pending_mgr', 'pending_hr', 'approved', 'rejected', 'cancelled']) {
-    const e = entry({ status });
+  const cases = [
+    ...['pending_mgr', 'pending_hr', 'approved', 'rejected', 'cancelled']
+      .map((status) => [status, entry({ status })]),
+    // The two shapes `pending_hr` now comes in — one that got there by being
+    // approved, one that started there because the หัวหน้า who filed it would
+    // have been the approver. The rules have to agree about both.
+    ['pending_hr (skipped)', { employee: 'emp-1', status: 'pending_hr', filedBy: 'mgr-1' }],
+    ['pending_hr (signed)', entry({ status: 'pending_hr', filedBy: 'mgr-1' })],
+  ];
+
+  for (const [label, e] of cases) {
     assert.equal(
       cancelPermission(employee, e).ok,
       editPermission(employee, e).ok,
-      `the two rules disagree about the employee's rights at ${status}`,
+      `the two rules disagree about the employee's rights at ${label}`,
     );
   }
 });

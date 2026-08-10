@@ -1,9 +1,13 @@
 import mongoose from 'mongoose';
 import OtEntry from '@/src/models/OtEntry.js';
+import Employee from '@/src/models/Employee.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, applyComputation, checkCap, loadContext } from '@/src/services/otService.js';
 import { POPULATE, scopeFor, pickSession, stampCap, latestPerChain } from '@/lib/entries.js';
+import { coveredDepartments } from '@/lib/delegationQuery.js';
+import { scopeWidening } from '@/lib/delegation.js';
+import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
@@ -11,8 +15,28 @@ import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
-  const { status, period, employee, department, from, to, limit, replaced } = query(req);
-  const q = { ...scopeFor(user) };
+  const { status, period, employee, department, from, to, limit, replaced, scope } = query(req);
+
+  /**
+   * `scope=delegated` — the covered teams ONLY, rather than the caller's usual
+   * reach widened by them.
+   *
+   * It exists for ฝ่ายบุคคล standing in for a หัวหน้า. Their ordinary scope is
+   * everything, so widening it does nothing and their รออนุมัติ screen would be
+   * every pending request in the company — which is not the queue they were
+   * handed and not one anybody can work. A manager does not need this: their
+   * own queue already includes what they are covering, marked row by row.
+   *
+   * Empty when they are covering nothing, which is a real answer and not an
+   * error: it is what the screen shows the day a window closes.
+   */
+  const covered = await coveredDepartments(user);
+  const q = scope === 'delegated'
+    ? { department: { $in: covered } }
+    // A stand-in reads the teams they are covering as well as their own. Their
+    // own is always in the list — a delegation adds a department and never
+    // swaps one out, so coming back early takes nothing away.
+    : { ...scopeFor(user, scopeWidening(user, covered)) };
 
   if (status) q.status = { $in: String(status).split(',') };
   if (period) q.period = period;
@@ -54,18 +78,40 @@ export const GET = route(async (req) => {
 
 export const POST = route(async (req) => {
   const user = await requireAuth(req);
-  // §2: managers are not eligible to submit OT. HR and Admin are not either —
-  // they administer the process rather than take part in it.
-  if (!user.maySubmitOt()) return fail('ตำแหน่งนี้ไม่สามารถบันทึก OT ได้', 403);
-
   const payload = await body(req);
+
+  /**
+   * Whose request is this?
+   *
+   * `employeeId` names somebody else and turns this into a หัวหน้า filing on
+   * their behalf. Everything downstream then belongs to THAT person — the
+   * department the entry is filed under, the ceiling it is measured against,
+   * the birthday its day types are resolved from — and `user` is recorded only
+   * as `filedBy`. Getting this wrong in either direction puts one person's
+   * hours on another person's month.
+   */
+  const forSomeoneElse = payload.employeeId && String(payload.employeeId) !== String(user._id);
+
+  let employee = user;
+  if (forSomeoneElse) {
+    const target = await Employee.findById(payload.employeeId).populate('department');
+    const may = proxyPermission(user, target);
+    if (!may.ok) return fail(may.error, may.status);
+    employee = target;
+  } else if (!user.maySubmitOt()) {
+    // §2: managers are not eligible to submit OT for themselves. HR and Admin
+    // are not either — they administer the process rather than take part in it.
+    return fail('ตำแหน่งนี้ไม่สามารถบันทึก OT ได้', 403);
+  }
+
   const session = pickSession(payload);
   const { value: description, error: descriptionError } = normaliseDescription(payload.description);
   if (descriptionError) return fail(descriptionError, 400);
 
-  // The employee is the caller here, and `user` is a full document, so their
-  // birthDate is already in hand — no extra query to resolve their day types.
-  const ctx = await loadContext([session.workDate], { employee: user });
+  // The day types belong to whoever the entry is FOR. Filing for oneself that
+  // is the caller, whose document is already in hand; filing for somebody else
+  // it is the person just loaded, populated the same way.
+  const ctx = await loadContext([session.workDate], { employee });
   const result = await compute(session, ctx);
 
   if (result.totals.otHours <= 0) {
@@ -76,8 +122,8 @@ export const POST = route(async (req) => {
 
   const period = session.workDate.slice(0, 7);
   const cap = await checkCap({
-    employee: user,
-    department: user.department,
+    employee,
+    department: employee.department,
     period,
     result,
     policy: ctx.policy,
@@ -106,6 +152,14 @@ export const POST = route(async (req) => {
   let refiledFrom = null;
   let claimedParent = null;
   const childId = new mongoose.Types.ObjectId();
+
+  // The one chance to answer a refusal belongs to the person the request is
+  // for, and a หัวหน้า cannot spend it for them. The employee still has it:
+  // a proxy-filed request that was refused shows ส่งใหม่ on their own row like
+  // any other, because `refileState` reads the entry and not who typed it.
+  if (payload.refiledFrom && forSomeoneElse) {
+    return fail('สิทธิ์ส่งใหม่เป็นของพนักงานเจ้าของคำขอ — หัวหน้าบันทึกแทนไม่สามารถใช้สิทธิ์นี้ได้', 403);
+  }
 
   if (payload.refiledFrom) {
     const parent = await OtEntry.findOneAndUpdate(
@@ -139,18 +193,37 @@ export const POST = route(async (req) => {
     claimedParent = payload.refiledFrom;
   }
 
+  /**
+   * Where it starts, and whether the manager's step was skipped because the
+   * person who filled the form in is the person who would have signed it.
+   *
+   * `ctx.policy` is the same resolved policy the hours were computed under, so
+   * the routing answer and the figures come from one reading of the settings.
+   */
+  const start = initialStatus({
+    filer: user,
+    employee,
+    department: employee.department,
+    policy: ctx.policy,
+  });
+
   const entry = new OtEntry({
     _id: childId,
-    employee: user._id,
-    department: user.department._id,
+    employee: employee._id,
+    department: employee.department._id,
+    filedBy: user._id,
     ...session,
     description,
-    status: 'pending_mgr',
+    status: start.status,
     refiledFrom,
   });
   applyComputation(entry, result, ctx);
   stampCap(entry, cap);
-  entry.log(user, 'submit', null, null);
+  // `submit_proxy` says who filed it; `toStatus` says where it went; the note
+  // says why, and is written only when something needs explaining. Three facts,
+  // one row — a second history entry for the skip would be a second event where
+  // only one thing happened.
+  entry.log(user, forSomeoneElse ? 'submit_proxy' : 'submit', start.note, null);
 
   try {
     await entry.save();

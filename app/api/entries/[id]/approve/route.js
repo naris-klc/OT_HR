@@ -2,6 +2,8 @@ import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { POPULATE } from '@/lib/entries.js';
+import { approvalPermission, approvalRecord, historyExtra } from '@/lib/delegation.js';
+import { heldBy, today } from '@/lib/delegationQuery.js';
 
 export const POST = route(async (req, { params }) => {
   const user = requireRole(await requireAuth(req), 'manager', 'hr', 'admin');
@@ -13,23 +15,33 @@ export const POST = route(async (req, { params }) => {
   const note = payload?.note;
   const from = entry.status;
 
-  if (user.role === 'manager') {
-    if (entry.status !== 'pending_mgr') return fail('รายการนี้ไม่ได้อยู่ในขั้นรอหัวหน้า', 409);
-    if (String(entry.department._id) !== String(user.department?._id)) {
-      return fail('อนุมัติได้เฉพาะรายการในแผนกของตน', 403);
-    }
-    entry.managerDecision = { by: user._id, at: new Date(), note };
+  /**
+   * Who may sign this, at which step, and whose authority they are using.
+   *
+   * The ladder of role-and-status checks both this route and `reject` used to
+   * carry a copy of now lives in lib/delegation.js, where it can be read and
+   * tested on its own — and where the three answers it has to give (may they,
+   * which step, on whose behalf) come out together rather than being inferred
+   * from which branch happened to run.
+   */
+  const on = today();
+  const may = approvalPermission({
+    user,
+    entry,
+    delegations: await heldBy(user, on),
+    today: on,
+    verb: 'อนุมัติ',
+  });
+  if (!may.ok) return fail(may.error, may.status);
+
+  if (may.stage === 'mgr') {
+    entry.managerDecision = approvalRecord(user, may, { note });
     entry.status = 'pending_hr';
-    entry.log(user, 'approve_mgr', note, from);
+    entry.log(user, 'approve_mgr', note, from, null, historyExtra(may));
   } else {
-    // §6: two steps are required. HR confirming a request the manager has not
-    // seen would collapse the flow to one, so it is refused.
-    if (entry.status !== 'pending_hr') {
-      return fail('ต้องผ่านการอนุมัติจากหัวหน้าก่อน', 409);
-    }
-    entry.hrDecision = { by: user._id, at: new Date(), note };
+    entry.hrDecision = approvalRecord(user, may, { note });
     entry.status = 'approved';
-    entry.log(user, 'approve_hr', note, from);
+    entry.log(user, 'approve_hr', note, from, null, historyExtra(may));
   }
 
   await entry.save();

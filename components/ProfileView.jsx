@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
 import { Alert } from './common.jsx';
+import Delegation from './Delegation.jsx';
 
 const ROLE_LABEL = {
   employee: 'พนักงาน', manager: 'หัวหน้างาน', hr: 'ฝ่ายบุคคล', admin: 'ผู้ดูแลระบบ',
@@ -22,6 +23,10 @@ export default function ProfileView({ user, onLogout }) {
   return (
     <div className="stack">
       <Details user={user} />
+      {/* Where a หัวหน้า arranges their own cover — on the page they are
+          already on when they know they will be away. ฝ่ายบุคคล have the same
+          screen under ตั้งค่าระบบ for the หัวหน้า who is already gone. */}
+      {user.role === 'manager' && <Delegation user={user} scope="mine" />}
       <ChangePassword />
       {/* On mobile the sidebar — and with it the ออกจากระบบ button — is not on
           screen, and the appbar avatar now opens this page instead of signing

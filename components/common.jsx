@@ -3,7 +3,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate } from '@/lib/api.js';
-import { ENTERED_FIELDS, sameSession, sameValue } from '@/lib/entries.js';
+import { ENTERED_FIELDS, isProxyFiled, sameSession, sameValue } from '@/lib/entries.js';
 
 export function StatusChip({ status }) {
   const s = STATUS[status] || { label: status, bg: '#eee', fg: '#555' };
@@ -179,6 +179,11 @@ export function SegmentList({ segments }) {
  */
 const ACTION_META = {
   submit: { label: 'ยื่นคำขอ', tone: 'file' },
+  // Its own action rather than a `submit` with a note, so that "who filed
+  // this" is machine-readable and one row still covers one event: the label
+  // says who, `toStatus` says where it went, and the note says why when the
+  // manager's step was skipped.
+  submit_proxy: { label: 'หัวหน้างานบันทึกแทนพนักงาน', tone: 'file' },
   resubmit: { label: 'ยื่นคำขอใหม่', tone: 'file' },
   edit: { label: 'พนักงานแก้ไขคำขอ', tone: 'edit' },
   approve_mgr: { label: 'หัวหน้างานอนุมัติ', tone: 'ok' },
@@ -253,6 +258,52 @@ export function EditedMark({ entry }) {
 }
 
 /**
+ * หัวหน้าบันทึกแทน — this request was filled in by somebody other than the
+ * person it is for.
+ *
+ * Wherever `EditedMark` goes, so does this, and for the same reason: the row
+ * shows a request and says nothing about how it got there. An employee reading
+ * their own ประวัติการขอ OT has to be able to see a row they did not type, and
+ * the ฝ่ายบุคคล confirming it has to see that the หัวหน้า who would normally
+ * have signed it wrote it instead.
+ *
+ * It names the หัวหน้า rather than only stating the fact — "somebody filed this
+ * for you" is the half of the sentence that produces the phone call.
+ */
+export function ProxyMark({ entry }) {
+  if (!isProxyFiled(entry)) return null;
+  const name = entry.filedBy?.name;
+  return (
+    <span
+      className="chip proxy"
+      title={name
+        ? `${name} เป็นผู้บันทึกรายการนี้แทนพนักงาน — ใบนี้ยังเป็นของพนักงานตามเดิม`
+        : 'รายการนี้บันทึกโดยหัวหน้างาน ไม่ใช่พนักงานเจ้าของรายการ'}
+    >
+      หัวหน้าบันทึกแทน{name ? ` · ${name}` : ''}
+    </span>
+  );
+}
+
+/**
+ * The team a row belongs to, on the queue of somebody standing in for two.
+ *
+ * Only drawn when the reviewer is covering somebody else's queue as well as
+ * their own — on an ordinary queue every row is the same team and a chip
+ * saying so on all of them is noise.
+ */
+export function TeamMark({ entry, coveredDepartments }) {
+  const dept = entry.department?._id || entry.department;
+  if (!dept || !coveredDepartments?.length) return null;
+  if (!coveredDepartments.some((id) => String(id) === String(dept))) return null;
+  return (
+    <span className="chip delegated" title="รายการจากทีมที่คุณรับช่วงอนุมัติแทน">
+      รับช่วง · {entry.department?.nameTh || entry.department?.name || 'ทีมที่รับช่วง'}
+    </span>
+  );
+}
+
+/**
  * The live entry in the shape `history.before` stores.
  *
  * Exported because the same shape answers a second question: what one request
@@ -299,7 +350,23 @@ export function EntryHistory({ entry }) {
           <li key={i} className={meta.tone}>
             <div className="head">
               <span className="act">{meta.label}</span>
-              {h.byName && <span className="who">โดย {h.byName}</span>}
+              {/*
+                Who acted, and whose authority they used — never one collapsed
+                into the other. "โดย สมหญิง" alone is true and useless: the
+                question a disputed approval raises is why สมหญิง was allowed
+                to sign a request from a team that is not hers, and only the
+                second half answers it.
+              */}
+              {h.byName && (
+                <span className="who">
+                  โดย {h.byName}
+                  {h.onBehalfOfName && (
+                    <span className="behalf" title="อนุมัติในฐานะผู้รับช่วงแทนหัวหน้างานเจ้าของคิว">
+                      {' '}· ทำแทน {h.onBehalfOfName}
+                    </span>
+                  )}
+                </span>
+              )}
               {h.at && <span className="when">{new Date(h.at).toLocaleString('th-TH')}</span>}
             </div>
             {moved && (

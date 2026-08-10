@@ -49,6 +49,32 @@ export default function PrintForm({ employeeId, period, onClose }) {
         </div>
       </div>
 
+      {/*
+        The same facts, on the screen, always — whatever the paper is set to
+        carry. Whoever pressed print is the person who can still do something
+        about a row that was filed by the wrong person, and while
+        `proxyNoteOnForm` is off this is the only place the month's proxy
+        filings and stand-in approvals are named together.
+      */}
+      {form.acting?.length > 0 && (
+        <div className="no-print" style={{ marginBottom: 12 }}>
+          <Alert kind="info">
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+              เดือนนี้มี {form.acting.length} รายการที่บันทึกหรืออนุมัติโดยผู้ทำแทน
+            </div>
+            {form.acting.map((a, i) => (
+              <div key={i} style={{ fontSize: 12.5 }}>{actingLine(a)}</div>
+            ))}
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              {form.actingOnPaper
+                ? 'ข้อความนี้พิมพ์ลงในใบด้วย (ตั้งค่า proxyNoteOnForm เปิดอยู่)'
+                : 'ใบพิมพ์จะแสดงเฉพาะเครื่องหมาย (แทน) ในช่องรายละเอียดงาน '
+                  + '· เปิด proxyNoteOnForm ในนโยบายการคำนวณ หากต้องการให้พิมพ์รายชื่อผู้ทำแทนลงในใบด้วย'}
+            </div>
+          </Alert>
+        </div>
+      )}
+
       {/* Inside no-print, deliberately. The sheet shows the latest filing of a
           session and nothing else — that is what was asked of it — but hours
           that exist in the database and not on the paper cannot go unsaid to
@@ -159,6 +185,12 @@ export default function PrintForm({ employeeId, period, onClose }) {
                       {s?.description || ''}
                       {s?.continuedFromPreviousDay ? ' (ต่อจากคืนก่อน)' : ''}
                       {s?.noBreakTaken ? ' [ไม่พักเที่ยง]' : ''}
+                      {/* Six characters, in the cell that already carries the
+                          other two per-row remarks. Not a new column and not a
+                          new row: this sheet is a fixed month of 31 and its
+                          columns are measured in millimetres against the
+                          paper. What (แทน) means is spelt out under the grid. */}
+                      {s?.filedByProxy ? ' (แทน)' : ''}
                     </td>
                     {i === 0 && <td className="sig" rowSpan={sessions.length} />}
                     {i === 0 && <td className="sig" rowSpan={sessions.length} />}
@@ -175,6 +207,23 @@ export default function PrintForm({ employeeId, period, onClose }) {
               </tr>
             </tbody>
           </table>
+
+          {/* Who filled a row in, and who signed one, when that was not the
+              obvious person.
+
+              Between the grid and the ฝ่ายบุคคล box, and rendered ONLY when
+              the month has something to say — a month with nothing produces
+              no element at all, so the sheet stays byte for byte what it was.
+              That is the same rule the ไม่ถูกนับ flags follow on the other two
+              printed sheets, and for the same reason: F-HR-027 is a controlled
+              form whose spacing is measured against the paper, and anything
+              added unconditionally is added to every sheet forever.
+
+              Behind `proxyNoteOnForm`, default off. The (แทน) mark inside the
+              description cell is not — it sits where HR already reads two other
+              remarks. This block is a line the form does not have today, so it
+              waits for somebody in HR to look at a printed sample and say yes. */}
+          <ActingNote form={form} />
 
           {/* The tail of the paper form. เฉพาะฝ่ายบุคคล is boxed in solid rule;
               everything HR writes in is dashed. The OT × 1.5 row has two boxes
@@ -218,5 +267,37 @@ export default function PrintForm({ employeeId, period, onClose }) {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * One acting note as a sentence, used on the screen and on the paper alike.
+ *
+ * Both halves are named — who acted and whose authority they used — because
+ * either alone is the half that produces the question rather than the one that
+ * answers it. A missing name prints "—" rather than being dropped: that a row
+ * was signed by a stand-in stays true after the stand-in has left.
+ */
+function actingLine(a) {
+  const when = thaiDate(a.workDate);
+  if (a.kind === 'filed') return `${when} · หัวหน้างานบันทึกแทน — ${a.by || '—'}`;
+  const verb = a.kind === 'refused' ? 'ไม่อนุมัติ' : 'อนุมัติ';
+  return `${when} · ${a.by || '—'} ${verb}แทน ${a.onBehalfOf || '—'}`;
+}
+
+/**
+ * The block under the grid, on the paper.
+ *
+ * Returns null — not an empty element, not a zero-height rule — when the month
+ * has nothing to say or the flag is off, so an ordinary sheet is unchanged.
+ */
+function ActingNote({ form }) {
+  if (!form.actingOnPaper || !form.acting?.length) return null;
+  return (
+    <div className="f027-acting">
+      <div className="t">หมายเหตุ · ผู้บันทึก / ผู้อนุมัติแทน</div>
+      {form.acting.map((a, i) => <div className="l" key={i}>{actingLine(a)}</div>)}
+      <div className="l">(แทน) ในช่องรายละเอียดงาน = หัวหน้างานเป็นผู้บันทึกรายการแทนพนักงาน</div>
+    </div>
   );
 }

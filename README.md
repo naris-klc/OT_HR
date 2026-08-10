@@ -22,6 +22,16 @@ npm run dev            # UI + API together on :3000
 Upgrading a database seeded before the two-company split? Run
 `npm run migrate:company` once — see [Two companies](#two-companies-primus--themtech).
 
+**Deploying the proxy-filing and delegation work?** Two new keys join
+`DEFAULT_POLICY` (`proxySkipsOwnApproval`, `proxyNoteOnForm`), which moves the
+effective policy away from the newest recorded version — and until somebody
+presses **บันทึกกฎที่ใช้อยู่เป็นเวอร์ชัน** under ตั้งค่าระบบ → นโยบายการคำนวณ,
+every entry filed from that moment is stamped with no `policyVersionId` and
+nothing anywhere errors. See
+[When the live rules are not on record](#which-rules-produced-this-figure). No
+migration is needed otherwise: `filedBy` absent means self-filed, which is what
+every existing entry is.
+
 Upgrading a database from before policy versioning? Run
 `npm run migrate:policy-version` once — see
 [Which rules produced this figure](#which-rules-produced-this-figure). It writes
@@ -51,8 +61,8 @@ src/config/policy.js      every [OPEN] item as a named flag — start here
 src/config/companies.js   the two payroll entities and the code-prefix rule
 src/lib/otEngine.js       the arithmetic: segmentation, buckets, break, rounding
 src/lib/csv.js            CSV in/out, UTF-8 BOM on the way out
-src/models/               Department, Employee, Holiday, OtEntry, PolicyVersion,
-                          PolicyReplayRun, Setting
+src/models/               ApprovalDelegation, Department, Employee, Holiday,
+                          OtEntry, PolicyVersion, PolicyReplayRun, Setting
 src/services/otService.js engine ↔ database: compute, cap check, replay
 src/migrate-company.js    one-off: fill `company` on a pre-split database
 src/migrate-policy-version.js
@@ -72,13 +82,21 @@ lib/policyConfirmations.js
                           sign-off is allowed to change (nothing) — pure
 lib/policyConfirmSave.js  the one mongoose call behind a sign-off, kept apart so
                           the rule above can be tested without a database
+lib/proxyFiling.js        who may file OT on somebody's behalf, and where that
+                          request starts — pure
+lib/delegation.js         windows, the no-chains rules, who may approve and on
+                          whose authority — pure
+lib/delegationQuery.js    the reads and the clock behind it, kept apart for the
+                          reason policyConfirmSave.js is
 lib/accounting.js         สรุป OT ส่งบัญชี, shared by its report and its CSV
 lib/accountingRows.js     entries → rows, the hours that reach no row, and the
                           sheet's own reconciliation — pure
 lib/departmentSummary.js  the same month regrouped by แผนก, both companies in
                           one count — shared by its screen, its CSV and its
                           printed form
-test/                     21 files, run by `npm test`
+test/                     23 files, run by `npm test`
+test/proxyFiling.test.js    who may file for whom, and where it starts
+test/delegation.test.js     windows, chains, cycles, and what the trail keeps
 test/otEngine.test.js       worked examples A–E plus edge cases
 test/reportColumns.test.js  no rate bucket lost between engine and paper
 test/accountingReconciliation.test.js
@@ -87,8 +105,8 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **267 tests
-across 21 files** — runs with plain `node --test`, no server and no database.
+and the engine know nothing about Next.js, so the whole suite — **410 tests
+across 23 files** — runs with plain `node --test`, no server and no database.
 Only `app/` and `lib/` touch the framework.
 
 That is also why it stays fast: the suite finishes in **under 400 ms**, which is
@@ -100,6 +118,15 @@ separate file from `lib/policyConfirmations.js`.
 `src/server.js` and `src/routes/` are the retired Express implementation, still
 runnable via `npm run legacy:start` for comparison. Delete them once you are
 satisfied the port is faithful.
+
+**It is no longer a faithful copy and is not being kept as one.** It drifted
+first at the re-filing chain (`refiledFrom` / `resubmittedTo` were never ported)
+and now again at proxy filing and delegation: `src/routes/entries.js` knows
+nothing about `filedBy`, and its approve and reject handlers still carry the
+role-and-status ladder that `lib/delegation.js` replaced. Rules that must hold
+everywhere — `authorizeReplay`, `savePolicy` — are still shared by both servers
+on purpose; this feature's are not, because the Express entry routes are no
+longer a path anybody can reach.
 
 ### The engine is pure
 
@@ -139,6 +166,10 @@ signed-off number is worse than an inconsistency.
 | 10 | Holiday calendar format? | Both paths built | CSV upload + manual entry |
 | 11 | Roster as a file or typed in? | Both paths built | CSV upload + manual entry |
 | 12 | HR boxes: raw or multiplied? | Raw hours | `hrSummaryBasis: 'raw'` |
+
+Two later flags sit beside them, both COSMETIC and neither an [OPEN] item:
+`proxySkipsOwnApproval` (default `true`) and `proxyNoteOnForm` (default
+`false`) — see [หัวหน้าบันทึก OT แทนลูกทีม](#หัวหน้าบันทึก-ot-แทนลูกทีม).
 
 ### ⚠ Three of these are guesses, and the system says so
 
@@ -308,6 +339,192 @@ lands, the พนักงาน screen **shows the interpretation before it is 
 `05/03/1998 → 5 มีนาคม 1998` for the first rows, plus the rows that will be
 skipped — and uploads nothing until someone confirms. The preview runs the same
 pure module the route does; the server is still what enforces it.
+
+---
+
+## หัวหน้าบันทึก OT แทนลูกทีม
+
+An employee who cannot get to the system — off site, no account on them, a
+phone that will not load the form — still worked the hours. Their หัวหน้า can
+file the request for them, and the request that comes out is **the employee's**:
+`entry.employee` is the person who worked it, `entry.department` is theirs, the
+ceiling it is measured against is theirs and the day types are resolved from
+their birthday. The หัวหน้า appears in exactly one new field, **`filedBy`**.
+
+Those two must never be conflated. Filed against the หัวหน้า instead, the hours
+would land on the wrong person's month, the wrong department's cap and the
+wrong F-HR-027 — and every figure on every report would still agree with every
+other one.
+
+**Who may.** หัวหน้างาน only, and only for `role: 'employee'` people in their own
+department (`proxyPermission`, [`lib/proxyFiling.js`](lib/proxyFiling.js)). Not
+ฝ่ายบุคคล and not Admin: neither files OT today, and both would be filing for
+people they do not work beside. The whole rule is one predicate, so widening it
+later is a clause rather than a rewrite.
+
+**`filedBy` is written on every entry**, including the ordinary ones where it
+equals `employee`, so "was this filed by somebody else" is a comparison of two
+present values rather than a rule with an exception. Entries from before the
+field carry nothing, and for them absent means self-filed — *provable*, not
+assumed: `POST /api/entries` accepted only callers passing `maySubmitOt()` and
+wrote the caller as the employee. It is the one field in `OtEntry` whose absence
+has a known meaning.
+
+**The employee still owns it.** It appears in their **OT ของฉัน** without any
+change to `scopeFor` — the entry is theirs — and they may correct or withdraw it
+on the same terms as anything they filed themselves.
+
+### It skips the step its author would have signed
+
+A หัวหน้า who fills the form in and then presses อนุมัติ on it has checked
+nothing. The signature is real in the sense that somebody made it and worthless
+in the sense that it is the same person twice — and **the audit trail cannot
+tell those apart afterwards**. It records ยื่นคำขอ → หัวหน้างานอนุมัติ →
+ฝ่ายบุคคลยืนยัน and reads, correctly as far as anything on the page can show, as
+two independent people agreeing. That is the lie. So the request is created at
+`pending_hr`, having been approved by nobody, and the history says so.
+
+`proxySkipsOwnApproval` (default `true`) turns it off, because "we want both
+presses on the record whatever they are worth" is an answer HR is entitled to
+give. The condition is deliberately **"could this filer sign the step"** and not
+"was this a proxy filing": under the rules above the two pick out the same
+entries, and only the first stays true if who may file is ever widened.
+
+Nobody approves their own filing, and that is checked **again**, independently,
+in `approvalPermission` — not left to the routing above having handled it. The
+routing is a different rule in a different file behind a config flag, and a
+request can reach `pending_mgr` carrying its author's name by more than one
+route: the flag turned off, or a stand-in reaching a department whose entries
+never passed their own step. A rule that depends on another rule breaks silently
+the day somebody edits the other one.
+
+### Before the first signature, not "while pending_mgr"
+
+`editPermission` and `cancelPermission` drew their line at
+`status === 'pending_mgr'`, which was the same line as "nobody has approved
+this" for as long as those two could not come apart. A skipped request is
+created at `pending_hr` with no approval on it, and read literally the old
+spelling shut the employee out of their own request from the moment it existed.
+
+`awaitingFirstSignature()` is now that line, written as *the old condition OR the
+new one* rather than as the general rule `!managerDecision?.at` that both are
+instances of. The general version is tidier and strictly narrower: under
+`hrRejectReturnsTo: 'manager'` a refused entry returns to `pending_mgr` carrying
+the manager's earlier decision, and the tidy rule would quietly close a door
+that has been open since the first version — a rule change nobody asked for,
+arriving as a side effect of a feature about something else.
+
+### On screen and on the paper
+
+Every list that shows a request shows who filed it: **หัวหน้าบันทึกแทน · ชื่อ**
+beside the แก้ไขแล้ว mark it is deliberately *not* coloured like, on the
+employee's own history, the approval queues, and ตรวจสอบรายเดือน → ดู /
+แก้ไขรายการ. The review pop-up says it above the hours, where a view has not
+been formed yet, together with the fact that nobody approved it and why.
+
+**F-HR-027 gets a six-character `(แทน)`** in the รายละเอียดงานที่ทำ cell — where
+`(ต่อจากคืนก่อน)` and `[ไม่พักเที่ยง]` already are, which is the one place on
+that form carrying per-row remarks and the one HR reads today. Not a column and
+not a row: the sheet is a fixed month of 31 rows with columns measured in
+millimetres.
+
+The block under the grid naming who filed and who signed on whose behalf is
+behind **`proxyNoteOnForm`, default `false`**. F-HR-027 Rev.4 is a controlled
+form, and a line nobody in HR has agreed to is a change to a document rather
+than a feature — so it is written, testable, and off until somebody looks at a
+printed sample and says yes. With it off, the same facts are on the **screen**
+above the sheet, always: whoever pressed print is the person who can still do
+something about a row filed by the wrong person.
+
+---
+
+## ผู้รับช่วงอนุมัติแทน — the stand-in
+
+A หัวหน้า who is away can let somebody else sign their approval queue, between
+two dates. The rules are pure and live in
+[`lib/delegation.js`](lib/delegation.js); the reads and the clock are in
+`lib/delegationQuery.js`, split for the reason `policyConfirmSave.js` is split
+from `policyConfirmations.js` — the suite tests the rules without opening a
+connection.
+
+**A window, never a switch.** There is no `enabled` field, and that is the
+design rather than an omission. A toggle gets turned on for a week and left on
+for a year, because the person who would turn it off is the person who was
+away — and nothing ever objects, since a stand-in signing and a stand-in who
+should have stopped signing months ago are indistinguishable. A dated window
+stops applying on its own.
+
+Dates are `'YYYY-MM-DD'` **strings**, for the reason `Holiday.date` and
+`Employee.birthDate` are: this is a range on a calendar, not a pair of instants.
+Both ends are inclusive. The one date that has to be *produced* rather than read
+is today's, and `today()` formats it in **`Asia/Bangkok`** (override with
+`OT_TIMEZONE`) — `toISOString()` is UTC, and for the seven hours after midnight
+it would name yesterday, opening a window late and holding it open through the
+small hours after it should have shut.
+
+**It adds a signature, it does not move one.** The real manager's claim is
+settled before any delegation is consulted, so coming back early costs nothing
+and needs no undo. Both may approve throughout.
+
+**No chains, and the cycle is walked.** A stand-in may not be somebody who has
+delegated their own queue away, and a manager holding somebody else's queue may
+not pass one on — two rules that between them make the graph one edge deep, so a
+loop is unreachable. `wouldCycle()` walks it anyway: that property holds only if
+every row went through these rules, and rows fixed by hand or written in a race
+did not. A cycle among approvers is the one shape here that cannot be reasoned
+out afterwards, because every link in it looks legitimate on its own.
+
+**Set by the manager, or by ฝ่ายบุคคล.** HR is not a courtesy: a หัวหน้า taken
+ill on a Sunday night cannot log in to nominate anybody, and a rule that works
+only while the person is well is not a rule for absence. The manager's own copy
+is on **ข้อมูลส่วนตัว**; HR's is **ตั้งค่าระบบ → ผู้รับช่วงอนุมัติ**. One
+component, because the screen used less often is the one that would end up
+missing the rule that matters.
+
+**The stand-in reads both queues, and can tell them apart.** `scopeFor` takes
+the covered departments as an argument rather than looking them up, so it stays
+pure; a manager's **รออนุมัติ** carries the covered team's rows alongside their
+own, under a banner naming who is being covered and until when, with every
+covered row wearing a **รับช่วง** chip.
+
+Widening never applies to ฝ่ายบุคคล, who are not narrowed by department in the
+first place — widening a scope that is not narrow would *narrow* it, and it
+would do so silently, on the screen meant to show everything. So `scopeWidening`
+hands the list only to somebody it would widen. What HR lack while standing in
+is therefore not access but a **screen**: `GET /entries?scope=delegated` returns
+the handed-over queue and nothing else, behind a **รออนุมัติแทน** tab that
+appears while they are covering at least one team — keyed on teams covered, not
+rows waiting, because an empty covered queue is still somebody's
+responsibility and a tab that vanished with its last row is one nobody would
+trust to be there tomorrow.
+
+### The audit trail is the point
+
+`history.by` stays **the person who pressed the button** — always, never the
+manager they stood in for. Beside it:
+
+- **`onBehalfOf`** — whose authority it was, with **`onBehalfOfName`**
+  denormalised next to it for the reason `byName` is: a trail has to stay
+  readable after somebody leaves, and a name copied at the moment of signing is
+  the only version a later roster change cannot erase.
+- **`delegationId`** — *where that authority came from*. A name answers "who
+  signed". This answers "on what basis", which no number of names can. Without
+  it the trail says B acted for A and leaves whoever is checking to take it on
+  trust; with it there is a record with dates on it that either covers the day
+  the decision was made or does not.
+
+The same three ride on `managerDecision` and `hrDecision`. ประวัติรายการ prints
+**หัวหน้างานอนุมัติ · โดย สมหญิง · ทำแทน สมชาย**, the review pop-up says it under
+ผู้อนุมัติ, and the F-HR-027 note block carries it to the paper when
+`proxyNoteOnForm` is on.
+
+**An expiry changes the queue, not the past.** Entries already approved keep the
+status they were given: an approval is an event that happened, not a permission
+re-evaluated on every read, and nothing recomputes one.
+`test/delegation.test.js` pins that explicitly — it is exactly the kind of thing
+a later reader might "fix". Ending a delegation early sets `revokedAt` and
+deletes nothing, because approvals point back at it: an audit trail whose
+evidence can be removed proves nothing.
 
 ---
 
@@ -850,10 +1067,12 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **267/267 pass in ~385 ms**, including all five worked examples
+- `npm test` — **410/410 pass in ~460 ms**, including all five worked examples
   from §4, the OPEN 1–5, 9 and 12 policy variants, company inference from the
   code, `editPermission()` over every role × status pair
-  (`test/editPermission.test.js`), and the two conservation rules: that no rate
+  (`test/editPermission.test.js`), proxy filing and delegation
+  (`test/proxyFiling.test.js`, `test/delegation.test.js`), and the two
+  conservation rules: that no rate
   bucket is lost between the engine's three columns and the paper's two
   (`test/reportColumns.test.js`), and that no person's hours are lost between
   the entry collection and the printed roster
@@ -889,6 +1108,25 @@ The employee's own edit of a `pending_mgr` entry — the permission rule is
 covered by the test suite, but the write behind it (recompute, cap re-check
 with `excludeId`, the `edit` history stamp) has not been walked against a live
 database the way HR's correction was.
+
+**Proxy filing and delegation have not been walked against a live database at
+all.** Every rule in them is pure and pinned by `test/proxyFiling.test.js` and
+`test/delegation.test.js`, and `npm run build` compiles; what is untested is
+everything those rules sit on — that `POST /api/entries` with an `employeeId`
+writes the target's department and the target's cap snapshot, that the
+`ApprovalDelegation` indexes are used by `heldBy`, that a widened `scopeFor`
+returns the covered team's rows, and that `history.onBehalfOf` survives the
+round trip and reaches ประวัติรายการ. Walk one proxy filing (manager files →
+lands at `pending_hr` with `submit_proxy` in its history → employee corrects it
+→ HR confirms) and one delegation (set a window, approve as the stand-in,
+check the trail reads **ทำแทน**, let it expire, confirm the queue goes back)
+before treating either as working.
+
+The **F-HR-027 note block has never been printed.** `proxyNoteOnForm` ships
+`false`, so nothing about the sheet changes until somebody turns it on — but the
+block's height against the 297 mm page is measured by eye and by nothing else,
+exactly like the column widths above. Print a sample month before showing it to
+HR.
 
 Most HTTP paths remain unexercised — the walk above covers auth, entries,
 approve/cancel and the form report, but not the CSV exports, the CSV imports,

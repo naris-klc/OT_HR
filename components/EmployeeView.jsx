@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  StatusChip, Alert, Empty, EditedMark, EntryHistory, Modal, RequestTrail, editsOf, trailOf,
+  StatusChip, Alert, Empty, EditedMark, EntryHistory, Modal, ProxyMark, RequestTrail,
+  editsOf, trailOf,
 } from './common.jsx';
-import { refileState } from '@/lib/entries.js';
+import { awaitingFirstSignature, isProxyFiled, refileState } from '@/lib/entries.js';
 import OtForm from './OtForm.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -202,13 +203,21 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                   {e.endsNextDay && ' · ข้ามคืน'}
                   {e.noBreakTaken && ' · ไม่พักเที่ยง'}
                 </div>
+                {/* A row the employee never typed. It is theirs — it counts
+                    against their month and their ceiling — and the first they
+                    may hear of it is seeing it here, so it says who wrote it. */}
+                {isProxyFiled(e) && <div style={{ marginTop: 4 }}><ProxyMark entry={e} /></div>}
               </div>
               <div className="num" style={{ font: '600 16px/1 var(--mono)', flex: 'none' }}>
                 {hours(e.totals?.otHours)}
                 <span style={{ font: '400 11px/1 var(--sans)', color: 'var(--muted-2)' }}> ชม.</span>
               </div>
               <StatusChip status={e.status} />
-              {e.status === 'pending_mgr' && (
+              {/* Not `status === 'pending_mgr'`: a request filed on this
+                  person's behalf starts at pending_hr with nobody having
+                  approved it, and it is still theirs to correct. Same rule the
+                  server enforces — see `awaitingFirstSignature`. */}
+              {awaitingFirstSignature(e) && (
                 <button className="btn ghost sm" style={{ flex: 'none' }} onClick={() => setEditing(e)}>
                   แก้ไข
                 </button>
@@ -225,8 +234,9 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
             <div style={{ flex: 1 }}>
               <h2>ประวัติการขอ OT · {periodLabel(period)}</h2>
               <div className="hint" style={{ margin: 0 }}>
-                แก้ไขวันที่ เวลา และรายละเอียดเองได้เฉพาะรายการที่ยังรอหัวหน้าอนุมัติ ·
+                แก้ไขวันที่ เวลา และรายละเอียดเองได้ตราบใดที่<strong>ยังไม่มีผู้อนุมัติ</strong> ·
                 เมื่อหัวหน้าหรือฝ่ายบุคคลอนุมัติแล้ว ต้องให้ฝ่ายบุคคลเป็นผู้แก้ไข ·
+                รายการที่หัวหน้าบันทึกแทนก็เป็นของคุณเช่นกัน แก้ไขและยกเลิกเองได้ตามเงื่อนไขเดียวกัน ·
                 รายการที่ไม่อนุมัติ กด “ส่งใหม่” เพื่อยื่นคำขอใหม่จากข้อมูลเดิมได้ <strong>1 ครั้ง</strong> ·
                 {' '}หากคำขอที่ส่งใหม่ถูกไม่อนุมัติอีก ต้องบันทึก OT เป็นคำขอใหม่ตั้งแต่ต้น
               </div>
@@ -274,6 +284,9 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                       <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
                       <td style={{ maxWidth: 260 }}>
                         {e.description}
+                        {isProxyFiled(e) && (
+                          <div style={{ marginTop: 4 }}><ProxyMark entry={e} /></div>
+                        )}
                         {editsOf(e).length > 0 && (
                           <div style={{ marginTop: 4 }}><EditedMark entry={e} /></div>
                         )}
@@ -287,8 +300,10 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {/* Only while nobody has signed it. Once the manager
                             approves, the hours carry a decision and the row is
-                            HR's to correct. */}
-                        {e.status === 'pending_mgr' && (
+                            HR's to correct. That is not the same as "while it
+                            is pending_mgr" for a request somebody filed on
+                            this person's behalf — see awaitingFirstSignature. */}
+                        {awaitingFirstSignature(e) && (
                           <>
                             <button className="btn ghost sm" onClick={() => setEditing(e)}>แก้ไข</button>
                             <button
@@ -326,10 +341,10 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                           <span className="chip final-rejected">ไม่อนุมัติ (สิ้นสุด)</span>
                         )}
                         {/* Offered on rows with something earlier to show —
-                            a rewrite, or the refused request this one replaced.
-                            On the rest a button that opens "ยื่นคำขอ" alone is
-                            noise. */}
-                        {(editsOf(e).length > 0 || e.refiledFrom) && (
+                            a rewrite, the refused request this one replaced, or
+                            a filing this person did not make. On the rest a
+                            button that opens "ยื่นคำขอ" alone is noise. */}
+                        {(editsOf(e).length > 0 || e.refiledFrom || isProxyFiled(e)) && (
                           <button
                             className="btn ghost sm"
                             style={{ marginLeft: 6 }}

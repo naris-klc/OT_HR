@@ -181,6 +181,49 @@ export const DEFAULT_POLICY = Object.freeze({
    */
   hrRejectReturnsTo: 'employee',
 
+  // ── หัวหน้าบันทึก OT แทนลูกทีม ──────────────────────────────────────────────
+  /**
+   * When the person who filled the form in is also the person who would sign
+   * the manager's step, does the request skip that step?
+   *
+   * true  — it goes straight to `pending_hr` (DEFAULT), with the reason written
+   *         into its history.
+   * false — it waits at `pending_mgr` like any other, for the หัวหน้า who wrote
+   *         it to approve their own filing.
+   *
+   * The default is the honest reading rather than the flattering one. A หัวหน้า
+   * pressing อนุมัติ on a form they typed has checked nothing — but the trail
+   * that comes out of it reads ยื่นคำขอ → หัวหน้างานอนุมัติ → ฝ่ายบุคคลยืนยัน,
+   * which is indistinguishable on the page from two people agreeing, and there
+   * is no way to tell them apart afterwards. Skipping openly looks worse and
+   * says something true: this reached HR approved by nobody.
+   *
+   * A flag rather than an assumption because "we want both presses on the
+   * record whatever they are worth" is a defensible answer that HR is entitled
+   * to give. COSMETIC — it moves no hour, only which desk the request is on.
+   * The rule itself is `initialStatus` in lib/proxyFiling.js.
+   */
+  proxySkipsOwnApproval: true,
+  /**
+   * Does F-HR-027 carry a line under the table naming who filed and who signed
+   * on somebody else's behalf?
+   *
+   * false — the sheet is unchanged except for the short (แทน) mark in the
+   *         รายละเอียดงานที่ทำ cell (DEFAULT).
+   * true  — a note line prints under the grid, naming the dates and both people.
+   *
+   * Off by default because F-HR-027 Rev.4 is a controlled form and a line
+   * nobody in HR has agreed to is a change to a document, not a feature. The
+   * mark inside the description cell is not covered by this: it sits where
+   * (ต่อจากคืนก่อน) and [ไม่พักเที่ยง] already sit, which HR reads today.
+   *
+   * COSMETIC in the strict sense, exactly like `birthdayReasonOnForm` beside
+   * which it is registered: every hour on the sheet comes from stored segments
+   * and this decides only what is printed beside them. Flipping it must
+   * recompute nothing.
+   */
+  proxyNoteOnForm: false,
+
   // ── [OPEN 8] Hitting the department cap: block or warn? ────────────────────
   /** 'warn' — allow through with a flag for HR (DEFAULT). 'block' — refuse. */
   capBehaviour: 'warn',

@@ -34,6 +34,30 @@ const blank = () => ({
  */
 export default function OtForm({ entry, template, onSaved, onCancel, mode = 'employee', employeeId }) {
   const hrEdit = mode === 'hr';
+  const proxy = mode === 'proxy';
+
+  /**
+   * Who the request is FOR, when that is not whoever is filling the form in.
+   *
+   * `proxy` mode starts blank on purpose. A pre-selected first name in the
+   * dropdown is the shape of mistake this whole feature could produce at
+   * scale — a หัวหน้า filing five requests in a row and one of them landing on
+   * the wrong person's month, where nothing on any screen would ever flag it.
+   * Nothing computes and the button stays shut until somebody is chosen.
+   */
+  const [target, setTarget] = useState('');
+  const [team, setTeam] = useState([]);
+  const [teamError, setTeamError] = useState('');
+
+  useEffect(() => {
+    if (!proxy) return;
+    api.get('/employees')
+      .then((res) => setTeam((res.employees || []).filter((e) => e.role === 'employee')))
+      .catch((err) => setTeamError(err.message));
+  }, [proxy]);
+
+  const forWhom = proxy ? target : employeeId;
+
   const [form, setForm] = useState(() => {
     const from = entry || template;
     return from ? {
@@ -48,6 +72,8 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
   const [note, setNote] = useState('');
   const [preview, setPreview] = useState(null);
   const [cap, setCap] = useState(null);
+  /** Where the server says this would land — see the preview route. */
+  const [routing, setRouting] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const timer = useRef(null);
@@ -60,18 +86,26 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
     clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       if (!form.workDate || !form.startTime || !form.endTime) return;
+      // Filing for somebody else, the preview is worthless until the server
+      // knows who: the ceiling and the day types are theirs, and a split
+      // computed against nobody would disagree with what saving produces.
+      if (proxy && !target) { setPreview(null); setCap(null); return; }
       try {
-        const res = await api.post('/entries/preview', { ...form, entryId: entry?._id, employeeId });
+        const res = await api.post('/entries/preview', {
+          ...form, entryId: entry?._id, employeeId: forWhom,
+        });
         setPreview(res.result);
         setCap(res.cap);
+        setRouting(res.routing || null);
         setError('');
       } catch (err) {
         setPreview(null);
+        setRouting(null);
         setError(err.message);
       }
     }, 250);
     return () => clearTimeout(timer.current);
-  }, [form.workDate, form.startTime, form.endTime, form.endsNextDay, form.noBreakTaken]);
+  }, [form.workDate, form.startTime, form.endTime, form.endsNextDay, form.noBreakTaken, forWhom]);
 
   async function submit(e) {
     e.preventDefault();
@@ -87,7 +121,10 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
         // writes a request that points back at it, so the manager reviewing
         // this one can see they have refused it before and what they said.
         const refiledFrom = template?.status === 'rejected' ? template._id : undefined;
-        await api.post('/entries', { ...form, refiledFrom });
+        // `employeeId` is what turns this into a filing on somebody's behalf.
+        // The server decides whether this caller may — the dropdown only ever
+        // offered their own team, but that is a convenience, not the rule.
+        await api.post('/entries', { ...form, refiledFrom, employeeId: proxy ? target : undefined });
       }
       onSaved();
     } catch (err) {
@@ -108,9 +145,10 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
     <form className="card" onSubmit={submit}>
       <h2>
         {hrEdit ? 'แก้ไขรายละเอียด (ฝ่ายบุคคล)'
-          : entry ? 'แก้ไขรายการที่ยื่นไว้'
-            : template ? 'ส่งคำขอใหม่จากรายการเดิม'
-              : 'บันทึกการทำงานล่วงเวลา'}
+          : proxy ? 'บันทึก OT แทนลูกทีม'
+            : entry ? 'แก้ไขรายการที่ยื่นไว้'
+              : template ? 'ส่งคำขอใหม่จากรายการเดิม'
+                : 'บันทึกการทำงานล่วงเวลา'}
       </h2>
       <div className="hint">
         เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT ·
@@ -129,6 +167,52 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
           สถานะเดิมคงไว้ตามเดิม ไม่ต้องส่งกลับไปให้หัวหน้าอนุมัติใหม่ ·
           ระบบบันทึกผู้แก้ไขและเหตุผลไว้ในประวัติรายการ
         </div>
+      )}
+
+      {/* ── whose request this is ─────────────────────────────────────────── */}
+      {proxy && (
+        <>
+          <div className="field" style={{ marginTop: 6 }}>
+            <label>บันทึกแทนพนักงาน *</label>
+            <select value={target} onChange={(e) => setTarget(e.target.value)} required>
+              <option value="">— เลือกพนักงานในแผนก —</option>
+              {team.map((p) => (
+                <option key={p._id} value={p._id}>{p.name} · {p.code}</option>
+              ))}
+            </select>
+            <span className="field-note">
+              เลือกได้เฉพาะพนักงานในแผนกของคุณ · ชั่วโมง เพดาน และวันหยุดทั้งหมดคิดจากพนักงานคนนี้
+            </span>
+          </div>
+          {teamError && <Alert kind="error">{teamError}</Alert>}
+          {team.length === 0 && !teamError && (
+            <Alert kind="warn">ไม่พบพนักงานที่บันทึก OT ได้ในแผนกนี้</Alert>
+          )}
+
+          {/*
+            Said before anything is typed, not after it is saved. Two things
+            about a proxy filing surprise people, and both are visible on the
+            row afterwards whether or not anybody warned them: the request
+            belongs to the employee and shows up on their screen, and it is not
+            going to wait for the หัวหน้า who wrote it to approve it.
+          */}
+          <Alert kind="info">
+            รายการนี้จะเป็น<strong>ของพนักงาน</strong> ไม่ใช่ของคุณ — พนักงานจะเห็นในหน้า “OT ของฉัน”
+            {' '}และแก้ไขเองได้ตราบใดที่ยังไม่มีผู้อนุมัติ ·
+            {' '}ระบบจะบันทึกว่า<strong>คุณเป็นผู้บันทึกแทน</strong> ทั้งบนหน้าจอและในใบพิมพ์
+            {/* Read off the server's own answer rather than assumed: whether
+                the manager's step is skipped is a policy flag, and a promise
+                the settings could contradict is worse than no promise. */}
+            {routing?.skipped && (
+              <> · และจะ<strong>ข้ามขั้นรอหัวหน้าไปยังรอ HR โดยตรง</strong>
+                {' '}เพราะการที่คุณอนุมัติใบที่คุณกรอกเองไม่ได้เพิ่มการตรวจสอบใด ๆ
+              </>
+            )}
+            {routing && !routing.skipped && (
+              <> · ตามนโยบายปัจจุบัน รายการนี้จะ<strong>รอหัวหน้าอนุมัติตามปกติ</strong></>
+            )}
+          </Alert>
+        </>
       )}
 
       <div className="row">
@@ -240,9 +324,12 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
         {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>ยกเลิก</button>}
         <button
           className="btn"
-          disabled={busy || over || !preview || preview.totals.otHours <= 0 || (hrEdit && !note.trim())}
+          disabled={busy || over || !preview || preview.totals.otHours <= 0
+            || (hrEdit && !note.trim()) || (proxy && !target)}
         >
-          {entry ? 'บันทึกการแก้ไข' : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
+          {entry ? 'บันทึกการแก้ไข'
+            : proxy ? (routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า')
+              : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
         </button>
       </div>
     </form>

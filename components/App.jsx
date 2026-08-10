@@ -176,6 +176,7 @@ const ROLE_LABEL = {
 const PAGE = {
   mine: ['OT ของฉัน', 'MY OVERTIME'],
   approve: ['รออนุมัติ', 'PENDING · MANAGER'],
+  delegated: ['รออนุมัติแทน', 'PENDING · DELEGATED'],
   confirm: ['รอ HR ยืนยัน', 'PENDING · HR'],
   monthly: ['ตรวจสอบรายเดือน', 'MONTHLY REVIEW'],
   accounting: ['สรุป OT ส่งบัญชี', 'PAYROLL SUBMISSION'],
@@ -189,7 +190,9 @@ function Shell({ session, onLogout }) {
   const { user } = session;
   const home = defaultTab(user.role);
   const [tab, setTab] = useState(home);
-  const [counts, setCounts] = useState({ pendingMgr: 0, pendingHr: 0 });
+  const [counts, setCounts] = useState({
+    pendingMgr: 0, pendingHr: 0, pendingMgrDelegated: 0, delegatedTeams: 0,
+  });
   /**
    * Which section ตั้งค่าระบบ should open on, when something sent us there.
    * Cleared on leaving the tab (below), so it steers the one arrival it was set
@@ -213,7 +216,9 @@ function Shell({ session, onLogout }) {
    * somebody else was working the same queue.
    */
   function queueDone(stage, n = 1) {
-    const key = stage === 'pending_hr' ? 'pendingHr' : 'pendingMgr';
+    const key = stage === 'pending_hr' ? 'pendingHr'
+      : stage === 'delegated' ? 'pendingMgrDelegated'
+        : 'pendingMgr';
     setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] || 0) - n) }));
     refreshCounts();
   }
@@ -270,6 +275,29 @@ function Shell({ session, onLogout }) {
   const tabs = [];
   if (user.maySubmitOt) tabs.push({ key: 'mine', label: 'OT ของฉัน', icon: '◧' });
   if (user.role === 'manager') tabs.push({ key: 'approve', label: 'รออนุมัติ', icon: '◔', badge: counts.pendingMgr });
+  /**
+   * ฝ่ายบุคคล standing in for a หัวหน้า get a queue of their own.
+   *
+   * A manager needs no such tab — their รออนุมัติ already carries the covered
+   * team's rows, each wearing a รับช่วง chip, because `scopeFor` widens by
+   * department and theirs was narrow. HR's is not narrow, so widening it does
+   * nothing and their existing screens would never show the manager's step at
+   * all. This one asks for `scope=delegated`: the handed-over queue and
+   * nothing else.
+   *
+   * Keyed on how many teams are covered rather than on how many rows are
+   * waiting — an empty covered queue is still somebody's responsibility, and a
+   * tab that vanished with its last row is a tab nobody would trust to be
+   * there tomorrow.
+   */
+  if (['hr', 'admin'].includes(user.role) && counts.delegatedTeams > 0) {
+    tabs.push({
+      key: 'delegated',
+      label: 'รออนุมัติแทน',
+      icon: '◕',
+      badge: counts.pendingMgrDelegated,
+    });
+  }
   if (['hr', 'admin'].includes(user.role)) {
     tabs.push({ key: 'confirm', label: 'รอ HR ยืนยัน', icon: '◑', badge: counts.pendingHr });
     tabs.push({ key: 'monthly', label: 'ตรวจสอบรายเดือน', icon: '▤' });
@@ -379,6 +407,7 @@ function Shell({ session, onLogout }) {
           <div className="page">
             {tab === 'mine' && <EmployeeView user={user} onChanged={refreshCounts} openSignal={formSignal} />}
             {tab === 'approve' && <ApprovalQueue user={user} stage="pending_mgr" onChanged={queueDone} onOpenPolicy={openPolicy} />}
+            {tab === 'delegated' && <ApprovalQueue user={user} stage="pending_mgr" delegatedOnly onChanged={queueDone} onOpenPolicy={openPolicy} />}
             {tab === 'confirm' && <ApprovalQueue user={user} stage="pending_hr" onChanged={queueDone} onOpenPolicy={openPolicy} />}
             {tab === 'monthly' && <HrView user={user} />}
             {tab === 'accounting' && <AccountingView />}

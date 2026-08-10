@@ -4,11 +4,16 @@ import { requireAuth } from '@/lib/session.js';
 import { POPULATE, cancelPermission } from '@/lib/entries.js';
 
 /**
- * §6: own request, while still pending_mgr.
+ * §6: own request, while nobody has approved it.
  *
  * The rule itself is `cancelPermission`, beside `editPermission` — the two draw
  * the same line at the first approval and are worth reading together. This
  * route is left with the lookup and the history entry.
+ *
+ * The line is `awaitingFirstSignature` rather than a status, so a request a
+ * หัวหน้า filed on this person's behalf — which starts at `pending_hr` having
+ * been approved by nobody — is still theirs to withdraw. `findById` returns the
+ * whole document, `managerDecision` included, which is what that rule reads.
  *
  * Withdrawing sets a status and nothing else. It deliberately does NOT touch
  * `resubmittedTo`: that field is the once-only lock on correcting a REFUSED

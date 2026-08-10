@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { DEFAULT_POLICY } from '../src/config/policy.js';
+import { ARITHMETIC_KEYS, COSMETIC_KEYS } from '../lib/policyVersion.js';
 
 /**
  * The "ไม่ถูกนับ" warning reaches the paper without moving anything on it.
@@ -176,4 +178,63 @@ test('the screen banner stays off the paper', () => {
   const common = sourceOf('components/common.jsx');
   const banner = common.slice(common.indexOf('export function UnaccountedHours'));
   assert.match(banner.slice(0, 400), /className="box error no-print"/);
+});
+
+// ── F-HR-027: the acting note costs an ordinary sheet nothing ───────────────
+
+/**
+ * The same lesson as the two sheets above, applied to the one form that is a
+ * controlled document.
+ *
+ * F-HR-027 Rev.4 is laid out cell for cell against the paper, its columns are
+ * measured in millimetres and its month is a fixed 31 rows. A note added
+ * unconditionally is a note added to every sheet the company prints forever,
+ * including the ones HR has never agreed to change. So the mark inside the
+ * description cell goes where the other two per-row remarks already are, and
+ * the block under the grid renders nothing at all until somebody turns it on.
+ */
+const FORM = 'components/PrintForm.jsx';
+
+test('the acting note is behind a flag and returns null when there is nothing to say', () => {
+  const code = sourceOf(FORM);
+  assert.match(
+    code,
+    /function ActingNote\(\{ form \}\) \{\s*if \(!form\.actingOnPaper \|\| !form\.acting\?\.length\) return null;/,
+    'the note renders unconditionally, or without consulting the flag',
+  );
+});
+
+test('the row mark rides in the description cell, beside the remarks already there', () => {
+  // Not a column, not a row: either would move a measured layout.
+  const code = sourceOf(FORM);
+  const cell = code.slice(code.indexOf('<td className="desc"'), code.indexOf('</td>', code.indexOf('<td className="desc"')));
+  assert.match(cell, /continuedFromPreviousDay/, 'this is the cell that carries per-row remarks');
+  assert.match(cell, /filedByProxy \? ' \(แทน\)' : ''/);
+});
+
+test('F-HR-027 still draws one row per date and nothing counts the note', () => {
+  const code = sourceOf(FORM);
+  // The month is the calendar's, and the sessions are the entry's. If the note
+  // ever became a row, one of these two expressions would have to change.
+  assert.match(code, /const sessions = row\.sessions\.length \? row\.sessions : \[null\];/);
+  assert.match(code, /rowSpan=\{sessions\.length\}/);
+});
+
+test('the acting note is not marked no-print, and the screen copy is', () => {
+  const code = sourceOf(FORM);
+  const paper = code.slice(code.indexOf('function ActingNote'));
+  assert.doesNotMatch(paper, /no-print/, 'the paper note is hidden from the paper');
+
+  // Its screen counterpart says the same things to whoever pressed print, and
+  // must stay off the sheet — two copies of the block on one page.
+  const screen = code.slice(code.indexOf('{form.acting?.length > 0 && ('), code.indexOf('{/* Inside no-print'));
+  assert.match(screen, /className="no-print"/);
+});
+
+test('the flag ships off — the paper is unchanged until HR sees a sample', () => {
+  assert.equal(DEFAULT_POLICY.proxyNoteOnForm, false);
+  // And it must not be able to replay a month: it decides what is printed
+  // beside hours that are already in their columns.
+  assert.ok(COSMETIC_KEYS.includes('proxyNoteOnForm'));
+  assert.ok(!ARITHMETIC_KEYS.includes('proxyNoteOnForm'));
 });

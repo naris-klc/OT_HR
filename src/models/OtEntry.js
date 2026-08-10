@@ -126,14 +126,47 @@ const historySchema = new mongoose.Schema(
       // value dropped from this list would make those entries fail validation
       // the next time anything touched them.
       enum: [
-        'submit', 'resubmit', 'approve_mgr', 'reject_mgr', 'approve_hr', 'reject_hr',
-        'cancel', 'edit', 'hr_edit', 'recompute',
+        'submit', 'submit_proxy', 'resubmit', 'approve_mgr', 'reject_mgr',
+        'approve_hr', 'reject_hr', 'cancel', 'edit', 'hr_edit', 'recompute',
       ],
       required: true,
     },
     note: String,
     fromStatus: String,
     toStatus: String,
+
+    /**
+     * Whose authority this action was taken under, when that is not the person
+     * who took it.
+     *
+     * Written by an approval or a refusal made by a ผู้รับช่วง — `by` stays the
+     * person who pressed the button and this says on whose behalf. The pair is
+     * the whole point: a trail holding only the name of whoever acted can say
+     * that B signed but not why B was allowed to, and "why was B allowed to" is
+     * the question a disputed figure actually raises. Collapsing the two into
+     * one name loses one of them for good, and there is nothing else on the
+     * entry that remembers.
+     *
+     * Absent on every ordinary decision, which is nearly all of them, and on
+     * every decision recorded before delegation existed.
+     */
+    onBehalfOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+    /**
+     * The same name, copied. Denormalised for the reason `byName` is: a person
+     * leaves, their document goes, and a trail that has to resolve a pointer to
+     * stay readable stops being readable at exactly the moment somebody is
+     * asking about the months they worked.
+     */
+    onBehalfOfName: String,
+    /**
+     * And where the authority came from — the window, who granted it, when.
+     *
+     * A name answers "who signed". This answers "on what basis", which no
+     * amount of names can. Without it the trail says B acted for A and leaves
+     * whoever is checking to take that on trust; with it there is a record with
+     * dates on it that either covers the day the decision was made or does not.
+     */
+    delegationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalDelegation' },
 
     /**
      * The entry as it stood immediately before this action, written only by the
@@ -151,6 +184,40 @@ const otEntrySchema = new mongoose.Schema(
   {
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true, index: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true, index: true },
+
+    /**
+     * Who put the request in — the employee themselves, or the หัวหน้า who
+     * filled the form in for them.
+     *
+     * A field of its own rather than a flag, because "somebody else filed this"
+     * is only half an answer: the employee reading their own OT ของฉัน, the
+     * ฝ่ายบุคคล reconciling a month and the manager signing the paper all need
+     * the name. It never moves `employee`, which stays the person who worked
+     * the hours and whose department, cap and birthday the figures come from —
+     * the two fields answer different questions and conflating them would put
+     * a หัวหน้า's name on hours they did not work.
+     *
+     * Written on EVERY entry from here on, including the ordinary ones where it
+     * equals `employee`, so that the question "was this filed by somebody else"
+     * is a comparison of two present values rather than a rule with an
+     * exception in it. Entries written before this field existed carry nothing,
+     * and for them absent means self-filed — which is provable rather than
+     * assumed: `POST /api/entries` accepted only callers passing
+     * `maySubmitOt()` and wrote the caller as the employee. It is the one field
+     * in this schema whose absence has a known meaning; `capSnapshot.breaches`
+     * and `dayReason` above are the ordinary case, where absent means only
+     * "not recorded".
+     *
+     * Not `required`, for the same reason nothing else added later is: mongoose
+     * validates the whole document on save, and a required field here would
+     * make every historic entry unsaveable the next time anything touched it.
+     */
+    filedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Employee',
+      default: null,
+      index: true,
+    },
 
     // ── §12.2: sessions cross midnight ──────────────────────────────────────
     // Wall-clock fields are the source of truth: no timezone can move them,
@@ -226,15 +293,27 @@ const otEntrySchema = new mongoose.Schema(
     /** 'YYYY-MM' — the month this entry rolls up into. Derived from workDate. */
     period: { type: String, required: true, index: true },
 
+    /**
+     * The manager's signature. `by` is whoever pressed the button; when that
+     * was a ผู้รับช่วง, `onBehalfOf` names the manager whose queue it was and
+     * `delegationId` points at the record that says why they could. See the
+     * same three fields on `historySchema` above for why all three are kept.
+     */
     managerDecision: {
       by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
       at: Date,
       note: String,
+      onBehalfOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+      onBehalfOfName: String,
+      delegationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalDelegation' },
     },
     hrDecision: {
       by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
       at: Date,
       note: String,
+      onBehalfOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+      onBehalfOfName: String,
+      delegationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalDelegation' },
     },
     rejectionReason: String,
 
@@ -363,7 +442,12 @@ otEntrySchema.methods.snapshot = function snapshot() {
   };
 };
 
-otEntrySchema.methods.log = function log(actor, action, note, fromStatus, before) {
+/**
+ * `extra` carries `onBehalfOf` / `onBehalfOfName` / `delegationId` for the
+ * decisions a ผู้รับช่วง made — an optional last argument rather than three
+ * more positional ones, so that the eleven existing calls stay as they were.
+ */
+otEntrySchema.methods.log = function log(actor, action, note, fromStatus, before, extra) {
   this.history.push({
     by: actor?._id,
     byName: actor?.name,
@@ -374,6 +458,9 @@ otEntrySchema.methods.log = function log(actor, action, note, fromStatus, before
     // `undefined` rather than `null`: mongoose stores an explicit null as a
     // subdocument, and a reader cannot tell that from a real empty snapshot.
     before: before || undefined,
+    onBehalfOf: extra?.onBehalfOf || undefined,
+    onBehalfOfName: extra?.onBehalfOfName || undefined,
+    delegationId: extra?.delegationId || undefined,
   });
 };
 

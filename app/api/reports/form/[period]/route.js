@@ -8,8 +8,8 @@ import {
 } from '@/src/lib/otEngine.js';
 import { loadHolidaySet } from '@/src/services/otService.js';
 import {
-  PERIOD_RE, previousPeriod, thaiMonth, min, max, latestPerSession, formDayTypes,
-  reportStatuses,
+  PERIOD_RE, actingNotes, previousPeriod, thaiMonth, min, max, latestPerSession,
+  formDayTypes, reportStatuses,
 } from '@/lib/reports.js';
 
 /**
@@ -109,6 +109,14 @@ export const GET = route(async (req, { params }) => {
           statusLabel: STATUS_LABEL_TH[entry.status],
           noBreakTaken: entry.noBreakTaken,
           continuedFromPreviousDay: seg.date !== entry.workDate,
+          /**
+           * This row was filled in by somebody other than the person the sheet
+           * is for. Printed as a short mark in the description cell, where
+           * (ต่อจากคืนก่อน) and [ไม่พักเที่ยง] already are — the one place on
+           * this form that carries per-row remarks and the one HR already
+           * reads. Read off the history so a leaver's filing still says so.
+           */
+          filedByProxy: (entry.history || []).some((h) => h.action === 'submit_proxy'),
           [BUCKETS.OT15_WEEKDAY]: 0,
           [BUCKETS.OT15_HOLIDAY]: 0,
           [BUCKETS.OT3_HOLIDAY]: 0,
@@ -141,6 +149,19 @@ export const GET = route(async (req, { params }) => {
         [BUCKETS.OT3_HOLIDAY]: BUCKET_LABEL_TH[BUCKETS.OT3_HOLIDAY],
       },
       rows,
+      /**
+       * Who filled rows in and who signed them, when that was not the obvious
+       * person — the note block under the grid.
+       *
+       * Built from the rows the sheet actually prints (`shown`), so a note can
+       * never point at a filing that was folded off the page. Returned whatever
+       * `proxyNoteOnForm` says: the flag decides whether the PAPER carries the
+       * block, and the screen above the sheet says it either way, because the
+       * person holding both is entitled to know what the page leaves out.
+       */
+      acting: actingNotes(shown),
+      /** [proxyNoteOnForm] Does the note block print, or stay on the screen? */
+      actingOnPaper: Boolean(policy.proxyNoteOnForm),
       /**
        * Duplicate filings kept off the sheet. Not printed — the paper form has
        * no place for them — but returned so the screen can name the hours it

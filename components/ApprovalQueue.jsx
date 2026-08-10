@@ -5,11 +5,13 @@ import {
   api, hours, thaiDate, dayName, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
 import { describeBreaches } from '@/lib/caps.js';
+import { isProxyFiled } from '@/lib/entries.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, Modal, RefiledNote, RequestTrail,
-  SegmentList, StatusChip, editsOf,
+  Alert, Empty, EditedMark, EntryHistory, Modal, ProxyMark, RefiledNote, RequestTrail,
+  SegmentList, StatusChip, TeamMark, editsOf,
 } from './common.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
+import OtForm from './OtForm.jsx';
 import { useToast } from './Toast.jsx';
 
 /**
@@ -26,7 +28,7 @@ import { useToast } from './Toast.jsx';
  * What is NOT batched: rejection. A refusal carries a reason the employee will
  * read, so even the batch path stops for one to be typed.
  */
-export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) {
+export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, delegatedOnly = false }) {
   const isHr = stage === 'pending_hr';
   const verb = isHr ? 'ยืนยัน' : 'อนุมัติ';
   const toast = useToast();
@@ -40,6 +42,34 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) 
   const [q, setQ] = useState('');
   const [dept, setDept] = useState('');
   const [per, setPer] = useState('');
+
+  // ── standing in ───────────────────────────────────────────────────────────
+  /**
+   * The queues this person is covering for somebody else, if any.
+   *
+   * The rows arrive mixed in with their own — one list, because approving is
+   * the same act either way and two tables would mean two batch bars. What
+   * cannot be mixed is WHOSE team a row is from: the reviewer is signing under
+   * a different person's authority on some of these, and a queue that does not
+   * say which is which is a queue where that goes unnoticed.
+   */
+  const [holding, setHolding] = useState([]);
+  const covered = useMemo(
+    () => holding.map((d) => d.from?.departmentId).filter(Boolean),
+    [holding],
+  );
+
+  useEffect(() => {
+    // Only the queues where standing in can be the reason a row is on screen.
+    // The HR confirmation queue is nobody's to lend — see approvalPermission.
+    if (isHr) return;
+    api.get('/delegations')
+      .then((res) => setHolding(res.holding || []))
+      .catch(() => setHolding([])); // not fatal — the queue still works
+  }, [isHr]);
+
+  // ── filing on somebody's behalf ───────────────────────────────────────────
+  const [filing, setFiling] = useState(false);
 
   // ── selection ─────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState(() => new Set());
@@ -57,7 +87,10 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) 
 
   async function load() {
     try {
-      const res = await api.get(`/entries?status=${stage}`);
+      // `scope=delegated` narrows to the covered teams instead of widening the
+      // caller's own reach — the difference between a ฝ่ายบุคคล seeing the one
+      // queue they were handed and seeing every pending request in the company.
+      const res = await api.get(`/entries?status=${stage}${delegatedOnly ? '&scope=delegated' : ''}`);
       setEntries(res.entries);
       if (res.entries.length) everHadRows.current = true;
       return res.entries;
@@ -69,7 +102,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) 
     setSelected(new Set());
     everHadRows.current = false;
     load();
-  }, [stage]);
+  }, [stage, delegatedOnly]);
 
   // ── what the table is showing ─────────────────────────────────────────────
 
@@ -89,6 +122,14 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) 
       && (!needle || haystack(e).includes(needle))
     ));
   }, [entries, q, dept, per]);
+
+  /** How much of this queue is somebody else's team. */
+  const coveredCount = useMemo(
+    () => (entries || []).filter((e) => covered.some(
+      (id) => String(id) === String(e.department?._id),
+    )).length,
+    [entries, covered],
+  );
 
   /**
    * A tick survives only as long as its row is on screen. Confirming a batch
@@ -154,7 +195,10 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) 
 
     const ok = list.length - failed.length;
     if (ok > 0) {
-      onChanged?.(stage, ok);
+      // Which badge just went down. The covered queue has a counter of its own,
+      // and taking a row off the manager's number instead would move the wrong
+      // one on screen until the refresh behind it landed.
+      onChanged?.(delegatedOnly ? 'delegated' : stage, ok);
       toast(done(ok, list));
     }
     if (failed.length) {
@@ -199,23 +243,68 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) 
 
   // ── render ────────────────────────────────────────────────────────────────
 
+  // The manager's own screen doubles as the way into filing for somebody who
+  // cannot — it is where they already are when they notice the gap.
+  if (filing) {
+    return (
+      <OtForm
+        mode="proxy"
+        onSaved={() => { setFiling(false); load(); onChanged?.(stage, 0); }}
+        onCancel={() => setFiling(false)}
+      />
+    );
+  }
+
   return (
     <div className="card flush">
       <div className="card-head">
         <div>
-          <div className="t">{isHr ? 'รอ HR ยืนยัน' : 'รอหัวหน้าอนุมัติ'}</div>
+          <div className="t">
+            {delegatedOnly ? 'รออนุมัติ · ทีมที่รับช่วง'
+              : isHr ? 'รอ HR ยืนยัน' : 'รอหัวหน้าอนุมัติ'}
+          </div>
           <div className="hint" style={{ margin: '3px 0 0' }}>
-            {isHr
-              ? 'ตรวจสอบรายเดือน · รายการที่ยืนยันแล้วจะเข้าสู่รายงานส่งออก'
-              : `ตรวจสอบรายวัน · เฉพาะแผนก${user.department?.name || ''}`}
+            {delegatedOnly
+              ? 'คิวของหัวหน้างานที่คุณรับช่วงมา · การอนุมัติจะบันทึกว่าทำแทนเจ้าของคิว'
+              : isHr
+                ? 'ตรวจสอบรายเดือน · รายการที่ยืนยันแล้วจะเข้าสู่รายงานส่งออก'
+                : `ตรวจสอบรายวัน · เฉพาะแผนก${user.department?.name || ''}`}
           </div>
         </div>
+        {!isHr && !delegatedOnly && user.role === 'manager' && (
+          <button className="btn ghost sm" onClick={() => setFiling(true)}>
+            + บันทึก OT แทนลูกทีม
+          </button>
+        )}
         {entries?.length > 0 && (
           <span className="chip muted">
             {filtered ? `${shown.length} / ${entries.length}` : entries.length} รายการ
           </span>
         )}
       </div>
+
+      {/*
+        Standing in for somebody, said once at the top with the dates on it.
+        A stand-in whose window shut yesterday and a stand-in who never had one
+        both see the same queue — their own — and the only difference is what
+        is missing from it, which is not something anybody notices. Naming the
+        window while it is open is what makes its closing legible.
+      */}
+      {holding.length > 0 && (
+        <div style={{ padding: '0 18px' }}>
+          <Alert kind="info">
+            <strong>คุณกำลังรับช่วงอนุมัติแทน</strong>{' '}
+            {holding.map((d) => `${d.from?.name} (ถึง ${thaiDate(d.toDate)})`).join(' · ')}
+            {' '}— คิวด้านล่างรวมทีมที่รับช่วงมาแล้ว {coveredCount} รายการ
+            {' '}และแถวเหล่านั้นมีป้าย “รับช่วง” กำกับไว้
+            <div style={{ fontSize: 12.5, marginTop: 4 }}>
+              การอนุมัติของคุณจะถูกบันทึกว่า <strong>“ทำแทน”</strong> ชื่อหัวหน้าเจ้าของคิว
+              {' '}ทั้งในประวัติรายการและบนใบพิมพ์ ·
+              {' '}หัวหน้าเจ้าของคิวยังอนุมัติเองได้ตลอดเวลา
+            </div>
+          </Alert>
+        </div>
+      )}
 
       {/* Directly under the heading and above the filters, in the same gutter
           the error alert below uses — it is about the rules every figure in
@@ -365,6 +454,18 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) 
                   <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
                   <td style={{ maxWidth: 240 }}>
                     {e.description}
+                    {/* Whose team this row is from, when the reviewer is
+                        holding more than one. */}
+                    {covered.length > 0 && (
+                      <div style={{ marginTop: 4 }}>
+                        <TeamMark entry={e} coveredDepartments={covered} />
+                      </div>
+                    )}
+                    {/* Somebody else filled this in. It matters here because
+                        the หัวหน้า who did is usually the person who would
+                        otherwise be signing it — which is why it is on this
+                        queue at all rather than theirs. */}
+                    <ProxyMark entry={e} />
                     {/* The row above is the request as it stands now. This
                         says it has not always said that — the values being
                         approved are a revision. */}
@@ -734,6 +835,21 @@ function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEnt
           {/* Above the hours on purpose — see RefiledNote. */}
           <RefiledNote parent={e.refiledFrom} />
 
+          {/* Same placement, same reason: a reviewer who finds out after
+              forming a view that the request was written by the person who
+              would normally have approved it has already formed the view. */}
+          {isProxyFiled(e) && (
+            <Alert kind="warn">
+              <strong>หัวหน้างานเป็นผู้บันทึกรายการนี้แทนพนักงาน</strong>
+              {e.filedBy?.name && <> — ผู้บันทึก: {e.filedBy.name}</>}
+              {e.status === 'pending_hr' && !e.managerDecision?.at && (
+                <> · รายการนี้<strong>ยังไม่ผ่านการอนุมัติจากหัวหน้า</strong>
+                  {' '}เพราะผู้บันทึกคือผู้ที่จะอนุมัติเอง ระบบจึงข้ามขั้นนั้นมา
+                </>
+              )}
+            </Alert>
+          )}
+
           <Section title="คำขอ">
             <dl className="fact-grid">
               <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}${e.endsNextDay ? ' (ข้ามคืน)' : ''}`} />
@@ -790,11 +906,30 @@ function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEnt
 
           <Section title="ผู้อนุมัติ">
             <dl className="fact-grid">
-              <Fact k="ยื่นคำขอโดย" v={filed?.byName || e.employee?.name} sub={stamp(filed?.at)} />
+              <Fact
+                k="ยื่นคำขอโดย"
+                v={filed?.byName || e.employee?.name}
+                /* Named outright rather than left to the reader to work out
+                   from two names that happen to differ. */
+                sub={[
+                  isProxyFiled(e) ? `บันทึกแทน ${e.employee?.name}` : null,
+                  stamp(filed?.at),
+                ].filter(Boolean).join(' · ') || undefined}
+              />
               <Fact
                 k="หัวหน้างานอนุมัติ"
-                v={mgr?.byName || 'ยังไม่ผ่านหัวหน้างาน'}
-                sub={mgr ? stamp(mgr.at) : undefined}
+                v={mgr?.byName || (e.status === 'pending_hr' && !e.managerDecision?.at
+                  ? 'ข้ามขั้นหัวหน้า — ผู้บันทึกคือผู้อนุมัติเอง'
+                  : 'ยังไม่ผ่านหัวหน้างาน')}
+                /* Who signed, and whose authority they signed under. Left as
+                   one name, a reviewer cannot tell an approval made by the
+                   department's own หัวหน้า from one made by a stand-in — and
+                   the second is the one with a window on it that either
+                   covered the day or did not. */
+                sub={[
+                  mgr?.onBehalfOfName ? `ทำแทน ${mgr.onBehalfOfName}` : null,
+                  mgr ? stamp(mgr.at) : undefined,
+                ].filter(Boolean).join(' · ') || undefined}
               />
             </dl>
             {mgr?.note && <p className="note" style={{ marginTop: 8 }}>บันทึกจากหัวหน้างาน — {mgr.note}</p>}
