@@ -84,6 +84,20 @@ export const accountingLabel = (key) => {
  * Longest prefix first: a two-letter prefix must never shadow a three-letter
  * one if the roster ever gains e.g. 'TH' alongside 'THT'.
  */
+/**
+ * Which payroll an employee files under — the stored field, then the code
+ * prefix, then the default.
+ *
+ * One function because two reports now ask it (สรุป OT ส่งบัญชี and the birthday
+ * check on ตรวจสอบรายเดือน), and a second copy of this order is how one screen
+ * starts filing somebody under a company the other one does not. The prefix is
+ * only a fallback for rows written before the field existed; see the note on
+ * `codePrefixes` above.
+ */
+export function companyOf(employee) {
+  return employee?.company || companyFromCode(employee?.code) || DEFAULT_COMPANY;
+}
+
 export function companyFromCode(code) {
   const normalised = String(code ?? '').replace(/\W|_/g, '').toUpperCase();
   if (!normalised) return null;

@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, hours, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
+import {
+  api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS, companyLabel,
+} from '@/lib/api.js';
+import { UNCHECKABLE } from '@/lib/birthdayCheck.js';
 import { Alert, Empty } from './common.jsx';
 import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
 import PrintForm from './PrintForm.jsx';
@@ -251,14 +254,15 @@ export default function HrView({ user }) {
 
             {/* An employee with no วันเกิด on record is computed as though no
                 weekday of theirs was ever a holiday, which looks identical to
-                an employee whose birthday fell on a Sunday. Only HR can tell
-                the two apart, and only if the gap is named. Louder when the
-                rule is actually on — the figures below are affected by then. */}
-            {data.birthDates?.missing > 0 && (
-              <Alert kind={data.birthDates.ruleEnabled ? 'warn' : 'info'}>
-                {data.birthDates.ruleEnabled
-                  ? `กฎวันหยุดวันเกิดเปิดอยู่ แต่ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — ชั่วโมงของคนเหล่านี้คำนวณเหมือนไม่มีวันเกิด`
-                  : `ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — กรอกให้ครบก่อนเปิดกฎวันหยุดวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง`}
+                an employee whose birthday fell on a Sunday.
+
+                Only while the rule is OFF. Once it is on, the same gap is said
+                by the birthday check below — in the list of people whose month
+                cannot be checked — and saying it twice on one screen makes both
+                copies easier to skip. */}
+            {data.birthDates?.missing > 0 && !data.birthDates.ruleEnabled && (
+              <Alert kind="info">
+                {`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — กรอกให้ครบก่อนเปิดกฎวันหยุดวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง`}
                 <div style={{ marginTop: 4 }}>
                   {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
                 </div>
@@ -268,14 +272,137 @@ export default function HrView({ user }) {
               </Alert>
             )}
 
-            {/* Proposing the month's unclaimed birthday ใบ used to sit here. It
-                moved to รอ HR ยืนยัน — HR opens that queue daily and this screen
-                once a month, and a reminder to file something belongs where the
-                filing gets done. See BirthdayProposals in ApprovalQueue.jsx. */}
+            {/* วันเกิดที่ยังไม่มีใบ — a list to read, at the foot of the month
+                it is about. HR and Admin only; the endpoint refuses หัวหน้า, who
+                may open this screen for their own team. */}
+            <BirthdayCheck period={period} user={user} />
           </>
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * วันเกิดที่ยังไม่มีใบ — the month's unclaimed birthday holidays, and the people
+ * whose month cannot be checked at all.
+ *
+ * A LIST, NOT A WARNING. Nothing here is an error: not working on your birthday
+ * is the ordinary case, and most names on this list will have a perfectly good
+ * reason to be there. So it is drawn in the neutral `box`, with no red, no amber
+ * and no count in a badge — the tone the screen takes is part of what it says.
+ * What the section is for is the asymmetry the rule creates: a birthday on a
+ * Tuesday is a holiday that looks exactly like a working day, so it is the one
+ * kind of holiday an employee forgets to claim. A Saturday announces itself.
+ *
+ * NO BUTTON TO FILE. ฝ่ายบุคคล cannot know whether somebody was at work or until
+ * what hour, and hours invented from a calendar are precisely what this system
+ * must not contain. Each row names the หัวหน้า of that person's department
+ * instead — they can answer both questions and they already have the path in
+ * (บันทึก OT แทนลูกทีม, on their own queue).
+ *
+ * Silent when there is nothing to say, and silent when the rule is off — a
+ * section that renders "0 คน" every month is a section nobody reads. The one
+ * thing it will not do is stay silent about a roster it cannot check: that is the
+ * second list.
+ */
+function BirthdayCheck({ period, user }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  const mayRead = ['hr', 'admin'].includes(user?.role);
+
+  useEffect(() => {
+    if (!mayRead) return undefined;
+    let live = true;
+    setData(null);
+    api.get(`/reports/birthday-check/${period}`)
+      .then((res) => { if (live) { setData(res); setError(''); } })
+      .catch((err) => { if (live) setError(err.message); });
+    return () => { live = false; };
+  }, [period, mayRead]);
+
+  if (!mayRead) return null;
+  if (error) return <Alert kind="error">{error}</Alert>;
+  if (!data || !data.ruleEnabled) return null;
+  if (data.needsEntry.length === 0 && data.uncheckable.length === 0) return null;
+
+  return (
+    <div className="box" style={{ marginTop: 12 }}>
+      <div style={{ fontWeight: 600 }}>วันเกิดที่ยังไม่มีใบ</div>
+      <div className="hint" style={{ marginTop: 2 }}>
+        วันเกิดที่ตรงจันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น แต่วันนั้นดูเหมือนวันทำงานปกติ
+        {' '}พนักงานจึงลืมยื่นได้ง่าย — <strong>รายการนี้ไว้ตรวจ ไม่ใช่ข้อผิดพลาด</strong>
+        {' '}(ไม่มาทำงานวันเกิดก็เป็นเรื่องปกติ) · ถ้าเขามาทำงานจริง
+        {' '}ให้หัวหน้าแผนกเป็นผู้บันทึกแทนจากหน้าคิวของหัวหน้า — ฝ่ายบุคคลไม่ทราบว่าเขามาทำงานถึงกี่โมง
+      </div>
+
+      {data.needsEntry.length > 0 && (
+        <div className="table-wrap" style={{ marginTop: 10 }}>
+          <table className="mini">
+            <thead>
+              <tr>
+                <th>พนักงาน</th>
+                <th>แผนก</th>
+                <th>วันเกิด (วันหยุดของเขา)</th>
+                <th>บริษัท</th>
+                <th>หัวหน้าที่บันทึกแทนได้</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.needsEntry.map((r) => (
+                <tr key={r.employeeId + r.date}>
+                  <td>
+                    {r.name}
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.code}</div>
+                  </td>
+                  <td>{r.department || '—'}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {thaiDate(r.date)} (วัน{dayName(r.date)})
+                    {/* A day that has not arrived is on the list to see, not to
+                        ring anybody about. */}
+                    {r.upcoming && (
+                      <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>ยังไม่ถึงวัน</div>
+                    )}
+                  </td>
+                  <td>{companyLabel(r.company)}</td>
+                  <td>
+                    {r.managers.length > 0
+                      ? r.managers.map((m) => m.name).join(' · ')
+                      : <span style={{ color: 'var(--muted)' }}>ยังไม่มีหัวหน้าในแผนกนี้</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* "ตรวจไม่ได้" is a different answer from "nothing missing", and a roster
+          that is still mostly empty must not read as a clean month. */}
+      {data.uncheckable.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontWeight: 600, fontSize: 13 }}>
+            ไม่มีข้อมูลวันเกิด ตรวจไม่ได้ — {data.uncheckable.length} คน
+          </div>
+          <div className="hint" style={{ marginTop: 2 }}>
+            คนเหล่านี้ยังไม่ถูกตรวจว่ามีวันเกิดตรงวันทำงานหรือไม่ ·
+            {' '}เพิ่มวันเกิดได้ที่หน้า ผู้ดูแลระบบ › พนักงาน (เฉพาะ Admin)
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12.5 }}>
+            {data.uncheckable.map((r) => (
+              <div key={r.employeeId}>
+                {r.code} {r.name}
+                <span style={{ color: 'var(--muted)' }}>
+                  {' '}· {r.department || '—'} · {companyLabel(r.company)}
+                  {r.reason === 'invalid' ? ` · ${UNCHECKABLE.invalid}` : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

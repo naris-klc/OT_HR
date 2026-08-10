@@ -14,7 +14,7 @@ import {
 // version it replaced, and a second copy that drifted would lose forms rather
 // than merely disagree about them. lib/entries.js imports nothing, so plain
 // node can load it as happily as Next can.
-import { sameSession } from '../../lib/entries.js';
+import { sameSession, noOtHoursMessage } from '../../lib/entries.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -119,7 +119,7 @@ router.post('/', wrap(async (req, res) => {
 
   if (result.totals.otHours <= 0) {
     return res.status(400).json({
-      error: 'ช่วงเวลานี้อยู่ในเวลาทำงานปกติทั้งหมด จึงไม่นับเป็น OT',
+      error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes),
       warnings: result.warnings,
     });
   }
@@ -197,7 +197,10 @@ router.patch('/:id', wrap(async (req, res) => {
   });
   const result = await compute(session, ctx);
   if (result.totals.otHours <= 0) {
-    return res.status(400).json({ error: 'ช่วงเวลานี้อยู่ในเวลาทำงานปกติทั้งหมด จึงไม่นับเป็น OT' });
+    return res.status(400).json({
+      error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes),
+      warnings: result.warnings,
+    });
   }
 
   Object.assign(entry, session);

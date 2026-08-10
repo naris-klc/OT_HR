@@ -49,8 +49,12 @@ export const PATCH = route(async (req, { params }) => {
     employee: { birthDate: await birthDateOf(entry.employee?._id || entry.employee) },
   });
   const result = await compute(session, ctx);
+  // Same refusal and the same sentence as the submit path — an edit that leaves
+  // no OT is the same mistake, arriving one screen later.
   if (result.totals.otHours <= 0) {
-    return fail('ช่วงเวลานี้อยู่ในเวลาทำงานปกติทั้งหมด จึงไม่นับเป็น OT', 400);
+    return fail(noOtHoursMessage(session, ctx.policy, ctx.dayTypes), 400, {
+      warnings: result.warnings,
+    });
   }
 
   Object.assign(entry, session);

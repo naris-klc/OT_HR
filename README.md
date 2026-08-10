@@ -338,101 +338,90 @@ shown. `birthDate` itself is not colleague-visible: `publicEmployee()` filters i
 out of the roster for everyone except the person, HR and admin — managers
 included.
 
-### ใบ OT วันเกิด — the system proposes, ฝ่ายบุคคล disposes
+### วันเกิดที่ยังไม่มีใบ — the one holiday people forget to claim
 
-The benefit was being granted and not claimed. This system replaces a paper
-request form, so it knows who **filed** and never who came in — and the request
-a birthday needs is one for **08:00–17:00**, an ordinary working day, which is
-exactly the request nobody thinks to file. Months passed with
-`birthdayHolidayEnabled` on and no `dayReason: 'birthday'` segment anywhere in
-the database.
+A birthday falling Mon–Fri is a holiday for one person, and **the day looks
+exactly like a working day**: same shift, same colleagues, nothing on any
+calendar, nothing on any screen. So the request goes unfiled — unlike a Saturday,
+which announces itself. The benefit ends up granted in the settings and claimed by
+nobody, and nobody finds out until somebody happens to look.
 
-So the direction is reversed, and the offer appears **on รอ HR ยืนยัน** — the
-queue HR opens daily, rather than ตรวจสอบรายเดือน, which is read once a month and
-therefore the wrong place to be reminded to file something. A birthday that has
-passed with no ใบ against it shows up above the queue as a proposal — not a row,
-because nothing exists in the database yet — and **ยืนยันและลงใบ** writes the
-request and confirms it in one press. The system proposes from data it has (a date
-of birth and a calendar); a person disposes with knowledge it does not have (who
-turned up). There is no attendance or time-clock data in this system and this
-feature does not pretend otherwise.
+At the foot of **ตรวจสอบรายเดือน**, for the month on screen: every employee whose
+birthday fell in it on a Mon–Fri that is not a company holiday, with no ใบ against
+that date. Name, แผนก, the date, บริษัท, and the **หัวหน้า** of their department.
+
+**It is a list, not a warning.** Not working on your birthday is the ordinary
+case, so most names on it have a perfectly good reason to be there. It is drawn in
+the neutral box with no red, no amber and no badge count — the tone is part of what
+it says — and it renders nothing at all when there is nothing to show, or when
+`birthdayHolidayEnabled` is off (a birthday is then an ordinary working day and no
+hours are owed).
+
+**No button to file, on purpose.** ฝ่ายบุคคล cannot know whether somebody was at
+work or until what hour, and hours invented from a calendar are exactly what this
+system must not contain — the route is `GET`-only and has no write counterpart at
+all. What each row carries instead is the หัวหน้า's name, because they can answer
+both questions and they already have the path in: **บันทึก OT แทนลูกทีม** on their
+own queue (`lib/proxyFiling.js`). The name is read as *role `manager`, same
+department* — the rule `isDepartmentManager` actually enforces — and not off
+`Department.manager`, a field nothing consults and most departments leave unset.
+
+**"ตรวจไม่ได้" is a second list, never silence.** Somebody with no `birthDate`, or
+an unusable one, cannot be checked either way, and a roster that is still mostly
+empty must not read as a clean month. So they appear under a heading of their own
+that says so.
 
 | | |
 |---|---|
-| Rules | [`lib/birthdayEntries.js`](lib/birthdayEntries.js) — pure. `birthdayCandidates()` returns `eligible` **and** `skipped` with a reason per name |
-| Endpoint | `GET/POST /api/entries/birthday/[period]` — HR and Admin only |
-| Screen | รอ HR ยืนยัน (`components/ApprovalQueue.jsx` → `BirthdayProposals`), above the filter bar |
-| Created entry | 08:00–17:00, `description` “ทำงานในวันเกิด…”, **`approved`** in the same press, `filedBy` = the HR user, history **`submit_birthday` → `approve_hr`** |
-| Undo | `POST /api/entries/[id]/cancel` — logged as **`void`**, allowed while `isUntouchedSystemFiling()` |
+| Rules | [`lib/birthdayCheck.js`](lib/birthdayCheck.js) — pure. `birthdayCheck()` returns `needsEntry` + `uncheckable` |
+| Endpoint | `GET /api/reports/birthday-check/[period]` — HR and Admin only, read-only |
+| Screen | ตรวจสอบรายเดือน (`components/HrView.jsx` → `BirthdayCheck`) |
+| Tests | [`test/birthdayCheck.test.js`](test/birthdayCheck.test.js) |
 
-**Two months, and nothing in the future.** The block covers the current period
-**and the previous one**, because a month is closed after it ends — on 3
-September HR is still finishing August, and a proposal scoped to "this month"
-would drop somebody's birthday the moment the calendar turned. A birthday that has
-not happened yet is never offered: `birthdayCandidates()` takes `today` and
-**throws if it is not given**, for the reason `computeSession` throws on a date
-missing from its `dayTypes` map — a default would switch the guard off in exactly
-the case it exists for, and the entry it would write is approved on the spot.
+**ANY status counts as "has a ใบ"** — refused and withdrawn included. The question
+is whether the day was *overlooked*, and a request that was filed and turned down
+was not. A date already dealt with never comes back onto the list.
 
-**A reason beside every name that is not proposed** — `noBirthDate`,
-`badBirthDate`, `otherMonth`, `notYet`, `alreadyHoliday` (the day is วันหยุด for
-everybody already, so the birthday adds nothing), `alreadyFiled`, `leapSkipped`,
-and at write time `noHours` and `capBlocked`. HR is asking whether the month is
-complete, and a list of three out of eighteen answers that only if the other
-fifteen are accounted for.
+**Separate from ตรวจสอบรายเดือน's own route**, though drawn on that screen. That
+report is open to หัวหน้า for their own team and is pinned to reporting a *count*
+of missing birth dates and never a date; a role-shaped branch in one payload would
+leave the guarantee resting on which branch ran. Two routes, one rule each. A date
+of birth still never leaves the server either way — what goes out is the date of
+the **holiday** being asked about.
 
-**ไม่ได้มา hides a row and stores nothing.** It comes back on reload, and that is
-the honest version: a dismissal that persisted would need somewhere to live and
-would withhold the offer next year too, and the alternative — writing a *refused*
-request for hours nobody claimed — puts a rejection on somebody's record for
-having taken their birthday off. The offer stops for good when the ใบ exists.
+**HR filing these directly was tried and withdrawn.** For one release ฝ่ายบุคคล
+could write the whole month's birthday requests from a list, confirmed on
+creation. It was the wrong shape for the reason above, and the rows it wrote are
+still in the database — which is what `isUntouchedSystemFiling()` and the
+**ถอนใบวันเกิด** button in ตรวจสอบรายเดือน › a person's รายการ are for: an
+`approved` entry can otherwise be removed by nobody, and those were generated
+rather than claimed. The `submit_birthday` and `void` history actions stay for the
+same reason — a value dropped from that enum makes the entries carrying it
+unsaveable.
 
-**What it may be asked for.** `POST` takes **employee ids and nothing else** —
-no date, no times, no hours. It re-derives the candidates server-side and keeps
-the ticked ones, so a client cannot name a shift or a day that is not somebody's
-birthday. Each entry then goes through `computeSession`, the department ceiling
-and `applyComputation` like every other filing, and is refused if the engine says
-those hours are not OT.
+### A request that computes to nothing is refused, in words
 
-**Created and confirmed in one press, with a way back out.** There is no
-ขั้นหัวหน้า and no second visit to รอ HR ยืนยัน: ฝ่ายบุคคล ticking a name **is**
-the confirmation, and the same person pressing the same button again about the
-same list checks nothing the first press did not. (It was also a dead end — the
-rule in `approvalPermission` that nobody signs off their own filing meant the
-person who created the batch could not confirm it, so in an office with one
-ฝ่ายบุคคล it stalled.) Both events are still logged, `submit_birthday` then
-`approve_hr`, carrying one name and one timestamp rather than posing as two
-independent checks. Pressing the button twice creates nothing the second time —
-`alreadyFiled` is keyed per person per date.
+08:00–17:00 on an ordinary Wednesday is entirely normal working time, so the
+engine keeps none of it (`NORMAL_HOURS_IGNORED`) and the session totals zero.
+**All four write paths refuse it** rather than storing the nought: a 0-hour
+request is a row in a queue, a line on F-HR-027 and a name in a monthly total, all
+saying somebody worked no overtime, and none of them can be told apart from a
+mistake.
 
-What replaces the queue as the safeguard is **ถอนใบวันเกิด**, and it is the
-better one: an approved entry can otherwise be removed by nobody —
-`approvalPermission` acts only on `pending_*`, `cancelPermission` only before the
-first signature, and the API has no delete — so confirming on creation would make
-one mis-ticked checkbox a permanent figure. `isUntouchedSystemFiling()` in
-[`lib/entries.js`](lib/entries.js) opens that door for exactly as long as the row
-is still what the system wrote: a `hr_edit`, an `edit`, a manager's signature, and
-it closes, because withdrawing would then throw away somebody's work. A
-`recompute` does not close it — a policy replay is not a person. The button is
-**ถอนใบวันเกิด** on ตรวจสอบรายเดือน › a person's รายการ, and the withdrawal is
-logged as `void`, never as the employee's own `cancel`.
+The sentence is `noOtHoursMessage()` in [`lib/entries.js`](lib/entries.js), in one
+place because four routes on two servers say it. It names the boundary from the
+**policy** rather than hard-coding 08:00–17:00, and it names the way out — a
+holiday, including your own birthday when the rule is on, counts the whole day. On
+a day that already IS a holiday it says something else entirely: there is no
+normal working time to blame, so a nought there means the break rule or the
+rounding ate the session.
 
-The failure mode this design takes seriously is not a wrong rate — the engine
-computes those — it is **a person who was not at work that day**, which no data
-in this system can rule out. So the answer is a fast correction rather than a
-ceremonial second approval.
-
-**`submit_birthday` is its own history action** so that "nobody filled a form in"
-is machine-readable, and `isSystemFiled()` in `lib/entries.js` keeps the screen
-marks honest: a generated row reads **ระบบสร้างใบวันเกิด** rather than
-บันทึกแทน, which would credit a check no person made. `ProxyMark` also stopped
-saying หัวหน้า about everybody — it now names the filer's role, since ฝ่ายบุคคล
-can be the one on the row.
-
-Those hours carry `dayReason: 'birthday'`, which is what puts “วันเกิด” in the
-strip beside the row on สรุป OT ส่งบัญชี. That is the whole loop: the rule grants
-the day, one press files and confirms it, and the submission sheet says why the
-figure reads the way it does.
+**The filer's own form says why their birthday looks different.** When the day
+resolved to a birthday holiday, `components/OtForm.jsx` prints a note above the
+split: the hours are in the วันหยุด columns, ยื่นถูกแล้ว. Read off the preview's
+`dayReason` rather than recomputed in the browser — the rule has three parts and a
+second implementation would be a second answer. Withheld on a proxy filing, since
+it would tell a หัวหน้า when their team member was born.
 
 ### Getting the birthday into the system — the file is the unit, not the row
 

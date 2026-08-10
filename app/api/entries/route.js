@@ -4,7 +4,9 @@ import Employee from '@/src/models/Employee.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, applyComputation, checkCap, loadContext } from '@/src/services/otService.js';
-import { POPULATE, scopeFor, pickSession, stampCap, latestPerChain } from '@/lib/entries.js';
+import {
+  POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
+} from '@/lib/entries.js';
 import { coveredDepartments } from '@/lib/delegationQuery.js';
 import { scopeWidening } from '@/lib/delegation.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
@@ -114,8 +116,10 @@ export const POST = route(async (req) => {
   const ctx = await loadContext([session.workDate], { employee });
   const result = await compute(session, ctx);
 
+  // Refused, not stored as a nought — see `noOtHoursMessage`, which is also
+  // where the sentence lives, so all four write paths say the same thing.
   if (result.totals.otHours <= 0) {
-    return fail('ช่วงเวลานี้อยู่ในเวลาทำงานปกติทั้งหมด จึงไม่นับเป็น OT', 400, {
+    return fail(noOtHoursMessage(session, ctx.policy, ctx.dayTypes), 400, {
       warnings: result.warnings,
     });
   }

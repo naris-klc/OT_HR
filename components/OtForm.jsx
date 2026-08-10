@@ -298,6 +298,24 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
 
       {error && <Alert kind="error">{error}</Alert>}
 
+      {/* "วันนี้เป็นวันเกิดคุณ" — said before the split, because it is the reason
+          the split looks the way it does.
+
+          The employee filing for themselves ONLY. A birthday holiday on a
+          Tuesday puts the hours in the วันหยุด columns and nothing else on this
+          form explains why, so somebody who expected ×1.5 วันปกติ concludes they
+          filed the wrong date. On a proxy filing the note is withheld: it would
+          tell a หัวหน้า when their team member was born, and a birth date is not
+          theirs to read (see `publicEmployee` in lib/employees.js). They see the
+          columns and can ask HR, which is the same position they are in today. */}
+      {preview && !proxy && !hrEdit && isOwnBirthday(preview) && (
+        <Alert kind="info">
+          วันที่เลือกเป็น<strong>วันเกิดของคุณ</strong> ซึ่งนับเป็นวันหยุดของคุณคนเดียว —
+          {' '}ชั่วโมงในวันนี้จึงเข้าช่อง OT วันหยุด (08:00–17:00 ×1.5 · นอกเวลา ×3)
+          {' '}ไม่ใช่ OT วันปกติ · ยื่นถูกแล้ว
+        </Alert>
+      )}
+
       {preview && (
         <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>ระบบคำนวณได้</div>
@@ -340,4 +358,18 @@ function nextDay(dateStr) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d) + 86400000).toISOString().slice(0, 10);
+}
+
+/**
+ * Did the engine make this day a holiday because it is the filer's birthday?
+ *
+ * Read off the preview's own segments rather than by comparing dates in the
+ * browser: the rule has three parts — the flag, the leap-day answer and the fact
+ * that a weekend or company holiday takes precedence — and a second
+ * implementation here would be a second answer to disagree with. `dayReason` is
+ * what the server resolved for this exact session, so the note appears when, and
+ * only when, the hours in the columns above got there that way.
+ */
+function isOwnBirthday(preview) {
+  return (preview?.segments || []).some((s) => s.dayReason === 'birthday');
 }
