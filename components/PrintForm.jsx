@@ -164,17 +164,13 @@ export default function PrintForm({ employeeId, period, onClose }) {
                 const sessions = row.sessions.length ? row.sessions : [null];
                 return sessions.map((s, i) => (
                   <tr key={`${row.date}-${i}`}>
+                    {/* The day number and nothing under it. A birthday note
+                        used to sit here to explain a Tuesday in the วันหยุด
+                        column; HR asked for it off the controlled form, and the
+                        remark now goes on สรุป OT ส่งบัญชี beside the row —
+                        see components/AccountingPrint.jsx. */}
                     {i === 0 && (
-                      <td className="c day" rowSpan={sessions.length}>
-                        {row.day}
-                        {/* Saturdays, Sundays and the company calendar are
-                            already obvious from a month grid. A birthday
-                            holiday is not, and without it this row reads as an
-                            ordinary Tuesday carrying วันหยุด hours. */}
-                        {row.dayReason === 'birthday' && (
-                          <div className="daynote">วันเกิด</div>
-                        )}
-                      </td>
+                      <td className="c day" rowSpan={sessions.length}>{row.day}</td>
                     )}
                     <td className="c">{s?.from || ''}</td>
                     <td className="c">{s?.to || ''}</td>

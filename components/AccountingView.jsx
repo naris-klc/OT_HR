@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES, accountingLabel,
 } from '@/lib/api.js';
+import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { Alert, Empty, UnaccountedHours } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { useBackHandler } from './nav.jsx';
@@ -250,6 +251,15 @@ function CompanySheet({ company, period, index }) {
                     </td>
                     <td>
                       <span style={{ color: 'var(--muted)' }}>{row.companyLabel}</span>
+                      {/* The same remark the printed sheet puts beside this row,
+                          so HR reads it here before it is on paper. With the
+                          hours, which the paper leaves out for want of room —
+                          this is the screen the figure is checked on. */}
+                      {row.birthdayHours > 0 && (
+                        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                          {BIRTHDAY_REMARK} · {hours(row.birthdayHours)} ชม. อยู่ในช่องวันหยุด
+                        </div>
+                      )}
                       {row.pendingCount > 0 && (
                         <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>
                           ค้างอนุมัติ {row.pendingCount} รายการ · ไม่นับรวม

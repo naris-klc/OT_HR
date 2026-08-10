@@ -22,6 +22,15 @@ npm run dev            # UI + API together on :3000
 Upgrading a database seeded before the two-company split? Run
 `npm run migrate:company` once — see [Two companies](#two-companies-primus--themtech).
 
+**Deploying the birthday-remark move?** `birthdayReasonOnForm` **leaves**
+`DEFAULT_POLICY` — “วันเกิด” is off F-HR-027 and printed on สรุป OT ส่งบัญชี
+instead, and neither is a setting any more (see
+[วันเกิดพนักงานเป็นวันหยุดของคนนั้น](#วันเกิดพนักงานเป็นวันหยุดของคนนั้น--two-flags-and-a-remark-that-moved)).
+A key leaving has the same consequence as a key joining: press **บันทึกกฎที่ใช้อยู่เป็นเวอร์ชัน**
+under ตั้งค่าระบบ → นโยบายการคำนวณ, or entries filed from the deploy carry no
+`policyVersionId`. No migration otherwise — no figure moves, and a stored
+override for the retired key is ignored by `Setting.effectivePolicy()`.
+
 **Deploying the proxy-filing and delegation work?** Two new keys join
 `DEFAULT_POLICY` (`proxySkipsOwnApproval`, `proxyNoteOnForm`), which moves the
 effective policy away from the newest recorded version — and until somebody
@@ -261,7 +270,7 @@ The arithmetic is pure and lives in `lib/caps.js`; `checkCap` in
 runs on a **date range rather than a period**, since the week of 30 November
 opens in one month and closes in the next.
 
-### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — three flags, one of them cosmetic
+### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — two flags, and a remark that moved
 
 A benefit that arrived after the twelve, and the only rule in the system whose
 answer depends on **who** worked rather than only on when.
@@ -270,7 +279,9 @@ answer depends on **who** worked rather than only on when.
 |---|---|---|
 | `birthdayHolidayEnabled` | Off by default. On, a birthday falling Mon–Fri is a holiday for that person alone: 08:00–17:00 goes to `ot15_holiday`, the hours either side to `ot3_holiday` | **Yes** |
 | `birthdayLeapFallback` | Which day a 29 February birthday lands on in a non-leap year — `'feb28'` (default), `'mar01'` or `'none'` | **Yes** |
-| `birthdayReasonOnForm` | Whether F-HR-027's calendar prints “วันเกิด” under the day number. Default `true` | **No — cosmetic** |
+
+There was a third, `birthdayReasonOnForm`, and it is **gone** — see
+[Where “วันเกิด” is printed](#where-วนเกด-is-printed) below.
 
 Because the day type now depends on the person, the engine no longer resolves
 it. `computeSession` takes a **`dayTypes` map** the caller has already resolved,
@@ -287,23 +298,45 @@ Friday and running into Saturday produces two identical-looking `ot3_holiday`
 segments that got there by different rules, and only one of them moves if the
 benefit is withdrawn.
 
-**`birthdayReasonOnForm` is cosmetic in the strict sense, not merely in
-intent.** The hours were computed from day types resolved when the entry was
-filed and are already sitting in the holiday columns; this decides only what the
-grid *beside* them says. It is listed in `COSMETIC_KEYS`, so flipping it
-recomputes nothing. It is a flag rather than a constant because a birthday is
-personal data and F-HR-027 reaches the manager, HR and accounting — if that is
-judged too far, the answer is to drop the note, not to move the hours somewhere
-they do not belong. Default `true` because the alternative is a sheet that
-contradicts itself: an ordinary-looking Tuesday carrying OT วันหยุด hours, on
-the page a manager has to sign.
+### Where “วันเกิด” is printed
 
-**That sheet only.** F-HR-027 is one person's own month. The birthday reaches no
-aggregate report — ตรวจสอบรายเดือน, สรุป OT ส่งบัญชี, the department breakdown,
-the CSV exports — and is never written to the company holiday calendar,
-whichever way the flag is set. `birthDate` itself is not colleague-visible:
-`publicEmployee()` filters it out of the roster for everyone except the person,
-HR and admin — managers included.
+**Not on F-HR-027.** It used to be: the sheet's calendar marked the date วันหยุด
+and printed “วันเกิด” under the day number, behind `birthdayReasonOnForm`,
+default on. HR answered that question on **2026-08-10** and answered it the other
+way — F-HR-027 Rev.4 is a controlled form and the word is off it. So the flag is
+retired rather than defaulted off: a decision that has been made is not a
+setting, and a dropdown would leave the word one click from the form. The sheet
+prints the day number alone, and `formDayTypes()` in `lib/reports.js`
+**takes no birth date** — a signature that cannot be passed the wrong argument is
+a stronger rule than a flag both servers have to remember to read.
+
+Nothing on that sheet ever rendered a day type, so what this removed is the note
+and only the note. A Tuesday a birthday made a holiday still prints its hours in
+the วันหยุด columns, because those come from `entry.segments`.
+
+**On สรุป OT ส่งบัญชี, beside the row.** Where HR wrote it by hand on the paper
+this sheet replaces: the grid stops after **3.00** and the 82mm of white to its
+right is now a borderless fifth column that prints the word itself — no heading,
+no rules, no tint, empty on every row with nothing to explain, and no change to
+`ROWS_PER_PAGE` (see `components/AccountingPrint.jsx`). It reaches the screen's
+หมายเหตุ cell and the CSV's หมายเหตุ column too, both with the hours added, since
+neither is short of room.
+
+**Read off the segment, never off the roster.** `birthdayHoursOf()` in
+`lib/accountingRows.js` sums the segments whose `dayReason` is `birthday` — a
+label written when the entry was filed. The report loads no `birthDate`, resolves
+no calendar and returns no date, so accounting learns that somebody's birthday
+fell on a working day they worked, which the hours beside the name already imply,
+and never learns when it is. That distinction is what makes the remark acceptable
+on a document listing a whole company, and it is pinned in
+`test/birthdayOnPaper.test.js`.
+
+**Those two documents only.** No other aggregate names a birthday —
+ตรวจสอบรายเดือน, the department breakdown, the other CSV exports — and it is
+never written to the company holiday calendar, which is a list everybody is
+shown. `birthDate` itself is not colleague-visible: `publicEmployee()` filters it
+out of the roster for everyone except the person, HR and admin — managers
+included.
 
 ### Getting the birthday into the system — the file is the unit, not the row
 
@@ -821,7 +854,7 @@ month goes wrong. `/api/exports/accounting.csv` follows the screen column for
 column, in the same order.
 
 The **paper form** is the accounting sheet: รหัส | ชื่อ-นามสกุล | **1.50** |
-**3.00** under one ประจำเดือน banner, and nothing else. It combines วันปกติ and
+**3.00** under one ประจำเดือน banner, then the unruled remark strip. It combines วันปกติ and
 วันหยุด into the single 1.50 column because the form has one, and anyone
 reconciling the CSV against it adds those two columns. That is the only place
 the two representations differ, and it differs because the paper is what gets
@@ -924,21 +957,20 @@ than `0.00`, on the screen and in the CSV alike.
 
 **The printed sheet** (`components/AccountingPrint.jsx`, styles under `.acct`
 in `app/print.css`) is the paper form HR already sends, and only that: four
-columns — รหัส, ชื่อ-นามสกุล, **1.50**, **3.00** — under one ประจำเดือน banner,
-with nothing above the grid but the ไม่ถูกนับ flag in the months that have one.
+ruled columns — รหัส, ชื่อ-นามสกุล, **1.50**, **3.00** — under one ประจำเดือน
+banner, with nothing above the grid but the ไม่ถูกนับ flag in the months that
+have one, and nothing below it: no subtotal rows, no total, no signature block.
 Same print setup as F-HR-027, **A4 portrait, “ค่าเริ่มต้น” margins, no
 scaling**, sharing its `@page` rule.
 
-The grid is 112mm wide rather than the full 194mm, and everything on the sheet
-lines up with it. That is not a layout accident: on the paper, remarks —
-“วันเกิด” beside a name — are written by hand in the white strip *beside* the
-table, so หมายเหตุ is not a column and the strip has to stay empty. Anything
-the system wants to say about a row goes on the screen and in the CSV instead.
-
-Two things are added below the grid: the same รวมแผนก / รวมบริษัท summary block
-the screen carries, and a ผู้จัดทำ / ผู้ตรวจสอบ block. With no แผนก column,
-each summary row names its department in the ชื่อ-นามสกุล cell rather than
-adding a column that would be blank on every other line.
+The ruled grid is 112mm of the 194mm, and everything on the sheet lines up with
+it. That is not a layout accident: on the paper, remarks — “วันเกิด” beside a
+name — were written by hand in the white strip *beside* the table. That strip is
+now the sheet's fifth column, and it is drawn as paper rather than as part of the
+form: 82mm, no heading, no rules, no tint, and empty except where a row has a
+remark. The one remark it prints is “วันเกิด” — see
+[Where “วันเกิด” is printed](#where-วนเกด-is-printed). Everything else the system
+wants to say about a row still goes on the screen and in the CSV.
 
 Two things differ from F-HR-027 by design. It always lists the full roster
 regardless of the screen's checkbox, because a submission sheet with names

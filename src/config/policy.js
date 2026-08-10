@@ -135,32 +135,19 @@ export const DEFAULT_POLICY = Object.freeze({
    * it is recorded as part of the rule set like every other answer here.
    */
   birthdayLeapFallback: 'feb28',
-  /**
-   * Does the calendar printed on F-HR-027 say that a day was somebody's
-   * birthday?
-   *
-   * true  — the grid down the left of the sheet marks that date วันหยุด and
-   *         prints "วันเกิด" under the day number (DEFAULT).
-   * false — the grid is drawn from the company holiday calendar alone.
-   *
-   * COSMETIC, and listed as such in lib/policyVersion.js. It changes no figure:
-   * the hours on the page come from the segments stored on each entry, resolved
-   * when the entry was filed, and they are already in the holiday columns
-   * before this flag is read. Changing it must not replay anything.
-   *
-   * Default true because the alternative is a sheet that contradicts itself —
-   * an ordinary-looking Tuesday carrying OT วันหยุด hours, on the page the
-   * manager signs. It is a flag rather than a constant because a birthday is
-   * personal data and this sheet reaches the manager, HR and accounting; if HR
-   * decides that is too far, the answer is to drop the note, not to move the
-   * hours somewhere they do not belong.
-   *
-   * This sheet only. F-HR-027 is one person's own month. The birthday reaches
-   * no aggregate report — ตรวจสอบรายเดือน, สรุป OT ส่งบัญชี, the department
-   * breakdown, the CSV exports — and is never written to the holiday calendar
-   * on the settings page, whichever way this is set.
-   */
-  birthdayReasonOnForm: true,
+  /* There is no third birthday flag, and this note is here so that nobody
+     re-adds one. `birthdayReasonOnForm` decided whether F-HR-027 printed
+     "วันเกิด" under the day number, and it shipped on. On 2026-08-10 HR answered
+     the question it existed to ask: the controlled form does not carry the word,
+     and the remark belongs on สรุป OT ส่งบัญชี, in the white strip beside the
+     person's row — where it was written by hand on the old paper. A decision
+     that has been made is not a flag, so the key is retired rather than
+     defaulted off: the note is gone from the form, the accounting sheet prints
+     it from `segments[].dayReason`, and `formDayTypes` in lib/reports.js accepts
+     no birth date at all. A stored override for the retired key is dropped by
+     `Setting.effectivePolicy()`, so a database that has one does not carry it
+     into the versions recorded from here on. */
+
 
   // ── [OPEN 6] Different rules per department or shift? ──────────────────────
   /**
@@ -217,9 +204,8 @@ export const DEFAULT_POLICY = Object.freeze({
    * mark inside the description cell is not covered by this: it sits where
    * (ต่อจากคืนก่อน) and [ไม่พักเที่ยง] already sit, which HR reads today.
    *
-   * COSMETIC in the strict sense, exactly like `birthdayReasonOnForm` beside
-   * which it is registered: every hour on the sheet comes from stored segments
-   * and this decides only what is printed beside them. Flipping it must
+   * COSMETIC in the strict sense: every hour on the sheet comes from stored
+   * segments and this decides only what is printed beside them. Flipping it must
    * recompute nothing.
    */
   proxyNoteOnForm: false,

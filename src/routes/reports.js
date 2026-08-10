@@ -50,15 +50,14 @@ router.get('/form/:period', wrap(async (req, res) => {
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const holidays = await loadHolidaySet([year]);
 
-  // Resolved for this employee, so the grid agrees with the hours beside it —
-  // see the App Router copy of this route for why.
+  // The company holiday calendar and nothing about this employee — F-HR-027
+  // carries no birthday remark. See the App Router copy of this route for why.
   const dates = [];
   for (let day = 1; day <= daysInMonth; day++) {
     dates.push(`${period}-${String(day).padStart(2, '0')}`);
   }
   const dayTypes = formDayTypes(dates, {
     isHoliday: makeIsHoliday(holidays, policy),
-    birthDate: employee.birthDate,
     policy,
   });
 
@@ -66,7 +65,6 @@ router.get('/form/:period', wrap(async (req, res) => {
     day: i + 1,
     date,
     isHoliday: dayTypes[date].type === 'holiday',
-    dayReason: dayTypes[date].reason,
     sessions: [],
   }));
   const byDate = new Map(rows.map((r) => [r.date, r]));

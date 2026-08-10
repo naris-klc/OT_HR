@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, THAI_MONTHS } from '@/lib/api.js';
+import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { Alert, UnaccountedHours } from './common.jsx';
 
 /**
@@ -9,9 +10,16 @@ import { Alert, UnaccountedHours } from './common.jsx';
  *
  * The sheet is the table and nothing else: รหัส, ชื่อ-นามสกุล and the two rate
  * columns headed 1.50 and 3.00 under one ประจำเดือน banner. No company
- * heading, no subtitle, no subtotal or total rows, no note, no signature block
- * — the paper accounting receives carries none of them, and anything extra is
- * one more thing to reconcile against a sheet that does not have it.
+ * heading, no subtitle, no subtotal or total rows, no signature block — the
+ * paper accounting receives carries none of them, and anything extra is one
+ * more thing to reconcile against a sheet that does not have it.
+ *
+ * The one thing beside the grid is the remark strip: “วันเกิด” in the white to
+ * the right of a row, where HR wrote it by hand on the paper this replaces. It
+ * came onto the print in Aug 2026 at the same time it came off F-HR-027 — that
+ * form is a controlled document and HR did not want the word on it. The strip is
+ * not a column of the form (see the colgroup below): no rules, no heading, no
+ * fill, and empty on the rows that have nothing to explain.
  *
  * The company heading is deliberately NOT here — accounting asked for the sheet
  * without it. This still prints one company per sheet and the two still file
@@ -125,16 +133,21 @@ function Sheet({ company, period, unaccounted }) {
 
   return (
     <div className="acct">
-      {/* Four columns and no more. The remarks on the paper — "วันเกิด" beside
-          a name — are handwritten in the margin BESIDE the table, not in a
-          column of it, so the table stops at 3.00 and the rest of the line is
-          left as paper to write on. */}
+      {/* Four ruled columns, and the white strip beside them.
+
+          The grid still stops after 3.00 — that is the form accounting knows,
+          and the remarks were always written by hand in the white to the right
+          of it. The fifth column IS that white: 82mm, no rules, no tint, and
+          empty on all but the few rows that have something to say. So the note
+          prints where HR used to write it, the paper still has room to write
+          another one, and no figure moves a millimetre. */}
       <table>
         <colgroup>
           <col style={{ width: '24mm' }} />
           <col style={{ width: '54mm' }} />
           <col style={{ width: '17mm' }} />
           <col style={{ width: '17mm' }} />
+          <col style={{ width: '82mm' }} />
         </colgroup>
         {/* The first row is the top margin, and the tfoot is the bottom one.
             Page margins have to come from somewhere the browser repeats, and
@@ -150,7 +163,7 @@ function Sheet({ company, period, unaccounted }) {
             that does not have it. */}
         <thead>
           <tr className="pad">
-            <td className="co" colSpan={4}>
+            <td className="co" colSpan={5}>
               <PaperFlag unaccounted={unaccounted} />
             </td>
           </tr>
@@ -158,6 +171,10 @@ function Sheet({ company, period, unaccounted }) {
             <th rowSpan={2}>รหัส</th>
             <th rowSpan={2}>ชื่อ-นามสกุล</th>
             <th colSpan={2} className="hl">{monthHead(period)}</th>
+            {/* Unheaded on purpose: the strip is not a column of the form, so
+                naming it would put a heading on the paper that the sheet
+                accounting signs has never had. */}
+            <th rowSpan={2} className="note" />
           </tr>
           <tr>
             <th className="rate">1.50</th>
@@ -171,21 +188,23 @@ function Sheet({ company, period, unaccounted }) {
               <td>{row.employee.name}</td>
               <td className="n">{amount(row.ot15Hours)}</td>
               <td className="n">{amount(row.ot3Hours)}</td>
+              <td className="note">{remark(row)}</td>
             </tr>
           ))}
           {/* Ruled like every other line, tint and all — a blank row here is
-              part of the grid, not the end of it. */}
+              part of the grid, not the end of it. The strip stays white. */}
           {Array.from({ length: filler }, (_, i) => (
             <tr key={`fill-${i}`} aria-hidden="true">
               <td className="code" />
               <td />
               <td className="n" />
               <td className="n" />
+              <td className="note" />
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr className="pad" aria-hidden="true"><td colSpan={4} /></tr>
+          <tr className="pad" aria-hidden="true"><td colSpan={5} /></tr>
         </tfoot>
       </table>
     </div>
@@ -203,3 +222,19 @@ function monthHead(period) {
  * rule the screen and the CSV use, and what the paper sheet shows.
  */
 const amount = (n) => (n ? Number(n).toFixed(2) : '');
+
+/**
+ * What the strip beside a row says. One word, or nothing.
+ *
+ * “วันเกิด” explains the only figure on this sheet that a reader cannot account
+ * for from the calendar: วันหยุด hours against somebody who worked an ordinary
+ * Tuesday. The hours are not repeated here — they are two cells to the left, and
+ * a second copy is a second number to reconcile.
+ *
+ * Nothing else goes in this strip. ค้างอนุมัติ and ไม่มี OT are on the screen
+ * and in the CSV: neither is a remark about a figure on the paper, and the sheet
+ * is signed for what it prints.
+ */
+function remark(row) {
+  return row.birthdayHours > 0 ? BIRTHDAY_REMARK : '';
+}

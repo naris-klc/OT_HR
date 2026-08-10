@@ -1,7 +1,7 @@
 import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { accountingReport } from '@/lib/accounting.js';
-import { unaccountedCsvRow } from '@/lib/accountingRows.js';
+import { unaccountedCsvRow, BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
 import { PERIOD_RE, thaiMonth } from '@/lib/reports.js';
@@ -173,9 +173,19 @@ function tail(totals, pending, period) {
   return parts.join(' · ');
 }
 
-/** Why a row reads the way it does — the column accounting queries HR about. */
+/**
+ * Why a row reads the way it does — the column accounting queries HR about.
+ *
+ * “วันเกิด” leads, because it is the only part of this cell that explains a
+ * figure the file is asserting: วันหยุด hours against somebody who worked a
+ * weekday. It is the same remark the printed sheet carries beside the row, with
+ * the hours added — a file is read next to the sheet, and the number is what
+ * makes the two reconcilable. The other two parts describe what is NOT in the
+ * row, and the paper does not carry them at all.
+ */
 function note(row) {
   const parts = [];
+  if (row.birthdayHours > 0) parts.push(`${BIRTHDAY_REMARK} ${fmt(row.birthdayHours)} ชม.`);
   if (row.entryCount === 0) parts.push('ไม่มี OT');
   if (row.pendingCount > 0) parts.push(`ค้างอนุมัติ ${row.pendingCount} รายการ (${fmt(row.pendingHours)} ชม. ไม่นับรวม)`);
   return parts.join(' · ');

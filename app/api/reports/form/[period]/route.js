@@ -53,19 +53,14 @@ export const GET = route(async (req, { params }) => {
   const holidays = await loadHolidaySet([year]);
 
   /**
-   * The calendar down the left of the sheet, resolved for THIS employee.
+   * The calendar down the left of the sheet — the company one, for everybody.
    *
-   * It has to be the same resolution the hours were computed from, or the sheet
-   * contradicts itself: a birthday Tuesday carries ot15_holiday hours, and a
-   * grid drawn from the company calendar alone would print them against a row
-   * marked วันทำงาน. The reason rides along so the row can say why — this is
-   * the employee's own form, and a day marked หยุด with no explanation is the
-   * thing that generates the phone call.
-   *
-   * Whether the birthday half is resolved at all is `birthdayReasonOnForm`,
-   * read inside `formDayTypes`. Nothing below this line depends on it: the
-   * hours come from `entry.segments`, and this map only decides what the grid
-   * beside them says.
+   * `formDayTypes` takes no birth date and this route has none to give it: the
+   * sheet carries no birthday remark since HR asked for it off F-HR-027
+   * (2026-08-10), and the remark lives on สรุป OT ส่งบัญชี now. Nothing below
+   * this line depends on the map either — the hours come from `entry.segments`,
+   * resolved when each entry was filed, so a Tuesday somebody's birthday made a
+   * holiday still prints in the วันหยุด columns with the day number beside it.
    */
   const dates = [];
   for (let day = 1; day <= daysInMonth; day++) {
@@ -73,16 +68,15 @@ export const GET = route(async (req, { params }) => {
   }
   const dayTypes = formDayTypes(dates, {
     isHoliday: makeIsHoliday(holidays, policy),
-    birthDate: employee.birthDate,
     policy,
   });
 
   const rows = dates.map((date, i) => ({
     day: i + 1,
     date,
+    /** The company calendar's answer, and no reason field — so no row can
+        explain a holiday by naming whose day it was. */
     isHoliday: dayTypes[date].type === 'holiday',
-    /** 'weekend' | 'companyHoliday' | 'birthday' | null. */
-    dayReason: dayTypes[date].reason,
     sessions: [],
   }));
   const byDate = new Map(rows.map((r) => [r.date, r]));

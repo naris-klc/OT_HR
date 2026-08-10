@@ -94,10 +94,9 @@
 
 .f027 td.c { text-align: center; }
 .f027 td.n { text-align: right; font-variant-numeric: tabular-nums; }
+/* The number alone. Nothing is printed under it — the birthday remark this
+   column used to carry now sits on สรุป OT ส่งบัญชี (see .acct td.note). */
 .f027 td.day { font-weight: 600; }
-/* Why a weekday row is carrying วันหยุด hours. Small enough not to disturb the
-   day column's width, which the whole grid is measured from. */
-.f027 td.day .daynote { font-weight: 400; font-size: 6.5pt; line-height: 1.1; }
 .f027 td.desc { font-size: 6.8pt; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* The three yellow headings are the only fill on the sheet — holidays are not
    tinted, exactly as on the paper form. */
@@ -211,10 +210,15 @@
  *
  * The submission sheet HR sends to accounting: a table and nothing else —
  * รหัส, ชื่อ-นามสกุล, and the two rate columns under one ประจำเดือน banner,
- * with the margin the remarks are written in. No company heading, no subtitle,
+ * then the white strip the remarks sit in. No company heading, no subtitle,
  * no subtotals, no signature block — the paper carries none of them, and the
  * ประจำเดือน banner is what says whose month it is. Same @page as F-HR-027
  * above — A4 portrait, printed at 100%.
+ *
+ * The strip used to be white space the table did not reach into, for HR to
+ * write “วันเกิด” in by hand. It is now a borderless fifth column that prints
+ * that word itself; nothing else about the sheet changed, which is the whole
+ * requirement — see components/AccountingPrint.jsx.
  *
  * A roster runs to whatever length it runs to, so unlike F-HR-027 this sheet
  * is not built to fit one side: the row height is set for legibility and the
@@ -236,11 +240,14 @@
 }
 .acct + .acct { break-before: page; page-break-before: always; }
 
-/* 24 + 54 + 17 + 17mm. Deliberately narrower than the page: on the paper the
-   grid stops after 3.00 and the rest of the line is white, which is where the
-   remarks ("วันเกิด") get written by hand. A full-width table would take that
-   space away. */
-.acct table { width: 112mm; border-collapse: collapse; table-layout: fixed; }
+/* 24 + 54 + 17 + 17 = 112mm of ruled grid, then 82mm of white strip: the table
+   spans the page but the FORM still stops after 3.00. On the paper the remarks
+   ("วันเกิด") were written by hand in that white, so it is reproduced as a
+   column with no rules and no fill (see td.note below) rather than left out of
+   the table — a note printed in a real cell lands on its own row's baseline,
+   which is the one thing a floated or absolutely-positioned label cannot promise
+   across a page break. */
+.acct table { width: 194mm; border-collapse: collapse; table-layout: fixed; }
 
 /* styles.css dresses every `th` in the app for the screen — uppercase, mono,
    letter-spaced and nowrap — which overflows a fixed-width print cell. As in
@@ -261,8 +268,10 @@
 }
 .acct th { text-align: center; font-weight: 600; }
 /* …including `tbody tr:last-child td { border-bottom: none }`, which would rub
-   out the rule that closes the grid, and the screen row-hover tint. */
-.acct table tbody tr:last-child td { border-bottom: 0.25mm solid #000; }
+   out the rule that closes the grid, and the screen row-hover tint.
+   `:not(.note)` keeps the closing rule inside the grid: the strip beside the
+   last row is paper like the strip beside every other one. */
+.acct table tbody tr:last-child td:not(.note) { border-bottom: 0.25mm solid #000; }
 .acct table tbody tr:hover { background: none; }
 
 /* The ประจำเดือน banner is filled solid on the paper sheet and the two columns
@@ -281,6 +290,21 @@
    are centred in their column. */
 .acct td.code { text-align: left; font-variant-numeric: tabular-nums; }
 .acct td.n { text-align: center; font-variant-numeric: tabular-nums; }
+
+/* The white strip: paper, not a column. No rules on any side — including the
+   one the grid closes with, which `.acct table tbody tr:last-child td` would
+   otherwise draw right across it — and no heading above it. It inherits the
+   row's height and nowrap from the rules above, so a remark cannot make one line
+   into two and cannot move ROWS_PER_PAGE.
+
+   Padded off the 3.00 rule rather than butted against it: on the paper the
+   handwriting starts a few millimetres clear of the grid. */
+.acct th.note, .acct td.note {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding-left: 3mm;
+}
 
 /* Every body row is exactly one line, so a page holds exactly ROWS_PER_PAGE of
    them and the blank rows that fill the last page land where they should. A

@@ -45,10 +45,27 @@ settingSchema.statics.load = async function load() {
   );
 };
 
-/** DEFAULT_POLICY with the stored overrides applied. */
+/**
+ * DEFAULT_POLICY with the stored overrides applied.
+ *
+ * Overrides for keys the file no longer asks about are DROPPED rather than
+ * spread through. A flag can be retired by a deploy — `birthdayReasonOnForm`
+ * was, when HR took the birthday remark off F-HR-027 — and its stored answer
+ * outlives it in this document. Spread in, it would reach `canonicalPolicy`,
+ * change the `policyHash`, and be recorded as part of the live rule set in every
+ * `PolicyVersion` written from then on: a rule the system does not have, on the
+ * append-only record of the rules it does. `savePolicy` already refuses to
+ * accept a key that is not in DEFAULT_POLICY; this is the same rule on the way
+ * out.
+ */
 settingSchema.statics.effectivePolicy = async function effectivePolicy() {
   const doc = await this.load();
-  return Object.freeze({ ...DEFAULT_POLICY, ...(doc.policy || {}) });
+  const stored = doc.policy || {};
+  const overrides = {};
+  for (const key of Object.keys(DEFAULT_POLICY)) {
+    if (key in stored) overrides[key] = stored[key];
+  }
+  return Object.freeze({ ...DEFAULT_POLICY, ...overrides });
 };
 
 export default model('Setting', settingSchema);
