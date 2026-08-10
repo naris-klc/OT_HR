@@ -67,17 +67,35 @@ lib/policyVersion.js      what a rule set is, whether two of them compute the
                           same, and who a replay may touch — pure
 lib/policySave.js         record the rules, then replay against them; shared by
                           both servers' settings routes
+lib/policyConfirmations.js
+                          the three rules HR has never agreed to, and what a
+                          sign-off is allowed to change (nothing) — pure
+lib/policyConfirmSave.js  the one mongoose call behind a sign-off, kept apart so
+                          the rule above can be tested without a database
 lib/accounting.js         สรุป OT ส่งบัญชี, shared by its report and its CSV
+lib/accountingRows.js     entries → rows, the hours that reach no row, and the
+                          sheet's own reconciliation — pure
 lib/departmentSummary.js  the same month regrouped by แผนก, both companies in
                           one count — shared by its screen, its CSV and its
                           printed form
-test/otEngine.test.js     worked examples A–E plus edge cases
-test/companies.test.js    company inference from the employee code
+test/                     21 files, run by `npm test`
+test/otEngine.test.js       worked examples A–E plus edge cases
+test/reportColumns.test.js  no rate bucket lost between engine and paper
+test/accountingReconciliation.test.js
+                            no person's hours lost between database and paper
+test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the 32 domain tests run with plain
-`node --test` and no server. Only `app/` and `lib/` touch the framework.
+and the engine know nothing about Next.js, so the whole suite — **267 tests
+across 21 files** — runs with plain `node --test`, no server and no database.
+Only `app/` and `lib/` touch the framework.
+
+That is also why it stays fast: the suite finishes in **under 400 ms**, which is
+a budget rather than an observation. A test file that reaches for a model drags
+mongoose into a suite that never opens a connection and costs a third of a
+second on its own — which is exactly why `lib/policyConfirmSave.js` is a
+separate file from `lib/policyConfirmations.js`.
 
 `src/server.js` and `src/routes/` are the retired Express implementation, still
 runnable via `npm run legacy:start` for comparison. Delete them once you are
@@ -111,7 +129,7 @@ signed-off number is worse than an inconsistency.
 | 1 | Break on every session? | Only the part overlapping 12:00–13:00 | `breakMode: 'lunchWindow'` |
 | 2 | Overnight: one break or two? | One per lunch window crossed | `breakPerCalendarDay: true` |
 | 3 | Round down / up / nearest? | Down, per bucket | `roundingMode: 'floor'` |
-| 4 | Under 1 hour: reject or raise? | Raise to 1 h | `belowMinimum: 'raise'` |
+| 4 | Under 1 hour: reject or raise? | Refuse the entry ⚠ | `belowMinimum: 'reject'` |
 | 5 | OT starts 17:00 or 17:01? | 17:00 — 17:00–20:00 is 3 h | `otStartsAtCoreEnd: true` |
 | 6 | Per-department shifts? | No | `shiftPatternsEnabled: false` |
 | 7 | HR reject after manager approved? | Yes, back to the employee | `hrMayReject`, `hrRejectReturnsTo` |
@@ -120,6 +138,33 @@ signed-off number is worse than an inconsistency.
 | 10 | Holiday calendar format? | Both paths built | CSV upload + manual entry |
 | 11 | Roster as a file or typed in? | Both paths built | CSV upload + manual entry |
 | 12 | HR boxes: raw or multiplied? | Raw hours | `hrSummaryBasis: 'raw'` |
+
+### ⚠ Three of these are guesses, and the system says so
+
+"Default" covers two very different things, and printing both the same way is
+how one of them gets forgotten. Most rows above are a recommendation from the
+requirements doc that nobody has objected to. Three are something else: values
+**reverse-engineered from how the old paper appears to have been filled in**,
+never confirmed by anyone in HR, and each one moves hours.
+
+| Question | What the system does today | Why it is that |
+|---|---|---|
+| Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with |
+| Under the 1-hour minimum | Refuse the entry | What the live database has always done — the file said `'raise'` while a `'reject'` override sat in `settings`, so the code and the config disagreed for months |
+| What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h | `computeSession` has only ever done it this way. There is no flag for the per-column reading, because nothing implements it |
+
+These carry a **รอ HR ยืนยัน** badge on ตั้งค่าระบบ → นโยบายการคำนวณ. Pressing
+ยืนยัน records who signed it off and when — it changes no value, appends no
+policy version and replays nothing, which is enforced structurally: the
+confirmations live on `Setting.policyConfirmations`, a *sibling* of
+`Setting.policy`, so they cannot reach `canonicalPolicy`, a `policyHash` or the
+engine. See [`src/config/policy.js`](src/config/policy.js) (`HR_UNCONFIRMED`),
+[`lib/policyConfirmations.js`](lib/policyConfirmations.js) and
+`test/policyConfirmation.test.js`.
+
+The third has no dropdown — a rule the engine has and the policy has no key for
+— so it gets a read-only row of its own. Left off the page it would be the only
+unconfirmed rule with nothing anywhere saying so.
 
 ### Why OPEN 1's default is the lunch window, not a threshold
 
@@ -147,6 +192,50 @@ the employee or department record, and the engine needs a per-day shift lookup
 rather than two constants. That is a schema change. It is the one open item
 that can still cause structural rework, which is why the doc's own "answered
 maybe" is worth pushing on.
+
+### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — three flags, one of them cosmetic
+
+A benefit that arrived after the twelve, and the only rule in the system whose
+answer depends on **who** worked rather than only on when.
+
+| Flag | What it decides | Arithmetic? |
+|---|---|---|
+| `birthdayHolidayEnabled` | Off by default. On, a birthday falling Mon–Fri is a holiday for that person alone: 08:00–17:00 goes to `ot15_holiday`, the hours either side to `ot3_holiday` | **Yes** |
+| `birthdayLeapFallback` | Which day a 29 February birthday lands on in a non-leap year — `'feb28'` (default), `'mar01'` or `'none'` | **Yes** |
+| `birthdayReasonOnForm` | Whether F-HR-027's calendar prints “วันเกิด” under the day number. Default `true` | **No — cosmetic** |
+
+Because the day type now depends on the person, the engine no longer resolves
+it. `computeSession` takes a **`dayTypes` map** the caller has already resolved,
+and a date missing from that map **throws** rather than defaulting to a working
+day — guessing would put holiday hours in the ×1.5 weekday column with nothing
+on the entry, the form or the audit trail recording that a guess was made.
+`resolveDayTypes()` in `src/lib/otEngine.js` is the whole rule; the engine
+itself never learns that birthdays exist.
+
+Segments also carry a `dayReason` (`weekend` / `companyHoliday` / `birthday`)
+alongside `dayType`. The arithmetic never reads it. It exists because the reason
+is not recoverable afterwards: an overnight session starting on a birthday
+Friday and running into Saturday produces two identical-looking `ot3_holiday`
+segments that got there by different rules, and only one of them moves if the
+benefit is withdrawn.
+
+**`birthdayReasonOnForm` is cosmetic in the strict sense, not merely in
+intent.** The hours were computed from day types resolved when the entry was
+filed and are already sitting in the holiday columns; this decides only what the
+grid *beside* them says. It is listed in `COSMETIC_KEYS`, so flipping it
+recomputes nothing. It is a flag rather than a constant because a birthday is
+personal data and F-HR-027 reaches the manager, HR and accounting — if that is
+judged too far, the answer is to drop the note, not to move the hours somewhere
+they do not belong. Default `true` because the alternative is a sheet that
+contradicts itself: an ordinary-looking Tuesday carrying OT วันหยุด hours, on
+the page a manager has to sign.
+
+**That sheet only.** F-HR-027 is one person's own month. The birthday reaches no
+aggregate report — ตรวจสอบรายเดือน, สรุป OT ส่งบัญชี, the department breakdown,
+the CSV exports — and is never written to the company holiday calendar,
+whichever way the flag is set. `birthDate` itself is not colleague-visible:
+`publicEmployee()` filters it out of the roster for everyone except the person,
+HR and admin — managers included.
 
 ---
 
@@ -407,6 +496,18 @@ and the `company` handling in `app/api/employees/**` and the บริษัท 
 subtotal on the screen that disagreed with the file exported from it would be
 found by accounting, not by us.
 
+**The sheet is built entries-first, and that order is load-bearing.** Every
+approved entry makes a row, whoever filed it; the roster query
+(`{ active: true, role: 'employee' }`) runs *afterwards* and only ADDS the blank
+lines for people with no OT. So that filter decides whose **empty** row is
+printed and nothing else — a manager who worked OT and somebody who left in
+March are both on the sheet with their hours, because their entries put them
+there. Built the other way round, the same filter would silently drop those
+people's hours and the sheet would still balance against itself. This is pinned
+by a source check in `test/accountingReconciliation.test.js`, because it is a
+property of the order two loops run in and that is exactly the kind of thing a
+later edit reverses while making a screen behave.
+
 It differs from ตรวจสอบรายเดือน in two ways, and both are the point.
 
 *It counts only `approved`.* There is no สถานะที่นับ selector here. The flow is
@@ -436,6 +537,68 @@ The **paper form** is the accounting sheet: รหัส | ชื่อ-นา�
 reconciling the CSV against it adds those two columns. That is the only place
 the two representations differ, and it differs because the paper is what gets
 signed.
+
+#### `unaccounted` / `reconciliation` — the one error the sheet cannot show
+
+Every figure on these reports is a total of something visible, which means a
+shortfall is invisible: the rows add up to the subtotals, the subtotals to the
+grand total, and สรุป OT ส่งบัญชี to สรุป OT แยกแผนก — **all of them short by
+the same amount**, all of them internally consistent. Somebody signs a total
+that is wrong and there is nothing on the page they could have checked.
+
+There is exactly one way in. An entry whose `employee` reference no longer
+resolves has no row to land on. No route hard-deletes an employee — deactivating
+is the supported path and it keeps the hours — so this arrives from a restore, a
+half-finished import, or a fix applied straight to the database. It used to be
+skipped by a bare `continue`.
+
+So the report now carries two extra fields, both from
+[`lib/accountingRows.js`](lib/accountingRows.js):
+
+- **`unaccounted`** — `{ count, hours, entries[] }`. Nought in every ordinary
+  month.
+- **`reconciliation`** — `{ filed, reported, unaccounted, balanced }`, the sheet
+  checking itself: **filed = reported + unaccounted**. Three sums over a month
+  already in memory. Computed against every row the month produced, never the
+  filtered view, or picking one company out of two would read as a shortfall —
+  the loudest possible warning fired by the most ordinary possible action.
+
+It shows up in four places: a red banner on both report screens, a **line on the
+paper** of both printed forms, and a `ไม่ถูกนับ` row at the foot of both CSVs.
+The paper matters most — the screen banner is seen by whoever pressed print, and
+the person who signs is usually not that person.
+
+On the accounting sheet the line **costs no row**: it renders inside the thead
+margin band beside the company name, so `ROWS_PER_PAGE = 37` and the last-page
+filler arithmetic are untouched, and with nothing missing the component returns
+`null` and the sheet is byte for byte what it was. (`ROWS_PER_PAGE` is measured,
+not derived — this is the second thing to be squeezed into that band rather than
+given a row of its own, after the company name.) On the departmental sheet it is
+one line under `รวมชั่วโมงทำOT`, and only on the **รวมทุกแผนก** closing sheet:
+an unaccounted entry belongs to no department, so printing it under one
+department's total would assert something untrue about that department.
+
+The CSV line is the same shape as the `รวมแผนก` / `รวมทั้งหมด` / `รวมทุกบริษัท`
+rows already in those files — blank `รหัสพนักงาน`, label in the name column —
+so it adds no new case to a consumer that was already correct, and it is written
+last, after the grand total. It is built by `unaccountedCsvRow(headers, …)`,
+which sizes the row from the caller's own header array and places values **by
+column name**: a row one cell short of its header opens with every column after
+it shifted, which is a worse outcome than the missing hours it is reporting.
+
+**What HR can actually do about it: nothing, in the UI.** `entry.employee` is
+written once, at submission, and no route touches it afterwards — re-pointing an
+orphan is a database job. The banner says so outright, because a warning that
+sends somebody hunting for a button that does not exist is one that gets
+dismissed by the second month. What it gives them instead is the **name of the
+person who filed it**, read from `history[0].byName` — a copy of the name taken
+at submission, denormalised so a deleted employee could not erase an audit
+trail, which turns out to be exactly this case. "Find สมชาย in the roster" is
+something HR can do; a 24-character ObjectId is not. The id, workDate,
+department and the dangling reference are all there too, for whoever opens the
+database. That last one needs a second unpopulated read of those few entries —
+`populate()` replaces a reference to a missing document with `null` and throws
+the id away with it.
 
 **The company is headed the way accounting names it — `PM · ไพรมัส`,
 `THT · เดมเทค`.** The code leads because this is the one sheet another
@@ -610,9 +773,14 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — 46/46 pass, including all five worked examples from §4, the
-  OPEN 1–5, 9 and 12 policy variants, company inference from the code, and
-  `editPermission()` over every role × status pair (`test/editPermission.test.js`).
+- `npm test` — **267/267 pass in ~385 ms**, including all five worked examples
+  from §4, the OPEN 1–5, 9 and 12 policy variants, company inference from the
+  code, `editPermission()` over every role × status pair
+  (`test/editPermission.test.js`), and the two conservation rules: that no rate
+  bucket is lost between the engine's three columns and the paper's two
+  (`test/reportColumns.test.js`), and that no person's hours are lost between
+  the entry collection and the printed roster
+  (`test/accountingReconciliation.test.js`).
 - Every server module imports cleanly.
 - `npm run build` succeeds.
 - `npm audit --omit=dev` — 0 vulnerabilities.

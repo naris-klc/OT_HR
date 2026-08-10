@@ -6,3 +6,9 @@ web/dist/
 
 .next/
 next-env.d.ts
+
+# Per-machine Claude Code permissions. Tracked for two commits by mistake —
+# it is a record of which shell commands one developer approved on one laptop,
+# so it conflicts on every pull and tells nobody anything. `.claude/settings.json`
+# (shared, deliberate) is NOT ignored.
+.claude/settings.local.json
