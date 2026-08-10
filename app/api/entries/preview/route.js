@@ -1,9 +1,14 @@
 import Employee from '@/src/models/Employee.js';
+import BirthdayCheck from '@/src/models/BirthdayCheck.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, checkCap, loadContext } from '@/src/services/otService.js';
 import { pickSession, isDepartmentManager } from '@/lib/entries.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
+import { birthdayInYear } from '@/src/lib/otEngine.js';
+import { absentKeys, filedKey } from '@/lib/birthdayCheck.js';
+import { birthdayDirectApproval } from '@/lib/birthdayFiling.js';
+import { today } from '@/lib/delegationQuery.js';
 
 /** Compute without saving, so the form can show the split live. */
 export const POST = route(async (req) => {
@@ -75,5 +80,53 @@ export const POST = route(async (req) => {
     })
     : null;
 
-  return json({ result, cap, routing });
+  /**
+   * And the same question for บันทึก OT ให้ จากรายการวันเกิด, when the form
+   * asks it.
+   *
+   * Answered by `birthdayDirectApproval` — the very function the write route
+   * refuses with, over the same recomputed birthday date and the same live
+   * policy — rather than by the browser reasoning from a role and a flag. The
+   * form prints one sentence off this ("จะอนุมัติทันที" or "จะรอหัวหน้าอนุมัติ")
+   * and it is the sentence anybody reads twice; a browser-side copy of the rule
+   * would be wrong the first time `hrDirectApproveBirthday` moved.
+   *
+   * Only computed when asked for. Every other caller of this route gets `null`
+   * and pays for none of the lookups below.
+   */
+  let birthdayRouting = null;
+  if (payload.birthday && employee) {
+    let birthdayDate = null;
+    let badBirthDate = false;
+    try {
+      birthdayDate = employee.birthDate
+        ? birthdayInYear(employee.birthDate, Number(session.workDate.slice(0, 4)), ctx.policy)
+        : null;
+    } catch {
+      badBirthDate = true;
+    }
+
+    if (badBirthDate) {
+      birthdayRouting = { ok: false, error: 'วันเกิดของพนักงานคนนี้ในระบบไม่ถูกต้อง จึงตรวจสอบไม่ได้' };
+    } else {
+      const checks = await BirthdayCheck.find({ employee: employee._id, workDate: session.workDate })
+        .select('employee workDate outcome checkedAt').lean();
+
+      const gate = birthdayDirectApproval({
+        actor: user,
+        employee,
+        workDate: session.workDate,
+        birthdayDate,
+        isCompanyHoliday: ctx.isHoliday(session.workDate),
+        today: today(),
+        policy: ctx.policy,
+        alreadyAbsent: absentKeys(checks).has(filedKey(employee._id, session.workDate)),
+      });
+      birthdayRouting = gate.ok
+        ? { ok: true, direct: Boolean(gate.direct), reason: gate.reason || null }
+        : { ok: false, error: gate.error };
+    }
+  }
+
+  return json({ result, cap, routing, birthdayRouting });
 });

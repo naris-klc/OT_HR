@@ -133,8 +133,15 @@ const historySchema = new mongoose.Schema(
       // the way back out of an entry that was confirmed on creation. Its own
       // action, not a 'cancel', because 'cancel' means the employee withdrew
       // their own request and that is a different event with a different actor.
+      // 'submit_hr_verified' is ฝ่ายบุคคล filing a birthday-holiday request from
+      // วันเกิดที่ยังไม่มีใบ with the in/out times read off the fingerprint
+      // scanner, and approving it in the same act. ONE row for one event, and
+      // the only action in this list whose `toStatus` is 'approved' without an
+      // 'approve_*' before it — which is the fact it exists to record. There is
+      // no matching manager block on the entry, deliberately: see
+      // lib/birthdayFiling.js.
       enum: [
-        'submit', 'submit_proxy', 'submit_birthday', 'resubmit',
+        'submit', 'submit_proxy', 'submit_birthday', 'submit_hr_verified', 'resubmit',
         'approve_mgr', 'reject_mgr', 'approve_hr', 'reject_hr',
         'cancel', 'void', 'edit', 'hr_edit', 'recompute',
       ],

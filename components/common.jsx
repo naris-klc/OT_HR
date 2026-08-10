@@ -3,7 +3,9 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate } from '@/lib/api.js';
-import { ENTERED_FIELDS, isProxyFiled, isSystemFiled, sameSession, sameValue } from '@/lib/entries.js';
+import {
+  ENTERED_FIELDS, isHrVerifiedBirthday, isProxyFiled, isSystemFiled, sameSession, sameValue,
+} from '@/lib/entries.js';
 
 export function StatusChip({ status }) {
   const s = STATUS[status] || { label: status, bg: '#eee', fg: '#555' };
@@ -189,6 +191,14 @@ const ACTION_META = {
   // reading it on a row the system generated is how a reader concludes the wrong
   // thing about who checked the hours.
   submit_birthday: { label: 'ระบบสร้างใบวันเกิด (ฝ่ายบุคคลสั่ง)', tone: 'file' },
+  // One row for one event, and the label has to carry both halves of it: this
+  // is the only action in the list whose `toStatus` is 'อนุมัติ' without an
+  // approval before it, and a trail that said only "ฝ่ายบุคคลบันทึกแทน" would
+  // leave a reader looking for the approve row that is never coming. `tone:
+  // 'ok'` rather than 'file' for the same reason — the entry was decided here.
+  submit_hr_verified: {
+    label: 'ฝ่ายบุคคลบันทึกและอนุมัติเอง (ตรวจจากบันทึกเวลาสแกนนิ้ว)', tone: 'ok',
+  },
   resubmit: { label: 'ยื่นคำขอใหม่', tone: 'file' },
   edit: { label: 'พนักงานแก้ไขคำขอ', tone: 'edit' },
   approve_mgr: { label: 'หัวหน้างานอนุมัติ', tone: 'ok' },
@@ -292,9 +302,35 @@ const FILER_LABEL = {
 
 export function ProxyMark({ entry }) {
   const generated = isSystemFiled(entry);
-  if (!generated && !isProxyFiled(entry)) return null;
+  const verified = isHrVerifiedBirthday(entry);
+  if (!generated && !verified && !isProxyFiled(entry)) return null;
 
   const name = entry.filedBy?.name;
+
+  /**
+   * ฝ่ายบุคคล filed this off the scan record AND signed it, in one act — the one
+   * request in the system that is `approved` with no หัวหน้า in its chain.
+   *
+   * ITS OWN CHIP, checked before the proxy one and never folded into it. It is a
+   * proxy filing too (somebody typed it for somebody else), so the plain
+   * "ฝ่ายบุคคลบันทึกแทน" would be true and would leave out the whole of what is
+   * unusual about the row: that the approval anybody reading a หัวหน้า's team
+   * summary would assume happened, did not. The chip is where that gets said,
+   * on every screen the row appears on, without anybody opening it.
+   */
+  if (verified) {
+    return (
+      <span
+        className="chip verified"
+        title={`${name ? `${name} (ฝ่ายบุคคล) ` : 'ฝ่ายบุคคล'}ตรวจเวลาเข้า-ออกจากบันทึกสแกนนิ้ว `
+          + 'แล้วบันทึกและอนุมัติรายการนี้ในขั้นตอนเดียว — ไม่ได้ผ่านการอนุมัติของหัวหน้างาน '
+          + 'ใบนี้เป็นของพนักงานตามเดิม'}
+      >
+        HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว{name ? ` · ${name}` : ''}
+      </span>
+    );
+  }
+
   if (generated) {
     return (
       <span

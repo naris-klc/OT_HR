@@ -277,6 +277,14 @@ export default function PrintForm({ employeeId, period, onClose }) {
 function actingLine(a) {
   const when = thaiDate(a.workDate);
   if (a.kind === 'filed') return `${when} · หัวหน้างานบันทึกแทน — ${a.by || '—'}`;
+  // The one line here that is about an approval as much as a filing: it says
+  // what happened AND what did not, because a sheet naming only the person who
+  // typed it would leave the missing manager's signature looking like an
+  // omission on the paper rather than a fact about the row.
+  if (a.kind === 'hr_verified') {
+    return `${when} · ฝ่ายบุคคลบันทึกและอนุมัติเอง (ตรวจจากบันทึกเวลาสแกนนิ้ว) — ${a.by || '—'}`
+      + ' · ไม่ได้ผ่านการอนุมัติของหัวหน้างาน';
+  }
   const verb = a.kind === 'refused' ? 'ไม่อนุมัติ' : 'อนุมัติ';
   return `${when} · ${a.by || '—'} ${verb}แทน ${a.onBehalfOf || '—'}`;
 }

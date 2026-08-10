@@ -5,6 +5,7 @@ import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { summariseEntries, hrSummary, capUsage } from '@/src/lib/otEngine.js';
 import { PERIOD_RE, latestPerSession, editTally, reportStatuses } from '@/lib/reports.js';
+import { isHrVerifiedBirthday } from '@/lib/entries.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 
 /** HR's monthly review: every employee's totals for a period, in one table. */
@@ -106,6 +107,16 @@ export const GET = route(async (req, { params }) => {
       pendingCount: group.entries.filter((e) => e.status !== 'approved').length,
       /** { count, hrCount, lastAt } — corrections made after filing (§6). */
       edits: editTally(filedByEmployee.get(String(group.employee?._id)) || []),
+      /**
+       * Hours ฝ่ายบุคคล filed and approved in one act, off the scan record.
+       *
+       * Counted per person because of who reads this screen. For a หัวหน้า it is
+       * สรุปทีม, and these are hours that appeared under their team's name
+       * without them pressing anything — the one figure on the page they cannot
+       * account for by remembering what they approved. A count they can see
+       * beside the name turns that from a discrepancy into a row to open.
+       */
+      hrVerified: group.entries.filter(isHrVerifiedBirthday).length,
       /** Which rules produced this person's hours — and whether that is one set. */
       policy: versionSpread(group.entries, policyVersions),
       summary,
@@ -122,6 +133,12 @@ export const GET = route(async (req, { params }) => {
     hrSection: hrSummary(grand, policy),
     /** Superseded filings left out of every figure above — reported, not silent. */
     supersededCount: hidden.length,
+    /**
+     * The same count for the whole month, so the screen can explain the marks
+     * once above the table rather than repeating the sentence on every row that
+     * wears one. Zero on nearly every month, and the section renders nothing.
+     */
+    hrVerifiedCount: entries.filter(isHrVerifiedBirthday).length,
     /**
      * The roster gap the birthday rule creates, counted so the screen can say
      * it out loud.

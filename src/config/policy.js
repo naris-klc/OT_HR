@@ -210,6 +210,38 @@ export const DEFAULT_POLICY = Object.freeze({
    */
   proxyNoteOnForm: false,
 
+  // ── ฝ่ายบุคคลบันทึก OT ให้ จากรายการวันเกิด ─────────────────────────────────
+  /**
+   * When ฝ่ายบุคคล files a birthday-holiday request from วันเกิดที่ยังไม่มีใบ,
+   * having read the in and out times off the fingerprint scanner, does that one
+   * act both file and approve it?
+   *
+   * true  — the request is written `approved` (DEFAULT), carrying a single
+   *         `submit_hr_verified` history row that names HR as both the person
+   *         who filled it in and the person who signed it, with the reason on
+   *         it. `managerDecision` stays empty, because no หัวหน้า saw it.
+   * false — it starts at `pending_mgr` like any other request and waits for the
+   *         department's หัวหน้า.
+   *
+   * The default is the shortcut because the evidence is genuinely in HR's hands
+   * for this one case: the scan record answers both questions a หัวหน้า would be
+   * asked, and asking them to repeat it down the phone adds a signature and no
+   * information. "We want the หัวหน้า in the loop regardless" is a defensible
+   * answer HR is entitled to give, which is why it is a flag rather than an
+   * assumption.
+   *
+   * NARROW BY CONSTRUCTION. It is read in exactly one place —
+   * `birthdayDirectApproval` in lib/birthdayFiling.js — which refuses outright
+   * unless the date is the one the birthday rule itself produced for that
+   * person. It cannot widen to ordinary OT: POST /api/entries has no branch that
+   * reaches it and no branch that can write `approved`.
+   *
+   * COSMETIC in the sense lib/policyVersion.js means: it changes which desk a
+   * request lands on and not one figure on it. The hours come from the engine
+   * over the times that were typed, identically either way.
+   */
+  hrDirectApproveBirthday: true,
+
   // ── [OPEN 8] Hitting the department cap: block or warn? ────────────────────
   /** 'warn' — allow through with a flag for HR (DEFAULT). 'block' — refuse. */
   capBehaviour: 'warn',

@@ -31,10 +31,21 @@ const blank = () => ({
  * on the manager, HR's at any live status. `template` only fills the fields in
  * — it is how an employee re-submits after a rejection without retyping, and
  * what it writes is a NEW request.
+ *
+ * `mode="birthday"` is the same form with two fields nailed shut, opened from a
+ * row of วันเกิดที่ยังไม่มีใบ: the person and the date are the row, and what is
+ * being entered is the pair of times off the fingerprint scanner. It shares
+ * every line below it deliberately — the split, the ceiling, the refusal of a
+ * 0-hour session and the live preview are the engine's answers and must be the
+ * same answers here, or this would be the one request on the sheet arrived at a
+ * different way. `birthday` carries `{ employeeId, name, code, date }`.
  */
-export default function OtForm({ entry, template, onSaved, onCancel, mode = 'employee', employeeId }) {
+export default function OtForm({
+  entry, template, onSaved, onCancel, mode = 'employee', employeeId, birthday = null,
+}) {
   const hrEdit = mode === 'hr';
   const proxy = mode === 'proxy';
+  const fromBirthday = mode === 'birthday';
 
   /**
    * Who the request is FOR, when that is not whoever is filling the form in.
@@ -56,24 +67,58 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
       .catch((err) => setTeamError(err.message));
   }, [proxy]);
 
-  const forWhom = proxy ? target : employeeId;
+  const forWhom = proxy ? target : (fromBirthday ? birthday?.employeeId : employeeId);
 
   const [form, setForm] = useState(() => {
     const from = entry || template;
-    return from ? {
-      workDate: from.workDate,
-      startTime: from.startTime,
-      endTime: from.endTime,
-      endsNextDay: from.endsNextDay,
-      noBreakTaken: from.noBreakTaken,
-      description: from.description,
-    } : blank();
+    if (from) {
+      return {
+        workDate: from.workDate,
+        startTime: from.startTime,
+        endTime: from.endTime,
+        endsNextDay: from.endsNextDay,
+        noBreakTaken: from.noBreakTaken,
+        description: from.description,
+      };
+    }
+    if (fromBirthday) {
+      return {
+        ...blank(),
+        workDate: birthday?.date || '',
+        /**
+         * The times start EMPTY rather than at the usual 17:00–20:00.
+         *
+         * A birthday holiday is a whole วันหยุด, so its hours are typically a
+         * day shift and nothing like the evening default — and these two fields
+         * are the only thing on this form that is being read off a machine. A
+         * pre-filled pair that happens to compute to a plausible number of hours
+         * is exactly the kind of default somebody saves without reading.
+         */
+        startTime: '',
+        endTime: '',
+        /**
+         * Pre-filled, and it says what HR actually knows. The scan record gives
+         * two times and no account of the work; "OT วันหยุดวันเกิด" is the whole
+         * of what can honestly be written from it, and it is editable for
+         * anybody who does know more.
+         */
+        description: 'OT วันหยุดวันเกิด',
+      };
+    }
+    return blank();
   });
   const [note, setNote] = useState('');
   const [preview, setPreview] = useState(null);
   const [cap, setCap] = useState(null);
   /** Where the server says this would land — see the preview route. */
   const [routing, setRouting] = useState(null);
+  /**
+   * And the same answer for a birthday filing: whether this press files and
+   * approves in one act, or files something the หัวหน้า/ฝ่ายบุคคล still has to
+   * sign. From `birthdayDirectApproval` on the server, never worked out here —
+   * see the note on it in the preview route.
+   */
+  const [birthdayRouting, setBirthdayRouting] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const timer = useRef(null);
@@ -92,15 +137,17 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
       if (proxy && !target) { setPreview(null); setCap(null); return; }
       try {
         const res = await api.post('/entries/preview', {
-          ...form, entryId: entry?._id, employeeId: forWhom,
+          ...form, entryId: entry?._id, employeeId: forWhom, birthday: fromBirthday || undefined,
         });
         setPreview(res.result);
         setCap(res.cap);
         setRouting(res.routing || null);
+        setBirthdayRouting(res.birthdayRouting || null);
         setError('');
       } catch (err) {
         setPreview(null);
         setRouting(null);
+        setBirthdayRouting(null);
         setError(err.message);
       }
     }, 250);
@@ -116,7 +163,24 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
       // server decides whether this caller is allowed to. Without it (a blank
       // form, or one filled from `template`) this writes a new request.
       if (entry) await api.patch(`/entries/${entry._id}`, { ...form, note });
-      else {
+      /**
+       * A door of its own, not `/entries` with a flag on it.
+       *
+       * The single-signature rule lives behind this endpoint and nowhere else,
+       * and `/entries` has no branch that can reach `approved` — see
+       * lib/birthdayFiling.js. Posting the same body to the ordinary route would
+       * file an ordinary request, which is a safe way to be wrong and not a way
+       * to get round anything.
+       */
+      else if (fromBirthday) {
+        const res = await api.post('/birthday/entries', {
+          ...form,
+          workDate: birthday?.date,
+          employeeId: birthday?.employeeId,
+        });
+        onSaved(res);
+        return;
+      } else {
         // A blank form writes a plain request. One filled from a REJECTED row
         // writes a request that points back at it, so the manager reviewing
         // this one can see they have refused it before and what they said.
@@ -146,9 +210,10 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
       <h2>
         {hrEdit ? 'แก้ไขรายละเอียด (ฝ่ายบุคคล)'
           : proxy ? 'บันทึก OT แทนลูกทีม'
-            : entry ? 'แก้ไขรายการที่ยื่นไว้'
-              : template ? 'ส่งคำขอใหม่จากรายการเดิม'
-                : 'บันทึกการทำงานล่วงเวลา'}
+            : fromBirthday ? 'บันทึก OT ให้ — วันหยุดวันเกิด'
+              : entry ? 'แก้ไขรายการที่ยื่นไว้'
+                : template ? 'ส่งคำขอใหม่จากรายการเดิม'
+                  : 'บันทึกการทำงานล่วงเวลา'}
       </h2>
       <div className="hint">
         เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT ·
@@ -167,6 +232,63 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
           สถานะเดิมคงไว้ตามเดิม ไม่ต้องส่งกลับไปให้หัวหน้าอนุมัติใหม่ ·
           ระบบบันทึกผู้แก้ไขและเหตุผลไว้ในประวัติรายการ
         </div>
+      )}
+
+      {/* ── a row of วันเกิดที่ยังไม่มีใบ, opened ─────────────────────────── */}
+      {fromBirthday && (
+        <>
+          <div className="box" style={{ marginTop: 10 }}>
+            <div style={{ fontWeight: 600 }}>
+              {birthday?.name}
+              {birthday?.code && (
+                <span style={{ fontWeight: 400, color: 'var(--muted)' }}> · {birthday.code}</span>
+              )}
+            </div>
+            <div style={{ marginTop: 2 }}>
+              วันหยุดวันเกิด · {thaiDate(birthday?.date)} (วัน{dayName(birthday?.date)})
+            </div>
+            {/* Both are the row this form was opened from, so neither is a
+                field. Shown rather than hidden: somebody has to be able to see
+                they opened the right name before they type two times against
+                it, and the server checks the pair against the roster anyway. */}
+            <div className="hint" style={{ margin: '4px 0 0' }}>
+              พนักงานและวันที่มาจากรายการวันเกิด แก้ไขในฟอร์มนี้ไม่ได้ ·
+              {' '}กรอกเฉพาะเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง
+            </div>
+          </div>
+
+          {/*
+            What this press will actually do, from the server's own answer.
+
+            Two sentences, and only one of them is on screen at a time, because
+            the difference between them is the whole of what is unusual here: a
+            request that goes straight to อนุมัติ has no หัวหน้า behind it and the
+            person pressing is signing for it alone. Reading that AFTER saving
+            would be reading it too late.
+          */}
+          {birthdayRouting?.ok && birthdayRouting.direct && (
+            <Alert kind="warn">
+              บันทึกแล้วรายการนี้จะ<strong>อนุมัติทันทีในขั้นตอนเดียว</strong> —
+              {' '}ไม่ผ่านหัวหน้างานและไม่ผ่านคิวรอ HR ·
+              {' '}ระบบจะบันทึกไว้ว่า<strong>คุณเป็นทั้งผู้กรอกและผู้อนุมัติ</strong>
+              {' '}พร้อมเหตุผลว่าตรวจจากบันทึกเวลาเข้า-ออกงาน ·
+              {' '}ช่องลายเซ็นหัวหน้างานจะว่างไว้ตามจริง
+              <div style={{ marginTop: 4, fontSize: 12.5 }}>
+                ใบนี้เป็น<strong>ของพนักงาน</strong> เขาจะเห็นในหน้า “OT ของฉัน” ·
+                {' '}หัวหน้าแผนกจะเห็นชั่วโมงนี้ในหน้าสรุปทีม พร้อมป้ายกำกับว่าอนุมัติชั้นเดียว
+              </div>
+            </Alert>
+          )}
+          {birthdayRouting?.ok && !birthdayRouting.direct && (
+            <Alert kind="info">
+              บันทึกแล้วรายการนี้จะ<strong>เข้าคิวรออนุมัติตามปกติ</strong>
+              {birthdayRouting.reason ? ` — ${birthdayRouting.reason}` : ''}
+            </Alert>
+          )}
+          {birthdayRouting && !birthdayRouting.ok && (
+            <Alert kind="error">{birthdayRouting.error}</Alert>
+          )}
+        </>
       )}
 
       {/* ── whose request this is ─────────────────────────────────────────── */}
@@ -218,17 +340,27 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
       <div className="row">
         <div className="field">
           <label>วันที่เริ่ม</label>
-          <input type="date" value={form.workDate} onChange={(e) => set('workDate', e.target.value)} required />
+          {/* Locked on a birthday row: the date IS the row, and the server
+              refuses any other one anyway (it recomputes the person's birthday
+              holiday and compares). Disabled rather than removed so the form
+              still shows what it is about to save. */}
+          <input
+            type="date"
+            value={form.workDate}
+            onChange={(e) => set('workDate', e.target.value)}
+            disabled={fromBirthday}
+            required
+          />
           <span style={{ fontSize: 12, color: 'var(--muted)' }}>
             วัน{dayName(form.workDate)} · {thaiDate(form.workDate)}
           </span>
         </div>
         <div className="field" style={{ maxWidth: 130 }}>
-          <label>เวลาเริ่ม (จาก)</label>
+          <label>{fromBirthday ? 'เวลาเข้า (สแกนนิ้ว)' : 'เวลาเริ่ม (จาก)'}</label>
           <input type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required />
         </div>
         <div className="field" style={{ maxWidth: 130 }}>
-          <label>เวลาสิ้นสุด (ถึง)</label>
+          <label>{fromBirthday ? 'เวลาออก (สแกนนิ้ว)' : 'เวลาสิ้นสุด (ถึง)'}</label>
           <input type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required />
           {overnight && (
             <span style={{ fontSize: 12, color: 'var(--amber)' }}>วัน{dayName(endDateLabel)}ถัดไป</span>
@@ -308,7 +440,10 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
           tell a หัวหน้า when their team member was born, and a birth date is not
           theirs to read (see `publicEmployee` in lib/employees.js). They see the
           columns and can ask HR, which is the same position they are in today. */}
-      {preview && !proxy && !hrEdit && isOwnBirthday(preview) && (
+      {/* …and withheld on a birthday-list filing for the same reason it is on a
+          proxy one, twice over: the form already says whose birthday it is, and
+          "ของคุณ" would be addressed to ฝ่ายบุคคล about somebody else's. */}
+      {preview && !proxy && !hrEdit && !fromBirthday && isOwnBirthday(preview) && (
         <Alert kind="info">
           วันที่เลือกเป็น<strong>วันเกิดของคุณ</strong> ซึ่งนับเป็นวันหยุดของคุณคนเดียว —
           {' '}ชั่วโมงในวันนี้จึงเข้าช่อง OT วันหยุด (08:00–17:00 ×1.5 · นอกเวลา ×3)
@@ -343,11 +478,16 @@ export default function OtForm({ entry, template, onSaved, onCancel, mode = 'emp
         <button
           className="btn"
           disabled={busy || over || !preview || preview.totals.otHours <= 0
-            || (hrEdit && !note.trim()) || (proxy && !target)}
+            || (hrEdit && !note.trim()) || (proxy && !target)
+            // Nothing is saved while the server says this row cannot take this
+            // path — the write would 409, and the reason is already on screen.
+            || (fromBirthday && birthdayRouting?.ok === false)}
         >
           {entry ? 'บันทึกการแก้ไข'
             : proxy ? (routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า')
-              : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
+              : fromBirthday
+                ? (birthdayRouting?.direct ? 'บันทึกและอนุมัติ' : 'บันทึกและส่งเข้าคิว')
+                : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
         </button>
       </div>
     </form>

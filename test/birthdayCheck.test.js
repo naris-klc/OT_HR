@@ -6,7 +6,9 @@ import { dirname, join } from 'node:path';
 
 import { makeIsHoliday, computeSession, resolveDayTypes, sessionDates } from '../src/lib/otEngine.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
-import { birthdayCheck, filedKey, UNCHECKABLE } from '../lib/birthdayCheck.js';
+import {
+  birthdayCheck, filedKey, absentKeys, latestChecks, UNCHECKABLE, OUTCOME, BIRTHDAY_OUTCOMES,
+} from '../lib/birthdayCheck.js';
 import { noOtHoursMessage } from '../lib/entries.js';
 
 /**
@@ -28,6 +30,10 @@ import { noOtHoursMessage } from '../lib/entries.js';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Source with comments removed — so a rule cannot be "found" in prose about it. */
+const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 const HOLIDAYS = ['2026-08-12'];
 const isHoliday = makeIsHoliday(HOLIDAYS);
 
@@ -77,16 +83,44 @@ test('บริษัทมาจากฟิลด์ที่เก็บไ�
   assert.equal(check([stored]).needsEntry[0].company, 'primus');
 });
 
-test('วันที่ยังไม่ถึง ขึ้นรายการแต่ติดป้ายว่ายังไม่ถึงวัน', () => {
-  // Still worth seeing — HR is reading the month — but nobody can be asked about
-  // a shift that has not happened, so the row says so rather than being chased.
+test('วันที่ยังไม่ถึง อยู่กลุ่ม "กำลังจะถึง" ไม่ใช่กลุ่มที่ต้องตรวจ', () => {
+  /**
+   * The split that decides whether the screen shows a button.
+   *
+   * Both answers on this list are settled against the fingerprint scanner's
+   * record for that date, and a date that has not arrived has no such record.
+   * Leaving these rows in `needsEntry` with only a label on them would put
+   * บันทึก OT ให้ over a shift that has not happened — and the label is exactly
+   * what somebody reading forty rows does not read.
+   */
   const p = person({ birthDate: '1977-08-20' });
-  const rows = birthdayCheck({
+  const out = birthdayCheck({
     period: '2026-08', today: '2026-08-10', roster: [p], isHoliday, policy: ON,
-  }).needsEntry;
+  });
 
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].upcoming, true);
+  assert.deepEqual(out.needsEntry, []);
+  assert.equal(out.upcoming.length, 1);
+  assert.equal(out.upcoming[0].date, '2026-08-20');
+  assert.equal(out.upcoming[0].upcoming, true);
+
+  // The same birthday, once the day has been and gone.
+  const after = birthdayCheck({
+    period: '2026-08', today: '2026-08-21', roster: [p], isHoliday, policy: ON,
+  });
+  assert.equal(after.needsEntry.length, 1);
+  assert.equal(after.needsEntry[0].upcoming, false);
+  assert.deepEqual(after.upcoming, []);
+});
+
+test('วันเกิดวันนี้พอดี ต้องตรวจได้แล้ว ไม่ใช่ "กำลังจะถึง"', () => {
+  // The boundary is `date > today`, so the birthday itself is settled the same
+  // day. The scan record for a day exists from the first punch on it.
+  const out = birthdayCheck({
+    period: '2026-08', today: '2026-08-04',
+    roster: [person({ birthDate: '1977-08-04' })], isHoliday, policy: ON,
+  });
+  assert.equal(out.needsEntry.length, 1);
+  assert.deepEqual(out.upcoming, []);
 });
 
 test('เรียงตามวันที่ แล้วจึงตามรหัส', () => {
@@ -148,6 +182,102 @@ test('กฎวันหยุดวันเกิดปิดอยู่ — 
   assert.equal(out.ruleEnabled, false);
   assert.deepEqual(out.needsEntry, []);
   assert.deepEqual(out.uncheckable, []);
+});
+
+// ── BirthdayCheck: "ไม่ได้มาทำงาน", and taking it back ─────────────────────
+
+/**
+ * The second answer, and the only one that used to be unrecordable. "มาทำงาน"
+ * writes a ใบ, which is its own evidence; "ไม่ได้มาทำงาน" wrote nothing, so the
+ * same name came back every time anybody opened the screen and a birthday
+ * nobody had looked at was indistinguishable from one already settled.
+ */
+const check2 = (over = {}) => ({
+  _id: 'c1', employee: 'e1', workDate: '2026-08-04',
+  outcome: OUTCOME.ABSENT, checkedAt: new Date('2026-08-05T03:00:00Z'), ...over,
+});
+
+test('มี BirthdayCheck ว่าไม่ได้มาทำงานแล้ว — ไม่ขึ้นรายการ', () => {
+  const p = person({ _id: 'e1', birthDate: '1977-08-04' });
+  const checked = absentKeys([check2()]);
+
+  assert.deepEqual(check([p], { checked }).needsEntry, []);
+
+  // Per person per date, exactly as `filed` is: somebody else's check on the
+  // same day withholds nothing, and this person's check on another day either.
+  assert.equal(check([person({ birthDate: '1977-08-04' })], { checked }).needsEntry.length, 1);
+  const elsewhere = absentKeys([check2({ workDate: '2026-08-05' })]);
+  assert.equal(check([p], { checked: elsewhere }).needsEntry.length, 1);
+});
+
+test('ยกเลิก BirthdayCheck แล้ว — กลับมาขึ้นรายการ', () => {
+  /**
+   * The rule that makes an append-only record retractable. Asked as "does a row
+   * exist", the retraction would be written, stored, visible in the collection
+   * and change nothing anybody can see.
+   */
+  const p = person({ _id: 'e1', birthDate: '1977-08-04' });
+  const rows = [
+    check2(),
+    check2({
+      _id: 'c2', outcome: OUTCOME.CANCELLED, checkedAt: new Date('2026-08-06T03:00:00Z'),
+    }),
+  ];
+
+  assert.deepEqual([...absentKeys(rows)], [], 'แถวใหม่สุดคือ cancelled จึงไม่นับว่าไม่มา');
+  assert.equal(check([p], { checked: absentKeys(rows) }).needsEntry.length, 1);
+
+  // And marking it again after a retraction takes it back off — three rows, all
+  // kept, and the newest one decides.
+  const again = [...rows, check2({ _id: 'c3', checkedAt: new Date('2026-08-07T03:00:00Z') })];
+  assert.deepEqual(check([p], { checked: absentKeys(again) }).needsEntry, []);
+});
+
+test('แถวใหม่สุดชนะ และ _id ตัดสินเมื่อเวลาเท่ากัน', () => {
+  // Two rows written in the same millisecond — a seeded month does this — must
+  // not let insertion order decide, or the list changes between two reads of
+  // unchanged data. Same tie-break `latestPerSession` uses.
+  const at = new Date('2026-08-05T03:00:00Z');
+  const a = check2({ _id: 'c1', outcome: OUTCOME.ABSENT, checkedAt: at });
+  const b = check2({ _id: 'c2', outcome: OUTCOME.CANCELLED, checkedAt: at });
+
+  assert.equal(latestChecks([a, b]).get(filedKey('e1', '2026-08-04'))._id, 'c2');
+  assert.equal(latestChecks([b, a]).get(filedKey('e1', '2026-08-04'))._id, 'c2');
+});
+
+test('BirthdayCheck ไม่มีชั่วโมง ไม่มีสถานะ และไม่มีรายงานใดอ่านถึง', () => {
+  /**
+   * The separation is structural, not a filter anybody has to remember. The
+   * model carries no hours, no status, no department and no period — so there
+   * is nothing a rollup COULD count — and nothing that totals hours imports it.
+   */
+  const model = readFileSync(join(ROOT, 'src/models/BirthdayCheck.js'), 'utf8');
+  const schema = strip(model);
+  for (const forbidden of ['hours', 'buckets', 'totals', 'segments', 'status', 'period', 'capSnapshot']) {
+    assert.ok(!new RegExp(`\\b${forbidden}\\b`).test(schema), `BirthdayCheck ต้องไม่มีฟิลด์ ${forbidden}`);
+  }
+  // Append-only by mechanism, not by convention.
+  assert.match(schema, /immutable: true/);
+  assert.ok(!/findOneAndUpdate|updateOne|\.save\(\)/.test(schema), 'ต้องไม่มีทางแก้แถวเดิม');
+
+  // Nothing that turns entries into hours knows this collection exists.
+  for (const file of [
+    'lib/accounting.js', 'lib/reports.js', 'lib/caps.js', 'lib/departmentSummary.js',
+    'src/services/otService.js', 'app/api/reports/monthly/[period]/route.js',
+    'app/api/exports/accounting.csv/route.js', 'app/api/exports/entries.csv/route.js',
+    'app/api/exports/monthly.csv/route.js',
+  ]) {
+    const src = readFileSync(join(ROOT, file), 'utf8');
+    assert.ok(!/BirthdayCheck/.test(src), `${file} อ้างถึง BirthdayCheck — ต้องไม่ถูกนับที่ใดเลย`);
+  }
+});
+
+test('outcome มีสองค่า และไม่มี "present"', () => {
+  // A person who WAS at work is recorded by the ใบ filed for them. A second
+  // document saying the same thing is a second account to disagree with it.
+  assert.deepEqual([...BIRTHDAY_OUTCOMES].sort(), ['absent', 'cancelled']);
+  assert.equal(OUTCOME.ABSENT, 'absent');
+  assert.equal(OUTCOME.CANCELLED, 'cancelled');
 });
 
 // ── the second list: cannot check ──────────────────────────────────────────
@@ -223,29 +353,80 @@ test('29 ก.พ. ตามนโยบายปีที่ไม่ใช่�
 // ── the screen reads, it does not write ────────────────────────────────────
 
 /**
- * ฝ่ายบุคคล cannot know whether somebody was at work on their birthday, or until
- * what hour. So this list reports and stops, and the way a missing ใบ gets filed
- * is the หัวหน้า's existing proxy path. Pinned as text because the route resolves
- * `@/…` through the Next alias, which node --test does not.
+ * The report route reports. Both ways of ANSWERING a row are POST routes of
+ * their own, each with its rule in lib/ — so however the screen above it
+ * changes, reading this list can never write anything.
+ *
+ * Pinned as text because the routes resolve `@/…` through the Next alias, which
+ * node --test does not.
  */
-test('เส้นทางนี้อ่านอย่างเดียว — ไม่มีทางสร้างใบจากรายการนี้', () => {
+test('เส้นทางรายงานยังอ่านอย่างเดียว — การเขียนอยู่คนละ route', () => {
   const route = readFileSync(join(ROOT, 'app/api/reports/birthday-check/[period]/route.js'), 'utf8');
-  const code = route.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const code = strip(route);
 
   assert.match(code, /export const GET =/);
   assert.ok(!/export const (POST|PATCH|PUT|DELETE)/.test(code), 'route นี้ต้องไม่มีทางเขียนอะไรเลย');
-  assert.ok(!/new OtEntry|entry\.save\(\)/.test(code), 'ต้องไม่สร้างใบ');
-  assert.match(code, /requireRole\(await requireAuth\(req\), 'hr', 'admin'\)/);
+  assert.ok(!/new OtEntry|entry\.save\(\)|BirthdayCheck\.create/.test(code), 'ต้องไม่สร้างอะไร');
 
-  // The หัวหน้า's name rides along, because that is what HR does next.
+  // Opened to หัวหน้า, and scoped by the SAME rule the approval queue runs on —
+  // not by a role test written a second time here.
+  assert.match(code, /requireRole\(await requireAuth\(req\), 'manager', 'hr', 'admin'\)/);
+  assert.match(code, /birthdayActionPermission/);
+  assert.match(code, /delegatedDepartments/);
+
+  // The หัวหน้า's name still rides along: HR may still prefer to ring.
   assert.match(code, /role: 'manager'/);
 });
 
-test('หน้าจอไม่มีปุ่มสร้างใบจากรายการนี้', () => {
+test('หน้าจอมีปุ่มสองทางต่อแถว และถามสิทธิ์จากเซิร์ฟเวอร์ ไม่ตัดสินเอง', () => {
   const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
   const section = view.slice(view.indexOf('function BirthdayCheck'));
-  assert.ok(!/api\.post|api\.patch/.test(section), 'ส่วนนี้ต้องไม่เขียนอะไรลงระบบ');
-  assert.match(section, /หัวหน้า/, 'ต้องบอกว่าใครเป็นคนบันทึกแทนได้');
+
+  assert.match(section, /บันทึก OT ให้/);
+  assert.match(section, /ไม่ได้มาทำงาน/);
+  assert.match(section, /\/birthday\/checks/);
+  // The filing button opens the form; it does not POST an entry from here.
+  assert.match(section, /onFile\?\.\(/);
+
+  /**
+   * Whether the buttons are drawn is `canAct` — the server's own answer, from
+   * `birthdayActionPermission`. A role test in the browser is how a screen ends
+   * up offering a row the server refuses, or hiding one somebody may act on;
+   * the queue already learnt that lesson with `isOwnFiling`.
+   */
+  assert.match(section, /r\.canAct \?/);
+  assert.ok(
+    !/user\?\.role|\['hr', 'admin'\]\.includes/.test(section),
+    'ส่วนนี้ต้องไม่ตัดสินสิทธิ์เองจาก role',
+  );
+
+  // The two groups, and only the first one carries buttons.
+  assert.match(section, /ต้องตรวจ/);
+  assert.match(section, /กำลังจะถึง/);
+  const upcomingBlock = section.slice(section.indexOf('data.upcoming.length > 0'));
+  const upcomingEnd = upcomingBlock.indexOf('data.absent.length > 0');
+  assert.ok(
+    !/<button/.test(upcomingBlock.slice(0, upcomingEnd)),
+    'กลุ่ม “กำลังจะถึง” ต้องไม่มีปุ่ม — ยังไม่มีบันทึกเวลาให้เทียบ',
+  );
+});
+
+/**
+ * The sentence the old screen carried was the opposite of the truth: it sent
+ * the reader to the หัวหน้า "เพราะฝ่ายบุคคลไม่ทราบว่าเขามาทำงานถึงกี่โมง". HR
+ * reads the fingerprint scanner's own export. Pinned because a wrong
+ * explanation on a screen outlives every correction made in a meeting.
+ */
+test('ข้อความอธิบายตรงกับความจริง — HR เทียบบันทึกสแกนนิ้วเองได้', () => {
+  const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
+  const section = view.slice(view.indexOf('function BirthdayCheck'));
+
+  assert.ok(
+    !/ฝ่ายบุคคลไม่ทราบว่าเขามาทำงานถึงกี่โมง/.test(section),
+    'ข้อความเดิมที่ขัดกับสเปกยังอยู่',
+  );
+  assert.match(section, /สแกนนิ้ว/, 'ต้องบอกว่าตรวจจากบันทึกเวลาเข้างาน');
+  assert.match(section, /หัวหน้าแผนกบันทึกแทนลูกทีมของตนเองได้/, 'หัวหน้าก็ยังบันทึกแทนได้');
 });
 
 // ── 0-hour submissions are refused, in words ──────────────────────────────
@@ -350,7 +531,8 @@ test('ฟอร์มยื่นใบอ่านเหตุผลจาก p
   assert.match(form, /function isOwnBirthday\(preview\)/);
   assert.match(form, /s\.dayReason === 'birthday'/);
   // Only on the filer's own form. A proxy filing would be telling a หัวหน้า when
-  // their team member was born.
-  assert.match(form, /preview && !proxy && !hrEdit && isOwnBirthday\(preview\)/);
+  // their team member was born — and a birthday-list filing would be saying
+  // "ของคุณ" to ฝ่ายบุคคล about somebody else.
+  assert.match(form, /preview && !proxy && !hrEdit && !fromBirthday && isOwnBirthday\(preview\)/);
   assert.ok(!/birthDate/.test(form), 'ฟอร์มต้องไม่แตะวันเกิดของใครเลย');
 });

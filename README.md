@@ -41,6 +41,17 @@ nothing anywhere errors. See
 migration is needed otherwise: `filedBy` absent means self-filed, which is what
 every existing entry is.
 
+**Deploying the birthday check-and-settle work?** One new key joins
+`DEFAULT_POLICY` — `hrDirectApproveBirthday` (default `true`) — with the same
+consequence every joining key has: the effective policy stops matching the newest
+recorded version, so **press บันทึกกฎที่ใช้อยู่เป็นเวอร์ชัน** under ตั้งค่าระบบ →
+นโยบายการคำนวณ, or every entry filed from that moment carries no
+`policyVersionId` and nothing anywhere errors. No migration otherwise: the
+`otBirthdayChecks` collection starts empty, which is the correct state (nobody has
+been asked yet), and the new `submit_hr_verified` history action only has to exist
+in the enum before a row can use it. See
+[วันเกิดที่ยังไม่มีใบ](#วันเกิดที่ยังไม่มีใบ--the-one-holiday-people-forget-to-claim).
+
 Upgrading a database from before policy versioning? Run
 `npm run migrate:policy-version` once — see
 [Which rules produced this figure](#which-rules-produced-this-figure). It writes
@@ -375,31 +386,53 @@ that date. Name, แผนก, the date, บริษัท, and the **หัว
 
 **It is a list, not a warning.** Not working on your birthday is the ordinary
 case, so most names on it have a perfectly good reason to be there. It is drawn in
-the neutral box with no red, no amber and no badge count — the tone is part of what
-it says — and it renders nothing at all when there is nothing to show, or when
+the neutral box with no red and no badge count — the tone is part of what it says
+— and it renders nothing at all when there is nothing to show, or when
 `birthdayHolidayEnabled` is off (a birthday is then an ordinary working day and no
 hours are owed).
 
-**No button to file, on purpose.** ฝ่ายบุคคล cannot know whether somebody was at
-work or until what hour, and hours invented from a calendar are exactly what this
-system must not contain — the route is `GET`-only and has no write counterpart at
-all. What each row carries instead is the หัวหน้า's name, because they can answer
-both questions and they already have the path in: **บันทึก OT แทนลูกทีม** on their
-own queue (`lib/proxyFiling.js`). The name is read as *role `manager`, same
-department* — the rule `isDepartmentManager` actually enforces — and not off
-`Department.manager`, a field nothing consults and most departments leave unset.
+**Both answers are settled from here, one press each.** The screen used to say
+that ฝ่ายบุคคล could not know whether somebody was at work, and send the reader to
+the หัวหน้า. That was never the situation in this office: HR opens the fingerprint
+scanner's own export and reads the in and out times for that date — the same times
+a หัวหน้า would repeat down the phone. So each row of the first group carries two
+buttons:
 
-**"ตรวจไม่ได้" is a second list, never silence.** Somebody with no `birthDate`, or
-an unusable one, cannot be checked either way, and a roster that is still mostly
-empty must not read as a clean month. So they appear under a heading of their own
-that says so.
+* **บันทึก OT ให้** — opens the submit form with the person and the date nailed
+  shut and only the two scanned times to enter. The engine computes the hours;
+  there is no field anywhere that takes a number of hours.
+* **ไม่ได้มาทำงาน** — writes a **BirthdayCheck**, which is not an OT request at
+  all (below). The name leaves the list so nobody checks it twice.
+
+The หัวหน้า still files through **บันทึก OT แทนลูกทีม** on their own queue when
+they prefer, and can use either button here for their own team.
+
+**Two groups, and only the first one has buttons.** A birthday whose date has not
+arrived has no scan record to compare against, so **กำลังจะถึง** rows are shown and
+left alone. The split is the server's — `birthdayCheck()` against Asia/Bangkok's
+date, the same `today()` delegation uses — and it is enforced again in
+`birthdayDirectApproval`, not merely by which buttons were drawn.
+
+**"ตรวจไม่ได้" is a list of its own, never silence.** Somebody with no `birthDate`,
+or an unusable one, cannot be checked either way, and a roster that is still mostly
+empty must not read as a clean month. So they appear under a heading that says so.
+
+**Who may press.** ฝ่ายบุคคล and Admin for everybody; a หัวหน้า for their own team;
+a ผู้รับช่วง for the teams whose queue they hold **today**. That is
+`birthdayActionPermission` → `departmentClaim` — the same function
+`approvalPermission` decides an approval with, so a delegation window closing takes
+this screen with it on the same day and by the same rule. The screen never decides
+from a role: each row carries `canAct`, answered by the server.
 
 | | |
 |---|---|
-| Rules | [`lib/birthdayCheck.js`](lib/birthdayCheck.js) — pure. `birthdayCheck()` returns `needsEntry` + `uncheckable` |
-| Endpoint | `GET /api/reports/birthday-check/[period]` — HR and Admin only, read-only |
-| Screen | ตรวจสอบรายเดือน (`components/HrView.jsx` → `BirthdayCheck`) |
-| Tests | [`test/birthdayCheck.test.js`](test/birthdayCheck.test.js) |
+| Rules | [`lib/birthdayCheck.js`](lib/birthdayCheck.js) — pure. `birthdayCheck()` returns `needsEntry` + `upcoming` + `uncheckable`; `absentKeys()` decides which checks are live |
+| | [`lib/birthdayFiling.js`](lib/birthdayFiling.js) — pure. Who may act, and whether the filing takes the single-signature path |
+| Endpoints | `GET /api/reports/birthday-check/[period]` — read-only, still. หัวหน้า/HR/Admin |
+| | `POST /api/birthday/entries` — บันทึก OT ให้ |
+| | `POST /api/birthday/checks` — ไม่ได้มาทำงาน, and its retraction |
+| Screen | ตรวจสอบรายเดือน / สรุปทีม (`components/HrView.jsx` → `BirthdayCheck`) |
+| Tests | [`test/birthdayCheck.test.js`](test/birthdayCheck.test.js), [`test/birthdayDirectApproval.test.js`](test/birthdayDirectApproval.test.js) |
 
 **ANY status counts as "has a ใบ"** — refused and withdrawn included. The question
 is whether the day was *overlooked*, and a request that was filed and turned down
@@ -412,9 +445,82 @@ leave the guarantee resting on which branch ran. Two routes, one rule each. A da
 of birth still never leaves the server either way — what goes out is the date of
 the **holiday** being asked about.
 
-**HR filing these directly was tried and withdrawn.** For one release ฝ่ายบุคคล
-could write the whole month's birthday requests from a list. It was the wrong
-shape for the reason above, and the rows it wrote are still in the database —
+#### BirthdayCheck — "ไม่ได้มาทำงาน", written down
+
+Append-only, exactly as `PolicyVersion` is and by the same mechanism: every field
+is `immutable`, so mongoose refuses a write that would restate a row. Getting one
+wrong is undone by writing a second row with `outcome: 'cancelled'`; the first
+stays. The **live** answer for a person and a date is the newest row for that pair
+— `absentKeys()`, ordered by `checkedAt` with `_id` breaking a tie — so a birthday
+that was marked and then un-marked comes straight back onto the list. Asked as
+"does a row exist", the retraction would be written, stored, visible in the
+collection and change nothing anybody can see.
+
+**It is not an OT request and it cannot become one.** The model holds no hours, no
+status, no approval, no department and no period, so there is nothing a rollup
+*could* count — a stronger guarantee than a flag on `OtEntry` that every total
+would have to remember to exclude, one by one, for ever. It eats no cap and
+reaches no report. `test/birthdayCheck.test.js` pins both halves: the absent
+fields, and that nothing in `lib/accounting.js`, `lib/reports.js`, `lib/caps.js`,
+`src/services/otService.js` or any export route so much as names it.
+
+There is deliberately no `'present'` outcome. Somebody who *was* at work is
+recorded by the ใบ filed for them, and a second document saying the same thing is a
+second account to disagree with the first.
+
+Checks stay on screen for the month they are about, under **ตรวจแล้ว ·
+ไม่ได้มาทำงาน**, each naming who gave the answer and when — which is where the
+retraction button is, and what stops two people checking the same name twice.
+
+#### One signature, and the trail says so
+
+`hrDirectApproveBirthday` (default `true`, COSMETIC). When ฝ่ายบุคคล press
+**บันทึก OT ให้**, the request is written `approved` in that one act. §6's two
+steps do not bend anywhere else; here the second person already holds the first
+one's evidence, because the scan record answers both questions a หัวหน้า would be
+asked. There is no fact left to add.
+
+What the entry carries is the truth about that:
+
+* history: **one** row, `submit_hr_verified`, naming HR as both the person who
+  filled it in and the person who signed it, with the reason on it.
+* `hrDecision`: written, because it happened.
+* `managerDecision`: **left empty**, because it did not. Filling it in would be
+  the same lie `initialStatus` refuses to tell — two signatures on the page, one
+  person behind them, and nothing afterwards able to tell the difference.
+* the chip **HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว** wherever the row appears, amber
+  and distinct from the blue *บันทึกแทน* — both mean "somebody else typed this",
+  only this one also means an approval a reader assumes happened did not.
+* on the หัวหน้า's **สรุปทีม**: a per-person count and a line above the table.
+  Their team's hours went up while their queue never rang; that is the one figure
+  on the page they could not otherwise account for.
+
+`submit_hr_verified` is deliberately **not** in `SYSTEM_FILED_ACTIONS`. That list
+means *no form was filled in*; here a person read a clock record and typed two
+times, so the "ระบบสร้างใบวันเกิด" chip and the no-questions `ถอนใบวันเกิด` exit
+must not follow.
+
+**The limit is enforced at function level, not by hiding a button.**
+`birthdayDirectApproval` refuses outright — 400/409, whoever is asking — unless the
+date is the one the birthday rule itself produced for that person, recomputed by
+the route from their stored `birthDate` under the live policy. It also refuses a
+date that has not arrived, a birthday already on a company holiday, and one
+already checked as absent. Turn the flag off, or let a **หัวหน้า** press it, and
+the answer is not an error: the request is filed and routed by `initialStatus`
+like any other (`pending_mgr`, or `pending_hr` for a หัวหน้า's own team). A
+หัวหน้า gets no shortcut because theirs is the *first* signature — there is no
+second step for them to spend early.
+
+And it is two doors, not one door with a flag: `POST /api/entries` neither imports
+`lib/birthdayFiling.js` nor contains the string `'approved'`, which
+`test/birthdayDirectApproval.test.js` pins. The ordinary path cannot be talked
+into the shortcut by any payload at all.
+
+**An earlier attempt at HR filing these was withdrawn.** For one release ฝ่ายบุคคล
+could write the whole month's birthday requests from a list — *generated from a
+calendar*, with nobody filling a form in, which is the thing this system must not
+contain and is not what the path above does. The rows it wrote are still in the
+database —
 which is what `isUntouchedSystemFiling()` and the **ถอนใบวันเกิด** button are for:
 an `approved` entry can otherwise be removed by nobody, and those were generated
 rather than claimed. The `submit_birthday` and `void` history actions stay for the

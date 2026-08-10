@@ -425,6 +425,14 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
    reviewer which authority they are about to sign under, and every row on the
    covered team carries it. */
 .chip.delegated { background: var(--neutral-wash); color: var(--muted); }
+/* HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว — the one request that is อนุมัติ with no
+   หัวหน้า in its chain. Amber, and NOT the blue บันทึกแทน wears beside it: both
+   say "somebody else typed this", and only this one also says an approval a
+   reader would assume happened did not. On a หัวหน้า's สรุปทีม it is the whole
+   explanation for hours that appeared without them pressing anything, so it has
+   to be the mark on the row that catches the eye first. Not red: nothing is
+   wrong — the scan record is better evidence than the phone call it replaces. */
+.chip.verified { background: var(--amber-bg); color: var(--amber); }
 /* "· ทำแทน สมชาย" inside a history line. Not a chip and not bold: it is the
    second half of the sentence naming who acted, and it reads as one line. */
 .entry-history .who .behalf { color: var(--muted); font-weight: 500; }
