@@ -5,6 +5,7 @@ import { route, uploadText, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { parseCsv, pick } from '@/src/lib/csv.js';
 import { defaultPassword, rosterPermission } from '@/lib/employees.js';
+import { resolveBirthDateColumn } from '@/lib/birthDate.js';
 
 // ── [OPEN 11] roster import ─────────────────────────────────────────────────
 // Built regardless of HR's answer: if they hand over a file, use the upload;
@@ -20,6 +21,15 @@ export const POST = route(async (req) => {
   if (!text.trim()) return fail('ไม่พบไฟล์หรือข้อมูล CSV', 400);
 
   const rows = parseCsv(text);
+
+  // Before a single row is written. Excel rewrites the whole วันเกิด column
+  // when HR opens and saves the file, so whether "05/03/1998" is March or May
+  // is a fact about the file, not about the row — and a file whose order
+  // nothing settles is refused entire. Importing the readable half of it would
+  // just be the same guess made quietly. See lib/birthDate.js.
+  const dates = resolveBirthDateColumn(rows);
+  if (!dates.ok) return fail(dates.fileError, 400, { birthDateAmbiguous: dates.ambiguous });
+
   const departments = await Department.find().lean();
   const byCode = new Map(departments.map((d) => [d.code.toUpperCase(), d]));
 
@@ -45,11 +55,11 @@ export const POST = route(async (req) => {
 
       // Optional, and rejected loudly rather than silently dropped — a birthday
       // written 12/05/2532 is a mistake worth showing HR, not worth guessing at.
-      const birthDate = pick(row, 'birthDate', 'วันเกิด', 'birth_date');
-      if (birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
-        errors.push({ line, error: `วันเกิดต้องเป็นรูปแบบ YYYY-MM-DD (พ.ศ. ค.ศ. ใช้ ค.ศ.) — ได้รับ "${birthDate}"` });
-        continue;
-      }
+      // Read against the whole file above; what is left per row is a cell no
+      // reading of the file could save.
+      const cell = dates.byLine.get(line);
+      if (cell?.error) { errors.push({ line, error: cell.error }); continue; }
+      const birthDate = cell?.date || '';
 
       // Which of the two payrolls this person belongs to. Stated in the file
       // wins; otherwise the code prefix decides (PM… / THT…). A code matching
@@ -117,5 +127,9 @@ export const POST = route(async (req) => {
     errors,
     warnings,
     codes: { created, updated },
+    // How the วันเกิด column was read, so the confirmation says it too — the
+    // preview HR agreed to and the import that happened are then the same
+    // claim, checkable against each other.
+    birthDates: { order: dates.order, count: dates.cells.length, decidedBy: dates.decidedBy },
   });
 });

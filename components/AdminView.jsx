@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api, thaiDate, dayName, COMPANIES } from '@/lib/api.js';
 import { HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, defaultPassword } from '@/lib/employees.js';
+import { parseCsv } from '@/src/lib/csv.js';
+import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { Alert, Empty, Modal } from './common.jsx';
 
 const SECTIONS = [
@@ -174,6 +176,23 @@ const BLANK = {
   company: '', password: '',
 };
 
+/**
+ * What the preview claims the file means, in one sentence.
+ *
+ * `decidedBy` is named because it is the whole argument: an ambiguous column is
+ * read วัน/เดือน not out of preference but because one row in that same column
+ * could be read no other way. HR can check that row against the roster; they
+ * cannot check a preference.
+ */
+function interpretation(dates) {
+  if (!dates.order) {
+    return 'ไฟล์นี้ไม่มีคอลัมน์วันเกิด — นำเข้าข้อมูลอื่นตามปกติ และวันเกิดที่มีอยู่แล้วในระบบจะไม่ถูกลบ';
+  }
+  const head = `อ่านวันเกิด ${dates.cells.length} ค่า เป็นรูปแบบ ${ORDER_LABEL[dates.order]}`;
+  if (!dates.decidedBy) return head;
+  return `${head} — ตัดสินจากบรรทัด ${dates.decidedBy.line} (“${dates.decidedBy.raw}”) ซึ่งอ่านเป็นเดือนไม่ได้`;
+}
+
 function Employees({ user }) {
   const [rows, setRows] = useState([]);
   const [depts, setDepts] = useState([]);
@@ -184,6 +203,9 @@ function Employees({ user }) {
   const [issued, setIssued] = useState(null);
   /** The row whose password is being reset, if any. */
   const [resetting, setResetting] = useState(null);
+  /** A chosen file, read but not yet sent — see `choose` below. */
+  const [pending, setPending] = useState(null);
+  const [sending, setSending] = useState(false);
   const fileRef = useRef(null);
 
   // Mirrors rosterPermission() on the server. Not a substitute for it — the
@@ -225,13 +247,39 @@ function Employees({ user }) {
     } catch (err) { setError(err.message); }
   }
 
-  async function upload(e) {
+  /**
+   * Choosing a file no longer imports it. The file is read here first and the
+   * วันเกิด column is interpreted in front of HR, because "05/03/1998" on the
+   * screen is not evidence of what anybody typed — Excel rewrote it on save,
+   * and after the import a wrong reading looks exactly like a right one. The
+   * only person who can tell 5 March from 3 May is the one who knows the
+   * roster, and this is the last moment they can be asked.
+   *
+   * The reading shown is not the reading enforced: the server runs the same
+   * module on the same bytes when the upload arrives. This is a preview of that
+   * decision, not a substitute for it.
+   */
+  async function choose(e) {
     const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = '';
     if (!file) return;
+    setError('');
+    setResult(null);
     try {
-      setResult(await api.upload('/employees/import', file));
+      const rows = parseCsv(await file.text());
+      const dates = resolveBirthDateColumn(rows);
+      setPending({ file, rows: rows.length, dates, preview: birthDatePreview(dates) });
+    } catch (err) { setError(err.message); }
+  }
+
+  async function confirmImport() {
+    if (!pending) return;
+    setSending(true);
+    try {
+      setResult(await api.upload('/employees/import', pending.file));
+      setPending(null);
       load();
-    } catch (err) { setError(err.message); } finally { if (fileRef.current) fileRef.current.value = ''; }
+    } catch (err) { setError(err.message); } finally { setSending(false); }
   }
 
   return (
@@ -242,7 +290,13 @@ function Employees({ user }) {
         · ช่อง “บริษัท” ระบุว่าพนักงานคนนี้อยู่ในบัญชีเงินเดือนของบริษัทใด
         เว้นว่างได้ ระบบจะเดาจากรหัส (PM… = ไพรมัส, THT… = เดมเทค)
         · “วันเกิด” ไม่บังคับ และแก้ไขได้จากหน้านี้เท่านั้น —
-        พนักงานเห็นได้ในหน้าข้อมูลส่วนตัวแต่แก้เองไม่ได้ (ในไฟล์ CSV ใช้รูปแบบ YYYY-MM-DD เป็น ค.ศ.)
+        พนักงานเห็นได้ในหน้าข้อมูลส่วนตัวแต่แก้เองไม่ได้
+        · ในไฟล์ CSV ให้ใช้ YYYY-MM-DD เป็น ค.ศ. (เช่น 1998-03-05) —
+        แต่ถ้าเปิดไฟล์ด้วย Excel แล้วกดบันทึกทับ Excel จะเขียนคอลัมน์วันเกิดใหม่
+        เป็น DD/MM/YYYY หรือ MM/DD/YYYY ตามการตั้งค่าของเครื่องนั้น
+        ค่าอย่าง 05/03/1998 จึงเป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
+        ระบบอ่านได้ทั้ง YYYY-MM-DD และ DD/MM/YYYY และจะแสดงผลการตีความให้ตรวจก่อนกดยืนยันนำเข้า
+        โปรดอ่านตัวอย่างนั้นให้ครบก่อนยืนยัน — ถ้าตีความไม่ได้แน่ชัด ระบบจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา
         · ทุกบัญชีที่สร้างจากหน้านี้จะถูกบังคับให้ตั้งรหัสผ่านใหม่เมื่อเข้าระบบครั้งแรก
         {!isAdmin && ' · บทบาท “ผู้ดูแลระบบ” ตั้งได้โดยผู้ดูแลระบบเท่านั้น'}
       </div>
@@ -273,13 +327,64 @@ function Employees({ user }) {
         </button>
         <label className="btn ghost" style={{ cursor: 'pointer' }}>
           นำเข้ารายชื่อจาก CSV
-          <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={upload} style={{ display: 'none' }} />
+          <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={choose} style={{ display: 'none' }} />
         </label>
       </div>
+
+      {/* The interpretation, before it is applied rather than after. */}
+      {pending && (
+        <Alert kind={pending.dates.ok ? 'warn' : 'error'}>
+          <strong>ตรวจก่อนนำเข้า</strong> — {pending.file.name} · {pending.rows} แถว
+          {!pending.dates.ok ? (
+            <>
+              <div style={{ marginTop: 6 }}>{pending.dates.fileError}</div>
+              {pending.dates.ambiguous.length > 0 && (
+                <ul style={{ marginTop: 6, marginLeft: 18 }}>
+                  {pending.dates.ambiguous.map((a) => (
+                    <li key={a.line}>บรรทัด {a.line}: “{a.raw}”</li>
+                  ))}
+                </ul>
+              )}
+              <div style={{ marginTop: 6, fontSize: 12.5 }}>
+                ไฟล์นี้จะไม่ถูกนำเข้าเลย แม้แต่แถวที่อ่านได้ — แก้ไฟล์แล้วเลือกใหม่อีกครั้ง
+              </div>
+              <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setPending(null)}>ปิด</button>
+            </>
+          ) : (
+            <>
+              <div style={{ marginTop: 6 }}>{interpretation(pending.dates)}</div>
+              {pending.preview.length > 0 && (
+                <ul style={{ marginTop: 6, marginLeft: 18, fontFamily: 'var(--mono, monospace)' }}>
+                  {pending.preview.map((p) => <li key={p.line}>บรรทัด {p.line}: {p.text}</li>)}
+                </ul>
+              )}
+              {pending.dates.rowErrors.length > 0 && (
+                <div style={{ marginTop: 6, fontSize: 12.5 }}>
+                  {pending.dates.rowErrors.length} แถวมีวันเกิดที่ใช้ไม่ได้ และจะถูกข้ามไปทั้งแถว:
+                  <ul style={{ marginTop: 4, marginLeft: 18 }}>
+                    {pending.dates.rowErrors.map((r) => <li key={r.line}>บรรทัด {r.line}: {r.error}</li>)}
+                  </ul>
+                </div>
+              )}
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn" onClick={confirmImport} disabled={sending}>
+                  {sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
+                </button>
+                <button className="btn ghost" onClick={() => setPending(null)} disabled={sending}>ยกเลิก</button>
+              </div>
+            </>
+          )}
+        </Alert>
+      )}
 
       {result && (
         <Alert kind={result.errors?.length || result.warnings?.length ? 'warn' : 'ok'}>
           นำเข้าใหม่ {result.created} คน · ปรับปรุง {result.updated} คน
+          {result.birthDates?.order && (
+            <div style={{ fontSize: 12.5 }}>
+              วันเกิด {result.birthDates.count} ค่า อ่านเป็น {ORDER_LABEL[result.birthDates.order]}
+            </div>
+          )}
           {result.errors?.length > 0 && (
             <ul style={{ marginTop: 6, marginLeft: 18 }}>
               {result.errors.map((er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>)}

@@ -1,28 +1,24 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, THAI_MONTHS, accountingLabel } from '@/lib/api.js';
+import { api, THAI_MONTHS } from '@/lib/api.js';
 import { Alert, UnaccountedHours } from './common.jsx';
 
 /**
  * สรุป OT ส่งบัญชี rendered for print — one sheet per company, A4 portrait.
  *
- * The sheet is the table and one line above it: the company, then รหัส,
- * ชื่อ-นามสกุล and the two rate columns headed 1.50 and 3.00 under one
- * ประจำเดือน banner. No subtitle, no subtotal or total rows, no note, no
- * signature block — the paper accounting receives carries none of them, and
- * anything extra is one more thing to reconcile against a sheet that does not
- * have it.
+ * The sheet is the table and nothing else: รหัส, ชื่อ-นามสกุล and the two rate
+ * columns headed 1.50 and 3.00 under one ประจำเดือน banner. No company
+ * heading, no subtitle, no subtotal or total rows, no note, no signature block
+ * — the paper accounting receives carries none of them, and anything extra is
+ * one more thing to reconcile against a sheet that does not have it.
  *
- * The company line is the exception, and it is not decoration. This prints one
- * company per sheet and the two file separately, so the moment a page leaves
- * the stapled set there is nothing on it saying which payroll it belongs to —
- * the banner names the month, the grid names the people, and รหัส is the only
- * clue, read off a column of codes rather than stated. It is headed the way
- * accounting names a company, `PM · ไพรมัส`, the same accountingLabel() the
- * screen uses, because the sheet and the screen being read against each other
- * is the normal case. In thead, so a roster running past one side repeats it on
- * every page rather than only on the first.
+ * The company heading is deliberately NOT here — accounting asked for the sheet
+ * without it. This still prints one company per sheet and the two still file
+ * separately, so what the page carries instead is the รหัส column: a page that
+ * comes loose from the stapled set is placed by reading PM- or THT- off the
+ * codes rather than by a line that states it. Anything reinstated above the
+ * grid belongs in the thead margin band, not in a row (see PaperFlag below).
  *
  * Hours print to two decimals (8.00, not 8) because that is how the paper
  * reads. Every roster member is listed, including the ones with no OT — a
@@ -38,12 +34,12 @@ import { Alert, UnaccountedHours } from './common.jsx';
  * nothing on it saying so gets signed as correct — which is the whole failure,
  * because every figure on the page still agrees with every other one.
  *
- * IT COSTS NO ROW. It is rendered inside the thead margin band, beside the
- * company name, so `ROWS_PER_PAGE` is untouched and the filler arithmetic below
- * cannot be thrown out by it — the same reasoning that put the company name
- * there rather than in a row of its own. `nowrap` on the band keeps it to one
- * line, so the band's 10mm does not grow either. Absent entirely in an ordinary
- * month: nothing renders, and the sheet is byte for byte what it was.
+ * IT COSTS NO ROW. It is rendered inside the thead margin band — the 10mm of
+ * white above the grid — so `ROWS_PER_PAGE` is untouched and the filler
+ * arithmetic below cannot be thrown out by it. `nowrap` on the band keeps it to
+ * one line, so the band's 10mm does not grow either. Absent entirely in an
+ * ordinary month: nothing renders, the band is empty white, and the sheet is
+ * byte for byte the plain grid.
  *
  * In thead, so a roster running to several sides repeats it on every one of
  * them. A page that comes loose from the set still carries the warning.
@@ -52,7 +48,7 @@ function PaperFlag({ unaccounted }) {
   if (!unaccounted?.count) return null;
   return (
     <span className="flag">
-      {' '}· ไม่ถูกนับ {unaccounted.count} ใบ {Number(unaccounted.hours).toFixed(2)} ชม.
+      ไม่ถูกนับ {unaccounted.count} ใบ {Number(unaccounted.hours).toFixed(2)} ชม.
     </span>
   );
 }
@@ -147,14 +143,14 @@ function Sheet({ company, period, unaccounted }) {
             every page are thead and tfoot. Padding on the sheet would space
             page 1 and leave page 2 starting hard against the paper edge.
 
-            The company sits IN that margin row rather than in a row of its own:
-            a new row would take 7mm off every page, and ROWS_PER_PAGE below is
-            counted against a page that does not have it. The band is already
-            10mm of white above the grid, which is where a heading goes anyway. */}
+            The band carries no company heading — accounting wants the sheet as
+            the grid alone. What does sit in it is the ไม่ถูกนับ flag, and it
+            sits HERE rather than in a row of its own: a new row would take 7mm
+            off every page, and ROWS_PER_PAGE below is counted against a page
+            that does not have it. */}
         <thead>
           <tr className="pad">
             <td className="co" colSpan={4}>
-              {accountingLabel(company)}
               <PaperFlag unaccounted={unaccounted} />
             </td>
           </tr>

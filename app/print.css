@@ -194,20 +194,20 @@
 
 /* ══ สรุปค่าล่วงเวลา (OT) ส่งบัญชี ═══════════════════════════════════════════
  *
- * The submission sheet HR sends to accounting: the company on one line, then a
- * table and nothing else — รหัส, ชื่อ-นามสกุล, and the two rate columns under
- * one ประจำเดือน banner, with the margin the remarks are written in. No
- * subtitle, no subtotals, no signature block — the paper carries none, and
- * between the company line and the banner the sheet says whose month it is.
- * Same @page as F-HR-027 above — A4 portrait, printed at 100%.
+ * The submission sheet HR sends to accounting: a table and nothing else —
+ * รหัส, ชื่อ-นามสกุล, and the two rate columns under one ประจำเดือน banner,
+ * with the margin the remarks are written in. No company heading, no subtitle,
+ * no subtotals, no signature block — the paper carries none of them, and the
+ * ประจำเดือน banner is what says whose month it is. Same @page as F-HR-027
+ * above — A4 portrait, printed at 100%.
  *
  * A roster runs to whatever length it runs to, so unlike F-HR-027 this sheet
  * is not built to fit one side: the row height is set for legibility and the
  * table breaks across pages with its headings repeated. What IS fixed is one
  * company per sheet — the two file separately, and a page carrying both would
- * have to be cut up by hand. Which is also why the company line lives in thead
- * with the column headings: a sheet that runs to two sides must name its
- * company on both, or the second one is the loose page nobody can place.
+ * have to be cut up by hand. Nothing on the page states which of the two it is,
+ * by request: the รหัส column and its PM- / THT- prefixes are what place a
+ * sheet that has come loose from its set.
  */
 
 .acct {
@@ -294,17 +294,18 @@
 }
 .acct tfoot tr.pad, .acct tfoot tr.pad td { height: 12mm; }
 
-/* The company, sitting in the top margin band rather than in a row of its own —
-   a row of its own would cost every page 7mm that ROWS_PER_PAGE has already
-   been counted against. Undoes the three things the pad rule sets for a cell
-   that was empty when it was written: `line-height: 0` would collapse the text
-   onto nothing, and the zero padding and centred `th` alignment would sit it
-   hard against the top-left corner of the band.
+/* Text in the top margin band — today only the ไม่ถูกนับ flag, since the
+   company heading that used to sit here was dropped at accounting's request.
+   The band rather than a row of its own: a row would cost every page 7mm that
+   ROWS_PER_PAGE has already been counted against. Undoes the three things the
+   pad rule sets for a cell that was empty when it was written: `line-height: 0`
+   would collapse the text onto nothing, and the zero padding and centred `th`
+   alignment would sit it hard against the top-left corner of the band.
 
-   Aligned bottom-left: the name reads down the same edge as the รหัส column
-   under it, and sits just above the grid rather than floating in the middle of
-   the white — near enough to read as this table's heading, which is the whole
-   point on a page that has come loose from its set. */
+   Aligned bottom-left: it reads down the same edge as the รหัส column under it,
+   and sits just above the grid rather than floating in the middle of the white,
+   so it reads as belonging to this table. With nothing to show the cell is
+   empty and the band is plain white — which is the ordinary month. */
 .acct thead tr.pad td.co {
   line-height: 1.2;
   vertical-align: bottom;
@@ -315,13 +316,13 @@
   white-space: nowrap;
 }
 
-/* "· ไม่ถูกนับ 1 ใบ 3.50 ชม." — inline, on the company's own line.
+/* "ไม่ถูกนับ 1 ใบ 3.50 ชม." — one line in the top margin band.
 
    Inline and `nowrap`-inherited on purpose: the band it sits in is a fixed
    10mm that ROWS_PER_PAGE has been counted against, so this must not be able
-   to add a second line to it. Lighter weight than the company name beside it,
-   and the only red on the sheet, which is the whole job — a signature is about
-   to go on a total that this says is short. */
+   to add a second line to it. Lighter weight than a heading, and the only red
+   on the sheet, which is the whole job — a signature is about to go on a total
+   that this says is short. */
 .acct thead tr.pad td.co .flag {
   font-weight: 400;
   color: #c00;

@@ -237,6 +237,41 @@ whichever way the flag is set. `birthDate` itself is not colleague-visible:
 `publicEmployee()` filters it out of the roster for everyone except the person,
 HR and admin — managers included.
 
+### Getting the birthday into the system — the file is the unit, not the row
+
+HR types `1998-03-05`. Excel displays `05/03/1998`, and saving the file writes
+that back, so the roster CSV that reaches the importer is in whatever order the
+machine's locale chose rather than the one anybody picked. Read the wrong way
+that value becomes 3 May: a real date, a clean import, a birthday holiday two
+months off, and **no error anywhere ever** — a birthday is only compared against
+itself. Every other bad cell in this system announces itself; this one does not.
+
+So `lib/birthDate.js` interprets the whole column at once, before a single row
+is written:
+
+- **Accepted:** `YYYY-MM-DD`, `DD/MM/YYYY`, `D/M/YYYY`, ค.ศ. only. A year past
+  2500 is พ.ศ. and is **rejected with the ค.ศ. equivalent named** (`พ.ศ. 2541 =
+  ค.ศ. 1998`) rather than quietly having 543 subtracted — unlike the holiday
+  calendar's `normaliseDate()`, which converts, because a holiday that lands
+  543 years off is visibly absurd and a birthday is not.
+- **Evidence beats preference.** `15/05/1998` can only be read one way — no
+  month is 15 — so it settles the order for every ambiguous row beside it, and
+  the screen names the row that decided it. Excel rewrites the column as a
+  whole, which is what makes one row's shape evidence about all of them.
+- **No evidence, no import.** A file whose only dates are ambiguous is refused
+  **entire**, by line and value. Not the readable half of it: importing the rows
+  that were never in doubt and dropping the rest is the same guess, made
+  quietly. A file that is month-first (`05/25/1998`) is refused by name, so HR
+  learns which machine wrote it.
+- **The calendar is checked, not just the shape.** 29 February passes in 1996
+  and 2000, fails in 1998 and 1900. The `Employee` schema's regex never could.
+
+And because a wrong reading is indistinguishable from a right one the moment it
+lands, the พนักงาน screen **shows the interpretation before it is applied** —
+`05/03/1998 → 5 มีนาคม 1998` for the first rows, plus the rows that will be
+skipped — and uploads nothing until someone confirms. The preview runs the same
+pure module the route does; the server is still what enforces it.
+
 ---
 
 ## Which rules produced this figure
@@ -569,11 +604,11 @@ The paper matters most — the screen banner is seen by whoever pressed print, a
 the person who signs is usually not that person.
 
 On the accounting sheet the line **costs no row**: it renders inside the thead
-margin band beside the company name, so `ROWS_PER_PAGE = 37` and the last-page
-filler arithmetic are untouched, and with nothing missing the component returns
-`null` and the sheet is byte for byte what it was. (`ROWS_PER_PAGE` is measured,
-not derived — this is the second thing to be squeezed into that band rather than
-given a row of its own, after the company name.) On the departmental sheet it is
+margin band, so `ROWS_PER_PAGE = 37` and the last-page filler arithmetic are
+untouched, and with nothing missing the component returns `null` and the sheet
+is byte for byte what it was. (`ROWS_PER_PAGE` is measured, not derived, so
+anything above the grid goes in that band rather than in a row of its own.) On
+the departmental sheet it is
 one line under `รวมชั่วโมงทำOT`, and only on the **รวมทุกแผนก** closing sheet:
 an unaccounted entry belongs to no department, so printing it under one
 department's total would assert something untrue about that department.
@@ -600,11 +635,15 @@ database. That last one needs a second unpopulated read of those few entries —
 `populate()` replaces a reference to a missing document with `null` and throws
 the id away with it.
 
-**The company is headed the way accounting names it — `PM · ไพรมัส`,
+**On screen the company is headed the way accounting names it — `PM · ไพรมัส`,
 `THT · เดมเทค`.** The code leads because this is the one sheet another
 department reconciles against and their records are keyed on it; the full legal
 name stays underneath, because the figures are signed for by a company and not
-by a code. `accountingCode` lives on `src/config/companies.js` as its own field
+by a code. **The printed sheet carries no company heading at all** — accounting
+asked for the paper as the grid alone, so a loose page is placed by the PM- /
+THT- prefixes in its รหัส column rather than by a line naming the company.
+`accountingLabel()` is therefore a screen-and-CSV label, not a paper one.
+`accountingCode` lives on `src/config/companies.js` as its own field
 rather than reusing `codePrefixes`: the prefix is a convention the roster
 follows and this is a label accounting has committed to, and if either moves it
 should not drag the other with it. Nowhere else in the system is renamed — the
@@ -631,7 +670,8 @@ than `0.00`, on the screen and in the CSV alike.
 
 **The printed sheet** (`components/AccountingPrint.jsx`, styles under `.acct`
 in `app/print.css`) is the paper form HR already sends, and only that: four
-columns — รหัส, ชื่อ-นามสกุล, **1.50**, **3.00** — under one ประจำเดือน banner.
+columns — รหัส, ชื่อ-นามสกุล, **1.50**, **3.00** — under one ประจำเดือน banner,
+with nothing above the grid but the ไม่ถูกนับ flag in the months that have one.
 Same print setup as F-HR-027, **A4 portrait, “ค่าเริ่มต้น” margins, no
 scaling**, sharing its `@page` rule.
 

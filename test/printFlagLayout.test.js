@@ -18,9 +18,9 @@ import { dirname, join } from 'node:path';
  * bands. Anything that adds a row, or grows one of those bands, silently
  * invalidates it: the filler stops landing on a page boundary and every sheet
  * after the first ends in the wrong place. That has happened once already, when
- * the company name was added, which is why it sits in the margin band rather
- * than in a row of its own — and why this warning sits in the same band beside
- * it.
+ * a company heading was added above the grid — the heading has since been taken
+ * off the sheet at accounting's request, and the lesson it left is why this
+ * warning sits in the margin band rather than in a row of its own.
  *
  * So what is checked here is the arithmetic and the placement, from the source.
  * There is no DOM in this suite and adding one to measure millimetres would be
@@ -45,8 +45,7 @@ const DEPARTMENT = 'components/DepartmentPrint.jsx';
 test('the accounting flag renders inside the margin band, not as a table row', () => {
   const code = sourceOf(ACCOUNTING);
 
-  // In the pad row that already carries the company name — the band whose
-  // 10mm ROWS_PER_PAGE was counted against.
+  // In the thead pad row — the 10mm band ROWS_PER_PAGE was counted against.
   assert.match(
     code,
     /<tr className="pad">[\s\S]{0,200}<PaperFlag unaccounted=\{unaccounted\} \/>/,
