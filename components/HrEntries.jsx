@@ -6,6 +6,7 @@ import {
   Alert, Empty, EditedMark, EntryHistory, RequestTrail, StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail } from '@/lib/entries.js';
+import { describeBreaches } from '@/lib/caps.js';
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
 import OtForm from './OtForm.jsx';
@@ -217,9 +218,15 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                     <td><PolicyVersionCell version={e.policyVersionId} /></td>
                     <td>
                       <StatusChip status={e.status} />
-                      {e.capExceeded && (
-                        <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>เกินเพดาน</div>
-                      )}
+                      {describeBreaches(e).map((b) => (
+                        <div
+                          key={b.scope + b.text}
+                          style={{ fontSize: 11.5, color: 'var(--amber)' }}
+                          title={b.text}
+                        >
+                          เกินเพดานราย{b.scope === 'week' ? 'สัปดาห์' : 'เดือน'}
+                        </div>
+                      ))}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {closed ? (

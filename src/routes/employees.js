@@ -22,7 +22,7 @@ router.get('/', wrap(async (req, res) => {
   if (!req.query.all) query.active = true;
 
   const employees = await Employee.find(query)
-    .populate('department', 'code name nameTh monthlyCapHours')
+    .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours')
     .sort({ code: 1 })
     .lean();
   // Same rule as the App Router roster — `.lean()` carries birthDate and a

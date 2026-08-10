@@ -192,6 +192,24 @@ export const DEFAULT_POLICY = Object.freeze({
    */
   capBasis: 'clock',
 
+  // ── [OPEN 9] Where a week begins, for the weekly department cap ────────────
+  /**
+   * 0 = Sunday … 6 = Saturday. 1 — Monday–Sunday (DEFAULT).
+   *
+   * A flag rather than a constant because the boundary is a convention, not
+   * arithmetic. Monday–Sunday is what the payroll calendar here runs on, but a
+   * department working a Sunday–Saturday week would otherwise have every one of
+   * its weekly totals cut in the middle, and correcting that should not need a
+   * redeploy.
+   *
+   * Read ONLY by lib/caps.js, which decides which week an OT segment falls in.
+   * It has nothing to do with `weekendDays` — that one decides which days are
+   * วันหยุด and therefore which bucket an hour is paid at, and it is arithmetic
+   * for exactly that reason. This one moves no hour between buckets and changes
+   * no total; it changes which pile of hours a ceiling is compared against.
+   */
+  weekStartsOn: 1,
+
   // ── [OPEN 12] HR summary boxes: raw hours or already multiplied? ───────────
   /**
    * 'raw'        — the "OT × 1.5" box holds the hours that fall in the ×1.5

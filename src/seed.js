@@ -21,11 +21,14 @@ import { loadCalendar, contextFor, compute, applyComputation } from './services/
 const PASSWORD = process.env.SEED_PASSWORD || 'primus123';
 
 const DEPARTMENTS = [
-  { code: 'ENG', name: 'Engineering', nameTh: 'วิศวกรรม', monthlyCapHours: 40 },
-  { code: 'PROD', name: 'Production', nameTh: 'ผลิต', monthlyCapHours: null },
-  { code: 'QC', name: 'Quality Control', nameTh: 'ควบคุมคุณภาพ', monthlyCapHours: 40 },
-  { code: 'WH', name: 'Warehouse', nameTh: 'คลังสินค้า', monthlyCapHours: null },
-  { code: 'ADM', name: 'Administration', nameTh: 'สำนักงาน', monthlyCapHours: null },
+  // A spread of cap combinations on purpose: both set, monthly only, weekly
+  // only, and neither — so the four cases a reviewer has to look at are all
+  // reachable in a seeded database without editing one first.
+  { code: 'ENG', name: 'Engineering', nameTh: 'วิศวกรรม', monthlyCapHours: 40, weeklyCapHours: 12 },
+  { code: 'PROD', name: 'Production', nameTh: 'ผลิต', monthlyCapHours: null, weeklyCapHours: 15 },
+  { code: 'QC', name: 'Quality Control', nameTh: 'ควบคุมคุณภาพ', monthlyCapHours: 40, weeklyCapHours: null },
+  { code: 'WH', name: 'Warehouse', nameTh: 'คลังสินค้า', monthlyCapHours: null, weeklyCapHours: null },
+  { code: 'ADM', name: 'Administration', nameTh: 'สำนักงาน', monthlyCapHours: null, weeklyCapHours: null },
 ];
 
 const PEOPLE = [

@@ -51,7 +51,7 @@ export default function AdminView({ user, initialSection }) {
 function Departments() {
   const [rows, setRows] = useState([]);
   const [people, setPeople] = useState([]);
-  const [form, setForm] = useState({ code: '', name: '', nameTh: '', monthlyCapHours: '' });
+  const [form, setForm] = useState({ code: '', name: '', nameTh: '', monthlyCapHours: '', weeklyCapHours: '' });
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
@@ -68,7 +68,7 @@ function Departments() {
     e.preventDefault();
     try {
       await api.post('/departments', form);
-      setForm({ code: '', name: '', nameTh: '', monthlyCapHours: '' });
+      setForm({ code: '', name: '', nameTh: '', monthlyCapHours: '', weeklyCapHours: '' });
       setOk('เพิ่มแผนกแล้ว');
       load();
     } catch (err) { setError(err.message); }
@@ -112,6 +112,14 @@ function Departments() {
             onChange={(e) => setForm({ ...form, monthlyCapHours: e.target.value })}
           />
         </div>
+        <div className="field" style={{ maxWidth: 150 }}>
+          <label>เพดาน ชม./สัปดาห์</label>
+          <input
+            type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
+            value={form.weeklyCapHours}
+            onChange={(e) => setForm({ ...form, weeklyCapHours: e.target.value })}
+          />
+        </div>
         <button className="btn">เพิ่มแผนก</button>
       </form>
 
@@ -120,7 +128,10 @@ function Departments() {
           <thead>
             <tr>
               <th>รหัส</th><th>ชื่อแผนก</th><th>หัวหน้างาน</th>
-              <th className="num">จำนวนคน</th><th>เพดาน ชม./เดือน</th><th>สถานะ</th>
+              <th className="num">จำนวนคน</th>
+              <th>เพดาน ชม./เดือน</th>
+              <th>เพดาน ชม./สัปดาห์</th>
+              <th>สถานะ</th>
             </tr>
           </thead>
           <tbody>
@@ -140,12 +151,23 @@ function Departments() {
                   </select>
                 </td>
                 <td className="num">{d.headcount}</td>
+                {/* Blank is no ceiling; 0 is a ceiling of zero. The field
+                    sends whatever was typed and `capHoursFrom` on the server
+                    keeps the two apart. */}
                 <td>
                   <input
                     type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
                     defaultValue={d.monthlyCapHours ?? ''}
                     style={{ width: 110 }}
                     onBlur={(e) => update(d._id, { monthlyCapHours: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
+                    defaultValue={d.weeklyCapHours ?? ''}
+                    style={{ width: 110 }}
+                    onBlur={(e) => update(d._id, { weeklyCapHours: e.target.value })}
                   />
                 </td>
                 <td>
@@ -777,12 +799,39 @@ const POLICY_FIELDS = [
   {
     key: 'capBasis', open: 9, label: 'เพดานนับชั่วโมงแบบใด',
     options: [['clock', 'ชั่วโมงที่ทำจริง (ตัวอย่าง D = 14)'], ['weighted', 'ชั่วโมงคูณอัตรา (ตัวอย่าง D = 31.5)']],
+    hint: 'ใช้กับทั้งเพดานรายเดือนและรายสัปดาห์ — ทั้งสองนับด้วยเกณฑ์เดียวกันเสมอ',
+  },
+  {
+    key: 'weekStartsOn', open: 9, label: 'สัปดาห์เริ่มวันใด (เพดานรายสัปดาห์)', num: true,
+    options: [
+      [1, 'จันทร์ – อาทิตย์ (ค่าเริ่มต้น)'],
+      [0, 'อาทิตย์ – เสาร์'],
+      [6, 'เสาร์ – ศุกร์'],
+    ],
+    hint: 'ไม่กระทบชั่วโมงในช่องใดเลย เปลี่ยนแล้วไม่มีการคำนวณใหม่ '
+      + '· เปลี่ยนเฉพาะว่าชั่วโมงถูกนับรวมเข้าสัปดาห์ไหนเมื่อเทียบกับเพดาน '
+      + '· งานที่ข้ามเที่ยงคืนถูกแบ่งตามวันที่ของแต่ละช่วง ไม่ได้นับทั้งใบเข้าสัปดาห์ที่เริ่มงาน '
+      + '· ธงบนรายการที่บันทึกไว้แล้วยังเป็นค่าที่อ่านตอนยื่น จนกว่าจะมีการคำนวณใหม่',
   },
   {
     key: 'hrSummaryBasis', open: 12, label: 'ช่อง OT ×1.5 / ×3 ในใบฟอร์ม',
     options: [['raw', 'ชั่วโมงดิบ ยังไม่คูณ'], ['multiplied', 'คูณอัตราแล้ว']],
   },
 ];
+
+/**
+ * The dropdown's string, back to the type the policy stores.
+ *
+ * `bool` and `num` are declared on the field rather than sniffed from the
+ * current value, because a value can be legitimately absent — a policy key the
+ * database has no override for yet reads as undefined, and guessing its type
+ * from that would send a string on the one save that introduces it.
+ */
+function coerce(field, raw) {
+  if (field.bool) return raw === 'true';
+  if (field.num) return Number(raw);
+  return raw;
+}
 
 /**
  * The badge, and the one button that removes it.
@@ -1002,8 +1051,13 @@ function Policy({ user }) {
                 <td>
                   <select
                     disabled={!canEdit || busy}
-                    value={f.bool ? String(policy[f.key]) : policy[f.key]}
-                    onChange={(e) => save(f.key, f.bool ? e.target.value === 'true' : e.target.value)}
+                    value={f.bool || f.num ? String(policy[f.key]) : policy[f.key]}
+                    /* A <select> hands back a string whatever the option held.
+                       Coerced on the way out or the policy would store "1"
+                       where it stores 1 — `canonicalPolicy` compares values,
+                       so a saved string reads as a changed answer and mints a
+                       version on every save that changed nothing. */
+                    onChange={(e) => save(f.key, coerce(f, e.target.value))}
                     style={{ minWidth: 280 }}
                   >
                     {f.options.map(([v, l]) => (

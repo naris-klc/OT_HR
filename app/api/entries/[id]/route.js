@@ -7,6 +7,7 @@ import {
 import {
   POPULATE, scopeFor, pickSession, stampCap, editPermission, sameSession,
 } from '@/lib/entries.js';
+import { blockedMessage } from '@/lib/caps.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req, { params }) => {
@@ -68,7 +69,7 @@ export const PATCH = route(async (req, { params }) => {
     excludeId: entry._id,
     policy: ctx.policy,
   });
-  if (cap.blocked) return fail(`เกินเพดาน ${cap.capHours} ชม./เดือน ของแผนก`, 409, { cap });
+  if (cap.blocked) return fail(blockedMessage(cap), 409, { cap });
 
   applyComputation(entry, result, ctx);
   stampCap(entry, cap);

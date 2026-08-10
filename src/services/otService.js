@@ -22,6 +22,9 @@ import {
 import PolicyReplayRun from '../models/PolicyReplayRun.js';
 import { latestPerSession } from '../../lib/reports.js';
 import {
+  CAP_STATUSES, capBreaches, usageByWeek, weekLabel, weeksOfEntry,
+} from '../../lib/caps.js';
+import {
   planRecompute, samePolicy, figuresMoved, summariseReplay,
 } from '../../lib/policyVersion.js';
 
@@ -215,7 +218,7 @@ export async function monthlyUsage(employeeId, period, { excludeId = null, polic
   const query = {
     employee: employeeId,
     period,
-    status: { $in: ['pending_mgr', 'pending_hr', 'approved'] },
+    status: { $in: [...CAP_STATUSES] },
   };
   if (excludeId) query._id = { $ne: excludeId };
 
@@ -231,25 +234,121 @@ export async function monthlyUsage(employeeId, period, { excludeId = null, polic
 }
 
 /**
- * [OPEN 8] Check a new/edited entry against the department cap.
+ * The same question over one week: hours already committed between `weekStart`
+ * and the six days after it.
  *
- * Returns { capHours, usedHoursBefore, projected, exceeded, blocked, basis }.
- * `blocked` is only ever true when policy.capBehaviour is 'block'; otherwise
- * the entry goes through carrying `exceeded` for HR to decide (§7).
+ * Queried by DATE RANGE, not by `period`, because a week is not inside a month.
+ * The week of 30 November opens in one period and closes in the next, and a
+ * query keyed on the filing month would count the November half of it and
+ * quietly drop the December half — the ceiling would then clear a request that
+ * had already passed it.
+ *
+ * The range opens one day EARLY for the same reason the totals below come from
+ * segments: an entry filed against Sunday can put minutes into Monday, so an
+ * entry contributing to this week may carry a `workDate` from the day before it
+ * begins. A session cannot span more than two dates (`computeSession` rejects
+ * anything over 24 hours), so one day of slack is the whole of it.
+ *
+ * `segments` is selected because `weeksOfEntry` attributes hours by the date of
+ * each segment; without them it would fall back to charging whole entries to
+ * the week of their `workDate`, which is the very error this exists to avoid.
+ */
+export async function weeklyUsage(employeeId, weekStart, { excludeId = null, policy } = {}) {
+  const p = policy || (await Setting.effectivePolicy());
+  const weekEnd = addDays(weekStart, 6);
+  const query = {
+    employee: employeeId,
+    workDate: { $gte: addDays(weekStart, -1), $lte: weekEnd },
+    status: { $in: [...CAP_STATUSES] },
+  };
+  if (excludeId) query._id = { $ne: excludeId };
+
+  const entries = await OtEntry.find(query)
+    .select('segments buckets totals employee workDate startTime endTime endsNextDay createdAt')
+    .lean();
+  // Superseded filings drop out here exactly as they do for the month — one
+  // session filed twice is one session whichever window is counting it.
+  const { shown } = latestPerSession(entries);
+  const byWeek = usageByWeek(shown, { weekStartsOn: p.weekStartsOn, basis: p.capBasis });
+  return { usedHours: byWeek.get(weekStart) || 0, basis: p.capBasis, weekStart, weekEnd };
+}
+
+/**
+ * [OPEN 8] Check a new/edited entry against its department's ceilings — the
+ * monthly one and the weekly one, always both.
+ *
+ * Returns the monthly figures at the top level, unchanged from when the month
+ * was the only ceiling, plus:
+ *
+ *   breaches — every ceiling actually passed, in `capBreaches`' shape. The
+ *              list is the answer; `exceeded` is only whether it is non-empty.
+ *   weekly   — the weekly window's numbers, or null when the department has no
+ *              weekly cap set.
+ *
+ * `exceeded` is now true for a breach of EITHER ceiling, and `blocked` follows
+ * it — a request over the weekly limit is refused under capBehaviour 'block'
+ * for the same reason a request over the monthly one is. No second mechanism:
+ * the existing flag covers both windows (§7).
+ *
+ * A session that crosses midnight into a new week is checked against BOTH weeks
+ * it touches, each against that week's own accumulated hours, because its two
+ * halves are charged to two different windows.
  */
 export async function checkCap({ employee, department, period, result, excludeId, policy }) {
   const p = policy || (await Setting.effectivePolicy());
   const capHours = department?.monthlyCapHours ?? null;
+  const weeklyCapHours = department?.weeklyCapHours ?? null;
+  const weighted = p.capBasis === 'weighted';
 
   const { usedHours } = await monthlyUsage(employee._id, period, { excludeId, policy: p });
-  const thisEntry = p.capBasis === 'weighted' ? result.totals.weightedHours : result.totals.otHours;
+  const thisEntry = weighted ? result.totals.weightedHours : result.totals.otHours;
   const projected = Math.round((usedHours + thisEntry) * 100) / 100;
 
-  if (capHours == null) {
-    return { capHours: null, usedHoursBefore: usedHours, projected, exceeded: false, blocked: false, basis: p.capBasis };
+  const windows = [{
+    scope: 'month', key: period, label: period, capHours, usedHoursBefore: usedHours, adding: thisEntry,
+  }];
+
+  /**
+   * Which weeks this entry puts hours into — one normally, two when it runs
+   * past midnight across the week boundary. Read from the computed segments,
+   * which already carry a date each.
+   *
+   * Skipped entirely when no weekly cap is set: `capBreaches` would ignore the
+   * windows anyway, and there is no reason to spend a query per week to
+   * discover that.
+   */
+  const perWeek = weeklyCapHours == null
+    ? new Map()
+    : weeksOfEntry(
+      // Segments alone: a result with none produced no OT hours, so there is
+      // no week for it to land in and the `workDate` fallback has nothing to do.
+      { segments: result.segments, totals: result.totals },
+      { weekStartsOn: p.weekStartsOn, basis: p.capBasis },
+    );
+
+  const weeks = [];
+  for (const [weekStart, adding] of perWeek) {
+    const used = await weeklyUsage(employee._id, weekStart, { excludeId, policy: p });
+    weeks.push({ weekStart, weekEnd: used.weekEnd, usedHoursBefore: used.usedHours, adding });
+    windows.push({
+      scope: 'week',
+      key: weekStart,
+      label: weekLabel(weekStart, p.weekStartsOn),
+      capHours: weeklyCapHours,
+      usedHoursBefore: used.usedHours,
+      adding,
+    });
   }
 
-  const exceeded = projected > capHours;
+  const breaches = capBreaches(windows);
+  const exceeded = breaches.length > 0;
+
+  // Which week the flat `weekly.*` fields describe: whichever was actually
+  // breached, else the week the session opened in. Matched on `key`, the week's
+  // start date, so the two cannot drift apart the way parsing a label would.
+  const flaggedWeek = breaches.find((b) => b.scope === 'week');
+  const primaryWeek = weeks.find((w) => w.weekStart === flaggedWeek?.key) || weeks[0] || null;
+
   return {
     capHours,
     usedHoursBefore: usedHours,
@@ -257,6 +356,15 @@ export async function checkCap({ employee, department, period, result, excludeId
     exceeded,
     blocked: exceeded && p.capBehaviour === 'block',
     basis: p.capBasis,
+    breaches,
+    weekly: weeklyCapHours == null ? null : {
+      capHours: weeklyCapHours,
+      weekStartsOn: p.weekStartsOn,
+      weeks,
+      usedHoursBefore: primaryWeek?.usedHoursBefore ?? 0,
+      weekStart: primaryWeek?.weekStart ?? null,
+      weekEnd: primaryWeek?.weekEnd ?? null,
+    },
   };
 }
 

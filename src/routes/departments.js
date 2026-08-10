@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Department from '../models/Department.js';
 import Employee from '../models/Employee.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
+import { capHoursFrom } from '../../lib/caps.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -24,15 +25,16 @@ router.get('/', wrap(async (req, res) => {
 }));
 
 router.post('/', requireRole('admin'), wrap(async (req, res) => {
-  const { code, name, nameTh, manager, monthlyCapHours } = req.body || {};
+  const { code, name, nameTh, manager, monthlyCapHours, weeklyCapHours } = req.body || {};
   if (!code || !name) return res.status(400).json({ error: 'ต้องระบุรหัสและชื่อแผนก' });
 
   const department = await Department.create({
     code, name, nameTh,
     manager: manager || null,
     // §7: caps are per-department and OPTIONAL. Empty means no cap, which is
-    // not the same as a cap of 0.
-    monthlyCapHours: monthlyCapHours === '' || monthlyCapHours == null ? null : Number(monthlyCapHours),
+    // not the same as a cap of 0 — see `capHoursFrom`.
+    monthlyCapHours: capHoursFrom(monthlyCapHours),
+    weeklyCapHours: capHoursFrom(weeklyCapHours),
   });
   res.status(201).json({ department });
 }));
@@ -41,15 +43,13 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const department = await Department.findById(req.params.id);
   if (!department) return res.status(404).json({ error: 'ไม่พบแผนก' });
 
-  const { name, nameTh, manager, monthlyCapHours, active } = req.body || {};
+  const { name, nameTh, manager, monthlyCapHours, weeklyCapHours, active } = req.body || {};
   if (name != null) department.name = name;
   if (nameTh != null) department.nameTh = nameTh;
   if (active != null) department.active = Boolean(active);
   if (manager !== undefined) department.manager = manager || null;
-  if (monthlyCapHours !== undefined) {
-    department.monthlyCapHours =
-      monthlyCapHours === '' || monthlyCapHours == null ? null : Number(monthlyCapHours);
-  }
+  if (monthlyCapHours !== undefined) department.monthlyCapHours = capHoursFrom(monthlyCapHours);
+  if (weeklyCapHours !== undefined) department.weeklyCapHours = capHoursFrom(weeklyCapHours);
 
   await department.save();
   res.json({ department });

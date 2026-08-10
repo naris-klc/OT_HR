@@ -2,6 +2,7 @@ import Department from '@/src/models/Department.js';
 import Employee from '@/src/models/Employee.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
+import { capHoursFrom } from '@/lib/caps.js';
 
 export const GET = route(async (req) => {
   await requireAuth(req);
@@ -25,15 +26,16 @@ export const GET = route(async (req) => {
 
 export const POST = route(async (req) => {
   requireRole(await requireAuth(req), 'admin');
-  const { code, name, nameTh, manager, monthlyCapHours } = await body(req);
+  const { code, name, nameTh, manager, monthlyCapHours, weeklyCapHours } = await body(req);
   if (!code || !name) return fail('ต้องระบุรหัสและชื่อแผนก', 400);
 
   const department = await Department.create({
     code, name, nameTh,
     manager: manager || null,
     // §7: caps are per-department and OPTIONAL. Empty means no cap, which is
-    // not the same as a cap of 0.
-    monthlyCapHours: monthlyCapHours === '' || monthlyCapHours == null ? null : Number(monthlyCapHours),
+    // not the same as a cap of 0 — see `capHoursFrom`.
+    monthlyCapHours: capHoursFrom(monthlyCapHours),
+    weeklyCapHours: capHoursFrom(weeklyCapHours),
   });
   return json({ department }, 201);
 });

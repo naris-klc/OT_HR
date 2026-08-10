@@ -9,6 +9,7 @@ import {
 import { loadHolidaySet } from '@/src/services/otService.js';
 import {
   PERIOD_RE, previousPeriod, thaiMonth, min, max, latestPerSession, formDayTypes,
+  reportStatuses,
 } from '@/lib/reports.js';
 
 /**
@@ -34,7 +35,9 @@ export const GET = route(async (req, { params }) => {
     return fail('ดูได้เฉพาะพนักงานในแผนกของตน', 403);
   }
 
-  const statuses = String(q.status || 'approved,pending_hr,pending_mgr').split(',');
+  // Withdrawn and refused requests are on nobody's F-HR-027 — see
+  // `reportStatuses`. The sheet is a statement of what a person worked.
+  const statuses = reportStatuses(q.status);
   const policy = await Setting.effectivePolicy();
 
   // An overnight session started on the last day of the previous month spills

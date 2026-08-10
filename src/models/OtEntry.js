@@ -47,6 +47,32 @@ const segmentSchema = new mongoose.Schema(
 );
 
 /**
+ * One ceiling this entry passed, in the shape `capBreaches` returns.
+ *
+ * Its own schema, and `_id: false`, for the reason `segmentSchema` above has
+ * both: these are values, not records — nothing ever refers to one — and an id
+ * per row would be noise in every snapshot.
+ *
+ * Every field optional, like `snapshotSchema`: mongoose validates the whole
+ * document on save, and a required field here would make an entry written by an
+ * older version of this file unsaveable — you could no longer approve or
+ * recompute a historic month.
+ */
+const breachSchema = new mongoose.Schema(
+  {
+    scope: { type: String },        // 'month' | 'week'
+    key: { type: String },          // the period, or the week's start date
+    label: { type: String },        // how it is printed
+    capHours: Number,
+    usedHoursBefore: Number,
+    adding: Number,
+    projected: Number,
+    overBy: Number,
+  },
+  { _id: false },
+);
+
+/**
  * What an entry said BEFORE an edit rewrote it.
  *
  * `history` has always recorded who changed an entry and why, but never WHAT it
@@ -213,14 +239,38 @@ const otEntrySchema = new mongoose.Schema(
     rejectionReason: String,
 
     /**
-     * [OPEN 8] Set when the entry pushed its department over the monthly cap
-     * and policy.capBehaviour is 'warn'. HR sees the flag and decides.
+     * [OPEN 8] Set when the entry pushed its department over a cap — the
+     * monthly one, the weekly one, or both — and policy.capBehaviour is 'warn'.
+     * HR sees the flag and decides.
+     *
+     * Stays a single boolean because that is the question every list screen
+     * asks ("is there anything to look at on this row"). WHICH ceiling, and by
+     * how much, is `capSnapshot.breaches` below.
      */
     capExceeded: { type: Boolean, default: false },
+    /**
+     * What the ceilings looked like at the moment this entry was filed.
+     *
+     * The three original fields are still here and still monthly. They are read
+     * by rows written before the weekly cap existed and by screens that only
+     * ever wanted the month, so renaming them would have bought a tidier shape
+     * at the price of every historic row's snapshot reading as empty.
+     *
+     * `breaches` is the complete answer and the one new code should read: one
+     * entry per ceiling actually passed, in the shape `capBreaches` returns.
+     * Absent on rows written before the weekly cap; absent is "not recorded",
+     * not "nothing was breached" — `capExceeded` is what says that.
+     */
     capSnapshot: {
       capHours: Number,
       usedHoursBefore: Number,
       basis: String,
+      /** The weekly side, and which week it was. Null when no weekly cap is set. */
+      weeklyCapHours: Number,
+      weeklyUsedHoursBefore: Number,
+      /** 'YYYY-MM-DD' — the Monday (or whichever day) the week opened on. */
+      weekStart: String,
+      breaches: { type: [breachSchema], default: undefined },
     },
     /**
      * The rejected request this one was filed to replace.

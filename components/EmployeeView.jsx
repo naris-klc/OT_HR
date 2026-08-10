@@ -388,9 +388,19 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
             />
             <span className="field-note">ไม่บังคับ — ถ้ากรอก จะบันทึกไว้ในประวัติรายการ</span>
           </div>
+          {/* The one thing the dialog has to say, said before the reasoning:
+              this cannot be undone. A cancelled entry is closed to the
+              employee AND to HR (see editPermission) — there is no path that
+              turns it back into a live request, so "แก้กลับไม่ได้" is the
+              literal truth and not a caution. */}
+          <Alert kind="warn">
+            ยกเลิกแล้ว<strong>แก้กลับไม่ได้</strong> — รายการนี้จะปิดถาวร
+            ทั้งตัวพนักงานเองและฝ่ายบุคคลไม่สามารถเปิดหรือแก้ไขได้อีก
+          </Alert>
           <div className="hint">
             รายการจะยังอยู่ในตารางโดยขึ้นสถานะ “ยกเลิก” ไม่ได้ถูกลบทิ้ง ·
-            {' '}หากต้องการขอ OT ช่วงเวลานี้อีกครั้ง ให้บันทึกคำขอใหม่
+            ชั่วโมงจะไม่ถูกนับในเพดานของแผนกและไม่ขึ้นในรายงานใด ๆ ·
+            {' '}หากต้องการขอ OT ช่วงเวลานี้อีกครั้ง ให้บันทึกคำขอใหม่ได้ไม่จำกัดจำนวนครั้ง
           </div>
         </Modal>
       )}

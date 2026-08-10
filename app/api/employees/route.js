@@ -19,7 +19,7 @@ export const GET = route(async (req) => {
   if (!q.all) filter.active = true;
 
   const employees = await Employee.find(filter)
-    .populate('department', 'code name nameTh monthlyCapHours')
+    .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours')
     .sort({ code: 1 })
     .lean();
   // `.lean()` hands back the whole document, birthDate included. A manager

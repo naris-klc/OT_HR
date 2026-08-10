@@ -3,7 +3,7 @@ import { route, query, csvResponse } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
-import { latestPerSession } from '@/lib/reports.js';
+import { latestPerSession, reportStatuses } from '@/lib/reports.js';
 
 /**
  * §10 data export — for HR to hand to whoever runs payroll.
@@ -27,7 +27,7 @@ export const GET = route(async (req) => {
   }
   // Default to approved only: the export feeds payroll, and an unapproved
   // request is not yet a fact.
-  filter.status = { $in: String(q.status || 'approved').split(',') };
+  filter.status = { $in: reportStatuses(q.status, 'approved') };
   if (user.role === 'manager') filter.department = user.department?._id;
   else if (q.department) filter.department = q.department;
 

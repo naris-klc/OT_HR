@@ -4,7 +4,7 @@ import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS, summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
-import { latestPerSession } from '@/lib/reports.js';
+import { latestPerSession, reportStatuses } from '@/lib/reports.js';
 
 /** One row per employee per month — the shape HR actually reviews. */
 export const GET = route(async (req) => {
@@ -17,13 +17,13 @@ export const GET = route(async (req) => {
   }
 
   const policy = await Setting.effectivePolicy();
-  const filter = { period, status: { $in: String(q.status || 'approved').split(',') } };
+  const filter = { period, status: { $in: reportStatuses(q.status, 'approved') } };
   if (user.role === 'manager') filter.department = user.department?._id;
   else if (q.department) filter.department = q.department;
 
   const all = await OtEntry.find(filter)
     .populate('employee', 'code name position')
-    .populate('department', 'code name nameTh monthlyCapHours')
+    .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours')
     .lean();
 
   // Same rule as ตรวจสอบรายเดือน, which is the screen this file is exported

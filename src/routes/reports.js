@@ -149,7 +149,7 @@ router.get('/monthly/:period', wrap(async (req, res) => {
 
   const entries = await OtEntry.find(query)
     .populate('employee', 'code name position')
-    .populate('department', 'code name nameTh monthlyCapHours')
+    .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours')
     .lean();
 
   const byEmployee = new Map();

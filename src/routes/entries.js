@@ -5,6 +5,7 @@ import Setting from '../models/Setting.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { OtValidationError } from '../lib/otEngine.js';
 import { normaliseDescription } from '../config/policy.js';
+import { blockedMessage } from '../../lib/caps.js';
 import {
   compute, applyComputation, checkCap, loadContext, monthlyUsage, birthDateOf,
 } from '../services/otService.js';
@@ -20,7 +21,7 @@ router.use(requireAuth);
 
 const POPULATE = [
   { path: 'employee', select: 'code name position role' },
-  { path: 'department', select: 'code name nameTh monthlyCapHours' },
+  { path: 'department', select: 'code name nameTh monthlyCapHours weeklyCapHours' },
 ];
 
 /** Role scoping (§2): own / own department / everything. */
@@ -133,12 +134,9 @@ router.post('/', wrap(async (req, res) => {
   });
 
   // [OPEN 8] 'block' refuses here; 'warn' lets it through carrying the flag.
-  if (cap.blocked) {
-    return res.status(409).json({
-      error: `เกินเพดาน ${cap.capHours} ชม./เดือน ของแผนก (ใช้ไปแล้ว ${cap.usedHoursBefore} ชม.)`,
-      cap,
-    });
-  }
+  // Names every ceiling that refused it — the weekly one included, or an
+  // employee turned away by the week is sent to fix the month.
+  if (cap.blocked) return res.status(409).json({ error: blockedMessage(cap), cap });
 
   const entry = new OtEntry({
     employee: req.user._id,
@@ -217,7 +215,7 @@ router.patch('/:id', wrap(async (req, res) => {
     excludeId: entry._id,
     policy: ctx.policy,
   });
-  if (cap.blocked) return res.status(409).json({ error: `เกินเพดาน ${cap.capHours} ชม./เดือน ของแผนก`, cap });
+  if (cap.blocked) return res.status(409).json({ error: blockedMessage(cap), cap });
 
   applyComputation(entry, result, ctx);
   stampCap(entry, cap);

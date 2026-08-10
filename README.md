@@ -135,6 +135,7 @@ signed-off number is worse than an inconsistency.
 | 7 | HR reject after manager approved? | Yes, back to the employee | `hrMayReject`, `hrRejectReturnsTo` |
 | 8 | Cap hit: block or warn? | Warn, flag for HR | `capBehaviour: 'warn'` |
 | 9 | Cap counts clock or weighted hours? | Clock (example D = 14) | `capBasis: 'clock'` |
+| 9 | Where does a week begin? | Monday–Sunday | `weekStartsOn: 1` |
 | 10 | Holiday calendar format? | Both paths built | CSV upload + manual entry |
 | 11 | Roster as a file or typed in? | Both paths built | CSV upload + manual entry |
 | 12 | HR boxes: raw or multiplied? | Raw hours | `hrSummaryBasis: 'raw'` |
@@ -192,6 +193,42 @@ the employee or department record, and the engine needs a per-day shift lookup
 rather than two constants. That is a schema change. It is the one open item
 that can still cause structural rework, which is why the doc's own "answered
 maybe" is worth pushing on.
+
+### Two ceilings per department, and why the week one is COSMETIC
+
+A department carries `monthlyCapHours` and `weeklyCapHours`, both on the
+department record (§12.3), both nullable, and **blank means no ceiling — which
+is not the same as a ceiling of 0**. Both are checked on every submission and an
+entry can breach either, both, or neither; when it breaches both, both are
+reported, because next Monday clears one of them and nothing clears the other
+before the month turns. There is no second mechanism for the weekly one —
+`capBehaviour: 'warn'` flags it and `'block'` refuses it, exactly as for the
+month.
+
+Weekly hours are attributed **by the date of each segment**, not by the entry's
+`workDate`. A shift running 22:00 Sunday → 02:00 Monday is two hours in the week
+that is closing and two in the week that just opened; charging the whole entry
+to the week it started in would overstate one week and leave the other showing
+room it does not have. The engine already cuts sessions at midnight, so this is
+read off `entry.segments` rather than recomputed.
+
+Where a week begins is `weekStartsOn` (default Monday), and it is registered in
+`COSMETIC_KEYS`, which deserves a word because the label fits badly. That list
+is not "flags that do not matter" — moving the boundary genuinely changes which
+entries carry `capExceeded`. It is consulted for exactly one decision: whether a
+policy save must replay stored figures. Moving the boundary replays nothing
+because it moves no figure — every `segments`, `buckets` and `totals` value is
+bit-identical either side of the change, and it is only the *grouping* of
+already-computed segments that differs. It sits beside `capBehaviour` and
+`capBasis` for that reason, and the consequence it shares with them — that
+`capExceeded` on a stored row reflects the ceiling in force when it was filed —
+is not new with it. Contrast `weekendDays`, which is ARITHMETIC: that one
+decides which days are วันหยุด and therefore which bucket an hour is paid at.
+
+The arithmetic is pure and lives in `lib/caps.js`; `checkCap` in
+`src/services/otService.js` supplies each window's numbers. The weekly query
+runs on a **date range rather than a period**, since the week of 30 November
+opens in one month and closes in the next.
 
 ### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — three flags, one of them cosmetic
 

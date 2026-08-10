@@ -4,6 +4,7 @@ import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, applyComputation, checkCap, loadContext } from '@/src/services/otService.js';
 import { POPULATE, scopeFor, pickSession, stampCap, latestPerChain } from '@/lib/entries.js';
+import { blockedMessage } from '@/lib/caps.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 // ── list ────────────────────────────────────────────────────────────────────
@@ -83,13 +84,10 @@ export const POST = route(async (req) => {
   });
 
   // [OPEN 8] 'block' refuses here; 'warn' lets it through carrying the flag.
-  if (cap.blocked) {
-    return fail(
-      `เกินเพดาน ${cap.capHours} ชม./เดือน ของแผนก (ใช้ไปแล้ว ${cap.usedHoursBefore} ชม.)`,
-      409,
-      { cap },
-    );
-  }
+  // The message names every ceiling that refused it — being turned away by the
+  // weekly limit and told about the monthly one sends the employee to move the
+  // shift into a month that was never the problem.
+  if (cap.blocked) return fail(blockedMessage(cap), 409, { cap });
 
   // §6 — "ส่งใหม่" files a fresh request to replace one that was refused, and
   // the right to do that is spent once.

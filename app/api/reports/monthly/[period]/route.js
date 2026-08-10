@@ -4,7 +4,7 @@ import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { summariseEntries, hrSummary, capUsage } from '@/src/lib/otEngine.js';
-import { PERIOD_RE, latestPerSession, editTally } from '@/lib/reports.js';
+import { PERIOD_RE, latestPerSession, editTally, reportStatuses } from '@/lib/reports.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 
 /** HR's monthly review: every employee's totals for a period, in one table. */
@@ -21,7 +21,9 @@ export const GET = route(async (req, { params }) => {
   const filter = { period };
   if (user.role === 'manager') filter.department = user.department?._id;
   else if (q.department) filter.department = q.department;
-  filter.status = { $in: String(q.status || 'approved,pending_hr,pending_mgr').split(',') };
+  // Withdrawn and refused requests are not on any report, whatever the URL asks
+  // for — see `reportStatuses`.
+  filter.status = { $in: reportStatuses(q.status) };
 
   /**
    * `birthDate` is selected but never returned — see `withoutBirthDate` below.
@@ -35,7 +37,7 @@ export const GET = route(async (req, { params }) => {
    */
   const all = await OtEntry.find(filter)
     .populate('employee', 'code name position birthDate')
-    .populate('department', 'code name nameTh monthlyCapHours')
+    .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours')
     .lean();
 
   // A session filed twice is one session. Only the latest filing counts, here

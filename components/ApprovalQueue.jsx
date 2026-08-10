@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   api, hours, thaiDate, dayName, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
+import { describeBreaches } from '@/lib/caps.js';
 import {
   Alert, Empty, EditedMark, EntryHistory, Modal, RefiledNote, RequestTrail,
   SegmentList, StatusChip, editsOf,
@@ -377,11 +378,12 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy }) 
                         <span className="chip refiled">ส่งใหม่จากที่ไม่อนุมัติ</span>
                       </div>
                     )}
-                    {e.capExceeded && (
-                      <div className="cell-note">
-                        ⚠ เกินเพดานแผนก ({e.capSnapshot?.capHours} ชม.)
-                      </div>
-                    )}
+                    {/* Every ceiling breached, not the first — an entry can be
+                        over the week and the month at once, and the reviewer
+                        needs both to know what moving the shift would fix. */}
+                    {describeBreaches(e).map((b) => (
+                      <div className="cell-note" key={b.scope + b.text}>⚠ {b.text}</div>
+                    ))}
                     {e.warnings?.map((w) => (
                       <div key={w.code} className="cell-sub">{w.message}</div>
                     ))}
@@ -564,9 +566,15 @@ function OverrideModal({ entry, busy, onClose, onSave }) {
         </>
       )}
     >
+      {/* One waiver covers the entry, but it has to name everything being
+          waived — approving past a weekly ceiling while believing it was the
+          monthly one is a decision made on the wrong facts. */}
       <Alert kind="warn">
-        เพดาน {entry.capSnapshot?.capHours} ชม./เดือน ·
-        {' '}ใช้ไปแล้ว {hours(entry.capSnapshot?.usedHoursBefore)} ชม. ก่อนรายการนี้
+        {describeBreaches(entry).map((b) => (
+          <div key={b.scope + b.text}>
+            {b.text}{b.detail ? ` · ${b.detail}` : ''}
+          </div>
+        ))}
       </Alert>
       <div className="field">
         <label>เหตุผลในการอนุมัติเกินเพดาน *</label>
@@ -731,7 +739,12 @@ function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEnt
               <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}${e.endsNextDay ? ' (ข้ามคืน)' : ''}`} />
               <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
               <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />
-              <Fact k="เกินเพดานแผนก" v={e.capExceeded ? `ใช่ (${e.capSnapshot?.capHours} ชม.)` : 'ไม่'} />
+              <Fact
+                k="เกินเพดานแผนก"
+                v={e.capExceeded
+                  ? describeBreaches(e).map((b) => b.text).join(' · ')
+                  : 'ไม่'}
+              />
             </dl>
             <div className="split" style={{ marginTop: 12 }}>
               {Object.values(BUCKETS).map((b) => (

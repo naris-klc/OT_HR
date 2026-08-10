@@ -19,6 +19,9 @@ export const GET = route(async (req) => {
       minimumHours: policy.minimumHours,
       capBehaviour: policy.capBehaviour,
       capBasis: policy.capBasis,
+      // Which day a week opens on, so the screens can name the span a weekly
+      // breach is about rather than printing a bare date.
+      weekStartsOn: policy.weekStartsOn,
       hrSummaryBasis: policy.hrSummaryBasis,
       hrMayReject: policy.hrMayReject,
     },
