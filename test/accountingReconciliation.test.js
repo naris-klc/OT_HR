@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
+  birthdayHoursOf,
   groupEntriesByEmployee,
   reconcile,
   unaccountedCsvRow,
@@ -12,6 +13,10 @@ import {
 } from '../lib/accountingRows.js';
 import { sumRows } from '../lib/departmentSummary.js';
 import { toCsv, parseCsv } from '../src/lib/csv.js';
+import {
+  computeSession, makeIsHoliday, resolveDayTypes, sessionDates, summariseEntries,
+} from '../src/lib/otEngine.js';
+import { DEFAULT_POLICY } from '../src/config/policy.js';
 
 /**
  * Every approved hour in the month is either printed on a row or reported as
@@ -351,12 +356,153 @@ test('the report re-reads the dangling reference populate threw away', () => {
   );
 });
 
+// ── the birthday split: a part of the 1.50 column, never a change to it ─────
+
+/**
+ * “วันเกิด 8.00 ชม.” beside a row on สรุป OT ส่งบัญชี.
+ *
+ * Accounting asked for it because the paper they work from has it in HR's
+ * handwriting: ×1.5 วันหยุด hours against somebody who worked an ordinary
+ * Tuesday reads as an error, and a sheet that does not explain it comes back.
+ *
+ * The number is a SPLIT of a figure the sheet already prints, not a new figure,
+ * and these tests are about that distinction. Built from real engine output
+ * rather than hand-written buckets, because the whole mechanism is that
+ * `dayReason` was written onto the segments when the entry was filed — a
+ * hand-made fixture would prove only that the sum function adds.
+ */
+const HOLIDAYS = ['2026-08-12'];
+const isHoliday = makeIsHoliday(HOLIDAYS);
+const BIRTHDAY_ON = { ...DEFAULT_POLICY, birthdayHolidayEnabled: true };
+const BIRTHDAY_OFF = { ...DEFAULT_POLICY, birthdayHolidayEnabled: false };
+
+/** One filed session, computed the way `otService` computes it. */
+function filed(session, { birthDate = null, policy = BIRTHDAY_ON } = {}) {
+  const result = computeSession(session, {
+    policy,
+    dayTypes: resolveDayTypes(sessionDates(session), { isHoliday, birthDate, policy }),
+  });
+  return {
+    _id: `e-${session.workDate}`,
+    employee: person('emp-1', 'THT0018'),
+    department: { _id: 'd1', code: 'D1', nameTh: 'ผลิต 1' },
+    segments: result.segments,
+    buckets: result.buckets,
+    totals: result.totals,
+  };
+}
+
+const DAY = { startTime: '08:00', endTime: '17:00' };
+
+test('เดือนเดียวมีทั้งวันเกิดและวันหยุดปกติ — แยกถูก และยอด 1.50 ไม่ขยับ', () => {
+  // 4 Aug 2026 is this person's birthday and a Tuesday; 8 Aug is a Saturday.
+  // Both land 8 hours in ot15_holiday, by different rules, and the paper shows
+  // one 1.50 column of 16.00 — which is exactly why the remark has to say how
+  // much of it the birthday accounts for.
+  const entries = [
+    filed({ workDate: '2026-08-04', ...DAY }, { birthDate: '1977-08-04' }),
+    filed({ workDate: '2026-08-08', ...DAY }, { birthDate: '1977-08-04' }),
+  ];
+
+  const summary = summariseEntries(entries);
+  assert.equal(summary.ot15Hours, 16, 'the 1.50 column is the sum of both, as before');
+  assert.equal(summary.ot3Hours, 0);
+  assert.equal(birthdayHoursOf(entries), 8, 'and 8 of those 16 are the birthday');
+
+  // The other 8 are a Saturday and must not be claimed by the remark.
+  assert.equal(birthdayHoursOf([entries[1]]), 0);
+
+  // Adding the split changed no figure the sheet was already printing.
+  const before = summariseEntries([entries[1]]);
+  assert.equal(before.ot15Hours, 8);
+});
+
+test('วันเกิดที่ทำนอกเวลา ก็ยังนับเป็นชั่วโมงวันเกิด แม้จะอยู่คอลัมน์ ×3', () => {
+  // The remark is about WHY the day was a holiday, not about which column the
+  // hours landed in — an evening on your birthday is ×3, and accounting reading
+  // a ×3 figure for a Tuesday asks the same question.
+  const evening = filed(
+    { workDate: '2026-08-04', startTime: '18:00', endTime: '21:00' },
+    { birthDate: '1977-08-04' },
+  );
+  assert.equal(evening.buckets.ot3_holiday, 3);
+  assert.equal(birthdayHoursOf([evening]), 3);
+});
+
+test('คนที่ไม่มีชั่วโมงวันเกิด — ไม่มีหมายเหตุ และไม่มีอะไรบนใบเปลี่ยน', () => {
+  const ordinary = [
+    filed({ workDate: '2026-08-05', startTime: '17:00', endTime: '20:00' }),  // Wednesday
+    filed({ workDate: '2026-08-08', ...DAY }),                                // Saturday
+    filed({ workDate: '2026-08-12', ...DAY }),                                // company holiday
+  ];
+  assert.equal(birthdayHoursOf(ordinary), 0);
+
+  // Which is what the sheet reads to decide whether to print anything at all.
+  const print = readFileSync(join(ROOT, 'components/AccountingPrint.jsx'), 'utf8');
+  assert.match(print, /if \(!\(row\.birthdayHours > 0\)\) return '';/);
+});
+
+test('กฎวันเกิดปิดอยู่ — ไม่มีชั่วโมงวันเกิดในเดือนนั้นเลย', () => {
+  // With the rule off the same session on the same date is an ordinary
+  // Tuesday: the hours are ×1.5 วันปกติ and no segment claims a birthday, so
+  // nothing on the sheet has anything to explain.
+  const entries = [filed({ workDate: '2026-08-04', startTime: '17:00', endTime: '20:00' },
+    { birthDate: '1977-08-04', policy: BIRTHDAY_OFF })];
+
+  assert.equal(entries[0].buckets.ot15_weekday, 3);
+  assert.equal(entries[0].buckets.ot15_holiday, 0);
+  assert.equal(birthdayHoursOf(entries), 0);
+});
+
+test('ชั่วโมงวันเกิดไม่ถูกบวกเพิ่มเข้ายอดรวมของใบ', () => {
+  // The one arithmetic error this feature could introduce: a reader — or a
+  // subtotal — treating the split as a fourth bucket. `reconcile` is what would
+  // catch it, so it is asserted against the same rows.
+  const entries = [filed({ workDate: '2026-08-04', ...DAY }, { birthDate: '1977-08-04' })];
+  const { groups, unaccounted } = groupEntriesByEmployee(entries, { companyOf: () => 'themtech' });
+  const rows = [...groups.values()].map((g) => ({
+    employee: { code: g.employee.code },
+    otHours: summariseEntries(g.entries).otHours,
+    entryCount: g.entries.length,
+    birthdayHours: birthdayHoursOf(g.entries),
+  }));
+
+  assert.equal(rows[0].birthdayHours, 8);
+  assert.equal(rows[0].otHours, 8, 'the row total is the hours worked, not hours + birthday hours');
+  assert.deepEqual(reconcile(entries, rows, unaccounted), {
+    filed: 8,
+    reported: 8,
+    unaccounted: 0,
+    balanced: true,
+    entriesFiled: 1,
+    entriesReported: 1,
+    entriesUnaccounted: 0,
+  });
+});
+
+test('รายงานส่งบัญชีบอกได้แค่จำนวนชั่วโมง ไม่บอกว่าวันไหน', () => {
+  // The rule this replaced an older one with: the month may be disclosed, the
+  // DATE may not. `birthdayHoursOf` returns a number and has no other shape to
+  // return — there is no date on it to leak, by construction.
+  const entries = [filed({ workDate: '2026-08-04', ...DAY }, { birthDate: '1977-08-04' })];
+  const answer = birthdayHoursOf(entries);
+  assert.equal(typeof answer, 'number');
+  assert.equal(answer, 8);
+});
+
 // ── the CSV line cannot break the file ──────────────────────────────────────
 
-/** The two exports' real header rows, copied so a drift shows up as a failure. */
+/**
+ * The two exports' real header rows, copied so a drift shows up as a failure.
+ *
+ * `birthday_hours` is last in the accounting file and must stay last: everything
+ * accounting has built on this export counts columns from the left, so a column
+ * inserted before it shifts their sheet without any error anywhere.
+ */
 const ACCOUNTING_HEADERS = [
   'บริษัท', 'company_code', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก',
   'OT x1.5 วันปกติ', 'OT x1.5 วันหยุด', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ',
+  'birthday_hours',
 ];
 const DEPARTMENT_HEADERS = [
   'แผนก', 'ลำดับที่', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'บริษัท',
@@ -405,10 +551,18 @@ test('a column added to an export moves the line with it', () => {
 
 test('the line survives the round trip through the CSV writer and parser', () => {
   // Quoting, the BOM and CRLF all applied by the same toCsv the exports use.
-  const rows = [
-    ['ไพรมัส', 'PM', 'PM-0412', 'สมชาย ใจดี', 'ผลิต 1', '8', '', '', '8', ''],
-    unaccountedCsvRow(ACCOUNTING_HEADERS, UNACCOUNTED),
+  // The employee row carries every column the file has, `birthday_hours`
+  // included — a fixture one cell short would parse without complaint and hide
+  // exactly the shift this file is afraid of.
+  const employee = [
+    'ไพรมัส', 'PM', 'PM-0412', 'สมชาย ใจดี', 'ผลิต 1', '8', '8', '', '16', 'วันเกิด 8 ชม.', '8',
   ];
+  const rows = [employee, unaccountedCsvRow(ACCOUNTING_HEADERS, UNACCOUNTED)];
+
+  for (const row of rows) {
+    assert.equal(row.length, ACCOUNTING_HEADERS.length, 'every row is as wide as the header');
+  }
+
   const parsed = parseCsv(toCsv(ACCOUNTING_HEADERS, rows));
 
   assert.equal(parsed.length, 2);
@@ -416,6 +570,12 @@ test('the line survives the round trip through the CSV writer and parser', () =>
   assert.equal(parsed[1]['รวมชั่วโมง'], '3.5');
   assert.equal(parsed[1]['รหัสพนักงาน'], '');
   assert.equal(parsed[0]['รหัสพนักงาน'], 'PM-0412', 'the employee rows above are untouched');
+
+  // The split reads back as its own number, and the total it is part of is
+  // unchanged by it: 16.00 in the 1.50 column, 8 of which are the birthday.
+  assert.equal(parsed[0].birthday_hours, '8');
+  assert.equal(parsed[0]['รวมชั่วโมง'], '16');
+  assert.equal(parsed[1].birthday_hours, '', 'the ไม่ถูกนับ line belongs to nobody, so it has none');
 });
 
 test('nothing in the line can be read as a spreadsheet formula', () => {
@@ -425,6 +585,18 @@ test('nothing in the line can be read as a spreadsheet formula', () => {
   for (const cell of row) {
     assert.doesNotMatch(String(cell), /^[=+\-@]/, `cell would be read as a formula: ${cell}`);
   }
+
+  // Nor can a name, and the birthday remark rides in the same cell as the rest
+  // of the หมายเหตุ prose — so the whole employee row goes through the writer
+  // with a hostile name in it.
+  const hostile = [
+    '=cmd|calc', 'PM', 'PM-0001', '@somchai', '-ผลิต', '8', '8', '', '16', '+วันเกิด 8 ชม.', '8',
+  ];
+  const parsed = parseCsv(toCsv(ACCOUNTING_HEADERS, [hostile]));
+  for (const value of Object.values(parsed[0])) {
+    assert.doesNotMatch(String(value), /^[=+\-@]/, `cell survived unquoted: ${value}`);
+  }
+  assert.equal(parsed[0].birthday_hours, '8', 'and the numeric column is untouched by the guard');
 
   // And the guard itself still fires for anything that could.
   const line = toCsv(['a'], [['=1+1']]).split('\r\n')[1];

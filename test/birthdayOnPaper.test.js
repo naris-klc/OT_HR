@@ -187,10 +187,18 @@ test('birthdayHoursOf ปัดสองตำแหน่งเหมือน�
 });
 
 /**
- * The report is allowed to say it — and still may not read a birth date.
+ * THE MONTH MAY BE DISCLOSED. THE DATE MAY NOT.
  *
- * `dayReason` is a label on a figure the sheet is already printing. `birthDate`
- * is somebody's date of birth, and this document lists a whole company.
+ * This is the rule that replaced "the submission sheet never mentions a
+ * birthday", and the line moved on purpose: accounting asked for the remark
+ * because ×1.5 วันหยุด hours against somebody who worked an ordinary Tuesday read
+ * as an error and came back for explaining. What they are told is a NUMBER OF
+ * HOURS in the month — enough to reconcile the figure beside it — and never which
+ * day, which is the fact that is actually personal.
+ *
+ * Structurally rather than by discipline: these files read `dayReason` off
+ * segments computed when the entry was filed. None of them loads a `birthDate`,
+ * none of them resolves a calendar, and there is no date on the answer to leak.
  */
 for (const file of [
   'lib/accounting.js',
@@ -200,24 +208,39 @@ for (const file of [
   'components/AccountingPrint.jsx',
   'components/AccountingView.jsx',
 ]) {
-  test(`${file} อ่านเหตุผลจาก segment ไม่เคยอ่านวันเกิดของใคร`, () => {
+  test(`${file} บอกได้แค่จำนวนชั่วโมง ไม่เคยอ่านหรือส่งวันเกิดจริง`, () => {
     const src = read(file);
     assert.ok(!/birthDate/.test(src), `${file} แตะ birthDate — ใบนี้ไม่ได้เป็นของคนเดียว`);
     assert.ok(
       !/resolveDayTypes|birthdayInYear|makeIsHoliday/.test(src),
       `${file} คำนวณประเภทของวันเอง แปลว่ามันต้องรู้วันเกิดถึงจะทำได้`,
     );
+    // No per-date field either: `birthdayHours` is the whole vocabulary, and a
+    // `birthdayDate` / `birthdayOn` would be the same disclosure by another name.
+    assert.ok(
+      !/birthday(Date|Day|On|Dates)\b/.test(src),
+      `${file} มีฟิลด์ที่ระบุวันของวันเกิด`,
+    );
   });
 }
 
-test('ใบพิมพ์ส่งบัญชีพิมพ์คำว่าวันเกิดจาก birthdayHours ของแถวนั้น', () => {
+test('ใบพิมพ์ส่งบัญชีระบุจำนวนชั่วโมงวันเกิดเสมอ', () => {
   const src = read('components/AccountingPrint.jsx');
 
+  // The hours are not optional. The 1.50 column is one number covering both ×1.5
+  // kinds, so “วันเกิด” alone would leave accounting to guess how much of it the
+  // remark is about — which is the question the remark exists to answer.
   assert.match(
     src,
-    /row\.birthdayHours > 0 \? BIRTHDAY_REMARK : ''/,
+    /if \(!\(row\.birthdayHours > 0\)\) return '';/,
     'หมายเหตุต้องมาจากชั่วโมงวันเกิดของแถว ไม่ใช่ค่าอื่น',
   );
+  assert.match(
+    src,
+    /`\$\{BIRTHDAY_REMARK\} \$\{amount\(row\.birthdayHours\)\} ชม\.`/,
+    'ต้องพิมพ์จำนวนชั่วโมงต่อท้ายคำว่าวันเกิด ด้วยทศนิยมสองตำแหน่งเหมือนทุกยอดบนใบ',
+  );
+
   // Beside the row, in the strip — not a fifth ruled column of the form and not
   // a row of its own, which would cost every page 7mm and invalidate
   // ROWS_PER_PAGE (see test/printFlagLayout.test.js).
@@ -227,6 +250,41 @@ test('ใบพิมพ์ส่งบัญชีพิมพ์คำว่�
     /\.acct th\.note, \.acct td\.note \{[\s\S]*?border: 0;/,
     'แถบหมายเหตุต้องไม่มีเส้นตาราง',
   );
+});
+
+test('CSV มีคอลัมน์ birthday_hours ต่อท้ายเท่านั้น และเว้นว่างเมื่อไม่มี', () => {
+  const src = read('app/api/exports/accounting.csv/route.js');
+
+  // Appended, never inserted: accounting's own sheets count columns from the
+  // left, and a column in the middle shifts every one after it silently.
+  assert.match(src, /'รวมชั่วโมง', 'หมายเหตุ',\s*\n\s*'birthday_hours',\s*\n\s*\];/);
+  // `cell`, not `fmt` — blank rather than 0.00 for somebody with none, the rule
+  // every other hour column in this file already follows. `cell` is where that
+  // rule lives, so the check is on both the call and the definition.
+  assert.match(src, /cell\(row\.birthdayHours\)/);
+  assert.match(src, /cell\(totals\.birthdayHours\)/, 'บรรทัดรวมต้องมีผลรวมของคอลัมน์นี้ด้วย');
+  assert.match(src, /const cell = \(n\) => \(n \? fmt\(n\) : ''\);/, 'เว้นว่างเมื่อเป็นศูนย์');
+
+  // The หมายเหตุ sentence stays as well, and is not the same thing: it is the
+  // remark the PAPER carries, so a person holding both reads the same words on
+  // each. The column beside it is what their spreadsheet sums.
+  assert.match(src, /\$\{BIRTHDAY_REMARK\} \$\{fmt\(row\.birthdayHours\)\} ชม\./);
+});
+
+test('รายงานแยกแผนกยังไม่รู้เรื่องวันเกิด — ใบนั้นส่งผู้บริหาร ไม่ใช่บัญชี', () => {
+  // Untouched by this change, and deliberately: the reason the remark exists is
+  // that a figure on the ACCOUNTING sheet reads as an error without it. That
+  // sheet has no such figure to explain, so adding it there would disclose
+  // something for no reason — and would be HR's decision to make, not ours.
+  for (const file of [
+    'lib/departmentSummary.js',
+    'components/DepartmentPrint.jsx',
+    'app/api/exports/departments.csv/route.js',
+  ]) {
+    const src = read(file);
+    const hit = /birthday|dayreason|วันเกิด/i.exec(src);
+    assert.equal(hit, null, `${file} เอ่ยถึงวันเกิด ("${hit?.[0]}")`);
+  }
 });
 
 test('คำว่าวันเกิดบนกระดาษ หน้าจอ และไฟล์ CSV เป็นคำเดียวกัน', () => {

@@ -58,9 +58,24 @@ export const GET = route(async (req) => {
    * Its name is ASCII and unlocalised because it is the column their system
    * matches on, not one a person reads.
    */
+  /**
+   * `birthday_hours` is LAST, after หมายเหตุ, and that placement is the whole
+   * requirement.
+   *
+   * Accounting's own sheets and lookups are built on the columns that were here
+   * before it; a column inserted in the middle shifts every one after it and
+   * breaks them silently. Appended, a consumer that has never heard of it reads
+   * exactly what it read last month.
+   *
+   * ASCII and unlocalised for the reason `company_code` is: it is a column their
+   * system matches on and sums, not one a person reads — the sentence a person
+   * reads is in หมายเหตุ. How many of the 1.50 hours are there because the day
+   * was somebody's birthday; blank when none, like every other hour column here.
+   */
   const headers = [
     'บริษัท', 'company_code', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก',
     'OT x1.5 วันปกติ', 'OT x1.5 วันหยุด', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ',
+    'birthday_hours',
   ];
 
   const rows = [];
@@ -77,6 +92,11 @@ export const GET = route(async (req) => {
         cell(row.buckets[BUCKETS.OT3_HOLIDAY]),
         cell(row.otHours),
         note(row),
+        // Part of the 1.50 column beside it, never added to the row's total —
+        // a consumer that sums this alongside รวมชั่วโมง would double-count, and
+        // that is why it is named `birthday_hours` rather than anything that
+        // reads like a bucket of its own.
+        cell(row.birthdayHours),
       ]);
     }
 
@@ -157,6 +177,11 @@ function summaryRow(company, label, subject, totals, remark, format = fmt) {
     format(totals.buckets[BUCKETS.OT3_HOLIDAY]),
     format(totals.otHours),
     remark,
+    // The subtotal of the same split, so the new column adds up down the file
+    // like every other figure in it. `cell` regardless of `format`: a รวม line
+    // has to print its hours, but nought birthday hours is nought and printing
+    // 0 in a column that is blank on every employee row above reads as a figure.
+    cell(totals.birthdayHours),
   ];
 }
 

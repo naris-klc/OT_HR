@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  approvalPermission, approvalRecord, delegationPermission, historyExtra,
+  approvalPermission, approvalRecord, delegationPermission, historyExtra, isOwnFiling,
   delegatedDepartments, isLive, overlaps, publicDelegation, receivedOn,
   scopeWidening, wouldCycle,
 } from '../lib/delegation.js';
@@ -189,6 +189,59 @@ test('a colleague may still approve what somebody else filed', () => {
     approvalPermission({ user: A, entry: filedByC, delegations: [], today: '2026-08-06' }).ok,
     true,
   );
+});
+
+/**
+ * The screen has to be able to ask the same question.
+ *
+ * A queue that offered ยืนยัน and ไม่อนุมัติ on a row where both are refused sent
+ * the reviewer round in circles — press, 403, press the other one, the same 403,
+ * with nothing saying what to do instead. That happened with ฝ่ายบุคคล's own
+ * generated birthday rows. So the first clause of `approvalPermission` is an
+ * exported predicate, and these two must agree: if they drift, the queue either
+ * hides work somebody could do or offers work the server will refuse.
+ */
+test('isOwnFiling works on the shape the BROWSER holds, not only the server one', () => {
+  /**
+   * The bug this exists to stop coming back. `publicUser()` hands the client
+   * `id`; the server holds `_id`. Compared with `idOf`, a client-side user turned
+   * into "[object Object]" and every row read as "not yours" — so the queue went
+   * on offering two buttons the server refuses, and the failure was invisible
+   * because both sides answered the same word for different reasons.
+   */
+  const entry = engEntry({ filedBy: A, employee: WORKER });
+  const serverUser = A;                                    // mongoose-shaped: _id
+  const clientUser = { id: String(A._id), role: A.role };  // publicUser-shaped: id
+
+  assert.equal(isOwnFiling(entry, serverUser), true, 'server shape');
+  assert.equal(isOwnFiling(entry, clientUser), true, 'client shape');
+
+  // And a different person, in both shapes, is still not the filer.
+  assert.equal(isOwnFiling(entry, C), false);
+  assert.equal(isOwnFiling(entry, { id: String(C._id), role: C.role }), false);
+});
+
+test('isOwnFiling is exactly the refusal approvalPermission gives', () => {
+  const cases = [
+    ['filed by the reviewer', engEntry({ filedBy: A, employee: WORKER }), A, true],
+    ['filed by somebody else', engEntry({ filedBy: C, employee: WORKER }), A, false],
+    ['self-filed by the employee', engEntry({ filedBy: WORKER, employee: WORKER }), A, false],
+    ['no filedBy recorded at all', engEntry({ employee: WORKER }), A, false],
+  ];
+
+  for (const [why, entry, user, expected] of cases) {
+    assert.equal(isOwnFiling(entry, user), expected, why);
+
+    // And the server's answer, for the rows where the reviewer would otherwise
+    // have been allowed through.
+    const decision = approvalPermission({ user, entry, delegations: [], today: '2026-08-06' });
+    if (expected) {
+      assert.equal(decision.ok, false, `${why} — ต้องถูกปฏิเสธที่เซิร์ฟเวอร์ด้วย`);
+      assert.match(decision.error, /ผู้บันทึกรายการแทนไม่สามารถอนุมัติ/);
+    } else {
+      assert.equal(decision.ok, true, `${why} — ต้องอนุมัติได้ตามปกติ`);
+    }
+  }
 });
 
 // ── the rules that stop a chain forming ─────────────────────────────────────

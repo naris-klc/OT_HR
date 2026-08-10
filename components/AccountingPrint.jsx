@@ -224,17 +224,24 @@ function monthHead(period) {
 const amount = (n) => (n ? Number(n).toFixed(2) : '');
 
 /**
- * What the strip beside a row says. One word, or nothing.
+ * What the strip beside a row says — “วันเกิด 8.00 ชม.”, or nothing.
  *
- * “วันเกิด” explains the only figure on this sheet that a reader cannot account
- * for from the calendar: วันหยุด hours against somebody who worked an ordinary
- * Tuesday. The hours are not repeated here — they are two cells to the left, and
- * a second copy is a second number to reconcile.
+ * It explains the only figure on this sheet a reader cannot account for from the
+ * calendar: วันหยุด hours against somebody who worked an ordinary Tuesday. That
+ * is why the paper this replaces carries the words in HR's handwriting, and why
+ * accounting sends a sheet without them back to be explained.
  *
- * Nothing else goes in this strip. ค้างอนุมัติ and ไม่มี OT are on the screen
- * and in the CSV: neither is a remark about a figure on the paper, and the sheet
- * is signed for what it prints.
+ * THE HOURS ARE ALWAYS NAMED, and that is not a repetition of the cell two
+ * columns to the left. The 1.50 column is one number covering both ×1.5 kinds —
+ * somebody who worked a Saturday AND their own birthday in the same month has
+ * both in it, and “วันเกิด” alone would leave accounting to guess how much of the
+ * 16.00 the remark is about. Two decimals, like every figure on the sheet.
+ *
+ * Nothing else goes in this strip. ค้างอนุมัติ and ไม่มี OT are on the screen and
+ * in the CSV: neither is a remark about a figure on the paper, and the sheet is
+ * signed for what it prints.
  */
 function remark(row) {
-  return row.birthdayHours > 0 ? BIRTHDAY_REMARK : '';
+  if (!(row.birthdayHours > 0)) return '';
+  return `${BIRTHDAY_REMARK} ${amount(row.birthdayHours)} ชม.`;
 }

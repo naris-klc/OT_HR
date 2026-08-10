@@ -314,29 +314,52 @@ Nothing on that sheet ever rendered a day type, so what this removed is the note
 and only the note. A Tuesday a birthday made a holiday still prints its hours in
 the วันหยุด columns, because those come from `entry.segments`.
 
-**On สรุป OT ส่งบัญชี, beside the row.** Where HR wrote it by hand on the paper
-this sheet replaces: the grid stops after **3.00** and the 82mm of white to its
-right is now a borderless fifth column that prints the word itself — no heading,
-no rules, no tint, empty on every row with nothing to explain, and no change to
-`ROWS_PER_PAGE` (see `components/AccountingPrint.jsx`). It reaches the screen's
-หมายเหตุ cell and the CSV's หมายเหตุ column too, both with the hours added, since
-neither is short of room.
+**On สรุป OT ส่งบัญชี, beside the row — “วันเกิด 8.00 ชม.”** Where HR wrote it by
+hand on the paper this sheet replaces, and for the reason they did: ×1.5 วันหยุด
+hours against somebody who worked an ordinary Tuesday read as an error, and
+accounting sends a sheet that does not explain it back. The grid stops after
+**3.00** and the 82mm of white to its right is a borderless fifth column carrying
+the remark — no heading, no rules, no tint, empty on every row with nothing to
+explain, and **no change to `ROWS_PER_PAGE`**: it is a cell in an existing row,
+which is the same trick the ไม่ถูกนับ flag uses in the thead margin band.
+
+**The hours are always named, and they are a SPLIT rather than a new figure.**
+The 1.50 column is one number covering both ×1.5 kinds, so somebody who worked a
+Saturday *and* their own birthday has both in it — “วันเกิด” alone would leave
+accounting to guess how much of the 16.00 the remark is about. `ot15Hours` is
+unchanged by the split's existence, nothing sums the two together, and
+`reconcile()` still balances `filed = reported + unaccounted`.
+
+**In the CSV as `birthday_hours`, appended last.** After หมายเหตุ, never inserted
+— accounting's sheets count columns from the left and a column in the middle
+shifts every one after it with no error anywhere. Blank rather than `0.00` for
+somebody with none, like every other hour column in that file, and subtotalled on
+the รวมแผนก / รวมทั้งหมด lines so the column adds up down the page. ASCII and
+unlocalised for the reason `company_code` is: it is the column their system sums.
+The Thai sentence stays in หมายเหตุ as well — that is the remark the *paper*
+carries, so a person holding both reads the same words on each.
 
 **Read off the segment, never off the roster.** `birthdayHoursOf()` in
 `lib/accountingRows.js` sums the segments whose `dayReason` is `birthday` — a
-label written when the entry was filed. The report loads no `birthDate`, resolves
-no calendar and returns no date, so accounting learns that somebody's birthday
-fell on a working day they worked, which the hours beside the name already imply,
-and never learns when it is. That distinction is what makes the remark acceptable
-on a document listing a whole company, and it is pinned in
-`test/birthdayOnPaper.test.js`.
+label written when the entry was filed, which is also why the sheet keeps
+explaining a figure after HR turns the benefit off: the hours stayed, so the
+explanation stays with them. The report loads no `birthDate`, resolves no
+calendar, and returns a NUMBER with no date on it to leak.
 
-**Those two documents only.** No other aggregate names a birthday —
-ตรวจสอบรายเดือน, the department breakdown, the other CSV exports — and it is
-never written to the company holiday calendar, which is a list everybody is
-shown. `birthDate` itself is not colleague-visible: `publicEmployee()` filters it
-out of the roster for everyone except the person, HR and admin — managers
-included.
+**THE MONTH MAY BE DISCLOSED; THE DATE MAY NOT.** That is the rule that replaced
+“the submission sheet never mentions a birthday”, deliberately, when accounting
+asked for the remark. What they are told is how many hours in the month came from
+a birthday — enough to reconcile the figure beside it — and never which day. The
+older rule and its test are gone; `test/birthdayOnPaper.test.js` pins the new one,
+including that no `birthdayDate`-shaped field exists anywhere on the path.
+
+**Not on สรุป OT แยกแผนก.** That sheet goes to management, not to accounting, and
+it has no figure that reads as an error without the remark — so adding it there
+would disclose something for no reason. It is HR's call to make, not a
+consistency argument, and it is pinned as absent.
+
+`birthDate` itself remains not colleague-visible: `publicEmployee()` filters it out
+of the roster for everyone except the person, HR and admin — managers included.
 
 ### วันเกิดที่ยังไม่มีใบ — the one holiday people forget to claim
 
@@ -390,14 +413,27 @@ of birth still never leaves the server either way — what goes out is the date 
 the **holiday** being asked about.
 
 **HR filing these directly was tried and withdrawn.** For one release ฝ่ายบุคคล
-could write the whole month's birthday requests from a list, confirmed on
-creation. It was the wrong shape for the reason above, and the rows it wrote are
-still in the database — which is what `isUntouchedSystemFiling()` and the
-**ถอนใบวันเกิด** button in ตรวจสอบรายเดือน › a person's รายการ are for: an
-`approved` entry can otherwise be removed by nobody, and those were generated
+could write the whole month's birthday requests from a list. It was the wrong
+shape for the reason above, and the rows it wrote are still in the database —
+which is what `isUntouchedSystemFiling()` and the **ถอนใบวันเกิด** button are for:
+an `approved` entry can otherwise be removed by nobody, and those were generated
 rather than claimed. The `submit_birthday` and `void` history actions stay for the
 same reason — a value dropped from that enum makes the entries carrying it
 unsaveable.
+
+Those rows also exposed a **general** gap, since fixed: `approvalPermission`
+refuses ยืนยัน *and* ไม่อนุมัติ on a request whose reviewer filed it, and
+รอ HR ยืนยัน offered both buttons anyway. Pressing either returned 403 and the
+screen had no third option — the withdrawal was two screens away behind a status
+filter that hid the row. The first clause of that rule is now the exported
+predicate `isOwnFiling()` in [`lib/delegation.js`](lib/delegation.js), and
+`ApprovalQueue` asks it: such a row is not tickable, is excluded from
+เลือกทั้งหมด and the batch bar, states why in place of the two decisions, and
+carries **ถอนใบวันเกิด** when the row is a generated one. The same predicate on
+both sides is the point — a component that re-implemented it would eventually
+hide work somebody could do, or offer work the server refuses. The trap also bites
+without birthdays: set `proxySkipsOwnApproval: false` and a หัวหน้า's own filing
+waits at `pending_mgr` for the person who wrote it.
 
 ### A request that computes to nothing is refused, in words
 

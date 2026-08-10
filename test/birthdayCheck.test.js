@@ -303,6 +303,45 @@ test('ทุกเส้นทางที่เขียนใบ ใช้ข�
   }
 });
 
+// ── the queue never offers a button that cannot work ──────────────────────
+
+/**
+ * The rows ฝ่ายบุคคล generated are in their own confirmation queue, filed under
+ * their own name — and `approvalPermission` refuses BOTH ยืนยัน and ไม่อนุมัติ on
+ * a request its reviewer wrote. Before this, the queue offered both anyway: press,
+ * 403, press the other, the same 403, and no way out on that screen at all
+ * (the withdrawal lived two screens away, behind a status filter that hid the
+ * row). What is pinned is that the screen asks the same question the server does,
+ * and that the one action which works is on the row.
+ */
+test('คิวอนุมัติถามคำถามเดียวกับเซิร์ฟเวอร์ และไม่โชว์ปุ่มที่กดไม่ได้', () => {
+  const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+
+  // Not a second implementation of the rule in the component.
+  assert.match(queue, /import \{ isOwnFiling \} from '@\/lib\/delegation\.js'/);
+  assert.ok(
+    !/filedBy\)\s*===\s*idOf\(user\)|filedBy\?\._id === user\._id/.test(queue),
+    'คอมโพเนนต์เขียนกฎเองซ้ำ — จะเพี้ยนกันวันใดวันหนึ่ง',
+  );
+
+  // The row branches on it, and the branch without the two decisions offers the
+  // withdrawal instead.
+  assert.match(queue, /isOwnFiling\(e, user\) \? \(/);
+  assert.match(queue, /onClick=\{\(\) => voidEntry\(e\)\}/);
+  assert.match(queue, /const voidEntry = \(entry\) => run\(/);
+  assert.match(queue, /\/entries\/\$\{e\._id\}\/cancel/);
+
+  // Such a row cannot be ticked into a batch either — a batch of three that
+  // fails on one is three presses to work out which.
+  assert.match(queue, /disabled=\{isOwnFiling\(e, user\)\}/);
+  assert.match(queue, /const actionable = useMemo\(\(\) => shown\.filter\(\(e\) => !isOwnFiling\(e, user\)\)/);
+  assert.match(queue, /selected\.size === actionable\.length/);
+
+  // And the pop-up does not put the same two buttons back.
+  assert.match(queue, /mine=\{isOwnFiling\(detail, user\)\}/);
+  assert.match(queue, /\) : mine \? \(/);
+});
+
 // ── the form tells the filer why their birthday looks different ───────────
 
 test('ฟอร์มยื่นใบอ่านเหตุผลจาก preview ไม่ได้คำนวณวันเกิดเองในเบราว์เซอร์', () => {

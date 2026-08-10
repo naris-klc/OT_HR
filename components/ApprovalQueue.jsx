@@ -5,7 +5,10 @@ import {
   api, hours, thaiDate, dayName, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
 import { describeBreaches } from '@/lib/caps.js';
-import { isProxyFiled } from '@/lib/entries.js';
+import { isProxyFiled, isSystemFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
+// The same predicate `approvalPermission` refuses on, so the buttons this screen
+// offers and the ones the server accepts cannot drift apart.
+import { isOwnFiling } from '@/lib/delegation.js';
 import {
   Alert, Empty, EditedMark, EntryHistory, Modal, ProxyMark, RefiledNote, RequestTrail,
   SegmentList, StatusChip, TeamMark, editsOf,
@@ -145,11 +148,19 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
     });
   }, [shown]);
 
+  /**
+   * The rows this reviewer can actually decide — everything except the ones they
+   * filed themselves, which no button of theirs can move (see `isOwnFiling`).
+   * เลือกทั้งหมด and the tick-box state are both counted against this rather than
+   * against `shown`, so a batch cannot be built out of rows that will 403.
+   */
+  const actionable = useMemo(() => shown.filter((e) => !isOwnFiling(e, user)), [shown, user]);
+
   useEffect(() => {
     if (allRef.current) {
-      allRef.current.indeterminate = selected.size > 0 && selected.size < shown.length;
+      allRef.current.indeterminate = selected.size > 0 && selected.size < actionable.length;
     }
-  }, [selected, shown]);
+  }, [selected, actionable]);
 
   const picked = shown.filter((e) => selected.has(e._id));
   const pickedHours = picked.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
@@ -164,7 +175,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   }
 
   const toggleAll = () => setSelected(
-    selected.size === shown.length ? new Set() : new Set(shown.map((e) => e._id)),
+    selected.size === actionable.length ? new Set() : new Set(actionable.map((e) => e._id)),
   );
 
   // ── actions ───────────────────────────────────────────────────────────────
@@ -231,6 +242,23 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
     [entry],
     (e) => api.post(`/entries/${e._id}/cap-override`, { reason }),
     () => 'บันทึกการอนุมัติเกินเพดานแล้ว',
+  );
+
+  /**
+   * ถอนใบวันเกิด — the only action available on a row the reviewer filed
+   * themselves, and it is here because this is where they are stuck.
+   *
+   * It goes through `/cancel`, the same endpoint an employee withdraws their own
+   * request with; `cancelPermission` decides which of the two acts it is and the
+   * history records `void` rather than `cancel`. The row leaves this queue, its
+   * hours are counted nowhere, and the birthday goes back onto
+   * วันเกิดที่ยังไม่มีใบ on ตรวจสอบรายเดือน — where the หัวหน้า's name is, which
+   * is the path that was meant to file it.
+   */
+  const voidEntry = (entry) => run(
+    [entry],
+    (e) => api.post(`/entries/${e._id}/cancel`, { note: 'ถอนใบวันเกิดที่ระบบสร้าง' }),
+    (n, all) => `ถอนใบวันเกิดของ ${all[0].employee?.name} แล้ว — ชั่วโมงนี้ไม่ถูกนับที่ใด`,
   );
 
   /** A row rewritten from inside the pop-up: refresh the table under it, and
@@ -406,7 +434,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                   <input
                     ref={allRef}
                     type="checkbox"
-                    checked={shown.length > 0 && selected.size === shown.length}
+                    checked={actionable.length > 0 && selected.size === actionable.length}
                     onChange={toggleAll}
                     aria-label="เลือกทั้งหมด"
                   />
@@ -426,9 +454,13 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
               {shown.map((e) => (
                 <tr key={e._id} className={selected.has(e._id) ? 'picked' : ''}>
                   <td className="check">
+                    {/* Not tickable when this reviewer cannot decide it: a batch
+                        of three that fails on one row is three presses to work
+                        out which. `actionable` also keeps เลือกทั้งหมด off it. */}
                     <input
                       type="checkbox"
                       checked={selected.has(e._id)}
+                      disabled={isOwnFiling(e, user)}
                       onChange={() => toggle(e._id)}
                       aria-label={`เลือกรายการของ ${e.employee?.name}`}
                     />
@@ -490,30 +522,60 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                     ))}
                   </td>
                   <td>
-                    <div className="row-actions">
-                      <button className="btn sm" disabled={busy} onClick={() => setConfirming([e])}>
-                        {verb}
-                      </button>
-                      <button
-                        className="btn ghost danger sm"
-                        disabled={busy}
-                        onClick={() => setRejecting([e])}
-                      >
-                        ไม่อนุมัติ
-                      </button>
-                      <button className="btn ghost sm" onClick={() => setDetail(e)}>
-                        รายละเอียด
-                      </button>
-                      {isHr && e.capExceeded && (
-                        <button
-                          className="btn ghost warn sm"
-                          disabled={busy}
-                          onClick={() => setOverriding(e)}
-                        >
-                          อนุมัติเกินเพดาน
+                    {/* A row this reviewer wrote themselves cannot be signed OR
+                        refused by them — one rule governs both, so offering
+                        either button is offering a 403. What goes here instead is
+                        the reason and, when the row is one the system generated
+                        and nobody has touched, the only action that does work.
+                        See `isOwnFiling` in lib/delegation.js. */}
+                    {isOwnFiling(e, user) ? (
+                      <div className="row-actions">
+                        <span className="cell-sub" style={{ maxWidth: 190 }}>
+                          คุณเป็นผู้บันทึกรายการนี้ จึงอนุมัติหรือไม่อนุมัติเองไม่ได้
+                          {isUntouchedSystemFiling(e)
+                            ? ' — ถอนใบได้ หรือให้ผู้ดูแลระบบยืนยันแทน'
+                            : ' — ต้องให้คนอื่นเป็นผู้อนุมัติ'}
+                        </span>
+                        {isUntouchedSystemFiling(e) && (
+                          <button
+                            className="btn ghost sm"
+                            disabled={busy}
+                            onClick={() => voidEntry(e)}
+                            title="ถอนใบที่ระบบสร้าง — ชั่วโมงนี้จะไม่ถูกนับที่ใด และหัวหน้าแผนกยังบันทึกแทนใหม่ได้"
+                          >
+                            ถอนใบวันเกิด
+                          </button>
+                        )}
+                        <button className="btn ghost sm" onClick={() => setDetail(e)}>
+                          รายละเอียด
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="row-actions">
+                        <button className="btn sm" disabled={busy} onClick={() => setConfirming([e])}>
+                          {verb}
+                        </button>
+                        <button
+                          className="btn ghost danger sm"
+                          disabled={busy}
+                          onClick={() => setRejecting([e])}
+                        >
+                          ไม่อนุมัติ
+                        </button>
+                        <button className="btn ghost sm" onClick={() => setDetail(e)}>
+                          รายละเอียด
+                        </button>
+                        {isHr && e.capExceeded && (
+                          <button
+                            className="btn ghost warn sm"
+                            disabled={busy}
+                            onClick={() => setOverriding(e)}
+                          >
+                            อนุมัติเกินเพดาน
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -560,6 +622,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
           entry={detail}
           verb={verb}
           busy={busy}
+          mine={isOwnFiling(detail, user)}
           onClose={() => setDetail(null)}
           onApprove={() => { const e = detail; setDetail(null); approve([e]); }}
           onReject={(reason, notify) => { const e = detail; setDetail(null); reject([e], reason, notify); }}
@@ -748,7 +811,7 @@ function RejectFields({ value, onChange, many }) {
  * history and the scan comparison at the exact moment they are being explained
  * in writing. The refusal happens here, over the top of the same header.
  */
-function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEntryChanged }) {
+function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, onReject, onEntryChanged }) {
   const [mode, setMode] = useState('view'); // 'view' | 'rejecting'
   const [rejectState, setRejectState] = useState({
     reason: '', notify: { employee: true, manager: false },
@@ -789,6 +852,12 @@ function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEnt
         ยืนยันไม่อนุมัติ
       </button>
     </>
+  ) : mine ? (
+    // The reviewer filed this one. Neither decision is theirs to make, so the
+    // pop-up closes and says why rather than repeating the row's two dead
+    // buttons — the way out is on the row itself (ถอนใบวันเกิด) or another
+    // reviewer.
+    <button className="btn ghost" onClick={onClose}>ปิด</button>
   ) : (
     <>
       <button className="btn ghost" onClick={onClose}>ปิด</button>
@@ -840,12 +909,29 @@ function DetailModal({ entry: e, verb, busy, onClose, onApprove, onReject, onEnt
               would normally have approved it has already formed the view. */}
           {isProxyFiled(e) && (
             <Alert kind="warn">
-              <strong>หัวหน้างานเป็นผู้บันทึกรายการนี้แทนพนักงาน</strong>
+              {/* Who wrote it, in words that are true of them: a หัวหน้า filing
+                  for their team, ฝ่ายบุคคล filing for somebody, or nobody at all
+                  on a row the system generated. */}
+              <strong>
+                {isUntouchedSystemFiling(e) || isSystemFiled(e)
+                  ? 'รายการนี้ระบบสร้างจากกฎวันหยุดวันเกิด ไม่มีใครกรอกแบบฟอร์ม'
+                  : 'รายการนี้มีผู้อื่นเป็นผู้บันทึกแทนพนักงาน'}
+              </strong>
               {e.filedBy?.name && <> — ผู้บันทึก: {e.filedBy.name}</>}
               {e.status === 'pending_hr' && !e.managerDecision?.at && (
                 <> · รายการนี้<strong>ยังไม่ผ่านการอนุมัติจากหัวหน้า</strong>
                   {' '}เพราะผู้บันทึกคือผู้ที่จะอนุมัติเอง ระบบจึงข้ามขั้นนั้นมา
                 </>
+              )}
+              {/* The sentence that was missing when this row could not be moved:
+                  it names the rule and the two ways forward. */}
+              {mine && (
+                <div style={{ marginTop: 4 }}>
+                  คุณเป็นผู้บันทึกรายการนี้เอง จึงอนุมัติหรือไม่อนุมัติเองไม่ได้ —
+                  {isUntouchedSystemFiling(e)
+                    ? ' กด “ถอนใบวันเกิด” ที่แถวในคิว หรือให้ผู้ดูแลระบบยืนยันแทน'
+                    : ' ต้องให้ผู้อื่นเป็นผู้อนุมัติ'}
+                </div>
               )}
             </Alert>
           )}
