@@ -28,9 +28,28 @@ import {
   planRecompute, samePolicy, figuresMoved, summariseReplay,
 } from '../../lib/policyVersion.js';
 
-/** Holiday dates are read per request; the set is tiny (tens of rows a year). */
+/**
+ * Holiday dates are read per request; the set is tiny (tens of rows a year).
+ *
+ * FILTERED ON `date`, NEVER ON `year`. `year` is a denormalised copy of the
+ * first four characters of `date`, and every write path in this app upserts —
+ * which skips the document hook that derives it. So `year` was simply absent on
+ * every holiday added through the ปฏิทินวันหยุด screen and every one imported
+ * from CSV, and this function could not see any of them: the calendar showed
+ * the day, HR believed it was set, and the engine went on paying วันปกติ rates
+ * for it with nothing on any screen to say so.
+ *
+ * The writes now set `year` properly too. This still asks `date`, because the
+ * field that decides what somebody is paid should be the field the row actually
+ * stores, not a copy of it that a future upsert can forget again.
+ *
+ * `date` is 'YYYY-MM-DD', so a string range IS a chronological range and the
+ * unique index on it serves the query.
+ */
 export async function loadHolidaySet(years = []) {
-  const query = years.length ? { year: { $in: years.map(Number) } } : {};
+  const query = years.length
+    ? { $or: years.map((y) => ({ date: { $gte: `${Number(y)}-01-01`, $lte: `${Number(y)}-12-31` } })) }
+    : {};
   const docs = await Holiday.find(query).select('date').lean();
   return new Set(docs.map((d) => d.date));
 }

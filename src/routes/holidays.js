@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import Holiday from '../models/Holiday.js';
+import Holiday, { yearOf } from '../models/Holiday.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../lib/csv.js';
 import { recomputeEntries } from '../services/otService.js';
@@ -12,7 +12,9 @@ router.use(requireAuth);
 
 /** Everyone reads the calendar — the submit form needs it to label the day. */
 router.get('/', wrap(async (req, res) => {
-  const query = req.query.year ? { year: Number(req.query.year) } : {};
+  // Filtered on `date`: rows written before the upserts set `year` have none.
+  const y = req.query.year && Number(req.query.year);
+  const query = y ? { date: { $gte: `${y}-01-01`, $lte: `${y}-12-31` } } : {};
   const holidays = await Holiday.find(query).sort({ date: 1 }).lean();
   res.json({ holidays });
 }));
@@ -26,7 +28,8 @@ router.post('/', requireRole('admin', 'hr'), wrap(async (req, res) => {
 
   const holiday = await Holiday.findOneAndUpdate(
     { date },
-    { date, name, source: 'manual' },
+    // `year` explicitly — an upsert does not run the model's hook.
+    { date, name, source: 'manual', year: yearOf(date) },
     { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
   );
   // A date becoming a holiday changes which buckets its entries fall into.
@@ -77,7 +80,8 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
 
     await Holiday.findOneAndUpdate(
       { date },
-      { date, name, source: 'import' },
+      // `year` explicitly — an upsert does not run the model's hook.
+      { date, name, source: 'import', year: yearOf(date) },
       { upsert: true, setDefaultsOnInsert: true, runValidators: true },
     );
     dates.push(date);

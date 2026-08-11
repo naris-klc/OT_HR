@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { HR_ASSIGNABLE_ROLES, SELF_LOCKED_FIELDS, dropsAnAdmin } from '@/lib/employees.js';
 import { ACCOUNTING_SENSITIVE, FIELD_LABEL, rosterChanges } from '@/lib/rosterAudit.js';
-import { parseCsv } from '@/src/lib/csv.js';
+import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // Pure config, no mongoose — the same resolution the accounting sheet uses, so
 // the column showing which payroll somebody is on cannot disagree with the file
 // they end up in.
@@ -632,34 +632,7 @@ function Employees({ user }) {
         server keeps only the hash, so the repair would be resetting every new
         row by hand. Shown once, on the screen that did the upload.
       */}
-      {result?.issued?.length > 0 && (
-        <Alert kind="ok">
-          <strong>รหัสผ่านชั่วคราวของ {result.issued.length} บัญชีที่เพิ่งสร้าง</strong>
-          {' '}— แสดงเพียงครั้งเดียว ปิดแล้วดูซ้ำไม่ได้ ต้องตั้งใหม่รายคน
-          <div className="table-wrap" style={{ marginTop: 8 }}>
-            <table>
-              <thead>
-                <tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>รหัสผ่านชั่วคราว</th></tr>
-              </thead>
-              <tbody>
-                {result.issued.map((row) => (
-                  <tr key={row.code}>
-                    <td style={{ whiteSpace: 'nowrap' }}>{row.code}</td>
-                    <td>{row.name}</td>
-                    <td style={{ fontFamily: 'var(--mono, monospace)', whiteSpace: 'nowrap' }}>
-                      {row.password}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ marginTop: 6, fontSize: 12.5 }}>
-            ทุกบัญชีจะถูกบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
-            {' '}· พิมพ์หรือจดไว้ก่อนปิดหน้านี้
-          </div>
-        </Alert>
-      )}
+      {result?.issued?.length > 0 && <IssuedPasswords rows={result.issued} />}
 
       <div className="row" style={{ marginBottom: 14 }}>
         <button
@@ -823,7 +796,7 @@ function Employees({ user }) {
                 <td>{p.name}</td>
                 <td>{p.position || <span style={{ color: 'var(--muted)' }}>—</span>}</td>
                 {/* Shown as text like everything else. HR and Admin are the only
-                    people who reach this screen, and `maySeeBirthDate` on the
+                    people who reach this screen, and `maySeePersonalDetails` on the
                     server is what decides they may be sent it at all. */}
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {p.birthDate
@@ -947,6 +920,40 @@ const LOCK_NOTE = {
   // Not about who is editing — about what the system would be left with.
   lastAdmin: 'นี่คือผู้ดูแลระบบที่ใช้งานอยู่คนสุดท้าย — ถ้าเปลี่ยนบทบาทหรือปิดใช้งาน '
     + 'จะไม่เหลือใครที่ตั้งผู้ดูแลระบบคนใหม่ได้ (ฝ่ายบุคคลตั้งไม่ได้) ให้ตั้งอีกคนก่อน',
+};
+
+/**
+ * The same refusals in one line, for the note that stays on screen.
+ *
+ * A greyed field has to say why without being asked — the reader is looking at
+ * a box that will not take a keystroke and deciding whether it is broken. Four
+ * lines of grey between two inputs is not how they find out: a paragraph under
+ * every field is a wall the eye skips whole, and it takes the one sentence that
+ * mattered with it.
+ *
+ * So the short line shows and the (?) beside the label holds LOCK_NOTE itself,
+ * word for word — nothing here replaces anything, it only decides what is on
+ * screen before somebody asks.
+ */
+const LOCK_SHORT = {
+  code: 'แก้ได้เฉพาะผู้ดูแลระบบ',
+  selfRole: 'บัญชีของคุณเอง — เปลี่ยนบทบาทตัวเองไม่ได้',
+  selfActive: 'บัญชีของคุณเอง — ปิดใช้งานตัวเองไม่ได้',
+  lastAdmin: 'ผู้ดูแลระบบที่ใช้งานอยู่คนสุดท้าย — ต้องตั้งอีกคนก่อน',
+};
+
+/**
+ * รหัสผ่านไม่ได้อยู่ในหน้านี้ — the short line, and the whole of it.
+ *
+ * It explains something that happens somewhere else, to somebody who is in the
+ * middle of editing a name. One line is the whole of what they need at that
+ * moment; the rest is there for the reader who wonders why the field is missing
+ * rather than merely noticing that it is.
+ */
+const PASSWORD_NOTE = {
+  short: 'รหัสผ่านไม่ได้อยู่ในหน้านี้ — ใช้ปุ่ม “ตั้งรหัสใหม่” ในตารางทะเบียนพนักงาน',
+  full: 'ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสเดิมได้ '
+    + '· ประวัติการแก้ทะเบียนไม่เคยบันทึกตัวรหัสผ่าน บันทึกเพียงว่ามีการตั้งรหัสใหม่',
 };
 
 /** One roster row as the edit dialog holds it — the audited fields, nothing else. */
@@ -1140,7 +1147,10 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
       title={rowLocked ? 'ข้อมูลพนักงาน' : 'แก้ไขข้อมูลพนักงาน'}
       subtitle={`${employee.code} · ${employee.name}`}
       onClose={onClose}
-      wide
+      // Not `wide`. 880px put nine short controls in one line each and stretched
+      // every sentence under them to a length nobody tracks back from — the
+      // default 620 holds two columns and keeps a line of Thai near the width
+      // it is comfortable to read.
       // The unsaved-changes prompt the Modal already knows how to ask. Driven by
       // the same diff as the save button, so "ยังมีข้อมูลที่ยังไม่ได้บันทึก" is
       // never asked about a form somebody only looked at.
@@ -1196,169 +1206,193 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
       )}
 
       {step === 'edit' ? (
-        <>
-          <div className="row">
-            <Field
-              label="รหัสพนักงาน"
-              // Admin's to change, and never silently: the reason below is
-              // required by the server, not merely asked for here.
-              note={isAdmin ? 'เปลี่ยนได้ แต่ต้องระบุเหตุผล — จะถูกบันทึกไว้ในประวัติ' : LOCK_NOTE.code}
-              style={{ maxWidth: 160 }}
-            >
-              <input
-                value={form.code}
-                onChange={(e) => set({ code: e.target.value.toUpperCase() })}
-                disabled={disabled(!isAdmin)}
-                autoComplete="off"
-              />
-            </Field>
-            <Field label="ชื่อ-สกุล">
-              <input
-                value={form.name}
-                onChange={(e) => set({ name: e.target.value })}
-                disabled={disabled()}
-              />
-            </Field>
-            <Field label="ตำแหน่ง">
-              <input
-                value={form.position}
-                onChange={(e) => set({ position: e.target.value })}
-                disabled={disabled()}
-              />
-            </Field>
-          </div>
-
-          {codeChanged && (
-            <Field
-              label="เหตุผลที่เปลี่ยนรหัสพนักงาน (บังคับ)"
-              note={reasonMissing ? null : 'จะถูกบันทึกไว้ในประวัติการแก้ทะเบียนพร้อมค่าเดิมและค่าใหม่'}
-            >
-              <input
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="เช่น ออกรหัสผิดตอนรับเข้า ตัวจริงคือ PM-0641"
-                disabled={busy}
-              />
-              {reasonMissing && (
-                <div className="field-note error">ต้องระบุเหตุผลก่อนจึงจะบันทึกได้</div>
-              )}
-            </Field>
-          )}
-
-          <div className="row">
-            <Field
-              label="วันเกิด"
-              note="แก้ได้จากหน้านี้เท่านั้น · พนักงานเห็นในข้อมูลส่วนตัวแต่แก้เองไม่ได้"
-              style={{ maxWidth: 190 }}
-            >
-              <input
-                type="date"
-                value={form.birthDate}
-                onChange={(e) => set({ birthDate: e.target.value })}
-                disabled={disabled()}
-              />
-            </Field>
-            <Field label="อีเมล" note="ไม่ใช่ชื่อผู้ใช้ — เข้าระบบด้วยรหัสพนักงานเสมอ">
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => set({ email: e.target.value })}
-                disabled={disabled()}
-                autoComplete="off"
-              />
-            </Field>
-          </div>
-
-          <div className="row">
-            <Field label="แผนก" note="ใบเก่าไม่ขยับ — มีผลกับใบที่ยื่นหลังจากนี้">
-              <select
-                value={form.department}
-                onChange={(e) => set({ department: e.target.value })}
-                disabled={disabled()}
+        /*
+          Three headed groups rather than one queue of controls.
+          Nine fields with no seams read as one long list to work down, when
+          they are really three questions — who this person is, where they
+          work, and what they may do — and the third is the only one with a
+          refusal in it. The headings are what let somebody open this dialog to
+          fix a surname and never read the rest.
+        */
+        <div className="edit-form">
+          <section className="form-group">
+            <div className="gh">ข้อมูลส่วนตัว</div>
+            <div className="form-grid">
+              <Field label="ชื่อ-สกุล">
+                <input
+                  value={form.name}
+                  onChange={(e) => set({ name: e.target.value })}
+                  disabled={disabled()}
+                />
+              </Field>
+              <Field label="ตำแหน่ง">
+                <input
+                  value={form.position}
+                  onChange={(e) => set({ position: e.target.value })}
+                  disabled={disabled()}
+                />
+              </Field>
+              <Field
+                label="วันเกิด"
+                tip="แก้ได้จากหน้านี้เท่านั้น · พนักงานเห็นในข้อมูลส่วนตัวแต่แก้เองไม่ได้"
               >
-                {!before.department && <option value="">— ไม่กำหนด —</option>}
-                {depts.map((d) => (
-                  <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
-                ))}
-              </select>
-            </Field>
-            <Field
-              label="บทบาท"
-              // The lockout reasons win over the role-list one: a locked field
-              // needs the sentence that explains THIS lock, and "ฝ่ายบุคคลตั้งได้
-              // เฉพาะ…" would send somebody to find an Admin for a change no
-              // Admin can make either.
-              note={selfLocked('role') ? LOCK_NOTE.selfRole
-                : isLastAdmin ? LOCK_NOTE.lastAdmin
-                  : isAdmin ? 'กำหนดว่าคนนี้ยื่น OT ได้ อนุมัติได้ หรือดูแลระบบได้' : LOCK_NOTE.role}
-            >
-              {/*
-                Rendered whole, with what HR may not pick disabled rather than
-                dropped. A list that silently omits “ผู้ดูแลระบบ” answers the
-                question "why can I not make this person an admin" with nothing
-                at all; a greyed row answers it, and the note below says who can.
+                <input
+                  type="date"
+                  value={form.birthDate}
+                  onChange={(e) => set({ birthDate: e.target.value })}
+                  disabled={disabled()}
+                />
+              </Field>
+              <Field label="อีเมล" tip="ไม่ใช่ชื่อผู้ใช้ — เข้าระบบด้วยรหัสพนักงานเสมอ">
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => set({ email: e.target.value })}
+                  disabled={disabled()}
+                  autoComplete="off"
+                />
+              </Field>
+            </div>
+          </section>
 
-                The row's CURRENT role stays selectable whatever it is, so
-                changing away from it and back leaves the form where it started
-                instead of stranding it on a value the server would refuse.
-              */}
-              <select
-                value={form.role}
-                onChange={(e) => set({ role: e.target.value })}
-                disabled={disabled(roleLocked)}
+          <section className="form-group">
+            <div className="gh">การทำงาน</div>
+            <div className="form-grid">
+              <Field
+                label="รหัสพนักงาน"
+                // Admin's to change, and never silently: the reason below is
+                // required by the server, not merely asked for here. For
+                // everybody else the field is grey, so the reason it is grey
+                // stays on screen rather than waiting behind the (?).
+                note={isAdmin ? null : LOCK_SHORT.code}
+                tip={isAdmin ? 'เปลี่ยนได้ แต่ต้องระบุเหตุผล — จะถูกบันทึกไว้ในประวัติ' : LOCK_NOTE.code}
               >
-                {ROLE_OPTIONS.map((o) => {
-                  const refused = !isAdmin
-                    && !HR_ASSIGNABLE_ROLES.includes(o.value)
-                    && o.value !== before.role;
-                  return (
-                    <option key={o.value} value={o.value} disabled={refused}>
-                      {o.label}{refused ? ' — ผู้ดูแลระบบเท่านั้น' : ''}
-                    </option>
-                  );
-                })}
-              </select>
-            </Field>
-            <Field
-              label="บริษัท"
-              note="ใช้แบ่งไฟล์ส่งบัญชี PM / THT — อ่านจากทะเบียนตอนออกรายงาน ไม่ได้เก็บไว้ที่ใบ"
-            >
-              <select
-                value={form.company}
-                onChange={(e) => set({ company: e.target.value })}
-                disabled={disabled()}
+                <input
+                  value={form.code}
+                  onChange={(e) => set({ code: e.target.value.toUpperCase() })}
+                  disabled={disabled(!isAdmin)}
+                  autoComplete="off"
+                />
+              </Field>
+              <Field label="แผนก" tip="ใบเก่าไม่ขยับ — มีผลกับใบที่ยื่นหลังจากนี้">
+                <select
+                  value={form.department}
+                  onChange={(e) => set({ department: e.target.value })}
+                  disabled={disabled()}
+                >
+                  {!before.department && <option value="">— ไม่กำหนด —</option>}
+                  {depts.map((d) => (
+                    <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field
+                label="บริษัท"
+                tip="ใช้แบ่งไฟล์ส่งบัญชี PM / THT — อ่านจากทะเบียนตอนออกรายงาน ไม่ได้เก็บไว้ที่ใบ"
               >
-                {/* Only while it IS blank: the model has no "no company" state
-                    to go back to, so offering it on a row that has one would be
-                    offering a save the server refuses. */}
-                {!before.company && <option value="">— เดาจากรหัส —</option>}
-                {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-              </select>
-            </Field>
-            <Field
-              label="สถานะการใช้งาน"
-              note={selfLocked('active') ? LOCK_NOTE.selfActive
-                : isLastAdmin ? LOCK_NOTE.lastAdmin
-                  : 'ปิดใช้งานแล้วเข้าระบบไม่ได้ · ชั่วโมงที่อนุมัติแล้วยังอยู่ในรายงานตามเดิม'}
-              style={{ maxWidth: 190 }}
-            >
-              <select
-                value={form.active ? 'yes' : 'no'}
-                onChange={(e) => set({ active: e.target.value === 'yes' })}
-                disabled={disabled(activeLocked)}
-              >
-                <option value="yes">ใช้งาน</option>
-                <option value="no">ปิดใช้งาน</option>
-              </select>
-            </Field>
-          </div>
+                <select
+                  value={form.company}
+                  onChange={(e) => set({ company: e.target.value })}
+                  disabled={disabled()}
+                >
+                  {/* Only while it IS blank: the model has no "no company" state
+                      to go back to, so offering it on a row that has one would be
+                      offering a save the server refuses. */}
+                  {!before.company && <option value="">— เดาจากรหัส —</option>}
+                  {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                </select>
+              </Field>
+            </div>
 
-          <div className="hint" style={{ marginTop: 4 }}>
-            รหัสผ่านไม่ได้อยู่ในหน้านี้ — ระบบเก็บแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสเดิมได้
-            {' '}ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง · ประวัติการแก้ทะเบียนไม่เคยบันทึกตัวรหัสผ่าน
-            {' '}บันทึกเพียงว่ามีการตั้งรหัสใหม่
-          </div>
-        </>
+            {/* Out of the grid and full width: it appears mid-edit, and a box
+                that opens in a column would take half the row with it. */}
+            {codeChanged && (
+              <Field
+                label="เหตุผลที่เปลี่ยนรหัสพนักงาน (บังคับ)"
+                note={reasonMissing ? null : 'จะถูกบันทึกไว้ในประวัติการแก้ทะเบียนพร้อมค่าเดิมและค่าใหม่'}
+                style={{ marginTop: 14 }}
+              >
+                <input
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="เช่น ออกรหัสผิดตอนรับเข้า ตัวจริงคือ PM-0641"
+                  disabled={busy}
+                />
+                {reasonMissing && (
+                  <div className="field-note error">ต้องระบุเหตุผลก่อนจึงจะบันทึกได้</div>
+                )}
+              </Field>
+            )}
+          </section>
+
+          <section className="form-group">
+            <div className="gh">สิทธิ์และสถานะ</div>
+            <div className="form-grid">
+              <Field
+                label="บทบาท"
+                // The lockout reasons win over the role-list one: a locked field
+                // needs the sentence that explains THIS lock, and "ฝ่ายบุคคลตั้งได้
+                // เฉพาะ…" would send somebody to find an Admin for a change no
+                // Admin can make either.
+                //
+                // A lock shows its one line without being asked; the (?) beside
+                // it still opens the full LOCK_NOTE, which is the same sentence
+                // the server answers 403 with.
+                note={selfLocked('role') ? LOCK_SHORT.selfRole
+                  : isLastAdmin ? LOCK_SHORT.lastAdmin : null}
+                tip={selfLocked('role') ? LOCK_NOTE.selfRole
+                  : isLastAdmin ? LOCK_NOTE.lastAdmin
+                    : isAdmin ? 'กำหนดว่าคนนี้ยื่น OT ได้ อนุมัติได้ หรือดูแลระบบได้' : LOCK_NOTE.role}
+              >
+                {/*
+                  Rendered whole, with what HR may not pick disabled rather than
+                  dropped. A list that silently omits “ผู้ดูแลระบบ” answers the
+                  question "why can I not make this person an admin" with nothing
+                  at all; a greyed row answers it, and the note below says who can.
+
+                  The row's CURRENT role stays selectable whatever it is, so
+                  changing away from it and back leaves the form where it started
+                  instead of stranding it on a value the server would refuse.
+                */}
+                <select
+                  value={form.role}
+                  onChange={(e) => set({ role: e.target.value })}
+                  disabled={disabled(roleLocked)}
+                >
+                  {ROLE_OPTIONS.map((o) => {
+                    const refused = !isAdmin
+                      && !HR_ASSIGNABLE_ROLES.includes(o.value)
+                      && o.value !== before.role;
+                    return (
+                      <option key={o.value} value={o.value} disabled={refused}>
+                        {o.label}{refused ? ' — ผู้ดูแลระบบเท่านั้น' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </Field>
+              <Field
+                label="สถานะการใช้งาน"
+                note={selfLocked('active') ? LOCK_SHORT.selfActive
+                  : isLastAdmin ? LOCK_SHORT.lastAdmin : null}
+                tip={selfLocked('active') ? LOCK_NOTE.selfActive
+                  : isLastAdmin ? LOCK_NOTE.lastAdmin
+                    : 'ปิดใช้งานแล้วเข้าระบบไม่ได้ · ชั่วโมงที่อนุมัติแล้วยังอยู่ในรายงานตามเดิม'}
+              >
+                <select
+                  value={form.active ? 'yes' : 'no'}
+                  onChange={(e) => set({ active: e.target.value === 'yes' })}
+                  disabled={disabled(activeLocked)}
+                >
+                  <option value="yes">ใช้งาน</option>
+                  <option value="no">ปิดใช้งาน</option>
+                </select>
+              </Field>
+            </div>
+          </section>
+
+          <FoldedNote short={PASSWORD_NOTE.short} full={PASSWORD_NOTE.full} />
+        </div>
       ) : (
         <>
           <div className="hint" style={{ marginTop: 0 }}>
@@ -1410,13 +1444,235 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
   );
 }
 
-/** A labelled control with the sentence that explains it underneath. */
-function Field({ label, note, children, style }) {
+/** Column headings for the issued-password list, in one place — screen and file. */
+const ISSUED_HEADERS = ['รหัสพนักงาน', 'ชื่อ-สกุล', 'รหัสผ่านชั่วคราว'];
+
+/**
+ * The filename carries the instruction, because the file outlives the screen.
+ *
+ * The warning below is read once, in the app, by somebody who is about to click
+ * away from it. The file lands in Downloads and gets opened next week by
+ * somebody who never saw the warning — possibly not even the person who
+ * exported it. A name is the only part of this that travels with the data.
+ */
+const ISSUED_FILENAME = 'temporary-passwords-DELETE-AFTER-HANDOUT.csv';
+
+/**
+ * A hundred temporary passwords, and a way to actually use them.
+ *
+ * WHY THIS IS NOT JUST A TABLE. A CSV import creates as many accounts as the
+ * file had new rows, and every one of them gets a generated password that exists
+ * in exactly one place: this response. Reading two hundred of them off a screen
+ * and retyping them is not a thing anybody does — what they do instead is import
+ * in batches of five, or screenshot the page, or ask for the old guessable
+ * scheme back. So the list has to leave the screen in one action.
+ *
+ * TWO ACTIONS, because they fail in different places. คัดลอก needs no file and
+ * leaves nothing behind, which is the better answer whenever the passwords are
+ * about to be pasted into whatever HR is already working in. ดาวน์โหลด is for
+ * printing and for reading down a phone one at a time — and it leaves a
+ * plaintext file on a shared machine, which is why it says so, twice, and why
+ * the filename says it a third time.
+ *
+ * NEITHER GOES NEAR THE SERVER. The rows are already in this component; the CSV
+ * is built here and handed to a Blob. Round-tripping would put the passwords
+ * back on the wire and give them a URL — and a URL is a thing that gets pasted
+ * into a chat window.
+ *
+ * The one-shot rule is unchanged: nothing here re-fetches, so navigating away
+ * loses the lot and the recovery is ตั้งรหัสใหม่ per person.
+ */
+function IssuedPasswords({ rows }) {
+  const [done, setDone] = useState('');
+
+  const text = () => [
+    ISSUED_HEADERS.join('\t'),
+    ...rows.map((r) => [r.code, r.name, r.password].join('\t')),
+  ].join('\n');
+
+  async function copy() {
+    const payload = text();
+    try {
+      // Only exists in a secure context. This app is served over plain http on
+      // the office network as often as not, where `navigator.clipboard` is
+      // undefined — so the deprecated path below is the one that actually runs,
+      // and it is not a fallback for old browsers but for how this is deployed.
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(payload);
+      else legacyCopy(payload);
+      setDone('copied');
+    } catch {
+      setDone('failed');
+    }
+  }
+
+  function download() {
+    // Built from the same rows the table renders, through the same writer the
+    // reports use — so the file is quoted and BOM'd like every other CSV this
+    // system produces and opens in Excel without a mangled Thai column.
+    const csv = toCsv(ISSUED_HEADERS, rows.map((r) => [r.code, r.name, r.password]));
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = ISSUED_FILENAME;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setDone('downloaded');
+  }
+
+  return (
+    <Alert kind="ok">
+      <strong>รหัสผ่านชั่วคราวของ {rows.length} บัญชีที่เพิ่งสร้าง</strong>
+      {' '}— <strong>แสดงเพียงครั้งเดียว</strong> ออกจากหน้านี้แล้วดูซ้ำไม่ได้
+      {' '}ถ้าพลาดต้องตั้งรหัสใหม่ทีละคน
+
+      <div className="row" style={{ marginTop: 10, marginBottom: 4 }}>
+        <button className="btn" onClick={copy}>คัดลอกทั้งตาราง</button>
+        <button className="btn ghost" onClick={download}>ดาวน์โหลดเป็น CSV</button>
+      </div>
+
+      {done === 'copied' && (
+        <div className="field-note">
+          คัดลอกแล้ว {rows.length} แถว — วางในโปรแกรมที่ใช้แจกได้เลย (คั่นด้วยแท็บ)
+        </div>
+      )}
+      {done === 'downloaded' && (
+        <div className="field-note error">
+          ดาวน์โหลดแล้วเป็นไฟล์ <strong>{ISSUED_FILENAME}</strong>
+          {' '}— ไฟล์นี้มีรหัสผ่านชั่วคราวแบบอ่านได้ทั้งหมด
+          {' '}<strong>ลบทิ้งทันทีที่แจกเสร็จ</strong> และอย่าส่งต่อทางอีเมลหรือแชท
+          {' '}· ถ้าไฟล์หลุด ให้ตั้งรหัสใหม่ให้ทุกคนในรายการนี้
+        </div>
+      )}
+      {done === 'failed' && (
+        <div className="field-note error">
+          คัดลอกไม่สำเร็จ (เบราว์เซอร์ไม่อนุญาต) — ใช้ปุ่มดาวน์โหลด CSV แทน
+          {' '}หรือเลือกข้อความในตารางแล้วคัดลอกเอง
+        </div>
+      )}
+
+      <div className="table-wrap" style={{ marginTop: 8 }}>
+        <table>
+          <thead>
+            <tr>{ISSUED_HEADERS.map((h) => <th key={h}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.code}>
+                <td style={{ whiteSpace: 'nowrap' }}>{row.code}</td>
+                <td>{row.name}</td>
+                <td style={{ fontFamily: 'var(--mono, monospace)', whiteSpace: 'nowrap' }}>
+                  {row.password}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: 6, fontSize: 12.5 }}>
+        ทุกบัญชีจะถูกบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+        {' '}· ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรายการนี้ซ้ำได้
+      </div>
+    </Alert>
+  );
+}
+
+/**
+ * Copy without the Clipboard API, for the pages served over plain http.
+ *
+ * `document.execCommand` is deprecated and is also the only thing that works in
+ * a non-secure context, which is where this app usually runs. Off-screen rather
+ * than hidden: `display: none` cannot be selected, so it would copy nothing.
+ */
+function legacyCopy(payload) {
+  const box = document.createElement('textarea');
+  box.value = payload;
+  box.setAttribute('readonly', '');
+  box.style.position = 'fixed';
+  box.style.top = '-1000px';
+  document.body.appendChild(box);
+  box.select();
+  try {
+    if (!document.execCommand('copy')) throw new Error('execCommand refused');
+  } finally {
+    box.remove();
+  }
+}
+
+/**
+ * A labelled control, with the sentence that explains it.
+ *
+ * TWO PLACES FOR THAT SENTENCE, because it is answering two different
+ * questions.
+ *
+ * `note` stays on screen. It is for a control somebody cannot use: the reason
+ * has to arrive before they try, not after they have clicked at a grey box and
+ * gone looking for whoever maintains this.
+ *
+ * `tip` is the same kind of sentence for a control that works, and it waits
+ * behind the (?) beside the label. Stacked under every field these were a wall
+ * of grey taller than the form — and a wall of grey is read as decoration, so
+ * the one sentence that mattered got skipped along with the rest. Hover gives
+ * it through `title`, a click opens it in place; nothing is shortened or
+ * dropped either way.
+ */
+function Field({ label, note, tip, children, style }) {
+  const [open, setOpen] = useState(false);
   return (
     <div className="field" style={style}>
-      <label>{label}</label>
+      <div className="field-head">
+        <label>{label}</label>
+        {tip && <TipButton text={tip} of={label} open={open} onToggle={() => setOpen((v) => !v)} />}
+      </div>
       {children}
       {note && <div className="field-note">{note}</div>}
+      {tip && open && <div className="field-note">{tip}</div>}
+    </div>
+  );
+}
+
+/**
+ * The (?) that holds a sentence until it is asked for.
+ *
+ * A real <button>, not a styled span: it is reached by Tab, answers Enter and
+ * Space, and says whether it is open — the sentence behind it is the only
+ * explanation of the field, so a pointer must not be the one way to it.
+ */
+function TipButton({ text, of, open, onToggle }) {
+  return (
+    <button
+      type="button"
+      className={open ? 'tip-btn on' : 'tip-btn'}
+      // Hover, for the reader who is not going to click anything.
+      title={text}
+      aria-expanded={open}
+      aria-label={`คำอธิบายของ ${of}`}
+      onClick={onToggle}
+    >
+      ?
+    </button>
+  );
+}
+
+/**
+ * One line, with the rest of it behind the same (?).
+ *
+ * For a paragraph that explains something happening on another screen, read by
+ * somebody in the middle of correcting a surname. The line is what they need
+ * there; the rest is for the reader who wondered why the field is missing
+ * rather than merely noticing that it is.
+ */
+function FoldedNote({ short, full }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="folded-note">
+      <div className="line">
+        <span>{short}</span>
+        <TipButton text={full} of={short} open={open} onToggle={() => setOpen((v) => !v)} />
+      </div>
+      {open && <div className="more">{full}</div>}
     </div>
   );
 }

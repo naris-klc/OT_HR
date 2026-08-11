@@ -322,6 +322,44 @@ The arithmetic is pure and lives in `lib/caps.js`; `checkCap` in
 runs on a **date range rather than a period**, since the week of 30 November
 opens in one month and closes in the next.
 
+### ⚠ วันหยุดบริษัท: `year` is not what decides anything, and once it was
+
+**Fixed 2026-08-11. Read this before deploying — it changes what closed months
+compute to.**
+
+`Holiday.year` is a denormalised copy of the first four characters of `date`,
+derived by a `pre('validate')` hook. All four write paths — manual add and CSV
+import, on both servers — upsert with `findOneAndUpdate`, which is *query*
+middleware: the document hook never ran, and `runValidators: true` only checks
+paths present in the update, so `year: { required: true }` never complained
+about a field nobody had mentioned. **Every holiday ever created through the app
+went in without a `year`.** And `loadHolidaySet()` filtered on `year`.
+
+So HR added วันหยุดบริษัท, saw it appear on the calendar, and the engine could
+not see it: every ใบ OT on that date was computed and paid at ×1.5 วันปกติ
+instead of ×1.5/×3 วันหยุด. The recompute that fires on save reported
+`updated: 1, changed: 0`, which reads like success. Nothing on any screen
+disagreed with anything on any other screen. Only the seeded rows — written
+through `new Holiday()` + `save()` — had a `year` and therefore worked.
+
+Fixed on both sides: the upserts set `year` through the exported `yearOf()`, and
+**nothing that decides a rate reads it any more** — `loadHolidaySet` and both
+calendar list endpoints range over `date` instead (`'YYYY-MM-DD'` sorts
+chronologically, and the unique index on it serves the query). The second half is
+the one that matters: it makes a future missed write cosmetic rather than a
+payroll error. Pinned by `test/holidayYear.test.js`.
+
+**On deploy.** Holidays already in the database with no `year` become effective
+the moment this ships — which is correct, and is a change. Days HR believed were
+holidays start being paid as holidays. Approved entries do not move (the replay
+refuses them, as always), so nothing already sent to accounting is restated; ใบ
+ที่ยังไม่อนุมัติ on those dates will recompute upward the next time anything
+replays them. Before deploying, list them and tell payroll which dates they are:
+
+```js
+db.holidays.find({ year: { $exists: false } }).sort({ date: 1 })
+```
+
 ### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — two flags, and a remark that moved
 
 A benefit that arrived after the twelve, and the only rule in the system whose

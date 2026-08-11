@@ -1,4 +1,4 @@
-import Holiday from '@/src/models/Holiday.js';
+import Holiday, { yearOf } from '@/src/models/Holiday.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { recomputeEntries } from '@/src/services/otService.js';
@@ -8,7 +8,13 @@ import { previousDay } from '@/lib/holidays.js';
 export const GET = route(async (req) => {
   await requireAuth(req);
   const { year } = query(req);
-  const holidays = await Holiday.find(year ? { year: Number(year) } : {}).sort({ date: 1 }).lean();
+  // Filtered on `date` for the reason `loadHolidaySet` is: rows written before
+  // the upserts started setting `year` have none, and a calendar that hid them
+  // would report a day as not-a-holiday while the engine treated it as one.
+  const filter = year
+    ? { date: { $gte: `${Number(year)}-01-01`, $lte: `${Number(year)}-12-31` } }
+    : {};
+  const holidays = await Holiday.find(filter).sort({ date: 1 }).lean();
   return json({ holidays });
 });
 
@@ -23,7 +29,11 @@ export const POST = route(async (req) => {
 
   const holiday = await Holiday.findOneAndUpdate(
     { date },
-    { date, name, source: 'manual' },
+    // `year` spelled out because this is an upsert: `pre('validate')` on the
+    // model is document middleware and does not run here, and `runValidators`
+    // only checks paths present in the update — so a missing `year` raised
+    // nothing and the day silently stayed a working day. See the model.
+    { date, name, source: 'manual', year: yearOf(date) },
     { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
   );
   // A date becoming a holiday changes which buckets its entries fall into.

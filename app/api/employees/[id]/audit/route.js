@@ -14,7 +14,7 @@ import { rosterPermission } from '@/lib/employees.js';
  * บทบาท, which is not a thing a colleague or a manager needs.
  *
  * A birth date can appear in it, as a `from`/`to` on the birthDate field, which
- * is the other reason this cannot be opened up: `maySeeBirthDate` allows HR,
+ * is the other reason this cannot be opened up: `maySeePersonalDetails` allows HR,
  * Admin and the person themselves, and `rosterPermission` is strictly narrower
  * than that. No password ever appears — see lib/rosterAudit.js.
  *

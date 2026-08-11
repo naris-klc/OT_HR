@@ -193,6 +193,37 @@ test('the issued password is still never written to the audit trail', () => {
   }
 });
 
+test('a bulk import’s passwords can leave the screen without a round trip', () => {
+  // Two hundred passwords read off a screen and retyped is not a thing anybody
+  // does — what they do instead is import in batches of five, or screenshot the
+  // page, or ask for the guessable scheme back. So there is a copy and a
+  // download, and both are built from rows the component already holds:
+  // round-tripping would put the passwords back on the wire and give them a URL.
+  const screen = strip(readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8'));
+
+  assert.match(screen, /function IssuedPasswords\(/);
+  assert.match(screen, /navigator\.clipboard\?\.writeText/);
+  assert.match(screen, /new Blob\(\[csv\], \{ type: 'text\/csv;charset=utf-8' \}\)/);
+  // Built locally through the shared writer — never fetched back from a route.
+  assert.match(screen, /toCsv\(ISSUED_HEADERS, rows\.map/);
+  assert.doesNotMatch(screen, /api\.(get|post|download)\([^)]*password/i, 'passwords are re-fetched from the server');
+});
+
+test('the downloaded file says what it is, in the one place that travels with it', () => {
+  // The on-screen warning is read once, by somebody about to click away. The
+  // file gets opened next week, possibly by somebody else. The filename is the
+  // only part of this that goes with the data.
+  const screen = strip(readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8'));
+  assert.match(screen, /ISSUED_FILENAME = 'temporary-passwords-DELETE-AFTER-HANDOUT\.csv'/);
+
+  // And the screen says it too, at the moment the file appears rather than
+  // before — a warning shown before the click is a warning about a hypothetical.
+  const raw = readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8');
+  const block = raw.slice(raw.indexOf("done === 'downloaded'"), raw.indexOf("done === 'failed'"));
+  assert.match(block, /ลบทิ้งทันทีที่แจกเสร็จ/);
+  assert.match(block, /อย่าส่งต่อทางอีเมลหรือแชท/);
+});
+
 /** Comments say what the code should do; these tests are about what it does. */
 function strip(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

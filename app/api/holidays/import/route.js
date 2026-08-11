@@ -1,4 +1,4 @@
-import Holiday from '@/src/models/Holiday.js';
+import Holiday, { yearOf } from '@/src/models/Holiday.js';
 import { route, uploadText, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { parseCsv, pick } from '@/src/lib/csv.js';
@@ -30,7 +30,9 @@ export const POST = route(async (req) => {
 
     await Holiday.findOneAndUpdate(
       { date },
-      { date, name, source: 'import' },
+      // `year` explicitly — an upsert does not run the model's hook. See
+      // src/models/Holiday.js for what that cost before it was noticed.
+      { date, name, source: 'import', year: yearOf(date) },
       { upsert: true, setDefaultsOnInsert: true, runValidators: true },
     );
     dates.push(date);

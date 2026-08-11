@@ -389,6 +389,63 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .field-note { font: 400 12.5px/1.4 var(--sans); color: var(--muted); }
 .field-note.error { color: var(--danger-ink); }
 
+/* The label, and the (?) that carries the sentence explaining the field.
+   `min-height` so a field with no (?) reserves the same first row as one that
+   has it, which is what keeps the boxes below them on one line. */
+.field-head { display: flex; align-items: center; gap: 6px; min-height: 18px; }
+
+/* Small, quiet, and not in the tab order's way — a question somebody may ask,
+   drawn at the weight of a question rather than of an answer. */
+.tip-btn {
+  flex: none; width: 17px; height: 17px; padding: 0;
+  border: 1px solid var(--line); border-radius: 50%;
+  background: #fff; color: var(--muted-2);
+  font: 600 11px/1 var(--latin); cursor: pointer;
+  display: grid; place-items: center;
+  transition: background .14s, border-color .14s, color .14s;
+}
+.tip-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-tint); }
+.tip-btn.on { border-color: var(--green); background: var(--green); color: #fff; }
+.tip-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* ══ grouped dialog form ═════════════════════════════════════════════════ */
+
+/* Nine controls in one queue read as a list to work down; they are really
+   three questions, and only the last of them can refuse. Separated by a rule
+   and a heading rather than by nested boxes — a card inside a dialog inside a
+   backdrop is three borders deep before any content. */
+.edit-form { display: flex; flex-direction: column; }
+.form-group + .form-group {
+  margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line-soft);
+}
+.form-group > .gh {
+  font: 600 11px/1 var(--mono); letter-spacing: .11em; text-transform: uppercase;
+  color: var(--muted-2); margin-bottom: 12px;
+}
+
+/* `align-items: start`, and that is the whole fix for the misalignment.
+   These were flex rows with `align-items: flex-end`, so two fields side by side
+   were pinned by the BOTTOM of their notes — the field with the longer sentence
+   pushed its own label and box upward, and วันเกิด sat a line above อีเมล for
+   no reason a reader could see. Starting them together makes every label and
+   every box in a row share a top edge whatever is written underneath. */
+.form-grid {
+  display: grid; align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 14px;
+}
+/* One column before the boxes get too narrow to read what is in them. */
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* The paragraph about a button on another screen: one line, and the rest of it
+   behind the same (?) the fields use. */
+.folded-note { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.folded-note .line {
+  display: flex; align-items: center; gap: 6px;
+  font: 400 12.5px/1.55 var(--sans); color: var(--muted-2);
+}
+.folded-note .more { margin-top: 6px; font: 400 12.5px/1.55 var(--sans); color: var(--muted-2); }
+
 /* ══ profile ═════════════════════════════════════════════════════════════ */
 
 /* ข้อมูลส่วนตัว, read-only. A description list rather than a table: it is one
@@ -1087,6 +1144,18 @@ table.mini tbody tr:hover { background: none; }
   display: flex; gap: 10px; justify-content: flex-end; align-items: center;
   background: #fff; border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
+/* A dialog's primary action is off while there is nothing to save, and the
+   global `opacity: .55` said that by draining the green — which does not read
+   as "not yet", it reads as a button somebody drew in a lighter colour. Grey
+   with a hairline, so the difference from the live button is a difference of
+   KIND. Drawn with an inset shadow rather than a border: a real border would
+   add two pixels and make the button change size the moment it came alive. */
+.modal-foot .btn:disabled {
+  opacity: 1;
+  background: var(--neutral-wash); color: var(--muted-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
 /* Closing over unsaved typing is asked for twice — on a phone the backdrop is
    always one badly-aimed thumb away. */
 .modal-foot.asking { background: var(--danger-bg); border-top-color: #F3CFC7; flex-wrap: wrap; }

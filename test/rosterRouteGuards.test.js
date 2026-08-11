@@ -56,7 +56,7 @@ test('every handler that writes the roster calls rosterPermission', () => {
 test('every handler that reads a roster trail calls it too', () => {
   // A trail names who changed somebody's แผนก and บทบาท and can carry a วันเกิด
   // as a from/to value. It is not a wider audience than the screen it is drawn
-  // on — see maySeeBirthDate in lib/employees.js, which is strictly wider than
+  // on — see maySeePersonalDetails in lib/employees.js, which is strictly wider than
   // this and still excludes managers.
   for (const file of [TRAIL, TRAIL_ALL, IMPACT]) {
     assert.match(read(file), /rosterPermission\(/, `${file} answers without asking`);
