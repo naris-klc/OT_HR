@@ -359,7 +359,7 @@ test('the report re-reads the dangling reference populate threw away', () => {
 // ── the birthday split: a part of the 1.50 column, never a change to it ─────
 
 /**
- * “วันเกิด 8.00 ชม.” beside a row on สรุป OT ส่งบัญชี.
+ * “วันเกิด” beside a row on สรุป OT ส่งบัญชี, and the hours behind it.
  *
  * Accounting asked for it because the paper they work from has it in HR's
  * handwriting: ×1.5 วันหยุด hours against somebody who worked an ordinary
@@ -397,8 +397,8 @@ const DAY = { startTime: '08:00', endTime: '17:00' };
 test('เดือนเดียวมีทั้งวันเกิดและวันหยุดปกติ — แยกถูก และยอด 1.50 ไม่ขยับ', () => {
   // 4 Aug 2026 is this person's birthday and a Tuesday; 8 Aug is a Saturday.
   // Both land 8 hours in ot15_holiday, by different rules, and the paper shows
-  // one 1.50 column of 16.00 — which is exactly why the remark has to say how
-  // much of it the birthday accounts for.
+  // one 1.50 column of 16.00 — which is exactly why `birthdayHours` has to say
+  // how much of it the birthday accounts for, in the CSV column accounting sums.
   const entries = [
     filed({ workDate: '2026-08-04', ...DAY }, { birthDate: '1977-08-04' }),
     filed({ workDate: '2026-08-08', ...DAY }, { birthDate: '1977-08-04' }),

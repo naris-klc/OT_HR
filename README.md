@@ -325,7 +325,7 @@ Nothing on that sheet ever rendered a day type, so what this removed is the note
 and only the note. A Tuesday a birthday made a holiday still prints its hours in
 the วันหยุด columns, because those come from `entry.segments`.
 
-**On สรุป OT ส่งบัญชี, beside the row — “วันเกิด 8.00 ชม.”** Where HR wrote it by
+**On สรุป OT ส่งบัญชี, beside the row — “วันเกิด”.** Where HR wrote it by
 hand on the paper this sheet replaces, and for the reason they did: ×1.5 วันหยุด
 hours against somebody who worked an ordinary Tuesday read as an error, and
 accounting sends a sheet that does not explain it back. The grid stops after
@@ -334,12 +334,16 @@ the remark — no heading, no rules, no tint, empty on every row with nothing to
 explain, and **no change to `ROWS_PER_PAGE`**: it is a cell in an existing row,
 which is the same trick the ไม่ถูกนับ flag uses in the thead margin band.
 
-**The hours are always named, and they are a SPLIT rather than a new figure.**
-The 1.50 column is one number covering both ×1.5 kinds, so somebody who worked a
-Saturday *and* their own birthday has both in it — “วันเกิด” alone would leave
-accounting to guess how much of the 16.00 the remark is about. `ot15Hours` is
-unchanged by the split's existence, nothing sums the two together, and
-`reconcile()` still balances `filed = reported + unaccounted`.
+**The word alone on the paper; the hours where they are summed.** The strip used
+to read “วันเกิด 8.00 ชม.” — HR asked on **2026-08-11** for the hours off it, so
+the printed sheet matches the handwriting it replaces. The split is still a
+SPLIT rather than a new figure, and it is still carried: `birthday_hours` in the
+CSV and the หมายเหตุ sentence beside it, which is the file accounting keys from
+when the 1.50 column covers both a Saturday and a birthday. On screen,
+ตรวจสอบ/ส่งบัญชี still shows *“วันเกิด · 8.00 ชม. อยู่ในช่องวันหยุด”* — that is
+the screen the figure is checked on. `ot15Hours` is unchanged by the split's
+existence, nothing sums the two together, and `reconcile()` still balances
+`filed = reported + unaccounted`.
 
 **In the CSV as `birthday_hours`, appended last.** After หมายเหตุ, never inserted
 — accounting's sheets count columns from the left and a column in the middle

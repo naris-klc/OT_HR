@@ -224,21 +224,27 @@ for (const file of [
   });
 }
 
-test('ใบพิมพ์ส่งบัญชีระบุจำนวนชั่วโมงวันเกิดเสมอ', () => {
+test('ใบพิมพ์ส่งบัญชีเขียนแค่คำว่าวันเกิด ไม่มีจำนวนชั่วโมงต่อท้าย', () => {
   const src = read('components/AccountingPrint.jsx');
 
-  // The hours are not optional. The 1.50 column is one number covering both ×1.5
-  // kinds, so “วันเกิด” alone would leave accounting to guess how much of it the
-  // remark is about — which is the question the remark exists to answer.
+  // Still driven by the row's own birthday hours — the word appears because the
+  // row HAS such hours, never because of anything else on the sheet.
   assert.match(
     src,
     /if \(!\(row\.birthdayHours > 0\)\) return '';/,
     'หมายเหตุต้องมาจากชั่วโมงวันเกิดของแถว ไม่ใช่ค่าอื่น',
   );
+  // The word alone, the way HR wrote it by hand. The split that tells accounting
+  // how much of the 1.50 column is birthday hours lives in the CSV
+  // (`birthday_hours` + หมายเหตุ), which is what their spreadsheet reads.
   assert.match(
     src,
-    /`\$\{BIRTHDAY_REMARK\} \$\{amount\(row\.birthdayHours\)\} ชม\.`/,
-    'ต้องพิมพ์จำนวนชั่วโมงต่อท้ายคำว่าวันเกิด ด้วยทศนิยมสองตำแหน่งเหมือนทุกยอดบนใบ',
+    /return BIRTHDAY_REMARK;/,
+    'แถบข้างแถวต้องมีแค่คำว่าวันเกิด',
+  );
+  assert.ok(
+    !/BIRTHDAY_REMARK\}? \$?\{?[^}]*ชม\./.test(src),
+    'ใบพิมพ์ต้องไม่มีจำนวนชั่วโมงต่อท้ายคำว่าวันเกิดอีก',
   );
 
   // Beside the row, in the strip — not a fifth ruled column of the form and not
