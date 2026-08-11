@@ -5,11 +5,12 @@ import {
   api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS, companyLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
-import { overCap, pendingCapNote } from '@/lib/caps.js';
-import { Alert, Empty, AddBirthDateHint } from './common.jsx';
+import { capFigure, overCap, pendingCapNote } from '@/lib/caps.js';
+import { Alert, Empty, AddBirthDateHint, RateHead } from './common.jsx';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
 import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
 import PrintForm from './PrintForm.jsx';
+import PrintFormBatch from './PrintFormBatch.jsx';
 import HrEntries from './HrEntries.jsx';
 import HrEdits from './HrEdits.jsx';
 import { useBackHandler } from './nav.jsx';
@@ -63,6 +64,20 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
   useBackHandler(Boolean(printing), () => setPrinting(null));
   useBackHandler(Boolean(auditing), () => setAuditing(null));
   useBackHandler(Boolean(opened), () => setOpened(null));
+
+  // The whole table as one document, or one row of it — the same sheet either
+  // way. The list is captured into state when the button is pressed rather than
+  // read from `data` while printing, so a reload underneath cannot renumber the
+  // pages of a bundle somebody is already reading.
+  if (printing?.employees) {
+    return (
+      <PrintFormBatch
+        employees={printing.employees}
+        period={period}
+        onClose={() => setPrinting(null)}
+      />
+    );
+  }
 
   if (printing) {
     return (
@@ -119,6 +134,21 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
         </div>
 
         <div className="row" style={{ marginTop: 12 }}>
+          {/* The month as one document instead of one press per person. Whose
+              sheets are in it is exactly the table below — same order, same
+              สถานะที่นับ — so the bundle can be checked against the screen it
+              was printed from. Each sheet is fetched the way the per-row button
+              fetches it, so a page in the bundle and a page printed on its own
+              are the same page. */}
+          <button
+            className="btn ghost"
+            disabled={!data?.employees?.length}
+            onClick={() => setPrinting({ employees: data.employees.map((r) => r.employee) })}
+            title="รวมใบ F-HR-027 ของทุกคนในตารางไว้ในเอกสารเดียว หนึ่งคนต่อหนึ่งหน้า"
+          >
+            พิมพ์ F-HR-027 ทุกคน
+            {data?.employees?.length ? ` (${data.employees.length} คน)` : ''}
+          </button>
           <button
             className="btn ghost"
             onClick={() => api.download(
@@ -163,9 +193,11 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                   <tr>
                     <th>พนักงาน</th>
                     <th>แผนก</th>
-                    <th className="num">×1.5 ปกติ</th>
-                    <th className="num">×1.5 วันหยุด</th>
-                    <th className="num">×3</th>
+                    {/* Broken where RateHead says, not where the width falls
+                        out — the same three headings on every screen. */}
+                    <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
+                    <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
+                    <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
                     <th className="num">รวม ชม.</th>
                     <th className="num">รายการ</th>
                     <th className="num">แก้ไข</th>
@@ -190,9 +222,9 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
                       </td>
                       <td>{row.department?.nameTh || row.department?.name}</td>
-                      <td className="num">{hours(row.summary.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                      <td className="num">{hours(row.summary.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                      <td className="num">{hours(row.summary.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                      <td className="num rate-col">{hours(row.summary.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                      <td className="num rate-col">{hours(row.summary.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                      <td className="num rate-col">{hours(row.summary.buckets[BUCKETS.OT3_HOLIDAY])}</td>
                       <td className="num"><strong>{hours(row.summary.otHours)}</strong></td>
                       <td className="num">
                         {row.entryCount}
@@ -258,9 +290,9 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                   ))}
                   <tr>
                     <td colSpan={2}><strong>รวมทั้งหมด</strong></td>
-                    <td className="num"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_WEEKDAY])}</strong></td>
-                    <td className="num"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
-                    <td className="num"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>
+                    <td className="num rate-col"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_WEEKDAY])}</strong></td>
+                    <td className="num rate-col"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
+                    <td className="num rate-col"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>
                     <td className="num"><strong>{hours(data.grandTotal.otHours)}</strong></td>
                     <td colSpan={5} />
                   </tr>
@@ -377,19 +409,28 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
  * `capUsedHours` is absent from a payload written before this existed, so the
  * colour falls back to the printed figure: the old behaviour, rather than a
  * column that silently stops warning at all.
+ *
+ * A DEPARTMENT WITH NO CEILING still shows its hours. The cell used to print
+ * "ไม่กำหนด" and nothing else, which answered a question nobody was asking —
+ * how much somebody has worked this month is worth knowing whether or not there
+ * is a limit on it, and the absence of a limit is already legible in a figure
+ * with no "/ 40" after it. `capFigure` is what makes that safe: it prints the
+ * number alone rather than the "/ 0" a bare `||` would turn a blank ceiling
+ * into, and the note under it says รวมทั้งหมด instead of เพดานนับ.
  */
 function CapCell({ cap }) {
-  if (cap.capHours == null) return <span style={{ color: 'var(--muted)' }}>ไม่กำหนด</span>;
-
   const capUsed = cap.capUsedHours ?? cap.usedHours;
   const note = pendingCapNote(cap.usedHours, capUsed, cap.capHours);
 
   return (
     <>
       <span style={{ color: overCap(capUsed, cap.capHours) ? 'var(--danger-ink)' : 'inherit' }}>
-        {hours(cap.usedHours)} / {cap.capHours}
+        {capFigure(cap.usedHours, cap.capHours)}
       </span>
-      {note && <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{note}</div>}
+      {/* `.cap-sub` rather than an inline style: คิวรออนุมัติ prints this same
+          sentence about the same hours, and two screens that agree on the words
+          should not disagree on the type. */}
+      {note && <div className="cap-sub">{note}</div>}
     </>
   );
 }

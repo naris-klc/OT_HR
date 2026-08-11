@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, ProxyMark, RequestTrail, StatusChip,
+  Alert, Empty, EditedMark, EntryHistory, ProxyMark, RateHead, RequestTrail, StatusChip,
   editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isProxyFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
@@ -178,9 +178,9 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
               <tr>
                 <th>วันที่</th>
                 <th>จาก–ถึง</th>
-                <th className="num">×1.5 ปกติ</th>
-                <th className="num">×1.5 วันหยุด</th>
-                <th className="num">×3</th>
+                <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
+                <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
+                <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
                 <th className="num">รวม</th>
                 <th>รายละเอียดงานที่ทำ</th>
                 <th>กฎที่ใช้</th>
@@ -209,9 +209,9 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                         <div style={{ fontSize: 12, color: 'var(--amber)' }}>ข้ามคืน</div>
                       )}
                     </td>
-                    <td className="num">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
-                    <td className="num">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
-                    <td className="num">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
+                    <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
+                    <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
+                    <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
                     <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
                     <td>
                       {e.description}

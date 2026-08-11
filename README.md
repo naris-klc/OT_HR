@@ -1115,6 +1115,27 @@ built from *segments*, not entries, so an overnight session appears on both
 dates with its hours in the correct column — Friday's row reads 17:00–24:00 and
 Saturday's 00:00–07:00.
 
+**พิมพ์ F-HR-027 ทุกคน** — the same sheet for a whole month in one document,
+one person to a side of paper. `components/PrintFormBatch.jsx` renders
+`F027Sheet` once per employee, each one fetched from
+`GET /api/reports/form/:period?employee=` exactly as the per-row button fetches
+it, so a page in the bundle and a page printed on its own are the same page.
+The sheet element is declared in one file only —
+[`test/formBundle.test.js`](test/formBundle.test.js) pins that, because a
+second copy of a controlled form is a second form the day one of them is
+corrected.
+
+Who is in the bundle is the rows of ตรวจสอบรายเดือน as they stand: same order,
+same **สถานะที่นับ**. Somebody with no OT that month has no row and gets no
+sheet — a blank F-HR-027 is a page nobody signs — and somebody whose only hours
+are still in a queue is in or out according to the filter, which is the same
+lever that decided whether their row was on the screen at all. The filter never
+reaches the sheets themselves: each is fetched with the form route's own
+statuses (อนุมัติแล้ว + ค้างอนุมัติ), which is what the paper has always shown,
+since it is the sheet the approval is signed onto. Sheets are fetched four at a
+time, and an employee whose sheet fails is named above the stack rather than
+silently missing from it.
+
 **รายละเอียดงานที่ทำ is capped at 22 characters** — `DESCRIPTION_MAX_CHARS` in
 [`src/config/policy.js`](src/config/policy.js), enforced by
 `normaliseDescription()` on both write paths and shown as a live counter on the

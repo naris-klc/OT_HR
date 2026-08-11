@@ -195,10 +195,17 @@
    the paper. Printing strips all of that. */
 .f027-screen { background: #e8ebe9; padding: 16px; }
 .f027-screen .f027 { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 10mm 8mm; }
+/* A whole month printed in one go puts every employee's sheet in the same
+   wrapper — one person to a side, the same rule the other two multi-sheet
+   documents carry (.acct, .otdept). One sheet on its own has no sibling and is
+   therefore untouched by this. */
+.f027-screen .f027 + .f027 { margin-top: 16px; }
 
 @media print {
   .f027-screen { background: #fff; padding: 0; }
   .f027-screen .f027 { box-shadow: none; padding: 0; }
+  .f027-screen .f027 + .f027 { margin-top: 0; }
+  .f027 + .f027 { break-before: page; page-break-before: always; }
   /* A month with enough split sessions outgrows the sheet. Let it run onto a
      second page with the column headings repeated, rather than forcing the
      whole form onto one page and having the browser shrink or clip it. */

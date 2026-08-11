@@ -881,12 +881,11 @@ tfoot tr.grand td {
    the widths and lets the table exceed the card, which is the trade this whole
    block is making. Every width is measured — the longest name on the roster,
    the widest heading, the compound figure — not estimated. */
-.queue-table { table-layout: fixed; min-width: 1252px; }
+.queue-table { table-layout: fixed; min-width: 1262px; }
 
 /* A row is as tall as its tallest cell, so these are what kept every row two
    lines taller than its content. */
 .queue-table td.who-col .who-name,
-.queue-table td.who-col .nb,
 .queue-table td.when-col,
 .queue-table td.span-col { white-space: nowrap; }
 
@@ -901,10 +900,10 @@ th.who-col { width: 168px; }
 
 /* "16 ส.ค. 69" is 90px; the long form it replaced was 130 and the heading is
    49. */
-th.when-col { width: 96px; }
+th.when-col { width: 92px; }
 
 /* "17:00–21:00" is 108, and ไม่พักเที่ยง under it is 79. */
-th.span-col { width: 112px; }
+th.span-col { width: 108px; }
 
 /* สะสมทั้งเดือน carries a compound figure ("16.5 / 40 ชม.", 137px), a breach
    line (162px) and, where a department sets a weekly ceiling, a date range
@@ -915,21 +914,59 @@ th.span-col { width: 112px; }
    this column 283px — wider than any other in the table, to repeat on forty
    rows a label that describes the column. It drops to the second line instead,
    at every width, so the figure stays whole and the rows stay level. */
-th.cap-col { width: 196px; }
+th.cap-col { width: 224px; }
 
-/* The four rate columns hold one or two digits and a decimal — 58px with
-   padding — and every bit of their old width was in the heading: "×1.5 วันหยุด"
-   is 105px on one line. So the heading is the one thing in this table allowed
-   to take two lines. It is written once, at the top, where a taller row costs
-   nothing, and it buys back nearly 200px for the columns that cannot wrap at
-   all. `vertical-align: bottom` keeps one- and two-line headings on a baseline. */
-th.rate-col { width: 56px; }
-th.rate-col { white-space: normal; vertical-align: bottom; }
-.queue-table td.rate-col { white-space: nowrap; }
+/* ── the rate columns, on every table that has them ──────────────────────
+   Six tables on four screens carry ×1.5 ปกติ · ×1.5 วันหยุด · ×3, and these
+   rules are deliberately NOT scoped to the queue: the three columns are the
+   same three columns wherever they appear and should not be set three ways.
 
-/* Tighter than the 12px every other cell gets: these columns are four
-   characters wide, so a third of each one was padding. */
-.queue-table th.rate-col, .queue-table td.rate-col { padding-left: 8px; padding-right: 8px; }
+   The heading breaks where `RateHead` puts the <br>, so the width is measured
+   against the LONGEST WORD rather than the whole phrase — "วันหยุด", not
+   "×1.5 วันหยุด". Left to the browser the phrase broke wherever the width fell,
+   which at these widths meant three lines and a Thai word torn in half.
+
+   `white-space: normal` because the base `th` rule sets nowrap, which would
+   refuse the break we do want; `.nb` on the lower word is what refuses the ones
+   we do not. */
+/* Measured, in the heading's own face: ×1.5 is 31, ปกติ 26, ×3 16, รวม 23,
+   วันหยุด 42 — and the figures under them 34 ("12.5", the widest an entry's
+   hours can be). Sixteen of padding on top of the larger of the two. `wide` is
+   the two columns whose lower word is วันหยุด. */
+th.rate-col { width: 52px; }
+th.rate-col.wide { width: 58px; }
+th.rate-col { white-space: normal; }
+th.rate-col, td.rate-col { padding-left: 8px; padding-right: 8px; }
+td.rate-col { white-space: nowrap; }
+
+/* Centred, headings and figures together.
+   These four columns are a block: three rates and their total, each one or two
+   characters wide in a column sized by its heading. Right-aligned — the rule
+   for figures read down a column — they sat hard against their right edge with
+   the heading centred above them, and the block read as four ragged strips
+   rather than one. Tabular figures still line up digit under digit; the column
+   is too narrow for the alignment to be doing any other work. */
+th.rate-col, td.rate-col { text-align: center; }
+
+/* ×3 IS a holiday rate — it is holiday hours outside 08:00–17:00 — so it takes
+   the same second line as ×1.5 วันหยุด, and all three headings are two lines
+   deep. Nothing is left floating at a different height, which is what a single
+   one-line heading in a row of two-line ones does however it is aligned.
+   รวม stays one line and sits on the FIRST of them, level with ×1.5 and ×3:
+   it is the only heading in the block that is not a rate, and it belongs with
+   the rates rather than with the days they apply to.
+   Applied to every heading in the row, not only the rate ones, so พนักงาน and
+   วันที่ start on that first line too. On a row of single-line headings this
+   changes nothing at all — top and middle are the same place when there is
+   only one line. */
+thead th { vertical-align: top; }
+/* …except the tick box, which is a control rather than a word and belongs in
+   the middle of whatever height the headings make. */
+thead th.check { vertical-align: middle; }
+
+/* One word, never broken — the lower half of a rate heading, and the employee
+   code in the queue's first column. */
+.nb { white-space: nowrap; }
 
 /* Three buttons that must not break mid-label, measured as a set: 58 + 73 + 91,
    two 6px gaps, and the cell's own padding. It was 246 and the third button was
@@ -941,29 +978,23 @@ th.act-col { width: 258px; }
    whatever the other ten columns did not take, which on a narrow card was
    76px — a column of one word per line, which is the failure this block
    exists to end. */
-th.why-col { width: 160px; }
+th.why-col { width: 150px; }
 
-/* The "what this counts" label, on the line under the figure it qualifies.
-   `nowrap` because it is one phrase: wrapped where it fell it broke as
-   "(อนุมัติแล้ว" over "เท่านั้น)", which reads as two words neither of which is
-   a word. Smaller and greyer than the figure, so it stays a label. */
-.cap-note {
-  font: 400 11px/1.4 var(--sans); color: var(--muted);
-  white-space: nowrap;
-}
+/* `.cap-note` and `.cap-why` were the "(อนุมัติแล้วเท่านั้น)" label and the (?)
+   beside it. Both are gone: the line under the figure now says what the ceiling
+   counts (`pendingCapNote`), which is what the label was for, and everything
+   the (?) held was already in the รายละเอียด pop-up in the same words.
 
-/* The (?) that holds the month, this row's own contribution, and the room
-   left. Everything behind it is still said in full — see `why` in
-   components/ApprovalQueue.jsx — it is simply not what the eye needs while
-   scanning forty rows. A dotted ring rather than an icon: it has to read as
-   "there is more here" at 11px without becoming the thing you look at. */
-.cap-why {
-  display: inline-block; width: 14px; height: 14px;
-  border: 1px dotted var(--muted-2); border-radius: 50%;
-  font: 600 10px/12px var(--sans); text-align: center; color: var(--muted);
-  cursor: help; vertical-align: 1px;
-}
-.cap-why:hover { border-style: solid; color: var(--ink); }
+   `.cap-sub` is what replaced them — the line under the figure, on คิวรออนุมัติ
+   and on ตรวจสอบรายเดือน both. One class rather than one per screen for the
+   same reason the sentence itself is one function: two screens quoting the same
+   hours should not differ in how they look either, and the review screen was
+   carrying this as an inline style that nothing kept in step with the queue.
+
+   Sans rather than the mono `.cell-sub` uses: it is a sentence with two figures
+   in it, not a figure, and mono costs it 39px it does not have — enough to
+   break "รวมใบที่รออนุมัติ" across two lines in the middle of the phrase. */
+.cap-sub { font: 400 11.5px/1.45 var(--sans); color: var(--muted); }
 
 /* HR's queue arrives all at once at month end. These are the controls that
    turn "every request in the company" back into "the ones I am deciding
@@ -1011,7 +1042,21 @@ th.why-col { width: 160px; }
   display: block; height: 100%; background: var(--green); transition: width .2s ease;
 }
 
-th.check, td.check { width: 42px; padding-right: 0; text-align: center; }
+/* A TABLE CELL, not a flex box — and it has to be said, because `.check` two
+   hundred lines up is a form-label rule (`display: flex`) and these cells carry
+   the same class name. A cell set to `display: flex` stops being a table cell:
+   it no longer stretches to its row's height, it sizes to its own content
+   instead, and the rest of the column shows the page through the gap.
+
+   That is the white rectangle under the header checkbox. It was latent for as
+   long as the heading row happened to be as short as a checkbox — 40px, the
+   same as the cell — and appeared the moment the rate headings were allowed a
+   second line and the row grew to 71px, leaving 31px of the column unpainted
+   against a header that is `--neutral-wash` everywhere else.
+
+   Scoped to `th`/`td` so every `<label className="check">` on a form keeps the
+   flex layout it was written for. */
+th.check, td.check { display: table-cell; width: 42px; padding-right: 0; text-align: center; }
 th.check input, td.check input {
   width: 17px; height: 17px; accent-color: var(--green); cursor: pointer; vertical-align: middle;
 }

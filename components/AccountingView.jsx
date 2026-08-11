@@ -5,7 +5,7 @@ import {
   api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES, accountingLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
-import { Alert, Empty, UnaccountedHours } from './common.jsx';
+import { Alert, Empty, RateHead, UnaccountedHours } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -228,9 +228,9 @@ function CompanySheet({ company, period, index }) {
                 <tr>
                   <th>พนักงาน</th>
                   <th>แผนก</th>
-                  <th className="num">×1.5 ปกติ</th>
-                  <th className="num">×1.5 วันหยุด</th>
-                  <th className="num">×3</th>
+                  <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
+                  <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
+                  <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
                   <th className="num">รวม ชม.</th>
                   <th>หมายเหตุ / บริษัท</th>
                 </tr>
@@ -243,9 +243,9 @@ function CompanySheet({ company, period, index }) {
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
                     </td>
                     <td>{row.department?.name || '—'}</td>
-                    <td className="num">{cell(row.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                    <td className="num">{cell(row.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                    <td className="num">{cell(row.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                    <td className="num rate-col">{cell(row.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                    <td className="num rate-col">{cell(row.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                    <td className="num rate-col">{cell(row.buckets[BUCKETS.OT3_HOLIDAY])}</td>
                     <td className="num">
                       <strong>{cell(row.otHours)}</strong>
                     </td>
@@ -277,9 +277,9 @@ function CompanySheet({ company, period, index }) {
                   <tr key={d.department?.id || 'none'}>
                     <td>รวมแผนก</td>
                     <td>{d.department?.name || '—'}</td>
-                    <td className="num">{cell(d.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                    <td className="num">{cell(d.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                    <td className="num">{cell(d.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                    <td className="num rate-col">{cell(d.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                    <td className="num rate-col">{cell(d.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                    <td className="num rate-col">{cell(d.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
                     <td className="num">{cell(d.totals.otHours)}</td>
                     <td>{d.totals.headcount} คนมี OT</td>
                   </tr>
@@ -287,9 +287,9 @@ function CompanySheet({ company, period, index }) {
                 <tr className="grand">
                   <td>รวมทั้งหมด</td>
                   <td>{company.accountingCode ? `${company.accountingCode} · ${company.shortTh}` : company.shortTh}</td>
-                  <td className="num">{hours(t.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                  <td className="num">{hours(t.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                  <td className="num">{hours(t.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                  <td className="num rate-col">{hours(t.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                  <td className="num rate-col">{hours(t.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                  <td className="num rate-col">{hours(t.buckets[BUCKETS.OT3_HOLIDAY])}</td>
                   <td className="num">{hours(t.otHours)}</td>
                   <td>{t.headcount} คน · {t.entryCount} รายการ</td>
                 </tr>
@@ -315,9 +315,9 @@ function AllCompanies({ data }) {
             <tr>
               <th>บริษัท</th>
               <th className="num">จำนวนคน</th>
-              <th className="num">×1.5 ปกติ</th>
-              <th className="num">×1.5 วันหยุด</th>
-              <th className="num">×3</th>
+              <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
+              <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
+              <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
               <th className="num">รวม ชม.</th>
             </tr>
           </thead>
@@ -331,9 +331,9 @@ function AllCompanies({ data }) {
                   </div>
                 </td>
                 <td className="num">{c.totals.headcount}</td>
-                <td className="num">{cell(c.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                <td className="num">{cell(c.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                <td className="num">{cell(c.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                <td className="num rate-col">{cell(c.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                <td className="num rate-col">{cell(c.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                <td className="num rate-col">{cell(c.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
                 <td className="num"><strong>{cell(c.totals.otHours)}</strong></td>
               </tr>
             ))}
@@ -342,9 +342,9 @@ function AllCompanies({ data }) {
             <tr className="grand">
               <td>รวมทั้งหมด</td>
               <td className="num">{g.headcount}</td>
-              <td className="num">{hours(g.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-              <td className="num">{hours(g.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-              <td className="num">{hours(g.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+              <td className="num rate-col">{hours(g.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+              <td className="num rate-col">{hours(g.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+              <td className="num rate-col">{hours(g.buckets[BUCKETS.OT3_HOLIDAY])}</td>
               <td className="num">{hours(g.otHours)}</td>
             </tr>
           </tfoot>

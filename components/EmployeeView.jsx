@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  StatusChip, Alert, Empty, EditedMark, EntryHistory, Modal, ProxyMark, RequestTrail,
+  StatusChip, Alert, Empty, EditedMark, EntryHistory, Modal, ProxyMark, RateHead, RequestTrail,
   editsOf, trailOf,
 } from './common.jsx';
 import { awaitingFirstSignature, isProxyFiled, refileState } from '@/lib/entries.js';
@@ -264,9 +264,9 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                   <tr>
                     <th>วันที่</th>
                     <th>เวลา</th>
-                    <th className="num">×1.5 ปกติ</th>
-                    <th className="num">×1.5 วันหยุด</th>
-                    <th className="num">×3</th>
+                    <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
+                    <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
+                    <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
                     <th className="num">รวม</th>
                     <th>รายละเอียด</th>
                     <th>สถานะ</th>
@@ -286,9 +286,9 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                         {e.endsNextDay && <div style={{ fontSize: 12, color: 'var(--amber)' }}>ข้ามคืน</div>}
                         {e.noBreakTaken && <div className="hint">ไม่พักเที่ยง</div>}
                       </td>
-                      <td className="num">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
-                      <td className="num">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
-                      <td className="num">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
+                      <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
+                      <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
+                      <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
                       <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
                       <td style={{ maxWidth: 260 }}>
                         {e.description}

@@ -475,80 +475,179 @@ test('ตรวจสอบรายเดือน still opens on อนุม�
   // widest, which is the one nobody has selected.
   assert.match(view, /overCap\(capUsed, cap\.capHours\)/, 'the cap colour follows the filter again');
   assert.match(view, /pendingCapNote\(/, 'the cell no longer says which figure the colour came from');
+
+  // The เพดาน cell prints through `capFigure`, so a department with no ceiling
+  // shows its hours rather than the bare "ไม่กำหนด" it used to, and a blank
+  // ceiling can never render as "/ 0".
+  assert.match(view, /capFigure\(cap\.usedHours, cap\.capHours\)/, 'the cell builds its own figure again');
+  assert.doesNotMatch(stripComments(view), /ไม่กำหนด/, 'a department with no ceiling shows no hours again');
+  // And both screens style the note with the one shared class.
+  assert.match(view, /className="cap-sub"/, 'the review screen styles the note its own way again');
 });
 
 /**
  * The สะสมทั้งเดือน column, read as text — there is no DOM in this suite.
  *
- * What is pinned is the ORDER OF PROMINENCE, which is the whole of this change:
- * the approved figure is the headline, the pending hours are a line under it,
- * a breach is on the row, and everything else is one press away.
+ * ANOTHER DELIBERATE CHANGE OF SPEC, and the assertions below used to say the
+ * opposite. This column carried three lines of its own invention — the figure
+ * with " ชม.", "(อนุมัติแล้วเท่านั้น)" with a (?) beside it, and
+ * "+ รออนุมัติ 19" — while ตรวจสอบรายเดือน said the same thing about the same
+ * hours in two lines and different words. Two screens, one fact, two phrasings,
+ * and a reviewer holding both had to work out they were the same.
+ *
+ * The queue now prints exactly what the review screen prints. The label went
+ * because the note under the figure says what it counts; the (?) went with it,
+ * and what it held was already in the รายละเอียด pop-up, unchanged.
  */
-test('the queue column leads with the approved figure, not the ceiling total', () => {
+test('the queue column prints the same two lines ตรวจสอบรายเดือน prints', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
   const cell = queue.slice(queue.indexOf('function CapUsage'), queue.indexOf('function WeekUsage'));
 
-  // The headline is approvedHours. This is the assertion that fails if anybody
-  // puts the pending-inclusive total back at the top of the column.
+  // The headline is approvedHours, with no unit — "16.5 / 40", as the review
+  // screen prints it. This fails if anybody puts the ceiling total back on top.
   assert.match(
     cell,
-    /<strong>\{capFigure\(month\.approvedHours, month\.capHours\)\} ชม\.<\/strong>/,
-    'the headline is no longer the approved figure',
+    /<strong>\{capFigure\(month\.approvedHours, month\.capHours\)\}<\/strong>/,
+    'the headline is no longer the approved figure, or grew a unit back',
   );
-  assert.doesNotMatch(
-    cell,
-    /<strong>\{capFigure\(month\.usedHours/,
-    'the ceiling total is back in the headline',
-  );
+  assert.doesNotMatch(cell, /<strong>\{capFigure\(month\.usedHours/, 'the ceiling total is back in the headline');
 
-  // The second line, and the condition it appears under.
-  assert.match(cell, /pending > 0 &&[\s\S]{0,200}\+ รออนุมัติ \{hours\(pending\)\}/, 'the pending line is gone');
+  // The second line is the shared sentence, not a locally assembled one.
+  assert.match(cell, /capNote\(month\) && <div className="cap-sub">\{capNote\(month\)\}<\/div>/, 'the note line is gone');
+  assert.match(queue, /pendingCapNote\(w\.approvedHours, w\.usedHours, w\.capHours\)/, 'the note is no longer the shared one');
 
-  // The breach is on the row, never behind the (?).
-  assert.match(cell, /const breach = breachLine\(month\);/, 'the breach warning is gone from the row');
-  assert.match(cell, /\{breach && \(/, 'the breach warning no longer renders on the row');
-  assert.doesNotMatch(cell, /why = \[[\s\S]*?breach[\s\S]*?\]\.filter/, 'the breach was folded into the tooltip');
+  // The breach stays on the row.
+  assert.match(cell, /breachLine\(month\) && \(/, 'the breach warning no longer renders on the row');
 
-  // …and the (?) carries the rest, in the words it was already written in.
-  assert.match(cell, /title=\{why\}/, 'the (?) no longer carries the detail');
-  assert.match(cell, /periodLabel\(month\.period\)/, 'which month is no longer said anywhere');
-  assert.match(cell, /รวมใบนี้ \$\{hours\(month\.adding\)\} ชม\. แล้ว/, 'the row\'s own contribution is gone');
-  assert.match(cell, /roomLine\(month\)/, 'the room left over is gone');
+  // And the three things this pass removed are gone from the cell.
+  assert.doesNotMatch(cell, /รออนุมัติ \{hours/, 'the separate "+ รออนุมัติ" line is back');
+  assert.doesNotMatch(cell, /cap-why|title=\{why\}/, 'the (?) is back on the row');
+  assert.doesNotMatch(queue, /APPROVED_ONLY/, 'the "(อนุมัติแล้วเท่านั้น)" label is back');
 });
 
 /**
- * The หัวหน้า who reads 16.5 / 40 and believes there are 23.5 hours of room is
- * the reason the second line is never folded away. It is only correct to hide
- * it when there is genuinely nothing waiting.
+ * What the (?) used to hold had to land somewhere, and the pop-up already had
+ * all of it: which month, whether this row is inside the figure, the room left
+ * over. Nothing was dropped when the icon was.
  */
-test('the pending line is shown whenever anything is pending, and only then', () => {
+test('everything the (?) held is still in the รายละเอียด pop-up', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  const cell = queue.slice(queue.indexOf('function CapUsage'), queue.indexOf('function WeekUsage'));
+  const from = queue.indexOf('k={`สะสมทั้งเดือน');
+  const popup = queue.slice(from, queue.indexOf('<div className="split"', from));
 
-  assert.match(cell, /const pending = month\.pendingHours \|\| 0;/);
-  // Not inside the `why` tooltip and not conditioned on anything else.
-  assert.doesNotMatch(cell, /why = \[[\s\S]*?รออนุมัติ[\s\S]*?\]/, 'the pending hours were hidden behind the (?)');
+  assert.match(queue.slice(from - 40, from + 60), /periodLabel\(e\.usage\.month\.period\)/, 'which month');
+  assert.match(popup, /รวมใบนี้ \$\{hours\(e\.usage\.month\.adding\)\} ชม\. แล้ว/, "the row's own contribution");
+  assert.match(popup, /roomLine\(e\.usage\.month\)/, 'the room left over');
 });
 
 /**
- * The figure and its unit are one thing and must break as one.
- *
- * "16.5 /" above "40 ชม." is not a figure, it is two, and the column is the
- * narrowest place in the table where that can happen.
+ * The figure and its ceiling are one thing and must break as one: "16.5 /"
+ * above "40" is not a figure, it is two.
  */
-test('nothing in the cap cell may wrap between a number and its unit', () => {
+test('nothing in the cap cell may wrap between a number and its ceiling', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  const cell = queue.slice(queue.indexOf('function CapUsage'), queue.indexOf('const APPROVED_ONLY'));
+  const cell = queue.slice(queue.indexOf('function CapUsage'), queue.indexOf('const capNote'));
   const styles = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
 
-  const figures = [...cell.matchAll(/ชม\./g)].length;
   const nowraps = [...cell.matchAll(/whiteSpace: 'nowrap'/g)].length;
-  assert.ok(nowraps >= 2, `${nowraps} nowrap guards for ${figures} figures in the cell`);
+  assert.ok(nowraps >= 2, `${nowraps} nowrap guards in the cap cell`);
 
-  // And the column was widened to make that possible without scrolling — paid
-  // for out of the three rate columns, which hold four characters at most.
+  // And the column keeps a measured width, paid for out of the rate columns.
   assert.match(styles, /th\.cap-col \{ width: \d+px; \}/, 'the cap column lost its width');
   assert.match(styles, /th\.rate-col \{ width: \d+px; \}/, 'the rate columns were not narrowed to pay for it');
+});
+
+// ── one sentence, both screens, ceiling or no ceiling ───────────────────────
+
+/**
+ * THE WORDS, to the letter, for the case both screens share.
+ *
+ * `pendingCapNote` takes the figure being shown and the figure the ceiling
+ * counts. On ตรวจสอบรายเดือน the first is whatever สถานะที่นับ selected; in the
+ * queue it is the approved hours. Different first argument, identical output —
+ * which is the whole point of the sentence living in one place.
+ */
+test('a department with a ceiling reads the same on both screens, character for character', () => {
+  const expected = 'เพดานนับ 35.5 / 40 · รวมใบที่รออนุมัติ';
+
+  // ตรวจสอบรายเดือน at its default filter: shows 16.5, ceiling counts 35.5.
+  assert.equal(pendingCapNote(16.5, 35.5, 40), expected);
+  // คิวรออนุมัติ: shows the approved 16.5, ceiling counts the same 35.5.
+  assert.equal(pendingCapNote(16.5, 35.5, 40), expected);
+  // And at a wider filter the review screen shows more while the note holds.
+  assert.equal(pendingCapNote(23.5, 35.5, 40), expected);
+});
+
+/**
+ * A department with NO ceiling — `monthlyCapHours` is null, which is not zero
+ * and not "ไม่กำหนด" pretending to be a number.
+ *
+ * The total is still worth knowing: how much somebody has worked this month
+ * does not stop mattering because nobody set a limit on it. Only the first word
+ * changes, and no slash appears anywhere.
+ */
+test('a department with no ceiling says รวมทั้งหมด, and prints no slash at all', () => {
+  const note = pendingCapNote(16.5, 35.5, null);
+
+  assert.equal(note, 'รวมทั้งหมด 35.5 · รวมใบที่รออนุมัติ');
+  assert.ok(!note.includes('/'), 'a "/" reached a line with no ceiling on it');
+  assert.ok(!note.includes('ไม่กำหนด'), '"ไม่กำหนด" was printed as if it were a figure');
+  assert.ok(!note.includes('เพดาน'), 'a department with no ceiling was told about its ceiling');
+});
+
+test('an unset ceiling never becomes a ceiling of zero', () => {
+  // The mistake one `||` away, in the sentence and in the figure it embeds.
+  assert.ok(!pendingCapNote(3, 9, null).includes('/ 0'));
+  assert.equal(capFigure(9, null), '9');
+  // A TYPED zero is a real ceiling and still prints as one.
+  assert.equal(pendingCapNote(3, 9, 0), 'เพดานนับ 9 / 0 · รวมใบที่รออนุมัติ');
+});
+
+/**
+ * Nothing pending means nothing to reconcile, so the row is one line — with a
+ * ceiling and without one alike.
+ */
+test('with nothing pending there is no second line, ceiling or no ceiling', () => {
+  assert.equal(pendingCapNote(16.5, 16.5, 40), null);
+  assert.equal(pendingCapNote(16.5, 16.5, null), null);
+  assert.equal(pendingCapNote(0, 0, null), null);
+  // Rounding decides it on the same hundredth the figures are printed at.
+  assert.equal(pendingCapNote(16.499, 16.5, 40), null);
+});
+
+/**
+ * The queue's own figures, through the same function, for both kinds of
+ * department — so the sentence is checked against what `queueCapUsage` really
+ * produces rather than against numbers typed into a test.
+ */
+test('the queue feeds its own figures to the shared sentence, with and without a ceiling', async () => {
+  for (const [capHours, expected] of [
+    [40, 'เพดานนับ 35.5 / 40 · รวมใบที่รออนุมัติ'],
+    [null, 'รวมทั้งหมด 35.5 · รวมใบที่รออนุมัติ'],
+  ]) {
+    const row = entry({ id: 'live', otHours: 11.5, workDate: '2026-08-20', department: dept(capHours) });
+    const { find } = reader([
+      entry({ employee: 'emp1', workDate: '2026-08-03', otHours: 6, status: 'approved' }),
+      entry({ employee: 'emp1', workDate: '2026-08-08', otHours: 10.5, status: 'approved' }),
+      entry({ employee: 'emp1', workDate: '2026-08-11', otHours: 7.5, status: 'pending_hr' }),
+      row,
+    ]);
+    const { month } = (await queueCapUsage([row], { policy: POLICY, find })).get('live');
+
+    assert.equal(capFigure(month.approvedHours, month.capHours), capHours == null ? '16.5' : '16.5 / 40');
+    assert.equal(pendingCapNote(month.approvedHours, month.usedHours, month.capHours), expected);
+  }
+});
+
+test('a settled month in a department with no ceiling is a single line', async () => {
+  const row = entry({ id: 'live', otHours: 3, workDate: '2026-08-20', status: 'approved', department: dept(null) });
+  const { find } = reader([entry({ workDate: '2026-08-03', otHours: 6, status: 'approved' }), row]);
+  const { month } = (await queueCapUsage([row], { policy: POLICY, find })).get('live');
+
+  assert.equal(capFigure(month.approvedHours, month.capHours), '9');
+  assert.equal(pendingCapNote(month.approvedHours, month.usedHours, month.capHours), null);
+  assert.equal(month.exceeded, false, 'no ceiling can never be exceeded');
+  assert.equal(overCapLine(month), null);
 });
 
 // ── the same two figures, exported ──────────────────────────────────────────

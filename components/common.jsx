@@ -12,6 +12,42 @@ export function StatusChip({ status }) {
   return <span className="chip" style={{ background: s.bg, color: s.fg }}>{s.label}</span>;
 }
 
+/**
+ * The heading of a rate column — "×1.5" over "วันหยุด", broken WHERE WE SAY.
+ *
+ * Six tables on four screens carry these three columns and every one of them
+ * was letting the browser find the break. It finds it by width, and at the
+ * width a column of one-digit figures deserves it finds two: "×1.5 วันหยุด"
+ * came out as ×1.5 / วัน / หยุด, three lines deep, with a Thai word torn in
+ * half — วัน and หยุด are not words on their own here, and a column heading
+ * that has to be reassembled by the reader is not a heading.
+ *
+ * So the break is a `<br>` and the lower word is `nb` (nowrap): the rate on one
+ * line, the day it applies to on the next, and nothing else possible. This is
+ * markup rather than `white-space`, because `white-space: nowrap` on the whole
+ * phrase would refuse the break we want as well as the ones we do not, and the
+ * column would go back to being 105px wide to hold a heading over figures that
+ * need 34.
+ *
+ * `of` is optional: ×3 and รวม are one word and take one line — see the
+ * `vertical-align` note in app/styles.css for why they sit where they sit.
+ *
+ * One component rather than the same two lines of JSX six times, so the six
+ * tables cannot drift into six spellings. It is for the SCREEN only — the CSV
+ * exports and the printed forms build their own headings, accounting reads
+ * those by name, and nothing here reaches them.
+ */
+export function RateHead({ rate, of = null }) {
+  if (!of) return rate;
+  return (
+    <>
+      {rate}
+      <br />
+      <span className="nb">{of}</span>
+    </>
+  );
+}
+
 export function Alert({ kind = 'warn', children }) {
   if (!children) return null;
   return <div className={`alert ${kind}`}>{children}</div>;
