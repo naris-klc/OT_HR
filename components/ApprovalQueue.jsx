@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   api, hours, thaiDate, dayName, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
-import { describeBreaches } from '@/lib/caps.js';
+import { capFigure, describeBreaches } from '@/lib/caps.js';
 import { isProxyFiled, isSystemFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
@@ -93,7 +93,10 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
       // `scope=delegated` narrows to the covered teams instead of widening the
       // caller's own reach — the difference between a ฝ่ายบุคคล seeing the one
       // queue they were handed and seeing every pending request in the company.
-      const res = await api.get(`/entries?status=${stage}${delegatedOnly ? '&scope=delegated' : ''}`);
+      // `usage=cap` adds each row's running total for its own month — see
+      // CapUsageCell, and `queueCapUsage` for why it costs the same however
+      // long the queue is.
+      const res = await api.get(`/entries?status=${stage}&usage=cap${delegatedOnly ? '&scope=delegated' : ''}`);
       setEntries(res.entries);
       if (res.entries.length) everHadRows.current = true;
       return res.entries;
@@ -446,6 +449,9 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                 <th className="num">×1.5 วันหยุด</th>
                 <th className="num">×3</th>
                 <th className="num">รวม</th>
+                {/* Not "เพดาน": what the column carries is the running total,
+                    and the ceiling only when the department has one. */}
+                <th className="num">สะสมทั้งเดือน</th>
                 <th>รายละเอียด</th>
                 <th />
               </tr>
@@ -484,6 +490,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                   <td className="num">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
                   <td className="num">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
                   <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
+                  <td className="num" style={{ minWidth: 150 }}><CapUsage usage={e.usage} /></td>
                   <td style={{ maxWidth: 240 }}>
                     {e.description}
                     {/* Whose team this row is from, when the reviewer is
@@ -947,6 +954,25 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
                   ? describeBreaches(e).map((b) => b.text).join(' · ')
                   : 'ไม่'}
               />
+              {/* The row's figure again, because this pop-up is where a reviewer
+                  looks at one request in isolation — which is the habit that
+                  made the running total worth showing in the first place.
+                  `capExceeded` above is what the ceilings said when the request
+                  was FILED; this is what they say now, and a month that has
+                  filled up since is exactly the difference. */}
+              {e.usage?.month && (
+                <Fact
+                  k={`สะสมทั้งเดือน ${periodLabel(e.usage.month.period)}`}
+                  v={(
+                    <span style={e.usage.month.exceeded ? OVER_CAP : undefined}>
+                      {capFigure(e.usage.month.usedHours, e.usage.month.capHours)} ชม.
+                    </span>
+                  )}
+                  sub={e.usage.counted
+                    ? `รวมใบนี้ ${hours(e.usage.month.adding)} ชม. แล้ว — ไม่ต้องบวกเพิ่ม`
+                    : 'ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน'}
+                />
+              )}
             </dl>
             <div className="split" style={{ marginTop: 12 }}>
               {Object.values(BUCKETS).map((b) => (
@@ -1214,6 +1240,83 @@ function Section({ title, action, children }) {
     </section>
   );
 }
+
+/**
+ * What this person has already run up in the month THIS ROW belongs to.
+ *
+ * The gap it closes: a หัวหน้า approving from this queue saw one request and
+ * nothing else, so "3 hours, fine" was the same decision whether it was the
+ * employee's first three hours of สิงหาคม or the three that took them past the
+ * department's ceiling. The figure that answers it was already on
+ * ตรวจสอบรายเดือน; this is the same figure, from the same function
+ * (`usageInMonth`), beside the row being decided.
+ *
+ * TWO THINGS HAVE TO BE SAID OUT LOUD, and both are said here rather than left
+ * to be inferred:
+ *
+ *   The total ALREADY CONTAINS this request. `pending_mgr` counts against a
+ *   ceiling from the moment it is filed (see CAP_STATUSES), so a reviewer
+ *   reading "16.5 / 40" beside a 3-hour request and adding them would be
+ *   double-counting their way to 19.5. The row says รวมใบนี้ … แล้ว, with the
+ *   amount, so the arithmetic they might do in their head is already done.
+ *
+ *   WHICH MONTH. The เดือน filter above can be ทุกเดือน, which mixes periods in
+ *   one queue, so the month is named on every row and comes from the row rather
+ *   than from the filter.
+ *
+ * Red on nothing but the ceiling being past, on the same test ตรวจสอบรายเดือน
+ * colours its own figure with (`overCap`). There is no "getting close" shade,
+ * because there is no threshold in this system for close — inventing one on
+ * this screen would put a number in front of a reviewer that no rule anywhere
+ * backs up. เหลือ … ชม. is the honest version of the same warning: it goes down
+ * as the room does, and needs no line drawn to be read.
+ */
+function CapUsage({ usage }) {
+  // Only the queue asks for these figures (`usage=cap`), and only for rows it
+  // could match to an employee. A row without them shows nothing rather than a
+  // zero, which would read as "this person has worked no overtime".
+  if (!usage?.month) return <span className="cell-sub">—</span>;
+  const { month, weeks = [], counted } = usage;
+  const room = month.capHours == null ? null : month.capHours - month.usedHours;
+
+  return (
+    <>
+      <div style={month.exceeded ? OVER_CAP : undefined}>
+        {capFigure(month.usedHours, month.capHours)} ชม.
+      </div>
+      <div className="cell-sub">
+        {periodLabel(month.period)}
+        {' · '}
+        {counted
+          ? `รวมใบนี้ ${hours(month.adding)} ชม. แล้ว`
+          /* A filing a later one for the same session replaced counts nowhere,
+             so claiming it is included would be the same lie the other way up. */
+          : 'ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน'}
+      </div>
+      {room != null && (
+        <div className="cell-sub" style={month.exceeded ? OVER_CAP : undefined}>
+          {month.exceeded ? `เกินเพดาน ${hours(-room)} ชม.` : `เหลือ ${hours(room)} ชม.`}
+        </div>
+      )}
+
+      {/* One block per week the shift touches — two when it crosses midnight
+          into a new week, each measured against that week's own hours. Absent
+          entirely where the department sets no weekly ceiling. */}
+      {weeks.map((w) => (
+        <div key={w.weekStart} style={{ marginTop: 4 }}>
+          <div className="cell-sub" style={w.exceeded ? OVER_CAP : undefined}>
+            สัปดาห์ {capFigure(w.usedHours, w.capHours)} ชม.
+          </div>
+          <div className="cell-sub">{w.weekStart} – {w.weekEnd}</div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** Past a ceiling — the one place this screen paints that, so the row and the
+    pop-up cannot disagree about what over looks like. */
+const OVER_CAP = { color: 'var(--danger-ink)', fontWeight: 600 };
 
 function Fact({ k, v, sub }) {
   return (

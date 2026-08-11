@@ -3,7 +3,9 @@ import OtEntry from '@/src/models/OtEntry.js';
 import Employee from '@/src/models/Employee.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { compute, applyComputation, checkCap, loadContext } from '@/src/services/otService.js';
+import {
+  compute, applyComputation, checkCap, loadContext, queueCapUsage,
+} from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
 } from '@/lib/entries.js';
@@ -17,7 +19,7 @@ import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
-  const { status, period, employee, department, from, to, limit, replaced, scope } = query(req);
+  const { status, period, employee, department, from, to, limit, replaced, scope, usage } = query(req);
 
   /**
    * `scope=delegated` — the covered teams ONLY, rather than the caller's usual
@@ -72,6 +74,26 @@ export const GET = route(async (req) => {
   const { shown: entries, hidden } = replaced === 'hide'
     ? latestPerChain(found)
     : { shown: found, hidden: [] };
+
+  /**
+   * `usage=cap` — how much of each row's ceilings that row's employee has
+   * already used, for the month THAT ROW belongs to.
+   *
+   * Opt-in, because only the approval queues want it: a หัวหน้า deciding one
+   * request needs to know whether it is the person's third hour this month or
+   * their forty-third, and every other caller of this endpoint (the employee's
+   * own history, the month's rows on ตรวจสอบรายเดือน) either has the figure
+   * already or has no use for it. Off by default, those callers pay nothing.
+   *
+   * Attached to the rows rather than returned beside them so a screen cannot
+   * pair a total with the wrong row, and computed here rather than in a second
+   * request so the rows and their totals come from one read. The batching —
+   * a fixed number of queries whatever the queue's length — is `queueCapUsage`.
+   */
+  if (usage === 'cap' && entries.length) {
+    const byEntry = await queueCapUsage(entries);
+    for (const entry of entries) entry.usage = byEntry.get(String(entry._id)) || null;
+  }
 
   return json({ entries, replacedCount: hidden.length });
 });

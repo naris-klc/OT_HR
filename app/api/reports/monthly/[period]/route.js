@@ -3,8 +3,9 @@ import PolicyVersion from '@/src/models/PolicyVersion.js';
 import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { summariseEntries, hrSummary, capUsage } from '@/src/lib/otEngine.js';
+import { summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { PERIOD_RE, latestPerSession, editTally, reportStatuses } from '@/lib/reports.js';
+import { overCap, usageInMonth } from '@/lib/caps.js';
 import { isHrVerifiedBirthday } from '@/lib/entries.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 
@@ -97,7 +98,22 @@ export const GET = route(async (req, { params }) => {
   const employees = [...byEmployee.values()].map((group) => {
     const summary = summariseEntries(group.entries);
     const capHours = group.department?.monthlyCapHours ?? null;
-    const used = capUsage(summary, policy);
+    /**
+     * The "16.5 / 40" on this screen, counted by the function every other
+     * monthly figure is counted by — see `usageInMonth` in lib/caps.js.
+     *
+     * It was three lines here and the same three lines in `monthlyUsage`, and
+     * they agreed. They now agree because they are one function, which is what
+     * the approval queue needed before it could show the same figure beside a
+     * row: two screens quoting a person's month at each other have to be
+     * quoting the same arithmetic, or the day they diverge nobody can say which
+     * is the real total.
+     *
+     * `group.entries` is already through `latestPerSession` above; running it
+     * again inside changes nothing (a deduplicated set deduplicates to itself)
+     * and keeps this call identical to every other one.
+     */
+    const used = usageInMonth(group.entries, policy).usedHours;
     return {
       employee: withoutBirthDate(group.employee),
       /** No วันเกิด on record — their weekdays can never become holidays. */
@@ -121,7 +137,10 @@ export const GET = route(async (req, { params }) => {
       policy: versionSpread(group.entries, policyVersions),
       summary,
       hrSection: hrSummary(summary, policy),
-      cap: { capHours, usedHours: used, exceeded: capHours != null && used > capHours, basis: policy.capBasis },
+      // `overCap` rather than the comparison spelt out: the queue colours its
+      // own figure red on this exact test, and a threshold written twice is a
+      // threshold that can be changed once.
+      cap: { capHours, usedHours: used, exceeded: overCap(used, capHours), basis: policy.capBasis },
     };
   }).sort((a, b) => a.employee.code.localeCompare(b.employee.code));
 

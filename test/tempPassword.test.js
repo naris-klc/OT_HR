@@ -176,6 +176,122 @@ test('a reset is asked for by a flag, and the issued value comes back once', () 
   }
 });
 
+// ── a reset that fails must leave the old password working ─────────────────
+
+/**
+ * THE WRITE IS THE LAST THING THAT CAN FAIL, AND IT HAS TO STAY THAT WAY.
+ *
+ * The hash used to be set on the document and committed by the same `save()`
+ * that wrote the roster fields — with the birthday replay, the populate and the
+ * response still to come. Any of those throwing gave HR a 500 and the employee a
+ * password that existed nowhere: the hash is one-way, so a reset that fails
+ * after the write is not a failed reset, it is a locked-out account with no
+ * recovery but another reset.
+ *
+ * Pinned as an ordering because that is what the property IS. There is no
+ * transaction here and a single-document update needs none — what it needs is
+ * for nothing fallible to sit between the write and the response.
+ */
+test('a reset writes the new hash last, after everything else has succeeded', () => {
+  /**
+   * Just the handler that resets, in each file.
+   *
+   * The Express router also creates accounts and changes people's own
+   * passwords, and both of those legitimately set a password on a document —
+   * neither has anything to lose, because the create's password is returned by
+   * the same statement that saves it and the self-change was typed by the
+   * person doing it. Reading the whole file would fail on their `setPassword`
+   * and, worse, would find the create's `save()` first and make the ordering
+   * checks below pass for free.
+   */
+  const handlers = {
+    // One handler in the file.
+    'app/api/employees/[id]/route.js': (src) => src,
+    'src/routes/employees.js': (src) => src.slice(
+      src.indexOf("router.patch('/:id'"),
+      src.indexOf("router.post('/me/password'"),
+    ),
+  };
+
+  for (const [file, take] of Object.entries(handlers)) {
+    const code = take(strip(readFileSync(join(ROOT, file), 'utf8')));
+    assert.ok(code.includes('resetPassword'), `${file}: cannot find the reset handler`);
+
+    // Hashed early, held as a local. `setPassword` puts it on the document,
+    // and a document carrying a new hash is one stray save() from committing it.
+    assert.match(code, /Employee\.hashPassword\(issued\)/, `${file} does not hash ahead of the write`);
+    assert.doesNotMatch(
+      code, /employee\.setPassword\(/,
+      `${file} puts the new hash back on the document, where any save() commits it`,
+    );
+
+    const at = {
+      save: code.indexOf('await employee.save()'),
+      populate: code.indexOf("employee.populate('department'"),
+      write: code.indexOf('Employee.updateOne('),
+      audit: code.indexOf('await recordRosterChange('),
+      respond: code.search(/return (json|res\.json)\(/),
+    };
+    // The birthday replay only exists on the App Router — this router accepts
+    // no วันเกิด. Skipped rather than asserted absent, so adding it later is
+    // covered by the same ordering instead of quietly escaping it.
+    const recompute = code.indexOf('await recomputeEntries(');
+    for (const [name, index] of Object.entries(at)) {
+      assert.ok(index > 0, `${file}: cannot find ${name}`);
+    }
+
+    assert.ok(at.save < at.write, `${file}: the roster save commits the password with it`);
+    assert.ok(at.populate < at.write, `${file}: a failed populate would strand the new password`);
+    if (recompute > 0) {
+      assert.ok(recompute < at.write, `${file}: a failed birthday replay would strand the new password`);
+    }
+    assert.ok(at.write < at.audit, `${file}: the trail records a reset the write could still refuse`);
+    assert.ok(at.write < at.respond, `${file}: the response is sent before the password is stored`);
+  }
+});
+
+/**
+ * The other half of the same failure, on the screen.
+ *
+ * The dialog used to hand the value up to the roster page and close itself. The
+ * page put it in a notice at the top of the card — above a forty-line hint, the
+ * add-employee form and the whole table — and the button that starts a reset is
+ * in a row of that table. Anybody on a roster of any size was scrolled well past
+ * the notice, so the dialog vanished and nothing appeared. PM-00511 was reset
+ * twice inside a minute on dev and locked out both times.
+ *
+ * Creating an account and importing a CSV write to the same notice and never
+ * showed the symptom, because both happen at the top of the page with the notice
+ * in view. Same code, different scroll position.
+ */
+test('the reset dialog shows the password itself, and cannot be closed by reflex', () => {
+  const screen = strip(readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8'));
+  const start = screen.indexOf('function ResetPassword(');
+  assert.ok(start > 0, 'ResetPassword is gone');
+  const dialog = screen.slice(start, screen.indexOf('function Holidays(', start));
+
+  // It keeps the value rather than passing it out and unmounting.
+  assert.match(dialog, /setPassword\(res\.password\)/, 'the dialog does not hold the issued password');
+  assert.match(dialog, /\{password\}/, 'the dialog never renders the password');
+  assert.match(dialog, /navigator\.clipboard\?\.writeText/, 'no way to copy it');
+
+  // Nothing ordinary closes it until somebody says they have it, and the
+  // reflexive ways out — ×, Escape, the backdrop — ask first.
+  assert.match(dialog, /dirty=\{!written\}/, 'Escape and × close over an unread password');
+  assert.match(dialog, /disabled=\{!written\}/, 'the close button does not wait for the tick');
+
+  // A 200 that carried no password would mean the hash had moved and the value
+  // was already gone. Said out loud rather than rendered as an empty box.
+  assert.match(dialog, /if \(!res\.password\)/, 'a passwordless response is shown as a blank');
+
+  // And the roster screen must not close the dialog the moment it arrives,
+  // which is the bug in one line.
+  const raw = readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8');
+  const wiring = raw.slice(raw.indexOf('<ResetPassword'), raw.indexOf('{editing && ('));
+  const onDone = wiring.slice(wiring.indexOf('onDone='));
+  assert.doesNotMatch(onDone, /setResetting\(null\)/, 'the dialog is closed the instant the password arrives');
+});
+
 test('the issued password is still never written to the audit trail', () => {
   // The allowlist in lib/rosterAudit.js is what guarantees this and is pinned
   // by test/rosterAudit.test.js. Checked again from this side because the

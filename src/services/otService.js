@@ -20,10 +20,11 @@ import {
   addDays,
 } from '../lib/otEngine.js';
 import PolicyReplayRun from '../models/PolicyReplayRun.js';
-import { latestPerSession } from '../../lib/reports.js';
 import {
-  CAP_STATUSES, capBreaches, usageByWeek, weekLabel, weeksOfEntry,
+  CAP_STATUSES, capBreaches, monthWindowOf, overCap, periodOf, usageInMonth, usageInWeeks,
+  weekEndOf, weekLabel, weeksOfEntry,
 } from '../../lib/caps.js';
+import { idOf } from '../../lib/entries.js';
 import {
   planRecompute, samePolicy, figuresMoved, summariseReplay,
 } from '../../lib/policyVersion.js';
@@ -244,13 +245,19 @@ export async function monthlyUsage(employeeId, period, { excludeId = null, polic
   // The session fields come along so a superseded filing can be dropped: the
   // cap is a count of hours worked, and counting a discarded version twice
   // would push a department over a limit it never reached.
-  const entries = await OtEntry.find(query)
-    .select('buckets totals employee workDate startTime endTime endsNextDay createdAt')
-    .lean();
-  const { shown } = latestPerSession(entries);
-  const summary = summariseEntries(shown);
-  return { summary, usedHours: capUsage(summary, p), basis: p.capBasis };
+  const entries = await OtEntry.find(query).select(MONTH_USAGE_SELECT).lean();
+  // Counted by `usageInMonth`, which is also what ตรวจสอบรายเดือน and the
+  // approval queue count with — see lib/caps.js.
+  return usageInMonth(entries, p);
 }
+
+/** The fields a monthly figure is made of: the hours, and enough of the session
+    to recognise a filing that a later one replaced. */
+const MONTH_USAGE_SELECT = 'buckets totals employee period workDate startTime endTime endsNextDay createdAt';
+
+/** The same, plus `segments` — the weekly window attributes hours by the date
+    of each segment, so without them an overnight shift lands in one week. */
+const WEEK_USAGE_SELECT = `${MONTH_USAGE_SELECT} segments`;
 
 /**
  * The same question over one week: hours already committed between `weekStart`
@@ -282,14 +289,197 @@ export async function weeklyUsage(employeeId, weekStart, { excludeId = null, pol
   };
   if (excludeId) query._id = { $ne: excludeId };
 
-  const entries = await OtEntry.find(query)
-    .select('segments buckets totals employee workDate startTime endTime endsNextDay createdAt')
-    .lean();
+  const entries = await OtEntry.find(query).select(WEEK_USAGE_SELECT).lean();
   // Superseded filings drop out here exactly as they do for the month — one
   // session filed twice is one session whichever window is counting it.
-  const { shown } = latestPerSession(entries);
-  const byWeek = usageByWeek(shown, { weekStartsOn: p.weekStartsOn, basis: p.capBasis });
+  const { byWeek } = usageInWeeks(entries, p);
   return { usedHours: byWeek.get(weekStart) || 0, basis: p.capBasis, weekStart, weekEnd };
+}
+
+/**
+ * What each row of an approval queue has already accumulated — every employee
+ * on the screen, in a fixed number of queries.
+ *
+ * The หัวหน้า decides one request at a time and, until now, saw one request at a
+ * time: nothing on the row said whether this was the person's first three hours
+ * of the month or their forty-third. The figure that answers that already
+ * existed on ตรวจสอบรายเดือน; what was missing was a way to put it beside a
+ * queue of rows without asking the database once per row.
+ *
+ * Two properties matter more than the shape of what comes back:
+ *
+ *   THE SAME NUMBER. Every figure here comes from `usageInMonth` /
+ *   `usageInWeeks` (lib/caps.js) — the functions `monthlyUsage`, `weeklyUsage`
+ *   and the monthly review all count with. Nothing is recomputed a second way,
+ *   so a reviewer cannot be shown 16.5 in the queue and 18 on the review screen
+ *   with no way to tell which is the real one.
+ *
+ *   EACH ROW'S OWN MONTH. A queue may be filtered to ทุกเดือน and hold rows from
+ *   several periods at once, so the window is taken from the ROW (`periodOf`)
+ *   and never from whatever the screen's filter happens to say.
+ *
+ * The counting is the whole point of the batching: one query per shape of
+ * window, not one per row. Both are `$or` over the windows actually wanted, so
+ * a queue of ten rows costs the same two round trips as a queue of one, and
+ * a queue where no department sets a weekly ceiling costs one.
+ *
+ * `find` is injected so the batching itself can be tested — the tests hand it a
+ * counter and a fixture instead of a database. Production callers pass nothing.
+ *
+ * Returns a Map of entry id → the figures for that row, or an empty Map for an
+ * empty queue.
+ */
+export async function queueCapUsage(rows = [], { policy, find = findUsageEntries } = {}) {
+  if (!rows.length) return new Map();
+  const p = policy || (await Setting.effectivePolicy());
+
+  /** period → the employees wanted in it, and week start → the same. */
+  const monthsWanted = new Map();
+  const weeksWanted = new Map();
+  /** entry id → everything about the row that the assembly below needs. */
+  const plan = new Map();
+
+  for (const row of rows) {
+    const employeeId = idOf(row.employee);
+    if (!employeeId) continue;
+
+    const period = periodOf(row);
+    const capHours = row.department?.monthlyCapHours ?? null;
+    const weeklyCapHours = row.department?.weeklyCapHours ?? null;
+    want(monthsWanted, period, employeeId);
+
+    /**
+     * The weekly side is skipped entirely where no weekly ceiling is set — the
+     * same decision `checkCap` makes, for the same reason: a total with nothing
+     * to compare it against is a number on a row that answers no question, and
+     * finding that out is not worth a query. A department that HAS one gets
+     * both figures.
+     *
+     * Read off the row's own segments, so a shift crossing midnight into a new
+     * week is measured against both weeks it touches.
+     */
+    const perWeek = weeklyCapHours == null
+      ? new Map()
+      : weeksOfEntry(row, { weekStartsOn: p.weekStartsOn, basis: p.capBasis });
+    for (const weekStart of perWeek.keys()) want(weeksWanted, weekStart, employeeId);
+
+    plan.set(String(row._id), { row, employeeId, period, capHours, weeklyCapHours, perWeek });
+  }
+
+  // Rows that name nobody are skipped above rather than queried for, and a page
+  // of only those leaves nothing to ask: an `$or: []` is not an empty result in
+  // mongo, it is a malformed query, and it would take the whole queue down with
+  // it rather than the one column.
+  if (!plan.size) return new Map();
+
+  /**
+   * One query for every month on the screen — grouped by period so each clause
+   * is `{ period, employee: { $in } }`, which is the shape of the
+   * `{ employee, period, status }` index the monthly figures have always used.
+   */
+  const monthRows = await find({
+    status: { $in: [...CAP_STATUSES] },
+    $or: [...monthsWanted].map(([period, ids]) => ({ period, employee: { $in: [...ids] } })),
+  }, MONTH_USAGE_SELECT);
+
+  const monthly = new Map();
+  for (const [key, list] of groupEntries(monthRows, monthWindowOf)) {
+    monthly.set(key, usageInMonth(list, p));
+  }
+
+  /**
+   * And one for every week, by date range rather than by period — a week is not
+   * inside a month (see `weeklyUsage`), and the range opens a day early for the
+   * same reason it does there: an entry filed against the day before can put
+   * minutes into this week.
+   */
+  const weekRows = weeksWanted.size
+    ? await find({
+      status: { $in: [...CAP_STATUSES] },
+      $or: [...weeksWanted].map(([weekStart, ids]) => ({
+        employee: { $in: [...ids] },
+        workDate: { $gte: addDays(weekStart, -1), $lte: addDays(weekStart, 6) },
+      })),
+    }, WEEK_USAGE_SELECT)
+    : [];
+
+  const weekly = new Map();
+  for (const [employeeId, list] of groupEntries(weekRows, (e) => idOf(e.employee))) {
+    weekly.set(employeeId, usageInWeeks(list, p));
+  }
+
+  const out = new Map();
+  for (const [id, planned] of plan) {
+    const { row, employeeId, period, capHours, weeklyCapHours, perWeek } = planned;
+    const month = monthly.get(`${employeeId}|${period}`) || usageInMonth([], p);
+
+    /**
+     * Is this row's own contribution inside the totals above?
+     *
+     * Almost always yes — `CAP_STATUSES` counts `pending_mgr`, so a request
+     * still waiting for the หัวหน้า is already in the figure they are reading.
+     * That has to be said on screen or it gets added a second time in somebody's
+     * head. The exception is a filing a later one for the same session replaced:
+     * it counts nowhere, and a row claiming to be included when it is not would
+     * be the same error in the other direction.
+     */
+    const counted = month.counted.has(id);
+
+    out.set(id, {
+      basis: p.capBasis,
+      counted,
+      month: {
+        period,
+        usedHours: month.usedHours,
+        capHours,
+        // The row's own hours, on the same basis the ceiling counts, so a
+        // reviewer who wants the figure without this request can subtract.
+        adding: counted ? capUsage(summariseEntries([row]), p) : 0,
+        exceeded: overCap(month.usedHours, capHours),
+      },
+      weeks: [...perWeek.keys()].map((weekStart) => {
+        const used = weekly.get(employeeId)?.byWeek.get(weekStart) || 0;
+        return {
+          weekStart,
+          weekEnd: weekEndOf(weekStart, p.weekStartsOn),
+          usedHours: used,
+          capHours: weeklyCapHours,
+          adding: counted ? perWeek.get(weekStart) || 0 : 0,
+          exceeded: overCap(used, weeklyCapHours),
+        };
+      }),
+    });
+  }
+
+  return out;
+}
+
+/** How the batched loader reads entries when nobody injects anything else. */
+const findUsageEntries = (filter, select) => OtEntry.find(filter).select(select).lean();
+
+/** Add one member to a set held under `key`. */
+function want(map, key, member) {
+  if (!map.has(key)) map.set(key, new Set());
+  map.get(key).add(member);
+}
+
+/**
+ * Split entries into the windows they belong to, so each window can be counted
+ * by the shared helper over its own rows.
+ *
+ * Grouping BEFORE counting rather than deduplicating the whole fetch and
+ * splitting afterwards, deliberately: it makes each group's arithmetic
+ * identical to the single-employee path by construction, rather than identical
+ * for a reason someone has to work out about session keys.
+ */
+function groupEntries(entries, keyOf) {
+  const groups = new Map();
+  for (const entry of entries) {
+    const key = keyOf(entry);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(entry);
+  }
+  return groups;
 }
 
 /**

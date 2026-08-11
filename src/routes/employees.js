@@ -150,12 +150,17 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   if (department != null) employee.department = department;
   if (role != null) employee.role = role;
   if (active != null) employee.active = Boolean(active);
-  // Made here, returned once, never read from the request.
+  /**
+   * Made here, returned once, never read from the request — and written LAST.
+   *
+   * The same ordering as the App Router's PATCH, for the same reason: a hash
+   * that reaches the database while the response carrying its plaintext does
+   * not is an employee locked out of an account nobody can open. Hashing is the
+   * slow part and it happens here, while failing is still free; the write is a
+   * single field update at the end, after everything else has succeeded.
+   */
   const issued = resetPassword ? generateTempPassword() : null;
-  if (issued) {
-    await employee.setPassword(issued);
-    employee.mustChangePassword = true;
-  }
+  const issuedHash = issued ? await Employee.hashPassword(issued) : null;
 
   const changes = rosterChanges(before, snapshot(employee));
   await employee.save();
@@ -169,6 +174,20 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
    * because it never accepts one. The App Router's PATCH is the only path that
    * can change a birth date and it replays that person's ใบ ที่ยังไม่อนุมัติ.
    */
+  // Assembled while the password can still be un-issued: a populate is a query
+  // and a query can fail.
+  const populated = await employee.populate('department', 'code name nameTh');
+
+  // The point of no return, and the last thing here that can fail. The audit
+  // below cannot throw by construction (lib/rosterAuditLog.js).
+  if (issuedHash) {
+    await Employee.updateOne(
+      { _id: employee._id },
+      { $set: { passwordHash: issuedHash, mustChangePassword: true } },
+    );
+    employee.mustChangePassword = true;
+  }
+
   const auditLogged = await recordRosterChange({
     employee,
     action: changes.length ? 'update' : 'password_reset',
@@ -178,7 +197,7 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   });
 
   return res.json({
-    employee: await employee.populate('department', 'code name nameTh'),
+    employee: populated,
     // Readable exactly once — only the hash is stored. Null when no reset.
     password: issued,
     auditLogged,

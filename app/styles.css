@@ -1161,6 +1161,27 @@ table.mini tbody tr:hover { background: none; }
 .modal-foot.asking { background: var(--danger-bg); border-top-color: #F3CFC7; flex-wrap: wrap; }
 .modal-foot .ask { flex: 1; min-width: 180px; font: 400 13px/1.5 var(--sans); color: var(--danger-ink); }
 
+/* ── the temporary password, on the one screen that will ever show it ──────
+   Sized to be read down a phone by somebody looking at it across a desk, not
+   to match the body text around it. `gof-mez-tab-4827` is four blocks with
+   three hyphens, so the whole string fits at this size on a narrow phone.
+
+   `user-select: all` makes one click take the entire value — the hyphens are
+   word boundaries, so a double-click would otherwise grab `gof` alone and hand
+   over a quarter of a password.
+
+   `break-all` rather than `nowrap`: wrapped is ugly, cut off is unrecoverable.
+   The digits are the end of the string and the end of the string is what a
+   fixed-width box would eat. */
+.temp-password {
+  margin-top: 4px; padding: 18px 16px;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--neutral-wash); color: var(--ink);
+  font: 500 clamp(20px, 5.2vw, 28px)/1.35 var(--mono);
+  letter-spacing: .06em; text-align: center; word-break: break-all;
+  user-select: all; cursor: pointer;
+}
+
 /* ══ login ═══════════════════════════════════════════════════════════════ */
 
 .login-split {

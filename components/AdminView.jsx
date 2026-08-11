@@ -858,8 +858,13 @@ function Employees({ user }) {
         <ResetPassword
           employee={resetting}
           onClose={() => setResetting(null)}
+          /**
+           * The dialog stays OPEN — it is showing the password, and closing it
+           * out from under the person reading it is the bug this whole path had.
+           * All this does is leave a second copy in the notice at the top of the
+           * card, for the reset that gets closed a moment too early.
+           */
           onDone={(password) => {
-            setResetting(null);
             setIssued({ code: resetting.code, name: resetting.name, password, reset: true });
           }}
         />
@@ -1886,21 +1891,163 @@ function RosterAudit() {
  * Confirming rather than composing also removes the other failure this had: the
  * quickest way past a "type a password" box is to type a memorable one, and HR
  * resetting six accounts in a morning types the same memorable one six times.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * IT SHOWS THE PASSWORD ITSELF, AND THAT IS THE SECOND FIX.
+ *
+ * It used to hand the value up to the roster screen and close, and the roster
+ * screen put it in a notice at the top of the card — above the ~40-line hint
+ * paragraph, above the add-employee form, above the table. The button that
+ * starts a reset is in a row of that table. On a roster of any size the person
+ * who clicked it was scrolled past the notice, so the dialog vanished and
+ * nothing appeared: the password was rendered, once, into a part of the page
+ * nobody was looking at, and by the time they scrolled up or clicked anything
+ * it was gone for good. That is how PM-00511 was reset twice in a minute and
+ * locked out anyway.
+ *
+ * Creating an account and importing a CSV write to the same notice and never
+ * showed the symptom, because both of those actions happen at the top of the
+ * page with the notice in view. Same code, different scroll position — which is
+ * exactly why the display has to belong to the thing that was clicked.
+ *
+ * So the value never leaves this component until somebody says they have it:
+ *
+ *   · shown here, in the dialog that asked for it, at a size meant to be read
+ *     aloud down a phone;
+ *   · a copy button, because the block form is easy to mistype;
+ *   · a คัดลอกแล้ว/จดแล้ว tick that gates the only ordinary way out. A button
+ *     that closes on the first click is a password lost to a reflex;
+ *   · ×, Escape and the backdrop go through the Modal's `dirty` guard, so the
+ *     reflexive ways out ask first.
+ *
+ * The server holds the other half of this: the new hash is not written until
+ * everything else in the request has succeeded (app/api/employees/[id]/route.js),
+ * so a reset that never reaches this screen never happened.
  */
 function ResetPassword({ employee, onClose, onDone }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  /** The password, once the server has issued it. Never leaves this component. */
+  const [password, setPassword] = useState('');
+  /** '' · 'copied' · 'failed' — see the same three states on IssuedPasswords. */
+  const [copied, setCopied] = useState('');
+  /** Ticked by hand. Nothing closes this dialog the easy way until it is. */
+  const [written, setWritten] = useState(false);
 
   async function submit() {
     setError('');
     setBusy(true);
     try {
       const res = await api.patch(`/employees/${employee._id}`, { resetPassword: true });
-      onDone(res.password);
+      /**
+       * A 200 with no password in it would mean the account's hash had moved
+       * and the only copy of the new value was already gone — so it is treated
+       * as the emergency it would be, rather than rendered as an empty box.
+       * Nothing in the current server can produce this; it is here because the
+       * failure it describes is silent and unrecoverable, and the screen is the
+       * last place it can still be said out loud.
+       */
+      if (!res.password) {
+        setError(
+          'เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา — รหัสผ่านของบัญชีนี้อาจถูกเปลี่ยนไปแล้ว '
+          + 'โดยไม่มีใครทราบค่าใหม่ กรุณาแจ้งผู้ดูแลระบบและกด “สร้างรหัสผ่านชั่วคราว” อีกครั้ง',
+        );
+        setBusy(false);
+        return;
+      }
+      setPassword(res.password);
+      setBusy(false);
+      // The roster screen keeps its own copy in the notice at the top of the
+      // card. Redundant on purpose: it is what is left to scroll back to if
+      // this dialog is closed a moment too early.
+      onDone?.(res.password);
     } catch (err) {
       setError(err.message);
       setBusy(false);
     }
+  }
+
+  async function copy() {
+    try {
+      // navigator.clipboard only exists in a secure context and this app is
+      // served over plain http on the office network — see legacyCopy.
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(password);
+      else legacyCopy(password);
+      setCopied('copied');
+      // Copying IS having it. Ticking the box by hand afterwards would be a
+      // second click for something the first one already proved.
+      setWritten(true);
+    } catch {
+      setCopied('failed');
+    }
+  }
+
+  if (password) {
+    return (
+      <Modal
+        title="รหัสผ่านชั่วคราว"
+        subtitle={`${employee.code} · ${employee.name}`}
+        onClose={onClose}
+        // The × and Escape ask first — and they ask about losing a password,
+        // not about losing typing.
+        dirty={!written}
+        dirtyPrompt={'ยังไม่ได้ยืนยันว่าจดรหัสผ่านไว้แล้ว — ปิดหน้าต่างนี้แล้วจะไม่มีทางดูรหัสนี้ซ้ำได้อีก '
+          + 'และต้องตั้งรหัสใหม่ให้พนักงานคนนี้อีกครั้ง'}
+        dirtyStayLabel="กลับไปดูรหัส"
+        dirtyLeaveLabel="ปิดทั้งที่ยังไม่ได้จด"
+        footer={(requestClose) => (
+          <>
+            <label className="row" style={{ gap: 6, marginRight: 'auto', cursor: 'pointer' }}>
+              <input type="checkbox" checked={written} onChange={(e) => setWritten(e.target.checked)} />
+              <span>จดรหัสผ่านนี้ไว้แล้ว</span>
+            </label>
+            {/* Disabled until the tick, and the reason is on the button rather
+                than left to be guessed at a grey box. `requestClose` rather
+                than `onClose`, so this route out asks the same question the ×
+                does if the box is somehow still clear. */}
+            <button
+              className="btn"
+              onClick={requestClose}
+              disabled={!written}
+              title={written ? undefined : 'ยืนยันก่อนว่าจดรหัสผ่านไว้แล้ว'}
+            >
+              เสร็จสิ้น
+            </button>
+          </>
+        )}
+      >
+        <Alert kind="ok">
+          ตั้งรหัสผ่านใหม่ให้ {employee.code} · {employee.name} แล้ว
+          {' '}— รหัสผ่านเดิมใช้ไม่ได้แล้วตั้งแต่ตอนนี้
+        </Alert>
+
+        {/* The value, at the size of the thing this whole dialog exists to
+            deliver. Monospace and spaced out because it is read aloud one block
+            at a time, and `user-select: all` so a click takes the whole string
+            for anybody who would rather select than press the button. */}
+        <div className="temp-password" onClick={copy} title="คลิกเพื่อคัดลอก">
+          {password}
+        </div>
+
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="btn" onClick={copy}>คัดลอกรหัสผ่าน</button>
+        </div>
+        {copied === 'copied' && (
+          <div className="field-note" style={{ marginTop: 6 }}>คัดลอกแล้ว</div>
+        )}
+        {copied === 'failed' && (
+          <div className="field-note error" style={{ marginTop: 6 }}>
+            คัดลอกไม่สำเร็จ (เบราว์เซอร์ไม่อนุญาต) — อ่านจากบนจอแล้วจดด้วยมือ
+          </div>
+        )}
+
+        <Alert kind="warn">
+          <strong>ดูซ้ำไม่ได้</strong> — ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว ไม่มีหน้าใดแสดงรหัสนี้อีก
+          {' '}ปิดหน้าต่างนี้ไปโดยยังไม่ได้จด ต้องตั้งรหัสใหม่ให้พนักงานคนนี้อีกครั้ง
+          {' '}· แจ้งรหัสนี้ให้พนักงาน แล้วระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+        </Alert>
+      </Modal>
+    );
   }
 
   return (
@@ -1917,7 +2064,7 @@ function ResetPassword({ employee, onClose, onDone }) {
     >
       <div className="hint">
         ระบบจะสุ่มรหัสผ่านชั่วคราวให้ และ<strong>แสดงเพียงครั้งเดียว</strong>หลังกดปุ่มนี้
-        {' '}— ปิดหน้าต่างแล้วดูซ้ำไม่ได้ ถ้าพลาดต้องตั้งใหม่อีกครั้ง
+        {' '}— แสดงในหน้าต่างนี้ ปิดแล้วดูซ้ำไม่ได้ ถ้าพลาดต้องตั้งใหม่อีกครั้ง
         {' '}· รหัสผ่านเดิมของพนักงานคนนี้จะใช้ไม่ได้ทันที
         {' '}· เมื่อเข้าระบบด้วยรหัสชั่วคราว ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองก่อนใช้งาน
       </div>

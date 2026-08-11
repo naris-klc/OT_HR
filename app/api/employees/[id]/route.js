@@ -137,18 +137,27 @@ export const PATCH = route(async (req, { params }) => {
     employee.company = company;
   }
   if (active != null) employee.active = Boolean(active);
-  // A reset is HR issuing a password, exactly as creating the account was — so
-  // it carries the same obligation to replace it. Editing anything else leaves
-  // the flag alone: a corrected job title is not a reason to ask somebody for a
-  // new password.
-  //
-  // The value is made here and returned once. It is never read from the request,
-  // which is the whole of the fix: the browser used to compute it.
+
+  /**
+   * A reset is HR issuing a password, exactly as creating the account was — so
+   * it carries the same obligation to replace it. Editing anything else leaves
+   * the flag alone: a corrected job title is not a reason to ask somebody for a
+   * new password.
+   *
+   * The value is made here and returned once. It is never read from the request,
+   * which is the whole of the earlier fix: the browser used to compute it.
+   *
+   * GENERATED AND HASHED HERE, WRITTEN AT THE VERY END. Nothing about this
+   * account's password moves until every other thing this request does has
+   * already succeeded — see the write below. A password that reached the
+   * database and not the person who asked for it is not a failed reset, it is a
+   * locked-out employee nobody can help: the hash is one-way, so there is no
+   * screen, no log and no support path that can recover it, and the only repair
+   * is another reset. Every other failure in this handler must therefore leave
+   * the old password working.
+   */
   const issued = resetPassword ? generateTempPassword() : null;
-  if (issued) {
-    await employee.setPassword(issued);
-    employee.mustChangePassword = true;
-  }
+  const issuedHash = issued ? await Employee.hashPassword(issued) : null;
 
   /**
    * Computed from the same document that is about to be saved, so the trail
@@ -170,18 +179,6 @@ export const PATCH = route(async (req, { params }) => {
   const birthDateMoved = changes.some((c) => c.field === 'birthDate');
 
   await employee.save();
-
-  const auditLogged = await recordRosterChange({
-    employee,
-    // A reset with nothing else changed is its own event; a reset alongside
-    // edits stays one record for one request. Either way the password is a
-    // boolean on the row and never a value.
-    action: changes.length ? 'update' : 'password_reset',
-    changes,
-    passwordReset: Boolean(issued),
-    reason,
-    actor,
-  });
 
   /**
    * A moved วันเกิด moves which days were that person's holiday, so the hours
@@ -208,12 +205,64 @@ export const PATCH = route(async (req, { params }) => {
     );
   }
 
+  /**
+   * The response, assembled while the password can still be un-issued.
+   *
+   * `populate` is a query and a query can fail, so it happens on this side of
+   * the write. Everything after this line is either the write itself or cannot
+   * throw.
+   */
+  const populated = await employee.populate('department', 'code name nameTh');
+
+  /**
+   * ─────────────────────────────────────────────────────────────────────────
+   * THE POINT OF NO RETURN, AND IT IS DELIBERATELY THE LAST ONE.
+   *
+   * The old password stops working here and the new one exists in exactly one
+   * place: the `password` field a few lines below. Nothing may fail between
+   * this write and that response — which is why the save, the birthday replay
+   * and the populate above have all already happened, and why the audit below
+   * cannot throw by construction (lib/rosterAuditLog.js returns false instead).
+   *
+   * A targeted `updateOne` rather than `employee.save()`: the document has been
+   * through validators and hooks already, and re-saving the whole row here
+   * would put every other field's failure modes back in front of the one write
+   * that must not be rolled back into.
+   *
+   * This is as close to all-or-nothing as one HTTP request gets. What it cannot
+   * cover is the response failing to ARRIVE — a dropped connection, a closed
+   * tab — because at that point the write has committed and no server knows.
+   * The screen carries that half: the dialog holds the password until somebody
+   * confirms they have written it down (components/AdminView.jsx).
+   */
+  if (issuedHash) {
+    await Employee.updateOne(
+      { _id: employee._id },
+      { $set: { passwordHash: issuedHash, mustChangePassword: true } },
+    );
+    // The copy going back in the response, brought level with the stored row.
+    // Assignment only — the document is never saved again.
+    employee.mustChangePassword = true;
+  }
+
+  const auditLogged = await recordRosterChange({
+    employee,
+    // A reset with nothing else changed is its own event; a reset alongside
+    // edits stays one record for one request. Either way the password is a
+    // boolean on the row and never a value.
+    action: changes.length ? 'update' : 'password_reset',
+    changes,
+    passwordReset: Boolean(issued),
+    reason,
+    actor,
+  });
+
   return json({
-    employee: await employee.populate('department', 'code name nameTh'),
+    employee: populated,
     /**
      * The issued password, exactly once, and only for a reset.
      *
-     * This response is the ONLY moment it is readable: `setPassword` stores a
+     * This response is the ONLY moment it is readable: the database holds a
      * hash and every roster read goes through `publicEmployee`, so a screen
      * that loses it has no way to ask again — the recovery is another reset.
      * It used to be absent here on the grounds that the caller had just typed

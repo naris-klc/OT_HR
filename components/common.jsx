@@ -650,6 +650,18 @@ export function trailOf(entry) {
 export function Modal({
   title, subtitle, meta, onClose, children, footer, wide = false,
   dirty = false, dirtyPrompt = 'ยังมีข้อมูลที่กรอกไว้และยังไม่ได้บันทึก ปิดหน้าต่างนี้เลยหรือไม่',
+  /**
+   * What the two answers to `dirtyPrompt` are called.
+   *
+   * The default pair is about unsaved typing, which is what `dirty` originally
+   * meant and what all but one caller still uses. ตั้งรหัสผ่านใหม่ borrows the
+   * same guard for something else entirely — a password on screen that no
+   * screen can ever show again — and there "ปิดโดยไม่บันทึก" would be a lie in
+   * the dangerous direction: the reset IS saved, it is the reader who is about
+   * to lose it. A question worth interrupting for is worth answering in its own
+   * words.
+   */
+  dirtyStayLabel = 'กลับไปแก้ต่อ', dirtyLeaveLabel = 'ปิดโดยไม่บันทึก',
 }) {
   const boxRef = React.useRef(null);
   const bodyRef = React.useRef(null);
@@ -749,9 +761,9 @@ export function Modal({
         {closeAsked ? (
           <div className="modal-foot asking">
             <div className="ask">{dirtyPrompt}</div>
-            <button className="btn ghost" onClick={() => setCloseAsked(false)}>กลับไปแก้ต่อ</button>
+            <button className="btn ghost" onClick={() => setCloseAsked(false)}>{dirtyStayLabel}</button>
             <button className="btn danger" onClick={() => { setCloseAsked(false); onClose?.(); }}>
-              ปิดโดยไม่บันทึก
+              {dirtyLeaveLabel}
             </button>
           </div>
         ) : footer && (

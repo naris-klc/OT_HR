@@ -87,8 +87,27 @@ employeeSchema.pre('validate', function inferCompany() {
   if (!this.company) this.company = companyFromCode(this.code) || DEFAULT_COMPANY;
 });
 
+/**
+ * A hash, computed and handed back rather than assigned to anything.
+ *
+ * For the caller that must not write the password until everything else about
+ * the request has already succeeded — see the reset in
+ * app/api/employees/[id]/route.js. `setPassword` puts the value on the document,
+ * and a document with a new hash on it is one stray `save()` away from being
+ * committed by unrelated code further down the handler; this leaves the caller
+ * holding a string and nothing else, so the moment of no return is the line that
+ * writes it and not the line that generates it.
+ *
+ * The cost of `bcrypt.hash` is why it is worth separating at all: it is the
+ * slowest thing in the request, so it happens up front while a failure is still
+ * free, and the write at the end is a single field update.
+ */
+employeeSchema.statics.hashPassword = function hashPassword(plain) {
+  return bcrypt.hash(plain, 10);
+};
+
 employeeSchema.methods.setPassword = async function setPassword(plain) {
-  this.passwordHash = await bcrypt.hash(plain, 10);
+  this.passwordHash = await this.constructor.hashPassword(plain);
 };
 
 employeeSchema.methods.verifyPassword = function verifyPassword(plain) {
