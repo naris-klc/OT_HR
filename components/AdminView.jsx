@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
-import { HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, defaultPassword } from '@/lib/employees.js';
+import { HR_ASSIGNABLE_ROLES, SELF_LOCKED_FIELDS, dropsAnAdmin } from '@/lib/employees.js';
 import { ACCOUNTING_SENSITIVE, FIELD_LABEL, rosterChanges } from '@/lib/rosterAudit.js';
 import { parseCsv } from '@/src/lib/csv.js';
 // Pure config, no mongoose — the same resolution the accounting sheet uses, so
@@ -212,7 +212,10 @@ const ROLE_OPTIONS = [
 
 const BLANK = {
   code: '', name: '', position: '', birthDate: '', department: '', role: 'employee',
-  company: '', password: '',
+  // No `password` — the server issues it. Sending one is now a 400, which is
+  // deliberate: a create that thought it set a password and did not is worse
+  // than one that was told.
+  company: '',
 };
 
 const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map((o) => [o.value, o.label]));
@@ -535,7 +538,13 @@ function Employees({ user }) {
         ค่าอย่าง 05/03/1998 จึงเป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
         ระบบอ่านได้ทั้ง YYYY-MM-DD และ DD/MM/YYYY และจะแสดงผลการตีความให้ตรวจก่อนกดยืนยันนำเข้า
         โปรดอ่านตัวอย่างนั้นให้ครบก่อนยืนยัน — ถ้าตีความไม่ได้แน่ชัด ระบบจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา
-        · ทุกบัญชีที่สร้างจากหน้านี้จะถูกบังคับให้ตั้งรหัสผ่านใหม่เมื่อเข้าระบบครั้งแรก
+        {/* Said here as well as on the dialogs, because it is the change most
+            likely to be read as a bug: the password field people used to fill
+            in is gone. */}
+        · ทุกบัญชีที่สร้างจากหน้านี้ (ทั้งทีละคนและจาก CSV) ระบบจะ
+        สุ่มรหัสผ่านชั่วคราวให้เอง แสดงบนจอครั้งเดียวให้ HR จดไปแจ้งพนักงาน
+        และบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+        — ไฟล์ CSV ไม่ต้องมีคอลัมน์รหัสผ่าน ถ้ามีระบบจะไม่ใช้ค่านั้น
         {/* Said plainly, because the alternative is HR discovering it as a 403.
             Both limits are enforced on the server (lib/employees.js); this is
             the sentence that stops somebody looking for a button that is not
@@ -601,13 +610,54 @@ function Employees({ user }) {
           nobody can recover — only reset. */}
       {issued && (
         <Alert kind="ok">
-          สร้างบัญชี {issued.code} · {issued.name} แล้ว
-          {' '}— รหัสผ่านเริ่มต้นคือ <strong style={{ fontFamily: 'var(--mono, monospace)' }}>{issued.password}</strong>
+          <div>
+            {issued.reset ? 'ตั้งรหัสผ่านใหม่ให้' : 'สร้างบัญชี'} {issued.code} · {issued.name} แล้ว
+            {' '}— รหัสผ่านชั่วคราวคือ{' '}
+            <strong style={{ fontFamily: 'var(--mono, monospace)', fontSize: 17, letterSpacing: '.04em' }}>
+              {issued.password}
+            </strong>
+          </div>
           <div style={{ marginTop: 4, fontSize: 12.5 }}>
-            แจ้งรหัสนี้ให้พนักงาน · ระบบจะบังคับให้ตั้งรหัสผ่านใหม่เมื่อเข้าระบบครั้งแรก
-            {' '}· รหัสนี้แสดงเพียงครั้งเดียว หากลืมให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตารางด้านล่าง
+            แจ้งรหัสนี้ให้พนักงาน · ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+            {' '}· ระบบสุ่มรหัสนี้ขึ้นมาและเก็บไว้แบบเข้ารหัสทางเดียว
+            {' '}<strong>แสดงเพียงครั้งเดียว</strong> ปิดแล้วดูซ้ำไม่ได้ — หากพลาดให้ตั้งใหม่อีกครั้ง
           </div>
           <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setIssued(null)}>รับทราบ</button>
+        </Alert>
+      )}
+
+      {/*
+        The same thing for a CSV import, which can create a hundred accounts at
+        once. Without this the upload would mint rows nobody can log into: the
+        server keeps only the hash, so the repair would be resetting every new
+        row by hand. Shown once, on the screen that did the upload.
+      */}
+      {result?.issued?.length > 0 && (
+        <Alert kind="ok">
+          <strong>รหัสผ่านชั่วคราวของ {result.issued.length} บัญชีที่เพิ่งสร้าง</strong>
+          {' '}— แสดงเพียงครั้งเดียว ปิดแล้วดูซ้ำไม่ได้ ต้องตั้งใหม่รายคน
+          <div className="table-wrap" style={{ marginTop: 8 }}>
+            <table>
+              <thead>
+                <tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>รหัสผ่านชั่วคราว</th></tr>
+              </thead>
+              <tbody>
+                {result.issued.map((row) => (
+                  <tr key={row.code}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{row.code}</td>
+                    <td>{row.name}</td>
+                    <td style={{ fontFamily: 'var(--mono, monospace)', whiteSpace: 'nowrap' }}>
+                      {row.password}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12.5 }}>
+            ทุกบัญชีจะถูกบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+            {' '}· พิมพ์หรือจดไว้ก่อนปิดหน้านี้
+          </div>
         </Alert>
       )}
 
@@ -740,18 +790,11 @@ function Employees({ user }) {
             {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
         </div>
-        {/* Left blank this is defaultPassword(code) — shown as the placeholder
-            so HR can see what they will be reading out before they decide
-            whether to type something else. */}
-        <div className="field" style={{ maxWidth: 200 }}>
-          <label>รหัสผ่านเริ่มต้น</label>
-          <input
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder={form.code ? defaultPassword(form.code) : 'เว้นว่าง = ตั้งจากรหัสพนักงาน'}
-            minLength={PASSWORD_MIN_LENGTH}
-          />
-        </div>
+        {/* No password field. There used to be one, prefilled with a value
+            computed from the employee code — so the roster, which is printed on
+            every form the company files, was also the password list for every
+            account nobody had logged into yet. The server issues one now and
+            shows it once; see lib/tempPassword.js. */}
         <button className="btn">เพิ่ม</button>
       </form>
 
@@ -844,7 +887,7 @@ function Employees({ user }) {
           onClose={() => setResetting(null)}
           onDone={(password) => {
             setResetting(null);
-            setIssued({ code: resetting.code, name: resetting.name, password });
+            setIssued({ code: resetting.code, name: resetting.name, password, reset: true });
           }}
         />
       )}
@@ -854,6 +897,16 @@ function Employees({ user }) {
           employee={editing}
           depts={depts}
           user={user}
+          /**
+           * Whether anybody ELSE could still administer the system if this row
+           * stopped doing so. Counted from the roster the table already has, so
+           * the dialog can grey the two fields instead of letting somebody fill
+           * the form in and meet a 409 — the server counts it again for real
+           * (lastAdminPermission), which is what actually enforces it.
+           */
+          otherActiveAdmins={rows.filter((r) => (
+            r.role === 'admin' && r.active !== false && String(r._id) !== String(editing._id)
+          )).length}
           onClose={() => setEditing(null)}
           onSave={async (patch) => {
             await update(editing._id, patch);
@@ -884,6 +937,16 @@ const LOCK_NOTE = {
     + '— “ฝ่ายบุคคล” และ “ผู้ดูแลระบบ” ต้องให้ผู้ดูแลระบบตั้งให้',
   adminRow: 'บัญชีผู้ดูแลระบบแก้ไขได้เฉพาะผู้ดูแลระบบเท่านั้น รวมถึงการตั้งรหัสผ่านใหม่ '
     + '— เพราะการแก้แถวหนึ่งรวมถึงการตั้งรหัสผ่านของแถวนั้นด้วย',
+  // The two fields nobody may change on their own row. Named per field because
+  // the consequence differs: one takes the screen away, the other takes the
+  // login away, and both leave the person holding no way to undo it.
+  selfRole: 'นี่คือบัญชีของคุณเอง — เปลี่ยนบทบาทตัวเองไม่ได้ '
+    + 'เพราะเปลี่ยนแล้วจะไม่มีสิทธิ์กลับเข้าหน้านี้เพื่อเปลี่ยนคืน ให้ผู้ดูแลระบบคนอื่นเปลี่ยนให้',
+  selfActive: 'นี่คือบัญชีของคุณเอง — ปิดใช้งานตัวเองไม่ได้ '
+    + 'เพราะบัญชีที่ปิดแล้วเข้าระบบไม่ได้ จึงเปิดคืนเองไม่ได้',
+  // Not about who is editing — about what the system would be left with.
+  lastAdmin: 'นี่คือผู้ดูแลระบบที่ใช้งานอยู่คนสุดท้าย — ถ้าเปลี่ยนบทบาทหรือปิดใช้งาน '
+    + 'จะไม่เหลือใครที่ตั้งผู้ดูแลระบบคนใหม่ได้ (ฝ่ายบุคคลตั้งไม่ได้) ให้ตั้งอีกคนก่อน',
 };
 
 /** One roster row as the edit dialog holds it — the audited fields, nothing else. */
@@ -952,10 +1015,34 @@ function showValue(field, value, depts = []) {
  * test/rosterRouteGuards.test.js. What is disabled here is disabled so that
  * nobody is invited to type something that will be refused.
  */
-function EditEmployee({ employee, depts, user, onClose, onSave }) {
+function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, onSave }) {
   const isAdmin = user?.role === 'admin';
   /** ฝ่ายบุคคล opening the ผู้ดูแลระบบ row: readable, not writable. */
   const rowLocked = !isAdmin && employee.role === 'admin';
+
+  /**
+   * The two lockouts, as the dialog sees them.
+   *
+   * `isSelf` — บทบาท and สถานะการใช้งาน on one's own row. Both are one save away
+   *   from an account that cannot reach the screen it would undo the save from,
+   *   and for a single-Admin installation there is nobody else to undo it.
+   * `isLastAdmin` — the same outcome reached without editing oneself: demote or
+   *   deactivate the only active ผู้ดูแลระบบ and nobody can hand the role back
+   *   out, because ฝ่ายบุคคล may not (`HR_ASSIGNABLE_ROLES`).
+   *
+   * Greyed here, refused by `selfEditPermission` and `lastAdminPermission` on
+   * both servers. `dropsAnAdmin` is imported rather than re-expressed so the
+   * screen and the refusal cannot disagree about what counts as dropping one.
+   */
+  const isSelf = String(user?._id ?? '') === String(employee._id ?? '');
+  const isLastAdmin = otherActiveAdmins === 0
+    && dropsAnAdmin(employee, { role: 'employee', active: false });
+  // Read off the shared list rather than spelled out again — the field a future
+  // version adds to SELF_LOCKED_FIELDS is then locked here without this line
+  // being touched, instead of being refused by the server and editable here.
+  const selfLocked = (field) => isSelf && SELF_LOCKED_FIELDS.includes(field);
+  const roleLocked = selfLocked('role') || isLastAdmin;
+  const activeLocked = selfLocked('active') || isLastAdmin;
 
   const before = formOf(employee);
   const [form, setForm] = useState(before);
@@ -1197,7 +1284,13 @@ function EditEmployee({ employee, depts, user, onClose, onSave }) {
             </Field>
             <Field
               label="บทบาท"
-              note={isAdmin ? 'กำหนดว่าคนนี้ยื่น OT ได้ อนุมัติได้ หรือดูแลระบบได้' : LOCK_NOTE.role}
+              // The lockout reasons win over the role-list one: a locked field
+              // needs the sentence that explains THIS lock, and "ฝ่ายบุคคลตั้งได้
+              // เฉพาะ…" would send somebody to find an Admin for a change no
+              // Admin can make either.
+              note={selfLocked('role') ? LOCK_NOTE.selfRole
+                : isLastAdmin ? LOCK_NOTE.lastAdmin
+                  : isAdmin ? 'กำหนดว่าคนนี้ยื่น OT ได้ อนุมัติได้ หรือดูแลระบบได้' : LOCK_NOTE.role}
             >
               {/*
                 Rendered whole, with what HR may not pick disabled rather than
@@ -1212,7 +1305,7 @@ function EditEmployee({ employee, depts, user, onClose, onSave }) {
               <select
                 value={form.role}
                 onChange={(e) => set({ role: e.target.value })}
-                disabled={disabled()}
+                disabled={disabled(roleLocked)}
               >
                 {ROLE_OPTIONS.map((o) => {
                   const refused = !isAdmin
@@ -1244,13 +1337,15 @@ function EditEmployee({ employee, depts, user, onClose, onSave }) {
             </Field>
             <Field
               label="สถานะการใช้งาน"
-              note="ปิดใช้งานแล้วเข้าระบบไม่ได้ · ชั่วโมงที่อนุมัติแล้วยังอยู่ในรายงานตามเดิม"
+              note={selfLocked('active') ? LOCK_NOTE.selfActive
+                : isLastAdmin ? LOCK_NOTE.lastAdmin
+                  : 'ปิดใช้งานแล้วเข้าระบบไม่ได้ · ชั่วโมงที่อนุมัติแล้วยังอยู่ในรายงานตามเดิม'}
               style={{ maxWidth: 190 }}
             >
               <select
                 value={form.active ? 'yes' : 'no'}
                 onChange={(e) => set({ active: e.target.value === 'yes' })}
-                disabled={disabled()}
+                disabled={disabled(activeLocked)}
               >
                 <option value="yes">ใช้งาน</option>
                 <option value="no">ปิดใช้งาน</option>
@@ -1524,24 +1619,28 @@ function RosterAudit() {
  * ตั้งรหัสผ่านใหม่ให้พนักงาน — the counterpart to creating the account, for the
  * day somebody forgets.
  *
- * The suggested value is the same one a new account gets, because the shape HR
- * has to read down the phone should not depend on whether this is the first
- * time or the third. Whatever is set here comes back with the same obligation:
- * the employee cannot reach any other screen until they have replaced it.
+ * NO FIELD TO TYPE ONE IN, AND THAT IS THE POINT. This dialog used to open with
+ * `defaultPassword(employee.code)` already in the box and PATCH whatever was
+ * left there — so the value a password was reset to was computed in the BROWSER,
+ * from the employee code, which is printed on every form the company files.
+ * Anybody who noticed the shape had every account that had not yet been logged
+ * into. Now the button asks the server for one; `generateTempPassword` makes it
+ * with `node:crypto` and it comes back exactly once.
+ *
+ * Confirming rather than composing also removes the other failure this had: the
+ * quickest way past a "type a password" box is to type a memorable one, and HR
+ * resetting six accounts in a morning types the same memorable one six times.
  */
 function ResetPassword({ employee, onClose, onDone }) {
-  const suggestion = defaultPassword(employee.code);
-  const [password, setPassword] = useState(suggestion);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const ready = password.length >= PASSWORD_MIN_LENGTH;
 
   async function submit() {
     setError('');
     setBusy(true);
     try {
-      await api.patch(`/employees/${employee._id}`, { password });
-      onDone(password);
+      const res = await api.patch(`/employees/${employee._id}`, { resetPassword: true });
+      onDone(res.password);
     } catch (err) {
       setError(err.message);
       setBusy(false);
@@ -1553,36 +1652,24 @@ function ResetPassword({ employee, onClose, onDone }) {
       title="ตั้งรหัสผ่านใหม่"
       subtitle={`${employee.code} · ${employee.name}`}
       onClose={onClose}
-      dirty={password !== suggestion && !busy}
       footer={<>
-        <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
-        <button className="btn" onClick={submit} disabled={busy || !ready}>
-          {busy ? 'กำลังบันทึก…' : 'ตั้งรหัสผ่านใหม่'}
+        <button className="btn ghost" onClick={onClose} disabled={busy}>ยกเลิก</button>
+        <button className="btn" onClick={submit} disabled={busy}>
+          {busy ? 'กำลังสร้าง…' : 'สร้างรหัสผ่านชั่วคราว'}
         </button>
       </>}
     >
       <div className="hint">
-        รหัสผ่านเดิมของพนักงานคนนี้จะใช้ไม่ได้ทันที
-        {' '}· เมื่อเข้าระบบด้วยรหัสใหม่ ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองก่อนใช้งาน
+        ระบบจะสุ่มรหัสผ่านชั่วคราวให้ และ<strong>แสดงเพียงครั้งเดียว</strong>หลังกดปุ่มนี้
+        {' '}— ปิดหน้าต่างแล้วดูซ้ำไม่ได้ ถ้าพลาดต้องตั้งใหม่อีกครั้ง
+        {' '}· รหัสผ่านเดิมของพนักงานคนนี้จะใช้ไม่ได้ทันที
+        {' '}· เมื่อเข้าระบบด้วยรหัสชั่วคราว ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองก่อนใช้งาน
       </div>
       {error && <Alert kind="error">{error}</Alert>}
-      <div className="field">
-        <label>รหัสผ่านใหม่</label>
-        <input
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={PASSWORD_MIN_LENGTH}
-          autoComplete="off"
-        />
-        {!ready && (
-          <div className="field-note error">ต้องยาวอย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร</div>
-        )}
-      </div>
-      {password !== suggestion && (
-        <button className="btn ghost" onClick={() => setPassword(suggestion)}>
-          ใช้รหัสเริ่มต้น ({suggestion})
-        </button>
-      )}
+      <Alert kind="warn">
+        เตรียมที่จดไว้ก่อนกด — รหัสนี้ต้องอ่านให้พนักงานฟัง และระบบเก็บไว้แบบเข้ารหัสทางเดียว
+        {' '}จึงไม่มีหน้าใดแสดงซ้ำได้
+      </Alert>
     </Modal>
   );
 }

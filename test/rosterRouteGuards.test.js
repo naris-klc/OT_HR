@@ -142,9 +142,11 @@ test('no roster route hands a password to the audit trail', () => {
     for (const call of calls) {
       assert.doesNotMatch(call, /password:/, `${file} passes a password into the trail`);
       assert.doesNotMatch(call, /passwordHash/, `${file} passes a hash into the trail`);
-      // The one thing it may say about a password is that one was set.
+      // The one thing it may say about a password is that one was set —
+      // `issued` is the value the server just generated, and `Boolean()` is
+      // what keeps this a flag rather than a slot the value could slide into.
       if (/passwordReset/.test(call)) {
-        assert.match(call, /passwordReset:\s*Boolean\(password\)|passwordReset:\s*(true|false)/, file);
+        assert.match(call, /passwordReset:\s*Boolean\(issued\)|passwordReset:\s*(true|false)/, file);
       }
     }
   }
@@ -187,7 +189,7 @@ test('the roster table is read-only — every edit goes through the one dialog',
   const screen = read('components/AdminView.jsx');
   // The ทะเบียนพนักงาน table specifically — แผนกและเพดาน above it is a different
   // screen with two numeric fields that legitimately still save on blur.
-  const start = screen.indexOf('<th>รหัส</th><th>ชื่อ-สกุล</th>');
+  const start = screen.indexOf('<th>รหัส</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th>');
   assert.ok(start > 0, 'could not find the employee table — its header row changed');
   const table = screen.slice(start, screen.indexOf('</table>', start));
 

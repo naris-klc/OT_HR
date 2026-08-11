@@ -2,9 +2,8 @@ import Employee, { ROLES } from '@/src/models/Employee.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import {
-  PASSWORD_MIN_LENGTH, defaultPassword, publicEmployee, rosterPermission,
-} from '@/lib/employees.js';
+import { publicEmployee, rosterPermission } from '@/lib/employees.js';
+import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 
@@ -33,6 +32,16 @@ export const POST = route(async (req) => {
   const actor = await requireAuth(req);
   const { code, name, email, position, birthDate, department, role, company, password } = await body(req);
 
+  /**
+   * Refused rather than ignored — the same rule as the PATCH route. The server
+   * issues these now, so a caller still sending one is a caller working from
+   * the old contract, and letting it through quietly would mean an account
+   * whose password is whatever that caller chose.
+   */
+  if (password !== undefined) {
+    return fail('ระบบเป็นผู้สร้างรหัสผ่านเริ่มต้นเอง — ไม่ต้องส่งค่ารหัสผ่านมา', 400);
+  }
+
   if (!code || !name || !department) {
     return fail('ต้องระบุรหัสพนักงาน ชื่อ-สกุล และแผนก', 400);
   }
@@ -43,13 +52,6 @@ export const POST = route(async (req) => {
   const may = rosterPermission(actor, { role: role || 'employee' });
   if (!may.ok) return fail(may.error, may.status);
 
-  // A password HR types is one they are about to read out, so the only check it
-  // gets is the one the employee's own change is held to. Left blank it becomes
-  // defaultPassword(), which is longer than this anyway.
-  if (password && String(password).length < PASSWORD_MIN_LENGTH) {
-    return fail(`รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`, 400);
-  }
-
   // company left out on purpose falls to the model's pre-validate hook, which
   // reads it off the code prefix.
   const employee = new Employee({
@@ -59,7 +61,7 @@ export const POST = route(async (req) => {
     // YYYY-MM-DD match rejects the whole save.
     birthDate: birthDate || undefined,
   });
-  const issued = password || defaultPassword(code);
+  const issued = generateTempPassword();
   await employee.setPassword(issued);
   // Somebody else knows this password — it is not the employee's until they
   // have replaced it, and until then the client will not let the account

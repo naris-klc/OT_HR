@@ -2,7 +2,10 @@ import Employee, { ROLES } from '@/src/models/Employee.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { PASSWORD_MIN_LENGTH, codeChangePermission, rosterPermission } from '@/lib/employees.js';
+import {
+  codeChangePermission, dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
+} from '@/lib/employees.js';
+import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 import { codeMatcher, sameCode } from '@/src/lib/employeeCode.js';
@@ -16,14 +19,56 @@ export const PATCH = route(async (req, { params }) => {
   if (!employee) return fail('ไม่พบพนักงาน', 404);
 
   const {
-    code, name, email, position, birthDate, department, role, company, active, password, reason,
+    code, name, email, position, birthDate, department, role, company, active,
+    resetPassword, password, reason,
   } = await body(req);
 
   if (role != null && !ROLES.includes(role)) return fail('บทบาทไม่ถูกต้อง', 400);
+
+  /**
+   * A caller-chosen password is refused rather than ignored.
+   *
+   * The server issues these now — `generateTempPassword`, from `node:crypto` —
+   * and the field used to be filled in by the BROWSER with a value computed
+   * from the employee code. Accepting one silently would leave that path open
+   * for anything still sending it, and a request that thought it set a password
+   * and did not is worse than one that was told.
+   */
+  if (password !== undefined) {
+    return fail(
+      'ระบบเป็นผู้สร้างรหัสผ่านชั่วคราวเอง — ส่งค่า resetPassword: true เพื่อขอรหัสใหม่',
+      400,
+    );
+  }
+
   // Read before anything is assigned: the rule is about the row as it stands
   // and the role being asked for, not about the half-mutated document.
   const may = rosterPermission(actor, { target: employee, role: role ?? null });
   if (!may.ok) return fail(may.error, may.status);
+
+  /**
+   * Nobody edits themselves out of the system, and the system always keeps one
+   * ผู้ดูแลระบบ who can log in.
+   *
+   * Both read the row as it STANDS, alongside the permission above and before
+   * any assignment — `selfEditPermission` compares the incoming values against
+   * the stored ones to decide whether anything is being changed at all, which a
+   * half-mutated document cannot answer.
+   */
+  const self = selfEditPermission(actor, { target: employee, role: role ?? null, active: active ?? null });
+  if (!self.ok) return fail(self.error, self.status);
+
+  // The count only when it can matter — see `dropsAnAdmin`. Excludes this row:
+  // the question is whether there is ANOTHER one.
+  if (dropsAnAdmin(employee, { role: role ?? null, active: active ?? null })) {
+    const otherActiveAdmins = await Employee.countDocuments({
+      role: 'admin', active: true, _id: { $ne: employee._id },
+    });
+    const last = lastAdminPermission(employee, {
+      role: role ?? null, active: active ?? null, otherActiveAdmins,
+    });
+    if (!last.ok) return fail(last.error, last.status);
+  }
 
   /**
    * รหัสพนักงาน is its own permission, on top of the one above and not folded
@@ -34,10 +79,6 @@ export const PATCH = route(async (req, { params }) => {
    */
   const codeChange = codeChangePermission(actor, { from: employee.code, to: code, reason });
   if (!codeChange.ok) return fail(codeChange.error, codeChange.status);
-
-  if (password && String(password).length < PASSWORD_MIN_LENGTH) {
-    return fail(`รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`, 400);
-  }
 
   /**
    * The row as it stands, captured before a single field is assigned.
@@ -100,8 +141,12 @@ export const PATCH = route(async (req, { params }) => {
   // it carries the same obligation to replace it. Editing anything else leaves
   // the flag alone: a corrected job title is not a reason to ask somebody for a
   // new password.
-  if (password) {
-    await employee.setPassword(password);
+  //
+  // The value is made here and returned once. It is never read from the request,
+  // which is the whole of the fix: the browser used to compute it.
+  const issued = resetPassword ? generateTempPassword() : null;
+  if (issued) {
+    await employee.setPassword(issued);
     employee.mustChangePassword = true;
   }
 
@@ -133,7 +178,7 @@ export const PATCH = route(async (req, { params }) => {
     // boolean on the row and never a value.
     action: changes.length ? 'update' : 'password_reset',
     changes,
-    passwordReset: Boolean(password),
+    passwordReset: Boolean(issued),
     reason,
     actor,
   });
@@ -163,10 +208,18 @@ export const PATCH = route(async (req, { params }) => {
     );
   }
 
-  // No password echoed back, unlike create: a reset is always a password the
-  // caller just typed, so there is nothing here they do not already have.
   return json({
     employee: await employee.populate('department', 'code name nameTh'),
+    /**
+     * The issued password, exactly once, and only for a reset.
+     *
+     * This response is the ONLY moment it is readable: `setPassword` stores a
+     * hash and every roster read goes through `publicEmployee`, so a screen
+     * that loses it has no way to ask again — the recovery is another reset.
+     * It used to be absent here on the grounds that the caller had just typed
+     * the value; now the caller has not seen it, and cannot.
+     */
+    password: issued,
     /**
      * False when the change was saved but its record was not — see
      * lib/rosterAuditLog.js. The screen says so rather than letting a gap in the

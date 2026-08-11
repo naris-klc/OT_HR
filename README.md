@@ -72,6 +72,47 @@ Seeded logins (password from `SEED_PASSWORD`, default `primus123`):
 | `HR-001` | HR |
 | `ADMIN` | admin |
 
+That shared password is a **development fixture** and applies only to rows
+`npm run seed` writes. It is not how real accounts get one — see below.
+
+### Temporary passwords: generated, shown once, never derived
+
+An account created from ทะเบียนพนักงาน — one at a time or by CSV — gets a
+password from `generateTempPassword()` in `lib/tempPassword.js`: `node:crypto`,
+on the server, in the shape `gof-mez-tab-4827`. Sayable blocks, lowercase, and
+none of `0 1 l i O`, because HR reads it down a phone and somebody else types it
+on a shop-floor terminal.
+
+**It is returned exactly once**, in the response to the create / import / reset
+that produced it, and shown on that screen until dismissed. Only the hash is
+stored (`setPassword`) and every roster read goes through `publicEmployee()`, so
+there is no second look: the recovery is another reset. `mustChangePassword` is
+set with it, so the account cannot reach any screen but ตั้งรหัสผ่านใหม่ until
+the person holding it has replaced the issued value.
+
+**No caller may choose one.** `POST /api/employees` and `PATCH
+/api/employees/:id` return 400 for a `password` field rather than honouring it,
+a reset is asked for with `resetPassword: true`, and a `password` column in an
+import CSV is ignored with a warning on that row. This replaced
+`defaultPassword()`, which was `Primus@` + the employee code — computable from a
+roster that is printed on every ใบ F-HR-027 and every file sent to accounting,
+and, worse, computed in the *browser* by the ตั้งรหัสใหม่ dialog, which PATCHed
+whatever was left in the box. Pinned by `test/tempPassword.test.js`.
+
+### Nobody can lock themselves out
+
+Two floors, both refused at the route on both servers and greyed out with the
+reason in the edit dialog (`test/lockout.test.js`):
+
+- **บทบาท and สถานะการใช้งาน on your own row** (`selfEditPermission`). Either
+  one is a single save away from an account that cannot reach the screen it
+  would undo the save from. Every other field on your own row is ordinary.
+- **The last active ผู้ดูแลระบบ** (`lastAdminPermission`) may not be demoted or
+  deactivated by anybody. ฝ่ายบุคคล cannot mint an Admin
+  (`HR_ASSIGNABLE_ROLES`), so a system with no active Admin has no way to grow
+  one back — the repair would be a database console. 409 rather than 403: the
+  actor has the right, the state of the system is what refuses.
+
 ---
 
 ## Layout

@@ -1,0 +1,199 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+import { AMBIGUOUS_GLYPHS, generateTempPassword } from '../lib/tempPassword.js';
+import { PASSWORD_MIN_LENGTH } from '../lib/employees.js';
+
+/**
+ * THE FIRST-LOGIN PASSWORD IS NOT DERIVED FROM ANYTHING.
+ *
+ * It used to be `Primus@` + the employee code with punctuation stripped. The
+ * roster is printed on every ใบ F-HR-027 and every file sent to accounting, so
+ * that made the password of every account nobody had logged into yet a public
+ * fact — and the accounts most likely to be unclaimed are the new hires whose
+ * absence nobody would notice for a week.
+ *
+ * These tests pin the two halves of the fix: that the value is random and that
+ * nothing about the employee can be read out of it. The second is the one worth
+ * stating as a test rather than as a comment — a "random" generator that mixes
+ * the code in for readability would pass every other check here.
+ *
+ * Run with: npm test
+ */
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('two passwords are not the same password', () => {
+  // Sampled rather than compared twice: a generator that returned a per-process
+  // constant would pass a single !== and fail here.
+  const seen = new Set();
+  for (let i = 0; i < 200; i += 1) seen.add(generateTempPassword());
+  assert.equal(seen.size, 200, 'พบรหัสผ่านซ้ำในการสุ่ม 200 ครั้ง');
+});
+
+test('nothing about the employee is in it — not the code, not the company', () => {
+  // The failure being fixed, stated directly. Every one of these appeared in
+  // the old value: `Primus@PM0412` carried the company name AND the code.
+  const forbidden = [
+    'primus', 'themtech', 'pm', 'tht', 'ot', 'hr', 'admin',
+    'PM-0412', 'PM0412', '0412', 'somchai', 'สมชาย',
+  ];
+  for (let i = 0; i < 200; i += 1) {
+    const password = generateTempPassword().toLowerCase();
+    for (const needle of forbidden) {
+      // 'pm', 'ot' and 'hr' are two-letter sequences a random consonant run
+      // could produce by chance — but the alphabet has no 'm' after 'p' rule to
+      // prevent it, so this is checked as a substring of the BLOCK structure:
+      // any occurrence means the value could be read as carrying it.
+      if (needle.length <= 2) continue;
+      assert.equal(password.includes(needle.toLowerCase()), false, `${password} contains ${needle}`);
+    }
+  }
+});
+
+test('it is not a function of the employee — the generator cannot even see one', () => {
+  // The structural version of the test above, and the one that actually holds:
+  // a generator that takes no arguments cannot derive anything from the row.
+  // This is why `generateTempPassword()` has an empty parameter list on purpose.
+  assert.equal(generateTempPassword.length, 0);
+});
+
+test('no glyph anybody misreads down a phone', () => {
+  // 0/O, 1/l/I. HR reads these aloud and somebody else types them, often on a
+  // shop-floor terminal — a password that cannot be transcribed comes back as a
+  // second call, or as a note stuck to the monitor.
+  for (let i = 0; i < 200; i += 1) {
+    const password = generateTempPassword();
+    for (const glyph of AMBIGUOUS_GLYPHS) {
+      assert.equal(password.includes(glyph), false, `${password} contains ${glyph}`);
+    }
+    // Lowercase throughout, which is what removes the caps-lock failure at the
+    // login screen and the "was that a capital O" question with it.
+    assert.equal(password, password.toLowerCase());
+  }
+});
+
+test('long enough to be a password, shaped to be read aloud', () => {
+  for (let i = 0; i < 50; i += 1) {
+    const password = generateTempPassword();
+    assert.ok(password.length >= PASSWORD_MIN_LENGTH, password);
+    // Three sayable consonant-vowel-consonant blocks and one run of digits.
+    assert.match(password, /^[a-z]{3}-[a-z]{3}-[a-z]{3}-\d{4}$/, password);
+  }
+});
+
+test('the whole alphabet gets used — no position is stuck', () => {
+  // A modulo-biased or mis-indexed pick would show up as a character that never
+  // appears. Loose bounds, because this is a randomness smoke test rather than
+  // a distribution test.
+  const chars = new Set();
+  for (let i = 0; i < 500; i += 1) for (const ch of generateTempPassword()) chars.add(ch);
+  assert.ok(chars.size >= 25, `เห็นตัวอักษรเพียง ${chars.size} แบบ`);
+});
+
+// ── where it is generated, which is the other half of the fix ───────────────
+
+test('it is made on the server, with crypto — never in the browser', () => {
+  // ตั้งรหัสใหม่ used to prefill the field in the BROWSER with a value computed
+  // from the employee code and PATCH whatever was left in it. A generator that
+  // runs on the client is not a generator, it is a suggestion.
+  // Comments stripped: the module's own prose explains why `Math.random` is
+  // wrong, and a check that read the explanation as the code would fail on the
+  // file that documents the rule best.
+  const gen = strip(readFileSync(join(ROOT, 'lib/tempPassword.js'), 'utf8'));
+  assert.match(gen, /from 'node:crypto'/);
+  assert.match(gen, /randomInt\(/);
+  assert.doesNotMatch(gen, /Math\.random/);
+
+  // And this module must stay out of anything a client component imports —
+  // lib/employees.js is imported by 'use client' files.
+  const shared = strip(readFileSync(join(ROOT, 'lib/employees.js'), 'utf8'));
+  assert.doesNotMatch(shared, /tempPassword/, 'lib/employees.js now pulls node:crypto into the client bundle');
+  assert.doesNotMatch(shared, /defaultPassword/, 'the derived password came back');
+
+  const screen = strip(readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8'));
+  assert.doesNotMatch(screen, /generateTempPassword|defaultPassword/, 'the roster screen generates a password');
+  // And it no longer offers a box to type one into — see ResetPassword. The
+  // quickest way past such a box is a memorable password typed six times.
+  assert.doesNotMatch(screen, /label>รหัสผ่านใหม่</);
+  assert.match(screen, /\{ resetPassword: true \}/);
+});
+
+test('every route that issues one asks the generator, and none reads a request field', () => {
+  const routes = [
+    'app/api/employees/route.js',
+    'app/api/employees/[id]/route.js',
+    'app/api/employees/import/route.js',
+    'src/routes/employees.js',
+  ];
+  for (const file of routes) {
+    const code = strip(readFileSync(join(ROOT, file), 'utf8'));
+
+    assert.match(code, /generateTempPassword\(\)/, `${file} issues a password some other way`);
+    // The old shapes: a password taken from the body, or from a CSV column.
+    assert.doesNotMatch(code, /setPassword\(password\)/, `${file} still sets a caller's password`);
+    assert.doesNotMatch(code, /pick\(row, 'password'\) \|\|/, `${file} still honours a CSV password column`);
+  }
+
+  // A JSON caller still sending one is told, not ignored: a request that
+  // thought it set a password and did not is worse than one that was refused.
+  for (const file of ['app/api/employees/route.js', 'app/api/employees/[id]/route.js', 'src/routes/employees.js']) {
+    assert.match(
+      strip(readFileSync(join(ROOT, file), 'utf8')),
+      /password !== undefined/,
+      `${file} silently ignores a supplied password`,
+    );
+  }
+
+  // A CSV cannot be refused the same way — one stray column would reject a file
+  // of two hundred good rows — so the column is ignored and the row is flagged,
+  // which is the same information arriving as a warning instead of an error.
+  const importCode = readFileSync(join(ROOT, 'app/api/employees/import/route.js'), 'utf8');
+  assert.match(importCode, /if \(pick\(row, 'password'\)\) \{/);
+  assert.match(importCode, /ระบบไม่ใช้ค่านั้น/);
+});
+
+test('a reset is asked for by a flag, and the issued value comes back once', () => {
+  // `resetPassword: true` replaced `password: '…'`. The response carries the
+  // generated value because it is the only moment it is readable — only the
+  // hash is stored and every roster read goes through publicEmployee().
+  for (const file of ['app/api/employees/[id]/route.js', 'src/routes/employees.js']) {
+    const code = strip(readFileSync(join(ROOT, file), 'utf8'));
+    assert.match(code, /resetPassword \? generateTempPassword\(\) : null/, file);
+    assert.match(code, /password: issued/, `${file} does not return the issued password`);
+    assert.match(code, /passwordReset: Boolean\(issued\)/, `${file} records the wrong reset flag`);
+  }
+
+  // And the import hands back one row per account it created, or those accounts
+  // are unreachable: nobody can log in and nothing stored can say what to.
+  for (const file of ['app/api/employees/import/route.js', 'src/routes/employees.js']) {
+    const code = readFileSync(join(ROOT, file), 'utf8');
+    assert.match(code, /issuedPasswords\.push\(\{ code: employee\.code, name: employee\.name, password: issued \}\)/, file);
+    assert.match(code, /issued: issuedPasswords/, file);
+  }
+});
+
+test('the issued password is still never written to the audit trail', () => {
+  // The allowlist in lib/rosterAudit.js is what guarantees this and is pinned
+  // by test/rosterAudit.test.js. Checked again from this side because the
+  // routes now hold a plaintext password in a local called `issued`, which is a
+  // new thing for somebody to reach for when adding a field to the record.
+  for (const file of ['app/api/employees/[id]/route.js', 'app/api/employees/import/route.js', 'src/routes/employees.js']) {
+    const code = strip(readFileSync(join(ROOT, file), 'utf8'));
+    const calls = [...code.matchAll(/recordRosterChange\(\{[\s\S]*?\n\s*\}\)/g)].map((m) => m[0]);
+    for (const call of calls) {
+      // `Boolean(issued)` is the one permitted mention: it says a reset
+      // happened and carries no value. Anything else is the value itself.
+      const withoutFlag = call.replace(/passwordReset: Boolean\(issued\),?/g, '');
+      assert.doesNotMatch(withoutFlag, /\bissued\b/, `${file} passes the issued password into the trail`);
+    }
+  }
+});
+
+/** Comments say what the code should do; these tests are about what it does. */
+function strip(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+}

@@ -4,7 +4,10 @@ import { COMPANY_KEYS, DEFAULT_COMPANY, companyFromCode } from '@/src/config/com
 import { route, uploadText, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { parseCsv, pick } from '@/src/lib/csv.js';
-import { defaultPassword, rosterPermission } from '@/lib/employees.js';
+import {
+  dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
+} from '@/lib/employees.js';
+import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 import { resolveBirthDateColumn } from '@/lib/birthDate.js';
@@ -66,6 +69,17 @@ export const POST = route(async (req) => {
   const errors = [];
   /** Rows whose company was neither given nor derivable — see below. */
   const warnings = [];
+  /**
+   * The temporary passwords issued to rows this file CREATED, in the response
+   * and nowhere else.
+   *
+   * A bulk import that generates passwords and does not hand them back creates
+   * accounts nobody can log into — the hash is all that is stored, so the only
+   * repair would be resetting every new row one at a time. They are readable
+   * exactly once, on the screen that uploaded the file, which is the same
+   * contract the single-employee form has always had.
+   */
+  const issuedPasswords = [];
   /**
    * How many rows moved the roster without leaving a record of it.
    *
@@ -153,6 +167,24 @@ export const POST = route(async (req) => {
       const rowMay = rosterPermission(actor, { target: existing, role });
       if (!rowMay.ok) { errors.push({ line, error: rowMay.error }); continue; }
 
+      // Including the importer's own line: a file that demotes the person
+      // running it is the same lockout the form refuses, arriving as a row. A
+      // file that merely REPEATS their current role passes, which is what keeps
+      // an unchanged roster safe to re-import.
+      const rowSelf = selfEditPermission(actor, { target: existing, role });
+      if (!rowSelf.ok) { errors.push({ line, error: rowSelf.error }); continue; }
+
+      // And the same last-Admin floor the form is held to. Counted only when
+      // the row could actually lower it, so an ordinary roster file of two
+      // hundred employees runs no extra query at all.
+      if (dropsAnAdmin(existing, { role })) {
+        const otherActiveAdmins = await Employee.countDocuments({
+          role: 'admin', active: true, _id: { $ne: existing._id },
+        });
+        const last = lastAdminPermission(existing, { role, otherActiveAdmins });
+        if (!last.ok) { errors.push({ line, error: last.error }); continue; }
+      }
+
       if (existing) {
         // Captured before the assignments below overwrite the document in
         // place — the same reason the PATCH route reads its `before` first.
@@ -201,10 +233,33 @@ export const POST = route(async (req) => {
           role,
           company,
         });
-        await employee.setPassword(pick(row, 'password') || defaultPassword(code));
-        // Issued by whoever wrote the file, so the same obligation as the form.
+        /**
+         * Generated here, per row, and never read from the file.
+         *
+         * A `password` column used to be honoured. That put every new hire's
+         * password in a spreadsheet that gets mailed around, opened on a shared
+         * machine and left in Downloads — and the column was not even in the
+         * template, so it was a path nobody was told about and nobody could
+         * audit. Anything in it is now ignored, and the row is flagged below so
+         * whoever wrote it finds out rather than assuming it took.
+         */
+        const issued = generateTempPassword();
+        await employee.setPassword(issued);
+        // Issued by the system on HR's behalf, so the same obligation as the
+        // form: the account cannot reach any other screen until it is replaced.
         employee.mustChangePassword = true;
         await employee.save();
+        // Carried back so HR can hand them out. This is the only moment they
+        // are readable — see the create route.
+        issuedPasswords.push({ code: employee.code, name: employee.name, password: issued });
+        if (pick(row, 'password')) {
+          warnings.push({
+            line,
+            code,
+            warning: 'ไฟล์มีคอลัมน์ password — ระบบไม่ใช้ค่านั้น '
+              + 'และสร้างรหัสผ่านชั่วคราวให้เองตามรายการด้านล่าง',
+          });
+        }
         if (!(await recordRosterChange({
           employee,
           action: 'create',
@@ -225,6 +280,11 @@ export const POST = route(async (req) => {
     errors,
     warnings,
     codes: { created, updated },
+    /**
+     * `{ code, name, password }` for every row created — shown once and then
+     * unrecoverable. Empty on an import that only updated existing people.
+     */
+    issued: issuedPasswords,
     /**
      * Rows the import moved that nothing in otEmployeeAudits will ever show.
      * Nought in every ordinary run; said out loud rather than swallowed,

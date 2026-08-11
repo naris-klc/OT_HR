@@ -5,8 +5,10 @@ import Department from '../models/Department.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../lib/csv.js';
 import {
-  PASSWORD_MIN_LENGTH, codeChangePermission, defaultPassword, publicEmployee, rosterPermission,
+  PASSWORD_MIN_LENGTH, codeChangePermission, dropsAnAdmin, lastAdminPermission,
+  publicEmployee, rosterPermission, selfEditPermission,
 } from '../../lib/employees.js';
+import { generateTempPassword } from '../../lib/tempPassword.js';
 import { rosterChanges } from '../../lib/rosterAudit.js';
 import { recordRosterChange } from '../../lib/rosterAuditLog.js';
 import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '../lib/employeeCode.js';
@@ -65,12 +67,13 @@ router.post('/', requireRole('admin', 'hr'), wrap(async (req, res) => {
 
   const may = rosterPermission(req.user, { role: role || 'employee' });
   if (!may.ok) return res.status(may.status).json({ error: may.error });
-  if (password && String(password).length < PASSWORD_MIN_LENGTH) {
-    return res.status(400).json({ error: `รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` });
+  // Refused rather than ignored, as on the App Router: the server issues these.
+  if (password !== undefined) {
+    return res.status(400).json({ error: 'ระบบเป็นผู้สร้างรหัสผ่านเริ่มต้นเอง — ไม่ต้องส่งค่ารหัสผ่านมา' });
   }
 
   const employee = new Employee({ code, name, email: email || undefined, position, department, role: role || 'employee' });
-  const issued = password || defaultPassword(code);
+  const issued = generateTempPassword();
   await employee.setPassword(issued);
   employee.mustChangePassword = true;
   await employee.save();
@@ -90,11 +93,28 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const employee = await Employee.findById(req.params.id);
   if (!employee) return res.status(404).json({ error: 'ไม่พบพนักงาน' });
 
-  const { code, name, email, position, department, role, active, password } = req.body || {};
+  const { code, name, email, position, department, role, active, resetPassword, password } = req.body || {};
   if (role != null && !ROLES.includes(role)) return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง' });
 
   const may = rosterPermission(req.user, { target: employee, role: role ?? null });
   if (!may.ok) return res.status(may.status).json({ error: may.error });
+
+  // Nobody edits themselves out of the system, and there is always one active
+  // ผู้ดูแลระบบ left. Both read the row as it stands, before any assignment —
+  // see lib/employees.js. Applied here as well as on the App Router because a
+  // rule enforced by one of two servers is not a rule.
+  const self = selfEditPermission(req.user, { target: employee, role: role ?? null, active: active ?? null });
+  if (!self.ok) return res.status(self.status).json({ error: self.error });
+
+  if (dropsAnAdmin(employee, { role: role ?? null, active: active ?? null })) {
+    const otherActiveAdmins = await Employee.countDocuments({
+      role: 'admin', active: true, _id: { $ne: employee._id },
+    });
+    const last = lastAdminPermission(employee, {
+      role: role ?? null, active: active ?? null, otherActiveAdmins,
+    });
+    if (!last.ok) return res.status(last.status).json({ error: last.error });
+  }
 
   /**
    * รหัสพนักงาน is refused here rather than ignored.
@@ -114,8 +134,10 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
       error: 'เปลี่ยนรหัสพนักงานได้ที่หน้าทะเบียนพนักงานเท่านั้น — ช่องทางนี้ไม่รองรับ',
     });
   }
-  if (password && String(password).length < PASSWORD_MIN_LENGTH) {
-    return res.status(400).json({ error: `รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` });
+  if (password !== undefined) {
+    return res.status(400).json({
+      error: 'ระบบเป็นผู้สร้างรหัสผ่านชั่วคราวเอง — ส่งค่า resetPassword: true เพื่อขอรหัสใหม่',
+    });
   }
 
   // Read before a single field is assigned — the document below is mutated in
@@ -128,8 +150,10 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   if (department != null) employee.department = department;
   if (role != null) employee.role = role;
   if (active != null) employee.active = Boolean(active);
-  if (password) {
-    await employee.setPassword(password);
+  // Made here, returned once, never read from the request.
+  const issued = resetPassword ? generateTempPassword() : null;
+  if (issued) {
+    await employee.setPassword(issued);
     employee.mustChangePassword = true;
   }
 
@@ -149,12 +173,14 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
     employee,
     action: changes.length ? 'update' : 'password_reset',
     changes,
-    passwordReset: Boolean(password),
+    passwordReset: Boolean(issued),
     actor: req.user,
   });
 
   return res.json({
     employee: await employee.populate('department', 'code name nameTh'),
+    // Readable exactly once — only the hash is stored. Null when no reset.
+    password: issued,
     auditLogged,
   });
 }));
@@ -222,6 +248,8 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
   const errors = [];
   /** Rows the import moved that nothing in otEmployeeAudits will ever show. */
   let auditUnlogged = 0;
+  /** Temporary passwords for rows this file created — readable once, here. */
+  const issuedPasswords = [];
 
   for (const [i, row] of rows.entries()) {
     const line = i + 2; // header is line 1
@@ -246,6 +274,19 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
 
       const rowMay = rosterPermission(req.user, { target: existing, role });
       if (!rowMay.ok) { errors.push({ line, error: rowMay.error }); continue; }
+
+      // The lockout floors, per row — same as the App Router's import. A file
+      // that demotes the importer, or the last active ผู้ดูแลระบบ, is the same
+      // refusal arriving as a spreadsheet.
+      const rowSelf = selfEditPermission(req.user, { target: existing, role });
+      if (!rowSelf.ok) { errors.push({ line, error: rowSelf.error }); continue; }
+      if (dropsAnAdmin(existing, { role })) {
+        const otherActiveAdmins = await Employee.countDocuments({
+          role: 'admin', active: true, _id: { $ne: existing._id },
+        });
+        const last = lastAdminPermission(existing, { role, otherActiveAdmins });
+        if (!last.ok) { errors.push({ line, error: last.error }); continue; }
+      }
 
       if (existing) {
         const before = snapshot(existing);
@@ -274,9 +315,13 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
           department: department._id,
           role,
         });
-        await employee.setPassword(pick(row, 'password') || defaultPassword(code));
+        // Generated, never read from the file. A `password` column used to be
+        // honoured here — that put every new hire's password in a spreadsheet.
+        const issued = generateTempPassword();
+        await employee.setPassword(issued);
         employee.mustChangePassword = true;
         await employee.save();
+        issuedPasswords.push({ code: employee.code, name: employee.name, password: issued });
         if (!(await recordRosterChange({
           employee,
           action: 'create',
@@ -292,7 +337,12 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
   }
 
   res.json({
-    created: created.length, updated: updated.length, errors, codes: { created, updated }, auditUnlogged,
+    created: created.length,
+    updated: updated.length,
+    errors,
+    codes: { created, updated },
+    issued: issuedPasswords,
+    auditUnlogged,
   });
 }));
 
