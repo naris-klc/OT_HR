@@ -6,6 +6,7 @@ import { requireAuth } from '@/lib/session.js';
 import { parseCsv, pick } from '@/src/lib/csv.js';
 import { defaultPassword, rosterPermission } from '@/lib/employees.js';
 import { resolveBirthDateColumn } from '@/lib/birthDate.js';
+import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '@/src/lib/employeeCode.js';
 
 // ── [OPEN 11] roster import ─────────────────────────────────────────────────
 // Built regardless of HR's answer: if they hand over a file, use the upload;
@@ -30,6 +31,31 @@ export const POST = route(async (req) => {
   const dates = resolveBirthDateColumn(rows);
   if (!dates.ok) return fail(dates.fileError, 400, { birthDateAmbiguous: dates.ambiguous });
 
+  /**
+   * The other question that is about the file rather than about a row, and
+   * refused the same way, for the same reason.
+   *
+   * PM-0620 and PM0620 are one employee (src/lib/employeeCode.js), so a file
+   * carrying both is a file making two statements about one person with nothing
+   * in it to say which is meant. There is no per-row answer: skipping the
+   * second and importing the first would leave the roster holding whichever the
+   * loop happened to reach, and no screen afterwards would say a choice had
+   * been made. So the whole file is refused with the clashing lines named, and
+   * nothing is written.
+   *
+   * Two rows spelling the code IDENTICALLY are the same clash and are refused
+   * with them — the loop below used to let the later one quietly overwrite the
+   * earlier, which is the same coin flip with no message attached.
+   */
+  const collisions = codeCollisions(
+    rows.map((row, i) => ({ line: i + 2, code: pick(row, 'code', 'รหัสพนักงาน', 'employee_code') })),
+  );
+  if (collisions.length) {
+    return fail(collisionMessage(collisions), 400, {
+      codeCollisions: collisions.map(({ key, rows: clashing }) => ({ code: key, rows: clashing })),
+    });
+  }
+
   const departments = await Department.find().lean();
   const byCode = new Map(departments.map((d) => [d.code.toUpperCase(), d]));
 
@@ -46,6 +72,11 @@ export const POST = route(async (req) => {
       const name = pick(row, 'name', 'ชื่อ-สกุล', 'ชื่อ');
       const deptCode = pick(row, 'department', 'แผนก', 'dept').toUpperCase();
       if (!code || !name) { errors.push({ line, error: 'ต้องมี code และ name' }); continue; }
+      // A cell of nothing but punctuation passes the emptiness check above and
+      // still names nobody — refused here rather than turned into a filter that
+      // would match on absence.
+      const matcher = codeMatcher(code);
+      if (!matcher) { errors.push({ line, error: `รหัสพนักงานไม่ถูกต้อง "${code}"` }); continue; }
 
       const department = byCode.get(deptCode);
       if (!department) { errors.push({ line, error: `ไม่พบแผนกรหัส "${deptCode}"` }); continue; }
@@ -76,7 +107,15 @@ export const POST = route(async (req) => {
         warnings.push({ line, code, warning: `รหัสไม่ตรงรูปแบบบริษัทใด — ตั้งเป็น "${DEFAULT_COMPANY}" ไว้ก่อน` });
       }
 
-      const existing = await Employee.findOne({ code });
+      /**
+       * Matched on the normalised code, so a file that writes PM0620 where the
+       * roster says PM-0620 updates that person instead of minting a second
+       * copy of them — which is what a raw `findOne({ code })` did, silently,
+       * and which the unique index could not catch because the two strings
+       * genuinely differ.
+       */
+      const candidate = await Employee.findOne({ code: matcher });
+      const existing = candidate && sameCode(candidate.code, code) ? candidate : null;
 
       // The same rule the form is held to, applied per row — a CSV is the one
       // way to write hundreds of roster rows at once, and a rule the form
@@ -97,8 +136,14 @@ export const POST = route(async (req) => {
         // already stored. The DEFAULT_COMPANY fallback must not: it would undo
         // an Admin's correction on every re-import of the same roster file.
         if (givenCompany || derived) existing.company = givenCompany || derived;
+        // `existing.code` is deliberately NOT assigned. The roster's spelling is
+        // the one payroll reads off their own sheets, and a file that happens to
+        // write it the other way is not a request to renumber anybody — it is
+        // the same code, which is why this row was found at all.
         await existing.save();
-        updated.push(code);
+        // Reported as it is stored, not as the file spelled it, so what HR is
+        // shown afterwards is what is on the row.
+        updated.push(existing.code);
       } else {
         const employee = new Employee({
           code,

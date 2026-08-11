@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Employee from '../models/Employee.js';
 import Setting from '../models/Setting.js';
 import { signToken, setAuthCookie, clearAuthCookie, requireAuth, wrap } from '../middleware/auth.js';
+import { codeMatcher, sameCode } from '../lib/employeeCode.js';
 
 const router = Router();
 
@@ -9,9 +10,14 @@ router.post('/login', wrap(async (req, res) => {
   const { code, password } = req.body || {};
   if (!code || !password) return res.status(400).json({ error: 'กรุณากรอกรหัสพนักงานและรหัสผ่าน' });
 
-  const user = await Employee.findOne({ code: String(code).trim().toUpperCase() })
-    .select('+passwordHash')
-    .populate('department');
+  // The same lookup the App Router login does, from the same module — a session
+  // issued here is valid there, so which spelling of a code gets in must not
+  // depend on which server answered. See src/lib/employeeCode.js.
+  const matcher = codeMatcher(code);
+  const found = matcher
+    ? await Employee.findOne({ code: matcher }).select('+passwordHash').populate('department')
+    : null;
+  const user = found && sameCode(found.code, code) ? found : null;
 
   if (!user || !user.active || !(await user.verifyPassword(password))) {
     return res.status(401).json({ error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' });

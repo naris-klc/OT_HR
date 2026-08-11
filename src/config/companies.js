@@ -17,6 +17,8 @@
  * silently move somebody onto the wrong payroll.
  */
 
+import { normalizeCode } from '../lib/employeeCode.js';
+
 export const COMPANIES = Object.freeze([
   Object.freeze({
     key: 'primus',
@@ -99,7 +101,10 @@ export function companyOf(employee) {
 }
 
 export function companyFromCode(code) {
-  const normalised = String(code ?? '').replace(/\W|_/g, '').toUpperCase();
+  // The same normalisation login and the roster import compare on — this file
+  // had its own copy of it, which is how the codebase came to tolerate PM-0620
+  // and PM0620 for the payroll question while refusing to for every other one.
+  const normalised = normalizeCode(code);
   if (!normalised) return null;
 
   const candidates = COMPANIES

@@ -7,6 +7,7 @@ import { parseCsv, pick, toCsv } from '../lib/csv.js';
 import {
   PASSWORD_MIN_LENGTH, defaultPassword, publicEmployee, rosterPermission,
 } from '../../lib/employees.js';
+import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '../lib/employeeCode.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
@@ -123,6 +124,21 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
   if (!text.trim()) return res.status(400).json({ error: 'ไม่พบไฟล์หรือข้อมูล CSV' });
 
   const rows = parseCsv(text);
+
+  // Before a single row is written, and for the reason the App Router import
+  // does it (app/api/employees/import/route.js): PM-0620 and PM0620 are one
+  // employee, so a file holding both says two things about one person and no
+  // reading of it settles which. Refused whole rather than half-imported.
+  const collisions = codeCollisions(
+    rows.map((row, i) => ({ line: i + 2, code: pick(row, 'code', 'รหัสพนักงาน', 'employee_code') })),
+  );
+  if (collisions.length) {
+    return res.status(400).json({
+      error: collisionMessage(collisions),
+      codeCollisions: collisions.map(({ key, rows: clashing }) => ({ code: key, rows: clashing })),
+    });
+  }
+
   const departments = await Department.find().lean();
   const byCode = new Map(departments.map((d) => [d.code.toUpperCase(), d]));
 
@@ -137,6 +153,8 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
       const name = pick(row, 'name', 'ชื่อ-สกุล', 'ชื่อ');
       const deptCode = pick(row, 'department', 'แผนก', 'dept').toUpperCase();
       if (!code || !name) { errors.push({ line, error: 'ต้องมี code และ name' }); continue; }
+      const matcher = codeMatcher(code);
+      if (!matcher) { errors.push({ line, error: `รหัสพนักงานไม่ถูกต้อง "${code}"` }); continue; }
 
       const department = byCode.get(deptCode);
       if (!department) { errors.push({ line, error: `ไม่พบแผนกรหัส "${deptCode}"` }); continue; }
@@ -144,7 +162,10 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
       const role = (pick(row, 'role', 'บทบาท') || 'employee').toLowerCase();
       if (!ROLES.includes(role)) { errors.push({ line, error: `บทบาทไม่ถูกต้อง "${role}"` }); continue; }
 
-      const existing = await Employee.findOne({ code });
+      // Matched on the normalised code so a differently-spelled file updates the
+      // person rather than creating a second copy of them.
+      const candidate = await Employee.findOne({ code: matcher });
+      const existing = candidate && sameCode(candidate.code, code) ? candidate : null;
 
       const rowMay = rosterPermission(req.user, { target: existing, role });
       if (!rowMay.ok) { errors.push({ line, error: rowMay.error }); continue; }
@@ -155,8 +176,10 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
         existing.email = pick(row, 'email', 'อีเมล') || existing.email;
         existing.department = department._id;
         existing.role = role;
+        // `existing.code` is left alone: the roster's spelling is the one
+        // payroll reads, and the file's is the same code, not a renumbering.
         await existing.save();
-        updated.push(code);
+        updated.push(existing.code);
       } else {
         const employee = new Employee({
           code,
