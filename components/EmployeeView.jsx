@@ -129,6 +129,14 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                 เพดาน {cap} ชม./เดือน · {over
                   ? `เกิน ${hours(used - cap)} ชม.`
                   : `เหลือ ${hours(remain)} ชม.`}
+                {/* The room is measured against `usedHours`, which counts every
+                    request still waiting for an answer — right, because that is
+                    what the ceiling counts, and unreadable without saying so:
+                    refuse one of those requests and this number moves. The
+                    panel beside it already splits the month into อนุมัติแล้ว
+                    and รออนุมัติ; this is the line that says which of the two
+                    the remaining hours were worked out from. */}
+                {Boolean(usage?.pendingHours) && ' หากอนุมัติครบทุกใบ'}
                 {usage?.basis === 'weighted' && ' · นับแบบคูณอัตรา'}
               </div>
             </>

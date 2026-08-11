@@ -5,6 +5,7 @@ import {
   api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS, companyLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
+import { overCap, pendingCapNote } from '@/lib/caps.js';
 import { Alert, Empty, AddBirthDateHint } from './common.jsx';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
 import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
@@ -13,10 +14,32 @@ import HrEntries from './HrEntries.jsx';
 import HrEdits from './HrEdits.jsx';
 import { useBackHandler } from './nav.jsx';
 
+/**
+ * The widest this screen goes: every request that has not been refused or
+ * withdrawn — the same set a department's ceiling counts (CAP_STATUSES).
+ *
+ * Named rather than written inline because it is the one filter at which this
+ * screen and คิวรออนุมัติ are asking the same question, and the tests compare
+ * the two screens at exactly that setting. The route recognises it by content
+ * (`coversAllLive`), not by string, so the extra cap query is skipped whenever
+ * the filter already covers the ceiling's own list.
+ */
+const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
+
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null }) {
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
+  /**
+   * อนุมัติแล้วเท่านั้น, because this screen is what HR signs off — a total
+   * that moves when somebody withdraws a request is not a total to sign.
+   *
+   * It is also the reason this screen and คิวรออนุมัติ quote different numbers
+   * for the same person's month: the queue counts every request still alive
+   * (CAP_STATUSES), because a หัวหน้า deciding one needs to know what the month
+   * becomes if they say yes. Both are right, and each screen now says which it
+   * is showing — see the เพดาน column below, and `CapUsage` in ApprovalQueue.
+   */
   const [statusFilter, setStatusFilter] = useState('approved');
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(null);
@@ -90,7 +113,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="approved">อนุมัติแล้วเท่านั้น</option>
               <option value="approved,pending_hr">อนุมัติแล้ว + รอ HR</option>
-              <option value="approved,pending_hr,pending_mgr">ทั้งหมดที่ยังไม่ถูกปฏิเสธ</option>
+              <option value={ALL_LIVE_STATUSES}>ทั้งหมดที่ยังไม่ถูกปฏิเสธ</option>
             </select>
           </div>
         </div>
@@ -147,6 +170,14 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                     <th className="num">รายการ</th>
                     <th className="num">แก้ไข</th>
                     <th>กฎที่ใช้</th>
+                    {/* No blanket note under the header any more. It said
+                        "ไม่รวมใบที่รออนุมัติ" on every row of the column the
+                        moment the filter narrowed, including the rows with
+                        nothing pending, and it left the rows that DID have
+                        something pending looking identical to them. `CapCell`
+                        answers per row and only where the two figures actually
+                        differ — and it colours from the ceiling's own total, so
+                        the warning arrives before anybody reads a word. */}
                     <th>เพดาน</th>
                     <th />
                   </tr>
@@ -206,15 +237,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                           A version that spans one employee's own total is the
                           case HR can actually do something about. */}
                       <td><PolicyVersionSummaryCell spread={row.policy} /></td>
-                      <td>
-                        {row.cap.capHours == null ? (
-                          <span style={{ color: 'var(--muted)' }}>ไม่กำหนด</span>
-                        ) : (
-                          <span style={{ color: row.cap.exceeded ? 'var(--danger-ink)' : 'inherit' }}>
-                            {hours(row.cap.usedHours)} / {row.cap.capHours}
-                          </span>
-                        )}
-                      </td>
+                      <td><CapCell cap={row.cap} /></td>
                       <td>
                         <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
                           <button
@@ -330,6 +353,43 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
           />
         )}
       </div>
+    </>
+  );
+}
+
+/**
+ * The เพดาน column — the filtered figure, coloured by the unfiltered one.
+ *
+ * These are two different questions and the cell was answering the first with
+ * the second's colour. What this screen PRINTS is the hours สถานะที่นับ
+ * selected, because that is the report HR signs; what a ceiling COUNTS is every
+ * request still alive, because a department's remaining allowance is not a
+ * display preference. At the default filter a person with 16.5 approved and 19
+ * pending printed "16.5 / 40" in black while 35.5 of the 40 was already spoken
+ * for — and colour is what a reader takes in before any of the words.
+ *
+ * So the colour now comes from `capUsedHours` always, and where that differs
+ * from the printed figure the cell says so, in the sentence คิวรออนุมัติ uses
+ * for the same hours (`pendingCapNote` in lib/caps.js). Where they agree — the
+ * widest filter, or any month with nothing pending — there is nothing to
+ * explain and nothing is added.
+ *
+ * `capUsedHours` is absent from a payload written before this existed, so the
+ * colour falls back to the printed figure: the old behaviour, rather than a
+ * column that silently stops warning at all.
+ */
+function CapCell({ cap }) {
+  if (cap.capHours == null) return <span style={{ color: 'var(--muted)' }}>ไม่กำหนด</span>;
+
+  const capUsed = cap.capUsedHours ?? cap.usedHours;
+  const note = pendingCapNote(cap.usedHours, capUsed, cap.capHours);
+
+  return (
+    <>
+      <span style={{ color: overCap(capUsed, cap.capHours) ? 'var(--danger-ink)' : 'inherit' }}>
+        {hours(cap.usedHours)} / {cap.capHours}
+      </span>
+      {note && <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{note}</div>}
     </>
   );
 }

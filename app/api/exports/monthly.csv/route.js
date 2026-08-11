@@ -5,6 +5,8 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS, summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
 import { latestPerSession, reportStatuses } from '@/lib/reports.js';
+import { capColumn } from '@/lib/caps.js';
+import { capEntriesByEmployee } from '@/src/services/otService.js';
 
 /** One row per employee per month — the shape HR actually reviews. */
 export const GET = route(async (req) => {
@@ -38,13 +40,34 @@ export const GET = route(async (req) => {
     grouped.get(key).list.push(e);
   }
 
+  /**
+   * The same month as a ceiling counts it — one read for the file, shared with
+   * ตรวจสอบรายเดือน, which is the screen this is exported from.
+   */
+  const capByEmployee = await capEntriesByEmployee(filter, { inHand: all });
+
   const multiplied = policy.hrSummaryBasis === 'multiplied';
   const headers = [
     'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก', 'ประจำเดือน',
     'OT วันปกติ (x1.5)', 'OT วันหยุด 8-17 (x1.5)', 'OT วันหยุด นอกเวลา (x3)',
     `OT x1.5 (${multiplied ? 'คูณแล้ว' : 'ชั่วโมงดิบ'})`,
     `OT x3 (${multiplied ? 'คูณแล้ว' : 'ชั่วโมงดิบ'})`,
-    'รวม', 'จำนวนรายการ', 'เพดานแผนก', 'ใช้ไป',
+    'รวม', 'จำนวนรายการ', 'เพดานแผนก',
+    /**
+     * "16.5 / 40 · + รออนุมัติ 19", as two numbers a spreadsheet can add.
+     *
+     * `ใช้ไป` was one column following สถานะที่นับ, which made it a different
+     * quantity depending on a dropdown the file does not record — 16.5 from one
+     * export and 35.5 from the next, same month, same person, nothing in the
+     * file to tell them apart. Split, both halves are the ceiling's own count
+     * and neither moves with the filter, so two exports of a month are the same
+     * two numbers.
+     *
+     * NOT one cell reading "16.5 / 40 ชม.". This file is opened in Excel and
+     * the column is summed; a figure with a slash and a unit in it is text, and
+     * the sum of a column of text is zero.
+     */
+    'ใช้ไป (อนุมัติแล้ว)', 'รออนุมัติ',
   ];
 
   const rows = [...grouped.values()]
@@ -52,6 +75,14 @@ export const GET = route(async (req) => {
     .map((g) => {
       const s = summariseEntries(g.list);
       const hr = hrSummary(s, policy);
+      const capHours = g.department?.monthlyCapHours ?? null;
+      // The same two figures the screen prints, from the same function.
+      const cap = capColumn({
+        shown: g.list,
+        live: capByEmployee.get(String(g.employee?._id)) || [],
+        capHours,
+        policy,
+      });
       return [
         g.employee?.code,
         g.employee?.name,
@@ -64,8 +95,11 @@ export const GET = route(async (req) => {
         fmt(hr.ot3),
         fmt(hr.total),
         g.list.length,
-        g.department?.monthlyCapHours ?? 'ไม่กำหนด',
-        fmt(policy.capBasis === 'weighted' ? s.weightedHours : s.otHours),
+        capHours ?? 'ไม่กำหนด',
+        fmt(cap.approvedHours),
+        // Zero rather than blank: a month with nothing waiting has none pending,
+        // which is a figure. An empty cell reads as "not worked out".
+        fmt(cap.pendingHours),
       ];
     });
 

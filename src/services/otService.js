@@ -25,6 +25,7 @@ import {
   weekEndOf, weekLabel, weeksOfEntry,
 } from '../../lib/caps.js';
 import { idOf } from '../../lib/entries.js';
+import { latestPerSession } from '../../lib/reports.js';
 import {
   planRecompute, samePolicy, figuresMoved, summariseReplay,
 } from '../../lib/policyVersion.js';
@@ -251,9 +252,18 @@ export async function monthlyUsage(employeeId, period, { excludeId = null, polic
   return usageInMonth(entries, p);
 }
 
-/** The fields a monthly figure is made of: the hours, and enough of the session
-    to recognise a filing that a later one replaced. */
-const MONTH_USAGE_SELECT = 'buckets totals employee period workDate startTime endTime endsNextDay createdAt';
+/**
+ * The fields a monthly figure is made of: the hours, enough of the session to
+ * recognise a filing that a later one replaced, and the status.
+ *
+ * `status` is not there to filter — the query above already did that. It is
+ * there so `usageInMonth` can say how much of the total is signed off and how
+ * much is still a request, which is the difference between the queue's figure
+ * and ตรวจสอบรายเดือน's. Without it the split would silently report every hour
+ * as approved (see the fallback in `usageInMonth`), which is the exact
+ * misreading the split was added to end.
+ */
+const MONTH_USAGE_SELECT = 'buckets totals employee period workDate startTime endTime endsNextDay createdAt status';
 
 /** The same, plus `segments` — the weekly window attributes hours by the date
     of each segment, so without them an overnight shift lands in one week. */
@@ -431,6 +441,18 @@ export async function queueCapUsage(rows = [], { policy, find = findUsageEntries
       month: {
         period,
         usedHours: month.usedHours,
+        /**
+         * The same total taken apart — see `usageInMonth`.
+         *
+         * The queue counts `pending_mgr` and `pending_hr` alongside `approved`,
+         * so `usedHours` is what the month becomes if everything on this screen
+         * is approved, not what it has committed to. ตรวจสอบรายเดือน opens on
+         * อนุมัติแล้ว and shows `approvedHours` instead. Both figures travel
+         * together from here so the queue can print both and name them, rather
+         * than the two screens each showing a bare number and disagreeing.
+         */
+        approvedHours: month.approvedHours,
+        pendingHours: month.pendingHours,
         capHours,
         // The row's own hours, on the same basis the ceiling counts, so a
         // reviewer who wants the figure without this request can subtract.
@@ -439,10 +461,14 @@ export async function queueCapUsage(rows = [], { policy, find = findUsageEntries
       },
       weeks: [...perWeek.keys()].map((weekStart) => {
         const used = weekly.get(employeeId)?.byWeek.get(weekStart) || 0;
+        const approved = weekly.get(employeeId)?.approvedByWeek.get(weekStart) || 0;
         return {
           weekStart,
           weekEnd: weekEndOf(weekStart, p.weekStartsOn),
           usedHours: used,
+          // Split the same way and for the same reason as the month above.
+          approvedHours: approved,
+          pendingHours: Math.round((used - approved) * 100) / 100,
           capHours: weeklyCapHours,
           adding: counted ? perWeek.get(weekStart) || 0 : 0,
           exceeded: overCap(used, weeklyCapHours),
@@ -452,6 +478,44 @@ export async function queueCapUsage(rows = [], { policy, find = findUsageEntries
   }
 
   return out;
+}
+
+/**
+ * The rows a CEILING counts for a report's scope, grouped by employee.
+ *
+ * A report is filtered by สถานะที่นับ; a ceiling is not, and cannot be — a
+ * department's remaining allowance is not a display preference. So any screen
+ * or file that puts a cap figure beside a filtered total needs the same month
+ * counted a second way, and two of them do: ตรวจสอบรายเดือน colours its เพดาน
+ * column from it, and สรุปรายเดือน (CSV) prints อนุมัติแล้ว and รออนุมัติ as
+ * separate columns from it.
+ *
+ * ONE READ FOR THE WHOLE REPORT, never one per employee — the same rule
+ * `queueCapUsage` above is built around, and the reason both callers can hand a
+ * month of two hundred people to `capColumn` without the page cost moving.
+ *
+ * `inHand` is the rows the caller already fetched. Where its filter ALREADY
+ * covers every live status there is nothing left to ask for, so the query is
+ * skipped entirely and those rows are reused — at ทั้งหมดที่ยังไม่ถูกปฏิเสธ the
+ * report costs exactly what it always did. The check is on the filter's
+ * contents rather than on a string, so a screen that spells its widest option
+ * differently still gets the short circuit.
+ *
+ * `find` is injected so the read can be counted in a test, as it is for
+ * `queueCapUsage`. Production callers pass nothing.
+ */
+export async function capEntriesByEmployee(filter = {}, { inHand = null, find = findUsageEntries } = {}) {
+  const asked = filter.status?.$in || [];
+  const coversAllLive = CAP_STATUSES.every((s) => asked.includes(s));
+
+  const rows = coversAllLive && inHand
+    ? inHand
+    : await find({ ...filter, status: { $in: [...CAP_STATUSES] } }, MONTH_USAGE_SELECT);
+
+  // A session filed twice is one session, here as everywhere — dropped before
+  // grouping so a superseded filing cannot inflate anybody's ceiling.
+  const { shown } = latestPerSession(rows);
+  return groupEntries(shown, (e) => idOf(e.employee));
 }
 
 /** How the batched loader reads entries when nobody injects anything else. */

@@ -16,7 +16,9 @@ export const GET = route(async (req, { params }) => {
   if (!employee) return fail('ไม่พบพนักงาน', 404);
 
   const policy = await Setting.effectivePolicy();
-  const { summary, usedHours, basis } = await monthlyUsage(employee._id, params.period, { policy });
+  const {
+    summary, usedHours, approvedHours, pendingHours, basis,
+  } = await monthlyUsage(employee._id, params.period, { policy });
 
   /**
    * Every week the month touches, including the two that straddle its edges.
@@ -50,6 +52,16 @@ export const GET = route(async (req, { params }) => {
     period: params.period,
     summary,
     usedHours,
+    /**
+     * The same total taken apart — see `usageInMonth` in lib/caps.js.
+     *
+     * `usedHours` is what the ceiling counts, which includes every request the
+     * employee has filed and nobody has answered yet. So "เหลือ 4.5 ชม." on the
+     * strength of it is the room left IF all of those are approved, and the
+     * screen has to be able to say which of the two it is showing.
+     */
+    approvedHours,
+    pendingHours,
     basis,
     capHours: employee.department?.monthlyCapHours ?? null,
     weeklyCapHours,

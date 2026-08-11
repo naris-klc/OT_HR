@@ -5,7 +5,8 @@ import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { PERIOD_RE, latestPerSession, editTally, reportStatuses } from '@/lib/reports.js';
-import { overCap, usageInMonth } from '@/lib/caps.js';
+import { capColumn } from '@/lib/caps.js';
+import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { isHrVerifiedBirthday } from '@/lib/entries.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 
@@ -46,6 +47,23 @@ export const GET = route(async (req, { params }) => {
   // and on the printed form, so a total on this screen can be checked against
   // the sheet it prints without the two ever disagreeing.
   const { shown: entries, hidden } = latestPerSession(all);
+
+  /**
+   * The SAME month counted the way a ceiling counts it — every request still
+   * alive, whatever สถานะที่นับ is set to.
+   *
+   * The เพดาน column shows the filtered hours (16.5 at the default filter) and
+   * coloured itself from them, against a ceiling that honours no filter. So a
+   * department with 35.5 of its 40 hours already committed printed in black,
+   * because 19 of those hours were in a queue this screen was not looking at.
+   * The colour is what a reader takes in before any of the words, and it was
+   * saying the opposite of the truth.
+   *
+   * One read for the whole screen, skipped entirely at the widest filter, and
+   * shared with สรุปรายเดือน (CSV) so the file and the screen cannot come to
+   * different conclusions about the same month — see `capEntriesByEmployee`.
+   */
+  const capByEmployee = await capEntriesByEmployee(filter, { inHand: all });
 
   const byEmployee = new Map();
   for (const entry of entries) {
@@ -100,7 +118,7 @@ export const GET = route(async (req, { params }) => {
     const capHours = group.department?.monthlyCapHours ?? null;
     /**
      * The "16.5 / 40" on this screen, counted by the function every other
-     * monthly figure is counted by — see `usageInMonth` in lib/caps.js.
+     * monthly figure is counted by — `usageInMonth`, through `capColumn`.
      *
      * It was three lines here and the same three lines in `monthlyUsage`, and
      * they agreed. They now agree because they are one function, which is what
@@ -109,11 +127,22 @@ export const GET = route(async (req, { params }) => {
      * quoting the same arithmetic, or the day they diverge nobody can say which
      * is the real total.
      *
-     * `group.entries` is already through `latestPerSession` above; running it
-     * again inside changes nothing (a deduplicated set deduplicates to itself)
-     * and keeps this call identical to every other one.
+     * TWO SETS GO IN, and that is the whole of the cap column's repair. `shown`
+     * is what สถานะที่นับ selected and is what gets printed; `live` is the same
+     * month as the ceiling counts it, and is what the colour is decided from. A
+     * warning worked out from the filtered half was a false negative by
+     * construction — see `capColumn` in lib/caps.js.
+     *
+     * Both sets are already through `latestPerSession`; running it again inside
+     * changes nothing (a deduplicated set deduplicates to itself) and keeps
+     * these calls identical to every other one.
      */
-    const used = usageInMonth(group.entries, policy).usedHours;
+    const cap = capColumn({
+      shown: group.entries,
+      live: capByEmployee.get(String(group.employee?._id)) || [],
+      capHours,
+      policy,
+    });
     return {
       employee: withoutBirthDate(group.employee),
       /** No วันเกิด on record — their weekdays can never become holidays. */
@@ -137,10 +166,15 @@ export const GET = route(async (req, { params }) => {
       policy: versionSpread(group.entries, policyVersions),
       summary,
       hrSection: hrSummary(summary, policy),
-      // `overCap` rather than the comparison spelt out: the queue colours its
-      // own figure red on this exact test, and a threshold written twice is a
-      // threshold that can be changed once.
-      cap: { capHours, usedHours: used, exceeded: overCap(used, capHours), basis: policy.capBasis },
+      /**
+       * `usedHours` is what the screen prints — the hours สถานะที่นับ selected,
+       * unchanged, because a column that quietly started showing pending hours
+       * would be a different report and this one is what HR signs.
+       * `capUsedHours` is what the colour is decided from. They are equal at
+       * the widest filter and in any month with nothing pending, and the cell
+       * says nothing extra when they are.
+       */
+      cap,
     };
   }).sort((a, b) => a.employee.code.localeCompare(b.employee.code));
 

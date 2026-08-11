@@ -2,9 +2,11 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  api, hours, thaiDate, dayName, periodLabel, BUCKETS, BUCKET_LABEL,
+  api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
-import { capFigure, describeBreaches } from '@/lib/caps.js';
+import {
+  INCLUDES_PENDING, capFigure, describeBreaches, overCap, overCapLine, pendingSplitLine,
+} from '@/lib/caps.js';
 import { isProxyFiled, isSystemFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
@@ -430,7 +432,14 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
         <Empty>ไม่มีรายการที่ตรงกับตัวกรอง</Empty>
       ) : (
         <div className="table-wrap">
-          <table>
+          {/* `queue-table` carries the column geometry — see the block in
+              app/styles.css. Eleven columns in a card that is rarely wider than
+              1100px cannot all size themselves: left to it, every one was
+              squeezed to its narrowest and a name, a code and a date each broke
+              across lines. The columns that must not wrap are pinned, the ones
+              with room to give are narrowed, and the table scrolls rather than
+              compressing when the two do not fit. */}
+          <table className="queue-table">
             <thead>
               <tr>
                 <th className="check">
@@ -442,18 +451,22 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                     aria-label="เลือกทั้งหมด"
                   />
                 </th>
-                <th>พนักงาน</th>
-                <th>วันที่</th>
-                <th>เวลา</th>
-                <th className="num">×1.5 ปกติ</th>
-                <th className="num">×1.5 วันหยุด</th>
-                <th className="num">×3</th>
-                <th className="num">รวม</th>
+                <th className="who-col">พนักงาน</th>
+                <th className="when-col">วันที่</th>
+                <th className="span-col">เวลา</th>
+                {/* Narrowed to pay for the columns that cannot be — see
+                    th.rate-col. Each holds four characters at most, and the
+                    heading is the only thing in them with any width, so the
+                    heading is the one thing allowed to take two lines. */}
+                <th className="num rate-col">×1.5 ปกติ</th>
+                <th className="num rate-col">×1.5 วันหยุด</th>
+                <th className="num rate-col">×3</th>
+                <th className="num rate-col total-col">รวม</th>
                 {/* Not "เพดาน": what the column carries is the running total,
                     and the ceiling only when the department has one. */}
-                <th className="num">สะสมทั้งเดือน</th>
-                <th>รายละเอียด</th>
-                <th />
+                <th className="num cap-col">สะสมทั้งเดือน</th>
+                <th className="why-col">รายละเอียด</th>
+                <th className="act-col" />
               </tr>
             </thead>
             <tbody>
@@ -471,27 +484,39 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                       aria-label={`เลือกรายการของ ${e.employee?.name}`}
                     />
                   </td>
-                  <td>
-                    {e.employee?.name}
+                  {/* A name is one thing and a code is one thing; both broke
+                      mid-word when the column was squeezed. The department is
+                      the only part of this cell that may wrap, because it is
+                      the only part that is prose. */}
+                  <td className="who-col">
+                    <div className="who-name">{e.employee?.name}</div>
                     <div className="cell-sub">
-                      {e.employee?.code} · {e.department?.nameTh || e.department?.name}
+                      <span className="nb">{e.employee?.code}</span>
+                      {' · '}
+                      {e.department?.nameTh || e.department?.name}
                     </div>
                   </td>
-                  <td>
-                    {thaiDate(e.workDate)}
-                    <div className="cell-sub">วัน{dayName(e.workDate)}</div>
+                  {/* "16 ส.ค. 69" over "อา." — the same two facts as before at
+                      a third of the width. The long form is still what the
+                      รายละเอียด pop-up and the printed form use. */}
+                  <td className="when-col">
+                    {thaiDateShort(e.workDate)}
+                    <div className="cell-sub">{dayAbbr(e.workDate)}</div>
                   </td>
-                  <td>
+                  <td className="span-col">
                     {e.startTime}–{e.endTime}
                     {e.endsNextDay && <div className="cell-note">ข้ามคืน</div>}
                     {e.noBreakTaken && <div className="cell-sub">ไม่พักเที่ยง</div>}
                   </td>
-                  <td className="num">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
-                  <td className="num">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
-                  <td className="num">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
-                  <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
-                  <td className="num" style={{ minWidth: 150 }}><CapUsage usage={e.usage} /></td>
-                  <td style={{ maxWidth: 240 }}>
+                  <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
+                  <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
+                  <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
+                  <td className="num rate-col"><strong>{hours(e.totals?.otHours)}</strong></td>
+                  {/* The width now comes from th.cap-col, which the three rate
+                      columns pay for — a minWidth here only ever grew the
+                      table. */}
+                  <td className="num cap-col"><CapUsage usage={e.usage} /></td>
+                  <td className="why-col">
                     {e.description}
                     {/* Whose team this row is from, when the reviewer is
                         holding more than one. */}
@@ -966,11 +991,23 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
                   v={(
                     <span style={e.usage.month.exceeded ? OVER_CAP : undefined}>
                       {capFigure(e.usage.month.usedHours, e.usage.month.capHours)} ชม.
+                      {/* The same label the row carries. A reviewer who opened
+                          this pop-up to check a figure they distrusted must not
+                          be shown the same number with the qualifier dropped. */}
+                      {splitLine(e.usage.month) && ` (${INCLUDES_PENDING})`}
                     </span>
                   )}
-                  sub={e.usage.counted
-                    ? `รวมใบนี้ ${hours(e.usage.month.adding)} ชม. แล้ว — ไม่ต้องบวกเพิ่ม`
-                    : 'ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน'}
+                  sub={(
+                    <>
+                      {splitLine(e.usage.month) && <div>{splitLine(e.usage.month)}</div>}
+                      {roomLine(e.usage.month) && <div>{roomLine(e.usage.month)}</div>}
+                      <div>
+                        {e.usage.counted
+                          ? `รวมใบนี้ ${hours(e.usage.month.adding)} ชม. แล้ว — ไม่ต้องบวกเพิ่ม`
+                          : 'ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน'}
+                      </div>
+                    </>
+                  )}
                 />
               )}
             </dl>
@@ -1264,12 +1301,34 @@ function Section({ title, action, children }) {
  *   one queue, so the month is named on every row and comes from the row rather
  *   than from the filter.
  *
- * Red on nothing but the ceiling being past, on the same test ตรวจสอบรายเดือน
- * colours its own figure with (`overCap`). There is no "getting close" shade,
- * because there is no threshold in this system for close — inventing one on
- * this screen would put a number in front of a reviewer that no rule anywhere
- * backs up. เหลือ … ชม. is the honest version of the same warning: it goes down
- * as the room does, and needs no line drawn to be read.
+ * WHICH FIGURE IS THE BIG ONE, and this is the part that changed.
+ *
+ * It used to be the pending-inclusive total — 35.5 where ตรวจสอบรายเดือน printed
+ * 16.5 for the same person's same สิงหาคม. Both were right and the column said
+ * so, but a reviewer scanning down forty rows reads one number per row, and the
+ * one they were reading was the number the other screen does not have. So the
+ * headline is now the APPROVED figure, which is the same figure ตรวจสอบรายเดือน
+ * opens on, and the pending hours sit under it as "+ รออนุมัติ 19".
+ *
+ * The pending line is not decoration. A หัวหน้า about to approve who sees only
+ * 16.5 / 40 will believe there are 23.5 hours of room; there are 4.5, and the
+ * other 19 are requests sitting under the one they are deciding. That sentence
+ * is why the second line exists and why it is never folded away.
+ *
+ * WHAT MOVED BEHIND THE (?). Which month, whether this row's own hours are
+ * already inside the figure, and how much room is left if everything is
+ * approved. All of it still said, in the same words, one press away — none of
+ * it is what the eye needs on the way down a queue.
+ *
+ * WHAT DID NOT MOVE. A ceiling being past is on the row, always. There is no
+ * "getting close" shade, because there is no threshold in this system for close
+ * — inventing one on this screen would put a number in front of a reviewer that
+ * no rule anywhere backs up.
+ *
+ * Red on the same test ตรวจสอบรายเดือน colours its own figure with: `exceeded`,
+ * which is `overCap` against the hours the CEILING counts. So the headline can
+ * be 16.5 and red, for the same reason the review screen's can — the limit does
+ * not honour a display choice.
  */
 function CapUsage({ usage }) {
   // Only the queue asks for these figures (`usage=cap`), and only for rows it
@@ -1277,25 +1336,64 @@ function CapUsage({ usage }) {
   // zero, which would read as "this person has worked no overtime".
   if (!usage?.month) return <span className="cell-sub">—</span>;
   const { month, weeks = [], counted } = usage;
-  const room = month.capHours == null ? null : month.capHours - month.usedHours;
+  const pending = month.pendingHours || 0;
+  const breach = breachLine(month);
+
+  /**
+   * Everything the eye does not need on the way down the queue, in the words
+   * it was already written in. Joined into one `title` rather than a panel:
+   * this screen states facts in `title` attributes everywhere (see the chips in
+   * components/common.jsx), and a column of forty rows is no place to invent a
+   * second kind of pop-up.
+   */
+  const why = [
+    `${periodLabel(month.period)} · ${counted
+      ? `รวมใบนี้ ${hours(month.adding)} ชม. แล้ว`
+      /* A filing a later one for the same session replaced counts nowhere,
+         so claiming it is included would be the same lie the other way up. */
+      : 'ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน'}`,
+    roomLine(month),
+  ].filter(Boolean).join('\n');
 
   return (
     <>
-      <div style={month.exceeded ? OVER_CAP : undefined}>
-        {capFigure(month.usedHours, month.capHours)} ชม.
+      {/**
+        * The headline: approved hours against the ceiling, with the unit on the
+        * same line as the number it belongs to. "16.5 /" above "40 ชม." is not
+        * a figure, it is two.
+        */}
+      <div style={{ ...(month.exceeded ? OVER_CAP : undefined), whiteSpace: 'nowrap' }}>
+        <strong>{capFigure(month.approvedHours, month.capHours)} ชม.</strong>
       </div>
-      <div className="cell-sub">
-        {periodLabel(month.period)}
-        {' · '}
-        {counted
-          ? `รวมใบนี้ ${hours(month.adding)} ชม. แล้ว`
-          /* A filing a later one for the same session replaced counts nowhere,
-             so claiming it is included would be the same lie the other way up. */
-          : 'ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน'}
+      {/**
+        * The label takes its own line rather than trailing the figure.
+        *
+        * Sharing the line cost this column 87px — it would have had to be the
+        * widest in the table, 283px, to keep a qualifier company on forty rows.
+        * Left to wrap wherever it fell it broke as "(อนุมัติแล้ว" over
+        * "เท่านั้น)", which is the same mid-phrase break this pass exists to
+        * remove. On its own line it needs 106px, fits inside the column, and
+        * breaks in the same place on every row at every width.
+        */}
+      <div className="cap-note">
+        ({APPROVED_ONLY})
+        {' '}
+        <span className="cap-why" title={why} aria-label={why} role="img">?</span>
       </div>
-      {room != null && (
-        <div className="cell-sub" style={month.exceeded ? OVER_CAP : undefined}>
-          {month.exceeded ? `เกินเพดาน ${hours(-room)} ชม.` : `เหลือ ${hours(room)} ชม.`}
+
+      {/* Only where something IS pending. A month with nothing waiting is a
+          single line, because the headline is then the whole story. */}
+      {pending > 0 && (
+        <div className="cell-sub" style={{ whiteSpace: 'nowrap' }}>
+          + รออนุมัติ {hours(pending)}
+        </div>
+      )}
+
+      {/* Never behind the (?). A breached ceiling is the one thing on this row
+          that changes what the reviewer should do. */}
+      {breach && (
+        <div className="cell-sub" style={{ ...OVER_CAP, whiteSpace: 'nowrap' }}>
+          {breach}
         </div>
       )}
 
@@ -1303,15 +1401,97 @@ function CapUsage({ usage }) {
           into a new week, each measured against that week's own hours. Absent
           entirely where the department sets no weekly ceiling. */}
       {weeks.map((w) => (
-        <div key={w.weekStart} style={{ marginTop: 4 }}>
-          <div className="cell-sub" style={w.exceeded ? OVER_CAP : undefined}>
-            สัปดาห์ {capFigure(w.usedHours, w.capHours)} ชม.
-          </div>
-          <div className="cell-sub">{w.weekStart} – {w.weekEnd}</div>
-        </div>
+        <WeekUsage key={w.weekStart} week={w} />
       ))}
     </>
   );
+}
+
+/** What the headline figure counts — the same words สถานะที่นับ offers on
+    ตรวจสอบรายเดือน, so the two screens name one filter one way. */
+const APPROVED_ONLY = 'อนุมัติแล้วเท่านั้น';
+
+/**
+ * The two breach sentences come from lib/caps.js — see `overCapLine`.
+ *
+ * A ceiling already past and a ceiling this queue would push past are two
+ * different situations and get two different sentences; keeping the rule in the
+ * shared file means it can be tested against real figures rather than checked
+ * by reading the component.
+ */
+const breachLine = overCapLine;
+
+/**
+ * One week the shift touches, measured against that week's own hours.
+ *
+ * Shaped exactly like the month above it — approved figure, then the pending
+ * hours, then a breach if there is one. It sits in the same cell of the same
+ * column, and a reader who has just learnt what the big number means three
+ * lines up must not have to learn a second convention for this one.
+ */
+function WeekUsage({ week }) {
+  const pending = week.pendingHours || 0;
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div className="cell-sub" style={{ ...(week.exceeded ? OVER_CAP : undefined), whiteSpace: 'nowrap' }}>
+        สัปดาห์ {capFigure(week.approvedHours ?? week.usedHours, week.capHours)} ชม.
+      </div>
+      {pending > 0 && <div className="cell-sub">+ รออนุมัติ {hours(pending)}</div>}
+      {breachLine(week) && (
+        <div className="cell-sub" style={{ ...OVER_CAP, whiteSpace: 'nowrap' }}>{breachLine(week)}</div>
+      )}
+      {/* A span of two dates is one fact; broken across lines it reads as two
+          unrelated ones, and this is the widest thing the column ever holds. */}
+      <div className="cell-sub" style={{ whiteSpace: 'nowrap' }}>{week.weekStart} – {week.weekEnd}</div>
+    </div>
+  );
+}
+
+/**
+ * The label and the split come from lib/caps.js, not from here.
+ *
+ * ตรวจสอบรายเดือน has to state the same fact about the same hours — its ceiling
+ * counts requests its filter is hiding — and two screens each phrasing that
+ * their own way is how a reviewer comes to believe they are two different
+ * facts. `splitLine` is the local name for the shared sentence.
+ */
+const splitLine = pendingSplitLine;
+
+/**
+ * "เหลือ 4.5 ชม." — and what that 4.5 was worked out from.
+ *
+ * The line was true and unreadable: it is the room left against a total that
+ * counts requests nobody has approved, so on a row with 19 pending hours it
+ * described a month that does not exist yet, in the same words it uses for one
+ * that does. Refuse one of those requests and the number moves.
+ *
+ * So it says หากอนุมัติครบทุกใบ whenever the figure depends on that, and says
+ * nothing extra when it does not. The third case is the one that must not be
+ * softened: where the APPROVED hours alone are already past the ceiling, the
+ * breach is a fact and not a projection, and the line leads with the fact.
+ *
+ * NO LONGER ON THE ROW. It is behind the (?) and in the รายละเอียด pop-up,
+ * unchanged and in full — room left over is a number to work out a decision
+ * against, not one to scan a queue by, and `overCapLine` now carries the part
+ * that does have to be scanned. Kept word for word: whoever presses the (?) is
+ * checking a figure they already distrust, and a sentence rewritten on its way
+ * into a tooltip is a sentence they cannot check against what they remember.
+ */
+function roomLine(month) {
+  if (month.capHours == null) return null;
+  const room = Math.round((month.capHours - month.usedHours) * 100) / 100;
+  const pending = month.pendingHours || 0;
+
+  if (pending && overCap(month.approvedHours, month.capHours)) {
+    const overNow = Math.round((month.approvedHours - month.capHours) * 100) / 100;
+    return `เกินเพดานแล้ว ${hours(overNow)} ชม. จากใบที่อนุมัติแล้ว`
+      + ` · หากอนุมัติครบทุกใบ เกิน ${hours(-room)} ชม.`;
+  }
+
+  const ifAll = pending ? ' หากอนุมัติครบทุกใบ' : '';
+  return month.exceeded
+    ? `เกินเพดาน ${hours(-room)} ชม.${ifAll}`
+    : `เหลือ ${hours(room)} ชม.${ifAll}`;
 }
 
 /** Past a ceiling — the one place this screen paints that, so the row and the
