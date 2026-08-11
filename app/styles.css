@@ -367,6 +367,18 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(15, 138, 70, .13);
 }
+/* A field this person may not change.
+   Greyed for real rather than left to the browser: `background: #fff` above
+   wins over the UA's own disabled tint, so without this a locked field looked
+   exactly like an editable one and the only signal was that typing did nothing.
+   The sentence saying WHY goes underneath in .field-note — grey on its own
+   reads as "broken" rather than as "not yours". */
+.field input:disabled, .field select:disabled, .field textarea:disabled {
+  background: var(--neutral-wash);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 .field .check { flex-direction: row; align-items: center; gap: 9px; }
 
 .check { display: flex; align-items: center; gap: 9px; font: 400 14px/1.4 var(--sans); cursor: pointer; }

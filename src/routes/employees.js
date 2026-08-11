@@ -5,7 +5,7 @@ import Department from '../models/Department.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../lib/csv.js';
 import {
-  PASSWORD_MIN_LENGTH, defaultPassword, publicEmployee, rosterPermission,
+  PASSWORD_MIN_LENGTH, codeChangePermission, defaultPassword, publicEmployee, rosterPermission,
 } from '../../lib/employees.js';
 import { rosterChanges } from '../../lib/rosterAudit.js';
 import { recordRosterChange } from '../../lib/rosterAuditLog.js';
@@ -90,11 +90,30 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const employee = await Employee.findById(req.params.id);
   if (!employee) return res.status(404).json({ error: 'ไม่พบพนักงาน' });
 
-  const { name, email, position, department, role, active, password } = req.body || {};
+  const { code, name, email, position, department, role, active, password } = req.body || {};
   if (role != null && !ROLES.includes(role)) return res.status(400).json({ error: 'บทบาทไม่ถูกต้อง' });
 
   const may = rosterPermission(req.user, { target: employee, role: role ?? null });
   if (!may.ok) return res.status(may.status).json({ error: may.error });
+
+  /**
+   * รหัสพนักงาน is refused here rather than ignored.
+   *
+   * This handler has never assigned `code`, so there is no hole today — but
+   * "safe because a field is missing from a destructure" is a guarantee that
+   * lasts until somebody adds the field, and the rule it would silently break
+   * (Admin only, reason required) is the most consequential one on the roster.
+   * The permission check goes first so a ฝ่ายบุคคล sending a code gets the same
+   * 403 both servers give, rather than a 400 that reads as "wrong endpoint" and
+   * suggests trying another one.
+   */
+  const codeChange = codeChangePermission(req.user, { from: employee.code, to: code, reason: req.body?.reason });
+  if (!codeChange.ok) return res.status(codeChange.status).json({ error: codeChange.error });
+  if (codeChange.changed) {
+    return res.status(400).json({
+      error: 'เปลี่ยนรหัสพนักงานได้ที่หน้าทะเบียนพนักงานเท่านั้น — ช่องทางนี้ไม่รองรับ',
+    });
+  }
   if (password && String(password).length < PASSWORD_MIN_LENGTH) {
     return res.status(400).json({ error: `รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` });
   }

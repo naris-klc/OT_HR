@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { api, thaiDate, dayName, COMPANIES } from '@/lib/api.js';
+import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, defaultPassword } from '@/lib/employees.js';
-import { FIELD_LABEL } from '@/lib/rosterAudit.js';
+import { ACCOUNTING_SENSITIVE, FIELD_LABEL, rosterChanges } from '@/lib/rosterAudit.js';
 import { parseCsv } from '@/src/lib/csv.js';
+// Pure config, no mongoose — the same resolution the accounting sheet uses, so
+// the column showing which payroll somebody is on cannot disagree with the file
+// they end up in.
+import { companyOf } from '@/src/config/companies.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { Alert, Empty, Modal } from './common.jsx';
 import Delegation from './Delegation.jsx';
@@ -18,6 +22,11 @@ const SECTIONS = [
   // that matters: the case the feature exists for is a หัวหน้า taken ill
   // suddenly enough that they cannot log in to nominate anybody themselves.
   { key: 'delegation', label: 'ผู้รับช่วงอนุมัติ' },
+  // The roster's own trail, across everybody. Its own section rather than a
+  // per-row pop-up alone, because the question it answers — "what has been
+  // changed lately" — is asked by somebody who does not yet know whose row to
+  // open. The pop-up on the row stays for the other question.
+  { key: 'rosterAudit', label: 'ประวัติการแก้ทะเบียน' },
 ];
 
 /**
@@ -49,6 +58,7 @@ export default function AdminView({ user, initialSection }) {
       {section === 'holidays' && <Holidays />}
       {section === 'policy' && <Policy user={user} />}
       {section === 'delegation' && <Delegation user={user} scope="all" />}
+      {section === 'rosterAudit' && <RosterAudit />}
     </>
   );
 }
@@ -208,31 +218,41 @@ const BLANK = {
 const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map((o) => [o.value, o.label]));
 
 /**
- * What the three accounting-facing changes actually do — said before the save,
- * not after it.
+ * What the consequential changes actually do — said before the save, not after
+ * it.
  *
- * WHY THESE THREE AND NOT THE OTHERS. A corrected surname or job title is
- * visible in its own consequences: the roster says one thing, then it says
- * another. These three move NUMBERS on sheets nobody is looking at while they
- * make the change — a department decides which report the hours land in and
- * which ceiling they are measured against, a company decides which of the two
- * payroll files they are filed in, and a role decides whether the person may
- * file at all. None of that is legible from the row being edited.
+ * WHY THESE AND NOT THE OTHERS. A corrected surname or job title is visible in
+ * its own consequences: the roster says one thing, then it says another. These
+ * move NUMBERS on sheets nobody is looking at while they make the change — a
+ * department decides which report the hours land in and which ceiling they are
+ * measured against, a company decides which of the two payroll files they are
+ * filed in, a role decides whether the person may file at all, and a birth date
+ * decides which of their days were holidays. None of that is legible from the
+ * row being edited.
  *
  * The copy states what was actually checked in the code rather than a general
  * caution, because "this may affect reports" is a sentence people click past.
- * Each `body` below is the answer to "does this touch what has already been
- * sent to accounting", and the three answers genuinely differ:
+ * Each `body` below is the answer to "does this touch what has already been sent
+ * to accounting", and the answers genuinely differ:
  *
  *   department — no. OtEntry stores its own `department` (required, indexed)
  *                and every report groups by it, so history stays where it was
  *                worked. Only future filings move.
  *   company    — YES, all of it. Nothing on the entry records a company;
  *                สรุป OT ส่งบัญชี asks `companyOf(entry.employee)` at report
- *                time, so today's value restates every month ever filed.
+ *                time, so today's value restates every month ever filed. This
+ *                is the only one that gets counted — see lib/rosterImpact.js.
  *   role       — no hours are lost. The submission sheet is built entries-first
  *                and the `role: 'employee'` filter only decides who gets a
  *                blank line. What does change is what the person can do next.
+ *   birthDate  — approved entries never move (recomputeEntries refuses them);
+ *                the ones still in flight are replayed, because the day types
+ *                they were computed under have changed.
+ *
+ * The asymmetry between the first two is the load-bearing fact on this screen
+ * and it is not obvious from either field: both are dimensions the same reports
+ * are split by. It is written up in the README and pinned by
+ * test/reportDimension.test.js.
  */
 const IMPACT = {
   department: ({ depts, from, to }) => ({
@@ -246,19 +266,51 @@ const IMPACT = {
         + 'และถูกวัดกับเพดาน ชม./เดือน และ ชม./สัปดาห์ ของแผนกใหม่ ซึ่งเป็นคนละตัวกับของเดิม',
     ],
   }),
-  company: ({ from, to }) => ({
-    // The one change on this screen that restates a figure already sent out.
-    // Red, and it says so first, because the reader has to decide differently.
-    tone: 'error',
-    title: 'เปลี่ยนบริษัท — กระทบย้อนหลังทั้งหมด รวมเดือนที่ส่งบัญชีไปแล้ว',
-    body: [
-      `ย้ายจาก “${companyName(from)}” ไป “${companyName(to)}”`,
-      'ใบ OT ไม่ได้เก็บบริษัทไว้ที่ใบ — สรุป OT ส่งบัญชี อ่านค่านี้จากทะเบียนตอนออกรายงาน',
-      `ชั่วโมงของคนนี้ “ทุกเดือนย้อนหลัง” จะย้ายจากไฟล์ ${companyName(from)} ไปไฟล์ ${companyName(to)} ทันที `
-        + 'รวมเดือนที่ปิดและส่งให้บัญชีไปแล้ว — ยอดของทั้งสองบริษัทในเดือนเก่าจะไม่ตรงกับใบที่ส่งไป',
-      'ถ้าเป็นการย้ายที่มีผลจากเดือนใดเดือนหนึ่งเป็นต้นไป ให้แจ้งบัญชีก่อนบันทึก',
-    ],
-  }),
+  /**
+   * The one change on this screen that restates a figure already sent out. Red,
+   * and it leads with the count, because the reader has to decide differently
+   * and "กระทบย้อนหลัง" without a size is a sentence people talk themselves out
+   * of. `impact` comes from /api/employees/:id/impact — null while it is still
+   * being counted, so the dialog says which of the two it is rather than
+   * printing a zero it has not verified.
+   */
+  company: ({ from, to, impact }) => {
+    /**
+     * Which company they are on TODAY, as the sheet resolves it — the stored
+     * field, then the code prefix. `from` here is only the stored value, and it
+     * is blank for every row written before `npm run migrate:company`: writing
+     * ไพรมัส into a blank field on a PM… code changes no report at all, and a
+     * red dialog announcing otherwise is how the one warning that must be
+     * believed stops being believed.
+     */
+    const wasOn = impact?.from ?? from;
+    if (impact && !impact.moved) {
+      return {
+        tone: 'warn',
+        title: 'ระบุบริษัทให้ชัดเจน — ไม่มีรายงานไหนเปลี่ยน',
+        body: [
+          `ช่องนี้เคยเว้นว่างไว้ และระบบเดาจากรหัสได้ “${companyName(wasOn)}” อยู่แล้ว `
+            + 'การบันทึกครั้งนี้เป็นการเขียนค่าเดิมลงไปให้ชัดเจนเท่านั้น',
+          'ไม่มีชั่วโมงย้ายไฟล์ ไม่มีเดือนย้อนหลังเปลี่ยน '
+            + '· ที่ได้คือรายชื่อจะไม่ขึ้นกับคำนำหน้ารหัสอีกต่อไป',
+        ],
+      };
+    }
+    return {
+      // The one change on this screen that restates a figure already sent out.
+      // Red, and it leads with the count, because the reader has to decide
+      // differently and "กระทบย้อนหลัง" with no size attached is a sentence
+      // people talk themselves out of.
+      tone: 'error',
+      title: 'เปลี่ยนบริษัท — กระทบย้อนหลังทั้งหมด รวมเดือนที่ส่งบัญชีไปแล้ว',
+      body: [
+        `ย้ายจาก “${companyName(wasOn)}” ไป “${companyName(to)}”`,
+        'ใบ OT ไม่ได้เก็บบริษัทไว้ที่ใบ — สรุป OT ส่งบัญชี อ่านค่านี้จากทะเบียนตอนออกรายงาน',
+        retroLine(wasOn, to, impact),
+        'ถ้าเป็นการย้ายที่มีผลจากเดือนใดเดือนหนึ่งเป็นต้นไป ให้แจ้งบัญชีก่อนบันทึก',
+      ],
+    };
+  },
   role: ({ from, to }) => ({
     tone: 'warn',
     title: `เปลี่ยนบทบาทจาก “${ROLE_LABEL[from] || from}” เป็น “${ROLE_LABEL[to] || to}”`,
@@ -278,7 +330,47 @@ const IMPACT = {
         ]),
     ],
   }),
+  /**
+   * Not one of ACCOUNTING_SENSITIVE — no report is partitioned by วันเกิด — but
+   * it is the other field on this screen that moves hours without anybody
+   * opening an entry, so it is warned about in the same place. The rule stated
+   * here is the one the route actually applies, not a summary of it: see the
+   * `recomputeEntries` call in app/api/employees/[id]/route.js, narrowed to
+   * PENDING_STATUSES on top of that function's own refusal to replay approved.
+   */
+  birthDate: ({ from, to }) => ({
+    tone: 'warn',
+    title: 'เปลี่ยนวันเกิด — ใบที่ยังไม่อนุมัติจะถูกคำนวณใหม่',
+    body: [
+      `จาก ${from ? thaiDate(from) : '— ไม่ได้ระบุ —'} เป็น ${to ? thaiDate(to) : '— ล้างค่า —'}`,
+      'วันเกิดเป็นวันหยุดของคนนั้น การเปลี่ยนจึงเปลี่ยนว่าวันไหนของเขาเป็นวันหยุด '
+        + 'และชั่วโมงในใบถูกคิดเป็นอัตราไหน',
+      'ใบที่ “อนุมัติแล้ว” จะไม่ถูกแตะต้อง — ชั่วโมงที่มีคนเซ็นรับรองไปแล้วไม่ขยับ '
+        + 'เพราะแก้วันเกิดทีหลัง',
+      'ใบที่ยัง “รออนุมัติ” จะถูกคำนวณใหม่ทันที และจะบอกจำนวนที่คำนวณใหม่หลังบันทึก',
+    ],
+  }),
 };
+
+/**
+ * The retroactive line for a company move — how much, or that it is still being
+ * counted, or that there is nothing to count.
+ *
+ * Three states rather than a number defaulting to zero. "ไม่มีใบที่กระทบ" and
+ * "ยังนับไม่เสร็จ" are opposite answers and a dialog that prints 0 for both is
+ * one that will eventually tell somebody a move is free when it is not.
+ */
+function retroLine(from, to, impact) {
+  const move = `จากไฟล์ ${companyName(from)} ไปไฟล์ ${companyName(to)}`;
+  if (!impact) return `กำลังนับรายงานย้อนหลังที่กระทบ… (ย้าย${move})`;
+  if (!impact.entries) {
+    return 'คนนี้ยังไม่มีใบ OT ที่อนุมัติแล้ว จึงไม่มีเดือนย้อนหลังที่ต้องแก้ '
+      + `— ชั่วโมงตั้งแต่นี้ไปจะไปอยู่ในไฟล์ ${companyName(to)}`;
+  }
+  const months = impact.periods.map((p) => periodLabel(p.period)).join(' · ');
+  return `กระทบรายงานย้อนหลัง ${impact.months} เดือน · ${impact.entries} ใบ · ${impact.hours} ชั่วโมง `
+    + `— ทั้งหมดจะย้าย${move}ทันที รวมเดือนที่ปิดและส่งบัญชีไปแล้ว · เดือนที่กระทบ: ${months}`;
+}
 
 const nameOfDept = (depts, id) => {
   const d = depts.find((x) => String(x._id) === String(id));
@@ -315,17 +407,16 @@ function Employees({ user }) {
   /** The row whose password is being reset, if any. */
   const [resetting, setResetting] = useState(null);
   /**
-   * A change to one of the three accounting-facing fields, held until it is
-   * confirmed. `{ row, field, value }` — see IMPACT above for what each says.
+   * The row open in the edit dialog, if any — the ONLY way this screen changes
+   * an existing person.
    *
-   * The select is left showing the OLD value while this is up, deliberately: the
-   * control has not been saved, and a dropdown already reading the new answer
-   * behind a dialog asking whether to make the change is a dialog whose "ยกเลิก"
-   * appears to have done nothing.
+   * The table used to save each cell on blur, which made the trail one record
+   * per field and put three-quarters of the fields somewhere the reason they
+   * were disabled could not be written. One dialog per row means one PATCH, one
+   * audit record, and one place to say what a change is going to do before it
+   * happens.
    */
-  const [confirming, setConfirming] = useState(null);
-  /** The row whose รหัสพนักงาน Admin is changing, if any. */
-  const [renumbering, setRenumbering] = useState(null);
+  const [editing, setEditing] = useState(null);
   /** The row whose ประวัติการแก้ไข is open, if any. */
   const [trailFor, setTrailFor] = useState(null);
   /** What the last save did beyond writing the field — recompute, audit gaps. */
@@ -343,17 +434,6 @@ function Employees({ user }) {
     ? ROLE_OPTIONS
     : ROLE_OPTIONS.filter((o) => HR_ASSIGNABLE_ROLES.includes(o.value));
   const mayEdit = (row) => isAdmin || row.role !== 'admin';
-  /**
-   * Which บทบาท this row may be moved TO, from here.
-   *
-   * ฝ่ายบุคคล get employee and หัวหน้างาน — `HR_ASSIGNABLE_ROLES`, the same list
-   * the server refuses by. A row that is already something else keeps its own
-   * value in the list so the select has something to display: dropping it would
-   * render the current role as blank and read as though it had been cleared.
-   */
-  const roleOptionsFor = (row) => (isAdmin
-    ? ROLE_OPTIONS
-    : ROLE_OPTIONS.filter((o) => HR_ASSIGNABLE_ROLES.includes(o.value) || o.value === row.role));
 
   async function load() {
     try {
@@ -394,30 +474,15 @@ function Employees({ user }) {
    */
   async function update(id, patch) {
     setError('');
-    try {
-      const res = await api.patch(`/employees/${id}`, patch);
-      setSaved({
-        code: res.employee?.code,
-        recomputed: res.recomputed || null,
-        auditLogged: res.auditLogged !== false,
-      });
-      load();
-      return true;
-    } catch (err) { setError(err.message); return false; }
-  }
-
-  /**
-   * A change to one of the three fields that move figures — held, not sent.
-   *
-   * Nothing about the value is different from any other save; what differs is
-   * that its consequences are not visible from this screen. Everything else on
-   * the row still saves the moment it is changed.
-   */
-  function propose(row, field, value) {
-    if (String(value) === String(field === 'department'
-      ? (row.department?._id ?? '')
-      : (row[field] ?? ''))) return;
-    setConfirming({ row, field, value });
+    const res = await api.patch(`/employees/${id}`, patch);
+    setSaved({
+      code: res.employee?.code,
+      // `reason` is metadata about the edit, not one of the fields edited.
+      changed: Object.keys(patch).filter((k) => k !== 'reason').length,
+      recomputed: res.recomputed || null,
+      auditLogged: res.auditLogged !== false,
+    });
+    load();
   }
 
   /**
@@ -483,8 +548,13 @@ function Employees({ user }) {
             is what stops the question being asked. */}
         {' '}· ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสผ่านเดิมได้
         {' '}หากพนักงานลืม ให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง
-        {' '}· ทุกการแก้ไขในตารางนี้ถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
-        {' '}(ดูได้ที่ปุ่ม “ดูประวัติ”)
+        {' '}· ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
+        {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
+        {/* The table is a table again. Everything that changes an existing row
+            goes through the dialog, which is the only place there is room to
+            say what a field does before it is changed and why another one is
+            greyed out. */}
+        {' '}· แก้ไขข้อมูลของคนที่มีอยู่แล้วได้ที่ปุ่ม “แก้ไข” ในแต่ละแถว
       </div>
       {error && <Alert kind="error">{error}</Alert>}
 
@@ -497,7 +567,7 @@ function Employees({ user }) {
         screen. And an audit row that could not be written means the change
         stands with no record of who made it, which is worth interrupting for.
       */}
-      {saved && (saved.recomputed || !saved.auditLogged) && (
+      {saved && (
         <Alert kind={saved.auditLogged ? 'ok' : 'error'}>
           {!saved.auditLogged && (
             <div>
@@ -505,8 +575,13 @@ function Employees({ user }) {
               {' '}— ข้อมูลถูกแก้แล้ว แต่จะไม่มีบันทึกว่าใครแก้ กรุณาแจ้งผู้ดูแลระบบ
             </div>
           )}
+          {saved.auditLogged && (
+            <div>
+              บันทึก {saved.code} แล้ว · แก้ไข {saved.changed} ฟิลด์ · เก็บไว้ในประวัติการแก้ทะเบียนแล้ว
+            </div>
+          )}
           {saved.recomputed && (
-            <div style={{ marginTop: saved.auditLogged ? 0 : 6 }}>
+            <div style={{ marginTop: 6 }}>
               เปลี่ยนวันเกิดของ {saved.code} แล้ว ·
               {saved.recomputed.updated > 0
                 ? ` คำนวณใบที่ยังไม่อนุมัติใหม่ ${saved.recomputed.updated} รายการ`
@@ -680,143 +755,82 @@ function Employees({ user }) {
         <button className="btn">เพิ่ม</button>
       </form>
 
+      {/*
+        Read-only, deliberately.
+
+        Every cell here used to be an input that saved on blur. That made three
+        problems at once: the trail got one record per field rather than one per
+        edit, a field somebody may not change could only be greyed out with no
+        room to say why, and a change whose consequences are not on this screen
+        (บริษัท, most of all) had to interrupt with a dialog anyway. One "แก้ไข"
+        per row replaces all of it — see EditEmployee.
+      */}
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
               <th>รหัส</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>วันเกิด</th><th>แผนก</th>
-              <th>บทบาท</th><th>บริษัท</th><th>สถานะ</th><th>รหัสผ่าน</th><th>ประวัติ</th>
+              <th>บทบาท</th><th>บริษัท</th><th>สถานะ</th><th>จัดการ</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((p) => (
               <tr key={p._id}>
-                {/* The one field on this row that is not HR's. It identifies the
-                    account rather than describing the person: it is what they
-                    log in with, what the company is guessed from, and what every
-                    historic ใบ was reconciled against on paper. Admin changes it
-                    with a reason; everybody else reads it. */}
+                <td style={{ whiteSpace: 'nowrap' }}>{p.code}</td>
+                <td>{p.name}</td>
+                <td>{p.position || <span style={{ color: 'var(--muted)' }}>—</span>}</td>
+                {/* Shown as text like everything else. HR and Admin are the only
+                    people who reach this screen, and `maySeeBirthDate` on the
+                    server is what decides they may be sent it at all. */}
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  {p.code}
-                  {isAdmin && (
-                    <button
-                      className="btn ghost sm"
-                      style={{ marginLeft: 6 }}
-                      onClick={() => setRenumbering(p)}
-                      title="เปลี่ยนรหัสพนักงาน — ต้องระบุเหตุผล"
-                    >
-                      แก้รหัส
-                    </button>
+                  {p.birthDate
+                    ? thaiDate(p.birthDate)
+                    : <span style={{ color: 'var(--muted)' }}>— ยังไม่มี —</span>}
+                </td>
+                <td>{p.department ? (p.department.nameTh || p.department.name) : '—'}</td>
+                <td>{ROLE_LABEL[p.role] || p.role}</td>
+                {/* An unset company is not "no company" — the sheet falls back
+                    to the code prefix and files them somewhere regardless. The
+                    column says which, and that it was guessed, because that is
+                    the difference between a blank worth fixing and one that is
+                    already behaving correctly. */}
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {p.company ? companyName(p.company) : (
+                    <span style={{ color: 'var(--muted)' }}>
+                      {companyName(companyOf(p))} · เดาจากรหัส
+                    </span>
                   )}
                 </td>
-                {/* Saved on blur, not on every keystroke: a name is typed a
-                    character at a time and a PATCH per character would file a
-                    trail row per character too. */}
+                <td>{p.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</td>
                 <td>
-                  <input
-                    defaultValue={p.name || ''}
-                    style={{ minWidth: 150 }}
-                    disabled={!mayEdit(p)}
-                    onBlur={(e) => {
-                      if (e.target.value !== (p.name || '')) update(p._id, { name: e.target.value });
-                    }}
-                  />
-                </td>
-                <td>
-                  <input
-                    defaultValue={p.position || ''}
-                    style={{ minWidth: 130 }}
-                    disabled={!mayEdit(p)}
-                    onBlur={(e) => {
-                      if (e.target.value !== (p.position || '')) update(p._id, { position: e.target.value });
-                    }}
-                  />
-                </td>
-                {/* Editable here and nowhere else — the employee sees it on
-                    ข้อมูลส่วนตัว but cannot change it. Changing it replays that
-                    person's ใบ ที่ยังไม่อนุมัติ, because it decides which of
-                    their days were holidays; the result is reported above. */}
-                <td>
-                  <input
-                    type="date"
-                    value={p.birthDate || ''}
-                    onChange={(e) => update(p._id, { birthDate: e.target.value })}
-                    disabled={!mayEdit(p)}
-                  />
-                </td>
-                {/* The three below go through a confirmation. Not because they
-                    are more likely to be wrong, but because what they change is
-                    not on this screen — see IMPACT. */}
-                <td>
-                  <select
-                    value={p.department?._id || ''}
-                    onChange={(e) => propose(p, 'department', e.target.value)}
-                    disabled={!mayEdit(p)}
-                    style={{ minWidth: 130 }}
-                  >
-                    {!p.department && <option value="">— ไม่กำหนด —</option>}
-                    {depts.map((d) => (
-                      <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <select
-                    value={p.role}
-                    onChange={(e) => propose(p, 'role', e.target.value)}
-                    disabled={!mayEdit(p)}
-                    title={isAdmin ? undefined : 'บทบาท “ผู้ดูแลระบบ” ตั้งได้โดยผู้ดูแลระบบเท่านั้น'}
-                  >
-                    {roleOptionsFor(p).map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <select
-                    value={p.company || ''}
-                    onChange={(e) => propose(p, 'company', e.target.value)}
-                    disabled={!mayEdit(p)}
-                  >
-                    {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-                  </select>
-                </td>
-                {/* Not on the confirmed list: deactivating changes who appears
-                    on next month's blank lines and nothing that has been filed.
-                    A deactivated person's approved hours stay on the sheet for
-                    the same reason a promoted one's do. */}
-                <td>
-                  <button
-                    className="btn ghost sm"
-                    onClick={() => update(p._id, { active: !p.active })}
-                    disabled={!mayEdit(p)}
-                  >
-                    {p.active ? 'ใช้งาน' : 'ปิด'}
-                  </button>
-                </td>
-                <td>
-                  {/* ลืมรหัสผ่าน has no self-service path — no email is on file
-                      for most of the roster — so this is the whole of the
-                      recovery story, and it belongs on the row rather than
-                      behind an edit screen nobody opens for one field. */}
-                  <button
-                    className="btn ghost"
-                    onClick={() => setResetting(p)}
-                    disabled={!mayEdit(p)}
-                    title={mayEdit(p) ? 'ตั้งรหัสผ่านใหม่ให้พนักงานคนนี้' : 'บัญชีผู้ดูแลระบบตั้งรหัสใหม่ได้โดยผู้ดูแลระบบเท่านั้น'}
-                  >
-                    ตั้งรหัสใหม่
-                  </button>
-                </td>
-                <td>
-                  <button
-                    className="btn ghost sm"
-                    onClick={() => setTrailFor(p)}
-                    disabled={!mayEdit(p)}
-                    title="ใครแก้อะไรในทะเบียนของคนนี้บ้าง"
-                  >
-                    ดูประวัติ
-                  </button>
+                  <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                    {/* Opens for every row, including one this person may not
+                        change: the dialog is where the reason is written, and a
+                        dead button explains nothing. */}
+                    <button className="btn ghost sm" onClick={() => setEditing(p)}>
+                      {mayEdit(p) ? 'แก้ไข' : 'ดูข้อมูล'}
+                    </button>
+                    {/* ลืมรหัสผ่าน has no self-service path — no email is on file
+                        for most of the roster — so this is the whole of the
+                        recovery story, and it stays on the row rather than
+                        behind an edit dialog somebody has to open for it. */}
+                    <button
+                      className="btn ghost sm"
+                      onClick={() => setResetting(p)}
+                      disabled={!mayEdit(p)}
+                      title={mayEdit(p) ? 'ตั้งรหัสผ่านใหม่ให้พนักงานคนนี้' : 'บัญชีผู้ดูแลระบบตั้งรหัสใหม่ได้โดยผู้ดูแลระบบเท่านั้น'}
+                    >
+                      ตั้งรหัสใหม่
+                    </button>
+                    <button
+                      className="btn ghost sm"
+                      onClick={() => setTrailFor(p)}
+                      disabled={!mayEdit(p)}
+                      title="ใครแก้อะไรในทะเบียนของคนนี้บ้าง"
+                    >
+                      ดูประวัติ
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -835,24 +849,16 @@ function Employees({ user }) {
         />
       )}
 
-      {confirming && (
-        <ConfirmImpact
-          change={confirming}
+      {editing && (
+        <EditEmployee
+          employee={editing}
           depts={depts}
-          onClose={() => setConfirming(null)}
-          onConfirm={async () => {
-            const { row, field, value } = confirming;
-            setConfirming(null);
-            await update(row._id, { [field]: value });
+          user={user}
+          onClose={() => setEditing(null)}
+          onSave={async (patch) => {
+            await update(editing._id, patch);
+            setEditing(null);
           }}
-        />
-      )}
-
-      {renumbering && (
-        <ChangeCode
-          employee={renumbering}
-          onClose={() => setRenumbering(null)}
-          onDone={() => { setRenumbering(null); load(); }}
         />
       )}
 
@@ -864,124 +870,459 @@ function Employees({ user }) {
 }
 
 /**
- * The consequence, stated before the save rather than discovered after it.
+ * Why a field is not this person's to change, written under the field.
  *
- * ยืนยัน is the ordinary button and the คำเตือน is the content — no
- * type-the-word-to-continue, no second checkbox. These are changes HR is
- * supposed to be able to make; what they were missing was the sentence
- * explaining what happens next, and a dialog that makes a legitimate edit
- * tedious is one people learn to dismiss without reading. The บริษัท case gets
- * `danger` on its button because it is the only one of the three that restates
- * a figure already sent out.
+ * A greyed-out control says "no" and nothing else, so the reader's next move is
+ * to ask somebody whether it is broken. Each of these says which rule refused
+ * and who can do it instead — the same sentences the server answers 403 with
+ * (lib/employees.js), so the screen and the refusal cannot drift apart.
  */
-function ConfirmImpact({ change, depts, onClose, onConfirm }) {
-  const { row, field, value } = change;
-  const from = field === 'department' ? (row.department?._id ?? null) : (row[field] ?? null);
-  const impact = IMPACT[field]({ depts, from, to: value });
+const LOCK_NOTE = {
+  code: 'รหัสพนักงานผูกกับการเข้าสู่ระบบ การเดาบริษัทจากรหัส และใบเก่าทั้งหมด '
+    + '— ผู้ดูแลระบบแก้ได้ (แจ้งพร้อมเหตุผล)',
+  role: 'ฝ่ายบุคคลตั้งได้เฉพาะ “พนักงาน” และ “หัวหน้างาน” '
+    + '— “ฝ่ายบุคคล” และ “ผู้ดูแลระบบ” ต้องให้ผู้ดูแลระบบตั้งให้',
+  adminRow: 'บัญชีผู้ดูแลระบบแก้ไขได้เฉพาะผู้ดูแลระบบเท่านั้น รวมถึงการตั้งรหัสผ่านใหม่ '
+    + '— เพราะการแก้แถวหนึ่งรวมถึงการตั้งรหัสผ่านของแถวนั้นด้วย',
+};
+
+/** One roster row as the edit dialog holds it — the audited fields, nothing else. */
+const formOf = (employee) => ({
+  code: employee.code || '',
+  name: employee.name || '',
+  email: employee.email || '',
+  position: employee.position || '',
+  birthDate: employee.birthDate || '',
+  department: employee.department?._id ? String(employee.department._id) : '',
+  role: employee.role || 'employee',
+  company: employee.company || '',
+  active: employee.active !== false,
+});
+
+/**
+ * One value as a person reads it — used by the confirmation list and by the
+ * trail, which are printing the same `{ field, from, to }` shape.
+ *
+ * Ids are what the trail stores, because ids are what the field holds and a name
+ * copied in would go stale the day a department is renamed. Resolved to a name
+ * where one is available, printed raw where it is not: a department that has
+ * since been deleted still has to print as something a person can search for.
+ */
+function showValue(field, value, depts = []) {
+  if (value == null || value === '') return '—';
+  if (field === 'department') return nameOfDept(depts, value) || value;
+  if (field === 'company') return companyName(value);
+  if (field === 'role') return ROLE_LABEL[value] || value;
+  if (field === 'active') return String(value) === 'true' ? 'ใช้งาน' : 'ปิดใช้งาน';
+  if (field === 'birthDate') return thaiDate(value);
+  return value;
+}
+
+/**
+ * แก้ไขข้อมูลพนักงาน — every field on the row, in one place, saved once.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY A DIALOG AND NOT THE TABLE
+ *
+ * The table used to save each cell on blur. Three things were wrong with that
+ * and only one of them was visible:
+ *
+ *   · one PATCH per field meant one audit record per field, so correcting a
+ *     name and a job title in the same breath read as two separate decisions;
+ *   · a field somebody may not change could only be greyed out — there is no
+ *     room in a table cell for the sentence saying why, and grey alone reads as
+ *     "broken" rather than as "not yours";
+ *   · a change whose consequences are not on the screen had to interrupt with a
+ *     dialog anyway, so half the edits went through one path and half the other.
+ *
+ * Everything now goes through here: one form, one review, one PATCH, one record.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE DIFF IS COMPUTED BY THE MODULE THE SERVER AUDITS WITH
+ *
+ * `rosterChanges` is the same pure function `app/api/employees/[id]/route.js`
+ * uses to build the trail. So the list this dialog shows before saving is,
+ * field for field, the list that will be written afterwards — not a second
+ * implementation that agrees with it today. It is also what decides whether
+ * there is anything to save at all, which is how re-selecting a value you had
+ * just changed away from correctly leaves the dialog with nothing to do.
+ *
+ * None of this is the permission. The server checks `rosterPermission` and
+ * `codeChangePermission` on every save whatever this screen sent — see
+ * test/rosterRouteGuards.test.js. What is disabled here is disabled so that
+ * nobody is invited to type something that will be refused.
+ */
+function EditEmployee({ employee, depts, user, onClose, onSave }) {
+  const isAdmin = user?.role === 'admin';
+  /** ฝ่ายบุคคล opening the ผู้ดูแลระบบ row: readable, not writable. */
+  const rowLocked = !isAdmin && employee.role === 'admin';
+
+  const before = formOf(employee);
+  const [form, setForm] = useState(before);
+  const [reason, setReason] = useState('');
+  /** 'edit' → the form · 'confirm' → what is about to happen. */
+  const [step, setStep] = useState('edit');
+  /** Counted by the server for a company move; null until it arrives. */
+  const [impact, setImpact] = useState(null);
+  /** 'idle' · 'counting' · 'done' · 'failed' — see `counting` below. */
+  const [countState, setCountState] = useState('idle');
+  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const changes = rosterChanges(before, form);
+  const changed = (field) => changes.some((c) => c.field === field);
+  const codeChanged = changed('code');
+  const companyChanged = changed('company');
+
+  /**
+   * Which changes get a paragraph before they are saved: the three the
+   * accounting sheets read, plus วันเกิด (which moves pending hours) and
+   * รหัสพนักงาน (which moves what somebody logs in with). Everything else — a
+   * corrected surname, a job title — is its own explanation.
+   */
+  const explained = changes
+    .map((c) => c.field)
+    .filter((f) => ACCOUNTING_SENSITIVE.includes(f) || f === 'birthDate');
+  const needsReview = explained.length > 0 || codeChanged;
+
+  const reasonMissing = codeChanged && !reason.trim();
+  const ready = changes.length > 0 && !reasonMissing && !rowLocked;
+
+  /**
+   * A company move that has not been counted yet — or could not be — blocks the
+   * save.
+   *
+   * Failing OPEN would mean somebody confirming a restatement of every month
+   * they have ever filed while the paragraph above the button still reads
+   * "กำลังนับ…". The count is the whole content of that warning, so no count is
+   * no warning, and the answer to no warning is not to proceed anyway.
+   */
+  const counting = companyChanged && countState !== 'done';
+
+  /** Move to the review, counting the company impact first when there is one. */
+  async function review() {
+    setError('');
+    setStep('confirm');
+    if (!companyChanged || !form.company) return;
+    setImpact(null);
+    setCountState('counting');
+    try {
+      const res = await api.get(
+        `/employees/${employee._id}/impact?company=${encodeURIComponent(form.company)}`,
+      );
+      setImpact(res.company);
+      setCountState('done');
+    } catch (err) {
+      setCountState('failed');
+      setError(`นับรายงานย้อนหลังที่กระทบไม่สำเร็จ: ${err.message}`);
+    }
+  }
+
+  /** Only what moved, so the request and the audit record describe the same edit. */
+  function patch() {
+    const out = {};
+    for (const c of changes) {
+      if (c.field === 'active') out.active = form.active;
+      // Required on the model — an empty string would fail validation rather
+      // than clear it, and there is no "no department" to ask for here.
+      else if (c.field === 'department') { if (form.department) out.department = form.department; }
+      else out[c.field] = form[c.field];
+    }
+    if (codeChanged) out.reason = reason.trim();
+    return out;
+  }
+
+  async function save() {
+    setError('');
+    setBusy(true);
+    try {
+      await onSave(patch());
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+      setStep('edit');
+    }
+  }
+
+  const disabled = (extra = false) => rowLocked || extra || busy;
 
   return (
     <Modal
-      title={impact.title}
-      subtitle={`${row.code} · ${row.name}`}
+      title={rowLocked ? 'ข้อมูลพนักงาน' : 'แก้ไขข้อมูลพนักงาน'}
+      subtitle={`${employee.code} · ${employee.name}`}
       onClose={onClose}
-      footer={<>
-        <button className="btn ghost" onClick={onClose} disabled={busy}>ยกเลิก</button>
-        <button
-          className={impact.tone === 'error' ? 'btn danger' : 'btn'}
-          disabled={busy}
-          onClick={async () => { setBusy(true); await onConfirm(); }}
-        >
-          {busy ? 'กำลังบันทึก…' : 'ยืนยันการเปลี่ยน'}
-        </button>
-      </>}
+      wide
+      // The unsaved-changes prompt the Modal already knows how to ask. Driven by
+      // the same diff as the save button, so "ยังมีข้อมูลที่ยังไม่ได้บันทึก" is
+      // never asked about a form somebody only looked at.
+      dirty={changes.length > 0 && !busy}
+      // `requestClose` rather than `onClose`: ยกเลิก goes through the same
+      // unsaved-work prompt the × and Escape do, instead of being the one exit
+      // that discards silently.
+      footer={(requestClose) => (step === 'edit' ? (
+        <>
+          <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
+          <button
+            className="btn"
+            onClick={() => (needsReview ? review() : save())}
+            disabled={!ready || busy}
+          >
+            {busy ? 'กำลังบันทึก…' : (needsReview ? 'ตรวจผลกระทบก่อนบันทึก' : 'บันทึก')}
+          </button>
+        </>
+      ) : (
+        <>
+          <button className="btn ghost" onClick={() => setStep('edit')} disabled={busy}>
+            กลับไปแก้
+          </button>
+          {/* Held until the count is in. A บริษัท move confirmed while its own
+              warning still reads "กำลังนับ…" is a move confirmed against no
+              number at all, which is the thing this step exists to prevent. */}
+          <button
+            className={impact?.moved ? 'btn danger' : 'btn'}
+            onClick={save}
+            disabled={!ready || busy || counting}
+          >
+            {busy ? 'กำลังบันทึก…'
+              : countState === 'failed' ? 'ยังนับผลกระทบไม่ได้'
+                : counting ? 'กำลังนับผลกระทบ…' : 'ยืนยันและบันทึก'}
+          </button>
+        </>
+      ))}
     >
-      <Alert kind={impact.tone}>
-        {impact.body.map((line, i) => (
-          <div key={i} style={{ marginTop: i ? 6 : 0 }}>{line}</div>
-        ))}
-      </Alert>
-      <div className="hint" style={{ marginTop: 8 }}>
-        การเปลี่ยนนี้จะถูกบันทึกไว้ในประวัติการแก้ทะเบียนของพนักงานคนนี้ พร้อมชื่อผู้แก้และเวลา
-      </div>
+      {rowLocked && <Alert kind="warn">{LOCK_NOTE.adminRow}</Alert>}
+      {error && (
+        <Alert kind="error">
+          {error}
+          {countState === 'failed' && (
+            <div style={{ marginTop: 6 }}>
+              บันทึกไม่ได้จนกว่าจะนับได้ — การเปลี่ยนบริษัทกระทบเดือนที่ส่งบัญชีไปแล้ว
+              {' '}จึงต้องรู้ก่อนว่ากระทบเท่าไร
+              <button className="btn ghost" style={{ marginTop: 8 }} onClick={review}>
+                ลองนับใหม่
+              </button>
+            </div>
+          )}
+        </Alert>
+      )}
+
+      {step === 'edit' ? (
+        <>
+          <div className="row">
+            <Field
+              label="รหัสพนักงาน"
+              // Admin's to change, and never silently: the reason below is
+              // required by the server, not merely asked for here.
+              note={isAdmin ? 'เปลี่ยนได้ แต่ต้องระบุเหตุผล — จะถูกบันทึกไว้ในประวัติ' : LOCK_NOTE.code}
+              style={{ maxWidth: 160 }}
+            >
+              <input
+                value={form.code}
+                onChange={(e) => set({ code: e.target.value.toUpperCase() })}
+                disabled={disabled(!isAdmin)}
+                autoComplete="off"
+              />
+            </Field>
+            <Field label="ชื่อ-สกุล">
+              <input
+                value={form.name}
+                onChange={(e) => set({ name: e.target.value })}
+                disabled={disabled()}
+              />
+            </Field>
+            <Field label="ตำแหน่ง">
+              <input
+                value={form.position}
+                onChange={(e) => set({ position: e.target.value })}
+                disabled={disabled()}
+              />
+            </Field>
+          </div>
+
+          {codeChanged && (
+            <Field
+              label="เหตุผลที่เปลี่ยนรหัสพนักงาน (บังคับ)"
+              note={reasonMissing ? null : 'จะถูกบันทึกไว้ในประวัติการแก้ทะเบียนพร้อมค่าเดิมและค่าใหม่'}
+            >
+              <input
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="เช่น ออกรหัสผิดตอนรับเข้า ตัวจริงคือ PM-0641"
+                disabled={busy}
+              />
+              {reasonMissing && (
+                <div className="field-note error">ต้องระบุเหตุผลก่อนจึงจะบันทึกได้</div>
+              )}
+            </Field>
+          )}
+
+          <div className="row">
+            <Field
+              label="วันเกิด"
+              note="แก้ได้จากหน้านี้เท่านั้น · พนักงานเห็นในข้อมูลส่วนตัวแต่แก้เองไม่ได้"
+              style={{ maxWidth: 190 }}
+            >
+              <input
+                type="date"
+                value={form.birthDate}
+                onChange={(e) => set({ birthDate: e.target.value })}
+                disabled={disabled()}
+              />
+            </Field>
+            <Field label="อีเมล" note="ไม่ใช่ชื่อผู้ใช้ — เข้าระบบด้วยรหัสพนักงานเสมอ">
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => set({ email: e.target.value })}
+                disabled={disabled()}
+                autoComplete="off"
+              />
+            </Field>
+          </div>
+
+          <div className="row">
+            <Field label="แผนก" note="ใบเก่าไม่ขยับ — มีผลกับใบที่ยื่นหลังจากนี้">
+              <select
+                value={form.department}
+                onChange={(e) => set({ department: e.target.value })}
+                disabled={disabled()}
+              >
+                {!before.department && <option value="">— ไม่กำหนด —</option>}
+                {depts.map((d) => (
+                  <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field
+              label="บทบาท"
+              note={isAdmin ? 'กำหนดว่าคนนี้ยื่น OT ได้ อนุมัติได้ หรือดูแลระบบได้' : LOCK_NOTE.role}
+            >
+              {/*
+                Rendered whole, with what HR may not pick disabled rather than
+                dropped. A list that silently omits “ผู้ดูแลระบบ” answers the
+                question "why can I not make this person an admin" with nothing
+                at all; a greyed row answers it, and the note below says who can.
+
+                The row's CURRENT role stays selectable whatever it is, so
+                changing away from it and back leaves the form where it started
+                instead of stranding it on a value the server would refuse.
+              */}
+              <select
+                value={form.role}
+                onChange={(e) => set({ role: e.target.value })}
+                disabled={disabled()}
+              >
+                {ROLE_OPTIONS.map((o) => {
+                  const refused = !isAdmin
+                    && !HR_ASSIGNABLE_ROLES.includes(o.value)
+                    && o.value !== before.role;
+                  return (
+                    <option key={o.value} value={o.value} disabled={refused}>
+                      {o.label}{refused ? ' — ผู้ดูแลระบบเท่านั้น' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </Field>
+            <Field
+              label="บริษัท"
+              note="ใช้แบ่งไฟล์ส่งบัญชี PM / THT — อ่านจากทะเบียนตอนออกรายงาน ไม่ได้เก็บไว้ที่ใบ"
+            >
+              <select
+                value={form.company}
+                onChange={(e) => set({ company: e.target.value })}
+                disabled={disabled()}
+              >
+                {/* Only while it IS blank: the model has no "no company" state
+                    to go back to, so offering it on a row that has one would be
+                    offering a save the server refuses. */}
+                {!before.company && <option value="">— เดาจากรหัส —</option>}
+                {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+              </select>
+            </Field>
+            <Field
+              label="สถานะการใช้งาน"
+              note="ปิดใช้งานแล้วเข้าระบบไม่ได้ · ชั่วโมงที่อนุมัติแล้วยังอยู่ในรายงานตามเดิม"
+              style={{ maxWidth: 190 }}
+            >
+              <select
+                value={form.active ? 'yes' : 'no'}
+                onChange={(e) => set({ active: e.target.value === 'yes' })}
+                disabled={disabled()}
+              >
+                <option value="yes">ใช้งาน</option>
+                <option value="no">ปิดใช้งาน</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="hint" style={{ marginTop: 4 }}>
+            รหัสผ่านไม่ได้อยู่ในหน้านี้ — ระบบเก็บแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสเดิมได้
+            {' '}ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง · ประวัติการแก้ทะเบียนไม่เคยบันทึกตัวรหัสผ่าน
+            {' '}บันทึกเพียงว่ามีการตั้งรหัสใหม่
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="hint" style={{ marginTop: 0 }}>
+            ตรวจสิ่งที่กำลังจะเปลี่ยน · ทั้งหมดนี้จะถูกบันทึกลงประวัติการแก้ทะเบียนของคนนี้
+            {' '}พร้อมชื่อผู้แก้และเวลา
+          </div>
+
+          <ul className="entry-diff">
+            {changes.map((c) => (
+              <li key={c.field}>
+                <span className="k">{FIELD_LABEL[c.field] || c.field}</span>
+                <span className="was">{showValue(c.field, c.from, depts)}</span>
+                <span className="to">→</span>
+                <span className="now">{showValue(c.field, c.to, depts)}</span>
+              </li>
+            ))}
+          </ul>
+
+          {codeChanged && (
+            <Alert kind="warn">
+              <strong>รหัสพนักงานผูกกับสามอย่างนอกหน้านี้</strong>
+              <div style={{ marginTop: 6 }}>
+                1. การเข้าสู่ระบบ — คนนี้ต้องใช้รหัสใหม่ในการเข้าระบบทันที (รหัสผ่านเดิมยังใช้ได้ตามเดิม)
+              </div>
+              <div style={{ marginTop: 6 }}>
+                2. การเดาบริษัท — คนที่ไม่ได้ระบุบริษัทไว้ ระบบเดาจากคำนำหน้ารหัส (PM… / THT…)
+                {' '}ช่อง “บริษัท” ถูกเก็บไว้ต่างหากและจะ<strong>ไม่</strong>เปลี่ยนตามรหัส
+              </div>
+              <div style={{ marginTop: 6 }}>
+                3. ใบ OT เดิม — ใบผูกกับตัวพนักงานไม่ได้ผูกกับสตริงรหัส ชั่วโมงจึงไม่หาย
+                {' '}แต่เอกสารกระดาษและไฟล์ที่ส่งบัญชีไปแล้วยังพิมพ์รหัสเดิมไว้
+              </div>
+            </Alert>
+          )}
+
+          {explained.map((field) => {
+            const c = changes.find((x) => x.field === field);
+            const note = IMPACT[field]({ depts, from: c.from, to: c.to, impact });
+            return (
+              <Alert kind={note.tone} key={field}>
+                <strong>{note.title}</strong>
+                {note.body.map((line, i) => <div key={i} style={{ marginTop: 6 }}>{line}</div>)}
+              </Alert>
+            );
+          })}
+        </>
+      )}
     </Modal>
   );
 }
 
-/**
- * เปลี่ยนรหัสพนักงาน — Admin only, and never without a reason.
- *
- * Its own dialog rather than an editable cell, because the code is not one
- * field among the others: it is what the person types to log in, what
- * `companyFromCode` falls back to when no company is stored, and the string
- * payroll matched every historic ใบ against on paper. The reason is required by
- * the server (`codeChangePermission`), not just asked for here — this dialog is
- * where it gets typed, not where it gets enforced.
- */
-function ChangeCode({ employee, onClose, onDone }) {
-  const [code, setCode] = useState(employee.code || '');
-  const [reason, setReason] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const changed = code.trim() && code.trim().toUpperCase() !== String(employee.code).toUpperCase();
-  const ready = changed && reason.trim().length > 0;
-
-  async function submit() {
-    setError('');
-    setBusy(true);
-    try {
-      await api.patch(`/employees/${employee._id}`, { code: code.trim().toUpperCase(), reason });
-      onDone();
-    } catch (err) {
-      setError(err.message);
-      setBusy(false);
-    }
-  }
-
+/** A labelled control with the sentence that explains it underneath. */
+function Field({ label, note, children, style }) {
   return (
-    <Modal
-      title="เปลี่ยนรหัสพนักงาน"
-      subtitle={`${employee.code} · ${employee.name}`}
-      onClose={onClose}
-      dirty={(changed || reason.trim().length > 0) && !busy}
-      footer={<>
-        <button className="btn ghost" onClick={onClose} disabled={busy}>ยกเลิก</button>
-        <button className="btn danger" onClick={submit} disabled={busy || !ready}>
-          {busy ? 'กำลังบันทึก…' : 'เปลี่ยนรหัสพนักงาน'}
-        </button>
-      </>}
-    >
-      <Alert kind="warn">
-        <strong>รหัสพนักงานผูกกับสามอย่างนอกหน้านี้</strong>
-        <div style={{ marginTop: 6 }}>
-          1. การเข้าสู่ระบบ — คนนี้ต้องใช้รหัสใหม่ในการเข้าระบบทันที (รหัสผ่านเดิมยังใช้ได้ตามเดิม)
-        </div>
-        <div style={{ marginTop: 6 }}>
-          2. การเดาบริษัท — คนที่ไม่ได้ระบุบริษัทไว้ ระบบเดาจากคำนำหน้ารหัส (PM… / THT…)
-          {' '}ช่อง “บริษัท” ในทะเบียนนี้ถูกเก็บไว้ต่างหากและจะ<strong>ไม่</strong>เปลี่ยนตามรหัส
-        </div>
-        <div style={{ marginTop: 6 }}>
-          3. ใบ OT เดิม — ใบผูกกับตัวพนักงานไม่ได้ผูกกับสตริงรหัส ชั่วโมงจึงไม่หาย
-          {' '}แต่เอกสารกระดาษและไฟล์ที่ส่งบัญชีไปแล้วยังพิมพ์รหัสเดิมไว้
-        </div>
-      </Alert>
-      {error && <Alert kind="error">{error}</Alert>}
-      <div className="field">
-        <label>รหัสพนักงานใหม่</label>
-        <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" />
-      </div>
-      <div className="field">
-        <label>เหตุผล (บังคับ — จะถูกบันทึกไว้ในประวัติ)</label>
-        <input
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="เช่น ออกรหัสผิดตอนรับเข้า ตัวจริงคือ PM-0641"
-        />
-        {changed && !reason.trim() && (
-          <div className="field-note error">ต้องระบุเหตุผลก่อนจึงจะเปลี่ยนได้</div>
-        )}
-      </div>
-    </Modal>
+    <div className="field" style={style}>
+      <label>{label}</label>
+      {children}
+      {note && <div className="field-note">{note}</div>}
+    </div>
   );
 }
 
@@ -1022,22 +1363,6 @@ function RosterTrail({ employee, depts, onClose }) {
       .catch((err) => setError(err.message));
   }, [employee._id]);
 
-  /**
-   * Ids are what the trail stores — they are what the field holds, and a name
-   * copied in would go stale the day a department is renamed. Resolved to a
-   * name for display where one is available, and shown as the raw value where
-   * it is not: a department that has since been deleted still has to print as
-   * something a person can search for.
-   */
-  const show = (field, value) => {
-    if (value == null) return '—';
-    if (field === 'department') return nameOfDept(depts, value) || value;
-    if (field === 'company') return companyName(value);
-    if (field === 'role') return ROLE_LABEL[value] || value;
-    if (field === 'active') return value === 'true' ? 'ใช้งาน' : 'ปิดใช้งาน';
-    return value;
-  };
-
   return (
     <Modal
       title="ประวัติการแก้ทะเบียน"
@@ -1052,42 +1377,146 @@ function RosterTrail({ employee, depts, onClose }) {
       </div>
       {error && <Alert kind="error">{error}</Alert>}
       {!records && !error && <Empty>กำลังโหลด…</Empty>}
-      {records?.length === 0 && (
-        <Empty>ยังไม่มีการแก้ไขที่บันทึกไว้ — ทะเบียนเริ่มเก็บประวัติตั้งแต่รุ่นนี้เป็นต้นไป</Empty>
-      )}
-      {records?.length > 0 && (
-        <ol className="entry-history">
-          {records.map((r) => (
-            <li key={r.id} className={TONE[r.action] || 'off'}>
-              <div className="head">
-                <span className="act">
-                  {ACTION_LABEL[r.action] || r.action}
-                  {r.source === 'import' && ' (นำเข้า CSV)'}
-                </span>
-                {r.by && <span className="who">โดย {r.by}</span>}
-                <span className="when">{new Date(r.at).toLocaleString('th-TH')}</span>
-              </div>
-              {r.reason && <div className="note">“{r.reason}”</div>}
-              {r.passwordReset && (
-                <div className="note">ตั้งรหัสผ่านใหม่ให้บัญชีนี้ — ระบบไม่ได้บันทึกตัวรหัสผ่าน</div>
-              )}
-              {r.changes.length > 0 && (
-                <ul className="entry-diff">
-                  {r.changes.map((c) => (
-                    <li key={c.field}>
-                      <span className="k">{FIELD_LABEL[c.field] || c.field}</span>
-                      <span className="was">{show(c.field, c.from)}</span>
-                      <span className="to">→</span>
-                      <span className="now">{show(c.field, c.to)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ol>
+      {records && (
+        <TrailList
+          records={records}
+          depts={depts}
+          empty="ยังไม่มีการแก้ไขที่บันทึกไว้ — ทะเบียนเริ่มเก็บประวัติตั้งแต่รุ่นนี้เป็นต้นไป"
+        />
       )}
     </Modal>
+  );
+}
+
+/**
+ * The records themselves, rendered once for both screens that show them: one
+ * person's trail in the pop-up above, and everybody's in the section below.
+ *
+ * Shared rather than written twice because the two are the same records read
+ * with two different questions in mind, and a second copy would be the one that
+ * still printed a field after its label changed. `withWho` is the only
+ * difference: the pop-up already names the person in its subtitle, so repeating
+ * it on every line there would be noise.
+ */
+function TrailList({ records, depts, empty, withWho = false }) {
+  if (!records.length) return <Empty>{empty}</Empty>;
+  return (
+    <ol className="entry-history">
+      {records.map((r) => (
+        <li key={r.id} className={TONE[r.action] || 'off'}>
+          <div className="head">
+            <span className="act">
+              {ACTION_LABEL[r.action] || r.action}
+              {r.source === 'import' && ' (นำเข้า CSV)'}
+            </span>
+            {/* The code and name as they stood when the record was written —
+                see src/models/EmployeeAudit.js. A renumbering's own record must
+                not relabel itself with the code it produced. */}
+            {withWho && (
+              <span className="who">{r.employee?.code} · {r.employee?.name || '—'}</span>
+            )}
+            {r.by && <span className="who">โดย {r.by}</span>}
+            <span className="when">{new Date(r.at).toLocaleString('th-TH')}</span>
+          </div>
+          {r.reason && <div className="note">“{r.reason}”</div>}
+          {r.passwordReset && (
+            <div className="note">ตั้งรหัสผ่านใหม่ให้บัญชีนี้ — ระบบไม่ได้บันทึกตัวรหัสผ่าน</div>
+          )}
+          {r.changes.length > 0 && (
+            <ul className="entry-diff">
+              {r.changes.map((c) => (
+                <li key={c.field}>
+                  <span className="k">{FIELD_LABEL[c.field] || c.field}</span>
+                  <span className="was">{showValue(c.field, c.from, depts)}</span>
+                  <span className="to">→</span>
+                  <span className="now">{showValue(c.field, c.to, depts)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * ประวัติการแก้ทะเบียน across everybody — the section, for ฝ่ายบุคคล and
+ * ผู้ดูแลระบบ.
+ *
+ * The per-row pop-up answers "what happened to this person", which is the
+ * question you ask once you know whose row to open. This one answers "what has
+ * been changed lately", which is the question you ask when a report came out
+ * wrong and you do not. Same append-only records either way.
+ *
+ * Filtering by person is a client-side narrowing of a server-side list ONLY in
+ * the sense that the dropdown re-requests: `?employee=` goes to the server,
+ * which applies the same per-row permission the pop-up gets, so this cannot be
+ * used to read a trail the pop-up would refuse.
+ */
+function RosterAudit() {
+  const [records, setRecords] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [people, setPeople] = useState([]);
+  const [depts, setDepts] = useState([]);
+  const [who, setWho] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([api.get('/employees?all=1'), api.get('/departments?all=1')])
+      .then(([e, d]) => { setPeople(e.employees); setDepts(d.departments); })
+      .catch((err) => setError(err.message));
+  }, []);
+
+  useEffect(() => {
+    setRecords(null);
+    api.get(`/employees/audit${who ? `?employee=${who}` : ''}`)
+      .then((res) => { setRecords(res.records); setHasMore(res.hasMore); setError(''); })
+      .catch((err) => setError(err.message));
+  }, [who]);
+
+  return (
+    <div className="card">
+      <h2>ประวัติการแก้ทะเบียน</h2>
+      <div className="hint">
+        ทุกการเพิ่ม แก้ไข และตั้งรหัสผ่านใหม่ในทะเบียนพนักงาน เรียงจากใหม่ไปเก่า ·
+        {' '}บันทึกแบบต่อท้ายอย่างเดียว แก้ย้อนหลังไม่ได้ เหมือนประวัตินโยบายการคำนวณ
+        {' '}· การตั้งรหัสผ่านใหม่บันทึกไว้เฉพาะว่าเกิดขึ้น
+        {' '}<strong>ไม่มีการเก็บตัวรหัสผ่านไม่ว่ารูปแบบใด</strong>
+        {' '}· การแก้ไขใบ OT เป็นคนละเรื่องและอยู่ที่ประวัติของใบนั้นเอง
+      </div>
+
+      <div className="row" style={{ marginBottom: 12 }}>
+        <div className="field" style={{ maxWidth: 320 }}>
+          <label>กรองตามพนักงาน</label>
+          <select value={who} onChange={(e) => setWho(e.target.value)}>
+            <option value="">— ทุกคน —</option>
+            {people.map((p) => (
+              <option key={p._id} value={p._id}>{p.code} · {p.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {error && <Alert kind="error">{error}</Alert>}
+      {hasMore && (
+        <Alert kind="warn">
+          รายการยาวกว่าที่แสดงได้ — หน้านี้แสดงเฉพาะรายการล่าสุด
+          {' '}เลือกพนักงานรายคนเพื่อดูประวัติของคนนั้นให้ครบขึ้น
+        </Alert>
+      )}
+      {!records && !error && <Empty>กำลังโหลด…</Empty>}
+      {records && (
+        <TrailList
+          records={records}
+          depts={depts}
+          withWho
+          empty={who
+            ? 'ยังไม่มีการแก้ไขที่บันทึกไว้สำหรับคนนี้'
+            : 'ยังไม่มีการแก้ไขที่บันทึกไว้ — ทะเบียนเริ่มเก็บประวัติตั้งแต่รุ่นนี้เป็นต้นไป'}
+        />
+      )}
+    </div>
   );
 }
 

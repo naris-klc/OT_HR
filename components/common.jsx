@@ -754,7 +754,16 @@ export function Modal({
               ปิดโดยไม่บันทึก
             </button>
           </div>
-        ) : footer && <div className="modal-foot">{footer}</div>}
+        ) : footer && (
+          <div className="modal-foot">
+            {/* A function footer is handed `requestClose` — the same path the ×,
+                Escape and the backdrop take, so a dialog's own "ยกเลิก" asks
+                about unsaved work instead of being the one way out that does
+                not. Plain nodes still work; only the footers that need it ask
+                for it. */}
+            {typeof footer === 'function' ? footer(requestClose) : footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

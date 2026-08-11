@@ -1130,6 +1130,41 @@ It is stored rather than derived on the fly. The prefix is a convention, not a
 rule, and the day the roster departs from it nobody should quietly change
 payroll.
 
+### แผนก is snapshotted onto the entry · บริษัท is not — and that is why one edit is retroactive and the other is not
+
+Both are dimensions the same monthly reports are split by, and they behave
+oppositely when somebody edits the roster. This is not a coincidence and it is
+not visible from either field, so it is written down here.
+
+| | where the report reads it from | editing the roster row |
+|---|---|---|
+| **แผนก** | `entry.department` — a required, indexed field **on the entry**, set when the request was filed (`src/models/OtEntry.js`) | **not retroactive.** Every closed month keeps its hours under the department they were worked in. Only entries filed from now on land somewhere new. |
+| **บริษัท** | `companyOf(entry.employee)` — asked **at report time** (`lib/accounting.js`, via `groupEntriesByEmployee`). Nothing on the entry records a company. | **fully retroactive.** Every month that person has ever filed moves between the PM and THT files the instant the field is saved, closed months included. |
+
+So *the same edit gesture on two adjacent dropdowns has two completely different
+blast radii*, and the smaller one is the one that looks scarier (a department
+transfer feels like a bigger deal than a payroll relabel). ทะเบียนพนักงาน warns
+about both, but only the บริษัท warning carries a count — how many months, how
+many ใบ, how many hours — because only บริษัท has anything to count. See
+`lib/rosterImpact.js`, which explains why giving แผนก a number too would be a
+warning that is not true.
+
+**Why they differ.** แผนก was snapshotted because a mid-month transfer has to
+leave the hours where they were worked — the manager who signed them owns them,
+and the department's ceiling was measured against them. บริษัท was never
+snapshotted because it started life as a *relabelling* of an existing roster
+(`npm run migrate:company` filled it in from code prefixes), so at the time the
+field was added, reading it live was the only way old months could split at all.
+Both decisions were right for their own problem; nobody ever compared them.
+
+**If you are about to change this** — most likely by copying `company` onto
+`OtEntry` so that history stops moving — `test/reportDimension.test.js` will go
+red, deliberately. It pins today's behaviour on both axes so the change has to
+be made on purpose rather than arrived at. Making it would also need a decision
+about what to backfill the existing entries with (today's roster value is the
+only thing available, which reproduces exactly the retroactive restatement the
+change is meant to stop) and would obsolete the count in `lib/rosterImpact.js`.
+
 **Removing it.** If the two-company split is dropped for good: delete
 `src/config/companies.js`, the `company` field and `pre('validate')` hook in
 `src/models/Employee.js`, `src/migrate-company.js`, `test/companies.test.js`,
