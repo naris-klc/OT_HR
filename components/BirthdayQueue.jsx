@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, thaiDate, dayName, companyLabel, periodLabel } from '@/lib/api.js';
 import { UNCHECKABLE } from '@/lib/birthdayCheck.js';
-import { Alert, Empty } from './common.jsx';
+import { Alert, Empty, AddBirthDateHint } from './common.jsx';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -37,7 +37,7 @@ import { useBackHandler } from './nav.jsx';
  * It is still a list, not a warning. Not working on your birthday is the ordinary
  * case, and most names here will have a perfectly good reason to be there.
  */
-export default function BirthdayQueue({ onCountChange }) {
+export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [marking, setMarking] = useState(null);
@@ -298,7 +298,7 @@ export default function BirthdayQueue({ onCountChange }) {
           </div>
           <div className="hint" style={{ marginTop: 2 }}>
             คนเหล่านี้ยังไม่ถูกตรวจว่ามีวันเกิดตรงวันทำงานหรือไม่ ·
-            {' '}เพิ่มวันเกิดได้ที่หน้า ผู้ดูแลระบบ › พนักงาน (เฉพาะ Admin)
+            {' '}<AddBirthDateHint onOpen={onOpenRoster} />
           </div>
           <div style={{ marginTop: 6, fontSize: 12.5 }}>
             {uncheckable.map((r) => (

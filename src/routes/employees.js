@@ -7,10 +7,35 @@ import { parseCsv, pick, toCsv } from '../lib/csv.js';
 import {
   PASSWORD_MIN_LENGTH, defaultPassword, publicEmployee, rosterPermission,
 } from '../../lib/employees.js';
+import { rosterChanges } from '../../lib/rosterAudit.js';
+import { recordRosterChange } from '../../lib/rosterAuditLog.js';
 import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '../lib/employeeCode.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+
+/**
+ * One field snapshot, in the shape `rosterChanges` compares — the same helper
+ * the App Router's routes build theirs from.
+ *
+ * THIS ROUTER STILL LAGS THE APP ROUTER and always has: it knows nothing of
+ * `birthDate`, `company` or a รหัสพนักงาน change, so those fields cannot move
+ * through here at all. That is why they are read anyway — the diff describes the
+ * ROW, not what this particular handler happens to support, so a field written
+ * by the Next.js server and left alone here reads as unchanged rather than as
+ * absent.
+ */
+const snapshot = (e) => ({
+  code: e.code,
+  name: e.name,
+  email: e.email,
+  position: e.position,
+  birthDate: e.birthDate,
+  department: e.department,
+  role: e.role,
+  company: e.company,
+  active: e.active,
+});
 
 router.use(requireAuth);
 
@@ -50,9 +75,14 @@ router.post('/', requireRole('admin', 'hr'), wrap(async (req, res) => {
   employee.mustChangePassword = true;
   await employee.save();
 
+  const auditLogged = await recordRosterChange({
+    employee, action: 'create', changes: rosterChanges({}, snapshot(employee)), actor: req.user,
+  });
+
   res.status(201).json({
     employee: await employee.populate('department', 'code name nameTh'),
     password: issued,
+    auditLogged,
   });
 }));
 
@@ -69,6 +99,10 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
     return res.status(400).json({ error: `รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` });
   }
 
+  // Read before a single field is assigned — the document below is mutated in
+  // place, so a "before" taken afterwards would record nothing.
+  const before = snapshot(employee);
+
   if (name != null) employee.name = name;
   if (email !== undefined) employee.email = email || undefined;
   if (position != null) employee.position = position;
@@ -80,8 +114,30 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
     employee.mustChangePassword = true;
   }
 
+  const changes = rosterChanges(before, snapshot(employee));
   await employee.save();
-  return res.json({ employee: await employee.populate('department', 'code name nameTh') });
+
+  /**
+   * The roster is written from two servers, so it is audited by two servers.
+   * `rosterChanges` is the same allowlist either way, which is what keeps the
+   * password out of both without this handler having to know the rule.
+   *
+   * Note that this router recomputes nothing when a วันเกิด moves — it cannot,
+   * because it never accepts one. The App Router's PATCH is the only path that
+   * can change a birth date and it replays that person's ใบ ที่ยังไม่อนุมัติ.
+   */
+  const auditLogged = await recordRosterChange({
+    employee,
+    action: changes.length ? 'update' : 'password_reset',
+    changes,
+    passwordReset: Boolean(password),
+    actor: req.user,
+  });
+
+  return res.json({
+    employee: await employee.populate('department', 'code name nameTh'),
+    auditLogged,
+  });
 }));
 
 /** Change own password. */
@@ -145,6 +201,8 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
   const created = [];
   const updated = [];
   const errors = [];
+  /** Rows the import moved that nothing in otEmployeeAudits will ever show. */
+  let auditUnlogged = 0;
 
   for (const [i, row] of rows.entries()) {
     const line = i + 2; // header is line 1
@@ -171,6 +229,7 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
       if (!rowMay.ok) { errors.push({ line, error: rowMay.error }); continue; }
 
       if (existing) {
+        const before = snapshot(existing);
         existing.name = name;
         existing.position = pick(row, 'position', 'ตำแหน่ง') || existing.position;
         existing.email = pick(row, 'email', 'อีเมล') || existing.email;
@@ -178,7 +237,14 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
         existing.role = role;
         // `existing.code` is left alone: the roster's spelling is the one
         // payroll reads, and the file's is the same code, not a renumbering.
+        const changes = rosterChanges(before, snapshot(existing));
         await existing.save();
+        // Only rows the file actually moved. A roster re-imported unchanged
+        // touches every row and changes none of them — see the App Router's
+        // import for the same rule, which is what makes re-running it safe.
+        if (!(await recordRosterChange({
+          employee: existing, action: 'update', changes, actor: req.user, source: 'import',
+        }))) auditUnlogged += 1;
         updated.push(existing.code);
       } else {
         const employee = new Employee({
@@ -192,6 +258,13 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
         await employee.setPassword(pick(row, 'password') || defaultPassword(code));
         employee.mustChangePassword = true;
         await employee.save();
+        if (!(await recordRosterChange({
+          employee,
+          action: 'create',
+          changes: rosterChanges({}, snapshot(employee)),
+          actor: req.user,
+          source: 'import',
+        }))) auditUnlogged += 1;
         created.push(code);
       }
     } catch (err) {
@@ -199,7 +272,9 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
     }
   }
 
-  res.json({ created: created.length, updated: updated.length, errors, codes: { created, updated } });
+  res.json({
+    created: created.length, updated: updated.length, errors, codes: { created, updated }, auditUnlogged,
+  });
 }));
 
 export default router;

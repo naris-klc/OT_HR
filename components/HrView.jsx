@@ -5,7 +5,7 @@ import {
   api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS, companyLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
-import { Alert, Empty } from './common.jsx';
+import { Alert, Empty, AddBirthDateHint } from './common.jsx';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
 import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
 import PrintForm from './PrintForm.jsx';
@@ -14,7 +14,7 @@ import HrEdits from './HrEdits.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
-export default function HrView({ user, onOpenBirthdayQueue }) {
+export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null }) {
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
   const [statusFilter, setStatusFilter] = useState('approved');
@@ -300,7 +300,7 @@ export default function HrView({ user, onOpenBirthdayQueue }) {
                   {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
                 </div>
                 <div style={{ marginTop: 4, fontSize: 11.5 }}>
-                  เพิ่มวันเกิดได้ที่หน้า ผู้ดูแลระบบ › พนักงาน (เฉพาะ Admin)
+                  <AddBirthDateHint onOpen={onOpenRoster} />
                 </div>
               </Alert>
             )}
@@ -326,6 +326,7 @@ export default function HrView({ user, onOpenBirthdayQueue }) {
             period={period}
             onOpenQueue={onOpenBirthdayQueue}
             onOpenEntries={setOpened}
+            onOpenRoster={onOpenRoster}
           />
         )}
       </div>
@@ -353,7 +354,7 @@ export default function HrView({ user, onOpenBirthdayQueue }) {
  * birthday from the month you happen to be reading is the natural move, and
  * sending somebody to another screen to do it is how a row gets left.
  */
-function BirthdayMonth({ period, onOpenQueue, onOpenEntries }) {
+function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [marking, setMarking] = useState(null);
@@ -515,7 +516,7 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries }) {
           </div>
           <div className="hint" style={{ marginTop: 2 }}>
             ไม่ทราบว่าเกิดเดือนไหน จึงไม่อยู่ในตารางด้านบน ·
-            {' '}เพิ่มวันเกิดได้ที่หน้า ผู้ดูแลระบบ › พนักงาน (เฉพาะ Admin)
+            {' '}<AddBirthDateHint onOpen={onOpenRoster} />
           </div>
           <div style={{ marginTop: 6, fontSize: 12.5 }}>
             {uncheckable.map((r) => (

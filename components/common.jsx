@@ -765,6 +765,39 @@ export function Empty({ children }) {
   return <div className="empty">{children}</div>;
 }
 
+/**
+ * “เพิ่มวันเกิดได้ที่…” — the one sentence three birthday screens end on.
+ *
+ * It used to read “ผู้ดูแลระบบ › พนักงาน (เฉพาะ Admin)”, written out three
+ * times. That was accurate while the roster was Admin's alone; it stopped being
+ * accurate when ฝ่ายบุคคล took ทะเบียนพนักงาน over, and it was wrong in the way
+ * that costs the most — every one of these notices is read by HR, who were being
+ * told the fix was somebody else's to make while they were sitting on the screen
+ * that makes it.
+ *
+ * One component rather than a fourth copy of the words. Three sentences that are
+ * meant to say the same thing will be edited one at a time, and the copy that
+ * caused this was in exactly that state.
+ *
+ * `onOpen` turns it into the way there rather than a description of the way
+ * there. Absent — a หัวหน้า, who has no ตั้งค่าระบบ tab — it degrades to the
+ * sentence naming who to ask, because a link to a tab somebody does not have is
+ * worse than no link.
+ */
+export function AddBirthDateHint({ onOpen }) {
+  if (!onOpen) {
+    return <>วันเกิดกรอกได้ที่ทะเบียนพนักงาน — แจ้งฝ่ายบุคคลให้เพิ่มให้</>;
+  }
+  return (
+    <>
+      เพิ่มวันเกิดได้ที่{' '}
+      <button type="button" className="link" onClick={onOpen}>
+        ตั้งค่าระบบ › พนักงาน
+      </button>
+    </>
+  );
+}
+
 export function PeriodPicker({ value, onChange }) {
   return (
     <div className="field" style={{ maxWidth: 180 }}>

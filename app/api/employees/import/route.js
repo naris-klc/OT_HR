@@ -5,6 +5,8 @@ import { route, uploadText, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { parseCsv, pick } from '@/src/lib/csv.js';
 import { defaultPassword, rosterPermission } from '@/lib/employees.js';
+import { rosterChanges } from '@/lib/rosterAudit.js';
+import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 import { resolveBirthDateColumn } from '@/lib/birthDate.js';
 import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '@/src/lib/employeeCode.js';
 
@@ -64,6 +66,34 @@ export const POST = route(async (req) => {
   const errors = [];
   /** Rows whose company was neither given nor derivable — see below. */
   const warnings = [];
+  /**
+   * How many rows moved the roster without leaving a record of it.
+   *
+   * Counted rather than thrown, for the reason lib/rosterAuditLog.js returns
+   * false rather than raising: the row is already saved by the time its record
+   * is attempted, so failing the import here would abandon a half-written
+   * roster. Reported at the end so the confirmation can say it out loud —
+   * see `auditUnlogged` in the response.
+   */
+  let auditUnlogged = 0;
+  /**
+   * One field snapshot, in the shape `rosterChanges` compares.
+   *
+   * Written once and used for both sides of every row, so a before and an after
+   * can never be read off different field lists — which is the way a diff comes
+   * to under-report the one field somebody removed from one of the two copies.
+   */
+  const snapshot = (e) => ({
+    code: e.code,
+    name: e.name,
+    email: e.email,
+    position: e.position,
+    birthDate: e.birthDate,
+    department: e.department,
+    role: e.role,
+    company: e.company,
+    active: e.active,
+  });
 
   for (const [i, row] of rows.entries()) {
     const line = i + 2; // header is line 1
@@ -124,6 +154,9 @@ export const POST = route(async (req) => {
       if (!rowMay.ok) { errors.push({ line, error: rowMay.error }); continue; }
 
       if (existing) {
+        // Captured before the assignments below overwrite the document in
+        // place — the same reason the PATCH route reads its `before` first.
+        const before = snapshot(existing);
         existing.name = name;
         existing.position = pick(row, 'position', 'ตำแหน่ง') || existing.position;
         existing.email = pick(row, 'email', 'อีเมล') || existing.email;
@@ -140,7 +173,20 @@ export const POST = route(async (req) => {
         // the one payroll reads off their own sheets, and a file that happens to
         // write it the other way is not a request to renumber anybody — it is
         // the same code, which is why this row was found at all.
+        const changes = rosterChanges(before, snapshot(existing));
         await existing.save();
+        /**
+         * Only rows the file actually moved get a record. A roster CSV
+         * re-imported unchanged touches every row and changes none of them, and
+         * a trail that filed two hundred "edited, nothing different" rows each
+         * time would bury the one row that did move — the same rule the entry
+         * history follows for a `before` snapshot identical to its after.
+         * `recordRosterChange` drops the empty ones; this is what makes the
+         * import safe to run twice.
+         */
+        if (!(await recordRosterChange({
+          employee: existing, action: 'update', changes, actor, source: 'import',
+        }))) auditUnlogged += 1;
         // Reported as it is stored, not as the file spelled it, so what HR is
         // shown afterwards is what is on the row.
         updated.push(existing.code);
@@ -159,6 +205,13 @@ export const POST = route(async (req) => {
         // Issued by whoever wrote the file, so the same obligation as the form.
         employee.mustChangePassword = true;
         await employee.save();
+        if (!(await recordRosterChange({
+          employee,
+          action: 'create',
+          changes: rosterChanges({}, snapshot(employee)),
+          actor,
+          source: 'import',
+        }))) auditUnlogged += 1;
         created.push(code);
       }
     } catch (err) {
@@ -172,6 +225,13 @@ export const POST = route(async (req) => {
     errors,
     warnings,
     codes: { created, updated },
+    /**
+     * Rows the import moved that nothing in otEmployeeAudits will ever show.
+     * Nought in every ordinary run; said out loud rather than swallowed,
+     * because a gap in an audit trail is only ever found by somebody looking
+     * for a change that is already in dispute.
+     */
+    auditUnlogged,
     // How the วันเกิด column was read, so the confirmation says it too — the
     // preview HR agreed to and the import that happened are then the same
     // claim, checkable against each other.

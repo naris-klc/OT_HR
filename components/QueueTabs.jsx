@@ -27,7 +27,8 @@ import BirthdayQueue from './BirthdayQueue.jsx';
  * queues as they load, so a badge and the tab it opens cannot disagree.
  */
 export default function QueueTabs({
-  user, stage, onChanged, onOpenPolicy, initialTab = null, pendingCount = 0, onCounts,
+  user, stage, onChanged, onOpenPolicy, onOpenRoster = null,
+  initialTab = null, pendingCount = 0, onCounts,
 }) {
   const [tab, setTab] = useState(initialTab === 'birthday' ? 'birthday' : 'entries');
   /**
@@ -85,6 +86,7 @@ export default function QueueTabs({
         />
       ) : (
         <BirthdayQueue
+          onOpenRoster={onOpenRoster}
           onCountChange={(n) => {
             setBirthdayCount(n);
             onCounts?.(n);

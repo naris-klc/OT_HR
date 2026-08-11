@@ -269,6 +269,28 @@ function Shell({ session, onLogout }) {
     goTab('admin');
   }
 
+  /**
+   * Where the "ยังไม่มีวันเกิดในระบบ" notices point.
+   *
+   * The birthday screens name a gap in ทะเบียนพนักงาน and used to end at
+   * "(เฉพาะ Admin)" — accurate when the roster was Admin's alone, and now both
+   * wrong and a dead end for the person most likely to be reading it. ฝ่ายบุคคล
+   * maintain the roster, so the sentence names the tab and this takes them
+   * there, on the right section, the way the policy drift strip already does.
+   *
+   * Guarded on the role rather than trusted to the caller: the same screens are
+   * read by a หัวหน้า, who has no ตั้งค่าระบบ tab at all — see `tabs` above.
+   * They get the plain sentence with no link, since sending them to a tab that
+   * does not exist is worse than not offering.
+   */
+  const mayOpenRoster = ['hr', 'admin'].includes(user.role);
+
+  function openRoster() {
+    if (!mayOpenRoster) return;
+    setAdminSection('employees');
+    goTab('admin');
+  }
+
   const canGoBack = subDepth > 0 || trail.length > 0;
 
   function goBack() {
@@ -446,6 +468,7 @@ function Shell({ session, onLogout }) {
                 onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
                 onChanged={queueDone}
                 onOpenPolicy={openPolicy}
+                onOpenRoster={mayOpenRoster ? openRoster : null}
               />
             )}
             {/* The covered queue stays a single list: a ฝ่ายบุคคล standing in for
@@ -461,11 +484,13 @@ function Shell({ session, onLogout }) {
                 onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
                 onChanged={queueDone}
                 onOpenPolicy={openPolicy}
+                onOpenRoster={mayOpenRoster ? openRoster : null}
               />
             )}
             {tab === 'monthly' && (
               <HrView
                 user={user}
+                onOpenRoster={mayOpenRoster ? openRoster : null}
                 onOpenBirthdayQueue={() => {
                   setQueueTab('birthday');
                   goTab(user.role === 'manager' ? 'approve' : 'confirm');

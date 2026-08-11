@@ -5,6 +5,8 @@ import { requireAuth } from '@/lib/session.js';
 import {
   PASSWORD_MIN_LENGTH, defaultPassword, publicEmployee, rosterPermission,
 } from '@/lib/employees.js';
+import { rosterChanges } from '@/lib/rosterAudit.js';
+import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
@@ -65,11 +67,42 @@ export const POST = route(async (req) => {
   employee.mustChangePassword = true;
   await employee.save();
 
+  /**
+   * The row's first record — every field it was created with, as a change from
+   * nothing.
+   *
+   * Diffed against `{}` rather than written by hand, so a create and an edit
+   * produce the same shape and the same allowlist decides both. A field added
+   * to AUDITED_FIELDS is then covered here without this line being touched, and
+   * one that must never be recorded stays out of both.
+   *
+   * `passwordReset` is deliberately NOT set: an account whose password was
+   * issued at creation is what 'create' already means, and flagging it too
+   * would make every new hire look like somebody who had forgotten theirs.
+   */
+  const auditLogged = await recordRosterChange({
+    employee,
+    action: 'create',
+    changes: rosterChanges({}, {
+      code: employee.code,
+      name: employee.name,
+      email: employee.email,
+      position: employee.position,
+      birthDate: employee.birthDate,
+      department: employee.department,
+      role: employee.role,
+      company: employee.company,
+      active: employee.active,
+    }),
+    actor,
+  });
+
   // The issued password comes back so the screen that created the account can
   // show HR what to hand over. It is never readable again: only the hash is
   // stored, and every roster read goes through publicEmployee().
   return json({
     employee: await employee.populate('department', 'code name nameTh'),
     password: issued,
+    auditLogged,
   }, 201);
 });
