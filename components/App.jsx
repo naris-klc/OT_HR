@@ -8,6 +8,7 @@ import { ToastHost } from './Toast.jsx';
 import { BackProvider } from './nav.jsx';
 import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
+import QueueTabs from './QueueTabs.jsx';
 import HrView from './HrView.jsx';
 import AccountingView from './AccountingView.jsx';
 import DepartmentView from './DepartmentView.jsx';
@@ -191,8 +192,16 @@ function Shell({ session, onLogout }) {
   const home = defaultTab(user.role);
   const [tab, setTab] = useState(home);
   const [counts, setCounts] = useState({
-    pendingMgr: 0, pendingHr: 0, pendingMgrDelegated: 0, delegatedTeams: 0,
+    pendingMgr: 0, pendingHr: 0, pendingMgrDelegated: 0, delegatedTeams: 0, birthdayPending: 0,
   });
+  /**
+   * Which sub-tab the queue screen should open on, when something sent us there.
+   *
+   * Same shape as `adminSection` below and cleared the same way — a signal for
+   * one arrival, not a stored preference. The status line at the foot of
+   * ตรวจสอบรายเดือน is the only thing that sets it.
+   */
+  const [queueTab, setQueueTab] = useState(null);
   /**
    * Which section ตั้งค่าระบบ should open on, when something sent us there.
    * Cleared on leaving the tab (below), so it steers the one arrival it was set
@@ -207,6 +216,7 @@ function Shell({ session, onLogout }) {
   }
   useEffect(() => { refreshCounts(); }, [tab]);
   useEffect(() => { if (tab !== 'admin') setAdminSection(null); }, [tab]);
+  useEffect(() => { if (!['approve', 'confirm'].includes(tab)) setQueueTab(null); }, [tab]);
 
   /**
    * Rows just left a queue. Take them off the badge now and ask the server
@@ -272,9 +282,28 @@ function Shell({ session, onLogout }) {
     setTab(home);
   }
 
+  /**
+   * The badge counts the SCREEN, not one of its tabs.
+   *
+   * รออนุมัติ and รอ HR ยืนยัน each now hold two piles of work — requests waiting
+   * for a signature, and birthdays waiting for somebody to check the scan record
+   * — and a badge that counted only the first would go to zero with a tab still
+   * full. Inside the screen the two numbers stay apart, on their own tabs,
+   * because they are two different jobs; out here they are one answer to "is
+   * there anything for me".
+   *
+   * `birthdayPending` is scoped to the caller by the server, so a หัวหน้า's
+   * number is their team's and ฝ่ายบุคคล's is everybody's.
+   */
+  const birthdayBadge = counts.birthdayPending || 0;
+
   const tabs = [];
   if (user.maySubmitOt) tabs.push({ key: 'mine', label: 'OT ของฉัน', icon: '◧' });
-  if (user.role === 'manager') tabs.push({ key: 'approve', label: 'รออนุมัติ', icon: '◔', badge: counts.pendingMgr });
+  if (user.role === 'manager') {
+    tabs.push({
+      key: 'approve', label: 'รออนุมัติ', icon: '◔', badge: counts.pendingMgr + birthdayBadge,
+    });
+  }
   /**
    * ฝ่ายบุคคล standing in for a หัวหน้า get a queue of their own.
    *
@@ -299,7 +328,9 @@ function Shell({ session, onLogout }) {
     });
   }
   if (['hr', 'admin'].includes(user.role)) {
-    tabs.push({ key: 'confirm', label: 'รอ HR ยืนยัน', icon: '◑', badge: counts.pendingHr });
+    tabs.push({
+      key: 'confirm', label: 'รอ HR ยืนยัน', icon: '◑', badge: counts.pendingHr + birthdayBadge,
+    });
     tabs.push({ key: 'monthly', label: 'ตรวจสอบรายเดือน', icon: '▤' });
     // Closing the month, not checking it — hence its own tab next to the
     // review rather than a mode inside it.
@@ -406,10 +437,41 @@ function Shell({ session, onLogout }) {
         <main>
           <div className="page">
             {tab === 'mine' && <EmployeeView user={user} onChanged={refreshCounts} openSignal={formSignal} />}
-            {tab === 'approve' && <ApprovalQueue user={user} stage="pending_mgr" onChanged={queueDone} onOpenPolicy={openPolicy} />}
+            {tab === 'approve' && (
+              <QueueTabs
+                user={user}
+                stage="pending_mgr"
+                pendingCount={counts.pendingMgr}
+                initialTab={queueTab}
+                onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
+                onChanged={queueDone}
+                onOpenPolicy={openPolicy}
+              />
+            )}
+            {/* The covered queue stays a single list: a ฝ่ายบุคคล standing in for
+                a หัวหน้า already sees every birthday in the company on their own
+                รอ HR ยืนยัน, so a second copy here would be the same rows twice. */}
             {tab === 'delegated' && <ApprovalQueue user={user} stage="pending_mgr" delegatedOnly onChanged={queueDone} onOpenPolicy={openPolicy} />}
-            {tab === 'confirm' && <ApprovalQueue user={user} stage="pending_hr" onChanged={queueDone} onOpenPolicy={openPolicy} />}
-            {tab === 'monthly' && <HrView user={user} />}
+            {tab === 'confirm' && (
+              <QueueTabs
+                user={user}
+                stage="pending_hr"
+                pendingCount={counts.pendingHr}
+                initialTab={queueTab}
+                onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
+                onChanged={queueDone}
+                onOpenPolicy={openPolicy}
+              />
+            )}
+            {tab === 'monthly' && (
+              <HrView
+                user={user}
+                onOpenBirthdayQueue={() => {
+                  setQueueTab('birthday');
+                  goTab(user.role === 'manager' ? 'approve' : 'confirm');
+                }}
+              />
+            )}
             {tab === 'accounting' && <AccountingView />}
             {tab === 'departments' && <DepartmentView />}
             {tab === 'form' && <MyForm />}

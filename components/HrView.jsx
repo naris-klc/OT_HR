@@ -4,18 +4,17 @@ import React, { useEffect, useState } from 'react';
 import {
   api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS, companyLabel,
 } from '@/lib/api.js';
-import { UNCHECKABLE, OUTCOME } from '@/lib/birthdayCheck.js';
-import { Alert, Empty, Modal } from './common.jsx';
+import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
+import { Alert, Empty } from './common.jsx';
+import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
 import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
 import PrintForm from './PrintForm.jsx';
 import HrEntries from './HrEntries.jsx';
 import HrEdits from './HrEdits.jsx';
-import OtForm from './OtForm.jsx';
-import { useToast } from './Toast.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
-export default function HrView({ user }) {
+export default function HrView({ user, onOpenBirthdayQueue }) {
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
   const [statusFilter, setStatusFilter] = useState('approved');
@@ -23,19 +22,6 @@ export default function HrView({ user }) {
   const [printing, setPrinting] = useState(null);
   const [opened, setOpened] = useState(null); // employee whose entries HR is in
   const [auditing, setAuditing] = useState(null); // employee whose edits HR is reading
-  /**
-   * A row of วันเกิดที่ยังไม่มีใบ being turned into a ใบ.
-   *
-   * Held here rather than inside the section it is opened from, so that it
-   * replaces the page through the same early return the other three sub-views
-   * use — and so it gets the same hardware-back handling. A form this
-   * consequential inside a pop-up inside a section at the foot of a long table
-   * is a form somebody fills in without seeing what else is on screen.
-   */
-  const [filingBirthday, setFilingBirthday] = useState(null);
-  /** Bumped to make the birthday section reload after either button. */
-  const [birthdaySignal, setBirthdaySignal] = useState(0);
-  const toast = useToast();
 
   async function load() {
     try {
@@ -54,26 +40,6 @@ export default function HrView({ user }) {
   useBackHandler(Boolean(printing), () => setPrinting(null));
   useBackHandler(Boolean(auditing), () => setAuditing(null));
   useBackHandler(Boolean(opened), () => setOpened(null));
-  useBackHandler(Boolean(filingBirthday), () => setFilingBirthday(null));
-
-  if (filingBirthday) {
-    return (
-      <OtForm
-        mode="birthday"
-        birthday={filingBirthday}
-        onCancel={() => setFilingBirthday(null)}
-        onSaved={(res) => {
-          const who = filingBirthday.name;
-          setFilingBirthday(null);
-          setBirthdaySignal((n) => n + 1);
-          load();
-          toast(res?.direct
-            ? `บันทึกและอนุมัติ OT วันเกิดของ ${who} แล้ว — บันทึกไว้ว่าคุณเป็นทั้งผู้กรอกและผู้อนุมัติ`
-            : `บันทึก OT วันเกิดของ ${who} แล้ว — รออนุมัติตามคิวปกติ`);
-        }}
-      />
-    );
-  }
 
   if (printing) {
     return (
@@ -343,25 +309,23 @@ export default function HrView({ user }) {
         )}
 
         {/*
-          วันเกิดที่ยังไม่มีใบ — at the foot of the month it is about, and now a
-          list that can be settled rather than only read.
+          The month's birthdays — ALL of them, settled or not.
 
-          OUTSIDE the "does this month have entries" branch, deliberately. It
-          used to sit inside it, which meant a month where nobody filed any OT
-          printed "ไม่มีรายการในเดือนนี้" and nothing else — and that is exactly
-          the month where an unclaimed birthday holiday is most likely and least
-          visible. The section has its own silence rule (nothing to show, or the
-          rule off) and does not need a second one imposed by the table above it.
+          OUTSIDE the "does this month have entries" branch, deliberately. A
+          month where nobody filed any OT would otherwise print
+          "ไม่มีรายการในเดือนนี้" and nothing else, and that is exactly the month
+          where an unclaimed birthday holiday is most likely and least visible.
 
-          ฝ่ายบุคคล for everybody; a หัวหน้า, or their stand-in, for their own
-          team — the same scope the rest of this screen already has.
+          The outstanding rows are ALSO in วันเกิดรอตรวจ on the confirmation
+          screen, which spans every month and is what the nav badge counts. This
+          one is scoped to the month on screen, because closing a period is a
+          question about that period. The two numbers are meant to differ.
         */}
         {data && (
-          <BirthdayCheck
+          <BirthdayMonth
             period={period}
-            signal={birthdaySignal}
-            onFile={setFilingBirthday}
-            onChanged={() => { setBirthdaySignal((n) => n + 1); load(); }}
+            onOpenQueue={onOpenBirthdayQueue}
+            onOpenEntries={setOpened}
           />
         )}
       </div>
@@ -370,262 +334,191 @@ export default function HrView({ user }) {
 }
 
 /**
- * วันเกิดที่ยังไม่มีใบ — the month's unanswered birthday holidays, settled here.
+ * วันเกิดของเดือนนี้ — every one of them, settled or not, in one table.
  *
- * A LIST, NOT A WARNING. Nothing here is an error: not working on your birthday
- * is the ordinary case, and most names on this list will have a perfectly good
- * reason to be there. So it is drawn in the neutral `box`, with no red and no
- * count in a badge — the tone the screen takes is part of what it says. What the
- * section is for is the asymmetry the rule creates: a birthday on a Tuesday is a
- * holiday that looks exactly like a working day, so it is the one kind of holiday
- * an employee forgets to claim. A Saturday announces itself.
+ * WHY THE WHOLE MONTH AND NOT WHAT IS LEFT. This screen is where a period gets
+ * closed, and closing it means knowing every birthday in it was dealt with. A
+ * list of outstanding rows cannot say that: a name that was settled and a name
+ * nobody ever looked at are both simply missing from it, and absence is not an
+ * answer. So one row per birthday with one of five statuses, and the counts above
+ * them — "เดือนนี้มีวันเกิด 6 คน · ต้องตรวจ 1 · เสร็จแล้ว 4 · รอถึงวัน 1".
  *
- * IT USED TO SAY THE OPPOSITE OF WHAT IS TRUE. The old copy told the reader to
- * send this to the หัวหน้า "เพราะฝ่ายบุคคลไม่ทราบว่าเขามาทำงานถึงกี่โมง". That
- * was never the situation in this office: HR opens the fingerprint scanner's own
- * export and reads the in and out times for that person on that date — the same
- * times a หัวหน้า would be repeating down the phone. So the sentence is gone and
- * both answers are here, one press each. The หัวหน้า can still settle their own
- * team's rows, and still file through the ordinary proxy path when they prefer.
+ * IT IS NOT THE QUEUE, and the two numbers are meant to differ. วันเกิดรอตรวจ on
+ * รอ HR ยืนยัน spans EVERY month, because a backlog must not be hidden by a
+ * dropdown, and it holds only the ต้องตรวจ rows, because that is the only status
+ * that is work. This table is one month and every status. Only the ต้องตรวจ rows
+ * here are also in that queue; a row settled from either place leaves both.
  *
- * TWO GROUPS, AND ONLY THE FIRST HAS BUTTONS. A birthday that has not arrived
- * has no scan record to check against, so there is nothing to compare and
- * nothing to press — those rows are shown and left alone. The split is the
- * server's (`birthdayCheck` against Asia/Bangkok's date), not a comparison made
- * in the browser against whatever the laptop's clock says.
- *
- * Silent when there is nothing to say, and silent when the rule is off — a
- * section that renders "0 คน" every month is a section nobody reads. The one
- * thing it will not do is stay silent about a roster it cannot check: that is the
- * third list.
+ * The buttons are the same two, from components/birthdayActions.jsx — settling a
+ * birthday from the month you happen to be reading is the natural move, and
+ * sending somebody to another screen to do it is how a row gets left.
  */
-function BirthdayCheck({ period, signal = 0, onFile, onChanged }) {
+function BirthdayMonth({ period, onOpenQueue, onOpenEntries }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  /** The row a "ไม่ได้มาทำงาน" is being recorded against. */
   const [marking, setMarking] = useState(null);
-  const toast = useToast();
+  const [filing, setFiling] = useState(null);
 
-  /**
-   * No role test here, deliberately.
-   *
-   * Who may read this list is the server's decision — ฝ่ายบุคคล for everybody, a
-   * หัวหน้า and their stand-in for their own team — and it is made by the same
-   * function the two write routes refuse with. A second copy of it in the
-   * browser is how a screen ends up hiding a section somebody is entitled to, or
-   * showing one that 403s. A caller with no claim gets an error, which is drawn.
-   */
-  useEffect(() => {
-    let live = true;
-    setData(null);
-    api.get(`/reports/birthday-check/${period}`)
-      .then((res) => { if (live) { setData(res); setError(''); } })
-      .catch((err) => { if (live) setError(err.message); });
-    return () => { live = false; };
-  }, [period, signal]);
+  async function load() {
+    try {
+      const res = await api.get(`/reports/birthday-check/${period}`);
+      setData(res);
+      setError('');
+    } catch (err) { setError(err.message); }
+  }
+
+  useEffect(() => { setData(null); load(); }, [period]);
+  useBackHandler(Boolean(filing), () => setFiling(null));
+
+  const retract = useRetractCheck(() => load(), setError);
+
+  if (filing) {
+    return (
+      <BirthdayFileForm
+        birthday={filing}
+        onCancel={() => setFiling(null)}
+        onSaved={() => { setFiling(null); load(); }}
+      />
+    );
+  }
 
   if (error) return <Alert kind="error">{error}</Alert>;
+  // The rule being off is not a gap in the data: a birthday is then an ordinary
+  // working day and there is no such thing as a birthday holiday to settle.
   if (!data || !data.ruleEnabled) return null;
-  const nothing = data.needsEntry.length === 0
-    && data.upcoming.length === 0
-    && data.absent.length === 0
-    && data.uncheckable.length === 0;
-  if (nothing) return null;
 
-  async function retract(r) {
-    try {
-      await api.post('/birthday/checks', {
-        employeeId: r.employeeId, workDate: r.date, outcome: OUTCOME.CANCELLED,
-      });
-      toast(`ยกเลิกการบันทึกของ ${r.name} แล้ว — ชื่อกลับมาอยู่ในรายการที่ต้องตรวจ`);
-      onChanged?.();
-    } catch (err) {
-      setError(err.message);
-    }
+  /**
+   * A month that ended before the rule was ever turned on.
+   *
+   * Said out loud rather than shown as an empty table, and certainly not shown
+   * as a table full of ต้องตรวจ: nothing was owed then, and a button offering to
+   * file it would grant a holiday that did not exist on the date it carries.
+   */
+  if (!data.ruleActiveInPeriod) {
+    return (
+      <div className="box" style={{ marginTop: 12 }}>
+        <div style={{ fontWeight: 600 }}>วันเกิดของเดือนนี้</div>
+        <div className="hint" style={{ marginTop: 2 }}>
+          เดือนนี้อยู่ก่อนวันที่เริ่มใช้กฎวันหยุดวันเกิด — วันเกิดในเดือนนั้นยังเป็นวันทำงานปกติ
+          {' '}จึงไม่มีวันหยุดที่ต้องตรวจย้อนหลัง
+        </div>
+      </div>
+    );
   }
+
+  const { rows, summary, uncheckable } = data;
+  if (rows.length === 0 && uncheckable.length === 0) return null;
 
   return (
     <div className="box" style={{ marginTop: 12 }}>
-      <div style={{ fontWeight: 600 }}>วันเกิดที่ยังไม่มีใบ</div>
+      <div style={{ fontWeight: 600 }}>วันเกิดของเดือนนี้</div>
+
+      {/* The summary, above the table it counts. `done` is the three statuses
+          that mean nothing is left to do — filed, checked, or already a holiday
+          — so the four numbers add up to the first one and a reader can check
+          them against each other. */}
       <div className="hint" style={{ marginTop: 2 }}>
-        วันเกิดที่ตรงจันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น แต่วันนั้นดูเหมือนวันทำงานปกติ
-        {' '}พนักงานจึงลืมยื่นได้ง่าย — <strong>รายการนี้ไว้ตรวจ ไม่ใช่ข้อผิดพลาด</strong>
-        {' '}(ไม่มาทำงานวันเกิดก็เป็นเรื่องปกติ)
-        <div style={{ marginTop: 4 }}>
-          เปิดโปรแกรมสแกนนิ้วดูเวลาเข้า-ออกของวันนั้น แล้วตอบได้เลยจากหน้านี้ —
-          {' '}<strong>“บันทึก OT ให้”</strong> ถ้าเขามาทำงาน (กรอกเวลาที่อ่านได้ ระบบคำนวณชั่วโมงเอง)
-          {' '}หรือ <strong>“ไม่ได้มาทำงาน”</strong> ถ้าไม่มีการสแกน ·
-          {' '}หัวหน้าแผนกบันทึกแทนลูกทีมของตนเองได้เช่นกัน ทั้งจากหน้านี้และจากหน้าคิวของหัวหน้า
-        </div>
+        {rows.length === 0
+          ? 'ไม่มีพนักงานที่วันเกิดตรงกับเดือนนี้'
+          : (
+            <>
+              เดือนนี้มีวันเกิด <strong>{summary.total} คน</strong> ·
+              {' '}ต้องตรวจ <strong style={{ color: summary.due ? 'var(--amber)' : 'inherit' }}>{summary.due}</strong> ·
+              {' '}เสร็จแล้ว {summary.done}
+              {summary.upcoming > 0 && ` · รอถึงวัน ${summary.upcoming}`}
+            </>
+          )}
       </div>
 
-      {data.needsEntry.length > 0 && (
-        <>
-          <div className="kicker-sm" style={{ marginTop: 12 }}>
-            ต้องตรวจ — {data.needsEntry.length} รายการ
-          </div>
-          <div className="table-wrap" style={{ marginTop: 6 }}>
-            <table className="mini">
-              <thead>
-                <tr>
-                  <th>พนักงาน</th>
-                  <th>แผนก</th>
-                  <th>วันเกิด (วันหยุดของเขา)</th>
-                  <th>บริษัท</th>
-                  <th>หัวหน้าที่บันทึกแทนได้</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {data.needsEntry.map((r) => (
-                  <tr key={r.employeeId + r.date}>
-                    <td>
-                      {r.name}
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.code}</div>
-                    </td>
-                    <td>{r.department || '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {thaiDate(r.date)} (วัน{dayName(r.date)})
-                    </td>
-                    <td>{companyLabel(r.company)}</td>
-                    <td>
-                      {r.managers.length > 0
-                        ? r.managers.map((m) => m.name).join(' · ')
-                        : <span style={{ color: 'var(--muted)' }}>ยังไม่มีหัวหน้าในแผนกนี้</span>}
-                    </td>
-                    <td>
-                      {/* `canAct` is the server's answer, over the same rule the
-                          write routes enforce — not a role test made here. */}
-                      {r.canAct ? (
-                        <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
-                          <button
-                            className="btn ghost sm"
-                            onClick={() => onFile?.({
-                              employeeId: r.employeeId, name: r.name, code: r.code, date: r.date,
-                            })}
-                            title="กรอกเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง"
-                          >
-                            บันทึก OT ให้
-                          </button>
-                          <button
-                            className="btn ghost sm"
-                            onClick={() => setMarking(r)}
-                            title="บันทึกว่าวันนั้นเขาไม่ได้มาทำงาน — ไม่ใช่ใบ OT ไม่มีชั่วโมง ไม่เข้ารายงานใด และยกเลิกได้"
-                          >
-                            ไม่ได้มาทำงาน
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>ไม่ใช่แผนกของคุณ</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+      {/* Said out loud rather than left as an absence. A blank space and a month
+          that has been fully checked look identical, and the difference matters
+          most to whoever is about to send a file to accounting. */}
+      {rows.length > 0 && summary.due === 0 && (
+        <div className="hint" style={{ marginTop: 2, color: 'var(--green-dark)' }}>
+          ✓ ตรวจครบแล้ว — ไม่มีวันเกิดของเดือนนี้ที่ยังต้องตอบก่อนปิดเดือน
+        </div>
       )}
-
-      {/* Nothing to press: the shift has not happened, so there is no scan
-          record to compare against and no honest answer to give yet. Shown
-          anyway — HR reads the month ahead, and a name that appears out of
-          nowhere on the 30th is a name nobody planned for. */}
-      {data.upcoming.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div className="kicker-sm">กำลังจะถึง — {data.upcoming.length} รายการ</div>
-          <div className="hint" style={{ marginTop: 2 }}>
-            วันเกิดยังไม่ถึง จึงยังไม่มีบันทึกเวลาเข้า-ออกงานให้เทียบ — ดูอย่างเดียว
-          </div>
-          <div style={{ marginTop: 6, fontSize: 12.5 }}>
-            {data.upcoming.map((r) => (
-              <div key={r.employeeId + r.date}>
-                {thaiDate(r.date)} (วัน{dayName(r.date)}) · {r.code} {r.name}
-                <span style={{ color: 'var(--muted)' }}>
-                  {' '}· {r.department || '—'} · {companyLabel(r.company)}
-                </span>
-              </div>
-            ))}
-          </div>
+      {summary.due > 0 && (
+        <div className="hint" style={{ marginTop: 2 }}>
+          แต่ละรายการที่ยังไม่ตรวจอาจกลายเป็นชั่วโมง OT ที่ยังไม่อยู่ในยอดของเดือนนี้ ·
+          {' '}ตรวจจากบันทึกเวลาเข้า-ออก (สแกนนิ้ว) แล้วตอบได้จากปุ่มในตาราง
+          {onOpenQueue && (
+            <>
+              {' '}· <button type="button" className="link" onClick={onOpenQueue}>
+                เปิดคิว “วันเกิดรอตรวจ”
+              </button> เพื่อดูของค้างจากทุกเดือนรวมกัน
+            </>
+          )}
         </div>
       )}
 
-      {/* Already answered — and the ONLY place the answer can be taken back.
-          A checked row leaves the three lists above by design; if it left the
-          screen as well, an append-only record would be one nobody could
-          append the retraction to. */}
-      {data.absent.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div className="kicker-sm">ตรวจแล้ว · ไม่ได้มาทำงาน — {data.absent.length} รายการ</div>
-          <div className="hint" style={{ marginTop: 2 }}>
-            ไม่ใช่ใบ OT · ไม่มีชั่วโมง ไม่เข้ารายงานใด และไม่นับรวมในเพดานแผนก
-          </div>
-          <div className="table-wrap" style={{ marginTop: 6 }}>
-            <table className="mini">
-              <thead>
-                <tr>
-                  <th>พนักงาน</th>
-                  <th>วันเกิด</th>
-                  <th>ผู้บันทึก</th>
-                  <th>หมายเหตุ</th>
-                  <th />
+      {rows.length > 0 && (
+        <div className="table-wrap" style={{ marginTop: 10 }}>
+          <table className="mini">
+            <thead>
+              <tr>
+                <th>พนักงาน</th>
+                <th>แผนก</th>
+                <th>วันเกิด</th>
+                <th>บริษัท</th>
+                <th>สถานะ</th>
+                <th className="num">ชั่วโมง</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.employeeId + r.date}>
+                  <td>
+                    {r.name}
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.code}</div>
+                  </td>
+                  <td>{r.department || '—'}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {thaiDate(r.date)}
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(r.date)}</div>
+                  </td>
+                  <td>{companyLabel(r.company)}</td>
+                  <td>
+                    <BirthdayStatusCell row={r} />
+                  </td>
+                  <td className="num">
+                    {r.status === BIRTHDAY_STATUS.FILED && !r.allClosed
+                      ? <strong>{hours(r.otHours)}</strong>
+                      : <span style={{ color: 'var(--muted)' }}>—</span>}
+                  </td>
+                  <td>
+                    <BirthdayRowActions
+                      row={r}
+                      onFile={setFiling}
+                      onMark={setMarking}
+                      onRetract={retract}
+                      onOpenEntries={onOpenEntries}
+                    />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {data.absent.map((r) => (
-                  <tr key={r.employeeId + r.date}>
-                    <td>
-                      {r.name}
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.code}</div>
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{thaiDate(r.date)}</td>
-                    <td>
-                      {r.checkedByName || '—'}
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                        {r.checkedAt ? new Date(r.checkedAt).toLocaleString('th-TH') : ''}
-                      </div>
-                    </td>
-                    <td>{r.note || <span style={{ color: 'var(--muted)' }}>—</span>}</td>
-                    <td>
-                      {r.canAct && (
-                        <button
-                          className="btn ghost sm"
-                          onClick={() => retract(r)}
-                          title="เขียนแถวใหม่ทับความหมายเดิม ไม่ลบของเดิม — ชื่อจะกลับมาขึ้นรายการที่ต้องตรวจ"
-                        >
-                          ยกเลิกการบันทึก
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {marking && (
-        <AbsentModal
-          row={marking}
-          onClose={() => setMarking(null)}
-          onDone={() => { setMarking(null); onChanged?.(); }}
-        />
-      )}
-
-      {/* "ตรวจไม่ได้" is a different answer from "nothing missing", and a roster
-          that is still mostly empty must not read as a clean month. */}
-      {data.uncheckable.length > 0 && (
+      {/* Kept OUT of the table on purpose: which month somebody with no วันเกิด
+          belongs to is the one thing nobody knows, so a row for them in a table
+          sorted by date would have to invent a date to sit at. "Cannot check" is
+          a different answer from "nothing outstanding", and a roster still mostly
+          empty must not read as a clean month. */}
+      {uncheckable.length > 0 && (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontWeight: 600, fontSize: 13 }}>
-            ไม่มีข้อมูลวันเกิด ตรวจไม่ได้ — {data.uncheckable.length} คน
+            ไม่มีข้อมูลวันเกิด ตรวจไม่ได้ — {uncheckable.length} คน
           </div>
           <div className="hint" style={{ marginTop: 2 }}>
-            คนเหล่านี้ยังไม่ถูกตรวจว่ามีวันเกิดตรงวันทำงานหรือไม่ ·
+            ไม่ทราบว่าเกิดเดือนไหน จึงไม่อยู่ในตารางด้านบน ·
             {' '}เพิ่มวันเกิดได้ที่หน้า ผู้ดูแลระบบ › พนักงาน (เฉพาะ Admin)
           </div>
           <div style={{ marginTop: 6, fontSize: 12.5 }}>
-            {data.uncheckable.map((r) => (
+            {uncheckable.map((r) => (
               <div key={r.employeeId}>
                 {r.code} {r.name}
                 <span style={{ color: 'var(--muted)' }}>
@@ -637,86 +530,139 @@ function BirthdayCheck({ period, signal = 0, onFile, onChanged }) {
           </div>
         </div>
       )}
+
+      {marking && (
+        <AbsentModal
+          row={marking}
+          onClose={() => setMarking(null)}
+          onDone={() => { setMarking(null); load(); }}
+        />
+      )}
     </div>
   );
 }
 
 /**
- * ไม่ได้มาทำงาน — the second answer, with a stop in front of it.
+ * The status, and the one extra fact that makes it useful.
  *
- * A stop, and a short one. What is being recorded is not a refusal and costs
- * nobody anything: it says the scan record shows no attendance that day, which
- * is the ordinary case. But it takes a name off a list other people are working
- * from, so it names who is about to be marked and for which date, and it says in
- * one line what the record is and is not — because "ไม่ได้มาทำงาน" beside an OT
- * screen reads, at a glance, like something that might affect somebody's pay.
- *
- * The note is optional on purpose, matching `cancelPermission`'s reasoning about
- * withdrawing a generated row: a reason is owed for changing what somebody else
- * established, and this establishes nothing about anybody's hours. Requiring one
- * buys a field full of "ไม่มา" and a slower check.
+ * The label alone is not the answer for three of the five: "มีใบแล้ว" without the
+ * hours is a row HR still has to go and open, "ตรวจแล้ว" without a name is an
+ * assertion with nobody behind it, and "วันหยุดอยู่แล้ว" is worth saying WHY.
+ * `STATUS_LABEL_TH` comes from the same module the statuses do, so a wording
+ * change lands in one place.
  */
-function AbsentModal({ row, onClose, onDone }) {
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const toast = useToast();
+function BirthdayStatusCell({ row }) {
+  const label = STATUS_LABEL_TH[row.status] || row.status;
 
-  async function save() {
-    setBusy(true);
-    setError('');
-    try {
-      await api.post('/birthday/checks', {
-        employeeId: row.employeeId,
-        workDate: row.date,
-        outcome: OUTCOME.ABSENT,
-        note: note.trim(),
-      });
-      toast(`บันทึกแล้วว่า ${row.name} ไม่ได้มาทำงานวันที่ ${thaiDate(row.date)} — ยกเลิกได้ภายหลัง`);
-      onDone();
-    } catch (err) {
-      setError(err.message);
-      setBusy(false);
-    }
+  if (row.status === BIRTHDAY_STATUS.FILED) {
+    return (
+      <>
+        <span className="chip green">{label}</span>
+        {row.allClosed && (
+          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+            ใบถูกไม่อนุมัติหรือยกเลิก — ไม่มีชั่วโมงเข้ายอด
+          </div>
+        )}
+        {row.alreadyHoliday && (
+          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>วันนั้นเป็นวันหยุดอยู่แล้ว</div>
+        )}
+      </>
+    );
   }
 
-  return (
-    <Modal
-      title="บันทึกว่าไม่ได้มาทำงาน"
-      subtitle={`${row.name} · ${row.code} · ${thaiDate(row.date)} (วัน${dayName(row.date)})`}
-      onClose={onClose}
-      dirty={note.trim().length > 0}
-      footer={(
-        <>
-          <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
-          <button className="btn" disabled={busy} onClick={save}>บันทึก</button>
-        </>
-      )}
-    >
-      <Alert kind="info">
-        รายการนี้<strong>ไม่ใช่ใบ OT</strong> — ไม่มีชั่วโมง ไม่มีสถานะอนุมัติ
-        {' '}ไม่เข้ารายงานใด ๆ และไม่นับรวมในเพดานแผนก ·
-        {' '}ผลของมันคือชื่อนี้จะหายไปจากรายการวันเกิดของเดือนนี้ เพื่อไม่ให้คนอื่นตรวจซ้ำ
-        <div style={{ marginTop: 4, fontSize: 12.5 }}>
-          ระบบเก็บไว้ว่า<strong>ใครเป็นผู้บันทึกและบันทึกเมื่อใด</strong> ·
-          {' '}ถ้าบันทึกผิด กด “ยกเลิกการบันทึก” ได้ — ระบบจะเขียนแถวใหม่ทับความหมายเดิม
-          {' '}โดยไม่ลบของเดิมทิ้ง และชื่อจะกลับมาขึ้นรายการอีกครั้ง
+  if (row.status === BIRTHDAY_STATUS.ABSENT) {
+    return (
+      <>
+        <span className="chip muted">{label}</span>
+        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+          {row.check?.by || '—'}
+          {row.check?.at ? ` · ${new Date(row.check.at).toLocaleString('th-TH')}` : ''}
         </div>
-      </Alert>
+        {row.check?.note && (
+          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{row.check.note}</div>
+        )}
+      </>
+    );
+  }
 
-      <div className="field">
-        <label>หมายเหตุ</label>
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={500}
-          placeholder="เช่น ลาพักร้อน · ไม่มีการสแกนเข้า-ออกในวันนั้น"
-        />
-        <span className="field-note">ไม่บังคับ — ถ้ากรอก จะเก็บไว้คู่กับชื่อผู้บันทึก</span>
-      </div>
+  if (row.status === BIRTHDAY_STATUS.HOLIDAY) {
+    return (
+      <>
+        <span className="chip muted">{label}</span>
+        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+          กฎวันเกิดไม่ได้เพิ่มอะไร ไม่ต้องทำอะไร
+        </div>
+      </>
+    );
+  }
 
-      {error && <Alert kind="error">{error}</Alert>}
-    </Modal>
-  );
+  if (row.status === BIRTHDAY_STATUS.UPCOMING) {
+    return (
+      <>
+        <span className="chip muted">{label}</span>
+        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+          ยังไม่มีบันทึกเวลาให้เทียบ
+        </div>
+      </>
+    );
+  }
+
+  return <span className="chip edited">{label}</span>;
 }
 
+/**
+ * What each status lets somebody do — and, for three of the five, nothing.
+ *
+ * A row with no action gets no button rather than a disabled one: there is
+ * nothing being withheld here, the birthday is simply settled or not yet
+ * arrived. `canAct` is the server's answer for the two that do have buttons.
+ */
+function BirthdayRowActions({ row, onFile, onMark, onRetract, onOpenEntries }) {
+  if (row.status === BIRTHDAY_STATUS.FILED) {
+    return onOpenEntries ? (
+      <button
+        className="btn ghost sm"
+        onClick={() => onOpenEntries({ _id: row.employeeId, name: row.name, code: row.code })}
+      >
+        ดูใบ
+      </button>
+    ) : null;
+  }
+
+  if (row.status === BIRTHDAY_STATUS.ABSENT) {
+    return row.canAct ? (
+      <button
+        className="btn ghost sm"
+        onClick={() => onRetract(row)}
+        title="เขียนแถวใหม่ทับความหมายเดิม ไม่ลบของเดิม — ชื่อจะกลับมาต้องตรวจ"
+      >
+        ยกเลิกการตรวจ
+      </button>
+    ) : null;
+  }
+
+  if (row.status !== BIRTHDAY_STATUS.DUE) return null;
+
+  if (!row.canAct) return <span style={{ fontSize: 12, color: 'var(--muted)' }}>ไม่ใช่แผนกของคุณ</span>;
+
+  return (
+    <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+      <button
+        className="btn ghost sm"
+        onClick={() => onFile({
+          employeeId: row.employeeId, name: row.name, code: row.code, date: row.date,
+        })}
+        title="กรอกเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง"
+      >
+        บันทึก OT ให้
+      </button>
+      <button
+        className="btn ghost sm"
+        onClick={() => onMark(row)}
+        title="บันทึกว่าวันนั้นเขาไม่ได้มาทำงาน — ไม่ใช่ใบ OT ไม่มีชั่วโมง ไม่เข้ารายงานใด และยกเลิกได้"
+      >
+        ไม่ได้มาทำงาน
+      </button>
+    </div>
+  );
+}

@@ -380,9 +380,38 @@ calendar, nothing on any screen. So the request goes unfiled — unlike a Saturd
 which announces itself. The benefit ends up granted in the settings and claimed by
 nobody, and nobody finds out until somebody happens to look.
 
-At the foot of **ตรวจสอบรายเดือน**, for the month on screen: every employee whose
-birthday fell in it on a Mon–Fri that is not a company holiday, with no ใบ against
-that date. Name, แผนก, the date, บริษัท, and the **หัวหน้า** of their department.
+**It is a queue, and it lives on the queue screen.** วันเกิดรอตรวจ is the second
+tab of **รอ HR ยืนยัน** (and of **รออนุมัติ**, for a หัวหน้า) — every employee
+whose birthday fell on a Mon–Fri that is not a company holiday, with no ใบ against
+that date and no check recorded. Name, แผนก, the date, how long it has been
+waiting, บริษัท, and the **หัวหน้า** of their department.
+
+**Not scoped to a month, and that is the point of it.** It used to sit at the
+foot of ตรวจสอบรายเดือน and follow that screen's month picker, which got it wrong
+twice: you had to scroll past a month's totals to find work, and a birthday
+overlooked in August disappeared the moment anybody looked at September — the
+rows waiting longest were the ones hardest to see. The queue carries every
+outstanding month at once, **oldest first**, with `ageDays` printed on each row
+("ค้าง 12 วัน", amber past a fortnight).
+
+**How far back, and why it stops there.** `queueWindow` reaches back to the month
+the birthday rule was first recorded as on — read off `otPolicyVersions`, because
+before that flag a birthday was an ordinary working day and no holiday was owed,
+so listing those months would fill the queue with names nobody ever had anything
+to do about. Capped at `BACKLOG_MONTHS` (12) so a queue stays a queue; rounded to
+the first of the month, because a flag flipped mid-month replays that whole
+month. Whichever bound applied is returned and **printed on screen** — a queue
+that silently drops its own tail reads as "you are up to date". A database with no
+version records at all shows this month only and says so rather than inventing a
+year of history.
+
+**A tab, not a nav entry.** Two piles of work for the same person on the same
+screen; a fifth sidebar item would be permanent chrome for a list that is empty
+most months. The **sidebar badge carries the sum of both tabs** — it is about the
+screen — while each tab shows its own number, because they are two different
+jobs. The badge comes from `loadBirthdayQueue(user, { countOnly: true })`, the
+same loader the tab itself runs, so the badge and the screen it opens cannot be
+two computations.
 
 **It is a list, not a warning.** Not working on your birthday is the ordinary
 case, so most names on it have a perfectly good reason to be there. It is drawn in
@@ -407,15 +436,22 @@ buttons:
 The หัวหน้า still files through **บันทึก OT แทนลูกทีม** on their own queue when
 they prefer, and can use either button here for their own team.
 
-**Two groups, and only the first one has buttons.** A birthday whose date has not
-arrived has no scan record to compare against, so **กำลังจะถึง** rows are shown and
-left alone. The split is the server's — `birthdayCheck()` against Asia/Bangkok's
-date, the same `today()` delegation uses — and it is enforced again in
-`birthdayDirectApproval`, not merely by which buttons were drawn.
+**Only work is in the queue.** Three things are not, and each is folded or set
+apart rather than mixed into the count:
 
-**"ตรวจไม่ได้" is a list of its own, never silence.** Somebody with no `birthDate`,
-or an unusable one, cannot be checked either way, and a roster that is still mostly
-empty must not read as a clean month. So they appear under a heading that says so.
+* **กำลังจะถึง** — a birthday whose date has not arrived has no scan record to
+  compare against, so there is nothing to press and nothing to decide. Folded at
+  the foot, counted nowhere. Kept rather than cut because it is the only forward
+  view there is: a roster gap is worth fixing *before* the day arrives, and folded
+  it costs one line. The split is the server's — `birthdayQueue()` against
+  Asia/Bangkok's date, the same `today()` delegation uses — and it is enforced
+  again in `birthdayDirectApproval`, not merely by which buttons were drawn.
+* **ตรวจแล้ว · ไม่ได้มาทำงาน** — folded, and the only place a check can be
+  retracted from. A checked row leaves the queue by design; if it left the screen
+  too, an append-only record would be one nobody could append the retraction to.
+* **ไม่มีข้อมูลวันเกิด ตรวจไม่ได้** — not folded, because it is the one thing here
+  somebody has to go and fix. "Cannot check" is a different answer from "nothing
+  outstanding", and a roster still mostly empty must not read as a clean queue.
 
 **Who may press.** ฝ่ายบุคคล and Admin for everybody; a หัวหน้า for their own team;
 a ผู้รับช่วง for the teams whose queue they hold **today**. That is
@@ -426,19 +462,79 @@ from a role: each row carries `canAct`, answered by the server.
 
 | | |
 |---|---|
-| Rules | [`lib/birthdayCheck.js`](lib/birthdayCheck.js) — pure. `birthdayCheck()` returns `needsEntry` + `upcoming` + `uncheckable`; `absentKeys()` decides which checks are live |
+| Rules | [`lib/birthdayCheck.js`](lib/birthdayCheck.js) — pure. `birthdayMonth()` gives one row per birthday with one of five statuses; `birthdayQueue()` spans months and keeps only `DUE`, adding `ageDays`; `absentKeys()` decides which checks are live |
 | | [`lib/birthdayFiling.js`](lib/birthdayFiling.js) — pure. Who may act, and whether the filing takes the single-signature path |
-| Endpoints | `GET /api/reports/birthday-check/[period]` — read-only, still. หัวหน้า/HR/Admin |
+| Loader | [`lib/birthdayQueueQuery.js`](lib/birthdayQueueQuery.js) — the reads, the clock and `queueWindow`. One loader; the queue tab and the nav badge are both it |
+| Endpoints | `GET /api/birthday/queue` — the queue. **Takes no period at all** |
+| | `GET /api/reports/birthday-check/[period]` — one month, every status, for the table |
 | | `POST /api/birthday/entries` — บันทึก OT ให้ |
 | | `POST /api/birthday/checks` — ไม่ได้มาทำงาน, and its retraction |
-| Screen | ตรวจสอบรายเดือน / สรุปทีม (`components/HrView.jsx` → `BirthdayCheck`) |
-| Tests | [`test/birthdayCheck.test.js`](test/birthdayCheck.test.js), [`test/birthdayDirectApproval.test.js`](test/birthdayDirectApproval.test.js) |
+| Screens | รอ HR ยืนยัน / รออนุมัติ → tab **วันเกิดรอตรวจ** (`components/QueueTabs.jsx` → `BirthdayQueue.jsx`) |
+| | ตรวจสอบรายเดือน / สรุปทีม → the month table (`HrView.jsx` → `BirthdayMonth`) |
+| Actions | [`components/birthdayActions.jsx`](components/birthdayActions.jsx) — the two buttons and their dialog, shared by both screens |
+| Tests | [`test/birthdayQueue.test.js`](test/birthdayQueue.test.js), [`test/birthdayCheck.test.js`](test/birthdayCheck.test.js), [`test/birthdayDirectApproval.test.js`](test/birthdayDirectApproval.test.js) |
 
 **ANY status counts as "has a ใบ"** — refused and withdrawn included. The question
 is whether the day was *overlooked*, and a request that was filed and turned down
-was not. A date already dealt with never comes back onto the list.
+was not. A date already dealt with never comes back onto the queue.
 
-**Separate from ตรวจสอบรายเดือน's own route**, though drawn on that screen. That
+#### วันเกิดของเดือนนี้ — the month table on ตรวจสอบรายเดือน
+
+The queue is what is left. This is **everyone**, and the difference is the point.
+
+Closing a period is a real question with a real deadline: before สรุป OT ส่งบัญชี
+goes to accounting, HR has to know that August's birthdays were all dealt with.
+A list of outstanding rows cannot say that — a name that was settled and a name
+nobody ever looked at are both simply missing from it, and **absence is not an
+answer**. So one row per birthday in the month, each with one of five statuses:
+
+| Status | Means | Row carries | Buttons |
+|---|---|---|---|
+| **มีใบแล้ว** | a ใบ exists for that date | hours (live ones only), a link to open it | ดูใบ |
+| **ตรวจแล้ว: ไม่ได้มาทำงาน** | a BirthdayCheck says so | who checked, when, any note | ยกเลิกการตรวจ |
+| **วันหยุดอยู่แล้ว** | Sat/Sun/company holiday | — | none: nothing was ever owed |
+| **ต้องตรวจ** | the day passed, nobody answered | — | บันทึก OT ให้ · ไม่ได้มาทำงาน |
+| **ยังไม่ถึงวัน** | the date has not arrived | — | none: no scan record yet |
+
+Above it: *"เดือนนี้มีวันเกิด 6 คน · ต้องตรวจ 1 · เสร็จแล้ว 4 · รอถึงวัน 1"* —
+`done` is the three settled statuses, so the four numbers add up to the first and
+a reader can check them against each other. When nothing is outstanding it **says
+so** rather than rendering nothing: a blank space and a fully-checked month look
+identical, and the difference matters most to whoever is about to send a file.
+
+**Precedence, where two facts are true at once** — FILED > ABSENT > HOLIDAY >
+UPCOMING > DUE. A ใบ is the strongest thing that can be true of a date (its hours
+are what HR came to see), so it outranks a Saturday, with `alreadyHoliday` riding
+along so the row can still say the birthday was beside the point. ABSENT above
+HOLIDAY is the deliberate one: the write route refuses to record "ไม่ได้มาทำงาน"
+against a company holiday so the pair should not occur — but a row written before
+that rule would otherwise show as HOLIDAY and lose its ยกเลิก button, leaving a
+stored check nobody could retract.
+
+**A month before the rule started shows no table at all.** The month picker
+reaches back further than `birthdayHolidayEnabled` does, and applying today's
+policy to last year would mark ordinary working days ต้องตรวจ — with a button
+that *works*, filing an approved request for a holiday that did not exist on the
+date it carries. `birthdayRuleStart()` is passed in as `activeFrom`; the queue's
+window is built on the same fact, so the two cannot disagree about when the
+benefit began.
+
+**Only ต้องตรวจ is in the queue**, and that is a filter over these same statuses
+(`birthdayQueue` keeps `status === DUE`) rather than a second set of rules — which
+is what keeps the nav badge honest. The badge counts every month; this table
+counts one. Given the same data those are different numbers on purpose, and
+`test/birthdayQueue.test.js` pins the difference in both directions.
+
+**ไม่มีข้อมูลวันเกิด stays out of the table**, listed separately: which month
+somebody with no วันเกิด belongs to is the one thing nobody knows, so a row for
+them in a table sorted by date would have to invent a date to sit at.
+
+The two buttons come from `components/birthdayActions.jsx`, shared with the queue
+— the dialog in front of ไม่ได้มาทำงาน explains what the stored record is and is
+not, and written twice that sentence would one day read two ways on two screens
+describing the same document.
+
+**Separate from ตรวจสอบรายเดือน's own route.** That
 report is open to หัวหน้า for their own team and is pinned to reporting a *count*
 of missing birth dates and never a date; a role-shaped branch in one payload would
 leave the guarantee resting on which branch ran. Two routes, one rule each. A date

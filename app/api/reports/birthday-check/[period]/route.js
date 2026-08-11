@@ -9,11 +9,23 @@ import { idOf } from '@/lib/entries.js';
 import { today, heldBy } from '@/lib/delegationQuery.js';
 import { delegatedDepartments } from '@/lib/delegation.js';
 import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
-import { birthdayCheck, filedKey, absentKeys, latestChecks, OUTCOME } from '@/lib/birthdayCheck.js';
-import { companyOf } from '@/src/config/companies.js';
+import { birthdayMonth } from '@/lib/birthdayCheck.js';
+import { birthdayRuleStart } from '@/lib/birthdayQueueQuery.js';
 
 /**
- * วันเกิดที่ยังไม่มีใบ — one month, for whoever can settle it.
+ * วันเกิดของเดือนนี้ — every one of them, settled or not.
+ *
+ * THE WHOLE MONTH, NOT WHAT IS LEFT. This is the screen a period gets closed on,
+ * and closing it means knowing every birthday in it was dealt with — which a
+ * list of outstanding rows cannot say. A name that was settled and a name nobody
+ * ever looked at are both simply missing from such a list, and absence is not an
+ * answer. So one row per birthday with one of five statuses, and the counts to
+ * go above them.
+ *
+ * The outstanding ones ALSO appear in วันเกิดรอตรวจ, the queue on the
+ * confirmation screen, which spans every month and is what the nav badge counts.
+ * The two are meant to give different numbers: this one is about August, that one
+ * is about everything. See `birthdayQueue` in lib/birthdayCheck.js.
  *
  * READ-ONLY, AND IT STAYS READ-ONLY. The two ways to answer a row are POST
  * routes of their own under /api/birthday, each with its own rule in lib/:
@@ -101,12 +113,14 @@ export const GET = route(async (req, { params }) => {
     /**
      * Every ใบ in the month, whatever became of it.
      *
-     * ANY status — refused and withdrawn included. The question this screen asks
-     * is whether a birthday was overlooked, and a request that was filed and then
-     * turned down was not overlooked by anybody.
+     * ANY status — refused and withdrawn included. The question is whether the
+     * birthday was DEALT WITH, and a request that was filed and then turned down
+     * was dealt with by somebody. `status` comes along so the row can say that:
+     * the hours it prints are the live ones, and a date whose every ใบ is closed
+     * says so rather than printing a bare 0.
      */
     OtEntry.find({ period, employee: { $in: rosterIds } })
-      .select('employee workDate').lean(),
+      .select('employee workDate status totals').lean(),
     /**
      * And every check written about a day in this month, in full rather than
      * narrowed to the latest — which row is live is `absentKeys`' decision, and
@@ -118,18 +132,26 @@ export const GET = route(async (req, { params }) => {
     }).select('employee workDate outcome checkedAt checkedByName note').lean(),
   ]);
 
-  const live = latestChecks(checks);
-
-  const check = birthdayCheck({
+  const month = birthdayMonth({
     period,
     // Bangkok's date, from the one helper that answers that question. It decides
-    // which rows can be settled now; everything else here is pure.
+    // ยังไม่ถึงวัน from ต้องตรวจ; everything else here is pure.
     today: on,
     roster,
     isHoliday: calendar.isHoliday,
     policy: calendar.policy,
-    filed: new Set(entries.map((e) => filedKey(e.employee, e.workDate))),
-    checked: absentKeys(checks),
+    entries,
+    checks,
+    /**
+     * The month picker can reach back further than the rule does.
+     *
+     * The queue never could — its window starts where the rule does — but this
+     * table answers whichever month HR types. Without this, a period from before
+     * `birthdayHolidayEnabled` was turned on would list ordinary working days as
+     * ต้องตรวจ and offer a button that WORKS, filing an approved request for a
+     * holiday that did not exist on the date it carries.
+     */
+    activeFrom: await birthdayRuleStart(),
   });
 
   const byDepartment = new Map();
@@ -157,53 +179,30 @@ export const GET = route(async (req, { params }) => {
     }).ok,
   }));
 
-  /**
-   * The birthdays somebody has already answered with "ไม่ได้มาทำงาน" — the
-   * fourth group, and the only place a check can be retracted from.
-   *
-   * A row that is checked leaves the three lists above by design; without this
-   * it would leave the SCREEN, and a record that can only be undone by an
-   * endpoint nobody can reach is a record that cannot be undone. So the answers
-   * stay visible for the month they are about, each naming who gave it and when
-   * — which is also what stops two people checking the same name twice.
-   *
-   * Built from the newest row per person and date (`latestChecks`), so a
-   * birthday that was marked and then un-marked is absent from here as well as
-   * back on the list: one reading of the collection, two consistent screens.
-   */
-  const byPerson = new Map(roster.map((p) => [String(p._id), p]));
-  const absent = [];
-  for (const [, row] of live) {
-    if (row.outcome !== OUTCOME.ABSENT) continue;
-    if (row.workDate.slice(0, 7) !== period) continue;
-    const person = byPerson.get(String(row.employee));
-    if (!person) continue;
-    absent.push({
-      employeeId: String(person._id),
-      code: person.code,
-      name: person.name,
-      department: person.department?.nameTh || person.department?.name || null,
-      departmentId: String(person.department?._id ?? ''),
-      company: companyOf(person),
-      date: row.workDate,
-      checkedByName: row.checkedByName || '',
-      checkedAt: row.checkedAt,
-      note: row.note || '',
-    });
-  }
-  absent.sort((a, b) => a.date.localeCompare(b.date) || String(a.code).localeCompare(String(b.code)));
-
   return json({
     period,
-    ruleEnabled: check.ruleEnabled,
+    ruleEnabled: month.ruleEnabled,
+    /** False for a month that ended before the birthday rule was ever turned on. */
+    ruleActiveInPeriod: month.ruleActiveInPeriod,
     /** Whether ฝ่ายบุคคล's press files and approves in one act — the screen says so. */
     directApproval: Boolean(calendar.policy.hrDirectApproveBirthday),
-    /** The birthday has been and gone; there is a scan record to check against. */
-    needsEntry: decorate(check.needsEntry),
-    /** It has not. Shown, never actionable. */
-    upcoming: decorate(check.upcoming),
-    /** Answered the other way, and retractable from here. */
-    absent: decorate(absent),
-    uncheckable: decorate(check.uncheckable),
+    /**
+     * EVERY birthday in the month, settled or not, one row each with a status.
+     *
+     * The whole month rather than what is left, because this screen is where a
+     * period gets closed and closing it means knowing every name was dealt with.
+     * A list of outstanding rows cannot answer "did anybody look at สมชาย" — a
+     * name that was settled and a name nobody checked are both simply missing
+     * from it.
+     */
+    rows: decorate(month.rows),
+    /** The counts printed above the table, computed where the statuses are. */
+    summary: month.summary,
+    /**
+     * Kept OUT of the table, and out of `summary.total`. Which month somebody
+     * with no วันเกิด belongs to is the one thing nobody knows, so a row for them
+     * in a table sorted by date would have to invent a date to sit at.
+     */
+    uncheckable: decorate(month.uncheckable),
   });
 });

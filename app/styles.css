@@ -400,6 +400,41 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
 .profile-form { display: flex; flex-direction: column; gap: 14px; max-width: 380px; margin-top: 4px; }
 .profile-form .btn { align-self: flex-start; }
 
+/* ══ queue tabs ══════════════════════════════════════════════════════════ */
+
+/* Two piles of work on one screen — ใบรอยืนยัน and วันเกิดรอตรวจ. Drawn as a
+   segmented control rather than as underlined tabs: these switch what the whole
+   page is, and the sidebar already owns the underline idiom for navigation. */
+.queue-tabs {
+  display: flex; gap: 6px; padding: 6px; border-radius: 12px;
+  background: var(--neutral-wash); border: 1px solid var(--line);
+}
+.queue-tabs button {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 14px; border: 0; border-radius: 8px; background: transparent;
+  font: 600 13.5px/1.4 var(--sans); color: var(--muted); cursor: pointer;
+}
+.queue-tabs button:hover { color: var(--ink); }
+.queue-tabs button.active { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.08)); }
+/* The per-tab number. The sidebar badge carries the SUM of the two, because it
+   is about the screen; these are about one job each. */
+.queue-tabs .count {
+  min-width: 20px; padding: 0 6px; border-radius: 10px;
+  background: var(--amber-bg); color: var(--amber);
+  font: 600 11.5px/18px var(--sans); font-variant-numeric: tabular-nums;
+}
+.queue-tabs button.active .count { background: var(--amber); color: #fff; }
+
+/* Present but out of the way: what has been answered, and what cannot be
+   answered yet. Neither is work, so neither costs a row in the queue above. */
+.queue-fold { padding: 0 18px 14px; }
+.queue-fold > summary {
+  cursor: pointer; padding: 10px 0; font: 600 12px/1.4 var(--sans);
+  letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+}
+.queue-fold > summary:hover { color: var(--ink); }
+.queue-fold[open] > summary { color: var(--ink); }
+
 /* ══ chips & alerts ══════════════════════════════════════════════════════ */
 
 .chip {

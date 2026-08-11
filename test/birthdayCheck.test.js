@@ -7,23 +7,25 @@ import { dirname, join } from 'node:path';
 import { makeIsHoliday, computeSession, resolveDayTypes, sessionDates } from '../src/lib/otEngine.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
 import {
-  birthdayCheck, filedKey, absentKeys, latestChecks, UNCHECKABLE, OUTCOME, BIRTHDAY_OUTCOMES,
+  birthdayMonth, filedKey, latestChecks, UNCHECKABLE, OUTCOME, BIRTHDAY_OUTCOMES,
+  BIRTHDAY_STATUS, STATUS_LABEL_TH, SETTLED_STATUSES,
 } from '../lib/birthdayCheck.js';
 import { noOtHoursMessage } from '../lib/entries.js';
 
 /**
- * วันเกิดที่ยังไม่มีใบ — the list HR reads, and everything it must not do.
+ * วันเกิดของเดือนนี้ — the month table HR closes a period against.
  *
  * The rule makes a birthday falling Mon–Fri a holiday for one person, and that
  * day looks like any other working day — same shift, same colleagues, nothing on
  * any calendar. So the request goes unfiled, unlike a Saturday, which announces
- * itself. This list is the only place that asymmetry is visible.
+ * itself.
  *
- * What is pinned here is mostly what stays OFF the list, because every wrong name
- * on it sends HR to ask a หัวหน้า about hours that were never owed: a weekend
- * birthday, one on a company holiday, one already filed. And the second list —
- * "cannot check" — because a roster with no วันเกิด in it must not read as a
- * clean month.
+ * WHAT IS PINNED HERE IS THAT EVERY BIRTHDAY GETS AN ANSWER. This used to be two
+ * lists — "needs a ใบ" and "cannot check" — and everything else was invisible: a
+ * weekend birthday, one already filed, one already checked were all simply
+ * missing, and absence is not an answer. HR closing August could not tell
+ * "settled" from "nobody looked". So the table holds one row per birthday with
+ * one of five statuses, and only one of those statuses is work.
  *
  * August 2026, as everywhere else: 4 Aug is a Tuesday, 8 Aug a Saturday, 12 Aug
  * (วันแม่) the company holiday.
@@ -52,139 +54,240 @@ const person = (over = {}) => ({
 });
 
 /** The month is over, so every August birthday has happened. */
-const check = (roster, over = {}) => birthdayCheck({
+const month = (roster, over = {}) => birthdayMonth({
   period: '2026-08', today: '2026-08-31', roster, isHoliday, policy: ON, ...over,
 });
 
-// ── what belongs on the list ────────────────────────────────────────────────
+const statusOf = (out, code) => out.rows.find((r) => r.code === code)?.status;
 
-test('วันเกิดตรงวันอังคาร ไม่มีใบ — ขึ้นรายการ พร้อมแผนกและบริษัท', () => {
+const entry = (over = {}) => ({
+  _id: 'x1', employee: 'e1', workDate: '2026-08-04', status: 'approved',
+  totals: { otHours: 8 }, ...over,
+});
+
+const aCheck = (over = {}) => ({
+  _id: 'c1', employee: 'e1', workDate: '2026-08-04',
+  outcome: OUTCOME.ABSENT, checkedAt: new Date('2026-08-05T03:00:00Z'), ...over,
+});
+
+// ── every birthday gets one of five answers ────────────────────────────────
+
+test('ทุกคนที่เกิดเดือนนั้นขึ้นตาราง พร้อมสถานะคนละแบบ', () => {
+  const roster = [
+    person({ _id: 'e1', code: 'A', birthDate: '1977-08-04' }), // Tue — filed
+    person({ _id: 'e2', code: 'B', birthDate: '1980-08-05' }), // Wed — checked away
+    person({ _id: 'e3', code: 'C', birthDate: '1985-08-06' }), // Thu — nobody answered
+    person({ _id: 'e4', code: 'D', birthDate: '1990-08-08' }), // Sat
+    person({ _id: 'e5', code: 'E', birthDate: '1988-08-12' }), // วันแม่
+    person({ _id: 'e6', code: 'F', birthDate: '1992-08-26' }), // not yet
+  ];
+
+  const out = birthdayMonth({
+    period: '2026-08', today: '2026-08-16', roster, isHoliday, policy: ON,
+    entries: [entry()],
+    checks: [aCheck({ employee: 'e2', workDate: '2026-08-05', checkedByName: 'มาลี' })],
+  });
+
+  assert.equal(out.ruleEnabled, true);
+  assert.equal(out.rows.length, 6, 'ต้องขึ้นทุกคน ไม่ใช่เฉพาะที่ค้าง');
+  assert.equal(statusOf(out, 'A'), 'filed');
+  assert.equal(statusOf(out, 'B'), 'absent');
+  assert.equal(statusOf(out, 'C'), 'due');
+  assert.equal(statusOf(out, 'D'), 'holiday');
+  assert.equal(statusOf(out, 'E'), 'holiday');
+  assert.equal(statusOf(out, 'F'), 'upcoming');
+
+  // Date order, then code — a report is read down the month.
+  assert.deepEqual(out.rows.map((r) => r.date), [
+    '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-08', '2026-08-12', '2026-08-26',
+  ]);
+
+  // And the counts above the table. `done` is the three settled statuses, so the
+  // four numbers add up to the first and a reader can check them against each
+  // other — "เดือนนี้มีวันเกิด 6 คน · ต้องตรวจ 1 · เสร็จแล้ว 4 · รอถึงวัน 1".
+  assert.deepEqual(out.summary, {
+    total: 6,
+    due: 1,
+    done: 4,
+    upcoming: 1,
+    byStatus: { filed: 1, absent: 1, holiday: 2, upcoming: 1, due: 1 },
+  });
+  assert.equal(out.summary.due + out.summary.done + out.summary.upcoming, out.summary.total);
+});
+
+test('คนเกิดวันเสาร์ — "วันหยุดอยู่แล้ว" ขึ้นตาราง ไม่ใช่หายไป', () => {
+  // Nobody was expected at work, the day was already วันหยุด for the whole
+  // company, and the birthday rule added nothing to it. That is a fact worth
+  // printing: silence would leave HR unable to tell it from an oversight.
+  const out = month([person({ code: 'A', birthDate: '1990-08-08' })]);
+  assert.equal(out.rows.length, 1);
+  assert.equal(statusOf(out, 'A'), 'holiday');
+  assert.equal(out.rows[0].alreadyHoliday, true);
+  assert.equal(out.summary.due, 0);
+  assert.equal(out.summary.done, 1);
+});
+
+test('วันเกิดตรงวันหยุดบริษัท — "วันหยุดอยู่แล้ว" เหมือนกัน', () => {
+  const out = month([person({ code: 'A', birthDate: '1988-08-12' })]);
+  assert.equal(statusOf(out, 'A'), 'holiday');
+});
+
+test('มีใบแล้ว — ขึ้นตารางพร้อมชั่วโมงและทางเปิดใบ', () => {
+  const p = person({ _id: 'e1', code: 'A', birthDate: '1977-08-04' });
+  const out = month([p], { entries: [entry({ totals: { otHours: 8 } })] });
+
+  assert.equal(statusOf(out, 'A'), 'filed');
+  assert.equal(out.rows[0].otHours, 8);
+  assert.equal(out.rows[0].entryCount, 1);
+  assert.equal(out.rows[0].entryId, 'x1');
+  assert.equal(out.rows[0].allClosed, false);
+});
+
+test('ใบที่ถูกไม่อนุมัติ ยังนับว่า "มีใบแล้ว" แต่ไม่มีชั่วโมง', () => {
+  /**
+   * ANY status counts as dealt with — the question is whether the day was
+   * OVERLOOKED, and a request filed and then turned down was not. But its hours
+   * are on nobody's books, so printing them here would make this the one screen
+   * in the system that counted a refused request.
+   */
+  const p = person({ _id: 'e1', code: 'A', birthDate: '1977-08-04' });
+  const out = month([p], { entries: [entry({ status: 'rejected', totals: { otHours: 8 } })] });
+
+  assert.equal(statusOf(out, 'A'), 'filed');
+  assert.equal(out.rows[0].otHours, 0);
+  assert.equal(out.rows[0].allClosed, true, 'หน้าจอต้องบอกได้ว่าทำไมชั่วโมงเป็นศูนย์');
+});
+
+test('ใบต้องตรงคนและตรงวัน จึงจะนับว่ามีใบ', () => {
+  const p = person({ _id: 'e1', code: 'A', birthDate: '1977-08-04' });
+  // Somebody else's ใบ on the same day, and this person's on another day.
+  assert.equal(statusOf(month([p], { entries: [entry({ employee: 'e9' })] }), 'A'), 'due');
+  assert.equal(statusOf(month([p], { entries: [entry({ workDate: '2026-08-05' })] }), 'A'), 'due');
+});
+
+test('ตรวจแล้วว่าไม่มา — ขึ้นตารางพร้อมชื่อผู้ตรวจและเวลา', () => {
+  const p = person({ _id: 'e1', code: 'A', birthDate: '1977-08-04' });
+  const at = new Date('2026-08-05T03:00:00Z');
+  const out = month([p], {
+    checks: [aCheck({ checkedAt: at, checkedByName: 'มาลี บุญมาก', note: 'ลาพักร้อน' })],
+  });
+
+  assert.equal(statusOf(out, 'A'), 'absent');
+  assert.deepEqual(out.rows[0].check, { by: 'มาลี บุญมาก', at, note: 'ลาพักร้อน' });
+});
+
+test('ยกเลิกการตรวจแล้ว — กลับไปเป็น "ต้องตรวจ"', () => {
+  /**
+   * The rule that makes an append-only record retractable. Asked as "does a row
+   * exist", the retraction would be written, stored, visible in the collection
+   * and change nothing anybody can see.
+   */
+  const p = person({ _id: 'e1', code: 'A', birthDate: '1977-08-04' });
+  const rows = [
+    aCheck(),
+    aCheck({ _id: 'c2', outcome: OUTCOME.CANCELLED, checkedAt: new Date('2026-08-06T03:00:00Z') }),
+  ];
+  assert.equal(statusOf(month([p], { checks: rows }), 'A'), 'due');
+
+  // And marking it again after a retraction settles it once more — three rows,
+  // all kept, and the newest one decides.
+  const again = [...rows, aCheck({ _id: 'c3', checkedAt: new Date('2026-08-07T03:00:00Z') })];
+  assert.equal(statusOf(month([p], { checks: again }), 'A'), 'absent');
+});
+
+test('ลำดับความสำคัญ: มีใบ ชนะ ตรวจแล้ว ชนะ วันหยุด', () => {
+  /**
+   * A ใบ is the strongest thing that can be true of a date, and its hours are
+   * what HR came to see — so FILED outranks a Saturday, with `alreadyHoliday`
+   * riding along so the screen can still say the birthday was beside the point.
+   *
+   * ABSENT above HOLIDAY is the deliberate one: the write route refuses to
+   * record "ไม่ได้มาทำงาน" against a company holiday, so the pair should not
+   * occur — but a row written before that rule would otherwise show as HOLIDAY
+   * and lose its ยกเลิก button, leaving a stored check nobody could retract.
+   */
+  const sat = person({ _id: 'e1', code: 'A', birthDate: '1990-08-08' });
+
+  const filedOnSat = month([sat], { entries: [entry({ workDate: '2026-08-08' })] });
+  assert.equal(statusOf(filedOnSat, 'A'), 'filed');
+  assert.equal(filedOnSat.rows[0].alreadyHoliday, true, 'ยังต้องบอกได้ว่าวันนั้นเป็นวันหยุดอยู่แล้ว');
+
+  const checkedOnSat = month([sat], { checks: [aCheck({ workDate: '2026-08-08' })] });
+  assert.equal(statusOf(checkedOnSat, 'A'), 'absent', 'การตรวจที่บันทึกไว้แล้วต้องยกเลิกได้เสมอ');
+});
+
+// ── the row itself ─────────────────────────────────────────────────────────
+
+test('แถวพาแผนกและบริษัทไปด้วย และไม่พาวันเกิดจริง', () => {
   const p = person({ birthDate: '1977-08-04', code: 'THT0018' });
-  const { ruleEnabled, needsEntry, uncheckable } = check([p]);
+  const out = month([p]);
 
-  assert.equal(ruleEnabled, true);
-  assert.equal(uncheckable.length, 0);
-  assert.deepEqual(needsEntry, [{
-    employeeId: p._id,
-    code: 'THT0018',
-    name: p.name,
-    department: 'วิศวกรรม',
-    departmentId: 'd1',
-    // Read from the code prefix when the field is unset — the same rule
-    // สรุป OT ส่งบัญชี partitions by, from one place (src/config/companies.js).
-    company: 'themtech',
-    date: '2026-08-04',
-    upcoming: false,
-  }]);
+  assert.equal(out.uncheckable.length, 0);
+  assert.equal(out.rows[0].employeeId, p._id);
+  assert.equal(out.rows[0].name, p.name);
+  assert.equal(out.rows[0].department, 'วิศวกรรม');
+  assert.equal(out.rows[0].departmentId, 'd1');
+  assert.equal(out.rows[0].date, '2026-08-04');
+  // Read from the code prefix when the field is unset — the same rule
+  // สรุป OT ส่งบัญชี partitions by, from one place (src/config/companies.js).
+  assert.equal(out.rows[0].company, 'themtech');
+  assert.ok(!('birthDate' in out.rows[0]), 'วันเกิดจริงต้องไม่ออกจากเซิร์ฟเวอร์');
 });
 
 test('บริษัทมาจากฟิลด์ที่เก็บไว้ก่อน แล้วจึงเป็นรหัสพนักงาน', () => {
   const stored = person({ birthDate: '1977-08-04', code: 'THT0001', company: 'primus' });
-  assert.equal(check([stored]).needsEntry[0].company, 'primus');
+  assert.equal(month([stored]).rows[0].company, 'primus');
 });
 
-test('วันที่ยังไม่ถึง อยู่กลุ่ม "กำลังจะถึง" ไม่ใช่กลุ่มที่ต้องตรวจ', () => {
-  /**
-   * The split that decides whether the screen shows a button.
-   *
-   * Both answers on this list are settled against the fingerprint scanner's
-   * record for that date, and a date that has not arrived has no such record.
-   * Leaving these rows in `needsEntry` with only a label on them would put
-   * บันทึก OT ให้ over a shift that has not happened — and the label is exactly
-   * what somebody reading forty rows does not read.
-   */
-  const p = person({ birthDate: '1977-08-20' });
-  const out = birthdayCheck({
-    period: '2026-08', today: '2026-08-10', roster: [p], isHoliday, policy: ON,
-  });
-
-  assert.deepEqual(out.needsEntry, []);
-  assert.equal(out.upcoming.length, 1);
-  assert.equal(out.upcoming[0].date, '2026-08-20');
-  assert.equal(out.upcoming[0].upcoming, true);
-
-  // The same birthday, once the day has been and gone.
-  const after = birthdayCheck({
-    period: '2026-08', today: '2026-08-21', roster: [p], isHoliday, policy: ON,
-  });
-  assert.equal(after.needsEntry.length, 1);
-  assert.equal(after.needsEntry[0].upcoming, false);
-  assert.deepEqual(after.upcoming, []);
-});
-
-test('วันเกิดวันนี้พอดี ต้องตรวจได้แล้ว ไม่ใช่ "กำลังจะถึง"', () => {
+test('วันเกิดวันนี้พอดี ต้องตรวจได้แล้ว ไม่ใช่ "ยังไม่ถึงวัน"', () => {
   // The boundary is `date > today`, so the birthday itself is settled the same
   // day. The scan record for a day exists from the first punch on it.
-  const out = birthdayCheck({
+  const out = birthdayMonth({
     period: '2026-08', today: '2026-08-04',
-    roster: [person({ birthDate: '1977-08-04' })], isHoliday, policy: ON,
+    roster: [person({ code: 'A', birthDate: '1977-08-04' })], isHoliday, policy: ON,
   });
-  assert.equal(out.needsEntry.length, 1);
-  assert.deepEqual(out.upcoming, []);
+  assert.equal(statusOf(out, 'A'), 'due');
 });
 
 test('เรียงตามวันที่ แล้วจึงตามรหัส', () => {
-  const rows = check([
+  const rows = month([
     person({ code: 'PM-0900', birthDate: '1977-08-20' }),
     person({ code: 'PM-0100', birthDate: '1977-08-04' }),
     person({ code: 'PM-0050', birthDate: '1980-08-20' }),
-  ]).needsEntry;
+  ]).rows;
 
   assert.deepEqual(rows.map((r) => `${r.date} ${r.code}`), [
     '2026-08-04 PM-0100', '2026-08-20 PM-0050', '2026-08-20 PM-0900',
   ]);
 });
 
-// ── what must stay off it ──────────────────────────────────────────────────
-
-test('วันเกิดตรงเสาร์ ไม่ขึ้นรายการ', () => {
-  // Nobody was expected at work, the day was already วันหยุด for the whole
-  // company, and the birthday rule added nothing to it. This is the asymmetry the
-  // list exists for: a Saturday explains itself, a Tuesday does not.
-  const { needsEntry } = check([person({ birthDate: '1990-08-08' })]);
-  assert.deepEqual(needsEntry, []);
-});
-
-test('วันเกิดตรงวันหยุดบริษัท ไม่ขึ้นรายการ', () => {
-  const { needsEntry } = check([person({ birthDate: '1988-08-12' })]);
-  assert.deepEqual(needsEntry, []);
-});
-
-test('มีใบของวันนั้นแล้ว ไม่ขึ้นรายการ — ทุกสถานะนับว่ามีใบ', () => {
-  // The question is whether the day was OVERLOOKED. A request that was filed and
-  // then refused, or withdrawn, was not overlooked by anybody — and putting it
-  // back on the list would send HR to ask about a decision somebody already made.
-  const p = person({ birthDate: '1977-08-04' });
-  const filed = new Set([filedKey(p._id, '2026-08-04')]);
-
-  assert.deepEqual(check([p], { filed }).needsEntry, []);
-
-  // Per person per date: somebody else's ใบ on the same day withholds nothing,
-  // and this person's ใบ on another day withholds nothing either.
-  assert.equal(check([person({ birthDate: '1977-08-04' })], { filed }).needsEntry.length, 1);
-  const elsewhere = new Set([filedKey(p._id, '2026-08-05')]);
-  assert.equal(check([p], { filed: elsewhere }).needsEntry.length, 1);
-});
-
-test('วันเกิดเดือนอื่น ไม่ขึ้นรายการของเดือนนี้', () => {
-  assert.deepEqual(check([person({ birthDate: '1990-12-25' })]).needsEntry, []);
+test('วันเกิดเดือนอื่น ไม่อยู่ในตารางของเดือนนี้', () => {
+  assert.deepEqual(month([person({ birthDate: '1990-12-25' })]).rows, []);
 });
 
 test('กฎวันหยุดวันเกิดปิดอยู่ — ไม่ขึ้นอะไรเลย แม้แต่รายการที่ตรวจไม่ได้', () => {
-  // With the rule off a birthday is an ordinary working day: no hours are owed,
-  // so no ใบ is missing and nothing needs checking. The flag is returned so the
-  // screen can stay silent for a reason rather than look like a clean month.
-  const out = check([
+  // With the rule off a birthday is an ordinary working day: no holiday is owed,
+  // so there is no such thing as a birthday to settle. The flag is returned so
+  // the screen can stay silent for a reason rather than look like a clean month.
+  const out = month([
     person({ birthDate: '1977-08-04' }),
     person({ birthDate: null }),
   ], { policy: OFF });
 
   assert.equal(out.ruleEnabled, false);
-  assert.deepEqual(out.needsEntry, []);
+  assert.deepEqual(out.rows, []);
   assert.deepEqual(out.uncheckable, []);
+  assert.equal(out.summary.total, 0);
 });
 
-// ── BirthdayCheck: "ไม่ได้มาทำงาน", and taking it back ─────────────────────
+test('ไม่ส่ง today มา ต้อง throw ไม่ใช่เดาเอา', () => {
+  assert.throws(
+    () => birthdayMonth({ period: '2026-08', roster: [person({ birthDate: '1977-08-04' })], isHoliday, policy: ON }),
+    /today/,
+  );
+});
+
+// ── BirthdayCheck: the record behind the "ตรวจแล้ว" status ─────────────────
 
 /**
  * The second answer, and the only one that used to be unrecordable. "มาทำงาน"
@@ -192,46 +295,7 @@ test('กฎวันหยุดวันเกิดปิดอยู่ — 
  * same name came back every time anybody opened the screen and a birthday
  * nobody had looked at was indistinguishable from one already settled.
  */
-const check2 = (over = {}) => ({
-  _id: 'c1', employee: 'e1', workDate: '2026-08-04',
-  outcome: OUTCOME.ABSENT, checkedAt: new Date('2026-08-05T03:00:00Z'), ...over,
-});
-
-test('มี BirthdayCheck ว่าไม่ได้มาทำงานแล้ว — ไม่ขึ้นรายการ', () => {
-  const p = person({ _id: 'e1', birthDate: '1977-08-04' });
-  const checked = absentKeys([check2()]);
-
-  assert.deepEqual(check([p], { checked }).needsEntry, []);
-
-  // Per person per date, exactly as `filed` is: somebody else's check on the
-  // same day withholds nothing, and this person's check on another day either.
-  assert.equal(check([person({ birthDate: '1977-08-04' })], { checked }).needsEntry.length, 1);
-  const elsewhere = absentKeys([check2({ workDate: '2026-08-05' })]);
-  assert.equal(check([p], { checked: elsewhere }).needsEntry.length, 1);
-});
-
-test('ยกเลิก BirthdayCheck แล้ว — กลับมาขึ้นรายการ', () => {
-  /**
-   * The rule that makes an append-only record retractable. Asked as "does a row
-   * exist", the retraction would be written, stored, visible in the collection
-   * and change nothing anybody can see.
-   */
-  const p = person({ _id: 'e1', birthDate: '1977-08-04' });
-  const rows = [
-    check2(),
-    check2({
-      _id: 'c2', outcome: OUTCOME.CANCELLED, checkedAt: new Date('2026-08-06T03:00:00Z'),
-    }),
-  ];
-
-  assert.deepEqual([...absentKeys(rows)], [], 'แถวใหม่สุดคือ cancelled จึงไม่นับว่าไม่มา');
-  assert.equal(check([p], { checked: absentKeys(rows) }).needsEntry.length, 1);
-
-  // And marking it again after a retraction takes it back off — three rows, all
-  // kept, and the newest one decides.
-  const again = [...rows, check2({ _id: 'c3', checkedAt: new Date('2026-08-07T03:00:00Z') })];
-  assert.deepEqual(check([p], { checked: absentKeys(again) }).needsEntry, []);
-});
+const check2 = aCheck;
 
 test('แถวใหม่สุดชนะ และ _id ตัดสินเมื่อเวลาเท่ากัน', () => {
   // Two rows written in the same millisecond — a seeded month does this — must
@@ -280,74 +344,91 @@ test('outcome มีสองค่า และไม่มี "present"', () =
   assert.equal(OUTCOME.CANCELLED, 'cancelled');
 });
 
-// ── the second list: cannot check ──────────────────────────────────────────
+// ── the list that is not in the table: cannot check ────────────────────────
 
-test('ไม่มี birthDate — ขึ้นรายการที่สองว่าตรวจไม่ได้ ไม่ใช่เงียบไป', () => {
+test('ไม่มี birthDate — แยกรายการว่าตรวจไม่ได้ ไม่ปนในตาราง', () => {
+  /**
+   * Kept OUT of the table, and out of `summary.total`. Which month somebody with
+   * no วันเกิด belongs to is the one thing nobody knows, so a row for them in a
+   * table sorted by date would have to invent a date to sit at. Silence is not an
+   * option either: a roster still mostly empty must not read as a clean month.
+   */
   const p = person({ birthDate: null });
-  const { needsEntry, uncheckable } = check([p]);
+  const out = month([p]);
 
-  assert.deepEqual(needsEntry, []);
-  assert.equal(uncheckable.length, 1);
-  assert.equal(uncheckable[0].reason, 'missing');
-  assert.equal(uncheckable[0].code, p.code);
+  assert.deepEqual(out.rows, []);
+  assert.equal(out.summary.total, 0);
+  assert.equal(out.uncheckable.length, 1);
+  assert.equal(out.uncheckable[0].reason, 'missing');
+  assert.equal(out.uncheckable[0].code, p.code);
   assert.ok(UNCHECKABLE.missing, 'ต้องมีคำอธิบายให้หน้าจอ');
 });
 
 test('วันเกิดในระบบใช้ไม่ได้ — ตรวจไม่ได้ ไม่ใช่ไม่มีอะไรค้าง', () => {
   // 30 February in the roster. "Cannot tell" and "nothing owed" are different
-  // answers, and only one of them is safe to show as an empty list.
-  const { needsEntry, uncheckable } = check([person({ birthDate: '1994-02-30' })]);
-  assert.deepEqual(needsEntry, []);
-  assert.equal(uncheckable[0].reason, 'invalid');
+  // answers, and only one of them is safe to show as an empty table.
+  const out = month([person({ birthDate: '1994-02-30' })]);
+  assert.deepEqual(out.rows, []);
+  assert.equal(out.uncheckable[0].reason, 'invalid');
   assert.ok(UNCHECKABLE.invalid);
 });
 
-test('คนที่ตรวจไม่ได้ ไม่ทำให้คนอื่นหลุดรายการ', () => {
-  const rows = check([
+test('คนที่ตรวจไม่ได้ ไม่ทำให้คนอื่นหลุดตาราง', () => {
+  const out = month([
     person({ birthDate: '1994-02-30' }),
     person({ birthDate: null }),
     person({ birthDate: '1977-08-04' }),
   ]);
-  assert.equal(rows.needsEntry.length, 1);
-  assert.equal(rows.uncheckable.length, 2);
+  assert.equal(out.rows.length, 1);
+  assert.equal(out.uncheckable.length, 2);
 });
 
-test('รายการทั้งสองไม่พา birthDate ออกไปด้วย', () => {
+test('ทั้งตารางและรายการที่ตรวจไม่ได้ ไม่พา birthDate ออกไปด้วย', () => {
   // ตรวจสอบรายเดือน is open to หัวหน้า for their own team, and a date of birth is
-  // not theirs to read. The endpoint is HR-only on top of this; the payload does
-  // not rely on that being remembered. What goes out is the date of the HOLIDAY.
-  const rows = check([
+  // not theirs to read. What goes out is the date of the HOLIDAY.
+  const out = month([
     person({ birthDate: '1977-08-04' }),
     person({ birthDate: null }),
     person({ birthDate: '1994-02-30' }),
   ]);
-  for (const r of [...rows.needsEntry, ...rows.uncheckable]) {
+  for (const r of [...out.rows, ...out.uncheckable]) {
     assert.ok(!('birthDate' in r), `${r.code} มี birthDate ติดไปด้วย`);
   }
 });
 
-test('ไม่ส่ง today มา ต้อง throw ไม่ใช่เดาเอา', () => {
-  assert.throws(
-    () => birthdayCheck({ period: '2026-08', roster: [person({ birthDate: '1977-08-04' })], isHoliday, policy: ON }),
-    /today/,
-  );
-});
-
 test('29 ก.พ. ตามนโยบายปีที่ไม่ใช่อธิกสุรทิน', () => {
-  const p = person({ birthDate: '2000-02-29' });
-  const at = (period, policy) => birthdayCheck({
+  const p = person({ code: 'A', birthDate: '2000-02-29' });
+  const at = (period, policy) => birthdayMonth({
     period, today: '2028-12-31', roster: [p], isHoliday, policy,
   });
 
-  // 28 Feb 2027 is a Sunday — already a holiday, so nothing is missing.
-  assert.deepEqual(at('2027-02', { ...ON, birthdayLeapFallback: 'feb28' }).needsEntry, []);
-  // 'mar01' moves the holiday into March, and the list follows the holiday.
-  assert.deepEqual(at('2027-02', { ...ON, birthdayLeapFallback: 'mar01' }).needsEntry, []);
-  assert.equal(at('2027-03', { ...ON, birthdayLeapFallback: 'mar01' }).needsEntry[0].date, '2027-03-01');
-  // 'none' — no holiday is owed that year at all, so nothing is missing either.
-  assert.deepEqual(at('2027-02', { ...ON, birthdayLeapFallback: 'none' }).needsEntry, []);
+  // 28 Feb 2027 is a Sunday — the day exists, and it was already a holiday.
+  assert.equal(statusOf(at('2027-02', { ...ON, birthdayLeapFallback: 'feb28' }), 'A'), 'holiday');
+  // 'mar01' moves the holiday into March, and the table follows the holiday.
+  assert.deepEqual(at('2027-02', { ...ON, birthdayLeapFallback: 'mar01' }).rows, []);
+  assert.equal(at('2027-03', { ...ON, birthdayLeapFallback: 'mar01' }).rows[0].date, '2027-03-01');
+  // 'none' — no holiday is owed that year at all, so there is no row to show.
+  assert.deepEqual(at('2027-02', { ...ON, birthdayLeapFallback: 'none' }).rows, []);
   // In a leap year, 29 Feb 2028 is a Tuesday.
-  assert.equal(at('2028-02', ON).needsEntry[0].date, '2028-02-29');
+  assert.equal(at('2028-02', ON).rows[0].date, '2028-02-29');
+});
+
+// ── the five statuses are a closed set ─────────────────────────────────────
+
+test('สถานะมี 5 แบบ มีคำแปลครบ และมีแบบเดียวที่เป็นงาน', () => {
+  /**
+   * The set is closed, and `SETTLED_STATUSES` names the three that mean nothing
+   * is left to do. `birthdayQueue` holds only DUE — a status added to the queue
+   * by accident would have to be added here, in the one place the meanings are
+   * written down.
+   */
+  const all = Object.values(BIRTHDAY_STATUS);
+  assert.deepEqual([...all].sort(), ['absent', 'due', 'filed', 'holiday', 'upcoming']);
+  for (const s of all) assert.ok(STATUS_LABEL_TH[s], `${s} ไม่มีคำแปลไทย`);
+
+  assert.deepEqual([...SETTLED_STATUSES].sort(), ['absent', 'filed', 'holiday']);
+  assert.ok(!SETTLED_STATUSES.includes(BIRTHDAY_STATUS.DUE));
+  assert.ok(!SETTLED_STATUSES.includes(BIRTHDAY_STATUS.UPCOMING));
 });
 
 // ── the screen reads, it does not write ────────────────────────────────────
@@ -378,37 +459,47 @@ test('เส้นทางรายงานยังอ่านอย่า�
   assert.match(code, /role: 'manager'/);
 });
 
-test('หน้าจอมีปุ่มสองทางต่อแถว และถามสิทธิ์จากเซิร์ฟเวอร์ ไม่ตัดสินเอง', () => {
-  const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
-  const section = view.slice(view.indexOf('function BirthdayCheck'));
+test('คิวมีปุ่มสองทางต่อแถว และถามสิทธิ์จากเซิร์ฟเวอร์ ไม่ตัดสินเอง', () => {
+  const queue = readFileSync(join(ROOT, 'components/BirthdayQueue.jsx'), 'utf8');
 
-  assert.match(section, /บันทึก OT ให้/);
-  assert.match(section, /ไม่ได้มาทำงาน/);
-  assert.match(section, /\/birthday\/checks/);
-  // The filing button opens the form; it does not POST an entry from here.
-  assert.match(section, /onFile\?\.\(/);
+  assert.match(queue, /บันทึก OT ให้/);
+  assert.match(queue, /ไม่ได้มาทำงาน/);
+
+  /**
+   * The two actions come from one module, not from two copies.
+   *
+   * The month table on ตรวจสอบรายเดือน offers the same pair of buttons on the
+   * same kind of row, and the dialog in front of one of them explains what the
+   * stored record is and is not. Written twice, that sentence would one day read
+   * two ways on two screens describing the same document.
+   */
+  const actions = readFileSync(join(ROOT, 'components/birthdayActions.jsx'), 'utf8');
+  assert.match(actions, /\/birthday\/checks/);
+  assert.match(actions, /OUTCOME\.ABSENT/);
+  assert.match(actions, /OUTCOME\.CANCELLED/);
+  for (const screen of ['components/BirthdayQueue.jsx', 'components/HrView.jsx']) {
+    const src = readFileSync(join(ROOT, screen), 'utf8');
+    assert.match(src, /from '\.\/birthdayActions\.jsx'/, `${screen} ต้องใช้ปุ่มชุดเดียวกัน`);
+    assert.ok(!/\/birthday\/checks/.test(src), `${screen} เขียน POST เอง — จะเพี้ยนกับอีกจอ`);
+  }
 
   /**
    * Whether the buttons are drawn is `canAct` — the server's own answer, from
    * `birthdayActionPermission`. A role test in the browser is how a screen ends
    * up offering a row the server refuses, or hiding one somebody may act on;
-   * the queue already learnt that lesson with `isOwnFiling`.
+   * the approval queue already learnt that lesson with `isOwnFiling`.
    */
-  assert.match(section, /r\.canAct \?/);
+  assert.match(queue, /r\.canAct \?/);
   assert.ok(
-    !/user\?\.role|\['hr', 'admin'\]\.includes/.test(section),
+    !/user\?\.role|\['hr', 'admin'\]\.includes/.test(queue),
     'ส่วนนี้ต้องไม่ตัดสินสิทธิ์เองจาก role',
   );
 
-  // The two groups, and only the first one carries buttons.
-  assert.match(section, /ต้องตรวจ/);
-  assert.match(section, /กำลังจะถึง/);
-  const upcomingBlock = section.slice(section.indexOf('data.upcoming.length > 0'));
-  const upcomingEnd = upcomingBlock.indexOf('data.absent.length > 0');
-  assert.ok(
-    !/<button/.test(upcomingBlock.slice(0, upcomingEnd)),
-    'กลุ่ม “กำลังจะถึง” ต้องไม่มีปุ่ม — ยังไม่มีบันทึกเวลาให้เทียบ',
-  );
+  // "กำลังจะถึง" is folded away and carries no button — there is no scan record
+  // for a shift that has not happened, so there is nothing to press.
+  const upcoming = queue.slice(queue.indexOf('upcoming.length > 0'), queue.indexOf('uncheckable.length > 0'));
+  assert.match(upcoming, /<Fold/);
+  assert.ok(!/<button/.test(upcoming), 'กลุ่ม “กำลังจะถึง” ต้องไม่มีปุ่ม');
 });
 
 /**
@@ -418,15 +509,14 @@ test('หน้าจอมีปุ่มสองทางต่อแถว �
  * explanation on a screen outlives every correction made in a meeting.
  */
 test('ข้อความอธิบายตรงกับความจริง — HR เทียบบันทึกสแกนนิ้วเองได้', () => {
-  const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
-  const section = view.slice(view.indexOf('function BirthdayCheck'));
+  const queue = readFileSync(join(ROOT, 'components/BirthdayQueue.jsx'), 'utf8');
 
   assert.ok(
-    !/ฝ่ายบุคคลไม่ทราบว่าเขามาทำงานถึงกี่โมง/.test(section),
+    !/ฝ่ายบุคคลไม่ทราบว่าเขามาทำงานถึงกี่โมง/.test(queue),
     'ข้อความเดิมที่ขัดกับสเปกยังอยู่',
   );
-  assert.match(section, /สแกนนิ้ว/, 'ต้องบอกว่าตรวจจากบันทึกเวลาเข้างาน');
-  assert.match(section, /หัวหน้าแผนกบันทึกแทนลูกทีมของตนเองได้/, 'หัวหน้าก็ยังบันทึกแทนได้');
+  assert.match(queue, /สแกนนิ้ว/, 'ต้องบอกว่าตรวจจากบันทึกเวลาเข้างาน');
+  assert.match(queue, /หัวหน้าแผนกบันทึกแทนลูกทีมของตนเองได้/, 'หัวหน้าก็ยังบันทึกแทนได้');
 });
 
 // ── 0-hour submissions are refused, in words ──────────────────────────────
