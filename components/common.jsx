@@ -835,6 +835,71 @@ export function Empty({ children }) {
 }
 
 /**
+ * The grey page a printed sheet sits on — and, on a phone, the only thing
+ * standing between a 412px screen and a sheet of A4.
+ *
+ * The sheet is 194mm of paper geometry and cannot shrink (app/print.css), so it
+ * is about twice the width of a phone and has to be swiped. That part works on
+ * its own. What does not is knowing it: the horizontal scrollbar belongs to a
+ * container two and a half thousand pixels tall and only appears at the foot of
+ * it, nowhere near the columns it is describing. Somebody who does not already
+ * know the sheet slides sees a form that stops after จำนวนชั่วโมง — and the
+ * three columns past the fold are รายละเอียดงานที่ทำ and the two signatures,
+ * which is most of what the form is for.
+ *
+ * So the scroller gets a wrapper, and the wrapper carries the two things that
+ * say it slides: a fade at whichever edge still has paper behind it, and one
+ * line of text that leaves the moment it has been understood. Both hang on the
+ * wrapper rather than the scroller because anything painted inside a scroll
+ * container is content and scrolls away with it — which is the one thing these
+ * two must not do.
+ *
+ * `data-edge` is start / middle / end / none, read from the scroller itself
+ * rather than from a breakpoint. A sheet that fits is `none` and draws neither
+ * the fade nor the hint, so on a desktop this is an ordinary div — and it stays
+ * one at any window width, including the ones between "phone" and "fits an A4"
+ * that a breakpoint would have had to guess at.
+ */
+export function SheetScroll({ className, hint = '↔ ปัดซ้าย-ขวาเพื่อดูทั้งใบ', children }) {
+  const ref = React.useRef(null);
+  const [edge, setEdge] = React.useState('none');
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+
+    const read = () => {
+      const slack = el.scrollWidth - el.clientWidth;
+      // Not `> 0`: fractional layout widths leave a sub-pixel remainder behind
+      // at most zoom levels, and it would light the fade on a desktop where
+      // there is nothing to swipe to.
+      if (slack <= 2) { setEdge('none'); return; }
+      if (el.scrollLeft <= 1) { setEdge('start'); return; }
+      setEdge(el.scrollLeft >= slack - 1 ? 'end' : 'middle');
+    };
+
+    read();
+    el.addEventListener('scroll', read, { passive: true });
+    // Both figures above move without a scroll event: the sheet arrives after
+    // its data does, and rotating the phone changes the screen under it.
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', read); ro.disconnect(); };
+  }, [children]);
+
+  return (
+    <div className="sheet-view" data-edge={edge}>
+      <div className={className} ref={ref}>{children}</div>
+      {/* Only at rest against the left edge — one swipe and it has done its
+          job. `no-print` as well as the state, because the state is the
+          screen's and a sheet printed without having been swiped still has
+          `start` on it. */}
+      {edge === 'start' && <div className="sheet-hint no-print">{hint}</div>}
+    </div>
+  );
+}
+
+/**
  * “เพิ่มวันเกิดได้ที่…” — the one sentence three birthday screens end on.
  *
  * It used to read “ผู้ดูแลระบบ › พนักงาน (เฉพาะ Admin)”, written out three

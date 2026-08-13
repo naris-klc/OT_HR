@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, BUCKETS } from '@/lib/api.js';
-import { Alert } from './common.jsx';
+import { Alert, SheetScroll } from './common.jsx';
 
 /**
  * F-HR-027 Rev.4 rendered for print — one employee, one month (§10).
@@ -41,9 +41,9 @@ export default function PrintForm({ employeeId, period, onClose }) {
     <>
       <PrintChrome onClose={onClose} basis={form.hrSection.basis} />
       <FormNotices form={form} />
-      <div className="f027-screen">
+      <SheetScroll className="f027-screen">
         <F027Sheet form={form} />
-      </div>
+      </SheetScroll>
     </>
   );
 }

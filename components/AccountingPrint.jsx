@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, THAI_MONTHS } from '@/lib/api.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
-import { Alert, UnaccountedHours } from './common.jsx';
+import { Alert, SheetScroll, UnaccountedHours } from './common.jsx';
 
 /**
  * สรุป OT ส่งบัญชี rendered for print — one sheet per company, A4 portrait.
@@ -101,13 +101,13 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
         </div>
       )}
 
-      <div className="acct-screen">
+      <SheetScroll className="acct-screen">
         {data.companies.length === 0 ? (
           <div className="empty">ไม่มีข้อมูลสำหรับเดือนนี้</div>
         ) : data.companies.map((c) => (
           <Sheet key={c.key} company={c} period={period} unaccounted={data.unaccounted} />
         ))}
-      </div>
+      </SheetScroll>
     </>
   );
 }

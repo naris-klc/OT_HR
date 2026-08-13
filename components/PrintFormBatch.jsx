@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
-import { Alert, Empty } from './common.jsx';
+import { Alert, Empty, SheetScroll } from './common.jsx';
 import { PrintChrome, FormNotices, F027Sheet } from './PrintForm.jsx';
 
 /**
@@ -137,14 +137,14 @@ export default function PrintFormBatch({ employees, period, onClose }) {
         />
       ))}
 
-      <div className="f027-screen">
+      <SheetScroll className="f027-screen">
         {(forms || []).map((form, i) => (
           // Keyed by position: two people can share a name, and a roster with
           // two shapes of employee code (PM-0620 / PM00511) is not something to
           // build a react key out of.
           <F027Sheet key={`${form.employee.code}-${i}`} form={form} />
         ))}
-      </div>
+      </SheetScroll>
     </>
   );
 }

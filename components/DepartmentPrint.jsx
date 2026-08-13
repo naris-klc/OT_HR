@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
-import { Alert, UnaccountedHours } from './common.jsx';
+import { Alert, SheetScroll, UnaccountedHours } from './common.jsx';
 
 /**
  * สรุปชั่วโมงทำ OT แยกแผนก — the departmental sheet, cell for cell.
@@ -73,7 +73,7 @@ export default function DepartmentPrint({ period, onClose }) {
         </div>
       )}
 
-      <div className="otdept-screen">
+      <SheetScroll className="otdept-screen">
         {departments.length === 0 ? (
           <div className="empty">ไม่มีข้อมูลสำหรับเดือนนี้</div>
         ) : (
@@ -116,7 +116,7 @@ export default function DepartmentPrint({ period, onClose }) {
             />
           </>
         )}
-      </div>
+      </SheetScroll>
     </>
   );
 }

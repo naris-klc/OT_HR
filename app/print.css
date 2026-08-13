@@ -623,6 +623,83 @@
   .otdept tfoot { display: table-footer-group; }
 }
 
+/* ══ the wrapper: the fade and the swipe hint ════════════════════════════════
+ *
+ * Rendered by SheetScroll (components/common.jsx), which puts `data-edge` on
+ * this element from the scroller's own scrollLeft. Both marks hang HERE and not
+ * on the scroller inside it: a pseudo-element of a scroll container is content,
+ * and content scrolls away — a fade that slides off the edge it is marking is
+ * worse than no fade, because it says the paper has run out at the moment it
+ * has not.
+ *
+ * No breakpoint anywhere below. `data-edge` is `none` whenever the sheet fits,
+ * so a desktop draws nothing and this stays an ordinary div — and it keeps
+ * doing the right thing at the window widths between "phone" and "wide enough
+ * for A4", which is the range a breakpoint would have had to guess at.
+ */
+
+.sheet-view { position: relative; }
+
+.sheet-view::before, .sheet-view::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  z-index: 1;
+  /* The paper underneath is still the target of every tap and swipe. */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+.sheet-view::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(17, 30, 24, .16), rgba(17, 30, 24, 0));
+}
+.sheet-view::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(17, 30, 24, .16), rgba(17, 30, 24, 0));
+}
+/* Each edge is lit only while there is paper behind it — which is what makes
+   this a position indicator rather than a decoration. At `end` the left one
+   alone is on, and that is the only thing on the screen saying the swipe went
+   somewhere and can be undone. */
+.sheet-view[data-edge="start"]::after,
+.sheet-view[data-edge="middle"]::after { opacity: 1; }
+.sheet-view[data-edge="middle"]::before,
+.sheet-view[data-edge="end"]::before { opacity: 1; }
+
+/* One line, on the grey band above the paper so it covers none of the form,
+   and gone after the first swipe (SheetScroll renders it at `start` only).
+   The fade says there is more; this says how to get to it — worth its one
+   appearance, not worth being permanent furniture on a form that is opened
+   every month. */
+.sheet-hint {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(20, 32, 26, .8);
+  color: #fff;
+  font: 500 12px/1.35 var(--sans);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@media print {
+  /* `data-edge` is the screen's state and survives into the print tree — a
+     sheet printed without ever having been swiped still says `start`. The
+     hint carries `no-print`; the fades have no class to hide behind. */
+  .sheet-view::before, .sheet-view::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-view::before, .sheet-view::after { transition: none; }
+}
+
 /* ══ the three sheets on a phone ═════════════════════════════════════════════
  *
  * `screen and`, and it is load-bearing rather than tidy: A4 with a zero @page
@@ -641,9 +718,14 @@
  * two have to cancel exactly, notch or no notch.
  */
 @media screen and (max-width: 860px) {
-  .f027-screen, .acct-screen, .otdept-screen {
+  /* The pull-out goes on the wrapper, not the scroller, so the fades above are
+     measured against the real edges of the screen. The padding stays on the
+     scroller, where it is still the grey band round the paper. */
+  .sheet-view {
     margin-left: calc(-1 * max(12px, env(safe-area-inset-left)));
     margin-right: calc(-1 * max(12px, env(safe-area-inset-right)));
+  }
+  .f027-screen, .acct-screen, .otdept-screen {
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
   }
