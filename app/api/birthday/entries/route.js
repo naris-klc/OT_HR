@@ -13,7 +13,7 @@ import {
 } from '@/lib/birthdayFiling.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { approvalRecord } from '@/lib/delegation.js';
-import { heldBy, today } from '@/lib/delegationQuery.js';
+import { today } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
@@ -41,14 +41,10 @@ export const POST = route(async (req) => {
   const employee = await Employee.findById(payload.employeeId).populate('department');
   if (!employee) return fail('ไม่พบพนักงานที่ระบุ', 404);
 
-  // May this person act on this team's birthdays at all? Their own, or one they
-  // are standing in for today — `departmentClaim`, the same rule the approval
-  // queue runs on.
+  // ฝ่ายบุคคล only, and never their own row. No delegations are read: a
+  // ผู้รับช่วง holds an approval queue and this is not one.
   const on = today();
-  const delegations = await heldBy(user, on);
-  const may = birthdayActionPermission({
-    user, department: employee.department, delegations, today: on,
-  });
+  const may = birthdayActionPermission({ user, subject: employee._id });
   if (!may.ok) return fail(may.error, may.status);
 
   const session = pickSession(payload);

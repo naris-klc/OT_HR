@@ -6,9 +6,8 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { loadCalendar } from '@/src/services/otService.js';
 import { PERIOD_RE } from '@/lib/reports.js';
 import { idOf } from '@/lib/entries.js';
-import { today, heldBy } from '@/lib/delegationQuery.js';
-import { delegatedDepartments } from '@/lib/delegation.js';
-import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
+import { today } from '@/lib/delegationQuery.js';
+import { BIRTHDAY_SUBJECT_ROLES, birthdayActionPermission } from '@/lib/birthdayFiling.js';
 import { birthdayMonth } from '@/lib/birthdayCheck.js';
 import { birthdayRuleStart } from '@/lib/birthdayQueueQuery.js';
 
@@ -60,30 +59,31 @@ export const GET = route(async (req, { params }) => {
   if (!PERIOD_RE.test(period)) return fail('ประจำเดือนต้องเป็นรูปแบบ YYYY-MM', 400);
 
   const on = today();
-  const delegations = await heldBy(user, on);
 
   /**
-   * Which teams this caller may see — and `null` for ฝ่ายบุคคล, meaning "no
-   * department filter", which is not the same as an empty list. Written as a
-   * distinct value rather than an empty array because `{ $in: [] }` matches
-   * nothing, and an HR reading of "everybody" that arrived as an empty filter
-   * would silently show a clean month.
+   * ฝ่ายบุคคล and Admin, and they see everybody — asked of the same function the
+   * write routes refuse with, so what a screen shows and what it can do cannot
+   * come apart.
+   *
+   * There is no team scope here any more. It used to narrow a หัวหน้า to their
+   * own department plus whatever they were covering; since 2026-08-13 they can
+   * settle no birthday row at all, and a month view of work somebody cannot do
+   * reads as their job left undone. Refused outright rather than returned empty,
+   * because unlike the queue this is not what a badge counts — an empty month
+   * here would say "nothing outstanding", which is a different and false claim.
    */
-  const scope = ['hr', 'admin'].includes(user.role)
-    ? null
-    : [idOf(user.department), ...delegatedDepartments(delegations, user, on).map(idOf)]
-      .filter(Boolean);
-
-  if (scope && scope.length === 0) {
-    return fail('ไม่พบแผนกของคุณ จึงยังดูรายการวันเกิดไม่ได้', 403);
-  }
+  const may = birthdayActionPermission({ user });
+  if (!may.ok) return fail(may.error, may.status);
 
   const rosterQuery = {
-    // Only people who may submit OT (§2 — managers, HR and Admin may not) and
-    // only active ones. The same filter สรุป OT ส่งบัญชี uses.
+    // Everybody the birthday holiday is granted to, which is NOT the same list
+    // as everybody who may submit OT — see BIRTHDAY_SUBJECT_ROLES in
+    // lib/birthdayFiling.js. This filter used to read `role: 'employee'`,
+    // borrowed from the OT rule, and it quietly kept every หัวหน้า off a benefit
+    // the company gives to anyone who comes in on their birthday. §2 is
+    // unaffected: it is about filing OT, and none of that changed.
     active: true,
-    role: 'employee',
-    ...(scope ? { department: { $in: scope } } : {}),
+    role: { $in: BIRTHDAY_SUBJECT_ROLES },
   };
 
   const [calendar, roster, managers] = await Promise.all([
@@ -102,7 +102,7 @@ export const GET = route(async (req, { params }) => {
      * decision and is unset on most departments, so a list built from it would
      * name somebody who cannot help, or nobody at all.
      */
-    Employee.find({ active: true, role: 'manager', ...(scope ? { department: { $in: scope } } : {}) })
+    Employee.find({ active: true, role: 'manager' })
       .select('code name department')
       .lean(),
   ]);
@@ -157,26 +157,34 @@ export const GET = route(async (req, { params }) => {
   const byDepartment = new Map();
   for (const m of managers) {
     const key = String(m.department ?? '');
-    byDepartment.set(key, [...(byDepartment.get(key) || []), { code: m.code, name: m.name }]);
+    byDepartment.set(key, [
+      ...(byDepartment.get(key) || []),
+      { employeeId: String(m._id), code: m.code, name: m.name },
+    ]);
   }
 
   /**
    * Per row: who to ring, and whether THIS caller may press the buttons.
    *
    * `canAct` is answered by the same function the two write routes refuse with,
-   * over the same delegations, rather than by the screen inferring it from a
-   * role. Today every row a caller receives is one they may act on — the roster
-   * above is already scoped — so it is uniformly true; it is sent anyway because
-   * the alternative is a component that decides for itself, and the day the
-   * scope and the permission stop coinciding, the button and the server would
-   * disagree silently.
+   * rather than by the screen inferring it from a role.
+   *
+   * IT IS NO LONGER UNIFORMLY TRUE, and the note that used to say so predicted
+   * the day: "the day the scope and the permission stop coinciding, the button
+   * and the server would disagree silently." That day is ฝ่ายบุคคล being added
+   * to the list they stand over (BIRTHDAY_SUBJECT_ROLES) — their own birthday
+   * arrives inside the everybody they can see, and is the one row in it they may
+   * not sign. Because this was sent from the start rather than inferred on the
+   * screen, the button and the server still agree, and nothing here had to be
+   * rewritten to keep them so.
    */
   const decorate = (rows) => rows.map((r) => ({
     ...r,
+    // Who to RING, not who may sign — every row is ฝ่ายบุคคล's now, so a
+    // หัวหน้า stays listed even on a row about themselves: that is the call HR
+    // makes to find out whether they came in.
     managers: byDepartment.get(r.departmentId) || [],
-    canAct: birthdayActionPermission({
-      user, department: r.departmentId, delegations, today: on,
-    }).ok,
+    canAct: birthdayActionPermission({ user, subject: r.employeeId }).ok,
   }));
 
   return json({

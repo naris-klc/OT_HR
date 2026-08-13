@@ -6,8 +6,8 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { loadCalendar } from '@/src/services/otService.js';
 import { birthdayInYear } from '@/src/lib/otEngine.js';
 import { absentKeys, filedKey, BIRTHDAY_OUTCOMES, OUTCOME } from '@/lib/birthdayCheck.js';
-import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
-import { heldBy, today } from '@/lib/delegationQuery.js';
+import { birthdayActionPermission, isBirthdaySubject } from '@/lib/birthdayFiling.js';
+import { today } from '@/lib/delegationQuery.js';
 
 /**
  * ไม่ได้มาทำงาน — the other answer to a row of วันเกิดที่ยังไม่มีใบ, and the one
@@ -26,8 +26,7 @@ import { heldBy, today } from '@/lib/delegationQuery.js';
  * person and a date rather than any row.
  *
  * Same permission as the other button, from the same function: ฝ่ายบุคคล and
- * Admin, a หัวหน้า for their own team, a ผู้รับช่วง for the teams they are
- * covering today.
+ * Admin only, and never on their own row.
  */
 export const POST = route(async (req) => {
   const user = requireRole(await requireAuth(req), 'manager', 'hr', 'admin');
@@ -45,15 +44,17 @@ export const POST = route(async (req) => {
 
   const employee = await Employee.findById(payload.employeeId).populate('department');
   if (!employee) return fail('ไม่พบพนักงานที่ระบุ', 404);
-  if (employee.role !== 'employee') {
-    return fail('บันทึกได้เฉพาะพนักงานที่มีสิทธิ์ขอ OT', 400);
+  // Everybody the birthday holiday is granted to, which is every role — see
+  // BIRTHDAY_SUBJECT_ROLES. Kept as a check rather than dropped: it is what
+  // makes "ทุกคน" a decision on the record instead of an absent rule.
+  if (!isBirthdaySubject(employee)) {
+    return fail('บทบาทนี้ไม่อยู่ในข่ายวันหยุดวันเกิด', 400);
   }
 
   const on = today();
-  const delegations = await heldBy(user, on);
-  const may = birthdayActionPermission({
-    user, department: employee.department, delegations, today: on,
-  });
+  // No delegations read: a ผู้รับช่วง holds an approval queue, and birthday rows
+  // are not one — they are ฝ่ายบุคคล's alone. See birthdayActionPermission.
+  const may = birthdayActionPermission({ user, subject: employee._id });
   if (!may.ok) return fail(may.error, may.status);
 
   /**

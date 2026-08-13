@@ -2889,7 +2889,7 @@ function Policy({ user }) {
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="เช่น ฝ่ายบุคคลตอบ OPEN 3 ในที่ประชุม 5 ส.ค."
+            placeholder="เช่น ฝ่ายบุคคลตอบข้อ 3 ในที่ประชุม 5 ส.ค."
             disabled={busy}
           />
         </div>
@@ -2899,13 +2899,43 @@ function Policy({ user }) {
         <table>
           <thead><tr><th style={{ width: 80 }}>ข้อ</th><th>คำถาม</th><th>คำตอบปัจจุบัน</th></tr></thead>
           <tbody>
-            {POLICY_FIELDS.map((f) => (
+            {POLICY_FIELDS.map((f, i) => (
               <tr key={f.key}>
                 <td>
-                  {/* Rules that arrived after the twelve [OPEN] items have no
-                      number to carry, and printing "OPEN undefined" beside one
-                      would make it look like an item somebody forgot. */}
-                  {f.open ? `OPEN ${f.open}` : '—'}
+                  {/* The number alone. It used to read "OPEN 3", which is the
+                      requirements document's own label and means nothing to
+                      anybody reading this screen — the column is already headed
+                      ข้อ, so the word was repeating the heading in English.
+
+                      FOUR OF THE NUMBERS APPEAR TWICE (3, 4, 7, 9) and that is
+                      the structure rather than a mistake: one question can need
+                      more than one flag to answer it — ข้อ 4 asks what to do
+                      with a session under an hour AND what the hour is measured
+                      against, and neither half means anything alone. Dropping
+                      the word exposed that: "OPEN 7" twice read as a label
+                      repeated, "7" twice reads as a duplicate.
+
+                      So the number is printed once per question and the rows
+                      under it carry ↳. The cell cannot simply be merged with
+                      rowSpan — each row's own override marker lives in it, and
+                      those are per flag, not per question.
+
+                      Rules that arrived after the original twelve have no number
+                      to carry; they print — rather than an empty cell, so a row
+                      without one does not look like an item somebody forgot. */}
+                  {(() => {
+                    if (!f.open) return '—';
+                    const continues = i > 0 && POLICY_FIELDS[i - 1].open === f.open;
+                    if (!continues) return f.open;
+                    return (
+                      <span
+                        style={{ color: 'var(--muted-2)' }}
+                        title={`ข้อ ${f.open} เดียวกับแถวบน — คำถามนี้ต้องตอบมากกว่าหนึ่งค่า`}
+                      >
+                        ↳ {f.open}
+                      </span>
+                    );
+                  })()}
                   {/* "HR ตอบแล้ว" until 2026-08-13, which an override is not
                       evidence of — it says a value is stored, not who chose it
                       or whether anybody did. `minimumHoursScope` wore this and
@@ -2980,8 +3010,8 @@ function Policy({ user }) {
       </div>
 
       <div className="hint" style={{ marginTop: 14 }}>
-        OPEN 6 (กะงานต่างกันรายแผนก) ไม่ได้อยู่ในหน้านี้ — ถ้าคำตอบคือ “มี” จะต้องแก้โครงสร้างข้อมูล
-        ไม่ใช่แค่ปรับค่า · OPEN 10 และ 11 รองรับทั้งไฟล์และการกรอกเองอยู่แล้ว
+        ข้อ 6 (กะงานต่างกันรายแผนก) ไม่ได้อยู่ในหน้านี้ — ถ้าคำตอบคือ “มี” จะต้องแก้โครงสร้างข้อมูล
+        ไม่ใช่แค่ปรับค่า · ข้อ 10 และ 11 รองรับทั้งไฟล์และการกรอกเองอยู่แล้ว
       </div>
 
       <PolicyHistory versions={versions} unversioned={unversioned} live={live} />

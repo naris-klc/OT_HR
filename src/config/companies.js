@@ -50,10 +50,18 @@ export const COMPANIES = Object.freeze([
 export const COMPANY_KEYS = Object.freeze(COMPANIES.map((c) => c.key));
 
 /**
- * Where a code with no recognised prefix lands. Primus owns the system and the
- * non-roster accounts (HR-001, ADMIN) belong to it, so this is the safe side of
- * the guess — but it IS a guess, which is why both the CSV import and the
- * migration report every row that fell back here instead of matching.
+ * Where a code with no recognised prefix lands. Primus owns the system, so this
+ * is the safe side of the guess — but it IS a guess, which is why both the CSV
+ * import and the migration report every row that fell back here instead of
+ * matching.
+ *
+ * HR-001 and ADMIN are the two accounts that reach it, and neither is a person:
+ * they are logins added for the system, one per function. Everybody who works
+ * here — ฝ่ายบุคคล included — has their own PM- or THT- employee record, so
+ * `companyOf` places them by prefix and this line never decides anything about
+ * a human. Worth stating, because a birthday OT entry for somebody in ฝ่ายบุคคล
+ * lands on the right payroll sheet by the same prefix rule as everyone else's,
+ * under their own code, rather than by anything special here.
  */
 export const DEFAULT_COMPANY = 'primus';
 

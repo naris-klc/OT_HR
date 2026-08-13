@@ -141,8 +141,11 @@ test('บันทึกไว้แล้วว่าไม่ได้มา�
   assert.match(out.error, /ยกเลิกการบันทึก/);
 });
 
-test('เป้าหมายต้องเป็นพนักงานที่ขอ OT ได้ และยังไม่ถูกปิดใช้งาน', () => {
-  assert.equal(gate({ employee: { ...STAFF, role: 'manager' } }).status, 400);
+test('เป้าหมายต้องยังไม่ถูกปิดใช้งาน และต้องมีตัวตน', () => {
+  // `role: 'manager'` asserted a 400 here until 2026-08-13, borrowed from
+  // `maySubmitOt`. It was the wrong rule on this gate: §2 keeps หัวหน้า out of
+  // OT, and the birthday holiday is granted to everybody who comes in. Which
+  // roles the day is owed to is pinned in the block further down.
   assert.equal(gate({ employee: { ...STAFF, active: false } }).status, 409);
   assert.equal(gate({ employee: null }).status, 404);
 });
@@ -153,56 +156,105 @@ test('ไม่ส่ง today มา ต้อง throw ไม่ใช่เ�
 
 // ── who may press either button ───────────────────────────────────────────
 
-const claim = (user, department, delegations = []) => birthdayActionPermission({
-  user, department, delegations, today: '2026-08-10',
+const claim = (user, subject = null) => birthdayActionPermission({ user, subject });
+
+test('ฝ่ายบุคคลและผู้ดูแลระบบเท่านั้นที่กดได้ ไม่ว่าแผนกไหน', () => {
+  assert.equal(claim(HR).ok, true);
+  assert.equal(claim(HR).actor, 'hr');
+  assert.equal(claim(ADMIN).ok, true);
 });
 
-test('หัวหน้าเห็นและกดได้เฉพาะลูกทีมตัวเอง', () => {
-  assert.equal(claim(MGR, 'd1').ok, true);
-  assert.equal(claim(MGR, 'd1').actor, 'mgr');
-
-  const across = claim(OTHER_MGR, 'd1');
-  assert.equal(across.ok, false);
-  assert.equal(across.status, 403);
-});
-
-test('ฝ่ายบุคคลและผู้ดูแลระบบกดได้ทุกแผนก', () => {
-  assert.equal(claim(HR, 'd1').ok, true);
-  assert.equal(claim(HR, 'd1').actor, 'hr');
-  assert.equal(claim(ADMIN, 'd2').ok, true);
-});
-
-test('ผู้รับช่วงที่ยังไม่หมดอายุกดได้ หมดอายุแล้วกดไม่ได้', () => {
+test('หัวหน้างานกดรายการวันเกิดไม่ได้เลย แม้แต่ลูกทีมตัวเอง', () => {
   /**
-   * The same `departmentClaim` an approval runs through, over the same
-   * delegation rows — so a window that closes takes this screen with it on the
-   * same day and by the same rule, rather than by a second rule somebody has to
-   * remember to keep in step.
+   * It used to be `departmentClaim` — own team, plus any team held under a
+   * delegation. HR's answer on 2026-08-13 was that วันหยุดวันเกิด is theirs end
+   * to end and a หัวหน้า approves ordinary OT requests, which is the whole of
+   * their part. The justification agrees: the single-signature path exists
+   * because HR reads the fingerprint scanner's export, and a หัวหน้า pressing
+   * this would be signing against evidence they do not hold.
    */
-  const live = {
-    _id: 'dg1', from: MGR, to: OTHER_MGR, fromDate: '2026-08-01', toDate: '2026-08-31',
-  };
-  const stood = claim(OTHER_MGR, 'd1', [live]);
-  assert.equal(stood.ok, true);
-  assert.equal(stood.onBehalfOf, MGR, 'ต้องบันทึกได้ว่าใช้สิทธิ์ของใคร');
-  assert.equal(stood.delegationId, 'dg1');
-
-  const expired = { ...live, fromDate: '2026-07-01', toDate: '2026-07-31' };
-  assert.equal(claim(OTHER_MGR, 'd1', [expired]).ok, false);
-
-  // Ended early is the same as expired — and needs no undo anywhere.
-  const revoked = { ...live, revokedAt: new Date('2026-08-02') };
-  assert.equal(claim(OTHER_MGR, 'd1', [revoked]).ok, false);
+  const own = claim(MGR, STAFF._id);
+  assert.equal(own.ok, false);
+  assert.equal(own.status, 403);
+  assert.equal(claim(OTHER_MGR, STAFF._id).ok, false);
 });
 
-test('ไม่มีชุดกฎสิทธิ์ใหม่ — ใช้ departmentClaim ตัวเดียวกับ approvalPermission', () => {
+test('การรับช่วงอนุมัติไม่ทำให้กดรายการวันเกิดได้', () => {
+  // A ผู้รับช่วง holds an approval queue; birthday rows are not one. Nothing to
+  // pass here any more — the function does not read delegations at all, which is
+  // the point: there is no window through which a stand-in could arrive.
+  assert.equal(birthdayActionPermission({ user: OTHER_MGR }).ok, false);
+});
+
+// ── the guard that cannot fire yet ─────────────────────────────────────────
+
+test('กันการลงนามให้ตนเองไว้ แม้วันนี้จะยังไม่มีทางเกิดขึ้น', () => {
+  /**
+   * The roles that may ACT are function logins (HR-001, ADMIN); the roles that
+   * may be acted ON are people. The two sets do not meet, so nobody can reach
+   * their own row today. Pinned anyway: this is what stops a future widening of
+   * BIRTHDAY_SUBJECT_ROLES from creating self-approval somewhere nobody is
+   * looking — the same refusal `isOwnFiling` makes in the approval queue.
+   */
+  const own = claim(HR, HR._id);
+  assert.equal(own.ok, false);
+  assert.equal(own.status, 403);
+
+  assert.equal(claim(HR, STAFF._id).ok, true);
+  assert.equal(claim(ADMIN, HR._id).ok, true);
+});
+
+test('ไม่ส่ง subject มา คำตอบเท่าเดิมทุกประการ', () => {
+  // Callers asking only whether this user works with birthday rows at all must
+  // not start being refused for not naming a person.
+  assert.equal(claim(HR).ok, true);
+  assert.equal(claim(MGR).ok, false);
+});
+
+test('วันหยุดวันเกิดมีให้หัวหน้างานด้วย — เป็นวันหยุดของบริษัท ไม่ใช่ OT', () => {
+  // §2 is about FILING OT and is untouched: `maySubmitOt` still says employees
+  // only, and this gate deliberately no longer borrows it.
+  assert.equal(gate({ employee: { ...STAFF, role: 'employee' } }).ok, true);
+  assert.equal(gate({ employee: { ...STAFF, role: 'manager' } }).ok, true);
+});
+
+test('บัญชีระบบไม่อยู่ในข่าย — HR-001 กับ ADMIN ไม่ใช่คน', () => {
+  /**
+   * Not a benefit denied. Everybody who works here already has their own PM- or
+   * THT- employee record and is covered through that; HR-001 and ADMIN are
+   * logins added for the system, one per function. On the list they become
+   * permanent `uncheckable / missing` rows telling ฝ่ายบุคคล to fill in a birth
+   * date that will never exist — spending the warning that stops a half-filled
+   * roster reading as a clean month.
+   */
+  assert.equal(gate({ employee: { ...STAFF, role: 'hr' } }).status, 400);
+  assert.equal(gate({ employee: { ...STAFF, role: 'admin' } }).status, 400);
+  // A role the system does not have is refused too, so the list stays a
+  // decision on the record rather than an absent check.
+  assert.equal(gate({ employee: { ...STAFF, role: 'contractor' } }).status, 400);
+});
+
+test('บัญชีระบบยังกดรายการวันเกิดของคนอื่นได้ — คนละคำถามกับการได้สิทธิ์', () => {
+  assert.equal(claim(ADMIN, STAFF._id).ok, true);
+  assert.equal(claim(HR, STAFF._id).ok, true);
+});
+
+test('ไม่มีชุดกฎสิทธิ์ทีมเหลืออยู่ในเส้นทางวันเกิด', () => {
+  /**
+   * This used to assert the OPPOSITE — that lib/birthdayFiling.js imports
+   * `departmentClaim`, so the birthday buttons and the approval queue could
+   * never drift apart. Correct while a หัวหน้า could press them. Since
+   * 2026-08-13 they cannot, and the strongest version of the same guarantee is
+   * that no team rule reaches this file at all: nothing to keep in step, and no
+   * delegation window through which a stand-in could arrive.
+   */
   const filing = strip(readFileSync(join(ROOT, 'lib/birthdayFiling.js'), 'utf8'));
-  assert.match(filing, /import \{ departmentClaim \} from '\.\/delegation\.js'/);
   assert.ok(
-    !/isDepartmentManager|receivedOn|isLive/.test(filing),
-    'lib/birthdayFiling.js เขียนกฎสิทธิ์เองซ้ำ — จะเพี้ยนกับคิวอนุมัติวันใดวันหนึ่ง',
+    !/departmentClaim|isDepartmentManager|receivedOn|isLive/.test(filing),
+    'lib/birthdayFiling.js อ่านกฎทีมอีกแล้ว — รายการวันเกิดเป็นของฝ่ายบุคคลเท่านั้น',
   );
 
+  // The approval queue's own rule is untouched by any of this.
   const delegation = strip(readFileSync(join(ROOT, 'lib/delegation.js'), 'utf8'));
   assert.match(delegation, /export function departmentClaim/);
   assert.match(

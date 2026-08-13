@@ -175,6 +175,8 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
                   </td>
                   <td>{companyLabel(r.company)}</td>
                   <td>
+                    {/* Who to ring to find out whether they came in — not who
+                        may settle the row, which is ฝ่ายบุคคล on every row. */}
                     {r.managers.length > 0
                       ? r.managers.map((m) => m.name).join(' · ')
                       : <span style={{ color: 'var(--muted)' }}>ยังไม่มีหัวหน้าในแผนกนี้</span>}

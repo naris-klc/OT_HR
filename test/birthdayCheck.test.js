@@ -449,11 +449,18 @@ test('เส้นทางรายงานยังอ่านอย่า�
   assert.ok(!/export const (POST|PATCH|PUT|DELETE)/.test(code), 'route นี้ต้องไม่มีทางเขียนอะไรเลย');
   assert.ok(!/new OtEntry|entry\.save\(\)|BirthdayCheck\.create/.test(code), 'ต้องไม่สร้างอะไร');
 
-  // Opened to หัวหน้า, and scoped by the SAME rule the approval queue runs on —
-  // not by a role test written a second time here.
-  assert.match(code, /requireRole\(await requireAuth\(req\), 'manager', 'hr', 'admin'\)/);
+  /**
+   * ฝ่ายบุคคล and Admin only since 2026-08-13, decided by the SAME function the
+   * write routes refuse with rather than by a role test written a second time
+   * here. It used to assert `delegatedDepartments` — a หัวหน้า saw their own
+   * team and a ผู้รับช่วง the teams they held — and that scope is gone with the
+   * permission it existed to serve.
+   */
   assert.match(code, /birthdayActionPermission/);
-  assert.match(code, /delegatedDepartments/);
+  assert.ok(
+    !/delegatedDepartments|departmentClaim/.test(code),
+    'ขอบเขตทีมกลับมาแล้ว — รายการวันเกิดเป็นของฝ่ายบุคคลเท่านั้น',
+  );
 
   // The หัวหน้า's name still rides along: HR may still prefer to ring.
   assert.match(code, /role: 'manager'/);

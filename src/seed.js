@@ -38,8 +38,44 @@ const PEOPLE = [
   { code: 'PM-0102', name: 'สุนีย์ มั่นคง', position: 'ผู้จัดการฝ่าย QC', dept: 'QC', role: 'manager' },
   { code: 'PM-0103', name: 'อนันต์ ทรัพย์เจริญ', position: 'ผู้จัดการคลังสินค้า', dept: 'WH', role: 'manager' },
 
-  { code: 'HR-001', name: 'มาลี บุญมาก', position: 'เจ้าหน้าที่ฝ่ายบุคคล', dept: 'ADM', role: 'hr' },
-  { code: 'ADMIN', name: 'ผู้ดูแลระบบ', position: 'IT', dept: 'ADM', role: 'admin' },
+  /**
+   * The two function logins — NOT people, and named so that nobody reads them
+   * as people again.
+   *
+   * `HR-001` used to be seeded as "มาลี บุญมาก · เจ้าหน้าที่ฝ่ายบุคคล", which is
+   * how this database came to look as though ฝ่ายบุคคล were a member of the
+   * roster. They are not: everybody who works here has their own PM- or THT-
+   * code, and these two accounts were added for the system alone, one per
+   * function. The costly version of that confusion is putting `hr` or `admin`
+   * into BIRTHDAY_SUBJECT_ROLES, where an account that can never have a วันเกิด
+   * becomes a permanent "ยังไม่มีวันเกิดในระบบ" row nobody can ever clear.
+   *
+   * Neither carries a birthDate here, and neither should be given one.
+   */
+  { code: 'HR-001', name: 'ฝ่ายบุคคล', position: 'บัญชีระบบ', dept: 'ADM', role: 'hr' },
+  { code: 'ADMIN', name: 'ผู้ดูแลระบบ', position: 'บัญชีระบบ', dept: 'ADM', role: 'admin' },
+
+  /**
+   * …and the person who does that job, on the roster like everybody else.
+   *
+   * `role: 'employee'`, not 'hr': the role is what a login may DO, and the
+   * ฝ่ายบุคคล work is done from HR-001. This row is มาลี as a member of staff —
+   * she has a birthday, is owed the holiday, and it is settled from HR-001,
+   * which is a different account, so nothing self-approves. She is here rather
+   * than left out precisely so that path can be tested.
+   *
+   * `birthDate` is the only one in this file, and one is enough to work with:
+   * every other row lands in `uncheckable / missing`, which is itself the state
+   * the birthday screens most need to be seen in.
+   */
+  {
+    code: 'PM-0210',
+    name: 'มาลี บุญมาก',
+    position: 'เจ้าหน้าที่ฝ่ายบุคคล',
+    dept: 'ADM',
+    role: 'employee',
+    birthDate: '1990-08-15',
+  },
 
   { code: 'PM-0412', name: 'สมชาย ใจดี', position: 'ช่างเทคนิคอาวุโส', dept: 'ENG', role: 'employee' },
   { code: 'PM-0388', name: 'ธนพล เกษมสุข', position: 'วิศวกรระบบ', dept: 'ENG', role: 'employee' },
@@ -140,6 +176,10 @@ async function run() {
       position: p.position,
       department: depts.get(p.dept)._id,
       role: p.role,
+      // Only where the row has one. Absent is the ordinary state of this field
+      // on a real roster and the birthday screens are built around saying so, so
+      // seeding a date onto everybody would hide the case they exist for.
+      ...(p.birthDate ? { birthDate: p.birthDate } : {}),
     });
     await employee.setPassword(PASSWORD);
     await employee.save();
@@ -197,6 +237,9 @@ async function run() {
   console.log(`\nseeded ${DEPARTMENTS.length} departments, ${PEOPLE.length} people, ${HOLIDAYS.length} holidays`);
   console.log(`login with any code above, password: ${PASSWORD}`);
   console.log('  employee PM-0412 · manager PM-0100 · hr HR-001 · admin ADMIN');
+  // The one row with a วันเกิด, and the reason it is worth naming here: it is
+  // what makes วันเกิดรอตรวจ show anything at all on a fresh database.
+  console.log('  PM-0210 มาลี (ฝ่ายบุคคล, พนักงาน) เกิด 15 ส.ค. — ใช้ทดสอบวันหยุดวันเกิด');
 
   await disconnect();
 }

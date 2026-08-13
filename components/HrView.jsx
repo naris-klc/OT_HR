@@ -5,6 +5,7 @@ import {
   api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS, companyLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
+import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 import { capFigure, overCap, pendingCapNote } from '@/lib/caps.js';
 import { Alert, Empty, AddBirthDateHint, RateHead } from './common.jsx';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
@@ -376,7 +377,10 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
           one is scoped to the month on screen, because closing a period is a
           question about that period. The two numbers are meant to differ.
         */}
-        {data && (
+        {/* ฝ่ายบุคคล only since 2026-08-13 — the route refuses everybody else,
+            and a หัวหน้า opening สรุปทีม must not be shown a red error where a
+            section used to be. Same predicate the route decides with. */}
+        {data && birthdayActionPermission({ user }).ok && (
           <BirthdayMonth
             period={period}
             onOpenQueue={onOpenBirthdayQueue}
