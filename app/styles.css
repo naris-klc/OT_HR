@@ -1000,6 +1000,38 @@ thead th.check { vertical-align: middle; }
    clipped by twelve pixels — a control half off the edge of a row. */
 th.act-col { width: 258px; }
 
+/* AND IT STAYS ON SCREEN.
+
+   The width above only ever guaranteed the buttons fit their own cell. The
+   eleven columns come to 1262px, which is wider than the card on a laptop, so
+   .table-wrap scrolls — and the column that went off the right edge was the one
+   holding every control on the row. A reviewer had to push the table sideways
+   before they could press ยืนยัน, on the screen whose whole purpose is pressing
+   it, and รายละเอียด was cut in half by the card's edge in the ordinary case.
+
+   Pinning it is the fix rather than shaving widths off the columns to its left.
+   Each of those was measured against real content — the longest name on the
+   roster, the widest heading, the compound figure — and taking pixels back from
+   any of them re-breaks something that block was written to stop. The figures
+   scroll under the controls instead, and the controls never leave.
+
+   Above 860px only: the mobile layout wraps the buttons onto their own lines
+   (.row-actions in the breakpoint below) and a 258px column pinned to a 375px
+   screen would be most of it.
+
+   The background has to be opaque or the scrolling rows show through it, and it
+   has to answer to the row's own state — hence the three lines repeating the
+   hover and selection colours. `th` already carries a background of its own. */
+@media (min-width: 861px) {
+  .queue-table th.act-col,
+  .queue-table td.act-col { position: sticky; right: 0; }
+  .queue-table thead th.act-col { z-index: 2; }
+  .queue-table tbody td.act-col { z-index: 1; background: #fff; }
+  .queue-table tbody tr:hover td.act-col { background: var(--green-wash); }
+  .queue-table tbody tr.picked td.act-col { background: var(--green-tint); }
+  .queue-table tbody tr.picked:hover td.act-col { background: var(--green-bg); }
+}
+
 /* Prose, and the only cell in the row that is meant to wrap. Given a width
    rather than the leftover: under `table-layout: fixed` the leftover is
    whatever the other ten columns did not take, which on a narrow card was
@@ -1143,15 +1175,35 @@ tbody tr.picked:hover { background: var(--green-bg); }
 }
 .detail-sec .kicker-sm { margin-bottom: 0; }
 
-/* Label over value, one cell per fact, hairlines between — the same grid
-   ข้อมูลส่วนตัว uses, so a fact reads the same wherever it is stated. */
+/* Label over value, one cell per fact, hairlines between. The หน้าโปรไฟล์
+   equivalent is `.profile-facts`, which is its own rule at its own sizes — this
+   one is the รายละเอียด pop-up's, and nothing else uses it.
+
+   FLEX RATHER THAN GRID, and the reason is the empty cell it used to leave.
+   `repeat(auto-fit, minmax(150px, 1fr))` fixes the number of columns from the
+   width, so a row of four facts in a five-column grid left a fifth track with
+   nothing in it — and because the hairlines are drawn by the container's own
+   background showing through a 1px gap, "nothing in it" rendered as a grey box
+   at the end of the row. auto-fit could not collapse that track either: the
+   full-width fact below spans every column, so no column is ever empty in the
+   sense auto-fit means.
+
+   Flex has no tracks to leave empty. `flex: 1 1 150px` lets however many facts
+   land on a row share that row's whole width between them, so the row always
+   ends flush whether it holds two facts or five. */
 .fact-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex; flex-wrap: wrap;
   gap: 1px; margin: 0;
   background: var(--line-soft); border: 1px solid var(--line-soft);
   border-radius: var(--radius-xs); overflow: hidden;
 }
-.fact-grid > div { background: #fff; padding: 10px 12px; }
+.fact-grid > div { flex: 1 1 150px; background: #fff; padding: 10px 12px; }
+/* A fact whose value is a paragraph, on its own row. Cells on a row are as tall
+   as the tallest of them, so a four-line fact beside three one-line ones
+   stretched all four into tall empty boxes — see `Fact`'s `wide` in
+   components/ApprovalQueue.jsx. A basis of 100% takes the row on its own at
+   every width, with no breakpoint to keep in step. */
+.fact-grid > div.wide { flex-basis: 100%; }
 .fact-grid dt {
   font: 500 10.5px/1.4 var(--mono); letter-spacing: .09em;
   text-transform: uppercase; color: var(--muted-2); margin-bottom: 3px;

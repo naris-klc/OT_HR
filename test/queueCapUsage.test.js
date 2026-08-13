@@ -563,7 +563,11 @@ test('the queue column prints the same two lines ตรวจสอบราย�
  */
 test('everything the (?) held is still in the รายละเอียด pop-up', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  const from = queue.indexOf('k={`สะสมทั้งเดือน');
+  // Anchored on the pop-up's heading. A miss returns -1 and slices from the end
+  // of the file, which reads as a passing test over the wrong text — the trap
+  // `function WeekUsage` fell into when it was deleted — so it is asserted.
+  const from = queue.indexOf('k={`สะสม / เพดาน');
+  assert.ok(from > 0, 'the pop-up heading was renamed and this slice no longer finds it');
   const popup = queue.slice(from, queue.indexOf('<div className="split"', from));
 
   assert.match(queue.slice(from - 40, from + 60), /periodLabel\(e\.usage\.month\.period\)/, 'which month');
@@ -728,17 +732,52 @@ test('no cap cell in the CSV carries a slash, a unit, or a rendered figure', () 
 /**
  * The pop-up is where a reviewer goes to check a figure they distrust, so it
  * keeps everything — including the two sentences the row now folds away.
+ *
+ * IT LEADS WITH THE SAME NUMBER THE ROW LEADS WITH, and it used not to. The
+ * headline was `usedHours`: a row reading "7.5 / 40" opened onto a pop-up
+ * reading "38.5 / 40 ชม. (รวมใบที่รออนุมัติ)", both true, in the same larger
+ * type the row used for the other one. The qualifier had been carried across
+ * carefully and the figure under it had not, so the one screen built for
+ * settling a doubt about a number answered with a different number.
+ *
+ * `INCLUDES_PENDING` is gone from the cell with it. The label belonged to a
+ * headline that counted pending hours; the headline no longer does, and the
+ * sentence that does — `capNote`, from lib/caps.js — carries its own wording.
  */
 test('the รายละเอียด pop-up still shows the whole story', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  const from = queue.indexOf('k={`สะสมทั้งเดือน');
+  // Anchored on the pop-up's heading. A miss returns -1 and slices from the end
+  // of the file, which reads as a passing test over the wrong text — the trap
+  // `function WeekUsage` fell into when it was deleted — so it is asserted.
+  const from = queue.indexOf('k={`สะสม / เพดาน');
+  assert.ok(from > 0, 'the pop-up heading was renamed and this slice no longer finds it');
   const popup = queue.slice(from, queue.indexOf('<div className="split"', from));
 
-  assert.match(popup, /capFigure\(e\.usage\.month\.usedHours/, 'the pop-up stopped showing the ceiling total');
-  assert.match(popup, /INCLUDES_PENDING/, 'the pop-up lost its label');
+  assert.match(
+    popup,
+    /capFigure\(e\.usage\.month\.approvedHours/,
+    'the pop-up no longer leads with the figure its row leads with',
+  );
+  assert.doesNotMatch(
+    popup,
+    /capFigure\(e\.usage\.month\.usedHours/,
+    'the ceiling total is back in the headline, where it disagrees with the row',
+  );
+  // Nothing was dropped in the move — the ceiling total is still here, in the
+  // shared sentence, one line down.
+  assert.match(popup, /capNote\(e\.usage\.month\)/, 'the pop-up lost the ceiling total altogether');
   assert.match(popup, /splitLine\(e\.usage\.month\)/, 'the pop-up lost the split');
   assert.match(popup, /roomLine\(e\.usage\.month\)/, 'the pop-up lost the room left over');
   assert.match(popup, /รวมใบนี้ \$\{hours\(e\.usage\.month\.adding\)\} ชม\. แล้ว/);
+
+  // And the fact is a paragraph, so it takes a row of the grid rather than
+  // stretching every one-line fact beside it to its own height. `wide` sits
+  // above the `k` this slice starts at, so it is looked for either side.
+  assert.match(
+    queue.slice(from - 500, from),
+    /\bwide\b/,
+    'the สะสม fact shares a row with the short facts again',
+  );
 });
 
 /**

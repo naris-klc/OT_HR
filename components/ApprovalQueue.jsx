@@ -5,7 +5,7 @@ import {
   api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
 import {
-  INCLUDES_PENDING, capFigure, describeBreaches, overCap, overCapLine,
+  capFigure, describeBreaches, overCap, overCapLine,
   pendingCapNote, pendingSplitLine,
 } from '@/lib/caps.js';
 import {
@@ -1073,18 +1073,36 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
                   filled up since is exactly the difference. */}
               {e.usage?.month && (
                 <Fact
-                  k={`สะสมทั้งเดือน ${periodLabel(e.usage.month.period)}`}
+                  wide
+                  /* The column's own heading, plus the month it is about. Named
+                     "สะสมทั้งเดือน" until the two screens' headings were settled
+                     on สะสม / เพดาน — a pop-up opened from a column should not
+                     rename the column on the way. */
+                  k={`สะสม / เพดาน · ${periodLabel(e.usage.month.period)}`}
                   v={(
                     <span style={e.usage.month.exceeded ? OVER_CAP : undefined}>
-                      {capFigure(e.usage.month.usedHours, e.usage.month.capHours)} ชม.
-                      {/* The same label the row carries. A reviewer who opened
-                          this pop-up to check a figure they distrusted must not
-                          be shown the same number with the qualifier dropped. */}
-                      {splitLine(e.usage.month) && ` (${INCLUDES_PENDING})`}
+                      {/*
+                        THE ROW'S HEADLINE, NOT THE CEILING'S TOTAL.
+                        This led with `usedHours` — 38.5 where the row it was
+                        opened from led with 7.5. The qualifier was carried
+                        across faithfully and the NUMBER underneath it was not,
+                        so a reviewer who opened this pop-up because they
+                        distrusted the figure on the row was shown a different
+                        figure, in a larger type, with no way to tell which of
+                        the two the ceiling was about. Both numbers are still
+                        here; they are simply in the order the row, this cell
+                        and ตรวจสอบรายเดือน all now use.
+                      */}
+                      {capFigure(e.usage.month.approvedHours, e.usage.month.capHours)} ชม.
                     </span>
                   )}
                   sub={(
                     <>
+                      {/* The shared sentence, first — it is what carries the
+                          ceiling's own total now that the headline does not. */}
+                      {capNote(e.usage.month) && <div>{capNote(e.usage.month)}</div>}
+                      {/* Kept under it: the split names the pending hours
+                          outright (31), which the sentence above does not. */}
                       {splitLine(e.usage.month) && <div>{splitLine(e.usage.month)}</div>}
                       {roomLine(e.usage.month) && <div>{roomLine(e.usage.month)}</div>}
                       <div>
@@ -1539,9 +1557,18 @@ function roomLine(month) {
     pop-up cannot disagree about what over looks like. */
 const OVER_CAP = { color: 'var(--danger-ink)', fontWeight: 600 };
 
-function Fact({ k, v, sub }) {
+/**
+ * `wide` gives a fact the whole row instead of one column of it.
+ *
+ * The grid's cells stretch to the tallest of them, so one fact carrying four
+ * lines of explanation left the three or four one-line facts beside it as tall
+ * empty boxes — a band of white space across the pop-up, and a heading narrow
+ * enough to wrap "สะสมทั้งเดือน สิงหาคม 2569" onto two lines. A fact that is a
+ * paragraph rather than a value belongs on its own row.
+ */
+function Fact({ k, v, sub, wide = false }) {
   return (
-    <div>
+    <div className={wide ? 'wide' : undefined}>
       <dt>{k}</dt>
       <dd>{v}{sub && <div className="cell-sub">{sub}</div>}</dd>
     </div>
