@@ -300,6 +300,10 @@ function readDayType(dayTypes, dateStr) {
 // ── rounding ────────────────────────────────────────────────────────────────
 
 function roundMinutes(minutes, policy) {
+  // 'exact' — คิดตามจริงเป็นทศนิยม. A fourth answer to [OPEN 3] rather than a
+  // fourth block, so the increment is not read and not cleared: switching back
+  // to floor/ceil/nearest restores whichever block HR last chose.
+  if (policy.roundingMode === 'exact') return minutes;
   const inc = policy.roundingIncrementMinutes;
   if (!inc || inc <= 1) return minutes;
   const q = minutes / inc;
@@ -603,11 +607,41 @@ export function computeSession(session, options = {}) {
     });
   }
 
+  /**
+   * เวลาขั้นต่ำในการเริ่มนับ OT — the buffer, and the first question asked of a
+   * session: was any of this OT at all?
+   *
+   * Measured on the minutes AS WORKED — after the break, before rounding — for
+   * the reason HR gave it: 25 minutes under a 30-minute buffer is nought, and 35
+   * minutes goes on to the block like any other session. Reading it after
+   * rounding would let the block decide the buffer's answer, so that under
+   * floor/30 every session below 30 minutes was already nought and the setting
+   * did nothing, while under ceil/30 a 5-minute callout arrived at the buffer as
+   * a full half hour and passed it.
+   *
+   * `> 0` on the worked minutes, not `>= 0`: a session that produced no OT
+   * minutes at all — a Tuesday 09:00–12:00, entirely inside normal hours — never
+   * went near the buffer, and saying it was cut by one would name the wrong
+   * rule in the refusal the write paths are about to print.
+   */
+  const bufferMinutes = Number(policy.minimumBufferMinutes) || 0;
+  const workedMinutes = segments.reduce((s, x) => s + x.minutes, 0);
+  const belowBuffer = bufferMinutes > 0 && workedMinutes > 0 && workedMinutes < bufferMinutes;
+  if (belowBuffer) {
+    warnings.push({
+      code: 'BELOW_BUFFER_ZEROED',
+      minutes: workedMinutes,
+      bufferMinutes,
+      message: `${workedMinutes} min of OT is under the ${bufferMinutes}-minute buffer `
+        + 'and is not counted as OT.',
+    });
+  }
+
   // `segments` is the session as worked (after the break); `workingSegments` is
   // what [OPEN 3] left of it. The minimum rule reads both — see `minimumPiles`,
   // which is where the two are paired up — so that a short session rounding away
   // to zero is still caught rather than silently becoming a 0-hour entry.
-  const workingSegments = applyRounding(segments, policy);
+  const workingSegments = belowBuffer ? [] : applyRounding(segments, policy);
 
   // [OPEN 4] The minimum — per entry ('sheet') or per rate column ('bucket').
   const minimumMinutes = policy.minimumHours * 60;
@@ -629,7 +663,16 @@ export function computeSession(session, options = {}) {
   /** Set when 'raise' had to re-create a column that rounding had emptied. */
   let seeded = false;
 
-  for (const pile of minimumPiles(segments, workingSegments, policy)) {
+  /**
+   * A buffered session skips the minimum entirely, and that is the whole reason
+   * the two rules are ordered rather than merged. Left in, `belowMinimum:
+   * 'raise'` would find a pile worth nought, pad it to a full hour, and hand
+   * back more than the 25 minutes anybody worked — the buffer's answer inverted
+   * by the rule that runs after it. There is nothing short here to raise: the
+   * session is not short OT, it is not OT.
+   */
+  const piles = belowBuffer ? [] : minimumPiles(segments, workingSegments, policy);
+  for (const pile of piles) {
     const worked = pile.before.reduce((s, x) => s + x.minutes, 0);
     const counted = pile.after.reduce((s, x) => s + x.minutes, 0);
     // A pile nobody worked is not short, it is absent — under bucket scope that
@@ -736,6 +779,17 @@ export function computeSession(session, options = {}) {
      * than the absence of one.
      */
     belowMinimumFlagged,
+    /**
+     * เวลาขั้นต่ำในการเริ่มนับ OT cut this session to nought — see where it is
+     * set above. Always present, like `belowMinimumFlagged` beside it, and never
+     * true at the same time as that one: a buffered session skips the minimum.
+     *
+     * It never reaches an OtEntry, because an entry this is true of is refused
+     * rather than stored (`otHours <= 0` on every write path). It is on the
+     * result so that the preview, and the refusal message, can say which rule
+     * emptied a session that was filled in correctly.
+     */
+    belowBufferZeroed: belowBuffer,
     warnings,
   };
 }

@@ -52,7 +52,7 @@ export const PATCH = route(async (req, { params }) => {
   // Same refusal and the same sentence as the submit path — an edit that leaves
   // no OT is the same mistake, arriving one screen later.
   if (result.totals.otHours <= 0) {
-    return fail(noOtHoursMessage(session, ctx.policy, ctx.dayTypes), 400, {
+    return fail(noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result), 400, {
       warnings: result.warnings,
     });
   }

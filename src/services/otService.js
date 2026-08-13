@@ -18,13 +18,14 @@ import {
   summariseEntries,
   capUsage,
   addDays,
+  OtValidationError,
 } from '../lib/otEngine.js';
 import PolicyReplayRun from '../models/PolicyReplayRun.js';
 import {
   CAP_STATUSES, capBreaches, monthWindowOf, overCap, periodOf, usageInMonth, usageInWeeks,
   weekEndOf, weekLabel, weeksOfEntry,
 } from '../../lib/caps.js';
-import { idOf } from '../../lib/entries.js';
+import { idOf, noOtHoursMessage } from '../../lib/entries.js';
 import { latestPerSession } from '../../lib/reports.js';
 import {
   planRecompute, samePolicy, figuresMoved, summariseReplay,
@@ -729,6 +730,31 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
       });
 
       const result = computeSession(session, ctx);
+
+      /**
+       * The fifth write path, holding the rule the other four hold: an entry is
+       * never stored as a nought.
+       *
+       * A replay can empty one where a submission cannot, because the times were
+       * filled in under rules that counted them and the rules have since moved —
+       * เวลาขั้นต่ำในการเริ่มนับ OT is the case it was written for, and a raised
+       * increment or a shifted core boundary can do it too. Written through, the
+       * entry stays in its queue reading 0 ชม., which is exactly what
+       * `noOtHoursMessage` exists to keep out of a queue, off F-HR-027 and out of
+       * a monthly total.
+       *
+       * So it fails instead: the entry keeps the hours it was filed with, and
+       * the run reports it. `belowMinimum: 'reject'` already lands here by
+       * throwing from the engine, and this is the same outcome for the answer
+       * that returns a nought rather than refusing.
+       */
+      if (result.totals.otHours <= 0) {
+        throw new OtValidationError(
+          'NO_OT_HOURS',
+          `กฎใหม่ทำให้รายการนี้ไม่เหลือชั่วโมง OT — ${noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result)}`,
+        );
+      }
+
       applyComputation(entry, result, ctx);
 
       // Only when it actually moved: a replay that lands on the same figures

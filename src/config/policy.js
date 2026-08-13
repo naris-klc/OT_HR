@@ -49,10 +49,40 @@ export const DEFAULT_POLICY = Object.freeze({
   breakPerCalendarDay: true,
 
   // ── [OPEN 3] Round down, up, or to nearest 30 minutes? ─────────────────────
-  /** 'floor' | 'ceil' | 'nearest'. Default 'floor': never over-reports hours. */
+  /**
+   * 'floor'   — ปัดลงทั้งหมด (DEFAULT: never over-reports hours).
+   * 'ceil'    — ปัดขึ้นทั้งหมด.
+   * 'nearest' — ปัดเข้าหาค่าใกล้ที่สุด.
+   * 'exact'   — คิดตามจริงเป็นทศนิยม: no rounding at all, and
+   *             `roundingIncrementMinutes` is not read.
+   *
+   * 'exact' is a fourth ANSWER to [OPEN 3] and not a fourth increment. The other
+   * three all ask "to which block", and switching the block off is not a value
+   * that block can take — `roundingIncrementMinutes: 0` did it as a side effect
+   * of an increment nothing divides by, which is a behaviour rather than a
+   * stated rule, and it is not something the settings page could have offered
+   * without a row reading "ปัดทีละ 0 นาที".
+   *
+   * The increment is left stored and untouched under 'exact', so switching back
+   * to floor/ceil/nearest restores the block HR last chose rather than an
+   * absent one.
+   */
   roundingMode: 'floor',
   /**
-   * Increment in minutes.
+   * Increment in minutes — the block a session's minutes are rounded to under
+   * 'floor', 'ceil' and 'nearest'. Not read under 'exact'.
+   *
+   * The settings page offers 5, 10, 15, 30 and 60. Any positive number computes;
+   * an increment of 0 or 1 is the same as no rounding, which is what 'exact'
+   * says out loud and is why the dropdown does not offer it.
+   *
+   * ⚠ HOURS ARE STORED TO TWO DECIMAL PLACES (`minutesToHours`), and five- and
+   * ten-minute blocks do not land on two decimals — 20 minutes is 0.33 h, and
+   * two such columns print 0.33 + 0.33 against a total of 0.67. The same is true
+   * of 'exact'. Blocks of 15, 30 and 60 are exact at two decimals and cannot
+   * drift. Nothing is lost — every figure is stored in the same unit it is
+   * printed in — but a form whose columns miss its total by 0.01 is a question
+   * somebody will ask, and this is the answer.
    *
    * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ตั้งตามพฤติกรรมเดิม. 30 is what the
    * requirements doc says and what every figure in the database was computed
@@ -68,6 +98,48 @@ export const DEFAULT_POLICY = Object.freeze({
    *             largest bucket.
    */
   roundingScope: 'bucket',
+
+  // ── เวลาขั้นต่ำในการเริ่มนับ OT ─────────────────────────────────────────────
+  /**
+   * The buffer, in minutes. A session whose OT comes to less than this counts as
+   * nought — it is not rounded, not flagged and not padded, it simply is not OT.
+   * At or above it, the session goes on to rounding like any other.
+   *
+   * 0 — off (DEFAULT). Every minute of OT counts, which is what the system has
+   * always done and what every figure in the database was computed with. A
+   * shipped default of anything else would restate hours on the first deploy for
+   * a rule nobody had switched on.
+   *
+   * NOT A SECOND `minimumHours`, and the two are read in that order:
+   *
+   *   this one  — is there any OT at all? Measured on the minutes as worked,
+   *               after the break and BEFORE rounding, so a 25-minute callout
+   *               under a 30-minute buffer is nought whatever the block would
+   *               have made of it. Answered "no", nothing downstream runs.
+   *   the other — the OT there is came to less than `minimumHours`; accept it
+   *               and flag it, pad it, or refuse the entry.
+   *
+   * The order is what keeps `belowMinimum: 'raise'` from undoing the buffer. Pad
+   * first and a 25-minute callout comes back as a full hour, which is the
+   * opposite of both answers at once. So a buffered session skips the minimum
+   * entirely — there is nothing short left to raise.
+   *
+   * MEASURED ON THE WHOLE ENTRY, not per rate column, and `minimumHoursScope`
+   * does not reach it. That flag is the scope of the 1-hour minimum, which is a
+   * question about how short work is treated; this asks whether the session was
+   * OT, and a session is one thing whatever mix of columns it lands in. A Friday
+   * night running into Saturday is not two attendances.
+   *
+   * A session buffered to nought is REFUSED at the form rather than stored as a
+   * nought — every write path already refuses `otHours <= 0`, and
+   * `noOtHoursMessage` in lib/entries.js names the buffer when that is the
+   * reason. A replay refuses too: an entry already filed keeps the hours it was
+   * filed with and is reported as failed, rather than being quietly emptied.
+   *
+   * ARITHMETIC (see ARITHMETIC_KEYS in lib/policyVersion.js). Raising it
+   * restates entries still in flight; approved ones do not move.
+   */
+  minimumBufferMinutes: 0,
 
   // ── [OPEN 4] Session under the 1-hour minimum: accept, raise or refuse? ────
   /**
@@ -359,9 +431,18 @@ export const HR_UNCONFIRMED_SINCE = '2026-08-07';
 export const HR_UNCONFIRMED = Object.freeze([
   Object.freeze({
     id: 'roundingIncrement',
-    label: 'ปัดเศษชั่วโมง OT ทีละกี่นาที',
-    keys: Object.freeze(['roundingMode']),
-    reading: (policy) => `ทีละ ${policy.roundingIncrementMinutes} นาที`,
+    /**
+     * The badge used to sit on `roundingMode`, because the increment was a
+     * number in this file with no row on the settings page to wear it — the
+     * same stand-in `minimumScope` had, and retired the same way. The increment
+     * has its own dropdown now, so the badge moved onto the flag the question is
+     * actually about. `roundingMode` is not unconfirmed: 'floor' is the
+     * requirements doc's own recommendation.
+     */
+    keys: Object.freeze(['roundingIncrementMinutes']),
+    reading: (policy) => (policy.roundingMode === 'exact'
+      ? 'ไม่ปัดเศษ — คิดตามจริงเป็นทศนิยม'
+      : `ทีละ ${policy.roundingIncrementMinutes} นาที`),
     note: 'ค่าที่ใช้อยู่คือ 30 นาที (ครึ่งชั่วโมง) ตามเอกสารข้อกำหนดและตามที่ทุกใบในระบบถูกคำนวณมา '
       + '· ถ้าคำตอบคือชั่วโมงเต็ม ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
   }),

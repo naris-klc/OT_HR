@@ -572,6 +572,31 @@ test('ถ้าวันนั้นเป็นวันหยุดอยู�
   assert.ok(!/ไม่นับเป็น OT/.test(message));
 });
 
+test('ใบที่ถูกตัดด้วยเวลาขั้นต่ำ ต้องบอกว่าเป็นเพราะเวลาขั้นต่ำ ไม่ใช่ให้ไปแก้เวลา', () => {
+  // 17:00–17:25 on a Wednesday under a 30-minute buffer. The date is right, the
+  // times are right and the session did produce OT — it is only that HR set a
+  // floor under it. Every other sentence here sends somebody back to a form
+  // that has nothing wrong with it.
+  const buffered = { ...ON, minimumBufferMinutes: 30 };
+  const session = { workDate: '2026-08-05', startTime: '17:00', endTime: '17:25' };
+  const dayTypes = resolveDayTypes(sessionDates(session), { isHoliday, birthDate: null, policy: buffered });
+  const result = computeSession(session, { policy: buffered, dayTypes });
+
+  assert.equal(result.totals.otHours, 0);
+  assert.equal(result.belowBufferZeroed, true);
+
+  const message = noOtHoursMessage(session, buffered, dayTypes, result);
+  assert.match(message, /25 นาที/, 'บอกว่าทำไปเท่าไร');
+  assert.match(message, /30 นาที/, 'และเทียบกับเกณฑ์ที่ตั้งไว้');
+  assert.match(message, /ไม่ต้องแก้/);
+  assert.ok(!/วันทำงานปกติ/.test(message), 'ต้องไม่โทษเส้น 08:00–17:00');
+
+  // Without the result there is nothing to say it was the buffer, so the
+  // sentence falls back rather than guessing — which is why every write path
+  // passes it.
+  assert.match(noOtHoursMessage(session, buffered, dayTypes), /วันทำงานปกติ/);
+});
+
 test('ทุกเส้นทางที่เขียนใบ ใช้ข้อความเดียวกัน', () => {
   // Four write paths on two servers. A copy per route is four sentences to keep
   // in step, and the one that drifts is the one somebody reads.
@@ -581,7 +606,10 @@ test('ทุกเส้นทางที่เขียนใบ ใช้ข�
     'src/routes/entries.js',
   ]) {
     const src = readFileSync(join(ROOT, file), 'utf8');
-    assert.match(src, /noOtHoursMessage\(session, ctx\.policy, ctx\.dayTypes\)/, file);
+    // `result` and not just the session: เวลาขั้นต่ำในการเริ่มนับ OT is the one
+    // reason a nought needs the engine's answer to explain, and a path that
+    // dropped it would print "08:00–17:00 ไม่นับเป็น OT" at a form that is right.
+    assert.match(src, /noOtHoursMessage\(session, ctx\.policy, ctx\.dayTypes, result\)/, file);
     assert.ok(
       !/'ช่วงเวลานี้อยู่ในเวลาทำงานปกติทั้งหมด/.test(src),
       `${file} ยังมีข้อความเดิมฝังอยู่`,

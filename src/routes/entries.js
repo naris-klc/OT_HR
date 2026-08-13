@@ -119,7 +119,7 @@ router.post('/', wrap(async (req, res) => {
 
   if (result.totals.otHours <= 0) {
     return res.status(400).json({
-      error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes),
+      error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result),
       warnings: result.warnings,
     });
   }
@@ -198,7 +198,7 @@ router.patch('/:id', wrap(async (req, res) => {
   const result = await compute(session, ctx);
   if (result.totals.otHours <= 0) {
     return res.status(400).json({
-      error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes),
+      error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result),
       warnings: result.warnings,
     });
   }

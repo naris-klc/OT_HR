@@ -2514,8 +2514,50 @@ const POLICY_FIELDS = [
     options: [[true, 'หักตามจำนวนวันที่คาบเกี่ยว'], [false, 'หักครั้งเดียวเสมอ']],
   },
   {
-    key: 'roundingMode', open: 3, label: 'การปัดเศษ 30 นาที',
-    options: [['floor', 'ปัดลง'], ['ceil', 'ปัดขึ้น'], ['nearest', 'ปัดใกล้ที่สุด']],
+    key: 'roundingMode', open: 3, label: 'วิธีการปัดเศษชั่วโมง OT',
+    options: [
+      ['floor', 'ปัดลงทั้งหมด (ค่าเริ่มต้น)'],
+      ['ceil', 'ปัดขึ้นทั้งหมด'],
+      ['nearest', 'ปัดเข้าหาค่าใกล้ที่สุด'],
+      ['exact', 'คิดตามจริงเป็นทศนิยม — ไม่ปัดเศษ'],
+    ],
+    hint: 'ปัดทีละกี่นาทีตั้งได้ในแถวถัดไป '
+      + '· เลือก “คิดตามจริง” แล้วระบบจะไม่ปัดเลย และไม่อ่านค่าบล็อกนาทีในแถวถัดไป '
+      + '(ค่าที่ตั้งไว้ยังอยู่ กลับมาเลือกปัดลง/ขึ้น/ใกล้ที่สุดเมื่อไรก็ใช้ค่าเดิม) '
+      + '· ปัดแยกทีละช่องอัตรา ไม่ได้ปัดที่ยอดรวมแล้วเกลี่ยกลับ '
+      + '· เปลี่ยนแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ',
+  },
+  {
+    key: 'roundingIncrementMinutes', open: 3, label: 'ปัดเศษทีละกี่นาที', num: true,
+    options: [
+      [5, 'ทุก 5 นาที'],
+      [10, 'ทุก 10 นาที'],
+      [15, 'ทุก 15 นาที'],
+      [30, 'ทุก 30 นาที (ครึ่งชั่วโมง — ค่าเริ่มต้น)'],
+      [60, 'ทุก 60 นาที (ชั่วโมงเต็ม)'],
+    ],
+    hint: 'ไม่มีผลเมื่อวิธีการปัดเศษข้างบนคือ “คิดตามจริงเป็นทศนิยม” '
+      + '· ชั่วโมงถูกเก็บเป็นทศนิยม 2 ตำแหน่ง — 15, 30 และ 60 นาทีลงตัวพอดี '
+      + 'แต่ 5 และ 10 นาทีไม่ลงตัว เช่น 20 นาที = 0.33 ชม. ผลรวมของช่องอัตราจึงอาจต่างจากยอดรวมได้ 0.01 ชม. '
+      + '· เปลี่ยนแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ',
+  },
+  {
+    key: 'minimumBufferMinutes', label: 'เวลาขั้นต่ำในการเริ่มนับ OT', num: true,
+    options: [
+      [0, 'ไม่ใช้ — นับทุกนาทีที่ทำ (ค่าเริ่มต้น)'],
+      [5, 'ต้องทำอย่างน้อย 5 นาที'],
+      [10, 'ต้องทำอย่างน้อย 10 นาที'],
+      [15, 'ต้องทำอย่างน้อย 15 นาที'],
+      [30, 'ต้องทำอย่างน้อย 30 นาที'],
+      [60, 'ต้องทำอย่างน้อย 60 นาที'],
+    ],
+    hint: 'ทำ OT ไม่ถึงเวลานี้ ระบบมองเป็น 0 ทันที ไม่นำไปปัดเศษและไม่บันทึกใบ '
+      + '— ตั้งไว้ 30 นาที ทำ 25 นาทีจะไม่ถูกนับ ส่วน 35 นาทีจะเข้ากระบวนการปัดเศษต่อตามนโยบาย '
+      + '· วัดจากนาที OT หลังหักเวลาพัก ก่อนปัดเศษ และวัดทั้งใบรวมกัน ไม่ได้แยกทีละช่องอัตรา '
+      + '· คนละข้อกับ “ต่ำกว่าขั้นต่ำ 1 ชม.” ข้างล่าง — ข้อนี้ถามว่ามี OT ไหม ข้อนั้นถามว่า OT ที่มีสั้นเกินไปแล้วจะทำอย่างไร '
+      + 'ใบที่ถูกตัดด้วยข้อนี้จะไม่ถูกปัดขึ้นเป็น 1 ชม. และไม่ติดธง เพราะไม่มี OT ให้ปัด '
+      + '· เปลี่ยนแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่คำนวณแล้วเหลือ 0 ชม. จะถูกข้ามและรายงานว่าไม่สำเร็จ '
+      + 'โดยยังคงชั่วโมงเดิมไว้ · ใบที่อนุมัติแล้วไม่ขยับ',
   },
   {
     key: 'belowMinimum', open: 4, label: 'ต่ำกว่าขั้นต่ำ 1 ชม.',
@@ -2780,9 +2822,28 @@ function Policy({ user }) {
       const stamped = res.versionCreated && res.policyVersion
         ? ` · บันทึกเป็นเวอร์ชัน ${res.policyVersion.seq}`
         : '';
+      /**
+       * Failures were counted by the replay and printed by nobody.
+       *
+       * A rule can leave an entry that cannot be recomputed — เวลาขั้นต่ำในการ
+       * เริ่มนับ OT empties short ones, `belowMinimum: 'reject'` refuses them —
+       * and the replay's answer is to skip it and keep the hours it was filed
+       * with. That is the right answer and it is silent: the save reads
+       * "คำนวณใหม่ 10 รายการ" while two entries in the queue are still on the
+       * old rules with nothing anywhere saying which two.
+       */
+      const failures = res.recomputed?.failed || [];
+      // The reason, not just the count. There is no screen listing replay runs,
+      // so a bare number would be a fact nobody could act on; the first message
+      // is what every entry in the list fails for when a rule empties them, and
+      // the ones that differ are rare enough to be worth a second save to see.
+      const skipped = failures.length
+        ? ` · ข้าม ${failures.length} รายการที่คำนวณใหม่ไม่ได้ ยังคงชั่วโมงเดิมไว้`
+          + `${failures[0]?.error ? ` — ${failures[0].error}` : ''}`
+        : '';
       setMsg(res.recomputed?.updated
-        ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ`
-        : `บันทึกแล้ว${stamped}`);
+        ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ${skipped}`
+        : `บันทึกแล้ว${stamped}${skipped}`);
       setNote('');
       load();
     } catch (err) { setError(err.message); } finally { setBusy(false); }

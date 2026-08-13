@@ -163,7 +163,29 @@ test('a confirmed item carries who and when; an unconfirmed one carries null', (
 test('confirming one item does not clear the badge on the others', () => {
   const keys = unconfirmedKeys({ belowMinimumAction: confirmationRecord({ name: 'สมชาย' }, new Date(0)) });
   assert.equal(keys.has('belowMinimum'), false);
-  assert.equal(keys.has('roundingMode'), true);
+  assert.equal(keys.has('roundingIncrementMinutes'), true);
+});
+
+test('the rounding increment’s badge sits on the increment, not on the mode', () => {
+  // Same move `minimumScope` made below, for the same reason. The increment was
+  // a number in src/config/policy.js with no row on the settings page, so the
+  // badge borrowed `roundingMode`'s row; the increment has its own dropdown now.
+  // `roundingMode` is not an unconfirmed rule — 'floor' is the requirements
+  // doc's own recommendation — and a badge left on it would say it was.
+  const item = HR_UNCONFIRMED.find((i) => i.id === 'roundingIncrement');
+  assert.deepEqual(item.keys, ['roundingIncrementMinutes']);
+  assert.equal(unconfirmedKeys({}).has('roundingMode'), false);
+});
+
+test('the increment’s reading says so when no rounding is happening at all', () => {
+  // 'exact' is a fourth answer to [OPEN 3] and it makes the increment inert.
+  // A page reading "ทีละ 30 นาที" beside an engine that rounds nothing would be
+  // the one thing `reading` exists to prevent.
+  const readingOf = (policy) => unconfirmedState({ ...DEFAULT_POLICY, ...policy }, {})
+    .find((i) => i.id === 'roundingIncrement').reading;
+
+  assert.equal(readingOf({ roundingIncrementMinutes: 15 }), 'ทีละ 15 นาที');
+  assert.match(readingOf({ roundingMode: 'exact' }), /ไม่ปัดเศษ/);
 });
 
 test('the minimum’s scope now has a flag, and its badge sits on it', () => {

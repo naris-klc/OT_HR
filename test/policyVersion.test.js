@@ -51,6 +51,19 @@ test('the flags that move numbers are the ones that make figures incomparable', 
   assert.equal(sameArithmetic(DEFAULT_POLICY, rounded), false);
 });
 
+test('the rounding block and the OT buffer both move numbers', () => {
+  // Both are settings HR turns from the page, and both restate hours: one
+  // changes what a session rounds to, the other whether it is OT at all.
+  // Classified COSMETIC, `savePolicy` would skip the replay and the banner would
+  // call a month comparable across the change that emptied half of it.
+  assert.equal(
+    sameArithmetic(DEFAULT_POLICY, { ...DEFAULT_POLICY, roundingIncrementMinutes: 15 }), false,
+  );
+  assert.equal(
+    sameArithmetic(DEFAULT_POLICY, { ...DEFAULT_POLICY, minimumBufferMinutes: 30 }), false,
+  );
+});
+
 test('a permission change is a new policy but the same arithmetic', () => {
   const permission = { ...DEFAULT_POLICY, hrMayReject: false, hrRejectReturnsTo: 'manager' };
   assert.equal(samePolicy(DEFAULT_POLICY, permission), false);

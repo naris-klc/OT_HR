@@ -216,7 +216,7 @@ signed-off number is worse than an inconsistency.
 |---|---|---|---|
 | 1 | Break on every session? | Only the part overlapping 12:00–13:00 | `breakMode: 'lunchWindow'` |
 | 2 | Overnight: one break or two? | One per lunch window crossed | `breakPerCalendarDay: true` |
-| 3 | Round down / up / nearest? | Down, per bucket | `roundingMode: 'floor'` |
+| 3 | Round down / up / nearest? | Down, per bucket, to 30-minute blocks | `roundingMode: 'floor'`, `roundingIncrementMinutes: 30` |
 | 4 | Under 1 hour: accept, raise or reject? | Accept the real hours, flag for HR ⚠ | `belowMinimum: 'accept'` |
 | 5 | OT starts 17:00 or 17:01? | 17:00 — 17:00–20:00 is 3 h | `otStartsAtCoreEnd: true` |
 | 6 | Per-department shifts? | No | `shiftPatternsEnabled: false` |
@@ -232,6 +232,53 @@ Two later flags sit beside them, both COSMETIC and neither an [OPEN] item:
 `proxySkipsOwnApproval` (default `true`) and `proxyNoteOnForm` (default
 `false`) — see [หัวหน้าบันทึก OT แทนลูกทีม](#หัวหน้าบันทึก-ot-แทนลูกทีม).
 
+### What HR sets about the arithmetic itself
+
+Three of the rows above are the whole of how a session's minutes become hours,
+and they are read in this order — break, buffer, block, minimum:
+
+| Setting | Flag | Offered | Ships as |
+|---|---|---|---|
+| วิธีการปัดเศษ | `roundingMode` | ปัดลงทั้งหมด · ปัดขึ้นทั้งหมด · ปัดเข้าหาค่าใกล้ที่สุด · คิดตามจริงเป็นทศนิยม | `'floor'` |
+| ปัดเศษทีละกี่นาที | `roundingIncrementMinutes` | 5 · 10 · 15 · 30 · 60 | `30` ⚠ |
+| เวลาขั้นต่ำในการเริ่มนับ OT | `minimumBufferMinutes` | ไม่ใช้ · 5 · 10 · 15 · 30 · 60 | `0` — off |
+
+**`'exact'` is a fourth answer, not a fourth block.** It rounds nothing and does
+not read the increment — and does not clear it either, so switching back to
+floor/ceil/nearest restores whichever block HR last chose.
+
+**The buffer is not a second `minimumHours`.** They answer different questions
+and run in that order:
+
+- **The buffer** asks *was any of this OT at all?* Measured on the minutes as
+  worked — after the break, **before** rounding, so 25 minutes under a 30-minute
+  buffer is nought whatever the block would have made of it, and 35 minutes goes
+  on to the block like any other session. Measured on the **whole entry**;
+  `minimumHoursScope` is the 1-hour minimum's scope and does not reach it.
+- **`belowMinimum`** asks *the OT there is came to less than an hour — accept it
+  and flag it, pad it, or refuse the entry?*
+
+A session the buffer zeroed **skips the minimum entirely**. That ordering is the
+point: run the other way, `belowMinimum: 'raise'` would pad a 25-minute callout
+back up to a full hour and invert both answers at once. There is nothing short
+left to raise — the session is not short OT, it is not OT.
+
+Such a session is **refused at the form** rather than stored as a nought, like
+every other 0-hour result (see [A request that computes to nothing is refused, in
+words](#a-request-that-computes-to-nothing-is-refused-in-words)) — and the
+sentence names the buffer, because the date, the times and the length are all
+correct and every other explanation would send somebody back to a form that is
+already right. A replay refuses too: an entry already filed keeps the hours it
+was filed with and is reported as skipped, rather than being quietly emptied in
+somebody's queue.
+
+⚠ **Five- and ten-minute blocks, and `'exact'`, do not land on two decimals.**
+Hours are stored to 2 dp throughout (`minutesToHours`), so 20 minutes is 0.33 h
+and two such columns can print 0.33 + 0.33 against a total of 0.67. Nothing is
+lost — every figure is stored in the unit it is printed in — but a form whose
+columns miss its total by 0.01 is a question somebody will ask. Blocks of 15, 30
+and 60 are exact at two decimals and cannot drift.
+
 ### ⚠ Three of these are guesses, and the system says so
 
 "Default" covers two very different things, and printing both the same way is
@@ -242,7 +289,7 @@ never confirmed by anyone in HR, and each one moves hours.
 
 | Question | What the system does today | Why it is that |
 |---|---|---|
-| Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with |
+| Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with. The badge used to sit on `roundingMode`'s row for want of one of its own; the increment has its own dropdown now, so it moved. `roundingMode` is *not* unconfirmed — `'floor'` is the doc's own recommendation |
 | Under the 1-hour minimum | Record the hours actually worked and flag the entry (`belowMinimumFlagged`) | The reading that keeps every answer open. It was `'reject'` — read off a `'reject'` override that sat in `settings` against a file saying `'raise'` — and refusing the entry means not recording work that was done, which is a liability rather than a conservative default. HR has still not answered, so the badge stays |
 | What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h (`minimumHoursScope: 'sheet'`) | `computeSession` has only ever done it this way, and it is the reading that refuses least. The per-column reading is `'bucket'`: the same rule asked of each rate column, so a Friday-night shift running into Saturday is measured twice. Having a flag is not an answer — HR still has not given one, and the badge now sits on the dropdown |
 
@@ -255,9 +302,16 @@ engine. See [`src/config/policy.js`](src/config/policy.js) (`HR_UNCONFIRMED`),
 [`lib/policyConfirmations.js`](lib/policyConfirmations.js) and
 `test/policyConfirmation.test.js`.
 
-The third has no dropdown — a rule the engine has and the policy has no key for
-— so it gets a read-only row of its own. Left off the page it would be the only
-unconfirmed rule with nothing anywhere saying so.
+All three sit on a dropdown now. Two of them did not: the minimum's scope was a
+rule the engine had and the policy had no key for, and the rounding increment
+was a number in `src/config/policy.js` with no row on the page. Both borrowed a
+neighbouring row, or none at all, until the flag they are about existed. Having
+a dropdown is not an answer — HR has still not given one, and the badge moved
+onto the control rather than off the page.
+
+An item with **no** `keys` remains a supported shape, and the read-only row it
+gets is the reason: a rule with nothing on the settings page is the one nobody
+can find by reading the settings.
 
 ### Why OPEN 1's default is the lunch window, not a threshold
 
@@ -736,6 +790,20 @@ holiday, including your own birthday when the rule is on, counts the whole day. 
 a day that already IS a holiday it says something else entirely: there is no
 normal working time to blame, so a nought there means the break rule or the
 rounding ate the session.
+
+It also takes the **engine's result**, for the one case where no sentence about
+the clock is true. เวลาขั้นต่ำในการเริ่มนับ OT can empty a session that is on the
+right day, at the right hours, and long enough to have produced OT — a 25-minute
+callout under a 30-minute buffer. Every other explanation would send somebody
+back to a form that is already correct, so that one names the buffer, says how
+many minutes were worked against it, and says not to change anything.
+
+**A replay is the fifth path and holds the same rule.** Recomputing an entry that
+comes out at nought — the buffer raised, the block widened, the core boundary
+moved — fails that entry rather than storing the nought: it keeps the hours it
+was filed with, and the save reports how many were skipped and why. An entry
+already in a queue is not somewhere a 0 may appear by a rule change that nobody
+looked at it under.
 
 **The filer's own form says why their birthday looks different.** When the day
 resolved to a birthday holiday, `components/OtForm.jsx` prints a note above the

@@ -263,7 +263,7 @@ test('ชั่วโมงมาจากเวลาเข้า-ออก ไ
   assert.match(route, /await compute\(session, ctx\)/);
   assert.match(route, /applyComputation\(entry, result, ctx\)/);
   // A 0-hour session is refused here too, in the same words as everywhere else.
-  assert.match(route, /noOtHoursMessage\(session, ctx\.policy, ctx\.dayTypes\)/);
+  assert.match(route, /noOtHoursMessage\(session, ctx\.policy, ctx\.dayTypes, result\)/);
 
   // And nothing reads hours off the payload.
   assert.ok(

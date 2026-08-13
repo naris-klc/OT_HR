@@ -116,7 +116,7 @@ export const POST = route(async (req) => {
   // Refused, not stored as a nought — the same sentence all the other write
   // paths use, from lib/entries.js.
   if (result.totals.otHours <= 0) {
-    return fail(noOtHoursMessage(session, ctx.policy, ctx.dayTypes), 400, {
+    return fail(noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result), 400, {
       warnings: result.warnings,
     });
   }

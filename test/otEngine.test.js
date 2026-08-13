@@ -219,6 +219,146 @@ test('[OPEN 3] bucket scope keeps the three columns summing to the total', () =>
   assert.equal(sum, r.totals.otHours);
 });
 
+test('[OPEN 3] the block is configurable: 17:00–20:20 under 5 / 15 / 60 minutes', () => {
+  const at = (roundingIncrementMinutes) => run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '20:20' },
+    { roundingIncrementMinutes },
+  ).totals.otHours;
+
+  assert.equal(at(5), 3.33, '200 minutes floors to 200');
+  assert.equal(at(15), 3.25, '…to 195');
+  assert.equal(at(60), 3, '…to 180');
+});
+
+/**
+ * The fourth answer to [OPEN 3]: no block at all.
+ *
+ * Distinct from `roundingIncrementMinutes: 0`, which the tests above this one
+ * use to switch rounding off as a side effect. That was a behaviour; this is a
+ * stated rule, and the difference shows in what it does to the increment —
+ * nothing. HR's chosen block stays stored and is simply not read, so switching
+ * back restores it rather than an absent value.
+ */
+test('[OPEN 3] exact: 17:00–20:20 keeps all 200 minutes, whatever the block says', () => {
+  const r = run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '20:20' },
+    { roundingMode: 'exact', roundingIncrementMinutes: 60 },
+  );
+  assert.equal(r.totals.otHours, 3.33, '200 minutes, unrounded');
+  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 3.33);
+});
+
+test('[OPEN 3] exact does not pretend a 20-minute session is a whole block', () => {
+  // Under the shipped floor/30 the same session rounds away to nothing — see
+  // the [OPEN 4] test that pins that. Exact is the answer that keeps it.
+  const r = run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '17:20' },
+    { roundingMode: 'exact' },
+  );
+  assert.equal(r.totals.otHours, 0.33);
+  assert.equal(r.belowMinimumFlagged, true, 'still short of the 1-hour minimum, and still said so');
+});
+
+// ── เวลาขั้นต่ำในการเริ่มนับ OT — the buffer ───────────────────────────────────
+
+test('the buffer ships off, so no stored figure moves on deploy', () => {
+  assert.equal(DEFAULT_POLICY.minimumBufferMinutes, 0);
+});
+
+test('buffer: 25 minutes under a 30-minute buffer is not OT at all', () => {
+  const r = run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '17:25' },
+    { minimumBufferMinutes: 30 },
+  );
+  assert.equal(r.totals.otHours, 0);
+  assert.equal(r.segments.length, 0);
+  assert.equal(r.belowBufferZeroed, true);
+
+  const cut = r.warnings.find((w) => w.code === 'BELOW_BUFFER_ZEROED');
+  assert.ok(cut, 'the write paths print which rule emptied it');
+  assert.equal(cut.minutes, 25, 'as worked, not as rounded');
+  assert.equal(cut.bufferMinutes, 30);
+});
+
+test('buffer: 35 minutes clears it and goes on to rounding like any other session', () => {
+  // HR's own example. Floor/30 is what makes it 0.5 — the buffer decides only
+  // whether the session reaches the block, never what the block does with it.
+  const r = run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '17:35' },
+    { minimumBufferMinutes: 30 },
+  );
+  assert.equal(r.totals.otHours, 0.5);
+  assert.equal(r.belowBufferZeroed, false);
+  assert.equal(r.warnings.some((w) => w.code === 'BELOW_BUFFER_ZEROED'), false);
+});
+
+/**
+ * Measured BEFORE rounding, which is the whole reason the two are ordered.
+ *
+ * Read after the block instead, `ceil`/30 would hand the buffer a 5-minute
+ * callout as a full half hour and it would pass a 30-minute buffer — the block
+ * answering the buffer's question.
+ */
+test('buffer: reads the minutes as worked, not what ceil would have made of them', () => {
+  const r = run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '17:05' },
+    { minimumBufferMinutes: 30, roundingMode: 'ceil' },
+  );
+  assert.equal(r.totals.otHours, 0, 'five minutes is five minutes');
+  assert.equal(r.belowBufferZeroed, true);
+});
+
+/**
+ * The buffer wins over the minimum, and this is the case that would otherwise
+ * invert both answers at once: `raise` padding a buffered session back up to a
+ * full hour.
+ */
+test('buffer: a zeroed session is never raised to the 1-hour minimum', () => {
+  const r = run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '17:25' },
+    { minimumBufferMinutes: 30, belowMinimum: 'raise' },
+  );
+  assert.equal(r.totals.otHours, 0);
+  assert.equal(r.warnings.some((w) => w.code === 'RAISED_TO_MINIMUM'), false);
+  assert.equal(r.belowMinimumFlagged, false, 'it is not short OT — it is not OT');
+});
+
+test('buffer: a zeroed session is not refused by belowMinimum reject either', () => {
+  // 'reject' throws, and a session the buffer has already answered must never
+  // reach it: the two rules would be refusing the same work for two reasons.
+  const r = run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '17:25' },
+    { minimumBufferMinutes: 30, belowMinimum: 'reject' },
+  );
+  assert.equal(r.totals.otHours, 0);
+  assert.equal(r.belowBufferZeroed, true);
+});
+
+test('buffer: measured on the whole entry, not per rate column', () => {
+  // Sat 8 Aug, 16:45–17:15 — 15 minutes either side of the ×1.5/×3 boundary.
+  // Under a 20-minute buffer the entry clears it; measured per column neither
+  // half would, and a Friday night running into Saturday is not two attendances.
+  const r = run(
+    { workDate: '2026-08-08', startTime: '16:45', endTime: '17:15' },
+    { minimumBufferMinutes: 20, roundingMode: 'exact', minimumHoursScope: 'bucket' },
+  );
+  assert.equal(r.belowBufferZeroed, false);
+  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 0.25);
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 0.25);
+});
+
+test('buffer: a session that produced no OT minutes is not blamed on the buffer', () => {
+  // Wednesday 09:00–10:00 is entirely inside normal hours. It never went near
+  // the buffer, and the refusal has to name the boundary it did run into.
+  const r = run(
+    { workDate: '2026-08-05', startTime: '09:00', endTime: '10:00' },
+    { minimumBufferMinutes: 30 },
+  );
+  assert.equal(r.totals.otHours, 0);
+  assert.equal(r.belowBufferZeroed, false);
+  assert.ok(r.warnings.some((w) => w.code === 'NORMAL_HOURS_IGNORED'));
+});
+
 // ── [OPEN 4] the 1-hour minimum ─────────────────────────────────────────────
 
 // Neither `raise` nor `reject` is the shipped default — see the [OPEN 4]
