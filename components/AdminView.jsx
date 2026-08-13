@@ -211,7 +211,11 @@ const ROLE_OPTIONS = [
 ];
 
 const BLANK = {
-  code: '', name: '', position: '', birthDate: '', department: '', role: 'employee',
+  // `email` is on the model and on the create route, and was missing from this
+  // form alone — so a person added one at a time arrived without one and had to
+  // be edited straight afterwards to get it, while the same person imported from
+  // CSV arrived complete.
+  code: '', name: '', email: '', position: '', birthDate: '', department: '', role: 'employee',
   // No `password` — the server issues it. Sending one is now a 400, which is
   // deliberate: a create that thought it set a password and did not is worse
   // than one that was told.
@@ -402,7 +406,8 @@ function interpretation(dates) {
 function Employees({ user }) {
   const [rows, setRows] = useState([]);
   const [depts, setDepts] = useState([]);
-  const [form, setForm] = useState(BLANK);
+  /** Whether เพิ่มพนักงาน is open — the only way this screen creates a row. */
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   /** The password just issued, and who for — the one moment it is readable. */
@@ -433,9 +438,6 @@ function Employees({ user }) {
   // server is what enforces this — but an option nobody may pick is better not
   // offered, and a disabled button explains itself where a 403 does not.
   const isAdmin = user?.role === 'admin';
-  const roleOptions = isAdmin
-    ? ROLE_OPTIONS
-    : ROLE_OPTIONS.filter((o) => HR_ASSIGNABLE_ROLES.includes(o.value));
   const mayEdit = (row) => isAdmin || row.role !== 'admin';
 
   async function load() {
@@ -447,18 +449,23 @@ function Employees({ user }) {
   }
   useEffect(() => { load(); }, []);
 
-  async function create(e) {
-    e.preventDefault();
+  /**
+   * Create one row from the dialog.
+   *
+   * The error is NOT caught here. A duplicate รหัสพนักงาน or a name the server
+   * refuses has to land back in the form that has the value in it — closing the
+   * dialog and printing the message on the card behind it would throw away
+   * everything that was typed, which is what the old inline form did.
+   */
+  async function create(values) {
     setError('');
-    try {
-      const res = await api.post('/employees', form);
-      // Shown once, from the response — the server stores only the hash, so
-      // this is the last time anyone can read it off a screen. HR reads it to
-      // the new employee, who is made to replace it at first login.
-      setIssued({ code: form.code, name: form.name, password: res.password });
-      setForm(BLANK);
-      load();
-    } catch (err) { setError(err.message); }
+    const res = await api.post('/employees', values);
+    // Shown once, from the response — the server stores only the hash, so
+    // this is the last time anyone can read it off a screen. HR reads it to
+    // the new employee, who is made to replace it at first login.
+    setIssued({ code: values.code, name: values.name, password: res.password });
+    setAdding(false);
+    load();
   }
 
   /**
@@ -559,10 +566,11 @@ function Employees({ user }) {
         {' '}หากพนักงานลืม ให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง
         {' '}· ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
         {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
-        {/* The table is a table again. Everything that changes an existing row
-            goes through the dialog, which is the only place there is room to
-            say what a field does before it is changed and why another one is
-            greyed out. */}
+        {/* The table is a table again, and the form above it is gone. Both the
+            row that does not exist yet and the row being corrected go through a
+            dialog, which is the only place there is room to say what a field
+            does before it is filled in and why another one is greyed out. */}
+        {' '}· เพิ่มทีละคนได้ที่ปุ่ม “เพิ่มพนักงาน” ด้านล่าง
         {' '}· แก้ไขข้อมูลของคนที่มีอยู่แล้วได้ที่ปุ่ม “แก้ไข” ในแต่ละแถว
       </div>
       {error && <Alert kind="error">{error}</Alert>}
@@ -645,6 +653,10 @@ function Employees({ user }) {
           นำเข้ารายชื่อจาก CSV
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={choose} style={{ display: 'none' }} />
         </label>
+        {/* Beside the import, because they are the same decision asked twice —
+            one person or a file of them — and the dialog behind it is the same
+            form the row's แก้ไข opens. */}
+        <button className="btn" onClick={() => setAdding(true)}>เพิ่มพนักงาน</button>
       </div>
 
       {/* The interpretation, before it is applied rather than after. */}
@@ -721,55 +733,6 @@ function Employees({ user }) {
           )}
         </Alert>
       )}
-
-      <form className="row" onSubmit={create} style={{ marginBottom: 16 }}>
-        <div className="field" style={{ maxWidth: 120 }}>
-          <label>รหัสพนักงาน</label>
-          <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-        </div>
-        <div className="field">
-          <label>ชื่อ-สกุล</label>
-          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        </div>
-        <div className="field">
-          <label>ตำแหน่ง</label>
-          <input value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} />
-        </div>
-        <div className="field" style={{ maxWidth: 160 }}>
-          <label>วันเกิด</label>
-          <input
-            type="date"
-            value={form.birthDate}
-            onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
-          />
-        </div>
-        <div className="field" style={{ maxWidth: 160 }}>
-          <label>แผนก</label>
-          <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} required>
-            <option value="">— เลือก —</option>
-            {depts.map((d) => <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>)}
-          </select>
-        </div>
-        <div className="field" style={{ maxWidth: 130 }}>
-          <label>บทบาท</label>
-          <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            {roleOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-        <div className="field" style={{ maxWidth: 170 }}>
-          <label>บริษัท</label>
-          <select value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })}>
-            <option value="">— เดาจากรหัส —</option>
-            {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </select>
-        </div>
-        {/* No password field. There used to be one, prefilled with a value
-            computed from the employee code — so the roster, which is printed on
-            every form the company files, was also the password list for every
-            account nobody had logged into yet. The server issues one now and
-            shows it once; see lib/tempPassword.js. */}
-        <button className="btn">เพิ่ม</button>
-      </form>
 
       {/*
         Read-only, deliberately.
@@ -853,6 +816,15 @@ function Employees({ user }) {
           </tbody>
         </table>
       </div>
+
+      {adding && (
+        <AddEmployee
+          depts={depts}
+          isAdmin={isAdmin}
+          onClose={() => setAdding(false)}
+          onSave={create}
+        />
+      )}
 
       {resetting && (
         <ResetPassword
@@ -942,6 +914,7 @@ const LOCK_NOTE = {
  */
 const LOCK_SHORT = {
   code: 'แก้ได้เฉพาะผู้ดูแลระบบ',
+  role: 'ฝ่ายบุคคลตั้งได้เฉพาะ “พนักงาน” และ “หัวหน้างาน”',
   selfRole: 'บัญชีของคุณเอง — เปลี่ยนบทบาทตัวเองไม่ได้',
   selfActive: 'บัญชีของคุณเอง — ปิดใช้งานตัวเองไม่ได้',
   lastAdmin: 'ผู้ดูแลระบบที่ใช้งานอยู่คนสุดท้าย — ต้องตั้งอีกคนก่อน',
@@ -960,6 +933,212 @@ const PASSWORD_NOTE = {
   full: 'ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสเดิมได้ '
     + '· ประวัติการแก้ทะเบียนไม่เคยบันทึกตัวรหัสผ่าน บันทึกเพียงว่ามีการตั้งรหัสใหม่',
 };
+
+/**
+ * The same missing field, said the other way round.
+ *
+ * On a new row there is no “ตั้งรหัสใหม่” button to point at yet, and the reader
+ * is looking for the box they used to fill in. What they need to know before
+ * they press บันทึก is that one is coming, that it appears once, and that it is
+ * theirs to hand over — a password discovered after the notice has been closed
+ * cannot be read back, only reset.
+ */
+const NEW_PASSWORD_NOTE = {
+  short: 'ไม่ต้องตั้งรหัสผ่าน — ระบบสุ่มให้เอง และแสดงครั้งเดียวหลังกดบันทึก',
+  full: 'รหัสผ่านชั่วคราวจะขึ้นบนหน้านี้ครั้งเดียวให้จดไปแจ้งพนักงาน ปิดแล้วดูซ้ำไม่ได้ '
+    + '— หากพลาด ให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตารางเพื่อออกรหัสใหม่ '
+    + '· ระบบบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก',
+};
+
+/**
+ * เพิ่มพนักงาน — the same form as แก้ไขข้อมูลพนักงาน, for a row that does not
+ * exist yet.
+ *
+ * WHY A DIALOG. It used to be a `.row` of nine controls above the table, and
+ * being a row is what kept it incomplete: อีเมล never fitted, so a person added
+ * one at a time arrived without one and had to be opened in the edit dialog
+ * immediately afterwards to get it — while the same person imported from CSV
+ * arrived complete. The row also had no room for the sentence under a field, so
+ * บริษัท being optional and วันเกิด moving nothing yet were things you knew or
+ * did not. Both forms are now the same three groups in the same order, which is
+ * also why somebody who has used one has used the other.
+ *
+ * WHAT IS NOT HERE. สถานะการใช้งาน: a row is created active, and “เพิ่มพนักงาน
+ * แล้วปิดใช้งานทันที” is not a thing anybody is doing on purpose — the table's
+ * แก้ไข is where a row is turned off. รหัสผ่าน: the server issues it (see
+ * NEW_PASSWORD_NOTE and lib/tempPassword.js) and sending one is a 400. And there
+ * is no review step: a new row restates no month and moves no approved figure,
+ * so there is nothing to count before saving.
+ *
+ * Permission is the server's (`rosterPermission`); what is greyed here is greyed
+ * so nobody is invited to pick a role that will be refused.
+ */
+function AddEmployee({ depts, isAdmin, onClose, onSave }) {
+  const [form, setForm] = useState(BLANK);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  // The three the server insists on, checked here so the refusal is a greyed
+  // button next to the empty field rather than a 400 after the form is full.
+  const ready = form.code.trim() && form.name.trim() && form.department;
+  const dirty = Object.keys(BLANK).some((k) => form[k] !== BLANK[k]);
+
+  async function save() {
+    setError('');
+    setBusy(true);
+    try {
+      await onSave({ ...form, code: form.code.trim(), name: form.name.trim() });
+    } catch (err) {
+      // Stays open, with everything still typed in it — see `create`.
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="เพิ่มพนักงาน"
+      subtitle="สร้างทะเบียนใหม่ทีละคน"
+      onClose={onClose}
+      dirty={dirty && !busy}
+      footer={(requestClose) => (
+        <>
+          <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
+          <button className="btn" onClick={save} disabled={!ready || busy}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+          </button>
+        </>
+      )}
+    >
+      {error && <Alert kind="error">{error}</Alert>}
+
+      <div className="edit-form">
+        <section className="form-group">
+          <div className="gh">ข้อมูลส่วนตัว</div>
+          <div className="form-grid">
+            <Field label="ชื่อ-สกุล">
+              <input
+                value={form.name}
+                onChange={(e) => set({ name: e.target.value })}
+                disabled={busy}
+              />
+            </Field>
+            <Field label="ตำแหน่ง">
+              <input
+                value={form.position}
+                onChange={(e) => set({ position: e.target.value })}
+                disabled={busy}
+              />
+            </Field>
+            <Field
+              label="วันเกิด"
+              tip={'ไม่บังคับ · เติมภายหลังได้จากปุ่ม “แก้ไข” ในตาราง '
+                + '— แต่คนที่ยังไม่มีวันเกิดจะไม่ขึ้นในรายการวันเกิดที่ต้องตรวจ'}
+            >
+              <input
+                type="date"
+                value={form.birthDate}
+                onChange={(e) => set({ birthDate: e.target.value })}
+                disabled={busy}
+              />
+            </Field>
+            <Field label="อีเมล" tip="ไม่บังคับ และไม่ใช่ชื่อผู้ใช้ — เข้าระบบด้วยรหัสพนักงานเสมอ">
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => set({ email: e.target.value })}
+                disabled={busy}
+                autoComplete="off"
+              />
+            </Field>
+          </div>
+        </section>
+
+        <section className="form-group">
+          <div className="gh">การทำงาน</div>
+          <div className="form-grid">
+            <Field
+              label="รหัสพนักงาน"
+              // Free to type now and Admin-only afterwards, because from the
+              // moment the row exists it is what somebody logs in with and what
+              // every filed sheet has printed on it. Worth saying while it is
+              // still just an empty box.
+              tip={'ใช้เข้าสู่ระบบ และเป็นสิ่งที่พิมพ์อยู่บนใบเก่าทุกใบ '
+                + '— หลังสร้างแล้วแก้ได้โดยผู้ดูแลระบบเท่านั้น จึงควรตรวจให้ตรงก่อนบันทึก'}
+            >
+              <input
+                value={form.code}
+                onChange={(e) => set({ code: e.target.value.toUpperCase() })}
+                disabled={busy}
+                autoComplete="off"
+              />
+            </Field>
+            <Field label="แผนก" tip="ตัดสินว่าชั่วโมงของคนนี้ไปอยู่ในรายงานแผนกใด และวัดกับเพดานของแผนกใด">
+              <select
+                value={form.department}
+                onChange={(e) => set({ department: e.target.value })}
+                disabled={busy}
+              >
+                <option value="">— เลือก —</option>
+                {depts.map((d) => (
+                  <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field
+              label="บริษัท"
+              tip="ใช้แบ่งไฟล์ส่งบัญชี PM / THT — เว้นไว้ได้ ระบบจะเดาจากคำนำหน้ารหัส (PM… = ไพรมัส, THT… = เดมเทค)"
+            >
+              <select
+                value={form.company}
+                onChange={(e) => set({ company: e.target.value })}
+                disabled={busy}
+              >
+                <option value="">— เดาจากรหัส —</option>
+                {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+              </select>
+            </Field>
+          </div>
+        </section>
+
+        <section className="form-group">
+          <div className="gh">สิทธิ์</div>
+          <div className="form-grid">
+            <Field
+              label="บทบาท"
+              note={isAdmin ? null : LOCK_SHORT.role}
+              tip={isAdmin
+                ? 'กำหนดว่าคนนี้ยื่น OT ได้ อนุมัติได้ หรือดูแลระบบได้'
+                : LOCK_NOTE.role}
+            >
+              {/* Whole list with the refused entries greyed, as in the edit
+                  dialog: a list that silently omits “ผู้ดูแลระบบ” answers
+                  "why can I not create one" with nothing at all. */}
+              <select
+                value={form.role}
+                onChange={(e) => set({ role: e.target.value })}
+                disabled={busy}
+              >
+                {ROLE_OPTIONS.map((o) => {
+                  const refused = !isAdmin && !HR_ASSIGNABLE_ROLES.includes(o.value);
+                  return (
+                    <option key={o.value} value={o.value} disabled={refused}>
+                      {o.label}{refused ? ' — ผู้ดูแลระบบเท่านั้น' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </Field>
+          </div>
+        </section>
+
+        <FoldedNote short={NEW_PASSWORD_NOTE.short} full={NEW_PASSWORD_NOTE.full} />
+      </div>
+    </Modal>
+  );
+}
 
 /** One roster row as the edit dialog holds it — the audited fields, nothing else. */
 const formOf = (employee) => ({
