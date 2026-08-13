@@ -101,17 +101,28 @@ function Login({ onLogin }) {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  /**
+   * The second line under a refusal, when the server has one to add.
+   *
+   * Kept apart from `error` rather than joined onto it, because they are two
+   * different sentences: the first says what happened and is the same every
+   * time, the second says what to do about it and only appears once somebody
+   * has been getting it wrong for a while. See lib/loginThrottle.js.
+   */
+  const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     setError('');
+    setHint('');
     try {
       await api.post('/auth/login', { code, password });
       onLogin(await api.get('/auth/me'));
     } catch (err) {
       setError(err.message);
+      setHint(err.payload?.hint || '');
       setBusy(false);
     }
   }
@@ -153,7 +164,12 @@ function Login({ onLogin }) {
               <label>รหัสผ่าน · PASSWORD</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            {error && <Alert kind="error">{error}</Alert>}
+            {error && (
+              <Alert kind="error">
+                {error}
+                {hint && <div style={{ marginTop: 4, fontSize: 12.5 }}>{hint}</div>}
+              </Alert>
+            )}
             <button className="btn" style={{ width: '100%', marginTop: 20 }} disabled={busy}>
               {busy ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
             </button>
