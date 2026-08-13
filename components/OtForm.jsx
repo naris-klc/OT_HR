@@ -337,7 +337,12 @@ export default function OtForm({
         </>
       )}
 
-      <div className="row">
+      {/* flex-start, not the row default of flex-end: วันที่เริ่ม carries a line
+          of day/Thai-date underneath it and เวลาออก sometimes carries one too,
+          so aligning bottoms drops whichever box has no line under it. Aligning
+          tops puts the three labels on one line and the three boxes on the next,
+          and the notes hang below without moving anything. */}
+      <div className="row" style={{ alignItems: 'flex-start' }}>
         <div className="field">
           <label>วันที่เริ่ม</label>
           {/* Locked on a birthday row: the date IS the row, and the server
