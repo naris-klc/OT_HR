@@ -226,8 +226,32 @@
 }
 
 /* On screen the sheet sits on a grey page with a shadow, so what you see is
-   the paper. Printing strips all of that. */
-.f027-screen { background: #e8ebe9; padding: 16px; }
+   the paper. Printing strips all of that.
+
+   It is also the scroll container. The sheet is 194mm of paper plus its bands
+   — ~794px — and that figure is not negotiable on any screen: it is A4. A
+   viewport narrower than the sheet therefore scrolls it sideways rather than
+   compressing it, which is the whole point of `overflow-x: auto` here. Without
+   it the width propagated outwards instead: main was stretched to the sheet
+   (see `main { min-width: 0 }` in styles.css), the document went with it, and
+   a phone fitted the ENTIRE page to its screen — 7.2pt type rendered at about
+   half size, which no one could read and nothing on the page could be tapped.
+
+   A scroll container's min-content width is zero, so this is also what stops
+   the sheet from reaching main in the first place. The two rules are one fix.
+
+   Nothing about the sheet's own geometry changes: it stays 194mm at 1:1, so
+   what is on the screen is still exactly what comes out of the printer. The
+   phone shows a real sheet a bit at a time instead of a shrunken whole one. */
+.f027-screen {
+  background: #e8ebe9;
+  padding: 16px;
+  overflow-x: auto;
+  /* A sideways swipe on the sheet must not also drag the page or trigger the
+     browser's back gesture once the sheet hits its end. */
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
 /* The same bands the paper is printed with, so the preview is the sheet — see
    the @page note at the foot of this file for where the figures come from. */
 .f027-screen .f027 { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 18mm 8mm 22mm; }
@@ -238,7 +262,12 @@
 .f027-screen .f027 + .f027 { margin-top: 16px; }
 
 @media print {
-  .f027-screen { background: #fff; padding: 0; }
+  /* `overflow: visible` first, and it is not cosmetic: a scroll container is a
+     single unbreakable box to the paginator. Left on, the sheet would be cut
+     off at the bottom of page one instead of running on, and a month that
+     needed a second side would simply lose it. The screen's swipe has no
+     meaning on paper anyway — the sheet is 194mm and the paper is 210mm. */
+  .f027-screen { background: #fff; padding: 0; overflow: visible; }
   /* Padding is NOT reset: it is the sheet's own margin bands, and on paper it
      is doing the same job it does in the preview. Only the shadow goes. */
   .f027-screen .f027 { box-shadow: none; }
@@ -423,12 +452,22 @@
 /* On screen the sheet sits on a grey page with a shadow, so what you see is
    the paper. Vertical spacing is left to the pad rows so the preview and the
    print agree; only the side margins are padding here. */
-.acct-screen { background: #e8ebe9; padding: 16px; }
+/* Scrolls sideways on a narrow screen for the same reason .f027-screen does,
+   and the reasoning above it applies here unchanged — 194mm is the paper. */
+.acct-screen {
+  background: #e8ebe9;
+  padding: 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .acct-screen .acct { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 0 8mm; }
 .acct-screen .acct + .acct { margin-top: 16px; }
 
 @media print {
-  .acct-screen { background: #fff; padding: 0; }
+  /* `overflow: visible` — a roster is the sheet that most needs to break
+     across pages, and a scroll container cannot be broken at all. */
+  .acct-screen { background: #fff; padding: 0; overflow: visible; }
   .acct-screen .acct { box-shadow: none; }
   .acct-screen .acct + .acct { margin-top: 0; }
   /* A name must not be split across the fold. */
@@ -562,12 +601,19 @@
   line-height: 0;
 }
 
-.otdept-screen { background: #e8ebe9; padding: 16px; }
+/* As .f027-screen and .acct-screen — see the note above the first of them. */
+.otdept-screen {
+  background: #e8ebe9;
+  padding: 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .otdept-screen .otdept { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 0 8mm; }
 .otdept-screen .otdept + .otdept { margin-top: 16px; }
 
 @media print {
-  .otdept-screen { background: #fff; padding: 0; }
+  .otdept-screen { background: #fff; padding: 0; overflow: visible; }
   .otdept-screen .otdept { box-shadow: none; }
   .otdept-screen .otdept + .otdept { margin-top: 0; }
   /* A name must not be split across the fold — but a department is a page, so
@@ -575,6 +621,32 @@
   .otdept tr { page-break-inside: avoid; }
   .otdept thead { display: table-header-group; }
   .otdept tfoot { display: table-footer-group; }
+}
+
+/* ══ the three sheets on a phone ═════════════════════════════════════════════
+ *
+ * `screen and`, and it is load-bearing rather than tidy: A4 with a zero @page
+ * margin gives the print canvas a width of 210mm — 794px, which is UNDER this
+ * breakpoint. A bare `max-width: 860px` block matches while printing, and every
+ * mobile rule in it would land on the paper. The rest of the app's mobile block
+ * (styles.css, 860px) gets away with it only because `main { padding: 0
+ * !important }` in that file's print block happens to undo the one thing it
+ * sets that would matter. Nothing here should rely on being undone later.
+ *
+ * The sheet is ~794px wide and the phone is not, so what these rules buy is the
+ * 12mm main is inset by, given back to the scroll container: the swipe runs the
+ * full width of the screen and the grey reads as the page behind the paper
+ * rather than as a panel sitting on the page. Insets rather than a flat 12px,
+ * because main's padding is now stated in the same terms (styles.css) and the
+ * two have to cancel exactly, notch or no notch.
+ */
+@media screen and (max-width: 860px) {
+  .f027-screen, .acct-screen, .otdept-screen {
+    margin-left: calc(-1 * max(12px, env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(12px, env(safe-area-inset-right)));
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
 }
 
 /* ══ กระดาษเปล่า: เหลือแต่ตาราง ══════════════════════════════════════════════

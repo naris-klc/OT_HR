@@ -197,7 +197,16 @@ a:hover { color: var(--green-dark); }
 .appbar .mark-btn:active .mark-sm { opacity: .7; }
 .appbar .mark-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
-main { padding: clamp(16px, 3vw, 28px); flex: 1; }
+/* `min-width: 0` against the flex default of `auto`. As a flex item of .shell,
+   main is otherwise never allowed narrower than its widest child — and the
+   printed sheets are 194mm of paper geometry that cannot shrink (app/print.css).
+   One F-HR-027 on screen therefore pushed main out to ~794px, took the whole
+   document with it, and a phone showed the entire page fitted to 390px: the
+   card legible-ish, the form's 7.2pt type at half size and unreadable.
+   Anything genuinely too wide for the viewport scrolls in its own container —
+   .table-wrap for the screen tables, .f027-screen and its two siblings for the
+   sheets — which is the only way a narrow screen can be told from a small one. */
+main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .page { max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
 
 /* ══ hero ════════════════════════════════════════════════════════════════ */
@@ -1408,8 +1417,15 @@ table.mini tbody tr:hover { background: none; }
   /* 44px here too — the way to ข้อมูลส่วนตัว and to ออกจากระบบ. */
   .appbar .avatar { display: grid; width: 44px; height: 44px; cursor: pointer; }
 
+  /* Longhand, because the shorthand had the two insets the wrong way round —
+     `padding: t r b l` was giving the RIGHT edge inset-left and the left edge
+     inset-right. Equal on a phone held upright, which is why it went unseen;
+     in landscape the notch is on one side only and the page ran under it. */
   main {
-    padding: 14px max(12px, env(safe-area-inset-left)) 14px max(12px, env(safe-area-inset-right));
+    padding-top: 14px;
+    padding-bottom: 14px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
   }
 
   /* Clears the fixed bottom bar so the last row is never trapped under it. */
