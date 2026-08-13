@@ -2901,57 +2901,58 @@ function Policy({ user }) {
           <tbody>
             {POLICY_FIELDS.map((f, i) => (
               <tr key={f.key}>
-                <td>
-                  {/* The number alone. It used to read "OPEN 3", which is the
-                      requirements document's own label and means nothing to
-                      anybody reading this screen — the column is already headed
-                      ข้อ, so the word was repeating the heading in English.
+                {/* ── ข้อ, one cell per QUESTION rather than per row ──────────
+                    The number alone. It used to read "OPEN 3" — the requirements
+                    document's own label, which means nothing to the ฝ่ายบุคคล who
+                    open this page, and repeated the ข้อ heading in English.
 
-                      FOUR OF THE NUMBERS APPEAR TWICE (3, 4, 7, 9) and that is
-                      the structure rather than a mistake: one question can need
-                      more than one flag to answer it — ข้อ 4 asks what to do
-                      with a session under an hour AND what the hour is measured
-                      against, and neither half means anything alone. Dropping
-                      the word exposed that: "OPEN 7" twice read as a label
-                      repeated, "7" twice reads as a duplicate.
+                    Dropping the word exposed something the label had been hiding:
+                    four of the numbers appear twice (3, 4, 7, 9), because one
+                    question can need more than one flag to answer it. ข้อ 4 asks
+                    what to do with a session under an hour AND what the hour is
+                    measured against, and neither half means anything alone.
+                    "OPEN 7" twice read as a label repeated; "7" twice read as a
+                    bug.
 
-                      So the number is printed once per question and the rows
-                      under it carry ↳. The cell cannot simply be merged with
-                      rowSpan — each row's own override marker lives in it, and
-                      those are per flag, not per question.
+                    A merged cell says "one question, two rows" to anybody who has
+                    read a table before, which an arrow and a tooltip do not — the
+                    tooltip especially, since it takes a hover nobody performs and
+                    a touch screen cannot. So the cell spans its group and the
+                    rows inside it draw no ข้อ cell at all.
 
-                      Rules that arrived after the original twelve have no number
-                      to carry; they print — rather than an empty cell, so a row
-                      without one does not look like an item somebody forgot. */}
-                  {(() => {
-                    if (!f.open) return '—';
-                    const continues = i > 0 && POLICY_FIELDS[i - 1].open === f.open;
-                    if (!continues) return f.open;
-                    return (
-                      <span
-                        style={{ color: 'var(--muted-2)' }}
-                        title={`ข้อ ${f.open} เดียวกับแถวบน — คำถามนี้ต้องตอบมากกว่าหนึ่งค่า`}
-                      >
-                        ↳ {f.open}
-                      </span>
-                    );
-                  })()}
-                  {/* "HR ตอบแล้ว" until 2026-08-13, which an override is not
-                      evidence of — it says a value is stored, not who chose it
-                      or whether anybody did. `minimumHoursScope` wore this and
-                      the รอ HR ยืนยัน badge at the same time, on the same row,
-                      flatly contradicting itself; a reader deciding which half
-                      to believe was the only thing holding the page together.
-                      Whether HR has actually answered is what the badge and
-                      ConfirmedBy below are for, and they know. */}
-                  {overrides.includes(f.key) && (
-                    <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>ตั้งทับค่าตั้งต้น</div>
-                  )}
-                </td>
+                    Rules that arrived after the original twelve have no number to
+                    carry; they print — rather than an empty cell, so a row
+                    without one does not look like an item somebody forgot. */}
+                {(!f.open || POLICY_FIELDS[i - 1]?.open !== f.open) && (
+                  <td
+                    className="policy-open"
+                    rowSpan={openSpanAt(i)}
+                    style={{ verticalAlign: 'middle' }}
+                  >
+                    {f.open || '—'}
+                  </td>
+                )}
                 <td>
                   {f.label}
                   {f.hint && (
                     <div className="hint" style={{ marginTop: 4 }}>{f.hint}</div>
+                  )}
+                  {/* Moved here out of the ข้อ cell when that cell became one per
+                      question: this is about one FLAG — whether that value is
+                      stored rather than taken from the file — and the flag's name
+                      is the thing directly above it.
+
+                      It read "HR ตอบแล้ว" until 2026-08-13, which an override is
+                      not evidence of: it says a value is stored, not who chose it
+                      or whether anybody did. `minimumHoursScope` wore that and the
+                      รอ HR ยืนยัน badge at once, on the same row, flatly
+                      contradicting itself. Whether HR has actually answered is
+                      what the badge and ConfirmedBy below are for, and they
+                      know. */}
+                  {overrides.includes(f.key) && (
+                    <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 4 }}>
+                      ตั้งทับค่าตั้งต้น
+                    </div>
                   )}
                   {/* One question can cover more than one flag, so a row can
                       wear more than one badge. */}
@@ -3083,6 +3084,26 @@ function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
 }
 
 const CHANGE_LABEL = Object.fromEntries(POLICY_FIELDS.map((f) => [f.key, f.label]));
+
+/**
+ * How tall the merged ข้อ cell starting at row `i` is — the run of CONSECUTIVE
+ * rows sharing that number, not every row in the table that carries it.
+ *
+ * The difference only shows up on a table somebody has since edited, which is
+ * exactly when it would not be noticed: counting every match would give a
+ * rowSpan longer than its own group the moment two rows with the same ข้อ are
+ * separated, and the cells below would be pushed out of their columns for good.
+ *
+ * A row with no ข้อ spans one and stops there — without that guard a run of
+ * `undefined === undefined` would merge every unnumbered row into one cell.
+ */
+function openSpanAt(i) {
+  const n = POLICY_FIELDS[i]?.open;
+  if (!n) return 1;
+  let span = 1;
+  while (POLICY_FIELDS[i + span]?.open === n) span += 1;
+  return span;
+}
 
 /**
  * What this installation is ACTUALLY computing with, against what the program

@@ -858,6 +858,18 @@ table.fixed td { overflow-wrap: anywhere; }
 }
 .cell-note { margin-top: 3px; font: 400 11.5px/1.45 var(--sans); color: var(--amber); }
 tbody tr:hover { background: var(--green-wash); }
+
+/* The merged ข้อ cell on นโยบายการคำนวณ, which spans the two or three rows one
+   question is answered by (see openSpanAt in components/AdminView.jsx).
+
+   A cell with rowSpan belongs to the FIRST row of its group, so the row-hover
+   tint above reached it when that row was hovered and not when any of the others
+   were — the number lit up or stayed white depending on which of its own rows
+   the pointer happened to be over, which reads as the highlight being broken
+   rather than as a grouped cell. Painting it opaque takes it out of the hover
+   entirely: the tint marks the row you are on, and the number beside it is the
+   heading for all of them, so it should no more highlight than the <th> does. */
+td.policy-open { background: var(--card); }
 tbody tr:last-child td { border-bottom: none; }
 tfoot td { font-weight: 600; border-top: 1px solid var(--line); background: var(--neutral-wash); }
 /* Several summary rows can stack in one foot — per department, then the whole
