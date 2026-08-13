@@ -5,5 +5,5 @@
       "@/*": ["./*"]
     }
   },
-  "exclude": ["node_modules", ".next", "web"]
+  "exclude": ["node_modules", ".next"]
 }

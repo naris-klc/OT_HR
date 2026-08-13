@@ -8,6 +8,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
+  capFor, takeCapped,
 } from '@/lib/entries.js';
 import { coveredDepartments } from '@/lib/delegationQuery.js';
 import { scopeWidening } from '@/lib/delegation.js';
@@ -52,11 +53,20 @@ export const GET = route(async (req) => {
     if (to) q.workDate.$lte = to;
   }
 
-  const found = await OtEntry.find(q)
-    .populate(POPULATE)
-    .sort({ workDate: -1, createdAt: -1 })
-    .limit(Number(limit) || 500)
-    .lean();
+  /**
+   * One row more than will be returned — see `takeCapped`. The extra document
+   * is what lets this answer "there is more" without counting the whole
+   * collection on every request that does not need it.
+   */
+  const cap = capFor(limit);
+  const { rows: found, truncated } = takeCapped(
+    await OtEntry.find(q)
+      .populate(POPULATE)
+      .sort({ workDate: -1, createdAt: -1 })
+      .limit(cap + 1)
+      .lean(),
+    cap,
+  );
 
   /**
    * `replaced=hide` — one row per line of filing rather than one per document.
@@ -95,7 +105,28 @@ export const GET = route(async (req) => {
     for (const entry of entries) entry.usage = byEntry.get(String(entry._id)) || null;
   }
 
-  return json({ entries, replacedCount: hidden.length });
+  /**
+   * `total` is DOCUMENTS MATCHED, not rows drawn, and only when the list was
+   * cut short.
+   *
+   * The two numbers are not the same thing under `replaced=hide`, which folds a
+   * refused request into the one that replaced it: three documents can be two
+   * rows. So this is not a figure a screen may print beside `entries.length` as
+   * though they counted the same population — it answers one question only,
+   * "how many are there altogether", for the banner that says the list is
+   * incomplete. `null` when nothing was cut, because a number sent then would
+   * be read as a row count and would sometimes be wrong.
+   *
+   * The count is skipped entirely on the ordinary request. Truncation is the
+   * rare case, and paying for a second query only when it happens keeps every
+   * screen that is nowhere near the ceiling exactly as fast as before.
+   */
+  return json({
+    entries,
+    replacedCount: hidden.length,
+    truncated,
+    total: truncated ? await OtEntry.countDocuments(q) : null,
+  });
 });
 
 // ── submit ──────────────────────────────────────────────────────────────────

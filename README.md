@@ -1161,8 +1161,16 @@ Neither changes the code, but both should be corrected in the doc:
 
 ## What the prototype got wrong
 
-`OT-System.html` in this folder is the bundled prototype. For the record, the
-rules it invented and this scaffold does not have:
+`OT-System.html` was the bundled prototype and is no longer in this folder —
+it was removed along with `web/`, the Vite copy of the four screens, both of
+which had stopped tracking the live code and were only ever a way to edit the
+wrong file. Read it back from history if you need it:
+
+```bash
+git show ab8179a:OT-System.html > OT-System.html
+```
+
+For the record, the rules it invented and this scaffold does not have:
 
 - a 21:00 weekday ceiling (§5: there is no ceiling)
 - OT that cannot start before 17:00 (§5: early weekday starts count)

@@ -549,11 +549,15 @@ test('[OPEN 4] a scope nobody recognises counts ต่อใบ rather than inve
  */
 test('[OPEN 4] no screen keys a warnings list on the code alone', () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  /**
+   * Two more paths stood here — `web/src/components/OtForm.jsx` and its
+   * ApprovalQueue — from when the Vite prototype was a second live copy of
+   * these screens. That copy was deleted rather than kept in step; the rule is
+   * unchanged and now has one place to hold rather than two.
+   */
   for (const file of [
     'components/OtForm.jsx',
     'components/ApprovalQueue.jsx',
-    'web/src/components/OtForm.jsx',
-    'web/src/components/ApprovalQueue.jsx',
   ]) {
     const src = readFileSync(join(root, file), 'utf8');
     assert.ok(!/key=\{w\.code\}/.test(src), `${file} — สองคำเตือนที่รหัสเดียวกันจะหายไปหนึ่งอัน`);

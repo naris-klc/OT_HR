@@ -501,7 +501,19 @@ test('ตรวจสอบรายเดือน still opens on อนุม�
  */
 test('the queue column prints the same two lines ตรวจสอบรายเดือน prints', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  const cell = queue.slice(queue.indexOf('function CapUsage'), queue.indexOf('function WeekUsage'));
+  /**
+   * Ends at `capNote`, the first thing declared after the component.
+   *
+   * It used to end at `function WeekUsage`, which no longer exists — and an
+   * `indexOf` that misses returns -1, so the slice quietly became "everything
+   * but the last character of the file" and every assertion below started
+   * reading the whole module. The suite stayed green while checking something
+   * else entirely, which is the failure mode a source-reading test has and a
+   * DOM test does not.
+   */
+  const end = queue.indexOf('const capNote =');
+  assert.ok(end > 0, 'the cell can no longer be sliced out of the file');
+  const cell = queue.slice(queue.indexOf('function CapUsage'), end);
 
   // The headline is approvedHours, with no unit — "16.5 / 40", as the review
   // screen prints it. This fails if anybody puts the ceiling total back on top.
@@ -523,6 +535,25 @@ test('the queue column prints the same two lines ตรวจสอบราย�
   assert.doesNotMatch(cell, /รออนุมัติ \{hours/, 'the separate "+ รออนุมัติ" line is back');
   assert.doesNotMatch(cell, /cap-why|title=\{why\}/, 'the (?) is back on the row');
   assert.doesNotMatch(queue, /APPROVED_ONLY/, 'the "(อนุมัติแล้วเท่านั้น)" label is back');
+
+  /**
+   * THE WEEKLY BLOCK IS NOT IN THIS CELL, on HR's instruction of 2026-08-13.
+   *
+   * It printed four more lines — the week's figure, its pending note, its
+   * breach and the span of dates — which made this cell six lines deep against
+   * the two ตรวจสอบรายเดือน prints, on any department with a weekly ceiling.
+   * "The same two lines" in this test's name was true only of departments that
+   * had none, and it is the whole of the spec now.
+   *
+   * The cost was stated and accepted: the weekly ceiling has no live warning
+   * left in the queue. This asserts the display only — `weeksOfEntry`,
+   * `checkCap` and the `weeks` payload are untouched and are pinned by the
+   * tests above, so a ceiling that is still enforced cannot be mistaken for
+   * one that was removed.
+   */
+  assert.doesNotMatch(cell, /สัปดาห์ \{capFigure/, 'the weekly block is back in the cell');
+  assert.doesNotMatch(cell, /weekStart\} – \{/, 'the week date span is back in the cell');
+  assert.doesNotMatch(queue, /function WeekUsage/, 'the weekly sub-component is back');
 });
 
 /**

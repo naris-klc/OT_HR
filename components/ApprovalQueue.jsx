@@ -8,7 +8,9 @@ import {
   INCLUDES_PENDING, capFigure, describeBreaches, overCap, overCapLine,
   pendingCapNote, pendingSplitLine,
 } from '@/lib/caps.js';
-import { isProxyFiled, isSystemFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
+import {
+  MAX_LIST_LIMIT, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
+} from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
 import { isOwnFiling } from '@/lib/delegation.js';
@@ -91,7 +93,25 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
       different empty states — "nothing came in" vs "you just cleared it". */
   const everHadRows = useRef(false);
 
-  async function load() {
+  /**
+   * The list stops at 500 rows, and this is the queue where that shows.
+   *
+   * `truncated` is what the server sends back when it cut the list short; every
+   * filter on this screen is built from the rows in hand (`departments`,
+   * `periods`, `shown`), so a queue over the ceiling is one whose แผนก dropdown
+   * is missing departments and whose search finds nothing in the rows that were
+   * never sent. None of that is visible from the screen, and the rows dropped
+   * are the oldest — the ones that have waited longest for a signature.
+   *
+   * `asked` raises the ceiling for this screen only, which is why it is state
+   * and not a constant: pressing โหลดทั้งหมด refetches the same query with the
+   * server's maximum. It resets whenever the queue changes, so moving between
+   * tabs never carries a heavy fetch along with it.
+   */
+  const [asked, setAsked] = useState(null);
+  const [cut, setCut] = useState(null); // { shown, total } | null
+
+  async function load(limit = asked) {
     try {
       // `scope=delegated` narrows to the covered teams instead of widening the
       // caller's own reach — the difference between a ฝ่ายบุคคล seeing the one
@@ -99,8 +119,12 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
       // `usage=cap` adds each row's running total for its own month — see
       // CapUsageCell, and `queueCapUsage` for why it costs the same however
       // long the queue is.
-      const res = await api.get(`/entries?status=${stage}&usage=cap${delegatedOnly ? '&scope=delegated' : ''}`);
+      const res = await api.get(
+        `/entries?status=${stage}&usage=cap${delegatedOnly ? '&scope=delegated' : ''}`
+        + `${limit ? `&limit=${limit}` : ''}`,
+      );
       setEntries(res.entries);
+      setCut(res.truncated ? { shown: res.entries.length, total: res.total } : null);
       if (res.entries.length) everHadRows.current = true;
       return res.entries;
     } catch (err) { setError(err.message); return null; }
@@ -109,8 +133,11 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   useEffect(() => {
     setEntries(null);
     setSelected(new Set());
+    setAsked(null);
     everHadRows.current = false;
-    load();
+    // Passed rather than read off `asked`: the reset above lands on the next
+    // render, so the closure here would still be holding the old queue's.
+    load(null);
   }, [stage, delegatedOnly]);
 
   // ── what the table is showing ─────────────────────────────────────────────
@@ -355,6 +382,47 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
         <PolicyDriftBanner user={user} onOpenPolicy={onOpenPolicy} />
       </div>
 
+      {/*
+        ABOVE the filter bar, because it is about the filter bar as much as the
+        table: every dropdown below is built from the rows that arrived, so a
+        cut list is one whose แผนก and เดือน options are themselves incomplete.
+        Read before the filters are trusted, not after.
+
+        `kind="error"` and not the amber the notices around it use. A backlog is
+        ordinary and a policy drift is a question; this says the number on the
+        badge and the number of rows on screen are different, which is the one
+        state where a reviewer can finish the queue and be wrong about it.
+      */}
+      {cut && (
+        <div style={{ padding: '0 18px' }}>
+          <Alert kind="error">
+            <strong>แสดง {cut.shown} จาก {cut.total} รายการ</strong>
+            {' '}— รายการที่ไม่ได้แสดงคือใบที่<strong>ค้างนานที่สุด</strong>
+            {' '}และตัวกรองด้านล่างเห็นเฉพาะรายการที่แสดงอยู่
+            {/*
+              The month and department dropdowns are NOT offered as a way out
+              of this. They filter the rows already in hand, so narrowing one
+              cannot bring a hidden row back — telling somebody to "เลือกเดือน
+              ให้แคบลง" here would be advice that quietly does nothing. Loading
+              the rest, or working the queue down, are the only two answers.
+            */}
+            <div style={{ fontSize: 12.5, marginTop: 4 }}>
+              {cut.shown < MAX_LIST_LIMIT ? (
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => { setAsked(MAX_LIST_LIMIT); load(MAX_LIST_LIMIT); }}
+                >
+                  โหลดทั้งหมด
+                </button>
+              ) : (
+                <>คิวยาวเกินกว่าจะโหลดในครั้งเดียว — ทยอยอนุมัติแล้วรายการที่เหลือจะขึ้นมาเอง</>
+              )}
+            </div>
+          </Alert>
+        </div>
+      )}
+
       {/* ── filter bar ─────────────────────────────────────────────────────── */}
       {entries?.length > 0 && (
         <div className="queue-tools">
@@ -469,9 +537,18 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                 <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
                 <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
                 <th className="num rate-col total-col"><RateHead rate="รวม" /></th>
-                {/* Not "เพดาน": what the column carries is the running total,
-                    and the ceiling only when the department has one. */}
-                <th className="num cap-col">สะสมทั้งเดือน</th>
+                {/* THE SAME HEADING ตรวจสอบรายเดือน USES, over the same cell.
+                    The two screens had already been made to print the same two
+                    lines about the same hours (see CapUsage) and then named the
+                    column differently — "สะสมทั้งเดือน" here, "เพดาน" there —
+                    which left HR translating between two words for one figure
+                    while moving between two screens in one sitting.
+
+                    Both halves are in the name because both are in the cell:
+                    the figure is a running total, and it is measured against a
+                    ceiling only where the department sets one. Neither word
+                    alone is true of every row. */}
+                <th className="num cap-col">สะสม / เพดาน</th>
                 <th className="why-col">รายละเอียด</th>
                 <th className="act-col" />
               </tr>
@@ -1342,7 +1419,7 @@ function CapUsage({ usage }) {
   // could match to an employee. A row without them shows nothing rather than a
   // zero, which would read as "this person has worked no overtime".
   if (!usage?.month) return <span className="cell-sub">—</span>;
-  const { month, weeks = [] } = usage;
+  const { month } = usage;
 
   return (
     <>
@@ -1366,12 +1443,25 @@ function CapUsage({ usage }) {
         </div>
       )}
 
-      {/* One block per week the shift touches — two when it crosses midnight
-          into a new week, each measured against that week's own hours. Absent
-          entirely where the department sets no weekly ceiling. */}
-      {weeks.map((w) => (
-        <WeekUsage key={w.weekStart} week={w} />
-      ))}
+      {/*
+        THE WEEKLY BLOCK USED TO SIT HERE and was removed on HR's instruction,
+        2026-08-13. It printed one block per week the shift touched — the
+        week's own figure, its pending note, its breach sentence and the span
+        of dates it covered — which on a department with a weekly ceiling made
+        this cell six lines deep where ตรวจสอบรายเดือน's is two.
+
+        HR asked for the two screens to read identically and were told what
+        this costs before it was done: the weekly ceiling now has NO live
+        warning anywhere in the queue. The row still carries เกินเพดานแผนก in
+        its รายละเอียด pop-up, but that reads `capSnapshot` — what the ceilings
+        said when the request was FILED — so a week that filled up after this
+        request was filed is no longer visible to whoever is signing it.
+
+        `weeksOfEntry` and the `weeks` payload are untouched: the server still
+        computes them, `checkCap` still refuses or flags on them, and the
+        printed and exported figures are unchanged. This is a display change
+        only, and putting the block back is one JSX element.
+      */}
     </>
   );
 }
@@ -1397,31 +1487,6 @@ const capNote = (w) => pendingCapNote(w.approvedHours, w.usedHours, w.capHours);
  * by reading the component.
  */
 const breachLine = overCapLine;
-
-/**
- * One week the shift touches, measured against that week's own hours.
- *
- * Shaped exactly like the month above it — approved figure, then the pending
- * hours, then a breach if there is one. It sits in the same cell of the same
- * column, and a reader who has just learnt what the big number means three
- * lines up must not have to learn a second convention for this one.
- */
-function WeekUsage({ week }) {
-  return (
-    <div style={{ marginTop: 4 }}>
-      <div className="cell-sub" style={{ ...(week.exceeded ? OVER_CAP : undefined), whiteSpace: 'nowrap' }}>
-        สัปดาห์ {capFigure(week.approvedHours ?? week.usedHours, week.capHours)}
-      </div>
-      {capNote(week) && <div className="cap-sub">{capNote(week)}</div>}
-      {breachLine(week) && (
-        <div className="cell-sub" style={{ ...OVER_CAP, whiteSpace: 'nowrap' }}>{breachLine(week)}</div>
-      )}
-      {/* A span of two dates is one fact; broken across lines it reads as two
-          unrelated ones, and this is the widest thing the column ever holds. */}
-      <div className="cell-sub" style={{ whiteSpace: 'nowrap' }}>{week.weekStart} – {week.weekEnd}</div>
-    </div>
-  );
-}
 
 /**
  * The label and the split come from lib/caps.js, not from here.

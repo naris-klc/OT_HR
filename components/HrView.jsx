@@ -211,7 +211,12 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                         answers per row and only where the two figures actually
                         differ — and it colours from the ceiling's own total, so
                         the warning arrives before anybody reads a word. */}
-                    <th>เพดาน</th>
+                    {/* Named to match the same column on คิวรออนุมัติ, which
+                        prints the same two lines from the same helper. "เพดาน"
+                        alone was the older name and described only half the
+                        cell: a department that sets no ceiling still shows its
+                        running total here. */}
+                    <th>สะสม / เพดาน</th>
                     <th />
                   </tr>
                 </thead>
