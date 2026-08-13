@@ -594,6 +594,12 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; }
   display: grid; place-items: center; border-radius: 50%;
   font: 600 11px/1 var(--mono); color: #fff;
 }
+/* The message, as one block beside the mark. The row above is for the mark and
+   nothing else: without this every child of an alert becomes a column, so a
+   notice with a heading and a few lines under it is torn into columns that each
+   have to be read on their own. `min-width: 0` lets a long line wrap inside the
+   alert instead of stretching it past the card. */
+.alert-body { flex: 1; min-width: 0; }
 .alert.warn { background: var(--amber-bg); color: var(--amber); border-color: #EFDCB6; }
 .alert.warn::before { content: '!'; background: var(--amber); }
 .alert.error { background: var(--danger-bg); color: var(--danger-ink); border-color: #F3CFC7; }

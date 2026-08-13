@@ -48,9 +48,21 @@ export function RateHead({ rate, of = null }) {
   );
 }
 
+/**
+ * The mark and the message. `.alert` is a flex row so the round ! or i can sit
+ * beside the text rather than above it — which means every child handed to it
+ * would otherwise become a column of its own, and a notice written as a heading
+ * plus its lines came out as three narrow columns side by side. The wrapper is
+ * what puts the message back into ordinary block flow: one column, each child
+ * on its own line, however many there are.
+ */
 export function Alert({ kind = 'warn', children }) {
   if (!children) return null;
-  return <div className={`alert ${kind}`}>{children}</div>;
+  return (
+    <div className={`alert ${kind}`}>
+      <div className="alert-body">{children}</div>
+    </div>
+  );
 }
 
 /**

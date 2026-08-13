@@ -8,9 +8,20 @@
  *
  * Cells state their own box-sizing rather than inherit it: whether the row is
  * 5.5mm or 5.5mm-plus-padding decides whether the month fits the page, and
- * that is not something to leave to a global rule in styles.css. Measured, the
- * 31-row sheet comes to ~242mm against the 277mm A4 gives you — the slack is
- * there because a date with two sessions adds a row, and five still fit.
+ * that is not something to leave to a global rule in styles.css.
+ *
+ * 5.5mm is the row's MINIMUM, not its height. Laid out at that figure the
+ * 31-row sheet comes to ~242mm of the 297mm the paper has, and it printed with
+ * a hand's width of nothing under the signature block — which is not what the
+ * paper does. On the printed F-HR-027 the grid runs down to a ~20mm bottom
+ * band, so the sheet is a flex column with the table growing into whatever is
+ * left (`.f027 > table { flex: 1 0 auto }`) and the rows share it out.
+ *
+ * The growth is what gives way when the month needs the space. A date worked
+ * in two sessions is two rows, not one, and a month with several of them has
+ * no slack to distribute: the rows fall back to their 5.5mm minimum and the
+ * sheet is exactly the one that was measured against the paper. Nothing here
+ * can push a month onto a second side that would have fitted on one.
  */
 
 @page {
@@ -26,7 +37,19 @@
   font-family: 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
   font-size: 8pt;
   line-height: 1.25;
+  /* The paper's own body height, between the bands the padding gives back —
+     255mm here plus 18mm above and 22mm below is 295mm of the 297 A4 has, and
+     the 2mm that are left is deliberate: a sheet that measured 297.1mm would
+     spill a blank side into the middle of a bundle. */
+  min-height: 255mm;
+  display: flex;
+  flex-direction: column;
 }
+/* Only the grid grows. The title, the ชื่อ-สกุล line and the ฝ่ายบุคคล block
+   are the size they are on the paper, and none of them may shrink either — a
+   month that outgrows the page must run on rather than be squeezed. */
+.f027 > * { flex: none; }
+.f027 > table { flex: 1 0 auto; }
 
 .f027-title {
   font-size: 11pt;
@@ -194,7 +217,9 @@
 /* On screen the sheet sits on a grey page with a shadow, so what you see is
    the paper. Printing strips all of that. */
 .f027-screen { background: #e8ebe9; padding: 16px; }
-.f027-screen .f027 { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 10mm 8mm; }
+/* The same bands the paper is printed with, so the preview is the sheet — see
+   the @page note at the foot of this file for where the figures come from. */
+.f027-screen .f027 { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 18mm 8mm 22mm; }
 /* A whole month printed in one go puts every employee's sheet in the same
    wrapper — one person to a side, the same rule the other two multi-sheet
    documents carry (.acct, .otdept). One sheet on its own has no sibling and is
