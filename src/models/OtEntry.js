@@ -276,8 +276,18 @@ const otEntrySchema = new mongoose.Schema(
       clockHours: { type: Number, default: 0 },
       breakHours: { type: Number, default: 0 },
     },
-    /** e.g. NORMAL_HOURS_IGNORED, RAISED_TO_MINIMUM — shown to reviewers. */
-    warnings: { type: [{ code: String, message: String, minutes: Number }], default: [] },
+    /**
+     * e.g. NORMAL_HOURS_IGNORED, RAISED_TO_MINIMUM — shown to reviewers.
+     *
+     * `bucket` is set only where a warning is about ONE rate column rather than
+     * the entry: the minimum under `minimumHoursScope: 'bucket'` produces one
+     * warning per short column, and without a field for it mongoose would drop
+     * the only thing telling two otherwise identical sentences apart.
+     */
+    warnings: {
+      type: [{ code: String, message: String, minutes: Number, bucket: String }],
+      default: [],
+    },
 
     /**
      * The rule set the figures above were produced by — stamped by
@@ -343,6 +353,22 @@ const otEntrySchema = new mongoose.Schema(
      * how much, is `capSnapshot.breaches` below.
      */
     capExceeded: { type: Boolean, default: false },
+
+    /**
+     * [OPEN 4] Set when the session came out under `minimumHours` and
+     * policy.belowMinimum is 'accept' — the hours are recorded as worked and HR
+     * decides what they are worth.
+     *
+     * A sibling of `capExceeded` and for the same reason: a list screen asks
+     * "is there anything to look at on this row" and wants one boolean, while
+     * WHAT was short is the `BELOW_MINIMUM_ACCEPTED` entry in `warnings`.
+     *
+     * Written by `applyComputation` together with the hours it describes, so a
+     * replay under a policy where the entry is no longer short clears it. False
+     * on every row filed under 'reject' or 'raise': neither leaves a short entry
+     * behind to flag.
+     */
+    belowMinimumFlagged: { type: Boolean, default: false },
     /**
      * What the ceilings looked like at the moment this entry was filed.
      *

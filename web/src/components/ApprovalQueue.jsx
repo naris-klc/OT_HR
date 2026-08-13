@@ -114,7 +114,7 @@ export default function ApprovalQueue({ user, stage, onChanged }) {
                         </div>
                       )}
                       {e.warnings?.map((w) => (
-                        <div key={w.code} style={{ fontSize: 12, color: 'var(--muted)' }}>{w.message}</div>
+                        <div key={w.code + (w.bucket || '')} style={{ fontSize: 12, color: 'var(--muted)' }}>{w.message}</div>
                       ))}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>

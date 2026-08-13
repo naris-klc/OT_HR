@@ -547,6 +547,21 @@ test('ข้อความบอกเวลาตามนโยบายท�
   assert.match(message, /09:00–18:30/);
 });
 
+test('[OPEN 5] ตอบ 17:01 แล้ว ข้อความต้องบอก 17:01 ไม่ใช่ 17:00', () => {
+  // A 16:00–17:01 session is refused under this answer — OT does not start until
+  // 17:01 — and the sentence that comes back is the only thing telling the person
+  // why. Naming 17:00 there sends them off to re-type a time that is already right.
+  const session = { workDate: '2026-08-05', startTime: '16:00', endTime: '17:01' };
+  const literal = { ...ON, otStartsAtCoreEnd: false };
+  const dayTypes = resolveDayTypes(sessionDates(session), { isHoliday, birthDate: null, policy: literal });
+
+  assert.equal(computeSession(session, { policy: literal, dayTypes }).totals.otHours, 0);
+
+  const message = noOtHoursMessage(session, literal, dayTypes);
+  assert.match(message, /08:00–17:01/);
+  assert.match(message, /เริ่มนับตั้งแต่ 17:01/);
+});
+
 test('ถ้าวันนั้นเป็นวันหยุดอยู่แล้ว ข้อความต้องไม่อ้างเรื่องเวลาทำงานปกติ', () => {
   // On a holiday there is no normal working time, so a nought means the break
   // rule or the rounding ate the session — a different answer to a different

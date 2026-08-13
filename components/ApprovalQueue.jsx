@@ -556,8 +556,10 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                     {describeBreaches(e).map((b) => (
                       <div className="cell-note" key={b.scope + b.text}>⚠ {b.text}</div>
                     ))}
+                    {/* code + column: a bucket-scoped minimum can leave two
+                        warnings on one entry sharing a code. */}
                     {e.warnings?.map((w) => (
-                      <div key={w.code} className="cell-sub">{w.message}</div>
+                      <div key={w.code + (w.bucket || '')} className="cell-sub">{w.message}</div>
                     ))}
                   </td>
                   <td>
@@ -1055,7 +1057,7 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
             ) : (
               <>
                 <SegmentList segments={e.segments} />
-                {e.warnings?.map((w) => <div key={w.code} className="hint">{w.message}</div>)}
+                {e.warnings?.map((w) => <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>)}
               </>
             )}
           </Section>
@@ -1230,7 +1232,7 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
               </div>
               <SegmentList segments={preview.result?.segments} />
               {preview.result?.warnings?.map((w) => (
-                <div key={w.code} className="hint">{w.message}</div>
+                <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>
               ))}
               {preview.cap?.exceeded && (
                 <Alert kind="warn">

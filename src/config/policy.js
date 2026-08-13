@@ -69,32 +69,73 @@ export const DEFAULT_POLICY = Object.freeze({
    */
   roundingScope: 'bucket',
 
-  // ── [OPEN 4] Session under the 1-hour minimum: reject or round up? ─────────
+  // ── [OPEN 4] Session under the 1-hour minimum: accept, raise or refuse? ────
   /**
-   * 'raise' — pad up to minimumHours. 'reject' — refuse the entry.
+   * 'accept' — keep the hours actually worked and flag the entry (DEFAULT).
+   * 'raise'  — pad up to minimumHours. 'reject' — refuse the entry outright.
    *
-   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ตั้งตามพฤติกรรมเดิม. The shipped default
-   * used to be 'raise' while the live database carried a 'reject' override, so
-   * every entry ever computed here was rejected below the minimum and the file
-   * said otherwise. Pinning it to 'reject' does not change a single stored
-   * figure; it stops the file and the database disagreeing about what the
-   * system has been doing. HR has still not answered [OPEN 4] — see
-   * HR_UNCONFIRMED below.
+   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — HR ยังไม่ตอบ [OPEN 4] ดู HR_UNCONFIRMED
+   * ข้างล่าง. The flag stays unconfirmed: changing which reading we run on is
+   * not the same act as HR answering the question, and the badge comes off when
+   * somebody in HR presses ยืนยัน, not when a default moves.
+   *
+   * The default was 'reject' — the behaviour read off the live database, where a
+   * 'reject' override had sat for months against a file that said 'raise'. What
+   * it does is refuse to record work that was done: a 40-minute callout is
+   * turned away at the form and leaves no trace that anybody worked it. That is
+   * a liability rather than a conservative choice, and it is not a decision this
+   * system is entitled to make on HR's behalf while the question is still open.
+   *
+   * 'accept' is the reading that keeps every answer available. The hours are
+   * stored as computed — not padded, so it never over-reports, and not zeroed,
+   * so nothing is lost — and the entry carries `belowMinimumFlagged` for HR to
+   * decide against a real record. If HR later answers 'raise' or 'reject', the
+   * flag is the list of entries the answer has to be applied to.
+   *
+   * ARITHMETIC (see ARITHMETIC_KEYS in lib/policyVersion.js): moving this
+   * restates entries still in flight. Approved ones do not move.
    */
-  belowMinimum: 'reject',
+  belowMinimum: 'accept',
   /**
    * The minimum, in hours.
    *
    * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ตั้งตามพฤติกรรมเดิม.
    *
-   * WHAT IS UNCONFIRMED IS NOT ONLY THE NUMBER. The engine applies this to the
-   * SESSION total — one entry, one minimum, whatever mix of buckets it lands in
-   * (see `computeSession`, where `totalMinutes` is summed across every bucket
-   * before the comparison). "ต่อใบ", in other words. Whether HR means that or
-   * one minimum per rate column is the open question, and there is no flag for
-   * the other reading because nothing in the system implements it.
+   * WHAT IS UNCONFIRMED IS NOT ONLY THE NUMBER. What it is measured against is
+   * `minimumHoursScope` below, and that question — "ต่อใบหรือต่อช่อง" — is as
+   * unanswered as this one. The two are read together and neither means
+   * anything alone.
    */
   minimumHours: 1,
+  /**
+   * What `minimumHours` is measured against.
+   *
+   * 'sheet'  — one entry, one minimum, whatever mix of rate columns it lands in
+   *            (DEFAULT). A 20-minute weekday stretch and a 45-minute holiday
+   *            stretch on the same entry clear a 1-hour minimum together.
+   * 'bucket' — one minimum per rate column. The same entry is short in both, and
+   *            `belowMinimum` is applied to each column that falls short: two
+   *            flags under 'accept', two paddings under 'raise', and one refusal
+   *            under 'reject' (the entry is refused as a whole — an entry that
+   *            kept its long columns and dropped its short one would be a third
+   *            answer nobody asked for).
+   *
+   * 'sheet' is the DEFAULT because it is what every figure in the database was
+   * computed with, and because it is the reading that refuses least: under
+   * 'bucket' the same work is short more often, and more often is not more
+   * correct while the question is open.
+   *
+   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ดู HR_UNCONFIRMED (`minimumScope`) below.
+   * Until this existed the other reading was not a value but a rewrite of the
+   * engine, which is why the badge for it had no dropdown to sit on.
+   *
+   * ARITHMETIC (see ARITHMETIC_KEYS in lib/policyVersion.js). Under 'accept' it
+   * moves no hour and only flags more entries — but under 'raise' it pads
+   * columns 'sheet' would have left alone, and under 'reject' it refuses
+   * entries 'sheet' would have kept, so it is registered on what it can do and
+   * not on what today's `belowMinimum` happens to make of it.
+   */
+  minimumHoursScope: 'sheet',
 
   // ── [OPEN 5] Does OT begin at 17:00 or 17:01? ──────────────────────────────
   /**
@@ -305,10 +346,13 @@ export const DEFAULT_POLICY = Object.freeze({
  * than our guess.
  *
  * `keys` places the badge — a settings row wearing it is a row this question is
- * about. Empty `keys` is a real case and the reason `reading` exists: the
- * minimum's scope is a rule the engine has but the policy has no flag for, so
- * there is no dropdown to hang a badge on and the current behaviour has to be
- * stated in words.
+ * about. It may be empty, and `reading` is what makes that survivable: an item
+ * with no dropdown to sit on still states the rule the system is running on, in
+ * words, on the settings page. `minimumScope` was that case until 2026-08-13 —
+ * the minimum's scope was a rule the engine had and the policy had no flag for
+ * — and it is not any more, because `minimumHoursScope` is now the flag. The
+ * question is no less unanswered for having a dropdown; the badge stayed and
+ * only moved onto it.
  */
 export const HR_UNCONFIRMED_SINCE = '2026-08-07';
 
@@ -329,20 +373,29 @@ export const HR_UNCONFIRMED = Object.freeze([
      * is what caught it.
      */
     id: 'belowMinimumAction',
-    label: 'ต่ำกว่าขั้นต่ำ 1 ชม. ให้ปัดขึ้นหรือไม่รับ',
+    label: 'ต่ำกว่าขั้นต่ำ 1 ชม. ให้รับ ปัดขึ้น หรือไม่รับ',
     keys: Object.freeze(['belowMinimum']),
-    reading: (policy) => (policy.belowMinimum === 'reject' ? 'ไม่รับรายการ' : 'ปัดขึ้นเป็น 1 ชม.'),
-    note: 'ค่าที่ใช้อยู่คือ “ไม่รับรายการ” ซึ่งเป็นสิ่งที่ระบบทำมาตลอด '
-      + '(ฐานข้อมูลตั้ง reject ทับไว้ ทั้งที่ไฟล์เขียนว่า raise — ตอนนี้ตรงกันแล้ว)',
+    reading: (policy) => {
+      if (policy.belowMinimum === 'reject') return 'ไม่รับรายการ';
+      if (policy.belowMinimum === 'raise') return 'ปัดขึ้นเป็น 1 ชม.';
+      return 'รับตามชั่วโมงจริง และติดธงให้ HR ตรวจ';
+    },
+    note: 'ค่าที่ใช้อยู่คือ “รับตามชั่วโมงจริง” — ใบที่ต่ำกว่า 1 ชม. จะถูกบันทึกตามชั่วโมงที่คำนวณได้ '
+      + 'ไม่ปัดขึ้นและไม่ถูกปฏิเสธ แต่ติดธงไว้ให้ฝ่ายบุคคลตัดสิน '
+      + '· ก่อนหน้านี้ระบบใช้ “ไม่รับรายการ” ซึ่งเท่ากับไม่บันทึกชั่วโมงที่พนักงานทำจริง '
+      + '· ถ้า HR ตอบว่าให้ปัดขึ้นหรือไม่รับ ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
   }),
   Object.freeze({
     id: 'minimumScope',
     label: 'ขั้นต่ำ 1 ชม. นับต่อใบหรือต่อช่อง',
-    /** No flag exists for the other reading, so no dropdown wears this badge. */
-    keys: Object.freeze([]),
-    reading: () => 'ต่อใบ (รวมทุกช่องก่อนเทียบกับขั้นต่ำ)',
-    note: 'ระบบนับต่อใบ — รวมชั่วโมงทุกช่องในใบนั้นก่อน แล้วจึงเทียบกับ 1 ชม. '
-      + '· ยังไม่มีค่าตั้งสำหรับการนับต่อช่อง ถ้าคำตอบคือต่อช่อง ต้องแก้ตัวคำนวณ ไม่ใช่แก้ค่า',
+    keys: Object.freeze(['minimumHoursScope']),
+    reading: (policy) => (policy.minimumHoursScope === 'bucket'
+      ? 'ต่อช่อง (เทียบขั้นต่ำแยกทีละช่องอัตรา)'
+      : 'ต่อใบ (รวมทุกช่องก่อนเทียบกับขั้นต่ำ)'),
+    note: 'ค่าที่ใช้อยู่คือ “ต่อใบ” — รวมชั่วโมงทุกช่องในใบนั้นก่อน แล้วจึงเทียบกับ 1 ชม. '
+      + '· ถ้าคำตอบคือต่อช่อง ให้เปลี่ยนที่ตัวเลือกในหน้านี้ '
+      + '· ต่อช่องทำให้ใบที่คาบเกี่ยวสองช่อง เช่น ศุกร์ดึกข้ามไปเสาร์ ถูกวัดสองครั้ง '
+      + 'ชั่วโมงของใบที่ยังไม่อนุมัติจึงเปลี่ยนเมื่อ “ต่ำกว่าขั้นต่ำ” ตั้งไว้ที่ปัดขึ้นหรือไม่รับ',
   }),
 ]);
 

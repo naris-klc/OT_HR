@@ -2,7 +2,10 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
-import { HR_ASSIGNABLE_ROLES, SELF_LOCKED_FIELDS, dropsAnAdmin } from '@/lib/employees.js';
+import {
+  HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
+  chosenPasswordPermission, dropsAnAdmin,
+} from '@/lib/employees.js';
 import { ACCOUNTING_SENSITIVE, FIELD_LABEL, rosterChanges } from '@/lib/rosterAudit.js';
 import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // Pure config, no mongoose — the same resolution the accounting sheet uses, so
@@ -216,11 +219,25 @@ const BLANK = {
   // be edited straight afterwards to get it, while the same person imported from
   // CSV arrived complete.
   code: '', name: '', email: '', position: '', birthDate: '', department: '', role: 'employee',
-  // No `password` — the server issues it. Sending one is now a 400, which is
-  // deliberate: a create that thought it set a password and did not is worse
-  // than one that was told.
   company: '',
+  /**
+   * The first password, and how it is being decided.
+   *
+   * 'generate' sends no password at all and the server makes one — the default,
+   * and the only thing this form could do at all until HR asked for the other.
+   * 'choose' sends what is in the box. Kept as a mode rather than as "a filled
+   * box means chosen", so leaving a character behind while switching back to
+   * ให้ระบบสุ่ม cannot quietly set it.
+   */
+  passwordMode: 'generate',
+  password: '',
 };
+
+/** What actually goes to the server — the mode is this screen's, not the API's. */
+function createPayload(form) {
+  const { passwordMode, password, ...fields } = form;
+  return passwordMode === 'choose' ? { ...fields, password } : fields;
+}
 
 const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map((o) => [o.value, o.label]));
 
@@ -460,10 +477,26 @@ function Employees({ user }) {
   async function create(values) {
     setError('');
     const res = await api.post('/employees', values);
-    // Shown once, from the response — the server stores only the hash, so
-    // this is the last time anyone can read it off a screen. HR reads it to
-    // the new employee, who is made to replace it at first login.
-    setIssued({ code: values.code, name: values.name, password: res.password });
+    const who = { code: values.code, name: values.name };
+    if (res.passwordChosen) {
+      // Nothing to reveal: the password is the one HR typed, and they still have
+      // it. The notice says the account exists and that it must still be changed
+      // at first login, which is the part they did not choose.
+      setIssued({ ...who, chosen: true });
+    } else if (res.password) {
+      // Shown once, from the response — the server stores only the hash, so
+      // this is the last time anyone can read it off a screen. HR reads it to
+      // the new employee, who is made to replace it at first login.
+      setIssued({ ...who, password: res.password });
+    } else {
+      /**
+       * A 201 with neither. The row exists and nobody — not HR, not the server,
+       * not this screen — knows what it can be logged into with. Nothing in the
+       * current servers produces this; it is here because the failure is silent
+       * and the account would otherwise sit on the roster looking finished.
+       */
+      setIssued({ ...who, missing: true });
+    }
     setAdding(false);
     load();
   }
@@ -548,10 +581,13 @@ function Employees({ user }) {
         {/* Said here as well as on the dialogs, because it is the change most
             likely to be read as a bug: the password field people used to fill
             in is gone. */}
-        · ทุกบัญชีที่สร้างจากหน้านี้ (ทั้งทีละคนและจาก CSV) ระบบจะ
-        สุ่มรหัสผ่านชั่วคราวให้เอง แสดงบนจอครั้งเดียวให้ HR จดไปแจ้งพนักงาน
+        · บัญชีที่สร้างจากหน้านี้ ระบบจะสุ่มรหัสผ่านชั่วคราวให้เอง
+        แสดงบนจอครั้งเดียวให้ HR จดไปแจ้งพนักงาน
         และบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
-        — ไฟล์ CSV ไม่ต้องมีคอลัมน์รหัสผ่าน ถ้ามีระบบจะไม่ใช้ค่านั้น
+        · การเพิ่มทีละคนเลือก “ตั้งเอง” ได้ถ้าต้องบอกรหัสกับพนักงานตรงนั้นเลย
+        แต่อย่าใช้รูปแบบเดียวกันกับทุกคน และตั้งให้ไม่มีรหัสพนักงานอยู่ในนั้น
+        (ระบบไม่รับ เพราะรหัสพนักงานพิมพ์อยู่บนใบ OT ทุกใบและในไฟล์ที่ส่งบัญชี)
+        — ไฟล์ CSV ตั้งเองไม่ได้ ไม่ต้องมีคอลัมน์รหัสผ่าน ถ้ามีระบบจะไม่ใช้ค่านั้น
         {/* Said plainly, because the alternative is HR discovering it as a 403.
             Both limits are enforced on the server (lib/employees.js); this is
             the sentence that stops somebody looking for a button that is not
@@ -617,19 +653,48 @@ function Employees({ user }) {
           clears itself while somebody is reaching for a pen is a password
           nobody can recover — only reset. */}
       {issued && (
-        <Alert kind="ok">
-          <div>
-            {issued.reset ? 'ตั้งรหัสผ่านใหม่ให้' : 'สร้างบัญชี'} {issued.code} · {issued.name} แล้ว
-            {' '}— รหัสผ่านชั่วคราวคือ{' '}
-            <strong style={{ fontFamily: 'var(--mono, monospace)', fontSize: 17, letterSpacing: '.04em' }}>
-              {issued.password}
-            </strong>
-          </div>
-          <div style={{ marginTop: 4, fontSize: 12.5 }}>
-            แจ้งรหัสนี้ให้พนักงาน · ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
-            {' '}· ระบบสุ่มรหัสนี้ขึ้นมาและเก็บไว้แบบเข้ารหัสทางเดียว
-            {' '}<strong>แสดงเพียงครั้งเดียว</strong> ปิดแล้วดูซ้ำไม่ได้ — หากพลาดให้ตั้งใหม่อีกครั้ง
-          </div>
+        <Alert kind={issued.missing ? 'error' : 'ok'}>
+          {/* Three things this can be reporting, and only the first of them is
+              a password nobody may lose: one the server made, one HR typed and
+              still has, and one that has gone missing between the two. */}
+          {issued.missing ? (
+            <>
+              <div>
+                <strong>สร้างบัญชี {issued.code} · {issued.name} แล้ว แต่ไม่ทราบรหัสผ่าน</strong>
+                {' '}— เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา และระบบเก็บไว้แบบเข้ารหัสทางเดียว
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12.5 }}>
+                บัญชีนี้ยังเข้าระบบไม่ได้จนกว่าจะออกรหัสใหม่ — กดปุ่ม “ตั้งรหัสใหม่” ที่แถวของคนนี้
+                {' '}และแจ้งผู้ดูแลระบบว่าเกิดเหตุนี้ขึ้น
+              </div>
+            </>
+          ) : issued.chosen ? (
+            <>
+              <div>
+                สร้างบัญชี {issued.code} · {issued.name} แล้ว — ใช้รหัสผ่านที่ตั้งไว้ในหน้าต่างเพิ่มพนักงาน
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12.5 }}>
+                ระบบไม่แสดงรหัสนั้นซ้ำที่ใดอีก เพราะเก็บไว้แบบเข้ารหัสทางเดียว — หากจำไม่ได้
+                {' '}ให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง
+                {' '}· ระบบจะบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                {issued.reset ? 'ตั้งรหัสผ่านใหม่ให้' : 'สร้างบัญชี'} {issued.code} · {issued.name} แล้ว
+                {' '}— รหัสผ่านชั่วคราวคือ{' '}
+                <strong style={{ fontFamily: 'var(--mono, monospace)', fontSize: 17, letterSpacing: '.04em' }}>
+                  {issued.password}
+                </strong>
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12.5 }}>
+                แจ้งรหัสนี้ให้พนักงาน · ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+                {' '}· ระบบสุ่มรหัสนี้ขึ้นมาและเก็บไว้แบบเข้ารหัสทางเดียว
+                {' '}<strong>แสดงเพียงครั้งเดียว</strong> ปิดแล้วดูซ้ำไม่ได้ — หากพลาดให้ตั้งใหม่อีกครั้ง
+              </div>
+            </>
+          )}
           <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setIssued(null)}>รับทราบ</button>
         </Alert>
       )}
@@ -935,19 +1000,22 @@ const PASSWORD_NOTE = {
 };
 
 /**
- * The same missing field, said the other way round.
+ * The two ways a first password happens, and what each costs the reader.
  *
- * On a new row there is no “ตั้งรหัสใหม่” button to point at yet, and the reader
- * is looking for the box they used to fill in. What they need to know before
- * they press บันทึก is that one is coming, that it appears once, and that it is
- * theirs to hand over — a password discovered after the notice has been closed
- * cannot be read back, only reset.
+ * `short` describes the DEFAULT, and is shown only while that default is in
+ * force — it is the line for somebody looking for the box they used to fill in.
+ * `full` has to cover both, because it sits behind the (?) on the control that
+ * switches between them.
+ *
+ * Both halves say the same underlying thing: whichever way the password is
+ * decided, the system never shows it again, and the recovery is ตั้งรหัสใหม่.
  */
 const NEW_PASSWORD_NOTE = {
   short: 'ไม่ต้องตั้งรหัสผ่าน — ระบบสุ่มให้เอง และแสดงครั้งเดียวหลังกดบันทึก',
-  full: 'รหัสผ่านชั่วคราวจะขึ้นบนหน้านี้ครั้งเดียวให้จดไปแจ้งพนักงาน ปิดแล้วดูซ้ำไม่ได้ '
-    + '— หากพลาด ให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตารางเพื่อออกรหัสใหม่ '
-    + '· ระบบบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก',
+  full: 'ให้ระบบสุ่มให้: รหัสจะขึ้นบนหน้านี้ครั้งเดียวหลังกดบันทึก ให้จดไปแจ้งพนักงาน ปิดแล้วดูซ้ำไม่ได้ '
+    + '· ตั้งเอง: ใช้เมื่อต้องบอกรหัสกับพนักงานตรงนั้นเลย ระบบจะไม่แสดงค่านั้นซ้ำเช่นกัน '
+    + '· ทั้งสองแบบ ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว หากลืมให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง '
+    + 'และบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรกเสมอ',
 };
 
 /**
@@ -980,16 +1048,30 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
+  const choosing = form.passwordMode === 'choose';
+  /**
+   * The same rule the server applies, run on what is in the box.
+   *
+   * Imported rather than restated: a length and a "not the employee code" check
+   * written twice is a pair that agrees until one of them is edited. Held back
+   * until something has been typed, so an empty box is not scolded for being
+   * empty before anybody has had a turn.
+   */
+  const passwordCheck = choosing && form.password
+    ? chosenPasswordPermission(form.password, { code: form.code })
+    : { ok: true };
+  const passwordReady = !choosing || (form.password && passwordCheck.ok);
+
   // The three the server insists on, checked here so the refusal is a greyed
   // button next to the empty field rather than a 400 after the form is full.
-  const ready = form.code.trim() && form.name.trim() && form.department;
+  const ready = form.code.trim() && form.name.trim() && form.department && passwordReady;
   const dirty = Object.keys(BLANK).some((k) => form[k] !== BLANK[k]);
 
   async function save() {
     setError('');
     setBusy(true);
     try {
-      await onSave({ ...form, code: form.code.trim(), name: form.name.trim() });
+      await onSave(createPayload({ ...form, code: form.code.trim(), name: form.name.trim() }));
     } catch (err) {
       // Stays open, with everything still typed in it — see `create`.
       setError(err.message);
@@ -1134,7 +1216,54 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
           </div>
         </section>
 
-        <FoldedNote short={NEW_PASSWORD_NOTE.short} full={NEW_PASSWORD_NOTE.full} />
+        <section className="form-group">
+          <div className="gh">รหัสผ่านแรกเข้า</div>
+          <div className="form-grid">
+            <Field
+              label="วิธีตั้งรหัสผ่าน"
+              tip={NEW_PASSWORD_NOTE.full}
+            >
+              <select
+                value={form.passwordMode}
+                onChange={(e) => set({ passwordMode: e.target.value })}
+                disabled={busy}
+              >
+                <option value="generate">ให้ระบบสุ่มให้ (แนะนำ)</option>
+                <option value="choose">ตั้งเอง</option>
+              </select>
+            </Field>
+            {choosing && (
+              <Field
+                label="รหัสผ่าน"
+                note={form.password && !passwordCheck.ok ? null : `อย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`}
+                tip={'พนักงานยังต้องเปลี่ยนรหัสนี้เมื่อเข้าระบบครั้งแรกอยู่ดี '
+                  + '· อย่าตั้งรูปแบบเดียวกันให้ทุกคน — บัญชีที่ยังไม่มีใครเข้าคือบัญชีที่ถูกใช้ผิดแล้วไม่มีใครรู้'}
+              >
+                {/*
+                  Plain text, deliberately. This is a credential HR is about to
+                  say out loud to the person it belongs to — hiding it behind
+                  dots protects it from nobody in that room and buys a typo that
+                  is only discovered when the employee cannot log in. There is
+                  no confirm-password box for the same reason: the value is
+                  legible, so there is nothing to confirm it against.
+                */}
+                <input
+                  value={form.password}
+                  onChange={(e) => set({ password: e.target.value })}
+                  disabled={busy}
+                  autoComplete="new-password"
+                  spellCheck={false}
+                />
+                {form.password && !passwordCheck.ok && (
+                  <div className="field-note error">{passwordCheck.error}</div>
+                )}
+              </Field>
+            )}
+          </div>
+          {!choosing && (
+            <FoldedNote short={NEW_PASSWORD_NOTE.short} full={NEW_PASSWORD_NOTE.full} />
+          )}
+        </section>
       </div>
     </Modal>
   );
@@ -2390,11 +2519,36 @@ const POLICY_FIELDS = [
   },
   {
     key: 'belowMinimum', open: 4, label: 'ต่ำกว่าขั้นต่ำ 1 ชม.',
-    options: [['raise', 'ปัดขึ้นเป็น 1 ชม.'], ['reject', 'ไม่รับรายการ']],
+    options: [
+      ['accept', 'รับตามชั่วโมงจริง (ติดธงให้ HR)'],
+      ['raise', 'ปัดขึ้นเป็น 1 ชม.'],
+      ['reject', 'ไม่รับรายการ'],
+    ],
+  },
+  {
+    key: 'minimumHoursScope', open: 4, label: 'ขั้นต่ำ 1 ชม. นับต่อใบหรือต่อช่อง',
+    options: [
+      ['sheet', 'ต่อใบ — รวมทุกช่องก่อนเทียบกับขั้นต่ำ (ค่าเริ่มต้น)'],
+      ['bucket', 'ต่อช่อง — เทียบขั้นต่ำแยกทีละช่องอัตรา'],
+    ],
+    hint: 'มีผลเฉพาะใบที่คาบเกี่ยวมากกว่าหนึ่งช่องอัตรา เช่น ศุกร์ดึกข้ามไปเสาร์ '
+      + 'ใบที่อยู่ช่องเดียวได้ผลเหมือนกันทั้งสองแบบ '
+      + '· ต่อช่องจะวัดใบเดียวหลายครั้ง ช่องที่สั้นกว่าขั้นต่ำจะถูกจัดการตามค่า “ต่ำกว่าขั้นต่ำ” ข้างบน '
+      + '— ติดธงทีละช่อง (รับตามจริง) ปัดขึ้นทีละช่อง (ปัดขึ้น) หรือไม่รับทั้งใบ (ไม่รับรายการ) '
+      + '· เปลี่ยนเป็นต่อช่องแล้ว ถ้าค่าข้างบนคือปัดขึ้นหรือไม่รับ ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
   },
   {
     key: 'otStartsAtCoreEnd', open: 5, label: 'OT เริ่มนับที่', bool: true,
-    options: [[true, '17:00 (นับเต็ม 3 ชม. สำหรับ 17:00–20:00)'], [false, '17:01']],
+    options: [
+      [true, '17:00 (นับเต็ม 3 ชม. สำหรับ 17:00–20:00)'],
+      [false, '17:01 (17:00–20:00 เหลือ 2 ชม. 59 นาที)'],
+    ],
+    hint: 'ค่าเริ่มต้น 17:00 คืออ่าน “17.01” บนแบบฟอร์มว่าเป็นคำย่อของ “หลัง 17:00” '
+      + '· เลือก 17:01 คือถือตามตัวอักษร นาที 17:00–17:01 ไม่ใช่ OT '
+      + 'ทำให้ 17:00–20:00 เหลือ 2 ชม. 59 นาที และเมื่อปัดเศษ 30 นาทีแบบปัดลงจะเหลือ 2.5 ชม. '
+      + '· วันหยุดใช้เส้นแบ่งเดียวกัน นาทีนั้นจะค้างอยู่ในช่อง ×1.5 วันหยุด ไม่เข้าช่อง ×3 '
+      + '· ไม่กระทบเส้น 08:00 ตอนเช้า — OT ก่อนเข้างานยังนับถึง 08:00 เท่าเดิม '
+      + '· เปลี่ยนแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ',
   },
   {
     key: 'birthdayHolidayEnabled', label: 'วันเกิดพนักงานเป็นวันหยุดของคนนั้น', bool: true,

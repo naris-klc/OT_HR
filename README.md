@@ -217,7 +217,7 @@ signed-off number is worse than an inconsistency.
 | 1 | Break on every session? | Only the part overlapping 12:00–13:00 | `breakMode: 'lunchWindow'` |
 | 2 | Overnight: one break or two? | One per lunch window crossed | `breakPerCalendarDay: true` |
 | 3 | Round down / up / nearest? | Down, per bucket | `roundingMode: 'floor'` |
-| 4 | Under 1 hour: reject or raise? | Refuse the entry ⚠ | `belowMinimum: 'reject'` |
+| 4 | Under 1 hour: accept, raise or reject? | Accept the real hours, flag for HR ⚠ | `belowMinimum: 'accept'` |
 | 5 | OT starts 17:00 or 17:01? | 17:00 — 17:00–20:00 is 3 h | `otStartsAtCoreEnd: true` |
 | 6 | Per-department shifts? | No | `shiftPatternsEnabled: false` |
 | 7 | HR reject after manager approved? | Yes, back to the employee | `hrMayReject`, `hrRejectReturnsTo` |
@@ -243,8 +243,8 @@ never confirmed by anyone in HR, and each one moves hours.
 | Question | What the system does today | Why it is that |
 |---|---|---|
 | Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with |
-| Under the 1-hour minimum | Refuse the entry | What the live database has always done — the file said `'raise'` while a `'reject'` override sat in `settings`, so the code and the config disagreed for months |
-| What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h | `computeSession` has only ever done it this way. There is no flag for the per-column reading, because nothing implements it |
+| Under the 1-hour minimum | Record the hours actually worked and flag the entry (`belowMinimumFlagged`) | The reading that keeps every answer open. It was `'reject'` — read off a `'reject'` override that sat in `settings` against a file saying `'raise'` — and refusing the entry means not recording work that was done, which is a liability rather than a conservative default. HR has still not answered, so the badge stays |
+| What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h (`minimumHoursScope: 'sheet'`) | `computeSession` has only ever done it this way, and it is the reading that refuses least. The per-column reading is `'bucket'`: the same rule asked of each rate column, so a Friday-night shift running into Saturday is measured twice. Having a flag is not an answer — HR still has not given one, and the badge now sits on the dropdown |
 
 These carry a **รอ HR ยืนยัน** badge on ตั้งค่าระบบ → นโยบายการคำนวณ. Pressing
 ยืนยัน records who signed it off and when — it changes no value, appends no

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { AMBIGUOUS_GLYPHS, generateTempPassword } from '../lib/tempPassword.js';
-import { PASSWORD_MIN_LENGTH } from '../lib/employees.js';
+import { PASSWORD_MIN_LENGTH, chosenPasswordPermission } from '../lib/employees.js';
 
 /**
  * THE FIRST-LOGIN PASSWORD IS NOT DERIVED FROM ANYTHING.
@@ -138,9 +138,12 @@ test('every route that issues one asks the generator, and none reads a request f
     assert.doesNotMatch(code, /pick\(row, 'password'\) \|\|/, `${file} still honours a CSV password column`);
   }
 
-  // A JSON caller still sending one is told, not ignored: a request that
-  // thought it set a password and did not is worse than one that was refused.
-  for (const file of ['app/api/employees/route.js', 'app/api/employees/[id]/route.js', 'src/routes/employees.js']) {
+  // Changing an EXISTING row still refuses a supplied password outright: a
+  // reset is asked for with a flag, and a request that thought it set a
+  // password and did not is worse than one that was refused. Creating a row is
+  // the one place a caller may choose one, and that is checked rather than
+  // ignored — see the block below.
+  for (const file of ['app/api/employees/[id]/route.js', 'src/routes/employees.js']) {
     assert.match(
       strip(readFileSync(join(ROOT, file), 'utf8')),
       /password !== undefined/,
@@ -154,6 +157,68 @@ test('every route that issues one asks the generator, and none reads a request f
   const importCode = readFileSync(join(ROOT, 'app/api/employees/import/route.js'), 'utf8');
   assert.match(importCode, /if \(pick\(row, 'password'\)\) \{/);
   assert.match(importCode, /ระบบไม่ใช้ค่านั้น/);
+});
+
+// ── the password ฝ่ายบุคคล types in themselves ───────────────────────────────
+
+/**
+ * WHAT THE CHECK IS FOR, AND WHAT IT IS NOT FOR.
+ *
+ * เพิ่มพนักงาน may send a password now: HR asked to be able to say a first
+ * password to somebody standing in front of them instead of reading a generated
+ * one down a phone. That reopens exactly one door — the old scheme was
+ * `Primus@` + the employee code, and a box to type a password into is somewhere
+ * to type that same scheme back in by hand.
+ *
+ * So these tests pin the one refusal that matters and, just as deliberately, do
+ * NOT pin a character-class policy. This credential is replaced at first login,
+ * and a rule that makes HR fight the box is a rule answered with one password
+ * for the whole roster.
+ */
+test('a chosen password may not carry the employee code, however it is spelled', () => {
+  // Every one of these is the old value or a hand-typed cousin of it, and the
+  // roster they can be computed from is printed on every ใบ and every accounting
+  // file the company sends out.
+  for (const password of ['PM-0620', 'pm0620', 'Primus@PM-0620', 'xxPM0620xx', 'PM.0620!']) {
+    const may = chosenPasswordPermission(password, { code: 'PM-0620' });
+    assert.equal(may.ok, false, `${password} was accepted`);
+    assert.equal(may.status, 400);
+  }
+  // Both shapes the roster actually holds — see normalizeCode. A rule that knew
+  // only one of them would pass whichever spelling the row happened not to use.
+  assert.equal(chosenPasswordPermission('helloPM00511', { code: 'PM00511' }).ok, false);
+  assert.equal(chosenPasswordPermission('helloPM-00511', { code: 'PM00511' }).ok, false);
+});
+
+test('a chosen password is refused for being short, and for nothing else', () => {
+  assert.equal(chosenPasswordPermission('abc', { code: 'PM-0620' }).ok, false);
+  assert.equal(chosenPasswordPermission('a'.repeat(PASSWORD_MIN_LENGTH - 1), { code: 'X' }).ok, false);
+
+  // Long enough and not the code: accepted, whatever it is made of. No
+  // uppercase rule, no digit rule, no symbol rule — on purpose.
+  for (const password of ['ดอกไม้สวย', 'welcome-monday', 'aaaaaaaa', 'สมชาย1234']) {
+    assert.equal(chosenPasswordPermission(password, { code: 'PM-0620' }).ok, true, password);
+  }
+});
+
+test('a code too short to recognise does not refuse half the alphabet', () => {
+  // Stripped to two characters there is nothing left to match on: a rule that
+  // still tried would refuse every password with 'pm' anywhere inside it.
+  assert.equal(chosenPasswordPermission('important-pm-stuff', { code: 'PM' }).ok, true);
+  assert.equal(chosenPasswordPermission('welcome-monday', { code: '' }).ok, true);
+});
+
+test('both servers check a chosen password with the same rule', () => {
+  // A rule enforced by one of two servers is not a rule, and the failure mode
+  // here is silent: the account is created either way.
+  for (const file of ['app/api/employees/route.js', 'src/routes/employees.js']) {
+    const code = strip(readFileSync(join(ROOT, file), 'utf8'));
+    assert.match(code, /chosenPasswordPermission\(/, `${file} accepts a chosen password unchecked`);
+    // And a chosen one is never echoed back — HR already has it, and the
+    // response is one more place it would exist for no reason.
+    assert.match(code, /password: chosen \? undefined : issued/, `${file} echoes a chosen password`);
+    assert.match(code, /passwordChosen/, `${file} does not tell the screen which kind it made`);
+  }
 });
 
 test('a reset is asked for by a flag, and the issued value comes back once', () => {

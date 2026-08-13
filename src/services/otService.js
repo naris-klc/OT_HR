@@ -219,6 +219,11 @@ export function applyComputation(entry, result, ctx = null) {
   };
   entry.totals = result.totals;
   entry.warnings = result.warnings;
+  // [OPEN 4]. Written here rather than at the four call sites for the reason
+  // everything else in this function is: it describes the figures above and has
+  // to move with them. A replay under a policy that no longer leaves this entry
+  // short writes `false` back, so the flag can never outlive the hours.
+  entry.belowMinimumFlagged = Boolean(result.belowMinimumFlagged);
   // Only ever overwritten together with the hours it describes. A caller with
   // no context leaves the existing pointer alone rather than clearing it —
   // an unstamped recomputation is a gap; a wrongly cleared one is a lie about

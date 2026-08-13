@@ -118,8 +118,34 @@ test('the answer shown is read off the live policy, not stored with the confirma
 test('what the system does today is what the badge says it does', () => {
   const items = unconfirmedState(DEFAULT_POLICY, {});
   assert.equal(items.find((i) => i.id === 'roundingIncrement').reading, 'ทีละ 30 นาที');
-  assert.equal(items.find((i) => i.id === 'belowMinimumAction').reading, 'ไม่รับรายการ');
+  assert.equal(
+    items.find((i) => i.id === 'belowMinimumAction').reading,
+    'รับตามชั่วโมงจริง และติดธงให้ HR ตรวจ',
+  );
   assert.match(items.find((i) => i.id === 'minimumScope').reading, /ต่อใบ/);
+});
+
+test('the badge reads all three answers to [OPEN 4], including the one it used to ship on', () => {
+  // Every value the flag can hold has a sentence, because a version recorded
+  // under 'reject' is still in the collection and a settings page showing the
+  // wrong one of these is worse than showing none.
+  const readingOf = (belowMinimum) => unconfirmedState({ ...DEFAULT_POLICY, belowMinimum }, {})
+    .find((i) => i.id === 'belowMinimumAction').reading;
+
+  assert.equal(readingOf('reject'), 'ไม่รับรายการ');
+  assert.equal(readingOf('raise'), 'ปัดขึ้นเป็น 1 ชม.');
+  assert.equal(readingOf('accept'), 'รับตามชั่วโมงจริง และติดธงให้ HR ตรวจ');
+});
+
+test('answering [OPEN 4] is HR pressing ยืนยัน — not a default moving', () => {
+  // The change to 'accept' does not confirm the rule. Nobody in HR has answered
+  // the question, and the badge is a record of that fact rather than of which
+  // reading the system happens to run on.
+  const item = HR_UNCONFIRMED.find((i) => i.id === 'belowMinimumAction');
+  assert.ok(item, '[OPEN 4] must stay on the unconfirmed list');
+  assert.deepEqual(item.keys, ['belowMinimum']);
+  assert.equal(unconfirmedKeys({}).has('belowMinimum'), true);
+  assert.equal(unconfirmedState(DEFAULT_POLICY, {}).find((i) => i.id === 'belowMinimumAction').confirmed, null);
 });
 
 test('a confirmed item carries who and when; an unconfirmed one carries null', () => {
@@ -140,13 +166,29 @@ test('confirming one item does not clear the badge on the others', () => {
   assert.equal(keys.has('roundingMode'), true);
 });
 
-test('an item with no flag still appears — it is the one nobody could find otherwise', () => {
-  // The minimum's scope is a rule the engine has and the policy has no key
-  // for, so no dropdown wears its badge. Left off the page it would be the
-  // only unconfirmed rule with nothing anywhere saying so.
+test('the minimum’s scope now has a flag, and its badge sits on it', () => {
+  // It used to have none: the scope was a rule the engine had and the policy
+  // had no key for, so the item carried empty `keys` and appeared on the page
+  // on the strength of its `reading` alone. `minimumHoursScope` is that key,
+  // and the badge moved onto the dropdown rather than off the page — HR have
+  // still not answered the question. An item with no keys remains a supported
+  // shape (see `unconfirmedKeys`); it is simply not this item's shape any more.
   const scope = HR_UNCONFIRMED.find((i) => i.id === 'minimumScope');
-  assert.deepEqual(scope.keys, []);
+  assert.deepEqual(scope.keys, ['minimumHoursScope']);
+  assert.equal(unconfirmedKeys({}).has('minimumHoursScope'), true);
   assert.equal(unconfirmedState(DEFAULT_POLICY, {}).some((i) => i.id === 'minimumScope'), true);
+  assert.equal(unconfirmedState(DEFAULT_POLICY, {}).find((i) => i.id === 'minimumScope').confirmed, null);
+});
+
+test('answering ต่อใบ/ต่อช่อง shows the answer the engine is running on', () => {
+  // The reading is read off the live policy like every other one, so a page
+  // showing "ต่อใบ" while the engine measures per column is not a state this
+  // can reach.
+  const readingOf = (minimumHoursScope) => unconfirmedState({ ...DEFAULT_POLICY, minimumHoursScope }, {})
+    .find((i) => i.id === 'minimumScope').reading;
+
+  assert.match(readingOf('sheet'), /ต่อใบ/);
+  assert.match(readingOf('bucket'), /ต่อช่อง/);
 });
 
 test('an unknown id is refused rather than recorded', () => {

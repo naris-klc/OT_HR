@@ -328,9 +328,44 @@ function subtractIntervals(start, end, holes) {
 }
 
 /**
- * Cut points that matter: midnight (day type can change), 08:00 and 17:00 (the
- * core-hours boundary). Everything between two adjacent cut points shares one
- * bucket, which is what makes a session spanning several buckets computable.
+ * [OPEN 5] The instant OT starts on the evening side of the core window.
+ *
+ * `coreEndMinute` is when normal working hours STOP; this is when OT BEGINS,
+ * and the two are the same instant only because the default answer reads the
+ * form's "17.01" as paper shorthand for "after 17:00" (`otStartsAtCoreEnd`,
+ * true). Answered the other way the shorthand is literal, there is a one-minute
+ * gap at the boundary, and 17:00–20:00 counts 2 h 59 m.
+ *
+ * ONE boundary, read by both branches of `bucketFor`, because §5 is one
+ * question. On a holiday there are no normal working hours for the odd minute
+ * to fall into, so it stays in the ×1.5 holiday column and the ×3 column starts
+ * at 17:01 — which is what the two form headers ("8.00–17.00" and
+ * "17.01–07.59") say once their "17.01" is read literally. Moving the weekday
+ * boundary and not the holiday one would be two answers to one question.
+ *
+ * The MORNING boundary does not move under either answer. §5 asks when OT
+ * starts, and "07.59" is the same shorthand on the other side of the day: OT
+ * worked before the shift still runs up to `coreStartMinute` exactly.
+ *
+ * Read as `=== false` so a policy that predates the flag, or one loaded from a
+ * database that has no override for it, keeps the default 17:00 boundary rather
+ * than acquiring a gap from an absent value.
+ */
+function otStartMinute(policy) {
+  return policy.coreEndMinute + (policy.otStartsAtCoreEnd === false ? 1 : 0);
+}
+
+/**
+ * Cut points that matter: midnight (day type can change), 08:00 and the instant
+ * OT starts (the core-hours boundary — 17:00, or 17:01 under [OPEN 5]).
+ * Everything between two adjacent cut points shares one bucket, which is what
+ * makes a session spanning several buckets computable.
+ *
+ * It is `otStartMinute` and not `coreEndMinute` that appears here for the same
+ * reason `bucketFor` reads it: a cut list that does not carry the boundary the
+ * buckets are decided on lets a segment straddle it, and the whole segment then
+ * takes the bucket of its first minute. That is the difference between a
+ * 17:00–20:00 session losing one minute and losing all three hours.
  */
 function boundaryCuts(startAbs, endAbs, policy) {
   const cuts = new Set([startAbs, endAbs]);
@@ -338,7 +373,7 @@ function boundaryCuts(startAbs, endAbs, policy) {
   const lastDay = Math.floor((endAbs - 1) / MINUTES_PER_DAY);
   for (let day = firstDay; day <= lastDay + 1; day++) {
     const base = day * MINUTES_PER_DAY;
-    for (const off of [0, policy.coreStartMinute, policy.coreEndMinute]) {
+    for (const off of [0, policy.coreStartMinute, otStartMinute(policy)]) {
       const t = base + off;
       if (t > startAbs && t < endAbs) cuts.add(t);
     }
@@ -347,7 +382,10 @@ function boundaryCuts(startAbs, endAbs, policy) {
 }
 
 function bucketFor(isHolidayDay, minuteOfDay, policy) {
-  const inCore = minuteOfDay >= policy.coreStartMinute && minuteOfDay < policy.coreEndMinute;
+  // Half-open [coreStart, otStart): the minute the OT boundary sits on belongs
+  // to whatever is on its left, which is what makes 17:00–20:00 three clean
+  // hours when OT starts at 17:00 and 2 h 59 m when it starts at 17:01.
+  const inCore = minuteOfDay >= policy.coreStartMinute && minuteOfDay < otStartMinute(policy);
   if (isHolidayDay) return inCore ? BUCKETS.OT15_HOLIDAY : BUCKETS.OT3_HOLIDAY;
   // Mon–Fri inside 08:00–17:00 is normal working time, not OT at all.
   return inCore ? null : BUCKETS.OT15_WEEKDAY;
@@ -390,6 +428,51 @@ function applyFlatDeduction(segments, deductMinutes) {
     remaining -= take;
   }
   return segments.filter((s) => s.minutes > 0);
+}
+
+// ── the minimum ─────────────────────────────────────────────────────────────
+
+/** Chronological, the order segmentation produces. Both fields sort as text. */
+function byClock(a, b) {
+  return a.date === b.date ? a.start.localeCompare(b.start) : a.date.localeCompare(b.date);
+}
+
+/**
+ * [OPEN 4] The piles `minimumHours` is measured against.
+ *
+ * "ต่อใบหรือต่อช่อง" — one minimum for the entry, or one per rate column. The
+ * question was open long before there was a flag for it, and the shape of the
+ * answer is the reason: 'sheet' asks about one pile and 'bucket' asks the same
+ * thing about three, so the two readings differ in how many piles there are and
+ * in nothing else. Everything downstream — reject, accept, raise — is written
+ * once, against a pile.
+ *
+ * Each pile carries the same hours twice. `before` is as worked (after the
+ * break, before rounding) and `after` is what [OPEN 3] left of it. The rule
+ * needs both: a 20-minute callout is real work that floors to nothing, and a
+ * pile read only through `after` would pass as "not short" at the exact moment
+ * it went to zero. `after` holds the live objects from `workingSegments`, so
+ * 'raise' pads them where they lie.
+ *
+ * Bucket piles are keyed off the PRE-rounding segments for the same reason. A
+ * column that rounded away entirely is still a column somebody worked, and
+ * grouping `workingSegments` would drop it from the check that exists to catch
+ * exactly that.
+ */
+function minimumPiles(segments, workingSegments, policy) {
+  if (policy.minimumHoursScope !== 'bucket') {
+    // 'sheet', and anything unrecognised: one entry, one minimum, whatever mix
+    // of columns it landed in. The reading the system has always run on, and
+    // the one an unknown value falls back to rather than quietly tripling the
+    // number of ways an entry can be refused.
+    return [{ bucket: null, before: segments, after: workingSegments }];
+  }
+
+  return [...groupBy(segments, (s) => s.bucket).entries()].map(([bucket, before]) => ({
+    bucket,
+    before,
+    after: workingSegments.filter((s) => s.bucket === bucket),
+  }));
 }
 
 // ── the engine ──────────────────────────────────────────────────────────────
@@ -510,41 +593,116 @@ export function computeSession(session, options = {}) {
     warnings.push({
       code: 'NORMAL_HOURS_IGNORED',
       minutes: nonOtMinutes,
-      message: `${minutesToHours(nonOtMinutes)} h of this session fall inside normal working hours (Mon–Fri 08:00–17:00) and are not counted as OT.`,
+      // The window is read off the policy rather than written out, because
+      // under [OPEN 5]'s other answer this warning is the only thing that
+      // explains where the odd minute of a 17:00 start went — and naming
+      // 08:00–17:00 while the boundary is at 17:01 would explain it wrongly.
+      message: `${minutesToHours(nonOtMinutes)} h of this session fall inside normal working hours `
+        + `(Mon–Fri ${formatTime(policy.coreStartMinute)}–${formatTime(otStartMinute(policy))}) `
+        + 'and are not counted as OT.',
     });
   }
 
-  // OT minutes before rounding. Used by the minimum rule so that a short
-  // session which rounds away to zero is still caught rather than silently
-  // becoming a 0-hour entry.
-  const otMinutesAfterBreak = segments.reduce((s, x) => s + x.minutes, 0);
+  // `segments` is the session as worked (after the break); `workingSegments` is
+  // what [OPEN 3] left of it. The minimum rule reads both — see `minimumPiles`,
+  // which is where the two are paired up — so that a short session rounding away
+  // to zero is still caught rather than silently becoming a 0-hour entry.
+  const workingSegments = applyRounding(segments, policy);
 
-  let workingSegments = applyRounding(segments, policy);
-  let totalMinutes = workingSegments.reduce((s, x) => s + x.minutes, 0);
-
-  // [OPEN 4] Minimum of 1 hour per OT session.
+  // [OPEN 4] The minimum — per entry ('sheet') or per rate column ('bucket').
   const minimumMinutes = policy.minimumHours * 60;
-  if (otMinutesAfterBreak > 0 && totalMinutes < minimumMinutes) {
+  /**
+   * Set when the session had real OT minutes and still came out under the
+   * minimum — the ×1.5/×3 equivalent of `capExceeded`: one boolean saying there
+   * is something on this row for HR to look at, with the detail beside it in
+   * `warnings`. False on every entry that never went near the minimum, so it
+   * answers "is this one of them" without reading the warning codes.
+   *
+   * Only ever true in 'accept' mode. 'reject' throws and 'raise' pads the hours
+   * up to the minimum, and in neither case is there a short entry left to flag.
+   *
+   * ONE boolean under either scope. A bucket-scoped entry can be short in two
+   * columns at once and the flag still answers the question a list screen asks;
+   * WHICH columns is in `warnings`, one entry each, carrying `bucket`.
+   */
+  let belowMinimumFlagged = false;
+  /** Set when 'raise' had to re-create a column that rounding had emptied. */
+  let seeded = false;
+
+  for (const pile of minimumPiles(segments, workingSegments, policy)) {
+    const worked = pile.before.reduce((s, x) => s + x.minutes, 0);
+    const counted = pile.after.reduce((s, x) => s + x.minutes, 0);
+    // A pile nobody worked is not short, it is absent — under bucket scope that
+    // is every column this session never touched, and refusing an entry for
+    // having no ×3 holiday hours would refuse every ordinary weekday evening.
+    if (worked <= 0 || counted >= minimumMinutes) continue;
+
+    // Named by the column HR reads on the form, not by the bucket key. Empty
+    // under sheet scope, where the pile IS the entry and there is nothing to
+    // distinguish it from.
+    const where = pile.bucket ? ` in ${BUCKET_LABEL_TH[pile.bucket]}` : '';
+    // Present only when it means something, so a sheet-scoped warning is the
+    // same object it has always been rather than one carrying `bucket: null`.
+    const column = pile.bucket ? { bucket: pile.bucket } : {};
+
     if (policy.belowMinimum === 'reject') {
       throw new OtValidationError(
         'BELOW_MINIMUM',
-        `OT sessions must be at least ${policy.minimumHours} hour(s); this one is ${minutesToHours(otMinutesAfterBreak)} h.`,
+        `OT sessions must be at least ${policy.minimumHours} hour(s); this one is ${minutesToHours(worked)} h${where}.`,
       );
     }
-    if (workingSegments.length === 0) {
-      // Everything rounded away — pad the longest pre-rounding segment.
-      const seed = segments.reduce((a, b) => (b.minutes > a.minutes ? b : a));
-      workingSegments = [{ ...seed, minutes: 0 }];
+
+    if (policy.belowMinimum === 'accept') {
+      /**
+       * Keep what the person worked. NOT padded up to the minimum and NOT
+       * refused: the hours stay exactly what rounding produced, and the entry
+       * carries a flag instead of a decision, because whether a 40-minute
+       * session is payable is HR's answer to give and refusing it here throws
+       * the record of the work away while they think about it.
+       *
+       * The 0-hour rule is untouched and sits downstream of this: a session
+       * that produced no OT minutes at all never reaches this branch, and the
+       * write paths still refuse an entry whose total is nought.
+       */
+      belowMinimumFlagged = true;
+      warnings.push({
+        code: 'BELOW_MINIMUM_ACCEPTED',
+        minutes: counted,
+        ...column,
+        message: `${minutesToHours(counted)} h${where} is under the ${policy.minimumHours}-hour minimum. `
+          + 'Recorded as worked and flagged for HR.',
+      });
+      continue;
     }
-    const largest = workingSegments.reduce((a, b) => (b.minutes > a.minutes ? b : a));
-    largest.minutes += minimumMinutes - totalMinutes;
-    totalMinutes = minimumMinutes;
+
+    // 'raise', and anything unrecognised — pad up to the minimum, which is
+    // what this branch has always done for a value it did not know.
+    let target = pile.after;
+    if (!target.length) {
+      // The pile rounded away entirely. Pad a copy of its longest pre-rounding
+      // segment: under bucket scope that re-creates one column and leaves the
+      // others where rounding left them, which is why the seed is pushed rather
+      // than made the whole list.
+      const seed = { ...pile.before.reduce((a, b) => (b.minutes > a.minutes ? b : a)), minutes: 0 };
+      workingSegments.push(seed);
+      target = [seed];
+      seeded = true;
+    }
+    const largest = target.reduce((a, b) => (b.minutes > a.minutes ? b : a));
+    largest.minutes += minimumMinutes - counted;
     warnings.push({
       code: 'RAISED_TO_MINIMUM',
-      message: `Raised to the ${policy.minimumHours}-hour minimum.`,
+      ...column,
+      message: `Raised to the ${policy.minimumHours}-hour minimum${where}.`,
     });
   }
 
+  // Seeds are appended, and the printed form reads these rows top to bottom. A
+  // sort only where one was appended keeps every other session's rows in the
+  // order the segmentation produced them.
+  if (seeded) workingSegments.sort(byClock);
+
+  const totalMinutes = workingSegments.reduce((s, x) => s + x.minutes, 0);
   const buckets = totalBuckets(workingSegments);
 
   const ot15Minutes = (buckets[BUCKETS.OT15_WEEKDAY] || 0) + (buckets[BUCKETS.OT15_HOLIDAY] || 0);
@@ -572,6 +730,12 @@ export function computeSession(session, options = {}) {
     },
     breakMinutes,
     endsNextDay,
+    /**
+     * [OPEN 4] Under the minimum, accepted at the hours actually worked — see
+     * where it is set above. Always present, so a caller reads a boolean rather
+     * than the absence of one.
+     */
+    belowMinimumFlagged,
     warnings,
   };
 }

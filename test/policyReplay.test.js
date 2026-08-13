@@ -6,6 +6,7 @@ import {
 } from '../src/lib/otEngine.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
 import { planRecompute, samePolicy } from '../lib/policyVersion.js';
+import { applyComputation } from '../src/services/otService.js';
 
 /**
  * What a version pointer is worth: replaying an entry against the rules it
@@ -33,6 +34,13 @@ const V2 = {
   _id: 'v2',
   seq: 2,
   policy: { ...DEFAULT_POLICY, roundingMode: 'ceil', breakMode: 'always' },
+};
+
+/** The rules as they stood before [OPEN 4] moved to 'accept'. */
+const V_REJECT = {
+  _id: 'v0',
+  seq: 0,
+  policy: { ...DEFAULT_POLICY, belowMinimum: 'reject' },
 };
 
 const HOLIDAYS = new Set(['2026-08-12']);
@@ -64,11 +72,13 @@ const SESSIONS = [
 /**
  * What the engine did with a session — the figures, or the refusal.
  *
- * A refusal is an outcome like any other and has to reproduce like one. Under
- * the shipped `belowMinimum: 'reject'` the last session below is not a filable
- * entry at all, and replaying it against the rules that refused it must refuse
- * it again for the same stated reason. Comparing only successful results would
- * quietly skip that case rather than check it.
+ * A refusal is an outcome like any other and has to reproduce like one. The
+ * shipped policy no longer refuses anything below the minimum — it accepts and
+ * flags (see [OPEN 4] in src/config/policy.js) — but versions recorded while
+ * `belowMinimum` was `'reject'` are in the append-only collection for good, and
+ * replaying a session against one of those must still refuse it for the same
+ * stated reason. `V_REJECT` below is that case; comparing only successful
+ * results would quietly skip it rather than check it.
  */
 const outcomeOf = (session, version) => {
   try {
@@ -91,6 +101,100 @@ test('replaying against the version an entry names reproduces its hours exactly'
       );
     }
   }
+});
+
+test('a refusal recorded under an older version reproduces as the same refusal', () => {
+  const short = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40', endsNextDay: false };
+
+  // Under the version that refused it, three months later, it is still refused.
+  for (let i = 0; i < 3; i++) {
+    assert.deepEqual(outcomeOf(short, V_REJECT), { code: 'BELOW_MINIMUM' });
+  }
+
+  // And under the rules the system ships on now, the same session is a filable
+  // entry carrying its real hours and a flag. Both are correct answers; which
+  // one an entry got is what its version pointer says.
+  const now = outcomeOf(short, V1).result;
+  assert.equal(now.totals.otHours, 0.5);
+  assert.equal(now.belowMinimumFlagged, true);
+});
+
+/**
+ * [OPEN 4] moving to 'accept', as the two halves that decide who it reaches.
+ *
+ * The case is worth its own test because it is the one where a replay would
+ * REDUCE a signed-off figure: an entry filed under 'raise' carries a padded
+ * hour, and the same session under 'accept' is half of one. A month that
+ * silently restated approved rows would take 0.5 h off somebody's already
+ * agreed total, and nothing on the sheet would say why.
+ */
+test('[OPEN 4] raise → accept: ใบ pending ได้ชั่วโมงจริงและติดธง ใบ approved ไม่ขยับ', () => {
+  const V_RAISE = { _id: 'vr', seq: 5, policy: { ...DEFAULT_POLICY, belowMinimum: 'raise' } };
+  const V_ACCEPT = { _id: 'va', seq: 6, policy: { ...DEFAULT_POLICY } };
+
+  const session = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40', endsNextDay: false };
+  const month = [
+    { _id: 'a', status: 'pending_mgr', session, policyVersionId: 'vr' },
+    { _id: 'b', status: 'pending_hr', session, policyVersionId: 'vr' },
+    { _id: 'c', status: 'approved', session, policyVersionId: 'vr' },
+  ];
+  for (const e of month) {
+    const r = computeSession(e.session, contextOf(V_RAISE, e.session));
+    e.otHours = r.totals.otHours;
+    e.belowMinimumFlagged = r.belowMinimumFlagged;
+  }
+  // Padded to the minimum, and nothing flagged: under 'raise' there is no short
+  // entry left to look at.
+  for (const e of month) {
+    assert.equal(e.otHours, 1);
+    assert.equal(e.belowMinimumFlagged, false);
+  }
+
+  const { replay, skipped } = planRecompute(month);
+  for (const entry of replay) {
+    const r = computeSession(entry.session, contextOf(V_ACCEPT, entry.session));
+    entry.otHours = r.totals.otHours;
+    entry.belowMinimumFlagged = r.belowMinimumFlagged;
+    entry.policyVersionId = 'va';
+  }
+
+  const [a, b, c] = month;
+  for (const e of [a, b]) {
+    assert.equal(e.otHours, 0.5, 'a pending entry now carries the hours actually worked');
+    assert.equal(e.belowMinimumFlagged, true, 'and the flag HR decides against');
+    assert.equal(e.policyVersionId, 'va');
+  }
+
+  assert.equal(c.otHours, 1, 'an approved entry kept the hours it was signed off at');
+  assert.equal(c.belowMinimumFlagged, false, 'and was not re-flagged behind the signature');
+  assert.equal(c.policyVersionId, 'vr', 'an approved entry kept its original version');
+  assert.deepEqual(skipped, [{ id: 'c', reason: 'approved' }]);
+});
+
+/**
+ * The flag lands on the entry through the same call the hours do.
+ *
+ * `applyComputation` is the one place engine output reaches a document, so a
+ * flag written anywhere else would be one four routes had to remember — and a
+ * flag left behind by a replay that lifted the entry back over the minimum
+ * would be a warning on a row that no longer has anything wrong with it.
+ */
+test('[OPEN 4] belowMinimumFlagged is written with the hours it describes, and cleared with them', () => {
+  const short = { workDate: '2026-08-17', startTime: '17:00', endTime: '17:40', endsNextDay: false };
+  const entry = {};
+
+  applyComputation(entry, computeSession(short, contextOf(V1, short)));
+  assert.equal(entry.totals.otHours, 0.5);
+  assert.equal(entry.belowMinimumFlagged, true);
+  assert.ok(entry.warnings.some((w) => w.code === 'BELOW_MINIMUM_ACCEPTED'));
+
+  // The same entry corrected to a full evening. Nothing is left saying it was
+  // ever short.
+  const full = { ...short, endTime: '21:00' };
+  applyComputation(entry, computeSession(full, contextOf(V1, full)));
+  assert.equal(entry.totals.otHours, 4);
+  assert.equal(entry.belowMinimumFlagged, false);
+  assert.equal(entry.warnings.some((w) => w.code === 'BELOW_MINIMUM_ACCEPTED'), false);
 });
 
 test('the same session under a different version is a different figure — which is the point', () => {

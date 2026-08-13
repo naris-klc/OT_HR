@@ -460,8 +460,11 @@ export default function OtForm({
           </div>
           <BucketSplit buckets={preview.buckets} total={preview.totals.otHours} label="รวมชั่วโมง OT" />
           <SegmentList segments={preview.segments} />
+          {/* Keyed by code AND column: under `minimumHoursScope: 'bucket'` the
+              minimum is measured per rate column, so one preview can carry two
+              BELOW_MINIMUM_ACCEPTED warnings that differ only in `bucket`. */}
           {preview.warnings?.map((w) => (
-            <Alert key={w.code} kind="warn">{w.message}</Alert>
+            <Alert key={w.code + (w.bucket || '')} kind="warn">{w.message}</Alert>
           ))}
           {cap?.capHours != null && (
             <Alert kind={cap.exceeded ? 'warn' : 'ok'}>

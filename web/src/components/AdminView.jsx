@@ -408,11 +408,31 @@ const POLICY_FIELDS = [
   },
   {
     key: 'belowMinimum', open: 4, label: 'ต่ำกว่าขั้นต่ำ 1 ชม.',
-    options: [['raise', 'ปัดขึ้นเป็น 1 ชม.'], ['reject', 'ไม่รับรายการ']],
+    options: [
+      ['accept', 'รับตามชั่วโมงจริง (ติดธงให้ HR)'],
+      ['raise', 'ปัดขึ้นเป็น 1 ชม.'],
+      ['reject', 'ไม่รับรายการ'],
+    ],
+  },
+  {
+    // ต่อใบ or ต่อช่อง. Read together with the row above it: the scope decides
+    // how many piles are measured, that one decides what happens to a short one.
+    key: 'minimumHoursScope', open: 4, label: 'ขั้นต่ำ 1 ชม. นับต่อใบหรือต่อช่อง',
+    options: [
+      ['sheet', 'ต่อใบ — รวมทุกช่องก่อนเทียบกับขั้นต่ำ (ค่าเริ่มต้น)'],
+      ['bucket', 'ต่อช่อง — เทียบขั้นต่ำแยกทีละช่องอัตรา'],
+    ],
   },
   {
     key: 'otStartsAtCoreEnd', open: 5, label: 'OT เริ่มนับที่', bool: true,
-    options: [[true, '17:00 (นับเต็ม 3 ชม. สำหรับ 17:00–20:00)'], [false, '17:01']],
+    // What the second option costs is spelled out on the label rather than in a
+    // hint: this screen has no `hint` row (the App Router copy does), and
+    // "17:01" on its own does not say that a whole half hour goes with it once
+    // the 30-minute floor is applied.
+    options: [
+      [true, '17:00 (นับเต็ม 3 ชม. สำหรับ 17:00–20:00)'],
+      [false, '17:01 (17:00–20:00 เหลือ 2 ชม. 59 นาที)'],
+    ],
   },
   {
     key: 'hrMayReject', open: 7, label: 'HR ปฏิเสธรายการที่หัวหน้าอนุมัติแล้วได้หรือไม่', bool: true,

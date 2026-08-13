@@ -5,8 +5,8 @@ import Department from '../models/Department.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../lib/csv.js';
 import {
-  PASSWORD_MIN_LENGTH, codeChangePermission, dropsAnAdmin, lastAdminPermission,
-  publicEmployee, rosterPermission, selfEditPermission,
+  PASSWORD_MIN_LENGTH, chosenPasswordPermission, codeChangePermission, dropsAnAdmin,
+  lastAdminPermission, publicEmployee, rosterPermission, selfEditPermission,
 } from '../../lib/employees.js';
 import { generateTempPassword } from '../../lib/tempPassword.js';
 import { rosterChanges } from '../../lib/rosterAudit.js';
@@ -67,13 +67,19 @@ router.post('/', requireRole('admin', 'hr'), wrap(async (req, res) => {
 
   const may = rosterPermission(req.user, { role: role || 'employee' });
   if (!may.ok) return res.status(may.status).json({ error: may.error });
-  // Refused rather than ignored, as on the App Router: the server issues these.
-  if (password !== undefined) {
-    return res.status(400).json({ error: 'ระบบเป็นผู้สร้างรหัสผ่านเริ่มต้นเอง — ไม่ต้องส่งค่ารหัสผ่านมา' });
+  // Optional and checked, as on the App Router — see the comment there for what
+  // the check is refusing and why it is not a password policy. Applied on both
+  // servers because a rule enforced by one of two servers is not a rule.
+  const chosen = password === undefined || password === null || password === ''
+    ? null
+    : String(password);
+  if (chosen !== null) {
+    const ok = chosenPasswordPermission(chosen, { code });
+    if (!ok.ok) return res.status(ok.status).json({ error: ok.error });
   }
 
   const employee = new Employee({ code, name, email: email || undefined, position, department, role: role || 'employee' });
-  const issued = generateTempPassword();
+  const issued = chosen ?? generateTempPassword();
   await employee.setPassword(issued);
   employee.mustChangePassword = true;
   await employee.save();
@@ -82,9 +88,11 @@ router.post('/', requireRole('admin', 'hr'), wrap(async (req, res) => {
     employee, action: 'create', changes: rosterChanges({}, snapshot(employee)), actor: req.user,
   });
 
+  // A chosen password is not echoed back — see the App Router route.
   res.status(201).json({
     employee: await employee.populate('department', 'code name nameTh'),
-    password: issued,
+    password: chosen ? undefined : issued,
+    passwordChosen: chosen !== null,
     auditLogged,
   });
 }));

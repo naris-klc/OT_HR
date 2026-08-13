@@ -2,7 +2,7 @@ import Employee, { ROLES } from '@/src/models/Employee.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { publicEmployee, rosterPermission } from '@/lib/employees.js';
+import { publicEmployee, rosterPermission, chosenPasswordPermission } from '@/lib/employees.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
@@ -32,16 +32,6 @@ export const POST = route(async (req) => {
   const actor = await requireAuth(req);
   const { code, name, email, position, birthDate, department, role, company, password } = await body(req);
 
-  /**
-   * Refused rather than ignored — the same rule as the PATCH route. The server
-   * issues these now, so a caller still sending one is a caller working from
-   * the old contract, and letting it through quietly would mean an account
-   * whose password is whatever that caller chose.
-   */
-  if (password !== undefined) {
-    return fail('ระบบเป็นผู้สร้างรหัสผ่านเริ่มต้นเอง — ไม่ต้องส่งค่ารหัสผ่านมา', 400);
-  }
-
   if (!code || !name || !department) {
     return fail('ต้องระบุรหัสพนักงาน ชื่อ-สกุล และแผนก', 400);
   }
@@ -52,6 +42,35 @@ export const POST = route(async (req) => {
   const may = rosterPermission(actor, { role: role || 'employee' });
   if (!may.ok) return fail(may.error, may.status);
 
+  /**
+   * A password ฝ่ายบุคคล chose, if they chose one.
+   *
+   * The route used to refuse this outright, and refusing it was right while the
+   * only thing that ever sent one was the old client computing it from the
+   * employee code in the browser. What HR asked for is the other case: a first
+   * password they can say to somebody in the room instead of reading a generated
+   * one down a phone and resetting it when the notice is closed too early.
+   *
+   * So it is optional and checked rather than forbidden — `chosenPasswordPermission`
+   * refuses the shape the old scheme had, and the account is still flagged
+   * `mustChangePassword` below, because a password somebody else chose is not
+   * yet the account holder's whichever way it was made.
+   *
+   * After the permission check, not before: a caller who may not create this row
+   * at all is answered about that, rather than being told what this system
+   * thinks of a password it was never going to accept.
+   *
+   * An empty string is "no password", not a password of length nought: the
+   * field is on a form, and a form sends what is in the box.
+   */
+  const chosen = password === undefined || password === null || password === ''
+    ? null
+    : String(password);
+  if (chosen !== null) {
+    const chosenOk = chosenPasswordPermission(chosen, { code });
+    if (!chosenOk.ok) return fail(chosenOk.error, chosenOk.status);
+  }
+
   // company left out on purpose falls to the model's pre-validate hook, which
   // reads it off the code prefix.
   const employee = new Employee({
@@ -61,11 +80,12 @@ export const POST = route(async (req) => {
     // YYYY-MM-DD match rejects the whole save.
     birthDate: birthDate || undefined,
   });
-  const issued = generateTempPassword();
+  const issued = chosen ?? generateTempPassword();
   await employee.setPassword(issued);
   // Somebody else knows this password — it is not the employee's until they
   // have replaced it, and until then the client will not let the account
-  // anywhere else.
+  // anywhere else. True of a generated one and of one HR typed: what the flag
+  // records is that a second person knows it, not how it was made.
   employee.mustChangePassword = true;
   await employee.save();
 
@@ -99,12 +119,21 @@ export const POST = route(async (req) => {
     actor,
   });
 
-  // The issued password comes back so the screen that created the account can
+  // The GENERATED password comes back so the screen that created the account can
   // show HR what to hand over. It is never readable again: only the hash is
   // stored, and every roster read goes through publicEmployee().
+  //
+  // One HR typed is not echoed. They already have it — it is in the box they
+  // typed it into — and sending it back would put a password the server never
+  // needed to transmit into a response body, a browser's network log and
+  // whatever sits between the two, to tell somebody something they know.
+  // `passwordChosen` is what the screen reads instead: a missing `password` on
+  // its own cannot be told apart from a server that failed to issue one, and
+  // that failure is the emergency ResetPassword shouts about.
   return json({
     employee: await employee.populate('department', 'code name nameTh'),
-    password: issued,
+    password: chosen ? undefined : issued,
+    passwordChosen: chosen !== null,
     auditLogged,
   }, 201);
 });

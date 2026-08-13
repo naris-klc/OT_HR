@@ -13,6 +13,9 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 import {
   BUCKETS,
@@ -133,6 +136,65 @@ test('[OPEN 5] 17:00–20:00 counts a clean 3 hours', () => {
   assert.equal(r.totals.otHours, 3);
 });
 
+/**
+ * The other answer, which the engine ignored until 2026-08-13: the flag was on
+ * the settings screen and in ARITHMETIC_KEYS, so choosing 17:01 minted a policy
+ * version and replayed the month — and every figure came back identical, since
+ * `bucketFor` read `coreEndMinute` directly and never learned the boundary had
+ * moved. A replay that moves nothing is worse than none: it tells HR the answer
+ * took effect.
+ *
+ * Rounding is switched off in these (`roundingIncrementMinutes: 0`) so the
+ * assertions are about the boundary and not about [OPEN 3] — at the shipped
+ * 30-minute floor the missing minute costs a whole half hour, which is true and
+ * is the reason 17:00 is the default, but it hides what is being tested.
+ */
+const EXACT = { otStartsAtCoreEnd: false, roundingIncrementMinutes: 0 };
+
+test('[OPEN 5] otStartsAtCoreEnd=false: 17:00–20:00 counts 2 h 59 m', () => {
+  const r = run({ workDate: '2026-08-05', startTime: '17:00', endTime: '20:00' }, EXACT);
+  assert.equal(r.totals.otHours, 2.98, '179 minutes');
+  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 2.98);
+  assert.equal(r.segments[0].start, '17:01', 'the OT row starts where OT starts');
+  assert.equal(r.warnings[0].code, 'NORMAL_HOURS_IGNORED', 'the odd minute is normal time');
+  assert.equal(r.warnings[0].minutes, 1);
+  assert.match(r.warnings[0].message, /08:00–17:01/, 'the warning names the boundary in force');
+});
+
+test('[OPEN 5] otStartsAtCoreEnd=true is unchanged by the same setup', () => {
+  const r = run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '20:00' },
+    { ...EXACT, otStartsAtCoreEnd: true },
+  );
+  assert.equal(r.totals.otHours, 3);
+  assert.equal(r.warnings.length, 0);
+});
+
+test('[OPEN 5] the ×3 holiday boundary moves with it — one question, one answer', () => {
+  // Sat 8 Aug. There are no normal working hours on a holiday, so the minute
+  // does not vanish: it stays in the ×1.5 column the form heads "8.00–17.00".
+  const r = run({ workDate: '2026-08-08', startTime: '17:00', endTime: '20:00' }, EXACT);
+  assert.equal(r.buckets[BUCKETS.OT15_HOLIDAY], 0.02, '17:00–17:01');
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 2.98, '17:01–20:00');
+  assert.equal(r.totals.otHours, 3, 'nothing is lost on a holiday — only re-columned');
+  assert.equal(r.warnings.length, 0);
+});
+
+test('[OPEN 5] does not move the morning boundary', () => {
+  // "OT starts at 17:01" is an answer about the evening. OT worked before the
+  // shift still runs up to 08:00 exactly, under either answer.
+  const r = run({ workDate: '2026-08-05', startTime: '05:30', endTime: '08:00' }, EXACT);
+  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 2.5);
+  assert.equal(r.warnings.length, 0, 'nothing fell into normal hours');
+});
+
+test('[OPEN 5] a session ending at the boundary is all normal hours', () => {
+  // 16:00–17:01 on a Wednesday: OT starts at 17:01, so nothing here is OT.
+  const r = run({ workDate: '2026-08-05', startTime: '16:00', endTime: '17:01', noBreakTaken: true }, EXACT);
+  assert.equal(r.totals.otHours, 0);
+  assert.equal(r.warnings[0].minutes, 61);
+});
+
 // ── [OPEN 3] rounding ───────────────────────────────────────────────────────
 
 test('[OPEN 3] floor (default): 17:00–20:20 → 3.0 h', () => {
@@ -159,13 +221,14 @@ test('[OPEN 3] bucket scope keeps the three columns summing to the total', () =>
 
 // ── [OPEN 4] the 1-hour minimum ─────────────────────────────────────────────
 
-// `raise` is no longer the shipped default — see the [OPEN 4] comment in
-// src/config/policy.js — so the mode under test is now stated rather than
-// assumed. What it is expected to produce has not moved.
+// Neither `raise` nor `reject` is the shipped default — see the [OPEN 4]
+// comment in src/config/policy.js — so the mode under test is stated rather
+// than assumed. What each one is expected to produce has not moved.
 test('[OPEN 4] raise: a 20-minute session becomes 1 h', () => {
   const r = run({ workDate: '2026-08-05', startTime: '17:00', endTime: '17:20' }, { belowMinimum: 'raise' });
   assert.equal(r.totals.otHours, 1);
   assert.ok(r.warnings.some((w) => w.code === 'RAISED_TO_MINIMUM'));
+  assert.equal(r.belowMinimumFlagged, false, 'padded up to the minimum — there is nothing short left to flag');
 });
 
 test('[OPEN 4] reject: a 20-minute session is refused', () => {
@@ -173,6 +236,207 @@ test('[OPEN 4] reject: a 20-minute session is refused', () => {
     () => run({ workDate: '2026-08-05', startTime: '17:00', endTime: '17:20' }, { belowMinimum: 'reject' }),
     (e) => e instanceof OtValidationError && e.code === 'BELOW_MINIMUM',
   );
+});
+
+test('[OPEN 4] accept is what the system ships on', () => {
+  assert.equal(DEFAULT_POLICY.belowMinimum, 'accept');
+});
+
+test('[OPEN 4] accept: a 40-minute session keeps its 0.5 h and is flagged, not refused', () => {
+  // The whole point of the mode: hours somebody worked are recorded rather than
+  // turned away at the form while HR decides what they are worth.
+  const r = run({ workDate: '2026-08-05', startTime: '17:00', endTime: '17:40' });
+
+  assert.equal(r.totals.otHours, 0.5, 'the hours rounding produced — not padded to 1, not zeroed');
+  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 0.5);
+  assert.equal(r.belowMinimumFlagged, true);
+
+  const flag = r.warnings.find((w) => w.code === 'BELOW_MINIMUM_ACCEPTED');
+  assert.ok(flag, 'HR reads the warnings on the row; the boolean is what a list screen filters on');
+  assert.equal(flag.minutes, 30);
+  assert.equal(r.warnings.some((w) => w.code === 'RAISED_TO_MINIMUM'), false, 'accept must not pad');
+});
+
+test('[OPEN 4] accept flags nothing on an entry that clears the minimum', () => {
+  const r = run({ workDate: '2026-08-05', startTime: '17:00', endTime: '21:00' });
+  assert.equal(r.totals.otHours, 4);
+  assert.equal(r.belowMinimumFlagged, false);
+  assert.equal(r.warnings.some((w) => w.code === 'BELOW_MINIMUM_ACCEPTED'), false);
+});
+
+/**
+ * The 0-hour rule is a different rule and this change does not touch it.
+ *
+ * A session inside 08:00–17:00 on a working day produced no OT at all — there
+ * are no hours to keep, and every write path refuses it in `noOtHoursMessage`'s
+ * words. `belowMinimumFlagged` says "short", not "empty", and saying it here
+ * would put the flag on entries that are not about the minimum.
+ */
+test('[OPEN 4] accept does not flag a session that produced no OT minutes at all', () => {
+  const r = run({ workDate: '2026-08-05', startTime: '09:00', endTime: '10:00' });
+  assert.equal(r.totals.otHours, 0);
+  assert.equal(r.belowMinimumFlagged, false);
+  assert.equal(r.warnings.some((w) => w.code === 'BELOW_MINIMUM_ACCEPTED'), false);
+  assert.ok(r.warnings.some((w) => w.code === 'NORMAL_HOURS_IGNORED'));
+});
+
+/**
+ * Where `accept` stops, stated rather than left to be discovered.
+ *
+ * [OPEN 3] floors to 30-minute increments, so a session under half an hour
+ * rounds to nothing before the minimum is consulted at all. `accept` keeps what
+ * rounding produced and what rounding produced is nought, so such a session is
+ * still unfilable — refused downstream by the 0-hour rule rather than by
+ * [OPEN 4]. Changing that means answering [OPEN 3], which is a separate
+ * unconfirmed question and not this flag's to settle.
+ */
+test('[OPEN 4] accept: a 20-minute session still rounds away to nothing under floor/30', () => {
+  const r = run({ workDate: '2026-08-05', startTime: '17:00', endTime: '17:20' });
+  assert.equal(r.totals.otHours, 0);
+  assert.equal(r.belowMinimumFlagged, true, 'it is short, and the engine says so');
+  assert.equal(
+    r.warnings.some((w) => w.code === 'RAISED_TO_MINIMUM'), false,
+    'nothing was padded — the write paths refuse this as a 0-hour entry',
+  );
+});
+
+// ── [OPEN 4] ต่อใบ or ต่อช่อง — what the minimum is measured against ──────────
+
+/**
+ * One session, two rate columns, one of them short. Every test below runs this
+ * same Sunday-night-into-Monday shift, because the two scopes are the same rule
+ * asked of a different number of piles and nothing else — the only honest way
+ * to show the difference is to change the flag and hold everything else still.
+ *
+ *   Sun 23:40–24:00   20 min  ot3_holiday    ← under the 1-hour minimum
+ *   Mon 00:00–02:00  120 min  ot15_weekday   ← well over it
+ *
+ * Note the rounding: [OPEN 3] floors each column to 30 minutes independently, so
+ * the 20-minute column is already nought before the minimum is consulted. That
+ * is not a complication invented for the test — it is the ordinary shape of a
+ * short column, and it is why the piles carry the hours twice (as worked, and as
+ * rounding left them).
+ */
+const SPLIT_SHIFT = {
+  workDate: '2026-08-09', startTime: '23:40', endTime: '02:00', endsNextDay: true,
+};
+
+test('[OPEN 4] sheet is what the system ships on', () => {
+  assert.equal(DEFAULT_POLICY.minimumHoursScope, 'sheet');
+});
+
+test('[OPEN 4] sheet: the columns are added up first, so the short one is carried', () => {
+  const r = run(SPLIT_SHIFT);
+  assert.equal(r.totals.otHours, 2);
+  assert.equal(r.belowMinimumFlagged, false, 'the entry as a whole is nowhere near short');
+  assert.equal(r.warnings.some((w) => w.code === 'BELOW_MINIMUM_ACCEPTED'), false);
+});
+
+test('[OPEN 4] bucket + accept: the same hours, and the short column is named', () => {
+  const r = run(SPLIT_SHIFT, { minimumHoursScope: 'bucket' });
+
+  assert.equal(r.totals.otHours, 2, 'accept moves no hour under either scope');
+  assert.equal(r.belowMinimumFlagged, true);
+
+  const flags = r.warnings.filter((w) => w.code === 'BELOW_MINIMUM_ACCEPTED');
+  assert.equal(flags.length, 1, 'one warning per short column — not one per column');
+  assert.equal(flags[0].bucket, BUCKETS.OT3_HOLIDAY);
+  assert.match(flags[0].message, /OT วันหยุด \(17\.01–07\.59\)/, 'named by the column on the form');
+});
+
+test('[OPEN 4] bucket: a column the session never touched is absent, not short', () => {
+  // Otherwise every ordinary weekday evening would be short in the two holiday
+  // columns it was never going to have hours in.
+  const r = run({ workDate: '2026-08-05', startTime: '17:00', endTime: '21:00' }, { minimumHoursScope: 'bucket' });
+  assert.equal(r.belowMinimumFlagged, false);
+  assert.equal(r.warnings.length, 0);
+});
+
+test('[OPEN 4] bucket + reject: refused for the column, and the message says which', () => {
+  assert.throws(
+    () => run(SPLIT_SHIFT, { minimumHoursScope: 'bucket', belowMinimum: 'reject' }),
+    (e) => e instanceof OtValidationError
+      && e.code === 'BELOW_MINIMUM'
+      && /OT วันหยุด \(17\.01–07\.59\)/.test(e.message),
+  );
+  // …and the same session is filed without complaint when the scope is ต่อใบ.
+  assert.equal(run(SPLIT_SHIFT, { belowMinimum: 'reject' }).totals.otHours, 2);
+});
+
+test('[OPEN 4] bucket + raise: pads the short column only, and keeps the rows in clock order', () => {
+  const r = run(SPLIT_SHIFT, { minimumHoursScope: 'bucket', belowMinimum: 'raise' });
+
+  assert.equal(r.buckets[BUCKETS.OT3_HOLIDAY], 1, 'padded up from nought');
+  assert.equal(r.buckets[BUCKETS.OT15_WEEKDAY], 2, 'left exactly where rounding put it');
+  assert.equal(r.totals.otHours, 3);
+
+  // The padded column had rounded away entirely, so its row is rebuilt from the
+  // stretch that was worked. Clock times stay as worked while the counted
+  // minutes are the padded ones — the same split a flat break deduction makes.
+  assert.equal(r.segments.length, 2);
+  assert.equal(r.segments[0].date, '2026-08-09', 'Sunday first, though it was padded last');
+  assert.equal(r.segments[0].start, '23:40');
+  assert.equal(r.segments[0].hours, 1);
+  assert.equal(r.segments[1].date, '2026-08-10');
+
+  const raised = r.warnings.filter((w) => w.code === 'RAISED_TO_MINIMUM');
+  assert.equal(raised.length, 1);
+  assert.equal(raised[0].bucket, BUCKETS.OT3_HOLIDAY);
+});
+
+test('[OPEN 4] sheet + raise pads once, whatever the columns underneath it', () => {
+  // Same shift, same action, one pile: 2 h clears the minimum and nothing is
+  // padded at all. The contrast with the test above is the whole flag.
+  const r = run(SPLIT_SHIFT, { belowMinimum: 'raise' });
+  assert.equal(r.totals.otHours, 2);
+  assert.equal(r.warnings.some((w) => w.code === 'RAISED_TO_MINIMUM'), false);
+});
+
+test('[OPEN 4] a scope nobody recognises counts ต่อใบ rather than inventing a third rule', () => {
+  const r = run(SPLIT_SHIFT, { minimumHoursScope: 'ต่อคน', belowMinimum: 'raise' });
+  assert.equal(r.totals.otHours, 2);
+  assert.equal(r.warnings.some((w) => w.code === 'RAISED_TO_MINIMUM'), false);
+});
+
+/**
+ * A code stopped being unique per entry the day the scope flag arrived, and the
+ * screens were all keying React lists on it.
+ *
+ * Two BELOW_MINIMUM_ACCEPTED warnings on one entry — one per short column —
+ * render under one key, which React resolves by dropping the second. HR would
+ * be shown one short column out of two, on the screen whose whole job is to
+ * show them what to look at, with nothing anywhere reporting a problem.
+ */
+test('[OPEN 4] no screen keys a warnings list on the code alone', () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  for (const file of [
+    'components/OtForm.jsx',
+    'components/ApprovalQueue.jsx',
+    'web/src/components/OtForm.jsx',
+    'web/src/components/ApprovalQueue.jsx',
+  ]) {
+    const src = readFileSync(join(root, file), 'utf8');
+    assert.ok(!/key=\{w\.code\}/.test(src), `${file} — สองคำเตือนที่รหัสเดียวกันจะหายไปหนึ่งอัน`);
+  }
+});
+
+test('[OPEN 4] the two scopes agree on every session that lands in one column', () => {
+  // Which is most of them. The flag can only ever change an entry that spans a
+  // rate boundary — worth pinning, because a scope that quietly re-measured a
+  // one-column session would move figures nobody could explain.
+  for (const session of [
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '17:40' },   // short, weekday
+    { workDate: '2026-08-08', startTime: '08:00', endTime: '17:00' },   // long, holiday
+    { workDate: '2026-08-05', startTime: '05:30', endTime: '08:00' },   // early start
+  ]) {
+    for (const belowMinimum of ['accept', 'raise']) {
+      const sheet = run(session, { belowMinimum });
+      const bucket = run(session, { belowMinimum, minimumHoursScope: 'bucket' });
+      assert.deepEqual(bucket.buckets, sheet.buckets, JSON.stringify(session));
+      assert.equal(bucket.totals.otHours, sheet.totals.otHours);
+      assert.equal(bucket.belowMinimumFlagged, sheet.belowMinimumFlagged);
+    }
+  }
 });
 
 // ── [OPEN 1 / 2] break modes ────────────────────────────────────────────────
