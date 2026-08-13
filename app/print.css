@@ -24,12 +24,23 @@
  * can push a month onto a second side that would have fitted on one.
  */
 
+/* The only @page in the app — see the note above the last block of this file
+   for why the margin is zero and how the bands are given back. styles.css used
+   to carry a second one (A4/12mm); it lost the cascade to this one and existed
+   only to break the day two stylesheets swapped order, so it is gone. */
 @page {
   size: A4 portrait;
-  margin: 10mm 8mm;
+  margin: 0;
 }
 
 .f027 {
+  /* content-box, against `* { box-sizing: border-box }` in styles.css. Every
+     figure below — 194mm, 255mm — is the BODY of the sheet, and the bands are
+     added round it (`.f027-screen .f027` padding). Inherited as border-box the
+     bands came out of the body instead: the sheet printed 255mm tall on 297mm
+     of paper and stopped a fat 40mm short of the bottom, which is the "form
+     does not fill the page" this was found by. */
+  box-sizing: content-box;
   width: 194mm;
   margin: 0 auto;
   background: #fff;
@@ -228,7 +239,9 @@
 
 @media print {
   .f027-screen { background: #fff; padding: 0; }
-  .f027-screen .f027 { box-shadow: none; padding: 0; }
+  /* Padding is NOT reset: it is the sheet's own margin bands, and on paper it
+     is doing the same job it does in the preview. Only the shadow goes. */
+  .f027-screen .f027 { box-shadow: none; }
   .f027-screen .f027 + .f027 { margin-top: 0; }
   .f027 + .f027 { break-before: page; page-break-before: always; }
   /* A month with enough split sessions outgrows the sheet. Let it run onto a
@@ -262,6 +275,12 @@
  */
 
 .acct {
+  /* Same reason as .f027: 194mm is the body, the 8mm bands are added round it.
+     Inherited as border-box the body came to 178mm while `.acct table` below is
+     still ruled at 194mm, so the grid hung 16mm out past its own block — right
+     rule on the paper edge, and a browser fitting the page to the printable
+     area shrank the whole sheet to make it go. */
+  box-sizing: content-box;
   width: 194mm;
   margin: 0 auto;
   background: #fff;
@@ -437,6 +456,8 @@
  */
 
 .otdept {
+  /* As .f027 and .acct — 194mm is the body, the 8mm bands sit outside it. */
+  box-sizing: content-box;
   width: 194mm;
   margin: 0 auto;
   background: #fff;
@@ -572,14 +593,20 @@
  * start hard against the paper edge. The accounting sheet therefore carries
  * its margin in blank thead/tfoot rows, which the browser repeats on every
  * page (see the .acct tr.pad rules above). F-HR-027 is a one-side form, so
- * padding is the right tool there.
+ * padding is the right tool there — the same 18mm/8mm/22mm the preview shows,
+ * carried through to the paper rather than overridden to something else. It
+ * used to be re-stated here as `10mm 0`, which is where the 22mm of dead paper
+ * under the signature block came from: 10 + 255 + 10 is 275mm of 297, and the
+ * grid grew to fill 275 instead of 295. The declaration is gone; the sheet is
+ * one width and one height on screen and on paper.
+ *
+ * 194mm of body plus 8mm either side is 210mm — the full width of A4. The grid
+ * cannot go wider: it is already as far out as a printer's non-printable edge
+ * allows, and a table ruled at 210mm would come back with its outer rule cut
+ * off on both sides.
  */
-@page { margin: 0; }
 
 @media print {
-  /* One page by design, so start and end of the block IS every page. */
-  .f027-screen .f027 { padding: 10mm 0; }
-
   /* The grey is `.shell`, which paints var(--bg) (#EEF1EE) over the whole
      viewport — and `* { print-color-adjust: exact }` in styles.css makes sure
      it is printed rather than dropped. Clearing html/body is not enough; the

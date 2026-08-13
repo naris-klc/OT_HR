@@ -1526,7 +1526,11 @@ table.mini tbody tr:hover { background: none; }
 
 /* ══ print — the app chrome is not part of the document ══════════════════ */
 
-@page { size: A4; margin: 12mm; }
+/* No @page here. print.css owns it, and the sheets are measured against the
+   margin it sets — a second @page in this file only decides the paper on the
+   day the two stylesheets load in the other order, and it would decide it
+   wrong (12mm of margin leaves 186mm for a 210mm sheet, which every browser
+   answers by shrinking the whole page until it fits). */
 
 @media print {
   html, body { background: #fff; }
