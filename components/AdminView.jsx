@@ -12,6 +12,9 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // the column showing which payroll somebody is on cannot disagree with the file
 // they end up in.
 import { companyOf } from '@/src/config/companies.js';
+// Pure too — no imports of its own at all, so the diff the settings page draws
+// is computed by the same function the replay and the version history use.
+import { diffPolicy } from '@/lib/policyVersion.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { Alert, Empty, Modal } from './common.jsx';
 import Delegation from './Delegation.jsx';
@@ -2707,7 +2710,12 @@ function Unconfirmed({ item, canEdit, busy, onConfirm }) {
         รอ HR ยืนยัน
       </span>
       <div className="hint" style={{ marginTop: 4 }}>
-        ค่าที่ใช้อยู่: <strong>{item.reading}</strong> · ตั้งตามพฤติกรรมเดิม ณ {item.since} ยังไม่มีใครใน HR ตอบข้อนี้
+        {/* "ตั้งตามพฤติกรรมเดิม" was said of every item and is true of only
+            some: the rounding increment came off the requirements doc and the
+            buffer came off nobody at all — it ships at "no threshold" because
+            no figure was ever given, which is not the same as an answer of
+            none. Where each value came from is now its own `note`. */}
+        ค่าที่ใช้อยู่: <strong>{item.reading}</strong> · ยังไม่มีใครใน HR ตอบข้อนี้ ตั้งแต่ {item.since}
         {item.note && <div style={{ marginTop: 2 }}>{item.note}</div>}
       </div>
       {canEdit && (
@@ -2738,6 +2746,12 @@ function ConfirmedBy({ item }) {
 
 function Policy({ user }) {
   const [policy, setPolicy] = useState(null);
+  /**
+   * The values the PROGRAM ships, as opposed to the ones it is running. The API
+   * has always sent them; nothing drew them, so the only way to find out what a
+   * stored override was hiding was to read src/config/policy.js and be wrong.
+   */
+  const [defaults, setDefaults] = useState(null);
   const [overrides, setOverrides] = useState([]);
   /** The rules HR has not agreed to — see lib/policyConfirmations.js. */
   const [unconfirmed, setUnconfirmed] = useState([]);
@@ -2764,6 +2778,7 @@ function Policy({ user }) {
         api.get('/settings/policy-versions'),
       ]);
       setPolicy(res.policy);
+      setDefaults(res.defaults);
       setOverrides(res.overrides);
       setUnconfirmed(res.unconfirmed || []);
       setVersions(history.versions);
@@ -2864,6 +2879,7 @@ function Policy({ user }) {
       {msg && <Alert kind="ok">{msg}</Alert>}
 
       <UnrecordedPolicy live={live} canEdit={canEdit} busy={busy} onRecord={recordLive} />
+      <LivePolicy policy={policy} defaults={defaults} overrides={overrides} />
 
       {/* Typed before the dropdown is touched, because changing a dropdown IS
           the save — there is no button to attach a reason to afterwards. */}
@@ -2890,8 +2906,16 @@ function Policy({ user }) {
                       number to carry, and printing "OPEN undefined" beside one
                       would make it look like an item somebody forgot. */}
                   {f.open ? `OPEN ${f.open}` : '—'}
+                  {/* "HR ตอบแล้ว" until 2026-08-13, which an override is not
+                      evidence of — it says a value is stored, not who chose it
+                      or whether anybody did. `minimumHoursScope` wore this and
+                      the รอ HR ยืนยัน badge at the same time, on the same row,
+                      flatly contradicting itself; a reader deciding which half
+                      to believe was the only thing holding the page together.
+                      Whether HR has actually answered is what the badge and
+                      ConfirmedBy below are for, and they know. */}
                   {overrides.includes(f.key) && (
-                    <div style={{ fontSize: 11.5, color: 'var(--green-dark)' }}>HR ตอบแล้ว</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>ตั้งทับค่าตั้งต้น</div>
                   )}
                 </td>
                 <td>
@@ -3029,6 +3053,78 @@ function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
 }
 
 const CHANGE_LABEL = Object.fromEntries(POLICY_FIELDS.map((f) => [f.key, f.label]));
+
+/**
+ * What this installation is ACTUALLY computing with, against what the program
+ * ships — the panel that exists because reading the file is not an answer.
+ *
+ * `src/config/policy.js` is a set of defaults. `Setting.policy` shadows it key
+ * by key, silently, and for as long as the value sits there. On 2026-08-13 this
+ * database had been running `minimumHoursScope: 'bucket'` against a file reading
+ * `'sheet'` — and the settings page said nothing, so the only way to find out
+ * was to query the database. Before that, `belowMinimum` ran as 'reject' for
+ * months against a file saying 'raise'. Twice is a pattern, and both times the
+ * cost was a decision taken on a value nobody was running.
+ *
+ * Two categories, and the second is the one nobody thinks of:
+ *
+ *   ต่างจากค่าตั้งต้น — the value here is not the value the program ships.
+ *                     Read the file and you will be wrong about this system.
+ *   ตรึงไว้เท่าเดิม   — stored at the same value the file happens to have today.
+ *                     Invisible in a diff, and the trap in a deploy: the day a
+ *                     release changes that default, this installation does NOT
+ *                     follow it. `otStartsAtCoreEnd` is one of these right now.
+ *
+ * The same two questions `npm run whatif -- --show` answers from a terminal.
+ * On the page as well because HR and Admin are who need it and neither has a
+ * terminal, and because the badge saying a question is unanswered belongs next
+ * to the value that is answering it in the meantime.
+ */
+function LivePolicy({ policy, defaults, overrides }) {
+  if (!policy || !defaults) return null;
+
+  const moved = diffPolicy(defaults, policy);
+  const movedKeys = new Set(moved.map((d) => d.key));
+  const pinned = (overrides || []).filter((k) => !movedKeys.has(k) && k in defaults);
+  if (!moved.length && !pinned.length) {
+    return (
+      <div className="hint" style={{ marginTop: 10 }}>
+        ทุกข้อในหน้านี้ใช้ค่าตั้งต้นของโปรแกรม ไม่มีข้อใดถูกตั้งทับไว้
+      </div>
+    );
+  }
+
+  const arithmetic = moved.filter((d) => d.arithmetic).length;
+
+  return (
+    <Alert kind={arithmetic ? 'warn' : 'info'}>
+      <strong>ค่าที่ระบบนี้ใช้จริง ไม่ตรงกับค่าตั้งต้นของโปรแกรมทั้งหมด</strong>
+      {moved.length > 0 && (
+        <div style={{ marginTop: 8, fontSize: 12.5 }}>
+          <div style={{ color: 'var(--muted)' }}>ต่างจากค่าตั้งต้น — ค่าที่ใช้คำนวณจริงคือค่าทางขวา:</div>
+          {moved.map((d) => (
+            <div key={d.key}>
+              {CHANGE_LABEL[d.key] || d.key}: {JSON.stringify(d.from)} → <strong>{JSON.stringify(d.to)}</strong>
+              {d.arithmetic
+                ? <span style={{ color: 'var(--amber)' }}> (มีผลต่อชั่วโมง)</span>
+                : <span style={{ color: 'var(--muted)' }}> (ไม่มีผลต่อชั่วโมง)</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {pinned.length > 0 && (
+        <div style={{ marginTop: 8, fontSize: 12.5 }}>
+          <div style={{ color: 'var(--muted)' }}>ตรึงไว้เท่ากับค่าตั้งต้นวันนี้:</div>
+          <div>{pinned.map((k) => CHANGE_LABEL[k] || k).join(' · ')}</div>
+          <div style={{ color: 'var(--muted)', marginTop: 2 }}>
+            เท่ากันอยู่ตอนนี้ แต่ถูกเก็บค่าไว้แล้ว — ถ้าโปรแกรมเวอร์ชันใหม่เปลี่ยนค่าตั้งต้นของข้อเหล่านี้
+            ระบบนี้จะไม่เปลี่ยนตาม
+          </div>
+        </div>
+      )}
+    </Alert>
+  );
+}
 
 /**
  * Every rule set the system has computed with, and what changed when each

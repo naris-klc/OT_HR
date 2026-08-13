@@ -443,8 +443,19 @@ export const HR_UNCONFIRMED = Object.freeze([
     reading: (policy) => (policy.roundingMode === 'exact'
       ? 'ไม่ปัดเศษ — คิดตามจริงเป็นทศนิยม'
       : `ทีละ ${policy.roundingIncrementMinutes} นาที`),
-    note: 'ค่าที่ใช้อยู่คือ 30 นาที (ครึ่งชั่วโมง) ตามเอกสารข้อกำหนดและตามที่ทุกใบในระบบถูกคำนวณมา '
-      + '· ถ้าคำตอบคือชั่วโมงเต็ม ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
+    /**
+     * `note` says what the question is and what answering it costs. It must NOT
+     * restate the value — `reading` does that, off the live policy, and a note
+     * that names a value too is a second source of truth that goes stale the
+     * first time somebody changes the dropdown. All three notes here did exactly
+     * that until 2026-08-13, and minimumScope's was already wrong: it read
+     * "ค่าที่ใช้อยู่คือ ต่อใบ" on a database that had been running ต่อช่อง for
+     * as long as anybody could tell, because a stored override shadows this file
+     * silently (see `npm run whatif -- --show`).
+     */
+    note: '30 นาที (ครึ่งชั่วโมง) มาจากเอกสารข้อกำหนด และเป็นค่าที่ทุกใบในระบบถูกคำนวณมา '
+      + '— ไม่ใช่คำตอบที่ใครในฝ่ายบุคคลเคยให้ไว้ '
+      + '· เปลี่ยนข้อนี้แล้วชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม',
   }),
   Object.freeze({
     /**
@@ -461,10 +472,10 @@ export const HR_UNCONFIRMED = Object.freeze([
       if (policy.belowMinimum === 'raise') return 'ปัดขึ้นเป็น 1 ชม.';
       return 'รับตามชั่วโมงจริง และติดธงให้ HR ตรวจ';
     },
-    note: 'ค่าที่ใช้อยู่คือ “รับตามชั่วโมงจริง” — ใบที่ต่ำกว่า 1 ชม. จะถูกบันทึกตามชั่วโมงที่คำนวณได้ '
-      + 'ไม่ปัดขึ้นและไม่ถูกปฏิเสธ แต่ติดธงไว้ให้ฝ่ายบุคคลตัดสิน '
-      + '· ก่อนหน้านี้ระบบใช้ “ไม่รับรายการ” ซึ่งเท่ากับไม่บันทึกชั่วโมงที่พนักงานทำจริง '
-      + '· ถ้า HR ตอบว่าให้ปัดขึ้นหรือไม่รับ ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
+    note: '“รับตามชั่วโมงจริง” บันทึกชั่วโมงที่คำนวณได้ ไม่ปัดขึ้นและไม่ปฏิเสธ '
+      + 'แต่ติดธงไว้ให้ฝ่ายบุคคลตัดสินรายใบ '
+      + '· ระบบเคยตั้งไว้ที่ “ไม่รับรายการ” ซึ่งเท่ากับไม่บันทึกชั่วโมงที่พนักงานทำไปแล้ว '
+      + '· เปลี่ยนเป็นปัดขึ้นหรือไม่รับ ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม',
   }),
   Object.freeze({
     id: 'minimumScope',
@@ -473,10 +484,36 @@ export const HR_UNCONFIRMED = Object.freeze([
     reading: (policy) => (policy.minimumHoursScope === 'bucket'
       ? 'ต่อช่อง (เทียบขั้นต่ำแยกทีละช่องอัตรา)'
       : 'ต่อใบ (รวมทุกช่องก่อนเทียบกับขั้นต่ำ)'),
-    note: 'ค่าที่ใช้อยู่คือ “ต่อใบ” — รวมชั่วโมงทุกช่องในใบนั้นก่อน แล้วจึงเทียบกับ 1 ชม. '
-      + '· ถ้าคำตอบคือต่อช่อง ให้เปลี่ยนที่ตัวเลือกในหน้านี้ '
-      + '· ต่อช่องทำให้ใบที่คาบเกี่ยวสองช่อง เช่น ศุกร์ดึกข้ามไปเสาร์ ถูกวัดสองครั้ง '
-      + 'ชั่วโมงของใบที่ยังไม่อนุมัติจึงเปลี่ยนเมื่อ “ต่ำกว่าขั้นต่ำ” ตั้งไว้ที่ปัดขึ้นหรือไม่รับ',
+    note: '“ต่อใบ” รวมชั่วโมงทุกช่องก่อนแล้วจึงเทียบกับ 1 ชม. · “ต่อช่อง” เทียบทีละช่อง '
+      + 'ใบที่คาบเกี่ยวสองช่อง เช่น ศุกร์ดึกข้ามไปเสาร์ จึงถูกวัดสองครั้งและติดธงได้ทั้งสองช่อง '
+      + '· ขณะที่ “ต่ำกว่าขั้นต่ำ” ตั้งไว้ที่ “รับตามชั่วโมงจริง” ข้อนี้เปลี่ยนแค่จำนวนธงที่ฝ่ายบุคคลต้องตรวจ '
+      + 'ไม่ขยับชั่วโมง — จะขยับก็ต่อเมื่อข้อนั้นถูกเปลี่ยนเป็นปัดขึ้นหรือไม่รับ',
+  }),
+  Object.freeze({
+    /**
+     * Added 2026-08-13. The buffer had been the odd one out: a value that moves
+     * hours, shipped at a figure nobody in HR chose, and the only one of the
+     * four with nothing on the page saying so. It was not an oversight in the
+     * catalogue so much as an artefact of when the flag arrived — it was built
+     * after the other three were written down, and a question that nobody wrote
+     * down is a question that stops being asked.
+     *
+     * `startBuffer`, not `minimumBuffer...`: an id that collides with a policy
+     * key makes `{ [id]: {...} }` read as a policy override to anything scanning
+     * the settings document loosely, which is the trap `belowMinimumAction`
+     * was renamed out of.
+     */
+    id: 'startBuffer',
+    since: '2026-08-13',
+    label: 'ต้องทำเกินกี่นาที จึงเริ่มนับเป็น OT',
+    keys: Object.freeze(['minimumBufferMinutes']),
+    reading: (policy) => (Number(policy.minimumBufferMinutes) > 0
+      ? `ต้องทำอย่างน้อย ${policy.minimumBufferMinutes} นาที`
+      : 'ไม่มีเกณฑ์ — ทุกนาทีที่ทำนับเป็น OT'),
+    note: 'ถามคนละเรื่องกับขั้นต่ำ 1 ชม. ข้อนี้ถามว่า “นับเป็น OT หรือเปล่า” '
+      + 'วัดจากนาทีที่ทำจริงทั้งใบ ก่อนปัดเศษ · ใบที่ไม่ผ่านเกณฑ์นี้จะถูกปฏิเสธตั้งแต่หน้ากรอก '
+      + 'ไม่ใช่บันทึกเป็น 0 · ระบบส่งมาที่ “ไม่มีเกณฑ์” เพราะยังไม่เคยมีใครในฝ่ายบุคคลระบุตัวเลขมา '
+      + 'ไม่ใช่เพราะตอบแล้วว่าไม่ต้องมี',
   }),
 ]);
 

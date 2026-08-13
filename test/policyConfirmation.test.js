@@ -92,14 +92,25 @@ test('ids are unique — two items sharing one would confirm each other', () => 
   assert.deepEqual([...new Set(ids)].sort(), [...ids].sort());
 });
 
-test('the three rules nobody in HR has answered are the three that are listed', () => {
-  // Named, not counted. Adding a fourth is a decision somebody should have to
-  // make here rather than discover on the settings page.
+test('the rules nobody in HR has answered are the ones that are listed', () => {
+  // Named, not counted. Adding one is a decision somebody should have to make
+  // here rather than discover on the settings page — which is how `startBuffer`
+  // came to be added on 2026-08-13: the buffer moved hours, shipped at a figure
+  // nobody chose, and was the only one of the four with no badge saying so.
   assert.deepEqual(
     HR_UNCONFIRMED.map((i) => i.id),
-    ['roundingIncrement', 'belowMinimumAction', 'minimumScope'],
+    ['roundingIncrement', 'belowMinimumAction', 'minimumScope', 'startBuffer'],
   );
   assert.equal(HR_UNCONFIRMED_SINCE, '2026-08-07');
+});
+
+test('an item added after the catalogue opened is dated from when it arrived', () => {
+  // The shared HR_UNCONFIRMED_SINCE is the floor, not the answer: a question
+  // that did not exist on 2026-08-07 must not be shown as unanswered since then.
+  const state = unconfirmedState(DEFAULT_POLICY, {});
+  const byId = Object.fromEntries(state.map((i) => [i.id, i]));
+  assert.equal(byId.startBuffer.since, '2026-08-13');
+  assert.equal(byId.roundingIncrement.since, HR_UNCONFIRMED_SINCE);
 });
 
 // ── what a screen is told ───────────────────────────────────────────────────
