@@ -145,7 +145,20 @@ a:hover { color: var(--green-dark); }
 }
 .nav button:hover { background: rgba(255, 255, 255, .07); color: #fff; }
 .nav button.active { background: var(--green); color: #fff; }
-.nav .icon { font: 400 15px/1 var(--mono); width: 18px; text-align: center; opacity: .9; flex: none; }
+/* The slot is a fixed 18px box so every label starts on the same left edge —
+   it did that by `width` + `text-align` when the icon was a character, and it
+   does it by centring an svg now. `opacity` rather than a dimmer colour: the
+   icons inherit `currentColor`, which is the whole reason one file covers the
+   sidebar's white, the active row's white-on-green, and the phone bar's grey
+   and green. */
+.nav .icon {
+  width: 18px; height: 18px; flex: none;
+  display: grid; place-items: center;
+  opacity: .9;
+}
+.nav .icon svg { width: 18px; height: 18px; display: block; }
+/* The active row is the one place the icon should not be held back. */
+.nav button.active .icon { opacity: 1; }
 .nav .label { flex: 1; text-align: left; }
 
 /* Count badges are alarms, not decoration — one colour, used only here. */
@@ -1547,7 +1560,11 @@ table.mini tbody tr:hover { background: none; }
     color: var(--muted-2);
   }
   .mobile-nav button.active { color: var(--green); }
-  .mobile-nav .icon { position: relative; font: 400 17px/1 var(--mono); }
+  /* `position: relative` is load-bearing — the count badge is absolutely
+     positioned against this box, not against the button, so it rides on the
+     icon's top-right corner rather than the whole tab's. */
+  .mobile-nav .icon { position: relative; display: grid; place-items: center; }
+  .mobile-nav .icon svg { width: 22px; height: 22px; display: block; }
   .mobile-nav .label { font: 500 11px/1 var(--sans); }
   .mobile-nav .count {
     position: absolute; top: -4px; right: -11px;

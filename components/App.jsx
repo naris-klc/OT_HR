@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
 import { Alert } from './common.jsx';
+import Icon from './icons.jsx';
 import { ToastHost } from './Toast.jsx';
 import { BackProvider } from './nav.jsx';
 import EmployeeView from './EmployeeView.jsx';
@@ -378,10 +379,10 @@ function Shell({ session, onLogout }) {
   const birthdayBadge = counts.birthdayPending || 0;
 
   const tabs = [];
-  if (user.maySubmitOt) tabs.push({ key: 'mine', label: 'OT ของฉัน', icon: '◧' });
+  if (user.maySubmitOt) tabs.push({ key: 'mine', label: 'OT ของฉัน', icon: 'clock' });
   if (user.role === 'manager') {
     tabs.push({
-      key: 'approve', label: 'รออนุมัติ', icon: '◔', badge: counts.pendingMgr + birthdayBadge,
+      key: 'approve', label: 'รออนุมัติ', icon: 'inbox', badge: counts.pendingMgr + birthdayBadge,
     });
   }
   /**
@@ -403,31 +404,31 @@ function Shell({ session, onLogout }) {
     tabs.push({
       key: 'delegated',
       label: 'รออนุมัติแทน',
-      icon: '◕',
+      icon: 'users',
       badge: counts.pendingMgrDelegated,
     });
   }
   if (['hr', 'admin'].includes(user.role)) {
     tabs.push({
-      key: 'confirm', label: 'รอ HR ยืนยัน', icon: '◑', badge: counts.pendingHr + birthdayBadge,
+      key: 'confirm', label: 'รอ HR ยืนยัน', icon: 'check', badge: counts.pendingHr + birthdayBadge,
     });
-    tabs.push({ key: 'monthly', label: 'ตรวจสอบรายเดือน', icon: '▤' });
+    tabs.push({ key: 'monthly', label: 'ตรวจสอบรายเดือน', icon: 'calendar' });
     // Closing the month, not checking it — hence its own tab next to the
     // review rather than a mode inside it.
-    tabs.push({ key: 'accounting', label: 'สรุป OT ส่งบัญชี', icon: '▥' });
+    tabs.push({ key: 'accounting', label: 'สรุป OT ส่งบัญชี', icon: 'banknote' });
     // The other question the same month answers — how many hours each แผนก
     // worked, both payrolls counted together. Its own tab rather than a mode
     // inside สรุป OT ส่งบัญชี, because it is a different sheet for different
     // readers, not a different view of the submission.
-    tabs.push({ key: 'departments', label: 'สรุป OT แยกแผนก', icon: '▧' });
+    tabs.push({ key: 'departments', label: 'สรุป OT แยกแผนก', icon: 'org' });
   }
-  if (user.role === 'manager') tabs.push({ key: 'monthly', label: 'สรุปทีม', icon: '▤' });
-  if (user.maySubmitOt) tabs.push({ key: 'form', label: 'ใบ F-HR-027', icon: '▦' });
+  if (user.role === 'manager') tabs.push({ key: 'monthly', label: 'สรุปทีม', icon: 'chart' });
+  if (user.maySubmitOt) tabs.push({ key: 'form', label: 'ใบ F-HR-027', icon: 'document' });
   // One label for both now that ฝ่ายบุคคล maintains ทะเบียนพนักงาน here as
   // well — "นโยบายและวันหยุด" named the two sections HR could use back when the
   // roster was Admin's alone, and a tab that undersells what is behind it is
   // how HR ends up asking IT to add a new hire.
-  if (['hr', 'admin'].includes(user.role)) tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: '⚙' });
+  if (['hr', 'admin'].includes(user.role)) tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: 'sliders' });
 
   async function logout() {
     await api.post('/auth/logout');
@@ -456,7 +457,7 @@ function Shell({ session, onLogout }) {
               className={tab === t.key ? 'active' : ''}
               onClick={() => goTab(t.key)}
             >
-              <span className="icon">{t.icon}</span>
+              <span className="icon"><Icon name={t.icon} /></span>
               <span className="label">{t.label}</span>
               {/* Keyed on the number: React remounts the span when the count
                   moves, which replays the CSS pop. The queue emptying is the
@@ -576,7 +577,7 @@ function Shell({ session, onLogout }) {
               onClick={() => goTab(t.key)}
             >
               <span className="icon">
-                {t.icon}
+                <Icon name={t.icon} />
                 {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
               </span>
               <span className="label">{t.label}</span>
