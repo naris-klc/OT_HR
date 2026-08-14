@@ -19,19 +19,30 @@ import PrintForm from './PrintForm.jsx';
 /**
  * The company mark, in the three places it appears.
  *
- * WHAT IT DRAWS DEPENDS ON WHETHER `public/logo.png` EXISTS. With the file
- * there it is the real Primus logo; without it, the two-letter “Pm” tile this
- * app shipped with. The fallback is not politeness — it is the difference
- * between a missing asset costing a slightly plainer badge and costing every
- * screen a broken-image icon in the top left corner, on a system whose users
- * cannot fix it and would reasonably read it as the app being broken.
+ * IT DRAWS THE MARK, NOT THE LOCKUP. `logo-mark.png` is the Pm on its own,
+ * cropped from the supplied artwork by scripts/make-icon.js; `logo.png` is the
+ * full lockup and is the SOURCE for that crop, not something any screen shows.
+ *
+ * The reason is visible the moment you look at the login panel: the badge is
+ * 30–40 px and every one of these three places already writes “PRIMUS” in text
+ * beside it. Drawing the lockup put the word in twice — once set cleanly in
+ * type, and once about five pixels tall inside the badge, where it reads as a
+ * green smudge under the mark. The mark alone is the correct half of a lockup
+ * to use when the other half is already on the screen.
+ *
+ * WHAT IT DRAWS DEPENDS ON WHETHER THE FILE EXISTS. Without it, the two-letter
+ * “Pm” tile this app shipped with. The fallback is not politeness — it is the
+ * difference between a missing asset costing a slightly plainer badge and
+ * costing every screen a broken-image icon in the top left corner, on a system
+ * whose users cannot fix it and would reasonably read it as the app being
+ * broken.
  *
  * `onError` rather than a build-time check, because the file is dropped in by
  * whoever has the artwork, on the machine that runs this, without a rebuild —
  * and a check that happened at build time would be answering the question at
  * the one moment nobody is asking it.
  *
- * The tile turns white when the logo loads (`has-logo`). The mark is green on
+ * The tile turns white when the mark loads (`has-logo`). The mark is green on
  * transparent, so on the dark sidebar and the green login panel it needs
  * something behind it; the “Pm” tile is green on those and needs the opposite.
  * One class, so the two can never be half-applied.
@@ -41,7 +52,7 @@ function BrandMark({ className, alt = 'PRIMUS' }) {
   return (
     <span className={`${className}${ok ? ' has-logo' : ''}`} aria-hidden={ok ? undefined : 'true'}>
       {ok
-        ? <img src="/logo.png" alt={alt} onError={() => setOk(false)} />
+        ? <img src="/logo-mark.png" alt={alt} onError={() => setOk(false)} />
         : 'Pm'}
     </span>
   );

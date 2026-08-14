@@ -105,18 +105,22 @@ a:hover { color: var(--green-dark); }
 }
 
 /* ── the company mark ─────────────────────────────────────────────────────
-   `has-logo` is set by BrandMark once public/logo.png has actually loaded, and
-   everything below hangs off it rather than off the presence of an <img>. The
-   logo is green on transparent; the tile it sits in is green in two of the
-   three places it appears, so without this the mark would be green on green —
+   `has-logo` is set by BrandMark once public/logo-mark.png has actually loaded,
+   and everything below hangs off it rather than off the presence of an <img>.
+   The mark is green on transparent; the tile it sits in is green in two of the
+   three places it appears, so without this it would be green on green —
    invisible, and invisible in the way that looks like a layout bug rather than
    a missing file.
 
-   The padding is what keeps it a logo rather than a sticker: the artwork runs
-   to its own edges, and a mark pressed against the corners of a rounded tile
-   reads as cropped. `object-fit: contain` because the source is taller than it
-   is wide and the tiles are square — anything else would trim the ® or the
-   wordmark off. */
+   `object-fit: contain` because the mark is wider than it is tall (441×316 in
+   the artwork) and every tile is square. It is centred in a square canvas by
+   the generator, so the letterboxing is already baked in and the ® at the top
+   right cannot be clipped by a tile of any size.
+
+   The padding is small on purpose. The generated file already carries a 6%
+   margin of its own, and stacking a large CSS padding on top of that is how a
+   34 px badge ends up drawing a 20 px mark that reads as timid rather than
+   deliberate. */
 .brand .mark.has-logo,
 .appbar .mark-sm.has-logo,
 .login-brand .lockup .mark.has-logo { background: #fff; }
@@ -126,7 +130,7 @@ a:hover { color: var(--green-dark); }
 .login-brand .lockup .mark img {
   width: 100%; height: 100%;
   object-fit: contain;
-  padding: 3px;
+  padding: 1px;
 }
 .brand .name { font: 600 13px/1.1 var(--latin); letter-spacing: .14em; }
 .brand .kicker { font: 400 10.5px/1.4 var(--mono); color: var(--muted-2); letter-spacing: .08em; }

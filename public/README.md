@@ -2,19 +2,32 @@
 
 Files here are served from the site root: `public/logo.png` → `/logo.png`.
 
-## logo.png — โลโก้บริษัท
+## Two files, and only one of them is drawn
 
-**Save the Primus logo here, named exactly `logo.png`.** Nothing else has to
-change: the sidebar, the mobile top bar and the login panel all read it at
-runtime, and a refresh picks it up. No rebuild, no restart.
+| file | what it is | who draws it |
+|---|---|---|
+| `logo.png` | the supplied artwork — the Pm mark **over the word PRIMUS** | nothing. it is the SOURCE |
+| `logo-mark.png` | the Pm mark alone, cropped out of it, transparent | the sidebar, the mobile bar, the login panel |
 
-Until the file exists, all three fall back to the two-letter **Pm** tile the app
-shipped with — see `BrandMark` in `components/App.jsx`. That is why a missing
-logo costs a plainer badge instead of a broken-image icon in the corner of every
-screen, on a system whose users could not fix it and would reasonably read it as
-the app being broken.
+`logo-mark.png` and `app/icon.png` are both **generated** from `logo.png` by
+`node scripts/make-icon.js`. **Replace `logo.png` and run that script**, or the
+badges and the browser tab keep the old mark and nothing says so.
 
-What the artwork should be:
+### Why the badges do not use the full artwork
+
+Every place the badge appears it is 30–40 px, and the app has already written
+**PRIMUS** in text right beside it. Drawing the full lockup put the word on
+screen twice: once set cleanly in type, and once about five pixels tall inside
+the badge, where it reads as a green smudge under the mark. Using the mark
+alone is what a lockup has a separate mark *for*.
+
+Until `logo-mark.png` exists, all three badges fall back to the two-letter
+**Pm** tile the app shipped with — see `BrandMark` in `components/App.jsx`. That
+is why a missing file costs a plainer badge instead of a broken-image icon in
+the corner of every screen, on a system whose users could not fix it and would
+reasonably read it as the app being broken.
+
+What the source artwork (`logo.png`) should be:
 
 - **PNG with a transparent background.** The tile behind it turns white when the
   logo loads, and a white rectangle baked into the image would show as a square
@@ -27,23 +40,19 @@ What the artwork should be:
   top of the 3 px the stylesheet already adds, and the mark ends up looking
   shrunken beside the wordmark next to it.
 
-## The browser tab icon is a second file, and it is DERIVED from this one
+## What the generator does
 
-`app/icon.png` — Next.js picks that path up by App Router convention and writes
-the `<link rel="icon">` itself; nothing in this project configures it.
+`node scripts/make-icon.js` writes `public/logo-mark.png` (256 px, for the
+badges) and `app/icon.png` (128 px, the browser tab — Next.js picks that path up
+by App Router convention and writes the `<link rel="icon">` itself). Three
+steps, and the size of a tab icon is the reason for each:
 
-It is **not** a copy of `logo.png`. It is generated from it by
-`node scripts/make-icon.js`, which does three things a 16 px icon needs:
-
-- **Crops to the Pm mark**, dropping the word PRIMUS. At 16 px that word is a
-  green smudge under the mark — which is why brand systems keep a mark separate
-  from the full lockup.
+- **Crops to the Pm mark**, by measurement rather than fixed coordinates: the
+  bands of the lockup are separated by blank rows, so the first run of rows with
+  ink is the mark. Differently proportioned artwork still works.
 - **Makes white transparent**, keeping the anti-aliased edges soft. Every pixel
   in the artwork is the same green blended with white, so the blend is undone
   rather than thresholded. A tab bar is light in one theme and dark in the
   other, and an opaque white square is obvious in the second.
-- **Box-filter downscales** to 128×128 — 8× the 16 px icon and 4× the 32 px one.
-
-**If you replace `logo.png`, run that script again**, or the tab keeps the old
-mark and nothing says so. The script measures where the mark is rather than
-using fixed coordinates, so differently proportioned artwork still works.
+- **Box-filter downscales.** Nearest-neighbour at these ratios drops most of the
+  image on the floor and takes the thin strokes of the "m" with it.

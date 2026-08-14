@@ -1,38 +1,59 @@
 /**
- * public/logo.png → app/icon.png — the browser-tab icon.
+ * public/logo.png → the two places the mark is used WITHOUT its wordmark.
  *
- * Three things happen, and each is here because the tab icon is 16 px:
+ *   public/logo-mark.png   the badge in the sidebar, the mobile bar, and login
+ *   app/icon.png           the browser-tab icon
  *
- *   CROP TO THE MARK. The full artwork is the Pm mark over the word PRIMUS.
- *   At 16 px the word is one pixel tall — not small, absent, and what it
- *   actually contributes is a green smudge under the mark. The mark alone is
- *   what survives, which is why brand systems have a mark separate from the
- *   lockup in the first place.
+ * ── Why the wordmark comes off ──────────────────────────────────────────────
  *
- *   WHITE BECOMES TRANSPARENT, WITH THE EDGES INTACT. A tab bar is light in one
- *   theme and dark in the other, and an opaque white square is obvious in the
- *   second. Every pixel in this artwork is the same green blended with white,
- *   so the blend can be undone rather than thresholded: alpha comes from how
- *   far the red channel has been lifted toward white, and the colour is set
- *   back to the pure green. That keeps the anti-aliased edge as a soft edge
- *   instead of turning it into a jagged one.
+ * The supplied artwork is a lockup: the Pm mark above the word PRIMUS. Every
+ * place this app draws it, the badge is 30–40 px and the app has ALREADY
+ * written “PRIMUS” in text beside it. So the word inside the picture is
+ * illegible and duplicated at the same time — at 34 px it is about five pixels
+ * tall, which reads as a green smudge under the mark, next to the same word set
+ * cleanly in type. That is what a mark separate from a lockup is FOR, and this
+ * script is how one is obtained from the other.
  *
- *   BOX-FILTER DOWNSCALE. 316 px of source into 128 px, averaging every source
- *   pixel that lands in each destination pixel. Nearest-neighbour at this ratio
- *   drops most of the image on the floor and takes the thin strokes of the "m"
- *   with it.
+ * ── The three things it does ────────────────────────────────────────────────
  *
- * Run: node <this file>    (from the repo root)
+ *   CROP TO THE MARK. Found by measurement, not by fixed coordinates: the bands
+ *   of the lockup are separated by blank rows, so the first run of rows with ink
+ *   is the mark and the next is the word. Replace the artwork with differently
+ *   proportioned art and this still finds the right part of it.
+ *
+ *   WHITE BECOMES TRANSPARENT, WITH THE EDGES INTACT. Every pixel in this
+ *   artwork is the same green blended with white, so the blend is undone rather
+ *   than thresholded: alpha comes from how far the red channel has been lifted
+ *   toward white, and the colour is set back to the pure green. Thresholding
+ *   would turn the anti-aliased edge into a jagged one. Transparency matters for
+ *   the tab icon, where the bar is light in one theme and dark in the other, and
+ *   it costs nothing on the badge.
+ *
+ *   BOX-FILTER DOWNSCALE, averaging every source pixel that lands in each
+ *   destination pixel. Nearest-neighbour at these ratios drops most of the image
+ *   on the floor and takes the thin strokes of the “m” with it.
+ *
+ * Run: node scripts/make-icon.js     (from the repo root, after changing the logo)
  */
 import fs from 'node:fs';
 import zlib from 'node:zlib';
 import path from 'node:path';
 
 const SRC = 'public/logo.png';
-const OUT = 'app/icon.png';
-const SIZE = 128;          // 8× the 16 px tab icon, 4× the 32 px one — clean ratios
 const MARGIN = 0.06;       // breathing room, as a fraction of the mark's longest side
 const INK = [0, 144, 50];  // #009032, the green this logo is drawn in
+
+/**
+ * Both outputs are the same crop at different sizes, so they are one list.
+ *
+ * The badge is drawn at 40 px at most and the icon at 32; each file is several
+ * times its largest drawn size, which is what a high-DPI screen asks for and is
+ * still small enough that neither is worth thinking about again.
+ */
+const OUTPUTS = [
+  { file: 'public/logo-mark.png', size: 256 },
+  { file: 'app/icon.png', size: 128 },
+];
 
 // ── decode ──────────────────────────────────────────────────────────────────
 
@@ -119,6 +140,7 @@ const boxY = top + markH / 2 - side / 2;
 
 // ── box-filter downscale, undoing the white blend as it goes ────────────────
 
+function render(SIZE) {
 const out = Buffer.alloc(SIZE * SIZE * 4);
 const step = side / SIZE;
 
@@ -153,6 +175,8 @@ for (let dy = 0; dy < SIZE; dy += 1) {
     out[p] = INK[0]; out[p + 1] = INK[1]; out[p + 2] = INK[2]; out[p + 3] = alpha;
   }
 }
+return out;
+}
 
 // ── encode ──────────────────────────────────────────────────────────────────
 
@@ -173,24 +197,30 @@ const chunk = (type, data) => {
   return Buffer.concat([len, body, sum]);
 };
 
-const scan = Buffer.alloc((SIZE * 4 + 1) * SIZE);
-for (let y = 0; y < SIZE; y += 1) {
-  scan[y * (SIZE * 4 + 1)] = 0;
-  out.copy(scan, y * (SIZE * 4 + 1) + 1, y * SIZE * 4, (y + 1) * SIZE * 4);
+for (const { file, size: SIZE } of OUTPUTS) {
+  const out = render(SIZE);
+
+  const scan = Buffer.alloc((SIZE * 4 + 1) * SIZE);
+  for (let y = 0; y < SIZE; y += 1) {
+    scan[y * (SIZE * 4 + 1)] = 0;
+    out.copy(scan, y * (SIZE * 4 + 1) + 1, y * SIZE * 4, (y + 1) * SIZE * 4);
+  }
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(SIZE, 0); ihdr.writeUInt32BE(SIZE, 4);
+  ihdr[8] = 8; ihdr[9] = 6; // 8-bit RGBA
+
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', zlib.deflateSync(scan, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ]));
+
+  const opaque = out.filter((_, i) => i % 4 === 3 && out[i] > 8).length;
+  console.log(
+    `เขียน ${file} — ${SIZE}×${SIZE} RGBA, ${fs.statSync(file).size} ไบต์`
+    + `, มีหมึก ${(opaque / (SIZE * SIZE) * 100).toFixed(1)}%`,
+  );
 }
-
-const ihdr = Buffer.alloc(13);
-ihdr.writeUInt32BE(SIZE, 0); ihdr.writeUInt32BE(SIZE, 4);
-ihdr[8] = 8; ihdr[9] = 6; // 8-bit RGBA
-
-fs.mkdirSync(path.dirname(OUT), { recursive: true });
-fs.writeFileSync(OUT, Buffer.concat([
-  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-  chunk('IHDR', ihdr),
-  chunk('IDAT', zlib.deflateSync(scan, { level: 9 })),
-  chunk('IEND', Buffer.alloc(0)),
-]));
-
-const opaque = out.filter((_, i) => i % 4 === 3 && out[i] > 8).length;
-console.log(`เขียน ${OUT} — ${SIZE}×${SIZE} RGBA, ${fs.statSync(OUT).size} ไบต์`);
-console.log(`พิกเซลที่มีหมึก ${(opaque / (SIZE * SIZE) * 100).toFixed(1)}% — ที่เหลือโปร่งใส`);
