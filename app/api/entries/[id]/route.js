@@ -10,6 +10,7 @@ import {
 import { coveredDepartments } from '@/lib/delegationQuery.js';
 import { scopeWidening } from '@/lib/delegation.js';
 import { blockedMessage } from '@/lib/caps.js';
+import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req, { params }) => {
@@ -28,6 +29,17 @@ export const PATCH = route(async (req, { params }) => {
 
   const entry = await OtEntry.findById(params.id).populate(POPULATE);
   if (!entry) return fail('ไม่พบรายการ', 404);
+
+  /**
+   * Is the month still open?
+   *
+   * Before the permission check on purpose. "งวดนี้ปิดแล้ว" is true of everybody
+   * — the employee, ฝ่ายบุคคล, an administrator — and answering it first means
+   * HR is told the month is closed rather than being told they may edit and
+   * then refused for a reason they have to guess at.
+   */
+  const locked = await refusePeriodLock(entry.period, 'แก้ไข');
+  if (locked) return fail(locked.error, locked.status);
 
   // Who may rewrite this, and what the edit is called in the history. The rule
   // itself lives in lib/entries.js so it can be read — and tested — on its own.

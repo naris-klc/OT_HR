@@ -10,6 +10,7 @@ import { capFigure, overCap, pendingCapNote } from '@/lib/caps.js';
 import { Alert, Empty, AddBirthDateHint, RateHead } from './common.jsx';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
 import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
+import PeriodLockBar from './PeriodLock.jsx';
 import PrintForm from './PrintForm.jsx';
 import PrintFormBatch from './PrintFormBatch.jsx';
 import HrEntries from './HrEntries.jsx';
@@ -173,6 +174,14 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
           </div>
         </div>
       </div>
+
+      {/* Whether this month is finished, directly under the controls that
+          finish it — printing the sheets, exporting the file, then closing the
+          period is one sitting, and closing it belongs at the end of that
+          sitting rather than on a settings page nobody would think to visit.
+          `onChanged` reloads the table so the ceiling figures and the row
+          buttons are read again under the new state. */}
+      <PeriodLockBar user={user} period={period} onChanged={load} />
 
       {error && <Alert kind="error">{error}</Alert>}
 

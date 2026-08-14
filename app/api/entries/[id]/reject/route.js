@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { POPULATE } from '@/lib/entries.js';
 import { approvalPermission, approvalRecord, historyExtra } from '@/lib/delegation.js';
 import { heldBy, today } from '@/lib/delegationQuery.js';
+import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 
 export const POST = route(async (req, { params }) => {
   const user = requireRole(await requireAuth(req), 'manager', 'hr', 'admin');
@@ -12,6 +13,12 @@ export const POST = route(async (req, { params }) => {
 
   const entry = await OtEntry.findById(params.id).populate('department');
   if (!entry) return fail('ไม่พบรายการ', 404);
+
+  // Refusing is a decision on the month's figures as much as approving is, so
+  // a closed month declines both. See the note in approve/route.js for why a
+  // request can be sitting in a closed period at all.
+  const locked = await refusePeriodLock(entry.period, 'ไม่อนุมัติ');
+  if (locked) return fail(locked.error, locked.status);
 
   const reason = String(payload?.reason || '').trim();
   if (!reason) return fail('กรุณาระบุเหตุผลที่ไม่อนุมัติ', 400);

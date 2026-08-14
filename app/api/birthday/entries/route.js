@@ -12,6 +12,8 @@ import {
   HR_VERIFIED_ACTION, HR_VERIFIED_NOTE,
 } from '@/lib/birthdayFiling.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
+import { refusePeriodLock } from '@/lib/periodLockQuery.js';
+import { periodOf } from '@/lib/periodLock.js';
 import { approvalRecord } from '@/lib/delegation.js';
 import { today } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
@@ -51,6 +53,19 @@ export const POST = route(async (req) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(session.workDate)) {
     return fail('กรุณาระบุวันที่ในรูปแบบ YYYY-MM-DD', 400);
   }
+
+  /**
+   * A closed month takes no birthday filing either.
+   *
+   * This one is the likeliest of all the write paths to run into a closed
+   * period, because วันเกิดที่ยังไม่มีใบ is by nature discovered late — the
+   * queue's whole purpose is to surface days that were missed. Refusing here
+   * rather than at the end means HR is told to reopen the month before they
+   * fill anything in, and the ordinary answer for an old birthday nobody
+   * claimed remains what it already was: settle it as ไม่ได้มาทำงาน.
+   */
+  const closed = await refusePeriodLock(periodOf(session.workDate), 'บันทึกใบวันเกิดย้อนหลัง');
+  if (closed) return fail(closed.error, closed.status);
 
   /**
    * The context first, because the gate below is a question about the POLICY as

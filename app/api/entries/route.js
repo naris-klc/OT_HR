@@ -13,6 +13,8 @@ import {
 import { coveredDepartments } from '@/lib/delegationQuery.js';
 import { scopeWidening } from '@/lib/delegation.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
+import { refusePeriodLock } from '@/lib/periodLockQuery.js';
+import { periodOf } from '@/lib/periodLock.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
@@ -162,6 +164,21 @@ export const POST = route(async (req) => {
   const session = pickSession(payload);
   const { value: description, error: descriptionError } = normaliseDescription(payload.description);
   if (descriptionError) return fail(descriptionError, 400);
+
+  /**
+   * A closed month takes no new requests either.
+   *
+   * HR's rule is that a period which has been sent to accounting stops moving,
+   * and a request filed into it afterwards moves it as surely as an edit does —
+   * it would be a row nobody could approve (the approval route refuses too),
+   * sitting in a month whose total has already been reported.
+   *
+   * Checked before the engine runs rather than after. Somebody filing three
+   * weeks late should be told the month is closed, not shown their hours
+   * computed and then refused.
+   */
+  const closed = await refusePeriodLock(periodOf(session.workDate), 'บันทึกรายการย้อนหลัง');
+  if (closed) return fail(closed.error, closed.status);
 
   // The day types belong to whoever the entry is FOR. Filing for oneself that
   // is the caller, whose document is already in hand; filing for somebody else
