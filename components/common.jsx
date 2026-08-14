@@ -256,6 +256,16 @@ const ACTION_META = {
   reject_hr: { label: 'ฝ่ายบุคคลไม่อนุมัติ', tone: 'no' },
   cancel: { label: 'พนักงานยกเลิกคำขอ', tone: 'off' },
   void: { label: 'ฝ่ายบุคคลถอนใบที่ระบบสร้าง', tone: 'off' },
+  /**
+   * The three rows of ขอถอนใบ. `withdraw_request` is the only action in the
+   * list that changes no status, so its label has to carry that itself — a
+   * reader seeing "ถอนใบ" beside an entry still marked อนุมัติ would otherwise
+   * conclude the trail contradicts the row. `tone: 'edit'` and not 'off' for
+   * the same reason: nothing has come off the books yet.
+   */
+  withdraw_request: { label: 'พนักงานขอถอนใบ (รอการพิจารณา)', tone: 'edit' },
+  withdraw_grant: { label: 'อนุมัติให้ถอนใบ', tone: 'off' },
+  withdraw_refuse: { label: 'ไม่อนุมัติให้ถอนใบ — รายการยังมีผล', tone: 'no' },
   recompute: { label: 'ระบบคำนวณใหม่ตามนโยบาย', tone: 'off' },
 };
 

@@ -19,6 +19,7 @@ import {
   RequestTrail, SegmentList, StatusChip, TeamMark, editsOf,
 } from './common.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
+import WithdrawalRequests from './WithdrawalRequests.jsx';
 import OtForm from './OtForm.jsx';
 import { useToast } from './Toast.jsx';
 
@@ -317,6 +318,13 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   }
 
   return (
+    <>
+    {/* Above the queue, and only on the reviewer's own tab.
+        `!delegatedOnly` is not about who may answer one — the server decides
+        that, and a stand-in may — but about not printing the same panel twice
+        for somebody who has both tabs open. The list it fetches is already
+        scoped to what this person can see. */}
+    {!delegatedOnly && <WithdrawalRequests user={user} onChanged={() => onChanged?.(stage, 0)} />}
     <div className="card flush">
       <div className="card-head">
         <div>
@@ -748,6 +756,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
         />
       )}
     </div>
+    </>
   );
 }
 

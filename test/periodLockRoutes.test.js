@@ -36,6 +36,16 @@ const GUARDED = [
   ['app/api/entries/[id]/reject/route.js', 'ไม่อนุมัติ', 'refusing a request'],
   ['app/api/entries/[id]/cap-override/route.js', 'บันทึกการอนุมัติเกินเพดาน', 'recording an over-cap approval'],
   ['app/api/birthday/entries/route.js', 'บันทึกใบวันเกิดย้อนหลัง', 'filing a birthday holiday'],
+  /**
+   * Both halves of ขอถอนใบ. The ASK writes nothing to the hours and would look
+   * safe to leave out — it is here because accepting a request in a closed
+   * month puts a row in somebody's queue that can never be granted, and tells
+   * the employee their withdrawal is under way when it is not. The refusal
+   * belongs for the ordinary reason: it writes a decision, a name and a date
+   * into a month that has already gone to accounting.
+   */
+  ['app/api/entries/[id]/withdraw/route.js', 'ขอถอนใบ', 'asking for a signed entry back'],
+  ['app/api/entries/[id]/withdraw/decide/route.js', 'ตอบคำขอถอนใบ', 'granting or refusing that request'],
 ];
 
 for (const [file, verb, what] of GUARDED) {

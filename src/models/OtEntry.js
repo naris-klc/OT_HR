@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { model } from './model.js';
 import { BUCKETS, DAY_REASONS } from '../lib/otEngine.js';
+import { WITHDRAWAL_STATES } from '../../lib/withdrawal.js';
 
 export const STATUSES = ['pending_mgr', 'pending_hr', 'approved', 'rejected', 'cancelled'];
 
@@ -140,10 +141,20 @@ const historySchema = new mongoose.Schema(
       // 'approve_*' before it — which is the fact it exists to record. There is
       // no matching manager block on the entry, deliberately: see
       // lib/birthdayFiling.js.
+      // 'withdraw_request' is the employee ASKING for a signed entry to be
+      // taken back, and it is the only action in this list that changes no
+      // status — the entry stays approved and keeps counting until somebody
+      // answers. Its two answers are 'withdraw_grant', which ends at
+      // 'cancelled', and 'withdraw_refuse', which ends where it started. Three
+      // actions rather than reusing 'cancel' because the trail has to be able
+      // to say who asked as well as who released it; 'cancel' means the
+      // employee withdrew a request nobody had signed, and that is a different
+      // event with one actor instead of two. See lib/withdrawal.js.
       enum: [
         'submit', 'submit_proxy', 'submit_birthday', 'submit_hr_verified', 'resubmit',
         'approve_mgr', 'reject_mgr', 'approve_hr', 'reject_hr',
         'cancel', 'void', 'edit', 'hr_edit', 'recompute',
+        'withdraw_request', 'withdraw_grant', 'withdraw_refuse',
       ],
       required: true,
     },
@@ -445,6 +456,51 @@ const otEntrySchema = new mongoose.Schema(
       by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
       at: Date,
       reason: String,
+    },
+
+    /**
+     * ขอถอนใบที่อนุมัติแล้ว — the employee asking for a signed entry back, and
+     * the answer. Rules in lib/withdrawal.js; this is only the shape.
+     *
+     * On the entry rather than in a collection of its own, matching
+     * `capOverride`: there is at most one live request per entry, it is
+     * meaningless away from the entry it is about, and every screen that would
+     * show it is already holding the row. A separate collection would buy
+     * "every withdrawal ever asked for" as a query — which `history` already
+     * answers, and answers in the one place a person disputing the month is
+     * already reading.
+     *
+     * NOT a status. `state` here is the request's state; `status` above stays
+     * the entry's, and a granted withdrawal ends at `cancelled` — which is what
+     * every rollup, cap and report already means by "these hours do not count".
+     *
+     * Only the latest request is kept. Asking again after a refusal overwrites
+     * this block, and nothing is lost by that: `history` holds one row per ask
+     * and one per answer, with the reason on each. This field is the shortcut a
+     * list screen needs ("is anything waiting on this row"), the way
+     * `capExceeded` is for the ceilings, and the full account lives where every
+     * other full account lives.
+     */
+    withdrawal: {
+      /** 'requested' | 'granted' | 'refused'. Absent means never asked. */
+      state: { type: String, enum: [...WITHDRAWAL_STATES, null], default: undefined },
+
+      requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+      requestedByName: String,
+      requestedAt: Date,
+      /** Why they are asking. Required by the rule — see withdrawRequestPermission. */
+      reason: { type: String, trim: true, maxlength: 200 },
+
+      /** The person who pressed the button, never the one they stood in for. */
+      decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+      decidedByName: String,
+      decidedAt: Date,
+      decisionNote: String,
+
+      /** Whose authority, when a ผู้รับช่วง answered. Same trio as everywhere else. */
+      onBehalfOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+      onBehalfOfName: String,
+      delegationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalDelegation' },
     },
 
     history: { type: [historySchema], default: [] },

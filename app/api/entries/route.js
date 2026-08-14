@@ -22,7 +22,9 @@ import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
-  const { status, period, employee, department, from, to, limit, replaced, scope, usage } = query(req);
+  const {
+    status, period, employee, department, from, to, limit, replaced, scope, usage, withdrawal,
+  } = query(req);
 
   /**
    * `scope=delegated` — the covered teams ONLY, rather than the caller's usual
@@ -46,6 +48,21 @@ export const GET = route(async (req) => {
     : { ...scopeFor(user, scopeWidening(user, covered)) };
 
   if (status) q.status = { $in: String(status).split(',') };
+  /**
+   * `withdrawal=open` — the requests waiting for an answer, in whatever the
+   * caller's scope already is.
+   *
+   * A filter on this list rather than an endpoint of its own, because the rows
+   * are ordinary entries, the scoping is the scoping every other list uses, and
+   * a second route would be a second place for "which teams may this person
+   * see" to be got wrong. The queue screen asks for it; nothing else has to
+   * know it exists.
+   *
+   * Note these rows are `approved` and `pending_hr`, so they do NOT appear in
+   * the pending queue — an entry with an open request keeps counting until
+   * somebody answers, which is the whole point of asking rather than taking.
+   */
+  if (withdrawal === 'open') q['withdrawal.state'] = 'requested';
   if (period) q.period = period;
   if (employee && user.role !== 'employee') q.employee = employee;
   if (department && ['hr', 'admin'].includes(user.role)) q.department = department;

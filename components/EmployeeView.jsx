@@ -7,6 +7,7 @@ import {
   editsOf, trailOf,
 } from './common.jsx';
 import { awaitingFirstSignature, isProxyFiled, refileState } from '@/lib/entries.js';
+import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
 import OtForm from './OtForm.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -21,6 +22,8 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   const [showHistory, setShowHistory] = useState(null); // entry id, in the full table
   const [cancelling, setCancelling] = useState(null);   // own entry being withdrawn
   const [cancelNote, setCancelNote] = useState('');
+  const [asking, setAsking] = useState(null);           // own signed entry — asking to withdraw
+  const [askReason, setAskReason] = useState('');
   const [error, setError] = useState('');
 
   async function load() {
@@ -57,6 +60,23 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
       await api.post(`/entries/${cancelling._id}/cancel`, { note: cancelNote.trim() || undefined });
       setCancelling(null);
       setCancelNote('');
+      await load();
+      onChanged?.();
+    } catch (err) { setError(err.message); }
+  }
+
+  /**
+   * Once somebody has signed it, withdrawing stops being something the employee
+   * does and becomes something they ask for. Nothing moves here: the row stays
+   * อนุมัติ, the hours stay in the month, and the request waits for the หัวหน้า
+   * or ฝ่ายบุคคล to answer. The screen has to say that plainly, because the
+   * button is in the same column as ยกเลิก, which does move things.
+   */
+  async function askWithdraw() {
+    try {
+      await api.post(`/entries/${asking._id}/withdraw`, { reason: askReason.trim() });
+      setAsking(null);
+      setAskReason('');
       await load();
       onChanged?.();
     } catch (err) { setError(err.message); }
@@ -303,6 +323,17 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                             เหตุผล: {e.rejectionReason}
                           </div>
                         )}
+                        {/* A refused request needs an answer on the row, not
+                            only in the trail behind a button. The employee
+                            asked a question; leaving them to go looking for
+                            whether anybody replied is how they end up asking
+                            again by phone, which is what this replaced. */}
+                        {e.withdrawal?.state === 'refused' && (
+                          <div style={{ fontSize: 12, color: 'var(--danger-ink)' }}>
+                            คำขอถอนใบไม่ได้รับอนุมัติ — รายการนี้ยังมีผล
+                            {e.withdrawal.decisionNote && ` · ${e.withdrawal.decisionNote}`}
+                          </div>
+                        )}
                       </td>
                       <td><StatusChip status={e.status} /></td>
                       <td style={{ whiteSpace: 'nowrap' }}>
@@ -322,6 +353,24 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                               ยกเลิก
                             </button>
                           </>
+                        )}
+                        {/* After the first signature, withdrawing is a request
+                            rather than an act. Offered by the same rule the
+                            server enforces — a button the server would refuse
+                            teaches the employee to distrust the screen. */}
+                        {withdrawEligibility(user, e).ok && (
+                          <button
+                            className="btn ghost sm"
+                            style={{ marginLeft: 6 }}
+                            onClick={() => { setAsking(e); setAskReason(''); }}
+                          >
+                            ขอถอนใบ
+                          </button>
+                        )}
+                        {hasOpenWithdrawal(e) && (
+                          <span className="chip" title={`เหตุผล: ${e.withdrawal.reason}`}>
+                            ขอถอนใบแล้ว · รอพิจารณา
+                          </span>
                         )}
                         {/* Not an edit: it fills a blank form from this row and
                             submits a new request. The rejected one stays put.
@@ -424,6 +473,58 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
             รายการจะยังอยู่ในตารางโดยขึ้นสถานะ “ยกเลิก” ไม่ได้ถูกลบทิ้ง ·
             ชั่วโมงจะไม่ถูกนับในเพดานของแผนกและไม่ขึ้นในรายงานใด ๆ ·
             {' '}หากต้องการขอ OT ช่วงเวลานี้อีกครั้ง ให้บันทึกคำขอใหม่ได้ไม่จำกัดจำนวนครั้ง
+          </div>
+        </Modal>
+      )}
+
+      {asking && (
+        <Modal
+          title="ขอถอนใบที่อนุมัติแล้ว"
+          subtitle={`${thaiDate(asking.workDate)} · ${asking.startTime}–${asking.endTime} · ${hours(asking.totals?.otHours)} ชม.`}
+          onClose={() => setAsking(null)}
+          dirty={askReason.trim().length > 0}
+          footer={(
+            <>
+              <button className="btn ghost" onClick={() => setAsking(null)}>ปิด</button>
+              {/* Disabled rather than allowed-and-refused: the reason is
+                  required by the rule, and a button that submits into a 400 is
+                  a worse way to say so than a button that waits. */}
+              <button className="btn" onClick={askWithdraw} disabled={!askReason.trim()}>
+                ส่งคำขอถอนใบ
+              </button>
+            </>
+          )}
+        >
+          <div className="field">
+            <label>เหตุผลที่ขอถอน</label>
+            <input
+              value={askReason}
+              onChange={(e) => setAskReason(e.target.value)}
+              maxLength={200}
+              placeholder="เช่น งานถูกยกเลิกกะทันหัน ไม่ได้เข้ามาทำจริง"
+              autoFocus
+            />
+            {/* Required here and optional on ยกเลิก, and the note says which:
+                this asks somebody to take back what they signed, and the person
+                deciding cannot decide without knowing why. */}
+            <span className="field-note">
+              จำเป็นต้องกรอก — ผู้พิจารณาจะเห็นข้อความนี้ และจะถูกบันทึกไว้ในประวัติรายการถาวร
+            </span>
+          </div>
+          {/* The one thing this dialog exists to make unambiguous. The button
+              sits in the same column as ยกเลิก, which closes an entry on the
+              spot; this one does not close anything, and an employee who
+              assumed it did would stop counting hours that are still counted. */}
+          <Alert kind="warn">
+            นี่คือ<strong>คำขอ</strong> ไม่ใช่การยกเลิก — รายการยังมีสถานะเดิม
+            ชั่วโมงยังถูกนับในเพดานของแผนกและยังขึ้นในรายงาน
+            จนกว่าหัวหน้างานหรือฝ่ายบุคคลจะอนุมัติให้ถอน
+          </Alert>
+          <div className="hint">
+            หัวหน้างานของแผนกหรือฝ่ายบุคคลเป็นผู้พิจารณา ·
+            หากอนุมัติ รายการจะเปลี่ยนเป็น “ยกเลิก” และชั่วโมงจะถูกตัดออกจากเดือนนี้ ·
+            หากไม่อนุมัติ รายการยังมีผลตามเดิม และขอใหม่ได้หากมีเหตุผลเพิ่มเติม ·
+            {' '}เดือนที่ปิดงวดแล้วขอถอนไม่ได้
           </div>
         </Modal>
       )}

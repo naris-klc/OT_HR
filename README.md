@@ -1095,6 +1095,67 @@ evidence can be removed proves nothing.
 
 ---
 
+## ขอถอนใบที่อนุมัติแล้ว — asking, not taking
+
+`cancelPermission` draws its line at the first signature: before it the request
+is the employee's to withdraw, after it the entry carries a decision made
+against particular hours. That line is right. What was wrong was the sentence on
+the other side of it — **“หัวหน้าอนุมัติแล้ว ยกเลิกเองไม่ได้ — ติดต่อฝ่ายบุคคล”** —
+which sent the rest of the story outside the system.
+
+What happened out there was ฝ่ายบุคคล editing or cancelling the row on the
+employee's say-so, and what the trail recorded was **ฝ่ายบุคคลแก้ไขข้อมูล**. Who
+asked, when, why, and whether the manager who signed ever heard about it were
+all real facts about that entry and none of them was written down. A withdrawal
+that leaves no record of the request is a signed figure coming off the books on
+the authority of a phone call.
+
+**Asking and deciding are two acts, by two people.** The employee asks with a
+reason; somebody whose signature is on the entry answers. There is deliberately
+no path where ฝ่ายบุคคล records both halves in one press — that would rebuild the
+hole, because the record of the request would again be somebody's memory of a
+conversation.
+
+**Nothing moves while a request is open.** The entry stays `approved`, its hours
+stay in the month, in the department's cap usage and on F-HR-027. A request that
+removed the hours on the spot would let one person take back what two signed.
+
+**No new status.** A granted withdrawal ends at `cancelled` — what every rollup,
+cap calculation and report already means by “these hours do not count”. The
+request itself is a subdocument, `OtEntry.withdrawal`, and `history` carries one
+row per ask and one per answer. The same reasoning `refileState` gives for not
+being a status either.
+
+| | who | what it writes |
+|---|---|---|
+| **ขอถอนใบ** | the employee, on their own entry, after the first signature | `withdrawal.state = 'requested'` · `withdraw_request`, status unchanged |
+| **อนุมัติให้ถอน** | the department's หัวหน้า, a ผู้รับช่วง holding their queue, or ฝ่ายบุคคล | `granted` · `withdraw_grant` · status → `cancelled` |
+| **ไม่อนุมัติ** | the same people | `refused` · `withdraw_refuse`, status unchanged |
+
+A reason is **required** to ask, where `cancelPermission` deliberately asks for
+none: removing a request nobody has looked at establishes nothing, but this asks
+somebody to take back what they established, and the person deciding cannot
+decide without knowing why. The same line `editPermission` draws for HR
+corrections. A refusal requires one too, for the reason a rejection does — the
+employee reads it, and “ไม่อนุมัติ” alone sends them back to asking in person.
+
+Refusing is not final. Circumstances change, and the record of every ask and
+every answer is the check on somebody asking repeatedly — not a lock that leaves
+a phone call as the only way through, which is what this replaced. Contrast
+`resubmittedTo`, which *is* a once-only door.
+
+The rules are pure and live in `lib/withdrawal.js`; `withdrawEligibility` is the
+same predicate the screen offers the button on and the route refuses with, so
+the two cannot drift. Both routes refuse a closed month — including the *ask*,
+because a request accepted into a closed month sits in a queue where it can
+never be granted while the employee has been told their withdrawal is under way.
+
+Reviewers find them on **คำขอถอนใบที่อนุมัติแล้ว**, above the approval queue,
+fed by `GET /api/entries?withdrawal=open` in whatever scope the caller already
+has. It is not batchable, for the reason rejection is not.
+
+---
+
 ## Which rules produced this figure
 
 Answering an [OPEN] item mid-month is the point of these being runtime flags,
