@@ -27,11 +27,23 @@ What the artwork should be:
   top of the 3 px the stylesheet already adds, and the mark ends up looking
   shrunken beside the wordmark next to it.
 
-## The browser tab icon is separate
+## The browser tab icon is a second file, and it is DERIVED from this one
 
-`logo.png` does not become the favicon. Next.js takes that from a file named
-`app/icon.png` (or `app/favicon.ico`) — App Router convention, not something
-this project configures. Dropping a copy there names the tab too; leaving it
-alone keeps the default. Same picture, second file, deliberately: the tab icon
-is 16 px and a mark that reads at 34 px often needs a cropped version to survive
-that.
+`app/icon.png` — Next.js picks that path up by App Router convention and writes
+the `<link rel="icon">` itself; nothing in this project configures it.
+
+It is **not** a copy of `logo.png`. It is generated from it by
+`node scripts/make-icon.js`, which does three things a 16 px icon needs:
+
+- **Crops to the Pm mark**, dropping the word PRIMUS. At 16 px that word is a
+  green smudge under the mark — which is why brand systems keep a mark separate
+  from the full lockup.
+- **Makes white transparent**, keeping the anti-aliased edges soft. Every pixel
+  in the artwork is the same green blended with white, so the blend is undone
+  rather than thresholded. A tab bar is light in one theme and dark in the
+  other, and an opaque white square is obvious in the second.
+- **Box-filter downscales** to 128×128 — 8× the 16 px icon and 4× the 32 px one.
+
+**If you replace `logo.png`, run that script again**, or the tab keeps the old
+mark and nothing says so. The script measures where the mark is rather than
+using fixed coordinates, so differently proportioned artwork still works.
