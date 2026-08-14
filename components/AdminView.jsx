@@ -2856,9 +2856,24 @@ function Policy({ user }) {
         ? ` · ข้าม ${failures.length} รายการที่คำนวณใหม่ไม่ได้ ยังคงชั่วโมงเดิมไว้`
           + `${failures[0]?.error ? ` — ${failures[0].error}` : ''}`
         : '';
+      /**
+       * The months ปิดงวด kept out of the replay, named.
+       *
+       * The same silence the failures above were fixed for, and worse: a closed
+       * month is skipped WHOLESALE, so a rule change that was meant to restate
+       * the year restates everything except the months that were already sent
+       * to accounting — which is correct, and invisible. Whoever changed the
+       * flag has to decide whether those months should move too, and that
+       * decision starts with knowing which they were.
+       */
+      const closed = res.recomputed?.closedPeriods?.length
+        ? ` · ไม่แตะงวดที่ปิดแล้ว ${res.recomputed.closedPeriods.map(periodLabel).join(', ')}`
+          + ` (${res.recomputed.skippedClosed} รายการ) — หากต้องการให้คำนวณใหม่ด้วย`
+          + ' ต้องให้ผู้ดูแลระบบเปิดงวดก่อน'
+        : '';
       setMsg(res.recomputed?.updated
-        ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ${skipped}`
-        : `บันทึกแล้ว${stamped}${skipped}`);
+        ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ${skipped}${closed}`
+        : `บันทึกแล้ว${stamped}${skipped}${closed}`);
       setNote('');
       load();
     } catch (err) { setError(err.message); } finally { setBusy(false); }

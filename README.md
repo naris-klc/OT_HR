@@ -1688,23 +1688,29 @@ four role UIs.
 
 **Not yet verified**
 
-The employee's own edit of a `pending_mgr` entry — the permission rule is
-covered by the test suite, but the write behind it (recompute, cap re-check
-with `excludeId`, the `edit` history stamp) has not been walked against a live
-database the way HR's correction was.
+~~The employee's own edit of a `pending_mgr` entry has not been walked against a
+live database.~~ **Walked 2026-08-14** — and it is where the description cap
+turned out to refuse edits to every entry written before the cap existed, for
+the length of a field the editor had not touched. Fixed the same day
+(`descriptionUnchanged` in lib/entries.js, `test/descriptionEdit.test.js`); the
+recompute, the cap re-check with `excludeId` and the history stamp behind that
+write all hold.
 
-**Proxy filing and delegation have not been walked against a live database at
-all.** Every rule in them is pure and pinned by `test/proxyFiling.test.js` and
-`test/delegation.test.js`, and `npm run build` compiles; what is untested is
-everything those rules sit on — that `POST /api/entries` with an `employeeId`
-writes the target's department and the target's cap snapshot, that the
-`ApprovalDelegation` indexes are used by `heldBy`, that a widened `scopeFor`
-returns the covered team's rows, and that `history.onBehalfOf` survives the
-round trip and reaches ประวัติรายการ. Walk one proxy filing (manager files →
-lands at `pending_hr` with `submit_proxy` in its history → employee corrects it
-→ HR confirms) and one delegation (set a window, approve as the stand-in,
-check the trail reads **ทำแทน**, let it expire, confirm the queue goes back)
-before treating either as working.
+~~Proxy filing and delegation have not been walked against a live database at
+all.~~ **Both were walked on 2026-08-14 and both hold.** A หัวหน้า filing for a
+team member produced an entry carrying the TARGET's department and the TARGET's
+cap snapshot (40 / 12, used 0 — not the filer's), `filedBy` the manager,
+`submit_proxy` in the history and `pending_hr` as the opening status; the
+employee saw it in their own list, a colleague in the same department did not,
+and ฝ่ายบุคคล confirmed it. A delegation set from one หัวหน้า to another
+returned exactly the covered team's rows under `scope=delegated` and nothing
+else; approving as the stand-in recorded `approve_mgr` by the stand-in with
+`onBehalfOf` the queue's owner, which is what prints as **ทำแทน**; and with the
+window moved into the past the covered queue emptied, `holding` went to zero,
+and approving that team's request came back 403. The throwaway entries and the
+delegation were deleted afterwards.
+
+That walk is also what found the description bug below.
 
 The **F-HR-027 note block has never been printed.** `proxyNoteOnForm` ships
 `false`, so nothing about the sheet changes until somebody turns it on — but the

@@ -21,6 +21,7 @@ import {
   OtValidationError,
 } from '../lib/otEngine.js';
 import PolicyReplayRun from '../models/PolicyReplayRun.js';
+import PeriodLock from '../models/PeriodLock.js';
 import {
   CAP_STATUSES, capBreaches, monthWindowOf, overCap, periodOf, usageInMonth, usageInWeeks,
   weekEndOf, weekLabel, weeksOfEntry,
@@ -684,7 +685,24 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
   }
 
   const found = await OtEntry.find(filter);
-  const { replay, skipped } = planRecompute(found, { includeApproved });
+
+  /**
+   * The months ปิดงวด has finished, among the ones this run actually touches.
+   *
+   * Queried from the periods in hand rather than by loading every lock there
+   * has ever been: a replay over one holiday date asks about one month, and the
+   * yearly ones ask about twelve. `planRecompute` does the deciding — this is
+   * only the read, and it is here rather than in each caller for the reason the
+   * approved rule is here: a filter is something every future caller has to
+   * remember, and this is a rule.
+   */
+  const periods = [...new Set(found.map((e) => e.period).filter(Boolean))];
+  const closedPeriods = periods.length
+    ? (await PeriodLock.find({ period: { $in: periods }, state: 'closed' }).select('period').lean())
+      .map((l) => l.period)
+    : [];
+
+  const { replay, skipped } = planRecompute(found, { includeApproved, closedPeriods });
 
   /**
    * Captured before anything is recomputed. `applyComputation` overwrites
@@ -847,6 +865,20 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
     updated,
     failed,
     skipped,
+    /**
+     * The months this run left alone because ปิดงวด has finished them.
+     *
+     * Lifted out of `skipped` rather than left for each caller to filter,
+     * because it is the one kind of skip that is somebody's job: an approved
+     * row skipped by the ordinary rule is the system working, and a whole month
+     * skipped is a set of figures that did NOT move and were probably meant to.
+     * Whoever ordered the replay has to decide whether to ask an administrator
+     * to reopen those periods and run it again.
+     *
+     * Named months, not a count. "12 skipped" reads as an ordinary run.
+     */
+    skippedClosed: summary.skippedClosed,
+    closedPeriods: summary.closedPeriods,
     /** What the run record says, for a caller that wants to show it. */
     changed: changed.length,
     runId: run ? String(run._id) : null,
