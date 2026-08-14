@@ -279,19 +279,21 @@ lost — every figure is stored in the unit it is printed in — but a form whos
 columns miss its total by 0.01 is a question somebody will ask. Blocks of 15, 30
 and 60 are exact at two decimals and cannot drift.
 
-### ⚠ Three of these are guesses, and the system says so
+### ⚠ Four of these are unanswered, and the system says so
 
 "Default" covers two very different things, and printing both the same way is
 how one of them gets forgotten. Most rows above are a recommendation from the
-requirements doc that nobody has objected to. Three are something else: values
-**reverse-engineered from how the old paper appears to have been filled in**,
-never confirmed by anyone in HR, and each one moves hours.
+requirements doc that nobody has objected to. Four are something else. Three are
+values **reverse-engineered from how the old paper appears to have been filled
+in**; the fourth is a value nobody ever gave at all. None is confirmed by anyone
+in HR, and each one can move hours.
 
 | Question | What the system does today | Why it is that |
 |---|---|---|
 | Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with. The badge used to sit on `roundingMode`'s row for want of one of its own; the increment has its own dropdown now, so it moved. `roundingMode` is *not* unconfirmed — `'floor'` is the doc's own recommendation |
 | Under the 1-hour minimum | Record the hours actually worked and flag the entry (`belowMinimumFlagged`) | The reading that keeps every answer open. It was `'reject'` — read off a `'reject'` override that sat in `settings` against a file saying `'raise'` — and refusing the entry means not recording work that was done, which is a liability rather than a conservative default. HR has still not answered, so the badge stays |
 | What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h (`minimumHoursScope: 'sheet'`) | `computeSession` has only ever done it this way, and it is the reading that refuses least. The per-column reading is `'bucket'`: the same rule asked of each rate column, so a Friday-night shift running into Saturday is measured twice. Having a flag is not an answer — HR still has not given one, and the badge now sits on the dropdown |
+| Start buffer — เวลาขั้นต่ำในการเริ่มนับ OT | **No threshold — 0** (`minimumBufferMinutes`) | Added 2026-08-13 on HR's request, with 30 นาที used only as the worked example in the ask, never as an instruction. It ships at 0 because any other value would have restated hours for a rule nobody had switched on — and 0 is the *absence* of a guess rather than a guess, which is why it carried no badge until one was added. ⚠ It is also **inert**: floor/30 already refuses everything shorter than a block, so any buffer up to 30 changes only the wording of the refusal |
 
 These carry a **รอ HR ยืนยัน** badge on ตั้งค่าระบบ → นโยบายการคำนวณ. Pressing
 ยืนยัน records who signed it off and when — it changes no value, appends no
@@ -302,7 +304,7 @@ engine. See [`src/config/policy.js`](src/config/policy.js) (`HR_UNCONFIRMED`),
 [`lib/policyConfirmations.js`](lib/policyConfirmations.js) and
 `test/policyConfirmation.test.js`.
 
-All three sit on a dropdown now. Two of them did not: the minimum's scope was a
+All four sit on a dropdown now. Two of them did not: the minimum's scope was a
 rule the engine had and the policy had no key for, and the rounding increment
 was a number in `src/config/policy.js` with no row on the page. Both borrowed a
 neighbouring row, or none at all, until the flag they are about existed. Having
@@ -312,6 +314,17 @@ onto the control rather than off the page.
 An item with **no** `keys` remains a supported shape, and the read-only row it
 gets is the reason: a rule with nothing on the settings page is the one nobody
 can find by reading the settings.
+
+**Two of the four are the same question.** The start buffer asks "was this OT at
+all"; the rounding increment answers it as a side effect, because a session
+shorter than one block floors to nought and is refused before the buffer is ever
+consulted. Verified against the engine on 2026-08-14: `--set
+minimumBufferMinutes=15` and `=30` both report no entry affected, and that is the
+rules overlapping rather than a thin database. The consequence is a trap worth
+stating out loud — answering the buffer "0" is only correct *while the increment
+is 30*, and the day somebody lowers the increment the buffer becomes a live
+question again with its badge already cleared.
+[`src/config/policy.js`](src/config/policy.js) says so on both keys.
 
 ### Why OPEN 1's default is the lunch window, not a threshold
 

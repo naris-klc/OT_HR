@@ -84,6 +84,14 @@ export const DEFAULT_POLICY = Object.freeze({
    * printed in — but a form whose columns miss its total by 0.01 is a question
    * somebody will ask, and this is the answer.
    *
+   * ⚠ LOWERING THIS RE-OPENS `minimumBufferMinutes`, SILENTLY. The buffer is
+   * inert at any value up to one block, because a session shorter than a block
+   * already floors to nought and is already refused by the 0-hour rule. So a
+   * buffer answered "0" under a 30-minute block is an unanswered question again
+   * under a 15-minute one — and by then the รอ HR ยืนยัน badge is gone, so
+   * nothing on the settings page will say so. The two keys are one question
+   * asked twice and have to be answered together.
+   *
    * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ตั้งตามพฤติกรรมเดิม. 30 is what the
    * requirements doc says and what every figure in the database was computed
    * with; it is NOT an answer anybody in HR has given. See HR_UNCONFIRMED
@@ -109,6 +117,19 @@ export const DEFAULT_POLICY = Object.freeze({
    * always done and what every figure in the database was computed with. A
    * shipped default of anything else would restate hours on the first deploy for
    * a rule nobody had switched on.
+   *
+   * ⚠ AND WHILE THE INCREMENT IS 30, THIS KEY DOES NOTHING WHATEVER IT IS SET
+   * TO. Verified against the engine 2026-08-14: under floor/30 every session
+   * producing under 30 minutes of OT already comes to 0 h and is already refused,
+   * so a buffer of 15 — or of anything up to 30 — changes the message the
+   * employee is refused with and not one outcome. It first bites ABOVE 30, where
+   * it starts refusing the 30–44 minute callouts the increment was keeping.
+   *
+   * Which means "the buffer is off" and "there is no screening" are different
+   * statements and only the first is true. The screening is real; it is done by
+   * [OPEN 3]. Anybody reading a 0 here as "HR wanted no minimum" has read it
+   * wrong, and `npm run whatif -- --set minimumBufferMinutes=15` reporting no
+   * change is this paragraph, not a broken tool.
    *
    * NOT A SECOND `minimumHours`, and the two are read in that order:
    *
@@ -513,7 +534,9 @@ export const HR_UNCONFIRMED = Object.freeze([
     note: 'ถามคนละเรื่องกับขั้นต่ำ 1 ชม. ข้อนี้ถามว่า “นับเป็น OT หรือเปล่า” '
       + 'วัดจากนาทีที่ทำจริงทั้งใบ ก่อนปัดเศษ · ใบที่ไม่ผ่านเกณฑ์นี้จะถูกปฏิเสธตั้งแต่หน้ากรอก '
       + 'ไม่ใช่บันทึกเป็น 0 · ระบบส่งมาที่ “ไม่มีเกณฑ์” เพราะยังไม่เคยมีใครในฝ่ายบุคคลระบุตัวเลขมา '
-      + 'ไม่ใช่เพราะตอบแล้วว่าไม่ต้องมี',
+      + 'ไม่ใช่เพราะตอบแล้วว่าไม่ต้องมี '
+      + '· ⚠ ขณะที่ปัดลงทีละ 30 นาที ข้อนี้ยังไม่มีผลไม่ว่าตั้งเท่าไหร่ — งานที่สั้นกว่า 30 นาที '
+      + 'ถูกปัดเหลือ 0 และถูกปฏิเสธอยู่แล้ว · จะเริ่มมีผลก็ต่อเมื่อตั้งเกิน 30 หรือลดขนาดการปัดเศษลง',
   }),
 ]);
 
