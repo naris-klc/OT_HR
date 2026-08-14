@@ -6,6 +6,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, editPermission, sameSession,
+  descriptionUnchanged,
 } from '@/lib/entries.js';
 import { coveredDepartments } from '@/lib/delegationQuery.js';
 import { scopeWidening } from '@/lib/delegation.js';
@@ -70,7 +71,30 @@ export const PATCH = route(async (req, { params }) => {
   }
 
   Object.assign(entry, session);
-  if (payload.description != null) {
+  /**
+   * THE CAP APPLIES TO WHAT IS BEING WRITTEN, NOT TO WHAT IS ALREADY THERE.
+   *
+   * `DESCRIPTION_MAX_CHARS` is 22 — the width of one line of F-HR-027's
+   * รายละเอียดงานที่ทำ cell — and the comment beside it says entries stored
+   * before the cap existed are longer and must stay saveable. They were not.
+   *
+   * The edit form (OtForm) fills itself from the entry, description included,
+   * and posts the whole form back. So correcting the HOURS on any entry
+   * written before the cap sent its own 30-, 48- or 55-character description
+   * along untouched, and was refused for the length of a field nobody had
+   * touched. Found 2026-08-14 against the live database: seven of nine entries
+   * in it were over the cap, and neither the employee nor ฝ่ายบุคคล could edit
+   * any of them through that form. `QuickEdit` in the review screen sends only
+   * the times and was unaffected, which is why this survived — the path most
+   * used is the path that never carried a description.
+   *
+   * Comparing against the stored value is what fixes it, and it is narrower
+   * than it looks: a description that is being CHANGED is still measured, so a
+   * 48-character one edited down to 30 is refused exactly as a new 30 would be.
+   * Only leaving it alone is free. `.trim()` on both sides because the form
+   * round-trips whitespace the stored value does not have.
+   */
+  if (!descriptionUnchanged(payload.description, entry.description)) {
     const { value, error } = normaliseDescription(payload.description);
     if (error) return fail(error, 400);
     entry.description = value;
