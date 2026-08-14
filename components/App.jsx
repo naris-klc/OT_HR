@@ -16,6 +16,37 @@ import AdminView from './AdminView.jsx';
 import ProfileView, { ChangePassword } from './ProfileView.jsx';
 import PrintForm from './PrintForm.jsx';
 
+/**
+ * The company mark, in the three places it appears.
+ *
+ * WHAT IT DRAWS DEPENDS ON WHETHER `public/logo.png` EXISTS. With the file
+ * there it is the real Primus logo; without it, the two-letter “Pm” tile this
+ * app shipped with. The fallback is not politeness — it is the difference
+ * between a missing asset costing a slightly plainer badge and costing every
+ * screen a broken-image icon in the top left corner, on a system whose users
+ * cannot fix it and would reasonably read it as the app being broken.
+ *
+ * `onError` rather than a build-time check, because the file is dropped in by
+ * whoever has the artwork, on the machine that runs this, without a rebuild —
+ * and a check that happened at build time would be answering the question at
+ * the one moment nobody is asking it.
+ *
+ * The tile turns white when the logo loads (`has-logo`). The mark is green on
+ * transparent, so on the dark sidebar and the green login panel it needs
+ * something behind it; the “Pm” tile is green on those and needs the opposite.
+ * One class, so the two can never be half-applied.
+ */
+function BrandMark({ className, alt = 'PRIMUS' }) {
+  const [ok, setOk] = useState(true);
+  return (
+    <span className={`${className}${ok ? ' has-logo' : ''}`} aria-hidden={ok ? undefined : 'true'}>
+      {ok
+        ? <img src="/logo.png" alt={alt} onError={() => setOk(false)} />
+        : 'Pm'}
+    </span>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -131,7 +162,7 @@ function Login({ onLogin }) {
     <div className="login-split">
       <div className="login-brand">
         <div className="lockup">
-          <div className="mark">Pm</div>
+          <BrandMark className="mark" />
           <div className="word">PRIMUS</div>
         </div>
         <div>
@@ -400,7 +431,7 @@ function Shell({ session, onLogout }) {
     <div className="shell">
       <aside className="sidebar no-print">
         <div className="brand">
-          <div className="mark">Pm</div>
+          <BrandMark className="mark" />
           <div>
             <div className="name">PRIMUS</div>
             <div className="kicker">OT SYSTEM</div>
@@ -460,7 +491,10 @@ function Shell({ session, onLogout }) {
             aria-label={canGoBack ? 'ย้อนกลับ' : 'กลับหน้าหลัก'}
             title={canGoBack ? 'ย้อนกลับ' : 'กลับหน้าหลัก'}
           >
-            <span className="mark-sm" aria-hidden="true">Pm</span>
+            {/* The button already carries the label, so the mark inside it is
+                decorative either way — `alt=""` keeps a screen reader from
+                reading "PRIMUS" over "ย้อนกลับ". */}
+            <BrandMark className="mark-sm" alt="" />
           </button>
           <div className="grow">
             <div className="title">{title}</div>

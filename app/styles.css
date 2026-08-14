@@ -103,6 +103,31 @@ a:hover { color: var(--green-dark); }
   background: var(--green); display: grid; place-items: center;
   font: 700 16px/1 var(--latin);
 }
+
+/* ── the company mark ─────────────────────────────────────────────────────
+   `has-logo` is set by BrandMark once public/logo.png has actually loaded, and
+   everything below hangs off it rather than off the presence of an <img>. The
+   logo is green on transparent; the tile it sits in is green in two of the
+   three places it appears, so without this the mark would be green on green —
+   invisible, and invisible in the way that looks like a layout bug rather than
+   a missing file.
+
+   The padding is what keeps it a logo rather than a sticker: the artwork runs
+   to its own edges, and a mark pressed against the corners of a rounded tile
+   reads as cropped. `object-fit: contain` because the source is taller than it
+   is wide and the tiles are square — anything else would trim the ® or the
+   wordmark off. */
+.brand .mark.has-logo,
+.appbar .mark-sm.has-logo,
+.login-brand .lockup .mark.has-logo { background: #fff; }
+
+.brand .mark img,
+.appbar .mark-sm img,
+.login-brand .lockup .mark img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 3px;
+}
 .brand .name { font: 600 13px/1.1 var(--latin); letter-spacing: .14em; }
 .brand .kicker { font: 400 10.5px/1.4 var(--mono); color: var(--muted-2); letter-spacing: .08em; }
 
