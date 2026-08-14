@@ -2,6 +2,13 @@ node_modules/
 .env
 *.log
 
+# `npm run backup` output. A complete copy of the database, which means
+# passwordHash for every account and birthDate for every employee — the field
+# the roster deliberately hides from managers. It does not go where the code
+# goes. Keep backups off this disk entirely; ./backups is only the default
+# landing spot, and `--out` is there to move them.
+backups/
+
 .next/
 next-env.d.ts
 

@@ -14,6 +14,8 @@
     "test": "node --test \"test/**/*.test.js\"",
     "seed": "node src/seed.js",
     "whatif": "node src/whatif.js",
+    "backup": "node src/backup.js",
+    "restore": "node src/restore.js",
     "migrate:company": "node src/migrate-company.js",
     "migrate:policy-version": "node src/migrate-policy-version.js",
     "setup": "npm install",

@@ -60,6 +60,53 @@ only version pointers; no entry's hours or status is touched.
 Requires **Node 20+** and a MongoDB instance. For production, `npm run build`
 then `npm start`.
 
+## สำรองและกู้คืนข้อมูล
+
+```powershell
+npm run backup                                    # → ./backups/primus_ot-<วันเวลา>/
+npm run backup -- --out D:/ot-backups             # somewhere that is not this disk
+npm run restore -- <โฟลเดอร์>                      # ตรวจสอบและแสดงแผน ไม่เขียนอะไร
+npm run restore -- <โฟลเดอร์> --yes                # กู้ทับฐานที่ MONGODB_URI
+npm run restore -- <โฟลเดอร์> --to <uri> --yes     # ซ้อมกู้ลงฐานทดสอบ
+```
+
+`mongodump` is not installed on the machine this runs on, so both scripts go
+through the driver the application already uses — they work wherever `npm run
+dev` does. The output is Extended JSON, one document per line, plus a
+`manifest.json` holding a SHA-256 of every file and the index definitions.
+`mongorestore` cannot read it; `npm run restore` is its only reader.
+
+**Collections come from the database, not from the model list.** `lib/db.js`
+imports six models and `src/models/` holds twelve — a backup driven by the
+registry would have silently omitted `otEmployeeAudits`, `approvaldelegations`,
+`otBirthdayChecks`, `otPeriodLocks` and `otPolicyReplayRuns`, and reported
+success. A backup that omits five collections is worse than none, because it is
+believed.
+
+**Nothing is written without `--yes`.** The default run verifies every
+fingerprint, connects, prints what it would drop, and stops. Files are read,
+hashed and parsed *before* the first collection is dropped, so a truncated or
+edited backup is discovered while the live database is still intact. Restoring
+over a database that has anything in it takes a safety copy first
+(`--no-safety-backup` to skip, for a scratch target). Collections present in the
+target but absent from the backup are left alone and reported — the usual cause
+of one is a restore aimed at the wrong database.
+
+Indexes are saved and rebuilt. Dropping a collection drops its indexes, and a
+restore without them gives back every figure and none of the constraints: the
+unique index on `Employee.code` is what stops a second PM-0620 existing.
+
+**A backup nobody has restored is a backup of unknown state.** `--to` exists so
+that can be fixed — point a restore at a scratch database and let it verify the
+counts. Verified end-to-end on 2026-08-14: backing up the restored database
+produced byte-identical files and identical index definitions for all eleven
+collections.
+
+`backups/` is in `.gitignore`. A dump is a complete copy of the roster —
+`passwordHash` for every account, and the `birthDate` that `publicEmployee()`
+deliberately filters out for managers. Keep them off this disk; `--out` is there
+for that.
+
 One Next.js app serves both halves — there is no separate API port and no
 proxy. `.env` is read by Next directly.
 
