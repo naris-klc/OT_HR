@@ -6,8 +6,8 @@
  * Nothing here touches a database or a disk. That is deliberate: the one
  * question a backup has to answer — "is what I am about to restore the same
  * bytes I saved?" — is answerable with no infrastructure at all, so it is
- * tested that way (test/backup.test.js) rather than by taking a backup of a
- * live database and hoping.
+ * tested that way (test/backupFormat.test.js) rather than by taking a backup of
+ * a live database and hoping.
  *
  * ── Why Extended JSON and not JSON ──────────────────────────────────────────
  *

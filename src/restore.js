@@ -38,6 +38,7 @@
 import 'dotenv/config';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import mongoose from 'mongoose';
 import { connect, disconnect } from './db.js';
 import { dumpDatabase } from './backup.js';
@@ -53,7 +54,7 @@ import {
 /** Mongo's own limit is 100k per batch; 1000 keeps the request size sane too. */
 const INSERT_CHUNK = 1000;
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = argv.slice(2);
   const flags = new Set(args.filter((a) => a.startsWith('--')));
 
@@ -61,7 +62,23 @@ function parseArgs(argv) {
   if (toIndex !== -1 && !args[toIndex + 1]) throw new Error('--to ต้องตามด้วย MONGODB_URI ปลายทาง');
   const to = toIndex === -1 ? null : args[toIndex + 1];
 
-  const positional = args.filter((a, i) => !a.startsWith('--') && i !== toIndex + 1);
+  /**
+   * Where `--to`'s VALUE sits, or -1 when there is no `--to` on the line.
+   *
+   * Written out rather than inlined as `toIndex + 1`, because with no `--to`
+   * `toIndex` is -1 and `toIndex + 1` is 0 — which is the position of the backup
+   * folder itself. That arithmetic discarded the folder on every run WITHOUT
+   * `--to`, which is to say on every real recovery: a rehearsal against a
+   * scratch database parsed correctly, and the one command anybody types on the
+   * day the data is gone answered "ต้องระบุโฟลเดอร์สำรอง" while being handed it.
+   *
+   * It failed closed — nothing was written — so the cost was the recovery not
+   * starting rather than a database lost. The reason it survived an end-to-end
+   * verification is that the rehearsal this file recommends is the path that
+   * worked. See test/restoreArgs.test.js.
+   */
+  const toValueIndex = toIndex === -1 ? -1 : toIndex + 1;
+  const positional = args.filter((a, i) => !a.startsWith('--') && i !== toValueIndex);
   if (!positional.length) {
     throw new Error('ต้องระบุโฟลเดอร์สำรอง เช่น: npm run restore -- ./backups/primus_ot-20260814-093107');
   }
@@ -248,8 +265,23 @@ async function run() {
   await disconnect();
 }
 
-run().catch(async (err) => {
-  console.error(err.message || err);
-  await mongoose.disconnect().catch(() => {});
-  process.exit(1);
-});
+/**
+ * Only when run as a command — the same guard `backup.js` carries, and needed
+ * here more than there.
+ *
+ * Without it, importing this module for any reason RUNS A RESTORE: `run()` was
+ * called at the top level, so a test that wanted to check one function, or any
+ * future script that wanted `loadBackup`, would connect to `MONGODB_URI` and
+ * begin. It stopped short of writing (there is no `--yes` in a test runner's
+ * argv, and `parseArgs` throws before that anyway) — but it also called
+ * `process.exit(1)` on the way out, which takes the whole test run with it. That
+ * is precisely why the argument bug above had no test: the file could not be
+ * imported.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  run().catch(async (err) => {
+    console.error(err.message || err);
+    await mongoose.disconnect().catch(() => {});
+    process.exit(1);
+  });
+}
