@@ -1637,7 +1637,7 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **410/410 pass in ~460 ms**, including all five worked examples
+- `npm test` — **775/775 pass in ~1 s**, including all five worked examples
   from §4, the OPEN 1–5, 9 and 12 policy variants, company inference from the
   code, `editPermission()` over every role × status pair
   (`test/editPermission.test.js`), proxy filing and delegation
@@ -1648,7 +1648,7 @@ four role UIs.
   the entry collection and the printed roster
   (`test/accountingReconciliation.test.js`).
 - Every server module imports cleanly.
-- `npm run build` succeeds.
+- `npm run build` succeeds — 2026-08-14, Next 16.3, all 50 routes.
 - `npm audit --omit=dev` — 0 vulnerabilities.
 - Against a live MongoDB, one entry walked end to end: submit → manager
   approve → HR approve → **HR correct** → printed form. Checked on the way
@@ -1667,10 +1667,24 @@ four role UIs.
   period and an unknown company key are both 400, and that an employee, a
   manager and an anonymous caller get 403/403/401. The database used had
   `company` unset on every row — the code-prefix fallback partitioned it
-  correctly. The **UI and the printed sheet have only been checked to
-  compile**, not opened in a browser or sent to a printer — the column widths
-  (22 + 70 + 24 + 24mm over the 194mm the `@page` margins leave) and the ~38
-  rows a first page holds are measured on paper, not observed.
+  correctly. **The printed sheet has still never been sent to a printer** — the
+  column widths (22 + 70 + 24 + 24mm over the 194mm the `@page` margins leave)
+  and the ~38 rows a first page holds are measured on paper, not observed. The
+  screens themselves are no longer in that state: they have been worked in a
+  browser since, and several were changed because of what that showed.
+- Against a live MongoDB, 2026-08-14, **the login delay** (`lib/loginThrottle.js`):
+  five wrong passwords cost nothing and the fifth adds the "ติดต่อฝ่ายบุคคล"
+  line, the sixth waits 1 s and the seventh 2 s, a correct password pays the
+  delay it had earned and then clears the count, and the failure after it is
+  fast again. No account was locked at any point, which is the whole rule.
+- Against a live MongoDB, 2026-08-14, **ปิดงวด** end to end
+  (`lib/periodLock.js`): closing a month with three requests still pending is
+  refused and the refusal names the three; closing an empty month succeeds;
+  filing into the closed month comes back 409 naming the month in Thai;
+  ฝ่ายบุคคล reopening it is 403 and an administrator without a reason is 400;
+  with a reason it opens, filing works again, and `events` holds both the close
+  and the reopen in order with the reason on the second. The throwaway entry and
+  the lock document were deleted afterwards.
 
 **Not yet verified**
 
@@ -1698,12 +1712,23 @@ block's height against the 297 mm page is measured by eye and by nothing else,
 exactly like the column widths above. Print a sample month before showing it to
 HR.
 
-Most HTTP paths remain unexercised — the walk above covers auth, entries,
-approve/cancel and the form report, but not the CSV exports, the CSV imports,
-the holiday and roster screens, or `settings/recompute`. The database-facing
-parts those depend on — query shapes, `populate` chains, cap accumulation
-across stored entries — are still untested. The arithmetic underneath them is
-covered by the test suite, which does not touch Mongo at all.
+Most HTTP paths remain unexercised — the walks above cover auth, the login
+delay, entries, approve/cancel, ปิดงวด and the form report, but not the CSV
+exports, the CSV imports, the holiday and roster screens, or
+`settings/recompute`. The database-facing parts those depend on — query shapes,
+`populate` chains, cap accumulation across stored entries — are still untested.
+The arithmetic underneath them is covered by the test suite, which does not
+touch Mongo at all.
+
+**`settings/recompute` is not only untested — it is not covered by ปิดงวด.**
+A policy replay writes entries directly rather than through the seven routes
+that check the lock (see `test/periodLockRoutes.test.js` for the list), so a
+closed month can still be restated by one. The paths that can do it are already
+admin-only (`authorizeReplay`), and an administrator is also the only role that
+can reopen a period, so nobody gains an authority they did not have — but the
+replay does it without the deliberate step, and without the record, that
+reopening the month would have left. Left open on purpose, 2026-08-14: it moves
+money either way and HR have not been asked.
 
 Install MongoDB, then `npm run seed && npm run dev` and walk one entry through
 submit → manager → HR → export before treating the API as working. The seed
