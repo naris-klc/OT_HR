@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 
 import {
   CLOSE_ROLES, PENDING_STATUSES, REOPEN_ROLES,
-  closeRefusal, isPeriod, isPeriodClosed, lockRefusal, lockSummary, periodOf, reopenRefusal,
+  closeRefusal, closeWarnings, isPeriod, isPeriodClosed, lockRefusal, lockSummary, periodOf,
+  reopenRefusal,
 } from '../lib/periodLock.js';
 
 /**
@@ -127,6 +128,101 @@ test('refused and withdrawn requests do not block a close', () => {
   // waiting states count.
   assert.deepEqual([...PENDING_STATUSES], ['pending_mgr', 'pending_hr']);
   assert.equal(closeRefusal({ user: hr, lock: null, pendingCount: 0, period: '2026-08' }), null);
+});
+
+test('a month with an unanswered ขอถอนใบ cannot be closed either', () => {
+  /**
+   * The same stranding failure as pending requests, wearing different clothes —
+   * and invisible to the count above, because the entry a withdrawal request
+   * sits on is `approved`.
+   *
+   * `withdraw/decide` refuses a closed month like every other write path, so
+   * closing over an open request means it can never be granted and never
+   * refused. The employee who asked watches it sit there, and the only way out
+   * is an administrator reopening the month.
+   */
+  const refusal = closeRefusal({
+    user: hr, lock: null, pendingCount: 0, openWithdrawalCount: 2, period: '2026-08',
+  });
+  assert.equal(refusal.status, 409);
+  assert.match(refusal.error, /2 คำขอ/, 'it does not say how many are in the way');
+  assert.match(refusal.error, /ไม่มีใครตอบคำขอได้อีก/, 'it does not say why it matters');
+  assert.match(refusal.error, /สิงหาคม 2569/);
+});
+
+test('the two blocking counts are named separately, not totalled', () => {
+  /**
+   * They are cleared by different people doing different things — one by
+   * working an approval queue, the other by answering a question somebody
+   * asked. A single number covering both would match neither screen.
+   *
+   * Pending is reported first when both are present: it is the older rule, and
+   * the queue is where HR already is.
+   */
+  const both = closeRefusal({
+    user: hr, lock: null, pendingCount: 3, openWithdrawalCount: 2, period: '2026-08',
+  });
+  assert.match(both.error, /3 ใบ/);
+  // `/5/` alone would be wrong here — the Thai year in every one of these
+  // sentences is 2569. It is the COUNT that must never be a total.
+  assert.doesNotMatch(both.error, /5 (ใบ|คำขอ)/, 'the two must never be added together');
+});
+
+test('a month with neither closes', () => {
+  assert.equal(
+    closeRefusal({ user: hr, lock: null, pendingCount: 0, openWithdrawalCount: 0, period: '2026-08' }),
+    null,
+  );
+  // Absent arguments read as zero — every caller before this feature passed
+  // neither, and a month with no withdrawals must not become unclosable.
+  assert.equal(closeRefusal({ user: hr, lock: null, period: '2026-08' }), null);
+});
+
+// ── warnings, which are not refusals ────────────────────────────────────────
+
+test('a flagged over-cap entry does NOT block the close', () => {
+  /**
+   * The line this whole pair of functions exists to hold. An entry flagged
+   * `capExceeded` is approved: its hours are real, its status is final, and
+   * closing the month does not trap it — so it is not the stranding failure
+   * that justifies a refusal.
+   *
+   * Refusing would also contradict `capBehaviour: 'warn'`, which is the
+   * policy's own answer that an over-cap request goes through carrying a flag
+   * for HR. Under that setting, HR approving it IS the decision; blocking would
+   * mean the only way to close a month is to press ยกเว้นเพดาน on every flagged
+   * row, turning a deliberate policy choice into paperwork.
+   */
+  assert.equal(
+    closeRefusal({ user: hr, lock: null, pendingCount: 0, openWithdrawalCount: 0, period: '2026-08' }),
+    null,
+  );
+  const warnings = closeWarnings({ capExceededCount: 2 });
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0].kind, 'capExceeded');
+  assert.equal(warnings[0].count, 2);
+  assert.match(warnings[0].text, /2 ใบ/, 'a warning without a number is not actionable');
+});
+
+test('below-minimum entries are warned about too', () => {
+  const warnings = closeWarnings({ belowMinimumCount: 1 });
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0].kind, 'belowMinimum');
+  assert.match(warnings[0].text, /1 ใบ/);
+});
+
+test('a clean month produces no warnings at all', () => {
+  // Empty, not a "0 ใบ" line. A screen that prints a reassurance every month is
+  // a screen people stop reading by the third one.
+  assert.deepEqual(closeWarnings({ capExceededCount: 0, belowMinimumCount: 0 }), []);
+  assert.deepEqual(closeWarnings({}), []);
+  assert.deepEqual(closeWarnings(), []);
+});
+
+test('both warnings appear together, each with its own count', () => {
+  const warnings = closeWarnings({ capExceededCount: 2, belowMinimumCount: 3 });
+  assert.deepEqual(warnings.map((w) => w.kind), ['capExceeded', 'belowMinimum']);
+  assert.deepEqual(warnings.map((w) => w.count), [2, 3]);
 });
 
 test('closing an already-closed month is refused rather than done twice', () => {

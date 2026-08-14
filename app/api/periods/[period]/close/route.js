@@ -2,7 +2,7 @@ import PeriodLock from '@/src/models/PeriodLock.js';
 import { route, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { closeRefusal, isPeriod } from '@/lib/periodLock.js';
-import { lockFor, lockState, pendingInPeriod } from '@/lib/periodLockQuery.js';
+import { closeChecks, lockFor, lockState } from '@/lib/periodLockQuery.js';
 
 /**
  * ปิดงวด — ฝ่ายบุคคล declaring a month finished.
@@ -23,14 +23,22 @@ export const POST = route(async (req, { params }) => {
   if (!isPeriod(period)) return fail('รูปแบบงวดไม่ถูกต้อง (YYYY-MM)', 400);
 
   /**
-   * The count is read before the refusal rather than inside it, because a month
-   * with requests still waiting is the one refusal HR can do something about —
-   * and the sentence names the number so they know how much.
+   * The counts are read before the refusal rather than inside it, because the
+   * two states that block are the ones HR can do something about — and each
+   * sentence names its number so they know how much.
+   *
+   * The other two counts `closeChecks` returns are warnings and are not
+   * consulted here at all. They are shown on the screen before the button is
+   * pressed; refusing over them would contradict `capBehaviour: 'warn'` — see
+   * `closeWarnings` for the whole argument.
    */
+  const [lock, checks] = await Promise.all([lockFor(period), closeChecks(period)]);
+
   const refusal = closeRefusal({
     user,
-    lock: await lockFor(period),
-    pendingCount: await pendingInPeriod(period),
+    lock,
+    pendingCount: checks.pending,
+    openWithdrawalCount: checks.openWithdrawals,
     period,
   });
   if (refusal) return fail(refusal.error, refusal.status);

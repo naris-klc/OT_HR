@@ -1154,6 +1154,44 @@ Reviewers find them on **คำขอถอนใบที่อนุมัต�
 fed by `GET /api/entries?withdrawal=open` in whatever scope the caller already
 has. It is not batchable, for the reason rejection is not.
 
+### An open request blocks ปิดงวด
+
+Same stranding failure as a pending approval, wearing different clothes — and
+invisible to that count, because the entry a request sits on is `approved`.
+`withdraw/decide` refuses a closed month like every other write path, so closing
+over an open request means it can never be granted and never refused. The
+employee watches it sit there and only an administrator can undo it.
+
+`closeRefusal` names it as its own count with its own sentence, never added to
+`pendingCount`: the two are cleared by different people doing different things —
+one by working an approval queue, the other by answering a question somebody
+asked — and a single number would match neither screen.
+
+### …and what only warns
+
+`closeWarnings` is the other half, and the line between them is worth stating:
+
+> A **refusal** is for a state that closing would STRAND. A **warning** is for a
+> state that is finished but worth a second look.
+
+An entry flagged `capExceeded` or `belowMinimumFlagged` is approved: its hours
+are real, its status is final, and closing does not trap it. Refusing over one
+would also contradict `capBehaviour: 'warn'`, which is the policy's own answer
+that an over-cap request goes through carrying a flag — under that setting HR
+approving it **is** the decision, and blocking would make the only route to a
+closed month pressing **ยกเว้นเพดาน** on every flagged row.
+
+So they are counted, and printed in the **ปิดงวด** dialog. That dialog is itself
+new: closing had no confirmation at all, while reopening — the reversible half of
+the pair — has had one since it was written. A line above a button is a line
+people stop seeing by the third month; a dialog they pass through is read on the
+sitting that matters. A clean month says so in one sentence rather than printing
+zeroes.
+
+`GET /api/periods/<period>` returns all four counts as `checks`, from one
+`$facet`, and still returns `pending` at the top level so the reply stays a
+superset of what it was.
+
 ---
 
 ## Which rules produced this figure

@@ -1,6 +1,6 @@
 import { route, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { lockState, pendingInPeriod } from '@/lib/periodLockQuery.js';
+import { closeChecks, lockState } from '@/lib/periodLockQuery.js';
 import { isPeriod } from '@/lib/periodLock.js';
 
 /**
@@ -12,15 +12,24 @@ import { isPeriod } from '@/lib/periodLock.js';
  * and a หัวหน้า looking at an empty queue should be able to tell a quiet month
  * from a closed one.
  *
- * `pending` rides along because the screen that closes a month needs it before
- * it can offer the button — `closeRefusal` counts it as the reason to say no,
- * and a button that is going to be refused should not be offered in the first
- * place.
+ * `checks` rides along because the screen that closes a month needs the counts
+ * before it can offer the button — `closeRefusal` reads two of them as reasons
+ * to say no, and a button that is going to be refused should not be offered in
+ * the first place. The other two are `closeWarnings`, which do not stop
+ * anything and are printed so nobody freezes a month without having seen them.
+ *
+ * `pending` is ALSO returned at the top level, unchanged. It was the shape
+ * before `checks` existed and PeriodLockBar reads it; keeping it means this
+ * reply is a superset of the old one rather than a rename that breaks a screen
+ * on the way past.
  */
 export const GET = route(async (req, { params }) => {
   await requireAuth(req);
   if (!isPeriod(params.period)) return fail('รูปแบบงวดไม่ถูกต้อง (YYYY-MM)', 400);
 
-  const state = await lockState(params.period);
-  return json({ ...state, pending: await pendingInPeriod(params.period) });
+  const [state, checks] = await Promise.all([
+    lockState(params.period),
+    closeChecks(params.period),
+  ]);
+  return json({ ...state, pending: checks.pending, checks });
 });
