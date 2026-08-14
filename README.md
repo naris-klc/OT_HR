@@ -62,6 +62,12 @@ then `npm start`.
 
 ## สำรองและกู้คืนข้อมูล
 
+Note the `--` before the flags. Without it npm keeps them for itself, and the
+command succeeds having quietly ignored both — writing to the default
+`./backups` on the same disk as the database, with no retention. It is the one
+mistake here that looks like it worked. The wrappers below carry the `--` so
+nobody has to remember.
+
 ```powershell
 npm run backup                                    # → ./backups/primus_ot-<วันเวลา>/
 npm run backup -- --out D:/ot-backups             # somewhere that is not this disk
@@ -112,6 +118,20 @@ for that.
 
 **On this machine — Windows, Task Scheduler.** This is the one that runs today:
 “production” is a laptop, so the scheduler is the one built into it.
+
+> **`D:\ot-backups` below is a placeholder, and as of 2026-08-14 this machine has
+> only a `C:` drive.** Substitute a path on a disk that is not the one holding
+> MongoDB — an external drive, or a network share — and create it first. The
+> wrappers check the destination and refuse rather than creating it, so a task
+> pointed at a drive that is not there logs `ไม่พบปลายทาง` every night and backs
+> up nothing. That refusal is deliberate: creating the folder would put the
+> backup on whatever disk the path falls back to, which is the one it exists to
+> be somewhere other than.
+>
+> A cloud-synced folder (OneDrive) does get the data off this laptop, but a dump
+> carries `passwordHash` for every account and `birthDate` for every employee —
+> that is uploading staff PII to a third party, and it is a decision for whoever
+> owns that call, not a convenience.
 
 ```powershell
 # ทดสอบด้วยมือก่อนหนึ่งรอบเสมอ — ต้องได้ exit code 0
