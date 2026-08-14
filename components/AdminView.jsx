@@ -2857,19 +2857,29 @@ function Policy({ user }) {
           + `${failures[0]?.error ? ` — ${failures[0].error}` : ''}`
         : '';
       /**
-       * The months ปิดงวด kept out of the replay, named.
+       * The months ปิดงวด kept out of the replay, named — and NOTHING ABOUT HOW
+       * TO GET THEM BACK IN.
        *
-       * The same silence the failures above were fixed for, and worse: a closed
-       * month is skipped WHOLESALE, so a rule change that was meant to restate
-       * the year restates everything except the months that were already sent
-       * to accounting — which is correct, and invisible. Whoever changed the
-       * flag has to decide whether those months should move too, and that
-       * decision starts with knowing which they were.
+       * An earlier draft ended this sentence with "หากต้องการให้คำนวณใหม่ด้วย
+       * ต้องให้ผู้ดูแลระบบเปิดงวดก่อน", which reads as an instruction: change a
+       * rule, then go and have the closed months reopened so they match. That is
+       * the opposite of what closing one is for. The user's rule, 2026-08-14:
+       * ปิดงวดแล้วเปลี่ยนวิธีคำนวณ ก็ไม่ต้องเอาของเก่ามาคำนวณใหม่ — a closed
+       * month keeps the figures it was closed with, and a new rule applies from
+       * here on.
+       *
+       * Reopening still exists and is still how a mistake in a closed month gets
+       * corrected; the refusal on the edit path says so, because there it is the
+       * right next step. Here it is not, so it is not offered.
+       *
+       * The months are still named, because the alternative is silence: a rule
+       * change that restated eleven months and not the twelfth should say which
+       * twelfth, or the difference is discovered by whoever compares two reports
+       * next year.
        */
       const closed = res.recomputed?.closedPeriods?.length
         ? ` · ไม่แตะงวดที่ปิดแล้ว ${res.recomputed.closedPeriods.map(periodLabel).join(', ')}`
-          + ` (${res.recomputed.skippedClosed} รายการ) — หากต้องการให้คำนวณใหม่ด้วย`
-          + ' ต้องให้ผู้ดูแลระบบเปิดงวดก่อน'
+          + ` (${res.recomputed.skippedClosed} รายการ) — งวดที่ปิดแล้วคงชั่วโมงเดิมไว้`
         : '';
       setMsg(res.recomputed?.updated
         ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ${skipped}${closed}`
