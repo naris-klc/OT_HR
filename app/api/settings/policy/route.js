@@ -28,6 +28,13 @@ export const PATCH = route(async (req) => {
     actor: user,
     recompute: payload?.recompute,
     note: payload?.note,
+    /**
+     * The day the new rules start. Absent means today; a future date is HR
+     * announcing a change ahead of it, which is how a change to overtime pay is
+     * supposed to reach the people it affects. A past date is refused inside
+     * `savePolicy` — see `effectiveFromRefusal`.
+     */
+    effectiveFrom: payload?.effectiveFrom,
   });
   if (result.error) return fail(result.error, result.status);
 

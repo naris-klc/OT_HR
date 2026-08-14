@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
+import { today } from '@/lib/today.js';
 import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
   chosenPasswordPermission, dropsAnAdmin,
@@ -2770,6 +2771,14 @@ function Policy({ user }) {
    * diff is the only thing left explaining a month that does not add up.
    */
   const [note, setNote] = useState('');
+  /**
+   * Today in the company's timezone, and the day a change starts unless HR
+   * moves it forward. Computed once per mount rather than per render: a value
+   * that changes at midnight underneath an open screen would move the `min` on
+   * the field somebody is typing into.
+   */
+  const [todayISO] = useState(() => today());
+  const [effectiveFrom, setEffectiveFrom] = useState(todayISO);
 
   async function load() {
     try {
@@ -2828,7 +2837,9 @@ function Policy({ user }) {
     setBusy(true);
     setError('');
     try {
-      const res = await api.patch('/settings/policy', { policy: { [key]: value }, note });
+      const res = await api.patch('/settings/policy', {
+        policy: { [key]: value }, note, effectiveFrom,
+      });
       setPolicy(res.policy);
 
       // Named rather than counted. "5 รายการ" says work happened; the version
@@ -2906,17 +2917,49 @@ function Policy({ user }) {
       <UnrecordedPolicy live={live} canEdit={canEdit} busy={busy} onRecord={recordLive} />
       <LivePolicy policy={policy} defaults={defaults} overrides={overrides} />
 
-      {/* Typed before the dropdown is touched, because changing a dropdown IS
-          the save — there is no button to attach a reason to afterwards. */}
+      {/* Both typed before the dropdown is touched, because changing a dropdown
+          IS the save — there is no button to attach a reason or a date to
+          afterwards. */}
       {canEdit && (
-        <div className="field" style={{ maxWidth: 520 }}>
-          <label>เหตุผลของการเปลี่ยนแปลง (ไม่บังคับ แต่จะถูกบันทึกไว้กับเวอร์ชัน)</label>
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="เช่น ฝ่ายบุคคลตอบข้อ 3 ในที่ประชุม 5 ส.ค."
-            disabled={busy}
-          />
+        <div className="row" style={{ alignItems: 'flex-end' }}>
+          <div className="field" style={{ maxWidth: 520, flex: 1 }}>
+            <label>เหตุผลของการเปลี่ยนแปลง (ไม่บังคับ แต่จะถูกบันทึกไว้กับเวอร์ชัน)</label>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="เช่น ฝ่ายบุคคลตอบข้อ 3 ในที่ประชุม 5 ส.ค."
+              disabled={busy}
+            />
+          </div>
+          {/*
+            THE DAY THE NEW RULES START — the field HR asked for, 2026-08-14.
+
+            Overtime is work already done, so it is worth what the rules said on
+            the day it was worked. A change announced today therefore governs
+            today's work onward and cannot reach back over last week's; setting
+            this forward is how a change is announced before it starts, which is
+            what the law expects of a change to how people are paid.
+
+            `min` is today: the server refuses a past date (`effectiveFromRefusal`)
+            and the input should not offer what the server will reject. It is not
+            the enforcement — a browser is never that — it is the same answer
+            arriving earlier.
+          */}
+          <div className="field" style={{ maxWidth: 200 }}>
+            <label>กฎใหม่มีผลตั้งแต่</label>
+            <input
+              type="date"
+              value={effectiveFrom}
+              min={todayISO}
+              onChange={(e) => setEffectiveFrom(e.target.value)}
+              disabled={busy}
+            />
+            <div className="field-note">
+              {effectiveFrom > todayISO
+                ? 'ประกาศล่วงหน้า — ใบของงานก่อนวันนี้ยังใช้กฎเดิม'
+                : 'ใบของงานที่ทำก่อนวันนี้ยังใช้กฎเดิม'}
+            </div>
+          </div>
         </div>
       )}
 

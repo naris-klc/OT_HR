@@ -29,7 +29,7 @@ import {
 import { idOf, noOtHoursMessage } from '../../lib/entries.js';
 import { latestPerSession } from '../../lib/reports.js';
 import {
-  planRecompute, samePolicy, figuresMoved, summariseReplay,
+  planRecompute, samePolicy, figuresMoved, summariseReplay, versionForDate,
 } from '../../lib/policyVersion.js';
 
 /**
@@ -91,22 +91,74 @@ export async function currentPolicyVersion(policy) {
  */
 export async function loadCalendar(workDates = []) {
   const years = [...new Set(workDates.flatMap((d) => [d.slice(0, 4), addDays(d, 1).slice(0, 4)]))];
-  const [policy, holidays] = await Promise.all([
+  const [livePolicy, holidays, versions] = await Promise.all([
     Setting.effectivePolicy(),
     loadHolidaySet(years),
-  ]);
-  const version = await currentPolicyVersion(policy);
-  return {
-    policy,
-    isHoliday: makeIsHoliday(holidays, policy),
     /**
-     * Carried on the context rather than passed alongside it so that stamping
-     * cannot be forgotten: every caller that computes already holds a context,
-     * and `applyComputation` reads the version off the same object it reads the
-     * hours from. The engine never sees this — it stays pure, takes a policy,
-     * and knows nothing about where the policy came from.
+     * Every recorded rule set, not just the newest. A replay covering March to
+     * August may cross three of them, and the run must answer each date with
+     * the rules that were in force on it. One query for the whole run; there
+     * are as many rows here as times HR has changed their mind.
      */
-    policyVersionId: version?._id || null,
+    PolicyVersion.find().select('seq policy effectiveFrom').lean(),
+  ]);
+  const liveVersion = await currentPolicyVersion(livePolicy);
+
+  /**
+   * THE RULES FOR ONE DAY'S WORK.
+   *
+   * HR's rule, 2026-08-14: overtime is work already performed, so it is worth
+   * what the rules said on the day it was worked — not what they say now. This
+   * is where that stops being a policy statement and becomes arithmetic: the
+   * engine is handed the policy for the entry's own date, so a rule announced
+   * last week cannot reach behind a shift worked the week before it.
+   *
+   * `isHoliday` is resolved from the same version, not from the live policy,
+   * because `weekendDays` is a policy key: a company that moved its weekend
+   * changed which of last year's Saturdays were holidays, and reading that off
+   * today's answer would restate old hours by the back door.
+   *
+   * A date older than every recorded version falls back to the live policy and
+   * stamps nothing — the same answer this function gave before any of this
+   * existed, for the same reason: rules nobody recorded cannot be attached to
+   * hours that were computed under them.
+   *
+   * Memoised per date. A month's replay asks the same question thirty times and
+   * `makeIsHoliday` builds a set each call.
+   */
+  const cache = new Map();
+  function policyFor(workDate) {
+    if (cache.has(workDate)) return cache.get(workDate);
+    const version = versionForDate(versions, workDate);
+    const policy = version ? version.policy : livePolicy;
+    const resolved = {
+      policy,
+      isHoliday: makeIsHoliday(holidays, policy),
+      /**
+       * Carried on the context rather than passed alongside it so that stamping
+       * cannot be forgotten: every caller that computes already holds a context,
+       * and `applyComputation` reads the version off the same object it reads
+       * the hours from. The engine never sees this — it stays pure, takes a
+       * policy, and knows nothing about where the policy came from.
+       */
+      policyVersionId: version ? version._id : (liveVersion?._id || null),
+    };
+    cache.set(workDate, resolved);
+    return resolved;
+  }
+
+  /**
+   * The live answers stay on the object for the callers that are asking about
+   * TODAY rather than about a particular entry — the settings screen, the
+   * preview endpoint, the messages that quote the current core hours. A caller
+   * computing an entry must go through `policyFor`, which `contextFor` and
+   * `loadContext` do for it.
+   */
+  return {
+    policyFor,
+    policy: livePolicy,
+    isHoliday: makeIsHoliday(holidays, livePolicy),
+    policyVersionId: liveVersion?._id || null,
   };
 }
 
@@ -124,12 +176,29 @@ export async function loadCalendar(workDates = []) {
  * case that has to be right.
  */
 export function contextFor(calendar, session, employee = null) {
+  /**
+   * Resolved from `workDate` — the day the shift STARTED — and used for the
+   * whole session, second half of an overnight shift included.
+   *
+   * HR's answer, 2026-08-14, when asked what a night shift crossing the day a
+   * rule takes effect should do: the shift belongs to the day it started, which
+   * is the standard every payroll and time-attendance system uses, and it is
+   * already how this system files an entry (§12.2) and which month it counts
+   * in (`period = workDate.slice(0, 7)`). Splitting a shift across two rule
+   * sets would be more precise and impossible to explain to the person who
+   * worked it — two halves of one night at two rates.
+   *
+   * `calendar.policyFor` is absent on a context built by an older caller or a
+   * test fixture; falling back to the calendar itself is what it used to do.
+   */
+  const resolved = calendar.policyFor ? calendar.policyFor(session.workDate) : calendar;
   return {
     ...calendar,
+    ...resolved,
     dayTypes: resolveDayTypes(sessionDates(session), {
-      isHoliday: calendar.isHoliday,
+      isHoliday: resolved.isHoliday,
       birthDate: employee?.birthDate || null,
-      policy: calendar.policy,
+      policy: resolved.policy,
     }),
   };
 }
@@ -153,12 +222,25 @@ export function contextFor(calendar, session, employee = null) {
 export async function loadContext(workDates = [], { employee = null } = {}) {
   const calendar = await loadCalendar(workDates);
   const dates = [...new Set(workDates.flatMap((d) => [d, addDays(d, 1)]))];
+  /**
+   * One shift, one rule set — resolved from the first date, which for every
+   * caller of this function is the shift's own `workDate`. (`recomputeEntries`
+   * is the caller that holds many entries at once, and it goes through
+   * `loadCalendar` + `contextFor` per entry rather than through here.)
+   *
+   * The day types are still resolved over `workDate` AND the day after, so an
+   * overnight shift knows what kind of day it ended on — but both are read
+   * under the starting day's rules, which is the answer HR gave for a shift
+   * that crosses the day a rule takes effect.
+   */
+  const resolved = calendar.policyFor ? calendar.policyFor(workDates[0]) : calendar;
   return {
     ...calendar,
+    ...resolved,
     dayTypes: resolveDayTypes(dates, {
-      isHoliday: calendar.isHoliday,
+      isHoliday: resolved.isHoliday,
       birthDate: employee?.birthDate || null,
-      policy: calendar.policy,
+      policy: resolved.policy,
     }),
   };
 }

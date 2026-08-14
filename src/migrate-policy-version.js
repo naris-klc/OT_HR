@@ -32,9 +32,76 @@ import PolicyVersion from './models/PolicyVersion.js';
 import Setting from './models/Setting.js';
 import { DEFAULT_POLICY } from './config/policy.js';
 import { planBackfill, diffPolicy, policyHash } from '../lib/policyVersion.js';
+import { today } from '../lib/today.js';
 
 const dryRun = process.argv.includes('--dry');
 const confirmed = process.argv.includes('--yes');
+
+/**
+ * Give every version already on record the date it started applying.
+ *
+ * `effectiveFrom` arrived on 2026-08-14, when HR settled that an entry is
+ * computed under the rules in force on the day it was WORKED. Rows written
+ * before that have no such date, and `versionForDate` ignores a version without
+ * one — so until this runs, a database with versions behaves as though it had
+ * none, and every entry falls back to the live policy. That is the old
+ * behaviour rather than a wrong one, but it is not the new rule.
+ *
+ * THE OLDEST VERSION IS BACKDATED TO BEFORE THE OLDEST ENTRY, deliberately, and
+ * it is the only backdating this system permits. That version is the record of
+ * the rules everything was computed under before anybody was recording them; if
+ * it started at its own `createdAt` instead, every entry worked before the
+ * migration ran would resolve to no version at all and be recomputed under
+ * today's policy — which is precisely the retroactive restatement the field
+ * exists to prevent. Later versions start on the day they were recorded, which
+ * is the truth about them: nobody could announce a date before the field
+ * existed.
+ *
+ * Idempotent: rows that already have a date are left alone, so this runs with
+ * the rest of the migration as often as anybody likes.
+ */
+async function backfillEffectiveFrom({ dry = false } = {}) {
+  const missing = await PolicyVersion.find({
+    $or: [{ effectiveFrom: { $exists: false } }, { effectiveFrom: null }, { effectiveFrom: '' }],
+  }).select('seq createdAt').sort({ seq: 1 }).lean();
+  if (!missing.length) return;
+
+  const oldestEntry = await OtEntry.findOne().select('workDate').sort({ workDate: 1 }).lean();
+  const asDate = (d) => today(d instanceof Date ? d : new Date(d));
+  const [first, ...rest] = missing;
+
+  /** Earlier of "the first entry ever" and "the day the version was recorded". */
+  const floor = [oldestEntry?.workDate, first.createdAt && asDate(first.createdAt)]
+    .filter(Boolean).sort()[0] || today();
+
+  const writes = [
+    { updateOne: { filter: { _id: first._id }, update: { $set: { effectiveFrom: floor } } } },
+    ...rest.map((v) => ({
+      updateOne: {
+        filter: { _id: v._id },
+        update: { $set: { effectiveFrom: v.createdAt ? asDate(v.createdAt) : floor } },
+      },
+    })),
+  ];
+
+  /**
+   * `--dry` REPORTS AND WRITES NOTHING, and this check is here rather than at
+   * the call site because the first version of it was at the call site — below
+   * the call — and a dry run wrote the backfill for real. Caught on 2026-08-14
+   * by running it. A function that writes must be the one that knows whether it
+   * is allowed to.
+   */
+  if (dry) {
+    console.log(`--dry: จะเติมวันที่เริ่มมีผลให้เวอร์ชันเดิม ${writes.length} เวอร์ชัน (เวอร์ชันแรกเริ่ม ${floor})`);
+    return;
+  }
+
+  // `strict: false` — `effectiveFrom` is `immutable`, which mongoose enforces on
+  // updates too, and these rows are being given a value they have never had
+  // rather than having one changed.
+  await PolicyVersion.bulkWrite(writes, { strict: false });
+  console.log(`เติมวันที่เริ่มมีผลให้เวอร์ชันเดิม ${writes.length} เวอร์ชัน (เวอร์ชันแรกเริ่ม ${floor})`);
+}
 
 async function run() {
   await connect();
@@ -48,6 +115,8 @@ async function run() {
    */
   const snapshot = await Setting.effectivePolicy();
   const drift = diffPolicy(DEFAULT_POLICY, snapshot);
+
+  await backfillEffectiveFrom({ dry: dryRun });
 
   const [existingVersions, entries] = await Promise.all([
     PolicyVersion.find().select('seq policy createdAt').lean(),
