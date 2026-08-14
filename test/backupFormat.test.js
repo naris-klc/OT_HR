@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
 import {
   FORMAT_VERSION,
+  backupsToPrune,
   buildManifest,
   digest,
   fileNameFor,
@@ -275,6 +276,89 @@ test('collection ของ Mongo เองไม่ถูกสำรอง', ()
   assert.equal(isBackupCollection('otentries'), true);
   assert.equal(isBackupCollection('system.views'), false);
   assert.equal(isBackupCollection(''), false);
+});
+
+// ── retention: the one thing here that destroys data ────────────────────────
+
+const stamps = (...s) => s.map((x) => `primus_ot-${x}`);
+
+test('เก็บชุดใหม่สุดไว้ ลบที่เหลือจากเก่าสุด', () => {
+  const all = stamps('20260811-000000', '20260812-000000', '20260813-000000', '20260814-000000');
+  assert.deepEqual(
+    backupsToPrune(all, 'primus_ot', 2),
+    stamps('20260811-000000', '20260812-000000'),
+  );
+  assert.deepEqual(backupsToPrune(all, 'primus_ot', 4), [], 'มีเท่าที่เก็บ ไม่ต้องลบ');
+  assert.deepEqual(backupsToPrune(all, 'primus_ot', 9), [], 'เก็บมากกว่าที่มี ก็ไม่ลบ');
+});
+
+test('เรียงตามชื่อ ไม่ใช่ตามลำดับที่ระบบไฟล์คืนมา', () => {
+  /**
+   * The stamp sorts as the calendar does, so this needs no `stat` and no clock —
+   * and a folder copied in from another machine keeps its place in the sequence
+   * instead of jumping to the front on its mtime.
+   */
+  const jumbled = stamps('20260814-000000', '20260811-000000', '20260813-000000');
+  assert.deepEqual(backupsToPrune(jumbled, 'primus_ot', 1), stamps('20260811-000000', '20260813-000000'));
+});
+
+test('ไม่แตะอะไรที่เครื่องมือนี้ไม่ได้สร้าง', () => {
+  /**
+   * `--out` pointing at a shared drive is the ordinary case, so a retention
+   * sweep that removed whatever else was in the folder would be a data-loss bug
+   * wearing a housekeeping hat.
+   */
+  const mixed = [
+    ...stamps('20260811-000000', '20260812-000000'),
+    'เอกสารสำคัญ',
+    'primus_ot-notes',
+    'primus_ot-2026-08-11',
+    'README.txt',
+    '.hidden',
+  ];
+  assert.deepEqual(backupsToPrune(mixed, 'primus_ot', 1), stamps('20260811-000000'));
+});
+
+test('สองฐานข้อมูลในโฟลเดอร์เดียวกันไม่ลบของกันและกัน', () => {
+  const both = [
+    ...stamps('20260811-000000', '20260812-000000', '20260813-000000'),
+    'primus_ot_test-20260811-000000',
+    'primus_ot_test-20260812-000000',
+  ];
+  assert.deepEqual(backupsToPrune(both, 'primus_ot', 1), stamps('20260811-000000', '20260812-000000'));
+  assert.deepEqual(
+    backupsToPrune(both, 'primus_ot_test', 1),
+    ['primus_ot_test-20260811-000000'],
+    'ชื่อที่เป็นคำนำหน้าของอีกชื่อต้องไม่ถูกเหมารวม',
+  );
+});
+
+test('ชื่อฐานข้อมูลที่มีอักขระพิเศษไม่กลายเป็น regex', () => {
+  // A database called `a.b` must not match `axb`, or a retention sweep on one
+  // database quietly eats another's backups.
+  const names = ['a.b-20260811-000000', 'axb-20260811-000000', 'a.b-20260812-000000'];
+  assert.deepEqual(backupsToPrune(names, 'a.b', 1), ['a.b-20260811-000000']);
+});
+
+test('ไม่มีทางลบทั้งหมด แม้จะสั่งให้เก็บ 0', () => {
+  /**
+   * "Delete all my backups" is not a retention policy, and an unset variable
+   * landing as 0 — or as an empty string, or as text — is the likeliest way to
+   * ask for it by accident. Every one of those reads as 1.
+   */
+  const all = stamps('20260811-000000', '20260812-000000');
+  for (const keep of [0, -5, null, undefined, NaN, '']) {
+    assert.deepEqual(
+      backupsToPrune(all, 'primus_ot', keep),
+      stamps('20260811-000000'),
+      `keep=${String(keep)} ต้องยังเหลือชุดล่าสุดไว้`,
+    );
+  }
+});
+
+test('โฟลเดอร์ว่างไม่พัง', () => {
+  assert.deepEqual(backupsToPrune([], 'primus_ot', 3), []);
+  assert.deepEqual(backupsToPrune(undefined, 'primus_ot', 3), []);
 });
 
 test('ชื่อโฟลเดอร์เรียงตามเวลาได้', () => {

@@ -265,3 +265,38 @@ export function stampFor(date) {
   const iso = date.toISOString();
   return `${iso.slice(0, 10).replace(/-/g, '')}-${iso.slice(11, 19).replace(/:/g, '')}`;
 }
+
+/**
+ * Which old backup folders a `--keep N` run should delete.
+ *
+ * PURE, AND SEPARATE FROM THE DELETING, because this is the one decision in the
+ * whole tool that destroys data. Everything else here can be got wrong and cost
+ * a re-run; this can be got wrong and cost the backups. So the choosing is a
+ * function of a list of names with no filesystem underneath it, and it is tested
+ * that way — `src/backup.js` does the removing and re-checks each folder is a
+ * real backup before it goes.
+ *
+ * Three rules, and each is a way this could delete something it should not:
+ *
+ *   ONLY FOLDERS THIS TOOL MADE. Matched against `<database>-YYYYMMDD-HHMMSS`,
+ *   with the database name pinned by the caller. Pointing `--out` at a shared
+ *   drive is the ordinary case, and a retention sweep that removed whatever else
+ *   was in the folder would be a data-loss bug wearing a housekeeping hat. It
+ *   also means two databases backing up to one folder never prune each other.
+ *
+ *   NEWEST KEPT, BY NAME. The stamp sorts as the calendar does, so ordering
+ *   needs no `stat` and no clock — a folder copied from another machine keeps
+ *   its place in the sequence rather than jumping to the front on its mtime.
+ *
+ *   NEVER EVERYTHING. `keep` below 1 is read as 1. "Delete all my backups" is
+ *   not a retention policy, and a typo or an unset variable landing as 0 is the
+ *   likeliest way to ask for it by accident.
+ *
+ * Returns the names to delete, oldest first.
+ */
+export function backupsToPrune(names, database, keep) {
+  const shape = new RegExp(`^${database.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d{8}-\\d{6}$`);
+  const mine = (names || []).filter((n) => shape.test(n)).sort();
+  const survivors = Math.max(1, Number(keep) || 1);
+  return mine.slice(0, Math.max(0, mine.length - survivors));
+}

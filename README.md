@@ -65,6 +65,7 @@ then `npm start`.
 ```powershell
 npm run backup                                    # → ./backups/primus_ot-<วันเวลา>/
 npm run backup -- --out D:/ot-backups             # somewhere that is not this disk
+npm run backup -- --out D:/ot-backups --keep 30   # ...and delete all but the newest 30
 npm run restore -- <โฟลเดอร์>                      # ตรวจสอบและแสดงแผน ไม่เขียนอะไร
 npm run restore -- <โฟลเดอร์> --yes                # กู้ทับฐานที่ MONGODB_URI
 npm run restore -- <โฟลเดอร์> --to <uri> --yes     # ซ้อมกู้ลงฐานทดสอบ
@@ -106,6 +107,56 @@ collections.
 `passwordHash` for every account, and the `birthDate` that `publicEmployee()`
 deliberately filters out for managers. Keep them off this disk; `--out` is there
 for that.
+
+### ตั้งเวลาสำรองอัตโนมัติ
+
+**On this machine — Windows, Task Scheduler.** This is the one that runs today:
+“production” is a laptop, so the scheduler is the one built into it.
+
+```powershell
+# ทดสอบด้วยมือก่อนหนึ่งรอบเสมอ — ต้องได้ exit code 0
+.\scripts\backup.ps1 -Destination D:\ot-backups -Keep 30
+
+# ตั้งให้รันทุกวัน 02:00
+$action  = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument '-NoProfile -ExecutionPolicy Bypass -File "C:\Users\suwan\Documents\OT_HR\scripts\backup.ps1" -Destination D:\ot-backups -Keep 30'
+$trigger = New-ScheduledTaskTrigger -Daily -At 2am
+Register-ScheduledTask -TaskName 'OT backup' -Action $action -Trigger $trigger `
+  -Description 'สำรองฐานข้อมูล OT ไป D:\ot-backups เก็บ 30 ชุด'
+```
+
+**On a Linux server, if there is ever one — cron.** `scripts/backup.sh` is the
+same three behaviours; both wrappers are deliberately kept in step, so change
+them together.
+
+```sh
+chmod +x scripts/backup.sh
+0 2 * * *  cd /srv/ot && scripts/backup.sh /mnt/backups 30
+```
+
+Both wrappers are thin: all they run is `npm run backup -- --out … --keep …`.
+What they add is what a scheduled job needs and a person at a keyboard does not
+— **a log**, because nobody is watching at 02:00; **a non-zero exit** on failure,
+because that is what Task Scheduler and cron report on; and **a refusal when the
+destination is missing**, because an unplugged drive is the ordinary Monday
+failure and without the check `--out` would helpfully create the folder on the
+disk holding the database, which is the exact disk a backup exists to be
+somewhere other than.
+
+`--keep N` prunes *after* the new backup is written and verified — never before,
+or a run that fails halfway has thrown away yesterday's copy to make room for
+one that does not exist. The choosing is `backupsToPrune`, pure and tested: it
+only ever matches `<database>-YYYYMMDD-HHMMSS`, so pointing `--out` at a shared
+drive cannot sweep away anything else in it; two databases writing to one folder
+do not prune each other; and `--keep 0` is read as 1, because “delete all my
+backups” is not a retention policy and an unset variable is the likeliest way to
+ask for it by accident. Before deleting, each folder is re-checked for a
+`manifest.json` — a name is something anybody can create — and one without is
+reported and left alone.
+
+**None of this is set up yet.** The scripts are written and tested; nothing is
+scheduled, and `./backups` is still on the same disk as the database, which is
+the failure a backup does not protect against.
 
 One Next.js app serves both halves — there is no separate API port and no
 proxy. `.env` is read by Next directly.

@@ -28,12 +28,13 @@
  */
 
 import 'dotenv/config';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import mongoose from 'mongoose';
 import { connect, disconnect } from './db.js';
 import {
+  backupsToPrune,
   buildManifest,
   digest,
   fileNameFor,
@@ -119,24 +120,77 @@ export async function dumpDatabase(db, outDir, { log = () => {} } = {}) {
   return manifest;
 }
 
-function outDirFrom(argv, database, now) {
+export function baseDirFrom(argv) {
   const flag = argv.indexOf('--out');
   if (flag !== -1 && !argv[flag + 1]) throw new Error('--out ต้องตามด้วยชื่อโฟลเดอร์');
-  const base = flag === -1 ? resolve('backups') : resolve(argv[flag + 1]);
-  return join(base, `${database}-${stampFor(now)}`);
+  return flag === -1 ? resolve('backups') : resolve(argv[flag + 1]);
+}
+
+/**
+ * `--keep N` — how many backups to leave behind, or null for "keep everything".
+ *
+ * Absent means keep everything, and that is the right default for a tool a
+ * person runs by hand: somebody typing `npm run backup` to get a copy before
+ * doing something risky is not asking for anything to be deleted. Retention is
+ * for the scheduled runs, where nobody is watching the disk fill up.
+ */
+export function keepFrom(argv) {
+  const flag = argv.indexOf('--keep');
+  if (flag === -1) return null;
+  const n = Number(argv[flag + 1]);
+  if (!Number.isInteger(n) || n < 1) throw new Error('--keep ต้องตามด้วยจำนวนเต็มตั้งแต่ 1 ขึ้นไป');
+  return n;
+}
+
+/**
+ * Delete the backups `backupsToPrune` chose — after checking each one again.
+ *
+ * The re-check is the belt to that function's braces. It picks by NAME, and a
+ * name is a thing anybody can create; a folder called `primus_ot-20260101-000000`
+ * holding somebody's notes matches the pattern perfectly. Requiring a readable
+ * `manifest.json` inside means this only ever removes something this tool
+ * actually wrote — and a folder that fails the check is reported and left
+ * alone rather than being silently skipped, because an unexplained folder in
+ * the backup directory is worth a person's attention.
+ */
+function prune(baseDir, database, keep, log) {
+  const doomed = backupsToPrune(readdirSync(baseDir), database, keep);
+  if (!doomed.length) return;
+
+  for (const name of doomed) {
+    const dir = join(baseDir, name);
+    if (!existsSync(join(dir, 'manifest.json'))) {
+      log(`  ข้าม ${name} — ไม่มี manifest.json จึงไม่ใช่ข้อมูลสำรองที่เครื่องมือนี้สร้าง`);
+      continue;
+    }
+    rmSync(dir, { recursive: true, force: true });
+    log(`  ลบ ${name}`);
+  }
 }
 
 async function run() {
+  const keep = keepFrom(process.argv);
+  const baseDir = baseDirFrom(process.argv);
+
   const conn = await connect();
   const db = conn.db;
+  const outDir = join(baseDir, `${db.databaseName}-${stampFor(new Date())}`);
 
-  const outDir = outDirFrom(process.argv, db.databaseName, new Date());
   console.log(`สำรองข้อมูลฐาน "${db.databaseName}" ไปที่ ${outDir}`);
-
   const manifest = await dumpDatabase(db, outDir, { log: (line) => console.log(line) });
-
   console.log(`\nเสร็จแล้ว — ${manifest.collections.length} collection รวม ${manifest.totalDocuments} รายการ`);
-  console.log('ตรวจสอบว่ากู้คืนได้จริงด้วย:');
+
+  /**
+   * Pruned AFTER the new backup is complete and its manifest is on disk, never
+   * before. Deleting first would mean a run that fails halfway has thrown away
+   * yesterday's copy to make room for one that does not exist.
+   */
+  if (keep !== null) {
+    console.log(`\nเก็บย้อนหลัง ${keep} ชุด`);
+    prune(baseDir, db.databaseName, keep, (line) => console.log(line));
+  }
+
+  console.log('\nตรวจสอบว่ากู้คืนได้จริงด้วย:');
   console.log(`  npm run restore -- "${outDir}" --to mongodb://127.0.0.1:27017/primus_ot_restoretest`);
 
   await disconnect();
