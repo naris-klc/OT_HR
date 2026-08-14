@@ -1,0 +1,19 @@
+# scripts/backup.sh must keep LF endings wherever it is checked out.
+#
+# `core.autocrlf` is true on the machine this is developed on, so the working
+# copy of every text file is CRLF locally. That is harmless for JavaScript and
+# fatal for a shell script: `#!/bin/sh\r` is read by the kernel as an
+# interpreter literally named "sh\r", and the whole file fails with
+# "bad interpreter: No such file or directory" — a message that names the shebang
+# and says nothing about the invisible character in it.
+#
+# The blob committed here is already LF, so a clone on Linux is fine today. This
+# is for the other route: somebody copying the file out of a Windows working
+# tree onto a server, which is exactly how a wrapper written for a future Linux
+# host would get there.
+*.sh text eol=lf
+
+# The same reasoning in reverse. PowerShell tolerates LF, but a .ps1 opened in
+# an editor that does not is the sort of thing that gets "fixed" by hand at the
+# wrong moment.
+*.ps1 text eol=crlf
