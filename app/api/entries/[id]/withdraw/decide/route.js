@@ -1,7 +1,7 @@
 import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
-import { POPULATE } from '@/lib/entries.js';
+import { POPULATE, DECIDE_POPULATE } from '@/lib/entries.js';
 import { withdrawDecisionPermission, withdrawalDecision } from '@/lib/withdrawal.js';
 import { historyExtra } from '@/lib/delegation.js';
 import { heldBy, today } from '@/lib/delegationQuery.js';
@@ -27,7 +27,7 @@ export const POST = route(async (req, { params }) => {
   const user = requireRole(await requireAuth(req), 'manager', 'hr', 'admin');
   const payload = await body(req);
 
-  const entry = await OtEntry.findById(params.id).populate('department');
+  const entry = await OtEntry.findById(params.id).populate(DECIDE_POPULATE);
   if (!entry) return fail('ไม่พบรายการ', 404);
 
   const granted = Boolean(payload?.granted);

@@ -4,6 +4,7 @@ import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
   codeChangePermission, dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
+  signingScope,
 } from '@/lib/employees.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
@@ -19,7 +20,7 @@ export const PATCH = route(async (req, { params }) => {
   if (!employee) return fail('ไม่พบพนักงาน', 404);
 
   const {
-    code, name, email, position, birthDate, department, role, company, active,
+    code, name, email, position, birthDate, department, role, company, approvesCompany, active,
     resetPassword, password, reason,
   } = await body(req);
 
@@ -96,6 +97,7 @@ export const PATCH = route(async (req, { params }) => {
     department: employee.department,
     role: employee.role,
     company: employee.company,
+    approvesCompany: employee.approvesCompany,
     active: employee.active,
   };
 
@@ -136,6 +138,17 @@ export const PATCH = route(async (req, { params }) => {
     if (!COMPANY_KEYS.includes(company)) return fail('บริษัทไม่ถูกต้อง', 400);
     employee.company = company;
   }
+  /**
+   * Who this หัวหน้า may sign for. `undefined` is "not mentioned" and null is
+   * "ทุกบริษัท" — two different things, so this cannot use the `!= null` guard
+   * every field above it uses, or clearing the scope back to ทุกบริษัท would be
+   * indistinguishable from not sending the field at all.
+   */
+  if (approvesCompany !== undefined) {
+    const signs = signingScope(approvesCompany);
+    if (!signs.ok) return fail(signs.error, 400);
+    employee.approvesCompany = signs.value;
+  }
   if (active != null) employee.active = Boolean(active);
 
   /**
@@ -174,6 +187,7 @@ export const PATCH = route(async (req, { params }) => {
     department: employee.department,
     role: employee.role,
     company: employee.company,
+    approvesCompany: employee.approvesCompany,
     active: employee.active,
   });
   const birthDateMoved = changes.some((c) => c.field === 'birthDate');

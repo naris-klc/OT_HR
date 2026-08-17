@@ -7,7 +7,8 @@ import { summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { PERIOD_RE, latestPerSession, editTally, reportStatuses } from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
-import { isHrVerifiedBirthday } from '@/lib/entries.js';
+import { isHrVerifiedBirthday, signsForCompany } from '@/lib/entries.js';
+import { companyOf } from '@/src/config/companies.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 
 /** HR's monthly review: every employee's totals for a period, in one table. */
@@ -38,10 +39,26 @@ export const GET = route(async (req, { params }) => {
    * difference is that one of them is right and the other is a gap in the
    * roster, and only HR can close it.
    */
-  const all = await OtEntry.find(filter)
-    .populate('employee', 'code name position birthDate')
+  const found = await OtEntry.find(filter)
+    .populate('employee', 'code name position birthDate company')
     .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours')
     .lean();
+
+  /**
+   * And the หัวหน้า's own half of it, where their signature is scoped to one
+   * payroll — the same rule the queue and the ลูกทีม picker use, applied to a
+   * report so that the rows on it are the rows this person is answerable for.
+   *
+   * Filtered in JavaScript over the populated employee rather than as a clause
+   * on the query, for the reason `companyRosters` resolves the same sets that
+   * way: nothing on an entry records a company, and a row whose `company` was
+   * never filled in is still on a payroll that only the code prefix knows.
+   *
+   * ฝ่ายบุคคล and Admin are untouched — they read the whole month either way.
+   */
+  const all = user.role === 'manager' && user.approvesCompany
+    ? found.filter((e) => signsForCompany(user, companyOf(e.employee)))
+    : found;
 
   // A session filed twice is one session. Only the latest filing counts, here
   // and on the printed form, so a total on this screen can be checked against

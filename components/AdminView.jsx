@@ -15,6 +15,7 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // the column showing which payroll somebody is on cannot disagree with the file
 // they end up in.
 import { companyOf } from '@/src/config/companies.js';
+import { viewerId } from '@/lib/entries.js';
 // Pure too — no imports of its own at all, so the diff the settings page draws
 // is computed by the same function the replay and the version history use.
 import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
@@ -76,6 +77,96 @@ export default function AdminView({ user, initialSection }) {
 }
 
 // ── departments ─────────────────────────────────────────────────────────────
+
+/**
+ * WHO SIGNS FOR THIS แผนก — read from the roster, not from the department row.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHAT WAS HERE BEFORE, AND WHY IT HAD TO GO
+ *
+ * A single-select dropdown writing `Department.manager`. Two things were wrong
+ * with it and only the second is new:
+ *
+ *   · NOTHING READ THE FIELD. Not the approve route, not the queue, not the
+ *     บันทึกแทน rule — every one of them decides from the หัวหน้า's OWN
+ *     `department`, and always has (see `isDepartmentManager`). So HR could pick
+ *     a name here, watch it save, and change nothing at all. A control that
+ *     appears to grant authority and does not is worse than no control: it
+ *     teaches people that this screen cannot be trusted to mean what it shows.
+ *   · IT COULD ONLY HOLD ONE NAME. A department holding both payrolls can now
+ *     have one หัวหน้า per company (`approvesCompany`), so the truth stopped
+ *     fitting in the shape — แผนกผลิต genuinely has two, and this cell could
+ *     print one of them.
+ *
+ * What replaces it reads the same facts the server decides from: everybody in
+ * this department whose role is หัวหน้างาน, and the company scope on each. It
+ * therefore cannot say something the อนุมัติ button would contradict.
+ *
+ * NOTHING IS EDITABLE HERE. This cell reports; it does not decide.
+ *
+ * เซ็นให้บริษัท is briefly editable from this table and no longer is, by HR's
+ * own call: every fact behind it belongs to a PERSON, so every edit to it
+ * happens in one place — ทะเบียนพนักงาน → แก้ไข → สิทธิ์และสถานะ. One door means
+ * one form, one confirmation and one audit record, and nobody has to learn that
+ * two screens write the same field.
+ *
+ * The same reasoning already governs the rest of it: adding or removing a
+ * หัวหน้า means changing a person's แผนก or their บทบาท, which moves their own
+ * requests, their queue and their ceiling with it.
+ *
+ *   ทะเบียน decides · แผนก reports what was decided
+ *
+ * THE WARNING IS THE POINT OF THE WHOLE CELL. A payroll with people in this
+ * department and no หัวหน้า covering it is a queue nobody can clear: §6 wants two
+ * signatures and ฝ่ายบุคคล do not stand in for the first by outranking it, so
+ * those requests wait at รอหัวหน้า until somebody covers the team. Nothing else
+ * in the system says this out loud, and it is silent exactly when it matters —
+ * the moment a scope is narrowed, or a หัวหน้า leaves.
+ */
+function Heads({ department, people }) {
+  const staff = people.filter(
+    (p) => p.active !== false
+      && String(p.department?._id || p.department || '') === String(department._id),
+  );
+  const heads = staff.filter((p) => p.role === 'manager');
+
+  /**
+   * Which payrolls have somebody here who can FILE — `role: 'employee'`, which
+   * is what `maySubmitOt` allows (§2: a หัวหน้า does not file their own OT).
+   *
+   * Counted over filers rather than over everybody, or a department whose only
+   * เดมเทค person is the เดมเทค หัวหน้า would be flagged as uncovered while having
+   * no เดมเทค request that could ever arrive.
+   */
+  const payrolls = [...new Set(staff.filter((p) => p.role === 'employee').map(companyOf))];
+  const covered = (key) => heads.some((h) => !h.approvesCompany || h.approvesCompany === key);
+  const gaps = payrolls.filter((key) => !covered(key));
+
+  return (
+    <div>
+      {heads.length === 0 ? (
+        <div className="cell-sub">— ยังไม่มีหัวหน้า —</div>
+      ) : heads.map((h) => (
+        <div key={h._id} style={{ marginBottom: 4 }}>
+          {h.name}
+          {/* The scope on its own line, and ONLY when it is set: "ทุกบริษัท" under
+              every name on a roster nobody has split is four rows of noise
+              saying nothing changed. A line appearing is the signal. */}
+          {h.approvesCompany && (
+            <div className="cell-sub">เซ็นให้เฉพาะ{companyName(h.approvesCompany)}</div>
+          )}
+        </div>
+      ))}
+
+      {gaps.length > 0 && (
+        <div className="cell-sub">
+          ⚠ พนักงาน{gaps.map(companyName).join(' และ ')}ในแผนกนี้ยังไม่มีหัวหน้าคนใดเซ็นให้ได้
+          {' '}— ใบที่ยื่นจะค้างที่ “รอหัวหน้า”
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Departments() {
   const [rows, setRows] = useState([]);
@@ -150,15 +241,7 @@ function Departments() {
                 <td>{d.code}</td>
                 <td>{d.nameTh || d.name}</td>
                 <td>
-                  <select
-                    value={d.manager?._id || ''}
-                    onChange={(e) => update(d._id, { manager: e.target.value })}
-                  >
-                    <option value="">— ไม่กำหนด —</option>
-                    {people.filter((p) => p.role === 'manager').map((p) => (
-                      <option key={p._id} value={p._id}>{p.name} ({p.code})</option>
-                    ))}
-                  </select>
+                  <Heads department={d} people={people} />
                 </td>
                 <td className="num">{d.headcount}</td>
                 {/* Blank is no ceiling; 0 is a ceiling of zero. The field
@@ -215,9 +298,11 @@ const CAP_TIP = 'ไม่บังคับ · เว้นว่างหม�
  * typed into. Both forms are now the same shape, so somebody who has added a
  * person has added a department.
  *
- * WHAT IS NOT HERE. หัวหน้างาน and สถานะ: a department is created active and
- * unmanaged, and both are set from the row in the table, which is where the
- * list of หัวหน้างาน to choose from already is.
+ * WHAT IS NOT HERE. หัวหน้างาน and สถานะ. สถานะ is set from the row in the
+ * table; หัวหน้างาน is not set anywhere on this screen at all — a department is
+ * headed by whoever's ทะเบียน row says they are a หัวหน้างาน in it, so a new
+ * department is unheaded until somebody is put in it from the พนักงาน screen.
+ * The row shows who that is, and says so when the answer is nobody.
  */
 function AddDepartment({ onClose, onSave }) {
   const [form, setForm] = useState(BLANK_DEPT);
@@ -314,6 +399,32 @@ const ROLE_OPTIONS = [
   { value: 'admin', label: 'ผู้ดูแลระบบ' },
 ];
 
+const SIGNS_FOR_TIP = 'หัวหน้าเซ็นให้เฉพาะแผนกของตนอยู่แล้ว — ช่องนี้แคบลงอีกชั้นว่าเซ็นให้คนของ'
+  + 'บริษัทไหนในแผนกนั้น · เว้นไว้ = ทุกบริษัท ซึ่งเป็นพฤติกรรมเดิมของระบบ '
+  + '· ตั้งค่าเมื่อแผนกหนึ่งมีหัวหน้าสองคนแยกกันตามนิติบุคคล';
+
+/**
+ * เซ็นให้บริษัท — the control, written once for the two forms that hold it.
+ *
+ * Rendered only for a หัวหน้างาน, because it is read only for one: on anybody
+ * else it is a setting that changes nothing, and a form that offers those
+ * teaches people the screen cannot be trusted to mean what it shows. The value
+ * is not cleared when a role moves away from หัวหน้างาน — see the model — so a
+ * demotion and a re-appointment leave the same answer in place.
+ */
+function SignsForField({ value, onChange, disabled }) {
+  return (
+    <Field label="เซ็นให้บริษัท" tip={SIGNS_FOR_TIP}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
+        <option value="">ทุกบริษัท</option>
+        {COMPANIES.map((c) => (
+          <option key={c.key} value={c.key}>เฉพาะ{c.label}</option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
 const BLANK = {
   // `email` is on the model and on the create route, and was missing from this
   // form alone — so a person added one at a time arrived without one and had to
@@ -321,6 +432,8 @@ const BLANK = {
   // CSV arrived complete.
   code: '', name: '', email: '', position: '', birthDate: '', department: '', role: 'employee',
   company: '',
+  /** ทุกบริษัท. Only read when the role is หัวหน้างาน — see SIGNS_FOR_TIP. */
+  approvesCompany: '',
   /**
    * The first password, and how it is being decided.
    *
@@ -918,7 +1031,15 @@ function Employees({ user }) {
                     : <span style={{ color: 'var(--muted)' }}>— ยังไม่มี —</span>}
                 </td>
                 <td>{p.department ? (p.department.nameTh || p.department.name) : '—'}</td>
-                <td>{ROLE_LABEL[p.role] || p.role}</td>
+                {/* The scope under the role rather than in a column of its own:
+                    it is meaningful on four rows out of a roster, and a tenth
+                    column would narrow the nine that are meaningful on all. */}
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {ROLE_LABEL[p.role] || p.role}
+                  {p.role === 'manager' && p.approvesCompany && (
+                    <div className="cell-sub">เซ็นให้ {companyName(p.approvesCompany)}</div>
+                  )}
+                </td>
                 {/* An unset company is not "no company" — the sheet falls back
                     to the code prefix and files them somewhere regardless. The
                     column says which, and that it was guessed, because that is
@@ -1299,6 +1420,13 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
                 })}
               </select>
             </Field>
+            {form.role === 'manager' && (
+              <SignsForField
+                value={form.approvesCompany}
+                onChange={(v) => set({ approvesCompany: v })}
+                disabled={busy}
+              />
+            )}
           </div>
         </section>
 
@@ -1365,6 +1493,7 @@ const formOf = (employee) => ({
   department: employee.department?._id ? String(employee.department._id) : '',
   role: employee.role || 'employee',
   company: employee.company || '',
+  approvesCompany: employee.approvesCompany || '',
   active: employee.active !== false,
 });
 
@@ -1378,6 +1507,12 @@ const formOf = (employee) => ({
  * since been deleted still has to print as something a person can search for.
  */
 function showValue(field, value, depts = []) {
+  /**
+   * Before the blank check, not after it: unset here is not "missing", it is
+   * ทุกบริษัท — the widest scope there is. Printing it as — would read as a
+   * หัวหน้า who signs for nobody, which is the opposite of what it means.
+   */
+  if (field === 'approvesCompany') return value ? companyName(value) : 'ทุกบริษัท';
   if (value == null || value === '') return '—';
   if (field === 'department') return nameOfDept(depts, value) || value;
   if (field === 'company') return companyName(value);
@@ -1440,7 +1575,26 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
    * both servers. `dropsAnAdmin` is imported rather than re-expressed so the
    * screen and the refusal cannot disagree about what counts as dropping one.
    */
-  const isSelf = String(user?._id ?? '') === String(employee._id ?? '');
+  /**
+   * IS THIS MY OWN ROW? Through `viewerId`, because the two sides of this
+   * comparison do not carry the same field name.
+   *
+   * It read `user?._id` and the logged-in user arrives from `publicUser` with
+   * `id` — no underscore, deliberately, since that is the shape the client has
+   * consumed since the Express server. So the left side was ALWAYS the empty
+   * string, `isSelf` was always false, and every self-lock below it was dead:
+   * ฝ่ายบุคคล opening their own row got a live ปิดใช้งาน dropdown and a save
+   * button, and the sentence explaining why they may not do it never appeared.
+   *
+   * The server refused the save (`selfEditPermission`, and the account was never
+   * actually at risk) — which is exactly what made this hard to notice: the only
+   * symptom was a control that works right up to a 403.
+   *
+   * `viewerId` exists for this: mongoose documents first, the client's `id`
+   * second. It is the same helper the approval rules compare viewers with, so
+   * this screen and those rules cannot disagree about who somebody is.
+   */
+  const isSelf = viewerId(user) === viewerId(employee);
   const isLastAdmin = otherActiveAdmins === 0
     && dropsAnAdmin(employee, { role: 'employee', active: false });
   // Read off the shared list rather than spelled out again — the field a future
@@ -1770,6 +1924,13 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
                   })}
                 </select>
               </Field>
+              {form.role === 'manager' && (
+                <SignsForField
+                  value={form.approvesCompany}
+                  onChange={(v) => set({ approvesCompany: v })}
+                  disabled={disabled()}
+                />
+              )}
               <Field
                 label="สถานะการใช้งาน"
                 note={selfLocked('active') ? LOCK_SHORT.selfActive

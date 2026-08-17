@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   approvalPermission, approvalRecord, delegationPermission, historyExtra, isOwnFiling,
-  delegatedDepartments, isLive, overlaps, publicDelegation, receivedOn,
+  delegatedClaims, delegatedDepartments, isLive, overlaps, publicDelegation, receivedOn,
   scopeWidening, wouldCycle,
 } from '../lib/delegation.js';
 import { scopeFor } from '../lib/entries.js';
@@ -27,7 +27,9 @@ const B = { _id: 'mgr-b', name: 'สมหญิง', role: 'manager', departmen
 const C = { _id: 'mgr-c', name: 'สมปอง', role: 'manager', department: SALES };
 const HR = { _id: 'hr-1', name: 'ฝ่ายบุคคล', role: 'hr', department: ENG };
 const ADMIN = { _id: 'adm-1', name: 'แอดมิน', role: 'admin' };
-const WORKER = { _id: 'emp-1', name: 'พนักงาน', role: 'employee', department: ENG };
+// `company` on every person a request can be FOR: the permission rules read
+// which payroll a row belongs to, and refuse to guess when nobody says.
+const WORKER = { _id: 'emp-1', name: 'พนักงาน', role: 'employee', department: ENG, company: 'primus' };
 
 /** A → B for the week of 5–12 August. */
 const AtoB = {
@@ -450,8 +452,10 @@ test('what the expiry does change is the queue, from that day on', () => {
 
 test('a stand-in sees their own team and the one they are covering, both', () => {
   const held = receivedOn([AtoB], B, '2026-08-06');
-  const extra = delegatedDepartments(held, B, '2026-08-06');
-  assert.deepEqual(extra, [ENG]);
+  const extra = delegatedClaims(held, B, '2026-08-06');
+  assert.deepEqual(extra, [{ department: ENG, company: null }]);
+  // The ids alongside, for the chip on the row and the count of covered teams.
+  assert.deepEqual(delegatedDepartments(held, B, '2026-08-06'), [ENG]);
 
   assert.deepEqual(scopeFor(B, extra), { department: { $in: [QA, ENG] } });
 });
@@ -464,8 +468,8 @@ test('with nothing delegated the scope is exactly what it always was', () => {
 test('standing in never narrows ฝ่ายบุคคล, who already see everything', () => {
   // Widening a scope that is not narrow would be narrowing it — the one way
   // this could go wrong, and it would go wrong silently.
-  assert.deepEqual(scopeFor(HR, [ENG, QA]), {});
-  assert.deepEqual(scopeFor(ADMIN, [ENG]), {});
+  assert.deepEqual(scopeFor(HR, [{ department: ENG }, { department: QA }]), {});
+  assert.deepEqual(scopeFor(ADMIN, [{ department: ENG }]), {});
 });
 
 /**

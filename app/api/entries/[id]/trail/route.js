@@ -1,7 +1,7 @@
 import OtEntry from '@/src/models/OtEntry.js';
 import { route, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { scopeFor } from '@/lib/entries.js';
+import { resolveScope } from '@/lib/delegationQuery.js';
 
 /** A request that re-files a request that re-files… stops somewhere. */
 const MAX_DEPTH = 20;
@@ -25,7 +25,9 @@ const MAX_DEPTH = 20;
  */
 export const GET = route(async (req, { params }) => {
   const user = await requireAuth(req);
-  const scope = scopeFor(user);
+  // Their own reach, not widened by anything they are standing in for — which
+  // is what this endpoint has always done.
+  const { own: scope } = await resolveScope(user);
 
   const head = await OtEntry.findOne({ _id: params.id, ...scope })
     .populate({ path: 'employee', select: 'code name' })

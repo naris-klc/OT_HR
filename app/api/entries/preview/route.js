@@ -4,6 +4,7 @@ import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, checkCap, loadContext } from '@/src/services/otService.js';
 import { pickSession, isDepartmentManager } from '@/lib/entries.js';
+import { companyOf } from '@/src/config/companies.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { birthdayInYear } from '@/src/lib/otEngine.js';
 import { absentKeys, filedKey } from '@/lib/birthdayCheck.js';
@@ -43,7 +44,7 @@ export const POST = route(async (req) => {
    */
   if (employee && !['hr', 'admin'].includes(user.role)
     && String(employee._id) !== String(user._id)
-    && !isDepartmentManager(user, employee.department)) {
+    && !isDepartmentManager(user, employee.department, companyOf(employee))) {
     return fail('ดูข้อมูลได้เฉพาะของตนเองหรือพนักงานในแผนกของตน', 403);
   }
 

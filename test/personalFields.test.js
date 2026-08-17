@@ -141,7 +141,10 @@ test('the endpoints that hand a roster to non-HR select no personal field at all
   // the delegation picker. It narrows with `.select()` before publicEmployee
   // ever sees the row, so a change to either alone still cannot leak.
   const code = readFileSync(join(ROOT, 'app/api/delegations/candidates/route.js'), 'utf8');
-  assert.match(code, /\.select\('code name role department'\)/);
+  // The exact projection, field for field. `approvesCompany` is on it because the
+  // form has to say which payroll a queue covers before somebody hands it over;
+  // it is a fact about an approver's authority, not about a person's private life.
+  assert.match(code, /\.select\('code name role department approvesCompany'\)/);
   for (const field of PERSONAL_FIELDS) {
     assert.doesNotMatch(code, new RegExp(`select\\([^)]*${field}`), `candidates selects ${field}`);
   }

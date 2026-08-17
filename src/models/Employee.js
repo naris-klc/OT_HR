@@ -56,6 +56,34 @@ const employeeSchema = new mongoose.Schema(
     // under Primus.
     company: { type: String, enum: COMPANY_KEYS, required: true },
 
+    /**
+     * WHICH COMPANY'S PEOPLE THIS หัวหน้า MAY SIGN FOR. Null — the default, and
+     * the state of every row until somebody says otherwise — is ทุกบริษัท: the
+     * behaviour this system had before the field existed.
+     *
+     * Read ONLY for role 'manager', and only alongside the department rule it
+     * narrows. A หัวหน้า signs for their own department, and — once this is set
+     * — only for the people in it whom this company pays. Two หัวหน้า can
+     * therefore share one แผนก and split it by payroll without the department
+     * itself being duplicated, which would split the ceiling and the
+     * สรุป OT แยกแผนก row along with it.
+     *
+     * Three arrangements, one field: nobody set means one หัวหน้า covers both
+     * payrolls, everybody set means each covers their own, and a mixture is
+     * what a company part-way through the change actually looks like.
+     *
+     * A department where no scope covers a company is a department whose people
+     * on that payroll cannot be signed for. Deliberately visible rather than
+     * papered over with a fallback: ผู้รับช่วงอนุมัติ already answers "somebody
+     * must cover this team today", it expires on its own, and it records whose
+     * authority was used.
+     *
+     * Left in place when somebody stops being a หัวหน้า, and inert while they
+     * are not one — the same value means the same thing if they are appointed
+     * again, and nothing else reads it.
+     */
+    approvesCompany: { type: String, enum: [...COMPANY_KEYS, null], default: null },
+
     passwordHash: { type: String, required: true, select: false },
 
     /**

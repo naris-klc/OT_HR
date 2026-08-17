@@ -4,6 +4,8 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
 import { latestPerSession, reportStatuses } from '@/lib/reports.js';
+import { companyOf } from '@/src/config/companies.js';
+import { signsForCompany } from '@/lib/entries.js';
 
 /**
  * §10 data export — for HR to hand to whoever runs payroll.
@@ -31,11 +33,27 @@ export const GET = route(async (req) => {
   if (user.role === 'manager') filter.department = user.department?._id;
   else if (q.department) filter.department = q.department;
 
-  const all = await OtEntry.find(filter)
-    .populate('employee', 'code name position')
+  const found = await OtEntry.find(filter)
+    .populate('employee', 'code name position company')
     .populate('department', 'code name nameTh')
     .sort({ 'employee.code': 1, workDate: 1 })
     .lean();
+
+  /**
+   * And the หัวหน้า's own half of it, where their signature is scoped to one
+   * payroll — the same rule the queue and the ลูกทีม picker use, applied to a
+   * report so that the rows on it are the rows this person is answerable for.
+   *
+   * Filtered in JavaScript over the populated employee rather than as a clause
+   * on the query, for the reason `companyRosters` resolves the same sets that
+   * way: nothing on an entry records a company, and a row whose `company` was
+   * never filled in is still on a payroll that only the code prefix knows.
+   *
+   * ฝ่ายบุคคล and Admin are untouched — they read the whole month either way.
+   */
+  const all = user.role === 'manager' && user.approvesCompany
+    ? found.filter((e) => signsForCompany(user, companyOf(e.employee)))
+    : found;
 
   // One row per session, not per filing. This file is a list rather than a
   // total, but it is a list somebody sums: leaving a superseded filing in it

@@ -3,13 +3,19 @@
  *
  * OT hours are recorded once, in one system, but the two companies file their
  * payroll separately, so every employee has to be attributable to one of them.
- * Nothing in the domain branches on company: the engine, the caps and
- * F-HR-027 are all identical either way. It is a reporting-time partition,
- * which is why it lives here as data rather than as a branch anywhere in
- * src/lib.
  *
- * One report consumes it — สรุป OT ส่งบัญชี, the monthly submission sheet in
- * lib/accounting.js — which is the whole reason the field is carried.
+ * NOTHING IN THE ARITHMETIC BRANCHES ON COMPANY. The engine, the caps and
+ * F-HR-027 are identical either way, which is why this lives here as data and
+ * why nothing in src/lib imports it.
+ *
+ * Two things outside the arithmetic read it:
+ *
+ *   · สรุป OT ส่งบัญชี, the monthly submission sheet (lib/accounting.js) — the
+ *     reporting-time partition this field was originally carried for;
+ *   · WHO MAY SIGN, where a หัวหน้า's `approvesCompany` is set — one แผนก, two
+ *     หัวหน้า, split by payroll (see `isDepartmentManager` in lib/entries.js).
+ *     Unset on every row until somebody says otherwise, and unset means ทุกบริษัท,
+ *     so a roster nobody has touched behaves exactly as it did before.
  *
  * `codePrefixes` exists only to seed the field on existing rows and to
  * pre-fill the Admin form — the stored `company` on the employee is the

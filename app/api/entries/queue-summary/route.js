@@ -1,16 +1,13 @@
 import OtEntry from '@/src/models/OtEntry.js';
 import { route, json } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { scopeFor } from '@/lib/entries.js';
-import { coveredDepartments } from '@/lib/delegationQuery.js';
-import { scopeWidening } from '@/lib/delegation.js';
+import { resolveScope } from '@/lib/delegationQuery.js';
 import { loadBirthdayQueue } from '@/lib/birthdayQueueQuery.js';
 
 /** Queue counts for the manager's daily review and HR's monthly review (§2). */
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
-  const covered = await coveredDepartments(user);
-  const scope = scopeFor(user, scopeWidening(user, covered));
+  const { scope, delegated: coveredScope, covered } = await resolveScope(user);
   const [pendingMgr, pendingHr, delegated, birthday] = await Promise.all([
     OtEntry.countDocuments({ ...scope, status: 'pending_mgr' }),
     OtEntry.countDocuments({ ...scope, status: 'pending_hr' }),
@@ -23,8 +20,8 @@ export const GET = route(async (req) => {
      * Zero for everybody not standing in, which is nearly everybody, and the
      * query is skipped entirely for them.
      */
-    covered.length
-      ? OtEntry.countDocuments({ department: { $in: covered }, status: 'pending_mgr' })
+    coveredScope
+      ? OtEntry.countDocuments({ ...coveredScope, status: 'pending_mgr' })
       : 0,
     /**
      * The second tab of the same screen.

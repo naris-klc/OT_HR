@@ -5,18 +5,17 @@ import {
   compute, applyComputation, checkCap, loadContext, birthDateOf,
 } from '@/src/services/otService.js';
 import {
-  POPULATE, scopeFor, pickSession, stampCap, editPermission, sameSession,
+  POPULATE, pickSession, stampCap, editPermission, sameSession,
   descriptionUnchanged,
 } from '@/lib/entries.js';
-import { coveredDepartments } from '@/lib/delegationQuery.js';
-import { scopeWidening } from '@/lib/delegation.js';
+import { resolveScope } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req, { params }) => {
   const user = await requireAuth(req);
-  const scope = scopeFor(user, scopeWidening(user, await coveredDepartments(user)));
+  const { scope } = await resolveScope(user);
   const entry = await OtEntry.findOne({ _id: params.id, ...scope }).populate(POPULATE);
   if (!entry) return fail('ไม่พบรายการ', 404);
   return json({ entry });

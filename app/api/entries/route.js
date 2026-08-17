@@ -10,8 +10,7 @@ import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
   capFor, takeCapped,
 } from '@/lib/entries.js';
-import { coveredDepartments } from '@/lib/delegationQuery.js';
-import { scopeWidening } from '@/lib/delegation.js';
+import { resolveScope } from '@/lib/delegationQuery.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 import { periodOf } from '@/lib/periodLock.js';
@@ -39,13 +38,15 @@ export const GET = route(async (req) => {
    * Empty when they are covering nothing, which is a real answer and not an
    * error: it is what the screen shows the day a window closes.
    */
-  const covered = await coveredDepartments(user);
+  const reach = await resolveScope(user);
   const q = scope === 'delegated'
-    ? { department: { $in: covered } }
+    // `{ department: null }` and not `{}` when nothing is covered: an empty
+    // filter on this screen would answer with the whole company.
+    ? { ...(reach.delegated ?? { department: null }) }
     // A stand-in reads the teams they are covering as well as their own. Their
-    // own is always in the list — a delegation adds a department and never
-    // swaps one out, so coming back early takes nothing away.
-    : { ...scopeFor(user, scopeWidening(user, covered)) };
+    // own is always in the list — a delegation adds a claim and never swaps one
+    // out, so coming back early takes nothing away.
+    : { ...reach.scope };
 
   if (status) q.status = { $in: String(status).split(',') };
   /**

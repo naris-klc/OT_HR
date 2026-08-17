@@ -1521,10 +1521,12 @@ description cannot become a spreadsheet formula.
 ## Two companies: Primus / Themtech
 
 The roster spans two legal entities, which file their payroll separately, so
-every employee carries a `company` — `primus` or `themtech`. **Exactly one
-thing reads it: สรุป OT ส่งบัญชี.** The engine, the caps, the approval chain,
-F-HR-027 and the two per-entry exports are identical either way — company is a
-reporting-time partition, not a rule.
+every employee carries a `company` — `primus` or `themtech`. **The arithmetic
+never reads it.** The engine, the caps, F-HR-027 and the two per-entry exports
+are identical either way.
+
+Two things do read it: **สรุป OT ส่งบัญชี**, which is what the field was carried
+for, and — only where somebody has set it — **who may sign a request**, below.
 
 **Assigning it.** Stated on the Admin screen or in the roster CSV's `company`
 column wins. Left blank, the code prefix decides: `PM…` → Primus, `THT…` →
@@ -1535,6 +1537,59 @@ import returns it as a warning and `npm run migrate:company` prints it by name.
 It is stored rather than derived on the fly. The prefix is a convention, not a
 rule, and the day the roster departs from it nobody should quietly change
 payroll.
+
+### เซ็นให้บริษัท — one แผนก, two หัวหน้า
+
+A department that holds people from both payrolls can be signed for by two
+หัวหน้า, one per company, **without the department being duplicated**. The field
+is `Employee.approvesCompany` on the หัวหน้า, and it narrows the rule that was
+already there rather than replacing it: their own department first, and then —
+if this is set — only the people in it whom that company pays.
+
+| `approvesCompany` | who they sign for |
+|---|---|
+| unset / null (**the default**) | everybody in their department, both payrolls |
+| `primus` | the ไพรมัส half of their department |
+| `themtech` | the เดมเทค half |
+
+**Unset is the state of every row until somebody changes one**, and unset is the
+behaviour this system had before the field existed — so the three arrangements
+(nobody split, everybody split, and the mixture a company part-way through the
+change actually has) are one field and no migration.
+
+**Why not a second department row.** `PM-PROD` / `THT-PROD` would work today
+with no code at all, and it splits two things that should not split: the
+department's ceiling becomes two ceilings, and สรุป OT แยกแผนก — which exists to
+count the people who sit in one room whatever entity pays them — reports the room
+as two rows. This keeps the department whole and splits only the signature.
+
+**Why on the person and not in a mapping table.** `Department.manager` already
+exists and is read by nothing (see the note on `isDepartmentManager`); a third
+place recording "who approves here" would be a third answer to drift from the
+other two. The rule is decided where it has always been decided — the หัวหน้า's
+own row — so there is one source and no join to keep in step.
+
+**A stand-in exercises the giver's scope, not their own.** This is the whole of
+what makes cover work: when the ไพรมัส หัวหน้า goes on leave and hands their
+queue to the เดมเทค หัวหน้า, that person signs the ไพรมัส half **in the giver's
+name** for the length of the window, and their own half as themselves. Read the
+other way round — the holder's scope applied to a borrowed queue — the delegation
+would grant nothing and the team would have nobody for a fortnight. The
+delegation screen prints the scope being handed over for the same reason.
+
+**A department nobody's scope covers has nobody who can sign.** Deliberately
+visible: §6 requires two signatures and ฝ่ายบุคคล do not stand in for the first
+one by outranking it, so those requests wait at `pending_mgr` until somebody
+covers the team. The answer is a **ผู้รับช่วง**, which expires on its own and
+records whose authority was used — not a silent fallback in the code.
+
+**The queue is built from the same claims the button is.** A row that a reviewer
+cannot sign must not be in their queue: nothing on an entry records a company (see
+below — and that is on purpose), so a scoped claim becomes `{ department, employee:
+{ $in: … } }` over the people that payroll pays, resolved through `companyOf` in
+JavaScript rather than as a mongo filter, because a row whose `company` was never
+filled in is still on a payroll and a query cannot see that. With nobody scoped
+the query is byte-for-byte the one it always was.
 
 ### แผนก is snapshotted onto the entry · บริษัท is not — and that is why one edit is retroactive and the other is not
 

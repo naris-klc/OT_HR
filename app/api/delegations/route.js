@@ -5,7 +5,10 @@ import { requireAuth } from '@/lib/session.js';
 import { delegationPermission, publicDelegation } from '@/lib/delegation.js';
 import { today } from '@/lib/delegationQuery.js';
 
-const PERSON = 'code name role department';
+// `approvesCompany` because `publicDelegation` reports it: a card that says
+// "แผนกวิศวกรรม" about a queue narrowed to one payroll is telling the reader
+// something wider than what was handed over.
+const PERSON = 'code name role department approvesCompany';
 
 /**
  * The delegations this person may see.

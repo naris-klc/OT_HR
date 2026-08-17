@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import {
   HR_ASSIGNABLE_ROLES, SELF_LOCKED_FIELDS, dropsAnAdmin, lastAdminPermission, selfEditPermission,
 } from '../lib/employees.js';
+import { viewerId } from '../lib/entries.js';
 
 /**
  * NOBODY EDITS THEMSELVES OUT, AND THE SYSTEM ALWAYS KEEPS ONE WAY BACK IN.
@@ -179,6 +180,37 @@ test('the floors are read before the document is mutated', () => {
   const firstWrite = code.search(/employee\.\w+ = /);
   assert.ok(checked > 0 && firstWrite > 0);
   assert.ok(checked < firstWrite, 'selfEditPermission ถูกเรียกหลังเริ่มเขียนค่าลงเอกสารแล้ว');
+});
+
+test('the dialog knows which row is the viewer’s own', () => {
+  /**
+   * THE PLUMBING WAS RIGHT AND THE WATER NEVER ARRIVED.
+   *
+   * The test below has always pinned that the dialog greys what the server
+   * refuses — `selfLocked('active')`, `disabled={disabled(activeLocked)}`, the
+   * reason underneath. All of it was wired correctly and none of it ever fired,
+   * because `isSelf` compared `user._id` against the row while the logged-in
+   * user arrives from `publicUser` carrying `id`. Always false, so ฝ่ายบุคคล
+   * could pick ปิดใช้งาน on their own account and press save; only the server's
+   * 403 stopped it.
+   *
+   * So the identity comparison is pinned on its own, one level below the wiring:
+   * it must go through `viewerId`, which reads both shapes and is what the
+   * approval rules compare viewers with.
+   */
+  const screen = read('components/AdminView.jsx');
+  assert.match(screen, /const isSelf = viewerId\(user\) === viewerId\(employee\)/);
+  assert.doesNotMatch(
+    screen,
+    /user\??\._id/,
+    'the client user has no _id — comparing it silently disables every self-lock',
+  );
+
+  // And the shape the client is actually handed, so the two cannot drift apart
+  // without one of these two lines failing.
+  assert.match(read('lib/session.js'), /export function publicUser[\s\S]{0,120}id: String\(user\._id\)/);
+  assert.equal(viewerId({ id: 'x' }), 'x', 'viewerId must read the client shape');
+  assert.equal(viewerId({ _id: 'x' }), 'x', 'and the mongoose one');
 });
 
 test('the dialog greys exactly the fields the server refuses', () => {

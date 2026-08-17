@@ -29,7 +29,9 @@ export const GET = route(async (req) => {
     active: true,
     role: { $in: [...new Set([...DELEGATE_ROLES, 'manager'])] },
   })
-    .select('code name role department')
+    // `approvesCompany` so the form can state what is being handed over rather
+    // than implying the whole department — see components/Delegation.jsx.
+    .select('code name role department approvesCompany')
     .populate('department', 'code name nameTh')
     .sort({ code: 1 })
     .lean();

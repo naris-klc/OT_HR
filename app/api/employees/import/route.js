@@ -106,6 +106,7 @@ export const POST = route(async (req) => {
     department: e.department,
     role: e.role,
     company: e.company,
+    approvesCompany: e.approvesCompany,
     active: e.active,
   });
 

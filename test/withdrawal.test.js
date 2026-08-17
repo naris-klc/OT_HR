@@ -18,8 +18,10 @@ import { cancelPermission } from '../lib/entries.js';
  * Run with: npm test
  */
 
-const EMP = { _id: 'e1', name: 'สมชาย', role: 'employee', department: 'd1' };
-const OTHER = { _id: 'e2', name: 'สมหญิง', role: 'employee', department: 'd1' };
+// `company` on both: withdrawDecisionPermission resolves which payroll a row
+// belongs to before deciding whose row it is, and refuses to guess.
+const EMP = { _id: 'e1', name: 'สมชาย', role: 'employee', department: 'd1', company: 'primus' };
+const OTHER = { _id: 'e2', name: 'สมหญิง', role: 'employee', department: 'd1', company: 'primus' };
 const MGR = { _id: 'm1', name: 'หัวหน้าเอ', role: 'manager', department: 'd1' };
 const MGR_OTHER = { _id: 'm2', name: 'หัวหน้าบี', role: 'manager', department: 'd2' };
 const HR = { _id: 'h1', name: 'ฝ่ายบุคคล', role: 'hr' };
@@ -27,7 +29,8 @@ const HR = { _id: 'h1', name: 'ฝ่ายบุคคล', role: 'hr' };
 /** An entry the manager has signed — the first case that needs asking. */
 const approvedEntry = (over = {}) => ({
   _id: 'x1',
-  employee: 'e1',
+  // The document, not a bare id — see the company note on EMP above.
+  employee: EMP,
   department: 'd1',
   status: 'approved',
   managerDecision: { by: 'm1', at: new Date('2026-08-06T02:00:00Z') },

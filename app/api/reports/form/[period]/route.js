@@ -7,6 +7,8 @@ import {
   BUCKETS, BUCKET_LABEL_TH, summariseEntries, hrSummary, capUsage, makeIsHoliday,
 } from '@/src/lib/otEngine.js';
 import { loadHolidaySet } from '@/src/services/otService.js';
+import { companyOf } from '@/src/config/companies.js';
+import { signsForCompany } from '@/lib/entries.js';
 import {
   PERIOD_RE, actingNotes, previousPeriod, thaiMonth, min, max, latestPerSession,
   formDayTypes, reportStatuses,
@@ -30,8 +32,14 @@ export const GET = route(async (req, { params }) => {
   const employee = await Employee.findById(employeeId).populate('department');
   if (!employee) return fail('ไม่พบพนักงาน', 404);
 
+  /**
+   * Their own department, and their own half of it where their signature is
+   * scoped to one payroll. This is the sheet a หัวหน้า signs; one belonging to
+   * somebody they cannot sign for is not theirs to print.
+   */
   if (user.role === 'manager'
-    && String(employee.department?._id) !== String(user.department?._id)) {
+    && (String(employee.department?._id) !== String(user.department?._id)
+      || !signsForCompany(user, companyOf(employee)))) {
     return fail('ดูได้เฉพาะพนักงานในแผนกของตน', 403);
   }
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
 import { Alert, Empty, Field, Modal } from './common.jsx';
+import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
 
 /**
@@ -124,7 +125,12 @@ export default function Delegation({ user, scope = 'mine' }) {
                   <td><StateChip state={d.state} /></td>
                   <td>
                     {d.from?.name || '—'}
-                    <div className="cell-sub">{d.from?.code}</div>
+                    <div className="cell-sub">
+                      {d.from?.code}
+                      {d.from?.approvesCompany
+                        ? ` · เฉพาะ${companyLabel(d.from.approvesCompany)}`
+                        : ''}
+                    </div>
                   </td>
                   <td>
                     {d.to?.name || '—'}
@@ -203,6 +209,41 @@ const BLANK_DELEGATION = { from: '', to: '', fromDate: '', toDate: '', reason: '
  * behind: หัวหน้างานคนนี้มีผู้รับช่วงอยู่แล้วในช่วงวันที่นี้ is a message about
  * the dates in the boxes, and it is no use next to a form that has closed.
  */
+/**
+ * WHAT IS BEING HANDED OVER, in words, before anybody presses บันทึก.
+ *
+ * A delegation is named after a PERSON — "somebody covers คุณวิชัย's queue" —
+ * and for as long as a หัวหน้า covered their whole department those two readings
+ * were the same thing. They are not the same once a signature can be scoped to
+ * one payroll: the person picking a stand-in believes they have handed over
+ * แผนกวิศวกรรม and has handed over half of it, and the half that was not covered
+ * is a queue nobody is watching for the length of the leave.
+ *
+ * So the sentence is drawn from the granter's OWN scope, which is the same fact
+ * `delegatedClaims` builds the borrowed queue from — one source, so the promise
+ * on the screen and the rows the server will accept cannot come apart.
+ */
+function Handover({ granter, receiver }) {
+  if (!granter) return null;
+  const team = granter.department?.nameTh || granter.department?.name || 'แผนกของหัวหน้าคนนี้';
+  const scope = granter.approvesCompany
+    ? `เฉพาะพนักงาน${companyLabel(granter.approvesCompany)}`
+    : 'พนักงานทุกบริษัท';
+
+  return (
+    <div className="hint" style={{ marginTop: 4 }}>
+      สิทธิ์ที่กำลังมอบ: <strong>{team} · {scope}</strong>
+      {receiver ? <> ให้ {receiver.name}</> : null}
+      {granter.approvesCompany ? (
+        <div style={{ marginTop: 4 }}>
+          หัวหน้าคนนี้เซ็นให้เฉพาะ{companyLabel(granter.approvesCompany)} ผู้รับช่วงจึงได้เท่านั้นด้วย
+          {' '}— คนของอีกบริษัทในแผนกเดียวกันไม่ได้รวมอยู่ในนี้
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function DelegationForm({ user, all, onClose, onSaved }) {
   const [pool, setPool] = useState({ managers: [], candidates: [] });
   const [form, setForm] = useState(BLANK_DELEGATION);
@@ -227,6 +268,16 @@ function DelegationForm({ user, all, onClose, onSaved }) {
   // Nobody stands in for themselves — taken off the list rather than left in
   // to be refused after the dates have been typed.
   const candidates = pool.candidates.filter((p) => String(p._id) !== String(granter));
+
+  /**
+   * The granter as the picker knows them — department and signing scope.
+   *
+   * Read off `pool.managers` rather than off `user`, so both modes of this form
+   * get the answer from one place: ฝ่ายบุคคล picks a หัวหน้า from that list, and
+   * a หัวหน้า setting up their own cover is in it too.
+   */
+  const granterInfo = managers.find((p) => String(p._id) === String(granter)) || null;
+  const receiverInfo = pool.candidates.find((p) => String(p._id) === String(form.to)) || null;
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const ready = form.to && form.fromDate && form.toDate && (!all || form.from);
@@ -293,11 +344,15 @@ function DelegationForm({ user, all, onClose, onSaved }) {
                 {candidates.map((p) => (
                   <option key={p._id} value={p._id}>
                     {p.name} · {ROLE[p.role]} · {p.department?.nameTh || p.department?.name || '—'}
+                    {p.approvesCompany ? ` · เซ็นให้${companyLabel(p.approvesCompany)}` : ''}
                   </option>
                 ))}
               </select>
             </Field>
           </div>
+          {/* Out of the grid and full width: it is a sentence, and a sentence in
+              a 1fr column wraps four times. */}
+          <Handover granter={granterInfo} receiver={receiverInfo} />
         </section>
 
         {/*

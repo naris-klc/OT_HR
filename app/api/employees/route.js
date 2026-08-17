@@ -1,8 +1,10 @@
 import Employee, { ROLES } from '@/src/models/Employee.js';
-import { COMPANY_KEYS } from '@/src/config/companies.js';
+import { COMPANY_KEYS, companyOf } from '@/src/config/companies.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { publicEmployee, rosterPermission, chosenPasswordPermission } from '@/lib/employees.js';
+import {
+  publicEmployee, rosterPermission, chosenPasswordPermission, signingScope,
+} from '@/lib/employees.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
@@ -19,10 +21,33 @@ export const GET = route(async (req) => {
   if (q.company) filter.company = q.company;
   if (!q.all) filter.active = true;
 
-  const employees = await Employee.find(filter)
+  const found = await Employee.find(filter)
     .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours')
     .sort({ code: 1 })
     .lean();
+
+  /**
+   * A หัวหน้า whose signature is scoped to one payroll gets that half of their
+   * department, not all of it.
+   *
+   * THE LIST AND THE BUTTONS HAVE TO AGREE. One screen consumes this as a
+   * manager: the ลูกทีม picker in บันทึก OT แทน. `proxyPermission` refuses a
+   * target outside the scope, so a picker that still offered those names would
+   * be a list where choosing certain rows answers 403 — the failure this system
+   * has already shipped once, on HR's own birthday queue.
+   *
+   * Filtered here through `companyOf` rather than as a clause on the query, for
+   * the reason lib/delegationQuery.js resolves the same sets the same way: a row
+   * whose `company` was never filled in is still on a payroll — the code prefix
+   * says which — and a mongo filter cannot see that.
+   *
+   * ฝ่ายบุคคล and Admin are untouched. Their scope is the whole roster and the
+   * `?company=` filter above is theirs to ask for.
+   */
+  const employees = user.role === 'manager' && user.approvesCompany
+    ? found.filter((e) => companyOf(e) === user.approvesCompany)
+    : found;
+
   // `.lean()` hands back the whole document, birthDate included. A manager
   // listing their department must not receive their team's dates of birth.
   return json({ employees: employees.map((e) => publicEmployee(e, user)) });
@@ -30,7 +55,9 @@ export const GET = route(async (req) => {
 
 export const POST = route(async (req) => {
   const actor = await requireAuth(req);
-  const { code, name, email, position, birthDate, department, role, company, password } = await body(req);
+  const {
+    code, name, email, position, birthDate, department, role, company, approvesCompany, password,
+  } = await body(req);
 
   if (!code || !name || !department) {
     return fail('ต้องระบุรหัสพนักงาน ชื่อ-สกุล และแผนก', 400);
@@ -71,11 +98,20 @@ export const POST = route(async (req) => {
     if (!chosenOk.ok) return fail(chosenOk.error, chosenOk.status);
   }
 
+  /**
+   * Blank means ทุกบริษัท and is stored as null, not as ''. The form sends what
+   * is in the box, and an empty string would fail the enum — see the same
+   * reading of birthDate two lines down.
+   */
+  const signs = signingScope(approvesCompany);
+  if (!signs.ok) return fail(signs.error, 400);
+
   // company left out on purpose falls to the model's pre-validate hook, which
   // reads it off the code prefix.
   const employee = new Employee({
     code, name, email: email || undefined, position, department, role: role || 'employee',
     company: company || undefined,
+    approvesCompany: signs.value,
     // Optional. An empty string must become undefined, not '', or the schema's
     // YYYY-MM-DD match rejects the whole save.
     birthDate: birthDate || undefined,
@@ -114,6 +150,7 @@ export const POST = route(async (req) => {
       department: employee.department,
       role: employee.role,
       company: employee.company,
+      approvesCompany: employee.approvesCompany,
       active: employee.active,
     }),
     actor,
