@@ -15,6 +15,7 @@ import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 import { periodOf } from '@/lib/periodLock.js';
 import { blockedMessage } from '@/lib/caps.js';
+import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 // ── list ────────────────────────────────────────────────────────────────────
@@ -211,6 +212,23 @@ export const POST = route(async (req) => {
       warnings: result.warnings,
     });
   }
+
+  /**
+   * รูปแบบโอทีของแผนก — a department that does no ordinary OT, or is paid
+   * เหมารายวัน, refuses weekday hours here. lib/otMode.js holds the rule, and
+   * says why this is not a ceiling of 0.
+   *
+   * After the engine, because the question is which BUCKET the hours landed in
+   * and only the engine knows: the same 18:00–21:00 is refused on a Tuesday,
+   * allowed on a company holiday, and allowed on the person's own birthday when
+   * the birthday rule is on. Nothing here reads a calendar.
+   *
+   * 409 rather than 400 — the request is well formed and the times may be
+   * exactly right; it is the state of the department that refuses it, which is
+   * the same shape of answer the ceiling gives two lines below.
+   */
+  const weekdayRefusal = weekdayOtRefusal(employee.department, result);
+  if (weekdayRefusal) return fail(weekdayRefusal, 409, { warnings: result.warnings });
 
   const period = session.workDate.slice(0, 7);
   const cap = await checkCap({

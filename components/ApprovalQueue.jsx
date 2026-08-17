@@ -663,7 +663,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                   <td className="span-col">
                     {e.startTime}–{e.endTime}
                     {e.endsNextDay && <div className="cell-note">ข้ามคืน</div>}
-                    {e.noBreakTaken && <div className="cell-sub">ไม่พักเที่ยง</div>}
+                    {e.noBreakTaken && <div className="cell-sub th">ไม่พักเที่ยง</div>}
                   </td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>

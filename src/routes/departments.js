@@ -3,6 +3,7 @@ import Department from '../models/Department.js';
 import Employee from '../models/Employee.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { capHoursFrom } from '../../lib/caps.js';
+import { otModeFrom } from '../../lib/otMode.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -25,8 +26,13 @@ router.get('/', wrap(async (req, res) => {
 }));
 
 router.post('/', requireRole('admin'), wrap(async (req, res) => {
-  const { code, name, nameTh, manager, monthlyCapHours, weeklyCapHours } = req.body || {};
+  const {
+    code, name, nameTh, manager, monthlyCapHours, weeklyCapHours, otMode,
+  } = req.body || {};
   if (!code || !name) return res.status(400).json({ error: 'ต้องระบุรหัสและชื่อแผนก' });
+
+  const mode = otModeFrom(otMode);
+  if (mode === null) return res.status(400).json({ error: 'รูปแบบโอทีของแผนกไม่ถูกต้อง' });
 
   const department = await Department.create({
     code, name, nameTh,
@@ -35,6 +41,7 @@ router.post('/', requireRole('admin'), wrap(async (req, res) => {
     // not the same as a cap of 0 — see `capHoursFrom`.
     monthlyCapHours: capHoursFrom(monthlyCapHours),
     weeklyCapHours: capHoursFrom(weeklyCapHours),
+    otMode: mode,
   });
   res.status(201).json({ department });
 }));
@@ -43,13 +50,20 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   const department = await Department.findById(req.params.id);
   if (!department) return res.status(404).json({ error: 'ไม่พบแผนก' });
 
-  const { name, nameTh, manager, monthlyCapHours, weeklyCapHours, active } = req.body || {};
+  const {
+    name, nameTh, manager, monthlyCapHours, weeklyCapHours, active, otMode,
+  } = req.body || {};
   if (name != null) department.name = name;
   if (nameTh != null) department.nameTh = nameTh;
   if (active != null) department.active = Boolean(active);
   if (manager !== undefined) department.manager = manager || null;
   if (monthlyCapHours !== undefined) department.monthlyCapHours = capHoursFrom(monthlyCapHours);
   if (weeklyCapHours !== undefined) department.weeklyCapHours = capHoursFrom(weeklyCapHours);
+  if (otMode !== undefined) {
+    const mode = otModeFrom(otMode);
+    if (mode === null) return res.status(400).json({ error: 'รูปแบบโอทีของแผนกไม่ถูกต้อง' });
+    department.otMode = mode;
+  }
 
   await department.save();
   res.json({ department });

@@ -3,6 +3,7 @@ import Employee from '@/src/models/Employee.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { capHoursFrom } from '@/lib/caps.js';
+import { otModeFrom } from '@/lib/otMode.js';
 
 export const GET = route(async (req) => {
   await requireAuth(req);
@@ -26,8 +27,15 @@ export const GET = route(async (req) => {
 
 export const POST = route(async (req) => {
   requireRole(await requireAuth(req), 'admin');
-  const { code, name, nameTh, manager, monthlyCapHours, weeklyCapHours } = await body(req);
+  const {
+    code, name, nameTh, manager, monthlyCapHours, weeklyCapHours, otMode,
+  } = await body(req);
   if (!code || !name) return fail('ต้องระบุรหัสและชื่อแผนก', 400);
+
+  // Refused rather than defaulted — see `otModeFrom`. A department created
+  // with a mode nobody recognises would read as an ordinary one.
+  const mode = otModeFrom(otMode);
+  if (mode === null) return fail('รูปแบบโอทีของแผนกไม่ถูกต้อง', 400);
 
   const department = await Department.create({
     code, name, nameTh,
@@ -36,6 +44,7 @@ export const POST = route(async (req) => {
     // not the same as a cap of 0 — see `capHoursFrom`.
     monthlyCapHours: capHoursFrom(monthlyCapHours),
     weeklyCapHours: capHoursFrom(weeklyCapHours),
+    otMode: mode,
   });
   return json({ department }, 201);
 });

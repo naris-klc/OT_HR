@@ -16,6 +16,11 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // they end up in.
 import { companyOf } from '@/src/config/companies.js';
 import { viewerId } from '@/lib/entries.js';
+// Pure as well — the settings screen names the modes and the write paths refuse
+// with them, and both read the list from here.
+import {
+  OT_MODES, OT_MODE_LABEL_TH, OT_MODE_NOTE_TH, otModeOf,
+} from '@/lib/otMode.js';
 // Pure too — no imports of its own at all, so the diff the settings page draws
 // is computed by the same function the replay and the version history use.
 import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
@@ -142,26 +147,42 @@ function Heads({ department, people }) {
   const covered = (key) => heads.some((h) => !h.approvesCompany || h.approvesCompany === key);
   const gaps = payrolls.filter((key) => !covered(key));
 
+  /**
+   * WHAT THE ROW SAYS WHEN NOBODY HEADS THE DEPARTMENT AT ALL: one line, not two.
+   *
+   * "— ยังไม่มีหัวหน้า —" above "⚠ พนักงานไพรมัสยังไม่มีหัวหน้า…" is the same
+   * fact twice, and the second sentence is the one that says what it costs. So
+   * the empty case borrows the warning rather than adding to it.
+   */
+  const nobody = heads.length === 0;
+
   return (
     <div>
-      {heads.length === 0 ? (
-        <div className="cell-sub">— ยังไม่มีหัวหน้า —</div>
-      ) : heads.map((h) => (
-        <div key={h._id} style={{ marginBottom: 4 }}>
+      {heads.map((h) => (
+        <div key={h._id} className="dept-head">
           {h.name}
           {/* The scope on its own line, and ONLY when it is set: "ทุกบริษัท" under
               every name on a roster nobody has split is four rows of noise
-              saying nothing changed. A line appearing is the signal. */}
+              saying nothing changed. A line appearing is the signal.
+
+              `.th` because the line is Thai — see the class in app/styles.css.
+              Plain `.cell-sub` is mono, which carries no Thai at all. */}
           {h.approvesCompany && (
-            <div className="cell-sub">เซ็นให้เฉพาะ{companyName(h.approvesCompany)}</div>
+            <div className="cell-sub th">เซ็นให้เฉพาะ{companyShort(h.approvesCompany)}</div>
           )}
         </div>
       ))}
 
-      {gaps.length > 0 && (
-        <div className="cell-sub">
-          ⚠ พนักงาน{gaps.map(companyName).join(' และ ')}ในแผนกนี้ยังไม่มีหัวหน้าคนใดเซ็นให้ได้
-          {' '}— ใบที่ยื่นจะค้างที่ “รอหัวหน้า”
+      {(nobody || gaps.length > 0) && (
+        <div className="cell-note">
+          {/* The same ⚠ the cap-breach note wears in the approval queue — one
+              mark for "this row needs somebody to do something", not a second
+              vocabulary for the same idea. */}
+          {'⚠ '}
+          {nobody
+            ? 'ยังไม่มีหัวหน้า'
+            : `ไม่มีหัวหน้าที่เซ็นให้พนักงาน${gaps.map(companyShort).join(' และ ')}ได้`}
+          {' — ใบที่ยื่นจะค้างที่ “รอหัวหน้า”'}
         </div>
       )}
     </div>
@@ -173,6 +194,14 @@ function Departments() {
   const [people, setPeople] = useState([]);
   /** Whether เพิ่มแผนก is open — the only way this screen creates a row. */
   const [adding, setAdding] = useState(false);
+  /**
+   * The row แก้ไขแผนก is open on, or null.
+   *
+   * The error is deliberately NOT handled here: `DepartmentForm` keeps its own,
+   * so a รหัส the server already has lands back in the dialog beside the box that
+   * caused it rather than closing the form and printing on the card behind.
+   */
+  const [editing, setEditing] = useState(null);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
@@ -219,13 +248,19 @@ function Departments() {
       {ok && <Alert kind="ok">{ok}</Alert>}
 
       {/* The five boxes this replaces are in the dialog behind it — see
-          AddDepartment for why they are no longer standing above the table. */}
+          DepartmentForm for why they are no longer standing above the table. */}
       <div className="row" style={{ marginBottom: 16 }}>
         <button className="btn" onClick={() => setAdding(true)}>เพิ่มแผนก</button>
       </div>
 
+      {/*
+        `dept-table` is the hook the phone layout hangs on — below 860px the same
+        eight cells are re-placed as a card by the classes they carry here, the
+        way คิวรออนุมัติ does it. Nothing about what is rendered changes, so a
+        change to a row shows up in both layouts or in neither.
+      */}
       <div className="table-wrap">
-        <table>
+        <table className="deptset-table">
           <thead>
             <tr>
               <th>รหัส</th><th>ชื่อแผนก</th><th>หัวหน้างาน</th>
@@ -233,40 +268,52 @@ function Departments() {
               <th>เพดาน ชม./เดือน</th>
               <th>เพดาน ชม./สัปดาห์</th>
               <th>สถานะ</th>
+              <th>จัดการ</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((d) => (
               <tr key={d._id}>
-                <td>{d.code}</td>
-                <td>{d.nameTh || d.name}</td>
-                <td>
+                <td className="code-col">{d.code}</td>
+                <td className="name-col">
+                  {d.nameTh || d.name}
+                  {/* Only when it is not the ordinary one. A chip on every row
+                      saying "มีโอทีตามปกติ" would leave the two rows that
+                      matter looking like the rest of the table. */}
+                  {otModeOf(d) !== 'normal' && (
+                    <div className="cell-sub th">{OT_MODE_NOTE_TH[otModeOf(d)]}</div>
+                  )}
+                </td>
+                <td className="heads-col">
                   <Heads department={d} people={people} />
                 </td>
-                <td className="num">{d.headcount}</td>
+                <td className="num count-col">{d.headcount}</td>
                 {/* Blank is no ceiling; 0 is a ceiling of zero. The field
                     sends whatever was typed and `capHoursFrom` on the server
                     keeps the two apart. */}
-                <td>
+                <td className="cap-col cap-month">
                   <input
                     type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
                     defaultValue={d.monthlyCapHours ?? ''}
-                    style={{ width: 110 }}
                     onBlur={(e) => update(d._id, { monthlyCapHours: e.target.value })}
                   />
                 </td>
-                <td>
+                <td className="cap-col cap-week">
                   <input
                     type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
                     defaultValue={d.weeklyCapHours ?? ''}
-                    style={{ width: 110 }}
                     onBlur={(e) => update(d._id, { weeklyCapHours: e.target.value })}
                   />
                 </td>
-                <td>
+                <td className="state-col">
                   <button className="btn ghost sm" onClick={() => update(d._id, { active: !d.active })}>
                     {d.active ? 'ใช้งาน' : 'ปิดใช้งาน'}
                   </button>
+                </td>
+                <td className="act-col">
+                  {/* รหัส and ชื่อแผนก, which were unreachable after creation —
+                      see DepartmentForm. */}
+                  <button className="btn ghost sm" onClick={() => setEditing(d)}>แก้ไข</button>
                 </td>
               </tr>
             ))}
@@ -274,12 +321,26 @@ function Departments() {
         </table>
       </div>
 
-      {adding && <AddDepartment onClose={() => setAdding(false)} onSave={create} />}
+      {adding && <DepartmentForm onClose={() => setAdding(false)} onSave={create} />}
+      {editing && (
+        <DepartmentForm
+          department={editing}
+          onClose={() => setEditing(null)}
+          onSave={async (values) => {
+            await api.patch(`/departments/${editing._id}`, values);
+            setOk('บันทึกแล้ว');
+            setEditing(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
 
-const BLANK_DEPT = { code: '', name: '', nameTh: '', monthlyCapHours: '', weeklyCapHours: '' };
+const BLANK_DEPT = {
+  code: '', name: '', nameTh: '', monthlyCapHours: '', weeklyCapHours: '', otMode: 'normal',
+};
 
 /** Said in both เพดาน fields, because the distinction is the whole of what
     those two boxes mean and a placeholder saying "ไม่กำหนด" is gone the moment
@@ -287,8 +348,14 @@ const BLANK_DEPT = { code: '', name: '', nameTh: '', monthlyCapHours: '', weekly
 const CAP_TIP = 'ไม่บังคับ · เว้นว่างหมายถึงไม่มีเพดาน ซึ่งไม่เหมือนกับเพดาน 0'
   + ' · แก้ภายหลังได้จากช่องในตารางด้านล่าง';
 
+/** Said in full once, because every clause of it is a thing somebody asks. */
+const OT_MODE_TIP = 'เลือก "ไม่มีโอที" หรือ "เหมารายวัน" แล้วพนักงานแผนกนี้จะยื่นโอทีของ'
+  + 'วันทำงานปกติไม่ได้ ระบบจะปฏิเสธพร้อมบอกเหตุผล · วันหยุดบริษัทและวันหยุดวันเกิด'
+  + 'ยังยื่นได้ตามปกติ และฝ่ายบุคคลยังบันทึกวันเกิดให้ได้เหมือนเดิม '
+  + '· ไม่เหมือนกับการตั้งเพดานเป็น 0 ซึ่งจะไปปิดวันหยุดด้วย';
+
 /**
- * เพิ่มแผนก — the five fields that make a department, in a dialog.
+ * เพิ่มแผนก / แก้ไขแผนก — the fields that name a department, in a dialog.
  *
  * WHY A DIALOG, and it is เพิ่มพนักงาน's answer again. As a `.row` above the
  * table the five boxes wrapped into a ragged stack on anything narrower than a
@@ -298,29 +365,64 @@ const CAP_TIP = 'ไม่บังคับ · เว้นว่างหม�
  * typed into. Both forms are now the same shape, so somebody who has added a
  * person has added a department.
  *
- * WHAT IS NOT HERE. หัวหน้างาน and สถานะ. สถานะ is set from the row in the
+ * ONE FORM FOR BOTH, because until now there was no second one at all: รหัส and
+ * ชื่อแผนก could be typed once and never corrected — the name was not on any
+ * screen after creation and the code was not even accepted by the PATCH route.
+ * A misspelling saved in the half-second before anybody read it back was
+ * permanent, which is a poor reason to keep a department called ผลติ.
+ *
+ * WHAT THE EDIT FORM LEAVES OUT: เพดาน, deliberately. Those two boxes are in the
+ * table row and stay there — one field, one door. Putting them here as well
+ * would be two places writing the same number, which is how the two come to
+ * disagree about which was saved last.
+ *
+ * WHAT IS IN NEITHER. หัวหน้างาน and สถานะ. สถานะ is set from the row in the
  * table; หัวหน้างาน is not set anywhere on this screen at all — a department is
  * headed by whoever's ทะเบียน row says they are a หัวหน้างาน in it, so a new
  * department is unheaded until somebody is put in it from the พนักงาน screen.
  * The row shows who that is, and says so when the answer is nobody.
  */
-function AddDepartment({ onClose, onSave }) {
-  const [form, setForm] = useState(BLANK_DEPT);
+function DepartmentForm({ department = null, onClose, onSave }) {
+  const editing = Boolean(department);
+  const before = editing
+    ? {
+      code: department.code || '',
+      name: department.name || '',
+      nameTh: department.nameTh || '',
+      monthlyCapHours: '',
+      weeklyCapHours: '',
+      // Unlike the ceilings above, this one IS in the edit form: there is no
+      // control for it in the table row, so leaving it out of both would make a
+      // department's mode unchangeable after creation — which is the mistake
+      // รหัส and ชื่อแผนก spent a year in.
+      otMode: otModeOf(department),
+    }
+    : BLANK_DEPT;
+  const [form, setForm] = useState(before);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
+  const dirty = Object.keys(before).some((k) => form[k] !== before[k]);
   // The two the server insists on, checked here so the refusal is a greyed
-  // button beside the empty field rather than a 400 after the form is full.
-  const ready = form.code.trim() && form.name.trim();
-  const dirty = Object.keys(BLANK_DEPT).some((k) => form[k] !== BLANK_DEPT[k]);
+  // button beside the empty field rather than a 400 after the form is full. An
+  // edit needs one more thing: something to have actually changed.
+  const ready = form.code.trim() && form.name.trim() && (!editing || dirty);
 
   async function save() {
     setError('');
     setBusy(true);
     try {
-      await onSave({ ...form, code: form.code.trim(), name: form.name.trim() });
+      const values = {
+        code: form.code.trim(), name: form.name.trim(), nameTh: form.nameTh, otMode: form.otMode,
+      };
+      // A create carries the ceilings it was given; an edit does not mention
+      // them at all, so the row's own boxes stay the only thing that writes
+      // them — `undefined` is "not mentioned" on the server.
+      await onSave(editing
+        ? values
+        : { ...values, monthlyCapHours: form.monthlyCapHours, weeklyCapHours: form.weeklyCapHours });
     } catch (err) {
       // Stays open, with everything still typed in it — see `create`.
       setError(err.message);
@@ -330,8 +432,10 @@ function AddDepartment({ onClose, onSave }) {
 
   return (
     <Modal
-      title="เพิ่มแผนก"
-      subtitle="สร้างแผนกใหม่หนึ่งแผนก"
+      title={editing ? 'แก้ไขแผนก' : 'เพิ่มแผนก'}
+      subtitle={editing
+        ? `${department.code} · ${department.nameTh || department.name}`
+        : 'สร้างแผนกใหม่หนึ่งแผนก'}
       onClose={onClose}
       dirty={dirty && !busy}
       footer={(requestClose) => (
@@ -349,7 +453,14 @@ function AddDepartment({ onClose, onSave }) {
         <section className="form-group">
           <div className="gh">ชื่อแผนก</div>
           <div className="form-grid">
-            <Field label="รหัส">
+            <Field
+              label="รหัส"
+              tip={editing
+                ? 'ชั่วโมงและพนักงานไม่ขยับ — ทั้งสองอย่างผูกกับตัวแผนก ไม่ใช่กับรหัส '
+                  + '· แต่ไฟล์ CSV นำเข้าพนักงานจับคู่แผนกจากรหัสนี้ ไฟล์เก่าที่ยังใช้รหัสเดิม'
+                  + 'จะจับคู่ไม่ได้และจะรายงานเป็นข้อผิดพลาดรายบรรทัด'
+                : 'ตัวพิมพ์เล็กจะถูกเปลี่ยนเป็นตัวพิมพ์ใหญ่ · ห้ามซ้ำกับแผนกอื่น'}
+            >
               <input value={form.code} onChange={(e) => set({ code: e.target.value })} disabled={busy} />
             </Field>
             <Field label="ชื่อ (EN)">
@@ -364,6 +475,26 @@ function AddDepartment({ onClose, onSave }) {
           </div>
         </section>
 
+        <section className="form-group">
+          <div className="gh">รูปแบบโอที</div>
+          <div className="form-grid">
+            <Field label="โอทีวันทำงานปกติ" tip={OT_MODE_TIP}>
+              <select
+                value={form.otMode}
+                onChange={(e) => set({ otMode: e.target.value })}
+                disabled={busy}
+              >
+                {OT_MODES.map((m) => (
+                  <option key={m} value={m}>{OT_MODE_LABEL_TH[m]}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </section>
+
+        {editing ? (
+          <div className="hint">เพดานชั่วโมงแก้ที่ช่องในตาราง · สถานะแก้ที่ปุ่มในตาราง</div>
+        ) : (
         <section className="form-group">
           <div className="gh">เพดานชั่วโมง</div>
           <div className="form-grid">
@@ -385,6 +516,7 @@ function AddDepartment({ onClose, onSave }) {
             </Field>
           </div>
         </section>
+        )}
       </div>
     </Modal>
   );
@@ -616,6 +748,15 @@ const nameOfDept = (depts, id) => {
 };
 
 const companyName = (key) => COMPANIES.find((c) => c.key === key)?.label || key || '—';
+/**
+ * The same company in two words rather than four.
+ *
+ * `label` is "ไพรมัส (Primus)" — right for a dropdown, where the English is what
+ * accounting says on their own sheets and somebody may be matching the two. Read
+ * inside a table cell it is twice the length of the sentence around it, and the
+ * sentence is what carries the meaning.
+ */
+const companyShort = (key) => COMPANIES.find((c) => c.key === key)?.shortTh || companyName(key);
 
 /**
  * What the preview claims the file means, in one sentence.
@@ -1008,8 +1149,13 @@ function Employees({ user }) {
         (บริษัท, most of all) had to interrupt with a dialog anyway. One "แก้ไข"
         per row replaces all of it — see EditEmployee.
       */}
+      {/* `stack-table` and the `data-label` on every cell are the phone layout —
+          one pattern shared by every plain list in the app, described in
+          app/styles.css. The two heading cells are marked rather than labelled:
+          a card found by code and name should not open with two rows reading
+          "รหัส PM-0620" / "ชื่อ-สกุล ปรีชา". */}
       <div className="table-wrap">
-        <table>
+        <table className="stack-table">
           <thead>
             <tr>
               <th>รหัส</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>วันเกิด</th><th>แผนก</th>
@@ -1019,25 +1165,27 @@ function Employees({ user }) {
           <tbody>
             {rows.map((p) => (
               <tr key={p._id}>
-                <td style={{ whiteSpace: 'nowrap' }}>{p.code}</td>
-                <td>{p.name}</td>
-                <td>{p.position || <span style={{ color: 'var(--muted)' }}>—</span>}</td>
+                <td className="stack-code" style={{ whiteSpace: 'nowrap' }}>{p.code}</td>
+                <td className="stack-name">{p.name}</td>
+                <td data-label="ตำแหน่ง">{p.position || <span style={{ color: 'var(--muted)' }}>—</span>}</td>
                 {/* Shown as text like everything else. HR and Admin are the only
                     people who reach this screen, and `maySeePersonalDetails` on the
                     server is what decides they may be sent it at all. */}
-                <td style={{ whiteSpace: 'nowrap' }}>
+                <td data-label="วันเกิด" style={{ whiteSpace: 'nowrap' }}>
                   {p.birthDate
                     ? thaiDate(p.birthDate)
                     : <span style={{ color: 'var(--muted)' }}>— ยังไม่มี —</span>}
                 </td>
-                <td>{p.department ? (p.department.nameTh || p.department.name) : '—'}</td>
+                <td data-label="แผนก">
+                  {p.department ? (p.department.nameTh || p.department.name) : '—'}
+                </td>
                 {/* The scope under the role rather than in a column of its own:
                     it is meaningful on four rows out of a roster, and a tenth
                     column would narrow the nine that are meaningful on all. */}
-                <td style={{ whiteSpace: 'nowrap' }}>
+                <td data-label="บทบาท" style={{ whiteSpace: 'nowrap' }}>
                   {ROLE_LABEL[p.role] || p.role}
                   {p.role === 'manager' && p.approvesCompany && (
-                    <div className="cell-sub">เซ็นให้ {companyName(p.approvesCompany)}</div>
+                    <div className="cell-sub th">เซ็นให้ {companyShort(p.approvesCompany)}</div>
                   )}
                 </td>
                 {/* An unset company is not "no company" — the sheet falls back
@@ -1045,14 +1193,14 @@ function Employees({ user }) {
                     column says which, and that it was guessed, because that is
                     the difference between a blank worth fixing and one that is
                     already behaving correctly. */}
-                <td style={{ whiteSpace: 'nowrap' }}>
+                <td data-label="บริษัท" style={{ whiteSpace: 'nowrap' }}>
                   {p.company ? companyName(p.company) : (
                     <span style={{ color: 'var(--muted)' }}>
                       {companyName(companyOf(p))} · เดาจากรหัส
                     </span>
                   )}
                 </td>
-                <td>{p.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</td>
+                <td data-label="สถานะ">{p.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</td>
                 <td>
                   <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
                     {/* Opens for every row, including one this person may not
@@ -2113,16 +2261,21 @@ function IssuedPasswords({ rows }) {
       )}
 
       <div className="table-wrap" style={{ marginTop: 8 }}>
-        <table>
+        <table className="stack-table">
           <thead>
             <tr>{ISSUED_HEADERS.map((h) => <th key={h}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.code}>
-                <td style={{ whiteSpace: 'nowrap' }}>{row.code}</td>
-                <td>{row.name}</td>
-                <td style={{ fontFamily: 'var(--mono, monospace)', whiteSpace: 'nowrap' }}>
+                <td className="stack-code" style={{ whiteSpace: 'nowrap' }}>{row.code}</td>
+                <td className="stack-name">{row.name}</td>
+                {/* The one cell on this screen somebody reads out loud — labelled,
+                    and left in mono so an l and a 1 cannot be confused. */}
+                <td
+                  data-label="รหัสผ่าน"
+                  style={{ fontFamily: 'var(--mono, monospace)', whiteSpace: 'nowrap' }}
+                >
                   {row.password}
                 </td>
               </tr>
@@ -2757,15 +2910,19 @@ function Holidays() {
 
       {rows.length === 0 ? <Empty>ยังไม่มีวันหยุดในปีนี้</Empty> : (
         <div className="table-wrap">
-          <table>
+          <table className="stack-table">
             <thead><tr><th>วันที่</th><th>วัน</th><th>ชื่อวันหยุด</th><th>ที่มา</th><th /></tr></thead>
             <tbody>
               {rows.map((h) => (
                 <tr key={h._id}>
-                  <td>{thaiDate(h.date)}</td>
-                  <td>วัน{dayName(h.date)}</td>
-                  <td>{h.name}</td>
-                  <td>{h.source === 'import' ? 'นำเข้า' : 'เพิ่มเอง'}</td>
+                  {/* The date and the name are what a holiday IS — the card's
+                      heading, the way a code and a name are on every other list.
+                      `วัน…` keeps its label because it is the same fact restated
+                      for somebody checking a Saturday. */}
+                  <td className="stack-code">{thaiDate(h.date)}</td>
+                  <td className="stack-name">{h.name}</td>
+                  <td data-label="วัน">วัน{dayName(h.date)}</td>
+                  <td data-label="ที่มา">{h.source === 'import' ? 'นำเข้า' : 'เพิ่มเอง'}</td>
                   <td><button className="btn ghost sm" onClick={() => remove(h._id)}>ลบ</button></td>
                 </tr>
               ))}

@@ -176,7 +176,7 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
                   <td className="dept-col">{r.department || '—'}</td>
                   <td className="date-col" style={{ whiteSpace: 'nowrap' }}>
                     {thaiDate(r.date)}
-                    <div className="cell-sub">วัน{dayName(r.date)}</div>
+                    <div className="cell-sub th">วัน{dayName(r.date)}</div>
                   </td>
                   {/*
                     The number that makes a backlog visible without anybody
@@ -221,7 +221,7 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
                         </button>
                       </div>
                     ) : (
-                      <span className="cell-sub">ไม่ใช่แผนกของคุณ</span>
+                      <span className="cell-sub th">ไม่ใช่แผนกของคุณ</span>
                     )}
                   </td>
                 </tr>

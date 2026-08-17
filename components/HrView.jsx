@@ -640,7 +640,7 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
                   <td className="dept-col">{r.department || '—'}</td>
                   <td className="date-col" style={{ whiteSpace: 'nowrap' }}>
                     {thaiDate(r.date)}
-                    <div className="cell-sub" style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(r.date)}</div>
+                    <div className="cell-sub th" style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(r.date)}</div>
                   </td>
                   <td className="co-col">{companyLabel(r.company)}</td>
                   <td className="state-col">

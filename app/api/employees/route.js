@@ -22,7 +22,7 @@ export const GET = route(async (req) => {
   if (!q.all) filter.active = true;
 
   const found = await Employee.find(filter)
-    .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours')
+    .populate('department', 'code name nameTh monthlyCapHours weeklyCapHours otMode')
     .sort({ code: 1 })
     .lean();
 

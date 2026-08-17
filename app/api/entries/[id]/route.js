@@ -10,6 +10,7 @@ import {
 } from '@/lib/entries.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
+import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
@@ -98,6 +99,13 @@ export const PATCH = route(async (req, { params }) => {
     if (error) return fail(error, 400);
     entry.description = value;
   }
+
+  // The same department rule the submit path applies, and for the reason the
+  // ceiling is measured again on an edit: an entry moved onto an ordinary
+  // Tuesday is a weekday OT request however it was filed. The department is the
+  // entry's own — whoever it is FOR, not the person editing.
+  const weekdayRefusal = weekdayOtRefusal(entry.department, result);
+  if (weekdayRefusal) return fail(weekdayRefusal, 409, { warnings: result.warnings });
 
   // The cap belongs to whoever the entry is FOR, which is not the actor when
   // HR is the one editing. `excludeId` keeps the entry's own current hours out

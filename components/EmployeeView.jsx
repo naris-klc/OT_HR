@@ -324,7 +324,9 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
             <Empty>ยังไม่มีรายการในเดือนนี้</Empty>
           ) : (
             <div className="table-wrap">
-              <table>
+              {/* `stack-table` + `data-label` is the phone layout every plain list
+                  in the app shares — see app/styles.css. */}
+              <table className="stack-table">
                 <thead>
                   <tr>
                     <th>วันที่</th>
@@ -342,11 +344,13 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                   {monthEntries.map((e) => (
                     <React.Fragment key={e._id}>
                     <tr>
-                      <td>
+                      {/* The date is the card's heading: it is how somebody finds
+                          the row they mean. */}
+                      <td className="stack-name">
                         {thaiDate(e.workDate)}
                         <div className="hint">วัน{dayName(e.workDate)}</div>
                       </td>
-                      <td>
+                      <td data-label="เวลา">
                         {e.startTime}–{e.endTime}
                         {e.endsNextDay && <div style={{ fontSize: 12, color: 'var(--amber)' }}>ข้ามคืน</div>}
                         {e.noBreakTaken && <div className="hint">ไม่พักเที่ยง</div>}
@@ -354,8 +358,10 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                       <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                       <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
                       <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
-                      <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
-                      <td style={{ maxWidth: 260 }}>
+                      <td className="num" data-label="รวม (ชม.)">
+                        <strong>{hours(e.totals?.otHours)}</strong>
+                      </td>
+                      <td data-label="รายละเอียด" style={{ maxWidth: 260 }}>
                         {e.description}
                         {isProxyFiled(e) && (
                           <div style={{ marginTop: 4 }}><ProxyMark entry={e} /></div>
@@ -380,7 +386,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                           </div>
                         )}
                       </td>
-                      <td><StatusChip status={e.status} /></td>
+                      <td><StatusChip status={e.status} /></td>{/* a chip says what it is */}
                       {/* `.row-actions` rather than a margin on each button:
                           it is the class every other table's action cell uses,
                           it keeps the gaps equal however many of these rules

@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
 import { model } from './model.js';
+// Relative, like every other import that has to survive the retired Express
+// server as well as the bundler.
+import { OT_MODES, OT_MODE_DEFAULT } from '../../lib/otMode.js';
 
 /**
  * แผนก. One department has one manager and roughly 5–6 people (§9).
@@ -41,6 +44,20 @@ const departmentSchema = new mongoose.Schema(
      * split between the two rather than charged whole to the one it started in.
      */
     weeklyCapHours: { type: Number, default: null, min: 0 },
+
+    /**
+     * รูปแบบโอที — see lib/otMode.js, which holds the rule and the reason each
+     * value exists. `normal` is the DEFAULT so that adding this field takes OT
+     * away from nobody who had it: a row written before it existed reads back
+     * as the ordinary department it has always been.
+     *
+     * Stored as the reason rather than as a boolean, because HR asked for two
+     * different answers — a department that simply does no OT, and one paid
+     * เหมารายวัน where the hours exist but the rate does not change. The system
+     * treats them identically; the screens say which one it is, and a report
+     * can too.
+     */
+    otMode: { type: String, enum: OT_MODES, default: OT_MODE_DEFAULT },
 
     active: { type: Boolean, default: true },
   },

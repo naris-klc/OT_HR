@@ -119,6 +119,15 @@ export default function OtForm({
    * see the note on it in the preview route.
    */
   const [birthdayRouting, setBirthdayRouting] = useState(null);
+  /**
+   * รูปแบบโอทีของแผนก, answered by the server for THESE hours.
+   *
+   * A sentence or null, and never derived here from the department's mode: the
+   * mode alone cannot answer it, because the same evening is refused on a
+   * Tuesday and allowed on a holiday or on the person's own birthday. The
+   * server has just run the engine over these times — see `weekdayOtRefusal`.
+   */
+  const [weekdayRefusal, setWeekdayRefusal] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const timer = useRef(null);
@@ -134,7 +143,7 @@ export default function OtForm({
       // Filing for somebody else, the preview is worthless until the server
       // knows who: the ceiling and the day types are theirs, and a split
       // computed against nobody would disagree with what saving produces.
-      if (proxy && !target) { setPreview(null); setCap(null); return; }
+      if (proxy && !target) { setPreview(null); setCap(null); setWeekdayRefusal(null); return; }
       try {
         const res = await api.post('/entries/preview', {
           ...form, entryId: entry?._id, employeeId: forWhom, birthday: fromBirthday || undefined,
@@ -143,11 +152,13 @@ export default function OtForm({
         setCap(res.cap);
         setRouting(res.routing || null);
         setBirthdayRouting(res.birthdayRouting || null);
+        setWeekdayRefusal(res.weekdayRefusal || null);
         setError('');
       } catch (err) {
         setPreview(null);
         setRouting(null);
         setBirthdayRouting(null);
+        setWeekdayRefusal(null);
         setError(err.message);
       }
     }, 250);
@@ -483,6 +494,12 @@ export default function OtForm({
         </Alert>
       )}
 
+      {/* Shown with the hours still computed below it, deliberately: the times
+          are not wrong and the split is worth reading — what is missing is a
+          department that pays for them. The same sentence the write path would
+          answer with, so pressing บันทึก could add nothing to it. */}
+      {weekdayRefusal && <Alert kind="warn">{weekdayRefusal}</Alert>}
+
       {preview && (
         <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>ระบบคำนวณได้</div>
@@ -516,7 +533,9 @@ export default function OtForm({
             || (hrEdit && !note.trim()) || (proxy && !target)
             // Nothing is saved while the server says this row cannot take this
             // path — the write would 409, and the reason is already on screen.
-            || (fromBirthday && birthdayRouting?.ok === false)}
+            || (fromBirthday && birthdayRouting?.ok === false)
+            // แผนกไม่มีโอที / เหมารายวัน, and these are weekday hours.
+            || Boolean(weekdayRefusal)}
         >
           {entry ? 'บันทึกการแก้ไข'
             : proxy ? (routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า')

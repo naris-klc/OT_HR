@@ -107,7 +107,7 @@ export default function Delegation({ user, scope = 'mine' }) {
         <Empty>{all ? 'ยังไม่มีการมอบหมายในระบบ' : 'ยังไม่เคยมอบหมายผู้รับช่วง'}</Empty>
       ) : (
         <div className="table-wrap" style={{ marginTop: 12 }}>
-          <table>
+          <table className="stack-table">
             <thead>
               <tr>
                 <th>สถานะ</th>
@@ -122,31 +122,33 @@ export default function Delegation({ user, scope = 'mine' }) {
             <tbody>
               {groups.map((d) => (
                 <tr key={d._id}>
+                  {/* The chip is the card's first line and needs no heading —
+                      "ใช้งานอยู่" and "หมดอายุแล้ว" say what they are. */}
                   <td><StateChip state={d.state} /></td>
-                  <td>
+                  <td data-label="คิวของ">
                     {d.from?.name || '—'}
-                    <div className="cell-sub">
-                      {d.from?.code}
-                      {d.from?.approvesCompany
-                        ? ` · เฉพาะ${companyLabel(d.from.approvesCompany)}`
-                        : ''}
-                    </div>
+                    <div className="cell-sub">{d.from?.code}</div>
+                    {d.from?.approvesCompany && (
+                      <div className="cell-sub th">
+                        เซ็นให้เฉพาะ{companyLabel(d.from.approvesCompany)}
+                      </div>
+                    )}
                   </td>
-                  <td>
+                  <td data-label="ผู้รับช่วง">
                     {d.to?.name || '—'}
                     <div className="cell-sub">{d.to?.code} · {ROLE[d.to?.role] || d.to?.role}</div>
                   </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td data-label="ช่วงเวลา" style={{ whiteSpace: 'nowrap' }}>
                     {thaiDate(d.fromDate)} – {thaiDate(d.toDate)}
                     {d.state === 'active' && (
-                      <div className="cell-sub">เหลืออีก {daysLeft(d.toDate, today)} วัน</div>
+                      <div className="cell-sub th">เหลืออีก {daysLeft(d.toDate, today)} วัน</div>
                     )}
                   </td>
-                  <td style={{ maxWidth: 220 }}>{d.reason || '—'}</td>
-                  <td>
+                  <td data-label="เหตุผล" style={{ maxWidth: 220 }}>{d.reason || '—'}</td>
+                  <td data-label="ผู้ตั้ง">
                     {d.createdByName || '—'}
                     {d.revokedAt && (
-                      <div className="cell-sub">ยกเลิกโดย {d.revokedByName || '—'}</div>
+                      <div className="cell-sub th">ยกเลิกโดย {d.revokedByName || '—'}</div>
                     )}
                   </td>
                   <td>

@@ -976,6 +976,29 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 /* ══ tables ══════════════════════════════════════════════════════════════ */
 
+/* ── แผนกและเพดาน ──────────────────────────────────────────────────────────
+   Two cells on this table hold something no other table's do, and both were
+   distorting it.
+
+   หัวหน้างาน can hold several names now — a department with people on both
+   payrolls has one หัวหน้า per company — with a scope under each and a warning
+   under those. Left to size itself the column took the width its longest
+   sentence wanted, squeezing the two ceiling boxes and the two buttons until
+   "ใช้งาน" wrapped onto two lines. A ceiling of 40 needs four characters and a
+   button needs to stay on one line, so those get fixed room and the names get
+   what is left. */
+.deptset-table th.heads, .deptset-table td.heads-col { min-width: 210px; }
+/* THAI HAS NO SPACES, so a sentence is one unbreakable word as far as a layout is
+   concerned — "ไม่มีหัวหน้าที่เซ็นให้พนักงานไพรมัสได้" reports a min-content width
+   of the whole run and pushes whatever holds it as wide as that. It is why this
+   cell needs saying and the other cells here do not: they hold a code, a name or
+   a number. Same answer `table.fixed` already uses for the same reason. */
+.deptset-table td.heads-col { overflow-wrap: anywhere; }
+.deptset-table td.cap-col input { width: 100px; }
+.deptset-table td.state-col .btn, .deptset-table td.act-col .btn { white-space: nowrap; }
+/* Each name its own line, tight enough that two of them still read as one cell. */
+.deptset-table .dept-head + .dept-head { margin-top: 6px; }
+
 .table-wrap { overflow-x: auto; border-radius: var(--radius); }
 
 table { width: 100%; border-collapse: collapse; }
@@ -1016,6 +1039,23 @@ table.fixed td { overflow-wrap: anywhere; }
   font: 400 12px/1.45 var(--mono); font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
+/* The same second line when what it holds is a THAI SENTENCE rather than a code
+   or a figure.
+
+   `.cell-sub` is mono because it was written for employee codes and numbers read
+   down a column. IBM Plex Mono carries no Thai at all, so Thai set in it does not
+   come out mono — the digits take the mono and the letters drop past it to
+   whatever the system happens to have, which is the one font on the page that is
+   not IBM Plex Sans Thai. Two fonts inside one short line, and the line looks
+   broken rather than quiet. Same size, same colour, same margin; sans, and the
+   tabular-numeral setting dropped with it since a sentence has nothing to line
+   up against. (The policy dropdowns three hundred lines down are the same
+   problem, answered the same way.) */
+.cell-sub.th {
+  font: 400 12px/1.45 var(--sans);
+  font-variant-numeric: normal;
+}
+
 .cell-note { margin-top: 3px; font: 400 11.5px/1.45 var(--sans); color: var(--amber); }
 tbody tr:hover { background: var(--green-wash); }
 
@@ -2812,6 +2852,233 @@ table.mini tbody tr:hover { background: none; }
      without `:has` simply keeps today's behaviour — the bar overlapping the
      foot of the list — rather than breaking the layout. */
   .card:has(> .batch-bar) .table-wrap { padding-bottom: 104px; }
+
+  /* ══ EVERY OTHER TABLE ON A PHONE — one pattern, not one per screen ═══════
+     A table becomes a stack of cards, and each cell says what it is.
+
+     WHY A SHARED PATTERN AND NOT ANOTHER HAND-TUNED BLOCK. The queue, the two
+     accounting reports, นโยบายการคำนวณ, เวอร์ชันนโยบาย, วันเกิด and แผนกและเพดาน
+     each have a block of their own further down and above, and every one of them
+     earns it: a queue carries tick-boxes and a batch bar, a report is a grid that
+     has to stay a grid, แผนกและเพดาน holds two editable ceilings. But the seven
+     plain LISTS in the app — ทะเบียนพนักงาน, วันหยุดบริษัท, ประวัติการแก้ทะเบียน,
+     ผู้รับช่วงอนุมัติ and the three entry lists — are the same thing seven times:
+     rows of fields, one row per record. Seven more bespoke blocks is how a screen
+     ends up looking like a different app from the one beside it, and how the
+     eighth list added next year gets none at all.
+
+     HOW IT WORKS. `thead` goes and each cell carries its own heading in
+     `data-label`, printed by ::before. So the labels cannot drift from the column
+     they belong to: they are on the cell, not counted off in a stylesheet.
+
+        ┌──────────────────────────────┐
+        │ PM-0620      ปรีชา ทองแท้    │   ← first two cells: the card's heading
+        │ ตำแหน่ง          ช่างไฟฟ้า    │
+        │ แผนก                  ผลิต    │
+        │ บทบาท             พนักงาน    │
+        │ [ แก้ไข ] [ ตั้งรหัสใหม่ ]     │   ← a cell with no label spans the card
+        └──────────────────────────────┘
+
+     A cell with no `data-label` is not a field — it is the row's buttons, or a
+     tick-box — so it takes the full width and prints no heading.
+
+     Sans on the label, and that is not a detail: these read "ชื่อ-สกุล", "วันเกิด",
+     "เพดาน ชม./เดือน". The desktop <th> is mono, which carries no Thai at all —
+     see `.cell-sub.th` where the same trap is spelt out. */
+
+  .stack-table { display: block; min-width: 0; width: 100%; }
+  .stack-table thead { display: none; }
+  .stack-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+  .stack-table tbody tr {
+    display: flex; flex-direction: column; gap: 8px;
+    /* 15px, the same padding `.card` takes at this width. */
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  /* A card is not a row to be pointed at, and a phone has no pointer anyway. */
+  .stack-table tbody tr:hover { background: var(--card); }
+
+  /* A BLOCK WITH A FLOATED LABEL, not a flex row — and that is not a stylistic
+     preference, it is the only one of the two that holds a cell with more than one
+     thing in it.
+
+     Several cells carry a value AND a note under it: บทบาท on ทะเบียนพนักงาน is
+     "หัวหน้างาน" with "เซ็นให้ ไพรมัส" beneath, and a status is often a word plus a
+     reason. As flex items those became two columns side by side, so the label, the
+     role and the note ended up spread across one line reading as three unrelated
+     things. Floated, the label sits at the left and everything else flows to the
+     right of it and wraps underneath — which is what a value with a note under it
+     is supposed to look like. It also needs no wrapper element, so a bare text
+     node beside a <div> lays out correctly without every cell in the app being
+     rewritten to hold one. */
+  .stack-table tbody td {
+    display: block; text-align: right;
+    border: 0; padding: 0;
+    /* Thai has no spaces, so a sentence is one unbreakable word as far as the
+       layout is concerned and would push the card past the screen. */
+    overflow-wrap: anywhere;
+  }
+  .stack-table tbody td::before {
+    content: attr(data-label);
+    float: left; margin-right: 16px; text-align: left; white-space: nowrap;
+    font: 400 13px/1.5 var(--sans); color: var(--muted-2);
+  }
+
+  /* THE THREE RATE COLUMNS GO, the same decision the queue's card makes twenty
+     lines down and for the same reason: four figures per card, three of them
+     0.00, buries the one the row is actually about. รวม stays — it has no
+     `.rate-col` — and the split is in the row's own detail wherever a screen
+     offers one. */
+  /* `:not(.total-col)` is not decoration — it lifts this above
+     `td:not([data-label])` below, which carries the same specificity and would
+     otherwise win on source order and put the three figures back. Same selector
+     the queue's card uses, for the same reason. */
+  .stack-table tbody td.rate-col:not(.total-col) { display: none; }
+
+  /* THE DRAWER UNDER A ROW keeps its own card rather than being folded into the
+     one above it. Two lists open a detail panel as a second <tr> holding a single
+     `colSpan` cell (รายการ OT ของฉัน, ใบทั้งหมดของฝ่ายบุคคล); left to the rules
+     above it would print as a labelless field inside the row's card and its
+     border would land in the middle of the panel. As a card of its own it reads
+     as what it is — the row, then what is inside it. */
+  .stack-table tbody td[colspan] { display: block; text-align: left; }
+  .stack-table tbody td[colspan]::before { content: none; }
+
+  /* Cells with nothing to label: buttons, a tick-box, a chip. Full width, no
+     heading, and their contents laid out as they were. */
+  .stack-table tbody td:not([data-label]) {
+    display: block; text-align: left;
+  }
+  .stack-table tbody td:not([data-label])::before { content: none; }
+  .stack-table tbody td .btn { min-height: 44px; }
+
+  /* THE FIRST TWO CELLS ARE THE CARD'S HEADING, not two more fields. A record is
+     found by its code and its name, and reading those back as "รหัส  PM-0620"
+     under a heading that says the same makes the card start with two rows of
+     bookkeeping. `.stack-head` marks them: no label, side by side, the name
+     carrying the weight. */
+  .stack-table tbody td.stack-code::before, .stack-table tbody td.stack-name::before {
+    content: none;
+  }
+  .stack-table tbody td.stack-code {
+    display: block; text-align: left;
+    font: 600 13px/1.5 var(--mono); color: var(--muted);
+  }
+  .stack-table tbody td.stack-name {
+    display: block; text-align: left; margin-top: -4px;
+    font: 600 15px/1.4 var(--sans);
+  }
+
+  /* ══ แผนกและเพดาน on a phone ══════════════════════════════════════════════
+     Eight columns, and five of them held one or two characters. At 440px the
+     table scrolled sideways with รหัส pinned at one end and แก้ไข at the other,
+     so "ควบคุม คุณภาพ" broke across two lines to leave room for a ceiling box
+     that was off-screen anyway. The ⚠ under a department with no หัวหน้า came
+     out eleven lines tall and made its row taller than the phone.
+
+     Same eight cells as a card, the way คิวรออนุมัติ does it — re-placed by the
+     classes the row already carries, so nothing about what is rendered changes
+     and a change to a row shows up in both layouts or in neither.
+
+        ADM  สำนักงาน
+        ยังไม่มีหัวหน้า — ใบที่ยื่นจะค้างที่ "รอหัวหน้า"
+        จำนวนคน 3
+        เพดาน ชม./เดือน            [ ไม่กำหนด ]
+        เพดาน ชม./สัปดาห์          [ ไม่กำหนด ]
+        [ ใช้งาน ]  [ แก้ไข ]
+
+     THE TWO CEILINGS ARE ONE LINE EACH, label left and box right, rather than a
+     pair of columns. Side by side they cost the card its shape: a number input
+     carries an intrinsic width of about twenty characters, so the left-hand
+     column sized itself to that — pushing ชื่อแผนก out to the middle of the
+     heading line and the second box past the right edge of the screen. As rows
+     they cannot squeeze anything, and the label sits where a label sits.
+
+     Their headings come from ::before, because thead is gone and a bare number
+     box says nothing about which window it is. SANS, not the mono the desktop
+     <th> uses: these read "เพดาน ชม./เดือน", and IBM Plex Mono carries no Thai
+     — see `.cell-sub.th` at the top of the tables section. */
+
+  .deptset-table { display: block; min-width: 0; }
+  .deptset-table thead { display: none; }
+  .deptset-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+
+  .deptset-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "code  name"
+      "heads heads"
+      "count count"
+      "capm  capm"
+      "capw  capw"
+      "act   act";
+    gap: 10px 12px; align-items: start;
+    /* 15px, the same padding `.card` takes at this width — one card inset in the
+       app rather than one per screen. */
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  /* A card is not a row to be pointed at, and a phone has no pointer anyway. */
+  .deptset-table tbody tr:hover { background: var(--card); }
+
+  .deptset-table td { display: block; border: 0; padding: 0; }
+
+  /* The code stays mono and the name carries the weight — together they are the
+     card's heading, so they sit on one line with the code as its prefix. */
+  .deptset-table td.code-col {
+    grid-area: code;
+    font: 600 13px/1.5 var(--mono); color: var(--muted);
+    padding-top: 2px;
+  }
+  .deptset-table td.name-col { grid-area: name; font: 600 15px/1.4 var(--sans); }
+
+  /* Released from the 210px the desktop column needs — here it has the whole
+     card, which is what stops the ⚠ being eleven lines. */
+  .deptset-table td.heads-col { grid-area: heads; min-width: 0; }
+
+  /* Left, not right. `td.num` right-aligns a figure so it can be compared down a
+     column, and in a card there is no column to compare it down. */
+  .deptset-table td.count-col {
+    grid-area: count; text-align: left;
+    font: 400 13px/1.45 var(--sans); color: var(--muted);
+  }
+  .deptset-table td.count-col::before { content: 'จำนวนคน '; }
+
+  .deptset-table td.cap-col {
+    min-width: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .deptset-table td.cap-month { grid-area: capm; }
+  .deptset-table td.cap-week { grid-area: capw; }
+  .deptset-table td.cap-col::before {
+    font: 400 13px/1.45 var(--sans); color: var(--muted);
+  }
+  .deptset-table td.cap-month::before { content: 'เพดาน ชม./เดือน'; }
+  .deptset-table td.cap-week::before { content: 'เพดาน ชม./สัปดาห์'; }
+  /* `min-width: 0` is the load-bearing half: without it the input keeps its
+     intrinsic twenty-character width whatever the box around it says, and the
+     card grows past the screen instead of the field shrinking. */
+  .deptset-table td.cap-col input { width: 130px; min-width: 0; flex: none; }
+
+  /* Both buttons a real touch target, and a half of the card each — the same
+     foot the queue cards give their two decisions, so a card ends in a full
+     row of buttons rather than two small controls stranded at its corner.
+
+     Both share the one `act` area, which is why the last row of the grid
+     above reads "act act" rather than "state act": the card's two columns are
+     sized by รหัส and ชื่อแผนก at its head, so a button placed in each would
+     take the widths that heading needs and not halves. Across the whole row
+     instead, `calc(50% - 6px)` pinned to either end leaves exactly the 12px
+     the grid's column gap uses everywhere else. */
+  .deptset-table td.state-col, .deptset-table td.act-col {
+    grid-area: act; width: calc(50% - 6px);
+  }
+  .deptset-table td.state-col { justify-self: start; }
+  .deptset-table td.act-col { justify-self: end; }
+  .deptset-table td.state-col .btn, .deptset-table td.act-col .btn {
+    width: 100%; min-height: 44px;
+  }
 }
 
 /* Every tab change fades the page in and the bottom sheet slides. Somebody who

@@ -6,6 +6,7 @@ import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { OtValidationError } from '../lib/otEngine.js';
 import { normaliseDescription } from '../config/policy.js';
 import { blockedMessage } from '../../lib/caps.js';
+import { weekdayOtRefusal } from '../../lib/otMode.js';
 import {
   compute, applyComputation, checkCap, loadContext, monthlyUsage, birthDateOf,
 } from '../services/otService.js';
@@ -21,7 +22,7 @@ router.use(requireAuth);
 
 const POPULATE = [
   { path: 'employee', select: 'code name position role' },
-  { path: 'department', select: 'code name nameTh monthlyCapHours weeklyCapHours' },
+  { path: 'department', select: 'code name nameTh monthlyCapHours weeklyCapHours otMode' },
 ];
 
 /** Role scoping (§2): own / own department / everything. */
@@ -98,7 +99,9 @@ router.post('/preview', wrap(async (req, res) => {
     })
     : null;
 
-  res.json({ result, cap });
+  const weekdayRefusal = employee ? weekdayOtRefusal(employee.department, result) : null;
+
+  res.json({ result, cap, weekdayRefusal });
 }));
 
 // ── submit ──────────────────────────────────────────────────────────────────
@@ -122,6 +125,13 @@ router.post('/', wrap(async (req, res) => {
       error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result),
       warnings: result.warnings,
     });
+  }
+
+  // รูปแบบโอทีของแผนก — see lib/otMode.js, and the App Router copy of this
+  // path, which carries the reasoning.
+  const weekdayRefusal = weekdayOtRefusal(req.user.department, result);
+  if (weekdayRefusal) {
+    return res.status(409).json({ error: weekdayRefusal, warnings: result.warnings });
   }
 
   const period = session.workDate.slice(0, 7);
@@ -208,6 +218,11 @@ router.patch('/:id', wrap(async (req, res) => {
     const { value, error } = normaliseDescription(req.body.description);
     if (error) return res.status(400).json({ error });
     entry.description = value;
+  }
+
+  const weekdayRefusal = weekdayOtRefusal(entry.department, result);
+  if (weekdayRefusal) {
+    return res.status(409).json({ error: weekdayRefusal, warnings: result.warnings });
   }
 
   const cap = await checkCap({

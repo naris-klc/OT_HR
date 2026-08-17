@@ -173,7 +173,9 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
         )}
 
         <div className="table-wrap">
-          <table>
+          {/* `stack-table` + `data-label` is the phone layout every plain list in
+              the app shares — see app/styles.css. */}
+          <table className="stack-table">
             <thead>
               <tr>
                 <th>วันที่</th>
@@ -199,11 +201,12 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                 return (
                   <React.Fragment key={e._id}>
                   <tr>
-                    <td>
+                    {/* The date is the card's heading — how a row is found. */}
+                    <td className="stack-name">
                       {thaiDate(e.workDate)}
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(e.workDate)}</div>
                     </td>
-                    <td>
+                    <td data-label="จาก–ถึง">
                       {e.startTime}–{e.endTime}
                       {e.endsNextDay && (
                         <div style={{ fontSize: 12, color: 'var(--amber)' }}>ข้ามคืน</div>
@@ -212,8 +215,10 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
-                    <td className="num"><strong>{hours(e.totals?.otHours)}</strong></td>
-                    <td>
+                    <td className="num" data-label="รวม (ชม.)">
+                      <strong>{hours(e.totals?.otHours)}</strong>
+                    </td>
+                    <td data-label="รายละเอียดงานที่ทำ">
                       {e.description}
                       {/* ฝ่ายบุคคล reconciling a month against the signed paper
                           are asking who stands behind each row. A request the
@@ -237,7 +242,7 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                         Beside the hours rather than in the drawer: which rules
                         produced a figure is part of reading it, not part of
                         investigating it. */}
-                    <td><PolicyVersionCell version={e.policyVersionId} /></td>
+                    <td data-label="กฎที่ใช้"><PolicyVersionCell version={e.policyVersionId} /></td>
                     <td>
                       <StatusChip status={e.status} />
                       {describeBreaches(e).map((b) => (

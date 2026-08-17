@@ -6,6 +6,7 @@ import { compute, checkCap, loadContext } from '@/src/services/otService.js';
 import { pickSession, isDepartmentManager } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
+import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { birthdayInYear } from '@/src/lib/otEngine.js';
 import { absentKeys, filedKey } from '@/lib/birthdayCheck.js';
 import { birthdayDirectApproval } from '@/lib/birthdayFiling.js';
@@ -129,5 +130,18 @@ export const POST = route(async (req) => {
     }
   }
 
-  return json({ result, cap, routing, birthdayRouting });
+  /**
+   * Said before the form is sent, rather than after it is refused.
+   *
+   * A sentence when this department does not do weekday OT and these hours are
+   * weekday OT, null otherwise — from the very function the write path refuses
+   * with, so the line on the screen and the line in the 409 are one line. The
+   * form greys บันทึก on it instead of reasoning from the mode itself, which
+   * would be the rule written twice.
+   */
+  const weekdayRefusal = employee ? weekdayOtRefusal(employee.department, result) : null;
+
+  return json({
+    result, cap, routing, birthdayRouting, weekdayRefusal,
+  });
 });

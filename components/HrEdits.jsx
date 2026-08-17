@@ -84,7 +84,9 @@ export default function HrEdits({ employee, period, status, onClose }) {
           </div>
 
           <div className="table-wrap" style={{ marginTop: 8 }}>
-            <table>
+            {/* `stack-table` + `data-label` is the phone layout every plain list
+                in the app shares — see app/styles.css. */}
+            <table className="stack-table">
               <thead>
                 <tr>
                   <th>วันที่ทำ OT</th>
@@ -98,17 +100,19 @@ export default function HrEdits({ employee, period, status, onClose }) {
               <tbody>
                 {edits.map((h) => (
                   <tr key={`${h.entry._id}-${h.index}`}>
-                    <td>
+                    {/* The OT date is the card's heading — which row this change
+                        was to. */}
+                    <td className="stack-name">
                       {thaiDate(h.entry.workDate)}
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>
                         วัน{dayName(h.entry.workDate)} · {h.entry.startTime}–{h.entry.endTime}
                       </div>
                       <div style={{ marginTop: 4 }}><StatusChip status={h.entry.status} /></div>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td data-label="แก้ไขเมื่อ" style={{ whiteSpace: 'nowrap' }}>
                       {h.at ? new Date(h.at).toLocaleString('th-TH') : '—'}
                     </td>
-                    <td>
+                    <td data-label="ผู้แก้ไข">
                       {h.byName || '—'}
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>
                         {ACTION_LABEL[h.action] || h.action}
@@ -117,13 +121,19 @@ export default function HrEdits({ employee, period, status, onClose }) {
                     {/* HR must give a reason to edit; an employee correcting a
                         request the manager has not seen yet is not asked for
                         one, so a blank here is expected rather than missing. */}
-                    <td>{h.note || <span style={{ color: 'var(--muted)' }}>—</span>}</td>
+                    <td data-label="เหตุผล">
+                      {h.note || <span style={{ color: 'var(--muted)' }}>—</span>}
+                    </td>
                     {/* Which rules each side of the change was computed under.
                         An edit and a policy change both move the hours in this
                         row; only this column tells them apart, and a correction
                         that crossed a version boundary changed two things at
                         once whether whoever made it meant to or not. */}
-                    <td><PolicyVersionChange before={h.before} after={h.after} /></td>
+                    <td data-label="กฎที่ใช้">
+                      <PolicyVersionChange before={h.before} after={h.after} />
+                    </td>
+                    {/* The change itself is the point of the card, and it is a list
+                        rather than a value — full width, no label crowding it. */}
                     <td>
                       <Changes before={h.before} after={h.after} />
                     </td>

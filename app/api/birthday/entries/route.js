@@ -132,6 +132,22 @@ export const POST = route(async (req) => {
     });
   }
 
+  /**
+   * NO รูปแบบโอที CHECK HERE, and that is the decision rather than an omission.
+   *
+   * This route files one thing only — a วันหยุดวันเกิด that ฝ่ายบุคคล has read
+   * off the scan record — and the birthday holiday is granted by the company to
+   * everybody who comes in, whatever their department is paid on. A แผนก marked
+   * ไม่มีโอที or เหมารายวัน is saying that staying past 17:00 on an ORDINARY day
+   * earns nothing; it is not saying its people do not get their birthday. HR
+   * answered this directly, 2026-08-17.
+   *
+   * The employee-facing paths refuse weekday hours (see `weekdayOtRefusal`).
+   * A birthday shift that runs past midnight into an ordinary day does leave a
+   * few weekday hours on such a department's month, and they stay: the shift is
+   * one shift, HR has the scan record for it in front of them, and refusing the
+   * day over its tail would leave the birthday itself unfiled.
+   */
   const period = session.workDate.slice(0, 7);
   const cap = await checkCap({
     employee,
