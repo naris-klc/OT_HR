@@ -107,12 +107,14 @@ export default function DepartmentView() {
           </div>
         </div>
 
-        <div className="row" style={{ marginTop: 14, alignItems: 'center' }}>
+        {/* Same action row as สรุป OT ส่งบัญชี, `.action-row` and all — the two
+            screens are card for card the same, so they wrap the same way. */}
+        <div className="row action-row" style={{ marginTop: 14 }}>
           <button className="btn" onClick={exportCsv}>ส่งออกไฟล์แยกแผนก (CSV/Excel)</button>
           <button className="btn ghost" onClick={() => setPrinting(true)}>
             พิมพ์แบบฟอร์ม / บันทึกเป็น PDF
           </button>
-          <label className="check" style={{ marginLeft: 'auto' }}>
+          <label className="check">
             <input
               type="checkbox"
               checked={includeZero}
@@ -122,11 +124,18 @@ export default function DepartmentView() {
           </label>
         </div>
 
+        {/* Two lines down to one. Gone: the UTF-8 BOM note, which is a fact
+            about file encoding that reads as reassurance the first time and as
+            noise every time after; and the sentence describing what the printed
+            form looks like, which the print preview shows.
+
+            KEPT, and it is the reason this hint exists at all: the export
+            ignores the department picker above it. A control that does not
+            govern the button beside it is the one thing here somebody can get
+            wrong, and nothing on screen says so. */}
         <div className="hint" style={{ marginTop: 10 }}>
-          ไฟล์ CSV บันทึกด้วย UTF-8 BOM เปิดใน Excel ภาษาไทยได้ทันที · ไม่มีการคำนวณเป็นเงิน
-          <br />
-          ทั้งไฟล์ CSV และแบบฟอร์มออกครบทุกแผนก ไม่ขึ้นกับแผนกที่เลือกไว้ด้านบน ·
-          {' '}แบบฟอร์มพิมพ์หนึ่งแผนกต่อหนึ่งหน้า พร้อมใบรวมทุกแผนก และพิมพ์รายชื่อครบทุกคนเสมอ
+          ไฟล์และแบบฟอร์มออกครบทุกแผนก <strong>ไม่ขึ้นกับแผนกที่เลือกไว้ด้านบน</strong> ·
+          {' '}ไม่มีการคำนวณเป็นเงิน
         </div>
       </div>
 
@@ -201,7 +210,12 @@ function DepartmentCard({ dept, period, index }) {
         {/* Declared widths rather than whatever this department's names happen
             to measure: the cards stack, and a column has to land in the same
             place in every one of them for the stack to be read down. */}
-        <table className="fixed">
+        {/* `dept-table` — card layout below 860px, where the declared widths
+            below add up to 820px on a 375px screen and the three figures the
+            sheet is about are the three columns off the right edge. The widths
+            and the colgroup are untouched: they are what makes a stack of these
+            cards read straight on a desktop, and paper has its own rules. */}
+        <table className="fixed dept-table">
           <colgroup>
             <col style={{ width: 74 }} />
             <col />
@@ -213,43 +227,64 @@ function DepartmentCard({ dept, period, index }) {
           <thead>
             <tr>
               <th className="seq">ลำดับที่</th>
-              <th>ชื่อ-นามสกุล</th>
-              <th>บริษัท</th>
-              <th className="num">1.50</th>
-              <th className="num">3.00</th>
-              <th className="num">รวม ชม.</th>
+              <th className="who-col">ชื่อ-นามสกุล</th>
+              <th className="co-col">บริษัท</th>
+              <th className="num b-15">1.50</th>
+              <th className="num b-3">3.00</th>
+              <th className="num total-col">รวม ชม.</th>
             </tr>
           </thead>
           <tbody>
             {dept.rows.map((row, i) => (
               <tr key={row.employee.id}>
                 <td className="seq">{i + 1}</td>
-                <td>
+                <td className="who-col">
                   {row.employee.name}
                   <div className="cell-sub">{row.employee.code}</div>
                 </td>
-                <td>
-                  <span style={{ color: 'var(--muted)' }}>{row.companyLabel}</span>
+                <td className="co-col">
+                  <span className="co">{row.companyLabel}</span>
                   {row.pendingCount > 0 && (
                     <div className="cell-note">
                       ค้างอนุมัติ {row.pendingCount} รายการ · ไม่นับรวม
                     </div>
                   )}
                 </td>
-                <td className="num">{cell(row.ot15Hours)}</td>
-                <td className="num">{cell(row.ot3Hours)}</td>
-                <td className="num"><strong>{cell(row.otHours)}</strong></td>
+                <td className="num b-15">{cell(row.ot15Hours)}</td>
+                <td className="num b-3">{cell(row.ot3Hours)}</td>
+                <td className="num total-col"><strong>{cell(row.otHours)}</strong></td>
               </tr>
             ))}
           </tbody>
           {/* The row the paper closes with, in the foot of the same table so a
               figure is always read down the column it belongs to. */}
+          {/*
+            THREE CELLS, not one `colSpan={3}`.
+
+            The label used to span ลำดับที่, ชื่อ-นามสกุล and บริษัท. Below 860px
+            the first two columns are frozen, and a frozen column has to exist in
+            EVERY row or it has a hole in it: scrolled sideways, the summary row
+            would have shown whichever figure happened to be passing where every
+            other row shows a name. Pinning the spanning cell instead is no
+            answer either — it is wider than the frozen pair and would lay its
+            overflow across the figures beside it.
+
+            Split into real cells, ลำดับที่ and ชื่อ-นามสกุล are pinned here by
+            exactly the same rules as the rows above, and รวมชั่วโมงทำOT sits in
+            the name column, which is where the row's own name belongs.
+
+            Identical on a desktop: the label is left-aligned in the first of the
+            three either way, and this table draws no vertical rules for the
+            joins to show up in.
+          */}
           <tfoot>
             <tr className="grand">
-              <td colSpan={3}>รวมชั่วโมงทำOT</td>
-              <td className="num">{hours(t.ot15Hours)}</td>
-              <td className="num">{hours(t.ot3Hours)}</td>
-              <td className="num">{hours(t.otHours)}</td>
+              <td className="seq" />
+              <td className="who-col sum-k">รวมชั่วโมงทำOT</td>
+              <td className="co-col" />
+              <td className="num b-15">{hours(t.ot15Hours)}</td>
+              <td className="num b-3">{hours(t.ot3Hours)}</td>
+              <td className="num total-col">{hours(t.otHours)}</td>
             </tr>
           </tfoot>
         </table>
@@ -284,7 +319,7 @@ function AllDepartments({ departments, total }) {
             the department cards, so the bundle's last sheet lines up with the
             sheets it totals. Only the middle differs: one wide column for the
             department name where the cards carry name and บริษัท. */}
-        <table className="fixed">
+        <table className="fixed dept-table alldept">
           <colgroup>
             <col style={{ width: 74 }} />
             <col />
@@ -296,32 +331,34 @@ function AllDepartments({ departments, total }) {
           <thead>
             <tr>
               <th className="seq">ลำดับที่</th>
-              <th>แผนก</th>
-              <th className="num">จำนวนคน</th>
-              <th className="num">1.50</th>
-              <th className="num">3.00</th>
-              <th className="num">รวม ชม.</th>
+              <th className="who-col">แผนก</th>
+              <th className="num head-col">จำนวนคน</th>
+              <th className="num b-15">1.50</th>
+              <th className="num b-3">3.00</th>
+              <th className="num total-col">รวม ชม.</th>
             </tr>
           </thead>
           <tbody>
             {departments.map((d, i) => (
               <tr key={d.id}>
                 <td className="seq">{i + 1}</td>
-                <td>{d.name}</td>
-                <td className="num">{d.totals.headcount}</td>
-                <td className="num">{cell(d.totals.ot15Hours)}</td>
-                <td className="num">{cell(d.totals.ot3Hours)}</td>
-                <td className="num"><strong>{cell(d.totals.otHours)}</strong></td>
+                <td className="who-col">{d.name}</td>
+                <td className="num head-col">{d.totals.headcount}</td>
+                <td className="num b-15">{cell(d.totals.ot15Hours)}</td>
+                <td className="num b-3">{cell(d.totals.ot3Hours)}</td>
+                <td className="num total-col"><strong>{cell(d.totals.otHours)}</strong></td>
               </tr>
             ))}
           </tbody>
+          {/* Split for the same reason as the department cards above. */}
           <tfoot>
             <tr className="grand">
-              <td colSpan={2}>รวมชั่วโมงทำOT</td>
-              <td className="num">{total.headcount}</td>
-              <td className="num">{hours(total.ot15Hours)}</td>
-              <td className="num">{hours(total.ot3Hours)}</td>
-              <td className="num">{hours(total.otHours)}</td>
+              <td className="seq" />
+              <td className="who-col sum-k">รวมชั่วโมงทำOT</td>
+              <td className="num head-col">{total.headcount}</td>
+              <td className="num b-15">{hours(total.ot15Hours)}</td>
+              <td className="num b-3">{hours(total.ot3Hours)}</td>
+              <td className="num total-col">{hours(total.otHours)}</td>
             </tr>
           </tfoot>
         </table>

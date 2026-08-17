@@ -215,9 +215,24 @@ export default function OtForm({
                 : template ? 'ส่งคำขอใหม่จากรายการเดิม'
                   : 'บันทึกการทำงานล่วงเวลา'}
       </h2>
+      {/*
+        NOT THE SAME SENTENCE ON A BIRTHDAY ROW, because the usual one is false
+        there. "เวลาทำงานปกติ … นอกเหนือจากนี้นับเป็น OT" tells the reader that
+        08:00–17:00 is ordinary time — true on a working day, and the opposite
+        of true on a วันหยุดวันเกิด, where the whole day is a holiday and every
+        hour worked is OT. The detail pop-up on a filed birthday row shows
+        exactly that: 08:00–17:00 booked as OT วันหยุด ×1.5.
+
+        So ฝ่ายบุคคล were reading, immediately above the two boxes they were
+        about to type scan times into, a rule that contradicted what the form
+        was going to do with them. Replaced rather than merely shortened — the
+        shorter version of a wrong sentence is still wrong — and the replacement
+        is one line instead of three, which is the space the form wanted back.
+      */}
       <div className="hint">
-        เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT ·
-        ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ
+        {fromBirthday
+          ? 'วันหยุดวันเกิดเป็นวันหยุดทั้งวัน — ชั่วโมงที่ทำทั้งหมดนับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'
+          : 'เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'}
       </div>
       {entry && !hrEdit && (
         <div className="hint">
@@ -251,9 +266,15 @@ export default function OtForm({
                 field. Shown rather than hidden: somebody has to be able to see
                 they opened the right name before they type two times against
                 it, and the server checks the pair against the roster anyway. */}
+            {/* "พนักงานและวันที่ … แก้ไขในฟอร์มนี้ไม่ได้" was the first half of
+                this and is gone. It described the screen rather than telling
+                anybody anything: the two facts are printed as text directly
+                above, and วันที่เริ่ม below is rendered `disabled` and looks it.
+                A sentence that only repeats what is already visible costs a
+                line of a phone screen and earns nothing. What is left is the
+                half that is an instruction. */}
             <div className="hint" style={{ margin: '4px 0 0' }}>
-              พนักงานและวันที่มาจากรายการวันเกิด แก้ไขในฟอร์มนี้ไม่ได้ ·
-              {' '}กรอกเฉพาะเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง
+              กรอกเฉพาะเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง
             </div>
           </div>
 
@@ -360,11 +381,15 @@ export default function OtForm({
             วัน{dayName(form.workDate)} · {thaiDate(form.workDate)}
           </span>
         </div>
-        <div className="field" style={{ maxWidth: 130 }}>
+        {/* `field time` rather than an inline `maxWidth: 130` — the two want to
+            share a line at phone width, where `.field` is otherwise forced to
+            100%, and an inline max-width is the one thing a media query cannot
+            argue with. The 130px lives in the stylesheet now. */}
+        <div className="field time">
           <label>{fromBirthday ? 'เวลาเข้า (สแกนนิ้ว)' : 'เวลาเริ่ม (จาก)'}</label>
           <input type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required />
         </div>
-        <div className="field" style={{ maxWidth: 130 }}>
+        <div className="field time">
           <label>{fromBirthday ? 'เวลาออก (สแกนนิ้ว)' : 'เวลาสิ้นสุด (ถึง)'}</label>
           <input type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required />
           {overnight && (
@@ -373,7 +398,9 @@ export default function OtForm({
         </div>
       </div>
 
-      <div className="row" style={{ marginTop: 14 }}>
+      {/* One per line on a phone — see .form-checks. Side by side they were two
+          17px boxes about 6px apart with wrapped labels between them. */}
+      <div className="row form-checks" style={{ marginTop: 14 }}>
         <label className="check">
           <input type="checkbox" checked={form.endsNextDay} onChange={(e) => set('endsNextDay', e.target.checked)} />
           ทำงานข้ามคืน (สิ้นสุดวันถัดไป)
@@ -481,7 +508,7 @@ export default function OtForm({
         </div>
       )}
 
-      <div className="row" style={{ marginTop: 18, justifyContent: 'flex-end' }}>
+      <div className="row form-actions" style={{ marginTop: 18, justifyContent: 'flex-end' }}>
         {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>ยกเลิก</button>}
         <button
           className="btn"

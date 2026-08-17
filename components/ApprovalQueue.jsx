@@ -15,8 +15,8 @@ import {
 // offers and the ones the server accepts cannot drift apart.
 import { isOwnFiling } from '@/lib/delegation.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, Modal, ProxyMark, RateHead, RefiledNote,
-  RequestTrail, SegmentList, StatusChip, TeamMark, editsOf,
+  Alert, Empty, EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead, RefiledNote,
+  RequestTrail, Section, SegmentList, StatusChip, TeamMark, editsOf,
 } from './common.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
 import WithdrawalRequests from './WithdrawalRequests.jsx';
@@ -51,6 +51,14 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   const [q, setQ] = useState('');
   const [dept, setDept] = useState('');
   const [per, setPer] = useState('');
+  /*
+   * THE FILTERS DO NOT FOLD. They were briefly put behind a กรองข้อมูล button
+   * on phones, to buy back the two thirds of a 375px screen the three stacked
+   * fields take before the first request. It was the wrong trade and was taken
+   * out again on 2026-08-14: a filter bar is read at a glance and typed into
+   * without thinking, and a tap in front of it is paid on every visit to save
+   * scrolling that is paid once.
+   */
 
   // ── standing in ───────────────────────────────────────────────────────────
   /**
@@ -82,7 +90,15 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
 
   // ── selection ─────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState(() => new Set());
+  /**
+   * TWO เลือกทั้งหมด boxes, not one — the table's heading row and the mobile
+   * toolbar's. Only ever one of them is on screen: the card layout below 860px
+   * hides `thead` entirely, and hiding it took the heading checkbox with it,
+   * which left a phone with no way to build a batch at all. Both are kept in
+   * step by the same `toggleAll` and the same indeterminate effect.
+   */
   const allRef = useRef(null);
+  const allMobileRef = useRef(null);
 
   // ── modals ────────────────────────────────────────────────────────────────
   const [confirming, setConfirming] = useState(null); // entry[]
@@ -191,14 +207,23 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   const actionable = useMemo(() => shown.filter((e) => !isOwnFiling(e, user)), [shown, user]);
 
   useEffect(() => {
-    if (allRef.current) {
-      allRef.current.indeterminate = selected.size > 0 && selected.size < actionable.length;
-    }
+    const part = selected.size > 0 && selected.size < actionable.length;
+    if (allRef.current) allRef.current.indeterminate = part;
+    if (allMobileRef.current) allMobileRef.current.indeterminate = part;
   }, [selected, actionable]);
 
   const picked = shown.filter((e) => selected.has(e._id));
   const pickedHours = picked.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
   const filtered = entries && shown.length !== entries.length;
+  /**
+   * "12 รายการ", or "3 / 12 รายการ" while a filter is narrowing the list. Held
+   * here rather than written out at each of the two places that print it — the
+   * heading on a phone and the chip on a desktop — so that a screen cannot end
+   * up quoting two different numbers for one queue.
+   */
+  const countLabel = entries?.length > 0
+    ? `${filtered ? `${shown.length} / ${entries.length}` : entries.length} รายการ`
+    : null;
 
   function toggle(id) {
     setSelected((prev) => {
@@ -331,6 +356,21 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
           <div className="t">
             {delegatedOnly ? 'รออนุมัติ · ทีมที่รับช่วง'
               : isHr ? 'รอ HR ยืนยัน' : 'รอหัวหน้าอนุมัติ'}
+            {/* THE SAME COUNT AS THE CHIP BELOW, and only one of the two is ever
+                on screen — this one under 860px, the chip above it. Two
+                renderings rather than one moved, for the reason the chip's own
+                comment gives: on a desktop the count belongs to the button
+                beside it, and pulling it into the heading would leave that
+                button reading as part of the title.
+
+                On a phone there is no button next to it. `.card-head` wraps at
+                that width, so the right-hand group drops onto a line of its
+                own, and for ฝ่ายบุคคล — who have no บันทึกแทน button — that
+                line is a lone grey pill taking a row of a 375px screen to say
+                "1". Here it costs nothing.
+
+                `countLabel` is computed once so the two can never disagree. */}
+            {countLabel && <span className="t-count">{' · '}{countLabel}</span>}
           </div>
           <div className="hint" style={{ margin: '3px 0 0' }}>
             {delegatedOnly
@@ -346,11 +386,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
             heading rather than to the card. The count sits inside the group
             because it is what the button acts on. */}
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-          {entries?.length > 0 && (
-            <span className="chip muted">
-              {filtered ? `${shown.length} / ${entries.length}` : entries.length} รายการ
-            </span>
-          )}
+          {countLabel && <span className="chip muted">{countLabel}</span>}
           {!isHr && !delegatedOnly && user.role === 'manager' && (
             <button className="btn ghost sm" onClick={() => setFiling(true)}>
               + บันทึก OT แทนลูกทีม
@@ -433,6 +469,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
 
       {/* ── filter bar ─────────────────────────────────────────────────────── */}
       {entries?.length > 0 && (
+        <>
         <div className="queue-tools">
           <div className="field search">
             <label>ค้นหา</label>
@@ -473,6 +510,34 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
             </button>
           )}
         </div>
+        {/*
+          PHONE ONLY — not drawn at all above 860px, where the table's own
+          heading row carries this.
+
+          เลือกทั้งหมด exists here because the card layout hides `thead`, and
+          hiding it took the heading checkbox with it — which left a phone
+          unable to build a batch at all. It counts `actionable`, the same list
+          the batch is built from, so the number on the label is the number that
+          will be ticked.
+
+          Under the filters rather than over them: it belongs to the list, not
+          to the filtering, and sitting directly above the first card it lines
+          up with the tick-boxes it selects.
+        */}
+        {actionable.length > 0 && (
+          <div className="queue-mobile-bar no-print">
+            <label className="check">
+              <input
+                ref={allMobileRef}
+                type="checkbox"
+                checked={selected.size === actionable.length}
+                onChange={toggleAll}
+              />
+              เลือกทั้งหมด ({actionable.length})
+            </label>
+          </div>
+        )}
+        </>
       )}
 
       {/* ── batch bar ──────────────────────────────────────────────────────── */}
@@ -603,7 +668,12 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
-                  <td className="num rate-col"><strong>{hours(e.totals?.otHours)}</strong></td>
+                  {/* `total-col` matches the heading's own class, which the td
+                      was missing. It earns its keep below 860px, where the
+                      three rate cells above fold away into the รายละเอียด
+                      pop-up and this is the only figure left on the card — it
+                      is the class that tells them apart. */}
+                  <td className="num rate-col total-col"><strong>{hours(e.totals?.otHours)}</strong></td>
                   {/* The width now comes from th.cap-col, which the three rate
                       columns pay for — a minWidth here only ever grew the
                       table. */}
@@ -647,7 +717,14 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                       <div key={w.code + (w.bucket || '')} className="cell-sub">{w.message}</div>
                     ))}
                   </td>
-                  <td>
+                  {/* `act-col`, which this cell has never carried. The heading
+                      has it and so does the stylesheet: the min-width:861px
+                      block pins `.queue-table td.act-col` to the right edge so
+                      the buttons stay put while the eleven columns scroll under
+                      them. With no class on the cell that rule matched nothing
+                      and the action column has been scrolling away with the
+                      rest all along. */}
+                  <td className="act-col">
                     {/* A row this reviewer wrote themselves cannot be signed OR
                         refused by them — one rule governs both, so offering
                         either button is offering a 403. What goes here instead is
@@ -656,7 +733,11 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                         See `isOwnFiling` in lib/delegation.js. */}
                     {isOwnFiling(e, user) ? (
                       <div className="row-actions">
-                        <span className="cell-sub" style={{ maxWidth: 190 }}>
+                        {/* A class rather than the inline `maxWidth: 190` it
+                            used to carry: the card layout needs this sentence
+                            to run the full width of the card, and an inline
+                            style is the one thing a media query cannot answer. */}
+                        <span className="cell-sub own-note">
                           คุณเป็นผู้บันทึกรายการนี้ จึงอนุมัติหรือไม่อนุมัติเองไม่ได้
                           {isUntouchedSystemFiling(e)
                             ? ' — ถอนใบได้ หรือให้ผู้ดูแลระบบยืนยันแทน'
@@ -1379,18 +1460,6 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
 }
 
 // ── small parts ─────────────────────────────────────────────────────────────
-function Section({ title, action, children }) {
-  return (
-    <section className="detail-sec">
-      <div className="sec-head">
-        <div className="kicker-sm">{title}</div>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 /**
  * What this person has already run up in the month THIS ROW belongs to.
  *
@@ -1565,24 +1634,6 @@ function roomLine(month) {
 /** Past a ceiling — the one place this screen paints that, so the row and the
     pop-up cannot disagree about what over looks like. */
 const OVER_CAP = { color: 'var(--danger-ink)', fontWeight: 600 };
-
-/**
- * `wide` gives a fact the whole row instead of one column of it.
- *
- * The grid's cells stretch to the tallest of them, so one fact carrying four
- * lines of explanation left the three or four one-line facts beside it as tall
- * empty boxes — a band of white space across the pop-up, and a heading narrow
- * enough to wrap "สะสมทั้งเดือน สิงหาคม 2569" onto two lines. A fact that is a
- * paragraph rather than a value belongs on its own row.
- */
-function Fact({ k, v, sub, wide = false }) {
-  return (
-    <div className={wide ? 'wide' : undefined}>
-      <dt>{k}</dt>
-      <dd>{v}{sub && <div className="cell-sub">{sub}</div>}</dd>
-    </div>
-  );
-}
 
 /** The rows a confirmation is about — folded away when there are many. */
 function EntryPeek({ entries, collapsed }) {

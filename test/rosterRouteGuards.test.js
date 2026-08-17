@@ -129,6 +129,30 @@ test('the everybody trail leaves out the rows HR may not open one at a time', ()
   assert.match(code, /rosterPermission\(actor,\s*\{\s*target\s*\}\)/);
 });
 
+test('narrowing the everybody trail cannot widen it', () => {
+  // The screen filters by person, by field, by action and by account. Each one
+  // is applied ON TOP of the permission filter rather than instead of it — a
+  // filter object rebuilt from scratch per parameter is how a `?by=` would come
+  // to answer with the Admin rows that `$nin` had been keeping out.
+  const code = read(TRAIL_ALL);
+  assert.match(code, /const filter = \{ \.\.\.scope \}/, 'the filters no longer start from the scope');
+  // ?field= is checked against the allowlist rather than passed through to the
+  // query, so it can only ever name something the trail actually records.
+  assert.match(code, /AUDITED_FIELDS\.includes\(q\.field\)/);
+  assert.match(code, /filter\['changes\.field'\]/);
+});
+
+test('the ผู้แก้ไข list is built from what the reader may see, not from what they asked for', () => {
+  // From `scope` — the permission half — so picking an account does not empty
+  // the dropdown of every other account, and so it can never offer a name that
+  // only appears on records this reader is not allowed to read.
+  const code = read(TRAIL_ALL);
+  const match = code.match(/EmployeeAudit\.aggregate\(\[[\s\S]*?\]\)/);
+  assert.ok(match, 'the actor list is no longer an aggregation over the trail');
+  assert.match(match[0], /\$match:\s*\{\s*\.\.\.scope/, 'the actor list is built from the narrowed filter');
+  assert.doesNotMatch(match[0], /\.\.\.filter/);
+});
+
 // ── the password: never in the trail, whatever any route does ───────────────
 
 test('no roster route hands a password to the audit trail', () => {

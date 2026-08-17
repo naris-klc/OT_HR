@@ -7,7 +7,9 @@ import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
   chosenPasswordPermission, dropsAnAdmin,
 } from '@/lib/employees.js';
-import { ACCOUNTING_SENSITIVE, FIELD_LABEL, rosterChanges } from '@/lib/rosterAudit.js';
+import {
+  ACCOUNTING_SENSITIVE, AUDITED_FIELDS, FIELD_LABEL, rosterChanges,
+} from '@/lib/rosterAudit.js';
 import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // Pure config, no mongoose — the same resolution the accounting sheet uses, so
 // the column showing which payroll somebody is on cannot disagree with the file
@@ -15,9 +17,9 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 import { companyOf } from '@/src/config/companies.js';
 // Pure too — no imports of its own at all, so the diff the settings page draws
 // is computed by the same function the replay and the version history use.
-import { diffPolicy } from '@/lib/policyVersion.js';
+import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
-import { Alert, Empty, Modal } from './common.jsx';
+import { Alert, Empty, Modal, Field, TipButton } from './common.jsx';
 import Delegation from './Delegation.jsx';
 
 const SECTIONS = [
@@ -48,7 +50,10 @@ export default function AdminView({ user, initialSection }) {
   return (
     <>
       <div className="card">
-        <div className="row">
+        {/* `.section-tabs` is what keeps these flush when they wrap — six
+            labels of six different lengths otherwise leave a ragged right
+            edge on every screen narrower than a desktop. */}
+        <div className="row section-tabs">
           {SECTIONS.map((s) => (
             <button
               key={s.key}
@@ -75,7 +80,8 @@ export default function AdminView({ user, initialSection }) {
 function Departments() {
   const [rows, setRows] = useState([]);
   const [people, setPeople] = useState([]);
-  const [form, setForm] = useState({ code: '', name: '', nameTh: '', monthlyCapHours: '', weeklyCapHours: '' });
+  /** Whether เพิ่มแผนก is open — the only way this screen creates a row. */
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
@@ -88,14 +94,20 @@ function Departments() {
   }
   useEffect(() => { load(); }, []);
 
-  async function create(e) {
-    e.preventDefault();
-    try {
-      await api.post('/departments', form);
-      setForm({ code: '', name: '', nameTh: '', monthlyCapHours: '', weeklyCapHours: '' });
-      setOk('เพิ่มแผนกแล้ว');
-      load();
-    } catch (err) { setError(err.message); }
+  /**
+   * Create one row from the dialog.
+   *
+   * The error is NOT caught here, for the same reason as เพิ่มพนักงาน's — a
+   * รหัส the server already has has to land back in the form holding the value
+   * that caused it. Closing the dialog to print the message on the card behind
+   * would throw away everything typed, which is what the inline row did.
+   */
+  async function create(values) {
+    setError('');
+    await api.post('/departments', values);
+    setOk('เพิ่มแผนกแล้ว');
+    setAdding(false);
+    load();
   }
 
   async function update(id, patch) {
@@ -115,37 +127,11 @@ function Departments() {
       {error && <Alert kind="error">{error}</Alert>}
       {ok && <Alert kind="ok">{ok}</Alert>}
 
-      <form className="row" onSubmit={create} style={{ marginBottom: 16 }}>
-        <div className="field" style={{ maxWidth: 110 }}>
-          <label>รหัส</label>
-          <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-        </div>
-        <div className="field">
-          <label>ชื่อ (EN)</label>
-          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        </div>
-        <div className="field">
-          <label>ชื่อ (ไทย)</label>
-          <input value={form.nameTh} onChange={(e) => setForm({ ...form, nameTh: e.target.value })} />
-        </div>
-        <div className="field" style={{ maxWidth: 150 }}>
-          <label>เพดาน ชม./เดือน</label>
-          <input
-            type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
-            value={form.monthlyCapHours}
-            onChange={(e) => setForm({ ...form, monthlyCapHours: e.target.value })}
-          />
-        </div>
-        <div className="field" style={{ maxWidth: 150 }}>
-          <label>เพดาน ชม./สัปดาห์</label>
-          <input
-            type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
-            value={form.weeklyCapHours}
-            onChange={(e) => setForm({ ...form, weeklyCapHours: e.target.value })}
-          />
-        </div>
-        <button className="btn">เพิ่มแผนก</button>
-      </form>
+      {/* The five boxes this replaces are in the dialog behind it — see
+          AddDepartment for why they are no longer standing above the table. */}
+      <div className="row" style={{ marginBottom: 16 }}>
+        <button className="btn" onClick={() => setAdding(true)}>เพิ่มแผนก</button>
+      </div>
 
       <div className="table-wrap">
         <table>
@@ -204,7 +190,118 @@ function Departments() {
           </tbody>
         </table>
       </div>
+
+      {adding && <AddDepartment onClose={() => setAdding(false)} onSave={create} />}
     </div>
+  );
+}
+
+const BLANK_DEPT = { code: '', name: '', nameTh: '', monthlyCapHours: '', weeklyCapHours: '' };
+
+/** Said in both เพดาน fields, because the distinction is the whole of what
+    those two boxes mean and a placeholder saying "ไม่กำหนด" is gone the moment
+    anybody types into it. */
+const CAP_TIP = 'ไม่บังคับ · เว้นว่างหมายถึงไม่มีเพดาน ซึ่งไม่เหมือนกับเพดาน 0'
+  + ' · แก้ภายหลังได้จากช่องในตารางด้านล่าง';
+
+/**
+ * เพิ่มแผนก — the five fields that make a department, in a dialog.
+ *
+ * WHY A DIALOG, and it is เพิ่มพนักงาน's answer again. As a `.row` above the
+ * table the five boxes wrapped into a ragged stack on anything narrower than a
+ * desktop, and a row has nowhere to put the sentence a field needs. The field
+ * that needs one most is เพดาน: blank and 0 are different answers there, and
+ * the row could only say so in a placeholder that disappears as soon as it is
+ * typed into. Both forms are now the same shape, so somebody who has added a
+ * person has added a department.
+ *
+ * WHAT IS NOT HERE. หัวหน้างาน and สถานะ: a department is created active and
+ * unmanaged, and both are set from the row in the table, which is where the
+ * list of หัวหน้างาน to choose from already is.
+ */
+function AddDepartment({ onClose, onSave }) {
+  const [form, setForm] = useState(BLANK_DEPT);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  // The two the server insists on, checked here so the refusal is a greyed
+  // button beside the empty field rather than a 400 after the form is full.
+  const ready = form.code.trim() && form.name.trim();
+  const dirty = Object.keys(BLANK_DEPT).some((k) => form[k] !== BLANK_DEPT[k]);
+
+  async function save() {
+    setError('');
+    setBusy(true);
+    try {
+      await onSave({ ...form, code: form.code.trim(), name: form.name.trim() });
+    } catch (err) {
+      // Stays open, with everything still typed in it — see `create`.
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="เพิ่มแผนก"
+      subtitle="สร้างแผนกใหม่หนึ่งแผนก"
+      onClose={onClose}
+      dirty={dirty && !busy}
+      footer={(requestClose) => (
+        <>
+          <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
+          <button className="btn" onClick={save} disabled={!ready || busy}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+          </button>
+        </>
+      )}
+    >
+      {error && <Alert kind="error">{error}</Alert>}
+
+      <div className="edit-form">
+        <section className="form-group">
+          <div className="gh">ชื่อแผนก</div>
+          <div className="form-grid">
+            <Field label="รหัส">
+              <input value={form.code} onChange={(e) => set({ code: e.target.value })} disabled={busy} />
+            </Field>
+            <Field label="ชื่อ (EN)">
+              <input value={form.name} onChange={(e) => set({ name: e.target.value })} disabled={busy} />
+            </Field>
+            <Field
+              label="ชื่อ (ไทย)"
+              tip="ไม่บังคับ — เว้นว่างแล้วตารางและรายงานจะแสดงชื่อ (EN) แทน"
+            >
+              <input value={form.nameTh} onChange={(e) => set({ nameTh: e.target.value })} disabled={busy} />
+            </Field>
+          </div>
+        </section>
+
+        <section className="form-group">
+          <div className="gh">เพดานชั่วโมง</div>
+          <div className="form-grid">
+            <Field label="เพดาน ชม./เดือน" tip={CAP_TIP}>
+              <input
+                type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
+                value={form.monthlyCapHours}
+                onChange={(e) => set({ monthlyCapHours: e.target.value })}
+                disabled={busy}
+              />
+            </Field>
+            <Field label="เพดาน ชม./สัปดาห์" tip={CAP_TIP}>
+              <input
+                type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
+                value={form.weeklyCapHours}
+                onChange={(e) => set({ weeklyCapHours: e.target.value })}
+                disabled={busy}
+              />
+            </Field>
+          </div>
+        </section>
+      </div>
+    </Modal>
   );
 }
 
@@ -570,48 +667,33 @@ function Employees({ user }) {
   return (
     <div className="card">
       <h2>พนักงาน</h2>
+      {/*
+        Two sentences, where there were twelve.
+
+        The wall this replaces was written when the form stood above the table
+        and there was nowhere else to say any of it. Now there is, and every
+        clause that has a field of its own has gone to sit under that field:
+        บริษัท เว้นว่างได้ and วันเกิด ไม่บังคับ are tips in เพิ่มพนักงาน, what
+        ฝ่ายบุคคล may not set is on the greyed control itself (LOCK_SHORT /
+        LOCK_NOTE), the temporary password is on the dialog before the save and
+        on the notice after it, and “เพิ่มทีละคนได้ที่ปุ่มด้านล่าง” was a
+        sentence describing a button two inches below it.
+
+        Length was the whole problem: on a phone this card opened with a
+        screen-and-a-half of grey before the first control, so the reader
+        scrolled past all of it — including the one paragraph that could not be
+        recovered from anywhere else. What is left is the pair with nowhere to
+        go. The CSV format is needed in Excel, before this screen is even open,
+        and getting it wrong silently moves somebody's birthday into the wrong
+        month; the audit line is a fact about the screen, not about any one
+        control on it.
+      */}
       <div className="hint">
-        เพิ่มทีละคน หรือนำเข้าเป็นไฟล์ CSV — รองรับทั้งสองแบบ จึงไม่ต้องรอคำตอบว่า HR จะส่งรายชื่อมาแบบไหน
-        · ช่อง “บริษัท” ระบุว่าพนักงานคนนี้อยู่ในบัญชีเงินเดือนของบริษัทใด
-        เว้นว่างได้ ระบบจะเดาจากรหัส (PM… = ไพรมัส, THT… = เดมเทค)
-        · “วันเกิด” ไม่บังคับ และแก้ไขได้จากหน้านี้เท่านั้น —
-        พนักงานเห็นได้ในหน้าข้อมูลส่วนตัวแต่แก้เองไม่ได้
-        · ในไฟล์ CSV ให้ใช้ YYYY-MM-DD เป็น ค.ศ. (เช่น 1998-03-05) —
-        แต่ถ้าเปิดไฟล์ด้วย Excel แล้วกดบันทึกทับ Excel จะเขียนคอลัมน์วันเกิดใหม่
-        เป็น DD/MM/YYYY หรือ MM/DD/YYYY ตามการตั้งค่าของเครื่องนั้น
-        ค่าอย่าง 05/03/1998 จึงเป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
-        ระบบอ่านได้ทั้ง YYYY-MM-DD และ DD/MM/YYYY และจะแสดงผลการตีความให้ตรวจก่อนกดยืนยันนำเข้า
-        โปรดอ่านตัวอย่างนั้นให้ครบก่อนยืนยัน — ถ้าตีความไม่ได้แน่ชัด ระบบจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา
-        {/* Said here as well as on the dialogs, because it is the change most
-            likely to be read as a bug: the password field people used to fill
-            in is gone. */}
-        · บัญชีที่สร้างจากหน้านี้ ระบบจะสุ่มรหัสผ่านชั่วคราวให้เอง
-        แสดงบนจอครั้งเดียวให้ HR จดไปแจ้งพนักงาน
-        และบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
-        · การเพิ่มทีละคนเลือก “ตั้งเอง” ได้ถ้าต้องบอกรหัสกับพนักงานตรงนั้นเลย
-        แต่อย่าใช้รูปแบบเดียวกันกับทุกคน และตั้งให้ไม่มีรหัสพนักงานอยู่ในนั้น
-        (ระบบไม่รับ เพราะรหัสพนักงานพิมพ์อยู่บนใบ OT ทุกใบและในไฟล์ที่ส่งบัญชี)
-        — ไฟล์ CSV ตั้งเองไม่ได้ ไม่ต้องมีคอลัมน์รหัสผ่าน ถ้ามีระบบจะไม่ใช้ค่านั้น
-        {/* Said plainly, because the alternative is HR discovering it as a 403.
-            Both limits are enforced on the server (lib/employees.js); this is
-            the sentence that stops somebody looking for a button that is not
-            there. */}
-        {!isAdmin && ' · บทบาท “ผู้ดูแลระบบ” ตั้งได้โดยผู้ดูแลระบบเท่านั้น'}
-        {!isAdmin && ' · “รหัสพนักงาน” ของคนที่มีอยู่แล้วแก้ได้โดยผู้ดูแลระบบเท่านั้น '
-          + 'เพราะผูกกับการเข้าสู่ระบบและใบเก่า — แจ้งผู้ดูแลระบบพร้อมเหตุผล'}
-        {/* ระบบไม่เก็บรหัสผ่านแบบอ่านได้: hashed one way, so there is nothing to
-            show. The recovery path is the button on the row, and saying so here
-            is what stops the question being asked. */}
-        {' '}· ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสผ่านเดิมได้
-        {' '}หากพนักงานลืม ให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง
+        วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD เป็น ค.ศ. (เช่น 1998-03-05) — ถ้าเปิดแล้วบันทึกทับด้วย Excel
+        คอลัมน์นี้จะถูกเขียนใหม่ตามการตั้งค่าของเครื่อง และ “05/03/1998” เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
+        · ระบบจะแสดงผลการอ่านให้ตรวจก่อนนำเข้าเสมอ และถ้าตีความไม่ได้แน่ชัดจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา
         {' '}· ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
         {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
-        {/* The table is a table again, and the form above it is gone. Both the
-            row that does not exist yet and the row being corrected go through a
-            dialog, which is the only place there is room to say what a field
-            does before it is filled in and why another one is greyed out. */}
-        {' '}· เพิ่มทีละคนได้ที่ปุ่ม “เพิ่มพนักงาน” ด้านล่าง
-        {' '}· แก้ไขข้อมูลของคนที่มีอยู่แล้วได้ที่ปุ่ม “แก้ไข” ในแต่ละแถว
       </div>
       {error && <Alert kind="error">{error}</Alert>}
 
@@ -1918,60 +2000,9 @@ function legacyCopy(payload) {
   }
 }
 
-/**
- * A labelled control, with the sentence that explains it.
- *
- * TWO PLACES FOR THAT SENTENCE, because it is answering two different
- * questions.
- *
- * `note` stays on screen. It is for a control somebody cannot use: the reason
- * has to arrive before they try, not after they have clicked at a grey box and
- * gone looking for whoever maintains this.
- *
- * `tip` is the same kind of sentence for a control that works, and it waits
- * behind the (?) beside the label. Stacked under every field these were a wall
- * of grey taller than the form — and a wall of grey is read as decoration, so
- * the one sentence that mattered got skipped along with the rest. Hover gives
- * it through `title`, a click opens it in place; nothing is shortened or
- * dropped either way.
- */
-function Field({ label, note, tip, children, style }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="field" style={style}>
-      <div className="field-head">
-        <label>{label}</label>
-        {tip && <TipButton text={tip} of={label} open={open} onToggle={() => setOpen((v) => !v)} />}
-      </div>
-      {children}
-      {note && <div className="field-note">{note}</div>}
-      {tip && open && <div className="field-note">{tip}</div>}
-    </div>
-  );
-}
-
-/**
- * The (?) that holds a sentence until it is asked for.
- *
- * A real <button>, not a styled span: it is reached by Tab, answers Enter and
- * Space, and says whether it is open — the sentence behind it is the only
- * explanation of the field, so a pointer must not be the one way to it.
- */
-function TipButton({ text, of, open, onToggle }) {
-  return (
-    <button
-      type="button"
-      className={open ? 'tip-btn on' : 'tip-btn'}
-      // Hover, for the reader who is not going to click anything.
-      title={text}
-      aria-expanded={open}
-      aria-label={`คำอธิบายของ ${of}`}
-      onClick={onToggle}
-    >
-      ?
-    </button>
-  );
-}
+/* Field and TipButton now live in common.jsx — ผู้รับช่วงอนุมัติแทน grew a
+   dialog form of its own and needs the same two. FoldedNote stays here: it is
+   the one that is only ever about a control on this screen. */
 
 /**
  * One line, with the rest of it behind the same (?).
@@ -2127,8 +2158,20 @@ function RosterAudit() {
   const [hasMore, setHasMore] = useState(false);
   const [people, setPeople] = useState([]);
   const [depts, setDepts] = useState([]);
-  const [who, setWho] = useState('');
+  /** Who has ever written to this trail — from the records, not from the roster. */
+  const [actors, setActors] = useState([]);
+  /**
+   * The four filters, as one object.
+   *
+   * Together rather than four `useState`s because they are read together: the
+   * request is built from all four and the empty-list message has to know
+   * whether ANY of them is set. Four separate flags is four places to forget.
+   */
+  const [filters, setFilters] = useState({ employee: '', field: '', action: '', by: '' });
   const [error, setError] = useState('');
+
+  const narrowed = Object.values(filters).some(Boolean);
+  const setFilter = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
     Promise.all([api.get('/employees?all=1'), api.get('/departments?all=1')])
@@ -2136,12 +2179,30 @@ function RosterAudit() {
       .catch((err) => setError(err.message));
   }, []);
 
+  /**
+   * EVERY FILTER GOES TO THE SERVER, and none of them narrows the list in the
+   * browser.
+   *
+   * The endpoint answers with the newest `limit` records and says whether it cut
+   * the list off. Filtering that answer here would filter the most recent 100
+   * records — so "แก้วันเกิด, โดยฝ่ายบุคคล" would come back empty on a roster
+   * whose last 100 changes happened to be แผนก moves, and read as "this has
+   * never happened" rather than "look further back".
+   */
   useEffect(() => {
     setRecords(null);
-    api.get(`/employees/audit${who ? `?employee=${who}` : ''}`)
-      .then((res) => { setRecords(res.records); setHasMore(res.hasMore); setError(''); })
+    const params = new URLSearchParams(
+      Object.entries(filters).filter(([, v]) => v),
+    ).toString();
+    api.get(`/employees/audit${params ? `?${params}` : ''}`)
+      .then((res) => {
+        setRecords(res.records);
+        setHasMore(res.hasMore);
+        setActors(res.actors || []);
+        setError('');
+      })
       .catch((err) => setError(err.message));
-  }, [who]);
+  }, [filters]);
 
   return (
     <div className="card">
@@ -2154,23 +2215,80 @@ function RosterAudit() {
         {' '}· การแก้ไขใบ OT เป็นคนละเรื่องและอยู่ที่ประวัติของใบนั้นเอง
       </div>
 
-      <div className="row" style={{ marginBottom: 12 }}>
-        <div className="field" style={{ maxWidth: 320 }}>
-          <label>กรองตามพนักงาน</label>
-          <select value={who} onChange={(e) => setWho(e.target.value)}>
+      {/*
+        Four filters, and the two that were added are the two an auditor starts
+        from. "แก้อะไร" and "ใครแก้" are asked before anybody knows whose row to
+        open — which is the whole reason this section exists apart from the
+        per-row pop-up — and กรองตามพนักงาน could not answer either.
+
+        `.form-grid` rather than `.row`: four labelled selects on a phone wrap
+        into a column and `.row`'s flex-end alignment would hang each one off
+        the bottom of a different-height label.
+      */}
+      <div className="form-grid" style={{ marginBottom: 12 }}>
+        <Field label="กรองตามพนักงาน">
+          <select value={filters.employee} onChange={(e) => setFilter('employee', e.target.value)}>
             <option value="">— ทุกคน —</option>
             {people.map((p) => (
               <option key={p._id} value={p._id}>{p.code} · {p.name}</option>
             ))}
           </select>
-        </div>
+        </Field>
+        <Field
+          label="กรองตามสิ่งที่ถูกแก้"
+          tip={'แสดงเฉพาะรายการที่แก้ฟิลด์นั้น เช่น วันเกิด '
+            + '· การแก้ครั้งเดียวเปลี่ยนได้หลายฟิลด์พร้อมกัน รายการที่ผ่านตัวกรองจึงยังแสดงฟิลด์อื่นที่แก้พร้อมกันด้วย '
+            + '· การตั้งรหัสผ่านใหม่ไม่ได้แก้ฟิลด์ใด จึงไม่อยู่ในผลของตัวกรองนี้'}
+        >
+          <select value={filters.field} onChange={(e) => setFilter('field', e.target.value)}>
+            <option value="">— ทุกอย่าง —</option>
+            {AUDITED_FIELDS.map((f) => (
+              <option key={f} value={f}>{FIELD_LABEL[f] || f}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="กรองตามประเภท">
+          <select value={filters.action} onChange={(e) => setFilter('action', e.target.value)}>
+            <option value="">— ทุกประเภท —</option>
+            {Object.entries(ACTION_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </Field>
+        {/* Named บัญชีผู้แก้ไข, not ผู้แก้ไข: ฝ่ายบุคคล is one shared login for
+            the whole department, so what is on the record — and all this can
+            filter by — is which ACCOUNT made the change. */}
+        <Field
+          label="กรองตามบัญชีผู้แก้ไข"
+          note="รายชื่อมาจากประวัติเอง — ไม่ใช่ทะเบียนวันนี้"
+        >
+          <select value={filters.by} onChange={(e) => setFilter('by', e.target.value)}>
+            <option value="">— ทุกบัญชี —</option>
+            {actors.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name || '—'}{a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
+
+      {narrowed && (
+        <div className="row" style={{ marginBottom: 12 }}>
+          <button
+            className="btn ghost sm"
+            onClick={() => setFilters({ employee: '', field: '', action: '', by: '' })}
+          >
+            ล้างตัวกรองทั้งหมด
+          </button>
+        </div>
+      )}
 
       {error && <Alert kind="error">{error}</Alert>}
       {hasMore && (
         <Alert kind="warn">
           รายการยาวกว่าที่แสดงได้ — หน้านี้แสดงเฉพาะรายการล่าสุด
-          {' '}เลือกพนักงานรายคนเพื่อดูประวัติของคนนั้นให้ครบขึ้น
+          {' '}เลือกตัวกรองด้านบนให้แคบลง เพื่อดูประวัติของสิ่งที่กำลังตามหาให้ครบขึ้น
         </Alert>
       )}
       {!records && !error && <Empty>กำลังโหลด…</Empty>}
@@ -2179,8 +2297,8 @@ function RosterAudit() {
           records={records}
           depts={depts}
           withWho
-          empty={who
-            ? 'ยังไม่มีการแก้ไขที่บันทึกไว้สำหรับคนนี้'
+          empty={narrowed
+            ? 'ไม่มีการแก้ไขที่ตรงกับตัวกรองนี้ — ลองล้างตัวกรองบางข้อออก'
             : 'ยังไม่มีการแก้ไขที่บันทึกไว้ — ทะเบียนเริ่มเก็บประวัติตั้งแต่รุ่นนี้เป็นต้นไป'}
         />
       )}
@@ -2394,7 +2512,8 @@ function ResetPassword({ employee, onClose, onDone }) {
 function Holidays() {
   const [rows, setRows] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
-  const [form, setForm] = useState({ date: '', name: '' });
+  /** Whether เพิ่มวันหยุด is open — the only way this screen adds one by hand. */
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const fileRef = useRef(null);
@@ -2405,14 +2524,19 @@ function Holidays() {
   }
   useEffect(() => { load(); }, [year]);
 
-  async function add(e) {
-    e.preventDefault();
-    try {
-      const res = await api.post('/holidays', form);
-      setForm({ date: '', name: '' });
-      setResult(res.recomputed?.updated ? { msg: `คำนวณรายการเดิมใหม่ ${res.recomputed.updated} รายการ` } : null);
-      load();
-    } catch (err) { setError(err.message); }
+  /**
+   * Add one day from the dialog.
+   *
+   * Uncaught here, as เพิ่มพนักงาน and เพิ่มแผนก are: a date the calendar
+   * already holds is refused by the server, and the refusal has to arrive in
+   * the form still showing the date that caused it.
+   */
+  async function add(values) {
+    setError('');
+    const res = await api.post('/holidays', values);
+    setResult(res.recomputed?.updated ? { msg: `คำนวณรายการเดิมใหม่ ${res.recomputed.updated} รายการ` } : null);
+    setAdding(false);
+    load();
   }
 
   async function remove(id) {
@@ -2465,19 +2589,10 @@ function Holidays() {
           นำเข้าปฏิทินจาก CSV
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={upload} style={{ display: 'none' }} />
         </label>
+        {/* Beside the import, because they are the same decision asked twice —
+            one day or a calendar of them. */}
+        <button className="btn" onClick={() => setAdding(true)}>เพิ่มวันหยุด</button>
       </div>
-
-      <form className="row" onSubmit={add} style={{ marginBottom: 16 }}>
-        <div className="field" style={{ maxWidth: 170 }}>
-          <label>วันที่</label>
-          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
-        </div>
-        <div className="field">
-          <label>ชื่อวันหยุด</label>
-          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        </div>
-        <button className="btn">เพิ่ม</button>
-      </form>
 
       {rows.length === 0 ? <Empty>ยังไม่มีวันหยุดในปีนี้</Empty> : (
         <div className="table-wrap">
@@ -2497,7 +2612,95 @@ function Holidays() {
           </table>
         </div>
       )}
+
+      {adding && <AddHoliday onClose={() => setAdding(false)} onSave={add} />}
     </div>
+  );
+}
+
+const BLANK_HOLIDAY = { date: '', name: '' };
+
+/**
+ * เพิ่มวันหยุด — one company holiday, in a dialog.
+ *
+ * WHY A DIALOG. Two boxes fit in a row where five did not, so the layout is
+ * not the reason this one moved; the consequence is. Saving a day here
+ * recomputes every OT entry already filed on it, and the row above the table
+ * could only say so in the card's hint — three lines up, read before anybody
+ * had picked a date, and by then scrolled past. Under the date field it is in
+ * front of the person about to press บันทึก. It also puts adding one day and
+ * importing a calendar of them into the same shape, which is what they are.
+ *
+ * WHAT IS NOT HERE. ปี: the year box above the table chooses what is LISTED,
+ * not what is being added — the date carries its own year, and a day added
+ * outside the year on screen is saved and simply not in the list underneath.
+ */
+function AddHoliday({ onClose, onSave }) {
+  const [form, setForm] = useState(BLANK_HOLIDAY);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const ready = form.date && form.name.trim();
+  const dirty = Object.keys(BLANK_HOLIDAY).some((k) => form[k] !== BLANK_HOLIDAY[k]);
+
+  async function save() {
+    setError('');
+    setBusy(true);
+    try {
+      await onSave({ ...form, name: form.name.trim() });
+    } catch (err) {
+      // Stays open, with the date still in it — see `add`.
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="เพิ่มวันหยุด"
+      subtitle="วันหยุดพิเศษของบริษัทหนึ่งวัน"
+      onClose={onClose}
+      dirty={dirty && !busy}
+      footer={(requestClose) => (
+        <>
+          <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
+          <button className="btn" onClick={save} disabled={!ready || busy}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+          </button>
+        </>
+      )}
+    >
+      {error && <Alert kind="error">{error}</Alert>}
+
+      <div className="edit-form">
+        <section className="form-group">
+          <div className="gh">วันหยุด</div>
+          <div className="form-grid">
+            <Field
+              label="วันที่"
+              tip={'บันทึกแล้วรายการ OT ที่ยื่นไว้ในวันนี้จะถูกคำนวณใหม่ทันที ตามอัตราวันหยุด'
+                + ' · เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้ว ไม่ต้องบันทึกที่นี่'}
+            >
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => set({ date: e.target.value })}
+                disabled={busy}
+              />
+            </Field>
+            <Field label="ชื่อวันหยุด">
+              <input
+                value={form.name}
+                onChange={(e) => set({ name: e.target.value })}
+                disabled={busy}
+              />
+            </Field>
+          </div>
+        </section>
+      </div>
+    </Modal>
   );
 }
 
@@ -2644,7 +2847,12 @@ const POLICY_FIELDS = [
   {
     key: 'capBasis', open: 9, label: 'เพดานนับชั่วโมงแบบใด',
     options: [['clock', 'ชั่วโมงที่ทำจริง (ตัวอย่าง D = 14)'], ['weighted', 'ชั่วโมงคูณอัตรา (ตัวอย่าง D = 31.5)']],
-    hint: 'ใช้กับทั้งเพดานรายเดือนและรายสัปดาห์ — ทั้งสองนับด้วยเกณฑ์เดียวกันเสมอ',
+    hint: 'ใช้กับทั้งเพดานรายเดือนและรายสัปดาห์ — ทั้งสองนับด้วยเกณฑ์เดียวกันเสมอ '
+      + '· ตัวอย่างสั้น ๆ: ทำ OT วันหยุดนอกเวลา (×3) 2 ชม. — “ชั่วโมงที่ทำจริง” ตัดเพดานไป 2 ชม. '
+      + 'ส่วน “ชั่วโมงคูณอัตรา” ตัดไป 6 ชม. คนเดียวกันจึงชนเพดานเร็วกว่ากันสามเท่าในวันหยุด '
+      + '· “ตัวอย่าง D” คือเคสในเอกสารข้อกำหนด — ศุกร์ 17:00 ถึงเช้าเสาร์ 07:00 '
+      + 'ได้ 14 ชม. จริง (ศุกร์ 7 ชม. ×1.5 + เสาร์ 7 ชม. ×3) เท่ากับ 31.5 ชม. เมื่อคูณอัตรา '
+      + '· ไม่กระทบชั่วโมงที่จ่ายจริง เปลี่ยนเฉพาะว่าเพดานเต็มเมื่อใด',
   },
   {
     key: 'weekStartsOn', open: 9, label: 'สัปดาห์เริ่มวันใด (เพดานรายสัปดาห์)', num: true,
@@ -2661,6 +2869,11 @@ const POLICY_FIELDS = [
   {
     key: 'hrSummaryBasis', open: 12, label: 'ช่อง OT ×1.5 / ×3 ในใบฟอร์ม',
     options: [['raw', 'ชั่วโมงดิบ ยังไม่คูณ'], ['multiplied', 'คูณอัตราแล้ว']],
+    hint: 'ตัวอย่าง: ทำ OT วันปกติ 2 ชม. — “ชั่วโมงดิบ” พิมพ์ 2.00 ลงช่อง ×1.5 (ฝ่ายบัญชีคูณ 1.5 เอง) '
+      + 'ส่วน “คูณอัตราแล้ว” พิมพ์ 3.00 · ทำ OT วันหยุดนอกเวลา 2 ชม. ช่อง ×3 จะเป็น 2.00 หรือ 6.00 ตามลำดับ '
+      + '· เปลี่ยนเฉพาะตัวเลขที่พิมพ์ลงใบ F-HR-027 และไฟล์ส่งบัญชี ชั่วโมงที่ระบบเก็บไว้ไม่ขยับ '
+      + 'และไม่มีการคำนวณใบใดใหม่ · หัวคอลัมน์ในไฟล์ CSV บอกไว้ทุกครั้งว่าเป็นแบบใด '
+      + 'แต่ใบที่พิมพ์ไปแล้วยังเป็นแบบเดิม — เปลี่ยนกลางเดือนแล้วพิมพ์ซ้ำ ตัวเลขบนใบสองใบจะไม่เท่ากัน',
   },
 ];
 
@@ -2779,6 +2992,24 @@ function Policy({ user }) {
    */
   const [todayISO] = useState(() => today());
   const [effectiveFrom, setEffectiveFrom] = useState(todayISO);
+  /**
+   * The change that has been chosen and not yet saved — `{ field, raw, value }`.
+   *
+   * CHANGING A DROPDOWN ON THIS PAGE USED TO BE THE SAVE. There is no save
+   * button to attach a second thought to: `onChange` PATCHed the policy, minted
+   * a version and replayed every entry in flight, and the first anybody knew of
+   * a mis-click was the green banner counting how many rows it had just moved.
+   * The two fields above — the reason and the day the rules start — were typed
+   * BEFORE the dropdown for the same reason, which is a sequence nobody guesses
+   * on their first visit; a change made in the wrong order recorded a version
+   * with no reason on it, permanently, because the versions are append-only.
+   *
+   * So the dropdown now proposes and this state holds the proposal. Nothing is
+   * sent until the dialog is answered, and cancelling puts the select back where
+   * it was — `raw` is kept so the chosen option stays visible behind the dialog
+   * while it is being read.
+   */
+  const [pending, setPending] = useState(null);
 
   async function load() {
     try {
@@ -2836,6 +3067,7 @@ function Policy({ user }) {
   async function save(key, value) {
     setBusy(true);
     setError('');
+    setPending(null);
     try {
       const res = await api.patch('/settings/policy', {
         policy: { [key]: value }, note, effectiveFrom,
@@ -2919,9 +3151,16 @@ function Policy({ user }) {
 
       {/* Both typed before the dropdown is touched, because changing a dropdown
           IS the save — there is no button to attach a reason or a date to
-          afterwards. */}
+          afterwards.
+
+          Aligned by their tops, against `.row`'s flex-end default: only the date
+          carries a .field-note, so aligning bottoms pushed its whole column —
+          label included — a note's height above the reason beside it, and two
+          labels at two different heights read as two unrelated things. Tops line
+          up because both labels are the first thing in their column; the note
+          hangs off the bottom, where an explanation belongs. */}
       {canEdit && (
-        <div className="row" style={{ alignItems: 'flex-end' }}>
+        <div className="row" style={{ alignItems: 'flex-start' }}>
           <div className="field" style={{ maxWidth: 520, flex: 1 }}>
             <label>เหตุผลของการเปลี่ยนแปลง (ไม่บังคับ แต่จะถูกบันทึกไว้กับเวอร์ชัน)</label>
             <input
@@ -2964,11 +3203,22 @@ function Policy({ user }) {
       )}
 
       <div className="table-wrap">
-        <table>
+        <table className="policy-table">
           <thead><tr><th style={{ width: 80 }}>ข้อ</th><th>คำถาม</th><th>คำตอบปัจจุบัน</th></tr></thead>
           <tbody>
             {POLICY_FIELDS.map((f, i) => (
-              <tr key={f.key}>
+              /* `data-open` carries the ข้อ number a SECOND time, for the phone
+                 only — see .policy-table tr::before in app/styles.css.
+
+                 The merged cell below cannot come to a card stack: a rowSpan
+                 cell belongs to the first row of its group, so once every row
+                 is drawn as its own card, ข้อ 3's second card has no number in
+                 it at all and reads as a rule belonging to nothing. Repeating
+                 the number on both cards is what the merge means anyway —
+                 "these two answer one question" — said the way a stack can say
+                 it. Every row that has a number carries the attribute, not just
+                 the group head; the desktop ignores it entirely. */
+              <tr key={f.key} data-open={f.open || undefined}>
                 {/* ── ข้อ, one cell per QUESTION rather than per row ──────────
                     The number alone. It used to read "OPEN 3" — the requirements
                     document's own label, which means nothing to the ฝ่ายบุคคล who
@@ -3000,8 +3250,8 @@ function Policy({ user }) {
                     {f.open || '—'}
                   </td>
                 )}
-                <td>
-                  {f.label}
+                <td className="policy-q">
+                  <div className="policy-label">{f.label}</div>
                   {f.hint && (
                     <div className="hint" style={{ marginTop: 4 }}>{f.hint}</div>
                   )}
@@ -3031,17 +3281,24 @@ function Policy({ user }) {
                     </React.Fragment>
                   ))}
                 </td>
-                <td>
+                <td className="policy-a">
                   <select
                     disabled={!canEdit || busy}
-                    value={f.bool || f.num ? String(policy[f.key]) : policy[f.key]}
+                    /* The proposed answer while its dialog is up, so the option
+                       being confirmed is the one on screen behind it. Cancelling
+                       clears `pending` and the select falls back to the stored
+                       value on its own — there is no second copy to reset. */
+                    value={pending?.field.key === f.key
+                      ? pending.raw
+                      : (f.bool || f.num ? String(policy[f.key]) : policy[f.key])}
                     /* A <select> hands back a string whatever the option held.
                        Coerced on the way out or the policy would store "1"
                        where it stores 1 — `canonicalPolicy` compares values,
                        so a saved string reads as a changed answer and mints a
                        version on every save that changed nothing. */
-                    onChange={(e) => save(f.key, coerce(f, e.target.value))}
-                    style={{ minWidth: 280 }}
+                    onChange={(e) => setPending({
+                      field: f, raw: e.target.value, value: coerce(f, e.target.value),
+                    })}
                   >
                     {f.options.map(([v, l]) => (
                       <option key={String(v)} value={String(v)}>{l}</option>
@@ -3060,13 +3317,13 @@ function Policy({ user }) {
                 because there is no control whose value could state it. */}
             {unconfirmed.filter((u) => u.keys.length === 0).map((u) => (
               <tr key={u.id}>
-                <td>—</td>
-                <td>
-                  {u.label}
+                <td className="policy-open">—</td>
+                <td className="policy-q">
+                  <div className="policy-label">{u.label}</div>
                   <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />
                   <ConfirmedBy item={u} />
                 </td>
-                <td>
+                <td className="policy-a">
                   {u.reading}
                   <div className="hint" style={{ marginTop: 4 }}>
                     ไม่มีค่าตั้งให้เลือก — เปลี่ยนคำตอบข้อนี้ต้องแก้ตัวคำนวณ
@@ -3084,7 +3341,118 @@ function Policy({ user }) {
       </div>
 
       <PolicyHistory versions={versions} unversioned={unversioned} live={live} />
+
+      {pending && (
+        <ConfirmPolicyChange
+          field={pending.field}
+          from={policy[pending.field.key]}
+          to={pending.value}
+          effectiveFrom={effectiveFrom}
+          todayISO={todayISO}
+          note={note}
+          busy={busy}
+          onCancel={() => setPending(null)}
+          onConfirm={() => save(pending.field.key, pending.value)}
+        />
+      )}
     </div>
+  );
+}
+
+/** What an option is called, for a value the dropdown holds. */
+function optionLabel(field, value) {
+  const found = field.options.find(([v]) => String(v) === String(value));
+  return found ? found[1] : String(value);
+}
+
+/**
+ * ยืนยันการเปลี่ยนกฎ — the question between choosing an answer and saving it.
+ *
+ * It exists because of what a save on this page does, which is not what a save
+ * on the other settings screens does: it appends a version that can never be
+ * edited or removed, and — for the flags on ARITHMETIC_KEYS — recomputes every
+ * entry still in flight, restating hours on requests that people have already
+ * filed and managers are part-way through reading.
+ *
+ * The three things it states are the three that are decided elsewhere on the
+ * page and are easy to have got wrong by the time the dropdown is touched:
+ *
+ *   · WHICH WORK IT REACHES. `effectiveFrom` is a separate field further up,
+ *     and the rule behind it — an entry is computed under the rules in force on
+ *     the day it was WORKED — is the one thing about this page nobody can infer
+ *     from looking at it.
+ *   · WHETHER HOURS MOVE. Half the rules here move figures and half change who
+ *     may do what; the page gives no sign which is which until after the save,
+ *     in the sentence counting what was recomputed.
+ *   · WHAT THE RECORD WILL SAY. The reason is typed before the dropdown, so an
+ *     empty one is the normal mistake, and it cannot be added afterwards.
+ *
+ * It does not ask for anything new. Everything here was chosen on the page
+ * behind; a dialog that made the reader type again would be a second form, and
+ * the answer to a mis-click is to be able to say no, not to fill something in.
+ */
+function ConfirmPolicyChange({
+  field, from, to, effectiveFrom, todayISO, note, busy, onCancel, onConfirm,
+}) {
+  const arithmetic = ARITHMETIC_KEYS.includes(field.key);
+  const announced = effectiveFrom > todayISO;
+
+  return (
+    <Modal
+      title="ยืนยันการเปลี่ยนกฎการคำนวณ"
+      subtitle={field.label}
+      onClose={busy ? undefined : onCancel}
+      footer={(
+        <>
+          <button className="btn ghost" onClick={onCancel} disabled={busy}>
+            ยกเลิก ไม่เปลี่ยน
+          </button>
+          <button className="btn" onClick={onConfirm} disabled={busy}>
+            {busy ? 'กำลังบันทึก…' : 'ยืนยันและบันทึก'}
+          </button>
+        </>
+      )}
+    >
+      <div className="policy-confirm">
+        <div className="change">
+          <span className="was">{optionLabel(field, from)}</span>
+          <span className="to">→</span>
+          <span className="now">{optionLabel(field, to)}</span>
+        </div>
+
+        <Alert kind={arithmetic ? 'warn' : 'info'}>
+          <strong>
+            กฎใหม่มีผลกับใบของงานที่ทำตั้งแต่วันที่ {thaiDate(effectiveFrom)} เป็นต้นไป
+          </strong>
+          <div style={{ marginTop: 4, fontSize: 12.5 }}>
+            {announced
+              ? 'ประกาศล่วงหน้า — งานที่ทำก่อนวันนั้นยังคิดด้วยกฎเดิมตลอดไป ไม่ว่าใบจะยื่นเข้ามาช้าแค่ไหน'
+              : 'งานที่ทำก่อนวันนี้ยังคิดด้วยกฎเดิมตลอดไป ไม่ว่าใบจะยื่นเข้ามาช้าแค่ไหน'}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12.5 }}>
+            {arithmetic
+              ? 'ข้อนี้เปลี่ยนจำนวนชั่วโมง — ระบบจะคำนวณใบที่ยังไม่อนุมัติใหม่ทันทีหลังบันทึก '
+                + '· ใบที่อนุมัติแล้วและงวดที่ปิดแล้วไม่ถูกแตะต้อง'
+              : 'ข้อนี้ไม่เปลี่ยนจำนวนชั่วโมงของใบใดเลย ไม่มีการคำนวณใหม่ '
+                + '· เปลี่ยนเฉพาะสิทธิ์หรือวิธีแสดงผล'}
+          </div>
+        </Alert>
+
+        {/* The reason is a field on the page behind, and this is the last moment
+            it can still be typed into: the version row is append-only, so a
+            version saved without one carries a date and a diff for good. */}
+        <div className="hint">
+          {note
+            ? <>เหตุผลที่จะบันทึกไว้กับเวอร์ชันนี้: “<strong>{note}</strong>”</>
+            : 'ยังไม่ได้กรอกเหตุผล — บันทึกได้ แต่เวอร์ชันนี้จะเหลือเพียงวันที่และรายการที่เปลี่ยน '
+              + 'กด “ยกเลิก ไม่เปลี่ยน” เพื่อกลับไปกรอกช่องเหตุผลก่อน แล้วค่อยเลือกใหม่'}
+        </div>
+        <div className="hint">
+          ทุกการบันทึกจะถูกเก็บเป็นเวอร์ชันใหม่ในประวัตินโยบายการคำนวณ พร้อมชื่อผู้บันทึก
+          {' '}· ประวัติแก้ย้อนหลังไม่ได้ · เปลี่ยนใจภายหลังทำได้โดยบันทึกเวอร์ชันถัดไป
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -3289,7 +3657,7 @@ function PolicyHistory({ versions, unversioned, live }) {
         <Empty>ยังไม่มีเวอร์ชันที่บันทึกไว้ — รัน npm run migrate:policy-version เพื่อสร้างเวอร์ชันแรก</Empty>
       ) : (
         <div className="table-wrap">
-          <table>
+          <table className="pver-table">
             <thead>
               <tr>
                 <th style={{ width: 90 }}>เวอร์ชัน</th>
@@ -3302,18 +3670,18 @@ function PolicyHistory({ versions, unversioned, live }) {
             <tbody>
               {versions.map((v) => (
                 <tr key={v._id}>
-                  <td><strong>{v.seq}</strong></td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td className="seq-col"><strong>{v.seq}</strong></td>
+                  <td className="when-col" style={{ whiteSpace: 'nowrap' }}>
                     {v.createdAt ? new Date(v.createdAt).toLocaleString('th-TH') : '—'}
                   </td>
-                  <td>
+                  <td className="who-col">
                     {v.createdByName || <span style={{ color: 'var(--muted)' }}>ระบบ</span>}
                     {v.note && (
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>{v.note}</div>
                     )}
                   </td>
-                  <td className="num">{v.entryCount}</td>
-                  <td><PolicyChanges changes={v.changes} seq={v.seq} /></td>
+                  <td className="num count-col">{v.entryCount}</td>
+                  <td className="diff-col"><PolicyChanges changes={v.changes} seq={v.seq} /></td>
                 </tr>
               ))}
             </tbody>

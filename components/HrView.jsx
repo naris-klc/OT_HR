@@ -135,7 +135,12 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
           </div>
         </div>
 
-        <div className="row" style={{ marginTop: 12 }}>
+        {/* `export-row` — a flex row of three long labels stacks one per line on
+            a phone, which is three quarters of the screen above the table spent
+            on buttons pressed once a month. The stylesheet pairs the two CSVs
+            below 860px and leaves the print button its own full-width line,
+            because its label is the one that will not fit in half. */}
+        <div className="row export-row" style={{ marginTop: 12 }}>
           {/* The month as one document instead of one press per person. Whose
               sheets are in it is exactly the table below — same order, same
               สถานะที่นับ — so the bundle can be checked against the screen it
@@ -198,20 +203,28 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
             <PolicyVersionBanner spread={data.policy} />
 
             <div className="table-wrap">
-              <table>
+              {/* `hr-table` — below 860px the stylesheet lays these eleven cells
+                  out as a card, placing each by its class. Eleven columns on a
+                  375px screen put รวม ชม., the figure the whole screen is about,
+                  off the right edge behind a sideways scroll. */}
+              <table className="hr-table">
                 <thead>
                   <tr>
-                    <th>พนักงาน</th>
-                    <th>แผนก</th>
+                    <th className="who-col">พนักงาน</th>
+                    <th className="dept-col">แผนก</th>
                     {/* Broken where RateHead says, not where the width falls
                         out — the same three headings on every screen. */}
-                    <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
-                    <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
-                    <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
-                    <th className="num">รวม ชม.</th>
-                    <th className="num">รายการ</th>
-                    <th className="num">แก้ไข</th>
-                    <th>กฎที่ใช้</th>
+                    {/* One class per bucket, not three cells sharing `rate-col`.
+                        The card layout draws these three as a labelled grid and
+                        each label is different, so each cell has to be
+                        addressable on its own. */}
+                    <th className="num rate-col b-15w"><RateHead rate="×1.5" of="ปกติ" /></th>
+                    <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
+                    <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
+                    <th className="num total-col">รวม ชม.</th>
+                    <th className="num count-col">รายการ</th>
+                    <th className="num edits-col">แก้ไข</th>
+                    <th className="rule-col">กฎที่ใช้</th>
                     {/* No blanket note under the header any more. It said
                         "ไม่รวมใบที่รออนุมัติ" on every row of the column the
                         moment the filter narrowed, including the rows with
@@ -225,23 +238,23 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                         alone was the older name and described only half the
                         cell: a department that sets no ceiling still shows its
                         running total here. */}
-                    <th>สะสม / เพดาน</th>
-                    <th />
+                    <th className="cap-col">สะสม / เพดาน</th>
+                    <th className="act-col" />
                   </tr>
                 </thead>
                 <tbody>
                   {data.employees.map((row) => (
                     <tr key={row.employee._id}>
-                      <td>
+                      <td className="who-col">
                         {row.employee.name}
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
                       </td>
-                      <td>{row.department?.nameTh || row.department?.name}</td>
-                      <td className="num rate-col">{hours(row.summary.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                      <td className="num rate-col">{hours(row.summary.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                      <td className="num rate-col">{hours(row.summary.buckets[BUCKETS.OT3_HOLIDAY])}</td>
-                      <td className="num"><strong>{hours(row.summary.otHours)}</strong></td>
-                      <td className="num">
+                      <td className="dept-col">{row.department?.nameTh || row.department?.name}</td>
+                      <td className="num rate-col b-15w">{hours(row.summary.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                      <td className="num rate-col b-15h">{hours(row.summary.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                      <td className="num rate-col b-3h">{hours(row.summary.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                      <td className="num total-col"><strong>{hours(row.summary.otHours)}</strong></td>
+                      <td className="num count-col">
                         {row.entryCount}
                         {row.pendingCount > 0 && (
                           <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>ค้าง {row.pendingCount}</div>
@@ -261,7 +274,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                           ones the employee filed. This is where a month that
                           was corrected after the fact announces itself, before
                           HR signs anything off. */}
-                      <td className="num">
+                      <td className="num edits-col">
                         {row.edits?.count ? (
                           <button
                             className="btn ghost sm"
@@ -283,10 +296,15 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                           the sheet is not uniform, this says whose rows to open.
                           A version that spans one employee's own total is the
                           case HR can actually do something about. */}
-                      <td><PolicyVersionSummaryCell spread={row.policy} /></td>
-                      <td><CapCell cap={row.cap} /></td>
-                      <td>
-                        <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                      <td className="rule-col"><PolicyVersionSummaryCell spread={row.policy} /></td>
+                      <td className="cap-col"><CapCell cap={row.cap} /></td>
+                      <td className="act-col">
+                        {/* `flexWrap: 'nowrap'` was inline here and is gone: at
+                            phone width this column is a declared 176px and the
+                            two buttons have to be allowed onto two lines. On a
+                            desktop the column still sizes to its content, so
+                            they stay side by side there as before. */}
+                        <div className="row row-actions" style={{ gap: 6 }}>
                           <button
                             className="btn ghost sm"
                             onClick={() => setOpened(row.employee)}
@@ -303,13 +321,24 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                       </td>
                     </tr>
                   ))}
-                  <tr>
-                    <td colSpan={2}><strong>รวมทั้งหมด</strong></td>
-                    <td className="num rate-col"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_WEEKDAY])}</strong></td>
-                    <td className="num rate-col"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
-                    <td className="num rate-col"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>
-                    <td className="num"><strong>{hours(data.grandTotal.otHours)}</strong></td>
-                    <td colSpan={5} />
+                  {/* `total-row` names the month's own line so the phone layout
+                      can give its two frozen cells the backgrounds of a summary
+                      rather than of a person. It lives in `tbody` — this table
+                      has no `tfoot` — which is why it needs a class at all.
+
+                      Two cells rather than the `colSpan={2}` it used to carry;
+                      see the note in DepartmentView. The frozen name column has
+                      to exist in this row too, or scrolling sideways leaves a
+                      hole in it exactly where the month's own total is. The
+                      trailing `pad-col` keeps the cell count at eleven. */}
+                  <tr className="total-row">
+                    <td className="who-col"><strong>รวมทั้งหมด</strong></td>
+                    <td className="dept-col" />
+                    <td className="num rate-col b-15w"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_WEEKDAY])}</strong></td>
+                    <td className="num rate-col b-15h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
+                    <td className="num rate-col b-3h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>
+                    <td className="num total-col"><strong>{hours(data.grandTotal.otHours)}</strong></td>
+                    <td className="pad-col" colSpan={5} />
                   </tr>
                 </tbody>
               </table>
@@ -558,15 +587,20 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
           ✓ ตรวจครบแล้ว — ไม่มีวันเกิดของเดือนนี้ที่ยังต้องตอบก่อนปิดเดือน
         </div>
       )}
+      {/* Was three clauses. "ตรวจจากบันทึกเวลาเข้า-ออก (สแกนนิ้ว) แล้วตอบได้
+          จากปุ่มในตาราง" is gone: the second half told the reader that the
+          buttons in front of them are buttons, and the first half is said again
+          on the form those buttons open, in the same words. What is left is the
+          one thing that is NOT visible from the screen — that an unanswered row
+          means hours missing from this month's total. */}
       {summary.due > 0 && (
         <div className="hint" style={{ marginTop: 2 }}>
-          แต่ละรายการที่ยังไม่ตรวจอาจกลายเป็นชั่วโมง OT ที่ยังไม่อยู่ในยอดของเดือนนี้ ·
-          {' '}ตรวจจากบันทึกเวลาเข้า-ออก (สแกนนิ้ว) แล้วตอบได้จากปุ่มในตาราง
+          รายการที่ยังไม่ตรวจอาจเป็นชั่วโมง OT ที่ยังไม่อยู่ในยอดของเดือนนี้
           {onOpenQueue && (
             <>
               {' '}· <button type="button" className="link" onClick={onOpenQueue}>
                 เปิดคิว “วันเกิดรอตรวจ”
-              </button> เพื่อดูของค้างจากทุกเดือนรวมกัน
+              </button> เพื่อดูของค้างทุกเดือน
             </>
           )}
         </div>
@@ -574,40 +608,61 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
 
       {rows.length > 0 && (
         <div className="table-wrap" style={{ marginTop: 10 }}>
-          <table className="mini">
+          {/* Card layout below 860px, like วันเกิดรอตรวจ — the two lists are
+              the same rows read for two different reasons, and both were
+              scrolling their action buttons off the right of the screen.
+
+              Its OWN class rather than `bday-table` even so. The two differ in
+              the cell that matters most: the queue's is "ค้าง 4 วัน", a short
+              pill that belongs in the corner beside the name, while this one is
+              `BirthdayStatusCell` — a chip AND a sentence explaining it. Forced
+              into one grid template, whichever table lost would be the one
+              squeezing a sentence into a corner. */}
+          <table className="mini bmonth-table">
             <thead>
               <tr>
-                <th>พนักงาน</th>
-                <th>แผนก</th>
-                <th>วันเกิด</th>
-                <th>บริษัท</th>
-                <th>สถานะ</th>
-                <th className="num">ชั่วโมง</th>
-                <th />
+                <th className="who-col">พนักงาน</th>
+                <th className="dept-col">แผนก</th>
+                <th className="date-col">วันเกิด</th>
+                <th className="co-col">บริษัท</th>
+                <th className="state-col">สถานะ</th>
+                <th className="num hrs-col">ชั่วโมง</th>
+                <th className="act-col" />
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.employeeId + r.date}>
-                  <td>
+                  <td className="who-col">
                     {r.name}
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.code}</div>
                   </td>
-                  <td>{r.department || '—'}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td className="dept-col">{r.department || '—'}</td>
+                  <td className="date-col" style={{ whiteSpace: 'nowrap' }}>
                     {thaiDate(r.date)}
-                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(r.date)}</div>
+                    <div className="cell-sub" style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(r.date)}</div>
                   </td>
-                  <td>{companyLabel(r.company)}</td>
-                  <td>
+                  <td className="co-col">{companyLabel(r.company)}</td>
+                  <td className="state-col">
                     <BirthdayStatusCell row={r} />
                   </td>
-                  <td className="num">
+                  {/* `none` marks the rows where there is no figure and there
+                      never could be — anything not filed, and anything filed on
+                      a month since closed. The dash is right in a table, where
+                      the column has to keep its shape down the page; on the
+                      phone's card there is no column to keep, and a labelled
+                      line reading "ชั่วโมง —" on three rows out of five is a
+                      line that says nothing. The class lets the card drop it
+                      while the table keeps it. */}
+                  <td className={
+                    r.status === BIRTHDAY_STATUS.FILED && !r.allClosed
+                      ? 'num hrs-col' : 'num hrs-col none'
+                  }>
                     {r.status === BIRTHDAY_STATUS.FILED && !r.allClosed
                       ? <strong>{hours(r.otHours)}</strong>
                       : <span style={{ color: 'var(--muted)' }}>—</span>}
                   </td>
-                  <td>
+                  <td className="act-col">
                     <BirthdayRowActions
                       row={r}
                       onFile={setFiling}
@@ -766,7 +821,11 @@ function BirthdayRowActions({ row, onFile, onMark, onRetract, onOpenEntries }) {
   if (!row.canAct) return <span style={{ fontSize: 12, color: 'var(--muted)' }}>ไม่ใช่แผนกของคุณ</span>;
 
   return (
-    <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+    // `row-actions`, which is the class the phone layout sizes buttons by —
+    // without it these two were the only decision buttons in the app not given
+    // a 44px target. The inline `flexWrap: 'nowrap'` went with it: below 860px
+    // `.row-actions` is meant to wrap, and an inline style cannot be overruled.
+    <div className="row row-actions" style={{ gap: 6 }}>
       <button
         className="btn ghost sm"
         onClick={() => onFile({

@@ -90,10 +90,13 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
       <div className="card-head">
         <div>
           <div className="t">วันเกิดรอตรวจ</div>
+          {/* "แต่วันนั้นดูเหมือนวันทำงานปกติ พนักงานจึงลืมยื่นได้ง่าย" is gone —
+              it explained why the queue was built, which is a thing for whoever
+              maintains it rather than for whoever works it. The rule and the
+              queue's own behaviour are what a reader acts on. */}
           <div className="hint" style={{ margin: '3px 0 0' }}>
-            วันเกิดที่ตรงจันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น แต่วันนั้นดูเหมือนวันทำงานปกติ
-            {' '}พนักงานจึงลืมยื่นได้ง่าย — <strong>คิวนี้ไม่ผูกกับเดือน</strong>
-            {' '}ค้างจากเดือนไหนก็ยังอยู่ตรงนี้ เรียงเก่าสุดขึ้นก่อน
+            วันเกิดที่ตรงจันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น ·
+            {' '}<strong>คิวนี้ไม่ผูกกับเดือน</strong> ค้างจากเดือนไหนก็ยังอยู่ เรียงเก่าสุดขึ้นก่อน
           </div>
         </div>
         {needsEntry.length > 0 && (
@@ -102,11 +105,20 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
       </div>
 
       <div style={{ padding: '0 18px' }}>
+        {/* Four clauses down to two. Gone: the two button names, quoted back at
+            a reader who is looking at the buttons, and "(กรอกเวลาที่อ่านได้
+            ระบบคำนวณชั่วโมงเอง)", which is the first line of the form those
+            buttons open.
+
+            THE หัวหน้าแผนก SENTENCE STAYS, and it is not padding. I cut it as
+            "about somebody else's screen" and `birthdayCheck.test.js` failed on
+            it: the test asserts this file says a หัวหน้า may still file for
+            their own team, because that is what the write routes allow and the
+            wording here is held to the rules rather than to whoever is reading.
+            It is shortened, not removed. */}
         <div className="hint">
-          เปิดโปรแกรมสแกนนิ้วดูเวลาเข้า-ออกของวันนั้น แล้วตอบได้เลยจากหน้านี้ —
-          {' '}<strong>“บันทึก OT ให้”</strong> ถ้าเขามาทำงาน (กรอกเวลาที่อ่านได้ ระบบคำนวณชั่วโมงเอง)
-          {' '}หรือ <strong>“ไม่ได้มาทำงาน”</strong> ถ้าไม่มีการสแกน ·
-          {' '}หัวหน้าแผนกบันทึกแทนลูกทีมของตนเองได้เช่นกัน ทั้งจากหน้านี้และจากหน้าคิวของหัวหน้า
+          ดูเวลาเข้า-ออกของวันนั้นจากโปรแกรมสแกนนิ้ว แล้วตอบจากปุ่มในแถว ·
+          {' '}หัวหน้าแผนกบันทึกแทนลูกทีมของตนเองได้เช่นกัน
         </div>
         {/*
           The window, printed rather than assumed.
@@ -137,27 +149,32 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
         </div>
       ) : (
         <div className="table-wrap">
-          <table>
+          {/* `bday-table` carries the same trick .queue-table does: below 860px
+              the stylesheet lays these seven cells out as a card, placing each
+              by the class it already has. Seven columns will not fit a phone —
+              the two buttons were off the right edge of the screen, reachable
+              only by scrolling a table sideways to press them. */}
+          <table className="bday-table">
             <thead>
               <tr>
-                <th>พนักงาน</th>
-                <th>แผนก</th>
-                <th>วันหยุดวันเกิด</th>
-                <th>ค้างมาแล้ว</th>
-                <th>บริษัท</th>
-                <th>หัวหน้าที่บันทึกแทนได้</th>
-                <th />
+                <th className="who-col">พนักงาน</th>
+                <th className="dept-col">แผนก</th>
+                <th className="date-col">วันหยุดวันเกิด</th>
+                <th className="age-col">ค้างมาแล้ว</th>
+                <th className="co-col">บริษัท</th>
+                <th className="mgr-col">หัวหน้าที่บันทึกแทนได้</th>
+                <th className="act-col" />
               </tr>
             </thead>
             <tbody>
               {needsEntry.map((r) => (
                 <tr key={r.employeeId + r.date}>
-                  <td>
+                  <td className="who-col">
                     {r.name}
                     <div className="cell-sub">{r.code}</div>
                   </td>
-                  <td>{r.department || '—'}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td className="dept-col">{r.department || '—'}</td>
+                  <td className="date-col" style={{ whiteSpace: 'nowrap' }}>
                     {thaiDate(r.date)}
                     <div className="cell-sub">วัน{dayName(r.date)}</div>
                   </td>
@@ -168,20 +185,20 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
                     closed at the end of it and an unanswered birthday is what
                     stops สรุป OT ส่งบัญชี being final.
                   */}
-                  <td style={{ whiteSpace: 'nowrap' }}>
+                  <td className="age-col" style={{ whiteSpace: 'nowrap' }}>
                     <span style={{ color: r.ageDays >= 14 ? 'var(--amber)' : 'inherit' }}>
                       {r.ageDays === 0 ? 'วันนี้' : `ค้าง ${r.ageDays} วัน`}
                     </span>
                   </td>
-                  <td>{companyLabel(r.company)}</td>
-                  <td>
+                  <td className="co-col">{companyLabel(r.company)}</td>
+                  <td className="mgr-col">
                     {/* Who to ring to find out whether they came in — not who
                         may settle the row, which is ฝ่ายบุคคล on every row. */}
                     {r.managers.length > 0
                       ? r.managers.map((m) => m.name).join(' · ')
                       : <span style={{ color: 'var(--muted)' }}>ยังไม่มีหัวหน้าในแผนกนี้</span>}
                   </td>
-                  <td>
+                  <td className="act-col">
                     {/* `canAct` is the server's answer, over the same rule the
                         write routes enforce — not a role test made here. */}
                     {r.canAct ? (
@@ -277,13 +294,22 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
           open={showUpcoming}
           onToggle={setShowUpcoming}
         >
-          <div style={{ fontSize: 12.5 }}>
+          {/* One row per birthday rather than one paragraph. Run together as
+              plain text these wrapped mid-name at phone width and there was
+              nothing to tell where one person ended and the next began — five
+              facts and four separators, all the same weight. The date leads
+              because this list is read down the dates. */}
+          <div className="mini-list">
             {upcoming.map((r) => (
-              <div key={r.employeeId + r.date}>
-                {thaiDate(r.date)} (วัน{dayName(r.date)}) · {r.code} {r.name}
-                <span style={{ color: 'var(--muted)' }}>
-                  {' '}· {r.department || '—'} · {companyLabel(r.company)}
-                </span>
+              <div className="mini-row" key={r.employeeId + r.date}>
+                <div className="k">
+                  {thaiDate(r.date)}
+                  <span className="sub">วัน{dayName(r.date)}</span>
+                </div>
+                <div className="v">
+                  {r.code} {r.name}
+                  <span className="sub">{r.department || '—'} · {companyLabel(r.company)}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -302,14 +328,19 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
             คนเหล่านี้ยังไม่ถูกตรวจว่ามีวันเกิดตรงวันทำงานหรือไม่ ·
             {' '}<AddBirthDateHint onOpen={onOpenRoster} />
           </div>
-          <div style={{ marginTop: 6, fontSize: 12.5 }}>
+          {/* Same shape as กำลังจะถึง above — the name leads here because this
+              list is read for who is missing a birth date, not for when. */}
+          <div className="mini-list" style={{ marginTop: 6 }}>
             {uncheckable.map((r) => (
-              <div key={r.employeeId}>
-                {r.code} {r.name}
-                <span style={{ color: 'var(--muted)' }}>
-                  {' '}· {r.department || '—'} · {companyLabel(r.company)}
-                  {r.reason === 'invalid' ? ` · ${UNCHECKABLE.invalid}` : ''}
-                </span>
+              <div className="mini-row" key={r.employeeId}>
+                <div className="k">{r.code}</div>
+                <div className="v">
+                  {r.name}
+                  <span className="sub">
+                    {r.department || '—'} · {companyLabel(r.company)}
+                    {r.reason === 'invalid' ? ` · ${UNCHECKABLE.invalid}` : ''}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

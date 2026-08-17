@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 import { effectiveFromRefusal, versionForDate } from '../lib/policyVersion.js';
 
@@ -118,4 +121,44 @@ test('a malformed date is refused before it can be compared', () => {
   for (const bad of ['', '   ', '2026-8-1', '14/08/2026', 'วันนี้', null, undefined]) {
     assert.equal(effectiveFromRefusal(bad, '2026-08-14').status, 400, String(bad));
   }
+});
+
+// ── and the screen says which day it is, BEFORE the save ────────────────────
+
+/**
+ * The rule above is invisible from the settings page. `effectiveFrom` is a
+ * date box beside a reason box, several rows above the dropdowns, and the
+ * consequence of what is in it — that work done before that day keeps its old
+ * rate for good — is a sentence nobody can infer from a date input.
+ *
+ * Worse, changing a dropdown WAS the save: one click appended a version that
+ * can never be edited and replayed every entry in flight. The reason and the
+ * date had to have been typed first, in that order, or the record was written
+ * without them.
+ *
+ * So the change is proposed, stated in full, and only then sent. Read as source
+ * text for the reason test/rosterRouteGuards.test.js is — the screen resolves
+ * `@/…` through the Next alias and cannot be imported by `node --test`.
+ */
+const screen = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'components/AdminView.jsx'),
+  'utf8',
+);
+
+test('choosing an answer proposes it — the PATCH waits for the dialog', () => {
+  // The dropdown holds the proposal; nothing but the dialog's own button saves.
+  assert.match(screen, /onChange=\{\(e\) => setPending\(\{/, 'the dropdown saves on change again');
+  assert.match(screen, /onConfirm=\{\(\) => save\(pending\.field\.key, pending\.value\)\}/);
+  // And cancelling sends nothing at all.
+  assert.match(screen, /onCancel=\{\(\) => setPending\(null\)\}/);
+});
+
+test('the dialog names the day the new rules start', () => {
+  // The one thing about this page nobody can work out by looking at it, said at
+  // the moment it is being decided rather than in a hint further up.
+  assert.match(screen, /กฎใหม่มีผลกับใบของงานที่ทำตั้งแต่วันที่ \{thaiDate\(effectiveFrom\)\}/);
+  // And whether this particular rule moves hours at all — half of them do not,
+  // and "จะคำนวณใหม่" said of a permission flag is a warning people learn to
+  // ignore on the rules where it is true.
+  assert.match(screen, /const arithmetic = ARITHMETIC_KEYS\.includes\(field\.key\)/);
 });

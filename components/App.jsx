@@ -435,6 +435,10 @@ function Shell({ session, onLogout }) {
     onLogout();
   }
 
+  // Read twice — by the FAB itself and by the spacer that has to keep the last
+  // row out from under it.
+  const showFab = user.maySubmitOt && tab === 'mine';
+
   const [title, meta] = PAGE[tab] || ['', ''];
   const initials = (user.code || '').replace(/[^A-Za-z0-9]/g, '').slice(-2).toUpperCase();
 
@@ -567,7 +571,11 @@ function Shell({ session, onLogout }) {
           </div>
         </main>
 
-        <div className="mobile-nav-spacer no-print" />
+        {/* The spacer clears whatever is pinned to the bottom of THIS screen.
+            That is the nav bar everywhere, and on หน้า OT ของฉัน the FAB as
+            well — which floats 92px up and is 58 tall, so a spacer sized for
+            the nav alone left the last row's status chip underneath it. */}
+        <div className={`mobile-nav-spacer no-print${showFab ? ' with-fab' : ''}`} />
 
         <nav className="mobile-nav no-print">
           {tabs.map((t) => (
@@ -585,7 +593,7 @@ function Shell({ session, onLogout }) {
           ))}
         </nav>
 
-        {user.maySubmitOt && tab === 'mine' && (
+        {showFab && (
           <button
             className="fab no-print"
             onClick={() => setFormSignal((n) => n + 1)}

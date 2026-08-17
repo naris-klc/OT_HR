@@ -732,6 +732,72 @@ export function Modal({
     else onClose?.();
   }, [dirty, onClose]);
 
+  /**
+   * SWIPE THE SHEET DOWN TO CLOSE.
+   *
+   * This exists because the grabber above the title says it does. A grey bar at
+   * the top of a sheet is not decoration — it is a promise about a gesture, and
+   * drawing one over a sheet that cannot be swiped teaches people to pull at a
+   * dialog that will not move. So the two ship together or not at all.
+   *
+   * THE HEADER IS THE GRAB SURFACE, not the whole sheet. `.modal-body` scrolls,
+   * and a drag that started inside it would have to decide on every frame
+   * whether it was a scroll or a dismiss — the usual answer, "a dismiss only
+   * when already scrolled to the top", gets that wrong for the one press that
+   * matters here: somebody halfway down รายละเอียด flicking back up to the top
+   * carries straight on into closing the thing they were reading. The header
+   * never scrolls, so there is no question to get wrong.
+   *
+   * It goes out through `requestClose`, the same door as ✕, Escape and the
+   * backdrop — so a half-typed เหตุผลที่ไม่อนุมัติ is asked about rather than
+   * thrown away by a flick of the thumb.
+   */
+  const grabRef = React.useRef(null);
+  const dragRef = React.useRef(null);
+
+  function dragStart(e) {
+    /* The grabber is `display: none` above 860px, so this asks the stylesheet
+       whether the dialog is a sheet right now rather than re-deciding it here
+       against a copy of the breakpoint that would then drift from it. */
+    if (!grabRef.current?.offsetParent) return;
+    dragRef.current = { id: e.pointerId, y0: e.clientY, dy: 0, moved: false };
+  }
+
+  function dragMove(e) {
+    const d = dragRef.current;
+    if (!d || d.id !== e.pointerId) return;
+    const dy = e.clientY - d.y0;
+    /* Under 5px is a tap — the × sits in this header and has to keep working.
+       Upwards is not a dismiss either; a sheet only leaves the way it came. */
+    if (!d.moved) {
+      if (dy < 5) return;
+      d.moved = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      /* `otslide` is declared `both`, so its final frame keeps applying — and a
+         running animation outranks an inline style. Without this line the sheet
+         does not move a pixel. */
+      boxRef.current.style.animation = 'none';
+      boxRef.current.style.transition = 'none';
+    }
+    d.dy = dy;
+    boxRef.current.style.transform = `translateY(${dy}px)`;
+  }
+
+  function dragEnd(e) {
+    const d = dragRef.current;
+    if (!d || d.id !== e.pointerId) return;
+    dragRef.current = null;
+    if (!d.moved) return;
+    /* Cleared before the decision, so the sheet springs back under its own CSS
+       transition whichever way the decision goes — including the one where
+       `requestClose` puts the unsaved-work question up and stays open. */
+    boxRef.current.style.transition = '';
+    boxRef.current.style.transform = '';
+    /* A quarter of the sheet, capped — otherwise รายละเอียด, which is nearly
+       full height, would want a much longer swipe than the reject sheet. */
+    if (d.dy > Math.min(140, boxRef.current.offsetHeight * 0.25)) requestClose();
+  }
+
   // Focus goes in on open and comes back out on close, and the page behind
   // stops scrolling while it is up — on a phone that background scroll is what
   // makes a bottom sheet feel like it is sliding around under the thumb.
@@ -799,7 +865,19 @@ export function Modal({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={trapTab}
       >
-        <div className={scrolled ? 'modal-head scrolled' : 'modal-head'}>
+        <div
+          className={scrolled ? 'modal-head scrolled' : 'modal-head'}
+          onPointerDown={dragStart}
+          onPointerMove={dragMove}
+          onPointerUp={dragEnd}
+          onPointerCancel={dragEnd}
+        >
+          {/* Drawn only below 860px, where the dialog is a bottom sheet. Not a
+              control and not in the tab order — ✕ beside it is the labelled way
+              out, and this is the picture of the gesture. `offsetParent` on it
+              is also what tells the drag handlers whether the sheet layout is
+              on, so it is never merely decorative. */}
+          <div className="modal-grab" ref={grabRef} aria-hidden="true" />
           <div className="who">
             <div className="t" id={titleId}>{title}</div>
             {subtitle && <div className="s">{subtitle}</div>}
@@ -840,8 +918,107 @@ export function Modal({
   );
 }
 
+/**
+ * One block of a detail pop-up — a kicker, an optional control beside it, and
+ * whatever the block is about. Shared, because a request looks the same
+ * whether it is a reviewer opening it out of คิวรออนุมัติ or the employee
+ * opening their own row: two shapes for the same pop-up would drift.
+ */
+export function Section({ title, action, children }) {
+  return (
+    <section className="detail-sec">
+      <div className="sec-head">
+        <div className="kicker-sm">{title}</div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * `wide` gives a fact the whole row instead of one column of it.
+ *
+ * The grid's cells stretch to the tallest of them, so one fact carrying four
+ * lines of explanation left the three or four one-line facts beside it as tall
+ * empty boxes — a band of white space across the pop-up, and a heading narrow
+ * enough to wrap "สะสมทั้งเดือน สิงหาคม 2569" onto two lines. A fact that is a
+ * paragraph rather than a value belongs on its own row.
+ */
+export function Fact({ k, v, sub, wide = false }) {
+  return (
+    <div className={wide ? 'wide' : undefined}>
+      <dt>{k}</dt>
+      <dd>{v}{sub && <div className="cell-sub">{sub}</div>}</dd>
+    </div>
+  );
+}
+
 export function Empty({ children }) {
   return <div className="empty">{children}</div>;
+}
+
+// ── dialog fields ───────────────────────────────────────────────────────────
+//
+// Here rather than in AdminView, which is where both of these were written and
+// where they stayed for as long as ตั้งค่าระบบ was the only screen with dialog
+// forms in it. ผู้รับช่วงอนุมัติแทน now has one too, and its fields have the
+// same two kinds of sentence to place. Copied across they would be two Fields
+// that look alike until somebody fixes the alignment of one of them.
+
+/**
+ * One labelled control in a dialog form, and the sentence that goes with it.
+ *
+ * TWO PLACES FOR THAT SENTENCE, because it is answering two different
+ * questions.
+ *
+ * `note` stays on screen. It is for a control somebody cannot use: the reason
+ * has to arrive before they try, not after they have clicked at a grey box and
+ * gone looking for whoever maintains this.
+ *
+ * `tip` is the same kind of sentence for a control that works, and it waits
+ * behind the (?) beside the label. Stacked under every field these were a wall
+ * of grey taller than the form — and a wall of grey is read as decoration, so
+ * the one sentence that mattered got skipped along with the rest. Hover gives
+ * it through `title`, a click opens it in place; nothing is shortened or
+ * dropped either way.
+ */
+export function Field({ label, note, tip, children, style }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="field" style={style}>
+      <div className="field-head">
+        <label>{label}</label>
+        {tip && <TipButton text={tip} of={label} open={open} onToggle={() => setOpen((v) => !v)} />}
+      </div>
+      {children}
+      {note && <div className="field-note">{note}</div>}
+      {tip && open && <div className="field-note">{tip}</div>}
+    </div>
+  );
+}
+
+/**
+ * The (?) that holds a sentence until it is asked for.
+ *
+ * A real <button>, not a styled span: it is reached by Tab, answers Enter and
+ * Space, and says whether it is open — the sentence behind it is the only
+ * explanation of the field, so a pointer must not be the one way to it.
+ */
+export function TipButton({ text, of, open, onToggle }) {
+  return (
+    <button
+      type="button"
+      className={open ? 'tip-btn on' : 'tip-btn'}
+      // Hover, for the reader who is not going to click anything.
+      title={text}
+      aria-expanded={open}
+      aria-label={`คำอธิบายของ ${of}`}
+      onClick={onToggle}
+    >
+      ?
+    </button>
+  );
 }
 
 /**

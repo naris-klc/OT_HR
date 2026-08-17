@@ -103,13 +103,16 @@ export default function AccountingView() {
         </div>
 
         {/* The checkbox joins the actions rather than sitting on a row of its
-            own now that the segmented buttons are gone. */}
-        <div className="row" style={{ marginTop: 14, alignItems: 'center' }}>
+            own now that the segmented buttons are gone. `.action-row` is what
+            holds it at the far end of the row while there is room, and lets it
+            fall back into line with the buttons on a card too narrow to keep
+            all three side by side. */}
+        <div className="row action-row" style={{ marginTop: 14 }}>
           <button className="btn" onClick={exportCsv}>ส่งออกไฟล์บัญชี (CSV/Excel)</button>
           <button className="btn ghost" onClick={() => setPrinting(true)}>
             พิมพ์แบบฟอร์ม / บันทึกเป็น PDF
           </button>
-          <label className="check" style={{ marginLeft: 'auto' }}>
+          <label className="check">
             <input
               type="checkbox"
               checked={includeZero}
@@ -119,8 +122,11 @@ export default function AccountingView() {
           </label>
         </div>
 
+        {/* The UTF-8 BOM half is gone — an encoding detail that reassures once
+            and is noise thereafter. What accounting actually needs to know
+            about this file is that it carries hours, not money. */}
         <div className="hint" style={{ marginTop: 10 }}>
-          ไฟล์ CSV บันทึกด้วย UTF-8 BOM เปิดใน Excel ภาษาไทยได้ทันที · ไม่มีการคำนวณเป็นเงิน
+          ไม่มีการคำนวณเป็นเงิน — ไฟล์นี้เป็นชั่วโมง
         </div>
       </div>
 
@@ -223,45 +229,54 @@ function CompanySheet({ company, period, index }) {
       ) : (
         <>
           <div className="table-wrap">
-            <table>
+            {/* `acct-table` — card layout below 860px. Seven columns put รวม ชม.
+                and the whole หมายเหตุ column off the right of a phone, which on
+                this screen means the ค้างอนุมัติ warning — the one line that
+                says a figure is not final — was the least reachable thing on
+                it. */}
+            <table className="acct-table">
               <thead>
                 <tr>
-                  <th>พนักงาน</th>
-                  <th>แผนก</th>
-                  <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
-                  <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
-                  <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
-                  <th className="num">รวม ชม.</th>
-                  <th>หมายเหตุ / บริษัท</th>
+                  <th className="who-col">พนักงาน</th>
+                  <th className="dept-col">แผนก</th>
+                  <th className="num rate-col b-15w"><RateHead rate="×1.5" of="ปกติ" /></th>
+                  <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
+                  <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
+                  <th className="num total-col">รวม ชม.</th>
+                  <th className="note-col">หมายเหตุ / บริษัท</th>
                 </tr>
               </thead>
               <tbody>
                 {company.rows.map((row) => (
                   <tr key={row.employee.id}>
-                    <td>
+                    <td className="who-col">
                       {row.employee.name}
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
                     </td>
-                    <td>{row.department?.name || '—'}</td>
-                    <td className="num rate-col">{cell(row.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                    <td className="num rate-col">{cell(row.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                    <td className="num rate-col">{cell(row.buckets[BUCKETS.OT3_HOLIDAY])}</td>
-                    <td className="num">
+                    <td className="dept-col">{row.department?.name || '—'}</td>
+                    <td className="num rate-col b-15w">{cell(row.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                    <td className="num rate-col b-15h">{cell(row.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                    <td className="num rate-col b-3h">{cell(row.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                    <td className="num total-col">
                       <strong>{cell(row.otHours)}</strong>
                     </td>
-                    <td>
-                      <span style={{ color: 'var(--muted)' }}>{row.companyLabel}</span>
+                    <td className="note-col">
+                      <span className="co">{row.companyLabel}</span>
                       {/* The same remark the printed sheet puts beside this row,
                           so HR reads it here before it is on paper. With the
                           hours, which the paper leaves out for want of room —
                           this is the screen the figure is checked on. */}
+                      {/* Classes rather than the inline sizes and colours these
+                          carried: on the card they are drawn as marks under the
+                          name, which needs a background and a shape, and an
+                          inline style is what a media query cannot answer. */}
                       {row.birthdayHours > 0 && (
-                        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                        <div className="note-mark">
                           {BIRTHDAY_REMARK} · {hours(row.birthdayHours)} ชม. อยู่ในช่องวันหยุด
                         </div>
                       )}
                       {row.pendingCount > 0 && (
-                        <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>
+                        <div className="note-mark warn">
                           ค้างอนุมัติ {row.pendingCount} รายการ · ไม่นับรวม
                         </div>
                       )}
@@ -272,26 +287,30 @@ function CompanySheet({ company, period, index }) {
               {/* The summary block: one row per department, then the company.
                   Same seven columns as the rows above them, so each heading
                   still describes what is underneath it. */}
+              {/* `sum-k` is the word that says what is being totalled —
+                  รวมแผนก or รวมทั้งหมด. On the desktop table it is just the
+                  first cell; on the card it is the summary block's heading, so
+                  it needs a name of its own. */}
               <tfoot>
                 {company.departments.map((d) => (
                   <tr key={d.department?.id || 'none'}>
-                    <td>รวมแผนก</td>
-                    <td>{d.department?.name || '—'}</td>
-                    <td className="num rate-col">{cell(d.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                    <td className="num rate-col">{cell(d.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                    <td className="num rate-col">{cell(d.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
-                    <td className="num">{cell(d.totals.otHours)}</td>
-                    <td>{d.totals.headcount} คนมี OT</td>
+                    <td className="sum-k">รวมแผนก</td>
+                    <td className="who-col">{d.department?.name || '—'}</td>
+                    <td className="num rate-col b-15w">{cell(d.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                    <td className="num rate-col b-15h">{cell(d.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                    <td className="num rate-col b-3h">{cell(d.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                    <td className="num total-col">{cell(d.totals.otHours)}</td>
+                    <td className="note-col">{d.totals.headcount} คนมี OT</td>
                   </tr>
                 ))}
                 <tr className="grand">
-                  <td>รวมทั้งหมด</td>
-                  <td>{company.accountingCode ? `${company.accountingCode} · ${company.shortTh}` : company.shortTh}</td>
-                  <td className="num rate-col">{hours(t.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                  <td className="num rate-col">{hours(t.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                  <td className="num rate-col">{hours(t.buckets[BUCKETS.OT3_HOLIDAY])}</td>
-                  <td className="num">{hours(t.otHours)}</td>
-                  <td>{t.headcount} คน · {t.entryCount} รายการ</td>
+                  <td className="sum-k">รวมทั้งหมด</td>
+                  <td className="who-col">{company.accountingCode ? `${company.accountingCode} · ${company.shortTh}` : company.shortTh}</td>
+                  <td className="num rate-col b-15w">{hours(t.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                  <td className="num rate-col b-15h">{hours(t.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                  <td className="num rate-col b-3h">{hours(t.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                  <td className="num total-col">{hours(t.otHours)}</td>
+                  <td className="note-col">{t.headcount} คน · {t.entryCount} รายการ</td>
                 </tr>
               </tfoot>
             </table>
@@ -310,42 +329,44 @@ function AllCompanies({ data }) {
       <h2>รวมทุกบริษัท</h2>
       <div className="hint">ยอดรวมของทั้งสองบริษัท ใช้แนบหน้าปกเมื่อส่งพร้อมกัน</div>
       <div className="table-wrap">
-        <table>
+        {/* Two rows and a total, but the same six columns as the sheets above —
+            so it scrolled sideways on a phone for the same reason they did. */}
+        <table className="allco-table">
           <thead>
             <tr>
-              <th>บริษัท</th>
-              <th className="num">จำนวนคน</th>
-              <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
-              <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
-              <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
-              <th className="num">รวม ชม.</th>
+              <th className="who-col">บริษัท</th>
+              <th className="num head-col">จำนวนคน</th>
+              <th className="num rate-col b-15w"><RateHead rate="×1.5" of="ปกติ" /></th>
+              <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
+              <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
+              <th className="num total-col">รวม ชม.</th>
             </tr>
           </thead>
           <tbody>
             {data.companies.map((c, i) => (
               <tr key={c.key}>
-                <td>
+                <td className="who-col">
                   {c.accountingCode ? `${c.accountingCode} · ` : ''}{c.shortTh}
                   <div style={{ fontSize: 12, color: 'var(--muted)' }}>
                     บริษัทที่ {i + 1} · {c.nameEn}
                   </div>
                 </td>
-                <td className="num">{c.totals.headcount}</td>
-                <td className="num rate-col">{cell(c.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-                <td className="num rate-col">{cell(c.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-                <td className="num rate-col">{cell(c.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
-                <td className="num"><strong>{cell(c.totals.otHours)}</strong></td>
+                <td className="num head-col">{c.totals.headcount}</td>
+                <td className="num rate-col b-15w">{cell(c.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+                <td className="num rate-col b-15h">{cell(c.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+                <td className="num rate-col b-3h">{cell(c.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+                <td className="num total-col"><strong>{cell(c.totals.otHours)}</strong></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="grand">
-              <td>รวมทั้งหมด</td>
-              <td className="num">{g.headcount}</td>
-              <td className="num rate-col">{hours(g.buckets[BUCKETS.OT15_WEEKDAY])}</td>
-              <td className="num rate-col">{hours(g.buckets[BUCKETS.OT15_HOLIDAY])}</td>
-              <td className="num rate-col">{hours(g.buckets[BUCKETS.OT3_HOLIDAY])}</td>
-              <td className="num">{hours(g.otHours)}</td>
+              <td className="who-col">รวมทั้งหมด</td>
+              <td className="num head-col">{g.headcount}</td>
+              <td className="num rate-col b-15w">{hours(g.buckets[BUCKETS.OT15_WEEKDAY])}</td>
+              <td className="num rate-col b-15h">{hours(g.buckets[BUCKETS.OT15_HOLIDAY])}</td>
+              <td className="num rate-col b-3h">{hours(g.buckets[BUCKETS.OT3_HOLIDAY])}</td>
+              <td className="num total-col">{hours(g.otHours)}</td>
             </tr>
           </tfoot>
         </table>

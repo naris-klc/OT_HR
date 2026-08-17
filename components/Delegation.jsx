@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
-import { Alert, Empty } from './common.jsx';
+import { Alert, Empty, Field, Modal } from './common.jsx';
 import { useToast } from './Toast.jsx';
 
 /**
@@ -24,7 +24,8 @@ export default function Delegation({ user, scope = 'mine' }) {
   const [today, setToday] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
+  /** Whether มอบหมายผู้รับช่วง is open — the only way this screen creates one. */
+  const [adding, setAdding] = useState(false);
 
   async function load() {
     try {
@@ -75,16 +76,19 @@ export default function Delegation({ user, scope = 'mine' }) {
               : 'ให้คนอื่นอนุมัติคิวของคุณแทนได้ชั่วคราว ระหว่างที่คุณไม่อยู่'}
           </div>
         </div>
-        <button className="btn" onClick={() => setOpen((v) => !v)}>
-          {open ? 'ปิดฟอร์ม' : '+ มอบหมายผู้รับช่วง'}
-        </button>
+        {/* One label, not two. The button used to say ปิดฟอร์ม while the form
+            was open, which is a second way of closing something that already
+            has a × and an Escape — and it was the one that threw away what had
+            been typed without asking. */}
+        <button className="btn" onClick={() => setAdding(true)}>มอบหมายผู้รับช่วง</button>
       </div>
 
       {/*
-        Said before the form, because it is what people get wrong about this.
-        The two halves are the two questions asked after the fact — "did I
-        remember to turn it off" (there is nothing to turn off) and "can I still
-        approve things myself" (yes, always).
+        On the card rather than in the dialog, because it is not about the form:
+        it answers the two questions that come AFTER a delegation exists — "did
+        I remember to turn it off" (there is nothing to turn off) and "can I
+        still approve things myself" (yes, always). Both are asked by somebody
+        looking at the table, with no form open.
       */}
       <Alert kind="info">
         การมอบหมาย<strong>หมดอายุเองตามวันที่กำหนด</strong> ไม่มีสวิตช์เปิด/ปิดที่ต้องกลับมาปิด ·
@@ -97,19 +101,6 @@ export default function Delegation({ user, scope = 'mine' }) {
       </Alert>
 
       {error && <Alert kind="error">{error}</Alert>}
-
-      {open && (
-        <DelegationForm
-          user={user}
-          all={all}
-          onSaved={async (row) => {
-            setOpen(false);
-            await load();
-            toast(`มอบหมายให้ ${row.to?.name} อนุมัติแทน ${thaiDate(row.fromDate)} – ${thaiDate(row.toDate)} แล้ว`);
-          }}
-          onError={setError}
-        />
-      )}
 
       {!rows ? <Empty>กำลังโหลด…</Empty> : groups.length === 0 ? (
         <Empty>{all ? 'ยังไม่มีการมอบหมายในระบบ' : 'ยังไม่เคยมอบหมายผู้รับช่วง'}</Empty>
@@ -176,15 +167,46 @@ export default function Delegation({ user, scope = 'mine' }) {
           {' '}และยังเก็บไว้เพราะเป็นหลักฐานของรายการที่อนุมัติไปภายใต้การมอบหมายนั้น
         </div>
       )}
+
+      {adding && (
+        <DelegationForm
+          user={user}
+          all={all}
+          onClose={() => setAdding(false)}
+          onSaved={async (row) => {
+            setAdding(false);
+            await load();
+            toast(`มอบหมายให้ ${row.to?.name} อนุมัติแทน ${thaiDate(row.fromDate)} – ${thaiDate(row.toDate)} แล้ว`);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ── the form ────────────────────────────────────────────────────────────────
 
-function DelegationForm({ user, all, onSaved, onError }) {
+const BLANK_DELEGATION = { from: '', to: '', fromDate: '', toDate: '', reason: '' };
+
+/**
+ * มอบหมายผู้รับช่วง — the form, in a dialog.
+ *
+ * WHY A DIALOG, and it is the answer เพิ่มพนักงาน and เพิ่มแผนก already gave.
+ * As a panel unfolding under the button it shared a card with the table of
+ * existing delegations, so on a phone the two dates were typed with the card's
+ * own hint, an info box and a table all still on screen — and the button that
+ * opened it turned into ปิดฟอร์ม, a second way out that discarded everything
+ * typed without asking. The dialog asks (`dirty`), and × / Escape / ยกเลิก all
+ * go through the same question.
+ *
+ * The refusal stays in here too, rather than being handed up to the card
+ * behind: หัวหน้างานคนนี้มีผู้รับช่วงอยู่แล้วในช่วงวันที่นี้ is a message about
+ * the dates in the boxes, and it is no use next to a form that has closed.
+ */
+function DelegationForm({ user, all, onClose, onSaved }) {
   const [pool, setPool] = useState({ managers: [], candidates: [] });
-  const [form, setForm] = useState({ from: '', to: '', fromDate: '', toDate: '', reason: '' });
+  const [form, setForm] = useState(BLANK_DELEGATION);
+  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   /**
@@ -197,7 +219,7 @@ function DelegationForm({ user, all, onSaved, onError }) {
   useEffect(() => {
     api.get('/delegations/candidates')
       .then(setPool)
-      .catch((err) => onError(err.message));
+      .catch((err) => setError(err.message));
   }, []);
 
   const granter = all ? form.from : String(user.id || user._id);
@@ -208,9 +230,10 @@ function DelegationForm({ user, all, onSaved, onError }) {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const ready = form.to && form.fromDate && form.toDate && (!all || form.from);
+  const dirty = Object.keys(BLANK_DELEGATION).some((k) => form[k] !== BLANK_DELEGATION[k]);
 
-  async function submit(e) {
-    e.preventDefault();
+  async function save() {
+    setError('');
     setBusy(true);
     try {
       const res = await api.post('/delegations', {
@@ -222,67 +245,113 @@ function DelegationForm({ user, all, onSaved, onError }) {
       });
       onSaved(res.delegation);
     } catch (err) {
-      onError(err.message);
-    } finally { setBusy(false); }
+      // Stays open, with both dates still in it — see the note on the component.
+      setError(err.message);
+      setBusy(false);
+    }
   }
 
   return (
-    <form onSubmit={submit} style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-      {all && (
-        <div className="field">
-          <label>คิวของหัวหน้างาน *</label>
-          <select value={form.from} onChange={(e) => set('from', e.target.value)} required>
-            <option value="">— เลือกหัวหน้างาน —</option>
-            {managers.map((p) => (
-              <option key={p._id} value={p._id}>
-                {p.name} · {p.department?.nameTh || p.department?.name || '—'}
-              </option>
-            ))}
-          </select>
-        </div>
+    <Modal
+      title="มอบหมายผู้รับช่วง"
+      subtitle={all ? 'ตั้งผู้รับช่วงอนุมัติแทนหัวหน้างานหนึ่งคน' : 'ให้คนอื่นอนุมัติคิวของคุณแทนชั่วคราว'}
+      onClose={onClose}
+      dirty={dirty && !busy}
+      footer={(requestClose) => (
+        <>
+          <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
+          <button className="btn" onClick={save} disabled={!ready || busy}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึกการมอบหมาย'}
+          </button>
+        </>
       )}
+    >
+      {error && <Alert kind="error">{error}</Alert>}
 
-      <div className="field" style={{ marginTop: all ? 12 : 0 }}>
-        <label>ผู้รับช่วง *</label>
-        <select value={form.to} onChange={(e) => set('to', e.target.value)} required>
-          <option value="">— เลือกผู้รับช่วง —</option>
-          {candidates.map((p) => (
-            <option key={p._id} value={p._id}>
-              {p.name} · {ROLE[p.role]} · {p.department?.nameTh || p.department?.name || '—'}
-            </option>
-          ))}
-        </select>
-        <span className="field-note">เลือกได้เฉพาะหัวหน้างานหรือฝ่ายบุคคล</span>
-      </div>
+      <div className="edit-form">
+        <section className="form-group">
+          <div className="gh">ใคร</div>
+          <div className="form-grid">
+            {all && (
+              <Field
+                label="คิวของหัวหน้างาน"
+                tip="คิวที่จะถูกอนุมัติแทน — หัวหน้างานคนนี้ยังอนุมัติเองได้ตามปกติ"
+              >
+                <select value={form.from} onChange={(e) => set('from', e.target.value)} disabled={busy}>
+                  <option value="">— เลือกหัวหน้างาน —</option>
+                  {managers.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.name} · {p.department?.nameTh || p.department?.name || '—'}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            <Field label="ผู้รับช่วง" note="เลือกได้เฉพาะหัวหน้างานหรือฝ่ายบุคคล">
+              <select value={form.to} onChange={(e) => set('to', e.target.value)} disabled={busy}>
+                <option value="">— เลือกผู้รับช่วง —</option>
+                {candidates.map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.name} · {ROLE[p.role]} · {p.department?.nameTh || p.department?.name || '—'}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </section>
 
-      <div className="row" style={{ marginTop: 12 }}>
-        <div className="field" style={{ maxWidth: 200 }}>
-          <label>ตั้งแต่วันที่ *</label>
-          <input type="date" value={form.fromDate} onChange={(e) => set('fromDate', e.target.value)} required />
-        </div>
-        <div className="field" style={{ maxWidth: 200 }}>
-          <label>ถึงวันที่ *</label>
-          <input type="date" value={form.toDate} onChange={(e) => set('toDate', e.target.value)} required />
-          <span className="field-note">นับรวมวันสุดท้าย · หมดอายุเองหลังจากนั้น</span>
-        </div>
-      </div>
+        {/*
+          The two dates in one `.form-grid`, which is the whole of the
+          alignment fix.
 
-      <div className="field" style={{ marginTop: 12 }}>
-        <label>เหตุผล</label>
-        <input
-          value={form.reason}
-          onChange={(e) => set('reason', e.target.value)}
-          maxLength={200}
-          placeholder="เช่น ลาป่วย · ไปราชการต่างจังหวัด"
-        />
-      </div>
+          They were a `.row`, and `.row` is `align-items: flex-end` — so the
+          two boxes were hung from the BOTTOM of their fields, and ถึงวันที่
+          carries a note that ตั้งแต่วันที่ does not. The note's two lines
+          pushed that box and its label upward, leaving a pair of date boxes
+          that are the same size and the same kind of thing sitting at two
+          different heights. `.form-grid` starts them together instead
+          (`align-items: start`) and gives each an equal 1fr column, so the
+          boxes line up at the top whatever is written underneath either of
+          them — the same fix already made for วันเกิด/อีเมล in เพิ่มพนักงาน.
+        */}
+        <section className="form-group">
+          <div className="gh">ช่วงเวลา</div>
+          <div className="form-grid">
+            <Field label="ตั้งแต่วันที่">
+              <input
+                type="date"
+                value={form.fromDate}
+                onChange={(e) => set('fromDate', e.target.value)}
+                disabled={busy}
+              />
+            </Field>
+            <Field label="ถึงวันที่" note="นับรวมวันสุดท้าย · หมดอายุเองหลังจากนั้น">
+              <input
+                type="date"
+                value={form.toDate}
+                onChange={(e) => set('toDate', e.target.value)}
+                disabled={busy}
+              />
+            </Field>
+          </div>
+        </section>
 
-      <div className="row" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
-        <button className="btn" disabled={busy || !ready}>
-          {busy ? 'กำลังบันทึก…' : 'บันทึกการมอบหมาย'}
-        </button>
+        <section className="form-group">
+          <div className="gh">เหตุผล</div>
+          <div className="form-grid">
+            <Field label="เหตุผล" tip="ไม่บังคับ · แสดงในตารางด้านหลัง เพื่อให้คนอื่นรู้ว่าการมอบหมายนี้มาจากอะไร">
+              <input
+                value={form.reason}
+                onChange={(e) => set('reason', e.target.value)}
+                maxLength={200}
+                placeholder="เช่น ลาป่วย · ไปราชการต่างจังหวัด"
+                disabled={busy}
+              />
+            </Field>
+          </div>
+        </section>
       </div>
-    </form>
+    </Modal>
   );
 }
 

@@ -331,6 +331,10 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .card-head .t { font: 600 15px/1 var(--sans); }
+/* The queue's count, printed into the heading for phones only — the chip in the
+   right-hand group is what a wide screen reads. See the two comments at the
+   heading in ApprovalQueue.jsx for why it is drawn twice rather than moved. */
+.card-head .t-count { display: none; font-weight: 400; color: var(--muted); }
 /* Which of the two payroll entities this card is — sits above its name, in the
    same mono voice the appbar uses for a page's kicker. */
 .kicker-sm {
@@ -352,6 +356,11 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   width: 100%; text-align: left; display: flex; align-items: center; gap: 14px;
   padding: 15px 18px; border: none; border-bottom: 1px solid var(--line-softer);
   background: var(--card); cursor: pointer;
+  /* This was written for a button and only ever used on a div. Now that
+     รายการล่าสุด draws the real thing, the two UA styles a <button> arrives
+     with — its own font and its own colour — have to be turned off, or the row
+     comes out in the browser's default 13px sans. */
+  font: inherit; color: inherit;
 }
 .item:hover { background: var(--green-wash); }
 .item:last-child { border-bottom: none; }
@@ -366,6 +375,21 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .date .n { font: 600 17px/1 var(--mono); }
 .date .c { font: 400 10px/1.4 var(--mono); letter-spacing: .06em; }
 .date.holiday { background: var(--amber-bg); color: var(--amber); }
+
+/* The rest of a row, as classes rather than as the inline styles these were.
+   Not tidiness for its own sake: the mobile block re-places all three, and an
+   inline style is the one thing a media query cannot take back. */
+.item-main { flex: 1; min-width: 0; }
+.item-title { font: 500 14.5px/1.4 var(--sans); }
+.item-hours {
+  flex: none; font: 600 16px/1 var(--mono); font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.item-hours .u { font: 400 11px/1 var(--sans); color: var(--muted-2); }
+/* Not an arrow and not a button — the whole row is the button. This is the
+   mark that says so, at the end a reader's eye already finishes on. */
+.item-go { flex: none; font: 400 20px/1 var(--latin); color: var(--muted-2); }
+.item:hover .item-go { color: var(--green); }
 
 /* ══ buttons ═════════════════════════════════════════════════════════════ */
 
@@ -419,13 +443,23 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 /* Mono + tracking on labels: the design pairs Thai with an English key. */
 .field label { font: 600 12px/1 var(--mono); letter-spacing: .09em; color: var(--muted); text-transform: uppercase; }
-.field input, .field select, .field textarea {
+/* `.policy-table select` is in this list rather than in a rule of its own, and
+   that is the point: the twelve dropdowns on นโยบายการคำนวณ are the only
+   controls in the app that had NO style at all, so what they drew was the
+   browser's own box — a darker, squarer frame than anything else on the page,
+   sitting two fields below the เหตุผล input it was supposed to match. Copying
+   the values across would have fixed today and drifted tomorrow; sharing the
+   declaration cannot. See .policy-table select below for the one thing that
+   does differ, and why. */
+.field input, .field select, .field textarea,
+.policy-table select {
   border: 1px solid var(--input-line); border-radius: var(--radius-sm);
   padding: 12px 14px; background: #fff; width: 100%;
   font: 500 15px/1.3 var(--mono); color: var(--ink);
 }
 .field textarea { font: 400 14.5px/1.55 var(--sans); resize: vertical; min-height: 64px; }
-.field input:focus, .field select:focus, .field textarea:focus {
+.field input:focus, .field select:focus, .field textarea:focus,
+.policy-table select:focus {
   outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(15, 138, 70, .13);
 }
 /* A field this person may not change.
@@ -434,7 +468,8 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    exactly like an editable one and the only signal was that typing did nothing.
    The sentence saying WHY goes underneath in .field-note — grey on its own
    reads as "broken" rather than as "not yours". */
-.field input:disabled, .field select:disabled, .field textarea:disabled {
+.field input:disabled, .field select:disabled, .field textarea:disabled,
+.policy-table select:disabled {
   background: var(--neutral-wash);
   color: var(--muted);
   cursor: not-allowed;
@@ -444,6 +479,34 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 .check { display: flex; align-items: center; gap: 9px; font: 400 14px/1.4 var(--sans); cursor: pointer; }
 .check input { width: 17px; height: 17px; accent-color: var(--green); }
+
+/* A row of buttons that ends with a checkbox — ส่งออก/พิมพ์ then
+   แสดงพนักงานที่ไม่มี OT, on สรุป OT ส่งบัญชี and สรุป OT แยกแผนก.
+
+   The checkbox is a setting rather than an action, so while all three fit on
+   one line it is pushed to the far end, away from the two buttons. Once they
+   no longer fit, `.row` wraps and the checkbox takes a line of its own — and
+   the push, which only ever meant "the other end of the row I share", left it
+   hugging the right edge alone while every other thing on the card sits
+   flush left. On a phone that reads as something that came loose.
+
+   A CONTAINER query and not a viewport one: what decides whether this wraps is
+   the width of the card, and the card runs ~310px narrower than the viewport
+   for as long as the sidebar is up, so the wrap happens at two quite different
+   viewport widths depending on which side of the 860px breakpoint we are on.
+   The row itself is the container, so the question asked is the exact one that
+   matters. The threshold sits a little above where the three actually stop
+   fitting: erring that way puts the checkbox beside the buttons for a narrow
+   band of widths, which looks like nothing at all, rather than leaving it
+   stranded on the right for that band.
+
+   The push lives here rather than inline on the label, because an inline style
+   wins over any selector and the query below could not take it back. */
+.action-row { container-type: inline-size; align-items: center; }
+.action-row .check { margin-left: auto; }
+@container (max-width: 660px) {
+  .action-row .check { margin-left: 0; }
+}
 
 /* Per-field validation, under the input it belongs to. Narrower than .alert,
    which speaks for the whole card. */
@@ -498,6 +561,26 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* One column before the boxes get too narrow to read what is in them. */
 @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
 
+/* A time box holds five characters and a picker glyph — it never wants the
+   share of a row that a name or a description does. Was an inline style on both
+   fields in OtForm; here so the phone layout can pair them up instead. */
+.field.time { max-width: 130px; }
+
+/* ── two lists that are read, not worked ─────────────────────────────────
+   กำลังจะถึง and ไม่มีข้อมูลวันเกิด. A key on the left, the rest on the right,
+   one rule between rows — enough structure to stop the eye from running two
+   people together, and not so much that either reads as a queue with something
+   to do about it. */
+.mini-list { font: 400 12.5px/1.5 var(--sans); }
+.mini-row {
+  display: flex; gap: 6px 14px; align-items: baseline;
+  padding: 7px 0; border-top: 1px solid var(--line-softer);
+}
+.mini-row:first-child { border-top: 0; }
+.mini-row .k { flex: none; font-weight: 500; }
+.mini-row .v { flex: 1; min-width: 0; }
+.mini-row .sub { color: var(--muted-2); margin-left: 7px; }
+
 /* The paragraph about a button on another screen: one line, and the rest of it
    behind the same (?) the fields use. */
 .folded-note { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
@@ -510,14 +593,21 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* ══ profile ═════════════════════════════════════════════════════════════ */
 
 /* ข้อมูลส่วนตัว, read-only. A description list rather than a table: it is one
-   person's facts, not rows to compare. */
+   person's facts, not rows to compare.
+
+   Flex rather than grid, for the same reason as `.fact-grid` further down — a
+   grid fixes the number of columns from the card width, and seven facts in a
+   five-column grid left the last row with two cells and three empty tracks.
+   The hairlines are the container's background showing through a 1px gap, so
+   "empty track" rendered as a grey box stretching to the end of the row. Flex
+   has no tracks: `flex: 1 1 210px` lets however many facts land on a row share
+   that row's whole width, so every row ends flush. */
 .profile-facts {
-  display: grid; gap: 1px; margin-top: 4px;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  display: flex; flex-wrap: wrap; gap: 1px; margin-top: 4px;
   background: var(--line); border: 1px solid var(--line);
   border-radius: var(--radius-sm); overflow: hidden;
 }
-.profile-facts > div { background: #fff; padding: 12px 14px; }
+.profile-facts > div { flex: 1 1 210px; background: #fff; padding: 12px 14px; }
 .profile-facts dt {
   font: 600 11px/1 var(--mono); letter-spacing: .09em;
   color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
@@ -554,6 +644,24 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   font: 600 11.5px/18px var(--sans); font-variant-numeric: tabular-nums;
 }
 .queue-tabs button.active .count { background: var(--amber); color: #fff; }
+
+/* ตั้งค่าระบบ's six section buttons — the same job as .queue-tabs above, but
+   six choices instead of two, so they have to be allowed to wrap and cannot be
+   one segmented bar.
+
+   `.row` on its own left every button at the width of its own label, and a
+   wrapped row therefore ended wherever its last label happened to end: three
+   buttons, then two, then one, with three different amounts of empty space
+   down the right. That reads as a pile of unrelated buttons rather than one
+   set to choose from.
+
+   `flex: 1 1 auto` hands each row the card's full width to share out among
+   whatever landed on it, in proportion to label length, so every row ends
+   flush at both edges. Deliberately NOT equal-width columns: a two-column
+   phone track is about 182px and ประวัติการแก้ทะเบียน needs about 190px, so a
+   grid would break that label over two lines and pull its whole row taller,
+   trading one kind of untidy for another. */
+.section-tabs .btn { flex: 1 1 auto; }
 
 /* Present but out of the way: what has been answered, and what cannot be
    answered yet. Neither is work, so neither costs a row in the queue above. */
@@ -922,6 +1030,48 @@ tbody tr:hover { background: var(--green-wash); }
    entirely: the tint marks the row you are on, and the number beside it is the
    heading for all of them, so it should no more highlight than the <th> does. */
 td.policy-open { background: var(--card); }
+
+/* The answer dropdowns. The box itself is declared with .field's up at the top
+   of this file; these two lines are everything about them that is NOT the same
+   as every other field in the app.
+
+   SANS, against the mono that rule sets. Mono is for "every number, field label
+   and metadata line" — the note this file opens with — and an answer here is
+   none of those: it is a Thai sentence, up to "หักเฉพาะช่วงที่คาบเกี่ยว
+   12:00–13:00 (ค่าเริ่มต้น)". IBM Plex Mono carries no Thai at all, so mono on
+   this control would not even be mono: the digits would take the fallback and
+   the Thai would drop past it to whatever the system happens to have, which is
+   the one font on the page that is not IBM Plex Sans Thai. The other selects in
+   the app hold a name or a filter word and the difference does not show; twelve
+   sentences is where it would.
+
+   MIN-WIDTH, so the column reads as a column rather than as twelve controls of
+   twelve lengths. It was an inline `style` on the <select> until 2026-08-17,
+   which the phone's card layout below could not override without `!important`:
+   a width is geometry, and geometry belongs where the breakpoint that changes
+   it can be read next to it. */
+.policy-table select {
+  font: 400 14px/1.35 var(--sans);
+  min-width: 280px;
+}
+
+/* ยืนยันการเปลี่ยนกฎการคำนวณ — the dialog between choosing an answer and saving
+   it (ConfirmPolicyChange in components/AdminView.jsx).
+
+   The old answer and the new one are the first thing in it and are sized to be
+   read at a glance, because that is the whole question being asked: everything
+   under them is consequence. Same three-part grammar as .entry-diff — struck
+   through on the left, arrow, weight on the right — so a reader who has seen a
+   change drawn anywhere else in this app has already read this one. */
+.policy-confirm { display: flex; flex-direction: column; gap: 12px; }
+.policy-confirm .change {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px;
+  padding: 12px 14px; background: var(--neutral-wash); border-radius: var(--radius-xs);
+  font: 400 14px/1.5 var(--sans);
+}
+.policy-confirm .change .was { color: var(--muted-2); text-decoration: line-through; }
+.policy-confirm .change .to { color: var(--muted-2); }
+.policy-confirm .change .now { color: var(--ink); font-weight: 600; }
 tbody tr:last-child td { border-bottom: none; }
 tfoot td { font-weight: 600; border-top: 1px solid var(--line); background: var(--neutral-wash); }
 /* Several summary rows can stack in one foot — per department, then the whole
@@ -1120,6 +1270,11 @@ th.why-col { width: 150px; }
 .queue-tools .field.search { flex: 2 1 300px; }
 .queue-tools .btn { flex: none; }
 
+/* The phone's own toolbar — กรองข้อมูล and เลือกทั้งหมด. Drawn only inside the
+   860px block; on a desktop the filters are already on screen and the heading
+   row already has the tick-box, so both controls would be duplicates. */
+.queue-mobile-bar { display: none; }
+
 /* Only on screen while something is ticked, and pinned under the app bar so
    the buttons stay reachable however far down the table you have read. */
 .batch-bar {
@@ -1175,6 +1330,22 @@ tbody tr.picked { background: var(--green-tint); }
 tbody tr.picked:hover { background: var(--green-bg); }
 
 .row-actions { display: flex; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
+
+/* "คุณเป็นผู้บันทึกรายการนี้…" — the sentence that stands where a row's two
+   buttons would be. Held to the width of the action column so it wraps into
+   the column rather than widening the table; the card layout below 860px lets
+   it out again. */
+.own-note { max-width: 190px; }
+
+/* The two remarks at the end of a สรุป OT ส่งบัญชี row — วันหยุดวันเกิด hours
+   already counted in the holiday column, and entries still awaiting a signature
+   that this sheet therefore does not include. Was an inline size and colour on
+   each; here because the card layout below 860px draws them as marks under the
+   name, and an inline style is the one thing a media query cannot take back.
+   Same size and colours the inline styles set, so the desktop table is what it
+   was. `.warn` is the pending one — the sheet is not final while it is there. */
+.note-mark { font: 400 11.5px/1.45 var(--sans); color: var(--muted); }
+.note-mark.warn { color: var(--amber); }
 
 /* Three buttons in one cell have to say three different things at a glance.
    Filled green commits, a red outline refuses, a plain outline only looks —
@@ -1395,6 +1566,11 @@ table.mini tbody tr:hover { background: none; }
 }
 /* Says there is more below without costing a row of height. */
 .modal-head.scrolled { box-shadow: 0 6px 14px -8px rgba(20, 32, 26, .35); }
+/* The bottom sheet's grabber. Nothing above 860px, where the dialog is centred
+   and there is no gesture for it to describe — and the drag handlers in Modal
+   read that back off this element rather than keeping their own copy of the
+   breakpoint. */
+.modal-grab { display: none; }
 .modal-head .who { flex: 1; min-width: 0; }
 .modal-head .t { font: 600 17px/1.35 var(--sans); }
 .modal-head .s { font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); margin-top: 2px; }
@@ -1504,7 +1680,34 @@ table.mini tbody tr:hover { background: none; }
 
 .mobile-nav, .fab { display: none; }
 
-@media (max-width: 860px) {
+/*
+ * `screen and`, and it is load-bearing.
+ *
+ * A print media query is evaluated against the PAGE BOX, not the window. This
+ * app prints A4 portrait at `margin: 0` (see print.css), and 210mm at 96dpi is
+ * 794 CSS pixels — under 860. So every rule in this block was matching on
+ * paper as well as on a phone, and had been since the block was written: the
+ * print rules three hundred lines down already carry `table { min-width: 0
+ * !important }` and `table.fixed { table-layout: auto !important }`, which are
+ * exactly the symptoms of a screen breakpoint landing on A4.
+ *
+ * That was survivable while the block only moved padding around. It stopped
+ * being survivable the moment this block started turning tables into cards:
+ * `display: block` on the table, `display: none` on the thead and a grid on
+ * every row prints a column of cards with no column headings.
+ *
+ * NOT the sheets accounting receives — those come from AccountingPrint.jsx and
+ * DepartmentPrint.jsx, which build their own plain `<table>` and carry none of
+ * these classes. What it would have caught is Ctrl+P on the screen itself,
+ * which is a real way to get a copy of a month and is the path the `table`
+ * resets below were already written for.
+ *
+ * The print block cannot undo this from where it sits either. It would have to
+ * name and reset every card rule, and each new one would print wrong once
+ * before anybody noticed. Naming the medium here is the fix that cannot fall
+ * behind.
+ */
+@media screen and (max-width: 860px) {
   .sidebar { display: none; }
 
   /* viewport-fit: cover lets the page run under the notch and the rounded
@@ -1546,6 +1749,10 @@ table.mini tbody tr:hover { background: none; }
 
   /* Clears the fixed bottom bar so the last row is never trapped under it. */
   .mobile-nav-spacer { height: 74px; }
+  /* And the FAB, on the one screen that has one: 92px up plus 58 of button,
+     rounded up so the last row's chip clears the shadow as well as the circle.
+     Sized here rather than guessed at, so moving the FAB moves this too. */
+  .mobile-nav-spacer.with-fab { height: 158px; }
 
   .mobile-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
@@ -1582,7 +1789,12 @@ table.mini tbody tr:hover { background: none; }
   }
 
   /* A form on a phone is a bottom sheet: it rises from the thumb, not the middle. */
-  .modal-backdrop { align-items: flex-end; padding: 0; }
+  /* `overflow: hidden` overrides the `auto` this has on a desktop, where it is
+     the escape hatch for a dialog taller than the screen. A sheet cannot be:
+     `max-height: 92dvh` below caps it. What `auto` would do here instead is
+     count the dragged sheet's own translate as scrollable overflow and hand the
+     backdrop a scrollbar for the length of every swipe. */
+  .modal-backdrop { align-items: flex-end; padding: 0; overflow: hidden; }
   .modal {
     width: 100%; max-width: none;
     /* Overrides the desktop `margin: auto` — the sheet sits on the bottom
@@ -1590,11 +1802,29 @@ table.mini tbody tr:hover { background: none; }
     margin: auto 0 0;
     max-height: 92vh;
     max-height: 92dvh;
-    border-radius: 20px 20px 0 0;
+    border-radius: 22px 22px 0 0;
     animation: otslide .22s ease both;
+    /* What springs the sheet back when a downward drag stops short of the
+       dismiss threshold. Transform only — a blanket `all` here would catch the
+       head's shadow and the foot's colours too. The reduced-motion block at the
+       foot of this file already flattens it for anybody who asked. */
+    transition: transform .22s ease;
   }
   .modal.wide { width: 100%; }
-  .modal-head { border-radius: 20px 20px 0 0; padding: 14px 16px; }
+  .modal-head {
+    position: relative;
+    border-radius: 22px 22px 0 0;
+    /* Room above the title for the grabber. */
+    padding: 20px 16px 14px;
+    /* The header IS the drag surface, so the browser must not claim the same
+       vertical pan for scrolling or for pull-to-refresh. */
+    touch-action: none;
+  }
+  .modal-grab {
+    display: block; position: absolute; top: 8px; left: 50%;
+    width: 38px; height: 4px; margin-left: -19px;
+    border-radius: 2px; background: var(--line);
+  }
   .modal-body { padding: 16px; }
 
   /* The sheet's own buttons sit right where the home indicator is. Pad past
@@ -1638,16 +1868,950 @@ table.mini tbody tr:hover { background: none; }
   .field { min-width: 100%; }
   .card { padding: 15px; border-radius: var(--radius); }
 
+  /* ── รายการล่าสุด on a phone ──────────────────────────────────────────────
+     Five things in one flex line — date chip, what the work was, how many
+     hours, where it has got to, and the mark that says there is more — were
+     five columns fighting over 390px. The sentence came out three words wide
+     and tore "ไม่พักเที่ยง" in half across two lines, while the figure and the
+     chip beside it took the width that would have fixed that.
+
+     Two rows instead. The description gets the full width; the figure and the
+     status sit under it, left-aligned, where they read as one pair rather than
+     as two more columns. The date chip and the chevron span both rows, so the
+     row still runs from one anchor on the left to one on the right.
+
+     Keyed on .row-link and not on .item: the same class draws a reviewer's row on
+     ขอถอนใบที่อนุมัติแล้ว, which holds different cells and buttons of its own. */
+  .item.row-link {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "date main  main  go"
+      "date hours chip  go";
+    align-items: center;
+    gap: 7px 12px;
+    padding: 14px 12px;
+  }
+  /* Top-aligned, because the description beside it can run to three lines and
+     a chip floating in the middle of them reads as belonging to none. */
+  .item.row-link > .date { grid-area: date; align-self: start; }
+  .item.row-link > .item-main { grid-area: main; }
+  .item.row-link > .item-hours { grid-area: hours; }
+  .item.row-link > .chip { grid-area: chip; justify-self: start; }
+  .item.row-link > .item-go { grid-area: go; }
+
   /* One control per line — a filter you have to pinch at is a filter nobody
-     uses, and the batch buttons are the reason the bar is there at all. */
-  .queue-tools { padding: 12px; }
+     uses, and the batch buttons are the reason the bar is there at all.
+
+     The rule at the foot of the block belongs to whichever bar is last. That is
+     usually `.queue-mobile-bar` — but it is not drawn on a queue where every
+     row is the reviewer's own filing and there is nothing to tick, and then
+     this one is the foot and keeps its border. Stated as "drop mine when that
+     one follows" rather than the reverse so a browser without `:has` errs
+     towards one hairline too many rather than none. */
+  .queue-tools { padding: 12px 12px 10px; }
+  .queue-tools:has(+ .queue-mobile-bar) { border-bottom: 0; }
   .queue-tools .field, .queue-tools .field.search { flex: 1 1 100%; }
-  .batch-bar { padding: 10px 12px; }
-  .batch-bar .count-label { flex: 1 1 100%; }
-  .batch-bar .btn { flex: 1 1 auto; }
   .batch-progress { padding: 10px 12px; }
   .row-actions { flex-wrap: wrap; white-space: normal; }
+  /* Its own margin is from the days it sat loose in a table cell; inside
+     .row-actions the gap already spaces it and the two together read as a
+     double gap. */
+  .row-actions .refile-offer { margin-left: 0; }
   .modal.wide { width: 100%; }
+
+  /* ══ คิวรออนุมัติ on a phone ═══════════════════════════════════════════
+     Three changes, and they are one change: the queue stops being a table.
+
+     The table is eleven columns and declares `min-width: 1262px`. On a 375px
+     screen that is three and a half screens of sideways scrolling per row, with
+     the tick-box at one end and the buttons at the other — so deciding one
+     request meant scrolling right to read it, right again to sign it, then all
+     the way back for the next. Below 860px the same eleven cells are laid out
+     as a card instead: everything the decision rests on in one column, nothing
+     off-screen, and the parts that only matter once you have doubts folded into
+     the รายละเอียด pop-up that already holds them.
+
+     Nothing here changes what is rendered. The cells are the same cells the
+     desktop table draws, re-placed by the column classes they already carry —
+     which is why a change to a row shows up in both layouts or in neither. */
+
+  /* ── the heading's count ───────────────────────────────────────────────── */
+
+  /* Swapped: the number joins the title, the pill goes. `.card-head` wraps at
+     this width, and a right-hand group holding nothing but the count becomes a
+     row of the screen spent on one digit. */
+  .card-head .t-count { display: inline; }
+  .card-head .chip.muted { display: none; }
+  /* What is left of that group when the count was all it held. `display: none`
+     on the chip empties it visually but not structurally, so it stays a flex
+     item and `.card-head` still pays its 12px gap for it. Both cases: nothing
+     rendered at all (a queue with no rows), and the chip alone — which is every
+     ฝ่ายบุคคล screen, since the บันทึกแทน button beside it is a หัวหน้า's.
+     A group holding that button keeps it and is untouched. */
+  .card-head .row:empty,
+  .card-head .row:has(> .chip.muted:only-child) { display: none; }
+
+  /* ── เลือกทั้งหมด ──────────────────────────────────────────────────────── */
+
+  /* 12px to a side, the same inset `tbody` gives the cards below, so the
+     tick-box lines up with the ones on the cards it selects rather than
+     floating over them. No top border and no top padding: `.queue-tools` ends
+     immediately above, the two share a background, and a rule between them
+     would draw a boundary that is not there. */
+  .queue-mobile-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 12px 12px;
+    background: var(--neutral-wash); border-bottom: 1px solid var(--line-soft);
+  }
+  /* Drawn as a control rather than as a form label — a bare tick-box with words
+     after it reads as something left over at the end of a row, and this is the
+     only way to build a batch on a phone. Given a button's height, border and
+     radius so it is as obviously pressable as anything else in the bar. */
+  .queue-mobile-bar .check {
+    gap: 8px; min-height: 40px; padding: 0 12px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: var(--card); font: 500 13px/1.4 var(--sans);
+  }
+  .queue-mobile-bar .check input { width: 18px; height: 18px; }
+
+  /* ── the row as a card ─────────────────────────────────────────────────── */
+
+  .queue-table { display: block; min-width: 0; table-layout: auto; }
+  /* Takes the heading checkbox with it — replaced by เลือกทั้งหมด in
+     .queue-mobile-bar above, which is the same `toggleAll` over the same list. */
+  .queue-table thead { display: none; }
+  .queue-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+
+  /*  ☐  ชื่อพนักงาน                 ( 2.00 ชม. )
+         รหัส · แผนก
+         16 ส.ค. 69 อา. · 17:30–19:30
+      ─────────────────────────────────────────
+      สะสม / เพดาน  16.5 / 40
+      รายละเอียดงาน + ป้ายกำกับ + คำเตือน
+      ─────────────────────────────────────────
+      [ อนุมัติ ] [ ไม่อนุมัติ ] [ รายละเอียด ]
+
+      The tick-box spans the first two rows so the name, the code and the
+      department all sit inside one hanging indent rather than each starting at
+      a different left edge.
+
+      FOUR COLUMNS, not three. The date and the time are separate cells and were
+      being pushed to opposite edges of the card by a `1fr` between them — the
+      two halves of one fact, read as far apart as it is possible to put them.
+      A narrow `auto` column for the date and the leftover for the time sets
+      them side by side; the name spans both, so nothing else pays for it. */
+  .queue-table tr {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "check who  who  total"
+      "check when span span"
+      "cap   cap  cap  cap"
+      "why   why  why  why"
+      "act   act  act  act";
+    gap: 4px 8px; align-items: start;
+    /* 15px, the same padding `.card` takes at this width — one card inset in
+       the app rather than one per screen. */
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  /* Ticked, said with the border as well as the fill — a wash alone is hard to
+     read against a phone's own brightness in a workshop. */
+  .queue-table tbody tr.picked { border-color: var(--green); background: var(--green-tint); }
+  .queue-table tbody tr:hover { background: var(--card); }
+  .queue-table tbody tr.picked:hover { background: var(--green-tint); }
+
+  .queue-table td { display: block; border: 0; padding: 0; }
+
+  /* `display: block` and `width: auto` are both overrides of the table-cell
+     rule this file sets 300 lines up, which a card has no use for. */
+  .queue-table td.check { grid-area: check; display: block; width: auto; padding-top: 2px; }
+  .queue-table td.check input { width: 22px; height: 22px; }
+
+  .queue-table td.who-col { grid-area: who; }
+  .queue-table td.who-col .who-name { font: 600 15px/1.35 var(--sans); white-space: normal; }
+
+  .queue-table td.when-col { grid-area: when; white-space: nowrap; font: 400 13px/1.45 var(--sans); }
+  /* "อา." beside the date rather than under it. As a block it took a whole line
+     of the card to carry two characters. */
+  .queue-table td.when-col .cell-sub { display: inline; margin: 0 0 0 5px; }
+  .queue-table td.span-col {
+    grid-area: span; text-align: left; white-space: nowrap;
+    font: 400 13px/1.45 var(--mono); color: var(--muted);
+  }
+  /* Now that the two sit together, something has to say they are two facts. */
+  .queue-table td.span-col::before { content: '· '; color: var(--muted-2); }
+
+  /* THE THREE RATE COLUMNS GO. Not lost — the รายละเอียด pop-up prints all
+     four buckets under BUCKET_LABEL, which is where a reviewer who wants the
+     split already looks. What stays on the card is the figure the decision is
+     actually about, and it stays because there is now room for it to be big. */
+  /* `:not(.total-col)` rather than leaning on source order — the total cell
+     carries BOTH classes, the two selectors weigh the same, and which one won
+     would otherwise be decided by which rule was written second. */
+  .queue-table td.rate-col:not(.total-col) { display: none; }
+
+  /* A badge rather than loose type in the corner — at 21px against a 15px name
+     the bare figure was the heaviest thing on the card and still read as
+     unplaced, because nothing tied it to anything. Boxed, it becomes one object
+     balancing the name across the row.
+
+     NEUTRAL, not green: green is what the ยืนยัน button under it means, and a
+     pending row's hours are a quantity, not a verdict. State on this card is
+     the business of the chips in รายละเอียด. */
+  .queue-table td.total-col {
+    grid-area: total; align-self: start;
+    display: inline-flex; align-items: baseline; gap: 4px;
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--neutral-wash);
+    text-align: left; white-space: nowrap;
+  }
+  .queue-table td.total-col strong {
+    font: 600 17px/1.15 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums;
+  }
+  /* The unit the column heading used to carry. A bare "2.00" on a card with no
+     heading row above it is a number with no name. */
+  .queue-table td.total-col::after {
+    content: 'ชม.'; font: 400 11px/1 var(--sans); color: var(--muted-2);
+  }
+
+  /* Labelled, for the same reason — `CapUsage` prints "16.5 / 40" and trusted
+     the heading to say what the two figures were. `::before` is a flex item
+     here, so the label and the figure sit on one line and the notes under
+     `CapUsage` wrap onto the next. */
+  .queue-table td.cap-col {
+    grid-area: cap; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
+    text-align: left;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-softer);
+  }
+  .queue-table td.cap-col::before {
+    content: 'สะสม / เพดาน';
+    font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
+  }
+  /* "เพดานนับ 38.5 / 40 · รวมใบที่รออนุมัติ" — a sentence with two figures in
+     it, on its own line and a step quieter than the figure it qualifies. At the
+     desktop's 11.5px it was crowding the line above on a narrow card. */
+  .queue-table td.cap-col .cap-sub,
+  .queue-table td.cap-col .cell-sub { flex: 1 1 100%; }
+  .queue-table td.cap-col .cap-sub { font-size: 11px; color: var(--muted-2); }
+
+  /* Prose and every chip hanging off it — the width rule from `th.why-col` is
+     a table geometry and does not survive into the card. */
+  .queue-table td.why-col { grid-area: why; margin-top: 6px; font: 400 13px/1.5 var(--sans); }
+
+  /* The two decisions, at the foot of the card where the thumb is. `1 1 40%`
+     rather than `auto` so อนุมัติ and ไม่อนุมัติ take a half each and
+     รายละเอียด drops to its own full-width line beneath them — the two
+     consequential presses are never side by side with a third that only looks. */
+  .queue-table td.act-col {
+    grid-area: act; margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--line-softer);
+  }
+  .queue-table td.act-col .row-actions { gap: 8px; }
+  .queue-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: 44px; }
+  /* The two are already the same box — 44px, and `box-sizing: border-box` at
+     the top of this file means the outlined one's border is inside that height
+     rather than added to it. What made อนุมัติ look the taller of the pair is
+     the 18px green glow `.btn` casts, which at this size spills a third of the
+     button's own height below it. Halved here so the pair reads as one row of
+     two equal targets; the fill and the red outline still carry which is which,
+     which is the part of that weight worth keeping. */
+  .queue-table td.act-col .row-actions .btn:not(.ghost) {
+    box-shadow: 0 3px 9px rgba(15, 138, 70, .22);
+  }
+  /* Released from the action column's 190px — on a card it has the width. */
+  .queue-table td.act-col .own-note { flex: 1 1 100%; max-width: none; }
+
+  /* ══ วันเกิดรอตรวจ — the same table-to-card change ═════════════════════
+     Seven columns, and the two that decide the row (บันทึก OT ให้ and
+     ไม่ได้มาทำงาน) are the last of them. On a phone they sat off the right edge
+     of the screen: the only way to answer a birthday was to scroll a table
+     sideways, press, and scroll back. Nothing here is rendered differently —
+     the cells are placed by the classes they carry, as on the queue. */
+
+  .bday-table { display: block; min-width: 0; table-layout: auto; }
+  .bday-table thead { display: none; }
+  .bday-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+
+  /*  วิชัย ศรีสุข                    ( ค้าง 4 วัน )
+      PM-0100
+      วิศวกรรม · ไพรมัส
+      ──────────────────────────────────────────
+      วันหยุดวันเกิด   10 สิงหาคม 2569 วันจันทร์
+      บันทึกแทนได้     สมชาย ใจดี
+      ──────────────────────────────────────────
+      [ บันทึก OT ให้ ]      [ ไม่ได้มาทำงาน ]   */
+  .bday-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "who  who  age"
+      "dept co   co"
+      "date date date"
+      "mgr  mgr  mgr"
+      "act  act  act";
+    gap: 4px 8px; align-items: start;
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  .bday-table td { display: block; border: 0; padding: 0; }
+
+  .bday-table td.who-col { grid-area: who; font: 600 15px/1.35 var(--sans); }
+  .bday-table td.dept-col { grid-area: dept; font: 400 13px/1.45 var(--sans); color: var(--muted); }
+  .bday-table td.co-col { grid-area: co; font: 400 13px/1.45 var(--sans); color: var(--muted); }
+  .bday-table td.co-col::before { content: '· '; color: var(--muted-2); }
+
+  /* The badge, and the one thing on the card that decides how urgent it is. The
+     amber past a fortnight is an inline colour on the span inside, so this box
+     stays neutral and lets that through rather than fighting it. */
+  .bday-table td.age-col {
+    grid-area: age; align-self: start; justify-self: end;
+    padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--neutral-wash);
+    font: 500 12.5px/1.4 var(--sans);
+  }
+
+  /* Labelled, because the heading row that named these is gone. Both are a
+     label and a value on one line, so the card reads as a short list of facts
+     rather than as loose sentences. */
+  .bday-table td.date-col,
+  .bday-table td.mgr-col {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
+    font: 400 13px/1.5 var(--sans);
+  }
+  /* The rule goes above the pair, not between them — they are one block of
+     facts under the name, and a line between every row would make four blocks
+     out of a card that has two. */
+  .bday-table td.date-col {
+    grid-area: date;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-softer);
+  }
+  .bday-table td.mgr-col { grid-area: mgr; }
+  .bday-table td.date-col::before,
+  .bday-table td.mgr-col::before {
+    font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
+  }
+  .bday-table td.date-col::before { content: 'วันหยุดวันเกิด'; }
+  .bday-table td.mgr-col::before { content: 'บันทึกแทนได้'; }
+  .bday-table td.date-col .cell-sub { display: inline; margin: 0 0 0 5px; }
+
+  .bday-table td.act-col {
+    grid-area: act; margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--line-softer);
+  }
+  .bday-table td.act-col .row-actions { gap: 8px; }
+  .bday-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: 44px; }
+  .bday-table td.act-col .row-actions .btn:not(.ghost) {
+    box-shadow: 0 3px 9px rgba(15, 138, 70, .22);
+  }
+
+  /* ══ วันเกิดของเดือนนี้ (ตรวจสอบรายเดือน) ══════════════════════════════
+     Seven columns, laid out as วันเกิดรอตรวจ's card. Its own class rather than
+     `.bday-table` only because the two differ in one cell — see the note over
+     the grid below — and not because they should look different. */
+
+  .bmonth-table { display: block; min-width: 0; table-layout: auto; }
+  .bmonth-table thead { display: none; }
+  .bmonth-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+
+  /*  THE SAME CARD AS วันเกิดรอตรวจ, cell for cell — same three tracks, the
+      name over its code over แผนก · บริษัท, then a ruled block of labelled
+      facts, then the buttons. The two screens are the same rows read for two
+      different reasons and there is no reason for them to be two shapes.
+
+      วิชัย ศรีสุข
+      PM-0100
+      วิศวกรรม
+      ──────────────────────────────────────────
+      วันเกิด    10 สิงหาคม 2569 วันจันทร์
+      บริษัท     ไพรมัส
+      ชั่วโมง    8            ← only where there is one
+                 [ต้องตรวจ]
+                 ตรวจจากบันทึกเวลาเข้า-ออก …
+      ──────────────────────────────────────────
+      [ บันทึก OT ให้ ]     [ ไม่ได้มาทำงาน ]
+
+      ONE COLUMN, and that is what fixes the gap that used to sit between
+      วิศวกรรม and · ไพรมัส. A grid item spanning several tracks widens the
+      `auto` ones it crosses, and on this card every other item — the name, the
+      date, the status, the buttons — spans the lot. So the track แผนก sat in
+      was being stretched by all of them, and บริษัท started wherever that
+      stretching left off. Two tracks or three made no difference; the only
+      cure is not to have a second track for anything to be pushed across.
+      บริษัท joins the labelled facts below instead, which is where the rest of
+      the row's detail already lives.
+
+      THE CORNER BADGE from วันเกิดรอตรวจ is still not copied. There ค้างมาแล้ว
+      is two words that fit in a corner; here the status is a chip AND a
+      sentence under it, and a sentence squeezed into a corner would take the
+      width back off the name. */
+  .bmonth-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "who"
+      "dept"
+      "date"
+      "co"
+      "hrs"
+      "state"
+      "act";
+    gap: 4px 0; align-items: start;
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  .bmonth-table td { display: block; border: 0; padding: 0; text-align: left; }
+
+  /* The code on its own line under the name, as on วันเกิดรอตรวจ — it was
+     inlined here to save a line, which is exactly the difference between the
+     two screens that was being asked about. */
+  .bmonth-table td.who-col { grid-area: who; font: 600 15px/1.35 var(--sans); }
+  .bmonth-table td.dept-col {
+    grid-area: dept; font: 400 13px/1.45 var(--sans); color: var(--muted);
+  }
+
+  /* Label and value on one line, the block ruled off above it. The headings
+     these labels replace went with the thead. */
+  .bmonth-table td.date-col,
+  .bmonth-table td.co-col,
+  .bmonth-table td.hrs-col,
+  .bmonth-table td.state-col {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
+    padding: 2px 0; font: 400 13px/1.5 var(--sans); text-align: left;
+  }
+  .bmonth-table td.date-col::before,
+  .bmonth-table td.co-col::before,
+  .bmonth-table td.hrs-col::before {
+    flex: none; min-width: 52px;
+    font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
+  }
+  .bmonth-table td.date-col {
+    grid-area: date;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-softer);
+  }
+  .bmonth-table td.date-col::before { content: 'วันเกิด'; }
+  .bmonth-table td.date-col .cell-sub { display: inline; margin: 0 0 0 5px; }
+
+  .bmonth-table td.co-col { grid-area: co; }
+  .bmonth-table td.co-col::before { content: 'บริษัท'; }
+
+  .bmonth-table td.hrs-col {
+    grid-area: hrs;
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+  }
+  .bmonth-table td.hrs-col::before { content: 'ชั่วโมง'; }
+  /* Nothing filed, so no figure and no line — see the `none` note in HrView. */
+  .bmonth-table td.hrs-col.none { display: none; }
+
+  /* NO LABEL ON THE STATUS. A coloured chip says "status" on its own, and
+     วันเกิดรอตรวจ does not label its own badge either. The cell is indented to
+     the column the values sit in so the chip lines up with them rather than
+     with the labels. */
+  .bmonth-table td.state-col { grid-area: state; padding-left: 60px; }
+  .bmonth-table td.state-col > div { flex: 1 1 100%; }
+
+  .bmonth-table td.act-col {
+    grid-area: act; margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--line-softer);
+  }
+  /* `BirthdayRowActions` returns null on every row there is nothing to do
+     about — a birthday that was already a holiday, one that has not arrived,
+     one filed on a closed month. The cell is then genuinely empty, and it was
+     still drawing its rule and its 20px of spacing: an empty bordered block at
+     the foot of most of the cards on this screen. */
+  .bmonth-table td.act-col:empty { display: none; }
+
+  /* `.btn`, not `.row-actions .btn`. Two of the four cases here — ดูใบ and
+     ยกเลิกการตรวจ — are a bare button with no wrapper, so a rule reaching
+     through `.row-actions` missed them and they were the only decision buttons
+     in the app left under 44px. */
+  .bmonth-table td.act-col .row-actions { flex-wrap: wrap; gap: 8px; }
+  .bmonth-table td.act-col .btn { flex: 1 1 40%; min-height: 44px; }
+  .bmonth-table td.act-col .btn:not(.ghost) {
+    box-shadow: 0 3px 9px rgba(15, 138, 70, .22);
+  }
+
+  /* ══ นโยบายการคำนวณ — the question and its answer, one card each ═══════
+     Three columns, and the third holds a 280px <select>. A dropdown cannot be
+     compressed the way prose can, so on a 440px phone the whole of the table's
+     remaining width went to it and the คำถาม column was left with about forty
+     pixels: "วิธีการปัดเศษชั่วโมง OT" came down the screen two characters to a
+     line, and its hint — the paragraph explaining what "คิดตามจริง" does —
+     took some ninety lines to say it. The answer beside it was still cut off at
+     the right edge, because 280px never fitted either.
+
+     This is the same kind of screen as คิวรออนุมัติ: one row is read, decided
+     and left behind, and nobody reads down the column. So it takes the same
+     shape — the number, then the question at a readable size, then the
+     dropdown at the full width of the card underneath it. Reading order is
+     unchanged; it is the same three cells, stacked instead of squeezed. */
+
+  .policy-table { display: block; min-width: 0; table-layout: auto; }
+  .policy-table thead { display: none; }
+  .policy-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+
+  .policy-table tr {
+    display: block;
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  /* The row tint is a pointer affordance and there is no pointer here; left on,
+     it stuck to whichever card was last touched. */
+  .policy-table tbody tr:hover { background: var(--card); }
+
+  .policy-table td { display: block; border: 0; padding: 0; }
+
+  /* THE MERGED CELL GOES, and the number comes back from the row's own
+     `data-open` — see the note over the <tr> in components/AdminView.jsx. The
+     cell is on the first row of its group only, so drawing it here would number
+     the first card of a pair and leave the second one blank. */
+  .policy-table td.policy-open { display: none; }
+  .policy-table tr[data-open]::before {
+    content: 'ข้อ ' attr(data-open);
+    display: block; margin-bottom: 6px;
+    font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
+  }
+
+  /* The question is the heading of its card — 15px, the size a name takes on
+     the queue's cards. Only the label itself: the hint, the ตั้งทับค่าตั้งต้น
+     note and the รอ HR ยืนยัน block under it are explanation and stay at the
+     weight they already have. */
+  .policy-table td.policy-q .policy-label { font: 600 15px/1.4 var(--sans); }
+
+  /* Ruled off above, the way every card on this breakpoint separates what is
+     read from what is pressed. `width: 100%` against the 280px floor: the
+     control is as wide as the card, whatever the longest option says. */
+  .policy-table td.policy-a {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--line-softer);
+    font: 400 13px/1.5 var(--sans);
+  }
+  .policy-table td.policy-a select {
+    width: 100%; min-width: 0; min-height: 44px;
+  }
+
+  /* ══ ประวัติเวอร์ชันนโยบาย — the same change, five columns ═══════════════
+     A record read one line at a time: what changed, when, and who typed the
+     reason. The diff is the widest thing in it by far — `.entry-diff` prints
+     one line per flag moved — and on a phone it was the column being crushed.
+
+     เวอร์ชัน 4              14 ส.ค. 2569 09:12
+     สมชาย · ฝ่ายบุคคลตอบข้อ 3 ในที่ประชุม
+     คำนวณด้วยเวอร์ชันนี้  128 ใบ
+     ──────────────────────────────────────
+     วิธีการปัดเศษชั่วโมง OT
+     "floor" → "nearest"   มีผลต่อชั่วโมง
+
+     The diff lines stack themselves — `.entry-diff` drops to one column of its
+     own accord under 640px, which is where the flag name stops sharing a line
+     with the two values. Nothing here overrides that. */
+
+  .pver-table { display: block; min-width: 0; table-layout: auto; }
+  .pver-table thead { display: none; }
+  .pver-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+
+  .pver-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "seq  when"
+      "who  who"
+      "cnt  cnt"
+      "diff diff";
+    gap: 4px 8px; align-items: baseline;
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  .pver-table tbody tr:hover { background: var(--card); }
+  .pver-table td { display: block; border: 0; padding: 0; text-align: left; }
+
+  /* "เวอร์ชัน 4" — the heading the thead used to supply. A bare 4 at the top of
+     a card is a number with no name, the same problem the queue's ชม. solves. */
+  .pver-table td.seq-col { grid-area: seq; }
+  .pver-table td.seq-col::before {
+    content: 'เวอร์ชัน ';
+    font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
+  }
+  .pver-table td.seq-col strong { font: 600 15px/1.35 var(--mono); }
+
+  .pver-table td.when-col {
+    grid-area: when; text-align: right;
+    font: 400 12.5px/1.45 var(--sans); color: var(--muted);
+    /* The desktop cell holds this nowrap as an inline style to keep the date
+       out of two lines in its column; on a card there is no column to protect
+       and a Thai long date beside the version number needs the wrap. */
+    white-space: normal !important;
+  }
+
+  .pver-table td.who-col { grid-area: who; font: 400 13px/1.5 var(--sans); }
+
+  .pver-table td.count-col {
+    grid-area: cnt; display: flex; align-items: baseline; gap: 6px;
+    text-align: left; font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 13px;
+  }
+  .pver-table td.count-col::before {
+    content: 'คำนวณด้วยเวอร์ชันนี้';
+    font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
+  }
+  .pver-table td.count-col::after { content: 'ใบ'; font: 400 11px/1.5 var(--sans); color: var(--muted-2); }
+
+  .pver-table td.diff-col {
+    grid-area: diff; margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid var(--line-softer);
+    font: 400 13px/1.5 var(--sans);
+  }
+
+  /* ══ the report tables stay tables ═════════════════════════════════════
+     ตรวจสอบรายเดือน, สรุป OT ส่งบัญชี and สรุป OT แยกแผนก are read DOWN their
+     columns — that is what they are for. `CompanySheet` says so in its own
+     comment: the department subtotals sit in the foot of the same table rather
+     than in a second one beside it "so a figure is always read down the column
+     it belongs to". Broken into one card per person, thirty values of 1.50 end
+     up in thirty different places and nothing can be compared or reconciled
+     against the paper any more.
+
+     So these three keep their tables and are made to scroll properly instead.
+     คิวรออนุมัติ and the two birthday lists are the opposite kind of screen —
+     one row is read, decided and left behind, and nobody reads down a column —
+     so they stay cards. */
+
+  /* THE SCROLL HINT. Four backgrounds on the scrolling box: two covers painted
+     in the card's own colour that travel WITH the content (`local`), and two
+     shadows pinned to the box (`scroll`). At either end the cover sits over the
+     shadow and hides it; the moment the content moves, the cover slides off and
+     the shadow appears. So a shadow shows only on the side there is more table
+     on, and a table that already fits shows neither. No script, and nothing
+     that can fall out of step with the actual scroll position. */
+  .table-wrap {
+    background:
+      linear-gradient(to right, var(--card) 30%, rgba(255, 255, 255, 0)) left center,
+      linear-gradient(to left, var(--card) 30%, rgba(255, 255, 255, 0)) right center,
+      radial-gradient(farthest-side at 0 50%, rgba(20, 32, 26, .17), rgba(20, 32, 26, 0)) left center,
+      radial-gradient(farthest-side at 100% 50%, rgba(20, 32, 26, .17), rgba(20, 32, 26, 0)) right center;
+    background-repeat: no-repeat;
+    background-size: 34px 100%, 34px 100%, 13px 100%, 13px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+
+  /* COMPACT. 12px of padding on each side of every cell is 24px per column, and
+     at eleven columns that is a quarter of the table's width spent on air. The
+     headings come down further than the figures do: they are already two short
+     lines from `RateHead` and they are not what is being read. */
+  .hr-table th, .hr-table td,
+  .acct-table th, .acct-table td,
+  .allco-table th, .allco-table td,
+  .dept-table th, .dept-table td { padding: 8px 7px; }
+  .hr-table td, .acct-table td, .allco-table td, .dept-table td { font-size: 13px; }
+  .hr-table th, .acct-table th, .allco-table th, .dept-table th {
+    font-size: 10px; letter-spacing: .03em;
+  }
+
+  /* EVERY COLUMN SIZES ITSELF. No declared widths anywhere below — a figure
+     column is as wide as its figures and a note column as wide as its notes,
+     and a month with longer names or an extra remark widens the column that
+     grew rather than pushing something off the end of a fixed budget.
+
+     `width: max-content` is what asks for that. Left at the base `width: 100%`,
+     an eleven-column table squeezed into 351px is laid out at its MINIMUM
+     widths instead — every column wrapping to one or two characters a line —
+     because a table only overflows once it cannot compress further. Asking for
+     max-content says the opposite: take the width the contents actually want
+     and let `.table-wrap` scroll. `min-width: 100%` keeps a short table from
+     ending in the middle of the card.
+
+     สรุป OT แยกแผนก IS NOT IN THIS RULE, and cannot be. See the block below. */
+  .hr-table, .acct-table, .allco-table {
+    table-layout: auto; width: max-content; min-width: 100%;
+  }
+
+  /* ── สรุป OT แยกแผนก declares its widths, and has to ────────────────────
+     This screen is a STACK of tables — one per department, each its own
+     `<table>`. Self-sizing columns are decided per table, so วิศวกรรม sizes
+     ชื่อ-นามสกุล to its own longest name and ผลิต to a different one, and the
+     three cards' columns stop lining up with each other. Read down the stack,
+     nothing is in a column at all.
+
+     That is exactly what the colgroup on this table was for — "the cards stack,
+     and a column has to land in the same place in every one of them" — and
+     turning the table over to `max-content` overrode it. There is no way to
+     have both: aligning separate tables to each other is not something CSS can
+     do from their contents, only from a figure they are all given.
+
+     So the ceilings become the widths, and `min-width` is their sum so that
+     `table-layout: fixed` has no leftover to share out. The colgroup's own
+     820px worth of inline widths are still reset with `!important` — those are
+     the desktop's numbers, not these.
+
+     Every figure below is measured against what its column actually has to
+     hold, not rounded up for comfort:
+
+       ลำดับที่  34  — one or two digits, centred. The heading is the longest
+                      thing in it and is allowed to wrap rather than set it.
+       ชื่อ       72  — AT ITS FLOOR, and the floor is not the name. "THT0056"
+                      is seven characters of 12px mono — about 50px — plus 14px
+                      of padding, so 64px is the narrowest this column can be
+                      before an employee code stops fitting on one line. 72
+                      leaves that 8px of margin and nothing more. Names wrap
+                      inside it, which the cell already does for the code line
+                      beneath them.
+       บริษัท    64  — sized to the COMPANY, which is all this cell holds on an
+                      ordinary row: "ไพรมัส" is about 42px at 13px, plus 14px
+                      of padding. It is not sized to the ค้างอนุมัติ warning
+                      that shares the cell, because that line is on a minority
+                      of rows and sizing every card's column to an exception
+                      was what made this the widest thing on the sheet. The
+                      warning wraps onto three or four lines when it appears —
+                      a taller row on the rows that have something wrong with
+                      them, which is not a bad place to spend height.
+       1.50/3.00 46  — "13.5" is 30px of mono at 13px, plus 14px of padding.
+       รวม ชม.   50  — bold, and its heading takes two lines.
+
+     Sum is 312px. A 375px phone has 321px once `main` and `.card` have taken
+     their padding, so the department cards now fit without scrolling at all.
+
+     `table.dept-table`, NOT `.dept-table`, AND THAT IS THE WHOLE POINT OF THIS
+     RULE. The base stylesheet carries
+
+         table.fixed { table-layout: fixed; min-width: 820px; }
+
+     and this table is `class="fixed dept-table"`. `table.fixed` is an element
+     plus a class; a bare `.dept-table` is one class, which loses — being later
+     in the file and inside a media query buys nothing, because media queries
+     add no specificity. So every `min-width` written here across several
+     revisions was overruled and the table stayed 820px wide.
+
+     Which is what the complaint was the whole time. Under `table-layout: fixed`
+     a table forced to 820px with 312px of declared columns shares the other
+     508px out among them — about 85px added to every column, including the
+     figure columns — so each round of narrowing the declared widths did
+     nothing except change how much padding got handed back. Matching
+     `table.fixed`'s specificity and coming after it is the fix. */
+  table.dept-table { table-layout: fixed; width: 100%; min-width: 312px; }
+  .dept-table th.seq { width: 34px; }
+  .dept-table th.who-col { width: 72px; }
+  .dept-table th.co-col { width: 64px; }
+  .dept-table th.b-15, .dept-table th.b-3 { width: 46px; }
+  .dept-table th.total-col { width: 50px; }
+
+  /* `overflow-wrap: anywhere` is on every cell in these tables so a declared
+     width can break a word rather than be pushed open. An employee code is the
+     one thing that must never be broken — "THT00" over "56" is not a code
+     anybody can check against a payroll file — and this column is now sized to
+     the width of exactly one. Exempted here so that if it ever does not fit,
+     the code overflows visibly rather than splitting silently. */
+  .dept-table td.who-col .cell-sub { white-space: nowrap; overflow-wrap: normal; }
+
+  /* รวมทุกแผนก has จำนวนคน where the cards have บริษัท — a count, not a label,
+     so it takes a figure's width and the whole table comes to 294px. A 375px
+     phone has 321px left after its own padding and the card's, so this one now
+     fits with room to spare and stops scrolling sideways altogether. */
+  table.dept-table.alldept { min-width: 294px; }
+  .dept-table.alldept th.head-col { width: 46px; }
+
+  /* CEILINGS ON THE PROSE COLUMNS — the other half of `max-content`, and it is
+     not optional.
+
+     max-content means "as wide as the contents want", which for a figure is
+     four characters and for a sentence is the whole sentence on one line. บริษัท
+     on สรุป OT แยกแผนก carries "ค้างอนุมัติ 2 รายการ · ไม่นับรวม" and took about
+     230px to keep it unbroken, pushing 1.50, 3.00 and รวม most of a screen to
+     the right — the columns were not spaced apart, one column was eating the
+     room. Same for แผนก, หมายเหตุ, กฎที่ใช้ and the button column.
+
+     `max-width`, not `width`: a CEILING. A month of short names and no remarks
+     still gets narrow columns, because max-content is still what decides — this
+     only says how wide a column may grow before its contents have to wrap
+     instead. `overflow-wrap: anywhere` is what lets them.
+
+     Figures have no ceiling. They are already the width of a figure. */
+  .hr-table td, .acct-table td, .allco-table td, .dept-table td { overflow-wrap: anywhere; }
+
+  .hr-table :is(th, td).who-col,
+  .acct-table :is(th, td).who-col,
+  .allco-table :is(th, td).who-col { max-width: 112px; }
+  .acct-table :is(th, td).note-col { max-width: 140px; }
+  .acct-table :is(th, td).dept-col,
+  .hr-table :is(th, td).dept-col { max-width: 88px; }
+  .hr-table :is(th, td).rule-col,
+  .hr-table :is(th, td).cap-col { max-width: 116px; }
+  .hr-table :is(th, td).edits-col { max-width: 82px; }
+  /* Two buttons, allowed onto two lines rather than a column of their own
+     width — see the `flexWrap` note in HrView. */
+  .hr-table :is(th, td).act-col { max-width: 150px; }
+
+  /* THE NAME COLUMN IS FROZEN. Scrolled right to read 1.50, 3.00 and รวม, the
+     one thing that stops meaning anything is whose row it is — so it stays.
+     The shadow on its right edge is what says it is pinned rather than merely
+     first.
+
+     A sticky cell needs an opaque background of its own or the rows travel
+     underneath it, and it needs one per row state, which is what the three
+     lines after each block are for. */
+  .hr-table th.who-col, .hr-table td.who-col,
+  .acct-table th.who-col, .acct-table td.who-col,
+  .allco-table th.who-col, .allco-table td.who-col {
+    position: sticky; left: 0; z-index: 1;
+    box-shadow: 3px 0 6px -3px rgba(20, 32, 26, .28);
+  }
+  .hr-table tbody td.who-col,
+  .acct-table tbody td.who-col,
+  .allco-table tbody td.who-col { background: var(--card); }
+  .hr-table thead th.who-col,
+  .acct-table thead th.who-col,
+  .allco-table thead th.who-col { z-index: 3; background: var(--neutral-wash); }
+  .hr-table tbody tr:hover td.who-col,
+  .acct-table tbody tr:hover td.who-col,
+  .allco-table tbody tr:hover td.who-col { background: var(--green-wash); }
+
+  /* สรุป OT แยกแผนก ONCE FROZE TWO — ลำดับที่ as well as the name, because that
+     number is the line number on the printed sheet and reading the screen
+     against the paper is what it is for. It does not any more, and the reason
+     is worth writing down because it is a real fork, not a preference:
+
+     A second frozen column has to declare a distance from the edge, and that
+     distance is the width of the first one. Which means the first one's width
+     has to be a number in this file rather than whatever its contents come to
+     — and once one column is declared under `table-layout: fixed`, every column
+     has to be, or the leftover gets shared out equally among the ones that are
+     not and four-character figures end up in 113px columns.
+
+     So it was: TWO FROZEN COLUMNS, or COLUMNS THAT SIZE THEMSELVES. Not both,
+     short of measuring in script. Sizing themselves is what was asked for, so
+     ลำดับที่ now slides under the name like everything else, and the name pins
+     at `left: 0`, which needs no measurement of anything. */
+  .dept-table col { width: auto !important; }
+  .dept-table th.who-col, .dept-table td.who-col {
+    position: sticky; left: 0; z-index: 1;
+    box-shadow: 3px 0 6px -3px rgba(20, 32, 26, .28);
+  }
+  .dept-table tbody td.who-col { background: var(--card); }
+  .dept-table thead th.who-col { z-index: 3; background: var(--neutral-wash); }
+  .dept-table tbody tr:hover td.who-col { background: var(--green-wash); }
+
+  /* รวม ชม. IS NOT PINNED. It was for one revision and is not any more.
+     Scrolling sideways, the name is what you need held; the total is one of the
+     figures you are scrolling to reach, and pinning it spent a second slice of
+     a 375px screen to keep showing a number that is already visible when you
+     are looking at it. `.total-col` is now an ordinary column on all four.
+
+     WHAT WENT WITH IT: `table-layout: fixed` and eleven declared column widths
+     on ส่งบัญชี and ตรวจสอบรายเดือน. Those existed for one reason — a sticky
+     column needs an exact offset, and pinning รวม ชม. mid-table meant declaring
+     every width so `left: 132px` could be trusted to the pixel. With nothing
+     pinned mid-table, the offsets are gone and so is the need: both tables go
+     back to sizing their columns to their contents, which is what they do on a
+     desktop and what they did before.
+
+     สรุป OT แยกแผนก keeps ITS declared widths — it still pins two columns, so
+     `left: 38px` still has to be exact. See the colgroup reset above. */
+
+  /* THE SUMMARY ROWS FREEZE TOO — รวมชั่วโมงทำOT, รวมแผนก, รวมทั้งหมด. A frozen
+     column has to exist in every row of the table or it is not a column, it is
+     a column with a hole in it, and the hole would fall exactly on the row
+     carrying the figure that gets signed for.
+
+     The cells were spanning columns until now, which is what made this look
+     impossible; they were split in the two components instead. So there is
+     nothing special to do here beyond giving the pinned cells the backgrounds
+     of the rows they sit in — a sticky cell paints its own or the table travels
+     through it. */
+  /* Only the cells that are actually pinned are named here. `tfoot td` and
+     `tr.grand td` already paint these two colours for every other cell in the
+     row — a sticky cell is the only one that has to be told again, because it
+     leaves the row's own painted box behind when it moves. */
+  .dept-table tfoot td.who-col,
+  .allco-table tfoot td.who-col,
+  .acct-table tfoot td.sum-k,
+  .hr-table tbody tr.total-row td.who-col { background: var(--neutral-wash); }
+
+  /* `.grand` is the one that gets signed for rather than another subtotal, and
+     it is green everywhere else in this app for exactly that reason. */
+  .dept-table tfoot tr.grand td.who-col,
+  .allco-table tfoot tr.grand td.who-col,
+  .acct-table tfoot tr.grand td.sum-k { background: var(--green-bg); }
+
+  /* ส่งบัญชี's foot is the one row shape that still differs: รวมแผนก sits in the
+     first cell and the name of what is being totalled in the SECOND, so it is
+     `.sum-k` that occupies the frozen column and takes the pin, and the name
+     cell beside it stays put. */
+  .acct-table tfoot td.sum-k {
+    position: sticky; left: 0; z-index: 1;
+    box-shadow: 3px 0 6px -3px rgba(20, 32, 26, .28);
+  }
+  .acct-table tfoot td.who-col { position: static; box-shadow: none; }
+
+  /* ══ the export buttons ════════════════════════════════════════════════ */
+
+  /* Two CSVs share a line; พิมพ์ F-HR-027 ทุกคน (3 คน) keeps its own, because
+     its label is the one that cannot fit in half a phone. The note under them
+     spans both. */
+  .export-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .export-row > .btn { min-height: 44px; }
+  .export-row > .btn:first-child,
+  .export-row > div { grid-column: 1 / -1; }
+
+  /* สรุป OT ส่งบัญชี's two, paired. Both labels are long enough to take two
+     lines at half width, which still costs less height than two full-width
+     buttons — and pairing them says what they are: the two ways to take this
+     month off the screen. แสดงพนักงานที่ไม่มี OT is not one of those, so it
+     keeps its own line under them rather than being dressed as a third. */
+  .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .action-row > .btn { min-height: 44px; }
+  .action-row > .check { grid-column: 1 / -1; min-height: 44px; }
+
+  /* ══ the OT form on a phone ════════════════════════════════════════════ */
+
+  /* เวลาเข้า and เวลาออก side by side. `.field` is forced to `min-width: 100%`
+     up in this block, which is right for a name or a description and wrong for
+     a five-character clock: it put two boxes on two lines with a label each,
+     four lines to say what fits on two. `min-width: 0` is what lets the flex
+     basis below actually hold. */
+  .row .field.time { flex: 1 1 calc(50% - 6px); min-width: 0; max-width: none; }
+
+  /* One tick-box per line. Side by side they were two 17px targets a few pixels
+     apart with wrapped labels running between them — the row where "ไม่พักเที่ยง"
+     is pressed by mistake instead of "ทำงานข้ามคืน". */
+  .form-checks { flex-direction: column; align-items: stretch; gap: 4px; }
+  .form-checks .check { min-height: 44px; }
+
+  /* Both decisions at a real touch size, filling the width the way the sheet
+     footers elsewhere in the app do. */
+  .form-actions { gap: 8px; }
+  .form-actions .btn { flex: 1 1 40%; min-height: 44px; }
+
+  /* ── the batch bar, moved to the thumb ─────────────────────────────────── */
+
+  /* Sticky under the app bar is a desktop answer: up there it is beside the
+     mouse and out of the way of the rows. On a phone it is the far end of the
+     screen from the hand, and it competes with the app bar for the top edge.
+     Pinned above the nav instead, where the two buttons are a thumb's reach
+     from wherever the reading has got to. */
+  .batch-bar {
+    position: fixed; top: auto; left: 0; right: 0;
+    bottom: calc(70px + env(safe-area-inset-bottom));
+    z-index: 31;
+    border-top: 1px solid #C4E3D2; border-bottom: 0;
+    box-shadow: 0 -8px 22px rgba(15, 23, 20, .14);
+    /* Longhand — see `main` above, where the shorthand had the two horizontal
+       insets swapped and nobody saw it until a phone was turned sideways. */
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .batch-bar .count-label { flex: 1 1 100%; }
+  .batch-bar .count-label .sub { display: inline; margin-left: 8px; }
+  .batch-bar .btn { flex: 1 1 40%; min-height: 44px; }
+  .batch-bar .link { flex: 1 1 100%; text-align: center; min-height: 32px; }
+
+  /* Clearance for it, so the last card is never trapped underneath. `:has` and
+     not a permanent gap: the bar is on screen only while something is ticked,
+     and a phone cannot spare 100px of nothing the rest of the time. A browser
+     without `:has` simply keeps today's behaviour — the bar overlapping the
+     foot of the list — rather than breaking the layout. */
+  .card:has(> .batch-bar) .table-wrap { padding-bottom: 104px; }
 }
 
 /* Every tab change fades the page in and the bottom sheet slides. Somebody who

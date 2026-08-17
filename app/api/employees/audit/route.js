@@ -3,6 +3,7 @@ import EmployeeAudit from '@/src/models/EmployeeAudit.js';
 import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { rosterPermission } from '@/lib/employees.js';
+import { AUDITED_FIELDS } from '@/lib/rosterAudit.js';
 
 /**
  * ประวัติการแก้ทะเบียน across the whole roster — the screen for the question
@@ -47,23 +48,58 @@ export const GET = route(async (req) => {
   if (!may.ok) return fail(may.error, may.status);
 
   const q = query(req);
-  const filter = {};
+
+  /**
+   * WHAT THIS READER MAY SEE AT ALL, kept apart from what they asked to see.
+   *
+   * The screen's filters narrow `filter`; the ผู้แก้ไข dropdown is built from
+   * `scope`. Building it from the narrowed filter instead would empty the
+   * dropdown of every choice except the one already picked — a filter that can
+   * only ever be relaxed by clearing it.
+   */
+  const scope = {};
+  if (actor.role !== 'admin') {
+    const admins = await Employee.find({ role: 'admin' }).select('_id').lean();
+    if (admins.length) scope.employee = { $nin: admins.map((a) => a._id) };
+  }
+
+  const filter = { ...scope };
 
   if (q.employee) {
     // Narrowed to one person: the same target check their own row would get, so
     // ?employee=<the admin's id> is refused rather than filtered to nothing —
-    // an empty list would read as "this account has never been edited".
+    // an empty list would read as "this account has never been edited". The
+    // row check having passed, this replaces the blanket exclusion above.
     const target = await Employee.findById(q.employee).select('role').lean();
     if (!target) return fail('ไม่พบพนักงาน', 404);
     const mayRow = rosterPermission(actor, { target });
     if (!mayRow.ok) return fail(mayRow.error, mayRow.status);
     filter.employee = target._id;
-  } else if (actor.role !== 'admin') {
-    const admins = await Employee.find({ role: 'admin' }).select('_id').lean();
-    if (admins.length) filter.employee = { $nin: admins.map((a) => a._id) };
   }
 
   if (q.action) filter.action = q.action;
+
+  /**
+   * กรองตามประเภทการแก้ไข — "show me the วันเกิด changes", which is a different
+   * question from `action` and the one HR actually asks: every birth date that
+   * has ever been rewritten is an 'update', and so is every แผนก move.
+   *
+   * Checked against the allowlist rather than passed through, so this cannot be
+   * used to probe for a path the trail does not record. A record with no
+   * `changes` at all — a bare ตั้งรหัสผ่านใหม่ — matches no field and drops out,
+   * which is the right answer: it changed no field.
+   */
+  if (q.field) {
+    if (!AUDITED_FIELDS.includes(q.field)) return fail('ไม่รู้จักฟิลด์ที่ขอกรอง', 400);
+    filter['changes.field'] = q.field;
+  }
+
+  // กรองตามผู้แก้ไข. Shape-checked here because an id mongoose cannot cast
+  // throws where a 400 belongs.
+  if (q.by) {
+    if (!/^[0-9a-f]{24}$/i.test(q.by)) return fail('รหัสผู้แก้ไขไม่ถูกต้อง', 400);
+    filter.by = q.by;
+  }
 
   const limit = Math.min(Number(q.limit) || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -76,8 +112,30 @@ export const GET = route(async (req) => {
 
   const records = found.slice(0, limit);
 
+  /**
+   * Who appears in this trail as an editor — read off the records themselves,
+   * not off today's roster.
+   *
+   * The two lists differ in both directions and each difference matters: an
+   * account that has since been deactivated, or dropped from HR, still made the
+   * edits it made and must remain selectable; a newly appointed HR account that
+   * has changed nothing would otherwise sit in the dropdown offering an
+   * always-empty result.
+   *
+   * The name is the one stored on the record (`byName`), for the reason the
+   * model denormalises it. `$last` under a `createdAt` sort takes the newest
+   * spelling, so a renamed account appears once rather than twice.
+   */
+  const actors = (await EmployeeAudit.aggregate([
+    { $match: { ...scope, by: { $ne: null } } },
+    { $sort: { createdAt: 1 } },
+    { $group: { _id: '$by', name: { $last: '$byName' }, role: { $last: '$byRole' } } },
+    { $sort: { name: 1 } },
+  ])).map((a) => ({ id: String(a._id), name: a.name || null, role: a.role || null }));
+
   return json({
     hasMore: found.length > limit,
+    actors,
     records: records.map((r) => ({
       id: String(r._id),
       at: r.createdAt,

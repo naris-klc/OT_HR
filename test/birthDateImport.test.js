@@ -270,5 +270,24 @@ test('หน้าทะเบียนพนักงานแสดงตั�
     !/api\.upload/.test(chooseBody),
     'การอ่านไฟล์เพื่อทำตัวอย่างต้องไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
   );
-  assert.match(src, /Excel จะเขียนคอลัมน์วันเกิดใหม่/, 'คำเตือนเรื่อง Excel บันทึกทับต้องอยู่ในหน้านี้');
+  /**
+   * The Excel warning, pinned by what it has to contain rather than by the
+   * sentence it is currently written in.
+   *
+   * Scoped to the `.hint` element on purpose. `src` also holds the comment on
+   * `choose()` explaining the same thing to whoever is reading the code, so a
+   * match against the whole function would go on passing with the warning
+   * deleted from the screen — which is the only place it is any use. The file
+   * is built in Excel before this card is ever open, so the preview underneath
+   * cannot replace it: by then the damage is in the file.
+   *
+   * The value is pinned as well as the word. "Excel may reformat dates" is a
+   * caution people read past; 05/03/1998 being two different birthdays is the
+   * part that makes anybody check.
+   */
+  const hintAt = src.indexOf('<div className="hint">');
+  const hint = src.slice(hintAt, src.indexOf('</div>', hintAt));
+  assert.ok(hintAt > 0, 'การ์ดนี้ต้องมีคำอธิบาย');
+  assert.match(hint, /Excel/, 'คำเตือนเรื่อง Excel บันทึกทับต้องอยู่ในคำอธิบายของหน้านี้');
+  assert.match(hint, /05\/03\/1998/, 'ต้องยกค่าที่อ่านได้สองแบบให้เห็น ไม่ใช่เตือนลอย ๆ');
 });
