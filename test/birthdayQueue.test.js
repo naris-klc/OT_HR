@@ -305,12 +305,19 @@ test('ตัวเลขบนแถบซ้ายรวมสองแท็�
   // Inside, each tab gets its own number.
   assert.match(app, /pendingCount=\{counts\.pendingMgr\}/);
   assert.match(app, /pendingCount=\{counts\.pendingHr\}/);
+  // Including the birthday half, which the screen already knows from the badge
+  // — the tab's own count does not exist until somebody opens it, and a chip
+  // that appears only after the press is no use in deciding to press.
+  assert.equal([...app.matchAll(/birthdayCount=\{counts\.birthdayPending\}/g)].length, 2);
 
   const tabs = strip(readFileSync(join(ROOT, 'components/QueueTabs.jsx'), 'utf8'));
   assert.match(tabs, /ใบรอยืนยัน/);
   assert.match(tabs, /วันเกิดรอตรวจ/);
   assert.match(tabs, /\{pendingCount > 0 && <span className="count">\{pendingCount\}<\/span>\}/);
-  assert.match(tabs, /\{birthdayCount > 0 && <span className="count">\{birthdayCount\}<\/span>\}/);
+  assert.match(tabs, /\{shownBirthdayCount > 0 && <span className="count">\{shownBirthdayCount\}<\/span>\}/);
+  // Live figure first, summary second — never the snapshot over a number the
+  // queue itself has reported, or answering a row would not move the chip.
+  assert.match(tabs, /const shownBirthdayCount = birthdayCount \?\? summaryCount;/);
 
   // No new sidebar entry: the queue is a tab on a screen that already exists.
   const navKeys = [...app.matchAll(/tabs\.push\(\{\s*key: '(\w+)'/g)].map((m) => m[1]);

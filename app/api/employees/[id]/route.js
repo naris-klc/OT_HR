@@ -7,7 +7,7 @@ import {
   signingScope,
 } from '@/lib/employees.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
-import { rosterChanges } from '@/lib/rosterAudit.js';
+import { BIRTHDATE_REPLAY_NOTE, rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 import { codeMatcher, sameCode } from '@/src/lib/employeeCode.js';
 import { recomputeEntries } from '@/src/services/otService.js';
@@ -204,18 +204,38 @@ export const PATCH = route(async (req, { params }) => {
    * stale day type until some unrelated policy save happens to sweep it up is
    * an entry whose figures nobody can explain in the meantime.
    *
-   * ONLY WHAT IS STILL IN FLIGHT. `recomputeEntries` already refuses to replay
-   * an approved entry — hours somebody signed for do not move because a birth
-   * date was corrected afterwards — and narrowing to the pending statuses on
-   * top of that keeps the trail off rejected and cancelled rows, which nothing
-   * will ever pay against and which would collect a `recompute` line each time.
+   * APPROVED ENTRIES MOVE TOO, WHILE THE MONTH IS OPEN. HR's rule, 2026-08-18.
+   * Until then this replayed only the pending statuses, on the reasoning that
+   * hours somebody signed for do not move because a birth date was corrected
+   * afterwards. What that left behind is an approved entry printed on F-HR-027
+   * under a day type everybody now agrees is wrong — and while the month is
+   * still open nothing has been sent anywhere, so there is no outside figure
+   * for the old one to agree with. The paper is simply wrong.
+   *
+   * The guard is ปิดงวด, not the signature: `recomputeEntries` skips a closed
+   * month whatever it is asked to do (test/replayPeriodLock.test.js — "a closed
+   * month is skipped", "includeApproved does not open a closed month"), so a
+   * month that HAS gone to accounting still needs an administrator to reopen
+   * it. The reply names those months, so the screen can say which ones were
+   * left standing on the old date.
+   *
+   * What the escape hatch asks for is still paid: every entry whose figures
+   * actually move keeps a `before` snapshot and a `recompute` line carrying
+   * `BIRTHDATE_REPLAY_NOTE`, so the change appears in ประวัติรายการ beside the
+   * ordinary corrections. `authorizeReplay`'s admin-only clause is not consulted
+   * here, and that is the deliberate part: it exists so nobody re-reads a POLICY
+   * question and quietly restates a month on the strength of their own reading.
+   * A birth date is not a reading — it is a fact that was recorded wrong.
+   *
+   * Rejected and cancelled rows stay out, as they always did: nothing will ever
+   * pay against them, and they would collect a `recompute` line each time.
    */
   let recomputed = null;
   if (birthDateMoved) {
     recomputed = await recomputeEntries(
-      { employee: employee._id, status: { $in: [...PENDING_STATUSES] } },
+      { employee: employee._id, status: { $in: [...PENDING_STATUSES, 'approved'] } },
       actor,
-      { source: 'manual' },
+      { source: 'manual', includeApproved: true, note: BIRTHDATE_REPLAY_NOTE },
     );
   }
 

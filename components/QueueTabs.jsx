@@ -37,7 +37,7 @@ import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
  */
 export default function QueueTabs({
   user, stage, onChanged, onOpenPolicy, onOpenRoster = null,
-  initialTab = null, pendingCount = 0, onCounts,
+  initialTab = null, pendingCount = 0, birthdayCount: summaryCount = 0, onCounts,
 }) {
   /**
    * Whether this person has a birthday tab at all — asked of the same function
@@ -58,8 +58,18 @@ export default function QueueTabs({
    * nav summary. The summary is a snapshot taken when the tab last changed; this
    * is what is actually on screen, and the two would drift the moment somebody
    * answers a row without leaving the page.
+   *
+   * `null` UNTIL THE TAB HAS BEEN OPENED, and that is the whole reason the
+   * summary is still read below: the birthday queue is mounted only while its
+   * tab is showing, so nothing had reported a number yet and the chip sat empty
+   * on a tab with two rows behind it — the one number somebody needs BEFORE
+   * deciding whether to open it. The nav badge knew all along (it is the sum
+   * this screen's two tabs make up), so the tab now shows that until it has
+   * something better. Live figure first, summary second, never the summary over
+   * a figure the queue has actually reported.
    */
   const [birthdayCount, setBirthdayCount] = useState(null);
+  const shownBirthdayCount = birthdayCount ?? summaryCount;
 
   /**
    * Arriving from the status line on ตรวจสอบรายเดือน, which sends people here to
@@ -90,7 +100,7 @@ export default function QueueTabs({
             onClick={() => setTab('birthday')}
           >
             วันเกิดรอตรวจ
-            {birthdayCount > 0 && <span className="count">{birthdayCount}</span>}
+            {shownBirthdayCount > 0 && <span className="count">{shownBirthdayCount}</span>}
           </button>
         )}
       </div>

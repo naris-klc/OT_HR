@@ -530,6 +530,10 @@ function Shell({ session, onLogout }) {
                 user={user}
                 stage="pending_mgr"
                 pendingCount={counts.pendingMgr}
+                // The nav badge is the sum of this screen's two tabs, so the
+                // birthday half of it is already known here — and the tab that
+                // has not been opened yet has no other way to know it.
+                birthdayCount={counts.birthdayPending}
                 initialTab={queueTab}
                 onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
                 onChanged={queueDone}
@@ -546,6 +550,7 @@ function Shell({ session, onLogout }) {
                 user={user}
                 stage="pending_hr"
                 pendingCount={counts.pendingHr}
+                birthdayCount={counts.birthdayPending}
                 initialTab={queueTab}
                 onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
                 onChanged={queueDone}

@@ -963,6 +963,16 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
     closedPeriods: summary.closedPeriods,
     /** What the run record says, for a caller that wants to show it. */
     changed: changed.length,
+    /**
+     * How many of the replayed rows were signed off — the number the escape
+     * hatch exists to guard, and the one a screen has to say out loud.
+     *
+     * On the summary from the start (`summariseReplay`) and simply never
+     * forwarded, which mattered from the day a birthday correction began
+     * reaching approved entries: the roster screen could report that hours had
+     * moved but not that any of them were hours somebody had signed for.
+     */
+    approvedReplayed: summary.approvedReplayed,
     runId: run ? String(run._id) : null,
     /**
      * False when the run itself could not be filed. The entries were still

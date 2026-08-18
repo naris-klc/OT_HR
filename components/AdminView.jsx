@@ -862,10 +862,13 @@ function Employees({ user }) {
    * The response is read rather than discarded, because two things can happen
    * on the way through that the roster table itself would not show:
    *
-   *   recomputed  — a moved วันเกิด replays that person's ใบ ที่ยังไม่อนุมัติ,
-   *                 since the day types they were computed under have changed.
-   *                 A count of what moved belongs on screen; silently
-   *                 restating somebody's pending hours does not.
+   *   recomputed  — a moved วันเกิด replays that person's entries, since the
+   *                 day types they were computed under have changed. Since
+   *                 2026-08-18 that includes the APPROVED ones, in months that
+   *                 are still open. A count of what moved belongs on screen;
+   *                 silently restating hours somebody signed for does not, and
+   *                 the months a closed period kept out are named rather than
+   *                 counted — those are the ones still on the old date.
    *   auditLogged — false means the change was saved and nothing will ever
    *                 record who made it. Said out loud here, at the moment it
    *                 happens, rather than left to be discovered as a gap.
@@ -977,9 +980,27 @@ function Employees({ user }) {
             <div style={{ marginTop: 6 }}>
               เปลี่ยนวันเกิดของ {saved.code} แล้ว ·
               {saved.recomputed.updated > 0
-                ? ` คำนวณใบที่ยังไม่อนุมัติใหม่ ${saved.recomputed.updated} รายการ`
-                : ' ไม่มีใบที่ยังไม่อนุมัติให้คำนวณใหม่'}
-              {' '}· ใบที่อนุมัติแล้วไม่ถูกแตะต้อง
+                ? ` คำนวณใหม่ ${saved.recomputed.updated} รายการ`
+                : ' ไม่มีรายการให้คำนวณใหม่'}
+              {/* `changed` is the number whose FIGURES moved; `updated` counts
+                  every row the replay wrote, most of which land on the same
+                  hours. Only the first is worth a second sentence. */}
+              {saved.recomputed.changed > 0 && (
+                <> · ชั่วโมงเปลี่ยนจริง {saved.recomputed.changed} รายการ
+                  {saved.recomputed.approvedReplayed > 0
+                    && ` (ในนั้นเป็นใบที่อนุมัติแล้ว ${saved.recomputed.approvedReplayed} รายการ — เก็บค่าเดิมไว้ในประวัติรายการแล้ว)`}
+                </>
+              )}
+              {/* The months this could not reach. Named, because somebody has to
+                  act on them: an administrator reopens the period and runs the
+                  recompute again, or the old date stands on paper that has
+                  already been sent. */}
+              {saved.recomputed.closedPeriods?.length > 0 && (
+                <div style={{ marginTop: 4 }}>
+                  ⚠ เดือนที่ปิดงวดแล้วไม่ถูกแตะต้อง — {saved.recomputed.closedPeriods.join(', ')}
+                  {' '}· ใบในเดือนเหล่านี้ยังคำนวณด้วยวันเกิดเดิม ต้องให้ผู้ดูแลระบบเปิดงวดแล้วสั่งคำนวณใหม่
+                </div>
+              )}
             </div>
           )}
           <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setSaved(null)}>
