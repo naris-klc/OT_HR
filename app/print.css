@@ -796,3 +796,95 @@
   .otdept tr.total td.grand { background: #ffff00; }
   .otdept td.gap { background: none; }
 }
+
+/* ══ สลิปรหัสผ่านชั่วคราว ═══════════════════════════════════════════════════
+ *
+ * The fourth sheet in this file, and the only one that is not a document. The
+ * other three are a form and two reports: one thing, printed whole, kept. This
+ * is ten separate handouts on a sheet of paper that exists to be cut up and
+ * thrown away, and the geometry follows from that rather than from any form.
+ *
+ * TEN TO A SIDE. A4 is 210×297mm; 10mm of margin all round leaves 190×277, and
+ * two columns of 95mm by five rows of 55mm is 190×275 with 2mm to spare — the
+ * same 2mm of headroom `.f027` keeps, and for the same reason: a sheet that
+ * measured 297.1mm would spill a blank side into the middle of the stack.
+ *
+ * `@page` is zero-margin for F-HR-027's sake, so the margin is padding here.
+ */
+.slips {
+  box-sizing: content-box;
+  width: 190mm;
+  /* 5 rows of 55mm exactly. content-box, like .f027 — so the 10mm padding is
+     ADDED round this, and the sheet is 275+20 = 295mm of the 297 A4 has. The
+     2mm left over is the same slack .f027 keeps: a sheet measuring 297.1mm
+     spills a blank side into the middle of the stack. It was 277mm here for
+     one revision, which came to exactly 297 and did precisely that. */
+  min-height: 275mm;
+  padding: 10mm;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  font-family: 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
+  display: grid;
+  grid-template-columns: repeat(2, 95mm);
+  grid-auto-rows: 55mm;
+}
+
+/* Dashed, because the line is an instruction — "cut here" — and a solid rule
+   reads as a box drawn round the slip. Only the top and left are drawn on each
+   cell so neighbours share one line rather than printing two side by side, and
+   the sheet's own outer edge is closed by the last two rules. */
+.slip {
+  box-sizing: border-box;
+  padding: 6mm 5mm;
+  border-top: 0.3mm dashed #999;
+  border-left: 0.3mm dashed #999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.slip:nth-child(2n) { border-right: 0.3mm dashed #999; }
+.slip:nth-last-child(-n+2) { border-bottom: 0.3mm dashed #999; }
+/* The filler cells on a short last page keep the grid without printing a slip
+   somebody might cut out and wonder about. */
+.slip-blank { border-color: transparent; }
+.slip-blank:nth-child(2n), .slip-blank:nth-last-child(-n+2) { border-color: transparent; }
+
+.slip-head { font-size: 7pt; letter-spacing: .04em; color: #555; }
+.slip-name { font-size: 12pt; font-weight: 700; margin-top: 1.5mm; }
+
+.slip-fields { display: grid; grid-template-columns: auto 1fr; gap: 1mm 3mm; margin-top: 3mm; }
+.slip-fields dt { font-size: 8pt; color: #555; align-self: baseline; }
+.slip-fields dd { margin: 0; align-self: baseline; }
+.slip-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10pt; }
+/* The one thing on the slip that gets typed in. Bigger than the code above it
+   and boxed, because it is read off paper by somebody at a keyboard and a
+   hyphenated block set at body size is where a `1` and an `l` get confused. */
+.slip-secret {
+  font-size: 12pt;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: 1mm 2mm;
+  border: 0.25mm solid #000;
+}
+
+.slip-foot { margin-top: auto; font-size: 7pt; line-height: 1.35; color: #333; }
+
+/* The desk, exactly as the other three sheets have one — see the note at the
+   foot of this file for why it is a light grey in both themes. */
+.slips-screen {
+  background: var(--paper-desk);
+  padding: 16px;
+  overflow-x: auto;
+}
+.slips-screen .slips { box-shadow: 0 2px 12px var(--paper-shadow); }
+.slips-screen .slips + .slips { margin-top: 16px; }
+
+@media print {
+  .slips-screen { background: #fff; padding: 0; overflow: visible; }
+  .slips-screen .slips { box-shadow: none; }
+  .slips-screen .slips + .slips { margin-top: 0; }
+  .slips + .slips { break-before: page; page-break-before: always; }
+  /* A slip must never be split down the middle by a page break. */
+  .slip { break-inside: avoid; page-break-inside: avoid; }
+}

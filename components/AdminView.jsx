@@ -15,6 +15,7 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // the column showing which payroll somebody is on cannot disagree with the file
 // they end up in.
 import { companyOf, companyLabel } from '@/src/config/companies.js';
+import PasswordSlips from './PasswordSlips.jsx';
 import { viewerId } from '@/lib/entries.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
 // with them, and both read the list from here.
@@ -2249,6 +2250,18 @@ const ISSUED_FILENAME = 'temporary-passwords-DELETE-AFTER-HANDOUT.csv';
  */
 function IssuedPasswords({ rows }) {
   const [done, setDone] = useState('');
+  /**
+   * The slips REPLACE this panel while they are open rather than floating over
+   * it, and come back to it on ปิด.
+   *
+   * `window.print()` prints the document, not the dialog on top of it, so a
+   * modal would have printed the panel underneath — the whole table of
+   * passwords, on one page, which is the opposite of what a slip is for. The
+   * rows are held in this component's props either way, so nothing is lost by
+   * swapping the view: what must not happen is a reload, and neither path does
+   * one.
+   */
+  const [printing, setPrinting] = useState(false);
 
   const text = () => [
     ISSUED_HEADERS.join('\t'),
@@ -2286,6 +2299,8 @@ function IssuedPasswords({ rows }) {
     setDone('downloaded');
   }
 
+  if (printing) return <PasswordSlips rows={rows} onClose={() => setPrinting(false)} />;
+
   return (
     <Alert kind="ok">
       <strong>รหัสผ่านชั่วคราวของ {rows.length} บัญชีที่เพิ่งสร้าง</strong>
@@ -2293,7 +2308,12 @@ function IssuedPasswords({ rows }) {
       {' '}ถ้าพลาดต้องตั้งรหัสใหม่ทีละคน
 
       <div className="row" style={{ marginTop: 10, marginBottom: 4 }}>
-        <button className="btn" onClick={copy}>คัดลอกทั้งตาราง</button>
+        {/* FIRST of the three, because it is the one that hands a password to a
+            person without also leaving a copy of everybody else's somewhere.
+            The other two are still here — พิมพ์ is no use to somebody handing
+            out three accounts, and a printer is not always the thing in reach. */}
+        <button className="btn" onClick={() => setPrinting(true)}>พิมพ์สลิปแจก</button>
+        <button className="btn ghost" onClick={copy}>คัดลอกทั้งตาราง</button>
         <button className="btn ghost" onClick={download}>ดาวน์โหลดเป็น CSV</button>
       </div>
 

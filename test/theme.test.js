@@ -478,13 +478,25 @@ test('ธีมมืด — เทาต้องไม่อมเขียว
 test('กระดาษและโต๊ะรองกระดาษไม่เปลี่ยนตามธีม', () => {
   const print = readFileSync(join(ROOT, 'app/print.css'), 'utf8');
 
-  // Three sheets, each declaring its own paper — never a token.
+  /**
+   * FOUR sheets, each declaring its own paper — never a token.
+   *
+   * It was three until the password slips (`.slips`) joined F-HR-027 and the
+   * two accounting sheets. The count is deliberately a count and not a `>= 1`:
+   * it is the thing that fails when somebody adds a fifth printable and reaches
+   * for `var(--card)` because that is what every other surface in the app uses.
+   * On paper that is a themed colour on a sheet the printer will not tint, and
+   * in the dark theme it is near-black ink on white.
+   *
+   * So a failure here is not "update the number" — it is "the new sheet either
+   * declares its own #fff/#000 like the four below, or it is not a sheet".
+   */
   const paper = new RegExp(String.raw`background: #fff;\s+color: #000;`, 'g');
-  assert.equal([...print.matchAll(paper)].length, 3);
+  assert.equal([...print.matchAll(paper)].length, 4);
 
-  // Three desks, all reading the same token, none holding a colour of its own.
+  // Four desks, all reading the same token, none holding a colour of its own.
   const desk = new RegExp(String.raw`background: var\(--paper-desk\);`, 'g');
-  assert.equal([...print.matchAll(desk)].length, 3);
+  assert.equal([...print.matchAll(desk)].length, 4);
   assert.doesNotMatch(print, /#e8ebe9/);
 
   // One value, not two: the desk is the same grey in both themes, deliberately.
@@ -493,7 +505,7 @@ test('กระดาษและโต๊ะรองกระดาษไม�
 
   // And it turns white for the printer, where there is no desk.
   const onPaper = new RegExp(String.raw`-screen \{ background: #fff;`, 'g');
-  assert.equal([...print.matchAll(onPaper)].length, 3);
+  assert.equal([...print.matchAll(onPaper)].length, 4);
 });
 
 /**
