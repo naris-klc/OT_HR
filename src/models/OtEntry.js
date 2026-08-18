@@ -516,6 +516,30 @@ otEntrySchema.pre('validate', function setPeriod(next) {
 /** The monthly review and the printed form both query by these. */
 otEntrySchema.index({ employee: 1, period: 1, status: 1 });
 otEntrySchema.index({ department: 1, status: 1, workDate: 1 });
+/**
+ * The two questions asked about a WHOLE MONTH rather than about one person or
+ * one department: สรุป OT ส่งบัญชี (`lib/accounting.js`) and the check that
+ * runs every time ตรวจสอบรายเดือน re-renders the ปิดงวด button
+ * (`pendingInPeriod` and the `$facet` beside it in `lib/periodLockQuery.js`).
+ * Both are `{ period, status: { $in: […] } }` and neither is served by the two
+ * above — the first is prefixed on `employee`, the second on `department`, and
+ * a compound index can only be entered from its own prefix.
+ *
+ * It does not collide with either. Mongo's rule is that no two indexes may have
+ * the same key pattern in the same order; `{ employee, period, status }` and
+ * `{ department, status, workDate }` share no prefix with `{ period, status }`,
+ * so this is a third index and not a redeclaration of one. It also makes the
+ * single-field `period: true` above redundant for every query that filters on
+ * status as well — that one is left in place deliberately, because the entry
+ * list filters on `period` alone and the planner needs a cheaper index for it
+ * than this one.
+ *
+ * `period` leads because it is the selective half: one month is a few hundred
+ * documents out of the whole collection, where `status: 'approved'` is most of
+ * it. The other order would scan the majority of the collection to find one
+ * month inside it.
+ */
+otEntrySchema.index({ period: 1, status: 1 });
 
 /**
  * The fields the employee filled in, plus the hours they computed to — the
