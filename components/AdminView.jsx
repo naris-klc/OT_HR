@@ -2825,6 +2825,17 @@ function ResetPassword({ employee, onClose, onDone }) {
   const [copied, setCopied] = useState('');
   /** Ticked by hand. Nothing closes this dialog the easy way until it is. */
   const [written, setWritten] = useState(false);
+  /**
+   * Showing the printable slip instead of the dialog.
+   *
+   * The slip is the same one a CSV import prints ten to a sheet — one row of
+   * it, here. It exists because the alternative on this screen was reading a
+   * generated password down a phone line one block at a time, which is slow,
+   * gets misheard, and ends with somebody writing it on the back of a docket
+   * anyway. A slip is the thing that was going to be produced regardless; this
+   * makes it the printer's job rather than HR's handwriting.
+   */
+  const [printing, setPrinting] = useState(false);
 
   async function submit() {
     setError('');
@@ -2872,6 +2883,27 @@ function ResetPassword({ employee, onClose, onDone }) {
     } catch {
       setCopied('failed');
     }
+  }
+
+  /**
+   * The slip replaces the dialog rather than opening over it.
+   *
+   * `PasswordSlips` is a full-screen document with its own print chrome — the
+   * same component and the same A4 geometry the import flow uses, given one
+   * row. Rendering it inside a Modal would put a sheet of paper inside a box
+   * with its own scroll and its own backdrop, and `@media print` would then
+   * have to undo both.
+   *
+   * ปิด comes back here with the password still in state, so the dialog is
+   * exactly where it was — including the tick, which printing has already set.
+   */
+  if (printing) {
+    return (
+      <PasswordSlips
+        rows={[{ code: employee.code, name: employee.name, password }]}
+        onClose={() => setPrinting(false)}
+      />
+    );
   }
 
   if (password) {
@@ -2922,7 +2954,20 @@ function ResetPassword({ employee, onClose, onDone }) {
         </div>
 
         <div className="row" style={{ marginTop: 10 }}>
-          <button className="btn" onClick={copy}>คัดลอกรหัสผ่าน</button>
+          {/* FIRST, because it is the way that hands a password to a person
+              without anybody reading it aloud or writing it down — the same
+              reason พิมพ์สลิปแจก leads the row on IssuedPasswords.
+
+              Printing IS having it, so it sets the tick, exactly as copying
+              does. A second confirmation for something the printer has already
+              done is a click that teaches people to click. */}
+          <button
+            className="btn"
+            onClick={() => { setWritten(true); setPrinting(true); }}
+          >
+            พิมพ์สลิป
+          </button>
+          <button className="btn ghost" onClick={copy}>คัดลอกรหัสผ่าน</button>
         </div>
         {copied === 'copied' && (
           <div className="field-note" style={{ marginTop: 6 }}>คัดลอกแล้ว</div>
