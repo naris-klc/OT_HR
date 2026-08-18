@@ -5,7 +5,7 @@ import { route, uploadText, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { parseCsv, pick } from '@/src/lib/csv.js';
 import {
-  dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
+  dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission, unsignedStaff,
 } from '@/lib/employees.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
@@ -63,6 +63,37 @@ export const POST = route(async (req) => {
 
   const departments = await Department.find().lean();
   const byCode = new Map(departments.map((d) => [d.code.toUpperCase(), d]));
+  const deptName = new Map(departments.map((d) => [String(d._id), d.code]));
+
+  /**
+   * WHO HAS NOBODY LEFT TO SIGN FOR THEM, across the whole roster.
+   *
+   * Asked TWICE — once before the loop and once after — because the answer only
+   * means something as a difference. ADM has had no หัวหน้า for as long as the
+   * roster has existed, and a file that does not touch ADM must not be reported
+   * as having broken it.
+   *
+   * The whole roster rather than the departments this file mentions: a row can
+   * strand somebody in a department its own line never names — demote the only
+   * หัวหน้า of ENG and it is ENG's staff who lose their signature, not the
+   * demoted person's row. Five departments and twenty people make the cost of
+   * asking about all of them irrelevant, and it removes a class of bug that
+   * would only ever appear on the import nobody tested.
+   */
+  const coverageGaps = async () => {
+    const all = await Employee.find({ active: true })
+      .select('code name role department company approvesCompany')
+      .lean();
+    const byDept = new Map();
+    for (const p of all) {
+      const key = String(p.department ?? '');
+      if (!key) continue;
+      if (!byDept.has(key)) byDept.set(key, []);
+      byDept.get(key).push(p);
+    }
+    return [...byDept.entries()].flatMap(([dept, roster]) => unsignedStaff(roster, dept));
+  };
+  const strandedBefore = new Set((await coverageGaps()).map((p) => String(p._id)));
 
   const created = [];
   const updated = [];
@@ -275,11 +306,44 @@ export const POST = route(async (req) => {
     }
   }
 
+  /**
+   * REPORTED, NOT REFUSED, and that is forced rather than chosen.
+   *
+   * Every row above is already saved by the time this runs — the loop writes as
+   * it goes, exactly as `auditUnlogged` explains for the same reason. There is
+   * nothing left to refuse.
+   *
+   * It could not have been a per-row check either. The หัวหน้า who covers a
+   * person can be line 40 of the same file the person is on line 5 of, so a
+   * check inside the loop would refuse the correct sequence and force HR to
+   * split one roster into two uploads in an order nothing tells them. The
+   * question is only answerable once the whole file has been applied.
+   *
+   * So it is the last thing the import does and the first thing the screen
+   * says. Anyone here has an account, can log in, can file OT — and their
+   * request will sit at `pending_mgr` with nobody able to sign it.
+   */
+  const stranded = (await coverageGaps())
+    .filter((p) => !strandedBefore.has(String(p._id)))
+    .map((p) => ({
+      code: p.code,
+      name: p.name,
+      company: p.company,
+      department: deptName.get(String(p.department)) || '—',
+    }));
+
   return json({
     created: created.length,
     updated: updated.length,
     errors,
     warnings,
+    /**
+     * People this file left with no eligible หัวหน้า — empty on every ordinary
+     * import. Separate from `warnings`, which is per-row and about the file;
+     * this is about the roster the file produced, and the people on it need not
+     * appear in the file at all.
+     */
+    unsignable: stranded,
     codes: { created, updated },
     /**
      * `{ code, name, password }` for every row created — shown once and then

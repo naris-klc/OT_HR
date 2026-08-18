@@ -80,3 +80,52 @@ test('ลดตำแหน่ง ปิดบัญชี ย้ายบริ
 test('หัวหน้าไม่ต้องมีใครเซ็นให้ — §2 ไม่ให้หัวหน้าทำ OT ปกติอยู่แล้ว', () => {
   assert.deepEqual(unsignedStaff([mgr('THT0012', 'themtech', 'themtech')], DEPT), []);
 });
+
+/**
+ * ── นำเข้า CSV ────────────────────────────────────────────────────────────
+ *
+ * The single-row guard refuses; the import REPORTS. That is forced, not
+ * chosen: the import loop writes each row as it reaches it, so by the time the
+ * whole file has been applied there is nothing left to refuse — and a per-row
+ * check inside the loop would refuse the correct sequence, because the หัวหน้า
+ * who covers somebody can be line 40 of the file they are on line 5 of.
+ *
+ * These hold the shape of the answer the route computes with the same two
+ * calls it makes: `unsignedStaff` over the whole roster, before and after,
+ * reported as the difference.
+ */
+
+const before = (roster) => new Set(unsignedStaff(roster, DEPT).map((p) => String(p._id)));
+const strandedBy = (was, now) => unsignedStaff(now, DEPT)
+  .filter((p) => !before(was).has(String(p._id)))
+  .map((p) => p.code);
+
+test('นำเข้า — คนเดมเทคเข้าแผนกที่หัวหน้าเซ็นให้ไพรมัสอย่างเดียว ถูกรายงาน', () => {
+  const was = [mgr('PM-0102', 'primus'), staff('PM-0410', 'primus')];
+  const now = [...was, staff('THT0056', 'themtech')];
+  assert.deepEqual(strandedBy(was, now), ['THT0056']);
+});
+
+test('นำเข้า — หัวหน้าอยู่บรรทัดหลังลูกน้อง ก็ยังไม่ถูกรายงาน', () => {
+  // The sequence a per-row check would have refused: the covering หัวหน้า and
+  // the people they cover arrive in one file, in the wrong order.
+  const was = [mgr('PM-0102', 'primus')];
+  const now = [mgr('PM-0102', 'primus'), staff('THT0056', 'themtech'), mgr('THT0012', 'themtech', 'themtech')];
+  assert.deepEqual(strandedBy(was, now), [], 'ทั้งไฟล์ถูกใช้แล้วค่อยถาม จึงไม่มีใครถูกตัด');
+});
+
+test('นำเข้า — รูที่มีอยู่ก่อน ไม่ถูกนับเป็นผลจากไฟล์', () => {
+  // ADM's staff have had nobody since before this file existed. An import that
+  // does not touch them must not be reported as having broken them.
+  const was = [staff('ADM-01', 'primus')];
+  const now = [...was, staff('PM-0411', 'primus'), mgr('PM-0102')];
+  assert.deepEqual(strandedBy(was, now), [], 'ADM-01 ถูกตัดมาก่อนแล้ว ไม่ใช่ผลจากไฟล์นี้');
+});
+
+test('นำเข้า — ลดตำแหน่งหัวหน้า ตัดคนที่ไฟล์ไม่ได้เอ่ยถึงเลย', () => {
+  // The reason the route asks about the WHOLE roster rather than the
+  // departments the file names: this row's line never mentions PM-0410.
+  const was = [mgr('PM-0102'), staff('PM-0410', 'primus')];
+  const now = [{ ...mgr('PM-0102'), role: 'employee' }, staff('PM-0410', 'primus')];
+  assert.ok(strandedBy(was, now).includes('PM-0410'));
+});

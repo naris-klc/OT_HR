@@ -14,7 +14,7 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // Pure config, no mongoose — the same resolution the accounting sheet uses, so
 // the column showing which payroll somebody is on cannot disagree with the file
 // they end up in.
-import { companyOf } from '@/src/config/companies.js';
+import { companyOf, companyLabel } from '@/src/config/companies.js';
 import { viewerId } from '@/lib/entries.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
 // with them, and both read the list from here.
@@ -1132,8 +1132,44 @@ function Employees({ user }) {
       )}
 
       {result && (
-        <Alert kind={result.auditUnlogged || result.errors?.length || result.warnings?.length ? 'warn' : 'ok'}>
+        <Alert kind={
+          result.unsignable?.length ? 'error'
+            : (result.auditUnlogged || result.errors?.length || result.warnings?.length ? 'warn' : 'ok')
+        }
+        >
           นำเข้าใหม่ {result.created} คน · ปรับปรุง {result.updated} คน
+          {/*
+            FIRST, and `error` rather than `warn`.
+
+            Everything else in this box is about the file — a row that failed, a
+            column that could not be read. This one is about the roster the file
+            produced, and the people named have working accounts that can file
+            OT which nobody is able to approve. Nothing else on this screen, or
+            any other, would say so: the request simply waits.
+
+            They need not appear in the uploaded file at all — demoting the only
+            หัวหน้า of a department strands that department's staff, whose rows
+            the file never mentions. So this lists people, not lines.
+          */}
+          {result.unsignable?.length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <strong>
+                {result.unsignable.length} คนไม่มีหัวหน้าคนใดเซ็นอนุมัติ OT ให้ได้
+              </strong>
+              {' '}— บัญชีถูกสร้างแล้วและใช้งานได้ แต่ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดได้
+              <ul style={{ marginTop: 4, marginLeft: 18 }}>
+                {result.unsignable.map((p) => (
+                  <li key={p.code}>
+                    {p.code} · {p.name} — แผนก {p.department}
+                    {p.company && ` · ${companyLabel(p.company)}`}
+                  </li>
+                ))}
+              </ul>
+              <div style={{ marginTop: 4 }}>
+                ตั้งหัวหน้าให้แผนกนั้น หรือแก้ “เซ็นให้บริษัท” ของหัวหน้าที่มีอยู่ให้ครอบคลุมบริษัทของพวกเขา
+              </div>
+            </div>
+          )}
           {result.auditUnlogged > 0 && (
             <div style={{ marginTop: 4 }}>
               <strong>{result.auditUnlogged} แถวไม่ได้ถูกบันทึกลงประวัติการแก้ทะเบียน</strong>
