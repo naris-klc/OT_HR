@@ -18,8 +18,25 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
 
-/** The file in three parts: the token block, the rules, and the print block. */
-const rootEnd = css.indexOf('\n}\n', css.indexOf(':root {')) + 3;
+/**
+ * The file in three parts: the token block, the rules, and the print block.
+ *
+ * THE END OF THE TOKEN BLOCK IS FOUND WITH A REGEX, NOT WITH `'\n}\n'`.
+ *
+ * `core.autocrlf` is true on the machine this is developed on, so every text
+ * file is CRLF in the working copy and LF in the repository. A literal `\n}\n`
+ * therefore finds nothing in a fresh clone here: `indexOf` returns -1, `rootEnd`
+ * becomes 2, and the assertions below run against the string `'/*'` — the first
+ * two characters of the file — and fail with a message about `--card` that says
+ * nothing about line endings. That is what happened on 2026-08-18.
+ *
+ * The file's own endings are not the thing under test and must not be able to
+ * decide the result, so the pattern accepts either.
+ */
+const tokenBlockEnd = /\r?\n\}\r?\n/;
+const fromRoot = css.slice(css.indexOf(':root {'));
+const rootEnd = css.indexOf(':root {') + fromRoot.search(tokenBlockEnd)
+  + fromRoot.match(tokenBlockEnd)[0].length;
 const themeEnd = css.indexOf('* { margin: 0');
 const printStart = css.indexOf('@media print {');
 const RULES = css.slice(themeEnd, printStart);
