@@ -6,6 +6,7 @@ import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate } from '@/lib/api.js';
 import {
   ENTERED_FIELDS, isHrVerifiedBirthday, isProxyFiled, isSystemFiled, sameSession, sameValue,
 } from '@/lib/entries.js';
+import { searchPeople } from '@/lib/personSearch.js';
 
 export function StatusChip({ status }) {
   // A class, not a style: see STATUS in lib/api.js. An unknown status falls
@@ -1125,6 +1126,250 @@ export function PeriodPicker({ value, onChange }) {
     <div className="field" style={{ maxWidth: 180 }}>
       <label>ประจำเดือน</label>
       <input type="month" value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+/**
+ * The ✕ that empties a search box.
+ *
+ * Shared by the two controls that search the roster because it is the one part
+ * of them that IS the same act, and because the two things it has to get right
+ * are both easy to leave out and invisible when you do.
+ *
+ * A REAL BUTTON. Reached by Tab, answers Enter and Space, and carries a name —
+ * "✕" read aloud is nothing, and this is the only one-press way back to the
+ * unfiltered list.
+ *
+ * `onMouseDown` PREVENTED. The button lives inside a box that is often the
+ * focused element, and mousedown moves focus away from it. Whatever that blur
+ * triggers — closing a menu, reverting typed text — runs before the click, and
+ * the click then lands on a button that has already gone. Costs nothing when
+ * there is no blur handler to race, so it is here rather than at each caller.
+ */
+export function ClearButton({ onClear, label = 'ล้างการค้นหา' }) {
+  return (
+    <button
+      type="button"
+      className="searchbox-clear"
+      aria-label={label}
+      title={label}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClear}
+    >
+      ✕
+    </button>
+  );
+}
+
+/**
+ * เลือกพนักงาน — the roster, as a box you type into.
+ *
+ * WHAT THIS REPLACED AND WHY. กรองตามพนักงาน was a <select> holding the whole
+ * roster. That control has exactly one way in: open it and scroll. Twenty-odd
+ * names on the seed data is already a flick and a squint on a phone; a real
+ * roster is a list nobody reads, they hunt. And the hunt is the part a <select>
+ * cannot help with — the native type-ahead matches from the FIRST character of
+ * the option text, which here is the code, so somebody who knows the name and
+ * not the number has nothing to type at all.
+ *
+ * WHAT IT COSTS, said plainly because it is a real loss. A <select> on a phone
+ * opens the operating system's own picker: a big wheel, styled by the OS,
+ * reachable by every assistive technology on the device without this file
+ * having to be right about anything. A custom listbox has to earn all of that
+ * back in markup and key handling, which is why this is only worth using where
+ * the list is long enough to hunt through. The three four-option filters
+ * beside it on the same screen stay plain <select>s, and should.
+ *
+ * THE SELECTION AND THE SEARCH ARE TWO DIFFERENT THINGS, and keeping them
+ * apart is most of what the state here is for. `query` is what has been typed
+ * SINCE the box was opened; `value` is who is actually chosen, and it belongs
+ * to the caller. `query === null` means nothing is being typed, so the box
+ * shows the chosen person. Nothing that happens to `query` — typing, blurring,
+ * pressing Escape — is allowed to change `value`; only picking a row does.
+ *
+ * That is what makes the box safe to abandon. Type three letters, change your
+ * mind, tap elsewhere: `query` goes back to null, the chosen name comes back,
+ * and the list below is still filtered by the person the box says it is. The
+ * alternative — a box whose text and whose filter can disagree — is a screen
+ * that lies about what it is showing, on a screen whose whole job is being the
+ * record of who changed what.
+ *
+ * OPENING CLEARS THE SEARCH BUT NOT THE CHOICE. Focus shows the full roster
+ * rather than the one person already picked, because "open it and look" is the
+ * other half of what a <select> was for, and filtering down to the answer you
+ * already have is no use to anybody. The name comes back the moment the box is
+ * left.
+ */
+export function PickPerson({
+  people,
+  value,
+  onChange,
+  allLabel = '— ทุกคน —',
+  placeholder = 'พิมพ์ชื่อ หรือ รหัสพนักงาน…',
+  emptyLabel = 'ไม่พบพนักงานที่ตรงกับคำค้น',
+  disabled = false,
+}) {
+  const listId = React.useId();
+  const [query, setQuery] = React.useState(null);
+  const [open, setOpen] = React.useState(false);
+  const [active, setActive] = React.useState(0);
+  const listRef = React.useRef(null);
+
+  const roster = Array.isArray(people) ? people : [];
+  const chosen = roster.find((p) => String(p._id) === String(value)) || null;
+  const labelOf = (p) => `${p.code} · ${p.name}`;
+
+  const matches = React.useMemo(
+    () => (open ? searchPeople(roster, query) : []),
+    [open, roster, query],
+  );
+
+  /**
+   * ทุกคน is always the first row, and never filtered out.
+   *
+   * It is a command — "stop filtering" — not a person, so there is no query it
+   * should fail to match. It is also the row somebody lands on by pressing ↑
+   * once from the top, which is the whole keyboard path back to an unfiltered
+   * list. The ✕ is the same act for a pointer.
+   */
+  const rows = [
+    { value: '', label: allLabel },
+    ...matches.map((p) => ({ value: String(p._id), label: labelOf(p) })),
+  ];
+  // Clamped rather than trusted: a keystroke that narrows the list to nothing
+  // leaves `active` pointing past the end, and aria-activedescendant would then
+  // name an element that is not on the page.
+  const at = Math.min(active, rows.length - 1);
+
+  /* Scroll the keyboard's row into view — `nearest`, so the list only moves
+     when it has to and a mouse resting elsewhere is not fought with. */
+  React.useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelector('[data-active="1"]')?.scrollIntoView({ block: 'nearest' });
+  }, [open, at]);
+
+  function openList() {
+    if (disabled || open) return;
+    setOpen(true);
+    setQuery('');
+    // Where ↓ starts from: the row already chosen. With an empty query every
+    // person matches, so the index is exact — +1 for the ทุกคน row above them.
+    const i = roster.findIndex((p) => String(p._id) === String(value));
+    setActive(i < 0 ? 0 : i + 1);
+  }
+
+  /** Close without choosing: the typed text goes, the choice stays. */
+  function revert() {
+    setOpen(false);
+    setQuery(null);
+  }
+
+  function pick(row) {
+    onChange(row.value);
+    setOpen(false);
+    setQuery(null);
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { openList(); return; }
+      // Wraps, so ↑ from the top row is one keypress to ทุกคน rather than a
+      // hold on ↑ back through the whole roster.
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      setActive((i) => (Math.min(i, rows.length - 1) + step + rows.length) % rows.length);
+      return;
+    }
+    if (e.key === 'Enter') {
+      // preventDefault whether or not the list is open: this box is meant to be
+      // usable inside a form, and Enter must not submit one behind it.
+      e.preventDefault();
+      if (open && rows[at]) pick(rows[at]);
+      return;
+    }
+    if (e.key === 'Escape' && open) {
+      // Stopped only because it did something here. With the list already shut
+      // Escape belongs to whatever is above this — a dialog still has to close.
+      e.stopPropagation();
+      revert();
+      return;
+    }
+    if (e.key === 'Tab' && open) revert();
+  }
+
+  const shown = query ?? (chosen ? labelOf(chosen) : '');
+  const clearable = !disabled && (Boolean(value) || Boolean(query));
+
+  return (
+    <div className="searchbox">
+      <input
+        type="text"
+        role="combobox"
+        className={clearable ? 'has-clear' : undefined}
+        value={shown}
+        placeholder={placeholder}
+        disabled={disabled}
+        // The browser's own suggestion list would cover this one.
+        autoComplete="off"
+        spellCheck={false}
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={open && rows[at] ? `${listId}-${at}` : undefined}
+        onFocus={openList}
+        // Focus fires once; this is the way back after Escape closed the list
+        // while the box still had the caret in it.
+        onClick={openList}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          // The first match, not the row that was active a keystroke ago: the
+          // list underneath is now a different list, and Enter has to mean the
+          // thing currently at the top of it.
+          setActive(1);
+          if (!open) setOpen(true);
+        }}
+        onBlur={revert}
+        onKeyDown={onKeyDown}
+      />
+      {clearable && (
+        <ClearButton
+          label="ล้างการค้นหา แสดงทุกคน"
+          onClear={() => { onChange(''); setQuery(null); setOpen(false); }}
+        />
+      )}
+      {open && (
+        <ul
+          id={listId}
+          role="listbox"
+          className="pick-menu"
+          ref={listRef}
+          aria-label={placeholder}
+          // Selection happens on click, not here — but the default action of
+          // mousedown is to move focus, which blurs the input and unmounts this
+          // list before the click can land. Prevented on the container, so a
+          // drag to scroll on a touch screen is still just a scroll.
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {rows.map((r, i) => (
+            <li
+              key={r.value || 'all'}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={r.value === String(value || '')}
+              data-active={i === at ? '1' : undefined}
+              className={r.value === '' ? 'all' : undefined}
+              onClick={() => pick(r)}
+              // Follows the pointer, so the row under the cursor is the row
+              // Enter takes — one notion of "the current row", not two.
+              onMouseMove={() => setActive(i)}
+            >
+              {r.label}
+            </li>
+          ))}
+          {matches.length === 0 && <li className="none" role="presentation">{emptyLabel}</li>}
+        </ul>
+      )}
     </div>
   );
 }

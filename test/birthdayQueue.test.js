@@ -401,3 +401,89 @@ test('ตัวเลข badge กับตัวเลขในแท็บม�
   // A failed count costs a badge, not the two numbers beside it.
   assert.match(summary, /\.catch\(\(\) => 0\)/);
 });
+
+// ── the same decision looks the same on both screens ────────────────────────
+
+test('บันทึก OT ให้ เป็นปุ่มทึบทั้งสองหน้า ไม่ใช่ ghost หน้าหนึ่ง', () => {
+  /**
+   * วันเกิดรอตรวจ (BirthdayQueue) and วันเกิดของเดือนนี้ (HrView) are the same
+   * rows read for two different reasons, and they offer the same pair of
+   * answers: บันทึก OT ให้, or ไม่ได้มาทำงาน. The pair opens the same form and
+   * writes the same entry either way.
+   *
+   * They drifted: the queue's was `btn sm` and the monthly page's `btn ghost
+   * sm`, so reading one screen after the other the same act looked like a
+   * different act — and on the monthly page two outlines side by side said the
+   * two answers were equals, which they are not. บันทึก OT ให้ is the outcome
+   * the ต้องตรวจ chip exists to chase down.
+   *
+   * Pinned rather than left to care, because nothing else would have caught it:
+   * both spellings render, both pass every other test, and the difference is
+   * only visible with the two screens open side by side.
+   */
+  const pair = [
+    ['components/BirthdayQueue.jsx', 'วันเกิดรอตรวจ'],
+    ['components/HrView.jsx', 'วันเกิดของเดือนนี้'],
+  ];
+  /**
+   * The className of the button whose TEXT is this label.
+   *
+   * Two traps here, both of which returned a wrong answer while reporting
+   * green. Both labels also appear inside a `title=` on the OTHER button of the
+   * pair, so the words alone find the wrong element on one of the two screens.
+   * And `<button([\s\S]*?)>` backtracks across button boundaries — the leftmost
+   * match starts at the FIRST <button> in the file and swallows everything up
+   * to the label, so it reads some unrelated button's className.
+   *
+   * So: find the label as element text, then walk back to the `<button` that
+   * opens it.
+   */
+  const classOf = (src, label) => {
+    const m = new RegExp(String.raw`>\s*${label}\s*</button>`).exec(src);
+    if (!m) return null;
+    const open = src.lastIndexOf('<button', m.index);
+    if (open < 0) return null;
+    return (src.slice(open, m.index).match(/className="([^"]*)"/) || [])[1];
+  };
+  for (const [file, screen] of pair) {
+    const src = strip(readFileSync(join(ROOT, file), 'utf8'));
+    assert.equal(classOf(src, 'บันทึก OT ให้'), 'btn sm', `${screen}: ปุ่มต้องทึบ ไม่ใช่ ghost`);
+  }
+
+  /**
+   * And its partner stays outlined on both. "Both filled" would be the same
+   * mistake from the other end — two equal-weight greens on a row where one of
+   * them means "this person did not come in".
+   */
+  for (const [file, screen] of pair) {
+    const src = strip(readFileSync(join(ROOT, file), 'utf8'));
+    assert.equal(classOf(src, 'ไม่ได้มาทำงาน'), 'btn ghost sm', `${screen}: ปุ่มคู่ต้องเป็น ghost`);
+  }
+});
+
+test('การ์ดบนมือถือหรี่เงาของปุ่มทึบ ทั้งสามตาราง', () => {
+  /**
+   * `.btn` casts an 18px green glow. At the card's 44px that spills about a
+   * third of the button's height below it, and the filled button reads as the
+   * taller of a pair that is actually the same box — `box-sizing: border-box`
+   * puts the outlined one's border inside its height, not on top.
+   *
+   * Two tables already carried the correction. The third needed it the day
+   * บันทึก OT ให้ stopped being a ghost there, and a missing copy is invisible
+   * in code review — it looks like nothing, and shows up as one button sitting
+   * lower than its neighbour.
+   */
+  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  for (const table of ['queue-table', 'bday-table', 'bmonth-table']) {
+    const rule = new RegExp(
+      String.raw`\.${table} td\.act-col[^{]*\.btn:not\(\.ghost\) \{\s*box-shadow: 0 3px 9px var\(--green-glow-sm\);`,
+      'g',
+    );
+    const found = phone.match(rule) || [];
+    // Exactly once. `assert.match` would pass on a rule pasted in twice, which
+    // is how this arrived — identical neighbouring blocks are invisible in a
+    // stylesheet and the browser reports nothing.
+    assert.equal(found.length, 1, `${table}: ต้องมีกฎหรี่เงาหนึ่งชุดพอดี (เจอ ${found.length})`);
+  }
+});

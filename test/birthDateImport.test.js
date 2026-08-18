@@ -274,19 +274,25 @@ test('หน้าทะเบียนพนักงานแสดงตั�
    * The Excel warning, pinned by what it has to contain rather than by the
    * sentence it is currently written in.
    *
-   * Scoped to the `.hint` element on purpose. `src` also holds the comment on
-   * `choose()` explaining the same thing to whoever is reading the code, so a
-   * match against the whole function would go on passing with the warning
-   * deleted from the screen — which is the only place it is any use. The file
-   * is built in Excel before this card is ever open, so the preview underneath
-   * cannot replace it: by then the damage is in the file.
+   * Scoped to the `.hint-list` element on purpose. `src` also holds the
+   * comment on `choose()` explaining the same thing to whoever is reading the
+   * code, so a match against the whole function would go on passing with the
+   * warning deleted from the screen — which is the only place it is any use.
+   * The file is built in Excel before this card is ever open, so the preview
+   * underneath cannot replace it: by then the damage is in the file.
+   *
+   * `hint-list` rather than the plain `hint` this used to look for: the card
+   * opens with several `.hint` blocks and the first one in the file is not
+   * reliably this one — it moved once already, and the failure that caused was
+   * this assertion reading a different card's text. The list class names one
+   * block, and it is the block the warning has to be in.
    *
    * The value is pinned as well as the word. "Excel may reformat dates" is a
    * caution people read past; 05/03/1998 being two different birthdays is the
    * part that makes anybody check.
    */
-  const hintAt = src.indexOf('<div className="hint">');
-  const hint = src.slice(hintAt, src.indexOf('</div>', hintAt));
+  const hintAt = src.indexOf('className="hint hint-list"');
+  const hint = src.slice(hintAt, src.indexOf('</ul>', hintAt));
   assert.ok(hintAt > 0, 'การ์ดนี้ต้องมีคำอธิบาย');
   assert.match(hint, /Excel/, 'คำเตือนเรื่อง Excel บันทึกทับต้องอยู่ในคำอธิบายของหน้านี้');
   assert.match(hint, /05\/03\/1998/, 'ต้องยกค่าที่อ่านได้สองแบบให้เห็น ไม่ใช่เตือนลอย ๆ');

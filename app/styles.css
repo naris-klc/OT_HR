@@ -820,23 +820,23 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 /* Mono + tracking on labels: the design pairs Thai with an English key. */
 .field label { font: 600 12px/1 var(--mono); letter-spacing: .09em; color: var(--muted); text-transform: uppercase; }
-/* `.policy-table select` is in this list rather than in a rule of its own, and
-   that is the point: the twelve dropdowns on นโยบายการคำนวณ are the only
+/* `.policy-row select` is in this list rather than in a rule of its own, and
+   that is the point: the dropdowns on นโยบายการคำนวณ are the only
    controls in the app that had NO style at all, so what they drew was the
    browser's own box — a darker, squarer frame than anything else on the page,
    sitting two fields below the เหตุผล input it was supposed to match. Copying
    the values across would have fixed today and drifted tomorrow; sharing the
-   declaration cannot. See .policy-table select below for the one thing that
+   declaration cannot. See .policy-row select below for the one thing that
    does differ, and why. */
 .field input, .field select, .field textarea,
-.policy-table select {
+.policy-row select {
   border: 1px solid var(--input-line); border-radius: var(--radius-sm);
   padding: 12px 14px; background: var(--field-bg); width: 100%;
   font: 500 15px/1.3 var(--mono); color: var(--ink);
 }
 .field textarea { font: 400 14.5px/1.55 var(--sans); resize: vertical; min-height: 64px; }
 .field input:focus, .field select:focus, .field textarea:focus,
-.policy-table select:focus {
+.policy-row select:focus {
   outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
 }
 /* A field this person may not change.
@@ -846,7 +846,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    The sentence saying WHY goes underneath in .field-note — grey on its own
    reads as "broken" rather than as "not yours". */
 .field input:disabled, .field select:disabled, .field textarea:disabled,
-.policy-table select:disabled {
+.policy-row select:disabled {
   background: var(--neutral-wash);
   color: var(--muted);
   cursor: not-allowed;
@@ -881,6 +881,104 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .pick-list .check { padding: 9px 12px; }
 .pick-list .check + .check { border-top: 1px solid var(--line-softer); }
 .pick-list .check:hover { background: var(--neutral-wash); }
+
+/* ══ ช่องค้นหา — a text box with a ✕ in it ══════════════════════════════════
+   Shared by the two controls that search the roster, which are NOT the same
+   control: PickPerson (components/common.jsx) picks one person to filter a
+   report by, and ทะเบียนพนักงาน's box narrows the table you are looking at.
+   Their behaviour has almost nothing in common — one commits a value, the
+   other never does — so what is shared is this box and the ✕ inside it, and
+   nothing else. The search rule both ask is lib/personSearch.js.
+
+   The input itself is NOT styled here. It is `.field input` like every other
+   box in the app and must stay that way — a search box that is a different
+   height or a different grey from the select beside it in the same
+   `.form-grid` reads as a different kind of control, and it is not one. All
+   that is added is room at the right end for the ✕. */
+.searchbox { position: relative; }
+.searchbox input.has-clear { padding-right: 42px; }
+
+/* THE ✕, and it is a real button: `aria-label`, reached by Tab, answers Enter
+   and Space. It is the only one-press way back to ทุกคน for a pointer, and the
+   list it would otherwise take three actions to get to is the unfiltered one —
+   which is the state somebody needs when the filter they set turned out to be
+   the wrong person. 34px square inside a 46px-tall field, centred by
+   translate rather than by a magic top value so it stays centred if the
+   field's padding ever changes. */
+.searchbox-clear {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 34px; height: 34px; padding: 0;
+  border: none; border-radius: var(--radius-xs); background: none;
+  color: var(--muted-2); font: 400 15px/1 var(--latin); cursor: pointer;
+}
+.searchbox-clear:hover { background: var(--neutral-wash); color: var(--ink); }
+.searchbox-clear:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+
+/* ค้นหาในทะเบียนพนักงาน — the box over the roster table.
+
+   ALMOST NOTHING IS HERE, and that is the fix rather than an omission. This
+   shipped as a bare <input> in a bare <div>, outside the `.field` wrapper that
+   carries every input style in this app — so it drew at the browser's default
+   width of about twenty characters, with the browser's own border, no
+   background, and no padding, sitting in a corner of the card looking broken.
+   The note above says the input is `.field input` like every other box; that
+   was true of PickPerson, which sits inside a <Field>, and false of this one.
+
+   So it is a <Field> now, and takes its width, its fill, its border, its
+   radius, its padding and its focus ring from the same rules as every other
+   input on the screen — which is also the only way it stays matching the day
+   any of those change.
+
+   Full width, deliberately: the table under it is the whole register, and a
+   filter for it that stops a third of the way across reads as a form field
+   somebody forgot to finish. */
+.roster-find { margin-bottom: 14px; }
+/* The count, under the box as a `.field` note. Mono on the figures only —
+   they are the two numbers being compared and the words around them are
+   Thai, which mono carries nothing of. */
+.roster-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
+
+/* THE LIST. `position: absolute` and not a portal: it is anchored to a box
+   inside an ordinary card in normal flow, and nothing on this screen clips it.
+
+   z-index 5 is deliberately LOW. It has to beat the fields under it — which
+   carry no z-index at all — and it must NOT beat the app bar (20) or the
+   sticky tab strip (10). Scroll far enough and the input slides under those
+   bars; a menu that drew over them would be a list hanging off the top of the
+   page, attached to nothing visible. */
+.pick-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5;
+  margin: 0; padding: 4px; list-style: none;
+  max-height: 264px; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  box-shadow: 0 14px 34px var(--shadow-soft);
+}
+/* 40px rows and no smaller. A row here is "show me this person's history",
+   which is a read — but the rows are 4px apart in a list of two hundred, and a
+   thumb that lands one row off looks at the wrong person's record without
+   anything on screen saying so. The phone block below takes it to 44. */
+.pick-menu li {
+  padding: 10px 12px; min-height: 40px;
+  display: flex; align-items: center;
+  border-radius: var(--radius-xs);
+  font: 500 14px/1.4 var(--mono); color: var(--ink);
+  cursor: pointer;
+}
+/* ONE highlight, driven by `data-active`, and the pointer writes to it on
+   move. Hover as a second, CSS-only highlight is the bug this avoids: the
+   mouse rests over one row while the arrow keys are on another, two rows light
+   up, and Enter takes the one the eye is not on. */
+.pick-menu li[data-active='1'] { background: var(--green-bg); color: var(--green-dark); }
+/* ทุกคน is a command, not a person — sans, because it is a sentence and mono
+   carries no Thai (the same trap `.cell-sub.th` spells out). */
+.pick-menu li.all { font: 500 13.5px/1.4 var(--sans); color: var(--muted); }
+.pick-menu li[aria-selected='true'] { font-weight: 700; }
+/* Not an option and not selectable: no pointer, no highlight, no role. */
+.pick-menu li.none {
+  cursor: default; font: 400 13px/1.5 var(--sans); color: var(--muted-2);
+}
 
 /* สรุปผลการบันทึกแทน — one line per person.
 
@@ -1439,6 +1537,20 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 }
 
 .hint { font: 400 12.5px/1.55 var(--sans); color: var(--muted-2); }
+/* A HINT THAT IS SEVERAL FACTS rather than one. Run together into a paragraph
+   they were skipped whole: Thai sets no spaces between words, so five lines of
+   `--muted-2` had no ragged edge for an eye to catch on and read as texture.
+   `*` zeroes every ul's padding app-wide, so the margin is the whole indent
+   and the markers land on the card's text edge; the gap is what keeps two
+   multi-line facts from running into each other again.
+
+   And a step darker than `.hint`, deliberately: at 12.5px `--muted-2` is
+   about 3.4:1 on white — under the 4.5:1 normal text needs — and a list is
+   used where the plain hint is not, on a phone, in a warehouse, before the
+   file has been opened in Excel. `--muted` is the app's own darker grey,
+   already carrying body text elsewhere, at about 5.6:1. */
+.hint-list { margin-left: 18px; color: var(--muted); }
+.hint-list li + li { margin-top: 6px; }
 .note { font: 400 12.5px/1.55 var(--sans); color: var(--muted); }
 
 /* ══ tables ══════════════════════════════════════════════════════════════ */
@@ -1526,21 +1638,182 @@ table.fixed td { overflow-wrap: anywhere; }
 .cell-note { margin-top: 3px; font: 400 11.5px/1.45 var(--sans); color: var(--amber); }
 tbody tr:hover { background: var(--green-wash); }
 
-/* The merged ข้อ cell on นโยบายการคำนวณ, which spans the two or three rows one
-   question is answered by (see openSpanAt in components/AdminView.jsx).
+/* ══ นโยบายการคำนวณ — one ruled row per rule ═══════════════════════════════
+   Two columns and a hairline. The note over .policy-list in
+   components/AdminView.jsx has the history — a table, then a card per rule,
+   then this — and the short version is that the card fixed the alignment and
+   charged five screens of scrolling for it. A grid aligns the two halves for
+   nothing: no border, no fill, no padding around the outside, and the panel
+   this page already is provides the surface. */
+.policy-list { display: flex; flex-direction: column; margin-top: 10px; }
 
-   A cell with rowSpan belongs to the FIRST row of its group, so the row-hover
-   tint above reached it when that row was hovered and not when any of the others
-   were — the number lit up or stayed white depending on which of its own rows
-   the pointer happened to be over, which reads as the highlight being broken
-   rather than as a grouped cell. Painting it opaque takes it out of the hover
-   entirely: the tint marks the row you are on, and the number beside it is the
-   heading for all of them, so it should no more highlight than the <th> does. */
-td.policy-open { background: var(--card); }
+/* ── the four blocks the page is read in ────────────────────────────────────
+   Drawn where POLICY_SECTIONS changes (PolicyBlockHead in
+   components/AdminView.jsx).
 
-/* The answer dropdowns. The box itself is declared with .field's up at the top
-   of this file; these two lines are everything about them that is NOT the same
-   as every other field in the app.
+   The one thing on the list that is allowed to be heavier than a hairline,
+   because it is the only thing on it that is not a rule. */
+.policy-block {
+  padding: 20px 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+.policy-list > .policy-block:first-child { padding-top: 4px; }
+.policy-section-title {
+  display: flex; align-items: baseline; gap: 8px;
+  font: 600 14px/1.45 var(--sans); color: var(--ink);
+}
+/* THE BLOCK'S NUMBER SAYS THE WORD กลุ่ม, and this is why.
+   The heading sits at the left edge of the list, which is where each rule's own
+   ข้อ number starts, so a bare numeral here landed a line above ข้อ 3.1 in the
+   same grey and read as a numbering that had lost its way. Two independent
+   numberings can share a page but not an edge, and the fix that needs no
+   alignment to work is the one where the numeral says what it counts.
+   Sans, not the mono a figure would take: mono carries no Thai at all, so
+   กลุ่มที่ set in it would come out in whatever the system falls back to — the
+   one font on the page that is not IBM Plex Sans Thai. */
+.policy-section-title .n {
+  font: 600 11.5px/1.6 var(--sans); letter-spacing: .02em; color: var(--muted-2);
+}
+.policy-section-note {
+  margin-top: 3px;
+  font: 400 12px/1.5 var(--sans); color: var(--muted);
+}
+
+/* ── the row ────────────────────────────────────────────────────────────────
+   62/38, which is where the two columns stop fighting: the left holds a
+   paragraph and wants to be wide, the right holds one control whose longest
+   option is "หักเฉพาะช่วงที่คาบเกี่ยว 12:00–13:00 (ค่าเริ่มต้น)" and stops being
+   readable under about a third of the panel.
+
+   `align-items: start` is the whole point of the grid. Without it the two
+   columns stretch to the row's height and every rule's dropdown ends up
+   vertically centred against its own paragraph — which is the drifting the
+   table did, reproduced in a grid. Both columns begin at the top of the row,
+   so the controls come down the page at the same offset from the questions
+   they answer.
+
+   `minmax(0, …)` on both tracks: a grid track's default minimum is the widest
+   thing that cannot wrap, and the longest option inside the <select> is exactly
+   that. Without it one dropdown's widest option decides the whole layout. */
+.policy-row {
+  display: grid;
+  grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+  gap: 4px 28px;
+  padding: 14px 0;
+  align-items: start;
+}
+/* The divider, and only between two rules — a row that opens a block already
+   has the block's own line above it.
+
+   `--line-soft` and not `--line-softer`. The softer one is for a line inside
+   something that is already boxed, where the box is doing the separating and
+   the line is only tidying up. Here the line IS the separation, and in ธีมมืด
+   the softer token lands about four levels off the panel behind it — which on a
+   laptop screen at an angle is nothing at all. One step up is still quieter
+   than the block heading's own rule above it, which is the order these two
+   want.
+
+   (The two values are not written out here. Every hex in this half of the file
+   is a rule naming a colour of its own, including the ones inside comments —
+   test/theme.test.js reads the rules as text and cannot tell the difference,
+   and a guard that has to parse comments to stay right is a worse guard.) */
+.policy-row + .policy-row { border-top: 1px solid var(--line-soft); }
+.policy-row:hover { background: transparent; }
+
+/* Everything that is read, in one column — which is itself two: a gutter
+   holding the ข้อ, and everything else.
+
+   THE GUTTER IS WHY THE TITLES LINE UP. The number was inline in front of the
+   title, so a rule with one started a few characters further right than a rule
+   without, and the four unnumbered rules on the page were the only ones whose
+   titles met the left edge — a ragged margin down the middle of a settings
+   list, and the eye reads a ragged margin as a mistake before it reads what
+   caused it. Hanging the number in a column of its own puts every title on one
+   edge and costs no height, which is what a kicker line above the title would
+   have cost.
+
+   Every child sits in the second column; the number is the only thing that
+   reaches into the first. Baselines rather than boxes, so the small grey number
+   sits on the line of the title it belongs to and not at the top of it. */
+.policy-row-q {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: baseline;
+}
+.policy-row-q > * { grid-column: 2; }
+.policy-row-q > .policy-num { grid-column: 1; grid-row: 1; }
+.policy-row-q > .policy-label { grid-row: 1; }
+/* The gutter is always rendered so the columns exist; four rules have no number
+   to put in it. */
+.policy-num:empty { display: none; }
+/* Everything that is pressed or is about what was pressed, in the other. The
+   pill and the override note sit UNDER the control and against the right edge:
+   they are what the control currently amounts to, and the eye that sweeps this
+   column for amber is sweeping one edge rather than a zig-zag. */
+.policy-row-a {
+  min-width: 0;
+  display: flex; flex-direction: column; align-items: stretch; gap: 7px;
+}
+.policy-row-a .chip.policy-status,
+.policy-row-a .policy-override { align-self: flex-end; }
+/* On top of the column's own gap. The pill was sitting against the bottom edge
+   of the control, close enough to read as part of it — it is a statement about
+   the value rather than a second row of the field, and a few pixels is the
+   whole difference between those two things. */
+.policy-row-a .chip.policy-status { margin-top: 6px; }
+
+/* The question — the one thing in the row set at full weight and full colour.
+   Everything under it is explanation and is a size and a shade down, which is
+   the whole hierarchy this column has. */
+.policy-label {
+  font: 600 15px/1.5 var(--sans); color: var(--ink);
+}
+.policy-num {
+  font: 600 11.5px/1.5 var(--sans); letter-spacing: .02em; color: var(--muted-2);
+  white-space: nowrap;
+}
+
+/* What the rule does today, for the one item that has no control to say it. */
+.policy-reading { font: 500 14px/1.4 var(--sans); color: var(--ink); }
+
+/* Where the value came from, under the value it is about. */
+.policy-override { font: 400 11.5px/1.5 var(--sans); color: var(--muted); }
+
+/* The explanation, under the question rather than beside the control: it
+   explains what is being asked, and the answer to it is opposite. */
+.policy-help { margin-top: 5px; }
+
+/* ── the note a dropdown answers with ───────────────────────────────────────
+   Shown only while the option it is about is the one selected — see `warn` on
+   POLICY_FIELDS. Amber and boxed rather than grey like `.field-note`: the notes
+   on this page explain a rule, and this one says the answer just chosen has a
+   cost, which is the distinction `.chip.unconfirmed` draws below it. Same three
+   colours, for the same reason.
+
+   As wide as the control it sits under and no wider — it is the column, so it
+   needs no width of its own. */
+.policy-warn {
+  padding: 7px 10px; border-radius: var(--radius-xs);
+  background: var(--amber-bg); color: var(--amber-ink);
+  border: 1px solid var(--amber);
+  font: 400 12px/1.55 var(--sans);
+}
+
+/* The pill, sized against `.chip.unconfirmed` beside it — see PolicyStatus in
+   components/AdminView.jsx for why only four rules may wear the green one.
+   Ringed rather than filled like `.chip.green`, because the two are read
+   against each other and a filled pill beside a ringed one reads as louder
+   rather than as different. */
+.chip.policy-status { flex: none; }
+.chip.policy-status.confirmed {
+  padding: 1px 7px; border-radius: 999px; font: 700 11px/1.5 var(--sans);
+  background: var(--green-bg); color: var(--green-dark); border: 1px solid var(--ok-line);
+}
+
+/* The answer dropdown. The box itself is declared with .field's up at the top
+   of this file; these two lines are everything about it that is NOT the same as
+   every other field in the app.
 
    SANS, against the mono that rule sets. Mono is for "every number, field label
    and metadata line" — the note this file opens with — and an answer here is
@@ -1549,17 +1822,17 @@ td.policy-open { background: var(--card); }
    this control would not even be mono: the digits would take the fallback and
    the Thai would drop past it to whatever the system happens to have, which is
    the one font on the page that is not IBM Plex Sans Thai. The other selects in
-   the app hold a name or a filter word and the difference does not show; twelve
-   sentences is where it would.
+   the app hold a name or a filter word and the difference does not show;
+   seventeen sentences is where it would.
 
-   MIN-WIDTH, so the column reads as a column rather than as twelve controls of
-   twelve lengths. It was an inline `style` on the <select> until 2026-08-17,
-   which the phone's card layout below could not override without `!important`:
-   a width is geometry, and geometry belongs where the breakpoint that changes
-   it can be read next to it. */
-.policy-table select {
+   NO WIDTH OF ITS OWN, which took three tries to get to. A 280px minimum held a
+   table column open; a 400px maximum then held a card's control down to a
+   readable width. The column IS the width now — `.field select` already sets
+   `width: 100%` — so a number here would only be a second opinion about the
+   grid, and the two would disagree the first time the panel changed size. */
+.policy-row select {
   font: 400 14px/1.35 var(--sans);
-  min-width: 280px;
+  padding-inline: 12px;
 }
 
 /* ยืนยันการเปลี่ยนกฎการคำนวณ — the dialog between choosing an answer and saving
@@ -2254,12 +2527,16 @@ table.mini tbody tr:hover { background: none; }
     padding-right: max(12px, env(safe-area-inset-right));
   }
 
-  /* Clears the fixed bottom bar so the last row is never trapped under it. */
-  .mobile-nav-spacer { height: 74px; }
+  /* Clears the fixed bottom bar so the last row is never trapped under it.
+     The inset is part of the height, not a detail: the bar pads past the home
+     indicator (`.mobile-nav` below), so on a gesture-navigation phone it is
+     74px PLUS that inset tall, and a flat 74px spacer left the last row of
+     every table under the bar on exactly the devices the padding was for. */
+  .mobile-nav-spacer { height: calc(74px + env(safe-area-inset-bottom)); }
   /* And the FAB, on the one screen that has one: 92px up plus 58 of button,
      rounded up so the last row's chip clears the shadow as well as the circle.
      Sized here rather than guessed at, so moving the FAB moves this too. */
-  .mobile-nav-spacer.with-fab { height: 158px; }
+  .mobile-nav-spacer.with-fab { height: calc(158px + env(safe-area-inset-bottom)); }
 
   .mobile-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
@@ -2280,15 +2557,26 @@ table.mini tbody tr:hover { background: none; }
   .mobile-nav .icon { position: relative; display: grid; place-items: center; }
   .mobile-nav .icon svg { width: 22px; height: 22px; display: block; }
   .mobile-nav .label { font: 500 11px/1 var(--sans); }
+  /* Clear of the glyph, not on top of it. At -4/-11 the badge sat five pixels
+     inside a 22px icon and a two-digit count buried eleven — on รอ HR ยืนยัน,
+     where the icon is the tick, that is the part of the mark it covered. Moved
+     out far enough that a single digit only grazes the corner, and ringed in
+     the bar's own colour so a count that grows to two or three digits still
+     reads as a badge above the icon rather than a blot on it. */
   .mobile-nav .count {
-    position: absolute; top: -4px; right: -11px;
+    position: absolute; top: -6px; right: -13px;
     min-width: 16px; height: 16px; padding: 0 4px;
     border-radius: 8px; font: 600 10px/16px var(--mono);
+    box-shadow: 0 0 0 2px var(--bar-blur-strong);
   }
 
+  /* `bottom` carries the inset for the same reason the spacer's height does:
+     92px is measured from the top of the nav bar, and the bar grows by the
+     inset. Without it the FAB sank into the bar on a phone with a home
+     indicator — the one button on that screen you cannot afford to lose. */
   .fab {
     display: grid; place-items: center;
-    position: fixed; right: 18px; bottom: 92px; z-index: 35;
+    position: fixed; right: 18px; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 35;
     width: 58px; height: 58px; border-radius: 50%;
     border: none; background: var(--green); color: var(--on-fill);
     font: 300 30px/1 var(--latin); cursor: pointer;
@@ -2351,6 +2639,19 @@ table.mini tbody tr:hover { background: none; }
   .head-meta .total .v { font-size: 17px; }
 
   .row-actions .btn.sm, .quick-edit-foot .btn { min-height: 44px; }
+
+  /* ช่องค้นหา on a phone. 44px rows, and a list that stops well short of
+     the fold: the software keyboard is up the whole time this control is open
+     and takes roughly the bottom half of the screen with it, so a menu sized
+     for a desktop would open entirely underneath it. `vh` and not `dvh` on
+     purpose — `dvh` tracks the visible viewport, which means the list would
+     resize under the reader's finger every time the keyboard slid in or out. */
+  .pick-menu { max-height: min(264px, 44vh); }
+  .pick-menu li { min-height: 44px; }
+  /* The ✕ is the one-press way back to the whole list and it sits inside the
+     text box, where a thumb is already aiming at a caret. Full 44 both ways. */
+  .searchbox-clear { width: 44px; height: 44px; right: 2px; }
+  .searchbox input.has-clear { padding-right: 48px; }
   .quick-edit { padding: 13px; }
   .quick-edit .checks { gap: 14px; flex-direction: column; }
 
@@ -2420,7 +2721,10 @@ table.mini tbody tr:hover { background: none; }
   .queue-tools:has(+ .queue-mobile-bar) { border-bottom: 0; }
   .queue-tools .field, .queue-tools .field.search { flex: 1 1 100%; }
   .batch-progress { padding: 10px 12px; }
-  .row-actions { flex-wrap: wrap; white-space: normal; }
+  /* 8px, which is what the queue and birthday cards already override to: at
+     44px tall and side by side, 6px between two decisions is close enough that
+     a thumb aiming at one lands on the other. */
+  .row-actions { flex-wrap: wrap; white-space: normal; gap: 8px; }
   /* Its own margin is from the days it sat loose in a table cell; inside
      .row-actions the gap already spaces it and the two together read as a
      double gap. */
@@ -2860,68 +3164,53 @@ table.mini tbody tr:hover { background: none; }
      in the app left under 44px. */
   .bmonth-table td.act-col .row-actions { flex-wrap: wrap; gap: 8px; }
   .bmonth-table td.act-col .btn { flex: 1 1 40%; min-height: 44px; }
+  /* And the glow halved, the third time this rule is needed and for the reason
+     spelled out over `.queue-table`'s copy: the two buttons are already the
+     same 44px box, but `.btn`'s full 18px green glow spills a third of that
+     height below the filled one and makes it read as the taller of the pair.
+     Needed here from the day บันทึก OT ให้ stopped being a ghost — see
+     BirthdayRowActions in components/HrView.jsx. */
   .bmonth-table td.act-col .btn:not(.ghost) {
     box-shadow: 0 3px 9px var(--green-glow-sm);
   }
 
-  /* ══ นโยบายการคำนวณ — the question and its answer, one card each ═══════
-     Three columns, and the third holds a 280px <select>. A dropdown cannot be
-     compressed the way prose can, so on a 440px phone the whole of the table's
-     remaining width went to it and the คำถาม column was left with about forty
-     pixels: "วิธีการปัดเศษชั่วโมง OT" came down the screen two characters to a
-     line, and its hint — the paragraph explaining what "คิดตามจริง" does —
-     took some ninety lines to say it. The answer beside it was still cut off at
-     the right edge, because 280px never fitted either.
+  /* ══ นโยบายการคำนวณ — the two columns become one ════════════════════════
+     62/38 needs a panel wide enough for both halves to be readable, and at
+     430px neither is: the question comes down the screen a few characters to a
+     line and the dropdown is cut off at the right edge, which is what this
+     breakpoint was written for in the first place.
 
-     This is the same kind of screen as คิวรออนุมัติ: one row is read, decided
-     and left behind, and nobody reads down the column. So it takes the same
-     shape — the number, then the question at a readable size, then the
-     dropdown at the full width of the card underneath it. Reading order is
-     unchanged; it is the same three cells, stacked instead of squeezed. */
-
-  .policy-table { display: block; min-width: 0; table-layout: auto; }
-  .policy-table thead { display: none; }
-  .policy-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
-
-  .policy-table tr {
-    display: block;
-    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
-    background: var(--card);
+     One column, then, in the order the row is read — question, explanation,
+     then the control under them. The dividers do the separating exactly as they
+     do on the desktop; nothing here draws a box. */
+  .policy-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 13px 0;
   }
-  /* The row tint is a pointer affordance and there is no pointer here; left on,
-     it stuck to whichever card was last touched. */
-  .policy-table tbody tr:hover { background: var(--card); }
+  /* The control is as wide as the screen, and 44px tall because it is touched
+     rather than clicked. */
+  .policy-row-a { align-items: stretch; }
+  .policy-row-a .chip.policy-status,
+  .policy-row-a .policy-override { align-self: flex-start; }
+  .policy-row select { min-height: 44px; }
 
-  .policy-table td { display: block; border: 0; padding: 0; }
+  /* THE GUTTER GOES, and the ข้อ becomes a line above the question.
 
-  /* THE MERGED CELL GOES, and the number comes back from the row's own
-     `data-open` — see the note over the <tr> in components/AdminView.jsx. The
-     cell is on the first row of its group only, so drawing it here would number
-     the first card of a pair and leave the second one blank. */
-  .policy-table td.policy-open { display: none; }
-  .policy-table tr[data-open]::before {
-    content: 'ข้อ ' attr(data-open);
-    display: block; margin-bottom: 6px;
-    font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
-  }
+     Hanging the number beside the title is what lines the titles up on a screen
+     where they are read down a column. Nobody reads down a column here — one
+     rule fills the phone — so the 52px buys nothing, and it is 12% of a 430px
+     screen taken off a paragraph that is already the tallest thing in the row.
+     Above the title it costs one short line and gives the text the whole width.
 
-  /* The question is the heading of its card — 15px, the size a name takes on
-     the queue's cards. Only the label itself: the hint, the ตั้งทับค่าตั้งต้น
-     note and the รอ HR ยืนยัน block under it are explanation and stay at the
-     weight they already have. */
-  .policy-table td.policy-q .policy-label { font: 600 15px/1.4 var(--sans); }
-
-  /* Ruled off above, the way every card on this breakpoint separates what is
-     read from what is pressed. `width: 100%` against the 280px floor: the
-     control is as wide as the card, whatever the longest option says. */
-  .policy-table td.policy-a {
-    margin-top: 10px; padding-top: 10px;
-    border-top: 1px solid var(--line-softer);
-    font: 400 13px/1.5 var(--sans);
-  }
-  .policy-table td.policy-a select {
-    width: 100%; min-width: 0; min-height: 44px;
-  }
+     Auto-flow rather than the fixed rows above: a rule with no number must not
+     leave an empty line where its number would have been, and `:empty` above
+     takes it out of the flow entirely. */
+  .policy-row-q { grid-template-columns: minmax(0, 1fr); }
+  .policy-row-q > *,
+  .policy-row-q > .policy-num { grid-column: 1; }
+  .policy-row-q > .policy-num,
+  .policy-row-q > .policy-label { grid-row: auto; }
 
   /* ══ ประวัติเวอร์ชันนโยบาย — the same change, five columns ═══════════════
      A record read one line at a time: what changed, when, and who typed the

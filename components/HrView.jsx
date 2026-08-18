@@ -826,8 +826,16 @@ function BirthdayRowActions({ row, onFile, onMark, onRetract, onOpenEntries }) {
     // a 44px target. The inline `flexWrap: 'nowrap'` went with it: below 860px
     // `.row-actions` is meant to wrap, and an inline style cannot be overruled.
     <div className="row row-actions" style={{ gap: 6 }}>
+      {/* FILLED, not ghost — the same button on วันเกิดรอตรวจ already is, and
+          these are not two buttons that happen to share a label: they open the
+          same form, over the same row, and write the same entry. Two outlines
+          side by side said the two decisions were equals, and they are not.
+          บันทึก OT ให้ is the answer for somebody who came in on their
+          birthday, which is the case the whole ต้องตรวจ chip exists to chase
+          down; ไม่ได้มาทำงาน is the other one. Reading the two screens in a
+          row, the same act looked like a different act on each. */}
       <button
-        className="btn ghost sm"
+        className="btn sm"
         onClick={() => onFile({
           employeeId: row.employeeId, name: row.name, code: row.code, date: row.date,
         })}

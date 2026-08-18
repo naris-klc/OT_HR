@@ -26,7 +26,8 @@ import {
 // is computed by the same function the replay and the version history use.
 import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
-import { Alert, Empty, Modal, Field, TipButton } from './common.jsx';
+import { searchPeople, personMatches } from '@/lib/personSearch.js';
+import { Alert, Empty, Modal, Field, TipButton, PickPerson, ClearButton } from './common.jsx';
 import Delegation from './Delegation.jsx';
 
 const SECTIONS = [
@@ -850,6 +851,16 @@ function interpretation(dates) {
 function Employees({ user }) {
   const [rows, setRows] = useState([]);
   const [depts, setDepts] = useState([]);
+  /**
+   * What has been typed into ค้นหาในทะเบียน, narrowing the table below it.
+   *
+   * NOT sent to the server and not part of `load()`. The whole register is
+   * already here — see the note over the box itself — so this is a view of
+   * `rows`, which is why it survives an edit: fix somebody's วันเกิด and the
+   * table reloads still showing the person you were working on, rather than
+   * throwing you back to the top of two hundred rows.
+   */
+  const [find, setFind] = useState('');
   /** Whether เพิ่มพนักงาน is open — the only way this screen creates a row. */
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
@@ -883,6 +894,9 @@ function Employees({ user }) {
   // offered, and a disabled button explains itself where a 403 does not.
   const isAdmin = user?.role === 'admin';
   const mayEdit = (row) => isAdmin || row.role !== 'admin';
+
+  /** The rows the table draws. `rows` stays the register, for the count. */
+  const shown = React.useMemo(() => searchPeople(rows, find), [rows, find]);
 
   async function load() {
     try {
@@ -925,6 +939,16 @@ function Employees({ user }) {
       setIssued({ ...who, missing: true });
     }
     setAdding(false);
+    /**
+     * A filter left on from before must not swallow the row that was just
+     * created. HR searches for somebody, does not find them, adds them — and
+     * the search that failed a moment ago is still narrowing the table, so the
+     * new row lands outside it and the screen looks like the create failed.
+     *
+     * Cleared only when it WOULD hide them, so a filter that still matches is
+     * left where it was rather than being reset under somebody mid-task.
+     */
+    if (find && !personMatches(who, find)) setFind('');
     load();
   }
 
@@ -1017,13 +1041,28 @@ function Employees({ user }) {
         month; the audit line is a fact about the screen, not about any one
         control on it.
       */}
-      <div className="hint">
-        วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD เป็น ค.ศ. (เช่น 1998-03-05) — ถ้าเปิดแล้วบันทึกทับด้วย Excel
-        คอลัมน์นี้จะถูกเขียนใหม่ตามการตั้งค่าของเครื่อง และ “05/03/1998” เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
-        · ระบบจะแสดงผลการอ่านให้ตรวจก่อนนำเข้าเสมอ และถ้าตีความไม่ได้แน่ชัดจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา
-        {' '}· ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
-        {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
-      </div>
+      {/*
+        A LIST, not a paragraph. The words are the same words; what changed is
+        that they were four separate facts run together with · into five lines
+        of unbroken grey, and Thai sets no spaces between words, so there was
+        no ragged edge for an eye to catch on — the whole block read as one
+        texture and got skipped. Split, the one that has to land before Excel
+        is ever opened is a line of its own at the top. The class carries a
+        darker grey with it as well — see `.hint-list` in styles.css.
+      */}
+      <ul className="hint hint-list">
+        <li>
+          วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD เป็น ค.ศ. (เช่น 1998-03-05) — ถ้าเปิดแล้วบันทึกทับด้วย Excel
+          คอลัมน์นี้จะถูกเขียนใหม่ตามการตั้งค่าของเครื่อง และ “05/03/1998” เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
+        </li>
+        <li>
+          ระบบจะแสดงผลการอ่านให้ตรวจก่อนนำเข้าเสมอ และถ้าตีความไม่ได้แน่ชัดจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา
+        </li>
+        <li>
+          ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
+          {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
+        </li>
+      </ul>
       {error && <Alert kind="error">{error}</Alert>}
 
       {/*
@@ -1283,6 +1322,85 @@ function Employees({ user }) {
           app/styles.css. The two heading cells are marked rather than labelled:
           a card found by code and name should not open with two rows reading
           "รหัส PM-0620" / "ชื่อ-สกุล ปรีชา". */}
+      {/*
+        ค้นหาในทะเบียน — because the way anybody arrives here is with one person
+        in mind.
+
+        The table is the whole register, ordered by รหัส, and every task that
+        starts on this screen is about one row of it: fix a วันเกิด, reset a
+        password, read who changed what. Finding that row meant scrolling a list
+        whose order is only useful if you already know the code — and on a phone
+        each row is a card, so the roster is a column several screens tall.
+
+        A <Field>, like every other input in this app, and that is load-bearing
+        rather than tidy. It shipped once as a bare <input> in a bare <div> and
+        drew at the browser's default width with the browser's own border and no
+        fill at all, because `.field input` is where the width, the background,
+        the radius, the padding and the focus ring all come from. Nothing was
+        missing from the stylesheet; the box was simply outside the wrapper that
+        reaches it.
+
+        NOT A <select> AND NOT A COMBOBOX. กรองตามพนักงาน picks one person to
+        filter a report by, and commits a value. This one commits nothing: it
+        narrows the table in front of you and the table IS the answer. Same
+        search rule (lib/personSearch.js), so a code typed without its hyphen
+        and a Thai name typed without its space both land here too — but a
+        different control, because they are different acts.
+
+        Client-side, and safe to be: `/employees?all=1` has no limit, so `rows`
+        is the entire register. Narrowing it here can hide a name that is
+        present, never miss one that is absent.
+      */}
+      <div className="roster-find">
+        <Field
+          label="ค้นหาพนักงาน"
+          /*
+            The count, and it is not decoration. A filtered table is a table
+            that is lying by omission — nine rows where the register holds two
+            hundred — and the box above it is one line that is easy to scroll
+            past and easier to forget. This is the sentence that says the short
+            list is a filter and not the roster.
+          */
+          note={find ? (
+            <span className="found">
+              แสดง <strong>{shown.length}</strong> จาก <strong>{rows.length}</strong> คน
+            </span>
+          ) : null}
+        >
+          <div className="searchbox">
+            <input
+              type="text"
+              className={find ? 'has-clear' : undefined}
+              value={find}
+              onChange={(e) => setFind(e.target.value)}
+              placeholder="พิมพ์ชื่อ หรือ รหัสพนักงาน…"
+              /* Matches the visible label rather than elaborating on it: the
+                 <label> above is not tied to this input by `htmlFor`, so this
+                 is the name assistive technology reads, and a name that says
+                 something different from the words on screen is worse than a
+                 plain one. The detail lives in the placeholder. */
+              aria-label="ค้นหาพนักงาน"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {find && <ClearButton onClear={() => setFind('')} />}
+          </div>
+        </Field>
+      </div>
+
+      {/*
+        An empty table after a search is the one state that reads as breakage —
+        nine columns of headings over nothing, on a screen whose ordinary
+        content is the entire company. Said in words instead, with the query
+        quoted back so a typo is visible, and with the two things that are
+        searchable named: somebody who typed a department here should find out
+        that is not what this box does.
+      */}
+      {find && shown.length === 0 ? (
+        <Empty>
+          ไม่พบพนักงานที่ตรงกับ “{find}” — ค้นได้จากรหัสพนักงานและชื่อ-สกุลเท่านั้น
+        </Empty>
+      ) : (
       <div className="table-wrap">
         <table className="stack-table">
           <thead>
@@ -1292,7 +1410,7 @@ function Employees({ user }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => (
+            {shown.map((p) => (
               <tr key={p._id}>
                 <td className="stack-code" style={{ whiteSpace: 'nowrap' }}>{p.code}</td>
                 <td className="stack-name">{p.name}</td>
@@ -1331,7 +1449,17 @@ function Employees({ user }) {
                 </td>
                 <td data-label="สถานะ">{p.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</td>
                 <td>
-                  <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                  {/* `row-actions`, the class the phone layout sizes and
+                      spaces buttons by — not a bare `row` with an inline
+                      `flexWrap: 'nowrap'`, which is what this was. Three
+                      44px buttons held on one line inside a 440px card came
+                      out narrow and 6px apart, and ตั้งรหัสใหม่ — the one
+                      press here that cannot be undone — sat between the two
+                      harmless ones. Allowed to wrap, they take a full line
+                      each when the card is too narrow to hold three. The
+                      desktop is unaffected: `.row-actions` is nowrap above
+                      860px, and the column still sizes to its content. */}
+                  <div className="row row-actions">
                     {/* Opens for every row, including one this person may not
                         change: the dialog is where the reason is written, and a
                         dead button explains nothing. */}
@@ -1365,6 +1493,7 @@ function Employees({ user }) {
           </tbody>
         </table>
       </div>
+      )}
 
       {adding && (
         <AddEmployee
@@ -2650,6 +2779,13 @@ function RosterAudit() {
    * records — so "แก้วันเกิด, โดยฝ่ายบุคคล" would come back empty on a roster
    * whose last 100 changes happened to be แผนก moves, and read as "this has
    * never happened" rather than "look further back".
+   *
+   * THE ONE THING THAT IS SEARCHED IN THE BROWSER is the roster inside
+   * กรองตามพนักงาน's picker, and it is the exception that proves the rule
+   * above. `/employees?all=1` has no limit — the whole register arrives, in
+   * code order — so narrowing it here can only ever hide a name that is
+   * present, never miss one that is absent. The records list has no such
+   * guarantee, which is why it is not narrowed here.
    */
   useEffect(() => {
     setRecords(null);
@@ -2683,18 +2819,26 @@ function RosterAudit() {
         open — which is the whole reason this section exists apart from the
         per-row pop-up — and กรองตามพนักงาน could not answer either.
 
-        `.form-grid` rather than `.row`: four labelled selects on a phone wrap
+        `.form-grid` rather than `.row`: four labelled controls on a phone wrap
         into a column and `.row`'s flex-end alignment would hang each one off
         the bottom of a different-height label.
       */}
       <div className="form-grid" style={{ marginBottom: 12 }}>
-        <Field label="กรองตามพนักงาน">
-          <select value={filters.employee} onChange={(e) => setFilter('employee', e.target.value)}>
-            <option value="">— ทุกคน —</option>
-            {people.map((p) => (
-              <option key={p._id} value={p._id}>{p.code} · {p.name}</option>
-            ))}
-          </select>
+        {/* The one filter here that is not a short fixed list. The other
+            three hold four, ten and however many accounts have ever written to
+            the trail — a <select> is the right control for those and they keep
+            it. This one holds the roster, so it gets the box you can type a
+            name or a code into; see PickPerson in common.jsx for what that
+            costs as well as what it buys. */}
+        <Field
+          label="กรองตามพนักงาน"
+          note="พิมพ์เพื่อค้นหา · ค้นได้ทั้งรหัสและชื่อ · เว้นว่างไว้คือทุกคน"
+        >
+          <PickPerson
+            people={people}
+            value={filters.employee}
+            onChange={(id) => setFilter('employee', id)}
+          />
         </Field>
         <Field
           label="กรองตามสิ่งที่ถูกแก้"
@@ -3217,8 +3361,35 @@ function AddHoliday({ onClose, onSave }) {
 
 // ── policy: the twelve [OPEN] answers ───────────────────────────────────────
 
+/**
+ * The four blocks the rules on this page are read in.
+ *
+ * Seventeen dropdowns down one column is a list with no shape. The rules that
+ * decide how long a session is sit against the rules that decide whose desk a
+ * request lands on, separated by a horizontal line that looks the same
+ * everywhere, and nobody opens this page to read all of it — they open it to
+ * answer one question. The block is what says which third of the page to look
+ * in, and it is the first thing on the page that can be found without reading.
+ *
+ * ORDER IS THE GROUPING. A field belongs to the block whose id it carries, and
+ * the heading is drawn on the row where that id changes — exactly as the merged
+ * ข้อ cell is drawn where `open` changes. So the blocks are the order of
+ * POLICY_FIELDS and cannot disagree with it: a field moved away from its own
+ * block draws the heading twice, which is visible on the page, rather than
+ * sorting itself quietly into a group it is not next to.
+ *
+ * The note under each title is not written here — see SECTION_NOTE below.
+ */
+const POLICY_SECTIONS = [
+  { id: 1, title: 'เวลาทำงาน และการหักเวลาพัก' },
+  { id: 2, title: 'เกณฑ์การนับ และการปัดเศษ OT' },
+  { id: 3, title: 'สิทธิ์วันเกิด และวันหยุดพิเศษ' },
+  { id: 4, title: 'เวิร์กโฟลว์ และเพดานชั่วโมง' },
+];
+
 const POLICY_FIELDS = [
   {
+    section: 1,
     key: 'breakMode', open: 1, label: 'การหักเวลาพัก',
     options: [
       ['lunchWindow', 'หักเฉพาะช่วงที่คาบเกี่ยว 12:00–13:00 (ค่าเริ่มต้น)'],
@@ -3228,10 +3399,12 @@ const POLICY_FIELDS = [
     ],
   },
   {
+    section: 1,
     key: 'breakPerCalendarDay', open: 2, label: 'ทำงานข้ามคืน หักพักกี่ครั้ง', bool: true,
     options: [[true, 'หักตามจำนวนวันที่คาบเกี่ยว'], [false, 'หักครั้งเดียวเสมอ']],
   },
   {
+    section: 2,
     key: 'roundingMode', open: 3, label: 'วิธีการปัดเศษชั่วโมง OT',
     options: [
       ['floor', 'ปัดลงทั้งหมด (ค่าเริ่มต้น)'],
@@ -3246,6 +3419,7 @@ const POLICY_FIELDS = [
       + '· เปลี่ยนแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ',
   },
   {
+    section: 2,
     key: 'roundingIncrementMinutes', open: 3, label: 'ปัดเศษทีละกี่นาที', num: true,
     options: [
       [5, 'ทุก 5 นาที'],
@@ -3256,10 +3430,51 @@ const POLICY_FIELDS = [
     ],
     hint: 'ไม่มีผลเมื่อวิธีการปัดเศษข้างบนคือ “คิดตามจริงเป็นทศนิยม” '
       + '· ชั่วโมงถูกเก็บเป็นทศนิยม 2 ตำแหน่ง — 15, 30 และ 60 นาทีลงตัวพอดี '
-      + 'แต่ 5 และ 10 นาทีไม่ลงตัว เช่น 20 นาที = 0.33 ชม. ผลรวมของช่องอัตราจึงอาจต่างจากยอดรวมได้ 0.01 ชม. '
       + '· เปลี่ยนแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ',
+    /**
+     * The half of that note that was about 5 and 10, moved out from under the
+     * question and put under the answer, where it is shown only when 5 or 10 is
+     * the answer on screen.
+     *
+     * A hint states what is always true of a rule. This never was: it describes
+     * what two of five options do, to a reader who has chosen neither and has to
+     * get past a paragraph to reach the control. Said when one of them is the
+     * answer, the same sentence is about the row it is sitting on.
+     *
+     * READ IN TWO PLACES, because moving the dropdown on this page IS the save
+     * request and the confirm dialog comes up over the row. Under the control it
+     * is the standing answer's note, which is what the row looks like once 5 or
+     * 10 has been saved; in ConfirmPolicyChange it is the proposed answer's, at
+     * the one moment it can still change what happens. Under the control alone
+     * it would be behind the dialog when it mattered.
+     *
+     * "คลาดเคลื่อนได้ 0.01 ชม." and not "คลาดเคลื่อนเล็กน้อย". How little is
+     * little is the first thing anybody asks of a warning, and a figure that
+     * fits in the same breath is cheaper than the question — 0.01 ชม. is also
+     * the answer to whether this is worth caring about, which the reader is
+     * entitled to decide rather than be told.
+     *
+     * ชั่วโมง, not money. The drift is 0.01 ชม. on a column total. This system
+     * holds no rates and computes no pay at all (see the head of
+     * src/config/policy.js, and section 11 of the requirements), so a warning
+     * about เศษสตางค์ would describe an arithmetic that happens in another
+     * department, on figures this page has never seen — and would be read as
+     * this page having an opinion about pay.
+     *
+     * Silent under 'exact', which does not read this key. The same two decimals
+     * drift there, but they drift for every session rather than for a block the
+     * reader picked, and a warning under a control nothing is reading from is a
+     * warning about the wrong control.
+     */
+    warn: (value, policy) => (
+      (Number(value) === 5 || Number(value) === 10) && policy.roundingMode !== 'exact'
+        ? '⚠️ การปัดเศษ 5 หรือ 10 นาที อาจทำให้เมื่อแปลงเป็นทศนิยม 2 ตำแหน่งแล้ว '
+          + 'ผลรวมในรายงานคลาดเคลื่อนได้ 0.01 ชม. (แนะนำ 15 หรือ 30 นาที)'
+        : ''
+    ),
   },
   {
+    section: 2,
     key: 'minimumBufferMinutes', label: 'เวลาขั้นต่ำในการเริ่มนับ OT', num: true,
     options: [
       [0, 'ไม่ใช้ — นับทุกนาทีที่ทำ (ค่าเริ่มต้น)'],
@@ -3278,6 +3493,7 @@ const POLICY_FIELDS = [
       + 'โดยยังคงชั่วโมงเดิมไว้ · ใบที่อนุมัติแล้วไม่ขยับ',
   },
   {
+    section: 2,
     key: 'belowMinimum', open: 4, label: 'ต่ำกว่าขั้นต่ำ 1 ชม.',
     options: [
       ['accept', 'รับตามชั่วโมงจริง (ติดธงให้ HR)'],
@@ -3286,6 +3502,7 @@ const POLICY_FIELDS = [
     ],
   },
   {
+    section: 2,
     key: 'minimumHoursScope', open: 4, label: 'ขั้นต่ำ 1 ชม. นับต่อใบหรือต่อช่อง',
     options: [
       ['sheet', 'ต่อใบ — รวมทุกช่องก่อนเทียบกับขั้นต่ำ (ค่าเริ่มต้น)'],
@@ -3298,6 +3515,7 @@ const POLICY_FIELDS = [
       + '· เปลี่ยนเป็นต่อช่องแล้ว ถ้าค่าข้างบนคือปัดขึ้นหรือไม่รับ ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยน',
   },
   {
+    section: 2,
     key: 'otStartsAtCoreEnd', open: 5, label: 'OT เริ่มนับที่', bool: true,
     options: [
       [true, '17:00 (นับเต็ม 3 ชม. สำหรับ 17:00–20:00)'],
@@ -3311,6 +3529,7 @@ const POLICY_FIELDS = [
       + '· เปลี่ยนแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ',
   },
   {
+    section: 3,
     key: 'birthdayHolidayEnabled', label: 'วันเกิดพนักงานเป็นวันหยุดของคนนั้น', bool: true,
     options: [
       [true, 'ใช่ — วันเกิดที่ตรงจันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น'],
@@ -3321,6 +3540,7 @@ const POLICY_FIELDS = [
       + '· พนักงานที่ยังไม่มีวันเกิดในระบบจะขึ้นเตือนในหน้าตรวจสอบรายเดือน',
   },
   {
+    section: 3,
     key: 'birthdayLeapFallback', label: 'วันเกิด 29 ก.พ. ในปีที่ไม่ใช่อธิกสุรทิน',
     options: [
       ['feb28', '28 ก.พ. (ค่าเริ่มต้น)'],
@@ -3329,6 +3549,7 @@ const POLICY_FIELDS = [
     ],
   },
   {
+    section: 3,
     key: 'hrDirectApproveBirthday', label: 'ฝ่ายบุคคลบันทึก OT ให้จากรายการวันเกิด', bool: true,
     options: [
       [true, 'บันทึกและอนุมัติในขั้นตอนเดียว (ค่าเริ่มต้น)'],
@@ -3344,18 +3565,22 @@ const POLICY_FIELDS = [
   // (HR, 2026-08-10) and สรุป OT ส่งบัญชี always prints it beside the row it
   // explains. Neither is a setting — see src/config/policy.js.
   {
+    section: 4,
     key: 'hrMayReject', open: 7, label: 'HR ปฏิเสธรายการที่หัวหน้าอนุมัติแล้วได้หรือไม่', bool: true,
     options: [[true, 'ได้'], [false, 'ไม่ได้']],
   },
   {
+    section: 4,
     key: 'hrRejectReturnsTo', open: 7, label: 'เมื่อ HR ปฏิเสธ ส่งกลับไปที่',
     options: [['employee', 'พนักงาน (แก้ไขและส่งใหม่)'], ['manager', 'หัวหน้างาน']],
   },
   {
+    section: 4,
     key: 'capBehaviour', open: 8, label: 'เมื่อเกินเพดานแผนก',
     options: [['warn', 'เตือนแต่ให้ส่งได้ ให้ HR ตัดสิน'], ['block', 'ไม่ให้ส่ง']],
   },
   {
+    section: 4,
     key: 'capBasis', open: 9, label: 'เพดานนับชั่วโมงแบบใด',
     options: [['clock', 'ชั่วโมงที่ทำจริง (ตัวอย่าง D = 14)'], ['weighted', 'ชั่วโมงคูณอัตรา (ตัวอย่าง D = 31.5)']],
     hint: 'ใช้กับทั้งเพดานรายเดือนและรายสัปดาห์ — ทั้งสองนับด้วยเกณฑ์เดียวกันเสมอ '
@@ -3366,6 +3591,7 @@ const POLICY_FIELDS = [
       + '· ไม่กระทบชั่วโมงที่จ่ายจริง เปลี่ยนเฉพาะว่าเพดานเต็มเมื่อใด',
   },
   {
+    section: 4,
     key: 'weekStartsOn', open: 9, label: 'สัปดาห์เริ่มวันใด (เพดานรายสัปดาห์)', num: true,
     options: [
       [1, 'จันทร์ – อาทิตย์ (ค่าเริ่มต้น)'],
@@ -3378,6 +3604,7 @@ const POLICY_FIELDS = [
       + '· ธงบนรายการที่บันทึกไว้แล้วยังเป็นค่าที่อ่านตอนยื่น จนกว่าจะมีการคำนวณใหม่',
   },
   {
+    section: 4,
     key: 'hrSummaryBasis', open: 12, label: 'ช่อง OT ×1.5 / ×3 ในใบฟอร์ม',
     options: [['raw', 'ชั่วโมงดิบ ยังไม่คูณ'], ['multiplied', 'คูณอัตราแล้ว']],
     hint: 'ตัวอย่าง: ทำ OT วันปกติ 2 ชม. — “ชั่วโมงดิบ” พิมพ์ 2.00 ลงช่อง ×1.5 (ฝ่ายบัญชีคูณ 1.5 เอง) '
@@ -3387,6 +3614,119 @@ const POLICY_FIELDS = [
       + 'แต่ใบที่พิมพ์ไปแล้วยังเป็นแบบเดิม — เปลี่ยนกลางเดือนแล้วพิมพ์ซ้ำ ตัวเลขบนใบสองใบจะไม่เท่ากัน',
   },
 ];
+
+/**
+ * What a block of rules can do to a figure — counted off ARITHMETIC_KEYS
+ * rather than typed in beside the title.
+ *
+ * The one thing worth knowing before touching anything on this page is whether
+ * the rule about to be changed restates hours on requests other people are
+ * part-way through reading. The confirm dialog says so, but only after the
+ * dropdown has been moved, which is one move too late to be a warning.
+ *
+ * Counted, because a sentence written here would be a second source of truth
+ * for a classification that lives in lib/policyVersion.js and is checked
+ * against DEFAULT_POLICY by a test. A flag that changes sides moves the heading
+ * with it; a sentence would have stayed where it was and been believed.
+ */
+const SECTION_NOTE = Object.fromEntries(POLICY_SECTIONS.map((sec) => {
+  const fields = POLICY_FIELDS.filter((f) => f.section === sec.id);
+  const moves = fields.filter((f) => ARITHMETIC_KEYS.includes(f.key)).length;
+  const recompute = 'แก้แล้วใบที่ยังไม่อนุมัติจะถูกคำนวณใหม่ทันที ใบที่อนุมัติแล้วไม่ขยับ';
+  if (moves === 0) {
+    return [sec.id, `${fields.length} ข้อ · ไม่มีข้อใดในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง `
+      + '— เปลี่ยนเฉพาะสิทธิ์หรือวิธีแสดงผล'];
+  }
+  if (moves === fields.length) {
+    return [sec.id, `${fields.length} ข้อ · ทุกข้อในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง — ${recompute}`];
+  }
+  return [sec.id, `${fields.length} ข้อ · ${moves} ข้อในกลุ่มนี้เปลี่ยนจำนวนชั่วโมง — ${recompute}`];
+}));
+
+/** The heading between two blocks — a rule with a name on it, not a card. */
+function PolicyBlockHead({ block }) {
+  return (
+    <div className="policy-block">
+      <div className="policy-section-title">
+        <span className="n">กลุ่มที่ {block.id}</span>
+        <span>{block.title}</span>
+      </div>
+      <div className="policy-section-note">{SECTION_NOTE[block.id]}</div>
+    </div>
+  );
+}
+
+/**
+ * The ข้อ each rule answers, as it is printed — 3.1 and 3.2 rather than ข้อ 3
+ * twice.
+ *
+ * Four of the twelve questions take more than one flag to answer: ข้อ 4 asks
+ * what to do with a session under an hour AND what the hour is measured
+ * against, and neither half means anything alone. The table said so with a
+ * merged cell, which is a thing a table can say and a list cannot — printed
+ * flat, the same number on two rows in a row reads as a number repeated by
+ * mistake, which is exactly how it read.
+ *
+ * A decimal says the same thing in a form a list can hold: 3.1 and 3.2 are
+ * visibly two parts of one question, they sort the way they are read, and
+ * "ข้อ 4.2" is something somebody can say out loud to HR. A question answered
+ * by ONE flag keeps its bare number — 3.1 with no 3.2 anywhere would be a part
+ * of nothing.
+ *
+ * Computed once from the order of POLICY_FIELDS, and indexed by position for
+ * the same reason the block headings are: the numbering is the order, and a
+ * field moved away from its own siblings would be visibly wrong on the page
+ * rather than quietly renumbered behind it.
+ */
+const OPEN_LABEL = (() => {
+  const total = {};
+  for (const f of POLICY_FIELDS) if (f.open) total[f.open] = (total[f.open] || 0) + 1;
+  const nth = {};
+  return POLICY_FIELDS.map((f) => {
+    if (!f.open) return '';
+    if (total[f.open] === 1) return String(f.open);
+    nth[f.open] = (nth[f.open] || 0) + 1;
+    return `${f.open}.${nth[f.open]}`;
+  });
+})();
+
+/**
+ * The pill beside a question — the one thing on this page that can be read
+ * without being read.
+ *
+ * Placed under the control it is about, against the right edge of the answer
+ * column — see `.policy-row-a`.
+ *
+ * GREEN ONLY WHERE SOMEBODY SIGNED. It says HR ยืนยันแล้ว, and the only rules
+ * entitled to wear it are the HR_UNCONFIRMED items carrying a name and a date
+ * (ConfirmedBy prints them underneath). Every other row on this page holds a
+ * default — the requirements doc's recommendation, or a reading off the old
+ * paper — and painting those green would be the page asserting an approval
+ * nobody gave, on thirteen rules at once, in the same green as the four that
+ * were actually answered. That is the exact confusion HR_UNCONFIRMED exists to
+ * undo: see the note over it in src/config/policy.js, about a default nobody
+ * chose and a default somebody read off a stack of 2025 timesheets printing
+ * identically.
+ *
+ * So a rule that was never one of the open questions wears no pill at all. The
+ * absence is the honest state, and amber is what the eye is sweeping for — one
+ * pill per rule, all of them on one edge, so sweeping is all it takes.
+ *
+ * Amber from `.chip.unconfirmed`, which is where its colours went when they
+ * stopped being inline — one of them was reading `--amber-dark`, a token no
+ * `:root` block defines, so what drew was a hard-coded brown chosen against a
+ * white page: 2.53 against the dark card, on the badge that says a rule is
+ * unanswered. It reads `--amber-ink` now, 5.46 light and 8.77 dark.
+ */
+function PolicyStatus({ items }) {
+  if (!items?.length) return null;
+  const waiting = items.some((u) => !u.confirmed);
+  return (
+    <span className={`chip policy-status ${waiting ? 'unconfirmed' : 'confirmed'}`}>
+      {waiting ? '⚠️ รอ HR ยืนยัน' : '✓ HR ยืนยันแล้ว'}
+    </span>
+  );
+}
 
 /**
  * The dropdown's string, back to the type the policy stores.
@@ -3403,7 +3743,12 @@ function coerce(field, raw) {
 }
 
 /**
- * The badge, and the one button that removes it.
+ * What an unanswered rule says, and the one button that removes it.
+ *
+ * The pill itself is drawn beside the question by `PolicyStatus`, so that a
+ * reader sweeping the column meets one mark per row rather than a mark buried
+ * in the paragraph explaining it. What is left here is the paragraph: where the
+ * value came from, and what pressing ยืนยัน does.
  *
  * Amber rather than red: nothing is broken, and the hours on every screen in
  * the system are as correct as they were a minute ago. What it says is that the
@@ -3420,18 +3765,6 @@ function Unconfirmed({ item, canEdit, busy, onConfirm }) {
 
   return (
     <div style={{ marginTop: 4 }}>
-      {/* `--amber-dark` HAS NEVER EXISTED. This badge carried its colours
-          inline, and that one read a token no `:root` block in the app defines,
-          so what actually drew was the hard-coded fallback beside it — #8a5a00,
-          a brown chosen against a white page. It followed neither theme, and on
-          the dark card it measured 2.53 against the panel behind it: the badge
-          that says an [OPEN] item is unanswered was the least readable thing on
-          ตั้งค่าระบบ. The colour it was reaching for was real enough — a darker
-          amber for text that has to be READ rather than glanced at — it had just
-          never been created. It exists now as `--amber-ink`, built like
-          `--danger-ink` beside it, and this badge is the only thing that wants
-          it. 5.46 in the light theme and 8.77 in the dark one. */}
-      <span className="chip unconfirmed">รอ HR ยืนยัน</span>
       <div className="hint" style={{ marginTop: 4 }}>
         {/* "ตั้งตามพฤติกรรมเดิม" was said of every item and is true of only
             some: the rounding increment came off the requirements doc and the
@@ -3461,7 +3794,7 @@ function ConfirmedBy({ item }) {
   const { byName, at } = item.confirmed;
   return (
     <div className="hint" style={{ marginTop: 4, color: 'var(--green-dark)' }}>
-      HR ยืนยันแล้ว{byName ? ` โดย ${byName}` : ''}
+      ยืนยันแล้ว{byName ? ` โดย ${byName}` : ''}
       {at ? ` · ${thaiDate(String(at).slice(0, 10))}` : ''}
     </div>
   );
@@ -3711,137 +4044,128 @@ function Policy({ user }) {
         </div>
       )}
 
-      <div className="table-wrap">
-        <table className="policy-table">
-          <thead><tr><th style={{ width: 80 }}>ข้อ</th><th>คำถาม</th><th>คำตอบปัจจุบัน</th></tr></thead>
-          <tbody>
-            {POLICY_FIELDS.map((f, i) => (
-              /* `data-open` carries the ข้อ number a SECOND time, for the phone
-                 only — see .policy-table tr::before in app/styles.css.
+      {/* ── ONE ROW PER RULE ────────────────────────────────────────────────
+          Two columns, ruled off from each other by a hairline and nothing else.
 
-                 The merged cell below cannot come to a card stack: a rowSpan
-                 cell belongs to the first row of its group, so once every row
-                 is drawn as its own card, ข้อ 3's second card has no number in
-                 it at all and reads as a rule belonging to nothing. Repeating
-                 the number on both cards is what the merge means anyway —
-                 "these two answer one question" — said the way a stack can say
-                 it. Every row that has a number carries the attribute, not just
-                 the group head; the desktop ignores it entirely. */
-              <tr key={f.key} data-open={f.open || undefined}>
-                {/* ── ข้อ, one cell per QUESTION rather than per row ──────────
-                    The number alone. It used to read "OPEN 3" — the requirements
-                    document's own label, which means nothing to the ฝ่ายบุคคล who
-                    open this page, and repeated the ข้อ heading in English.
+          This has now been three shapes. A three-column table, whose two text
+          cells could never stay level; then a card per rule, which fixed the
+          alignment by giving every rule a box of its own and cost the page its
+          height — seventeen boxes, each with a border, a fill and 34px of
+          padding, came to five screens of scrolling for seventeen dropdowns.
+          The fix for a row that will not line up was never a box around it; it
+          was saying where the two halves start. A grid does that, and a grid
+          costs nothing: the question and everything explaining it on the left,
+          the control and its state on the right, both starting at the top of
+          their own row.
 
-                    Dropping the word exposed something the label had been hiding:
-                    four of the numbers appear twice (3, 4, 7, 9), because one
-                    question can need more than one flag to answer it. ข้อ 4 asks
-                    what to do with a session under an hour AND what the hour is
-                    measured against, and neither half means anything alone.
-                    "OPEN 7" twice read as a label repeated; "7" twice read as a
-                    bug.
+          So no card, no fill, no padding around the outside. The panel this
+          page already is provides the surface; a rule is a line, and what
+          separates one rule from the next is the hairline between them. */}
+      <div className="policy-list">
+        {POLICY_FIELDS.map((f, i) => {
+          /* The heading is drawn on the row where the block changes. */
+          const block = POLICY_SECTIONS.find((sec) => sec.id === f.section);
+          const opensBlock = block && POLICY_FIELDS[i - 1]?.section !== f.section;
+          /* THE ANSWER ON SCREEN, which is the proposed one while its dialog is
+             up rather than the stored one. Everything on the row that depends on
+             the answer reads this, so the dropdown and the note under it cannot
+             end up describing two different values. */
+          const shown = pending?.field.key === f.key ? pending.value : policy[f.key];
+          const warning = f.warn ? f.warn(shown, policy) : '';
+          /* One question can cover more than one flag, so a row can carry more
+             than one of these. */
+          const items = unconfirmed.filter((u) => u.keys.includes(f.key));
 
-                    A merged cell says "one question, two rows" to anybody who has
-                    read a table before, which an arrow and a tooltip do not — the
-                    tooltip especially, since it takes a hover nobody performs and
-                    a touch screen cannot. So the cell spans its group and the
-                    rows inside it draw no ข้อ cell at all.
-
-                    Rules that arrived after the original twelve have no number to
-                    carry; they print — rather than an empty cell, so a row
-                    without one does not look like an item somebody forgot. */}
-                {(!f.open || POLICY_FIELDS[i - 1]?.open !== f.open) && (
-                  <td
-                    className="policy-open"
-                    rowSpan={openSpanAt(i)}
-                    style={{ verticalAlign: 'middle' }}
-                  >
-                    {f.open || '—'}
-                  </td>
-                )}
-                <td className="policy-q">
+          return (
+            <React.Fragment key={f.key}>
+              {opensBlock && <PolicyBlockHead block={block} />}
+              <div className="policy-row">
+                <div className="policy-row-q">
+                  {/* Always rendered, empty or not: it is the left column of
+                      .policy-row-q's own grid, and a title with no number in
+                      front of it has to start where the numbered ones do. */}
+                  <span className="policy-num">
+                    {OPEN_LABEL[i] ? `ข้อ ${OPEN_LABEL[i]}` : ''}
+                  </span>
                   <div className="policy-label">{f.label}</div>
-                  {f.hint && (
-                    <div className="hint" style={{ marginTop: 4 }}>{f.hint}</div>
-                  )}
-                  {/* Moved here out of the ข้อ cell when that cell became one per
-                      question: this is about one FLAG — whether that value is
-                      stored rather than taken from the file — and the flag's name
-                      is the thing directly above it.
-
-                      It read "HR ตอบแล้ว" until 2026-08-13, which an override is
-                      not evidence of: it says a value is stored, not who chose it
-                      or whether anybody did. `minimumHoursScope` wore that and the
-                      รอ HR ยืนยัน badge at once, on the same row, flatly
-                      contradicting itself. Whether HR has actually answered is
-                      what the badge and ConfirmedBy below are for, and they
-                      know. */}
-                  {overrides.includes(f.key) && (
-                    <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 4 }}>
-                      ตั้งทับค่าตั้งต้น
-                    </div>
-                  )}
-                  {/* One question can cover more than one flag, so a row can
-                      wear more than one badge. */}
-                  {unconfirmed.filter((u) => u.keys.includes(f.key)).map((u) => (
+                  {f.hint && <div className="hint policy-help">{f.hint}</div>}
+                  {items.map((u) => (
                     <React.Fragment key={u.id}>
                       <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />
                       <ConfirmedBy item={u} />
                     </React.Fragment>
                   ))}
-                </td>
-                <td className="policy-a">
+                </div>
+                <div className="policy-row-a">
                   <select
                     disabled={!canEdit || busy}
                     /* The proposed answer while its dialog is up, so the option
                        being confirmed is the one on screen behind it. Cancelling
                        clears `pending` and the select falls back to the stored
                        value on its own — there is no second copy to reset. */
-                    value={pending?.field.key === f.key
-                      ? pending.raw
-                      : (f.bool || f.num ? String(policy[f.key]) : policy[f.key])}
+                    value={String(shown)}
                     /* A <select> hands back a string whatever the option held.
-                       Coerced on the way out or the policy would store "1"
-                       where it stores 1 — `canonicalPolicy` compares values,
-                       so a saved string reads as a changed answer and mints a
-                       version on every save that changed nothing. */
+                       Coerced on the way out or the policy would store "1" where
+                       it stores 1 — `canonicalPolicy` compares values, so a saved
+                       string reads as a changed answer and mints a version on
+                       every save that changed nothing. */
                     onChange={(e) => setPending({
-                      field: f, raw: e.target.value, value: coerce(f, e.target.value),
+                      field: f, value: coerce(f, e.target.value),
                     })}
                   >
                     {f.options.map(([v, l]) => (
                       <option key={String(v)} value={String(v)}>{l}</option>
                     ))}
                   </select>
-                </td>
-              </tr>
-            ))}
+                  {/* Against the control rather than against the question: it is
+                      about the option that is selected, and it appears as the
+                      selection is made. ConfirmPolicyChange carries the same
+                      sentence, because the dialog comes up over this row. */}
+                  {warning && <div className="policy-warn">{warning}</div>}
+                  <PolicyStatus items={items} />
+                  {/* This is about one FLAG — whether the value above is stored
+                      rather than taken from the file — so it sits under the value
+                      and not under the question.
 
-            {/* A question about a rule the engine has but the policy has no
-                flag for. It gets a row of its own rather than being left off
-                the page: the badge is a record of what has not been agreed,
-                and an item with no dropdown is if anything the one most worth
-                showing — nobody can find it by reading the settings. The
-                คำตอบปัจจุบัน cell states what the code does today, in words,
-                because there is no control whose value could state it. */}
-            {unconfirmed.filter((u) => u.keys.length === 0).map((u) => (
-              <tr key={u.id}>
-                <td className="policy-open">—</td>
-                <td className="policy-q">
-                  <div className="policy-label">{u.label}</div>
-                  <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />
-                  <ConfirmedBy item={u} />
-                </td>
-                <td className="policy-a">
-                  {u.reading}
-                  <div className="hint" style={{ marginTop: 4 }}>
-                    ไม่มีค่าตั้งให้เลือก — เปลี่ยนคำตอบข้อนี้ต้องแก้ตัวคำนวณ
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      It read "HR ตอบแล้ว" until 2026-08-13, which an override is
+                      not evidence of: it says a value is stored, not who chose it
+                      or whether anybody did. `minimumHoursScope` wore that and the
+                      รอ HR ยืนยัน badge at once, flatly contradicting itself.
+                      Whether HR has actually answered is what the pill above and
+                      ConfirmedBy opposite are for, and they know. */}
+                  {overrides.includes(f.key) && (
+                    <div className="policy-override">ตั้งทับค่าตั้งต้น</div>
+                  )}
+                </div>
+              </div>
+            </React.Fragment>
+          );
+        })}
+
+        {/* A question about a rule the engine has but the policy has no flag
+            for. It gets a row of its own rather than being left off the page:
+            the pill is a record of what has not been agreed, and an item with
+            no dropdown is if anything the one most worth showing — nobody can
+            find it by reading the settings. Where the control would be, the row
+            states what the code does today, in words, because there is no
+            control whose value could state it. */}
+        {unconfirmed.filter((u) => u.keys.length === 0).map((u) => (
+          <div className="policy-row" key={u.id}>
+            <div className="policy-row-q">
+              <span className="policy-num" />
+              <div className="policy-label">{u.label}</div>
+              <div className="hint policy-help">
+                ไม่มีค่าตั้งให้เลือก — เปลี่ยนคำตอบข้อนี้ต้องแก้ตัวคำนวณ
+              </div>
+              <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />
+              <ConfirmedBy item={u} />
+            </div>
+            <div className="policy-row-a">
+              <div className="policy-reading">{u.reading}</div>
+              <PolicyStatus items={[u]} />
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="hint" style={{ marginTop: 14 }}>
@@ -3854,6 +4178,7 @@ function Policy({ user }) {
       {pending && (
         <ConfirmPolicyChange
           field={pending.field}
+          policy={policy}
           from={policy[pending.field.key]}
           to={pending.value}
           effectiveFrom={effectiveFrom}
@@ -3901,10 +4226,22 @@ function optionLabel(field, value) {
  * the answer to a mis-click is to be able to say no, not to fill something in.
  */
 function ConfirmPolicyChange({
-  field, from, to, effectiveFrom, todayISO, note, busy, onCancel, onConfirm,
+  field, policy, from, to, effectiveFrom, todayISO, note, busy, onCancel, onConfirm,
 }) {
   const arithmetic = ARITHMETIC_KEYS.includes(field.key);
   const announced = effectiveFrom > todayISO;
+  /**
+   * The same sentence the row carries, about the answer being proposed rather
+   * than the one in force.
+   *
+   * It is here because of what this page does when a dropdown moves: choosing
+   * IS the save request, and this dialog comes up over the row. A note that
+   * lives only under the control is therefore behind this box at the one moment
+   * it would have been worth reading, and on screen afterwards only if the
+   * reader went ahead. Both places, then — under the control it describes the
+   * standing answer; here it describes the answer about to be given.
+   */
+  const warning = field.warn ? field.warn(to, policy) : '';
 
   return (
     <Modal
@@ -3950,6 +4287,8 @@ function ConfirmPolicyChange({
         {/* The reason is a field on the page behind, and this is the last moment
             it can still be typed into: the version row is append-only, so a
             version saved without one carries a date and a diff for good. */}
+        {warning && <div className="policy-warn">{warning}</div>}
+
         <div className="hint">
           {note
             ? <>เหตุผลที่จะบันทึกไว้กับเวอร์ชันนี้: “<strong>{note}</strong>”</>
@@ -4029,26 +4368,6 @@ function UnrecordedPolicy({ live, canEdit, busy, onRecord }) {
 }
 
 const CHANGE_LABEL = Object.fromEntries(POLICY_FIELDS.map((f) => [f.key, f.label]));
-
-/**
- * How tall the merged ข้อ cell starting at row `i` is — the run of CONSECUTIVE
- * rows sharing that number, not every row in the table that carries it.
- *
- * The difference only shows up on a table somebody has since edited, which is
- * exactly when it would not be noticed: counting every match would give a
- * rowSpan longer than its own group the moment two rows with the same ข้อ are
- * separated, and the cells below would be pushed out of their columns for good.
- *
- * A row with no ข้อ spans one and stops there — without that guard a run of
- * `undefined === undefined` would merge every unnumbered row into one cell.
- */
-function openSpanAt(i) {
-  const n = POLICY_FIELDS[i]?.open;
-  if (!n) return 1;
-  let span = 1;
-  while (POLICY_FIELDS[i + span]?.open === n) span += 1;
-  return span;
-}
 
 /**
  * What this installation is ACTUALLY computing with, against what the program
