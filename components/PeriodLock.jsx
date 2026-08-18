@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, periodLabel } from '@/lib/api.js';
-import { closeRefusal, closeWarnings, reopenRefusal } from '@/lib/periodLock.js';
+import { closeRefusal, closeWarnings, previousMonthOpen, reopenRefusal } from '@/lib/periodLock.js';
+import { previousPeriod } from '@/lib/reports.js';
 import { Alert, Modal } from './common.jsx';
 
 /**
@@ -35,14 +36,41 @@ export default function PeriodLockBar({ user, period, onChanged = null }) {
   const [closing, setClosing] = useState(false);
   const [reason, setReason] = useState('');
 
+  /**
+   * The month BEFORE this one, and whether anybody ever closed it.
+   *
+   * Closing is the last step of a sitting that starts on this screen, and this
+   * bar has always said the right thing about the month it is looking at. What
+   * nothing said is that the month before is still open — HR arrives on the
+   * current month by default, sees a bar that correctly reports an open period
+   * (you do not close the month you are in), and there is no screen anywhere
+   * that mentions the one that ended.
+   *
+   * ONE MONTH BACK, not all of them. A sweep would be the thorough answer and
+   * the wrong one: it needs an endpoint that does not exist, and a prompt
+   * listing every unclosed month since the system was installed is a prompt
+   * people learn to scroll past. Closing is monthly, so a miss is caught next
+   * month — and if it is not, this line is still there the month after.
+   *
+   * `entries` is why closeChecks now counts them. A month nobody worked is
+   * trivially closable and pointless to ask about, and every month before the
+   * system existed is one of those.
+   */
+  const [previous, setPrevious] = useState(null);
+
   async function load() {
     try {
       setState(await api.get(`/periods/${period}`));
       setErr('');
     } catch (e) { setErr(e.message); }
+    // Separately, and failure is silent: a reminder that cannot be fetched is
+    // not a reason to break the bar that closes the month.
+    try {
+      setPrevious(await api.get(`/periods/${previousPeriod(period)}`));
+    } catch { setPrevious(null); }
   }
 
-  useEffect(() => { setState(null); load(); }, [period]);
+  useEffect(() => { setState(null); setPrevious(null); load(); }, [period]);
 
   async function act(path, payload) {
     setBusy(true);
@@ -64,6 +92,7 @@ export default function PeriodLockBar({ user, period, onChanged = null }) {
   // second on a closed month is worse than no bar.
   if (!state) return err ? <Alert kind="error">{err}</Alert> : null;
 
+  const lastMonth = previousMonthOpen(previous);
   const lock = state.lock || null;
   const checks = state.checks || {};
   const closeBlock = closeRefusal({
@@ -95,6 +124,21 @@ export default function PeriodLockBar({ user, period, onChanged = null }) {
           {state.closed && (
             <div className="hint" style={{ margin: '4px 0 0' }}>
               แก้ไข ยกเลิก อนุมัติ และบันทึกรายการย้อนหลังของงวดนี้ถูกปิดทั้งหมด
+            </div>
+          )}
+          {/* Shown whatever THIS month's state is, including when it is closed:
+              closing สิงหาคม while กรกฎาคม is still open is exactly the order
+              in which a month gets skipped, and the moment it is most worth
+              saying. Not an Alert — it is a fact about another month, not a
+              problem with this one. */}
+          {lastMonth && (
+            <div className="hint" style={{ margin: '4px 0 0' }}>
+              <strong>{periodLabel(previousPeriod(period))} ยังไม่ได้ปิดงวด</strong>
+              {' '}— มี {lastMonth.entries} รายการในเดือนนั้น
+              {lastMonth.pending > 0
+                ? ` และยังค้างอนุมัติ ${lastMonth.pending} ใบ`
+                : ' และไม่มีใบค้างอนุมัติแล้ว'}
+              {' '}· เลือกเดือนนั้นด้านบนเพื่อปิด
             </div>
           )}
           {!state.closed && state.pending > 0 && (
