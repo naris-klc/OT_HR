@@ -5,7 +5,7 @@ import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
-  chosenPasswordPermission, dropsAnAdmin,
+  chosenPasswordPermission, dropsAnAdmin, unsignedStaff,
 } from '@/lib/employees.js';
 import {
   ACCOUNTING_SENSITIVE, AUDITED_FIELDS, FIELD_LABEL, rosterChanges,
@@ -16,7 +16,7 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // they end up in.
 import { companyOf, companyLabel } from '@/src/config/companies.js';
 import PasswordSlips from './PasswordSlips.jsx';
-import { viewerId } from '@/lib/entries.js';
+import { idOf, viewerId } from '@/lib/entries.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
 // with them, and both read the list from here.
 import {
@@ -190,6 +190,72 @@ function Heads({ department, people }) {
   );
 }
 
+/**
+ * ใครไม่มีหัวหน้าคนใดเซ็นอนุมัติ OT ให้ได้.
+ *
+ * WHY THIS IS A SCREEN AND NOT A RULE. The rule already exists and already
+ * refuses: `signingCoveragePermission` stops a save that would take somebody's
+ * last signer away, and the CSV import reports anyone a file stranded. Both are
+ * about a CHANGE. Neither of them can see a gap that was there before either
+ * was written — ADM has had no หัวหน้า for as long as the roster has existed,
+ * and until now the only way to learn that was to read the database.
+ *
+ * It is deliberately not an alert somewhere else in the app. The two things
+ * that fix a row here are on this settings screen — appoint or re-scope a
+ * หัวหน้า under พนักงาน, or set up a stand-in under ผู้รับช่วงอนุมัติ — so the
+ * finding belongs where the repair is.
+ *
+ * `unsignedStaff` rather than a rule written for the screen. It is the same
+ * function the two write paths call, which is the same question the approve
+ * route asks when a request finally arrives; a second reading of it here is how
+ * a screen comes to promise a signature the server then refuses.
+ */
+function SigningCoverage({ departments, people }) {
+  const active = people.filter((p) => p.active !== false);
+
+  const gaps = departments
+    .map((d) => {
+      const roster = active.filter((p) => idOf(p.department) === String(d._id));
+      return {
+        dept: d,
+        managers: roster.filter((p) => p.role === 'manager'),
+        stranded: unsignedStaff(roster, String(d._id)),
+      };
+    })
+    .filter((g) => g.stranded.length);
+
+  if (!gaps.length) return null;
+
+  const total = gaps.reduce((n, g) => n + g.stranded.length, 0);
+
+  return (
+    <Alert kind="error">
+      <strong>{total} คนไม่มีหัวหน้าคนใดเซ็นอนุมัติ OT ให้ได้</strong>
+      {' '}— บัญชีใช้งานได้ตามปกติ แต่ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดอนุมัติได้
+      <ul style={{ marginTop: 6, marginLeft: 18 }}>
+        {gaps.map(({ dept, managers, stranded }) => (
+          <li key={dept._id} style={{ marginTop: 4 }}>
+            <strong>{dept.code}</strong>{' '}
+            {managers.length === 0
+              ? 'ไม่มีหัวหน้างาน'
+              /* Named rather than counted: a department WITH a หัวหน้า that
+                 still strands somebody is a company-scope problem, and the
+                 scope belongs to a person. */
+              : `หัวหน้า ${managers.map((m) => `${m.code} (เซ็นให้${m.approvesCompany ? companyLabel(m.approvesCompany) : 'ทุกบริษัท'})`).join(' · ')}`}
+            <div style={{ fontSize: 12.5, marginTop: 2 }}>
+              {stranded.map((p) => `${p.code} ${p.name}${p.company ? ` · ${companyLabel(p.company)}` : ''}`).join(', ')}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div style={{ marginTop: 6, fontSize: 12.5 }}>
+        แก้ได้สองทาง — ตั้งหรือแก้ “เซ็นให้บริษัท” ของหัวหน้าในแท็บ พนักงาน
+        {' '}หรือตั้งผู้รับช่วงในแท็บ ผู้รับช่วงอนุมัติ
+      </div>
+    </Alert>
+  );
+}
+
 function Departments() {
   const [rows, setRows] = useState([]);
   const [people, setPeople] = useState([]);
@@ -247,6 +313,11 @@ function Departments() {
       </div>
       {error && <Alert kind="error">{error}</Alert>}
       {ok && <Alert kind="ok">{ok}</Alert>}
+
+      {/* Above the table rather than in it: a department with nobody to sign
+          for its people is not a column of that department's row, it is a thing
+          somebody has to go and do. */}
+      <SigningCoverage departments={rows} people={people} />
 
       {/* The five boxes this replaces are in the dialog behind it — see
           DepartmentForm for why they are no longer standing above the table. */}
