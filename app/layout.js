@@ -43,7 +43,32 @@ const THEME_BOOT = `try{var t=localStorage.getItem('ot-theme');`
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="th">
+    /**
+     * `suppressHydrationWarning` IS THE POINT OF THE SCRIPT ABOVE, not a way of
+     * quietening it.
+     *
+     * THEME_BOOT writes `data-theme` onto this very element before React
+     * hydrates — that is its whole job. The server cannot have written it: the
+     * value lives in the browser's localStorage and no request carries it, so
+     * the markup React rendered carries no theme attribute at all and the DOM it
+     * wakes up to carries data-theme="light". React compares them, finds an
+     * attribute it did not put there, and reports a hydration mismatch.
+     *
+     * The prose here deliberately spells no complete html tag. The test that
+     * pins this reads the file as text, and a comment quoting the tag it is
+     * looking for satisfies the assertion on its own — which is exactly how a
+     * no-op shipped once already, green.
+     *
+     * The mismatch is intended and permanent, which is exactly the case this
+     * attribute exists for. It applies to THIS element only — one level, never
+     * the tree — so a real mismatch anywhere inside the app is still reported.
+     *
+     * The alternative is a cookie, so the server can render the attribute
+     * itself. It would remove the mismatch honestly rather than declare it
+     * expected, at the price of a cookie on every request and a theme that
+     * leaves the browser it belongs to. Not worth it for one attribute.
+     */
+    <html lang="th" suppressHydrationWarning>
       <head>
         {/* eslint-disable-next-line react/no-danger */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />

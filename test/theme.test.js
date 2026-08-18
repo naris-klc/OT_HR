@@ -68,6 +68,28 @@ test('the stored choice is applied before the first paint', () => {
   // In <head>, ahead of everything: from a React effect it would paint the
   // system's answer first and swap a frame later.
   assert.ok(layout.indexOf('THEME_BOOT') < layout.indexOf('fonts.googleapis.com'));
+
+  /**
+   * And the root element must say the mismatch it causes is expected. Without
+   * it React reports a hydration error on every first paint — the server
+   * rendered no theme attribute and the script had already written one. It is
+   * load-bearing for the script above, not decoration: remove it and the app
+   * logs an error it cannot fix, or somebody "fixes" it by moving the theme
+   * into an effect and the flash comes back.
+   *
+   * READ FROM THE RETURNED JSX, NOT FROM THE FILE. Matching the whole file is
+   * how this assertion passed while the attribute sat in a COMMENT and the real
+   * tag went without it — a no-op, shipped green, found by the error still
+   * being on screen. A test that a comment can satisfy is testing prose.
+   */
+  const code = layout
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  assert.match(code, /<html lang="th" suppressHydrationWarning>/);
+  // The stripper is load-bearing, so prove it strips: the comment above the tag
+  // in layout.js says the word, and the code must still be the thing matched.
+  assert.ok(layout.includes('suppressHydrationWarning` IS THE POINT'), 'คอมเมนต์หายไป — เทสต์ข้างล่างไม่ได้พิสูจน์อะไร');
+  assert.doesNotMatch(code, /IS THE POINT/, 'ตัวตัดคอมเมนต์ไม่ทำงาน');
 });
 
 test('the setting is per browser, not per account', () => {
