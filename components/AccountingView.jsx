@@ -5,6 +5,9 @@ import {
   api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES, accountingLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
+// Pure — the same function the CSV phrases its row with, so the screen and the
+// file cannot come to describe one nought two different ways.
+import { zeroRowReason } from '@/lib/otMode.js';
 import { Alert, Empty, RateHead, UnaccountedHours } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { useBackHandler } from './nav.jsx';
@@ -278,6 +281,15 @@ function CompanySheet({ company, period, index }) {
                       {row.pendingCount > 0 && (
                         <div className="note-mark warn">
                           ค้างอนุมัติ {row.pendingCount} รายการ · ไม่นับรวม
+                        </div>
+                      )}
+                      {/* A nought that will always be a nought, said only where
+                          there IS a nought: on a row with hours the department's
+                          mode explains nothing, and a mark on every row of a
+                          เหมารายวัน department is a mark nobody reads. */}
+                      {row.entryCount === 0 && zeroRowReason(row.department) && (
+                        <div className="note-mark">
+                          ไม่มี OT — {zeroRowReason(row.department)}
                         </div>
                       )}
                     </td>

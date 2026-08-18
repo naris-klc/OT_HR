@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { accountingReport } from '@/lib/accounting.js';
 import { unaccountedCsvRow, BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
+import { zeroRowReason } from '@/lib/otMode.js';
 import { toCsv } from '@/src/lib/csv.js';
 import { PERIOD_RE, thaiMonth } from '@/lib/reports.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
@@ -211,7 +212,15 @@ function tail(totals, pending, period) {
 function note(row) {
   const parts = [];
   if (row.birthdayHours > 0) parts.push(`${BIRTHDAY_REMARK} ${fmt(row.birthdayHours)} ชม.`);
-  if (row.entryCount === 0) parts.push('ไม่มี OT');
+  if (row.entryCount === 0) {
+    // "ไม่มี OT" alone cannot tell a reader whether this person had a quiet
+    // month or is in a department that does no OT at all. Where the department
+    // answers that, the answer goes here rather than into a column of its own:
+    // the แผนก column is what accounting groups by, and "ผลิต (เหมารายวัน)"
+    // would split one department into two in every pivot table built on it.
+    const why = zeroRowReason(row.department);
+    parts.push(why ? `ไม่มี OT — ${why}` : 'ไม่มี OT');
+  }
   if (row.pendingCount > 0) parts.push(`ค้างอนุมัติ ${row.pendingCount} รายการ (${fmt(row.pendingHours)} ชม. ไม่นับรวม)`);
   return parts.join(' · ');
 }

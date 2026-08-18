@@ -3059,7 +3059,22 @@ table.mini tbody tr:hover { background: none; }
   /* `min-width: 0` is the load-bearing half: without it the input keeps its
      intrinsic twenty-character width whatever the box around it says, and the
      card grows past the screen instead of the field shrinking. */
-  .deptset-table td.cap-col input { width: 130px; min-width: 0; flex: none; }
+  .deptset-table td.cap-col input {
+    width: 130px; min-width: 0; flex: none;
+    /* A real touch target, and the app's own field rather than the browser's.
+       These two are the only inputs on this screen that never went through
+       `.field` — they are bare <input>s in a table cell, so they kept the
+       default border and a ~26px height while every button on the card beside
+       them is 44px. Wider is NOT the fix and was considered: the box's width is
+       what says a two-digit number goes in it, and a full-card box for "40"
+       reads as a text field. */
+    min-height: 44px; padding: 0 12px;
+    border: 1px solid var(--input-line); border-radius: var(--radius-sm);
+    background: #fff; font: 500 15px/1.3 var(--mono); color: var(--ink);
+  }
+  .deptset-table td.cap-col input:focus {
+    outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(15, 138, 70, .13);
+  }
 
   /* Both buttons a real touch target, and a half of the card each — the same
      foot the queue cards give their two decisions, so a card ends in a full
