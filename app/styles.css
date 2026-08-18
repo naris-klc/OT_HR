@@ -50,6 +50,81 @@
   --info: #2A6099;
   --info-bg: #E7F0FA;
 
+  /* The hairline round a status panel. Named rather than typed at each of the
+     eleven places that draw one, because ธีมมืด has to answer them together:
+     a tint that works as a background on white is not a border on charcoal. */
+  --amber-line: #EFDCB6;
+  --danger-line: #F3CFC7;
+  --ok-line: #C4E3D2;
+  --info-line: #C9DCF0;
+
+  /* ── surfaces that are not the card ──────────────────────────────────── */
+  /**
+   * WHY `#fff` IS NOT ONE THING. It appeared 44 times in this file meaning at
+   * least four different jobs, and ธีมมืด needs each answered differently:
+   *
+   *   --on-fill   text sitting ON a filled colour (green button, red badge).
+   *               Stays white in both themes — the fill stays saturated, so
+   *               the thing on top of it does not move.
+   *   --field-bg  the inside of an input. In light it matches the card; in
+   *               dark it must NOT, or a field disappears into the panel.
+   *   --card      an actual raised surface. Already a token; most of the 44
+   *               were this one written out longhand.
+   *   --scrim/-bar the translucent layers — a modal backdrop and the frosted
+   *               bars — which invert rather than darken.
+   */
+  /**
+   * THE DARK SURFACE — the sidebar, the hero card, the toast, the login panel.
+   *
+   * These were `var(--ink)`, which is also the colour of ordinary TEXT. One
+   * token doing both jobs is fine while the app has one theme and breaks the
+   * moment it has two: ธีมมืด needs text to become near-white and needs these
+   * four panels to stay dark, and a single token cannot go both ways. Split
+   * before the dark palette was written rather than discovered afterwards by a
+   * white sidebar.
+   *
+   * In the light theme it is exactly what it was, so nothing moves today.
+   */
+  --surface-dark: #14201A;
+  --surface-dark-2: #3C4A42;
+  --on-fill: #ffffff;
+  --logo-plate: #ffffff;
+  --field-bg: #ffffff;
+  --scroll-thumb: #CBD4CD;
+  --scrim: rgba(20, 32, 26, .5);
+  --bar-blur: rgba(255, 255, 255, .92);
+  --bar-blur-strong: rgba(255, 255, 255, .96);
+  /** The fade a horizontally scrollable table draws at its edges. */
+  --card-fade: rgba(255, 255, 255, 0);
+
+  /* ── shadow, as a colour rather than as three numbers ────────────────── */
+  /* A shadow on a dark surface is not the same shadow at lower opacity — it is
+     a different colour. One token per weight so ธีมมืด answers them once. */
+  --shadow-soft: rgba(20, 32, 26, .17);
+  --shadow-1: rgba(20, 32, 26, .28);
+  --shadow-2: rgba(20, 32, 26, .3);
+  --shadow-3: rgba(20, 32, 26, .35);
+  --shadow-lift: rgba(15, 23, 20, .14);
+  --shadow-tab: rgba(0, 0, 0, .08);
+
+  /* ── the green glow, and the focus ring cut from it ──────────────────── */
+  --green-glow: rgba(15, 138, 70, .28);
+  --green-glow-sm: rgba(15, 138, 70, .22);
+  --green-glow-lg: rgba(15, 138, 70, .42);
+  --focus-ring: rgba(15, 138, 70, .13);
+  --danger-glow: rgba(228, 87, 46, .28);
+
+  /* ── the sidebar, which is dark in BOTH themes ───────────────────────── */
+  /* These are overlays on `--ink`, so they survive the theme unchanged. They
+     are tokens anyway: a reader looking for "what colour is that hover" should
+     not have to know that this one corner of the app was never themed. */
+  --on-dark-hover: rgba(255, 255, 255, .07);
+  --on-dark-active: rgba(255, 255, 255, .1);
+  --on-dark-line: rgba(255, 255, 255, .09);
+  --on-dark-border: rgba(255, 255, 255, .14);
+  --on-dark-border-2: rgba(255, 255, 255, .18);
+  --meter-track: rgba(255, 255, 255, .13);
+
   --radius-lg: 16px;
   --radius: 14px;
   --radius-sm: 11px;
@@ -62,6 +137,288 @@
   font-family: var(--sans);
 }
 
+/* ══ ธีมมืด ═══════════════════════════════════════════════════════════════
+   Only tokens are redefined — not one rule below this block knows which theme
+   is running. That is the whole reason the raw colours were swept onto tokens
+   first: a theme that needed a second copy of any rule would be a theme that
+   goes stale the first time somebody edits the original.
+
+   `light-dark()` RATHER THAN A DUPLICATED PALETTE. The obvious shape is two
+   blocks — one under `prefers-color-scheme: dark`, one under
+   `[data-theme="dark"]` — holding the same fifty declarations twice, which is
+   two palettes to keep in step and one to forget. `light-dark()` states both
+   values once and picks by the USED `color-scheme`, so the same declaration
+   serves the system preference and the explicit choice below.
+
+   THE BLOCK ABOVE IS THE FALLBACK, and that is why the light values are still
+   written out plainly up there: a browser without `light-dark()` drops every
+   declaration here as invalid and keeps the light theme it has always had,
+   rather than losing its colours.
+
+   WHAT IS NOT HERE:
+     --on-fill      white text on a filled colour. The fill stays saturated in
+                    both themes, so what sits on it does not move.
+     --logo-plate   the white plate behind the Pm mark, for the same reason.
+     --on-dark-*    overlays on the sidebar, which is dark in both themes.
+
+   The green lifts from #0F8A46 to #17A65B. The brand colour is unchanged on
+   paper and in the light theme; on a near-black page the original reads as a
+   muddy olive at body-text size, and a brand nobody can read is not being
+   protected by keeping its hex. */
+:root {
+  color-scheme: light dark;
+
+  --ink: light-dark(#14201A, #E9EFEB);
+  --ink-2: light-dark(#3C4A42, #C7D2CB);
+  --muted: light-dark(#5B6B62, #A0ADA6);
+  --muted-2: light-dark(#7E8F85, #8A9791);
+  --muted-3: light-dark(#8B998F, #7C8983);
+  --muted-4: light-dark(#9AA8A0, #6F7C76);
+
+  /**
+   * THREE LEVELS, NOT ONE. The first dark palette gave the page #0E1411 and the
+   * card #17201B — nine points of lightness apart — and put the sidebar on a
+   * third value close to both. On screen the whole app read as one flat olive
+   * sheet with the panels barely showing, which is what "ดูไม่ค่อยสวย" was.
+   *
+   * They are separated here and the order is deliberate: the rail is the
+   * DEEPEST, the page sits above it, the card above that. Light falls on what
+   * is nearest, so the thing being read is the lightest thing on screen — the
+   * same order the light theme gets for free from a white card on a grey page.
+   *
+   * The neutrals also lost most of their green. A grey mixed toward the brand
+   * reads as olive at panel size however well it works in a 4px border, and
+   * olive is the colour of a screen that looks unwell. What is left is a hint,
+   * which is what keeps it from reading as a generic slate template.
+   */
+  --bg: light-dark(#EEF1EE, #101513);
+  --card: light-dark(#ffffff, #1F2723);
+  --line: light-dark(#E2E7E3, #303934);
+  --line-soft: light-dark(#EEF1EE, #29312C);
+  --line-softer: light-dark(#F2F5F3, #232B27);
+  --input-line: light-dark(#DDE4DF, #3B453F);
+
+  /* Recessed rather than raised. On white, a field is the same colour as the
+     card and its border does the work; on a dark card that leaves the field
+     invisible, so it sits BELOW the surface instead of level with it. */
+  --field-bg: light-dark(#ffffff, #131A17);
+
+  /* Already dark in the light theme. It lifts a little here so the sidebar
+     does not merge into the page behind it. */
+  --surface-dark: light-dark(#14201A, #171E1A);
+  --surface-dark-2: light-dark(#3C4A42, #273029);
+
+  /**
+   * ONE GREEN CANNOT DO BOTH JOBS, and the numbers say so exactly.
+   *
+   * `--green` fills a button that carries white text, and it also colours green
+   * TEXT on a dark card. On #17201B those pull in opposite directions: white on
+   * the fill needs the green at or under 0.178 relative luminance, green text on
+   * the card needs it at or over 0.232. There is no colour in between, so the
+   * two are separate tokens rather than one compromise that fails both.
+   *
+   * The fill kept the brand value in BOTH themes for one revision, on the
+   * argument that a filled block is read by its shape and its label. That was
+   * wrong, and the way it was found is worth keeping.
+   *
+   * The accents below were muted first and the dark theme did not get quieter,
+   * because on a screen like สรุป OT ส่งบัญชี almost nothing green is an accent:
+   * the 01 avatar, the Pm mark, the active row of the phone bar and the primary
+   * button are ALL this one token, and none of them has a panel or a border to
+   * soften it. Muting everything except the fill muted everything except what
+   * was actually bright.
+   *
+   * So the fill comes down too, in the dark theme only — chroma 0.143 → 0.105
+   * and lightness 0.556 → 0.510. Both directions are free: white on the fill is
+   * the only floor it has, and both dulling and darkening RAISE that, 4.43 →
+   * 5.46. The pairing that had the least headroom in the file now has the most.
+   *
+   * It is still the most saturated green here (0.105, against 0.080 for the
+   * amber and 0.065 for the accents) and still the only saturated one, which is
+   * what a brand colour on a dark screen should be. The light theme keeps the
+   * exact brand value, because on white it was never the problem.
+   */
+  --green: light-dark(#0F8A46, #2E7747);
+  /* Hover. Held about 0.05 lightness above the fill so the lift is still felt,
+     and white on it improves from 3.40 to 4.33 on the way past. */
+  --green-lift: light-dark(#12A053, #3C8855);
+  /**
+   * FROM HERE DOWN THE DARK GREENS ARE MUTED, and the fill above is not.
+   *
+   * The `--amber` note further down explains the mechanism: a colour tuned as
+   * dark ink on a pale panel RECEDES, and the same value flipped onto a dark
+   * page starts EMITTING. Every green below this line is that same kind of
+   * colour, so every one of them was carrying the same problem — and green
+   * carries it harder than amber ever did, because green is not the exception
+   * on this screen, it is the ordinary case. An approved chip, a link, a total
+   * row, a ✓: the quieter a colour's job, the more of it there is.
+   *
+   * So the accents came down to chroma 0.065 — BELOW the muted amber's 0.080,
+   * deliberately. The rare colour is allowed to be the louder one.
+   *
+   * THE FILL DID NOT COME WITH THEM. It could have: desaturating `#0F8A46`
+   * RAISES white's contrast on it (4.43 → 4.51 at 0.100), so the ceiling that
+   * pins the fill only bars it from getting LIGHTER. What stopped it is not a
+   * measurement — it is that the fill is the brand mark, the primary button and
+   * the avatar, and a PRIMUS screen whose green is not the PRIMUS green is a
+   * different decision from a screen that is easier to look at. Muting the
+   * accents alone leaves the fill as the one saturated green in the dark theme,
+   * which is what a brand colour is supposed to be.
+   */
+  /** Green as TEXT — links, the active tab on the phone bar, an ✓ in a list. */
+  --green-text: light-dark(#0F8A46, #9ACBAF);
+  /* Was the darkest green — a TEXT colour on a pale green panel. On a dark
+     panel the text has to be the lightest of the three, so this one inverts
+     rather than shifts. */
+  --green-dark: light-dark(#0B6E37, #9ACBAF);
+  /* Lifted off the card rather than sunk into it: on the new card these read
+     as panels somebody placed there, not as holes in it. Lightness unchanged
+     through the muting — only the colour left, so nothing re-stacks. */
+  --green-bg: light-dark(#E8F4ED, #1D3023);
+  --green-tint: light-dark(#F3FAF5, #1D2921);
+  /* Already at 0.016 — the row-hover wash was never the problem. Left alone so
+     the diff says only what actually moved. */
+  --green-wash: light-dark(#F7FAF8, #1B241F);
+  --neutral-wash: light-dark(#F6F8F6, #262E2A);
+
+  --danger: light-dark(#E4572E, #EF6B41);
+  --danger-ink: light-dark(#B4402F, #FFA98E);
+  --danger-bg: light-dark(#FBEAE7, #331A13);
+  --danger-line: light-dark(#F3CFC7, #52291C);
+  /**
+   * WHY THE DARK AMBER IS DULLER THAN THE LIGHT ONE, at the same contrast.
+   *
+   * The first dark amber was #D8A73E — a straight lightening of the brand gold.
+   * It measured 6.93 on the card, BELOW the 8.56 the อนุมัติ green measures, and
+   * still read as the loudest thing on screen. Contrast was not what was wrong
+   * with it. Two other things were:
+   *
+   *   CHROMA. Everything else in the dark theme is cool and nearly grey — card
+   *   0.014, muted text 0.018, all of it in the green family. The old amber sat
+   *   at 0.132, the highest on screen after `--danger`, and it was the only hue
+   *   outside that family. Nothing competed with it, so it won every glance.
+   *
+   *   DIRECTION. In the light theme this colour is dark ink on pale cream: it
+   *   RECEDES. Flipped into the dark theme the same pair becomes light on dark
+   *   and starts EMITTING. Identical values, opposite behaviour.
+   *
+   * So the dark half is muted rather than dimmed — chroma 0.132 → 0.080, and the
+   * hue turned off the gold toward brick, 83° → 62°. It measures 7.00 on the
+   * card, slightly MORE than before: what left is the saturation, not the
+   * legibility. The light theme is untouched, because on cream it was never loud.
+   *
+   * The floor on that turn is `--danger` at 38°. Staying 24° off it with a third
+   * of its chroma keeps a warning tellable from an error at a glance, which is
+   * the whole reason they are two colours.
+   */
+  --amber: light-dark(#A8791A, #D6A67C);
+  /**
+   * What sits ON an amber fill — the count chip and the ! in a warning.
+   *
+   * Not `--on-fill`. The amber lightens in the dark theme so that it reads as
+   * amber against charcoal, and white on it measures 2.19 — the one pairing in
+   * this file that the dark theme made worse rather than better. Dark ink on
+   * that same chip measures 7.95. The light theme keeps the white it has always
+   * had, so nothing on today's screens moves.
+   */
+  --on-amber: light-dark(#ffffff, #261708);
+  /* Panel and border follow the text off the gold. Left behind at 78° and 81°
+     they would have framed a brick-toned word in a golden-brown plate. Their
+     LIGHTNESS is untouched, so the chip sits exactly where it sat and nothing
+     re-tunes around it — only the hue and a little of the chroma move. */
+  --amber-bg: light-dark(#FBF1E0, #312419);
+  --amber-line: light-dark(#EFDCB6, #4A3420);
+  --info: light-dark(#2A6099, #6FA8DC);
+  --info-bg: light-dark(#E7F0FA, #172735);
+  --info-line: light-dark(#C9DCF0, #2A4864);
+  /* Muted with the greens above — it is the border of a --green-bg panel and
+     was the loudest edge on a dark card at 0.065. */
+  --ok-line: light-dark(#C4E3D2, #354E3F);
+
+  --scroll-thumb: light-dark(#CBD4CD, #33403A);
+
+  /**
+   * THE DESK THE PAPER LIES ON — the grey behind the F-HR-027 preview and the
+   * two accounting sheets, in print.css.
+   *
+   * NEITHER OF THESE FOLLOWS THE THEME, and the second one is a decision rather
+   * than an oversight.
+   *
+   * The sheet cannot: it is a picture of paper, it sets its own white and its
+   * own black, and a preview that went dark would be lying about what comes out
+   * of the printer.
+   *
+   * The desk was themed for one afternoon — near-black, so the sheet would be
+   * the brightest thing in the window the way a document viewer does it — and
+   * put back after looking at the two side by side. The light grey reads as the
+   * desk the paper is lying on, and the preview is the one screen in this app
+   * that is pretending to be a physical object. It is the brightest thing on a
+   * dark screen at night; that is the cost, and it was paid on purpose.
+   *
+   * Still tokens, because print.css must not hold a raw colour that somebody
+   * later assumes is themed — and because dimming the desk one notch, if it
+   * ever comes up again, is then one line rather than three.
+   */
+  --paper-desk: #e8ebe9;
+  --paper-shadow: rgba(0, 0, 0, .18);
+  /* Heavier than the light theme's. A dialog is told apart from the page
+     behind it by the contrast between them, and on a dark page a half-opacity
+     scrim leaves the two almost the same colour. */
+  --scrim: light-dark(rgba(20, 32, 26, .5), rgba(0, 0, 0, .74));
+  --bar-blur: light-dark(rgba(255, 255, 255, .92), rgba(16, 21, 19, .92));
+  --bar-blur-strong: light-dark(rgba(255, 255, 255, .96), rgba(16, 21, 19, .96));
+  --card-fade: light-dark(rgba(255, 255, 255, 0), rgba(31, 39, 35, 0));
+
+  /* Black on the dark side, not the ink colour: a shadow works by darkening
+     what is under it, and #14201A over a #0E1411 page darkens nothing. */
+  --shadow-soft: light-dark(rgba(20, 32, 26, .17), rgba(0, 0, 0, .34));
+  --shadow-1: light-dark(rgba(20, 32, 26, .28), rgba(0, 0, 0, .5));
+  --shadow-2: light-dark(rgba(20, 32, 26, .3), rgba(0, 0, 0, .55));
+  --shadow-3: light-dark(rgba(20, 32, 26, .35), rgba(0, 0, 0, .6));
+  --shadow-lift: light-dark(rgba(15, 23, 20, .14), rgba(0, 0, 0, .45));
+  --shadow-tab: light-dark(rgba(0, 0, 0, .08), rgba(0, 0, 0, .35));
+
+  /**
+   * THE SAME RULE AS THE SHADOWS ABOVE, which this group used to break.
+   *
+   * A green "glow" under a button is a shadow — it is only ever seen as light
+   * because of what it sits on. Composited on the light page, `rgba(15,138,70,
+   * .28)` takes #EEF1EE to #B0D4BF: LIGHTNESS −0.117, a shadow. The dark half
+   * was written a step lighter and a step more opaque, and composited on #101513
+   * it took the page to #124129: lightness +0.147. Not a shadow — a lamp. The
+   * primary button was the brightest object on the screen and the light was
+   * coming from underneath it.
+   *
+   * So on the dark side these are black, like every other shadow in this block,
+   * and the green comes from the button rather than from the air around it.
+   *
+   * --focus-ring is the exception and stays green, because it is the one of
+   * these whose JOB is to pull the eye. It is only turned down — the fill green
+   * at .16 instead of a much lighter green at .22, +0.057 rather than +0.102.
+   */
+  --green-glow: light-dark(rgba(15, 138, 70, .28), rgba(0, 0, 0, .5));
+  --green-glow-sm: light-dark(rgba(15, 138, 70, .22), rgba(0, 0, 0, .42));
+  --green-glow-lg: light-dark(rgba(15, 138, 70, .42), rgba(0, 0, 0, .55));
+  --focus-ring: light-dark(rgba(15, 138, 70, .13), rgba(18, 160, 83, .16));
+  /* Same reasoning, same fix: a red lamp under the delete button is still a lamp. */
+  --danger-glow: light-dark(rgba(228, 87, 46, .28), rgba(0, 0, 0, .5));
+}
+
+/**
+ * The explicit choice, which is one attribute on <html> and nothing else.
+ *
+ * `only light` / `only dark` rather than a second palette: `light-dark()` reads
+ * the USED colour scheme, so pinning that pins every token above in one line.
+ * It also tells the browser which way to draw the things CSS does not own —
+ * scrollbars, form controls, the caret — which a palette alone cannot.
+ *
+ * Set before first paint by the inline script in app/layout.js. Without it the
+ * page would paint the system's answer and then swap, and the person most
+ * likely to notice the flash is the one who set the theme by hand.
+ */
+:root[data-theme="light"] { color-scheme: only light; }
+:root[data-theme="dark"] { color-scheme: only dark; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
@@ -73,7 +430,7 @@ html, body {
 body { font-size: 14.5px; line-height: 1.55; }
 
 button, input, select, textarea { font-family: inherit; color: inherit; }
-a { color: var(--green); }
+a { color: var(--green-text); }
 a:hover { color: var(--green-dark); }
 
 /* Numbers are compared down a column, so they must not shift width. */
@@ -83,7 +440,7 @@ a:hover { color: var(--green-dark); }
 @keyframes otslide { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #CBD4CD; border-radius: 8px; border: 3px solid var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; border: 3px solid var(--bg); }
 
 /* ══ shell ═══════════════════════════════════════════════════════════════ */
 
@@ -91,7 +448,7 @@ a:hover { color: var(--green-dark); }
 
 .sidebar {
   width: 248px; flex: none;
-  background: var(--ink); color: #fff;
+  background: var(--surface-dark); color: var(--on-fill);
   padding: 22px 16px;
   display: flex; flex-direction: column;
   position: sticky; top: 0; height: 100vh;
@@ -123,7 +480,10 @@ a:hover { color: var(--green-dark); }
    deliberate. */
 .brand .mark.has-logo,
 .appbar .mark-sm.has-logo,
-.login-brand .lockup .mark.has-logo { background: #fff; }
+/* Not `--card`: this is the plate the Pm mark is drawn on, and the file it
+   loads is a green mark with a transparent ground. On a dark plate it loses its
+   own edge, so this white does not follow the theme. */
+.login-brand .lockup .mark.has-logo { background: var(--logo-plate); }
 
 .brand .mark img,
 .appbar .mark-sm img,
@@ -143,8 +503,8 @@ a:hover { color: var(--green-dark); }
   border-radius: var(--radius-xs); cursor: pointer;
   font: 500 14px/1 var(--sans); text-align: left;
 }
-.nav button:hover { background: rgba(255, 255, 255, .07); color: #fff; }
-.nav button.active { background: var(--green); color: #fff; }
+.nav button:hover { background: var(--on-dark-hover); color: var(--on-fill); }
+.nav button.active { background: var(--green); color: var(--on-fill); }
 /* The slot is a fixed 18px box so every label starts on the same left edge —
    it did that by `width` + `text-align` when the icon was a character, and it
    does it by centring an svg now. `opacity` rather than a dimmer colour: the
@@ -164,11 +524,11 @@ a:hover { color: var(--green-dark); }
 /* Count badges are alarms, not decoration — one colour, used only here. */
 .count {
   min-width: 20px; height: 20px; padding: 0 6px; flex: none;
-  border-radius: 10px; background: var(--danger); color: #fff;
+  border-radius: 10px; background: var(--danger); color: var(--on-fill);
   font: 600 11px/20px var(--mono); text-align: center;
 }
 
-.sidebar-foot { margin-top: auto; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .09); }
+.sidebar-foot { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--on-dark-line); }
 /* A button since it opens ข้อมูลส่วนตัว — reset the browser chrome that comes
    with one, and keep the flex row it had as a div. */
 .whoami {
@@ -176,12 +536,12 @@ a:hover { color: var(--green-dark); }
   border: none; background: transparent; border-radius: 8px;
   color: inherit; text-align: left; font: inherit; cursor: pointer;
 }
-.whoami:hover { background: rgba(255, 255, 255, .07); }
-.whoami.active { background: rgba(255, 255, 255, .1); }
+.whoami:hover { background: var(--on-dark-hover); }
+.whoami.active { background: var(--on-dark-active); }
 .whoami .chev { flex: none; color: var(--muted-2); font-size: 17px; line-height: 1; }
 .avatar {
   width: 34px; height: 34px; flex: none; border-radius: 50%;
-  background: var(--green); color: #fff; display: grid; place-items: center;
+  background: var(--green); color: var(--on-fill); display: grid; place-items: center;
   font: 600 13px/1 var(--mono); border: none;
 }
 .whoami .n { font: 500 13px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -189,17 +549,17 @@ a:hover { color: var(--green-dark); }
 
 .signout {
   width: 100%; margin-top: 6px; padding: 9px;
-  border: 1px solid rgba(255, 255, 255, .14); background: transparent;
+  border: 1px solid var(--on-dark-border); background: transparent;
   color: var(--on-dark-2); border-radius: 8px;
   font: 500 12.5px/1 var(--sans); cursor: pointer;
 }
-.signout:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.signout:hover { background: var(--on-dark-hover); color: var(--on-fill); }
 
 .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 .appbar {
   position: sticky; top: 0; z-index: 20;
-  background: rgba(255, 255, 255, .92); backdrop-filter: blur(10px);
+  background: var(--bar-blur); backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
   padding: 0 clamp(16px, 3vw, 32px); height: 62px;
   display: flex; align-items: center; gap: 14px;
@@ -209,7 +569,7 @@ a:hover { color: var(--green-dark); }
 .appbar .grow { flex: 1; min-width: 0; }
 .appbar .mark-sm {
   width: 30px; height: 30px; flex: none; border-radius: 7px;
-  background: var(--green); color: #fff; display: grid; place-items: center;
+  background: var(--green); color: var(--on-fill); display: grid; place-items: center;
   font: 700 14px/1 var(--latin);
   transition: opacity .14s;
 }
@@ -256,7 +616,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .stack { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
 
 .hero {
-  background: var(--ink); color: #fff;
+  background: var(--surface-dark); color: var(--on-fill);
   border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 28px);
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 22px; align-items: end;
 }
@@ -267,7 +627,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .hero .mid { font: 600 30px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
 .hero .sub { font: 400 12px/1.5 var(--sans); color: var(--on-dark); margin-top: 6px; }
 
-.meter { margin-top: 14px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .13); overflow: hidden; }
+.meter { margin-top: 14px; height: 6px; border-radius: 3px; background: var(--meter-track); overflow: hidden; }
 .meter > i { display: block; height: 100%; border-radius: 3px; background: var(--green-lift); transition: width .3s ease; }
 .meter.over > i { background: var(--danger); }
 
@@ -323,7 +683,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    the reason every button below it will refuse. The padding is tighter than a
    card's because this is one line and a button, not a section. */
 .period-lock { padding: 12px 18px; }
-.period-lock.closed { background: var(--amber-bg); border-color: #E8D4A8; }
+.period-lock.closed { background: var(--amber-bg); border-color: var(--amber-line); }
 .period-lock .hint { margin-bottom: 0; }
 
 .card.flush { padding: 0; overflow: hidden; }
@@ -345,10 +705,10 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* Bare month picker used in card headers, without the stacked label. */
 .period-input {
   border: 1px solid var(--input-line); border-radius: var(--radius-xs);
-  padding: 7px 10px; background: #fff;
+  padding: 7px 10px; background: var(--field-bg);
   font: 500 13px/1 var(--mono); color: var(--ink);
 }
-.period-input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(15, 138, 70, .13); }
+.period-input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
 
 /* ══ rows / list items ═══════════════════════════════════════════════════ */
 
@@ -389,15 +749,15 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* Not an arrow and not a button — the whole row is the button. This is the
    mark that says so, at the end a reader's eye already finishes on. */
 .item-go { flex: none; font: 400 20px/1 var(--latin); color: var(--muted-2); }
-.item:hover .item-go { color: var(--green); }
+.item:hover .item-go { color: var(--green-text); }
 
 /* ══ buttons ═════════════════════════════════════════════════════════════ */
 
 .btn {
   padding: 12px 18px; border: none; border-radius: var(--radius-sm);
-  background: var(--green); color: #fff;
+  background: var(--green); color: var(--on-fill);
   font: 600 14.5px/1 var(--sans); cursor: pointer;
-  box-shadow: 0 6px 18px rgba(15, 138, 70, .28);
+  box-shadow: 0 6px 18px var(--green-glow);
   transition: background .16s, transform .16s, box-shadow .16s;
 }
 .btn:hover:not(:disabled) { background: var(--green-lift); }
@@ -405,20 +765,20 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
 
 .btn.ghost {
-  background: #fff; color: var(--ink-2);
+  background: var(--card); color: var(--ink-2);
   border: 1px solid var(--line); box-shadow: none; font-weight: 500;
 }
 .btn.ghost:hover:not(:disabled) { background: var(--green-tint); border-color: var(--green); color: var(--green-dark); }
 
-.btn.danger { background: var(--danger); box-shadow: 0 6px 18px rgba(228, 87, 46, .28); }
+.btn.danger { background: var(--danger); box-shadow: 0 6px 18px var(--danger-glow); }
 .btn.danger:hover:not(:disabled) { background: var(--danger-ink); }
 
 .btn.sm { padding: 9px 13px; font-size: 13px; border-radius: var(--radius-xs); box-shadow: none; }
-.btn.on-dark { border: 1px solid rgba(255, 255, 255, .18); background: transparent; color: var(--on-dark-3); box-shadow: none; font-weight: 500; }
-.btn.on-dark:hover:not(:disabled) { background: rgba(255, 255, 255, .07); color: #fff; }
+.btn.on-dark { border: 1px solid var(--on-dark-border-2); background: transparent; color: var(--on-dark-3); box-shadow: none; font-weight: 500; }
+.btn.on-dark:hover:not(:disabled) { background: var(--on-dark-hover); color: var(--on-fill); }
 
 .link {
-  border: none; background: none; color: var(--green);
+  border: none; background: none; color: var(--green-text);
   font: 500 13px/1 var(--sans); cursor: pointer; padding: 0;
 }
 .link:hover { color: var(--green-dark); text-decoration: underline; }
@@ -454,16 +814,16 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .field input, .field select, .field textarea,
 .policy-table select {
   border: 1px solid var(--input-line); border-radius: var(--radius-sm);
-  padding: 12px 14px; background: #fff; width: 100%;
+  padding: 12px 14px; background: var(--field-bg); width: 100%;
   font: 500 15px/1.3 var(--mono); color: var(--ink);
 }
 .field textarea { font: 400 14.5px/1.55 var(--sans); resize: vertical; min-height: 64px; }
 .field input:focus, .field select:focus, .field textarea:focus,
 .policy-table select:focus {
-  outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(15, 138, 70, .13);
+  outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
 }
 /* A field this person may not change.
-   Greyed for real rather than left to the browser: `background: #fff` above
+   Greyed for real rather than left to the browser: `background: var(--card)` above
    wins over the UA's own disabled tint, so without this a locked field looked
    exactly like an editable one and the only signal was that typing did nothing.
    The sentence saying WHY goes underneath in .field-note — grey on its own
@@ -523,13 +883,13 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .tip-btn {
   flex: none; width: 17px; height: 17px; padding: 0;
   border: 1px solid var(--line); border-radius: 50%;
-  background: #fff; color: var(--muted-2);
+  background: var(--card); color: var(--muted-2);
   font: 600 11px/1 var(--latin); cursor: pointer;
   display: grid; place-items: center;
   transition: background .14s, border-color .14s, color .14s;
 }
-.tip-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-tint); }
-.tip-btn.on { border-color: var(--green); background: var(--green); color: #fff; }
+.tip-btn:hover { border-color: var(--green); color: var(--green-text); background: var(--green-tint); }
+.tip-btn.on { border-color: var(--green); background: var(--green); color: var(--on-fill); }
 .tip-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
 /* ══ grouped dialog form ═════════════════════════════════════════════════ */
@@ -607,7 +967,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   background: var(--line); border: 1px solid var(--line);
   border-radius: var(--radius-sm); overflow: hidden;
 }
-.profile-facts > div { flex: 1 1 210px; background: #fff; padding: 12px 14px; }
+.profile-facts > div { flex: 1 1 210px; background: var(--card); padding: 12px 14px; }
 .profile-facts dt {
   font: 600 11px/1 var(--mono); letter-spacing: .09em;
   color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
@@ -635,7 +995,10 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   font: 600 13.5px/1.4 var(--sans); color: var(--muted); cursor: pointer;
 }
 .queue-tabs button:hover { color: var(--ink); }
-.queue-tabs button.active { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.08)); }
+/* `--shadow-sm` has never been defined; the fallback is what draws. Kept at
+   its own weight rather than folded into `--shadow-soft`, which is twice as
+   dark — the sweep would have deepened this one tab's edge for no reason. */
+.queue-tabs button.active { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px var(--shadow-tab); }
 /* The per-tab number. The sidebar badge carries the SUM of the two, because it
    is about the screen; these are about one job each. */
 .queue-tabs .count {
@@ -643,7 +1006,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   background: var(--amber-bg); color: var(--amber);
   font: 600 11.5px/18px var(--sans); font-variant-numeric: tabular-nums;
 }
-.queue-tabs button.active .count { background: var(--amber); color: #fff; }
+.queue-tabs button.active .count { background: var(--amber); color: var(--on-amber); }
 
 /* ตั้งค่าระบบ's six section buttons — the same job as .queue-tabs above, but
    six choices instead of two, so they have to be allowed to wrap and cannot be
@@ -686,13 +1049,27 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .chip.muted { background: var(--neutral-wash); color: var(--muted); }
 /* แก้ไขแล้ว — amber, the same "needs a second look" tone รอหัวหน้า carries,
    because that is what it is asking of the reader rather than a warning. */
-.chip.edited { background: #FBF1E0; color: #A8791A; }
+.chip.edited { background: var(--amber-bg); color: var(--amber); }
 .chip.green { background: var(--green-bg); color: var(--green-dark); }
+/**
+ * สถานะของใบ — the five, as classes.
+ *
+ * They were five pairs of hex values in lib/api.js applied as an inline style,
+ * which is the one thing a theme cannot reach: on the day ธีมมืด shipped every
+ * chip in the app stayed a pale pill on charcoal. Each pair mapped exactly onto
+ * a status token that already existed, so this is the same five colours read
+ * from the place the alerts and the boxes read theirs.
+ */
+.chip.st-pending_mgr { background: var(--amber-bg); color: var(--amber); }
+.chip.st-pending_hr { background: var(--info-bg); color: var(--info); }
+.chip.st-approved { background: var(--green-bg); color: var(--green-dark); }
+.chip.st-rejected { background: var(--danger-bg); color: var(--danger-ink); }
+.chip.st-cancelled { background: var(--line-softer); color: var(--muted-2); }
 /* หัวหน้าบันทึกแทน — blue, deliberately not the amber แก้ไขแล้ว wears. Neither
    is a warning, but they say different things: one is "these numbers moved
    after filing", the other is "this row is not in the handwriting you expect".
    Two facts a reviewer reads on the same row, so they must not look alike. */
-.chip.proxy { background: #E8F0FA; color: #2C5B93; }
+.chip.proxy { background: var(--info-bg); color: var(--info); }
 /* รับช่วง — the team a row came from, on a queue holding more than one. Grey,
    because it is orientation rather than something to act on: it tells the
    reviewer which authority they are about to sign under, and every row on the
@@ -711,7 +1088,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .entry-history .who .behalf { color: var(--muted); font-weight: 500; }
 .badge {
   display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 6px;
-  background: var(--danger); color: #fff; border-radius: 9px;
+  background: var(--danger); color: var(--on-fill); border-radius: 9px;
   font: 600 11px/18px var(--mono); text-align: center;
 }
 
@@ -731,8 +1108,8 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   transition: background .15s ease, color .15s ease;
 }
 .seg button:hover { background: var(--green-tint); color: var(--green-dark); }
-.seg button.active { background: var(--green); color: #fff; }
-.seg button.active:hover { background: var(--green-lift); color: #fff; }
+.seg button.active { background: var(--green); color: var(--on-fill); }
+.seg button.active:hover { background: var(--green-lift); color: var(--on-fill); }
 .seg .n {
   font: 500 12px/1 var(--mono); font-variant-numeric: tabular-nums;
   opacity: .68; letter-spacing: -.01em;
@@ -743,10 +1120,14 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   font: 400 13.5px/1.6 var(--sans);
   border: 1px solid transparent;
 }
-.box.warn { background: var(--amber-bg); color: var(--amber); border-color: #EFDCB6; }
-.box.error { background: var(--danger-bg); color: var(--danger-ink); border-color: #F3CFC7; }
-.box.ok { background: var(--green-bg); color: var(--green-dark); border-color: #C4E3D2; }
-.box.info { background: var(--info-bg); color: var(--info); border-color: #C9DCF0; }
+/* The รวม tile at the end of a rate split — the one box in the row that is a
+   total rather than a column. It carried its own pale green inline, which on a
+   dark screen was a white slab in the middle of the panel. */
+.box.total { background: var(--green-bg); border-color: var(--ok-line); }
+.box.warn { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-line); }
+.box.error { background: var(--danger-bg); color: var(--danger-ink); border-color: var(--danger-line); }
+.box.ok { background: var(--green-bg); color: var(--green-dark); border-color: var(--ok-line); }
+.box.info { background: var(--info-bg); color: var(--info); border-color: var(--info-line); }
 
 /* An alert is a .box that speaks: same four palettes, plus a mark in the mono
    voice the sidebar icons use, so "ไม่อนุมัติเพราะ…" is not mistaken for the
@@ -761,7 +1142,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .alert::before {
   flex: none; width: 17px; height: 17px; margin-top: 1px;
   display: grid; place-items: center; border-radius: 50%;
-  font: 600 11px/1 var(--mono); color: #fff;
+  font: 600 11px/1 var(--mono); color: var(--on-fill);
 }
 /* The message, as one block beside the mark. The row above is for the mark and
    nothing else: without this every child of an alert becomes a column, so a
@@ -769,13 +1150,13 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    have to be read on their own. `min-width: 0` lets a long line wrap inside the
    alert instead of stretching it past the card. */
 .alert-body { flex: 1; min-width: 0; }
-.alert.warn { background: var(--amber-bg); color: var(--amber); border-color: #EFDCB6; }
-.alert.warn::before { content: '!'; background: var(--amber); }
-.alert.error { background: var(--danger-bg); color: var(--danger-ink); border-color: #F3CFC7; }
+.alert.warn { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-line); }
+.alert.warn::before { content: '!'; background: var(--amber); color: var(--on-amber); }
+.alert.error { background: var(--danger-bg); color: var(--danger-ink); border-color: var(--danger-line); }
 .alert.error::before { content: '!'; background: var(--danger); }
-.alert.ok { background: var(--green-bg); color: var(--green-dark); border-color: #C4E3D2; }
+.alert.ok { background: var(--green-bg); color: var(--green-dark); border-color: var(--ok-line); }
 .alert.ok::before { content: '✓'; background: var(--green); }
-.alert.info { background: var(--info-bg); color: var(--info); border-color: #C9DCF0; }
+.alert.info { background: var(--info-bg); color: var(--info); border-color: var(--info-line); }
 .alert.info::before { content: 'i'; background: var(--info); }
 
 /* How the engine cut a session up — one line per segment, times and hours, so
@@ -834,11 +1215,11 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .refiled-note {
   display: flex; align-items: flex-start; gap: 11px; flex-wrap: wrap;
   padding: 13px 15px; border-radius: var(--radius-sm);
-  background: var(--amber-bg); border: 1px solid #EFDCB6;
+  background: var(--amber-bg); border: 1px solid var(--amber-line);
 }
 .refiled-note .mark {
   flex: none; padding: 3px 9px; border-radius: 20px;
-  background: var(--amber); color: #fff;
+  background: var(--amber); color: var(--on-amber);
   font: 600 11px/1.5 var(--sans); white-space: nowrap;
 }
 .refiled-note .body { flex: 1; min-width: 180px; }
@@ -868,7 +1249,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   border: 1px solid var(--line); border-radius: var(--radius-xs);
   padding: 12px 14px; background: var(--neutral-wash);
 }
-.req.current { background: #fff; border-color: var(--green); }
+.req.current { background: var(--card); border-color: var(--green); }
 .req > header {
   display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
   padding-bottom: 9px; border-bottom: 1px dashed var(--line);
@@ -916,10 +1297,10 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* The open state of a toggle has to differ by more than the word on it —
    a column of identical grey buttons gives no sense of what is expanded. */
 .btn.ghost.sm.on {
-  background: var(--ink); border-color: var(--ink); color: #fff;
+  background: var(--surface-dark); border-color: var(--surface-dark); color: var(--on-fill);
 }
 .btn.ghost.sm.on:hover:not(:disabled) {
-  background: var(--ink-2); border-color: var(--ink-2); color: #fff;
+  background: var(--surface-dark-2); border-color: var(--surface-dark-2); color: var(--on-fill);
 }
 
 .audit-row > td { padding: 0; background: var(--neutral-wash); }
@@ -1268,7 +1649,7 @@ th.act-col { width: 258px; }
   .queue-table th.act-col,
   .queue-table td.act-col { position: sticky; right: 0; }
   .queue-table thead th.act-col { z-index: 2; }
-  .queue-table tbody td.act-col { z-index: 1; background: #fff; }
+  .queue-table tbody td.act-col { z-index: 1; background: var(--card); }
   .queue-table tbody tr:hover td.act-col { background: var(--green-wash); }
   .queue-table tbody tr.picked td.act-col { background: var(--green-tint); }
   .queue-table tbody tr.picked:hover td.act-col { background: var(--green-bg); }
@@ -1321,7 +1702,7 @@ th.why-col { width: 150px; }
   position: sticky; top: 62px; z-index: 10;
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 12px 18px;
-  background: var(--green-bg); border-bottom: 1px solid #C4E3D2;
+  background: var(--green-bg); border-bottom: 1px solid var(--ok-line);
   animation: otfade .16s ease both;
 }
 .batch-bar .count-label {
@@ -1392,13 +1773,13 @@ tbody tr.picked:hover { background: var(--green-bg); }
    weight carries the consequence, so the irreversible one is never the one
    you hit by aiming badly. */
 .btn.ghost.danger {
-  background: #fff; color: var(--danger-ink); border-color: #F3CFC7; box-shadow: none;
+  background: var(--card); color: var(--danger-ink); border-color: var(--danger-line); box-shadow: none;
 }
 .btn.ghost.danger:hover:not(:disabled) {
   background: var(--danger-bg); border-color: var(--danger); color: var(--danger-ink);
 }
 .btn.ghost.warn {
-  background: #fff; color: var(--amber); border-color: #EFDCB6; box-shadow: none;
+  background: var(--card); color: var(--amber); border-color: var(--amber-line); box-shadow: none;
 }
 .btn.ghost.warn:hover:not(:disabled) {
   background: var(--amber-bg); border-color: var(--amber); color: var(--amber);
@@ -1411,7 +1792,7 @@ tbody tr.picked:hover { background: var(--green-bg); }
 }
 .empty.cleared .tick {
   width: 46px; height: 46px; border-radius: 50%;
-  background: var(--green-bg); color: var(--green);
+  background: var(--green-bg); color: var(--green-text);
   display: grid; place-items: center; font: 400 22px/1 var(--sans);
   animation: ottick .32s cubic-bezier(.2, 1.3, .5, 1) both;
 }
@@ -1460,7 +1841,7 @@ tbody tr.picked:hover { background: var(--green-bg); }
   background: var(--line-soft); border: 1px solid var(--line-soft);
   border-radius: var(--radius-xs); overflow: hidden;
 }
-.fact-grid > div { flex: 1 1 150px; background: #fff; padding: 10px 12px; }
+.fact-grid > div { flex: 1 1 150px; background: var(--card); padding: 10px 12px; }
 /* A fact whose value is a paragraph, on its own row. Cells on a row are as tall
    as the tallest of them, so a four-line fact beside three one-line ones
    stretched all four into tall empty boxes — see `Fact`'s `wide` in
@@ -1490,11 +1871,11 @@ table.mini tbody tr:hover { background: none; }
   animation: otfade .16s ease both;
 }
 .quick-edit .checks { display: flex; gap: 20px; flex-wrap: wrap; }
-.quick-edit .field input, .quick-edit .field textarea { background: #fff; }
+.quick-edit .field input, .quick-edit .field textarea { background: var(--field-bg); }
 
 .edit-preview {
   padding: 12px 14px; border-radius: var(--radius-xs);
-  background: #fff; border: 1px solid var(--line);
+  background: var(--card); border: 1px solid var(--line);
   display: flex; flex-direction: column; gap: 6px;
 }
 /* เดิม → ใหม่, in the same voice the history diff uses, because it is the
@@ -1525,8 +1906,8 @@ table.mini tbody tr:hover { background: none; }
   pointer-events: auto;
   display: flex; align-items: flex-start; gap: 10px;
   padding: 13px 14px; border-radius: var(--radius-sm);
-  background: var(--ink); color: #fff;
-  box-shadow: 0 14px 34px rgba(20, 32, 26, .3);
+  background: var(--surface-dark); color: var(--on-fill);
+  box-shadow: 0 14px 34px var(--shadow-2);
   font: 400 13.5px/1.55 var(--sans);
   animation: ottoast .22s cubic-bezier(.2, 1.1, .5, 1) both;
 }
@@ -1535,7 +1916,7 @@ table.mini tbody tr:hover { background: none; }
   flex: none; border: none; background: none; cursor: pointer;
   color: var(--on-dark); font: 300 20px/1 var(--latin); padding: 0 2px;
 }
-.toast button:hover { color: #fff; }
+.toast button:hover { color: var(--on-fill); }
 .toast.ok { background: var(--green-dark); }
 .toast.error { background: var(--danger-ink); }
 
@@ -1565,7 +1946,7 @@ table.mini tbody tr:hover { background: none; }
    transform, and .page animates one. */
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 80;
-  background: rgba(20, 32, 26, .5);
+  background: var(--scrim);
   display: flex; align-items: center; justify-content: center; padding: 20px;
   /* Should the content ever outgrow the cap below — an old browser, a very
      long history — the dialog scrolls instead of having its top cut off out
@@ -1582,7 +1963,7 @@ table.mini tbody tr:hover { background: none; }
    with the browser's own bars collapsed, which pushes the buttons under the
    URL bar exactly when they are needed. */
 .modal {
-  background: #fff; border-radius: var(--radius-lg);
+  background: var(--card); border-radius: var(--radius-lg);
   width: min(620px, 100%);
   /* `auto` on all four sides centres it, and — unlike align-items alone —
      keeps both ends reachable if it ever overflows. */
@@ -1590,7 +1971,7 @@ table.mini tbody tr:hover { background: none; }
   max-height: 88vh;                  /* browsers without dvh still get a cap */
   max-height: min(88dvh, 900px);
   display: flex; flex-direction: column;
-  box-shadow: 0 26px 60px rgba(20, 32, 26, .28);
+  box-shadow: 0 26px 60px var(--shadow-1);
   animation: otfade .16s ease both;
 }
 .modal.wide { width: min(880px, 100%); }
@@ -1599,13 +1980,13 @@ table.mini tbody tr:hover { background: none; }
 .modal > h2, .modal-head {
   flex: none;
   padding: 16px 20px; border-bottom: 1px solid var(--line-soft);
-  background: #fff; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--card); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   font: 600 17px/1.3 var(--sans);
   display: flex; align-items: center; gap: 12px;
   transition: box-shadow .16s;
 }
 /* Says there is more below without costing a row of height. */
-.modal-head.scrolled { box-shadow: 0 6px 14px -8px rgba(20, 32, 26, .35); }
+.modal-head.scrolled { box-shadow: 0 6px 14px -8px var(--shadow-3); }
 /* The bottom sheet's grabber. Nothing above 860px, where the dialog is centred
    and there is no gesture for it to describe — and the drag handlers in Modal
    read that back off this element rather than keeping their own copy of the
@@ -1643,7 +2024,7 @@ table.mini tbody tr:hover { background: none; }
   flex: none;
   padding: 14px 20px; border-top: 1px solid var(--line-soft);
   display: flex; gap: 10px; justify-content: flex-end; align-items: center;
-  background: #fff; border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--card); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 /* A dialog's primary action is off while there is nothing to save, and the
    global `opacity: .55` said that by draining the green — which does not read
@@ -1659,7 +2040,7 @@ table.mini tbody tr:hover { background: none; }
 
 /* Closing over unsaved typing is asked for twice — on a phone the backdrop is
    always one badly-aimed thumb away. */
-.modal-foot.asking { background: var(--danger-bg); border-top-color: #F3CFC7; flex-wrap: wrap; }
+.modal-foot.asking { background: var(--danger-bg); border-top-color: var(--danger-line); flex-wrap: wrap; }
 .modal-foot .ask { flex: 1; min-width: 180px; font: 400 13px/1.5 var(--sans); color: var(--danger-ink); }
 
 /* ── the temporary password, on the one screen that will ever show it ──────
@@ -1688,13 +2069,13 @@ table.mini tbody tr:hover { background: none; }
 .login-split {
   min-height: 100vh; display: grid;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  background: var(--ink);
+  background: var(--surface-dark);
 }
 .login-brand {
   padding: 56px 48px; display: flex; flex-direction: column; justify-content: space-between;
   background: var(--green);
   background-image: linear-gradient(160deg, var(--green-lift) 0%, var(--green-dark) 100%);
-  color: #fff; min-height: 280px;
+  color: var(--on-fill); min-height: 280px;
 }
 .login-brand .kicker { font: 500 12px/1 var(--mono); letter-spacing: .18em; opacity: .75; margin-bottom: 18px; }
 .login-brand h1 { font: 700 clamp(28px, 4vw, 40px)/1.2 var(--sans); letter-spacing: -.5px; margin-bottom: 14px; text-wrap: pretty; }
@@ -1702,12 +2083,12 @@ table.mini tbody tr:hover { background: none; }
 .login-brand .ver { font: 400 12px/1.5 var(--mono); opacity: .6; }
 .login-brand .lockup { display: flex; align-items: center; gap: 12px; }
 .login-brand .lockup .mark {
-  width: 40px; height: 40px; border-radius: 9px; background: #fff; color: var(--green);
+  width: 40px; height: 40px; border-radius: 9px; background: var(--card); color: var(--green);
   display: grid; place-items: center; font: 700 19px/1 var(--latin); letter-spacing: -.5px;
 }
 .login-brand .lockup .word { font: 600 15px/1.2 var(--latin); letter-spacing: .14em; }
 
-.login-form { background: #fff; padding: 56px 48px; display: flex; flex-direction: column; justify-content: center; }
+.login-form { background: var(--card); padding: 56px 48px; display: flex; flex-direction: column; justify-content: center; }
 .login-form .inner { width: 100%; max-width: 400px; margin: 0 auto; }
 .login-form h2 { font: 600 24px/1.3 var(--sans); margin-bottom: 6px; }
 .login-form .lede { font: 400 14px/1.5 var(--sans); color: var(--muted); margin-bottom: 28px; }
@@ -1797,7 +2178,7 @@ table.mini tbody tr:hover { background: none; }
   .mobile-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
     display: flex;
-    background: rgba(255, 255, 255, .96); backdrop-filter: blur(12px);
+    background: var(--bar-blur-strong); backdrop-filter: blur(12px);
     border-top: 1px solid var(--line);
     padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
   }
@@ -1806,7 +2187,7 @@ table.mini tbody tr:hover { background: none; }
     border: none; background: none; cursor: pointer; padding: 6px 2px;
     color: var(--muted-2);
   }
-  .mobile-nav button.active { color: var(--green); }
+  .mobile-nav button.active { color: var(--green-text); }
   /* `position: relative` is load-bearing — the count badge is absolutely
      positioned against this box, not against the button, so it rides on the
      icon's top-right corner rather than the whole tab's. */
@@ -1823,9 +2204,9 @@ table.mini tbody tr:hover { background: none; }
     display: grid; place-items: center;
     position: fixed; right: 18px; bottom: 92px; z-index: 35;
     width: 58px; height: 58px; border-radius: 50%;
-    border: none; background: var(--green); color: #fff;
+    border: none; background: var(--green); color: var(--on-fill);
     font: 300 30px/1 var(--latin); cursor: pointer;
-    box-shadow: 0 10px 26px rgba(15, 138, 70, .42);
+    box-shadow: 0 10px 26px var(--green-glow-lg);
   }
 
   /* A form on a phone is a bottom sheet: it rises from the thumb, not the middle. */
@@ -2082,6 +2463,31 @@ table.mini tbody tr:hover { background: none; }
   }
   /* Now that the two sit together, something has to say they are two facts. */
   .queue-table td.span-col::before { content: '· '; color: var(--muted-2); }
+  /**
+   * ข้ามคืน AND ไม่พักเที่ยง GET THE SAME TREATMENT AS "อา." ABOVE, and for a
+   * worse version of the same reason.
+   *
+   * They are `<div>`s inside `span-col`, which on the card is grid columns 3–4
+   * of the second row — its content box starts AFTER the tick-box and after the
+   * date. A block child therefore begins about 140px into a 350px card, and the
+   * card ends up with three different left edges: 15px for the ceiling line, the
+   * description and the buttons; 45px for the name, the code and the date, under
+   * the tick-box's hanging indent; and this one, holding a single short phrase
+   * and lining up with nothing above it or below it.
+   *
+   * Inline, it becomes the third fact in a sentence the card already reads as
+   * one — "15 ส.ค. 69 ส. · 08:00–17:00 · ข้ามคืน" — and the third edge is gone.
+   *
+   * `white-space: normal` is re-declared because the cell is `nowrap` to keep
+   * 08:00–17:00 from breaking at its dash, and that would otherwise be inherited
+   * by a Thai phrase which has every right to wrap on a narrow phone.
+   */
+  .queue-table td.span-col .cell-note,
+  .queue-table td.span-col .cell-sub {
+    display: inline; margin: 0; white-space: normal;
+  }
+  .queue-table td.span-col .cell-note::before,
+  .queue-table td.span-col .cell-sub::before { content: '· '; color: var(--muted-2); }
 
   /* THE THREE RATE COLUMNS GO. Not lost — the รายละเอียด pop-up prints all
      four buckets under BUCKET_LABEL, which is where a reviewer who wants the
@@ -2158,7 +2564,7 @@ table.mini tbody tr:hover { background: none; }
      two equal targets; the fill and the red outline still carry which is which,
      which is the part of that weight worth keeping. */
   .queue-table td.act-col .row-actions .btn:not(.ghost) {
-    box-shadow: 0 3px 9px rgba(15, 138, 70, .22);
+    box-shadow: 0 3px 9px var(--green-glow-sm);
   }
   /* Released from the action column's 190px — on a card it has the width. */
   .queue-table td.act-col .own-note { flex: 1 1 100%; max-width: none; }
@@ -2243,7 +2649,7 @@ table.mini tbody tr:hover { background: none; }
   .bday-table td.act-col .row-actions { gap: 8px; }
   .bday-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: 44px; }
   .bday-table td.act-col .row-actions .btn:not(.ghost) {
-    box-shadow: 0 3px 9px rgba(15, 138, 70, .22);
+    box-shadow: 0 3px 9px var(--green-glow-sm);
   }
 
   /* ══ วันเกิดของเดือนนี้ (ตรวจสอบรายเดือน) ══════════════════════════════
@@ -2369,7 +2775,7 @@ table.mini tbody tr:hover { background: none; }
   .bmonth-table td.act-col .row-actions { flex-wrap: wrap; gap: 8px; }
   .bmonth-table td.act-col .btn { flex: 1 1 40%; min-height: 44px; }
   .bmonth-table td.act-col .btn:not(.ghost) {
-    box-shadow: 0 3px 9px rgba(15, 138, 70, .22);
+    box-shadow: 0 3px 9px var(--green-glow-sm);
   }
 
   /* ══ นโยบายการคำนวณ — the question and its answer, one card each ═══════
@@ -2526,10 +2932,10 @@ table.mini tbody tr:hover { background: none; }
      that can fall out of step with the actual scroll position. */
   .table-wrap {
     background:
-      linear-gradient(to right, var(--card) 30%, rgba(255, 255, 255, 0)) left center,
-      linear-gradient(to left, var(--card) 30%, rgba(255, 255, 255, 0)) right center,
-      radial-gradient(farthest-side at 0 50%, rgba(20, 32, 26, .17), rgba(20, 32, 26, 0)) left center,
-      radial-gradient(farthest-side at 100% 50%, rgba(20, 32, 26, .17), rgba(20, 32, 26, 0)) right center;
+      linear-gradient(to right, var(--card) 30%, var(--card-fade)) left center,
+      linear-gradient(to left, var(--card) 30%, var(--card-fade)) right center,
+      radial-gradient(farthest-side at 0 50%, var(--shadow-soft), transparent) left center,
+      radial-gradient(farthest-side at 100% 50%, var(--shadow-soft), transparent) right center;
     background-repeat: no-repeat;
     background-size: 34px 100%, 34px 100%, 13px 100%, 13px 100%;
     background-attachment: local, local, scroll, scroll;
@@ -2693,7 +3099,7 @@ table.mini tbody tr:hover { background: none; }
   .acct-table th.who-col, .acct-table td.who-col,
   .allco-table th.who-col, .allco-table td.who-col {
     position: sticky; left: 0; z-index: 1;
-    box-shadow: 3px 0 6px -3px rgba(20, 32, 26, .28);
+    box-shadow: 3px 0 6px -3px var(--shadow-1);
   }
   .hr-table tbody td.who-col,
   .acct-table tbody td.who-col,
@@ -2724,7 +3130,7 @@ table.mini tbody tr:hover { background: none; }
   .dept-table col { width: auto !important; }
   .dept-table th.who-col, .dept-table td.who-col {
     position: sticky; left: 0; z-index: 1;
-    box-shadow: 3px 0 6px -3px rgba(20, 32, 26, .28);
+    box-shadow: 3px 0 6px -3px var(--shadow-1);
   }
   .dept-table tbody td.who-col { background: var(--card); }
   .dept-table thead th.who-col { z-index: 3; background: var(--neutral-wash); }
@@ -2778,7 +3184,7 @@ table.mini tbody tr:hover { background: none; }
      cell beside it stays put. */
   .acct-table tfoot td.sum-k {
     position: sticky; left: 0; z-index: 1;
-    box-shadow: 3px 0 6px -3px rgba(20, 32, 26, .28);
+    box-shadow: 3px 0 6px -3px var(--shadow-1);
   }
   .acct-table tfoot td.who-col { position: static; box-shadow: none; }
 
@@ -2832,8 +3238,8 @@ table.mini tbody tr:hover { background: none; }
     position: fixed; top: auto; left: 0; right: 0;
     bottom: calc(70px + env(safe-area-inset-bottom));
     z-index: 31;
-    border-top: 1px solid #C4E3D2; border-bottom: 0;
-    box-shadow: 0 -8px 22px rgba(15, 23, 20, .14);
+    border-top: 1px solid var(--ok-line); border-bottom: 0;
+    box-shadow: 0 -8px 22px var(--shadow-lift);
     /* Longhand — see `main` above, where the shorthand had the two horizontal
        insets swapped and nobody saw it until a phone was turned sideways. */
     padding-top: 10px;
@@ -3070,10 +3476,10 @@ table.mini tbody tr:hover { background: none; }
        reads as a text field. */
     min-height: 44px; padding: 0 12px;
     border: 1px solid var(--input-line); border-radius: var(--radius-sm);
-    background: #fff; font: 500 15px/1.3 var(--mono); color: var(--ink);
+    background: var(--field-bg); font: 500 15px/1.3 var(--mono); color: var(--ink);
   }
   .deptset-table td.cap-col input:focus {
-    outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(15, 138, 70, .13);
+    outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
   }
 
   /* Both buttons a real touch target, and a half of the card each — the same
@@ -3115,6 +3521,20 @@ table.mini tbody tr:hover { background: none; }
    answers by shrinking the whole page until it fits). */
 
 @media print {
+  /**
+   * PAPER IS ALWAYS THE LIGHT THEME, and this one line is what enforces it.
+   *
+   * `light-dark()` reads the used colour scheme, so pinning the scheme here
+   * pins every token in the file back to its light value for the length of the
+   * print job — the ~50 colours, the shadows, the status panels, all of them.
+   *
+   * Without it, somebody running ธีมมืด prints F-HR-027 as pale text on white:
+   * browsers drop background colours when printing but keep foreground ones,
+   * so the page would come out nearly blank and the only way to find out is to
+   * print it. Everything else in this block was written for a screen that was
+   * always light; this line is what keeps that assumption true.
+   */
+  :root { color-scheme: only light; }
   html, body { background: #fff; }
   /* The dialog now lives on <body>, outside .shell — so it has to be named
      here or it would print over the form. */

@@ -244,7 +244,7 @@
    what is on the screen is still exactly what comes out of the printer. The
    phone shows a real sheet a bit at a time instead of a shrunken whole one. */
 .f027-screen {
-  background: #e8ebe9;
+  background: var(--paper-desk);
   padding: 16px;
   overflow-x: auto;
   /* A sideways swipe on the sheet must not also drag the page or trigger the
@@ -254,7 +254,7 @@
 }
 /* The same bands the paper is printed with, so the preview is the sheet — see
    the @page note at the foot of this file for where the figures come from. */
-.f027-screen .f027 { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 18mm 8mm 22mm; }
+.f027-screen .f027 { box-shadow: 0 2px 12px var(--paper-shadow); padding: 18mm 8mm 22mm; }
 /* A whole month printed in one go puts every employee's sheet in the same
    wrapper — one person to a side, the same rule the other two multi-sheet
    documents carry (.acct, .otdept). One sheet on its own has no sibling and is
@@ -455,13 +455,13 @@
 /* Scrolls sideways on a narrow screen for the same reason .f027-screen does,
    and the reasoning above it applies here unchanged — 194mm is the paper. */
 .acct-screen {
-  background: #e8ebe9;
+  background: var(--paper-desk);
   padding: 16px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
-.acct-screen .acct { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 0 8mm; }
+.acct-screen .acct { box-shadow: 0 2px 12px var(--paper-shadow); padding: 0 8mm; }
 .acct-screen .acct + .acct { margin-top: 16px; }
 
 @media print {
@@ -603,13 +603,13 @@
 
 /* As .f027-screen and .acct-screen — see the note above the first of them. */
 .otdept-screen {
-  background: #e8ebe9;
+  background: var(--paper-desk);
   padding: 16px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
-.otdept-screen .otdept { box-shadow: 0 2px 12px rgba(0, 0, 0, .18); padding: 0 8mm; }
+.otdept-screen .otdept { box-shadow: 0 2px 12px var(--paper-shadow); padding: 0 8mm; }
 .otdept-screen .otdept + .otdept { margin-top: 16px; }
 
 @media print {

@@ -22,10 +22,31 @@ export const viewport = {
   viewportFit: 'cover',
 };
 
+/**
+ * ธีมที่เลือกไว้ ทาลงบน <html> ก่อนหน้าจอวาดครั้งแรก.
+ *
+ * Inline and `beforeInteractive` by construction — it runs where it is
+ * written, before the body paints. A theme applied from a React effect would
+ * paint the system's answer first and swap a frame later, and the person most
+ * likely to notice that flash is the one who went and set the theme by hand.
+ *
+ * It reads one key and sets one attribute; everything else is CSS (see the
+ * `light-dark()` block in styles.css). Wrapped in try/catch because
+ * localStorage throws rather than returns null in a locked-down browser, and a
+ * theme is not worth a blank page.
+ *
+ * No value stored means no attribute, which is the system's preference — the
+ * default this app had before it had a setting at all.
+ */
+const THEME_BOOT = `try{var t=localStorage.getItem('ot-theme');`
+  + `if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}`;
+
 export default function RootLayout({ children }) {
   return (
     <html lang="th">
       <head>
+        {/* eslint-disable-next-line react/no-danger */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

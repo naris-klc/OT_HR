@@ -869,7 +869,7 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
           <div className="k">จำนวนรายการ</div>
           <div className="v">{entries.length}</div>
         </div>
-        <div className="box" style={{ background: 'var(--green-bg)', borderColor: '#C4E3D2' }}>
+        <div className="box total">
           <div className="k">รวมชั่วโมง OT</div>
           <div className="v">{hours(total)}</div>
         </div>
@@ -1212,7 +1212,7 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
                   <div className="v">{hours(e.buckets?.[b])}</div>
                 </div>
               ))}
-              <div className="box" style={{ background: 'var(--green-bg)', borderColor: '#C4E3D2' }}>
+              <div className="box total">
                 <div className="k">รวม</div>
                 <div className="v">{hours(e.totals?.otHours)}</div>
               </div>

@@ -8,8 +8,9 @@ import {
 } from '@/lib/entries.js';
 
 export function StatusChip({ status }) {
-  const s = STATUS[status] || { label: status, bg: '#eee', fg: '#555' };
-  return <span className="chip" style={{ background: s.bg, color: s.fg }}>{s.label}</span>;
+  // A class, not a style: see STATUS in lib/api.js. An unknown status falls
+  // through to the plain `.chip`, which is grey and readable in both themes.
+  return <span className={`chip st-${status}`}>{STATUS[status]?.label || status}</span>;
 }
 
 /**
@@ -170,7 +171,7 @@ export function BucketSplit({ buckets, total, label = 'รวม' }) {
         </div>
       ))}
       {total != null && (
-        <div className="box" style={{ background: '#e8f4ed', borderColor: '#bcdcc9' }}>
+        <div className="box total">
           <div className="k">{label}</div>
           <div className="v">{hours(total)}</div>
         </div>

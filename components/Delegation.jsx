@@ -423,15 +423,20 @@ const ROLE = { manager: 'หัวหน้างาน', hr: 'ฝ่ายบ�
  * guessing which mistake they made.
  */
 const STATE = {
-  active: ['มีผลอยู่', '#1F7A4D', '#E4F3EA'],
-  scheduled: ['ยังไม่เริ่ม', '#8A5A00', '#FDF3DF'],
-  expired: ['หมดอายุแล้ว', '#5A5A5A', '#EFEFEF'],
-  revoked: ['ยกเลิกแล้ว', '#8A2B2B', '#F7E5E5'],
+  active: ['มีผลอยู่', 'green'],
+  scheduled: ['ยังไม่เริ่ม', 'edited'],
+  expired: ['หมดอายุแล้ว', 'muted'],
+  revoked: ['ยกเลิกแล้ว', 'st-rejected'],
 };
 
+/**
+ * The four states wear the chip classes the rest of the app already has,
+ * instead of four pairs of hex values written here. They were written here, and
+ * an inline style is the one thing a theme cannot reach.
+ */
 function StateChip({ state }) {
-  const [label, fg, bg] = STATE[state] || [state, '#555', '#eee'];
-  return <span className="chip" style={{ background: bg, color: fg }}>{label}</span>;
+  const [label, tone] = STATE[state] || [state, 'muted'];
+  return <span className={`chip ${tone}`}>{label}</span>;
 }
 
 function daysLeft(toDate, today) {
