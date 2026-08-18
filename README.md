@@ -7,6 +7,22 @@ form **F-HR-027 Rev.4**). Replaces the paper form
 **The system never calculates money.** It records hours, classifies them into
 the ×1.5 and ×3 buckets, and totals them. No rates, no baht, anywhere.
 
+## เอกสารสำหรับคนที่ไม่ได้อ่านโค้ด
+
+The rest of this file is written for whoever maintains the code. Two things are
+not, and they live in [`docs/`](docs/) because the people who need them will be
+looking for them on a day when reading 130 kB of English is not an option:
+
+- **[docs/contingency.md](docs/contingency.md)** — ฝ่ายบุคคล / หัวหน้างาน:
+  what to do when the system is unreachable. Paper F-HR-027 → keying it back in
+  → reopening a closed period → reconciling before it closes again.
+- **[docs/network.md](docs/network.md)** — whoever runs the router: the server's
+  address, why it must stop being a DHCP lease, and where the LAN perimeter is
+  meant to be.
+
+Both carry a checklist of things that are **not done yet**. Those checklists are
+the honest state of the deployment; keep them current rather than tidy.
+
 ---
 
 ## Setup
@@ -133,31 +149,68 @@ for that.
 **On this machine — Windows, Task Scheduler.** This is the one that runs today:
 “production” is a laptop, so the scheduler is the one built into it.
 
-> **`D:\ot-backups` below is a placeholder, and as of 2026-08-14 this machine has
-> only a `C:` drive.** Substitute a path on a disk that is not the one holding
-> MongoDB — an external drive, or a network share — and create it first. The
-> wrappers check the destination and refuse rather than creating it, so a task
-> pointed at a drive that is not there logs `ไม่พบปลายทาง` every night and backs
-> up nothing. That refusal is deliberate: creating the folder would put the
-> backup on whatever disk the path falls back to, which is the one it exists to
-> be somewhere other than.
+**REGISTERED 2026-08-18.** The task is called **`OT backup`**, runs **daily at
+01:00**, and writes to **`E:\ot-backups`** keeping 30 sets. It is `State: Ready`
+and its log is `backups\backup.log`.
+
+> ⚠️ **`E:` IS NOT PLUGGED IN, so the task backs up nothing tonight.** This
+> machine still has only a `C:` volume (checked 2026-08-18). Every run until the
+> drive is connected logs `ล้มเหลว: ไม่พบปลายทาง E:\ot-backups` and reports
+> `LastTaskResult: 1` — which is exactly what it should do, and is not the same
+> thing as a backup existing. Plug the drive in, create `E:\ot-backups`, then
+> `Start-ScheduledTask -TaskName 'OT backup'` and confirm `LastTaskResult: 0`.
+>
+> The wrappers check the destination and refuse rather than creating it. That
+> refusal is deliberate: creating the folder would put the backup on whatever
+> disk the path falls back to, which is the one it exists to be somewhere other
+> than.
 >
 > A cloud-synced folder (OneDrive) does get the data off this laptop, but a dump
 > carries `passwordHash` for every account and `birthDate` for every employee —
 > that is uploading staff PII to a third party, and it is a decision for whoever
 > owns that call, not a convenience.
 
+> 🔴 **`scripts/backup.ps1` MUST KEEP ITS UTF-8 BOM.** The task runs it under
+> `powershell.exe` — Windows PowerShell 5.1 — which reads a BOM-less file as
+> ANSI. Every Thai string in the script then becomes mojibake, the parser hits
+> `Unexpected token` on line 65, and PowerShell exits 1 **before the first
+> `Write-Log`**: the task reports failure and the log file is never touched, so
+> the one place anybody would look for the reason stays empty. That is how this
+> was found on 2026-08-18 — the script had been tested only under `pwsh` 7,
+> which defaults to UTF-8, and the version of this section printed above it had
+> never worked. An editor that "cleans up" the BOM re-breaks it silently.
+
 ```powershell
 # ทดสอบด้วยมือก่อนหนึ่งรอบเสมอ — ต้องได้ exit code 0
-.\scripts\backup.ps1 -Destination D:\ot-backups -Keep 30
+# และทดสอบด้วย powershell.exe ไม่ใช่ pwsh — ตัวที่ Task Scheduler ใช้คือ 5.1
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File "C:\Users\suwan\Documents\OT_HR\scripts\backup.ps1" -Destination E:\ot-backups -Keep 30
 
-# ตั้งให้รันทุกวัน 02:00
-$action  = New-ScheduledTaskAction -Execute 'powershell.exe' `
-  -Argument '-NoProfile -ExecutionPolicy Bypass -File "C:\Users\suwan\Documents\OT_HR\scripts\backup.ps1" -Destination D:\ot-backups -Keep 30'
-$trigger = New-ScheduledTaskTrigger -Daily -At 2am
-Register-ScheduledTask -TaskName 'OT backup' -Action $action -Trigger $trigger `
-  -Description 'สำรองฐานข้อมูล OT ไป D:\ot-backups เก็บ 30 ชุด'
+# ตั้งให้รันทุกวัน 01:00 — นี่คือคำสั่งที่ใช้จริงเมื่อ 2026-08-18
+$repo = 'C:\Users\suwan\Documents\OT_HR'
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument ('-NoProfile -ExecutionPolicy Bypass -File "{0}\scripts\backup.ps1" -Destination E:\ot-backups -Keep 30' -f $repo) `
+  -WorkingDirectory $repo
+$trigger  = New-ScheduledTaskTrigger -Daily -At 1am
+# StartWhenAvailable is what covers a laptop that was asleep at 01:00 — without
+# it a missed run is simply skipped and nobody is told. MultipleInstances
+# IgnoreNew stops a slow run being overlapped by the next night's.
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun `
+  -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries `
+  -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+Register-ScheduledTask -TaskName 'OT backup' -Action $action -Trigger $trigger -Settings $settings `
+  -Description 'สำรองฐานข้อมูล OT ไป E:\ot-backups ทุกวัน 01:00 เก็บ 30 ชุด — ดู backups\backup.log' -Force
 ```
+
+Checking on it afterwards — the two lines worth knowing:
+
+```powershell
+Get-ScheduledTaskInfo -TaskName 'OT backup' | Select LastRunTime, LastTaskResult, NextRunTime
+Get-Content backups\backup.log -Tail 5
+```
+
+`LastTaskResult: 0` is a backup that happened. `1` is the destination missing.
+Anything else, read the log.
 
 **On a Linux server, if there is ever one — cron.** `scripts/backup.sh` is the
 same three behaviours; both wrappers are deliberately kept in step, so change
