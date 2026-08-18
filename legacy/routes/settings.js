@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import Setting from '../models/Setting.js';
-import { DEFAULT_POLICY } from '../config/policy.js';
+import Setting from '../../src/models/Setting.js';
+import { DEFAULT_POLICY } from '../../src/config/policy.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
-import { recomputeEntries } from '../services/otService.js';
+import { recomputeEntries } from '../../src/services/otService.js';
 import { savePolicy } from '../../lib/policySave.js';
 import { authorizeReplay } from '../../lib/policyVersion.js';
 import { unconfirmedState } from '../../lib/policyConfirmations.js';

@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import OtEntry, { STATUS_LABEL_TH } from '../models/OtEntry.js';
-import Employee from '../models/Employee.js';
-import Setting from '../models/Setting.js';
+import OtEntry, { STATUS_LABEL_TH } from '../../src/models/OtEntry.js';
+import Employee from '../../src/models/Employee.js';
+import Setting from '../../src/models/Setting.js';
 import { requireAuth, wrap } from '../middleware/auth.js';
 import {
   BUCKETS, BUCKET_LABEL_TH, summariseEntries, hrSummary, capUsage, makeIsHoliday,
-} from '../lib/otEngine.js';
-import { loadHolidaySet } from '../services/otService.js';
+} from '../../src/lib/otEngine.js';
+import { loadHolidaySet } from '../../src/services/otService.js';
 import { formDayTypes } from '../../lib/reports.js';
 
 const router = Router();

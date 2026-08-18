@@ -1,11 +1,31 @@
+/**
+ * ⛔ DEPRECATED — THIS SERVER IS NOT THE APPLICATION. See legacy/README.md.
+ *
+ * The app is Next.js App Router: `npm run dev`, `npm run build`, `npm start`.
+ * Every endpoint below has an equivalent in app/api/ and every one of them is
+ * OLDER than the rules the app now runs on — ปิดงวด, ผู้รับช่วงอนุมัติ,
+ * ขอถอนใบที่อนุมัติแล้ว, เวลาทับซ้อน. A request that reached this file's
+ * `POST /api/entries` would write hours into a closed month with no overlap
+ * check and no policy version stamped on them.
+ *
+ * It is kept as readable history and moved out of `src/` so that nothing can
+ * start it by habit. `npm run legacy:dev` and `npm run legacy:start` are gone;
+ * `express`, `cookie-parser` and `multer` are no longer installed, so the
+ * imports below will not even resolve. It could not have served the app in any
+ * case — it looks for a built frontend in `web/dist`, and there is no `web/`.
+ *
+ * If you are reading this because you are about to make it run: don't. Whatever
+ * the App Router is doing wrong is a bug in app/api/, and fixing it there fixes
+ * it for the browser too.
+ */
 import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 
-import { connect } from './db.js';
-import { OtValidationError } from './lib/otEngine.js';
+import { connect } from '../src/db.js';
+import { OtValidationError } from '../src/lib/otEngine.js';
 import authRoutes from './routes/auth.js';
 import entryRoutes from './routes/entries.js';
 import departmentRoutes from './routes/departments.js';

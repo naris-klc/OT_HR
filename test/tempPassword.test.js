@@ -127,7 +127,7 @@ test('every route that issues one asks the generator, and none reads a request f
     'app/api/employees/route.js',
     'app/api/employees/[id]/route.js',
     'app/api/employees/import/route.js',
-    'src/routes/employees.js',
+    'legacy/routes/employees.js',
   ];
   for (const file of routes) {
     const code = strip(readFileSync(join(ROOT, file), 'utf8'));
@@ -143,7 +143,7 @@ test('every route that issues one asks the generator, and none reads a request f
   // password and did not is worse than one that was refused. Creating a row is
   // the one place a caller may choose one, and that is checked rather than
   // ignored — see the block below.
-  for (const file of ['app/api/employees/[id]/route.js', 'src/routes/employees.js']) {
+  for (const file of ['app/api/employees/[id]/route.js', 'legacy/routes/employees.js']) {
     assert.match(
       strip(readFileSync(join(ROOT, file), 'utf8')),
       /password !== undefined/,
@@ -211,7 +211,7 @@ test('a code too short to recognise does not refuse half the alphabet', () => {
 test('both servers check a chosen password with the same rule', () => {
   // A rule enforced by one of two servers is not a rule, and the failure mode
   // here is silent: the account is created either way.
-  for (const file of ['app/api/employees/route.js', 'src/routes/employees.js']) {
+  for (const file of ['app/api/employees/route.js', 'legacy/routes/employees.js']) {
     const code = strip(readFileSync(join(ROOT, file), 'utf8'));
     assert.match(code, /chosenPasswordPermission\(/, `${file} accepts a chosen password unchecked`);
     // And a chosen one is never echoed back — HR already has it, and the
@@ -225,7 +225,7 @@ test('a reset is asked for by a flag, and the issued value comes back once', () 
   // `resetPassword: true` replaced `password: '…'`. The response carries the
   // generated value because it is the only moment it is readable — only the
   // hash is stored and every roster read goes through publicEmployee().
-  for (const file of ['app/api/employees/[id]/route.js', 'src/routes/employees.js']) {
+  for (const file of ['app/api/employees/[id]/route.js', 'legacy/routes/employees.js']) {
     const code = strip(readFileSync(join(ROOT, file), 'utf8'));
     assert.match(code, /resetPassword \? generateTempPassword\(\) : null/, file);
     assert.match(code, /password: issued/, `${file} does not return the issued password`);
@@ -234,7 +234,7 @@ test('a reset is asked for by a flag, and the issued value comes back once', () 
 
   // And the import hands back one row per account it created, or those accounts
   // are unreachable: nobody can log in and nothing stored can say what to.
-  for (const file of ['app/api/employees/import/route.js', 'src/routes/employees.js']) {
+  for (const file of ['app/api/employees/import/route.js', 'legacy/routes/employees.js']) {
     const code = readFileSync(join(ROOT, file), 'utf8');
     assert.match(code, /issuedPasswords\.push\(\{ code: employee\.code, name: employee\.name, password: issued \}\)/, file);
     assert.match(code, /issued: issuedPasswords/, file);
@@ -272,7 +272,7 @@ test('a reset writes the new hash last, after everything else has succeeded', ()
   const handlers = {
     // One handler in the file.
     'app/api/employees/[id]/route.js': (src) => src,
-    'src/routes/employees.js': (src) => src.slice(
+    'legacy/routes/employees.js': (src) => src.slice(
       src.indexOf("router.patch('/:id'"),
       src.indexOf("router.post('/me/password'"),
     ),
@@ -362,7 +362,7 @@ test('the issued password is still never written to the audit trail', () => {
   // by test/rosterAudit.test.js. Checked again from this side because the
   // routes now hold a plaintext password in a local called `issued`, which is a
   // new thing for somebody to reach for when adding a field to the record.
-  for (const file of ['app/api/employees/[id]/route.js', 'app/api/employees/import/route.js', 'src/routes/employees.js']) {
+  for (const file of ['app/api/employees/[id]/route.js', 'app/api/employees/import/route.js', 'legacy/routes/employees.js']) {
     const code = strip(readFileSync(join(ROOT, file), 'utf8'));
     const calls = [...code.matchAll(/recordRosterChange\(\{[\s\S]*?\n\s*\}\)/g)].map((m) => m[0]);
     for (const call of calls) {

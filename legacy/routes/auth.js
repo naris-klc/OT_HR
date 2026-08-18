@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import Employee from '../models/Employee.js';
-import Setting from '../models/Setting.js';
+import Employee from '../../src/models/Employee.js';
+import Setting from '../../src/models/Setting.js';
 import { signToken, setAuthCookie, clearAuthCookie, requireAuth, wrap } from '../middleware/auth.js';
-import { codeMatcher, sameCode } from '../lib/employeeCode.js';
+import { codeMatcher, sameCode } from '../../src/lib/employeeCode.js';
 
 const router = Router();
 

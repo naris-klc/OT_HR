@@ -18,18 +18,13 @@
     "restore": "node src/restore.js",
     "migrate:company": "node src/migrate-company.js",
     "migrate:policy-version": "node src/migrate-policy-version.js",
-    "setup": "npm install",
-    "legacy:dev": "node --watch src/server.js",
-    "legacy:start": "node src/server.js"
+    "setup": "npm install"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.5",
-    "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.5",
-    "multer": "^2.0.2",
     "next": "^16.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

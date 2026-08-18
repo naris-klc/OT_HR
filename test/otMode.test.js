@@ -162,7 +162,7 @@ test('every write path that computes hours consults the rule', () => {
     'app/api/entries/route.js',
     'app/api/entries/[id]/route.js',
     'app/api/entries/preview/route.js',
-    'src/routes/entries.js',
+    'legacy/routes/entries.js',
   ]) {
     assert.match(read(path), /weekdayOtRefusal/, `${path} must apply the rule`);
   }
@@ -176,7 +176,7 @@ test('every write path that computes hours consults the rule', () => {
 test('the department the rule reads is populated with the field', () => {
   // A select that omits it reads back as undefined, which otModeOf answers as
   // an ordinary department — the rule would be off and nothing would say so.
-  for (const path of ['lib/entries.js', 'src/routes/entries.js']) {
+  for (const path of ['lib/entries.js', 'legacy/routes/entries.js']) {
     assert.match(read(path), /weeklyCapHours otMode/, `${path} must select otMode`);
   }
 });

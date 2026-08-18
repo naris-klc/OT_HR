@@ -12,7 +12,7 @@ export const ROLES = ['employee', 'manager', 'hr', 'admin'];
  * §12: `admin` is the fourth role, new in v1.
  *
  * Managers are NOT eligible to submit OT (§2) — that is enforced in
- * src/routes/entries.js, which removes the "who approves the manager"
+ * app/api/entries/route.js, which removes the "who approves the manager"
  * problem entirely.
  */
 const employeeSchema = new mongoose.Schema(

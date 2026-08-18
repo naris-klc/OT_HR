@@ -158,7 +158,7 @@ test('every handler that can change บทบาท or สถานะ applies b
   for (const file of [
     'app/api/employees/[id]/route.js',
     'app/api/employees/import/route.js',
-    'src/routes/employees.js',
+    'legacy/routes/employees.js',
   ]) {
     const code = read(file);
     assert.match(code, /selfEditPermission\(/, `${file} lets somebody edit their own role`);

@@ -1,15 +1,15 @@
 import { Router } from 'express';
-import OtEntry from '../models/OtEntry.js';
-import Employee from '../models/Employee.js';
-import Setting from '../models/Setting.js';
+import OtEntry from '../../src/models/OtEntry.js';
+import Employee from '../../src/models/Employee.js';
+import Setting from '../../src/models/Setting.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
-import { OtValidationError } from '../lib/otEngine.js';
-import { normaliseDescription } from '../config/policy.js';
+import { OtValidationError } from '../../src/lib/otEngine.js';
+import { normaliseDescription } from '../../src/config/policy.js';
 import { blockedMessage } from '../../lib/caps.js';
 import { weekdayOtRefusal } from '../../lib/otMode.js';
 import {
   compute, applyComputation, checkCap, loadContext, monthlyUsage, birthDateOf,
-} from '../services/otService.js';
+} from '../../src/services/otService.js';
 // `pickSession` and `stampCap` below are this file's own copies, from before the
 // split. `sameSession` is not copied: it decides whether an edit keeps the
 // version it replaced, and a second copy that drifted would lose forms rather

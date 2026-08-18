@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import Department from '../models/Department.js';
-import Employee from '../models/Employee.js';
+import Department from '../../src/models/Department.js';
+import Employee from '../../src/models/Employee.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { capHoursFrom } from '../../lib/caps.js';
 import { otModeFrom } from '../../lib/otMode.js';

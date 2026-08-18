@@ -129,7 +129,7 @@ test('a field added to the list is withheld without any route being touched', ()
 test('both servers filter the roster list through publicEmployee', () => {
   // Two endpoints on two servers. A projection remembered in one of them is a
   // projection that is right in one of them.
-  for (const file of ['app/api/employees/route.js', 'src/routes/employees.js']) {
+  for (const file of ['app/api/employees/route.js', 'legacy/routes/employees.js']) {
     const code = readFileSync(join(ROOT, file), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     assert.match(code, /publicEmployee\(/, `${file} returns roster rows unfiltered`);

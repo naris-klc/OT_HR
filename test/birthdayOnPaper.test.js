@@ -74,7 +74,7 @@ test('app/print.css ไม่มีสไตล์ของหมายเหต
  * pass one — every form route has the employee document in scope — and would be
  * reintroducing the birthday to this sheet on one server and not the other.
  */
-for (const file of ['app/api/reports/form/[period]/route.js', 'src/routes/reports.js']) {
+for (const file of ['app/api/reports/form/[period]/route.js', 'legacy/routes/reports.js']) {
   test(`${file} วาดตารางผ่าน formDayTypes และไม่ส่ง birthDate เข้าไป`, () => {
     const src = read(file);
     assert.match(src, /formDayTypes\(/, 'ต้องเรียกผ่านตัวกลางที่ไม่รับวันเกิด');
@@ -319,7 +319,7 @@ const NOT_THE_SUBMISSION_SHEET = [
   'app/api/exports/monthly.csv/route.js',
   'app/api/exports/entries.csv/route.js',
   'app/api/holidays/route.js',
-  'src/routes/holidays.js',
+  'legacy/routes/holidays.js',
   'src/models/Holiday.js',
 ];
 

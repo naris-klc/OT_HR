@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
-import Holiday, { yearOf } from '../models/Holiday.js';
+import Holiday, { yearOf } from '../../src/models/Holiday.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
-import { parseCsv, pick, toCsv } from '../lib/csv.js';
-import { recomputeEntries } from '../services/otService.js';
+import { parseCsv, pick, toCsv } from '../../src/lib/csv.js';
+import { recomputeEntries } from '../../src/services/otService.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });

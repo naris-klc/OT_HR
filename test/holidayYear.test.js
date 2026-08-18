@@ -45,7 +45,7 @@ const read = (file) => readFileSync(join(ROOT, file), 'utf8')
 const WRITERS = [
   'app/api/holidays/route.js',
   'app/api/holidays/import/route.js',
-  'src/routes/holidays.js',
+  'legacy/routes/holidays.js',
 ];
 
 test('nothing that decides a rate reads the derived year', () => {
@@ -102,7 +102,7 @@ test('the calendar list is filtered by date too, so old rows are still listed', 
   // filtering by it would show the day as absent while the engine — now reading
   // `date` — treated it as a holiday, which is the same disagreement the other
   // way round.
-  for (const file of ['app/api/holidays/route.js', 'src/routes/holidays.js']) {
+  for (const file of ['app/api/holidays/route.js', 'legacy/routes/holidays.js']) {
     const code = read(file);
     assert.doesNotMatch(code, /\{ year: Number\(/, `${file} still filters the calendar by year`);
     assert.match(code, /-01-01`, \$lte: `\$\{/, file);

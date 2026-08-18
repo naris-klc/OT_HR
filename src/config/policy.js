@@ -590,7 +590,7 @@ export function normaliseDescription(raw) {
 /**
  * [OPEN 10] Holiday calendar format and [OPEN 11] employee roster format are
  * not arithmetic, so they are not flags — both import paths are built. See
- * `src/routes/holidays.js` and `src/routes/employees.js`: each accepts a CSV
+ * `app/api/holidays/import/` and `app/api/employees/import/`: each accepts a CSV
  * upload *and* manual entry, so either HR answer is already covered.
  */
 

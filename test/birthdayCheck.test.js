@@ -610,7 +610,7 @@ test('ทุกเส้นทางที่เขียนใบ ใช้ข�
   for (const file of [
     'app/api/entries/route.js',
     'app/api/entries/[id]/route.js',
-    'src/routes/entries.js',
+    'legacy/routes/entries.js',
   ]) {
     const src = readFileSync(join(ROOT, file), 'utf8');
     // `result` and not just the session: เวลาขั้นต่ำในการเริ่มนับ OT is the one

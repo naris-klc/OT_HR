@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
-import Employee, { ROLES } from '../models/Employee.js';
-import Department from '../models/Department.js';
+import Employee, { ROLES } from '../../src/models/Employee.js';
+import Department from '../../src/models/Department.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
-import { parseCsv, pick, toCsv } from '../lib/csv.js';
+import { parseCsv, pick, toCsv } from '../../src/lib/csv.js';
 import {
   PASSWORD_MIN_LENGTH, chosenPasswordPermission, codeChangePermission, dropsAnAdmin,
   lastAdminPermission, publicEmployee, rosterPermission, selfEditPermission,
@@ -11,7 +11,7 @@ import {
 import { generateTempPassword } from '../../lib/tempPassword.js';
 import { rosterChanges } from '../../lib/rosterAudit.js';
 import { recordRosterChange } from '../../lib/rosterAuditLog.js';
-import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '../lib/employeeCode.js';
+import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '../../src/lib/employeeCode.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });

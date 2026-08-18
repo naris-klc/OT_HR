@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import Employee from '../models/Employee.js';
+import Employee from '../../src/models/Employee.js';
 
 const COOKIE = 'ot_token';
 

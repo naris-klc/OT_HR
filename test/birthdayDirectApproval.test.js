@@ -341,7 +341,7 @@ test('ใบ OT ทั่วไปไม่มีทางออกมาเป�
    * branch that writes `approved` and no import that could give it one — so the
    * ordinary path cannot be talked into the shortcut by any payload at all.
    */
-  for (const file of ['app/api/entries/route.js', 'src/routes/entries.js']) {
+  for (const file of ['app/api/entries/route.js', 'legacy/routes/entries.js']) {
     const src = strip(readFileSync(join(ROOT, file), 'utf8'));
     assert.ok(
       !/birthdayFiling|birthdayDirectApproval|HR_VERIFIED_ACTION|submit_hr_verified/.test(src),
@@ -364,9 +364,9 @@ test('ใบ OT ทั่วไปไม่มีทางออกมาเป�
    * "exactly one, and it is the approval" rather than "never", which is the
    * strongest thing that is actually true of that file.
    */
-  const legacy = strip(readFileSync(join(ROOT, 'src/routes/entries.js'), 'utf8'));
+  const legacy = strip(readFileSync(join(ROOT, 'legacy/routes/entries.js'), 'utf8'));
   const approvals = [...legacy.matchAll(/status = 'approved';\s*\n\s*entry\.log\([^,]+, '(\w+)'/g)];
-  assert.equal(approvals.length, 1, 'src/routes/entries.js ต้องมีที่เขียน approved ที่เดียว');
+  assert.equal(approvals.length, 1, 'legacy/routes/entries.js ต้องมีที่เขียน approved ที่เดียว');
   assert.equal(approvals[0][1], 'approve_hr', 'และต้องเป็นขั้นฝ่ายบุคคลยืนยันเท่านั้น');
 });
 

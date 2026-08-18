@@ -43,7 +43,7 @@ const IMPORT = 'app/api/employees/import/route.js';
 const TRAIL = 'app/api/employees/[id]/audit/route.js';
 const TRAIL_ALL = 'app/api/employees/audit/route.js';
 const IMPACT = 'app/api/employees/[id]/impact/route.js';
-const LEGACY = 'src/routes/employees.js';
+const LEGACY = 'legacy/routes/employees.js';
 
 // ── every roster route asks the permission ──────────────────────────────────
 

@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import OtEntry, { STATUS_LABEL_TH } from '../models/OtEntry.js';
-import Setting from '../models/Setting.js';
+import OtEntry, { STATUS_LABEL_TH } from '../../src/models/OtEntry.js';
+import Setting from '../../src/models/Setting.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
-import { BUCKETS, summariseEntries, hrSummary } from '../lib/otEngine.js';
-import { sendCsv } from '../lib/csv.js';
+import { BUCKETS, summariseEntries, hrSummary } from '../../src/lib/otEngine.js';
+import { sendCsv } from '../../src/lib/csv.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('hr', 'admin', 'manager'));
