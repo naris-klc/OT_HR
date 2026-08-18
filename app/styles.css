@@ -857,6 +857,66 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .check { display: flex; align-items: center; gap: 9px; font: 400 14px/1.4 var(--sans); cursor: pointer; }
 .check input { width: 17px; height: 17px; accent-color: var(--green); }
 
+/* บันทึกแทนพนักงาน — the team, ticked.
+
+   A scroll box rather than a list of whatever length the แผนก happens to be.
+   The three fields that matter next (วันที่, เวลาเข้า, เวลาออก) and the live
+   preview under them are what a หัวหน้า is actually filling in; a roster of
+   twelve names pushing all of it below the fold turns one screen into three.
+   `max-height` and not a fixed one, so a team of three does not sit in a box
+   of empty rules.
+
+   Rows rather than a plain stack: the whole row is the hit area, which on a
+   phone is the difference between ticking eight names and missing three of
+   them. `.check` supplies the layout — this only adds the target size and the
+   rule between neighbours. */
+.pick-list {
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  overscroll-behavior-y: contain;
+}
+.pick-list .check { padding: 9px 12px; }
+.pick-list .check + .check { border-top: 1px solid var(--line-softer); }
+.pick-list .check:hover { background: var(--neutral-wash); }
+
+/* สรุปผลการบันทึกแทน — one line per person.
+
+   The tick and the cross carry a colour AND a glyph. Colour alone is the one
+   thing on this screen a reviewer cannot re-read later to check: it is the
+   difference between "filed" and "not filed" for somebody's paid hours, and
+   about one man in twelve here cannot tell the two hues apart. */
+.batch-result { list-style: none; margin: 14px 0 0; padding: 0; }
+.batch-result li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.batch-result li + li { margin-top: 8px; }
+.batch-result li.ok { background: var(--green-bg); border-color: transparent; }
+.batch-result li.bad { background: var(--danger-bg); border-color: transparent; }
+.batch-result .mark { font-weight: 700; line-height: 1.45; }
+.batch-result li.ok .mark { color: var(--green-dark); }
+.batch-result li.bad .mark { color: var(--danger-ink); }
+.batch-result .who { flex: 1; min-width: 0; }
+.batch-result .nm { font: 600 14px/1.45 var(--sans); color: var(--ink); }
+/* The server's own refusal, wrapped rather than clipped — it names the
+   ceiling, or the clashing entry's date and times, and that is the whole
+   reason this row is on the screen. `pre-line` because the overlap message
+   is written as one sentence and a bulleted line per clash. */
+.batch-result .why {
+  margin-top: 3px;
+  font: 400 13px/1.5 var(--sans);
+  color: var(--danger-ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 /* A row of buttons that ends with a checkbox — ส่งออก/พิมพ์ then
    แสดงพนักงานที่ไม่มี OT, on สรุป OT ส่งบัญชี and สรุป OT แยกแผนก.
 

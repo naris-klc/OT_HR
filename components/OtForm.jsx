@@ -50,15 +50,37 @@ export default function OtForm({
   /**
    * Who the request is FOR, when that is not whoever is filling the form in.
    *
-   * `proxy` mode starts blank on purpose. A pre-selected first name in the
-   * dropdown is the shape of mistake this whole feature could produce at
-   * scale — a หัวหน้า filing five requests in a row and one of them landing on
-   * the wrong person's month, where nothing on any screen would ever flag it.
-   * Nothing computes and the button stays shut until somebody is chosen.
+   * A LIST, because a shift is a list. Eight people on the same Saturday, the
+   * same hours and the same job is one thing that happened, and filing it as
+   * eight separate visits to this form — pick a name, retype the date, retype
+   * the times, retype the description, save, watch the form close, press the
+   * button again — is the point at which a หัวหน้า decides the paper was
+   * quicker. It was, which is the problem.
+   *
+   * What is filed is still ONE REQUEST PER PERSON, posted one at a time, and
+   * that is not an implementation detail: the ceiling, the day types (somebody
+   * on the list may be having a birthday), รูปแบบโอที and the overlap check are
+   * all questions about an individual, and the server has to be allowed to
+   * answer them individually. See `submit` below, and the summary it produces.
+   *
+   * `proxy` mode starts with NOTHING ticked, on purpose. A pre-selected first
+   * name is the shape of mistake this feature could produce at scale — a
+   * หัวหน้า filing five requests in a row and one of them landing on the wrong
+   * person's month, where nothing on any screen would ever flag it. Nothing
+   * computes and the button stays shut until somebody is chosen.
    */
-  const [target, setTarget] = useState('');
+  const [targets, setTargets] = useState([]);
   const [team, setTeam] = useState([]);
   const [teamError, setTeamError] = useState('');
+  /**
+   * What the server said about each person, once a batch has been posted.
+   *
+   * `null` until then. Non-null replaces the whole form with the summary —
+   * a partial success is not a state anybody should be left to work out from a
+   * toast, and the successful rows must not still be sitting under a button
+   * that would file them again.
+   */
+  const [results, setResults] = useState(null);
 
   useEffect(() => {
     if (!proxy) return;
@@ -67,7 +89,28 @@ export default function OtForm({
       .catch((err) => setTeamError(err.message));
   }, [proxy]);
 
-  const forWhom = proxy ? target : (fromBirthday ? birthday?.employeeId : employeeId);
+  const toggleTarget = (id) => setTargets((t) => (
+    t.includes(id) ? t.filter((x) => x !== id) : [...t, id]
+  ));
+
+  const nameOf = (id) => {
+    const p = team.find((e) => String(e._id) === String(id));
+    return p ? `${p.name} · ${p.code}` : id;
+  };
+
+  /**
+   * WHOSE ceiling and whose day types the preview is computed against.
+   *
+   * One person, always — the engine takes one employee and there is no honest
+   * way to render one split for eight. With a list ticked this is the FIRST of
+   * them, and the panel says so rather than letting a reviewer read one
+   * person's numbers as the batch's. The ceiling is hidden outright at that
+   * point; see the note above the preview block.
+   *
+   * The authority was never this preview in any case — every person is
+   * recomputed and re-checked by the server when the batch is posted.
+   */
+  const forWhom = proxy ? (targets[0] || '') : (fromBirthday ? birthday?.employeeId : employeeId);
 
   const [form, setForm] = useState(() => {
     const from = entry || template;
@@ -143,7 +186,7 @@ export default function OtForm({
       // Filing for somebody else, the preview is worthless until the server
       // knows who: the ceiling and the day types are theirs, and a split
       // computed against nobody would disagree with what saving produces.
-      if (proxy && !target) { setPreview(null); setCap(null); setWeekdayRefusal(null); return; }
+      if (proxy && !targets.length) { setPreview(null); setCap(null); setWeekdayRefusal(null); return; }
       try {
         const res = await api.post('/entries/preview', {
           ...form, entryId: entry?._id, employeeId: forWhom, birthday: fromBirthday || undefined,
@@ -191,15 +234,51 @@ export default function OtForm({
         });
         onSaved(res);
         return;
+      } else if (proxy) {
+        /**
+         * ONE POST PER PERSON, IN ORDER, AND NOTHING IS ABANDONED ON A FAILURE.
+         *
+         * Not one request carrying eight names, and not `Promise.all`. Three
+         * reasons, and the first is the one that decides it:
+         *
+         *   · Every rule the server applies here is about an individual — the
+         *     monthly and weekly ceilings, the day types (a birthday on the
+         *     list makes that person's whole day a holiday), รูปแบบโอที for
+         *     their department, and the overlap check against what they have
+         *     already filed. A batch endpoint would need its own copy of all
+         *     four, which is four places for the rules to drift apart.
+         *   · A refusal belongs to a name. Posted together, the first 409 would
+         *     be the whole batch's answer and nobody would know which seven of
+         *     the eight were fine.
+         *   · Sequentially rather than concurrently because the ceiling is read
+         *     and then written: two requests in flight for the same department
+         *     can both read the same "used so far". Eight round trips on an
+         *     office LAN is not the cost worth optimising here.
+         *
+         * `catch` per person, never around the loop. One person over their
+         * ceiling must not stop the six after them being filed.
+         */
+        const out = [];
+        for (const id of targets) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const res = await api.post('/entries', { ...form, employeeId: id });
+            out.push({ id, ok: true, entry: res.entry });
+          } catch (err) {
+            out.push({ id, ok: false, error: err.message });
+          }
+        }
+        // `onSaved` is NOT called here. It closes this form and reloads the
+        // queue behind it, and the summary has not been read yet — it is the
+        // screen now, and its own เสร็จสิ้น is what calls `onSaved`.
+        setResults(out);
+        return;
       } else {
         // A blank form writes a plain request. One filled from a REJECTED row
         // writes a request that points back at it, so the manager reviewing
         // this one can see they have refused it before and what they said.
         const refiledFrom = template?.status === 'rejected' ? template._id : undefined;
-        // `employeeId` is what turns this into a filing on somebody's behalf.
-        // The server decides whether this caller may — the dropdown only ever
-        // offered their own team, but that is a convenience, not the rule.
-        await api.post('/entries', { ...form, refiledFrom, employeeId: proxy ? target : undefined });
+        await api.post('/entries', { ...form, refiledFrom });
       }
       onSaved();
     } catch (err) {
@@ -207,6 +286,30 @@ export default function OtForm({
     } finally {
       setBusy(false);
     }
+  }
+
+  /**
+   * A batch has been posted — the summary replaces the form entirely.
+   *
+   * BEFORE the fields are rendered, so there is no path back to a บันทึก button
+   * still holding eight names that have already been filed. Pressing it again
+   * is exactly what a person does when a screen looks unchanged after a slow
+   * save, and the ceiling would absorb the second copy silently.
+   */
+  if (results) {
+    return (
+      <BatchResult
+        results={results}
+        nameOf={nameOf}
+        form={form}
+        onDone={() => onSaved()}
+        onRetryFailed={(failedIds) => {
+          setTargets(failedIds);
+          setResults(null);
+          setError('');
+        }}
+      />
+    );
   }
 
   // An entry written before the cap can be longer than it: `maxlength` stops
@@ -327,15 +430,49 @@ export default function OtForm({
       {proxy && (
         <>
           <div className="field" style={{ marginTop: 6 }}>
-            <label>บันทึกแทนพนักงาน *</label>
-            <select value={target} onChange={(e) => setTarget(e.target.value)} required>
-              <option value="">— เลือกพนักงานในแผนก —</option>
+            <label>บันทึกแทนพนักงาน * {targets.length > 0 && `(เลือกแล้ว ${targets.length} คน)`}</label>
+            {/* A scrolling box rather than a list that pushes the times and the
+                preview off the screen. Twelve names is the tallest a แผนก here
+                gets; the height is set so a team of that size is two or three
+                flicks rather than a page of its own. */}
+            <div className="pick-list">
               {team.map((p) => (
-                <option key={p._id} value={p._id}>{p.name} · {p.code}</option>
+                <label key={p._id} className="check">
+                  <input
+                    type="checkbox"
+                    checked={targets.includes(String(p._id))}
+                    onChange={() => toggleTarget(String(p._id))}
+                  />
+                  {p.name} · {p.code}
+                </label>
               ))}
-            </select>
+            </div>
+            {/* เลือกทั้งหมด is one tick and it is the common case — a whole
+                small team on one Saturday. It is BELOW the list rather than
+                above it, so it cannot be the thing a thumb lands on first. */}
+            {team.length > 1 && (
+              <div className="row" style={{ marginTop: 8, gap: 12 }}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setTargets(team.map((p) => String(p._id)))}
+                  disabled={targets.length === team.length}
+                >
+                  เลือกทั้งหมด ({team.length})
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setTargets([])}
+                  disabled={targets.length === 0}
+                >
+                  ล้างที่เลือก
+                </button>
+              </div>
+            )}
             <span className="field-note">
-              เลือกได้เฉพาะพนักงานในแผนกของคุณ · ชั่วโมง เพดาน และวันหยุดทั้งหมดคิดจากพนักงานคนนี้
+              เลือกได้เฉพาะพนักงานในแผนกของคุณ · เลือกหลายคนได้เมื่อทำ OT กะเดียวกัน วันเดียวกัน เวลาเดียวกัน
+              {' '}· ระบบจะ<strong>แยกบันทึกเป็นคนละใบ</strong> และคิดชั่วโมง เพดาน วันหยุด ของแต่ละคนแยกกัน
             </span>
           </div>
           {teamError && <Alert kind="error">{teamError}</Alert>}
@@ -351,7 +488,8 @@ export default function OtForm({
             going to wait for the หัวหน้า who wrote it to approve it.
           */}
           <Alert kind="info">
-            รายการนี้จะเป็น<strong>ของพนักงาน</strong> ไม่ใช่ของคุณ — พนักงานจะเห็นในหน้า “OT ของฉัน”
+            {targets.length > 1 ? 'แต่ละใบ' : 'รายการนี้'}จะเป็น<strong>ของพนักงาน</strong> ไม่ใช่ของคุณ
+            {' '}— พนักงานจะเห็นในหน้า “OT ของฉัน”
             {' '}และแก้ไขเองได้ตราบใดที่ยังไม่มีผู้อนุมัติ ·
             {' '}ระบบจะบันทึกว่า<strong>คุณเป็นผู้บันทึกแทน</strong> ทั้งบนหน้าจอและในใบพิมพ์
             {/* Read off the server's own answer rather than assumed: whether
@@ -507,6 +645,22 @@ export default function OtForm({
             เวลาทั้งหมด {hours(preview.totals.clockHours)} ชม.
             {preview.totals.breakHours > 0 && ` · หักพัก ${hours(preview.totals.breakHours)} ชม.`}
           </div>
+          {/* WHOSE NUMBERS THESE ARE, said out loud the moment there is more
+              than one candidate for the answer.
+
+              The engine takes one employee. With a list ticked this panel is
+              computed against the first of them, and the two things that can
+              differ down the list are named rather than left to be discovered
+              on somebody's payslip: a person whose birthday falls on this date
+              gets the whole day as วันหยุด and a different split, and the
+              ceiling is counted per person against their own month. */}
+          {proxy && targets.length > 1 && (
+            <Alert kind="info">
+              ตัวเลขนี้คำนวณจาก <strong>{nameOf(targets[0])}</strong> เป็นตัวอย่าง
+              {' '}— อีก {targets.length - 1} คนระบบจะคำนวณแยกตอนบันทึก
+              {' '}และอาจได้ไม่เท่ากันถ้าวันนี้ตรงกับวันเกิดของใครบางคน หรือใครใช้เพดานเดือนนี้ไปต่างกัน
+            </Alert>
+          )}
           <BucketSplit buckets={preview.buckets} total={preview.totals.otHours} label="รวมชั่วโมง OT" />
           <SegmentList segments={preview.segments} />
           {/* Keyed by code AND column: under `minimumHoursScope: 'bucket'` the
@@ -515,12 +669,28 @@ export default function OtForm({
           {preview.warnings?.map((w) => (
             <Alert key={w.code + (w.bucket || '')} kind="warn">{w.message}</Alert>
           ))}
-          {cap?.capHours != null && (
+          {/* The ceiling is WITHHELD on a multi-person batch rather than shown
+              for the first name.
+
+              "ใช้ไปแล้ว 34 ชม." under a list of eight reads as the batch's
+              figure, and it is one person's. Worse, it is the number a หัวหน้า
+              would use to decide whether to file at all — and being wrong in
+              that direction is how somebody gets told at the end that three of
+              the eight were blocked. Each person's ceiling is checked by the
+              server when their own request is posted, and the summary names
+              whoever it stopped. */}
+          {cap?.capHours != null && !(proxy && targets.length > 1) && (
             <Alert kind={cap.exceeded ? 'warn' : 'ok'}>
               เพดานแผนก {cap.capHours} ชม./เดือน · ใช้ไปแล้ว {hours(cap.usedHoursBefore)} ชม. ·
               {' '}รวมรายการนี้เป็น {hours(cap.projected)} ชม.
               {cap.exceeded && (cap.blocked ? ' — เกินเพดาน ไม่สามารถบันทึกได้' : ' — เกินเพดาน ระบบจะส่งให้ HR พิจารณา')}
             </Alert>
+          )}
+          {proxy && targets.length > 1 && (
+            <div className="field-note" style={{ marginTop: 8 }}>
+              เพดานของแต่ละคนต่างกัน จึงยังไม่แสดงตรงนี้ — ระบบจะตรวจให้ทีละคนตอนบันทึก
+              {' '}และแจ้งชื่อคนที่ติดเพดานในสรุปผล
+            </div>
           )}
         </div>
       )}
@@ -530,7 +700,7 @@ export default function OtForm({
         <button
           className="btn"
           disabled={busy || over || !preview || preview.totals.otHours <= 0
-            || (hrEdit && !note.trim()) || (proxy && !target)
+            || (hrEdit && !note.trim()) || (proxy && !targets.length)
             // Nothing is saved while the server says this row cannot take this
             // path — the write would 409, and the reason is already on screen.
             || (fromBirthday && birthdayRouting?.ok === false)
@@ -538,13 +708,96 @@ export default function OtForm({
             || Boolean(weekdayRefusal)}
         >
           {entry ? 'บันทึกการแก้ไข'
-            : proxy ? (routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า')
+            : proxy ? (busy
+              ? `กำลังบันทึก… (${targets.length} ใบ)`
+              // The count is on the button because it is the last thing read
+              // before eight requests are filed, and "8 คน" is the fact most
+              // worth being sure of at that moment.
+              : `${routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
+                + (targets.length > 1 ? ` · ${targets.length} คน` : ''))
               : fromBirthday
                 ? (birthdayRouting?.direct ? 'บันทึกและอนุมัติ' : 'บันทึกและส่งเข้าคิว')
                 : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * สรุปผลการบันทึกแทน — one line per person, and the refusals in full.
+ *
+ * A PARTIAL SUCCESS IS THE ORDINARY OUTCOME HERE, not the exception. Filing
+ * one evening for eight people is eight independent decisions by the server:
+ * one of them is over their monthly ceiling, another already has a request
+ * covering 18:30, a third is in a department paid เหมารายวัน. A toast saying
+ * "บันทึกแล้ว" is false, and one saying "เกิดข้อผิดพลาด" is false in the other
+ * direction — six people's OT went in and nobody is being told.
+ *
+ * So the refusals are printed WHOLE. They are the server's own sentences, the
+ * ones that name the ceiling, the clashing entry's date and times, or the
+ * department's OT mode, and they are what somebody has to act on. Shortening
+ * them to "ไม่สำเร็จ" would leave a หัวหน้า with a name and no next step.
+ */
+function BatchResult({ results, nameOf, form, onDone, onRetryFailed }) {
+  const ok = results.filter((r) => r.ok);
+  const failed = results.filter((r) => !r.ok);
+
+  return (
+    <div className="card">
+      <h2>สรุปผลการบันทึกแทน</h2>
+      <div className="hint" style={{ marginBottom: 12 }}>
+        {form.workDate} · {form.startTime}–{form.endTime}{form.endsNextDay ? ' (ข้ามคืน)' : ''}
+        {form.description ? ` · ${form.description}` : ''}
+      </div>
+
+      {/* The count first, in the words the person came for. `kind` follows the
+          worst thing that happened rather than the best: a batch with one
+          failure is not an "ok" batch, because the one failure is the whole
+          reason to keep reading. */}
+      {failed.length === 0 && (
+        <Alert kind="ok">บันทึกสำเร็จทั้งหมด {ok.length} ใบ</Alert>
+      )}
+      {failed.length > 0 && ok.length > 0 && (
+        <Alert kind="warn">
+          บันทึกสำเร็จ {ok.length} ใบ · <strong>ไม่สำเร็จ {failed.length} ใบ</strong>
+          {' '}— รายการที่สำเร็จถูกบันทึกไปแล้ว ไม่ต้องทำซ้ำ
+        </Alert>
+      )}
+      {ok.length === 0 && (
+        <Alert kind="error">ไม่สำเร็จทั้งหมด {failed.length} ใบ — ไม่มีรายการใดถูกบันทึก</Alert>
+      )}
+
+      <ul className="batch-result">
+        {results.map((r) => (
+          <li key={r.id} className={r.ok ? 'ok' : 'bad'}>
+            <span className="mark" aria-hidden="true">{r.ok ? '✓' : '✕'}</span>
+            <div className="who">
+              <div className="nm">{nameOf(r.id)}</div>
+              {/* The server's sentence, unedited. See the note above. */}
+              {!r.ok && <div className="why">{r.error}</div>}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="row form-actions" style={{ marginTop: 18, justifyContent: 'flex-end' }}>
+        {/* Returns to the form with ONLY the failures ticked. That is what makes
+            the button safe: the six that went in are no longer selected, so the
+            obvious next act — fix the time, press save — cannot file them
+            twice. */}
+        {failed.length > 0 && (
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => onRetryFailed(failed.map((r) => r.id))}
+          >
+            แก้แล้วลองใหม่เฉพาะ {failed.length} คนที่ไม่สำเร็จ
+          </button>
+        )}
+        <button type="button" className="btn" onClick={onDone}>เสร็จสิ้น</button>
+      </div>
+    </div>
   );
 }
 
