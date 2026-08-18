@@ -4,7 +4,7 @@ import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
   codeChangePermission, dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
-  signingScope,
+  signingScope, signingCoveragePermission,
 } from '@/lib/employees.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
 import { BIRTHDATE_REPLAY_NOTE, rosterChanges } from '@/lib/rosterAudit.js';
@@ -191,6 +191,50 @@ export const PATCH = route(async (req, { params }) => {
     active: employee.active,
   });
   const birthDateMoved = changes.some((c) => c.field === 'birthDate');
+
+  /**
+   * NOBODY IS LEFT WITHOUT A SIGNATURE BY A SAVE ON THIS SCREEN.
+   *
+   * Checked here — after every field has been applied to the document and
+   * before anything is written — because the question is about the RESULT, not
+   * about which field the request happened to name. บริษัท, แผนก, บทบาท,
+   * สถานะการใช้งาน and เซ็นให้บริษัท can each take the last eligible signer away
+   * from somebody, and asking the finished document rather than the payload
+   * covers all five without a list here that would fall out of date.
+   *
+   * BOTH departments, not one. Moving a person OUT of a แผนก can strand the
+   * people they used to sign for; moving them IN can strand them on arrival, in
+   * a แผนก whose only หัวหน้า signs for the other company. They are different
+   * questions and the same rule answers both.
+   */
+  const asPerson = (src, dept) => ({
+    _id: employee._id,
+    code: employee.code,
+    name: employee.name,
+    role: src.role,
+    department: dept,
+    company: src.company,
+    approvesCompany: src.approvesCompany,
+  });
+  const sameDept = (dept, value) => String(value ?? '') === String(dept);
+
+  const touched = [...new Set([before.department, employee.department].map((d) => String(d ?? '')))]
+    .filter(Boolean);
+
+  for (const dept of touched) {
+    const others = await Employee
+      .find({ department: dept, active: true, _id: { $ne: employee._id } })
+      .select('code name role department company approvesCompany')
+      .lean();
+
+    const was = before.active !== false && sameDept(dept, before.department)
+      ? [asPerson(before, before.department)] : [];
+    const now = employee.active !== false && sameDept(dept, employee.department)
+      ? [asPerson(employee, employee.department)] : [];
+
+    const cover = signingCoveragePermission([...others, ...was], [...others, ...now], dept);
+    if (!cover.ok) return fail(cover.error, 409);
+  }
 
   await employee.save();
 

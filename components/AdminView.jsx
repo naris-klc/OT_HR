@@ -3248,20 +3248,18 @@ function Unconfirmed({ item, canEdit, busy, onConfirm }) {
 
   return (
     <div style={{ marginTop: 4 }}>
-      <span
-        style={{
-          display: 'inline-block',
-          fontSize: 11,
-          fontWeight: 700,
-          padding: '1px 7px',
-          borderRadius: 999,
-          background: 'var(--amber-bg, #fdf0d5)',
-          color: 'var(--amber-dark, #8a5a00)',
-          border: '1px solid var(--amber, #d99b1c)',
-        }}
-      >
-        รอ HR ยืนยัน
-      </span>
+      {/* `--amber-dark` HAS NEVER EXISTED. This badge carried its colours
+          inline, and that one read a token no `:root` block in the app defines,
+          so what actually drew was the hard-coded fallback beside it — #8a5a00,
+          a brown chosen against a white page. It followed neither theme, and on
+          the dark card it measured 2.53 against the panel behind it: the badge
+          that says an [OPEN] item is unanswered was the least readable thing on
+          ตั้งค่าระบบ. The colour it was reaching for was real enough — a darker
+          amber for text that has to be READ rather than glanced at — it had just
+          never been created. It exists now as `--amber-ink`, built like
+          `--danger-ink` beside it, and this badge is the only thing that wants
+          it. 5.46 in the light theme and 8.77 in the dark one. */}
+      <span className="chip unconfirmed">รอ HR ยืนยัน</span>
       <div className="hint" style={{ marginTop: 4 }}>
         {/* "ตั้งตามพฤติกรรมเดิม" was said of every item and is true of only
             some: the rounding increment came off the requirements doc and the

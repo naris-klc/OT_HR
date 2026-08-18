@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -189,6 +190,52 @@ test('green text is the pair the dark theme improved most', () => {
   // dark side clear AA without moving the light side at all.
   assert.ok(contrast(value('--green-text', 'dark'), value('--card', 'dark')) >= 4.5);
   assert.equal(value('--green-text', 'light'), '#0F8A46');
+});
+
+/**
+ * EVERY TOKEN A COMPONENT NAMES HAS TO EXIST, which nothing above checks.
+ *
+ * `no rule names a colour of its own` scans styles.css and only styles.css, so
+ * a colour written into a .jsx is invisible to it — and `var(--x, #hex)` is
+ * invisible twice over, because a name that resolves to nothing falls back to
+ * the hex and the page still renders. It just renders the wrong colour, in both
+ * themes, for ever.
+ *
+ * That is not hypothetical. `--amber-dark` was read by the รอ HR ยืนยัน badge on
+ * ตั้งค่าระบบ and has never been defined anywhere in this app; what drew was its
+ * fallback #8a5a00, a brown picked against a white page, which measured 2.53 on
+ * the dark card. The badge announcing an unanswered [OPEN] item was the hardest
+ * thing on that screen to read, and every contrast assertion in this file passed
+ * the whole time, because none of them was looking at a .jsx.
+ *
+ * A fallback is allowed — it is the sensible thing to write for a browser that
+ * drops the custom property. What is not allowed is a fallback standing in for a
+ * token nobody ever wrote.
+ */
+test('ทุกโทเคนที่ถูกอ้างในโค้ด ต้องมีนิยามจริง', () => {
+  const print = readFileSync(join(ROOT, 'app/print.css'), 'utf8');
+  const defined = new Set(
+    [...(css + print).matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)].map((m) => m[1]),
+  );
+
+  const files = execFileSync('git', ['ls-files', 'app', 'components', 'lib'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter((f) => /\.(jsx?|css)$/.test(f));
+
+  const dead = [];
+  for (const f of files) {
+    readFileSync(join(ROOT, f), 'utf8')
+      .split('\n')
+      .forEach((line, i) => {
+        for (const m of line.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)) {
+          if (!defined.has(m[1])) dead.push(`${f}:${i + 1} ${m[1]}`);
+        }
+      });
+  }
+  assert.deepEqual(dead, [], `โทเคนที่ไม่มีนิยาม:\n  ${dead.join('\n  ')}`);
 });
 
 /**

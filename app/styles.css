@@ -46,6 +46,7 @@
   --danger-ink: #B4402F;
   --danger-bg: #FBEAE7;
   --amber: #A8791A;
+  --amber-ink: #815B0B;
   --amber-bg: #FBF1E0;
   --info: #2A6099;
   --info-bg: #E7F0FA;
@@ -322,6 +323,22 @@
    * had, so nothing on today's screens moves.
    */
   --on-amber: light-dark(#ffffff, #261708);
+  /**
+   * AMBER AS TEXT THAT HAS TO BE READ, not amber as a state a chip reports.
+   *
+   * `--amber` on `--amber-bg` measures 3.46 in the light theme — below AA, known,
+   * and accepted for the four state chips in this file because they are a word
+   * you glance at beside a figure you actually read. รอ HR ยืนยัน is not that: it
+   * is 11px, it is asking somebody to go and answer an [OPEN] item, and it was
+   * the one place reaching for a darker amber that had never been created. The
+   * badge invented `--amber-dark` for itself and got a dead name and a hard-coded
+   * brown; this is that colour, made real.
+   *
+   * Same shape as `--danger-ink` above and for the same reason: darker than the
+   * base in the light theme, LIGHTER than it in the dark one, because the panel
+   * it sits on inverts. 5.46 and 8.77 respectively — both clear AA outright.
+   */
+  --amber-ink: light-dark(#815B0B, #EBBD95);
   /* Panel and border follow the text off the gold. Left behind at 78° and 81°
      they would have framed a brick-toned word in a golden-brown plate. Their
      LIGHTNESS is untouched, so the chip sits exactly where it sat and nothing
@@ -1051,6 +1068,15 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    because that is what it is asking of the reader rather than a warning. */
 .chip.edited { background: var(--amber-bg); color: var(--amber); }
 .chip.green { background: var(--green-bg); color: var(--green-dark); }
+/* รอ HR ยืนยัน on ตั้งค่าระบบ — an [OPEN] item HR has not answered yet.
+   Smaller and ringed rather than plain, because unlike the chips above it is not
+   reporting a state, it is asking somebody to go and press something. The
+   geometry is what it carried inline; only the colours moved, and they moved
+   because one of them was reading a token that does not exist. */
+.chip.unconfirmed {
+  padding: 1px 7px; border-radius: 999px; font: 700 11px/1.5 var(--sans);
+  background: var(--amber-bg); color: var(--amber-ink); border: 1px solid var(--amber);
+}
 /**
  * สถานะของใบ — the five, as classes.
  *

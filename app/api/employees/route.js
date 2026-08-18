@@ -4,6 +4,7 @@ import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
   publicEmployee, rosterPermission, chosenPasswordPermission, signingScope,
+  signingCoveragePermission,
 } from '@/lib/employees.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
@@ -116,6 +117,31 @@ export const POST = route(async (req) => {
     // YYYY-MM-DD match rejects the whole save.
     birthDate: birthDate || undefined,
   });
+  /**
+   * A NEW ROW CAN BE STRANDED THE MOMENT IT EXISTS — a Themtech พนักงาน created
+   * in a แผนก whose only หัวหน้า signs for ไพรมัส has nobody to approve them and
+   * nothing anywhere says so. Same rule as the edit route, with an empty
+   * "before" because there was no row a moment ago.
+   *
+   * Checked before the password is generated, so a refusal costs nothing: see
+   * the note in the edit route about why nothing to do with a password moves
+   * until everything else has succeeded.
+   */
+  const peers = await Employee
+    .find({ department: employee.department, active: true })
+    .select('code name role department company approvesCompany')
+    .lean();
+  const cover = signingCoveragePermission(peers, [...peers, {
+    _id: employee._id,
+    code: employee.code,
+    name: employee.name,
+    role: employee.role,
+    department: employee.department,
+    company: employee.company,
+    approvesCompany: employee.approvesCompany,
+  }], String(employee.department ?? ''));
+  if (!cover.ok) return fail(cover.error, 409);
+
   const issued = chosen ?? generateTempPassword();
   await employee.setPassword(issued);
   // Somebody else knows this password — it is not the employee's until they
