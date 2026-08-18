@@ -6,12 +6,13 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, pickSession, stampCap, editPermission, sameSession,
-  descriptionUnchanged,
+  descriptionUnchanged, noOtHoursMessage,
 } from '@/lib/entries.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
+import { refuseOverlap } from '@/lib/overlapQuery.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req, { params }) => {
@@ -106,6 +107,26 @@ export const PATCH = route(async (req, { params }) => {
   // entry's own — whoever it is FOR, not the person editing.
   const weekdayRefusal = weekdayOtRefusal(entry.department, result);
   if (weekdayRefusal) return fail(weekdayRefusal, 409, { warnings: result.warnings });
+
+  /**
+   * เวลาทับซ้อน, measured the same way the submit path measures it — against
+   * the person the entry is FOR, which is not the actor when ฝ่ายบุคคล is the
+   * one editing.
+   *
+   * `excludeId` is not an optimisation here, it is the rule: without it every
+   * edit that leaves the times alone would be refused by the entry it is
+   * editing, and an edit to the description would be impossible.
+   *
+   * Nothing is written yet. `Object.assign` above put the new session onto the
+   * in-memory document, but `save()` is still eleven lines away, so the copy
+   * this reads back out of Mongo is the one being replaced — which is why
+   * excluding it by id is enough and no ordering trick is needed.
+   */
+  const clash = await refuseOverlap(session, {
+    employee: entry.employee?._id || entry.employee,
+    excludeId: entry._id,
+  });
+  if (clash) return fail(clash.error, clash.status, { overlaps: clash.overlaps });
 
   // The cap belongs to whoever the entry is FOR, which is not the actor when
   // HR is the one editing. `excludeId` keeps the entry's own current hours out

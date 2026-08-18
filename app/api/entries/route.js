@@ -13,6 +13,7 @@ import {
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
+import { refuseOverlap } from '@/lib/overlapQuery.js';
 import { periodOf } from '@/lib/periodLock.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
@@ -229,6 +230,22 @@ export const POST = route(async (req) => {
    */
   const weekdayRefusal = weekdayOtRefusal(employee.department, result);
   if (weekdayRefusal) return fail(weekdayRefusal, 409, { warnings: result.warnings });
+
+  /**
+   * เวลาทับซ้อน — does anybody already hold these minutes?
+   *
+   * Measured against the person the entry is FOR, never against the filer: a
+   * หัวหน้า filing for two people at the same hour is two people at work, and
+   * a check keyed on `user` would refuse the second one.
+   *
+   * After the engine and before the ceiling, which is the order the two
+   * refusals are worth reading in. A clash means the hours are wrong and the
+   * ceiling arithmetic was measuring a number nobody should have filed; being
+   * told "เกินเพดาน" first would send somebody to argue for an override over
+   * hours they had accidentally claimed twice.
+   */
+  const clash = await refuseOverlap(session, { employee: employee._id });
+  if (clash) return fail(clash.error, clash.status, { overlaps: clash.overlaps });
 
   const period = session.workDate.slice(0, 7);
   const cap = await checkCap({

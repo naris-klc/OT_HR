@@ -13,6 +13,7 @@ import {
 } from '@/lib/birthdayFiling.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
+import { refuseOverlap } from '@/lib/overlapQuery.js';
 import { periodOf } from '@/lib/periodLock.js';
 import { approvalRecord } from '@/lib/delegation.js';
 import { today } from '@/lib/delegationQuery.js';
@@ -118,6 +119,27 @@ export const POST = route(async (req) => {
   if (existing) {
     return fail('มีใบ OT ของพนักงานคนนี้ในวันดังกล่าวอยู่แล้ว — เปิดดูที่ตรวจสอบรายเดือน', 409);
   }
+
+  /**
+   * AND THE DAY BEFORE, WHICH THE CHECK ABOVE CANNOT SEE.
+   *
+   * `existing` asks about `workDate` and answers the case this route was
+   * written for: two people pressing บันทึก OT ให้ at once. It cannot see a
+   * shift filed against YESTERDAY that ran past midnight into this birthday —
+   * a different date, so a different `workDate`, and no clash by that test.
+   *
+   * That gap matters more here than on any other path, because this one can
+   * write `approved` in the same act. An overlapping birthday filing would not
+   * sit in a queue waiting for somebody to notice it; it would go straight onto
+   * the month as signed-off hours claimed twice.
+   *
+   * The two checks are kept apart rather than merged. `existing` is deliberately
+   * blind to status — even a cancelled ใบ for that birthday means somebody has
+   * already been here — and this one counts only live requests, because a
+   * refused request holds no minutes. Neither answer is the other's.
+   */
+  const clash = await refuseOverlap(session, { employee: employee._id });
+  if (clash) return fail(clash.error, clash.status, { overlaps: clash.overlaps });
 
   const { value: description, error: descriptionError } = normaliseDescription(payload.description);
   if (descriptionError) return fail(descriptionError, 400);
