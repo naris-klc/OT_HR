@@ -27,7 +27,30 @@
 /* The only @page in the app — see the note above the last block of this file
    for why the margin is zero and how the bands are given back. styles.css used
    to carry a second one (A4/12mm); it lost the cascade to this one and existed
-   only to break the day two stylesheets swapped order, so it is gone. */
+   only to break the day two stylesheets swapped order, so it is gone.
+
+   ⚠ DO NOT PUT A MARGIN HERE. It is the one edit to this file that silently
+   costs a second sheet of paper per person, and the arithmetic is short enough
+   to check before making it:
+
+     the sheet is 194mm of body + 8mm bands either side          = 210mm wide
+     the sheet is 255mm of body + 18mm above + 22mm below        = 295mm tall
+     A4                                                          = 210 × 297mm
+
+   295 of 297 with 2mm to spare, which is the whole design. Give @page a 10mm
+   margin and the printable area becomes 190 × 277mm: the sheet is then 20mm too
+   wide and 18mm too tall, so every F-HR-027 spills its last band onto a second
+   side and a batch of forty prints eighty pages. The margin lives on `.f027`'s
+   own padding instead (`.f027-screen .f027`), where it is INSIDE the page box
+   and can be measured against the paper.
+
+   The browser's own header and footer are what a @page margin is usually
+   reached for, and they are already handled: Chrome and Firefox draw them in
+   roughly the top and bottom 10mm of the page box, which here is white band —
+   18mm of it above the title and 22mm below the ผู้ตรวจสอบ block. A ticked
+   "Headers and footers" box therefore prints the URL and the date on blank
+   paper rather than over the form. Untick it anyway for a controlled form; it
+   is not this stylesheet's to decide. */
 @page {
   size: A4 portrait;
   margin: 0;
@@ -262,6 +285,14 @@
 .f027-screen .f027 + .f027 { margin-top: 16px; }
 
 @media print {
+  /* The page box is 210 × 297mm and the sheet is drawn to fill it, so anything
+     the document itself adds around the sheet is millimetres taken off the
+     bottom of the form. `* { margin: 0; padding: 0 }` in styles.css already
+     zeroes these; they are restated here because this is the file somebody
+     opens when a form comes out one line short, and a reset that lives only in
+     a screen stylesheet is one refactor away from not applying. */
+  html, body { margin: 0; padding: 0; }
+
   /* `overflow: visible` first, and it is not cosmetic: a scroll container is a
      single unbreakable box to the paginator. Left on, the sheet would be cut
      off at the bottom of page one instead of running on, and a month that
@@ -272,12 +303,41 @@
      is doing the same job it does in the preview. Only the shadow goes. */
   .f027-screen .f027 { box-shadow: none; }
   .f027-screen .f027 + .f027 { margin-top: 0; }
+
+  /* ONE PERSON TO A SIDE, in a batch of forty.
+
+     `break-before` on every sheet after the first, and deliberately NOT
+     `break-after: always` on each of them: break-after would also fire on the
+     last sheet in the bundle and eject a blank fortieth-and-first side. The
+     two spellings are the same rule for two generations of browser — the
+     `page-break-*` alias is what older print engines read. */
   .f027 + .f027 { break-before: page; page-break-before: always; }
+
   /* A month with enough split sessions outgrows the sheet. Let it run onto a
      second page with the column headings repeated, rather than forcing the
      whole form onto one page and having the browser shrink or clip it. */
-  .f027 tr, .f027-foot, .f027-acting { page-break-inside: avoid; }
+  .f027 tr, .f027-foot, .f027-acting { break-inside: avoid; page-break-inside: avoid; }
   .f027 thead { display: table-header-group; }
+
+  /* WHEN IT DOES RUN ON, IT MUST NOT RUN ON BY ONE LINE.
+
+     The rules above keep each individual row and each footer block whole, and
+     say nothing about where the split between them falls — so a 33-row month
+     could put row 33, the สรุปรวม row and the entire signature block alone on
+     side two, over 250mm of white paper. These two say the tail travels with
+     the grid: the total never starts a page, and neither does the ผู้ตรวจสอบ
+     block.
+
+     `orphans` / `widows` would be the way to say the same thing about the date
+     rows themselves, and they are deliberately not here: the properties apply
+     to block containers with inline content, and no browser applies them to
+     table rows. A pair of them on `tbody` would read as a rule and do nothing.
+
+     `break-before: avoid` is a request, not a guarantee — a browser will still
+     break where it has no choice, which is correct: the alternative to an ugly
+     page two is a clipped page one. */
+  .f027 tr.total { break-before: avoid; page-break-before: avoid; }
+  .f027-foot { break-before: avoid; page-break-before: avoid; }
 }
 
 /* ══ สรุปค่าล่วงเวลา (OT) ส่งบัญชี ═══════════════════════════════════════════
