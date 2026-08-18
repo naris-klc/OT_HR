@@ -15,6 +15,7 @@ the ×1.5 and ×3 buckets, and totals them. No rates, no baht, anywhere.
 npm run setup          # installs dependencies
 copy .env.example .env # then edit MONGODB_URI and JWT_SECRET
 npm run seed           # demo departments, people, holidays, and examples A–E
+                       # REFUSES on a database holding anything it did not create
 npm test               # the calculation engine test suite
 npm run dev            # UI + API together on :3000
 ```
@@ -59,6 +60,19 @@ only version pointers; no entry's hours or status is touched.
 
 Requires **Node 20+** and a MongoDB instance. For production, `npm run build`
 then `npm start`.
+
+**`npm run seed` will not run against a database it did not create.** It opens
+with five `deleteMany({})` — departments, employees, holidays, entries and
+settings — which is the point of it on a laptop and is the roster plus every
+hour anybody has filed on the company server. It now counts what is there
+first: employees outside its own list, entries filed through the app, roster
+audits, policy versions, HR's answers to the [OPEN] items, delegations, closed
+periods. Any of them and it prints what it found and exits 1.
+
+`npm run seed -- --force` overrides it. Take a backup first, and know that the
+wipe is **partial** — the audit trail, the policy versions, the delegations and
+the period locks are not among the five collections it clears, so a forced
+reseed leaves them pointing at people and entries that no longer exist.
 
 ## สำรองและกู้คืนข้อมูล
 

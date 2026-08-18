@@ -10,7 +10,9 @@
  */
 
 import 'dotenv/config';
+import mongoose from 'mongoose';
 import { connect, disconnect } from './db.js';
+import { seedSafety, seedRefusal } from '../lib/seedGuard.js';
 import Department from './models/Department.js';
 import Employee from './models/Employee.js';
 import Holiday from './models/Holiday.js';
@@ -150,9 +152,58 @@ const THEMTECH_EXAMPLES = [
 
 const ALL_EXAMPLES = [...WORKED_EXAMPLES, ...THEMTECH_EXAMPLES];
 
+/**
+ * Everything this file creates, so the guard below can tell it apart from
+ * everything else. Read off the two lists rather than written a third time —
+ * a roster that drifts from the constant naming it is the way a guard starts
+ * reporting the seed's own rows as somebody else's data.
+ */
+const SEEDED_CODES = new Set(PEOPLE.map((p) => p.code));
+
+/**
+ * Refuses to wipe a database holding anything the seed did not put there.
+ *
+ * See lib/seedGuard.js for why the test is "foreign data" rather than "not
+ * empty", and for what a forced run leaves behind. The counting is here
+ * because it needs a connection; the decision is there because it does not.
+ */
+async function guard(force) {
+  const db = mongoose.connection.db;
+  const count = async (name, query = {}) => {
+    try { return await db.collection(name).countDocuments(query); } catch { return 0; }
+  };
+  const settings = await db.collection('settings').findOne({}).catch(() => null);
+
+  const check = seedSafety({
+    foreignEmployees: (await Employee.find().select('code').lean())
+      .map((e) => e.code)
+      .filter((c) => !SEEDED_CODES.has(c)),
+    // `filedBy` is written by the routes and never by this file, so it names
+    // exactly the entries a person put in through the app.
+    filedEntries: await count('otentries', { filedBy: { $ne: null } }),
+    rosterAudits: await count('otEmployeeAudits'),
+    policyVersions: await count('otPolicyVersions'),
+    policyConfirmations: Object.keys(settings?.policyConfirmations || {}).length,
+    delegations: await count('approvaldelegations'),
+    periodLocks: await count('otPeriodLocks'),
+  });
+
+  if (check.ok) return;
+  if (force) {
+    console.warn(seedRefusal(check.findings).replace('ไม่รัน seed —', '--force —'));
+    console.warn('\nกำลังลบตามที่สั่ง...\n');
+    return;
+  }
+  console.error(seedRefusal(check.findings));
+  await disconnect();
+  process.exit(1);
+}
+
 async function run() {
   await connect();
   console.log('connected');
+
+  await guard(process.argv.includes('--force'));
 
   await Promise.all([
     Department.deleteMany({}),
