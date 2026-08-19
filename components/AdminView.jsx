@@ -73,7 +73,7 @@ export default function AdminView({ user, initialSection }) {
           ))}
         </div>
       </div>
-      {section === 'departments' && <Departments />}
+      {section === 'departments' && <Departments onGo={setSection} />}
       {section === 'employees' && <Employees user={user} />}
       {section === 'holidays' && <Holidays />}
       {section === 'policy' && <Policy user={user} />}
@@ -211,7 +211,7 @@ function Heads({ department, people }) {
  * route asks when a request finally arrives; a second reading of it here is how
  * a screen comes to promise a signature the server then refuses.
  */
-function SigningCoverage({ departments, people }) {
+function SigningCoverage({ departments, people, onGo }) {
   const active = people.filter((p) => p.active !== false);
 
   const gaps = departments
@@ -249,15 +249,43 @@ function SigningCoverage({ departments, people }) {
           </li>
         ))}
       </ul>
-      <div style={{ marginTop: 6, fontSize: 12.5 }}>
-        แก้ได้สองทาง — ตั้งหรือแก้ “เซ็นให้บริษัท” ของหัวหน้าในแท็บ พนักงาน
-        {' '}หรือตั้งผู้รับช่วงในแท็บ ผู้รับช่วงอนุมัติ
+      {/* THE TWO REMEDIES, AS TWO BUTTONS.
+
+          This sentence used to end in the names of two tabs — "ในแท็บ พนักงาน"
+          and "ในแท็บ ผู้รับช่วงอนุมัติ" — which is a set of directions rather
+          than a way out: whoever reads this banner is on แผนกและเพดาน, has just
+          been told somebody's OT will sit unsigned, and then has to go and find
+          the tab the sentence named. The tabs are six buttons in a row above,
+          and two of the six are the ones meant.
+
+          Both of them, not one. The banner has always said there are two ways
+          out, and which one is right depends on something this screen cannot
+          know — whether the department is short a หัวหน้า for good or short one
+          this week. Picking a single "quick action" would be the screen making
+          that call on the reader's behalf.
+
+          The sentence still says what each one does, because a button label has
+          room for a destination and not for a rule. */}
+      <div className="alert-actions">
+        <span>
+          แก้ได้สองทาง — ตั้งหรือแก้ “เซ็นให้บริษัท” ของหัวหน้า หรือตั้งผู้รับช่วงอนุมัติ
+        </span>
+        {onGo && (
+          <>
+            <button className="btn ghost sm" onClick={() => onGo('employees')}>
+              ตั้งค่าหัวหน้างาน
+            </button>
+            <button className="btn ghost sm" onClick={() => onGo('delegation')}>
+              ตั้งผู้รับช่วงอนุมัติ
+            </button>
+          </>
+        )}
       </div>
     </Alert>
   );
 }
 
-function Departments() {
+function Departments({ onGo }) {
   const [rows, setRows] = useState([]);
   const [people, setPeople] = useState([]);
   /** Whether เพิ่มแผนก is open — the only way this screen creates a row. */
@@ -318,7 +346,7 @@ function Departments() {
       {/* Above the table rather than in it: a department with nobody to sign
           for its people is not a column of that department's row, it is a thing
           somebody has to go and do. */}
-      <SigningCoverage departments={rows} people={people} />
+      <SigningCoverage departments={rows} people={people} onGo={onGo} />
 
       {/* The five boxes this replaces are in the dialog behind it — see
           DepartmentForm for why they are no longer standing above the table. */}
@@ -385,8 +413,17 @@ function Departments() {
                 </td>
                 <td className="act-col">
                   {/* รหัส and ชื่อแผนก, which were unreachable after creation —
-                      see DepartmentForm. */}
-                  <button className="btn ghost sm" onClick={() => setEditing(d)}>แก้ไข</button>
+                      see DepartmentForm.
+
+                      A TEXT ACTION, not a button. สถานะ beside it is a control
+                      that changes something when pressed — ใช้งาน / ปิดใช้งาน is
+                      a toggle wearing a button because that is what it is — and
+                      drawn as two identical ghost buttons the row ended in a
+                      pair, with the eye going to whichever came first rather
+                      than to the state it was meant to read. This one only opens
+                      a dialog; nothing it does is final. So the weight goes to
+                      the control that decides and this one steps back. */}
+                  <button className="link" onClick={() => setEditing(d)}>แก้ไข</button>
                 </td>
               </tr>
             ))}

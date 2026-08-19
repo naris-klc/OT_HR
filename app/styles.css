@@ -1343,6 +1343,24 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .alert.info { background: var(--info-bg); color: var(--info); border-color: var(--info-line); }
 .alert.info::before { content: 'i'; background: var(--info); }
 
+/* A way out, on the banner that says something is wrong.
+
+   The line an alert ends with when the thing it reports is fixed somewhere
+   else: the sentence saying what to do, then the buttons that go and do it.
+   Wrapping rather than stacking, and `align-items: center` so a button sits on
+   the line of the sentence it belongs to rather than under it — on a wide card
+   the whole thing is one line, and on a narrow one the buttons drop below the
+   words they came from and stay together.
+
+   `.btn.ghost` is drawn on `--card`, which is what makes it work here: the
+   panel behind it is the alert's own red, and a control that keeps the card's
+   colour reads as a thing to press rather than as more of the notice. */
+.alert-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  margin-top: 8px;
+}
+.alert-actions > span { font-size: 12.5px; }
+
 /* How the engine cut a session up — one line per segment, times and hours, so
    it is mono throughout. The green stub on the left ties each line back to the
    session above it rather than letting them read as separate notes. */
@@ -1573,8 +1591,33 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    cell needs saying and the other cells here do not: they hold a code, a name or
    a number. Same answer `table.fixed` already uses for the same reason. */
 .deptset-table td.heads-col { overflow-wrap: anywhere; }
-.deptset-table td.cap-col input { width: 100px; }
-.deptset-table td.state-col .btn, .deptset-table td.act-col .btn { white-space: nowrap; }
+/* เพดาน ชม./เดือน and ชม./สัปดาห์ — the two boxes edited in the row itself.
+
+   NARROWER, and the width is the label. A ceiling is two or three digits and
+   the widest thing either box ever holds is its own "ไม่กำหนด" placeholder, so
+   90px covers both with room to spare and hands the rest of the table back to
+   the columns that hold sentences. A wide box in a table asks to be typed a
+   sentence into.
+
+   AND THE APP'S OWN FIELD RATHER THAN THE BROWSER'S. These two are the only
+   inputs on this screen that never went through `.field` — bare <input>s in a
+   table cell — so what drew was the UA's default box: square, its own border
+   colour, no padding at all, and in ธีมมืด a light control on a dark row. The
+   phone layout at the foot of this file had already fixed it for itself and
+   said so in a note; the desktop was left as it was. Same tokens as every other
+   field in the app, at the smaller size a table row wants. */
+.deptset-table td.cap-col input {
+  width: 90px;
+  padding: 7px 9px;
+  border: 1px solid var(--input-line); border-radius: var(--radius-sm);
+  background: var(--field-bg); color: var(--ink);
+  font: 500 14px/1.3 var(--mono); font-variant-numeric: tabular-nums;
+}
+.deptset-table td.cap-col input:focus {
+  outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.deptset-table td.state-col .btn, .deptset-table td.act-col .btn,
+.deptset-table td.act-col .link { white-space: nowrap; }
 /* Each name its own line, tight enough that two of them still read as one cell. */
 .deptset-table .dept-head + .dept-head { margin-top: 6px; }
 
@@ -3837,24 +3880,18 @@ table.mini tbody tr:hover { background: none; }
   }
   .deptset-table td.cap-month::before { content: 'เพดาน ชม./เดือน'; }
   .deptset-table td.cap-week::before { content: 'เพดาน ชม./สัปดาห์'; }
-  /* `min-width: 0` is the load-bearing half: without it the input keeps its
+  /* The box, the app's own field in both layouts now — only the three things a
+     touch screen changes are left here.
+
+     `min-width: 0` is the load-bearing one: without it the input keeps its
      intrinsic twenty-character width whatever the box around it says, and the
-     card grows past the screen instead of the field shrinking. */
+     card grows past the screen instead of the field shrinking. Wider than the
+     desktop's 90 and still not full-width: the box's width is what says a
+     two-digit number goes in it, and a full-card box for "40" reads as a text
+     field. */
   .deptset-table td.cap-col input {
     width: 130px; min-width: 0; flex: none;
-    /* A real touch target, and the app's own field rather than the browser's.
-       These two are the only inputs on this screen that never went through
-       `.field` — they are bare <input>s in a table cell, so they kept the
-       default border and a ~26px height while every button on the card beside
-       them is 44px. Wider is NOT the fix and was considered: the box's width is
-       what says a two-digit number goes in it, and a full-card box for "40"
-       reads as a text field. */
-    min-height: 44px; padding: 0 12px;
-    border: 1px solid var(--input-line); border-radius: var(--radius-sm);
-    background: var(--field-bg); font: 500 15px/1.3 var(--mono); color: var(--ink);
-  }
-  .deptset-table td.cap-col input:focus {
-    outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+    min-height: 44px; padding: 0 12px; font-size: 15px;
   }
 
   /* Both buttons a real touch target, and a half of the card each — the same
@@ -3874,6 +3911,12 @@ table.mini tbody tr:hover { background: none; }
   .deptset-table td.act-col { justify-self: end; }
   .deptset-table td.state-col .btn, .deptset-table td.act-col .btn {
     width: 100%; min-height: 44px;
+  }
+  /* แก้ไข is a text action on the desktop, where it steps back from the state
+     control beside it. It still has to be a target here — 44px, and the width
+     of its half of the card's foot, so the two controls end the card level. */
+  .deptset-table td.act-col .link {
+    width: 100%; min-height: 44px; text-align: right;
   }
 }
 
