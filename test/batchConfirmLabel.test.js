@@ -70,10 +70,10 @@ test('the bar and the rows read one flag, so they cannot disagree', () => {
  */
 test('a ticked row offers no decision of its own', () => {
   has(bar, "selected.has(e._id) ? (");
+  // Replaced, not merely hidden: a card that loses its buttons has to say why.
+  // The wording itself is pinned in test/batchBarSticky.test.js, which is where
+  // the bar it used to point at is tested.
   has(bar, 'picked-note');
-  // Replaced, not merely hidden: a card that loses its buttons has to say where
-  // they went.
-  has(bar, 'เลือกไว้แล้ว');
 });
 
 test('reading a row is still allowed while it is ticked', () => {

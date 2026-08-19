@@ -3126,9 +3126,14 @@ table.mini tbody tr:hover { background: none; }
      z-index 11: over the cards, which carry none, and under the app bar (20)
      that it tucks beneath. */
   .queue-mobile-bar {
+    /* 62px IS the top of the screen here — it is the app bar's height, and the
+       app bar is itself sticky at 0 and never leaves. Set to 0 this bar would
+       slide UNDER it (z-index 11 against the app bar's 20) and be invisible
+       exactly when it is stuck. Below the one fixed thing on the screen is as
+       high as anything else can go. */
     position: sticky; top: 62px; z-index: 11;
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    padding: 0 12px 12px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 0 12px 10px;
     background: var(--neutral-wash); border-bottom: 1px solid var(--line-soft);
   }
   /* Sticky needs an opaque background of its own — `--neutral-wash` above is
@@ -3138,30 +3143,61 @@ table.mini tbody tr:hover { background: none; }
      the tools' fill. */
   .queue-mobile-bar:has(.picked-actions) { background: var(--green-bg); }
 
-  /* The summary and the two decisions, on the line under เลือกทั้งหมด.
-     `flex: 1 1 100%` so they take a row of their own: three controls and a
-     sentence beside a tick-box is four things competing for a phone's width,
-     and the count is the one that must not be squeezed to an ellipsis. */
+  /* TWO ROWS, NOT FOUR. เลือกทั้งหมด, the tally and the ✕ share the first; the
+     two decisions have the second to themselves.
+
+     It was four rows deep — a sentence, two buttons and a full-width ล้างการเลือก
+     link — which on a 640px-tall phone is a fifth of the screen spent on a
+     control bar that is stuck to the top of it, over a list it exists to act on.
+     The only part of it worth a touch target is the pair of decisions; the rest
+     is a tick-box, two numbers and an undo. */
+  .picked-sum {
+    flex: 1 1 auto; min-width: 0;
+    font: 400 12.5px/1.3 var(--sans); color: var(--green-dark);
+    /* The numbers are the point, so they get the mono face and the size; the
+       words between them are separators. */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .picked-sum strong { font: 600 14.5px/1.2 var(--mono); }
+
+  /* The ✕ in the corner. 34px, which is under the 44px this app gives every
+     other control on a phone, and deliberately: that floor is for DECISIONS —
+     the two buttons under it, which cannot be taken back — and this is an undo
+     with nothing behind it. A mis-tap costs one more tap. Made small so it
+     cannot be mistaken for a third decision, which is exactly what it looked
+     like while it was a full-width link under the other two. */
+  .picked-clear {
+    flex: none; width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border: 1px solid var(--ok-line); border-radius: var(--radius-sm);
+    background: var(--card); color: var(--green-dark);
+    font: 400 13px/1 var(--sans); cursor: pointer;
+  }
+  .picked-clear:active { transform: translateY(1px); }
+  /* Not a `.btn`, so the app's focus rule does not reach it — the same gap
+     `.password-field .reveal` had to close. */
+  .picked-clear:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+
   .picked-actions {
     flex: 1 1 100%;
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 8px;
     animation: otfade .16s ease both;
   }
-  .picked-sum {
-    flex: 1 1 100%;
-    font: 400 13px/1.4 var(--sans); color: var(--green-dark);
-  }
-  .picked-sum strong { font: 600 15px/1.2 var(--mono); }
-  .picked-actions .btn { flex: 1 1 40%; min-height: 44px; }
-  .picked-actions .link { flex: 1 1 100%; text-align: center; min-height: 32px; color: var(--green-dark); }
+  /* Equal halves, and 44px kept: these two are the decisions, and the floor
+     stays where the rest of the app puts it. Compacting a bar is not a reason
+     to shrink the two things on it that cannot be undone. */
+  .picked-actions .btn { flex: 1 1 0; min-height: 44px; padding-left: 8px; padding-right: 8px; }
   /* Drawn as a control rather than as a form label — a bare tick-box with words
      after it reads as something left over at the end of a row, and this is the
      only way to build a batch on a phone. Given a button's height, border and
      radius so it is as obviously pressable as anything else in the bar. */
   .queue-mobile-bar .check {
-    gap: 8px; min-height: 40px; padding: 0 12px;
+    gap: 8px; min-height: 38px; padding: 0 10px;
     border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: var(--card); font: 500 13px/1.4 var(--sans);
+    background: var(--card); font: 500 12.5px/1.4 var(--sans);
+    /* It shares its line with the tally and the ✕ now, and it is the one of the
+       three that can give: the numbers must not wrap and the mark is fixed. */
+    flex: 0 1 auto; min-width: 0; white-space: nowrap;
   }
   .queue-mobile-bar .check input { width: 18px; height: 18px; }
 

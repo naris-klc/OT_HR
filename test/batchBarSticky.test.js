@@ -38,8 +38,44 @@ test('the controls sit in the same bar as เลือกทั้งหมด',
 });
 
 test('it summarises what is ticked — count and hours', () => {
-  has(jsx, 'เลือกแล้ว <strong>{picked.length}</strong> รายการ');
-  has(jsx, '{hours(pickedHours)} ชม.');
+  // Two numbers on the tick-box's own line, not a sentence on a row of its own:
+  // this is checked before a press, not read.
+  has(jsx, '<strong>{picked.length}</strong> ใบ · {hours(pickedHours)} ชม.');
+});
+
+/**
+ * FOUR ROWS DOWN TO TWO. On a 640px phone the bar was taking a fifth of the
+ * screen — and it is stuck to the top of that screen, over the list it exists to
+ * act on. Only the two decisions are worth a touch target; the rest is a
+ * tick-box, two numbers and an undo.
+ */
+test('the box is two rows, and only the decisions keep the 44px floor', () => {
+  const rules = phone.slice(phone.indexOf('.picked-sum {'), phone.indexOf('/* ── the row as a card'));
+  // Tally and ✕ share the tick-box's line; the two decisions have the next.
+  has(rules, '.picked-sum {\r\n    flex: 1 1 auto;');
+  has(rules, '.picked-actions {\r\n    flex: 1 1 100%;');
+  has(rules, '.picked-actions .btn { flex: 1 1 0; min-height: 44px;');
+  // The undo is smaller ON PURPOSE — it is the one control here that can be
+  // taken back, and at full width under the other two it read as a third
+  // decision.
+  has(rules, 'width: 34px; height: 34px;');
+});
+
+test('the ✕ is reachable without a pointer', () => {
+  has(jsx, 'aria-label="ล้างการเลือก"');
+  // Not a `.btn`, so the app's focus rule does not reach it — the gap
+  // `.password-field .reveal` had to close too.
+  has(phone, '.picked-clear:focus-visible');
+});
+
+/**
+ * The card pointed at "แถบด้านล่าง" for one commit after the bar moved to the
+ * top. A direction that names the wrong end of the screen is worse than none.
+ */
+test('a ticked card does not send anybody to where the bar used to be', () => {
+  has(jsx, '✓ เลือกอยู่');
+  const code = jsx.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!code.includes('ใช้แถบด้านล่าง'), 'การ์ดยังชี้ไปที่แถบด้านล่างที่ย้ายไปแล้ว');
 });
 
 /**
@@ -49,9 +85,14 @@ test('it summarises what is ticked — count and hours', () => {
  */
 test('the bar stays under the app bar while the list scrolls', () => {
   const rule = phone.slice(phone.indexOf('.queue-mobile-bar {'), phone.indexOf('.queue-mobile-bar .check'));
+  /* 62px, NOT 0. The app bar is itself sticky at 0, 62px tall and never leaves,
+     so 62 IS the top of the usable screen; at 0 this bar would slide under it
+     (z-index 11 against 20) and vanish at the exact moment it stuck. */
   has(rule, 'position: sticky; top: 62px;');
-  // Over the cards, under the app bar it tucks beneath.
   has(rule, 'z-index: 11;');
+  const appbar = css.slice(css.indexOf('.appbar {'), css.indexOf('.appbar .title'));
+  has(appbar, 'position: sticky; top: 0; z-index: 20;', 'แอปบาร์เปลี่ยนไปแล้ว');
+  has(appbar, 'height: 62px;', 'ความสูงแอปบาร์เปลี่ยน — top ของแถบต้องตามไปด้วย');
   // Sticky needs a fill of its own or the rows read through it.
   has(phone, '.queue-mobile-bar:has(.picked-actions) { background: var(--green-bg); }');
 });

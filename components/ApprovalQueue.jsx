@@ -571,25 +571,46 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
               filings.
             */}
             {picked.length > 0 && (
-              <div className="picked-actions">
+              <>
+                {/* The tally, on the same line as เลือกทั้งหมด rather than under
+                    it. "เลือกแล้ว 3 รายการ (26.00 ชม.)" was a sentence on a row
+                    of its own, and it is not a sentence anybody reads twice —
+                    it is two numbers being checked before a press. Two numbers
+                    fit beside the tick-box; the sentence did not. */}
                 <div className="picked-sum">
-                  เลือกแล้ว <strong>{picked.length}</strong> รายการ
-                  {' '}({hours(pickedHours)} ชม.)
+                  <strong>{picked.length}</strong> ใบ · {hours(pickedHours)} ชม.
                 </div>
-                <button className="btn sm" disabled={busy} onClick={() => setConfirming(picked)}>
-                  {pileLabel(isHr, picked.length)}
-                </button>
+                {/* ล้างการเลือก as a mark in the corner, not a full-width link
+                    under the decisions. Undoing a selection is the cheapest
+                    thing on this bar and it was taking the most room — and a
+                    third full-width control under two others reads as a third
+                    decision, which it is not. The label survives for anybody
+                    who cannot see the mark. */}
                 <button
-                  className="btn ghost danger sm"
+                  type="button"
+                  className="picked-clear"
                   disabled={busy}
-                  onClick={() => setRejecting(picked)}
+                  onClick={() => setSelected(new Set())}
+                  aria-label="ล้างการเลือก"
+                  title="ล้างการเลือก"
                 >
-                  ไม่อนุมัติ
+                  ✕
                 </button>
-                <button className="link" disabled={busy} onClick={() => setSelected(new Set())}>
-                  ล้างการเลือก
-                </button>
-              </div>
+                {/* The two decisions, side by side on their own line — the only
+                    part of this box that is worth a touch target. */}
+                <div className="picked-actions">
+                  <button className="btn sm" disabled={busy} onClick={() => setConfirming(picked)}>
+                    {pileLabel(isHr, picked.length)}
+                  </button>
+                  <button
+                    className="btn ghost danger sm"
+                    disabled={busy}
+                    onClick={() => setRejecting(picked)}
+                  >
+                    ไม่อนุมัติ
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -839,8 +860,15 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                             the pile. So does อนุมัติเกินเพดาน below: the batch bar
                             has no equivalent, so hiding it would take away the
                             only way to reach it while anything is ticked. */}
+                        {/* It read "✓ เลือกไว้แล้ว · ใช้แถบด้านล่าง" until the bar
+                            moved to the top of the list, at which point the card
+                            was pointing at a place with nothing in it. The
+                            direction is dropped rather than turned round: the bar
+                            is stuck to the top of the screen and is the only
+                            thing on it that could act on a selection, so naming
+                            where it is says less than the tick already does. */}
                         {selected.has(e._id) ? (
-                          <span className="cell-sub picked-note">✓ เลือกไว้แล้ว · ใช้แถบด้านล่าง</span>
+                          <span className="cell-sub picked-note">✓ เลือกอยู่</span>
                         ) : (
                           <>
                             <button className="btn sm" disabled={busy} onClick={() => setConfirming([e])}>
