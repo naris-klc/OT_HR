@@ -854,13 +854,34 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
 
   return (
     <Modal
-      title={`${verb} ${entries.length} รายการ`}
+      /**
+       * "ทั้งหมด" OF ONE IS NOT A THING, and this dialog opens on one far more
+       * often than on forty — the commonest way to reach it is a single tick, or
+       * the อนุมัติ button on one row. A green button reading อนุมัติทั้งหมด over
+       * a list of one is the app describing a batch that is not happening, and
+       * it is the last thing read before an approval goes to payroll.
+       *
+       * The count moves onto the button when there IS a batch, because that is
+       * the number worth checking twice and it is the number that scrolls off a
+       * phone: the title is at the top of a sheet whose bottom is the button.
+       *
+       * The title takes the same shape as RejectModal's below — count when many,
+       * "รายการนี้" when one. It also stops the single case printing the same
+       * sentence twice, once at each end of a short sheet.
+       *
+       * `verb` is อนุมัติ for a หัวหน้า and ยืนยัน for ฝ่ายบุคคล, so every string
+       * here has to survive both. "ยืนยันการยืนยัน" is why the button is not
+       * phrased as a confirmation of the verb.
+       */
+      title={many ? `${verb} ${entries.length} รายการ` : `${verb}รายการนี้`}
       subtitle={isHr ? 'รายการที่ยืนยันแล้วจะเข้าสู่รายงานส่งออกทันที' : 'ส่งต่อให้ฝ่ายบุคคลยืนยัน'}
       onClose={onClose}
       footer={(
         <>
           <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
-          <button className="btn" disabled={busy} onClick={onConfirm}>{verb}ทั้งหมด</button>
+          <button className="btn" disabled={busy} onClick={onConfirm}>
+            {many ? `${verb}ทั้งหมด (${entries.length} รายการ)` : `${verb} 1 รายการ`}
+          </button>
         </>
       )}
     >
