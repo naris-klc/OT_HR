@@ -68,8 +68,12 @@ export default function Delegation({ user, scope = 'mine' }) {
 
   return (
     <div className="card">
-      <div className="row" style={{ alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
+      {/* The heading and its one button. `flex: 1` on the text block is a CLASS
+          and not the inline style it used to be: below 860px the phone layout
+          has to widen that block to the full row so the button drops under it,
+          and an inline style cannot be overridden by a stylesheet at all. */}
+      <div className="row deleg-head" style={{ alignItems: 'flex-start' }}>
+        <div className="deleg-head-text">
           <h2>ผู้รับช่วงอนุมัติแทน</h2>
           <div className="hint" style={{ margin: 0 }}>
             {all
@@ -107,7 +111,12 @@ export default function Delegation({ user, scope = 'mine' }) {
         <Empty>{all ? 'ยังไม่มีการมอบหมายในระบบ' : 'ยังไม่เคยมอบหมายผู้รับช่วง'}</Empty>
       ) : (
         <div className="table-wrap" style={{ marginTop: 12 }}>
-          <table className="stack-table">
+          {/* `deleg-table` on top of the shared `stack-table`: six of these
+              seven cells carry a second line under the value — a code, a role,
+              a company scope — so a card here is roughly twice the lines of one
+              in any other list using the pattern, and the shared spacing runs
+              them together. See the block in styles.css. */}
+          <table className="stack-table deleg-table">
             <thead>
               <tr>
                 <th>สถานะ</th>
@@ -144,7 +153,15 @@ export default function Delegation({ user, scope = 'mine' }) {
                       <div className="cell-sub th">เหลืออีก {daysLeft(d.toDate, today)} วัน</div>
                     )}
                   </td>
-                  <td data-label="เหตุผล" style={{ maxWidth: 220 }}>{d.reason || '—'}</td>
+                  {/* `cell-cap` and not the inline `maxWidth: 220` it used to
+                      be. The cap is for the DESKTOP column — a long เหตุผล would
+                      otherwise stretch the table — and on the phone card it was
+                      the reason this one line failed to line up with the four
+                      above it: a capped block still starts at the card's left
+                      edge, so `text-align: right` was right-aligning the value
+                      inside a 220px box that ended halfway across the card. As a
+                      class, the card can drop the cap. */}
+                  <td className="cell-cap" data-label="เหตุผล">{d.reason || '—'}</td>
                   <td data-label="ผู้ตั้ง">
                     {d.createdByName || '—'}
                     {d.revokedAt && (

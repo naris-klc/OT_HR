@@ -361,7 +361,10 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                       <td className="num" data-label="รวม (ชม.)">
                         <strong>{hours(e.totals?.otHours)}</strong>
                       </td>
-                      <td data-label="รายละเอียด" style={{ maxWidth: 260 }}>
+                      {/* Capped for the desktop column, uncapped in the card —
+                          see `cell-cap` in styles.css. Inline, this cell had the
+                          same misalignment ผู้รับช่วงอนุมัติแทน's เหตุผล had. */}
+                      <td className="cell-cap-lg" data-label="รายละเอียด">
                         {e.description}
                         {isProxyFiled(e) && (
                           <div style={{ marginTop: 4 }}><ProxyMark entry={e} /></div>

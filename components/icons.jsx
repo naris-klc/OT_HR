@@ -3,7 +3,8 @@
 import React from 'react';
 
 /**
- * The navigation icons — the sidebar's and the phone's bottom bar's.
+ * The app's icons — the sidebar's, the phone's bottom bar's, and the one or two
+ * that sit inside a control.
  *
  * ── Why these replaced the characters that were here ────────────────────────
  *
@@ -138,6 +139,34 @@ const ICONS = {
       <circle cx="15" cy="7" r="2.5" />
       <circle cx="10" cy="12" r="2.5" />
       <circle cx="15" cy="17" r="2.5" />
+    </>
+  ),
+
+  /**
+   * แสดงรหัสผ่าน — the only two here that are not a destination.
+   *
+   * They mark a state rather than a screen, which is why they are a pair: the
+   * eye says the password is legible on the glass right now, and the crossed
+   * eye says it is not. Drawn to the same rules as the nine above so the toggle
+   * on the login page is not the one hand-drawn thing in the app.
+   */
+  eye: (
+    <>
+      <path d="M2.75 12s3.4-6 9.25-6 9.25 6 9.25 6-3.4 6-9.25 6-9.25-6-9.25-6z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </>
+  ),
+
+  /**
+   * A whole eye with a line through it, rather than the half-drawn eye some
+   * sets use. At 18px a broken outline reads as a rendering fault; a struck-out
+   * one reads as struck out, which is the thing being said.
+   */
+  eyeOff: (
+    <>
+      <path d="M2.75 12s3.4-6 9.25-6 9.25 6 9.25 6-3.4 6-9.25 6-9.25-6-9.25-6z" />
+      <circle cx="12" cy="12" r="2.75" />
+      <path d="M4.5 19.5 19.5 4.5" />
     </>
   ),
 };

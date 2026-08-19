@@ -779,7 +779,6 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 }
 .btn:hover:not(:disabled) { background: var(--green-lift); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
-.btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
 
 .btn.ghost {
   background: var(--card); color: var(--ink-2);
@@ -787,10 +786,66 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 }
 .btn.ghost:hover:not(:disabled) { background: var(--green-tint); border-color: var(--green); color: var(--green-dark); }
 
+/* The third voice, between the filled one and the ghost.
+
+   `.btn.ghost` is grey on the card: it says "a button", and nothing about what
+   kind. Where a screen has one action it is FOR and two more beside it — take
+   this month away as a file — three ghosts read as three equal offers and the
+   eye picks the leftmost. Outlined is the middle step: the same green as the
+   filled button, so it is visibly the same family of action, drawn as a line
+   instead of a fill, so it is visibly not the first one.
+
+   Reach for it in a row that already has a filled button. A screen whose
+   secondary actions are outlined but whose primary one is missing has drawn
+   two second places. */
+.btn.outline {
+  background: transparent; color: var(--green-text);
+  border: 1px solid var(--green); box-shadow: none; font-weight: 600;
+}
+.btn.outline:hover:not(:disabled) {
+  background: var(--green-tint); border-color: var(--green-lift); color: var(--green-dark);
+}
+
 .btn.danger { background: var(--danger); box-shadow: 0 6px 18px var(--danger-glow); }
 .btn.danger:hover:not(:disabled) { background: var(--danger-ink); }
 
 .btn.sm { padding: 9px 13px; font-size: 13px; border-radius: var(--radius-xs); box-shadow: none; }
+
+/* ── A BUTTON THAT CANNOT BE PRESSED IS GREY, not a faded version of itself ──
+   `opacity: .55` was the whole of it, and on a filled green button over a dark
+   card that is still a green button: ปิดงวด on ตรวจสอบรายเดือน has been
+   correctly disabled the whole time — the month has three entries still waiting
+   for a signature — and read as the thing to press next, right beside the line
+   explaining why it could not be. The state was in the DOM and not on the
+   screen.
+
+   Grey for real, which is what this file already does one section down for a
+   field somebody may not edit: "Greyed for real rather than left to the
+   browser… without this a locked field looked exactly like an editable one".
+   The same sentence is true of a button and was not being acted on.
+
+   Placed after every variant so it wins on order rather than on weight — a
+   ghost and a danger button are each two classes, and a disabled one of either
+   has to beat that.
+
+   NOT ON THE DARK PANELS. `--neutral-wash` is a pale surface; on the sidebar
+   it would be the brightest thing there. That one keeps the fade. */
+.btn:disabled,
+.btn.ghost:disabled,
+.btn.outline:disabled,
+.btn.danger:disabled {
+  opacity: 1;
+  background: var(--neutral-wash);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.btn.on-dark:disabled {
+  opacity: .55; background: transparent;
+  border: 1px solid var(--on-dark-border-2); color: var(--on-dark-3);
+  cursor: not-allowed;
+}
 .btn.on-dark { border: 1px solid var(--on-dark-border-2); background: transparent; color: var(--on-dark-3); box-shadow: none; font-weight: 500; }
 .btn.on-dark:hover:not(:disabled) { background: var(--on-dark-hover); color: var(--on-fill); }
 
@@ -816,6 +871,10 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* ══ fields ══════════════════════════════════════════════════════════════ */
 
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+/* ผู้รับช่วงอนุมัติแทน's heading block — the title and its two-line explanation,
+   taking whatever the button beside it leaves. It was an inline `flex: 1`; it is
+   a class so the phone layout can widen it, which an inline style forbids. */
+.deleg-head-text { flex: 1; }
 .field { display: flex; flex-direction: column; gap: 7px; min-width: 150px; flex: 1; }
 
 /* Mono + tracking on labels: the design pairs Thai with an English key. */
@@ -914,6 +973,40 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 }
 .searchbox-clear:hover { background: var(--neutral-wash); color: var(--ink); }
 .searchbox-clear:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+
+/* ══ แสดงรหัสผ่าน — the eye inside the password box ═══════════════════════
+   The same shape as `.searchbox` above and deliberately to its numbers: a
+   position-only wrapper, room made at the right end of the field, and a 34px
+   square button centred by translate inside a 46px-tall box. Two controls that
+   sit inside a field in the same app should sit at the same place in it, and
+   copying the geometry is how that survives a change to either.
+
+   THE INPUT IS NOT STYLED HERE. It is `.field input` like every other box in
+   the app — same height, same fill, same border, same focus ring — and all
+   that is added is the room.
+
+   GREY UNTIL IT IS WANTED. `--muted-2` is legible and quiet; this screen has
+   exactly one thing it is asking for and that is the green button under these
+   two fields. An eye in the app's green would be a second call to action on a
+   page with one job. It picks up `--ink-2` and a wash on hover, which is where
+   the answer to "is this a control?" belongs — under the pointer asking it. */
+.password-field { position: relative; display: flex; }
+.password-field input { padding-right: 42px; }
+.password-field .reveal {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 34px; height: 34px; padding: 0;
+  border: none; border-radius: var(--radius-xs); background: none;
+  color: var(--muted-2); cursor: pointer;
+  transition: color .14s, background .14s;
+}
+.password-field .reveal:hover { background: var(--neutral-wash); color: var(--ink-2); }
+/* Not a `.btn` or a `.link`, so the app's focus rule does not reach it and a
+   keyboard would have found it invisible — the gap that rule exists to close.
+   Inset, or the ring's outer edge sits on the field's own border and reads as
+   the field being focused rather than the button. */
+.password-field .reveal:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+.password-field .reveal svg { width: 18px; height: 18px; }
 
 /* ค้นหาในทะเบียนพนักงาน — the box over the roster table.
 
@@ -1617,7 +1710,40 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .deptset-table td.state-col .btn, .deptset-table td.act-col .btn,
+.deptset-table td.state-col .state-badge,
 .deptset-table td.act-col .link { white-space: nowrap; }
+
+/* สถานะ — a badge that is also the switch.
+
+   Shaped like `.chip` on purpose: everywhere else in the app a pill with a
+   colour reports a state, so this one is read as the state before it is read as
+   a control. The dot carries the colour; the pill stays quiet, because a
+   solid green "ใช้งาน" on every row would make the ordinary case the loudest
+   thing in the table and leave a closed department looking like the default.
+
+   Its outline is what says it can be pressed — chips have none — and hover
+   fills it, which a chip does not do either. */
+.state-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card);
+  font: 600 12px/1.5 var(--sans); color: var(--muted);
+  cursor: pointer;
+}
+.state-badge .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2);
+  flex: none;
+}
+.state-badge.on { color: var(--green-dark); border-color: var(--green-bg); background: var(--green-bg); }
+.state-badge.on .dot { background: var(--green); }
+.state-badge:hover { border-color: var(--green); color: var(--green-dark); }
+.state-badge:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+
+/* The heading line เพิ่มแผนก now shares. `.card h2` carries a 4px bottom margin
+   for the hint that follows it; inside a centred flex row that margin lifts the
+   title off the button's centre line by half of it. */
+.dept-head-bar { margin-bottom: 4px; }
+.dept-head-bar h2 { margin-bottom: 0; }
 /* Each name its own line, tight enough that two of them still read as one cell. */
 .deptset-table .dept-head + .dept-head { margin-top: 6px; }
 
@@ -1677,6 +1803,20 @@ table.fixed td { overflow-wrap: anywhere; }
   font: 400 12px/1.45 var(--sans);
   font-variant-numeric: normal;
 }
+
+/* A CELL WITH A CEILING ON IT — เหตุผล on ผู้รับช่วงอนุมัติแทน, รายละเอียด on the
+   entry lists. Both hold free text somebody typed, and without a cap one long
+   sentence takes the width of the table and squeezes every column beside it.
+
+   A CLASS AND NOT THE INLINE STYLE BOTH OF THEM CARRIED. The cap is a fact
+   about a COLUMN, and below 860px there are no columns — the cell is a line on a
+   card, and a capped block still begins at the card's left edge, so the value
+   right-aligned itself against the end of a 220px box instead of against the
+   card. One line out of five landing short is exactly the misalignment somebody
+   sees and cannot explain. An inline style cannot be undone by a stylesheet at
+   any specificity, which is why this had to move to be fixable at all. */
+.cell-cap { max-width: 220px; }
+.cell-cap-lg { max-width: 260px; }
 
 .cell-note { margin-top: 3px; font: 400 11.5px/1.45 var(--sans); color: var(--amber); }
 tbody tr:hover { background: var(--green-wash); }
@@ -2419,7 +2559,13 @@ table.mini tbody tr:hover { background: none; }
   min-height: 0;               /* without this, flex refuses to let it shrink */
   overflow-y: auto;
   overscroll-behavior: contain; /* scrolled to the end, the page behind stays put */
-  padding: 20px; display: flex; flex-direction: column; gap: 18px;
+  /* 26 at the foot rather than 20: the buttons below are separated from the
+     form by a hairline and 14px of the footer's own padding, which is enough to
+     draw a line but not enough to say "the form has finished". The extra six
+     are on the body and not on `.modal-foot`, because a margin there would push
+     the border down with it and leave the rule floating inside the scroll area
+     instead of sitting at its edge. */
+  padding: 20px 20px 26px; display: flex; flex-direction: column; gap: 18px;
 }
 
 .modal-foot {
@@ -2428,6 +2574,18 @@ table.mini tbody tr:hover { background: none; }
   display: flex; gap: 10px; justify-content: flex-end; align-items: center;
   background: var(--card); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
+/* ยกเลิก, and the only thing separating it from บันทึก used to be the fill.
+
+   `.btn.ghost` is written for a row of equals — two or three ways on from the
+   same place — so it carries `--ink-2`, which is body-text dark. In a dialog
+   foot the two buttons are not equals: one saves and one throws the typing
+   away, and the second is the one somebody reaches for by accident. Caption
+   grey instead, so the eye lands on the green first and ยกเลิก is found when it
+   is looked for. Everything else about the ghost — the card behind it, the
+   hairline round it, the green it turns under the pointer — is left alone;
+   this is a step back, not a different button. */
+.modal-foot .btn.ghost { color: var(--muted); }
+
 /* A dialog's primary action is off while there is nothing to save, and the
    global `opacity: .55` said that by draining the green — which does not read
    as "not yet", it reads as a button somebody drew in a lighter colour. Grey
@@ -2718,6 +2876,67 @@ table.mini tbody tr:hover { background: none; }
   .row { gap: 10px; }
   .field { min-width: 100%; }
   .card { padding: 15px; border-radius: var(--radius); }
+
+  /* ── ตั้งค่าระบบ's six sections on a phone ────────────────────────────────
+     ONE SWIPEABLE STRIP, not a wrapped block.
+
+     `flex: 1 1 auto` (see .section-tabs above) is right on a wide screen and
+     wrong here: six labels of six different lengths sharing 375px wrapped into
+     three or four rows, so a third of the screen was spent on navigation before
+     any setting was on it — and the labels that had to share a row with a long
+     one came out squeezed, with นโยบายการคำนวณ breaking across two lines.
+
+     Nowrap plus overflow-x is what a phone expects of a tab bar: the current
+     section is on screen, the rest are a thumb-flick away, and no label is ever
+     compressed or broken. `flex: 0 0 auto` is the load-bearing half of that —
+     without it flex would still shrink every button to fit and there would be
+     nothing to scroll.
+
+     THE SCROLLBAR IS HIDDEN, and what replaces it as the "there is more this
+     way" signal is the bleed: negative margins pull the strip out to the card's
+     own edges and the padding puts the inset back inside the scroller, so the
+     next button is cut by the screen edge rather than sitting neatly short of
+     it. A strip that ends flush looks like the whole set.
+
+     `proximity`, not `mandatory`: mandatory snapping fights a short flick and
+     drags a tab you were only peeking at into place. */
+  .section-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    margin: -15px; padding: 15px;
+  }
+  .section-tabs::-webkit-scrollbar { display: none; }
+
+  /* ── the way out on a warning banner ─────────────────────────────────────
+     STACKED, not wrapped.
+
+     `.alert-actions` wraps by design so that on a wide card the sentence and
+     its buttons are one line. On a phone that same rule scatters them: the
+     sentence fills the width and ends mid-line, ตั้งค่าหัวหน้างาน lands in
+     whatever space is left at the end of it, and ตั้งผู้รับช่วงอนุมัติ drops to
+     a line of its own on the left. Two buttons of equal standing end up at two
+     different widths on two different lines, indented by whatever the sentence
+     happened to leave — which reads as one button belonging to the sentence and
+     one loose beneath it.
+
+     A column gives both the full width and the same width, under the sentence
+     that names them both. They are two ways out of one problem, so they have to
+     look like a pair. */
+  .alert-actions {
+    flex-direction: column; align-items: stretch; gap: 8px; margin-top: 10px;
+  }
+  .alert-actions > span { margin-bottom: 2px; }
+  .alert-actions .btn { width: 100%; }
+  /* The bleed above runs the scroller out to the card's border box, and the
+     card's corners are 14px round — a button sliding past one of them would
+     otherwise clear the curve and sit outside the card. The strip's own 15px
+     of padding keeps every focus ring well inside what this clips. */
+  .card:has(> .section-tabs) { overflow: hidden; }
+  .section-tabs .btn { flex: 0 0 auto; scroll-snap-align: start; min-height: 44px; }
 
   /* ── รายการล่าสุด on a phone ──────────────────────────────────────────────
      Five things in one flex line — date chip, what the work was, how many
@@ -3747,6 +3966,14 @@ table.mini tbody tr:hover { background: none; }
     float: left; margin-right: 16px; text-align: left; white-space: nowrap;
     font: 400 13px/1.5 var(--sans); color: var(--muted-2);
   }
+  /* THE CAP COMES OFF IN A CARD. It sizes a column, and there is no column here
+     — see `.cell-cap` in the tables section. Left on, the cell is a 220px block
+     at the left edge of a 340px card and its value right-aligns to the end of
+     THAT, which puts one line of five short of the right edge that the other
+     four share. */
+  .stack-table tbody td.cell-cap, .stack-table tbody td.cell-cap-lg {
+    max-width: none;
+  }
 
   /* THE THREE RATE COLUMNS GO, the same decision the queue's card makes twenty
      lines down and for the same reason: four figures per card, three of them
@@ -3776,6 +4003,159 @@ table.mini tbody tr:hover { background: none; }
   .stack-table tbody td:not([data-label])::before { content: none; }
   .stack-table tbody td .btn { min-height: 44px; }
 
+  /* ── ทะเบียนพนักงาน's three buttons: one grid, not a wrapped row ──────────
+     ดูข้อมูล / ตั้งรหัสใหม่ / ดูประวัติ are three labels of three different
+     lengths, so as flex items each took the width of its own word and the row
+     ended wherever the third one happened to end — a ragged stub of empty card
+     to the right of every card in the list, and three targets of three
+     different sizes for three actions of equal standing.
+
+     Equal columns instead: all three are actions on this one person, so they
+     get the same claim on the card's width. Which of them is the one you came
+     for is said in colour rather than in size — see the tones below. The
+     geometry says "these belong together", the colour says where to start.
+
+     THREE COLUMNS BY COUNT, NOT BY NUMBER. `grid-auto-flow: column` with
+     `grid-auto-columns: 1fr` comes to repeat(3, 1fr) because this cell renders
+     exactly three buttons — but a row that ever renders two gets two halves
+     rather than two thirds and a hole, which `repeat(3, 1fr)` would leave.
+
+     nowrap plus a smaller face: at a third of a 375px card, minus padding, each
+     button has about 100px and "ตั้งรหัสใหม่" wants nearly all of it. Allowed
+     to wrap, that one label would break in the middle of a Thai word — Thai has
+     no spaces, so there is no good place for it to break — and make its button
+     two lines tall while its neighbours stayed one. */
+  .stack-table tbody td .roster-actions {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    gap: 8px; width: 100%;
+  }
+  /* 36px, not the 44 `.stack-table tbody td .btn` gives every other list, and
+     13px/500 rather than 14.5/600. Three buttons across a 375px card at 44px
+     tall was a band of control heavier than the six lines of the person's own
+     record above it — the card ended in its furniture. None of the three
+     commits anything (two of them only open something to read), so this is the
+     one place on the phone where the touch floor gives way to the reading. */
+  .stack-table tbody td .roster-actions .btn {
+    width: 100%; min-width: 0; min-height: 36px;
+    padding: 8px 4px; text-align: center; white-space: nowrap;
+    font: 500 13px/1 var(--sans);
+    /* `.btn` transitions background, transform and box-shadow — written for the
+       filled buttons, which only ever change their fill. These three change
+       their edge and their text as well, and without the extra two properties
+       the wash faded in while the border and the letters snapped. Named rather
+       than `all`: `all` would also animate the grid resizing them, so a card
+       opening would have its buttons grow into place. Somebody who has asked
+       their system for less motion gets none of it — see the
+       prefers-reduced-motion block at the foot of the file. */
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+  }
+
+  /* ── one primary, two quiet ──────────────────────────────────────────────
+     ONE OF THE THREE IS THE DOOR, and the other two are things you might also
+     want. Given a tone each, all three competed and the row read as a choice
+     between three equals — which is not what it is: ดูข้อมูล opens the record,
+     and the record is where somebody was going.
+
+     So the colour marks the one, and the two beside it step back to grey. The
+     amber ตั้งรหัสใหม่ carried is gone — it was answering "how careful should I
+     be" when the question this row actually asks is "which one takes me in".
+     Care is the dialog's job, and the dialog does it: the reveal, the warning
+     and the confirm are all behind the button, not on it.
+
+     WHY IT IS A TINT AND NOT THE APP'S FILLED `.btn`. A filled green button is
+     the app asking for a decision — ยื่นโอที, อนุมัติ, บันทึก. Nobody is asking
+     anything on a roster card; it is a list of people. A wash of the brand
+     colour is enough to say "start here" without the card looking like it wants
+     something.
+
+     TOKENS, AND NOT ONE NEW ONE. Every tint this needs is already in the
+     palette: `--green-tint` is the app's faintest green wash, `--ok-line` its
+     faint green rule, `--neutral-wash` the grey `.chip.muted` wears. Written
+     as literal rgba they would have been a second green and a second grey that
+     drift the first time a token moves — and a light-mode colour stranded in
+     ธีมมืด, since only a token carries both halves. `no rule names a colour of
+     its own` in test/theme.test.js is what holds that line; this block was
+     written in rgba first and that test is what caught it. */
+
+  /* ดูข้อมูล / แก้ไข. Offered on every row including one this account may not
+     change — the dialog behind it is where the reason is written, so it is
+     never the disabled one.
+
+     `--green-tint`, not the `--green-bg` an alert uses: it is the palette's
+     faintest green, two steps off white, and reads as a button with a warmth to
+     it where the alert's green reads as a panel. On the dark side the same
+     token is a surface a shade greener than the card — same relationship, and
+     the reason one token covers both.
+
+     (No hex in this comment on purpose: `no rule names a colour of its own`
+     scans the rules as TEXT, comments included, and a colour quoted in prose
+     fails it exactly like one written in a declaration. That is the test being
+     right — a hex in a comment is a value that has stopped tracking its token
+     and will be copied back out one day.) */
+  .stack-table tbody td .roster-actions .act-main {
+    background: var(--green-tint); border-color: var(--ok-line); color: var(--green-dark);
+  }
+
+  /* ตั้งรหัสใหม่ and ดูประวัติ. Deliberately identical, and deliberately still
+     two class names: what they do is different enough to want marking in the
+     markup, and giving one of them a tone again is then a one-line change
+     rather than an archaeology exercise.
+
+     THE GREY WASH IS GONE, and this is the second thing this row got wrong.
+     `--neutral-wash` on `--muted` is what `.btn:disabled` wears in this app —
+     literally the same two tokens — so the two secondaries were drawn in the
+     app's own house style for "you cannot press this". Backing off the primary
+     had turned into backing out of being a button at all.
+
+     A ghost is not a wash. The card's own colour behind it, a visible edge
+     around it and text at reading weight: `--input-line` rather than `--line`
+     because that token is the app's edge for things you can OPERATE — every
+     field on every form is drawn with it — and `--ink-2` rather than
+     `--muted`, which is body-text grey and not caption grey. What separates
+     these from the primary now is that they carry no colour, which is exactly
+     as much as the difference deserves. */
+  .stack-table tbody td .roster-actions .act-security,
+  .stack-table tbody td .roster-actions .act-info {
+    background: var(--card); border-color: var(--input-line); color: var(--ink-2);
+  }
+
+  /* Pressed.
+
+     THE TWO SECONDARIES HAVE NO HOVER RULE HERE, AND THAT IS THE RULE. Every
+     ghost button in the app goes green under the pointer — `.btn.ghost:hover`
+     at the top of this file, which is the app's one answer to "something is
+     about to happen if you press". These two carry `.btn.ghost`, so they
+     inherit it as soon as nothing local is in the way, and what was in the way
+     was a grey hover written here. Deleting it is the whole change: no second
+     copy of the app's green to keep in step with the first.
+
+     It wins on specificity without help — `.btn.ghost:hover:not(:disabled)` is
+     four classes against the three-classes-two-elements of the base rule above,
+     and `:not(:disabled)` keeps it off a button this account may not press.
+
+     The primary keeps a hover of its own because it cannot use that one: it is
+     already sitting in `--green-tint`, so the shared rule would leave it
+     exactly as it was and pressing it would feel dead. One step deeper instead.
+     Its resting state and a hovered secondary are then close — both green
+     washes — which is correct rather than confusing: whichever button the
+     pointer is on is the one about to be pressed, and the pointer is on it. */
+  .stack-table tbody td .roster-actions .act-main:hover:not(:disabled) {
+    background: var(--green-bg); border-color: var(--green); color: var(--green-dark);
+  }
+
+  /* A button this account may not press drops its tone entirely — one look for
+     "off", not three greyed-out flavours of it, and the look is the app's own:
+     `--neutral-wash` on `--muted`, which is what every disabled button in
+     every other screen draws. It can go back to being that now that no live
+     button on this card is wearing it. The rule is here only to beat the tones
+     above on specificity — the values are `.btn:disabled`'s, not new ones.
+
+     The one row where a live secondary and a dead one appear side by side is
+     ผู้ดูแลระบบ, which ฝ่ายบุคคล can open but not touch. */
+  .stack-table tbody td .roster-actions .btn:disabled {
+    background: var(--neutral-wash); border-color: var(--line); color: var(--muted);
+  }
+
   /* THE FIRST TWO CELLS ARE THE CARD'S HEADING, not two more fields. A record is
      found by its code and its name, and reading those back as "รหัส  PM-0620"
      under a heading that says the same makes the card start with two rows of
@@ -3792,6 +4172,98 @@ table.mini tbody tr:hover { background: none; }
     display: block; text-align: left; margin-top: -4px;
     font: 600 15px/1.4 var(--sans);
   }
+
+  /* ── ผู้รับช่วงอนุมัติแทน on a phone ──────────────────────────────────────
+     THE BUTTON GETS ITS OWN LINE. `.row` wraps already, but wrapping only
+     happens when something no longer fits — and มอบหมายผู้รับช่วง fits, because
+     the heading block beside it is `flex: 1` and shrinks to let it. What that
+     bought was a two-line Thai explanation squeezed into about half the card
+     with a button pressed against its right edge, which is the one arrangement
+     that makes both harder to read.
+
+     Sending the text block to 100% is what forces the wrap: the button then has
+     nothing to sit beside and drops under it, where it takes the full width. It
+     lands above the blue notice rather than below it, which is the right side of
+     that box — the notice answers questions somebody has AFTER delegating, so
+     the way in should not be underneath it.
+
+     Full width is not only about the thumb. It is the only control on this card,
+     and a button sized to its own label leaves the card ending in a ragged edge
+     that reads as an unfinished row. */
+  .deleg-head-text { flex: 1 1 100%; }
+  .deleg-head .btn { width: 100%; }
+
+  /* ── and the cards under it ──────────────────────────────────────────────
+     10px between lines rather than the 8 every other list in the shared pattern
+     takes. Not a preference: six of the seven cells here carry a `.cell-sub`
+     under the value — the code beneath a name, the role beneath that, the
+     company a หัวหน้า signs for — so where an ordinary card is six lines this
+     one is eleven, and at 8px the sub-line of one field sits as close to the
+     next field's label as it does to its own value. The extra two pixels are
+     what keeps a pair reading as a pair.
+
+     8px was asked for and is what the shared rule already sets, so setting it
+     again would have changed nothing on the screen. */
+  .stack-table.deleg-table tbody tr { gap: 10px; }
+
+  /* ── วันหยุดบริษัท: the one card in the shared pattern that ends in a delete ─
+     Everything above holds for this list too — the date and the name are the
+     card's heading, วัน and ที่มา are two labelled lines. What the shared
+     pattern gets wrong here is the last cell. It has no `data-label`, so it is
+     drawn as "buttons, full width, left" — and the button is ลบ, which removes
+     a company holiday AND recomputes every OT entry already filed on that day.
+     Drawn like every other action, at the widest target on the card, sitting
+     directly under the thumb's resting place.
+
+     Three changes, and they are one change: make it read as the exception.
+
+     THE DASHED RULE. Every other separator in this app is solid — a card's
+     edge, a table's rows, a dialog's foot. Dashed is not decoration here: it
+     says the thing below it is not more of the record above it. Solid would
+     have read as one more field of the holiday.
+
+     RIGHT, NOT LEFT. Thai reads left to right, so the left of a card is where
+     the eye lands and the right is where it arrives having read. A destructive
+     control belongs at the end of that, not at the start of it — and a phone
+     held one-handed puts the right-hand corner under the thumb, which is an
+     argument the other way, but a 36px button that has to be aimed at beats a
+     full-width one that cannot be missed. */
+  .stack-table.holiday-table tbody td.holiday-act {
+    display: block; text-align: right;
+    border-top: 1px dashed var(--line);
+    margin-top: 4px; padding-top: 12px;
+  }
+  /* The danger colours as an OUTLINE. `.btn.danger` is filled red and means
+     "confirm this" — it is what the deletion dialogs wear. There is no dialog
+     behind this one, so the red says which control it is rather than asking
+     for a decision, and a filled red button on every card would make a list of
+     public holidays look like a list of problems. */
+  .stack-table.holiday-table tbody td.holiday-act .act-danger {
+    width: auto; min-height: 36px; padding: 0 18px;
+    background: var(--danger-bg); border: 1px solid var(--danger-line);
+    color: var(--danger-ink); font: 500 13px/1 var(--sans);
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+  }
+  /* Firmer, not louder — the fill would take it to the confirm-button register
+     it is deliberately not in. */
+  .stack-table.holiday-table tbody td.holiday-act .act-danger:hover:not(:disabled) {
+    background: var(--danger-bg); border-color: var(--danger); color: var(--danger-ink);
+  }
+
+  /* ── and the row above the list ──────────────────────────────────────────
+     ดาวน์โหลดแม่แบบ CSV and นำเข้าปฏิทินจาก CSV are the two longest button
+     labels in ตั้งค่าระบบ. At `.btn`'s 18px of side padding the pair measures
+     more than a 375px card can hold, so they broke to a line each with a third
+     of the width left empty beside them. 14px is enough to keep a button
+     looking like a button and enough, on the narrowest phone this app is used
+     on, to let the two sit side by side — which is what they are: two ways to
+     get a calendar in, offered together.
+
+     8px between them rather than `.row`'s 10: at this width the pair is
+     tight enough that the two extra pixels are the difference between fitting
+     and not. */
+  .holiday-tools { gap: 8px; }
+  .holiday-tools .btn { padding-left: 14px; padding-right: 14px; }
 
   /* ══ แผนกและเพดาน on a phone ══════════════════════════════════════════════
      Eight columns, and five of them held one or two characters. At 440px the
@@ -3880,44 +4352,86 @@ table.mini tbody tr:hover { background: none; }
   }
   .deptset-table td.cap-month::before { content: 'เพดาน ชม./เดือน'; }
   .deptset-table td.cap-week::before { content: 'เพดาน ชม./สัปดาห์'; }
-  /* The box, the app's own field in both layouts now — only the three things a
-     touch screen changes are left here.
+  /* The box, the app's own field in both layouts now — what a touch screen
+     changes about it is here.
 
-     `min-width: 0` is the load-bearing one: without it the input keeps its
-     intrinsic twenty-character width whatever the box around it says, and the
-     card grows past the screen instead of the field shrinking. Wider than the
-     desktop's 90 and still not full-width: the box's width is what says a
-     two-digit number goes in it, and a full-card box for "40" reads as a text
-     field. */
+     THE WIDTH IS DECLARED AT BOTH ENDS. `flex: none` plus an explicit 130px is
+     what stops the input reaching for its intrinsic twenty-character width and
+     pushing the card past the screen — that used to be `min-width: 0`'s job,
+     back when the box was allowed to shrink. It no longer is: 120px is the
+     floor, because a field that shrinks to fit a long label stops looking like
+     a field. 130 clears it, so the two never fight. Wider than the desktop's 90
+     and still not full-width: the box's width is what says a two-digit number
+     goes in it, and a full-card box for "40" reads as a text field.
+
+     RIGHT-ALIGNED, because the label is on the left of the same line. The
+     figure and the card's right edge line up down the two ceiling rows, which
+     is the only alignment a two-row stack has left to give. */
   .deptset-table td.cap-col input {
-    width: 130px; min-width: 0; flex: none;
+    width: 130px; min-width: 120px; flex: none;
     min-height: 44px; padding: 0 12px; font-size: 15px;
+    text-align: right;
   }
 
-  /* Both buttons a real touch target, and a half of the card each — the same
-     foot the queue cards give their two decisions, so a card ends in a full
-     row of buttons rather than two small controls stranded at its corner.
+  /* ── the foot of the card: a state on the left, an action on the right ──
 
-     Both share the one `act` area, which is why the last row of the grid
-     above reads "act act" rather than "state act": the card's two columns are
-     sized by รหัส and ชื่อแผนก at its head, so a button placed in each would
-     take the widths that heading needs and not halves. Across the whole row
-     instead, `calc(50% - 6px)` pinned to either end leaves exactly the 12px
-     the grid's column gap uses everywhere else. */
+     WHAT WAS HERE BEFORE: two 44px controls, half the card each, side by side.
+     It read as a choice between two buttons — and it is not one. ใช้งาน reports
+     what this แผนก currently is; แก้ไข opens a dialog. Drawn the same size and
+     the same shape they were indistinguishable until you pressed one, and the
+     one that answers "is this department on?" was the one nobody could see was
+     an answer.
+
+     So the two are told apart by shape rather than by position alone: the state
+     is a badge (see `.state-badge`) sized to its own words, and แก้ไข — a bare
+     text action in the desktop's จัดการ column — becomes a ghost button, which
+     is the card's one thing to press. The gap between them is the card, so
+     neither has to be read as a pair with the other.
+
+     Still one `act` area for both, and still not "state act": the card's two
+     columns are sized by รหัส and ชื่อแผนก at its head, so anything placed in
+     them would take those widths. Two items in one area, justified to opposite
+     ends, land where the eye expects without borrowing the heading's geometry.
+
+     Deliberately NO hairline above them. Two items sharing one grid area can
+     only draw a border each, at their own two widths, which is a pair of stubs
+     and not a rule across the card. The 4px of extra space below เพดาน does the
+     separating instead. */
   .deptset-table td.state-col, .deptset-table td.act-col {
-    grid-area: act; width: calc(50% - 6px);
+    grid-area: act; width: auto; max-width: calc(50% - 6px);
+    align-self: center; margin-top: 4px;
   }
   .deptset-table td.state-col { justify-self: start; }
   .deptset-table td.act-col { justify-self: end; }
-  .deptset-table td.state-col .btn, .deptset-table td.act-col .btn {
-    width: 100%; min-height: 44px;
+  /* BOTH 36px TALL, and level with each other.
+
+     Under the app's own 44px floor for a touch target, which is a deliberate
+     trade and not an oversight. The foot of this card holds no decision: one
+     side reports a state, the other opens a dialog, and both are one press to
+     undo. Sized at 44 they were the heaviest thing on a card whose subject is
+     two numbers — the screenshot of that version is why they are not. Every
+     control that commits something (อนุมัติ, the queue's buttons, the ceiling
+     boxes above) keeps its 44.
+
+     The pill is sized to its own words rather than stretched, so it reads as a
+     label with a state-coloured dot; the ghost button keeps a 96px floor so it
+     stays a target you can aim at rather than a word with a line round it. */
+  .deptset-table td.state-col .state-badge {
+    min-height: 36px; padding: 0 13px; font-size: 13px;
   }
-  /* แก้ไข is a text action on the desktop, where it steps back from the state
-     control beside it. It still has to be a target here — 44px, and the width
-     of its half of the card's foot, so the two controls end the card level. */
+  /* แก้ไข as a ghost button, which is what a card's one action has to look
+     like when there is no จัดการ heading above it to say so. Written out
+     rather than given the `.btn ghost` class in the JSX, because the desktop
+     table wants the text action it already has and the row is rendered once
+     for both layouts. */
   .deptset-table td.act-col .link {
-    width: 100%; min-height: 44px; text-align: right;
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 36px; min-width: 96px; padding: 0 16px;
+    border: 1px solid var(--line); border-radius: var(--radius-xs);
+    background: var(--card); color: var(--green-dark);
+    font: 600 13.5px/1 var(--sans); text-decoration: none;
   }
+  .deptset-table td.act-col .link:hover { text-decoration: none; border-color: var(--green); }
 }
 
 /* Every tab change fades the page in and the bottom sheet slides. Somebody who

@@ -143,6 +143,16 @@ function FirstLogin({ user, onDone, onLogout }) {
 function Login({ onLogin }) {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
+  /**
+   * Whether the password is legible on the glass.
+   *
+   * Starts false every time the component mounts and is never persisted: a
+   * preference that outlived the session would reveal the next person's typing
+   * on a shared machine, and the two screens most likely to be logged into from
+   * one — the ฝ่ายบุคคล account is shared by the whole department — are exactly
+   * where that matters.
+   */
+  const [passwordShown, setPasswordShown] = useState(false);
   const [error, setError] = useState('');
   /**
    * The second line under a refusal, when the server has one to add.
@@ -205,7 +215,39 @@ function Login({ onLogin }) {
             </div>
             <div className="field" style={{ marginTop: 16 }}>
               <label>รหัสผ่าน · PASSWORD</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              {/* The box and the eye share a wrapper so the button can sit
+                  inside the field rather than beside it — see .password-field.
+                  The input keeps its own class and every style it had. */}
+              <div className="password-field">
+                <input
+                  type={passwordShown ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                {/* `type="button"`, and it is the whole of what makes this safe
+                    to put inside a <form>: a <button> with no type is a submit
+                    button, so revealing the password would have posted the
+                    login — half-typed, against the throttle in
+                    lib/loginThrottle.js, which counts a wrong password whether
+                    or not the person meant to send one.
+
+                    aria-pressed rather than a label that changes: the button IS
+                    แสดงรหัสผ่าน in both states and what moves is whether it is
+                    on, which is what a screen reader announces from the state.
+                    The tooltip says the action instead, because a pointer has no
+                    other way to be told. */}
+                <button
+                  type="button"
+                  className="reveal"
+                  onClick={() => setPasswordShown((shown) => !shown)}
+                  aria-label="แสดงรหัสผ่าน"
+                  aria-pressed={passwordShown}
+                  title={passwordShown ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                >
+                  <Icon name={passwordShown ? 'eye' : 'eyeOff'} />
+                </button>
+              </div>
             </div>
             {error && (
               <Alert kind="error">

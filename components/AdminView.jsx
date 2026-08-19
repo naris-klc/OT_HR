@@ -336,7 +336,22 @@ function Departments({ onGo }) {
 
   return (
     <div className="card">
-      <h2>แผนก</h2>
+      {/* The CTA rides in the heading line, not below the banner.
+
+          It used to stand on its own `.row` between SigningCoverage and the
+          table, which on a phone put a button across the one seam that has to
+          read as a seam: the warning above it says a department has nobody to
+          sign for it, the cards below it are the departments. A button in
+          between belongs to neither and was read as part of both.
+
+          In the heading it belongs to the section, and the warning ends against
+          the list it is about. `.card-head` already wraps at this width, so on
+          the narrowest phones the button drops under the title rather than
+          squeezing it. */}
+      <div className="card-head dept-head-bar">
+        <h2>แผนก</h2>
+        <button className="btn" onClick={() => setAdding(true)}>เพิ่มแผนก</button>
+      </div>
       <div className="hint">
         เพดานชั่วโมงกำหนดรายแผนกและไม่บังคับ — เว้นว่างหมายถึงไม่มีเพดาน ซึ่งไม่เหมือนกับเพดาน 0
       </div>
@@ -347,12 +362,6 @@ function Departments({ onGo }) {
           for its people is not a column of that department's row, it is a thing
           somebody has to go and do. */}
       <SigningCoverage departments={rows} people={people} onGo={onGo} />
-
-      {/* The five boxes this replaces are in the dialog behind it — see
-          DepartmentForm for why they are no longer standing above the table. */}
-      <div className="row" style={{ marginBottom: 16 }}>
-        <button className="btn" onClick={() => setAdding(true)}>เพิ่มแผนก</button>
-      </div>
 
       {/*
         `dept-table` is the hook the phone layout hangs on — below 860px the same
@@ -407,7 +416,29 @@ function Departments({ onGo }) {
                   />
                 </td>
                 <td className="state-col">
-                  <button className="btn ghost sm" onClick={() => update(d._id, { active: !d.active })}>
+                  {/* STILL A BUTTON, drawn as a badge.
+
+                      The card's foot has to answer two different questions —
+                      "what state is this แผนก in" on the left and "what can I do
+                      about it" on the right — and two identical ghost buttons
+                      answered neither: the eye reads a pair of controls and has
+                      to try one to find out which is the state. So the state
+                      takes a badge's shape, with a dot in its own colour, and
+                      the action keeps the button's.
+
+                      It is NOT turned into a static chip, because pressing it is
+                      the only way this screen has to close a department. A badge
+                      that toggles is a smaller target than 44px, so the pill is
+                      padded out to 36 and the whole cell is the target — enough
+                      for a control that is pressed rarely and is one press to
+                      undo either way. */}
+                  <button
+                    className={`state-badge ${d.active ? 'on' : 'off'}`}
+                    aria-pressed={d.active}
+                    title={d.active ? 'กดเพื่อปิดใช้งานแผนกนี้' : 'กดเพื่อเปิดใช้งานแผนกนี้'}
+                    onClick={() => update(d._id, { active: !d.active })}
+                  >
+                    <span className="dot" aria-hidden="true" />
                     {d.active ? 'ใช้งาน' : 'ปิดใช้งาน'}
                   </button>
                 </td>
@@ -415,14 +446,17 @@ function Departments({ onGo }) {
                   {/* รหัส and ชื่อแผนก, which were unreachable after creation —
                       see DepartmentForm.
 
-                      A TEXT ACTION, not a button. สถานะ beside it is a control
-                      that changes something when pressed — ใช้งาน / ปิดใช้งาน is
-                      a toggle wearing a button because that is what it is — and
-                      drawn as two identical ghost buttons the row ended in a
-                      pair, with the eye going to whichever came first rather
-                      than to the state it was meant to read. This one only opens
-                      a dialog; nothing it does is final. So the weight goes to
-                      the control that decides and this one steps back. */}
+                      A TEXT ACTION on a wide screen, where it sits in a จัดการ
+                      column beside a สถานะ column: the two headings already say
+                      which is which, so the action steps back and lets the state
+                      read first. Nothing it does is final — it only opens a
+                      dialog — so it does not need a button's weight to be found.
+
+                      On a phone the headings are gone and there is no column to
+                      sit in, so `td.act-col .link` below 860px is drawn as a
+                      ghost button: a card's foot has to show its one action as
+                      something with an edge you can aim at. Same markup, two
+                      layouts — which is why the button is not written twice. */}
                   <button className="link" onClick={() => setEditing(d)}>แก้ไข</button>
                 </td>
               </tr>
@@ -1495,12 +1529,21 @@ function Employees({ user }) {
                       harmless ones. Allowed to wrap, they take a full line
                       each when the card is too narrow to hold three. The
                       desktop is unaffected: `.row-actions` is nowrap above
-                      860px, and the column still sizes to its content. */}
-                  <div className="row row-actions">
+                      860px, and the column still sizes to its content.
+
+                      `roster-actions` is the narrower hook the phone layout
+                      needs on top of that: below 860px these three become one
+                      grid of three equal columns. It is on this cell and not on
+                      `.row-actions` itself because that class is shared — the
+                      same cell on รายการ OT ของฉัน holds a chip, a sentence and
+                      a variable number of buttons, and equal columns would tear
+                      it apart. Three fixed buttons on every row is what makes
+                      the grid safe here, and that is a fact about THIS table. */}
+                  <div className="row row-actions roster-actions">
                     {/* Opens for every row, including one this person may not
                         change: the dialog is where the reason is written, and a
                         dead button explains nothing. */}
-                    <button className="btn ghost sm" onClick={() => setEditing(p)}>
+                    <button className="btn ghost sm act-main" onClick={() => setEditing(p)}>
                       {mayEdit(p) ? 'แก้ไข' : 'ดูข้อมูล'}
                     </button>
                     {/* ลืมรหัสผ่าน has no self-service path — no email is on file
@@ -1508,7 +1551,7 @@ function Employees({ user }) {
                         recovery story, and it stays on the row rather than
                         behind an edit dialog somebody has to open for it. */}
                     <button
-                      className="btn ghost sm"
+                      className="btn ghost sm act-security"
                       onClick={() => setResetting(p)}
                       disabled={!mayEdit(p)}
                       title={mayEdit(p) ? 'ตั้งรหัสผ่านใหม่ให้พนักงานคนนี้' : 'บัญชีผู้ดูแลระบบตั้งรหัสใหม่ได้โดยผู้ดูแลระบบเท่านั้น'}
@@ -1516,7 +1559,7 @@ function Employees({ user }) {
                       ตั้งรหัสใหม่
                     </button>
                     <button
-                      className="btn ghost sm"
+                      className="btn ghost sm act-info"
                       onClick={() => setTrailFor(p)}
                       disabled={!mayEdit(p)}
                       title="ใครแก้อะไรในทะเบียนของคนนี้บ้าง"
@@ -3262,7 +3305,11 @@ function Holidays() {
         </Alert>
       )}
 
-      <div className="row" style={{ marginBottom: 14 }}>
+      {/* `holiday-tools` is the phone layout's hook for this row — the two CSV
+          buttons are the longest labels on the screen and at the app's ordinary
+          button padding they only just fit a 375px card. See the block in
+          styles.css; nothing about the desktop changes. */}
+      <div className="row holiday-tools" style={{ marginBottom: 14 }}>
         <div className="field" style={{ maxWidth: 120 }}>
           <label>ปี (ค.ศ.)</label>
           <input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
@@ -3284,7 +3331,12 @@ function Holidays() {
 
       {rows.length === 0 ? <Empty>ยังไม่มีวันหยุดในปีนี้</Empty> : (
         <div className="table-wrap">
-          <table className="stack-table">
+          {/* `holiday-table` on top of the shared `stack-table`: below 860px the
+              row's one action is a DELETE, and the shared pattern draws a
+              labelless cell as a full-width left-aligned button like any other.
+              A destructive action does not get to look like every other action,
+              and it does not get the widest target on the card. */}
+          <table className="stack-table holiday-table">
             <thead><tr><th>วันที่</th><th>วัน</th><th>ชื่อวันหยุด</th><th>ที่มา</th><th /></tr></thead>
             <tbody>
               {rows.map((h) => (
@@ -3297,7 +3349,18 @@ function Holidays() {
                   <td className="stack-name">{h.name}</td>
                   <td data-label="วัน">วัน{dayName(h.date)}</td>
                   <td data-label="ที่มา">{h.source === 'import' ? 'นำเข้า' : 'เพิ่มเอง'}</td>
-                  <td><button className="btn ghost sm" onClick={() => remove(h._id)}>ลบ</button></td>
+                  <td className="holiday-act">
+                    {/* Still `.btn.ghost`, not `.btn.danger` — a filled red
+                        button is the app asking somebody to confirm a deletion,
+                        and this one has no confirm behind it: `remove` fires on
+                        the press. So it is drawn as what it is, an outline in
+                        the danger colour: unmistakably the destructive control,
+                        and not the loudest thing on a card about a public
+                        holiday. */}
+                    <button className="btn ghost sm act-danger" onClick={() => remove(h._id)}>
+                      ลบ
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -58,5 +58,5 @@ export const POST = route(async (req) => {
   }
 
   recordSuccess(key);
-  return setAuthCookie(json({ user: publicUser(user) }), signToken(user));
+  return setAuthCookie(json({ user: publicUser(user) }), signToken(user), req);
 });

@@ -147,8 +147,13 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
               was printed from. Each sheet is fetched the way the per-row button
               fetches it, so a page in the bundle and a page printed on its own
               are the same page. */}
+          {/* THE ONE FILLED BUTTON ON THE SCREEN. All three of these were
+              ghosts, which made the row read as three equal offers — and they
+              are not: this is what the month is for. The two CSVs are what
+              somebody takes away afterwards, and the outline says so without
+              saying it quietly enough to be missed. */}
           <button
-            className="btn ghost"
+            className="btn"
             disabled={!data?.employees?.length}
             onClick={() => setPrinting({ employees: data.employees.map((r) => r.employee) })}
             title="รวมใบ F-HR-027 ของทุกคนในตารางไว้ในเอกสารเดียว หนึ่งคนต่อหนึ่งหน้า"
@@ -157,7 +162,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
             {data?.employees?.length ? ` (${data.employees.length} คน)` : ''}
           </button>
           <button
-            className="btn ghost"
+            className="btn outline"
             onClick={() => api.download(
               `/exports/entries.csv?period=${period}&status=${statusFilter}`,
               `OT-${period}.csv`,
@@ -166,7 +171,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
             ส่งออกรายรายการ (CSV)
           </button>
           <button
-            className="btn ghost"
+            className="btn outline"
             onClick={() => api.download(
               `/exports/monthly.csv?period=${period}&status=${statusFilter}`,
               `OT-monthly-${period}.csv`,
