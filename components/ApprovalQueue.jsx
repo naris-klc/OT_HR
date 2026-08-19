@@ -109,6 +109,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   /** Was there ever something in this queue this session? Drives the two
       different empty states — "nothing came in" vs "you just cleared it". */
   const everHadRows = useRef(false);
+  const barRef = useRef(null);
 
   /**
    * The list stops at 500 rows, and this is the queue where that shows.
@@ -212,7 +213,53 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
     if (allMobileRef.current) allMobileRef.current.indeterminate = part;
   }, [selected, actionable]);
 
+  /**
+   * HOW TALL THE BATCH BAR IS, published to CSS as `--batch-bar-h`.
+   *
+   * On a phone the bar is `position: fixed` above the nav, so it covers the foot
+   * of the list — and the list has to be padded by exactly its height or the
+   * last row is unreachable. That padding was a number typed into the
+   * stylesheet, and the bar has changed height twice since it was: its buttons
+   * carry counts now, and "อนุมัติทั้งหมดที่เลือก (5 รายการ)" wraps where the
+   * label before it did not. Nothing announces that — the last card is simply
+   * not there any more, under a bar that looks correct.
+   *
+   * So the number follows the bar. `ResizeObserver` rather than a measurement
+   * on mount, because the bar changes height WITHOUT remounting: ticking a
+   * fifth row can wrap a button, and turning the phone sideways relaws the lot.
+   *
+   * WRITTEN ONTO THE PARENT, which is the element the rule is on —
+   * `.card:has(> .batch-bar)` selects the bar's own parent by construction, so
+   * the two cannot point at different boxes.
+   *
+   * Desktop reads it and does nothing with it: up there the bar is sticky under
+   * the app bar and covers nothing, and the padding rule lives inside the
+   * phone's media query.
+   */
   const picked = shown.filter((e) => selected.has(e._id));
+
+  // AFTER `picked`, not before it. The dependency below is evaluated during
+  // render, so a `const` declared further down is still in its temporal dead
+  // zone and the whole screen throws — which is what this did on the first run.
+  useEffect(() => {
+    const bar = barRef.current;
+    const card = bar?.parentElement;
+    if (!bar || !card || typeof ResizeObserver === 'undefined') return undefined;
+
+    const publish = () => {
+      card.style.setProperty('--batch-bar-h', `${Math.ceil(bar.getBoundingClientRect().height)}px`);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(bar);
+    return () => {
+      observer.disconnect();
+      // Cleared on the way out, so a card with no bar carries no leftover
+      // clearance — the rule stops matching, but the property would linger on
+      // the node React reuses for the next render.
+      card.style.removeProperty('--batch-bar-h');
+    };
+  }, [picked.length > 0]);
   /**
    * Whether anything on this screen should say "ทั้งหมด" at all.
    *
@@ -551,7 +598,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
 
       {/* ── batch bar ──────────────────────────────────────────────────────── */}
       {picked.length > 0 && (
-        <div className="batch-bar">
+        <div className="batch-bar" ref={barRef}>
           <div className="count-label">
             เลือกไว้ <strong>{picked.length}</strong> รายการ
             <span className="sub">รวม {hours(pickedHours)} ชม.</span>
