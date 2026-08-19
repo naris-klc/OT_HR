@@ -125,17 +125,6 @@
   --on-dark-border: rgba(255, 255, 255, .14);
   --on-dark-border-2: rgba(255, 255, 255, .18);
 
-  /* ── one number that is not a colour, and is written at runtime ─────────
-     How tall the batch bar is. Declared here so that it EXISTS — a token used
-     by a rule and defined nowhere fails the completeness check in
-     test/theme.test.js, which is the same guard that caught `--amber-glow`, and
-     it is right to: a reader cannot tell a value set from JavaScript from one
-     somebody forgot to add.
-
-     The value here is the floor, used before the first measurement and by any
-     browser without ResizeObserver. `ApprovalQueue` overwrites it on the card
-     itself while a bar is on screen — see the note over the observer there. */
-  --batch-bar-h: 88px;
   --meter-track: rgba(255, 255, 255, .13);
 
   --radius-lg: 16px;
@@ -467,13 +456,7 @@ a:hover { color: var(--green-dark); }
 
 @keyframes otfade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes otslide { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-/* The batch bar arriving at the foot of a phone. Its own keyframe rather than
-   `otslide` above: this one travels its OWN height, so it comes up from under
-   the edge of the screen instead of appearing a couple of centimetres down and
-   sliding the rest of the way — which reads as a card, not as a bar. Killed by
-   the prefers-reduced-motion block at the foot of the file, like every other
-   animation here. */
-@keyframes otbatchup { from { transform: translateY(100%); } to { transform: none; } }
+
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; border: 3px solid var(--bg); }
@@ -3133,11 +3116,44 @@ table.mini tbody tr:hover { background: none; }
      floating over them. No top border and no top padding: `.queue-tools` ends
      immediately above, the two share a background, and a rule between them
      would draw a boundary that is not there. */
+  /* STICKY UNDER THE APP BAR — 62px is its height, on a phone as on a desktop.
+
+     It holds the only way to build a batch on a phone AND, once something is
+     ticked, the buttons that act on it. Both have to be reachable from wherever
+     the reading has got to, and a control that scrolls away takes the selection
+     with it as far as the reader is concerned.
+
+     z-index 11: over the cards, which carry none, and under the app bar (20)
+     that it tucks beneath. */
   .queue-mobile-bar {
-    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 62px; z-index: 11;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     padding: 0 12px 12px;
     background: var(--neutral-wash); border-bottom: 1px solid var(--line-soft);
   }
+  /* Sticky needs an opaque background of its own — `--neutral-wash` above is
+     one, but only while the bar is IN `.queue-tools`' own block; stuck over the
+     cards it needs to keep it, and a wash that let the rows through would make
+     both unreadable. Stated rather than inherited so it survives a change to
+     the tools' fill. */
+  .queue-mobile-bar:has(.picked-actions) { background: var(--green-bg); }
+
+  /* The summary and the two decisions, on the line under เลือกทั้งหมด.
+     `flex: 1 1 100%` so they take a row of their own: three controls and a
+     sentence beside a tick-box is four things competing for a phone's width,
+     and the count is the one that must not be squeezed to an ellipsis. */
+  .picked-actions {
+    flex: 1 1 100%;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    animation: otfade .16s ease both;
+  }
+  .picked-sum {
+    flex: 1 1 100%;
+    font: 400 13px/1.4 var(--sans); color: var(--green-dark);
+  }
+  .picked-sum strong { font: 600 15px/1.2 var(--mono); }
+  .picked-actions .btn { flex: 1 1 40%; min-height: 44px; }
+  .picked-actions .link { flex: 1 1 100%; text-align: center; min-height: 32px; color: var(--green-dark); }
   /* Drawn as a control rather than as a form label — a bare tick-box with words
      after it reads as something left over at the end of a row, and this is the
      only way to build a batch on a phone. Given a button's height, border and
@@ -3969,55 +3985,26 @@ table.mini tbody tr:hover { background: none; }
   .form-actions { gap: 8px; }
   .form-actions .btn { flex: 1 1 40%; min-height: 44px; }
 
-  /* ── the batch bar, moved to the thumb ─────────────────────────────────── */
+  /* ── the batch bar is not drawn on a phone at all ───────────────────────── */
 
-  /* Sticky under the app bar is a desktop answer: up there it is beside the
-     mouse and out of the way of the rows. On a phone it is the far end of the
-     screen from the hand, and it competes with the app bar for the top edge.
-     Pinned above the nav instead, where the two buttons are a thumb's reach
-     from wherever the reading has got to. */
-  .batch-bar {
-    position: fixed; top: auto; left: 0; right: 0;
-    /* Above the nav, never over it: .mobile-nav is fixed at bottom 0 with
-       z-index 30, so this sits one above it and starts where it ends. */
-    bottom: calc(70px + env(safe-area-inset-bottom));
-    z-index: 31;
-    border-top: 1px solid var(--ok-line); border-bottom: 0;
-    box-shadow: 0 -8px 22px var(--shadow-lift);
-    /* Rising from under the edge, rather than the shared 8px fade it inherits
-       from the desktop rule. A bar that fades in where it will stand reads as
-       part of the page that was always there; one that comes up from the bottom
-       reads as an answer to the tick that was just made. */
-    animation: otbatchup .2s cubic-bezier(.22, .68, .36, 1) both;
-    /* Longhand — see `main` above, where the shorthand had the two horizontal
-       insets swapped and nobody saw it until a phone was turned sideways. */
-    padding-top: 10px;
-    padding-bottom: 10px;
-    padding-left: max(12px, env(safe-area-inset-left));
-    padding-right: max(12px, env(safe-area-inset-right));
-  }
-  .batch-bar .count-label { flex: 1 1 100%; }
-  .batch-bar .count-label .sub { display: inline; margin-left: 8px; }
-  .batch-bar .btn { flex: 1 1 40%; min-height: 44px; }
-  .batch-bar .link { flex: 1 1 100%; text-align: center; min-height: 32px; }
+  /* It was pinned above the nav here, on the reasoning that the foot of the
+     screen is where a thumb is. True, and beside the point: เลือกทั้งหมด is at
+     the TOP of the list and is the only way to build a batch on a phone, so the
+     moment the buttons are wanted is the moment somebody has just pressed
+     something at the other end of the screen. A bar at the foot answers "I have
+     scrolled and now want to act"; it does not answer "I have just selected".
 
-  /* Clearance for it, so the last card is never trapped underneath. `:has` and
-     not a permanent gap: the bar is on screen only while something is ticked,
-     and a phone cannot spare 100px of nothing the rest of the time. A browser
-     without `:has` simply keeps today's behaviour — the bar overlapping the
-     foot of the list — rather than breaking the layout.
+     `.queue-mobile-bar` above carries both now, sticky under the app bar, which
+     is also what the desktop rule does — one shape on both. Kept rather than
+     removed from the markup because the desktop bar IS this element; only the
+     phone stops drawing it, and drawing both would put two identical pairs of
+     buttons on one short screen, which is the duplication the row buttons were
+     taken out of two commits ago.
 
-     MEASURED, NOT GUESSED. `--batch-bar-h` is written by the screen itself from
-     the bar's own height (see the ResizeObserver in components/ApprovalQueue.jsx).
-     The 104px it falls back to was a number typed once against the labels of the
-     day, and those labels have changed twice since — "อนุมัติทั้งหมดที่เลือก
-     (5 รายการ)" wraps where "อนุมัติรายการที่เลือก" did not, and a bar that grows
-     a line silently starts covering the last card again. Nothing on screen says
-     so; the row is simply not there. A number that follows the bar cannot drift
-     away from it. */
-  .card:has(> .batch-bar) .table-wrap {
-    padding-bottom: calc(var(--batch-bar-h) + 16px);
-  }
+     Gone with it: the fixed positioning, the slide-up, the `--batch-bar-h`
+     measurement and the clearance under the list. None of them has anything to
+     hold up once the bar is not over the cards. */
+  .batch-bar { display: none; }
 
   /* ══ EVERY OTHER TABLE ON A PHONE — one pattern, not one per screen ═══════
      A table becomes a stack of cards, and each cell says what it is.

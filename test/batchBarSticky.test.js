@@ -5,89 +5,81 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 /**
- * แถบอนุมัติแบบกลุ่มบนมือถือ — ลอยอยู่เหนือแถบเมนู และไม่บังการ์ดใบสุดท้าย.
+ * แถบเลือกหลายรายการบนมือถือ — อยู่ที่เดียวกับปุ่มที่ใช้เลือก.
  *
- * Two numbers have to agree and nothing makes them: where the bar sits, and how
- * much room the list leaves under itself. Get the second wrong and the last row
- * of a queue is unreachable — not missing, not greyed, simply under a bar that
- * looks perfectly correct. Nobody reports that as a bug; they report that a
- * request "is not in the list".
+ * เลือกทั้งหมด is the only way to build a batch on a phone (the card layout
+ * hides `thead`, which took the heading checkbox with it) and it sits at the TOP
+ * of the list. The buttons that act on the selection were pinned above the nav
+ * at the FOOT of the screen — a defensible place for a thumb, and the wrong
+ * place for the one moment they are wanted: somebody has just pressed something
+ * at the other end of the screen and is looking for what to do next.
  *
- * It went wrong the ordinary way. The clearance was a number typed once against
- * the labels of the day, and the labels have changed twice since — a button
- * reading "อนุมัติทั้งหมดที่เลือก (5 รายการ)" wraps where the older one did not.
- * So the number is measured from the bar now, and what these pin is that it
- * still is.
+ * So both live in one sticky bar under the app bar now, which is the shape the
+ * desktop rule has always had. What these pin is that there is exactly ONE set
+ * of these buttons on a phone — two would be the duplication the row buttons
+ * were taken out of — and that the bar stays put while the list scrolls.
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
 const jsx = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
 
-/** The phone block only — the desktop rule above it is sticky-to-the-top. */
+/** The phone block only — the desktop rules above it are a different design. */
 const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-const mobileBar = phone.slice(phone.indexOf('.batch-bar {'), phone.indexOf('.batch-bar .count-label'));
-
 const has = (src, text, why) => assert.ok(src.includes(text), why || `หาไม่เจอ: ${text}`);
 
-test('on a phone the bar is fixed to the bottom, not sticky to the top', () => {
-  has(mobileBar, 'position: fixed; top: auto;');
-  has(mobileBar, 'bottom: calc(70px + env(safe-area-inset-bottom))');
+test('the controls sit in the same bar as เลือกทั้งหมด', () => {
+  // The actions are inside the toolbar element, not a sibling of it.
+  const bar = jsx.slice(jsx.indexOf('className="queue-mobile-bar'), jsx.indexOf('{/* ── batch bar'));
+  has(bar, 'เลือกทั้งหมด ({actionable.length})');
+  has(bar, 'picked-actions');
+  has(bar, 'pileLabel(isHr, picked.length)');
+  has(bar, 'setRejecting(picked)');
+});
+
+test('it summarises what is ticked — count and hours', () => {
+  has(jsx, 'เลือกแล้ว <strong>{picked.length}</strong> รายการ');
+  has(jsx, '{hours(pickedHours)} ชม.');
 });
 
 /**
- * The stack it has to win, and the one it must not: .mobile-nav is fixed at the
- * very bottom on 30. One above it puts the bar over the cards and under nothing.
+ * A control that scrolls away takes the selection with it as far as the reader
+ * is concerned: the ticks are still set, but nothing on screen says so or offers
+ * to act on them.
  */
-test('it sits one layer above the bottom nav and never over it', () => {
-  has(mobileBar, 'z-index: 31;');
-  const nav = phone.slice(phone.indexOf('.mobile-nav {'), phone.indexOf('.mobile-nav button'));
-  has(nav, 'z-index: 30;', 'แถบเมนูล่างเปลี่ยน z-index ไปแล้ว');
-  // It starts where the nav ends, so neither covers the other.
-  has(nav, 'position: fixed; bottom: 0;');
-});
-
-test('it lifts off the list — a shadow, and a slide up from the edge', () => {
-  has(mobileBar, 'box-shadow: 0 -8px 22px');
-  has(mobileBar, 'animation: otbatchup');
-  // Travels its own height, so it comes from under the screen edge rather than
-  // appearing part-way up and sliding the rest.
-  has(css, '@keyframes otbatchup { from { transform: translateY(100%); }');
-  // And is silenced for anybody who asked for less motion.
-  has(css, '@media (prefers-reduced-motion: reduce)');
-});
-
-test('the clearance under the list is measured from the bar, not typed', () => {
-  has(phone, 'padding-bottom: calc(var(--batch-bar-h) + 16px)');
-  // Declared in :root as well, so the token exists before the first measurement
-  // and for a browser with no ResizeObserver — and so it passes the
-  // completeness check in test/theme.test.js.
-  has(css, '--batch-bar-h: 88px;');
-  has(jsx, "card.style.setProperty('--batch-bar-h'");
-  // Height changes without a remount — a fifth tick can wrap a button, and so
-  // does turning the phone sideways.
-  has(jsx, 'new ResizeObserver(publish)');
-  has(jsx, "card.style.removeProperty('--batch-bar-h')");
+test('the bar stays under the app bar while the list scrolls', () => {
+  const rule = phone.slice(phone.indexOf('.queue-mobile-bar {'), phone.indexOf('.queue-mobile-bar .check'));
+  has(rule, 'position: sticky; top: 62px;');
+  // Over the cards, under the app bar it tucks beneath.
+  has(rule, 'z-index: 11;');
+  // Sticky needs a fill of its own or the rows read through it.
+  has(phone, '.queue-mobile-bar:has(.picked-actions) { background: var(--green-bg); }');
 });
 
 /**
- * The rule writes to `.card:has(> .batch-bar)` and the effect writes to the
- * bar's `parentElement`. They are the same box only because the bar is a direct
- * child; if one moves, both must.
+ * The bottom bar is the SAME element as the desktop one, so it stays in the
+ * markup; the phone simply stops drawing it. Drawing both would put two
+ * identical pairs of buttons on one short screen.
  */
-test('the element measured is the element the rule is on', () => {
-  has(phone, '.card:has(> .batch-bar) .table-wrap');
-  has(jsx, 'const card = bar?.parentElement;');
-  has(jsx, '<div className="batch-bar" ref={barRef}>');
+test('there is exactly one set of these buttons on a phone', () => {
+  has(phone, '.batch-bar { display: none; }');
+  // …and the desktop rule is untouched above the media query.
+  const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
+  has(desktop, 'position: sticky; top: 62px; z-index: 10;');
 });
 
 /**
- * The dependency is evaluated during render, so a `const` declared below it is
- * still in its temporal dead zone and the screen throws on first paint. It did.
+ * Removed with the bottom bar: the fixed positioning it needed, the height
+ * measurement that fed the clearance under the list, and the clearance itself.
+ * A leftover of any of them is a rule holding up nothing.
  */
-test('the observer is set up after the value its dependency reads', () => {
-  assert.ok(
-    jsx.indexOf('const picked = shown.filter') < jsx.indexOf('}, [picked.length > 0]);'),
-    'useEffect อ่าน picked ก่อนที่ picked จะถูกประกาศ — หน้าจอจะพังตั้งแต่เรนเดอร์แรก',
-  );
+test('nothing is left over from the bar that used to cover the list', () => {
+  assert.ok(!phone.includes('padding-bottom: calc(var(--batch-bar-h)'), 'ยังเว้นที่ให้แถบที่ไม่มีแล้ว');
+  assert.ok(!css.includes('--batch-bar-h: '), 'token ที่ไม่มีใครอ่านแล้วยังอยู่');
+  assert.ok(!css.includes('@keyframes otbatchup'), 'keyframe ที่ไม่มีใครใช้แล้วยังอยู่');
+  // Comments stripped: the note where the observer stood NAMES it, which is the
+  // point of a tombstone and not a leftover. Prose is not what runs.
+  const code = jsx.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!code.includes('ResizeObserver'), 'observer ที่ไม่มีอะไรให้วัดแล้วยังอยู่');
+  assert.ok(!code.includes('barRef'), 'ref ที่ไม่มีใครใช้แล้วยังอยู่');
 });

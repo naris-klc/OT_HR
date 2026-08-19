@@ -88,8 +88,12 @@ test('reading a row is still allowed while it is ticked', () => {
 // ── the confirm dialog ──────────────────────────────────────────────────────
 
 test('the dialog says ทั้งหมด only when there is more than one', () => {
-  has(code, 'ยืนยันอนุมัติทั้งหมด (${entries.length} รายการ)');
-  has(code, "'ยืนยันการอนุมัติ'");
+  // The words moved into `pileLabel`, shared with the bar that opens this
+  // dialog — a button whose label changes on the way to the dialog repeating it
+  // is a second thing to read.
+  has(code, 'const confirmLabel = pileLabel(isHr, entries.length);');
+  has(strip(src), 'ยืนยันอนุมัติทั้งหมด (${count} รายการ)');
+  has(strip(src), "'ยืนยันการอนุมัติ'");
 });
 
 test('the title matches RejectModal — count when many, รายการนี้ when one', () => {
@@ -104,7 +108,11 @@ test('the title matches RejectModal — count when many, รายการน�
  * use this screen — which is why the confirm label is written out per role.
  */
 test('the confirm label is per role, and neither half doubles a word', () => {
-  has(code, 'const confirmLabel = isHr');
+  const helper = strip(src.slice(src.indexOf('function pileLabel')));
+  has(helper, 'if (isHr) return count > 1');
+  const code_ = helper.slice(0, helper.indexOf('}'));
+  assert.ok(!code_.includes('ยืนยันการ${verb}'), 'ป้ายปุ่มพังเมื่อ verb เป็น “ยืนยัน”');
+  assert.ok(!code_.includes('ยืนยันยืนยัน'), 'ป้ายปุ่มของฝ่ายบุคคลพูดคำเดิมสองครั้ง');
   assert.ok(!code.includes('ยืนยันการ${verb}'), 'ป้ายปุ่มพังเมื่อ verb เป็น “ยืนยัน”');
   assert.ok(!code.includes('ยืนยันยืนยัน'), 'ป้ายปุ่มของฝ่ายบุคคลพูดคำเดิมสองครั้ง');
   // The form it replaced: `${verb}ทั้งหมด …`, which is the one that breaks. The

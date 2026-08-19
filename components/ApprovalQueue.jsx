@@ -109,7 +109,6 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   /** Was there ever something in this queue this session? Drives the two
       different empty states — "nothing came in" vs "you just cleared it". */
   const everHadRows = useRef(false);
-  const barRef = useRef(null);
 
   /**
    * The list stops at 500 rows, and this is the queue where that shows.
@@ -213,60 +212,19 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
     if (allMobileRef.current) allMobileRef.current.indeterminate = part;
   }, [selected, actionable]);
 
-  /**
-   * HOW TALL THE BATCH BAR IS, published to CSS as `--batch-bar-h`.
-   *
-   * On a phone the bar is `position: fixed` above the nav, so it covers the foot
-   * of the list — and the list has to be padded by exactly its height or the
-   * last row is unreachable. That padding was a number typed into the
-   * stylesheet, and the bar has changed height twice since it was: its buttons
-   * carry counts now, and "อนุมัติทั้งหมดที่เลือก (5 รายการ)" wraps where the
-   * label before it did not. Nothing announces that — the last card is simply
-   * not there any more, under a bar that looks correct.
-   *
-   * So the number follows the bar. `ResizeObserver` rather than a measurement
-   * on mount, because the bar changes height WITHOUT remounting: ticking a
-   * fifth row can wrap a button, and turning the phone sideways relaws the lot.
-   *
-   * WRITTEN ONTO THE PARENT, which is the element the rule is on —
-   * `.card:has(> .batch-bar)` selects the bar's own parent by construction, so
-   * the two cannot point at different boxes.
-   *
-   * Desktop reads it and does nothing with it: up there the bar is sticky under
-   * the app bar and covers nothing, and the padding rule lives inside the
-   * phone's media query.
-   */
   const picked = shown.filter((e) => selected.has(e._id));
 
-  // AFTER `picked`, not before it. The dependency below is evaluated during
-  // render, so a `const` declared further down is still in its temporal dead
-  // zone and the whole screen throws — which is what this did on the first run.
-  useEffect(() => {
-    const bar = barRef.current;
-    const card = bar?.parentElement;
-    if (!bar || !card || typeof ResizeObserver === 'undefined') return undefined;
-
-    const publish = () => {
-      card.style.setProperty('--batch-bar-h', `${Math.ceil(bar.getBoundingClientRect().height)}px`);
-    };
-    publish();
-    const observer = new ResizeObserver(publish);
-    observer.observe(bar);
-    return () => {
-      observer.disconnect();
-      // Cleared on the way out, so a card with no bar carries no leftover
-      // clearance — the rule stops matching, but the property would linger on
-      // the node React reuses for the next render.
-      card.style.removeProperty('--batch-bar-h');
-    };
-  }, [picked.length > 0]);
+  /* A ResizeObserver stood here, publishing the batch bar's height so the phone
+     could pad the list by exactly enough to clear it. The bar is not drawn over
+     the list any more — the controls are in `.queue-mobile-bar`, sticky at the
+     top — so there is nothing to clear and nothing to measure. */
   /**
    * Whether anything on this screen should say "ทั้งหมด" at all.
    *
-   * One name, read by the bar at the bottom and by every row's action cell, so
-   * the batch bar cannot be counting a pile the rows disagree about. The
-   * confirm dialog works this out again from the list it is handed — it is
-   * opened from single rows too, where this flag is not the answer.
+   * One name, read by the batch bar and by every row's action cell, so the bar
+   * cannot be counting a pile the rows disagree about. The confirm dialog works
+   * this out again from the list it is handed — it is opened from single rows
+   * too, where this flag is not the answer.
    */
   const many = picked.length > 1;
   const pickedHours = picked.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
@@ -591,6 +549,48 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
               />
               เลือกทั้งหมด ({actionable.length})
             </label>
+            {/*
+              THE DECISION SITS WITH THE CONTROL THAT MADE THE SELECTION.
+
+              เลือกทั้งหมด is the only way to build a batch on a phone, and it is
+              at the TOP of the list. The buttons that act on what it selected
+              were at the other end of the screen, pinned above the nav — a
+              defensible place for a thumb, and the wrong place for the moment
+              this is actually used: tick at the top, then look for what to do
+              next, and the answer is nowhere near the thing just pressed.
+
+              So the actions moved up here, into the same bar, and the bar is
+              sticky under the app bar — which is what the desktop rule has
+              always done. One shape on both, and no second copy of these
+              buttons anywhere: two batch bars on one screen would be the same
+              duplication the row buttons were just taken out of.
+
+              The summary rides along because the count is what somebody checks
+              before pressing — เลือกทั้งหมด selects `actionable`, which is not
+              every row on screen when some of them are the reviewer's own
+              filings.
+            */}
+            {picked.length > 0 && (
+              <div className="picked-actions">
+                <div className="picked-sum">
+                  เลือกแล้ว <strong>{picked.length}</strong> รายการ
+                  {' '}({hours(pickedHours)} ชม.)
+                </div>
+                <button className="btn sm" disabled={busy} onClick={() => setConfirming(picked)}>
+                  {pileLabel(isHr, picked.length)}
+                </button>
+                <button
+                  className="btn ghost danger sm"
+                  disabled={busy}
+                  onClick={() => setRejecting(picked)}
+                >
+                  ไม่อนุมัติ
+                </button>
+                <button className="link" disabled={busy} onClick={() => setSelected(new Set())}>
+                  ล้างการเลือก
+                </button>
+              </div>
+            )}
           </div>
         )}
         </>
@@ -598,7 +598,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
 
       {/* ── batch bar ──────────────────────────────────────────────────────── */}
       {picked.length > 0 && (
-        <div className="batch-bar" ref={barRef}>
+        <div className="batch-bar">
           <div className="count-label">
             เลือกไว้ <strong>{picked.length}</strong> รายการ
             <span className="sub">รวม {hours(pickedHours)} ชม.</span>
@@ -927,6 +927,25 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   );
 }
 
+/**
+ * ปุ่มที่ตัดสินทั้งกอง — เขียนแยกตามบทบาท ไม่ได้ประกอบจาก verb.
+ *
+ * A หัวหน้า sees อนุมัติ and ฝ่ายบุคคล see ยืนยัน. "ยืนยันการ" + verb reads
+ * beautifully for the first — ยืนยันการอนุมัติ — and produces ยืนยันการยืนยัน
+ * for the second, which is the kind of thing that ships because whoever wrote it
+ * only ever had one of the two accounts open. So the confirming half of the
+ * sentence is dropped where the verb already IS "confirm".
+ *
+ * One function because two places say it now: the bar at the top of the queue
+ * and the dialog it opens. They were separately worded until the bar moved up
+ * here, and a button whose label changes on the way to the dialog that repeats
+ * it is a second thing to read.
+ */
+function pileLabel(isHr, count) {
+  if (isHr) return count > 1 ? `ยืนยันทั้งหมด (${count} รายการ)` : 'ยืนยัน 1 รายการ';
+  return count > 1 ? `ยืนยันอนุมัติทั้งหมด (${count} รายการ)` : 'ยืนยันการอนุมัติ';
+}
+
 // ── batch modals ────────────────────────────────────────────────────────────
 
 /**
@@ -938,22 +957,8 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
   const capped = entries.filter((e) => e.capExceeded);
   const many = entries.length > 1;
 
-  /**
-   * WRITTEN OUT PER ROLE RATHER THAN BUILT FROM `verb`, and that is the whole
-   * reason this is a table and not a template string.
-   *
-   * A หัวหน้า sees อนุมัติ and ฝ่ายบุคคล see ยืนยัน. "ยืนยันการ" + verb reads
-   * beautifully for the first — ยืนยันการอนุมัติ — and produces
-   * ยืนยันการยืนยัน for the second, which is the kind of thing that ships
-   * because whoever wrote it only ever had one of the two accounts open.
-   *
-   * So the confirming half of the sentence is dropped where the verb already IS
-   * "confirm": ฝ่ายบุคคล get the count and nothing else, which is the honest
-   * short form rather than a phrase bent around a word that will not take it.
-   */
-  const confirmLabel = isHr
-    ? (many ? `ยืนยันทั้งหมด (${entries.length} รายการ)` : 'ยืนยัน 1 รายการ')
-    : (many ? `ยืนยันอนุมัติทั้งหมด (${entries.length} รายการ)` : 'ยืนยันการอนุมัติ');
+  // The same words the bar that opened this dialog used — see `pileLabel`.
+  const confirmLabel = pileLabel(isHr, entries.length);
 
   return (
     <Modal
