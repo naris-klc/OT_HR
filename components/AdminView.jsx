@@ -3485,6 +3485,22 @@ const POLICY_SECTIONS = [
   { id: 2, title: 'เกณฑ์การนับ และการปัดเศษ OT' },
   { id: 3, title: 'สิทธิ์วันเกิด และวันหยุดพิเศษ' },
   { id: 4, title: 'เวิร์กโฟลว์ และเพดานชั่วโมง' },
+  /**
+   * WHICH DATES MAY BE FILED AT ALL — a question neither of the other four
+   * blocks asks.
+   *
+   * They answer "how are the hours worked out" and "who signs it". Folded into
+   * เวิร์กโฟลว์ these two would sit under a heading about desks and ceilings,
+   * between rules that have nothing to do with a calendar, and the reader
+   * looking for them would have no block to look in.
+   *
+   * It opened with one row and the second arrived as expected: ล่วงหน้า and
+   * ย้อนหลัง are the same rule pointed in opposite directions, they are read
+   * together, and neither is comprehensible beside a rule about break
+   * deductions. The backward one shares the job with ปิดงวด, which is not on
+   * this page at all — it is a month somebody closes, not a value anybody sets.
+   */
+  { id: 5, title: 'กรอบเวลาการยื่นใบ OT' },
 ];
 
 const POLICY_FIELDS = [
@@ -3713,6 +3729,111 @@ const POLICY_FIELDS = [
       + 'และไม่มีการคำนวณใบใดใหม่ · หัวคอลัมน์ในไฟล์ CSV บอกไว้ทุกครั้งว่าเป็นแบบใด '
       + 'แต่ใบที่พิมพ์ไปแล้วยังเป็นแบบเดิม — เปลี่ยนกลางเดือนแล้วพิมพ์ซ้ำ ตัวเลขบนใบสองใบจะไม่เท่ากัน',
   },
+  {
+    section: 5,
+    key: 'maxAdvanceSubmissionDays', num: true, nullable: true,
+    label: 'จำนวนวันที่อนุญาตให้ยื่น OT ล่วงหน้า (วัน)',
+    /**
+     * A LIST OF DAYS RATHER THAN A BOX TO TYPE ONE IN, and on this page that is
+     * not a shortcut — see the note on `pending` in `Policy`. Choosing on this
+     * page IS the save request: it raises the confirm dialog, and answering it
+     * appends a policy version that can never be removed. A free number input
+     * fires on every keystroke, so typing "14" would propose 1 and then 14 —
+     * one dialog per digit, over a control the reader is still typing into.
+     * Committing on blur instead would work and would be the only control on
+     * the page behaving that way, which is its own kind of surprise.
+     *
+     * The other reason is that ไม่จำกัด is one of the answers and is not a
+     * number. `null` is how the policy says the rule is off (see the key in
+     * src/config/policy.js, and why `36500` is not that); a `min: 0` number box
+     * cannot express it, so the control would be strictly less able to say what
+     * the rule can mean.
+     *
+     * The list is what HR would actually answer — a day, a few days, a week, a
+     * fortnight, a month. If somebody needs 45, the value is not out of reach:
+     * PATCH /api/settings/policy takes any number in DEFAULT_POLICY, and this
+     * row would then show it (see `optionLabel`, which falls back to printing
+     * the value when no option holds it).
+     */
+    options: [
+      [0, 'ยื่นล่วงหน้าไม่ได้ — ถึงวันปัจจุบันเท่านั้น (ค่าเริ่มต้น)'],
+      [1, 'ล่วงหน้าได้ 1 วัน'],
+      [3, 'ล่วงหน้าได้ 3 วัน'],
+      [7, 'ล่วงหน้าได้ 7 วัน'],
+      [14, 'ล่วงหน้าได้ 14 วัน'],
+      [30, 'ล่วงหน้าได้ 30 วัน'],
+      [null, 'ไม่จำกัด — ยื่นวันไหนก็ได้'],
+    ],
+    /**
+     * ONE SENTENCE, AND THE REST IS NOT LOST — it is in the source, over the key
+     * in src/config/policy.js and over the rule in lib/entries.js.
+     *
+     * The hint shipped as ten clauses: the timezone it is measured in, that an
+     * edit only counts when the date moves, how it differs from ปิดงวด, that the
+     * birthday queue is exempt, and that stored entries are never re-checked.
+     * Every one of those is true and none of them is what somebody opening this
+     * page is deciding. HR shortened it, 2026-08-19, and the trade is deliberate:
+     * a paragraph nobody finishes explains less than a line everybody reads.
+     *
+     * What the removed clauses answer is a question asked AFTER something looks
+     * wrong — "why was this refused", "why is that one still editable" — and
+     * that question arrives with a refusal message beside it, which names the
+     * dates and the window. The block heading above already says the group
+     * changes no hours.
+     */
+    hint: 'กำหนดระยะเวลาสูงสุดที่พนักงานยื่น OT ล่วงหน้าได้ '
+      + '(ตั้งเป็น 0 เพื่อไม่อนุญาตให้ยื่นล่วงหน้า)',
+    /**
+     * Against ไม่จำกัด only, and it is a warning rather than a refusal because
+     * "we roster months ahead" is an answer HR is entitled to give.
+     *
+     * What it names is the consequence that is not visible from this page: a
+     * request dated next year is accepted, waits in a queue nobody opens until
+     * then, and counts against a ceiling for a month nobody has worked yet.
+     */
+    warn: (value) => (value === null
+      ? '⚠️ ไม่จำกัด หมายถึงยื่นใบลงวันที่ปีหน้าก็ได้ — ใบนั้นจะค้างอยู่ในคิวจนถึงวันนั้น '
+        + 'และถูกนับรวมในเพดานของเดือนที่ยังไม่มีใครทำงาน'
+      : ''),
+  },
+  {
+    section: 5,
+    key: 'maxPastSubmissionDays', num: true, nullable: true,
+    label: 'จำนวนวันที่อนุญาตให้ยื่น OT ย้อนหลัง (วัน)',
+    /**
+     * ไม่จำกัด IS FIRST HERE, WHERE 0 IS FIRST IN THE ROW ABOVE. The first option
+     * in a list reads as the recommended one, and on this rule it is: the
+     * shipped answer is ไม่จำกัด, and the two directions are not symmetrical.
+     * Refusing a future date loses nothing, because a future date records
+     * nothing that has happened. Refusing a past one turns work somebody
+     * actually did into hours nobody ever claimed.
+     */
+    options: [
+      [null, 'ไม่จำกัด — ใช้การปิดงวดเป็นตัวคุมย้อนหลัง (ค่าเริ่มต้น)'],
+      [1, 'ย้อนหลังได้ 1 วัน'],
+      [3, 'ย้อนหลังได้ 3 วัน'],
+      [7, 'ย้อนหลังได้ 7 วัน'],
+      [14, 'ย้อนหลังได้ 14 วัน'],
+      [30, 'ย้อนหลังได้ 30 วัน'],
+    ],
+    // Shortened with its twin above, on the same terms — see the note there.
+    // The one clause worth missing is that ฝ่ายบุคคล can still file what an
+    // employee no longer can; `warn` below says it, on every setting that makes
+    // it true, which is where somebody is in a position to act on it.
+    hint: 'กำหนดระยะเวลาย้อนหลังที่พนักงานยื่น OT ได้นับจากวันที่ทำ '
+      + '(เลือก “ไม่จำกัด” หากต้องการใช้การปิดงวดรายเดือนคุมตามเดิม)',
+    /**
+     * On EVERY number, not on one end. The row above warns only about ไม่จำกัด,
+     * because its other answers refuse nothing that exists. Every number here
+     * refuses work that has been done, and the consequence is the same whichever
+     * number is chosen — so the warning is on the choice, not on a threshold.
+     */
+    warn: (value) => (value === null
+      ? ''
+      : `⚠️ พนักงานที่กลับมาจากลาป่วยหรือไปทำงานต่างจังหวัดเกิน ${value} วัน `
+        + 'จะบันทึก OT ที่ทำไปแล้วไม่ได้เลย — ต้องให้ฝ่ายบุคคลเป็นผู้บันทึกให้ '
+        + '· ระบบไม่มีช่องผ่อนผันรายใบสำหรับข้อนี้'),
+  },
 ];
 
 /**
@@ -3837,6 +3958,18 @@ function PolicyStatus({ items }) {
  * from that would send a string on the one save that introduces it.
  */
 function coerce(field, raw) {
+  /**
+   * `nullable` is checked BEFORE `num`, and it is the whole reason it exists:
+   * a <select> hands back the string 'null' for an option whose value is null,
+   * and `Number('null')` is NaN. A NaN would be stored, would survive
+   * `canonicalPolicy` as the JSON literal `null` anyway, and would look right
+   * on the page while being a different value from the one that was chosen.
+   *
+   * Declared on the field rather than sniffed from the string, for the reason
+   * `bool` and `num` are: a field whose options happen to contain no null today
+   * must not start accepting one because somebody typed it into a URL.
+   */
+  if (field.nullable && raw === 'null') return null;
   if (field.bool) return raw === 'true';
   if (field.num) return Number(raw);
   return raw;

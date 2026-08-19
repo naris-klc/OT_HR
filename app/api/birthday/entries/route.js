@@ -97,6 +97,26 @@ export const POST = route(async (req) => {
   const checks = await BirthdayCheck.find({ employee: employee._id, workDate: session.workDate })
     .select('employee workDate outcome checkedAt').lean();
 
+  /**
+   * NO `submissionWindowRefusal` HERE, in either direction, and it is not a path
+   * that was missed. The two halves are left out for two different reasons.
+   *
+   * FORWARD: `birthdayDirectApproval` below already refuses `workDate > today`,
+   * outright and without reading a policy key — because the justification for
+   * this route existing at all is that ฝ่ายบุคคล read the scan record, and a
+   * shift that has not happened has no scan record. That reason does not weaken
+   * if HR ever sets `maxAdvanceSubmissionDays` to a positive number: a company
+   * may well roster overtime a week ahead and still have nothing to read for
+   * next Tuesday. The stricter of the two rules is the one that belongs here.
+   *
+   * BACKWARD: `maxPastSubmissionDays` would defeat the feature. วันเกิดที่ยังไม่
+   * มีใบ is by nature discovered late — surfacing days that were missed is the
+   * queue's entire purpose, and the note over the ปิดงวด check above says so.
+   * A rolling window would refuse exactly the rows this screen exists to settle,
+   * and would leave ฝ่ายบุคคล holding a scan record they are not allowed to
+   * record. The backward limit that does apply here is ปิดงวด, which an
+   * administrator can reopen for a month with a reason on the record.
+   */
   const gate = birthdayDirectApproval({
     actor: user,
     employee,

@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  StatusChip, Alert, BucketSplit, Empty, EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead,
-  RefiledNote, RequestTrail, Section, SegmentList, editsOf, trailOf,
+  ApproverLine, StatusChip, Alert, BucketSplit, Empty, EditedMark, EntryHistory, Fact, Modal,
+  ProxyMark, RateHead, RefiledNote, RequestTrail, Section, SegmentList, editsOf, trailOf,
 } from './common.jsx';
 import { awaitingFirstSignature, isProxyFiled, refileState } from '@/lib/entries.js';
 import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
@@ -13,6 +13,21 @@ import { useBackHandler } from './nav.jsx';
 
 export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   const [entries, setEntries] = useState([]);
+  /**
+   * Who would sign a request from this person — for the waiting line under the
+   * status chip. `{ departmentId, people }` from GET /api/entries/approvers.
+   *
+   * ONE FETCH FOR THE WHOLE SCREEN, not one per row: every request on it belongs
+   * to the same person, so every row waiting on a หัวหน้า is waiting on the same
+   * desk. It is deliberately NOT part of the entries response — the list is
+   * paged and cached and this is a fact about the roster, which changes on a
+   * different clock.
+   *
+   * `null` while it is loading and after a failure, and `approverLine` prints
+   * the desk without names when it is missing. A line that cannot name anybody
+   * is a smaller loss than a screen that will not draw.
+   */
+  const [signers, setSigners] = useState(null);
   const [usage, setUsage] = useState(null);
   const [period, setPeriod] = useState(currentPeriod());
   const [reusing, setReusing] = useState(null); // rejected entry being sent again
@@ -41,6 +56,12 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   }
 
   useEffect(() => { load(); }, [period]);
+
+  // Once per mount, not per period: the roster does not change when somebody
+  // pages back to July. Not fatal — see the note on `signers`.
+  useEffect(() => {
+    api.get('/entries/approvers').then(setSigners).catch(() => setSigners(null));
+  }, []);
 
   // The mobile FAB lives in the shell, so it asks for the form by bumping a counter.
   useEffect(() => { if (openSignal > 0) setShowForm(true); }, [openSignal]);
@@ -277,6 +298,12 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                     against their month and their ceiling — and the first they
                     may hear of it is seeing it here, so it says who wrote it. */}
                 {isProxyFiled(e) && <div style={{ marginTop: 4 }}><ProxyMark entry={e} /></div>}
+                {/* Inside item-main rather than under the chip, because the chip
+                    sits in its own grid column a few characters wide and a
+                    sentence hung under it would set the column's width. This is
+                    the column that already holds the row's other secondary
+                    lines, and it is the one that wraps. */}
+                <ApproverLine entry={e} signers={signers} />
               </div>
               <div className="item-hours">
                 {hours(e.totals?.otHours)}<span className="u"> ชม.</span>
@@ -389,7 +416,11 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                           </div>
                         )}
                       </td>
-                      <td><StatusChip status={e.status} /></td>{/* a chip says what it is */}
+                      <td>
+                        <StatusChip status={e.status} />{/* a chip says what it is */}
+                        {/* …and the line under it says whose desk it is on. */}
+                        <ApproverLine entry={e} signers={signers} />
+                      </td>
                       {/* `.row-actions` rather than a margin on each button:
                           it is the class every other table's action cell uses,
                           it keeps the gaps equal however many of these rules
@@ -501,6 +532,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
         <EntryDetail
           entry={detail}
           user={user}
+          signers={signers}
           onClose={() => setDetailId(null)}
           onEdit={() => { setDetailId(null); setEditing(detail); }}
           onRefile={() => { setDetailId(null); setReusing(detail); }}
@@ -619,7 +651,9 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
  * which on a phone were a sideways scroll — so the row's own summary stays
  * short and everything it cannot hold is one press away instead.
  */
-function EntryDetail({ entry: e, user, onClose, onEdit, onRefile, onCancel, onAskWithdraw }) {
+function EntryDetail({
+  entry: e, user, signers = null, onClose, onEdit, onRefile, onCancel, onAskWithdraw,
+}) {
   const mayEdit = awaitingFirstSignature(e);
   const mayAsk = withdrawEligibility(user, e).ok;
   const trail = trailOf(e);
@@ -658,6 +692,11 @@ function EntryDetail({ entry: e, user, onClose, onEdit, onRefile, onCancel, onAs
         </>
       )}
     >
+      {/* First in the body, under the chip in the header: on the screen somebody
+          opens to ask "what is happening to my request", this is the answer, and
+          everything below it is detail about the hours. */}
+      <ApproverLine entry={e} signers={signers} className="lead" />
+
       <RefiledNote parent={e.refiledFrom} />
 
       {isProxyFiled(e) && (

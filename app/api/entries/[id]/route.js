@@ -6,8 +6,9 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, pickSession, stampCap, editPermission, sameSession,
-  descriptionUnchanged, noOtHoursMessage,
+  descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal,
 } from '@/lib/entries.js';
+import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
@@ -62,6 +63,35 @@ export const PATCH = route(async (req, { params }) => {
   const ctx = await loadContext([session.workDate], {
     employee: { birthDate: await birthDateOf(entry.employee?._id || entry.employee) },
   });
+
+  /**
+   * An edit may not MOVE a request onto a date it could not have been filed on
+   * — which is a narrower rule than the submit path's, and narrower on purpose.
+   *
+   * Only a date that is being CHANGED is measured. This is the lesson
+   * `descriptionUnchanged` above was written from: the cap on รายละเอียดงานที่ทำ
+   * was applied to every edit, the edit form posts the whole entry back, and
+   * correcting the HOURS on an older request was refused for the length of a
+   * field nobody had touched. A window that tightens has the same shape — an
+   * entry filed legitimately under a laxer setting would become uneditable,
+   * including by the ฝ่ายบุคคล trying to correct it, which turns a rule about
+   * filing into a rule about repair.
+   *
+   * THE BACKWARD WINDOW MAKES THAT NECESSARY RATHER THAN MERELY KIND. It moves
+   * on its own overnight: an entry filed inside a 7-day window is outside it on
+   * the eighth day, with nobody having changed anything. Measured on every edit,
+   * every request in the queue would become uneditable simply by ageing —
+   * including for ฝ่ายบุคคล, and including the correction that would have made
+   * it right.
+   *
+   * `entry.workDate` is still the stored value here; `Object.assign` below is
+   * what replaces it.
+   */
+  if (session.workDate !== entry.workDate) {
+    const outsideWindow = submissionWindowRefusal(session.workDate, today(), ctx.policy);
+    if (outsideWindow) return fail(outsideWindow.error, outsideWindow.status);
+  }
+
   const result = await compute(session, ctx);
   // Same refusal and the same sentence as the submit path — an edit that leaves
   // no OT is the same mistake, arriving one screen later.

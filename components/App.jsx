@@ -3,10 +3,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
-import { Alert } from './common.jsx';
+import { Alert, PasswordInput } from './common.jsx';
 import Icon from './icons.jsx';
 import { ToastHost } from './Toast.jsx';
 import { BackProvider } from './nav.jsx';
+import { PolicyProvider } from './policyContext.jsx';
 import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
 import QueueTabs from './QueueTabs.jsx';
@@ -92,7 +93,12 @@ export default function App() {
   }
   return (
     <ToastHost>
-      <Shell session={session} onLogout={() => setSession(null)} />
+      {/* Outside Shell, so every screen and every form opened over one reads
+          the same copy — see components/policyContext.jsx for why this is not
+          a prop. `session.policy` is what /auth/me sent. */}
+      <PolicyProvider policy={session.policy}>
+        <Shell session={session} onLogout={() => setSession(null)} />
+      </PolicyProvider>
     </ToastHost>
   );
 }
@@ -215,39 +221,19 @@ function Login({ onLogin }) {
             </div>
             <div className="field" style={{ marginTop: 16 }}>
               <label>รหัสผ่าน · PASSWORD</label>
-              {/* The box and the eye share a wrapper so the button can sit
-                  inside the field rather than beside it — see .password-field.
-                  The input keeps its own class and every style it had. */}
-              <div className="password-field">
-                <input
-                  type={passwordShown ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                {/* `type="button"`, and it is the whole of what makes this safe
-                    to put inside a <form>: a <button> with no type is a submit
-                    button, so revealing the password would have posted the
-                    login — half-typed, against the throttle in
-                    lib/loginThrottle.js, which counts a wrong password whether
-                    or not the person meant to send one.
-
-                    aria-pressed rather than a label that changes: the button IS
-                    แสดงรหัสผ่าน in both states and what moves is whether it is
-                    on, which is what a screen reader announces from the state.
-                    The tooltip says the action instead, because a pointer has no
-                    other way to be told. */}
-                <button
-                  type="button"
-                  className="reveal"
-                  onClick={() => setPasswordShown((shown) => !shown)}
-                  aria-label="แสดงรหัสผ่าน"
-                  aria-pressed={passwordShown}
-                  title={passwordShown ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
-                >
-                  <Icon name={passwordShown ? 'eye' : 'eyeOff'} />
-                </button>
-              </div>
+              {/* This was written out here, and เปลี่ยนรหัสผ่าน then needed the
+                  same control three more times. It is `PasswordInput` in
+                  components/common.jsx now, which is also where the reasons it
+                  is built the way it is are written down — the `type="button"`
+                  that keeps the eye from submitting this form against the login
+                  throttle, above all. Nothing about what draws here changed. */}
+              <PasswordInput
+                shown={passwordShown}
+                onToggle={() => setPasswordShown((shown) => !shown)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
             </div>
             {error && (
               <Alert kind="error">

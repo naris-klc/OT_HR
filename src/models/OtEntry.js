@@ -250,7 +250,26 @@ const otEntrySchema = new mongoose.Schema(
     // Wall-clock fields are the source of truth: no timezone can move them,
     // and they map one-to-one onto a row of the paper form. `endsNextDay`
     // replaces the old "end must be after start" rule.
-    /** วันที่ the session STARTS. 'YYYY-MM-DD'. */
+    /**
+     * วันที่ the session STARTS. 'YYYY-MM-DD'.
+     *
+     * SHAPE ONLY. How far AHEAD of today this may be is
+     * `maxAdvanceSubmissionDays`, and it is enforced by
+     * `advanceSubmissionRefusal` in lib/entries.js on the way in — not here —
+     * for the two reasons the `description` field below is capped loosely for:
+     *
+     *   Mongoose validates the whole document on save, so a bound checked here
+     *   would fire on entries that are merely being APPROVED, corrected or
+     *   replayed. A request filed for tomorrow, legitimately, becomes one that
+     *   cannot be signed off the day after — and a window that HR later tightens
+     *   would strand every entry filed under the looser one.
+     *
+     *   And a validator here can only read DEFAULT_POLICY. The live answer may
+     *   have been moved by a stored override (see `Setting.effectivePolicy`),
+     *   so the schema would enforce a number nobody is running on. The write
+     *   paths have the effective policy in hand and are the only place the real
+     *   rule can be asked.
+     */
     workDate: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/, index: true },
     /** จาก — 'HH:MM'. */
     startTime: { type: String, required: true, match: /^\d{2}:\d{2}$/ },

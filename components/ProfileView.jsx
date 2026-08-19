@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
-import { Alert } from './common.jsx';
+import { Alert, PasswordInput } from './common.jsx';
 import Delegation from './Delegation.jsx';
 
 const ROLE_LABEL = {
@@ -181,6 +181,20 @@ export function ChangePassword({ onDone, hint }) {
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * THREE FLAGS, NOT ONE. Revealing รหัสผ่านใหม่ to check what was typed must
+   * not also put the old password on screen — the two are different secrets and
+   * only one of them is being chosen. It is also the pair the form asks somebody
+   * to compare: showing รหัสผ่านใหม่ and ยืนยัน together is the whole reason to
+   * reveal anything here, and a single flag would have made that impossible to
+   * do without exposing the third box as well.
+   *
+   * All three start false on every mount — see `PasswordInput`. Nothing here
+   * remembers a revealed box between visits.
+   */
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNext, setShowNext] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Checked here as well as on the server: the server never sees `confirm`,
   // so a typo in it is only catchable on this side.
@@ -227,8 +241,9 @@ export function ChangePassword({ onDone, hint }) {
       <form onSubmit={submit} className="profile-form">
         <div className="field">
           <label>รหัสผ่านเดิม · CURRENT PASSWORD</label>
-          <input
-            type="password"
+          <PasswordInput
+            shown={showCurrent}
+            onToggle={() => setShowCurrent((v) => !v)}
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
             autoComplete="current-password"
@@ -238,8 +253,9 @@ export function ChangePassword({ onDone, hint }) {
 
         <div className="field">
           <label>รหัสผ่านใหม่ · NEW PASSWORD</label>
-          <input
-            type="password"
+          <PasswordInput
+            shown={showNext}
+            onToggle={() => setShowNext((v) => !v)}
             value={next}
             onChange={(e) => setNext(e.target.value)}
             autoComplete="new-password"
@@ -252,8 +268,9 @@ export function ChangePassword({ onDone, hint }) {
 
         <div className="field">
           <label>ยืนยันรหัสผ่านใหม่ · CONFIRM</label>
-          <input
-            type="password"
+          <PasswordInput
+            shown={showConfirm}
+            onToggle={() => setShowConfirm((v) => !v)}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"

@@ -15,7 +15,8 @@ import {
 // version it replaced, and a second copy that drifted would lose forms rather
 // than merely disagree about them. lib/entries.js imports nothing, so plain
 // node can load it as happily as Next can.
-import { sameSession, noOtHoursMessage } from '../../lib/entries.js';
+import { sameSession, noOtHoursMessage, submissionWindowRefusal } from '../../lib/entries.js';
+import { today } from '../../lib/today.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -118,6 +119,14 @@ router.post('/', wrap(async (req, res) => {
   if (descriptionError) return res.status(400).json({ error: descriptionError });
 
   const ctx = await loadContext([session.workDate], { employee: req.user });
+
+  // กรอบเวลาการยื่นใบ — ล่วงหน้าและย้อนหลัง, both asked by one call. The rules and
+  // the sentences are in lib/entries.js, shared with the App Router copy of this
+  // path. Same placement as there: after the context, which is where the live
+  // policy arrives, and before the engine.
+  const outsideWindow = submissionWindowRefusal(session.workDate, today(), ctx.policy);
+  if (outsideWindow) return res.status(outsideWindow.status).json({ error: outsideWindow.error });
+
   const result = await compute(session, ctx);
 
   if (result.totals.otHours <= 0) {
@@ -205,6 +214,15 @@ router.patch('/:id', wrap(async (req, res) => {
   const ctx = await loadContext([session.workDate], {
     employee: { birthDate: await birthDateOf(entry.employee?._id || entry.employee) },
   });
+
+  // Only a date being CHANGED is measured — see the App Router copy of this
+  // path for why an edit must not be refused over a field nobody touched, and
+  // why the backward window makes that necessary rather than merely kind.
+  if (session.workDate !== entry.workDate) {
+    const outsideWindow = submissionWindowRefusal(session.workDate, today(), ctx.policy);
+    if (outsideWindow) return res.status(outsideWindow.status).json({ error: outsideWindow.error });
+  }
+
   const result = await compute(session, ctx);
   if (result.totals.otHours <= 0) {
     return res.status(400).json({

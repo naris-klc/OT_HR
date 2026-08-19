@@ -413,6 +413,84 @@ export const DEFAULT_POLICY = Object.freeze({
    *                hours. Changes what the export column means.
    */
   hrSummaryBasis: 'raw',
+
+  // ── ยื่น OT ล่วงหน้าได้ถึงวันไหน ─────────────────────────────────────────────
+  /**
+   * How many days past today a `workDate` may be, at the moment it is written.
+   *
+   * 0    — up to and including today (DEFAULT). Overtime here is work that has
+   *        been done, and every other rule in the system treats it that way: the
+   *        hours are computed from times somebody read off a scanner, the
+   *        ceiling counts what was worked, and ปิดงวด exists because a month of
+   *        it eventually stops moving. A request for next Tuesday records
+   *        nothing that has happened.
+   * n     — a positive number of days, for a company that rosters overtime ahead
+   *        and wants the request in before the shift.
+   * null  — ไม่จำกัด. The rule switched off, said out loud rather than by
+   *        picking a number nothing will exceed: `maxAdvanceSubmissionDays:
+   *        36500` computes the same and reads as a limit nobody can explain.
+   *
+   * WHY THERE WAS NOTHING HERE UNTIL NOW. `workDate` is checked for SHAPE by the
+   * schema and for one BOUNDARY by ปิดงวด — a month HR has closed takes no new
+   * requests. Neither of them looks forward. Nothing anywhere refused a request
+   * dated 2027, and one filed today would wait in a queue nobody opens for
+   * months, inside a ceiling for a month nobody has worked yet.
+   *
+   * MEASURED AGAINST THE OFFICE'S OWN DAY, never the server's — `today()` in
+   * lib/today.js. After 17:00 UTC a server running on UTC is already on tomorrow
+   * while the office is not, and "not after today" would start letting tomorrow
+   * through every evening.
+   *
+   * NOT ARITHMETIC (see COSMETIC_KEYS in lib/policyVersion.js). It decides
+   * whether an entry may be WRITTEN and never what its hours are: the engine
+   * never reads it, and no stored figure goes stale when it moves.
+   *
+   * NOT ENFORCED BY THE SCHEMA, deliberately — see the note on `workDate` in
+   * src/models/OtEntry.js. `advanceSubmissionRefusal` in lib/entries.js is the
+   * rule, and every write path calls it with the policy actually in force.
+   */
+  maxAdvanceSubmissionDays: 0,
+
+  // ── ยื่น OT ย้อนหลังได้ถึงกี่วัน ─────────────────────────────────────────────
+  /**
+   * How many days BEFORE today a `workDate` may be, at the moment it is written.
+   *
+   * null — ไม่จำกัด (DEFAULT). ปิดงวด is the only backward limit, which is what
+   *        the system has always done: a month stops taking new requests when
+   *        ฝ่ายบุคคล closes it, and until then a late entry is late but not
+   *        refused. Shipped off because turning it on refuses work that people
+   *        have actually done, and that is HR's decision to make rather than a
+   *        default to arrive in a deploy.
+   * n    — a positive number of days.
+   *
+   * THE MIRROR OF `maxAdvanceSubmissionDays` ABOVE, AND NOT ITS EQUAL. The two
+   * refuse opposite directions and the cost of being wrong is not the same in
+   * both. A future date records nothing that has happened, so refusing it loses
+   * nothing. A past date records a shift somebody actually worked, and refusing
+   * it turns work into hours that were never claimed — which is why the shipped
+   * answers differ (0 forward, unlimited back) and why this one warns on the
+   * settings page and that one does not.
+   *
+   * NOT A SECOND ปิดงวด, and the two are worth telling apart:
+   *
+   *   ปิดงวด    — a MONTH that has been sent to accounting stops moving.
+   *               Deliberate, dated, reversible by an administrator with a
+   *               reason on the record. See lib/periodLock.js.
+   *   this one  — a rolling window measured in days from today. Nobody presses
+   *               anything; it moves on its own overnight, and there is no
+   *               reopening it for one late entry.
+   *
+   * It is therefore checked AFTER the period lock in every write path, so a
+   * request that is both late and inside a closed month is answered with ปิดงวด
+   * — the refusal that names a person who can do something about it.
+   *
+   * NOT ARITHMETIC, NOT ENFORCED BY THE SCHEMA, and MEASURED AGAINST THE
+   * OFFICE'S OWN DAY, for the three reasons written out over
+   * `maxAdvanceSubmissionDays` above. `pastSubmissionRefusal` in lib/entries.js
+   * is the rule; `submissionWindowRefusal` beside it is what the routes call, so
+   * that neither direction can be checked in a path that forgot the other.
+   */
+  maxPastSubmissionDays: null,
 });
 
 /**

@@ -24,6 +24,19 @@ export const GET = route(async (req) => {
       weekStartsOn: policy.weekStartsOn,
       hrSummaryBasis: policy.hrSummaryBasis,
       hrMayReject: policy.hrMayReject,
+      /**
+       * กรอบเวลาการยื่นใบ. The date box on บันทึก OT turns these into its own
+       * `min` and `max`, so the calendar cannot offer a day the write path is
+       * about to refuse — see `submissionWindow` in lib/entries.js, which both
+       * sides read.
+       *
+       * Sent even when they are the shipped defaults. A key left out is not
+       * "no limit" to `submissionWindow`: absent reads as 0 in the forward
+       * direction on purpose, so trimming this to save two fields would lock
+       * the picker to today.
+       */
+      maxAdvanceSubmissionDays: policy.maxAdvanceSubmissionDays,
+      maxPastSubmissionDays: policy.maxPastSubmissionDays,
     },
   });
 });

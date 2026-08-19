@@ -7,6 +7,8 @@ import {
   ENTERED_FIELDS, isHrVerifiedBirthday, isProxyFiled, isSystemFiled, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { searchPeople } from '@/lib/personSearch.js';
+import { approverLine } from '@/lib/approverLine.js';
+import Icon from './icons.jsx';
 
 export function StatusChip({ status }) {
   // A class, not a style: see STATUS in lib/api.js. An unknown status falls
@@ -996,6 +998,90 @@ export function Field({ label, note, tip, children, style }) {
       {children}
       {note && <div className="field-note">{note}</div>}
       {tip && open && <div className="field-note">{tip}</div>}
+    </div>
+  );
+}
+
+/**
+ * ที่ใบนี้ค้างอยู่ตรงไหน — one line, under the status chip, on the employee's
+ * own screen.
+ *
+ * The words are `approverLine` in lib/approverLine.js; this is only how they
+ * are drawn. The split matters because the words are the part that can be
+ * wrong, and a pure function is the part a test can hold still.
+ *
+ * QUIETER THAN THE HOURS AND THE DATE, on purpose. Those two are what the row
+ * is; this is what has happened to it. It draws at 12.5px in the muted ink
+ * every secondary line on this screen uses, with only the leading mark carrying
+ * colour — enough to be found by somebody scanning for it and not enough to
+ * compete with the figure it sits under.
+ *
+ * `null` when there is nothing to say, so a cancelled row grows no empty line.
+ */
+export function ApproverLine({ entry, signers = null, className = '' }) {
+  const line = approverLine(entry, signers);
+  if (!line) return null;
+  return (
+    <div className={`approver-line ${line.tone} ${className}`.trim()}>
+      <span className="mark" aria-hidden="true">{line.icon}</span>
+      <span className="who">{line.text}</span>
+      {/* The reason a refusal came back, which is the only part of this line
+          anybody has to act on. Quoted, like every other stored note on this
+          screen, so it reads as somebody's words rather than as the app's. */}
+      {line.note && <span className="why">“{line.note}”</span>}
+    </div>
+  );
+}
+
+/**
+ * A password box with the eye inside it.
+ *
+ * HERE RATHER THAN IN EACH SCREEN, because there are four of these now. The
+ * login page had the only one and carried it inline; เปลี่ยนรหัสผ่าน has three,
+ * and three more copies of a control whose whole job is to briefly show a
+ * password on screen is three places for one of them to be got subtly wrong.
+ * The dangerous mistakes here are all invisible in a screenshot — see the two
+ * below — so the copy that has them right is the only copy there should be.
+ *
+ * `type="button"` IS LOAD-BEARING, not tidiness. A <button> inside a <form>
+ * with no type is a SUBMIT button, so pressing the eye would post the form —
+ * half-typed. On the login page that spends an attempt against the throttle in
+ * lib/loginThrottle.js, which counts a wrong password whether or not anybody
+ * meant to send one; on this form it would fire a change-password request with
+ * an empty confirmation box.
+ *
+ * `aria-pressed` RATHER THAN A LABEL THAT CHANGES. The button is แสดงรหัสผ่าน
+ * in both states and what moves is whether it is on, which is what a screen
+ * reader announces from the state. The tooltip says the action instead, because
+ * a pointer has no other way of being told.
+ *
+ * THE ICON SHOWS THE STATE, NOT THE ACTION: a plain eye while the characters
+ * are visible, a struck-out eye while they are dots. It has to agree with
+ * `aria-pressed` beside it — that reports state — and a control whose picture
+ * and whose announced state disagree is one nobody can act on with confidence.
+ * Both readings are in use in the wild; what matters is that the four boxes in
+ * this app do not disagree with each other.
+ *
+ * NEVER STICKY, AND THERE IS NOTHING TO REMEMBER IT WITH. Each box starts
+ * hidden on every mount, so a revealed password cannot survive a navigation
+ * onto a screen somebody else is looking at.
+ */
+export function PasswordInput({ shown, onToggle, ...props }) {
+  return (
+    <div className="password-field">
+      {/* The input keeps its own class and every style it had — the wrapper is
+          only what lets the button sit inside the box. See .password-field. */}
+      <input {...props} type={shown ? 'text' : 'password'} />
+      <button
+        type="button"
+        className="reveal"
+        onClick={onToggle}
+        aria-label="แสดงรหัสผ่าน"
+        aria-pressed={shown}
+        title={shown ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+      >
+        <Icon name={shown ? 'eye' : 'eyeOff'} />
+      </button>
     </div>
   );
 }

@@ -3,10 +3,23 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
+import { submissionWindow } from '@/lib/entries.js';
+import { today } from '@/lib/today.js';
 import { Alert, BucketSplit, SegmentList } from './common.jsx';
+import { usePolicy } from './policyContext.jsx';
 
 const blank = () => ({
-  workDate: new Date().toISOString().slice(0, 10),
+  /**
+   * `today()` — the office's day — and NOT `new Date().toISOString()`, which is
+   * what stood here.
+   *
+   * That reads the UTC date, so between midnight and 07:00 in Bangkok the form
+   * opened on YESTERDAY. Harmless while nothing looked at the date twice; not
+   * harmless now that the box carries a `min`, because with ยื่นย้อนหลัง set to
+   * 0 the value it opens with would be outside its own allowed range before
+   * anybody touched it.
+   */
+  workDate: today(),
   startTime: '17:00',
   endTime: '20:00',
   endsNextDay: false,
@@ -46,6 +59,39 @@ export default function OtForm({
   const hrEdit = mode === 'hr';
   const proxy = mode === 'proxy';
   const fromBirthday = mode === 'birthday';
+
+  /**
+   * WHICH DAYS THE CALENDAR MAY OFFER — the same window the server enforces.
+   *
+   * `submissionWindow` in lib/entries.js does the arithmetic for both sides, so
+   * the box cannot offer a day that POST /api/entries is about to refuse. The
+   * policy is the copy /auth/me sent at sign-in; the refusal on the server is
+   * the authority, and this is the part that stops somebody meeting it.
+   *
+   * WIDENED TO INCLUDE THE ENTRY'S OWN DATE WHEN EDITING, and this is the whole
+   * of what makes it safe. An `<input type="date">` holding a value outside its
+   * own min/max is INVALID — the browser blocks the submit, on a form where the
+   * only thing being corrected might be the times. The backward window moves on
+   * its own overnight, so without this every request in the queue would become
+   * unsaveable simply by ageing, which is the exact failure the server-side rule
+   * is written to avoid (it measures a date only when the date CHANGES). The
+   * picker has to make the same allowance or it re-introduces it in the browser.
+   *
+   * NOT APPLIED ON A BIRTHDAY ROW. The date there is the row, the box is
+   * disabled, and app/api/birthday/entries is exempt from the window on purpose
+   * — วันเกิดที่ยังไม่มีใบ exists to settle days that were missed, and a bound
+   * here would grey out exactly those.
+   */
+  const policy = usePolicy();
+  const dateBounds = React.useMemo(() => {
+    if (fromBirthday) return { min: undefined, max: undefined };
+    const { min, max } = submissionWindow(today(), policy);
+    const held = entry?.workDate;
+    return {
+      min: min && (!held || held >= min) ? min : undefined,
+      max: max && (!held || held <= max) ? max : undefined,
+    };
+  }, [fromBirthday, policy, entry?.workDate]);
 
   /**
    * Who the request is FOR, when that is not whoever is filling the form in.
@@ -519,16 +565,41 @@ export default function OtForm({
               refuses any other one anyway (it recomputes the person's birthday
               holiday and compares). Disabled rather than removed so the form
               still shows what it is about to save. */}
+          {/* `min`/`max` are what grey the days out. The calendar drawn by an
+              `<input type="date">` belongs to the browser — it is not in this
+              document and no stylesheet here can reach inside it — but every
+              browser this app runs on already dims and refuses days outside the
+              range, which is the behaviour being asked for. What CSS here can
+              do is say when the BOX itself holds a date outside the range; see
+              `input:out-of-range` in app/styles.css.
+
+              `undefined` rather than `''` for an absent bound: React drops the
+              attribute entirely for undefined, where an empty string would be
+              set and is treated by some browsers as a bound of its own. */}
           <input
             type="date"
             value={form.workDate}
             onChange={(e) => set('workDate', e.target.value)}
+            min={dateBounds.min}
+            max={dateBounds.max}
             disabled={fromBirthday}
             required
           />
           <span style={{ fontSize: 12, color: 'var(--muted)' }}>
             วัน{dayName(form.workDate)} · {thaiDate(form.workDate)}
           </span>
+          {/* Said in words as well as drawn, because a greyed-out calendar tells
+              somebody they cannot pick a day and not why, and the answer is a
+              rule HR set rather than anything about their request. Only when a
+              bound exists — with both ends open this line would be noise on
+              every form. */}
+          {(dateBounds.min || dateBounds.max) && (
+            <span className="field-note">
+              เลือกได้ {dateBounds.min ? thaiDate(dateBounds.min) : 'ไม่จำกัด'}
+              {' – '}
+              {dateBounds.max ? thaiDate(dateBounds.max) : 'ไม่จำกัด'}
+            </span>
+          )}
         </div>
         {/* `field time` rather than an inline `maxWidth: 130` — the two want to
             share a line at phone width, where `.field` is otherwise forced to

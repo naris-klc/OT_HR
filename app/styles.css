@@ -911,6 +911,73 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   cursor: not-allowed;
 }
 
+/* A date outside the window HR set — see `min`/`max` on วันที่เริ่ม in
+   components/OtForm.jsx.
+
+   WHAT THIS CAN AND CANNOT REACH. The calendar an `<input type="date">` drops
+   down is drawn by the BROWSER, not by this document: it is not in the DOM, no
+   selector here enters it, and there is no stylesheet anywhere in this app that
+   can dim one of its days. It does not need one — given `min` and `max`, every
+   browser this runs on already draws the days outside them greyed and refuses
+   the click, which is the behaviour being asked for. What is left for CSS is
+   the box itself, and only one case reaches it: a value that is out of range
+   without having been picked from the calendar — typed into the field, filled
+   by the browser, or left over from an entry that has aged past the backward
+   window since it was filed.
+
+   Amber and not red. The commonest way to see this is an old request being
+   corrected, where the date is not a mistake and nothing is going to be
+   refused: the edit only measures a date that CHANGES. Red would say "fix
+   this" about a field there is often nothing wrong with.
+
+   `:out-of-range` only matches an input that HAS a min or a max, so a form with
+   both ends open can never wear it. */
+.field input:out-of-range {
+  border-color: var(--amber-line);
+  background: var(--amber-bg);
+}
+/* The ring stays the app's green focus ring — see the note over --focus-ring,
+   which is deliberately the one token that does not change with the state of
+   the thing it surrounds. Only the border says which state this is; a second
+   colour on the same box at the same moment reads as two problems. */
+.field input:out-of-range:focus { border-color: var(--amber); }
+
+/* ที่ใบนี้ค้างอยู่ตรงไหน — the line under the status chip on OT ของฉัน.
+
+   DELIBERATELY QUIET. It sits in rows whose whole point is a date and a number
+   of hours, and it is neither: it says what has happened to the row. So it
+   takes the same 12.5px muted ink every other secondary line on that screen
+   uses, and only the leading mark carries colour. A coloured sentence here
+   would win the row against the figure it sits under.
+
+   `align-items: flex-start` so a mark stays beside the FIRST line of a name
+   that wraps — on a phone "รอการอนุมัติจาก: สมหญิง ก. · หัวหน้าแผนก" is two
+   lines, and a centred mark would float in the middle of them. */
+.approver-line {
+  display: flex; align-items: flex-start; gap: 5px;
+  margin-top: 4px;
+  font: 400 12.5px/1.45 var(--sans); color: var(--muted);
+}
+.approver-line .mark { flex: none; font-size: 11.5px; line-height: 1.55; }
+.approver-line .why { color: var(--ink-2); }
+.approver-line .why::before { content: ' '; }
+/* Only the two that are asking for something get ink of their own, and neither
+   is red: a refusal already has a red chip beside it, and ⚠️ here is a fact
+   about the roster rather than a mistake in the request. */
+.approver-line.warn .who { color: var(--amber); font-weight: 500; }
+/* In the pop-up it is the first thing under the header and has room to be read
+   properly — see the note where it is rendered. */
+.approver-line.lead {
+  margin: 0 0 12px; padding: 9px 11px;
+  font-size: 13px;
+  background: var(--neutral-wash); border-radius: var(--radius-sm);
+}
+.approver-line.lead .who { color: var(--ink-2); }
+.approver-line.lead.warn .who { color: var(--amber); }
+/* In the full table the chip sits above it, so the line starts under the chip
+   rather than beside the row. */
+td > .approver-line { margin-top: 5px; }
+
 .field .check { flex-direction: row; align-items: center; gap: 9px; }
 
 .check { display: flex; align-items: center; gap: 9px; font: 400 14px/1.4 var(--sans); cursor: pointer; }

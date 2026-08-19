@@ -8,8 +8,9 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
-  capFor, takeCapped,
+  capFor, takeCapped, submissionWindowRefusal,
 } from '@/lib/entries.js';
+import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
@@ -204,6 +205,31 @@ export const POST = route(async (req) => {
   // is the caller, whose document is already in hand; filing for somebody else
   // it is the person just loaded, populated the same way.
   const ctx = await loadContext([session.workDate], { employee });
+
+  /**
+   * MAY THIS DATE BE FILED TODAY — the window at both ends. ปิดงวด above refuses
+   * a month that has finished; this refuses a day that has not started, and a
+   * day too long past to still be claimed.
+   *
+   * Not beside ปิดงวด, and the gap is not accidental: this rule reads two policy
+   * keys and `loadContext` is where the live policy arrives. Still before
+   * `compute`, which is the ordering that matters — the point of all three
+   * checks is that somebody filing a date they may not file is told so, rather
+   * than shown their hours worked out and then turned away.
+   *
+   * AFTER ปิดงวด rather than before it, where the two overlap. A late request
+   * into a month that is also closed is answered with "งวดนี้ปิดแล้ว", which
+   * names something an administrator can reopen; the rolling window names
+   * nothing anybody can press.
+   *
+   * `ctx.policy` is the LIVE policy, deliberately, where the engine below is
+   * handed `policyFor(date)` — the rules in force on the work date. That is
+   * right for arithmetic and wrong here: this asks whether the request may be
+   * filed today, and the answer belongs to today's rules.
+   */
+  const outsideWindow = submissionWindowRefusal(session.workDate, today(), ctx.policy);
+  if (outsideWindow) return fail(outsideWindow.error, outsideWindow.status);
+
   const result = await compute(session, ctx);
 
   // Refused, not stored as a nought — see `noOtHoursMessage`, which is also
