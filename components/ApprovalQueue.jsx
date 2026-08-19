@@ -213,6 +213,15 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   }, [selected, actionable]);
 
   const picked = shown.filter((e) => selected.has(e._id));
+  /**
+   * Whether anything on this screen should say "ทั้งหมด" at all.
+   *
+   * One name, read by the bar at the bottom and by every row's action cell, so
+   * the batch bar cannot be counting a pile the rows disagree about. The
+   * confirm dialog works this out again from the list it is handed — it is
+   * opened from single rows too, where this flag is not the answer.
+   */
+  const many = picked.length > 1;
   const pickedHours = picked.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
   const filtered = entries && shown.length !== entries.length;
   /**
@@ -547,15 +556,23 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
             เลือกไว้ <strong>{picked.length}</strong> รายการ
             <span className="sub">รวม {hours(pickedHours)} ชม.</span>
           </div>
+          {/* THE COUNT IS ON THE BUTTON, not only in the label beside it.
+              "รายการที่เลือก" describes the pile without saying how big it is,
+              and the bar is pinned to the bottom of the screen while the ticks
+              are up in a list that scrolls — so on a phone the two are rarely
+              visible at once. The number belongs on the thing being pressed.
+
+              Both buttons take the same shape. One counting and one not, side
+              by side, reads as the uncounted one doing something else. */}
           <button className="btn sm" disabled={busy} onClick={() => setConfirming(picked)}>
-            ✓ {verb}รายการที่เลือก
+            ✓ {many ? `${verb}ทั้งหมดที่เลือก (${picked.length} รายการ)` : `${verb} 1 รายการ`}
           </button>
           <button
             className="btn ghost danger sm"
             disabled={busy}
             onClick={() => setRejecting(picked)}
           >
-            ✕ ไม่อนุมัติรายการที่เลือก
+            ✕ {many ? `ไม่อนุมัติทั้งหมดที่เลือก (${picked.length} รายการ)` : 'ไม่อนุมัติ 1 รายการ'}
           </button>
           <button className="link" disabled={busy} onClick={() => setSelected(new Set())}>
             ยกเลิกการเลือก
@@ -759,16 +776,38 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                       </div>
                     ) : (
                       <div className="row-actions">
-                        <button className="btn sm" disabled={busy} onClick={() => setConfirming([e])}>
-                          {verb}
-                        </button>
-                        <button
-                          className="btn ghost danger sm"
-                          disabled={busy}
-                          onClick={() => setRejecting([e])}
-                        >
-                          ไม่อนุมัติ
-                        </button>
+                        {/* TICKED, SO THE DECISION HAS MOVED TO THE BAR.
+                            Two อนุมัติ buttons on screen at once — one on the row
+                            and one at the foot of it — are not two ways to do the
+                            same thing: the row's decides ONE entry and drops the
+                            other ticks on the floor, and on a phone, where the
+                            card fills the screen and the bar is pinned under it,
+                            they sit a thumb apart. Pressing the wrong one signs
+                            one of five and leaves four looking untouched.
+
+                            The buttons are replaced rather than merely hidden, so
+                            a card that loses its actions says where they went.
+                            รายละเอียด stays — reading a row is not deciding it,
+                            and it is how somebody checks a row before confirming
+                            the pile. So does อนุมัติเกินเพดาน below: the batch bar
+                            has no equivalent, so hiding it would take away the
+                            only way to reach it while anything is ticked. */}
+                        {selected.has(e._id) ? (
+                          <span className="cell-sub picked-note">✓ เลือกไว้แล้ว · ใช้แถบด้านล่าง</span>
+                        ) : (
+                          <>
+                            <button className="btn sm" disabled={busy} onClick={() => setConfirming([e])}>
+                              {verb}
+                            </button>
+                            <button
+                              className="btn ghost danger sm"
+                              disabled={busy}
+                              onClick={() => setRejecting([e])}
+                            >
+                              ไม่อนุมัติ
+                            </button>
+                          </>
+                        )}
                         <button className="btn ghost sm" onClick={() => setDetail(e)}>
                           รายละเอียด
                         </button>
@@ -852,6 +891,23 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
   const capped = entries.filter((e) => e.capExceeded);
   const many = entries.length > 1;
 
+  /**
+   * WRITTEN OUT PER ROLE RATHER THAN BUILT FROM `verb`, and that is the whole
+   * reason this is a table and not a template string.
+   *
+   * A หัวหน้า sees อนุมัติ and ฝ่ายบุคคล see ยืนยัน. "ยืนยันการ" + verb reads
+   * beautifully for the first — ยืนยันการอนุมัติ — and produces
+   * ยืนยันการยืนยัน for the second, which is the kind of thing that ships
+   * because whoever wrote it only ever had one of the two accounts open.
+   *
+   * So the confirming half of the sentence is dropped where the verb already IS
+   * "confirm": ฝ่ายบุคคล get the count and nothing else, which is the honest
+   * short form rather than a phrase bent around a word that will not take it.
+   */
+  const confirmLabel = isHr
+    ? (many ? `ยืนยันทั้งหมด (${entries.length} รายการ)` : 'ยืนยัน 1 รายการ')
+    : (many ? `ยืนยันอนุมัติทั้งหมด (${entries.length} รายการ)` : 'ยืนยันการอนุมัติ');
+
   return (
     <Modal
       /**
@@ -879,9 +935,7 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
       footer={(
         <>
           <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
-          <button className="btn" disabled={busy} onClick={onConfirm}>
-            {many ? `${verb}ทั้งหมด (${entries.length} รายการ)` : `${verb} 1 รายการ`}
-          </button>
+          <button className="btn" disabled={busy} onClick={onConfirm}>{confirmLabel}</button>
         </>
       )}
     >

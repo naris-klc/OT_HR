@@ -2367,6 +2367,21 @@ tbody tr.picked:hover { background: var(--green-bg); }
    it out again. */
 .own-note { max-width: 190px; }
 
+/* "✓ เลือกไว้แล้ว · ใช้แถบด้านล่าง" — what stands where a ticked row's two
+   buttons were.
+
+   Same job as .own-note above it and the same shape: a sentence occupying the
+   space a decision used to be offered in, so a card that loses its buttons says
+   where they went instead of just going quiet. Green rather than grey, because
+   it is the row agreeing with the tick beside it and with the tint the whole
+   row is already wearing (tbody tr.picked) — grey here would read as the row
+   having been disabled. */
+.picked-note {
+  display: inline-flex; align-items: center;
+  max-width: 190px;
+  color: var(--green-text); font-weight: 500;
+}
+
 /* The two remarks at the end of a สรุป OT ส่งบัญชี row — วันหยุดวันเกิด hours
    already counted in the holiday column, and entries still awaiting a signature
    that this sheet therefore does not include. Was an inline size and colour on
@@ -3287,6 +3302,10 @@ table.mini tbody tr:hover { background: none; }
   }
   /* Released from the action column's 190px — on a card it has the width. */
   .queue-table td.act-col .own-note { flex: 1 1 100%; max-width: none; }
+  /* Full width on a card for the reason .own-note is: the action column becomes
+     a row of full-width buttons, and a note held to 190px in the middle of it
+     reads as a fragment. */
+  .queue-table td.act-col .picked-note { flex: 1 1 100%; max-width: none; }
 
   /* ══ วันเกิดรอตรวจ — the same table-to-card change ═════════════════════
      Seven columns, and the two that decide the row (บันทึก OT ให้ and

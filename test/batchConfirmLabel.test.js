@@ -5,19 +5,24 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 /**
- * “อนุมัติทั้งหมด” ของหนึ่งรายการ.
+ * “อนุมัติทั้งหมด” ของหนึ่งรายการ — และปุ่มอนุมัติสองปุ่มบนจอเดียวกัน.
  *
- * This dialog opens on one entry far more often than on a batch — a single tick,
- * or the อนุมัติ button on a row, both land here — and it shipped with a green
- * button reading อนุมัติทั้งหมด over a list of one. That is the app describing a
- * batch that is not happening, on the last thing read before an approval goes to
- * payroll.
+ * The confirm dialog opens on one entry far more often than on a batch — a
+ * single tick, or the อนุมัติ button on a row, both land there — and it shipped
+ * with a green button reading อนุมัติทั้งหมด over a list of one.
  *
- * The other half of what these pin is the verb. `verb` is อนุมัติ for a หัวหน้า
- * and ยืนยัน for ฝ่ายบุคคล, and every string in the dialog is built from it — so
- * a rewrite that reads well for one ("ยืนยันการอนุมัติ") can quietly produce
- * "ยืนยันการยืนยัน" for the other. Read as source text for the reason
- * test/passwordReveal.test.js is.
+ * The second thing pinned here is the one that can actually lose work. While
+ * rows are ticked, the batch bar carries an อนุมัติ button AND every row carries
+ * its own, a thumb apart on a phone. They are not two ways to do one thing: the
+ * row's decides ONE entry and silently drops the other ticks.
+ *
+ * The third is the verb. `verb` is อนุมัติ for a หัวหน้า and ยืนยัน for
+ * ฝ่ายบุคคล, so a label that reads well for one — "ยืนยันการอนุมัติ" — becomes
+ * "ยืนยันการยืนยัน" for the other. That is why the confirm label is a table per
+ * role rather than a template string, and it is the assertion most likely to be
+ * undone by somebody tidying it back into one line.
+ *
+ * Read as source text for the reason test/passwordReveal.test.js is.
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -25,49 +30,91 @@ const src = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
 
 /** The ConfirmModal body only — RejectModal below it has its own buttons. */
 const modal = src.slice(src.indexOf('function ConfirmModal'), src.indexOf('function RejectModal'));
+/** The screen itself — everything above the batch modals. */
+const screen = src.slice(0, src.indexOf('// ── batch modals'));
 
 /**
- * The same, with the block comments taken out.
+ * The same, with block comments taken out.
  *
- * The note over this dialog QUOTES the label it replaced, which is the whole
- * point of it — and a test scanning for that label as a defect found the
- * sentence explaining why it is gone. Prose is not what ships to the screen, so
- * the assertions about shipped strings read this instead. Found on the first
- * run of this file.
+ * The notes here QUOTE the labels they replaced, which is the point of them —
+ * and a test scanning for those labels as defects found the sentences
+ * explaining why they are gone. Prose is not what ships to the screen.
  */
-const code = modal.replace(/\/\*[\s\S]*?\*\//g, '');
+const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
+const code = strip(modal);
+const bar = strip(screen);
 
-const has = (text, why) => assert.ok(modal.includes(text), why || `หาไม่เจอ: ${text}`);
+const has = (src_, text, why) => assert.ok(src_.includes(text), why || `หาไม่เจอ: ${text}`);
 
-test('ทั้งหมด is said only when there is more than one', () => {
-  has('many ? `${verb}ทั้งหมด (${entries.length} รายการ)` : `${verb} 1 รายการ`');
-  // No bare `{verb}ทั้งหมด` left anywhere in the dialog.
-  assert.ok(
-    !/\{verb\}ทั้งหมด(?!\s*\(\$)/.test(modal.replace('`${verb}ทั้งหมด (${entries.length} รายการ)`', '')),
-    'ยังมีปุ่ม “ทั้งหมด” ที่ไม่ได้ดูจำนวน',
-  );
+// ── the bar at the foot of the queue ────────────────────────────────────────
+
+test('the batch bar counts what is ticked, on both of its buttons', () => {
+  has(bar, '${verb}ทั้งหมดที่เลือก (${picked.length} รายการ)');
+  has(bar, '`${verb} 1 รายการ`');
+  // One counting and one not, side by side, reads as the uncounted one doing
+  // something else.
+  has(bar, 'ไม่อนุมัติทั้งหมดที่เลือก (${picked.length} รายการ)');
+  has(bar, "'ไม่อนุมัติ 1 รายการ'");
 });
 
-test('the batch count is on the button, not only in the title', () => {
-  // The title is at the top of a sheet whose bottom is the button; on a phone
-  // the number worth checking twice is the one that scrolled away.
-  has('${entries.length} รายการ)`');
+test('the bar and the rows read one flag, so they cannot disagree', () => {
+  has(bar, 'const many = picked.length > 1;');
+});
+
+// ── a ticked row ────────────────────────────────────────────────────────────
+
+/**
+ * The failure this prevents is not cosmetic. With five rows ticked, pressing a
+ * ROW's อนุมัติ signs one of them and leaves four looking untouched — and on a
+ * phone that button sits a thumb from the bar's.
+ */
+test('a ticked row offers no decision of its own', () => {
+  has(bar, "selected.has(e._id) ? (");
+  has(bar, 'picked-note');
+  // Replaced, not merely hidden: a card that loses its buttons has to say where
+  // they went.
+  has(bar, 'เลือกไว้แล้ว');
+});
+
+test('reading a row is still allowed while it is ticked', () => {
+  // รายละเอียด is outside the conditional — checking a row before confirming the
+  // pile is the whole reason somebody would look at it now.
+  const cell = bar.slice(bar.indexOf("selected.has(e._id) ? ("));
+  const detailAt = cell.indexOf('รายละเอียด');
+  const closesAt = cell.indexOf(')}');
+  assert.ok(detailAt > closesAt, 'ปุ่มรายละเอียดถูกซ่อนไปพร้อมปุ่มตัดสินใจ');
+});
+
+// ── the confirm dialog ──────────────────────────────────────────────────────
+
+test('the dialog says ทั้งหมด only when there is more than one', () => {
+  has(code, 'ยืนยันอนุมัติทั้งหมด (${entries.length} รายการ)');
+  has(code, "'ยืนยันการอนุมัติ'");
 });
 
 test('the title matches RejectModal — count when many, รายการนี้ when one', () => {
-  has('title={many ? `${verb} ${entries.length} รายการ` : `${verb}รายการนี้`}');
+  has(code, 'title={many ? `${verb} ${entries.length} รายการ` : `${verb}รายการนี้`}');
   const reject = src.slice(src.indexOf('function RejectModal'));
   assert.ok(reject.includes("'ไม่อนุมัติรายการนี้'"), 'RejectModal เปลี่ยนรูปแบบไปแล้ว');
 });
 
 /**
- * The trap a nicer-sounding rewrite falls into: ฝ่ายบุคคล see ยืนยัน where a
- * หัวหน้า sees อนุมัติ, so any label of the form "ยืนยันการ${verb}" reads as
- * "ยืนยันการยืนยัน" for half the people who use this screen.
+ * ฝ่ายบุคคล see ยืนยัน where a หัวหน้า sees อนุมัติ. Any label of the form
+ * "ยืนยันการ${verb}" therefore reads as ยืนยันการยืนยัน for half the people who
+ * use this screen — which is why the confirm label is written out per role.
  */
-test('every label survives both verbs', () => {
+test('the confirm label is per role, and neither half doubles a word', () => {
+  has(code, 'const confirmLabel = isHr');
   assert.ok(!code.includes('ยืนยันการ${verb}'), 'ป้ายปุ่มพังเมื่อ verb เป็น “ยืนยัน”');
-  assert.ok(!code.includes('อนุมัติทั้งหมด'), 'มีคำว่า อนุมัติ เขียนตายไว้ แทนที่จะมาจาก verb');
-  // Every visible word in this dialog is built from `verb`, never spelled out.
-  assert.ok(!/>\s*อนุมัติ/.test(code), 'มีป้ายที่เขียนคำว่า อนุมัติ ตรง ๆ');
+  assert.ok(!code.includes('ยืนยันยืนยัน'), 'ป้ายปุ่มของฝ่ายบุคคลพูดคำเดิมสองครั้ง');
+  // The form it replaced: `${verb}ทั้งหมด …`, which is the one that breaks. The
+  // literal "ยืนยันอนุมัติทั้งหมด" on the isHr === false branch is the fix, not
+  // the defect, so the pattern has to name the interpolation and not the words.
+  assert.ok(!code.includes('${verb}ทั้งหมด'), 'ยังมีปุ่มที่ประกอบ “ทั้งหมด” จาก verb ตรง ๆ');
+});
+
+test('every label the หัวหน้า path builds still comes from the verb', () => {
+  // The row's own button and the bar's are built from `verb`; only the confirm
+  // dialog spells อนุมัติ out, and only on the branch that knows isHr is false.
+  assert.ok(!/>\s*อนุมัติ\s*</.test(bar), 'มีป้ายที่เขียนคำว่า อนุมัติ ตรง ๆ ในแถวหรือแถบ');
 });
