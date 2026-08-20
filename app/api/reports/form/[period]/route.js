@@ -11,7 +11,7 @@ import { companyOf } from '@/src/config/companies.js';
 import { signsForCompany } from '@/lib/entries.js';
 import {
   PERIOD_RE, actingNotes, previousPeriod, thaiMonth, min, max, latestPerSession,
-  formDayTypes, formPrintStatuses,
+  formDayTypes, formPrintStatuses, formPendingStatuses,
 } from '@/lib/reports.js';
 
 /**
@@ -61,6 +61,15 @@ export const GET = route(async (req, { params }) => {
    * for every other report. The sheet is a statement of what a person worked.
    */
   const { scope: printScope, statuses } = formPrintStatuses(policy, q.status);
+
+  /**
+   * …and which of the rows that reach the paper it marks as unsettled, which
+   * is a narrower list than "not approved". On a sheet no รอหัวหน้า row can
+   * reach, รอ HR is not one of them: the หัวหน้า has signed, and the step
+   * still open is the เฉพาะฝ่ายบุคคล box at the foot of this very sheet. See
+   * `formPendingStatuses` in lib/reports.js.
+   */
+  const pendingStatuses = formPendingStatuses(statuses);
 
   // An overnight session started on the last day of the previous month spills
   // into this month, so widen the query by one period and filter by segment.
@@ -148,6 +157,24 @@ export const GET = route(async (req, { params }) => {
 
   const summary = summariseEntries(inPeriod);
 
+  /**
+   * The three lists below the sheet — unsettled, unmarked, folded away — are
+   * three readings of the same month, so they are one shape and one test of
+   * what counts as being on this sheet at all. A row is on it when a segment
+   * of it lands on a date the grid has, which is what put it in `rows` above.
+   */
+  const onSheet = (e) => (e.segments || []).some((s) => byDate.has(s.date));
+  const brief = (e) => ({
+    id: String(e._id),
+    workDate: e.workDate,
+    from: e.startTime,
+    to: e.endTime,
+    description: e.description,
+    otHours: e.totals?.otHours ?? 0,
+    status: e.status,
+    statusLabel: STATUS_LABEL_TH[e.status],
+  });
+
   return json({
     form: {
       code: (await Setting.load()).formCode,
@@ -176,8 +203,10 @@ export const GET = route(async (req, { params }) => {
        */
       printScope,
       /**
-       * The rows on this sheet that nobody has approved yet — empty under the
-       * strict answer, by construction.
+       * The rows on this sheet still waiting on a decision the sheet is not
+       * itself the place for — empty under the strict answer, by construction,
+       * and empty too under อนุมัติแล้ว + รอ HR, where the only step left is
+       * the เฉพาะฝ่ายบุคคล box at the foot (see `formPendingStatuses`).
        *
        * Named for the screen the way `hidden` is, and for the opposite reason:
        * `hidden` is hours that are NOT on the paper, this is hours that ARE and
@@ -185,19 +214,23 @@ export const GET = route(async (req, { params }) => {
        * itself with (รออนุมัติ) in the description cell; this is the list, so
        * whoever pressed print can act on it without reading 31 rows.
        */
-      pending: shown
-        .filter((e) => e.status !== 'approved'
-          && (e.segments || []).some((s) => byDate.has(s.date)))
-        .map((e) => ({
-          id: String(e._id),
-          workDate: e.workDate,
-          from: e.startTime,
-          to: e.endTime,
-          description: e.description,
-          otHours: e.totals?.otHours ?? 0,
-          status: e.status,
-          statusLabel: STATUS_LABEL_TH[e.status],
-        })),
+      pending: shown.filter((e) => onSheet(e) && pendingStatuses.includes(e.status)).map(brief),
+      /**
+       * The other half of the same question: rows on this sheet that are not
+       * approved and carry NO mark — รอ HR under a filter that counts it as
+       * signed, which is อนุมัติแล้ว + รอ HR on ตรวจสอบรายเดือน.
+       *
+       * The paper is deliberately silent about them; this list is why the
+       * screen is not. Whoever pressed print chose that filter and can read
+       * the statuses in the table they pressed it from, so it is one quiet
+       * line rather than the warning `pending` raises — but a sheet that
+       * counts hours ฝ่ายบุคคล has not confirmed yet may not become a sheet
+       * that never said so.
+       */
+      unmarked: shown
+        .filter((e) => onSheet(e) && e.status !== 'approved'
+          && !pendingStatuses.includes(e.status))
+        .map(brief),
       /**
        * Who filled rows in and who signed them, when that was not the obvious
        * person — the note block under the grid.
@@ -216,16 +249,7 @@ export const GET = route(async (req, { params }) => {
        * no place for them — but returned so the screen can name the hours it
        * dropped rather than let them vanish between two documents.
        */
-      hidden: hidden.filter((e) => (e.segments || []).some((s) => byDate.has(s.date))).map((e) => ({
-        id: String(e._id),
-        workDate: e.workDate,
-        from: e.startTime,
-        to: e.endTime,
-        description: e.description,
-        otHours: e.totals?.otHours ?? 0,
-        status: e.status,
-        statusLabel: STATUS_LABEL_TH[e.status],
-      })),
+      hidden: hidden.filter((e) => onSheet(e)).map(brief),
       /** สรุปรวม — one total per hour column. */
       summary: summary.buckets,
       totalHours: summary.otHours,

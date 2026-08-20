@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api } from '@/lib/api.js';
+import { api, thaiDate } from '@/lib/api.js';
 import { Alert, Empty, SheetScroll } from './common.jsx';
-import { PrintChrome, FormNotices, F027Sheet, sheetQuery } from './PrintForm.jsx';
+import { PrintChrome, F027Sheet, narrowedByPolicy, sheetQuery } from './PrintForm.jsx';
 
 /**
  * Every F-HR-027 in a month as one document — one person to a side of paper.
@@ -37,8 +37,8 @@ import { PrintChrome, FormNotices, F027Sheet, sheetQuery } from './PrintForm.jsx
  * are still in a queue has a row on the screen — so a sheet in the bundle — and
  * that sheet comes back with nothing on it. Dropping it here would quietly make
  * the bundle a different list from the table it was pressed from, which is the
- * one property this component is not allowed to decide. Their `FormNotices`
- * block says why the sheet is empty, with their name on it.
+ * one property this component is not allowed to decide. `NoticeDigest` below
+ * says why the sheet is empty, with their name in it.
  */
 
 /**
@@ -141,16 +141,8 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
       {/* Collected above the stack rather than left beside the sheet each one
           belongs to. In a bundle nobody scrolls forty pages looking for the
           warnings, and a warning between two sheets reads as though it belongs
-          to the sheet below it. Each carries its own name — see `FormNotices`.
-          A month with nothing to say renders nothing at all. */}
-      {(forms || []).map((form) => (
-        <FormNotices
-          key={`notice-${form.employee.code}-${form.employee.name}`}
-          form={form}
-          who={`${form.employee.code} · ${form.employee.name}`}
-          asked={status}
-        />
-      ))}
+          to the sheet below it. A month with nothing to say renders nothing. */}
+      <NoticeDigest forms={forms || []} asked={status} />
 
       <SheetScroll className="f027-screen">
         {(forms || []).map((form, i) => (
@@ -161,5 +153,134 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
         ))}
       </SheetScroll>
     </>
+  );
+}
+
+/**
+ * What the whole bundle has to say, as ONE box — never one box per person.
+ *
+ * The notices used to be `FormNotices` rendered once per sheet, which is right for
+ * a single print and wrong for forty. Each person can raise up to four of them;
+ * a department of forty filled the screen with amber above a preview nobody
+ * could see, and the one fact somebody actually needed — how many sheets this
+ * is about — was the one thing no box on the screen said, because each box only
+ * ever knew about its own page.
+ *
+ * So the digest counts SHEETS first and names people second. The counts are
+ * always visible; the names sit behind ดูรายละเอียด, because "which 3 of 40" is
+ * a question you ask after you know there are 3. `<details>` rather than state:
+ * the list reloads underneath this whenever the month or สถานะที่นับ changes,
+ * and an open/closed flag in state is a thing that can end up describing a list
+ * that no longer exists.
+ *
+ * NOT gone from the app — a single print still shows the per-sheet blocks in
+ * full beside the one sheet they belong to, where there is room and no question
+ * about whose page it is. This is the same information for the case where there
+ * are forty of them.
+ */
+const DIGEST_KINDS = [
+  {
+    key: 'pending',
+    level: 'warn',
+    label: 'ยังไม่อนุมัติ',
+    rows: (form) => form.pending || [],
+    title: (sheets, rows) => `พบใบที่มีรายการยังไม่อนุมัติ ${sheets} ใบ · ${rows} รายการ`,
+  },
+  {
+    key: 'hidden',
+    level: 'warn',
+    label: 'ซ่อนรายการที่ซ้ำช่วงเวลาเดิม',
+    rows: (form) => form.hidden || [],
+    title: (sheets, rows) => `พบใบที่มีรายการซ้ำช่วงเวลาเดิมถูกซ่อน ${sheets} ใบ · ${rows} รายการ`,
+  },
+  {
+    key: 'unmarked',
+    level: 'info',
+    label: 'รอ HR ยืนยัน',
+    rows: (form) => form.unmarked || [],
+    title: (sheets, rows) => `พบเอกสารรอ HR ยืนยันทั้งหมด ${sheets} ใบ · ${rows} รายการ`,
+  },
+  {
+    key: 'acting',
+    level: 'info',
+    label: 'ผู้บันทึกหรือผู้อนุมัติแทน',
+    rows: (form) => form.acting || [],
+    title: (sheets, rows) => `พบใบที่มีผู้บันทึกหรือผู้อนุมัติแทน ${sheets} ใบ · ${rows} รายการ`,
+  },
+];
+
+/**
+ * The days one kind of notice falls on, in date order, one entry per date.
+ *
+ * The same rule the per-sheet block follows: full `thaiDate`, because an overnight
+ * session started on the last day of the previous month is on this sheet with a
+ * workDate belonging to the month before, and a bare day number would name the
+ * wrong day exactly on the rows that are hardest to find.
+ */
+const datesOf = (rows) => [...new Set(rows.map((r) => r.workDate))]
+  .sort()
+  .map(thaiDate)
+  .join(' · ');
+
+function NoticeDigest({ forms, asked = '' }) {
+  const groups = DIGEST_KINDS
+    .map((kind) => ({
+      kind,
+      sheets: forms
+        .map((form) => ({ form, rows: kind.rows(form) }))
+        .filter(({ rows }) => rows.length > 0),
+    }))
+    .filter(({ sheets }) => sheets.length > 0);
+
+  /**
+   * Bundle-wide, and so NOT one of the groups: `printScope` is policy and `asked` is
+   * the screen, so this is true of every sheet in a printing or of none. Forty
+   * names under it would be the same sentence forty times.
+   */
+  const narrowed = forms.some((form) => narrowedByPolicy(form, asked));
+  if (!groups.length && !narrowed) return null;
+
+  // The box takes the loudest tone in it. An amber notice quietened to blue
+  // because a blue one was counted beside it would be a downgrade nobody asked
+  // for, on the two kinds that bear on whether a sheet may be signed at all.
+  const level = groups.some(({ kind }) => kind.level === 'warn') ? 'warn' : 'info';
+
+  return (
+    <div className="no-print notice-digest">
+      <Alert kind={level}>
+        {groups.map(({ kind, sheets }) => (
+          <div key={kind.key} style={{ fontWeight: 600 }}>
+            {kind.title(sheets.length, sheets.reduce((n, s) => n + s.rows.length, 0))}
+          </div>
+        ))}
+
+        {narrowed && (
+          <div style={{ fontSize: 12.5, marginTop: groups.length ? 4 : 0 }}>
+            ทั้งชุดพิมพ์เฉพาะรายการที่อนุมัติแล้ว ตามนโยบายการพิมพ์ใบขออนุมัติ OT ในตั้งค่าระบบ
+            — ไม่ได้ใช้ “สถานะที่นับ” ที่เลือกไว้ ยอดบนใบจึงน้อยกว่ายอดในตารางได้
+          </div>
+        )}
+
+        {groups.length > 0 && (
+          <details className="notice-fold">
+            <summary>ดูรายละเอียด</summary>
+            {groups.map(({ kind, sheets }) => (
+              <div key={kind.key} className="notice-fold-group">
+                <div className="k">{kind.label}</div>
+                {sheets.map(({ form, rows }, i) => (
+                  // Keyed by position: two people can share a name, and a roster
+                  // with two shapes of employee code (PM-0620 / PM00511) is not
+                  // something to build a react key out of.
+                  <div key={`${kind.key}-${i}`} className="l">
+                    {form.employee.code} · {form.employee.name} — {rows.length} รายการ
+                    {' · '}{datesOf(rows)}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </details>
+        )}
+      </Alert>
+    </div>
   );
 }

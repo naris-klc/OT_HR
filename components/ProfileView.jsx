@@ -21,7 +21,11 @@ const ROLE_LABEL = {
  */
 export default function ProfileView({ user, onLogout }) {
   return (
-    <div className="stack">
+    /* `profile-page` is not a layout — `.stack` is still doing that. It is the
+       handle the stylesheet needs to give THESE cards 24px of padding without
+       restating every queue, table and modal in the app. See the rule beside
+       `.profile-form`. */
+    <div className="stack profile-page">
       <Details user={user} />
       {/* Where a หัวหน้า arranges their own cover — on the page they are
           already on when they know they will be away. ฝ่ายบุคคล have the same
@@ -180,6 +184,40 @@ function Details({ user }) {
 const MIN_LENGTH = PASSWORD_MIN_LENGTH; // one number, shared with the server
 
 /**
+ * WHAT THE BROWSER AND ITS EXTENSIONS MUST NOT DO TO THIS FORM.
+ *
+ * Three boxes in a row, two of them named "password", is the exact shape a
+ * password manager is built to fill — and every one of them is wrong about this
+ * form. Chrome offered the saved password into รหัสผ่านเดิม and then into
+ * รหัสผ่านใหม่ as well, which submits current === next and gets the server's
+ * "must not repeat" back; LastPass and 1Password draw their own icon over the
+ * right-hand end of the box, on top of the reveal eye, so the one control that
+ * checks what was typed is the one the overlay covers; and the manager's own
+ * "save this password?" bubble lands over the ยืนยัน field mid-typing.
+ *
+ * `autocomplete="new-password"` ON ALL THREE, including รหัสผ่านเดิม, which is
+ * the part worth being deliberate about. `current-password` is the correct
+ * semantic there and it is exactly what invites the fill; this form asks
+ * somebody to PROVE they know the old password before it will change it, and a
+ * value the browser typed proves nothing about the person at the keyboard. The
+ * cost is real and accepted: anybody who has never memorised their password has
+ * to go and copy it out of the manager. On the first-login gate — where the
+ * password being typed is the one HR read out over the phone an hour ago —
+ * there was nothing saved to fill anyway.
+ *
+ * The two `data-` attributes are not standards. They are the opt-outs LastPass
+ * and 1Password/Dashlane actually read, because `autocomplete` alone has never
+ * been enough to stop an extension — every major manager treats it as a hint it
+ * may overrule. React passes unknown `data-*` through to the DOM untouched,
+ * which is the whole reason they can be written here as ordinary props.
+ */
+const NO_AUTOFILL = {
+  autoComplete: 'new-password',
+  'data-lpignore': 'true',
+  'data-form-type': 'other',
+};
+
+/**
  * เปลี่ยนรหัสผ่าน — the same form on ข้อมูลส่วนตัว and on the first-login gate.
  *
  * `onDone` is how the gate finds out it can let go: it re-reads /auth/me, sees
@@ -259,7 +297,7 @@ export function ChangePassword({ onDone, hint }) {
             onToggle={() => setShowCurrent((v) => !v)}
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
-            autoComplete="current-password"
+            {...NO_AUTOFILL}
             required
           />
         </div>
@@ -272,7 +310,7 @@ export function ChangePassword({ onDone, hint }) {
             onToggle={() => setShowNext((v) => !v)}
             value={next}
             onChange={(e) => setNext(e.target.value)}
-            autoComplete="new-password"
+            {...NO_AUTOFILL}
             minLength={MIN_LENGTH}
             required
           />
@@ -288,7 +326,7 @@ export function ChangePassword({ onDone, hint }) {
             onToggle={() => setShowConfirm((v) => !v)}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            autoComplete="new-password"
+            {...NO_AUTOFILL}
             required
           />
           {mismatch && <div className="field-note error">รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน</div>}

@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PROFILE = 'components/ProfileView.jsx';
+const APP = 'components/App.jsx';
 const sourceOf = (file) => readFileSync(join(ROOT, file), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '');
@@ -95,8 +96,24 @@ test('each password field labels in Thai and places the English in the box', () 
 test('the placeholder is dressed as a sub-label, and only in this form', () => {
   const css = styles();
   assert.match(css, /\.profile-form input::placeholder \{[^}]*var\(--mono\)[^}]*\}/);
-  // Scoped: the rest of the app's placeholders are sample values, not labels.
-  assert.equal((css.match(/input::placeholder/g) || []).length, 1);
+
+  /**
+   * Scoped: the rest of the app's placeholders are sample values, not labels.
+   *
+   * This was a count of one. It is a list now, because a second scoped rule
+   * arrived that is not a counter-example to any of the above: `.searchbox`
+   * sets a COLOUR and nothing else, on the three boxes that are typed into, so
+   * a prompt and a real query are never the same weight of text. What the
+   * count was really guarding is the blanket rule neither of them is — one
+   * `.field input::placeholder` would dress every sample value in the app as
+   * a sub-label — so that is what is asserted instead of an arithmetic that
+   * fails on any third scoped rule whatever it says.
+   */
+  const scopes = (css.match(/[^\n]*input::placeholder/g) || []).map((s) => s.trim());
+  assert.deepEqual(scopes, [
+    '.searchbox input::placeholder',
+    '.profile-form input::placeholder',
+  ]);
 });
 
 test('the phone tightens the gaps and nothing else', () => {
@@ -108,4 +125,107 @@ test('the phone tightens the gaps and nothing else', () => {
   assert.match(block, /\.profile-form \.field \{ gap: 5px; \}/);
   // The boxes themselves keep their height — a thumb has to hit them.
   assert.ok(!/padding/.test(block), 'the phone rule started resizing the inputs');
+});
+
+// ── ออกจากระบบ, the sidebar's copy ──────────────────────────────────────────
+
+/**
+ * The button on the card is only half of it. On a desktop the sidebar is the
+ * one somebody actually uses, and it is in a different file with a different
+ * class on a ground that no theme changes — so it gets its own three checks:
+ * where it sits, that it is red, and that the red is the un-themed kind.
+ */
+test('the sidebar sign-out sits under the whoami card, on the floor', () => {
+  const code = sourceOf(APP);
+  const foot = code.indexOf('<div className="sidebar-foot">');
+  assert.ok(foot > 0, '.sidebar-foot is gone — the pair no longer has a floor');
+  const block = code.slice(foot, foot + 900);
+  const whoami = block.indexOf('className={`whoami');
+  const signout = block.indexOf('className="signout"');
+  assert.ok(whoami > 0 && signout > 0, 'the profile card and the sign-out are not both in the foot');
+  assert.ok(signout > whoami, 'ออกจากระบบ must follow the profile card, not precede it');
+
+  // And the floor is an auto margin, not a fixed offset somebody has to keep
+  // in step with the sidebar's height.
+  assert.match(styles(), /\.sidebar-foot \{[^}]*margin-top: auto/);
+});
+
+test('.signout is the destructive sub-action, not another grey nav row', () => {
+  const css = styles();
+  const at = css.indexOf('.signout {');
+  assert.ok(at > 0, '.signout is gone');
+  const rule = css.slice(at, css.indexOf('}', at));
+  assert.match(rule, /color: var\(--on-dark-danger\)/, 'the letters went back to grey');
+  assert.match(rule, /border: 1px solid var\(--on-dark-danger-line\)/, 'the red line is gone');
+  assert.match(rule, /background: transparent/, 'outlined, never filled — see the note above the rule');
+  assert.match(rule, /transition:/, 'the hover arrives instantly again');
+
+  const hover = css.slice(css.indexOf('.signout:hover {'), css.indexOf('.body {'));
+  assert.match(hover, /background: var\(--on-dark-danger-wash\)/);
+  assert.match(hover, /box-shadow: 0 0 0 3px var\(--on-dark-danger-glow\)/, 'the hover glow is gone');
+});
+
+test('its red is un-themed, because the sidebar is dark in both themes', () => {
+  const css = styles();
+  for (const token of ['--on-dark-danger', '--on-dark-danger-line', '--on-dark-danger-wash', '--on-dark-danger-glow']) {
+    const at = css.indexOf(`  ${token}:`);
+    assert.ok(at > 0, `${token} is gone`);
+    const decl = css.slice(at, css.indexOf(';', at));
+    assert.ok(
+      !decl.includes('light-dark('),
+      `${token} was themed — the ground under it is not, so the button would change colour for no reason`,
+    );
+  }
+  // Not --danger-ink: that one IS themed, and its light value is unreadable here.
+  assert.ok(
+    !/\.signout[^}]*var\(--danger/.test(css.slice(css.indexOf('.signout {'), css.indexOf('.body {'))),
+    '.signout reached for the themed --danger-* set',
+  );
+});
+
+// ── the reveal eye ──────────────────────────────────────────────────────────
+
+test('the eye is --muted, one step up from the 3.41:1 it shipped at', () => {
+  const css = styles();
+  const at = css.indexOf('.password-field .reveal {');
+  const rule = css.slice(at, css.indexOf('}', at));
+  assert.match(rule, /color: var\(--muted\);/, 'the eye went back to --muted-2');
+  assert.ok(!/--muted-2/.test(rule), '--muted-2 is the faint one — see the note above the rule');
+  // Hover still goes all the way to ink, which is where "this is a control"
+  // gets answered.
+  assert.match(css, /\.password-field \.reveal:hover \{[^}]*color: var\(--ink-2\)/);
+});
+
+// ── the cards ───────────────────────────────────────────────────────────────
+
+test('ข้อมูลส่วนตัว carries its own class, and its cards their own padding', () => {
+  assert.match(sourceOf(PROFILE), /<div className="stack profile-page">/);
+  const css = styles();
+  assert.match(css, /\.profile-page \.card \{ padding: 24px; \}/);
+  // Scoped, or every queue and modal in the app moves with it.
+  assert.ok(!/^\.card \{[^}]*padding: 24px/m.test(css), 'the app-wide card padding was raised instead');
+  // The phone gives the room back.
+  assert.match(css, /@media \(max-width: 640px\) \{\n  \.profile-page \.card \{ padding: 18px; \}\n\}/);
+});
+
+// ── autofill ────────────────────────────────────────────────────────────────
+
+test('all three boxes refuse the browser and the extensions alike', () => {
+  const code = sourceOf(PROFILE);
+  assert.match(code, /autoComplete: 'new-password',/);
+  assert.match(code, /'data-lpignore': 'true',/);
+  assert.match(code, /'data-form-type': 'other',/);
+  // One object, spread three times — three hand-written copies is how one of
+  // them ends up a word out of step.
+  assert.equal((code.match(/\{\.\.\.NO_AUTOFILL\}/g) || []).length, 3);
+});
+
+test('รหัสผ่านเดิม is included on purpose, and current-password is gone', () => {
+  const code = sourceOf(PROFILE);
+  assert.ok(
+    !/autoComplete="current-password"/.test(code),
+    'the old-password box is fillable again — a value the browser typed proves nothing about who is at the keyboard',
+  );
+  // No stray per-field autoComplete left to overrule the shared object.
+  assert.ok(!/autoComplete="/.test(code), 'a field kept its own autoComplete attribute');
 });

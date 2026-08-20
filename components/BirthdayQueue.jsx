@@ -148,7 +148,7 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
           </div>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap card-list">
           {/* `bday-table` carries the same trick .queue-table does: below 860px
               the stylesheet lays these seven cells out as a card, placing each
               by the class it already has. Seven columns will not fit a phone —

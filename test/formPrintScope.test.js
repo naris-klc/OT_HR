@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  FORM_PRINT_SCOPES, REPORTABLE_STATUSES, formPrintStatuses,
+  FORM_PRINT_SCOPES, REPORTABLE_STATUSES, formPrintStatuses, formPendingStatuses,
 } from '../lib/reports.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
 import { ARITHMETIC_KEYS, COSMETIC_KEYS } from '../lib/policyVersion.js';
@@ -150,6 +150,52 @@ test('the scope comes back with the list, so a sheet can say why it holds what i
   assert.equal(formPrintStatuses({ formPrintScope: 'screen' }, 'approved').scope, 'screen');
 });
 
+// ── which of those rows the paper marks ─────────────────────────────────────
+
+/**
+ * The second half of the table. `formPrintStatuses` says which rows reach the
+ * paper; this says which of them the paper calls ยังไม่อนุมัติ, and the two are
+ * not the same question.
+ *
+ * รอ HR means the หัวหน้า has signed. The step still open is the one the sheet
+ * itself carries — the เฉพาะฝ่ายบุคคล box at the foot, filled in by whoever
+ * pressed print. Marking those rows told ฝ่ายบุคคล that ฝ่ายบุคคล had not
+ * decided yet, and spent two lines of a millimetre-measured form explaining it.
+ */
+
+test('อนุมัติแล้ว + รอ HR prints a sheet somebody can sign — no mark, no legend', () => {
+  assert.deepEqual(formPendingStatuses(['approved', 'pending_hr']), []);
+});
+
+test('รอ HR is marked again as soon as รอหัวหน้า can reach the same sheet', () => {
+  // Under ใบร่างเดินเรื่อง both queues print together. A mark on one and
+  // silence on the other would read as "these are the unapproved rows", which
+  // on a sheet carrying both would be false.
+  assert.deepEqual(
+    formPendingStatuses(formPrintStatuses({ formPrintScope: 'draft' }).statuses),
+    ['pending_hr', 'pending_mgr'],
+  );
+});
+
+test('the strict answer has nothing to mark, and asking is not an error', () => {
+  assert.deepEqual(formPendingStatuses(['approved']), []);
+  assert.deepEqual(formPendingStatuses([]), []);
+  assert.deepEqual(formPendingStatuses(undefined), []);
+});
+
+test('a sheet of รอหัวหน้า rows alone still marks every one of them', () => {
+  assert.deepEqual(formPendingStatuses(['pending_mgr']), ['pending_mgr']);
+});
+
+test('it knows one thing about รอ HR and nothing about any other status', () => {
+  // A status added later is unapproved until somebody decides otherwise here.
+  assert.deepEqual(formPendingStatuses(['approved', 'pending_audit']), ['pending_audit']);
+  assert.deepEqual(
+    formPendingStatuses(['approved', 'pending_hr', 'pending_audit']),
+    ['pending_audit'],
+  );
+});
+
 // ── the classification ───────────────────────────────────────────────────────
 
 test('the print policy moves no hour — it must never replay a month', () => {
@@ -181,12 +227,19 @@ test('the route decides, and it decides with the policy in hand', () => {
 test('the sheet is told which answer produced it, and which of its rows are unsettled', () => {
   const code = sourceOf(ROUTE);
   assert.match(code, /^\s*printScope,$/m, 'the screen cannot explain a narrowed print');
-  assert.match(code, /pending: shown$/m);
   assert.match(
     code,
-    /\.filter\(\(e\) => e\.status !== 'approved'/,
-    'pending must be the rows that are ON the paper and not approved',
+    /const pendingStatuses = formPendingStatuses\(statuses\)/,
+    'the route must ask which statuses the paper marks — not assume every unapproved one',
   );
+  assert.match(
+    code,
+    /pending: shown\.filter\(\(e\) => onSheet\(e\) && pendingStatuses\.includes\(e\.status\)\)/,
+    'pending must be the rows that are ON the paper and that the paper marks',
+  );
+  // …and the ones it is silent about are still handed to the screen.
+  assert.match(code, /^\s*unmarked: shown$/m);
+  assert.match(code, /!pendingStatuses\.includes\(e\.status\)/);
 });
 
 test('both print paths pass สถานะที่นับ through, and neither invents its own', () => {
@@ -211,22 +264,61 @@ test('an unapproved row says so on the paper, in the cell that carries the other
   const code = sourceOf(SHEET);
   const open = code.indexOf('<td className="desc"');
   const cell = code.slice(open, code.indexOf('</td>', open));
-  assert.match(cell, /s && s\.status !== 'approved' \? ' \(รออนุมัติ\)' : ''/);
+  assert.match(cell, /s && pendingIds\.has\(s\.entryId\) \? ' \(รออนุมัติ\)' : ''/);
+  // Off the server’s list, never off the status a second time: the mark and the
+  // legend that explains it are one decision, so neither can outlive the other on
+  // a document somebody signs.
+  assert.match(
+    code,
+    /const pendingIds = new Set\(\(form\.pending \|\| \[\]\)\.map\(\(p\) => p\.id\)\)/,
+  );
   assert.match(cell, /filedByProxy/, 'this is still the cell that carries per-row remarks');
 });
 
-test('the mark is explained under the grid, and only on a sheet that carries one', () => {
-  // An unexplained abbreviation on a signature document cannot do the job the
-  // mark exists for. A sheet with nothing pending renders no element at all, so
-  // an ordinary form is unchanged.
+test('the paper carries the mark and no legend under the grid', () => {
+  // HR asked the หมายเหตุ block off F-HR-027 (2026-08-20). The mark stays —
+  // (รออนุมัติ) is the word itself, in the cell beside the work it belongs to,
+  // and it is the one remark there that bears on whether a row may be signed.
+  // What the block added over it was a count and a warning about สรุปรวม, and
+  // both of those are on the screen, in front of whoever pressed print.
   const code = sourceOf(SHEET);
+  assert.ok(!code.includes('PendingNote'), 'the legend block is back on the paper');
+
+  // Nothing under the grid but the acting note, which has its own flag.
+  const grid = code.slice(code.indexOf('</table>'), code.indexOf('<div className="f027-foot">'));
+  assert.doesNotMatch(grid, /หมายเหตุ · รายการที่ยังไม่อนุมัติ/);
+  assert.match(grid, /<ActingNote form=\{form\} \/>/);
+
+  // And the count the block used to print is still said, on the screen.
+  const notices = code.slice(
+    code.indexOf('export function FormNotices'),
+    code.indexOf('export function F027Sheet'),
+  );
+  assert.match(notices, /\{form\.pending\.length\} รายการที่ยังไม่อนุมัติ/);
+  assert.match(notices, /\(รออนุมัติ\)/);
+});
+
+test('the rows the paper is silent about are named on the screen, with their dates', () => {
+  // A count says how much of the sheet is unconfirmed; it does not say where
+  // to look, and looking is the only thing left to do about these rows.
+  const code = sourceOf(SHEET);
+  const notices = code.slice(
+    code.indexOf('export function FormNotices'),
+    code.indexOf('export function F027Sheet'),
+  );
+  assert.match(notices, /\{form\.unmarked\.length\} รายการที่สถานะยังเป็น/);
+  assert.match(notices, /\{unmarkedDates\}/);
+
+  // One entry per date, in date order — ISO strings sort chronologically, and
+  // a date carried twice is one day to look at, not two.
   assert.match(
     code,
-    /function PendingNote\(\{ form \}\) \{\s*if \(!form\.pending\?\.length\) return null;/,
+    /const unmarkedDates = \[\.\.\.new Set\(\(form\.unmarked \|\| \[\]\)\.map\(\(u\) => u\.workDate\)\)\]\s*\.sort\(\)\s*\.map\(thaiDate\)/,
   );
-  const paper = code.slice(code.indexOf('function PendingNote'), code.indexOf('function ActingNote'));
-  assert.doesNotMatch(paper, /no-print/, 'the legend is hidden from the paper it explains');
-  assert.match(paper, /\(รออนุมัติ\)/);
+  // The long form: an overnight session started on the 31st puts a workDate
+  // from the month before on this sheet, and a bare day number would name the
+  // wrong day exactly there.
+  assert.doesNotMatch(notices, /thaiDateShort/);
 });
 
 test('whoever pressed print is told what the paper cannot say', () => {
@@ -234,7 +326,11 @@ test('whoever pressed print is told what the paper cannot say', () => {
   // Hours that ARE on the sheet and are not settled…
   assert.match(code, /form\.pending\?\.length > 0 && \(/);
   // …and the opposite surprise: a strict policy quietly narrowing a wide filter.
-  assert.match(code, /const narrowed = form\.printScope === 'approved'/);
+  assert.match(code, /const narrowed = narrowedByPolicy\(form, asked\)/);
+  // One reading of it, exported, because the bundle asks the same question of
+  // forty sheets at once and answers for the document rather than the page.
+  assert.match(code, /export function narrowedByPolicy\(form, asked = ''\)/);
+  assert.match(sourceOf(BUNDLE), /forms\.some\(\(form\) => narrowedByPolicy\(form, asked\)\)/);
   // Both belong to the screen — the paper cannot carry either.
   const notices = code.slice(
     code.indexOf('export function FormNotices'),
@@ -242,9 +338,43 @@ test('whoever pressed print is told what the paper cannot say', () => {
   );
   assert.equal(
     (notices.match(/className="no-print"/g) || []).length,
-    4,
+    5,
     'every notice block above the sheet must be marked no-print',
   );
+});
+
+test('forty sheets raise one notice box, not forty — and it names its counts first', () => {
+  // FormNotices is right for one sheet and wrong for forty: each person can
+  // raise four blocks, so a department filled the screen above the preview it
+  // was printed to look at — and none of those boxes could say how many
+  // sheets were affected, because each knew only about its own page.
+  const bundle = sourceOf(BUNDLE);
+  assert.ok(!bundle.includes('FormNotices'), 'the bundle is back to one box per person');
+  assert.match(bundle, /<NoticeDigest forms=\{forms \|\| \[\]\} asked=\{status\} \/>/);
+
+  // Every kind the per-sheet block can raise is counted by the digest, or a
+  // whole class of notice goes silent the moment there is more than one sheet.
+  const kinds = bundle.slice(bundle.indexOf('const DIGEST_KINDS'), bundle.indexOf('const datesOf'));
+  for (const key of ['pending', 'hidden', 'unmarked', 'acting']) {
+    assert.match(kinds, new RegExp(`key: '${key}'`), `the digest drops ${key} on a bundle`);
+  }
+
+  // Counts always visible; names behind the toggle. `<details>` and not state:
+  // the list is rebuilt whenever the month or สถานะที่นับ changes.
+  assert.match(bundle, /<details className="notice-fold">\s*<summary>ดูรายละเอียด<\/summary>/);
+
+  // And the box takes the loudest tone in it — an amber notice may not be
+  // quietened to blue by being counted beside one.
+  assert.match(bundle, /groups\.some\(\(\{ kind \}\) => kind\.level === 'warn'\) \? 'warn' : 'info'/);
+});
+
+test('the notice box is capped so it cannot push the sheets off the screen', () => {
+  // The preview below it is what somebody came to this screen to look at.
+  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+  const rule = css.slice(css.indexOf('.notice-digest {'), css.indexOf('.notice-digest > .alert'));
+  assert.match(rule, /max-height: 120px/);
+  assert.match(rule, /overflow-y: auto/);
+  assert.match(sourceOf(BUNDLE), /className="no-print notice-digest"/);
 });
 
 test('HR can set the answer from ตั้งค่าระบบ, and the loose ones warn', () => {

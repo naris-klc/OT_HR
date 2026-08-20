@@ -169,6 +169,22 @@ const ICONS = {
       <path d="M4.5 19.5 19.5 4.5" />
     </>
   ),
+
+  /**
+   * ค้นหา — inside the box, at the left end, saying what the box is for before
+   * anything has been typed into it.
+   *
+   * The handle runs down and to the RIGHT of the lens, which is the direction
+   * every magnifier in every interface is drawn and therefore the one that is
+   * read as a magnifier rather than as a shape. Both strokes are one path each,
+   * so the join at the rim stays a join at 18px instead of two lines that miss.
+   */
+  search: (
+    <>
+      <circle cx="10.75" cy="10.75" r="6" />
+      <path d="M15.25 15.25 20.5 20.5" />
+    </>
+  ),
 };
 
 /**

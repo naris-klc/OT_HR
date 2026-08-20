@@ -51,6 +51,31 @@
   --info: #2A6099;
   --info-bg: #E7F0FA;
 
+  /* ── the three birthday chips, pinned to the Tailwind palette ───────────
+     ต้องตรวจ, ยังไม่ถึงวัน and the two "answered" statuses, asked for by hand
+     as amber-500/20 · amber-400 · amber-500/40, the blue pair beside them,
+     and zinc-800/400/700 for the grey.
+
+     THE SAME VALUE ON BOTH HALVES BELOW, which is what "force these colours"
+     means: the chips no longer follow the theme. They are tokens all the same
+     because a rule that names its own colour is the one thing this stylesheet
+     does not allow — see `no rule names a colour of its own` in
+     test/theme.test.js. Putting them here keeps that true and puts the three
+     hexes somewhere a reader looking for the palette will find them.
+
+     THEY ARE DARK-MODE VALUES AND THE LIGHT THEME GETS THEM TOO: #fbbf24 on
+     the 20% amber wash over white measures 1.4:1 and cannot be read. Giving
+     the light half its old tokens back is a one-line change per pair. */
+  --bday-due-bg: rgb(245 158 11 / .2);
+  --bday-due-ink: #fbbf24;
+  --bday-due-line: rgb(245 158 11 / .4);
+  --bday-upcoming-bg: rgb(59 130 246 / .2);
+  --bday-upcoming-ink: #60a5fa;
+  --bday-upcoming-line: rgb(59 130 246 / .4);
+  --bday-settled-bg: #27272a;
+  --bday-settled-ink: #a1a1aa;
+  --bday-settled-line: #3f3f46;
+
   /* ── the refusal button in a decision footer ───────────────────────────
      A SECOND RED, ON PURPOSE, AND ONLY FOR THIS.
 
@@ -164,6 +189,30 @@
   --on-dark-line: rgba(255, 255, 255, .09);
   --on-dark-border: rgba(255, 255, 255, .14);
   --on-dark-border-2: rgba(255, 255, 255, .18);
+
+  /* ออกจากระบบ's red, which is also not themed.
+
+     `--danger-*` cannot serve here. Its light-theme values are a dark red
+     designed to be read on white — #B4402F on the sidebar is 1.4:1, a stain
+     rather than a word — and its readable dark-theme values only arrive when
+     somebody has picked มืด. The ground under this button does not change with
+     that setting, so its colour must not either.
+
+     The hue is the app's own warm `--danger` (#E4572E) lightened until it
+     carries on the dark ground, not the cool red every dark UI reaches for
+     first: in a palette whose reds are all warm, a cool one reads as another
+     system's button that wandered in. #F0A08A clears 8:1 on both sidebar
+     surfaces; the cool equivalent managed 6.1 and matched nothing.
+
+     The line is that red at .35 — found when you look at the button, not
+     before. The sign-out is a sub-action sitting under somebody's own name on
+     every screen in the app, and a solid red rule there is an alarm that never
+     stops. The wash it fills with on hover is the same red at .16, and the ring
+     outside it the same again at .18 — one hue, three weights. */
+  --on-dark-danger: #F0A08A;
+  --on-dark-danger-line: rgba(228, 87, 46, .35);
+  --on-dark-danger-wash: rgba(228, 87, 46, .16);
+  --on-dark-danger-glow: rgba(228, 87, 46, .18);
 
   --meter-track: rgba(255, 255, 255, .13);
 
@@ -309,6 +358,24 @@
    */
   /** Green as TEXT — links, the active tab on the phone bar, an ✓ in a list. */
   --green-text: light-dark(#0F8A46, #9ACBAF);
+  /**
+   * The same green as text, but SATURATED IN THE DARK — one control only.
+   *
+   * It exists because it disagrees with the paragraph above, on purpose and on
+   * request (2026-08-20). Every other green accent was muted for the dark theme
+   * so that the brand fill stays the one saturated green on the screen; this is
+   * the exception, and naming it rather than reaching for a raw colour is what
+   * keeps the exception countable.
+   *
+   * WHERE: the primary button at the foot of a ตรวจสอบรายเดือน card on a phone
+   * — ดู / แก้ไขรายการ. That button carries no fill and no icon, so its colour
+   * is the entire signal that it is the first of the two, and `--green-text`
+   * dark is a sage that reads as grey-green at 13px on a tinted panel.
+   *
+   * The light value is `--green-text`'s own, unchanged: nothing about the light
+   * theme was in question.
+   */
+  --green-accent: light-dark(#0F8A46, #34D399);
   /* Was the darkest green — a TEXT colour on a pale green panel. On a dark
      panel the text has to be the lightest of the three, so this one inverts
      rather than shifts. */
@@ -398,6 +465,22 @@
   --info: light-dark(#2A6099, #6FA8DC);
   --info-bg: light-dark(#E7F0FA, #172735);
   --info-line: light-dark(#C9DCF0, #2A4864);
+
+  /* The three birthday chips again — see the note in the fallback block above.
+     `light-dark()` with the SAME value twice is not a mistake and is not
+     shorthand for "no token": it is how this file says a colour deliberately
+     does not follow the theme, in the one place a reader checks to find out
+     whether it does. Written flat, they would read as a pair somebody forgot
+     to finish. */
+  --bday-due-bg: light-dark(rgb(245 158 11 / .2), rgb(245 158 11 / .2));
+  --bday-due-ink: light-dark(#fbbf24, #fbbf24);
+  --bday-due-line: light-dark(rgb(245 158 11 / .4), rgb(245 158 11 / .4));
+  --bday-upcoming-bg: light-dark(rgb(59 130 246 / .2), rgb(59 130 246 / .2));
+  --bday-upcoming-ink: light-dark(#60a5fa, #60a5fa);
+  --bday-upcoming-line: light-dark(rgb(59 130 246 / .4), rgb(59 130 246 / .4));
+  --bday-settled-bg: light-dark(#27272a, #27272a);
+  --bday-settled-ink: light-dark(#a1a1aa, #a1a1aa);
+  --bday-settled-line: light-dark(#3f3f46, #3f3f46);
   /* Muted with the greens above — it is the border of a --green-bg panel and
      was the loudest edge on a dark card at 0.065. */
   --ok-line: light-dark(#C4E3D2, #354E3F);
@@ -615,13 +698,45 @@ a:hover { color: var(--green-dark); }
 .whoami .n { font: 500 13px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .whoami .r { font: 400 11px/1.4 var(--sans); color: var(--muted-2); }
 
+/* ── ออกจากระบบ, on the floor of the sidebar under the person's own card ─────
+   WHERE IT SITS was already right, and is worth writing down because nothing
+   here said so: `.sidebar-foot` takes `margin-top: auto`, which pushes the pair
+   to the bottom of the column however short the nav above them is, and this
+   button follows `.whoami` in source order — the name, then the way out of the
+   name. No positioning, no fixed offset, nothing to keep in sync with the
+   sidebar's height.
+
+   WHAT IT LOOKS LIKE is the change. Drawn in `--on-dark-2` inside
+   `--on-dark-border` it was the same object as the nav rows above it, in a
+   column where every other grey thing navigates — and this is the one control
+   in the sidebar that takes something away. It now borrows the voice
+   `.btn.ghost.danger` already uses on the card side, translated to the tokens
+   that survive a ground which is dark in both themes.
+
+   OUTLINED AND NOT FILLED, and a step quieter than the card's version. Filled
+   red is reserved for what cannot be taken back; signing out is undone by
+   signing in, and this one is on screen all day. What arrives on hover is the
+   confirmation — a wash, a solid edge, and a soft ring outside it — so the
+   button answers "yes, this one" under the pointer rather than shouting from
+   the corner of every screen.
+
+   The colour never moves. `--on-dark-danger` is the resting letter colour AND
+   the hover one, because there is nowhere brighter to go that is still this
+   red: at 8:1 on the sidebar it is already legible, and the ordinary
+   dim-then-brighten would have meant shipping a resting state dimmer than it
+   needs to be purely to leave room for the hover. */
 .signout {
   width: 100%; margin-top: 6px; padding: 9px;
-  border: 1px solid var(--on-dark-border); background: transparent;
-  color: var(--on-dark-2); border-radius: 8px;
+  border: 1px solid var(--on-dark-danger-line); background: transparent;
+  color: var(--on-dark-danger); border-radius: 8px;
   font: 500 12.5px/1 var(--sans); cursor: pointer;
+  transition: background .16s, border-color .16s, box-shadow .16s;
 }
-.signout:hover { background: var(--on-dark-hover); color: var(--on-fill); }
+.signout:hover {
+  background: var(--on-dark-danger-wash);
+  border-color: var(--on-dark-danger);
+  box-shadow: 0 0 0 3px var(--on-dark-danger-glow);
+}
 
 .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
@@ -1170,8 +1285,38 @@ td > .approver-line { margin-top: 5px; }
    height or a different grey from the select beside it in the same
    `.form-grid` reads as a different kind of control, and it is not one. All
    that is added is room at the right end for the ✕. */
+/* A PLACEHOLDER IS NOT AN ANSWER, and on these three boxes it has to keep
+   saying so after somebody has typed. `--muted-2` is the app's lightest
+   readable grey: clearly a step off `--ink`, so the prompt and a real query
+   are never the same weight of text in the same box — which is the whole
+   question somebody glancing back at a filtered list is asking.
+
+   Scoped to `.searchbox`, which is the three boxes in the app that are typed
+   INTO rather than filled IN — ตรวจสอบรายเดือน, ทะเบียนพนักงาน and
+   กรองตามพนักงาน. Everywhere else a placeholder is a sample value
+   ("เช่น สอบเทียบชุด PM-3000") and reads as one at the browser's own grey. */
+.searchbox input::placeholder { color: var(--muted-2); opacity: 1; }
+
 .searchbox { position: relative; }
 .searchbox input.has-clear { padding-right: 42px; }
+
+/* THE MAGNIFIER, at the other end of the same box.
+
+   `pointer-events: none` is what makes it a picture rather than a control:
+   the whole width of the field, the icon included, is the field — a press that
+   lands on the glass puts the caret in the box, which is what somebody aiming
+   at a search box means every time.
+
+   Not on every `.searchbox` in the app. กรองตามพนักงาน is a `<select>`
+   replacement that happens to be typed into — its box already says what it is
+   by showing the chosen person — while this one starts empty on a screen full
+   of figures and has to say so itself. So it is opt-in, by the same pair of
+   classes `.has-clear` uses at the right end. */
+.searchbox .searchbox-icon {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; color: var(--muted); pointer-events: none;
+}
+.searchbox input.has-icon { padding-left: 40px; }
 
 /* THE ✕, and it is a real button: `aria-label`, reached by Tab, answers Enter
    and Space. It is the only one-press way back to ทุกคน for a pointer, and the
@@ -1201,10 +1346,19 @@ td > .approver-line { margin-top: 5px; }
    the app — same height, same fill, same border, same focus ring — and all
    that is added is the room.
 
-   GREY UNTIL IT IS WANTED. `--muted-2` is legible and quiet; this screen has
-   exactly one thing it is asking for and that is the green button under these
-   two fields. An eye in the app's green would be a second call to action on a
-   page with one job. It picks up `--ink-2` and a wash on hover, which is where
+   QUIET, NOT FAINT — and `--muted-2` was faint. On the light theme it measures
+   3.41:1 against `--card`, which clears the 3:1 that WCAG 1.4.11 asks of a
+   non-text control and clears nothing else. This is an 18px outline glyph with
+   no fill and no border of its own, sitting inside a box whose own border is
+   louder than it is — and it is the only way to check what was typed into a
+   field that shows dots, wanted by somebody who has just mistyped a password,
+   often on a phone in worse light than this was drawn in.
+
+   So it steps up one token, to `--muted`: 5.64:1 on the light theme and 6.57:1
+   on the dark. Still grey, and still not the app's green — an eye in the accent
+   colour would be a second call to action on a page whose one job is the green
+   button under these fields, which is the part of the original reasoning that
+   was never wrong. It picks up `--ink-2` and a wash on hover, which is where
    the answer to "is this a control?" belongs — under the pointer asking it. */
 .password-field { position: relative; display: flex; }
 .password-field input { padding-right: 42px; }
@@ -1213,7 +1367,7 @@ td > .approver-line { margin-top: 5px; }
   display: grid; place-items: center;
   width: 34px; height: 34px; padding: 0;
   border: none; border-radius: var(--radius-xs); background: none;
-  color: var(--muted-2); cursor: pointer;
+  color: var(--muted); cursor: pointer;
   transition: color .14s, background .14s;
 }
 .password-field .reveal:hover { background: var(--neutral-wash); color: var(--ink-2); }
@@ -1247,6 +1401,24 @@ td > .approver-line { margin-top: 5px; }
    they are the two numbers being compared and the words around them are
    Thai, which mono carries nothing of. */
 .roster-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
+
+/* ── ค้นหาบนตรวจสอบรายเดือน ────────────────────────────────────────────────
+   The same box as ทะเบียนพนักงาน's, in a row with its own count beside it
+   rather than under it: this one sits directly above the list it filters, and
+   a count on its own line would push the first card down by a line of type
+   that is blank most of the time.
+
+   `align-items: center` and not `baseline`: the count is one line and the
+   field is 46px, so a baseline would hang it off the bottom of the box.
+
+   It wraps below the count's own width, which is what puts the count under the
+   box on a narrow phone instead of squeezing the field to half a name. */
+.month-find { align-items: center; gap: 10px 14px; margin-bottom: 12px; }
+.month-find .found { font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
+.month-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
+/* Nothing here styles the input. It sits inside a `.field`, so it is the same
+   box as every other one in the app — same height, same fill, same border, same
+   focus ring — and it stays that way the day any of those change. */
 
 /* THE LIST. `position: absolute` and not a portal: it is anchored to a box
    inside an ordinary card in normal flow, and nothing on this screen clips it.
@@ -1457,6 +1629,27 @@ td > .approver-line { margin-top: 5px; }
   color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
 }
 .profile-facts dd { font: 500 15px/1.35 var(--sans); color: var(--ink); margin: 0; }
+
+/* ── ข้อมูลส่วนตัว's cards breathe wider than the app's ──────────────────────
+   18px is the app's card padding and it is right for the screens it was set
+   for: a queue card is mostly one dense row, and a table card wants its rows
+   near the edge. This page is four stacked cards of prose and form — read-only
+   facts, three theme buttons, three password boxes, and the way out — where the
+   padding is the only thing separating one section from the next, and at 18px
+   the four ran together into one grey column.
+
+   24px, scoped here rather than raised everywhere: this is a layout judgement
+   about one page, and the same change to `.card` would restate every queue,
+   table and modal in the app on the way past. The border stays `--line`, which
+   is already the quiet hairline these cards want — the separation comes from
+   the room inside, not from a louder edge.
+
+   The phone keeps 18px. There the card IS the screen, and 24px on both sides is
+   48px of a 412px width spent on nothing. */
+.profile-page .card { padding: 24px; }
+@media (max-width: 640px) {
+  .profile-page .card { padding: 18px; }
+}
 
 /* Stacked, not the app's usual side-by-side .row: the three password boxes are
    a sequence to work down, and side by side they invite typing into the wrong
@@ -1682,6 +1875,102 @@ td > .approver-line { margin-top: 5px; }
    because that is what it is asking of the reader rather than a warning. */
 .chip.edited { background: var(--amber-bg); color: var(--amber); }
 .chip.green { background: var(--green-bg); color: var(--green-dark); }
+/* ต้องตรวจ — the same amber fill as แก้ไขแล้ว above, RINGED.
+
+   It is the one birthday status that is work: every other row on วันเกิดของ
+   เดือนนี้ is settled, or not due yet, and this is the one somebody has to go
+   and answer before the month can be closed. Sitting in a column of grey and
+   green chips, a flat amber panel was a colour among colours; the ring is what
+   makes it read as a state that is asking rather than reporting — the same
+   move `.chip.unconfirmed` makes for the same reason, and the same
+   `--amber-line` the warning alerts are bordered in.
+
+   THE PADDING COMES DOWN BY THE BORDER IT GAINS. A chip a pixel taller than
+   the ones above and below it in the same column is a row that does not line
+   up, and the ring is meant to be noticed, not the height. */
+/* ONE STEP LOUDER THAN IT WAS, in both themes and by the same move: the
+   text takes the INK of its family and the ring takes the family colour
+   itself, where both were a shade quieter (`--amber` on `--amber-line`).
+
+   Asked for as amber-400 text on an amber-500/40 ring, which is a dark-mode
+   palette and cannot be taken literally here: amber-400 on this chip's own
+   pale fill measures about 1.6:1 on the light theme — a badge nobody can
+   read. The tokens go the right way on both sides instead: on the dark
+   theme --amber-ink is BRIGHTER than --amber, on the light theme it is
+   darker, and either way it is further from the fill behind it. */
+.chip.due {
+  padding: 3px 9px;
+  background: var(--amber-bg); color: var(--amber-ink);
+  border: 1px solid var(--amber);
+}
+/* ── AND THE REST OF THAT COLUMN, so five statuses read as one set ─────────
+   วันเกิดของเดือนนี้ carries all five at once, and ringing only the amber one
+   left the other four looking like a different kind of object beside it. Each
+   is now a fill, its own text colour and a ring in the same family — the three
+   families this app already has for exactly this: amber asks, blue informs,
+   grey reports. Same 3px/9px as `.chip.due` so a column of them lines up.
+
+   ยังไม่ถึงวัน is INFORMATION and not work: the date has not arrived, there is
+   no scan record to check against, and nothing anybody can do about it today —
+   which is precisely what the blue is for everywhere else in this app.
+
+   `.neutral` is TWO statuses, วันหยุดอยู่แล้ว and ตรวจแล้ว: ไม่ได้มาทำงาน.
+   They were one class before this and still are: both mean "answered, nothing
+   owed", and the sentence under each says which. Splitting them into two greys
+   would be a distinction the colour cannot carry.
+
+   NOT `.chip.muted`, which stays exactly as it was — it is the flat grey chip
+   four other screens use, and this set gains a ring without any of them
+   moving. */
+.chip.upcoming {
+  padding: 3px 9px;
+  background: var(--info-bg); color: var(--info);
+  border: 1px solid var(--info);
+}
+.chip.neutral {
+  padding: 3px 9px;
+  background: var(--neutral-wash); color: var(--muted);
+  border: 1px solid var(--muted-2);
+}
+
+/* ══ THE THREE BIRTHDAY CHIPS, FORCED TO THE TAILWIND PALETTE ══════════════
+   Asked for by hand, twice, as literal values: amber-500/20 · amber-400 ·
+   amber-500/40, the blue pair beside it, and zinc-800/400/700 for the grey.
+   They override the token rules directly above rather than replacing them, so
+   the shape of those rules — and the reasoning written over them — stays
+   readable next to what is actually being painted.
+
+   The values are `--bday-*` tokens and not the hexes themselves: a rule that
+   names its own colour is the one thing this stylesheet does not allow, and
+   test/theme.test.js fails the build over it. The hexes are in the token block
+   at the top, where the note explaining that they no longer follow the theme
+   sits beside them.
+
+   WHAT THIS COSTS, said here too because the `!important` is what makes it
+   unconditional. These are DARK-MODE colours applied to both themes:
+   amber-400 on a 20% amber wash over white measures 1.4:1, and blue-400 on
+   the blue one 2.0:1 — both under the 4.5:1 a text colour needs, and
+   the amber is not readable at all. `@media print` forces `color-scheme: only
+   light`, so a printed chip is the light-theme one.
+
+   `border-color` and not `border`, so the 1px solid from the rules above is
+   still the thing setting the width — one place decides how thick a chip's
+   ring is, and it is not here. */
+.chip.due {
+  background: var(--bday-due-bg) !important;
+  color: var(--bday-due-ink) !important;
+  border-color: var(--bday-due-line) !important;
+}
+.chip.upcoming {
+  background: var(--bday-upcoming-bg) !important;
+  color: var(--bday-upcoming-ink) !important;
+  border-color: var(--bday-upcoming-line) !important;
+}
+.chip.neutral {
+  background: var(--bday-settled-bg) !important;
+  color: var(--bday-settled-ink) !important;
+  border-color: var(--bday-settled-line) !important;
+}
 /* รอ HR ยืนยัน on ตั้งค่าระบบ — an [OPEN] item HR has not answered yet.
    Smaller and ringed rather than plain, because unlike the chips above it is not
    reporting a state, it is asking somebody to go and press something. The
@@ -1816,6 +2105,51 @@ td > .approver-line { margin-top: 5px; }
   margin-top: 8px;
 }
 .alert-actions > span { font-size: 12.5px; }
+
+/* พรีวิวชุด F-HR-027 — every notice the bundle has, in one box above the stack.
+
+   THE CAP IS THE POINT. This box sits between the print button and the preview
+   of forty sheets, and the preview is what somebody came to this screen to
+   look at. Unbounded, four summary lines plus an opened list of forty names
+   pushes the first sheet off the bottom of the screen — so the notice grows to
+   120px and then scrolls inside itself, and the paper below it never moves.
+
+   `overflow-y: auto` and not `scroll`: the ordinary case is one or two lines
+   with the list folded away, and a scrollbar track drawn permanently beside a
+   two-line notice reads as though something is being hidden. */
+.notice-digest {
+  max-height: 120px; overflow-y: auto;
+  margin-bottom: 12px;
+  /* The wheel stops here rather than carrying on into the sheet preview once
+     the list has been read to its end. */
+  overscroll-behavior: contain;
+}
+/* The alert carries its own 12px top and bottom; inside a scroller those are
+   dead space at both ends of the scroll range, so the wrapper holds the
+   spacing and the box sits flush against it. */
+.notice-digest > .alert { margin: 0; }
+
+/* ดูรายละเอียด — who the counts above are about, on request.
+
+   A `<details>` and not a button with state: this list is rebuilt whenever the
+   month or สถานะที่นับ changes, and an open flag kept in state outlives the
+   list it was describing. The marker is left as the browser draws it — this is
+   a control inside a coloured panel, and a second custom chevron is one more
+   thing to keep in step with the theme for no gain. */
+.notice-fold > summary {
+  cursor: pointer; margin-top: 6px;
+  font: 600 12px/1.4 var(--sans); letter-spacing: .04em;
+  /* Inherits the alert's own ink, so the toggle stays legible in amber and in
+     blue without knowing which one it is in. */
+  opacity: .85;
+}
+.notice-fold > summary:hover { opacity: 1; }
+.notice-fold[open] > summary { opacity: 1; }
+.notice-fold-group { margin-top: 6px; }
+.notice-fold-group > .k {
+  font: 600 11.5px/1.5 var(--sans); letter-spacing: .04em; opacity: .8;
+}
+.notice-fold-group > .l { font-size: 12.5px; }
 
 /* How the engine cut a session up — one line per segment, times and hours, so
    it is mono throughout. The green stub on the left ties each line back to the
@@ -4403,7 +4737,10 @@ table.mini tbody tr:hover { background: none; }
 
   .bday-table { display: block; min-width: 0; table-layout: auto; }
   .bday-table thead { display: none; }
-  .bday-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+  /* 12px, and `.card-list` on the wrap in the JSX so the ground goes back a
+     step — see the note on `.table-wrap.card-list`. On a wrap the same colour
+     as the cards, any gap at all is the same colour as the cards. */
+  .bday-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
 
   /*  วิชัย ศรีสุข                    ( ค้าง 4 วัน )
       PM-0100
@@ -4467,6 +4804,49 @@ table.mini tbody tr:hover { background: none; }
   .bday-table td.mgr-col::before { content: 'บันทึกแทนได้'; }
   .bday-table td.date-col .cell-sub { display: inline; margin: 0 0 0 5px; }
 
+  /* THE OUTLINE ON THE SECOND BUTTON, and only where there IS a first one.
+
+     ไม่ได้มาทำงาน sits beside the filled บันทึก OT ให้, and `.btn.ghost`'s own
+     border is `--line` — the hairline that separates a card from its
+     background, which is the right weight for a divider and too quiet for a
+     control somebody has to find. `--muted-2` is a grey that is legible as an
+     edge on both themes without becoming a second filled button.
+
+     `.btn:not(.ghost) + .btn.ghost` is the whole rule, and it says the design
+     system's own sentence back: reach for an outline in a row that already has
+     a filled button. ดูใบ and ยกเลิกการตรวจ on the same table are lone ghosts
+     with no primary beside them — they match nothing here and keep the quiet
+     border, which is correct: there is no hierarchy for them to be the second
+     half of. */
+  .bday-table td.act-col .row-actions .btn:not(.ghost) + .btn.ghost,
+  .bmonth-table td.act-col .row-actions .btn:not(.ghost) + .btn.ghost {
+    border-color: var(--muted-2);
+  }
+
+  /* AND IT DOES NOT TURN GREEN WHEN TOUCHED.
+
+     `.btn.ghost:hover` goes to the app's green — right for every other ghost
+     in the app, where the green says "this is the thing you are reaching
+     for". Here it is the wrong sentence twice over: this is the NEGATIVE
+     answer standing beside a filled green button that is the positive one,
+     so under a finger the two swapped voices — ไม่ได้มาทำงาน lit up in the
+     colour บันทึก OT ให้ was already wearing.
+
+     So it darkens instead of colouring: the app's own neutral wash, a
+     border one step firmer, and the ink it already had.
+
+     `:active` IS IN THE LIST AND IS NOT DECORATION. There is no hover on a
+     phone — a tap resolves as :active, and on several mobile browsers the
+     :hover state then STICKS on the last thing touched until something else
+     is. Both states have to say the same thing or the green comes back by
+     the other door and stays there. */
+  .bday-table td.act-col .row-actions .btn:not(.ghost) + .btn.ghost:hover:not(:disabled),
+  .bday-table td.act-col .row-actions .btn:not(.ghost) + .btn.ghost:active:not(:disabled),
+  .bmonth-table td.act-col .row-actions .btn:not(.ghost) + .btn.ghost:hover:not(:disabled),
+  .bmonth-table td.act-col .row-actions .btn:not(.ghost) + .btn.ghost:active:not(:disabled) {
+    background: var(--neutral-wash); border-color: var(--muted); color: var(--ink);
+  }
+
   .bday-table td.act-col {
     grid-area: act; margin-top: 10px; padding-top: 10px;
     border-top: 1px solid var(--line-softer);
@@ -4484,51 +4864,60 @@ table.mini tbody tr:hover { background: none; }
 
   .bmonth-table { display: block; min-width: 0; table-layout: auto; }
   .bmonth-table thead { display: none; }
-  .bmonth-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+  .bmonth-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
 
-  /*  THE SAME CARD AS วันเกิดรอตรวจ, cell for cell — same three tracks, the
-      name over its code over แผนก · บริษัท, then a ruled block of labelled
-      facts, then the buttons. The two screens are the same rows read for two
-      different reasons and there is no reason for them to be two shapes.
+  /*  THE SAME CARD AS วันเกิดรอตรวจ, cell for cell — the name and its code, the
+      status in the corner beside them, แผนก under, then a ruled block of
+      labelled facts, then the buttons. The two screens are the same rows read
+      for two different reasons and there is no reason for them to be two shapes.
 
-      วิชัย ศรีสุข
+      วิชัย ศรีสุข                            [ต้องตรวจ]
       PM-0100
       วิศวกรรม
+      ยังไม่มีบันทึกเวลาให้เทียบ
       ──────────────────────────────────────────
       วันเกิด    10 สิงหาคม 2569 วันจันทร์
       บริษัท     ไพรมัส
       ชั่วโมง    8            ← only where there is one
-                 [ต้องตรวจ]
-                 ตรวจจากบันทึกเวลาเข้า-ออก …
       ──────────────────────────────────────────
       [ บันทึก OT ให้ ]     [ ไม่ได้มาทำงาน ]
 
-      ONE COLUMN, and that is what fixes the gap that used to sit between
-      วิศวกรรม and · ไพรมัส. A grid item spanning several tracks widens the
-      `auto` ones it crosses, and on this card every other item — the name, the
-      date, the status, the buttons — spans the lot. So the track แผนก sat in
-      was being stretched by all of them, and บริษัท started wherever that
-      stretching left off. Two tracks or three made no difference; the only
-      cure is not to have a second track for anything to be pushed across.
-      บริษัท joins the labelled facts below instead, which is where the rest of
-      the row's detail already lives.
+      THE STATUS MOVED INTO THE CORNER, where วันเกิดรอตรวจ has kept its
+      ค้างมาแล้ว pill all along. It used to sit six lines down, indented to the
+      value column of the labelled block as if it were another labelled fact
+      with its label rubbed out — an amber chip a card-length away from the name
+      it belongs to, on a screen where the whole point of the chip is to say
+      which of these people still needs answering. Reading the status now costs
+      the same glance as reading the name.
 
-      THE CORNER BADGE from วันเกิดรอตรวจ is still not copied. There ค้างมาแล้ว
-      is two words that fit in a corner; here the status is a chip AND a
-      sentence under it, and a sentence squeezed into a corner would take the
-      width back off the name. */
+      The old objection — that the status is a chip AND a sentence, and a
+      sentence squeezed into a corner would take the width back off the name —
+      is answered by splitting the two rather than by leaving both at the
+      bottom. Only the chip goes in the corner; the sentence stays full width,
+      under the name where there is room for it. The cell is `display: contents`
+      so its two children can land in two different places on the card, which is
+      also why HrView wraps the sentences in one `.state-note` div.
+
+      That buys back the two lines the old placement cost: the chip's own line
+      and the row gap over it.
+
+      TWO TRACKS, and only the first row uses the second one. Everything else
+      spans both, which is what keeps แผนก and the labelled facts starting at
+      the left edge — the gap this card used to have between วิศวกรรม and
+      · ไพรมัส came from a track being stretched by items crossing it, and
+      บริษัท lives among the labelled facts now for the same reason. */
   .bmonth-table tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "who"
-      "dept"
-      "date"
-      "co"
-      "hrs"
-      "state"
-      "act";
-    gap: 4px 0; align-items: start;
+      "who   state"
+      "dept  dept"
+      "note  note"
+      "date  date"
+      "co    co"
+      "hrs   hrs"
+      "act   act";
+    gap: 4px 8px; align-items: start;
     padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--card);
   }
@@ -4543,11 +4932,11 @@ table.mini tbody tr:hover { background: none; }
   }
 
   /* Label and value on one line, the block ruled off above it. The headings
-     these labels replace went with the thead. */
+     these labels replace went with the thead. `state-col` is no longer one of
+     them — it carries no label and its two halves now sit in two places. */
   .bmonth-table td.date-col,
   .bmonth-table td.co-col,
-  .bmonth-table td.hrs-col,
-  .bmonth-table td.state-col {
+  .bmonth-table td.hrs-col {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
     padding: 2px 0; font: 400 13px/1.5 var(--sans); text-align: left;
   }
@@ -4575,12 +4964,25 @@ table.mini tbody tr:hover { background: none; }
   /* Nothing filed, so no figure and no line — see the `none` note in HrView. */
   .bmonth-table td.hrs-col.none { display: none; }
 
-  /* NO LABEL ON THE STATUS. A coloured chip says "status" on its own, and
-     วันเกิดรอตรวจ does not label its own badge either. The cell is indented to
-     the column the values sit in so the chip lines up with them rather than
-     with the labels. */
-  .bmonth-table td.state-col { grid-area: state; padding-left: 60px; }
-  .bmonth-table td.state-col > div { flex: 1 1 100%; }
+  /* THE CELL ITSELF DRAWS NOTHING. `display: contents` dissolves it so its two
+     children become items of the card's grid in their own right — the chip up
+     in the corner beside the name, the sentence full width under it. A td can
+     do this because the card is already a grid and the table's own layout was
+     dropped at the top of this block.
+
+     NO LABEL ON THE STATUS, as before: a coloured chip says "status" on its
+     own, and วันเกิดรอตรวจ does not label its badge either. */
+  .bmonth-table td.state-col { display: contents; }
+
+  /* Top-right, on the name's line. `align-self: start` holds it to the top of
+     that row rather than letting it ride down beside a name that wrapped to
+     two lines; the 2px lifts it onto the same optical line as a 15px name. */
+  .bmonth-table td.state-col > .chip {
+    grid-area: state; justify-self: end; align-self: start; margin-top: 2px;
+  }
+  /* And the explanation under the pair, at the card's left edge — not indented
+     to the value column any more, because there are no labels beside it here. */
+  .bmonth-table td.state-col > .state-note { grid-area: note; }
 
   .bmonth-table td.act-col {
     grid-area: act; margin-top: 10px; padding-top: 10px;
@@ -4719,19 +5121,27 @@ table.mini tbody tr:hover { background: none; }
     font: 400 13px/1.5 var(--sans);
   }
 
-  /* ══ the report tables stay tables ═════════════════════════════════════
-     ตรวจสอบรายเดือน, สรุป OT ส่งบัญชี and สรุป OT แยกแผนก are read DOWN their
-     columns — that is what they are for. `CompanySheet` says so in its own
-     comment: the department subtotals sit in the foot of the same table rather
-     than in a second one beside it "so a figure is always read down the column
-     it belongs to". Broken into one card per person, thirty values of 1.50 end
-     up in thirty different places and nothing can be compared or reconciled
-     against the paper any more.
+  /* ══ the two accounting tables stay tables ═════════════════════════════
+     สรุป OT ส่งบัญชี and สรุป OT แยกแผนก are read DOWN their columns — that is
+     what they are for. `CompanySheet` says so in its own comment: the
+     department subtotals sit in the foot of the same table rather than in a
+     second one beside it "so a figure is always read down the column it belongs
+     to". Broken into one card per person, thirty values of 1.50 end up in
+     thirty different places and nothing can be compared or reconciled against
+     the paper any more.
 
-     So these three keep their tables and are made to scroll properly instead.
+     So those two keep their tables and are made to scroll properly instead.
      คิวรออนุมัติ and the two birthday lists are the opposite kind of screen —
      one row is read, decided and left behind, and nobody reads down a column —
-     so they stay cards. */
+     so they stay cards.
+
+     ตรวจสอบรายเดือน USED TO BE IN THE FIRST GROUP AND IS NOW IN THE SECOND.
+     It is the one screen of the three that is not only read: it is where an
+     employee's month is opened and where their F-HR-027 is printed from, and
+     those two buttons sat in an eleventh column at the far right — so the one
+     thing HR came to do was behind a sideways scroll past the figures. Its card
+     block is below, with what it keeps and what it drops. The reconciling is
+     still done on the two that remain tables, and on the paper. */
 
   /* THE SCROLL HINT. Four backgrounds on the scrolling box: two covers painted
      in the card's own colour that travel WITH the content (`local`), and two
@@ -4755,12 +5165,11 @@ table.mini tbody tr:hover { background: none; }
      at eleven columns that is a quarter of the table's width spent on air. The
      headings come down further than the figures do: they are already two short
      lines from `RateHead` and they are not what is being read. */
-  .hr-table th, .hr-table td,
   .acct-table th, .acct-table td,
   .allco-table th, .allco-table td,
   .dept-table th, .dept-table td { padding: 8px 7px; }
-  .hr-table td, .acct-table td, .allco-table td, .dept-table td { font-size: 13px; }
-  .hr-table th, .acct-table th, .allco-table th, .dept-table th {
+  .acct-table td, .allco-table td, .dept-table td { font-size: 13px; }
+  .acct-table th, .allco-table th, .dept-table th {
     font-size: 10px; letter-spacing: .03em;
   }
 
@@ -4778,7 +5187,7 @@ table.mini tbody tr:hover { background: none; }
      ending in the middle of the card.
 
      สรุป OT แยกแผนก IS NOT IN THIS RULE, and cannot be. See the block below. */
-  .hr-table, .acct-table, .allco-table {
+  .acct-table, .allco-table {
     table-layout: auto; width: max-content; min-width: 100%;
   }
 
@@ -4882,20 +5291,232 @@ table.mini tbody tr:hover { background: none; }
      instead. `overflow-wrap: anywhere` is what lets them.
 
      Figures have no ceiling. They are already the width of a figure. */
-  .hr-table td, .acct-table td, .allco-table td, .dept-table td { overflow-wrap: anywhere; }
+  .acct-table td, .allco-table td, .dept-table td { overflow-wrap: anywhere; }
 
-  .hr-table :is(th, td).who-col,
+  /* ── ค้นหา STAYS ON SCREEN ─────────────────────────────────────────────
+     A card list of forty people is forty screens of scrolling, and the box that
+     narrows it was at the top of the first one. Stuck, the way back from
+     "wrong person, sixteen cards down" is one tap rather than a scroll to the
+     top and a scroll back.
+
+     62px AND z-index 20, both copied from `.queue-mobile-bar` and neither
+     chosen here: 62px is the app bar's height and the app bar is itself sticky
+     at 0 and never leaves, so below it is as high as anything else on this
+     screen can go — at 0 this would slide underneath it and be invisible
+     exactly when it is stuck. 20 is over the cards, which carry none, and under
+     the phone's nav bar (30) and the dialogs (80).
+
+     OUT TO THE CARD'S EDGES AND BACK. Stuck, it is painted over the cards
+     passing under it, so it needs an opaque fill across the full width — and
+     the card's own 15px of padding would leave a column of list showing on each
+     side of it. The negative margins take the fill out to the card's border and
+     the padding puts the box back where it was.
+
+     NOT ON THE DESKTOP. There the whole month is a table read down its columns
+     with the heading row at the top; a filter box floating over the figures is
+     one more thing between the reader and them. */
+  .month-find {
+    position: sticky; top: 62px; z-index: 30;
+    margin-left: -15px; margin-right: -15px;
+    padding: 10px 15px 12px;
+    /* OPAQUE, AND DELIBERATELY NOT BLURRED. The fill is what stops a card
+       showing through and `z-index: 30` is what keeps it painted over them
+       rather than under. A blur on top of that buys nothing: there is nothing
+       behind an opaque fill to blur.
+
+       AND IT WOULD COST SOMETHING REAL. A backdrop-filtered element is
+       composited as its own layer, and a composited layer stops obeying
+       z-index — that is the bug `body.has-dialog .appbar` exists to undo,
+       where the two frosted bars painted themselves over an open sheet. A
+       third frosted bar on this screen would be a third element that can
+       appear over a dialog, bought for an effect nobody can see through an
+       opaque fill. See test/modalScrollFrame.test.js, which counts them.
+
+       `--bg` AND NOT `--card`, asked for as a flat near-black: the dark theme
+       resolves it to the same ground `.table-wrap.card-list` paints
+       under the cards this bar floats over. The bar and the gaps between the
+       cards passing under it are then one colour, so nothing reads as a
+       lighter panel sliding over a darker list. Inside the card, before it
+       sticks, it reads as a filter strip ruled off from what it filters.
+
+       `!important` on the fill because a transparent sticky bar is the one
+       failure mode that makes this screen unreadable, and it is worth being
+       unarguable rather than tidy — nothing overrides it today, and the point
+       is that nothing can.
+
+       TOP IS 62px AND NOT 0. `.appbar` is `sticky; top: 0` and 62px tall, so
+       0 would park this bar ON the app title rather than under it — and at
+       z-index 30 it would win. 62 IS flush: no gap between the two bars for
+       anything to show through. */
+    background: var(--bg) !important;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  /* ══ ตรวจสอบรายเดือน IS A CARD LIST BELOW 860px ════════════════════════
+
+     WHAT THE CARD CARRIES, and it is three things out of eleven columns:
+
+        ┌──────────────────────────────────┐
+        │ ปรีชา ทองแท้        16.5 / 40 ชม. │  ← name + code, สะสม / เพดาน
+        │ PM-0620                          │
+        │ [ ดู / แก้ไขรายการ ] [ พิมพ์ … ]  │  ← both buttons, always, side by side
+        └──────────────────────────────────┘
+
+     สะสม / เพดาน is the month's total AND its ceiling in one figure — it is
+     `capFigure(usedHours, capHours)`, and `usedHours` is the same number
+     รวม ชม. prints — so the card is not short of the figure the screen is
+     about; it is short of the same figure said twice.
+
+     WHAT IT DROPS, said plainly because it is a real loss and not a tidy-up:
+     the three rate columns, จำนวนรายการ with its ค้าง n, แก้ไข n ครั้ง, กฎที่ใช้
+     and แผนก. Eight columns of a signed-off month do not go on a 375px card in
+     any arrangement, and any subset chosen for them would be a different screen
+     from the desktop one. They are all still on the desktop table, and all of
+     them are one press away here — ดู / แก้ไขรายการ opens the month itself.
+
+     THE BUTTONS ARE THE POINT. They are why this table left the scrolling group
+     the two accounting ones stayed in: on this screen the row is not only read.
+     So they sit at the foot of every card, side by side, at a 44px target. */
+  /* THE GAP BETWEEN CARDS ONLY READS IF THE GROUND DOES.
+     12px of space between two white cards on a white wrap is 12px of the same
+     white — the hairline borders touch and forty people read as one block. So
+     the wrap goes back a step and each card is an object placed on it. The
+     `background` shorthand also clears the scroll-hint gradients
+     `.table-wrap` paints at this width: those are a promise that there is more
+     table to the right, and there is not any more.
+
+     `--bg` AND NOT `--neutral-wash`, which is what this was first and did not
+     work. On the light theme the wash is about three percent off a white card —
+     the right amount for a table's own header strip, and nowhere near enough to
+     be read as ground under one. `--bg` is the page's own colour and is a step
+     the eye takes without being asked: it is what every card in this app is
+     already read against, and it inverts correctly in the dark theme, where it
+     is DARKER than the card rather than lighter, so the cards lift rather than
+     sink. The 12px did not change; what changed is that it is now 12px of
+     something else. */
+  .table-wrap.card-list { background: var(--bg); }
+
+  .hr-table { display: block; width: 100%; min-width: 0; }
+  .hr-table thead { display: none; }
+  /* 12px between cards rather than 10: these are taller than the roster's —
+     two lines of name and code, a figure with a sentence under it, and a row of
+     buttons — and at 10px the gap read as part of the card above it. */
+  .hr-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+  .hr-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'who cap'
+      'act act';
+    align-items: start; gap: 10px 12px;
+    /* 15px, the same padding `.card` takes at this width — see `.stack-table`,
+       which is the card every other list on a phone is already drawn as. */
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  /* A card is not a row to be pointed at, and a phone has no pointer anyway. */
+  .hr-table tbody tr:hover { background: var(--card); }
+
+  .hr-table tbody td {
+    display: block; border: 0; padding: 0; text-align: left;
+    /* Thai has no spaces, so a name is one unbreakable word as far as the
+       layout is concerned and would push the card past the screen. */
+    overflow-wrap: anywhere;
+  }
+
+  /* The eight the card does not have room for. Named rather than hidden with a
+     blanket rule and three exceptions, so adding a twelfth column to this table
+     shows up on a phone instead of silently disappearing. */
+  .hr-table tbody td.dept-col,
+  .hr-table tbody td.rate-col,
+  .hr-table tbody td.count-col,
+  .hr-table tbody td.edits-col,
+  .hr-table tbody td.rule-col,
+  .hr-table tbody td.pad-col { display: none; }
+  /* รวม ชม. is the same figure as สะสม, which the card already prints beside
+     the name. It comes back for รวมทั้งหมด below, which has no ceiling cell. */
+  .hr-table tbody tr:not(.total-row) td.total-col { display: none; }
+
+  .hr-table tbody td.who-col {
+    grid-area: who; min-width: 0;
+    font: 600 15.5px/1.4 var(--sans);
+  }
+
+  .hr-table tbody td.cap-col {
+    grid-area: cap; text-align: right; white-space: nowrap;
+    font: 400 13.5px/1.5 var(--mono); font-variant-numeric: tabular-nums;
+  }
+  .hr-table tbody td.cap-col::before {
+    content: 'สะสม / เพดาน'; display: block;
+    font: 400 11.5px/1.5 var(--sans); color: var(--muted-2);
+  }
+  /* คิวรออนุมัติ's own sentence about the same hours — "เพดานนับ 38.5 / 40 ·
+     รวมใบที่รออนุมัติ". On a card it wraps under the figure rather than holding
+     the column open, and it takes `--muted-2`: a step QUIETER than the
+     `--muted` of the desktop line, which is what separates a qualifier from
+     the figure it qualifies when the two are stacked with nothing between them.
+     The same two values คิวรออนุมัติ's card already gives this same sentence —
+     see `.queue-table td.cap-col .cap-sub` above. */
+  .hr-table tbody td.cap-col .cap-sub {
+    white-space: normal; text-align: right;
+    font-size: 11px; color: var(--muted-2);
+  }
+
+  .hr-table tbody td.act-col {
+    grid-area: act; margin-top: 2px;
+    padding-top: 12px; border-top: 1px solid var(--line-softer);
+  }
+  /* SIDE BY SIDE, NOT WRAPPED. `flex: 1 1 0` splits the card between them —
+     a basis of 50% plus the gap is wider than the card, so the second button
+     would drop onto its own line on the narrowest phones. The labels wrap
+     inside their own button instead, which is the one place a Thai label has
+     room to. */
+  .hr-table tbody td.act-col .row-actions { flex-wrap: nowrap; gap: 8px; }
+  .hr-table tbody td.act-col .row-actions .btn {
+    flex: 1 1 0; min-width: 0; min-height: 44px;
+    padding: 10px 8px; font-size: 13px; text-align: center;
+  }
+
+  /* TWO GHOSTS SIDE BY SIDE ARE TWO EQUAL OFFERS, and these are not equal:
+     ดู / แก้ไขรายการ is what somebody opened this month to do, and พิมพ์ is
+     what they do afterwards, sometimes.
+
+     So the first takes the `.btn.outline` voice — the green of the filled
+     button drawn as a line and a wash instead of a fill. That voice is written
+     down in the buttons section with a warning on it: reach for it in a row
+     that already has a filled button, because outlined secondaries beside no
+     primary are two second places. This is the other case it names — outlined
+     as the FIRST place, with a plain ghost under it — and it is the reason the
+     rule was kept when its last caller went away.
+
+     Declared here and not by putting `outline` in the JSX: a desktop table
+     cell is not a card, the two buttons there sit in a 258px column among nine
+     other columns of figures, and one of them in green would be the only
+     coloured thing on a screen that is otherwise all numbers. */
+  .hr-table tbody td.act-col .row-actions .btn.act-open {
+    background: var(--green-tint); color: var(--green-accent);
+    border-color: var(--green); font-weight: 600;
+  }
+  .hr-table tbody td.act-col .row-actions .btn.act-open:active {
+    background: var(--green-bg); border-color: var(--green-lift);
+  }
+
+  /* รวมทั้งหมด — a card, but not a person's. No buttons, no ceiling; the two
+     cells it does carry are its name and the month's total. */
+  .hr-table tbody tr.total-row {
+    grid-template-areas: 'who cap';
+    background: var(--neutral-wash);
+  }
+  .hr-table tbody tr.total-row:hover { background: var(--neutral-wash); }
+  .hr-table tbody tr.total-row td.total-col {
+    grid-area: cap; text-align: right; white-space: nowrap;
+    font: 600 15.5px/1.4 var(--mono); font-variant-numeric: tabular-nums;
+  }
+
   .acct-table :is(th, td).who-col,
   .allco-table :is(th, td).who-col { max-width: 112px; }
   .acct-table :is(th, td).note-col { max-width: 140px; }
-  .acct-table :is(th, td).dept-col,
-  .hr-table :is(th, td).dept-col { max-width: 88px; }
-  .hr-table :is(th, td).rule-col,
-  .hr-table :is(th, td).cap-col { max-width: 116px; }
-  .hr-table :is(th, td).edits-col { max-width: 82px; }
-  /* Two buttons, allowed onto two lines rather than a column of their own
-     width — see the `flexWrap` note in HrView. */
-  .hr-table :is(th, td).act-col { max-width: 150px; }
+  .acct-table :is(th, td).dept-col { max-width: 88px; }
 
   /* THE NAME COLUMN IS FROZEN. Scrolled right to read 1.50, 3.00 and รวม, the
      one thing that stops meaning anything is whose row it is — so it stays.
@@ -4905,19 +5526,15 @@ table.mini tbody tr:hover { background: none; }
      A sticky cell needs an opaque background of its own or the rows travel
      underneath it, and it needs one per row state, which is what the three
      lines after each block are for. */
-  .hr-table th.who-col, .hr-table td.who-col,
   .acct-table th.who-col, .acct-table td.who-col,
   .allco-table th.who-col, .allco-table td.who-col {
     position: sticky; left: 0; z-index: 1;
     box-shadow: 3px 0 6px -3px var(--shadow-1);
   }
-  .hr-table tbody td.who-col,
   .acct-table tbody td.who-col,
   .allco-table tbody td.who-col { background: var(--card); }
-  .hr-table thead th.who-col,
   .acct-table thead th.who-col,
   .allco-table thead th.who-col { z-index: 3; background: var(--neutral-wash); }
-  .hr-table tbody tr:hover td.who-col,
   .acct-table tbody tr:hover td.who-col,
   .allco-table tbody tr:hover td.who-col { background: var(--green-wash); }
 
@@ -4979,8 +5596,7 @@ table.mini tbody tr:hover { background: none; }
      leaves the row's own painted box behind when it moves. */
   .dept-table tfoot td.who-col,
   .allco-table tfoot td.who-col,
-  .acct-table tfoot td.sum-k,
-  .hr-table tbody tr.total-row td.who-col { background: var(--neutral-wash); }
+  .acct-table tfoot td.sum-k { background: var(--neutral-wash); }
 
   /* `.grand` is the one that gets signed for rather than another subtotal, and
      it is green everywhere else in this app for exactly that reason. */

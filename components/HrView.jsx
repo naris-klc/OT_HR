@@ -7,7 +7,9 @@ import {
 import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
 import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 import { capFigure, overCap, pendingCapNote } from '@/lib/caps.js';
-import { Alert, Empty, AddBirthDateHint, RateHead } from './common.jsx';
+import { Alert, ClearButton, Empty, AddBirthDateHint, RateHead } from './common.jsx';
+import Icon from './icons.jsx';
+import { personMatches } from '@/lib/personSearch.js';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
 import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
 import PeriodLockBar from './PeriodLock.jsx';
@@ -66,6 +68,26 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
   useBackHandler(Boolean(printing), () => setPrinting(null));
   useBackHandler(Boolean(auditing), () => setAuditing(null));
   useBackHandler(Boolean(opened), () => setOpened(null));
+
+  /**
+   * ค้นหาชื่อ หรือ รหัสพนักงาน — a screen filter, and only that.
+   *
+   * NOT PART OF สถานะที่นับ, which reloads the month from the server and
+   * changes what the figures MEAN. This narrows what is on screen out of what
+   * was already fetched, so it costs no request and cannot change a total. It
+   * is deliberately not in the URL or in state that survives the screen: it is
+   * "where is ถาวร", asked and answered in a few seconds.
+   *
+   * `personMatches` is the rule the roster's own search box asks, so PM-0412
+   * and PM00511 both answer to either spelling and "ใจดี สมชาย" finds the same
+   * person as "สมชาย ใจดี" — see lib/personSearch.js. An empty query matches
+   * everybody, so there is no branch here for "not searching".
+   */
+  const [find, setFind] = useState('');
+  const shown = React.useMemo(
+    () => (data?.employees || []).filter((row) => personMatches(row.employee, find)),
+    [data, find],
+  );
 
   // The whole table as one document, or one row of it — the same sheet either
   // way. The list is captured into state when the button is pressed rather than
@@ -170,8 +192,13 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
               there is nothing here to account for. */}
           <button
             className="btn"
-            disabled={!data?.employees?.length}
-            onClick={() => setPrinting({ employees: data.employees.map((r) => r.employee) })}
+            disabled={!shown.length}
+            /* `shown`, not `data.employees`: the bundle's own note says it
+               is "exactly the rows of ตรวจสอบรายเดือน as they stand", and a
+               search that narrowed the screen without narrowing the document
+               would make that false in the direction nobody checks — forty
+               sheets when three were asked for. */
+            onClick={() => setPrinting({ employees: shown.map((r) => r.employee) })}
             title="รวมใบ F-HR-027 ของทุกคนในตารางไว้ในเอกสารเดียว หนึ่งคนต่อหนึ่งหน้า"
           >
             พิมพ์ F-HR-027 ทุกคน
@@ -223,7 +250,75 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                 reading rows has already begun trusting them. */}
             <PolicyVersionBanner spread={data.policy} />
 
-            <div className="table-wrap">
+            {/* AT THE TOP OF THE LIST, above the first card and above the
+                table's own heading row — the thing it filters starts directly
+                underneath it, on both layouts. */}
+            <div className="row month-find">
+              {/* `.field` around it, and that is the whole of the styling:
+                  `.field input` is what every box in this app is, and a search
+                  field that is a different height or a different grey from the
+                  two <select>s above it reads as a different kind of control.
+                  ทะเบียนพนักงาน's search box learnt this the hard way — it
+                  shipped bare and drew at the browser's default width. */}
+              <div className="field">
+                <div className="searchbox">
+                  <Icon name="search" className="searchbox-icon" />
+                  <input
+                    type="text"
+                    className={`has-icon${find ? ' has-clear' : ''}`}
+                    value={find}
+                    onChange={(e) => setFind(e.target.value)}
+                    placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
+                    /* The placeholder is the detail; this is the name assistive
+                       technology reads, and there is no visible <label> above
+                       the box for it to repeat. Same pair of words as
+                       ทะเบียนพนักงาน, which is the app's other search box. */
+                    aria-label="ค้นหาพนักงาน"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  {find && <ClearButton onClear={() => setFind('')} />}
+                </div>
+              </div>
+              {/* Only while it is narrowing something. "แสดง 24 จาก 24 คน" is
+                  a sentence about nothing. */}
+              {find && shown.length > 0 && (
+                <div className="found">
+                  แสดง <strong>{shown.length}</strong> จาก <strong>{data.employees.length}</strong> คน
+                </div>
+              )}
+            </div>
+
+            {/* The CSVs are built by the server from the month and สถานะที่นับ;
+                they have never known about this box and cannot. Said here, and
+                only while the box is narrowing something, because a file that
+                comes out longer than the screen is a surprise somebody finds
+                after opening it. */}
+            {find && shown.length > 0 && (
+              <div className="hint" style={{ marginTop: -4, marginBottom: 10 }}>
+                ไฟล์ CSV และยอด “รวมทั้งหมด” ยังเป็นของทั้งเดือน ไม่ใช่เฉพาะผลการค้นหา ·
+                ปุ่มพิมพ์รวมจะพิมพ์เฉพาะ {shown.length} คนที่ค้นเจอ
+              </div>
+            )}
+
+            {shown.length === 0 ? (
+              <div className="empty">
+                <div>ไม่พบข้อมูลพนักงานที่ค้นหา “{find}”</div>
+                <button
+                  className="btn ghost sm"
+                  style={{ marginTop: 10 }}
+                  onClick={() => setFind('')}
+                >
+                  ล้างการค้นหา
+                </button>
+              </div>
+            ) : (
+            <>
+            {/* `card-list` says what this wrap holds below 860px: cards, not a
+                table that scrolls. The stylesheet uses it to take the ground a
+                step back and to drop the sideways scroll shadows, which are a
+                promise about a gesture this table no longer has. */}
+            <div className="table-wrap card-list">
               {/* `hr-table` — below 860px the stylesheet lays these eleven cells
                   out as a card, placing each by its class. Eleven columns on a
                   375px screen put รวม ชม., the figure the whole screen is about,
@@ -264,7 +359,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                   </tr>
                 </thead>
                 <tbody>
-                  {data.employees.map((row) => (
+                  {shown.map((row) => (
                     <tr key={row.employee._id}>
                       <td className="who-col">
                         {row.employee.name}
@@ -319,15 +414,23 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                           case HR can actually do something about. */}
                       <td className="rule-col"><PolicyVersionSummaryCell spread={row.policy} /></td>
                       <td className="cap-col"><CapCell cap={row.cap} /></td>
+                      {/* THE FOOT OF THE CARD below 860px, and the eleventh
+                          column above it — same markup, both times. The phone
+                          layout lays this table out as one card per person and
+                          gives this cell the full width of it, so the two
+                          buttons are on screen from the moment the month loads
+                          rather than off the right edge of a sideways scroll.
+                          See `.hr-table tbody td.act-col` in app/styles.css. */}
                       <td className="act-col">
-                        {/* `flexWrap: 'nowrap'` was inline here and is gone: at
-                            phone width this column is a declared 176px and the
-                            two buttons have to be allowed onto two lines. On a
-                            desktop the column still sizes to its content, so
-                            they stay side by side there as before. */}
                         <div className="row row-actions" style={{ gap: 6 }}>
+                          {/* `act-open` names the primary action rather than
+                              leaving the phone card's accent on :first-child,
+                              which would follow whichever button somebody moves
+                              here next. It draws nothing on a desktop: the two
+                              are equal ghosts in a table cell, which is what
+                              they were before the card existed. */}
                           <button
-                            className="btn ghost sm"
+                            className="btn ghost sm act-open"
                             onClick={() => setOpened(row.employee)}
                           >
                             ดู / แก้ไขรายการ
@@ -353,7 +456,21 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                       hole in it exactly where the month's own total is. The
                       trailing `pad-col` keeps the cell count at eleven. */}
                   <tr className="total-row">
-                    <td className="who-col"><strong>รวมทั้งหมด</strong></td>
+                    {/* THE FIGURES BELOW ARE THE MONTH'S, ALWAYS. They come from
+                        `data.grandTotal`, which the server computed over every
+                        row it sent — the search box narrowed what is drawn above
+                        and did not, and must not, re-add anything. So while it
+                        is narrowing, the row says which total it is. Recomputing
+                        it over the visible rows was the other option and is the
+                        wrong one: this line is read against the CSV and against
+                        the paper, and a total that changes as somebody types is
+                        not the month's. */}
+                    <td className="who-col">
+                      <strong>{find ? 'รวมทั้งเดือน' : 'รวมทั้งหมด'}</strong>
+                      {find && (
+                        <div className="cap-sub">ไม่ใช่ยอดของผลการค้นหา</div>
+                      )}
+                    </td>
                     <td className="dept-col" />
                     <td className="num rate-col b-15w"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_WEEKDAY])}</strong></td>
                     <td className="num rate-col b-15h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
@@ -364,6 +481,8 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
                 </tbody>
               </table>
             </div>
+            </>
+            )}
 
             <div className="hint" style={{ marginTop: 12 }}>
               สรุปสำหรับฝ่ายบุคคล — OT × 1.5 = {hours(data.hrSection.ot15)} ชม. ·
@@ -628,7 +747,7 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
       )}
 
       {rows.length > 0 && (
-        <div className="table-wrap" style={{ marginTop: 10 }}>
+        <div className="table-wrap card-list" style={{ marginTop: 10 }}>
           {/* Card layout below 860px, like วันเกิดรอตรวจ — the two lists are
               the same rows read for two different reasons, and both were
               scrolling their action buttons off the right of the screen.
@@ -746,6 +865,12 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
  * assertion with nobody behind it, and "วันหยุดอยู่แล้ว" is worth saying WHY.
  * `STATUS_LABEL_TH` comes from the same module the statuses do, so a wording
  * change lands in one place.
+ *
+ * The sentences under the chip are wrapped in ONE `.state-note` div rather than
+ * left loose beside it. On the phone the cell becomes `display: contents` so the
+ * chip can sit in the card's top-right corner while its explanation stays full
+ * width under the name — and a grid places items, not fragments, so two loose
+ * divs would both land in the note area and paint over each other.
  */
 function BirthdayStatusCell({ row }) {
   const label = STATUS_LABEL_TH[row.status] || row.status;
@@ -754,13 +879,17 @@ function BirthdayStatusCell({ row }) {
     return (
       <>
         <span className="chip green">{label}</span>
-        {row.allClosed && (
-          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-            ใบถูกไม่อนุมัติหรือยกเลิก — ไม่มีชั่วโมงเข้ายอด
+        {(row.allClosed || row.alreadyHoliday) && (
+          <div className="state-note">
+            {row.allClosed && (
+              <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                ใบถูกไม่อนุมัติหรือยกเลิก — ไม่มีชั่วโมงเข้ายอด
+              </div>
+            )}
+            {row.alreadyHoliday && (
+              <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>วันนั้นเป็นวันหยุดอยู่แล้ว</div>
+            )}
           </div>
-        )}
-        {row.alreadyHoliday && (
-          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>วันนั้นเป็นวันหยุดอยู่แล้ว</div>
         )}
       </>
     );
@@ -769,14 +898,16 @@ function BirthdayStatusCell({ row }) {
   if (row.status === BIRTHDAY_STATUS.ABSENT) {
     return (
       <>
-        <span className="chip muted">{label}</span>
-        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-          {row.check?.by || '—'}
-          {row.check?.at ? ` · ${new Date(row.check.at).toLocaleString('th-TH')}` : ''}
+        <span className="chip neutral">{label}</span>
+        <div className="state-note">
+          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+            {row.check?.by || '—'}
+            {row.check?.at ? ` · ${new Date(row.check.at).toLocaleString('th-TH')}` : ''}
+          </div>
+          {row.check?.note && (
+            <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{row.check.note}</div>
+          )}
         </div>
-        {row.check?.note && (
-          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{row.check.note}</div>
-        )}
       </>
     );
   }
@@ -784,9 +915,11 @@ function BirthdayStatusCell({ row }) {
   if (row.status === BIRTHDAY_STATUS.HOLIDAY) {
     return (
       <>
-        <span className="chip muted">{label}</span>
-        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-          กฎวันเกิดไม่ได้เพิ่มอะไร ไม่ต้องทำอะไร
+        <span className="chip neutral">{label}</span>
+        <div className="state-note">
+          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+            กฎวันเกิดไม่ได้เพิ่มอะไร ไม่ต้องทำอะไร
+          </div>
         </div>
       </>
     );
@@ -795,15 +928,23 @@ function BirthdayStatusCell({ row }) {
   if (row.status === BIRTHDAY_STATUS.UPCOMING) {
     return (
       <>
-        <span className="chip muted">{label}</span>
-        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-          ยังไม่มีบันทึกเวลาให้เทียบ
+        <span className="chip upcoming">{label}</span>
+        <div className="state-note">
+          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+            ยังไม่มีบันทึกเวลาให้เทียบ
+          </div>
         </div>
       </>
     );
   }
 
-  return <span className="chip edited">{label}</span>;
+  /* ต้องตรวจ — `due` and not the `edited` chip it borrowed for a long time.
+     The two are the same amber and mean different things: แก้ไขแล้ว reports a
+     state, this one is the only birthday status that is WORK, and it is the
+     number the summary above the table counts and colours. Its own class is
+     what lets it be drawn as the thing being asked for without repainting a
+     chip on four other screens. */
+  return <span className="chip due">{label}</span>;
 }
 
 /**

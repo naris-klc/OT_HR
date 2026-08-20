@@ -103,6 +103,23 @@ export function PrintChrome({ onClose, basis, disabled = false, note = null }) {
 }
 
 /**
+ * The screen asked for rows the policy would not print. True only under
+ * เฉพาะรายการที่อนุมัติแล้ว and only when สถานะที่นับ was set wider than that —
+ * so an ordinary print says nothing, and the one print whose total will not
+ * match the table it was pressed from explains itself.
+ *
+ * Exported because the bundle asks it of forty sheets at once and answers for
+ * the whole document rather than one page (see components/PrintFormBatch.jsx).
+ * The answer is the same for every sheet in one printing — `printScope` is
+ * policy and `asked` is the screen — but "the same question, read twice, in
+ * two files" is how the two stop agreeing.
+ */
+export function narrowedByPolicy(form, asked = '') {
+  return form.printScope === 'approved'
+    && String(asked).split(',').some((s) => s.trim() && s.trim() !== 'approved');
+}
+
+/**
  * What this month has that the paper does not — said on the screen, never on
  * the sheet.
  *
@@ -113,14 +130,29 @@ export function PrintChrome({ onClose, basis, disabled = false, note = null }) {
  */
 export function FormNotices({ form, who = null, asked = '' }) {
   const of = who ? `${who} · ` : '';
+  const narrowed = narrowedByPolicy(form, asked);
   /**
-   * The screen asked for rows the policy would not print. True only under
-   * เฉพาะรายการที่อนุมัติแล้ว and only when สถานะที่นับ was set wider than that
-   * — so an ordinary print says nothing, and the one print whose total will not
-   * match the table it was pressed from explains itself.
+   * What the unmarked rows' status is CALLED, read off the rows rather than
+   * written in — today that is รอ HR and only รอ HR, and a sentence naming it
+   * in prose would quietly become false the day a fourth status can print.
    */
-  const narrowed = form.printScope === 'approved'
-    && asked.split(',').some((s) => s.trim() && s.trim() !== 'approved');
+  const unmarkedLabels = [...new Set((form.unmarked || []).map((u) => u.statusLabel))].join(' · ');
+  /**
+   * WHICH DAYS they are, in date order, one entry per date however many rows
+   * that date has. A count alone says how much of the sheet is unconfirmed; it
+   * does not say where to look, and the whole reason this line exists is that
+   * the paper beside it is silent.
+   *
+   * Full `thaiDate` rather than the short table form, and that is not a style
+   * choice: the route widens its query by one period so an overnight session
+   * started on the 31st is on this sheet, and its workDate belongs to the month
+   * before. A day number with no month would name the wrong day exactly on the
+   * rows that are hardest to find.
+   */
+  const unmarkedDates = [...new Set((form.unmarked || []).map((u) => u.workDate))]
+    .sort()
+    .map(thaiDate)
+    .join(' · ');
   return (
     <>
       {/* Hours that ARE on the paper and are not settled — the mirror of the
@@ -145,6 +177,28 @@ export function FormNotices({ form, who = null, asked = '' }) {
               ให้ตัดสินรายการที่ค้างให้ครบก่อนพิมพ์ หรือเปลี่ยน
               “นโยบายการพิมพ์ใบขออนุมัติ OT” ในตั้งค่าระบบเป็น
               “เฉพาะรายการที่อนุมัติแล้ว”
+            </div>
+          </Alert>
+        </div>
+      )}
+
+      {/* Hours on the paper that ฝ่ายบุคคล has not confirmed yet and that the
+          paper does not mark — รอ HR under a filter that counts it as signed.
+          INFO rather than the warning above it: this is the state the filter was
+          chosen to print, so it is a fact to have, not a problem to fix. It is
+          still said — and said with its dates — because the sheet's own silence
+          about these rows is what somebody would otherwise have to already
+          know, and a count with no days does not say where to look. */}
+      {form.unmarked?.length > 0 && (
+        <div className="no-print" style={{ marginBottom: 12 }}>
+          <Alert kind="info">
+            <div>
+              {of}ใบนี้รวม {form.unmarked.length} รายการที่สถานะยังเป็น
+              “{unmarkedLabels}” — {unmarkedDates}
+            </div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              รายการเหล่านี้พิมพ์ลงใบโดยไม่มีเครื่องหมายกำกับ · หัวหน้างานอนุมัติแล้ว
+              ขั้นที่เหลือคือช่อง “เฉพาะฝ่ายบุคคล” ท้ายใบนี้
             </div>
           </Alert>
         </div>
@@ -226,6 +280,18 @@ export function FormNotices({ form, who = null, asked = '' }) {
  */
 export function F027Sheet({ form }) {
   const cell = (v) => (v ? hours(v) : '');
+  /**
+   * Which sessions carry (รออนุมัติ) — READ OFF `form.pending`, the same list
+   * the legend under the grid counts and the warning above the sheet prints.
+   *
+   * It used to be `status !== 'approved'` here and the whole list there, which
+   * was two readings of one rule in two files, and they have to agree: a mark
+   * with no legend is an unexplained abbreviation on a document somebody signs,
+   * and a legend with no mark is a line about rows the reader cannot find. Now
+   * neither can move without the other. Which statuses are in the list is the
+   * server's decision — `formPendingStatuses` in lib/reports.js.
+   */
+  const pendingIds = new Set((form.pending || []).map((p) => p.id));
 
   return (
     <div className="f027">
@@ -308,15 +374,17 @@ export function F027Sheet({ form }) {
                 <td className="desc" title={s?.description}>
                   {s?.description || ''}
                   {/* FIRST OF THE FOUR MARKS, because it is the only one that
-                      bears on whether the row should be signed. Reached only
-                      under the two `formPrintScope` answers that let a queued
-                      row onto the paper — under เฉพาะรายการที่อนุมัติแล้ว no
-                      session here can carry another status. In the description
-                      cell for the same reason (แทน) is: F-HR-027 Rev.4 is a
-                      controlled form measured in millimetres, and a remark
-                      where HR already reads three others is not a revision of
-                      it. What it means is spelt out under the grid. */}
-                  {s && s.status !== 'approved' ? ' (รออนุมัติ)' : ''}
+                      bears on whether the row should be signed. Rarer than it
+                      looks: under เฉพาะรายการที่อนุมัติแล้ว no session here can
+                      carry another status at all, and under อนุมัติแล้ว + รอ HR
+                      the รอ HR rows are not marked either — the step they are
+                      waiting on is the เฉพาะฝ่ายบุคคล box at the foot of this
+                      sheet. In the description cell for the same reason (แทน)
+                      is: F-HR-027 Rev.4 is a controlled form measured in
+                      millimetres, and a remark where HR already reads three
+                      others is not a revision of it. What it means is spelt out
+                      under the grid. */}
+                  {s && pendingIds.has(s.entryId) ? ' (รออนุมัติ)' : ''}
                   {s?.continuedFromPreviousDay ? ' (ต่อจากคืนก่อน)' : ''}
                   {s?.noBreakTaken ? ' [ไม่พักเที่ยง]' : ''}
                   {/* Six characters, in the cell that already carries the
@@ -342,16 +410,20 @@ export function F027Sheet({ form }) {
         </tbody>
       </table>
 
-      {/* What (รออนุมัติ) means, on the paper, and only on a sheet that has one.
-          NOT BEHIND A FLAG, where the acting note below it is, and the two are
-          worth telling apart: that one adds a line to a sheet that already says
-          everything it needs to, so it waits for HR to see a sample. This one
-          explains a mark that is already on the page — and the mark is there to
-          stop somebody signing a row the app has not decided yet, which an
-          unexplained abbreviation cannot do. Its own flag is `formPrintScope`:
-          under เฉพาะรายการที่อนุมัติแล้ว nothing here can render, and an
-          ordinary sheet is unchanged to the millimetre. */}
-      <PendingNote form={form} />
+      {/* NO LEGEND FOR (รออนุมัติ) — there used to be a หมายเหตุ block here
+          naming what the mark meant, how many rows carried it, and that the
+          สรุปรวม above was therefore not the figure to send to accounting. HR
+          asked for it off the sheet (2026-08-20), and the sheet is theirs: this
+          is a controlled form measured in millimetres against A4, and three
+          lines that grow under the grid are three lines the form does not have.
+
+          THE MARK ITSELF STAYS. It is the one remark in the description cell
+          that bears on whether a row should be signed, and unlike (แทน) it
+          needs no gloss — it is the word รออนุมัติ, in Thai, in the cell beside
+          the work it belongs to. What the legend added over that was the count
+          and the warning about สรุปรวม, and both of those are on the screen
+          above the sheet, in front of the person who pressed print and can
+          still do something about them (see `FormNotices`). */}
 
       {/* Who filled a row in, and who signed one, when that was not the
           obvious person.
@@ -434,34 +506,6 @@ function actingLine(a) {
   }
   const verb = a.kind === 'refused' ? 'ไม่อนุมัติ' : 'อนุมัติ';
   return `${when} · ${a.by || '—'} ${verb}แทน ${a.onBehalfOf || '—'}`;
-}
-
-/**
- * One line under the grid saying what the (รออนุมัติ) marks above it mean, and
- * how many of them there are.
- *
- * Returns null on a sheet with none — which is every sheet under the shipped
- * `formPrintScope`, and every sheet at all once a month's queues are empty. So
- * the form gains nothing permanently; it gains a line exactly while it is
- * carrying rows that would otherwise be signed for as settled.
- *
- * It names the count rather than the dates. The dates are already on the page,
- * beside the mark, in the rows they belong to; repeating them under the grid
- * would be the same fact twice and would grow with the month. The count is the
- * one thing the rows cannot say — how much of this sheet is not final.
- */
-function PendingNote({ form }) {
-  if (!form.pending?.length) return null;
-  return (
-    <div className="f027-acting">
-      <div className="t">หมายเหตุ · รายการที่ยังไม่อนุมัติ</div>
-      <div className="l">
-        (รออนุมัติ) ในช่องรายละเอียดงาน = รายการที่ยังไม่ผ่านการอนุมัติครบทุกขั้น
-        ณ วันที่พิมพ์ — มี {form.pending.length} รายการในใบนี้ และถูกนับรวมใน สรุปรวม แล้ว
-      </div>
-      <div className="l">ยอดในใบนี้จึงยังไม่ใช่ยอดสุดท้ายสำหรับส่งบัญชี</div>
-    </div>
-  );
 }
 
 /**
