@@ -51,6 +51,46 @@
   --info: #2A6099;
   --info-bg: #E7F0FA;
 
+  /* ── the refusal button in a decision footer ───────────────────────────
+     A SECOND RED, ON PURPOSE, AND ONLY FOR THIS.
+
+     `--danger-*` above is the app's own red — warm, and it is what every alert,
+     chip and status panel is drawn in. The pair of buttons at the foot of the
+     รายละเอียด pop-up was specified in a cooler one, exactly, and "exactly" is
+     the request: a fill, a rule and an ink that are those three colours and not
+     the nearest thing already in the palette.
+
+     Tokens rather than the hexes at the rule, for the reason every colour here
+     is a token: a value written into a rule has one half and this app has two.
+     The dark side is the same three roles worked out for a charcoal card, in
+     the cooler hue — read against `--danger-bg` / `--danger-line` /
+     `--danger-ink`'s dark values, which are the warm equivalents.
+
+     MEASURED: the ink on the fill is 4.42:1 in light mode, just under AA's 4.5
+     for body text. It is a 15px button label, which AA measures at 3:1, so it
+     passes where it is used — and it is named here because the app's own
+     --danger-ink on --danger-bg clears 4.5 and somebody comparing the two
+     should know which way the trade went. The dark pair is 8.7:1. */
+  /* ── the one card written in a neutral grey ────────────────────────────
+     Everything else in this app is green-tinted, ink included: `--ink` is
+     #14201A and `--muted` #5B6B62, both a few degrees off neutral so that text
+     and surface belong to the same palette.
+
+     The รายละเอียดงาน card was specified in flat greys, and it is the one block
+     in the pop-up that is a SENTENCE somebody typed rather than a figure the
+     app worked out. A neutral ink suits that: it reads as quoted material and
+     not as another of the app's own numbers.
+
+     Kept to this card by the names. If a second block ever wants them, that is
+     the moment to ask whether the app has a neutral ink — not to reach for one
+     called "reason". */
+  --reason-label: #6B7280;
+  --reason-value: #1F2937;
+
+  --reject-bg: #FEF2F2;
+  --reject-line: #FECACA;
+  --reject-ink: #DC2626;
+
   /* The hairline round a status panel. Named rather than typed at each of the
      eleven places that draw one, because ธีมมืด has to answer them together:
      a tint that works as a background on white is not a border on charcoal. */
@@ -287,6 +327,15 @@
   --danger-ink: light-dark(#B4402F, #FFA98E);
   --danger-bg: light-dark(#FBEAE7, #331A13);
   --danger-line: light-dark(#F3CFC7, #52291C);
+  /* See the block above for why these are not the --danger-* three. */
+  /* Grey 400 and grey 200 against the dark card (#1F2723): 6.0 and 12.4 to one,
+     the same two steps apart the light pair is. */
+  --reason-label: light-dark(#6B7280, #9CA3AF);
+  --reason-value: light-dark(#1F2937, #E5E7EB);
+
+  --reject-bg: light-dark(#FEF2F2, #331717);
+  --reject-line: light-dark(#FECACA, #5A2626);
+  --reject-ink: light-dark(#DC2626, #FCA5A5);
   /**
    * WHY THE DARK AMBER IS DULLER THAN THE LIGHT ONE, at the same contrast.
    *
@@ -576,6 +625,76 @@ a:hover { color: var(--green-dark); }
 
 .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
+/* ── THE TWO FIXED BARS, AND WHY THEY UN-BLUR UNDER A DIALOG ────────────────
+   `.appbar` and `.mobile-nav` are the only two elements in this app that carry
+   `backdrop-filter`. It is what makes them frosted over the page scrolling
+   behind them, and it is also what takes a browser off the ordinary painting
+   path for them: a backdrop-filtered element is composited as its own layer
+   against everything behind it.
+
+   That is where they stop obeying z-index. Reported on a phone-width Chrome and
+   visible in a screenshot: the app bar drawn over the top corner of an open
+   bottom sheet, and the nav bar covering the last 77px of it with a strip of the
+   page showing between the two. The geometry was never the problem — measured
+   against the running app at 440×956 the backdrop is 0–956, the sheet is
+   114–956 flush to the bottom, and the nav is 879–956 at z-index 30 under a
+   backdrop at 80. Every number is right and the bars still painted on top.
+
+   `body.has-dialog` is set by `Modal` for as long as any dialog is open (see
+   components/common.jsx) and takes the filter off both. A filter that is not
+   applied cannot be composited out of turn, and with it gone the two bars are
+   ordinary positioned elements that lose to a z-index of 80 as they should.
+
+   Nothing else changes: they keep their own background, which is what they are
+   seen through anyway — for the whole time the class is on, both are behind the
+   scrim. */
+body.has-dialog .appbar,
+body.has-dialog .mobile-nav { backdrop-filter: none; }
+
+/* AND ON A PHONE THE TWO AT THE FOOT GO AWAY ALTOGETHER, which is the rule
+   that actually holds.
+
+   Dropping the filter is right and did not finish the job: the bars still came
+   back over the sheet on the reporting machine, in Chrome and on the phone
+   alike. Painting order is the browser's to decide and this app has now lost
+   that argument twice, so it stops being an argument. `visibility: hidden` is
+   not a layer that can be composited in the wrong order — there is nothing to
+   composite.
+
+   THE APP BAR IS NOT ONE OF THEM. It was, and hiding it was a rule applied
+   wider than the defect it was written for: a sheet is flush to the BOTTOM, so
+   the elements it can share a pixel with are the ones at the bottom. Measured
+   on the same 440×956 screen, the tallest sheet in the app starts at y=76 and
+   the app bar ends at y=62 — they never meet, whatever the compositor does. The
+   nav bar and the FAB do meet it, and they still go.
+
+   Hiding it cost a real thing: 62px of blank ground at the top of every sheet,
+   which reads as the page having lost its header rather than as a sheet lying
+   over a page that is still there. Dimmed behind the scrim is exactly what it
+   should look like.
+
+   WHAT THE READER GETS is a sheet that rises over the page. Below its foot is
+   the sheet's own fill to the bottom edge of the screen, above its head is the
+   scrim over the app bar and the list — no nav bar cutting the last 77px off
+   the buttons, no strip of the list showing between the two.
+
+   PHONE ONLY. On a desktop the dialog is a centred box on a page that stays
+   visible around it, and an app bar that vanished every time somebody opened
+   one would read as the page reloading underneath them. There the bars are
+   ordinary elements that lose to a z-index of 80 correctly, and this rule is
+   not needed.
+
+   `visibility`, not `display`. The nav is `position: fixed` and the app bar is
+   `position: sticky`, so neither leaves a hole in the layout — but `visibility`
+   also keeps them out of the tab order for as long as the dialog owns the
+   keyboard, which is the same thing the focus trap is doing from the inside.
+
+   THE RULE ITSELF IS IN THE PHONE BLOCK at the foot of this file, with the rest
+   of the sheet layout, rather than in a second `@media` opened here. One
+   breakpoint block is what the file has and what its readers scroll to; a
+   second one three thousand lines earlier is a rule nobody looking at the sheet
+   would find. */
+
 .appbar {
   position: sticky; top: 0; z-index: 20;
   background: var(--bar-blur); backdrop-filter: blur(10px);
@@ -799,7 +918,15 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
    Reach for it in a row that already has a filled button. A screen whose
    secondary actions are outlined but whose primary one is missing has drawn
-   two second places. */
+   two second places.
+
+   NOTHING USES IT RIGHT NOW. ตรวจสอบรายเดือน's two CSV exports were the only
+   callers, and they went to plain ghosts to match สรุป OT ส่งบัญชี — the same
+   shape of row, one filled export beside one secondary, and no reason for the
+   two screens to speak differently. The rule stays because the voice is still
+   the right answer for a row of three where the filled one needs a companion
+   rather than two strangers; it is written down here so the next person reaches
+   for it deliberately rather than rediscovering it. */
 .btn.outline {
   background: transparent; color: var(--green-text);
   border: 1px solid var(--green); box-shadow: none; font-weight: 600;
@@ -807,6 +934,26 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .btn.outline:hover:not(:disabled) {
   background: var(--green-tint); border-color: var(--green-lift); color: var(--green-dark);
 }
+
+/* The quietest voice: a button that is a way OUT, not a thing to do.
+
+   ปิด and ย้อนกลับ close a pop-up and change nothing. As `.btn.ghost` they are
+   white cards with a border — the same object as ไม่อนุมัติ beside them, and in
+   a foot of three that reads as three offers, with the leftmost taking the eye
+   first. It is the one that does the least.
+
+   So it keeps the size and loses the chrome: no fill, no rule, grey letters. The
+   border stays as a transparent 1px so it sits on the same baseline as the
+   bordered buttons beside it and does not jump on hover, when the wash arrives.
+
+   FOR A DISMISSAL WITH SOMETHING ELSE BESIDE IT. A pop-up whose only button is
+   ปิด has no primary to step back from — that one is the door, and it is drawn
+   as `.btn.ghost` like any other button somebody has to find. */
+.btn.quiet {
+  background: transparent; color: var(--muted);
+  border: 1px solid transparent; box-shadow: none; font-weight: 500;
+}
+.btn.quiet:hover:not(:disabled) { background: var(--neutral-wash); color: var(--ink-2); }
 
 .btn.danger { background: var(--danger); box-shadow: 0 6px 18px var(--danger-glow); }
 .btn.danger:hover:not(:disabled) { background: var(--danger-ink); }
@@ -1317,6 +1464,38 @@ td > .approver-line { margin-top: 5px; }
 .profile-form { display: flex; flex-direction: column; gap: 14px; max-width: 380px; margin-top: 4px; }
 .profile-form .btn { align-self: flex-start; }
 
+/* The button and the line under it are one thing, not two rows of the form —
+   7px apart like a field and its note, rather than the 14px that separates
+   one password box from the next. `align-items` rather than a width: the
+   note is a sentence and the button is not, and a stretched button would put
+   บันทึกรหัสผ่านใหม่ in the middle of 380px of green. */
+.profile-submit { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+
+/* THE ENGLISH MOVED INTO THE BOX. รหัสผ่านเดิม · CURRENT PASSWORD was one
+   label carrying two readings of the same field, and at phone width it is the
+   longest line in the card — three of them, each with a box under it, is most
+   of a 956px screen spent on labels. The Thai stays where a label belongs and
+   the English is now the placeholder: still there for anyone who reads the
+   form in English, gone the moment there is something in the box, which is
+   exactly when nobody is reading the label any more.
+
+   So it has to LOOK like a sub-label rather than an example value — mono,
+   uppercase, letter-spaced, one step lighter than the label above it. Scoped
+   to this form on purpose: every other placeholder in the app is a sample
+   ("เช่น สอบเทียบชุด PM-3000") and must go on reading as one. */
+.profile-form input::placeholder {
+  font: 600 11.5px/1 var(--mono); letter-spacing: .09em;
+  color: var(--muted-2); text-transform: uppercase;
+}
+
+/* Tighter on a phone, where the card is the whole screen and the three boxes
+   plus the button no longer fit in one view. Only the gaps close — the boxes
+   keep their own height, because they are what a thumb has to hit. */
+@media (max-width: 640px) {
+  .profile-form { gap: 10px; max-width: none; }
+  .profile-form .field { gap: 5px; }
+}
+
 /* ══ queue tabs ══════════════════════════════════════════════════════════ */
 
 /* Two piles of work on one screen — ใบรอยืนยัน and วันเกิดรอตรวจ. Drawn as a
@@ -1361,7 +1540,122 @@ td > .approver-line { margin-top: 5px; }
    phone track is about 182px and ประวัติการแก้ทะเบียน needs about 190px, so a
    grid would break that label over two lines and pull its whole row taller,
    trading one kind of untidy for another. */
-.section-tabs .btn { flex: 1 1 auto; }
+.section-tabs .btn {
+  flex: 1 1 auto;
+  /* The label and its badge on one line, centred together — a tab carrying a
+     number is otherwise a hair taller than the five beside it. */
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+}
+
+/* ── the count on a section tab ──────────────────────────────────────────────
+   HOW MANY THINGS ARE WRONG BEHIND THIS TAB, on the tab itself.
+
+   Not a dot. A dot says "something" and this screen already has a banner that
+   says what — the number is the one thing the banner cannot be read for at a
+   glance, and it is what tells HR whether the last fix finished the job.
+
+   ONE SKIN ON BOTH TABS, filled and ghost alike, and that is a decision rather
+   than an omission. A badge tuned to sit on the selected tab's green fill —
+   white ground, danger ink — inverts badly in the dark theme, where
+   `--danger-ink` lightens to a peach that was designed against `--danger-bg`
+   and not against white. The wash pair is the one this app has already checked
+   in both themes, and it is legible on the green fill and on the card alike
+   because it is neither of them.
+
+   `--danger` rather than amber: the banner it counts is `Alert kind="error"`,
+   and one finding wearing two severities on one screen is two findings. */
+.tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  /* A CIRCLE AT ONE DIGIT, a lozenge at two, and never a square. `min-width`
+     equal to `height` is what makes the common case round — 999px only rounds
+     what it is given, and a 18×18 box with 6px of padding is a 30px pill
+     holding a “1”. The padding is what a second digit grows into; a count
+     large enough to need three is not a badge any more. */
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--danger-bg); color: var(--danger-ink);
+  /* `/1` and not a line-height: the box is 18px and the flex centring above
+     places the glyphs in it. A line-height taller than the box would push the
+     digit off the optical centre in exactly the way this is meant to avoid. */
+  font: 700 11px/1 var(--sans); font-variant-numeric: tabular-nums;
+  /* Thai ascenders (ตั้ง, ค่า) sit well above the Latin cap height, so a badge
+     aligned to the text BOX rides high against a label like แผนกและเพดาน. The
+     button centres both as flex items, and this trims the last half-pixel of
+     that so the digit reads level with the middle of the Thai baseline band. */
+  align-self: center; position: relative; top: .5px;
+  flex: 0 0 auto;
+}
+
+/* ── “there are more tabs this way” ──────────────────────────────────────────
+   The wrapper around `.section-tabs`, carrying a fade at whichever edge still
+   has tabs behind it. `data-edge` comes from `useScrollEdge` in common.jsx —
+   the same reading `.sheet-view` uses on the printed forms, and deliberately
+   the same four values, so there is one answer in this app to "is there more
+   this way" and two ways of painting it.
+
+   It fades to the CARD, where the print one fades to a shadow: these tabs sit
+   on a white panel and what should happen at the edge is that the next button
+   dissolves into it. A shadow there would read as a dropped edge.
+
+   No breakpoint. Above 860px the strip wraps, nothing overflows, `data-edge` is
+   `none` and neither pseudo-element is drawn. */
+.tabs-view { position: relative; }
+.tabs-view::before, .tabs-view::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 34px; z-index: 1;
+  pointer-events: none; opacity: 0; transition: opacity .18s ease;
+}
+.tabs-view::before {
+  left: 0;
+  background: linear-gradient(to right, var(--card), transparent);
+}
+.tabs-view::after {
+  right: 0;
+  background: linear-gradient(to left, var(--card), transparent);
+}
+.tabs-view[data-edge="start"]::after,
+.tabs-view[data-edge="middle"]::after { opacity: 1; }
+.tabs-view[data-edge="middle"]::before,
+.tabs-view[data-edge="end"]::before { opacity: 1; }
+
+/* ── the chips above แผนก ────────────────────────────────────────────────────
+   TWO WAYS TO READ ONE TABLE, and they are chips rather than buttons because
+   neither of them DOES anything — pressing one changes what is on the screen
+   and nothing in the database, which is the distinction `.btn` carries on every
+   other row of this app.
+
+   The pressed one is filled and the other is not, so the pair reads as a
+   position rather than as two offers. `aria-pressed` says the same thing to a
+   reader that cannot see which is filled.
+
+   The count rides inside the chip, in the chip's own ink at reduced opacity —
+   a second colour there would make the number look like a separate control. */
+.filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 2px; }
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  background: var(--card); color: var(--muted);
+  border: 1px solid var(--line);
+  font: 500 12.5px/1.4 var(--sans);
+  transition: background .16s, border-color .16s, color .16s;
+}
+.filter-chip:hover { border-color: var(--green); color: var(--ink-2); }
+.filter-chip .n {
+  font-variant-numeric: tabular-nums; font-weight: 700; opacity: .75;
+}
+.filter-chip.on {
+  background: var(--green-tint); border-color: var(--green); color: var(--green-dark);
+  font-weight: 600;
+}
+/* The one that finds problems keeps the banner's colour whether it is pressed
+   or not — it is the same finding, and a chip that only turned red once you
+   had already pressed it would be telling you what you just asked for. */
+.filter-chip.warn { border-color: var(--danger); color: var(--danger-ink); }
+.filter-chip.warn:hover { background: var(--danger-bg); border-color: var(--danger); }
+.filter-chip.warn.on { background: var(--danger-bg); color: var(--danger-ink); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tabs-view::before, .tabs-view::after { transition: none; }
+  .filter-chip { transition: none; }
+}
 
 /* Present but out of the way: what has been answered, and what cannot be
    answered yet. Neither is work, so neither costs a row in the queue above. */
@@ -2036,6 +2330,29 @@ tbody tr:hover { background: var(--green-wash); }
    explains what is being asked, and the answer to it is opposite. */
 .policy-help { margin-top: 5px; }
 
+/* What each answer means, under the question that offers them.
+
+   A <dl> rather than a list of sentences: the option is the term and the gloss
+   is its definition, and the reader is matching one against the three lines in
+   the dropdown opposite. So the term repeats the option label VERBATIM — it is
+   the same string, read off `options` — because a paraphrase here would be a
+   fourth answer to look for in a list of three.
+
+   A size down from `.policy-help` above it and indented under its own term, so
+   the row still reads as one question with one explanation and not as four
+   paragraphs. Only rows that declare `optionHints` draw any of this. */
+.policy-options { margin-top: 7px; }
+.policy-options dt {
+  font: 600 12px/1.5 var(--sans); color: var(--ink-2);
+}
+.policy-options dt + dd { margin: 1px 0 0; }
+.policy-options dd {
+  margin: 1px 0 0; padding-left: 10px;
+  border-left: 2px solid var(--line);
+  font: 400 12px/1.55 var(--sans); color: var(--muted);
+}
+.policy-options dd + dt { margin-top: 7px; }
+
 /* ── the note a dropdown answers with ───────────────────────────────────────
    Shown only while the option it is about is the one selected — see `warn` on
    POLICY_FIELDS. Amber and boxed rather than grey like `.field-note`: the notes
@@ -2496,7 +2813,37 @@ table.mini tbody tr:hover { background: none; }
   background: var(--green-tint);
   animation: otfade .16s ease both;
 }
-.quick-edit .checks { display: flex; gap: 20px; flex-wrap: wrap; }
+/* A strip under the two time fields, not two controls loose in the form. Both
+   switches are about the times above them, and the fill says so — one step off
+   the panel's own `--green-tint`, which is enough to group without drawing a
+   second border inside a bordered panel.
+
+   ROW, AND ONLY WRAPPING WHEN IT MUST. 24px between them at every width; the
+   note below always takes its own line (`flex-basis: 100%`), so the two labels
+   wrap against each other and never against it. */
+.quick-edit .checks {
+  display: flex; flex-direction: row; flex-wrap: wrap;
+  align-items: center; gap: 8px 24px;
+  padding: 10px 12px; border-radius: var(--radius-xs);
+  background: var(--card); border: 1px solid var(--ok-line);
+}
+.quick-edit .checks .check { font: 400 14px/1.4 var(--sans); color: var(--ink-2); }
+/* What the switch DOES, in the filing form's own bracket convention. A step
+   down and a step quieter, so the label is still the thing being read. */
+.quick-edit .check-note { font: 400 11.5px/1.4 var(--sans); color: var(--muted-2); }
+/* ข้ามคืน reports the two times rather than asking about them, so it is drawn as
+   a read-out: the mark stays (it is the fastest way to see which way round the
+   session runs) and the label stops looking pressable. Not `opacity` — a faded
+   control reads as one that is temporarily off, and this one is never on. */
+.quick-edit .check.derived, .quick-edit .checks .check.derived { color: var(--muted); cursor: default; }
+.quick-edit .check.derived input { cursor: default; }
+/* Its own line, under both. Said once for the box rather than beside the mark:
+   a disabled control with no reason given is the one somebody presses twice and
+   then reports as broken. */
+.quick-edit .checks-note {
+  flex: 1 1 100%;
+  font: 400 11.5px/1.45 var(--sans); color: var(--muted-2);
+}
 .quick-edit .field input, .quick-edit .field textarea { background: var(--field-bg); }
 
 .edit-preview {
@@ -2515,6 +2862,34 @@ table.mini tbody tr:hover { background: none; }
 .edit-preview .delta .now { color: var(--green-dark); }
 
 .quick-edit-foot { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+/* THE SAME BOX, TO THE PIXEL — then one of them is filled and the other is not.
+
+   `.btn` is `border: none` and `.btn.ghost` carries a 1px rule, so at the same
+   padding the outlined one stands 2px taller than the filled one and the pair
+   sits crooked. The filled one gets the same hairline, in nothing: identical
+   height, identical corner, identical padding, and the only difference left is
+   the one that is meant to be read.
+
+   (The pop-up's own two buttons are held together the same way — see
+   `.foot-split .btn`. Same defect, same fix, different footer.)
+
+   Grey letters rather than the `--ink-2` a ghost takes by default: the app
+   already does this to a secondary button standing beside a primary one, in
+   `.modal-foot .btn.ghost`. Outlined says "pressable"; grey says "not the one
+   you came here for". */
+.quick-edit-foot .btn { border: 1px solid transparent; }
+.quick-edit-foot .btn.ghost { color: var(--muted); }
+
+/* The sentence under the buttons — what happens after a save, and what still
+   has to happen after that. It is a footnote to a decision, not part of it, and
+   at the form's own 12.5px it carried the same weight as the labels above the
+   fields. A step down, and no further: it is the line that tells somebody the
+   entry still needs signing off afterwards, so it has to be read at least once.
+
+   The child combinator matters. `.hint` is also what the preview above uses for
+   each of the engine's warnings — "พักเที่ยงถูกหักออกแล้ว" and the rest — and
+   those are about the numbers beside them, not footnotes to the form. */
+.quick-edit > .hint { font-size: 11.5px; line-height: 1.5; }
 
 /* ── toast ──────────────────────────────────────────────────────────────── */
 
@@ -2597,14 +2972,59 @@ table.mini tbody tr:hover { background: none; }
   max-height: 88vh;                  /* browsers without dvh still get a cap */
   max-height: min(88dvh, 900px);
   display: flex; flex-direction: column;
+  /* NOTHING PAINTS OUTSIDE THE ROUNDED CORNERS.
+     The three rows below carry their own matching radii, which covers the
+     ordinary dialog — and stops covering it the moment one has no footer, which
+     several do. `.modal-body` has no radius of its own, so as the last row its
+     square bottom corners paint straight over the two this element just
+     rounded: an Alert or a `.box` sitting at the end of a form fills the curve
+     back in, and the sheet reads as a rectangle with two dents in the top.
+     Clipping here is the rule that does not have to be repeated per row, and it
+     holds for any row anybody adds later.
+     The dialog's own drop shadow is unaffected — an element's overflow never
+     clips the shadow it casts outwards. */
+  overflow: hidden;
+  /* A STACKING CONTEXT OF ITS OWN, so `overflow` is the only question there is.
+     Clipping stops a descendant painting outside the box; it does not stop one
+     with a z-index of its own being COMPOSITED against something further out.
+     `isolation` closes that: every layer a dialog's content creates is resolved
+     inside the dialog, and the head and foot below can only ever be layered
+     against their own siblings. */
+  isolation: isolate;
+  /* Belt to `.modal-body`'s own: a flick that lands on the padding of a row
+     rather than on the scroller must not chain out to whatever is behind the
+     backdrop either. */
+  overscroll-behavior: contain;
   box-shadow: 0 26px 60px var(--shadow-1);
   animation: otfade .16s ease both;
 }
 .modal.wide { width: min(880px, 100%); }
 .modal:focus { outline: none; }
 
+/* THE TWO ROWS THAT DO NOT MOVE.
+
+   `flex: none` is what holds them — they are siblings of the scroll area, not
+   passengers in it, so there is no scroll position at which they can be reached
+   at all. That is a stronger guarantee than `position: sticky`, which this used
+   to be: sticky keeps its place until something in the content stacks above it,
+   and then the name of the person being decided about slides away underneath a
+   full-size image or a native picker. See the note over `.modal` above.
+
+   `background: var(--card)` — the theme's opaque panel, not a hard-coded white.
+   Opacity is the property that matters here and the token has it in both
+   themes; a literal white hex would be the right colour in the light theme and
+   a white slab across the dark one. (It would also trip the raw-colour scan in
+   test/theme.test.js, which is the check that keeps that from happening.)
+
+   `position: relative; z-index: 1` is the belt to that brace. Nothing in the
+   body can escape it — `.modal-body` scrolls, so it clips its own children on
+   both axes — but these two rows also paint the head's scrolled shadow and the
+   foot's border DOWN over the content, and a positioned descendant of the body
+   with a z-index of its own would otherwise take that away. It costs nothing
+   and removes the one way the rows could be layered under what they cover. */
 .modal > h2, .modal-head {
   flex: none;
+  position: relative; z-index: 1;
   padding: 16px 20px; border-bottom: 1px solid var(--line-soft);
   background: var(--card); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   font: 600 17px/1.3 var(--sans);
@@ -2621,6 +3041,108 @@ table.mini tbody tr:hover { background: none; }
 .modal-head .who { flex: 1; min-width: 0; }
 .modal-head .t { font: 600 17px/1.35 var(--sans); }
 .modal-head .s { font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); margin-top: 2px; }
+/* WHO on one line, WHEN on the next. They answer two different questions and
+   ran together as one grey sentence; the date is what the decision is about,
+   so it gets a line and a slightly stronger ink than the identifiers above it. */
+.modal-head .s-who { display: block; }
+.modal-head .s-when { display: block; color: var(--muted); }
+
+/* ── the ceiling, as chips ────────────────────────────────────────────────
+   Three sentences became three numbers with a word in front of each. The mono
+   face on the figure for the reason every figure in this app uses it: these are
+   read against each other and against the fraction above them.
+
+   RED IS NOT DECORATION HERE. It marks a chip whose number is past the ceiling
+   — and which chip that is says something the plain figures cannot: อนุมัติแล้ว
+   in red is hours somebody has signed off, and nothing in this queue undoes it;
+   เกิน in red may still be a projection over requests nobody has approved. The
+   sentence naming which is which sits under them. See `capChips` in lib/caps.js. */
+/* ── รายละเอียดงานที่ขอ OT ─────────────────────────────────────────────────
+   The one block in this pop-up that is a sentence rather than a figure, so it
+   is the one that gets a heading in words instead of a number beside it.
+
+   Outlined rather than washed. The card under it — สะสม / เพดาน — carries the
+   tint, and it earns it: it is a different SUBJECT, the month rather than the
+   request. This is still about the request, so it takes the body's own surface
+   and a hairline, which says "a block of its own" without saying "a change of
+   topic".
+
+   `pre-wrap` because a description is typed into a textarea: somebody who put
+   three lines in gets three lines back. `--sans` and not the mono the figures
+   take — nothing here lines up with anything. */
+.reason-card {
+  display: flex; flex-direction: column; gap: 4px;
+  /* Roomier than the cards around it, at both widths. They hold figures, which
+     read fine tight against a rule; this holds a sentence, and a sentence with
+     8px to the border reads as text that overflowed into the box it is in. */
+  padding: 12px 16px; border-radius: var(--radius-xs);
+  background: var(--card); border: 1px solid var(--line-soft);
+}
+/* 12px medium — a size and a weight up from the mono kickers, and no capitals.
+   It names the words under it rather than heading a column. */
+.reason-label { font: 500 12px/1.4 var(--sans); color: var(--reason-label); }
+.reason-text {
+  font: 400 14px/1.55 var(--sans); color: var(--reason-value);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+/* Not a description — the absence of one. Grey, so it is not read as something
+   somebody typed. */
+.reason-text.none { color: var(--muted-2); }
+
+/* ── สะสม / เพดาน, on a card of its own ───────────────────────────────────
+   Every other block in the pop-up is about the request. This one is about the
+   MONTH the request lands in — the only figure here that is also true of other
+   requests, and the one a reviewer looks up rather than reads past. It shared a
+   grid with เวลาที่ขอ and พักเที่ยง and read as a fifth property of the request.
+
+   Tinted rather than ruled, because a border would make it a fourth section in
+   a pop-up that already has four; a wash says "different subject" without
+   adding a heading to count. `--neutral-wash` is the app's own faint grey, and
+   it turns to the danger tint outright when the month is past its ceiling —
+   which is the one state on this card worth seeing before reading it. */
+.cap-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; border-radius: var(--radius-xs);
+  background: var(--neutral-wash); border: 1px solid var(--line-soft);
+}
+.cap-card.over { background: var(--danger-bg); border-color: var(--danger-line); }
+/* The heading and the figure on one line: a fraction is what the kicker names,
+   so putting it under would be a heading with nothing between it and its own
+   answer.
+
+   CENTRED, NOT ON A SHARED BASELINE. Baseline is the usual answer for text
+   beside text, and it is the wrong one here: the kicker is 9.5px uppercase mono
+   and the figure is 15px, so sitting them on one baseline drops the small label
+   to the bottom of the tall number and the line reads as sagging on the left.
+   Centring lines up what the eye actually measures — the middle of the label's
+   caps against the middle of the digits. */
+.cap-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.cap-card-head .kicker-sm { margin-bottom: 0; min-width: 0; }
+.cap-card-fig {
+  flex: none;
+  font: 600 17px/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink);
+  white-space: nowrap;
+}
+.cap-card.over .cap-card-fig { color: var(--danger-ink); }
+/* The exception, not a caption: it only appears when the numbers above are
+   about a month this request is not in. */
+.cap-card-note { font: 400 11.5px/1.45 var(--sans); color: var(--muted); }
+
+.cap-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; }
+.cap-chip {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  padding: 3px 8px; border-radius: 999px;
+  /* The card behind them is `--neutral-wash`; a chip in the same wash would be
+     an outline with nothing in it. */
+  background: var(--card); border: 1px solid var(--line);
+  font: 400 11px/1.5 var(--sans); color: var(--muted);
+  white-space: nowrap;
+}
+.cap-chip b { font: 600 12.5px/1.3 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.cap-chip.over { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger-ink); }
+.cap-chip.over b { color: var(--danger-ink); }
 
 /* The figure being decided about, kept out of the scroll area — and the one
    Quick Edit moves, so it doubles as the receipt for an edit. */
@@ -2649,11 +3171,22 @@ table.mini tbody tr:hover { background: none; }
      are on the body and not on `.modal-foot`, because a margin there would push
      the border down with it and leave the rule floating inside the scroll area
      instead of sitting at its edge. */
+  /* THE VERTICAL PAN IS THIS ELEMENT'S, said out loud.
+     Left unstated, a touch that begins here is a gesture the browser is still
+     deciding about — and on a phone the candidates include pull-to-refresh and
+     scrolling the document behind the sheet, both of which move something other
+     than the form under the thumb. `pan-y` claims the one axis this box has and
+     declines the rest. It is the same statement `.modal-head` makes with
+     `touch-action: none`, from the other side: the header pans nothing because
+     it is the drag surface, the body pans vertically because it is the form. */
+  touch-action: pan-y;
   padding: 20px 20px 26px; display: flex; flex-direction: column; gap: 18px;
 }
 
+/* The other fixed row — same reasoning as `.modal-head`, see the note there. */
 .modal-foot {
   flex: none;
+  position: relative; z-index: 1;
   padding: 14px 20px; border-top: 1px solid var(--line-soft);
   display: flex; gap: 10px; justify-content: flex-end; align-items: center;
   background: var(--card); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -2686,6 +3219,106 @@ table.mini tbody tr:hover { background: none; }
    always one badly-aimed thumb away. */
 .modal-foot.asking { background: var(--danger-bg); border-top-color: var(--danger-line); flex-wrap: wrap; }
 .modal-foot .ask { flex: 1; min-width: 180px; font: 400 13px/1.5 var(--sans); color: var(--danger-ink); }
+
+/* ── TWO DECISIONS AND NOTHING ELSE ───────────────────────────────────────
+   The foot of the รายละเอียด pop-up, once ปิด came out of it.
+
+   ปิด was the leftmost of three and the only one that changed nothing, and the
+   dialog already closes four other ways — ✕, Escape, the backdrop, and a swipe
+   down on the sheet's header. A button whose whole job is duplicated by the ✕
+   two inches above it was taking a third of the foot and first place in the
+   reading order.
+
+   What is left is a pair, so it is laid out as a pair: equal halves, because
+   they are the two answers to one question and a wider button is a nudge
+   towards its answer. On a phone they take the full width of the sheet (see the
+   860px block); on a desktop the pair keeps its natural size at the right-hand
+   end, where every other dialog in this app puts its buttons.
+
+   A WRAPPER, NOT `.modal-foot` ITSELF. That foot is shared by every dialog in
+   the app, and most of them have a ยกเลิก that should not be half the width of
+   anything. */
+.foot-split { display: flex; align-items: center; gap: 10px; }
+
+/* ONE BOX, TWICE. The two answers to a question must not differ in any way that
+   could be read as a hint, so everything about their shape is stated here
+   rather than inherited from two different variants:
+
+   — the same height, given as a floor so a wrapped label grows the pair
+     together rather than one of them alone;
+   — the same corner, from the app's own radius token, so neither reads as the
+     softer or the harder press;
+   — centred both ways. A `<button>` centres its own text, but only within the
+     box its padding makes; with a min-height doing the sizing instead, the text
+     sits wherever the padding left it. Flex centres against the box that is
+     actually drawn, which is the one being looked at.
+
+   Only the FILL then separates them, which is the one difference that is meant
+   to be read. */
+.foot-split .btn {
+  flex: 1 1 0;
+  /* 8px, WRITTEN OUT, and not the app's `--radius-sm` (11px) the rest of its
+     buttons take. The pair has been identical throughout — ONE rule cuts both
+     corners, so they cannot differ by construction — and the number has been
+     asked for four times, at 10px, then 8px. Set here, once, where anybody can
+     read it off the file and compare it to what is on the glass. */
+  min-height: 46px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  /* THE SAME BOX, DOWN TO THE HAIRLINE.
+
+     Both already took their radius from this one rule, so the two corners were
+     cut to the same number — but only one of them was cut through a border.
+     `.btn` is `border: none` and the refusal beside it carries a 1px rule, and a
+     radius drawn on a bordered box does not land where the same radius on a
+     bare one does: the curve is struck from the outer edge either way, and the
+     bordered one then draws a second, tighter curve 1px inside it. Side by
+     side at 46px the pair read as two slightly different roundings.
+
+     So the green one gets the same 1px, in nothing: identical geometry,
+     identical corner, and only the colour left to tell them apart. */
+  border: 1px solid transparent;
+}
+
+/* ── the refusal, in the palette's own light red ──────────────────────────
+   `.btn.ghost.danger` is a white card, and `.modal-foot .btn.ghost` then greys
+   its letters — so the refusal in this foot was a white box with grey words on
+   it, sitting beside a filled green button. It read as the disabled one.
+
+   Danger-light instead: the faint red `.modal-foot.asking` already fills itself
+   with, its rule, and its ink. Enough to be visibly the other answer, nowhere
+   near enough to compete with the green. The two are not equals; they are
+   equally REACHABLE, which is what the widths are for.
+
+   TOKENS, NOT THE RAW COLOURS THIS WAS SPECIFIED IN. The three that were asked
+   for are a cooler red than this app's, and they carry no dark-theme half — a
+   colour written into a rule is one colour, and this app has two of everything.
+   The tokens below are those same three roles in the palette that is already
+   here. (Quoting the hexes in this comment would itself trip “no rule names a
+   colour of its own” in test/theme.test.js, which reads the comments too.) */
+/* THE THREE COLOURS ARE THE SPEC, AND THEY WERE NEVER THE PROBLEM. What was
+   missing was not on the border — it was underneath it.
+
+   `.btn` carries `box-shadow: 0 6px 18px var(--green-glow)`: the approval does
+   not sit on the footer, it floats above it, and that lift is most of why it
+   reads as a solid object with a crisp edge. `.btn.ghost.danger` sets
+   `box-shadow: none`, so the refusal beside it was pressed flat into the
+   surface — same height, same corner, same width as the green one, and still
+   the two did not look like a pair.
+
+   So it gets a lift of its own: smaller, and neutral rather than a second
+   coloured glow, because two glows side by side is two primaries. Enough to
+   raise the button off the footer and let its 1px edge read as an edge.
+
+   It sits back down on press, which is the flat-button counterpart of the
+   translate `.btn:active` does. */
+.foot-split .btn.ghost.danger {
+  background: var(--reject-bg); color: var(--reject-ink); border: 1px solid var(--reject-line);
+  box-shadow: 0 3px 10px -4px var(--shadow-3);
+}
+.foot-split .btn.ghost.danger:active:not(:disabled) { box-shadow: none; }
+.foot-split .btn.ghost.danger:hover:not(:disabled) {
+  background: var(--reject-bg); color: var(--reject-ink); border-color: var(--reject-ink);
+}
 
 /* ── the temporary password, on the one screen that will ever show it ──────
    Sized to be read down a phone by somebody looking at it across a desk, not
@@ -2792,10 +3425,12 @@ table.mini tbody tr:hover { background: none; }
     left: max(12px, env(safe-area-inset-left));
     right: max(12px, env(safe-area-inset-right));
   }
-  .modal-foot {
-    padding-left: max(16px, env(safe-area-inset-left));
-    padding-right: max(16px, env(safe-area-inset-right));
-  }
+  /* `.modal-foot`'s insets are in ITS OWN shorthand further down, not here.
+     They were here, and the rule below — later in the file, same specificity —
+     sets the `padding` shorthand, which resets all four sides. So the left and
+     right insets were being written and then thrown away, and in landscape on a
+     notched phone the two decisions ran under the notch. The other four rules
+     in this block are safe: none of them is re-declared with a shorthand. */
 
   .appbar .mark-btn { display: flex; }
   /* 44px here too — the way to ข้อมูลส่วนตัว and to ออกจากระบบ. */
@@ -2868,6 +3503,61 @@ table.mini tbody tr:hover { background: none; }
     box-shadow: 0 10px 26px var(--green-glow-lg);
   }
 
+  /* THE CHROME AT THE FOOT LEAVES WHILE A SHEET IS OPEN — see the note over
+     `body.has-dialog` near `.appbar`, which is where the reasoning is. Here
+     because this is the block that decides what a sheet is on a phone.
+
+     THE APP BAR IS NOT IN THIS LIST ANY MORE, and the geometry is why. A sheet
+     is `align-items: flex-end` at `max-height: 92dvh`: on the 440×956 screen this
+     was measured against, the tallest sheet the app has starts at y=76 and the
+     app bar ends at y=62. They do not overlap, and a shorter sheet starts lower
+     still — so the app bar cannot be painted over a sheet whatever order the
+     browser chooses, because there is no shared pixel to fight over.
+
+     What could and did overlap is the pair at the BOTTOM: `.mobile-nav` sits
+     across the last 77px of every sheet and the FAB floats above it. Those two
+     keep the rule.
+
+     What the reader got from hiding all three was a blank grey band where the
+     bar had been — which reads as the page having lost its header rather than
+     as a sheet over a page. The bar under the scrim is what the scrim is FOR. */
+  body.has-dialog .mobile-nav,
+  body.has-dialog .fab { visibility: hidden; }
+
+  /* ── THE SHEET'S OWN COLOUR, CARRIED PAST ITS BOTTOM EDGE ────────────────
+     A band of the sheet's fill running from its bottom edge down past the foot
+     of the screen. Nothing sees it while the sheet is at rest — the sheet ends
+     on the bottom edge and this is off-screen underneath — and `.modal-backdrop`
+     is `overflow: hidden` at this width, so it cannot lengthen the page or hand
+     anything a scrollbar.
+
+     What it is for is the moment between frames: a spring-back that overshoots,
+     a rubber-band bounce, a redraw part-way through the transform. Any of them
+     can put a pixel or two of daylight under a sheet that is meant to be sitting
+     on the edge of the screen, and daylight there is the backdrop and the page
+     behind it. The band means the worst case is more sheet.
+
+     The REAL fix for the gap is in components/common.jsx — `dragMove` no longer
+     lets the sheet rise above its resting position at all. This is what is left
+     over for the cases no handler is driving.
+
+     NO MATCHING BAND ABOVE. It was asked for, and it would be wrong: what is
+     above the sheet is meant to be the dimmed page — it is what somebody is
+     going back to, it is the tap target that dismisses, and painting it the
+     sheet's own colour would turn a sheet over a page into a plain white screen.
+
+     `--card` and not white: on the dark side the sheet is a charcoal, and a
+     white band under it would be a seam rather than a continuation. (Naming the
+     hex here would trip “no rule names a colour of its own” in
+     test/theme.test.js, which reads the comments too.) */
+  .modal { position: relative; }
+  .modal::after {
+    content: ''; position: absolute; left: 0; right: 0;
+    top: 100%; height: 100vh;
+    background: var(--card);
+    pointer-events: none;
+  }
+
   /* A form on a phone is a bottom sheet: it rises from the thumb, not the middle. */
   /* `overflow: hidden` overrides the `auto` this has on a desktop, where it is
      the escape hatch for a dialog taller than the screen. A sheet cannot be:
@@ -2876,12 +3566,63 @@ table.mini tbody tr:hover { background: none; }
      backdrop a scrollbar for the length of every swipe. */
   .modal-backdrop { align-items: flex-end; padding: 0; overflow: hidden; }
   .modal {
-    width: 100%; max-width: none;
-    /* Overrides the desktop `margin: auto` — the sheet sits on the bottom
-       edge, with the space above it rather than around it. */
-    margin: auto 0 0;
+    /* ── PINNED TO THE BOTTOM EDGE, NOT ALIGNED TO IT ─────────────────────
+       `position: absolute` inside the fixed backdrop, and this replaces
+       `align-items: flex-end` + `margin: auto 0 0`, which is how it sat here
+       for a long time and is a strictly weaker statement.
+
+       Those two say "give the free space to the top". They are correct and
+       they are ARITHMETIC — the browser measures the sheet, subtracts it from
+       the container, and hands the remainder to a margin. Everything in that
+       sentence has to agree: the container's height, the sheet's resolved
+       `max-height` in whichever viewport unit is in play, and the free space
+       that falls out. On the reporting machine it did not: the sheet came out
+       with a gap BELOW it and the page showing through, undimmed, under the
+       foot of the form — the one place the scrim proves it is not covering.
+       Measured against the running app the same numbers are flush to 956, so
+       this is not something the stylesheet can be reasoned into.
+
+       `inset: auto 0 0 0` is not arithmetic. The sheet's bottom edge IS the
+       backdrop's bottom edge, its sides ARE the backdrop's sides, and no free
+       space is computed anywhere. There is nothing left to disagree about, and
+       `max-height` still decides how far up it reaches.
+
+       The backdrop is `position: fixed`, so it is already the containing block
+       — nothing else had to change. It stays `display: flex` for the desktop
+       dialog above this breakpoint, which still centres in the ordinary way. */
+    position: absolute;
+    inset: auto 0 0 0;
+    width: auto; max-width: none;
+    margin: 0;
+    /* ── HOW TALL A SHEET IS ALLOWED TO BE ────────────────────────────────
+       `svh`, not `dvh`, and the difference is the whole of this change.
+
+       A phone has three viewport heights: `lvh` with the browser's bars
+       collapsed, `svh` with them showing, and `dvh` — whichever is true right
+       now. `dvh` is the flattering one and it was the wrong choice here: it is
+       correct at the instant it is read and stale for the length of every bar
+       animation. Scroll the form, the address bar slides back in, `dvh` shrinks
+       under a sheet that is still the old height, and for those few hundred
+       milliseconds the foot of it — the บันทึก button — is off the bottom of
+       the screen with the form running past the edge behind the bar. That is
+       the "content sliding past the sheet" this keeps being reported as, and it
+       is a phone-only symptom because `svh` and `lvh` are the same number on a
+       desktop.
+
+       `svh` is the floor of the three. A sheet measured against it is never
+       taller than the screen at its SMALLEST, so no bar arriving can push
+       anything out of view and there is no transient state to catch. What it
+       costs is a little height while the bars are hidden, which is a sheet that
+       is slightly shorter than it could have been — the right way to be wrong
+       about a box with two buttons at the bottom of it.
+
+       88 rather than 92 for the same reason: the four points are what the
+       backdrop shows above the sheet, which is what says it is a sheet and not
+       a page, and headroom the keyboard can eat into first.
+
+       The plain `vh` line stays as the fallback for a browser with neither. */
     max-height: 92vh;
-    max-height: 92dvh;
+    max-height: 88svh;
     border-radius: 22px 22px 0 0;
     animation: otslide .22s ease both;
     /* What springs the sheet back when a downward drag stops short of the
@@ -2912,16 +3653,155 @@ table.mini tbody tr:hover { background: none; }
      — these are the two most consequential presses in the app. */
   .modal-foot {
     border-radius: 0;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    /* ALL FOUR SIDES IN ONE SHORTHAND, because a shorthand resets all four and
+       this is the last word on the foot's padding. The side insets used to be
+       declared separately further up this block and were being wiped here.
+
+       BOTTOM: 16px under the buttons rather than 12px — at 12px the pair sat
+       close enough to the edge of the sheet to read as attached to it. The
+       inset is ADDED, not replaced: on a phone with a home indicator this is
+       the bar the indicator lies over, and a flat 16px would put a 46px
+       decision under it. Where there is no indicator env() is 0 and this is
+       exactly 16px.
+
+       SIDES: `max`, not `+` — in portrait these insets are 0 and the padding
+       stays the 16px it has always been; in landscape the notch is on ONE side
+       and only that side moves. Written right-then-left, which is the order the
+       shorthand takes and the order the last shorthand in this file got wrong
+       (see `main` above). */
+    padding:
+      12px
+      max(16px, env(safe-area-inset-right))
+      calc(16px + env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
     gap: 8px;
   }
   .modal-foot .btn { flex: 1 1 0; min-height: 46px; padding-left: 10px; padding-right: 10px; }
   .modal-foot.asking .btn { flex: 1 1 140px; }
+  /* The pair spans the sheet. The rule above sizes buttons that are direct
+     children of the foot; these two are one step further in, so the wrapper is
+     what has to be told to fill the width. */
+  .modal-foot .foot-split { flex: 1; gap: 8px; }
 
-  /* The header holds a name, a figure and a chip; at phone width the figure
-     and chip stack under the ✕ rather than squeezing the name to nothing. */
-  .head-meta { flex-direction: column; align-items: flex-end; gap: 4px; }
-  .head-meta .total .v { font-size: 17px; }
+  /* ── the header, in one band ────────────────────────────────────────────
+     The figure and the status chip sat one above the other at the right-hand
+     end, which made the header three lines tall on a 375px screen before the
+     name had said anything. Side by side they are one line, and the figure
+     becomes a chip to sit with the one beside it: "รวม" over a number, in a
+     header whose only number IS the total, was a label doing no work.
+
+     ✕ and the name keep their sizes; what was bought is a whole line. */
+  .head-meta { flex-direction: row; align-items: center; gap: 6px; }
+  .head-meta .total {
+    align-items: baseline; gap: 3px;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--neutral-wash); border: 1px solid var(--line);
+  }
+  .head-meta .total .k { display: none; }
+  .head-meta .total .v { font-size: 15px; }
+  .head-meta .total .u { font-size: 10.5px; }
+  /* A long name now shares its line with two chips rather than pushing them
+     down, so it has to be the thing that gives. */
+  .modal-head .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .modal-head { padding: 12px 16px; gap: 10px; }
+
+  /* ── ONE COLUMN, AND THE ✕ OUT OF IT ────────────────────────────────────
+     name / รหัส · แผนก / the date / [ 3.00 ชม. ] [ รอ HR ]
+
+     The figure and the status chip were a right-hand group, which made the head
+     two columns wide: the name got what was left of 375px after them, and a
+     Thai name that did not fit was cut. Read down instead, they are the last
+     line of one block — who, when, and where it stands — and the name gets the
+     full width back.
+
+     The ✕ leaves the flow for the corner. It is not part of that reading and
+     was the reason the row had a third column at all. `padding-right` keeps the
+     name clear of it; 46px is the mark plus the corner it sits in.
+
+     `:has(.head-meta)` so this is the pop-up that HAS a figure and a status —
+     the รายละเอียด one. Every other dialog's head is a title and a ✕ on one
+     line, which is right for a title and a ✕. */
+  .modal-head:has(.head-meta) {
+    position: relative;
+    flex-direction: column; align-items: stretch; gap: 5px;
+    padding-right: 46px;
+  }
+  .modal-head:has(.head-meta) .modal-x { position: absolute; top: 8px; right: 10px; }
+  .modal-head:has(.head-meta) .head-meta { justify-content: flex-start; }
+
+  /* ── the rhythm between sections ────────────────────────────────────────
+     20px between one section and the next (10 of gap, 10 of rule-padding) down
+     to 14, and the heading row's 30px floor down to 22.
+
+     That floor is the expensive one: it is there so a heading with a button
+     beside it — แก้ไขชั่วโมง — does not sit tighter than the button's own
+     height, and it was being paid on all five headings whether they had a
+     button or not. 22px still clears the one that does. */
+  .modal-body { gap: 8px; }
+  .detail-sec + .detail-sec { padding-top: 6px; }
+  /* Whichever card ends up last before the next section carries the rule that
+     .detail-sec + .detail-sec would have drawn. Both are listed: the ceiling
+     card is absent on a month with no usage, and then the reason card is the
+     one the section follows. */
+  .cap-card + .detail-sec,
+  .reason-card + .detail-sec { padding-top: 6px; border-top: 1px solid var(--line-soft); }
+  .detail-sec .sec-head { min-height: 22px; margin-bottom: 2px; }
+  /* A step quieter and a step smaller: these name the block, they are not what
+     anybody came to read. The figures under them are. */
+  .detail-sec .kicker-sm, .cap-card .kicker-sm { font-size: 9.5px; letter-spacing: .1em; }
+  .cap-card { padding: 8px 10px; gap: 5px; }
+  /* .reason-card keeps its 12/16 and its 14px: see the rule above. It is the
+     one block here that is read rather than scanned, and the sheet is exactly
+     where that matters most. */
+  .cap-card-fig { font-size: 15px; }
+
+  /* ── the facts, tighter ─────────────────────────────────────────────────
+     10/12 is a desktop cell's padding. On a sheet the same grid is two columns
+     of short answers — 17:30–19:30, ไม่พัก, 2.00 ชม. — and the space around
+     them was costing more height than the answers themselves.
+
+     The kicker over each answer shrinks with the cell. It is a mono capital
+     label at a size nobody reads word by word; what it has to do is separate
+     one answer from the next, and at 9.5px with a letter of tracking it still
+     does. */
+  /* 4/6, from 5/7. This IS the floor: a 9.5px kicker over a 13.5px answer, and
+     four pixels of air is the point at which the answer starts to sit on the
+     hairline the grid draws under it. Anything tighter takes it off the cell
+     and onto the rule. */
+  .fact-grid > div { padding: 4px 6px; }
+  .fact-grid dt { font-size: 9.5px; margin-bottom: 1px; }
+  .fact-grid dd { font-size: 13.5px; line-height: 1.35; }
+
+  /* The gaps BETWEEN the blocks, which on a sheet are the other half of the
+     height. 18px between sections and 16px of rule above each was a desktop
+     dialog's breathing room applied to a screen a third the size — with five
+     sections that is nearly a hundred pixels of nothing. */
+
+
+  /* ── the multipliers, in one strip ──────────────────────────────────────
+     Four boxes, each a label over a figure, stacked one per line at this width:
+     four rows of a sheet for four numbers, and on an ordinary weekday three of
+     them are 0.00. Laid out as a strip they are the same four numbers in one
+     or two lines, and the eye compares them across instead of down.
+
+     Only in the pop-up (`ot-split`). `.split` on its own is the same shape on
+     other screens, where it is not competing with eight other sections for the
+     height of one phone. */
+  .ot-split { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .ot-split .box {
+    flex: 1 1 auto; min-width: 0;
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 7px 10px;
+  }
+  .ot-split .box .k { font-size: 10.5px; line-height: 1.4; }
+  .ot-split .box .v { margin-top: 0; font-size: 15px; }
+  /* A bucket that took no hours. Two of the three usually are — an ordinary
+     weekday evening is ×1.5 วันปกติ and two noughts — and a nought in a strip
+     this narrow costs a whole box to say nothing.
+
+     รวม is never hidden: it carries no `zero` class, because a total of 0.00 is
+     a fact about the request and not an empty bucket. See the JSX. */
+  .ot-split .box.zero { display: none; }
 
   .row-actions .btn.sm, .quick-edit-foot .btn { min-height: 44px; }
 
@@ -2938,7 +3818,11 @@ table.mini tbody tr:hover { background: none; }
   .searchbox-clear { width: 44px; height: 44px; right: 2px; }
   .searchbox input.has-clear { padding-right: 48px; }
   .quick-edit { padding: 13px; }
-  .quick-edit .checks { gap: 14px; flex-direction: column; }
+  /* Was `flex-direction: column`, from when these were two loose controls and
+     stacking them was the only way to give each a full-width tap target. In a
+     strip they are a row that wraps if it has to — and on a 375px screen the
+     two usually fit, which buys the form a line. */
+  .quick-edit .checks { gap: 8px 16px; padding: 8px 10px; }
 
   /* Bottom-right is the mobile nav and the FAB, so the toast goes up top —
      clear of the app bar, and out from under the thumb that just tapped. */
@@ -2976,14 +3860,42 @@ table.mini tbody tr:hover { background: none; }
      without it flex would still shrink every button to fit and there would be
      nothing to scroll.
 
-     THE SCROLLBAR IS HIDDEN, and what replaces it as the "there is more this
-     way" signal is the bleed: negative margins pull the strip out to the card's
-     own edges and the padding puts the inset back inside the scroller, so the
-     next button is cut by the screen edge rather than sitting neatly short of
-     it. A strip that ends flush looks like the whole set.
+     THE SCROLLBAR IS HIDDEN, and two things replace it as the "there is more
+     this way" signal. The first is the bleed: negative margins pull the strip
+     out to the card's own edges and the padding puts the inset back inside the
+     scroller, so the next button is cut by the screen edge rather than sitting
+     neatly short of it. A strip that ends flush looks like the whole set.
+
+     The second is the fade on `.tabs-view` (see the rule in the main block
+     above), which is the half the bleed cannot do: a cut edge says there is
+     more, and says it just as loudly when the strip is scrolled to the end and
+     there is not. The fade is lit per edge from the scroll position, so it also
+     answers the question the bleed leaves open — whether the flick went
+     anywhere, and whether it can be undone.
+
+     THE BLEED MOVED ONTO THE WRAPPER when the fade arrived, and it had to: the
+     fade is painted at the wrapper's edges, and while the wrapper stayed inside
+     the card's padding the two edges were 15px apart — a gradient floating in
+     the middle of the card with a tab sliding out from under it. The scroller
+     keeps the padding, so the buttons still start where the card's text does.
+
+     THE TWO SIDES ARE NOT THE SAME NUMBER, and the asymmetry is the point.
+     Left is 15px because that is the card's own inset: the first tab has to
+     line up with the heading and the table below it, and 20px there would set
+     the whole strip a notch in from everything else on the screen.
+
+     Right is 20px because it is not an inset, it is the END OF THE SCROLL. The
+     strip used to be built so that the last tab was cut by the card's edge —
+     that WAS the "there is more this way" signal, before the fade existed. It
+     is now the fade's job, and it does it better, per edge and only while there
+     is something behind it. What the cut leaves behind at the end of the flick
+     is a tab pressed flat against the edge with nothing after it, which reads
+     as clipped rather than as finished. The 20px is what the scroll comes to
+     rest against.
 
      `proximity`, not `mandatory`: mandatory snapping fights a short flick and
      drags a tab you were only peeking at into place. */
+  .tabs-view { margin: -15px; }
   .section-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -2991,7 +3903,7 @@ table.mini tbody tr:hover { background: none; }
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
-    margin: -15px; padding: 15px;
+    padding: 15px 20px 15px 15px;
   }
   .section-tabs::-webkit-scrollbar { display: none; }
 
@@ -3019,7 +3931,7 @@ table.mini tbody tr:hover { background: none; }
      card's corners are 14px round — a button sliding past one of them would
      otherwise clear the curve and sit outside the card. The strip's own 15px
      of padding keeps every focus ring well inside what this clips. */
-  .card:has(> .section-tabs) { overflow: hidden; }
+  .card:has(.section-tabs) { overflow: hidden; }
   .section-tabs .btn { flex: 0 0 auto; scroll-snap-align: start; min-height: 44px; }
 
   /* ── รายการล่าสุด on a phone ──────────────────────────────────────────────
@@ -3123,15 +4035,18 @@ table.mini tbody tr:hover { background: none; }
      the reading has got to, and a control that scrolls away takes the selection
      with it as far as the reader is concerned.
 
-     z-index 11: over the cards, which carry none, and under the app bar (20)
-     that it tucks beneath. */
+     z-index 20: over the cards, which carry none, and over anything else the
+     page puts in its way. It shares the number with the app bar it tucks under
+     and never overlaps it — see the top offset below — and stays under the
+     mobile nav (30) and the modals (80). */
   .queue-mobile-bar {
     /* 62px IS the top of the screen here — it is the app bar's height, and the
        app bar is itself sticky at 0 and never leaves. Set to 0 this bar would
-       slide UNDER it (z-index 11 against the app bar's 20) and be invisible
-       exactly when it is stuck. Below the one fixed thing on the screen is as
-       high as anything else can go. */
-    position: sticky; top: 62px; z-index: 11;
+       slide UNDER the app bar and be invisible exactly when it is stuck — or,
+       drawn later in the document at the same z-index, cover it and leave 14px
+       of app bar sticking out below. Below the one fixed thing on the screen is
+       as high as anything else can go. */
+    position: sticky; top: 62px; z-index: 20;
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     padding: 0 12px 10px;
     background: var(--neutral-wash); border-bottom: 1px solid var(--line-soft);
@@ -3141,65 +4056,166 @@ table.mini tbody tr:hover { background: none; }
      cards it needs to keep it, and a wash that let the rows through would make
      both unreadable. Stated rather than inherited so it survives a change to
      the tools' fill. */
-  .queue-mobile-bar:has(.picked-actions) { background: var(--green-bg); }
 
-  /* TWO ROWS, NOT FOUR. เลือกทั้งหมด, the tally and the ✕ share the first; the
-     two decisions have the second to themselves.
+  /* ── WITH A SELECTION: ONE LINE ────────────────────────────────────────────
+     [✓]  เลือก 3 ใบ · 26.00 ชม.     [ อนุมัติ (3) ][ ไม่อนุมัติ (3) ][ ✕ ]
 
-     It was four rows deep — a sentence, two buttons and a full-width ล้างการเลือก
-     link — which on a 640px-tall phone is a fifth of the screen spent on a
-     control bar that is stuck to the top of it, over a list it exists to act on.
-     The only part of it worth a touch target is the pair of decisions; the rest
-     is a tick-box, two numbers and an undo. */
+     It was two rows — tick-box, tally and ✕ on the first, the two decisions on
+     the second — and four before that. Two rows is ~110px of a 640px phone
+     spent on a bar stuck to the top of the list it acts on, and the list is the
+     thing being read. One row is ~58px: the 44px the decisions keep (below),
+     plus the padding around them.
+
+     No wrapping in this state. Every child is either fixed or shrinkable and
+     the tally is the one that gives — a second row appearing under a bar that
+     exists to have collapsed would be the old layout back by accident.
+
+     The shadow is what says "stuck". Until the page scrolls this sits inside
+     `.queue-tools`' own fill; after it, it is a green strip over white cards
+     with a hairline to lift it. Faint, and the same one `.modal-head.scrolled`
+     uses for the same reason. */
+  .queue-mobile-bar.picking {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 7px 10px;
+    background: var(--green-bg);
+    box-shadow: 0 6px 14px -8px var(--shadow-3);
+  }
+
+  /* The tally is the only child of the line that gives room up, so it is the
+     only one allowed to shrink below its content — everything else there is a
+     control. Ellipsis rather than wrap: this bar is one line now. */
   .picked-sum {
-    flex: 1 1 auto; min-width: 0;
+    flex: 0 1 auto; min-width: 0;
     font: 400 12.5px/1.3 var(--sans); color: var(--green-dark);
     /* The numbers are the point, so they get the mono face and the size; the
        words between them are separators. */
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .picked-sum strong { font: 600 14.5px/1.2 var(--mono); }
+  /* The first thing cut when the line is short — and cut outright rather than
+     ellipsed, so what is left is "3 ใบ · 26.00 ชม." and not "เลือก 3 ใบ · 26…".
+     A ticked box on a green bar has already said เลือก. */
+  @media (max-width: 389px) { .picked-sum .lead { display: none; } }
 
-  /* The ✕ in the corner. 34px, which is under the 44px this app gives every
-     other control on a phone, and deliberately: that floor is for DECISIONS —
-     the two buttons under it, which cannot be taken back — and this is an undo
-     with nothing behind it. A mis-tap costs one more tap. Made small so it
-     cannot be mistaken for a third decision, which is exactly what it looked
-     like while it was a full-width link under the other two. */
+  /* The ✕ at the end of the group. 34px, which is under the 44px this app gives
+     every other control on a phone, and deliberately: that floor is for
+     DECISIONS — the two buttons beside it, which cannot be taken back — and
+     this is an undo with nothing behind it. A mis-tap costs one more tap. Kept
+     small so that sitting in the same group as the two decisions it cannot be
+     read as a third one. */
+  /* NO BOX. It was a white card with a green border — which on this bar put a
+     third framed object beside two framed buttons, all three the same height,
+     and made the undo look like the third thing being offered. It is not: it is
+     the way out of the other two.
+
+     A grey mark on the bar's own fill instead. The size and the tap target are
+     unchanged; only the chrome is gone, and what is left says "dismiss" the way
+     every other ✕ on a phone does. The tint arrives on press, so the tap is
+     still acknowledged. */
   .picked-clear {
     flex: none; width: 34px; height: 34px;
     display: grid; place-items: center;
-    border: 1px solid var(--ok-line); border-radius: var(--radius-sm);
-    background: var(--card); color: var(--green-dark);
-    font: 400 13px/1 var(--sans); cursor: pointer;
+    border: 0; border-radius: var(--radius-sm);
+    background: transparent; color: var(--muted);
+    font: 400 15px/1 var(--sans); cursor: pointer;
   }
-  .picked-clear:active { transform: translateY(1px); }
+  .picked-clear:active:not(:disabled) {
+    transform: translateY(1px);
+    background: var(--card); color: var(--ink-2);
+  }
+  /* Nothing frames it any more, so being unpressable has to show in the mark. */
+  .picked-clear:disabled { color: var(--line); cursor: not-allowed; }
   /* Not a `.btn`, so the app's focus rule does not reach it — the same gap
      `.password-field .reveal` had to close. */
   .picked-clear:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
 
+  /* The right-hand end of the single line, not a row of its own.
+
+     It takes exactly what its three controls need and never gives any of it
+     back: `0 0 auto`, so on a 320px screen the shrinking lands on the tally —
+     which has an ellipsis for it — instead of on two buttons whose labels
+     cannot wrap and would simply spill out of their boxes.
+     `margin-left: auto` for the right edge, since the group no longer grows to
+     reach it. */
   .picked-actions {
-    flex: 1 1 100%;
-    display: flex; align-items: center; gap: 8px;
+    flex: 0 0 auto; margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
     animation: otfade .16s ease both;
   }
-  /* Equal halves, and 44px kept: these two are the decisions, and the floor
-     stays where the rest of the app puts it. Compacting a bar is not a reason
-     to shrink the two things on it that cannot be undone. */
-  .picked-actions .btn { flex: 1 1 0; min-height: 44px; padding-left: 8px; padding-right: 8px; }
-  /* Drawn as a control rather than as a form label — a bare tick-box with words
-     after it reads as something left over at the end of a row, and this is the
-     only way to build a batch on a phone. Given a button's height, border and
-     radius so it is as obviously pressable as anything else in the bar. */
+  /* EQUAL HALVES, AND 44px KEPT. These two are the decisions, and the floor
+     stays where the rest of the app puts it — collapsing a bar onto one line is
+     not a reason to shrink the two things on it that cannot be undone. The
+     height is what the line costs; the width is split evenly so neither reads
+     as the bigger offer.
+
+     A zero basis against a group that sizes to its contents settles both on the
+     wider label's width — ไม่อนุมัติ (3) here — so the pair comes out even
+     without either being clipped. nowrap because a bar that is one line by
+     definition cannot have a button breaking onto a second. */
+  .picked-actions .btn {
+    flex: 1 1 0; min-height: 44px;
+    padding-left: 8px; padding-right: 8px;
+    white-space: nowrap;
+  }
+  /* ONE FILL, ONE FLAT — not two cards side by side.
+
+     `.btn.ghost.danger` is white with a pale red border, which is right in a
+     table row where every button sits on the same white card and an outline is
+     what separates them. Here the bar is green, so that white block is the
+     brightest thing on it: brighter than the filled green button beside it,
+     which is the action this queue exists for. Two framed objects of equal
+     weight, and the eye goes to the wrong one.
+
+     Flat red on the bar's own fill instead. It keeps its half of the width and
+     its 44px, so it is no harder to hit and no harder to find — it just stops
+     announcing itself louder than the approval. The fill appears on press and
+     while the dialog it opens is working, which is when a refusal should look
+     like something that is happening. */
+  .picked-actions .btn.ghost.danger {
+    background: transparent; border-color: transparent;
+    color: var(--danger-ink); font-weight: 600;
+  }
+  .picked-actions .btn.ghost.danger:hover:not(:disabled),
+  .picked-actions .btn.ghost.danger:active:not(:disabled) {
+    background: var(--danger-bg); border-color: transparent; color: var(--danger-ink);
+  }
+  /* The app-wide disabled rule draws the grey card this one just took off. Kept
+     flat, and greyed for real rather than faded — same reasoning as that rule,
+     different chrome to express it in. */
+  .picked-actions .btn.ghost.danger:disabled {
+    background: transparent; border-color: transparent; color: var(--muted);
+  }
+  /* NO CARD, IN EITHER STATE — the mark and its words straight on the bar.
+
+     It was drawn as a chip: white fill, border, a button's height, on the
+     argument that a bare tick-box with words trailing after it reads as
+     something left over at the end of a filter row. That argument buys less
+     than it costs. The bar is the only white-on-tinted object in this list and
+     the chip made it two objects; a tick-box in the app's own green, with a
+     count beside it, at the head of a bar that exists to select things, is not
+     mistakable for a leftover.
+
+     What it keeps: `min-height`, which is the tap target and is invisible
+     either way, and weight on the words so they read as a control's label and
+     not as a caption.
+
+     `padding: 0` puts the mark at the bar's own 12px inset — the same inset
+     `tbody` gives the cards below, so it lines up with the tick-boxes on them
+     instead of sitting 10px inside its own former border. */
   .queue-mobile-bar .check {
-    gap: 8px; min-height: 38px; padding: 0 10px;
-    border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: var(--card); font: 500 12.5px/1.4 var(--sans);
-    /* It shares its line with the tally and the ✕ now, and it is the one of the
-       three that can give: the numbers must not wrap and the mark is fixed. */
+    gap: 8px; min-height: 38px; padding: 0;
+    background: none; border: 0;
+    font: 500 12.5px/1.4 var(--sans); color: var(--ink-2);
+    /* It shares its line with the tally and the buttons, and it is the one of
+       them that can give while it still has words in it. */
     flex: 0 1 auto; min-width: 0; white-space: nowrap;
   }
   .queue-mobile-bar .check input { width: 18px; height: 18px; }
+  /* Words gone (see the JSX), so there is nothing left to give room up with:
+     it must not shrink, because a tick-box narrower than its tick is not a
+     control. The chrome went from both states in the rule above. */
+  .queue-mobile-bar.picking .check { flex: none; gap: 0; }
 
   /* ── the row as a card ─────────────────────────────────────────────────── */
 

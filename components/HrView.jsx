@@ -76,6 +76,12 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
       <PrintFormBatch
         employees={printing.employees}
         period={period}
+        // สถานะที่นับ, the same value the table and both CSVs are read with.
+        // What it is worth on the paper is the route's decision — under the
+        // shipped `formPrintScope` it is ignored and the sheets are
+        // approved-only — but the screen must say what it is looking at, or a
+        // strict policy and a wide filter cannot tell each other apart.
+        status={statusFilter}
         onClose={() => setPrinting(null)}
       />
     );
@@ -86,6 +92,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
       <PrintForm
         employeeId={printing.employeeId}
         period={period}
+        status={statusFilter}
         onClose={() => setPrinting(null)}
       />
     );
@@ -147,11 +154,20 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
               was printed from. Each sheet is fetched the way the per-row button
               fetches it, so a page in the bundle and a page printed on its own
               are the same page. */}
-          {/* THE ONE FILLED BUTTON ON THE SCREEN. All three of these were
-              ghosts, which made the row read as three equal offers — and they
-              are not: this is what the month is for. The two CSVs are what
-              somebody takes away afterwards, and the outline says so without
-              saying it quietly enough to be missed. */}
+          {/* THE ONE FILLED BUTTON ON THE SCREEN. All three of these were ghosts,
+              which made the row read as three equal offers — and they are not:
+              this is what the month is for. The two CSVs are what somebody takes
+              away afterwards.
+
+              THE FILL IS WHAT SEPARATES THEM, and it is enough on its own. The
+              two exports were green outlines for a while — `.btn.outline`, the
+              middle voice — which said "same family as the filled one, one step
+              down". True, and it made this the only screen in the app where a
+              secondary button is green: สรุป OT ส่งบัญชี has exactly this shape,
+              one filled export beside พิมพ์แบบฟอร์ม / บันทึกเป็น PDF, and draws
+              its second button as a plain ghost. Two screens doing the same job
+              in two voices is a difference a reader has to account for, and
+              there is nothing here to account for. */}
           <button
             className="btn"
             disabled={!data?.employees?.length}
@@ -162,7 +178,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
             {data?.employees?.length ? ` (${data.employees.length} คน)` : ''}
           </button>
           <button
-            className="btn outline"
+            className="btn ghost"
             onClick={() => api.download(
               `/exports/entries.csv?period=${period}&status=${statusFilter}`,
               `OT-${period}.csv`,
@@ -171,7 +187,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
             ส่งออกรายรายการ (CSV)
           </button>
           <button
-            className="btn outline"
+            className="btn ghost"
             onClick={() => api.download(
               `/exports/monthly.csv?period=${period}&status=${statusFilter}`,
               `OT-monthly-${period}.csv`,

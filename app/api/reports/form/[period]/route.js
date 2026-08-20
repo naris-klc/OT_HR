@@ -11,7 +11,7 @@ import { companyOf } from '@/src/config/companies.js';
 import { signsForCompany } from '@/lib/entries.js';
 import {
   PERIOD_RE, actingNotes, previousPeriod, thaiMonth, min, max, latestPerSession,
-  formDayTypes, reportStatuses,
+  formDayTypes, formPrintStatuses,
 } from '@/lib/reports.js';
 
 /**
@@ -43,10 +43,24 @@ export const GET = route(async (req, { params }) => {
     return fail('ดูได้เฉพาะพนักงานในแผนกของตน', 403);
   }
 
-  // Withdrawn and refused requests are on nobody's F-HR-027 — see
-  // `reportStatuses`. The sheet is a statement of what a person worked.
-  const statuses = reportStatuses(q.status);
   const policy = await Setting.effectivePolicy();
+
+  /**
+   * WHICH ROWS THIS SHEET MAY CARRY — the policy's answer first, the screen's
+   * request only where the policy defers to it.
+   *
+   * Decided HERE rather than on the print screen, and that placement is the
+   * setting. `?status=` arrives from a browser: under เฉพาะรายการที่อนุมัติแล้ว
+   * a client that sends the wider list — a stale tab, a typed URL, a screen
+   * added later that forgot — must still be answered with approved rows alone,
+   * or the strict answer is a convention rather than a rule. See
+   * `formPrintStatuses` in lib/reports.js for the table.
+   *
+   * Withdrawn and refused requests are on nobody's F-HR-027 under any of the
+   * three answers: `reportStatuses` drops them inside that function, as it does
+   * for every other report. The sheet is a statement of what a person worked.
+   */
+  const { scope: printScope, statuses } = formPrintStatuses(policy, q.status);
 
   // An overnight session started on the last day of the previous month spills
   // into this month, so widen the query by one period and filter by segment.
@@ -151,6 +165,39 @@ export const GET = route(async (req, { params }) => {
         [BUCKETS.OT3_HOLIDAY]: BUCKET_LABEL_TH[BUCKETS.OT3_HOLIDAY],
       },
       rows,
+      /**
+       * Which of the three answers to `formPrintScope` produced this sheet.
+       *
+       * Returned on every print, not only the ones it changed, because the
+       * screen has to be able to explain a sheet that ignored สถานะที่นับ. Under
+       * เฉพาะรายการที่อนุมัติแล้ว the filter is deliberately not consulted, and
+       * a print that quietly disagrees with the table above it — with no reason
+       * on the page — is the thing this whole setting exists to stop.
+       */
+      printScope,
+      /**
+       * The rows on this sheet that nobody has approved yet — empty under the
+       * strict answer, by construction.
+       *
+       * Named for the screen the way `hidden` is, and for the opposite reason:
+       * `hidden` is hours that are NOT on the paper, this is hours that ARE and
+       * should not be signed for as though they were settled. The paper says so
+       * itself with (รออนุมัติ) in the description cell; this is the list, so
+       * whoever pressed print can act on it without reading 31 rows.
+       */
+      pending: shown
+        .filter((e) => e.status !== 'approved'
+          && (e.segments || []).some((s) => byDate.has(s.date)))
+        .map((e) => ({
+          id: String(e._id),
+          workDate: e.workDate,
+          from: e.startTime,
+          to: e.endTime,
+          description: e.description,
+          otHours: e.totals?.otHours ?? 0,
+          status: e.status,
+          statusLabel: STATUS_LABEL_TH[e.status],
+        })),
       /**
        * Who filled rows in and who signed them, when that was not the obvious
        * person — the note block under the grid.

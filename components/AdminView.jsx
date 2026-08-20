@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import {
@@ -27,7 +27,9 @@ import {
 import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { searchPeople, personMatches } from '@/lib/personSearch.js';
-import { Alert, Empty, Modal, Field, TipButton, PickPerson, ClearButton } from './common.jsx';
+import {
+  Alert, Empty, Modal, Field, TipButton, PickPerson, ClearButton, useScrollEdge,
+} from './common.jsx';
 import Delegation from './Delegation.jsx';
 
 const SECTIONS = [
@@ -55,25 +57,63 @@ const SECTIONS = [
  */
 export default function AdminView({ user, initialSection }) {
   const [section, setSection] = useState(initialSection || 'departments');
+  const roster = useRoster();
+  const [tabsRef, tabsEdge] = useScrollEdge(null);
+
+  /**
+   * The number on แผนกและเพดาน — departments nobody can sign for.
+   *
+   * Computed from the roster THIS COMPONENT HOLDS, not reported upwards by the
+   * section that draws the banner. A badge that only appeared once you had
+   * opened the tab it is on would be a warning that arrives after the thing it
+   * warns about, and the one arrival that skips แผนกและเพดาน is the policy-drift
+   * link from the approval queues — which lands on a settings screen precisely
+   * because something needed attention.
+   */
+  const gapCount = signingGaps(roster.rows, roster.people).length;
+
   return (
     <>
       <div className="card">
         {/* `.section-tabs` is what keeps these flush when they wrap — six
             labels of six different lengths otherwise leave a ragged right
-            edge on every screen narrower than a desktop. */}
-        <div className="row section-tabs">
-          {SECTIONS.map((s) => (
-            <button
-              key={s.key}
-              className={`btn ${section === s.key ? '' : 'ghost'}`}
-              onClick={() => setSection(s.key)}
-            >
-              {s.label}
-            </button>
-          ))}
+            edge on every screen narrower than a desktop.
+
+            The wrapper is not decoration: below 860px the strip stops wrapping
+            and scrolls, and `data-edge` is what puts a fade on whichever side
+            still has tabs behind it. It hangs on the WRAPPER because anything
+            painted inside a scroll container scrolls away with the content —
+            a fade that slides off the edge it marks says the tabs have run out
+            at the moment they have not. Above the breakpoint the strip wraps,
+            nothing overflows, `data-edge` reads `none` and this is an ordinary
+            div. See `useScrollEdge` in common.jsx. */}
+        <div className="tabs-view" data-edge={tabsEdge}>
+          <div className="row section-tabs" ref={tabsRef}>
+            {SECTIONS.map((s) => (
+              <button
+                key={s.key}
+                className={`btn ${section === s.key ? '' : 'ghost'}`}
+                onClick={() => setSection(s.key)}
+              >
+                {s.label}
+                {/* On the tab, not beside it: the count belongs to the section
+                    and has to travel with it when the strip scrolls. Rendered
+                    only when there is something to count — a permanent “0”
+                    would leave the one state that matters looking like the
+                    other five tabs. */}
+                {s.key === 'departments' && gapCount > 0 && (
+                  <span className="tab-badge" aria-label={`${gapCount} แผนกที่ยังไม่มีหัวหน้างาน`}>
+                    {gapCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-      {section === 'departments' && <Departments onGo={setSection} />}
+      {section === 'departments' && (
+        <Departments onGo={setSection} roster={roster} />
+      )}
       {section === 'employees' && <Employees user={user} />}
       {section === 'holidays' && <Holidays />}
       {section === 'policy' && <Policy user={user} />}
@@ -83,7 +123,74 @@ export default function AdminView({ user, initialSection }) {
   );
 }
 
+/**
+ * The two lists แผนกและเพดาน is built out of, read once for the whole screen.
+ *
+ * IN THE PARENT RATHER THAN IN `Departments`, because two things now depend on
+ * them and only one of them is on that tab: the section draws the table and the
+ * banner, and the tab strip above draws a count of the departments nobody can
+ * sign for. Left where it was, the badge would have had to be reported upwards
+ * by the section that owns the data — which means no badge until the tab has
+ * been opened, on a screen whose whole purpose is to say what needs doing.
+ *
+ * ONE FETCH, NOT TWO. The alternative — a second read of the same two endpoints
+ * here, just for the number — would be two answers to one question, and the day
+ * they disagreed the badge would say 1 over a table showing none.
+ *
+ * `reload` is handed down because every write on that tab is the section's:
+ * creating a department, editing one, toggling a ceiling. They change what this
+ * holds, so they say so.
+ */
+function useRoster() {
+  const [rows, setRows] = useState([]);
+  const [people, setPeople] = useState([]);
+  const [error, setError] = useState('');
+
+  const reload = useCallback(async () => {
+    try {
+      const [d, e] = await Promise.all([
+        api.get('/departments?all=1'),
+        api.get('/employees?all=1'),
+      ]);
+      setRows(d.departments);
+      setPeople(e.employees);
+      setError('');
+    } catch (err) { setError(err.message); }
+  }, []);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  return { rows, people, error, reload };
+}
+
 // ── departments ─────────────────────────────────────────────────────────────
+
+/**
+ * Departments whose roster holds somebody no หัวหน้า can sign for.
+ *
+ * ONE DEFINITION OF “มีปัญหา”, consulted by three things that must agree: the
+ * red banner, the filter chip above the table, and the number on the tab. Three
+ * readings of it would be three chances for the badge to say 1 while the chip
+ * says none, and a warning that contradicts the screen it is on teaches people
+ * to stop reading it.
+ *
+ * `unsignedStaff` rather than a rule written for the screen — the same function
+ * the two write paths call, which is the same question the approve route asks
+ * when a request finally arrives.
+ */
+function signingGaps(departments, people) {
+  const active = (people || []).filter((p) => p.active !== false);
+  return (departments || [])
+    .map((d) => {
+      const roster = active.filter((p) => idOf(p.department) === String(d._id));
+      return {
+        dept: d,
+        managers: roster.filter((p) => p.role === 'manager'),
+        stranded: unsignedStaff(roster, String(d._id)),
+      };
+    })
+    .filter((g) => g.stranded.length);
+}
 
 /**
  * WHO SIGNS FOR THIS แผนก — read from the roster, not from the department row.
@@ -212,18 +319,7 @@ function Heads({ department, people }) {
  * a screen comes to promise a signature the server then refuses.
  */
 function SigningCoverage({ departments, people, onGo }) {
-  const active = people.filter((p) => p.active !== false);
-
-  const gaps = departments
-    .map((d) => {
-      const roster = active.filter((p) => idOf(p.department) === String(d._id));
-      return {
-        dept: d,
-        managers: roster.filter((p) => p.role === 'manager'),
-        stranded: unsignedStaff(roster, String(d._id)),
-      };
-    })
-    .filter((g) => g.stranded.length);
+  const gaps = signingGaps(departments, people);
 
   if (!gaps.length) return null;
 
@@ -261,18 +357,28 @@ function SigningCoverage({ departments, people, onGo }) {
           Both of them, not one. The banner has always said there are two ways
           out, and which one is right depends on something this screen cannot
           know — whether the department is short a หัวหน้า for good or short one
-          this week. Picking a single "quick action" would be the screen making
-          that call on the reader's behalf.
+          this week.
 
-          The sentence still says what each one does, because a button label has
-          room for a destination and not for a rule. */}
+          ONE OF THEM IS FILLED AND THE OTHER IS NOT, and that is a change from
+          two identical ghosts. Two buttons of equal weight in a red banner is a
+          fork with no default: the eye takes the leftmost, which is the right
+          answer by accident rather than by design. Filling the first one says
+          which is the ordinary repair — appointing or re-scoping a หัวหน้า is
+          what CLOSES this warning, and it is the only one of the two that does.
+          ผู้รับช่วงอนุมัติ is a stand-in with an end date: it clears the queue and
+          leaves the department exactly as uncovered as it was, so the banner is
+          still here tomorrow. A secondary button is what that is.
+
+          It is a hierarchy, not a recommendation. Both are still one press away
+          and the sentence still names what each one does, because a button label
+          has room for a destination and not for a rule. */}
       <div className="alert-actions">
         <span>
           แก้ได้สองทาง — ตั้งหรือแก้ “เซ็นให้บริษัท” ของหัวหน้า หรือตั้งผู้รับช่วงอนุมัติ
         </span>
         {onGo && (
           <>
-            <button className="btn ghost sm" onClick={() => onGo('employees')}>
+            <button className="btn sm" onClick={() => onGo('employees')}>
               ตั้งค่าหัวหน้างาน
             </button>
             <button className="btn ghost sm" onClick={() => onGo('delegation')}>
@@ -285,11 +391,19 @@ function SigningCoverage({ departments, people, onGo }) {
   );
 }
 
-function Departments({ onGo }) {
-  const [rows, setRows] = useState([]);
-  const [people, setPeople] = useState([]);
+function Departments({ onGo, roster }) {
+  const { rows, people, reload: load } = roster;
   /** Whether เพิ่มแผนก is open — the only way this screen creates a row. */
   const [adding, setAdding] = useState(false);
+  /**
+   * The chip above the table — everything, or only what needs somebody.
+   *
+   * State on this component and not in the URL: it is a way of reading the
+   * table in front of you, not a place to come back to, and a filter that
+   * survives a reload would leave HR looking at three of eight departments with
+   * no memory of having asked for that.
+   */
+  const [onlyGaps, setOnlyGaps] = useState(false);
   /**
    * The row แก้ไขแผนก is open on, or null.
    *
@@ -301,14 +415,13 @@ function Departments({ onGo }) {
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
-  async function load() {
-    try {
-      const [d, e] = await Promise.all([api.get('/departments?all=1'), api.get('/employees?all=1')]);
-      setRows(d.departments);
-      setPeople(e.employees);
-    } catch (err) { setError(err.message); }
-  }
-  useEffect(() => { load(); }, []);
+  /**
+   * Which departments have nobody to sign for them — the same reading the
+   * banner above the table and the number on the tab are drawn from.
+   */
+  const gaps = signingGaps(rows, people);
+  const gapIds = new Set(gaps.map((g) => String(g.dept._id)));
+  const shownRows = onlyGaps ? rows.filter((d) => gapIds.has(String(d._id))) : rows;
 
   /**
    * Create one row from the dialog.
@@ -355,13 +468,49 @@ function Departments({ onGo }) {
       <div className="hint">
         เพดานชั่วโมงกำหนดรายแผนกและไม่บังคับ — เว้นว่างหมายถึงไม่มีเพดาน ซึ่งไม่เหมือนกับเพดาน 0
       </div>
-      {error && <Alert kind="error">{error}</Alert>}
+      {(error || roster.error) && <Alert kind="error">{error || roster.error}</Alert>}
       {ok && <Alert kind="ok">{ok}</Alert>}
 
       {/* Above the table rather than in it: a department with nobody to sign
           for its people is not a column of that department's row, it is a thing
           somebody has to go and do. */}
       <SigningCoverage departments={rows} people={people} onGo={onGo} />
+
+      {/* ── the two ways to read the table ────────────────────────────────────
+          BETWEEN THE BANNER AND THE TABLE, because that is the seam it belongs
+          to: the banner names departments and the table holds them, and this is
+          how you get from one to the other on a roster of any size. The banner
+          lists the gaps in prose; on eight departments that is enough, and the
+          day there are thirty it is a paragraph to read against a table to
+          scroll. The chip is the same finding as a lever.
+
+          RENDERED ONLY WHEN THERE IS SOMETHING TO FILTER. A pair of chips
+          reading “ไม่มีหัวหน้า (0)” on a healthy roster is a control that can
+          only ever be pressed to show nothing, sitting where the warning would
+          be — furniture that says every day what it should only say on the day
+          it is true. Nothing to fix, nothing here. */}
+      {gaps.length > 0 && (
+        <div className="filter-chips" role="group" aria-label="กรองรายการแผนก">
+          <button
+            type="button"
+            className={`filter-chip ${onlyGaps ? '' : 'on'}`}
+            aria-pressed={!onlyGaps}
+            onClick={() => setOnlyGaps(false)}
+          >
+            แสดงทั้งหมด
+            <span className="n">{rows.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`filter-chip warn ${onlyGaps ? 'on' : ''}`}
+            aria-pressed={onlyGaps}
+            onClick={() => setOnlyGaps(true)}
+          >
+            ไม่มีหัวหน้างาน
+            <span className="n">{gaps.length}</span>
+          </button>
+        </div>
+      )}
 
       {/*
         `dept-table` is the hook the phone layout hangs on — below 860px the same
@@ -382,7 +531,7 @@ function Departments({ onGo }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((d) => (
+            {shownRows.map((d) => (
               <tr key={d._id}>
                 <td className="code-col">{d.code}</td>
                 <td className="name-col">
@@ -3730,6 +3879,69 @@ const POLICY_FIELDS = [
       + 'แต่ใบที่พิมพ์ไปแล้วยังเป็นแบบเดิม — เปลี่ยนกลางเดือนแล้วพิมพ์ซ้ำ ตัวเลขบนใบสองใบจะไม่เท่ากัน',
   },
   {
+    section: 4,
+    key: 'formPrintScope', label: 'นโยบายการพิมพ์ใบขออนุมัติ OT',
+    /**
+     * STRICT IS FIRST AND IS THE SHIPPED ANSWER. The first option in a list
+     * reads as the recommended one, and on this rule it is: the sheet has two
+     * signature columns on it, and a row nobody has approved sitting in a total
+     * somebody is about to sign for is the failure this setting exists to stop.
+     * The other two answers are for reading a month, not for filing one.
+     */
+    options: [
+      ['approved', 'เฉพาะรายการที่อนุมัติแล้ว (ค่าเริ่มต้น)'],
+      ['screen', 'ตาม “สถานะที่นับ” ที่เลือกบนหน้าตรวจสอบรายเดือน'],
+      ['draft', 'รวมรายการที่รออนุมัติด้วยเสมอ (ใบร่างไว้ตรวจ)'],
+    ],
+    /**
+     * ONE SENTENCE SAYING WHAT IS BEING ASKED, and the three answers explain
+     * themselves below it — see `optionHints`.
+     *
+     * It shipped as a six-clause paragraph carrying the whole rule: that the
+     * strict answer overrides สถานะที่นับ, where the (รออนุมัติ) mark prints,
+     * that the line under the grid is conditional, and that nothing recomputes.
+     * All true, and none of it is what somebody opening this page is deciding —
+     * they are choosing between three answers, and the paragraph described the
+     * answers without naming which was which. The same trade `maxAdvance-
+     * SubmissionDays` made on 2026-08-19: a paragraph nobody finishes explains
+     * less than a line everybody reads.
+     *
+     * What was removed is not lost. The override is named in the answer's own
+     * note; the consequence of the two loose answers is in `warn`, where it
+     * appears as they are chosen; and the mechanism is over `formPrintScope` in
+     * src/config/policy.js. The block heading above already says the group
+     * changes no hours.
+     */
+    hint: 'กำหนดข้อมูลที่จะนำมาแสดงในใบขออนุมัติ OT (F-HR-027) เมื่อสั่งพิมพ์เอกสาร',
+    /**
+     * WHAT EACH ANSWER IS FOR, all three at once, because this row is a choice
+     * between them rather than a switch. A note that appeared only under the
+     * selected option would explain the answer already given and say nothing
+     * about the two being weighed against it.
+     *
+     * Each line names the DOCUMENT the answer produces — เอกสารจริงส่งบัญชี,
+     * ตามฟิลเตอร์บนหน้าจอ, ใบร่างเดินเรื่อง. That is the thing HR is actually
+     * choosing; the statuses are how it is done.
+     */
+    optionHints: {
+      approved: 'พิมพ์เฉพาะรายการที่ผ่านการอนุมัติครบถ้วน เหมาะสำหรับเป็นเอกสารจริงส่งฝ่ายบัญชี',
+      screen: 'ยึดข้อมูลตามฟิลเตอร์บนหน้าจอขณะสั่งพิมพ์ (ยืดหยุ่นตามการใช้งาน)',
+      draft: 'ดึงทุกรายการรวมถึงรายการค้างอนุมัติ โดยจะแสดงแท็ก “(รออนุมัติ)” '
+        + 'ในช่องรายละเอียดงาน เหมาะสำหรับพิมพ์เป็นใบร่างเดินเรื่อง',
+    },
+    /**
+     * On both loose answers, because both put unapproved hours onto a document
+     * with signature columns. What the warning names is the consequence that is
+     * not visible from this page: the sheet is signed and filed, and the row it
+     * carried can still be refused afterwards.
+     */
+    warn: (value) => (value === 'approved'
+      ? ''
+      : '⚠️ คำเตือน: เอกสารที่พิมพ์จะรวมรายการที่ยังไม่อนุมัติเข้ามาด้วย '
+        + 'หากนำไปลงลายเซ็นอาจทำให้ยอดในกระดาษไม่ตรงกับยอดจ่ายจริงในระบบ '
+        + 'หากรายการนั้นถูกปฏิเสธในภายหลัง'),
+  },
+  {
     section: 5,
     key: 'maxAdvanceSubmissionDays', num: true, nullable: true,
     label: 'จำนวนวันที่อนุญาตให้ยื่น OT ล่วงหน้า (วัน)',
@@ -4322,6 +4534,24 @@ function Policy({ user }) {
                   </span>
                   <div className="policy-label">{f.label}</div>
                   {f.hint && <div className="hint policy-help">{f.hint}</div>}
+                  {/* What each answer is for, under the question and not under
+                      the control, for the reason `.policy-help` above it is:
+                      this explains what is being ASKED, and the answer to it is
+                      in the opposite column. Optional per field — a rule whose
+                      options need no gloss declares none and renders nothing,
+                      which is every other row on this page today. */}
+                  {f.optionHints && (
+                    <dl className="policy-options">
+                      {f.options
+                        .filter(([v]) => f.optionHints[String(v)])
+                        .map(([v, l]) => (
+                          <React.Fragment key={String(v)}>
+                            <dt>{l}</dt>
+                            <dd>{f.optionHints[String(v)]}</dd>
+                          </React.Fragment>
+                        ))}
+                    </dl>
+                  )}
                   {items.map((u) => (
                     <React.Fragment key={u.id}>
                       <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />

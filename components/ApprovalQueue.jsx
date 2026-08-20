@@ -5,11 +5,11 @@ import {
   api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
 import {
-  capFigure, describeBreaches, overCap, overCapLine,
-  pendingCapNote, pendingSplitLine,
+  capChips, capFigure, describeBreaches, overCapLine,
+  pendingCapNote,
 } from '@/lib/caps.js';
 import {
-  MAX_LIST_LIMIT, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
+  MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
@@ -539,15 +539,33 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
           up with the tick-boxes it selects.
         */}
         {actionable.length > 0 && (
-          <div className="queue-mobile-bar no-print">
+          <div className={`queue-mobile-bar no-print${picked.length > 0 ? ' picking' : ''}`}>
+            {/*
+              THE LABEL GIVES ITS ROOM AWAY THE MOMENT SOMETHING IS TICKED.
+
+              With nothing selected the box needs its words: เลือกทั้งหมด (12) is
+              the only way to build a batch on a phone, and a bare tick-box under
+              a row of filters says nothing about what it does.
+
+              With something selected the words are wrong anyway — the box no
+              longer selects all, it toggles — and the tally beside it describes
+              the pile far better than "เลือกทั้งหมด" ever did. So the label drops
+              to the mark alone, and the room it gives back is what pays for the
+              two decisions moving up onto the same line.
+
+              `aria-label` rather than the visible text in both states: what the
+              control DOES is the same either way, and a screen reader should not
+              hear it renamed to a tally halfway through a selection.
+            */}
             <label className="check">
               <input
                 ref={allMobileRef}
                 type="checkbox"
                 checked={selected.size === actionable.length}
                 onChange={toggleAll}
+                aria-label="เลือกทั้งหมด"
               />
-              เลือกทั้งหมด ({actionable.length})
+              {picked.length === 0 && <>เลือกทั้งหมด ({actionable.length})</>}
             </label>
             {/*
               THE DECISION SITS WITH THE CONTROL THAT MADE THE SELECTION.
@@ -572,42 +590,60 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
             */}
             {picked.length > 0 && (
               <>
-                {/* The tally, on the same line as เลือกทั้งหมด rather than under
-                    it. "เลือกแล้ว 3 รายการ (26.00 ชม.)" was a sentence on a row
-                    of its own, and it is not a sentence anybody reads twice —
-                    it is two numbers being checked before a press. Two numbers
-                    fit beside the tick-box; the sentence did not. */}
+                {/* The tally, sharing the line with the tick-box rather than
+                    sitting under it. "เลือกแล้ว 3 รายการ (26.00 ชม.)" was a
+                    sentence on a row of its own, and it is not a sentence
+                    anybody reads twice — it is two numbers being checked before
+                    a press. Two numbers fit beside the tick-box; the sentence
+                    did not.
+
+                    เลือก is in a span of its own because it is the one word here
+                    that can go: on a 360px screen the numbers and the two
+                    buttons come first, and a tick-box that is visibly ticked has
+                    already said "เลือก". */}
                 <div className="picked-sum">
+                  <span className="lead">เลือก </span>
                   <strong>{picked.length}</strong> ใบ · {hours(pickedHours)} ชม.
                 </div>
-                {/* ล้างการเลือก as a mark in the corner, not a full-width link
-                    under the decisions. Undoing a selection is the cheapest
-                    thing on this bar and it was taking the most room — and a
-                    third full-width control under two others reads as a third
-                    decision, which it is not. The label survives for anybody
-                    who cannot see the mark. */}
-                <button
-                  type="button"
-                  className="picked-clear"
-                  disabled={busy}
-                  onClick={() => setSelected(new Set())}
-                  aria-label="ล้างการเลือก"
-                  title="ล้างการเลือก"
-                >
-                  ✕
-                </button>
-                {/* The two decisions, side by side on their own line — the only
-                    part of this box that is worth a touch target. */}
+                {/* THE WHOLE DECISION, IN ONE GROUP, ON ONE LINE.
+
+                    Short labels, and the same shape on both: อนุมัติ (3) beside
+                    ไม่อนุมัติ (3), equal halves of what is left after the tally.
+                    "ยืนยันอนุมัติทั้งหมด (3 รายการ)" is what the DIALOG says —
+                    it has a whole sheet to say it in and it is the last thing
+                    read before payroll. A bar button is not that: it is the
+                    thing you press to GET to the sheet, and at this width the
+                    sentence either wrapped to two lines or squeezed the refusal
+                    beside it down to nothing.
+
+                    Both carry the count, because one counting and one not, side
+                    by side, reads as the uncounted one doing something else.
+
+                    ✕ closes the group instead of floating in the corner — three
+                    controls that act on the selection, in the order they would
+                    be reached for. It stays smaller than the two beside it: the
+                    44px floor is for decisions that cannot be taken back, and
+                    this one costs a tap. */}
                 <div className="picked-actions">
                   <button className="btn sm" disabled={busy} onClick={() => setConfirming(picked)}>
-                    {pileLabel(isHr, picked.length)}
+                    {verb} ({picked.length})
                   </button>
                   <button
                     className="btn ghost danger sm"
                     disabled={busy}
                     onClick={() => setRejecting(picked)}
                   >
-                    ไม่อนุมัติ
+                    ไม่อนุมัติ ({picked.length})
+                  </button>
+                  <button
+                    type="button"
+                    className="picked-clear"
+                    disabled={busy}
+                    onClick={() => setSelected(new Set())}
+                    aria-label="ล้างการเลือก"
+                    title="ล้างการเลือก"
+                  >
+                    ✕
                   </button>
                 </div>
               </>
@@ -941,7 +977,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
       {detail && (
         <DetailModal
           entry={detail}
-          verb={verb}
+          isHr={isHr}
           busy={busy}
           mine={isOwnFiling(detail, user)}
           onClose={() => setDetail(null)}
@@ -964,10 +1000,10 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
  * only ever had one of the two accounts open. So the confirming half of the
  * sentence is dropped where the verb already IS "confirm".
  *
- * One function because two places say it now: the bar at the top of the queue
- * and the dialog it opens. They were separately worded until the bar moved up
- * here, and a button whose label changes on the way to the dialog that repeats
- * it is a second thing to read.
+ * The DIALOG's button, and only it. The bar that opens the dialog says the same
+ * verb with the same count — อนุมัติ (3) — and nothing else: a bar button is
+ * pressed to reach this sheet, while this one is the last thing read before the
+ * hours move, and it is the one with a sheet's width to spell it out in.
  */
 function pileLabel(isHr, count) {
   if (isHr) return count > 1 ? `ยืนยันทั้งหมด (${count} รายการ)` : 'ยืนยัน 1 รายการ';
@@ -985,7 +1021,7 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
   const capped = entries.filter((e) => e.capExceeded);
   const many = entries.length > 1;
 
-  // The same words the bar that opened this dialog used — see `pileLabel`.
+  // Same verb and same count as the button that opened this — see `pileLabel`.
   const confirmLabel = pileLabel(isHr, entries.length);
 
   return (
@@ -1174,7 +1210,7 @@ function RejectFields({ value, onChange, many }) {
  * history and the scan comparison at the exact moment they are being explained
  * in writing. The refusal happens here, over the top of the same header.
  */
-function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, onReject, onEntryChanged }) {
+function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, onReject, onEntryChanged }) {
   const [mode, setMode] = useState('view'); // 'view' | 'rejecting'
   const [rejectState, setRejectState] = useState({
     reason: '', notify: { employee: true, manager: false },
@@ -1204,9 +1240,27 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
     return () => { live = false; };
   }, [e._id, parentId]);
 
+  /*
+   * NO ปิด. It was the leftmost of three buttons and the only one that changed
+   * nothing, and this dialog already closes four other ways: the ✕ in its own
+   * header, Escape, a tap on the backdrop, and a swipe down on the sheet. A
+   * fifth door, given a third of the foot and first place in the reading order,
+   * was the widest thing here doing the least.
+   *
+   * What is left is the question and its two answers, in equal halves — see
+   * `.foot-split` in app/styles.css.
+   *
+   * `mine` — the reviewer's own filing — has no answers to offer, so it gets no
+   * foot at all rather than a bar holding one button that means "go away". The
+   * body says why the decisions are not there, and the ✕ closes it.
+   */
   const footer = mode === 'rejecting' ? (
-    <>
-      <button className="btn ghost" onClick={() => setMode('view')}>ย้อนกลับ</button>
+    <div className="foot-split">
+      {/* NOT a way out: it goes back to the reading, which is the whole reason
+          the refusal is typed over the top of this pop-up rather than in a
+          dialog of its own. Quiet, because the decision beside it is the one
+          being asked for. */}
+      <button className="btn quiet" onClick={() => setMode('view')}>ย้อนกลับ</button>
       <button
         className="btn danger"
         disabled={busy || !rejectState.reason.trim()}
@@ -1214,30 +1268,58 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
       >
         ยืนยันไม่อนุมัติ
       </button>
-    </>
-  ) : mine ? (
-    // The reviewer filed this one. Neither decision is theirs to make, so the
-    // pop-up closes and says why rather than repeating the row's two dead
-    // buttons — the way out is on the row itself (ถอนใบวันเกิด) or another
-    // reviewer.
-    <button className="btn ghost" onClick={onClose}>ปิด</button>
-  ) : (
-    <>
-      <button className="btn ghost" onClick={onClose}>ปิด</button>
+    </div>
+  ) : mine ? null : (
+    <div className="foot-split">
       {/* Both decisions are shut while the hours are open for editing: a
           correction half-typed is not a basis for either one. */}
       <button className="btn ghost danger" disabled={busy || editing} onClick={() => setMode('rejecting')}>
         ไม่อนุมัติ
       </button>
-      <button className="btn" disabled={busy || editing} onClick={onApprove}>{verb}</button>
-    </>
+      {/*
+        THE BUTTON NAMES WHAT IT SIGNS, because here it is on its own.
+
+        Everywhere else the decision comes with its pile: อนุมัติ (3) on the bar,
+        ยืนยันทั้งหมด (3 รายการ) in the dialog — the count says what is being
+        acted on. This one decides the entry the pop-up is already showing, so
+        there is no count, and bare "ยืนยัน" is the word every OK button in the
+        app uses. ฝ่ายบุคคล get ยืนยันใบ OT: the same act, with its object said
+        out loud.
+
+        A หัวหน้า keeps อนุมัติ. It is already a verb that only means one thing,
+        and "อนุมัติใบ OT" beside a pop-up titled with the employee's name and
+        the date is the app repeating what the reader is looking at.
+      */}
+      <button className="btn" disabled={busy || editing} onClick={onApprove}>
+        {isHr ? 'ยืนยันใบ OT' : 'อนุมัติ'}
+      </button>
+    </div>
   );
 
   return (
     <Modal
       wide
       title={e.employee?.name}
-      subtitle={`${e.employee?.code} · ${e.department?.nameTh || e.department?.name} · ${thaiDate(e.workDate)} (วัน${dayName(e.workDate)})`}
+      /*
+       * WHO, THEN WHEN — two lines, not one run-on.
+       *
+       * It was one string: code · department · date · day-name, which on a
+       * phone is three lines of 12.5px grey under the name and no way to tell
+       * at a glance which part answers which question. They are two different
+       * questions. Who this is — the code and the แผนก — identifies the person
+       * and belongs against the name. When it was — the date and its day — is
+       * what the decision is actually about, and it now has a line to itself.
+       */
+      subtitle={(
+        <>
+          <span className="s-who">
+            {e.employee?.code} · {e.department?.nameTh || e.department?.name}
+          </span>
+          <span className="s-when">
+            {thaiDate(e.workDate)} (วัน{dayName(e.workDate)})
+          </span>
+        </>
+      )}
       /* The number being decided about, kept out of the scroll area — it is
          the one thing that must not move while the body does, and the one
          Quick Edit changes. */
@@ -1310,59 +1392,28 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
                   ? describeBreaches(e).map((b) => b.text).join(' · ')
                   : 'ไม่'}
               />
-              {/* The row's figure again, because this pop-up is where a reviewer
-                  looks at one request in isolation — which is the habit that
-                  made the running total worth showing in the first place.
-                  `capExceeded` above is what the ceilings said when the request
-                  was FILED; this is what they say now, and a month that has
-                  filled up since is exactly the difference. */}
-              {e.usage?.month && (
-                <Fact
-                  wide
-                  /* The column's own heading, plus the month it is about. Named
-                     "สะสมทั้งเดือน" until the two screens' headings were settled
-                     on สะสม / เพดาน — a pop-up opened from a column should not
-                     rename the column on the way. */
-                  k={`สะสม / เพดาน · ${periodLabel(e.usage.month.period)}`}
-                  v={(
-                    <span style={e.usage.month.exceeded ? OVER_CAP : undefined}>
-                      {/*
-                        THE ROW'S HEADLINE, NOT THE CEILING'S TOTAL.
-                        This led with `usedHours` — 38.5 where the row it was
-                        opened from led with 7.5. The qualifier was carried
-                        across faithfully and the NUMBER underneath it was not,
-                        so a reviewer who opened this pop-up because they
-                        distrusted the figure on the row was shown a different
-                        figure, in a larger type, with no way to tell which of
-                        the two the ceiling was about. Both numbers are still
-                        here; they are simply in the order the row, this cell
-                        and ตรวจสอบรายเดือน all now use.
-                      */}
-                      {capFigure(e.usage.month.approvedHours, e.usage.month.capHours)} ชม.
-                    </span>
-                  )}
-                  sub={(
-                    <>
-                      {/* The shared sentence, first — it is what carries the
-                          ceiling's own total now that the headline does not. */}
-                      {capNote(e.usage.month) && <div>{capNote(e.usage.month)}</div>}
-                      {/* Kept under it: the split names the pending hours
-                          outright (31), which the sentence above does not. */}
-                      {splitLine(e.usage.month) && <div>{splitLine(e.usage.month)}</div>}
-                      {roomLine(e.usage.month) && <div>{roomLine(e.usage.month)}</div>}
-                      <div>
-                        {e.usage.counted
-                          ? `รวมใบนี้ ${hours(e.usage.month.adding)} ชม. แล้ว — ไม่ต้องบวกเพิ่ม`
-                          : 'ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน'}
-                      </div>
-                    </>
-                  )}
-                />
-              )}
             </dl>
-            <div className="split" style={{ marginTop: 12 }}>
+            {/* `ot-split` is what turns these into one horizontal strip on a
+                phone — see app/styles.css. Four stacked boxes there were most of
+                a screen for four numbers, three of which are usually 0.00. */}
+            <div className="split ot-split" style={{ marginTop: 12 }}>
+              {/*
+                A BUCKET AT ZERO IS MARKED, NOT DROPPED.
+
+                Most entries are one bucket and two noughts: an ordinary weekday
+                evening is ×1.5 วันปกติ and nothing else. On a phone those two
+                noughts are two more boxes in a strip that is already competing
+                with five sections for the height of one screen, so the sheet
+                hides them (`.ot-split .box.zero` in app/styles.css).
+
+                A CLASS AND NOT A FILTER, because a desktop reviewer reading the
+                same pop-up beside the printed form wants the buckets that did
+                NOT fill as much as the one that did — "×3 is 0.00" is an answer,
+                and on a wide screen it costs nothing to give it. One layout
+                decides it, in the stylesheet, at the width where it matters.
+              */}
               {Object.values(BUCKETS).map((b) => (
-                <div className="box" key={b}>
+                <div className={(e.buckets?.[b] || 0) === 0 ? 'box zero' : 'box'} key={b}>
                   <div className="k">{BUCKET_LABEL[b]}</div>
                   <div className="v">{hours(e.buckets?.[b])}</div>
                 </div>
@@ -1372,8 +1423,128 @@ function DetailModal({ entry: e, verb, busy, mine = false, onClose, onApprove, o
                 <div className="v">{hours(e.totals?.otHours)}</div>
               </div>
             </div>
-            <p className="note" style={{ marginTop: 10 }}>{e.description}</p>
           </Section>
+
+          {/*
+            THE REASON THE REQUEST EXISTS, ON A CARD THAT SAYS SO.
+
+            This has moved twice, and both moves were the same defect. It was a
+            bare <p> under the multiplier strip — the description with nothing in
+            front of it, between two cards — and a filing reading "ทดสอบ" was
+            twice taken for a stray word left in the markup and twice asked to be
+            deleted. It is not stray: it is the sentence the request is asking to
+            be paid for, and the same value the queue's รายละเอียด column prints.
+
+            A cell in the คำขอ grid fixed the label and not the shape: prose in a
+            box built for 17:30–19:30 and 2.00 ชม. still reads as a field that
+            overflowed. It is not a measurement, it is the answer to "why", so it
+            gets the width of the sheet and a label in words.
+
+            BETWEEN THE HOURS AND THE CEILING, which is the order the reading
+            goes: what was asked for, why, and then where the month stands.
+
+            AND IT SPEAKS WHEN IT IS EMPTY. `normaliseDescription` refuses a blank
+            on the form, so a filing cannot arrive without one — but a row the
+            birthday rule generated was never on a form. A card with a heading
+            and nothing under it is a question the pop-up asked itself and left
+            hanging; "ไม่ได้ระบุรายละเอียดงาน" is the answer, and it is a
+            different thing from a description that happens to be short.
+          */}
+          <div className="reason-card">
+            {/* NOT a `kicker-sm`. Every other heading in this pop-up is one —
+                mono, uppercase, tracked out — which is right for a heading over
+                a column of figures and wrong over a sentence: it turns the
+                label into the loudest thing in a card whose point is the words
+                under it. Sans, one size down from them, and grey. */}
+            <div className="reason-label">รายละเอียดงานที่ขอ OT</div>
+            {e.description
+              ? <p className="reason-text">{e.description}</p>
+              : <p className="reason-text none">ไม่ได้ระบุรายละเอียดงาน</p>}
+          </div>
+
+          {/*
+            THE MONTH, NOT THE REQUEST — so it is not in the request's grid.
+
+            This was a full-width cell at the end of "คำขอ", among เวลาที่ขอ,
+            พักเที่ยง and ชั่วโมงตามนาฬิกา. Those four cells answer "what was
+            asked for"; this one answers "where does this person's month
+            stand", which is a different question with a different subject and
+            the only thing on the pop-up that is true of other requests too.
+            Sharing a grid with them, it read as a fifth property of the
+            request — and it is the one figure here that a reviewer looks up
+            rather than reads past.
+
+            So: its own card, tinted, with the figure and the three chips
+            inside it. `capExceeded` in the grid above stays where it is —
+            that IS a property of the request: what the ceilings said on the
+            day it was filed. This card is what they say now.
+          */}
+          {e.usage?.month && (
+            <div className={e.usage.month.exceeded ? 'cap-card over' : 'cap-card'}>
+              <div className="cap-card-head">
+                {/* The column's own heading, plus the month it is about. Named
+                    "สะสมทั้งเดือน" until the two screens' headings were settled
+                    on สะสม / เพดาน — a pop-up opened from a column should not
+                    rename the column on the way. */}
+                <span className="kicker-sm">
+                  สะสม / เพดาน · {periodLabel(e.usage.month.period)}
+                </span>
+                {/*
+                  THE ROW'S HEADLINE, NOT THE CEILING'S TOTAL.
+                  This led with `usedHours` — 38.5 where the row it was opened
+                  from led with 7.5. The qualifier was carried across
+                  faithfully and the NUMBER underneath it was not, so a
+                  reviewer who opened this pop-up because they distrusted the
+                  figure on the row was shown a different figure, in a larger
+                  type, with no way to tell which of the two the ceiling was
+                  about. Both numbers are still here; they are simply in the
+                  order the row, this card and ตรวจสอบรายเดือน all now use.
+                */}
+                <span className="cap-card-fig">
+                  {capFigure(e.usage.month.approvedHours, e.usage.month.capHours)} ชม.
+                </span>
+              </div>
+              {/*
+                THREE NUMBERS, DRAWN AS THREE NUMBERS.
+
+                This was three sentences stacked under the figure — the split,
+                the room left over, and the ceiling's own total — and read once
+                each they are a word and a number apiece. Four lines of prose
+                under a fact that is already a fraction is a paragraph nobody
+                reads twice, on the one pop-up that has to stay short enough to
+                decide from.
+
+                Red on a chip carries what the prose said in words: อนุมัติแล้ว
+                goes red when the APPROVED hours alone are past the ceiling,
+                which is a fact nothing in this queue undoes, and เกิน goes red
+                when the total does — which may still be a projection. See
+                `capChips` in lib/caps.js.
+              */}
+              <div className="cap-chips">
+                {capChips(e.usage.month).map((c) => (
+                  <span key={c.k} className={c.over ? 'cap-chip over' : 'cap-chip'}>
+                    {c.k} <b>{hours(c.v)}</b> ชม.
+                  </span>
+                ))}
+              </div>
+              {/*
+                SAID ONLY WHEN IT IS NOT TRUE.
+
+                "ไม่รวมใบนี้" is not a reassurance, it is an exception: a newer
+                request for the same shift has replaced this one in the count,
+                so every figure on this card is about a month this request is
+                not in. Rare, and it changes what all three chips mean.
+
+                Its ordinary half — "รวมใบนี้ 3 ชม. แล้ว — ไม่ต้องบวกเพิ่ม" —
+                was a line printed under every request to head off one piece of
+                mental arithmetic. The รออนุมัติ chip names those hours as a
+                number now, which is the same warning without the sentence.
+              */}
+              {!e.usage.counted && (
+                <div className="cap-card-note">ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน</div>
+              )}
+            </div>
+          )}
 
           <Section
             title="การแบ่งช่วงเวลา"
@@ -1525,8 +1696,45 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
     }
   }
 
-  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  /*
+   * ข้ามคืน IS NOT A CHOICE — IT IS WHAT THE TWO TIMES ALREADY SAY.
+   *
+   * Every tick of that box was either redundant or a server error, and the
+   * error came back as "A single session cannot exceed 24 hours": a sentence
+   * about a limit, for what is really a tick-box in the wrong state. The rule
+   * and the reasoning are in `endsNextDayFor` (lib/entries.js), next to the two
+   * `throw`s in the engine it is the inverse of.
+   *
+   * Derived on CHANGE, not on render, so opening the pop-up on a stored entry
+   * does not mark the form dirty before anybody has touched it.
+   */
+  const set = (patch) => setForm((f) => {
+    const next = { ...f, ...patch };
+    return { ...next, endsNextDay: endsNextDayFor(next.startTime, next.endTime) };
+  });
   const nextHours = preview?.result?.totals?.otHours;
+
+  /*
+   * ONE PLACE THAT SAYS WHAT IS WRONG.
+   *
+   * There were two: a red line under the เหตุผล box, permanently, saying the
+   * field was required, and an Alert at the foot carrying whatever the preview
+   * refused. Somebody who mistyped a time AND had not written a reason yet was
+   * being told off in two places at once, neither of which mentioned the other,
+   * with a disabled button between them.
+   *
+   * The server's own sentence is kept rather than replaced with "ตรวจสอบช่วง
+   * เวลาให้ถูกต้อง": it names WHICH thing is wrong — over 24 hours, end before
+   * start, past the ceiling — and a reviewer correcting a time needs that, not
+   * a category.
+   *
+   * Held back until something has actually been changed. A form that opens
+   * already complaining about a field nobody has reached is noise.
+   */
+  const problems = [
+    err || null,
+    !note.trim() ? 'กรุณาระบุเหตุผลการแก้ไข' : null,
+  ].filter(Boolean);
 
   return (
     <div className="quick-edit">
@@ -1541,14 +1749,28 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
         </div>
       </div>
 
+      {/*
+        THE TWO SWITCHES, IN A BOX OF THEIR OWN, ON THE LINE UNDER THE TIMES.
+
+        They belong to the times above them — one reports what those times mean,
+        the other changes what is deducted from them — and standing loose in the
+        middle of the form they read as two more questions at the same level as
+        เวลาเริ่ม and เหตุผลการแก้ไข. A tinted strip under the two time fields
+        says "these are about what you just typed" without a heading to say it.
+
+        THE WORDS COME FROM THE FILING FORM, not from here. OtForm says
+        "ทำงานข้ามคืน (สิ้นสุดวันถัดไป)" and "ไม่พักเที่ยง", and this is the same
+        two switches on the same entry — a reviewer correcting a filing should
+        not have to work out that two differently-worded boxes are the box they
+        already know. The clarifier in brackets is that form's convention too;
+        ไม่พักเที่ยง gets one here because what it actually does — stop the break
+        being deducted — is the part a reviewer is deciding about.
+      */}
       <div className="checks">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={form.endsNextDay}
-            onChange={(ev) => set({ endsNextDay: ev.target.checked })}
-          />
-          ข้ามคืน
+        {/* Read-only: it reports what the two times above add up to. See `set`. */}
+        <label className="check derived">
+          <input type="checkbox" checked={form.endsNextDay} disabled readOnly />
+          ข้ามคืน <span className="check-note">(สิ้นสุดวันถัดไป)</span>
         </label>
         <label className="check">
           <input
@@ -1556,8 +1778,12 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
             checked={form.noBreakTaken}
             onChange={(ev) => set({ noBreakTaken: ev.target.checked })}
           />
-          ไม่พักเที่ยง
+          ไม่พักเที่ยง <span className="check-note">(ไม่หักเวลาพัก)</span>
         </label>
+        {/* Once, for the box, rather than beside the mark: a disabled control
+            with no reason given is the thing somebody presses twice and then
+            reports as broken. */}
+        <div className="checks-note">“ข้ามคืน” คำนวณจากเวลาที่กรอก จึงติ๊กเองไม่ได้</div>
       </div>
 
       {moved && (
@@ -1592,16 +1818,31 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
           onChange={(ev) => setNote(ev.target.value)}
           placeholder="เช่น ปรับตามเวลาสแกนออกจริง 20:15"
         />
-        {/* Not a house rule — the server refuses an HR edit without one, so the
-            button stays shut rather than letting the save fail. */}
-        <div className={`field-note${note.trim() ? '' : ' error'}`}>
-          {note.trim() ? 'บันทึกไว้ในประวัติรายการ พร้อมค่าเดิมก่อนแก้' : 'ต้องระบุเหตุผลก่อนบันทึก'}
-        </div>
+        {/* What the note is FOR, which is worth saying whether or not one has
+            been typed. Whether one is missing is the banner's job now — this
+            line said it too, in red, from the moment the form opened. */}
+        <div className="field-note">บันทึกไว้ในประวัติรายการ พร้อมค่าเดิมก่อนแก้</div>
       </div>
 
-      {err && <Alert kind="error">{err}</Alert>}
+      {(moved || err) && problems.length > 0 && (
+        <Alert kind="error">{problems.join(' · ')}</Alert>
+      )}
 
       <div className="quick-edit-foot">
+        {/* A BUTTON, NOT A WORD. It went to `quiet` — no fill, no rule — on the
+            argument that a way out should not compete with the decision beside
+            it, and quiet is right for that in a POP-UP FOOTER, where the two
+            sit on the dialog's own surface and the shape of the row is obvious.
+
+            This row is inside a tinted panel, halfway down a form, under a
+            reason box somebody has just typed into. A grey word floating there
+            reads as a caption to the textarea above it rather than as the way
+            back — which is the one control on this form somebody reaches for in
+            a hurry, having decided not to change the hours after all.
+
+            So it takes the app's outlined voice, and the rule below makes the
+            two boxes the same size to the pixel. The save keeps the fill, the
+            weight and the glow; this keeps only its outline. */}
         <button className="btn ghost" onClick={onCancel} disabled={saving}>ยกเลิก</button>
         <button className="btn" onClick={save} disabled={saving || !moved || !note.trim()}>
           {saving ? 'กำลังบันทึก…' : 'บันทึกชั่วโมงใหม่'}
@@ -1631,8 +1872,10 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
  *   The total ALREADY CONTAINS this request. `pending_mgr` counts against a
  *   ceiling from the moment it is filed (see CAP_STATUSES), so a reviewer
  *   reading "16.5 / 40" beside a 3-hour request and adding them would be
- *   double-counting their way to 19.5. The row says รวมใบนี้ … แล้ว, with the
- *   amount, so the arithmetic they might do in their head is already done.
+ *   double-counting their way to 19.5. `pendingCapNote` below says what the
+ *   ceiling counts, and the pop-up's รออนุมัติ chip names those hours outright.
+ *   (A "รวมใบนี้ … แล้ว" line said it in words in the pop-up until the chips
+ *   made it a number; the row itself has never carried it.)
  *
  *   WHICH MONTH. The เดือน filter above can be ทุกเดือน, which mixes periods in
  *   one queue, so the month is named on every row and comes from the row rather
@@ -1739,52 +1982,21 @@ const capNote = (w) => pendingCapNote(w.approvedHours, w.usedHours, w.capHours);
  */
 const breachLine = overCapLine;
 
-/**
- * The label and the split come from lib/caps.js, not from here.
+/*
+ * GONE, AND WHERE THEY WENT.
  *
- * ตรวจสอบรายเดือน has to state the same fact about the same hours — its ceiling
- * counts requests its filter is hiding — and two screens each phrasing that
- * their own way is how a reviewer comes to believe they are two different
- * facts. `splitLine` is the local name for the shared sentence.
+ * `splitLine` (a local name for lib/caps.js's `pendingSplitLine`) and
+ * `roomLine` stood here. Both were sentences that counted — "อนุมัติแล้ว 8 ·
+ * รออนุมัติ 3", "เหลือ 29 ชม. หากอนุมัติครบทุกใบ" — and both are now chips in
+ * the รายละเอียด pop-up, built by `capChips` in lib/caps.js from the same
+ * window object and the same arithmetic.
+ *
+ * Nothing was dropped in the move. The two numbers each carried are on the
+ * chips; the difference between a breach that is a FACT and one that is a
+ * PROJECTION, which `roomLine` spent three branches saying in words, is which
+ * chip is red; and the sentence naming what the ceiling counts is
+ * `pendingCapNote`, which the pop-up still prints under them.
  */
-const splitLine = pendingSplitLine;
-
-/**
- * "เหลือ 4.5 ชม." — and what that 4.5 was worked out from.
- *
- * The line was true and unreadable: it is the room left against a total that
- * counts requests nobody has approved, so on a row with 19 pending hours it
- * described a month that does not exist yet, in the same words it uses for one
- * that does. Refuse one of those requests and the number moves.
- *
- * So it says หากอนุมัติครบทุกใบ whenever the figure depends on that, and says
- * nothing extra when it does not. The third case is the one that must not be
- * softened: where the APPROVED hours alone are already past the ceiling, the
- * breach is a fact and not a projection, and the line leads with the fact.
- *
- * NO LONGER ON THE ROW. It is behind the (?) and in the รายละเอียด pop-up,
- * unchanged and in full — room left over is a number to work out a decision
- * against, not one to scan a queue by, and `overCapLine` now carries the part
- * that does have to be scanned. Kept word for word: whoever presses the (?) is
- * checking a figure they already distrust, and a sentence rewritten on its way
- * into a tooltip is a sentence they cannot check against what they remember.
- */
-function roomLine(month) {
-  if (month.capHours == null) return null;
-  const room = Math.round((month.capHours - month.usedHours) * 100) / 100;
-  const pending = month.pendingHours || 0;
-
-  if (pending && overCap(month.approvedHours, month.capHours)) {
-    const overNow = Math.round((month.approvedHours - month.capHours) * 100) / 100;
-    return `เกินเพดานแล้ว ${hours(overNow)} ชม. จากใบที่อนุมัติแล้ว`
-      + ` · หากอนุมัติครบทุกใบ เกิน ${hours(-room)} ชม.`;
-  }
-
-  const ifAll = pending ? ' หากอนุมัติครบทุกใบ' : '';
-  return month.exceeded
-    ? `เกินเพดาน ${hours(-room)} ชม.${ifAll}`
-    : `เหลือ ${hours(room)} ชม.${ifAll}`;
-}
 
 /** Past a ceiling — the one place this screen paints that, so the row and the
     pop-up cannot disagree about what over looks like. */

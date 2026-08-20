@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
 import { Alert, Empty, SheetScroll } from './common.jsx';
-import { PrintChrome, FormNotices, F027Sheet } from './PrintForm.jsx';
+import { PrintChrome, FormNotices, F027Sheet, sheetQuery } from './PrintForm.jsx';
 
 /**
  * Every F-HR-027 in a month as one document — one person to a side of paper.
@@ -22,11 +22,23 @@ import { PrintChrome, FormNotices, F027Sheet } from './PrintForm.jsx';
  * hours are still in a queue is in or out according to สถานะที่นับ, which is
  * the same lever that decided whether their row was on the screen at all.
  *
- * Note that สถานะที่นับ does NOT reach the sheets themselves. Each one is
- * fetched exactly as the per-person button fetches it — อนุมัติแล้ว and
- * ค้างอนุมัติ together, which is what the paper form has always shown, since it
- * is the sheet the approval is signed onto. The filter chooses whose sheets are
- * in the bundle; it never changes what a sheet says.
+ * สถานะที่นับ IS PASSED TO THE SHEETS, and what it is worth there is not this
+ * component's decision. It used to be dropped on the way — every sheet was
+ * fetched with the queue statuses included, whatever the screen was filtered
+ * to, so a bundle printed under อนุมัติแล้วเท่านั้น carried totals larger than
+ * the table it was pressed from with nothing on the paper saying which rows the
+ * difference was. The route now weighs the request against `formPrintScope` and
+ * ignores it under two of the three answers — see `formPrintStatuses` in
+ * lib/reports.js. The bundle's job is only to ask the same question the
+ * per-person button asks, which `sheetQuery` is what guarantees.
+ *
+ * ONE CONSEQUENCE IS A BLANK SHEET, and it is left in rather than filtered out.
+ * Under the strict answer with สถานะที่นับ set wide, somebody whose only hours
+ * are still in a queue has a row on the screen — so a sheet in the bundle — and
+ * that sheet comes back with nothing on it. Dropping it here would quietly make
+ * the bundle a different list from the table it was pressed from, which is the
+ * one property this component is not allowed to decide. Their `FormNotices`
+ * block says why the sheet is empty, with their name on it.
  */
 
 /**
@@ -38,7 +50,7 @@ import { PrintChrome, FormNotices, F027Sheet } from './PrintForm.jsx';
  */
 const CONCURRENCY = 4;
 
-export default function PrintFormBatch({ employees, period, onClose }) {
+export default function PrintFormBatch({ employees, period, status = '', onClose }) {
   const [forms, setForms] = useState(null);
   const [failed, setFailed] = useState([]);
   const [done, setDone] = useState(0);
@@ -59,7 +71,9 @@ export default function PrintFormBatch({ employees, period, onClose }) {
         if (i >= employees.length || !live) return;
         const employee = employees[i];
         try {
-          const res = await api.get(`/reports/form/${period}?employee=${employee._id}`);
+          const res = await api.get(
+            `/reports/form/${period}${sheetQuery({ employeeId: employee._id, status })}`,
+          );
           out[i] = res.form;
         } catch (err) {
           // One employee's sheet failing is not the bundle failing. The rest
@@ -83,7 +97,7 @@ export default function PrintFormBatch({ employees, period, onClose }) {
     });
 
     return () => { live = false; };
-  }, [employees, period]);
+  }, [employees, period, status]);
 
   if (!employees.length) return <Empty>ไม่มีพนักงานที่ต้องพิมพ์ในเดือนนี้</Empty>;
 
@@ -134,6 +148,7 @@ export default function PrintFormBatch({ employees, period, onClose }) {
           key={`notice-${form.employee.code}-${form.employee.name}`}
           form={form}
           who={`${form.employee.code} · ${form.employee.name}`}
+          asked={status}
         />
       ))}
 

@@ -413,6 +413,46 @@ export const DEFAULT_POLICY = Object.freeze({
    *                hours. Changes what the export column means.
    */
   hrSummaryBasis: 'raw',
+  // ── ใบ F-HR-027 พิมพ์รายการสถานะใดบ้าง ──────────────────────────────────────
+  /**
+   * Which requests reach the printed F-HR-027 — the approved ones, or the ones
+   * still waiting in a queue as well.
+   *
+   * 'approved' — เฉพาะรายการที่อนุมัติแล้ว (DEFAULT). The sheet is the one that
+   *              gets wet-signed and filed, so what is on it is what payroll
+   *              will pay. `?status=` is IGNORED under this answer, which is
+   *              the point of it: the strict setting has to be strict against a
+   *              hand-edited URL too, or it is a suggestion.
+   * 'screen'   — whatever สถานะที่นับ on ตรวจสอบรายเดือน is set to, clamped by
+   *              `reportStatuses`. The screen and the paper then quote the same
+   *              figures for the same person, which they do not today.
+   * 'draft'    — อนุมัติแล้ว + รอ HR + รอหัวหน้า, always. What the route did
+   *              unconditionally before this flag existed: a working copy for
+   *              reading a month before it is closed.
+   *
+   * THE DEFAULT CHANGES BEHAVIOUR, and that is the reason it exists. The route
+   * shipped with the 'draft' list hard-coded and no mark on the paper, so HR
+   * could select อนุมัติแล้วเท่านั้น, read a total off ตรวจสอบรายเดือน, press
+   * พิมพ์ and get a larger total on a sheet with two signature lines on it —
+   * with nothing on the page saying which rows the difference was. A หัวหน้า
+   * signing that sheet signs rows the app still has waiting for their decision.
+   *
+   * Under the two answers that do let a pending row through, the row says so on
+   * the paper: `(รออนุมัติ)` prints in the รายละเอียดงานที่ทำ cell, where
+   * (ต่อจากคืนก่อน), [ไม่พักเที่ยง] and (แทน) already sit. Not a column and not
+   * a row — F-HR-027 Rev.4 is a controlled form measured in millimetres against
+   * the paper, and a remark in the cell HR already reads is not a revision of
+   * it.
+   *
+   * COSMETIC in the strict sense lib/policyVersion.js means. Every hour on the
+   * sheet comes from stored `segments`, resolved when the entry was filed; this
+   * decides which entries are fetched to print and never what any of them is
+   * worth. Flipping it must recompute nothing.
+   *
+   * The rule is `formPrintStatuses` in lib/reports.js, and it is applied by the
+   * ROUTE rather than by the screen — see app/api/reports/form/[period]/route.js.
+   */
+  formPrintScope: 'approved',
 
   // ── ยื่น OT ล่วงหน้าได้ถึงวันไหน ─────────────────────────────────────────────
   /**

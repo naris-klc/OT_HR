@@ -709,6 +709,12 @@ export function trailOf(entry) {
   return [shape(parent, 1, false), shape(entry, 2, true)];
 }
 
+/**
+ * How many dialogs are open right now — module scope, because the answer is the
+ * document's and not any one dialog's. See the mount effect in `Modal`.
+ */
+let openDialogs = 0;
+
 export function Modal({
   title, subtitle, meta, onClose, children, footer, wide = false,
   dirty = false, dirtyPrompt = 'ยังมีข้อมูลที่กรอกไว้และยังไม่ได้บันทึก ปิดหน้าต่างนี้เลยหรือไม่',
@@ -783,8 +789,21 @@ export function Modal({
       boxRef.current.style.animation = 'none';
       boxRef.current.style.transition = 'none';
     }
-    d.dy = dy;
-    boxRef.current.style.transform = `translateY(${dy}px)`;
+    /* CLAMPED AT ZERO, and this is the line that matters.
+
+       The guard above only covers the START of the gesture: a first move of
+       less than 5px is not a drag, so a sheet cannot be pulled up out of the
+       bottom of the screen. Once it IS dragging, `dy` was used raw — so a drag
+       that went down and then back past where it began drove translateY
+       NEGATIVE and lifted the sheet clear of the bottom edge. What showed in
+       the gap underneath was the backdrop, and through it the page.
+
+       A bottom sheet has nowhere to go upwards: it is already as tall as it is
+       allowed to be, so rising only uncovers what it is sitting on. Coming back
+       past the origin means "I have changed my mind", and the answer to that is
+       the sheet at rest, not the sheet in the air. */
+    d.dy = Math.max(0, dy);
+    boxRef.current.style.transform = `translateY(${d.dy}px)`;
   }
 
   function dragEnd(e) {
@@ -814,11 +833,41 @@ export function Modal({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
+    /**
+     * AND THE APP'S TWO FIXED BARS STOP BEING BLURRED WHILE THIS IS UP.
+     *
+     * `.appbar` and `.mobile-nav` carry `backdrop-filter`, which is what makes
+     * them frosted over the page scrolling behind them — and what takes a
+     * browser off the plain painting path for those two elements. On this
+     * machine's Chrome the result was that both bars drew ON TOP of a dialog
+     * they sit far below: the app bar clipped by the sheet's top corner, the
+     * nav bar covering the last 77px of it with a strip of the page showing
+     * between. Measured over the real app at 440×956 the layout is exactly
+     * right — backdrop 0–956, sheet 114–956, nav 879–956 at z-index 30 under a
+     * backdrop at 80 — so nothing about the geometry explains it, and nothing
+     * about the geometry can fix it either.
+     *
+     * A filter that is not applied cannot be composited out of turn, so the
+     * class below removes it for as long as a dialog is open (see
+     * `body.has-dialog` in app/styles.css). The bars keep their own background,
+     * which is what they are read through anyway: they spend the whole time
+     * behind the scrim.
+     *
+     * COUNTED, NOT SET AND CLEARED. A dialog can open over a dialog — the
+     * policy confirmation over ตั้งค่าระบบ, ตั้งรหัสผ่านใหม่ over ทะเบียนพนักงาน
+     * — and the inner one closing must not un-blur the outer one's problem. The
+     * class goes on at the first and comes off at the last.
+     */
+    openDialogs += 1;
+    document.body.classList.add('has-dialog');
+
     const first = boxRef.current?.querySelector(FOCUSABLE);
     (first || boxRef.current)?.focus?.({ preventScroll: true });
 
     return () => {
       document.body.style.overflow = prevOverflow;
+      openDialogs = Math.max(0, openDialogs - 1);
+      if (openDialogs === 0) document.body.classList.remove('has-dialog');
       returnTo?.focus?.({ preventScroll: true });
     };
   }, []);
@@ -1135,7 +1184,28 @@ export function TipButton({ text, of, open, onToggle }) {
  * one at any window width, including the ones between "phone" and "fits an A4"
  * that a breakpoint would have had to guess at.
  */
-export function SheetScroll({ className, hint = '↔ ปัดซ้าย-ขวาเพื่อดูทั้งใบ', children }) {
+/**
+ * Where a horizontal scroller currently stands — `none` / `start` / `middle` /
+ * `end` — and the ref to hang on the scroller itself.
+ *
+ * ONE READING, TWO SCROLLERS. It was `SheetScroll`'s alone until the ตั้งค่าระบบ
+ * tab strip needed the same answer, and a second copy of it would have been two
+ * definitions of "is there more this way" drifting apart over the sub-pixel
+ * rule below — which is the clause that is easy to leave out and impossible to
+ * notice missing on the machine it was written on.
+ *
+ * What each caller does with the answer is its own: the printed sheet fades to
+ * a shadow over grey, the tab strip fades to the card it sits on. They share
+ * the state, not the paint.
+ *
+ * `none` whenever the content fits, so nothing is drawn on a desktop and no
+ * caller needs a breakpoint — which is also what keeps it right at the window
+ * widths between "phone" and "wide", the range a breakpoint has to guess at.
+ *
+ * `watch` is anything whose arrival changes the measurement — usually the
+ * children. The ResizeObserver catches the rest.
+ */
+export function useScrollEdge(watch) {
   const ref = React.useRef(null);
   const [edge, setEdge] = React.useState('none');
 
@@ -1155,12 +1225,18 @@ export function SheetScroll({ className, hint = '↔ ปัดซ้าย-ข�
 
     read();
     el.addEventListener('scroll', read, { passive: true });
-    // Both figures above move without a scroll event: the sheet arrives after
+    // Both figures above move without a scroll event: the content arrives after
     // its data does, and rotating the phone changes the screen under it.
     const ro = new ResizeObserver(read);
     ro.observe(el);
     return () => { el.removeEventListener('scroll', read); ro.disconnect(); };
-  }, [children]);
+  }, [watch]);
+
+  return [ref, edge];
+}
+
+export function SheetScroll({ className, hint = '↔ ปัดซ้าย-ขวาเพื่อดูทั้งใบ', children }) {
+  const [ref, edge] = useScrollEdge(children);
 
   return (
     <div className="sheet-view" data-edge={edge}>

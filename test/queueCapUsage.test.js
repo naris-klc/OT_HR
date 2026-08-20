@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 
 import { capEntriesByEmployee, queueCapUsage } from '../src/services/otService.js';
 import {
-  CAP_STATUSES, INCLUDES_PENDING, capColumn, capFigure, overCap, overCapLine,
+  CAP_STATUSES, INCLUDES_PENDING, capChips, capColumn, capFigure, overCap, overCapLine,
   pendingCapNote, usageInMonth,
 } from '../lib/caps.js';
 import { latestPerSession, reportStatuses } from '../lib/reports.js';
@@ -557,22 +557,87 @@ test('the queue column prints the same two lines ตรวจสอบราย�
 });
 
 /**
+ * ── the ceiling as three chips ────────────────────────────────────────────
+ *
+ * The pop-up draws these; what they say is arithmetic, so it is pinned here
+ * rather than by reading the component.
+ *
+ * The distinction that matters is which chip goes red. อนุมัติแล้ว past the
+ * ceiling is a FACT — hours already signed off, and nothing a reviewer does to
+ * the queue undoes it. เกิน may be a PROJECTION over requests nobody has
+ * approved: refuse one and it moves. The prose these replaced spent three
+ * branches saying that; a chip says it by its colour, so the colour has to be
+ * right.
+ */
+test('ชิปเพดาน — อนุมัติแล้ว / รออนุมัติ / เหลือ', () => {
+  assert.deepEqual(
+    capChips({ approvedHours: 8, pendingHours: 3, usedHours: 11, capHours: 40 }),
+    [
+      { k: 'อนุมัติแล้ว', v: 8, over: false },
+      { k: 'รออนุมัติ', v: 3 },
+      { k: 'เหลือ', v: 29 },
+    ],
+  );
+});
+
+test('ชิปเพดาน — เกินเพราะใบที่รออนุมัติ ยังไม่ใช่ข้อเท็จจริง', () => {
+  // 35 approved under a 40 ceiling: the approved chip is NOT red. The total
+  // would pass it, so the last chip is — and it is the one somebody can still
+  // change by refusing a request.
+  const chips = capChips({ approvedHours: 35, pendingHours: 10, usedHours: 45, capHours: 40 });
+  assert.equal(chips[0].over, false, 'ชั่วโมงที่อนุมัติแล้วยังไม่เกิน แต่ถูกทาแดง');
+  assert.deepEqual(chips[2], { k: 'เกิน', v: 5, over: true });
+});
+
+test('ชิปเพดาน — เกินจากใบที่อนุมัติแล้ว คือข้อเท็จจริง', () => {
+  const chips = capChips({ approvedHours: 45, pendingHours: 5, usedHours: 50, capHours: 40 });
+  assert.equal(chips[0].over, true, 'เกินแล้วจริง ๆ แต่ชิปไม่ได้บอก');
+  assert.deepEqual(chips[2], { k: 'เกิน', v: 10, over: true });
+});
+
+test('ชิปเพดาน — ไม่มีเพดาน ก็ไม่มี “เหลือ”', () => {
+  // "เหลือ" against no ceiling is a number about nothing, and a month with
+  // nothing pending has no split to show.
+  assert.deepEqual(
+    capChips({ approvedHours: 8, usedHours: 8, capHours: null }),
+    [{ k: 'อนุมัติแล้ว', v: 8, over: false }],
+  );
+  assert.deepEqual(capChips(null), []);
+});
+
+/**
  * What the (?) used to hold had to land somewhere, and the pop-up already had
  * all of it: which month, whether this row is inside the figure, the room left
  * over. Nothing was dropped when the icon was.
  */
 test('everything the (?) held is still in the รายละเอียด pop-up', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  // Anchored on the pop-up's heading. A miss returns -1 and slices from the end
-  // of the file, which reads as a passing test over the wrong text — the trap
-  // `function WeekUsage` fell into when it was deleted — so it is asserted.
-  const from = queue.indexOf('k={`สะสม / เพดาน');
-  assert.ok(from > 0, 'the pop-up heading was renamed and this slice no longer finds it');
-  const popup = queue.slice(from, queue.indexOf('<div className="split"', from));
+  /* Anchored on the card the ceiling now has to itself — it was a cell in the
+     คำขอ grid until it was given one. A miss returns -1 and slices from the end
+     of the file, which reads as a passing test over the wrong text — the trap
+     `function WeekUsage` fell into when it was deleted — so it is asserted. */
+  const from = queue.indexOf('{e.usage?.month && (');
+  assert.ok(from > 0, 'the ceiling card was renamed and this slice no longer finds it');
+  const popup = queue.slice(from, queue.indexOf('<Section', from));
 
-  assert.match(queue.slice(from - 40, from + 60), /periodLabel\(e\.usage\.month\.period\)/, 'which month');
-  assert.match(popup, /รวมใบนี้ \$\{hours\(e\.usage\.month\.adding\)\} ชม\. แล้ว/, "the row's own contribution");
-  assert.match(popup, /roomLine\(e\.usage\.month\)/, 'the room left over');
+  assert.match(popup, /periodLabel\(e\.usage\.month\.period\)/, 'which month');
+  /* "รวมใบนี้ 3 ชม. แล้ว — ไม่ต้องบวกเพิ่ม" was printed under every request to
+     head off one piece of mental arithmetic: the figure counts pending hours
+     from the moment a request is filed, so adding this request to it
+     double-counts. The รออนุมัติ chip names those hours as a number now, which
+     is the same warning without the sentence.
+
+     What must NOT go quiet with it is the other half — the case where this
+     request is NOT in the figure at all, because a newer one for the same shift
+     replaced it. That is an exception, not a reassurance, and it changes what
+     every chip above it means. */
+  assert.match(popup, /capChips\(e\.usage\.month\)/, 'the pending hours are not named anywhere');
+  assert.match(popup, /!e\.usage\.counted && \(/, 'the pop-up stopped saying when the figure excludes this row');
+  assert.match(popup, /ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน/);
+  // The room left over is a chip now rather than a sentence — same number, same
+  // window, worked out in lib/caps.js instead of in the component. See
+  // `capChips` there, and test/detailModalFooter.test.js for the shape.
+  assert.match(popup, /capChips\(e\.usage\.month\)/, 'the room left over');
 });
 
 /**
@@ -746,12 +811,10 @@ test('no cap cell in the CSV carries a slash, a unit, or a rendered figure', () 
  */
 test('the รายละเอียด pop-up still shows the whole story', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  // Anchored on the pop-up's heading. A miss returns -1 and slices from the end
-  // of the file, which reads as a passing test over the wrong text — the trap
-  // `function WeekUsage` fell into when it was deleted — so it is asserted.
-  const from = queue.indexOf('k={`สะสม / เพดาน');
-  assert.ok(from > 0, 'the pop-up heading was renamed and this slice no longer finds it');
-  const popup = queue.slice(from, queue.indexOf('<div className="split"', from));
+  /* Same anchor as 'everything the (?) held…' above — the ceiling's own card. */
+  const from = queue.indexOf('{e.usage?.month && (');
+  assert.ok(from > 0, 'the ceiling card was renamed and this slice no longer finds it');
+  const popup = queue.slice(from, queue.indexOf('<Section', from));
 
   assert.match(
     popup,
@@ -763,21 +826,54 @@ test('the รายละเอียด pop-up still shows the whole story', ()
     /capFigure\(e\.usage\.month\.usedHours/,
     'the ceiling total is back in the headline, where it disagrees with the row',
   );
-  // Nothing was dropped in the move — the ceiling total is still here, in the
-  // shared sentence, one line down.
-  assert.match(popup, /capNote\(e\.usage\.month\)/, 'the pop-up lost the ceiling total altogether');
-  assert.match(popup, /splitLine\(e\.usage\.month\)/, 'the pop-up lost the split');
-  assert.match(popup, /roomLine\(e\.usage\.month\)/, 'the pop-up lost the room left over');
-  assert.match(popup, /รวมใบนี้ \$\{hours\(e\.usage\.month\.adding\)\} ชม\. แล้ว/);
+  /*
+   * THE CEILING TOTAL IS STILL HERE — IT IS JUST NOT A SENTENCE ANY MORE.
+   *
+   * `capNote` stood under the figure and read "เพดานนับ 11 / 40 · รวมใบที่รอ
+   * อนุมัติ". Every number in it is on this pop-up twice over now: 40 is in the
+   * headline the line sat under, 11 is อนุมัติแล้ว and รออนุมัติ side by side,
+   * and "รวมใบที่รออนุมัติ" is what having a รออนุมัติ chip at all says.
+   *
+   * It still earns its line on the QUEUE ROW, where there are no chips and the
+   * figure stands alone — so it is asserted there instead, and a change that
+   * removed it from both would still fail.
+   */
+  assert.doesNotMatch(popup, /capNote\(e\.usage\.month\)/, 'the sentence is back under the chips');
+  assert.match(queue, /\{capNote\(month\) && <div className="cap-sub">/, 'the row lost the ceiling total');
+  /*
+   * THE SPLIT AND THE ROOM ARE CHIPS NOW, NOT SENTENCES.
+   *
+   * They were `splitLine` and `roomLine` — two lines of prose that counted:
+   * "อนุมัติแล้ว 8 · รออนุมัติ 3" and "เหลือ 29 ชม. หากอนุมัติครบทุกใบ". Both are
+   * the same numbers off the same window object, so they are worked out once in
+   * lib/caps.js and drawn as chips here. What this pins is that the pop-up still
+   * gets all three of them from that window, and that the component did not
+   * start doing the subtraction itself.
+   */
+  assert.match(popup, /capChips\(e\.usage\.month\)/, 'the pop-up lost the split and the room');
+  assert.doesNotMatch(popup, /capHours\s*-/, 'the component is subtracting from the ceiling itself again');
+  // See the note in 'everything the (?) held…' above: the reassurance became the
+  // รออนุมัติ chip, and only the exception is still a sentence.
+  assert.match(popup, /ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน/);
 
-  // And the fact is a paragraph, so it takes a row of the grid rather than
-  // stretching every one-line fact beside it to its own height. `wide` sits
-  // above the `k` this slice starts at, so it is looked for either side.
-  assert.match(
-    queue.slice(from - 500, from),
-    /\bwide\b/,
-    'the สะสม fact shares a row with the short facts again',
-  );
+  /*
+   * AND IT IS NOT IN THE คำขอ GRID AT ALL ANY MORE.
+   *
+   * It was a `wide` cell at the end of that grid — full width, so the short
+   * facts beside it were not stretched to the height of its paragraph. It is
+   * out of the grid entirely now, on a card of its own, because the four cells
+   * there answer "what was asked for" and this one answers "where does this
+   * person's month stand" — a different question about a different subject, and
+   * the only figure on the pop-up that is true of other requests too.
+   *
+   * `capExceeded` stays in the grid: what the ceilings said on the day this was
+   * filed IS a property of the request. This card is what they say now.
+   */
+  const grid = queue.slice(queue.indexOf('<dl className="fact-grid">'), from);
+  assert.doesNotMatch(grid, /สะสม \/ เพดาน/, 'the ceiling is back among the request\'s own facts');
+  assert.match(grid, /k="เกินเพดานแผนก"/, 'the filed-day breach left the grid with it');
+  assert.match(popup, /className=\{e\.usage\.month\.exceeded \? 'cap-card over' : 'cap-card'\}/,
+    'the card stopped colouring itself when the month is past its ceiling');
 });
 
 /**

@@ -54,16 +54,26 @@ test('the sheet is declared in exactly one place', () => {
 });
 
 test('the bundle reads each sheet from the route the single sheet is read from', () => {
-  // Same endpoint, same employee parameter, therefore the same statuses, the
-  // same deduplication and the same สรุปรวม. A page in the bundle and a page
-  // printed on its own are the same page or this is not worth having.
+  // Same endpoint, same query builder, therefore the same statuses, the same
+  // deduplication and the same สรุปรวม. A page in the bundle and a page printed
+  // on its own are the same page or this is not worth having.
+  //
+  // The query is pinned to `sheetQuery` rather than to a literal `?employee=`.
+  // It carries สถานะที่นับ as well now, and two hand-built query strings is
+  // exactly how the bundle would start asking a different question from the
+  // button — the failure this file exists to catch, one parameter further on.
   const single = sourceOf(SHEET);
   const bundle = sourceOf(BUNDLE);
-  const call = /api\.get\(`\/reports\/form\/\$\{period\}/;
+  const call = /api\.get\(\s*`\/reports\/form\/\$\{period\}\$\{sheetQuery\(/;
 
   assert.match(single, call);
   assert.match(bundle, call);
-  assert.match(bundle, /\?employee=\$\{employee\._id\}/);
+  assert.match(single, /export function sheetQuery/, 'the builder must live with the sheet');
+  assert.match(bundle, /import \{[^}]*\bsheetQuery\b[^}]*\} from '\.\/PrintForm\.jsx'/);
+  assert.ok(
+    !/\?employee=/.test(bundle),
+    'the bundle has gone back to building its own query',
+  );
 });
 
 test('one person to a side of paper', () => {

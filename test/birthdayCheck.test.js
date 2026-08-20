@@ -658,9 +658,11 @@ test('คิวอนุมัติถามคำถามเดียวก�
   assert.match(queue, /const actionable = useMemo\(\(\) => shown\.filter\(\(e\) => !isOwnFiling\(e, user\)\)/);
   assert.match(queue, /selected\.size === actionable\.length/);
 
-  // And the pop-up does not put the same two buttons back.
+  // And the pop-up does not put the same two buttons back. Its foot is not
+  // drawn at all on such a row — there is no third thing for it to offer, and
+  // the ✕ closes the pop-up. See test/detailModalFooter.test.js.
   assert.match(queue, /mine=\{isOwnFiling\(detail, user\)\}/);
-  assert.match(queue, /\) : mine \? \(/);
+  assert.match(queue, /\) : mine \? null : \(/);
 });
 
 // ── the form tells the filer why their birthday looks different ───────────

@@ -34,7 +34,19 @@ export default function ProfileView({ user, onLogout }) {
           out. This is the only sign-out there, so it is not hidden on desktop
           either: two of them is better than a phone with none. */}
       <div className="card">
-        <button className="btn ghost" onClick={onLogout}>ออกจากระบบ</button>
+        {/* A RED OUTLINE, not the grey ghost it was. This is the only button on
+            the page that takes something away: the session goes, and with it
+            anything half-typed in another tab. Drawn as `.btn.ghost` it was the
+            same object as ธีมสีหน้าจอ's three choices and บันทึกรหัสผ่านใหม่'s own
+            disabled state — a grey box among grey boxes, sitting directly under
+            a form somebody has just been tabbing through, on a phone.
+
+            `.btn.ghost.danger` is the voice this app already uses for a button
+            that refuses or undoes — ไม่อนุมัติ, ยกเลิกคำขอ, ปลดล็อกงวด — so it is
+            recognised here rather than invented. Outlined and not filled: the
+            filled red is reserved for what cannot be taken back, and signing
+            out is undone by signing in. */}
+        <button className="btn ghost danger" onClick={onLogout}>ออกจากระบบ</button>
       </div>
     </div>
   );
@@ -240,8 +252,9 @@ export function ChangePassword({ onDone, hint }) {
 
       <form onSubmit={submit} className="profile-form">
         <div className="field">
-          <label>รหัสผ่านเดิม · CURRENT PASSWORD</label>
+          <label>รหัสผ่านเดิม</label>
           <PasswordInput
+            placeholder="CURRENT PASSWORD"
             shown={showCurrent}
             onToggle={() => setShowCurrent((v) => !v)}
             value={current}
@@ -252,8 +265,9 @@ export function ChangePassword({ onDone, hint }) {
         </div>
 
         <div className="field">
-          <label>รหัสผ่านใหม่ · NEW PASSWORD</label>
+          <label>รหัสผ่านใหม่</label>
           <PasswordInput
+            placeholder="NEW PASSWORD"
             shown={showNext}
             onToggle={() => setShowNext((v) => !v)}
             value={next}
@@ -267,8 +281,9 @@ export function ChangePassword({ onDone, hint }) {
         </div>
 
         <div className="field">
-          <label>ยืนยันรหัสผ่านใหม่ · CONFIRM</label>
+          <label>ยืนยันรหัสผ่านใหม่</label>
           <PasswordInput
+            placeholder="CONFIRM"
             shown={showConfirm}
             onToggle={() => setShowConfirm((v) => !v)}
             value={confirm}
@@ -279,9 +294,29 @@ export function ChangePassword({ onDone, hint }) {
           {mismatch && <div className="field-note error">รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน</div>}
         </div>
 
-        <button className="btn" disabled={busy || !ready}>
-          {busy ? 'กำลังบันทึก…' : 'บันทึกรหัสผ่านใหม่'}
-        </button>
+        {/* THE GREEN IS THE ANSWER TO "IS THIS READY?" — `.btn` fills green the
+            moment `ready` turns true, and the app's disabled rule paints it
+            grey with a border until then, which is what the screen shows for
+            most of the time somebody is on it.
+
+            What was missing is the sentence saying so. A grey box that never
+            reacts reads as a broken button, not as a button waiting: the three
+            per-field notes only appear once a rule is actually broken, so a
+            form with รหัสผ่านเดิม still empty said nothing at all. This line
+            names the condition and names the colour, so the change to green is
+            read as the form agreeing rather than as a coincidence.
+
+            It stands down as soon as a field has its own complaint — repeating
+            "กรอกให้ครบ" under "ทั้งสองช่องไม่ตรงกัน" would be the screen talking
+            over itself. */}
+        <div className="profile-submit">
+          <button className="btn" disabled={busy || !ready}>
+            {busy ? 'กำลังบันทึก…' : 'บันทึกรหัสผ่านใหม่'}
+          </button>
+          {!ready && !busy && !tooShort && !unchanged && !mismatch && (
+            <div className="field-note">กรอกให้ครบทั้งสามช่อง ปุ่มจึงจะเป็นสีเขียวและกดบันทึกได้</div>
+          )}
+        </div>
       </form>
     </div>
   );

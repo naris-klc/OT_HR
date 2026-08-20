@@ -5,6 +5,27 @@ import { api, hours, thaiDate, BUCKETS } from '@/lib/api.js';
 import { Alert, SheetScroll } from './common.jsx';
 
 /**
+ * The query string one sheet is asked for with — whose month, and สถานะที่นับ
+ * as the screen has it set.
+ *
+ * ONE FUNCTION FOR BOTH PATHS. A sheet printed on its own and the same sheet
+ * inside a bundle have to be the same request, or the bundle stops being the
+ * document it says it is — and "same route, different parameters" is the way
+ * that happens quietly. Both callers build their URL here.
+ *
+ * What the status parameter is WORTH is not decided here and cannot be: the
+ * route weighs it against `formPrintScope` and ignores it under two of the
+ * three answers (see `formPrintStatuses` in lib/reports.js). This is a screen
+ * saying what it is looking at, never a screen choosing what may be printed.
+ */
+export function sheetQuery({ employeeId = '', status = '' } = {}) {
+  const parts = [];
+  if (employeeId) parts.push(`employee=${employeeId}`);
+  if (status) parts.push(`status=${encodeURIComponent(status)}`);
+  return parts.length ? `?${parts.join('&')}` : '';
+}
+
+/**
  * F-HR-027 Rev.4 rendered for print — one employee, one month (§10).
  *
  * The layout follows the paper form cell for cell: วันที่ 1–31 down the left,
@@ -22,17 +43,21 @@ import { Alert, SheetScroll } from './common.jsx';
  * are then the same element and cannot drift apart, which matters more here
  * than anywhere else in the app: this is a controlled form, and a bundle whose
  * pages were laid out by a second copy of this markup would be a second form.
+ *
+ * `status` is สถานะที่นับ as the caller has it set, passed through untouched and
+ * decided by the route. Absent — a พนักงาน printing their own month — the route
+ * answers with the strict list under every `formPrintScope` setting, which is
+ * the right way for a missing filter to be wrong on a sheet that gets signed.
  */
-export default function PrintForm({ employeeId, period, onClose }) {
+export default function PrintForm({ employeeId, period, status = '', onClose }) {
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const q = employeeId ? `?employee=${employeeId}` : '';
-    api.get(`/reports/form/${period}${q}`)
+    api.get(`/reports/form/${period}${sheetQuery({ employeeId, status })}`)
       .then((res) => setForm(res.form))
       .catch((err) => setError(err.message));
-  }, [employeeId, period]);
+  }, [employeeId, period, status]);
 
   if (error) return <Alert kind="error">{error}</Alert>;
   if (!form) return <div className="empty">กำลังโหลด…</div>;
@@ -40,7 +65,7 @@ export default function PrintForm({ employeeId, period, onClose }) {
   return (
     <>
       <PrintChrome onClose={onClose} basis={form.hrSection.basis} />
-      <FormNotices form={form} />
+      <FormNotices form={form} asked={status} />
       <SheetScroll className="f027-screen">
         <F027Sheet form={form} />
       </SheetScroll>
@@ -86,10 +111,59 @@ export function PrintChrome({ onClose, basis, disabled = false, note = null }) {
  * above the stack, where “ซ่อน 2 รายการ” with no name attached would send HR
  * hunting through forty sheets for the one it means.
  */
-export function FormNotices({ form, who = null }) {
+export function FormNotices({ form, who = null, asked = '' }) {
   const of = who ? `${who} · ` : '';
+  /**
+   * The screen asked for rows the policy would not print. True only under
+   * เฉพาะรายการที่อนุมัติแล้ว and only when สถานะที่นับ was set wider than that
+   * — so an ordinary print says nothing, and the one print whose total will not
+   * match the table it was pressed from explains itself.
+   */
+  const narrowed = form.printScope === 'approved'
+    && asked.split(',').some((s) => s.trim() && s.trim() !== 'approved');
   return (
     <>
+      {/* Hours that ARE on the paper and are not settled — the mirror of the
+          ซ่อน block below, which is hours that are settled and are not on the
+          paper. First, because it is the only one of the three that bears on
+          whether the sheet should be signed at all. */}
+      {form.pending?.length > 0 && (
+        <div className="no-print" style={{ marginBottom: 12 }}>
+          <Alert kind="warn">
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+              {of}ใบนี้มี {form.pending.length} รายการที่ยังไม่อนุมัติ และถูกนับรวมใน สรุปรวม แล้ว
+            </div>
+            {form.pending.map((p) => (
+              <div key={p.id} style={{ fontSize: 12.5 }}>
+                {thaiDate(p.workDate)} {p.from}–{p.to} · {hours(p.otHours)} ชม. ·
+                {' '}{p.statusLabel} · {p.description}
+              </div>
+            ))}
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              รายการเหล่านี้พิมพ์ลงใบพร้อมเครื่องหมาย (รออนุมัติ) ในช่องรายละเอียดงาน ·
+              ยอดบนใบจึงยังไม่ใช่ยอดที่จะส่งบัญชี — หากต้องการใบสำหรับลงลายเซ็น
+              ให้ตัดสินรายการที่ค้างให้ครบก่อนพิมพ์ หรือเปลี่ยน
+              “นโยบายการพิมพ์ใบขออนุมัติ OT” ในตั้งค่าระบบเป็น
+              “เฉพาะรายการที่อนุมัติแล้ว”
+            </div>
+          </Alert>
+        </div>
+      )}
+
+      {/* The opposite surprise: HR set สถานะที่นับ wide, the policy is strict,
+          and the sheet is narrower than the table it was printed from. Said
+          here because the paper cannot carry it and the total is the thing
+          somebody is about to compare. */}
+      {narrowed && (
+        <div className="no-print" style={{ marginBottom: 12 }}>
+          <Alert kind="info">
+            {of}ใบนี้พิมพ์เฉพาะรายการที่อนุมัติแล้ว ตามนโยบายการพิมพ์ใบขออนุมัติ OT
+            ในตั้งค่าระบบ — ไม่ได้ใช้ “สถานะที่นับ” ที่เลือกไว้บนหน้าตรวจสอบรายเดือน
+            ยอดบนใบจึงน้อยกว่ายอดในตารางได้
+          </Alert>
+        </div>
+      )}
+
       {/*
         The same facts, on the screen, always — whatever the paper is set to
         carry. Whoever pressed print is the person who can still do something
@@ -233,10 +307,20 @@ export function F027Sheet({ form }) {
                 <td className="n">{cell(s?.[BUCKETS.OT3_HOLIDAY])}</td>
                 <td className="desc" title={s?.description}>
                   {s?.description || ''}
+                  {/* FIRST OF THE FOUR MARKS, because it is the only one that
+                      bears on whether the row should be signed. Reached only
+                      under the two `formPrintScope` answers that let a queued
+                      row onto the paper — under เฉพาะรายการที่อนุมัติแล้ว no
+                      session here can carry another status. In the description
+                      cell for the same reason (แทน) is: F-HR-027 Rev.4 is a
+                      controlled form measured in millimetres, and a remark
+                      where HR already reads three others is not a revision of
+                      it. What it means is spelt out under the grid. */}
+                  {s && s.status !== 'approved' ? ' (รออนุมัติ)' : ''}
                   {s?.continuedFromPreviousDay ? ' (ต่อจากคืนก่อน)' : ''}
                   {s?.noBreakTaken ? ' [ไม่พักเที่ยง]' : ''}
                   {/* Six characters, in the cell that already carries the
-                      other two per-row remarks. Not a new column and not a
+                      other per-row remarks. Not a new column and not a
                       new row: this sheet is a fixed month of 31 and its
                       columns are measured in millimetres against the
                       paper. What (แทน) means is spelt out under the grid. */}
@@ -257,6 +341,17 @@ export function F027Sheet({ form }) {
           </tr>
         </tbody>
       </table>
+
+      {/* What (รออนุมัติ) means, on the paper, and only on a sheet that has one.
+          NOT BEHIND A FLAG, where the acting note below it is, and the two are
+          worth telling apart: that one adds a line to a sheet that already says
+          everything it needs to, so it waits for HR to see a sample. This one
+          explains a mark that is already on the page — and the mark is there to
+          stop somebody signing a row the app has not decided yet, which an
+          unexplained abbreviation cannot do. Its own flag is `formPrintScope`:
+          under เฉพาะรายการที่อนุมัติแล้ว nothing here can render, and an
+          ordinary sheet is unchanged to the millimetre. */}
+      <PendingNote form={form} />
 
       {/* Who filled a row in, and who signed one, when that was not the
           obvious person.
@@ -339,6 +434,34 @@ function actingLine(a) {
   }
   const verb = a.kind === 'refused' ? 'ไม่อนุมัติ' : 'อนุมัติ';
   return `${when} · ${a.by || '—'} ${verb}แทน ${a.onBehalfOf || '—'}`;
+}
+
+/**
+ * One line under the grid saying what the (รออนุมัติ) marks above it mean, and
+ * how many of them there are.
+ *
+ * Returns null on a sheet with none — which is every sheet under the shipped
+ * `formPrintScope`, and every sheet at all once a month's queues are empty. So
+ * the form gains nothing permanently; it gains a line exactly while it is
+ * carrying rows that would otherwise be signed for as settled.
+ *
+ * It names the count rather than the dates. The dates are already on the page,
+ * beside the mark, in the rows they belong to; repeating them under the grid
+ * would be the same fact twice and would grow with the month. The count is the
+ * one thing the rows cannot say — how much of this sheet is not final.
+ */
+function PendingNote({ form }) {
+  if (!form.pending?.length) return null;
+  return (
+    <div className="f027-acting">
+      <div className="t">หมายเหตุ · รายการที่ยังไม่อนุมัติ</div>
+      <div className="l">
+        (รออนุมัติ) ในช่องรายละเอียดงาน = รายการที่ยังไม่ผ่านการอนุมัติครบทุกขั้น
+        ณ วันที่พิมพ์ — มี {form.pending.length} รายการในใบนี้ และถูกนับรวมใน สรุปรวม แล้ว
+      </div>
+      <div className="l">ยอดในใบนี้จึงยังไม่ใช่ยอดสุดท้ายสำหรับส่งบัญชี</div>
+    </div>
+  );
 }
 
 /**
