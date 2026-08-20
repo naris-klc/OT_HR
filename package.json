@@ -18,6 +18,7 @@
     "restore": "node src/restore.js",
     "migrate:company": "node src/migrate-company.js",
     "migrate:policy-version": "node src/migrate-policy-version.js",
+    "migrate:birthday-rule-start": "node src/migrate-birthday-rule-start.js",
     "setup": "npm install"
   },
   "dependencies": {

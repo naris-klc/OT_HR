@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
-import { Alert, SheetScroll, UnaccountedHours } from './common.jsx';
+import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
 
 /**
  * สรุปชั่วโมงทำ OT แยกแผนก — the departmental sheet, cell for cell.
@@ -52,26 +52,17 @@ export default function DepartmentPrint({ period, onClose }) {
 
   return (
     <>
-      <div className="row no-print" style={{ marginBottom: 12 }}>
-        <button className="btn" onClick={() => window.print()}>พิมพ์ / บันทึกเป็น PDF</button>
-        {onClose && <button className="btn ghost" onClick={onClose}>ปิด</button>}
-        <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 12.5, color: 'var(--muted)', alignSelf: 'center', textAlign: 'right' }}>
-          ตั้งค่าการพิมพ์: A4 แนวตั้ง · ขอบกระดาษ “ค่าเริ่มต้น” · ไม่ต้องปรับขนาด · เปิด “กราฟิกพื้นหลัง” ให้แถบสีหัวตารางติดมาด้วย
-          <br />
-          หนึ่งแผนกต่อหนึ่งหน้า · ปิดท้ายด้วยใบรวมทุกแผนก · ชั่วโมงในช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา
-        </div>
-      </div>
+      <PrintChrome
+        onClose={onClose}
+        hints={[{ label: 'หมายเหตุ', text: '1 แผนกต่อ 1 หน้า ปิดท้ายด้วยใบรวมทุกแผนก' }]}
+        footer="ช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา"
+      />
 
       {/* On the screen above the sheets, never on the paper — see
           AccountingPrint.jsx. */}
       <UnaccountedHours unaccounted={data.unaccounted} />
 
-      {data.pending?.count > 0 && (
-        <div className="box warn no-print">
-          เดือนนี้ยังมีรายการค้างอนุมัติ {data.pending.count} รายการ ซึ่ง<strong>ไม่ถูกนับ</strong>ในใบนี้
-        </div>
-      )}
+      <PendingNotice count={data.pending?.count} />
 
       <SheetScroll className="otdept-screen">
         {departments.length === 0 ? (

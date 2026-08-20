@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, THAI_MONTHS } from '@/lib/api.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
-import { Alert, SheetScroll, UnaccountedHours } from './common.jsx';
+import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
 
 /**
  * สรุป OT ส่งบัญชี rendered for print — one sheet per company, A4 portrait.
@@ -78,16 +78,11 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
 
   return (
     <>
-      <div className="row no-print" style={{ marginBottom: 12 }}>
-        <button className="btn" onClick={() => window.print()}>พิมพ์ / บันทึกเป็น PDF</button>
-        {onClose && <button className="btn ghost" onClick={onClose}>ปิด</button>}
-        <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 12.5, color: 'var(--muted)', alignSelf: 'center', textAlign: 'right' }}>
-          ตั้งค่าการพิมพ์: A4 แนวตั้ง · ขอบกระดาษ “ค่าเริ่มต้น” · ไม่ต้องปรับขนาด · เปิด “กราฟิกพื้นหลัง” ให้แถบสีหัวตารางติดมาด้วย
-          <br />
-          ชั่วโมงในช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา · หนึ่งบริษัทต่อหนึ่งหน้า
-        </div>
-      </div>
+      <PrintChrome
+        onClose={onClose}
+        hints={[{ label: 'หมายเหตุ', text: '1 บริษัทต่อ 1 หน้า' }]}
+        footer="ช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา"
+      />
 
       {/* Both notices belong on the screen, not on the sheet — the sheet is the
           table and nothing else. This one is here rather than only on the
@@ -95,11 +90,7 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
           and a sheet sent to accounting while it is showing is short. */}
       <UnaccountedHours unaccounted={data.unaccounted} />
 
-      {data.pending?.count > 0 && (
-        <div className="box warn no-print">
-          เดือนนี้ยังมีรายการค้างอนุมัติ {data.pending.count} รายการ ซึ่ง<strong>ไม่ถูกนับ</strong>ในใบนี้
-        </div>
-      )}
+      <PendingNotice count={data.pending?.count} />
 
       <SheetScroll className="acct-screen">
         {data.companies.length === 0 ? (

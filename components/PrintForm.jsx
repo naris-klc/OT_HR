@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, BUCKETS } from '@/lib/api.js';
-import { Alert, SheetScroll } from './common.jsx';
+import { Alert, PrintChrome, SheetScroll } from './common.jsx';
 
 /**
  * The query string one sheet is asked for with — whose month, and สถานะที่นับ
@@ -64,7 +64,7 @@ export default function PrintForm({ employeeId, period, status = '', onClose }) 
 
   return (
     <>
-      <PrintChrome onClose={onClose} basis={form.hrSection.basis} />
+      <PrintChrome onClose={onClose} {...f027Chrome(form)} />
       <FormNotices form={form} asked={status} />
       <SheetScroll className="f027-screen">
         <F027Sheet form={form} />
@@ -74,32 +74,28 @@ export default function PrintForm({ employeeId, period, status = '', onClose }) 
 }
 
 /**
- * The bar above the paper — print, close, and how the printer must be set.
+ * What PrintChrome (components/common.jsx) has to be told about an F-HR-027 —
+ * the yellow band the “กราฟิกพื้นหลัง” box carries, and what the ฝ่ายบุคคล
+ * column on this print means.
  *
- * `note` is where a document says what it is when it is more than one sheet;
- * `disabled` holds the print button while a bundle is still being fetched, so
- * nobody sends half a month to the printer.
+ * ONE FUNCTION FOR BOTH PATHS, for the same reason `sheetQuery` above is one:
+ * a sheet printed alone and the same sheet inside a bundle must say the same
+ * thing about its own figures. `form` is undefined until the first sheet of a
+ * bundle lands, and the basis line is then left out rather than guessed at —
+ * the wrong answer sits above a signed document for as long as the paper lasts.
+ *
+ * It is the `footer` and not a bullet: it is not a printer setting and nobody
+ * acts on it. It is what the column MEANS, read off the paper afterwards by
+ * whoever is checking the figures.
  */
-export function PrintChrome({ onClose, basis, disabled = false, note = null }) {
-  return (
-    <div className="row no-print" style={{ marginBottom: 12 }}>
-      <button className="btn" onClick={() => window.print()} disabled={disabled}>
-        พิมพ์ / บันทึกเป็น PDF
-      </button>
-      {onClose && <button className="btn ghost" onClick={onClose}>ปิด</button>}
-      <div style={{ flex: 1 }} />
-      {/* The sheet itself carries nothing the paper form does not, so what
-          the ฝ่ายบุคคล figures mean is said here instead of on the form. */}
-      <div style={{ fontSize: 12.5, color: 'var(--muted)', alignSelf: 'center', textAlign: 'right' }}>
-        ตั้งค่าการพิมพ์: A4 แนวตั้ง · ขอบกระดาษ “ค่าเริ่มต้น” · ไม่ต้องปรับขนาด · เปิด “กราฟิกพื้นหลัง” ให้แถบสีเหลืองติดมาด้วย
-        {note && <><br />{note}</>}
-        <br />
-        {basis === 'multiplied'
-          ? 'ช่องเฉพาะฝ่ายบุคคล: คูณอัตราแล้ว'
-          : 'ช่องเฉพาะฝ่ายบุคคล: เป็นชั่วโมงดิบ ยังไม่คูณอัตรา'}
-      </div>
-    </div>
-  );
+export function f027Chrome(form) {
+  const basis = form?.hrSection.basis;
+  return {
+    graphics: 'แถบสีเหลือง',
+    footer: basis && `ช่องเฉพาะฝ่ายบุคคล: ${basis === 'multiplied'
+      ? 'คูณอัตราแล้ว'
+      : 'เป็นชั่วโมงดิบ ยังไม่คูณอัตรา'}`,
+  };
 }
 
 /**

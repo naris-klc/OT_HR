@@ -123,10 +123,20 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
           which is the one thing a queue must never say falsely. Almost always
           the bound is the birthday rule's own start — before it was turned on no
           holiday was owed, so those months hold nothing to answer.
+
+          THE DAY, NOT THE MONTH, WHEN THE RULE STARTED PARTWAY THROUGH ONE. The
+          floor is a date (`queueWindow` → `fromDate`) because the arithmetic
+          works to the day, and a rule that began on the 13th leaves the 1st to
+          the 12th out of the queue. Printing "สิงหาคม" over a list that starts
+          on the 13th is the false all-clear this line exists to prevent. The
+          month reads better and is used whenever it is true — a floor on the 1st
+          means the whole month is in it.
         */}
         {window && (
           <div className="hint" style={{ marginTop: 4 }}>
-            แสดงย้อนหลังถึง {periodLabel(window.from)}
+            แสดงย้อนหลังถึง {window.fromDate && !window.fromDate.endsWith('-01')
+              ? thaiDate(window.fromDate)
+              : periodLabel(window.from)}
             {window.bound === 'rule' && ' — เท่าที่กฎวันหยุดวันเกิดเริ่มมีผล (ก่อนหน้านั้นไม่มีวันหยุดวันเกิดให้ตรวจ)'}
             {window.bound === 'cap' && ' — ย้อนหลังได้สูงสุด 12 เดือน อาจมีเก่ากว่านี้ที่ไม่ได้แสดง'}
             {window.bound === 'unversioned' && ' — ยังไม่มีบันทึกเวอร์ชันนโยบาย จึงแสดงได้เฉพาะเดือนปัจจุบัน (รัน migrate:policy-version เพื่อดูย้อนหลัง)'}

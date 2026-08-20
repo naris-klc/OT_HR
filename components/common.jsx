@@ -1243,7 +1243,7 @@ export function useScrollEdge(watch) {
   return [ref, edge];
 }
 
-export function SheetScroll({ className, hint = '↔ ปัดซ้าย-ขวาเพื่อดูทั้งใบ', children }) {
+export function SheetScroll({ className, hint = '← ปัดซ้าย-ขวาเพื่อดูทั้งใบ →', children }) {
   const [ref, edge] = useScrollEdge(children);
 
   return (
@@ -1254,6 +1254,121 @@ export function SheetScroll({ className, hint = '↔ ปัดซ้าย-ข�
           screen's and a sheet printed without having been swiped still has
           `start` on it. */}
       {edge === 'start' && <div className="sheet-hint no-print">{hint}</div>}
+    </div>
+  );
+}
+
+/**
+ * แถบเหนือกระดาษ — ปุ่มพิมพ์, ปุ่มปิด และวิธีตั้งเครื่องพิมพ์.
+ *
+ * ONE BAR, FIVE PRINT VIEWS. This was four copies of the same twelve lines —
+ * F-HR-027, the bundle, ใบสรุปแผนก, ใบบัญชี and the password slips — and they
+ * had already drifted: the slips screen was passing `basis="raw"` to a
+ * component that then printed “ช่องเฉพาะฝ่ายบุคคล: เป็นชั่วโมงดิบ” above a page
+ * of passwords, because that sentence was welded into the shared copy while
+ * everything else about it was not.
+ *
+ * So the split is: what is true of EVERY print (A4, margins, background
+ * graphics) is written here once, and what is true of ONE document is passed in
+ * as `hints`. A caller can no longer inherit a sentence about somebody else's
+ * form by accident.
+ *
+ * `graphics` names what the “กราฟิกพื้นหลัง” checkbox is worth on this
+ * particular sheet — the yellow band on F-HR-027, the header fills on the two
+ * reports. `null` drops the line: the slips are drawn with dashed BORDERS,
+ * which print either way, and telling somebody to tick a box that changes
+ * nothing is how the rest of the list stops being read.
+ *
+ * EVERY BULLET IS `{ label, text }` — “ตั้งค่าพิมพ์”, “ตัวเลือกเพิ่มเติม”,
+ * “หมายเหตุ”. The label is the word the eye lands on, so it cannot be the
+ * front half of a sentence that a caller happened to write with a colon in it:
+ * this list is scanned for the ONE line that answers whatever the printer is
+ * currently doing wrong, and a label is only worth its ink if every line has
+ * one in the same place. A hint with no `label` still renders — the text on its
+ * own — rather than being dropped.
+ *
+ * `footer` IS THE OTHER KIND OF SENTENCE, and the split is worth stating
+ * because most callers have one of each. The card answers “how do I print
+ * this” — settings, acted on once, at the printer, and of no interest a minute
+ * later. The footer answers “what do these numbers mean”, which is not a
+ * setting, is not acted on, and is read by whoever is holding the paper
+ * afterwards. Both used to be bullets in the same list, where the one that
+ * mattered after the printing was mixed in with the three that stopped
+ * mattering the moment it started.
+ *
+ * TWO SIBLINGS, NOT ONE WRAPPER, and that is what makes the bar sticky on a
+ * phone: `position: sticky` is measured against the PARENT box, so a bar
+ * nested in a chrome div would come unstuck the moment that div scrolled past —
+ * which is exactly the moment it is wanted. Side by side, both are children of
+ * the view, and the bar holds all the way down the sheet.
+ */
+export function PrintChrome({
+  onClose, disabled = false, graphics = 'แถบสีหัวตาราง', hints = [], footer = null,
+}) {
+  const lines = [
+    { label: 'ตั้งค่าพิมพ์', text: 'A4 แนวตั้ง | ขอบกระดาษ “เริ่มต้น” (ไม่ต้องปรับขนาด)' },
+    graphics && {
+      label: 'ตัวเลือกเพิ่มเติม',
+      text: `ติ๊กเปิด “กราฟิกพื้นหลัง” เพื่อให้${graphics}ติดมาด้วย`,
+    },
+    ...hints,
+  ].filter((line) => line && line.text);
+
+  return (
+    <>
+      <div className="print-bar no-print">
+        <button className="btn print-go" onClick={() => window.print()} disabled={disabled}>
+          พิมพ์ / บันทึกเป็น PDF
+        </button>
+        {onClose && <button className="btn ghost" onClick={onClose}>ปิด</button>}
+      </div>
+
+      {/* The sheet carries nothing the paper form does not, so what the figures
+          on it mean is said here instead of on the form. One line each: this is
+          read standing at a printer, not sat down. */}
+      <ul className="print-setup no-print">
+        {lines.map((line) => (
+          <li key={line.text}>
+            {line.label && <span className="print-setup-label">{line.label}:</span>}
+            {line.label ? ' ' : ''}{line.text}
+          </li>
+        ))}
+      </ul>
+
+      {footer && <div className="print-foot no-print">{footer}</div>}
+    </>
+  );
+}
+
+/**
+ * ค้างอนุมัติ, on a sheet that does not count them — ใบสรุปแผนก and ใบบัญชี.
+ *
+ * THE ONE LINE ON THIS SCREEN THAT CHANGES WHAT THE TOTAL MEANS, and the reason
+ * it is a component rather than markup in both files is that the two copies
+ * have to keep saying the same thing: a sheet sent to accounting is read as the
+ * month, and if these rows are missing from it the figure is short by however
+ * many hours they are. It sits above the paper and never on it (`no-print`) —
+ * the sheet is the form, and a warning printed into it would be a different
+ * document.
+ *
+ * NOT the same notice as `FormNotices` on F-HR-027 (components/PrintForm.jsx),
+ * which reports pending rows that ARE counted. Opposite meaning, so deliberately
+ * not the same component — two screens sharing one warning that means the
+ * reverse on each is worse than two warnings.
+ *
+ * Returns nothing at zero rather than making every caller ask, which is what
+ * both callers were doing.
+ */
+export function PendingNotice({ count }) {
+  if (!count) return null;
+
+  return (
+    <div className="print-warn no-print">
+      {/* Decoration, not information: the sentence beside it already says
+          ค้างอนุมัติ, and a screen reader announcing “warning sign” before it
+          adds a word, not a fact. */}
+      <span className="print-warn-mark" aria-hidden="true">⚠️</span>
+      <span>มีรายการค้างอนุมัติ {count} รายการ (จะไม่ถูกนับรวมในใบนี้)</span>
     </div>
   );
 }

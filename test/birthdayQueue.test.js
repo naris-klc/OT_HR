@@ -209,6 +209,45 @@ test('กฎวันหยุดวันเกิดปิดอยู่ — 
   assert.deepEqual(out.needsEntry, []);
 });
 
+test('กฎเริ่มกลางเดือน — วันก่อนหน้านั้นไม่เข้าคิว แม้จะอยู่ในเดือนเดียวกัน', () => {
+  /**
+   * THE GAP THIS CLOSES, and it was a real one on 2026-08-20.
+   *
+   * The rule was recorded on 13 August, effective that day. The queue rounded
+   * that to '2026-08' and offered every birthday in the month; the compute path
+   * resolves the rules per DATE, so for the 10th it read the version in force on
+   * the 10th — the rule off. ฝ่ายบุคคล opened บันทึก OT ให้ on a row the screen
+   * had just told them to work, and got a red กฎวันหยุดวันเกิดปิดอยู่ over two
+   * empty time boxes and 08:00–17:00 computing to 0 ชั่วโมง.
+   *
+   * The floor is a date now, so the queue offers exactly what the engine will
+   * accept. A birthday earlier in the same month is not "missed" — no holiday
+   * was owed on it — and if HR decides otherwise the answer is to record the
+   * earlier `effectiveFrom`, which moves the queue and the arithmetic together.
+   */
+  const before = person({ birthDate: '1980-08-10', code: 'PM-0100' });
+  const after = person({ birthDate: '1978-08-14', code: 'PM-0200' });
+
+  const out = queue([before, after], { activeFrom: '2026-08-13' });
+  assert.deepEqual(out.needsEntry.map((r) => r.date), ['2026-08-14']);
+
+  // And with the floor a day earlier, the same person is owed the day again.
+  const wider = queue([before, after], { activeFrom: '2026-08-01' });
+  assert.deepEqual(wider.needsEntry.map((r) => r.date), ['2026-08-10', '2026-08-14']);
+
+  // No floor at all is the old answer — every caller in the app hands one in,
+  // and a test fixture that does not must not silently lose rows.
+  assert.equal(queue([before, after]).needsEntry.length, 2);
+});
+
+test('พื้นวันที่ไม่กลบ "ตรวจไม่ได้" — คนที่ไม่มีวันเกิดยังต้องขึ้น', () => {
+  // A roster row with no birth date has no date to compare, and the warning is
+  // about the roster rather than about a month. It survives the floor.
+  const out = queue([person({ birthDate: null })], { activeFrom: '2026-08-13' });
+  assert.equal(out.uncheckable.length, 1);
+  assert.equal(out.uncheckable[0].reason, 'missing');
+});
+
 test('"ตรวจไม่ได้" นับต่อคน ไม่ใช่ต่อเดือน', () => {
   // A roster row with no birthDate is equally unanswerable in every month
   // scanned; listed per period it would print the same name twice and read as
@@ -384,9 +423,16 @@ test('เดือนก่อนกฎเริ่มใช้ ไม่มี�
   assert.match(report, /activeFrom: await birthdayRuleStart\(\)/);
   const loader = strip(readFileSync(join(ROOT, 'lib/birthdayQueueQuery.js'), 'utf8'));
   assert.match(loader, /export async function birthdayRuleStart/);
-  // The queue's own window is built on the same fact, so the two cannot disagree
-  // about when the benefit started.
-  assert.match(loader, /const ruleFrom = await birthdayRuleStart\(\)/);
+  /**
+   * The queue's own window is built on the same fact, so the two cannot
+   * disagree about when the benefit started — and the month the report asks for
+   * is DERIVED from the date the queue uses, rather than read a second time
+   * from a second field. `birthdayRuleStart` reading `createdAt` while the
+   * arithmetic read `effectiveFrom` is exactly how they came apart.
+   */
+  assert.match(loader, /const ruleFromDate = await birthdayRuleStartDate\(\)/);
+  assert.match(loader, /return periodOf\(await birthdayRuleStartDate\(\)/);
+  assert.match(loader, /sort\(\{ effectiveFrom: 1, seq: 1 \}\)/, 'วันเริ่มกฎต้องอ่านจากวันที่มีผล');
 });
 
 test('ตัวเลข badge กับตัวเลขในแท็บมาจากการคำนวณเดียวกัน', () => {

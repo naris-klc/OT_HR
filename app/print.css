@@ -564,6 +564,26 @@
   font-family: 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
   font-size: 9.5pt;
   line-height: 1.3;
+  /* A PAGE, NOT A STRIP — the last of the four sheets to get one.
+
+     Every other document in this file already fills its side: .f027 by
+     min-height and a flex column, .slips by five 55mm rows, .acct by a fixed
+     ROWS_PER_PAGE with pad bands top and bottom. This one had nothing, so a
+     department with four people rendered as a white strip a third of a page
+     deep, floating on the grey — while the accounting sheet beside it looked
+     like paper. The break rule below always did put one department on each
+     side; there was simply nothing saying how far down the side went, and on
+     screen that is the whole difference between a preview and a document.
+
+     295mm AND NOT 297. The bands here are horizontal only (`padding: 0 8mm`
+     in .otdept-screen), so this figure is the whole height of the page and
+     the 2mm left over is the same slack .f027 and .slips keep: a sheet that
+     measures 297.1mm ejects a blank side into the middle of the bundle.
+     .slips was written at exactly 297 for one revision and did precisely
+     that. A department too long for the page still runs on — this is a
+     minimum, and it is the one that would be reached for to "fix" the run-on
+     by capping it. */
+  min-height: 295mm;
 }
 .otdept + .otdept { break-before: page; page-break-before: always; }
 
@@ -683,6 +703,97 @@
   .otdept tfoot { display: table-footer-group; }
 }
 
+/* ══ the bar above the paper ═════════════════════════════════════════════════
+ *
+ * Rendered by PrintChrome (components/common.jsx) as two siblings — the buttons
+ * and the ตั้งค่าการพิมพ์ box — and they are siblings because of the phone rule
+ * at the foot of this file: only the bar is pinned there, and `position: sticky`
+ * cannot leave the parent it is measured against.
+ *
+ * Both carry `no-print` and neither has a print rule, which is the point: this
+ * is the screen telling you how to set the printer, and it would be absurd on
+ * the paper that came out of it.
+ */
+
+.print-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+/* A card rather than a right-aligned paragraph, and one line per instruction.
+   The four sentences used to run together into one grey block at the end of a
+   row — read once, when it was written, and never again. This is checked at the
+   printer, standing up, against a settings dialog that is open on the other
+   half of the screen.
+
+   12px, a size down from the app's body text and two down from the button
+   beside it. It is a reference card, not an instruction: the thing this screen
+   is for is พิมพ์, and the list must not compete with it for the first look. */
+.print-setup {
+  margin: 8px 0;
+  /* 12px round, plus the 16 the discs hang in. */
+  padding: 12px 12px 12px 28px;
+  list-style: disc;
+  border: 1px solid var(--print-note-line);
+  border-radius: 12px;
+  background: var(--print-note-bg);
+  max-width: 760px;
+}
+.print-setup li {
+  font: 400 12px/1.55 var(--sans);
+  color: var(--print-note-ink);
+}
+.print-setup li + li { margin-top: 4px; }
+
+/* ค้างอนุมัติ — the same card geometry as the list above it, in amber.
+ *
+ * SAME SHAPE ON PURPOSE: 12px radius, 12px padding, 8px clear, and the same
+ * 760px column, so the two panels above the paper read as one stack rather
+ * than as two things that happened to land next to each other. The colour is
+ * the only thing that separates them, which is what makes the colour mean
+ * something.
+ *
+ * 12px like the list, and the icon is what buys back the weight that size
+ * gives up. It replaced a 13.5px .box.warn — three lines shorter on a phone,
+ * which is three lines more of the sheet on screen. */
+.print-warn {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 0;
+  padding: 12px;
+  max-width: 760px;
+  border: 1px solid var(--print-warn-line);
+  border-radius: 12px;
+  background: var(--print-warn-bg);
+  color: var(--print-warn-ink);
+  font: 400 12px/1.5 var(--sans);
+}
+/* Never shrinks and never wraps away from its sentence — on a narrow phone the
+   text takes the second line and the mark stays with it. */
+.print-warn-mark { flex: none; font-size: 13px; line-height: 1; }
+
+/* What the figures mean, under the card rather than in it — see PrintChrome in
+   components/common.jsx for why the two are not the same kind of sentence.
+
+   10px and centred, which is as quiet as type in this app gets: it is the one
+   line here that is not read at the printer, and it earns its place by being
+   the only thing on the screen that says what the ฝ่ายบุคคล column is counting.
+   Centred under the card, so it reads as that card's footnote and not as the
+   first line of the sheet below it. */
+.print-foot {
+  margin: 0 0 12px;
+  max-width: 760px;
+  font: 400 10px/1.5 var(--sans);
+  color: var(--print-note-foot);
+  text-align: center;
+}
+/* The word the eye lands on. Weight and a shade of brightness, not a colour of
+   its own: three labels in three colours would be a legend to learn before the
+   list can be read. */
+.print-setup-label {
+  font-weight: 600;
+  color: var(--print-note-ink);
+}
+
 /* ══ the wrapper: the fade and the swipe hint ════════════════════════════════
  *
  * Rendered by SheetScroll (components/common.jsx), which puts `data-edge` on
@@ -742,11 +853,25 @@
   z-index: 2;
   padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(20, 32, 26, .8);
+  background: rgba(20, 32, 26, .72);
+  backdrop-filter: blur(2px);
   color: #fff;
   font: 500 12px/1.35 var(--sans);
   white-space: nowrap;
   pointer-events: none;
+  /* IT IS THE ONLY THING ON THE SCREEN THAT MOVES, which is what buys the
+     glance: a still pill over a still table reads as a caption on the picture,
+     and the swipe it is describing goes untried. Slow and shallow — it is
+     telling you the table continues, not asking to be looked at — and it is
+     gone after the first swipe anyway (SheetScroll renders it at `start`
+     only), so nothing on this screen pulses for longer than it takes to read
+     the sentence. */
+  animation: sheet-hint-pulse 2s cubic-bezier(.4, 0, .6, 1) infinite;
+}
+
+@keyframes sheet-hint-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
 }
 
 @media print {
@@ -758,6 +883,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sheet-view::before, .sheet-view::after { transition: none; }
+  /* Full strength when it stops rather than mid-fade: the setting asks for no
+     motion, not for a dimmer hint. */
+  .sheet-hint { animation: none; opacity: 1; }
 }
 
 /* ══ the three sheets on a phone ═════════════════════════════════════════════
@@ -789,6 +917,41 @@
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
   }
+
+  /* ── the bar stays ────────────────────────────────────────────────────────
+   *
+   * An A4 sheet on a phone is several screens tall, and พิมพ์ was at the top of
+   * the first one: every print meant reading to the bottom of the form and then
+   * scrolling all the way back up to press the button that prints it. Pinned,
+   * the sheet is checked and printed from wherever the checking ended.
+   *
+   * 62px IS the top of the screen here — the app bar's height, and the app bar
+   * is itself sticky at 0 and never leaves. At 0 this bar would slide under it
+   * and be invisible exactly while it was stuck. z-index 20 is the same number
+   * the queue's own pinned bar uses: over the page, under the mobile nav (30)
+   * and the modals (80).
+   *
+   * The pull-out and the padding cancel main's insets, the way `.sheet-view`
+   * does immediately above — a bar that stopped 12px short of each edge would
+   * let the desk through beside it and stop reading as a bar at all.
+   */
+  .print-bar {
+    position: sticky; top: 62px; z-index: 20;
+    margin-left: calc(-1 * max(12px, env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(12px, env(safe-area-inset-right)));
+    padding: 10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
+    /* Sticky needs an opaque fill of its own: what passes underneath is the
+       grey desk and then the sheet, and either one showing through would make
+       both it and the buttons unreadable. */
+    background: var(--bg);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  /* พิมพ์ takes the room, ปิด takes what it needs — one thumb-sized target for
+     the thing this screen is for, and the way out beside it. Ordered, not
+     specific: `.print-go` carries `.btn` too and the two selectors weigh the
+     same, so the general one has to come first or it wins. */
+  .print-bar .btn { flex: none; }
+  .print-bar .print-go { flex: 1; }
 }
 
 /* ══ กระดาษเปล่า: เหลือแต่ตาราง ══════════════════════════════════════════════

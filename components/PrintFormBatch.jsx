@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
-import { Alert, Empty, SheetScroll } from './common.jsx';
-import { PrintChrome, F027Sheet, narrowedByPolicy, sheetQuery } from './PrintForm.jsx';
+import { Alert, Empty, PrintChrome, SheetScroll } from './common.jsx';
+import { f027Chrome, F027Sheet, narrowedByPolicy, sheetQuery } from './PrintForm.jsx';
 
 /**
  * Every F-HR-027 in a month as one document — one person to a side of paper.
@@ -102,16 +102,23 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
   if (!employees.length) return <Empty>ไม่มีพนักงานที่ต้องพิมพ์ในเดือนนี้</Empty>;
 
   const loading = forms === null;
+  // The basis is policy-wide, so any sheet answers for all of them — and it is
+  // blank until the first one lands rather than guessed at and corrected. What
+  // this document IS goes above it: the bundle's own line first, then the one
+  // every F-HR-027 carries.
+  const chrome = f027Chrome(forms?.[0]);
 
   return (
     <>
       <PrintChrome
         onClose={onClose}
-        // Policy-wide, so any sheet answers for all of them. Blank until the
-        // first one lands, rather than guessing and correcting itself.
-        basis={forms?.[0]?.hrSection.basis}
         disabled={loading}
-        note={`รวม ${employees.length} คนในเอกสารเดียว · หนึ่งคนต่อหนึ่งหน้า · เรียงตามลำดับในตารางตรวจสอบรายเดือน`}
+        graphics={chrome.graphics}
+        footer={chrome.footer}
+        hints={[{
+          label: 'หมายเหตุ',
+          text: `รวม ${employees.length} คนในเอกสารเดียว (1 คนต่อ 1 หน้า) เรียงตามลำดับตารางตรวจรายเดือน`,
+        }]}
       />
 
       {loading && (

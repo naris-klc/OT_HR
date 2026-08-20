@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { PrintChrome } from './PrintForm.jsx';
+import { PrintChrome } from './common.jsx';
 
 /**
  * รหัสผ่านชั่วคราว ตัดแจกทีละใบ.
@@ -47,8 +47,13 @@ export default function PasswordSlips({ rows, onClose }) {
     <>
       <PrintChrome
         onClose={onClose}
-        basis="raw"
-        note={`${rows.length} ใบ · ${pages.length} แผ่น — ตัดตามเส้นประแล้วแจกให้เจ้าของแต่ละใบ`}
+        // The cut lines are dashed BORDERS, which print whether or not the
+        // “กราฟิกพื้นหลัง” box is ticked — so this page does not ask for it.
+        graphics={null}
+        hints={[{
+          label: 'หมายเหตุ',
+          text: `${rows.length} ใบ · ${pages.length} แผ่น — ตัดตามเส้นประแล้วแจกให้เจ้าของแต่ละใบ`,
+        }]}
       />
 
       {/* Said on the screen and never on the paper: the slip a person is handed

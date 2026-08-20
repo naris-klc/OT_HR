@@ -511,6 +511,44 @@
    */
   --paper-desk: #e8ebe9;
   --paper-shadow: rgba(0, 0, 0, .18);
+  /* ตั้งค่าการพิมพ์ — the card above the paper. Asked for by hand as
+     zinc-800/70 · zinc-700/60 · zinc-300, a dark translucent panel, and it
+     stays dark in both themes the way the swipe hint below it and the desk
+     above it do: this screen is a picture of paper on a surface, and the card
+     is a thing laid on that surface rather than part of the app's own chrome.
+
+     THE TWO ALPHAS ARE THE VALUES THAT ARE NOT AS ASKED, and the arithmetic is
+     why. The card sits on the PAGE, not on the desk, and in the light theme
+     that page is #EEF1EE — so zinc-800 at 70% composites to #636363, on which
+     zinc-300 measures 4.1:1 and would fail at 12px. 70% is kept where it was
+     asked for and works — the dark theme, where the page underneath is already
+     near-black — and the light half is taken to 88%: the same colour to look
+     at, 7.1:1 to read.
+
+     The footer is worse and is fixed the same way. It has NO card under it —
+     zinc-400 straight onto the light page is 2.0:1, invisible — so the light
+     half is the colour every other quiet line in this app is set in, --muted,
+     written out rather than referenced: --muted is itself a light-dark(), and
+     they do not nest. */
+  /* ค้างอนุมัติ above the same paper. Asked for by hand as amber-950/40 ·
+     amber-800/50 · amber-200, and the dark half is exactly that.
+
+     THE LIGHT HALF IS THIS FILE'S OWN AMBER and not the Tailwind one, because
+     amber-950 at 40% over the light page composites to a warm grey on which
+     amber-200 measures 2.2:1 — a warning nobody can read is worse than no
+     warning, and this is the one line on that screen that changes what the
+     total means. --amber-bg / --amber-line / --amber-ink are the tuned trio
+     from the block above, 5.46:1, already the answer to this exact question.
+     Written out rather than referenced: they are light-dark() themselves, and
+     those do not nest. */
+  --print-warn-bg: light-dark(#FBF1E0, rgb(69 26 3 / .4));
+  --print-warn-line: light-dark(#EFDCB6, rgb(146 64 14 / .5));
+  --print-warn-ink: light-dark(#815B0B, #fde68a);
+
+  --print-note-bg: light-dark(rgb(39 39 42 / .88), rgb(39 39 42 / .7));
+  --print-note-line: rgb(63 63 70 / .6);
+  --print-note-ink: #d4d4d8;
+  --print-note-foot: light-dark(#5B6B62, #a1a1aa);
   /* Heavier than the light theme's. A dialog is told apart from the page
      behind it by the contrast between them, and on a dark page a half-opacity
      scrim leaves the two almost the same colour. */
