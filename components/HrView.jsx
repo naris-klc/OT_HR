@@ -646,6 +646,7 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [marking, setMarking] = useState(null);
+  /** A pop-up over the month table, not a screen of its own — see BirthdayQueue. */
   const [filing, setFiling] = useState(null);
 
   async function load() {
@@ -657,19 +658,8 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
   }
 
   useEffect(() => { setData(null); load(); }, [period]);
-  useBackHandler(Boolean(filing), () => setFiling(null));
 
   const retract = useRetractCheck(() => load(), setError);
-
-  if (filing) {
-    return (
-      <BirthdayFileForm
-        birthday={filing}
-        onCancel={() => setFiling(null)}
-        onSaved={() => { setFiling(null); load(); }}
-      />
-    );
-  }
 
   if (error) return <Alert kind="error">{error}</Alert>;
   // The rule being off is not a gap in the data: a birthday is then an ordinary
@@ -844,6 +834,16 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
             ))}
           </div>
         </div>
+      )}
+
+      {/* Both answers to a birthday row are pop-ups over this table — the same
+          pair, drawn the same way, as on วันเกิดรอตรวจ. */}
+      {filing && (
+        <BirthdayFileForm
+          birthday={filing}
+          onCancel={() => setFiling(null)}
+          onSaved={() => { setFiling(null); load(); }}
+        />
       )}
 
       {marking && (

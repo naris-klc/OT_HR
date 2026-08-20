@@ -59,11 +59,19 @@ export function RateHead({ rate, of = null }) {
  * plus its lines came out as three narrow columns side by side. The wrapper is
  * what puts the message back into ordinary block flow: one column, each child
  * on its own line, however many there are.
+ *
+ * `tight` is the same notice one size down — see `.alert.tight` in
+ * app/styles.css. It is for a notice inside a DIALOG, where the box is
+ * competing for height with the fields and the buttons it is explaining, and
+ * where three lines of explanation can push the thing being explained off a
+ * phone screen. Not a second look: the same palette, the same mark, the same
+ * corner; less padding and a smaller type size. Everywhere else the ordinary
+ * size is right and stays the default.
  */
-export function Alert({ kind = 'warn', children }) {
+export function Alert({ kind = 'warn', tight = false, children }) {
   if (!children) return null;
   return (
-    <div className={`alert ${kind}`}>
+    <div className={`alert ${kind}${tight ? ' tight' : ''}`}>
       <div className="alert-body">{children}</div>
     </div>
   );

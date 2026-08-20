@@ -117,15 +117,41 @@ export function AbsentModal({ row, onClose, onDone }) {
         </>
       )}
     >
-      <Alert kind="info">
-        รายการนี้<strong>ไม่ใช่ใบ OT</strong> — ไม่มีชั่วโมง ไม่มีสถานะอนุมัติ
-        {' '}ไม่เข้ารายงานใด ๆ และไม่นับรวมในเพดานแผนก ·
-        {' '}ผลของมันคือชื่อนี้จะออกจากคิว และในตารางรายเดือนจะขึ้นว่า “ตรวจแล้ว”
-        <div style={{ marginTop: 4, fontSize: 12.5 }}>
-          ระบบเก็บไว้ว่า<strong>ใครเป็นผู้บันทึกและบันทึกเมื่อใด</strong> ·
-          {' '}ถ้าบันทึกผิด กด “ยกเลิกการตรวจ” ได้ — ระบบจะเขียนแถวใหม่ทับความหมายเดิม
-          {' '}โดยไม่ลบของเดิมทิ้ง และชื่อจะกลับมาต้องตรวจอีกครั้ง
-        </div>
+      {/*
+        ONE LINE THAT SAYS WHAT IT IS, AND TWO THAT SAY WHAT HAPPENS.
+
+        This used to be five clauses and a second paragraph, all of it true and
+        most of it answering a question nobody had asked yet. It is read in a
+        bottom sheet, above the one field and the two buttons it exists to
+        explain, so its length is taken directly out of them.
+
+        What was cut, and why none of it is lost:
+
+          · "ไม่มีสถานะอนุมัติ · ไม่เข้ารายงานใด ๆ" — three ways of saying the
+            one thing the heading now says. Nothing here has an hour, a status,
+            a period or a department on it (see app/api/birthday/checks), so
+            "ไม่ถูกนับเป็น OT" covers all of them at once.
+          · "ระบบเก็บไว้ว่าใครเป็นผู้บันทึกและบันทึกเมื่อใด" — still true, and
+            visible a moment later without being promised: the ตรวจแล้ว table
+            prints ผู้บันทึก and the timestamp in its own column.
+          · "เขียนแถวใหม่ทับความหมายเดิม โดยไม่ลบของเดิมทิ้ง" — how the undo is
+            implemented, which is not what somebody deciding needs. The promise
+            they need is that it CAN be undone. The mechanism is still written
+            on the ยกเลิกการตรวจ button's own `title`, next to the press it
+            describes, and in the route's own notes.
+
+        "ได้ตลอดเวลา" is a promise, so it was checked rather than assumed:
+        POST /api/birthday/checks carries no period lock and the record it
+        writes has no period on it, so closing a month does not take the undo
+        away. If either ever changes, this line has to change with it.
+      */}
+      <Alert kind="info" tight>
+        <strong>รายการนี้จะไม่ถูกนับเป็น OT</strong>
+        {' '}— ไม่มีการคำนวณชั่วโมง และไม่มีผลกับเพดานแผนก
+        <ul className="alert-list">
+          <li>สถานะจะเปลี่ยนเป็น “ตรวจแล้ว” และย้ายออกจากคิว</li>
+          <li>กด “ยกเลิกการตรวจ” เพื่อนำกลับมาแก้ไขได้ตลอดเวลา</li>
+        </ul>
       </Alert>
 
       <div className="field">

@@ -5,7 +5,6 @@ import { api, thaiDate, dayName, companyLabel, periodLabel } from '@/lib/api.js'
 import { UNCHECKABLE } from '@/lib/birthdayCheck.js';
 import { Alert, Empty, AddBirthDateHint } from './common.jsx';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
-import { useBackHandler } from './nav.jsx';
 
 /**
  * วันเกิดรอตรวจ — a queue, and everything about it follows from that word.
@@ -41,7 +40,15 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [marking, setMarking] = useState(null);
-  /** A row being turned into a ใบ — replaces the screen, like HrView's sub-views. */
+  /**
+   * A row being turned into a ใบ — a pop-up over this list, not a screen.
+   *
+   * It used to replace the queue the way HR's sub-views replace theirs, and it
+   * is not registered on the back stack any more for the same reason `marking`
+   * never was: the way out of a dialog is its own ✕, Escape, the backdrop or a
+   * swipe down, and all four go through the question about unsaved typing that
+   * a back arrow would walk straight past. See the note in components/OtForm.jsx.
+   */
   const [filing, setFiling] = useState(null);
   const [showUpcoming, setShowUpcoming] = useState(false);
 
@@ -55,22 +62,11 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
   }
 
   useEffect(() => { load(); }, []);
-  useBackHandler(Boolean(filing), () => setFiling(null));
 
   // Both actions come from components/birthdayActions.jsx — the month table on
   // ตรวจสอบรายเดือน offers the same pair, and a dialog explaining a stored record
   // must not have two wordings on two screens.
   const retract = useRetractCheck(() => load(), setError);
-
-  if (filing) {
-    return (
-      <BirthdayFileForm
-        birthday={filing}
-        onCancel={() => setFiling(null)}
-        onSaved={() => { setFiling(null); load(); }}
-      />
-    );
-  }
 
   if (error) return <Alert kind="error">{error}</Alert>;
   if (!data) return <Empty>กำลังโหลด…</Empty>;
@@ -345,6 +341,17 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* The two answers to a row, and both of them are pop-ups over the list
+          that asked. Rendered last so neither depends on where in the table its
+          button happens to sit — each portals itself out to <body> anyway. */}
+      {filing && (
+        <BirthdayFileForm
+          birthday={filing}
+          onCancel={() => setFiling(null)}
+          onSaved={() => { setFiling(null); load(); }}
+        />
       )}
 
       {marking && (

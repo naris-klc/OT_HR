@@ -2079,6 +2079,31 @@ td > .approver-line { margin-top: 5px; }
    have to be read on their own. `min-width: 0` lets a long line wrap inside the
    alert instead of stretching it past the card. */
 .alert-body { flex: 1; min-width: 0; }
+
+/* THE SAME NOTICE, ONE SIZE DOWN — for a dialog, where height is the scarce
+   thing.
+
+   A notice on a card is read on its own; a notice in a bottom sheet is read
+   against the fields under it, and every line it takes is a line of the form
+   that has to be scrolled to. So the padding comes in by 2px on each axis and
+   the type down by one step — far enough to stop the box being the loudest
+   thing in the sheet, not so far that it becomes the fine print nobody reads.
+   The mark keeps its size: it is what says which of the four kinds this is, and
+   shrinking it would cost legibility to save two pixels of a row that is
+   already as tall as the first line of text. */
+.alert.tight { padding: 10px 12px; font-size: 12.5px; }
+
+/* What a shortened notice turns into: one line that says the thing, and the
+   consequences under it as a list.
+
+   A list rather than a sentence with · between the clauses, because these are
+   not one thought — they are two separate things that happen, and run together
+   they were read as one and the second half was missed. Discs, indented far
+   enough to hang under the first line and no further: the alert is already
+   indented by its own mark, and a second deep indent inside it reads as a
+   footnote. */
+.alert-list { margin: 5px 0 0; padding-left: 17px; list-style: disc; }
+.alert-list li { margin-top: 2px; }
 .alert.warn { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-line); }
 .alert.warn::before { content: '!'; background: var(--amber); color: var(--on-amber); }
 .alert.error { background: var(--danger-bg); color: var(--danger-ink); border-color: var(--danger-line); }
@@ -3516,6 +3541,25 @@ table.mini tbody tr:hover { background: none; }
   touch-action: pan-y;
   padding: 20px 20px 26px; display: flex; flex-direction: column; gap: 18px;
 }
+
+/* A FORM THAT IS A DIALOG'S BODY — บันทึก OT ให้, off a birthday row.
+
+   The filing form is drawn on a `.card` on every other screen, and `.card`'s
+   own rules are quietly doing some of its spacing: `.card .hint` is what puts
+   14px under the line that explains the form before the first field starts.
+   Inside a pop-up there is no card, so those rules stop applying and the
+   explanation sits flat against the boxes below it.
+
+   Restated here rather than moved, because both shapes still ship: the employee
+   and the หัวหน้า file on a card, ฝ่ายบุคคล file from the birthday queue in a
+   sheet, and the same JSX has to read right in both.
+
+   It stays a BLOCK, deliberately — not another flex column with a gap of its
+   own. Every row inside it already carries its own `marginTop`, and a gap on
+   top of those margins would space the form by the sum of the two and put the
+   preview panel's rule in the wrong place. */
+.modal-form { display: block; }
+.modal-form .hint { margin-bottom: 14px; }
 
 /* The other fixed row — same reasoning as `.modal-head`, see the note there. */
 .modal-foot {

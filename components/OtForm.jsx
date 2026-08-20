@@ -5,7 +5,7 @@ import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import { submissionWindow } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
-import { Alert, BucketSplit, SegmentList } from './common.jsx';
+import { Alert, BucketSplit, Modal, SegmentList } from './common.jsx';
 import { usePolicy } from './policyContext.jsx';
 
 const blank = () => ({
@@ -221,6 +221,31 @@ export default function OtForm({
   const [busy, setBusy] = useState(false);
   const timer = useRef(null);
 
+  /**
+   * The <form> element's own id — and it is not decoration.
+   *
+   * On a birthday row this form is the body of a pop-up, and a pop-up's foot is
+   * a SIBLING of its body: the button that saves is outside the <form> it
+   * saves. `form={formId}` on that button is what puts it back inside, so the
+   * required fields, the native validation and Enter-in-a-box all keep working
+   * from the foot. Everywhere else the button is inside the form already and
+   * the attribute is a no-op pointing at its own parent.
+   */
+  const formId = React.useId();
+
+  /**
+   * Is there typing here that closing would throw away?
+   *
+   * Asked only by the pop-up, which puts a question in front of ✕, Escape, the
+   * backdrop and a swipe down. It cannot be "the fields are not blank": on a
+   * birthday row the two times START empty and รายละเอียด starts filled in. So
+   * it is "different from what the form opened with", compared against the
+   * opening state itself — a change to those defaults cannot leave this line
+   * behind.
+   */
+  const openedWith = useRef(form);
+  const dirty = Object.keys(form).some((k) => form[k] !== openedWith.current[k]);
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   // Debounced live preview. Every keystroke in a time field would otherwise
@@ -365,16 +390,23 @@ export default function OtForm({
   const overnight = form.endsNextDay;
   const endDateLabel = overnight ? nextDay(form.workDate) : form.workDate;
 
-  return (
-    <form className="card" onSubmit={submit}>
-      <h2>
-        {hrEdit ? 'แก้ไขรายละเอียด (ฝ่ายบุคคล)'
-          : proxy ? 'บันทึก OT แทนลูกทีม'
-            : fromBirthday ? 'บันทึก OT ให้ — วันหยุดวันเกิด'
-              : entry ? 'แก้ไขรายการที่ยื่นไว้'
-                : template ? 'ส่งคำขอใหม่จากรายการเดิม'
-                  : 'บันทึกการทำงานล่วงเวลา'}
-      </h2>
+  /**
+   * The title, said once for both shapes this form takes.
+   *
+   * It is an <h2> at the top of the card and the pop-up's own header line, and
+   * those are two different elements in two different files — so the sentence
+   * itself lives here, where the mode that decides it already lives.
+   */
+  const heading = hrEdit ? 'แก้ไขรายละเอียด (ฝ่ายบุคคล)'
+    : proxy ? 'บันทึก OT แทนลูกทีม'
+      : fromBirthday ? 'บันทึก OT ให้ — วันหยุดวันเกิด'
+        : entry ? 'แก้ไขรายการที่ยื่นไว้'
+          : template ? 'ส่งคำขอใหม่จากรายการเดิม'
+            : 'บันทึกการทำงานล่วงเวลา';
+
+  /** Everything between the title and the buttons — the same fields either way. */
+  const fields = (
+    <>
       {/*
         NOT THE SAME SENTENCE ON A BIRTHDAY ROW, because the usual one is false
         there. "เวลาทำงานปกติ … นอกเหนือจากนี้นับเป็น OT" tells the reader that
@@ -412,30 +444,23 @@ export default function OtForm({
       {/* ── a row of วันเกิดที่ยังไม่มีใบ, opened ─────────────────────────── */}
       {fromBirthday && (
         <>
-          <div className="box" style={{ marginTop: 10 }}>
-            <div style={{ fontWeight: 600 }}>
-              {birthday?.name}
-              {birthday?.code && (
-                <span style={{ fontWeight: 400, color: 'var(--muted)' }}> · {birthday.code}</span>
-              )}
-            </div>
-            <div style={{ marginTop: 2 }}>
-              วันหยุดวันเกิด · {thaiDate(birthday?.date)} (วัน{dayName(birthday?.date)})
-            </div>
-            {/* Both are the row this form was opened from, so neither is a
-                field. Shown rather than hidden: somebody has to be able to see
-                they opened the right name before they type two times against
-                it, and the server checks the pair against the roster anyway. */}
-            {/* "พนักงานและวันที่ … แก้ไขในฟอร์มนี้ไม่ได้" was the first half of
-                this and is gone. It described the screen rather than telling
-                anybody anything: the two facts are printed as text directly
-                above, and วันที่เริ่ม below is rendered `disabled` and looks it.
-                A sentence that only repeats what is already visible costs a
-                line of a phone screen and earns nothing. What is left is the
-                half that is an instruction. */}
-            <div className="hint" style={{ margin: '4px 0 0' }}>
-              กรอกเฉพาะเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง
-            </div>
+          {/* THE NAME AND THE DATE ARE IN THE HEADER NOW, and they are not said
+              twice.
+
+              They stood here in a `.box` because the form used to BE the
+              screen: it replaced the queue it was opened from, and nothing else
+              on it said whose birthday was being filed. As a pop-up it has a
+              header that does not scroll, and that header carries the same
+              three facts — ชื่อ · รหัส · วันที่ — over the fields for as long as
+              the sheet is open. Of two copies the one inside the body is the
+              one that scrolls away, so it is the one that goes.
+
+              Both are still nailed shut and still checked against the roster by
+              the server; วันที่เริ่ม below is rendered `disabled` and looks it.
+              What is left here is the half that is an instruction, which is not
+              something a header can say. */}
+          <div className="hint">
+            กรอกเฉพาะเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง
           </div>
 
           {/*
@@ -765,31 +790,95 @@ export default function OtForm({
           )}
         </div>
       )}
+    </>
+  );
 
+  /**
+   * ยกเลิก and the one that saves — written once, hung where the shape puts them.
+   *
+   * On a card they are the last row of the form. In the pop-up they are its
+   * foot, which is pinned and does not scroll with the fields.
+   *
+   * `cancel` is handed in rather than closed over, and that is the whole point
+   * of the argument: the pop-up passes its own `requestClose`, so ยกเลิก asks
+   * about half-typed times exactly as ✕, Escape and the backdrop do, while the
+   * card passes `onCancel`, which has nothing to ask.
+   */
+  const actions = (cancel) => (
+    <>
+      {onCancel && <button type="button" className="btn ghost" onClick={cancel}>ยกเลิก</button>}
+      <button
+        className="btn"
+        form={formId}
+        disabled={busy || over || !preview || preview.totals.otHours <= 0
+          || (hrEdit && !note.trim()) || (proxy && !targets.length)
+          // Nothing is saved while the server says this row cannot take this
+          // path — the write would 409, and the reason is already on screen.
+          || (fromBirthday && birthdayRouting?.ok === false)
+          // แผนกไม่มีโอที / เหมารายวัน, and these are weekday hours.
+          || Boolean(weekdayRefusal)}
+      >
+        {entry ? 'บันทึกการแก้ไข'
+          : proxy ? (busy
+            ? `กำลังบันทึก… (${targets.length} ใบ)`
+            // The count is on the button because it is the last thing read
+            // before eight requests are filed, and "8 คน" is the fact most
+            // worth being sure of at that moment.
+            : `${routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
+              + (targets.length > 1 ? ` · ${targets.length} คน` : ''))
+            : fromBirthday
+              ? (birthdayRouting?.direct ? 'บันทึกและอนุมัติ' : 'บันทึกและส่งเข้าคิว')
+              : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
+      </button>
+    </>
+  );
+
+  /**
+   * A BIRTHDAY FILING IS A POP-UP, NOT A SCREEN.
+   *
+   * It used to replace whichever list it was opened from — วันเกิดรอตรวจ or
+   * วันเกิดของเดือนนี้ — the way HR's sub-views do. That is the wrong shape for
+   * this one act, and the phone is where it showed:
+   *
+   *   · The row it is about is gone the moment the form is up, so the two facts
+   *     being typed against (whose birthday, which date) survived only as a box
+   *     the form drew for itself, which then scrolled away above the fields.
+   *   · Its two buttons sat at the foot of a long form, which on a phone is a
+   *     scroll away from the times somebody has just typed.
+   *   · ไม่ได้มาทำงาน — the OTHER answer to the same row, one button along — has
+   *     been a sheet from the bottom of the screen all along. Two answers to one
+   *     question arriving as two different kinds of thing is the queue's own
+   *     shape telling somebody they are doing two different sorts of act.
+   *
+   * So it comes up in the same `Modal` `AbsentModal` uses, which is a centred
+   * dialog on a desktop and a bottom sheet below 860px, and which brings the
+   * scrim, Escape, the swipe-down, the focus trap and the unsaved-typing
+   * question with it. The list stays on screen behind the scrim.
+   */
+  if (fromBirthday) {
+    return (
+      <Modal
+        title={heading}
+        subtitle={`${birthday?.name} · ${birthday?.code} · ${thaiDate(birthday?.date)} (วัน${dayName(birthday?.date)})`}
+        onClose={onCancel}
+        dirty={dirty}
+        footer={actions}
+      >
+        {/* The <form> is the dialog's body; the button that submits it is in the
+            foot outside — see `formId` above. */}
+        <form id={formId} className="modal-form" onSubmit={submit}>
+          {fields}
+        </form>
+      </Modal>
+    );
+  }
+
+  return (
+    <form id={formId} className="card" onSubmit={submit}>
+      <h2>{heading}</h2>
+      {fields}
       <div className="row form-actions" style={{ marginTop: 18, justifyContent: 'flex-end' }}>
-        {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>ยกเลิก</button>}
-        <button
-          className="btn"
-          disabled={busy || over || !preview || preview.totals.otHours <= 0
-            || (hrEdit && !note.trim()) || (proxy && !targets.length)
-            // Nothing is saved while the server says this row cannot take this
-            // path — the write would 409, and the reason is already on screen.
-            || (fromBirthday && birthdayRouting?.ok === false)
-            // แผนกไม่มีโอที / เหมารายวัน, and these are weekday hours.
-            || Boolean(weekdayRefusal)}
-        >
-          {entry ? 'บันทึกการแก้ไข'
-            : proxy ? (busy
-              ? `กำลังบันทึก… (${targets.length} ใบ)`
-              // The count is on the button because it is the last thing read
-              // before eight requests are filed, and "8 คน" is the fact most
-              // worth being sure of at that moment.
-              : `${routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
-                + (targets.length > 1 ? ` · ${targets.length} คน` : ''))
-              : fromBirthday
-                ? (birthdayRouting?.direct ? 'บันทึกและอนุมัติ' : 'บันทึกและส่งเข้าคิว')
-                : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
-        </button>
+        {actions(onCancel)}
       </div>
     </form>
   );
