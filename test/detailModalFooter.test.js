@@ -63,9 +63,11 @@ test('the refusal is the same word the rest of the app uses', () => {
  */
 test('nothing in the foot merely closes the pop-up', () => {
   assert.ok(!code.includes('>ปิด<'), 'ปุ่มปิดกลับมาอยู่ท้ายกล่องอีกแล้ว');
-  // The ways out that remain are the Modal's own, not this footer's — every one
-  // of them goes through the same door, so a half-typed reason still gets asked
-  // about. See components/common.jsx.
+  // The ways out that remain are the Modal's own, not this footer's — ✕, Escape,
+  // the backdrop and a swipe down, all four through one door and all four
+  // meaning the same thing since 2026-08-20: closed, in one action. See the note
+  // over `requestClose` in components/common.jsx for what that traded away, and
+  // test/modalCloseButton.test.js for the one dialog that still asks.
   const modalSrc = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
   has(modalSrc, 'className="modal-x" onClick={requestClose} aria-label="ปิด"');
   has(modalSrc, '<div className="modal-backdrop" onClick={requestClose}>');

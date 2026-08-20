@@ -562,6 +562,17 @@ const FOCUSABLE = [
   'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+/**
+ * Anything in a sheet's header that a press could have been aimed AT.
+ *
+ * Read by `Modal`'s drag handlers, which own that header — see the note over
+ * `dragStart`. Not `FOCUSABLE` above: that list answers "where can the keyboard
+ * go", so it drops disabled controls and picks up anything carrying a tabindex.
+ * This one answers "was this press a press", and a disabled button is still
+ * something somebody aimed at rather than a place to grab the sheet by.
+ */
+const CONTROLS = 'button, a, input, select, textarea, label, [role="button"]';
+
 let modalSeq = 0;
 
 /**
@@ -738,6 +749,25 @@ export function Modal({
    * words.
    */
   dirtyStayLabel = 'กลับไปแก้ต่อ', dirtyLeaveLabel = 'ปิดโดยไม่บันทึก',
+  /**
+   * Whether `dirty` STOPS a close, or is merely reported.
+   *
+   * OFF, AND THAT IS WHY EVERY WAY OUT IS ONE ACTION. Asked for over four turns
+   * on 2026-08-20, ending in "ดึงลงปิดไม่ได้เหรอ กดข้างนอกก็ปิดไม่ได้" — a
+   * dialog whose four exits each argued a little differently. With this off,
+   * `dirty` is a fact the caller states and nothing acts on: the eleven dialogs
+   * that pass it are saying "there is unsaved typing here", which is true, and
+   * which is what makes turning the guard back on a one-word change rather than
+   * an archaeology exercise. They are not passing a dead prop; they are passing
+   * the condition, and this is the switch.
+   *
+   * ON FOR THE TWELFTH. ตั้งรหัสผ่านใหม่ borrows `dirty` to mean something else
+   * entirely: a temporary password on screen that no screen will ever show
+   * again. There the press is not "throw away what I typed", it is "throw away
+   * the only copy", and no amount of retyping brings it back — which is the
+   * difference that decides this, not how deliberate the press looked.
+   */
+  dirtyBlocksClose = false,
 }) {
   const boxRef = React.useRef(null);
   const bodyRef = React.useRef(null);
@@ -745,10 +775,38 @@ export function Modal({
   const [closeAsked, setCloseAsked] = React.useState(false);
   const titleId = React.useMemo(() => `modal-title-${++modalSeq}`, []);
 
+  /**
+   * ✕, Escape, the backdrop and a swipe down all arrive here, and they all mean
+   * the same thing: close, now.
+   *
+   * FOUR WAYS OUT AND ONE ANSWER, which is the third shape this has taken in a
+   * day and the one that was actually asked for. It started as a question in
+   * front of every exit; then ✕ alone was let through; and the reply to that was
+   * "ดึงลงปิดไม่ได้เหรอ กดข้างนอกก็ปิดไม่ได้" — which is the right question to
+   * ask of a dialog whose four exits behaved three different ways. A way out
+   * that argues is not a way out, and four of them arguing differently is worse
+   * than any one of them arguing.
+   *
+   * WHAT WAS TRADED AWAY, said plainly so it can be traded back: the backdrop
+   * and the swipe are the two exits that can happen without being chosen — a
+   * thumb landing beside a sheet that fills a phone screen, a flick at the
+   * header the drag reads as a dismissal — and they now discard half-typed times
+   * with no question asked. That is a real cost and it was accepted knowingly.
+   * Everything typed here can be typed again in a minute, which is what makes it
+   * affordable; the line below is where it goes back if it ever stops being.
+   *
+   * `dirtyBlocksClose` is the exception and the whole reason the question still
+   * exists in this file. See the prop: one dialog guards something that no
+   * amount of retyping brings back.
+   */
   const requestClose = React.useCallback(() => {
-    if (dirty) setCloseAsked(true);
-    else onClose?.();
-  }, [dirty, onClose]);
+    if (!dirtyBlocksClose) { setCloseAsked(false); onClose?.(); return; }
+    /* From here down is that one dialog. The band is up, so this press is the
+       answer to it; or it is not, and the band goes up. */
+    if (closeAsked) { setCloseAsked(false); onClose?.(); return; }
+    if (dirty) { setCloseAsked(true); return; }
+    onClose?.();
+  }, [closeAsked, dirty, dirtyBlocksClose, onClose]);
 
   /**
    * SWIPE THE SHEET DOWN TO CLOSE.
@@ -767,17 +825,47 @@ export function Modal({
    * never scrolls, so there is no question to get wrong.
    *
    * It goes out through `requestClose`, the same door as ✕, Escape and the
-   * backdrop — so a half-typed เหตุผลที่ไม่อนุมัติ is asked about rather than
-   * thrown away by a flick of the thumb.
+   * backdrop, and since 2026-08-20 that door means the same thing whichever way
+   * it is reached: closed, in one action. A flick that reaches the threshold
+   * throws away half-typed times without asking — see the note over
+   * `requestClose` for the trade that was made and how to make it back.
    */
   const grabRef = React.useRef(null);
   const dragRef = React.useRef(null);
 
+  /**
+   * A PRESS THAT LANDS ON A CONTROL IS NOT A DRAG, and this line is the ✕
+   * working on a phone.
+   *
+   * The header is the grab surface and ✕ sits inside it, so every tap on ✕ was
+   * also the start of a sheet drag. A finger does not hold still: past 5px of
+   * travel `dragMove` decides the gesture is a dismissal and calls
+   * `setPointerCapture` on the header — and from that moment the pointer
+   * sequence belongs to the header, so the tap that follows is delivered there
+   * and never reaches the button it was aimed at. The drag then measures 6px,
+   * which is nowhere near the dismissal threshold, so it does nothing either.
+   * Both readings of the press are discarded and the sheet just sits there.
+   *
+   * It is intermittent by nature — a perfectly still thumb stays under 5px and
+   * the ✕ works — which is what makes it read as "the button sometimes does
+   * nothing" rather than as a gesture bug. Above 860px there is no grabber, no
+   * drag and no capture, so it never happened on a desktop at all.
+   *
+   * The 5px floor in `dragMove` was the existing guard for this ("Under 5px is
+   * a tap — the × sits in this header and has to keep working") and it is the
+   * wrong instrument: it is a threshold on how far the finger moved, when the
+   * question is what the finger came down ON. Both stay — that one still keeps
+   * a still-handed press on the header's blank space from nudging the sheet.
+   *
+   * `closest`, not a target check: ✕ holds a text node, and a caller's `meta`
+   * may hang a chip or a menu button in this row whose label is what gets hit.
+   */
   function dragStart(e) {
     /* The grabber is `display: none` above 860px, so this asks the stylesheet
        whether the dialog is a sheet right now rather than re-deciding it here
        against a copy of the breakpoint that would then drift from it. */
     if (!grabRef.current?.offsetParent) return;
+    if (e.target?.closest?.(CONTROLS)) return;
     dragRef.current = { id: e.pointerId, y0: e.clientY, dy: 0, moved: false };
   }
 
@@ -958,10 +1046,21 @@ export function Modal({
         {closeAsked ? (
           <div className="modal-foot asking">
             <div className="ask">{dirtyPrompt}</div>
-            <button className="btn ghost" onClick={() => setCloseAsked(false)}>{dirtyStayLabel}</button>
-            <button className="btn danger" onClick={() => { setCloseAsked(false); onClose?.(); }}>
-              {dirtyLeaveLabel}
-            </button>
+            {/* THE TWO ANSWERS SHARE A CARD, and that wrapper is the whole
+                reason this is not three loose children of the band. The band
+                wraps, so at a narrow width the prompt takes a line of its own
+                and the buttons drop below it — as siblings of the sentence they
+                landed there as two separate offers on a red wash, with nothing
+                saying the wash was the question rather than one of them. See
+                `.ask-acts` in app/styles.css. */}
+            <div className="ask-acts">
+              <button type="button" className="btn ghost" onClick={() => setCloseAsked(false)}>
+                {dirtyStayLabel}
+              </button>
+              <button type="button" className="btn danger" onClick={() => { setCloseAsked(false); onClose?.(); }}>
+                {dirtyLeaveLabel}
+              </button>
+            </div>
           </div>
         ) : footer && (
           <div className="modal-foot">

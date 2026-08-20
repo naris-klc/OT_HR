@@ -791,12 +791,14 @@ a:hover { color: var(--green-dark); }
    page showing between the two. The geometry was never the problem — measured
    against the running app at 440×956 the backdrop is 0–956, the sheet is
    114–956 flush to the bottom, and the nav is 879–956 at z-index 30 under a
-   backdrop at 80. Every number is right and the bars still painted on top.
+   backdrop at 80 — the number it carried then; it is 100 now, and the note
+   over `.modal-backdrop` says why. Every number was right and the bars still
+   painted on top.
 
    `body.has-dialog` is set by `Modal` for as long as any dialog is open (see
    components/common.jsx) and takes the filter off both. A filter that is not
    applied cannot be composited out of turn, and with it gone the two bars are
-   ordinary positioned elements that lose to a z-index of 80 as they should.
+   ordinary positioned elements that lose to the backdrop as they should.
 
    Nothing else changes: they keep their own background, which is what they are
    seen through anyway — for the whole time the class is on, both are behind the
@@ -834,7 +836,7 @@ body.has-dialog .mobile-nav { backdrop-filter: none; }
    PHONE ONLY. On a desktop the dialog is a centred box on a page that stays
    visible around it, and an app bar that vanished every time somebody opened
    one would read as the page reloading underneath them. There the bars are
-   ordinary elements that lose to a z-index of 80 correctly, and this rule is
+   ordinary elements that lose to the backdrop correctly, and this rule is
    not needed.
 
    `visibility`, not `display`. The nav is `position: fixed` and the app bar is
@@ -3342,8 +3344,35 @@ table.mini tbody tr:hover { background: none; }
 /* Rendered against <body> by a portal (components/common.jsx) — `position:
    fixed` only means "against the viewport" while no ancestor holds a
    transform, and .page animates one. */
+/* ── 100, AND THE NUMBER IT HAD TO CLEAR WAS THE TOAST'S ──────────────────
+   It was 80, which beats every other layer in this file — the app bar at 20,
+   the sticky table heads, the nav bar at 30, the FAB at 35 — and lost to the
+   one element above it: `.toast-host` at 95. A toast is `pointer-events: auto`
+   on its own box, so for the few seconds one is on screen it did not merely
+   sit over an open dialog, it TOOK THE PRESSES aimed at what was underneath.
+
+   Both halves of the report land on that. On a phone the toast goes to the top
+   — `top: calc(70px + env(safe-area-inset-top))`, because the bottom of that
+   screen is the nav bar and the FAB — and the tallest sheet in this app starts
+   at y=76 on the 440×956 screen these numbers were measured on. The toast is
+   therefore lying across the sheet's header, which is where ✕ is. On a desktop
+   it is bottom-right at `bottom: 20px`, and a centred dialog at 88dvh reaches
+   within about 48px of the same corner — which is where the foot puts its
+   buttons, ยกเลิก and กลับไปแก้ต่อ among them.
+
+   Neither is a z-index somebody got wrong: it is two elements that were never
+   meant to be on screen together. Every toast in this app confirms something
+   that CLOSED the screen it happened on — all eight call sites fire as their
+   dialog or their list goes away — so a toast over a live dialog is an accident
+   of timing, and when it happens the dialog is the thing being used and the
+   toast is already stale news. The dialog wins, and the toast waits behind the
+   scrim like the app bar and the list do.
+
+   Nothing sits above 100. Keep it that way: anything that does gets the same
+   defect, and it will read as a button that has stopped working rather than as
+   a layer in the wrong place. */
 .modal-backdrop {
-  position: fixed; inset: 0; z-index: 80;
+  position: fixed; inset: 0; z-index: 100;
   background: var(--scrim);
   display: flex; align-items: center; justify-content: center; padding: 20px;
   /* Should the content ever outgrow the cap below — an old browser, a very
@@ -3633,8 +3662,70 @@ table.mini tbody tr:hover { background: none; }
 
 /* Closing over unsaved typing is asked for twice — on a phone the backdrop is
    always one badly-aimed thumb away. */
-.modal-foot.asking { background: var(--danger-bg); border-top-color: var(--danger-line); flex-wrap: wrap; }
-.modal-foot .ask { flex: 1; min-width: 180px; font: 400 13px/1.5 var(--sans); color: var(--danger-ink); }
+/* TIGHTER THAN THE FOOT IT STANDS IN FOR. This band is not the dialog's own
+   footer — it replaces it while the question is up, and it carries a sentence
+   the footer does not. At the footer's own vertical insets that sentence plus a
+   pair of full-height buttons made the band half again as tall as the row it
+   replaced, and on a sheet that height comes out of the form above it: the
+   question arrives and the thing being asked about slides out of sight
+   underneath it. So the insets come in and the prompt is set one notch smaller.
+
+   PADDING-TOP AND PADDING-BOTTOM, NEVER THE SHORTHAND. The sides are the phone
+   block's business — `max(16px, env(safe-area-inset-left))` and its mirror, so
+   a notched phone in landscape does not run this decision under the notch — and
+   this rule is two classes to that one's one. A `padding:` here would outrank
+   it from outside the media query, whatever the source order, and quietly wipe
+   both insets. Only the two sides that have no inset are named. */
+.modal-foot.asking {
+  background: var(--danger-bg); border-top-color: var(--danger-line);
+  flex-wrap: wrap; gap: 8px;
+  padding-top: 10px; padding-bottom: 10px;
+}
+.modal-foot .ask { flex: 1; min-width: 180px; font: 400 12.5px/1.45 var(--sans); color: var(--danger-ink); }
+
+/* ── THE TWO ANSWERS, IN ONE BAR ──────────────────────────────────────────
+   They were two loose buttons on a red wash, and `flex-wrap` on the band means
+   the prompt can push them onto a line of their own at any width — at which
+   point nothing on screen said the pair belonged together, or that the wash
+   behind them was the question and not one of the answers. A card says it: one
+   surface, the app's own, laid on the wash and outlined in the same hairline
+   the band's top border uses.
+
+   It is also what makes the compaction safe. The buttons stop taking their
+   breathing room from the band's padding — the card gives them their own — so
+   the band can come in without the pair ending up against the edge of a sheet. */
+.ask-acts {
+  flex: none; display: flex; align-items: center; gap: 6px;
+  padding: 4px; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--danger-line);
+}
+
+/* ONE OBJECT SPLIT IN TWO, not two objects that happen to be near each other.
+   `.btn.ghost` is a card with a hairline round it — inside a card with a
+   hairline round it, that is three edges in eleven pixels, and the middle one
+   reads as a seam somebody forgot to remove. The quiet half gives up its
+   chrome and keeps its letters, which is what `.btn.quiet` does elsewhere for
+   the same reason; the fill beside it is then the only edge in the bar, and it
+   is the one meant to be seen. */
+.ask-acts .btn { min-height: 40px; padding: 0 14px; border-radius: 7px; }
+.ask-acts .btn.ghost { background: transparent; border-color: transparent; box-shadow: none; }
+.ask-acts .btn.ghost:hover:not(:disabled) {
+  background: var(--neutral-wash); border-color: transparent; color: var(--ink-2);
+}
+
+/* ปิดโดยไม่บันทึก IS THE ANSWER THAT LOSES THE TYPING, so it is the filled one, in
+   the warm orange-red this app already spends on every press that cannot be
+   taken back — `--danger`, darkening to `--danger-ink` under the pointer. Named
+   through the tokens rather than written out: the two hexes behind them are the
+   light theme's, and this dialog opens in the dark one too.
+
+   WHAT IT LOSES IN HERE IS THE GLOW. `.btn.danger` casts 18px of colour, drawn
+   for a button standing alone at the end of a footer; inside a 4px frame that
+   spread has nowhere to fall and stains the card instead of lifting anything.
+   A short neutral-length lift in its own hue, sitting down on press — the same
+   move `.foot-split .btn.ghost.danger` makes a few rules down. */
+.ask-acts .btn.danger { box-shadow: 0 3px 10px -4px var(--danger-glow); }
+.ask-acts .btn.danger:active:not(:disabled) { box-shadow: none; }
 
 /* ── TWO DECISIONS AND NOTHING ELSE ───────────────────────────────────────
    The foot of the รายละเอียด pop-up, once ปิด came out of it.
@@ -4093,7 +4184,34 @@ table.mini tbody tr:hover { background: none; }
     gap: 8px;
   }
   .modal-foot .btn { flex: 1 1 0; min-height: 46px; padding-left: 10px; padding-right: 10px; }
-  .modal-foot.asking .btn { flex: 1 1 140px; }
+  /* ── the question, on a sheet ───────────────────────────────────────────
+     The band replaces the footer, so it inherits that shorthand's side insets
+     and only the two ends are restated here — see the note over
+     `.modal-foot.asking` for why it must be these longhands and not a
+     shorthand. Eight at each end rather than twelve and sixteen: the card
+     inside now holds the pair off the edges, and what is bought back is a line
+     of the form above still being visible while the question is answered.
+
+     The safe-area inset is ADDED to the bottom eight, exactly as the footer
+     adds it to its sixteen. Where there is no home indicator env() is 0 and
+     this is eight.
+
+     THE BUTTONS KEEP THEIR 46. Everything else in this change is height coming
+     off the band; a touch target is not. These are the two most consequential
+     presses in the app and the compaction is not paid for out of them — the
+     desktop's 40 is for a pointer, and the phone block is where that is
+     undone. */
+  .modal-foot.asking {
+    padding-top: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+  /* The pair spans the sheet, and it is the CARD that has to be told so — the
+     buttons are one step further in now, so `.modal-foot .btn`'s `flex: 1 1 0`
+     divides the card rather than the band. Same shape as `.foot-split` above
+     and for the same reason. */
+  .modal-foot .ask-acts { flex: 1 1 100%; }
+  .modal-foot.asking .btn { flex: 1 1 0; min-height: 46px; }
   /* The pair spans the sheet. The rule above sizes buttons that are direct
      children of the foot; these two are one step further in, so the wrapper is
      what has to be told to fill the width. */

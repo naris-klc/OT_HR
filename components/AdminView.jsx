@@ -3286,8 +3286,14 @@ function ResetPassword({ employee, onClose, onDone }) {
         subtitle={`${employee.code} · ${employee.name}`}
         onClose={onClose}
         // The × and Escape ask first — and they ask about losing a password,
-        // not about losing typing.
+        // not about losing typing. `dirtyBlocksClose` is what keeps them asking:
+        // everywhere else in the app ✕ is one press and closes outright, because
+        // everywhere else what is at stake is typing that can be typed again.
+        // This password cannot be shown a second time by any screen, so the one
+        // press that reads as "I am done here" must not also be the one that
+        // loses it.
         dirty={!written}
+        dirtyBlocksClose
         dirtyPrompt={'ยังไม่ได้ยืนยันว่าจดรหัสผ่านไว้แล้ว — ปิดหน้าต่างนี้แล้วจะไม่มีทางดูรหัสนี้ซ้ำได้อีก '
           + 'และต้องตั้งรหัสใหม่ให้พนักงานคนนี้อีกครั้ง'}
         dirtyStayLabel="กลับไปดูรหัส"
