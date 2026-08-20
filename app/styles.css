@@ -124,6 +124,40 @@
   --ok-line: #C4E3D2;
   --info-line: #C9DCF0;
 
+  /* ── the success toast, and why it needs its own five ──────────────────
+     Asked for by hand as emerald-950/60 · emerald-800/60 · emerald-200, with
+     emerald-400 on the ✕ lifting to emerald-200. These are the LIGHT halves
+     and they are what the toast has always been: the fill it wore before, and
+     white on it. Nothing about ธีมสว่าง moves — see the note beside the dark
+     halves for what was wrong and which theme it was wrong in. */
+  --toast-ok-bg: #0B6E37;
+  --toast-ok-line: #0B6E37;
+  --toast-ok-ink: #ffffff;
+  --toast-ok-x: #8FA298;
+  --toast-ok-x-lift: #ffffff;
+
+  /* ── the bar at the foot of a phone ────────────────────────────────────
+     Its own three, and not `--muted-2` / `--green-text` as before, because the
+     bar is the one surface in this app that is PALE in the light theme and
+     near-black in the dark one. Everything else that carries these colours is
+     a card in both. The light halves are exactly what those two tokens were
+     giving it, so ธีมสว่าง does not move. */
+  --nav-idle: #7E8F85;
+  --nav-idle-lift: #14201A;
+  --nav-active: #0F8A46;
+
+  /* THE SAME CONFIRMATION, IN FLOW — `.alert.ok`, which is what วันเกิดรอตรวจ
+     now uses instead of a toast. Two token sets and not one, because the two
+     are only the same box in ธีมมืด: a toast is a dark chip in BOTH themes and
+     an alert is a pale panel in the light one. These five are exactly the
+     alert's old colours, read from --green-bg / --ok-line / --green-dark, so
+     ธีมสว่าง is unchanged to the pixel. */
+  --alert-ok-bg: #E8F4ED;
+  --alert-ok-line: #C4E3D2;
+  --alert-ok-ink: #0B6E37;
+  --alert-ok-x: #0F8A46;
+  --alert-ok-x-lift: #0B6E37;
+
   /* ── surfaces that are not the card ──────────────────────────────────── */
   /**
    * WHY `#fff` IS NOT ONE THING. It appeared 44 times in this file meaning at
@@ -484,6 +518,87 @@
   /* Muted with the greens above — it is the border of a --green-bg panel and
      was the loudest edge on a dark card at 0.065. */
   --ok-line: light-dark(#C4E3D2, #354E3F);
+
+  /**
+   * THE SUCCESS TOAST WAS THE ONE GREEN THING THIS FILE FLIPPED THE WRONG WAY.
+   *
+   * `.toast.ok` filled itself with `--green-dark` and wrote `--on-fill` on top,
+   * which is right while `--green-dark` is dark ink: #0B6E37 under white is
+   * 6.9:1. But `--green-dark` is a TEXT token — the note above it says so — and
+   * ธีมมืด lifts it to #9ACBAF so it can be read on a panel. The fill went with
+   * it, so on a dark screen every "บันทึกสำเร็จ" arrived as a pale mint slab
+   * carrying white text at 1.85:1: unreadable, and the brightest thing on the
+   * page at the moment it appears.
+   *
+   * So the toast stops reading a text token and gets its own fill. The values
+   * are emerald-950/60 under emerald-200 with an emerald-800/60 hairline, asked
+   * for by hand and in the same voice as the birthday chips above — the only
+   * difference being that these DO follow the theme, because the light half was
+   * never the problem.
+   *
+   * OPAQUE, AND IT WAS TRANSLUCENT FOR ONE REVISION. emerald-950/60 was asked
+   * for and shipped, and on a screen it did what alpha does on a box that
+   * floats: the table under the toast read through it. The ordinary answer is
+   * `backdrop-filter`, and this is the one element in the app that may not have
+   * one — a filtered box is composited as its own layer and stops obeying
+   * z-index, which is the bug `.appbar` and `.mobile-nav` already had, and
+   * test/modalScrollFrame.test.js holds them to being the only two carriers.
+   * So the alpha goes instead. #022C22 is emerald-950 flat; over `--bg` it is
+   * within a shade of what the 60% composited to, which is why nothing about
+   * the look moved when the see-through did.
+   *
+   * `--toast-ok-x` is emerald-400, which is already in this file as
+   * `--green-accent` — kept separate all the same, because that token is the
+   * dark theme's accent green and this one is pinned to the ✕ on one box.
+   */
+  --toast-ok-bg: light-dark(#0B6E37, #022C22);
+  --toast-ok-line: light-dark(#0B6E37, #065F46);
+  --toast-ok-ink: light-dark(#ffffff, #A7F3D0);
+  --toast-ok-x: light-dark(#8FA298, #34D399);
+  --toast-ok-x-lift: light-dark(#ffffff, #A7F3D0);
+
+  /**
+   * AND THE SAME FIVE FOR THE ALERT, because the confirmation moved into it.
+   *
+   * `.alert.ok` read --green-bg / --green-dark / --ok-line, which is the panel
+   * every other status alert is built from and is why it was never wrong. It
+   * gets its own set here so that the emerald asked for lands on the SUCCESS
+   * NOTICE and not on `.box.ok`, `.chip.st-approved` and the four other things
+   * those three tokens paint.
+   *
+   * The dark half is the toast's, to the hex. One confirmation with two
+   * appearances depending on whether it floated or not is the thing this
+   * avoids — on a dark screen they are now the same box.
+   */
+  --alert-ok-bg: light-dark(#E8F4ED, #022C22);
+  --alert-ok-line: light-dark(#C4E3D2, #065F46);
+  --alert-ok-ink: light-dark(#0B6E37, #A7F3D0);
+  --alert-ok-x: light-dark(#0F8A46, #34D399);
+  --alert-ok-x-lift: light-dark(#0B6E37, #A7F3D0);
+
+  /**
+   * THE MOBILE BAR, ASKED FOR BY HAND AS emerald-400 · zinc-400 · zinc-200.
+   *
+   * It read `--green-text` for the selected tab and `--muted-2` for the rest,
+   * and both are tuned for text on a CARD. On the bar's near-black they came
+   * out as the two quietest things on a screen whose whole job is telling you
+   * where you are: #9ACBAF is the muted green written for panels, and #8A9791
+   * is a green-grey that at 11px reads as switched off rather than merely
+   * unselected.
+   *
+   * Measured on the bar's own ground (`--bar-blur-strong`, ~#101513):
+   * emerald-400 9.6:1, zinc-400 7.2:1, zinc-200 14.5:1. The idle colour
+   * clearing 7:1 is the point of the request — an unselected tab still has to
+   * be READ, it is how somebody finds the tab they want.
+   *
+   * The zincs are neutral where the old grey was green-tinted, so selected and
+   * unselected now differ in hue as well as brightness. On the sidebar that
+   * distinction is carried by a filled pill instead, which is why `.nav` keeps
+   * its own colours and is not touched by any of this.
+   */
+  --nav-idle: light-dark(#7E8F85, #A1A1AA);
+  --nav-idle-lift: light-dark(#14201A, #E4E4E7);
+  --nav-active: light-dark(#0F8A46, #34D399);
 
   --scroll-thumb: light-dark(#CBD4CD, #33403A);
 
@@ -2120,6 +2235,28 @@ td > .approver-line { margin-top: 5px; }
    alert instead of stretching it past the card. */
 .alert-body { flex: 1; min-width: 0; }
 
+/* A WAY OUT, ON THE BANNER THAT SAYS SOMETHING WENT RIGHT.
+
+   `.alert-actions` further down is the other kind of exit — buttons that go and
+   fix what the notice reported. This one only takes the notice off the screen,
+   which is a thing worth having on a confirmation and not on a warning: a
+   success notice sits in the flow above a list somebody is still working
+   through, and by the third row answered it is describing the first.
+
+   `currentColor` at 60%, so an alert of any kind gets a ✕ that belongs to its
+   own palette without this rule naming a colour. .ok overrides it outright
+   because emerald-400 beside emerald-200 text is a deliberate pair, not the
+   text colour turned down. The negative margins pull it into the padding it
+   would otherwise add a line to. */
+.alert-x {
+  flex: none; border: none; background: none; cursor: pointer;
+  color: currentColor; opacity: .6;
+  font: 300 20px/1 var(--latin); padding: 0 2px; margin: -1px -3px 0 4px;
+}
+.alert-x:hover { opacity: 1; }
+.alert.ok .alert-x { color: var(--alert-ok-x); opacity: 1; }
+.alert.ok .alert-x:hover { color: var(--alert-ok-x-lift); }
+
 /* THE SAME NOTICE, ONE SIZE DOWN — for a dialog, where height is the scarce
    thing.
 
@@ -2148,10 +2285,27 @@ td > .approver-line { margin-top: 5px; }
 .alert.warn::before { content: '!'; background: var(--amber); color: var(--on-amber); }
 .alert.error { background: var(--danger-bg); color: var(--danger-ink); border-color: var(--danger-line); }
 .alert.error::before { content: '!'; background: var(--danger); }
-.alert.ok { background: var(--green-bg); color: var(--green-dark); border-color: var(--ok-line); }
+.alert.ok {
+  background: var(--alert-ok-bg); color: var(--alert-ok-ink);
+  border-color: var(--alert-ok-line);
+}
 .alert.ok::before { content: '✓'; background: var(--green); }
 .alert.info { background: var(--info-bg); color: var(--info); border-color: var(--info-line); }
 .alert.info::before { content: 'i'; background: var(--info); }
+
+/* THE NOTICE THAT BRINGS ITS OWN SYMBOL — see `mark` on Alert in
+   components/common.jsx.
+
+   AFTER the four rules above and not before them, because it has to beat them
+   and it ties on specificity: `.alert.warn::before` and `.alert.no-mark::before`
+   are both two classes and a pseudo-element, so source order is the whole of
+   what decides this. Moving it up is a silent no-op.
+
+   `display: none` rather than `content: none`: the mark is a flex item, and one
+   emptied of content still occupies its 17px and still takes a share of the
+   row's 9px gap — which would leave the ⚡ indented by a mark that is not
+   there. */
+.alert.no-mark::before { display: none; }
 
 /* A way out, on the banner that says something is wrong.
 
@@ -2193,6 +2347,16 @@ td > .approver-line { margin-top: 5px; }
    dead space at both ends of the scroll range, so the wrapper holds the
    spacing and the box sits flush against it. */
 .notice-digest > .alert { margin: 0; }
+
+/* AND THE SAME RESET FOR A NOTICE THAT IS A ROW OF THE PAGE ITSELF.
+
+   `.stack` is a flex column with an 18px gap, and flex gaps do not collapse
+   margins the way block flow does — they add to them. So an alert dropped
+   straight into a stack sat 30px from the card above it and 30px from the one
+   below, in a column where everything else is 18. The confirmation above
+   วันเกิดรอตรวจ is the reason this was noticed; ตรวจสอบใบของฉัน has had two
+   error alerts spaced that way for as long as it has had a stack. */
+.stack > .alert { margin: 0; }
 
 /* ดูรายละเอียด — who the counts above are about, on request.
 
@@ -3302,10 +3466,23 @@ table.mini tbody tr:hover { background: none; }
   width: min(400px, calc(100vw - 40px));
   pointer-events: none;
 }
+/* The 1px is on the BASE and transparent, the way `.alert` does it: only
+   .toast.ok draws an edge, and a box that gains a border when it succeeds is a
+   box that changes size when it succeeds. Every toast reserves the pixel.
+
+   Padding to a flat 12px on both axes — the 13/14 split was doing nothing the
+   eye could find, and the ✕ sits closer to the corner it belongs to. The corner
+   itself stays `--radius-sm`: 11px is what every panel in this app rounds to,
+   and it is one pixel off the 12 asked for.
+
+   No `backdrop-filter` — see the token note. It is the obvious thing to reach
+   for under a translucent fill and it is the one thing this element may not
+   have. */
 .toast {
   pointer-events: auto;
   display: flex; align-items: flex-start; gap: 10px;
-  padding: 13px 14px; border-radius: var(--radius-sm);
+  padding: 12px; border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   background: var(--surface-dark); color: var(--on-fill);
   box-shadow: 0 14px 34px var(--shadow-2);
   font: 400 13.5px/1.55 var(--sans);
@@ -3317,7 +3494,16 @@ table.mini tbody tr:hover { background: none; }
   color: var(--on-dark); font: 300 20px/1 var(--latin); padding: 0 2px;
 }
 .toast button:hover { color: var(--on-fill); }
-.toast.ok { background: var(--green-dark); }
+.toast.ok {
+  background: var(--toast-ok-bg); color: var(--toast-ok-ink);
+  border-color: var(--toast-ok-line);
+}
+/* The ✕ is the one control on the box, and on the dark half the base rule's
+   `--on-dark` is a grey mixed for the sidebar — beside emerald-200 text it
+   reads as disabled. Emerald-400, lifting to the text's own colour on hover, so
+   pressing it is the button reaching the weight of what it sits next to. */
+.toast.ok button { color: var(--toast-ok-x); }
+.toast.ok button:hover { color: var(--toast-ok-x-lift); }
 .toast.error { background: var(--danger-ink); }
 
 @keyframes ottoast { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -3975,15 +4161,23 @@ table.mini tbody tr:hover { background: none; }
   .mobile-nav button {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
     border: none; background: none; cursor: pointer; padding: 6px 2px;
-    color: var(--muted-2);
+    color: var(--nav-idle);
   }
-  .mobile-nav button.active { color: var(--green-text); }
+  /* BEFORE `.active`, and that is the whole of what decides it: the two
+     selectors tie at two classes and an element, so an `:hover` written after
+     would take the selected tab's green away under a finger. */
+  .mobile-nav button:hover { color: var(--nav-idle-lift); }
+  .mobile-nav button.active { color: var(--nav-active); }
   /* `position: relative` is load-bearing — the count badge is absolutely
      positioned against this box, not against the button, so it rides on the
      icon's top-right corner rather than the whole tab's. */
   .mobile-nav .icon { position: relative; display: grid; place-items: center; }
   .mobile-nav .icon svg { width: 22px; height: 22px; display: block; }
   .mobile-nav .label { font: 500 11px/1 var(--sans); }
+  /* Weight on the LABEL and not the button, so the icon — which is a stroked
+     SVG and does not have a weight — is not asked for one. Only ever one tab
+     at a time, which is what keeps this from widening the whole row. */
+  .mobile-nav button.active .label { font-weight: 600; }
   /* Clear of the glyph, not on top of it. At -4/-11 the badge sat five pixels
      inside a 22px icon and a two-digit count buried eleven — on รอ HR ยืนยัน,
      where the icon is the tick, that is the part of the mark it covered. Moved

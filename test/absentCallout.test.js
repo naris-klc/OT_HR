@@ -95,9 +95,24 @@ test('“ได้ตลอดเวลา” is true — nothing closes the und
 
 // ── the size ─────────────────────────────────────────────────────────────────
 
-test('the smaller notice is opt-in, and only this dialog asks for it', () => {
-  assert.match(common, /export function Alert\(\{ kind = 'warn', tight = false, children \}\)/);
-  assert.match(common, /className=\{`alert \$\{kind\}\$\{tight \? ' tight' : ''\}`\}/);
+/**
+ * NO LONGER "ONLY THIS DIALOG" — the birthday form asks for it too, for the
+ * same reason and in the same shape: a notice inside a bottom sheet, where
+ * every line it takes is a line of the form that has to be scrolled past. What
+ * the name was guarding is not the count but the DEFAULT — off unless a call
+ * site asks — so the assertions are unchanged and the name says what they check.
+ */
+test('the smaller notice is opt-in, and the base size is untouched', () => {
+  // The signature is read for the DEFAULT, not for its shape: `tight` off unless
+  // a call site asks. It grew an `onClose` beside it — opt-in in exactly the
+  // same way, for the same reason — and pinning the whole line character for
+  // character made adding one a failing test about the wrong thing.
+  assert.match(common, /export function Alert\(\{[\s\S]{0,120}?tight = false,/);
+  // Matched as a PREFIX: the template grew a third segment (`no-mark`, see
+  // `mark` on Alert) and pinning the closing backtick made appending one a
+  // failing test about the wrong thing. What this checks is that `tight`
+  // still reaches the class list, which is the assertion it was written for.
+  assert.match(common, /className=\{`alert \$\{kind\}\$\{tight \? ' tight' : ''\}/);
   assert.match(css, /\.alert\.tight \{ padding: 10px 12px; font-size: 12\.5px; \}/);
   // The base size is untouched — every other notice in the app is read on a
   // card, where it is not competing with a form for height.

@@ -333,13 +333,48 @@ test('ตารางในหน้ารายเดือนอ่านจ�
 
 // ── one badge, two tabs ───────────────────────────────────────────────────
 
-test('ตัวเลขบนแถบซ้ายรวมสองแท็บ และในหน้าแยกกัน', () => {
+test('ตัวเลขบนแถบซ้ายตามแท็บที่เปิด และรวมสองแท็บเมื่อยืนอยู่หน้าอื่น', () => {
   const app = strip(readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'));
 
-  // The badge counts the SCREEN: pending entries plus pending birthdays.
+  /**
+   * The badge follows whichever tab is open, and both nav bars read the same
+   * `tabs` array so neither can drift from the other.
+   *
+   * THE FALLBACK IS THE ASSERTION THAT MATTERS. From any other screen there is
+   * no open tab to follow and the badge is the SUM again — because a badge
+   * reporting one pile while somebody stands somewhere else hides the other one
+   * completely, which is the failure this test was originally written for. On
+   * the screen it does not apply: both tabs are in view with their own chips.
+   */
   assert.match(app, /const birthdayBadge = counts\.birthdayPending \|\| 0;/);
-  assert.match(app, /badge: counts\.pendingMgr \+ birthdayBadge/);
-  assert.match(app, /badge: counts\.pendingHr \+ birthdayBadge/);
+  assert.match(app, /badge: queueBadge\('approve', counts\.pendingMgr\)/);
+  assert.match(app, /badge: queueBadge\('confirm', counts\.pendingHr\)/);
+  assert.match(
+    app,
+    /if \(tab !== key\) return ownPending \+ birthdayBadge;/,
+    'ยืนอยู่หน้าอื่นแล้ว badge ต้องกลับไปรวมสองกอง',
+  );
+  // On the screen it never falls back to the sum — see the note there. A badge
+  // reading 5 while the chips above it read 3 and 2 is the screen disagreeing
+  // with itself, and it did for one frame while the effect was still to run.
+  assert.match(
+    app,
+    /return \(queueActive \|\| 'entries'\) === 'birthday' \? birthdayBadge : ownPending;/,
+  );
+  // And leaving the screen forgets which tab was open, or the badge would keep
+  // following a tab nobody is looking at any more.
+  assert.match(
+    app,
+    /if \(!\['approve', 'confirm'\]\.includes\(tab\)\) setQueueActive\(null\);/,
+  );
+  // Reported by the screen that owns the tab state, on every route into it —
+  // a press, an arrival from ตรวจสอบรายเดือน, and the first render.
+  const queueTabs = strip(readFileSync(join(ROOT, 'components/QueueTabs.jsx'), 'utf8'));
+  assert.match(queueTabs, /useEffect\(\(\) => \{ onActiveTab\?\.\(tab\); \}, \[tab\]\);/);
+  assert.equal(
+    [...app.matchAll(/onActiveTab=\{setQueueActive\}/g)].length, 2,
+    'ต้องต่อทั้ง รออนุมัติ และ รอ HR ยืนยัน',
+  );
 
   // Inside, each tab gets its own number.
   assert.match(app, /pendingCount=\{counts\.pendingMgr\}/);
@@ -361,6 +396,58 @@ test('ตัวเลขบนแถบซ้ายรวมสองแท็�
   // No new sidebar entry: the queue is a tab on a screen that already exists.
   const navKeys = [...app.matchAll(/tabs\.push\(\{\s*key: '(\w+)'/g)].map((m) => m[1]);
   assert.ok(!navKeys.includes('birthday'), 'ห้ามสร้างเมนูใหม่ในแถบซ้าย');
+
+  // Zero hides rather than printing a 0 — on the chip and on the badge alike. A
+  // badge reading 0 is a screen saying it has work and then saying it has none.
+  assert.match(app, /\{t\.badge > 0 && <span className="count"/);
+});
+
+/**
+ * ANSWERING A ROW MOVES EVERY NUMBER THAT COUNTS IT, WITHOUT CHANGING SCREENS.
+ *
+ * The birthday half looks after itself: both lists re-read after an answer and
+ * report upward, and the assertions above hold that chain together. The half
+ * that does NOT is `pendingHr` — and it is the half that MOVES on the same
+ * press. "บันทึก OT ให้" writes a ใบ, and unless the filer could approve it in
+ * the same act (`res.direct`, which is the server's answer and depends on who
+ * is filing) that ใบ lands in รอ HR ยืนยัน. The nav badge is the SUM of the two,
+ * so a row crossing from one half to the other must not read as one leaving.
+ *
+ * Hence a re-fetch and not a decrement. `refreshCounts` is what the approval
+ * queue already settles with; the birthday flow reached neither of them.
+ *
+ * ตรวจสอบรายเดือน is here for a second reason: it settles the same rows through
+ * the same two dialogs and reported nothing at all, so its badge stayed wrong
+ * until the tab changed. Its own `load()` cannot stand in — it re-reads one
+ * month and the badge counts every month.
+ */
+test('ตอบวันเกิดหนึ่งแถวแล้วตัวเลขทุกตัวขยับทันที ไม่ต้องเปลี่ยนหน้า', () => {
+  const app = strip(readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'));
+  const tabs = strip(readFileSync(join(ROOT, 'components/QueueTabs.jsx'), 'utf8'));
+  const queue = strip(readFileSync(join(ROOT, 'components/BirthdayQueue.jsx'), 'utf8'));
+  const view = strip(readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8'));
+
+  // Both queue screens ask the server for the authoritative pair.
+  assert.equal(
+    [...app.matchAll(/onSettled=\{refreshCounts\}/g)].length, 3,
+    'onSettled ต้องต่อครบทั้ง รออนุมัติ · รอ HR ยืนยัน และ ตรวจสอบรายเดือน',
+  );
+
+  // Down through the tabs to the queue, and called where a row is answered.
+  assert.match(tabs, /onSettled=\{onSettled\}/);
+  assert.match(queue, /function done\(message\) \{[\s\S]{0,200}?onSettled\?\.\(\);/);
+  // The month table settles the same rows through the same dialogs.
+  assert.match(view, /function done\(message\) \{[\s\S]{0,200}?onSettled\?\.\(\);/);
+
+  // The live birthday number still goes up on its own — the re-fetch is the
+  // second half of the answer, not a replacement for it. Losing this would make
+  // the chip wait for a round trip it does not need.
+  assert.match(queue, /onCountChange\?\.\(res\.needsEntry\.length\)/);
+
+  // And it is a re-fetch, not arithmetic: whether a filing needed a signature
+  // is the server's answer, so a client that predicted it would be wrong on
+  // exactly the cases where the two halves disagree.
+  assert.match(app, /async function refreshCounts\(\) \{[\s\S]{0,160}?\/entries\/queue-summary/);
 });
 
 test('ตัวเลขบนแถบซ้ายคือ "ต้องตรวจ" ทุกเดือน ไม่ใช่จำนวนในตารางเดือนที่ดู', () => {

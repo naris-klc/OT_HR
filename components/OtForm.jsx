@@ -471,22 +471,38 @@ export default function OtForm({
             request that goes straight to อนุมัติ has no หัวหน้า behind it and the
             person pressing is signing for it alone. Reading that AFTER saving
             would be reading it too late.
+
+            ── CUT DOWN TO ONE LINE, ASKED FOR BY HAND ──────────────────────
+
+            It said five things and now says three. What went, and where each
+            fact still lives, because a notice this one replaces is the last
+            place any of them was stated on screen:
+
+              · "ไม่ผ่านหัวหน้างานและไม่ผ่านคิวรอ HR" — the mechanism behind
+                "ขั้นตอนเดียว", which the shorter line still names.
+              · "ช่องลายเซ็นหัวหน้างานจะว่างไว้ตามจริง" — a PRINT consequence,
+                and the only warning anywhere that the filed F-HR-027 comes out
+                with an empty signature box. It is now visible only by printing
+                one. components/PrintForm.jsx prints the reason line instead.
+              · "ใบนี้เป็นของพนักงาน · หัวหน้าแผนกจะเห็นในสรุปทีม" — both are
+                true and both are visible on those screens; neither changes what
+                this press does, which is what the box is for.
+
+            `tight` because this is a DIALOG — see the note over Alert in
+            components/common.jsx. 12.5px is the size that variant exists to
+            give, and every line this box takes is a line of the form that has
+            to be scrolled past on a phone. The INFO twin below takes it too:
+            they are one slot in two states, and a box that changed size with
+            the routing would read as two different kinds of notice.
           */}
           {birthdayRouting?.ok && birthdayRouting.direct && (
-            <Alert kind="warn">
-              บันทึกแล้วรายการนี้จะ<strong>อนุมัติทันทีในขั้นตอนเดียว</strong> —
-              {' '}ไม่ผ่านหัวหน้างานและไม่ผ่านคิวรอ HR ·
-              {' '}ระบบจะบันทึกไว้ว่า<strong>คุณเป็นทั้งผู้กรอกและผู้อนุมัติ</strong>
-              {' '}พร้อมเหตุผลว่าตรวจจากบันทึกเวลาเข้า-ออกงาน ·
-              {' '}ช่องลายเซ็นหัวหน้างานจะว่างไว้ตามจริง
-              <div style={{ marginTop: 4, fontSize: 12.5 }}>
-                ใบนี้เป็น<strong>ของพนักงาน</strong> เขาจะเห็นในหน้า “OT ของฉัน” ·
-                {' '}หัวหน้าแผนกจะเห็นชั่วโมงนี้ในหน้าสรุปทีม พร้อมป้ายกำกับว่าอนุมัติชั้นเดียว
-              </div>
+            <Alert kind="warn" tight mark={false}>
+              ⚡ บันทึกและอนุมัติทันทีในขั้นตอนเดียว — ระบบจะบันทึกว่า
+              {' '}<strong>คุณเป็นทั้งผู้กรอกและผู้อนุมัติ</strong> (อ้างอิงจากเวลาสแกนนิ้ว)
             </Alert>
           )}
           {birthdayRouting?.ok && !birthdayRouting.direct && (
-            <Alert kind="info">
+            <Alert kind="info" tight>
               บันทึกแล้วรายการนี้จะ<strong>เข้าคิวรออนุมัติตามปกติ</strong>
               {birthdayRouting.reason ? ` — ${birthdayRouting.reason}` : ''}
             </Alert>

@@ -290,6 +290,13 @@ function Shell({ session, onLogout }) {
    */
   const [queueTab, setQueueTab] = useState(null);
   /**
+   * Which of the queue screen's two tabs is open — reported by QueueTabs, and
+   * meaningful only while one of those screens is the current tab. `null` says
+   * "nobody is looking at that screen", which is a third state and not a
+   * default: it is what makes the badge fall back to counting both piles.
+   */
+  const [queueActive, setQueueActive] = useState(null);
+  /**
    * Which section ตั้งค่าระบบ should open on, when something sent us there.
    * Cleared on leaving the tab (below), so it steers the one arrival it was set
    * for and the next plain click on the nav lands where it always does.
@@ -304,6 +311,8 @@ function Shell({ session, onLogout }) {
   useEffect(() => { refreshCounts(); }, [tab]);
   useEffect(() => { if (tab !== 'admin') setAdminSection(null); }, [tab]);
   useEffect(() => { if (!['approve', 'confirm'].includes(tab)) setQueueTab(null); }, [tab]);
+  // Leaving the screen takes the answer with it — see `queueBadge`.
+  useEffect(() => { if (!['approve', 'confirm'].includes(tab)) setQueueActive(null); }, [tab]);
 
   /**
    * Rows just left a queue. Take them off the badge now and ask the server
@@ -392,25 +401,60 @@ function Shell({ session, onLogout }) {
   }
 
   /**
-   * The badge counts the SCREEN, not one of its tabs.
-   *
-   * รออนุมัติ and รอ HR ยืนยัน each now hold two piles of work — requests waiting
-   * for a signature, and birthdays waiting for somebody to check the scan record
-   * — and a badge that counted only the first would go to zero with a tab still
-   * full. Inside the screen the two numbers stay apart, on their own tabs,
-   * because they are two different jobs; out here they are one answer to "is
-   * there anything for me".
-   *
    * `birthdayPending` is scoped to the caller by the server, so a หัวหน้า's
    * number is their team's and ฝ่ายบุคคล's is everybody's.
    */
   const birthdayBadge = counts.birthdayPending || 0;
 
+  /**
+   * THE BADGE FOLLOWS THE OPEN TAB — BUT ONLY WHILE THE SCREEN IS OPEN.
+   *
+   * รออนุมัติ and รอ HR ยืนยัน each hold two piles of work: requests waiting for
+   * a signature, and birthdays waiting for somebody to check the scan record.
+   * The badge was their SUM everywhere, and the number that produced was
+   * correct and unreadable — 5 on รอ HR ยืนยัน is three ใบ and two birthdays,
+   * and nothing about a bare 5 said so. Asked to make it follow the tab.
+   *
+   * THE FALLBACK IS NOT A DETAIL, it is the whole reason this is safe. From any
+   * other screen the badge is still the sum, because there is no open tab for it
+   * to follow and because that is the question a nav badge answers: is there
+   * anything for me over there. A badge that reported one pile while standing
+   * somewhere else would hide the other one completely — the failure the old
+   * comment here was written to prevent, and it still applies off-screen.
+   *
+   * On the screen it does not apply: both tabs are in view with their own
+   * chips, so the pile the badge is not counting is being counted two
+   * centimetres above it.
+   *
+   * BOTH BARS, and deliberately. `.sidebar` and `.mobile-nav` render the same
+   * `tabs` array and never appear together — 860px hides one or the other — so
+   * two rules would agree on every device and disagree the moment a window is
+   * dragged across that width.
+   */
+  function queueBadge(key, ownPending) {
+    if (tab !== key) return ownPending + birthdayBadge;
+    /*
+      `|| 'entries'` AND NOT A FALL BACK TO THE SUM.
+
+      QueueTabs reports its tab from an effect, which lands after the first
+      paint — so for one frame after arriving there was no answer here, and the
+      badge showed the SUM on the tab being stood on. Lit green and reading 5
+      while the two chips above it read 3 and 2 is the screen disagreeing with
+      itself, briefly and visibly.
+
+      'entries' rather than a guess at QueueTabs' own opening rule: it is what
+      that screen opens on unless ตรวจสอบรายเดือน steered it, and being wrong
+      for one frame between 3 and 2 is not something an eye can catch. Being
+      wrong between 3 and 5 was.
+    */
+    return (queueActive || 'entries') === 'birthday' ? birthdayBadge : ownPending;
+  }
+
   const tabs = [];
   if (user.maySubmitOt) tabs.push({ key: 'mine', label: 'OT ของฉัน', icon: 'clock' });
   if (user.role === 'manager') {
     tabs.push({
-      key: 'approve', label: 'รออนุมัติ', icon: 'inbox', badge: counts.pendingMgr + birthdayBadge,
+      key: 'approve', label: 'รออนุมัติ', icon: 'inbox', badge: queueBadge('approve', counts.pendingMgr),
     });
   }
   /**
@@ -438,7 +482,7 @@ function Shell({ session, onLogout }) {
   }
   if (['hr', 'admin'].includes(user.role)) {
     tabs.push({
-      key: 'confirm', label: 'รอ HR ยืนยัน', icon: 'check', badge: counts.pendingHr + birthdayBadge,
+      key: 'confirm', label: 'รอ HR ยืนยัน', icon: 'check', badge: queueBadge('confirm', counts.pendingHr),
     });
     tabs.push({ key: 'monthly', label: 'ตรวจสอบรายเดือน', icon: 'calendar' });
     // Closing the month, not checking it — hence its own tab next to the
@@ -564,6 +608,8 @@ function Shell({ session, onLogout }) {
                 birthdayCount={counts.birthdayPending}
                 initialTab={queueTab}
                 onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
+                onSettled={refreshCounts}
+                onActiveTab={setQueueActive}
                 onChanged={queueDone}
                 onOpenPolicy={openPolicy}
                 onOpenRoster={mayOpenRoster ? openRoster : null}
@@ -581,6 +627,8 @@ function Shell({ session, onLogout }) {
                 birthdayCount={counts.birthdayPending}
                 initialTab={queueTab}
                 onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
+                onSettled={refreshCounts}
+                onActiveTab={setQueueActive}
                 onChanged={queueDone}
                 onOpenPolicy={openPolicy}
                 onOpenRoster={mayOpenRoster ? openRoster : null}
@@ -589,6 +637,7 @@ function Shell({ session, onLogout }) {
             {tab === 'monthly' && (
               <HrView
                 user={user}
+                onSettled={refreshCounts}
                 onOpenRoster={mayOpenRoster ? openRoster : null}
                 onOpenBirthdayQueue={() => {
                   setQueueTab('birthday');

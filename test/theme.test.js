@@ -161,6 +161,14 @@ const READABLE = [
   ['--info', '--info-bg'],
   ['--on-amber', '--amber'],
   ['--on-fill', '--surface-dark'],
+  // The success notice, in both the shapes it takes: floating on the screens
+  // that still use a toast, and in the flow on the two birthday screens. Listed
+  // because the pair they replaced was NOT — .toast.ok filled itself with
+  // --green-dark, a token ธีมมืด lifts to #9ACBAF so it can be read AS TEXT,
+  // and white on that measures 1.85. Nothing here caught it, because in the
+  // light theme the same declaration was fine.
+  ['--toast-ok-ink', '--toast-ok-bg'],
+  ['--alert-ok-ink', '--alert-ok-bg'],
 ];
 
 test('ธีมมืด — ตัวหนังสืออ่านออกทุกคู่ ตามมาตรฐาน AA', () => {
@@ -171,6 +179,44 @@ test('ธีมมืด — ตัวหนังสืออ่านออก
     assert.ok(f && b, `หา token ไม่เจอ: ${fg} / ${bg}`);
     const r = contrast(f, b);
     assert.ok(r >= 4.5, `${fg} บน ${bg} = ${r.toFixed(2)} (ต้อง ≥ 4.5)`);
+  }
+});
+
+/**
+ * NEITHER SUCCESS FILL MAY GO SEE-THROUGH AGAIN, and this is the assertion
+ * rather than a comment because the alpha shipped once.
+ *
+ * emerald-950/60 was asked for and built, and on a screen it did what alpha
+ * does to a box that floats over a table: the rows read through it. The usual
+ * answer is `backdrop-filter`, which test/modalScrollFrame.test.js forbids
+ * outside the two bars — a filtered box composites as its own layer and stops
+ * obeying z-index. So opaque is the only shape these two can take, and the
+ * READABLE pairs above silently stop meaning anything if one drifts back:
+ * `value()` captures up to the first `)`, so `rgb(2 44 34 / .6)` comes back cut
+ * in half and `luminance()` returns NaN, which compares false against every
+ * floor without failing anything.
+ */
+test('ธีมมืด — พื้นกล่องแจ้งเตือนความสำเร็จต้องทึบ ไม่มี alpha', () => {
+  for (const token of ['--toast-ok-bg', '--alert-ok-bg']) {
+    const dark = value(token, 'dark');
+    assert.match(dark, /^#[0-9a-fA-F]{6}$/, `${token} ครึ่งมืดไม่ใช่ hex ทึบ: ${dark}`);
+  }
+});
+
+/**
+ * The ✕, held to the same floor as the sentence beside it.
+ *
+ * Kept out of READABLE because that list is measured against BOTH themes and
+ * this pair only clears AA in one: on the light toast the ✕ is `--on-dark`, the
+ * grey mixed for the sidebar, and it has sat at 2.36 on the green fill since
+ * long before there was a theme. Raising it is a change to how the app has
+ * always looked in ธีมสว่าง, which is not something to slip in under a dark-mode
+ * fix — the same reasoning LIGHT_FLOOR below is built on.
+ */
+test('ธีมมืด — ปุ่มปิดบนกล่องแจ้งเตือนความสำเร็จอ่านออก', () => {
+  for (const [x, bg] of [['--toast-ok-x', '--toast-ok-bg'], ['--alert-ok-x', '--alert-ok-bg']]) {
+    const ratio = contrast(value(x, 'dark'), value(bg, 'dark'));
+    assert.ok(ratio >= 4.5, `${x} บน ${bg} = ${ratio.toFixed(2)} (ต้อง ≥ 4.5)`);
   }
 });
 

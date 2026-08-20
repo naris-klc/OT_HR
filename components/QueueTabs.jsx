@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import ApprovalQueue from './ApprovalQueue.jsx';
 import BirthdayQueue from './BirthdayQueue.jsx';
+import { Alert } from './common.jsx';
 // Pure — no mongoose, no I/O. The same predicate the write routes refuse with.
 import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 
@@ -38,6 +39,7 @@ import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 export default function QueueTabs({
   user, stage, onChanged, onOpenPolicy, onOpenRoster = null,
   initialTab = null, pendingCount = 0, birthdayCount: summaryCount = 0, onCounts,
+  onSettled = null, onActiveTab = null,
 }) {
   /**
    * Whether this person has a birthday tab at all — asked of the same function
@@ -72,6 +74,28 @@ export default function QueueTabs({
   const shownBirthdayCount = birthdayCount ?? summaryCount;
 
   /**
+   * WHAT JUST HAPPENED, ABOVE BOTH LISTS RATHER THAN INSIDE ONE.
+   *
+   * The birthday queue's two answers each leave a sentence behind — see the
+   * note in components/birthdayActions.jsx for why it is a notice in the flow
+   * and not a toast. It is held HERE, one level up from the card that raised it,
+   * for the reason the card is crowded: วันเกิดรอตรวจ opens with three
+   * paragraphs explaining what the queue is and which window it covers, and a
+   * confirmation wedged between the heading and that explanation reads as part
+   * of it. Above the card it is plainly about the screen.
+   *
+   * CLEARED WHEN THE TAB CHANGES, which is the one thing owning it up here
+   * costs. The queues unmount as the tab switches and a notice living above
+   * them does not, so without this a "บันทึกแล้ว…" from the birthday list would
+   * still be sitting over ใบรอยืนยัน — a screen it says nothing about.
+   */
+  const [notice, setNotice] = useState('');
+  function show(next) {
+    setNotice('');
+    setTab(next);
+  }
+
+  /**
    * Arriving from the status line on ตรวจสอบรายเดือน, which sends people here to
    * a specific tab. Keyed on the signal rather than set once, so a second press
    * on that link works as well as the first.
@@ -80,6 +104,21 @@ export default function QueueTabs({
     if (initialTab === 'birthday' && maySettle) setTab('birthday');
   }, [initialTab, maySettle]);
 
+  /**
+   * WHICH PILE IS IN FRONT OF THE READER, reported upward for the nav badge.
+   *
+   * The badge used to be the sum of both tabs and now follows whichever one is
+   * open — see the note over `queueBadge` in components/App.jsx for why that is
+   * safe HERE and not safe from another screen.
+   *
+   * An effect and not a call inside `show()`, because the tab this lands on is
+   * not always chosen by a press: `initialTab` steers arrivals from
+   * ตรวจสอบรายเดือน, `maySettle` decides whether the birthday tab exists at all,
+   * and the first render picks one before anybody has touched anything. One
+   * place that watches the answer covers all four.
+   */
+  useEffect(() => { onActiveTab?.(tab); }, [tab]);
+
   return (
     <div className="stack">
       <div className="queue-tabs no-print" role="tablist">
@@ -87,7 +126,7 @@ export default function QueueTabs({
           role="tab"
           aria-selected={tab === 'entries'}
           className={tab === 'entries' ? 'active' : ''}
-          onClick={() => setTab('entries')}
+          onClick={() => show('entries')}
         >
           ใบรอยืนยัน
           {pendingCount > 0 && <span className="count">{pendingCount}</span>}
@@ -97,13 +136,17 @@ export default function QueueTabs({
             role="tab"
             aria-selected={tab === 'birthday'}
             className={tab === 'birthday' ? 'active' : ''}
-            onClick={() => setTab('birthday')}
+            onClick={() => show('birthday')}
           >
             วันเกิดรอตรวจ
             {shownBirthdayCount > 0 && <span className="count">{shownBirthdayCount}</span>}
           </button>
         )}
       </div>
+
+      {notice && (
+        <Alert kind="ok" onClose={() => setNotice('')}>{notice}</Alert>
+      )}
 
       {/*
         Both stay mounted is NOT what happens here, and that is on purpose: the
@@ -121,6 +164,8 @@ export default function QueueTabs({
       ) : (
         <BirthdayQueue
           onOpenRoster={onOpenRoster}
+          onNotice={setNotice}
+          onSettled={onSettled}
           onCountChange={(n) => {
             setBirthdayCount(n);
             onCounts?.(n);

@@ -67,12 +67,35 @@ export function RateHead({ rate, of = null }) {
  * phone screen. Not a second look: the same palette, the same mark, the same
  * corner; less padding and a smaller type size. Everywhere else the ordinary
  * size is right and stays the default.
+ *
+ * `onClose` ADDS A ✕, AND ONLY WHEN IT IS PASSED. A notice that reports a
+ * problem is dismissed by fixing the problem — giving it a ✕ offers a way to
+ * make the sentence go away without changing anything it describes, which is
+ * the wrong affordance on a warning and the right one on a confirmation. So it
+ * is opt-in per call site rather than a default the error alerts inherit.
+ *
+ * `mark={false}` DROPS THE ROUND ! / ✓ / i, and is for the one case where the
+ * sentence brings its own symbol. Two marks in a row is not a style choice, it
+ * is the same job done twice — and the notice on the birthday form opens with
+ * ⚡ deliberately, so the ! beside it was reading as a second, different alarm.
+ *
+ * Opt-in, like the other two, and for a stronger reason: the mark is what says
+ * WHICH of the four kinds a box is, and it is the only thing that does so in a
+ * theme where the four fills are all muted. Dropping it is a trade a call site
+ * makes knowingly, never a default.
  */
-export function Alert({ kind = 'warn', tight = false, children }) {
+export function Alert({
+  kind = 'warn', tight = false, mark = true, onClose = null, children,
+}) {
   if (!children) return null;
   return (
-    <div className={`alert ${kind}${tight ? ' tight' : ''}`}>
+    <div className={`alert ${kind}${tight ? ' tight' : ''}${mark ? '' : ' no-mark'}`}>
       <div className="alert-body">{children}</div>
+      {onClose && (
+        <button type="button" className="alert-x" onClick={onClose} aria-label="ปิดข้อความ">
+          ×
+        </button>
+      )}
     </div>
   );
 }

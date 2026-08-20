@@ -5,7 +5,6 @@ import { api, thaiDate, dayName } from '@/lib/api.js';
 import { OUTCOME } from '@/lib/birthdayCheck.js';
 import { Alert, Modal } from './common.jsx';
 import OtForm from './OtForm.jsx';
-import { useToast } from './Toast.jsx';
 
 /**
  * The two answers to a birthday row, as the screens perform them.
@@ -16,6 +15,25 @@ import { useToast } from './Toast.jsx';
  * Written twice, that sentence would one day read two ways on two screens
  * describing the same stored document — the reason `SKIP_NOTE` and
  * `noOtHoursMessage` are constants rather than literals.
+ *
+ * ── THE CONFIRMATION IS HANDED BACK, NOT FLOATED ──────────────────────────
+ *
+ * All three of these used `useToast`, and on a phone that was wrong in a way
+ * only a phone shows. `.toast-host` is `position: fixed` at `top: 70px` there
+ * — the bottom of that screen is the nav bar and the FAB — so the confirmation
+ * landed ACROSS the card it was about, covering the queue's own heading and the
+ * first row under it. The thing it was confirming was the thing it hid.
+ *
+ * The toast's own note argues for a toast when the screen that asked has since
+ * closed, and that argument still holds for ApprovalQueue and Delegation, which
+ * keep theirs. It is weaker here: the queue card is still on screen and still
+ * the thing being read, so a notice IN it can push the list down rather than
+ * lie over it.
+ *
+ * So the sentence travels out through the callback each of these already had,
+ * and the screen decides where to put it. It stays written here — that is the
+ * whole point of the paragraph above — and both call sites render it with
+ * `<Alert kind="ok">`.
  */
 
 /**
@@ -26,18 +44,27 @@ import { useToast } from './Toast.jsx';
  * the server's own answer about whether the filing was approved in one act.
  */
 export function BirthdayFileForm({ birthday, onCancel, onSaved }) {
-  const toast = useToast();
   return (
     <OtForm
       mode="birthday"
       birthday={birthday}
       onCancel={onCancel}
-      onSaved={(res) => {
-        toast(res?.direct
-          ? `บันทึกและอนุมัติ OT วันเกิดของ ${birthday.name} แล้ว — บันทึกไว้ว่าคุณเป็นทั้งผู้กรอกและผู้อนุมัติ`
-          : `บันทึก OT วันเกิดของ ${birthday.name} แล้ว — รออนุมัติตามคิวปกติ`);
-        onSaved(res);
-      }}
+      /*
+        TWO SENTENCES, AND THE SHORT ONE IS THE DIRECT HALF.
+
+        The clause that went — "บันทึกไว้ว่าคุณเป็นทั้งผู้กรอกและผู้อนุมัติ" — was
+        a restatement, not news: the warn banner on the form says it BEFORE the
+        press, which is when somebody can still decide not to. A confirmation
+        repeating the warning it already agreed to is the half nobody reads.
+
+        The queued half keeps its tail and is not "shortened to match". Its
+        clause says the request is NOT approved, which the sentence does not
+        otherwise carry and which no earlier screen has told this reader — cut
+        it and "บันทึก … แล้ว" reads as done.
+      */
+      onSaved={(res) => onSaved(res, res?.direct
+        ? `บันทึกและอนุมัติ OT วันเกิดของ ${birthday.name} เรียบร้อยแล้ว`
+        : `บันทึก OT วันเกิดของ ${birthday.name} แล้ว — รออนุมัติตามคิวปกติ`)}
     />
   );
 }
@@ -46,19 +73,17 @@ export function BirthdayFileForm({ birthday, onCancel, onSaved }) {
  * ยกเลิกการบันทึก — retract a check by writing a second row, never by deleting
  * the first.
  *
- * Returns nothing and throws nothing: both screens want the same toast on
- * success and the same message in their own error slot, so the handler is passed
- * in rather than the error being re-formatted at each call site.
+ * Returns nothing and throws nothing: both screens want the same sentence on
+ * success and the same message in their own error slot, so both handlers are
+ * passed in rather than either being re-formatted at each call site.
  */
 export function useRetractCheck(onDone, onError) {
-  const toast = useToast();
   return async (row) => {
     try {
       await api.post('/birthday/checks', {
         employeeId: row.employeeId, workDate: row.date, outcome: OUTCOME.CANCELLED,
       });
-      toast(`ยกเลิกการบันทึกของ ${row.name} แล้ว — ชื่อกลับมาอยู่ในรายการที่ต้องตรวจ`);
-      onDone?.();
+      onDone?.(`ยกเลิกการบันทึกของ ${row.name} แล้ว — ชื่อกลับมาอยู่ในรายการที่ต้องตรวจ`);
     } catch (err) {
       onError?.(err.message);
     }
@@ -84,7 +109,6 @@ export function AbsentModal({ row, onClose, onDone }) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const toast = useToast();
 
   async function save() {
     setBusy(true);
@@ -96,8 +120,7 @@ export function AbsentModal({ row, onClose, onDone }) {
         outcome: OUTCOME.ABSENT,
         note: note.trim(),
       });
-      toast(`บันทึกแล้วว่า ${row.name} ไม่ได้มาทำงานวันที่ ${thaiDate(row.date)} — ยกเลิกได้ภายหลัง`);
-      onDone();
+      onDone(`บันทึกแล้วว่า ${row.name} ไม่ได้มาทำงานวันที่ ${thaiDate(row.date)} — ยกเลิกได้ภายหลัง`);
     } catch (err) {
       setError(err.message);
       setBusy(false);

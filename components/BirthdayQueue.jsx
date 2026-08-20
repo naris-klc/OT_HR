@@ -36,7 +36,9 @@ import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayAction
  * It is still a list, not a warning. Not working on your birthday is the ordinary
  * case, and most names here will have a perfectly good reason to be there.
  */
-export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
+export default function BirthdayQueue({
+  onCountChange, onOpenRoster = null, onNotice = null, onSettled = null,
+}) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [marking, setMarking] = useState(null);
@@ -63,10 +65,46 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
 
   useEffect(() => { load(); }, []);
 
+  /**
+   * Where the two answers say so — handed UP, and drawn above this card by
+   * components/QueueTabs.jsx.
+   *
+   * Saying it at all is what `load()` makes necessary rather than merely nice.
+   * Answering a row REMOVES it, so by the time the confirmation could be read
+   * the row it names is gone from the table, and without a sentence somewhere
+   * the screen just silently loses a line.
+   *
+   * Clearing `error` too: the error slot below reports the same act, and a
+   * stale failure sitting under a fresh success is a screen contradicting
+   * itself.
+   */
+  /**
+   * AND THE NUMBERS BESIDE IT, WHICH THIS SCREEN DOES NOT OWN.
+   *
+   * `load()` above re-reads the birthday queue, so the birthday half of every
+   * badge is right the moment this returns. The OTHER half is not: answering a
+   * row with "บันทึก OT ให้" writes a ใบ, and unless HR was allowed to approve
+   * it in the same act that ใบ is now sitting in รอ HR ยืนยัน. The nav badge is
+   * `pendingHr + birthdayPending`, so without this it went DOWN by one for a
+   * row that had just moved from one of its halves to the other.
+   *
+   * Asked of the server rather than adjusted here, for the reason the queue
+   * itself is: whether a filing needed a signature is the server's answer
+   * (`res.direct`), it depends on who is filing and on the live policy, and a
+   * client that predicted it would be wrong on exactly the cases that matter.
+   * `refreshCounts` is the same call the approval queue settles with.
+   */
+  function done(message) {
+    onNotice?.(message);
+    setError('');
+    load();
+    onSettled?.();
+  }
+
   // Both actions come from components/birthdayActions.jsx — the month table on
   // ตรวจสอบรายเดือน offers the same pair, and a dialog explaining a stored record
   // must not have two wordings on two screens.
-  const retract = useRetractCheck(() => load(), setError);
+  const retract = useRetractCheck(done, setError);
 
   if (error) return <Alert kind="error">{error}</Alert>;
   if (!data) return <Empty>กำลังโหลด…</Empty>;
@@ -360,7 +398,7 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
         <BirthdayFileForm
           birthday={filing}
           onCancel={() => setFiling(null)}
-          onSaved={() => { setFiling(null); load(); }}
+          onSaved={(res, message) => { setFiling(null); done(message); }}
         />
       )}
 
@@ -368,7 +406,7 @@ export default function BirthdayQueue({ onCountChange, onOpenRoster = null }) {
         <AbsentModal
           row={marking}
           onClose={() => setMarking(null)}
-          onDone={() => { setMarking(null); load(); }}
+          onDone={(message) => { setMarking(null); done(message); }}
         />
       )}
     </div>

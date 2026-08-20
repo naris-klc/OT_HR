@@ -32,7 +32,9 @@ import { useBackHandler } from './nav.jsx';
 const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
 
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
-export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null }) {
+export default function HrView({
+  user, onOpenBirthdayQueue, onOpenRoster = null, onSettled = null,
+}) {
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
   /**
@@ -569,6 +571,7 @@ export default function HrView({ user, onOpenBirthdayQueue, onOpenRoster = null 
             onOpenQueue={onOpenBirthdayQueue}
             onOpenEntries={setOpened}
             onOpenRoster={onOpenRoster}
+            onSettled={onSettled}
           />
         )}
       </div>
@@ -642,9 +645,13 @@ function CapCell({ cap }) {
  * birthday from the month you happen to be reading is the natural move, and
  * sending somebody to another screen to do it is how a row gets left.
  */
-function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null }) {
+function BirthdayMonth({
+  period, onOpenQueue, onOpenEntries, onOpenRoster = null, onSettled = null,
+}) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  /** The confirmation the two answers leave behind — see `done` below. */
+  const [ok, setOk] = useState('');
   const [marking, setMarking] = useState(null);
   /** A pop-up over the month table, not a screen of its own — see BirthdayQueue. */
   const [filing, setFiling] = useState(null);
@@ -659,7 +666,37 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
 
   useEffect(() => { setData(null); load(); }, [period]);
 
-  const retract = useRetractCheck(() => load(), setError);
+  /**
+   * Where the two answers say so — in the flow, above the list they changed.
+   *
+   * `load()` is what makes this necessary rather than merely nicer. Answering a
+   * row REMOVES it, so by the time the confirmation could be read the row it
+   * names is gone from the table, and without a sentence somewhere the screen
+   * just silently loses a line. It used to be a toast — see the note in
+   * components/birthdayActions.jsx for why a fixed box was the wrong place for
+   * it on a phone.
+   *
+   * Clearing `error` too: these are two slots reporting the same act, and a
+   * stale failure sitting above a fresh success is a screen contradicting
+   * itself.
+   */
+  /**
+   * AND THE BADGES, WHICH THIS TABLE USED TO LEAVE ALONE ENTIRELY.
+   *
+   * `load()` re-reads ONE MONTH — `/reports/birthday-check/${period}` — and the
+   * nav badge counts every month, so nothing here can work the badge out for
+   * itself. It reported nothing at all before, which meant settling a row from
+   * ตรวจสอบรายเดือน left รอ HR ยืนยัน counting a row that no longer existed
+   * until somebody happened to change tabs. Same call the queue settles with.
+   */
+  function done(message) {
+    setOk(message);
+    setError('');
+    load();
+    onSettled?.();
+  }
+
+  const retract = useRetractCheck(done, setError);
 
   if (error) return <Alert kind="error">{error}</Alert>;
   // The rule being off is not a gap in the data: a birthday is then an ordinary
@@ -691,6 +728,7 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
   return (
     <div className="box" style={{ marginTop: 12 }}>
       <div style={{ fontWeight: 600 }}>วันเกิดของเดือนนี้</div>
+      {ok && <Alert kind="ok" onClose={() => setOk('')}>{ok}</Alert>}
 
       {/* The summary, above the table it counts. `done` is the three statuses
           that mean nothing is left to do — filed, checked, or already a holiday
@@ -842,7 +880,7 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
         <BirthdayFileForm
           birthday={filing}
           onCancel={() => setFiling(null)}
-          onSaved={() => { setFiling(null); load(); }}
+          onSaved={(res, message) => { setFiling(null); done(message); }}
         />
       )}
 
@@ -850,7 +888,7 @@ function BirthdayMonth({ period, onOpenQueue, onOpenEntries, onOpenRoster = null
         <AbsentModal
           row={marking}
           onClose={() => setMarking(null)}
-          onDone={() => { setMarking(null); load(); }}
+          onDone={(message) => { setMarking(null); done(message); }}
         />
       )}
     </div>
