@@ -166,8 +166,17 @@ test('every route that narrows a manager by department also narrows by company',
       if (statSync(full).isDirectory()) { walk(full); continue; }
       if (!/route\.js$/.test(name)) continue;
       const src = readFileSync(full, 'utf8');
-      const narrows = /role === 'manager'[\s\S]{0,200}?user\??\.department/.test(src)
-        || /user\??\.department[\s\S]{0,200}?role === 'manager'/.test(src);
+      /**
+       * `approvalDepartments(user)` counts as narrowing by department too — it
+       * IS the department rule now, and the routes that used to write
+       * `user.department` were changed to it when a หัวหน้า became able to cover
+       * more than one แผนก. Without this clause every one of them would quietly
+       * drop out of the check the day it was widened, which is the moment the
+       * check is worth the most.
+       */
+      const byDept = /user\??\.department|approvalDepartments\(/;
+      const narrows = new RegExp(`role === 'manager'[\\s\\S]{0,200}?(${byDept.source})`).test(src)
+        || new RegExp(`(${byDept.source})[\\s\\S]{0,200}?role === 'manager'`).test(src);
       if (!narrows) continue;
       if (!/approvesCompany|signsForCompany|isDepartmentManager|resolveScope/.test(src)) {
         offences.push(full.replace(ROOT, '').replace(/\\/g, '/'));

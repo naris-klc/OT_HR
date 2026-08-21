@@ -5,7 +5,7 @@ import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
 import { latestPerSession, reportStatuses } from '@/lib/reports.js';
 import { companyOf } from '@/src/config/companies.js';
-import { signsForCompany } from '@/lib/entries.js';
+import { approvalDepartments, signsForCompany } from '@/lib/entries.js';
 
 /**
  * §10 data export — for HR to hand to whoever runs payroll.
@@ -30,7 +30,10 @@ export const GET = route(async (req) => {
   // Default to approved only: the export feeds payroll, and an unapproved
   // request is not yet a fact.
   filter.status = { $in: reportStatuses(q.status, 'approved') };
-  if (user.role === 'manager') filter.department = user.department?._id;
+  // Every department this หัวหน้า signs for, not only their own — the same list
+  // `isDepartmentManager` decides each row from. A report narrower than the
+  // approve rule hides hours its reader is responsible for.
+  if (user.role === 'manager') filter.department = { $in: approvalDepartments(user) };
   else if (q.department) filter.department = q.department;
 
   const found = await OtEntry.find(filter)

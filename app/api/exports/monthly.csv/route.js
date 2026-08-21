@@ -8,7 +8,7 @@ import { latestPerSession, reportStatuses } from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { companyOf } from '@/src/config/companies.js';
-import { signsForCompany } from '@/lib/entries.js';
+import { approvalDepartments, signsForCompany } from '@/lib/entries.js';
 
 /** One row per employee per month — the shape HR actually reviews. */
 export const GET = route(async (req) => {
@@ -22,7 +22,10 @@ export const GET = route(async (req) => {
 
   const policy = await Setting.effectivePolicy();
   const filter = { period, status: { $in: reportStatuses(q.status, 'approved') } };
-  if (user.role === 'manager') filter.department = user.department?._id;
+  // Every department this หัวหน้า signs for, not only their own — the same list
+  // `isDepartmentManager` decides each row from. A report narrower than the
+  // approve rule hides hours its reader is responsible for.
+  if (user.role === 'manager') filter.department = { $in: approvalDepartments(user) };
   else if (q.department) filter.department = q.department;
 
   const found = await OtEntry.find(filter)

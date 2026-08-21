@@ -3,9 +3,11 @@ import { COMPANY_KEYS, companyOf } from '@/src/config/companies.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
-  publicEmployee, rosterPermission, chosenPasswordPermission, signingScope,
+  approvalScope, publicEmployee, rosterPermission, chosenPasswordPermission, signingScope,
   signingCoveragePermission,
 } from '@/lib/employees.js';
+import { approvalDepartments } from '@/lib/entries.js';
+import Department from '@/src/models/Department.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
@@ -15,8 +17,20 @@ export const GET = route(async (req) => {
   const q = query(req);
   const filter = {};
 
-  // A manager only ever needs their own 5–6 people (§9).
-  if (user.role === 'manager') filter.department = user.department?._id;
+  /**
+   * A manager only ever needs the people they sign for (§9: 5–6 per department).
+   *
+   * `approvalDepartments` and not `user.department`, since a หัวหน้า can be
+   * ticked into other departments. THE LIST AND THE BUTTONS HAVE TO AGREE — the
+   * note below says why for the company half, and the department half is the
+   * same sentence: `proxyPermission` asks `isDepartmentManager`, which now says
+   * yes for a ticked department, so a picker still narrowed to the home one
+   * would hide the exact people this feature was added to reach.
+   *
+   * `$in` on one id is the same index lookup as equality, so the ordinary
+   * หัวหน้า pays nothing for the general form.
+   */
+  if (user.role === 'manager') filter.department = { $in: approvalDepartments(user) };
   else if (user.role === 'employee') filter._id = user._id;
   if (q.department && ['hr', 'admin'].includes(user.role)) filter.department = q.department;
   if (q.company) filter.company = q.company;
@@ -58,6 +72,7 @@ export const POST = route(async (req) => {
   const actor = await requireAuth(req);
   const {
     code, name, email, position, birthDate, department, role, company, approvesCompany, password,
+    approvesDepartments,
   } = await body(req);
 
   if (!code || !name || !department) {
@@ -107,12 +122,29 @@ export const POST = route(async (req) => {
   const signs = signingScope(approvesCompany);
   if (!signs.ok) return fail(signs.error, 400);
 
+  /**
+   * แผนกที่คุมเพิ่ม. The ids are checked against the real list rather than
+   * trusted — see `approvalScope`, which also strips the home department the
+   * form sends back ticked.
+   *
+   * Read only when there is something to check: the ordinary create sends
+   * nothing and must not pay for a collection scan of แผนก to be told so.
+   */
+  let extraDepts;
+  if (approvesDepartments !== undefined) {
+    const known = await Department.find().select('_id').lean();
+    const scope = approvalScope(approvesDepartments, department, known.map((d) => d._id));
+    if (!scope.ok) return fail(scope.error, 400);
+    extraDepts = scope.value;
+  }
+
   // company left out on purpose falls to the model's pre-validate hook, which
   // reads it off the code prefix.
   const employee = new Employee({
     code, name, email: email || undefined, position, department, role: role || 'employee',
     company: company || undefined,
     approvesCompany: signs.value,
+    ...(extraDepts === undefined ? {} : { approvesDepartments: extraDepts }),
     // Optional. An empty string must become undefined, not '', or the schema's
     // YYYY-MM-DD match rejects the whole save.
     birthDate: birthDate || undefined,
@@ -129,9 +161,24 @@ export const POST = route(async (req) => {
    */
   const peers = await Employee
     .find({ department: employee.department, active: true })
-    .select('code name role department company approvesCompany')
+    .select('code name role department company approvesCompany approvesDepartments')
     .lean();
-  const cover = signingCoveragePermission(peers, [...peers, {
+  /**
+   * The signers are asked for separately from the peers, because a หัวหน้า
+   * ticked into this แผนก is not in it. Left as the peer list alone, a new hire
+   * in ADM would be refused on the grounds that nobody can sign for them, on a
+   * roster where somebody in ผลิต has been given ADM and can.
+   *
+   * The same pool serves both sides of the comparison: creating a row cannot
+   * change who signs for anybody else, so `before` and `after` differ only by
+   * the new person — and if the new person IS a หัวหน้า, they are added to both
+   * lists below.
+   */
+  const signers = await Employee
+    .find({ role: 'manager', active: true })
+    .select('code name role department company approvesCompany approvesDepartments')
+    .lean();
+  const arriving = {
     _id: employee._id,
     code: employee.code,
     name: employee.name,
@@ -139,7 +186,15 @@ export const POST = route(async (req) => {
     department: employee.department,
     company: employee.company,
     approvesCompany: employee.approvesCompany,
-  }], String(employee.department ?? ''));
+    approvesDepartments: employee.approvesDepartments,
+  };
+  const withNew = employee.role === 'manager' ? [...signers, arriving] : signers;
+  const cover = signingCoveragePermission(
+    peers,
+    [...peers, arriving],
+    String(employee.department ?? ''),
+    { before: signers, after: withNew },
+  );
   if (!cover.ok) return fail(cover.error, 409);
 
   const issued = chosen ?? generateTempPassword();

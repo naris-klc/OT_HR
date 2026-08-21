@@ -16,7 +16,7 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // they end up in.
 import { companyOf, companyLabel } from '@/src/config/companies.js';
 import PasswordSlips from './PasswordSlips.jsx';
-import { idOf, viewerId } from '@/lib/entries.js';
+import { approvalDepartments, idOf, viewerId } from '@/lib/entries.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
 // with them, and both read the list from here.
 import {
@@ -31,6 +31,8 @@ import {
   Alert, Empty, Modal, Field, TipButton, PickPerson, ClearButton, useScrollEdge,
 } from './common.jsx';
 import Delegation from './Delegation.jsx';
+// One clause of the เพดาน note depends on capBehaviour — see `capNote`.
+import { usePolicy } from './policyContext.jsx';
 
 const SECTIONS = [
   { key: 'departments', label: 'แผนกและเพดาน' },
@@ -168,28 +170,72 @@ function useRoster() {
 /**
  * Departments whose roster holds somebody no หัวหน้า can sign for.
  *
- * ONE DEFINITION OF “มีปัญหา”, consulted by three things that must agree: the
- * red banner, the filter chip above the table, and the number on the tab. Three
- * readings of it would be three chances for the badge to say 1 while the chip
- * says none, and a warning that contradicts the screen it is on teaches people
- * to stop reading it.
+ * ONE DEFINITION OF “มีปัญหา”, consulted by FOUR things that must agree: the
+ * banner, the filter chip above the table, the number on the tab, and — since
+ * the หัวหน้างาน cell started carrying the warning itself — the badge in the
+ * row. Four readings of it would be four chances for the badge to say 1 while
+ * the chip says none, and a warning that contradicts the screen it is on
+ * teaches people to stop reading it.
  *
  * `unsignedStaff` rather than a rule written for the screen — the same function
  * the two write paths call, which is the same question the approve route asks
  * when a request finally arrives.
+ *
+ * `payrolls` IS THE ROW'S WARNING, DERIVED HERE RATHER THAN IN THE CELL. The
+ * cell used to work out for itself which companies had nobody to sign for them
+ * — a `covered()` written against `approvesCompany` beside the roster loop —
+ * which is the private copy of the rule this function exists to prevent. It is
+ * the same list read the other way round: `stranded` is the people, this is the
+ * payrolls they are on, and neither can move without the other.
  */
 function signingGaps(departments, people) {
   const active = (people || []).filter((p) => p.active !== false);
+  /**
+   * EVERY หัวหน้า ON THE ROSTER, offered to every department.
+   *
+   * Not the department's own any more. A หัวหน้า ticked into another แผนก
+   * (`approvesDepartments`) covers it completely and is on neither its roster
+   * nor its headcount, so a rule that looked only inside would report ADM as
+   * having nobody on the very roster where somebody in ผลิต had just been given
+   * it — a red banner about a problem that had been fixed, which teaches people
+   * to stop reading the banner.
+   *
+   * `isDepartmentManager` inside `unsignedStaff` is what narrows the list, and
+   * `headsOf` below asks the same question for the column. Neither of them
+   * decides it here.
+   */
+  const signers = active.filter((p) => p.role === 'manager');
   return (departments || [])
     .map((d) => {
       const roster = active.filter((p) => idOf(p.department) === String(d._id));
+      const stranded = unsignedStaff(roster, String(d._id), signers);
       return {
         dept: d,
-        managers: roster.filter((p) => p.role === 'manager'),
-        stranded: unsignedStaff(roster, String(d._id)),
+        managers: headsOf(signers, d),
+        stranded,
+        payrolls: [...new Set(stranded.map(companyOf))],
       };
     })
     .filter((g) => g.stranded.length);
+}
+
+/**
+ * The หัวหน้า who sign for one department — from it, or ticked into it.
+ *
+ * `approvalDepartments` is the same list `isDepartmentManager` decides each row
+ * from, so the column cannot name somebody the อนุมัติ button would refuse, nor
+ * miss somebody it would accept. Read here rather than by comparing
+ * `p.department` because that comparison is now only half the rule.
+ *
+ * It is what puts one person's name on several rows of the table: somebody
+ * covering ผลิต and สำนักงาน is a หัวหน้า of both, and both rows say so the
+ * moment the box is ticked.
+ */
+function headsOf(people, department) {
+  const id = String(department._id);
+  return (people || []).filter(
+    (p) => p.active !== false && p.role === 'manager' && approvalDepartments(p).includes(id),
+  );
 }
 
 /**
@@ -236,67 +282,129 @@ function signingGaps(departments, people) {
  * those requests wait at รอหัวหน้า until somebody covers the team. Nothing else
  * in the system says this out loud, and it is silent exactly when it matters —
  * the moment a scope is narrowed, or a หัวหน้า leaves.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY BADGES, AND WHY THE GAP ARRIVES AS A PROP
+ *
+ * BADGES. The cell held a stack: a name, then the scope on a line under it when
+ * it was set, then a warning under that. Three type sizes in one table cell,
+ * and the shape of the stack changed from row to row — a department with one
+ * unscoped หัวหน้า drew one line, the one below it drew five. Nothing in the
+ * column lined up with anything else in it, and the reader had to work out what
+ * kind of line each one was before reading it. A pill per หัวหน้า is one object
+ * per fact, laid out the same way on every row, and it wraps instead of growing
+ * the column.
+ *
+ * THE SCOPE IS NOW ALWAYS PRINTED, including "(ทุกบริษัท)". The old rule was to
+ * print it only when set, on the argument that "ทุกบริษัท" under every name is
+ * noise saying nothing changed — right for a line under a name, wrong inside a
+ * pill. The scope is the whole reason this cell is not just a list of names:
+ * a badge reading only "วิชัย ศรีสุข" leaves the reader to remember whether an
+ * unmarked หัวหน้า means everybody or means nobody has said. Inside the pill it
+ * costs no line and no height, and the two kinds of badge become comparable at
+ * a glance rather than one being the absence of the other.
+ *
+ * THE GAP IS `signingGaps`', NOT THIS CELL'S. It used to be recomputed here from
+ * `approvesCompany` — a second reading of the rule the banner, the chip and the
+ * tab badge all take from `unsignedStaff`, sitting in the one place on the
+ * screen where a disagreement would be most visible. The row is now handed the
+ * finding, so the badge cannot say a payroll is covered while the tab counts it.
+ *
+ * AND IT CARRIES THE WAY OUT. เซ็นให้บริษัท belongs to a PERSON and is edited in
+ * ทะเบียนพนักงาน, which is a thing the reader has to know before the warning is
+ * of any use — so the warning says it, with a button that goes there. The
+ * banner above says the same thing once for the screen; this says it for the
+ * row somebody is actually looking at.
  */
-function Heads({ department, people }) {
-  const staff = people.filter(
-    (p) => p.active !== false
-      && String(p.department?._id || p.department || '') === String(department._id),
-  );
-  const heads = staff.filter((p) => p.role === 'manager');
-
+function Heads({ department, people, depts, gap, onGo }) {
   /**
-   * Which payrolls have somebody here who can FILE — `role: 'employee'`, which
-   * is what `maySubmitOt` allows (§2: a หัวหน้า does not file their own OT).
-   *
-   * Counted over filers rather than over everybody, or a department whose only
-   * เดมเทค person is the เดมเทค หัวหน้า would be flagged as uncovered while having
-   * no เดมเทค request that could ever arrive.
+   * `headsOf` and not a comparison written here — the same function
+   * `signingGaps` counts with, which reads the same `approvalDepartments` the
+   * approve route decides from. Two spellings of "does this person sign for
+   * this department" is how a row comes to print a หัวหน้า the gap calculation
+   * did not count.
    */
-  const payrolls = [...new Set(staff.filter((p) => p.role === 'employee').map(companyOf))];
-  const covered = (key) => heads.some((h) => !h.approvesCompany || h.approvesCompany === key);
-  const gaps = payrolls.filter((key) => !covered(key));
+  const heads = headsOf(people, department);
+  /** Whose own แผนก this is not — see the badge's second line. */
+  const visiting = (h) => idOf(h.department) !== String(department._id);
+  const deptName = (id) => {
+    const d = (depts || []).find((x) => String(x._id) === String(id));
+    return d ? (d.nameTh || d.name) : 'แผนกอื่น';
+  };
 
   /**
-   * WHAT THE ROW SAYS WHEN NOBODY HEADS THE DEPARTMENT AT ALL: one line, not two.
+   * The payrolls in this department with nobody to sign for them — computed by
+   * `signingGaps` and handed down, `[]` on a department that has none.
+   */
+  const stranded = gap?.payrolls || [];
+
+  /**
+   * WHAT THE ROW SAYS WHEN NOBODY HEADS THE DEPARTMENT AT ALL: one badge, not
+   * one per payroll.
    *
-   * "— ยังไม่มีหัวหน้า —" above "⚠ พนักงานไพรมัสยังไม่มีหัวหน้า…" is the same
-   * fact twice, and the second sentence is the one that says what it costs. So
-   * the empty case borrows the warning rather than adding to it.
+   * "ยังไม่มีหัวหน้าไพรมัส" beside "ยังไม่มีหัวหน้าเดมเทค" is a department with
+   * two specific holes; a department with no หัวหน้า at all has one hole, and
+   * naming the payrolls makes it read as the narrower problem it is not.
    */
   const nobody = heads.length === 0;
 
   return (
-    <div>
+    <div className="head-badges">
       {heads.map((h) => (
-        <div key={h._id} className="dept-head">
+        <span key={h._id} className={`head-badge${visiting(h) ? ' visiting' : ''}`}>
           {h.name}
-          {/* The scope on its own line, and ONLY when it is set: "ทุกบริษัท" under
-              every name on a roster nobody has split is four rows of noise
-              saying nothing changed. A line appearing is the signal.
+          {/* Muted, and inside the same pill: it qualifies the name rather than
+              standing beside it as a second fact. */}
+          <span className="scope">
+            ({h.approvesCompany ? companyShort(h.approvesCompany) : 'ทุกบริษัท'})
+          </span>
+          {/* WHERE THEY ACTUALLY SIT, and only when it is not here.
 
-              `.th` because the line is Thai — see the class in app/styles.css.
-              Plain `.cell-sub` is mono, which carries no Thai at all. */}
-          {h.approvesCompany && (
-            <div className="cell-sub th">เซ็นให้เฉพาะ{companyShort(h.approvesCompany)}</div>
+              One person can now head several departments, so the same name
+              appears on several rows — which is the point, and is also how a
+              reader comes to think the table has repeated itself or that
+              somebody was moved. Naming their own แผนก says the row is a second
+              posting rather than a duplicate, and it is the fact HR needs to
+              undo it: the tick is on that person's row, not on this แผนก. */}
+          {visiting(h) && (
+            <span className="from">· จาก{deptName(h.department)}</span>
           )}
-        </div>
+        </span>
       ))}
 
-      {(nobody || gaps.length > 0) && (
-        <div className="cell-note">
+      {(nobody || stranded.length > 0) && (
+        <>
           {/* The same ⚠ the cap-breach note wears in the approval queue — one
               mark for "this row needs somebody to do something", not a second
-              vocabulary for the same idea. */}
-          {'⚠ '}
-          {nobody
-            ? 'ยังไม่มีหัวหน้า'
-            : `ไม่มีหัวหน้าที่เซ็นให้พนักงาน${gaps.map(companyShort).join(' และ ')}ได้`}
-          {' — ใบที่ยื่นจะค้างที่ “รอหัวหน้า”'}
-        </div>
+              vocabulary for the same idea. `title` carries the consequence,
+              which is the sentence a pill has no room for. */}
+          {nobody ? (
+            <span className="head-badge gap" title={HEAD_GAP_TIP}>
+              ⚠ ยังไม่มีหัวหน้า
+            </span>
+          ) : stranded.map((key) => (
+            <span key={key} className="head-badge gap" title={HEAD_GAP_TIP}>
+              ⚠ ยังไม่มีหัวหน้า{companyShort(key)}
+            </span>
+          ))}
+          {onGo && (
+            <button
+              type="button"
+              className="link head-fix"
+              onClick={() => onGo('employees')}
+            >
+              แก้ไขสิทธิ์พนักงาน ↗
+            </button>
+          )}
+        </>
       )}
     </div>
   );
 }
+
+/** What a gap badge costs, said where the pill has no room to say it. */
+const HEAD_GAP_TIP = 'ใบ OT ที่พนักงานกลุ่มนี้ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดอนุมัติได้'
+  + ' · แก้โดยตั้งหรือขยาย “เซ็นให้บริษัท” ของหัวหน้าในหน้าพนักงาน';
 
 /**
  * ใครไม่มีหัวหน้าคนใดเซ็นอนุมัติ OT ให้ได้.
@@ -317,34 +425,45 @@ function Heads({ department, people }) {
  * function the two write paths call, which is the same question the approve
  * route asks when a request finally arrives; a second reading of it here is how
  * a screen comes to promise a signature the server then refuses.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * SHORTENED TO ONE LINE, and the detail moved into the table.
+ *
+ * WHAT IT USED TO BE: a red panel holding a bullet per department, each naming
+ * that department's หัวหน้า and their scopes, with the codes and names of
+ * everybody stranded underneath. On the roster it was written against that was
+ * three or four lines. It is the top of the screen, so it grows downwards into
+ * the thing it is about — and the day a company is added or a scope narrowed
+ * across several departments it is a page of prose sitting above the table that
+ * answers the same question by being read.
+ *
+ * The finding has not moved anywhere it cannot be found. It is in the row now:
+ * the หัวหน้างาน cell carries a ⚠ badge per uncovered payroll, and the chip
+ * under this banner narrows the table to exactly the departments this counts.
+ * A summary that says "some" over a table that says WHICH is the ordinary shape
+ * for this; a summary that repeats the table in sentences is not.
+ *
+ * WHAT IS DELIBERATELY LOST: the codes of the stranded people. They were the
+ * one thing the table does not repeat — the row says เดมเทค has nobody, not
+ * that it is PM-0412 and PM-0455 who are waiting. That is a list HR reads once,
+ * to go and look somebody up; the repair does not need it, because the repair
+ * is a scope on a หัวหน้า and not an edit to any of those rows. Nothing in the
+ * app went blind: `signingCoveragePermission` still names them in full when a
+ * save would strand them, which is the moment the names decide something.
  */
 function SigningCoverage({ departments, people, onGo }) {
   const gaps = signingGaps(departments, people);
 
   if (!gaps.length) return null;
 
-  const total = gaps.reduce((n, g) => n + g.stranded.length, 0);
-
   return (
     <Alert kind="error">
-      <strong>{total} คนไม่มีหัวหน้าคนใดเซ็นอนุมัติ OT ให้ได้</strong>
-      {' '}— บัญชีใช้งานได้ตามปกติ แต่ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดอนุมัติได้
-      <ul style={{ marginTop: 6, marginLeft: 18 }}>
-        {gaps.map(({ dept, managers, stranded }) => (
-          <li key={dept._id} style={{ marginTop: 4 }}>
-            <strong>{dept.code}</strong>{' '}
-            {managers.length === 0
-              ? 'ไม่มีหัวหน้างาน'
-              /* Named rather than counted: a department WITH a หัวหน้า that
-                 still strands somebody is a company-scope problem, and the
-                 scope belongs to a person. */
-              : `หัวหน้า ${managers.map((m) => `${m.code} (เซ็นให้${m.approvesCompany ? companyLabel(m.approvesCompany) : 'ทุกบริษัท'})`).join(' · ')}`}
-            <div style={{ fontSize: 12.5, marginTop: 2 }}>
-              {stranded.map((p) => `${p.code} ${p.name}${p.company ? ` · ${companyLabel(p.company)}` : ''}`).join(', ')}
-            </div>
-          </li>
-        ))}
-      </ul>
+      {/* No ⚠ in the text: `.alert.error` already draws its own mark to the
+          left of this line, and a second one two characters into the sentence
+          is the same glyph twice. The badges in the table wear the ⚠ because
+          they have no mark of their own. */}
+      <strong>บางแผนกยังไม่มีหัวหน้าเซ็นอนุมัติครอบคลุมทุกบริษัท</strong>
+      {' '}— ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดอนุมัติได้
       {/* THE TWO REMEDIES, AS TWO BUTTONS.
 
           This sentence used to end in the names of two tabs — "ในแท็บ พนักงาน"
@@ -371,15 +490,21 @@ function SigningCoverage({ departments, people, onGo }) {
 
           It is a hierarchy, not a recommendation. Both are still one press away
           and the sentence still names what each one does, because a button label
-          has room for a destination and not for a rule. */}
+          has room for a destination and not for a rule.
+
+          THE SENTENCE ABOVE THEM IS GONE, and the first button absorbed it. It
+          read "แก้ได้สองทาง — ตั้งหรือแก้ 'เซ็นให้บริษัท' ของหัวหน้า หรือตั้ง
+          ผู้รับช่วงอนุมัติ", which is the two button labels again in longer
+          words: a line explaining a control that is already visible and already
+          says what it does. On a phone it cost a paragraph above two full-width
+          buttons. What it did carry that the old labels did not is WHERE the
+          repair is — so that went into the label, which is where somebody
+          deciding whether to press it is looking. */}
       <div className="alert-actions">
-        <span>
-          แก้ได้สองทาง — ตั้งหรือแก้ “เซ็นให้บริษัท” ของหัวหน้า หรือตั้งผู้รับช่วงอนุมัติ
-        </span>
         {onGo && (
           <>
             <button className="btn sm" onClick={() => onGo('employees')}>
-              ตั้งค่าหัวหน้างาน
+              ไปที่หน้าพนักงานเพื่อตั้งค่าสิทธิ์ ↗
             </button>
             <button className="btn ghost sm" onClick={() => onGo('delegation')}>
               ตั้งผู้รับช่วงอนุมัติ
@@ -391,8 +516,42 @@ function SigningCoverage({ departments, people, onGo }) {
   );
 }
 
+/**
+ * เว้นว่าง ≠ 0 — the sentence under the table, and the `title` on both boxes.
+ *
+ * WHY IT IS A FUNCTION OF THE POLICY AND NOT A CONSTANT. The obvious wording is
+ * "เว้นว่าง = ไม่จำกัดเพดาน · กรอก 0 = ไม่อนุญาตให้ยื่น OT", and on this system
+ * the second half of it is FALSE. A ceiling of 0 makes every entry exceed it;
+ * what happens next is `capBehaviour`, which ships as 'warn' and is 'warn' on
+ * prod — the request is filed, it goes through, and it arrives in the queue
+ * carrying a เกินเพดาน flag for ฝ่ายบุคคล. Only 'block' refuses it. Printing the
+ * refusal under a system set to warn would have HR set a 0 to stop a department
+ * filing and watch the requests keep arriving, which is the exact failure the
+ * หัวหน้างาน dropdown was taken out of this screen for.
+ *
+ * `usePolicy` is the copy `/api/auth/me` sent at sign-in and is not re-read, so
+ * a `capBehaviour` changed under นโยบายการคำนวณ this session does not move this
+ * line until the next sign-in. Survivable, and the ordinary reason it is: this
+ * is a sentence about a rule, not a number anything is computed from.
+ *
+ * AND 0 IS NOT HOW YOU TURN OT OFF, which is worth the clause because it is
+ * what somebody reaching for a 0 usually wants. รูปแบบโอที → ไม่มีโอที closes
+ * ordinary working days and leaves วันหยุด and วันหยุดวันเกิด alone; a ceiling
+ * of 0 is measured against every kind of hour there is, holidays included.
+ */
+function capNote(policy) {
+  const zero = policy?.capBehaviour === 'block'
+    ? 'กรอก 0 = ไม่อนุญาตให้ยื่น OT ระบบจะปฏิเสธทุกใบ'
+    : 'กรอก 0 = ทุกใบจะติดธง “เกินเพดาน” ให้ฝ่ายบุคคลตรวจ แต่ยังยื่นได้ '
+      + '(ตั้งค่าปัจจุบันคือ “เตือน” ไม่ใช่ “ปฏิเสธ”)';
+  return `หมายเหตุ: เว้นว่าง = ไม่จำกัดเพดาน · ${zero}`
+    + ' · เพดานนับรวมวันหยุดด้วย ถ้าต้องการปิดโอทีเฉพาะวันทำงานปกติ ให้ตั้งที่ “รูปแบบโอที” ในปุ่มแก้ไข';
+}
+
 function Departments({ onGo, roster }) {
   const { rows, people, reload: load } = roster;
+  /** Read for one sentence — see `capNote`. */
+  const capTip = capNote(usePolicy());
   /** Whether เพิ่มแผนก is open — the only way this screen creates a row. */
   const [adding, setAdding] = useState(false);
   /**
@@ -420,8 +579,15 @@ function Departments({ onGo, roster }) {
    * banner above the table and the number on the tab are drawn from.
    */
   const gaps = signingGaps(rows, people);
-  const gapIds = new Set(gaps.map((g) => String(g.dept._id)));
-  const shownRows = onlyGaps ? rows.filter((d) => gapIds.has(String(d._id))) : rows;
+  /**
+   * The finding keyed by department, because the row needs the finding ITSELF
+   * and not merely whether there is one: the หัวหน้างาน cell prints a badge per
+   * uncovered payroll, and those payrolls are `gap.payrolls`. A `Set` of ids
+   * would answer the chip's question and leave the cell to work the rest out
+   * again — which is the private copy of the rule `signingGaps` exists to stop.
+   */
+  const gapOf = new Map(gaps.map((g) => [String(g.dept._id), g]));
+  const shownRows = onlyGaps ? rows.filter((d) => gapOf.has(String(d._id))) : rows;
 
   /**
    * Create one row from the dialog.
@@ -465,9 +631,10 @@ function Departments({ onGo, roster }) {
         <h2>แผนก</h2>
         <button className="btn" onClick={() => setAdding(true)}>เพิ่มแผนก</button>
       </div>
-      <div className="hint">
-        เพดานชั่วโมงกำหนดรายแผนกและไม่บังคับ — เว้นว่างหมายถึงไม่มีเพดาน ซึ่งไม่เหมือนกับเพดาน 0
-      </div>
+      {/* The เพดาน note used to be here, above everything. It is under the
+          table now — see `CapNote`. A rule about two boxes, printed four rows
+          above the first of them and separated from it by a red banner and a
+          pair of chips, is read before there is anything to read it against. */}
       {(error || roster.error) && <Alert kind="error">{error || roster.error}</Alert>}
       {ok && <Alert kind="ok">{ok}</Alert>}
 
@@ -544,22 +711,43 @@ function Departments({ onGo, roster }) {
                   )}
                 </td>
                 <td className="heads-col">
-                  <Heads department={d} people={people} />
+                  <Heads
+                    department={d}
+                    people={people}
+                    depts={rows}
+                    gap={gapOf.get(String(d._id))}
+                    onGo={onGo}
+                  />
                 </td>
                 <td className="num count-col">{d.headcount}</td>
                 {/* Blank is no ceiling; 0 is a ceiling of zero. The field
                     sends whatever was typed and `capHoursFrom` on the server
-                    keeps the two apart. */}
+                    keeps the two apart.
+
+                    "ไม่จำกัด" AND NOT "ไม่กำหนด". The two Thai words are a
+                    letter apart and mean different things: ไม่กำหนด says nobody
+                    has decided, which invites somebody to come and decide it
+                    and type the 0 that is the one answer this box must not be
+                    given by accident. ไม่จำกัด says what an empty box DOES —
+                    it is already the setting, and there is nothing to fill in.
+
+                    ON BLUR, unchanged. The row saves what was typed when focus
+                    leaves it, which is what makes eight departments' ceilings
+                    an afternoon's work rather than eight dialogs. `title` is
+                    the same sentence `CapNote` prints under the table, for
+                    whoever reaches the box before the note. */}
                 <td className="cap-col cap-month">
                   <input
-                    type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
+                    type="number" min="0" step="0.5" placeholder="ไม่จำกัด"
+                    title={capTip}
                     defaultValue={d.monthlyCapHours ?? ''}
                     onBlur={(e) => update(d._id, { monthlyCapHours: e.target.value })}
                   />
                 </td>
                 <td className="cap-col cap-week">
                   <input
-                    type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
+                    type="number" min="0" step="0.5" placeholder="ไม่จำกัด"
+                    title={capTip}
                     defaultValue={d.weeklyCapHours ?? ''}
                     onBlur={(e) => update(d._id, { weeklyCapHours: e.target.value })}
                   />
@@ -614,6 +802,14 @@ function Departments({ onGo, roster }) {
         </table>
       </div>
 
+      {/* UNDER THE TABLE, not above it. It is a legend: it explains two boxes,
+          and a legend read before the thing it explains is a rule with nothing
+          to attach to. Below the last row it is where the eye lands after
+          typing into one of them — and on a phone, where the two boxes are two
+          lines on every card, it is the one place it can sit without being
+          repeated eight times. */}
+      <div className="hint cap-note">{capTip}</div>
+
       {adding && <DepartmentForm onClose={() => setAdding(false)} onSave={create} />}
       {editing && (
         <DepartmentForm
@@ -636,9 +832,10 @@ const BLANK_DEPT = {
 };
 
 /** Said in both เพดาน fields, because the distinction is the whole of what
-    those two boxes mean and a placeholder saying "ไม่กำหนด" is gone the moment
-    anybody types into it. */
-const CAP_TIP = 'ไม่บังคับ · เว้นว่างหมายถึงไม่มีเพดาน ซึ่งไม่เหมือนกับเพดาน 0'
+    those two boxes mean and a placeholder saying "ไม่จำกัด" is gone the moment
+    anybody types into it. Same two words as the table's placeholder, for the
+    same reason the table uses them — see the note on the cell. */
+const CAP_TIP = 'ไม่บังคับ · เว้นว่างหมายถึงไม่จำกัดเพดาน ซึ่งไม่เหมือนกับเพดาน 0'
   + ' · แก้ภายหลังได้จากช่องในตารางด้านล่าง';
 
 /** Said in full once, because every clause of it is a thing somebody asks. */
@@ -793,7 +990,7 @@ function DepartmentForm({ department = null, onClose, onSave }) {
           <div className="form-grid">
             <Field label="เพดาน ชม./เดือน" tip={CAP_TIP}>
               <input
-                type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
+                type="number" min="0" step="0.5" placeholder="ไม่จำกัด"
                 value={form.monthlyCapHours}
                 onChange={(e) => set({ monthlyCapHours: e.target.value })}
                 disabled={busy}
@@ -801,7 +998,7 @@ function DepartmentForm({ department = null, onClose, onSave }) {
             </Field>
             <Field label="เพดาน ชม./สัปดาห์" tip={CAP_TIP}>
               <input
-                type="number" min="0" step="0.5" placeholder="ไม่กำหนด"
+                type="number" min="0" step="0.5" placeholder="ไม่จำกัด"
                 value={form.weeklyCapHours}
                 onChange={(e) => set({ weeklyCapHours: e.target.value })}
                 disabled={busy}
@@ -850,6 +1047,127 @@ function SignsForField({ value, onChange, disabled }) {
   );
 }
 
+const APPROVES_DEPTS_TIP = 'หัวหน้าเซ็นให้แผนกสังกัดของตนเสมอ — ติ๊กเพิ่มเพื่อให้เซ็นให้แผนกอื่นด้วย '
+  + '· แผนกที่ติ๊กเพิ่มจะได้สิทธิ์เท่ากับแผนกตัวเองทุกอย่าง คืออนุมัติ ไม่อนุมัติ เห็นในคิว '
+  + 'และบันทึก OT แทนลูกน้องได้ '
+  + '· ไม่ย้ายสังกัด ชั่วโมงและเพดานของหัวหน้าคนนี้ยังผูกกับแผนกสังกัดเดิม '
+  + '· ใช้เมื่อแผนกหนึ่งไม่มีหัวหน้าเป็นการถาวร — ถ้าเป็นการลาชั่วคราวให้ใช้ “ผู้รับช่วงอนุมัติ” แทน '
+  + 'เพราะอันนั้นหมดอายุเอง';
+
+/**
+ * แผนกที่คุม — the ticked list, for a หัวหน้างาน.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE HOME DEPARTMENT IS TICKED AND CANNOT BE UNTICKED
+ *
+ * It is shown at all because the question the reader is asking is "which
+ * departments does this person sign for", and a list that answered it by
+ * leaving out the most important one would be a list nobody could read as an
+ * answer. It is locked because there is no such thing as a หัวหน้า who does not
+ * sign for their own team: `approvalDepartments` puts it in whatever the stored
+ * list says, so a box that could be cleared would be a control that appears to
+ * take authority away and does not — the exact defect the หัวหน้างาน dropdown
+ * was removed from แผนกและเพดาน for.
+ *
+ * IT IS NOT IN `value` EITHER. The field stores extras only (see the model), so
+ * this component adds the home department when it paints and never when it
+ * reports. `onChange` therefore never receives it, `formOf` never holds it, and
+ * the dialog does not open already dirty.
+ *
+ * FIRST IN THE LIST, out of the department order, because it is the one row
+ * that is not a choice — reading down a column of tickable boxes it would
+ * otherwise be a locked one somewhere in the middle, which reads as an error.
+ */
+function ApprovesDepartmentsField({ home, value, onChange, depts, disabled }) {
+  const homeId = String(home || '');
+  const extras = value || [];
+  const ordered = [
+    ...depts.filter((d) => String(d._id) === homeId),
+    ...depts.filter((d) => String(d._id) !== homeId),
+  ];
+
+  const toggle = (id) => {
+    if (id === homeId) return;
+    onChange(extras.includes(id) ? extras.filter((x) => x !== id) : [...extras, id]);
+  };
+
+  return (
+    <Field label="แผนกที่คุม" tip={APPROVES_DEPTS_TIP}>
+      {/* `.pick-list` and `.check` — the same scroll box บันทึก OT แทน ticks a
+          team in. Five departments fit without scrolling and a thirtieth would
+          not push the fields below it off the screen. */}
+      <div className="pick-list" role="group" aria-label="แผนกที่หัวหน้าคนนี้เซ็นอนุมัติให้ได้">
+        {ordered.map((d) => {
+          const id = String(d._id);
+          const locked = id === homeId;
+          return (
+            <label key={id} className={`check${locked ? ' locked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={locked || extras.includes(id)}
+                disabled={disabled || locked}
+                onChange={() => toggle(id)}
+              />
+              <span className="nm">{d.nameTh || d.name}</span>
+              {/* Says WHY the box cannot be pressed, beside the box. A disabled
+                  tick with nothing next to it reads as broken. */}
+              {locked && <span className="tag">สังกัดหลัก</span>}
+            </label>
+          );
+        })}
+        {!ordered.length && <div className="pick-empty">ยังไม่มีแผนกในระบบ</div>}
+      </div>
+    </Field>
+  );
+}
+
+/**
+ * ขอบเขตการอนุมัติ — the two controls above it, read back as one sentence.
+ *
+ * WHY A SENTENCE AND NOT A COUNT. What HR is actually deciding here is spread
+ * across two fields that narrow each other in different directions: a list of
+ * departments, and a payroll inside each. Neither box says what the pair of
+ * them comes to, and the pair is the thing that decides whether somebody's OT
+ * gets signed. Somebody reading "แผนกที่คุม: ผลิต, สำนักงาน" and
+ * "เซ็นให้บริษัท: เฉพาะเดมเทค" has to do the join in their head, and the join
+ * is where the mistake lives — that pair signs for nobody at all in สำนักงาน if
+ * สำนักงาน has no เดมเทค staff.
+ *
+ * LIVE, off the form and not off the saved row, so it answers before the save
+ * rather than after it. That is the whole point: the sentence is a preview of a
+ * grant, and a preview that arrives once the grant is made is a receipt.
+ *
+ * It does NOT read the roster. It says what the setting MEANS, not what it
+ * currently reaches — "และแผนกนี้ยังไม่มีพนักงานเดมเทคเลย" would need the
+ * roster of every department in the form's hands, and the screen that already
+ * answers it is แผนกและเพดาน, which draws the same finding per row from the
+ * same rule.
+ */
+function ApprovalSummary({ home, extras, company, depts }) {
+  const ids = [...new Set([String(home || ''), ...(extras || [])].filter(Boolean))];
+  const names = ids.map((id) => nameOfDept(depts, id) || id);
+  const where = company ? companyName(company) : 'ทุกบริษัท';
+
+  return (
+    <div className="approval-summary">
+      <span className="mark" aria-hidden="true">📌</span>
+      <span>
+        <strong>ขอบเขตการอนุมัติ:</strong>{' '}
+        {names.length
+          ? (
+            <>
+              อนุมัติใบ OT ให้พนักงานในแผนก <b>[{names.join(', ')}]</b> สังกัด <b>[{where}]</b>
+            </>
+          )
+          /* The create form before a แผนก is picked. Saying "แผนก []" would be
+             a sentence claiming the grant is empty, and it is not — it is not
+             decided yet. */
+          : 'ยังไม่ได้เลือกแผนกสังกัด — เลือกแผนกก่อน แล้วบรรทัดนี้จะสรุปให้'}
+      </span>
+    </div>
+  );
+}
+
 const BLANK = {
   // `email` is on the model and on the create route, and was missing from this
   // form alone — so a person added one at a time arrived without one and had to
@@ -859,6 +1177,11 @@ const BLANK = {
   company: '',
   /** ทุกบริษัท. Only read when the role is หัวหน้างาน — see SIGNS_FOR_TIP. */
   approvesCompany: '',
+  /**
+   * แผนกที่คุมเพิ่ม — the EXTRAS, never the home department, which the picker
+   * ticks for itself. Also only read for a หัวหน้างาน.
+   */
+  approvesDepartments: [],
   /**
    * The first password, and how it is being decided.
    *
@@ -1907,7 +2230,20 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
   // The three the server insists on, checked here so the refusal is a greyed
   // button next to the empty field rather than a 400 after the form is full.
   const ready = form.code.trim() && form.name.trim() && form.department && passwordReady;
-  const dirty = Object.keys(BLANK).some((k) => form[k] !== BLANK[k]);
+  /**
+   * Anything typed yet? — the guard on closing the dialog by accident.
+   *
+   * `!==` on every key was enough while every key held a string. แผนกที่คุม is
+   * a list, and ticking a box then unticking it leaves a NEW empty array that
+   * is `!==` the blank one while holding exactly the same nothing — so the
+   * dialog would ask "ยังไม่ได้บันทึก" over a form nobody had filled in. Lists
+   * compare by content, scalars as before.
+   */
+  const dirty = Object.keys(BLANK).some((k) => (
+    Array.isArray(BLANK[k])
+      ? (form[k] || []).length !== BLANK[k].length
+      : form[k] !== BLANK[k]
+  ));
 
   async function save() {
     setError('');
@@ -2062,7 +2398,29 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
                 disabled={busy}
               />
             )}
+            {/* Here as well as on แก้ไข, because the case this exists for is a
+                แผนก with nobody — and appointing somebody to it is as likely to
+                be part of creating their account as of editing it later. Same
+                component, same validator on the server: one field, two doors
+                that cannot disagree. */}
+            {form.role === 'manager' && (
+              <ApprovesDepartmentsField
+                home={form.department}
+                value={form.approvesDepartments}
+                onChange={(v) => set({ approvesDepartments: v })}
+                depts={depts}
+                disabled={busy}
+              />
+            )}
           </div>
+          {form.role === 'manager' && (
+            <ApprovalSummary
+              home={form.department}
+              extras={form.approvesDepartments}
+              company={form.approvesCompany}
+              depts={depts}
+            />
+          )}
         </section>
 
         <section className="form-group">
@@ -2129,6 +2487,19 @@ const formOf = (employee) => ({
   role: employee.role || 'employee',
   company: employee.company || '',
   approvesCompany: employee.approvesCompany || '',
+  /**
+   * แผนกที่คุมเพิ่ม, as strings — the extras only, exactly as stored.
+   *
+   * The home department is NOT folded in here even though the checkbox list
+   * shows it ticked. `dirty` is computed by comparing this object with the one
+   * `formOf` produced from the untouched row, so a value the form invents on
+   * open is a value that reads as an edit before anybody has typed: the dialog
+   * would open with บันทึก already enabled on every หัวหน้า. The list adds the
+   * home department when it PAINTS (see `ApprovesDepartmentsField`) and the
+   * server strips it again if it is sent (see `approvalScope`), so the ticked
+   * box and the stored fact stay two different things on purpose.
+   */
+  approvesDepartments: (employee.approvesDepartments || []).map(String),
   active: employee.active !== false,
 });
 
@@ -2148,6 +2519,19 @@ function showValue(field, value, depts = []) {
    * หัวหน้า who signs for nobody, which is the opposite of what it means.
    */
   if (field === 'approvesCompany') return value ? companyName(value) : 'ทุกบริษัท';
+  /**
+   * Before the blank check as well, and for the reason above turned round: unset
+   * here IS "none", and it has to say so in words. `auditValue` stores this as
+   * comma-joined ids (lib/rosterAudit.js), so the split is reading back what it
+   * wrote — and each id becomes a name, because a confirmation dialog listing
+   * two ObjectIds is a dialog nobody can check.
+   */
+  if (field === 'approvesDepartments') {
+    if (!value) return 'ไม่คุมแผนกอื่น';
+    return String(value).split(',')
+      .map((id) => nameOfDept(depts, id) || id)
+      .join(', ');
+  }
   if (value == null || value === '') return '—';
   if (field === 'department') return nameOfDept(depts, value) || value;
   if (field === 'company') return companyName(value);
@@ -2566,6 +2950,15 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
                   disabled={disabled()}
                 />
               )}
+              {form.role === 'manager' && (
+                <ApprovesDepartmentsField
+                  home={form.department}
+                  value={form.approvesDepartments}
+                  onChange={(v) => set({ approvesDepartments: v })}
+                  depts={depts}
+                  disabled={disabled()}
+                />
+              )}
               <Field
                 label="สถานะการใช้งาน"
                 note={selfLocked('active') ? LOCK_SHORT.selfActive
@@ -2584,6 +2977,19 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
                 </select>
               </Field>
             </div>
+
+            {/* UNDER THE GRID, not inside it. It reads back two of the fields
+                above and is a sentence rather than a control, so a column of
+                the form is the wrong shape for it — it would be a third box
+                that cannot be typed into, beside the two it is about. */}
+            {form.role === 'manager' && (
+              <ApprovalSummary
+                home={form.department}
+                extras={form.approvesDepartments}
+                company={form.approvesCompany}
+                depts={depts}
+              />
+            )}
           </section>
 
           <FoldedNote short={PASSWORD_NOTE.short} full={PASSWORD_NOTE.full} />

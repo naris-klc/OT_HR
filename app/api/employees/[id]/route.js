@@ -4,8 +4,9 @@ import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
   codeChangePermission, dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
-  signingScope, signingCoveragePermission,
+  signingScope, signingCoveragePermission, approvalScope,
 } from '@/lib/employees.js';
+import Department from '@/src/models/Department.js';
 import { generateTempPassword } from '@/lib/tempPassword.js';
 import { BIRTHDATE_REPLAY_NOTE, rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
@@ -21,7 +22,7 @@ export const PATCH = route(async (req, { params }) => {
 
   const {
     code, name, email, position, birthDate, department, role, company, approvesCompany, active,
-    resetPassword, password, reason,
+    approvesDepartments, resetPassword, password, reason,
   } = await body(req);
 
   if (role != null && !ROLES.includes(role)) return fail('บทบาทไม่ถูกต้อง', 400);
@@ -98,6 +99,11 @@ export const PATCH = route(async (req, { params }) => {
     role: employee.role,
     company: employee.company,
     approvesCompany: employee.approvesCompany,
+    // Copied out of the array rather than referenced. Everything else in this
+    // snapshot is a scalar and a plain read is enough; this one is a mongoose
+    // array on the document about to be mutated, so a reference would be the
+    // live value and the "before" would equal the "after" every time.
+    approvesDepartments: (employee.approvesDepartments || []).map(String),
     active: employee.active,
   };
 
@@ -149,6 +155,23 @@ export const PATCH = route(async (req, { params }) => {
     if (!signs.ok) return fail(signs.error, 400);
     employee.approvesCompany = signs.value;
   }
+  /**
+   * แผนกที่คุมเพิ่ม — same `undefined` / `[]` distinction as the scope above,
+   * and for the same reason: `[]` is "untick everything", which is a real edit
+   * and must not read as "field not sent".
+   *
+   * Applied AFTER `department`, so `approvalScope` strips the home department
+   * this save is moving them to rather than the one they are leaving. Ticking
+   * ADM while also being moved into ADM is then one department, not two.
+   */
+  if (approvesDepartments !== undefined) {
+    const known = await Department.find().select('_id').lean();
+    const scope = approvalScope(
+      approvesDepartments, employee.department, known.map((d) => d._id),
+    );
+    if (!scope.ok) return fail(scope.error, 400);
+    employee.approvesDepartments = scope.value;
+  }
   if (active != null) employee.active = Boolean(active);
 
   /**
@@ -188,6 +211,7 @@ export const PATCH = route(async (req, { params }) => {
     role: employee.role,
     company: employee.company,
     approvesCompany: employee.approvesCompany,
+    approvesDepartments: employee.approvesDepartments,
     active: employee.active,
   });
   const birthDateMoved = changes.some((c) => c.field === 'birthDate');
@@ -206,6 +230,14 @@ export const PATCH = route(async (req, { params }) => {
    * people they used to sign for; moving them IN can strand them on arrival, in
    * a แผนก whose only หัวหน้า signs for the other company. They are different
    * questions and the same rule answers both.
+   *
+   * AND EVERY แผนก THIS SAVE TICKS OR UNTICKS, which is the sixth way in. A
+   * หัวหน้า covering ADM from ผลิต is on neither department's roster as far as
+   * the old loop was concerned: unticking ADM changes nothing about either
+   * `department` value, so the loop would not have looked at ADM at all and the
+   * save that stranded three people would have gone straight through. The
+   * before-list and the after-list are both in the union for the same reason
+   * the two `department` values are.
    */
   const asPerson = (src, dept) => ({
     _id: employee._id,
@@ -215,16 +247,47 @@ export const PATCH = route(async (req, { params }) => {
     department: dept,
     company: src.company,
     approvesCompany: src.approvesCompany,
+    approvesDepartments: src.approvesDepartments,
   });
   const sameDept = (dept, value) => String(value ?? '') === String(dept);
 
-  const touched = [...new Set([before.department, employee.department].map((d) => String(d ?? '')))]
-    .filter(Boolean);
+  const touched = [...new Set([
+    before.department,
+    employee.department,
+    ...before.approvesDepartments,
+    ...(employee.approvesDepartments || []),
+  ].map((d) => String(d ?? '')))].filter(Boolean);
+
+  /**
+   * Every OTHER active หัวหน้า on the roster, read once for the whole loop.
+   *
+   * Not per department, because a signer for ADM may sit in any of them — the
+   * pool is the same for every iteration and `isDepartmentManager` is what
+   * narrows it, asking each one whether THIS department is one of theirs.
+   *
+   * This person is excluded and then added back on each side of the comparison
+   * in their before and after shape. That is the whole mechanism: the two lists
+   * differ by exactly the edit being judged, so what `signingCoveragePermission`
+   * reports as newly stranded is what THIS save costs and not what was already
+   * true.
+   */
+  const otherManagers = await Employee
+    .find({ role: 'manager', active: true, _id: { $ne: employee._id } })
+    .select('code name role department company approvesCompany approvesDepartments')
+    .lean();
+  const wasSigner = before.role === 'manager' && before.active !== false
+    ? [asPerson(before, before.department)] : [];
+  const nowSigner = employee.role === 'manager' && employee.active !== false
+    ? [asPerson(employee, employee.department)] : [];
+  const signers = {
+    before: [...otherManagers, ...wasSigner],
+    after: [...otherManagers, ...nowSigner],
+  };
 
   for (const dept of touched) {
     const others = await Employee
       .find({ department: dept, active: true, _id: { $ne: employee._id } })
-      .select('code name role department company approvesCompany')
+      .select('code name role department company approvesCompany approvesDepartments')
       .lean();
 
     const was = before.active !== false && sameDept(dept, before.department)
@@ -232,7 +295,9 @@ export const PATCH = route(async (req, { params }) => {
     const now = employee.active !== false && sameDept(dept, employee.department)
       ? [asPerson(employee, employee.department)] : [];
 
-    const cover = signingCoveragePermission([...others, ...was], [...others, ...now], dept);
+    const cover = signingCoveragePermission(
+      [...others, ...was], [...others, ...now], dept, signers,
+    );
     if (!cover.ok) return fail(cover.error, 409);
   }
 

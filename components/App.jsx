@@ -531,6 +531,15 @@ function Shell({ session, onLogout }) {
             <button
               key={t.key}
               className={tab === t.key ? 'active' : ''}
+              /* `aria-current` says what the colour says.
+
+                 The open tab is marked by a fill here and by green type on
+                 the phone bar, and neither of those reaches somebody who is
+                 not looking at the screen — so the one button that is the
+                 page they are on was, to a screen reader, the fourth button
+                 in a row of eight. Read off the same `tab === t.key` as the
+                 class, so the two can never come apart. */
+              aria-current={tab === t.key ? 'page' : undefined}
               onClick={() => goTab(t.key)}
             >
               <span className="icon"><Icon name={t.icon} /></span>
@@ -664,6 +673,9 @@ function Shell({ session, onLogout }) {
             <button
               key={t.key}
               className={tab === t.key ? 'active' : ''}
+              /* The same pair as the sidebar, off the same state — see the
+                 note there. */
+              aria-current={tab === t.key ? 'page' : undefined}
               onClick={() => goTab(t.key)}
             >
               <span className="icon">

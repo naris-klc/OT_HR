@@ -84,6 +84,54 @@ const employeeSchema = new mongoose.Schema(
      */
     approvesCompany: { type: String, enum: [...COMPANY_KEYS, null], default: null },
 
+    /**
+     * WHICH OTHER แผนก THIS หัวหน้า SIGNS FOR — the ones beyond their own.
+     *
+     * A หัวหน้า has always signed for exactly one department: their own
+     * (`isDepartmentManager` compares `user.department` with the entry's). That
+     * is right for four of the five departments on this roster and wrong for the
+     * fifth — ADM has three people and no หัวหน้า at all, so a holiday OT filed
+     * there waits at รอหัวหน้า with nobody who can clear it. The only two
+     * answers before this field were to move somebody's แผนก (which moves their
+     * own hours, their ceiling and their report row with them) or to keep
+     * renewing a ผู้รับช่วงอนุมัติ, which is a window that closes by design.
+     *
+     * ─────────────────────────────────────────────────────────────────────────
+     * EXTRAS ONLY. THEIR OWN DEPARTMENT IS NOT IN HERE.
+     *
+     * The full set is `[department, ...approvesDepartments]`, assembled by
+     * `approvalDepartments` in lib/entries.js and nowhere else. Storing the home
+     * department here as well would be storing a fact twice, and the copy goes
+     * stale the first time HR moves somebody: a หัวหน้า moved from ผลิต to
+     * วิศวกรรม would keep signing for ผลิต — for a team they are no longer on —
+     * because a list written last year still named it. Derived, that cannot
+     * happen; the scope follows the person.
+     *
+     * It also means the ordinary row stores NOTHING. Empty is the state of every
+     * หัวหน้า on the roster today and reads as exactly the behaviour this system
+     * had before the field existed, so nobody's authority moves until somebody
+     * ticks a box.
+     *
+     * NARROWED BY `approvesCompany` JUST THE SAME, and by the one value — a
+     * scope is a property of the SIGNATURE, not of each team it reaches. A
+     * หัวหน้า who signs only for เดมเทค signs only for เดมเทค in every department
+     * they cover. Per-department payroll scopes would be the same field again in
+     * a second shape, and the arrangement that would need it (two departments
+     * split differently by company, one signer for both) has not been asked for.
+     *
+     * Read ONLY for role 'manager', like `approvesCompany`, and left in place
+     * when somebody stops being one for the same reason: the same list means the
+     * same thing if they are appointed again.
+     *
+     * No `ref` validation that the department still exists — a deleted แผนก
+     * leaves an id that matches nothing, which grants nothing. Failing closed is
+     * the whole reason this is a list of grants rather than a list of exclusions.
+     */
+    approvesDepartments: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Department' }],
+      default: () => [],
+    },
+
     passwordHash: { type: String, required: true, select: false },
 
     /**

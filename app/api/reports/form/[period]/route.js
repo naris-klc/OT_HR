@@ -8,7 +8,7 @@ import {
 } from '@/src/lib/otEngine.js';
 import { loadHolidaySet } from '@/src/services/otService.js';
 import { companyOf } from '@/src/config/companies.js';
-import { signsForCompany } from '@/lib/entries.js';
+import { isDepartmentManager } from '@/lib/entries.js';
 import {
   PERIOD_RE, actingNotes, previousPeriod, thaiMonth, min, max, latestPerSession,
   formDayTypes, formPrintStatuses, formPendingStatuses,
@@ -33,13 +33,19 @@ export const GET = route(async (req, { params }) => {
   if (!employee) return fail('ไม่พบพนักงาน', 404);
 
   /**
-   * Their own department, and their own half of it where their signature is
-   * scoped to one payroll. This is the sheet a หัวหน้า signs; one belonging to
-   * somebody they cannot sign for is not theirs to print.
+   * A department they sign for, and their own half of it where their signature
+   * is scoped to one payroll. This is the sheet a หัวหน้า signs; one belonging
+   * to somebody they cannot sign for is not theirs to print.
+   *
+   * `isDepartmentManager` rather than the two halves written out here, which is
+   * what this was: `employee.department === user.department` plus a
+   * `signsForCompany`. That spelling was the whole rule right up until a
+   * หัวหน้า could be ticked into another แผนก, at which point it became a
+   * reviewer who may approve somebody's request and may not print the sheet
+   * that request goes onto. One function, so the two cannot come apart again.
    */
   if (user.role === 'manager'
-    && (String(employee.department?._id) !== String(user.department?._id)
-      || !signsForCompany(user, companyOf(employee)))) {
+    && !isDepartmentManager(user, employee.department, companyOf(employee))) {
     return fail('ดูได้เฉพาะพนักงานในแผนกของตน', 403);
   }
 

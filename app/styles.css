@@ -1426,6 +1426,62 @@ td > .approver-line { margin-top: 5px; }
 .pick-list .check { padding: 9px 12px; }
 .pick-list .check + .check { border-top: 1px solid var(--line-softer); }
 .pick-list .check:hover { background: var(--neutral-wash); }
+.pick-list .pick-empty { padding: 12px; font: 400 13px/1.5 var(--sans); color: var(--muted-2); }
+
+/* ── แผนกที่คุม — the same box, with one row that cannot be pressed ─────────
+
+   THE LOCKED ROW IS THE HOME DEPARTMENT and it is a different KIND of row, not
+   a disabled one: nothing is refusing it, it is simply what being a หัวหน้า of
+   that แผนก already means. So it keeps full-strength ink while the tick beside
+   it is disabled — the app's `:disabled` grey would say "this is not available
+   to you", which is the wrong sentence and sends somebody looking for an Admin.
+
+   `cursor: default` rather than `not-allowed`, on the same reading. A barred
+   cursor is a refusal; this is a statement.
+
+   The row's fill is what actually marks it — a wash a shade off the box, so a
+   column of tickable rows has one that reads as already settled. */
+.pick-list .check.locked {
+  background: var(--neutral-wash);
+  cursor: default;
+}
+.pick-list .check.locked:hover { background: var(--neutral-wash); }
+.pick-list .check .nm { flex: 1; min-width: 0; }
+/* "สังกัดหลัก" — why the box is fixed, beside the box. `.chip.muted`'s tone at
+   a size that sits inside a 40px row without growing it. */
+.pick-list .check .tag {
+  flex: none;
+  padding: 2px 8px; border-radius: 20px;
+  background: var(--card); border: 1px solid var(--line);
+  font: 600 11px/1.5 var(--sans); color: var(--muted);
+}
+
+/* ── 📌 ขอบเขตการอนุมัติ — the two fields above, read back as one sentence ──
+
+   NOT AN ALERT. It reports the ordinary state of a correctly filled-in form, so
+   it must not wear a colour that means something is wrong — a `.alert.info`
+   here would put a blue panel on every หัวหน้า's dialog and teach the reader to
+   skip the place where the actual warnings appear. It is a quiet block on the
+   app's neutral wash: findable when looked for, silent when not.
+
+   FULL WIDTH, under the grid rather than in it: it is a sentence about two
+   controls, and a form column is the shape of a control.
+
+   `align-items: flex-start` so the 📌 sits on the first line when the sentence
+   wraps to two, which it does on a phone and on any roster with three
+   departments in the list. */
+.approval-summary {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 14px; padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--neutral-wash); border: 1px solid var(--line-softer);
+  font: 400 13px/1.6 var(--sans); color: var(--ink-2);
+}
+.approval-summary .mark { flex: none; font-size: 13px; line-height: 1.6; }
+.approval-summary strong { font-weight: 600; color: var(--ink); }
+/* The two values the sentence is actually about. Bracketed in the text and
+   weighted here, so they can be found without reading the sentence twice. */
+.approval-summary b { font-weight: 600; color: var(--green-dark); }
 
 /* ══ ช่องค้นหา — a text box with a ✕ in it ══════════════════════════════════
    Shared by the two controls that search the roster, which are NOT the same
@@ -2597,12 +2653,12 @@ td > .approver-line { margin-top: 5px; }
    distorting it.
 
    หัวหน้างาน can hold several names now — a department with people on both
-   payrolls has one หัวหน้า per company — with a scope under each and a warning
-   under those. Left to size itself the column took the width its longest
-   sentence wanted, squeezing the two ceiling boxes and the two buttons until
-   "ใช้งาน" wrapped onto two lines. A ceiling of 40 needs four characters and a
-   button needs to stay on one line, so those get fixed room and the names get
-   what is left. */
+   payrolls has one หัวหน้า per company — each with its scope, and a warning
+   badge for every payroll nobody covers. Left to size itself the column took
+   the width its longest badge wanted, squeezing the two ceiling boxes and the
+   two buttons until "ใช้งาน" wrapped onto two lines. A ceiling of 40 needs four
+   characters and a button needs to stay on one line, so those get fixed room
+   and the names get what is left. */
 .deptset-table th.heads, .deptset-table td.heads-col { min-width: 210px; }
 /* THAI HAS NO SPACES, so a sentence is one unbreakable word as far as a layout is
    concerned — "ไม่มีหัวหน้าที่เซ็นให้พนักงานไพรมัสได้" reports a min-content width
@@ -2613,7 +2669,7 @@ td > .approver-line { margin-top: 5px; }
 /* เพดาน ชม./เดือน and ชม./สัปดาห์ — the two boxes edited in the row itself.
 
    NARROWER, and the width is the label. A ceiling is two or three digits and
-   the widest thing either box ever holds is its own "ไม่กำหนด" placeholder, so
+   the widest thing either box ever holds is its own "ไม่จำกัด" placeholder, so
    90px covers both with room to spare and hands the rest of the table back to
    the columns that hold sentences. A wide box in a table asks to be typed a
    sentence into.
@@ -2670,8 +2726,108 @@ td > .approver-line { margin-top: 5px; }
    title off the button's centre line by half of it. */
 .dept-head-bar { margin-bottom: 4px; }
 .dept-head-bar h2 { margin-bottom: 0; }
-/* Each name its own line, tight enough that two of them still read as one cell. */
-.deptset-table .dept-head + .dept-head { margin-top: 6px; }
+
+/* ── หัวหน้างาน — one pill per fact ─────────────────────────────────────────
+
+   WHAT WAS HERE: `.dept-head`, a stack. A name on its own line, the scope on a
+   `.cell-sub.th` under it when there was one, and a `.cell-note` warning under
+   that. Three type sizes, and the shape changed from row to row — one
+   department drew a single line and the one below it drew five, so nothing in
+   the column lined up with anything else in it and each line had to be
+   identified before it could be read.
+
+   A PILL PER หัวหน้า, AND A PILL PER GAP. The two are the same object with
+   different colour, which is the point: "covered by วิชัย" and "nobody covers
+   เดมเทค" are two answers to one question, and a reader comparing them down the
+   column should not have to notice that one is a line of type and the other is
+   a line of type in amber. They WRAP rather than stack, so a department with
+   one หัวหน้า is one row tall on a 210px column and the column stops growing
+   with the roster.
+
+   `flex-start`, not `stretch`: a pill is sized by its own words. Stretched to
+   the cell they would all be 210px and read as rows of a list again. */
+.head-badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.head-badge {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  background: var(--neutral-wash); color: var(--ink-2);
+  font: 500 12.5px/1.5 var(--sans);
+  /* Thai has no spaces, so a two-word name is one unbreakable run to the layout
+     — see the note on `td.heads-col` above. Inside a pill that would push the
+     pill past the cell rather than wrapping in it. */
+  overflow-wrap: anywhere;
+}
+/* (ทุกบริษัท) — the qualifier, quieter than the name it qualifies but inside
+   the same pill, because it is not a second fact about the row. */
+.head-badge .scope { color: var(--muted); font-weight: 400; font-size: 11.5px; }
+
+/* ── A หัวหน้า WHO IS NOT FROM THIS แผนก ────────────────────────────────────
+
+   One person can be ticked into several departments, so the same name now
+   appears on several rows of this table. That is the feature working, and it is
+   also exactly how a reader comes to think the table has repeated itself or
+   that somebody has been moved. "· จากวิศวกรรม" inside the pill says which it
+   is, and says where to go to undo it — the tick is on that person's ทะเบียน
+   row, not on this department.
+
+   OUTLINED RATHER THAN FILLED, so the distinction survives without the words
+   being read: a หัวหน้า who belongs here is solid, one on loan is a ring. Same
+   ink and same size — it is not a warning, and a colour would make a perfectly
+   ordinary arrangement look like one. */
+.head-badge.visiting { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.head-badge .from { color: var(--muted-2); font-weight: 400; font-size: 11.5px; }
+
+/* THE GAP BADGE — amber, and the same amber `.cell-note` used to carry.
+
+   Not red. Red in this app is a refusal that has already happened; this is work
+   nobody has done yet, which is what the amber family says everywhere else here
+   (`.chip.edited`, `.chip.due`, the cap-breach note in the queue). The banner
+   above the table IS red, and the difference is deliberate: the banner reports
+   that the screen as a whole has a problem, the badge marks which row.
+
+   RINGED, like `.chip.due`, so it reads as a state asking rather than
+   reporting — a flat amber fill in a column of grey fills is a colour among
+   colours. The padding comes down by the border it gains, so a row with a gap
+   badge is exactly as tall as a row without one. */
+.head-badge.gap {
+  padding: 3px 9px;
+  background: var(--amber-bg); color: var(--amber-ink);
+  border: 1px solid var(--amber);
+  font-weight: 600;
+}
+
+/* แก้ไขสิทธิ์พนักงาน ↗ — the way out, on the row that needs it.
+
+   A `.link` and not a button, on the same reasoning as แก้ไข in the จัดการ
+   column: it opens another tab of this same screen and nothing it does is
+   final, so it does not need a button's weight to be found. It sits in the flex
+   run WITH the badges rather than under them, so on a wide cell the warning and
+   its repair are one line.
+
+   `100%` when the badges have already filled the row — `flex-basis: 100%` would
+   force it onto its own line always, which is wrong on a cell holding one short
+   gap badge. Nothing here does that: it wraps like anything else in the run.
+
+   ALIGNED TO THE PILLS' TEXT, not to their boxes. The badges are 24-26px tall
+   and this is a bare line of type; without the padding it hangs at the top of
+   the run while the pills' words sit lower. */
+.head-fix { padding: 4px 0; white-space: nowrap; }
+.head-fix:hover { text-decoration: underline; }
+
+/* หมายเหตุ: เว้นว่าง = ไม่จำกัดเพดาน … — the legend under the department table.
+
+   A `.hint` with a top margin and nothing else. It is the same grey and the
+   same size as every other explanatory line in the app, deliberately: it
+   explains two boxes that are already on the screen, and a boxed or coloured
+   note under a table reads as a finding about the table rather than as a key to
+   it. The margin is what separates it from the last row — without it the
+   sentence looks like a cell that lost its border.
+
+   `max-width` in ch, so the line breaks where a line of prose should rather
+   than running the width of a desktop table. Thai has no spaces (see
+   `td.heads-col`), so what actually wraps here are the ` · ` separators between
+   the three clauses — which is exactly where it should break. */
+.cap-note { margin-top: 10px; max-width: 92ch; }
 
 .table-wrap { overflow-x: auto; border-radius: var(--radius); }
 
@@ -4037,7 +4193,14 @@ table.mini tbody tr:hover { background: none; }
 /* ══ login ═══════════════════════════════════════════════════════════════ */
 
 .login-split {
-  min-height: 100vh; display: grid;
+  /* `dvh` for the reason the dialog gives at .modal: on a phone `100vh` is
+     measured against the viewport with the browser chrome hidden, so the
+     split runs taller than the screen it is drawn on and the form row
+     starts below the fold. The plain `vh` stays first, for the browsers
+     that do not know the newer unit. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   background: var(--surface-dark);
 }
@@ -4058,8 +4221,23 @@ table.mini tbody tr:hover { background: none; }
 }
 .login-brand .lockup .word { font: 600 15px/1.2 var(--latin); letter-spacing: .14em; }
 
-.login-form { background: var(--card); padding: 56px 48px; display: flex; flex-direction: column; justify-content: center; }
-.login-form .inner { width: 100%; max-width: 400px; margin: 0 auto; }
+/* The form column is as tall as the green one beside it — the grid row
+   stretches to the 100dvh the split asks for — so the block inside has to
+   be centred by hand or it hangs from the top and reads as unbalanced
+   against the hero.
+
+   `margin: auto` on the inner block rather than `justify-content: center`
+   on the column. The two centre identically while the form fits, and part
+   ways when it does not: a flex line centred by `justify-content` overflows
+   *both* ends, so on a short laptop screen with the error banner and its
+   hint line open, รหัสพนักงาน would sit above the top of the page with no
+   way to scroll up to it. An auto margin collapses to zero on the side that
+   runs out of room instead, and the page scrolls normally. */
+.login-form {
+  background: var(--card); padding: 56px 48px;
+  display: flex; flex-direction: column;
+}
+.login-form .inner { width: 100%; max-width: 400px; margin: auto; }
 .login-form h2 { font: 600 24px/1.3 var(--sans); margin-bottom: 6px; }
 .login-form .lede { font: 400 14px/1.5 var(--sans); color: var(--muted); margin-bottom: 28px; }
 .login-form .foot {
@@ -4561,10 +4739,32 @@ table.mini tbody tr:hover { background: none; }
   .toast { animation-name: otfade; }
 
 
-  .login-split { grid-template-columns: 1fr; }
-  .login-brand { padding: 32px 24px; min-height: 0; gap: 22px; }
-  .login-brand .ver { display: none; }
-  .login-form { padding: 32px 24px; }
+  /* ── the login on a phone ──────────────────────────────────────────────
+     Two columns become two rows, and the green one is a banner now rather
+     than half the screen: `1fr` on the second row hands the form every
+     pixel the banner does not take, so เข้าสู่ระบบ and its button land
+     above the fold instead of one scroll below it.
+
+     A quarter of the screen, set as a floor and not a ceiling. `min-height`
+     keeps it reading as a banner on a tall phone; nothing caps it, because
+     a cap is what would clip the หัวเรื่อง on a landscape screen where
+     25dvh is less than the words are tall. It only ever grows to fit.
+
+     What pays for that is the paragraph. It explains the system to somebody
+     who has not logged in yet — worth a column on a desktop, not worth the
+     form on a 375px screen. The lockup, the kicker and the หัวเรื่อง stay,
+     which is the part that says whose system this is. */
+  .login-split { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .login-brand {
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 24px 16px;
+    min-height: 25vh;
+    min-height: 25dvh;
+    gap: 12px; justify-content: center;
+  }
+  .login-brand .ver, .login-brand p { display: none; }
+  .login-brand .kicker { margin-bottom: 8px; }
+  .login-brand h1 { font-size: clamp(22px, 5.6vw, 30px); margin-bottom: 0; }
+  .login-form { padding: 24px 24px calc(24px + env(safe-area-inset-bottom, 0px)); }
 
   .hero { grid-template-columns: 1fr; gap: 18px; }
   .hero .big span:first-child { font-size: 38px; }
@@ -6504,6 +6704,18 @@ table.mini tbody tr:hover { background: none; }
   /* Released from the 210px the desktop column needs — here it has the whole
      card, which is what stops the ⚠ being eleven lines. */
   .deptset-table td.heads-col { grid-area: heads; min-width: 0; }
+  /* แก้ไขสิทธิ์พนักงาน ↗ on a touch screen. On the desktop it is a text action
+     in a cell full of pills and its 13px line is enough to click; on a phone it
+     is the one thing on this card that leaves the screen, and a bare line of
+     type is not a target. Padded out rather than turned into a button: the card
+     already has one ghost button at its foot (แก้ไข), and a second one halfway
+     up would be two buttons of equal weight again — which is the pairing the
+     foot of this card was rebuilt to stop. Full-width so the row it sits on is
+     unambiguously the tap area, and left-aligned with the badges above it. */
+  .head-fix {
+    min-height: 44px; display: inline-flex; align-items: center;
+    flex: 1 0 100%; padding: 0; font-size: 14px;
+  }
 
   /* Left, not right. `td.num` right-aligns a figure so it can be compared down a
      column, and in a card there is no column to compare it down. */

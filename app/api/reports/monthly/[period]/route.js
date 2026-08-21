@@ -7,7 +7,7 @@ import { summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { PERIOD_RE, latestPerSession, editTally, reportStatuses } from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
-import { isHrVerifiedBirthday, signsForCompany } from '@/lib/entries.js';
+import { approvalDepartments, isHrVerifiedBirthday, signsForCompany } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 
@@ -23,7 +23,10 @@ export const GET = route(async (req, { params }) => {
   const q = query(req);
   const policy = await Setting.effectivePolicy();
   const filter = { period };
-  if (user.role === 'manager') filter.department = user.department?._id;
+  // Every department this หัวหน้า signs for, not only their own — the same list
+  // `isDepartmentManager` decides each row from. A report narrower than the
+  // approve rule hides hours its reader is responsible for.
+  if (user.role === 'manager') filter.department = { $in: approvalDepartments(user) };
   else if (q.department) filter.department = q.department;
   // Withdrawn and refused requests are not on any report, whatever the URL asks
   // for — see `reportStatuses`.

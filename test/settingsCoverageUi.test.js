@@ -6,14 +6,18 @@ import { dirname, join } from 'node:path';
 
 /**
  * ตั้งค่าระบบ → แผนกและเพดาน: how the screen says a department has nobody to
- * sign for it, in the three places it now says it.
+ * sign for it, in the four places it now says it — and how the two ceiling
+ * boxes say that blank and 0 are different answers.
  *
  * The finding itself is `unsignedStaff` and is tested in
  * test/signingCoverage.test.js. What is pinned here is that the SCREEN reads it
- * once and paints it three times — banner, chip, tab badge — because three
- * readings of one rule is three chances for the badge to say 1 over a table
+ * once and paints it four times — banner, chip, tab badge, row badge — because
+ * four readings of one rule is four chances for the badge to say 1 over a table
  * showing none, and a warning that contradicts the screen it is on teaches
  * people to stop reading it.
+ *
+ * The row badge is the newest of the four and the one that matters most for
+ * this: it sits in the same cell as the names it contradicts.
  *
  * These files cannot be imported (they resolve `@/…` through the Next alias,
  * which node --test does not) so the checks read them as text, as
@@ -43,9 +47,12 @@ const printCss = () => readFileSync(join(ROOT, 'app/print.css'), 'utf8').replace
 test('the gap is computed once, by a function all three places call', () => {
   const code = sourceOf(SETTINGS);
   assert.match(code, /function signingGaps\(departments, people\)/);
-  assert.match(code, /stranded: unsignedStaff\(roster, String\(d\._id\)\)/);
+  // Every หัวหน้า on the roster is offered to every department, because one
+  // ticked into another แผนก is on neither its roster nor its headcount.
+  assert.match(code, /const signers = active\.filter\(\(p\) => p\.role === 'manager'\)/);
+  assert.match(code, /const stranded = unsignedStaff\(roster, String\(d\._id\), signers\)/);
 
-  // The banner, the chip and the badge — each asks the same function.
+  // The banner, the chip and the tab badge — each asks the same function.
   assert.match(code, /const gaps = signingGaps\(departments, people\)/, 'the banner');
   assert.match(code, /const gaps = signingGaps\(rows, people\)/, 'the chip');
   assert.match(code, /const gapCount = signingGaps\(roster\.rows, roster\.people\)\.length/, 'the badge');
@@ -55,6 +62,34 @@ test('the gap is computed once, by a function all three places call', () => {
     (code.match(/unsignedStaff\(/g) || []).length,
     1,
     'unsignedStaff is called from more than one place on this screen again',
+  );
+});
+
+test('the row badge reads the same finding, it does not recompute it', () => {
+  // The fourth reader. The หัวหน้างาน cell used to work out for itself which
+  // payrolls had nobody to sign for them — its own loop over `approvesCompany`,
+  // in the one place on the screen where disagreeing with the tab badge would
+  // be most visible. It is handed `signingGaps`' answer now.
+  const code = sourceOf(SETTINGS);
+
+  // The payrolls are the stranded people read the other way round, computed
+  // once beside them.
+  assert.match(code, /payrolls: \[\.\.\.new Set\(stranded\.map\(companyOf\)\)\]/);
+
+  // Keyed by department so the row can be given the finding itself, not merely
+  // told that there is one.
+  assert.match(code, /const gapOf = new Map\(gaps\.map\(\(g\) => \[String\(g\.dept\._id\), g\]\)\)/);
+  assert.match(code, /gap=\{gapOf\.get\(String\(d\._id\)\)\}/);
+
+  // And the cell takes it rather than deriving it.
+  assert.match(code, /function Heads\(\{ department, people, depts, gap, onGo \}\)/);
+  assert.match(code, /const stranded = gap\?\.payrolls \|\| \[\]/);
+  const start = code.indexOf('function Heads({ department, people, depts, gap, onGo })');
+  const body = code.slice(start, code.indexOf('const HEAD_GAP_TIP', start));
+  assert.ok(start > 0, 'Heads changed shape');
+  assert.ok(
+    !/approvesCompany === |const covered = /.test(body),
+    'the หัวหน้างาน cell is deciding coverage for itself again',
   );
 });
 
@@ -94,8 +129,149 @@ test('the repair that closes the warning is the filled button; the stand-in is n
   assert.match(actions, /className="btn sm" onClick=\{\(\) => onGo\('employees'\)\}/);
   assert.match(actions, /className="btn ghost sm" onClick=\{\(\) => onGo\('delegation'\)\}/);
   // Both still reachable in one press — a hierarchy, not a removal.
-  assert.match(actions, /ตั้งค่าหัวหน้างาน/);
+  assert.match(actions, /ไปที่หน้าพนักงานเพื่อตั้งค่าสิทธิ์ ↗/);
   assert.match(actions, /ตั้งผู้รับช่วงอนุมัติ/);
+
+  // The label carries the destination now, so the sentence that used to sit
+  // above the two buttons repeating them is gone.
+  assert.ok(
+    !/แก้ได้สองทาง/.test(code),
+    'the banner grew a line explaining the two buttons under it again',
+  );
+});
+
+test('the banner says "some department", once, and lets the table say which', () => {
+  // It used to print a bullet per department with the หัวหน้า, their scopes and
+  // the codes of everybody stranded — at the top of a screen, growing downwards
+  // into the table that answers the same question by being read.
+  const code = sourceOf(SETTINGS);
+  assert.match(code, /<strong>บางแผนกยังไม่มีหัวหน้าเซ็นอนุมัติครอบคลุมทุกบริษัท<\/strong>/);
+
+  const start = code.indexOf('function SigningCoverage(');
+  const body = code.slice(start, code.indexOf('function Departments(', start));
+  assert.ok(start > 0, 'SigningCoverage changed shape');
+  assert.ok(!/<ul/.test(body), 'the banner is listing the departments again');
+  assert.ok(
+    !/g\.stranded\.length|stranded\.map/.test(body),
+    'the banner is naming the stranded people again — that is the row\'s job now',
+  );
+
+  // The consequence stays. Without it the line names a state and not a cost,
+  // and the cost is the only reason anybody presses either button.
+  assert.match(body, /ค้างที่ “รอหัวหน้า”/);
+
+  // And no ⚠ in the text: `.alert.error` draws its own mark to the left of it.
+  assert.ok(!/⚠/.test(body), 'the banner has a second warning mark in its text');
+});
+
+// ── the row: one pill per fact ───────────────────────────────────────────────
+
+test('every หัวหน้า is a badge, and the scope is always inside it', () => {
+  // Including "(ทุกบริษัท)". Printed only when set, an unmarked badge leaves
+  // the reader to remember whether it means everybody or means nobody has said.
+  const code = sourceOf(SETTINGS);
+  assert.match(code, /<div className="head-badges">/);
+  assert.match(code, /<span key=\{h\._id\} className=\{`head-badge\$\{visiting\(h\) \? ' visiting' : ''\}`\}>/);
+  assert.match(
+    code,
+    /\(\{h\.approvesCompany \? companyShort\(h\.approvesCompany\) : 'ทุกบริษัท'\}\)/,
+  );
+  // The stack it replaced is gone from the cell.
+  assert.ok(
+    !/className="dept-head"/.test(code),
+    'the หัวหน้างาน cell went back to a stack of lines',
+  );
+});
+
+test('a gap is a badge per uncovered payroll, with the way out beside it', () => {
+  const code = sourceOf(SETTINGS);
+  // One badge naming the payroll…
+  assert.match(code, /className="head-badge gap" title=\{HEAD_GAP_TIP\}>\s*\n?\s*⚠ ยังไม่มีหัวหน้า\{companyShort\(key\)\}/);
+  // …unless nobody heads the department at all, which is one hole and not two.
+  assert.match(code, /const nobody = heads\.length === 0/);
+  assert.match(code, /⚠ ยังไม่มีหัวหน้า\s*\n/);
+  // And the button that goes where the fix is.
+  assert.match(code, /className="link head-fix"\s*\n\s*onClick=\{\(\) => onGo\('employees'\)\}/);
+  assert.match(code, /แก้ไขสิทธิ์พนักงาน ↗/);
+});
+
+test('the gap badge is amber and ringed; the plain one is not', () => {
+  // Red in this app is a refusal that already happened. A row nobody has got to
+  // yet is amber, like every other "needs somebody" mark on these screens.
+  const css = styles();
+  const plain = css.slice(css.indexOf('.head-badge {'));
+  assert.match(plain.slice(0, plain.indexOf('}')), /background: var\(--neutral-wash\)/);
+
+  const gap = css.slice(css.indexOf('.head-badge.gap {'));
+  const rule = gap.slice(0, gap.indexOf('}'));
+  assert.match(rule, /background: var\(--amber-bg\); color: var\(--amber-ink\);/);
+  assert.match(rule, /border: 1px solid var\(--amber\);/);
+  // Padding down by the border it gains, so a row with a gap is no taller.
+  assert.match(rule, /padding: 3px 9px;/);
+
+  // They wrap rather than stacking — the column stops growing with the roster.
+  assert.match(css, /\.head-badges \{ display: flex; flex-wrap: wrap;/);
+});
+
+// ── the two ceiling boxes: blank is not 0 ────────────────────────────────────
+
+test('an empty ceiling box says what it does, not that nobody decided', () => {
+  const code = sourceOf(SETTINGS);
+  assert.equal(
+    (code.match(/placeholder="ไม่จำกัด"/g) || []).length,
+    4,
+    'both boxes in the row and both in เพิ่มแผนก say the same word',
+  );
+  assert.ok(
+    !/placeholder="ไม่กำหนด"/.test(code),
+    'ไม่กำหนด invites somebody to come and decide it — which is the 0',
+  );
+});
+
+test('the ceiling note is under the table, and tells the truth about 0', () => {
+  // "กรอก 0 = ไม่อนุญาตให้ยื่น OT" is false while capBehaviour is 'warn', which
+  // is what it ships as and what prod runs: the entry is filed, goes through,
+  // and arrives flagged. Printing the refusal would have HR set a 0 to stop a
+  // department filing and watch the requests keep coming.
+  const code = sourceOf(SETTINGS);
+  assert.match(code, /function capNote\(policy\)/);
+  assert.match(code, /policy\?\.capBehaviour === 'block'/);
+  assert.match(code, /กรอก 0 = ไม่อนุญาตให้ยื่น OT ระบบจะปฏิเสธทุกใบ/);
+  assert.match(code, /กรอก 0 = ทุกใบจะติดธง “เกินเพดาน”/);
+  assert.match(code, /หมายเหตุ: เว้นว่าง = ไม่จำกัดเพดาน/);
+
+  // Read once, printed as the legend and as the `title` on both boxes.
+  assert.match(code, /const capTip = capNote\(usePolicy\(\)\)/);
+  assert.match(code, /<div className="hint cap-note">\{capTip\}<\/div>/);
+  assert.equal(
+    (code.match(/title=\{capTip\}/g) || []).length,
+    2,
+    'both ceiling boxes carry the same sentence',
+  );
+
+  // Under the table, not above it — a legend read before the thing it explains.
+  const table = code.indexOf('<table className="deptset-table">');
+  assert.ok(code.indexOf('className="hint cap-note"') > table, 'the note went back above the table');
+});
+
+test('the ceilings still save on blur, from the row', () => {
+  // The whole reason the two boxes are in the table and not in the dialog.
+  const code = sourceOf(SETTINGS);
+  assert.match(code, /onBlur=\{\(e\) => update\(d\._id, \{ monthlyCapHours: e\.target\.value \}\)\}/);
+  assert.match(code, /onBlur=\{\(e\) => update\(d\._id, \{ weeklyCapHours: e\.target\.value \}\)\}/);
+});
+
+test('แก้ไขแผนก has no หัวหน้างาน control, and no ceiling boxes either', () => {
+  // A dropdown writing `Department.manager` that nothing read was the reason
+  // this cell was rebuilt; the ceilings are in the row, one field one door.
+  const code = sourceOf(SETTINGS);
+  const start = code.indexOf('function DepartmentForm(');
+  // `const ROLE_OPTIONS` and not the `// ── employees` rule above it:
+  // `sourceOf` strips line comments, so that marker is not in what is searched.
+  const body = code.slice(start, code.indexOf('const ROLE_OPTIONS', start));
+  assert.ok(start > 0, 'DepartmentForm changed shape');
+  assert.ok(!/manager/i.test(body), 'แก้ไขแผนก grew a หัวหน้างาน field again');
+  assert.match(body, /เพดานชั่วโมงแก้ที่ช่องในตาราง · สถานะแก้ที่ปุ่มในตาราง/);
 });
 
 // ── 2 · the chip and the badge ───────────────────────────────────────────────
@@ -103,7 +279,7 @@ test('the repair that closes the warning is the filled button; the stand-in is n
 test('the chips filter the table and say how many of each there are', () => {
   const code = sourceOf(SETTINGS);
   assert.match(code, /const \[onlyGaps, setOnlyGaps\] = useState\(false\)/);
-  assert.match(code, /const shownRows = onlyGaps \? rows\.filter\(\(d\) => gapIds\.has\(String\(d\._id\)\)\) : rows/);
+  assert.match(code, /const shownRows = onlyGaps \? rows\.filter\(\(d\) => gapOf\.has\(String\(d\._id\)\)\) : rows/);
   // The table draws the filtered list, not the whole one.
   assert.match(code, /\{shownRows\.map\(\(d\) => \(/);
   assert.ok(

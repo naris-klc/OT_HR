@@ -82,7 +82,7 @@ export const POST = route(async (req) => {
    */
   const coverageGaps = async () => {
     const all = await Employee.find({ active: true })
-      .select('code name role department company approvesCompany')
+      .select('code name role department company approvesCompany approvesDepartments')
       .lean();
     const byDept = new Map();
     for (const p of all) {
@@ -91,7 +91,19 @@ export const POST = route(async (req) => {
       if (!byDept.has(key)) byDept.set(key, []);
       byDept.get(key).push(p);
     }
-    return [...byDept.entries()].flatMap(([dept, roster]) => unsignedStaff(roster, dept));
+    /**
+     * Every หัวหน้า on the roster is offered to every department, because one
+     * ticked into another แผนก does not appear on that แผนก's roster — see
+     * `unsignedStaff`. `isDepartmentManager` is what narrows the list, asking
+     * each of them whether this is a department they sign for.
+     *
+     * Without it the import would report a department as newly stranded on the
+     * strength of a signer it simply could not see, and the CSV that did
+     * nothing wrong would be the one carrying the warning.
+     */
+    const signers = all.filter((p) => p.role === 'manager');
+    return [...byDept.entries()]
+      .flatMap(([dept, roster]) => unsignedStaff(roster, dept, signers));
   };
   const strandedBefore = new Set((await coverageGaps()).map((p) => String(p._id)));
 

@@ -34,11 +34,24 @@ export const GET = route(async (req) => {
 
   const company = companyOf(user);
 
+  /**
+   * Everybody who might sign for this department — the ones IN it, and the ones
+   * ticked into it from elsewhere (`approvesDepartments`).
+   *
+   * The `$or` is the query half of `approvalDepartments`, and it has to be here
+   * rather than left to the filter below: this is a database read, and a
+   * หัวหน้า in ผลิต covering สำนักงาน is simply not in the result set of a query
+   * asking for สำนักงาน's members. Without it the employee's own
+   * ที่ใบนี้ค้างอยู่ตรงไหน line would say nobody can sign their request while the
+   * approve route accepted it from exactly that person — the screen and the
+   * server disagreeing about who has authority, which is what this route exists
+   * to stop.
+   */
   const managers = await Employee.find({
-    department: departmentId,
+    $or: [{ department: departmentId }, { approvesDepartments: departmentId }],
     role: 'manager',
     active: { $ne: false },
-  }).select('code name position role department company approvesCompany').lean();
+  }).select('code name position role department company approvesCompany approvesDepartments').lean();
 
   const eligible = managers.filter((m) => isDepartmentManager(m, departmentId, company));
 
