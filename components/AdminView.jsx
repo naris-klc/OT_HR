@@ -1047,123 +1047,543 @@ function SignsForField({ value, onChange, disabled }) {
   );
 }
 
-const APPROVES_DEPTS_TIP = 'หัวหน้าเซ็นให้แผนกสังกัดของตนเสมอ — ติ๊กเพิ่มเพื่อให้เซ็นให้แผนกอื่นด้วย '
-  + '· แผนกที่ติ๊กเพิ่มจะได้สิทธิ์เท่ากับแผนกตัวเองทุกอย่าง คืออนุมัติ ไม่อนุมัติ เห็นในคิว '
+const DEPT_TIP_STAFF = 'ตัดสินว่าชั่วโมงของคนนี้ไปอยู่ในรายงานแผนกใด และวัดกับเพดานของแผนกใด '
+  + '· ใบเก่าไม่ขยับ มีผลกับใบที่ยื่นหลังจากนี้';
+
+const DEPT_TIP_MANAGER = 'เลือกได้หลายแผนก — หัวหน้าคนนี้จะอนุมัติ OT ให้พนักงานในทุกแผนกที่เลือกไว้ '
+  + '· แผนกที่เพิ่มได้สิทธิ์เท่ากับสังกัดหลักทุกอย่าง คืออนุมัติ ไม่อนุมัติ เห็นในคิว '
   + 'และบันทึก OT แทนลูกน้องได้ '
-  + '· ไม่ย้ายสังกัด ชั่วโมงและเพดานของหัวหน้าคนนี้ยังผูกกับแผนกสังกัดเดิม '
-  + '· ใช้เมื่อแผนกหนึ่งไม่มีหัวหน้าเป็นการถาวร — ถ้าเป็นการลาชั่วคราวให้ใช้ “ผู้รับช่วงอนุมัติ” แทน '
-  + 'เพราะอันนั้นหมดอายุเอง';
+  + '· “สังกัดหลัก” คือแผนกที่ชั่วโมงและเพดานของหัวหน้าคนนี้ผูกอยู่ มีได้แผนกเดียว '
+  + 'ปลดออกไม่ได้ และย้ายได้ด้วย “ตั้งเป็นสังกัดหลัก” ในรายการ '
+  + '· ยังถูกจำกัดด้วย “เซ็นให้บริษัท” อีกชั้นหนึ่ง ดูสรุปที่บรรทัดใต้หัวข้อขอบเขตการอนุมัติ '
+  + '· ใช้เมื่อแผนกหนึ่งไม่มีหัวหน้าเป็นการถาวร — ถ้าเป็นการลาชั่วคราวให้ใช้ “ผู้รับช่วงอนุมัติ” '
+  + 'แทน เพราะอันนั้นหมดอายุเอง';
 
 /**
- * แผนกที่คุม — the ticked list, for a หัวหน้างาน.
+ * แผนก — ONE FIELD, and it changes shape with บทบาท.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * THE HOME DEPARTMENT IS TICKED AND CANNOT BE UNTICKED
+ * TWO FACTS, ONE CONTROL
  *
- * It is shown at all because the question the reader is asking is "which
- * departments does this person sign for", and a list that answered it by
- * leaving out the most important one would be a list nobody could read as an
- * answer. It is locked because there is no such thing as a หัวหน้า who does not
- * sign for their own team: `approvalDepartments` puts it in whatever the stored
- * list says, so a box that could be cleared would be a control that appears to
- * take authority away and does not — the exact defect the หัวหน้างาน dropdown
- * was removed from แผนกและเพดาน for.
+ *   สังกัดหลัก (`department`)          — where this person's OWN hours are
+ *                                        reported and which เพดาน they are
+ *                                        measured against. One value; the model
+ *                                        requires it.
+ *   แผนกที่คุม (`approvesDepartments`) — whose OT they may sign. Any number.
  *
- * IT IS NOT IN `value` EITHER. The field stores extras only (see the model), so
- * this component adds the home department when it paints and never when it
- * reports. `onChange` therefore never receives it, `formOf` never holds it, and
- * the dialog does not open already dirty.
+ * They were briefly two fields in two groups, and the labels did explain
+ * themselves — but it put the thing HR actually asks ("which departments is this
+ * person over") in two places, the second of which was below the fold on a
+ * phone. One question, one control; the form still keeps both answers.
  *
- * FIRST IN THE LIST, out of the department order, because it is the one row
- * that is not a choice — reading down a column of tickable boxes it would
- * otherwise be a locked one somewhere in the middle, which reads as an error.
+ * THE INVARIANT, which is what makes the collapse safe:
+ *
+ *     ticked  ==  [department, ...approvesDepartments]
+ *
+ * Ticking adds to the extras, unticking removes from them, and
+ * ตั้งเป็นสังกัดหลัก swaps which member of the SAME set is the home one — so
+ * the set never changes size and nobody's authority moves when a ceiling does.
+ * `approvalDepartments` in lib/entries.js reads the same union on the server,
+ * and `approvalScope` strips the home department back out on the way in, so
+ * what is STORED is still extras-only and cannot go stale when somebody moves.
+ *
+ * WHY ตั้งเป็นสังกัดหลัก HAS TO EXIST, and it is the thing a single ticked list
+ * gets wrong if nobody thinks about it. With no separate dropdown on screen,
+ * a locked home row and nothing else means a หัวหน้า can never be moved between
+ * departments again — their ceiling and their report row stay where they were
+ * hired. It is offered on the ROWS of the list and not on the chips: the chips
+ * are a summary and their ✕ is the frequent act, and putting a second button a
+ * few pixels from it is how somebody removes a department while meaning to
+ * move one.
+ *
+ * `พนักงาน`, `ฝ่ายบุคคล` and `ผู้ดูแลระบบ` get the plain dropdown they always
+ * had. `approvesDepartments` is read for role `manager` and nobody else
+ * (lib/entries.js), so a ticked list on those rows would be a control that
+ * grants nothing — the defect the หัวหน้างาน dropdown was taken off
+ * แผนกและเพดาน for.
  */
-function ApprovesDepartmentsField({ home, value, onChange, depts, disabled }) {
-  const homeId = String(home || '');
-  const extras = value || [];
-  const ordered = [
-    ...depts.filter((d) => String(d._id) === homeId),
-    ...depts.filter((d) => String(d._id) !== homeId),
-  ];
-
-  const toggle = (id) => {
-    if (id === homeId) return;
-    onChange(extras.includes(id) ? extras.filter((x) => x !== id) : [...extras, id]);
-  };
-
+function DepartmentField({ role, department, extras, onChange, depts, disabled, allowBlank }) {
+  if (role !== 'manager') {
+    return (
+      <Field label="แผนก" tip={DEPT_TIP_STAFF}>
+        <select
+          value={String(department || '')}
+          onChange={(e) => onChange({ department: e.target.value })}
+          disabled={disabled}
+        >
+          {allowBlank && <option value="">— เลือก —</option>}
+          {depts.map((d) => (
+            <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
+          ))}
+        </select>
+      </Field>
+    );
+  }
   return (
-    <Field label="แผนกที่คุม" tip={APPROVES_DEPTS_TIP}>
-      {/* `.pick-list` and `.check` — the same scroll box บันทึก OT แทน ticks a
-          team in. Five departments fit without scrolling and a thirtieth would
-          not push the fields below it off the screen. */}
-      <div className="pick-list" role="group" aria-label="แผนกที่หัวหน้าคนนี้เซ็นอนุมัติให้ได้">
-        {ordered.map((d) => {
-          const id = String(d._id);
-          const locked = id === homeId;
-          return (
-            <label key={id} className={`check${locked ? ' locked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={locked || extras.includes(id)}
-                disabled={disabled || locked}
-                onChange={() => toggle(id)}
-              />
-              <span className="nm">{d.nameTh || d.name}</span>
-              {/* Says WHY the box cannot be pressed, beside the box. A disabled
-                  tick with nothing next to it reads as broken. */}
-              {locked && <span className="tag">สังกัดหลัก</span>}
-            </label>
-          );
-        })}
-        {!ordered.length && <div className="pick-empty">ยังไม่มีแผนกในระบบ</div>}
-      </div>
+    <Field label="แผนก" tip={DEPT_TIP_MANAGER}>
+      <DeptCombo home={department} extras={extras} onChange={onChange} depts={depts} disabled={disabled} />
     </Field>
   );
 }
 
 /**
- * ขอบเขตการอนุมัติ — the two controls above it, read back as one sentence.
+ * แผนก, for a หัวหน้างาน — chips in a box, and a list of tick-boxes under it.
  *
- * WHY A SENTENCE AND NOT A COUNT. What HR is actually deciding here is spread
- * across two fields that narrow each other in different directions: a list of
- * departments, and a payroll inside each. Neither box says what the pair of
- * them comes to, and the pair is the thing that decides whether somebody's OT
- * gets signed. Somebody reading "แผนกที่คุม: ผลิต, สำนักงาน" and
- * "เซ็นให้บริษัท: เฉพาะเดมเทค" has to do the join in their head, and the join
- * is where the mistake lives — that pair signs for nobody at all in สำนักงาน if
- * สำนักงาน has no เดมเทค staff.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE SEARCH BOX IS DECIDED BY THE ROSTER, NOT BY A DEVELOPER
+ *
+ * This was a combobox: a text input that filtered the list as you typed. On a
+ * roster with five departments that is a control asking to be typed into when
+ * everything it could find already fits on screen without scrolling — and it
+ * cost a real thing to have, because a box with a caret in it says "type here"
+ * when the actual gesture is "pick from these five". Five tick-boxes is one
+ * click; a search field is a click, a decision about what to type, and a click.
+ *
+ * So it came out. The note left here said "if the roster ever grows, put it
+ * back" — which is a job nobody is assigned and nobody notices is due. It is
+ * `FILTER_FROM` now: under the threshold the control is exactly what it was,
+ * over it the field comes back on its own. Neither state is a compromise for
+ * the other, and nothing has to be remembered.
+ *
+ * BELOW THE THRESHOLD THE KEYBOARD STILL TYPES. `ค` jumps to คลังสินค้า the way
+ * it does in a native `<select>` — no field, no filtering, no state, and it is
+ * what somebody who types at a closed dropdown out of habit expects to happen.
+ *
+ * What both modes share is everything that was never about the query: the chips
+ * inside the shell, the popover's position and scroll (`.pick-menu`,
+ * `PickPerson`'s), the wrap-around ↑↓, the `Escape` that stops propagating only
+ * because it did something, and the `onMouseDown` prevented on the list —
+ * without which the pointer's own focus change closes the list before the click
+ * can land. `PickPerson` in components/common.jsx is the app's worked example
+ * of the searching shape.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHAT THE SHELL IS, given it has to hold buttons
+ *
+ * A `div` with `role="combobox"` and a tabindex, NOT a `<button>`. The chips
+ * inside it carry their own ✕, and a button inside a button is invalid markup
+ * that browsers resolve by dropping one of them — usually the one you wanted.
+ *
+ * That choice is why `onBlur` checks `relatedTarget`: focus moving from the
+ * shell to a ✕ INSIDE it is a focusout that bubbles, and a naive handler would
+ * close the list every time somebody tabbed to a chip.
+ *
+ * THE TICK-BOXES ARE DRAWN, NOT `<input type="checkbox">`. Each row is already
+ * a `role="option"` with `aria-selected`, which is what a screen reader reads
+ * from a listbox; a real checkbox inside it would announce the same state a
+ * second time in a different vocabulary ("selected" and "checked"). So the box
+ * is a span, `aria-hidden`, and the whole row is the target.
+ *
+ * THE INVARIANT IS UNCHANGED:
+ *
+ *     ticked  ==  [department, ...approvesDepartments]
+ *
+ * and สังกัดหลัก is moved with the dropdown in ข้อมูลการทำงาน, never here.
+ */
+/**
+ * How many departments it takes before the list grows a filter of its own.
+ *
+ * TEN, AND THE NUMBER COMES OFF THE PANEL. `.pick-menu.dept-menu` is capped at
+ * 160px with 32px rows, so five are on screen at once and ten is two panels'
+ * worth — the point where "read down the list" stops being one glance and
+ * starts being a scroll and a search with the eye. There are five today.
+ *
+ * A THRESHOLD, NOT A SETTING. Nobody should have to decide this per screen, and
+ * an HR ตั้งค่า for it would be a question about a control rather than about
+ * the work.
+ */
+const FILTER_FROM = 10;
+
+function DeptCombo({ home, extras, onChange, depts, disabled }) {
+  const listId = React.useId();
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const listRef = useRef(null);
+  const shellRef = useRef(null);
+  const inputRef = useRef(null);
+  const [query, setQuery] = useState('');
+  /** The last few keystrokes and when they landed — type-ahead's whole state. */
+  const typed = useRef({ buf: '', at: 0 });
+
+  const homeId = String(home || '');
+  /**
+   * The extras, with the home department taken out if it is somehow in both.
+   *
+   * `makeHome` keeps them apart and `approvalScope` strips it again on the
+   * server — but a form's state can also arrive from a row saved before either
+   * rule existed, and one department drawn as two chips is a control
+   * disagreeing with itself in the most visible place there is.
+   */
+  const list = (extras || []).filter((id) => id !== homeId);
+  /** Home first, then the extras in the order they were added. */
+  const ticked = [homeId, ...list].filter(Boolean);
+  const nameOf = (id) => {
+    const d = depts.find((x) => String(x._id) === String(id));
+    return d ? (d.nameTh || d.name) : id;
+  };
+
+  /**
+   * WHAT IS ON SCREEN, which is not always every department any more.
+   *
+   * Everything below counts and indexes from `shown`, never from `depts`: the
+   * keyboard's row, the clamp, ↑↓'s wrap and Enter's target. Mixing the two is
+   * the bug where ↓ walks past the end of a filtered list, or Enter ticks the
+   * department one row above the one being looked at.
+   */
+  const searchable = depts.length > FILTER_FROM;
+  const shown = React.useMemo(() => {
+    const q = searchable ? query.trim().toLowerCase() : '';
+    if (!q) return depts;
+    // Name and code in one haystack: somebody who knows the department as WH
+    // types WH, and somebody who knows it as คลังสินค้า types that.
+    return depts.filter((d) => `${d.nameTh || d.name || ''} ${d.code || ''}`
+      .toLowerCase().includes(q));
+  }, [depts, query, searchable]);
+
+  // Clamped rather than trusted: a shorter list would leave `active` past the
+  // end, and aria-activedescendant would name an element that is not there.
+  const at = Math.min(active, shown.length - 1);
+
+  React.useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelector('[data-active="1"]')?.scrollIntoView({ block: 'nearest' });
+  }, [open, at]);
+
+  function openList() {
+    if (disabled || open) return;
+    setOpen(true);
+    // Where ↓ starts from: the first row that is not already the home one, so
+    // the first keypress lands on something that can actually be toggled.
+    const i = shown.findIndex((d) => String(d._id) !== homeId);
+    setActive(i < 0 ? 0 : i);
+  }
+
+  /** Shut, and with nothing left narrowing the list the next time it opens. */
+  function close() { setOpen(false); setQuery(''); }
+
+  // The field is no use to anybody who has to click it a second time to type
+  // into it — opening the list and being ready for a query are one act.
+  React.useEffect(() => {
+    if (open && searchable) inputRef.current?.focus();
+  }, [open, searchable]);
+
+  /**
+   * Add or remove one department.
+   *
+   * THE FIRST PICK ON AN EMPTY FORM BECOMES สังกัดหลัก rather than an extra on
+   * somebody who has no department at all — that is the create form's opening
+   * state, and the alternative is a หัวหน้า the server would refuse after the
+   * form had let it be built.
+   *
+   * The list STAYS OPEN. Picking one department is rarely the whole job, and a
+   * menu that shuts on every tick makes choosing three of them three round
+   * trips.
+   */
+  function toggle(id) {
+    if (disabled || id === homeId) return;
+    if (!homeId) onChange({ department: id });
+    else if (list.includes(id)) onChange({ approvesDepartments: list.filter((x) => x !== id) });
+    else onChange({ approvesDepartments: [...list, id] });
+  }
+
+  /**
+   * Move สังกัดหลัก to another chosen department, KEEPING THE SET.
+   *
+   * The old home becomes an extra rather than dropping out: this person still
+   * covers it, their own hours are simply reported somewhere else now.
+   * Withdrawing a signature as a side effect of moving a ceiling would be two
+   * unrelated things done by one click.
+   *
+   * This is the ONLY way to move it, now that แผนก is one field again — see the
+   * note on `DepartmentField`.
+   */
+  function makeHome(id) {
+    if (disabled) return;
+    onChange({ department: id, approvesDepartments: ticked.filter((x) => x !== id) });
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { openList(); return; }
+      if (!shown.length) return;
+      // Wraps, so ↑ from the top row is one keypress to the bottom rather than
+      // a hold on ↑ through the whole list.
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      setActive((i) => (Math.min(i, shown.length - 1) + step + shown.length) % shown.length);
+      return;
+    }
+    // Space is a keystroke in a field and a command everywhere else. With the
+    // filter on screen it has to reach the input, or a department cannot be
+    // searched for by two words.
+    if (e.key === 'Enter' || (e.key === ' ' && !searchable)) {
+      // Prevented whether or not the list is open: this sits inside a form, so
+      // Enter must not submit the dialog behind it, and Space must not scroll
+      // the body under a shell that is a div rather than a control.
+      e.preventDefault();
+      if (open && shown[at]) toggle(String(shown[at]._id));
+      else openList();
+      return;
+    }
+    if (e.key === 'Escape' && open) {
+      // Stopped only because it did something here. With the list already shut
+      // Escape belongs to the dialog above, which still has to close.
+      e.stopPropagation();
+      // A query is the first thing it clears: somebody looking at three of
+      // twelve departments wants the other nine back, not the dialog gone.
+      if (query) { setQuery(''); setActive(0); return; }
+      close();
+      return;
+    }
+    /**
+     * Backspace removes the last chip — the shortcut every control of this
+     * shape has, and the reason the chips are ordered home-first: the one it
+     * takes is always the most recently added and never the locked one.
+     *
+     * NOT WHILE THERE IS A QUERY TO DELETE. In the field, Backspace is how a
+     * search is corrected, and a control that answers a typo by silently
+     * removing a department somebody granted is the worst kind of shortcut.
+     */
+    if (e.key === 'Backspace' && list.length && !query) {
+      e.preventDefault();
+      onChange({ approvesDepartments: list.slice(0, -1) });
+      return;
+    }
+    /**
+     * TYPE-AHEAD, for the list that has no field.
+     *
+     * `ค` jumps to คลังสินค้า and `ค` again does not start over — the buffer
+     * holds for 900ms, so คว reaches ควบคุมคุณภาพ. It is what a native
+     * `<select>` does, and somebody typing at a dropdown out of habit is not
+     * doing it by accident. Nothing is filtered and no state is kept.
+     */
+    if (!searchable && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const now = Date.now();
+      const buf = (now - typed.current.at < 900 ? typed.current.buf : '') + e.key.toLowerCase();
+      typed.current = { buf, at: now };
+      const i = depts.findIndex((d) => `${d.nameTh || d.name || ''}`.toLowerCase().startsWith(buf)
+        || String(d.code || '').toLowerCase().startsWith(buf));
+      if (i < 0) return;
+      e.preventDefault();
+      if (!open) setOpen(true);
+      setActive(i);
+      return;
+    }
+    if (e.key === 'Tab' && open) close();
+  }
+
+  return (
+    <div className="searchbox">
+      {/* THE COMBOBOX IS THE INPUT WHEN THERE IS ONE, AND THIS DIV WHEN THERE
+          IS NOT. Both cannot carry the role: a combobox owning a combobox is
+          two controls to a screen reader where there is one on screen. With no
+          field the div takes the role and a `tabIndex` to be reached by, which
+          it can do because the chips' ✕ are its only interactive children and
+          `role="combobox"` on a div is what keeps a button out of a button. */}
+      <div
+        ref={shellRef}
+        className={`dept-combo${open ? ' open' : ''}${disabled ? ' off' : ''}`}
+        role={searchable ? undefined : 'combobox'}
+        tabIndex={searchable || disabled ? -1 : 0}
+        aria-expanded={searchable ? undefined : open}
+        aria-controls={searchable ? undefined : listId}
+        aria-haspopup={searchable ? undefined : 'listbox'}
+        aria-label={searchable ? undefined : 'แผนกที่หัวหน้าคนนี้ดูแล'}
+        aria-activedescendant={!searchable && open && shown[at] ? `${listId}-${at}` : undefined}
+        // A click on the field itself must not shut the list somebody opened to
+        // type into — everywhere else on the shell still toggles.
+        onClick={(e) => {
+          if (!searchable) { open ? close() : openList(); return; }
+          inputRef.current?.focus();
+          if (!open) openList();
+          else if (e.target !== inputRef.current) close();
+        }}
+        onKeyDown={onKeyDown}
+        // Focus moving to a ✕ INSIDE the shell is a focusout that bubbles —
+        // without this check the list would shut every time somebody tabbed
+        // onto a chip.
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) close(); }}
+      >
+        {ticked.map((id) => {
+          const isHome = id === homeId;
+          return (
+            <span key={id} className={`dept-pill${isHome ? ' home' : ''}`}>
+              {nameOf(id)}
+              {isHome
+                ? <span className="tag">สังกัดหลัก</span>
+                : !disabled && (
+                  <button
+                    type="button"
+                    className="x"
+                    aria-label={`เอา ${nameOf(id)} ออก`}
+                    // The shell's own onClick opens and closes the list; a ✕
+                    // that let the event through would remove a chip and then
+                    // toggle the menu as its parting gesture.
+                    onClick={(e) => { e.stopPropagation(); toggle(id); }}
+                  >
+                    ✕
+                  </button>
+                )}
+            </span>
+          );
+        })}
+        {/* Below the threshold: a hint, and only when nothing has been ADDED —
+            the home chip is always there when a department is set, so an
+            empty-looking box is not the same as a box with nothing chosen.
+
+            Over it: the real thing. The placeholder goes quiet once there are
+            chips beside it, which is the state where the box is already saying
+            what it is for. */}
+        {searchable ? (
+          <input
+            ref={inputRef}
+            className="dept-find"
+            type="text"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-haspopup="listbox"
+            aria-autocomplete="list"
+            aria-label="ค้นหาแผนก"
+            aria-activedescendant={open && shown[at] ? `${listId}-${at}` : undefined}
+            placeholder="ค้นหาแผนก…"
+            value={query}
+            disabled={disabled}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              // The first row of what is left, not wherever the cursor was in
+              // a list that no longer has that many rows.
+              setActive(0);
+              if (!open) setOpen(true);
+            }}
+          />
+        ) : (
+          !list.length && <span className="ph">เพิ่มแผนก…</span>
+        )}
+        <span className="caret" aria-hidden="true">▾</span>
+      </div>
+
+      {open && (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-multiselectable="true"
+          className="pick-menu dept-menu"
+          ref={listRef}
+          aria-label="แผนกที่หัวหน้าคนนี้เซ็นอนุมัติให้ได้"
+          // Selection happens on click, not here — but the default action of
+          // mousedown is to move focus, which blurs the shell and unmounts this
+          // list before the click can land. Prevented on the container, so a
+          // drag to scroll on a touch screen is still just a scroll.
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {shown.map((d, i) => {
+            const id = String(d._id);
+            const isHome = id === homeId;
+            const on = ticked.includes(id);
+            return (
+              <li
+                key={id}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={on}
+                aria-disabled={isHome || undefined}
+                data-active={i === at ? '1' : undefined}
+                className={isHome ? 'home' : undefined}
+                onClick={() => toggle(id)}
+                // Follows the pointer, so the row under the cursor is the row
+                // Enter takes — one notion of "the current row", not two.
+                onMouseMove={() => setActive(i)}
+              >
+                {/* Drawn, not an <input>: the row is already a `role="option"`
+                    with `aria-selected`, and a real checkbox would announce the
+                    same state again in a second vocabulary. */}
+                <span className={`tick${on ? ' on' : ''}`} aria-hidden="true">
+                  {on ? '✓' : ''}
+                </span>
+                <span className="nm">{d.nameTh || d.name}</span>
+                {/* ตั้งเป็นสังกัดหลัก — offered on a row that is chosen and is
+                    not already the home one, which is the only place it can do
+                    anything. Revealed on hover or focus so it does not turn a
+                    list of five ticks into a wall of controls: ticking is what
+                    somebody came here to do, this is pressed about once in a
+                    career. `stopPropagation` because the row itself toggles. */}
+                {on && !isHome && !disabled && (
+                  <button
+                    type="button"
+                    className="link set-home-row"
+                    onClick={(e) => { e.stopPropagation(); makeHome(id); }}
+                  >
+                    ตั้งเป็นสังกัดหลัก
+                  </button>
+                )}
+                {isHome && <span className="tag">สังกัดหลัก</span>}
+                {/* LAST, on every row. It used to sit before the tag, so the
+                    home row put its code a tag's width in from the right while
+                    every other row had it hard against the edge — a column that
+                    is a column on four rows out of five. */}
+                <span className="cd">{d.code}</span>
+              </li>
+            );
+          })}
+          {/* Two different facts, and the older one comes first: a roster with
+              no departments in it at all is not a search that found nothing. */}
+          {!shown.length && (
+            <li className="none" role="presentation">
+              {depts.length ? 'ไม่พบแผนกที่ค้นหา' : 'ยังไม่มีแผนกในระบบ'}
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 📌 คุมอนุมัติ N แผนก … — the field above, read back in one line.
+ *
+ * WHY IT SAYS THE COMPANY TOO. The two controls that decide a หัวหน้า's reach
+ * narrow each other in different directions — a list of departments, and a
+ * payroll inside every one of them — and neither box says what the PAIR comes
+ * to. Somebody reading "แผนก: ผลิต, สำนักงาน" in one section and
+ * "เซ็นให้บริษัท: เฉพาะเดมเทค" in another has to do the join in their head, and
+ * the join is where the mistake lives: that pair signs for nobody at all in
+ * สำนักงาน if สำนักงาน has no เดมเทค staff. One line, both halves, so the join
+ * is done for them.
  *
  * LIVE, off the form and not off the saved row, so it answers before the save
- * rather than after it. That is the whole point: the sentence is a preview of a
- * grant, and a preview that arrives once the grant is made is a receipt.
+ * rather than after it. A preview that arrives once the grant is made is a
+ * receipt.
  *
- * It does NOT read the roster. It says what the setting MEANS, not what it
- * currently reaches — "และแผนกนี้ยังไม่มีพนักงานเดมเทคเลย" would need the
- * roster of every department in the form's hands, and the screen that already
- * answers it is แผนกและเพดาน, which draws the same finding per row from the
- * same rule.
+ * It does NOT read the roster. It says what the setting MEANS, not who it
+ * currently reaches — "และแผนกนี้ยังไม่มีพนักงานเดมเทคเลย" would need every
+ * department's roster in the form's hands, and the screen that already answers
+ * it is แผนกและเพดาน, which draws the same finding per row from the same rule.
+ *
+ * Nothing at all for anybody who is not a หัวหน้า: they approve nothing, and a
+ * badge saying so on every พนักงาน's dialog is furniture.
  */
-function ApprovalSummary({ home, extras, company, depts }) {
-  const ids = [...new Set([String(home || ''), ...(extras || [])].filter(Boolean))];
+function ApprovalBadge({ role, department, extras, company, depts }) {
+  if (role !== 'manager') return null;
+
+  const ids = [...new Set([String(department || ''), ...(extras || [])].filter(Boolean))];
   const names = ids.map((id) => nameOfDept(depts, id) || id);
   const where = company ? companyName(company) : 'ทุกบริษัท';
 
   return (
     <div className="approval-summary">
       <span className="mark" aria-hidden="true">📌</span>
-      <span>
-        <strong>ขอบเขตการอนุมัติ:</strong>{' '}
-        {names.length
-          ? (
-            <>
-              อนุมัติใบ OT ให้พนักงานในแผนก <b>[{names.join(', ')}]</b> สังกัด <b>[{where}]</b>
-            </>
-          )
-          /* The create form before a แผนก is picked. Saying "แผนก []" would be
-             a sentence claiming the grant is empty, and it is not — it is not
-             decided yet. */
-          : 'ยังไม่ได้เลือกแผนกสังกัด — เลือกแผนกก่อน แล้วบรรทัดนี้จะสรุปให้'}
-      </span>
+      {names.length ? (
+        <span>
+          <strong>คุมอนุมัติ {names.length} แผนก:</strong> <b>{names.join(', ')}</b>
+          {' · '}
+          เซ็นให้พนักงานสังกัด <b>{where}</b>
+        </span>
+      ) : (
+        /* The create form before anything is ticked. "คุมอนุมัติ 0 แผนก" is a
+           sentence claiming the grant is empty; it is not decided yet. */
+        <span>ยังไม่ได้เลือกแผนก — ติ๊กอย่างน้อยหนึ่งแผนก แล้วบรรทัดนี้จะสรุปสิทธิ์ให้</span>
+      )}
     </div>
   );
 }
@@ -2335,18 +2755,15 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
                 autoComplete="off"
               />
             </Field>
-            <Field label="แผนก" tip="ตัดสินว่าชั่วโมงของคนนี้ไปอยู่ในรายงานแผนกใด และวัดกับเพดานของแผนกใด">
-              <select
-                value={form.department}
-                onChange={(e) => set({ department: e.target.value })}
-                disabled={busy}
-              >
-                <option value="">— เลือก —</option>
-                {depts.map((d) => (
-                  <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
-                ))}
-              </select>
-            </Field>
+            <DepartmentField
+              role={form.role}
+              department={form.department}
+              extras={form.approvesDepartments}
+              onChange={set}
+              depts={depts}
+              disabled={busy}
+              allowBlank
+            />
             <Field
               label="บริษัท"
               tip="ใช้แบ่งไฟล์ส่งบัญชี PM / THT — เว้นไว้ได้ ระบบจะเดาจากคำนำหน้ารหัส (PM… = ไพรมัส, THT… = เดมเทค)"
@@ -2391,37 +2808,34 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
                 })}
               </select>
             </Field>
-            {form.role === 'manager' && (
+          </div>
+        </section>
+
+        {/* The same group as แก้ไข's, and only for a หัวหน้างาน — see the note
+            there. Here as well as on the edit form because the case this whole
+            feature exists for is a แผนก with nobody, and appointing somebody to
+            it is as likely to be part of creating their account as of editing
+            it afterwards. One component and one validator on the server: two
+            doors that cannot disagree. */}
+        {form.role === 'manager' && (
+          <section className="form-group">
+            <div className="gh">ขอบเขตการอนุมัติ</div>
+            <div className="form-grid">
               <SignsForField
                 value={form.approvesCompany}
                 onChange={(v) => set({ approvesCompany: v })}
                 disabled={busy}
               />
-            )}
-            {/* Here as well as on แก้ไข, because the case this exists for is a
-                แผนก with nobody — and appointing somebody to it is as likely to
-                be part of creating their account as of editing it later. Same
-                component, same validator on the server: one field, two doors
-                that cannot disagree. */}
-            {form.role === 'manager' && (
-              <ApprovesDepartmentsField
-                home={form.department}
-                value={form.approvesDepartments}
-                onChange={(v) => set({ approvesDepartments: v })}
-                depts={depts}
-                disabled={busy}
-              />
-            )}
-          </div>
-          {form.role === 'manager' && (
-            <ApprovalSummary
-              home={form.department}
+            </div>
+            <ApprovalBadge
+              role={form.role}
+              department={form.department}
               extras={form.approvesDepartments}
               company={form.approvesCompany}
               depts={depts}
             />
-          )}
-        </section>
+          </section>
+        )}
 
         <section className="form-group">
           <div className="gh">รหัสผ่านแรกเข้า</div>
@@ -2490,14 +2904,14 @@ const formOf = (employee) => ({
   /**
    * แผนกที่คุมเพิ่ม, as strings — the extras only, exactly as stored.
    *
-   * The home department is NOT folded in here even though the checkbox list
-   * shows it ticked. `dirty` is computed by comparing this object with the one
+   * The home department is NOT folded in here even though the แผนก list shows
+   * it ticked. `dirty` is computed by comparing this object with the one
    * `formOf` produced from the untouched row, so a value the form invents on
    * open is a value that reads as an edit before anybody has typed: the dialog
    * would open with บันทึก already enabled on every หัวหน้า. The list adds the
-   * home department when it PAINTS (see `ApprovesDepartmentsField`) and the
-   * server strips it again if it is sent (see `approvalScope`), so the ticked
-   * box and the stored fact stay two different things on purpose.
+   * home department when it PAINTS (see `DeptCombo`) and the server
+   * strips it again if it is sent (see `approvalScope`), so the ticked box and
+   * the stored fact stay two different things on purpose.
    */
   approvesDepartments: (employee.approvesDepartments || []).map(String),
   active: employee.active !== false,
@@ -2846,18 +3260,18 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
                   autoComplete="off"
                 />
               </Field>
-              <Field label="แผนก" tip="ใบเก่าไม่ขยับ — มีผลกับใบที่ยื่นหลังจากนี้">
-                <select
-                  value={form.department}
-                  onChange={(e) => set({ department: e.target.value })}
-                  disabled={disabled()}
-                >
-                  {!before.department && <option value="">— ไม่กำหนด —</option>}
-                  {depts.map((d) => (
-                    <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
-                  ))}
-                </select>
-              </Field>
+              {/* `allowBlank` only while the row genuinely has no department:
+                  the model requires one, so offering "— ไม่กำหนด —" on a row
+                  that has one would be offering a save the server refuses. */}
+              <DepartmentField
+                role={form.role}
+                department={form.department}
+                extras={form.approvesDepartments}
+                onChange={set}
+                depts={depts}
+                disabled={disabled()}
+                allowBlank={!before.department}
+              />
               <Field
                 label="บริษัท"
                 tip="ใช้แบ่งไฟล์ส่งบัญชี PM / THT — อ่านจากทะเบียนตอนออกรายงาน ไม่ได้เก็บไว้ที่ใบ"
@@ -2943,22 +3357,6 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
                   })}
                 </select>
               </Field>
-              {form.role === 'manager' && (
-                <SignsForField
-                  value={form.approvesCompany}
-                  onChange={(v) => set({ approvesCompany: v })}
-                  disabled={disabled()}
-                />
-              )}
-              {form.role === 'manager' && (
-                <ApprovesDepartmentsField
-                  home={form.department}
-                  value={form.approvesDepartments}
-                  onChange={(v) => set({ approvesDepartments: v })}
-                  depts={depts}
-                  disabled={disabled()}
-                />
-              )}
               <Field
                 label="สถานะการใช้งาน"
                 note={selfLocked('active') ? LOCK_SHORT.selfActive
@@ -2977,20 +3375,55 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
                 </select>
               </Field>
             </div>
+          </section>
 
-            {/* UNDER THE GRID, not inside it. It reads back two of the fields
-                above and is a sentence rather than a control, so a column of
-                the form is the wrong shape for it — it would be a third box
-                that cannot be typed into, beside the two it is about. */}
-            {form.role === 'manager' && (
-              <ApprovalSummary
-                home={form.department}
+          {/* ── ขอบเขตการอนุมัติ — its own group, and only for a หัวหน้างาน ──
+
+              THE THREE CONTROLS THAT DECIDE WHOSE OT THIS PERSON SIGNS, in one
+              place with one readout under them. They were spread across two
+              sections and neither said what the pair came to.
+
+              Rendered only for `manager`, because `approvesCompany` and
+              `approvesDepartments` are read for that role and no other
+              (lib/entries.js) — on anybody else these are settings that change
+              nothing, and a form offering those teaches people the screen
+              cannot be trusted to mean what it shows.
+
+              บทบาท ITSELF STAYS ABOVE, in สิทธิ์และสถานะ. It is the switch that
+              makes this group appear, so it cannot live inside it: a หัวหน้างาน
+              could never be appointed from a control that only exists once they
+              already are one. It sits directly above this heading, which is
+              near enough to read as one thought. */}
+          {form.role === 'manager' && (
+            <section className="form-group">
+              <div className="gh">ขอบเขตการอนุมัติ</div>
+              <div className="form-grid">
+                <SignsForField
+                  value={form.approvesCompany}
+                  onChange={(v) => set({ approvesCompany: v })}
+                  disabled={disabled()}
+                />
+              </div>
+              {/* THE ONE PLACE THE WHOLE GRANT IS SAID OUT LOUD, and the reason
+                  this group still exists with only one control in it.
+
+                  The two things that decide a หัวหน้า's reach are now in
+                  different groups — the departments are the แผนก field up in
+                  ข้อมูลการทำงาน, the payroll is เซ็นให้บริษัท right here — and
+                  neither box says what the PAIR comes to. Somebody reading
+                  "แผนก: ผลิต, สำนักงาน" in one group and "เฉพาะเดมเทค" in
+                  another has to do the join in their head, and the join is
+                  where the mistake lives: that pair signs for nobody at all in
+                  สำนักงาน if สำนักงาน has no เดมเทค staff. */}
+              <ApprovalBadge
+                role={form.role}
+                department={form.department}
                 extras={form.approvesDepartments}
                 company={form.approvesCompany}
                 depts={depts}
               />
-            )}
-          </section>
+            </section>
+          )}
 
           <FoldedNote short={PASSWORD_NOTE.short} full={PASSWORD_NOTE.full} />
         </div>

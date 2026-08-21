@@ -108,12 +108,34 @@ test('the placeholder is dressed as a sub-label, and only in this form', () => {
    * `.field input::placeholder` would dress every sample value in the app as
    * a sub-label — so that is what is asserted instead of an arithmetic that
    * fails on any third scoped rule whatever it says.
+   *
+   * AND NOW IT ACTUALLY IS. The paragraph above has said this since the second
+   * rule arrived; the assertion under it stayed a list of two, and the third
+   * scoped rule duly failed it — `.dept-combo-input::placeholder`, a colour and
+   * nothing else, on แผนกที่คุม's search box. Written out as the two properties
+   * that were meant, a fourth colour-only rule is no longer somebody's problem
+   * and a blanket one still is.
    */
   const scopes = (css.match(/[^\n]*input::placeholder/g) || []).map((s) => s.trim());
-  assert.deepEqual(scopes, [
-    '.searchbox input::placeholder',
-    '.profile-form input::placeholder',
-  ]);
+  assert.ok(scopes.length, 'the placeholder rules vanished');
+
+  // ONE: every one of them is scoped to a form. A bare `input::placeholder`, or
+  // `.field input::placeholder`, reaches every box in the app.
+  for (const rule of scopes) {
+    assert.match(
+      rule,
+      /^\.[\w-]+( [\w-]+)?::placeholder$|^\.[\w-]+ input::placeholder$/,
+      `${rule} is not scoped to one form`,
+    );
+    assert.ok(!/^\.field /.test(rule), `${rule} dresses every box in the app`);
+  }
+
+  // TWO: exactly one of them dresses a placeholder as a SUB-LABEL, and it is
+  // this form. The others are free to set a colour; mono is the tell.
+  const asLabel = (css.match(/[^\n]*input::placeholder \{[^}]*var\(--mono\)[^}]*\}/g) || [])
+    .map((s) => s.trim());
+  assert.equal(asLabel.length, 1, 'a second form is dressing placeholders as labels');
+  assert.match(asLabel[0], /^\.profile-form input::placeholder/);
 });
 
 test('the phone tightens the gaps and nothing else', () => {

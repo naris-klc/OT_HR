@@ -255,6 +255,35 @@
   --radius-sm: 11px;
   --radius-xs: 9px;
 
+  /* ── the box a form control is drawn in ───────────────────────────────
+     Height, horizontal padding and text size, as three tokens rather than as
+     three numbers repeated.
+
+     THEY EXIST BECAUSE ONE CONTROL IN THIS APP IS NOT AN <input>. แผนก is a
+     div holding chips (`.dept-combo`), and a div dressed as a text box shares
+     nothing with the real ones unless it is made to: it sat 4px shy of the
+     บริษัท select beside it in the same grid, with its text starting on a
+     different vertical line, because both boxes were written out by hand and
+     only one of them was ever updated. Anything that has to LOOK like a field
+     reads these; the radius they pair with is --radius-sm, which both already
+     shared.
+
+     46 is what `.field input` measured before it was named: 12px of padding
+     top and bottom, one 15px/1.3 line, and a 1px border. It is a floor rather
+     than a fixed height — a box of chips grows as they wrap, and a textarea
+     sets its own. */
+  --field-h: 46px;
+  --field-pad-y: 12px;
+  --field-pad-x: 14px;
+  --field-size: 15px;
+  /* The chip แผนก holds, as a number the box above can be built from rather
+     than as whatever its contents happened to add up to. It was emergent —
+     4px of padding around a 13px/1.5 line came to 29.5, except on the chips
+     carrying a ✕, where the 20px button made the line box 20 and the chip 30.
+     A shell padded to centre a 29.5px chip is half a pixel out on every chip
+     that has a ✕ in it, which is most of them. */
+  --chip-h: 30px;
+
   --sans: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --latin: 'IBM Plex Sans', system-ui, sans-serif;
@@ -1309,8 +1338,9 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .field input, .field select, .field textarea,
 .policy-row select {
   border: 1px solid var(--input-line); border-radius: var(--radius-sm);
-  padding: 12px 14px; background: var(--field-bg); width: 100%;
-  font: 500 15px/1.3 var(--mono); color: var(--ink);
+  min-height: var(--field-h);
+  padding: var(--field-pad-y) var(--field-pad-x); background: var(--field-bg); width: 100%;
+  font: 500 var(--field-size)/1.3 var(--mono); color: var(--ink);
 }
 .field textarea { font: 400 14.5px/1.55 var(--sans); resize: vertical; min-height: 64px; }
 .field input:focus, .field select:focus, .field textarea:focus,
@@ -1426,34 +1456,481 @@ td > .approver-line { margin-top: 5px; }
 .pick-list .check { padding: 9px 12px; }
 .pick-list .check + .check { border-top: 1px solid var(--line-softer); }
 .pick-list .check:hover { background: var(--neutral-wash); }
-.pick-list .pick-empty { padding: 12px; font: 400 13px/1.5 var(--sans); color: var(--muted-2); }
 
-/* ── แผนกที่คุม — the same box, with one row that cannot be pressed ─────────
+/* ══ แผนกที่คุม — a searchable multi-select ═══════════════════════════════════
 
-   THE LOCKED ROW IS THE HOME DEPARTMENT and it is a different KIND of row, not
-   a disabled one: nothing is refusing it, it is simply what being a หัวหน้า of
-   that แผนก already means. So it keeps full-strength ink while the tick beside
-   it is disabled — the app's `:disabled` grey would say "this is not available
-   to you", which is the wrong sentence and sends somebody looking for an Admin.
+   Built on `.searchbox` and `.pick-menu`, which are `PickPerson`'s (see
+   components/common.jsx). Everything the popover does — where it sits, how it
+   scrolls, how the keyboard's row is marked — is already in those rules and is
+   not restated here. What follows is only what MULTI adds: a shell that holds
+   the chosen ones, the pills themselves, and the two extra things a row in the
+   list can carry.
 
-   `cursor: default` rather than `not-allowed`, on the same reading. A barred
-   cursor is a refusal; this is a statement.
+   ── THE SHELL ───────────────────────────────────────────────────────────────
+   It has to look like the app's other text boxes and cannot BE one, because it
+   contains them: the pills sit inside the border with the caret after them. So
+   the border, radius, fill and focus ring are copied from `.field input`
+   deliberately rather than inherited — a control a pixel off the select beside
+   it in the same `.form-grid` reads as a different kind of thing, and it is
+   not one.
 
-   The row's fill is what actually marks it — a wash a shade off the box, so a
-   column of tickable rows has one that reads as already settled. */
-.pick-list .check.locked {
-  background: var(--neutral-wash);
-  cursor: default;
+   HEIGHT, INSET AND TEXT SIZE ARE THE FIELD'S OWN — `--field-h`,
+   `--field-pad-x` and `--field-size`, the three tokens `.field input` and
+   `.field select` are drawn from. They were three hand-written numbers here
+   and had already drifted: 42px against the select's 46, and a 10px inset
+   against its 14, so the chips started on a different vertical line from the
+   text in the box beside them. Sharing the declaration is what stops that
+   happening again — the values are in one place now, and nothing about this
+   control can quietly fall behind the ones it sits in a grid with.
+
+   THE VERTICAL PADDING IS DERIVED AND NOT CHOSEN, which is the difference
+   between the two boxes being the same height and being the same height today.
+   `--field-pad-y` cannot simply be reused here — the other fields pad a 19.5px
+   line of text and this one pads a 30px chip, so the same number gives two
+   different boxes. What has to match is the SUM, so the padding is read back
+   out of it: half of what is left of `--field-h` once the chip and the two
+   borders are taken off. Move `--field-h` and both boxes follow it; move
+   `--chip-h` and this one re-centres around the new chip at the same outside
+   height. It comes to 7px today.
+
+   The token is also a FLOOR — `min-height` — which is what holds an EMPTY box
+   level with the บริษัท and บทบาท selects, before any chip is in it.
+
+   THE GAP IS TWO NUMBERS: 4px between wrapped ROWS of pills, 8px between the
+   pills in a row. One number cannot be both — 8 down the rows pushes the shell
+   a line taller than it needs on a second row, and 4 across leaves the chips
+   touching. Sideways is where the eye has to separate one department from the
+   next, so that is the bigger of the two.
+
+   It grows down as pills wrap. No `max-height` and no inner scroll: five
+   departments is the whole list here, and a box that scrolls its own contents
+   hides the very thing it exists to show. */
+.dept-combo {
+  /* The ▾ is taken out of the flex flow and pinned to this box — see the note
+     over `.caret` below — so the padding reserves its column on the right:
+     the field's own inset, plus the 16px the arrow occupies. */
+  position: relative;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+  min-height: var(--field-h);
+  padding:
+    calc((var(--field-h) - var(--chip-h) - 2px) / 2)
+    calc(var(--field-pad-x) + 16px)
+    calc((var(--field-h) - var(--chip-h) - 2px) / 2)
+    var(--field-pad-x);
+  border: 1px solid var(--input-line); border-radius: var(--radius-sm);
+  background: var(--field-bg);
+  /* A pointer, not a caret. There is nothing to type into any more — the whole
+     shell is one target that opens the list. */
+  cursor: pointer;
 }
-.pick-list .check.locked:hover { background: var(--neutral-wash); }
-.pick-list .check .nm { flex: 1; min-width: 0; }
-/* "สังกัดหลัก" — why the box is fixed, beside the box. `.chip.muted`'s tone at
-   a size that sits inside a 40px row without growing it. */
-.pick-list .check .tag {
+/* The ring the box would have had, on the shell. `:focus-within` as well as
+   `:focus`, because the chips inside carry buttons of their own and the ring
+   must not vanish when one of them takes focus. */
+.dept-combo.open,
+.dept-combo:focus,
+.dept-combo:focus-within {
+  outline: none;
+  border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.dept-combo.off { background: var(--neutral-wash); cursor: default; opacity: .7; }
+
+/* "เลือกแผนกเพิ่ม…" — shown only while nothing has been ADDED.
+
+   A placeholder in the app's lightest readable grey, the same `--muted-2` every
+   other prompt-rather-than-value uses. It is a span and not a real placeholder
+   because there is no input left to hang one on.
+
+   IT HAS TO BE ABLE TO GIVE WAY, and that is the part that was missing. THAI
+   DOES NOT BREAK ON SPACES: "เลือกแผนกเพิ่ม…" is one unbroken run, so its
+   min-content width is the WHOLE string and a flex item that cannot shrink
+   below its min-content pushes whatever follows it onto the next line. The
+   column here is about 260px and the resting state — one สังกัดหลัก chip at
+   ~132px, this hint at ~96px, the arrow, two gaps — comes to about 256. On the
+   wrong side of that line the ▾ wrapped and the box stood a row taller than the
+   บริษัท and บทบาท selects beside it.
+
+   `min-width: 0` is what actually lets it shrink; the ellipsis is what makes
+   the shrinking readable rather than a hint chopped mid-word. With the arrow
+   now out of the flow this only bites once several chips are in the box, which
+   is the state where the hint matters least. */
+.dept-combo .ph {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--muted-2); font: 400 var(--field-size)/1.3 var(--sans);
+}
+
+/* ค้นหาแผนก… — the filter, which only exists over `FILTER_FROM` departments.
+
+   EVERY PROPERTY `.field input` SETS IS UNSET HERE, on purpose and one by one.
+   This input is inside a `.field`, so without this it is drawn as a form field
+   INSIDE a form field: its own 46px height, its own border and radius, its own
+   fill, mono at 15px. `.dept-combo .dept-find` is two classes to that rule's
+   one class and one element, so it wins — but only for what it names, which is
+   why the list is exhaustive rather than "the ones that looked wrong". The
+   same leak in a different costume as `.box` on the tick-box.
+
+   It takes the space the chips leave and no more, and gives way before they do
+   — `flex: 1 1 90px` with a min-width, so a box holding four chips still has
+   somewhere to type rather than a caret wedged against the last one. */
+.dept-combo .dept-find {
+  flex: 1 1 90px; min-width: 90px; width: auto;
+  border: none; border-radius: 0; background: none;
+  min-height: 0; padding: 0;
+  color: var(--ink); font: 400 var(--field-size)/1.3 var(--sans);
+}
+.dept-combo .dept-find:focus { outline: none; box-shadow: none; }
+.dept-combo .dept-find::placeholder { color: var(--muted-2); opacity: 1; }
+
+/* ▾ — what says this opens.
+
+   OUT OF THE FLOW, and it did not used to be. `margin-left: auto` put it at
+   the right end of the LAST ROW OF CHIPS, which is the right end of the box
+   only while the chips fit on one line. They do not always: with the box
+   nearly full the arrow was the item that wrapped, and it came to rest in the
+   bottom-right corner under the hint — a control a row taller than the selects
+   beside it, with its arrow in a place no other dropdown in the app keeps one.
+
+   Pinned to the shell it cannot wrap, cannot be pushed, and sits on the middle
+   of the box however many rows of chips are above and below it. The 30px of
+   right padding on `.dept-combo` is the room this occupies; nothing may flow
+   under it.
+
+   `translateY(-50%)` is HALF OF THE CENTRING and has to be repeated in the
+   open state below — `transform` is one property, so a bare `rotate(180deg)`
+   there would drop the offset and the arrow would jump down half its height at
+   the moment it turns. */
+.dept-combo .caret {
+  position: absolute; right: var(--field-pad-x); top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-2); font-size: 11px; line-height: 1;
+  transition: transform .12s ease;
+}
+.dept-combo.open .caret { transform: translateY(-50%) rotate(180deg); color: var(--green); }
+@media (prefers-reduced-motion: reduce) {
+  .dept-combo .caret { transition: none; }
+}
+
+/* ── THE PILLS ───────────────────────────────────────────────────────────────
+   `.chip`'s shape at the size a form control wants. Two kinds, and the
+   difference is the point: สังกัดหลัก is filled and carries a tag and no ✕,
+   the rest are outlined and can be taken off. A reader scanning the box should
+   be able to see which one cannot be removed without reading a word of it. */
+.dept-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: var(--chip-h);
+  padding: 4px 6px 4px 11px; border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--card); color: var(--ink-2);
+  font: 500 13px/1.5 var(--sans);
+  max-width: 100%;
+}
+/* Filled, and a step darker in both themes: it is the one fact in this box that
+   is not a choice. */
+.dept-pill.home {
+  background: var(--green-bg); border-color: var(--green-bg); color: var(--green-dark);
+  padding-right: 6px;
+}
+.dept-pill .tag {
+  padding: 1px 7px; border-radius: 20px;
+  background: var(--card); color: var(--green-dark);
+  font: 600 10.5px/1.6 var(--sans); white-space: nowrap;
+}
+
+/* The ✕ and the ⌂, both real buttons — reached by Tab, answered by Enter and
+   Space, and each with an `aria-label` naming the department it acts on, since
+   a row of identical glyphs says nothing on its own.
+
+   28px, which is under the 44px touch floor and is deliberate: they sit inside
+   a pill that is itself only 26px tall, and the phone rule at the foot of this
+   file grows the whole pill instead. Nothing here is destructive — a removed
+   department is one click in the list to put back. */
+.dept-pill button {
+  flex: none; width: 20px; height: 20px;
+  display: grid; place-items: center;
+  border: none; border-radius: 50%; padding: 0;
+  background: none; color: var(--muted);
+  font: 400 12px/1 var(--sans); cursor: pointer;
+}
+.dept-pill button:hover { background: var(--neutral-wash); color: var(--ink); }
+.dept-pill button:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+/* ── THE ROWS IN THE POPOVER ─────────────────────────────────────────────────
+   `.pick-menu li` already sizes and highlights them. This adds the three-part
+   layout: the tick-box, the name, and the code pushed to the far end.
+
+   THE TICK-BOX IS DRAWN, not an `<input type="checkbox">` — the row is already a
+   `role="option"` carrying `aria-selected`, and a real checkbox inside it
+   announces the same state a second time in a different vocabulary. It is
+   `aria-hidden` and the whole row is the target.
+
+   IT IS ALWAYS THERE, empty when the department is not chosen. A tick rendered
+   only when on would shift every name sideways at the moment it was picked —
+   on a list you are picking several things from, that is the text moving under
+   the pointer between one click and the next.
+
+   `.tick`, AND IT USED TO BE `.box`. THAT IS THE WHOLE BUG, not any of the
+   sizes below it. `.box` is this app's alert panel — `padding: 13px 15px;
+   margin: 12px 0` at line ~2717 — and this rule never declared either
+   property, so both came through untouched. With `box-sizing: border-box` a
+   16px width cannot hold 30px of padding: the element floors at its padding
+   and drew about 33 × 29, a wide grey slab beside a 14px name, with 24px of
+   margin under every row on top of that. Every "make the checkbox smaller"
+   change was to `width` and `height`, which were not what it was measuring.
+
+   Renamed rather than patched with `padding: 0`. The class is what carried it
+   in, and a tick-box that is still called `.box` inherits the NEXT thing
+   somebody adds to the alert panel too.
+
+   16px, AND THE ONE px IT GIVES UP IS DELIBERATE. Every real checkbox in this
+   app is 17 (`.check input`, and 18 on the queue's phone bar), and this drawn
+   one matched it — but those sit beside 15px form labels in rows that are
+   46px tall, and this one sits beside a 14px name in a row of 34. Matched by
+   the NUMBER it was a shade over-scaled for the list it is in; matched by the
+   PROPORTION it is the same control. Nothing on screen shows the two sizes
+   side by side, so the number was never the thing being kept.
+
+   The tick inside comes down with it — 10.5px in a box whose inside is 13px
+   after the two 1.5px borders. A ✓ sized off the box rather than off the text
+   is the difference between a tick and a glyph that touches the corners. */
+
+/* ── THE PANEL ───────────────────────────────────────────────────────────────
+
+   EVERY SELECTOR IN THIS BLOCK NAMES BOTH CLASSES — `.pick-menu.dept-menu`,
+   not `.dept-menu` — AND THAT IS LOAD-BEARING, NOT A HABIT.
+
+   The element carries both (`className="pick-menu dept-menu"`), and the shared
+   `.pick-menu` block is written FURTHER DOWN THIS FILE, at line ~2047. One
+   class each is equal specificity, and at equal specificity the later rule
+   wins — so for every property the two blocks both name, the shared one did.
+   This block set a 160px cap and `.pick-menu` put back 264. It set z-index 50
+   and got 5. It set 34px rows and got 40, mono instead of sans, and the green
+   `--green-bg` slab back on the row the pointer was over. None of it was
+   visible on screen, and none of it was visible in the built CSS either: the
+   declarations are all there in the bundle, losing.
+
+   Naming both classes takes this block to (0,2,0) and (0,2,1) and settles it
+   by SPECIFICITY rather than by position, so it cannot come undone the next
+   time somebody moves a section of this file. If you add a rule here, give it
+   both classes; a bare `.dept-menu` rule is a rule that may or may not run
+   depending on what is below it.
+
+   Floating and scrolling already — `.pick-menu` below is `position: absolute`
+   out of the flow, so this list has never pushed a field down and does not
+   need a portal to avoid it. What this block fixes is the other half of the
+   complaint: it covered the fields under it without ever looking like it was
+   ABOVE them, which reads as two controls fighting rather than as one panel
+   over a page.
+
+   FOUR NUMBERS, AND EACH IS ONE PART OF THAT.
+
+   `top: 100%` + `margin-top: 4px` — the same 4px `.pick-menu` sets inside its
+   `calc`, restated as a margin so the gap is a property somebody can find and
+   change rather than a term buried in an offset. Both are needed: without the
+   `top` reset the two 4s add up and the panel floats 8px off a box it is
+   supposed to belong to.
+
+   `z-index: 50`, and SCOPED to this list. `.pick-menu`'s 5 is deliberately low
+   because ค้นหาพนักงาน sits on an ordinary page and must not draw over the app
+   bar (20) or the sticky tab strip (10) — see the note there. This one opens
+   inside `.modal-body`, which is a scroll box that clips its own children, so
+   nothing it draws can reach those bars however high the number goes. Inside
+   that box it now beats everything, including anything a future field brings
+   its own stacking to.
+
+   THE SHADOW SAYS "ABOVE", AND NOTHING MORE THAN THAT. `0 8px 20px -6px`:
+   pushed down 8, blurred 20, and pulled back 6 so it does not leak out
+   sideways from under a panel that is the full width of the field. It was
+   `0 10px 25px -5px var(--shadow-1)` for one round — --shadow-1 is black at
+   half opacity on the dark side, which lifted the panel but put a dark band
+   across the field underneath it. `--shadow-soft` is the tone the app's other
+   floating things use, and with the tighter geometry it reads as depth rather
+   than as weather. A token either way: every colour in this file comes from
+   one, and test/theme.test.js fails the build on a literal rgba in a rule.
+
+   160 rather than `.pick-menu`'s 264, SCOPED the same way. This one opens
+   inside a dialog whose บันทึก sits a short way below it, and a panel that
+   reaches the footer covers the button somebody is on their way to press. At
+   the 34px rows below that is four and a half — enough that the list says
+   "there is more" on its own, short enough that the fields under it stay in
+   view while it is open. `overflow-y` is restated beside the cap rather than
+   left to `.pick-menu`: a max-height without the scroll that pairs with it is
+   how a list ends up with rows that cannot be reached, and the two belong in
+   one place.
+
+   THE WIDTH IS THE FIELD'S, and always was: `left: 0; right: 0` against a
+   `.searchbox` that is `position: relative` and wraps nothing but the shell.
+   The panel cannot be wider or narrower than the box that opens it. What made
+   it look as though it fanned out was its own height — a tall panel over a
+   short control reads as a bigger object than it is.
+
+   On a phone the shorter of the two still wins: 44vh is under 160 on anything
+   smaller than a tablet, and the panel must never grow with the keyboard open. */
+.pick-menu.dept-menu {
+  top: 100%; margin-top: 4px;
+  z-index: 50;
+  max-height: 160px; overflow-y: auto;
+  box-shadow: 0 8px 20px -6px var(--shadow-soft);
+}
+@media (max-width: 860px) {
+  .pick-menu.dept-menu { max-height: min(160px, 44vh); }
+}
+
+/* A row carries four things of three different heights — the tick-box, the
+   name, the สังกัดหลัก tag and the code — so `align-items: center` is restated
+   here rather than left to `.pick-menu li`. It is the one declaration in this
+   rule that a later, more specific rule could take away without anything else
+   looking wrong, and the row it produces then is the tag riding a pixel high
+   above the name beside it.
+
+   ACROSS, IT IS THE FIELD'S OWN INSET — `--field-pad-x`, the same token the
+   box above is padded with, so a department's name in the panel starts on the
+   exact vertical line the text in the closed box does. A list that steps in or
+   out by a few pixels as it opens reads as a second control rather than as the
+   same one unfolded.
+
+   DOWN, IT IS AS SHORT AS THE ROW CAN HONESTLY BE. 6px around a 14px/1.4 name
+   is 31.6px, so `min-height: 32px` is the row's own measurement rather than a
+   floor imposed on it — nothing is being squeezed and nothing is padded out.
+   Five of them fit the 160px cap above. The shared block's 40 is what was
+   actually on screen for three rounds of this, and ten rows of it turned a
+   five-department list into a panel the height of the form under it.
+
+   The phone block at the foot of this file takes rows back to 44px, where a
+   thumb is the pointer and 34 is under the touch floor. */
+.pick-menu.dept-menu li {
+  gap: 8px; padding: 6px var(--field-pad-x); min-height: 32px;
+  /* [tick-box] [ชื่อแผนก] [สังกัดหลัก] [รหัส] — four things of four different
+     heights (16px, 19.6px, 16.8px, 17.25px), centred on one line. Restated
+     here rather than left to `.pick-menu li`: it is the one declaration in
+     this rule a later, more specific rule could take away without anything
+     else looking wrong, and what it leaves behind is a badge riding a pixel
+     above the name beside it. */
+  align-items: center;
+  /* 14px sans, WRITTEN OUT rather than inherited. The shared block sets
+     `font: 500 14px/1.4 var(--mono)` — the size is the one this list wants and
+     the family is not, and mono carries no Thai at all, so every department
+     name was being drawn in whatever the browser fell back to. The weight is
+     left at 500 here on purpose: `.pick-menu li[aria-selected='true']` still
+     takes a chosen row to 700. */
+  font: 500 14px/1.4 var(--sans);
+}
+/* The touch floor, restated at this block's specificity — `.pick-menu li`'s
+   own 44px rule is a class short of reaching these rows now.
+
+   BELOW THE RULE IT OVERRIDES, not with the panel's height at the top of this
+   section: those two are the same specificity, and a floor written above the
+   rule it is meant to raise is a floor that does nothing. That is the same
+   mistake, one section further down, and it is worth being explicit about
+   because it looks tidier to keep the two phone rules together. */
+@media (max-width: 860px) {
+  .pick-menu.dept-menu li { min-height: 44px; }
+}
+
+/* ── HOVER, as well as the keyboard's row ────────────────────────────────────
+
+   `onMouseMove` already moves `data-active` to the row under the pointer, so
+   moving the mouse has always highlighted. What it cannot do is highlight the
+   row the pointer is ALREADY sitting on when the panel opens under it — the
+   list appears with nothing marked until the hand twitches.
+
+   BOTH MARKS ARE THE THEME'S GREY NOW, and the difference between them is a
+   2px rail rather than a second colour. The keyboard's row used to be filled
+   with `--green-bg` — on the dark theme a muted green slab sitting on a grey
+   card among grey rows, the one patch of colour in the dialog, and reading as
+   a stain rather than as a highlight. `--neutral-wash` is the fill every other
+   hovered row in this app uses, in both themes.
+
+   The two still say different things, which is the part that must not be lost:
+   the wash says "the pointer is here", the rail says "Enter takes this one".
+   Nearly always the same row — and on the beat where the keyboard has moved on
+   and the mouse has not, the rail is on one row and the wash on another, which
+   is honest about where Enter will go. `--green-accent` because it is the one
+   token in the green family tuned to be READ on a dark surface; 2px of it at
+   the edge of a row is a marker, not a fill.
+
+   `.pick-menu li[data-active='1']` is defined LATER in this file, not earlier,
+   which is why the rule below names both classes: the shared green outranked
+   this by position for as long as this block said only `.dept-menu`. See the
+   note over THE PANEL. */
+.pick-menu.dept-menu li:hover { background: var(--neutral-wash); }
+.pick-menu.dept-menu li[data-active='1'] {
+  background: var(--neutral-wash); color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--green-accent);
+}
+/* The home row answers no click, so it must not light up like the rows that do
+   — see `li.home` below. Both states are cancelled on it. */
+.pick-menu.dept-menu li.home:hover { background: transparent; }
+.pick-menu.dept-menu li .tick {
+  flex: none; width: 16px; height: 16px;
+  display: grid; place-items: center;
+  border: 1.5px solid var(--input-line); border-radius: 4px;
+  background: var(--card);
+  font-size: 10.5px; line-height: 1; color: transparent;
+}
+.pick-menu.dept-menu li .tick.on {
+  background: var(--green); border-color: var(--green); color: var(--on-fill);
+}
+/* The home row's box is filled and quiet — it is chosen and cannot be changed,
+   so it must not look like the ones that answer a click. */
+.pick-menu.dept-menu li.home .tick {
+  background: var(--muted-2); border-color: var(--muted-2);
+}
+
+/* ── ตั้งเป็นสังกัดหลัก ──────────────────────────────────────────────────────
+
+   แผนก is one field again, so this is the ONLY way left to move a หัวหน้า
+   between departments — without it their ceiling and their report row are stuck
+   where they were hired. See the note on `DepartmentField`.
+
+   HIDDEN UNTIL THE ROW IS HOVERED, FOCUSED, OR IS THE KEYBOARD'S CURRENT ROW.
+   That is what lets it sit on every chosen row without turning a list of five
+   ticks into a wall of controls: ticking is the frequent act, this is pressed
+   about once in a career. `:focus-within` and the `[data-active]` clause are
+   the halves that are easy to leave out and are not optional — without them the
+   control is reachable and invisible, which is worse than not having it.
+
+   `visibility`, not `display`, so the row does not change width under the
+   pointer as it is hovered — and so the code column beside it does not shuffle
+   sideways down the whole list as the cursor moves.
+
+   No `margin-left: auto`: `.nm` above is `flex: 1` and has already taken the
+   free space, so this lands hard against the code at the right end, which is as
+   far from the tick-box as the row goes. */
+.pick-menu.dept-menu li .set-home-row {
   flex: none;
-  padding: 2px 8px; border-radius: 20px;
-  background: var(--card); border: 1px solid var(--line);
-  font: 600 11px/1.5 var(--sans); color: var(--muted);
+  font: 500 11.5px/1.5 var(--sans);
+  visibility: hidden;
+}
+.pick-menu.dept-menu li:hover .set-home-row,
+.pick-menu.dept-menu li:focus-within .set-home-row,
+.pick-menu.dept-menu li[data-active='1'] .set-home-row { visibility: visible; }
+/* A touch screen has no hover to reveal it with, so it is simply always there.
+   The rows are 44px at this width and the two targets sit at opposite ends. */
+@media (hover: none) {
+  .pick-menu.dept-menu li .set-home-row { visibility: visible; }
+}
+.pick-menu.dept-menu li .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* The code, in the mono every other identifier in this app is set in, and quiet
+   — `--muted-2`, the app's lightest readable grey. It is here to be recognised
+   in passing, not read down against the names.
+
+   A REAL COLUMN, though: `min-width` at four characters and right-aligned, so
+   WH and PROD end at the same pixel instead of ragging by two characters down a
+   list of five. `.nm` above is `flex: 1` and has taken the free space, which is
+   what puts this hard against the right edge. */
+.pick-menu.dept-menu li .cd {
+  flex: none; min-width: 4ch; text-align: right;
+  font: 500 11.5px/1.5 var(--mono); color: var(--muted-2);
+}
+.pick-menu.dept-menu li .tag {
+  flex: none; padding: 1px 8px; border-radius: 20px;
+  background: var(--green-bg); color: var(--green-dark);
+  font: 600 10.5px/1.6 var(--sans); white-space: nowrap;
+}
+/* The home row is a statement, not a refusal — full-strength ink, and a cursor
+   that says "nothing happens here" rather than a barred one that says "you may
+   not". `aria-disabled` carries the same to a screen reader. */
+.pick-menu.dept-menu li.home { cursor: default; }
+.pick-menu.dept-menu li.home[data-active='1'] {
+  background: transparent; color: var(--ink); box-shadow: none;
 }
 
 /* ── 📌 ขอบเขตการอนุมัติ — the two fields above, read back as one sentence ──
@@ -1472,7 +1949,7 @@ td > .approver-line { margin-top: 5px; }
    departments in the list. */
 .approval-summary {
   display: flex; align-items: flex-start; gap: 8px;
-  margin-top: 14px; padding: 10px 12px;
+  margin-top: 16px; padding: 11px 13px;
   border-radius: var(--radius-sm);
   background: var(--neutral-wash); border: 1px solid var(--line-softer);
   font: 400 13px/1.6 var(--sans); color: var(--ink-2);
@@ -1766,12 +2243,23 @@ td > .approver-line { margin-top: 5px; }
    and a heading rather than by nested boxes — a card inside a dialog inside a
    backdrop is three borders deep before any content. */
 .edit-form { display: flex; flex-direction: column; }
+/* THE SEAM BETWEEN TWO GROUPS, and it is doing two jobs at once — the hairline
+   says "different subject", the space says "take a breath".
+
+   22 rather than 18, on both sides of the rule. แก้ไขข้อมูลพนักงาน is four or
+   five groups now (ข้อมูลส่วนตัว, การทำงาน, สิทธิ์และสถานะ, ขอบเขตการอนุมัติ,
+   รหัสผ่าน) where it used to be three, and at 18 the headings had begun to read
+   as rows of one long list rather than as the tops of separate blocks. The
+   extra 4px each side is what puts the heading nearer the fields it names than
+   the fields above it — which is the whole of what makes a group look like a
+   group. */
 .form-group + .form-group {
-  margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line-soft);
+  margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--line-soft);
 }
+/* And the heading sits closer to its own fields than to the rule above it. */
 .form-group > .gh {
   font: 600 11px/1 var(--mono); letter-spacing: .11em; text-transform: uppercase;
-  color: var(--muted-2); margin-bottom: 12px;
+  color: var(--muted-2); margin-bottom: 14px;
 }
 
 /* `align-items: start`, and that is the whole fix for the misalignment.
@@ -1780,10 +2268,16 @@ td > .approver-line { margin-top: 5px; }
    pushed its own label and box upward, and วันเกิด sat a line above อีเมล for
    no reason a reader could see. Starting them together makes every label and
    every box in a row share a top edge whatever is written underneath. */
+/* 16 rather than 14, the row gap a touch more than the column gap.
+
+   Two fields side by side are read as a pair and want to stay close; two ROWS
+   of them are separate thoughts, and at an equal 14 the grid read as an even
+   mesh with no grain to it. The difference is small on purpose — enough to
+   group by row, not enough to look like a gap somebody forgot to fill. */
 .form-grid {
   display: grid; align-items: start;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 14px;
+  gap: 18px 16px;
 }
 /* One column before the boxes get too narrow to read what is in them. */
 @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
@@ -6241,6 +6735,33 @@ table.mini tbody tr:hover { background: none; }
      is pressed by mistake instead of "ทำงานข้ามคืน". */
   .form-checks { flex-direction: column; align-items: stretch; gap: 4px; }
   .form-checks .check { min-height: 44px; }
+
+  /* ── แผนกที่อนุมัติเพิ่ม on a phone ───────────────────────────────────────
+
+     THE SHELL IS A 48px TARGET, because it is now one: the whole box opens the
+     list, and it is the primary gesture of this control rather than the frame
+     around a text field.
+
+     THE CHIPS GROW, AND THEIR ✕ WITH THEM. A ✕ at the desktop's 20px sits
+     inside a 26px chip and is a thumb's-width from the chip beside it — and
+     the two do different things, one removes a department and the other opens
+     the menu. 36 and 28 puts real space between them without turning a row of
+     two chips into two rows.
+
+     The ✕ stays under the app's 44px floor, deliberately: nothing here commits
+     anything — a department removed by a mis-tap is one press in the list to
+     put back, and the dialog is not saved until บันทึก. The controls that DO
+     commit keep their 44 everywhere.
+
+     The popover's own rows are already 44 at this width, from `.pick-menu li`
+     higher up this block. */
+  .dept-combo {
+    gap: 8px; min-height: 48px;
+    padding: 9px calc(var(--field-pad-x) + 16px) 9px var(--field-pad-x);
+  }
+  .dept-combo .ph { font-size: var(--field-size); }
+  .dept-pill { min-height: 36px; font-size: 14px; }
+  .dept-pill button { width: 28px; height: 28px; }
 
   /* Both decisions at a real touch size, filling the width the way the sheet
      footers elsewhere in the app do. */

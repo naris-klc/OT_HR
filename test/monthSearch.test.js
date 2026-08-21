@@ -151,7 +151,22 @@ test('the box stays on screen while a long list scrolls under it', () => {
   // 30 clears the cards (none) and the app bar (20), and ties with the phone's
   // nav — which is fixed to the BOTTOM of the screen and never meets it. The
   // dialogs at 80 still cover it, which is the part that must not change.
-  assert.ok(!/z-index: (4[0-9]|[5-7][0-9])\b/.test(css), 'something new landed between this bar and the dialogs');
+  //
+  // THE ONE EXEMPTION IS `.dept-menu`, and it is cut out rather than the range
+  // widened. It carries 50, and it cannot be the thing this test is guarding
+  // against: it lives inside `.modal-body`, which scrolls and therefore clips
+  // its own children on both axes, so nothing it paints reaches the page at
+  // all — let alone the strip between this bar and a dialog. Anything else
+  // landing in the range is still caught.
+  // Rules only. Half this stylesheet is prose about which layer sits over
+  // which, and a paragraph that names a number is not an element that carries
+  // one — matching the comments is how this reads its own explanation as the
+  // defect it warns about.
+  const own = css.indexOf('.pick-menu.dept-menu {');
+  const outside = (css.slice(0, own) + css.slice(css.indexOf('}', own)))
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/z-index: (4[0-9]|[5-7][0-9])\b/.test(outside), 'something new landed between this bar and the dialogs');
+  assert.match(css.slice(own, css.indexOf('}', own)), /z-index: 50;/, 'the exemption above is stale');
 
   // Stuck, it is painted over the cards passing under it: it needs an opaque
   // fill, out to the card's own edges or a column of list shows down each side.
