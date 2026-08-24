@@ -132,3 +132,17 @@ test('it shuts on a press outside it, on the ⓘ, and on Escape', () => {
   assert.match(app, /<span className="tip-wrap" ref=\{tipRef\}>/);
   assert.match(css, /\.appbar \.tip-wrap \{ display: inline-flex; flex: none; \}/);
 });
+test('the paragraph under ภาพรวม went behind the ⓘ, promises and all', () => {
+  // Four lines about what a traffic log is, above the figures somebody opened
+  // the screen for. Two of its clauses had nowhere else to be said, and one of
+  // them is the only answer this app gives to "is my password in there" — the
+  // promise test/logRouteGuards.test.js exists to hold the code to. It is still
+  // printed, one tap from the heading instead of four lines down one tab.
+  assert.ok(!log.includes('ระบบบันทึกทุกการเรียกใช้งานผ่าน API'), 'the paragraph came back');
+  const table = app.slice(app.indexOf('const PAGE = {'), app.indexOf('function Shell('));
+  assert.match(table, /เพิ่มได้อย่างเดียว แก้หรือลบย้อนหลังไม่ได้/);
+  assert.match(table, /ไม่เก็บเนื้อหาที่ส่งเข้ามาไม่ว่ารูปแบบใด รวมทั้งรหัสผ่าน/);
+  // And the figures start at the heading — `.card h2` leaves 4 of its own, so
+  // 10 is the 14px gap the paragraph used to leave behind it.
+  assert.match(log, /<div className="grid" style=\{\{ marginTop: 10 \}\}>/);
+});

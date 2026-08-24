@@ -174,17 +174,22 @@ function Overview({ onOpenTab, onFilter }) {
     <>
       <div className="card">
         <h2>ภาพรวม {data.windowDays} วันล่าสุด</h2>
-        <div className="hint">
-          ระบบบันทึกทุกการเรียกใช้งานผ่าน API ไว้เป็นข้อมูลจราจรทางคอมพิวเตอร์
-          {' '}ตาม พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ มาตรา ๒๖
-          {' '}· บันทึกนี้เพิ่มได้อย่างเดียว แก้หรือลบย้อนหลังไม่ได้ และไม่มีการเก็บเนื้อหาที่ส่งเข้ามา
-          {' '}<strong>ไม่ว่ารูปแบบใด รวมทั้งรหัสผ่าน</strong>
-        </div>
 
-        {/* `.grid` — the same auto-fit row of `.stat` boxes the landing screens
-            use, so these four read as the app's own tiles rather than as a
-            widget belonging to this page. */}
-        <div className="grid" style={{ marginTop: 4 }}>
+        {/* THE FIGURES START AT THE HEADING. What stood here was four lines
+            about what a traffic log is and what this one does not keep — true,
+            and read once. It is standing context, so it moved to where this
+            screen keeps standing context now: the ⓘ beside the page heading,
+            one tap away on every tab rather than four lines down on one of
+            them. See `PAGE.logs` in App.jsx.
+
+            10px, not the 4 it was: `.card h2` leaves 4 of its own, and 14 is
+            the gap `.card .hint` used to put between this heading and the
+            first thing under it.
+
+            `.grid` — the same auto-fit row of `.stat` boxes the landing
+            screens use, so these four read as the app's own tiles rather than
+            as a widget belonging to this page. */}
+        <div className="grid" style={{ marginTop: 10 }}>
           <Tile
             label="REQUESTS"
             value={data.requests}
@@ -693,13 +698,22 @@ function LogList({
         </Field>
       </div>
 
-      <div className="row" style={{ marginBottom: 12 }}>
+      {/* The spacing is in `.log-actions` rather than inline, because it is not
+          one number: on a phone these stack and the gap to the list below has
+          to be bigger than the gap between the two buttons. */}
+      <div className="row log-actions">
         {narrowed && (
           <button className="btn ghost sm" onClick={onClearFilters}>ล้างตัวกรองทั้งหมด</button>
         )}
         {/* The reason this screen has an export at all: the request comes from
-            somebody who will never be given a login. See the route. */}
-        <button className="btn ghost sm" onClick={download}>ดาวน์โหลด CSV ตามตัวกรอง</button>
+            somebody who will never be given a login. See the route.
+
+            `.outline` and not a third ghost. Of the two buttons here this is
+            the one that DOES something — the other undoes a filter — and two
+            grey cards side by side say neither. Not the filled green either:
+            that voice belongs to the action a screen is for, and this screen is
+            for reading. See the note at `.btn.outline`. */}
+        <button className="btn outline sm" onClick={download}>ดาวน์โหลด CSV ตามตัวกรอง</button>
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}

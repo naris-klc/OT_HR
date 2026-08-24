@@ -104,3 +104,49 @@ test('the two cells that lead the card print no label and read from the left', (
   // prints nothing is one item, which right-aligns the heading against nothing.
   assert.ok(block.includes(':not(.log-when):not([data-label="บัญชีผู้ใช้งาน"])'));
 });
+
+// ── the screen around the card ──────────────────────────────────────────────
+
+test('the two buttons stack, full width, and stand off the list below', () => {
+  const block = phoneBlock();
+  // Side by side at `.sm` they were two 13px labels sharing 340px, and one of
+  // them is ดาวน์โหลด CSV ตามตัวกรอง.
+  assert.match(block, /\.log-actions \{ flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 20px; \}/);
+  assert.match(block, /\.log-actions \.btn \{ width: 100%; min-height: 44px; \}/);
+  // The gap under them is bigger than the gap between them, or the second
+  // button reads as the first row of the log.
+  const gap = Number(block.match(/\.log-actions \{[^}]*gap: (\d+)px/)[1]);
+  const below = Number(block.match(/\.log-actions \{[^}]*margin-bottom: (\d+)px/)[1]);
+  assert.ok(below > gap, `${below} under, ${gap} between — the pair no longer reads as a pair`);
+});
+
+test('the export is the one button on the screen that does something', () => {
+  // Two ghosts side by side say neither; the filled green says "this is what
+  // the screen is for", which a log is not. `.btn.outline` is the step between,
+  // and it exists in the stylesheet for exactly this row.
+  assert.match(jsx, /className="btn outline sm" onClick=\{download\}/);
+  assert.match(css, /\.btn\.outline \{/);
+});
+
+test('the cards share a left edge with the filters above them', () => {
+  // `.stack-table tbody` insets its cards by 12px, which is right when a table
+  // is the whole card. This one shares a card with the filter form, so that
+  // inset put two left edges in one box.
+  assert.match(phoneBlock(), /\.stack-table\.log-table tbody \{ padding: 12px 0; \}/);
+});
+
+test('a path is cut at the end rather than broken across lines', () => {
+  // The cell wraps anywhere — it has to, or a Thai action name runs off the
+  // card — and a path has no spaces, so an id broke wherever the line ended
+  // and left `d171` alone underneath reading as a separate fact.
+  const block = phoneBlock();
+  const rule = block.slice(block.indexOf('.stack-table.log-table tbody .log-sub.mono'));
+  assert.match(rule.slice(0, rule.indexOf('}')), /white-space: nowrap; overflow: hidden; text-overflow: ellipsis;/);
+  // The device line under an IP is prose and must keep wrapping — clipping it
+  // would hide the half that names the browser.
+  assert.ok(!/\.log-sub \{[^}]*text-overflow/.test(css), 'every .log-sub is being clipped, not just the path');
+});
+
+test('a value and the line under it read as one group', () => {
+  assert.match(phoneBlock(), /\.log-v > \* \+ \* \{ margin-top: 3px; \}/);
+});

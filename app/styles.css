@@ -26,6 +26,8 @@
   --line-soft: #EEF1EE;
   --line-softer: #F2F5F3;
   --input-line: #DDE4DF;
+  /** The edge of something floating ABOVE the page — see --line-lift below. */
+  --line-lift: #D5DED8;
 
   /* ── brand ───────────────────────────────────────────────────────────── */
   --green: #0F8A46;
@@ -351,6 +353,25 @@
   --line-soft: light-dark(#EEF1EE, #29312C);
   --line-softer: light-dark(#F2F5F3, #232B27);
   --input-line: light-dark(#DDE4DF, #3B453F);
+
+  /**
+   * THE EDGE OF A THING THAT IS ABOVE THE PAGE, not on it.
+   *
+   * --line is the border of a card, and a card is level with everything else
+   * — the eye reads its edge as a division, not as a lift. A panel floating
+   * over content has to state its own outline or the shadow is doing the
+   * whole job on its own, and a shadow heavy enough to do that alone reads as
+   * weather rather than as depth.
+   *
+   * THE TWO SIDES GO IN OPPOSITE DIRECTIONS, which is why this cannot be the
+   * rgba(255,255,255,.1) a dark-first design would reach for. On the dark
+   * side that is exactly right and is what this is: white at about .18 over
+   * the card, stated in the palette's own hue so it does not read as a cool
+   * grey line on a warm grey panel. On the light side a brighter edge is
+   * WHITE ON WHITE — the panel is #ffffff — so the same intent is a step
+   * DARKER than --line instead.
+   */
+  --line-lift: light-dark(#D5DED8, #4A554E);
 
   /* Recessed rather than raised. On white, a field is the same colour as the
      card and its border does the work; on a dark card that leaves the field
@@ -1041,10 +1062,36 @@ body.has-dialog .mobile-nav { backdrop-filter: none; }
   left: clamp(16px, 3vw, 32px); right: clamp(16px, 3vw, 32px);
   max-width: 560px;
   padding: 11px 14px;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  /* The same lift `.pick-menu` uses — this app has one shadow for "this is
-     above the page" and a second one would read as a different kind of thing. */
-  box-shadow: 0 14px 34px var(--shadow-soft);
+  /* z-index 1 — AND 1 IS THE WHOLE LADDER THIS PANEL HAS.
+
+     `.appbar` is `position: sticky; z-index: 20`, which makes it a stacking
+     context: everything inside it is sorted against the bar's OWN children
+     and then the bar is placed on the page as one object. So what puts this
+     over the table is the bar's 20, and no number written here can raise it
+     past that or lower it below — 1 and 50 paint identically.
+
+     50 was asked for and is not available: test/monthSearch.test.js reserves
+     40–79 as empty ground between the sticky bars (30) and the dialogs (80),
+     with one exemption for `.pick-menu.dept-menu`, and a second number in
+     that range would make the band mean nothing. Nothing is lost — a dialog
+     and a toast still cover this panel, which is correct: they are what
+     somebody is answering, and Escape reaches them first.
+
+     Kept rather than dropped because it is the last child of the bar today,
+     and "paints last" is an accident of source order that the next element
+     added to the header would quietly take away. */
+  z-index: 1;
+  background: var(--card); border: 1px solid var(--line-lift); border-radius: var(--radius);
+  /* TWO SHADOWS, NOT ONE, and that is what reads as height: a wide soft cast
+     that says how far above the page this is, and a tighter darker one just
+     under the box that keeps its bottom edge from dissolving into whatever it
+     is over. Both pulled back (-5, -6) so neither leaks out sideways from a
+     panel that runs nearly the width of the bar.
+
+     --shadow-1 rather than the --shadow-soft `.pick-menu` uses: this one
+     floats over the page itself rather than inside a dialog, and on the dark
+     side the token IS black at half opacity — the value asked for. */
+  box-shadow: 0 10px 25px -5px var(--shadow-1), 0 8px 10px -6px var(--shadow-1);
   font: 400 12.5px/1.7 var(--sans); color: var(--muted);
   animation: otfade .18s ease both;
 }
@@ -7641,6 +7688,11 @@ table.mini tbody tr:hover { background: none; }
 }
 .log-tally .n.warn { color: var(--amber-ink); }
 
+/* ล้างตัวกรอง and ดาวน์โหลด CSV. On a wide screen this is an ordinary `.row`;
+   what it needs from a class is the margin, which the phone block below
+   changes rather than restating an inline style in two places. */
+.log-actions { margin-bottom: 12px; }
+
 /* ── the list itself ──────────────────────────────────────────────────────
    Two lines per cell in three of the five columns: the fact, and the thing
    that qualifies it. A log with one line per cell needs twice the columns to
@@ -7727,10 +7779,50 @@ table.mini tbody tr:hover { background: none; }
      only where nothing else will do: `192.168.109.119` would come apart mid
      octet on a card that had room for it, and Thai would break mid-word. */
   .log-v { flex: 1; min-width: 0; text-align: right; }
+  /* A value and the line under it are one group, not two lines that happen to
+     be adjacent — 3px is the same air `.log-detail dd .note` puts under a
+     value, and it is what makes ที่มา read as one address rather than as an
+     IP with something else beneath it. */
+  .log-v > * + * { margin-top: 3px; }
+  /* THE PATH IS ONE LINE OR IT IS NOTHING. The cell wraps anywhere — it has
+     to, or a Thai action name would run off the card — and a path has no
+     spaces either, so an id broke wherever the line ended and left `d171`
+     sitting alone under it, reading as a separate fact.
+
+     Cut at the end rather than broken: what is worth reading is the route
+     (`GET /api/departments/…`), and the id that follows it identifies a row
+     nobody can look up from four characters anyway. The whole path is in the
+     record itself, which is one tap away — this line is a label, not the
+     record. `break-all` was the other option and it only moves the problem:
+     the orphan becomes two orphans at a tidier column.
+
+     Not `.log-sub` at large: the device line under an IP is prose and wraps
+     properly, and clipping it would hide the half that names the browser. */
+  .stack-table.log-table tbody .log-sub.mono {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   /* The badge and the action it belongs to, centred against each other —
      8px is wide enough that a chip's rounded end does not read as part of the
      word next to it. Right, with the rest of the values. */
   .log-v .log-act { justify-content: flex-end; gap: 8px; }
+
+  /* THE TWO BUTTONS BECOME TWO ROWS, full width and 44px tall — the size a
+     thumb is aimed at, and the size every other button in a phone card takes
+     (`.stack-table tbody td .btn`). Side by side at `.sm` they were two 13px
+     labels sharing 340px, and ดาวน์โหลด CSV ตามตัวกรอง is not a short one.
+
+     20 below, 10 between: the gap to the list under them has to be larger
+     than the gap between them, or the second button reads as the first row
+     of the log. */
+  .log-actions { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 20px; }
+  .log-actions .btn { width: 100%; min-height: 44px; }
+
+  /* THE CARDS LINE UP WITH THE FIELDS ABOVE THEM. `.stack-table tbody` insets
+     its cards by 12px, which is right where a table is the whole card — here
+     the same card also holds the filter form, so the list sat 12px inside the
+     left edge every input above it starts at. Two left edges in one card is
+     what reads as "ไม่ตรงกัน"; the 12 stays as vertical space. */
+  .stack-table.log-table tbody { padding: 12px 0; }
 
   /* Room at the edges: 16px across, so a right-aligned value stops where the
      card's own text does rather than against its border, and 10px between
