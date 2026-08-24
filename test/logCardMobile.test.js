@@ -86,8 +86,10 @@ test('the value box can shrink, so a long address cannot push the card off scree
 // ── the two the user asked for by eye ───────────────────────────────────────
 
 test('the badge sits clear of the words next to it', () => {
+  // 8px on both sides of the breakpoint. The phone rule that used to be here
+  // said the same thing twice; what it says now is in the one-line test at the
+  // foot of this file, which is where the gap is actually load-bearing.
   assert.match(css, /\.log-act \{ display: flex;[^}]*gap: 8px/);
-  assert.match(phoneBlock(), /\.log-v \.log-act \{ justify-content: flex-end; gap: 8px; \}/);
 });
 
 test('the card has room at its edges and between its rows', () => {
@@ -149,4 +151,29 @@ test('a path is cut at the end rather than broken across lines', () => {
 
 test('a value and the line under it read as one group', () => {
   assert.match(phoneBlock(), /\.log-v > \* \+ \* \{ margin-top: 3px; \}/);
+});
+
+test('การกระทำ is one line: the badge, then what was done', () => {
+  // Beside its label this cell has about 250px of a 360px screen, and the
+  // moment a badge and a Thai verb came to more than that the badge went to
+  // one line and the words to the next — one fact drawn as two. Nothing wraps
+  // now: the badge keeps its size and the words are what give.
+  const block = phoneBlock();
+  assert.match(block, /\.log-v \.log-act \{ flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; \}/);
+  assert.match(block, /\.log-act \.chip \{ flex: none; \}/);
+  // `min-width: 0` first, or the item never shrinks to where the ellipsis is
+  // and the group pushes out of the card instead.
+  assert.match(block, /\.log-what \{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \}/);
+  // And the words are an element, so they can be the part that is cut.
+  assert.match(jsx, /<span className="log-what">\{r\.action\}<\/span>/);
+});
+
+test('the label sits against the middle of the two lines it labels', () => {
+  // การกระทำ is a line and the route under it. A label pinned to the top of
+  // that left a gap beneath itself that read as a row with nothing in it.
+  const block = phoneBlock();
+  assert.match(block, /td\[data-label="การกระทำ"\] \{ align-items: center; \}/);
+  // Every other cell is one line, where top and middle are the same place, and
+  // they keep the `flex-start` of the rule they all share.
+  assert.match(block, /td:not\(\.log-when\)[^{]*\{\s*display: flex; align-items: flex-start/);
 });

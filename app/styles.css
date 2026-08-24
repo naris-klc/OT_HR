@@ -7804,7 +7804,35 @@ table.mini tbody tr:hover { background: none; }
   /* The badge and the action it belongs to, centred against each other —
      8px is wide enough that a chip's rounded end does not read as part of the
      word next to it. Right, with the rest of the values. */
-  .log-v .log-act { justify-content: flex-end; gap: 8px; }
+  /* ── การกระทำ IS ONE LINE: badge, then what was done ────────────────────
+
+     `flex-wrap: wrap` is right in the desktop table, where this cell is a
+     column of its own and has nothing else to do with the space. Here it
+     was the whole defect: beside its label the cell has about 250px of a
+     360px screen, and the moment a badge and a Thai verb came to more than
+     that the badge went to one line and the words to the next — two things
+     that are one fact, drawn as two.
+
+     Held on one line, the badge keeps its size (it is four words that mean
+     something and `.chip` is `nowrap`) and `.log-what` shrinks. The real
+     rows fit without either: one badge is the most any row can carry — the
+     write flag and the auth events are mutually exclusive by path, see
+     `isMutation` — and `เข้าสู่ระบบสำเร็จ` + `เข้าสู่ระบบ` is about 190 of
+     the 250. The ellipsis is for the longest labels in the table, which
+     reach thirty Thai characters. */
+  .log-v .log-act { flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; }
+  .log-act .chip { flex: none; }
+  /* `min-width: 0` first — a flex item will not go below its min-content
+     width without it, so the ellipsis would never be reached and the group
+     would push out of the card instead. */
+  .log-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* The label sits against the middle of what it labels rather than at the
+     top of it: this cell is a line and a route under it, and a label pinned
+     to the first of the two left a gap under itself that read as a missing
+     row. `center` here and nowhere else — every other cell in the card is
+     one line, where the two are the same thing. */
+  .stack-table.log-table tbody td[data-label="การกระทำ"] { align-items: center; }
 
   /* THE TWO BUTTONS BECOME TWO ROWS, full width and 44px tall — the size a
      thumb is aimed at, and the size every other button in a phone card takes

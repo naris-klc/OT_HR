@@ -773,8 +773,28 @@ function LogList({
                           {r.event !== 'request' && (
                             <span className={`chip ev-${r.event}`}>{EVENT_LABEL[r.event]}</span>
                           )}
-                          {r.write && <span className="chip edited">แก้ไขข้อมูล</span>}
-                          {r.action}
+                          {/* NOT ON การแก้ไขข้อมูล, where it is on every row.
+                              That tab asks the endpoint for `write=1`, so the
+                              badge is true of everything in the list and says
+                              nothing about any of it — and it is amber, sitting
+                              against an action name that already begins with
+                              แก้ไข. Two near-identical Thai phrases 8px apart
+                              with no space between words is what "ทับกัน" was:
+                              measured on the built app the chip ends at 198px
+                              and the words start at 206, so nothing overlaps —
+                              they simply cannot be told apart at a glance.
+
+                              It stays on ทั้งหมด, where writes are the few rows
+                              among the reads and the badge is the whole point. */}
+                          {r.write && tab !== 'edits' && <span className="chip edited">แก้ไขข้อมูล</span>}
+                          {/* THE PART THAT GIVES. Badge and words are one line
+                              on a phone, and when the two of them are wider
+                              than the space beside the label something has to
+                              lose: a chip cannot be shortened and still be
+                              read, so it is these words, and they are the ones
+                              that can afford it — the row's own title in the
+                              record it opens is this same string, whole. */}
+                          <span className="log-what">{r.action}</span>
                         </span>
                         <span className="log-sub mono">{r.method} {r.path}</span>
                       </span>
