@@ -1004,6 +1004,50 @@ body.has-dialog .mobile-nav { backdrop-filter: none; }
 .appbar .title { font: 600 16px/1.25 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .appbar .meta { font: 400 11.5px/1.3 var(--mono); color: var(--muted-2); letter-spacing: .04em; }
 .appbar .grow { flex: 1; min-width: 0; }
+/* THE HEADING AND ITS ⓘ, on one line and only as wide as they need.
+
+   `.title` ellipsises, which is what keeps a long page name out of the
+   avatar at 360px — and an ellipsis needs a width to happen in, so the title
+   keeps `min-width: 0` and the button is `flex: none` beside it. Laid out
+   the other way round the button is what gets squeezed, and a 17px circle
+   has nothing to give. */
+.appbar .title-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.appbar .title-line .title { min-width: 0; }
+
+/* The ⓘ's own box, so a press on the button can be told from a press outside
+   it — the panel dismisses on `pointerdown`, which reaches the document
+   before the button's own click, and a button that closed the panel on the
+   way down and reopened it on the way up would be a button that cannot shut
+   what it opened. See the effect at `noteOpen` in App.jsx. */
+.appbar .tip-wrap { display: inline-flex; flex: none; }
+
+/* ── the line the ⓘ opens ──────────────────────────────────────────────────
+
+   IT FLOATS, AND THAT IS THE POINT. As a block in the page it pushed the
+   whole screen down when it opened and pulled it back up when it closed —
+   on a phone that moves the tab strip and the first row of the table under
+   the thumb that is already reaching for them.
+
+   Anchored to `.appbar`, which is `position: sticky` and therefore the
+   containing block: the panel hangs under the heading it explains and stays
+   with the bar while the page scrolls beneath it. The bar's own `z-index: 20`
+   carries it over everything on the page without a number of its own.
+
+   Left and right are the bar's padding, so it lines up with the heading and
+   the avatar; `max-width` stops it becoming a 1200px ribbon on a desktop,
+   where the sentence is four inches of text in the middle of nothing. */
+.appbar .page-note {
+  position: absolute; top: calc(100% + 4px);
+  left: clamp(16px, 3vw, 32px); right: clamp(16px, 3vw, 32px);
+  max-width: 560px;
+  padding: 11px 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  /* The same lift `.pick-menu` uses — this app has one shadow for "this is
+     above the page" and a second one would read as a different kind of thing. */
+  box-shadow: 0 14px 34px var(--shadow-soft);
+  font: 400 12.5px/1.7 var(--sans); color: var(--muted);
+  animation: otfade .18s ease both;
+}
 .appbar .mark-sm {
   width: 30px; height: 30px; flex: none; border-radius: 7px;
   background: var(--green); color: var(--on-fill); display: grid; place-items: center;
@@ -7608,7 +7652,13 @@ table.mini tbody tr:hover { background: none; }
 .log-who.muted { color: var(--muted); font-weight: 400; }
 .log-who.mono, .log-sub.mono, .log-table .mono { font-family: var(--mono); }
 .log-sub { display: block; font: 400 11.5px/1.45 var(--sans); color: var(--muted-2); overflow-wrap: anywhere; }
-.log-act { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 500 13px/1.45 var(--sans); }
+.log-act { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 500 13px/1.45 var(--sans); }
+/* Everything in a cell that is not its label. No geometry of its own here —
+   on a wide screen the cell IS the column and this is one block inside it.
+   It exists for the phone card, where the label and the value are the two
+   halves of a flex row and the value has to be one item; see the block at
+   the bottom of this section. */
+.log-v { display: block; }
 
 /* The status number, coloured by `statusClass` — the same four-way partition
    the ผลลัพธ์ filter uses, so the colour on a row and the choice in the
@@ -7638,6 +7688,54 @@ table.mini tbody tr:hover { background: none; }
   .stack-table.log-table tbody td.log-when::before,
   .stack-table.log-table tbody td[data-label="บัญชีผู้ใช้งาน"]::before { content: none; }
   .stack-table.log-table tbody td.log-when { font-size: 12px; color: var(--muted); }
+  /* The two that lead the card carry no label, so there is nothing for them
+     to right-align against — left, like `.stack-code` and `.stack-name` on
+     ทะเบียนพนักงาน, which is the heading this pair was written to be. */
+  .stack-table.log-table tbody td.log-when,
+  .stack-table.log-table tbody td[data-label="บัญชีผู้ใช้งาน"] { text-align: left; }
+
+  /* ── การกระทำ / ผลลัพธ์ / ที่มา: a label/value row, not a float ─────────
+
+     THE FLOAT DOES NOT HOLD A CELL WHOSE VALUE IS A FLEX BOX. Everywhere
+     else in this app a stacked cell's label floats left and the value's line
+     boxes shorten around it (the long comment at `.stack-table tbody td`).
+     That works on inline content. `.log-act` is a flex container, so it
+     takes a BOX beside the float instead — a narrow column, about half the
+     card, in which two chips and a Thai action name wrap over three or four
+     lines while the rows above and below it run the full width. That is the
+     "cramped" reading: the same card, laid out two different ways.
+
+     As a flex row the label is an item, the value is an item, and each row
+     of the card ends at the same right edge whatever is inside it.
+
+     The two above are excluded because they print no label — a flex row with
+     one item would only re-introduce the alignment this just fixed. */
+  .stack-table.log-table tbody td:not(.log-when):not([data-label="บัญชีผู้ใช้งาน"]) {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  }
+  .stack-table.log-table tbody td:not(.log-when):not([data-label="บัญชีผู้ใช้งาน"])::before {
+    float: none; margin-right: 0; flex: none;
+  }
+  /* `min-width: 0` is the line that keeps a long value on the screen. A flex
+     item will not shrink below its min-content width by default, and the two
+     values most likely to be long — a user-agent's device string, a path with
+     an id in it — have no space in them to break at, so the card would grow
+     past the viewport. With the floor removed, the `overflow-wrap: anywhere`
+     the cell already sets does the wrapping.
+
+     NOT `word-break: break-all`, which breaks at every character rather than
+     only where nothing else will do: `192.168.109.119` would come apart mid
+     octet on a card that had room for it, and Thai would break mid-word. */
+  .log-v { flex: 1; min-width: 0; text-align: right; }
+  /* The badge and the action it belongs to, centred against each other —
+     8px is wide enough that a chip's rounded end does not read as part of the
+     word next to it. Right, with the rest of the values. */
+  .log-v .log-act { justify-content: flex-end; gap: 8px; }
+
+  /* Room at the edges: 16px across, so a right-aligned value stops where the
+     card's own text does rather than against its border, and 10px between
+     rows so five label/value pairs read as five rather than one block. */
+  .stack-table.log-table tbody tr { gap: 10px; padding: 14px 16px; }
   .log-detail { grid-template-columns: 1fr; gap: 2px; }
   .log-detail dt { margin-top: 8px; }
   /* A fortnight of bars at 360px is 14 columns of about 18px. Still readable

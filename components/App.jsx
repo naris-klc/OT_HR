@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
-import { Alert, PasswordInput } from './common.jsx';
+import { Alert, PasswordInput, TipButton } from './common.jsx';
 import Icon from './icons.jsx';
 import { ToastHost } from './Toast.jsx';
 import { BackProvider } from './nav.jsx';
@@ -262,7 +262,20 @@ const ROLE_LABEL = {
   employee: 'พนักงาน', manager: 'หัวหน้างาน', hr: 'ฝ่ายบุคคล', admin: 'ผู้ดูแลระบบ',
 };
 
-/** Page heading and the mono kicker under it, per tab. */
+/**
+ * Page heading, the mono kicker under it, and — where a page has one — the one
+ * line of standing context that belongs to the whole screen.
+ *
+ * THE THIRD FIELD IS OPTIONAL AND ALMOST ALWAYS ABSENT. It is for the fact that
+ * is true of a screen every time it is opened and is about none of what is on
+ * it: บันทึกระบบ is kept because the law says so, and that sentence was a
+ * footer under every list, drawn on two tabs and read once. Behind the ⓘ it is
+ * still one tap from the heading it belongs to and is no longer in the way of
+ * the rows somebody came to read.
+ *
+ * A page whose note would change with its data does not belong here — this
+ * table is a constant, and the heading is drawn before any screen has loaded.
+ */
 const PAGE = {
   mine: ['OT ของฉัน', 'MY OVERTIME'],
   approve: ['รออนุมัติ', 'PENDING · MANAGER'],
@@ -274,7 +287,10 @@ const PAGE = {
   departments: ['สรุป OT แยกแผนก', 'DEPARTMENT SUMMARY'],
   form: ['ใบ F-HR-027', 'PRINTABLE FORM'],
   admin: ['ตั้งค่าระบบ', 'SETTINGS & POLICY'],
-  logs: ['บันทึกระบบ', 'SYSTEM & ACCESS LOG'],
+  logs: [
+    'บันทึกระบบ', 'SYSTEM & ACCESS LOG',
+    'ระบบเก็บบันทึกตาม พ.ร.บ. คอมพิวเตอร์ มาตรา ๒๖ (ไม่น้อยกว่า 90 วัน) · รวมอยู่ในไฟล์สำรองข้อมูลรายวัน',
+  ],
   profile: ['ข้อมูลส่วนตัว', 'MY PROFILE'],
 };
 
@@ -551,7 +567,47 @@ function Shell({ session, onLogout }) {
   // row out from under it.
   const showFab = user.maySubmitOt && tab === 'mine';
 
-  const [title, meta] = PAGE[tab] || ['', ''];
+  const [title, meta, note] = PAGE[tab] || ['', '', null];
+  /**
+   * Whether the ⓘ beside the heading is showing its line.
+   *
+   * Shut on arrival and shut again on the way out: this is an answer to a
+   * question somebody asked once, not a preference. Left open it would put the
+   * sentence back at the top of every screen they moved to next, which is the
+   * footer this replaced with an extra tap in front of it.
+   */
+  const [noteOpen, setNoteOpen] = useState(false);
+  useEffect(() => { setNoteOpen(false); }, [tab]);
+  /**
+   * The two boxes a press can land in without meaning "shut it".
+   *
+   * THE BUTTON IS THE TRAP HERE, and it is worth the two refs. The dismiss
+   * listens on `pointerdown`, which fires before `click` — so a press on the ⓘ
+   * while the panel is open would close it on the way down and the button's own
+   * onClick would open it again on the way up. Nothing visible happens, and the
+   * panel becomes a thing that cannot be shut by the control that opened it.
+   *
+   * The panel itself is the second: a press inside it is somebody reading, and
+   * on a phone it is also the start of a scroll.
+   */
+  const tipRef = useRef(null);
+  const noteRef = useRef(null);
+  useEffect(() => {
+    if (!noteOpen) return undefined;
+    const dismiss = (e) => {
+      if (tipRef.current?.contains(e.target) || noteRef.current?.contains(e.target)) return;
+      setNoteOpen(false);
+    };
+    /* Escape belongs to whatever is above this: a dialog opened over the page
+       still closes first, so this only fires when the panel is the top thing. */
+    const onKey = (e) => { if (e.key === 'Escape' && !e.defaultPrevented) setNoteOpen(false); };
+    document.addEventListener('pointerdown', dismiss);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [noteOpen]);
   const initials = (user.code || '').replace(/[^A-Za-z0-9]/g, '').slice(-2).toUpperCase();
 
   return (
@@ -634,13 +690,46 @@ function Shell({ session, onLogout }) {
             <BrandMark className="mark-sm" alt="" />
           </button>
           <div className="grow">
-            <div className="title">{title}</div>
+            <div className="title-line">
+              <div className="title">{title}</div>
+              {/* The app's own tip control, wearing an `i`. It is the same 17px
+                  circle that carries a `?` on every form field — same ink, same
+                  focus ring, same keys — because "there is something to explain
+                  here" is one promise and should not be two controls. The glyph
+                  is the difference between the two things being explained: a
+                  field asks what to type, a page heading does not ask anything.
+
+                  It holds the sentence in `title` for a pointer and toggles the
+                  line below for a thumb, which is the whole reason it is a
+                  button and not a hover — a phone has no hover to give. */}
+              {note && (
+                <span className="tip-wrap" ref={tipRef}>
+                  <TipButton
+                    glyph="i"
+                    text={note}
+                    of={title}
+                    open={noteOpen}
+                    onToggle={() => setNoteOpen((v) => !v)}
+                  />
+                </span>
+              )}
+            </div>
             <div className="meta">{meta}</div>
           </div>
           {/* On mobile the sidebar is gone, so this is the way to ข้อมูลส่วนตัว —
               and to ออกจากระบบ, which now lives on that page rather than one
               mistap away here. */}
           <button className="avatar" onClick={() => goTab('profile')} title="ข้อมูลส่วนตัว">{initials}</button>
+          {/* OVER THE PAGE, NOT IN IT. Inside the bar because the bar is what it
+              is anchored to — `.appbar` is sticky, which makes it the containing
+              block for this, so the panel hangs under the heading it belongs to
+              and travels with it when the page scrolls.
+
+              It closes on a press anywhere outside itself and the ⓘ, on Escape,
+              and on leaving the screen; see the effect at `noteOpen`. */}
+          {note && noteOpen && (
+            <div className="page-note" ref={noteRef} role="note">{note}</div>
+          )}
         </header>
 
         <main>

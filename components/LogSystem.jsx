@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api.js';
 import {
-  EVENT_LABEL, FAILED_LOGIN_ALERT, RETENTION_MIN_DAYS, STATUS_CLASS_LABEL,
+  EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
 } from '@/lib/accessLog.js';
 import {
   Alert, Empty, Field, Modal, ClearButton, useScrollEdge,
@@ -189,7 +189,12 @@ function Overview({ onOpenTab, onFilter }) {
             label="REQUESTS"
             value={data.requests}
             unit="ครั้ง"
-            note={`ทั้งหมดในระบบ ${data.total.toLocaleString('th-TH')} รายการ`}
+            /* The footer used to say how far back this goes. It is one clause
+               and it belongs to the count it qualifies — 371 rows means one
+               thing if the oldest is from March and another if it is from
+               Tuesday — so it moved here rather than being lost with the rest
+               of the footer. */
+            note={`ทั้งหมดในระบบ ${data.total.toLocaleString('th-TH')} รายการ${data.oldest ? ` · เก่าสุด ${atShort(data.oldest)}` : ''}`}
             onClick={() => drill('all', {})}
           />
           <Tile
@@ -310,8 +315,6 @@ function Overview({ onOpenTab, onFilter }) {
           })}
         />
       </div>
-
-      <RetentionNote retention={data.retention} oldest={data.oldest} total={data.total} />
     </>
   );
 }
@@ -744,22 +747,34 @@ function LogList({
                           </>
                         )}
                     </td>
+                    {/* `.log-v` — one box holding everything that is not the
+                        label. It changes nothing on a wide screen, where these
+                        cells are a column of their own; on a phone the label
+                        and this box are the two halves of a flex row, and
+                        without it the value's two lines would become two flex
+                        items sitting side by side. See `.log-v` in styles. */}
                     <td data-label="การกระทำ">
-                      <span className="log-act">
-                        {r.event !== 'request' && (
-                          <span className={`chip ev-${r.event}`}>{EVENT_LABEL[r.event]}</span>
-                        )}
-                        {r.write && <span className="chip edited">แก้ไขข้อมูล</span>}
-                        {r.action}
+                      <span className="log-v">
+                        <span className="log-act">
+                          {r.event !== 'request' && (
+                            <span className={`chip ev-${r.event}`}>{EVENT_LABEL[r.event]}</span>
+                          )}
+                          {r.write && <span className="chip edited">แก้ไขข้อมูล</span>}
+                          {r.action}
+                        </span>
+                        <span className="log-sub mono">{r.method} {r.path}</span>
                       </span>
-                      <span className="log-sub mono">{r.method} {r.path}</span>
                     </td>
                     <td data-label="ผลลัพธ์">
-                      <span className={`chip sc-${r.statusClass}`}>{r.status ?? '—'}</span>
+                      <span className="log-v">
+                        <span className={`chip sc-${r.statusClass}`}>{r.status ?? '—'}</span>
+                      </span>
                     </td>
                     <td data-label="ที่มา">
-                      <span className="log-who mono">{r.ip || '—'}</span>
-                      <span className="log-sub">{r.device}</span>
+                      <span className="log-v">
+                        <span className="log-who mono">{r.ip || '—'}</span>
+                        <span className="log-sub">{r.device}</span>
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -782,8 +797,6 @@ function LogList({
           )}
         </>
       )}
-
-      {data && <RetentionNote retention={data.retention} />}
 
       {open && <RecordDetail record={open} onClose={() => setOpen(null)} />}
     </div>
@@ -863,26 +876,3 @@ function Row({ k, v, note, mono = false }) {
   );
 }
 
-/**
- * How long these records are kept, said on the screen rather than in a comment.
- *
- * มาตรา ๒๖ puts a floor of ninety days under this, and the one thing an
- * administrator has to be able to answer without reading any source is whether
- * this system clears it. The answer depends on `LOG_RETENTION_DAYS`, which is
- * on the server and not on this screen, so the endpoint sends it.
- */
-function RetentionNote({ retention, oldest, total }) {
-  if (!retention) return null;
-  return (
-    <div className="hint" style={{ marginTop: 14, marginBottom: 0 }}>
-      {retention.days
-        ? `ระบบลบบันทึกที่เก่ากว่า ${retention.days} วันโดยอัตโนมัติ (ตั้งค่าที่ LOG_RETENTION_DAYS)`
-        : 'ระบบเก็บบันทึกไว้ทั้งหมด ไม่มีการลบอัตโนมัติ'}
-      {' '}· พ.ร.บ. คอมพิวเตอร์ มาตรา ๒๖ กำหนดให้เก็บข้อมูลจราจรทางคอมพิวเตอร์
-      {' '}ไม่น้อยกว่า {RETENTION_MIN_DAYS} วัน
-      {oldest && <> · บันทึกเก่าสุดที่มีคือ {atShort(oldest)}</>}
-      {total != null && <> · รวม {total.toLocaleString('th-TH')} รายการ</>}
-      {' '}· บันทึกนี้รวมอยู่ในไฟล์สำรองข้อมูลรายวันด้วย
-    </div>
-  );
-}

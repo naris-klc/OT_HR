@@ -1291,8 +1291,16 @@ export function PasswordInput({ shown, onToggle, ...props }) {
  * A real <button>, not a styled span: it is reached by Tab, answers Enter and
  * Space, and says whether it is open — the sentence behind it is the only
  * explanation of the field, so a pointer must not be the one way to it.
+ *
+ * `glyph` IS THE ONLY THING A CALLER MAY CHANGE, and there are two: `?` on a
+ * field, where the question is "what do I put in this box", and `i` beside a
+ * page heading, where nothing is being asked and the note is standing context.
+ * The circle is the button's own border either way, so an `i` in it is the ⓘ
+ * every screen means by that mark — drawn at the same 17px, in the same ink,
+ * answering the same keys as its sibling rather than being a second control
+ * that happens to look like one.
  */
-export function TipButton({ text, of, open, onToggle }) {
+export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
   return (
     <button
       type="button"
@@ -1303,7 +1311,7 @@ export function TipButton({ text, of, open, onToggle }) {
       aria-label={`คำอธิบายของ ${of}`}
       onClick={onToggle}
     >
-      ?
+      {glyph}
     </button>
   );
 }
