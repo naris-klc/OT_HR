@@ -94,6 +94,12 @@ export const GET = route(async (req) => {
     r.userAgent || '',
   ]));
 
-  const stamp = `${q.from || 'เริ่มต้น'}_${q.to || 'ล่าสุด'}`;
+  /**
+   * The dates in the name, in digits — so the ASCII fallback `csvResponse`
+   * builds still says WHICH period this file covers when the Thai half of the
+   * name cannot survive the header. A stamp reading `เริ่มต้น_ล่าสุด` would
+   * come out as `_____` there and identify nothing.
+   */
+  const stamp = `${q.from || 'start'}_${q.to || 'latest'}`;
   return csvResponse(`บันทึกระบบ_${stamp}.csv`, body);
 });

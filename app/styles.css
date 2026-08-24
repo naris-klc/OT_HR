@@ -7532,6 +7532,11 @@ table.mini tbody tr:hover { background: none; }
 
 /* ── the four counted lists ─────────────────────────────────────────────── */
 .log-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+/* The gap is the spacing here. `.card` carries a 16px bottom margin of its own
+   for the stacked layout everything else uses, and left on inside a grid it
+   adds to the row gap only — so the columns would sit 14px apart and the rows
+   30px, which reads as two loose pairs rather than one block of four. */
+.log-columns > .card { margin-bottom: 0; }
 .log-tally { list-style: none; margin: 0; padding: 0; }
 .log-tally li + li { border-top: 1px solid var(--line-softer); }
 .log-tally li > button, .log-tally li > .static {

@@ -300,6 +300,112 @@ reason in the edit dialog (`test/lockout.test.js`):
 
 ---
 
+## บันทึกระบบ — ข้อมูลจราจรทางคอมพิวเตอร์
+
+**ตั้งค่าระบบ ไม่ใช่ที่อยู่ของหน้านี้ — เป็นแท็บของตัวเอง และเห็นได้เฉพาะ
+ผู้ดูแลระบบ** (`components/LogSystem.jsx`, `app/api/logs/`).
+
+Three trails already answer *what did this figure used to be*: `history` on
+OtEntry, `otEmployeeAudits` for the roster, `otPolicyVersions` for the
+calculation. Every one of them is about a **value**. None of them can answer the
+question พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ **มาตรา ๒๖** asks of
+whoever runs a system: given a moment in time, *who* was connected, *from
+where*, and what did they touch — including the person who only ever looked, and
+the person whose password was refused.
+
+A read leaves no trace in any of the three. Neither does a login that failed
+eleven times at 02:00 from an address nobody recognises. `otAccessLogs` is where
+those land.
+
+### What is recorded, and where the recording happens
+
+One document per API call, written by **`route()` in `lib/http.js`** — the one
+door every handler in this app comes through. That placement is the whole
+design: a route added next year is logged without its author knowing this
+feature exists, and the alternative (a `logAccess()` at the top of fifty
+handlers) has exactly one failure mode, which is the handler somebody wrote in a
+hurry. The name on the row comes from **`requireAuth`**, for the same reason —
+it is the function that knows, and a route that never calls it authenticated
+nobody, which is exactly what a nameless row should mean.
+
+The write is scheduled with `after()` from `next/server`, so it never sits
+between the handler and the person waiting for it, and it happens even when the
+handler threw — a 500 is the case a record is worth most.
+
+| | |
+|---|---|
+| เวลา · วิธี · เส้นทาง · พารามิเตอร์ | as requested, query string redacted |
+| ผลลัพธ์ · เวลาที่ใช้ | the status the **server** decided, not what the handler intended |
+| ผู้ใช้งาน | code, name and role denormalised — the log still answers after an account is deleted |
+| หมายเลขไอพี · อุปกรณ์ | first hop of `x-forwarded-for`, plus the whole chain when there was one |
+| เหตุการณ์ | `request` · `login` · `login_failed` · `logout` |
+
+### What is never recorded
+
+**The request body. Not summarised, not truncated, not "just the keys."**
+`lib/rosterAudit.js` names the fields it may record; this goes one further and
+records no field value at all. `POST /api/auth/login` and
+`POST /api/employees/me/password` carry a plaintext password, and a logger with
+any body-recording path in it is one refactor away from writing that password
+into a collection ผู้ดูแลระบบ reads on screen. There is no such path, there is
+no field for one on the schema, and `test/logRouteGuards.test.js` fails if
+either changes.
+
+The response body is out for a second reason: the answer to
+`GET /api/employees` is the roster, and a log that kept answers would be a
+second copy of every personal detail in the system, in a collection with none of
+the per-row permissions protecting the first.
+
+**The one exception** is `attemptedCode` — the employee code typed at a login
+that failed. Without it a dictionary run is four hundred identical rows saying
+somebody failed to log in as somebody, because the refusal message is
+deliberately the same whether the code was real or not.
+
+### ผู้ดูแลระบบ only — and not ฝ่ายบุคคล
+
+Every other screen HR can reach is about OT. This one is about **people**: which
+account was connected at 22:40, from which phone, and what it opened. The
+ฝ่ายบุคคล login is shared by the whole department, so handing them a screen that
+names who did what tells each of them what all the others did — while the log's
+record of HR's own activity would be readable by whichever of them was curious.
+
+**Reading the log is itself logged.** That is not an accident of the
+implementation; it is the property that makes the collection worth anything. A
+log an administrator can read without trace says nothing about the one account
+that can reach everything.
+
+There is **no delete, no edit and no "clear log"** — every field on the model is
+`immutable`, no route offers a write, and the screen has nothing to draw.
+
+### เก็บไว้นานเท่าไร
+
+มาตรา ๒๖ sets a floor of **ninety days**, not a ceiling.
+
+* Unset `LOG_RETENTION_DAYS` — the default — and **nothing is ever deleted.** A
+  collection that grew too big is a problem anybody can solve on any Tuesday;
+  records deleted before they were asked for is a problem nobody can solve.
+* Set it and a TTL index is created. A value below 90 is **raised to 90 rather
+  than obeyed**: the environment can lengthen retention and cannot shorten it
+  past what the law requires.
+* Mongo reads that index once, when it creates it. Changing the variable later
+  does not move an index that already exists — that takes a `collMod` or
+  dropping `createdAt_1`.
+
+`npm run backup` takes the collection with everything else, because it reads the
+collections the database actually has rather than a list in the model registry.
+
+### Handing a copy over
+
+**ดาวน์โหลด CSV ตามตัวกรอง** on any of the list tabs, or
+`GET /api/exports/logs.csv?from=…&to=…`. The request this exists for does not
+come from somebody who will be given a login: what is asked for is a copy
+covering a stated period, readable without this application. The file carries
+**every** column including the ones the screen summarises — the full user-agent
+rather than "Chrome · Windows", the whole forwarded chain rather than the first
+hop. The screen's job is to be readable; the file's job is to be complete.
+
+---
+
 ## Layout
 
 ```
@@ -307,8 +413,9 @@ src/config/policy.js      every [OPEN] item as a named flag — start here
 src/config/companies.js   the two payroll entities and the code-prefix rule
 src/lib/otEngine.js       the arithmetic: segmentation, buckets, break, rounding
 src/lib/csv.js            CSV in/out, UTF-8 BOM on the way out
-src/models/               ApprovalDelegation, Department, Employee, Holiday,
-                          OtEntry, PolicyVersion, PolicyReplayRun, Setting
+src/models/               AccessLog, ApprovalDelegation, Department, Employee,
+                          EmployeeAudit, Holiday, OtEntry, PolicyVersion,
+                          PolicyReplayRun, Setting
 src/services/otService.js engine ↔ database: compute, cap check, replay
 src/migrate-company.js    one-off: fill `company` on a pre-split database
 src/migrate-policy-version.js
@@ -337,6 +444,14 @@ lib/delegationQuery.js    the reads and the clock behind it, kept apart for the
 lib/accounting.js         สรุป OT ส่งบัญชี, shared by its report and its CSV
 lib/accountingRows.js     entries → rows, the hours that reach no row, and the
                           sheet's own reconciliation — pure
+lib/accessLog.js          what a traffic record may say and may never say, how
+                          an address and a request are read — pure
+                          (พ.ร.บ. คอมพิวเตอร์ มาตรา ๒๖)
+lib/accessLogWrite.js     the one mongoose call behind it, kept apart for the
+                          reason policyConfirmSave.js is
+lib/requestContext.js     an AsyncLocalStorage scratchpad one request long — how
+                          requireAuth puts a name on a log row without every
+                          handler having to pass one
 lib/departmentSummary.js  the same month regrouped by แผนก, both companies in
                           one count — shared by its screen, its CSV and its
                           printed form
