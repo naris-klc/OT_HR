@@ -72,8 +72,16 @@ const employeeAuditSchema = new mongoose.Schema(
      * one click, and a trail that made those look like a hundred deliberate
      * edits on the ทะเบียน screen would send whoever is reading it looking for a
      * hundred decisions that were really one.
+     *
+     * 'script' is src/reset-admin-password.js and is the one value with no
+     * session behind it, which is exactly why it has to be distinguishable: a
+     * `by` that is empty could be a bug in any of the other paths, and telling
+     * "nobody was logged in because this ran at the console" apart from "the
+     * actor was lost" is not something a reader can do from the empty field
+     * alone. Every row carrying it is a password reset made outside the
+     * application by somebody with the server in front of them.
      */
-    source: { type: String, enum: ['form', 'import'], default: 'form', immutable: true },
+    source: { type: String, enum: ['form', 'import', 'script'], default: 'form', immutable: true },
 
     changes: { type: [changeSchema], default: [], immutable: true },
 

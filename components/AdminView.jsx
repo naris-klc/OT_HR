@@ -55,6 +55,17 @@ const SECTIONS = [
   // changed lately" — is asked by somebody who does not yet know whose row to
   // open. The pop-up on the row stays for the other question.
   { key: 'rosterAudit', label: 'ประวัติการแก้ทะเบียน' },
+  /**
+   * The three strings on the paperwork. LAST, because it is the section
+   * somebody opens once a year — the tab strip is ordered by how often a tab is
+   * wanted, not by how important what is behind it feels.
+   *
+   * It had no screen at all until now and `PATCH /api/settings` was
+   * ผู้ดูแลระบบ-only, so correcting a company name meant an API call typed by
+   * hand. Both halves of that are fixed together, because either one alone
+   * leaves the value unchangeable in practice.
+   */
+  { key: 'identity', label: 'ชื่อบริษัทและฟอร์ม' },
 ];
 
 /**
@@ -121,13 +132,14 @@ export default function AdminView({ user, initialSection }) {
         </div>
       </div>
       {section === 'departments' && (
-        <Departments onGo={setSection} roster={roster} />
+        <Departments user={user} onGo={setSection} roster={roster} />
       )}
       {section === 'employees' && <Employees user={user} />}
       {section === 'holidays' && <Holidays />}
       {section === 'policy' && <Policy user={user} />}
       {section === 'delegation' && <Delegation user={user} scope="all" />}
       {section === 'rosterAudit' && <RosterAudit />}
+      {section === 'identity' && <Identity />}
     </>
   );
 }
@@ -555,10 +567,32 @@ function capNote(policy) {
     + ' · เพดานนับรวมวันหยุดด้วย ถ้าต้องการปิดโอทีเฉพาะวันทำงานปกติ ให้ตั้งที่ “รูปแบบโอที” ในปุ่มแก้ไข';
 }
 
-function Departments({ onGo, roster }) {
+/**
+ * Why the สถานะ badge will not press, for the one role it will not press for.
+ *
+ * The same sentence the server refuses with (`departmentPermission` in
+ * lib/departments.js) said in the space a tooltip has — including the half that
+ * is not about permission at all: what closing a department actually does. HR
+ * reaching for this switch is usually reaching for "remove this department",
+ * and the useful answer names the consequence, not just the role.
+ */
+const DEPT_ACTIVE_LOCK = 'ปิด/เปิดใช้งานแผนก ทำได้โดยผู้ดูแลระบบเท่านั้น '
+  + '— เป็นการลบแผนกอย่างเดียวที่ระบบนี้มี พนักงานในแผนกจะยื่น OT ไม่ได้ '
+  + 'และแผนกจะหายจากช่องเลือกทุกที่ · ชื่อ รหัส เพดาน หัวหน้า และรูปแบบโอที แก้ได้ตามปกติที่ปุ่ม “แก้ไข”';
+
+function Departments({ user, onGo, roster }) {
   const { rows, people, reload: load } = roster;
   /** Read for one sentence — see `capNote`. */
   const capTip = capNote(usePolicy());
+  /**
+   * Mirrors `departmentPermission` in lib/departments.js — every other field on
+   * this screen is ฝ่ายบุคคล's, and `active` is not, in either direction.
+   *
+   * Not a substitute for the server, which is what enforces it: this only means
+   * the one control nobody may press does not look pressable. Same relationship
+   * `mayEdit` has to `rosterPermission` on the พนักงาน screen.
+   */
+  const mayClose = user?.role === 'admin';
   /** Whether เพิ่มแผนก is open — the only way this screen creates a row. */
   const [adding, setAdding] = useState(false);
   /**
@@ -775,11 +809,21 @@ function Departments({ onGo, roster }) {
                       that toggles is a smaller target than 44px, so the pill is
                       padded out to 36 and the whole cell is the target — enough
                       for a control that is pressed rarely and is one press to
-                      undo either way. */}
+                      undo either way.
+
+                      FOR ฝ่ายบุคคล IT IS A CHIP AFTER ALL, and it is `disabled`
+                      rather than swapped for a `<span>`: the state still has to
+                      read the same in both roles, and a disabled button keeps
+                      the tooltip that says who can change it. Turning it into
+                      plain text would answer "what state is this แผนก in" and
+                      silently drop the other half of the cell's job. */}
                   <button
                     className={`state-badge ${d.active ? 'on' : 'off'}`}
                     aria-pressed={d.active}
-                    title={d.active ? 'กดเพื่อปิดใช้งานแผนกนี้' : 'กดเพื่อเปิดใช้งานแผนกนี้'}
+                    disabled={!mayClose}
+                    title={mayClose
+                      ? (d.active ? 'กดเพื่อปิดใช้งานแผนกนี้' : 'กดเพื่อเปิดใช้งานแผนกนี้')
+                      : DEPT_ACTIVE_LOCK}
                     onClick={() => update(d._id, { active: !d.active })}
                   >
                     <span className="dot" aria-hidden="true" />
@@ -1864,6 +1908,17 @@ function Employees({ user }) {
   // offered, and a disabled button explains itself where a 403 does not.
   const isAdmin = user?.role === 'admin';
   const mayEdit = (row) => isAdmin || row.role !== 'admin';
+  /**
+   * ตั้งรหัสใหม่ is narrower than แก้ไข by exactly one row: your own.
+   *
+   * Mirrors `selfEditPermission` the way `mayEdit` mirrors `rosterPermission`,
+   * and it is a second predicate rather than a tightening of the first because
+   * the two genuinely differ — HR correcting their own job title is an ordinary
+   * save, and only the password button is refused on that row. Folding them
+   * together would grey out the whole row and say the wrong thing about why.
+   */
+  const isSelf = (row) => String(row._id ?? '') === String(user?.id ?? '');
+  const mayReset = (row) => mayEdit(row) && !isSelf(row);
 
   /** The rows the table draws. `rows` stays the register, for the count. */
   const shown = React.useMemo(() => searchPeople(rows, find), [rows, find]);
@@ -2452,8 +2507,10 @@ function Employees({ user }) {
                     <button
                       className="btn ghost sm act-security"
                       onClick={() => setResetting(p)}
-                      disabled={!mayEdit(p)}
-                      title={mayEdit(p) ? 'ตั้งรหัสผ่านใหม่ให้พนักงานคนนี้' : 'บัญชีผู้ดูแลระบบตั้งรหัสใหม่ได้โดยผู้ดูแลระบบเท่านั้น'}
+                      disabled={!mayReset(p)}
+                      title={mayReset(p) ? 'ตั้งรหัสผ่านใหม่ให้พนักงานคนนี้' : RESET_LOCK[
+                        isSelf(p) ? 'self' : 'adminRow'
+                      ]}
                     >
                       ตั้งรหัสใหม่
                     </button>
@@ -2554,6 +2611,28 @@ const LOCK_NOTE = {
   // Not about who is editing — about what the system would be left with.
   lastAdmin: 'นี่คือผู้ดูแลระบบที่ใช้งานอยู่คนสุดท้าย — ถ้าเปลี่ยนบทบาทหรือปิดใช้งาน '
     + 'จะไม่เหลือใครที่ตั้งผู้ดูแลระบบคนใหม่ได้ (ฝ่ายบุคคลตั้งไม่ได้) ให้ตั้งอีกคนก่อน',
+};
+
+/**
+ * The two reasons ตั้งรหัสใหม่ is not available on a row, as the button's own
+ * tooltip.
+ *
+ * Its own map rather than two more keys on `LOCK_NOTE`, because these hang on a
+ * BUTTON in the table and the rest hang on greyed INPUTS inside the edit dialog
+ * — different readers, different moment, and `adminRow` needs a shorter form
+ * here than the sentence the dialog can afford.
+ *
+ * `self` is the one worth spelling out: a disabled button on your own row reads
+ * as a bug unless it says where the working path is. It names หน้าโปรไฟล์,
+ * because "you may not" without "go here instead" is how somebody ends up
+ * asking ฝ่ายบุคคล to do it for them — which would be the same reset from
+ * another account and would defeat the rule.
+ */
+const RESET_LOCK = {
+  self: 'นี่คือบัญชีของคุณเอง — ตั้งรหัสผ่านใหม่ให้ตัวเองจากหน้านี้ไม่ได้ '
+    + 'เพราะหน้านี้ออกรหัสใหม่โดยไม่ถามรหัสเดิม '
+    + '· ถ้าต้องการเปลี่ยนรหัสผ่านของตัวเอง ให้ไปที่หน้าโปรไฟล์ ซึ่งต้องกรอกรหัสเดิมก่อน',
+  adminRow: 'บัญชีผู้ดูแลระบบตั้งรหัสใหม่ได้โดยผู้ดูแลระบบเท่านั้น',
 };
 
 /**
@@ -3698,6 +3777,20 @@ const ACTION_LABEL = {
 };
 
 /**
+ * Where the write came from, when it was not this screen.
+ *
+ * 'form' has no entry, deliberately: it is every ordinary row, and a label on
+ * every line is a label nobody reads. The two that are here are the two where
+ * "โดย ..." on the same line does not tell the whole story — a CSV import made
+ * a hundred rows from one click, and a server script made this one with nobody
+ * logged in at all.
+ */
+const SOURCE_LABEL = {
+  import: ' (นำเข้า CSV)',
+  script: ' (สคริปต์บนเซิร์ฟเวอร์)',
+};
+
+/**
  * The same three tones ประวัติรายการ uses, meaning the same three things: blue
  * for the row appearing, amber for its values being rewritten, grey for
  * something that happened to the account without changing what the roster says
@@ -3772,7 +3865,7 @@ function TrailList({ records, depts, empty, withWho = false }) {
           <div className="head">
             <span className="act">
               {ACTION_LABEL[r.action] || r.action}
-              {r.source === 'import' && ' (นำเข้า CSV)'}
+              {SOURCE_LABEL[r.source] || ''}
             </span>
             {/* The code and name as they stood when the record was written —
                 see src/models/EmployeeAudit.js. A renumbering's own record must
@@ -3802,6 +3895,175 @@ function TrailList({ records, depts, empty, withWho = false }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+/**
+ * ชื่อบริษัทและฟอร์ม — the three strings that are text on paperwork and nothing
+ * else.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THIS SCREEN EXISTS AT ALL
+ *
+ * The three values have been in the Setting singleton since the first commit
+ * and there has never been a control for any of them. `PATCH /api/settings` was
+ * ผู้ดูแลระบบ-only, so the whole procedure for fixing a misspelled company name
+ * was: open a terminal, write the JSON, send the request with the right cookie.
+ * A field that can only be changed that way is a field that does not get
+ * changed, and `formCode` is the one printed at the foot of every ใบ F-HR-027 —
+ * the number the QMS register has to agree with when the form goes to Rev.5.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY IT IS FLAT AND HAS NO CONFIRMATION
+ *
+ * Every other section on ตั้งค่าระบบ writes something an hour is computed from,
+ * and each carries the apparatus that goes with that — a version record, a
+ * ยืนยัน badge, a warning naming how many entries will move. None of it belongs
+ * here. Nothing in this system reads these three strings to decide anything:
+ * they are printed, and a value typed wrong is visible on the next sheet and
+ * fixed by typing it again. Wrapping them in the same ceremony would teach
+ * whoever reads it that the ceremony means nothing.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * EACH FIELD SAYS WHERE IT COMES OUT, AND TWO OF THEM SAY "NOWHERE YET"
+ *
+ * That is not a placeholder for a screen still to be built — it is the honest
+ * state of the data. `formCode` is read by
+ * app/api/reports/form/[period]/route.js and printed by PrintForm; the two
+ * company names are read by nothing. The sidebar footer and the browser tab
+ * carry the company's name as literal text in the source, so editing the boxes
+ * here will not move them. A box whose note says it changes the paperwork, and
+ * does not, is worse than no box: it sends whoever typed in it looking for a
+ * printer problem. Left as it is with the truth on the label, until somebody
+ * decides whether a controlled form should print a name it does not print
+ * today — which is a question about F-HR-027, not about this screen.
+ */
+function Identity() {
+  const [before, setBefore] = useState(null);
+  const [form, setForm] = useState(null);
+  const [error, setError] = useState('');
+  const [ok, setOk] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.get('/settings')
+      .then((res) => {
+        // Two copies deliberately: `before` is what the server has and is what
+        // `dirty` is measured against, so a save that succeeds moves the
+        // baseline and the button goes quiet again without a reload.
+        const values = {
+          companyName: res.settings?.companyName || '',
+          companyNameEn: res.settings?.companyNameEn || '',
+          formCode: res.settings?.formCode || '',
+        };
+        setBefore(values);
+        setForm(values);
+      })
+      .catch((err) => setError(err.message));
+  }, []);
+
+  if (!form) {
+    return (
+      <div className="card">
+        <h2>ชื่อบริษัทและรหัสฟอร์ม</h2>
+        {error ? <Alert kind="error">{error}</Alert> : <Empty>กำลังโหลด…</Empty>}
+      </div>
+    );
+  }
+
+  const set = (patch) => { setForm((f) => ({ ...f, ...patch })); setOk(''); };
+  const dirty = Object.keys(before).some((k) => form[k].trim() !== before[k]);
+  // `formCode` is the one the server would happily store as an empty string —
+  // `!= null` accepts ''. An empty form code prints as a blank at the foot of
+  // F-HR-027, which is a controlled document with a missing control number.
+  const ready = dirty && form.formCode.trim() && form.companyName.trim();
+
+  async function save() {
+    setError('');
+    setBusy(true);
+    try {
+      const values = {
+        companyName: form.companyName.trim(),
+        companyNameEn: form.companyNameEn.trim(),
+        formCode: form.formCode.trim(),
+      };
+      await api.patch('/settings', values);
+      setBefore(values);
+      setForm(values);
+      setOk('บันทึกแล้ว — ใบ F-HR-027 ที่พิมพ์หลังจากนี้จะใช้ค่าใหม่');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>ชื่อบริษัทและรหัสฟอร์ม</h2>
+      <div className="hint">
+        ข้อความบนหัวและท้ายกระดาษเท่านั้น — ไม่มีชั่วโมง เพดาน หรืออัตราใดอ่านค่าเหล่านี้
+        จึงไม่ต้องคำนวณใบเก่าใหม่ และแก้ผิดก็แก้กลับได้ทันที
+      </div>
+      {error && <Alert kind="error">{error}</Alert>}
+      {ok && <Alert kind="ok">{ok}</Alert>}
+
+      <div className="form-grid">
+        <Field
+          label="รหัสฟอร์ม"
+          note="พิมพ์อยู่มุมล่างของใบ F-HR-027 ทุกใบ · เปลี่ยนเมื่อฟอร์มขึ้น Rev. ใหม่ — ต้องตรงกับทะเบียนเอกสาร"
+        >
+          <input
+            value={form.formCode}
+            placeholder="F-HR-027 Rev.4"
+            onChange={(e) => set({ formCode: e.target.value })}
+          />
+          {!form.formCode.trim() && (
+            <div className="field-note error">รหัสฟอร์มว่างไม่ได้ — ใบที่พิมพ์ออกมาจะไม่มีเลขที่เอกสาร</div>
+          )}
+        </Field>
+
+        {/* The two below carry the same note on purpose. It is one fact about
+            both of them and saying it once per field is how each box answers
+            the question its own reader is asking — "will typing here change
+            what I just printed". */}
+        <Field
+          label="ชื่อบริษัท (ไทย)"
+          note="เก็บไว้ในระบบ แต่ยังไม่มีหน้าจอหรือแบบฟอร์มใดพิมพ์ค่านี้ออกมา — ชื่อบนแถบข้างและบนแท็บเบราว์เซอร์เป็นข้อความตายตัวในโค้ด"
+        >
+          <input
+            value={form.companyName}
+            placeholder="บริษัท ไพรมัส อินสตรูเมนท์ จำกัด"
+            onChange={(e) => set({ companyName: e.target.value })}
+          />
+          {!form.companyName.trim() && (
+            <div className="field-note error">ชื่อบริษัทว่างไม่ได้</div>
+          )}
+        </Field>
+
+        <Field
+          label="ชื่อบริษัท (อังกฤษ)"
+          note="เก็บไว้ในระบบเช่นกัน และยังไม่มีที่ใดพิมพ์ออกมา · เว้นว่างได้"
+        >
+          <input
+            value={form.companyNameEn}
+            placeholder="Primus Instrument Co., Ltd."
+            onChange={(e) => set({ companyNameEn: e.target.value })}
+          />
+        </Field>
+      </div>
+
+      <div className="row" style={{ marginTop: 14 }}>
+        <button className="btn" disabled={!ready || busy} onClick={save}>
+          {busy ? 'กำลังบันทึก…' : 'บันทึก'}
+        </button>
+        {dirty && !busy && (
+          <button className="btn ghost" onClick={() => { setForm(before); setError(''); }}>
+            ยกเลิกการแก้ไข
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

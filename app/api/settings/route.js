@@ -28,8 +28,27 @@ export const GET = route(async (req) => {
   });
 });
 
+/**
+ * ชื่อบริษัทและรหัสฟอร์ม — the words printed across the top of ใบ F-HR-027.
+ *
+ * ฝ่ายบุคคล AND ผู้ดูแลระบบ. It was Admin's alone and had no screen at all, so
+ * the only way to correct a misspelled company name was an API call typed by
+ * hand — which meant in practice that nobody corrected it. HR own the paper
+ * these three strings appear on and they are the ones who hear from accounting
+ * when the form code on the sheet stops matching the one in the QMS register.
+ *
+ * NOTHING HERE IS ARITHMETIC. These are labels: no hour, no rate, no ceiling
+ * and no day type reads any of them, and a value typed wrong is visible on the
+ * next form printed and fixed by typing it again. That is the whole test this
+ * handler had to pass to move — compare `PATCH /api/settings/policy`, which is
+ * a different route precisely because it changes what the engine computes.
+ *
+ * The policy half of this collection is NOT reachable from here: `doc.policy`
+ * is not in the payload and never was, so widening this handler cannot widen
+ * that one by accident.
+ */
 export const PATCH = route(async (req) => {
-  requireRole(await requireAuth(req), 'admin');
+  requireRole(await requireAuth(req), 'admin', 'hr');
   const doc = await Setting.load();
   const { companyName, companyNameEn, formCode } = await body(req);
   if (companyName != null) doc.companyName = companyName;

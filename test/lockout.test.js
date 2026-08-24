@@ -80,6 +80,67 @@ test('a payload repeating what the row already says is not a change', () => {
   );
 });
 
+// ── ตั้งรหัสผ่านใหม่ on one's own row ───────────────────────────────────────
+
+/**
+ * THE THIRD SELF-FIELD, AND THE ONE WITH A DIFFERENT REASON BEHIND IT.
+ *
+ * บทบาท and สถานะ are refused because you could not undo them. This one is
+ * refused because of who else might press it: a reset from ทะเบียนพนักงาน asks
+ * for no current password and prints the new one on the spot, so an unattended
+ * machine still logged in — the shop floor, the shared ฝ่ายบุคคล account — is
+ * one button away from a stranger holding a working credential, with the real
+ * holder locked out and no way to tell that from having forgotten it.
+ *
+ * หน้าโปรไฟล์ does the same job and asks for the current password first, which
+ * is exactly the check somebody walking past the desk cannot pass.
+ */
+test('nobody issues themselves a new password from the roster screen', () => {
+  for (const actor of [HR, ADMIN]) {
+    const may = selfEditPermission(actor, { target: actor, resetPassword: true });
+    assert.equal(may.ok, false, actor.role);
+    assert.equal(may.status, 403, actor.role);
+    assert.match(may.error, /ตัวเอง/);
+    // The refusal has to name the working path, or it is answered by asking a
+    // colleague to do it instead — which is the same reset from another account
+    // and would defeat the rule entirely.
+    assert.match(may.error, /โปรไฟล์/, `${actor.role}: refused without saying where to go`);
+  }
+});
+
+test('ผู้ดูแลระบบ is not exempt, and the escape hatch is off the web', () => {
+  /**
+   * Every argument above is heavier for an account that can reopen a closed
+   * month and read บันทึกระบบ. What makes an absolute rule safe rather than a
+   * trap is that an Admin who genuinely forgot has a way back that does not go
+   * through a browser somebody left open: `npm run reset-admin`, which needs
+   * the server console. That script is why this line can have no exception —
+   * so the test asserts the script is there.
+   */
+  assert.equal(selfEditPermission(ADMIN, { target: ADMIN, resetPassword: true }).ok, false);
+
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts['reset-admin'], 'node src/reset-admin-password.js');
+});
+
+test('a request that did not ask for a reset is untouched by the rule', () => {
+  // Correcting one's own job title still saves. `resetPassword` is read as
+  // something the caller opted into, not as a field whose presence is enough.
+  assert.deepEqual(selfEditPermission(HR, { target: HR, resetPassword: false }), { ok: true });
+  assert.deepEqual(selfEditPermission(HR, { target: HR }), { ok: true });
+});
+
+test('resetting somebody ELSE’s password is untouched — that is HR’s job', () => {
+  assert.deepEqual(
+    selfEditPermission(HR, { target: OTHER, resetPassword: true }),
+    { ok: true },
+  );
+  assert.deepEqual(
+    selfEditPermission(ADMIN, { target: OTHER, resetPassword: true }),
+    { ok: true },
+  );
+});
+
 test('somebody else’s row is somebody else’s row', () => {
   assert.deepEqual(selfEditPermission(ADMIN, { target: OTHER, role: 'manager' }), { ok: true });
   assert.deepEqual(selfEditPermission(ADMIN, { target: OTHER, active: false }), { ok: true });

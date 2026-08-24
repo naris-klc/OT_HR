@@ -3215,6 +3215,22 @@ td > .approver-line { margin-top: 5px; }
 .state-badge:hover { border-color: var(--green); color: var(--green-dark); }
 .state-badge:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
 
+/* ฝ่ายบุคคล see the same badge and cannot press it — ปิด/เปิดใช้งานแผนก is
+   ผู้ดูแลระบบ's (lib/departments.js).
+
+   IT KEEPS ITS COLOUR. Only the affordances go: the pointer, and the hover that
+   fills the outline. Greying the pill out as well would take the state with it,
+   and the state is the half of this cell that everybody reads — a closed
+   department has to look closed to the person who cannot reopen it, most of all.
+
+   `:hover` is re-stated after the rule above rather than guarded inside it,
+   because these two selectors are the same specificity and the later one wins;
+   written the other way round the hover would come back. The `disabled` button
+   still receives its tooltip, which is the whole reason it stays a button. */
+.state-badge:disabled { cursor: default; }
+.state-badge:disabled:hover { border-color: var(--line); color: var(--muted); }
+.state-badge.on:disabled:hover { border-color: var(--green-bg); color: var(--green-dark); }
+
 /* The heading line เพิ่มแผนก now shares. `.card h2` carries a 4px bottom margin
    for the hint that follows it; inside a centred flex row that margin lifts the
    title off the button's centre line by half of it. */

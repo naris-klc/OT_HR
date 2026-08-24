@@ -1,11 +1,12 @@
 import Department from '@/src/models/Department.js';
 import { route, body, json, fail } from '@/lib/http.js';
-import { requireAuth, requireRole } from '@/lib/session.js';
+import { requireAuth } from '@/lib/session.js';
+import { departmentPermission } from '@/lib/departments.js';
 import { capHoursFrom } from '@/lib/caps.js';
 import { otModeFrom } from '@/lib/otMode.js';
 
 export const PATCH = route(async (req, { params }) => {
-  requireRole(await requireAuth(req), 'admin', 'hr');
+  const actor = await requireAuth(req);
 
   const department = await Department.findById(params.id);
   if (!department) return fail('ไม่พบแผนก', 404);
@@ -13,6 +14,21 @@ export const PATCH = route(async (req, { params }) => {
   const {
     code, name, nameTh, manager, monthlyCapHours, weeklyCapHours, active, otMode,
   } = await body(req);
+
+  /**
+   * Asked BEFORE a single field is assigned, and asked about the row as it
+   * STANDS — the same placement and the same reason as the roster route's
+   * `rosterPermission`. `departmentPermission` decides whether `active` is
+   * actually MOVING by comparing what was sent against what is stored, which a
+   * half-mutated document can no longer answer.
+   *
+   * One check for the whole handler rather than a guard beside the `active`
+   * assignment forty lines down: a refusal issued there would already have
+   * rewritten ชื่อ, รหัส and both ceilings on the in-memory document, and the
+   * next `save()` from any source would carry them.
+   */
+  const may = departmentPermission(actor, { active, current: department.active });
+  if (!may.ok) return fail(may.error, may.status);
 
   /**
    * รหัสแผนก, which used to be unchangeable — not refused, simply absent from

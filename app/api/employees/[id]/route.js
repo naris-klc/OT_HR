@@ -49,15 +49,28 @@ export const PATCH = route(async (req, { params }) => {
   if (!may.ok) return fail(may.error, may.status);
 
   /**
-   * Nobody edits themselves out of the system, and the system always keeps one
-   * ผู้ดูแลระบบ who can log in.
+   * Nobody edits themselves out of the system, nobody re-issues their own
+   * password from this screen, and the system always keeps one ผู้ดูแลระบบ who
+   * can log in.
    *
    * Both read the row as it STANDS, alongside the permission above and before
    * any assignment — `selfEditPermission` compares the incoming values against
    * the stored ones to decide whether anything is being changed at all, which a
    * half-mutated document cannot answer.
+   *
+   * `resetPassword` is passed in as the request sent it, and it is checked HERE
+   * rather than beside `generateTempPassword()` two hundred lines below, where
+   * it would be a refusal issued after the ceiling checks, the coverage loop and
+   * `employee.save()` had all already run. A request that is going to be refused
+   * must be refused before it writes anything: the trail would otherwise carry a
+   * roster edit belonging to a request the caller was told had failed.
    */
-  const self = selfEditPermission(actor, { target: employee, role: role ?? null, active: active ?? null });
+  const self = selfEditPermission(actor, {
+    target: employee,
+    role: role ?? null,
+    active: active ?? null,
+    resetPassword: Boolean(resetPassword),
+  });
   if (!self.ok) return fail(self.error, self.status);
 
   // The count only when it can matter — see `dropsAnAdmin`. Excludes this row:
@@ -344,7 +357,21 @@ export const PATCH = route(async (req, { params }) => {
     recomputed = await recomputeEntries(
       { employee: employee._id, status: { $in: [...PENDING_STATUSES, 'approved'] } },
       actor,
-      { source: 'manual', includeApproved: true, note: BIRTHDATE_REPLAY_NOTE },
+      /**
+       * `source: 'birthdate'` and NOT 'manual', which is what this sent until
+       * 2026-08-24 — the same value `POST /api/settings/recompute` uses.
+       *
+       * The two runs are not the same act and reading them back has to be able
+       * to tell them apart. A 'manual' run is somebody deciding that a POLICY
+       * question was answered wrong and that a month should be restated on the
+       * strength of that reading — which is why `authorizeReplay` gates it to an
+       * administrator with a written reason. This one is a fact that was
+       * recorded wrong being corrected, and it deliberately does NOT consult
+       * that rule (see below). Filed under one label they would be
+       * distinguishable only by whoever thought to compare the `note` text,
+       * and `source` is the field that is indexed for exactly this question.
+       */
+      { source: 'birthdate', includeApproved: true, note: BIRTHDATE_REPLAY_NOTE },
     );
   }
 

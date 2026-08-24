@@ -1,7 +1,8 @@
 import Department from '@/src/models/Department.js';
 import Employee from '@/src/models/Employee.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
-import { requireAuth, requireRole } from '@/lib/session.js';
+import { requireAuth } from '@/lib/session.js';
+import { departmentPermission } from '@/lib/departments.js';
 import { capHoursFrom } from '@/lib/caps.js';
 import { otModeFrom } from '@/lib/otMode.js';
 
@@ -25,8 +26,20 @@ export const GET = route(async (req) => {
   });
 });
 
+/**
+ * ฝ่ายบุคคล AND ผู้ดูแลระบบ. It was Admin's alone from the first commit, with no
+ * comment saying why and no commit deciding it — while `PATCH` next door had
+ * always been open to HR, so the shipped split let HR rename, renumber, re-cap
+ * and switch OFF a department but not add one, and the screen offered them the
+ * button regardless.
+ *
+ * `active` is deliberately not in the payload below and not a field this handler
+ * accepts: a new department is active, and turning one off is ผู้ดูแลระบบ's —
+ * see `departmentPermission` for why that one field is where the line is drawn.
+ */
 export const POST = route(async (req) => {
-  requireRole(await requireAuth(req), 'admin');
+  const may = departmentPermission(await requireAuth(req));
+  if (!may.ok) return fail(may.error, may.status);
   const {
     code, name, nameTh, manager, monthlyCapHours, weeklyCapHours, otMode,
   } = await body(req);

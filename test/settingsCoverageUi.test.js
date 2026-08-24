@@ -101,13 +101,17 @@ test('the roster is fetched once, above the section that draws the table', () =>
   const code = sourceOf(SETTINGS);
   assert.match(code, /function useRoster\(\)/);
   assert.match(code, /const roster = useRoster\(\)/);
-  assert.match(code, /function Departments\(\{ onGo, roster \}\)/);
+  // `user` joined the signature when ปิด/เปิดใช้งานแผนก became ผู้ดูแลระบบ's —
+  // see `mayClose` and lib/departments.js. The rule pinned here is unchanged:
+  // the roster still arrives as a prop rather than being fetched again inside
+  // the section.
+  assert.match(code, /function Departments\(\{ user, onGo, roster \}\)/);
   assert.match(code, /const \{ rows, people, reload: load \} = roster/);
 
   // And the section it feeds has stopped reading either endpoint for itself.
   // (ทะเบียนพนักงาน and the import screen fetch the same two lists further down
   // this file for their own purposes; the rule here is about this one section.)
-  const start = code.indexOf('function Departments({ onGo, roster })');
+  const start = code.indexOf('function Departments({ user, onGo, roster })');
   const body = code.slice(start, code.indexOf('const BLANK_DEPT', start));
   assert.ok(start > 0, 'Departments changed shape');
   assert.ok(

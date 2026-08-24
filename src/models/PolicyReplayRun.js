@@ -29,7 +29,25 @@ import { model } from './model.js';
  */
 const policyReplayRunSchema = new mongoose.Schema(
   {
-    /** 'policy_save' — a flag was answered. 'manual' — the recompute endpoint. */
+    /**
+     * WHAT KIND OF ACT THIS RUN WAS. Indexed, because it is the first thing
+     * anybody asks of this collection months later.
+     *
+     *   'policy_save' — a flag under นโยบายการคำนวณ was answered (lib/policySave.js)
+     *   'manual'      — POST /api/settings/recompute, ordered by an administrator
+     *   'birthdate'   — a วันเกิด was corrected on ทะเบียนพนักงาน
+     *
+     * The last one is separate from 'manual' for a reason that outlives the
+     * code: 'manual' with `includeApproved` is somebody deciding a POLICY
+     * question was answered wrong and restating a signed-off month on that
+     * reading — `authorizeReplay` gates it to an administrator with a written
+     * reason. 'birthdate' is a recorded fact being corrected, does not consult
+     * that rule, and is reachable by ฝ่ายบุคคล. Two different authorities, two
+     * different things to be suspicious of when reading back, one collection.
+     *
+     * No enum, deliberately: a value stored before this list grew must stay
+     * readable, and mongoose validates the whole document on save.
+     */
     source: { type: String, required: true, immutable: true, index: true },
 
     by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', immutable: true },

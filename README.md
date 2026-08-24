@@ -36,6 +36,9 @@ npm test               # the calculation engine test suite
 npm run dev            # UI + API together on :3000
 ```
 
+Locked out of the only ผู้ดูแลระบบ account? `npm run reset-admin -- ADMIN` —
+see [ใครทำอะไรได้](#ใครทำอะไรได้--ฝ่ายบุคคล-กับ-ผู้ดูแลระบบ).
+
 Upgrading a database seeded before the two-company split? Run
 `npm run migrate:company` once — see [Two companies](#two-companies-primus--themtech).
 
@@ -286,17 +289,224 @@ whatever was left in the box. Pinned by `test/tempPassword.test.js`.
 
 ### Nobody can lock themselves out
 
-Two floors, both refused at the route on both servers and greyed out with the
+Three floors, all refused at the route on both servers and greyed out with the
 reason in the edit dialog (`test/lockout.test.js`):
 
 - **บทบาท and สถานะการใช้งาน on your own row** (`selfEditPermission`). Either
   one is a single save away from an account that cannot reach the screen it
   would undo the save from. Every other field on your own row is ordinary.
+- **ตั้งรหัสผ่านใหม่ on your own row** (`selfEditPermission`, added 2026-08-24).
+  Refused for a different reason from the two above — not because *you* could
+  not undo it, but because of who else might press it. A reset from
+  ทะเบียนพนักงาน asks for no current password and prints the new one on the
+  spot, so an unattended machine still logged in as ฝ่ายบุคคล is one button away
+  from a stranger holding a working credential, with the real holder locked out
+  and unable to tell that from having forgotten it. หน้าโปรไฟล์ does the same
+  job and asks for the current password first. **ผู้ดูแลระบบ is not exempt** —
+  see `npm run reset-admin` below, which is what makes an absolute rule safe.
 - **The last active ผู้ดูแลระบบ** (`lastAdminPermission`) may not be demoted or
   deactivated by anybody. ฝ่ายบุคคล cannot mint an Admin
   (`HR_ASSIGNABLE_ROLES`), so a system with no active Admin has no way to grow
   one back — the repair would be a database console. 409 rather than 403: the
   actor has the right, the state of the system is what refuses.
+
+---
+
+## ใครทำอะไรได้ — ฝ่ายบุคคล กับ ผู้ดูแลระบบ
+
+**The rule the split follows:** ฝ่ายบุคคล finish the day's work without asking
+anybody. ผู้ดูแลระบบ keep the two things that are hard to undo — what would
+**move a figure somebody has already signed for**, and what has **no way back**
+if it goes wrong.
+
+Everything below is enforced **at the route**. The screens grey out what the
+person in front of them may not press, but that is a courtesy — it stops
+somebody typing something that is going to be refused, and it gives the refusal
+a sentence instead of a 403. `test/permissionRouteGuards.test.js` pins that
+every rule here is on the server and that no button is offered to somebody the
+server would refuse.
+
+### The table
+
+| | ฝ่ายบุคคล | ผู้ดูแลระบบ | where |
+|---|---|---|---|
+| **ทะเบียนพนักงาน** | | | |
+| เพิ่ม / แก้ไขพนักงาน | ✅ | ✅ | `rosterPermission` |
+| ตั้งบทบาท พนักงาน / หัวหน้างาน | ✅ | ✅ | `HR_ASSIGNABLE_ROLES` |
+| ตั้งบทบาท ฝ่ายบุคคล / ผู้ดูแลระบบ | ❌ | ✅ | `HR_ASSIGNABLE_ROLES` |
+| แก้ไขแถวที่เป็น ผู้ดูแลระบบ (รวมตั้งรหัสใหม่) | ❌ | ✅ | `rosterPermission` |
+| เปลี่ยนรหัสพนักงาน | ❌ | ✅ *(ต้องระบุเหตุผล)* | `codeChangePermission` |
+| ตั้งรหัสผ่านใหม่ให้คนอื่น | ✅ | ✅ | `rosterPermission` |
+| ตั้งรหัสผ่านใหม่ให้ **ตัวเอง** | ❌ | ❌ | `selfEditPermission` |
+| นำเข้าพนักงานจาก CSV | ✅ | ✅ | `rosterPermission` ต่อแถว |
+| **แผนก** | | | |
+| เพิ่มแผนก | ✅ | ✅ | `departmentPermission` |
+| แก้ชื่อ / รหัส / เพดาน / รูปแบบโอที | ✅ | ✅ | `departmentPermission` |
+| ปิดใช้งานแผนก | ❌ | ✅ | `departmentPermission` |
+| เปิดใช้งานแผนกคืน | ❌ | ✅ | `departmentPermission` |
+| ลบแผนกถาวร | ❌ | ❌ *(ไม่มีในระบบ)* | — |
+| **ตั้งค่าระบบอื่น ๆ** | | | |
+| ชื่อบริษัท / รหัสฟอร์ม | ✅ | ✅ | `PATCH /api/settings` |
+| นโยบายการคำนวณ | ✅ | ✅ | `PATCH /api/settings/policy` |
+| วันหยุดบริษัท | ✅ | ✅ | `/api/holidays` |
+| ผู้รับช่วงอนุมัติ | ✅ | ✅ | `/api/delegations` |
+| **งวดและตัวเลข** | | | |
+| ปิดงวด | ✅ | ✅ | `CLOSE_ROLES` |
+| เปิดงวดที่ปิดแล้ว | ❌ | ✅ *(ต้องระบุเหตุผล)* | `REOPEN_ROLES` |
+| คำนวณใหม่ (ใบที่ยังไม่อนุมัติ) | ✅ | ✅ | `authorizeReplay` |
+| คำนวณใหม่ **รวมใบที่อนุมัติแล้ว** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `authorizeReplay` |
+| ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` |
+| **บันทึกระบบ** | ❌ | ✅ | `/api/logs`, `/api/logs/summary`, `/api/exports/logs.csv` |
+
+**บันทึกระบบ is the one thing that is a whole tab rather than a section**, and
+that is deliberate: every section inside ตั้งค่าระบบ is reachable by both roles,
+so a section that appeared for one of them would be a rule living in two files.
+The reason ฝ่ายบุคคล are excluded is `hr-account-is-shared` — the whole HR
+department signs into one account, so a traffic log they can edit their own way
+into is not evidence about a person.
+
+### ทำไม “ลบแผนก” จึงไม่มี
+
+`OtEntry.department` is a **required reference set when the request was filed** —
+the แผนก is snapshotted onto the entry on purpose, so a mid-month transfer
+leaves the hours where they were worked (see *แผนก is snapshotted onto the entry*
+below). Delete the row and every entry that pointed at it collapses into one
+unnamed `ไม่ระบุแผนก` bucket in `groupByDepartment` — permanently, and together
+with every other department ever deleted. `active: false` costs none of that: the
+department leaves every picker, its people can no longer file, and every closed
+month still reads correctly.
+
+So there is no `DELETE` handler under `app/api/departments/`, in any file, and
+`test/permissionRouteGuards.test.js` walks the folder to keep it that way.
+
+### ข้อยกเว้นหนึ่งข้อ: ใบที่อนุมัติแล้วขยับได้เฉพาะ ผู้ดูแลระบบ — ยกเว้นการแก้วันเกิด
+
+**The rule:** hours somebody has put their name to do not move because a flag
+was flipped afterwards. `recomputeEntries` refuses approved entries unless the
+caller passes `includeApproved`, and `authorizeReplay` gates that to an
+administrator with a written reason.
+
+**The one exception, and it is deliberate:** correcting a **วันเกิด** on
+ทะเบียนพนักงาน replays that person's entries with `includeApproved: true`, from
+a route ฝ่ายบุคคล can reach, without consulting `authorizeReplay`
+(`app/api/employees/[id]/route.js`).
+
+**Why.** `authorizeReplay` exists so nobody re-reads a *policy question* and
+quietly restates a month on the strength of their own reading. A birth date is
+not a reading — **it is a fact that was recorded wrong**. วันเกิดของพนักงานเป็น
+วันหยุดของคนนั้น, so a moved date moves which days were that person's holiday,
+and an approved entry left standing is a figure printed on F-HR-027 under a day
+type everybody now agrees is wrong. While the month is still open nothing has
+been sent anywhere, so there is no outside figure for the old one to agree with:
+the paper is simply wrong. HR's decision, 2026-08-18.
+
+**What the exception still pays.** Everything the escape hatch asks for except
+the role check:
+
+- **ปิดงวด is still the wall.** `recomputeEntries` skips a closed month whatever
+  it is asked to do, so a month that has gone to accounting still needs an
+  administrator to reopen it. The reply names those months and the screen prints
+  them (`⚠ เดือนที่ปิดงวดแล้วไม่ถูกแตะต้อง`).
+- **Every entry whose figures actually move keeps a `before` snapshot** and a
+  `recompute` line carrying `BIRTHDATE_REPLAY_NOTE`, so the restatement appears
+  in ประวัติรายการ beside the ordinary corrections.
+- **The run is filed in `otPolicyReplayRuns` under `source: 'birthdate'`** — not
+  `'manual'`, which is what the recompute endpoint writes. The two are different
+  acts under different authorities and reading them back has to be able to tell
+  them apart; `source` is indexed for exactly that question.
+- **The screen says how many signed-off entries moved**, in as many words.
+
+### สิทธิ์ ผู้ดูแลระบบ ที่ยังไม่มีหน้าจอ
+
+One is left. Both examples below assume `next start` on this laptop and a
+session cookie for an Admin account; `--cookie` takes the value of `ot_token`
+from a browser that is already signed in (devtools → Application → Cookies).
+
+**คำนวณใหม่รวมใบที่อนุมัติแล้ว** — `POST /api/settings/recompute`. There is no
+control for this anywhere on any screen, on purpose: it is the one action that
+restates figures somebody has signed for, and it is not a button anybody should
+find by accident.
+
+```bash
+# ตัวอย่างจริง — คำนวณใบของงวด 2026-08 ใหม่ รวมใบที่อนุมัติแล้ว
+curl -X POST http://127.0.0.1:3000/api/settings/recompute \
+  -H 'Content-Type: application/json' \
+  --cookie 'ot_token=<ค่าจากเบราว์เซอร์ที่ล็อกอินเป็น ผู้ดูแลระบบ>' \
+  -d '{"period":"2026-08","includeApproved":true,"note":"HR ตอบข้อ OPEN 1 เมื่อ 2026-08-24 — คำนวณทั้งเดือนใหม่"}'
+```
+
+> ⚠️ **`includeApproved: true` เปลี่ยนตัวเลขที่เซ็นรับไปแล้ว.** Every entry it
+> moves is a figure a หัวหน้า signed and ฝ่ายบุคคล confirmed, and one that may
+> already be printed on an ใบ F-HR-027 in somebody's file. `note` is required and
+> is not decoration — it is the only thing that will explain the restatement in
+> `otPolicyReplayRuns` afterwards. **`npm run backup` first**, and run
+> `npm run whatif` to price the change before running this to make it.
+>
+> Closed months are skipped regardless; the reply names them under
+> `skippedClosed`. Reopening one is a second, separate decision.
+
+Leave `includeApproved` out and the same endpoint is ordinary work that
+ฝ่ายบุคคล may do — it replays only the pending statuses:
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/settings/recompute \
+  -H 'Content-Type: application/json' --cookie 'ot_token=<…>' \
+  -d '{"period":"2026-08"}'
+```
+
+`PATCH /api/settings` no longer belongs on this list: ชื่อบริษัทและรหัสฟอร์ม is
+now a section on ตั้งค่าระบบ that both roles reach.
+
+### `npm run reset-admin` — the way back into an ผู้ดูแลระบบ account
+
+ผู้ดูแลระบบ is the escalation path for ฝ่ายบุคคล and has none of its own.
+`rosterPermission` refuses HR every write to an Admin row — the password reset
+included — there is exactly one active Admin, and the stored hash is one-way. So
+an Admin who forgets their password had no way back at all before this script,
+short of a mongo shell and a hand-computed bcrypt hash.
+
+```bash
+npm run reset-admin -- ADMIN
+```
+
+```
+ตั้งรหัสผ่านใหม่ให้ ADMIN · ผู้ดูแลระบบ แล้ว
+
+  รหัสผ่านชั่วคราว:  gof-mez-tab-4827
+
+รหัสนี้แสดงเพียงครั้งเดียว — ฐานข้อมูลเก็บไว้เป็น hash เท่านั้น
+ถ้าทำหาย ให้รันคำสั่งนี้ใหม่ จะได้รหัสใหม่อีกอัน
+ระบบจะบังคับให้เปลี่ยนรหัสผ่านทันทีที่เข้าสู่ระบบครั้งถัดไป
+```
+
+- **Runs on the server only.** It carries the same main guard `npm run seed`,
+  `npm run backup` and `npm run restore` carry — importing the file for any
+  reason does not reset anybody's password.
+- **It is not a wider grant than the database already gives.** Whoever can run
+  it is sitting at the machine that holds `MONGODB_URI` and could already write
+  the collection by hand. What it adds is that the repair goes through the same
+  generator, the same `mustChangePassword` flag and the same audit trail as
+  every reset made from the screen.
+- **ผู้ดูแลระบบ rows only.** Every other account has a path already — ฝ่ายบุคคล
+  reset it from ทะเบียนพนักงาน, and that path records who pressed the button. A
+  script that would reset anybody turns *has a shell on this server* into *is
+  any employee*, which is the shortest route to a หัวหน้า's signature. A
+  non-admin code is refused by name, and so is a deactivated row.
+- **A code is required.** It does not go looking for "the admin" and reset
+  whatever it finds.
+- **It leaves a record, and the record says it had no session behind it.** The
+  row in `otEmployeeAudits` carries `action: 'password_reset'`,
+  `source: 'script'` and **no actor** — the caller is whoever was at the console
+  and the system has no way to know who that was. Naming somebody there would be
+  an invention, and a trail that invents one field is not evidence about the
+  others. ประวัติการแก้ทะเบียน prints it as `ตั้งรหัสผ่านใหม่ (สคริปต์บนเซิร์ฟเวอร์)`.
+- **The temporary password uses `generateTempPassword()`** — the same one the
+  screen uses, never a second formula. See *Temporary passwords* above for why
+  that matters.
+
+If it is a **ฝ่ายบุคคล** account that is locked out, this script is not the
+answer: another ฝ่ายบุคคล or an ผู้ดูแลระบบ resets it from ทะเบียนพนักงาน, which
+is faster and records a name.
 
 ---
 
@@ -421,6 +631,9 @@ src/migrate-company.js    one-off: fill `company` on a pre-split database
 src/migrate-policy-version.js
                           one-off: record the rules in force and point every
                           existing entry at them
+src/reset-admin-password.js
+                          the way back into an ผู้ดูแลระบบ account — server
+                          console only, admin rows only, audited
 app/api/                  the HTTP layer — auth, entries, departments,
                           employees, holidays, reports, exports, settings
 app/layout.js, page.js    the shell; styles.css + print.css live here
@@ -455,6 +668,8 @@ lib/requestContext.js     an AsyncLocalStorage scratchpad one request long — h
 lib/departmentSummary.js  the same month regrouped by แผนก, both companies in
                           one count — shared by its screen, its CSV and its
                           printed form
+lib/departments.js        who may write a แผนก row, and why `active` is the one
+                          field ฝ่ายบุคคล do not get — pure
 test/                     23 files, run by `npm test`
 test/proxyFiling.test.js    who may file for whom, and where it starts
 test/delegation.test.js     windows, chains, cycles, and what the trail keeps
