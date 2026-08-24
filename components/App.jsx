@@ -267,6 +267,7 @@ const PAGE = {
   mine: ['OT ของฉัน', 'MY OVERTIME'],
   approve: ['รออนุมัติ', 'PENDING · MANAGER'],
   delegated: ['รออนุมัติแทน', 'PENDING · DELEGATED'],
+  unsigned: ['ใบที่ไม่มีหัวหน้าเซ็นได้', 'PENDING · NO APPROVER'],
   confirm: ['รอ HR ยืนยัน', 'PENDING · HR'],
   monthly: ['ตรวจสอบรายเดือน', 'MONTHLY REVIEW'],
   accounting: ['สรุป OT ส่งบัญชี', 'PAYROLL SUBMISSION'],
@@ -483,6 +484,30 @@ function Shell({ session, onLogout }) {
       badge: counts.pendingMgrDelegated,
     });
   }
+  /**
+   * ใบที่ไม่มีใครเซ็นได้ — ผู้ดูแลระบบ only, and only while there are any.
+   *
+   * A DIFFERENT TAB FROM รออนุมัติแทน, not a widening of it, because the two
+   * are answers to different questions. That one is a queue somebody was
+   * HANDED, for a window that closes by itself; this one is a fault — requests
+   * sitting at รอหัวหน้า in a แผนก with no หัวหน้า who covers them, which today
+   * is every request anybody files in ADM. Merged, the standing responsibility
+   * and the thing that is broken would wear one badge and one label, and
+   * whichever of them was on screen you would not know which you were reading.
+   *
+   * IT VANISHES AT ZERO, unlike its neighbour. A covered queue with no rows in
+   * it is still somebody's job today; a repaired fault is not, and a tab that
+   * sat there permanently reading 0 would be the one nobody looks at on the day
+   * it finally says 1.
+   */
+  if (user.role === 'admin' && counts.unsignedPending > 0) {
+    tabs.push({
+      key: 'unsigned',
+      label: 'ไม่มีหัวหน้าเซ็น',
+      icon: 'users',
+      badge: counts.unsignedPending,
+    });
+  }
   if (['hr', 'admin'].includes(user.role)) {
     tabs.push({
       key: 'confirm', label: 'รอ HR ยืนยัน', icon: 'check', badge: queueBadge('confirm', counts.pendingHr),
@@ -666,6 +691,13 @@ function Shell({ session, onLogout }) {
                 a หัวหน้า already sees every birthday in the company on their own
                 รอ HR ยืนยัน, so a second copy here would be the same rows twice. */}
             {tab === 'delegated' && <ApprovalQueue user={user} stage="pending_mgr" delegatedOnly onChanged={queueDone} onOpenPolicy={openPolicy} />}
+            {/* The same queue component, asking the server for a different
+                list — `scope=unsigned`. Not a second copy of the screen: every
+                rule about what a row shows and which buttons it earns is the
+                same one, and the one thing that differs (a reason is compulsory
+                here) is a fact about the rows, which the component reads off
+                the mode it was given. */}
+            {tab === 'unsigned' && <ApprovalQueue user={user} stage="pending_mgr" unsignedOnly onChanged={queueDone} onOpenPolicy={openPolicy} />}
             {tab === 'confirm' && (
               <QueueTabs
                 user={user}

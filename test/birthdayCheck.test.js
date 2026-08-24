@@ -638,8 +638,11 @@ test('ทุกเส้นทางที่เขียนใบ ใช้ข�
 test('คิวอนุมัติถามคำถามเดียวกับเซิร์ฟเวอร์ และไม่โชว์ปุ่มที่กดไม่ได้', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
 
-  // Not a second implementation of the rule in the component.
-  assert.match(queue, /import \{ isOwnFiling \} from '@\/lib\/delegation\.js'/);
+  // Not a second implementation of the rule in the component. `signedManagerStep`
+  // arrived beside it for the same reason — a second row-level refusal the
+  // server makes, so a second predicate the screen must ask rather than guess.
+  assert.match(queue, /import \{ isOwnFiling, signedManagerStep/);
+  assert.match(queue, /from '@\/lib\/delegation\.js'/);
   assert.ok(
     !/filedBy\)\s*===\s*idOf\(user\)|filedBy\?\._id === user\._id/.test(queue),
     'คอมโพเนนต์เขียนกฎเองซ้ำ — จะเพี้ยนกันวันใดวันหนึ่ง',
@@ -654,8 +657,12 @@ test('คิวอนุมัติถามคำถามเดียวก�
 
   // Such a row cannot be ticked into a batch either — a batch of three that
   // fails on one is three presses to work out which.
-  assert.match(queue, /disabled=\{isOwnFiling\(e, user\)\}/);
-  assert.match(queue, /const actionable = useMemo\(\(\) => shown\.filter\(\(e\) => !isOwnFiling\(e, user\)\)/);
+  // Both row-level refusals keep a row out of a batch, for the one reason.
+  assert.match(queue, /disabled=\{isOwnFiling\(e, user\) \|\| signedManagerStep\(e, user\)\}/);
+  assert.match(
+    queue,
+    /const actionable = useMemo\(\s*\(\) => shown\.filter\(\(e\) => !isOwnFiling\(e, user\) && !signedManagerStep\(e, user\)\)/,
+  );
   assert.match(queue, /selected\.size === actionable\.length/);
 
   // And the pop-up does not put the same two buttons back. Its foot is not

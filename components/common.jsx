@@ -528,6 +528,26 @@ export function EntryHistory({ entry }) {
                       {' '}· ทำแทน {h.onBehalfOfName}
                     </span>
                   )}
+                  {/*
+                    The fourth answer to "on what basis", and the only one where
+                    the basis is that there was nobody. It wears the same
+                    `.behalf` mark as a stand-in's line because it is the same
+                    kind of fact — this signature was not the ordinary one — and
+                    it can never appear beside `onBehalfOfName`: an override is
+                    precisely the case where no manager authorised anything.
+
+                    The reason is compulsory on this action (`approvalPermission`
+                    refuses it without one), so the “…” line below is always
+                    filled in on a row wearing this.
+                  */}
+                  {h.adminOverride && (
+                    <span
+                      className="behalf"
+                      title="แผนกนี้ไม่มีหัวหน้างานที่เซ็นให้ใบนี้ได้ ผู้ดูแลระบบจึงเซ็นในขั้นหัวหน้าแทน — เหตุผลอยู่บรรทัดล่าง"
+                    >
+                      {' '}· เซ็นแทนหัวหน้า (ผู้ดูแลระบบ)
+                    </span>
+                  )}
                 </span>
               )}
               {h.at && <span className="when">{new Date(h.at).toLocaleString('th-TH')}</span>}

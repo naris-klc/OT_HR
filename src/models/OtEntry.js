@@ -194,6 +194,22 @@ const historySchema = new mongoose.Schema(
      * dates on it that either covers the day the decision was made or does not.
      */
     delegationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalDelegation' },
+    /**
+     * ผู้ดูแลระบบ signed the หัวหน้า step because the department had no หัวหน้า
+     * who could — the fourth answer to "on what basis", and the only one where
+     * the basis is that there was nobody.
+     *
+     * Its own field precisely because the three above are all empty for it.
+     * Left to those, an administrator's override is indistinguishable from an
+     * ordinary manager signing their own team's request, and the one line in
+     * the trail that most needs explaining would be the quietest one on it.
+     *
+     * `note` is never empty on one of these — `approvalPermission` refuses the
+     * decision without a reason — so the row always carries both the fact and
+     * the why. Absent on every other decision and on every one recorded before
+     * this existed; present always means it happened.
+     */
+    adminOverride: Boolean,
 
     /**
      * The entry as it stood immediately before this action, written only by the
@@ -362,6 +378,16 @@ const otEntrySchema = new mongoose.Schema(
       onBehalfOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
       onBehalfOfName: String,
       delegationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalDelegation' },
+      /**
+       * Signed by ผู้ดูแลระบบ because the department had no หัวหน้า who could —
+       * see the same field on `historySchema` above.
+       *
+       * ON THIS BLOCK AND NOT ON `hrDecision`, because there is no such thing
+       * at the second step: ผู้ดูแลระบบ sign the HR step as themselves, by the
+       * ordinary rule that has always let them. Only the first step can be
+       * stood in for, and `approvalPermission` refuses the same person both.
+       */
+      adminOverride: Boolean,
     },
     hrDecision: {
       by: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
@@ -585,8 +611,10 @@ otEntrySchema.methods.snapshot = function snapshot() {
 
 /**
  * `extra` carries `onBehalfOf` / `onBehalfOfName` / `delegationId` for the
- * decisions a ผู้รับช่วง made — an optional last argument rather than three
- * more positional ones, so that the eleven existing calls stay as they were.
+ * decisions a ผู้รับช่วง made, and `adminOverride` for the หัวหน้า step an
+ * administrator signed because the department had none — an optional last
+ * argument rather than four more positional ones, so that the eleven existing
+ * calls stay as they were.
  */
 otEntrySchema.methods.log = function log(actor, action, note, fromStatus, before, extra) {
   this.history.push({
@@ -602,6 +630,7 @@ otEntrySchema.methods.log = function log(actor, action, note, fromStatus, before
     onBehalfOf: extra?.onBehalfOf || undefined,
     onBehalfOfName: extra?.onBehalfOfName || undefined,
     delegationId: extra?.delegationId || undefined,
+    adminOverride: extra?.adminOverride || undefined,
   });
 };
 

@@ -8,10 +8,11 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
-  capFor, takeCapped, submissionWindowRefusal,
+  capFor, takeCapped, submissionWindowRefusal, entryCompany,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
+import { nobodyCanSign } from '@/lib/delegation.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 import { refuseOverlap } from '@/lib/overlapQuery.js';
@@ -42,6 +43,23 @@ export const GET = route(async (req) => {
    * error: it is what the screen shows the day a window closes.
    */
   const reach = await resolveScope(user);
+  /**
+   * `scope=unsigned` — the requests NOBODY on the roster can sign.
+   *
+   * ผู้ดูแลระบบ only, because they are the only ones who can do anything about
+   * such a row (`mayOverrideManagerStep`). Asked for by the รออนุมัติแทนหัวหน้า
+   * tab, and it is a narrow list on purpose: an administrator may sign the
+   * หัวหน้า step of ANY request, but a screen listing every request in the
+   * company invites them to sign rows whose own หัวหน้า is about to — which
+   * would make §6's second pair of eyes a formality in practice while leaving
+   * the rule looking untouched. This tab shows the rows that are genuinely
+   * stuck, which is the problem the override was added for.
+   *
+   * The filtering itself happens after the query, below: whether anybody covers
+   * a row depends on the entry's owner's payroll as well as its department, and
+   * that is not a mongo filter — see `nobodyCanSign`.
+   */
+  const unsignedOnly = scope === 'unsigned' && user.role === 'admin';
   const q = scope === 'delegated'
     // `{ department: null }` and not `{}` when nothing is covered: an empty
     // filter on this screen would answer with the whole company.
@@ -82,14 +100,37 @@ export const GET = route(async (req) => {
    * collection on every request that does not need it.
    */
   const cap = capFor(limit);
-  const { rows: found, truncated } = takeCapped(
-    await OtEntry.find(q)
-      .populate(POPULATE)
-      .sort({ workDate: -1, createdAt: -1 })
-      .limit(cap + 1)
-      .lean(),
-    cap,
-  );
+  const matched = await OtEntry.find(q)
+    .populate(POPULATE)
+    .sort({ workDate: -1, createdAt: -1 })
+    .limit(cap + 1)
+    .lean();
+
+  /**
+   * `scope=unsigned`, applied here because it needs the populated owner.
+   *
+   * One roster read for the whole list rather than one per row — a หัวหน้า who
+   * covers a department may sit in any other, so the pool is the same for every
+   * entry and `isDepartmentManager` is what narrows it. The same shape the
+   * roster route's coverage loop uses.
+   *
+   * AFTER the cap, and that is a real limitation said out loud: `truncated`
+   * below counts documents the query matched, so on a list long enough to be
+   * cut short this could report "there are more" when the rest were all
+   * signable. The queue it serves is the requests waiting on a หัวหน้า across
+   * the company — a few rows, on a roster of seventeen — and paying for an
+   * exact count would mean resolving coverage for every pending request in the
+   * database on a screen that exists to show a handful.
+   */
+  const narrowed = unsignedOnly
+    ? await (async () => {
+      const managers = await Employee.find({ role: 'manager', active: true })
+        .select('code name role department company approvesCompany approvesDepartments').lean();
+      return matched.filter((e) => nobodyCanSign(e, managers, entryCompany(e)));
+    })()
+    : matched;
+
+  const { rows: found, truncated } = takeCapped(narrowed, cap);
 
   /**
    * `replaced=hide` — one row per line of filing rather than one per document.

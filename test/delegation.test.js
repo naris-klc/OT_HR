@@ -390,10 +390,27 @@ test('an ordinary approval carries none of it, so the mark means something', () 
   assert.equal(record.delegationId, undefined);
 });
 
-test('the history row carries the same three facts as the decision block', () => {
+test('the history row carries the same facts as the decision block', () => {
   const resolved = { stage: 'mgr', onBehalfOf: A, delegationId: 'del-1' };
   assert.deepEqual(historyExtra(resolved), {
-    onBehalfOf: 'mgr-a', onBehalfOfName: 'สมชาย', delegationId: 'del-1',
+    onBehalfOf: 'mgr-a',
+    onBehalfOfName: 'สมชาย',
+    delegationId: 'del-1',
+    // Absent on an ordinary delegated decision, and `undefined` rather than
+    // `false` — see the field on `approvalRecord`. A stored `false` would read
+    // as an assertion about entries that predate the question.
+    adminOverride: undefined,
+  });
+});
+
+test('an administrator’s override reaches the history row as its own fact', () => {
+  // The three delegation fields are all empty for it, which is exactly why it
+  // cannot be inferred from them.
+  assert.deepEqual(historyExtra({ stage: 'mgr', adminOverride: true }), {
+    onBehalfOf: undefined,
+    onBehalfOfName: undefined,
+    delegationId: undefined,
+    adminOverride: true,
   });
 });
 

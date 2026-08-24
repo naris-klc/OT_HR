@@ -36,6 +36,10 @@ export const POST = route(async (req, { params }) => {
     delegations: await heldBy(user, on),
     today: on,
     verb: 'ดำเนินการ',
+    // Already required of everybody, and refused above if it is empty — so the
+    // administrator override's own reason requirement is satisfied by the rule
+    // this route has always had, and passing it keeps the two paths identical.
+    note: reason,
   });
   if (!may.ok) return fail(may.error, may.status);
 

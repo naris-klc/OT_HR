@@ -350,6 +350,13 @@ server would refuse.
 | นโยบายการคำนวณ | ✅ | ✅ | `PATCH /api/settings/policy` |
 | วันหยุดบริษัท | ✅ | ✅ | `/api/holidays` |
 | ผู้รับช่วงอนุมัติ | ✅ | ✅ | `/api/delegations` |
+| **การอนุมัติ** | | | |
+| เห็นใบทุกแผนก ทุกบริษัท | ✅ | ✅ | `scopeFor` — ทั้งคู่ได้ `{}` ไม่มีตัวกรอง |
+| เซ็นขั้น HR ทุกแผนก ทุกบริษัท | ✅ | ✅ | `approvalPermission` — ไม่มีการกรองขอบเขต |
+| เซ็นขั้นหัวหน้าในฐานะ **ผู้รับช่วง** | ✅ | ✅ | `DELEGATE_ROLES` |
+| เซ็นขั้นหัวหน้า **แทนแผนกที่ไม่มีหัวหน้า** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `mayOverrideManagerStep` |
+| เซ็นทั้งสองขั้นของใบเดียวกัน | ❌ | ❌ | `signedManagerStep` — §6 |
+| แก้ไขใบที่ยังไม่ปิด | ✅ | ✅ | `editPermission` |
 | **งวดและตัวเลข** | | | |
 | ปิดงวด | ✅ | ✅ | `CLOSE_ROLES` |
 | เปิดงวดที่ปิดแล้ว | ❌ | ✅ *(ต้องระบุเหตุผล)* | `REOPEN_ROLES` |
@@ -364,6 +371,81 @@ so a section that appeared for one of them would be a rule living in two files.
 The reason ฝ่ายบุคคล are excluded is `hr-account-is-shared` — the whole HR
 department signs into one account, so a traffic log they can edit their own way
 into is not evidence about a person.
+
+### ผู้ดูแลระบบ เซ็นแทนหัวหน้าได้ — และยังเซ็นใบเดียวคนเดียวไม่ได้
+
+Two rules that arrived together on 2026-08-24 and only make sense together.
+
+#### ใบที่ไม่มีใครเซ็นได้
+
+A **แผนก with no หัวหน้า on the roster has requests nobody can sign at all**,
+and ผู้รับช่วงอนุมัติ cannot rescue them: `delegationPermission` requires the
+giver to be a manager, and there is no manager to give. **ADM is that department
+on the real roster today** — it has no หัวหน้า and never has. Before this, an OT
+request filed there sat at รอหัวหน้า for ever with no path anywhere in the app.
+
+So `mayOverrideManagerStep` lets **ผู้ดูแลระบบ, and only ผู้ดูแลระบบ**, sign the
+หัวหน้า step. ฝ่ายบุคคล are deliberately not on that line: §6 wants a second pair
+of eyes on the figures and HR *are* the second pair, so letting them supply the
+first as well makes the second step self-checking — which is the thing the two
+steps exist to prevent.
+
+Four things every such signature pays:
+
+- **The real หัวหน้า is asked first**, always. The override sits after
+  `managerClaim` in the same place a delegation does, so a department that *has*
+  a หัวหน้า is signed by their หัวหน้า and this path is only reached when nobody
+  else could have taken it.
+- **A reason is required** — refused with 400 otherwise, by the rule and not by
+  the route. Same standing as `authorizeReplay`, เปิดงวด and เปลี่ยนรหัสพนักงาน:
+  what changed can be reconstructed from the entry afterwards, why it was
+  allowed to cannot.
+- **The trail says so.** `managerDecision.adminOverride` and a matching history
+  row, printed in ประวัติรายการ as `· เซ็นแทนหัวหน้า (ผู้ดูแลระบบ)` with the
+  reason quoted under it. Its own field, because the three delegation fields
+  (`onBehalfOf`, `onBehalfOfName`, `delegationId`) are all **empty** for it —
+  nobody delegated this and no manager authorised it, so left to those it would
+  be indistinguishable from an ordinary manager signing their own team's row.
+- **It is offered on one screen only.** The **ไม่มีหัวหน้าเซ็น** tab
+  (ผู้ดูแลระบบ, and only while the count is above zero) lists exactly the
+  requests `nobodyCanSign` finds. The *rule* lets an administrator sign the
+  หัวหน้า step of any request; a screen listing every pending request in the
+  company would invite them to sign rows whose own หัวหน้า is about to, which
+  would make §6's second pair of eyes a formality in practice while leaving the
+  rule looking untouched.
+
+`nobodyCanSign` is asked **per entry, not per department**, and that is not
+pedantry: a แผนก can hold a หัวหน้า who signs only for ไพรมัส while two เดมเทค
+staff sit in it, and their requests are as unsignable as ADM's while the
+department looks covered from every screen.
+
+#### …และ §6 ตอนนี้แปลว่า “สองคน” จริง ๆ
+
+**This closed a hole that predates the override.** §6 wants two signatures and
+nothing checked they were two *people* — the rule was carried entirely by the
+shape of the roles (หัวหน้า sign first, ฝ่ายบุคคล sign second, nobody is both),
+and `DELEGATE_ROLES` broke that quietly the day it was written:
+
+> ฝ่ายบุคคล may be named as a ผู้รับช่วง. So an HR holding a live delegation
+> approves the **manager's** step on the giver's authority, the entry moves to
+> รอ HR ยืนยัน, and the very same person is `isHr` and signs it off. One person,
+> both signatures, no delegation rule broken, and nothing anywhere saying so.
+
+Reproduced against the real `approvalPermission` on 2026-08-24, with the
+delegation shape that is on the roster. `signedManagerStep` now refuses it —
+**generally**, keyed on `managerDecision.by`, because written as "an
+administrator may not sign both" it would have fixed the new path and left the
+ผู้รับช่วง one exactly as it was.
+
+- It is the **person**, not the role: another ผู้ดูแลระบบ or any ฝ่ายบุคคล may
+  confirm the entry.
+- **Holding** a delegation is not **having signed** — an HR who was named as a
+  stand-in and never used it confirms as usual. Anything coarser would take work
+  away from somebody for a button they never pressed.
+- 409, not 403: they have the right to sign the HR step; the state of *this
+  entry* is what refuses.
+- The queue asks the same predicate, so such a row shows the reason instead of
+  two buttons that would both answer 409.
 
 ### ทำไม “ลบแผนก” จึงไม่มี
 

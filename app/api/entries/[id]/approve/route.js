@@ -44,6 +44,17 @@ export const POST = route(async (req, { params }) => {
     delegations: await heldBy(user, on),
     today: on,
     verb: 'อนุมัติ',
+    /**
+     * The note reaches the RULE, not just the record.
+     *
+     * ผู้ดูแลระบบ signing the หัวหน้า step of a department that has no หัวหน้า
+     * is refused without a reason, and that refusal belongs beside the rule
+     * that grants the exception rather than in a guard here — a route that
+     * remembers to check is a route the next one beside it will forget to copy.
+     * ไม่อนุมัติ needs no such wiring: it has always demanded a reason from
+     * everybody. See `OVERRIDE_NOTE_REQUIRED`.
+     */
+    note,
   });
   if (!may.ok) return fail(may.error, may.status);
 

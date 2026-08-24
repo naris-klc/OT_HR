@@ -13,7 +13,7 @@ import {
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
-import { isOwnFiling } from '@/lib/delegation.js';
+import { isOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
 import {
   Alert, Empty, EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead, RefiledNote,
   RequestTrail, Section, SegmentList, StatusChip, TeamMark, editsOf,
@@ -37,9 +37,26 @@ import { useToast } from './Toast.jsx';
  * What is NOT batched: rejection. A refusal carries a reason the employee will
  * read, so even the batch path stops for one to be typed.
  */
-export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, delegatedOnly = false }) {
+export default function ApprovalQueue({
+  user, stage, onChanged, onOpenPolicy, delegatedOnly = false, unsignedOnly = false,
+}) {
   const isHr = stage === 'pending_hr';
   const verb = isHr ? 'ยืนยัน' : 'อนุมัติ';
+  /**
+   * ใบที่ไม่มีหัวหน้าเซ็นได้ — every row here is one an administrator is signing
+   * IN PLACE OF a หัวหน้า who does not exist, so every decision on this screen
+   * needs a reason (`OVERRIDE_NOTE_REQUIRED`).
+   *
+   * Read off the MODE rather than off the row, and that is what makes the
+   * screen and the server agree without the client modelling delegation
+   * coverage: the server put a row in this list precisely because nobody could
+   * sign it, so `approvalPermission` will take the administrator's override
+   * path for every one of them and refuse every one without a note. On any
+   * other queue this is false and nothing changes — an administrator holding a
+   * real delegation signs from รออนุมัติแทน with no reason demanded, exactly as
+   * ฝ่ายบุคคล does, because there the server does not demand one either.
+   */
+  const needsReason = unsignedOnly;
   const toast = useToast();
 
   const [entries, setEntries] = useState(null);
@@ -136,8 +153,11 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
       // `usage=cap` adds each row's running total for its own month — see
       // CapUsageCell, and `queueCapUsage` for why it costs the same however
       // long the queue is.
+      // `scope=unsigned` is the third reading of the same list: the rows at
+      // this stage that NOBODY on the roster covers. See app/api/entries.
+      const scope = delegatedOnly ? '&scope=delegated' : (unsignedOnly ? '&scope=unsigned' : '');
       const res = await api.get(
-        `/entries?status=${stage}&usage=cap${delegatedOnly ? '&scope=delegated' : ''}`
+        `/entries?status=${stage}&usage=cap${scope}`
         + `${limit ? `&limit=${limit}` : ''}`,
       );
       setEntries(res.entries);
@@ -155,7 +175,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
     // Passed rather than read off `asked`: the reset above lands on the next
     // render, so the closure here would still be holding the old queue's.
     load(null);
-  }, [stage, delegatedOnly]);
+  }, [stage, delegatedOnly, unsignedOnly]);
 
   // ── what the table is showing ─────────────────────────────────────────────
 
@@ -199,12 +219,25 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
   }, [shown]);
 
   /**
-   * The rows this reviewer can actually decide — everything except the ones they
-   * filed themselves, which no button of theirs can move (see `isOwnFiling`).
+   * The rows this reviewer can actually decide.
+   *
+   * TWO EXCLUSIONS, and they are the same kind of thing: a row no button of
+   * theirs can move.
+   *
+   *   · the ones they FILED themselves (`isOwnFiling`);
+   *   · the ones they SIGNED at the หัวหน้า step (`signedManagerStep`), which
+   *     they may not also sign at the ฝ่ายบุคคล step — §6 wants two people and
+   *     this is where that is made to mean two people. Only ever true on รอ HR
+   *     ยืนยัน, and only for somebody who reached the first step through a
+   *     delegation or through the administrator's override.
+   *
    * เลือกทั้งหมด and the tick-box state are both counted against this rather than
    * against `shown`, so a batch cannot be built out of rows that will 403.
    */
-  const actionable = useMemo(() => shown.filter((e) => !isOwnFiling(e, user)), [shown, user]);
+  const actionable = useMemo(
+    () => shown.filter((e) => !isOwnFiling(e, user) && !signedManagerStep(e, user)),
+    [shown, user],
+  );
 
   useEffect(() => {
     const part = selected.size > 0 && selected.size < actionable.length;
@@ -292,9 +325,18 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
     }
   }
 
-  const approve = (list) => run(
+  /**
+   * `note` is sent only where one is required, and it is the same string for
+   * every row of a batch — one decision, one reason.
+   *
+   * The server refuses the whole thing without it on this queue, so an empty
+   * one never reaches here: the dialog's button is disabled until something is
+   * typed. It is passed as `note` rather than `reason` because that is the
+   * field an approval carries; ไม่อนุมัติ has always had its own.
+   */
+  const approve = (list, note = null) => run(
     list,
-    (e) => api.post(`/entries/${e._id}/approve`),
+    (e) => api.post(`/entries/${e._id}/approve`, note ? { note } : undefined),
     (n, all) => (n === 1
       ? `${verb}รายการ OT ของ ${all[0].employee?.name} เรียบร้อยแล้ว`
       : `${verb} ${n} รายการเรียบร้อยแล้ว${isHr ? ' — เข้าสู่รายงานส่งออกแล้ว' : ''}`),
@@ -757,7 +799,7 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                     <input
                       type="checkbox"
                       checked={selected.has(e._id)}
-                      disabled={isOwnFiling(e, user)}
+                      disabled={isOwnFiling(e, user) || signedManagerStep(e, user)}
                       onChange={() => toggle(e._id)}
                       aria-label={`เลือกรายการของ ${e.employee?.name}`}
                     />
@@ -852,7 +894,24 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
                         the reason and, when the row is one the system generated
                         and nobody has touched, the only action that does work.
                         See `isOwnFiling` in lib/delegation.js. */}
-                    {isOwnFiling(e, user) ? (
+                    {/* The same shape as `isOwnFiling` below, for the same
+                        reason and with a different sentence: a row this
+                        reviewer already signed at the หัวหน้า step is one they
+                        may not sign again here. Offering the buttons would be
+                        offering a 409 twice; offering nothing at all would
+                        leave a row that simply refuses to do anything with no
+                        explanation on it. See `signedManagerStep`. */}
+                    {!isOwnFiling(e, user) && signedManagerStep(e, user) ? (
+                      <div className="row-actions">
+                        <span className="cell-sub own-note">
+                          คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว
+                          {' — '}ใบหนึ่งต้องผ่านผู้เซ็นสองคน ให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ
+                        </span>
+                        <button className="btn ghost sm" onClick={() => setDetail(e)}>
+                          รายละเอียด
+                        </button>
+                      </div>
+                    ) : isOwnFiling(e, user) ? (
                       <div className="row-actions">
                         {/* A class rather than the inline `maxWidth: 190` it
                             used to carry: the card layout needs this sentence
@@ -946,9 +1005,10 @@ export default function ApprovalQueue({ user, stage, onChanged, onOpenPolicy, de
           entries={confirming}
           verb={verb}
           isHr={isHr}
+          needsReason={needsReason}
           busy={busy}
           onClose={() => setConfirming(null)}
-          onConfirm={() => { const list = confirming; setConfirming(null); approve(list); }}
+          onConfirm={(note) => { const list = confirming; setConfirming(null); approve(list, note); }}
         />
       )}
 
@@ -1016,10 +1076,21 @@ function pileLabel(isHr, count) {
  * ยืนยัน is one click away from payroll, so it gets a stop — but a short one.
  * A batch shows what it is about to move; a single row shows the row.
  */
-function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
+function ConfirmModal({ entries, verb, isHr, busy, needsReason = false, onClose, onConfirm }) {
   const total = entries.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
   const capped = entries.filter((e) => e.capExceeded);
   const many = entries.length > 1;
+  /**
+   * The reason an administrator gives for signing in a หัวหน้า's place.
+   *
+   * Local to the dialog and never pre-filled. A default here — "แผนกนี้ไม่มี
+   * หัวหน้า" would be the obvious one to reach for — is a sentence the system
+   * wrote appearing in the record as something a person decided, on the one
+   * line whose whole job is to say what a person decided. It is three words to
+   * type and this is not a screen anybody visits daily.
+   */
+  const [why, setWhy] = useState('');
+  const ready = !needsReason || why.trim().length > 0;
 
   // Same verb and same count as the button that opened this — see `pileLabel`.
   const confirmLabel = pileLabel(isHr, entries.length);
@@ -1051,7 +1122,13 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
       footer={(
         <>
           <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
-          <button className="btn" disabled={busy} onClick={onConfirm}>{confirmLabel}</button>
+          <button
+            className="btn"
+            disabled={busy || !ready}
+            onClick={() => onConfirm(needsReason ? why.trim() : null)}
+          >
+            {confirmLabel}
+          </button>
         </>
       )}
     >
@@ -1073,6 +1150,37 @@ function ConfirmModal({ entries, verb, isHr, busy, onClose, onConfirm }) {
           {capped.length} รายการเกินเพดานแผนก — {capped.map((e) => e.employee?.name).join(', ')} ·
           {' '}ปิดหน้าต่างนี้แล้วใช้ “อนุมัติเกินเพดาน” หากตั้งใจให้ผ่าน
         </Alert>
+      )}
+
+      {/* ABOVE the row preview, not below it: this is the one thing on the
+          sheet that has to be done rather than read, and a required field
+          under a collapsible list of forty rows is a required field somebody
+          hunts for after the button refuses to work. */}
+      {needsReason && (
+        <>
+          <Alert kind="warn">
+            <strong>ใบนี้ไม่มีหัวหน้าแผนกที่เซ็นได้</strong>
+            {' — '}คุณกำลังเซ็นในขั้นหัวหน้าแทน · จะถูกบันทึกไว้ในประวัติของใบว่าเป็นการเซ็นแทน
+            โดยผู้ดูแลระบบ พร้อมเหตุผลที่กรอก
+            {' · '}หลังจากนี้ใบจะไปรอขั้นฝ่ายบุคคล และ<strong>คุณจะเซ็นขั้นนั้นของใบเดียวกันไม่ได้</strong>
+            {' '}ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ
+          </Alert>
+          <div className="field" style={{ marginTop: 12 }}>
+            <div className="field-head">
+              <label htmlFor="override-why">เหตุผลที่เซ็นแทนหัวหน้า *</label>
+            </div>
+            <textarea
+              id="override-why"
+              rows={2}
+              value={why}
+              placeholder="เช่น แผนก ADM ยังไม่มีหัวหน้างาน · หัวหน้าลาออกเมื่อ 20 ส.ค. ยังไม่ได้ตั้งคนใหม่"
+              onChange={(ev) => setWhy(ev.target.value)}
+            />
+            <div className="field-note">
+              {OVERRIDE_NOTE_REQUIRED}
+            </div>
+          </div>
+        </>
       )}
 
       <EntryPeek entries={entries} collapsed={many} />
