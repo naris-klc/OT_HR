@@ -1,7 +1,7 @@
 import Setting from '@/src/models/Setting.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
-import { unconfirmedState } from '@/lib/policyConfirmations.js';
+import { unconfirmedState, normaliseConfirmNote } from '@/lib/policyConfirmations.js';
 import { confirmPolicyItem } from '@/lib/policyConfirmSave.js';
 
 /**
@@ -29,7 +29,16 @@ export const POST = route(async (req) => {
   const user = requireRole(await requireAuth(req), 'admin', 'hr');
   const payload = await body(req);
 
-  const result = await confirmPolicyItem({ id: payload?.id, actor: user });
+  /**
+   * ที่มาของคำตอบ — optional, and refused rather than truncated when it is too
+   * long. A sign-off is a record somebody may read in a year; silently keeping
+   * the first 300 characters of what they wrote would put words in their mouth
+   * and cut the sentence that mattered.
+   */
+  const note = normaliseConfirmNote(payload?.note);
+  if (note.error) return fail(note.error, 400);
+
+  const result = await confirmPolicyItem({ id: payload?.id, actor: user, note: note.value });
   if (result.error) return fail(result.error, result.status);
 
   return json(result);

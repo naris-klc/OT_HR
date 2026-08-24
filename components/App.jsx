@@ -10,11 +10,13 @@ import { BackProvider } from './nav.jsx';
 import { PolicyProvider } from './policyContext.jsx';
 import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
+import { BackupBanner } from './BackupBanner.jsx';
 import QueueTabs from './QueueTabs.jsx';
 import HrView from './HrView.jsx';
 import AccountingView from './AccountingView.jsx';
 import DepartmentView from './DepartmentView.jsx';
 import AdminView from './AdminView.jsx';
+import LogSystem from './LogSystem.jsx';
 import ProfileView, { ChangePassword } from './ProfileView.jsx';
 import PrintForm from './PrintForm.jsx';
 
@@ -271,6 +273,7 @@ const PAGE = {
   departments: ['สรุป OT แยกแผนก', 'DEPARTMENT SUMMARY'],
   form: ['ใบ F-HR-027', 'PRINTABLE FORM'],
   admin: ['ตั้งค่าระบบ', 'SETTINGS & POLICY'],
+  logs: ['บันทึกระบบ', 'SYSTEM & ACCESS LOG'],
   profile: ['ข้อมูลส่วนตัว', 'MY PROFILE'],
 };
 
@@ -501,6 +504,18 @@ function Shell({ session, onLogout }) {
   // roster was Admin's alone, and a tab that undersells what is behind it is
   // how HR ends up asking IT to add a new hire.
   if (['hr', 'admin'].includes(user.role)) tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: 'sliders' });
+  /**
+   * บันทึกระบบ — ผู้ดูแลระบบ AND NOT ฝ่ายบุคคล, which is why it is its own tab
+   * rather than a seventh section inside ตั้งค่าระบบ.
+   *
+   * Every section on that screen is reachable by both roles; a section that
+   * appeared for one of them would be a rule living in two files, and the
+   * failure mode is the section quietly appearing for HR the day somebody adds
+   * the next one. The endpoints refuse HR either way — see
+   * app/api/logs/route.js for why the shared ฝ่ายบุคคล login is the reason —
+   * and this keeps the screen and the server saying the same thing.
+   */
+  if (user.role === 'admin') tabs.push({ key: 'logs', label: 'บันทึกระบบ', icon: 'shield' });
 
   async function logout() {
     await api.post('/auth/logout');
@@ -605,6 +620,29 @@ function Shell({ session, onLogout }) {
 
         <main>
           <div className="page">
+            {/*
+              สถานะการสำรองข้อมูล — บนหน้าแรกของ ฝ่ายบุคคล และ admin เท่านั้น
+
+              On the landing tab and nowhere else. A missed backup is a standing
+              condition rather than an event: it is equally true on every screen,
+              and repeating it on each of them is how a warning becomes furniture
+              — which is exactly what happened to the line the scheduled task has
+              written to backups/backup.log every night since 18 August. The
+              first screen after login is where it is read rather than scrolled
+              past.
+
+              Renders nothing for the other roles, and nothing at all while the
+              nightly job is doing its work — including when the only copy is on
+              the same disk as the database, which the endpoint still reports
+              and this strip stopped announcing on 2026-08-24. What is left is a
+              job that failed. See components/BackupBanner.jsx; there is no
+              green state either.
+            */}
+            {tab === home && (
+              <div style={{ padding: '0 18px' }}>
+                <BackupBanner user={user} />
+              </div>
+            )}
             {tab === 'mine' && <EmployeeView user={user} onChanged={refreshCounts} openSignal={formSignal} />}
             {tab === 'approve' && (
               <QueueTabs
@@ -658,6 +696,7 @@ function Shell({ session, onLogout }) {
             {tab === 'departments' && <DepartmentView />}
             {tab === 'form' && <MyForm />}
             {tab === 'admin' && <AdminView user={user} initialSection={adminSection} />}
+            {tab === 'logs' && <LogSystem />}
             {tab === 'profile' && <ProfileView user={user} onLogout={logout} />}
           </div>
         </main>

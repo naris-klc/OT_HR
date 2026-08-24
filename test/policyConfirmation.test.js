@@ -9,10 +9,12 @@ import {
   HR_UNCONFIRMED,
   HR_UNCONFIRMED_SINCE,
   readUnconfirmed,
-  unconfirmedKeys,
 } from '../src/config/policy.js';
 import { ARITHMETIC_KEYS, COSMETIC_KEYS, policyHash, samePolicy } from '../lib/policyVersion.js';
-import { confirmationRecord, unconfirmedItem, unconfirmedState } from '../lib/policyConfirmations.js';
+import {
+  CONFIRM_NOTE_MAX_CHARS, applyConfirmation, confirmationRecord, confirmedValues,
+  normaliseConfirmNote, unconfirmedItem, unconfirmedKeys, unconfirmedState,
+} from '../lib/policyConfirmations.js';
 
 /**
  * "รอ HR ยืนยัน" is a note about who decided a rule. It must never become a
@@ -159,22 +161,152 @@ test('answering [OPEN 4] is HR pressing ยืนยัน — not a default mov
   assert.equal(unconfirmedState(DEFAULT_POLICY, {}).find((i) => i.id === 'belowMinimumAction').confirmed, null);
 });
 
-test('a confirmed item carries who and when; an unconfirmed one carries null', () => {
+/** A sign-off written the way the writer writes one: naming the value it is on. */
+function signedOff(item, policy, actor, at, extra = {}) {
+  return confirmationRecord(actor, at, {
+    values: confirmedValues(item, policy),
+    reading: readUnconfirmed(item, policy),
+    ...extra,
+  });
+}
+
+test('a confirmed item carries who, when, and what was signed', () => {
   const at = new Date('2026-08-07T04:00:00.000Z');
-  const confirmations = { belowMinimumAction: confirmationRecord({ _id: 'u1', name: 'สมชาย' }, at) };
+  const item = unconfirmedItem('belowMinimumAction');
+  const confirmations = {
+    belowMinimumAction: signedOff(item, DEFAULT_POLICY, { _id: 'u1', name: 'สมชาย' }, at, {
+      note: 'ที่ประชุม 7 ส.ค.',
+    }),
+  };
   const items = unconfirmedState(DEFAULT_POLICY, confirmations);
 
   const confirmed = items.find((i) => i.id === 'belowMinimumAction');
   assert.deepEqual(confirmed.confirmed, {
-    by: 'u1', byName: 'สมชาย', at: '2026-08-07T04:00:00.000Z',
+    by: 'u1',
+    byName: 'สมชาย',
+    at: '2026-08-07T04:00:00.000Z',
+    values: { belowMinimum: 'accept' },
+    reading: 'รับตามชั่วโมงจริง และติดธงให้ HR ตรวจ',
+    policyVersionId: null,
+    note: 'ที่ประชุม 7 ส.ค.',
+    supersededCount: 0,
   });
+  assert.equal(confirmed.state, 'current');
+  assert.equal(confirmed.stands, true);
   assert.equal(items.find((i) => i.id === 'roundingIncrement').confirmed, null);
 });
 
 test('confirming one item does not clear the badge on the others', () => {
-  const keys = unconfirmedKeys({ belowMinimumAction: confirmationRecord({ name: 'สมชาย' }, new Date(0)) });
+  const item = unconfirmedItem('belowMinimumAction');
+  const keys = unconfirmedKeys(
+    { belowMinimumAction: signedOff(item, DEFAULT_POLICY, { name: 'สมชาย' }, new Date(0)) },
+    DEFAULT_POLICY,
+  );
   assert.equal(keys.has('belowMinimum'), false);
   assert.equal(keys.has('roundingIncrementMinutes'), true);
+});
+
+/**
+ * The failure this whole shape exists to stop.
+ *
+ * A signature is on an ANSWER, not on a question. Until 2026-08-24 the record
+ * held no value, so moving `belowMinimum` from 'accept' to 'reject' left the
+ * 14 August sign-off sitting under it, now endorsing a value nobody had seen —
+ * silently, because the row reads its answer off the live policy and would have
+ * shown the new one beside the old signature without a word.
+ */
+test('a sign-off stops standing when the value it was given for moves', () => {
+  const item = unconfirmedItem('belowMinimumAction');
+  const at = new Date('2026-08-14T03:46:00.000Z');
+  const confirmations = {
+    belowMinimumAction: signedOff(item, DEFAULT_POLICY, { _id: 'u1', name: 'ฝ่ายบุคคล' }, at),
+  };
+
+  const moved = { ...DEFAULT_POLICY, belowMinimum: 'reject' };
+  const row = unconfirmedState(moved, confirmations).find((i) => i.id === 'belowMinimumAction');
+
+  assert.equal(row.state, 'moved');
+  assert.equal(row.stands, false, 'the badge has to come back on its own');
+  assert.deepEqual(row.changes, [{ key: 'belowMinimum', was: 'accept', now: 'reject' }]);
+  // The signature is not deleted, and it still says what it was given for.
+  assert.equal(row.confirmed.byName, 'ฝ่ายบุคคล');
+  assert.equal(row.confirmed.reading, 'รับตามชั่วโมงจริง และติดธงให้ HR ตรวจ');
+  // And the row shows the value that is RUNNING, which is the other half.
+  assert.equal(row.reading, 'ไม่รับรายการ');
+  assert.equal(unconfirmedKeys(confirmations, moved).has('belowMinimum'), true);
+});
+
+/**
+ * The four pressed on 2026-08-14 — kept, never repaired.
+ *
+ * Back-filling today's values onto them would manufacture evidence that HR
+ * agreed to values they were never shown. What the record can honestly say is
+ * that somebody signed something and the system did not write down what.
+ */
+test('a sign-off from before values were recorded is marked, not mended', () => {
+  const legacy = { by: '6a7d', byName: 'ฝ่ายบุคคล', at: '2026-08-14T03:46:15.314Z' };
+  const row = unconfirmedState(DEFAULT_POLICY, { belowMinimumAction: legacy })
+    .find((i) => i.id === 'belowMinimumAction');
+
+  assert.equal(row.state, 'unrecorded');
+  assert.equal(row.stands, false);
+  assert.equal(row.confirmed.byName, 'ฝ่ายบุคคล', 'the signature is kept whole');
+  assert.equal(row.confirmed.at, '2026-08-14T03:46:15.314Z');
+  assert.equal(row.confirmed.values, null, 'and is not given values it never had');
+  assert.equal(unconfirmedKeys({ belowMinimumAction: legacy }, DEFAULT_POLICY).has('belowMinimum'), true);
+});
+
+test('re-confirming keeps the sign-off it replaces, and only when one is needed', () => {
+  const item = unconfirmedItem('belowMinimumAction');
+  const first = new Date('2026-08-14T03:46:00.000Z');
+  const doc = {
+    policyConfirmations: {
+      belowMinimumAction: signedOff(item, DEFAULT_POLICY, { name: 'ฝ่ายบุคคล' }, first),
+    },
+  };
+
+  // Pressing it again on an unchanged rule must not re-date the signature.
+  const again = applyConfirmation(doc, {
+    id: 'belowMinimumAction',
+    actor: { name: 'คนอื่น' },
+    at: new Date('2026-08-20T00:00:00.000Z'),
+    policy: DEFAULT_POLICY,
+  });
+  assert.equal(again.changed, false);
+  assert.equal(again.confirmations.belowMinimumAction.at, first.toISOString());
+
+  // Once the value has moved, it is a new answer to a question that came back.
+  const moved = { ...DEFAULT_POLICY, belowMinimum: 'raise' };
+  const redone = applyConfirmation(doc, {
+    id: 'belowMinimumAction',
+    actor: { _id: 'u2', name: 'สมศรี' },
+    at: new Date('2026-08-25T00:00:00.000Z'),
+    policy: moved,
+    note: 'ทวนกับ HR อีกครั้ง',
+  });
+  assert.equal(redone.changed, true);
+
+  const record = redone.confirmations.belowMinimumAction;
+  assert.equal(record.byName, 'สมศรี');
+  assert.deepEqual(record.values, { belowMinimum: 'raise' });
+  assert.equal(record.note, 'ทวนกับ HR อีกครั้ง');
+  assert.equal(record.supersedes.byName, 'ฝ่ายบุคคล', 'the earlier signature is kept whole');
+  assert.deepEqual(record.supersedes.values, { belowMinimum: 'accept' });
+  assert.equal(
+    unconfirmedState(moved, redone.confirmations).find((i) => i.id === 'belowMinimumAction')
+      .confirmed.supersededCount,
+    1,
+  );
+});
+
+test('ที่มาของคำตอบ is optional, capped, and refused rather than trimmed', () => {
+  assert.deepEqual(normaliseConfirmNote(''), { value: null });
+  assert.deepEqual(normaliseConfirmNote(null), { value: null });
+  assert.deepEqual(normaliseConfirmNote('  ถามคุณสมศรี  '), { value: 'ถามคุณสมศรี' });
+
+  const tooLong = normaliseConfirmNote('ก'.repeat(CONFIRM_NOTE_MAX_CHARS + 1));
+  assert.ok(tooLong.error, 'a note past the cap is an error, never a truncation');
+  assert.equal(tooLong.value, undefined);
 });
 
 test('the rounding increment’s badge sits on the increment, not on the mode', () => {
@@ -234,11 +366,14 @@ test('an unknown id is refused rather than recorded', () => {
 test('a signature survives the employee row it was signed with', () => {
   // byName is denormalised deliberately: an employee can be deleted, a
   // sign-off cannot be un-signed.
+  const empty = {
+    values: null, reading: null, policyVersionId: null, note: null, supersedes: null,
+  };
   assert.deepEqual(confirmationRecord({ _id: 'u9', code: 'PM0001' }, new Date(0)), {
-    by: 'u9', byName: 'PM0001', at: '1970-01-01T00:00:00.000Z',
+    by: 'u9', byName: 'PM0001', at: '1970-01-01T00:00:00.000Z', ...empty,
   });
   assert.deepEqual(confirmationRecord(null, new Date(0)), {
-    by: null, byName: null, at: '1970-01-01T00:00:00.000Z',
+    by: null, byName: null, at: '1970-01-01T00:00:00.000Z', ...empty,
   });
 });
 
@@ -265,4 +400,42 @@ test('the settings route confirms through the shared writer, not through savePol
 
   assert.match(code, /confirmPolicyItem/);
   assert.doesNotMatch(code, /savePolicy|recompute/i);
+});
+
+test('the sign-off writer reads a version and can never append one', () => {
+  /**
+   * lib/policyConfirmSave.js gained an import of PolicyVersion on 2026-08-24, so
+   * a record can point at the rule set it was signed inside. Reading one is not
+   * writing one, and the difference has to be held by something other than good
+   * intentions: `append` and `create` are the two ways a version comes into
+   * existence, and neither may appear on this path.
+   */
+  const src = readFileSync(join(ROOT, 'lib/policyConfirmSave.js'), 'utf8');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  assert.match(code, /PolicyVersion\.latest\(\)/, 'the version pointer must come from the latest row');
+  assert.doesNotMatch(code, /PolicyVersion\.(append|create)/, 'a sign-off appended a policy version');
+  assert.doesNotMatch(code, /doc\.policy\s*=/, 'a sign-off wrote a policy value');
+  assert.doesNotMatch(code, /recomputeEntries|savePolicy/, 'a sign-off reached the engine');
+});
+
+test('the settings page reads standing, not the mere existence of a signature', () => {
+  /**
+   * The badge is the point of the whole change. `item.confirmed` is now a
+   * record that may or may not still cover the value under it, so a screen
+   * testing it for truthiness would show ✓ HR ยืนยันแล้ว over a rule nobody has
+   * agreed to — which is exactly the state the page was in before.
+   */
+  const src = readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8');
+
+  assert.match(src, /item\.stands/, 'AdminView no longer reads whether a sign-off stands');
+  assert.doesNotMatch(
+    src,
+    /if \(!item \|\| item\.confirmed\) return null;/,
+    'the ยืนยัน block is back to hiding itself on any signature at all',
+  );
+  // The three things a re-opened row has to be able to say.
+  assert.match(src, /ยืนยันใหม่ที่ค่าปัจจุบัน/);
+  assert.match(src, /ทวนอีกครั้ง/);
+  assert.match(src, /ที่มาของคำตอบ/);
 });

@@ -5,6 +5,7 @@ import { codeMatcher, sameCode } from '@/src/lib/employeeCode.js';
 import {
   delayFor, failuresFor, hintFor, recordFailure, recordSuccess, throttleKey,
 } from '@/lib/loginThrottle.js';
+import { noteActor, noteAuthEvent } from '@/lib/requestContext.js';
 
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -54,9 +55,28 @@ export const POST = route(async (req) => {
      */
     const failures = recordFailure(key);
     const hint = hintFor(failures);
+    /**
+     * THE LOG IS TOLD WHICH CODE WAS TYPED; THE PERSON TYPING IS NOT TOLD
+     * ANYTHING. The two paragraphs above are about what the ANSWER may reveal,
+     * and none of that changes — one message, whatever went wrong.
+     *
+     * บันทึกระบบ is read by ผู้ดูแลระบบ afterwards, and there the code is the
+     * whole record: without it a night of guessing is four hundred identical
+     * rows saying somebody failed to log in as somebody. The password is not
+     * passed here, and there is no field for it anywhere downstream — see
+     * lib/requestContext.js and src/models/AccessLog.js.
+     */
+    noteAuthEvent('login_failed', { attemptedCode: code });
     return fail('รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง', 401, hint ? { hint } : {});
   }
 
   recordSuccess(key);
+  /**
+   * The one route where the actor is known without `requireAuth` having run —
+   * it is the request that CREATES the session, so the log has to be told by
+   * hand or every successful login would be an anonymous row.
+   */
+  noteActor(user);
+  noteAuthEvent('login');
   return setAuthCookie(json({ user: publicUser(user) }), signToken(user), req);
 });

@@ -25,6 +25,13 @@ import {
 // Pure too — no imports of its own at all, so the diff the settings page draws
 // is computed by the same function the replay and the version history use.
 import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
+// Pure for the same reason, and the reason matters more here: what it says is
+// derived from the whole policy rather than from the row it is printed on, so
+// the sentence under one dropdown is computed from the values in the others.
+import { inertReason, INERT_KEYS } from '@/lib/policyInert.js';
+// The cap the sign-off note is refused at, so the box on screen stops where the
+// route does rather than letting somebody type past a limit they cannot see.
+import { CONFIRM_NOTE_MAX_CHARS } from '@/lib/policyConfirmations.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { searchPeople, personMatches } from '@/lib/personSearch.js';
 import {
@@ -4998,12 +5005,34 @@ const OPEN_LABEL = (() => {
  */
 function PolicyStatus({ items }) {
   if (!items?.length) return null;
-  const waiting = items.some((u) => !u.confirmed);
+  /**
+   * THREE STATES, NOT TWO, and the third is the one worth having.
+   *
+   * `waiting` — nobody has answered, or somebody answered and the value has
+   *   been changed since. The badge coming back on its own is the whole point
+   *   of recording what was signed: a sign-off from August does not cover a
+   *   value chosen in September, and until 2026-08-24 it silently did.
+   * `review` — signed on 2026-08-14, before records carried values. Not
+   *   waiting, because somebody genuinely pressed it; not settled either,
+   *   because what they were looking at was never written down.
+   */
+  const waiting = items.some((u) => u.state === 'never' || u.state === 'moved');
+  const review = !waiting && items.some((u) => u.state === 'unrecorded');
+  const settled = !waiting && !review;
+
   return (
-    <span className={`chip policy-status ${waiting ? 'unconfirmed' : 'confirmed'}`}>
-      {waiting ? '⚠️ รอ HR ยืนยัน' : '✓ HR ยืนยันแล้ว'}
+    <span className={`chip policy-status ${settled ? 'confirmed' : 'unconfirmed'}`}>
+      {waiting && '⚠️ รอ HR ยืนยัน'}
+      {review && '⚠️ ยืนยันแล้ว — ทวนอีกครั้ง'}
+      {settled && '✓ HR ยืนยันแล้ว'}
     </span>
   );
+}
+
+/** One policy value as its dropdown words it — 'accept' → 'รับตามชั่วโมงจริง…'. */
+function valueLabel(key, value) {
+  const field = POLICY_FIELDS.find((f) => f.key === key);
+  return field ? optionLabel(field, value) : String(value);
 }
 
 /**
@@ -5051,7 +5080,21 @@ function coerce(field, raw) {
  * reads, reasonably, as though it might apply something.
  */
 function Unconfirmed({ item, canEdit, busy, onConfirm }) {
-  if (!item || item.confirmed) return null;
+  /**
+   * ที่มาของคำตอบ, held here rather than beside the page's other draft state.
+   *
+   * One box per item and never more than one item being signed at a time, so
+   * lifting it into `Policy` would buy a keyed map and the bug where two rows
+   * share a draft. It is cleared by the row disappearing when the sign-off
+   * lands, which is the only exit this box has.
+   */
+  const [why, setWhy] = useState('');
+
+  if (!item || item.stands) return null;
+
+  const moved = item.state === 'moved';
+  const unrecorded = item.state === 'unrecorded';
+  const signedOn = item.confirmed?.at ? thaiDate(String(item.confirmed.at).slice(0, 10)) : '';
 
   return (
     <div style={{ marginTop: 4 }}>
@@ -5061,31 +5104,87 @@ function Unconfirmed({ item, canEdit, busy, onConfirm }) {
             buffer came off nobody at all — it ships at "no threshold" because
             no figure was ever given, which is not the same as an answer of
             none. Where each value came from is now its own `note`. */}
-        ค่าที่ใช้อยู่: <strong>{item.reading}</strong> · ยังไม่มีใครใน HR ตอบข้อนี้ ตั้งแต่ {item.since}
+        ค่าที่ใช้อยู่: <strong>{item.reading}</strong>
+        {item.state === 'never' && <> · ยังไม่มีใครใน HR ตอบข้อนี้ ตั้งแต่ {item.since}</>}
         {item.note && <div style={{ marginTop: 2 }}>{item.note}</div>}
       </div>
+
+      {/* A sign-off that no longer covers the value under it. The row says what
+          was agreed and what it is now, because "ยืนยันใหม่" with neither on
+          screen is a button asking somebody to re-agree to something they
+          cannot see. */}
+      {moved && (
+        <div className="policy-inert" style={{ marginTop: 4 }}>
+          เคยยืนยันไว้{item.confirmed?.byName ? ` โดย ${item.confirmed.byName}` : ''}
+          {signedOn ? ` เมื่อ ${signedOn}` : ''} ที่ค่า{' '}
+          <strong>{item.confirmed?.reading || '—'}</strong> · ค่าถูกแก้หลังจากนั้น
+          {item.changes?.map((c) => (
+            <div key={c.key} style={{ marginTop: 2 }}>
+              {valueLabel(c.key, c.was)} → <strong>{valueLabel(c.key, c.now)}</strong>
+            </div>
+          ))}
+          <div style={{ marginTop: 2 }}>
+            คำตอบเดิมไม่ครอบคลุมค่าใหม่ — ต้องให้ฝ่ายบุคคลยืนยันอีกครั้ง · ลายเซ็นเดิมไม่ได้ถูกลบ
+          </div>
+        </div>
+      )}
+
+      {/* The four of 2026-08-14. Kept, dated, named, and honest about what it
+          cannot tell you — see lib/policyConfirmations.js. */}
+      {unrecorded && (
+        <div className="policy-inert" style={{ marginTop: 4 }}>
+          ยืนยันแล้ว{item.confirmed?.byName ? ` โดย ${item.confirmed.byName}` : ''}
+          {signedOn ? ` เมื่อ ${signedOn}` : ''} — แต่ตอนนั้นระบบยังไม่ได้เก็บว่ายืนยันที่ค่าใด
+          จึงบอกไม่ได้ว่าคำตอบนั้นครอบคลุมค่าที่ใช้อยู่ตอนนี้หรือไม่ · ควรทวนกับฝ่ายบุคคลอีกครั้ง
+          แล้วกดยืนยันใหม่ ลายเซ็นเดิมจะถูกเก็บไว้ทั้งใบ
+        </div>
+      )}
+
       {canEdit && (
-        <div style={{ marginTop: 4 }}>
-          <button className="btn ghost sm" disabled={busy} onClick={() => onConfirm(item.id)}>
-            ยืนยันว่าเป็นคำตอบของ HR
-          </button>
-          <span className="hint" style={{ marginLeft: 8 }}>
-            บันทึกชื่อผู้ยืนยันและวันที่เท่านั้น · ไม่เปลี่ยนค่า และไม่คำนวณใบใดใหม่
-          </span>
+        <div style={{ marginTop: 6 }}>
+          {/* `.field` rather than a bare input: it is what styles every text box
+              in this app, and the one on this page a few rows down — เหตุผลของ
+              การเปลี่ยนแปลง — is written exactly this way. */}
+          <div className="field" style={{ maxWidth: 520 }}>
+            <label>ที่มาของคำตอบ (ไม่บังคับ) — ถามใคร เมื่อไหร่ ด้วยหลักฐานอะไร</label>
+            <input
+              value={why}
+              disabled={busy}
+              maxLength={CONFIRM_NOTE_MAX_CHARS}
+              placeholder="เช่น คุณสมศรีตอบทางโทรศัพท์ 24 ส.ค. หลังดูใบ มิ.ย."
+              onChange={(e) => setWhy(e.target.value)}
+            />
+          </div>
+          <div style={{ marginTop: 4 }}>
+            <button className="btn ghost sm" disabled={busy} onClick={() => onConfirm(item.id, why)}>
+              {moved || unrecorded ? 'ยืนยันใหม่ที่ค่าปัจจุบัน' : 'ยืนยันว่าเป็นคำตอบของ HR'}
+            </button>
+            <span className="hint" style={{ marginLeft: 8 }}>
+              บันทึกชื่อผู้ยืนยัน วันที่ และค่าที่ยืนยัน · ไม่เปลี่ยนค่า และไม่คำนวณใบใดใหม่
+            </span>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-/** Who signed an item off, once somebody has. */
+/**
+ * Who signed an item off, while the signature still covers the value under it.
+ *
+ * Nothing here when it does not — `Unconfirmed` above takes the row over in
+ * that case and says considerably more. Two blocks both narrating one sign-off
+ * would be the page arguing with itself.
+ */
 function ConfirmedBy({ item }) {
-  if (!item?.confirmed) return null;
-  const { byName, at } = item.confirmed;
+  if (!item?.stands) return null;
+  const { byName, at, reading, note } = item.confirmed || {};
   return (
     <div className="hint" style={{ marginTop: 4, color: 'var(--green-dark)' }}>
       ยืนยันแล้ว{byName ? ` โดย ${byName}` : ''}
       {at ? ` · ${thaiDate(String(at).slice(0, 10))}` : ''}
+      {reading ? ` · ที่ค่า “${reading}”` : ''}
+      {note && <div style={{ marginTop: 2 }}>ที่มา: {note}</div>}
     </div>
   );
 }
@@ -5186,13 +5285,15 @@ function Policy({ user }) {
    * policy value, which records a version and replays every entry in flight.
    * A sign-off must reach neither, so it does not go through it.
    */
-  async function confirm(id) {
+  async function confirm(id, confirmNote) {
     setBusy(true);
     setError('');
     try {
-      const res = await api.post('/settings/policy-confirmations', { id });
+      const res = await api.post('/settings/policy-confirmations', { id, note: confirmNote || '' });
       setUnconfirmed(res.items || []);
-      setMsg('บันทึกการยืนยันของ HR แล้ว · ไม่มีค่าใดเปลี่ยน และไม่มีใบใดถูกคำนวณใหม่');
+      setMsg('บันทึกการยืนยันของ HR แล้ว พร้อมค่าที่ยืนยัน '
+        + '· ไม่มีค่าใดเปลี่ยน และไม่มีใบใดถูกคำนวณใหม่ '
+        + '· ถ้าค่านี้ถูกแก้ภายหลัง ป้ายจะกลับมาขึ้นเอง');
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
 
@@ -5267,6 +5368,19 @@ function Policy({ user }) {
   if (!policy) return <div className="card"><Empty>กำลังโหลด…</Empty></div>;
 
   const canEdit = ['admin', 'hr'].includes(user.role);
+
+  /**
+   * The policy as the page currently reads, which is the stored one plus
+   * whatever answer is sitting in an open dialog.
+   *
+   * Every row's "this does nothing" note is computed from the OTHER rows, so it
+   * has to be computed from one policy for the whole list rather than from each
+   * row's own `shown`. Proposing 'คิดตามจริง' on วิธีการปัดเศษ makes ปัดทีละกี่นาที
+   * inert the moment the dropdown moves — while the dialog confirming it is
+   * still up — which is the same rule the row's own `shown` follows, applied to
+   * the list instead of to one row.
+   */
+  const proposed = pending ? { ...policy, [pending.field.key]: pending.value } : policy;
 
   return (
     <div className="card">
@@ -5362,6 +5476,10 @@ function Policy({ user }) {
              end up describing two different values. */
           const shown = pending?.field.key === f.key ? pending.value : policy[f.key];
           const warning = f.warn ? f.warn(shown, policy) : '';
+          /* Whether this row's answer does anything at all — decided by the
+             other rows, read off `proposed` so the note and every dropdown on
+             the page are describing one policy. Null on a row that works. */
+          const inert = inertReason(f.key, proposed);
           /* One question can cover more than one flag, so a row can carry more
              than one of these. */
           const items = unconfirmed.filter((u) => u.keys.includes(f.key));
@@ -5430,6 +5548,13 @@ function Policy({ user }) {
                       selection is made. ConfirmPolicyChange carries the same
                       sentence, because the dialog comes up over this row. */}
                   {warning && <div className="policy-warn">{warning}</div>}
+                  {/* Under the value and not under the question, for the same
+                      reason `.policy-override` below is: it is about this
+                      answer's standing, not about what is being asked. Below
+                      the warning because a rule that has a cost has that cost
+                      whether or not it is running, and the cost is the thing to
+                      read first. */}
+                  {inert && <div className="policy-inert">{inert.text}</div>}
                   <PolicyStatus items={items} />
                   {/* This is about one FLAG — whether the value above is stored
                       rather than taken from the file — so it sits under the value
@@ -5551,6 +5676,30 @@ function ConfirmPolicyChange({
    */
   const warning = field.warn ? field.warn(to, policy) : '';
 
+  /**
+   * The policy this save would leave behind, and the two things worth saying
+   * about it that the row underneath cannot say from here.
+   *
+   * `inert` — the answer being chosen will do nothing, because another rule
+   *   answers the same question first. Said at the moment of choosing rather
+   *   than only afterwards: somebody setting เวลาขั้นต่ำ to 15 นาที under a
+   *   30-minute block is about to record a version, replay nothing, and see no
+   *   change, and "it was on the page behind the dialog" is not having told
+   *   them.
+   *
+   * `disables` — the reverse, and the half nobody would think to look for: this
+   *   change switches OTHER rows off. Turning the birthday rule off leaves two
+   *   dropdowns below it inert, and the settings page will go on showing their
+   *   values as if they were rules. Compared against the policy before the
+   *   change so a row that was already inert is not reported as a consequence
+   *   of this one.
+   */
+  const after = { ...policy, [field.key]: to };
+  const inert = inertReason(field.key, after);
+  const disables = INERT_KEYS.filter(
+    (key) => key !== field.key && inertReason(key, after) && !inertReason(key, policy),
+  );
+
   return (
     <Modal
       title="ยืนยันการเปลี่ยนกฎการคำนวณ"
@@ -5596,6 +5745,17 @@ function ConfirmPolicyChange({
             it can still be typed into: the version row is append-only, so a
             version saved without one carries a date and a diff for good. */}
         {warning && <div className="policy-warn">{warning}</div>}
+
+        {inert && <div className="policy-inert">{inert.text}</div>}
+
+        {disables.length > 0 && (
+          <div className="policy-inert">
+            บันทึกแล้ว ข้อต่อไปนี้จะไม่มีผลจนกว่าจะเปลี่ยนข้อนี้กลับ:
+            {' '}
+            {disables.map((key) => `“${CHANGE_LABEL[key] || key}”`).join(' · ')}
+            {' '}· ค่าที่ตั้งไว้ยังถูกเก็บ ไม่ได้ถูกล้าง
+          </div>
+        )}
 
         <div className="hint">
           {note

@@ -11,6 +11,7 @@
 
 import 'dotenv/config';
 import mongoose from 'mongoose';
+import { pathToFileURL } from 'node:url';
 import { connect, disconnect } from './db.js';
 import { seedSafety, seedRefusal } from '../lib/seedGuard.js';
 import Department from './models/Department.js';
@@ -295,7 +296,24 @@ async function run() {
   await disconnect();
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+/**
+ * Only when run as a command — `npm run seed`. Without this line, importing
+ * this file for any reason whatever (a module-graph walk, a test that wants
+ * DEPARTMENTS, an editor auto-import) calls `run()`, which connects to
+ * MONGODB_URI and then empties five collections.
+ *
+ * `seedGuard` still refuses on foreign data and is not weakened by this — but a
+ * destructive script that relies on its own safety net catching every
+ * accidental import is one bad ordering away from not being caught.
+ *
+ * Found 2026-08-24, when an import of the tree reached this file against the
+ * live database. It stopped short of the deletes only because
+ * `mongoose.connection.db` happened to be undefined at that moment — luck,
+ * standing in for the line backup.js and restore.js already had.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

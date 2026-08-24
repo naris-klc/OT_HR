@@ -5,7 +5,7 @@ import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { recomputeEntries } from '../../src/services/otService.js';
 import { savePolicy } from '../../lib/policySave.js';
 import { authorizeReplay } from '../../lib/policyVersion.js';
-import { unconfirmedState } from '../../lib/policyConfirmations.js';
+import { unconfirmedState, normaliseConfirmNote } from '../../lib/policyConfirmations.js';
 import { confirmPolicyItem } from '../../lib/policyConfirmSave.js';
 
 const router = Router();
@@ -35,7 +35,10 @@ router.get('/', wrap(async (req, res) => {
  * with the App Router so this server cannot be the lenient way in.
  */
 router.post('/policy-confirmations', requireRole('admin', 'hr'), wrap(async (req, res) => {
-  const result = await confirmPolicyItem({ id: req.body?.id, actor: req.user });
+  // Same refusal as the App Router: too long is answered, never trimmed.
+  const note = normaliseConfirmNote(req.body?.note);
+  if (note.error) return res.status(400).json({ error: note.error });
+  const result = await confirmPolicyItem({ id: req.body?.id, actor: req.user, note: note.value });
   if (result.error) return res.status(result.status).json({ error: result.error });
   return res.json(result);
 }));

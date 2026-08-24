@@ -1989,9 +1989,15 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **775/775 pass in ~1 s**, including all five worked examples
-  from §4, the OPEN 1–5, 9 and 12 policy variants, company inference from the
-  code, `editPermission()` over every role × status pair
+- `npm test` — **1386/1386 pass in about 2 s**, measured 2026-08-24 across 86
+  files, and cross-checked three ways that agree exactly: the runner's own
+  total, the sum of running each file separately, and a count of the ✔ lines.
+  Worth doing once because a bare total is a figure nobody can reproduce, and
+  because four files register cases from lists rather than one `test()` each
+  (`birthdayOnPaper`, `overlap`, `periodLockRoutes`, `rejectedNeverCounted`),
+  so grepping for `test(` undercounts by 33. The suite covers all five worked
+  examples from §4, the OPEN 1–5, 9 and 12 policy variants, company inference
+  from the code, `editPermission()` over every role × status pair
   (`test/editPermission.test.js`), proxy filing and delegation
   (`test/proxyFiling.test.js`, `test/delegation.test.js`), and the two
   conservation rules: that no rate
@@ -1999,9 +2005,38 @@ four role UIs.
   (`test/reportColumns.test.js`), and that no person's hours are lost between
   the entry collection and the printed roster
   (`test/accountingReconciliation.test.js`).
-- Every server module imports cleanly.
-- `npm run build` succeeds — 2026-08-14, Next 16.3, all 50 routes.
-- `npm audit --omit=dev` — 0 vulnerabilities.
+- Every server module imports cleanly — but that is only ever observed as a
+  side effect of `next build` below, never as a check of its own. **Do not go
+  looking for one by importing the tree in bare `node`.** The `@/` aliases do
+  not resolve outside Next, so every route reports a false failure, and
+  `src/seed.js` calls `run()` at module scope: against a live database,
+  importing it to see whether it parses *is* a seed. `seedGuard` refuses on
+  foreign data and is what stands between that and an emptied database.
+- `npm run build` — **passes 2026-08-24** on the current tree, Next 16.3 under
+  Turbopack, and the route table it prints is **54 `/api/*` routes** plus `/`,
+  `/_not-found` and `/icon.png`. Compared against the 54 `app/api/**/route.js`
+  files on disk, in both directions: nothing on disk went unbuilt and nothing
+  was built that has no file. This line read "succeeds — 2026-08-14, Next 16.3,
+  all 50 routes" until then — four routes, and ten days, out of date.
+  The run cleared the eight commits of 2026-08-20 and 2026-08-21 that had
+  landed since the previous recorded pass (`9eba37e`, 2026-08-19).
+  **A green test suite is still not a working build**, which is why this line
+  exists at all: `next build` resolves imports that `node --test` never
+  touches, and that is how a re-export bug once let `GET /api/entries` answer
+  500 in the built app with all tests passing.
+  ⚠ It emits **two warnings**, both from the uncommitted backup-status work:
+  `lib/backupStatusQuery.js:28` reads `BACKUP_DIR` at runtime and Turbopack
+  reports *"Dynamic filesystem access causes tracing of the whole project"*.
+  Nothing fails, and the path has to be dynamic — the destination is a setting
+  — but the tracing cost is real and is the price of that reading. Decide it
+  deliberately before committing rather than after.
+- `npm audit --omit=dev` — **1 high**, read 2026-08-24. `nanoid@3.3.17` wants
+  `<3.3.18`, reached through `next@16.3.0 → postcss@8.5.23`; a fix is
+  available. This line read "0 vulnerabilities" until then. Nothing under
+  `app/`, `lib/`, `src/`, `components/` or `test/` calls `nanoid`, and the
+  advisory is about a custom generator invoked with `size` 0 looping — so it
+  is not an opening anybody can reach through this application. It is also not
+  nought, which is why the count is printed here instead of the reassurance.
 - Against a live MongoDB, one entry walked end to end: submit → manager
   approve → HR approve → **HR correct** → printed form. Checked on the way
   through that a correction with no reason is refused (400), that the
@@ -2037,6 +2072,39 @@ four role UIs.
   with a reason it opens, filing works again, and `events` holds both the close
   and the reopen in order with the reason on the second. The throwaway entry and
   the lock document were deleted afterwards.
+- Against a live MongoDB, 2026-08-14, **สำรองและกู้คืน** proved as a round trip
+  rather than as an exit code (`82981ca`): the dump and the restored database
+  compared byte for byte; indexes carried in the manifest and rebuilt after the
+  insert, because a database restored without the unique index on
+  `Employee.code` would accept a second PM-0620 that same afternoon; and
+  `restore` parses every file and checks the fingerprint before it drops the
+  first collection, so a truncated or edited backup is found while the real
+  database is still whole. `mongodump` is not installed on the machine this
+  runs on — both scripts read and write through the driver.
+- Against a live MongoDB, 2026-08-18, the `{ period, status }` index
+  (`ad538c7`): it built with no error and survived a backup/restore round trip.
+- Against a live MongoDB **and against the built app**, 2026-08-19
+  (`2f17483`): กรอบเวลาการยื่นใบ OT, the password-reveal button, and the line
+  naming who a request is waiting on — walked end to end on a throwaway
+  database and on the real one. This is the only walk in this list exercised
+  through `next start` rather than `next dev`, which is the distinction the
+  build note above is about.
+- The mobile approval bar, 2026-08-19 (`8e2b71c`, `a43fedd`, `9eba37e`):
+  checked against the CSS the server actually served, not against the source. A
+  rule can be present in `.next` and still lose — grepping the bundle proves it
+  exists, not that it wins.
+
+**A build is not a walk.** The eight commits of 2026-08-20 and 2026-08-21 were
+built for the first time on 2026-08-24 and the build is clean, so they compile
+and their imports resolve. None of them has been walked against a live
+database. Four are screen only; the other four reach `app/api`, `lib/` or
+`src/`, and one of those is `0dac634 Birthday holiday OT calculation logic
+fix`, which is arithmetic. What that commit actually changes is the birthday
+queue's floor, not the engine — `src/lib/otEngine.js` is untouched by it — and
+its four edge cases (a missing date in `dayTypes`, an overnight session
+straddling a birthday, 29 February in a common year, a birthday landing on a
+Saturday or a company holiday) are covered by `test/otBirthday.test.js` and
+`test/birthdayCheck.test.js`, checked 2026-08-24.
 
 **Not yet verified**
 

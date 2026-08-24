@@ -3582,6 +3582,28 @@ tbody tr:hover { background: var(--green-wash); }
   font: 400 12px/1.55 var(--sans);
 }
 
+/* “ข้อนี้ตั้งได้ แต่ตอนนี้ไม่มีผล” — see lib/policyInert.js for when it appears.
+
+   DELIBERATELY NOT AMBER. It sits directly under `.policy-warn` and the two
+   would be read as the same kind of remark if they looked alike, which is the
+   one thing they are not: amber says the answer just chosen has a cost, this
+   says the answer just chosen has no consequence. Nothing is at risk and
+   nothing needs deciding — the value is stored and starts working the moment
+   the rule in front of it moves — so it is grey, the colour this app already
+   uses for a note that explains rather than one that stops you.
+
+   Boxed rather than left as loose text, because it has to be told apart from
+   `.policy-help` above the control, which explains what the row asks. Same
+   padding and radius as the warning so a row carrying both reads as one stack
+   and not as two unrelated boxes; the left rule is what says which is which. */
+.policy-inert {
+  padding: 7px 10px; border-radius: var(--radius-xs);
+  background: var(--neutral-wash); color: var(--muted);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--muted-3);
+  font: 400 12px/1.55 var(--sans);
+}
+
 /* The pill, sized against `.chip.unconfirmed` beside it — see PolicyStatus in
    components/AdminView.jsx for why only four rules may wear the green one.
    Ringed rather than filled like `.chip.green`, because the two are read
@@ -4581,7 +4603,16 @@ table.mini tbody tr:hover { background: none; }
    A WRAPPER, NOT `.modal-foot` ITSELF. That foot is shared by every dialog in
    the app, and most of them have a ยกเลิก that should not be half the width of
    anything. */
-.foot-split { display: flex; align-items: center; gap: 10px; }
+/* 12px between them, and it is the one measurement in this foot that is about
+   the HAND rather than the eye. The gap IS the margin for error on a mis-aimed
+   press, and the two things it separates are "this is approved" and "this is
+   refused" — there is no third answer and no undo on either. Ten was the app's
+   ordinary spacing between buttons, borrowed from rows where the worst a slip
+   costs is a dialog opening.
+
+   The phone block takes it back to 8, deliberately: there the pair spans the
+   whole sheet at 46px tall, and the width is doing what this gap does here. */
+.foot-split { display: flex; align-items: center; gap: 12px; }
 
 /* ONE BOX, TWICE. The two answers to a question must not differ in any way that
    could be read as a hint, so everything about their shape is stated here
@@ -4600,6 +4631,20 @@ table.mini tbody tr:hover { background: none; }
    to be read. */
 .foot-split .btn {
   flex: 1 1 0;
+  /* 22px of side padding, up from `.btn`'s own 18. On a desktop this pair is
+     shrink-to-fit and sits at the right-hand end of a bar that is otherwise
+     empty, so the padding is the whole of how substantial the two decisions
+     look — there is no surrounding content for them to be sized against.
+
+     BOTH FROM THIS ONE RULE, which is the same argument the radius and the
+     min-height above make: the labels differ in length (ไม่อนุมัติ against
+     ยืนยันใบ OT), `flex: 1 1 0` then makes the pair equal, and a padding set
+     per variant would quietly reintroduce the difference the flex line just
+     took out.
+
+     The phone block puts the sides back to 10. There the width belongs to the
+     sheet and padding is only what could stop a label fitting inside it. */
+  padding: 12px 22px;
   /* 8px, WRITTEN OUT, and not the app's `--radius-sm` (11px) the rest of its
      buttons take. The pair has been identical throughout — ONE rule cuts both
      corners, so they cannot differ by construction — and the number has been
@@ -4607,6 +4652,32 @@ table.mini tbody tr:hover { background: none; }
      read it off the file and compare it to what is on the glass. */
   min-height: 46px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
+  /* ── ONE LINE, AND THAI IS THE REASON IT HAD TO BE SAID ────────────────
+     ไม่อนุมัติ was coming out on two lines: ไม่ over อนุมัติ.
+
+     Thai is written without spaces, which makes it look like a string with no
+     break opportunities in it — and that is the assumption this rule was
+     missing. A browser breaks Thai with a DICTIONARY, not at spaces: it knows
+     ไม่ and อนุมัติ are two words and will part them, exactly as it would part
+     two English words at the space between them. So the label has a legal
+     break in the middle and no space to warn anybody it is there.
+
+     `flex: 1 1 0` above is the other half. `min-width: auto` normally stops a
+     flex item shrinking below its MIN-CONTENT width — but with a break
+     available, min-content is อนุมัติ alone, not the whole label. So the pair
+     was free to divide the foot into halves narrower than either word needed,
+     and the refusal took the second line rather than the width.
+
+     `nowrap` removes the break, which puts min-content back to the whole
+     label and makes the widths above a floor rather than a suggestion. It
+     goes on the PAIR and not on `.btn`: elsewhere a button says things like
+     ไม่อนุมัติทั้งหมดที่เลือก (3 รายการ), and a label that long is meant to
+     wrap — nowrap there would push it out through the side of the bar.
+
+     Both buttons, not just the one that wrapped. They are one box drawn twice
+     (see the note above this rule), and a line-breaking rule that applied to
+     only one of them is a way for the two to end up different heights. */
+  white-space: nowrap;
   /* THE SAME BOX, DOWN TO THE HAIRLINE.
 
      Both already took their radius from this one rule, so the two corners were
@@ -4620,6 +4691,19 @@ table.mini tbody tr:hover { background: none; }
      So the green one gets the same 1px, in nothing: identical geometry,
      identical corner, and only the colour left to tell them apart. */
   border: 1px solid transparent;
+  /* AND THE EDGE MOVES WITH THE FILL.
+
+     `.btn` eases background, transform and shadow, and not `border-color` —
+     correctly, because no `.btn` variant had a border that changed. This pair
+     does: the refusal's hover takes its hairline from the faint line token up
+     to the ink. Left off the list, the fill eased over 160ms while the edge
+     snapped on the first frame, which does not read as one button lighting up.
+     It reads as a flicker at the border.
+
+     Restated in full rather than appended, because a `transition` declaration
+     replaces the one it overrides — dropping any of the three would take the
+     approval's own hover and press with it. */
+  transition: background .16s, transform .16s, box-shadow .16s, border-color .16s;
 }
 
 /* ── the refusal, in the palette's own light red ──────────────────────────
@@ -5171,6 +5255,51 @@ table.mini tbody tr:hover { background: none; }
   .fact-grid > div { padding: 4px 6px; }
   .fact-grid dt { font-size: 9.5px; margin-bottom: 1px; }
   .fact-grid dd { font-size: 13.5px; line-height: 1.35; }
+
+  /* ── UNDER 640: THE PHONE ITSELF ────────────────────────────────────────
+     The sheet layout starts at 860, which is as much a tablet held upright as
+     it is a phone, and up there the compaction above is enough. Under 640 the
+     sheet IS the screen: รายละเอียด has five blocks and two decisions to fit in
+     one screenful, and every pixel of padding is a pixel of the reading pushed
+     under the fold.
+
+     Nested inside the phone block rather than opened as a second one beside it.
+     These rules mean nothing where the dialog is not already a sheet, and the
+     file has ONE place a reader goes to find the sheet layout — same shape as
+     the 389px rule further down. `screen and` is the outer block's business:
+     print is already excluded before this is ever read.
+
+     THE FOOT IS NOT IN HERE, deliberately. Its padding is settled in one
+     shorthand above, safe-area insets and all, and a second one at any width is
+     exactly the defect test/detailModalFooter.test.js pins. Its 16px is inside
+     what was asked for anyway, and the two decisions are the last thing that
+     should be paid for out of a compaction. */
+  @media (max-width: 640px) {
+    /* 16 → 12 on the two rows that hold the reading. Four pixels off each side
+       is eight pixels of width handed back to every block inside, which at
+       360px is where the คำขอ cells stop having to break their answers. */
+    .modal-body { padding: 12px 12px 14px; }
+    .modal-head { padding: 12px; }
+
+    /* ── คำขอ IN TWO COLUMNS, SAID RATHER THAN ARRIVED AT ─────────────────
+       `flex: 1 1 150px` puts two cells on a row at 375px by arithmetic, and the
+       arithmetic fails twice. On a 320px screen two 150px cells plus the
+       hairline no longer fit, so the four facts stack into four rows — the
+       narrowest phone gets the tallest sheet. And `min-width: auto` lets one
+       long answer set the row: เกินเพดานแผนก prints every breach it found, in
+       Thai, which has no spaces to break at, so that cell takes the width it
+       wants and the other three go with it.
+
+       A 50% basis states what the arithmetic was standing in for — two columns,
+       at every width, whatever the values turn out to say. Still flex and not a
+       grid, for the reason written over `.fact-grid` itself: an odd last cell
+       GROWS into its row, where a grid track would sit empty and the
+       container's fill would paint it as a fifth cell with nothing in it. */
+    .fact-grid > div { flex: 1 1 calc(50% - 1px); min-width: 0; }
+    /* The other half of that: a cell allowed to be narrower than its longest
+       run of letters is only an improvement if the letters then break. */
+    .fact-grid dd { overflow-wrap: anywhere; }
+  }
 
   /* The gaps BETWEEN the blocks, which on a sheet are the other half of the
      height. 18px between sections and 16px of rule above each was a desktop
@@ -7347,6 +7476,127 @@ table.mini tbody tr:hover { background: none; }
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
   }
+}
+
+/* ══ บันทึกระบบ ══════════════════════════════════════════════════════════
+   components/LogSystem.jsx. Tokens only, like every block above — nothing here
+   knows which theme is running.
+
+   The screen is four tabs over one collection and its whole job is being
+   SCANNED rather than read: a person opens it knowing roughly when something
+   happened and nothing else. So the type here is smaller than the app's and
+   the colour does more work than usual — a row's status is a colour before it
+   is a number, and the mono column exists so that an address and a path line
+   up down the page and a difference between two rows is a shape. */
+
+/* The four tiles on ภาพรวม are `.stat`, and two of them are pressable — each
+   is the way into the list it counts. A button, so it is reachable by keyboard
+   and announced as one; `text-align: left` and `font: inherit` because a
+   <button> otherwise centres its contents and swaps the font, which would make
+   two of the four tiles look nothing like the other two. */
+.stat.as-button {
+  font: inherit; text-align: left; width: 100%; cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.stat.as-button:hover { border-color: var(--green); }
+.stat.as-button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+/* Amber rather than red: a run of refused passwords is a thing to look at, not
+   a thing that has gone wrong. The same amber `.chip.edited` and every "needs
+   attention" panel in the app already uses. */
+.stat.warn { border-color: var(--amber-line); background: var(--amber-bg); }
+.stat.warn .value > span:first-child, .stat.warn .note { color: var(--amber-ink); }
+
+/* ── the fourteen-day chart ────────────────────────────────────────────────
+   Divs, not a charting library — see the comment on it in LogSystem.jsx. It is
+   flex rather than grid so a fortnight of bars shares the width evenly at any
+   size, and the bars have a minimum height of their own so a day with three
+   requests is still visibly a day rather than an empty column. */
+.log-chart { display: flex; align-items: flex-end; gap: 6px; height: 132px; margin-top: 10px; }
+.log-bar { flex: 1 1 0; display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
+.log-bar .col {
+  position: relative; flex: 1;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  background: var(--line-softer); border-radius: 4px; overflow: hidden;
+}
+.log-bar .fill { background: var(--green-bg); border-radius: 4px; min-height: 3px; display: flex; flex-direction: column; justify-content: flex-end; }
+/* Writes are a slice of the same bar, not a second bar beside it: they are a
+   subset of the requests above them, and two bars side by side would invite
+   the reader to add them together. */
+.log-bar .writes { background: var(--green); border-radius: 0 0 4px 4px; }
+/* A failed login is a mark, not a height. One at the foot of the column says
+   "something was refused here" without competing with the volume the bar is
+   drawing — and a day with four hundred requests and one refusal must not draw
+   that refusal as invisible. */
+.log-bar .failed { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--danger); }
+.log-bar .tick { font: 400 10.5px/1 var(--mono); color: var(--muted-3); text-align: center; }
+
+/* ── the four counted lists ─────────────────────────────────────────────── */
+.log-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.log-tally { list-style: none; margin: 0; padding: 0; }
+.log-tally li + li { border-top: 1px solid var(--line-softer); }
+.log-tally li > button, .log-tally li > .static {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 9px 4px; font: inherit; text-align: left; background: none; border: 0;
+}
+.log-tally li > button { cursor: pointer; border-radius: 6px; }
+.log-tally li > button:hover { background: var(--neutral-wash); }
+.log-tally li > button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+.log-tally .t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.log-tally .main { font: 500 13.5px/1.4 var(--sans); color: var(--ink); overflow-wrap: anywhere; }
+.log-tally .sub { font: 400 11.5px/1.4 var(--sans); color: var(--muted-2); overflow-wrap: anywhere; }
+.log-tally .n {
+  font: 600 15px/1 var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; flex: none;
+}
+.log-tally .n.warn { color: var(--amber-ink); }
+
+/* ── the list itself ──────────────────────────────────────────────────────
+   Two lines per cell in three of the five columns: the fact, and the thing
+   that qualifies it. A log with one line per cell needs twice the columns to
+   say the same and stops fitting on a laptop at about column six. */
+.log-table td { padding-top: 9px; padding-bottom: 9px; }
+.log-table tr.clickable { cursor: pointer; }
+.log-when { white-space: nowrap; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.log-who { display: block; font: 500 13px/1.45 var(--sans); color: var(--ink); overflow-wrap: anywhere; }
+.log-who.muted { color: var(--muted); font-weight: 400; }
+.log-who.mono, .log-sub.mono, .log-table .mono { font-family: var(--mono); }
+.log-sub { display: block; font: 400 11.5px/1.45 var(--sans); color: var(--muted-2); overflow-wrap: anywhere; }
+.log-act { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 500 13px/1.45 var(--sans); }
+
+/* The status number, coloured by `statusClass` — the same four-way partition
+   the ผลลัพธ์ filter uses, so the colour on a row and the choice in the
+   dropdown can never mean different things. */
+.chip.sc-ok { background: var(--green-bg); color: var(--green-dark); }
+.chip.sc-refused { background: var(--amber-bg); color: var(--amber); }
+.chip.sc-denied { background: var(--danger-bg); color: var(--danger-ink); }
+.chip.sc-error { background: var(--danger-bg); color: var(--danger-ink); font-weight: 700; }
+.chip.sc-unknown { background: var(--line-softer); color: var(--muted-2); }
+
+.chip.ev-login { background: var(--green-bg); color: var(--green-dark); }
+.chip.ev-login_failed { background: var(--danger-bg); color: var(--danger-ink); }
+.chip.ev-logout { background: var(--neutral-wash); color: var(--muted); }
+
+/* ── one record, whole ──────────────────────────────────────────────────── */
+.log-detail { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; gap: 8px 14px; margin: 0; }
+.log-detail dt { font: 400 12px/1.5 var(--sans); color: var(--muted-2); }
+.log-detail dd { margin: 0; font: 400 13.5px/1.5 var(--sans); color: var(--ink); overflow-wrap: anywhere; }
+.log-detail dd.mono { font-family: var(--mono); font-size: 12.5px; }
+.log-detail dd .note { display: block; margin-top: 3px; font: 400 11.5px/1.45 var(--sans); color: var(--muted-2); }
+
+@media (max-width: 860px) {
+  /* The stacked card `.stack-table` turns every row into: the two-line cells
+     inside it must not also carry the generic `data-label` prefix, or each row
+     grows to ten lines. Time and account lead the card, like `.stack-code` and
+     `.stack-name` do on ทะเบียนพนักงาน. */
+  .stack-table.log-table tbody td.log-when::before,
+  .stack-table.log-table tbody td[data-label="บัญชีผู้ใช้งาน"]::before { content: none; }
+  .stack-table.log-table tbody td.log-when { font-size: 12px; color: var(--muted); }
+  .log-detail { grid-template-columns: 1fr; gap: 2px; }
+  .log-detail dt { margin-top: 8px; }
+  /* A fortnight of bars at 360px is 14 columns of about 18px. Still readable
+     as a shape, which is all this chart is for; the numbers are in the tiles
+     above it and in the title of each bar. */
+  .log-chart { height: 108px; gap: 3px; }
+  .log-bar .tick { font-size: 9.5px; }
 }
 
 /* ══ print — the app chrome is not part of the document ══════════════════ */

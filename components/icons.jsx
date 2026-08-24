@@ -185,6 +185,20 @@ const ICONS = {
       <path d="M15.25 15.25 20.5 20.5" />
     </>
   ),
+
+  /**
+   * บันทึกระบบ — a shield, because this tab is the only one that is not about
+   * OT at all. The obvious drawing would be a scroll or a list, and both of
+   * those already exist in this set as `document` and `inbox` for screens full
+   * of OT rows; a third list beside them says "another table" when the thing
+   * behind it is the record of who has been in the system.
+   */
+  shield: (
+    <>
+      <path d="M12 2.75 4.5 5.75v6c0 4.4 3.1 8.05 7.5 9.5 4.4-1.45 7.5-5.1 7.5-9.5v-6z" />
+      <path d="M9.25 11.75 11.25 13.75 15 10" />
+    </>
+  ),
 };
 
 /**

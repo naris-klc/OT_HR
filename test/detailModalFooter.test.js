@@ -100,7 +100,11 @@ test('the foot is two answers, or it is not drawn', () => {
  * every other dialog in this app puts its buttons.
  */
 test('the pair splits the foot evenly', () => {
-  has(css, '.foot-split { display: flex; align-items: center; gap: 10px; }');
+  // 12 on a desktop, 8 on the sheet. The gap is the margin for error between
+  // an approval and a refusal, so it is wider than the app's ordinary 10 —
+  // and narrower on the phone, where the pair spans the sheet and the width is
+  // already doing that job.
+  has(css, '.foot-split { display: flex; align-items: center; gap: 12px; }');
   has(css, '.modal-foot .foot-split { flex: 1; gap: 8px; }');
   const start = css.indexOf('.foot-split .btn {');
   const rule = css.slice(start, css.indexOf('}', start));
@@ -109,6 +113,26 @@ test('the pair splits the foot evenly', () => {
   // A <button> centres its own label inside the box its PADDING makes; with a
   // min-height doing the sizing, that is not the box on screen.
   has(rule, 'display: flex; align-items: center; justify-content: center;');
+  // 22, up from `.btn`'s 18: on a desktop the pair is shrink-to-fit at the end
+  // of an otherwise empty bar, so the padding is the whole of how substantial
+  // the two decisions look. From ONE rule, or the shorter label gets the
+  // narrower button back — which is the difference `flex: 1 1 0` just removed.
+  has(rule, 'padding: 12px 22px;');
+  // `.btn` eases background, transform and shadow and stops there, because no
+  // `.btn` variant had a moving border. The refusal's hover moves one — faint
+  // line to ink — and left off this list the fill eases while the edge snaps.
+  has(rule, 'transition: background .16s, transform .16s, box-shadow .16s, border-color .16s;');
+  // ไม่อนุมัติ came out as ไม่ over อนุมัติ. Thai has no spaces, so the label
+  // looks unbreakable — but browsers break Thai with a dictionary, and it knows
+  // those are two words. That legal break also made the button MIN-CONTENT
+  // narrower than the label, which is what let `flex: 1 1 0` divide the foot
+  // into halves too narrow for it. Scoped to the pair on purpose: the batch
+  // bar says ไม่อนุมัติทั้งหมดที่เลือก (3 รายการ) and is meant to wrap.
+  has(rule, 'white-space: nowrap;');
+  assert.ok(
+    !/^.btn {[^}]*white-space/m.test(css),
+    'nowrap ไปอยู่บน .btn ทั้งตระกูล — ป้ายยาวในแถบเลือกหลายใบจะทะลุขอบ',
+  );
 });
 
 /**

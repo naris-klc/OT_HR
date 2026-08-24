@@ -663,15 +663,14 @@ export function readUnconfirmed(item, policy = DEFAULT_POLICY) {
   return typeof item.reading === 'function' ? item.reading(policy) : String(item.reading ?? '');
 }
 
-/** Every settings-page key that some unconfirmed question is about. */
-export function unconfirmedKeys(confirmations = {}) {
-  const keys = new Set();
-  for (const item of HR_UNCONFIRMED) {
-    if (confirmations?.[item.id]) continue;
-    for (const key of item.keys) keys.add(key);
-  }
-  return keys;
-}
+/* `unconfirmedKeys` used to sit here. It moved to lib/policyConfirmations.js on
+   2026-08-24, when "confirmed" stopped meaning "a record exists": a sign-off now
+   names the value it was given for and stands only while that value does, so the
+   question "does this key still wear the badge" cannot be answered from the
+   confirmations alone — it needs the live policy, and the comparison that reads
+   both lives beside the records. Left as a note rather than as a re-export,
+   because two names for one rule is how the two definitions drifted apart in
+   the first place. */
 
 /**
  * รายละเอียดงานที่ทำ — how much text may be entered, in characters.
