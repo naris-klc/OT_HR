@@ -2699,6 +2699,26 @@ td > .approver-line { margin-top: 5px; }
 .chip.st-approved { background: var(--green-bg); color: var(--green-dark); }
 .chip.st-rejected { background: var(--danger-bg); color: var(--danger-ink); }
 .chip.st-cancelled { background: var(--line-softer); color: var(--muted-2); }
+/* ── การใช้สิทธิ์พิเศษ — THREE LEVELS, NOT SIX COLOURS ─────────────────────────
+   Six kinds of privileged exception share one column on บันทึกระบบ. A palette
+   with one entry per kind would be a legend to memorise; what the eye needs
+   from that column is which of these moved money, which moved access, and
+   which moved neither.
+
+   Read from the same two families every other state on this app uses, so the
+   column agrees with the alerts and the status chips beside it — see
+   `KIND_TONE` in components/LogSystem.jsx, which holds the mapping and the
+   reason each kind sits where it does.
+
+   The third level reuses `.chip.muted` and gets nothing of its own: grey is
+   already this app's word for "orientation, not something to act on" — it is
+   what รับช่วง wears — and inventing a fourth token to say "exceptional, but
+   nothing was restated and nobody's access changed" would be a colour that
+   means no colour. A bare `.chip` was the other candidate and is wrong: it has
+   no background at all, so it would be the only entry in the column that is
+   not a pill. */
+.chip.danger { background: var(--danger-bg); color: var(--danger-ink); }
+.chip.warn { background: var(--amber-bg); color: var(--amber-ink); }
 /* หัวหน้าบันทึกแทน — blue, deliberately not the amber แก้ไขแล้ว wears. Neither
    is a warning, but they say different things: one is "these numbers moved
    after filing", the other is "this row is not in the handwriting you expect".
@@ -7553,6 +7573,13 @@ table.mini tbody tr:hover { background: none; }
    adds to the row gap only — so the columns would sit 14px apart and the rows
    30px, which reads as two loose pairs rather than one block of four. */
 .log-columns > .card { margin-bottom: 0; }
+/* Each card's note runs one or two lines depending on how wide the column came
+   out, and the list under a one-line note then starts a line higher than the
+   list beside it — the cards are the same height, but the rows inside them do
+   not line up, which is what reads as crooked. Two lines of floor (the hint's
+   own 12.5px at 1.5) starts every list on the same line; a note long enough to
+   need three lines still gets them. */
+.log-columns .hint { min-height: 3em; }
 .log-tally { list-style: none; margin: 0; padding: 0; }
 .log-tally li + li { border-top: 1px solid var(--line-softer); }
 .log-tally li > button, .log-tally li > .static {

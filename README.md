@@ -696,6 +696,71 @@ covering a stated period, readable without this application. The file carries
 rather than "Chrome · Windows", the whole forwarded chain rather than the first
 hop. The screen's job is to be readable; the file's job is to be complete.
 
+### การใช้สิทธิ์พิเศษ — the compliance report
+
+**A fifth tab on บันทึกระบบ, and the only one that does not read
+`otAccessLogs`.** The four beside it are traffic sliced four ways; this one
+answers a different question — *what was done that the rules would ordinarily
+have refused, and why was it allowed?*
+
+`otAccessLogs` cannot answer it. The six events that matter are in there among a
+hundred thousand that do not, and **none of them carries the why**, because a
+traffic log never reads a request body.
+
+**The six, and the test that picks them.** Not "is it important" — *would this
+have been refused if the actor were anybody else, and can the system not
+reconstruct why*. Six things pass, and they are exactly the ผู้ดูแลระบบ-only
+powers in the table above plus the one ฝ่ายบุคคล power with the same shape:
+
+| kind | what it is | reason required? |
+|---|---|---|
+| `password_reset` | an account was issued a new password by somebody else, or by `npm run reset-admin` | no |
+| `admin_override` | ผู้ดูแลระบบ signed the หัวหน้า step where no หัวหน้า could | **yes** |
+| `role_change` | a บทบาท crossed into or out of ฝ่ายบุคคล / ผู้ดูแลระบบ | no |
+| `code_change` | รหัสพนักงาน changed | **yes** |
+| `period_reopen` | a closed งวด was opened again | **yes** |
+| `replay_approved` | entries somebody had signed were recomputed (`includeApproved`) | **yes** |
+
+An `employee → manager` promotion is **not** here — that is ordinary onboarding,
+and putting it in the file buries the account that became ผู้ดูแลระบบ. Neither
+are ordinary approvals, ordinary edits or any read: they are the day's work,
+they are already in the three tabs above and in each entry's own ประวัติ, and a
+compliance file that includes them is one nobody finishes reading.
+
+**A blank เหตุผล is a finding, not a formatting problem** — four of the six
+cannot be performed without one. The screen states the count above the table and
+the CSV leaves the cell genuinely empty, so it sorts and filters as empty in
+Excel.
+
+**ผู้ดูแลระบบ only, and never ฝ่ายบุคคล — who appear IN it.** Every password HR
+issues is a row, and the ฝ่ายบุคคล login is shared by the whole department
+(`hr-account-is-shared`), so a copy they could take of the list of their own
+exceptional acts is not evidence about a person. Same line and same reason as
+the four tabs beside it.
+
+**There is deliberately no `?actor=`**, unlike the traffic export. The point of
+this file is that it is *complete for a period*: "what did PM-0620 do" is a
+question the file answers by being read, and a parameter returning a subset is a
+subset somebody later remembers as the whole. Date range and event kind are the
+only filters, and both are on the file's own name.
+
+```bash
+# ทั้งไตรมาส ทุกประเภท
+curl -o compliance.csv --cookie 'ot_token=<…ผู้ดูแลระบบ…>' \
+  'http://127.0.0.1:3000/api/exports/compliance.csv?from=2026-07-01&to=2026-09-30'
+
+# เฉพาะสองประเภทที่ตัวเลขขยับได้
+curl -o compliance.csv --cookie 'ot_token=<…>' \
+  'http://127.0.0.1:3000/api/exports/compliance.csv?from=2026-07-01&to=2026-09-30&kinds=period_reopen,replay_approved'
+```
+
+Four collections come out as one timeline, **oldest first** — unlike every
+screen in the app, because this is read as the story of a quarter rather than
+scanned for the most recent thing. The rule is `lib/complianceExport.js` (pure,
+`test/complianceExport.test.js`), the reads are `lib/complianceQuery.js`, and the
+screen and the file call the same loader so they can never report two different
+quarters.
+
 ---
 
 ## Layout
@@ -752,6 +817,12 @@ lib/departmentSummary.js  the same month regrouped by แผนก, both compani
                           printed form
 lib/departments.js        who may write a แผนก row, and why `active` is the one
                           field ฝ่ายบุคคล do not get — pure
+lib/complianceExport.js   which six events count as the exercise of a
+                          privileged exception, and the row shape four
+                          collections are normalised to — pure
+lib/complianceQuery.js    the four reads behind it, kept apart for the reason
+                          policyConfirmSave.js is; one loader for the screen
+                          and the CSV so they cannot disagree
 test/                     23 files, run by `npm test`
 test/proxyFiling.test.js    who may file for whom, and where it starts
 test/delegation.test.js     windows, chains, cycles, and what the trail keeps

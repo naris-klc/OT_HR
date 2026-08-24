@@ -49,6 +49,24 @@ const TABS = [
   { key: 'auth', label: 'การเข้าใช้งาน' },
   { key: 'edits', label: 'การแก้ไขข้อมูล' },
   { key: 'all', label: 'ทั้งหมด' },
+  /**
+   * A FIFTH QUESTION, AND THE ONLY TAB HERE THAT DOES NOT READ `otAccessLogs`.
+   *
+   *   การใช้สิทธิ์พิเศษ — "what was done that the rules would ordinarily have
+   *                        refused, and why was it allowed?"
+   *
+   * The four above are traffic: every request, sliced four ways. This one reads
+   * four OTHER collections and keeps six kinds of event — see
+   * lib/complianceExport.js for the test that decides which six. It is here
+   * rather than under ตั้งค่าระบบ because it has the same audience and the same
+   * rule as its neighbours (ผู้ดูแลระบบ only, and never ฝ่ายบุคคล, who appear in
+   * it), and because somebody arriving to audit opens this screen.
+   *
+   * LAST, because it is the answer to a question asked deliberately — an
+   * internal auditor asking for a quarter — rather than one somebody stumbles
+   * into. ภาพรวม stays first for the same reason it always was.
+   */
+  { key: 'compliance', label: 'การใช้สิทธิ์พิเศษ' },
 ];
 
 /** What each tab asks the endpoint for, beyond the filters somebody sets. */
@@ -114,7 +132,8 @@ export default function LogSystem() {
       </div>
 
       {tab === 'overview' && <Overview onOpenTab={setTab} onFilter={setFilters} />}
-      {tab !== 'overview' && (
+      {tab === 'compliance' && <Compliance />}
+      {tab !== 'overview' && tab !== 'compliance' && (
         <LogList
           key={tab}
           tab={tab}
@@ -240,7 +259,7 @@ function Overview({ onOpenTab, onFilter }) {
       <div className="log-columns">
         <Panel
           title="บัญชีที่ใช้งานมากที่สุด"
-          note="นับเป็นบัญชี ไม่ใช่คน — บัญชีฝ่ายบุคคลใช้ร่วมกันทั้งแผนก"
+          note="3 อันดับแรก · นับเป็นบัญชี ไม่ใช่คน — บัญชีฝ่ายบุคคลใช้ร่วมกันทั้งแผนก"
           rows={data.accounts}
           empty="ยังไม่มีการใช้งานในช่วงนี้"
           render={(a) => ({
@@ -345,6 +364,195 @@ function Panel({ title, note, rows, empty, render }) {
             );
           })}
         </ul>
+      )}
+    </div>
+  );
+}
+
+// ── การใช้สิทธิ์พิเศษ ────────────────────────────────────────────────────────
+
+/**
+ * The tone each kind of exception is drawn in.
+ *
+ * THREE LEVELS, NOT SIX COLOURS. A palette with one entry per kind is a legend
+ * to memorise; what the eye needs is "which of these moved money, which moved
+ * access, which moved a label".
+ *
+ *   danger — a figure somebody had signed for can have changed. เปิดงวด and
+ *            คำนวณใหม่รวมใบที่อนุมัติแล้ว are the only two events in this system
+ *            that can restate a number already sent to payroll.
+ *   warn   — somebody's access changed hands: a new password, or a บทบาท that
+ *            crossed into ฝ่ายบุคคล / ผู้ดูแลระบบ.
+ *   muted  — the two that are neither, and are here because they are refused
+ *            for everybody but one role: the หัวหน้า signature an administrator
+ *            supplied, and a รหัสพนักงาน that changed. Grey is already this
+ *            app's word for "orientation rather than something to act on".
+ */
+const KIND_TONE = {
+  period_reopen: 'danger',
+  replay_approved: 'danger',
+  password_reset: 'warn',
+  role_change: 'warn',
+  admin_override: 'muted',
+  code_change: 'muted',
+};
+
+/**
+ * รายงานการใช้สิทธิ์พิเศษ — six kinds of exception, on one timeline.
+ *
+ * ITS OWN STATE AND ITS OWN FILTERS, not the ones the four traffic tabs share.
+ * Those filter `otAccessLogs` by ip, event, status and actor — none of which
+ * exists here. Reusing the bar would offer four boxes that do nothing and
+ * silently carry a leftover ip filter into a compliance report, which is the
+ * worst possible place for a filter somebody has forgotten about.
+ */
+function Compliance() {
+  const [range, setRange] = useState({ from: '', to: '' });
+  const [only, setOnly] = useState('');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  const params = useMemo(() => {
+    const p = new URLSearchParams();
+    if (range.from) p.set('from', range.from);
+    if (range.to) p.set('to', range.to);
+    if (only) p.set('kinds', only);
+    return p.toString();
+  }, [range, only]);
+
+  useEffect(() => {
+    setData(null);
+    api.get(`/logs/compliance?${params}`)
+      .then((res) => { setData(res); setError(''); })
+      .catch((err) => setError(err.message));
+  }, [params]);
+
+  const download = () => {
+    const name = `การใช้สิทธิ์พิเศษ_${range.from || 'เริ่มต้น'}_${range.to || 'ล่าสุด'}.csv`;
+    api.download(`/exports/compliance.csv?${params}`, name).catch((err) => setError(err.message));
+  };
+
+  const today = ymd(new Date());
+  const labels = data?.labels || {};
+
+  return (
+    <div className="card">
+      <h2>การใช้สิทธิ์พิเศษ</h2>
+      <div className="hint">
+        ทุกครั้งที่มีการใช้สิทธิ์ที่ระบบปกติจะปฏิเสธ — ตั้งรหัสผ่านใหม่ · ผู้ดูแลระบบเซ็นแทนหัวหน้า
+        {' '}· เปลี่ยนบทบาทเป็นฝ่ายบุคคลหรือผู้ดูแลระบบ · เปลี่ยนรหัสพนักงาน · เปิดงวดที่ปิดแล้ว
+        {' '}· คำนวณใหม่รวมใบที่อนุมัติแล้ว
+        {' · '}เรียงจากเก่าไปใหม่ เพราะไฟล์นี้อ่านเป็นลำดับเหตุการณ์ ไม่ใช่กวาดหาของล่าสุด
+        {' · '}ไม่รวมงานประจำวันปกติ — งานเหล่านั้นอยู่ในสามแท็บก่อนหน้าและในประวัติของใบแต่ละใบ
+      </div>
+
+      <div className="form-grid">
+        <Field label="ตั้งแต่วันที่">
+          <input type="date" max={today} value={range.from}
+            onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
+        </Field>
+        <Field label="ถึงวันที่" note="รวมวันที่เลือกด้วย">
+          <input type="date" max={today} value={range.to}
+            onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
+        </Field>
+        <Field label="เฉพาะประเภท" note="เว้นว่าง = ทุกประเภท">
+          <select value={only} onChange={(e) => setOnly(e.target.value)}>
+            <option value="">ทุกประเภท</option>
+            {Object.entries(labels).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}{data?.counts?.[k] != null ? ` (${data.counts[k]})` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      <div className="row" style={{ marginBottom: 12 }}>
+        {(range.from || range.to || only) && (
+          <button className="btn ghost sm" onClick={() => { setRange({ from: '', to: '' }); setOnly(''); }}>
+            ล้างตัวกรองทั้งหมด
+          </button>
+        )}
+        <button className="btn ghost sm" onClick={download} disabled={!data?.total}>
+          ดาวน์โหลด CSV ตามตัวกรอง
+        </button>
+      </div>
+
+      {error && <Alert kind="error">{error}</Alert>}
+      {!data && !error && <Empty>กำลังโหลด…</Empty>}
+
+      {/* A quarter with no exceptions is the ordinary outcome and has to READ
+          like one. An empty table with no sentence under it looks like a screen
+          that failed to load, which is the reading that gets somebody to stop
+          checking. */}
+      {data && !data.total && (
+        <Empty>
+          ไม่มีการใช้สิทธิ์พิเศษในช่วงเวลานี้
+          {(range.from || range.to || only) ? ' — ลองขยายช่วงวันที่หรือเลือก “ทุกประเภท”' : ''}
+        </Empty>
+      )}
+
+      {data?.total > 0 && (
+        <>
+          {/* A row with no reason on it is a finding, and it is stated before
+              the table rather than left to be spotted while scrolling one. Four
+              of the six kinds cannot be performed without a reason, so this is
+              normally zero. */}
+          {data.withoutReason > 0 && (
+            <Alert kind="warn">
+              {data.withoutReason} รายการไม่มีเหตุผลบันทึกไว้
+              {' — '}อาจเป็นรายการที่เกิดก่อนระบบจะบังคับให้ระบุเหตุผล
+              หรือเป็นประเภทที่ไม่ได้บังคับ (ตั้งรหัสผ่านใหม่ · เซ็นแทนหัวหน้าจากสคริปต์)
+            </Alert>
+          )}
+
+          <div className="table-wrap">
+            <table className="log-table">
+              <thead>
+                <tr>
+                  <th>วันเวลา</th>
+                  <th>ประเภท</th>
+                  <th>ผู้กระทำ</th>
+                  <th>เป้าหมาย</th>
+                  <th>รายละเอียด</th>
+                  <th>เหตุผล</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map((r, i) => (
+                  <tr key={`${r.at}-${r.kind}-${i}`}>
+                    <td data-label="วันเวลา" className="nb">{at(r.at)}</td>
+                    <td data-label="ประเภท">
+                      <span className={`chip ${KIND_TONE[r.kind] || ''}`}>
+                        {labels[r.kind] || r.kind}
+                      </span>
+                      {/* Where it came from, and only when it was not a person
+                          on a screen. Printed on every row it would be noise;
+                          `สคริปต์บนเซิร์ฟเวอร์` on one row is the whole story of
+                          that row. */}
+                      {r.source && r.source !== 'หน้าจอ' && (
+                        <div className="cell-sub">{r.source}</div>
+                      )}
+                    </td>
+                    <td data-label="ผู้กระทำ">{r.actor}</td>
+                    <td data-label="เป้าหมาย">{r.target}</td>
+                    <td data-label="รายละเอียด">{r.detail}</td>
+                    <td data-label="เหตุผล">
+                      {r.reason
+                        ? <span className="note">“{r.reason}”</span>
+                        : <span className="cell-sub">— ไม่ได้ระบุ</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="hint" style={{ marginTop: 10 }}>
+            ทั้งหมด {data.total.toLocaleString('th-TH')} รายการ
+            {' · '}หน้านี้แสดงครบทุกรายการในช่วงที่เลือก ไม่มีการตัดท้าย
+          </div>
+        </>
       )}
     </div>
   );

@@ -27,6 +27,18 @@ import { describeRequest, FAILED_LOGIN_ALERT } from '@/lib/accessLog.js';
 const WINDOW_DAYS = 7;
 /** How many days the little bar chart shows. */
 const CHART_DAYS = 14;
+/**
+ * How many rows บัญชีที่ใช้งานมากที่สุด returns.
+ *
+ * Three, not fifteen. The card answers "who is in here", and on this roster
+ * that question is settled at the top of the list: the busiest few accounts
+ * carry nearly all of the traffic and the tail is somebody who signed in once.
+ * The long version also made this the tallest card in its row, so the two
+ * beside it — หมายเลขไอพีที่เข้ามา and คำสั่งแก้ไขข้อมูลที่ใช้บ่อย, both short
+ * by nature — sat under a column of whitespace. An account that is not on the
+ * list is still reachable from the table below, which filters by บัญชี.
+ */
+const TOP_ACCOUNTS = 3;
 
 /** Midnight this morning, in the office's timezone — see `dayStart` in ../route.js. */
 function startOfToday() {
@@ -99,7 +111,7 @@ export const GET = route(async (req) => {
             },
           },
           { $sort: { n: -1 } },
-          { $limit: 15 },
+          { $limit: TOP_ACCOUNTS },
         ],
         // Where from. On a LAN these are DHCP leases, so the useful reading is
         // "how many devices" and "is there one I do not recognise".
