@@ -153,19 +153,22 @@ test('a value and the line under it read as one group', () => {
   assert.match(phoneBlock(), /\.log-v > \* \+ \* \{ margin-top: 3px; \}/);
 });
 
-test('การกระทำ is one line: the badge, then what was done', () => {
-  // Beside its label this cell has about 250px of a 360px screen, and the
-  // moment a badge and a Thai verb came to more than that the badge went to
-  // one line and the words to the next — one fact drawn as two. Nothing wraps
-  // now: the badge keeps its size and the words are what give.
+test('การกระทำ stacks, and mostly has one thing to stack', () => {
+  // A badge and the words beside it never read as two things here: both are
+  // Thai, Thai puts no space between words, and the pair is almost always the
+  // same phrase twice. Measured three times at 8px apart and reported as
+  // overlapping every time — it was never a distance.
   const block = phoneBlock();
-  assert.match(block, /\.log-v \.log-act \{ flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; \}/);
+  assert.match(block, /\.log-v \.log-act \{\s*flex-direction: column; align-items: flex-end; gap: 4px;/);
   assert.match(block, /\.log-act \.chip \{ flex: none; \}/);
-  // `min-width: 0` first, or the item never shrinks to where the ellipsis is
-  // and the group pushes out of the card instead.
+  // The words are not printed at all where an event badge already says them —
+  // EVENT_LABEL is a superset of the action on all three of login, logout and
+  // login_failed, and it adds whether it worked.
+  assert.match(jsx, /\{r\.event === 'request' && <span className="log-what">\{r\.action\}<\/span>\}/);
+  // And the amber write badge is off the tab where every row is a write.
+  assert.match(jsx, /r\.write && tab !== 'edits'/);
+  // What is left can still be cut rather than wrapped.
   assert.match(block, /\.log-what \{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \}/);
-  // And the words are an element, so they can be the part that is cut.
-  assert.match(jsx, /<span className="log-what">\{r\.action\}<\/span>/);
 });
 
 test('the label sits against the middle of the two lines it labels', () => {

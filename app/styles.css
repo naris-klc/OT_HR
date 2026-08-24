@@ -7804,23 +7804,25 @@ table.mini tbody tr:hover { background: none; }
   /* The badge and the action it belongs to, centred against each other —
      8px is wide enough that a chip's rounded end does not read as part of the
      word next to it. Right, with the rest of the values. */
-  /* ── การกระทำ IS ONE LINE: badge, then what was done ────────────────────
+  /* ── การกระทำ STACKS ───────────────────────────────────────────────────
 
-     `flex-wrap: wrap` is right in the desktop table, where this cell is a
-     column of its own and has nothing else to do with the space. Here it
-     was the whole defect: beside its label the cell has about 250px of a
-     360px screen, and the moment a badge and a Thai verb came to more than
-     that the badge went to one line and the words to the next — two things
-     that are one fact, drawn as two.
+     A column, right-aligned, because a badge and the words beside it never
+     read as two things on this screen. Both are Thai, Thai puts no space
+     between words, and the pair is almost always the same phrase twice:
+     เข้าสู่ระบบสำเร็จ next to เข้าสู่ระบบ, แก้ไขข้อมูล next to แก้ไขการ
+     ตั้งค่าระบบ. Reported four times as "ทับกัน" and measured three: the
+     gap was 8px every time and nothing ever overlapped. It was never a
+     distance — two things that say the same thing cannot be told apart by
+     moving them further apart, only by putting them on different lines or
+     by printing one of them.
 
-     Held on one line, the badge keeps its size (it is four words that mean
-     something and `.chip` is `nowrap`) and `.log-what` shrinks. The real
-     rows fit without either: one badge is the most any row can carry — the
-     write flag and the auth events are mutually exclusive by path, see
-     `isMutation` — and `เข้าสู่ระบบสำเร็จ` + `เข้าสู่ระบบ` is about 190 of
-     the 250. The ellipsis is for the longest labels in the table, which
-     reach thirty Thai characters. */
-  .log-v .log-act { flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; }
+     It costs nothing on the rows that carry one thing, which after the
+     change above is nearly all of them: a column of one item is a line.
+     4px, not the 8 a row needed — vertical space between two lines of the
+     same fact reads as twice as much as the same number does horizontally. */
+  .log-v .log-act {
+    flex-direction: column; align-items: flex-end; gap: 4px;
+  }
   .log-act .chip { flex: none; }
   /* `min-width: 0` first — a flex item will not go below its min-content
      width without it, so the ellipsis would never be reached and the group

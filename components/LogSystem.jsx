@@ -794,7 +794,16 @@ function LogList({
                               read, so it is these words, and they are the ones
                               that can afford it — the row's own title in the
                               record it opens is this same string, whole. */}
-                          <span className="log-what">{r.action}</span>
+                          {/* NOT WHEN AN EVENT BADGE IS ALREADY SAYING IT.
+                              `EVENT_LABEL` is a superset of the action name on
+                              all three: the badge says เข้าสู่ระบบสำเร็จ where
+                              this says เข้าสู่ระบบ, and it adds the half that
+                              matters — whether it worked. Printed side by side
+                              they were the same word twice, 8px apart, in a
+                              language that puts no space between words. The
+                              route below still names the request, and the whole
+                              action is the title of the record this row opens. */}
+                          {r.event === 'request' && <span className="log-what">{r.action}</span>}
                         </span>
                         <span className="log-sub mono">{r.method} {r.path}</span>
                       </span>
