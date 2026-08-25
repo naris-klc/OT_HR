@@ -146,27 +146,57 @@ test('the card spacing and the sub-line take the values the queue card already u
 
 // ── กล่องรายชื่อสูงคงที่ ─────────────────────────────────────────────────────
 
-test('the list is a box of its own, and the component no longer counts rows', () => {
-  // Every row the search matched goes into the markup, on both layouts. No
-  // second argument to the map, because there is no index to compare against.
-  assert.match(hrView, /\{shown\.map\(\(row\) => \(/);
-  // The four numbers that used to live in this file are gone with the controls
-  // that moved them. If one comes back, so does a screen whose length depends
-  // on how many times somebody pressed something.
-  for (const gone of ['CARD_FOLD =', 'CARD_PAGE =', 'CARD_STEP =', 'setPage(', 'setLimit(', 'setShowAll(']) {
-    assert.ok(!hrCode.includes(gone), `${gone} came back into the component`);
-  }
-  assert.ok(!/off-page|over-fold|pager-row|fold-row/.test(hrCode), 'a row-hiding class came back');
+test('the box and the pager are two mechanisms over one list', () => {
+  // Five to a page — the number lives in the component, once.
+  assert.match(hrView, /const CARD_PAGE = 5;/);
+  // A WINDOW, not a fold: page 3 hides the ten rows above the five it draws as
+  // well as everything below them.
+  assert.match(hrView, /const from = \(current - 1\) \* CARD_PAGE;/);
+  assert.match(hrView, /const to = from \+ CARD_PAGE;/);
+  assert.match(hrView, /className=\{i < from \|\| i >= to \? 'off-page' : undefined\}/);
+  // …and the box, which the component knows nothing about.
+  assert.ok(!/matchMedia|innerWidth|isMobile|dvh/.test(hrCode), 'the layout is the stylesheet’s to decide');
+});
+
+test('a page that no longer exists is clamped, not drawn empty', () => {
+  // `load()` can shorten the list without the month, the filter or the search
+  // changing — HR withdraws the last live entry of the only person on page 12.
+  assert.match(hrView, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ CARD_PAGE\)\);/);
+  assert.match(hrView, /const current = Math\.min\(page, pageCount\);/);
+  // Clamped at render, so the empty page never exists for a frame — and `page`
+  // is left alone, so a list that grows back returns the reader where they were.
+  assert.ok(
+    !/setPage\(Math\.min/.test(hrCode) && !/useEffect[^)]*pageCount/.test(hrCode),
+    'the clamp became an effect, which draws the empty page for one frame first',
+  );
+});
+
+test('a new page starts at the top of the box', () => {
+  // The pager lives at the FOOT of a scrolling box, so ถัดไป is pressed with the
+  // box scrolled to its end. Without this the next five people are drawn above
+  // a viewport still looking at the pager: the button appears to do nothing.
+  // Found by walking it on 2026-08-25, not by reading the code.
+  assert.match(hrView, /const listRef = useRef\(null\);/);
+  assert.match(hrView, /<tbody ref=\{listRef\}>/);
+  assert.match(
+    hrCode,
+    /useEffect\(\(\) => \{\s*if \(listRef\.current\) listRef\.current\.scrollTop = 0;\s*\}, \[current, find, period, statusFilter\]\);/,
+  );
+  // `find` and the period are in the deps as well as `current`: a search that
+  // narrows the list while already on page 1 leaves `current` at 1, and the box
+  // would keep its scroll offset into a list that is now three people long.
+  // And it is a ref, not a layout question — above 860px there is no box,
+  // `scrollTop` is already 0 and the assignment is a no-op.
   assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
 });
 
 test('the box is bounded, scrolls itself, and does not hand the scroll on', () => {
   const box = phone.slice(phone.indexOf('.hr-table tbody {'));
   const rule = box.slice(0, box.indexOf('}'));
-  // Viewport-relative, not a count of cards: "three cards" is 474px on a card
-  // with one line of name and 550 on a card with two.
-  assert.match(rule, /max-height: 58dvh;/);
-  // A 480px-tall phone in landscape would otherwise get a 211px slit.
+  // About one card, the pager and the total — viewport-relative, because "one
+  // card" is 150px on a card with one line of name and 190 on a card with two.
+  assert.match(rule, /max-height: 42dvh;/);
+  // A 480px-tall phone in landscape would otherwise get a 202px slit.
   assert.match(rule, /min-height: 260px;/);
   assert.match(rule, /overflow-y: auto;/);
   // The part that makes nested scroll safe: without it, flicking to the end of
@@ -174,26 +204,63 @@ test('the box is bounded, scrolls itself, and does not hand the scroll on', () =
   // for this on .pick-menu.
   assert.match(rule, /overscroll-behavior: contain;/);
   assert.match(css, /\.pick-menu \{[\s\S]*?overscroll-behavior: contain;/);
-  // Above 860px there is no box at all — the desktop table is a table, and it
-  // is not opting out of a rule, the rule simply never applies to it.
+  // Above 860px there is no box at all.
   assert.ok(!/\.hr-table tbody \{[^}]*max-height/.test(desktop), 'the box reached the desktop table');
+});
+
+test('the pager is inside the box, above the total, and disables its ends', () => {
+  const block = hrView.slice(hrView.indexOf('{shown.length > CARD_PAGE && ('));
+  const row = block.slice(0, block.indexOf('</tr>'));
+  assert.match(row, /แสดง <strong>\{from \+ 1\}–\{Math\.min\(to, shown\.length\)\}<\/strong> จาก/);
+  assert.match(row, /<strong>\{shown\.length\}<\/strong> รายการ/);
+  // From the clamped value, never from raw `page`, or the label and the rows
+  // drawn could disagree on exactly the month that shortened.
+  assert.match(row, /หน้า <strong>\{current\}<\/strong> \/ <strong>\{pageCount\}<\/strong>/);
+  assert.match(row, /onClick=\{\(\) => setPage\(current - 1\)\}/);
+  assert.match(row, /disabled=\{current <= 1\}/);
+  assert.match(row, /onClick=\{\(\) => setPage\(current \+ 1\)\}/);
+  assert.match(row, /disabled=\{current >= pageCount\}/);
+  // `disabled` rather than gone: a control that disappears at the ends moves the
+  // two beside it, and the second press of a travelling thumb lands on the
+  // button that goes back.
+  assert.ok(!/\{current > 1 && \(\s*<button/.test(row), 'ก่อนหน้า is hidden at page 1 instead of disabled');
+  assert.match(row, /<div className="pager-say" aria-live="polite">/);
+  assert.match(row, /colSpan=\{11\}/);
+
+  // ORDER INSIDE THE BOX: cards, then the pager, then the total. With the total
+  // `sticky` at the foot of the scrollport everything else is above it by
+  // definition, so a pager after the total is the one row that could never
+  // share a screen with it.
+  assert.ok(
+    hrView.indexOf('{shown.length > CARD_PAGE && (') < hrView.indexOf('<tr className="total-row">'),
+    'the pager ended up under รวมทั้งหมด',
+  );
+  // Not a card, and one line that has to stay one line.
+  assert.match(phone, /\.hr-table tbody tr\.pager-row \{\s*display: block; padding: 0; border: 0; background: none;/);
+  assert.match(phone, /\.pager-controls \{\s*display: grid; grid-template-columns: 1fr auto 1fr;/);
+  assert.match(phone, /\.pager-controls \.btn \{\s*width: 100%; min-height: 44px;/);
+  // The disabled ends wear what every other disabled button in this app wears.
+  assert.ok(!/pager-controls \.btn:disabled/.test(phone), 'the pager opted out of the app’s disabled treatment');
+
+  // And the desktop hides the whole row while leaving `.off-page` unstyled —
+  // one `display: none` written there by mistake takes fifty-five people out of
+  // the desktop month.
+  assert.match(desktop, /\.hr-table tbody tr\.pager-row \{ display: none; \}/);
+  assert.ok(!desktop.includes('.off-page {'), 'the paging reached the desktop table');
 });
 
 test('รวมทั้งหมด is the floor of the box, not a bar over the page', () => {
   const total = phone.slice(phone.indexOf('.hr-table tbody tr.total-row {'));
   const rule = total.slice(0, total.indexOf('}'));
   assert.match(rule, /position: sticky;/);
-  // ZERO, and the number is the whole of what changed: the row used to be
-  // pinned to the VIEWPORT eight pixels above the nav bar, which is what
-  // `calc(82px + env(safe-area-inset-bottom))` was. It sticks to the bottom of
-  // the list's own scrollport now, and that box already sits above the nav.
+  // ZERO: the row used to be pinned to the VIEWPORT eight pixels above the nav
+  // bar. It sticks to the bottom of the list's own scrollport now.
   assert.match(rule, /bottom: 0;/);
   assert.ok(!rule.includes('safe-area-inset-bottom'), 'the row is still doing nav-bar arithmetic');
-  // Under the sticky ค้นหา bar and the nav, both at 30.
   assert.match(rule, /z-index: 5;/);
-  // Opaque, or the cards travel through it. The shadow points UP now — it is a
-  // floor with rows above it, not a bar floating over rows below.
   assert.match(rule, /background: var\(--neutral-wash\);/);
+  // The shadow points UP — it is a floor with rows above it, not a bar over
+  // rows below.
   assert.match(rule, /box-shadow: 0 -6px 20px var\(--shadow-soft\);/);
   // A sticky child scrolls against its nearest scrollport, which is now the
   // tbody. `.table-wrap` must not be a second one wrapped around it.
@@ -201,18 +268,13 @@ test('รวมทั้งหมด is the floor of the box, not a bar over the
   assert.ok(!desktop.includes('.hr-table tbody tr.total-row'), 'the sticky reached the desktop table');
 });
 
-test('the box is not a filter — nothing that is counted or printed reads it', () => {
+test('neither the box nor the page is a filter', () => {
   // รวมทั้งหมด is the month's, from the server's own grandTotal.
   assert.match(hrView, /hours\(data\.grandTotal\.otHours\)/);
-  // พิมพ์รวม prints every person the SEARCH matched, scrolled to or not.
+  // พิมพ์รวม prints every person the SEARCH matched, on this page or not.
   assert.match(hrView, /setPrinting\(\{ employees: shown\.map\(\(r\) => r\.employee\) \}\)/);
-  // And there is no longer any per-list state to reset when the month, the
-  // filter or the search changes — which is one whole class of "a number that
-  // outlived the list it described" that cannot happen any more.
-  assert.ok(
-    !/useEffect\(\(\) => \{ set(Page|Limit|ShowAll)\(/.test(hrCode),
-    'a reset effect came back, which means a row-count came back with it',
-  );
+  // And the page goes back to 1 whenever the list underneath it changes.
+  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); \}, \[period, statusFilter, find\]\);/);
 });
 
 test('รวมทั้งหมด is a card too, and has no buttons to offer', () => {

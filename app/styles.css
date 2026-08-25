@@ -5116,19 +5116,28 @@ table.mini tbody tr:hover { background: none; }
   background: var(--neutral-wash); font: 400 12.5px/1.6 var(--sans); color: var(--muted);
 }
 
-/* ══ ตรวจสอบรายเดือน — NOTHING TO UNDO ON A DESKTOP ANY MORE ══════════════
+/* ══ ตรวจสอบรายเดือน — THE PAGER DOES NOT EXIST ON A DESKTOP ══════════════
 
-   This is where `.hr-table tbody tr.fold-row`, and then `.pager-row`, were
-   switched off above 860px — one `display: none` undoing a control that only
-   the phone layout wanted. Both are gone: the list is no longer folded, loaded
-   in tens or paged, so there is no control in the markup for a desktop to hide.
+   `.pager-row` is the ก่อนหน้า / ถัดไป row and `.off-page` marks every card
+   that is not among the five the current page holds. Both are written into the
+   markup unconditionally — the JSX says WHICH rows are off the page and nothing
+   else — and it is this rule, with its pair in the 860px block, that decides
+   whether being off the page means anything.
 
-   The phone reads the same whole list through a box of fixed height instead
-   (`.hr-table tbody` in the 860px block below), which is a rule the desktop
-   simply never opts into rather than one it has to cancel. That is the better
-   shape of the "one markup, two layouts" rule this screen follows, and the
-   reason this section is now a note and not a declaration: the desktop table
-   draws every row of the month because nothing anywhere tells it not to. */
+   Above 860px it does not. A sixty-row table of eleven narrow columns is read
+   at a glance and down its columns; paging it would hide fifty-five rows behind
+   a control. So the pager is removed here and `.off-page` is deliberately
+   given NO rule at all, which is what leaves every row drawn.
+
+   `.off-page` HAS NO DECLARATION ANYWHERE ABOVE THIS LINE, and that is load-
+   bearing rather than an omission: one `display: none` written here by mistake
+   takes fifty-five people out of the desktop month. `test/hrMonthCards.test.js`
+   asserts its absence for exactly that reason.
+
+   Stated as a plain `display: none` and NOT as an inline style in the
+   component: an inline style beats the media query and the pager would never
+   appear on a phone at all. */
+.hr-table tbody tr.pager-row { display: none; }
 
 /* ══ mobile — the design's own 860px breakpoint ══════════════════════════ */
 
@@ -6932,7 +6941,7 @@ table.mini tbody tr:hover { background: none; }
      the rule that describes this element — see the note there. */
   .hr-table tbody {
     display: flex; flex-direction: column; gap: 12px; padding: 12px;
-    max-height: 58dvh;
+    max-height: 42dvh;
     min-height: 260px;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -7087,6 +7096,62 @@ table.mini tbody tr:hover { background: none; }
      ends up with two half-descriptions of the same box, and this file has been
      bitten by that before (see the note on `.dept-menu` losing to `.pick-menu`).
      One selector, one place, and this comment points at it. */
+
+  /* ══ แผงเปลี่ยนหน้า — THE SECOND WAY THROUGH THE SAME LIST ═══════════════
+
+     `.off-page` is what makes the pager mean anything: five cards drawn out of
+     however many the month holds. It sits inside the box with them, so the two
+     mechanisms compose rather than fight — the box bounds the HEIGHT of the
+     card and the page bounds the DISTANCE inside it. Five cards is about three
+     boxfuls of flicking; the sixth person is one press away instead.
+
+     THE COST IS WRITTEN DOWN IN components/HrView.jsx over `CARD_PAGE`: two
+     ways to reach the ninth person, and neither obviously the one to reach for.
+     Both were shipped alone on 2026-08-25 before they were shipped together. */
+  .hr-table tbody tr.off-page { display: none; }
+  /* Not a card: no border, no fill, no 15px of padding. The row it sits in on
+     screen is a control, and a bordered block around it reads as a sixth person
+     with nothing in them. */
+  .hr-table tbody tr.pager-row {
+    display: block; padding: 0; border: 0; background: none;
+  }
+  .hr-table tbody tr.pager-row:hover { background: none; }
+  /* WHERE IN THE LIST, above WHICH PAGE. Muted and 12.5px: it is the caption of
+     a control, not a figure of the month. */
+  .hr-table tbody tr.pager-row .pager-range {
+    margin: 2px 0 8px; text-align: center;
+    font: 400 12.5px/1.4 var(--sans); color: var(--muted);
+  }
+  .hr-table tbody tr.pager-row .pager-range strong {
+    font: 600 12.5px/1.4 var(--mono); color: var(--ink);
+  }
+
+  /* ‹ ก่อนหน้า · หน้า 2 / 12 · ถัดไป › — ONE LINE, AND IT HAS TO STAY ONE.
+     `1fr auto 1fr` rather than three equal columns or `space-between`: the two
+     buttons then take the same width as each other whatever their labels come
+     to, and the page number sits on the centre line of the card rather than
+     wherever the wider label happened to push it. At 360px that is two 106px
+     buttons around a 90px label, both keeping their 44px target. */
+  .hr-table tbody tr.pager-row .pager-controls {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; gap: 8px;
+  }
+  .hr-table tbody tr.pager-row .pager-controls .btn {
+    width: 100%; min-height: 44px; font-size: 13.5px;
+  }
+  .hr-table tbody tr.pager-row .pager-at {
+    text-align: center; white-space: nowrap;
+    font: 400 12.5px/1.4 var(--sans); color: var(--muted);
+  }
+  .hr-table tbody tr.pager-row .pager-at strong {
+    font: 600 14px/1.4 var(--mono); color: var(--ink);
+  }
+  /* THE ENDS OF THE LIST NEED NOTHING DECLARED HERE. `‹ ก่อนหน้า` on page 1 and
+     `ถัดไป ›` on the last carry the plain `disabled` attribute, and the app's
+     own `.btn:disabled` — a `--neutral-wash` fill with `--muted` text — draws
+     them. A fade was written here once and taken out again: that rule sets
+     `opacity: 1` on purpose, because a ghost faded to .45 is illegible on the
+     dark theme. */
 
   /* ══ รวมทั้งหมด SITS AT THE FOOT OF THE BOX ═════════════════════════════
 
