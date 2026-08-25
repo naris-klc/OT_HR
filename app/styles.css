@@ -3098,37 +3098,17 @@ td > .approver-line { margin-top: 5px; }
 .notice-fold > summary:hover { opacity: 1; }
 .notice-fold[open] > summary { opacity: 1; }
 
-/* ══ …AND A SUMMARY THAT SAYS WHICH WAY IT GOES ══════════════════════════
-
-   "รายละเอียด" beside a marker names the CONTENTS. Shut, the thing to say is
-   the act — ดูรายละเอียด — and open, the act is the other one, ซ่อนรายละเอียด.
-   Both are in the markup and `[open]` picks one; nothing here is state, which
-   is the whole reason this is a `<details>` (see above).
-
-   KEYED OFF THE SPANS, NOT OFF A NEW CLASS. PrintFormBatch's digest uses the
-   same `.notice-fold` with a plain-text summary, and it is not part of what was
-   asked for — a rule that reached it would change a screen nobody was looking
-   at. A summary with no `.fold-shut` inside it is untouched by every rule
-   below.
-
-   The marker stays the browser's, as the block above says: it already turns
-   from ▸ to ▾ and is themed by the panel's own ink, and a second chevron drawn
-   here would be one more thing to keep in step for no gain. */
-.notice-fold > summary > .fold-open { display: none; }
-.notice-fold[open] > summary > .fold-shut { display: none; }
-.notice-fold[open] > summary > .fold-open { display: inline; }
-
 /* ══ .fold-pill — A PRESS TARGET, BECAUSE THAT IS WHAT IT IS ═════════════
 
-   As bold 12px text these were a 17px-tall line of writing that happened to be
-   clickable, in an app where every other decision control is a 44px box on a
-   phone.
+   `ดูรายละเอียด ▼` / `ซ่อน ▲` on ตรวจสอบรายเดือน's alert panel. As bold 12px
+   text it was a 17px-tall line of writing that happened to be clickable, in an
+   app where every other decision control is a 44px box on a phone.
 
-   WORN BY TWO DIFFERENT ELEMENTS: the `<summary>` of a `.notice-fold`, and the
-   `<button>` that opens ตรวจสอบรายเดือน's alert strip. So it is a class rather
-   than a `:has()` on `summary`, and it resets the things a `<button>` brings
-   with it — a UA background, a UA border, a UA font — none of which a summary
-   has. PrintFormBatch's digest wears neither and is unchanged.
+   A CLASS AND NOT A SELECTOR ON `summary`. It is worn by a `<button>`, so it
+   resets what a button brings with it — a UA background, a UA border, a UA font
+   — none of which a `<summary>` has; and PrintFormBatch's digest uses
+   `.notice-fold` with a plain-text summary and must stay exactly as it is, which
+   a rule reaching through `summary` could not promise.
 
    `currentColor` for the line and nothing for the fill: the panel around it is
    already tinted, and a second fill inside it reads as a nested box. The ink is
@@ -3155,10 +3135,42 @@ td > .approver-line { margin-top: 5px; }
    putting a second panel there to say so would be the joke it sounds like. */
 .alerts-recall { margin: 0 0 12px; font-size: 12.5px; }
 
-/* "กฎการคำนวณคนละชุด · HR อนุมัติชั้นเดียว 1 รายการ" — which notices are behind
-   the strip, under the count rather than run into it. Quieter by a step, the
-   same distance `.cap-sub` puts between a figure and its qualifier. */
+/* "กฎการคำนวณคนละชุด · HR อนุมัติชั้นเดียว 1 รายการ" — which notices are in the
+   panel, under the count rather than run into it. Quieter by a step, the same
+   distance `.cap-sub` puts between a figure and its qualifier. Drawn only while
+   the list is shut; open, the list's own headings are these same words. */
 .alerts-say { margin-top: 2px; font-size: 12px; opacity: .85; }
+
+/* ══ THE LIST INSIDE THE PANEL — NOT A SECOND STACK OF PANELS ════════════
+
+   The first version of this counted the notices on a strip and then rendered
+   the two original `.alert` panels underneath it: three boxes where there had
+   been two, with the strip naming what the first box then said again.
+
+   So the notices open as items of one list, inside the box that counted them.
+   No bullet — the heading is the marker, and a disc in front of a bold line
+   inside an already-marked panel is a third level of decoration on one
+   sentence. A hairline between items instead, in the panel's own ink at a tenth,
+   so it separates without becoming a second border. */
+.alerts-list {
+  list-style: none; margin: 12px 0 0; padding: 0;
+  display: flex; flex-direction: column;
+}
+.alerts-list > li { padding: 10px 0; }
+.alerts-list > li:first-child {
+  padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.alerts-list > li + li {
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.alerts-list > li:last-child { padding-bottom: 0; }
+/* The figures — a version list, or the chip a row wears. Mono for the first of
+   those: "เวอร์ชัน 10 (1 ใบ) · เวอร์ชัน 1 (19 ใบ)" is read as counts. */
+.alerts-list .fig { margin-top: 3px; font-size: 12.5px; }
+/* And the one sentence that says what to do about it. `ตรวจก่อนเซ็นรับรอง` is
+   the whole reason the policy notice exists; a list that dropped it would be a
+   tidier screen that had stopped saying the thing it is for. */
+.alerts-list .say { margin-top: 5px; font-size: 12px; opacity: .85; }
 
 .notice-fold-group { margin-top: 6px; }
 .notice-fold-group > .k {

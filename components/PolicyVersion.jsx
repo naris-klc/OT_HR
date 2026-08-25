@@ -189,47 +189,36 @@ export function PolicyDriftBanner({ user, onOpenPolicy }) {
 }
 
 /**
- * The warning, and the reason it is worded three ways.
+ * EVERY WORD THIS WARNING HAS, IN ONE PLACE — and whether it has any at all.
  *
- * "More than one version" is the literal condition, and on its own it cries
- * wolf: answering OPEN 7 (may HR reject after the manager approved) mints a
- * version like any other and moves no number at all. A banner that fires on
- * that trains HR to dismiss the one that fires when the rounding rule changed
- * mid-month.
+ * Two screens draw this now and they draw it differently. ตรวจสอบใบของพนักงาน
+ * (`HrEntries`) still opens the full panel; ตรวจสอบรายเดือน puts it in a list
+ * inside its alert strip, as a heading, a line of figures and a sentence. What
+ * neither of them may do is hold its own copy of the wording: a warning that is
+ * worded twice is a warning that gets corrected once.
  *
- * So the four cases are separated, and the two that cannot answer "do these
+ * So the four cases live here with the version list and the colour, and both
+ * callers are renderers. The strip also has to know, BEFORE it renders, whether
+ * there is anything to say and how loud it is — `null` and `kind` are that
+ * answer, and asking `spread.mixed` again at the call site is how two rules
+ * that disagree start.
+ *
+ * `label` is the item's heading and the strip's collapsed line, in that order
+ * of importance: five words that say which notice this is.
+ *
+ * THE FOUR CASES, and why they are four. "More than one version" is the literal
+ * condition and on its own it cries wolf: answering OPEN 7 (may HR reject after
+ * the manager approved) mints a version like any other and moves no number at
+ * all. A banner that fires on that trains HR to dismiss the one that fires when
+ * the rounding rule changed mid-month. So the two that cannot answer "do these
  * figures compare" say which of them they are. `arithmeticMixed` is null for
  * two quite different reasons — rows whose rules were never recorded, and a
  * screen holding version numbers but not the snapshots behind them — and
  * telling HR to run a migration when the real answer is "open ตรวจสอบรายเดือน"
  * sends them somewhere that will not help.
  */
-/**
- * WHETHER THIS BANNER HAS ANYTHING TO SAY, AND HOW LOUDLY — for a caller that
- * has to know before it renders.
- *
- * ตรวจสอบรายเดือน gathers its top-of-card notices into one strip and has to
- * count them, colour the strip by the worst of them and name each in a line.
- * All three questions are this component's to answer, so they are answered
- * here and `PolicyVersionBanner` reads its own `kind` off the same call. Asking
- * `spread.mixed` again at the call site is how two rules that disagree start.
- *
- * `label` is the strip's line, not a summary of the banner: five words that say
- * which notice this is, with the reading left to the banner underneath.
- */
 export function policyVersionNotice(spread) {
   if (!spread?.mixed) return null;
-  return {
-    // `ok` is not a softer warning, it is a different answer: the versions
-    // differ and the arithmetic behind them does not, so the figures compare.
-    kind: spread.arithmeticMixed === false ? 'ok' : 'warn',
-    label: 'กฎการคำนวณคนละชุด',
-  };
-}
-
-export function PolicyVersionBanner({ spread }) {
-  const notice = policyVersionNotice(spread);
-  if (!notice) return null;
 
   const named = spread.used
     .map((u) => (u.seq != null
@@ -237,39 +226,60 @@ export function PolicyVersionBanner({ spread }) {
       : `ไม่ทราบเวอร์ชัน (${u.count} ใบ)`));
   if (spread.unversioned) named.push(`ไม่ระบุเวอร์ชัน (${spread.unversioned} ใบ)`);
 
-  const comparable = spread.arithmeticMixed === false;
+  let say;
+  if (spread.arithmeticMixed === true) {
+    say = (
+      <>
+        กฎที่ใช้คำนวณชั่วโมงต่างกันจริง — ตัวเลขรวมจึงมาจากวิธีคิดมากกว่าหนึ่งแบบ ·
+        {' '}ตรวจก่อนเซ็นรับรอง หรือสั่งคำนวณใหม่ทั้งเดือนพร้อมระบุเหตุผลที่หน้า ตั้งค่าระบบ → นโยบายการคำนวณ
+      </>
+    );
+  } else if (spread.arithmeticMixed === false) {
+    say = (
+      <>
+        เวอร์ชันต่างกันแต่กฎที่ใช้คำนวณชั่วโมงเหมือนกันทุกข้อ — ตัวเลขเทียบกันได้ตามปกติ ·
+        {' '}ที่ต่างคือข้อกำหนดเชิงสิทธิ์ ไม่ใช่การคิดชั่วโมง
+      </>
+    );
+  } else if (spread.unversioned > 0) {
+    say = (
+      <>
+        มีใบที่ไม่ได้บันทึกว่าใช้กฎชุดใด จึงเทียบไม่ได้ว่าตัวเลขมาจากวิธีคิดเดียวกันหรือไม่ ·
+        {' '}รัน <code>npm run migrate:policy-version</code> เพื่อกำกับเวอร์ชันให้ใบเก่า
+      </>
+    );
+  } else {
+    say = (
+      <>
+        หน้านี้แสดงเลขเวอร์ชันแต่ไม่ได้โหลดกฎเบื้องหลังมาด้วย จึงยังบอกไม่ได้ว่าต่างกันที่การคิดชั่วโมงหรือไม่ ·
+        {' '}ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว
+      </>
+    );
+  }
+
+  return {
+    // `ok` is not a softer warning, it is a different answer: the versions
+    // differ and the arithmetic behind them does not, so the figures compare.
+    kind: spread.arithmeticMixed === false ? 'ok' : 'warn',
+    label: 'กฎการคำนวณคนละชุด',
+    heading: 'เดือนนี้มีใบที่คำนวณด้วยกฎคนละชุด',
+    figures: named.join(' · '),
+    say,
+  };
+}
+
+export function PolicyVersionBanner({ spread }) {
+  const notice = policyVersionNotice(spread);
+  if (!notice) return null;
 
   return (
-    // From `policyVersionNotice` above, so the strip on ตรวจสอบรายเดือน and the
-    // banner it opens are never two different colours about one month.
+    // A renderer of `policyVersionNotice` and nothing else, so this panel and
+    // the list item ตรวจสอบรายเดือน draws from the same call can never be two
+    // different colours — or two different sentences — about one month.
     <Alert kind={notice.kind}>
-      <strong>เดือนนี้มีใบที่คำนวณด้วยกฎคนละชุด</strong>
-      <div style={{ marginTop: 4 }}>{named.join(' · ')}</div>
-      <div style={{ fontSize: 12.5, marginTop: 6 }}>
-        {spread.arithmeticMixed === true && (
-          <>
-            กฎที่ใช้คำนวณชั่วโมงต่างกันจริง — ตัวเลขรวมด้านล่างจึงมาจากวิธีคิดมากกว่าหนึ่งแบบ ·
-            {' '}ตรวจก่อนเซ็นรับรอง หรือสั่งคำนวณใหม่ทั้งเดือนพร้อมระบุเหตุผลที่หน้า ตั้งค่าระบบ → นโยบายการคำนวณ
-          </>
-        )}
-        {comparable && (
-          <>
-            เวอร์ชันต่างกันแต่กฎที่ใช้คำนวณชั่วโมงเหมือนกันทุกข้อ — ตัวเลขเทียบกันได้ตามปกติ ·
-            {' '}ที่ต่างคือข้อกำหนดเชิงสิทธิ์ ไม่ใช่การคิดชั่วโมง
-          </>
-        )}
-        {spread.arithmeticMixed == null && (spread.unversioned > 0 ? (
-          <>
-            มีใบที่ไม่ได้บันทึกว่าใช้กฎชุดใด จึงเทียบไม่ได้ว่าตัวเลขมาจากวิธีคิดเดียวกันหรือไม่ ·
-            {' '}รัน <code>npm run migrate:policy-version</code> เพื่อกำกับเวอร์ชันให้ใบเก่า
-          </>
-        ) : (
-          <>
-            หน้านี้แสดงเลขเวอร์ชันแต่ไม่ได้โหลดกฎเบื้องหลังมาด้วย จึงยังบอกไม่ได้ว่าต่างกันที่การคิดชั่วโมงหรือไม่ ·
-            {' '}ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว
-          </>
-        ))}
-      </div>
+      <strong>{notice.heading}</strong>
+      <div style={{ marginTop: 4 }}>{notice.figures}</div>
+      <div style={{ fontSize: 12.5, marginTop: 6 }}>{notice.say}</div>
     </Alert>
   );
 }

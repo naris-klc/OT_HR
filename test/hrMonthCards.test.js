@@ -37,6 +37,17 @@ const read = (f) => readFileSync(join(ROOT, f), 'utf8');
 const css = read('app/styles.css');
 const hrView = read('components/HrView.jsx');
 
+/**
+ * The screen with its commentary stripped — for asking what it SAYS rather than
+ * what the file explains about what it says.
+ *
+ * Three assertions in this file have caught their own comment instead of the
+ * code: a note reading "there is no matchMedia here", another reading "NOT
+ * sessionStorage", and one quoting the very Thai sentence it was checking had
+ * not been copied. Each looked like a real failure for a minute.
+ */
+const hrCode = hrView.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
 /** The phone block only — everything above it is the desktop design. */
 const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
 const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
@@ -51,7 +62,7 @@ test('the desktop table is still a table, cell for cell', () => {
     'edits-col', 'rule-col', 'cap-col', 'act-col']) {
     assert.ok(head.includes(col), `the desktop head lost ${col}`);
   }
-  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrView), 'the layout is the stylesheet’s to decide');
+  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
 });
 
 test('the phone layout turns that same table into cards', () => {
@@ -142,7 +153,7 @@ test('the card list stops at five and offers the rest', () => {
   assert.match(hrView, /const CARD_FOLD = 5;/);
   // The JSX marks WHICH rows are past the fifth and says nothing about width.
   assert.match(hrView, /className=\{!showAll && i >= CARD_FOLD \? 'over-fold' : undefined\}/);
-  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrView), 'the layout is the stylesheet’s to decide');
+  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
   // …and the stylesheet is where "past the fifth" becomes "not drawn", below
   // 860px and nowhere else.
   assert.match(phone, /\.hr-table tbody tr\.over-fold \{ display: none; \}/);
@@ -213,29 +224,66 @@ test('the raw-hours summary is not the total card said twice', () => {
 });
 
 const STRIP = '<MonthAlerts';
-const NOTICE = 'function HrVerifiedNotice({ count }) {';
 
-test('two panels became one strip, counted and named', () => {
-  // The complaint was the stack: the policy banner runs to five lines and names
-  // every version in the month, and อนุมัติชั้นเดียว carries a fold of its own.
-  // On a 375px phone that was most of a screen above the search box.
-  const strip = hrView.slice(hrView.indexOf('function MonthAlerts('), hrView.indexOf('function HrVerifiedNotice('));
+test('two panels became one panel — a list, not a second stack', () => {
+  // The first attempt counted them on a strip and then rendered the two
+  // ORIGINAL panels under it: three boxes where there had been two, and the
+  // strip naming what the first box then said again.
+  const strip = hrView.slice(hrView.indexOf('function MonthAlerts('), hrView.indexOf('function CapCell('));
   assert.match(strip, /แจ้งเตือนของเดือนนี้ \$\{notices\.length\} ข้อความ/);
-  // Each notice's own short label on the line, not a bare total: "2 ข้อความ"
-  // alone makes a reader open it to find out whether either of them matters.
-  // On their own quieter line, not run into the headline with an em dash: that
-  // wrapped as one paragraph of three and the bar stopped reading as a bar.
-  assert.match(strip, /<div className="alerts-say">\{notices\.map\(\(n\) => n\.label\)\.join\(' · '\)\}<\/div>/);
-  assert.match(css, /\.alerts-say \{ margin-top: 2px; font-size: 12px; opacity: \.85; \}/);
+  // ONE `<Alert>` in the whole component, and the list is INSIDE it.
+  assert.equal(strip.match(/<Alert /g).length, 1, 'a second panel came back');
+  assert.match(strip, /<ul className="alerts-list">[\s\S]*?<\/ul>[\s\S]*?<\/Alert>/);
+  assert.ok(!strip.includes('<PolicyVersionBanner'), 'the brown panel is still being rendered here');
+  assert.ok(!hrView.includes('HrVerifiedNotice'), 'the blue panel is still a component on this screen');
+  // …and the banner is not even imported any more. It is still a component
+  // because ตรวจสอบใบของพนักงาน opens it.
+  assert.ok(!/import \{[^}]*PolicyVersionBanner/.test(hrView), 'the banner is still imported here');
+  assert.match(read('components/HrEntries.jsx'), /<PolicyVersionBanner spread=\{spread\} \/>/);
+});
+
+test('an item is a heading, its figures, and the one sentence that says what to do', () => {
+  const strip = hrView.slice(hrView.indexOf('function MonthAlerts('), hrView.indexOf('function CapCell('));
+  assert.match(strip, /<strong>\{n\.label\}<\/strong>/);
+  assert.match(strip, /<div className="fig">\{n\.figures\}<\/div>/);
+  assert.match(strip, /<div className="say">\{n\.say\}<\/div>/);
+  // ตรวจก่อนเซ็นรับรอง is the whole reason the policy notice exists. A list
+  // that dropped it would be a tidier screen that had stopped saying the thing
+  // it is for — so `say` is carried, and it is carried from the notice's own
+  // module rather than retyped here.
+  const pv = read('components/PolicyVersion.jsx');
+  assert.match(pv, /ตรวจก่อนเซ็นรับรอง/);
+  assert.match(pv, /figures: named\.join\(' · '\),/);
+  assert.match(pv, /say,/);
+  assert.ok(!hrCode.includes('ตรวจก่อนเซ็นรับรอง'), 'the policy wording was copied into the screen');
+  // All four cases still answered in that one place — OPEN 7 mints a version
+  // and moves no number, so a banner that cries wolf on it trains HR to dismiss
+  // the one that fires when the rounding rule changed mid-month.
+  for (const only of ['ตัวเลขเทียบกันได้ตามปกติ', 'npm run migrate:policy-version', 'ซึ่งเทียบให้แล้ว']) {
+    assert.ok(pv.includes(only), `the ${only} case went missing`);
+  }
+  assert.match(css, /\.alerts-list \{\s*list-style: none;/);
+  assert.match(css, /\.alerts-list > li \+ li \{\s*border-top: 1px solid color-mix/);
+});
+
+test('one control for the whole thing, and no second ดูรายละเอียด inside it', () => {
+  const strip = hrView.slice(hrView.indexOf('function MonthAlerts('), hrView.indexOf('function CapCell('));
   assert.match(strip, /\{open \? 'ซ่อน ▲' : 'ดูรายละเอียด ▼'\}/);
   assert.match(strip, /aria-expanded=\{open\}/);
+  // A second `ดูรายละเอียด` two levels down is a reader asking which of them
+  // they just pressed. Nothing inside the list folds again.
+  assert.ok(!strip.includes('<details'), 'a fold came back inside the list');
+  assert.equal(strip.match(/fold-pill/g).length, 1, 'a second toggle appeared');
+  assert.equal(strip.match(/onClose=/g).length, 1, 'a second dismiss appeared');
+  // The labels line is drawn SHUT only — open, the list headings are those same
+  // words, and saying them twice fourteen pixels apart is a difference a reader
+  // has to check for and will not find.
+  assert.match(strip, /\{!open && \(\s*<div className="alerts-say">\{notices\.map\(\(n\) => n\.label\)\.join\(' · '\)\}<\/div>/);
+  assert.match(css, /\.alerts-say \{ margin-top: 2px; font-size: 12px; opacity: \.85; \}/);
   // THE COLOUR IS THE WORST OF THEM, or the fold has quietly downgraded a
   // warning by folding it.
   assert.match(strip, /\['warn', 'info', 'ok'\]\.find\(/);
-  // The panels open UNDER the strip. An alert nested in an alert is a box drawn
-  // twice, and each of these carries its own colour and mark already.
-  assert.match(strip, /\{open && notices\.map\(/);
-  // Whether there is a policy notice at all, and how loud, is the banner's own
+  // Whether there is a policy notice at all, and how loud, is the notice's own
   // module to answer — asking `spread.mixed` again here is how two rules that
   // disagree start.
   assert.match(strip, /const pv = policyVersionNotice\(policy\);/);
@@ -243,36 +291,32 @@ test('two panels became one strip, counted and named', () => {
   assert.match(read('components/PolicyVersion.jsx'), /<Alert kind=\{notice\.kind\}>/);
 });
 
-test('the strip is above the marks it explains, which one of them once only claimed', () => {
+test('the panel is above the marks it explains, which one of them once only claimed', () => {
   // The marks are the per-row `HR อนุมัติชั้นเดียว n` under รายการ and the chip
   // on the rows themselves. That sentence spent its life below the month's
   // total — on a phone, below วันเกิดของเดือนนี้ as well — where a reader who
   // has finished the rows has finished asking.
   const strip = hrView.indexOf(STRIP);
-  assert.ok(strip > 0, 'the strip was not found');
+  assert.ok(strip > 0, 'the panel was not found');
   // ABOVE the search box, not between it and the list: the box's own rule is
   // that the thing it filters starts directly underneath it, and these notices
   // are the month's, not the search's.
-  assert.ok(strip < hrView.indexOf('<div className="row month-find">'), 'the strip split the search box from its list');
-  assert.ok(strip < hrView.indexOf('<table className="hr-table">'), 'the strip is still under the table');
-  // The banner is no longer rendered on its own — the strip is the only caller.
-  assert.ok(
-    hrView.indexOf('<PolicyVersionBanner spread={policy} />') > hrView.indexOf('function MonthAlerts('),
-    'the policy banner is still drawn outside the strip',
-  );
+  assert.ok(strip < hrView.indexOf('<div className="row month-find">'), 'the panel split the search box from its list');
+  assert.ok(strip < hrView.indexOf('<table className="hr-table">'), 'the panel is still under the table');
   // And อนุมัติชั้นเดียว is out of the footnote wrapper it used to live in.
   const open = hrView.indexOf('<div className="month-notes">');
   assert.ok(!hrView.slice(open, hrView.indexOf('</>', open)).includes('hrVerifiedCount'), 'the notice is still a footnote');
   // Which can now leave that wrapper with no children at all.
   assert.match(phone, /\.month-card > \.month-notes:empty \{ display: none; \}/);
-  // The three notes that stayed: footnotes to figures already read, not
-  // warnings to read before starting.
+  // The notes that stayed: footnotes to figures already read, not warnings to
+  // read before starting.
   const notes = hrView.slice(open, hrView.indexOf('</>', open));
   assert.ok(notes.includes('supersededCount') && notes.includes('birthDates'), 'the footnotes were pulled up too');
+  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
 });
 
-test('an open panel cannot outlive its month, and the ✕ lasts until a reload', () => {
-  // Remounted by key: both the open flag and the panel under it describe the
+test('an open list cannot outlive its month, and the ✕ lasts until a reload', () => {
+  // Remounted by key: both the open flag and the list under it describe the
   // notices of ONE month at ONE สถานะที่นับ.
   assert.match(hrView, /key=\{`\$\{period\}\|\$\{statusFilter\}`\}/);
   // …which is exactly why the dismissal is NOT in that component's state — the
@@ -285,7 +329,7 @@ test('an open panel cannot outlive its month, and the ✕ lasts until a reload',
   // would still be in force the next morning with a different month on screen.
   // Named in the comment, which is where the reason lives — never CALLED.
   assert.ok(!/(session|local)Storage\s*[.[]/.test(hrView), 'the dismissal outlived the document');
-  // Dismissing closes the strip; it does not make the notices unreachable. The
+  // Dismissing closes the panel; it does not make the notices unreachable. The
   // count is recomputed from the month on screen, so a different month's
   // different warning is a different number with nothing reappearing.
   assert.match(hrView, /แสดงแจ้งเตือนของเดือนนี้ \(\$\{notices\.length\}\)/);
@@ -293,40 +337,21 @@ test('an open panel cannot outlive its month, and the ✕ lasts until a reload',
   assert.match(css, /\.alerts-recall \{ margin: 0 0 12px; font-size: 12\.5px; \}/);
 });
 
-test('the fold inside the strip says which way it goes', () => {
-  const note = hrView.slice(hrView.indexOf(NOTICE));
-  // "รายละเอียด" beside a marker names the contents. Shut and open, the thing
-  // to say is the act.
-  assert.match(note, /<span className="fold-shut">ดูรายละเอียด<\/span>/);
-  assert.match(note, /<span className="fold-open">ซ่อนรายละเอียด<\/span>/);
-  // Both in the markup, `[open]` picks one — no state, which is the whole
-  // reason this is a `<details>`.
-  assert.match(css, /\.notice-fold > summary > \.fold-open \{ display: none; \}/);
-  assert.match(css, /\.notice-fold\[open\] > summary > \.fold-shut \{ display: none; \}/);
-  // INFO and not amber: nothing here is wrong. What it is, is the one figure a
-  // หัวหน้า could not otherwise account for — and its count is on the strip's
-  // own line, which is what lets it be folded twice over without going missing.
-  assert.match(note, /<Alert kind="info" tight>/);
-  assert.match(note, /อนุมัติชั้นเดียว/);
-  assert.match(note, /HR ตรวจสแกนนิ้ว/);
-  assert.match(note, /ไม่ได้ผ่านการอนุมัติของหัวหน้างาน/);
-  // No ✕ of its own: two dismiss buttons one inside the other are two different
-  // promises about what closing means.
-  assert.ok(!note.slice(0, note.indexOf('</Alert>')).includes('onClose'), 'a second dismiss appeared inside the strip');
-  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrView), 'the layout is the stylesheet’s to decide');
-});
-
-test('.fold-pill is a class because two different elements wear it', () => {
-  // A `<summary>` and a `<button>`. So it resets what a button brings with it —
-  // a UA background, border and font — none of which a summary has.
+test('.fold-pill is a class, and the digest it shares a screen with is untouched', () => {
+  // Worn by a `<button>`, so it resets what a button brings with it — a UA
+  // background, border and font — none of which a `<summary>` has.
   assert.match(css, /\.fold-pill \{[\s\S]*?background: none; color: inherit; cursor: pointer;/);
-  assert.match(hrView, /<summary className="fold-pill">/);
   assert.match(hrView, /<button\s+type="button"\s+className="fold-pill"/);
   // 44px on a phone, like every other decision control at that width.
   assert.match(phone, /\.fold-pill \{ min-height: 44px; padding: 6px 16px; \}/);
-  // PrintFormBatch's digest wears neither the pill nor the two labels.
+  // PrintFormBatch's digest is the other `.notice-fold` in the app: plain-text
+  // summary, no pill, and no rule here reaches it.
   const digest = read('components/PrintFormBatch.jsx');
-  assert.ok(!digest.includes('fold-pill') && !digest.includes('fold-shut'), 'the pill leaked to the digest');
+  assert.match(digest, /<details className="notice-fold">\s*<summary>ดูรายละเอียด<\/summary>/);
+  assert.ok(!digest.includes('fold-pill'), 'the pill leaked to the digest');
+  // The two-label mechanism went with the fold it belonged to. Dead rules for a
+  // markup nothing writes any more are rules a reader has to account for.
+  assert.ok(!css.includes('fold-shut') && !css.includes('fold-open'), 'the two-label rules outlived their markup');
 });
 
 test('the phone puts วันเกิดของเดือนนี้ under the total and the footnotes after it', () => {
