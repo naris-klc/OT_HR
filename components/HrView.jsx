@@ -31,6 +31,25 @@ import { useBackHandler } from './nav.jsx';
  */
 const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
 
+/**
+ * How many people the card list draws before it offers the rest behind a
+ * button — ON A PHONE ONLY. Above 860px this table is a table and there is no
+ * fold; `.hr-table tbody tr.fold-row` is `display: none` outside the
+ * breakpoint, which is where that decision is made and the only place it is.
+ *
+ * Five, because five cards plus the period controls and the search box is one
+ * 375px screen: the button is on screen when the month loads, so it is not
+ * something to be discovered by scrolling to a place that looks like the end
+ * of the list. Six would put it below the fold, which is the one number this
+ * must not be.
+ *
+ * A FOLD, NOT A FILTER. รวมทั้งหมด is the month's, พิมพ์รวม prints everybody
+ * the search matched, and both CSVs are the server's — none of them reads this.
+ * See the note on the total row below, which says the same thing about the
+ * search box for the same reason.
+ */
+const CARD_FOLD = 5;
+
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({
   user, onOpenBirthdayQueue, onOpenRoster = null, onSettled = null,
@@ -90,6 +109,19 @@ export default function HrView({
     () => (data?.employees || []).filter((row) => personMatches(row.employee, find)),
     [data, find],
   );
+
+  /**
+   * แสดงทั้งหมด — pressed, and true until the list underneath it changes.
+   *
+   * It closes again on a new month, a new สถานะที่นับ and every keystroke in
+   * the search box, because each of those makes it a claim about a list that no
+   * longer exists: "แสดงทั้งหมด (60 รายการ)" pressed on August, left open, and
+   * then September loaded with 8 people in it is a fold that silently stopped
+   * meaning anything. Reset rather than remembered — the state this holds is
+   * "I am reading past the fifth of THESE", and there is no "these" left.
+   */
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => { setShowAll(false); }, [period, statusFilter, find]);
 
   // The whole table as one document, or one row of it — the same sheet either
   // way. The list is captured into state when the button is pressed rather than
@@ -368,8 +400,17 @@ export default function HrView({
                   </tr>
                 </thead>
                 <tbody>
-                  {shown.map((row) => (
-                    <tr key={row.employee._id}>
+                  {/* `over-fold` says ONE thing: this row is past the fifth.
+                      Whether that means anything is the stylesheet's to decide,
+                      and it only decides yes below 860px — the same rule the
+                      card layout itself follows, and the reason this file asks
+                      the browser nothing about how wide it is. On a desktop
+                      every one of these rows draws exactly as it did. */}
+                  {shown.map((row, i) => (
+                    <tr
+                      key={row.employee._id}
+                      className={!showAll && i >= CARD_FOLD ? 'over-fold' : undefined}
+                    >
                       <td className="who-col">
                         {row.employee.name}
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
@@ -454,6 +495,41 @@ export default function HrView({
                       </td>
                     </tr>
                   ))}
+                  {/* ABOVE รวมทั้งหมด, NOT UNDER IT. The total is the foot of
+                      the list on a phone — the card the birthdays and the
+                      footnotes are ordered to come up to — so a button after it
+                      would be a control stranded below the end of the screen it
+                      belongs to.
+
+                      The label carries the count because the alternative,
+                      "ดูเพิ่มเติม…", asks somebody to press a button to find
+                      out how much they were not being shown. `shown.length` and
+                      not `data.employees.length`: while the search box is
+                      narrowing, the fold is over the search's results, and the
+                      month's own figure is one line above in the found line.
+
+                      One row for both directions. ย่อกลับ matters more here
+                      than in most folds: sixty cards is the case this exists
+                      for, and having opened them there is otherwise no way back
+                      to the top of the month but scrolling through all sixty. */}
+                  {shown.length > CARD_FOLD && (
+                    <tr className="fold-row">
+                      {/* Eleven, like every other row in this table — see the
+                          `pad-col` note below. Not in the hidden-by-name list in
+                          the phone block, so it draws. */}
+                      <td className="fold-col" colSpan={11}>
+                        <button
+                          className="btn ghost sm"
+                          onClick={() => setShowAll((v) => !v)}
+                          aria-expanded={showAll}
+                        >
+                          {showAll
+                            ? `ย่อกลับ · แสดง ${CARD_FOLD} รายการแรก`
+                            : `แสดงทั้งหมด (${shown.length} รายการ)`}
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                   {/* `total-row` names the month's own line so the phone layout
                       can give its two frozen cells the backgrounds of a summary
                       rather than of a person. It lives in `tbody` — this table

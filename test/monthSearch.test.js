@@ -72,7 +72,11 @@ test('both spellings of a code find the person, and word order does not matter',
 test('the printed bundle is the rows on screen, however few', () => {
   assert.match(hrView, /onClick=\{\(\) => setPrinting\(\{ employees: shown\.map\(\(r\) => r\.employee\) \}\)\}/);
   assert.match(hrView, /disabled=\{!shown\.length\}/);
-  assert.match(hrView, /\{shown\.map\(\(row\) => \(/, 'the table still draws the unfiltered list');
+  // `shown`, and not `data.employees`. The second argument is the row's place
+  // in the list, which is all the phone's fold needs to know — see `CARD_FOLD`
+  // and `test/hrMonthCards.test.js`. Whatever else it grows, the list this maps
+  // over is the search's, or the bundle and the screen have stopped agreeing.
+  assert.match(hrView, /\{shown\.map\(\(row, i\) => \(/, 'the table still draws the unfiltered list');
 });
 
 test('รวมทั้งหมด stays the month’s figure, and says which total it is', () => {

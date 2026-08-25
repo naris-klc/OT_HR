@@ -5012,6 +5012,26 @@ table.mini tbody tr:hover { background: none; }
   background: var(--neutral-wash); font: 400 12.5px/1.6 var(--sans); color: var(--muted);
 }
 
+/* ══ ตรวจสอบรายเดือน — THE FOLD DOES NOT EXIST ON A DESKTOP ═══════════════
+
+   `.fold-row` is the ปุ่มแสดงทั้งหมด row, and `.over-fold` marks every card
+   past the fifth. Both are written into the markup unconditionally — the JSX
+   says WHICH rows are past the fifth and nothing else — and it is this rule,
+   with the pair in the 860px block below, that decides whether being past the
+   fifth means anything.
+
+   Above 860px it does not. A sixty-row table of eleven narrow columns is read
+   at a glance and down its columns; folding it would hide the rows and leave
+   the ceiling and the month's total sitting above a button. So the button is
+   removed and every row stays where it was — which is the same "one markup,
+   two layouts" rule the card list itself follows, and which
+   `test/hrMonthCards.test.js` pins.
+
+   Stated here as a plain `display: none` and NOT as an inline style in the
+   component: an inline style beats the media query and the fold would never
+   appear on a phone at all. */
+.hr-table tbody tr.fold-row { display: none; }
+
 /* ══ mobile — the design's own 860px breakpoint ══════════════════════════ */
 
 .mobile-nav, .fab { display: none; }
@@ -6905,6 +6925,41 @@ table.mini tbody tr:hover { background: none; }
   }
   .hr-table tbody td.act-col .row-actions .btn.act-open:active {
     background: var(--green-bg); border-color: var(--green-lift);
+  }
+
+  /* ══ ห้าการ์ดก่อน แล้วค่อยที่เหลือ ═════════════════════════════════════
+
+     SIXTY PEOPLE IS SIXTY CARDS, and each of these is 150px tall with two
+     buttons in it. On a 375px screen that is about nine screens of scrolling
+     between the search box and รวมทั้งหมด — and everything the phone layout
+     moved up to the total card (วันเกิดของเดือนนี้, the footnotes) is below
+     all nine of them. The table this replaced was long too, but it was long in
+     a shape a thumb flicks past; a column of objects with decision buttons in
+     them is not, because every one of them asks to be read.
+
+     So five, then a button. The number is `CARD_FOLD` in components/HrView.jsx
+     — five is what fits on one screen with the month's controls still above
+     it, so the fold is visible without scrolling and nobody has to discover it.
+
+     IT IS A FOLD, NOT A FILTER, and the difference is the whole of why this is
+     safe on this screen. รวมทั้งหมด is the month's total and was never a sum of
+     what is drawn — that is written down over the total row in the component.
+     พิมพ์รวม prints every person the search matched, folded or not. The two
+     CSVs are built by the server and have never known what is on screen. So
+     the only thing this changes is how far down the page the work is. */
+  .hr-table tbody tr.over-fold { display: none; }
+  /* Not a card: no border, no fill, no 15px of padding. The row it replaces on
+     screen is a control, and a bordered white block around one full-width
+     button reads as a sixth person with nothing in them. */
+  .hr-table tbody tr.fold-row {
+    display: block; padding: 0; border: 0; background: none;
+  }
+  .hr-table tbody tr.fold-row:hover { background: none; }
+  /* 44px like every other decision button on this card list, and the full width
+     of the card column — it is the only thing on its line, and a small ghost
+     floating left of sixty missing people is easy to read as a footnote. */
+  .hr-table tbody tr.fold-row .btn {
+    width: 100%; min-height: 44px; font-size: 13.5px;
   }
 
   /* รวมทั้งหมด — a card, but not a person's. No buttons, no ceiling; the two

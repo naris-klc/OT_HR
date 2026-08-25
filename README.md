@@ -1009,7 +1009,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1646 tests
+and the engine know nothing about Next.js, so the whole suite — **1649 tests
 across 101 files**, measured 2026-08-25 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 
@@ -2245,6 +2245,42 @@ Neither path touches the printed **ใบขออนุมัติทำงา
 (`components/PrintForm.jsx`) — there is nothing on it to edit, and no way to
 change what it says except by changing the entries behind it.
 
+**ตรวจสอบรายเดือน บนมือถือ: ห้าการ์ดก่อน แล้วค่อยที่เหลือ.** Below 860px this
+screen is one card per person — that is where **ดู / แก้ไขรายการ** and **พิมพ์
+F-HR-027** live, and it is why this table left the sideways-scrolling group the
+two accounting ones stayed in. A card is about 150px tall with two buttons in
+it, so a sixty-person month was roughly nine screens of scrolling between the
+search box and **รวมทั้งหมด** — and everything the phone layout deliberately
+moved *up* to the total card (วันเกิดของเดือนนี้, then the footnotes) sat below
+all nine of them. So the list draws **five**, then a full-width button —
+*แสดงทั้งหมด (18 รายการ)*, counting what it is holding back — and pressing it
+draws the rest. Pressing again folds it back, which matters because sixty cards
+is the case this exists for and there is otherwise no way to the top of the
+month but scrolling through all sixty.
+
+`CARD_FOLD` in [`components/HrView.jsx`](components/HrView.jsx) is the five, and
+it is five because five cards plus the month's own controls is one 375px
+screen: the button is visible when the month loads rather than discovered by
+scrolling to what looks like the end of the list.
+
+**It is a fold, not a filter,** and nothing that is counted, exported or printed
+reads it. **รวมทั้งหมด** is the server's `grandTotal` for the whole month —
+already true of the search box, for the same reason, and said on the row itself.
+**พิมพ์ F-HR-027 ทุกคน** bundles every person the search matched, folded or not.
+Both CSVs are built server-side and have never known what is on screen. What
+changes is how far down the page the work is, and nothing else.
+
+**One markup, two layouts**, like the card list itself: the component marks
+which rows are past the fifth (`over-fold`) and the *stylesheet* decides whether
+that means anything — only below 860px. Above it the button is `display: none`
+and every row draws as it always did, because eleven narrow columns are read at
+a glance and folding them would hide rows behind a button while the ceiling and
+the month's total sat above it. There is no `matchMedia` in the component and
+`test/hrMonthCards.test.js` fails if one appears. Walked 2026-08-25 against a
+clone of the database at 360×780 in the built app: 5 cards drawn of 18, the
+button 280×44 above the total card, all 18 after pressing, `display: none` on
+the button at 1440px — and รวมทั้งหมด read **83.5** in all three.
+
 **CSV export** — `/api/exports/entries.csv` (per entry),
 `/api/exports/monthly.csv` (per employee per month) and
 `/api/exports/accounting.csv` (the submission sheet, see below), all written
@@ -2682,15 +2718,17 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1646/1646 pass in about 2 s**, measured 2026-08-25 across 101
-  files. It read "1641", "1638" and "1601" earlier the same day, and "1386
-  across 86 files, 2026-08-24" before that. The newest five are
-  `test/scriptEncoding.test.js`, which holds the two 🔴 rules in §Setup about
-  how a PowerShell script Task Scheduler runs has to be encoded — the file that
-  is the whole of the 101st. The three before them are the cases in
-  `test/hrMonthCards.test.js` that pin what ตรวจสอบรายเดือน says under its total
-  card on a phone, and the three before those the wiring cases in
-  `test/replayPeriodLock.test.js` described under `settings/recompute` below.
+- `npm test` — **1649/1649 pass in about 2 s**, measured 2026-08-25 across 101
+  files. It read "1646", "1641", "1638" and "1601" earlier the same day, and
+  "1386 across 86 files, 2026-08-24" before that. The newest three are the
+  cases in `test/hrMonthCards.test.js` that pin the phone's ห้าการ์ดก่อน fold
+  described under ตรวจสอบรายเดือน below — no new file, so the 101 did not move.
+  Before them was `test/scriptEncoding.test.js`, which holds the two 🔴 rules in
+  §Setup about how a PowerShell script Task Scheduler runs has to be encoded —
+  the file that is the whole of the 101st. The three before that are the cases
+  in the same `test/hrMonthCards.test.js` that pin what ตรวจสอบรายเดือน says
+  under its total card on a phone, and the three before those the wiring cases
+  in `test/replayPeriodLock.test.js` described under `settings/recompute` below.
   The earlier count was cross-checked three ways that agreed exactly: the runner's own
   total, the sum of running each file separately, and a count of the ✔ lines.
   Worth doing once because a bare total is a figure nobody can reproduce, and

@@ -133,6 +133,60 @@ test('the card spacing and the sub-line take the values the queue card already u
   assert.match(phone, /\.queue-table td\.cap-col \.cap-sub \{ font-size: 11px; color: var\(--muted-2\); \}/);
 });
 
+// ── ห้าการ์ดก่อน แล้วค่อยที่เหลือ ────────────────────────────────────────────
+
+test('the card list stops at five and offers the rest', () => {
+  // The number lives in the component, once. Five is one 375px screen with the
+  // month's own controls still above it, so the button is on screen when the
+  // month loads rather than found by scrolling to what looks like the end.
+  assert.match(hrView, /const CARD_FOLD = 5;/);
+  // The JSX marks WHICH rows are past the fifth and says nothing about width.
+  assert.match(hrView, /className=\{!showAll && i >= CARD_FOLD \? 'over-fold' : undefined\}/);
+  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrView), 'the layout is the stylesheet’s to decide');
+  // …and the stylesheet is where "past the fifth" becomes "not drawn", below
+  // 860px and nowhere else.
+  assert.match(phone, /\.hr-table tbody tr\.over-fold \{ display: none; \}/);
+  assert.match(desktop, /\.hr-table tbody tr\.fold-row \{ display: none; \}/);
+  // Named in the desktop block's comment, which is where the reason lives —
+  // but never given a RULE there, or a row would go missing from the table.
+  assert.ok(!desktop.includes('.over-fold {'), 'the fold reached the desktop table');
+});
+
+test('the button counts what it is hiding, and goes back', () => {
+  const fold = hrView.slice(hrView.indexOf('{shown.length > CARD_FOLD && ('));
+  const row = fold.slice(0, fold.indexOf('</tr>'));
+  // "ดูเพิ่มเติม…" asks somebody to press a button to find out how much they
+  // were not shown. `shown.length`, so while the search box is narrowing the
+  // fold counts the search's results and not the month's.
+  assert.match(row, /แสดงทั้งหมด \(\$\{shown\.length\} รายการ\)/);
+  // Sixty cards is the case this exists for, and there is otherwise no way back
+  // to the top of the month but scrolling through all sixty.
+  assert.match(row, /ย่อกลับ · แสดง \$\{CARD_FOLD\} รายการแรก/);
+  assert.match(row, /aria-expanded=\{showAll\}/);
+  // Eleven cells like every other row in this table.
+  assert.match(row, /colSpan=\{11\}/);
+  // ABOVE the total card, which is the foot of the list on a phone and the
+  // thing วันเกิดของเดือนนี้ is ordered to come up to.
+  assert.ok(
+    hrView.indexOf('{shown.length > CARD_FOLD && (') < hrView.indexOf('<tr className="total-row">'),
+    'the fold button ended up under รวมทั้งหมด',
+  );
+  // Not a card: a bordered white block around one full-width button reads as a
+  // sixth person with nothing in them.
+  assert.match(phone, /\.hr-table tbody tr\.fold-row \{\s*display: block; padding: 0; border: 0; background: none;/);
+  assert.match(phone, /\.hr-table tbody tr\.fold-row \.btn \{\s*width: 100%; min-height: 44px;/);
+});
+
+test('a fold is not a filter — nothing that is counted or printed reads it', () => {
+  // รวมทั้งหมด is the month's, from the server's own grandTotal.
+  assert.match(hrView, /hours\(data\.grandTotal\.otHours\)/);
+  // พิมพ์รวม prints every person the SEARCH matched, folded or not.
+  assert.match(hrView, /setPrinting\(\{ employees: shown\.map\(\(r\) => r\.employee\) \}\)/);
+  // And it closes again whenever the list underneath it changes, or it is a
+  // claim about a list that no longer exists.
+  assert.match(hrView, /useEffect\(\(\) => \{ setShowAll\(false\); \}, \[period, statusFilter, find\]\);/);
+});
+
 test('รวมทั้งหมด is a card too, and has no buttons to offer', () => {
   // A total is not a person: nothing to open and nothing to print.
   const total = hrView.slice(hrView.indexOf('<tr className="total-row">'));
