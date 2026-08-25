@@ -69,6 +69,7 @@
  */
 
 import 'dotenv/config';
+import { pathToFileURL } from 'node:url';
 import { connect, disconnect } from './db.js';
 import OtEntry from './models/OtEntry.js';
 // Imported for its side effect — `populate('employee')` below resolves the model
@@ -226,8 +227,25 @@ async function run() {
   await disconnect();
 }
 
-run().catch(async (err) => {
-  console.error(err);
-  await disconnect();
-  process.exitCode = 1;
-});
+/**
+ * Only when run as a command — `npm run migrate:birthday-rule-start`. The line
+ * seed, backup, restore and reset-admin already carry.
+ *
+ * `--yes` was the whole confirmation this script had, and an import supplies no
+ * argument at all — so on paper an accidental import stopped at the dry-run
+ * summary. That is a safety net made of one `includes()` on `process.argv` in a
+ * file that BACKDATES A POLICY VERSION: the wrong reading of it is one edit
+ * away, and the thing on the other side is which days in August counted as
+ * somebody's วันหยุดวันเกิด.
+ *
+ * A confirmation flag answers "did the operator mean this run". It was never
+ * meant to answer "is there an operator", and this is the line that does.
+ * Added 2026-08-25.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  run().catch(async (err) => {
+    console.error(err);
+    await disconnect();
+    process.exitCode = 1;
+  });
+}

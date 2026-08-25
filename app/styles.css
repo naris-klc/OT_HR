@@ -118,6 +118,30 @@
   --reject-line: #FECACA;
   --reject-ink: #DC2626;
 
+  /* ── a box left empty, and the line under it ───────────────────────────
+     THE THIRD RED, AND THE LAST ONE THAT SHOULD BE ADDED.
+
+     `--danger-*` is the app's own warm red and speaks for a whole card —
+     an alert, a chip, a status panel: something has GONE WRONG. `--reject-*`
+     is the cool red of the ปฏิเสธ button, which is a decision somebody makes.
+     Neither is what an unfilled box is. Nothing has gone wrong and nobody has
+     decided anything; a required field is simply still empty, and the mark on
+     it is an instruction, not a verdict.
+
+     The line is #EF4444 exactly, as specified. It sits between --reject-line
+     (#FECACA, too pale to read as a border on a field that already has one)
+     and --reject-ink (#DC2626, which at 1px round a 46px box reads as a filled
+     alert). The INK under the box is --reject-ink and not this: #EF4444 on the
+     login panel measures 3.7:1, under AA's 4.5 for a 12.5px sentence, and that
+     sentence is the only thing telling the person what to do. Same hue, one
+     step darker where it has to carry text — the border is not text and 3:1 is
+     the bar it has to clear, which it does.
+
+     The dark halves are the same two roles worked out on a charcoal card, and
+     they follow --reject-*'s pair rather than inventing a third relationship. */
+  --invalid-line: #EF4444;
+  --invalid-ink: #DC2626;
+
   /* The hairline round a status panel. Named rather than typed at each of the
      eleven places that draw one, because ธีมมืด has to answer them together:
      a tint that works as a background on white is not a border on charcoal. */
@@ -487,6 +511,12 @@
   --reject-bg: light-dark(#FEF2F2, #331717);
   --reject-line: light-dark(#FECACA, #5A2626);
   --reject-ink: light-dark(#DC2626, #FCA5A5);
+  /* See the block beside the light halves for why this is neither --danger-*
+     nor --reject-*. Dark: the border lightens so it carries on a charcoal
+     field, and the ink takes --reject-ink's dark value unchanged — one hue
+     doing the same two jobs on both grounds. */
+  --invalid-line: light-dark(#EF4444, #F87171);
+  --invalid-ink: light-dark(#DC2626, #FCA5A5);
   /**
    * WHY THE DARK AMBER IS DULLER THAN THE LIGHT ONE, at the same contrast.
    *
@@ -1481,6 +1511,38 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    the thing it surrounds. Only the border says which state this is; a second
    colour on the same box at the same moment reads as two problems. */
 .field input:out-of-range:focus { border-color: var(--amber); }
+
+/* A required box that was empty when the form was sent.
+
+   A CLASS AND NOT `:invalid`. `:invalid` matches from the first paint — an
+   empty `required` field is invalid before anybody has touched it — so
+   styling it would open the login screen with both boxes already red, which
+   is an accusation rather than a correction. The class is put on by `submit`
+   in components/App.jsx and taken off at the first keystroke, so the red only
+   ever means "you pressed เข้าสู่ระบบ and this was blank".
+
+   It applies to `.field input` at the same specificity the base rule has, so
+   ORDER is what makes it win — it must stay below the block above. See the
+   note in memory about .dept-menu losing to .pick-menu for four rounds.
+
+   The sentence that goes with it is .field-note.error, one <div> below the box
+   in the same .field — the border says which box, the sentence says what to do,
+   and neither is much use without the other.
+
+   The focus ring is deliberately left alone: it stays the app's green, exactly
+   as :out-of-range above leaves it, so only the border says which state this
+   is. Border-colour only — no fill. A wash behind a box somebody is about to
+   type in makes it read as disabled, which is the opposite of the request. */
+.field input.invalid,
+.field input.invalid:focus {
+  border-color: var(--invalid-line);
+}
+/* The sentence takes the cool red on the login panel ONLY, so the box and the
+   line under it are one colour. Everywhere else .field-note.error keeps the
+   app's warm --danger-ink, which is what its rule above still sets: those
+   notes sit beside alerts and chips drawn in the warm red, and recolouring
+   them all to match one form would be the tail wagging the dog. */
+.login-form .field-note.error { color: var(--invalid-ink); }
 
 /* ที่ใบนี้ค้างอยู่ตรงไหน — the line under the status chip on OT ของฉัน.
 

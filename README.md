@@ -9,19 +9,22 @@ the ×1.5 and ×3 buckets, and totals them. No rates, no baht, anywhere.
 
 ## เอกสารสำหรับคนที่ไม่ได้อ่านโค้ด
 
-The rest of this file is written for whoever maintains the code. Two things are
-not, and they live in [`docs/`](docs/) because the people who need them will be
-looking for them on a day when reading 130 kB of English is not an option:
+ส่วนที่เหลือของไฟล์นี้เขียนให้คนที่ดูแลโค้ดอ่าน มีสามอย่างที่ไม่ใช่ และมันอยู่ใน
+[`docs/`](docs/) เพราะคนที่ต้องใช้มันจะมาหามันในวันที่การนั่งอ่านไฟล์ 170 kB ไม่ใช่
+ทางเลือก:
 
+- **[docs/features.md](docs/features.md)** — ทุกคน: **รายการฟีเจอร์ทั้งระบบ**
+  แยกเป็นสามกลุ่ม (มีหน้าจอ · มีแต่ route · เป็น script) พร้อมบอกต่อรายการว่ามี
+  เทสต์ครอบไหม และ**เคยเดินกับฐานข้อมูลจริงหรือยัง** อ่านออกมาจากโค้ดและจากฐาน
+  ข้อมูลจริง ไม่ใช่จากไฟล์นี้ — ใช้ประเมินความเสี่ยงก่อน deploy
 - **[docs/contingency.md](docs/contingency.md)** — ฝ่ายบุคคล / หัวหน้างาน:
-  what to do when the system is unreachable. Paper F-HR-027 → keying it back in
-  → reopening a closed period → reconciling before it closes again.
-- **[docs/network.md](docs/network.md)** — whoever runs the router: the server's
-  address, why it must stop being a DHCP lease, and where the LAN perimeter is
-  meant to be.
+  ต้องทำอะไรเมื่อระบบเข้าไม่ได้ กระดาษ F-HR-027 → คีย์กลับเข้าระบบ →
+  เปิดงวดที่ปิดไปแล้ว → กระทบยอดก่อนจะปิดอีกครั้ง
+- **[docs/network.md](docs/network.md)** — คนที่ดูแลเราเตอร์: หมายเลขของเซิร์ฟเวอร์
+  ทำไมมันต้องเลิกเป็น DHCP lease และขอบเขตของวง LAN ควรอยู่ตรงไหน
 
-Both carry a checklist of things that are **not done yet**. Those checklists are
-the honest state of the deployment; keep them current rather than tidy.
+สองไฟล์หลังมีรายการสิ่งที่ **ยังไม่ได้ทำ** ติดอยู่ด้วย รายการพวกนั้นคือสภาพจริงของ
+การติดตั้งใช้งาน ให้รักษาให้มันทันสมัยไว้ ไม่ใช่ทำให้มันดูเรียบร้อย
 
 ---
 
@@ -95,93 +98,92 @@ reseed leaves them pointing at people and entries that no longer exist.
 
 ## สำรองและกู้คืนข้อมูล
 
-Note the `--` before the flags. Without it npm keeps them for itself, and the
-command succeeds having quietly ignored both — writing to the default
-`./backups` on the same disk as the database, with no retention. It is the one
-mistake here that looks like it worked. The wrappers below carry the `--` so
-nobody has to remember.
+สังเกต `--` ที่อยู่หน้า flag ถ้าไม่มีมัน npm จะเก็บ flag พวกนั้นไว้ใช้เอง แล้วคำสั่ง
+จะทำงานสำเร็จโดยที่เพิกเฉยต่อทั้งสองตัวอย่างเงียบ ๆ — เขียนลง `./backups` ซึ่งเป็น
+ค่าตั้งต้น บนดิสก์ลูกเดียวกับฐานข้อมูล และไม่มีการลบชุดเก่า นี่คือความผิดพลาดข้อเดียว
+ในหน้านี้ที่หน้าตาเหมือนทำสำเร็จ ตัวห่อหุ้มข้างล่างใส่ `--` มาให้แล้ว จะได้ไม่มีใคร
+ต้องจำ
 
 ```powershell
 npm run backup                                    # → ./backups/primus_ot-<วันเวลา>/
-npm run backup -- --out D:/ot-backups             # somewhere that is not this disk
-npm run backup -- --out D:/ot-backups --keep 30   # ...and delete all but the newest 30
+npm run backup -- --out D:/ot-backups             # ที่ที่ไม่ใช่ดิสก์ลูกนี้
+npm run backup -- --out D:/ot-backups --keep 30   # …และลบทิ้งให้เหลือ 30 ชุดล่าสุด
 npm run restore -- <โฟลเดอร์>                      # ตรวจสอบและแสดงแผน ไม่เขียนอะไร
 npm run restore -- <โฟลเดอร์> --yes                # กู้ทับฐานที่ MONGODB_URI
 npm run restore -- <โฟลเดอร์> --to <uri> --yes     # ซ้อมกู้ลงฐานทดสอบ
 ```
 
-`mongodump` is not installed on the machine this runs on, so both scripts go
-through the driver the application already uses — they work wherever `npm run
-dev` does. The output is Extended JSON, one document per line, plus a
-`manifest.json` holding a SHA-256 of every file and the index definitions.
-`mongorestore` cannot read it; `npm run restore` is its only reader.
+เครื่องที่รันระบบนี้ไม่ได้ติดตั้ง `mongodump` ทั้งสองสคริปต์จึงเดินผ่าน driver ตัว
+เดียวกับที่แอปใช้อยู่แล้ว — มันทำงานได้ทุกที่ที่ `npm run dev` ทำงานได้ ผลลัพธ์เป็น
+Extended JSON หนึ่งเอกสารต่อหนึ่งบรรทัด บวก `manifest.json` ที่ถือ SHA-256 ของทุก
+ไฟล์และนิยามของ index ไว้ `mongorestore` อ่านมันไม่ได้ ตัวอ่านมีตัวเดียวคือ
+`npm run restore`
 
-**Collections come from the database, not from the model list.** `lib/db.js`
-imports six models and `src/models/` holds twelve — a backup driven by the
-registry would have silently omitted `otEmployeeAudits`, `approvaldelegations`,
-`otBirthdayChecks`, `otPeriodLocks` and `otPolicyReplayRuns`, and reported
-success. A backup that omits five collections is worse than none, because it is
-believed.
+**รายชื่อ collection มาจากฐานข้อมูล ไม่ได้มาจากรายการโมเดล** `lib/db.js` import
+โมเดลมาหกตัว แต่ `src/models/` มีสิบสองตัว — การสำรองที่ขับด้วยทะเบียนโมเดลจะข้าม
+`otEmployeeAudits`, `approvaldelegations`, `otBirthdayChecks`, `otPeriodLocks`
+และ `otPolicyReplayRuns` ไปเงียบ ๆ แล้วรายงานว่าสำเร็จ ชุดสำรองที่ขาดไปห้า
+collection แย่กว่าไม่มีชุดสำรองเลย เพราะมันคือสิ่งที่คนเชื่อถือ
 
-**Nothing is written without `--yes`.** The default run verifies every
-fingerprint, connects, prints what it would drop, and stops. Files are read,
-hashed and parsed *before* the first collection is dropped, so a truncated or
-edited backup is discovered while the live database is still intact. Restoring
-over a database that has anything in it takes a safety copy first
-(`--no-safety-backup` to skip, for a scratch target). Collections present in the
-target but absent from the backup are left alone and reported — the usual cause
-of one is a restore aimed at the wrong database.
+**ไม่มีอะไรถูกเขียนถ้าไม่มี `--yes`** การรันแบบตั้งต้นจะตรวจลายนิ้วมือทุกไฟล์
+เชื่อมต่อ พิมพ์ออกมาว่ามันจะลบอะไรบ้าง แล้วหยุด ไฟล์ถูกอ่าน ถูก hash และถูก parse
+*ก่อน* ที่ collection แรกจะถูกลบ ชุดสำรองที่ขาดหายหรือถูกแก้จึงถูกพบตั้งแต่ตอนที่
+ฐานข้อมูลจริงยังอยู่ครบ การกู้ทับฐานที่มีข้อมูลอยู่จะทำสำเนาความปลอดภัยไว้ก่อนเสมอ
+(ใส่ `--no-safety-backup` เพื่อข้าม สำหรับฐานทดสอบ) ส่วน collection ที่มีอยู่ในฐาน
+ปลายทางแต่ไม่มีในชุดสำรอง จะถูกปล่อยไว้เฉย ๆ และรายงานให้ทราบ — สาเหตุที่พบบ่อย
+ที่สุดคือกู้ผิดฐาน
 
-Indexes are saved and rebuilt. Dropping a collection drops its indexes, and a
-restore without them gives back every figure and none of the constraints: the
-unique index on `Employee.code` is what stops a second PM-0620 existing.
+index ถูกเก็บและสร้างคืน การลบ collection ทำให้ index ของมันหายไปด้วย และการกู้คืน
+ที่ไม่มี index กลับมา จะได้ตัวเลขคืนครบแต่ไม่ได้ข้อบังคับคืนเลยสักข้อ: unique index
+บน `Employee.code` คือสิ่งที่กัน PM-0620 ตัวที่สองไม่ให้เกิดขึ้น
 
-**A backup nobody has restored is a backup of unknown state.** `--to` exists so
-that can be fixed — point a restore at a scratch database and let it verify the
-counts. Verified end-to-end on 2026-08-14: backing up the restored database
-produced byte-identical files and identical index definitions for all eleven
-collections.
+**ชุดสำรองที่ไม่มีใครเคยกู้ คือชุดสำรองที่ไม่รู้ว่าอยู่ในสภาพไหน** `--to` มีไว้เพื่อ
+แก้เรื่องนั้น — ชี้การกู้ไปที่ฐานข้อมูลทิ้ง ๆ แล้วให้มันตรวจจำนวนให้ ตรวจครบวงจรแล้ว
+เมื่อ 2026-08-14: การสำรองฐานที่กู้กลับมา ให้ไฟล์ที่เหมือนกันทุกไบต์และนิยาม index
+ที่เหมือนกันครบทั้งสิบเอ็ด collection
 
-`backups/` is in `.gitignore`. A dump is a complete copy of the roster —
-`passwordHash` for every account, and the `birthDate` that `publicEmployee()`
-deliberately filters out for managers. Keep them off this disk; `--out` is there
-for that.
+`backups/` อยู่ใน `.gitignore` ชุดสำรองหนึ่งชุดคือสำเนาทะเบียนพนักงานทั้งชุด —
+`passwordHash` ของทุกบัญชี และ `birthDate` ที่ `publicEmployee()` กรองออกจากสายตา
+หัวหน้างานโดยตั้งใจ เก็บมันไว้นอกดิสก์ลูกนี้ `--out` มีไว้เพื่อการนั้น
 
 ### ตั้งเวลาสำรองอัตโนมัติ
 
-**On this machine — Windows, Task Scheduler.** This is the one that runs today:
-“production” is a laptop, so the scheduler is the one built into it.
+**บนเครื่องนี้ — Windows, Task Scheduler** นี่คือตัวที่ทำงานอยู่จริงวันนี้:
+“เครื่องจริง” คือแล็ปท็อป ตัวตั้งเวลาจึงเป็นตัวที่ติดมากับมัน
 
-**REGISTERED 2026-08-18.** The task is called **`OT backup`**, runs **daily at
-01:00**, and writes to **`E:\ot-backups`** keeping 30 sets. It is `State: Ready`
-and its log is `backups\backup.log`.
+**ตั้งไว้แล้วเมื่อ 2026-08-18** งานชื่อ **`OT backup`** รัน **ทุกวัน 01:00** เก็บ
+30 ชุด สถานะ `State: Ready` และ log อยู่ที่ `backups\backup.log`
 
-> ⚠️ **`E:` IS NOT PLUGGED IN, so the task backs up nothing tonight.** This
-> machine still has only a `C:` volume (checked 2026-08-18). Every run until the
-> drive is connected logs `ล้มเหลว: ไม่พบปลายทาง E:\ot-backups` and reports
-> `LastTaskResult: 1` — which is exactly what it should do, and is not the same
-> thing as a backup existing. Plug the drive in, create `E:\ot-backups`, then
-> `Start-ScheduledTask -TaskName 'OT backup'` and confirm `LastTaskResult: 0`.
+> ⚠️ **งานนี้สำเร็จแล้ว และมันยังไม่ใช่การสำรองข้อมูลจริง ๆ อยู่ดี**
+> ปลายทางถูกเปลี่ยนเป็น **`C:\Users\suwan\OT-Backups`** เมื่อ 2026-08-24 เพราะ
+> ไดรฟ์ `E:` ไม่เคยถูกเสียบเลย ตอนนี้จึงรันผ่านทุกคืน — ตรวจล่าสุด 2026-08-25 07:53
+> ได้ `LastTaskResult: 0` และ 12 collection รวม 785 รายการ
 >
-> The wrappers check the destination and refuse rather than creating it. That
-> refusal is deliberate: creating the folder would put the backup on whatever
-> disk the path falls back to, which is the one it exists to be somewhere other
-> than.
+> **แต่ `C:` คือดิสก์ลูกเดียวกับที่ MongoDB อยู่** ดิสก์เสียเมื่อไหร่ก็หายไปพร้อมกัน
+> ทั้งฐานข้อมูลและชุดสำรอง สิ่งที่การตั้งค่าปัจจุบันป้องกันได้คือ "ลบผิด" กับ
+> "กู้ข้อมูลย้อนหลัง" ส่วนสิ่งที่มันป้องกันไม่ได้คือ "ดิสก์พัง" ซึ่งเป็นเหตุผลข้อแรก
+> ที่คนทำสำรองข้อมูล **ยังรอฮาร์ดดิสก์ภายนอกอยู่** เสียบแล้วให้สร้างโฟลเดอร์ปลายทาง
+> เปลี่ยน `-Destination` ของงาน แล้ว `Start-ScheduledTask -TaskName 'OT backup'`
+> และยืนยันว่าได้ `LastTaskResult: 0`
 >
-> A cloud-synced folder (OneDrive) does get the data off this laptop, but a dump
-> carries `passwordHash` for every account and `birthDate` for every employee —
-> that is uploading staff PII to a third party, and it is a decision for whoever
-> owns that call, not a convenience.
+> ตัวห่อหุ้มจะตรวจปลายทางแล้วปฏิเสธ แทนที่จะสร้างโฟลเดอร์ให้ การปฏิเสธนั้นตั้งใจ:
+> การสร้างโฟลเดอร์ให้เท่ากับวางชุดสำรองไว้บนดิสก์ลูกไหนก็ตามที่ path นั้นตกลงไป
+> ซึ่งก็คือดิสก์ลูกที่ชุดสำรองมีไว้เพื่อจะ*ไม่*อยู่บนมัน
+>
+> โฟลเดอร์ที่ sync ขึ้นคลาวด์ (OneDrive) พาข้อมูลออกจากแล็ปท็อปเครื่องนี้ได้จริง
+> แต่ชุดสำรองหนึ่งชุดถือ `passwordHash` ของทุกบัญชี และ `birthDate` ของพนักงานทุกคน
+> — นั่นคือการอัปโหลดข้อมูลส่วนบุคคลของพนักงานไปให้บุคคลที่สาม เป็นเรื่องที่เจ้าของ
+> การตัดสินใจต้องตัดสิน ไม่ใช่เรื่องความสะดวก **ตัดสินไปแล้วเมื่อ 2026-08-18 ว่าไม่เอา**
 
-> 🔴 **`scripts/backup.ps1` MUST KEEP ITS UTF-8 BOM.** The task runs it under
-> `powershell.exe` — Windows PowerShell 5.1 — which reads a BOM-less file as
-> ANSI. Every Thai string in the script then becomes mojibake, the parser hits
-> `Unexpected token` on line 65, and PowerShell exits 1 **before the first
-> `Write-Log`**: the task reports failure and the log file is never touched, so
-> the one place anybody would look for the reason stays empty. That is how this
-> was found on 2026-08-18 — the script had been tested only under `pwsh` 7,
-> which defaults to UTF-8, and the version of this section printed above it had
-> never worked. An editor that "cleans up" the BOM re-breaks it silently.
+> 🔴 **`scripts/backup.ps1` ต้องคง UTF-8 BOM ไว้เสมอ** Task Scheduler รันมันด้วย
+> `powershell.exe` — Windows PowerShell 5.1 — ซึ่งอ่านไฟล์ที่ไม่มี BOM เป็น ANSI
+> ข้อความภาษาไทยทุกบรรทัดในสคริปต์จะกลายเป็นอักขระเพี้ยน parser ไปเจอ
+> `Unexpected token` ที่บรรทัด 65 แล้ว PowerShell ออกด้วยรหัส 1 **ก่อนถึง
+> `Write-Log` บรรทัดแรก**: งานรายงานว่าล้มเหลว และไฟล์ log ไม่ถูกแตะเลย ที่เดียวที่
+> ใครจะไปหาสาเหตุจึงว่างเปล่า นี่คือวิธีที่เรื่องนี้ถูกพบเมื่อ 2026-08-18 — สคริปต์
+> ถูกทดสอบด้วย `pwsh` 7 เท่านั้น ซึ่งใช้ UTF-8 เป็นค่าตั้งต้น และเนื้อหาส่วนนี้ที่
+> พิมพ์อยู่เหนือมันไม่เคยทำงานได้จริงเลย โปรแกรมแก้ไขไฟล์ที่ "เก็บกวาด" BOM ทิ้ง
+> จะทำให้มันพังซ้ำแบบเงียบ ๆ
 
 ```powershell
 # ทดสอบด้วยมือก่อนหนึ่งรอบเสมอ — ต้องได้ exit code 0
@@ -205,130 +207,124 @@ Register-ScheduledTask -TaskName 'OT backup' -Action $action -Trigger $trigger -
   -Description 'สำรองฐานข้อมูล OT ไป E:\ot-backups ทุกวัน 01:00 เก็บ 30 ชุด — ดู backups\backup.log' -Force
 ```
 
-Checking on it afterwards — the two lines worth knowing:
+คำสั่งตรวจสอบภายหลัง — สองบรรทัดที่ควรรู้:
 
 ```powershell
 Get-ScheduledTaskInfo -TaskName 'OT backup' | Select LastRunTime, LastTaskResult, NextRunTime
 Get-Content backups\backup.log -Tail 5
 ```
 
-`LastTaskResult: 0` is a backup that happened. `1` is the destination missing.
-Anything else, read the log.
+`LastTaskResult: 0` คือการสำรองที่เกิดขึ้นจริง `1` คือหาปลายทางไม่เจอ นอกนั้นให้
+ไปอ่าน log
 
-**On a Linux server, if there is ever one — cron.** `scripts/backup.sh` is the
-same three behaviours; both wrappers are deliberately kept in step, so change
-them together.
+**ถ้าวันหนึ่งย้ายไปเซิร์ฟเวอร์ Linux — ใช้ cron** `scripts/backup.sh` ทำสามอย่าง
+เดียวกัน ตัวห่อหุ้มทั้งสองตัวถูกทำให้เดินตรงกันโดยตั้งใจ แก้ตัวไหนต้องแก้อีกตัวด้วย
 
 ```sh
 chmod +x scripts/backup.sh
 0 2 * * *  cd /srv/ot && scripts/backup.sh /mnt/backups 30
 ```
 
-Both wrappers are thin: all they run is `npm run backup -- --out … --keep …`.
-What they add is what a scheduled job needs and a person at a keyboard does not
-— **a log**, because nobody is watching at 02:00; **a non-zero exit** on failure,
-because that is what Task Scheduler and cron report on; and **a refusal when the
-destination is missing**, because an unplugged drive is the ordinary Monday
-failure and without the check `--out` would helpfully create the folder on the
-disk holding the database, which is the exact disk a backup exists to be
-somewhere other than.
+ตัวห่อหุ้มทั้งสองบางมาก: สิ่งที่มันรันคือ `npm run backup -- --out … --keep …`
+เท่านั้น สิ่งที่มันเพิ่มเข้ามาคือสิ่งที่งานตามตารางเวลาต้องการแต่คนที่นั่งอยู่หน้า
+คีย์บอร์ดไม่ต้องการ — **log** เพราะตอนตีสองไม่มีใครนั่งดู · **exit code ที่ไม่ใช่
+ศูนย์** เมื่อล้มเหลว เพราะนั่นคือสิ่งที่ Task Scheduler และ cron รายงาน · และ
+**การปฏิเสธเมื่อไม่พบปลายทาง** เพราะไดรฟ์ที่ไม่ได้เสียบคือความล้มเหลวธรรมดา ๆ ของ
+วันจันทร์ และถ้าไม่มีการตรวจนี้ `--out` จะสร้างโฟลเดอร์ให้อย่างช่วยเหลือดี บนดิสก์
+ลูกที่ถือฐานข้อมูลอยู่ ซึ่งเป็นดิสก์ลูกที่ชุดสำรองมีไว้เพื่อจะไม่อยู่บนมัน
 
-`--keep N` prunes *after* the new backup is written and verified — never before,
-or a run that fails halfway has thrown away yesterday's copy to make room for
-one that does not exist. The choosing is `backupsToPrune`, pure and tested: it
-only ever matches `<database>-YYYYMMDD-HHMMSS`, so pointing `--out` at a shared
-drive cannot sweep away anything else in it; two databases writing to one folder
-do not prune each other; and `--keep 0` is read as 1, because “delete all my
-backups” is not a retention policy and an unset variable is the likeliest way to
-ask for it by accident. Before deleting, each folder is re-checked for a
-`manifest.json` — a name is something anybody can create — and one without is
-reported and left alone.
+`--keep N` ลบชุดเก่า *หลัง* ชุดใหม่ถูกเขียนและตรวจแล้ว ไม่เคยลบก่อน มิฉะนั้นการรัน
+ที่พังกลางทางจะทิ้งสำเนาของเมื่อวานไปเพื่อเปิดที่ให้สำเนาที่ไม่มีอยู่จริง ตัวเลือกว่า
+จะลบอะไรคือ `backupsToPrune` ซึ่งบริสุทธิ์และมีเทสต์: มันจับคู่เฉพาะรูปแบบ
+`<ฐานข้อมูล>-YYYYMMDD-HHMMSS` เท่านั้น การชี้ `--out` ไปที่ไดรฟ์ที่ใช้ร่วมกันจึงกวาด
+อย่างอื่นในนั้นไปไม่ได้ · ฐานข้อมูลสองฐานที่เขียนลงโฟลเดอร์เดียวกันไม่ลบของกันและกัน
+· และ `--keep 0` ถูกอ่านเป็น 1 เพราะ "ลบชุดสำรองของฉันให้หมด" ไม่ใช่นโยบายการเก็บ
+รักษา และตัวแปรที่ไม่ได้ตั้งค่าคือวิธีที่มีโอกาสมากที่สุดที่จะเผลอสั่งแบบนั้น ก่อนลบ
+ทุกโฟลเดอร์จะถูกตรวจซ้ำว่ามี `manifest.json` ไหม — ชื่อโฟลเดอร์เป็นสิ่งที่ใครก็สร้าง
+ได้ — โฟลเดอร์ที่ไม่มีจะถูกรายงานและปล่อยไว้เฉย ๆ
 
-**None of this is set up yet.** The scripts are written and tested; nothing is
-scheduled, and `./backups` is still on the same disk as the database, which is
-the failure a backup does not protect against.
+**ตอนนี้ตั้งไว้แล้วทั้งหมด** สคริปต์เขียนและทดสอบแล้ว งานตามตารางเวลาลงทะเบียนแล้ว
+และรันผ่านทุกคืน สิ่งเดียวที่ยังขาดคือ**ปลายทางที่ไม่ใช่ดิสก์ลูกเดียวกับฐานข้อมูล**
+— ดูกล่องคำเตือนข้างบน
 
-One Next.js app serves both halves — there is no separate API port and no
-proxy. `.env` is read by Next directly.
+แอป Next.js ตัวเดียวให้บริการทั้งสองฝั่ง — ไม่มีพอร์ต API แยก และไม่มี proxy
+`.env` ถูกอ่านโดย Next โดยตรง
 
-Seeded logins (password from `SEED_PASSWORD`, default `primus123`):
+บัญชีที่ seed ไว้ (รหัสผ่านจาก `SEED_PASSWORD` ค่าตั้งต้น `primus123`):
 
-| Code | Role |
+| รหัส | บทบาท |
 |---|---|
-| `PM-0412` | employee — carries worked examples A–E |
-| `PM-0100` | manager, Engineering |
-| `HR-001` | HR |
-| `ADMIN` | admin |
+| `PM-0412` | พนักงาน — เป็นเจ้าของตัวอย่างที่คำนวณไว้ A–E |
+| `PM-0100` | หัวหน้างาน แผนก Engineering |
+| `HR-001` | ฝ่ายบุคคล |
+| `ADMIN` | ผู้ดูแลระบบ |
 
-That shared password is a **development fixture** and applies only to rows
-`npm run seed` writes. It is not how real accounts get one — see below.
+รหัสผ่านร่วมนั้นเป็น **ของสำหรับการพัฒนาเท่านั้น** และใช้ได้เฉพาะกับแถวที่
+`npm run seed` เขียนขึ้น ไม่ใช่วิธีที่บัญชีจริงได้รหัสผ่านมา — ดูหัวข้อถัดไป
 
-### Temporary passwords: generated, shown once, never derived
+### รหัสผ่านชั่วคราว: สุ่มขึ้นมา แสดงครั้งเดียว และไม่เคยคำนวณจากอะไร
 
-An account created from ทะเบียนพนักงาน — one at a time or by CSV — gets a
-password from `generateTempPassword()` in `lib/tempPassword.js`: `node:crypto`,
-on the server, in the shape `gof-mez-tab-4827`. Sayable blocks, lowercase, and
-none of `0 1 l i O`, because HR reads it down a phone and somebody else types it
-on a shop-floor terminal.
+บัญชีที่ถูกสร้างจาก ทะเบียนพนักงาน — ทีละคนหรือด้วย CSV — จะได้รหัสผ่านจาก
+`generateTempPassword()` ใน `lib/tempPassword.js`: ใช้ `node:crypto` ทำงานบน
+เซิร์ฟเวอร์ ได้หน้าตาแบบ `gof-mez-tab-4827` เป็นบล็อกที่อ่านออกเสียงได้ ตัวพิมพ์เล็ก
+ทั้งหมด และไม่มี `0 1 l i O` เลย เพราะ ฝ่ายบุคคล ต้องอ่านมันทางโทรศัพท์ แล้วอีกคน
+ต้องพิมพ์มันบนเครื่องหน้าโรงงาน
 
-**It is returned exactly once**, in the response to the create / import / reset
-that produced it, and shown on that screen until dismissed. Only the hash is
-stored (`setPassword`) and every roster read goes through `publicEmployee()`, so
-there is no second look: the recovery is another reset. `mustChangePassword` is
-set with it, so the account cannot reach any screen but ตั้งรหัสผ่านใหม่ until
-the person holding it has replaced the issued value.
+**มันถูกส่งกลับมาเพียงครั้งเดียว** ในคำตอบของการสร้าง / นำเข้า / ตั้งรหัสใหม่ ที่ทำ
+ให้มันเกิดขึ้น และแสดงบนหน้าจอนั้นจนกว่าจะถูกปิด ฐานข้อมูลเก็บเฉพาะ hash
+(`setPassword`) และการอ่านทะเบียนทุกครั้งเดินผ่าน `publicEmployee()` จึงไม่มีการดู
+ครั้งที่สอง: ทางแก้คือตั้งรหัสใหม่อีกครั้ง `mustChangePassword` ถูกตั้งไปพร้อมกัน
+บัญชีนั้นจึงไปหน้าจอไหนไม่ได้เลยนอกจาก ตั้งรหัสผ่านใหม่ จนกว่าคนที่ถือมันจะเปลี่ยน
+ค่าที่ออกให้ทิ้ง
 
-**No caller may choose one.** `POST /api/employees` and `PATCH
-/api/employees/:id` return 400 for a `password` field rather than honouring it,
-a reset is asked for with `resetPassword: true`, and a `password` column in an
-import CSV is ignored with a warning on that row. This replaced
-`defaultPassword()`, which was `Primus@` + the employee code — computable from a
-roster that is printed on every ใบ F-HR-027 and every file sent to accounting,
-and, worse, computed in the *browser* by the ตั้งรหัสใหม่ dialog, which PATCHed
-whatever was left in the box. Pinned by `test/tempPassword.test.js`.
+**ไม่มีผู้เรียกคนไหนเลือกรหัสผ่านเองได้** `POST /api/employees` และ
+`PATCH /api/employees/:id` ตอบ 400 เมื่อเจอฟิลด์ `password` แทนที่จะทำตาม การตั้ง
+รหัสใหม่ขอด้วย `resetPassword: true` และคอลัมน์ `password` ในไฟล์ CSV นำเข้าจะถูก
+เพิกเฉยพร้อมคำเตือนบนแถวนั้น สิ่งนี้มาแทน `defaultPassword()` ซึ่งเคยเป็น `Primus@`
+ต่อด้วยรหัสพนักงาน — คำนวณออกมาได้จากทะเบียนที่พิมพ์อยู่บนใบ F-HR-027 ทุกใบและใน
+ทุกไฟล์ที่ส่งบัญชี และที่แย่กว่านั้นคือมันถูกคำนวณใน*เบราว์เซอร์* โดยกล่อง
+ตั้งรหัสใหม่ ซึ่ง PATCH อะไรก็ตามที่ค้างอยู่ในช่องนั้นขึ้นไป ตรึงไว้ด้วย
+`test/tempPassword.test.js`
 
-### Nobody can lock themselves out
+### ไม่มีใครล็อกตัวเองออกจากระบบได้
 
-Three floors, all refused at the route on both servers and greyed out with the
-reason in the edit dialog (`test/lockout.test.js`):
+พื้นสามข้อ ทุกข้อถูกปฏิเสธที่ route บนเซิร์ฟเวอร์ทั้งสองตัว และถูกทำให้จางพร้อม
+เหตุผลในกล่องแก้ไข (`test/lockout.test.js`):
 
-- **บทบาท and สถานะการใช้งาน on your own row** (`selfEditPermission`). Either
-  one is a single save away from an account that cannot reach the screen it
-  would undo the save from. Every other field on your own row is ordinary.
-- **ตั้งรหัสผ่านใหม่ on your own row** (`selfEditPermission`, added 2026-08-24).
-  Refused for a different reason from the two above — not because *you* could
-  not undo it, but because of who else might press it. A reset from
-  ทะเบียนพนักงาน asks for no current password and prints the new one on the
-  spot, so an unattended machine still logged in as ฝ่ายบุคคล is one button away
-  from a stranger holding a working credential, with the real holder locked out
-  and unable to tell that from having forgotten it. หน้าโปรไฟล์ does the same
-  job and asks for the current password first. **ผู้ดูแลระบบ is not exempt** —
-  see `npm run reset-admin` below, which is what makes an absolute rule safe.
-- **The last active ผู้ดูแลระบบ** (`lastAdminPermission`) may not be demoted or
-  deactivated by anybody. ฝ่ายบุคคล cannot mint an Admin
-  (`HR_ASSIGNABLE_ROLES`), so a system with no active Admin has no way to grow
-  one back — the repair would be a database console. 409 rather than 403: the
-  actor has the right, the state of the system is what refuses.
+- **บทบาท และ สถานะการใช้งาน บนแถวของตัวเอง** (`selfEditPermission`) ทั้งสองอย่าง
+  ห่างจากบัญชีที่เข้าไม่ถึงหน้าจอที่จะใช้ย้อนการบันทึกนั้น อยู่แค่การกดบันทึกครั้งเดียว
+  ฟิลด์อื่นทุกฟิลด์บนแถวของตัวเองเป็นเรื่องปกติ
+- **ตั้งรหัสผ่านใหม่ บนแถวของตัวเอง** (`selfEditPermission` เพิ่มเมื่อ 2026-08-24)
+  ถูกปฏิเสธด้วยเหตุผลคนละอย่างกับสองข้อบน — ไม่ใช่เพราะ*คุณ*ย้อนคืนไม่ได้ แต่เพราะ
+  คนอื่นอาจเป็นคนกด การตั้งรหัสใหม่จาก ทะเบียนพนักงาน ไม่ถามรหัสผ่านปัจจุบัน และ
+  พิมพ์รหัสใหม่ออกมาตรงนั้นเลย เครื่องที่ปล่อยทิ้งไว้โดยยังล็อกอินเป็น ฝ่ายบุคคล จึง
+  ห่างจากการที่คนแปลกหน้าถือรหัสที่ใช้ได้จริงอยู่แค่ปุ่มเดียว โดยเจ้าของตัวจริงถูกล็อก
+  ออกและแยกไม่ออกว่าต่างจากการลืมรหัสตรงไหน หน้าโปรไฟล์ ทำงานเดียวกันและถามรหัสผ่าน
+  ปัจจุบันก่อน **ผู้ดูแลระบบ ไม่ได้รับการยกเว้น** — ดู `npm run reset-admin` ข้างล่าง
+  ซึ่งเป็นสิ่งที่ทำให้กฎแบบไม่มีข้อยกเว้นข้อนี้ปลอดภัย
+- **ผู้ดูแลระบบ คนสุดท้ายที่ยังใช้งานอยู่** (`lastAdminPermission`) จะถูกลดบทบาท
+  หรือปิดใช้งานโดยใครไม่ได้เลย ฝ่ายบุคคล สร้าง Admin ขึ้นมาไม่ได้
+  (`HR_ASSIGNABLE_ROLES`) ระบบที่ไม่มี Admin ที่ใช้งานอยู่เลยจึงไม่มีทางสร้างขึ้นมา
+  คืน — การซ่อมจะต้องเปิดคอนโซลฐานข้อมูล ตอบ 409 ไม่ใช่ 403: ผู้กระทำมีสิทธิ์
+  สิ่งที่ปฏิเสธคือสถานะของระบบ
 
 ---
 
 ## ใครทำอะไรได้ — ฝ่ายบุคคล กับ ผู้ดูแลระบบ
 
-**The rule the split follows:** ฝ่ายบุคคล finish the day's work without asking
-anybody. ผู้ดูแลระบบ keep the two things that are hard to undo — what would
-**move a figure somebody has already signed for**, and what has **no way back**
-if it goes wrong.
+**กฎที่ใช้แบ่ง:** ฝ่ายบุคคล ต้องทำงานประจำวันจนจบได้เองโดยไม่ต้องขออนุญาตใคร
+ส่วน ผู้ดูแลระบบ เก็บไว้สองอย่างที่แก้คืนยาก — เรื่องที่**ขยับตัวเลขที่มีคนเซ็นรับ
+ไปแล้ว** และเรื่องที่**ไม่มีทางย้อนกลับ**ถ้าพลาด
 
-Everything below is enforced **at the route**. The screens grey out what the
-person in front of them may not press, but that is a courtesy — it stops
-somebody typing something that is going to be refused, and it gives the refusal
-a sentence instead of a 403. `test/permissionRouteGuards.test.js` pins that
-every rule here is on the server and that no button is offered to somebody the
-server would refuse.
+ทุกข้อข้างล่างนี้บังคับ**ที่ route** หน้าจอจะทำปุ่มที่กดไม่ได้ให้จาง ๆ ไว้ แต่นั่น
+เป็นเพียงมารยาท — มันช่วยไม่ให้ใครพิมพ์สิ่งที่กำลังจะถูกปฏิเสธ และทำให้การปฏิเสธ
+ออกมาเป็นประโยคแทนที่จะเป็น 403 เฉย ๆ `test/permissionRouteGuards.test.js` ตรึงไว้
+ว่าทุกกฎในหน้านี้อยู่ที่ฝั่งเซิร์ฟเวอร์ และไม่มีปุ่มไหนถูกยื่นให้คนที่เซิร์ฟเวอร์
+จะปฏิเสธ
 
-### The table
+### ตาราง
 
-| | ฝ่ายบุคคล | ผู้ดูแลระบบ | where |
+| | ฝ่ายบุคคล | ผู้ดูแลระบบ | กฎอยู่ที่ |
 |---|---|---|---|
 | **ทะเบียนพนักงาน** | | | |
 | เพิ่ม / แก้ไขพนักงาน | ✅ | ✅ | `rosterPermission` |
@@ -365,149 +361,136 @@ server would refuse.
 | ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` |
 | **บันทึกระบบ** | ❌ | ✅ | `/api/logs`, `/api/logs/summary`, `/api/exports/logs.csv` |
 
-**บันทึกระบบ is the one thing that is a whole tab rather than a section**, and
-that is deliberate: every section inside ตั้งค่าระบบ is reachable by both roles,
-so a section that appeared for one of them would be a rule living in two files.
-The reason ฝ่ายบุคคล are excluded is `hr-account-is-shared` — the whole HR
-department signs into one account, so a traffic log they can edit their own way
-into is not evidence about a person.
+**บันทึกระบบ เป็นสิ่งเดียวที่เป็นแท็บทั้งแท็บ ไม่ใช่หัวข้อย่อย** และตั้งใจให้เป็น
+อย่างนั้น: ทุกหัวข้อภายใน ตั้งค่าระบบ เข้าถึงได้ทั้งสองบทบาท หัวข้อที่โผล่ให้
+บทบาทเดียวจึงเป็นกฎที่ไปอยู่สองไฟล์ ส่วนเหตุผลที่ ฝ่ายบุคคล ถูกกันออกคือ
+`hr-account-is-shared` — ทั้งแผนกบุคคลใช้บัญชีเดียวกันเข้าระบบ บันทึกจราจรที่
+พวกเขาเปิดดูเองได้จึงไม่ใช่หลักฐานเกี่ยวกับ "คน" คนใดคนหนึ่ง
 
 ### ผู้ดูแลระบบ เซ็นแทนหัวหน้าได้ — และยังเซ็นใบเดียวคนเดียวไม่ได้
 
-Two rules that arrived together on 2026-08-24 and only make sense together.
+กฎสองข้อที่มาพร้อมกันเมื่อ 2026-08-24 และเข้าใจได้ก็ต่อเมื่ออ่านคู่กัน
 
 #### ใบที่ไม่มีใครเซ็นได้
 
-A **แผนก with no หัวหน้า on the roster has requests nobody can sign at all**,
-and ผู้รับช่วงอนุมัติ cannot rescue them: `delegationPermission` requires the
-giver to be a manager, and there is no manager to give. **ADM is that department
-on the real roster today** — it has no หัวหน้า and never has. Before this, an OT
-request filed there sat at รอหัวหน้า for ever with no path anywhere in the app.
+**แผนกที่ไม่มีหัวหน้าอยู่ในทะเบียน จะมีใบที่ไม่มีใครเซ็นได้เลย** และ
+ผู้รับช่วงอนุมัติ ก็ช่วยไม่ได้: `delegationPermission` บังคับว่าคนมอบต้องเป็น
+หัวหน้า และในเมื่อไม่มีหัวหน้าก็ไม่มีใครมอบ **วันนี้ ADM คือแผนกนั้นในทะเบียนจริง**
+— ไม่มีหัวหน้า และไม่เคยมีเลย ก่อนหน้านี้ใบ OT ที่ยื่นในแผนกนั้นค้างอยู่ที่
+รอหัวหน้า ตลอดไป โดยไม่มีทางออกที่ไหนในแอปเลย
 
-So `mayOverrideManagerStep` lets **ผู้ดูแลระบบ, and only ผู้ดูแลระบบ**, sign the
-หัวหน้า step. ฝ่ายบุคคล are deliberately not on that line: §6 wants a second pair
-of eyes on the figures and HR *are* the second pair, so letting them supply the
-first as well makes the second step self-checking — which is the thing the two
-steps exist to prevent.
+`mayOverrideManagerStep` จึงเปิดให้ **ผู้ดูแลระบบ และเฉพาะผู้ดูแลระบบเท่านั้น**
+เซ็นขั้นหัวหน้าได้ ฝ่ายบุคคล ไม่อยู่ในบรรทัดนั้นโดยตั้งใจ: §6 ต้องการสายตาคู่ที่สอง
+มาดูตัวเลข และ ฝ่ายบุคคล *คือ* สายตาคู่ที่สองอยู่แล้ว การให้เขาลงลายเซ็นคู่แรกด้วย
+ทำให้ขั้นที่สองกลายเป็นการตรวจงานตัวเอง ซึ่งคือสิ่งที่สองขั้นนี้มีไว้เพื่อป้องกัน
 
-Four things every such signature pays:
+ลายเซ็นแบบนี้ต้องจ่ายสี่อย่างเสมอ:
 
-- **The real หัวหน้า is asked first**, always. The override sits after
-  `managerClaim` in the same place a delegation does, so a department that *has*
-  a หัวหน้า is signed by their หัวหน้า and this path is only reached when nobody
-  else could have taken it.
-- **A reason is required** — refused with 400 otherwise, by the rule and not by
-  the route. Same standing as `authorizeReplay`, เปิดงวด and เปลี่ยนรหัสพนักงาน:
-  what changed can be reconstructed from the entry afterwards, why it was
-  allowed to cannot.
-- **The trail says so.** `managerDecision.adminOverride` and a matching history
-  row, printed in ประวัติรายการ as `· เซ็นแทนหัวหน้า (ผู้ดูแลระบบ)` with the
-  reason quoted under it. Its own field, because the three delegation fields
-  (`onBehalfOf`, `onBehalfOfName`, `delegationId`) are all **empty** for it —
-  nobody delegated this and no manager authorised it, so left to those it would
-  be indistinguishable from an ordinary manager signing their own team's row.
-- **It is offered on one screen only.** The **ไม่มีหัวหน้าเซ็น** tab
-  (ผู้ดูแลระบบ, and only while the count is above zero) lists exactly the
-  requests `nobodyCanSign` finds. The *rule* lets an administrator sign the
-  หัวหน้า step of any request; a screen listing every pending request in the
-  company would invite them to sign rows whose own หัวหน้า is about to, which
-  would make §6's second pair of eyes a formality in practice while leaving the
-  rule looking untouched.
+- **ถามหัวหน้าตัวจริงก่อนทุกครั้ง** การเซ็นแทนวางไว้หลัง `managerClaim` ที่
+  ตำแหน่งเดียวกับที่ผู้รับช่วงวางอยู่ แผนกที่*มี*หัวหน้าจึงเซ็นโดยหัวหน้าของเขาเอง
+  และทางนี้จะถูกใช้ก็ต่อเมื่อไม่มีใครอื่นเซ็นได้แล้วจริง ๆ
+- **ต้องระบุเหตุผล** ไม่ระบุคือ 400 และเป็นกฎที่ปฏิเสธ ไม่ใช่ route ยืนอยู่ระดับ
+  เดียวกับ `authorizeReplay`, เปิดงวด และ เปลี่ยนรหัสพนักงาน: *อะไร*ที่เปลี่ยนไป
+  ประกอบขึ้นใหม่จากใบได้ทีหลัง แต่*ทำไม*ถึงอนุญาต ประกอบขึ้นใหม่ไม่ได้
+- **ร่องรอยบอกไว้** `managerDecision.adminOverride` กับแถวประวัติอีกหนึ่งแถว
+  พิมพ์ใน ประวัติรายการ ว่า `· เซ็นแทนหัวหน้า (ผู้ดูแลระบบ)` พร้อมเหตุผลอยู่ใต้บรรทัดนั้น
+  ใช้ฟิลด์ของตัวเองเพราะสามฟิลด์ของผู้รับช่วง (`onBehalfOf`, `onBehalfOfName`,
+  `delegationId`) **ว่างทั้งหมด** สำหรับกรณีนี้ — ไม่มีใครมอบสิทธิ์ และไม่มีหัวหน้า
+  คนไหนอนุญาต ถ้าปล่อยให้ใช้สามฟิลด์นั้น มันจะแยกไม่ออกจากหัวหน้าธรรมดาที่เซ็นให้
+  ทีมตัวเอง
+- **มีให้กดบนหน้าจอเดียวเท่านั้น** แท็บ **ไม่มีหัวหน้าเซ็น** (ผู้ดูแลระบบ และ
+  เฉพาะตอนที่จำนวนมากกว่าศูนย์) แสดงเฉพาะใบที่ `nobodyCanSign` หาเจอ ตัว*กฎ*
+  เปิดให้ผู้ดูแลระบบเซ็นขั้นหัวหน้าของใบไหนก็ได้ แต่หน้าจอที่ไล่ใบที่รออนุมัติทั้ง
+  บริษัทมาให้ ก็เท่ากับชวนให้เขาไปเซ็นใบที่หัวหน้าของใบนั้นกำลังจะเซ็นอยู่แล้ว ซึ่งจะ
+  ทำให้สายตาคู่ที่สองของ §6 กลายเป็นพิธีกรรมในทางปฏิบัติ ทั้งที่ตัวกฎดูเหมือนไม่ถูกแตะ
 
-`nobodyCanSign` is asked **per entry, not per department**, and that is not
-pedantry: a แผนก can hold a หัวหน้า who signs only for ไพรมัส while two เดมเทค
-staff sit in it, and their requests are as unsignable as ADM's while the
-department looks covered from every screen.
+`nobodyCanSign` ถาม**เป็นรายใบ ไม่ใช่รายแผนก** และนั่นไม่ใช่ความจู้จี้: แผนกหนึ่ง
+อาจมีหัวหน้าที่เซ็นให้เฉพาะ ไพรมัส ขณะที่มีพนักงาน เดมเทค นั่งอยู่ในแผนกนั้นสองคน
+ใบของสองคนนั้นเซ็นไม่ได้เท่ากับใบของ ADM ทั้งที่มองจากทุกหน้าจอแล้วแผนกดูมีคนดูแล
+ครบ
 
 #### …และ §6 ตอนนี้แปลว่า “สองคน” จริง ๆ
 
-**This closed a hole that predates the override.** §6 wants two signatures and
-nothing checked they were two *people* — the rule was carried entirely by the
-shape of the roles (หัวหน้า sign first, ฝ่ายบุคคล sign second, nobody is both),
-and `DELEGATE_ROLES` broke that quietly the day it was written:
+**ข้อนี้ปิดช่องที่มีมาก่อนการเซ็นแทน** §6 ต้องการลายเซ็นสองอัน แต่ไม่มีอะไรตรวจว่า
+มันมาจาก*คน*สองคน — กฎนี้ถูกค้ำไว้ด้วยรูปร่างของบทบาทล้วน ๆ (หัวหน้าเซ็นก่อน
+ฝ่ายบุคคลเซ็นทีหลัง ไม่มีใครเป็นทั้งสอง) และ `DELEGATE_ROLES` ทำให้มันพังเงียบ ๆ
+ตั้งแต่วันที่เขียนมันขึ้นมา:
 
-> ฝ่ายบุคคล may be named as a ผู้รับช่วง. So an HR holding a live delegation
-> approves the **manager's** step on the giver's authority, the entry moves to
-> รอ HR ยืนยัน, and the very same person is `isHr` and signs it off. One person,
-> both signatures, no delegation rule broken, and nothing anywhere saying so.
+> ฝ่ายบุคคล ถูกตั้งเป็น ผู้รับช่วง ได้ ดังนั้น HR ที่ถือสิทธิ์รับช่วงอยู่จะอนุมัติขั้น
+> **หัวหน้า** ด้วยสิทธิ์ของคนที่มอบให้ ใบย้ายไป รอ HR ยืนยัน แล้วคนเดียวกันนั้นเอง
+> ก็เป็น `isHr` และเซ็นปิดท้าย คนเดียว สองลายเซ็น ไม่มีกฎการรับช่วงข้อไหนถูกละเมิด
+> และไม่มีอะไรที่ไหนบอกไว้
 
-Reproduced against the real `approvalPermission` on 2026-08-24, with the
-delegation shape that is on the roster. `signedManagerStep` now refuses it —
-**generally**, keyed on `managerDecision.by`, because written as "an
-administrator may not sign both" it would have fixed the new path and left the
-ผู้รับช่วง one exactly as it was.
+ทำซ้ำให้เห็นกับ `approvalPermission` ตัวจริงเมื่อ 2026-08-24 ด้วยรูปแบบการรับช่วง
+ที่มีอยู่ในทะเบียนจริง ตอนนี้ `signedManagerStep` ปฏิเสธมันแล้ว — และปฏิเสธ
+**แบบทั่วไป** โดยดูที่ `managerDecision.by` เพราะถ้าเขียนว่า "ผู้ดูแลระบบเซ็นทั้งสอง
+ขั้นไม่ได้" มันจะแก้เฉพาะทางใหม่ แล้วปล่อยทางของ ผู้รับช่วง ไว้เหมือนเดิมทุกประการ
 
-- It is the **person**, not the role: another ผู้ดูแลระบบ or any ฝ่ายบุคคล may
-  confirm the entry.
-- **Holding** a delegation is not **having signed** — an HR who was named as a
-  stand-in and never used it confirms as usual. Anything coarser would take work
-  away from somebody for a button they never pressed.
-- 409, not 403: they have the right to sign the HR step; the state of *this
-  entry* is what refuses.
-- The queue asks the same predicate, so such a row shows the reason instead of
-  two buttons that would both answer 409.
+- ดูที่**ตัวคน** ไม่ใช่บทบาท: ผู้ดูแลระบบคนอื่น หรือ ฝ่ายบุคคล คนไหนก็ยืนยันใบนั้นได้
+- **การถือ**สิทธิ์รับช่วง ไม่เท่ากับ**การได้เซ็น** — HR ที่ถูกตั้งเป็นตัวสำรองไว้แต่
+  ไม่เคยใช้ ยังยืนยันได้ตามปกติ กฎที่หยาบกว่านี้เท่ากับริบงานไปจากคนหนึ่งเพราะปุ่มที่
+  เขาไม่เคยกด
+- 409 ไม่ใช่ 403: เขามีสิทธิ์เซ็นขั้น HR อยู่แล้ว สิ่งที่ปฏิเสธคือสถานะของ*ใบนี้*
+- คิวถามคำถามเดียวกัน แถวแบบนี้จึงแสดงเหตุผลแทนที่จะแสดงปุ่มสองปุ่มที่กดแล้วได้ 409
+  ทั้งคู่
 
 ### ทำไม “ลบแผนก” จึงไม่มี
 
-`OtEntry.department` is a **required reference set when the request was filed** —
-the แผนก is snapshotted onto the entry on purpose, so a mid-month transfer
-leaves the hours where they were worked (see *แผนก is snapshotted onto the entry*
-below). Delete the row and every entry that pointed at it collapses into one
-unnamed `ไม่ระบุแผนก` bucket in `groupByDepartment` — permanently, and together
-with every other department ever deleted. `active: false` costs none of that: the
-department leaves every picker, its people can no longer file, and every closed
-month still reads correctly.
+`OtEntry.department` เป็น **reference ที่บังคับมี และถูกกำหนดตอนยื่นใบ** — แผนก
+ถูกถ่ายภาพนิ่งลงบนใบโดยตั้งใจ การย้ายแผนกกลางเดือนจึงทิ้งชั่วโมงไว้ที่ที่มันถูกทำ
+(ดู *แผนก is snapshotted onto the entry* ข้างล่าง) ถ้าลบแถวแผนกทิ้ง ทุกใบที่ชี้มา
+ที่มันจะยุบรวมเป็นถัง `ไม่ระบุแผนก` ถังเดียวไม่มีชื่อใน `groupByDepartment` —
+อย่างถาวร และรวมกับทุกแผนกอื่นที่เคยถูกลบด้วย ส่วน `active: false` ไม่ต้องจ่ายอะไร
+แบบนั้นเลย: แผนกหายไปจากทุกช่องเลือก คนในแผนกยื่นใบไม่ได้อีก และทุกเดือนที่ปิดไป
+แล้วยังอ่านออกมาถูกต้อง
 
-So there is no `DELETE` handler under `app/api/departments/`, in any file, and
-`test/permissionRouteGuards.test.js` walks the folder to keep it that way.
+ดังนั้นจึงไม่มี `DELETE` handler อยู่ใต้ `app/api/departments/` ในไฟล์ไหนเลย และ
+`test/permissionRouteGuards.test.js` เดินไล่ทั้งโฟลเดอร์เพื่อรักษาสภาพนั้นไว้
 
 ### ข้อยกเว้นหนึ่งข้อ: ใบที่อนุมัติแล้วขยับได้เฉพาะ ผู้ดูแลระบบ — ยกเว้นการแก้วันเกิด
 
-**The rule:** hours somebody has put their name to do not move because a flag
-was flipped afterwards. `recomputeEntries` refuses approved entries unless the
-caller passes `includeApproved`, and `authorizeReplay` gates that to an
-administrator with a written reason.
+**กฎ:** ชั่วโมงที่มีคนลงชื่อรับไปแล้ว จะไม่ขยับเพราะมีใครมาพลิกสวิตช์ทีหลัง
+`recomputeEntries` ปฏิเสธใบที่อนุมัติแล้ว เว้นแต่ผู้เรียกส่ง `includeApproved` มา
+และ `authorizeReplay` กั้นตรงนั้นไว้ให้เฉพาะผู้ดูแลระบบที่เขียนเหตุผลมาด้วย
 
-**The one exception, and it is deliberate:** correcting a **วันเกิด** on
-ทะเบียนพนักงาน replays that person's entries with `includeApproved: true`, from
-a route ฝ่ายบุคคล can reach, without consulting `authorizeReplay`
-(`app/api/employees/[id]/route.js`).
+**ข้อยกเว้นข้อเดียว และเป็นข้อยกเว้นที่ตั้งใจ:** การแก้ **วันเกิด** ใน
+ทะเบียนพนักงาน จะคำนวณใบของคนนั้นใหม่ด้วย `includeApproved: true` จาก route ที่
+ฝ่ายบุคคล เข้าถึงได้ โดยไม่ผ่าน `authorizeReplay`
+(`app/api/employees/[id]/route.js`)
 
-**Why.** `authorizeReplay` exists so nobody re-reads a *policy question* and
-quietly restates a month on the strength of their own reading. A birth date is
-not a reading — **it is a fact that was recorded wrong**. วันเกิดของพนักงานเป็น
-วันหยุดของคนนั้น, so a moved date moves which days were that person's holiday,
-and an approved entry left standing is a figure printed on F-HR-027 under a day
-type everybody now agrees is wrong. While the month is still open nothing has
-been sent anywhere, so there is no outside figure for the old one to agree with:
-the paper is simply wrong. HR's decision, 2026-08-18.
+**ทำไม** `authorizeReplay` มีไว้เพื่อไม่ให้ใครตีความ*คำถามเชิงนโยบาย*ใหม่ แล้วแอบ
+แถลงตัวเลขทั้งเดือนใหม่ตามความเข้าใจของตัวเอง แต่วันเกิดไม่ใช่การตีความ —
+**มันคือข้อเท็จจริงที่ถูกบันทึกผิด** วันเกิดของพนักงานเป็นวันหยุดของคนนั้น การย้าย
+วันจึงย้ายว่าวันไหนเป็นวันหยุดของเขา และใบที่อนุมัติแล้วซึ่งถูกปล่อยไว้เฉย ๆ ก็คือ
+ตัวเลขที่พิมพ์อยู่บน F-HR-027 ใต้ประเภทวันที่ตอนนี้ทุกคนเห็นตรงกันแล้วว่าผิด
+ตราบใดที่เดือนนั้นยังไม่ปิดงวด ก็ยังไม่มีอะไรถูกส่งไปที่ไหน จึงไม่มีตัวเลขข้างนอกให้
+ตัวเลขเดิมต้องตรงด้วย กระดาษใบนั้นผิดเฉย ๆ — ฝ่ายบุคคลตัดสิน 2026-08-18
 
-**What the exception still pays.** Everything the escape hatch asks for except
-the role check:
+**สิ่งที่ข้อยกเว้นนี้ยังต้องจ่าย** ทุกอย่างที่ทางออกฉุกเฉินเรียกร้อง ยกเว้นการตรวจ
+บทบาท:
 
-- **ปิดงวด is still the wall.** `recomputeEntries` skips a closed month whatever
-  it is asked to do, so a month that has gone to accounting still needs an
-  administrator to reopen it. The reply names those months and the screen prints
-  them (`⚠ เดือนที่ปิดงวดแล้วไม่ถูกแตะต้อง`).
-- **Every entry whose figures actually move keeps a `before` snapshot** and a
-  `recompute` line carrying `BIRTHDATE_REPLAY_NOTE`, so the restatement appears
-  in ประวัติรายการ beside the ordinary corrections.
-- **The run is filed in `otPolicyReplayRuns` under `source: 'birthdate'`** — not
-  `'manual'`, which is what the recompute endpoint writes. The two are different
-  acts under different authorities and reading them back has to be able to tell
-  them apart; `source` is indexed for exactly that question.
-- **The screen says how many signed-off entries moved**, in as many words.
+- **ปิดงวด ยังเป็นกำแพงอยู่** `recomputeEntries` ข้ามเดือนที่ปิดแล้วเสมอไม่ว่าจะถูก
+  สั่งให้ทำอะไร เดือนที่ส่งบัญชีไปแล้วจึงยังต้องให้ผู้ดูแลระบบเปิดงวดคืนก่อน คำตอบ
+  ที่ส่งกลับมาระบุชื่อเดือนพวกนั้น และหน้าจอพิมพ์มันออกมา
+  (`⚠ เดือนที่ปิดงวดแล้วไม่ถูกแตะต้อง`)
+- **ทุกใบที่ตัวเลขขยับจริงจะเก็บภาพ `before` ไว้** พร้อมบรรทัด `recompute` ที่ถือ
+  `BIRTHDATE_REPLAY_NOTE` การแถลงตัวเลขใหม่จึงโผล่ใน ประวัติรายการ ข้าง ๆ การแก้ไข
+  ธรรมดา
+- **การรันถูกบันทึกใน `otPolicyReplayRuns` ภายใต้ `source: 'birthdate'`** ไม่ใช่
+  `'manual'` ซึ่งเป็นค่าที่ endpoint คำนวณใหม่เขียน สองอย่างนี้เป็นคนละการกระทำ
+  ภายใต้คนละอำนาจ การอ่านย้อนหลังต้องแยกมันออกจากกันได้ และ `source` ทำ index ไว้
+  สำหรับคำถามนี้โดยเฉพาะ
+- **หน้าจอบอกจำนวนใบที่เซ็นรับไปแล้วและถูกขยับ** เป็นตัวเลขตรง ๆ
 
 ### สิทธิ์ ผู้ดูแลระบบ ที่ยังไม่มีหน้าจอ
 
-One is left. Both examples below assume `next start` on this laptop and a
-session cookie for an Admin account; `--cookie` takes the value of `ot_token`
-from a browser that is already signed in (devtools → Application → Cookies).
+เหลืออยู่ข้อเดียว ตัวอย่างทั้งสองข้างล่างสมมติว่ารัน `next start` บนเครื่องนี้ และ
+มี session cookie ของบัญชี ผู้ดูแลระบบ อยู่ · `--cookie` รับค่าของ `ot_token` จาก
+เบราว์เซอร์ที่ล็อกอินอยู่แล้ว (devtools → Application → Cookies)
 
-**คำนวณใหม่รวมใบที่อนุมัติแล้ว** — `POST /api/settings/recompute`. There is no
-control for this anywhere on any screen, on purpose: it is the one action that
-restates figures somebody has signed for, and it is not a button anybody should
-find by accident.
+**คำนวณใหม่รวมใบที่อนุมัติแล้ว** — `POST /api/settings/recompute` ไม่มีปุ่มสำหรับ
+เรื่องนี้อยู่ที่ไหนบนหน้าจอไหนเลย และตั้งใจให้เป็นอย่างนั้น: มันเป็นการกระทำเดียวที่
+แถลงตัวเลขที่มีคนเซ็นรับไปแล้วใหม่ และไม่ควรเป็นปุ่มที่ใครเผลอไปเจอเข้า
 
 ```bash
 # ตัวอย่างจริง — คำนวณใบของงวด 2026-08 ใหม่ รวมใบที่อนุมัติแล้ว
@@ -517,18 +500,18 @@ curl -X POST http://127.0.0.1:3000/api/settings/recompute \
   -d '{"period":"2026-08","includeApproved":true,"note":"HR ตอบข้อ OPEN 1 เมื่อ 2026-08-24 — คำนวณทั้งเดือนใหม่"}'
 ```
 
-> ⚠️ **`includeApproved: true` เปลี่ยนตัวเลขที่เซ็นรับไปแล้ว.** Every entry it
-> moves is a figure a หัวหน้า signed and ฝ่ายบุคคล confirmed, and one that may
-> already be printed on an ใบ F-HR-027 in somebody's file. `note` is required and
-> is not decoration — it is the only thing that will explain the restatement in
-> `otPolicyReplayRuns` afterwards. **`npm run backup` first**, and run
-> `npm run whatif` to price the change before running this to make it.
+> ⚠️ **`includeApproved: true` เปลี่ยนตัวเลขที่เซ็นรับไปแล้ว** ทุกใบที่มันขยับคือ
+> ตัวเลขที่หัวหน้าเซ็นและฝ่ายบุคคลยืนยันแล้ว และอาจถูกพิมพ์ลงใบ F-HR-027 ที่อยู่ใน
+> แฟ้มของใครสักคนไปแล้ว `note` เป็นสิ่งที่ต้องกรอกและไม่ใช่ของประดับ — มันเป็นสิ่ง
+> เดียวที่จะอธิบายการแถลงตัวเลขใหม่ครั้งนี้ใน `otPolicyReplayRuns` ได้ในภายหลัง
+> **สั่ง `npm run backup` ก่อน** และรัน `npm run whatif` เพื่อดูราคาของการเปลี่ยน
+> ก่อนจะรันคำสั่งนี้เพื่อเปลี่ยนจริง
 >
-> Closed months are skipped regardless; the reply names them under
-> `skippedClosed`. Reopening one is a second, separate decision.
+> เดือนที่ปิดงวดแล้วจะถูกข้ามเสมอ คำตอบที่ส่งกลับมาระบุชื่อมันไว้ใต้
+> `skippedClosed` การเปิดงวดคืนเป็นการตัดสินใจครั้งที่สอง แยกต่างหาก
 
-Leave `includeApproved` out and the same endpoint is ordinary work that
-ฝ่ายบุคคล may do — it replays only the pending statuses:
+ถ้าไม่ใส่ `includeApproved` endpoint เดียวกันนี้ก็เป็นงานธรรมดาที่ ฝ่ายบุคคล ทำได้
+— มันคำนวณใหม่เฉพาะใบที่ยังไม่ถูกตัดสิน:
 
 ```bash
 curl -X POST http://127.0.0.1:3000/api/settings/recompute \
@@ -536,16 +519,16 @@ curl -X POST http://127.0.0.1:3000/api/settings/recompute \
   -d '{"period":"2026-08"}'
 ```
 
-`PATCH /api/settings` no longer belongs on this list: ชื่อบริษัทและรหัสฟอร์ม is
-now a section on ตั้งค่าระบบ that both roles reach.
+`PATCH /api/settings` ไม่อยู่ในรายการนี้แล้ว: ชื่อบริษัทและรหัสฟอร์ม ตอนนี้เป็น
+หัวข้อหนึ่งใน ตั้งค่าระบบ ที่ทั้งสองบทบาทเข้าถึงได้
 
-### `npm run reset-admin` — the way back into an ผู้ดูแลระบบ account
+### `npm run reset-admin` — ทางกลับเข้าบัญชี ผู้ดูแลระบบ
 
-ผู้ดูแลระบบ is the escalation path for ฝ่ายบุคคล and has none of its own.
-`rosterPermission` refuses HR every write to an Admin row — the password reset
-included — there is exactly one active Admin, and the stored hash is one-way. So
-an Admin who forgets their password had no way back at all before this script,
-short of a mongo shell and a hand-computed bcrypt hash.
+ผู้ดูแลระบบ เป็นทางร้องเรียนขั้นถัดไปของ ฝ่ายบุคคล และตัวเองไม่มีทางร้องเรียนขั้น
+ถัดไปอีก `rosterPermission` ปฏิเสธการเขียนทุกอย่างที่ HR ทำกับแถวที่เป็น Admin —
+รวมทั้งการตั้งรหัสผ่านใหม่ — ในระบบมีบัญชี Admin ที่ใช้งานอยู่เพียงบัญชีเดียว และ
+hash ที่เก็บไว้ย้อนกลับไม่ได้ ดังนั้นก่อนจะมีสคริปต์นี้ Admin ที่ลืมรหัสผ่านจึงไม่มี
+ทางกลับเข้าระบบเลย นอกจากเปิด mongo shell แล้วคำนวณ bcrypt hash เอง
 
 ```bash
 npm run reset-admin -- ADMIN
@@ -561,34 +544,31 @@ npm run reset-admin -- ADMIN
 ระบบจะบังคับให้เปลี่ยนรหัสผ่านทันทีที่เข้าสู่ระบบครั้งถัดไป
 ```
 
-- **Runs on the server only.** It carries the same main guard `npm run seed`,
-  `npm run backup` and `npm run restore` carry — importing the file for any
-  reason does not reset anybody's password.
-- **It is not a wider grant than the database already gives.** Whoever can run
-  it is sitting at the machine that holds `MONGODB_URI` and could already write
-  the collection by hand. What it adds is that the repair goes through the same
-  generator, the same `mustChangePassword` flag and the same audit trail as
-  every reset made from the screen.
-- **ผู้ดูแลระบบ rows only.** Every other account has a path already — ฝ่ายบุคคล
-  reset it from ทะเบียนพนักงาน, and that path records who pressed the button. A
-  script that would reset anybody turns *has a shell on this server* into *is
-  any employee*, which is the shortest route to a หัวหน้า's signature. A
-  non-admin code is refused by name, and so is a deactivated row.
-- **A code is required.** It does not go looking for "the admin" and reset
-  whatever it finds.
-- **It leaves a record, and the record says it had no session behind it.** The
-  row in `otEmployeeAudits` carries `action: 'password_reset'`,
-  `source: 'script'` and **no actor** — the caller is whoever was at the console
-  and the system has no way to know who that was. Naming somebody there would be
-  an invention, and a trail that invents one field is not evidence about the
-  others. ประวัติการแก้ทะเบียน prints it as `ตั้งรหัสผ่านใหม่ (สคริปต์บนเซิร์ฟเวอร์)`.
-- **The temporary password uses `generateTempPassword()`** — the same one the
-  screen uses, never a second formula. See *Temporary passwords* above for why
-  that matters.
+- **รันบนเซิร์ฟเวอร์เท่านั้น** มันมี main guard ตัวเดียวกับที่ `npm run seed`,
+  `npm run backup` และ `npm run restore` มี — การ import ไฟล์นี้ไม่ว่าด้วยเหตุใด
+  ก็ไม่ได้ตั้งรหัสผ่านใหม่ให้ใคร
+- **ไม่ได้ให้อำนาจกว้างกว่าที่ฐานข้อมูลให้อยู่แล้ว** คนที่รันมันได้คือคนที่นั่งอยู่หน้า
+  เครื่องที่ถือ `MONGODB_URI` และเขียน collection ด้วยมือได้อยู่แล้ว สิ่งที่สคริปต์นี้
+  เพิ่มเข้ามาคือการซ่อมนั้นเดินผ่านตัวสุ่มรหัสตัวเดียวกัน ธง `mustChangePassword`
+  ตัวเดียวกัน และร่องรอยตรวจสอบชุดเดียวกันกับการตั้งรหัสใหม่จากหน้าจอ
+- **เฉพาะแถวที่เป็น ผู้ดูแลระบบ** บัญชีอื่นทุกบัญชีมีทางอยู่แล้ว — ฝ่ายบุคคล ตั้งใหม่
+  ให้จาก ทะเบียนพนักงาน และทางนั้นบันทึกว่าใครเป็นคนกด สคริปต์ที่ตั้งรหัสให้ใครก็ได้
+  จะเปลี่ยน *มี shell บนเซิร์ฟเวอร์นี้* ให้กลายเป็น *เป็นพนักงานคนไหนก็ได้* ซึ่งเป็น
+  ทางลัดที่สั้นที่สุดไปสู่ลายเซ็นของหัวหน้า รหัสที่ไม่ใช่ admin จะถูกปฏิเสธโดยระบุชื่อ
+  และแถวที่ปิดใช้งานแล้วก็เช่นกัน
+- **ต้องระบุรหัสพนักงาน** มันไม่ไล่หา "ตัว admin" แล้วตั้งรหัสให้กับอะไรก็ตามที่หาเจอ
+- **มันทิ้งบันทึกไว้ และบันทึกนั้นบอกว่าไม่มี session อยู่เบื้องหลัง** แถวใน
+  `otEmployeeAudits` ถือ `action: 'password_reset'`, `source: 'script'` และ
+  **ไม่มีผู้กระทำ** — ผู้เรียกคือใครก็ตามที่นั่งอยู่หน้าคอนโซล และระบบไม่มีทางรู้ว่า
+  เป็นใคร การใส่ชื่อใครลงไปตรงนั้นคือการแต่งขึ้น และร่องรอยที่แต่งขึ้นหนึ่งช่องก็ไม่ใช่
+  หลักฐานสำหรับช่องอื่น ๆ อีกต่อไป ประวัติการแก้ทะเบียน พิมพ์มันออกมาว่า
+  `ตั้งรหัสผ่านใหม่ (สคริปต์บนเซิร์ฟเวอร์)`
+- **รหัสผ่านชั่วคราวใช้ `generateTempPassword()`** ตัวเดียวกับที่หน้าจอใช้ ไม่มีสูตร
+  ที่สอง ดูหัวข้อ *Temporary passwords* ข้างบนว่าทำไมเรื่องนี้ถึงสำคัญ
 
-If it is a **ฝ่ายบุคคล** account that is locked out, this script is not the
-answer: another ฝ่ายบุคคล or an ผู้ดูแลระบบ resets it from ทะเบียนพนักงาน, which
-is faster and records a name.
+ถ้าบัญชีที่เข้าไม่ได้เป็นบัญชี **ฝ่ายบุคคล** สคริปต์นี้ไม่ใช่คำตอบ: ให้ ฝ่ายบุคคล
+คนอื่นหรือ ผู้ดูแลระบบ ตั้งรหัสใหม่ให้จาก ทะเบียนพนักงาน ซึ่งเร็วกว่าและบันทึกชื่อคน
+ที่ทำไว้ด้วย
 
 ---
 
@@ -597,152 +577,143 @@ is faster and records a name.
 **ตั้งค่าระบบ ไม่ใช่ที่อยู่ของหน้านี้ — เป็นแท็บของตัวเอง และเห็นได้เฉพาะ
 ผู้ดูแลระบบ** (`components/LogSystem.jsx`, `app/api/logs/`).
 
-Three trails already answer *what did this figure used to be*: `history` on
-OtEntry, `otEmployeeAudits` for the roster, `otPolicyVersions` for the
-calculation. Every one of them is about a **value**. None of them can answer the
-question พ.ร.บ. ว่าด้วยการกระทำความผิดเกี่ยวกับคอมพิวเตอร์ **มาตรา ๒๖** asks of
-whoever runs a system: given a moment in time, *who* was connected, *from
-where*, and what did they touch — including the person who only ever looked, and
-the person whose password was refused.
+มีร่องรอยสามชุดที่ตอบคำถาม *ตัวเลขนี้เมื่อก่อนเป็นเท่าไร* ได้อยู่แล้ว: `history`
+บน OtEntry, `otEmployeeAudits` สำหรับทะเบียน และ `otPolicyVersions` สำหรับการ
+คำนวณ ทั้งสามชุดเป็นเรื่องของ **ค่า** ไม่มีชุดไหนตอบคำถามที่ พ.ร.บ. ว่าด้วยการ
+กระทำความผิดเกี่ยวกับคอมพิวเตอร์ **มาตรา ๒๖** ถามผู้ให้บริการได้: ณ เวลาหนึ่ง
+*ใคร* เชื่อมต่ออยู่ *จากที่ไหน* และแตะอะไรบ้าง — รวมถึงคนที่แค่เข้ามาดูเฉย ๆ และคน
+ที่กรอกรหัสผ่านแล้วถูกปฏิเสธ
 
-A read leaves no trace in any of the three. Neither does a login that failed
-eleven times at 02:00 from an address nobody recognises. `otAccessLogs` is where
-those land.
+การเปิดอ่านไม่ทิ้งร่องรอยไว้ในสามชุดนั้นเลย การล็อกอินที่ผิดสิบเอ็ดครั้งตอนตีสอง
+จากหมายเลขที่ไม่มีใครรู้จักก็เช่นกัน `otAccessLogs` คือที่ที่สองอย่างนั้นไปลง
 
-### What is recorded, and where the recording happens
+### เก็บอะไรบ้าง และเก็บที่จุดไหน
 
-One document per API call, written by **`route()` in `lib/http.js`** — the one
-door every handler in this app comes through. That placement is the whole
-design: a route added next year is logged without its author knowing this
-feature exists, and the alternative (a `logAccess()` at the top of fifty
-handlers) has exactly one failure mode, which is the handler somebody wrote in a
-hurry. The name on the row comes from **`requireAuth`**, for the same reason —
-it is the function that knows, and a route that never calls it authenticated
-nobody, which is exactly what a nameless row should mean.
+หนึ่งเอกสารต่อการเรียก API หนึ่งครั้ง เขียนโดย **`route()` ใน `lib/http.js`** —
+ประตูเดียวที่ handler ทุกตัวในแอปนี้เดินผ่าน ตำแหน่งนี้คือตัวการออกแบบทั้งหมด:
+route ที่เพิ่มเข้ามาปีหน้าจะถูกบันทึกโดยที่คนเขียนไม่ต้องรู้ด้วยซ้ำว่ามีฟีเจอร์นี้อยู่
+ส่วนทางเลือกอีกทาง (วาง `logAccess()` ไว้หัว handler ห้าสิบตัว) มีรูปแบบความล้มเหลว
+อยู่แบบเดียว คือ handler ที่ใครสักคนเขียนตอนรีบ ชื่อบนแถวมาจาก **`requireAuth`**
+ด้วยเหตุผลเดียวกัน — มันคือฟังก์ชันที่รู้ และ route ที่ไม่เคยเรียกมันเลยก็คือ route
+ที่ไม่ได้ยืนยันตัวตนใคร ซึ่งตรงกับความหมายที่แถวไม่มีชื่อควรจะมี
 
-The write is scheduled with `after()` from `next/server`, so it never sits
-between the handler and the person waiting for it, and it happens even when the
-handler threw — a 500 is the case a record is worth most.
+การเขียนถูกตั้งคิวด้วย `after()` จาก `next/server` มันจึงไม่ไปคั่นระหว่าง handler
+กับคนที่รออยู่ และมันเกิดขึ้นแม้ handler จะ throw ออกมา — 500 คือกรณีที่บันทึกมี
+ค่ามากที่สุด
 
 | | |
 |---|---|
-| เวลา · วิธี · เส้นทาง · พารามิเตอร์ | as requested, query string redacted |
-| ผลลัพธ์ · เวลาที่ใช้ | the status the **server** decided, not what the handler intended |
-| ผู้ใช้งาน | code, name and role denormalised — the log still answers after an account is deleted |
-| หมายเลขไอพี · อุปกรณ์ | first hop of `x-forwarded-for`, plus the whole chain when there was one |
+| เวลา · วิธี · เส้นทาง · พารามิเตอร์ | ตามที่ร้องขอมา โดย query string ถูกกลบค่าไว้ |
+| ผลลัพธ์ · เวลาที่ใช้ | สถานะที่**เซิร์ฟเวอร์**ตัดสิน ไม่ใช่สิ่งที่ handler ตั้งใจ |
+| ผู้ใช้งาน | รหัส ชื่อ และบทบาท เก็บซ้ำไว้ในแถว — บันทึกยังตอบได้แม้บัญชีนั้นถูกลบไปแล้ว |
+| หมายเลขไอพี · อุปกรณ์ | hop แรกของ `x-forwarded-for` พร้อมทั้งสายทั้งเส้นถ้ามี |
 | เหตุการณ์ | `request` · `login` · `login_failed` · `logout` |
 
-### What is never recorded
+### สิ่งที่ไม่เก็บเด็ดขาด
 
-**The request body. Not summarised, not truncated, not "just the keys."**
-`lib/rosterAudit.js` names the fields it may record; this goes one further and
-records no field value at all. `POST /api/auth/login` and
-`POST /api/employees/me/password` carry a plaintext password, and a logger with
-any body-recording path in it is one refactor away from writing that password
-into a collection ผู้ดูแลระบบ reads on screen. There is no such path, there is
-no field for one on the schema, and `test/logRouteGuards.test.js` fails if
-either changes.
+**เนื้อหาที่ส่งเข้ามา (request body) ไม่สรุป ไม่ตัดทอน ไม่แม้แต่ "เก็บเฉพาะชื่อ
+ฟิลด์"** `lib/rosterAudit.js` ระบุรายชื่อฟิลด์ที่มันบันทึกได้ ส่วนที่นี่ไปไกลกว่านั้น
+อีกขั้น คือไม่บันทึกค่าของฟิลด์ใดเลย `POST /api/auth/login` และ
+`POST /api/employees/me/password` มีรหัสผ่านแบบข้อความธรรมดาติดมาด้วย และตัวบันทึกที่
+มีเส้นทางเก็บ body อยู่ในตัว ก็ห่างจากการเขียนรหัสผ่านนั้นลง collection ที่
+ผู้ดูแลระบบ เปิดดูบนหน้าจอ อยู่แค่การ refactor ครั้งเดียว ที่นี่ไม่มีเส้นทางแบบนั้น
+ไม่มีช่องบน schema ให้ทำแบบนั้น และ `test/logRouteGuards.test.js` จะพังทันทีถ้าสอง
+ข้อนี้เปลี่ยนไป
 
-The response body is out for a second reason: the answer to
-`GET /api/employees` is the roster, and a log that kept answers would be a
-second copy of every personal detail in the system, in a collection with none of
-the per-row permissions protecting the first.
+เนื้อหาที่ตอบกลับ (response body) ถูกกันออกด้วยเหตุผลข้อที่สอง: คำตอบของ
+`GET /api/employees` คือทะเบียนพนักงานทั้งชุด บันทึกที่เก็บคำตอบไว้จึงเท่ากับสำเนา
+ที่สองของข้อมูลส่วนบุคคลทุกอย่างในระบบ อยู่ใน collection ที่ไม่มีสิทธิ์รายแถวแบบที่
+ปกป้องสำเนาแรกอยู่เลย
 
-**The one exception** is `attemptedCode` — the employee code typed at a login
-that failed. Without it a dictionary run is four hundred identical rows saying
-somebody failed to log in as somebody, because the refusal message is
-deliberately the same whether the code was real or not.
+**ข้อยกเว้นข้อเดียว** คือ `attemptedCode` — รหัสพนักงานที่ถูกพิมพ์ตอนล็อกอินแล้ว
+ล้มเหลว ถ้าไม่มีมัน การไล่เดารหัสสี่ร้อยครั้งจะกลายเป็นสี่ร้อยแถวที่เหมือนกันหมดว่า
+มีคนล็อกอินเป็นใครสักคนไม่สำเร็จ เพราะข้อความปฏิเสธถูกทำให้เหมือนกันโดยตั้งใจ ไม่ว่า
+รหัสนั้นจะมีอยู่จริงหรือไม่
 
-### ผู้ดูแลระบบ only — and not ฝ่ายบุคคล
+### ผู้ดูแลระบบ เท่านั้น — และไม่ใช่ ฝ่ายบุคคล
 
-Every other screen HR can reach is about OT. This one is about **people**: which
-account was connected at 22:40, from which phone, and what it opened. The
-ฝ่ายบุคคล login is shared by the whole department, so handing them a screen that
-names who did what tells each of them what all the others did — while the log's
-record of HR's own activity would be readable by whichever of them was curious.
+หน้าจออื่นทุกหน้าที่ HR เข้าถึงได้เป็นเรื่องของ OT หน้านี้เป็นเรื่องของ **คน**:
+บัญชีไหนเชื่อมต่ออยู่ตอน 22:40 จากโทรศัพท์เครื่องไหน และเปิดอะไรดู บัญชีล็อกอินของ
+ฝ่ายบุคคล ใช้ร่วมกันทั้งแผนก การยื่นหน้าจอที่ระบุว่าใครทำอะไรให้พวกเขา จึงเท่ากับ
+บอกแต่ละคนว่าคนอื่นทั้งหมดทำอะไรไปบ้าง — ขณะที่บันทึกกิจกรรมของ HR เองก็จะถูกอ่าน
+ได้โดยคนใดก็ตามในแผนกที่อยากรู้
 
-**Reading the log is itself logged.** That is not an accident of the
-implementation; it is the property that makes the collection worth anything. A
-log an administrator can read without trace says nothing about the one account
-that can reach everything.
+**การเปิดอ่านบันทึกก็ถูกบันทึกด้วย** นั่นไม่ใช่ผลพลอยได้จากวิธีเขียนโค้ด แต่เป็น
+คุณสมบัติที่ทำให้ collection นี้มีค่าขึ้นมา บันทึกที่ผู้ดูแลระบบเปิดอ่านได้โดยไม่ทิ้ง
+ร่องรอย ไม่ได้บอกอะไรเลยเกี่ยวกับบัญชีเดียวที่เข้าถึงได้ทุกอย่าง
 
-There is **no delete, no edit and no "clear log"** — every field on the model is
-`immutable`, no route offers a write, and the screen has nothing to draw.
+**ไม่มีลบ ไม่มีแก้ และไม่มี "ล้างบันทึก"** — ทุกฟิลด์บนโมเดลเป็น `immutable`
+ไม่มี route ไหนเปิดให้เขียน และหน้าจอก็ไม่มีอะไรให้วาด
 
 ### เก็บไว้นานเท่าไร
 
-มาตรา ๒๖ sets a floor of **ninety days**, not a ceiling.
+มาตรา ๒๖ กำหนด**พื้น**ไว้ที่ **เก้าสิบวัน** ไม่ใช่เพดาน
 
-* Unset `LOG_RETENTION_DAYS` — the default — and **nothing is ever deleted.** A
-  collection that grew too big is a problem anybody can solve on any Tuesday;
-  records deleted before they were asked for is a problem nobody can solve.
-* Set it and a TTL index is created. A value below 90 is **raised to 90 rather
-  than obeyed**: the environment can lengthen retention and cannot shorten it
-  past what the law requires.
-* Mongo reads that index once, when it creates it. Changing the variable later
-  does not move an index that already exists — that takes a `collMod` or
-  dropping `createdAt_1`.
+* ไม่ตั้ง `LOG_RETENTION_DAYS` — ซึ่งเป็นค่าตั้งต้น — แล้ว**จะไม่มีอะไรถูกลบเลย**
+  collection ที่โตเกินไปเป็นปัญหาที่ใครก็แก้ได้ในวันอังคารวันไหนก็ได้ ส่วนบันทึกที่
+  ถูกลบไปก่อนจะมีคนมาขอ เป็นปัญหาที่ไม่มีใครแก้ได้
+* ถ้าตั้ง จะมีการสร้าง TTL index ค่าที่ต่ำกว่า 90 จะถูก**ดันขึ้นเป็น 90 แทนที่จะทำ
+  ตาม**: สภาพแวดล้อมยืดเวลาเก็บให้ยาวขึ้นได้ แต่ย่นให้สั้นกว่าที่กฎหมายกำหนดไม่ได้
+* Mongo อ่าน index นั้นครั้งเดียวตอนสร้าง การเปลี่ยนตัวแปรทีหลังไม่ขยับ index ที่มี
+  อยู่แล้ว ต้องใช้ `collMod` หรือลบ `createdAt_1` ทิ้ง
 
-`npm run backup` takes the collection with everything else, because it reads the
-collections the database actually has rather than a list in the model registry.
+`npm run backup` เก็บ collection นี้ไปพร้อมกับทุกอย่าง เพราะมันอ่านรายชื่อ
+collection จากฐานข้อมูลจริง ไม่ใช่จากรายการในทะเบียนโมเดล
 
-### Handing a copy over
+### ตอนต้องส่งสำเนาให้คนอื่น
 
-**ดาวน์โหลด CSV ตามตัวกรอง** on any of the list tabs, or
-`GET /api/exports/logs.csv?from=…&to=…`. The request this exists for does not
-come from somebody who will be given a login: what is asked for is a copy
-covering a stated period, readable without this application. The file carries
-**every** column including the ones the screen summarises — the full user-agent
-rather than "Chrome · Windows", the whole forwarded chain rather than the first
-hop. The screen's job is to be readable; the file's job is to be complete.
+**ดาวน์โหลด CSV ตามตัวกรอง** บนแท็บที่เป็นรายการแท็บไหนก็ได้ หรือ
+`GET /api/exports/logs.csv?from=…&to=…` คำขอที่ฟีเจอร์นี้มีไว้รองรับ ไม่ได้มาจาก
+คนที่จะได้ล็อกอิน สิ่งที่เขาขอคือสำเนาที่ครอบคลุมช่วงเวลาที่ระบุ และอ่านได้โดยไม่ต้อง
+มีแอปนี้ ไฟล์นี้จึงมี**ทุก**คอลัมน์ รวมทั้งคอลัมน์ที่หน้าจอย่อไว้ — user-agent เต็ม ๆ
+แทนที่จะเป็น "Chrome · Windows" และสาย forwarded ทั้งเส้นแทนที่จะเป็น hop แรก
+งานของหน้าจอคือทำให้อ่านง่าย งานของไฟล์คือทำให้ครบ
 
 ### การใช้สิทธิ์พิเศษ — the compliance report
 
-**A fifth tab on บันทึกระบบ, and the only one that does not read
-`otAccessLogs`.** The four beside it are traffic sliced four ways; this one
-answers a different question — *what was done that the rules would ordinarily
-have refused, and why was it allowed?*
+**เป็นแท็บที่ห้าของ บันทึกระบบ และเป็นแท็บเดียวที่ไม่ได้อ่าน `otAccessLogs`**
+สี่แท็บข้าง ๆ คือข้อมูลจราจรที่หั่นมาสี่แบบ ส่วนแท็บนี้ตอบคนละคำถาม — *มีอะไรถูกทำ
+ไปบ้างที่ตามกฎแล้วควรจะถูกปฏิเสธ และทำไมถึงอนุญาต?*
 
-`otAccessLogs` cannot answer it. The six events that matter are in there among a
-hundred thousand that do not, and **none of them carries the why**, because a
-traffic log never reads a request body.
+`otAccessLogs` ตอบคำถามนี้ไม่ได้ หกเหตุการณ์ที่สำคัญอยู่ในนั้นจริง ปนอยู่กับอีก
+แสนเหตุการณ์ที่ไม่สำคัญ และ**ไม่มีเหตุการณ์ไหนถือ "ทำไม" มาด้วย** เพราะบันทึกจราจร
+ไม่เคยอ่าน request body
 
-**The six, and the test that picks them.** Not "is it important" — *would this
-have been refused if the actor were anybody else, and can the system not
-reconstruct why*. Six things pass, and they are exactly the ผู้ดูแลระบบ-only
-powers in the table above plus the one ฝ่ายบุคคล power with the same shape:
+**หกอย่างนั้น และเกณฑ์ที่ใช้คัด** เกณฑ์ไม่ใช่ "สำคัญไหม" แต่คือ *ถ้าคนทำเป็นคนอื่น
+เรื่องนี้จะถูกปฏิเสธหรือไม่ และระบบประกอบเหตุผลขึ้นใหม่เองไม่ได้ใช่หรือไม่* มีหกอย่าง
+ที่ผ่านเกณฑ์ และมันคืออำนาจเฉพาะ ผู้ดูแลระบบ ในตารางข้างบนพอดี บวกอำนาจของ
+ฝ่ายบุคคล อีกหนึ่งข้อที่มีรูปร่างเดียวกัน:
 
-| kind | what it is | reason required? |
+| ประเภท | คืออะไร | ต้องมีเหตุผลไหม |
 |---|---|---|
-| `password_reset` | an account was issued a new password by somebody else, or by `npm run reset-admin` | no |
-| `admin_override` | ผู้ดูแลระบบ signed the หัวหน้า step where no หัวหน้า could | **yes** |
-| `role_change` | a บทบาท crossed into or out of ฝ่ายบุคคล / ผู้ดูแลระบบ | no |
-| `code_change` | รหัสพนักงาน changed | **yes** |
-| `period_reopen` | a closed งวด was opened again | **yes** |
-| `replay_approved` | entries somebody had signed were recomputed (`includeApproved`) | **yes** |
+| `password_reset` | บัญชีหนึ่งถูกคนอื่นตั้งรหัสผ่านใหม่ให้ หรือถูกตั้งโดย `npm run reset-admin` | ไม่ |
+| `admin_override` | ผู้ดูแลระบบ เซ็นขั้นหัวหน้าในที่ที่ไม่มีหัวหน้าคนไหนเซ็นได้ | **ต้อง** |
+| `role_change` | บทบาท ข้ามเข้าหรือข้ามออกจาก ฝ่ายบุคคล / ผู้ดูแลระบบ | ไม่ |
+| `code_change` | รหัสพนักงาน ถูกเปลี่ยน | **ต้อง** |
+| `period_reopen` | งวด ที่ปิดแล้วถูกเปิดคืน | **ต้อง** |
+| `replay_approved` | ใบที่มีคนเซ็นแล้วถูกคำนวณใหม่ (`includeApproved`) | **ต้อง** |
 
-An `employee → manager` promotion is **not** here — that is ordinary onboarding,
-and putting it in the file buries the account that became ผู้ดูแลระบบ. Neither
-are ordinary approvals, ordinary edits or any read: they are the day's work,
-they are already in the three tabs above and in each entry's own ประวัติ, and a
-compliance file that includes them is one nobody finishes reading.
+การเลื่อนจาก `employee → manager` **ไม่อยู่**ในนี้ — นั่นคือการรับคนเข้าทำงานตามปกติ
+และการใส่มันลงไฟล์ก็คือการกลบบัญชีที่กลายเป็น ผู้ดูแลระบบ ให้จมหายไป การอนุมัติ
+ตามปกติ การแก้ไขตามปกติ และการเปิดอ่านทุกชนิดก็ไม่อยู่เช่นกัน: มันคืองานประจำวัน
+มันอยู่ในสามแท็บข้างบนและอยู่ใน ประวัติ ของแต่ละใบอยู่แล้ว และไฟล์ตรวจสอบที่รวม
+พวกนั้นเข้าไปด้วยคือไฟล์ที่ไม่มีใครอ่านจนจบ
 
-**A blank เหตุผล is a finding, not a formatting problem** — four of the six
-cannot be performed without one. The screen states the count above the table and
-the CSV leaves the cell genuinely empty, so it sorts and filters as empty in
-Excel.
+**ช่อง เหตุผล ที่ว่างคือสิ่งที่ตรวจพบ ไม่ใช่ปัญหาการจัดรูปแบบ** — สี่ในหกอย่างนั้น
+ทำไม่ได้เลยถ้าไม่มีเหตุผล หน้าจอบอกจำนวนไว้เหนือตาราง และ CSV ปล่อยช่องนั้นให้ว่าง
+จริง ๆ มันจึงเรียงและกรองในฐานะช่องว่างได้ใน Excel
 
-**ผู้ดูแลระบบ only, and never ฝ่ายบุคคล — who appear IN it.** Every password HR
-issues is a row, and the ฝ่ายบุคคล login is shared by the whole department
-(`hr-account-is-shared`), so a copy they could take of the list of their own
-exceptional acts is not evidence about a person. Same line and same reason as
-the four tabs beside it.
+**เฉพาะ ผู้ดูแลระบบ และไม่ใช่ ฝ่ายบุคคล เด็ดขาด — เพราะพวกเขาอยู่ *ใน* ไฟล์นี้**
+ทุกรหัสผ่านที่ HR ออกให้คือหนึ่งแถว และบัญชีล็อกอินของ ฝ่ายบุคคล ใช้ร่วมกันทั้งแผนก
+(`hr-account-is-shared`) สำเนารายการการใช้อำนาจพิเศษของตัวเองที่พวกเขาหยิบไปได้เอง
+จึงไม่ใช่หลักฐานเกี่ยวกับ "คน" คนใดคนหนึ่ง เส้นเดียวกันและเหตุผลเดียวกันกับสี่แท็บ
+ข้าง ๆ
 
-**There is deliberately no `?actor=`**, unlike the traffic export. The point of
-this file is that it is *complete for a period*: "what did PM-0620 do" is a
-question the file answers by being read, and a parameter returning a subset is a
-subset somebody later remembers as the whole. Date range and event kind are the
-only filters, and both are on the file's own name.
+**ไม่มี `?actor=` โดยตั้งใจ** ต่างจากการส่งออกข้อมูลจราจร จุดสำคัญของไฟล์นี้คือมัน
+*ครบสำหรับช่วงเวลาหนึ่ง*: "PM-0620 ทำอะไรไปบ้าง" เป็นคำถามที่ไฟล์นี้ตอบได้ด้วยการ
+ถูกอ่าน ส่วนพารามิเตอร์ที่คืนค่าเพียงบางส่วน คือบางส่วนที่ภายหลังจะมีคนจำว่าเป็น
+ทั้งหมด ช่วงวันที่และประเภทเหตุการณ์เป็นตัวกรองสองอย่างเดียวที่มี และทั้งคู่อยู่บน
+ชื่อไฟล์เอง
 
 ```bash
 # ทั้งไตรมาส ทุกประเภท
@@ -754,12 +725,11 @@ curl -o compliance.csv --cookie 'ot_token=<…>' \
   'http://127.0.0.1:3000/api/exports/compliance.csv?from=2026-07-01&to=2026-09-30&kinds=period_reopen,replay_approved'
 ```
 
-Four collections come out as one timeline, **oldest first** — unlike every
-screen in the app, because this is read as the story of a quarter rather than
-scanned for the most recent thing. The rule is `lib/complianceExport.js` (pure,
-`test/complianceExport.test.js`), the reads are `lib/complianceQuery.js`, and the
-screen and the file call the same loader so they can never report two different
-quarters.
+สี่ collection ออกมาเป็นเส้นเวลาเดียว **เรียงจากเก่าไปใหม่** — ต่างจากทุกหน้าจอใน
+แอปนี้ เพราะไฟล์นี้ถูกอ่านในฐานะเรื่องราวของหนึ่งไตรมาส ไม่ใช่ถูกกวาดตาหาสิ่งที่
+เพิ่งเกิดล่าสุด กฎอยู่ที่ `lib/complianceExport.js` (บริสุทธิ์ ทดสอบที่
+`test/complianceExport.test.js`) การอ่านอยู่ที่ `lib/complianceQuery.js` และหน้าจอ
+กับไฟล์เรียกตัวโหลดตัวเดียวกัน จึงเป็นไปไม่ได้ที่สองอย่างนั้นจะรายงานคนละไตรมาส
 
 ---
 
@@ -2472,8 +2442,9 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1386/1386 pass in about 2 s**, measured 2026-08-24 across 86
-  files, and cross-checked three ways that agree exactly: the runner's own
+- `npm test` — **1601/1601 pass in about 2 s**, measured 2026-08-25 across 98
+  files. This line read "1386 across 86 files, 2026-08-24" until then.
+  The earlier count was cross-checked three ways that agreed exactly: the runner's own
   total, the sum of running each file separately, and a count of the ✔ lines.
   Worth doing once because a bare total is a figure nobody can reproduce, and
   because four files register cases from lists rather than one `test()` each
@@ -2491,10 +2462,13 @@ four role UIs.
 - Every server module imports cleanly — but that is only ever observed as a
   side effect of `next build` below, never as a check of its own. **Do not go
   looking for one by importing the tree in bare `node`.** The `@/` aliases do
-  not resolve outside Next, so every route reports a false failure, and
-  `src/seed.js` calls `run()` at module scope: against a live database,
-  importing it to see whether it parses *is* a seed. `seedGuard` refuses on
-  foreign data and is what stands between that and an emptied database.
+  not resolve outside Next, so every route reports a false failure.
+  ✅ The second half of this warning is now retired: **all eight entry-point
+  scripts under `src/` guard their entry point**, so importing one is a read of
+  the file and nothing else. `src/seed.js` was fixed 2026-08-24 and the three
+  `src/migrate-*.js` plus `src/whatif.js` on 2026-08-25 —
+  `test/seedEntryPoint.test.js` holds the list, checks it behaviourally, and
+  fails if `package.json` learns to start a `src/` file that is not on it.
 - `npm run build` — **passes 2026-08-24** on the current tree, Next 16.3 under
   Turbopack, and the route table it prints is **54 `/api/*` routes** plus `/`,
   `/_not-found` and `/icon.png`. Compared against the 54 `app/api/**/route.js`
@@ -2621,13 +2595,19 @@ block's height against the 297 mm page is measured by eye and by nothing else,
 exactly like the column widths above. Print a sample month before showing it to
 HR.
 
-Most HTTP paths remain unexercised — the walks above cover auth, the login
-delay, entries, approve/cancel, ปิดงวด and the form report, but not the CSV
-exports, the CSV imports, the holiday and roster screens, or
-`settings/recompute`. The database-facing parts those depend on — query shapes,
-`populate` chains, cap accumulation across stored entries — are still untested.
-The arithmetic underneath them is covered by the test suite, which does not
-touch Mongo at all.
+**Which paths have and have not met a real database is now answered by
+evidence rather than by memory — see [docs/features.md](docs/features.md)**,
+read out of the tree and out of the live collections on 2026-08-25. It supersedes
+the sentence that stood here, which said the CSV exports, the CSV imports and the
+holiday and roster screens were all unexercised: the roster import ran
+2026-08-18, the holiday import 2026-08-17, and four of the six CSV exports are in
+`otAccessLogs`. What that document does confirm is a shorter and sharper list —
+ปิดงวด (`otPeriodLocks` is empty), rejection (no entry has ever been
+`rejected`), ขอถอนใบ, the admin override, the birthday queue's two write
+actions, cap-override, `npm run reset-admin` and `settings/recompute` have all
+never run against real data. The arithmetic underneath them is covered by the
+test suite, which does not touch Mongo at all — which is exactly why a green
+suite says nothing about this list.
 
 **`settings/recompute` is not only untested — it is not covered by ปิดงวด.**
 A policy replay writes entries directly rather than through the seven routes

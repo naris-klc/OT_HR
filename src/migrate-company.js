@@ -14,6 +14,7 @@
  */
 
 import 'dotenv/config';
+import { pathToFileURL } from 'node:url';
 import { connect, disconnect } from './db.js';
 import Employee from './models/Employee.js';
 import { DEFAULT_COMPANY, companyFromCode, companyLabel } from './config/companies.js';
@@ -73,7 +74,26 @@ async function run() {
   await disconnect();
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+/**
+ * Only when run as a command — `npm run migrate:company`. The same line
+ * src/seed.js, src/backup.js, src/restore.js and src/reset-admin-password.js
+ * carry, and it is worth MORE here than on any of them.
+ *
+ * `seed` at least has `seedGuard` refusing on foreign data. This has no guard
+ * of any kind: `run()` connects to MONGODB_URI and writes `company` onto every
+ * employee row that lacks one, deciding the value from the code prefix. An
+ * accidental import — a module-graph walk, a test that wanted
+ * `companyFromCode`, an editor auto-import — WAS that migration, against
+ * whichever database the machine points at, silently, with no argument typed
+ * and `--dry` never considered.
+ *
+ * A wrongly-filed employee shows up as a wrong subtotal on somebody's payroll
+ * and nowhere else, which is the failure this file's own opening comment is
+ * about. Added 2026-08-25.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

@@ -26,6 +26,7 @@
  */
 
 import 'dotenv/config';
+import { pathToFileURL } from 'node:url';
 import { connect, disconnect } from './db.js';
 import OtEntry from './models/OtEntry.js';
 import PolicyVersion from './models/PolicyVersion.js';
@@ -214,7 +215,24 @@ async function run() {
   await disconnect();
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+/**
+ * Only when run as a command — `npm run migrate:policy-version`. The line
+ * seed, backup, restore and reset-admin already carry.
+ *
+ * Read the opening comment again with an accidental import in mind: step 1
+ * MINTS A POLICY VERSION from whatever the live rules happen to be, and step 2
+ * stamps `policyVersionId` onto every entry that has none — approved entries
+ * included, which is the one deliberate exception to "a signed-off figure is
+ * never restated". Doing that on purpose is a decision somebody made. Doing it
+ * because a file was imported is a version row nobody minted and a pointer
+ * nobody meant to set, on a database nobody chose.
+ *
+ * The idempotence in step 1 does not save this: it only stops a SECOND origin
+ * being minted. Nothing stops the first. Added 2026-08-25.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

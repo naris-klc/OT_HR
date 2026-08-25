@@ -172,9 +172,60 @@ function Login({ onLogin }) {
    */
   const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * The two boxes this form refuses to send empty, and the mark each one wears.
+   *
+   * WHY THIS IS NOT `required` DOING THE WORK. Both inputs still carry
+   * `required` — it is what tells a screen reader the field is not optional —
+   * but the <form> carries `noValidate`, so the browser no longer halts the
+   * submit and no longer draws its own bubble. That bubble was the thing to be
+   * rid of: it is a tooltip in the browser's chrome rather than on this page,
+   * worded by the browser and not by this app, it vanishes at the next click,
+   * and it is the one mark on this screen that no stylesheet here can reach.
+   * Everything else in this app that says "this is wrong" is ink under the
+   * field it means, and now so is this.
+   *
+   * Keyed by field, so the two are independent. Submitting with neither filled
+   * has to mark BOTH — which is exactly what the bubble could not do: it shows
+   * one field at a time and leaves the rest to be found by guessing.
+   */
+  const [blanks, setBlanks] = useState({ code: false, password: false });
+  const codeRef = useRef(null);
+  const passwordRef = useRef(null);
+
+  /**
+   * Clear one field's mark the moment its box changes.
+   *
+   * On the keystroke and not on blur: the mark's whole claim is "this box is
+   * empty", and that stops being true at the first character. Holding it until
+   * focus moves would leave the page arguing with what the person can see.
+   */
+  function edit(name, set) {
+    return (e) => {
+      set(e.target.value);
+      setBlanks((was) => (was[name] ? { ...was, [name]: false } : was));
+    };
+  }
 
   async function submit(e) {
     e.preventDefault();
+
+    // Trimmed, because a box holding a space is empty as far as the server is
+    // concerned — sending it spends one of the throttle's attempts to be told
+    // what this sentence already says. See lib/loginThrottle.js.
+    const missing = { code: !code.trim(), password: !password.trim() };
+    if (missing.code || missing.password) {
+      setBlanks(missing);
+      // Whatever the last attempt was refused for, it was refused about a code
+      // and a password that were both filled in. It is not about this.
+      setError('');
+      setHint('');
+      // The first empty box, so the cursor lands on the work. Marking the
+      // fields without moving focus leaves a keyboard several Tabs from the fix.
+      (missing.code ? codeRef : passwordRef).current?.focus();
+      return;
+    }
+
     setBusy(true);
     setError('');
     setHint('');
@@ -210,19 +261,29 @@ function Login({ onLogin }) {
         <div className="inner">
           <h2>เข้าสู่ระบบ</h2>
           <p className="lede">ใช้รหัสพนักงานและรหัสผ่านของบริษัท</p>
-          <form onSubmit={submit}>
+          {/* `noValidate` turns off the browser's own “โปรดกรอกฟิลด์นี้”; the
+              check it was doing now lives in `submit`, in this page's words. */}
+          <form onSubmit={submit} noValidate>
             <div className="field">
-              <label>รหัสพนักงาน · EMPLOYEE ID</label>
+              <label htmlFor="login-code">รหัสพนักงาน · EMPLOYEE ID</label>
               <input
+                id="login-code"
+                ref={codeRef}
+                className={blanks.code ? 'invalid' : undefined}
+                aria-invalid={blanks.code || undefined}
+                aria-describedby={blanks.code ? 'login-code-blank' : undefined}
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={edit('code', setCode)}
                 autoFocus
                 required
                 placeholder="PM-0412"
               />
+              {blanks.code && (
+                <div className="field-note error" id="login-code-blank">กรุณากรอกรหัสพนักงาน</div>
+              )}
             </div>
             <div className="field" style={{ marginTop: 16 }}>
-              <label>รหัสผ่าน · PASSWORD</label>
+              <label htmlFor="login-password">รหัสผ่าน · PASSWORD</label>
               {/* This was written out here, and เปลี่ยนรหัสผ่าน then needed the
                   same control three more times. It is `PasswordInput` in
                   components/common.jsx now, which is also where the reasons it
@@ -230,12 +291,20 @@ function Login({ onLogin }) {
                   that keeps the eye from submitting this form against the login
                   throttle, above all. Nothing about what draws here changed. */}
               <PasswordInput
+                id="login-password"
+                ref={passwordRef}
+                className={blanks.password ? 'invalid' : undefined}
+                aria-invalid={blanks.password || undefined}
+                aria-describedby={blanks.password ? 'login-password-blank' : undefined}
                 shown={passwordShown}
                 onToggle={() => setPasswordShown((shown) => !shown)}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={edit('password', setPassword)}
                 required
               />
+              {blanks.password && (
+                <div className="field-note error" id="login-password-blank">กรุณากรอกรหัสผ่าน</div>
+              )}
             </div>
             {error && (
               <Alert kind="error">

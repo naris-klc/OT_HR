@@ -32,6 +32,7 @@
  */
 
 import 'dotenv/config';
+import { pathToFileURL } from 'node:url';
 import { connect, disconnect } from './db.js';
 import Employee from './models/Employee.js';
 import OtEntry from './models/OtEntry.js';
@@ -343,6 +344,25 @@ function report(group, verbose) {
 
 const format = (v) => (Array.isArray(v) ? `[${v.join(',')}]` : String(v));
 
-run()
-  .catch((err) => { console.error(`\n${err.message}\n`); process.exitCode = 1; })
-  .finally(disconnect);
+/**
+ * Only when run as a command — `npm run whatif`.
+ *
+ * This one WRITES NOTHING, and the guard is here anyway. Two reasons, and
+ * neither is the damage:
+ *
+ *   · It is one rule. Six entry-point scripts wearing the same line is a thing
+ *     the next author copies without being told; five wearing it and one not is
+ *     a thing they have to decide about, and "this one is read-only" is a
+ *     judgement that has to be re-made every time the file grows.
+ *   · Read-only is a property of today's `run()`. `printPlan` already loads
+ *     every entry and replays it — one `save()` added to show a fix in place
+ *     and the sentence above stops being true, quietly.
+ *
+ * It also still connects to MONGODB_URI on import, which is a hung socket in a
+ * test run whatever else it does. Added 2026-08-25.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  run()
+    .catch((err) => { console.error(`\n${err.message}\n`); process.exitCode = 1; })
+    .finally(disconnect);
+}
