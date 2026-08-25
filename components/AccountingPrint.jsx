@@ -111,16 +111,51 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
  */
 const ROWS_PER_PAGE = 37;
 
+/**
+ * Blank ruled lines left under the last name — somewhere to write in somebody
+ * who was missed between printing the sheet and signing it, which is what the
+ * paper form this replaces gave you.
+ *
+ * FIVE, AND NOT "TO THE FOOT OF THE PAGE". Until 2026-08-25 this padded the
+ * last page out to a full multiple of `ROWS_PER_PAGE`, so ten people printed
+ * as ten names and twenty-seven empty ruled rows — measured on the live
+ * database that day, the month's two sheets carried fourteen names and sixty
+ * blank lines. A grid ruled to the bottom of the page is not more usable than
+ * five lines; it is the same five lines somebody writes on, under twenty-two
+ * they do not, and it reads as a roster that is missing people.
+ *
+ * IT CANNOT CHANGE THE NUMBER OF PAGES, and that is the property to keep when
+ * editing this. Pages are `ceil(rows / ROWS_PER_PAGE)` — decided by the names,
+ * never by the padding — and `room` below is what holds it: the filler is
+ * capped at the space left on the page the last name is already on, so it can
+ * fill that page and can never start another. Raise this to 50 and the sheets
+ * come out at exactly the page counts they do now.
+ *
+ * Not `SPARE_ROWS` from DepartmentPrint.jsx, which is 2 and is a different
+ * decision about a different form: those lines are NUMBERED and sit inside a
+ * department's own sequence, so each one is a promise that the ลำดับที่ is
+ * still running. These are unnumbered paper.
+ */
+const SPARE_LINES = 5;
+
 function Sheet({ company, period, unaccounted }) {
-  // The grid ends on the same line on the last page as on every other one.
-  // Without this the roster simply stops wherever it runs out and the closing
-  // page reads as a different form from the ones before it — which is the
-  // whole objection to a variable-length sheet. Blank rows are also what a
-  // paper form gives you: somewhere to add a name that was missed.
-  const short = company.rows.length % ROWS_PER_PAGE;
-  const filler = company.rows.length === 0
-    ? ROWS_PER_PAGE
-    : (short === 0 ? 0 : ROWS_PER_PAGE - short);
+  /**
+   * `room` is the rest of the page the last name is on — a whole page when
+   * there are no names at all, and nothing when the names happen to end
+   * exactly on a page boundary.
+   *
+   * The `length > 0` clause is what tells those two apart: `0 % 37` and
+   * `37 % 37` are both 0, and they want opposite answers. An empty sheet used
+   * to be special-cased to a full page of 37 ruled rows; it now takes the same
+   * five lines as every other sheet, which is the whole of what the empty case
+   * needs — the route does not emit a company with no rows (a month with no
+   * entries returns only the companies that have some), so this branch is
+   * reached by nothing today and is written to agree with the rule rather than
+   * to be a second rule nobody exercises.
+   */
+  const used = company.rows.length % ROWS_PER_PAGE;
+  const room = used === 0 && company.rows.length > 0 ? 0 : ROWS_PER_PAGE - used;
+  const filler = Math.min(SPARE_LINES, room);
 
   return (
     <div className="acct">

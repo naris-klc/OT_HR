@@ -2252,9 +2252,9 @@ The paper matters most — the screen banner is seen by whoever pressed print, a
 the person who signs is usually not that person.
 
 On the accounting sheet the line **costs no row**: it renders inside the thead
-margin band, so `ROWS_PER_PAGE = 37` and the last-page filler arithmetic are
-untouched, and with nothing missing the component returns `null` and the sheet
-is byte for byte what it was. (`ROWS_PER_PAGE` is measured, not derived, so
+margin band, so `ROWS_PER_PAGE = 37` and the spare-line arithmetic under the
+last name are untouched, and with nothing missing the component returns `null`
+and the sheet is byte for byte what it was. (`ROWS_PER_PAGE` is measured, not derived, so
 anything above the grid goes in that band rather than in a row of its own.) On
 the departmental sheet it is
 one line under `รวมชั่วโมงทำOT`, and only on the **รวมทุกแผนก** closing sheet:
@@ -2340,6 +2340,30 @@ sheet**: the two file separately, so a page carrying both would have to be cut
 up by hand. A roster longer than a page breaks across pages with the column
 headings repeated rather than being shrunk to fit — unlike F-HR-027, this
 sheet has no fixed number of rows to preserve.
+
+**Five blank ruled lines follow the last name, and no more.** They are what the
+paper form gave you: somewhere to write in somebody who was missed between
+printing the sheet and signing it. Until 2026-08-25 the last page was padded out
+to a full `ROWS_PER_PAGE` instead — measured on the live database that day, the
+month's two sheets carried **fourteen names and sixty blank ruled rows**, and a
+company with four people printed a grid ruled to the foot of the page. A sheet
+ruled to the bottom is not more usable than five lines; it is the same five
+lines somebody writes on, under twenty-two they do not, and it reads as a roster
+that is missing people.
+
+**The five cannot change the page count**, and that is the property to keep if
+the number is ever edited. Pages are `ceil(rows / 37)` — decided by the names —
+and the filler is capped at the room left on the page the last name is already
+on, so it can fill that page and can never start another. Printed to PDF through
+the built app at 10, 35, 40, 67 and 80 people on 2026-08-25: **1, 1, 2, 2 and 3
+pages, the same before the change and after it.** The one case that shows why
+the cap is against the room and not a flat five is 36 rows, where it clips to a
+single line; a flat five would have spilled onto a second side.
+
+It is a different decision from `SPARE_ROWS` on the departmental sheet, which is
+2 and stays 2: those lines are numbered and sit inside a department's own
+ลำดับที่, so each one is a promise the sequence is still running. These are
+unnumbered paper.
 
 ---
 

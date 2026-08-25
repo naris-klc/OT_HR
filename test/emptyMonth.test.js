@@ -165,16 +165,28 @@ test('the month still has a name when it has no hours', () => {
 
 // ── the printed forms ───────────────────────────────────────────────────────
 
-test('a company with nobody on it still prints a full page of ruled lines', () => {
-  // The accounting sheet fills its last page to ROWS_PER_PAGE. Zero rows is the
-  // one case where `rows.length % ROWS_PER_PAGE` is 0 while the page is empty
-  // rather than exactly full — hence the explicit branch, without which the
-  // sheet would print as a heading floating over blank paper.
+test('a company with nobody on it still gets ruled lines, and the same five as everyone', () => {
+  /**
+   * Zero rows is the one case where `rows.length % ROWS_PER_PAGE` is 0 while
+   * the page is EMPTY rather than exactly full, and the two want opposite
+   * answers — so the length is asked about as well as the remainder.
+   *
+   * It used to answer `ROWS_PER_PAGE`: a whole page of 37 ruled rows for a
+   * company with nobody on it. Since 2026-08-25 it answers the same five spare
+   * lines every other sheet gets. Nothing reaches this branch today — the route
+   * does not emit a company with no rows — which is precisely why it is written
+   * to agree with the rule rather than to be a second rule nobody exercises.
+   */
   const src = readFileSync(join(ROOT, 'components/AccountingPrint.jsx'), 'utf8');
   assert.match(
     src,
+    /used === 0 && company\.rows\.length > 0 \? 0 : ROWS_PER_PAGE - used/,
+    'the empty-company case is no longer told apart from an exactly-full page',
+  );
+  assert.doesNotMatch(
+    src,
     /company\.rows\.length === 0\s*\?\s*ROWS_PER_PAGE/,
-    'the empty-company branch is gone — a quiet month prints an unruled page',
+    'an empty company is back to a full page of ruled lines',
   );
 });
 

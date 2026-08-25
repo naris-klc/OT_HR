@@ -71,12 +71,27 @@ test('the row arithmetic still counts the roster and nothing else', () => {
   const code = sourceOf(ACCOUNTING);
 
   assert.match(code, /const ROWS_PER_PAGE = 37;/);
-  assert.match(code, /const short = company\.rows\.length % ROWS_PER_PAGE;/);
+  assert.match(code, /const used = company\.rows\.length % ROWS_PER_PAGE;/);
   assert.match(
     code,
-    /company\.rows\.length === 0\s*\?\s*ROWS_PER_PAGE\s*:\s*\(short === 0 \? 0 : ROWS_PER_PAGE - short\)/,
-    'the filler is computed from something other than company.rows.length',
+    /const room = used === 0 && company\.rows\.length > 0 \? 0 : ROWS_PER_PAGE - used;/,
+    'the space left on the page is computed from something other than company.rows.length',
   );
+
+  /**
+   * THE FILLER CANNOT REACH A SECOND PAGE, and this is the line that holds it.
+   *
+   * Until 2026-08-25 the last page was padded out to a full ROWS_PER_PAGE — ten
+   * people printed as ten names under twenty-seven ruled blanks. It is five
+   * lines now, capped at the room actually left: with 36 rows on the sheet the
+   * cap clips to 1, which is what keeps the page count at `ceil(rows / 37)`.
+   * Drop the `Math.min` and 36 rows would spill onto a second side.
+   *
+   * Measured by printing the built app to PDF at 10, 35, 40, 67 and 80 people
+   * on 2026-08-25: 1, 1, 2, 2 and 3 pages both before the change and after it.
+   */
+  assert.match(code, /const filler = Math\.min\(SPARE_LINES, room\);/, 'the filler is no longer bounded by the room left');
+  assert.match(code, /const SPARE_LINES = 5;/, 'the spare-line count is gone or is no longer a named constant');
 
   // The filler loop renders exactly `filler` rows and knows nothing about the
   // flag. A flag that reduced or added to it would show up here.
