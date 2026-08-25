@@ -140,6 +140,71 @@ test('รวมทั้งหมด is a card too, and has no buttons to offer'
   assert.match(phone, /\.hr-table tbody tr\.total-row \{\s*grid-template-areas: 'who cap';/);
 });
 
+// ── and what is said UNDER it ────────────────────────────────────────────────
+
+test('the raw-hours summary is not the total card said twice', () => {
+  // `hrSummary()` under `hrSummaryBasis: 'raw'` returns the two ×1.5 buckets
+  // added up, the ×3 bucket, and their sum — the three figures รวมทั้งหมด has
+  // just printed. On a phone that card IS the foot of the list, so the
+  // sentence landed directly under the numbers it repeated.
+  assert.ok(
+    !hrView.includes('ชั่วโมงดิบ ยังไม่คูณอัตรา'),
+    'the raw basis is printing its own summary again',
+  );
+  // 'multiplied' is the case it is kept for: the hours come out multiplied by
+  // their rates, so they are NOT the table's figures and this line is the only
+  // place on the screen they appear.
+  assert.match(hrView, /data\.hrSection\.basis === 'multiplied' && \(/);
+  assert.match(hrView, /สรุปสำหรับฝ่ายบุคคล \(คูณอัตราแล้ว\)/);
+});
+
+test('the one-signature notice is one line, with the rest one tap away', () => {
+  const note = hrView.slice(
+    hrView.indexOf('{data.hrVerifiedCount > 0 && ('),
+    hrView.indexOf('{data.supersededCount > 0 && ('),
+  );
+  // INFO and not amber: nothing here is wrong. What it is, is the one figure a
+  // หัวหน้า could not otherwise account for.
+  assert.match(note, /<Alert kind="info" tight>/);
+  // The count and the chip's own name — that is the whole of the line.
+  assert.match(note, /อนุมัติชั้นเดียว/);
+  assert.match(note, /HR ตรวจสแกนนิ้ว/);
+  // The three sentences that used to sit in front of the birthday table.
+  // `<details>` and not state: the month reloads underneath this whenever the
+  // period or สถานะที่นับ changes.
+  assert.match(note, /<details className="notice-fold">/);
+  const fold = note.slice(note.indexOf('<details'));
+  assert.match(fold, /ไม่ได้ผ่านการอนุมัติของหัวหน้างาน/);
+  assert.match(fold, /ดู \/ แก้ไขรายการ/);
+  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrView), 'the layout is the stylesheet’s to decide');
+});
+
+test('the phone puts วันเกิดของเดือนนี้ under the total and the footnotes after it', () => {
+  // One markup, two orders — the same rule the card list itself follows.
+  assert.match(hrView, /className="card month-card"/);
+  assert.match(hrView, /<div className="month-notes">/);
+  // In the MARKUP the notes still come first, which is the desktop reading:
+  // a table, its footnotes, then the birthdays.
+  assert.ok(
+    hrView.indexOf('<div className="month-notes">') < hrView.indexOf('<BirthdayMonth'),
+    'the document order stopped being the desktop order',
+  );
+  assert.match(phone, /\.month-card \{ display: flex; flex-direction: column; \}/);
+  assert.match(phone, /\.month-card > \.month-notes \{ order: 1; margin-top: 12px; \}/);
+  // Flex items do not collapse margins, so the gap above the block is stated
+  // once here instead of being whatever the first surviving note carried.
+  assert.match(phone, /\.month-card > \.month-notes > :first-child \{ margin-top: 0; \}/);
+  // …which an inline style would beat. The block runs from its own opening tag
+  // to the fragment that closes the "this month has entries" branch.
+  const open = hrView.indexOf('<div className="month-notes">');
+  const notes = hrView.slice(open, hrView.indexOf('</>', open));
+  assert.ok(notes.includes('supersededCount'), 'the notes block was not found whole');
+  assert.ok(!/marginTop: 6/.test(notes), 'a note is setting its own top margin again');
+  // Nothing else is given a number: a section added to this card later lands
+  // where its markup says.
+  assert.ok(!desktop.includes('.month-card'), 'the phone order leaked onto the desktop');
+});
+
 // ── what did not move ────────────────────────────────────────────────────────
 
 test('the two accounting tables still scroll — they are read down their columns', () => {

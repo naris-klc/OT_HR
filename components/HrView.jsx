@@ -240,7 +240,14 @@ export default function HrView({
 
       {error && <Alert kind="error">{error}</Alert>}
 
-      <div className="card">
+      {/* `month-card` — the stylesheet's handle on the ORDER of what is in
+          here, and only below 860px. On a desktop this is a table with its
+          footnotes under it and วันเกิดของเดือนนี้ under those, read in one
+          column with room to spare; on a phone the same column is four screens
+          of scrolling, and the birthday table — the one thing on this card that
+          is WORK rather than a figure — was at the bottom of the last of them.
+          See the block by this name in app/styles.css. */}
+      <div className="card month-card">
         {!data ? (
           <Empty>กำลังโหลด…</Empty>
         ) : data.employees.length === 0 ? (
@@ -486,65 +493,125 @@ export default function HrView({
             </>
             )}
 
-            <div className="hint" style={{ marginTop: 12 }}>
-              สรุปสำหรับฝ่ายบุคคล — OT × 1.5 = {hours(data.hrSection.ot15)} ชม. ·
-              {' '}OT × 3 = {hours(data.hrSection.ot3)} ชม. ·
-              {' '}รวม {hours(data.hrSection.total)} ชม.
-              {data.hrSection.basis === 'raw' ? ' (ชั่วโมงดิบ ยังไม่คูณอัตรา)' : ' (คูณอัตราแล้ว)'}
-            </div>
+            {/*
+              THE SAME THREE FIGURES THE TABLE ALREADY PRINTS — while the basis
+              is ชั่วโมงดิบ, which is what runs.
+
+              `hrSummary()` with `hrSummaryBasis: 'raw'` returns the two ×1.5
+              buckets added together, the ×3 bucket, and their sum: ×1.5 + ×1.5
+              of รวมทั้งหมด, ×3 of รวมทั้งหมด, and รวมทั้งหมด itself. Three
+              numbers a reader has just read, said again in a sentence — and on
+              a phone, where the total row IS the card at the foot of the list,
+              said again directly under it.
+
+              Under 'multiplied' they are NOT the same numbers: the hours come
+              out multiplied by their rates, so ×1.5 = 32.5 becomes 48.75 and
+              the total is not the table's total at all. That is the one case
+              where this line is the only place on the screen those figures
+              appear, so that is the case it is kept for — with the basis in
+              the label rather than in a parenthesis at the end, because a
+              figure that differs from the table above it must say why before
+              it is read, not after.
+
+              Nothing is lost while it is off: the printed F-HR-027 carries the
+              same summary boxes from the same `hrSummary()`, under whichever
+              basis is live — see `hrSection` in components/PrintForm.jsx.
+            */}
+            {data.hrSection.basis === 'multiplied' && (
+              <div className="hint" style={{ marginTop: 12 }}>
+                สรุปสำหรับฝ่ายบุคคล (คูณอัตราแล้ว) —
+                {' '}OT × 1.5 = {hours(data.hrSection.ot15)} ชม. ·
+                {' '}OT × 3 = {hours(data.hrSection.ot3)} ชม. ·
+                {' '}รวม {hours(data.hrSection.total)} ชม.
+              </div>
+            )}
 
             {/*
-              Said once, above the marks it explains, and worded for whoever is
-              reading it.
-
-              A หัวหน้า opening สรุปทีม is the reason this exists: their team's
-              hours went up and their queue never rang, because ฝ่ายบุคคล settled
-              a birthday from the scan record in one act. Left unexplained that
-              is a discrepancy they cannot resolve from any screen they have —
-              the entry is `approved` and was never in their queue to remember.
-              Nothing here is wrong, which is why it is neutral rather than a
-              warning; what it is, is the one thing on the page they could not
-              have known.
+              THE FOOTNOTES OF THE MONTH, IN ONE WRAPPER — which is what lets
+              the phone put วันเกิดของเดือนนี้ straight under the total card and
+              these underneath it. See `.month-card` in app/styles.css: the
+              order is the stylesheet's, the markup is one.
             */}
-            {data.hrVerifiedCount > 0 && (
-              <div className="hint" style={{ marginTop: 6 }}>
-                {`เดือนนี้มี ${data.hrVerifiedCount} รายการที่ฝ่ายบุคคลบันทึกและอนุมัติในขั้นตอนเดียว`}
-                {' '}จากรายการวันเกิดด้านล่าง โดยตรวจเวลาเข้า-ออกจากบันทึกสแกนนิ้ว ·
-                {' '}<strong>ไม่ได้ผ่านการอนุมัติของหัวหน้างาน</strong> และช่องลายเซ็นหัวหน้าในประวัติรายการจะว่างไว้ตามจริง ·
-                {' '}เปิด “ดู / แก้ไขรายการ” ของพนักงานเพื่อดูว่าเป็นรายการใด — จะมีป้าย “HR ตรวจสแกนนิ้ว” กำกับ
-              </div>
-            )}
+            <div className="month-notes">
+              {/*
+                Said once, above the marks it explains, and worded for whoever is
+                reading it.
 
-            {/* Same rule as the printed form, said on the screen the form is
-                reached from — so a total here and a total there never differ
-                without an explanation attached to both. */}
-            {data.supersededCount > 0 && (
-              <div className="hint" style={{ marginTop: 6 }}>
-                ไม่นับ {data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม ·
-                {' '}เมื่อกรอกวันและเวลาเดียวกันซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุด ·
-                {' '}เปิดใบ F-HR-027 ของพนักงานเพื่อดูว่าเป็นรายการใด
-              </div>
-            )}
+                A หัวหน้า opening สรุปทีม is the reason this exists: their team's
+                hours went up and their queue never rang, because ฝ่ายบุคคล settled
+                a birthday from the scan record in one act. Left unexplained that
+                is a discrepancy they cannot resolve from any screen they have —
+                the entry is `approved` and was never in their queue to remember.
+                Nothing here is wrong, which is why it is INFO and not the amber
+                of a warning; what it is, is the one thing on the page they could
+                not have known.
 
-            {/* An employee with no วันเกิด on record is computed as though no
-                weekday of theirs was ever a holiday, which looks identical to
-                an employee whose birthday fell on a Sunday.
+                FOUR LINES OF GREY BECAME ONE LINE AND A FOLD. All four sentences
+                were true and only the first was ever read: on a 375px screen the
+                paragraph ran to seven lines of `--muted-2` between the month's
+                total and วันเกิดของเดือนนี้, which is the shape of text a reader
+                scrolls past. The count and the chip's own name are what turn a
+                figure somebody cannot account for into one they can — the rest
+                is what they need AFTER that, and it is one tap away rather than
+                permanently in the way.
 
-                Only while the rule is OFF. Once it is on, the same gap is said
-                by the birthday check below — in the list of people whose month
-                cannot be checked — and saying it twice on one screen makes both
-                copies easier to skip. */}
-            {data.birthDates?.missing > 0 && !data.birthDates.ruleEnabled && (
-              <Alert kind="info">
-                {`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — กรอกให้ครบก่อนเปิดกฎวันหยุดวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง`}
-                <div style={{ marginTop: 4 }}>
-                  {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
+                `<details>` and not state, for the reason PrintFormBatch's digest
+                gives: the month reloads underneath this whenever the period or
+                สถานะที่นับ changes, and an open flag in state is a thing that can
+                end up describing a month that is no longer on screen.
+              */}
+              {data.hrVerifiedCount > 0 && (
+                <Alert kind="info" tight>
+                  {`มี ${data.hrVerifiedCount} รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว`}
+                  {' '}— ติดป้าย “HR ตรวจสแกนนิ้ว”
+                  <details className="notice-fold">
+                    <summary>รายละเอียด</summary>
+                    <div>
+                      เป็นรายการวันเกิดที่ฝ่ายบุคคลบันทึกและอนุมัติในขั้นตอนเดียว
+                      {' '}โดยตรวจเวลาเข้า-ออกจากบันทึกสแกนนิ้ว ·
+                      {' '}<strong>ไม่ได้ผ่านการอนุมัติของหัวหน้างาน</strong>
+                      {' '}และช่องลายเซ็นหัวหน้าในประวัติรายการจะว่างไว้ตามจริง ·
+                      {' '}เปิด “ดู / แก้ไขรายการ” ของพนักงานเพื่อดูว่าเป็นรายการใด
+                    </div>
+                  </details>
+                </Alert>
+              )}
+
+              {/* Same rule as the printed form, said on the screen the form is
+                  reached from — so a total here and a total there never differ
+                  without an explanation attached to both. */}
+              {/* No inline margin any more: the gap above this block is stated
+                  once, on `.month-notes`, and an inline style would beat the
+                  stylesheet's `:first-child` rule on the months where this is
+                  the only note there is. */}
+              {data.supersededCount > 0 && (
+                <div className="hint">
+                  ไม่นับ {data.supersededCount} รายการที่ซ้ำช่วงเวลาเดิม ·
+                  {' '}เมื่อกรอกวันและเวลาเดียวกันซ้ำ ระบบนับเฉพาะรายการที่กรอกล่าสุด ·
+                  {' '}เปิดใบ F-HR-027 ของพนักงานเพื่อดูว่าเป็นรายการใด
                 </div>
-                <div style={{ marginTop: 4, fontSize: 11.5 }}>
-                  <AddBirthDateHint onOpen={onOpenRoster} />
-                </div>
-              </Alert>
-            )}
+              )}
+
+              {/* An employee with no วันเกิด on record is computed as though no
+                  weekday of theirs was ever a holiday, which looks identical to
+                  an employee whose birthday fell on a Sunday.
+
+                  Only while the rule is OFF. Once it is on, the same gap is said
+                  by the birthday check — in the list of people whose month
+                  cannot be checked — and saying it twice on one screen makes both
+                  copies easier to skip. */}
+              {data.birthDates?.missing > 0 && !data.birthDates.ruleEnabled && (
+                <Alert kind="info">
+                  {`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — กรอกให้ครบก่อนเปิดกฎวันหยุดวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง`}
+                  <div style={{ marginTop: 4 }}>
+                    {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 11.5 }}>
+                    <AddBirthDateHint onOpen={onOpenRoster} />
+                  </div>
+                </Alert>
+              )}
+            </div>
 
           </>
         )}

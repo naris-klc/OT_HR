@@ -6919,6 +6919,39 @@ table.mini tbody tr:hover { background: none; }
     font: 600 15.5px/1.4 var(--mono); font-variant-numeric: tabular-nums;
   }
 
+  /* ══ วันเกิดของเดือนนี้ COMES UP TO THE TOTAL CARD ══════════════════════
+
+     The card list ends with รวมทั้งหมด, and directly under it — on the desktop
+     — are the month's footnotes: the one-signature notice, the superseded
+     count, the missing-วันเกิด list. All three are conditional, all three are
+     grey, and none of them is anything to DO. Under them sits the one section
+     on this screen that is work: the birthdays, with their two buttons.
+
+     On a 375px screen that order costs a scroll through a paragraph of grey to
+     reach the only rows that need answering before the month can be closed. So
+     the phone puts the birthdays straight under the total and the footnotes
+     after them.
+
+     ONE MARKUP, TWO ORDERS — the same rule the card list itself follows. There
+     is no phone branch in HrView.jsx; `order` on one wrapper is the whole of
+     it, which is why `.month-notes` had to become an element at all.
+
+     `order` NEEDS A FLEX PARENT, and making `.card` one has a cost worth
+     naming: flex items do not collapse their margins, so two stacked notices
+     that used to share the larger of their two gaps now add both. That is why
+     `.month-notes` declares its own top margin and its first child gives its
+     up — the gap above the block is stated once, here, instead of being
+     whatever the first surviving `.hint` happened to carry.
+
+     WHAT DOES NOT MOVE: everything else keeps `order: 0` and stays in document
+     order — the policy banner, the sticky ค้นหา bar, the card list itself. Only
+     the footnotes are given a number, so a section added to this card later
+     lands where its markup says rather than somewhere this rule decided for
+     it. */
+  .month-card { display: flex; flex-direction: column; }
+  .month-card > .month-notes { order: 1; margin-top: 12px; }
+  .month-card > .month-notes > :first-child { margin-top: 0; }
+
   .acct-table :is(th, td).who-col,
   .allco-table :is(th, td).who-col { max-width: 112px; }
   .acct-table :is(th, td).note-col { max-width: 140px; }

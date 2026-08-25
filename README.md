@@ -811,7 +811,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1638 tests
+and the engine know nothing about Next.js, so the whole suite — **1641 tests
 across 100 files**, measured 2026-08-25 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 
@@ -1386,9 +1386,16 @@ What the entry carries is the truth about that:
 * the chip **HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว** wherever the row appears, amber
   and distinct from the blue *บันทึกแทน* — both mean "somebody else typed this",
   only this one also means an approval a reader assumes happened did not.
-* on the หัวหน้า's **สรุปทีม**: a per-person count and a line above the table.
-  Their team's hours went up while their queue never rang; that is the one figure
-  on the page they could not otherwise account for.
+* on the หัวหน้า's **สรุปทีม**: a per-person count in the row, and under the
+  table one blue notice — *"มี 1 รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — ติดป้าย
+  HR ตรวจสแกนนิ้ว"* — with **รายละเอียด** folded under it: no หัวหน้า signature,
+  an empty signature box in the history, and where to find the rows. Their team's
+  hours went up while their queue never rang; that is the one figure on the page
+  they could not otherwise account for. It read "a line above the table" until
+  2026-08-25, and the line was four sentences of grey below it: on a phone that
+  is seven lines between the month's total and วันเกิดของเดือนนี้, which is the
+  shape of text a reader scrolls past. `test/hrMonthCards.test.js` pins the count
+  and the chip's name to the visible line and the rest to the fold.
 
 `submit_hr_verified` is deliberately **not** in `SYSTEM_FILED_ACTIONS`. That list
 means *no form was filled in*; here a person read a clock record and typed two
@@ -2453,9 +2460,11 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1638/1638 pass in about 2 s**, measured 2026-08-25 across 100
-  files. It read "1601" earlier the same day, and "1386 across 86 files,
-  2026-08-24" before that; the three added are the wiring cases in
+- `npm test` — **1641/1641 pass in about 2 s**, measured 2026-08-25 across 100
+  files. It read "1638" earlier the same day, "1601" before that, and "1386
+  across 86 files, 2026-08-24" before that; the last three are the cases in
+  `test/hrMonthCards.test.js` that pin what ตรวจสอบรายเดือน says under its total
+  card on a phone, and the three before them the wiring cases in
   `test/replayPeriodLock.test.js` described under `settings/recompute` below.
   The earlier count was cross-checked three ways that agreed exactly: the runner's own
   total, the sum of running each file separately, and a count of the ✔ lines.
