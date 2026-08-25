@@ -1440,6 +1440,11 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* ══ fields ══════════════════════════════════════════════════════════════ */
 
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+/* The gap between a card's controls and the buttons that act on them. Declared
+   here rather than as an inline `marginTop` on the element, because an inline
+   style is the one thing the 860px block below cannot reach — and this is the
+   gap a phone has least room for. */
+.export-row { margin-top: 12px; }
 /* ผู้รับช่วงอนุมัติแทน's heading block — the title and its two-line explanation,
    taking whatever the button beside it leaves. It was an inline `flex: 1`; it is
    a class so the phone layout can widen it, which an inline style forbids. */
@@ -3154,29 +3159,31 @@ td > .approver-line { margin-top: 5px; }
    been two, with the strip naming what the first box then said again.
 
    So the notices open as items of one list, inside the box that counted them.
-   No bullet — the heading is the marker, and a disc in front of a bold line
-   inside an already-marked panel is a third level of decoration on one
-   sentence. A hairline between items instead, in the panel's own ink at a tenth,
-   so it separates without becoming a second border. */
+
+   A BULLET AND A GAP, not a hairline between rows. This was hairlines first, on
+   the argument that a disc in front of a bold line inside an already-marked
+   panel is a third level of decoration — true of a list whose items are one
+   line each, and these are two: a statement and, under it, an instruction in
+   brackets. The bullet is what says where the next item starts when the item
+   above it did not end at the right-hand margin. The rule it replaces was
+   drawing a box inside a box for the same job.
+
+   The marker is drawn rather than `list-style`, because a `list-style` disc
+   sits outside the content box and would hang into the panel's 12px padding. */
 .alerts-list {
   list-style: none; margin: 10px 0 0; padding: 0;
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; gap: 10px;
 }
-.alerts-list > li { padding: 8px 0; }
-.alerts-list > li:first-child {
-  padding-top: 8px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+.alerts-list > li { padding-left: 14px; position: relative; }
+.alerts-list > li::before {
+  content: '•'; position: absolute; left: 0; top: 0;
+  opacity: .6; font-size: 13px; line-height: 1.55;
 }
-.alerts-list > li + li {
-  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-}
-.alerts-list > li:last-child { padding-bottom: 0; }
-/* The figures — a version list, or the chip a row wears. Mono for the first of
-   those: "เวอร์ชัน 10 (1 ใบ) · เวอร์ชัน 1 (19 ใบ)" is read as counts. */
-.alerts-list .fig { margin-top: 2px; font-size: 12.5px; }
-/* And the one sentence that says what to do about it. `ตรวจก่อนเซ็นรับรอง` is
-   the whole reason the policy notice exists; a list that dropped it would be a
-   tidier screen that had stopped saying the thing it is for. */
-.alerts-list .say { margin-top: 4px; font-size: 12px; opacity: .85; }
+/* The instruction about the line above it — in brackets in the markup, a step
+   quieter here. `ตรวจก่อนเซ็นรับรอง` is the whole reason the policy notice
+   exists; a list that dropped it would be a tidier panel that had stopped
+   saying the thing it is for. */
+.alerts-list .say { margin-top: 2px; font-size: 12px; opacity: .85; }
 
 .notice-fold-group { margin-top: 6px; }
 .notice-fold-group > .k {
@@ -7219,10 +7226,21 @@ table.mini tbody tr:hover { background: none; }
   /* Two CSVs share a line; พิมพ์ F-HR-027 ทุกคน (3 คน) keeps its own, because
      its label is the one that cannot fit in half a phone. The note under them
      spans both. */
-  .export-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  /* 8px above, not 12. The row over it has already stacked into three
+     full-width controls at this width, so 12px more before the first button
+     reads as a section break between the selects and the buttons that act on
+     what they set. Same 8px as the gap between the buttons themselves, which is
+     what makes them one block instead of two. */
+  .export-row {
+    margin-top: 8px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
   .export-row > .btn { min-height: 44px; }
   .export-row > .btn:first-child,
   .export-row > div { grid-column: 1 / -1; }
+  /* And the CSV footnote is a footnote: 12.5px of grey does not need the same
+     8px of air a 44px button does. */
+  .export-row > div { margin-top: -2px; }
 
   /* สรุป OT ส่งบัญชี's two, paired. Both labels are long enough to take two
      lines at half width, which still costs less height than two full-width

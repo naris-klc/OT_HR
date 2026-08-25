@@ -230,7 +230,10 @@ test('two panels became one panel — a list, not a second stack', () => {
   // ORIGINAL panels under it: three boxes where there had been two, and the
   // strip naming what the first box then said again.
   const strip = hrView.slice(hrView.indexOf('function MonthAlerts('), hrView.indexOf('function CapCell('));
-  assert.match(strip, /แจ้งเตือนของเดือนนี้ \$\{notices\.length\} ข้อความ/);
+  // THE MONTH BY NAME. This panel now sits ABOVE the box that sets the period,
+  // so "เดือนนี้" is a question rather than an answer.
+  assert.match(strip, /แจ้งเตือนของ \$\{periodName\} · \$\{notices\.length\} ข้อความ/);
+  assert.match(hrView, /periodName=\{periodLabel\(period\)\}/);
   // ONE `<Alert>` in the whole component, and the list is INSIDE it.
   assert.equal(strip.match(/<Alert /g).length, 1, 'a second panel came back');
   assert.match(strip, /<ul className="alerts-list">[\s\S]*?<\/ul>[\s\S]*?<\/Alert>/);
@@ -244,9 +247,19 @@ test('two panels became one panel — a list, not a second stack', () => {
 
 test('an item is a heading, its figures, and the one sentence that says what to do', () => {
   const strip = hrView.slice(hrView.indexOf('function MonthAlerts('), hrView.indexOf('function CapCell('));
-  assert.match(strip, /<strong>\{n\.label\}<\/strong>/);
-  assert.match(strip, /<div className="fig">\{n\.figures\}<\/div>/);
-  assert.match(strip, /<div className="say">\{n\.say\}<\/div>/);
+  // TWO LINES, not three. The heading and its figures are one statement and run
+  // together on the first; two blocks made a three-line item out of a two-line
+  // one wherever the pair happened to fit.
+  assert.match(strip, /<div><strong>\{n\.label\}<\/strong>: \{n\.figures\}<\/div>/);
+  // The brackets mark the second line as guidance ABOUT the first rather than
+  // more of it — which is what the block margin used to do and need not.
+  assert.match(strip, /<div className="say">\(\{n\.say\}\)<\/div>/);
+  // A bullet and a gap, not a hairline: an item is two lines now, and the disc
+  // is what says where the next one starts when the one above it did not end at
+  // the right-hand margin. Drawn, not `list-style`, so it cannot hang into the
+  // panel's own padding.
+  assert.match(css, /\.alerts-list > li::before \{\s*content: '•';/);
+  assert.ok(!css.includes('.alerts-list > li + li'), 'the hairline and the bullet are both in');
   // ตรวจก่อนเซ็นรับรอง is the whole reason the policy notice exists. A list
   // that dropped it would be a tidier screen that had stopped saying the thing
   // it is for — so `say` is carried, and it is carried from the notice's own
@@ -263,7 +276,6 @@ test('an item is a heading, its figures, and the one sentence that says what to 
     assert.ok(pv.includes(only), `the ${only} case went missing`);
   }
   assert.match(css, /\.alerts-list \{\s*list-style: none;/);
-  assert.match(css, /\.alerts-list > li \+ li \{\s*border-top: 1px solid color-mix/);
 });
 
 test('one control for the whole thing, and no second ดูรายละเอียด inside it', () => {
@@ -303,11 +315,18 @@ test('the panel is above the marks it explains, which one of them once only clai
   // has finished the rows has finished asking.
   const strip = hrView.indexOf(STRIP);
   assert.ok(strip > 0, 'the panel was not found');
-  // ABOVE the search box, not between it and the list: the box's own rule is
-  // that the thing it filters starts directly underneath it, and these notices
-  // are the month's, not the search's.
+  // FIRST OF EVERYTHING now — above the period box, above the export buttons,
+  // above the search box and the list. The person it warns is the one about to
+  // sign the figures, and a warning read after พิมพ์ has been pressed is a
+  // warning that arrived late.
+  assert.ok(strip < hrView.indexOf('<div className="card">'), 'the panel is under the controls card');
+  assert.ok(strip < hrView.indexOf('<input type="month"'), 'the panel is under the period box');
+  assert.ok(strip < hrView.indexOf('className="row export-row"'), 'the panel is under the export buttons');
   assert.ok(strip < hrView.indexOf('<div className="row month-find">'), 'the panel split the search box from its list');
   assert.ok(strip < hrView.indexOf('<table className="hr-table">'), 'the panel is still under the table');
+  // …and it can only be up there because it names the month itself; the assert
+  // for that is in the first test in this group.
+  assert.match(hrView, /\{data && \(\s*<MonthAlerts/);
   // And อนุมัติชั้นเดียว is out of the footnote wrapper it used to live in.
   const open = hrView.indexOf('<div className="month-notes">');
   assert.ok(!hrView.slice(open, hrView.indexOf('</>', open)).includes('hrVerifiedCount'), 'the notice is still a footnote');
@@ -337,7 +356,7 @@ test('an open list cannot outlive its month, and the ✕ lasts until a reload', 
   // Dismissing closes the panel; it does not make the notices unreachable. The
   // count is recomputed from the month on screen, so a different month's
   // different warning is a different number with nothing reappearing.
-  assert.match(hrView, /แสดงแจ้งเตือนของเดือนนี้ \(\$\{notices\.length\}\)/);
+  assert.match(hrView, /แสดงแจ้งเตือนของ \$\{periodName\} \(\$\{notices\.length\}\)/);
   assert.match(hrView, /alertsDismissed = false; setShut\(false\);/);
   assert.match(css, /\.alerts-recall \{ margin: 0 0 12px; font-size: 12\.5px; \}/);
 });
@@ -352,6 +371,13 @@ test('.fold-pill is a class, and the digest it shares a screen with is untouched
   // The 44 is the floor, so the panel gives back its own padding instead —
   // and only this panel: `.alert.tight` is worn all over the app.
   assert.match(phone, /\.month-card > \.alert\.tight \{ padding: 8px 12px; \}/);
+  // And the export buttons come up to the selects they act on: 8px at this
+  // width, the same as the gap between the buttons themselves, which is what
+  // makes them one block rather than a section break. Stated in the stylesheet
+  // — an inline `marginTop` is the one thing the 860px block cannot reach.
+  assert.match(css, /\.export-row \{ margin-top: 12px; \}/);
+  assert.match(phone, /\.export-row \{\s*margin-top: 8px;/);
+  assert.ok(!/export-row" style=/.test(hrView), 'the export row went back to an inline margin');
   // PrintFormBatch's digest is the other `.notice-fold` in the app: plain-text
   // summary, no pill, and no rule here reaches it.
   const digest = read('components/PrintFormBatch.jsx');

@@ -2269,7 +2269,7 @@ warning names every version in the month and says what to do about it, and
 360×780 on 2026-08-25 the two panels came to **340px** — most of a phone screen
 spent before a single row of the month was reached.
 
-`MonthAlerts` is one `.alert` that counts them: *"แจ้งเตือนของเดือนนี้ 2
+`MonthAlerts` is one `.alert` that counts them: *"แจ้งเตือนของ สิงหาคม 2569 · 2
 ข้อความ"*, with *"กฎการคำนวณคนละชุด · HR อนุมัติชั้นเดียว 1 รายการ"* a step
 quieter under it and **ดูรายละเอียด ▼** / **ซ่อน ▲** at the end of that same
 flow. The labels are there because a bare *"2 ข้อความ"* makes a reader open it
@@ -2277,21 +2277,49 @@ to find out whether either of them matters, which is the fold costing more than
 it saves; they are drawn **shut only**, because open the list's own headings are
 those same words.
 
+**FIRST OF EVERYTHING ON THE PAGE** — above the ประจำเดือน box, above พิมพ์
+F-HR-027 ทุกคน and the two CSVs, above the search box and the list. What it warns
+about is the figures on this screen and the person it warns is the one about to
+sign them, so it is read before the controls rather than after somebody has
+already pressed พิมพ์. It sat between the policy banner and the search box until
+later on 2026-08-25, and inside the month card before that.
+
+**It names the month because it is now above the box that sets it.** In its old
+place, directly over the list, *"เดือนนี้"* was answered by the period picker two
+inches above it; from the top of the page it is a question, and a warning about a
+month a reader has to scroll *down* to identify is a warning they check twice.
+The recall line the ✕ leaves behind says it too — *แสดงแจ้งเตือนของ สิงหาคม 2569
+(2)*.
+
 **The button is inline, not on a block of its own,** and that is worth 25px: it
 is a 44px touch target, and the labels wrap to two lines of Thai at 360px, so
 stacked it was a whole row of the panel spent on one control. Inline it lands at
-the end of the wrapped text. Shut the panel is **103px** and the search box sits
-**144px** from the top of the card; open it is **308px**. It read "127px
-collapsed, 437px open" until later the same day.
+the end of the wrapped text. Shut the panel is **107px**, open **269px**. It read
+"127px collapsed, 437px open" earlier the same day, and "103px / 308px" between.
 
 **What opens is a list INSIDE it, not a second stack of panels.** The first
 version of this counted the notices on a strip and then rendered the two
 original panels underneath — three boxes where there had been two, with the
 strip naming what the first box then said again. It read as a bug and was one.
 So the panels are gone from this screen: `<PolicyVersionBanner>` is not imported
-here any more, and each notice is an item of one `.alerts-list` — a heading, its
-figures, and **one sentence**. It read "the panels open underneath it" for a few
-hours on 2026-08-25.
+here any more, and each notice is an item of one `.alerts-list`. It read "the
+panels open underneath it" for a few hours on 2026-08-25.
+
+**An item is two lines.** The heading and its figures RUN TOGETHER on the first
+— *"กฎการคำนวณคนละชุด: เวอร์ชัน 10 (1 ใบ) · เวอร์ชัน 1 (19 ใบ)"* — because they
+are one statement, and two blocks made a three-line item out of a two-line one
+wherever the pair happened to fit. The instruction goes under it **in brackets**,
+which marks it as guidance about the line above rather than more of it — the job
+the block margin used to do and does not have to. Each item is 80px at 360px; it
+read "three blocks, 101px and 113px" until later the same day.
+
+A **bullet and a gap**, not a hairline between rows. Hairlines came first, on the
+argument that a disc in front of a bold line inside an already-marked panel is a
+third level of decoration — true of a list whose items are one line each, and
+these are two. The bullet is what says where the next item starts when the one
+above it did not end at the right-hand margin, and the rule it replaces was
+drawing a box inside a box for the same job. It is drawn with `::before` rather
+than `list-style`, which would hang the disc into the panel's own padding.
 
 **One line each, and what that cost.** The four policy sentences ran to three
 apiece and every one opened by restating the condition — *"กฎที่ใช้คำนวณ
@@ -2339,12 +2367,27 @@ warning unreachable, and it never touches the rows' own chips. A different
 month's different warning is then a different number in that line rather than a
 panel reappearing in front of somebody who said they did not want one.
 
-Walked at 360×780 on the built app against a clone, 2026-08-25: **one** `.alert`
-in the card in every state, no `<details>` inside it, one toggle and one ✕;
-shut 103px, open 308px with both items drawn and each `say` at two or three
-wrapped lines, dismissed 0 with the recall line at 48px; the per-row chip present
-throughout. On a 1440px desktop every `say` is one line and the open panel is
-241px.
+**The export buttons come up to the selects they act on.** 8px at 360px, the
+same as the gap between the buttons themselves, which is what makes them one
+block rather than a section break — at 12px the row above had already stacked
+into three full-width controls and the extra air read as a division between the
+selects and the buttons that act on what they set. 12px stays on a desktop. The
+value moved out of an inline `marginTop` on the element to `.export-row` in the
+stylesheet, because an inline style is the one thing the 860px block cannot
+reach.
+
+Walked at 360×780 on the built app against a clone, 2026-08-25: the panel above
+the ประจำเดือน box and above the export row, **one** `.alert` on the page in
+every state, no `<details>` inside it, one toggle and one ✕; shut 107px, open
+269px with both items at 80px, dismissed 0 with the recall line naming the month;
+8px between the last select and พิมพ์ F-HR-027 ทุกคน, 12px at 1440px; the per-row
+chip present throughout.
+
+**What is still above the first employee card**, measured the same way: 764px
+shut, 645px with the panel dismissed. Most of what is left is the controls card —
+its own `<h2>ตรวจสอบรายเดือน</h2>` and `สิงหาคม 2569` repeat the app header and
+the alert panel directly above them, and dropping that pair below 860px is worth
+about 60px more. Not done: it is a title, not spacing.
 
 **ตรวจสอบรายเดือน บนมือถือ: ห้าการ์ดก่อน แล้วค่อยที่เหลือ.** Below 860px this
 screen is one card per person — that is where **ดู / แก้ไขรายการ** and **พิมพ์

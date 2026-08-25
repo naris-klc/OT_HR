@@ -182,6 +182,39 @@ export default function HrView({
 
   return (
     <>
+      {/* FIRST OF EVERYTHING, above the month picker and above the export
+          buttons. What this warns about is the figures on this screen, and the
+          person it warns is the one about to sign them — so it is read before
+          the controls rather than after somebody has already pressed พิมพ์.
+
+          IT NAMES THE MONTH BECAUSE IT IS NOW ABOVE THE THING THAT SETS IT. In
+          its old place, directly over the list, "เดือนนี้" was answered by the
+          period box two inches above it. Here there is nothing above it but the
+          app's own header, and a warning about a month a reader has to scroll
+          DOWN to identify is a warning they have to check twice.
+
+          `data &&` because a month still loading has no notices to count, and
+          `MonthAlerts` returns null when it finds none — including on a month
+          with no entries at all, where `policy.mixed` is false and
+          `hrVerifiedCount` is 0.
+
+          `key` REMOUNTS IT WHEN THE MONTH DOES. Both the open flag and the list
+          under it describe the notices of one particular month at one particular
+          สถานะที่นับ; letting them survive a change of either is how an open list
+          ends up describing a month that is no longer on screen. Written as a key
+          rather than an effect because there is nothing to carry across — the
+          dismissal is deliberately not in that component's state (see
+          `alertsDismissed` by MonthAlerts) and is the one thing that does
+          survive. */}
+      {data && (
+        <MonthAlerts
+          key={`${period}|${statusFilter}`}
+          periodName={periodLabel(period)}
+          policy={data.policy}
+          hrVerifiedCount={data.hrVerifiedCount}
+        />
+      )}
+
       <div className="card">
         <div className="row" style={{ alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
@@ -207,7 +240,13 @@ export default function HrView({
             on buttons pressed once a month. The stylesheet pairs the two CSVs
             below 860px and leaves the print button its own full-width line,
             because its label is the one that will not fit in half. */}
-        <div className="row export-row" style={{ marginTop: 12 }}>
+        {/* The 12px above this used to be an inline `marginTop`, which no media
+            query can reach. On a phone the row above it has already stacked into
+            three full-width controls, and 12px more between the last of those
+            and the first button is a gap the eye reads as a section break where
+            there is none — the buttons act on what the selects just set. Stated
+            in the stylesheet now, 12px wide and 8px narrow. */}
+        <div className="row export-row">
           {/* The month as one document instead of one press per person. Whose
               sheets are in it is exactly the table below — same order, same
               สถานะที่นับ — so the bundle can be checked against the screen it
@@ -290,26 +329,6 @@ export default function HrView({
           <Empty>ไม่มีรายการในเดือนนี้</Empty>
         ) : (
           <>
-            {/* ONE STRIP FOR ALL OF THEM — see `MonthAlerts` below. Still above
-                the table and above the search box, for the reason each of these
-                was there on its own: what warns about the figures goes above the
-                figures, and a reviewer who has started reading rows has already
-                begun trusting them.
-
-                `key` REMOUNTS IT WHEN THE MONTH DOES. Both the strip's open flag
-                and the panel underneath describe the notices of one particular
-                month at one particular สถานะที่นับ; letting them survive a change
-                of either is how an open panel ends up describing a month that is
-                no longer on screen. Written as a key rather than as an effect
-                because there is nothing to carry across — the dismissal is
-                deliberately not in this component's state (see `alertsDismissed`
-                by MonthAlerts) and is the one thing that does survive. */}
-            <MonthAlerts
-              key={`${period}|${statusFilter}`}
-              policy={data.policy}
-              hrVerifiedCount={data.hrVerifiedCount}
-            />
-
             {/* AT THE TOP OF THE LIST, above the first card and above the
                 table's own heading row — the thing it filters starts directly
                 underneath it, on both layouts. */}
@@ -767,7 +786,7 @@ let alertsDismissed = false;
  * read, not warnings to read before starting, and pulling them up would make
  * this count a number about two unrelated things.
  */
-function MonthAlerts({ policy, hrVerifiedCount }) {
+function MonthAlerts({ periodName, policy, hrVerifiedCount }) {
   const [open, setOpen] = useState(false);
   const [shut, setShut] = useState(alertsDismissed);
 
@@ -816,7 +835,7 @@ function MonthAlerts({ policy, hrVerifiedCount }) {
           className="link"
           onClick={() => { alertsDismissed = false; setShut(false); }}
         >
-          {`แสดงแจ้งเตือนของเดือนนี้ (${notices.length})`}
+          {`แสดงแจ้งเตือนของ ${periodName} (${notices.length})`}
         </button>
       </div>
     );
@@ -827,10 +846,10 @@ function MonthAlerts({ policy, hrVerifiedCount }) {
 
   return (
     <Alert kind={kind} tight onClose={() => { alertsDismissed = true; setShut(true); }}>
-      <strong>{`แจ้งเตือนของเดือนนี้ ${notices.length} ข้อความ`}</strong>
-      {/* SHUT ONLY. Open, the list below is headed by these same words, and a
-          screen that says them twice in fourteen pixels of each other is a
-          screen a reader has to check for a difference that is not there. */}
+      {/* THE MONTH BY NAME, because this now sits above the box that sets it.
+          "เดือนนี้" was answered by the period picker when this was two inches
+          under it; from the top of the page it is a question. */}
+      <strong>{`แจ้งเตือนของ ${periodName} · ${notices.length} ข้อความ`}</strong>
       {/* THE LABELS AND THE BUTTON IN ONE FLOW, not one block each. The button
           is a 44px touch target and the labels wrap to two lines of Thai at
           360px; stacked, that is 44px of panel spent on a row holding one
@@ -851,13 +870,23 @@ function MonthAlerts({ policy, hrVerifiedCount }) {
           {open ? 'ซ่อน ▲' : 'ดูรายละเอียด ▼'}
         </button>
       </div>
+      {/* ONE ITEM IS TWO LINES: what it is and its figures on the first, the
+          instruction in brackets on the second.
+
+          The heading and the figures RUN TOGETHER — "กฎการคำนวณคนละชุด:
+          เวอร์ชัน 10 (1 ใบ) · เวอร์ชัน 1 (19 ใบ)" — rather than sitting in two
+          blocks. They are one statement, and two blocks made a three-line item
+          out of a two-line one wherever the pair happened to fit.
+
+          The brackets around the instruction are the second half of that: they
+          mark it as guidance about the line above rather than more of it, which
+          is what the block margin used to do and does not have to. */}
       {open && (
         <ul className="alerts-list">
           {notices.map((n) => (
             <li key={n.key}>
-              <strong>{n.label}</strong>
-              <div className="fig">{n.figures}</div>
-              <div className="say">{n.say}</div>
+              <div><strong>{n.label}</strong>: {n.figures}</div>
+              <div className="say">({n.say})</div>
             </li>
           ))}
         </ul>
