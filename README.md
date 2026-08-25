@@ -81,7 +81,9 @@ Upgrading a database from before policy versioning? Run
 only version pointers; no entry's hours or status is touched.
 
 Requires **Node 20+** and a MongoDB instance. For production, `npm run build`
-then `npm start`.
+then `npm start` — and on the machine that actually serves the office, neither
+of those is typed by hand every morning: see
+[ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน](#ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน--task-scheduler).
 
 **`npm run seed` will not run against a database it did not create.** It opens
 with five `deleteMany({})` — departments, employees, holidays, entries and
@@ -95,6 +97,201 @@ periods. Any of them and it prints what it found and exits 1.
 wipe is **partial** — the audit trail, the policy versions, the delegations and
 the period locks are not among the five collections it clears, so a forced
 reseed leaves them pointing at people and entries that no longer exist.
+
+### ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน — Task Scheduler
+
+**อ่านหัวข้อนี้เมื่อ:** เปิดหน้าเว็บแล้วขึ้น "This site can't be reached" ·
+เครื่องเพิ่งรีสตาร์ต · หรือต้องเอาโค้ดใหม่ขึ้น
+
+“เครื่องจริง” คือแล็ปท็อปเครื่องนี้ ([Status](#status)) ตัวที่ทำให้แอปขึ้นเองจึงเป็น
+Task Scheduler ตัวเดียวกับที่ [งานสำรองข้อมูล](#ตั้งเวลาสำรองอัตโนมัติ) ใช้อยู่
+
+**สิ่งที่งานนี้รัน** คือ `scripts/start-server.ps1` ซึ่งห่อคำสั่งเดียว —
+`node node_modules\next\dist\bin\next start -p 3000` — สิ่งที่ตัวห่อเพิ่มเข้ามาคือ
+สี่อย่างที่งานตามตารางเวลาต้องการ: **อยู่หน้าฉาก** (Task Scheduler นับว่างานยัง
+ทำงานอยู่ตราบใดที่โปรเซสของ action ยังอยู่) · **เขียน log** · **ออกด้วยรหัสที่ไม่ใช่
+ศูนย์เมื่อพัง** เพราะนั่นคือสัญญาณเดียวที่ตัวตั้ง restart อ่าน · และ **ปฏิเสธที่จะเป็น
+เซิร์ฟเวอร์ตัวที่สอง** ถ้ามีอะไรฟังพอร์ตนั้นอยู่แล้ว มันจะบันทึกแล้วออกด้วยศูนย์
+แทนที่จะวนเริ่มใหม่ทุกนาทีชนพอร์ตที่ไม่มีวันว่าง
+
+> 🔴 **`scripts/start-server.ps1` ต้องไม่มีอักขระนอก ASCII แม้แต่ตัวเดียว**
+> Task Scheduler รันมันด้วย `powershell.exe` — Windows PowerShell 5.1 — ซึ่งอ่าน
+> ไฟล์ที่ไม่มี BOM เป็น ANSI `scripts/backup.ps1` มีข้อความไทยอยู่ข้างใน จึงต้อง
+> พึ่ง BOM ของมันตลอดไป และวันที่โปรแกรมแก้ไขไฟล์ตัวหนึ่ง "เก็บกวาด" BOM ทิ้ง
+> parser ก็พังที่บรรทัด 65 แล้วงานออกด้วยรหัส 1 **ก่อนถึงบรรทัด log แรก** ไฟล์นี้
+> เลี่ยงทั้งกองด้วยการไม่มีอะไรให้เข้ารหัสผิด — ภาษาไทยอยู่ในหัวข้อนี้ ซึ่งไม่มีอะไร
+> ต้อง parse มัน
+>
+> กฎนี้กับกฎ BOM ของ `scripts/backup.ps1` ถูกบังคับด้วย
+> `test/scriptEncoding.test.js` — ทุกไฟล์ `.ps1` ใน `scripts/` ต้อง**อย่างใดอย่างหนึ่ง**
+> คือมี BOM หรือเป็น ASCII ล้วน และมีอีกสองเคสระบุว่าไฟล์ไหนเลือกทางไหนอยู่ตอนนี้
+> การเปลี่ยนทางจึงต้องเป็นการแก้เทสต์โดยตั้งใจ ไม่ใช่สิ่งที่บังเอิญยังผ่าน
+
+#### ทำไมเรียก `node` ตรง ๆ ไม่ใช่ `npm start`
+
+`npm start` ในไฟล์ `package.json` คือ `next start -p 3000` — ปลายทางเดียวกันเป๊ะ
+แต่ทางที่ไปถึงต่างกัน: Task Scheduler จะต้องเรียก `npm.cmd` ซึ่งเป็นแบตช์ไฟล์ มันเปิด
+`cmd.exe` แล้ว `cmd.exe` เปิด `node` อีกที กลายเป็นสองชั้นระหว่างงานกับเซิร์ฟเวอร์
+และทั้งสองชั้นนั้นทำสามอย่างพัง — **สั่งหยุดงานแล้วลูกหลุด** (ฆ่าตัวห่อ node
+ยังถือพอร์ต 3000 อยู่) · **รหัสออกถูกเขียนทับ** npm รายงานรหัสของตัวเองพร้อมกล่อง
+ข้อความของมัน ซึ่งคือสัญญาณที่ตัวตั้ง restart ใช้ตัดสิน · และ **ต้องพึ่ง PATH**
+ให้หา `npm.cmd` เจอในบริบทที่ไม่ใช่ของคนล็อกอิน
+
+`node .next\standalone\server.js` **ไม่ใช่ทางเลือกในตอนนี้** — `next.config.js`
+ไม่ได้ตั้ง `output: 'standalone'` โฟลเดอร์นั้นจึงไม่มีอยู่หลัง `npm run build`
+(ตรวจแล้ว 2026-08-25) จะใช้ต้องเปลี่ยนวิธี build ก่อน ซึ่งไม่จำเป็นสำหรับเครื่องนี้
+
+ตัวห่อ PowerShell เองก็เป็นหนึ่งชั้นเหมือนกัน ต่างกันตรงที่มันมีอยู่เพื่อทำสองอย่างที่
+npm ทำพัง — เปลี่ยนทางเดินของ log และส่งต่อรหัสออกของลูก — และมันเป็นแบบเดียวกับ
+`scripts/backup.ps1` ที่ตั้งสำเร็จมาแล้วบนเครื่องนี้
+
+#### log อยู่ที่ไหน
+
+ทั้งสามไฟล์อยู่ในโฟลเดอร์ `logs\` ของ repo (ถูก `.gitignore` คลุมด้วย `*.log`)
+
+| ไฟล์ | มีอะไร |
+|---|---|
+| `logs\task.log` | บรรทัดละเหตุการณ์ — เริ่มเมื่อไหร่ ตายเมื่อไหร่ ด้วยรหัสอะไร ต่อท้ายเรื่อย ๆ ไม่เคยล้าง **นี่คือไฟล์ที่ตอบว่า "มันรีสตาร์ตตอนไหน"** |
+| `logs\server.log` | ทุกอย่างที่แอปพิมพ์ออก stdout ของรอบที่กำลังรัน |
+| `logs\server.err.log` | ทุกอย่างที่แอปพิมพ์ออก stderr ของรอบที่กำลังรัน |
+
+สองไฟล์หลังถูกย้ายเป็น `server.prev.log` / `server.err.prev.log` ทุกครั้งที่เริ่มใหม่
+— รอบที่ตายกับรอบที่มาแทนจึงอยู่ข้างกัน ไม่ใช่ทับกัน ซึ่งเป็นสิ่งเดียวที่ตอบได้ว่า
+“มันตายเพราะอะไร” หลังจากการรีสตาร์ตเขียนทับไฟล์สดไปแล้ว
+
+#### คำสั่งลงทะเบียน — รันหนึ่งครั้ง
+
+ทดสอบด้วยมือก่อนหนึ่งรอบเสมอ และทดสอบด้วย `powershell.exe` ไม่ใช่ `pwsh` — ตัวที่
+Task Scheduler ใช้คือ 5.1
+
+```powershell
+# ถ้าพอร์ต 3000 ว่าง คำสั่งนี้จะยึดหน้าจอไว้และเสิร์ฟจริง (Ctrl+C เพื่อหยุด)
+# ถ้าไม่ว่าง มันจะบอกว่าใครถืออยู่แล้วออกด้วย 0 — ทั้งสองทางคือคำตอบที่ถูก
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File "C:\Users\suwan\Documents\OT_HR\scripts\start-server.ps1"
+```
+
+```powershell
+$repo = 'C:\Users\suwan\Documents\OT_HR'
+
+# -WindowStyle Hidden เพราะ LogonType Interactive จะเปิดหน้าต่างคอนโซลค้างไว้บน
+# เดสก์ท็อปทั้งวัน และหน้าต่างที่ปิดได้ด้วยการเผลอกดคือเซิร์ฟเวอร์ที่ปิดได้ด้วย
+# การเผลอกด · -WorkingDirectory เพราะ Task Scheduler เริ่มงานที่ C:\Windows\System32
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}\scripts\start-server.ps1" -Port 3000' -f $repo) `
+  -WorkingDirectory $repo
+
+# หน่วง 30 วินาที ให้บริการ MongoDB (StartType Automatic) ตั้งตัวก่อน
+$trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+$trigger.Delay = 'PT30S'
+
+# RestartCount/RestartInterval = ถ้าโปรเซสตายเอง ให้ลองใหม่ทุก 1 นาที (ต่ำสุดที่
+# Windows ยอม) จนกว่าจะขึ้น · ทั้งคู่ต้องใส่คู่กัน ใส่ตัวเดียวคำสั่งจะ error
+$settings = New-ScheduledTaskSettingsSet `
+  -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+  -StartWhenAvailable -MultipleInstances IgnoreNew `
+  -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
+
+# ตั้งเป็น property หลังสร้าง ไม่ใช่ผ่านพารามิเตอร์ — ค่า 0 คือ "ไม่จำกัดเวลา"
+# ค่าตั้งต้นคือ 72 ชั่วโมง ซึ่งแปลว่าวันหนึ่ง Windows จะฆ่าเซิร์ฟเวอร์ทิ้งเฉย ๆ
+$settings.ExecutionTimeLimit = 'PT0S'
+# ไม่ให้ถูกหยุดตอนเครื่องเลิก idle
+$settings.IdleSettings.StopOnIdleEnd = $false
+
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME `
+  -LogonType Interactive -RunLevel Limited
+
+Register-ScheduledTask -TaskName 'OT server' `
+  -Action $action -Trigger $trigger -Settings $settings -Principal $principal `
+  -Description 'เสิร์ฟระบบ OT ที่พอร์ต 3000 ตอนล็อกอิน และเริ่มใหม่เองถ้าโปรเซสตาย — log อยู่ที่ logs\task.log' `
+  -Force
+```
+
+#### ยืนยันว่าใช้ได้จริง — สามข้อ
+
+ก่อนเริ่ม ให้ปิดเซิร์ฟเวอร์ที่สั่งเริ่มด้วยมือไว้ก่อน มิฉะนั้นตัวห่อจะเจอพอร์ตไม่ว่าง
+แล้วออกด้วย 0 อย่างถูกต้อง — และงานจะขึ้นว่า `Ready` ไม่ใช่ `Running` ซึ่งอ่านแล้ว
+เหมือนล้มเหลวทั้งที่ไม่ใช่
+
+```powershell
+# 1) ล็อกออฟแล้วล็อกอินใหม่ — รอ 40 วินาที (หน่วง 30 วิ + เวลาบูตแอป)
+Get-ScheduledTask     -TaskName 'OT server' | Select-Object State          # Running
+Get-ScheduledTaskInfo -TaskName 'OT server' | Select-Object LastRunTime, LastTaskResult
+Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object OwningProcess
+(Invoke-WebRequest http://127.0.0.1:3000/api/health -UseBasicParsing).StatusCode   # 200
+```
+
+`LastTaskResult` เป็น **267009** คือ "กำลังทำงานอยู่" ไม่ใช่ error — เป็นค่าที่ถูก
+สำหรับงานแบบนี้ ส่วน **267011** แปลว่ายังไม่เคยรัน และ **0** บนงานนี้แปลว่ามัน
+*จบไปแล้ว* ซึ่งบนงานที่ควรรันค้างไว้คือสิ่งที่ต้องไปอ่าน `logs\task.log`
+
+```powershell
+# 2) ฆ่าโปรเซสแล้วมันต้องกลับมาเอง — รอถึงหนึ่งนาทีเต็ม (RestartInterval)
+Get-NetTCPConnection -LocalPort 3000 -State Listen |
+  ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+Start-Sleep -Seconds 90
+Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object OwningProcess
+Get-Content logs\task.log -Tail 4
+```
+
+ใน `logs\task.log` ต้องเห็นสองบรรทัดติดกัน — `server exited with code ...` แล้วตาม
+ด้วย `starting: ...` ที่เวลาใหม่ ถ้าเห็นบรรทัดแรกแต่ไม่เห็นบรรทัดที่สอง แปลว่างาน
+ไม่ได้ตั้ง restart ไว้ ให้ตรวจ `RestartCount` ด้วย
+`(Get-ScheduledTask -TaskName 'OT server').Settings`
+
+```powershell
+# 3) รีสตาร์ตเครื่อง แล้วล็อกอิน — รอ 1 นาที
+Get-ScheduledTaskInfo -TaskName 'OT server' | Select-Object LastRunTime, LastTaskResult
+Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object OwningProcess
+Get-Content logs\task.log -Tail 3
+```
+
+สิ่งที่ต้องดูคือ **บรรทัด `starting:` ใน `logs\task.log` ที่มีเวลาหลังการรีสตาร์ต** —
+ไม่ใช่แค่พอร์ตเปิด เพราะพอร์ตที่เปิดอยู่อาจเป็นของโปรเซสที่ใครสั่งเริ่มด้วยมือก็ได้
+`LastRunTime` ที่เป็นเวลาหลังบูตคือคำยืนยันอีกทาง
+
+> ⚠️ **ทริกเกอร์คือ "ตอนล็อกอิน" ไม่ใช่ "ตอนเปิดเครื่อง"** เครื่องนี้ไม่ได้ตั้ง
+> auto-logon (ตรวจแล้ว 2026-08-25) ถ้ารีสตาร์ตแล้วทิ้งไว้ที่หน้าจอล็อกอิน แอปจะยัง
+> ไม่ขึ้นจนกว่าจะมีคนล็อกอินเป็น `suwan` — ล็อกหน้าจอทีหลังได้ ไม่กระทบ
+>
+> ถ้าต้องการให้ขึ้นตั้งแต่บูตโดยไม่มีใครล็อกอิน ต้องเปลี่ยน principal เป็น
+> `-LogonType S4U` (หรือ Password) แล้วเพิ่มทริกเกอร์ `-AtStartup` — ซึ่ง**ต้องรัน
+> คำสั่งในหน้าต่างที่ Run as administrator** บัญชี `suwan` ไม่ได้อยู่ในกลุ่ม
+> Administrators (ตรวจแล้ว 2026-08-25) จึงเป็นการตัดสินใจแยกอีกเรื่องหนึ่ง
+
+#### เช็คว่าแอปยังอยู่ไหม — และเริ่มใหม่ด้วยมือ
+
+```powershell
+cd C:\Users\suwan\Documents\OT_HR
+
+# ยังอยู่ไหม
+Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object OwningProcess
+(Invoke-WebRequest http://127.0.0.1:3000/api/health -UseBasicParsing).StatusCode
+Get-Content logs\task.log -Tail 5
+
+# เริ่มใหม่ — ทางที่ควรใช้ก่อน
+Start-ScheduledTask -TaskName 'OT server'
+
+# เริ่มใหม่ด้วยมือล้วน ๆ (ถ้างานตามตารางมีปัญหา) — หน้าต่างนี้ต้องเปิดค้างไว้
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File "C:\Users\suwan\Documents\OT_HR\scripts\start-server.ps1"
+
+# หยุด — ต้องสองบรรทัด
+Stop-ScheduledTask -TaskName 'OT server'
+Get-NetTCPConnection -LocalPort 3000 -State Listen |
+  ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+**ทำไมการหยุดต้องสองบรรทัด** `Stop-ScheduledTask` ฆ่าตัวห่อ PowerShell และ `node`
+ที่เป็นลูกของมันอาจรอดมาเป็นโปรเซสกำพร้าที่ยังเสิร์ฟอยู่ ซึ่ง**ไม่ใช่เรื่องร้ายแรง**
+— แอปยังทำงาน เพียงแต่ Task Scheduler จะขึ้นว่าไม่ได้รัน และตัวห่อรอบหน้าจะเจอ
+พอร์ตไม่ว่างแล้วออกด้วย 0 อย่างสงบ แต่ถ้าตั้งใจจะหยุดจริง ๆ ต้องฆ่าตามพอร์ตด้วย
+
+**เอาโค้ดใหม่ขึ้น ต้องหยุดก่อน build** `next start` ถือ `BUILD_ID` ที่มันบูตมา ดังนั้น
+`npm run build` ทับข้างใต้เซิร์ฟเวอร์ที่รันอยู่จะทำให้ทุกหน้าที่เปิดค้างไว้ขอไฟล์ที่
+ไม่มีแล้ว (500 จนกว่าจะรีสตาร์ต) และบน Windows โปรเซสที่รันอยู่ยังจับไฟล์ใน `.next`
+ไว้ด้วย ลำดับที่ถูกคือ **หยุด → `npm run build` → `Start-ScheduledTask`**
+ระหว่างนั้นแอปดับราวหนึ่งนาที
 
 ## สำรองและกู้คืนข้อมูล
 
@@ -183,7 +380,8 @@ index ถูกเก็บและสร้างคืน การลบ col
 > ใครจะไปหาสาเหตุจึงว่างเปล่า นี่คือวิธีที่เรื่องนี้ถูกพบเมื่อ 2026-08-18 — สคริปต์
 > ถูกทดสอบด้วย `pwsh` 7 เท่านั้น ซึ่งใช้ UTF-8 เป็นค่าตั้งต้น และเนื้อหาส่วนนี้ที่
 > พิมพ์อยู่เหนือมันไม่เคยทำงานได้จริงเลย โปรแกรมแก้ไขไฟล์ที่ "เก็บกวาด" BOM ทิ้ง
-> จะทำให้มันพังซ้ำแบบเงียบ ๆ
+> จะทำให้มันพังซ้ำแบบเงียบ ๆ — ตั้งแต่ 2026-08-25 `test/scriptEncoding.test.js`
+> จะจับได้ก่อนถึง Task Scheduler
 
 ```powershell
 # ทดสอบด้วยมือก่อนหนึ่งรอบเสมอ — ต้องได้ exit code 0
@@ -798,7 +996,7 @@ lib/complianceExport.js   which six events count as the exercise of a
 lib/complianceQuery.js    the four reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     100 files, run by `npm test`. Six named below as a
+test/                     101 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -811,8 +1009,8 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1641 tests
-across 100 files**, measured 2026-08-25 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **1646 tests
+across 101 files**, measured 2026-08-25 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 
 That is also why it stays fast: the suite finishes in **about 2 s**, which is a
@@ -2484,11 +2682,14 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1641/1641 pass in about 2 s**, measured 2026-08-25 across 100
-  files. It read "1638" earlier the same day, "1601" before that, and "1386
-  across 86 files, 2026-08-24" before that; the last three are the cases in
+- `npm test` — **1646/1646 pass in about 2 s**, measured 2026-08-25 across 101
+  files. It read "1641", "1638" and "1601" earlier the same day, and "1386
+  across 86 files, 2026-08-24" before that. The newest five are
+  `test/scriptEncoding.test.js`, which holds the two 🔴 rules in §Setup about
+  how a PowerShell script Task Scheduler runs has to be encoded — the file that
+  is the whole of the 101st. The three before them are the cases in
   `test/hrMonthCards.test.js` that pin what ตรวจสอบรายเดือน says under its total
-  card on a phone, and the three before them the wiring cases in
+  card on a phone, and the three before those the wiring cases in
   `test/replayPeriodLock.test.js` described under `settings/recompute` below.
   The earlier count was cross-checked three ways that agreed exactly: the runner's own
   total, the sum of running each file separately, and a count of the ✔ lines.
@@ -2563,6 +2764,21 @@ four role UIs.
   The traced-output cost the warning names is nothing here, where `next start`
   serves out of the repository it was built in and every source file is on the
   disk already. **One warning is the expected count; a second is new.**
+- `scripts/start-server.ps1` — **both paths walked by hand 2026-08-25**, with
+  `powershell.exe` 5.1 rather than `pwsh`, because 5.1 is what Task Scheduler
+  runs. Against the live :3000 it reported the port already held and exited
+  **0**; started on :3001 it served a real page, wrote `logs/server.log` and a
+  `starting:` line to `logs/task.log`, and when that server was force-killed it
+  logged the exit and returned **1** — the failure signal the task's restart
+  setting reads. The file is pure ASCII and is checked to stay that way, so it
+  cannot repeat the BOM failure that once made `scripts/backup.ps1` exit 1
+  before its first log line.
+  ⚠ **The scheduled task itself is a separate step and this line does not claim
+  it is registered.** The command is in
+  [ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน](#ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน--task-scheduler),
+  along with the three checks that prove it — logon, kill, reboot — and none of
+  the three is verified here. As of 2026-08-25 the server on :3000 is still a
+  process started by hand, which is exactly the state the task exists to end.
 - `npm audit --omit=dev` — **1 high**, read 2026-08-24. `nanoid@3.3.17` wants
   `<3.3.18`, reached through `next@16.3.0 → postcss@8.5.23`; a fix is
   available. This line read "0 vulnerabilities" until then. Nothing under
