@@ -3097,6 +3097,46 @@ td > .approver-line { margin-top: 5px; }
 }
 .notice-fold > summary:hover { opacity: 1; }
 .notice-fold[open] > summary { opacity: 1; }
+
+/* ══ …AND A SUMMARY THAT SAYS WHICH WAY IT GOES ══════════════════════════
+
+   "รายละเอียด" beside a marker names the CONTENTS. Shut, the thing to say is
+   the act — ดูรายละเอียด — and open, the act is the other one, ซ่อนรายละเอียด.
+   Both are in the markup and `[open]` picks one; nothing here is state, which
+   is the whole reason this is a `<details>` (see above).
+
+   KEYED OFF THE SPANS, NOT OFF A NEW CLASS. PrintFormBatch's digest uses the
+   same `.notice-fold` with a plain-text summary, and it is not part of what was
+   asked for — a rule that reached it would change a screen nobody was looking
+   at. A summary with no `.fold-shut` inside it is untouched by every rule
+   below.
+
+   The marker stays the browser's, as the block above says: it already turns
+   from ▸ to ▾ and is themed by the panel's own ink, and a second chevron drawn
+   here would be one more thing to keep in step for no gain. */
+.notice-fold > summary > .fold-open { display: none; }
+.notice-fold[open] > summary > .fold-shut { display: none; }
+.notice-fold[open] > summary > .fold-open { display: inline; }
+
+/* A PRESS TARGET, because that is what it is. As bold 12px text it was a
+   17px-tall line of writing that happened to be clickable, in an app where
+   every other decision control is a 44px box on a phone. `:has()` keeps it to
+   the summaries that carry the two labels. */
+.notice-fold > summary:has(> .fold-shut) {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 8px; padding: 6px 12px;
+  border: 1px solid currentColor; border-radius: 999px;
+  /* `currentColor` at .35 for the line and nothing for the fill: the panel is
+     already tinted, and a second fill inside it reads as a nested box. Both
+     inherit the alert's ink, so this works in blue and in amber alike without
+     knowing which one it is in — the same trick the opacity above uses. */
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+.notice-fold > summary:has(> .fold-shut):hover {
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
 .notice-fold-group { margin-top: 6px; }
 .notice-fold-group > .k {
   font: 600 11.5px/1.5 var(--sans); letter-spacing: .04em; opacity: .8;
@@ -7006,6 +7046,21 @@ table.mini tbody tr:hover { background: none; }
   .month-card { display: flex; flex-direction: column; }
   .month-card > .month-notes { order: 1; margin-top: 12px; }
   .month-card > .month-notes > :first-child { margin-top: 0; }
+  /* All three notes are conditional and the อนุมัติชั้นเดียว one moved out to
+     the top of the card, so an ordinary month leaves this wrapper with no
+     children at all — a flex item carrying 12px of margin and nothing else,
+     between วันเกิดของเดือนนี้ and the foot of the card. */
+  .month-card > .month-notes:empty { display: none; }
+
+  /* 31px is a pill that reads as a control and is still not one to a thumb.
+     44px is what every other decision button on this screen is at this width —
+     see `.hr-table tbody td.act-col .row-actions .btn` — and a disclosure the
+     month's one unaccountable figure is folded behind is not the place to be
+     the exception. Only the labelled summary: PrintFormBatch's digest is a
+     different screen and was not part of this. */
+  .notice-fold > summary:has(> .fold-shut) {
+    min-height: 44px; padding: 6px 16px;
+  }
 
   .acct-table :is(th, td).who-col,
   .allco-table :is(th, td).who-col { max-width: 112px; }

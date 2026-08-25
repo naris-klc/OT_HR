@@ -1009,7 +1009,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1649 tests
+and the engine know nothing about Next.js, so the whole suite — **1651 tests
 across 101 files**, measured 2026-08-25 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 
@@ -1584,16 +1584,42 @@ What the entry carries is the truth about that:
 * the chip **HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว** wherever the row appears, amber
   and distinct from the blue *บันทึกแทน* — both mean "somebody else typed this",
   only this one also means an approval a reader assumes happened did not.
-* on the หัวหน้า's **สรุปทีม**: a per-person count in the row, and under the
-  table one blue notice — *"มี 1 รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — ติดป้าย
-  HR ตรวจสแกนนิ้ว"* — with **รายละเอียด** folded under it: no หัวหน้า signature,
+* on the หัวหน้า's **สรุปทีม**: a per-person count in the row, and **at the top
+  of the card, directly under the policy banner and above the search box**, one
+  blue notice — *"มี 1 รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — ติดป้าย HR
+  ตรวจสแกนนิ้ว"* — with the rest behind **ดูรายละเอียด**: no หัวหน้า signature,
   an empty signature box in the history, and where to find the rows. Their team's
   hours went up while their queue never rang; that is the one figure on the page
-  they could not otherwise account for. It read "a line above the table" until
-  2026-08-25, and the line was four sentences of grey below it: on a phone that
-  is seven lines between the month's total and วันเกิดของเดือนนี้, which is the
-  shape of text a reader scrolls past. `test/hrMonthCards.test.js` pins the count
-  and the chip's name to the visible line and the rest to the fold.
+  they could not otherwise account for.
+
+  Two things about it were wrong for as long as it existed, and the second hid
+  the first. It read "a line above the table" until 2026-08-25 and the line was
+  four sentences of grey **below** it — on a phone, seven lines of `--muted-2`
+  between the month's total and วันเกิดของเดือนนี้, which is the shape of text a
+  reader scrolls past. Folding it that morning left one line, and left it where
+  it was: **under the table**, while the comment above it in the source had said
+  "above the marks it explains" the whole time. The marks are the per-row
+  *HR อนุมัติชั้นเดียว n* and the chip on the rows themselves, and a reader who
+  has finished the rows has finished asking. So it moved to the top of the card
+  the same day, on the argument that already put `PolicyVersionBanner` there:
+  what warns about the figures goes above the figures. Above the search box and
+  not between it and the list — the box's own rule is that the thing it filters
+  starts directly underneath it, and this notice is the month's, not the
+  search's.
+
+  The fold is a `<details>` and carries no state, so a month reloading
+  underneath it cannot leave an open flag describing a month that has gone. The
+  summary says the **act** rather than the contents — *ดูรายละเอียด* shut,
+  *ซ่อนรายละเอียด* open, both in the markup with `[open]` picking one — and it
+  is a 44px pill on a phone, because a bold 12px line that happens to be
+  clickable is not a control. The panel also takes the **✕** `Alert` already
+  offers: dismissing it is *"I have read this one"*, and it comes back unread on
+  a new **ประจำเดือน** or a new **สถานะที่นับ**, either of which can change the
+  count it is quoting. Not on the search box, which narrows what is drawn out of
+  a month that has not changed. Closing it never touches the rows' own chips.
+  `test/hrMonthCards.test.js` pins the count and the chip's name to the visible
+  line, the rest to the fold, the position to above the search box, and the
+  dismissal to those two dependencies.
 
 `submit_hr_verified` is deliberately **not** in `SYSTEM_FILED_ACTIONS`. That list
 means *no form was filled in*; here a person read a clock record and typed two
@@ -2718,11 +2744,14 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1649/1649 pass in about 2 s**, measured 2026-08-25 across 101
-  files. It read "1646", "1641", "1638" and "1601" earlier the same day, and
-  "1386 across 86 files, 2026-08-24" before that. The newest three are the
-  cases in `test/hrMonthCards.test.js` that pin the phone's ห้าการ์ดก่อน fold
-  described under ตรวจสอบรายเดือน below — no new file, so the 101 did not move.
+- `npm test` — **1651/1651 pass in about 2 s**, measured 2026-08-25 across 101
+  files. It read "1649", "1646", "1641", "1638" and "1601" earlier the same day,
+  and "1386 across 86 files, 2026-08-24" before that. The newest two are the
+  cases in `test/hrMonthCards.test.js` that pin where the อนุมัติชั้นเดียว
+  notice sits and what its ✕ is allowed to outlive — §"One signature, and the
+  trail says so" above. The three before them are in the same file and pin the
+  phone's ห้าการ์ดก่อน fold described under ตรวจสอบรายเดือน below — no new file
+  either time, so the 101 did not move.
   Before them was `test/scriptEncoding.test.js`, which holds the two 🔴 rules in
   §Setup about how a PowerShell script Task Scheduler runs has to be encoded —
   the file that is the whole of the 101st. The three before that are the cases

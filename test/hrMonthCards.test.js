@@ -212,14 +212,13 @@ test('the raw-hours summary is not the total card said twice', () => {
   assert.match(hrView, /สรุปสำหรับฝ่ายบุคคล \(คูณอัตราแล้ว\)/);
 });
 
+const NOTICE = '{data.hrVerifiedCount > 0 && !noticeShut && (';
+
 test('the one-signature notice is one line, with the rest one tap away', () => {
-  const note = hrView.slice(
-    hrView.indexOf('{data.hrVerifiedCount > 0 && ('),
-    hrView.indexOf('{data.supersededCount > 0 && ('),
-  );
+  const note = hrView.slice(hrView.indexOf(NOTICE), hrView.indexOf('<div className="row month-find">'));
   // INFO and not amber: nothing here is wrong. What it is, is the one figure a
   // หัวหน้า could not otherwise account for.
-  assert.match(note, /<Alert kind="info" tight>/);
+  assert.match(note, /<Alert kind="info" tight onClose=/);
   // The count and the chip's own name — that is the whole of the line.
   assert.match(note, /อนุมัติชั้นเดียว/);
   assert.match(note, /HR ตรวจสแกนนิ้ว/);
@@ -231,6 +230,55 @@ test('the one-signature notice is one line, with the rest one tap away', () => {
   assert.match(fold, /ไม่ได้ผ่านการอนุมัติของหัวหน้างาน/);
   assert.match(fold, /ดู \/ แก้ไขรายการ/);
   assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrView), 'the layout is the stylesheet’s to decide');
+});
+
+test('the notice is above the marks it explains, which it once only claimed', () => {
+  // The marks are the per-row `HR อนุมัติชั้นเดียว n` under รายการ and the chip
+  // on the rows themselves. This sentence spent its life below the month's
+  // total — on a phone, below วันเกิดของเดือนนี้ as well — where a reader who
+  // has finished the rows has finished asking.
+  const notice = hrView.indexOf(NOTICE);
+  assert.ok(notice > 0, 'the notice block was not found');
+  // Under the policy banner, on the same argument that put THAT above the table.
+  assert.ok(hrView.indexOf('<PolicyVersionBanner') < notice, 'the notice jumped the policy banner');
+  // ABOVE the search box, not between it and the list: the box’s own rule is
+  // that the thing it filters starts directly underneath it, and this notice is
+  // the month’s, not the search’s.
+  assert.ok(notice < hrView.indexOf('<div className="row month-find">'), 'the notice split the search box from its list');
+  assert.ok(notice < hrView.indexOf('<table className="hr-table">'), 'the notice is still under the table');
+  // And it is out of the footnote wrapper it used to live in.
+  const open = hrView.indexOf('<div className="month-notes">');
+  assert.ok(!hrView.slice(open, hrView.indexOf('</>', open)).includes('hrVerifiedCount'), 'the notice is still a footnote');
+  // Which can now leave that wrapper with no children at all.
+  assert.match(phone, /\.month-card > \.month-notes:empty \{ display: none; \}/);
+});
+
+test('the fold says which way it goes, and the ✕ cannot outlive its month', () => {
+  const note = hrView.slice(hrView.indexOf(NOTICE), hrView.indexOf('<div className="row month-find">'));
+  // "รายละเอียด" beside a marker names the contents. Shut and open, the thing
+  // to say is the act.
+  assert.match(note, /<span className="fold-shut">ดูรายละเอียด<\/span>/);
+  assert.match(note, /<span className="fold-open">ซ่อนรายละเอียด<\/span>/);
+  // Both in the markup, `[open]` picks one — no state, which is the whole
+  // reason this is a `<details>`.
+  assert.match(css, /\.notice-fold > summary > \.fold-open \{ display: none; \}/);
+  assert.match(css, /\.notice-fold\[open\] > summary > \.fold-shut \{ display: none; \}/);
+  // Keyed off the spans so PrintFormBatch's digest — same class, plain-text
+  // summary — is left exactly as it was.
+  assert.match(css, /\.notice-fold > summary:has\(> \.fold-shut\) \{/);
+  assert.ok(
+    !/notice-fold > summary:has/.test(read('components/PrintFormBatch.jsx')),
+    'the digest was never meant to be part of this',
+  );
+  assert.ok(!read('components/PrintFormBatch.jsx').includes('fold-shut'), 'the two-label summary leaked to the digest');
+
+  // ✕ IS THE COMPONENT'S OWN, not a second dismiss control invented here.
+  assert.match(hrView, /onClose=\{\(\) => setNoticeShut\(true\)\}/);
+  // Back on a new period or a new สถานะที่นับ — either can change the count
+  // this box is quoting, and a dismissal that survived that is exactly what
+  // this notice exists to prevent. NOT on `find`: the search narrows what is
+  // drawn out of a month that has not changed.
+  assert.match(hrView, /useEffect\(\(\) => \{ setNoticeShut\(false\); \}, \[period, statusFilter\]\);/);
 });
 
 test('the phone puts วันเกิดของเดือนนี้ under the total and the footnotes after it', () => {

@@ -123,6 +123,25 @@ export default function HrView({
   const [showAll, setShowAll] = useState(false);
   useEffect(() => { setShowAll(false); }, [period, statusFilter, find]);
 
+  /**
+   * ✕ on the อนุมัติชั้นเดียว notice — "I have read this one".
+   *
+   * NOT on `find`, unlike the fold above it: the search box narrows what is
+   * drawn out of a month that has not changed, and a notice about that month is
+   * still about that month. A new period or a new สถานะที่นับ is a different
+   * month, or the same month counted differently, and either can change the
+   * count this box is quoting — so it comes back, unread, and says the new
+   * figure. A dismissal that survived that would be the one thing this notice
+   * exists to prevent: a หัวหน้า looking at hours they cannot account for with
+   * the explanation already dismissed on their behalf.
+   *
+   * It is deliberately not remembered past this screen either. The rows keep
+   * their own chips whatever happens here — closing this hides the sentence,
+   * never the mark.
+   */
+  const [noticeShut, setNoticeShut] = useState(false);
+  useEffect(() => { setNoticeShut(false); }, [period, statusFilter]);
+
   // The whole table as one document, or one row of it — the same sheet either
   // way. The list is captured into state when the button is pressed rather than
   // read from `data` while printing, so a reload underneath cannot renumber the
@@ -290,6 +309,73 @@ export default function HrView({
                 total at the bottom of it, and a reviewer who has started
                 reading rows has already begun trusting them. */}
             <PolicyVersionBanner spread={data.policy} />
+
+            {/*
+              Said once, ABOVE THE MARKS IT EXPLAINS — which is what it now
+              actually does.
+
+              A หัวหน้า opening สรุปทีม is the reason this exists: their team's
+              hours went up and their queue never rang, because ฝ่ายบุคคล settled
+              a birthday from the scan record in one act. Left unexplained that
+              is a discrepancy they cannot resolve from any screen they have —
+              the entry is `approved` and was never in their queue to remember.
+              Nothing here is wrong, which is why it is INFO and not the amber of
+              a warning; what it is, is the one thing on the page they could not
+              have known.
+
+              IT SPENT ITS WHOLE LIFE UNDER THE TABLE, and the sentence above it
+              in the source has said "above the marks it explains" the entire
+              time. It was not: the marks are the per-row *HR อนุมัติชั้นเดียว n*
+              under the รายการ column and the chip on the rows themselves, and
+              the explanation sat past the month's total — on a phone, past
+              วันเกิดของเดือนนี้ as well. A reader who has finished the rows has
+              finished asking. So it is here, on the same argument
+              `PolicyVersionBanner` is here on and directly under it: what warns
+              about the figures goes above the figures.
+
+              ABOVE THE SEARCH BOX, not between it and the list. The box's own
+              rule is that the thing it filters starts directly underneath it on
+              both layouts, and this notice is not filtered by it — it is the
+              month's, like the policy banner it now sits with.
+
+              FOUR LINES OF GREY BECAME ONE LINE AND A FOLD. All four sentences
+              were true and only the first was ever read: on a 375px screen the
+              paragraph ran to seven lines of `--muted-2`. The count and the
+              chip's own name are what turn a figure somebody cannot account for
+              into one they can — the rest is what they need AFTER that, and it
+              is one tap away rather than permanently in the way.
+
+              `<details>` and not state, for the reason PrintFormBatch's digest
+              gives: the month reloads underneath this whenever the period or
+              สถานะที่นับ changes, and an open flag in state is a thing that can
+              end up describing a month that is no longer on screen. The summary
+              says which way it goes in words — ดูรายละเอียด closed,
+              ซ่อนรายละเอียด open — because a bare "รายละเอียด" beside a marker
+              names the contents and not the act.
+            */}
+            {data.hrVerifiedCount > 0 && !noticeShut && (
+              <Alert kind="info" tight onClose={() => setNoticeShut(true)}>
+                {`มี ${data.hrVerifiedCount} รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว`}
+                {' '}— ติดป้าย “HR ตรวจสแกนนิ้ว”
+                <details className="notice-fold">
+                  {/* Two labels, one shown at a time by `[open]` in the
+                      stylesheet. The spans are also what the pill styling keys
+                      off, so PrintFormBatch's digest — same class, plain text
+                      summary — is left exactly as it was. */}
+                  <summary>
+                    <span className="fold-shut">ดูรายละเอียด</span>
+                    <span className="fold-open">ซ่อนรายละเอียด</span>
+                  </summary>
+                  <div>
+                    เป็นรายการวันเกิดที่ฝ่ายบุคคลบันทึกและอนุมัติในขั้นตอนเดียว
+                    {' '}โดยตรวจเวลาเข้า-ออกจากบันทึกสแกนนิ้ว ·
+                    {' '}<strong>ไม่ได้ผ่านการอนุมัติของหัวหน้างาน</strong>
+                    {' '}และช่องลายเซ็นหัวหน้าในประวัติรายการจะว่างไว้ตามจริง ·
+                    {' '}เปิด “ดู / แก้ไขรายการ” ของพนักงานเพื่อดูว่าเป็นรายการใด
+                  </div>
+                </details>
+              </Alert>
+            )}
 
             {/* AT THE TOP OF THE LIST, above the first card and above the
                 table's own heading row — the thing it filters starts directly
@@ -608,51 +694,11 @@ export default function HrView({
               these underneath it. See `.month-card` in app/styles.css: the
               order is the stylesheet's, the markup is one.
             */}
+            {/* `:empty` in the stylesheet hides this wrapper on the months where
+                none of the three notes below applies — it is a flex item with a
+                12px margin, and an empty one is 12px of nothing between the
+                birthdays and the foot of the card. */}
             <div className="month-notes">
-              {/*
-                Said once, above the marks it explains, and worded for whoever is
-                reading it.
-
-                A หัวหน้า opening สรุปทีม is the reason this exists: their team's
-                hours went up and their queue never rang, because ฝ่ายบุคคล settled
-                a birthday from the scan record in one act. Left unexplained that
-                is a discrepancy they cannot resolve from any screen they have —
-                the entry is `approved` and was never in their queue to remember.
-                Nothing here is wrong, which is why it is INFO and not the amber
-                of a warning; what it is, is the one thing on the page they could
-                not have known.
-
-                FOUR LINES OF GREY BECAME ONE LINE AND A FOLD. All four sentences
-                were true and only the first was ever read: on a 375px screen the
-                paragraph ran to seven lines of `--muted-2` between the month's
-                total and วันเกิดของเดือนนี้, which is the shape of text a reader
-                scrolls past. The count and the chip's own name are what turn a
-                figure somebody cannot account for into one they can — the rest
-                is what they need AFTER that, and it is one tap away rather than
-                permanently in the way.
-
-                `<details>` and not state, for the reason PrintFormBatch's digest
-                gives: the month reloads underneath this whenever the period or
-                สถานะที่นับ changes, and an open flag in state is a thing that can
-                end up describing a month that is no longer on screen.
-              */}
-              {data.hrVerifiedCount > 0 && (
-                <Alert kind="info" tight>
-                  {`มี ${data.hrVerifiedCount} รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว`}
-                  {' '}— ติดป้าย “HR ตรวจสแกนนิ้ว”
-                  <details className="notice-fold">
-                    <summary>รายละเอียด</summary>
-                    <div>
-                      เป็นรายการวันเกิดที่ฝ่ายบุคคลบันทึกและอนุมัติในขั้นตอนเดียว
-                      {' '}โดยตรวจเวลาเข้า-ออกจากบันทึกสแกนนิ้ว ·
-                      {' '}<strong>ไม่ได้ผ่านการอนุมัติของหัวหน้างาน</strong>
-                      {' '}และช่องลายเซ็นหัวหน้าในประวัติรายการจะว่างไว้ตามจริง ·
-                      {' '}เปิด “ดู / แก้ไขรายการ” ของพนักงานเพื่อดูว่าเป็นรายการใด
-                    </div>
-                  </details>
-                </Alert>
-              )}
-
               {/* Same rule as the printed form, said on the screen the form is
                   reached from — so a total here and a total there never differ
                   without an explanation attached to both. */}
