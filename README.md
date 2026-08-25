@@ -1009,7 +1009,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1651 tests
+and the engine know nothing about Next.js, so the whole suite — **1653 tests
 across 101 files**, measured 2026-08-25 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework.
 
@@ -1584,13 +1584,13 @@ What the entry carries is the truth about that:
 * the chip **HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว** wherever the row appears, amber
   and distinct from the blue *บันทึกแทน* — both mean "somebody else typed this",
   only this one also means an approval a reader assumes happened did not.
-* on the หัวหน้า's **สรุปทีม**: a per-person count in the row, and **at the top
-  of the card, directly under the policy banner and above the search box**, one
-  blue notice — *"มี 1 รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — ติดป้าย HR
-  ตรวจสแกนนิ้ว"* — with the rest behind **ดูรายละเอียด**: no หัวหน้า signature,
-  an empty signature box in the history, and where to find the rows. Their team's
-  hours went up while their queue never rang; that is the one figure on the page
-  they could not otherwise account for.
+* on the หัวหน้า's **สรุปทีม**: a per-person count in the row, and its own line
+  in the month's alert strip — *"HR อนุมัติชั้นเดียว 1 รายการ"* — opening to
+  *"มี 1 รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — ติดป้าย HR ตรวจสแกนนิ้ว"* with the
+  rest behind **ดูรายละเอียด**: no หัวหน้า signature, an empty signature box in
+  the history, and where to find the rows. Their team's hours went up while their
+  queue never rang; that is the one figure on the page they could not otherwise
+  account for. See **แถบแจ้งเตือนของเดือน** below for the strip itself.
 
   Two things about it were wrong for as long as it existed, and the second hid
   the first. It read "a line above the table" until 2026-08-25 and the line was
@@ -1602,24 +1602,17 @@ What the entry carries is the truth about that:
   *HR อนุมัติชั้นเดียว n* and the chip on the rows themselves, and a reader who
   has finished the rows has finished asking. So it moved to the top of the card
   the same day, on the argument that already put `PolicyVersionBanner` there:
-  what warns about the figures goes above the figures. Above the search box and
-  not between it and the list — the box's own rule is that the thing it filters
-  starts directly underneath it, and this notice is the month's, not the
-  search's.
+  what warns about the figures goes above the figures.
 
-  The fold is a `<details>` and carries no state, so a month reloading
-  underneath it cannot leave an open flag describing a month that has gone. The
-  summary says the **act** rather than the contents — *ดูรายละเอียด* shut,
-  *ซ่อนรายละเอียด* open, both in the markup with `[open]` picking one — and it
-  is a 44px pill on a phone, because a bold 12px line that happens to be
-  clickable is not a control. The panel also takes the **✕** `Alert` already
-  offers: dismissing it is *"I have read this one"*, and it comes back unread on
-  a new **ประจำเดือน** or a new **สถานะที่นับ**, either of which can change the
-  count it is quoting. Not on the search box, which narrows what is drawn out of
-  a month that has not changed. Closing it never touches the rows' own chips.
-  `test/hrMonthCards.test.js` pins the count and the chip's name to the visible
-  line, the rest to the fold, the position to above the search box, and the
-  dismissal to those two dependencies.
+  Its own fold stayed when the strip arrived, one level down: the strip says
+  **which** notices there are, this says **what** this one is. A `<details>` and
+  no state, so a month reloading underneath it cannot leave an open flag
+  describing a month that has gone; the summary says the **act** rather than the
+  contents — *ดูรายละเอียด* shut, *ซ่อนรายละเอียด* open, both in the markup with
+  `[open]` picking one — and it is a 44px pill on a phone, because a bold 12px
+  line that happens to be clickable is not a control. It carries **no ✕ of its
+  own**: the strip has the only one, and two dismiss buttons one inside the other
+  are two different promises about what closing means.
 
 `submit_hr_verified` is deliberately **not** in `SYSTEM_FILED_ACTIONS`. That list
 means *no form was filled in*; here a person read a clock record and typed two
@@ -2271,6 +2264,49 @@ Neither path touches the printed **ใบขออนุมัติทำงา
 (`components/PrintForm.jsx`) — there is nothing on it to edit, and no way to
 change what it says except by changing the entries behind it.
 
+**แถบแจ้งเตือนของเดือน — one strip instead of a stack of panels.** Two notices
+about the month itself can be on screen at once above the search box, and both
+are tall: `PolicyVersionBanner` runs to five lines and names every version in
+the month, and อนุมัติชั้นเดียว carries a fold of its own. Measured at 360×780
+on 2026-08-25 they came to **340px** — most of a phone screen spent before a
+single row of the month was reached.
+
+So `MonthAlerts` counts them and names them on one strip:
+*"แจ้งเตือนของเดือนนี้ 2 ข้อความ"*, with *"กฎการคำนวณคนละชุด · HR อนุมัติชั้นเดียว
+1 รายการ"* a step quieter under it, then **ดูรายละเอียด ▼** / **ซ่อน ▲**. The
+labels are there because a bare *"2 ข้อความ"* makes a reader open the strip to
+find out whether either of them matters, which is the fold costing more than it
+saves. Collapsed it is **127px**; the panels open **underneath** it rather than
+inside it, because each is already an `.alert` with its own colour and mark and
+an alert nested in an alert is a box drawn twice.
+
+**The strip takes the colour of the worst of them** — amber if any notice is
+amber — or the fold has quietly downgraded a warning by folding it. Whether
+there is a policy notice at all and how loud it is comes from
+`policyVersionNotice()` in the banner's own module, which the banner then reads
+its own `kind` off, so the strip and the panel it opens can never be two
+different colours about one month.
+
+**✕ lasts until the page is reloaded, and leaves something behind.** The strip
+is remounted by a `key` on every change of ประจำเดือน or สถานะที่นับ — that is
+what stops an open panel describing a month that has gone — so the dismissal
+cannot live in its state, which the same remount would clear. It is a
+module-level flag: it outlives the remount, outlives leaving the tab and coming
+back, and dies with the document. Not `sessionStorage`, which survives the
+reload, so a dismissal made in August would still be in force the next morning
+with a different month on screen.
+
+What it leaves behind is **แสดงแจ้งเตือนของเดือนนี้ (2)** on one line, counted
+from the month on screen. Dismissing closes the strip; it does not make a
+warning unreachable, and it never touches the rows' own chips. A different
+month's different warning is then a different number in that line rather than a
+panel reappearing in front of somebody who said they did not want one.
+
+Walked at 360×780 on the built app against a clone, 2026-08-25: collapsed 127px,
+open 466px, dismissed 0 with the recall line at 48px, dismissal surviving two
+changes of สถานะที่นับ and cleared by a reload; the per-row chip present in every
+state.
+
 **ตรวจสอบรายเดือน บนมือถือ: ห้าการ์ดก่อน แล้วค่อยที่เหลือ.** Below 860px this
 screen is one card per person — that is where **ดู / แก้ไขรายการ** and **พิมพ์
 F-HR-027** live, and it is why this table left the sideways-scrolling group the
@@ -2744,14 +2780,15 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1651/1651 pass in about 2 s**, measured 2026-08-25 across 101
-  files. It read "1649", "1646", "1641", "1638" and "1601" earlier the same day,
-  and "1386 across 86 files, 2026-08-24" before that. The newest two are the
-  cases in `test/hrMonthCards.test.js` that pin where the อนุมัติชั้นเดียว
-  notice sits and what its ✕ is allowed to outlive — §"One signature, and the
-  trail says so" above. The three before them are in the same file and pin the
-  phone's ห้าการ์ดก่อน fold described under ตรวจสอบรายเดือน below — no new file
-  either time, so the 101 did not move.
+- `npm test` — **1653/1653 pass in about 2 s**, measured 2026-08-25 across 101
+  files. It read "1651", "1649", "1646", "1641", "1638" and "1601" earlier the
+  same day, and "1386 across 86 files, 2026-08-24" before that. The five newest
+  are the cases in `test/hrMonthCards.test.js` that pin แถบแจ้งเตือนของเดือน —
+  the count and its labels, the colour being the worst of them, the panels
+  opening under the strip rather than inside it, and the ✕ that outlives a
+  remount but not a reload. They replaced three from earlier the same day that
+  pinned the same facts about the two banners separately. No new file at any
+  point, so the 101 did not move.
   Before them was `test/scriptEncoding.test.js`, which holds the two 🔴 rules in
   §Setup about how a PowerShell script Task Scheduler runs has to be encoded —
   the file that is the whole of the 101st. The three before that are the cases

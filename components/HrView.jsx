@@ -11,7 +11,7 @@ import { Alert, ClearButton, Empty, AddBirthDateHint, RateHead } from './common.
 import Icon from './icons.jsx';
 import { personMatches } from '@/lib/personSearch.js';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
-import { PolicyVersionBanner, PolicyVersionSummaryCell } from './PolicyVersion.jsx';
+import { PolicyVersionBanner, PolicyVersionSummaryCell, policyVersionNotice } from './PolicyVersion.jsx';
 import PeriodLockBar from './PeriodLock.jsx';
 import PrintForm from './PrintForm.jsx';
 import PrintFormBatch from './PrintFormBatch.jsx';
@@ -122,25 +122,6 @@ export default function HrView({
    */
   const [showAll, setShowAll] = useState(false);
   useEffect(() => { setShowAll(false); }, [period, statusFilter, find]);
-
-  /**
-   * ✕ on the อนุมัติชั้นเดียว notice — "I have read this one".
-   *
-   * NOT on `find`, unlike the fold above it: the search box narrows what is
-   * drawn out of a month that has not changed, and a notice about that month is
-   * still about that month. A new period or a new สถานะที่นับ is a different
-   * month, or the same month counted differently, and either can change the
-   * count this box is quoting — so it comes back, unread, and says the new
-   * figure. A dismissal that survived that would be the one thing this notice
-   * exists to prevent: a หัวหน้า looking at hours they cannot account for with
-   * the explanation already dismissed on their behalf.
-   *
-   * It is deliberately not remembered past this screen either. The rows keep
-   * their own chips whatever happens here — closing this hides the sentence,
-   * never the mark.
-   */
-  const [noticeShut, setNoticeShut] = useState(false);
-  useEffect(() => { setNoticeShut(false); }, [period, statusFilter]);
 
   // The whole table as one document, or one row of it — the same sheet either
   // way. The list is captured into state when the button is pressed rather than
@@ -305,77 +286,25 @@ export default function HrView({
           <Empty>ไม่มีรายการในเดือนนี้</Empty>
         ) : (
           <>
-            {/* Above the table, not beside a row: what it warns about is the
-                total at the bottom of it, and a reviewer who has started
-                reading rows has already begun trusting them. */}
-            <PolicyVersionBanner spread={data.policy} />
+            {/* ONE STRIP FOR ALL OF THEM — see `MonthAlerts` below. Still above
+                the table and above the search box, for the reason each of these
+                was there on its own: what warns about the figures goes above the
+                figures, and a reviewer who has started reading rows has already
+                begun trusting them.
 
-            {/*
-              Said once, ABOVE THE MARKS IT EXPLAINS — which is what it now
-              actually does.
-
-              A หัวหน้า opening สรุปทีม is the reason this exists: their team's
-              hours went up and their queue never rang, because ฝ่ายบุคคล settled
-              a birthday from the scan record in one act. Left unexplained that
-              is a discrepancy they cannot resolve from any screen they have —
-              the entry is `approved` and was never in their queue to remember.
-              Nothing here is wrong, which is why it is INFO and not the amber of
-              a warning; what it is, is the one thing on the page they could not
-              have known.
-
-              IT SPENT ITS WHOLE LIFE UNDER THE TABLE, and the sentence above it
-              in the source has said "above the marks it explains" the entire
-              time. It was not: the marks are the per-row *HR อนุมัติชั้นเดียว n*
-              under the รายการ column and the chip on the rows themselves, and
-              the explanation sat past the month's total — on a phone, past
-              วันเกิดของเดือนนี้ as well. A reader who has finished the rows has
-              finished asking. So it is here, on the same argument
-              `PolicyVersionBanner` is here on and directly under it: what warns
-              about the figures goes above the figures.
-
-              ABOVE THE SEARCH BOX, not between it and the list. The box's own
-              rule is that the thing it filters starts directly underneath it on
-              both layouts, and this notice is not filtered by it — it is the
-              month's, like the policy banner it now sits with.
-
-              FOUR LINES OF GREY BECAME ONE LINE AND A FOLD. All four sentences
-              were true and only the first was ever read: on a 375px screen the
-              paragraph ran to seven lines of `--muted-2`. The count and the
-              chip's own name are what turn a figure somebody cannot account for
-              into one they can — the rest is what they need AFTER that, and it
-              is one tap away rather than permanently in the way.
-
-              `<details>` and not state, for the reason PrintFormBatch's digest
-              gives: the month reloads underneath this whenever the period or
-              สถานะที่นับ changes, and an open flag in state is a thing that can
-              end up describing a month that is no longer on screen. The summary
-              says which way it goes in words — ดูรายละเอียด closed,
-              ซ่อนรายละเอียด open — because a bare "รายละเอียด" beside a marker
-              names the contents and not the act.
-            */}
-            {data.hrVerifiedCount > 0 && !noticeShut && (
-              <Alert kind="info" tight onClose={() => setNoticeShut(true)}>
-                {`มี ${data.hrVerifiedCount} รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว`}
-                {' '}— ติดป้าย “HR ตรวจสแกนนิ้ว”
-                <details className="notice-fold">
-                  {/* Two labels, one shown at a time by `[open]` in the
-                      stylesheet. The spans are also what the pill styling keys
-                      off, so PrintFormBatch's digest — same class, plain text
-                      summary — is left exactly as it was. */}
-                  <summary>
-                    <span className="fold-shut">ดูรายละเอียด</span>
-                    <span className="fold-open">ซ่อนรายละเอียด</span>
-                  </summary>
-                  <div>
-                    เป็นรายการวันเกิดที่ฝ่ายบุคคลบันทึกและอนุมัติในขั้นตอนเดียว
-                    {' '}โดยตรวจเวลาเข้า-ออกจากบันทึกสแกนนิ้ว ·
-                    {' '}<strong>ไม่ได้ผ่านการอนุมัติของหัวหน้างาน</strong>
-                    {' '}และช่องลายเซ็นหัวหน้าในประวัติรายการจะว่างไว้ตามจริง ·
-                    {' '}เปิด “ดู / แก้ไขรายการ” ของพนักงานเพื่อดูว่าเป็นรายการใด
-                  </div>
-                </details>
-              </Alert>
-            )}
+                `key` REMOUNTS IT WHEN THE MONTH DOES. Both the strip's open flag
+                and the panel underneath describe the notices of one particular
+                month at one particular สถานะที่นับ; letting them survive a change
+                of either is how an open panel ends up describing a month that is
+                no longer on screen. Written as a key rather than as an effect
+                because there is nothing to carry across — the dismissal is
+                deliberately not in this component's state (see `alertsDismissed`
+                by MonthAlerts) and is the one thing that does survive. */}
+            <MonthAlerts
+              key={`${period}|${statusFilter}`}
+              policy={data.policy}
+              hrVerifiedCount={data.hrVerifiedCount}
+            />
 
             {/* AT THE TOP OF THE LIST, above the first card and above the
                 table's own heading row — the thing it filters starts directly
@@ -765,6 +694,176 @@ export default function HrView({
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * DISMISSED UNTIL THE PAGE IS RELOADED — and deliberately not in React state.
+ *
+ * `MonthAlerts` is remounted by its `key` on every change of month or
+ * สถานะที่นับ, which is what stops an open panel describing a month that has
+ * gone. State inside it would be cleared by exactly the same remount, so the ✕
+ * would last until the next press of the period box and no longer — which is
+ * the thing that was asked not to happen. A module-level flag outlives the
+ * component, outlives leaving this tab and coming back, and dies with the
+ * document: "จนกว่าจะ Refresh หน้าใหม่", said in the only place that means it.
+ *
+ * NOT `sessionStorage`, which is the other obvious home and is the wrong one:
+ * it survives the reload, so a dismissal made in August would still be in force
+ * the next morning with a different month on screen.
+ *
+ * WHAT DISMISSING IS ALLOWED TO DO. It closes the strip; it does not make the
+ * notices unreachable. In its place comes `แสดงแจ้งเตือน (n)` — a text button
+ * on one line, counting what is behind it and recounted from the month on
+ * screen, so a different month's different warning is visible as a different
+ * number without anything reappearing in front of anybody. The rows keep their
+ * own chips throughout: this hides sentences, never marks.
+ */
+let alertsDismissed = false;
+
+/**
+ * ONE STRIP INSTEAD OF A STACK OF PANELS — the notices about the month itself.
+ *
+ * Two of these could be on screen at once and both are tall: the policy banner
+ * runs to five lines and names every version in the month, and อนุมัติชั้นเดียว
+ * carries a fold of its own. On a 375px phone that is most of a screen spent
+ * above the search box, before a single row of the month has been reached.
+ *
+ * So they are counted and named on one line, and opened together. What the line
+ * carries is each notice's own short label, not a bare total: "2 ข้อความ" alone
+ * would make a reader open it to find out whether either of them matters, which
+ * is the fold costing more than it saves.
+ *
+ * THE COLOUR IS THE WORST OF THEM. A strip that stands for an amber warning and
+ * a blue note has to look like the amber one, or the fold has quietly downgraded
+ * a warning by folding it.
+ *
+ * WHAT IS NOT HERE. The three notes under the table — superseded filings,
+ * missing วันเกิด — stay where they are. They are footnotes to figures that have
+ * been read, not warnings to read before starting, and pulling them up here
+ * would make this strip's count a number about two unrelated things.
+ */
+function MonthAlerts({ policy, hrVerifiedCount }) {
+  const [open, setOpen] = useState(false);
+  const [shut, setShut] = useState(alertsDismissed);
+
+  const notices = [];
+  // From the banner's own module, so the strip and the banner it opens can
+  // never disagree about whether there is anything to say or how loud it is.
+  const pv = policyVersionNotice(policy);
+  if (pv) {
+    notices.push({
+      key: 'policy', kind: pv.kind, label: pv.label,
+      node: <PolicyVersionBanner spread={policy} />,
+    });
+  }
+  if (hrVerifiedCount > 0) {
+    notices.push({
+      key: 'hr-verified', kind: 'info',
+      label: `HR อนุมัติชั้นเดียว ${hrVerifiedCount} รายการ`,
+      node: <HrVerifiedNotice count={hrVerifiedCount} />,
+    });
+  }
+
+  if (!notices.length) return null;
+
+  if (shut) {
+    return (
+      <div className="alerts-recall">
+        <button
+          type="button"
+          className="link"
+          onClick={() => { alertsDismissed = false; setShut(false); }}
+        >
+          {`แสดงแจ้งเตือนของเดือนนี้ (${notices.length})`}
+        </button>
+      </div>
+    );
+  }
+
+  // warn beats info beats ok — see THE COLOUR IS THE WORST OF THEM above.
+  const kind = ['warn', 'info', 'ok'].find((k) => notices.some((n) => n.kind === k));
+
+  return (
+    <>
+      <Alert kind={kind} tight onClose={() => { alertsDismissed = true; setShut(true); }}>
+        <strong>{`แจ้งเตือนของเดือนนี้ ${notices.length} ข้อความ`}</strong>
+        {/* ON ITS OWN LINE, QUIETER. Run into the headline with an em dash it
+            wrapped as one paragraph of three lines and the bar stopped reading
+            as a bar. The labels are what stops "2 ข้อความ" being a number
+            somebody has to open the strip to interpret, so they stay — one step
+            back, not one step away. */}
+        <div className="alerts-say">{notices.map((n) => n.label).join(' · ')}</div>
+        <div>
+          <button
+            type="button"
+            className="fold-pill"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? 'ซ่อน ▲' : 'ดูรายละเอียด ▼'}
+          </button>
+        </div>
+      </Alert>
+      {/* UNDER THE STRIP, NOT INSIDE IT. Each of these is already an `.alert`
+          with its own colour and mark, and an alert nested in an alert reads as
+          a box drawn twice. The strip says what is there; these say it. */}
+      {open && notices.map((n) => (
+        <React.Fragment key={n.key}>{n.node}</React.Fragment>
+      ))}
+    </>
+  );
+}
+
+/**
+ * มี n รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — one of the two the strip holds.
+ *
+ * A หัวหน้า opening สรุปทีม is the reason this exists: their team's hours went
+ * up and their queue never rang, because ฝ่ายบุคคล settled a birthday from the
+ * scan record in one act. Left unexplained that is a discrepancy they cannot
+ * resolve from any screen they have — the entry is `approved` and was never in
+ * their queue to remember. Nothing here is wrong, which is why it is INFO and
+ * not the amber of a warning; what it is, is the one thing on the page they
+ * could not have known.
+ *
+ * ITS COUNT IS ON THE STRIP'S OWN LINE, which is what lets this be folded twice
+ * over without the figure going missing. The count and the chip's name are what
+ * turn a figure somebody cannot account for into one they can; the paragraph
+ * below is what they need AFTER that.
+ *
+ * `<details>` and not state, for the reason PrintFormBatch's digest gives: this
+ * is rebuilt whenever the month or สถานะที่นับ changes, and an open flag in
+ * state is a thing that can end up describing a month that is no longer on
+ * screen. The summary says which way it goes in words — ดูรายละเอียด closed,
+ * ซ่อนรายละเอียด open — because a bare "รายละเอียด" beside a marker names the
+ * contents and not the act.
+ *
+ * NO ✕ OF ITS OWN any more. The strip above carries the only one, and two
+ * dismiss buttons one inside the other are two different promises about what
+ * closing means.
+ */
+function HrVerifiedNotice({ count }) {
+  return (
+    <Alert kind="info" tight>
+      {`มี ${count} รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว`}
+      {' '}— ติดป้าย “HR ตรวจสแกนนิ้ว”
+      <details className="notice-fold">
+        <summary className="fold-pill">
+          {/* Two labels, one shown at a time by `[open]` in the stylesheet.
+              PrintFormBatch's digest uses the same class with a plain-text
+              summary and no pill, and is left exactly as it was. */}
+          <span className="fold-shut">ดูรายละเอียด</span>
+          <span className="fold-open">ซ่อนรายละเอียด</span>
+        </summary>
+        <div>
+          เป็นรายการวันเกิดที่ฝ่ายบุคคลบันทึกและอนุมัติในขั้นตอนเดียว
+          {' '}โดยตรวจเวลาเข้า-ออกจากบันทึกสแกนนิ้ว ·
+          {' '}<strong>ไม่ได้ผ่านการอนุมัติของหัวหน้างาน</strong>
+          {' '}และช่องลายเซ็นหัวหน้าในประวัติรายการจะว่างไว้ตามจริง ·
+          {' '}เปิด “ดู / แก้ไขรายการ” ของพนักงานเพื่อดูว่าเป็นรายการใด
+        </div>
+      </details>
+    </Alert>
   );
 }
 

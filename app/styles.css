@@ -3118,24 +3118,47 @@ td > .approver-line { margin-top: 5px; }
 .notice-fold[open] > summary > .fold-shut { display: none; }
 .notice-fold[open] > summary > .fold-open { display: inline; }
 
-/* A PRESS TARGET, because that is what it is. As bold 12px text it was a
-   17px-tall line of writing that happened to be clickable, in an app where
-   every other decision control is a 44px box on a phone. `:has()` keeps it to
-   the summaries that carry the two labels. */
-.notice-fold > summary:has(> .fold-shut) {
+/* ══ .fold-pill — A PRESS TARGET, BECAUSE THAT IS WHAT IT IS ═════════════
+
+   As bold 12px text these were a 17px-tall line of writing that happened to be
+   clickable, in an app where every other decision control is a 44px box on a
+   phone.
+
+   WORN BY TWO DIFFERENT ELEMENTS: the `<summary>` of a `.notice-fold`, and the
+   `<button>` that opens ตรวจสอบรายเดือน's alert strip. So it is a class rather
+   than a `:has()` on `summary`, and it resets the things a `<button>` brings
+   with it — a UA background, a UA border, a UA font — none of which a summary
+   has. PrintFormBatch's digest wears neither and is unchanged.
+
+   `currentColor` for the line and nothing for the fill: the panel around it is
+   already tinted, and a second fill inside it reads as a nested box. The ink is
+   the alert's own, so this works in blue and in amber alike without knowing
+   which one it is in — the same trick the opacity above uses. */
+.fold-pill {
   display: inline-flex; align-items: center; gap: 6px;
   margin-top: 8px; padding: 6px 12px;
-  border: 1px solid currentColor; border-radius: 999px;
-  /* `currentColor` at .35 for the line and nothing for the fill: the panel is
-     already tinted, and a second fill inside it reads as a nested box. Both
-     inherit the alert's ink, so this works in blue and in amber alike without
-     knowing which one it is in — the same trick the opacity above uses. */
-  border-color: color-mix(in srgb, currentColor 35%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 999px;
+  background: none; color: inherit; cursor: pointer;
+  font: 600 12px/1.4 var(--sans); letter-spacing: .04em;
 }
-.notice-fold > summary:has(> .fold-shut):hover {
+.fold-pill:hover {
   border-color: color-mix(in srgb, currentColor 60%, transparent);
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
+
+/* แสดงแจ้งเตือนของเดือนนี้ (2) — what the ✕ leaves behind.
+
+   Dismissing the strip must not make the notices unreachable, so a text button
+   takes its place, counting what is behind it. `.link`'s own voice and one
+   line: this is the state where somebody has said they do not want a panel, and
+   putting a second panel there to say so would be the joke it sounds like. */
+.alerts-recall { margin: 0 0 12px; font-size: 12.5px; }
+
+/* "กฎการคำนวณคนละชุด · HR อนุมัติชั้นเดียว 1 รายการ" — which notices are behind
+   the strip, under the count rather than run into it. Quieter by a step, the
+   same distance `.cap-sub` puts between a figure and its qualifier. */
+.alerts-say { margin-top: 2px; font-size: 12px; opacity: .85; }
 
 .notice-fold-group { margin-top: 6px; }
 .notice-fold-group > .k {
@@ -7054,13 +7077,9 @@ table.mini tbody tr:hover { background: none; }
 
   /* 31px is a pill that reads as a control and is still not one to a thumb.
      44px is what every other decision button on this screen is at this width —
-     see `.hr-table tbody td.act-col .row-actions .btn` — and a disclosure the
-     month's one unaccountable figure is folded behind is not the place to be
-     the exception. Only the labelled summary: PrintFormBatch's digest is a
-     different screen and was not part of this. */
-  .notice-fold > summary:has(> .fold-shut) {
-    min-height: 44px; padding: 6px 16px;
-  }
+     see `.hr-table tbody td.act-col .row-actions .btn` — and the two folds the
+     month's warnings sit behind are not the place to be the exception. */
+  .fold-pill { min-height: 44px; padding: 6px 16px; }
 
   .acct-table :is(th, td).who-col,
   .allco-table :is(th, td).who-col { max-width: 112px; }

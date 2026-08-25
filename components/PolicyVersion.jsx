@@ -204,8 +204,32 @@ export function PolicyDriftBanner({ user, onOpenPolicy }) {
  * telling HR to run a migration when the real answer is "open ตรวจสอบรายเดือน"
  * sends them somewhere that will not help.
  */
-export function PolicyVersionBanner({ spread }) {
+/**
+ * WHETHER THIS BANNER HAS ANYTHING TO SAY, AND HOW LOUDLY — for a caller that
+ * has to know before it renders.
+ *
+ * ตรวจสอบรายเดือน gathers its top-of-card notices into one strip and has to
+ * count them, colour the strip by the worst of them and name each in a line.
+ * All three questions are this component's to answer, so they are answered
+ * here and `PolicyVersionBanner` reads its own `kind` off the same call. Asking
+ * `spread.mixed` again at the call site is how two rules that disagree start.
+ *
+ * `label` is the strip's line, not a summary of the banner: five words that say
+ * which notice this is, with the reading left to the banner underneath.
+ */
+export function policyVersionNotice(spread) {
   if (!spread?.mixed) return null;
+  return {
+    // `ok` is not a softer warning, it is a different answer: the versions
+    // differ and the arithmetic behind them does not, so the figures compare.
+    kind: spread.arithmeticMixed === false ? 'ok' : 'warn',
+    label: 'กฎการคำนวณคนละชุด',
+  };
+}
+
+export function PolicyVersionBanner({ spread }) {
+  const notice = policyVersionNotice(spread);
+  if (!notice) return null;
 
   const named = spread.used
     .map((u) => (u.seq != null
@@ -216,7 +240,9 @@ export function PolicyVersionBanner({ spread }) {
   const comparable = spread.arithmeticMixed === false;
 
   return (
-    <Alert kind={comparable ? 'ok' : 'warn'}>
+    // From `policyVersionNotice` above, so the strip on ตรวจสอบรายเดือน and the
+    // banner it opens are never two different colours about one month.
+    <Alert kind={notice.kind}>
       <strong>เดือนนี้มีใบที่คำนวณด้วยกฎคนละชุด</strong>
       <div style={{ marginTop: 4 }}>{named.join(' · ')}</div>
       <div style={{ fontSize: 12.5, marginTop: 6 }}>
