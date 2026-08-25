@@ -507,8 +507,11 @@ curl -X POST http://127.0.0.1:3000/api/settings/recompute \
 > **สั่ง `npm run backup` ก่อน** และรัน `npm run whatif` เพื่อดูราคาของการเปลี่ยน
 > ก่อนจะรันคำสั่งนี้เพื่อเปลี่ยนจริง
 >
-> เดือนที่ปิดงวดแล้วจะถูกข้ามเสมอ คำตอบที่ส่งกลับมาระบุชื่อมันไว้ใต้
-> `skippedClosed` การเปิดงวดคืนเป็นการตัดสินใจครั้งที่สอง แยกต่างหาก
+> เดือนที่ปิดงวดแล้วจะถูกข้ามเสมอ ไม่ว่าจะส่งอะไรมาก็ตาม คำตอบที่ส่งกลับมาบอก
+> **จำนวน**ไว้ที่ `skippedClosed` และ**ชื่อเดือน**ไว้ที่ `closedPeriods` ส่วนแต่ละแถวใน
+> `skipped` มี `reason: 'period_closed'` กับงวดของตัวเองกำกับ — สองชื่อ ไม่ใช่ชื่อเดียว
+> เพราะหน้าจอที่อ่านค่านี้ต้องการทั้งนับและชื่อ การเปิดงวดคืนเป็นการตัดสินใจครั้งที่สอง
+> แยกต่างหาก และทิ้งเหตุผลไว้เป็นหลักฐานของตัวเอง
 
 ถ้าไม่ใส่ `includeApproved` endpoint เดียวกันนี้ก็เป็นงานธรรมดาที่ ฝ่ายบุคคล ทำได้
 — มันคำนวณใหม่เฉพาะใบที่ยังไม่ถูกตัดสิน:
@@ -564,7 +567,7 @@ npm run reset-admin -- ADMIN
   หลักฐานสำหรับช่องอื่น ๆ อีกต่อไป ประวัติการแก้ทะเบียน พิมพ์มันออกมาว่า
   `ตั้งรหัสผ่านใหม่ (สคริปต์บนเซิร์ฟเวอร์)`
 - **รหัสผ่านชั่วคราวใช้ `generateTempPassword()`** ตัวเดียวกับที่หน้าจอใช้ ไม่มีสูตร
-  ที่สอง ดูหัวข้อ *Temporary passwords* ข้างบนว่าทำไมเรื่องนี้ถึงสำคัญ
+  ที่สอง ดูหัวข้อ *รหัสผ่านชั่วคราว* ข้างบนว่าทำไมเรื่องนี้ถึงสำคัญ
 
 ถ้าบัญชีที่เข้าไม่ได้เป็นบัญชี **ฝ่ายบุคคล** สคริปต์นี้ไม่ใช่คำตอบ: ให้ ฝ่ายบุคคล
 คนอื่นหรือ ผู้ดูแลระบบ ตั้งรหัสใหม่ให้จาก ทะเบียนพนักงาน ซึ่งเร็วกว่าและบันทึกชื่อคน
@@ -740,9 +743,10 @@ src/config/policy.js      every [OPEN] item as a named flag — start here
 src/config/companies.js   the two payroll entities and the code-prefix rule
 src/lib/otEngine.js       the arithmetic: segmentation, buckets, break, rounding
 src/lib/csv.js            CSV in/out, UTF-8 BOM on the way out
-src/models/               AccessLog, ApprovalDelegation, Department, Employee,
-                          EmployeeAudit, Holiday, OtEntry, PolicyVersion,
-                          PolicyReplayRun, Setting
+src/models/               AccessLog, ApprovalDelegation, BirthdayCheck,
+                          Department, Employee, EmployeeAudit, Holiday,
+                          OtEntry, PeriodLock, PolicyReplayRun, PolicyVersion,
+                          Setting
 src/services/otService.js engine ↔ database: compute, cap check, replay
 src/migrate-company.js    one-off: fill `company` on a pre-split database
 src/migrate-policy-version.js
@@ -761,8 +765,9 @@ lib/policyVersion.js      what a rule set is, whether two of them compute the
 lib/policySave.js         record the rules, then replay against them; shared by
                           both servers' settings routes
 lib/policyConfirmations.js
-                          the three rules HR has never agreed to, and what a
-                          sign-off is allowed to change (nothing) — pure
+                          the four rules HR has never agreed to, what a
+                          sign-off is allowed to change (nothing), and whether
+                          one still covers today's value — pure
 lib/policyConfirmSave.js  the one mongoose call behind a sign-off, kept apart so
                           the rule above can be tested without a database
 lib/proxyFiling.js        who may file OT on somebody's behalf, and where that
@@ -793,7 +798,9 @@ lib/complianceExport.js   which six events count as the exercise of a
 lib/complianceQuery.js    the four reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     23 files, run by `npm test`
+test/                     100 files, run by `npm test`. Six named below as a
+                          sample; docs/features.md maps every feature to the
+                          files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
 test/delegation.test.js     windows, chains, cycles, and what the trail keeps
 test/otEngine.test.js       worked examples A–E plus edge cases
@@ -804,23 +811,27 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **410 tests
-across 23 files** — runs with plain `node --test`, no server and no database.
-Only `app/` and `lib/` touch the framework.
+and the engine know nothing about Next.js, so the whole suite — **1638 tests
+across 100 files**, measured 2026-08-25 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework.
 
-That is also why it stays fast: the suite finishes in **under 400 ms**, which is
-a budget rather than an observation. A test file that reaches for a model drags
-mongoose into a suite that never opens a connection and costs a third of a
-second on its own — which is exactly why `lib/policyConfirmSave.js` is a
-separate file from `lib/policyConfirmations.js`.
+That is also why it stays fast: the suite finishes in **about 2 s**, which is a
+budget rather than an observation. (It read "410 tests, under 400 ms" until
+2026-08-25 — the budget is per test, and four times the tests for five times
+the time is the budget holding, not slipping.) A test file that reaches for a
+model drags mongoose into a suite that never opens a connection and costs a
+third of a second on its own — which is exactly why `lib/policyConfirmSave.js`
+is a separate file from `lib/policyConfirmations.js`.
 
-`src/server.js` and `src/routes/` are the retired Express implementation, still
-runnable via `npm run legacy:start` for comparison. Delete them once you are
-satisfied the port is faithful.
+`legacy/server.js` and `legacy/routes/` are the retired Express implementation.
+**There is no npm script that starts it any more** — this paragraph said
+`npm run legacy:start` and named the files under `src/`, both true before the
+folder was moved. Run it by hand if you ever need the comparison. Delete the
+folder once you are satisfied the port is faithful.
 
 **It is no longer a faithful copy and is not being kept as one.** It drifted
 first at the re-filing chain (`refiledFrom` / `resubmittedTo` were never ported)
-and now again at proxy filing and delegation: `src/routes/entries.js` knows
+and now again at proxy filing and delegation: `legacy/routes/entries.js` knows
 nothing about `filedBy`, and its approve and reject handlers still carry the
 role-and-status ladder that `lib/delegation.js` replaced. Rules that must hold
 everywhere — `authorizeReplay`, `savePolicy` — are still shared by both servers
@@ -2442,8 +2453,10 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1601/1601 pass in about 2 s**, measured 2026-08-25 across 98
-  files. This line read "1386 across 86 files, 2026-08-24" until then.
+- `npm test` — **1638/1638 pass in about 2 s**, measured 2026-08-25 across 100
+  files. It read "1601" earlier the same day, and "1386 across 86 files,
+  2026-08-24" before that; the three added are the wiring cases in
+  `test/replayPeriodLock.test.js` described under `settings/recompute` below.
   The earlier count was cross-checked three ways that agreed exactly: the runner's own
   total, the sum of running each file separately, and a count of the ✔ lines.
   Worth doing once because a bare total is a figure nobody can reproduce, and
@@ -2469,24 +2482,54 @@ four role UIs.
   `src/migrate-*.js` plus `src/whatif.js` on 2026-08-25 —
   `test/seedEntryPoint.test.js` holds the list, checks it behaviourally, and
   fails if `package.json` learns to start a `src/` file that is not on it.
-- `npm run build` — **passes 2026-08-24** on the current tree, Next 16.3 under
-  Turbopack, and the route table it prints is **54 `/api/*` routes** plus `/`,
-  `/_not-found` and `/icon.png`. Compared against the 54 `app/api/**/route.js`
-  files on disk, in both directions: nothing on disk went unbuilt and nothing
-  was built that has no file. This line read "succeeds — 2026-08-14, Next 16.3,
-  all 50 routes" until then — four routes, and ten days, out of date.
-  The run cleared the eight commits of 2026-08-20 and 2026-08-21 that had
-  landed since the previous recorded pass (`9eba37e`, 2026-08-19).
+- `npm run build` — **passes 2026-08-25**, Next 16.3 under Turbopack, and the
+  route table it prints is **59 `/api/*` routes** plus `/`, `/_not-found` and
+  `/icon.png`. Compared against the 59 `app/api/**/route.js` files on disk, in
+  both directions: nothing on disk went unbuilt and nothing was built that has
+  no file. This line read "passes 2026-08-24 … 54 routes" until then, and
+  before that "succeeds — 2026-08-14, all 50 routes". The 2026-08-24 record had
+  gone five routes out of date within a day, which is the argument for the
+  count being here at all rather than in somebody's memory.
+  **The run was made while :3000 kept serving**, against a scratch
+  `VERIFY_DIST_DIR`, and that is the only way to do it: `next start` holds the
+  `BUILD_ID` it booted with, so a plain rebuild under it makes every loaded
+  page ask for chunks that no longer exist and every screen 500s until a
+  restart. `next.config.js` is already wired for the scratch directory; delete
+  it afterwards, because it is not in `.gitignore`.
+  The run cleared everything since `38353a8` — the eight commits of 2026-08-20
+  and 2026-08-21 were cleared by the 2026-08-24 pass before it.
   **A green test suite is still not a working build**, which is why this line
   exists at all: `next build` resolves imports that `node --test` never
   touches, and that is how a re-export bug once let `GET /api/entries` answer
   500 in the built app with all tests passing.
-  ⚠ It emits **two warnings**, both from the uncommitted backup-status work:
-  `lib/backupStatusQuery.js:28` reads `BACKUP_DIR` at runtime and Turbopack
-  reports *"Dynamic filesystem access causes tracing of the whole project"*.
-  Nothing fails, and the path has to be dynamic — the destination is a setting
-  — but the tracing cost is real and is the price of that reading. Decide it
-  deliberately before committing rather than after.
+  ⚠ It emits **one warning**, and this line read "two warnings" until
+  2026-08-25. Both came from `lib/backupStatusQuery.js`, and Turbopack said the
+  same thing about each — *"Dynamic filesystem access causes tracing of the
+  whole project"*. **The second was a no-op and is gone**: `backupStatus` asked
+  for the root of `resolve(process.cwd())`, where `process.cwd()` is already
+  absolute and already normalised. Dropping the wrapper changes no value on any
+  input and removes a warning.
+
+  **The first one stays, deliberately, and the file says why at length.**
+  `backupDestination()` builds a path out of `BACKUP_DIR`, so the path really
+  can be anything and the warning is accurate about it. Three ways to silence
+  it were tried and measured on 2026-08-25. Hoisting the read into a
+  module-level `const` does not move it at all — the warning is about the
+  expression, not about when it runs — and would cost a restart to re-read the
+  setting, in exchange for nothing. Swapping `resolve` for `join` moves the
+  warning onto the `join`. Swapping it for a template string plus `normalize`
+  does reach zero, and is wrong: `resolve` and `normalize` disagree on Windows
+  about a POSIX-shaped setting. `BACKUP_DIR=/ot-backups` comes back from
+  `resolve` on the current drive and from `normalize` with no drive at all, and
+  its `parse().root` is then a bare separator rather than the drive — which is
+  exactly what `offsiteVerdict` compares against the application's root. The
+  banner would announce that the backups are on another disk when they are on
+  the same one. They also disagree on drive-relative paths and on a trailing
+  separator, which is printed on the screen.
+
+  The traced-output cost the warning names is nothing here, where `next start`
+  serves out of the repository it was built in and every source file is on the
+  disk already. **One warning is the expected count; a second is new.**
 - `npm audit --omit=dev` — **1 high**, read 2026-08-24. `nanoid@3.3.17` wants
   `<3.3.18`, reached through `next@16.3.0 → postcss@8.5.23`; a fix is
   available. This line read "0 vulnerabilities" until then. Nothing under
@@ -2602,22 +2645,84 @@ the sentence that stood here, which said the CSV exports, the CSV imports and th
 holiday and roster screens were all unexercised: the roster import ran
 2026-08-18, the holiday import 2026-08-17, and four of the six CSV exports are in
 `otAccessLogs`. What that document does confirm is a shorter and sharper list —
-ปิดงวด (`otPeriodLocks` is empty), rejection (no entry has ever been
+ปิดงวด (`otPeriodLocks` was empty), rejection (no entry had ever been
 `rejected`), ขอถอนใบ, the admin override, the birthday queue's two write
-actions, cap-override, `npm run reset-admin` and `settings/recompute` have all
-never run against real data. The arithmetic underneath them is covered by the
-test suite, which does not touch Mongo at all — which is exactly why a green
-suite says nothing about this list.
+actions, cap-override, `npm run reset-admin` and `settings/recompute` had none
+of them ever run against real data. The arithmetic underneath them is covered by
+the test suite, which does not touch Mongo at all — which is exactly why a green
+suite said nothing about that list.
 
-**`settings/recompute` is not only untested — it is not covered by ปิดงวด.**
-A policy replay writes entries directly rather than through the seven routes
-that check the lock (see `test/periodLockRoutes.test.js` for the list), so a
-closed month can still be restated by one. The paths that can do it are already
-admin-only (`authorizeReplay`), and an administrator is also the only role that
-can reopen a period, so nobody gains an authority they did not have — but the
-replay does it without the deliberate step, and without the record, that
-reopening the month would have left. Left open on purpose, 2026-08-14: it moves
-money either way and HR have not been asked.
+**All eight were walked on 2026-08-25, and all eight hold.** Against a clone of
+the live database — `npm run backup` of `primus_ot` restored into
+`primus_ot_walk`, so real documents with real field shapes, which is what a
+seeded scratch database cannot reproduce and what the `Holiday.year` bug hid
+behind. Driven over HTTP through `next dev` on :3002 with a scratch
+`VERIFY_DIST_DIR`, so :3000 kept serving out of `.next` untouched; every
+assertion read back out of Mongo rather than off the response; and the database
+restored from the snapshot and diffed document by document after each one — it
+came back identical to the snapshot all eight times, so none of it is still in
+the data.
+
+What each one showed, briefly. **ปิดงวด** refused to close สิงหาคม over its four
+pending rows and named them, closed กรกฎาคม, answered a request filed into it
+with 409, refused ฝ่ายบุคคล's reopen and an administrator's reason-less one, and
+left `events` reading close-then-reopen with the reason on the second only.
+**Rejection** produced the first `rejected` entry the database has held, at both
+stages — `reject_mgr`, and `reject_hr` through `hrMayReject` — and ส่งใหม่ spent
+its one chance: the refused row stayed exactly where it was, the replacement
+carried `refiledFrom`, and both a second claim on the same parent and a claim on
+the replacement were refused in their own words. **ขอถอนใบ** left the entry
+`approved` while the request was open, ended at `cancelled` when granted and
+moved nothing at all when refused, with the asking half of the record never
+overwritten by the answer. **The admin override** wrote
+`managerDecision.adminOverride: true` with `onBehalfOf` and `delegationId`
+absent rather than null, and the same administrator was then refused the
+ฝ่ายบุคคล step of that same entry. **The birthday queue's two writes** produced
+an entry `approved` in one step with no `managerDecision` on it at all, and a
+check that took a row off the list and a retraction that put it back — two rows
+in `otBirthdayChecks`, the first one untouched. **cap-override** cleared
+`capExceeded` while `capSnapshot.breaches` kept the record of what had been
+breached. **`npm run reset-admin`** was refused three ways, then issued a
+password that logged in over HTTP with `mustChangePassword` set, leaving an
+`otEmployeeAudits` row with `source: 'script'` and no actor — because there was
+none. **`settings/recompute`** is the paragraph below.
+
+One thing the walk had to work around, worth knowing before repeating it: ADM is
+`otMode: 'none'`, so the entry for the override walk could not be an ordinary
+weekday. It was filed on วันเฉลิมพระชนมพรรษา 12 สิงหาคม — a department that does
+no ordinary OT still takes holiday hours, and on this roster that is the only way
+to get a genuinely unsignable row into the queue.
+
+**`settings/recompute` IS covered by ปิดงวด, and this paragraph said the
+opposite for eleven days.** It used to read that a replay was the eighth way
+into a closed month, left open on purpose on 2026-08-14 because HR had not been
+asked. That was true when it was written at 08:13 that morning and false by
+08:38, when `2c1f3ae` closed it — the same commit edited this file and did not
+edit this paragraph. Recorded rather than quietly deleted, because the failure
+worth remembering is not the hole: it is that the README went on describing a
+hole nobody could still reach, which is the kind of sentence that gets a
+decision made twice.
+
+**What it does now**, verified against a live database on 2026-08-25 and not
+only against the rule: a replay SKIPS every closed month, whatever is asked for
+— `includeApproved: true` from an administrator with an explicit `period` was
+answered `updated: 0`, and the entry in that month came back with its
+`updatedAt` and `__v` unmoved. The decision is `planRecompute` in
+lib/policyVersion.js and it is checked BEFORE the approved rule, so it also
+covers the pending rows a closed month can contain. The answer names what it
+left alone: `skippedClosed` is the count, `closedPeriods` the months, and each
+row of `skipped` carries `reason: 'period_closed'` with its own period. Touching
+such a month takes เปิดงวด first — a second, deliberate decision that leaves a
+reason and a record of its own, which a flag change never would. Reopening
+กรกฎาคม and running the same call again replayed the entry and wrote a
+`recompute` row into its history.
+
+Two kinds of test hold it. `test/replayPeriodLock.test.js` covers the rule and
+the report; the same file now also asserts the WIRING — that `recomputeEntries`
+reads the locks for the months in hand and hands them to the rule, and that the
+route replays through the service rather than writing entries itself. Those
+three cases exist because the eight before them all passed during the twenty-five
+minutes when the rule was correct and nothing called it with a real list.
 
 Install MongoDB, then `npm run seed && npm run dev` and walk one entry through
 submit → manager → HR → export before treating the API as working. The seed

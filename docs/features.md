@@ -5,14 +5,14 @@ README และไม่ใช่จากความจำ วิธีที
 (§ที่มาของแต่ละคอลัมน์) เพื่อให้รันซ้ำแล้วได้ตัวเลขเดิม
 
 ขนาดของระบบ ณ วันนี้: **59 ไฟล์ `app/api/**/route.js` · 68 endpoint (method × path)
-· 30 ไฟล์ `components/*.jsx` · 49 ไฟล์ `lib/*.js` · 98 ไฟล์เทสต์ · 1600 เทสต์ผ่านหมด**
+· 30 ไฟล์ `components/*.jsx` · 48 ไฟล์ `lib/*.js` · 100 ไฟล์เทสต์**
 
 ---
 
 ## วิธีอ่านคอลัมน์ “Mongo จริง”
 
 คอลัมน์นี้ตอบคำถามเดียว — **ฟีเจอร์นี้เคยทำงานกับฐานข้อมูลจริงหรือยัง** ซึ่งไม่ใช่
-คำถามเดียวกับ “มีเทสต์ไหม” เพราะ **เทสต์ทั้ง 1600 ตัวไม่แตะ Mongo เลยสักตัว**
+คำถามเดียวกับ “มีเทสต์ไหม” เพราะ **เทสต์ในชุดนี้ไม่แตะ Mongo เลยสักตัว** (จำนวนที่วัดได้ล่าสุดอยู่ใน README §Status — ที่เดียว)
 
 | สัญลักษณ์ | ความหมาย |
 |---|---|
@@ -20,6 +20,15 @@ README และไม่ใช่จากความจำ วิธีที
 | ⚠️ | เคยเดิน แต่ **ร่องรอยถูกลบทิ้งแล้ว** — README บันทึกการเดินด้วยข้อมูลชั่วคราวที่ลบหลังเสร็จ ฐานข้อมูลวันนี้จึงไม่ยืนยันให้ |
 | ❌ | **ยังไม่เคย** — ที่ที่ฟีเจอร์นี้จำเป็นต้องทิ้งร่องรอยไว้ ว่างเปล่า |
 | ❓ | **ไม่แน่ใจ** — เป็นทางอ่านอย่างเดียวที่ไม่ทิ้งร่องรอย และไม่มีบันทึกการเดินไว้ที่ไหน |
+
+> 🚶 **การเดินเมื่อ 2026-08-25 — แปดเส้นทางที่เคยเป็น ❌ ตอนนี้เป็น ⚠️ ทั้งหมด**
+> เดินบน**สำเนาของฐานจริง** (`npm run backup` ของ `primus_ot` → `restore --to primus_ot_walk`)
+> ยิงผ่าน HTTP จริงบน `next dev` :3002 อ่านยืนยันจาก Mongo ทุกครั้ง ไม่เชื่อ response
+> แล้วคืนสภาพด้วย snapshot เดิมพร้อม diff ทีละ document — ขึ้น identical ทั้งแปดครั้ง
+>
+> ⚠️ ที่ได้จึงต่างจาก ⚠️ เดิมตรงเหตุผล: ไม่ใช่ “ร่องรอยถูกลบหลังเดิน” แต่คือ
+> **ร่องรอยไม่เคยอยู่ใน `primus_ot` ตั้งแต่แรก** ฐานจริงไม่ถูกแตะเลยสักไบต์ ซึ่งเป็นเจตนา
+> และแปลว่าคอลัมน์นี้จะยังไม่เป็น ✅ จนกว่าจะมีคนใช้ของจริง — รายละเอียดอยู่ใน README §Status
 
 > ⚠️ **`otAccessLogs` เพิ่งเริ่มเก็บเมื่อ 2026-08-24 04:22** (819 รายการ · 28 เส้นทาง)
 > การไม่พบเส้นทางหนึ่งในนั้นจึงแปลว่า “ไม่ได้ถูกเรียกในสองวันนี้” เท่านั้น
@@ -40,7 +49,7 @@ README และไม่ใช่จากความจำ วิธีที
 | คำนวณล่วงหน้าก่อนกดส่ง | ฟอร์มยิง preview ทุกครั้งที่แก้เวลา เพื่อโชว์ชั่วโมงและคำเตือนก่อนยื่น | `app/api/entries/preview/route.js` · `OtForm.jsx:262` | `otEngine` `quickEditOvernight` | ✅ โดยอนุมาน — ทั้ง 11 ใบยื่นผ่านฟอร์มนี้ |
 | แก้ไขใบของตัวเอง (ก่อนหัวหน้าเซ็น) | แก้เวลา/คำอธิบาย คำนวณใหม่ และบันทึกประวัติ | `app/api/entries/[id]/route.js` · `lib/entries.js` | `editPermission` `descriptionEdit` `quickEditOvernight` | ✅ README walk 2026-08-14 (เจอบั๊ก description cap ตรงนี้) |
 | ยกเลิกใบของตัวเอง | ถอนใบที่ยังไม่มีใครเซ็น | `app/api/entries/[id]/cancel/route.js` | `cancelPermission` | ✅ มี 1 ใบสถานะ `cancelled` |
-| **ขอถอนใบที่อนุมัติแล้ว** | ขอ ≠ ได้ — ยื่นคำขอพร้อมเหตุผล ใบยังนับอยู่จนกว่าจะมีคนตอบ | `app/api/entries/[id]/withdraw/route.js` · `lib/withdrawal.js` | `withdrawal` `approverCompanyScope` | ❌ ไม่มีใบไหนมี `withdrawal.state` เลยสักใบ |
+| **ขอถอนใบที่อนุมัติแล้ว** | ขอ ≠ ได้ — ยื่นคำขอพร้อมเหตุผล ใบยังนับอยู่จนกว่าจะมีคนตอบ | `app/api/entries/[id]/withdraw/route.js` · `lib/withdrawal.js` | `withdrawal` `approverCompanyScope` | ⚠️ เดิน 2026-08-25 — ขอ → ระหว่างรอสถานะยังเป็น `approved` → อนุมัติให้ถอน → `cancelled` |
 | ดูประวัติของใบ | ใครทำอะไรกับใบนี้บ้าง เรียงตามเวลา | `app/api/entries/[id]/trail/route.js` | `hasAuditTrail` `latestPerChain` | ❓ |
 | ดูว่ารออยู่ที่ใคร | บอกชื่อคนที่ต้องเซ็นขั้นถัดไป | `app/api/entries/approvers/route.js` · `lib/approverLine.js` | `approverLine` | ✅ `otAccessLogs` · README walk 2026-08-19 |
 | ดูเพดานที่ใช้ไปแล้ว | ชั่วโมงสะสมของเดือน/สัปดาห์ เทียบเพดานแผนก | `app/api/entries/usage/[period]/route.js` · `lib/caps.js` | `queueCapUsage` `weeklyCap` `entryListCap` | ✅ `otAccessLogs` |
@@ -50,13 +59,33 @@ README และไม่ใช่จากความจำ วิธีที
 | ฟีเจอร์ | ทำอะไร | ไฟล์หลัก | เทสต์ | Mongo จริง |
 |---|---|---|---|---|
 | อนุมัติใบ (ขั้นหัวหน้า) | เซ็นขั้นแรก ใบย้ายไป `pending_hr` | `app/api/entries/[id]/approve/route.js` · `lib/delegation.js` | `delegation` `adminApproval` `approverMultiDepartment` | ✅ 8 ใบมี `managerDecision.by` |
-| **ปฏิเสธใบ** | ตีกลับพร้อมเหตุผล | `app/api/entries/[id]/reject/route.js` | `delegation` `adminApproval` | ❌ ไม่มีใบไหนสถานะ `rejected` เลย |
+| **ปฏิเสธใบ** | ตีกลับพร้อมเหตุผล | `app/api/entries/[id]/reject/route.js` | `delegation` `adminApproval` | ⚠️ เดิน 2026-08-25 — `reject_mgr` แล้วส่งใหม่ผูก `refiledFrom` · ใบเก่าคงอยู่ · สิทธิ์ส่งใหม่ใช้ได้ครั้งเดียว |
 | อนุมัติเป็นชุด | เลือกหลายใบแล้วเซ็นรวดเดียว | `components/ApprovalQueue.jsx` | `batchBarSticky` `batchConfirmLabel` | ❓ |
-| **ยกเว้นเพดานให้ใบหนึ่ง** | ปล่อยใบที่เกินเพดานแผนกผ่าน พร้อมเหตุผล | `app/api/entries/[id]/cap-override/route.js` | `queueCapUsage` `entryListCap` | ❌ ไม่มีใบไหนมี `capOverride` |
-| **ตอบคำขอถอนใบ** | อนุมัติหรือปฏิเสธคำขอถอน | `app/api/entries/[id]/withdraw/decide/route.js` · `components/WithdrawalRequests.jsx` | `withdrawal` | ❌ ไม่มีคำขอในระบบให้ตอบ |
+| **ตอบคำขอถอนใบ** | อนุมัติหรือปฏิเสธคำขอถอน | `app/api/entries/[id]/withdraw/decide/route.js` · `components/WithdrawalRequests.jsx` | `withdrawal` | ⚠️ เดิน 2026-08-25 — อนุมัติให้ถอน → `cancelled` · ไม่อนุมัติ → สถานะไม่ขยับเลย |
+
+#### บนหน้าจอเดียวกัน แต่ไม่ใช่ของหัวหน้า — ฝ่ายบุคคล/ผู้ดูแลระบบ
+
+สี่รายการนี้เคยอยู่ในตารางข้างบน ใต้หัวข้อที่เขียนว่า **หัวหน้างาน** ซึ่งผิด —
+ตรวจใหม่เมื่อ 2026-08-25 โดยอ่าน guard ของ route จริงเทียบกับหัวข้อที่ครอบมันอยู่
+
+* **`cap-override` เป็น `requireRole(…, 'hr', 'admin')`** หัวหน้ายิงมาได้ 403 ตรง ๆ
+  (เดินจริงแล้ว) และปุ่มบนหน้าจอก็ขึ้นเฉพาะ `isHr` ที่ `ApprovalQueue.jsx`
+* **แท็บย่อยวันเกิดทั้งแท็บไม่ถูกวาดให้หัวหน้าเลย** ตั้งแต่ 2026-08-13 —
+  `QueueTabs.jsx` ถาม `birthdayActionPermission({ user }).ok` ก่อนจะวาดแท็บ
+  ทั้งสองปุ่มในนั้นจึงเป็นของ ฝ่ายบุคคล เท่านั้น และเซิร์ฟเวอร์ปฏิเสธซ้ำอีกชั้น
+
+> ⚠️ **`requireRole` ของ route วันเกิดกว้างกว่าความจริง** — ทั้งสามเส้นทางเขียนว่า
+> `'manager', 'hr', 'admin'` แต่ `birthdayActionPermission` ข้างในปฏิเสธหัวหน้า
+> (เดิน 2026-08-25: หัวหน้ายิงทั้งสองปุ่มได้ 403 พร้อมข้อความว่าเป็นของฝ่ายบุคคล)
+> ส่วน `birthday/queue` ไม่ 403 แต่คืน**รายการว่าง** ให้ — อ่าน `requireRole`
+> อย่างเดียวจึงตอบคำถาม “ใครใช้ฟีเจอร์นี้ได้” ไม่ได้
+
+| ฟีเจอร์ | ทำอะไร | ไฟล์หลัก | เทสต์ | Mongo จริง |
+|---|---|---|---|---|
+| **ยกเว้นเพดานให้ใบหนึ่ง** | ปล่อยใบที่เกินเพดานแผนกผ่าน พร้อมเหตุผล | `app/api/entries/[id]/cap-override/route.js` | `queueCapUsage` `entryListCap` | ⚠️ เดิน 2026-08-25 — `capExceeded` ถูกล้าง แต่ `capSnapshot.breaches` ยังเก็บว่าเคยเกินอะไรไว้ |
 | แท็บย่อย `วันเกิดที่ยังไม่มีใบ` | รายชื่อคนที่วันเกิดตรงกับวันทำงาน แต่ยังไม่มีใบ OT | `app/api/birthday/queue/route.js` · `components/BirthdayQueue.jsx` | `birthdayQueue` `birthdayCheck` `birthdayCardUi` | ✅ `otAccessLogs` 4 ครั้ง 2026-08-24 |
-| **บันทึกว่าตรวจแล้ว (วันเกิด)** | ปิดรายการในคิววันเกิดโดยไม่ต้องออกใบ | `app/api/birthday/checks/route.js` · `components/birthdayActions.jsx` | `birthdayCheck` `birthdayQueue` | ❌ `otBirthdayChecks` ว่างเปล่า (0 รายการ) |
-| **บันทึก OT ให้จากรายการวันเกิด** | ฝ่ายบุคคลออกใบแทนและอนุมัติในขั้นเดียว | `app/api/birthday/entries/route.js` · `lib/birthdayFiling.js` | `birthdayDirectApproval` `birthdayFileSheet` | ❌ ไม่มีใบไหนมาจากทางนี้ |
+| **บันทึกว่าตรวจแล้ว (วันเกิด)** | ปิดรายการในคิววันเกิดโดยไม่ต้องออกใบ | `app/api/birthday/checks/route.js` · `components/birthdayActions.jsx` | `birthdayCheck` `birthdayQueue` | ⚠️ เดิน 2026-08-25 — บันทึก → หายจากคิว → ยกเลิก → กลับมา · เหลือ 2 แถว แถวแรกไม่ถูกลบ |
+| **บันทึก OT ให้จากรายการวันเกิด** | ฝ่ายบุคคลออกใบแทนและอนุมัติในขั้นเดียว | `app/api/birthday/entries/route.js` · `lib/birthdayFiling.js` | `birthdayDirectApproval` `birthdayFileSheet` | ⚠️ เดิน 2026-08-25 — `approved` ชั้นเดียว ไม่มี `managerDecision` เลย · engine หักพักเที่ยงเอง 9 ชม. → 8 ชม. |
 
 ### แท็บ `รออนุมัติแทน` — ฝ่ายบุคคล/ผู้ดูแลระบบ (โผล่เมื่อมีทีมที่รับช่วงอยู่)
 
@@ -68,14 +97,14 @@ README และไม่ใช่จากความจำ วิธีที
 
 | ฟีเจอร์ | ทำอะไร | ไฟล์หลัก | เทสต์ | Mongo จริง |
 |---|---|---|---|---|
-| **ผู้ดูแลระบบเซ็นแทนหัวหน้า** | เฉพาะใบที่ไม่มีใครเซ็นได้จริง ๆ (แผนกไม่มีหัวหน้า) ต้องกรอกเหตุผล | `lib/delegation.js` (`mayOverrideManagerStep`, `nobodyCanSign`) · `app/api/entries/route.js` | `adminApproval` `permissionRouteGuards` | ❌ ไม่มีใบไหนมี `managerDecision.adminOverride` |
+| **ผู้ดูแลระบบเซ็นแทนหัวหน้า** | เฉพาะใบที่ไม่มีใครเซ็นได้จริง ๆ (แผนกไม่มีหัวหน้า) ต้องกรอกเหตุผล | `lib/delegation.js` (`mayOverrideManagerStep`, `nobodyCanSign`) · `app/api/entries/route.js` | `adminApproval` `permissionRouteGuards` | ⚠️ เดิน 2026-08-25 — ไม่มีเหตุผล → 400 · `onBehalfOf`/`delegationId` ไม่มีในเอกสาร ไม่ใช่ null |
 
 ### แท็บ `รอ HR ยืนยัน` — ฝ่ายบุคคล/ผู้ดูแลระบบ
 
 | ฟีเจอร์ | ทำอะไร | ไฟล์หลัก | เทสต์ | Mongo จริง |
 |---|---|---|---|---|
 | ยืนยันขั้น HR | เซ็นขั้นที่สอง ใบกลายเป็น `approved` | `app/api/entries/[id]/approve/route.js` | `delegation` `signingCoverage` | ✅ 6 ใบมี `hrDecision.by` |
-| HR ปฏิเสธใบที่หัวหน้าเซ็นแล้ว | ขึ้นกับนโยบาย `hrMayReject` และ `hrRejectReturnsTo` | `app/api/entries/[id]/reject/route.js` | `delegation` | ❌ เหมือนข้างบน — ไม่มีใบ `rejected` |
+| HR ปฏิเสธใบที่หัวหน้าเซ็นแล้ว | ขึ้นกับนโยบาย `hrMayReject` และ `hrRejectReturnsTo` | `app/api/entries/[id]/reject/route.js` | `delegation` | ⚠️ เดิน 2026-08-25 — `reject_hr` ลงเอยที่ `rejected` ตาม `hrRejectReturnsTo: 'employee'` |
 
 ### แท็บ `ตรวจสอบรายเดือน` — ฝ่ายบุคคล/ผู้ดูแลระบบ (หัวหน้าเห็นเป็น `สรุปทีม`)
 
@@ -83,7 +112,7 @@ README และไม่ใช่จากความจำ วิธีที
 |---|---|---|---|---|
 | ตารางรายเดือนทั้งบริษัท | ทุกใบของงวด กรองตามสถานะ/แผนก/คน | `app/api/reports/monthly/[period]/route.js` · `components/HrView.jsx` | `reportColumns` `emptyMonth` `monthSearch` `hrMonthCards` | ✅ `otAccessLogs` 10 ครั้ง |
 | ฝ่ายบุคคลแก้ไขใบ | แก้ใบที่ยังไม่ปิดงวด ต้องมีเหตุผล บันทึกประวัติ | `components/HrEdits.jsx` · `components/HrEntries.jsx` | `editPermission` `editTally` `descriptionEdit` | ✅ README walk 2026-08-14 (`hr_edit` ในประวัติ) |
-| **ปิดงวด / เปิดงวดที่ปิดแล้ว** | ล็อกเดือน ปิดทางเขียนของ 7 route · เปิดคืนได้เฉพาะผู้ดูแลระบบพร้อมเหตุผล | `components/PeriodLock.jsx` · `app/api/periods/[period]/{close,reopen}/route.js` · `lib/periodLock.js` | `periodLock` `periodLockRoutes` `periodReminder` `replayPeriodLock` | ⚠️ README walk 2026-08-14 ครบวงจร แต่เอกสารล็อกถูกลบหลังเสร็จ — **`otPeriodLocks` วันนี้ว่างเปล่า ยังไม่เคยมีงวดไหนถูกปิดจริง** |
+| **ปิดงวด / เปิดงวดที่ปิดแล้ว** | ล็อกเดือน ปิดทางเขียนของ 7 route · เปิดคืนได้เฉพาะผู้ดูแลระบบพร้อมเหตุผล | `components/PeriodLock.jsx` · `app/api/periods/[period]/{close,reopen}/route.js` · `lib/periodLock.js` | `periodLock` `periodLockRoutes` `periodReminder` `replayPeriodLock` | ⚠️ เดินอีกครั้ง 2026-08-25 — ปิด → ยื่นเข้าเดือนนั้น 409 → เปิดคืน (admin + เหตุผล) → ยื่นได้ · `events` เรียงถูก · **`otPeriodLocks` ในฐานจริงยังว่างอยู่** |
 | พิมพ์ใบ F-HR-027 ทั้งเดือนรวดเดียว | รวมทุกคนในงวดเป็นชุดพิมพ์ | `components/PrintFormBatch.jsx` · `app/api/reports/form/[period]/route.js` | `formBundle` `formPrintScope` `printFlagLayout` | ✅ `otAccessLogs` — แต่ยังไม่เคยส่งเข้าเครื่องพิมพ์จริง |
 | ส่งออกรายการเป็น CSV | ทุกใบของงวดตามตัวกรองที่ตั้งไว้ | `app/api/exports/entries.csv/route.js` | `accountingReconciliation` | ✅ `otAccessLogs` 2 ครั้ง |
 | ส่งออกสรุปรายเดือนเป็น CSV | ยอดรวมต่อคนต่อเดือน | `app/api/exports/monthly.csv/route.js` | `reportColumns` `emptyMonth` | ❓ |
@@ -157,7 +186,7 @@ README และไม่ใช่จากความจำ วิธีที
 
 | endpoint | ทำอะไร | ไฟล์หลัก | เทสต์ | Mongo จริง |
 |---|---|---|---|---|
-| `POST /api/settings/recompute` | คำนวณใบทั้งงวดใหม่ · ใส่ `includeApproved: true` แล้วจะขยับตัวเลขที่เซ็นรับไปแล้ว (ผู้ดูแลระบบ และต้องมี `note`) | `app/api/settings/recompute/route.js` · `src/services/otService.js` | `policyReplay` `replayPeriodLock` `permissionRouteGuards` | ❌ **ยังไม่เคยเลย** — `otPolicyReplayRuns` มี 30 รายการ แต่ไม่มีสักรายการที่ filter เป็น `{period}` (18 รายการมาจากการแก้ทะเบียน · 11 จากการบันทึกนโยบาย · 1 จากนำเข้าวันหยุด) |
+| `POST /api/settings/recompute` | คำนวณใบทั้งงวดใหม่ · ใส่ `includeApproved: true` แล้วจะขยับตัวเลขที่เซ็นรับไปแล้ว (ผู้ดูแลระบบ และต้องมี `note`) | `app/api/settings/recompute/route.js` · `src/services/otService.js` | `policyReplay` `replayPeriodLock` `permissionRouteGuards` | ⚠️ เดิน 2026-08-25 — replay ทั้งมีและไม่มี `includeApproved` · **เดือนที่ปิดงวดถูกข้ามเสมอ** (`updated: 0`, ใบไม่ขยับ) · ก่อนหน้านั้น `otPolicyReplayRuns` มี 30 รายการ แต่ไม่มีสักรายการที่ filter เป็น `{period}` (18 รายการมาจากการแก้ทะเบียน · 11 จากการบันทึกนโยบาย · 1 จากนำเข้าวันหยุด) |
 | `GET /api/health` | ให้ตัวเฝ้าระวังภายนอกเรียก · route เดียวที่ไม่ผ่าน `requireAuth` | `app/api/health/route.js` | — | ❓ ไม่พบใน `otAccessLogs` เลยตั้งแต่ 24 ส.ค. |
 
 > `PATCH /api/settings` เคยอยู่ในรายการนี้ ตอนนี้มีหน้าจอแล้ว (ตั้งค่าระบบ → ชื่อบริษัทและฟอร์ม)
@@ -171,12 +200,12 @@ README และไม่ใช่จากความจำ วิธีที
 | `npm run seed` | ล้าง 5 collection แล้วสร้างข้อมูลตัวอย่างใหม่ · `seedGuard` ปฏิเสธถ้ามีข้อมูลที่ seed ไม่ได้สร้าง | `src/seed.js` · `lib/seedGuard.js` | `seedGuard` `seedEntryPoint` | ✅ ฐานข้อมูลปัจจุบันมาจากการ seed 2026-08-13 |
 | `npm run backup` | dump ทุก collection เป็น Extended JSON ผ่าน driver (เครื่องนี้ไม่มี `mongodump`) | `src/backup.js` · `src/lib/backupFormat.js` | `backupFormat` `seedEntryPoint` | ✅ ชุดสำรองจริง 6 ชุดใน `backups/` และ 2 ชุดใน `C:\Users\suwan\OT-Backups` |
 | `npm run restore` | กู้คืน · ตรวจลายนิ้วมือทุกไฟล์ก่อนแตะ collection แรก · สร้าง index คืน | `src/restore.js` | `restoreArgs` `backupFormat` `seedEntryPoint` | ✅ README round trip 2026-08-14 เทียบไบต์ต่อไบต์ |
-| `npm run reset-admin -- <CODE>` | ทางกลับเข้าบัญชีผู้ดูแลระบบที่ลืมรหัส · เฉพาะแถว admin · ลงบันทึกโดยไม่ระบุตัวผู้กระทำ | `src/reset-admin-password.js` | `lockout` `permissionRouteGuards` | ❌ `otEmployeeAudits` ไม่มี `source: 'script'` เลยสักรายการ |
+| `npm run reset-admin -- <CODE>` | ทางกลับเข้าบัญชีผู้ดูแลระบบที่ลืมรหัส · เฉพาะแถว admin · ลงบันทึกโดยไม่ระบุตัวผู้กระทำ | `src/reset-admin-password.js` | `lockout` `permissionRouteGuards` | ⚠️ เดิน 2026-08-25 — ปฏิเสธสามทาง แล้วรหัสใหม่ล็อกอินผ่าน HTTP ได้พร้อม `mustChangePassword` · เขียนแถว `source: 'script'` ที่ไม่มีผู้กระทำ |
 | `npm run whatif` | ตีราคาการเปลี่ยนนโยบายก่อนเปลี่ยนจริง · อ่านอย่างเดียว ปลอดภัยกับ prod · `-- --show` บอกค่าที่ใช้อยู่จริง | `src/whatif.js` | — | ✅ ใช้ตอบข้อ [OPEN] เมื่อ 2026-08-13 |
 | `npm run migrate:company` | เติม `company` ให้แถวที่เกิดก่อนมีฟิลด์นี้ · `--dry` ดูแผนได้ | `src/migrate-company.js` | — | ❓ ไม่มีร่องรอย · วันนี้ไม่มีพนักงานคนไหนขาด `company` จึงเป็น no-op อยู่แล้ว |
 | `npm run migrate:policy-version` | สร้างเวอร์ชันที่ 1 แล้วชี้ทุกใบที่ยังไม่มีตัวชี้ไปที่นั้น | `src/migrate-policy-version.js` · `lib/policyVersion.js` | `policyVersion` (ส่วน `planBackfill`) | ❓ ทุกใบมี `policyVersionId` ครบ แต่ฐานข้อมูลถูก seed ใหม่เมื่อ 2026-08-13 ทับหลักฐานไปแล้ว |
 | `npm run migrate:birthday-rule-start` | ย้ายวันเริ่มมีผลของกฎวันหยุดวันเกิดไปต้นเดือน | `src/migrate-birthday-rule-start.js` | `birthdayCheck` `otBirthday` | ✅ เวอร์ชันที่ 10 (2026-08-20) มีเหตุผลตรงกับสิ่งที่สคริปต์นี้เขียน |
-| `npm test` | 1600 เทสต์ · ไม่แตะ Mongo เลย | `test/*.test.js` | — | — |
+| `npm test` | ทั้งชุด · ไม่แตะ Mongo เลย | `test/*.test.js` | — | — |
 | `npm run build` / `start` / `dev` | Next 16.3 · **สั่ง `build` ขณะ `start` ทำงานอยู่ ทำให้หน้าที่เปิดค้างพังจนกว่าจะรีสตาร์ท** | `next.config.js` | — | — |
 | `scripts/backup.ps1` | ตัวที่ Task Scheduler เรียกทุกวัน 01:00 · ต้องทดสอบด้วย `powershell.exe` ไม่ใช่ `pwsh` | `scripts/backup.ps1` | — | ✅ `backups/backup.log` มีบันทึกถึง 2026-08-25 |
 | `scripts/backup.sh` | ตัวเดียวกันฝั่ง POSIX | `scripts/backup.sh` | — | ❓ |
@@ -187,7 +216,7 @@ README และไม่ใช่จากความจำ วิธีที
 ## สิ่งที่ควรอ่านก่อน deploy — ฟีเจอร์ที่เทสต์ผ่านแต่ยังไม่เคยเดินกับ Mongo
 
 นี่คือคำตอบของคำถามข้อสุดท้ายในโจทย์ เรียงจากความเสี่ยงมากไปน้อย ทุกข้อมีเทสต์
-ครอบและเทสต์ผ่านหมด — และเทสต์ทั้ง 1600 ตัวไม่แตะฐานข้อมูล ซึ่งเป็นชนิดของ
+ครอบและเทสต์ผ่านหมด — และเทสต์ทั้งชุดไม่แตะฐานข้อมูล ซึ่งเป็นชนิดของ
 ช่องว่างที่บั๊ก `year` หายของปฏิทินวันหยุดเคยซ่อนอยู่
 
 | ฟีเจอร์ | หลักฐานว่ายังไม่เคย | ทำไมถึงเสี่ยง |
@@ -218,7 +247,17 @@ for f in $(find app/api -name route.js); do
 
 # route ไหนถูกเรียกจากหน้าจอบ้าง — ส่วนต่างคือกลุ่ม ข
 grep -rhoE "api\.(get|post|patch|del|download|upload)\(" -A0 components/ | sort -u
+
+# แต่ละแถวอยู่ใต้หัวข้อที่บอกบทบาทถูกไหม — เทียบกับ guard ของ route จริง
+grep -oE '`app/api/[^`]*route\.js`' docs/features.md | tr -d '`' | sort -u |
+  while read -r f; do printf '%s -> ' "$f";
+    grep -oE "requireRole\(await requireAuth\(req\),[^)]*\)" "$f" || echo "requireAuth only"; done
 ```
+
+คำสั่งสุดท้ายคือสิ่งที่เจอว่าสี่แถวอยู่ผิดหัวข้อเมื่อ 2026-08-25
+`test/docsMatchCode.test.js` ถือกฎนี้ไว้ให้แล้วสำหรับหัวข้อที่เขียนว่า **หัวหน้างาน**
+แต่มันจับได้แค่ชั้น `requireRole` เท่านั้น — route ที่ `requireRole` กว้างแล้วไป
+ปฏิเสธข้างในอย่างสามเส้นทางวันเกิด เครื่องไม่รู้ ต้องอ่านเอง
 
 หลักฐานฝั่งฐานข้อมูลอ่านด้วยสคริปต์ชั่วคราวที่ต่อผ่าน `MONGODB_URI` แล้วนับอย่าง
 เดียว หลักการมีสองข้อ:

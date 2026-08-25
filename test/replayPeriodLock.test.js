@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
 import { planRecompute, summariseReplay } from '../lib/policyVersion.js';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
 /**
  * A CLOSED MONTH IS NOT RESTATED BY A FLAG CHANGE EITHER.
@@ -113,4 +120,65 @@ test('a run that touched no closed month says so with an empty list, not a missi
   const summary = summariseReplay({ scanned: [1], replay: [1], skipped: [] });
   assert.equal(summary.skippedClosed, 0);
   assert.deepEqual(summary.closedPeriods, []);
+});
+
+// ── the wiring, which the seven tests above cannot see ──────────────────────
+
+/**
+ * `planRecompute` IS ONLY THE RULE. Everything above hands it a
+ * `closedPeriods` list and checks what it decides — and every one of them would
+ * still pass if `recomputeEntries` stopped reading the locks and passed `[]`.
+ *
+ * That is not a hypothetical shape of mistake: it is the shape this feature
+ * started as. Between 2026-08-14 08:13 and 08:38 the rule existed and nothing
+ * called it with a real list, and the README went on saying a replay could
+ * restate a closed month for eleven days afterwards because nothing anywhere
+ * disagreed with it.
+ *
+ * A source-reading test, for the reason test/periodLockRoutes.test.js is one:
+ * the read needs a database, the suite has none, and the alternative to
+ * asserting the line is there is finding out from a closed month that moved.
+ * Walked against a live database 2026-08-25 — a closed month came back
+ * `updated: 0` with the entry's `updatedAt` and `__v` untouched.
+ *
+ * Run with: npm test
+ */
+
+const service = read('src/services/otService.js');
+
+test('recomputeEntries reads the locks itself, rather than trusting its callers', () => {
+  assert.match(
+    service,
+    /PeriodLock\.find\(\{\s*period: \{ \$in: periods \}, state: 'closed' \}/,
+    'recomputeEntries no longer asks which of the months it is about to touch are closed',
+  );
+  assert.match(
+    service,
+    /planRecompute\(found, \{ includeApproved, closedPeriods \}\)/,
+    'the closed months are read and then not handed to the rule that uses them',
+  );
+});
+
+test('the lock is asked about the months in hand, not about every lock ever written', () => {
+  // A replay over one holiday date asks about one month. Loading the whole
+  // collection would work and would get slower every month the system runs.
+  assert.match(service, /const periods = \[\.\.\.new Set\(found\.map\(\(e\) => e\.period\)/);
+});
+
+test('the manual route replays through the service, so the lock is not optional', () => {
+  /**
+   * `settings/recompute` is deliberately absent from the GUARDED list in
+   * test/periodLockRoutes.test.js: it holds no `refusePeriodLock` call of its
+   * own, because a replay is not one month's write — it is a filter that can
+   * span any number of them, and the answer belongs per entry rather than per
+   * request. What must stay true is that it goes through the service that does
+   * the asking, and never writes entries itself.
+   */
+  const route = read('app/api/settings/recompute/route.js');
+  assert.match(route, /recomputeEntries\(/, 'the manual replay no longer goes through the service');
+  assert.doesNotMatch(
+    route,
+    /OtEntry|applyComputation|\.save\(\)/,
+    'the manual replay writes entries itself, which is the eighth way into a closed month',
+  );
 });
