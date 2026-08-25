@@ -514,8 +514,12 @@ function Compliance() {
             </Alert>
           )}
 
-          <div className="table-wrap">
-            <table className="log-table">
+          {/* `card-list` says what this wrap holds below 860px: cards, not a
+              table pushed sideways. Six columns, two of them whole sentences,
+              do not go on a 360px screen in any arrangement — see `.cmp-table`
+              in styles for what the card keeps and in what order. */}
+          <div className="table-wrap card-list">
+            <table className="log-table cmp-table">
               <thead>
                 <tr>
                   <th>วันเวลา</th>
@@ -529,8 +533,8 @@ function Compliance() {
               <tbody>
                 {data.rows.map((r, i) => (
                   <tr key={`${r.at}-${r.kind}-${i}`}>
-                    <td data-label="วันเวลา" className="nb">{at(r.at)}</td>
-                    <td data-label="ประเภท">
+                    <td data-label="วันเวลา" className="nb cmp-when">{at(r.at)}</td>
+                    <td data-label="ประเภท" className="cmp-kind">
                       <span className={`chip ${KIND_TONE[r.kind] || ''}`}>
                         {labels[r.kind] || r.kind}
                       </span>
@@ -542,10 +546,14 @@ function Compliance() {
                         <div className="cell-sub">{r.source}</div>
                       )}
                     </td>
-                    <td data-label="ผู้กระทำ">{r.actor}</td>
-                    <td data-label="เป้าหมาย">{r.target}</td>
-                    <td data-label="รายละเอียด">{r.detail}</td>
-                    <td data-label="เหตุผล">
+                    <td data-label="ผู้กระทำ" className="cmp-actor">{r.actor}</td>
+                    {/* The arrow between the two is drawn by the card and not
+                        printed here: on a wide screen these are two columns
+                        under two headings, and an arrow inside one of them
+                        would be a stray character in the เป้าหมาย column. */}
+                    <td data-label="เป้าหมาย" className="cmp-target">{r.target}</td>
+                    <td data-label="รายละเอียด" className="cmp-detail">{r.detail}</td>
+                    <td data-label="เหตุผล" className="cmp-reason">
                       {r.reason
                         ? <span className="note">“{r.reason}”</span>
                         : <span className="cell-sub">— ไม่ได้ระบุ</span>}

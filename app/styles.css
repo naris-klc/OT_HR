@@ -7858,6 +7858,157 @@ table.mini tbody tr:hover { background: none; }
      card's own text does rather than against its border, and 10px between
      rows so five label/value pairs read as five rather than one block. */
   .stack-table.log-table tbody tr { gap: 10px; padding: 14px 16px; }
+  /* ══ การใช้สิทธิ์พิเศษ IS A CARD LIST BELOW 860px ══════════════════════
+
+     Six columns, and two of them are prose: รายละเอียด is a whole clause and
+     เหตุผล is free text somebody typed into a box. A table answers prose in a
+     350px card the only way it can — every column squeezed to its minimum and
+     .table-wrap scrolled sideways — so a row was read three or four syllables
+     at a time down six narrow ribbons, with the two that say what happened off
+     the right edge.
+
+        ┌────────────────────────────────────────┐
+        │ 24 ส.ค. 2569 14:32:05  [ ตั้งรหัสผ่านใหม่ ] │
+        │ ผู้ดูแลระบบ → PM-0412 · สมชาย ใจดี          │
+        │ ตั้งรหัสผ่านใหม่ให้ PM-0412 · สมชาย ใจดี      │
+        │ เหตุผล “พนักงานลืมรหัสผ่าน”                 │
+        └────────────────────────────────────────┘
+
+     NOT `.stack-table`, which is how the three traffic tabs next door are
+     drawn at this width. That one prints its heading beside every value, and
+     six labelled rows — four of them a single short phrase — is a card twice
+     as tall as what it has to say. Here the order carries it instead: when and
+     what at the top, who did it to whom, then the sentence. The one label left
+     is เหตุผล, because a quoted line with nothing in front of it reads as the
+     tail of the รายละเอียด line above it.
+
+     NOTHING IS DROPPED. Unlike ตรวจสอบรายเดือน, which leaves eight columns on
+     the desktop table, all six facts are on the card — this is a report an
+     auditor reads in sequence, and a row that omits one of six is not the same
+     row. It fits because four of the six are short. */
+  .cmp-table { display: block; width: 100%; min-width: 0; }
+  .cmp-table thead { display: none; }
+  /* 12px between cards and none at the sides: this list sits in the same card
+     as the three filter boxes above it, and an inset here would put the cards
+     12px inside the left edge every input starts at. Same reasoning, and the
+     same numbers, as `.stack-table.log-table tbody` above. */
+  .cmp-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 12px 0; }
+  /* A WRAPPING FLEX ROW, not a grid. The first line is two items that share it
+     and the last two are items that take the whole of it, which grid-template-
+     areas would also do — but ผู้กระทำ → เป้าหมาย is two cells that have to sit
+     against each other and then wrap as one sentence when the pair is too long
+     for the line, and two grid areas cannot flow into each other. */
+  .cmp-table tbody tr {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 10px;
+    /* 15px, the padding `.card` itself takes at this width. */
+    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card);
+  }
+  .cmp-table tbody td {
+    display: block; border: 0; padding: 0; text-align: left;
+    font: 400 13px/1.5 var(--sans); color: var(--ink);
+    /* `break-word` AND NOT `anywhere`. Both break a word that will not fit;
+       `anywhere` also counts the break when the browser measures min-content,
+       so a flex item holding a Thai sentence reports a min-content width of one
+       character and the line above it — the datetime and the badge — is free to
+       take the whole card and push the sentence into a one-word column. This
+       one wraps at the last possible point and asks for its full width first,
+       which is what "ไม่พับคำย่อย" means here. */
+    overflow-wrap: break-word;
+  }
+
+  /* ── line 1: when it happened, and what kind ──────────────────────────── */
+  /* `flex: 1 1 0` — A BASIS OF ZERO, AND THAT IS THE WHOLE OF THE TOP LINE.
+
+     A flex container breaks its lines on the items' BASE sizes, before any of
+     them is allowed to shrink. At `auto` this cell asks for the width of the
+     whole datetime — 151px at 360, measured — and the widest badge is 161: the
+     two do not fit in the 264px a card has, so the badge was dropped onto the
+     second line, where it landed to the LEFT of ผู้กระทำ and read as something
+     that had been said about the actor. At zero the datetime never causes a
+     break, takes what the badge leaves, and wraps at its own space — "11 ส.ค.
+     2569" over "09:52:06" against the widest badge, one line against the rest.
+     `min-width: 0` is what lets it go that far.
+
+     The nowrap `.nb` carries over from the desktop column, where the datetime
+     IS the column and must not break. Undone here for the same reason. */
+  .cmp-table tbody td.cmp-when {
+    order: 1; flex: 1 1 0; min-width: 0;
+    white-space: normal;
+    font: 400 12px/1.5 var(--mono); font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+  /* `margin-left: auto` and not `justify-content: space-between` on the row:
+     the row holds six items across four lines, and space-between would push the
+     two halves of ผู้กระทำ → เป้าหมาย to opposite edges of line 2. The push
+     belongs to the one item that needs it. */
+  .cmp-table tbody td.cmp-kind {
+    order: 2; flex: 0 0 auto; margin-left: auto; text-align: right;
+  }
+  /* THE LINE BREAK AFTER THE BADGE, AND WHY THERE HAS TO BE ONE.
+
+     Wrapping is decided on base sizes, and `.cmp-when` asks for nothing —
+     that is what keeps the badge on line 1. The same nought invites ผู้กระทำ
+     up onto that line behind it: 0 + a badge + a name still fits in 264, so
+     the card put the actor beside the badge and left the datetime crushed to
+     one character a line down the left edge.
+
+     An empty item that demands the full width cannot share a line with
+     anything, so it ends line 1 and starts line 2. Zero-height and pulled in
+     by its own row gaps at both ends, it costs the card nothing but the break
+     it exists for. This is the only reason `order` is declared on all six
+     cells: a break has to be able to sit BETWEEN two of them.
+
+     Nothing is added to the markup for it. On a wide screen this pseudo-
+     element is a child of a table row, which generates no box at all. */
+  .cmp-table tbody tr::after {
+    content: ''; order: 3; flex: 1 0 100%; height: 0; margin: -4px 0;
+  }
+
+  /* ── line 2: who did it, to whom ──────────────────────────────────────── */
+  .cmp-table tbody td.cmp-actor { order: 4; flex: 0 1 auto; min-width: 0; font-weight: 500; }
+  .cmp-table tbody td.cmp-target { order: 5; flex: 1 1 auto; min-width: 0; font-weight: 500; }
+  /* The arrow is the card's, not the row's — it exists only where the two
+     columns have become one sentence. `-4px` takes back most of the row's 10px
+     column gap: the arrow belongs to the pair, and at the full gap it sat
+     equidistant between them and read as a third item. */
+  .cmp-table tbody td.cmp-target::before {
+    content: '→'; margin-left: -4px; margin-right: 6px;
+    font-family: var(--sans); font-weight: 400; color: var(--muted-2);
+  }
+
+  /* ── line 3: what was done, whole ─────────────────────────────────────── */
+  /* `flex: 1 0 100%` — a line of its own, always, however short the sentence
+     is. Left to share line 2 it would read as more of the target's name.
+
+     `text-wrap: balance` IS THE LINE THAT ANSWERS "ไม่พับคำย่อย". Thai is
+     written without spaces, so a browser breaks it on a dictionary and every
+     boundary inside a compound is a legal one: greedy wrapping ended a line on
+     "…บันทึกตัวรหัส" and left "ผ่าน" alone under it, which is a word cut in
+     half as far as anybody reading it is concerned. Balanced, the same
+     sentence comes out "ออกรหัสผ่านชั่วคราวใหม่ ·" over "ระบบไม่ได้บันทึกตัว
+     รหัสผ่าน" — two even lines, and the compound left whole.
+
+     It costs nothing where it does not apply: a one-line detail is already
+     balanced, and the browsers that do not implement it fall back to the
+     greedy wrap this had before. */
+  .cmp-table tbody td.cmp-detail { order: 6; flex: 1 0 100%; text-wrap: balance; }
+
+  /* ── line 4: why ──────────────────────────────────────────────────────── */
+  .cmp-table tbody td.cmp-reason { order: 7; flex: 1 0 100%; }
+  .cmp-table tbody td.cmp-reason::before {
+    content: 'เหตุผล'; margin-right: 6px;
+    font: 400 11.5px/1.45 var(--sans); color: var(--muted-2);
+  }
+  /* A ROW WITH NO REASON KEEPS ITS LINE. "— ไม่ได้ระบุ" under a label is a
+     finding this report exists to surface — the same one the amber panel above
+     the list counts — and a card that simply ends early hides it. It comes off
+     `.cell-sub`, which is mono for codes and figures and carries no Thai at
+     all, so the sentence would be set in whatever the system fell back to. */
+  .cmp-table tbody td.cmp-reason .cell-sub {
+    font: 400 12px/1.5 var(--sans); color: var(--muted-2);
+  }
+
   .log-detail { grid-template-columns: 1fr; gap: 2px; }
   .log-detail dt { margin-top: 8px; }
   /* A fortnight of bars at 360px is 14 columns of about 18px. Still readable
