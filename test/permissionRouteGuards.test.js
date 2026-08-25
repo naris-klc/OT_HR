@@ -7,7 +7,9 @@ import { dirname, join } from 'node:path';
 import { departmentPermission } from '../lib/departments.js';
 import { rosterPermission, codeChangePermission, selfEditPermission } from '../lib/employees.js';
 import { authorizeReplay } from '../lib/policyVersion.js';
-import { CLOSE_ROLES, REOPEN_ROLES } from '../lib/periodLock.js';
+import { CLOSE_ROLES, REOPEN_ROLES, reopenRefusal } from '../lib/periodLock.js';
+import { withdrawRequestPermission } from '../lib/withdrawal.js';
+import { OVERRIDE_NOTE_REQUIRED } from '../lib/delegation.js';
 
 /**
  * ฝ่ายบุคคล FINISH THE DAY'S WORK. ผู้ดูแลระบบ KEEP WHAT IS HARD TO UNDO.
@@ -399,4 +401,86 @@ test('บันทึกระบบ is still the one tab ฝ่ายบุค�
   // from drifting as sections are added around them.
   assert.match(read('components/App.jsx'), /user\.role === 'admin'\) tabs\.push\(\{ key: 'logs'/);
   assert.match(read(LOGS), /requireRole\(await requireAuth\(req\), 'admin'\)/);
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// 6 · ทุกข้อยกเว้นต้องมีเหตุผล — an exception with an empty reason is refused
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * EVERY POWER THAT WAIVES A RULE REFUSES WITHOUT A REASON.
+ *
+ * lib/complianceExport.js calls these "somebody using an exception the system
+ * grants to one role and no other", and the sentence that makes its report
+ * worth reading is: "every one of them has a reason attached, because each of
+ * the rules requires one."
+ *
+ * That was not true of all of them until 2026-08-25. `cap-override` accepted an
+ * empty body and stored "อนุมัติเกินเพดานโดย HR" — a restatement of the button
+ * that was pressed, written into the field where the reason goes, and
+ * afterwards indistinguishable from something a person typed. A row that reads
+ * like an answer and is not one is worse than an empty field, which at least
+ * shows what is missing.
+ *
+ * Walked against a live database the same day: an empty body and a
+ * whitespace-only reason both come back 400, and a real reason is stored
+ * verbatim with `capExceeded` cleared.
+ *
+ * Two shapes below, because the rules live in two places. Where a pure module
+ * decides, the module is CALLED — the stronger check. Where the handler decides
+ * inline, the handler is read as text, the way the rest of this file does it.
+ */
+
+test('the rules that live in a pure module refuse an empty reason, and a blank one', () => {
+  const entry = { employee: 'e1', status: 'approved', period: '2026-08' };
+  const owner = { _id: 'e1', role: 'employee' };
+
+  // ขอถอนใบ — asking for a signed entry back
+  assert.equal(withdrawRequestPermission(owner, entry, '').status, 400);
+  assert.equal(withdrawRequestPermission(owner, entry, '   ').status, 400);
+  assert.equal(withdrawRequestPermission(owner, entry, 'ลงเวลาผิด').ok, true);
+
+  // เปิดงวดที่ปิดแล้ว — the one path back into a signed-off month
+  const closed = { state: 'closed', period: '2026-07' };
+  const admin = { _id: 'a1', role: 'admin' };
+  assert.equal(reopenRefusal({ user: admin, lock: closed, reason: '', period: '2026-07' }).status, 400);
+  assert.equal(reopenRefusal({ user: admin, lock: closed, reason: '  ', period: '2026-07' }).status, 400);
+  assert.equal(reopenRefusal({ user: admin, lock: closed, reason: 'ต้องแก้', period: '2026-07' }), null);
+
+  // คำนวณใหม่รวมใบที่อนุมัติแล้ว
+  assert.equal(authorizeReplay({ actor: admin, includeApproved: true, note: '   ' }).status, 400);
+  assert.equal(authorizeReplay({ actor: admin, includeApproved: true, note: 'HR ตอบ OPEN 1' }).ok, true);
+
+  // ผู้ดูแลระบบเซ็นแทนหัวหน้า is the fifth, and it is NOT asserted here:
+  // `approvalPermission` needs a populated entry to reach its own rule, and
+  // building one belongs beside the other twenty cases about it.
+  // test/adminApproval.test.js holds it — 'without a reason it is refused —
+  // 400, and the message says what to write'. Named rather than duplicated,
+  // because two fixtures for one rule is how the two come to disagree.
+  assert.match(OVERRIDE_NOTE_REQUIRED, /ต้องระบุเหตุผล/, 'the fifth exception stopped demanding a reason');
+});
+
+test('อนุมัติเกินเพดาน refuses an empty reason in the handler', () => {
+  const code = read('app/api/entries/[id]/cap-override/route.js');
+  // `.trim()` and not a bare falsy check: the field is a textarea and a space
+  // is the easiest thing in the world to leave in one.
+  assert.match(code, /String\(payload\?\.reason \|\| ''\)\.trim\(\)/, 'the reason is no longer trimmed');
+  assert.match(code, /if \(!reason\) return fail\('[^']+', 400\)/, 'an empty reason is accepted again');
+});
+
+test('…and has no default reason left to fall back on', () => {
+  /**
+   * The specific regression. `reason: … || 'อนุมัติเกินเพดานโดย HR'` is how the
+   * field came to hold a sentence nobody wrote, and any literal in that
+   * position brings it back under a different spelling.
+   */
+  const code = read('app/api/entries/[id]/cap-override/route.js');
+  assert.doesNotMatch(code, /อนุมัติเกินเพดานโดย HR/, 'the default reason is back');
+  assert.doesNotMatch(code, /reason: [^,\n]*\|\|/, 'the reason falls back to a literal again');
+});
+
+test('ไม่อนุมัติ refuses an empty reason in the handler', () => {
+  const code = read('app/api/entries/[id]/reject/route.js');
+  assert.match(code, /String\(payload\?\.reason \|\| ''\)\.trim\(\)/);
+  assert.match(code, /if \(!reason\) return fail\('[^']+', 400\)/);
 });

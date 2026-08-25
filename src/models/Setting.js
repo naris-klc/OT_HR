@@ -37,12 +37,60 @@ const settingSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+/**
+ * The singleton, created on first use — and READ WITHOUT WRITING after that.
+ *
+ * ── WHY THIS IS NOT ONE `findOneAndUpdate` ──────────────────────────────────
+ *
+ * It was, until 2026-08-25: `findOneAndUpdate({key}, {$setOnInsert: …},
+ * {upsert: true})`. `$setOnInsert` does nothing to a document that exists, so
+ * the call reads as a read — but mongoose adds `$set: { updatedAt: now }` to
+ * every `findOneAndUpdate` on a timestamped schema, whatever the update body
+ * says. So every call wrote.
+ *
+ * And nearly every request calls it. `Setting.effectivePolicy()` goes through
+ * here, `requireAuth` reaches it by way of the session's policy, and the engine
+ * asks for the live policy on every computation — one write to this collection
+ * per authenticated request, measured on a live database: a single
+ * `GET /api/auth/me` moved `updatedAt` from 01:48 to 02:28.
+ *
+ * TWO THINGS WERE WRONG WITH THAT, and the second is the one that matters.
+ *
+ *   The write itself is waste — an indexed update on every request to store a
+ *   value nothing asked to change.
+ *
+ *   `updatedAt` MEANT "READ LAST AT", under a name that says "changed last at".
+ *   Nothing reads it today, which is the only reason this was harmless; the
+ *   next person to reach for "when did the policy last change" would have found
+ *   a field that answers, plausibly, and wrongly. AccessLog, BirthdayCheck,
+ *   PolicyVersion and PolicyReplayRun all turn `updatedAt` OFF for the sibling
+ *   of this reason — a field that is always equal to something else is a field
+ *   somebody will eventually read as what it is called.
+ *
+ * So: read; create only when there is nothing there. The upsert survives for
+ * the one call in the life of a database that finds the collection empty, and
+ * `new: true` still returns the created document.
+ *
+ * THE RETRY IS FOR TWO FIRST REQUESTS AT ONCE. `key` is unique, so of two
+ * callers racing on an empty database one inserts and the other is refused with
+ * E11000. It has nothing to do with the ordinary path — after the first
+ * millisecond of a database's life `findOne` answers and neither branch below
+ * runs — and re-reading is the whole repair, because by then the row is there.
+ */
 settingSchema.statics.load = async function load() {
-  return this.findOneAndUpdate(
-    { key: 'singleton' },
-    { $setOnInsert: { key: 'singleton', policy: {} } },
-    { new: true, upsert: true },
-  );
+  const found = await this.findOne({ key: 'singleton' });
+  if (found) return found;
+
+  try {
+    return await this.findOneAndUpdate(
+      { key: 'singleton' },
+      { $setOnInsert: { key: 'singleton', policy: {} } },
+      { new: true, upsert: true },
+    );
+  } catch (err) {
+    if (err?.code !== 11000) throw err;
+    return this.findOne({ key: 'singleton' });
+  }
 };
 
 /**
