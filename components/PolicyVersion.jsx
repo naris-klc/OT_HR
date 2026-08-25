@@ -226,35 +226,35 @@ export function policyVersionNotice(spread) {
       : `ไม่ทราบเวอร์ชัน (${u.count} ใบ)`));
   if (spread.unversioned) named.push(`ไม่ระบุเวอร์ชัน (${spread.unversioned} ใบ)`);
 
+  /**
+   * ONE LINE EACH, AND WHAT THAT COST.
+   *
+   * These ran to three sentences apiece until 2026-08-25 and each opened by
+   * restating the condition — "กฎที่ใช้คำนวณชั่วโมงต่างกันจริง — ตัวเลขรวมจึง
+   * มาจากวิธีคิดมากกว่าหนึ่งแบบ" in front of what to do about it. `heading`
+   * above already says that in four words, and both callers draw `heading`
+   * directly over this line, so it was the same fact twice, fourteen pixels
+   * apart, on the screen that has the least room for it.
+   *
+   * WHAT DID NOT GO: the instruction, and where to carry it out.
+   * `ตรวจก่อนเซ็นรับรอง` is the whole reason the first of these exists; the
+   * migration command is the whole reason the third does. A version of this
+   * that kept only the figures would be a tidier panel that had stopped saying
+   * the thing it is for.
+   */
   let say;
   if (spread.arithmeticMixed === true) {
-    say = (
-      <>
-        กฎที่ใช้คำนวณชั่วโมงต่างกันจริง — ตัวเลขรวมจึงมาจากวิธีคิดมากกว่าหนึ่งแบบ ·
-        {' '}ตรวจก่อนเซ็นรับรอง หรือสั่งคำนวณใหม่ทั้งเดือนพร้อมระบุเหตุผลที่หน้า ตั้งค่าระบบ → นโยบายการคำนวณ
-      </>
-    );
+    say = 'ตรวจก่อนเซ็นรับรอง หรือสั่งคำนวณใหม่ทั้งเดือนที่ ตั้งค่าระบบ → นโยบายการคำนวณ';
   } else if (spread.arithmeticMixed === false) {
-    say = (
-      <>
-        เวอร์ชันต่างกันแต่กฎที่ใช้คำนวณชั่วโมงเหมือนกันทุกข้อ — ตัวเลขเทียบกันได้ตามปกติ ·
-        {' '}ที่ต่างคือข้อกำหนดเชิงสิทธิ์ ไม่ใช่การคิดชั่วโมง
-      </>
-    );
+    say = 'ต่างกันที่ข้อกำหนดเชิงสิทธิ์ ไม่ใช่การคิดชั่วโมง — ตัวเลขเทียบกันได้ตามปกติ';
   } else if (spread.unversioned > 0) {
     say = (
       <>
-        มีใบที่ไม่ได้บันทึกว่าใช้กฎชุดใด จึงเทียบไม่ได้ว่าตัวเลขมาจากวิธีคิดเดียวกันหรือไม่ ·
-        {' '}รัน <code>npm run migrate:policy-version</code> เพื่อกำกับเวอร์ชันให้ใบเก่า
+        มีใบที่ไม่ได้บันทึกว่าใช้กฎชุดใด — รัน <code>npm run migrate:policy-version</code>
       </>
     );
   } else {
-    say = (
-      <>
-        หน้านี้แสดงเลขเวอร์ชันแต่ไม่ได้โหลดกฎเบื้องหลังมาด้วย จึงยังบอกไม่ได้ว่าต่างกันที่การคิดชั่วโมงหรือไม่ ·
-        {' '}ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว
-      </>
-    );
+    say = 'หน้านี้ไม่ได้โหลดกฎเบื้องหลังมาด้วย — ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว';
   }
 
   return {

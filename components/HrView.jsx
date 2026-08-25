@@ -792,12 +792,15 @@ function MonthAlerts({ policy, hrVerifiedCount }) {
       kind: 'info',
       label: `HR อนุมัติชั้นเดียว ${hrVerifiedCount} รายการ`,
       figures: 'ติดป้าย “HR ตรวจสแกนนิ้ว”',
+      // One line, like the policy notice above it. What went was the sentence
+      // about the empty signature box in the history — which is what
+      // "ไม่ผ่านหัวหน้างาน" already predicts, and which is spelled out in
+      // README §"One signature, and the trail says so" for whoever needs it.
+      // What stayed is the fact and where to go and look.
       say: (
         <>
-          บันทึกและอนุมัติในขั้นตอนเดียวโดยตรวจเวลาเข้า-ออกจากบันทึกสแกนนิ้ว ·
-          {' '}<strong>ไม่ได้ผ่านการอนุมัติของหัวหน้างาน</strong>
-          {' '}และช่องลายเซ็นหัวหน้าในประวัติรายการจะว่างไว้ตามจริง ·
-          {' '}เปิด “ดู / แก้ไขรายการ” ของพนักงานเพื่อดูว่าเป็นรายการใด
+          บันทึกและอนุมัติในขั้นตอนเดียว <strong>ไม่ผ่านหัวหน้างาน</strong> ·
+          {' '}เปิดดูที่ “ดู / แก้ไขรายการ” ของพนักงาน
         </>
       ),
     });
@@ -828,10 +831,17 @@ function MonthAlerts({ policy, hrVerifiedCount }) {
       {/* SHUT ONLY. Open, the list below is headed by these same words, and a
           screen that says them twice in fourteen pixels of each other is a
           screen a reader has to check for a difference that is not there. */}
-      {!open && (
-        <div className="alerts-say">{notices.map((n) => n.label).join(' · ')}</div>
-      )}
-      <div>
+      {/* THE LABELS AND THE BUTTON IN ONE FLOW, not one block each. The button
+          is a 44px touch target and the labels wrap to two lines of Thai at
+          360px; stacked, that is 44px of panel spent on a row holding one
+          control. Inline, the button lands at the end of the wrapped text and
+          the panel loses a whole row.
+
+          Shut only for the labels: open, the list's own headings are those same
+          words, and a screen that says them twice fourteen pixels apart is a
+          screen a reader has to check for a difference that is not there. */}
+      <div className="alerts-say">
+        {!open && <span>{notices.map((n) => n.label).join(' · ')}</span>}
         <button
           type="button"
           className="fold-pill"

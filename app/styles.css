@@ -3139,7 +3139,13 @@ td > .approver-line { margin-top: 5px; }
    panel, under the count rather than run into it. Quieter by a step, the same
    distance `.cap-sub` puts between a figure and its qualifier. Drawn only while
    the list is shut; open, the list's own headings are these same words. */
-.alerts-say { margin-top: 2px; font-size: 12px; opacity: .85; }
+.alerts-say { margin-top: 2px; font-size: 12px; }
+/* The labels take the step back; the button in the same flow must not, or the
+   one control on the panel is the faintest thing on it. */
+.alerts-say > span { opacity: .85; }
+/* `vertical-align: middle` and not the baseline a 44px inline-flex box would
+   otherwise sit on, which drops the text beside it to the pill's last line. */
+.alerts-say > .fold-pill { margin: 0 0 0 8px; vertical-align: middle; }
 
 /* ══ THE LIST INSIDE THE PANEL — NOT A SECOND STACK OF PANELS ════════════
 
@@ -3153,12 +3159,12 @@ td > .approver-line { margin-top: 5px; }
    sentence. A hairline between items instead, in the panel's own ink at a tenth,
    so it separates without becoming a second border. */
 .alerts-list {
-  list-style: none; margin: 12px 0 0; padding: 0;
+  list-style: none; margin: 10px 0 0; padding: 0;
   display: flex; flex-direction: column;
 }
-.alerts-list > li { padding: 10px 0; }
+.alerts-list > li { padding: 8px 0; }
 .alerts-list > li:first-child {
-  padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  padding-top: 8px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
 }
 .alerts-list > li + li {
   border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
@@ -3166,11 +3172,11 @@ td > .approver-line { margin-top: 5px; }
 .alerts-list > li:last-child { padding-bottom: 0; }
 /* The figures — a version list, or the chip a row wears. Mono for the first of
    those: "เวอร์ชัน 10 (1 ใบ) · เวอร์ชัน 1 (19 ใบ)" is read as counts. */
-.alerts-list .fig { margin-top: 3px; font-size: 12.5px; }
+.alerts-list .fig { margin-top: 2px; font-size: 12.5px; }
 /* And the one sentence that says what to do about it. `ตรวจก่อนเซ็นรับรอง` is
    the whole reason the policy notice exists; a list that dropped it would be a
    tidier screen that had stopped saying the thing it is for. */
-.alerts-list .say { margin-top: 5px; font-size: 12px; opacity: .85; }
+.alerts-list .say { margin-top: 4px; font-size: 12px; opacity: .85; }
 
 .notice-fold-group { margin-top: 6px; }
 .notice-fold-group > .k {
@@ -7089,9 +7095,23 @@ table.mini tbody tr:hover { background: none; }
 
   /* 31px is a pill that reads as a control and is still not one to a thumb.
      44px is what every other decision button on this screen is at this width —
-     see `.hr-table tbody td.act-col .row-actions .btn` — and the two folds the
-     month's warnings sit behind are not the place to be the exception. */
+     see `.hr-table tbody td.act-col .row-actions .btn` — and the fold the
+     month's warnings sit behind is not the place to be the exception. The 44
+     stays; the margin above it comes down instead. */
   .fold-pill { min-height: 44px; padding: 6px 16px; }
+
+  /* ══ AND THE PANEL AROUND IT GIVES BACK FOUR PIXELS ══════════════════════
+
+     Everything this panel is drawn from is already at its floor — the pill is
+     a 44px touch target and the two lines above it are Thai at 12–12.5px,
+     which wrap at 360px whatever is done to them. What is left is its own
+     padding, and 8px of it top and bottom is what `.alert.tight` would be if
+     `tight` had been written for a phone.
+
+     ONLY THIS PANEL. `.alert.tight` is worn all over the app — คิวรออนุมัติ's
+     notes, ตรวจสอบใบของฉัน's errors — and none of those were what pushed the
+     search box down the screen. */
+  .month-card > .alert.tight { padding: 8px 12px; }
 
   .acct-table :is(th, td).who-col,
   .allco-table :is(th, td).who-col { max-width: 112px; }

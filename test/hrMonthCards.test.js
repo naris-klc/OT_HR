@@ -278,8 +278,13 @@ test('one control for the whole thing, and no second ดูรายละเอ
   // The labels line is drawn SHUT only — open, the list headings are those same
   // words, and saying them twice fourteen pixels apart is a difference a reader
   // has to check for and will not find.
-  assert.match(strip, /\{!open && \(\s*<div className="alerts-say">\{notices\.map\(\(n\) => n\.label\)\.join\(' · '\)\}<\/div>/);
-  assert.match(css, /\.alerts-say \{ margin-top: 2px; font-size: 12px; opacity: \.85; \}/);
+  assert.match(strip, /\{!open && <span>\{notices\.map\(\(n\) => n\.label\)\.join\(' · '\)\}<\/span>\}/);
+  // …and the button is in that SAME flow, not on a block of its own: a 44px
+  // touch target stacked under two wrapped lines of Thai is a whole row of the
+  // panel spent on one control.
+  assert.match(strip, /<div className="alerts-say">\s*\{!open && <span>[\s\S]*?<button/);
+  assert.match(css, /\.alerts-say > \.fold-pill \{ margin: 0 0 0 8px; vertical-align: middle; \}/);
+  assert.match(css, /\.alerts-say \{ margin-top: 2px; font-size: 12px; \}/);
   // THE COLOUR IS THE WORST OF THEM, or the fold has quietly downgraded a
   // warning by folding it.
   assert.match(strip, /\['warn', 'info', 'ok'\]\.find\(/);
@@ -344,6 +349,9 @@ test('.fold-pill is a class, and the digest it shares a screen with is untouched
   assert.match(hrView, /<button\s+type="button"\s+className="fold-pill"/);
   // 44px on a phone, like every other decision control at that width.
   assert.match(phone, /\.fold-pill \{ min-height: 44px; padding: 6px 16px; \}/);
+  // The 44 is the floor, so the panel gives back its own padding instead —
+  // and only this panel: `.alert.tight` is worn all over the app.
+  assert.match(phone, /\.month-card > \.alert\.tight \{ padding: 8px 12px; \}/);
   // PrintFormBatch's digest is the other `.notice-fold` in the app: plain-text
   // summary, no pill, and no rule here reaches it.
   const digest = read('components/PrintFormBatch.jsx');

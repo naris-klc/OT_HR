@@ -2271,11 +2271,18 @@ spent before a single row of the month was reached.
 
 `MonthAlerts` is one `.alert` that counts them: *"แจ้งเตือนของเดือนนี้ 2
 ข้อความ"*, with *"กฎการคำนวณคนละชุด · HR อนุมัติชั้นเดียว 1 รายการ"* a step
-quieter under it, then **ดูรายละเอียด ▼** / **ซ่อน ▲**. The labels are there
-because a bare *"2 ข้อความ"* makes a reader open it to find out whether either
-of them matters, which is the fold costing more than it saves; they are drawn
-**shut only**, because open the list's own headings are those same words.
-Collapsed the panel is **127px**, open **437px**.
+quieter under it and **ดูรายละเอียด ▼** / **ซ่อน ▲** at the end of that same
+flow. The labels are there because a bare *"2 ข้อความ"* makes a reader open it
+to find out whether either of them matters, which is the fold costing more than
+it saves; they are drawn **shut only**, because open the list's own headings are
+those same words.
+
+**The button is inline, not on a block of its own,** and that is worth 25px: it
+is a 44px touch target, and the labels wrap to two lines of Thai at 360px, so
+stacked it was a whole row of the panel spent on one control. Inline it lands at
+the end of the wrapped text. Shut the panel is **103px** and the search box sits
+**144px** from the top of the card; open it is **308px**. It read "127px
+collapsed, 437px open" until later the same day.
 
 **What opens is a list INSIDE it, not a second stack of panels.** The first
 version of this counted the notices on a strip and then rendered the two
@@ -2286,9 +2293,20 @@ here any more, and each notice is an item of one `.alerts-list` — a heading, i
 figures, and **one sentence**. It read "the panels open underneath it" for a few
 hours on 2026-08-25.
 
-Not the heading alone, either. *ตรวจก่อนเซ็นรับรอง* is the whole reason the
-policy notice exists, and a list that dropped it would be a tidier screen that
-had stopped saying the thing it is for.
+**One line each, and what that cost.** The four policy sentences ran to three
+apiece and every one opened by restating the condition — *"กฎที่ใช้คำนวณ
+ชั่วโมงต่างกันจริง — ตัวเลขรวมจึงมาจากวิธีคิดมากกว่าหนึ่งแบบ"* in front of what
+to do about it. The item's heading already says that in four words, directly
+above, so it was the same fact twice fourteen pixels apart on the screen with the
+least room for it. อนุมัติชั้นเดียว lost its sentence about the empty signature
+box in the history, which is what *ไม่ผ่านหัวหน้างาน* already predicts and which
+is spelled out in §"One signature, and the trail says so" for whoever needs it.
+
+What did **not** go is the instruction and where to carry it out.
+*ตรวจก่อนเซ็นรับรอง* is the whole reason the policy notice exists;
+`npm run migrate:policy-version` is the whole reason its unversioned case does.
+A version of this that kept only the figures would be a tidier panel that had
+stopped saying the thing it is for.
 
 **Every word of it lives in one module.** `policyVersionNotice()` in
 [`components/PolicyVersion.jsx`](components/PolicyVersion.jsx) answers whether
@@ -2323,8 +2341,10 @@ panel reappearing in front of somebody who said they did not want one.
 
 Walked at 360×780 on the built app against a clone, 2026-08-25: **one** `.alert`
 in the card in every state, no `<details>` inside it, one toggle and one ✕;
-shut 127px, open 437px with both items drawn, dismissed 0 with the recall line at
-48px; the per-row chip present throughout.
+shut 103px, open 308px with both items drawn and each `say` at two or three
+wrapped lines, dismissed 0 with the recall line at 48px; the per-row chip present
+throughout. On a 1440px desktop every `say` is one line and the open panel is
+241px.
 
 **ตรวจสอบรายเดือน บนมือถือ: ห้าการ์ดก่อน แล้วค่อยที่เหลือ.** Below 860px this
 screen is one card per person — that is where **ดู / แก้ไขรายการ** and **พิมพ์
