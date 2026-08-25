@@ -2292,10 +2292,25 @@ The recall line the ✕ leaves behind says it too — *แสดงแจ้ง�
 (2)*.
 
 **The button is inline, not on a block of its own,** and that is worth 25px: it
-is a 44px touch target, and the labels wrap to two lines of Thai at 360px, so
-stacked it was a whole row of the panel spent on one control. Inline it lands at
-the end of the wrapped text. Shut the panel is **107px**, open **269px**. It read
-"127px collapsed, 437px open" earlier the same day, and "103px / 308px" between.
+is a touch target, and the labels wrap to two lines of Thai at 360px, so stacked
+it was a whole row of the panel spent on one control. Inline it lands at the end
+of the wrapped text.
+
+**And it is a mini pill, not a button.** `.fold-pill` started as bare bold text
+— a 17px line of writing that happened to be clickable — and overcorrected into
+a 44px bordered box that was the heaviest object in a panel whose whole point is
+the sentence beside it. It is now 12.5px at weight 500 rather than 12px at 600,
+which is the one combination that drops the visual weight without making the
+label harder to read, with 3px of vertical padding and a line at 28% of the
+panel's own ink. **34px on a phone, not 44** — this app has two touch floors and
+has had them since the batch bar: 44 for decisions, 34 for the controls beside
+them (`.queue-mobile-bar`'s undo, pinned in `test/batchBarSticky.test.js`).
+Opening a fold is not a decision, and 34 is still comfortably over the 24px WCAG
+2.5.8 AA floor; what it gives up is the AAA 44, on the one control on this panel
+that is not signing anything. The two buttons on every employee card keep 44.
+
+Shut the panel is **97px**, open **259px**. It read "127px collapsed, 437px open"
+earlier the same day, then "103px / 308px", then "107px / 269px".
 
 **What opens is a list INSIDE it, not a second stack of panels.** The first
 version of this counted the notices on a strip and then rendered the two
@@ -2378,12 +2393,13 @@ reach.
 
 Walked at 360×780 on the built app against a clone, 2026-08-25: the panel above
 the ประจำเดือน box and above the export row, **one** `.alert` on the page in
-every state, no `<details>` inside it, one toggle and one ✕; shut 107px, open
-269px with both items at 80px, dismissed 0 with the recall line naming the month;
-8px between the last select and พิมพ์ F-HR-027 ทุกคน, 12px at 1440px; the per-row
-chip present throughout.
+every state, no `<details>` inside it, one toggle and one ✕; shut 97px, open
+259px with both items at 80px, dismissed 0 with the recall line naming the month;
+the pill 108×34 shut and 62×34 open while the two buttons on every employee card
+measured 44; 8px between the last select and พิมพ์ F-HR-027 ทุกคน, 12px at 1440px;
+the per-row chip present throughout.
 
-**What is still above the first employee card**, measured the same way: 764px
+**What is still above the first employee card**, measured the same way: 754px
 shut, 645px with the panel dismissed. Most of what is left is the controls card —
 its own `<h2>ตรวจสอบรายเดือน</h2>` and `สิงหาคม 2569` repeat the app header and
 the alert panel directly above them, and dropping that pair below 860px is worth

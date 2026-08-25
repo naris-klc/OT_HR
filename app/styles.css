@@ -3103,11 +3103,27 @@ td > .approver-line { margin-top: 5px; }
 .notice-fold > summary:hover { opacity: 1; }
 .notice-fold[open] > summary { opacity: 1; }
 
-/* ══ .fold-pill — A PRESS TARGET, BECAUSE THAT IS WHAT IT IS ═════════════
+/* ══ .fold-pill — A PRESS TARGET, AND NOT THE LOUDEST THING IN THE PANEL ══
 
-   `ดูรายละเอียด ▼` / `ซ่อน ▲` on ตรวจสอบรายเดือน's alert panel. As bold 12px
-   text it was a 17px-tall line of writing that happened to be clickable, in an
-   app where every other decision control is a 44px box on a phone.
+   `ดูรายละเอียด ▼` / `ซ่อน ▲` on ตรวจสอบรายเดือน's alert panel. It started as
+   bare bold text — a 17px-tall line of writing that happened to be clickable —
+   and overcorrected into a 44px bordered box that was the heaviest object in a
+   panel whose whole point is the sentence beside it. This is the settled size:
+   a mini pill, quieter than the headline it sits under and still a control.
+
+   THE NUMBERS, AND WHERE THEY COME FROM. 12.5px at weight 500 rather than 12px
+   at 600 — smaller and lighter at once, which is the only combination that
+   drops the visual weight without making the label harder to read. 3px of
+   vertical padding rather than 6. The line at 28% of the panel's ink instead of
+   35%, which is the difference between a button drawn on a tinted panel and a
+   button drawn over it.
+
+   34px ON A PHONE, NOT 44. This app has two touch floors and has had them since
+   the batch bar: 44px for decisions, 34px for the controls beside them — see
+   `.queue-mobile-bar`'s undo, and `test/batchBarSticky.test.js`, which says so
+   in as many words. Opening a fold is not a decision. 34 is also comfortably
+   over the 24px WCAG 2.5.8 AA floor; what it gives up is the AAA 44, on the one
+   control here that is not signing anything.
 
    A CLASS AND NOT A SELECTOR ON `summary`. It is worn by a `<button>`, so it
    resets what a button brings with it — a UA background, a UA border, a UA font
@@ -3120,16 +3136,16 @@ td > .approver-line { margin-top: 5px; }
    the alert's own, so this works in blue and in amber alike without knowing
    which one it is in — the same trick the opacity above uses. */
 .fold-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  margin-top: 8px; padding: 6px 12px;
-  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 8px; padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
   border-radius: 999px;
   background: none; color: inherit; cursor: pointer;
-  font: 600 12px/1.4 var(--sans); letter-spacing: .04em;
+  font: 500 12.5px/1.4 var(--sans);
 }
 .fold-pill:hover {
-  border-color: color-mix(in srgb, currentColor 60%, transparent);
-  background: color-mix(in srgb, currentColor 8%, transparent);
+  border-color: color-mix(in srgb, currentColor 55%, transparent);
+  background: color-mix(in srgb, currentColor 7%, transparent);
 }
 
 /* แสดงแจ้งเตือนของเดือนนี้ (2) — what the ✕ leaves behind.
@@ -7100,12 +7116,15 @@ table.mini tbody tr:hover { background: none; }
      between วันเกิดของเดือนนี้ and the foot of the card. */
   .month-card > .month-notes:empty { display: none; }
 
-  /* 31px is a pill that reads as a control and is still not one to a thumb.
-     44px is what every other decision button on this screen is at this width —
-     see `.hr-table tbody td.act-col .row-actions .btn` — and the fold the
-     month's warnings sit behind is not the place to be the exception. The 44
-     stays; the margin above it comes down instead. */
-  .fold-pill { min-height: 44px; padding: 6px 16px; }
+  /* 34px, the app's OTHER touch floor — the one `.queue-mobile-bar`'s undo has
+     had since the batch bar, for controls that sit beside a decision without
+     being one. 44px is for the decisions: see
+     `.hr-table tbody td.act-col .row-actions .btn` on this same screen, which
+     keeps it. Opening a fold is not a decision, and at 44 this pill was the
+     heaviest object in a panel that exists for the sentence beside it. It read
+     "44px" until 2026-08-25; the reasoning for both numbers is in the block
+     that declares `.fold-pill`. */
+  .fold-pill { min-height: 34px; padding: 4px 12px; }
 
   /* ══ AND THE PANEL AROUND IT GIVES BACK FOUR PIXELS ══════════════════════
 

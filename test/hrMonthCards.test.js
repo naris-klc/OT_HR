@@ -366,10 +366,22 @@ test('.fold-pill is a class, and the digest it shares a screen with is untouched
   // background, border and font — none of which a `<summary>` has.
   assert.match(css, /\.fold-pill \{[\s\S]*?background: none; color: inherit; cursor: pointer;/);
   assert.match(hrView, /<button\s+type="button"\s+className="fold-pill"/);
-  // 44px on a phone, like every other decision control at that width.
-  assert.match(phone, /\.fold-pill \{ min-height: 44px; padding: 6px 16px; \}/);
-  // The 44 is the floor, so the panel gives back its own padding instead —
-  // and only this panel: `.alert.tight` is worn all over the app.
+  // A MINI PILL, not a button. Smaller AND lighter — 12.5px at weight 500
+  // rather than 12px at 600, which is the only combination that drops the
+  // visual weight without making the label harder to read — on a line at 28% of
+  // the panel's own ink rather than 35%.
+  assert.match(css, /\.fold-pill \{[\s\S]*?padding: 3px 10px;/);
+  assert.match(css, /\.fold-pill \{[\s\S]*?font: 500 12\.5px\/1\.4 var\(--sans\);/);
+  assert.match(css, /\.fold-pill \{[\s\S]*?currentColor 28%, transparent\);/);
+  // 34px on a phone: this app's OTHER touch floor, the one `.queue-mobile-bar`'s
+  // undo has had since the batch bar, for controls that sit beside a decision
+  // without being one. `test/batchBarSticky.test.js` says so in as many words.
+  assert.match(phone, /\.fold-pill \{ min-height: 34px; padding: 4px 12px; \}/);
+  // 44px is for the decisions, and the two on every employee card still keep it
+  // on this same screen.
+  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \{[\s\S]*?min-height: 44px;/);
+  // The panel gives back its own padding too — and only this panel:
+  // `.alert.tight` is worn all over the app.
   assert.match(phone, /\.month-card > \.alert\.tight \{ padding: 8px 12px; \}/);
   // And the export buttons come up to the selects they act on: 8px at this
   // width, the same as the gap between the buttons themselves, which is what
