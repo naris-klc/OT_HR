@@ -35,31 +35,17 @@ import { useBackHandler } from './nav.jsx';
  */
 const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
 
-/**
- * How many people are on one page of the card list — ON A PHONE ONLY. Above
- * 860px this table is a table and there are no pages at all;
- * `.hr-table tbody tr.pager-row` is `display: none` outside the breakpoint,
- * which is where that decision is made and the only place it is.
+/*
+ * NO CONSTANT HERE ANY MORE. `CARD_FOLD`, then `CARD_PAGE` and `CARD_STEP`,
+ * then `CARD_PAGE` again all lived on this line during 2026-08-25 — each one a
+ * number this file used to decide how much of the list to put in the markup.
  *
- * FIVE, AND THE LIST IS PAGED RATHER THAN GROWN. It went five → ten →
- * ten-at-a-time → five paged over 2026-08-25, and the two things that changed
- * are worth keeping straight:
- *
- *   - Five, because the page is no longer the START of the screen's length, it
- *     is ALL of it. A growing list pushed วันเกิดของเดือนนี้ — the one section
- *     on this card that is work rather than figures — further off the bottom
- *     with every press. A page of five puts it a short scroll under the fifth
- *     card and KEEPS it there, on page 1 and on page 12 alike.
- *   - Paged, so the screen has a length that does not depend on how many times
- *     anybody pressed anything. Sixty people is twelve pages of the same
- *     height, not one page that ends up nine screens long.
- *
- * A PAGE, NOT A FILTER. รวมทั้งหมด is the month's, พิมพ์รวม prints everybody
- * the search matched, and both CSVs are the server's — none of them reads this.
- * See the note on the total row below, which says the same thing about the
- * search box for the same reason.
+ * The list is now drawn whole and the phone reads it through a box of fixed
+ * height, so the only number left is that height, and a height belongs in the
+ * stylesheet: `.hr-table tbody` in app/styles.css, inside the 860px block. This
+ * file no longer knows how tall anything is, which is the state it was in
+ * before any of the four and the state it should have stayed in.
  */
-const CARD_PAGE = 5;
 
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({
@@ -121,46 +107,26 @@ export default function HrView({
     [data, find],
   );
 
-  /**
-   * WHICH PAGE OF THE CARD LIST IS ON SCREEN — 1-based, because that is what
-   * the control under the list says out loud ("หน้า 2 / 12").
+  /*
+   * NO PAGE STATE, AND NOTHING HERE DECIDES WHAT IS DRAWN. Every row the search
+   * matched goes into the markup, on both layouts; below 860px the stylesheet
+   * puts the list in a box of its own with `overflow-y: auto` and the reader
+   * scrolls it. See `.hr-table tbody` in app/styles.css.
    *
-   * It goes back to page 1 on a new month, a new สถานะที่นับ and every keystroke
-   * in the search box, because each of those makes it a claim about a list that
-   * no longer exists: page 8 of August, left where it was, and then September
-   * loaded with 8 people in it is a page number that silently stopped meaning
-   * anything. Reset rather than remembered: the state this holds is "I am
-   * reading the second five of THESE", and after any of the three there is no
-   * "these" left.
+   * This screen was paged for a few hours on 2026-08-25 — five to a page, with
+   * `page`, a clamped `current`, and ก่อนหน้า / ถัดไป under the total — and the
+   * history is worth a line because the paging solved a real problem that the
+   * box has to keep solving: วันเกิดของเดือนนี้, the one section on this card
+   * that is WORK rather than figures, must not be pushed off the bottom by the
+   * length of the list. A page of five fixed that by drawing five. A box of
+   * fixed height fixes it by drawing all of them somewhere that cannot grow.
+   *
+   * WHAT WENT WITH THE PAGER: nothing that counted. The total was never a sum
+   * of what was drawn, พิมพ์รวม never read it, and neither CSV has ever known
+   * what is on screen — which was true of the fold and the pages before it, and
+   * is the reason each of them could be swapped for the next without a single
+   * figure moving.
    */
-  const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [period, statusFilter, find]);
-
-  /**
-   * The page count, and the page actually drawn — which is NOT always `page`.
-   *
-   * `load()` can shorten this list without any of the three above changing: HR
-   * opens somebody's month, withdraws the last live entry in it, and comes back
-   * to a month with one fewer person in it. Sitting on the last page when that
-   * happens, `page` is now past the end and the list would draw nothing at all —
-   * an empty screen with a working ถัดไป button under it and no way to read what
-   * went wrong.
-   *
-   * Clamped at render rather than corrected in an effect, so there is no frame
-   * in which the empty page exists. `page` is left alone: it is what the reader
-   * asked for, and if the list grows back — the withdrawal is refused, the month
-   * reloads — they are returned to where they were rather than to page 1.
-   *
-   * `Math.max(1, …)` because a month whose search matches nobody has zero rows
-   * and still has to be "หน้า 1 / 1" rather than "หน้า 1 / 0". That branch is
-   * unreachable today — no-results is drawn by the empty state above, and the
-   * pager is only drawn past one page — and it is written down anyway, because
-   * the number it protects is divided by.
-   */
-  const pageCount = Math.max(1, Math.ceil(shown.length / CARD_PAGE));
-  const current = Math.min(page, pageCount);
-  const from = (current - 1) * CARD_PAGE;
-  const to = from + CARD_PAGE;
 
   // The whole table as one document, or one row of it — the same sheet either
   // way. The list is captured into state when the button is pressed rather than
@@ -473,25 +439,18 @@ export default function HrView({
                   </tr>
                 </thead>
                 <tbody>
-                  {/* `off-page` says ONE thing: this row is not in the five the
-                      current page holds. It read `over-fold` until the list was
-                      paged, and the name had to go with the behaviour — a fold
-                      only ever hid what came AFTER it, and page 3 hides ten rows
-                      above the five it draws as well as everything below them.
+                  {/* EVERY ROW, ON BOTH LAYOUTS. There is no `off-page` class
+                      any more and no second argument to this map: what the
+                      reader can see is decided entirely by the height of the box
+                      the stylesheet puts around this list below 860px, and above
+                      860px there is no box and the table is a table.
 
-                      Whether being off the page means anything is the
-                      stylesheet's to decide, and it only decides yes below 860px
-                      — the same rule the card layout itself follows, and the
-                      reason this file asks the browser nothing about how wide it
-                      is. On a desktop every one of these rows draws exactly as
-                      it did: eleven narrow columns are read at a glance and down
-                      their columns, and a table of sixty read that way is not
-                      improved by being served five at a time. */}
-                  {shown.map((row, i) => (
-                    <tr
-                      key={row.employee._id}
-                      className={i < from || i >= to ? 'off-page' : undefined}
-                    >
+                      That is the same "one markup, two layouts" rule this screen
+                      has followed through a fold, a load-more and a pager — and
+                      it is the reason none of those four could ever disagree
+                      with the desktop about who is in the month. */}
+                  {shown.map((row) => (
+                    <tr key={row.employee._id}>
                       <td className="who-col">
                         {row.employee.name}
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
@@ -576,86 +535,6 @@ export default function HrView({
                       </td>
                     </tr>
                   ))}
-                  {/* ABOVE รวมทั้งหมด, NOT UNDER IT. The total is the foot of
-                      the list on a phone — the card the birthdays and the
-                      footnotes are ordered to come up to — and the pager belongs
-                      to the list it pages rather than to what comes after it.
-                      Under the total it would read as a control for the whole
-                      card, which is the one thing it is not: pressing ถัดไป
-                      changes which five people are drawn and moves neither the
-                      total, nor the birthdays, nor a single figure.
-
-                      IT IS ALSO WHAT KEEPS THE FLOATING TOTAL OFF IT — mostly.
-                      รวมทั้งหมด is `position: sticky` at the foot of the list and
-                      floats UP over what precedes it, so a pager placed after it
-                      could never be covered at all. The band where it is is
-                      measured and written down in README; it is 40-odd pixels of
-                      a page this short, and paying for it with a pager that has
-                      drifted away from its list was the worse trade.
-
-                      THE RANGE IS ITS OWN LINE, above the control. "หน้า 2 / 12"
-                      says where in the list somebody is and nothing about how
-                      long the list is; "แสดง 6–10 จาก 57 รายการ" says both, and
-                      57 is a number nothing else on this screen prints once the
-                      export row has scrolled away. `shown.length` and not
-                      `data.employees.length`: while the search box is narrowing,
-                      the pages are over the search's results, and the month's own
-                      figure is one line above in the found line.
-
-                      `aria-live="polite"` ON THE PAGE NUMBER, because pressing
-                      ถัดไป changes nothing that a screen reader would otherwise
-                      announce — focus stays on a button whose label did not
-                      change, and five cards it was not reading are replaced by
-                      five more. The count line is inside the live region with it,
-                      so what is read out is "แสดง 6–10 จาก 57 รายการ · หน้า 2 /
-                      12" — where they are and out of how many, in one utterance.
-                      `polite` and not `assertive`: it is an answer to something
-                      they just pressed, not an interruption. */}
-                  {shown.length > CARD_PAGE && (
-                    <tr className="pager-row">
-                      {/* Eleven, like every other row in this table — see the
-                          `pad-col` note below. Not in the hidden-by-name list in
-                          the phone block, so it draws. */}
-                      <td className="pager-col" colSpan={11}>
-                        <div className="pager-say" aria-live="polite">
-                          <div className="pager-range">
-                            แสดง <strong>{from + 1}–{Math.min(to, shown.length)}</strong> จาก{' '}
-                            <strong>{shown.length}</strong> รายการ
-                          </div>
-                          <div className="pager-controls">
-                            {/* `disabled` rather than hidden. A control that
-                                disappears at the ends moves the two beside it —
-                                on page 1 ถัดไป would sit where ก่อนหน้า was, and
-                                the second press of a thumb already travelling
-                                lands on the button that went back. */}
-                            <button
-                              type="button"
-                              className="btn ghost sm pager-prev"
-                              onClick={() => setPage(current - 1)}
-                              disabled={current <= 1}
-                            >
-                              ‹ ก่อนหน้า
-                            </button>
-                            {/* Not `aria-hidden` even though the live region
-                                announces it: it is the only thing on screen that
-                                says which page this is, and somebody reading the
-                                page rather than listening to it needs it there. */}
-                            <span className="pager-at">
-                              หน้า <strong>{current}</strong> / <strong>{pageCount}</strong>
-                            </span>
-                            <button
-                              type="button"
-                              className="btn ghost sm pager-next"
-                              onClick={() => setPage(current + 1)}
-                              disabled={current >= pageCount}
-                            >
-                              ถัดไป ›
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                   {/* `total-row` names the month's own line so the phone layout
                       can give its two frozen cells the backgrounds of a summary
                       rather than of a person. It lives in `tbody` — this table

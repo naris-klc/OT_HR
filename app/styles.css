@@ -5116,25 +5116,19 @@ table.mini tbody tr:hover { background: none; }
   background: var(--neutral-wash); font: 400 12.5px/1.6 var(--sans); color: var(--muted);
 }
 
-/* ══ ตรวจสอบรายเดือน — THE PAGES DO NOT EXIST ON A DESKTOP ════════════════
+/* ══ ตรวจสอบรายเดือน — NOTHING TO UNDO ON A DESKTOP ANY MORE ══════════════
 
-   `.pager-row` is the ก่อนหน้า / ถัดไป row, and `.off-page` marks every card
-   that is not among the five the current page holds. Both are written into the
-   markup unconditionally — the JSX says WHICH rows are off the page and nothing
-   else — and it is this rule, with the pair in the 860px block below, that
-   decides whether being off the page means anything.
+   This is where `.hr-table tbody tr.fold-row`, and then `.pager-row`, were
+   switched off above 860px — one `display: none` undoing a control that only
+   the phone layout wanted. Both are gone: the list is no longer folded, loaded
+   in tens or paged, so there is no control in the markup for a desktop to hide.
 
-   Above 860px it does not. A sixty-row table of eleven narrow columns is read
-   at a glance and down its columns; paging it would hide fifty-five rows behind
-   a control and leave the ceiling and the month's total sitting under it. So
-   the pager is removed and every row stays where it was — which is the same
-   "one markup, two layouts" rule the card list itself follows, and which
-   `test/hrMonthCards.test.js` pins.
-
-   Stated here as a plain `display: none` and NOT as an inline style in the
-   component: an inline style beats the media query and the pager would never
-   appear on a phone at all. */
-.hr-table tbody tr.pager-row { display: none; }
+   The phone reads the same whole list through a box of fixed height instead
+   (`.hr-table tbody` in the 860px block below), which is a rule the desktop
+   simply never opts into rather than one it has to cancel. That is the better
+   shape of the "one markup, two layouts" rule this screen follows, and the
+   reason this section is now a note and not a declaration: the desktop table
+   draws every row of the month because nothing anywhere tells it not to. */
 
 /* ══ mobile — the design's own 860px breakpoint ══════════════════════════ */
 
@@ -6931,7 +6925,18 @@ table.mini tbody tr:hover { background: none; }
   /* 12px between cards rather than 10: these are taller than the roster's —
      two lines of name and code, a figure with a sentence under it, and a row of
      buttons — and at 10px the gap read as part of the card above it. */
-  .hr-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+  /* …and it is a BOX of fixed height, not a length. The four declarations after
+     the padding are the whole of the phone's scrolling list; the reasoning for
+     each number is in the block headed กล่องรายชื่อสูงคงที่ further down, which
+     is where a reader will look for it. They live on this rule because this is
+     the rule that describes this element — see the note there. */
+  .hr-table tbody {
+    display: flex; flex-direction: column; gap: 12px; padding: 12px;
+    max-height: 58dvh;
+    min-height: 260px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
   .hr-table tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -7031,7 +7036,7 @@ table.mini tbody tr:hover { background: none; }
     background: var(--green-bg); border-color: var(--green-lift);
   }
 
-  /* ══ ห้าคนต่อหนึ่งหน้า ═════════════════════════════════════════════════
+  /* ══ กล่องรายชื่อสูงคงที่ — A BOX, NOT A LENGTH ═════════════════════════
 
      SIXTY PEOPLE IS SIXTY CARDS, and each of these is 150px tall with two
      buttons in it. On a 375px screen that is about nine screens of scrolling
@@ -7041,120 +7046,93 @@ table.mini tbody tr:hover { background: none; }
      a shape a thumb flicks past; a column of objects with decision buttons in
      them is not, because every one of them asks to be read.
 
-     So five per page, and a pager. `CARD_PAGE` in components/HrView.jsx is the
-     five, and the note there carries the history: this was a fold at five, then
-     a fold at ten, then ten-at-a-time, and is now twelve pages of five. What
-     paging buys over growing is that the screen has ONE length. วันเกิดของ
-     เดือนนี้ sits a short scroll under the fifth card on page 1 and is in
-     exactly the same place on page 12 — under a list that grows, it is pushed
-     further off the bottom by every press, which is the opposite of what the
-     phone layout's `order` rules were written to do.
+     FOUR THINGS HAVE TRIED TO FIX THAT IN ONE DAY, 2026-08-25: a fold at five,
+     a fold at ten, ten-loaded-per-press, and five to a page with a pager. Every
+     one of them worked by DRAWING FEWER ROWS, which meant the component had to
+     hold a number and a control had to appear on screen to move it.
 
-     IT IS A PAGE, NOT A FILTER, and the difference is the whole of why this is
-     safe on this screen. รวมทั้งหมด is the month's total and was never a sum of
-     what is drawn — that is written down over the total row in the component.
-     พิมพ์รวม prints every person the search matched, on this page or not. The
-     two CSVs are built by the server and have never known what is on screen. So
-     the only thing this changes is which five are in front of somebody. */
-  .hr-table tbody tr.off-page { display: none; }
-  /* Not a card: no border, no fill, no 15px of padding. The row it sits in on
-     screen is a control, and a bordered white block around it reads as a sixth
-     person with nothing in them. */
-  .hr-table tbody tr.pager-row {
-    display: block; padding: 0; border: 0; background: none;
-  }
-  .hr-table tbody tr.pager-row:hover { background: none; }
-  /* WHERE IN THE LIST, above WHICH PAGE. Muted and 12.5px: it is the caption of
-     a control, not a figure of the month — the figures of the month are the
-     card directly below it. */
-  .hr-table tbody tr.pager-row .pager-range {
-    margin: 2px 0 8px; text-align: center;
-    font: 400 12.5px/1.4 var(--sans); color: var(--muted);
-  }
-  .hr-table tbody tr.pager-row .pager-range strong {
-    font: 600 12.5px/1.4 var(--mono); color: var(--ink);
-  }
+     This one draws them all and bounds the BOX instead. The list is its own
+     scrollport; the month can be four people or four hundred and the card is
+     the same height either way, so วันเกิดของเดือนนี้ — the one section on this
+     card that is WORK rather than figures — sits at a fixed distance under the
+     total and cannot be pushed off the bottom by anything.
 
-  /* ‹ ก่อนหน้า · หน้า 2 / 12 · ถัดไป › — ONE LINE, AND IT HAS TO STAY ONE.
-     `1fr auto 1fr` rather than three equal columns or `space-between`: the two
-     buttons then take the same width as each other whatever their labels come
-     to, and the page number sits on the centre line of the card rather than
-     wherever the wider label happened to push it. At 360px that is two 105px
-     buttons around a 90px label with room to spare, and the buttons keep their
-     44px target — these are the two most-pressed controls on the screen once a
-     month runs past five people. */
-  .hr-table tbody tr.pager-row .pager-controls {
-    display: grid; grid-template-columns: 1fr auto 1fr;
-    align-items: center; gap: 8px;
-  }
-  .hr-table tbody tr.pager-row .pager-controls .btn {
-    width: 100%; min-height: 44px; font-size: 13.5px;
-  }
-  .hr-table tbody tr.pager-row .pager-at {
-    text-align: center; white-space: nowrap;
-    font: 400 12.5px/1.4 var(--sans); color: var(--muted);
-  }
-  .hr-table tbody tr.pager-row .pager-at strong {
-    font: 600 14px/1.4 var(--mono); color: var(--ink);
-  }
-  /* THE ENDS OF THE LIST NEED NOTHING DECLARED HERE. `‹ ก่อนหน้า` on page 1 and
-     `ถัดไป ›` on the last carry the plain `disabled` attribute, and the app's
-     own `.btn:disabled` — a `--neutral-wash` fill with `--muted` text — is what
-     draws them. A fade was written here for one revision and taken out again:
-     that rule sets `opacity: 1` on purpose, because a ghost button faded to .45
-     is illegible on the dark theme, and one screen quietly opting out of the
-     treatment every other disabled button in the app wears is how two disabled
-     states that mean the same thing end up looking different. */
+     NOTHING IN THE COMPONENT KNOWS THIS NUMBER. There is no `CARD_PAGE` any
+     more; the JSX draws every row the search matched, on both layouts, and this
+     is the only place that decides how much of it is in view. Above 860px the
+     rule simply does not apply and the table is a table.
 
-  /* ══ รวมทั้งหมด STAYS ON SCREEN ═════════════════════════════════════════
+     THE HEIGHT IS VIEWPORT-RELATIVE, not a count of cards. "Three cards" is 474
+     pixels on a card with one line of name and 550 on a card with two, so a
+     fixed `px` height would be three cards on some months and two-and-a-bit on
+     others. `dvh` also follows the phone's own chrome as it hides and shows,
+     which a pixel figure cannot. 44dvh is about two and a half cards at 360×780
+     and leaves วันเกิดของเดือนนี้ on screen with the list scrolled to the top —
+     measured, not guessed; the figures are in README.
+
+     `min-height` KEEPS IT USABLE ON A SHORT SCREEN. At 44dvh a 480px-tall
+     phone in landscape would get a 211px slit showing one card and half of
+     another; 260px is a card and enough of the next to show that scrolling is
+     what to do.
+
+     `overscroll-behavior: contain` IS THE PART THAT MAKES NESTED SCROLL SAFE.
+     Without it, flicking to the end of this list carries straight on into the
+     page behind it — the reader lands somewhere they did not ask for and the
+     list they were reading is gone. The app already asks for this on
+     `.pick-menu` for the same reason.
+
+     THE FOUR DECLARATIONS ARE ON THE RULE THAT ALREADY EXISTS, up beside the
+     card stack's own `display: flex` — not in a second `.hr-table tbody { … }`
+     down here. Two rules with one selector in one stylesheet is how a screen
+     ends up with two half-descriptions of the same box, and this file has been
+     bitten by that before (see the note on `.dept-menu` losing to `.pick-menu`).
+     One selector, one place, and this comment points at it. */
+
+  /* ══ รวมทั้งหมด SITS AT THE FOOT OF THE BOX ═════════════════════════════
 
      A card, but not a person's: no buttons, no ceiling, and the two cells it
      does carry are its name and the month's total.
 
-     AND IT FLOATS. `position: sticky` with a `bottom` offset pins this row just
-     above the nav bar for as long as the list underneath it is still scrolling
-     past, then lets it settle into its own place at the foot of the list. The
+     `position: sticky; bottom: 0` — and the offset is 0 now because the thing
+     it sticks to changed. It used to be pinned to the VIEWPORT, eight pixels
+     above the nav bar, floating over a list that ran the whole length of the
+     page; `bottom: calc(82px + env(safe-area-inset-bottom))` was that nav bar
+     plus eight. The list has its own scrollport now, so the row sticks to the
+     bottom of THAT — which is a box already sitting above the nav, and needs no
+     arithmetic about home indicators to stay clear of it.
+
+     What it buys is unchanged and is the reason it is still sticky at all: the
      month's total is what this screen is signed off on, and reading it used to
-     mean scrolling to the end of every card first — the one figure most likely
-     to be wanted while looking at somebody's row was the one figure that could
-     never be on screen at the same time as a row.
-
-     `bottom` IS THE NAV BAR PLUS EIGHT, and the safe-area inset is part of it
-     for the same reason `.mobile-nav-spacer`'s height is: the bar pads past the
-     home indicator, so on a gesture-navigation phone it is 74px PLUS that inset
-     tall and a flat 82px would sink this row into it.
-
-     z-index 5 is deliberately low, like `.pick-menu`'s. It has to beat the
-     cards travelling under it — which carry none — and it must NOT beat the
-     sticky ค้นหา bar (30) or the nav (30). It cannot reach either in practice,
-     being pinned between them, and the ordering is written down anyway so the
-     next sticky thing on this screen has a number to sit beside.
+     mean scrolling past every card first. Now it is the floor of the list, in
+     view whichever five rows are.
 
      THE FILL IS WHAT MAKES IT READABLE. `--neutral-wash` is opaque, so the
-     cards pass behind rather than through it; the shadow is what says it is
-     floating rather than merely last. Both are already what this row wore as a
-     summary card, so nothing about it changed except that it stopped
-     disappearing. */
+     cards pass behind rather than through it; the shadow says it is a floor
+     rather than merely the last row. z-index 5 is deliberately low, like
+     `.pick-menu`'s: it has to beat the cards travelling under it — which carry
+     none — and must not beat the sticky ค้นหา bar (30) or the nav (30). It
+     cannot reach either from inside a box that sits between them, and the
+     number is written down anyway so the next sticky thing on this screen has
+     one to sit beside. */
   .hr-table tbody tr.total-row {
     grid-template-areas: 'who cap';
     background: var(--neutral-wash);
     position: sticky;
-    bottom: calc(82px + env(safe-area-inset-bottom));
+    bottom: 0;
     z-index: 5;
-    box-shadow: 0 6px 20px var(--shadow-soft);
+    box-shadow: 0 -6px 20px var(--shadow-soft);
   }
-  /* STICKY NEEDS A SCROLLPORT IT CAN REACH, and `.table-wrap` is `overflow-x:
-     auto` — which computes `overflow-y` to `auto` as well, making the wrap
-     itself the nearest scroll container. It is exactly as tall as its contents,
-     so a row sticky inside it would have nothing to stick against and would
-     draw as though the rule had not been written at all.
+  /* A sticky child scrolls against its nearest scrollport, and that is now the
+     tbody itself. `.table-wrap` must therefore NOT be one: it is `overflow-x:
+     auto` at every other width, which computes `overflow-y` to `auto` too and
+     would put a second scroll container around the first — two nested scrollbars
+     for one list, and a wrap that can be scrolled a few pixels on its own.
 
-     Safe to give back here and nowhere else: the sideways scroll is what the
-     other three tables on a phone still need, and this one stopped being a
-     table at this width — it is a column of cards that fits the screen, which
-     is why the block above also clears the scroll-hint gradients. Written as
-     its own rule rather than merged into `.table-wrap.card-list`'s fill so that
-     the reason for each stays next to the declaration it explains. */
+     This line read the same before the box existed, for a different reason: back
+     then the sticky row needed the PAGE as its scrollport and the wrap was in
+     the way of that too. Safe here and nowhere else — the sideways scroll is
+     what the other three tables on a phone still need, and this one stopped
+     being a table at this width. */
   .table-wrap.card-list { overflow: visible; }
   .hr-table tbody tr.total-row:hover { background: var(--neutral-wash); }
   .hr-table tbody tr.total-row td.total-col {
@@ -7162,13 +7140,13 @@ table.mini tbody tr:hover { background: none; }
     font: 600 15.5px/1.4 var(--mono); font-variant-numeric: tabular-nums;
   }
 
-  /* ══ วันเกิดของเดือนนี้ COMES UP TO THE TOTAL CARD ══════════════════════
+  /* ══ วันเกิดของเดือนนี้ COMES UP TO THE CARD LIST ═══════════════════════
 
-     The card list ends with รวมทั้งหมด, and directly under it — on the desktop
-     — are the month's footnotes: the one-signature notice, the superseded
-     count, the missing-วันเกิด list. All three are conditional, all three are
-     grey, and none of them is anything to DO. Under them sits the one section
-     on this screen that is work: the birthdays, with their two buttons.
+     The card list ends with รวมทั้งหมด at the foot of its box, and directly
+     under that are the month's footnotes: the one-signature notice, the
+     superseded count, the missing-วันเกิด list. All three are conditional, all
+     three are grey, and none of them is anything to DO. Under them sits the one
+     section on this screen that is work: the birthdays, with their two buttons.
 
      On a 375px screen that order costs a scroll through a paragraph of grey to
      reach the only rows that need answering before the month can be closed. So
