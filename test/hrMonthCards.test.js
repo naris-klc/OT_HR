@@ -144,58 +144,136 @@ test('the card spacing and the sub-line take the values the queue card already u
   assert.match(phone, /\.queue-table td\.cap-col \.cap-sub \{ font-size: 11px; color: var\(--muted-2\); \}/);
 });
 
-// ── ห้าการ์ดก่อน แล้วค่อยที่เหลือ ────────────────────────────────────────────
+// ── ห้าคนต่อหนึ่งหน้า ────────────────────────────────────────────────────────
 
-test('the card list stops at five and offers the rest', () => {
-  // The number lives in the component, once. Five is one 375px screen with the
-  // month's own controls still above it, so the button is on screen when the
-  // month loads rather than found by scrolling to what looks like the end.
-  assert.match(hrView, /const CARD_FOLD = 5;/);
-  // The JSX marks WHICH rows are past the fifth and says nothing about width.
-  assert.match(hrView, /className=\{!showAll && i >= CARD_FOLD \? 'over-fold' : undefined\}/);
+test('the card list is five to a page, and the page is a window not a ceiling', () => {
+  // The number lives in the component, once. Five, because the page is the
+  // whole of the screen's length now rather than the start of it — and the
+  // length has to be the same on page 1 and page 12 or วันเกิดของเดือนนี้ is
+  // somewhere different every time somebody presses ถัดไป.
+  assert.match(hrView, /const CARD_PAGE = 5;/);
+  assert.ok(!/CARD_STEP/.test(hrView), 'the load-more step survived the change to pages');
+  // A WINDOW: page 3 hides the ten rows above the five it draws as well as
+  // everything below them. A fold could only ever hide what came after it.
+  assert.match(hrView, /const from = \(current - 1\) \* CARD_PAGE;/);
+  assert.match(hrView, /const to = from \+ CARD_PAGE;/);
+  assert.match(hrView, /className=\{i < from \|\| i >= to \? 'off-page' : undefined\}/);
   assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
-  // …and the stylesheet is where "past the fifth" becomes "not drawn", below
+  // …and the stylesheet is where "off the page" becomes "not drawn", below
   // 860px and nowhere else.
-  assert.match(phone, /\.hr-table tbody tr\.over-fold \{ display: none; \}/);
-  assert.match(desktop, /\.hr-table tbody tr\.fold-row \{ display: none; \}/);
+  assert.match(phone, /\.hr-table tbody tr\.off-page \{ display: none; \}/);
+  assert.match(desktop, /\.hr-table tbody tr\.pager-row \{ display: none; \}/);
   // Named in the desktop block's comment, which is where the reason lives —
-  // but never given a RULE there, or a row would go missing from the table.
-  assert.ok(!desktop.includes('.over-fold {'), 'the fold reached the desktop table');
+  // but never given a RULE there, or fifty-five rows would go missing from a
+  // table that is read down its columns.
+  assert.ok(!desktop.includes('.off-page {'), 'the paging reached the desktop table');
 });
 
-test('the button counts what it is hiding, and goes back', () => {
-  const fold = hrView.slice(hrView.indexOf('{shown.length > CARD_FOLD && ('));
-  const row = fold.slice(0, fold.indexOf('</tr>'));
-  // "ดูเพิ่มเติม…" asks somebody to press a button to find out how much they
-  // were not shown. `shown.length`, so while the search box is narrowing the
-  // fold counts the search's results and not the month's.
-  assert.match(row, /แสดงทั้งหมด \(\$\{shown\.length\} รายการ\)/);
-  // Sixty cards is the case this exists for, and there is otherwise no way back
-  // to the top of the month but scrolling through all sixty.
-  assert.match(row, /ย่อกลับ · แสดง \$\{CARD_FOLD\} รายการแรก/);
-  assert.match(row, /aria-expanded=\{showAll\}/);
+test('a page that no longer exists is clamped, not drawn empty', () => {
+  // `load()` can shorten this list without the month, the filter or the search
+  // changing — HR withdraws the last live entry of the only person on page 12.
+  // Sitting there, `page` is past the end and the list would draw nothing at
+  // all, under a working ถัดไป button.
+  assert.match(hrView, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ CARD_PAGE\)\);/);
+  assert.match(hrView, /const current = Math\.min\(page, pageCount\);/);
+  // Clamped at render, so there is no frame in which the empty page exists —
+  // and `page` itself is left alone, so a list that grows back returns the
+  // reader to where they were rather than to page 1.
+  assert.ok(
+    !/setPage\(Math\.min/.test(hrCode) && !/useEffect[^)]*pageCount/.test(hrCode),
+    'the clamp became an effect, which draws the empty page for one frame first',
+  );
+});
+
+test('the pager says where in the list, which page, and disables its ends', () => {
+  const block = hrView.slice(hrView.indexOf('{shown.length > CARD_PAGE && ('));
+  const row = block.slice(0, block.indexOf('</tr>'));
+  // WHERE IN THE LIST — "หน้า 2 / 12" says where somebody is and nothing about
+  // how long the list is. 57 is a number nothing else prints once the export
+  // row has scrolled away.
+  assert.match(row, /แสดง <strong>\{from \+ 1\}–\{Math\.min\(to, shown\.length\)\}<\/strong> จาก/);
+  // `shown.length`, so while the search box is narrowing, the pages are over
+  // the search's results and not the month's.
+  assert.match(row, /<strong>\{shown\.length\}<\/strong> รายการ/);
+  // WHICH PAGE, from the clamped value — never from raw `page`, or the label
+  // and the rows drawn could disagree on exactly the month that shortened.
+  assert.match(row, /หน้า <strong>\{current\}<\/strong> \/ <strong>\{pageCount\}<\/strong>/);
+  // The two controls, and the ends they refuse.
+  assert.match(row, /onClick=\{\(\) => setPage\(current - 1\)\}/);
+  assert.match(row, /disabled=\{current <= 1\}/);
+  assert.match(row, /onClick=\{\(\) => setPage\(current \+ 1\)\}/);
+  assert.match(row, /disabled=\{current >= pageCount\}/);
+  // `disabled` rather than gone: a control that disappears at the ends moves
+  // the two beside it, and the second press of a travelling thumb lands on the
+  // button that goes back.
+  assert.ok(
+    !/\{current > 1 && \(\s*<button/.test(row),
+    'ก่อนหน้า is being hidden at page 1 instead of disabled',
+  );
+  // Pressing ถัดไป changes nothing a screen reader would otherwise announce:
+  // focus stays on a button whose label did not change.
+  assert.match(row, /<div className="pager-say" aria-live="polite">/);
   // Eleven cells like every other row in this table.
   assert.match(row, /colSpan=\{11\}/);
-  // ABOVE the total card, which is the foot of the list on a phone and the
-  // thing วันเกิดของเดือนนี้ is ordered to come up to.
+  // ABOVE the total card. The pager belongs to the list it pages; under the
+  // total it would read as a control for the whole card, which is the one thing
+  // it is not — and the floating total can only ever cover what precedes it.
   assert.ok(
-    hrView.indexOf('{shown.length > CARD_FOLD && (') < hrView.indexOf('<tr className="total-row">'),
-    'the fold button ended up under รวมทั้งหมด',
+    hrView.indexOf('{shown.length > CARD_PAGE && (') < hrView.indexOf('<tr className="total-row">'),
+    'the pager ended up under รวมทั้งหมด',
   );
-  // Not a card: a bordered white block around one full-width button reads as a
-  // sixth person with nothing in them.
-  assert.match(phone, /\.hr-table tbody tr\.fold-row \{\s*display: block; padding: 0; border: 0; background: none;/);
-  assert.match(phone, /\.hr-table tbody tr\.fold-row \.btn \{\s*width: 100%; min-height: 44px;/);
+  // Not a card: a bordered white block around a control reads as a sixth person
+  // with nothing in them.
+  assert.match(phone, /\.hr-table tbody tr\.pager-row \{\s*display: block; padding: 0; border: 0; background: none;/);
+  // One line, and the two buttons the same width as each other whatever their
+  // labels come to — so the page number sits on the card's centre line.
+  assert.match(phone, /\.pager-controls \{\s*display: grid; grid-template-columns: 1fr auto 1fr;/);
+  assert.match(phone, /\.pager-controls \.btn \{\s*width: 100%; min-height: 44px;/);
+  assert.match(phone, /\.pager-row \.pager-range \{[\s\S]*?color: var\(--muted\);/);
+  // The disabled ends wear what every other disabled button in this app wears.
+  // A local `opacity` was written here once: `.btn:disabled` sets `opacity: 1`
+  // on purpose, and a ghost faded to .45 is illegible on the dark theme.
+  assert.ok(
+    !/pager-controls \.btn:disabled/.test(phone),
+    'the pager opted out of the app’s own disabled treatment',
+  );
 });
 
-test('a fold is not a filter — nothing that is counted or printed reads it', () => {
+// ── รวมทั้งหมด ลอยอยู่เหนือแถบล่าง ───────────────────────────────────────────
+
+test('the month’s total floats above the nav bar instead of waiting at the end', () => {
+  const total = phone.slice(phone.indexOf('.hr-table tbody tr.total-row {'));
+  const rule = total.slice(0, total.indexOf('}'));
+  assert.match(rule, /position: sticky;/);
+  // The nav bar is 74px plus the home-indicator inset — the same sum
+  // `.mobile-nav-spacer` is built from — and eight above it, so it reads as
+  // floating over the bar rather than joined to it.
+  assert.match(rule, /bottom: calc\(82px \+ env\(safe-area-inset-bottom\)\);/);
+  // Under the sticky ค้นหา bar and the nav, both at 30. It cannot reach either,
+  // being pinned between them; the number is written down so the next sticky
+  // thing on this screen has one to sit beside.
+  assert.match(rule, /z-index: 5;/);
+  // Opaque, or the cards travel through it.
+  assert.match(rule, /background: var\(--neutral-wash\);/);
+  assert.match(rule, /box-shadow: 0 6px 20px var\(--shadow-soft\);/);
+  // `.table-wrap` is `overflow-x: auto`, which computes `overflow-y` to auto and
+  // makes the wrap itself the scrollport — exactly as tall as its contents, so
+  // a sticky row inside it has nothing to stick against.
+  assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible; \}/);
+  // The desktop table is eleven columns read at a glance; nothing floats there.
+  assert.ok(!desktop.includes('.hr-table tbody tr.total-row'), 'the float reached the desktop table');
+});
+
+test('a page is not a filter — nothing that is counted or printed reads it', () => {
   // รวมทั้งหมด is the month's, from the server's own grandTotal.
   assert.match(hrView, /hours\(data\.grandTotal\.otHours\)/);
-  // พิมพ์รวม prints every person the SEARCH matched, folded or not.
+  // พิมพ์รวม prints every person the SEARCH matched, on this page or not.
   assert.match(hrView, /setPrinting\(\{ employees: shown\.map\(\(r\) => r\.employee\) \}\)/);
-  // And it closes again whenever the list underneath it changes, or it is a
-  // claim about a list that no longer exists.
-  assert.match(hrView, /useEffect\(\(\) => \{ setShowAll\(false\); \}, \[period, statusFilter, find\]\);/);
+  // And it goes back to page 1 whenever the list underneath it changes, or it
+  // is a claim about a list that no longer exists. `find` is in the list
+  // because page 8 carried into a search that matched three people is a page
+  // number that stopped meaning anything.
+  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); \}, \[period, statusFilter, find\]\);/);
 });
 
 test('รวมทั้งหมด is a card too, and has no buttons to offer', () => {
