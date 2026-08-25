@@ -2405,7 +2405,7 @@ its own `<h2>ตรวจสอบรายเดือน</h2>` and `สิง�
 the alert panel directly above them, and dropping that pair below 860px is worth
 about 60px more. Not done: it is a title, not spacing.
 
-**ตรวจสอบรายเดือน บนมือถือ: กล่องเดียว — การ์ด, แผงเปลี่ยนหน้า, ยอดรวม.** Below
+**ตรวจสอบรายเดือน บนมือถือ: หน้าละ 5 คน แล้วเลื่อนหน้าเว็บตามปกติ.** Below
 860px this screen is one card per person — that is where **ดู / แก้ไขรายการ**
 and **พิมพ์ F-HR-027** live, and it is why this table left the sideways-
 scrolling group the two accounting ones stayed in. A card is about 150px tall
@@ -2414,53 +2414,53 @@ scrolling between the search box and **รวมทั้งหมด** — and 
 layout deliberately moved *up* to the total card (วันเกิดของเดือนนี้, then the
 footnotes) sat below all nine of them.
 
-**Five designs answered that on 2026-08-25**, and the shipped one is the last
-two combined:
+**Six designs answered that on 2026-08-25**: a fold at five, a fold at ten,
+ten-loaded-per-press, five to a page with a pager, a fixed-height box with the
+list scrolling inside it, and the box wrapped around the pager. The shipped one
+is the fourth — the page on its own, with nothing on this screen scrolling but
+the page itself:
 
 ```
-┌─────────────────────────────────┐ ↕ .hr-table tbody — max-height: 42dvh
-│ ผู้ดูแลระบบ              3      │   overflow-y: auto
-│ [ ดู / แก้ไขรายการ ] [ พิมพ์ ]  │   overscroll-behavior: contain
+┌─────────────────────────────────┐
+│ ผู้ดูแลระบบ              3      │ ← five cards, and five is all the layout
+│ [ ดู / แก้ไขรายการ ] [ พิมพ์ ]  │   holds: no max-height, no overflow-y
 │ ฝ่ายบุคคล              2.5      │
-│      แสดง 1–5 จาก 25 รายการ     │ ← the pager scrolls with the cards
-│ [ ‹ ก่อนหน้า ] หน้า 1/5 [ ถัดไป ›]│
-│┌───────────────────────────────┐│
-││ รวมทั้งหมด            75.5    ││ ← sticky bottom: 0 — the floor of the box
-│└───────────────────────────────┘│
 └─────────────────────────────────┘
-วันเกิดของเดือนนี้                    ← outside the box, always here
+       แสดง 1–5 จาก 25 รายการ         ← the pager, straight after the fifth card
+ [ ‹ ก่อนหน้า ] หน้า 1/5 [ ถัดไป ›]
+┌─────────────────────────────────┐
+│ รวมทั้งหมด            75.5      │ ← under the pager, static, in the flow
+└─────────────────────────────────┘
+วันเกิดของเดือนนี้                    ← last, and the only work on the screen
 ```
 
-**The box bounds the height; the page bounds the distance.** They are two
-mechanisms over one list and that is a real cost, written down over CARD_PAGE in
-[`components/HrView.jsx`](components/HrView.jsx) rather than left to be
-discovered: somebody who wants the ninth person can flick inside the box or
-press **ถัดไป**, and neither is obviously the one to reach for. What each buys
-is different — the box keeps the **card's height** fixed so วันเกิดของเดือนนี้
-never moves, and the page keeps the **distance** fixed so no amount of flicking
-is ever more than five cards long.
+**The page bounds the distance, and nothing bounds the height.** Five cards, the
+pager and the total are a length a phone scrolls in one gesture, so there is no
+second scrollbar anywhere on the screen — `.hr-table tbody` is a plain flex
+column and `.table-wrap.card-list` is `overflow: visible`, which it has to be
+because `overflow-x: auto` at every other width computes `overflow-y` to `auto`
+as well. The cost of paging at all is written down over `CARD_PAGE` in
+[`components/HrView.jsx`](components/HrView.jsx).
 
-**The order inside the box is cards → pager → total**, and the total is
-`position: sticky; bottom: 0` — the floor of the scrollport, in view whichever
-rows are. With the total pinned to the foot of the box everything else in that
-box is above it by definition, so a pager placed *after* the total would be the
-one row of the list that could never share a screen with it. That is why it went
-back above, having been below it earlier the same day.
+**The order is cards → pager → total → วันเกิดของเดือนนี้.** The pager belongs
+to the cards, not to what follows them: *แสดง 6–10 จาก 57 รายการ* is a sentence
+about the five immediately above it, and a month's total read in between breaks
+that sentence in half. It sat *below* the total for a few hours on 2026-08-25,
+under a total that was `position: sticky` and therefore made the pager the one
+row of the list that could never share a screen with the figure.
 
-**42dvh, and viewport-relative on purpose.** It is about one card, the pager and
-the total — and "one card" is 150px on a card with one line of name and 190 on a
-card with two, so a `px` height would be a different thing in different months;
-`dvh` also follows the phone's own chrome as it hides and shows.
-`min-height: 260px` keeps it usable on a short screen. The figure has been
-**58dvh** and **44dvh** during the day, each measured and each wrong for a
-reason worth keeping: 44dvh drew 1.7 cards and the pinned total cut the second
-one in half; 58dvh had no pager in it to make room for.
-
-**`overscroll-behavior: contain` is what makes a nested scroll safe.** Without
-it, flicking to the end of the list carries straight on into the page behind it
-and the list the reader was in is gone. The app already asks for this on
-`.pick-menu` for the same reason. Walked: scrolling the box to its end moved the
-page **not at all**.
+**The box it replaced, and what went with it.** For a few hours the same day the
+list was a scrollport — `.hr-table tbody` at "max-height: 42dvh" (it read
+"58dvh" and "44dvh" earlier), "min-height: 260px", "overflow-y: auto" and
+"overscroll-behavior: contain" — with the pager inside it and รวมทั้งหมด
+"position: sticky; bottom: 0" as its floor. It bought one thing this does not:
+the card was the same height in every month, so วันเกิดของเดือนนี้ sat at a
+fixed distance under the total whatever the month held. What it cost was a
+scrollbar inside a page that also scrolls, two ways to reach the ninth person
+with nothing to say which was meant, and one scroll position out of fifteen
+probed where the sticky total lay across the middle of the pager buttons. The
+distance under the total now varies by a line of name — one card's worth at
+most — and never by the size of the month.
 
 **It is not a filter,** and nothing that is counted, exported or printed reads
 it — which was true of every version this screen has had, and is why each could
@@ -2485,37 +2485,54 @@ given **no rule at all**, which is what leaves every row drawn; one
 people out of the desktop month, and `test/hrMonthCards.test.js` asserts its
 absence for that reason. There is no `matchMedia` in the component either.
 
-**A new page starts at the top of the box** — the one place this component
-touches the DOM, and it is there because the walk found the bug rather than
-because it looked likely. The pager is at the *foot* of a scrolling box, so
-**ถัดไป** is pressed with the box scrolled to its end; without resetting
-`scrollTop` the next five people are drawn above a viewport that is still
-looking at the pager, and the button appears to do nothing. Measured before the
-fix: the box’s scroll offset stayed at **592** after a press. After: **0**. It is a ref
-and not a layout question — above 860px there is no box and the assignment is a
-no-op.
+**And it is why the list is not `shown.slice(from, to)`,** which is the shorter
+way to draw five cards and draws five *rows* with it. The desktop has no pager
+to reach the other fifty-five with, so a sliced list is a month with most of the
+month missing on the layout that has always shown all of it. The phone draws
+exactly five either way; only this way leaves the desktop the month.
 
-**What it costs, measured rather than guessed.** The pager sits directly above a
-sticky total inside a short box, so there is one scroll position out of fifteen
-probed (40px steps across the box's 328px of scroll) where the total covers the
-middle of the pager buttons. It resolves by scrolling on — and at the position
-the pager actually comes to rest — the end of the box — a hit-test at each
-button's centre returns the button itself and both are pressable. The alternative arrangements were
-each worse: a pager *after* the total can never share a screen with it, and
-`pointer-events: none` on the total trades the band for a tap landing on
-whichever employee's **ดู / แก้ไขรายการ** is behind it.
+**A new page starts at the top of the list** — the one place this component
+touches the DOM, and it is there because the walk found the bug rather than
+because it looked likely. The pager sits under the fifth card, so **ถัดไป** is
+pressed with five cards' worth of list above the thumb; without scrolling, the
+next five people are drawn up there out of the viewport and a button whose label
+did not change appears to have done nothing. `goPage()` calls
+`scrollIntoView({ block: 'start' })` on the list wrap, and how far down to stop
+is `scroll-margin-top: 156px` in the stylesheet — 62px of `.appbar` plus about
+69 of `.month-find` plus the line the search adds when it is narrowing.
+
+**In the handler, not on an effect.** While the list was a box the reset was
+`scrollTop = 0` on a `useEffect` over `[current, find, period, statusFilter]`,
+which was the same act as scrolling the box. With the *page* doing the scrolling
+it is not: an effect over those deps fires on mount and on every keystroke in
+the search box, and the screen would jump down to the list while somebody was
+still typing above it. Pressing one of the two buttons is the only thing that
+scrolls anything.
 
 Walked 2026-08-25 at 360×780 against a clone of the database on `next dev`, the
-month seeded to 25 people because the live August has four: the box measured
-**328px** with a scroll height of **920px**; **7 rows inside it** — five people,
-the pager and the total; read in the box's own scroll space the order was **last
-card 618 → pager 769 → total 854**; both buttons **101×44**, inside the box and
-pressable, with **ก่อนหน้า** `disabled` on page 1; pressing **ถัดไป** gave
-*หน้า 2 / 5 · แสดง 6–10 จาก 25 รายการ* with the box back at the top;
-**วันเกิดของเดือนนี้** outside the box, 26px under it at y=483 against a nav bar
-at y=703; the page's own scroll **unchanged** while the box was scrolled end to
-end. At 1440px: `overflow-y: visible`, `max-height: none`, all 26 rows drawn,
-the pager `display: none` and the total `position: static`.
+month seeded to 25 people (24 with approved entries) because the live August has
+four. **Nothing on the page is an inner scrollport** — every element with an
+`overflow-y` that scrolls was collected and the list came back **empty**;
+`.hr-table tbody` computes `max-height: none` and `overflow-y: visible`, and the
+page's own scroll height is **3861px**. **7 rows drawn** — five people, the pager
+and the total — with the rest of the month `off-page`. Down the page: first card
+**842** → pager **1707** → total **1792** → **วันเกิดของเดือนนี้ 1870**. Read in
+the viewport with the fifth card on screen: **card 120–302 → pager 314–387 →
+total 399–453 → birthdays 477**, and a hit-test at each pager button's centre
+returns *that button* — the band where the sticky total used to lie across them
+is gone with it. Both card buttons **121×44**; **ก่อนหน้า** `disabled` on page 1.
+Pressing **ถัดไป** from a viewport looking at the pager gave *หน้า 2 / 5 ·
+แสดง 6–10 จาก 24 รายการ*, moved the page from **1000 to 674**, and put the list
+wrap at **156** in the viewport — the first card of page 2 at **168**, which is
+**24px clear** of the search bar's bottom edge at 144. At 1440px: all **25 rows**
+drawn (24 people and the total), the pager `display: none`, the total
+`position: static`.
+
+The measurements the box was signed off with, kept because they are what these
+are being compared against: the box measured "328px" with a scroll height of
+"920px", "7 rows inside it", the order in the box's own scroll space "last card
+618 → pager 769 → total 854", both buttons "101×44", and
+**วันเกิดของเดือนนี้** "26px" under the box at "y=483".
 
 
 **CSV export** — `/api/exports/entries.csv` (per entry),
