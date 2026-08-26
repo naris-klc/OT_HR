@@ -435,7 +435,12 @@ test('an item is a heading, its figures, and the one sentence that says what to 
   // All four cases still answered in that one place — OPEN 7 mints a version
   // and moves no number, so a banner that cries wolf on it trains HR to dismiss
   // the one that fires when the rounding rule changed mid-month.
-  for (const only of ['ตัวเลขเทียบกันได้ตามปกติ', 'npm run migrate:policy-version', 'ซึ่งเทียบให้แล้ว']) {
+  // The fourth is matched on 'ไม่ได้โหลดกฎมาเทียบ'. It read 'ซึ่งเทียบให้แล้ว'
+  // until 2026-08-26, when the sentence was shortened from
+  // "หน้านี้ไม่ได้โหลดกฎเบื้องหลังมาด้วย — ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว"
+  // to "หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ตรวจสอบรายเดือน". Both halves that
+  // matter survive: why this screen cannot answer, and which one can.
+  for (const only of ['ตัวเลขเทียบกันได้ตามปกติ', 'npm run migrate:policy-version', 'ไม่ได้โหลดกฎมาเทียบ']) {
     assert.ok(pv.includes(only), `the ${only} case went missing`);
   }
   assert.match(css, /\.alerts-list \{\s*list-style: none;/);
@@ -633,4 +638,42 @@ test('the desktop rules for this table were not touched', () => {
   // is whatever it was — including the action column's own width.
   assert.match(desktop, /th\.act-col \{ width: 258px; \}/);
   assert.ok(!desktop.includes('.hr-table tbody tr {'), 'a card rule leaked out of the phone block');
+});
+
+test('the panel says the instruction in the same voice the list does', () => {
+  // ONE CLASS, TWO RENDERERS. The banner carried an inline
+  // `style={{ fontSize: 12.5, marginTop: 6 }}` on this line until 2026-08-26
+  // while ตรวจสอบรายเดือน drew the same sentence through `.say` — one notice,
+  // two decisions about how loud its instruction is, and an inline style is
+  // the one thing a media query cannot reach.
+  const pv = read('components/PolicyVersion.jsx');
+  assert.match(pv, /<div className="say">\{notice\.say\}<\/div>/);
+  assert.ok(
+    !/style=\{\{ fontSize: 12\.5/.test(pv),
+    'the banner went back to writing its own type size',
+  );
+
+  // GREY, NOT A PALER AMBER — asked for as a lighter orange on 2026-08-26 and
+  // answered with the neutral, because it is the only option here that does
+  // not cost readability. `--amber` on `--amber-bg` is 3.46:1 in ธีมสว่าง (a
+  // recorded debt of this palette) and 85% opacity would take it to 2.80;
+  // `--muted` on that same ground is 5.04 and passes AA. Neutral also because
+  // `policyVersionNotice` returns `ok` as well as `warn`, and one rule has to
+  // sit correctly on green too — 4.99 there.
+  assert.match(css, /\.alert \.say \{ margin-top: 6px; font-size: 12\.5px; color: var\(--muted\); \}/);
+  // The list keeps its own, further down the file, and wins on order. Matched
+  // on the rule's opening brace, not on the selector: both names also appear in
+  // the prose above the rules, which is where an indexOf finds them first.
+  const listSay = css.indexOf('.alerts-list .say {');
+  assert.ok(listSay > css.indexOf('.alert .say {'), 'the list rule no longer wins on order');
+  assert.match(css.slice(listSay, listSay + 120), /opacity: \.85;/);
+});
+
+test('the shortened instruction still says why and where', () => {
+  const pv = read('components/PolicyVersion.jsx');
+  // "หน้านี้ไม่ได้โหลดกฎเบื้องหลังมาด้วย — ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว"
+  // until 2026-08-26. Thai has no spaces, so 76 characters of it is one
+  // unbreakable run three lines deep in an amber box.
+  assert.match(pv, /say = 'หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ตรวจสอบรายเดือน';/);
+  assert.ok(!pv.includes('กฎเบื้องหลังมาด้วย'), 'the long form came back');
 });

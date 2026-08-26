@@ -1009,10 +1009,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1689 tests
+and the engine know nothing about Next.js, so the whole suite — **1694 tests
 across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+"1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when that figure was re-checked. The file count read
 "101 files" through all of them and moved with
 `test/entryRowChrome.test.js`.)
@@ -2285,6 +2285,23 @@ all along. Nothing is lost by it: the point of saying so at all is that an
 absent control reads as a screen that forgot, and a sentence says it as plainly
 as a dead button did.
 
+**Then, on 2026-08-26, the two of them were told apart by weight.** On a ยกเลิก
+row the cell holds แก้ไขไม่ได้ and ดูข้อมูลเดิม side by side — a thing that
+cannot be done and a thing that can — and both were `--muted` at nearly one
+size, the live one a white button with a `--line` hairline on a white card. Two
+labels, and which was which came only from the words. The sentence goes a step
+lighter, to `--muted-2`: it stands in for a control that is not on offer, and a
+disabled control is quieter than a live one everywhere else in this app.
+**Both** sentences take it, not only แก้ไขไม่ได้ — ไม่มีประวัติการแก้ไข stands in
+for ดูข้อมูลเดิม in exactly the same way, and that the two speak in one voice is
+the whole reason neither of them is a disabled button any more. The button gains
+an edge, `--line-lift` — the token for the border of something sitting *above*
+the page — one step darker than `--line` in both themes, and the smallest change
+that makes the live control the heavier of the pair. **Not a fill:**
+`--neutral-wash` behind a ghost button is what `.btn:disabled` looks like, and
+dressing the live control in the dead one's clothes is the defect the paragraph
+above this one records.
+
 **And the one control carries a picture.** `pencil` in
 [`components/icons.jsx`](components/icons.jsx) — drawn, not the ✏️ character,
 for the reason the whole icon file exists: a glyph is whatever the font on the
@@ -2303,6 +2320,19 @@ states are a ladder in one family: `--card` at rest, `--green-tint` on hover,
 themes, no colour named at the rule — the standing rule `test/theme.test.js`
 holds this stylesheet to.
 
+**And the one value that wraps got a line-height of its own.**
+รายละเอียดงานที่ทำ is the only cell on the card whose value runs to two lines —
+*"ทดสอบ calibration ชุด PM-3000 ก่อนส่งมอบ (ไม่พักเที่ยง)"* — and at the table's
+1.5 the pair closed up into a block whose last line then sat 10px above
+**กฎที่ใช้**, which is a *label* and starts at the opposite edge. Two lines of
+text and a heading, sharing one gap measured for neither. 1.7 does two things
+with one number: the pair separates, and the half-leading under the last of them
+grows from 3.5px to 4.9 — so the distance from the final glyph to the label
+below goes **16.75px → 18.15** without touching the 10px step the rest of the
+card keeps. The table's own `td` rule is left alone: on the desktop this cell is
+a column beside ten others, and a line-height set for a wrapped card value would
+loosen every row of every table in the app.
+
 **The card breathes at 10px, not 8.** Every field on these cards is a label and
 a value on *one* line — floated label at the left, value flowing to the right of
 it — so that gap is the only vertical space between one fact and the next, and
@@ -2310,6 +2340,27 @@ at 8px against a 1.5 line-height six fields ran together into a block of text.
 10px is the step the cards themselves are spaced by, so a card's insides and the
 space around it are one rhythm. It is `.stack-table`'s rule, so every card list
 in the app gets it.
+
+**The bar above the table was centred and the sentence in it was not.**
+แสดงประวัติการแก้ไขทั้งหมด is a checkbox at the left and *"6 จาก 6 รายการมี
+ประวัติให้ดู"* pushed to the right, in a flex row that has said
+`align-items: center` since it was written — and the sentence still came out
+**seven pixels above** the checkbox beside it. `align-items` centres a flex
+item's *margin* box, and `.card .hint` gives every hint inside a card
+`margin-bottom: 14px`, so fourteen pixels of nothing underneath lifted the words
+by half of it. Nothing about the rule looked wrong, which is why it stood for as
+long as it did: the misalignment was inherited from four hundred lines away.
+`.audit-bar .hint` states all four sides now, so the next thing added to this
+bar cannot inherit one either. Measured on the built app at 1280px: 302.8 /
+302.8 / **295.8** before, 295.9 / 295.9 / 295.9 after.
+
+**Every alert in the app breathes 2px wider.** An alert is a 17px mark, a 9px
+gap and then a block of text — so the left edge of the *words* is already 26px
+inside the box while their right edge was 14px from it, and a notice of three
+lines sat visibly off-centre in its own border. The padding is `12px 16px`; it
+read "12px 14px" until 2026-08-26. `.alert.tight`, the one-size-down notice a
+bottom sheet uses, states its own and is untouched — which is the relationship
+`test/absentCallout.test.js` was written to hold.
 
 **The footnote is a boxed note now, not a ruled-off one.** *การแก้ไขของฝ่ายบุคคล
 จะคำนวณชั่วโมงใหม่ทันที…* sat 12px under the last card in the same grey as the
@@ -2449,6 +2500,27 @@ What did **not** go is the instruction and where to carry it out.
 `npm run migrate:policy-version` is the whole reason its unversioned case does.
 A version of this that kept only the figures would be a tidier panel that had
 stopped saying the thing it is for.
+
+**The fourth sentence came down again on 2026-08-26.** It read *"หน้านี้ไม่ได้
+โหลดกฎเบื้องหลังมาด้วย — ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว"* and is now
+*"หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ตรวจสอบรายเดือน"*. Thai has no spaces,
+so seventy-six characters of it is one unbreakable run three lines deep inside an
+amber box; both halves that matter survive — why this screen cannot answer, and
+which one can.
+
+**And the instruction is grey now, in both renderers.** Three lines in one amber
+at nearly one size is a block, and a block is read as one thing or skipped as
+one thing — the third line is the only one that says what to DO about the other
+two. A lighter amber was what was asked for and is the one option that costs
+readability: `--amber` on `--amber-bg` already measures **3.46:1** in ธีมสว่าง —
+a known, recorded debt of this palette — and 85% opacity would take it to 2.80.
+`--muted` on the same ground is **5.04** and passes AA; on `--green-bg`, which is
+what the `ok` variant of this same notice is drawn on, 4.99. So the line that
+separates from the amber is also the only one in the box that passes. The rule
+is `.alert .say`, and the panel gave up an inline `fontSize: 12.5` to reach it —
+`.alerts-list .say` keeps its own smaller size and its opacity, states no
+colour, and greys with it. One notice, one decision about how loud its
+instruction is.
 
 **Every word of it lives in one module.** `policyVersionNotice()` in
 [`components/PolicyVersion.jsx`](components/PolicyVersion.jsx) answers whether
@@ -3450,8 +3522,8 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1689/1689 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1687", "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1694/1694 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3459,18 +3531,26 @@ four role UIs.
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The eleven newest are the whole of `test/entryRowChrome.test.js`, the 102nd
-  file — it held "nine" earlier the same day — and they pin the last cell of a
-  row on รายการ OT: that the one thing which can be pressed is the only thing
-  drawn as a button and that a disabled one may not come back, that nothing in a
-  row writes its own type size any more, that the flex row's wrap belongs to the
-  card layout and not to the table, that the pencil is drawn rather than typed
-  and sized by a class, that a ghost button's hover and press are a ladder and
-  neither names a colour, the 10px field rhythm, the chip under a description,
-  and three on the footnote under the table: that it is a bordered wash rather
-  than a hairline and is still not faded past reading, that its two rules are one
-  bullet each and not one sentence joined by a ·, and that below 860px its edges
-  sit on the cards' edges rather than 12px outside them. Before them, six in
+  The fourteen newest are the whole of `test/entryRowChrome.test.js`, the 102nd
+  file — it held "nine" and then "eleven" earlier the same day — and they pin the
+  last cell of a row on รายการ OT: that the one thing which can be pressed is the
+  only thing drawn as a button and that a disabled one may not come back, that
+  nothing in a row writes its own type size any more, that the flex row's wrap
+  belongs to the card layout and not to the table, that the pencil is drawn
+  rather than typed and sized by a class, that a ghost button's hover and press
+  are a ladder and neither names a colour, the 10px field rhythm, the chip under
+  a description, three on the footnote under the table — that it is a bordered
+  wash rather than a hairline and is still not faded past reading, that its two
+  rules are one bullet each and not one sentence joined by a ·, and that below
+  860px its edges sit on the cards' edges rather than 12px outside them — and
+  three more from the same afternoon: that the bar above the table centres its
+  two halves on one axis and that the inherited `margin-bottom` which broke that
+  is the explanation, that on a ยกเลิก row the live control outweighs the dead
+  sentence and does it with an edge rather than a fill, and that the one value
+  which wraps carries a line-height while the table's own `td` does not. Two in
+  `test/hrMonthCards.test.js` joined them for the notice both screens draw: that
+  the panel says its instruction in the same `.say` the list does, and that the
+  shortened fourth sentence still says why and where. Before them, six in
   `test/monthSearch.test.js` pinning ตรวจสอบรายเดือน's own
   copy of that box: that it is the same combobox and not a third grammar and
   that `.acct-menu` is gone from every rule, what a suggestion holds — including

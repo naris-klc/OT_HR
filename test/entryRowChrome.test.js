@@ -235,3 +235,64 @@ test('the footnote lines up with the cards above it on a phone', () => {
   assert.match(phone, /\.hint\.entry-foot \{ margin-left: 12px; margin-right: 12px; \}/);
   assert.match(phone, /\.stack-table tbody \{ display: flex; flex-direction: column; gap: 10px; padding: 12px;/);
 });
+
+test('the bar centres its two halves on one axis, and the margin is why', () => {
+  // SEVEN PIXELS. `.audit-bar` is `align-items: center` and always was, but
+  // `align-items` centres a flex item's MARGIN box — and `.card .hint` gives
+  // every hint inside a card `margin-bottom: 14px`, so the sentence at the
+  // right-hand end was centred with 14px of nothing under it and its words came
+  // out half of that above the checkbox's. Measured on the built app at 1280px:
+  // the label's mid was 302.8 and the hint's 295.8.
+  //
+  // Stated on all four sides rather than as a bare `margin-bottom: 0`, so the
+  // next thing added to this bar cannot inherit one either.
+  assert.match(rule('.audit-bar .hint'), /margin: 0 0 0 auto;/);
+  // The bar's own centring is what the fix relies on — if this ever goes, the
+  // margin above stops being the explanation.
+  assert.match(rule('.audit-bar'), /align-items: center;/);
+  // And the inherited margin is real: this is the rule that was reaching in.
+  assert.match(css, /\.card \.hint \{[^}]*margin-bottom: 14px;/);
+});
+
+test('on a cancelled row the live control outweighs the dead sentence', () => {
+  // แก้ไขไม่ได้ and ดูข้อมูลเดิม sit side by side in one cell: a thing that
+  // cannot be done and a thing that can. Both were `--muted` at nearly one
+  // size, and the live one was a white button with a `--line` hairline on a
+  // white card — two labels, and which was which came only from the words.
+  assert.match(rule('.entry-actions .cell-sub.th'), /color: var\(--muted-2\);/);
+  assert.match(rule('.entry-actions .btn.ghost'), /border-color: var\(--line-lift\);/);
+
+  // BOTH SENTENCES, not only แก้ไขไม่ได้. ไม่มีประวัติการแก้ไข stands in for
+  // ดูข้อมูลเดิม in exactly the same way, and that the two speak in one voice
+  // is the whole reason neither of them is a disabled button any more.
+  assert.match(jsx, /<span className="cell-sub th">แก้ไขไม่ได้<\/span>/);
+  assert.match(jsx, /<span className="cell-sub th">ไม่มีประวัติการแก้ไข<\/span>/);
+
+  // NOT A FILL. `--neutral-wash` behind a ghost button is what `.btn:disabled`
+  // looks like, and on ธีมมืด that token is LIGHTER than the `--card` a ghost
+  // sits on — dressing the live control in the dead one's clothes is the exact
+  // defect this cell was repaired for earlier the same day.
+  assert.ok(
+    !/\.entry-actions \.btn\.ghost \{[^}]*background:/.test(css),
+    'the row button took a fill — see .btn:disabled',
+  );
+  // Scoped, so `.cell-sub.th` elsewhere — a note about a value rather than a
+  // missing control — is untouched. Matched at the line start, because
+  // `rule()` looks for a selector as a substring and the scoped rule above
+  // ends with these same characters.
+  assert.match(css, /^\.cell-sub\.th \{\r?\n  font: 400 12px\/1\.45 var\(--sans\);/m);
+});
+
+test('the one value that wraps gets a line-height, and only that one', () => {
+  // รายละเอียดงานที่ทำ is the only cell on the card whose value runs to two
+  // lines. At the table's 1.5 the pair closed up into a block whose last line
+  // then sat 10px above กฎที่ใช้ — a LABEL, starting at the opposite edge. Two
+  // lines and a heading sharing one gap that was measured for neither.
+  assert.match(jsx, /<td className="entry-desc" data-label="รายละเอียดงานที่ทำ">/);
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(phone, /\.stack-table tbody td\.entry-desc \{ line-height: 1\.7; \}/);
+  // The table's own rule is left alone: on the desktop this cell is a column
+  // beside ten others, and a line-height set for a wrapped card value would
+  // loosen every row of every table in the app.
+  assert.match(css, /^td \{ padding: 12px;[^}]*font: 400 14px\/1\.5 var\(--sans\);/m);
+});

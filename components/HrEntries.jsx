@@ -229,7 +229,10 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                     <td className="num" data-label="รวม (ชม.)">
                       <strong>{hours(e.totals?.otHours)}</strong>
                     </td>
-                    <td data-label="รายละเอียดงานที่ทำ">
+                    {/* `entry-desc` — the only cell on the card whose value runs
+                        to two lines, and the only one that needs a line-height
+                        of its own because of it. See the stylesheet. */}
+                    <td className="entry-desc" data-label="รายละเอียดงานที่ทำ">
                       {e.description}
                       {/* ฝ่ายบุคคล reconciling a month against the signed paper
                           are asking who stands behind each row. A request the

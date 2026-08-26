@@ -114,9 +114,13 @@ test('the smaller notice is opt-in, and the base size is untouched', () => {
   // still reaches the class list, which is the assertion it was written for.
   assert.match(common, /className=\{`alert \$\{kind\}\$\{tight \? ' tight' : ''\}/);
   assert.match(css, /\.alert\.tight \{ padding: 10px 12px; font-size: 12\.5px; \}/);
-  // The base size is untouched — every other notice in the app is read on a
-  // card, where it is not competing with a form for height.
-  assert.match(css, /\.alert \{[\s\S]{0,200}padding: 12px 14px;[\s\S]{0,120}font: 400 13\.5px\/1\.6 var\(--sans\);/);
+  // The base stays a step LOOSER than tight on both axes, which is what this
+  // assertion is for: the sheet's notice is smaller than a card's and the two
+  // may not drift into each other. It read "12px 14px" until 2026-08-26, when
+  // the horizontal went to 16 — an alert's words start 26px in past its mark
+  // and their right edge was 14px from the border, so a three-line notice sat
+  // visibly off-centre in its own box.
+  assert.match(css, /\.alert \{[\s\S]{0,200}padding: 12px 16px;[\s\S]{0,120}font: 400 13\.5px\/1\.6 var\(--sans\);/);
   // The error slot in this same dialog stays full size: a refusal from the
   // server is the one thing here somebody has to read.
   assert.match(code, /\{error && <Alert kind="error">\{error\}<\/Alert>\}/);

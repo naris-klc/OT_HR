@@ -3158,9 +3158,15 @@ td > .approver-line { margin-top: 5px; }
    voice the sidebar icons use, so "ไม่อนุมัติเพราะ…" is not mistaken for the
    caption of whatever sits above it. Every error and every confirmation in the
    app comes through here (components/common.jsx → Alert). */
+/* 16px ACROSS AND 12 DOWN, and the asymmetry is deliberate. An alert is a
+   17px mark, a 9px gap and then a block of text that wraps — so the left edge
+   of the WORDS is already 26px inside the box while their right edge was 14px
+   from it, and a notice of three lines sat visibly off-centre in its own
+   border. 16 is what the two sides read as level at. It was 12px 14px until
+   2026-08-26. `.alert.tight` states its own padding and is untouched. */
 .alert {
   display: flex; align-items: flex-start; gap: 9px;
-  padding: 12px 14px; border-radius: var(--radius-sm); margin: 12px 0;
+  padding: 12px 16px; border-radius: var(--radius-sm); margin: 12px 0;
   font: 400 13.5px/1.6 var(--sans);
   border: 1px solid transparent;
 }
@@ -3175,6 +3181,30 @@ td > .approver-line { margin-top: 5px; }
    have to be read on their own. `min-width: 0` lets a long line wrap inside the
    alert instead of stretching it past the card. */
 .alert-body { flex: 1; min-width: 0; }
+
+/* THE INSTRUCTION UNDER A NOTICE — what to DO about the lines above it.
+
+   A warning that says three things in one colour at nearly one size is a block,
+   and a block is read as one thing or skipped as one thing. This is the line
+   that is not a finding: it is where to go. Smaller, and a step off the palette.
+
+   GREY RATHER THAN A PALER AMBER, and that is the whole of the choice. Amber
+   turned down is what was asked for and it is the one option that costs
+   readability: `--amber` on `--amber-bg` already measures 3.46:1 in ธีมสว่าง —
+   below AA, a known and recorded debt of this palette — and taking it to 85%
+   opacity would put it at 2.80. `--muted` on the same ground measures 5.04, and
+   on `--green-bg` — the `ok` variant of this same notice — 4.99. So the line that
+   separates from the amber is also the only one in the box that passes AA.
+   Neutral rather than palette-tinted for the second reason too: one rule has to
+   sit correctly on both kinds. (ธีมมืด: `--muted` on `--amber-bg` is 6.45.)
+
+   `.alerts-list .say` KEEPS ITS OWN SIZE AND OPACITY and takes this colour:
+   that rule sits further down the file and wins on order at equal specificity
+   for the two properties it states, and states no colour — so ตรวจสอบรายเดือน's
+   bracketed copy of this sentence greys with the panel's, which is the point of
+   both of them coming from one `policyVersionNotice`. It gains contrast doing
+   it: amber at 85% on `--amber-bg` is 2.80:1, the neutral at 85% is 3.74. */
+.alert .say { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
 
 /* A WAY OUT, ON THE BANNER THAT SAYS SOMETHING WENT RIGHT.
 
@@ -3553,7 +3583,15 @@ td > .approver-line { margin-top: 5px; }
 }
 .audit-bar .check { font: 500 13.5px/1.4 var(--sans); }
 .audit-bar .check.off { color: var(--muted-2); cursor: default; }
-.audit-bar .hint { margin-left: auto; }
+/* PUSHED RIGHT, AND NOT LIFTED WITH IT. `margin-left: auto` was the whole rule
+   and the sentence came out SEVEN PIXELS ABOVE the checkbox beside it:
+   `.card .hint` gives every hint inside a card `margin-bottom: 14px`, and
+   `align-items: center` centres a flex item's MARGIN box — so 14px of nothing
+   underneath lifted the words by half of it. Nothing about the rule looked
+   wrong, which is why it stood; the misalignment was inherited from four
+   hundred lines away. All four sides are stated now, so the next thing added to
+   this bar cannot inherit one either. */
+.audit-bar .hint { margin: 0 0 0 auto; }
 
 /* ── the last cell of a row on รายการ OT ────────────────────────────────────
    Up to four things: แก้ไข, ถอนใบวันเกิด, ดูข้อมูลเดิม, and one of two
@@ -3576,6 +3614,34 @@ td > .approver-line { margin-top: 5px; }
 /* The sentences carry `.cell-sub`'s 2px top margin, which is for a line UNDER a
    value and is a nudge off-centre here. */
 .entry-actions .cell-sub { margin-top: 0; }
+
+/* THE TWO KINDS OF THING IN THIS RUN, TOLD APART BY WEIGHT.
+
+   On a ยกเลิก row the cell holds แก้ไขไม่ได้ and ดูข้อมูลเดิม side by side: a
+   thing that cannot be done, and a thing that can. Both were the same grey
+   (`--muted`) at nearly the same size, and the live one was a white button with a
+   `--line` hairline on a white card — so the pair read as two labels and the eye
+   had to work out which was which from the words alone.
+
+   THE SENTENCE GOES A STEP LIGHTER, to `--muted-2`: it stands in for a control
+   that is not on offer, and a disabled control is quieter than a live one
+   everywhere else in this app. Both sentences take it, not only แก้ไขไม่ได้ —
+   ไม่มีประวัติการแก้ไข stands in for ดูข้อมูลเดิม in exactly the same way, and
+   the rule that these two speak in one voice is the whole reason neither of
+   them is a disabled button any more. Scoped to `.entry-actions`, so `.cell-sub.th`
+   elsewhere — where it is a note about a value rather than a missing control —
+   is unchanged. 3.41:1 in ธีมสว่าง against `--muted`'s 5.64, which is the point:
+   a disabled label is meant to recede, and this one is four words that repeat
+   what the row's สถานะ chip already says.
+
+   THE BUTTON GAINS AN EDGE, `--line-lift` — the token for the border of something
+   that sits ABOVE the page rather than being ruled off from it. It is one step
+   darker than `--line` in both themes and it is the smallest change that makes
+   the live control the heavier of the two. Not a fill: `--neutral-wash` behind a
+   ghost button is what `.btn:disabled` looks like, and drawing the live one in
+   the dead one's clothes is the defect this cell was just repaired for. */
+.entry-actions .cell-sub.th { color: var(--muted-2); }
+.entry-actions .btn.ghost { border-color: var(--line-lift); }
 
 /* ── a chip under the line of work it qualifies ─────────────────────────────
    6px and not 4: on the phone card the description cell is a floated label with
@@ -7867,6 +7933,25 @@ table.mini tbody tr:hover { background: none; }
   }
   .stack-table tbody td:not([data-label])::before { content: none; }
   .stack-table tbody td .btn { min-height: 44px; }
+
+  /* A DESCRIPTION THAT WRAPS, AND THE LABEL DIRECTLY UNDER IT.
+
+     Every other value on this card is one line, so the 10px between fields is
+     read as the space between a fact and the next fact. รายละเอียดงานที่ทำ is
+     the one that runs to two — "ทดสอบ calibration ชุด PM-3000 ก่อนส่งมอบ
+     (ไม่พักเที่ยง)" — and at the table's 1.5 the two lines close up into a
+     block whose last line then sits 10px above กฎที่ใช้, which is a LABEL and
+     starts at the opposite edge. Two lines of text and a heading, sharing one
+     gap that was measured for neither.
+
+     1.7 does two things with one number: the pair of lines separates, and the
+     half-leading under the last of them grows from 3.5px to 4.9 — so the
+     distance from the final glyph to the label below goes 16.75px → 18.15
+     without touching the 10px step the rest of the card keeps. The table's own
+     `td` rule is left alone: on the desktop this cell is a column beside ten
+     others, and a line-height set for a wrapped card value would loosen every
+     row of every table in the app. */
+  .stack-table tbody td.entry-desc { line-height: 1.7; }
 
   /* รายการ OT's last cell, which is the foot of the card here rather than the
      eleventh column of a table. Wrapping is allowed — and only here — because a

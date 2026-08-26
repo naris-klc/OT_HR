@@ -254,7 +254,7 @@ export function policyVersionNotice(spread) {
       </>
     );
   } else {
-    say = 'หน้านี้ไม่ได้โหลดกฎเบื้องหลังมาด้วย — ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว';
+    say = 'หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ตรวจสอบรายเดือน';
   }
 
   return {
@@ -279,7 +279,17 @@ export function PolicyVersionBanner({ spread }) {
     <Alert kind={notice.kind}>
       <strong>{notice.heading}</strong>
       <div style={{ marginTop: 4 }}>{notice.figures}</div>
-      <div style={{ fontSize: 12.5, marginTop: 6 }}>{notice.say}</div>
+      {/* THE INSTRUCTION, ONE STEP QUIETER — and by the same class ตรวจสอบ
+          รายเดือน already prints this exact sentence with. It carried its own
+          inline `fontSize` until 2026-08-26, which is how one line of one
+          notice ended up being the only place in the app that said 12.5 by
+          hand: the size, the space above it and the grey now come from
+          `.alert .say`, so the panel and the list are one decision.
+
+          WHY THE PANEL NEEDED IT. Three lines in one amber, two of them the
+          same size, is a block the eye has to read to sort — and the third line
+          is the only one that says what to DO about the other two. */}
+      <div className="say">{notice.say}</div>
     </Alert>
   );
 }
