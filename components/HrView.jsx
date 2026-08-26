@@ -6,7 +6,7 @@ import {
 } from '@/lib/api.js';
 import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
 import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
-import { capFigure, overCap, pendingCapNote } from '@/lib/caps.js';
+import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
   Alert, ClearButton, Empty, AddBirthDateHint, Highlight, RateHead,
 } from './common.jsx';
@@ -858,7 +858,16 @@ export default function HrView({
                       className={`${i < from || i >= to ? 'off-page' : ''}${flash === row.employee._id ? ' row-flash' : ''}`.trim() || undefined}
                     >
                       <td className="who-col">
-                        {row.employee.name}
+                        {/* `|| '—'` — the same stand-in every other name in
+                            this app takes when the roster has none. A card
+                            headed by a blank line and a code underneath was
+                            reported on 2026-08-26 as "the name is missing":
+                            that one turned out to be the sticky ค้นหา bar
+                            painted over the top card and not a blank name at
+                            all (see `.month-find` in app/styles.css), but the
+                            row had no answer for a genuinely nameless employee
+                            either, and now it does. */}
+                        {row.employee.name || '—'}
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
                       </td>
                       <td className="dept-col">{row.department?.nameTh || row.department?.name}</td>
@@ -1383,13 +1392,31 @@ function CapCell({ cap }) {
 
   return (
     <>
+      {/* `capPair` and not `capFigure`: this cell sits under a heading that
+          says "สะสม / เพดาน", and on the phone card that heading is redrawn
+          over every single card. Both halves, always — "3 / —" where the
+          department sets no ceiling. See the note on `capPair` in
+          lib/caps.js for why the sentences on this screen keep the other
+          form. */}
       <span style={{ color: overCap(capUsed, cap.capHours) ? 'var(--danger-ink)' : 'inherit' }}>
-        {capFigure(cap.usedHours, cap.capHours)}
+        {capPair(cap.usedHours, cap.capHours)}
       </span>
-      {/* `.cap-sub` rather than an inline style: คิวรออนุมัติ prints this same
+      {/* ALWAYS DRAWN, EMPTY OR NOT, and that is the point of it.
+          `pendingCapNote` returns null on every settled month, so this line
+          used to be present on some cards and absent on others — and on the
+          phone, where each row is a card, the ones without it came out 16px
+          shorter than the ones with it. The element is now unconditional and
+          the phone block reserves its height (`td.cap-col .cap-sub` in
+          app/styles.css), so a person with nothing pending gets a card the
+          same size as everybody else's rather than a stunted one.
+
+          It costs an empty `<div>` per row on the desktop table, where no
+          height is reserved and it draws as nothing.
+
+          `.cap-sub` rather than an inline style: คิวรออนุมัติ prints this same
           sentence about the same hours, and two screens that agree on the words
           should not disagree on the type. */}
-      {note && <div className="cap-sub">{note}</div>}
+      <div className="cap-sub">{note}</div>
     </>
   );
 }

@@ -7509,9 +7509,27 @@ table.mini tbody tr:hover { background: none; }
   .hr-table tbody {
     display: flex; flex-direction: column; gap: 12px; padding: 12px;
   }
+  /* ONE SPLIT FOR EVERY CARD — 108px is a TRACK, not a guess at a width.
+
+     `auto` was here and it let the ceiling cell size itself from its widest
+     child, which is the sentence under the figure. So a person with something
+     pending gave that column 175px of the card's 250 and left 61 for their
+     name, which then wrapped down three lines; the person under them with
+     nothing pending gave it 67px and kept their name on one. Two cards, two
+     different layouts, and the reader was told nothing by the difference — it
+     was measured on 2026-08-26 at 360px as 139px, 161px, 139px and 183px tall
+     down one four-person month.
+
+     108 clears the two things that have to fit on ONE line — the
+     `td.cap-col::before` heading (67px at its widest) and the figure — with
+     room to spare, and leaves the name 130px, which is enough for every name
+     in the roster today. It is deliberately NOT wide enough for the sentence,
+     which now wraps to two lines on every card that has one and is reserved
+     at two lines on every card that does not. That is what makes the height
+     the same rather than merely similar: see `td.cap-col .cap-sub` below. */
   .hr-table tbody tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) 108px;
     grid-template-areas:
       'who cap'
       'act act';
@@ -7567,6 +7585,24 @@ table.mini tbody tr:hover { background: none; }
   .hr-table tbody td.cap-col .cap-sub {
     white-space: normal; text-align: right;
     font-size: 11px; color: var(--muted-2);
+    /* THE LINE IS RESERVED WHETHER OR NOT THERE IS ANYTHING TO SAY.
+       `pendingCapNote` returns null on a settled month, so this sentence is
+       on some cards and not others — and a card is not a table row: the ones
+       without it came out shorter than the ones with it, in a list where the
+       only thing that difference could mean is "this person is different",
+       which it is not. `CapCell` in components/HrView.jsx now draws the
+       element unconditionally and this holds two lines of it open.
+
+       TWO AND NOT ONE, because 108px of column is not enough for the sentence
+       on one line and never will be — "เพดานนับ 38.5 / 40 · รวมใบที่รออนุมัติ"
+       is about 175px at this size. Two is what it comes to at every width the
+       card is drawn at and for both wordings (`เพดานนับ` and `รวมทั้งหมด`),
+       measured rather than assumed, which is what makes the reserve exact
+       instead of approximately right.
+
+       2.9em against this rule's own 11px — 31.9px, the two lines — so it
+       follows the type if the type moves. */
+    min-height: 2.9em;
   }
 
   .hr-table tbody td.act-col {

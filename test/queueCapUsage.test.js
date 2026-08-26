@@ -6,8 +6,8 @@ import { dirname, join } from 'node:path';
 
 import { capEntriesByEmployee, queueCapUsage } from '../src/services/otService.js';
 import {
-  CAP_STATUSES, INCLUDES_PENDING, capChips, capColumn, capFigure, overCap, overCapLine,
-  pendingCapNote, usageInMonth,
+  CAP_STATUSES, INCLUDES_PENDING, NO_CAP, capChips, capColumn, capFigure, capPair,
+  overCap, overCapLine, pendingCapNote, usageInMonth,
 } from '../lib/caps.js';
 import { latestPerSession, reportStatuses } from '../lib/reports.js';
 import { BUCKETS } from '../src/lib/otEngine.js';
@@ -476,10 +476,12 @@ test('ตรวจสอบรายเดือน still opens on อนุม�
   assert.match(view, /overCap\(capUsed, cap\.capHours\)/, 'the cap colour follows the filter again');
   assert.match(view, /pendingCapNote\(/, 'the cell no longer says which figure the colour came from');
 
-  // The เพดาน cell prints through `capFigure`, so a department with no ceiling
-  // shows its hours rather than the bare "ไม่กำหนด" it used to, and a blank
-  // ceiling can never render as "/ 0".
-  assert.match(view, /capFigure\(cap\.usedHours, cap\.capHours\)/, 'the cell builds its own figure again');
+  // The เพดาน cell prints through `capPair`, so a department with no ceiling
+  // shows its hours rather than the bare "ไม่กำหนด" it used to, a blank ceiling
+  // can never render as "/ 0", and the column headed "สะสม / เพดาน" answers
+  // with both halves on every row — "3 / —" where there is no ceiling.
+  assert.match(view, /capPair\(cap\.usedHours, cap\.capHours\)/, 'the cell builds its own figure again');
+  assert.doesNotMatch(view, /capFigure\(cap\.usedHours, cap\.capHours\)/, 'the ceiling cell dropped its second half again');
   assert.doesNotMatch(stripComments(view), /ไม่กำหนด/, 'a department with no ceiling shows no hours again');
   // And both screens style the note with the one shared class.
   assert.match(view, /className="cap-sub"/, 'the review screen styles the note its own way again');
@@ -519,10 +521,15 @@ test('the queue column prints the same two lines ตรวจสอบราย�
   // screen prints it. This fails if anybody puts the ceiling total back on top.
   assert.match(
     cell,
-    /<strong>\{capFigure\(month\.approvedHours, month\.capHours\)\}<\/strong>/,
+    /<strong>\{capPair\(month\.approvedHours, month\.capHours\)\}<\/strong>/,
     'the headline is no longer the approved figure, or grew a unit back',
   );
-  assert.doesNotMatch(cell, /<strong>\{capFigure\(month\.usedHours/, 'the ceiling total is back in the headline');
+  assert.doesNotMatch(cell, /<strong>\{capPair\(month\.usedHours/, 'the ceiling total is back in the headline');
+  // AND IT IS THE REVIEW SCREEN'S HELPER. Both columns are headed
+  // "สะสม / เพดาน" and both are read by the same หัวหน้า in the same hour; one
+  // of them printing "3" while the other prints "3 / —" for the same person's
+  // same month is the disagreement this whole file exists to prevent.
+  assert.doesNotMatch(cell, /capFigure\(/, 'the queue headline went back to the sentence form');
 
   // The second line is the shared sentence, not a locally assembled one.
   assert.match(cell, /capNote\(month\) && <div className="cap-sub">\{capNote\(month\)\}<\/div>/, 'the note line is gone');
@@ -699,6 +706,17 @@ test('an unset ceiling never becomes a ceiling of zero', () => {
   // The mistake one `||` away, in the sentence and in the figure it embeds.
   assert.ok(!pendingCapNote(3, 9, null).includes('/ 0'));
   assert.equal(capFigure(9, null), '9');
+  // …and the column form says the ceiling is ABSENT rather than dropping it.
+  // Still never "/ 0": that would read as a department forbidden all overtime.
+  assert.equal(capPair(9, null), `9 / ${NO_CAP}`);
+  assert.ok(!capPair(9, null).includes('/ 0'));
+  assert.equal(capPair(16.5, 40), '16.5 / 40');
+  assert.equal(capPair(16.5, 40), capFigure(16.5, 40));
+  // A ceiling of zero is a real zero and is printed as one — see `capFigure`.
+  assert.equal(capPair(3, 0), '3 / 0');
+  // Rounded and null-safe the same way, because it is the same arithmetic.
+  assert.equal(capPair(undefined, null), `0 / ${NO_CAP}`);
+  assert.equal(capPair(16.499, 40), '16.5 / 40');
   // A TYPED zero is a real ceiling and still prints as one.
   assert.equal(pendingCapNote(3, 9, 0), 'เพดานนับ 9 / 0 · รวมใบที่รออนุมัติ');
 });

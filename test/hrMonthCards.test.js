@@ -104,8 +104,10 @@ test('the phone layout turns that same table into cards', () => {
 // ── what the card carries ────────────────────────────────────────────────────
 
 test('name, code and สะสม / เพดาน — and the eight columns that do not fit are named', () => {
-  // The code sits under the name in the same cell, on both layouts.
-  assert.match(hrView, /\{row\.employee\.name\}[\s\S]{0,200}\{row\.employee\.code\}/);
+  // The code sits under the name in the same cell, on both layouts — and the
+  // name takes the app's own stand-in when the roster has none, so a card is
+  // never headed by a blank line with a code under it.
+  assert.match(hrView, /\{row\.employee\.name \|\| '—'\}[\s\S]{0,200}\{row\.employee\.code\}/);
   assert.match(phone, /\.hr-table tbody td\.who-col \{/);
   assert.match(phone, /\.hr-table tbody td\.cap-col \{/);
   assert.match(phone, /content: 'สะสม \/ เพดาน'/);
@@ -171,6 +173,65 @@ test('the card spacing and the sub-line take the values the queue card already u
   // gives this same sentence on its own card.
   assert.match(phone, /\.hr-table tbody td\.cap-col \.cap-sub \{[\s\S]*?font-size: 11px; color: var\(--muted-2\);/);
   assert.match(phone, /\.queue-table td\.cap-col \.cap-sub \{ font-size: 11px; color: var\(--muted-2\); \}/);
+});
+
+/**
+ * ── ONE CARD IS THE SAME SIZE AS THE NEXT ONE ────────────────────────────────
+ *
+ * Reported on 2026-08-26 with a screenshot: four people in one month, four
+ * cards, four different heights — 139px, 161px, 139px and 183px at 360px. Two
+ * things made them, and both were the ceiling cell rather than anything about
+ * the people:
+ *
+ *   THE TRACK. `auto` let that column size itself from its widest child, which
+ *   is the sentence under the figure — so a card with something pending gave it
+ *   175px of the 250 available and left 61px for the name, which then wrapped
+ *   down three lines. The card under it with nothing pending gave it 67px and
+ *   kept the name on one.
+ *
+ *   THE SENTENCE. `pendingCapNote` returns null on a settled month, so the line
+ *   was on some cards and not others, and the ones without it came out shorter.
+ *
+ * Both are pinned here because both are invisible in a screenshot of a month
+ * where everybody happens to have something pending.
+ */
+test('every card is the same height — the ceiling column is a fixed track with a reserved line', () => {
+  // A TRACK, not `auto`: the sentence no longer decides how much of the card
+  // the name gets. 108px clears the `สะสม / เพดาน` heading and the figure —
+  // the two things that must not wrap — and is deliberately too narrow for the
+  // sentence, which is what makes the sentence two lines on EVERY card.
+  const cardRule = phone.slice(phone.indexOf('.hr-table tbody tr {'));
+  assert.match(cardRule, /^\.hr-table tbody tr \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) 108px;/);
+  // Scoped to this rule: `.bmonth-table` next door is a card with an `auto`
+  // second track and has every right to be.
+  assert.doesNotMatch(cardRule.slice(0, 400), /grid-template-columns: minmax\(0, 1fr\) auto;/);
+
+  // Two lines held open whether or not there is anything to say in them.
+  assert.match(phone, /\.hr-table tbody td\.cap-col \.cap-sub \{[\s\S]*?min-height: 2\.9em;/);
+
+  // …and the element is drawn unconditionally, or there would be nothing for
+  // the reserve to apply to. This is the half of the fix that lives in the
+  // component, and it is the half a later edit is most likely to "tidy" back
+  // into a `&&`.
+  assert.match(hrCode, /<div className="cap-sub">\{note\}<\/div>/);
+  assert.doesNotMatch(hrCode, /\{note && <div className="cap-sub">/);
+});
+
+/**
+ * BOTH HALVES OF A COLUMN THAT PROMISES TWO.
+ *
+ * `td.cap-col::before` redraws the heading "สะสม / เพดาน" over every card, and
+ * a department with no ceiling used to answer it with one number. `capPair`
+ * is the shared helper that prints "3 / —" instead — shared with คิวรออนุมัติ,
+ * whose column carries the same heading, so the two screens cannot come to
+ * quote one person's month in two shapes.
+ */
+test('a card with no ceiling still answers สะสม / เพดาน with two figures', () => {
+  assert.match(hrCode, /capPair\(cap\.usedHours, cap\.capHours\)/);
+  // The sentences on this screen keep the other form on purpose: "รวมทั้งหมด 9
+  // · รวมใบที่รออนุมัติ" and the dropdown's "แผนก | 3 ชม." both read worse with
+  // a dash in them, and `pendingCapNote` already says the ceiling is not there.
+  assert.match(hrCode, /capFigure\(row\.cap\.usedHours, row\.cap\.capHours\)/);
 });
 
 // ── หน้าละ 5 คน ──────────────────────────────────────────────────────────────

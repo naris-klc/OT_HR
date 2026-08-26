@@ -1009,11 +1009,11 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1701 tests
+and the engine know nothing about Next.js, so the whole suite — **1706 tests
 across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
-was already five behind when that figure was re-checked. The file count read
+"1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
 `test/entryRowChrome.test.js`.)
 
@@ -2845,6 +2845,14 @@ worth at most — and never by the size of the month. A change here is a choice
 between those two lists, not an improvement over nothing; the same note is over
 `CARD_PAGE` in [`components/HrView.jsx`](components/HrView.jsx).
 
+**Since 2026-08-26 the card itself is a fixed 170px** and that variance is
+nearly gone with it: the ceiling column is a 108px track rather than `auto`, so
+the sentence under the figure can no longer squeeze the name into three lines,
+and `.cap-sub` holds two lines open whether or not there is a sentence to put
+in them. What is left is a name long enough to run to three lines at 128px,
+which no name in the roster does today. Measured at 360px before and after:
+139 / 161 / 139 / 183, then 170 / 170 / 170 / 170.
+
 **It is not a filter,** and nothing that is counted, exported or printed reads
 it — which was true of every version this screen has had, and is why each could
 be swapped for the next without a single figure moving. **รวมทั้งหมด** is the
@@ -3540,10 +3548,20 @@ matches". A row reads:
 The first line is the same line ส่งบัญชี draws, from the same expression, and
 `test/monthSearch.test.js` holds both to it. The second line is the difference. ส่งบัญชี prints `hours()` because its sheet has
 no ceiling column; this prints **`capFigure(row.cap.usedHours, row.cap.capHours)`
-— the same helper, over the same `row.cap`, that the สะสม / เพดาน column prints
-on the row it takes you to**, so a suggestion and the row it opens cannot quote a
-person's month differently. A department with no ceiling reads `3 ชม.` with no
-denominator, exactly as its cell does.
+— over the same `row.cap` the สะสม / เพดาน column reads on the row it takes you
+to**, so a suggestion and the row it opens cannot quote a person's month
+differently.
+
+**The two are the same figures in two forms, and since 2026-08-26 they are not
+the same string.** This paragraph read "the same helper … A department with no
+ceiling reads `3 ชม.` with no denominator, exactly as its cell does" until then,
+and the second half of that stopped being true when the ceiling COLUMN went over
+to `capPair`: a cell under a heading that says "สะสม / เพดาน" now answers with
+both halves always — `3 / —` where the department sets none — while this line,
+which ends in `ชม.` and is a sentence rather than a column, keeps `capFigure`
+and still reads `3 ชม.`. Same `row.cap`, same arithmetic, same rounding; the
+dash is a column's business. See `capPair` in `lib/caps.js`, which is written
+beside `capFigure` and says which is for which.
 
 **Picking somebody OPENS their month.** This screen is where a month is checked
 and where a wrong figure is corrected, and correcting it means being inside
@@ -3716,8 +3734,8 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1701/1701 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1706/1706 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3758,7 +3776,8 @@ four role UIs.
   `test/monthSearch.test.js` pinning ตรวจสอบรายเดือน's own
   copy of that box: that it is the same combobox and not a third grammar and
   that `.acct-menu` is gone from every rule, what a suggestion holds — including
-  that its figure comes from the same `capFigure` the row's ceiling cell prints
+  that its figure comes from `capFigure` while the row's ceiling cell prints
+  `capPair` — the same `row.cap`, and the dash only in the column
   — that picking somebody calls `setOpened` and never `setFind` or `setQuery`,
   that the scroll and the flash wait for `data` and for all three sub-screens to
   clear, that the flash is painted on the `<tr>` there and fades to `--card` on

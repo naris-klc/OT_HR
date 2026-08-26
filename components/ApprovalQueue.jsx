@@ -5,7 +5,7 @@ import {
   api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
 import {
-  capChips, capFigure, describeBreaches, overCapLine,
+  capChips, capFigure, capPair, describeBreaches, overCapLine,
   pendingCapNote,
 } from '@/lib/caps.js';
 import {
@@ -2025,11 +2025,13 @@ function CapUsage({ usage }) {
 
   return (
     <>
-      {/* The approved hours against the ceiling — "16.5 / 40", or "16.5" alone
-          where the department sets none. `capFigure` is what refuses to print
-          "/ 0" for a blank ceiling. */}
+      {/* The approved hours against the ceiling — "16.5 / 40", and "16.5 / —"
+          where the department sets none. `capPair` is what refuses to print
+          "/ 0" for a blank ceiling AND refuses to drop the second half of a
+          column headed "สะสม / เพดาน"; ตรวจสอบรายเดือน's cell calls the same
+          helper, which is the whole reason this one changed with it. */}
       <div style={{ ...(month.exceeded ? OVER_CAP : undefined), whiteSpace: 'nowrap' }}>
-        <strong>{capFigure(month.approvedHours, month.capHours)}</strong>
+        <strong>{capPair(month.approvedHours, month.capHours)}</strong>
       </div>
 
       {/* What the ceiling counts, when that is not what the line above shows.
