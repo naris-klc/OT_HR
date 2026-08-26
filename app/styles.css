@@ -2461,8 +2461,16 @@ td > .approver-line { margin-top: 5px; }
   font: 500 14px/1.35 var(--sans);
 }
 /* The employee code, in the face codes are read in everywhere else in the app,
-   and a step quieter than the name it sits beside — it is how you tell two
-   คุณสมชาย apart, not what you are looking for. */
+   and a step quieter than the name it leads — it is how you tell two คุณสมชาย
+   apart, not what you are looking for.
+
+   IT LEADS THE ROW SINCE 2026-08-26 and used to trail the name in round
+   brackets. Mono is what makes that worth doing: every code on this roster is
+   the same width in this face, so at the left edge of forty rows they line up
+   into a column the eye can run down, which a list of Thai names of forty
+   different lengths does not give it. The square brackets are the asked-for
+   notation and they also stop `[PM-0100] วิชัย` reading as one word in a script
+   that sets no spaces. */
 .pick-menu.find-menu li .s-code {
   font: 400 12.5px/1.35 var(--mono); color: var(--muted);
 }

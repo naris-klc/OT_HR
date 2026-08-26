@@ -495,6 +495,23 @@ test('the dropdown is the app’s own listbox, not a second one', () => {
   assert.match(css, /\.pick-menu\.find-menu \{ max-height: min\(264px, 46vh\); \}/);
 });
 
+/**
+ * `[PM-0100] วิชัย ศรีสุข` — the code first, in square brackets, then the name.
+ *
+ * One expression, asserted from both screens' tests, because a suggestion row
+ * that put the same two facts in different orders on two tabs is a difference a
+ * reader has to account for every time they switch. Mono makes the leading code
+ * a column the eye can run down; the brackets are the asked-for notation and
+ * they also stop `[PM-0100] วิชัย` reading as one word in a script that sets no
+ * space between them.
+ */
+const ROW_LEADS_WITH_THE_CODE = new RegExp(
+  '<span className="s-code">\\s*'
+  + '\\[<Highlight text=\\{row\\.employee\\.code\\} query=\\{query\\} kind="code" />\\]\\s*'
+  + '</span>\\s*\\{\' \'\\}\\s*'
+  + '<Highlight text=\\{row\\.employee\\.name\\} query=\\{query\\} kind="name" />',
+);
+
 test('a suggestion says who, which code, which department and how many hours', () => {
   const item = acctView.slice(acctView.indexOf('<span className="s-who">'), acctView.indexOf('</ul>'));
   // The two strings the box was asked about are marked; แผนก and the hours are
@@ -509,7 +526,12 @@ test('a suggestion says who, which code, which department and how many hours', (
   // it in the same order the eye walks the page — and it is `narrowed`, which
   // means it can never list somebody the sheet is not showing.
   assert.match(acctView, /const suggestions = narrowed\.flatMap\(\(c\) => c\.rows\);/);
+  // THE CODE LEADS, IN BRACKETS — asked for by hand on 2026-08-26 and pinned
+  // here because the order is the whole of what was asked for. Both screens are
+  // checked against the same expression below.
+  assert.match(item, ROW_LEADS_WITH_THE_CODE);
 });
+
 
 test('picking a row moves the page to it and lights it — and leaves the filter alone', () => {
   const fn = acctView.slice(acctView.indexOf('function goToRow('), acctView.indexOf('function onFindKeyDown('));
@@ -604,6 +626,9 @@ test('a suggestion says who, which code, which department and how far into the c
   // The list IS the filtered rows, not a second list built beside them, so it
   // can never offer somebody the table is not showing.
   assert.match(hrView, /const suggestions = shown;/);
+  // The same expression ส่งบัญชี is held to. Two tabs of one document putting
+  // the code and the name in different orders is the difference this prevents.
+  assert.match(item, ROW_LEADS_WITH_THE_CODE);
 });
 
 test('picking somebody opens their month — and leaves the filter alone', () => {

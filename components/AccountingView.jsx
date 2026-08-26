@@ -410,12 +410,20 @@ export default function AccountingView() {
                       // row Enter takes.
                       onMouseMove={() => setActive(i)}
                     >
+                      {/* THE CODE LEADS, IN BRACKETS — asked for by hand on
+                          2026-08-26, and it reads "(PM-0100)" trailing the name
+                          until then. It is the better order for this list and
+                          not only a preference: every row of a sheet forty long
+                          starts with a Thai name of its own length, and the eye
+                          scanning down them has nothing to line up on. A code is
+                          fixed-width, mono, and at the left edge it makes a
+                          column — which is what a list of forty is read as. */}
                       <span className="s-who">
-                        <Highlight text={row.employee.name} query={query} kind="name" />
-                        {' '}
                         <span className="s-code">
-                          (<Highlight text={row.employee.code} query={query} kind="code" />)
+                          [<Highlight text={row.employee.code} query={query} kind="code" />]
                         </span>
+                        {' '}
+                        <Highlight text={row.employee.name} query={query} kind="name" />
                       </span>
                       {/* แผนก and the month's hours for this person — the two
                           things that tell two people with similar names apart,

@@ -2883,7 +2883,7 @@ fewer hooks than expected* the moment พิมพ์แบบฟอร์ม wa
 the box while there is something typed, one row per match:
 
 ```
-วิชัย ศรีสุข (PM-0100)
+[PM-0100] วิชัย ศรีสุข
 วิศวกรรม | 8 ชม.
 ```
 
@@ -2892,6 +2892,18 @@ hours for that person are the context — they are what tells two คุณส�
 and the figure somebody is usually looking for anyway. `hours()` and not
 `cell()`: a nought in a suggestion is an answer, where a blank in the table is a
 column to read past.
+
+**The code leads, in square brackets** — asked for by hand on 2026-08-26; it read
+"วิชัย ศรีสุข (PM-0100)", the name first with the code trailing in round
+brackets, until then. The order earns itself beyond the preference: every row of
+a list forty long starts with a Thai name of its own length and gives the eye
+running down them nothing to line up on, while a code is fixed-width in `--mono`
+and at the left edge the forty of them make a **column**. The square brackets are
+the asked-for notation and they do a second job in a script that sets no space
+between words — they stop `[PM-0100] วิชัย` reading as one run of characters.
+`test/monthSearch.test.js` holds both screens to one expression for this, because
+two tabs of the same document ordering the same two facts differently is a thing
+a reader has to re-learn on every switch.
 
 **It is a way TO the row, not a second filter, and the difference is the whole
 design.** The box already narrows the sheet; this says where on it to look.
@@ -3159,11 +3171,12 @@ suggestion does something other than move the page.
 matches". A row reads:
 
 ```
-สมชาย ใจดี (PM-0412)
+[PM-0412] สมชาย ใจดี
 วิศวกรรม | 15.5 / 40 ชม.
 ```
 
-The second line is the difference. ส่งบัญชี prints `hours()` because its sheet has
+The first line is the same line ส่งบัญชี draws, from the same expression, and
+`test/monthSearch.test.js` holds both to it. The second line is the difference. ส่งบัญชี prints `hours()` because its sheet has
 no ceiling column; this prints **`capFigure(row.cap.usedHours, row.cap.capHours)`
 — the same helper, over the same `row.cap`, that the สะสม / เพดาน column prints
 on the row it takes you to**, so a suggestion and the row it opens cannot quote a

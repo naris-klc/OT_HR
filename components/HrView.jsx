@@ -697,12 +697,19 @@ export default function HrView({
                           // the row Enter takes.
                           onMouseMove={() => setActive(i)}
                         >
+                          {/* THE CODE LEADS, IN BRACKETS. The same order and the
+                              same brackets ส่งบัญชี uses — see the note there
+                              for why a fixed-width code at the left edge is what
+                              makes a list of forty scannable. Two screens whose
+                              suggestion rows put the same two facts in different
+                              orders is a difference a reader has to account for
+                              every time they change tab. */}
                           <span className="s-who">
-                            <Highlight text={row.employee.name} query={query} kind="name" />
-                            {' '}
                             <span className="s-code">
-                              (<Highlight text={row.employee.code} query={query} kind="code" />)
+                              [<Highlight text={row.employee.code} query={query} kind="code" />]
                             </span>
+                            {' '}
+                            <Highlight text={row.employee.name} query={query} kind="name" />
                           </span>
                           {/* แผนก and สะสม / เพดาน — the two things that tell two
                               คุณสมชาย apart, and the figure this screen is about.
