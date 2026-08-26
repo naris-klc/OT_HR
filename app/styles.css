@@ -6934,17 +6934,15 @@ table.mini tbody tr:hover { background: none; }
   /* 12px between cards rather than 10: these are taller than the roster's —
      two lines of name and code, a figure with a sentence under it, and a row of
      buttons — and at 10px the gap read as part of the card above it. */
-  /* …and it is a BOX of fixed height, not a length. The four declarations after
-     the padding are the whole of the phone's scrolling list; the reasoning for
-     each number is in the block headed กล่องรายชื่อสูงคงที่ further down, which
-     is where a reader will look for it. They live on this rule because this is
-     the rule that describes this element — see the note there. */
+  /* …and it is a LENGTH, not a box — five cards long, which is a length a
+     phone screen holds. Nothing here caps a height and nothing here scrolls:
+     the page does, the way every other list in this app is read. The four
+     declarations that used to sit under the padding — `max-height: 42dvh`,
+     `min-height: 260px`, `overflow-y: auto`, `overscroll-behavior: contain` —
+     are gone with the box they described; the block headed แผงเปลี่ยนหน้า
+     further down is what bounds the list now, and why. */
   .hr-table tbody {
     display: flex; flex-direction: column; gap: 12px; padding: 12px;
-    max-height: 42dvh;
-    min-height: 260px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
   }
   .hr-table tbody tr {
     display: grid;
@@ -7045,7 +7043,7 @@ table.mini tbody tr:hover { background: none; }
     background: var(--green-bg); border-color: var(--green-lift);
   }
 
-  /* ══ กล่องรายชื่อสูงคงที่ — A BOX, NOT A LENGTH ═════════════════════════
+  /* ══ แผงเปลี่ยนหน้า — ONE MECHANISM, AND THE PAGE DOES THE SCROLLING ════
 
      SIXTY PEOPLE IS SIXTY CARDS, and each of these is 150px tall with two
      buttons in it. On a 375px screen that is about nine screens of scrolling
@@ -7055,79 +7053,33 @@ table.mini tbody tr:hover { background: none; }
      a shape a thumb flicks past; a column of objects with decision buttons in
      them is not, because every one of them asks to be read.
 
-     SIX THINGS HAVE TRIED TO FIX THAT, over 2026-08-25 and 26: a fold at five,
-     a fold at ten, ten-loaded-per-press, five to a page with a pager, this box,
-     and the page's own scroll with no box at all. Five of the six worked by
-     DRAWING FEWER ROWS, which meant the component had to hold a number and a
-     control had to appear on screen to move it.
+     FIVE THINGS HAVE TRIED TO FIX THAT, all on 2026-08-25: a fold at five, a
+     fold at ten, ten-loaded-per-press, five to a page with a pager, and a
+     fixed-height box with the list scrolling inside it. The box was then put
+     AROUND the pager, and that pairing is what this replaces — two mechanisms
+     over one list, a scrollbar inside a page that scrolls as well, and a reader
+     who could reach the ninth person either by flicking inside the box or by
+     pressing ถัดไป with nothing to say which was meant.
 
-     This one bounds the BOX. The list is its own scrollport; the month can be
-     four people or four hundred and the card is the same height either way, so
-     วันเกิดของเดือนนี้ — the one section on this card that is WORK rather than
-     figures — sits at a fixed distance under the total and cannot be pushed off
-     the bottom by anything.
+     WHAT IS LEFT IS THE PAGE. `.off-page` hides everybody who is not among the
+     current five, so the list is five cards long whatever the month holds — and
+     five cards, the pager and the total are a length the page's own scroll
+     handles. There is no scrollport on this screen now: no `max-height`, no
+     `overflow-y`, and nothing nested for a flick to hand on at its end, which
+     is why `overscroll-behavior` went with it rather than being kept in case.
 
-     WHICH IS WHY IT IS BACK. The box was taken out on 2026-08-26 and the
-     screen was walked without it, twice: five cards on the page's own scroll,
-     then a fold that opened the whole month in place. Both worked and both let
-     the page grow — with the fold open, วันเกิดของเดือนนี้ was measured "5,543px"
-     down the document against "1,841px" shut. Nothing above the list moved; that
-     was never the problem. The problem is everything below it.
+     WHAT WAS GIVEN UP WITH THE BOX, said plainly rather than left to be found.
+     The box kept the card's HEIGHT fixed, so วันเกิดของเดือนนี้ sat at the same
+     distance under the total in every month and could not be pushed off the
+     bottom by a long one. That distance is now whatever five cards come to,
+     which varies by a line of name and no longer by the size of the month — a
+     smaller promise than the box made, kept without a second scrollbar to make
+     it.
 
-     THE COMPONENT KNOWS ABOUT FIVE AND THIS RULE KNOWS ABOUT HEIGHT, and the
-     two do not talk. `CARD_PAGE` decides which rows are drawn; this decides how
-     much of what is drawn is in view. Above 860px neither applies: `.pager-row`
-     is `display: none`, `.off-page` has no rule at all, and the table is a
-     table.
-
-     THE HEIGHT IS VIEWPORT-RELATIVE, not a count of cards. "Three cards" is 474
-     pixels on a card with one line of name and 550 on a card with two, so a
-     fixed `px` height would be three cards on some months and two-and-a-bit on
-     others. `dvh` also follows the phone's own chrome as it hides and shows,
-     which a pixel figure cannot. 42dvh is about one card and a half at 360×780
-     with the pager and the total under it, and leaves วันเกิดของเดือนนี้ on
-     screen with the list scrolled to the top — measured, not guessed; it read
-     "58dvh" and "44dvh" earlier the same day, and the figures are in README.
-
-     `min-height` KEEPS IT USABLE ON A SHORT SCREEN. At 42dvh a 480px-tall
-     phone in landscape would get a 202px slit showing one card and half of
-     another; 260px is a card and enough of the next to show that scrolling is
-     what to do. It is also what a month of two people gets: the box does not
-     shrink to its content, so the pager and the total sit where they always sit
-     and the four-person August is the same shape as the forty-person one.
-
-     `overscroll-behavior: contain` IS THE PART THAT MAKES NESTED SCROLL SAFE.
-     Without it, flicking to the end of this list carries straight on into the
-     page behind it — the reader lands somewhere they did not ask for and the
-     list they were reading is gone. The app already asks for this on
-     `.pick-menu` for the same reason.
-
-     THE FOUR DECLARATIONS ARE ON THE RULE THAT ALREADY EXISTS, up beside the
-     card stack's own `display: flex` — not in a second `.hr-table tbody { … }`
-     down here. Two rules with one selector in one stylesheet is how a screen
-     ends up with two half-descriptions of the same box, and this file has been
-     bitten by that before (see the note on `.dept-menu` losing to `.pick-menu`).
-     One selector, one place, and this comment points at it. */
-
-  /* ══ แผงเปลี่ยนหน้า — THE SECOND WAY THROUGH THE SAME LIST ═══════════════
-
-     `.off-page` is what makes the pager mean anything: five cards drawn out of
-     however many the month holds. It sits inside the box with them, so the two
-     mechanisms compose rather than fight — the box bounds the HEIGHT of the
-     card and the page bounds the DISTANCE inside it. Five cards is about three
-     boxfuls of flicking; the sixth person is one press away instead.
-
-     IT IS DRAWN ON EVERY MONTH SINCE 2026-08-26, including the ones that fit on
-     one page, with both buttons `disabled` and "แสดง 1–4 จาก 4 รายการ" above
-     them. Nothing here changed for that — the row was already unconditional in
-     the stylesheet; what changed is the `{shown.length > CARD_PAGE && …}` around
-     it in the JSX. Written down here anyway, because "the foot of the box is
-     cards, pager, total" is now true of every month rather than of the long
-     ones, and that is a thing this block describes.
-
-     THE COST IS WRITTEN DOWN IN components/HrView.jsx over `CARD_PAGE`: two
-     ways to reach the ninth person, and neither obviously the one to reach for.
-     Both were shipped alone on 2026-08-25 before they were shipped together. */
+     ABOVE 860px NONE OF THIS APPLIES: `.pager-row` is `display: none` and
+     `.off-page` is given no rule at all, so the desktop table still draws every
+     row of the month. The cost of paging at all is written down over
+     `CARD_PAGE` in components/HrView.jsx. */
   .hr-table tbody tr.off-page { display: none; }
   /* Not a card: no border, no fill, no 15px of padding. The row it sits in on
      screen is a control, and a bordered block around it reads as a sixth person
@@ -7173,52 +7125,51 @@ table.mini tbody tr:hover { background: none; }
      `opacity: 1` on purpose, because a ghost faded to .45 is illegible on the
      dark theme. */
 
-  /* ══ รวมทั้งหมด SITS AT THE FOOT OF THE BOX ═════════════════════════════
+  /* ══ รวมทั้งหมด IS THE ROW AFTER THE PAGER ══════════════════════════════
 
      A card, but not a person's: no buttons, no ceiling, and the two cells it
      does carry are its name and the month's total.
 
-     `position: sticky; bottom: 0` — and the offset is 0 now because the thing
-     it sticks to changed. It used to be pinned to the VIEWPORT, eight pixels
-     above the nav bar, floating over a list that ran the whole length of the
-     page; `bottom: calc(82px + env(safe-area-inset-bottom))` was that nav bar
-     plus eight. The list has its own scrollport now, so the row sticks to the
-     bottom of THAT — which is a box already sitting above the nav, and needs no
-     arithmetic about home indicators to stay clear of it.
+     IT IS `static`, AND THAT IS THE THIRD POSITION THIS ROW HAS HELD. It was
+     pinned to the VIEWPORT eight pixels above the nav bar — `bottom: calc(82px
+     + env(safe-area-inset-bottom))`, floating over a list that ran the whole
+     length of the page — and then to the foot of the card list's own scrollport
+     at `bottom: 0`. Both were answers to a list that was screens long, and five
+     cards is not: the total is a short scroll under the pager and arrives on
+     screen on the way past. Left floating it would be a panel laid over
+     วันเกิดของเดือนนี้ — the one section on this screen that is WORK rather
+     than figures — for the whole of the page below the list.
 
-     What it buys is unchanged and is the reason it is still sticky at all: the
-     month's total is what this screen is signed off on, and reading it used to
-     mean scrolling past every card first. Now it is the floor of the list, in
-     view whichever five rows are.
-
-     THE FILL IS WHAT MAKES IT READABLE. `--neutral-wash` is opaque, so the
-     cards pass behind rather than through it; the shadow says it is a floor
-     rather than merely the last row. z-index 5 is deliberately low, like
-     `.pick-menu`'s: it has to beat the cards travelling under it — which carry
-     none — and must not beat the sticky ค้นหา bar (30) or the nav (30). It
-     cannot reach either from inside a box that sits between them, and the
-     number is written down anyway so the next sticky thing on this screen has
-     one to sit beside. */
+     THE FILL STAYS AND THE SHADOW DOES NOT. `--neutral-wash` is what says this
+     row is the month's rather than another person's, which it did before it was
+     ever sticky. `box-shadow: 0 -6px 20px` pointed UP because the row was a
+     floor with cards travelling beneath it; nothing travels beneath it now, and
+     the z-index went with it because there is nothing left to stack against. */
   .hr-table tbody tr.total-row {
     grid-template-areas: 'who cap';
     background: var(--neutral-wash);
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    box-shadow: 0 -6px 20px var(--shadow-soft);
   }
-  /* A sticky child scrolls against its nearest scrollport, and that is now the
-     tbody itself. `.table-wrap` must therefore NOT be one: it is `overflow-x:
-     auto` at every other width, which computes `overflow-y` to `auto` too and
-     would put a second scroll container around the first — two nested scrollbars
-     for one list, and a wrap that can be scrolled a few pixels on its own.
+  /* NO SCROLLPORT AROUND THE LIST EITHER. `.table-wrap` is `overflow-x: auto`
+     at every other width, and `overflow-x: auto` computes `overflow-y` to
+     `auto` as well — so left alone this wrap would BE the inner scrollbar the
+     box was taken out to be rid of. `visible` is safe here and nowhere else:
+     the sideways scroll is what the other three tables on a phone still need,
+     and this one stopped being a table at this width.
 
-     This line read the same before the box existed, for a different reason: back
-     then the sticky row needed the PAGE as its scrollport and the wrap was in
-     the way of that too. Safe here and nowhere else — the sideways scroll is
-     what the other three tables on a phone still need, and this one stopped
-     being a table at this width. */
-  .table-wrap.card-list { overflow: visible; }
+     This line has read the same through all three arrangements of this screen
+     and never twice for the same reason: first so the sticky total could take
+     the PAGE as its scrollport, then so it could take the tbody, now so that
+     nothing on this screen is a scrollport at all.
+
+     `scroll-margin-top` IS THE PAGER'S. ถัดไป scrolls this wrap back into view
+     — see `goPage` in components/HrView.jsx — and two bars are stuck above it:
+     `.appbar` at 62px and `.month-find` under it, 69px of `--field-h` and its
+     padding, plus about 22 more on the widths where the "แสดง n จาก n คน" line
+     wraps under the box while somebody is searching. 156 clears the tallest of
+     those, so the first card of a new page arrives under the search box instead
+     of behind it, and on the ordinary month it costs 25px of air. The number
+     lives in the stylesheet that owns both bars and not in the component. */
+  .table-wrap.card-list { overflow: visible; scroll-margin-top: 156px; }
   .hr-table tbody tr.total-row:hover { background: var(--neutral-wash); }
   .hr-table tbody tr.total-row td.total-col {
     grid-area: cap; text-align: right; white-space: nowrap;

@@ -144,9 +144,9 @@ test('the card spacing and the sub-line take the values the queue card already u
   assert.match(phone, /\.queue-table td\.cap-col \.cap-sub \{ font-size: 11px; color: var\(--muted-2\); \}/);
 });
 
-// ── กล่องรายชื่อสูงคงที่ ─────────────────────────────────────────────────────
+// ── หน้าละ 5 คน ──────────────────────────────────────────────────────────────
 
-test('the box and the pager are two mechanisms over one list', () => {
+test('five to a page, and the page is the whole of the mechanism', () => {
   // Five to a page — the number lives in the component, once.
   assert.match(hrView, /const CARD_PAGE = 5;/);
   // A WINDOW, not a fold: page 3 hides the ten rows above the five it draws as
@@ -154,7 +154,14 @@ test('the box and the pager are two mechanisms over one list', () => {
   assert.match(hrView, /const from = \(current - 1\) \* CARD_PAGE;/);
   assert.match(hrView, /const to = from \+ CARD_PAGE;/);
   assert.match(hrView, /className=\{i < from \|\| i >= to \? 'off-page' : undefined\}/);
-  // …and the box, which the component knows nothing about.
+  // A CLASS AND NOT `shown.slice`, which is the shorter way to draw five cards
+  // and draws five ROWS with it. The desktop has no pager — `.pager-row` is
+  // `display: none` above 860px — so a sliced list is a month with fifty-five
+  // people missing and no control anywhere on screen to reach them.
+  assert.ok(!/shown\.slice\(/.test(hrCode), 'the phone’s page window sliced the desktop’s month away');
+  assert.match(hrCode, /\{shown\.map\(\(row, i\) => \(/);
+  // …and no `dvh`: the list is no longer a box, and it was never the
+  // component's business how tall one was.
   assert.ok(!/matchMedia|innerWidth|isMobile|dvh/.test(hrCode), 'the layout is the stylesheet’s to decide');
 });
 
@@ -171,44 +178,54 @@ test('a page that no longer exists is clamped, not drawn empty', () => {
   );
 });
 
-test('a new page starts at the top of the box', () => {
-  // The pager lives at the FOOT of a scrolling box, so ถัดไป is pressed with the
-  // box scrolled to its end. Without this the next five people are drawn above
-  // a viewport still looking at the pager: the button appears to do nothing.
-  // Found by walking it on 2026-08-25, not by reading the code.
+test('a new page starts at the top of the list, and only when a button asks', () => {
+  // The pager sits under the FIFTH card, so ถัดไป is pressed with five cards'
+  // worth of list above the thumb. Without this the next five people are drawn
+  // up there, out of the viewport, and a button whose label did not change
+  // appears to have done nothing. Found by walking it on 2026-08-25.
   assert.match(hrView, /const listRef = useRef\(null\);/);
-  assert.match(hrView, /<tbody ref=\{listRef\}>/);
+  // On the WRAP, not the tbody: the wrap is the top of the list and it is what
+  // carries the `scroll-margin-top` that clears the two sticky bars.
+  assert.match(hrView, /<div className="table-wrap card-list" ref=\{listRef\}>/);
   assert.match(
     hrCode,
-    /useEffect\(\(\) => \{\s*if \(listRef\.current\) listRef\.current\.scrollTop = 0;\s*\}, \[current, find, period, statusFilter\]\);/,
+    /function goPage\(next\) \{\s*setPage\(next\);\s*listRef\.current\?\.scrollIntoView\(\{ block: 'start' \}\);\s*\}/,
   );
-  // `find` and the period are in the deps as well as `current`: a search that
-  // narrows the list while already on page 1 leaves `current` at 1, and the box
-  // would keep its scroll offset into a list that is now three people long.
-  // And it is a ref, not a layout question — above 860px there is no box,
-  // `scrollTop` is already 0 and the assignment is a no-op.
+  assert.match(hrView, /onClick=\{\(\) => goPage\(current - 1\)\}/);
+  assert.match(hrView, /onClick=\{\(\) => goPage\(current \+ 1\)\}/);
+  // IN THE HANDLER AND NOT ON AN EFFECT. `scrollTop = 0` was the same act as
+  // resetting the box, because the box was the thing scrolled; the page is now,
+  // and an effect over `[current, find, period, …]` would fire on mount and on
+  // every keystroke in the search box — the screen jumping down to the list
+  // while somebody is still typing above it.
+  assert.ok(!/scrollTop = 0/.test(hrCode), 'the box’s scroll reset outlived the box');
+  assert.ok(!/useEffect[^;]*scrollIntoView/.test(hrCode), 'the scroll went back onto an effect');
+  // And how far down to stop is the stylesheet's, because the bars it clears are.
+  assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible; scroll-margin-top: 156px; \}/);
   assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
 });
 
-test('the box is bounded, scrolls itself, and does not hand the scroll on', () => {
+test('nothing on this screen is a scrollport any more', () => {
   const box = phone.slice(phone.indexOf('.hr-table tbody {'));
   const rule = box.slice(0, box.indexOf('}'));
-  // About one card, the pager and the total — viewport-relative, because "one
-  // card" is 150px on a card with one line of name and 190 on a card with two.
-  assert.match(rule, /max-height: 42dvh;/);
-  // A 480px-tall phone in landscape would otherwise get a 202px slit.
-  assert.match(rule, /min-height: 260px;/);
-  assert.match(rule, /overflow-y: auto;/);
-  // The part that makes nested scroll safe: without it, flicking to the end of
-  // the list carries straight on into the page behind it. The app already asks
-  // for this on .pick-menu.
-  assert.match(rule, /overscroll-behavior: contain;/);
-  assert.match(css, /\.pick-menu \{[\s\S]*?overscroll-behavior: contain;/);
-  // Above 860px there is no box at all.
+  // The list is five cards long, which is a length the PAGE scrolls. The four
+  // declarations that made it a box — "max-height: 42dvh", "min-height: 260px",
+  // `overflow-y: auto` and `overscroll-behavior: contain` — went together, and
+  // `overscroll-behavior` went because there is no nested scroll left to
+  // contain, not because it stopped being the right pairing for one.
+  for (const gone of ['max-height', 'min-height', 'overflow', 'overscroll-behavior']) {
+    assert.ok(!rule.includes(gone), `the list is still a box: ${gone}`);
+  }
+  assert.match(rule, /display: flex; flex-direction: column; gap: 12px; padding: 12px;/);
+  // …and the wrap must not become one by inheritance: `.table-wrap` is
+  // `overflow-x: auto` at every other width, which computes `overflow-y` to
+  // `auto` as well and would be the inner scrollbar all over again.
+  assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible;/);
+  // Above 860px there was never a box.
   assert.ok(!/\.hr-table tbody \{[^}]*max-height/.test(desktop), 'the box reached the desktop table');
 });
 
-test('the pager is inside the box, above the total, and disables its ends', () => {
+test('the pager sits under the fifth card, above the total, and disables its ends', () => {
   const block = hrView.slice(hrView.indexOf('<tr className="pager-row">'));
   const row = block.slice(0, block.indexOf('</tr>'));
   assert.match(row, /แสดง <strong>\{from \+ 1\}–\{Math\.min\(to, shown\.length\)\}<\/strong> จาก/);
@@ -216,9 +233,9 @@ test('the pager is inside the box, above the total, and disables its ends', () =
   // From the clamped value, never from raw `page`, or the label and the rows
   // drawn could disagree on exactly the month that shortened.
   assert.match(row, /หน้า <strong>\{current\}<\/strong> \/ <strong>\{pageCount\}<\/strong>/);
-  assert.match(row, /onClick=\{\(\) => setPage\(current - 1\)\}/);
+  assert.match(row, /onClick=\{\(\) => goPage\(current - 1\)\}/);
   assert.match(row, /disabled=\{current <= 1\}/);
-  assert.match(row, /onClick=\{\(\) => setPage\(current \+ 1\)\}/);
+  assert.match(row, /onClick=\{\(\) => goPage\(current \+ 1\)\}/);
   assert.match(row, /disabled=\{current >= pageCount\}/);
   // `disabled` rather than gone: a control that disappears at the ends moves the
   // two beside it, and the second press of a travelling thumb lands on the
@@ -227,13 +244,18 @@ test('the pager is inside the box, above the total, and disables its ends', () =
   assert.match(row, /<div className="pager-say" aria-live="polite">/);
   assert.match(row, /colSpan=\{11\}/);
 
-  // ORDER INSIDE THE BOX: cards, then the pager, then the total. With the total
-  // `sticky` at the foot of the scrollport everything else is above it by
-  // definition, so a pager after the total is the one row that could never
-  // share a screen with it.
+  // THE ORDER OF THE WHOLE SCREEN: five cards, the pager directly under the
+  // fifth of them, รวมทั้งหมด under that, then วันเกิดของเดือนนี้. The pager
+  // belongs to the cards — "แสดง 6–10 จาก 57 รายการ" is a sentence about the
+  // five immediately above it — and a month's total read in between breaks that
+  // sentence in half.
   assert.ok(
     hrView.indexOf('<tr className="pager-row">') < hrView.indexOf('<tr className="total-row">'),
     'the pager ended up under รวมทั้งหมด',
+  );
+  assert.ok(
+    hrView.indexOf('<tr className="total-row">') < hrView.indexOf('<BirthdayMonth'),
+    'วันเกิดของเดือนนี้ came up above the month’s own total',
   );
   // Not a card, and one line that has to stay one line.
   assert.match(phone, /\.hr-table tbody tr\.pager-row \{\s*display: block; padding: 0; border: 0; background: none;/);
@@ -251,47 +273,44 @@ test('the pager is inside the box, above the total, and disables its ends', () =
 
 test('the pager is drawn on every month, including the ones that fit', () => {
   // It used to be `{shown.length > CARD_PAGE && …}`, and the four-person August
-  // had no pager at all: the foot of the box was a different shape depending on
+  // had no pager at all: the foot of the list was a different shape depending on
   // how many people filed OT, and "แสดง 1–4 จาก 4 รายการ" — the one line that
   // says how long the list is — was missing from exactly the months short enough
   // to doubt. Asked for by name on 2026-08-26.
-  assert.ok(
-    !/shown\.length > CARD_PAGE/.test(hrCode),
-    'the pager went back behind a condition',
-  );
+  assert.ok(!/shown\.length > CARD_PAGE/.test(hrCode), 'the pager went back behind a condition');
   // The ends carry it instead: one page means `current <= 1` and
   // `current >= pageCount` are both true, so both buttons come up disabled and
   // the count line still states the month.
   const row = hrView.slice(hrView.indexOf('<tr className="pager-row">'));
   assert.match(row.slice(0, row.indexOf('</tr>')), /disabled=\{current <= 1\}[\s\S]*disabled=\{current >= pageCount\}/);
-  // `pageCount` has a floor of 1, so "หน้า 1 / 1" is what an empty-ish month
-  // says — never "หน้า 1 / 0".
+  // `pageCount` has a floor of 1, so a short month says "หน้า 1 / 1" and never
+  // "หน้า 1 / 0".
   assert.match(hrView, /const pageCount = Math\.max\(1, Math\.ceil\(shown\.length \/ CARD_PAGE\)\);/);
-  // The row that IS conditional is the search's own empty state, which replaces
-  // the whole table — pager and total included — rather than sitting under it.
+  // The one row that IS conditional is the search's own empty state, and it
+  // replaces the whole table — pager and total included — rather than sitting
+  // under an empty one.
   assert.ok(
-    hrView.indexOf('shown.length === 0 ? (') < hrView.indexOf('<div className="table-wrap card-list">'),
+    hrView.indexOf('shown.length === 0 ? (') < hrView.indexOf('<div className="table-wrap card-list"'),
     'the empty state stopped replacing the table',
   );
 });
 
-test('รวมทั้งหมด is the floor of the box, not a bar over the page', () => {
+test('รวมทั้งหมด is the row after the pager, not a bar over the page', () => {
   const total = phone.slice(phone.indexOf('.hr-table tbody tr.total-row {'));
   const rule = total.slice(0, total.indexOf('}'));
-  assert.match(rule, /position: sticky;/);
-  // ZERO: the row used to be pinned to the VIEWPORT eight pixels above the nav
-  // bar. It sticks to the bottom of the list's own scrollport now.
-  assert.match(rule, /bottom: 0;/);
-  assert.ok(!rule.includes('safe-area-inset-bottom'), 'the row is still doing nav-bar arithmetic');
-  assert.match(rule, /z-index: 5;/);
+  // THE THIRD POSITION THIS ROW HAS HELD, and the first that floats over
+  // nothing: it was pinned to the VIEWPORT eight pixels above the nav bar
+  // ("bottom: calc(82px + env(safe-area-inset-bottom))"), then to the foot of
+  // the list's own scrollport ("bottom: 0"). Five cards is a short scroll, and
+  // a total left floating would lie over วันเกิดของเดือนนี้ — the one section
+  // on this screen that is work — for the whole of the page below the list.
+  for (const gone of ['position:', 'bottom:', 'z-index', 'box-shadow', 'safe-area-inset-bottom']) {
+    assert.ok(!rule.includes(gone), `the total is floating again: ${gone}`);
+  }
+  // The fill stays: it is what says this row is the month's rather than another
+  // person's, which it did before it was ever sticky.
   assert.match(rule, /background: var\(--neutral-wash\);/);
-  // The shadow points UP — it is a floor with rows above it, not a bar over
-  // rows below.
-  assert.match(rule, /box-shadow: 0 -6px 20px var\(--shadow-soft\);/);
-  // A sticky child scrolls against its nearest scrollport, which is now the
-  // tbody. `.table-wrap` must not be a second one wrapped around it.
-  assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible; \}/);
-  assert.ok(!desktop.includes('.hr-table tbody tr.total-row'), 'the sticky reached the desktop table');
+  assert.ok(!desktop.includes('.hr-table tbody tr.total-row'), 'the phone rule reached the desktop table');
 });
 
 test('neither the box nor the page is a filter', () => {
