@@ -2405,7 +2405,7 @@ its own `<h2>ตรวจสอบรายเดือน</h2>` and `สิง�
 the alert panel directly above them, and dropping that pair below 860px is worth
 about 60px more. Not done: it is a title, not spacing.
 
-**ตรวจสอบรายเดือน บนมือถือ: หน้าละ 5 คน แล้วเลื่อนหน้าเว็บตามปกติ.** Below
+**ตรวจสอบรายเดือน บนมือถือ: พับไว้ 5 คน คลี่ได้ทั้งเดือน.** Below
 860px this screen is one card per person — that is where **ดู / แก้ไขรายการ**
 and **พิมพ์ F-HR-027** live, and it is why this table left the sideways-
 scrolling group the two accounting ones stayed in. A card is about 150px tall
@@ -2414,125 +2414,136 @@ scrolling between the search box and **รวมทั้งหมด** — and 
 layout deliberately moved *up* to the total card (วันเกิดของเดือนนี้, then the
 footnotes) sat below all nine of them.
 
-**Six designs answered that on 2026-08-25**: a fold at five, a fold at ten,
-ten-loaded-per-press, five to a page with a pager, a fixed-height box with the
-list scrolling inside it, and the box wrapped around the pager. The shipped one
-is the fourth — the page on its own, with nothing on this screen scrolling but
-the page itself:
+**Seven designs have answered that, on 2026-08-25 and 26**: a fold at five, a
+fold at ten, ten-loaded-per-press, five to a page with a pager, a fixed-height
+box with the list scrolling inside it, the box wrapped around the pager, and the
+pager on its own. The shipped one is the first again, asked for by name:
 
 ```
 ┌─────────────────────────────────┐
-│ ผู้ดูแลระบบ              3      │ ← five cards, and five is all the layout
-│ [ ดู / แก้ไขรายการ ] [ พิมพ์ ]  │   holds: no max-height, no overflow-y
+│ ผู้ดูแลระบบ              3      │ ← five cards while the fold is shut:
+│ [ ดู / แก้ไขรายการ ] [ พิมพ์ ]  │   no max-height, no overflow-y anywhere
 │ ฝ่ายบุคคล              2.5      │
 └─────────────────────────────────┘
-       แสดง 1–5 จาก 25 รายการ         ← the pager, straight after the fifth card
- [ ‹ ก่อนหน้า ] หน้า 1/5 [ ถัดไป ›]
-┌─────────────────────────────────┐
-│ รวมทั้งหมด            75.5      │ ← under the pager, static, in the flow
+[ แสดงพนักงานเพิ่มอีก (+20 รายชื่อ) ▾ ] ← one bar, the width of the cards
+┌─────────────────────────────────┐      it opens; "ย่อรายการกลับ ▴" open
+│ รวมทั้งหมด            75.5      │ ← under the bar, static, in the flow
 └─────────────────────────────────┘
 วันเกิดของเดือนนี้                    ← last, and the only work on the screen
 ```
 
-**The page bounds the distance, and nothing bounds the height.** Five cards, the
-pager and the total are a length a phone scrolls in one gesture, so there is no
-second scrollbar anywhere on the screen — `.hr-table tbody` is a plain flex
-column and `.table-wrap.card-list` is `overflow: visible`, which it has to be
-because `overflow-x: auto` at every other width computes `overflow-y` to `auto`
-as well. The cost of paging at all is written down over `CARD_PAGE` in
-[`components/HrView.jsx`](components/HrView.jsx).
+**Shut it is the screen above; open it is the month, in place.** The twenty
+cards are drawn where the bar stands — between the fifth person and the month's
+own line — so **รวมทั้งหมด** and **วันเกิดของเดือนนี้** are pushed down by
+exactly what they come to and nothing else moves. There is no scrollbar anywhere
+on this screen either way: `.hr-table tbody` is a plain flex column and
+`.table-wrap.card-list` is `overflow: visible`, which it has to be because
+`overflow-x: auto` at every other width computes `overflow-y` to `auto` as well.
 
-**The order is cards → pager → total → วันเกิดของเดือนนี้.** The pager belongs
-to the cards, not to what follows them: *แสดง 6–10 จาก 57 รายการ* is a sentence
-about the five immediately above it, and a month's total read in between breaks
-that sentence in half. It sat *below* the total for a few hours on 2026-08-25,
-under a total that was `position: sticky` and therefore made the pager the one
-row of the list that could never share a screen with the figure.
+**What the fold gives up, said plainly.** The pager it replaces bounded the
+*distance*: no month was ever more than five cards deep, whatever it held.
+Opened, this one is as deep as the month is — a sixty-person August is sixty
+cards under one press. What it buys for that is one control instead of three,
+one gesture instead of twelve presses, and a state nobody has to keep track of:
+the fold is shut or it is not, and it says which in its own label. The trade is
+written down over `CARD_FOLD` in
+[`components/HrView.jsx`](components/HrView.jsx) rather than left to be found.
 
-**The box it replaced, and what went with it.** For a few hours the same day the
-list was a scrollport — `.hr-table tbody` at "max-height: 42dvh" (it read
-"58dvh" and "44dvh" earlier), "min-height: 260px", "overflow-y: auto" and
-"overscroll-behavior: contain" — with the pager inside it and รวมทั้งหมด
-"position: sticky; bottom: 0" as its floor. It bought one thing this does not:
-the card was the same height in every month, so วันเกิดของเดือนนี้ sat at a
-fixed distance under the total whatever the month held. What it cost was a
-scrollbar inside a page that also scrolls, two ways to reach the ninth person
-with nothing to say which was meant, and one scroll position out of fifteen
-probed where the sticky total lay across the middle of the pager buttons. The
-distance under the total now varies by a line of name — one card's worth at
-most — and never by the size of the month.
+**The bar is above the total because the cards it opens are.** Put under it, the
+bar would open a list on the far side of the figure that sums the list. Its
+label carries the only count on the screen — *แสดงพนักงานเพิ่มอีก (+20 รายชื่อ)*
+— and that count is `shown.length`, so while the search box is narrowing, the
+fold is over the search's results. `aria-expanded` and not a live region: this
+button's own label changes when it is pressed, which is the announcement.
+
+**The box, and the pager, and what went with them.** For a few hours on
+2026-08-25 the list was a scrollport — `.hr-table tbody` at "max-height: 42dvh"
+(it read "58dvh" and "44dvh" earlier), "min-height: 260px", "overflow-y: auto"
+and "overscroll-behavior: contain" — with the pager inside it and รวมทั้งหมด
+"position: sticky; bottom: 0" as its floor. Then the box went and the pager
+stayed: "แสดง 1–5 จาก 25 รายการ" over "‹ ก่อนหน้า · หน้า 1 / 5 · ถัดไป ›",
+`disabled` at the ends rather than hidden. The box cost a scrollbar inside a page
+that also scrolls; the pager cost twelve presses to read a month and a
+`pageCount` that had to be clamped at render in case `load()` shortened the list
+under it. Neither cost exists now, and neither of the things they bought does.
 
 **It is not a filter,** and nothing that is counted, exported or printed reads
 it — which was true of every version this screen has had, and is why each could
 be swapped for the next without a single figure moving. **รวมทั้งหมด** is the
 server's `grandTotal` for the whole month. **พิมพ์ F-HR-027 ทุกคน** bundles
-every person the search matched, on this page or not. Both CSVs are built
+every person the search matched, folded away or not. Both CSVs are built
 server-side and have never known what is on screen. A new month, a new
-สถานะที่นับ or a keystroke in the search box puts the page back to 1.
+สถานะที่นับ or a keystroke in the search box shuts the fold again — left open, a
+**ย่อรายการกลับ** would be sitting under a list of three people that was never
+folded.
 
-**A page that stops existing is clamped, not drawn empty.** `load()` can shorten
-the list without the month, the filter or the search changing — HR opens
-somebody's month and withdraws the last live entry in it. `current` is
-`Math.min(page, pageCount)`, clamped at render so the empty page never exists
-for a frame, with `page` itself left alone so a list that grows back returns the
-reader where they were.
+**One markup, two layouts.** The component marks which rows are folded away
+(`off-page`) and the *stylesheet* decides whether that means anything — only
+below 860px. Above it `.fold-row` is `display: none` and `off-page` is given
+**no rule at all**, which is what leaves every row drawn; one `display: none`
+written into the desktop block by mistake would take fifty-five people out of
+the desktop month, and `test/hrMonthCards.test.js` asserts its absence for that
+reason. There is no `matchMedia` in the component either.
 
-**One markup, two layouts.** The component marks which rows are off the current
-page (`off-page`) and the *stylesheet* decides whether that means anything —
-only below 860px. Above it `.pager-row` is `display: none` and `off-page` is
-given **no rule at all**, which is what leaves every row drawn; one
-`display: none` written into the desktop block by mistake would take fifty-five
-people out of the desktop month, and `test/hrMonthCards.test.js` asserts its
-absence for that reason. There is no `matchMedia` in the component either.
-
-**And it is why the list is not `shown.slice(from, to)`,** which is the shorter
-way to draw five cards and draws five *rows* with it. The desktop has no pager
-to reach the other fifty-five with, so a sliced list is a month with most of the
-month missing on the layout that has always shown all of it. The phone draws
+**And it is why the list is not `shown.slice(0, CARD_FOLD)`,** which is the
+shorter way to draw five cards and draws five *rows* with it. The desktop has no
+bar to open the other fifty-five with, so a sliced list is a month with most of
+the month missing on the layout that has always shown all of it. The phone draws
 exactly five either way; only this way leaves the desktop the month.
 
-**A new page starts at the top of the list** — the one place this component
-touches the DOM, and it is there because the walk found the bug rather than
-because it looked likely. The pager sits under the fifth card, so **ถัดไป** is
-pressed with five cards' worth of list above the thumb; without scrolling, the
-next five people are drawn up there out of the viewport and a button whose label
-did not change appears to have done nothing. `goPage()` calls
+**Shutting it puts the reader back at the top of the list** — the one place this
+component touches the DOM, and only on the way shut. Opening needs nothing: the
+new cards appear under the button, which is where the reader is looking.
+Shutting takes sixty cards down to five underneath somebody a long way down the
+page — the document ends above them, and the browser drops them on whatever the
+new bottom is, which is usually วันเกิดของเดือนนี้ with the list they just
+collapsed nowhere on screen. `toggleFold()` calls
 `scrollIntoView({ block: 'start' })` on the list wrap, and how far down to stop
 is `scroll-margin-top: 156px` in the stylesheet — 62px of `.appbar` plus about
 69 of `.month-find` plus the line the search adds when it is narrowing.
 
 **In the handler, not on an effect.** While the list was a box the reset was
-`scrollTop = 0` on a `useEffect` over `[current, find, period, statusFilter]`,
-which was the same act as scrolling the box. With the *page* doing the scrolling
-it is not: an effect over those deps fires on mount and on every keystroke in
+`scrollTop = 0` on a `useEffect`, which was the same act as scrolling the box.
+With the *page* doing the scrolling it is not: an effect over
+`[expanded, find, period, statusFilter]` fires on mount and on every keystroke in
 the search box, and the screen would jump down to the list while somebody was
-still typing above it. Pressing one of the two buttons is the only thing that
-scrolls anything.
+still typing above it. Pressing the bar is the only thing that scrolls anything.
 
-Walked 2026-08-25 at 360×780 against a clone of the database on `next dev`, the
+Walked 2026-08-26 at 360×780 against a clone of the database on `next dev`, the
 month seeded to 25 people (24 with approved entries) because the live August has
-four. **Nothing on the page is an inner scrollport** — every element with an
-`overflow-y` that scrolls was collected and the list came back **empty**;
-`.hr-table tbody` computes `max-height: none` and `overflow-y: visible`, and the
-page's own scroll height is **3861px**. **7 rows drawn** — five people, the pager
-and the total — with the rest of the month `off-page`. Down the page: first card
-**842** → pager **1707** → total **1792** → **วันเกิดของเดือนนี้ 1870**. Read in
-the viewport with the fifth card on screen: **card 120–302 → pager 314–387 →
-total 399–453 → birthdays 477**, and a hit-test at each pager button's centre
-returns *that button* — the band where the sticky total used to lie across them
-is gone with it. Both card buttons **121×44**; **ก่อนหน้า** `disabled` on page 1.
-Pressing **ถัดไป** from a viewport looking at the pager gave *หน้า 2 / 5 ·
-แสดง 6–10 จาก 24 รายการ*, moved the page from **1000 to 674**, and put the list
-wrap at **156** in the viewport — the first card of page 2 at **168**, which is
-**24px clear** of the search bar's bottom edge at 144. At 1440px: all **25 rows**
-drawn (24 people and the total), the pager `display: none`, the total
-`position: static`.
+four — so the fold holds **19**.
 
-The measurements the box was signed off with, kept because they are what these
-are being compared against: the box measured "328px" with a scroll height of
-"920px", "7 rows inside it", the order in the box's own scroll space "last card
-618 → pager 769 → total 854", both buttons "101×44", and
-**วันเกิดของเดือนนี้** "26px" under the box at "y=483".
+**Shut:** **5 cards drawn** and **19 `off-page`**; the bar reads
+*แสดงพนักงานเพิ่มอีก (+19 รายชื่อ) ▾* at **280×44** with `aria-expanded="false"`,
+and a hit-test at its centre returns the button itself. Down the page: first card
+**842** → fifth card **1513** → bar **1707** → total **1763** →
+**วันเกิดของเดือนนี้ 1841**, with the page **3832px** tall. Every element with an
+`overflow-y` that actually scrolls was collected and the list came back
+**empty** — `.hr-table tbody` computes `max-height: none` and
+`overflow-y: visible`. Both card buttons **121×44**; the total `position: static`.
+
+**Open:** the same bar reads *ย่อรายการกลับ ▴* with `aria-expanded="true"`,
+**24 cards drawn** and **0 `off-page`**. The page goes from 3832 to **7535px**
+and everything below the seam moves by that much and only that much: bar
+1707 → **5410**, total 1763 → **5466**, birthdays 1841 → **5543**. First card
+still **842** — nothing above the fold moved. Still no inner scrollport.
+
+**Shut again from the foot of the opened list** (page offset **5103**, where
+รวมทั้งหมด was on screen): 5 cards and 19 `off-page` again, the page back to
+**3832**, and the reader landed at page offset **674** with the list wrap at **156**
+in the viewport — the first card at **168**, which is **24px clear** of the search
+bar's bottom edge at 144.
+
+**At 1440px:** all **24 cards drawn** even though 19 still carry `off-page` —
+nothing above the phone block reads that class — and the bar is `display: none`.
+
+The measurements of the two arrangements this replaced, kept because they are
+what these are being compared against. The box: "328px" tall with a scroll height
+of "920px", "7 rows inside it", the order in its own scroll space "last card 618
+→ pager 769 → total 854", both buttons "101×44", วันเกิดของเดือนนี้ "26px" under
+it at "y=483". The pager on its own: "7 rows drawn", "first card 842 → pager 1707
+→ total 1792 → birthdays 1870", page "3861px", and pressing ถัดไป gave
+"หน้า 2 / 5 · แสดง 6–10 จาก 24 รายการ" while moving the page "1000 → 674".
 
 
 **CSV export** — `/api/exports/entries.csv` (per entry),

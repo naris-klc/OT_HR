@@ -5116,17 +5116,17 @@ table.mini tbody tr:hover { background: none; }
   background: var(--neutral-wash); font: 400 12.5px/1.6 var(--sans); color: var(--muted);
 }
 
-/* ══ ตรวจสอบรายเดือน — THE PAGER DOES NOT EXIST ON A DESKTOP ══════════════
+/* ══ ตรวจสอบรายเดือน — THE FOLD DOES NOT EXIST ON A DESKTOP ═══════════════
 
-   `.pager-row` is the ก่อนหน้า / ถัดไป row and `.off-page` marks every card
-   that is not among the five the current page holds. Both are written into the
-   markup unconditionally — the JSX says WHICH rows are off the page and nothing
-   else — and it is this rule, with its pair in the 860px block, that decides
-   whether being off the page means anything.
+   `.fold-row` is the แสดงพนักงานเพิ่มอีก / ย่อรายการกลับ row and `.off-page`
+   marks every card past the fifth while that fold is shut. Both are written
+   into the markup unconditionally — the JSX says WHICH rows are folded away and
+   nothing else — and it is this rule, with its pair in the 860px block, that
+   decides whether being folded away means anything.
 
    Above 860px it does not. A sixty-row table of eleven narrow columns is read
-   at a glance and down its columns; paging it would hide fifty-five rows behind
-   a control. So the pager is removed here and `.off-page` is deliberately
+   at a glance and down its columns; folding it would hide fifty-five rows
+   behind a control. So the fold is removed here and `.off-page` is deliberately
    given NO rule at all, which is what leaves every row drawn.
 
    `.off-page` HAS NO DECLARATION ANYWHERE ABOVE THIS LINE, and that is load-
@@ -5135,9 +5135,9 @@ table.mini tbody tr:hover { background: none; }
    asserts its absence for exactly that reason.
 
    Stated as a plain `display: none` and NOT as an inline style in the
-   component: an inline style beats the media query and the pager would never
+   component: an inline style beats the media query and the button would never
    appear on a phone at all. */
-.hr-table tbody tr.pager-row { display: none; }
+.hr-table tbody tr.fold-row { display: none; }
 
 /* ══ mobile — the design's own 860px breakpoint ══════════════════════════ */
 
@@ -7043,7 +7043,7 @@ table.mini tbody tr:hover { background: none; }
     background: var(--green-bg); border-color: var(--green-lift);
   }
 
-  /* ══ แผงเปลี่ยนหน้า — ONE MECHANISM, AND THE PAGE DOES THE SCROLLING ════
+  /* ══ แถบพับ/คลี่ — FIVE CARDS, AND THE REST ON ONE PRESS ════════════════
 
      SIXTY PEOPLE IS SIXTY CARDS, and each of these is 150px tall with two
      buttons in it. On a 375px screen that is about nine screens of scrolling
@@ -7053,79 +7053,54 @@ table.mini tbody tr:hover { background: none; }
      a shape a thumb flicks past; a column of objects with decision buttons in
      them is not, because every one of them asks to be read.
 
-     FIVE THINGS HAVE TRIED TO FIX THAT, all on 2026-08-25: a fold at five, a
-     fold at ten, ten-loaded-per-press, five to a page with a pager, and a
-     fixed-height box with the list scrolling inside it. The box was then put
-     AROUND the pager, and that pairing is what this replaces — two mechanisms
-     over one list, a scrollbar inside a page that scrolls as well, and a reader
-     who could reach the ninth person either by flicking inside the box or by
-     pressing ถัดไป with nothing to say which was meant.
+     SIX THINGS HAVE TRIED TO FIX THAT, on 2026-08-25 and 26: a fold at five, a
+     fold at ten, ten-loaded-per-press, five to a page with a pager, a
+     fixed-height box with the list scrolling inside it, and the box wrapped
+     around the pager. This is the first again, asked for by name — and the
+     honest note about it is that the pager it replaces bounded something this
+     does not. No month was ever more than five cards deep with a pager on it;
+     opened, this one is as deep as the month is.
 
-     WHAT IS LEFT IS THE PAGE. `.off-page` hides everybody who is not among the
-     current five, so the list is five cards long whatever the month holds — and
-     five cards, the pager and the total are a length the page's own scroll
-     handles. There is no scrollport on this screen now: no `max-height`, no
-     `overflow-y`, and nothing nested for a flick to hand on at its end, which
-     is why `overscroll-behavior` went with it rather than being kept in case.
+     WHAT IT BUYS FOR THAT. One control instead of three, one gesture instead of
+     twelve presses to read a sixty-person month, and a shut list that is the
+     screen in the picture: five cards, a bar, the total, the birthdays. Nothing
+     is behind a state anybody has to keep track of — the fold is shut or it is
+     not, and it says which in its own label.
 
-     WHAT WAS GIVEN UP WITH THE BOX, said plainly rather than left to be found.
-     The box kept the card's HEIGHT fixed, so วันเกิดของเดือนนี้ sat at the same
-     distance under the total in every month and could not be pushed off the
-     bottom by a long one. That distance is now whatever five cards come to,
-     which varies by a line of name and no longer by the size of the month — a
-     smaller promise than the box made, kept without a second scrollbar to make
-     it.
+     `.off-page` IS WHAT MAKES IT MEAN ANYTHING: it hides everybody past the
+     fifth while the fold is shut, and the JSX stops writing it the moment it
+     opens. There is no scrollport anywhere on this screen — no `max-height`, no
+     `overflow-y` — so what "opening" means is simply that the page grows and the
+     page's own scroll carries it.
 
-     ABOVE 860px NONE OF THIS APPLIES: `.pager-row` is `display: none` and
+     ABOVE 860px NONE OF THIS APPLIES: `.fold-row` is `display: none` and
      `.off-page` is given no rule at all, so the desktop table still draws every
-     row of the month. The cost of paging at all is written down over
-     `CARD_PAGE` in components/HrView.jsx. */
+     row of the month. The trade is written down over `CARD_FOLD` in
+     components/HrView.jsx. */
   .hr-table tbody tr.off-page { display: none; }
   /* Not a card: no border, no fill, no 15px of padding. The row it sits in on
      screen is a control, and a bordered block around it reads as a sixth person
      with nothing in them. */
-  .hr-table tbody tr.pager-row {
+  .hr-table tbody tr.fold-row {
     display: block; padding: 0; border: 0; background: none;
   }
-  .hr-table tbody tr.pager-row:hover { background: none; }
-  /* WHERE IN THE LIST, above WHICH PAGE. Muted and 12.5px: it is the caption of
-     a control, not a figure of the month. */
-  .hr-table tbody tr.pager-row .pager-range {
-    margin: 2px 0 8px; text-align: center;
-    font: 400 12.5px/1.4 var(--sans); color: var(--muted);
-  }
-  .hr-table tbody tr.pager-row .pager-range strong {
-    font: 600 12.5px/1.4 var(--mono); color: var(--ink);
-  }
+  .hr-table tbody tr.fold-row:hover { background: none; }
 
-  /* ‹ ก่อนหน้า · หน้า 2 / 12 · ถัดไป › — ONE LINE, AND IT HAS TO STAY ONE.
-     `1fr auto 1fr` rather than three equal columns or `space-between`: the two
-     buttons then take the same width as each other whatever their labels come
-     to, and the page number sits on the centre line of the card rather than
-     wherever the wider label happened to push it. At 360px that is two 106px
-     buttons around a 90px label, both keeping their 44px target. */
-  .hr-table tbody tr.pager-row .pager-controls {
-    display: grid; grid-template-columns: 1fr auto 1fr;
-    align-items: center; gap: 8px;
-  }
-  .hr-table tbody tr.pager-row .pager-controls .btn {
+  /* THE BAR IS THE WIDTH OF THE CARDS IT OPENS, which is what makes it read as
+     the seam of the list rather than as one more control floating under it. Full
+     width and 44px, the same target the two buttons on every card keep — this is
+     a decision about what is on screen, not a caption beside one, so it does not
+     take the 34px `.fold-pill` voice the alerts panel uses.
+
+     The ▾ / ▴ is part of the label rather than a pseudo-element: the label is
+     already the whole of what the button says ("แสดงพนักงานเพิ่มอีก (+20
+     รายชื่อ)" / "ย่อรายการกลับ"), and a mark drawn in CSS would be one more
+     place to keep the two states in step with each other. */
+  .hr-table tbody tr.fold-row .btn.fold-more {
     width: 100%; min-height: 44px; font-size: 13.5px;
   }
-  .hr-table tbody tr.pager-row .pager-at {
-    text-align: center; white-space: nowrap;
-    font: 400 12.5px/1.4 var(--sans); color: var(--muted);
-  }
-  .hr-table tbody tr.pager-row .pager-at strong {
-    font: 600 14px/1.4 var(--mono); color: var(--ink);
-  }
-  /* THE ENDS OF THE LIST NEED NOTHING DECLARED HERE. `‹ ก่อนหน้า` on page 1 and
-     `ถัดไป ›` on the last carry the plain `disabled` attribute, and the app's
-     own `.btn:disabled` — a `--neutral-wash` fill with `--muted` text — draws
-     them. A fade was written here once and taken out again: that rule sets
-     `opacity: 1` on purpose, because a ghost faded to .45 is illegible on the
-     dark theme. */
 
-  /* ══ รวมทั้งหมด IS THE ROW AFTER THE PAGER ══════════════════════════════
+  /* ══ รวมทั้งหมด IS THE ROW AFTER THE FOLD ═══════════════════════════════
 
      A card, but not a person's: no buttons, no ceiling, and the two cells it
      does carry are its name and the month's total.
@@ -7134,11 +7109,12 @@ table.mini tbody tr:hover { background: none; }
      pinned to the VIEWPORT eight pixels above the nav bar — `bottom: calc(82px
      + env(safe-area-inset-bottom))`, floating over a list that ran the whole
      length of the page — and then to the foot of the card list's own scrollport
-     at `bottom: 0`. Both were answers to a list that was screens long, and five
-     cards is not: the total is a short scroll under the pager and arrives on
-     screen on the way past. Left floating it would be a panel laid over
-     วันเกิดของเดือนนี้ — the one section on this screen that is WORK rather
-     than figures — for the whole of the page below the list.
+     at `bottom: 0`. Both were answers to a list that was screens long, and a
+     shut list is not: the total is a short scroll under the fold bar and
+     arrives on screen on the way past. Left floating it would be a panel laid
+     over วันเกิดของเดือนนี้ — the one section on this screen that is WORK
+     rather than figures — for the whole of the page below the list, and it
+     would be laid over the twenty cards the fold opens as well.
 
      THE FILL STAYS AND THE SHADOW DOES NOT. `--neutral-wash` is what says this
      row is the month's rather than another person's, which it did before it was
@@ -7161,14 +7137,14 @@ table.mini tbody tr:hover { background: none; }
      the PAGE as its scrollport, then so it could take the tbody, now so that
      nothing on this screen is a scrollport at all.
 
-     `scroll-margin-top` IS THE PAGER'S. ถัดไป scrolls this wrap back into view
-     — see `goPage` in components/HrView.jsx — and two bars are stuck above it:
-     `.appbar` at 62px and `.month-find` under it, 69px of `--field-h` and its
-     padding, plus about 22 more on the widths where the "แสดง n จาก n คน" line
-     wraps under the box while somebody is searching. 156 clears the tallest of
-     those, so the first card of a new page arrives under the search box instead
-     of behind it, and on the ordinary month it costs 25px of air. The number
-     lives in the stylesheet that owns both bars and not in the component. */
+     `scroll-margin-top` IS THE FOLD'S. ย่อรายการกลับ scrolls this wrap back
+     into view — see `toggleFold` in components/HrView.jsx — and two bars are
+     stuck above it: `.appbar` at 62px and `.month-find` under it, 69px of
+     `--field-h` and its padding, plus about 22 more on the widths where the
+     "แสดง n จาก n คน" line wraps under the box while somebody is searching. 156
+     clears the tallest of those, so the first card arrives under the search box
+     instead of behind it, and on the ordinary month it costs 25px of air. The
+     number lives in the stylesheet that owns both bars, not in the component. */
   .table-wrap.card-list { overflow: visible; scroll-margin-top: 156px; }
   .hr-table tbody tr.total-row:hover { background: var(--neutral-wash); }
   .hr-table tbody tr.total-row td.total-col {
