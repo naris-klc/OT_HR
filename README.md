@@ -1009,10 +1009,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1699 tests
+and the engine know nothing about Next.js, so the whole suite — **1700 tests
 across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+"1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when that figure was re-checked. The file count read
 "101 files" through all of them and moved with
 `test/entryRowChrome.test.js`.)
@@ -2410,6 +2410,33 @@ then a control. The number is on the bar rather than as a `margin-bottom` on
 screen; when there is no warning to show it is the gap under the card's heading
 instead, which wants the same.
 
+**A bar with nothing to show fades, and the reason for it does not.** The
+checkbox has carried `disabled` since it was written and the label has been
+`--muted-2` for as long — but a greyed word beside a live-looking box reads as a
+quiet label, not as a control that will not answer. The whole left-hand group
+fades now: box, tick and words together, which is what "this cannot be pressed"
+looks like everywhere else. **The colour goes darker by a step so the fade costs
+nothing:** stacking `opacity` on `--muted-2` would land the words at **2.15:1**
+on `--neutral-wash`, while `--muted` at 75% comes out at **3.19** — which is
+where `--muted-2` at full opacity already was (3.20). The group visibly dims and
+not one word became harder to read. (Disabled controls are exempt from the
+contrast minimum; the exemption is not taken here, because those five words are
+the only thing that names what the box does.) The sentence at the right end does
+**not** fade — it is not part of the disabled control, it is the *reason* the
+control is disabled — so once the left side dims the reason is the more readable
+of the two, which is the right way round.
+
+**And the box holds its contents the way the warning above it does.** `12px
+16px`; it read "11px 13px" until 2026-08-26, a pair of numbers this bar arrived
+with and nothing else in the app used. Two panels in a stack that hold their
+contents at different distances from their own border read as two kinds of box
+rather than two of the same kind. (The warning's *text* still starts further in
+— 43px against 17 — because its mark and the 9px gap after it sit inside that
+padding. That is the mark doing its job; it is the box edges that have to
+agree.) Measured on the built app: the label's left edge and the sentence's
+right edge are both **17px** from the border, and the checkbox, the label and
+the sentence share one axis.
+
 **The bar above the table was centred and the sentence in it was not.**
 แสดงประวัติการแก้ไขทั้งหมด is a checkbox at the left and *"6 จาก 6 รายการมี
 ประวัติให้ดู"* pushed to the right, in a flex row that has said
@@ -3625,8 +3652,8 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1699/1699 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1700/1700 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3634,8 +3661,9 @@ four role UIs.
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The sixteen newest are the whole of `test/entryRowChrome.test.js`, the 102nd
-  file — it held "nine", then "eleven", then "fourteen" earlier the same day — and they pin the
+  The seventeen newest are the whole of `test/entryRowChrome.test.js`, the
+  102nd file — it held "nine", then "eleven", "fourteen" and "sixteen" earlier
+  the same day — and they pin the
   last cell of a row on รายการ OT: that the one thing which can be pressed is the
   only thing drawn as a button and that a disabled one may not come back, that
   nothing in a row writes its own type size any more, that the flex row's wrap
@@ -3653,8 +3681,9 @@ four role UIs.
   which wraps carries a line-height **and** a padding, because a line-height puts
   only half its growth under the last line and what sits below is a label, that
   the notice under the employee's name has one place whether or not there is a
-  notice to put in it, and that every row's last cell is the same two slots and
-  they line up down the month. Five in `test/hrMonthCards.test.js` joined them for the notice both screens draw:
+  notice to put in it, that every row's last cell is the same two slots and they
+  line up down the month, and that a bar with nothing to show fades while the
+  sentence explaining why it is disabled does not. Five in `test/hrMonthCards.test.js` joined them for the notice both screens draw:
   that the panel says its instruction in the same `.say` the list does, that the
   shortened fourth sentence still says why and where, that the screen it names is
   a link when a caller offers one and plain text when it does not, that a link

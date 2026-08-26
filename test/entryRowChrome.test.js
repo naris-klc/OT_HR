@@ -323,7 +323,7 @@ test('the notice under the name has one place, whether or not there is a notice'
   assert.ok(!/^\.entry-notice \{/m.test(css), 'the slot took a box of its own');
   // The same figure the bar below it takes, which is what makes the two gaps
   // one gap repeated rather than two numbers that happen to be close.
-  assert.match(css.slice(css.indexOf('.audit-bar {')), /^\.audit-bar \{[\s\S]{0,200}margin: 16px 0 0;/);
+  assert.match(css.slice(css.indexOf('.audit-bar {')), /^\.audit-bar \{[\s\S]*?margin: 16px 0 0; padding: 12px 16px;/);
 });
 
 test('every card footer is the same two slots, and they line up down the month', () => {
@@ -355,4 +355,34 @@ test('every card footer is the same two slots, and they line up down the month',
   );
   assert.match(jsx, /ถอนใบวันเกิด/);
   assert.match(rule('.entry-actions'), /display: inline-flex;/);
+});
+
+test('a bar with nothing to show fades, and the reason for it does not', () => {
+  // The checkbox has carried `disabled` since it was written and the label has
+  // been `--muted-2` for as long — but a greyed word beside a live-looking box
+  // reads as a quiet label, not as a control that will not answer. The whole
+  // left-hand group fades: box, tick and words together.
+  assert.match(jsx, /className=\{auditable\.length \? 'check' : 'check off'\}/);
+  assert.match(jsx, /disabled=\{!auditable\.length\}/);
+  const off = rule('.audit-bar .check.off');
+  assert.match(off, /opacity: \.75;/);
+
+  // AND THE COLOUR GOES DARKER BY A STEP SO THE FADE COSTS NOTHING. Stacking
+  // opacity on `--muted-2` lands the words at 2.15:1 on `--neutral-wash`;
+  // `--muted` at 75% comes out at 3.19, which is where `--muted-2` at full
+  // opacity already was (3.20). The group dims and nothing became harder to
+  // read. These five words are the only thing that names what the box does,
+  // which is why the disabled-control contrast exemption is not taken here.
+  assert.match(off, /color: var\(--muted\);/);
+  assert.ok(!/--muted-2/.test(off), 'the label went back to the lighter grey under an opacity');
+
+  // The sentence on the right is not part of the disabled control — it is the
+  // REASON the control is disabled — so it keeps `.hint`'s size and colour and
+  // ends up the more readable of the two. That is the right way round.
+  assert.match(jsx, /'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'/);
+  assert.match(rule('.audit-bar .hint'), /margin: 0 0 0 auto;/);
+  assert.ok(
+    !/\.audit-bar \.hint \{[^}]*opacity/.test(css),
+    'the reason faded with the control it explains',
+  );
 });
