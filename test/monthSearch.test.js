@@ -190,7 +190,10 @@ test('the box stays on screen while a long list scrolls under it', () => {
 test('the space under the box is the space between two cards', () => {
   // 12px — the same gap the cards keep from each other, so the first card is
   // not a special case of the list it is the top of.
-  assert.match(css, /\.month-find \{ align-items: center; gap: 10px 14px; margin-bottom: 12px; \}/);
+  // The selector gained `.acct-find` on 2026-08-26 — ส่งบัญชี's box, which is
+  // this row minus the phone rule below. See the accounting section at the
+  // foot of this file.
+  assert.match(css, /\.month-find, \.acct-find \{ align-items: center; gap: 10px 14px; margin-bottom: 12px; \}/);
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.match(phone, /\.month-find \{[\s\S]*?padding: 10px 15px 12px;/);
 });
@@ -205,4 +208,78 @@ test('the placeholder is a prompt, not an answer', () => {
     !/\.field input::placeholder/.test(css),
     'every field in the app just had its placeholder restyled',
   );
+});
+
+// ── สรุป OT ส่งบัญชี has the same box, and one more thing to protect ─────────
+
+/**
+ * The second caller, added 2026-08-26.
+ *
+ * Everything above applies unchanged — same rule, same chrome, same "a screen
+ * filter and nothing more". What is different is the stake. ตรวจสอบรายเดือน is
+ * where a month is CHECKED; ส่งบัญชี is where it is CLOSED and the figures go to
+ * payroll. So the invariant that รวมทั้งหมด does not follow the box is not a
+ * nicety here, it is the whole reason the box can exist at all: a subtotal that
+ * quietly narrowed as somebody typed would be signed for.
+ */
+const acctView = read('components/AccountingView.jsx');
+
+test('ส่งบัญชี asks the same rule, and narrows rows and nothing else', () => {
+  assert.match(acctView, /import \{ personMatches \} from '@\/lib\/personSearch\.js'/);
+  // The spread is the mechanism: a copy of the company with ONE field replaced,
+  // so `totals`, `departments` and `accountingCode` are carried through by not
+  // being mentioned. Rewritten as a hand-built object it would be one forgotten
+  // key away from a summary that agreed with the search.
+  assert.match(
+    acctView,
+    /const narrowed = shown\.map\(\(c\) => \(\{\s*\.\.\.c,\s*rows: c\.rows\.filter\(\(row\) => personMatches\(row\.employee, find\)\),\s*\}\)\);/,
+  );
+  assert.ok(!/toLowerCase\(\)\.includes/.test(acctView), 'a hand-rolled match crept in beside personMatches');
+  // Nothing else in the file may take `find` as an argument — the totals, the
+  // CSV href and the print sheet are all built without it.
+  assert.ok(!/totals[\s\S]{0,60}find/.test(acctView), 'a total started reading the search box');
+  assert.ok(!/accounting\.csv\?[^`]*find/.test(acctView), 'the CSV started carrying the search');
+  assert.ok(
+    !/<AccountingPrint[\s\S]{0,200}find=/.test(acctView),
+    'the printed sheet started following the search',
+  );
+});
+
+test('and it says so on screen, in the words that name the figures', () => {
+  // Not a general "this is a filter" line: the three totals BY NAME, because
+  // those are the three a reader is about to act on.
+  assert.match(acctView, /ยอด “รวมแผนก” “รวมทั้งหมด” และ “รวมทุกบริษัท” ยังเป็นของทั้งเดือน/);
+  assert.match(acctView, /ไฟล์ CSV และแบบฟอร์มที่พิมพ์ก็เช่นกัน/);
+  // And only while it is narrowing something — a notice about a search nobody
+  // is running is a notice that stops being read.
+  assert.match(acctView, /\{searching && rowsFound > 0 && \(/);
+  // No result is an answer, with a way out, the same as ตรวจสอบรายเดือน's.
+  assert.match(acctView, /ไม่พบพนักงานที่ค้นหา “\{find\}”/);
+  assert.match(acctView, /ล้างการค้นหา/);
+});
+
+test('รวมทุกบริษัท is the first card, and the search box does not reach it', () => {
+  // total → per company → per person. At the foot of two sheets the covering
+  // note's own figure was the last thing on the screen.
+  const body = acctView.slice(acctView.indexOf('{!data ? ('), acctView.indexOf('function CompanySheet'));
+  assert.ok(
+    body.indexOf('<AllCompanies data={data} />') < body.indexOf('<CompanySheet'),
+    'the sheets went back above รวมทุกบริษัท',
+  );
+  // `data`, not `narrowed` — the month's two companies and their total, whole.
+  assert.match(acctView, /<AllCompanies data=\{data\} \/>/);
+  assert.ok(!/<AllCompanies[^>]*(narrowed|visible|find)/.test(acctView), 'รวมทุกบริษัท started following the search');
+});
+
+test('its box is `.acct-find` — the same row without the sticky phone rule', () => {
+  assert.match(acctView, /className="row acct-find"/);
+  // The magnifier and the ✕ are the shared components, not a second pair.
+  assert.match(acctView, /<Icon name="search" className="searchbox-icon" \/>/);
+  assert.match(acctView, /<ClearButton onClear=\{\(\) => setFind\(''\)\} \/>/);
+  // `.month-find`'s phone rule pins it under the app bar for a list nine
+  // screens long. This box sits in a card four rows tall, where sticky would
+  // unstick the moment the card scrolled past.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.ok(!/\.acct-find/.test(phone), 'ส่งบัญชี’s box picked up a phone rule of its own');
+  assert.match(css, /\.acct-find \{ margin-bottom: 0; \}/);
 });

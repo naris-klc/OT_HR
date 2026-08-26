@@ -2259,9 +2259,22 @@ td > .approver-line { margin-top: 5px; }
 
    It wraps below the count's own width, which is what puts the count under the
    box on a narrow phone instead of squeezing the field to half a name. */
-.month-find { align-items: center; gap: 10px 14px; margin-bottom: 12px; }
-.month-find .found { font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
-.month-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
+/* `.acct-find` is สรุป OT ส่งบัญชี's box, and it is here rather than folded into
+   `.month-find` because the two differ by exactly one thing and it is a phone
+   rule: `.month-find` is sticky at 62px with negative margins out to the card's
+   edges, for a list that runs nine screens. ส่งบัญชี's box lives among บริษัท and
+   ประจำเดือน in a card four rows tall, where a sticky element would unstick the
+   moment the card scrolled past — a mechanism that looks like it does something
+   and does not. Everything the two DO share is stated once, here. */
+.month-find, .acct-find { align-items: center; gap: 10px 14px; margin-bottom: 12px; }
+.month-find .found,
+.acct-find .found { font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
+.month-find .found strong,
+.acct-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
+/* …except the bottom margin. ส่งบัญชี's box is one row inside a card that
+   states its own rhythm with `marginTop` on each row; the 12px below was for a
+   box with a list directly under it. */
+.acct-find { margin-bottom: 0; }
 /* Nothing here styles the input. It sits inside a `.field`, so it is the same
    box as every other one in the app — same height, same fill, same border, same
    focus ring — and it stays that way the day any of those change. */

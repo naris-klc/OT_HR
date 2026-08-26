@@ -1009,7 +1009,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1659 tests
+and the engine know nothing about Next.js, so the whole suite — **1663 tests
 across 101 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "1654 … 2026-08-25" until then, and was already five behind when the figure was
@@ -2737,6 +2737,63 @@ day as that screen, and two review tables with different column sets is how a
 month goes wrong. `/api/exports/accounting.csv` follows the screen column for
 column, in the same order.
 
+**ค้นหาชื่อ หรือ รหัสพนักงาน — และยอดรวมไม่เดินตามช่องค้นหา.** The same box
+ตรวจสอบรายเดือน has, asking the same `personMatches` from
+[`lib/personSearch.js`](lib/personSearch.js), so PM-0412 and PM00511 both answer
+to either spelling and "ใจดี สมชาย" finds the same person as "สมชาย ใจดี". It
+narrows what was already fetched: no request, no reload, and it is not in the
+URL — it is "where is ถาวร", asked and answered in a few seconds.
+
+**On this screen that filter has teeth, and one rule carries the whole of it.**
+ตรวจสอบรายเดือน is where a month is checked; this is where it is closed and the
+figures go to payroll. So the box narrows `rows` and nothing else:
+
+```js
+const narrowed = shown.map((c) => ({
+  ...c,
+  rows: c.rows.filter((row) => personMatches(row.employee, find)),
+}));
+```
+
+The spread IS the mechanism. `totals`, `departments` and `accountingCode` are
+carried through by not being mentioned, so **รวมแผนก, รวมทั้งหมด and the chips on
+each card head stay the month's figures while the box is narrowing** — as do
+`/api/exports/accounting.csv` and the printed form, which are built by the server
+from the period and have never known the box exists. Written as a hand-built
+object instead, this would be one forgotten key away from a subtotal that agreed
+with the search — and a subtotal that quietly narrowed as somebody typed is one
+that gets signed for. All of it is pinned in
+[`test/monthSearch.test.js`](test/monthSearch.test.js), including the negative
+half: no `find` may reach a total, the CSV href or `AccountingPrint`.
+
+Said on screen too, in the words that name the figures — *ยอด “รวมแผนก”
+“รวมทั้งหมด” และ “รวมทุกบริษัท” ยังเป็นของทั้งเดือน ไม่ใช่เฉพาะผลการค้นหา · ไฟล์
+CSV และแบบฟอร์มที่พิมพ์ก็เช่นกัน* — and only while the box has something in it,
+because a notice about a search nobody is running stops being read.
+
+**A company with no match leaves while the box is narrowing.** Its heading, its
+chips and its summary block would otherwise be a screenful of figures about a
+company the reader is not asking about; the month's totals for it are still on
+รวมทุกบริษัท at the top, which the box does not touch either. When nothing
+matches at all, one empty state with a way out of it, the same as
+ตรวจสอบรายเดือน's.
+
+**The box sits with บริษัท and ประจำเดือน rather than above the sheets**, because
+that card IS the filter set — บริษัท already decides which sheets are drawn, and
+one filter inside the card with another floating outside it is the same job done
+in two places. It wears `.acct-find`, which is `.month-find` minus one phone
+rule: that class is sticky at 62px with negative margins out to the card's edges,
+for a list that runs nine screens, and an element sticky inside a card four rows
+tall unsticks the moment the card scrolls past — a mechanism that looks like it
+does something and does not.
+
+**รวมทุกบริษัท is the first card now, not the last.** total → per company → per
+person, which is the order somebody closing a month reads in and the opposite of
+the order the figures are built in. At the foot of two company sheets, the one
+figure the covering note carries was the last thing on the screen, reached past
+every row of both.
+
+
 **สรุป OT ส่งบัญชี บนมือถือ: ตารางนี้เลื่อนแนวนอน และนั่นคือคำตอบที่เลือกแล้ว.**
 Below 860px this table is laid out at `width: max-content` and scrolls sideways
 inside its card, with พนักงาน frozen at the left edge. Measured at 360px: the
@@ -3042,7 +3099,7 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1659/1659 pass in about 2 s**, measured 2026-08-26 across 101
+- `npm test` — **1663/1663 pass in about 2 s**, measured 2026-08-26 across 101
   files. It read "1654, measured 2026-08-25" until then, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3050,7 +3107,13 @@ four role UIs.
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The six newest are the cases in `test/hrMonthCards.test.js` that pin
+  The four newest are in `test/monthSearch.test.js` and pin ส่งบัญชี's own
+  ค้นหาชื่อ หรือ รหัสพนักงาน: that it asks the roster's rule, that the spread
+  narrows `rows` and carries `totals` and `departments` through untouched, that
+  no `find` reaches a total, the CSV href or `AccountingPrint`, that the screen
+  names all three totals while narrowing, and that รวมทุกบริษัท is the first
+  card and gets `data` rather than the filtered list. Before them, the six in
+  `test/hrMonthCards.test.js` that pin
   แถบแจ้งเตือนของเดือน — that the card holds exactly **one** `.alert` and the
   list opens inside it, what an item is made of, that its wording is the
   notice's own module's and not a copy, one toggle and one ✕ with no `<details>`

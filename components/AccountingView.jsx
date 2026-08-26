@@ -8,7 +8,11 @@ import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 // Pure — the same function the CSV phrases its row with, so the screen and the
 // file cannot come to describe one nought two different ways.
 import { zeroRowReason } from '@/lib/otMode.js';
-import { Alert, Empty, RateHead, UnaccountedHours } from './common.jsx';
+// The rule the roster's own box asks, so PM-0412 and PM00511 both answer to
+// either spelling — see lib/personSearch.js. A fourth caller, not a fourth copy.
+import { personMatches } from '@/lib/personSearch.js';
+import { Alert, ClearButton, Empty, RateHead, UnaccountedHours } from './common.jsx';
+import Icon from './icons.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -56,6 +60,39 @@ export default function AccountingView() {
   const shown = data
     ? data.companies.filter((c) => company === 'all' || c.key === company)
     : [];
+
+  /**
+   * ค้นหาชื่อ หรือ รหัสพนักงาน — A SCREEN FILTER, AND ON THIS SCREEN THAT
+   * SENTENCE HAS TEETH.
+   *
+   * ตรวจสอบรายเดือน has the same box and the same rule (see `find` in
+   * components/HrView.jsx). The difference is what this screen is FOR: HR
+   * closes the month here and hands the figures to payroll. So the one thing
+   * that must not happen is a narrowed total that still reads รวมทั้งหมด.
+   *
+   * IT NARROWS `rows` AND NOTHING ELSE. `company.totals`, `company.departments`
+   * and the chips on the card head are the month's and are carried through
+   * untouched — the spread below copies the company and replaces one field.
+   * The CSV and the printed sheet are built by the server from the period and
+   * have never known about this box. Both facts are said on screen while the
+   * box is narrowing something, because a total that quietly followed the
+   * search is a payroll error nobody could have seen.
+   *
+   * A COMPANY WITH NO MATCH LEAVES while the box has something in it. Its
+   * heading, its chips and its summary block would otherwise be four inches of
+   * figures about a company the reader is not asking about — and the month's
+   * own totals for it are still on รวมทุกบริษัท at the top of the screen, which
+   * this box does not touch either.
+   */
+  const [find, setFind] = useState('');
+  const searching = find.trim() !== '';
+  const narrowed = shown.map((c) => ({
+    ...c,
+    rows: c.rows.filter((row) => personMatches(row.employee, find)),
+  }));
+  const visible = searching ? narrowed.filter((c) => c.rows.length > 0) : narrowed;
+  const rowsFound = narrowed.reduce((n, c) => n + c.rows.length, 0);
+  const rowsAll = shown.reduce((n, c) => n + c.rows.length, 0);
   // Scoped to the tab, and read from the queue rather than from the rows —
   // somebody with nothing approved yet has no row to carry their backlog.
   const pending = company === 'all'
@@ -104,6 +141,54 @@ export default function AccountingView() {
             <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
           </div>
         </div>
+
+        {/* ค้นหา sits with บริษัท and ประจำเดือน rather than above the sheets,
+            and the reason is that this card IS the filter set: บริษัท already
+            decides which sheets are drawn, and a second filter floating between
+            รวมทุกบริษัท and the first sheet would be one control in the card and
+            one outside it, doing the same kind of job.
+
+            NOT `.month-find`. That class carries a phone rule of its own —
+            sticky at 62px with negative margins out to the card's edges —
+            written for a list nine screens long. This card is four rows tall,
+            so an element sticky inside it would stop the moment the card left
+            the screen, which is a mechanism that looks like it does something
+            and does not. `.acct-find` is the same row without it. */}
+        <div className="row acct-find" style={{ marginTop: 14 }}>
+          <div className="field" style={{ flex: 1, minWidth: 220 }}>
+            <label>ค้นหาพนักงาน</label>
+            <div className="searchbox">
+              <Icon name="search" className="searchbox-icon" />
+              <input
+                type="text"
+                className={`has-icon${find ? ' has-clear' : ''}`}
+                value={find}
+                onChange={(e) => setFind(e.target.value)}
+                placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
+                aria-label="ค้นหาพนักงาน"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {find && <ClearButton onClear={() => setFind('')} />}
+            </div>
+          </div>
+          {/* Only while it is narrowing something. "แสดง 4 จาก 4 คน" is a
+              sentence about nothing. */}
+          {searching && rowsFound > 0 && (
+            <div className="found">
+              แสดง <strong>{rowsFound}</strong> จาก <strong>{rowsAll}</strong> คน
+            </div>
+          )}
+        </div>
+
+        {/* THE ONE THING THIS SCREEN CANNOT LET A READER ASSUME. Said here,
+            directly under the box and above the export buttons it is about. */}
+        {searching && rowsFound > 0 && (
+          <div className="hint" style={{ marginTop: 6 }}>
+            ยอด “รวมแผนก” “รวมทั้งหมด” และ “รวมทุกบริษัท” ยังเป็นของทั้งเดือน
+            {' '}ไม่ใช่เฉพาะผลการค้นหา · ไฟล์ CSV และแบบฟอร์มที่พิมพ์ก็เช่นกัน
+          </div>
+        )}
 
         {/* The checkbox joins the actions rather than sitting on a row of its
             own now that the segmented buttons are gone. `.action-row` is what
@@ -163,19 +248,42 @@ export default function AccountingView() {
         <div className="card"><Empty>ไม่มีรายการที่อนุมัติแล้วในเดือนนี้</Empty></div>
       ) : (
         <>
-          {shown.map((c) => (
+          {/* รวมทุกบริษัท FIRST, and the sheets under it. It is the figure the
+              covering note carries and the shortest answer to "what am I about
+              to send" — at the foot of two company sheets it was the last thing
+              on the screen, reached past every row of both. Read this way the
+              page goes total → per company → per person, which is the order
+              somebody closing a month reads in and the opposite of the order
+              the figures are built in.
+
+              It is unaffected by the search box on purpose — see `find` above. */}
+          {company === 'all' && data.companies.length > 1 && (
+            <AllCompanies data={data} />
+          )}
+          {searching && rowsFound === 0 ? (
+            <div className="card">
+              <Empty>
+                <div>ไม่พบพนักงานที่ค้นหา “{find}”</div>
+                <button
+                  className="btn ghost sm"
+                  style={{ marginTop: 10 }}
+                  onClick={() => setFind('')}
+                >
+                  ล้างการค้นหา
+                </button>
+              </Empty>
+            </div>
+          ) : visible.map((c) => (
             <CompanySheet
               key={c.key}
               company={c}
               period={period}
               // Numbered against the full list, not the filtered one, so
-              // เดมเทค is "บริษัทที่ 2" on its own tab as well.
+              // เดมเทค is "บริษัทที่ 2" on its own tab as well — and stays
+              // "บริษัทที่ 2" when a search leaves it the only sheet drawn.
               index={data.companies.findIndex((x) => x.key === c.key) + 1}
             />
           ))}
-          {company === 'all' && data.companies.length > 1 && (
-            <AllCompanies data={data} />
-          )}
         </>
       )}
     </>
