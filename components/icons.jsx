@@ -199,6 +199,23 @@ const ICONS = {
       <path d="M9.25 11.75 11.25 13.75 15 10" />
     </>
   ),
+  /**
+   * แก้ไข — a pencil, and the first icon in this file that sits inside a button
+   * rather than in a navigation strip.
+   *
+   * TWO STROKES, NOT THREE. The obvious drawing is body + nib + a line for the
+   * cut where they meet, and at the 15px this renders at the third one lands
+   * within a pixel of the second and the tip goes to a smudge — the ▤▥▧▦
+   * mistake at a smaller size. The nib is left as the taper of the body and the
+   * one crossing stroke is the ferrule, which is what reads as "pencil" at this
+   * size rather than "arrow".
+   */
+  pencil: (
+    <>
+      <path d="M4.75 19.25v-3.2L16.1 4.7a2.3 2.3 0 0 1 3.2 3.2L7.95 19.25H4.75Z" />
+      <path d="M14.4 6.4 17.6 9.6" />
+    </>
+  ),
 };
 
 /**

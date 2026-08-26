@@ -11,6 +11,7 @@ import { describeBreaches } from '@/lib/caps.js';
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
 import OtForm from './OtForm.jsx';
+import Icon from './icons.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /**
@@ -201,15 +202,25 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                 return (
                   <React.Fragment key={e._id}>
                   <tr>
-                    {/* The date is the card's heading — how a row is found. */}
+                    {/* The date is the card's heading — how a row is found.
+                        FOUR INLINE GREYS LEFT THIS FILE ON 2026-08-26 and became
+                        the two classes the rest of the app already draws a second
+                        line with: `.cell-sub.th` for a quiet one and `.cell-note`
+                        for an amber one. They were `fontSize: 12` and
+                        `fontSize: 11.5` written by hand, and คิวรออนุมัติ prints
+                        the SAME two strings — ข้ามคืน and the ceiling warning —
+                        from those classes. Two screens quoting one fact in two
+                        type sizes is what the classes exist to prevent, and an
+                        inline style is also the one thing the 860px block cannot
+                        reach. */}
                     <td className="stack-name">
                       {thaiDate(e.workDate)}
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(e.workDate)}</div>
+                      <div className="cell-sub th">วัน{dayName(e.workDate)}</div>
                     </td>
                     <td data-label="จาก–ถึง">
                       {e.startTime}–{e.endTime}
                       {e.endsNextDay && (
-                        <div style={{ fontSize: 12, color: 'var(--amber)' }}>ข้ามคืน</div>
+                        <div className="cell-note">ข้ามคืน</div>
                       )}
                     </td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
@@ -225,13 +236,22 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                           หัวหน้า wrote and the employee never touched is a
                           different thing to check than one the employee filed,
                           and the two are indistinguishable without this. */}
+                      {/* `entry-mark` — 6px under the line of work it qualifies,
+                          not 4. On the phone card this cell is a floated label
+                          with its value flowing to the right of it, so the chip
+                          lands on the line BELOW the description and 4px reads
+                          as the same line wrapping rather than as a second
+                          statement about it. The class also caps the chip's
+                          width against the card, so a long one wraps instead of
+                          stretching the row — see `.entry-mark` in the
+                          stylesheet. */}
                       {isProxyFiled(e) && (
-                        <div style={{ marginTop: 4 }}><ProxyMark entry={e} /></div>
+                        <div className="entry-mark"><ProxyMark entry={e} /></div>
                       )}
                       {lastEdit && (
-                        <div style={{ marginTop: 4 }}>
+                        <div className="entry-mark">
                           <EditedMark entry={e} />
-                          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                          <div className="cell-sub th">
                             โดย {lastEdit.byName || '—'}
                             {lastEdit.note ? ` — ${lastEdit.note}` : ''}
                           </div>
@@ -248,18 +268,35 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                       {describeBreaches(e).map((b) => (
                         <div
                           key={b.scope + b.text}
-                          style={{ fontSize: 11.5, color: 'var(--amber)' }}
+                          className="cell-note"
                           title={b.text}
                         >
                           เกินเพดานราย{b.scope === 'week' ? 'สัปดาห์' : 'เดือน'}
                         </div>
                       ))}
                     </td>
+                    {/* `entry-actions` — ONE flex row rather than three siblings
+                        each carrying `marginLeft: 6`. What it buys is not the
+                        tidier markup: two of the four things in here are TEXT
+                        and two are 44px buttons, and as inline siblings the text
+                        sat on the buttons' baseline, a few pixels below the
+                        middle of them. Centring is the flex container's to do
+                        and cannot be done by a margin. */}
                     <td style={{ whiteSpace: 'nowrap' }}>
+                      <span className="entry-actions">
                       {closed ? (
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>แก้ไขไม่ได้</span>
+                        <span className="cell-sub th">แก้ไขไม่ได้</span>
                       ) : (
-                        <button className="btn ghost sm" onClick={() => setEditing(e)}>แก้ไข</button>
+                        /* THE ONE ACTION ON THE ROW, and the only thing in this
+                           cell drawn as a control. The pencil is what makes it
+                           findable at a glance in a card of eight grey lines —
+                           see `.btn.with-icon`, and `pencil` in
+                           components/icons.jsx for why it is drawn rather than
+                           typed as ✏️. */
+                        <button className="btn ghost sm with-icon" onClick={() => setEditing(e)}>
+                          <Icon name="pencil" className="btn-icon" />
+                          แก้ไข
+                        </button>
                       )}
                       {/* A row the system wrote and nobody has touched: the one
                           approved entry HR may take off the books, because it is
@@ -270,7 +307,6 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                       {isUntouchedSystemFiling(e) && (
                         <button
                           className="btn ghost sm"
-                          style={{ marginLeft: 6 }}
                           onClick={() => voidEntry(e)}
                           title="ถอนใบวันเกิดที่ระบบสร้าง — ชั่วโมงนี้จะไม่ถูกนับในใบส่งบัญชี"
                         >
@@ -281,23 +317,35 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                           reading what the row used to say, not only what it
                           says now — which is the one thing the printed form
                           cannot tell HR.
-                          A row that has only ever been filed says so rather
-                          than losing its button: an absent control reads as a
-                          screen that forgot, a disabled one as an answer. */}
+                          A row that has only ever been filed SAYS SO rather
+                          than losing the answer: an absent control reads as a
+                          screen that forgot.
+
+                          IT SAID SO AS A DISABLED BUTTON UNTIL 2026-08-26, and
+                          the shape of it was the whole of the problem.
+                          `.btn:disabled` fills with `--neutral-wash`, which on
+                          the dark theme is LIGHTER than the `--card` a ghost
+                          button sits on — so the thing that cannot be pressed
+                          was drawn brighter than the thing that can, and wider
+                          besides (134px against 57). Two controls on the row,
+                          and the eye went to the dead one.
+
+                          It was always a STATEMENT about the row rather than an
+                          offer, and it is drawn as one now — in `.cell-sub.th`,
+                          the same voice as แก้ไขไม่ได้ a few lines up, which
+                          this cell has used for exactly this all along. */}
                       {hasAuditTrail(e) ? (
                         <button
                           className={open.has(e._id) ? 'btn ghost sm on' : 'btn ghost sm'}
-                          style={{ marginLeft: 6 }}
                           onClick={() => toggle(e._id)}
                           aria-expanded={open.has(e._id)}
                         >
                           {open.has(e._id) ? 'ซ่อนข้อมูลเดิม' : 'ดูข้อมูลเดิม'}
                         </button>
                       ) : (
-                        <button className="btn ghost sm" style={{ marginLeft: 6 }} disabled>
-                          ไม่มีประวัติการแก้ไข
-                        </button>
+                        <span className="cell-sub th">ไม่มีประวัติการแก้ไข</span>
                       )}
+                      </span>
                     </td>
                   </tr>
                   {open.has(e._id) && (
@@ -329,7 +377,17 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
         </>
       )}
 
-      <div className="hint" style={{ marginTop: 12 }}>
+      {/* THE FOOTNOTE, AND IT IS RULED OFF FROM WHAT IT IS ABOUT. Two sentences
+          about the whole table sat 12px under the last card in the same grey and
+          nearly the same size as the notes inside the cards, so the eye read it
+          as one more line of the last row. The margin was doing all the work of
+          saying "this is a different KIND of thing", and 12px cannot say that
+          when the card gaps are 10.
+
+          The class is where the size, the rule above it and the space are; the
+          inline `marginTop` it used to carry is gone, because an inline style is
+          the one thing a media query cannot reach. */}
+      <div className="hint entry-foot">
         การแก้ไขของฝ่ายบุคคลจะคำนวณชั่วโมงใหม่ทันทีและคงสถานะการอนุมัติเดิมไว้ ·
         รายการที่ไม่อนุมัติหรือยกเลิกแล้วต้องให้พนักงานส่งใหม่
       </div>

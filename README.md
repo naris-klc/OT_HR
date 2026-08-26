@@ -996,7 +996,7 @@ lib/complianceExport.js   which six events count as the exercise of a
 lib/complianceQuery.js    the four reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     101 files, run by `npm test`. Six named below as a
+test/                     102 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1009,12 +1009,13 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1678 tests
-across 101 files**, measured 2026-08-26 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **1687 tests
+across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1672" earlier the same day and "1654 … 2026-08-25" before that, and was already
-five behind when the earlier figure was re-checked; the file count has not
-moved.)
+"1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+was already five behind when that figure was re-checked. The file count read
+"101 files" through all of them and moved with
+`test/entryRowChrome.test.js`.)
 
 That is also why it stays fast: the suite finishes in **about 2 s**, which is a
 budget rather than an observation. (It read "410 tests, under 400 ms" until
@@ -2265,6 +2266,69 @@ Neither path touches the printed **ใบขออนุมัติทำงา
 (`components/PrintForm.jsx`) — there is nothing on it to edit, and no way to
 change what it says except by changing the entries behind it.
 
+#### The row's last cell — one control, and the rest is sentences
+
+A card on **ดู / แก้ไขรายการ** offers HR exactly one action, **✏️ แก้ไข**, and
+until 2026-08-26 it did not look like it. Beside it sat **ไม่มีประวัติการแก้ไข**
+as a `disabled` button — and `.btn:disabled` fills with `--neutral-wash`, which
+in ธีมมืด is **lighter than the `--card` a ghost button is drawn on**. So the
+dead control came out brighter than the live one, and at **134px against 57** it
+was more than twice the width. Two buttons on the row, and the eye went to the
+one that does nothing. Measured on the built app before the change; the numbers
+are in `test/entryRowChrome.test.js`, which now forbids a disabled button in
+this file outright.
+
+**The fix is not a colour, it is a part of speech.** ไม่มีประวัติการแก้ไข was
+always a *statement about the row* rather than an offer, so it is drawn as one —
+`.cell-sub.th`, which is exactly what the same cell has used for **แก้ไขไม่ได้**
+all along. Nothing is lost by it: the point of saying so at all is that an
+absent control reads as a screen that forgot, and a sentence says it as plainly
+as a dead button did.
+
+**And the one control carries a picture.** `pencil` in
+[`components/icons.jsx`](components/icons.jsx) — drawn, not the ✏️ character,
+for the reason the whole icon file exists: a glyph is whatever the font on the
+device decides, and this app runs on Windows, iPhones and Android. It is two
+strokes rather than three, because at the 15px it renders at the third lands
+within a pixel of the second and the tip goes to a smudge. `.btn.with-icon` is
+opt-in by class, since `display: inline-flex` on `.btn` itself would relayout
+every button in the app to serve the one that has an icon.
+
+**A ghost button also has a press now, which it did not.** `.btn:active` moves
+every button down one pixel — enough on a filled button, and nothing at all on a
+ghost, which is the card's own background with a hairline round it. Under a
+thumb, which covers the button, that was no feedback whatsoever. The three
+states are a ladder in one family: `--card` at rest, `--green-tint` on hover,
+`--green-bg` on press, with `--green` on the border for both. All tokens, both
+themes, no colour named at the rule — the standing rule `test/theme.test.js`
+holds this stylesheet to.
+
+**The card breathes at 10px, not 8.** Every field on these cards is a label and
+a value on *one* line — floated label at the left, value flowing to the right of
+it — so that gap is the only vertical space between one fact and the next, and
+at 8px against a 1.5 line-height six fields ran together into a block of text.
+10px is the step the cards themselves are spaced by, so a card's insides and the
+space around it are one rhythm. It is `.stack-table`'s rule, so every card list
+in the app gets it.
+
+**The footnote is ruled off, not faded out.** *การแก้ไขของฝ่ายบุคคลจะคำนวณ
+ชั่วโมงใหม่ทันที…* sat 12px under the last card in the same grey as the notes
+*inside* the cards, so the eye took it as one more line of the last row. It is
+12px now with a hairline and 12px of air above it. **It keeps `.hint`'s colour
+on purpose:** a lighter grey was asked for, and `--muted-3` on `--card` measures
+**2.98:1** in ธีมสว่าง against 3.41 for the `--muted-2` it inherits — this is
+the sentence that says what an edit does to a signed month, and it is already
+under AA at the size it is. The rule and the space carry the hierarchy instead
+of the contrast carrying it. (For the record, ธีมมืด: `--muted-2` is 5.04 and
+`--muted-3` 4.20 — the light theme is the half that cannot afford it.)
+
+**Four inline greys left the file with them.** The day under the date, ข้ามคืน,
+who last edited the row and the ceiling warning were `fontSize: 12` and
+`fontSize: 11.5` written by hand; they are `.cell-sub.th` and `.cell-note` now,
+which is what **คิวรออนุมัติ** already prints the same two strings from. Two
+screens quoting one fact in two type sizes is what those classes exist to
+prevent — and an inline style is the one thing the 860px block cannot reach.
+
 **แถบแจ้งเตือนของเดือน — one panel, whole.** Two notices about the month itself
 can be on screen at once above the search box, and both are tall: the policy
 warning names every version in the month and says what to do about it, and
@@ -3354,16 +3418,25 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1678/1678 pass in about 2 s**, measured 2026-08-26 across 101
-  files. It read "1672" earlier the same day and "1654, measured 2026-08-25"
-  before that, which was five behind
+- `npm test` — **1687/1687 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1678" and "1672" earlier the same day and "1654, measured
+  2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
   and "1601" earlier that day, and "1386 across 86 files, 2026-08-24" before
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The six newest are in `test/monthSearch.test.js` and pin ตรวจสอบรายเดือน's own
+  The nine newest are the whole of `test/entryRowChrome.test.js`, the 102nd
+  file, and they pin the last cell of a row on รายการ OT: that the one thing
+  which can be pressed is the only thing drawn as a button and that a disabled
+  one may not come back, that nothing in a row writes its own type size any
+  more, that the flex row's wrap belongs to the card layout and not to the
+  table, that the pencil is drawn rather than typed and sized by a class, that a
+  ghost button's hover and press are a ladder and neither names a colour, the
+  10px field rhythm, the chip under a description, and that the footnote is
+  ruled off rather than faded past reading. Before them, six in
+  `test/monthSearch.test.js` pinning ตรวจสอบรายเดือน's own
   copy of that box: that it is the same combobox and not a third grammar and
   that `.acct-menu` is gone from every rule, what a suggestion holds — including
   that its figure comes from the same `capFigure` the row's ceiling cell prints

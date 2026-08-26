@@ -1326,6 +1326,31 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   border: 1px solid var(--line); box-shadow: none; font-weight: 500;
 }
 .btn.ghost:hover:not(:disabled) { background: var(--green-tint); border-color: var(--green); color: var(--green-dark); }
+/* THE PRESS, which for two years was a 1px nudge and nothing else.
+   `.btn:active` moves every button down a pixel, and on a FILLED button that is
+   enough — it is already a solid colour and the shadow moves with it. On a
+   ghost it is not: the button is the card's own background with a hairline
+   round it, so a press showed as one pixel of travel and no change of any kind
+   in what the thing looked like. Under a thumb, which covers the button, that
+   is no feedback at all.
+   `--green-bg` is one step deeper than the `--green-tint` hover, so the three
+   states are a ladder rather than two of them being the same picture. Both are
+   tokens and both already carry a dark half; nothing here names a colour. */
+.btn.ghost:active:not(:disabled) {
+  background: var(--green-bg); border-color: var(--green); color: var(--green-dark);
+}
+
+/* ── A BUTTON WITH A PICTURE IN IT ──────────────────────────────────────────
+   Opt-in by class, because `display: inline-flex` on `.btn` itself would change
+   the layout of every button in the app to fix the two that have an icon.
+
+   15px against a 13px label: an icon set to the text's own size reads smaller
+   than the letters beside it, because the letters fill their box and a line
+   drawing does not. 6px of gap is the space between two words at this size, so
+   the pair reads as one label rather than as a picture with a caption. */
+.btn.with-icon { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+/* `flex: none` — an icon may not be squeezed by a long Thai label beside it. */
+.btn.with-icon .btn-icon { width: 15px; height: 15px; flex: none; }
 
 /* The third voice, between the filled one and the ghost.
 
@@ -3529,6 +3554,65 @@ td > .approver-line { margin-top: 5px; }
 .audit-bar .check { font: 500 13.5px/1.4 var(--sans); }
 .audit-bar .check.off { color: var(--muted-2); cursor: default; }
 .audit-bar .hint { margin-left: auto; }
+
+/* ── the last cell of a row on รายการ OT ────────────────────────────────────
+   Up to four things: แก้ไข, ถอนใบวันเกิด, ดูข้อมูลเดิม, and one of two
+   sentences that stand in for a button that would have nothing to do.
+
+   A FLEX ROW, WHICH IS ABOUT THE SENTENCES AND NOT THE BUTTONS. Laid out as
+   inline siblings with `margin-left: 6px`, two 44px buttons and a line of 12px
+   text share a BASELINE — so the text sat a few pixels under the middle of the
+   controls beside it, which reads as a caption that has slipped. Centring is
+   the container's job and no margin can do it. The margins are gone with it:
+   one `gap` cannot be forgotten on the fourth thing somebody adds here.
+
+   NOWRAP HERE, AND THE WRAP IS THE PHONE'S ONLY. On the desktop this is the
+   eleventh column of a table and the cell already carries `white-space: nowrap`
+   — which is what kept แก้ไข and ดูข้อมูลเดิม side by side when they were
+   inline. A flex container ignores that, so `wrap` left on the base rule
+   restacked those two rows into two lines each and made every row of a long
+   month taller to fix a case that only exists on a phone. */
+.entry-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+/* The sentences carry `.cell-sub`'s 2px top margin, which is for a line UNDER a
+   value and is a nudge off-centre here. */
+.entry-actions .cell-sub { margin-top: 0; }
+
+/* ── a chip under the line of work it qualifies ─────────────────────────────
+   6px and not 4: on the phone card the description cell is a floated label with
+   its value flowing round it, so this lands on the line below the description,
+   and at 4px it reads as that line wrapping rather than as a separate statement
+   about it. On the desktop table it is the same 6px under a one-line cell.
+
+   AND THE CHIP MAY WRAP HERE. `.chip` is `nowrap` everywhere else, which is
+   right for อนุมัติ and ต้องตรวจ — a status is one word and a pill that breaks
+   in half is not a pill. This one holds a sentence
+   ("HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว · ฝ่ายบุคคล", 242px of it), and on a
+   304px card a nowrap pill of that width is a band across the row that has to
+   be cleared before anything else on the card can be read. Allowed to wrap it
+   is a right-aligned block whose edge lines up with the value above it, which
+   is what the rest of the card does. Scoped to this one place: nothing else in
+   the app puts a sentence in a chip. */
+.entry-mark { margin-top: 6px; }
+.entry-mark .chip { white-space: normal; text-align: left; }
+
+/* ── the footnote under the table ───────────────────────────────────────────
+   RULED OFF, and that is what actually makes it a footnote. It is two sentences
+   about the whole month sitting under the last card in the same grey as the
+   notes INSIDE the cards — at 12px with a hairline and 12px of air above it,
+   the eye takes it as a different kind of thing before it reads a word of it.
+
+   12px AND NOT SMALLER, and `--muted-2` and not `--muted-3`. This is an
+   instruction about what an edit DOES to a signed month, and the light theme
+   already draws `.hint` at 3.41:1 against the card — under AA's 4.5 for body
+   text, which is a pre-existing thing this note did not want to make worse.
+   `--muted-3` would take it to 2.98. The separation does the work of the
+   hierarchy instead of the contrast doing it. (Dark, for the record: --muted-2
+   is 5.04 and --muted-3 4.20.) */
+.hint.entry-foot {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--line-softer);
+  font-size: 12px;
+}
 
 /* The open state of a toggle has to differ by more than the word on it —
    a column of identical grey buttons gives no sense of what is expanded. */
@@ -7661,7 +7745,14 @@ table.mini tbody tr:hover { background: none; }
   .stack-table thead { display: none; }
   .stack-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
   .stack-table tbody tr {
-    display: flex; flex-direction: column; gap: 8px;
+    /* 10px BETWEEN FIELDS, and it was 8 until 2026-08-26. Each field here is a
+       label and a value on ONE line — floated label at the left, value flowing
+       to the right of it — so this gap is the only vertical space between one
+       fact and the next, and at 8px against a 1.5 line-height the lines of a
+       six-field card ran together into a block of text. 10 is the same step the
+       cards themselves are spaced by (`.stack-table tbody` gap), so a card's
+       insides and the space around it are one rhythm rather than two. */
+    display: flex; flex-direction: column; gap: 10px;
     /* 15px, the same padding `.card` takes at this width. */
     padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--card);
@@ -7730,6 +7821,13 @@ table.mini tbody tr:hover { background: none; }
   }
   .stack-table tbody td:not([data-label])::before { content: none; }
   .stack-table tbody td .btn { min-height: 44px; }
+
+  /* รายการ OT's last cell, which is the foot of the card here rather than the
+     eleventh column of a table. Wrapping is allowed — and only here — because a
+     44px button beside "ไม่มีประวัติการแก้ไข" is 204px of a 274px card at 360px
+     and does not fit at 320. The desktop keeps them on one line; see
+     `.entry-actions`. */
+  .stack-table tbody td .entry-actions { flex-wrap: wrap; }
 
   /* ── ทะเบียนพนักงาน's three buttons: one grid, not a wrapped row ──────────
      ดูข้อมูล / ตั้งรหัสใหม่ / ดูประวัติ are three labels of three different
