@@ -28,6 +28,27 @@ import { useBackHandler } from './nav.jsx';
 const FIND_DEBOUNCE_MS = 300;
 
 /**
+ * How long the row picked from the dropdown stays lit.
+ *
+ * Long enough to find with the eye after the page has finished moving, short
+ * enough that it is gone before it becomes a state of the row rather than an
+ * answer to a question. The fade is in the stylesheet; this is what holds the
+ * class on, and it is what a reader with `prefers-reduced-motion` gets INSTEAD
+ * of the fade — see `.row-flash`.
+ */
+const FLASH_MS = 1800;
+
+/**
+ * The id a row carries so the dropdown can scroll to it.
+ *
+ * On the element rather than in a ref map because there is one of these per
+ * company table and the tables are separate components — a ref would have to be
+ * threaded down and back up, and this is a document-wide lookup by nature.
+ * `acct-row-` prefixed so it cannot collide with anything else on the page.
+ */
+const rowDomId = (employeeId) => `acct-row-${employeeId}`;
+
+/**
  * สรุป OT ส่งบัญชี — the month's approved hours, ready to hand to accounting.
  *
  * Same layout language as ตรวจสอบรายเดือน (HrView): white cards, the same
@@ -85,6 +106,46 @@ export default function AccountingView() {
     return () => clearTimeout(timer);
   }, [find]);
 
+  /*
+   * THE SUGGESTION LIST — a way to the row, not a second filter.
+   *
+   * The box already narrows the sheet. This hangs under it while there is
+   * something typed, and picking a row from it does not change WHAT is on
+   * screen, only WHERE the screen is: the page scrolls to that person's row and
+   * lights it for FLASH_MS. Two jobs from one box, and they do not fight —
+   * the filter answers "who is in this month", the list answers "take me to
+   * them", which on a sheet three screens long is a different question.
+   *
+   * ITS CONTENTS COME FROM `query`, NOT `find` — the same debounced string the
+   * rows are filtered by. A dropdown that listed one search's people over
+   * another search's rows would be the same disagreement the debounce comment
+   * above exists to prevent, moved into a floating box.
+   *
+   * `active` IS A KEYBOARD POSITION, not a selection. It follows the pointer as
+   * well, so there is one notion of "the current row" rather than two — the
+   * same grammar `PickPerson` uses in components/common.jsx, and deliberately
+   * so: this is the app's second combobox and a reader should not have to learn
+   * a second set of keys for it.
+   */
+  const listId = React.useId();
+  const listRef = React.useRef(null);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+
+  /**
+   * The row the dropdown last sent somebody to, lit until the timer fires.
+   *
+   * Held here and not as a class poked onto the DOM: the row is drawn by
+   * `CompanySheet`, React owns that element, and an outside hand on its
+   * className is a change the next render silently undoes.
+   */
+  const [flash, setFlash] = useState(null);
+  useEffect(() => {
+    if (!flash) return undefined;
+    const timer = setTimeout(() => setFlash(null), FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [flash]);
+
   // The header mark leaves the print sheet before it leaves the tab.
   useBackHandler(printing, () => setPrinting(false));
 
@@ -140,6 +201,83 @@ export default function AccountingView() {
   const visible = searching ? narrowed.filter((c) => c.rows.length > 0) : narrowed;
   const rowsFound = narrowed.reduce((n, c) => n + c.rows.length, 0);
   const rowsAll = shown.reduce((n, c) => n + c.rows.length, 0);
+
+  /* Flattened across the companies, in the order the sheets draw them, so ↓
+     walks the dropdown in the same order the eye walks the page. */
+  const suggestions = narrowed.flatMap((c) => c.rows);
+  /* Clamped rather than trusted: a keystroke that narrows the list leaves
+     `active` past the end, and `aria-activedescendant` would then name an
+     element that is not on the page. */
+  const at = Math.min(active, Math.max(suggestions.length - 1, 0));
+  const menuOpen = open && searching && suggestions.length > 0;
+
+  /**
+   * Picked from the list: shut the box, light the row, take the page to it.
+   *
+   * THE FILTER IS LEFT ALONE. Clearing it here was the other option and is
+   * wrong twice over — it would throw away the narrowing the person just did,
+   * and it would make the row they asked for one of forty again, at which point
+   * the scroll is doing all the work and the flash none of it.
+   *
+   * SCROLLED AFTER THE FRAME THAT CLOSES THE MENU. `setOpen(false)` and the
+   * scroll in the same tick means measuring a layout that still has a 264px
+   * panel in it, and on a short sheet that is the difference between the row
+   * landing in the middle of the screen and landing under the app bar.
+   *
+   * `block: 'center'` rather than 'start': the app bar is sticky at the top of
+   * every screen in this app, and a row scrolled to `start` lands behind it.
+   * Centring needs no arithmetic about a bar this file should not know about.
+   *
+   * SMOOTH, EXCEPT WHERE SOMEBODY HAS ASKED FOR LESS MOTION. This is the one
+   * `matchMedia` in the component and it is not a layout question — the phone
+   * and desktop layouts are the stylesheet's business and stay there. It is a
+   * question about MOTION, which has no CSS equivalent for an imperative scroll.
+   */
+  function goToRow(row) {
+    const id = row?.employee?.id;
+    if (!id) return;
+    setOpen(false);
+    setFlash(id);
+    const still = typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    window.requestAnimationFrame(() => {
+      document.getElementById(rowDomId(id))?.scrollIntoView({
+        block: 'center',
+        behavior: still ? 'auto' : 'smooth',
+      });
+    });
+  }
+
+  function onFindKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!suggestions.length) return;
+      e.preventDefault();
+      if (!menuOpen) { setOpen(true); return; }
+      // Wraps, so ↑ from the first row reaches the last in one press rather
+      // than a hold on ↑ through the whole list.
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      setActive((i) => {
+        const from = Math.min(i, suggestions.length - 1);
+        return (from + step + suggestions.length) % suggestions.length;
+      });
+      return;
+    }
+    if (e.key === 'Enter') {
+      // Prevented whether or not the list is open: this box sits in a card of
+      // controls and Enter must not submit anything behind it.
+      e.preventDefault();
+      if (menuOpen && suggestions[at]) goToRow(suggestions[at]);
+      return;
+    }
+    if (e.key === 'Escape' && menuOpen) {
+      // Stopped only because it did something here. With the list already shut,
+      // Escape belongs to whatever is above this.
+      e.stopPropagation();
+      setOpen(false);
+      return;
+    }
+    if (e.key === 'Tab' && menuOpen) setOpen(false);
+  }
   // Scoped to the tab, and read from the queue rather than from the rows —
   // somebody with nothing approved yet has no row to carry their backlog.
   const pending = company === 'all'
@@ -214,15 +352,85 @@ export default function AccountingView() {
               <Icon name="search" className="searchbox-icon" />
               <input
                 type="text"
+                role="combobox"
                 className={`has-icon${find ? ' has-clear' : ''}`}
                 value={find}
-                onChange={(e) => setFind(e.target.value)}
+                onChange={(e) => {
+                  setFind(e.target.value);
+                  // The first suggestion, not the row that was active a
+                  // keystroke ago: the list underneath is a different list now,
+                  // and Enter has to mean whatever is at the top of it.
+                  setActive(0);
+                  setOpen(e.target.value !== '');
+                }}
+                // Focus fires once; the click is the way back after Escape shut
+                // the list with the caret still in the box.
+                onFocus={() => { if (find !== '') setOpen(true); }}
+                onClick={() => { if (find !== '') setOpen(true); }}
+                onBlur={() => setOpen(false)}
+                onKeyDown={onFindKeyDown}
                 placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
                 aria-label="ค้นหาพนักงาน"
+                aria-expanded={menuOpen}
+                aria-controls={listId}
+                aria-autocomplete="list"
+                aria-activedescendant={menuOpen && suggestions[at] ? `${listId}-${at}` : undefined}
+                // The browser's own suggestion list would cover this one.
                 autoComplete="off"
                 spellCheck={false}
               />
-              {find && <ClearButton onClear={() => setFind('')} />}
+              {find && <ClearButton onClear={() => { setFind(''); setOpen(false); }} />}
+
+              {/* NOTHING IS DRAWN WHEN NOTHING MATCHES. The card below already
+                  says ไม่พบพนักงานที่ค้นหา with a way out of it, and a floating
+                  panel repeating that over the top of it is the same sentence
+                  twice, one of them covering the button that answers it. */}
+              {menuOpen && (
+                <ul
+                  id={listId}
+                  role="listbox"
+                  className="pick-menu acct-menu"
+                  ref={listRef}
+                  aria-label="ผลการค้นหาพนักงาน"
+                  // Selection happens on click — but mousedown's default action
+                  // is to move focus, which blurs the input and unmounts this
+                  // list before the click can land. Prevented on the container,
+                  // so a drag to scroll on a touch screen is still a scroll.
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  {suggestions.map((row, i) => (
+                    <li
+                      key={row.employee.id}
+                      id={`${listId}-${i}`}
+                      role="option"
+                      aria-selected={i === at}
+                      data-active={i === at ? '1' : undefined}
+                      onClick={() => goToRow(row)}
+                      // Follows the pointer, so the row under the cursor is the
+                      // row Enter takes.
+                      onMouseMove={() => setActive(i)}
+                    >
+                      <span className="s-who">
+                        <Highlight text={row.employee.name} query={query} kind="name" />
+                        {' '}
+                        <span className="s-code">
+                          (<Highlight text={row.employee.code} query={query} kind="code" />)
+                        </span>
+                      </span>
+                      {/* แผนก and the month's hours for this person — the two
+                          things that tell two people with similar names apart,
+                          and the figure somebody is usually looking for anyway.
+                          `hours()` and not `cell()`: a nought here is an answer
+                          ("no OT this month"), not a blank to be read past. */}
+                      <span className="s-meta">
+                        {row.department?.name || '—'}
+                        <span className="s-sep">|</span>
+                        {hours(row.otHours)} ชม.
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
           {/* Only while it is narrowing something. "แสดง 4 จาก 4 คน" is a
@@ -336,6 +544,7 @@ export default function AccountingView() {
               company={c}
               period={period}
               query={query}
+              flash={flash}
               // Numbered against the full list, not the filtered one, so
               // เดมเทค is "บริษัทที่ 2" on its own tab as well — and stays
               // "บริษัทที่ 2" when a search leaves it the only sheet drawn.
@@ -362,7 +571,7 @@ export default function AccountingView() {
  * in a second table beside it, so a figure is always read down the column it
  * belongs to.
  */
-function CompanySheet({ company, period, index, query }) {
+function CompanySheet({ company, period, index, query, flash }) {
   const t = company.totals;
   return (
     <div className="card" style={{ marginTop: 18 }}>
@@ -417,7 +626,11 @@ function CompanySheet({ company, period, index, query }) {
               </thead>
               <tbody>
                 {company.rows.map((row) => (
-                  <tr key={row.employee.id}>
+                  <tr
+                    key={row.employee.id}
+                    id={rowDomId(row.employee.id)}
+                    className={flash === row.employee.id ? 'row-flash' : undefined}
+                  >
                     {/* The two strings the box is asked about are the two that
                         say where it landed. Nothing else on the row is marked:
                         แผนก and บริษัท are not what was searched, and marking a

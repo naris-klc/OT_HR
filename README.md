@@ -1009,7 +1009,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1668 tests
+and the engine know nothing about Next.js, so the whole suite — **1672 tests
 across 101 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "1654 … 2026-08-25" until then, and was already five behind when the figure was
@@ -2862,6 +2862,72 @@ are hooks that some renders call and others do not, and React threw *rendered
 fewer hooks than expected* the moment พิมพ์แบบฟอร์ม was pressed.
 
 
+**และกล่องแนะนำใต้ช่องค้นหา — กดแล้วพาไปที่แถวนั้น.** A floating list opens under
+the box while there is something typed, one row per match:
+
+```
+วิชัย ศรีสุข (PM-0100)
+วิศวกรรม | 8 ชม.
+```
+
+The name and the code are marked by the same `Highlight`; แผนก and the month's
+hours for that person are the context — they are what tells two คุณสมชาย apart,
+and the figure somebody is usually looking for anyway. `hours()` and not
+`cell()`: a nought in a suggestion is an answer, where a blank in the table is a
+column to read past.
+
+**It is a way TO the row, not a second filter, and the difference is the whole
+design.** The box already narrows the sheet; this says where on it to look.
+Picking a row shuts the list, scrolls the page to that person's row and lights it
+for 1800ms — and changes nothing about what is on screen. `goToRow()` never
+touches `find` or `query`, and `test/monthSearch.test.js` asserts that as a
+negative: clearing the box there would throw away the narrowing somebody just
+did and make the row they asked for one of forty again, at which point the scroll
+is doing all the work and the flash none of it.
+
+Three details in that function are each a bug avoided. The scroll happens in a
+`requestAnimationFrame` **after** the frame that closes the menu, because
+measuring a layout that still has a 264px panel in it puts the row in the wrong
+place on a short sheet. It scrolls to `block: 'center'` rather than `'start'`,
+because the app bar is sticky at the top of every screen in this app and a row
+sent to `start` lands behind it — centring needs no arithmetic about a bar this
+file should not know about. And `behavior` is `'smooth'` unless
+`prefers-reduced-motion` says otherwise; that is the one `matchMedia` in the
+component, and it is a question about MOTION, not about layout, which stays the
+stylesheet's.
+
+**The same panel and the same keys as กรองตามพนักงาน.** `.pick-menu` with an
+`.acct-menu` modifier for the two-line row, `role="combobox"` on the input and
+`role="listbox"` on the list, ↑ ↓ to walk it, Enter to take the active row,
+Escape and Tab to shut it, and the keyboard row following the pointer so there is
+one notion of "the current row" rather than two. A second combobox with its own
+grammar would be a second thing for a reader to learn and a second thing to keep
+in step. Both classes are named in every rule, for the reason written over
+`.dept-menu`: the shared `.pick-menu` block is further down the stylesheet, so a
+single-class rule loses to it on position and the symptom is a rule that is
+provably in the bundle and provably ignored.
+
+**Nothing is drawn when nothing matches.** The card below already says
+ไม่พบพนักงานที่ค้นหา with a way out of it, and a floating panel repeating that
+over the top of it is the same sentence twice, one of them covering the button
+that answers it.
+
+**The flash is painted on the cells, not on the row**, because below 860px the
+พนักงาน column is `position: sticky` with an opaque fill of its own — a colour on
+the `<tr>` would be covered on exactly the cell carrying the name that was
+searched for. An animation beats a normal declaration in the cascade whatever the
+selectors say, so the `td` rule reaches the sticky cell too, and it fades to
+`transparent` rather than back to a colour because the row's real background is
+one of three things this file cannot name.
+
+**And a reader who asked for less motion still sees it.** The blanket
+`prefers-reduced-motion` rule at the foot of the stylesheet clamps every
+animation to `.01ms`, which for this one would mean no highlight at all — an
+accessibility rule quietly deleting the feature it was meant to soften. Under
+that preference the fill is stated flat instead, and the JS timer, which is what
+actually ends the flash, takes it away at 1800ms either way.
+
+
 **รวมทุกบริษัท is the first card now, not the last.** total → per company → per
 person, which is the order somebody closing a month reads in and the opposite of
 the order the figures are built in. At the foot of two company sheets, the one
@@ -3174,7 +3240,7 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1668/1668 pass in about 2 s**, measured 2026-08-26 across 101
+- `npm test` — **1672/1672 pass in about 2 s**, measured 2026-08-26 across 101
   files. It read "1654, measured 2026-08-25" until then, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3182,8 +3248,13 @@ four role UIs.
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The five newest are also in `test/monthSearch.test.js` and pin the live half
-  of that box: the debounce's two strings and the early return that makes ✕ act
+  The four newest are also in `test/monthSearch.test.js` and pin the suggestion
+  list: that it is the app's own `.pick-menu` and the same five keys rather than
+  a second combobox, what a row holds, that `goToRow()` never touches `find` or
+  `query` — asserted as a negative — and that the flash is painted on the cells
+  and survives `prefers-reduced-motion`. Before them, five in the same file for
+  the live half of that box: the debounce's two strings and the early return
+  that makes ✕ act
   at once, that the rows, the count, the empty state and the highlight all read
   the same `query`, that the hooks sit above the print early-return, and three
   PURE cases over `highlightParts` — a code matched without its hyphen marks the

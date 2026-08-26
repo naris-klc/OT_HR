@@ -2315,6 +2315,37 @@ td > .approver-line { margin-top: 5px; }
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 
+/* ── THE ROW THE DROPDOWN SENT YOU TO ────────────────────────────────────
+   Picked from the suggestion list, the page scrolls to that row and lights it
+   for `FLASH_MS` (1800) — `components/AccountingView.jsx` holds the class on,
+   this decides what it looks like.
+
+   ON THE CELLS, NOT ON THE ROW. Below 860px the พนักงาน column is `position:
+   sticky` with an opaque `--card` fill of its own, so a colour painted on the
+   `<tr>` would be covered on exactly the cell carrying the name you searched
+   for. An animation beats a normal declaration in the cascade whatever the
+   selectors say, so putting it on the `td` reaches the sticky cell too.
+
+   FADES TO `transparent` AND NOT BACK TO A COLOUR. The row's real background is
+   whatever it was — `--card`, the hover wash, the sticky cell's fill — and this
+   file cannot name all three. Ending at transparent hands the row back to
+   whichever of them applies.
+
+   AND A READER WHO ASKED FOR LESS MOTION STILL SEES IT. The blanket
+   `prefers-reduced-motion` rule at the foot of this file clamps every animation
+   to .01ms, which for this one would mean no highlight at all — the whole point
+   of the flash, removed by an accessibility rule. So under that preference the
+   fill is stated flat and the JS timer, which is what actually ends the flash,
+   takes it away 1800ms later. */
+@keyframes rowFlash {
+  0%, 55% { background-color: var(--green-bg); }
+  100% { background-color: transparent; }
+}
+.acct-table tbody tr.row-flash > td { animation: rowFlash 1800ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .acct-table tbody tr.row-flash > td { background-color: var(--green-bg); }
+}
+
 /* ── AND THE BOX KEEPS ITS WIDTH, OR THE COUNT TAKES IT ──────────────────
    `.field` is `flex: 1`, which is `flex: 1 1 0%` — a basis of NOTHING. In a
    wrapping row that is the one value that guarantees no wrap ever happens: the
@@ -2375,6 +2406,53 @@ td > .approver-line { margin-top: 5px; }
    carries no Thai (the same trap `.cell-sub.th` spells out). */
 .pick-menu li.all { font: 500 13.5px/1.4 var(--sans); color: var(--muted); }
 .pick-menu li[aria-selected='true'] { font-weight: 700; }
+/* ══ ส่งบัญชี's SUGGESTION LIST ═════════════════════════════════════════════
+
+   `.pick-menu.acct-menu` — the same floating panel กรองตามพนักงาน uses, with
+   two lines to a row instead of one. Both classes on every selector, for the
+   reason written over `.dept-menu`: the shared `.pick-menu` block is FURTHER
+   DOWN this file, so a single-class rule here loses to it on position and the
+   symptom is a rule that is provably in the bundle and provably ignored.
+
+   WHY IT IS NOT ITS OWN PANEL. It opens under the same kind of box, it is
+   walked with the same keys, and it is dismissed the same way. A second panel
+   with its own shadow, corner and scroll behaviour would be a second thing to
+   keep in step for no gain — what actually differs is what a row HOLDS, which
+   is these four declarations. */
+.pick-menu.acct-menu li {
+  /* Two lines, so the row stops being a flex ROW. `stretch` rather than the
+     inherited `center`, or the second line would be centred under the first
+     and the two would stop sharing a left edge. */
+  flex-direction: column; align-items: stretch; gap: 2px;
+  /* A little taller than the 40px one-liner, and still over the 44px touch
+     floor once its padding is counted. */
+  padding: 9px 12px; min-height: 48px;
+  /* SANS, NOT `.pick-menu li`'s MONO. These rows are mostly a Thai name, and
+     the mono face carries no Thai — the same trap `.cell-sub.th` spells out.
+     The code keeps mono below, where it is a code and nothing else. */
+  font: 500 14px/1.35 var(--sans);
+}
+/* The employee code, in the face codes are read in everywhere else in the app,
+   and a step quieter than the name it sits beside — it is how you tell two
+   คุณสมชาย apart, not what you are looking for. */
+.pick-menu.acct-menu li .s-code {
+  font: 400 12.5px/1.35 var(--mono); color: var(--muted);
+}
+/* แผนก | n ชม. — the row's second line, quieter again. */
+.pick-menu.acct-menu li .s-meta {
+  font: 400 12px/1.4 var(--sans); color: var(--muted);
+}
+.pick-menu.acct-menu li .s-sep { margin: 0 6px; color: var(--muted-2); }
+/* On the row the keyboard is standing on, the mark's own wash sits on a green
+   fill and comes out muddy. The colour and the weight still say where the match
+   is; the wash is what has to go. */
+.pick-menu.acct-menu li[data-active='1'] .hit { background: none; }
+/* Two-line rows fill a 264px panel faster than one-line rows do, and on a phone
+   that panel is most of the screen. Same shape as `.dept-menu`'s cap. */
+@media (max-width: 860px) {
+  .pick-menu.acct-menu { max-height: min(264px, 46vh); }
+}
+
 /* Not an option and not selectable: no pointer, no highlight, no role. */
 .pick-menu li.none {
   cursor: default; font: 400 13px/1.5 var(--sans); color: var(--muted-2);

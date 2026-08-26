@@ -278,7 +278,10 @@ test('its box is `.acct-find` — the same row without the sticky phone rule', (
   assert.match(acctView, /className="row acct-find"/);
   // The magnifier and the ✕ are the shared components, not a second pair.
   assert.match(acctView, /<Icon name="search" className="searchbox-icon" \/>/);
-  assert.match(acctView, /<ClearButton onClear=\{\(\) => setFind\(''\)\} \/>/);
+  // The ✕ shuts the suggestion list as well as emptying the box — it is the one
+  // press that means "none of this", and leaving a panel of matches for a query
+  // that no longer exists floating over the sheet is half an answer.
+  assert.match(acctView, /<ClearButton onClear=\{\(\) => \{ setFind\(''\); setOpen\(false\); \}\} \/>/);
   // `.month-find`'s phone rule pins it under the app bar for a list nine
   // screens long. This box sits in a card four rows tall, where sticky would
   // unstick the moment the card scrolled past.
@@ -402,7 +405,7 @@ test('typing filters with no Enter, 300ms behind the box, and clearing does not 
   assert.match(acctView, /const FIND_DEBOUNCE_MS = 300;/);
   assert.match(acctView, /const \[find, setFind\] = useState\(''\);/);
   assert.match(acctView, /const \[query, setQuery\] = useState\(''\);/);
-  assert.match(acctView, /onChange=\{\(e\) => setFind\(e\.target\.value\)\}/);
+  assert.match(acctView, /onChange=\{\(e\) => \{\s*setFind\(e\.target\.value\);/);
   assert.match(acctView, /value=\{find\}/);
   // Clearing is a decision, not a keystroke — the early return is what makes
   // the ✕ and ล้างการค้นหา act at once instead of 300ms later.
@@ -442,4 +445,103 @@ test('the mark is the app’s green, not the browser’s highlighter', () => {
   assert.match(css, /\.hit \{[\s\S]*?border-radius: 2px; padding: 0;/);
   // A wrapped mark is two marks, not one box with a hole in it.
   assert.match(css, /\.hit \{[\s\S]*?box-decoration-break: clone;/);
+});
+
+// ── the suggestion list, and the row it takes you to ─────────────────────────
+
+/**
+ * Added 2026-08-26. A floating list under the box, a row per match, and a click
+ * that takes the page to that person's row on the sheet.
+ *
+ * The two things worth holding down are the two that would be easy to undo. It
+ * is the SAME panel and the same keys as กรองตามพนักงาน — a second combobox with
+ * its own grammar is a second thing for a reader to learn and for this file to
+ * keep in step. And picking a row does NOT change what is on screen: it is a way
+ * TO the row, not a second filter, and the moment it starts clearing the box it
+ * has become one.
+ */
+
+test('the dropdown is the app’s own listbox, not a second one', () => {
+  assert.match(acctView, /className="pick-menu acct-menu"/);
+  assert.match(acctView, /role="listbox"/);
+  assert.match(acctView, /role="combobox"/);
+  assert.match(acctView, /aria-expanded=\{menuOpen\}/);
+  assert.match(acctView, /aria-autocomplete="list"/);
+  assert.match(acctView, /aria-activedescendant=\{menuOpen && suggestions\[at\] \? `\$\{listId\}-\$\{at\}` : undefined\}/);
+  // The same keys PickPerson answers, in the same order, including the two that
+  // are easy to leave out: Escape shuts it and Tab shuts it.
+  for (const key of ['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Tab']) {
+    assert.ok(acctView.includes(`'${key}'`), `the box does not answer ${key}`);
+  }
+  // mousedown's default action moves focus, which blurs the input and unmounts
+  // the list before the click can land.
+  assert.match(acctView, /onMouseDown=\{\(e\) => e\.preventDefault\(\)\}/);
+  // The keyboard row follows the pointer, so there is one current row, not two.
+  assert.match(acctView, /onMouseMove=\{\(\) => setActive\(i\)\}/);
+  // Both classes on every rule, or the shared `.pick-menu` block further down
+  // the stylesheet wins on position — the trap `.dept-menu` fell into.
+  for (const rule of ['.pick-menu.acct-menu li', '.pick-menu.acct-menu li .s-code',
+    '.pick-menu.acct-menu li .s-meta']) {
+    assert.ok(css.includes(rule), `${rule} is not scoped to both classes`);
+  }
+  // The panel the phone gets has to be capped against the viewport as well as
+  // in pixels: two-line rows fill 264px faster than one-line rows do.
+  assert.match(css, /\.pick-menu\.acct-menu \{ max-height: min\(264px, 46vh\); \}/);
+});
+
+test('a suggestion says who, which code, which department and how many hours', () => {
+  const item = acctView.slice(acctView.indexOf('<span className="s-who">'), acctView.indexOf('</ul>'));
+  // The two strings the box was asked about are marked; แผนก and the hours are
+  // context and are not.
+  assert.match(item, /<Highlight text=\{row\.employee\.name\} query=\{query\} kind="name" \/>/);
+  assert.match(item, /<Highlight text=\{row\.employee\.code\} query=\{query\} kind="code" \/>/);
+  assert.match(item, /\{row\.department\?\.name \|\| '—'\}/);
+  // `hours()`, not `cell()`: a nought here is an answer, not a blank to read
+  // past. `cell()` is the table's rule and belongs to the table.
+  assert.match(item, /\{hours\(row\.otHours\)\} ชม\./);
+  // The list is the filtered rows in the order the sheets draw them, so ↓ walks
+  // it in the same order the eye walks the page — and it is `narrowed`, which
+  // means it can never list somebody the sheet is not showing.
+  assert.match(acctView, /const suggestions = narrowed\.flatMap\(\(c\) => c\.rows\);/);
+});
+
+test('picking a row moves the page to it and lights it — and leaves the filter alone', () => {
+  const fn = acctView.slice(acctView.indexOf('function goToRow('), acctView.indexOf('function onFindKeyDown('));
+  assert.match(fn, /setOpen\(false\);/);
+  assert.match(fn, /setFlash\(id\);/);
+  // NOT `setFind('')`. Clearing here would throw away the narrowing somebody
+  // just did and make the row they asked for one of forty again, at which point
+  // the scroll does all the work and the flash none of it.
+  assert.ok(!/setFind/.test(fn), 'picking a suggestion clears the search box');
+  assert.ok(!/setQuery/.test(fn), 'picking a suggestion rewrites the applied query');
+  // After the frame that closes the menu: measuring a layout that still has a
+  // 264px panel in it puts the row in the wrong place on a short sheet.
+  assert.match(fn, /window\.requestAnimationFrame\(\(\) => \{/);
+  // `center`, because the app bar is sticky at the top of every screen and a
+  // row scrolled to `start` lands behind it.
+  assert.match(fn, /block: 'center',/);
+  assert.match(fn, /behavior: still \? 'auto' : 'smooth',/);
+  // The id is on the element because the tables are separate components and
+  // this is a document-wide lookup by nature.
+  assert.match(acctView, /const rowDomId = \(employeeId\) => `acct-row-\$\{employeeId\}`;/);
+  assert.match(acctView, /id=\{rowDomId\(row\.employee\.id\)\}/);
+  assert.match(acctView, /className=\{flash === row\.employee\.id \? 'row-flash' : undefined\}/);
+});
+
+test('the flash reaches the sticky cell, and survives prefers-reduced-motion', () => {
+  // ON THE CELLS. Below 860px the พนักงาน column is sticky with an opaque fill
+  // of its own, so a colour on the `<tr>` is covered on exactly the cell
+  // carrying the name that was searched for.
+  assert.match(css, /\.acct-table tbody tr\.row-flash > td \{ animation: rowFlash 1800ms ease-out; \}/);
+  assert.match(css, /@keyframes rowFlash \{[\s\S]*?100% \{ background-color: transparent; \}/);
+  // The blanket reduced-motion rule clamps every animation to .01ms, which for
+  // this one would mean no highlight at all — an accessibility rule removing
+  // the whole point of the feature. Stated flat there instead; the JS timer is
+  // what ends it either way.
+  assert.match(
+    css,
+    /@media \(prefers-reduced-motion: reduce\) \{\s*\.acct-table tbody tr\.row-flash > td \{ background-color: var\(--green-bg\); \}\s*\}/,
+  );
+  assert.match(acctView, /const FLASH_MS = 1800;/);
+  assert.match(acctView, /setTimeout\(\(\) => setFlash\(null\), FLASH_MS\)/);
 });
