@@ -611,6 +611,17 @@ test('ส่งบัญชี fits the card instead: the figures keep their col
   for (const col of ['who-col', 'dept-col', 'rate-col', 'total-col', 'note-col']) {
     assert.ok(head.includes(col), `the head lost ${col}`);
   }
+  // ONE STATEMENT OF VERTICAL SPACE PER ROW. `padding: 8px 7px` from the
+  // COMPACT rule above means nothing to a grid item — it inflates whichever
+  // track the cell landed in — and with the `tr`'s own padding and the row-gap
+  // it made a two-line summary row 91px tall for 37px of type.
+  assert.match(
+    phone,
+    /\.acct-table tbody :is\(td\.who-col, td\.dept-col, td\.note-col\),[\s\S]{0,220}\{ padding: 0; \}/,
+  );
+  // …and the figures keep theirs, because it is horizontal and says how much
+  // room a 46px track leaves the mono face.
+  assert.match(phone, /\.acct-table td:is\(\.rate-col, \.total-col\),[\s\S]{0,80}font-size: 12px;/);
   // The desktop is whatever it was: no grid, no folding, above 860px.
   assert.ok(!desktop.includes('.acct-table tbody tr {'), 'a folding rule leaked out of the phone block');
 });
@@ -638,6 +649,13 @@ test('the phone puts รวมแผนก and รวมทั้งหมด ab
   // so the foot no longer draws one against the heading row's own.
   assert.match(phone, /\.acct-table > tbody \{ border-top: 1px solid var\(--line\); \}/);
   assert.match(phone, /\.acct-table tfoot tr:first-child \{ border-top: 0; \}/);
+  // FOUR SUMMARY ROWS OF ONE WASH RUN TOGETHER INTO A SLAB. A line between them
+  // is what makes them rows, and it is the same weight the people rows take.
+  assert.match(phone, /\.acct-table tfoot tr \+ tr \{ border-top: 1px solid var\(--line-softer\); \}/);
+  // The caption under each summary row is one line, not two cells: the label at
+  // the left edge and the headcount at the right.
+  assert.match(phone, /\.acct-table tfoot td\.note-col \{ grid-area: note; text-align: right; \}/);
+  assert.match(phone, /\.acct-table tfoot :is\(td\.sum-k, td\.note-col\) \{\s*font: 400 11px\/1\.5 var\(--sans\);/);
 });
 
 test('×1.5 หยุด is the same heading one size down, not a second spelling of it', () => {

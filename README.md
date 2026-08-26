@@ -2811,6 +2811,44 @@ against the heading row's own.
 and their total — and lifting a total over the two figures it is the sum of is
 not a shortcut to anything.
 
+**และแถวถูกบีบลง — 91px เหลือ 55px.** The first version of all this shipped and
+came straight back as *ไม่สวยเลย*, which was right: the rows were airy enough
+that a two-line summary row stood as tall as a person's card, and the summary
+block read as another group of people rather than as a total. Measured on the
+live app at 360px, one รวมแผนก row:
+
+```
+tr padding-top                     10
+who-col   8 + 20 (one line) + 8  = 36
+row-gap                             2
+sum-k     8 + 17 (one line) + 8  = 33
+tr padding-bottom                  10
+                                 ────
+                                    91   for 37px of type
+```
+
+**Three things were stating the same space.** `padding: 8px 7px` is the COMPACT
+rule at the top of the phone block, written for a table where a cell IS a row's
+worth of vertical space; the `tr` states its own padding because a grid row is
+one box; and `row-gap` states the space between the two lines. Under a grid the
+cell padding is the one that means nothing — it does not separate a cell from
+the cell beside it, it inflates whichever track the cell landed in, and it did
+so twice in every row. So the folded cells give theirs up. The figures keep
+`padding: 0 3px`, which is a horizontal statement about a 46px track and has no
+vertical part to lose.
+
+Measured again after: **รวมแผนก 91 → 55px, a person's row 109 → 76px, and the
+row carrying a ค้างอนุมัติ warning 161 → 108px.** The whole ไพรมัส card now lands
+inside one 360×780 screen.
+
+**The summary's second line became a caption.** รวมแผนก at the left edge and
+2 คนมี OT at the right, both 11px and muted — one line about the figures above
+it rather than two more cells. Right-aligning the count is what makes it a line:
+left-aligned it began in the third track, under ×1.5 หยุด, and read as a value
+that had lost its heading. And `tfoot tr + tr` draws `--line-softer` between the
+summary rows, because four or five rows of one wash with nothing between them
+are a grey slab in which only the figures change.
+
 Measured at 360px: `display: flex`, `order` 0/1/2, and the three blocks at
 y = 749 / 780 / 965. At 1280px the same table computes `display: table`, every
 `order` is 0, and `tbody` (514) is above `tfoot` (642) — the desktop untouched.

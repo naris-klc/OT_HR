@@ -7412,7 +7412,37 @@ table.mini tbody tr:hover { background: none; }
      row above it to separate from when there is more than one department. */
   .acct-table tfoot tr:first-child { border-top: 0; }
 
-  /* ── ส่งบัญชี: three lines a row ────────────────────────────────────────
+  /* ══ THE FOLDED CELLS CARRY NO PADDING OF THEIR OWN ═════════════════════
+
+     THE ROW WAS 91px TALL FOR TWO LINES OF TEXT, and this is the whole of why.
+     Measured on the live app at 360px on 2026-08-26, one รวมแผนก row:
+
+       tr padding-top                     10
+       who-col   8 + 20 (one line) + 8  = 36
+       row-gap                             2
+       sum-k     8 + 17 (one line) + 8  = 33
+       tr padding-bottom                  10
+                                        ────
+                                           91   for 37px of type
+
+     THREE THINGS WERE STATING THE SAME SPACE. `padding: 8px 7px` is the COMPACT
+     rule at the top of this block, written for a table where a cell IS a row's
+     worth of vertical space; the `tr` states its own padding because a grid row
+     is one box; and `row-gap` states the space between the two lines. Under a
+     grid the cell padding is the one that means nothing — it does not separate a
+     cell from the cell beside it, it just inflates whichever grid track the cell
+     landed in, and it did so twice per row.
+
+     So the folded cells give theirs up and the row keeps the two that describe
+     the shape it actually is. The figures are NOT in this list: they already
+     took `padding: 0 3px` further down, which is a horizontal statement about a
+     46px track and has no vertical part to lose. */
+  .acct-table tbody :is(td.who-col, td.dept-col, td.note-col),
+  .acct-table tfoot :is(td.who-col, td.sum-k, td.note-col),
+  .allco-table tbody :is(td.who-col, td.head-col),
+  .allco-table tfoot :is(td.who-col, td.head-col) { padding: 0; }
+
+  /* ── ส่งบัญชี: two lines a row ──────────────────────────────────────────
      name + the four figures · แผนก beside บริษัท and its remarks. */
   .acct-table thead tr { grid-template-areas: 'who w15 h15 h3 tot'; }
   .acct-table thead :is(th.dept-col, th.note-col) { display: none; }
@@ -7421,8 +7451,8 @@ table.mini tbody tr:hover { background: none; }
     grid-template-areas:
       'who  w15  h15  h3   tot'
       'dept dept note note note';
-    row-gap: 2px;
-    padding: 10px 0;
+    row-gap: 3px;
+    padding: 9px 0;
   }
   .acct-table tbody td.who-col { grid-area: who; min-width: 0; }
   .acct-table tbody td.dept-col { grid-area: dept; }
@@ -7432,17 +7462,31 @@ table.mini tbody tr:hover { background: none; }
      รวมแผนก / รวมทั้งหมด sits UNDER the thing it names rather than in front of
      it, because the figures beside the first line have to stay in the same five
      tracks as the rows above them, and a label in the first track would push
-     วิศวกรรม out of it. */
+     วิศวกรรม out of it.
+
+     THE SECOND LINE IS A CAPTION, NOT A ROW OF ITS OWN. รวมแผนก on the left and
+     2 คนมี OT on the right, both 11px and muted, reading as one line about the
+     figures above them rather than as two more cells. Right-aligning the count
+     is what makes it a line: left-aligned it started in the third track, which
+     put it under the ×1.5 หยุด column and made it look like a value that had
+     lost its heading. */
   .acct-table tfoot tr {
     grid-template-areas:
       'who  w15  h15 h3   tot'
       'sum  sum  note note note';
-    row-gap: 2px;
-    padding: 10px 0;
+    row-gap: 3px;
+    padding: 8px 0;
   }
   .acct-table tfoot td.who-col { grid-area: who; min-width: 0; }
   .acct-table tfoot td.sum-k { grid-area: sum; }
-  .acct-table tfoot td.note-col { grid-area: note; }
+  .acct-table tfoot td.note-col { grid-area: note; text-align: right; }
+
+  /* ONE BLOCK, NOT A STACK OF ROWS. รวมแผนก per department and then the company
+     are four or five rows of the same wash, and without a line between them
+     they run together into one grey slab where the figures are the only thing
+     that changes. `--line-softer` is the same divider the people rows take —
+     the same weight, because these are the same kind of boundary. */
+  .acct-table tfoot tr + tr { border-top: 1px solid var(--line-softer); }
 
   /* ── รวมทุกบริษัท: two lines ────────────────────────────────────────────
      Six columns, no notes and no แผนก — the one that folds is จำนวนคน, which
@@ -7477,9 +7521,15 @@ table.mini tbody tr:hover { background: none; }
      headings — the one heading in the row drawn as content. */
   .acct-table tfoot td.who-col { font-size: 13px; }
   .acct-table tbody td.dept-col,
-  .acct-table tfoot td.sum-k,
-  .acct-table td.note-col {
+  .acct-table tbody td.note-col {
     font: 400 12px/1.45 var(--sans); color: var(--muted);
+  }
+  /* The summary's caption is a step smaller again than the people's second
+     line. It is the same two words on every row of the block — รวมแผนก, then
+     รวมทั้งหมด once — so at 12px it was four repetitions of a label competing
+     with the figures it labels. 11px says it and stops. */
+  .acct-table tfoot :is(td.sum-k, td.note-col) {
+    font: 400 11px/1.5 var(--sans); color: var(--muted);
   }
   .acct-table tfoot td.sum-k { font-weight: 600; }
   /* บริษัท names the row's own company on a sheet already headed by one, so it
