@@ -7,22 +7,14 @@ import { dirname, join } from 'node:path';
 /**
  * ตรวจสอบรายเดือน บนมือถือ — หนึ่งคน หนึ่งการ์ด พร้อมปุ่มทั้งสอง.
  *
- * This screen was the first table in the app to stop being laid out as a table
- * on a phone. That was a deliberate decision and it is written down beside the
- * ones that still are: สรุป OT ส่งบัญชี and สรุป OT แยกแผนก are read DOWN their
+ * This screen was the last table in the app still laid out as a table on a
+ * phone. That was a deliberate decision and it is written down beside the two
+ * that still are: สรุป OT ส่งบัญชี and สรุป OT แยกแผนก are read DOWN their
  * columns, thirty values of 1.50 reconciled against the paper, and a card per
  * person destroys that. ตรวจสอบรายเดือน looked like the same kind of screen and
  * is not: it is where an employee's month is OPENED and where their F-HR-027 is
  * PRINTED, and those two buttons were the eleventh column of eleven — off the
  * right edge, reached by pushing the whole month sideways past the figures.
- *
- * ON 2026-08-26 THE MIDDLE GROUND ARRIVED, and this file grew a section for it.
- * ส่งบัญชี kept its columns and stopped scrolling: its four numeric columns are
- * a grid of the same five tracks in every row, and only แผนก and
- * หมายเหตุ / บริษัท — the two read ACROSS rather than down — fold under the
- * name. So the app now has three answers to a table on a phone, not two, and
- * which one a screen gets is decided by whether its columns are read down.
- * สรุป OT แยกแผนก is the only one left that scrolls.
  *
  * So it is a card list below 860px, and the desktop table is untouched. What is
  * pinned here is the part a later edit can quietly undo:
@@ -560,120 +552,30 @@ test('the phone puts วันเกิดของเดือนนี้ unde
 
 // ── what did not move ────────────────────────────────────────────────────────
 
-test('สรุป OT แยกแผนก is the one table still read sideways', () => {
-  // This test read "the two accounting tables still scroll" until 2026-08-26,
-  // and asserted `.acct-table, .allco-table { table-layout: auto; width:
-  // max-content }` plus their frozen name column. Both are gone: ส่งบัญชี's
-  // seven columns came to 560px inside a 304px card, so รวม ชม. and the whole
-  // หมายเหตุ column — where ค้างอนุมัติ is said — were off the right edge.
-  // See the test below for what replaced them.
-  assert.ok(
-    !phone.includes('table-layout: auto; width: max-content'),
-    'the max-content rule came back',
-  );
-  assert.ok(
-    !phone.includes('.acct-table th.who-col, .acct-table td.who-col'),
-    'the accounting tables froze a column again — nothing scrolls for it to hold',
-  );
-  // สรุป OT แยกแผนก keeps both, and for a reason nothing here changed: it is a
-  // STACK of tables, one per department, and separate tables only line up with
-  // each other from declared widths — which is also what its two frozen columns
-  // need. Read down thirty values of 1.50 against the paper.
-  assert.match(phone, /table\.dept-table \{ table-layout: fixed; width: 100%; min-width: 312px; \}/);
-  assert.match(phone, /\.dept-table th\.who-col, \.dept-table td\.who-col \{\s*position: sticky; left: 0;/);
+test('the two accounting tables still scroll — they are read down their columns', () => {
+  /*
+   * AND THE FOLD WAS BUILT, DEPLOYED AND TAKEN BACK OFF, so this line is now a
+   * decision rather than an assumption. On 2026-08-26 ส่งบัญชี was rebuilt to
+   * fit a 360px screen with no sideways scroll — the four numeric columns held
+   * as a grid, แผนก and หมายเหตุ folded under the name, three arrangements of
+   * the summary block, rows tightened from 91px to 55. It went to prod, was
+   * looked at, and the answer was that the plain table is better looking. It
+   * was reverted whole, docs and all.
+   *
+   * WHAT THAT COSTS, so nobody rediscovers it: on a 360px phone the card is
+   * 304px and this table is 560px, so รวม ชม. and the whole หมายเหตุ column —
+   * including "ค้างอนุมัติ n รายการ · ไม่นับรวม" — are off the right edge until
+   * somebody pushes the table sideways. That is a known, accepted trade, not an
+   * oversight. See README §"The screen and the paper are two different
+   * documents" for the measurements and the four states.
+   */
+  assert.match(phone, /\.acct-table, \.allco-table \{\s*table-layout: auto; width: max-content;/);
+  // And their frozen name column is still frozen.
+  assert.match(phone, /\.acct-table th\.who-col, \.acct-table td\.who-col,\s*\.allco-table th\.who-col/);
   // ตรวจสอบรายเดือน is out of all of it: a sticky cell inside a card is a cell
   // pinned to the edge of a card, which is not a column at all.
-  assert.ok(
-    !phone.slice(phone.indexOf('table.dept-table {'), phone.indexOf('.hr-table {')).includes('.hr-table'),
-    'the card layout is still carrying scrolling-table rules',
-  );
-});
-
-test('ส่งบัญชี fits the card instead: the figures keep their columns, the prose folds', () => {
-  // One markup, two layouts — the same rule ตรวจสอบรายเดือน follows above. A
-  // phone branch in AccountingView.jsx is how the screen and the CSV come to
-  // disagree about a month.
-  const acct = read('components/AccountingView.jsx');
-  assert.ok(!/matchMedia|innerWidth|isMobile/.test(acct), 'the layout is the stylesheet’s to decide');
-
-  assert.match(phone, /\.acct-table, \.allco-table \{\s*display: flex; flex-direction: column; width: 100%; min-width: 0;/);
-  // THE FIVE TRACKS ARE THE POINT. Same template in every row of the table, or
-  // a figure no longer lands under the heading that names it.
-  assert.match(phone, /grid-template-columns: minmax\(0, 1fr\) 46px 46px 46px 54px;/);
-  for (const area of ['who  w15  h15  h3   tot', 'dept dept note note note']) {
-    assert.ok(phone.includes(area), `the row lost its "${area}" line`);
-  }
-  // แผนก and หมายเหตุ FOLD, they do not disappear — the ค้างอนุมัติ line is the
-  // one line on this sheet that says a figure is not final.
-  assert.match(phone, /\.acct-table tbody td\.dept-col \{ grid-area: dept; \}/);
-  assert.match(phone, /\.acct-table tbody td\.note-col \{ grid-area: note; \}/);
-  const head = acct.slice(acct.indexOf('<table className="acct-table">'), acct.indexOf('<tbody>'));
-  for (const col of ['who-col', 'dept-col', 'rate-col', 'total-col', 'note-col']) {
-    assert.ok(head.includes(col), `the head lost ${col}`);
-  }
-  // ONE STATEMENT OF VERTICAL SPACE PER ROW. `padding: 8px 7px` from the
-  // COMPACT rule above means nothing to a grid item — it inflates whichever
-  // track the cell landed in — and with the `tr`'s own padding and the row-gap
-  // it made a two-line summary row 91px tall for 37px of type.
-  assert.match(
-    phone,
-    /\.acct-table tbody :is\(td\.who-col, td\.dept-col, td\.note-col\),[\s\S]{0,220}\{ padding: 0; \}/,
-  );
-  // …and the figures keep theirs, because it is horizontal and says how much
-  // room a 46px track leaves the mono face.
-  assert.match(phone, /\.acct-table td:is\(\.rate-col, \.total-col\),[\s\S]{0,80}font-size: 12px;/);
-  // The desktop is whatever it was: no grid, no folding, above 860px.
-  assert.ok(!desktop.includes('.acct-table tbody tr {'), 'a folding rule leaked out of the phone block');
-});
-
-test('the phone puts รวมแผนก and รวมทั้งหมด above the people, and รวมทุกบริษัท is left alone', () => {
-  // The roster is 20 active people, 15 of them ไพรมัส, so the tall case is
-  // about 15 rows in one company table — with the figures that get signed at
-  // the bottom of it. `order` on a flex table lifts the foot to the heading.
-  assert.match(phone, /\.acct-table, \.allco-table \{\s*display: flex; flex-direction: column;/);
-  assert.match(phone, /\.acct-table > thead \{ order: 0; \}/);
-  assert.match(phone, /\.acct-table > tfoot \{ order: 1; \}/);
-  assert.match(phone, /\.acct-table > tbody \{ order: 2; \}/);
-  // ONE MARKUP, TWO ORDERS. In the document the foot is still the foot, which
-  // is the desktop reading and the one the CSV and the paper sheet follow.
-  const acct = read('components/AccountingView.jsx');
-  assert.ok(
-    acct.indexOf('<tbody>') < acct.indexOf('<tfoot>'),
-    'the document order stopped being the desktop order',
-  );
-  assert.ok(!desktop.includes('.acct-table > tfoot'), 'the phone order leaked onto the desktop');
-  // รวมทุกบริษัท is three rows — one per company and their total. Lifting a
-  // total over the two figures it is the sum of is not a shortcut to anything.
-  assert.ok(!phone.includes('.allco-table > tfoot { order'), 'รวมทุกบริษัท was reordered too');
-  // And the boundary moved with the block: the people begin at the tbody now,
-  // so the foot no longer draws one against the heading row's own.
-  assert.match(phone, /\.acct-table > tbody \{ border-top: 1px solid var\(--line\); \}/);
-  assert.match(phone, /\.acct-table tfoot tr:first-child \{ border-top: 0; \}/);
-  // FOUR SUMMARY ROWS OF ONE WASH RUN TOGETHER INTO A SLAB. A line between them
-  // is what makes them rows, and it is the same weight the people rows take.
-  assert.match(phone, /\.acct-table tfoot tr \+ tr \{ border-top: 1px solid var\(--line-softer\); \}/);
-  // The caption under each summary row is one line, not two cells: the label at
-  // the left edge and the headcount at the right.
-  assert.match(phone, /\.acct-table tfoot td\.note-col \{ grid-area: note; text-align: right; \}/);
-  assert.match(phone, /\.acct-table tfoot :is\(td\.sum-k, td\.note-col\) \{\s*font: 400 11px\/1\.5 var\(--sans\);/);
-});
-
-test('×1.5 หยุด is the same heading one size down, not a second spelling of it', () => {
-  const common = read('components/common.jsx');
-  const acct = read('components/AccountingView.jsx');
-  // BOTH WORDS IN THE MARKUP, one hidden per width. A ternary in the component
-  // would need it to know the viewport, which a server-rendered heading cannot.
-  assert.match(common, /export function RateHead\(\{ rate, of = null, short = null \}\)/);
-  assert.match(common, /<span className="rh-wide">\{of\}<\/span>/);
-  assert.match(common, /<span className="rh-narrow">\{short\}<\/span>/);
-  assert.match(desktop, /\.rh-narrow \{ display: none; \}/);
-  assert.match(phone, /\.acct-table \.rh-narrow, \.allco-table \.rh-narrow \{ display: inline; \}/);
-  // Only the two columns whose lower word is วันหยุด ask for it, and the full
-  // word is still what `of` carries — the short one is an extra, not a rename.
-  assert.equal(acct.match(/short="หยุด"/g).length, 4);
-  assert.equal(acct.match(/of="วันหยุด" short="หยุด"/g).length, 4);
-  // ปกติ is four characters already and is left alone.
-  assert.ok(!acct.includes('of="ปกติ" short='), 'ปกติ was given a short form it does not need');
+  const scrollers = phone.slice(phone.indexOf('.acct-table, .allco-table {'), phone.indexOf('.hr-table {'));
+  assert.ok(!scrollers.includes('.hr-table'), 'the card layout is still carrying scrolling-table rules');
 });
 
 test('nothing is left of the row-tap sheet the card replaced', () => {

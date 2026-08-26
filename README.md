@@ -1009,10 +1009,11 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1662 tests
+and the engine know nothing about Next.js, so the whole suite — **1659 tests
 across 101 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1654 tests … measured 2026-08-25" until then; the file count has not moved.)
+"1654 … 2026-08-25" until then, and was already five behind when the figure was
+re-checked; the file count has not moved.)
 
 That is also why it stays fast: the suite finishes in **about 2 s**, which is a
 budget rather than an observation. (It read "410 tests, under 400 ms" until
@@ -2408,11 +2409,8 @@ about 60px more. Not done: it is a title, not spacing.
 
 **ตรวจสอบรายเดือน บนมือถือ: หน้าละ 5 คน แล้วเลื่อนหน้าเว็บตามปกติ.** Below
 860px this screen is one card per person — that is where **ดู / แก้ไขรายการ**
-and **พิมพ์ F-HR-027** live, and it is why this table was the first to leave the
-sideways-scrolling group. That clause read "the sideways-scrolling group the two
-accounting ones stayed in" until 2026-08-26, when the accounting two left it as
-well by a different route -- see the phone paragraph in the accounting section
-below. A card is about 150px tall
+and **พิมพ์ F-HR-027** live, and it is why this table left the sideways-
+scrolling group the two accounting ones stayed in. A card is about 150px tall
 with two buttons in it, so a sixty-person month was roughly nine screens of
 scrolling between the search box and **รวมทั้งหมด** — and everything the phone
 layout deliberately moved *up* to the total card (วันเกิดของเดือนนี้, then the
@@ -2739,124 +2737,39 @@ day as that screen, and two review tables with different column sets is how a
 month goes wrong. `/api/exports/accounting.csv` follows the screen column for
 column, in the same order.
 
-**สรุป OT ส่งบัญชี บนมือถือ: เจ็ดคอลัมน์ที่พับลงมาสองบรรทัด.** Below 860px the two
-tables on this screen — the per-company sheet and รวมทุกบริษัท — were laid out at
-`width: max-content` and scrolled sideways inside their card. Measured on a 360px
-phone on 2026-08-26: the card is 304px and the sheet came to 560px, columns
-พนักงาน 112 · แผนก 80 · ×1.5 ปกติ 52 · ×1.5 วันหยุด 58 · ×3 วันหยุด 58 · รวม ชม. 60 ·
-หมายเหตุ 140. Three of the seven were on screen. Everything from **รวม ชม.**
-rightward was off the edge — the month's total for each person, and the whole
-**หมายเหตุ** column, which is where *ค้างอนุมัติ n รายการ · ไม่นับรวม* is said. The
-one line that says a figure is **not final** was the least reachable thing on the
-sheet HR closes the month with.
+**สรุป OT ส่งบัญชี บนมือถือ: ตารางนี้เลื่อนแนวนอน และนั่นคือคำตอบที่เลือกแล้ว.**
+Below 860px this table is laid out at `width: max-content` and scrolls sideways
+inside its card, with พนักงาน frozen at the left edge. Measured at 360px: the
+card is 304px and the seven columns come to 560px — พนักงาน 112 · แผนก 80 ·
+×1.5 ปกติ 52 · ×1.5 วันหยุด 58 · ×3 วันหยุด 58 · รวม ชม. 60 · หมายเหตุ 140 —
+so three of the seven are on screen and **รวม ชม. and the whole หมายเหตุ column,
+where *ค้างอนุมัติ n รายการ · ไม่นับรวม* is said, are reached by pushing the
+table sideways.**
 
-**Both tables now fit the card, and nothing scrolls.** Each row is a grid of the
-same five tracks in every row of the table — head, body and foot alike — so the
-four numeric columns keep their columns: **×1.5 ปกติ | ×1.5 หยุด | ×3 หยุด | รวม
-ชม.**, read *down* against the รวมแผนก and รวมทั้งหมด lines beneath them. The two
-prose columns, **แผนก** and **หมายเหตุ / บริษัท**, are read *across* on the one row
-in front of you and lose nothing by folding onto a second line under the name.
-รวมทุกบริษัท folds **จำนวนคน** the same way, with the heading it loses said again
-beside the figure.
+**That is a known trade, not an oversight, and it was re-opened and closed on
+2026-08-26.** A phone layout that fits the card was built, shipped to prod and
+taken back off the same day. Four states were looked at, all at 360px:
 
-**Shorter headings and tighter cells were asked for first, and are in here — they
-were not enough on their own.** `RateHead` takes an optional `short`, so
-×1.5 วันหยุด reads ×1.5 หยุด below 860px; both words are in the markup with one
-hidden per width, because which of them fits is a question about the viewport
-that a server-rendered heading cannot ask. With the figures a size down and their
-padding at 3px a side, that comes to about 60px against a 256px overrun. Seven
-columns of Thai do not fit 304px at any type size that can be read. What fits is
-46 + 46 + 46 + 54 = 192px of figures, leaving 112px for the name on a 360px phone
-and 72px on a 320px one — where the name wraps and the employee code still lands
-on one line.
+| | what it was | why it went |
+|---|---|---|
+| **A** | this table — seven columns, sideways scroll | the one that was kept |
+| **B** | each row a grid of five tracks: name + the four figures, with แผนก and หมายเหตุ folded onto a second line; nothing scrolls; `RateHead` gained a `short` so ×1.5 วันหยุด read ×1.5 หยุด | summary still at the foot of ~15 rows |
+| **C** | B, with `order` on a flex table lifting รวมแผนก and รวมทั้งหมด up under the heading row | the folded rows read as fragments |
+| **D** | C, with the cell padding the COMPACT rule leaves on a grid item taken back out — รวมแผนก 91px → 55, a person's row 109 → 76 | **แบบเดิมสวยกว่า** |
 
-**It is deliberately not the card ตรวจสอบรายเดือน uses.** That screen drops the
-rate columns and keeps one total per person, because its cards carry the two
-buttons a month is *decided* with. This screen is read rather than acted on, and
-the three rate buckets are the reading — dropping them would leave HR closing the
-month without seeing what accounting is about to be sent.
+**The judgement was on looks and it is the right one to defer to** — this screen
+is read by the person who closes the month, and a layout they find ugly is a
+layout they will avoid. The folded version is not lost: it is
+`ebc8340`, `d2a66af` and `69daf3f` on this branch, reverted whole by the commit
+that follows them, docs and tests included. Anything that rebuilds it should
+read those three first rather than start again from the same measurements.
 
-**Nothing is pinned any more.** The frozen พนักงาน column and its right-edge
-shadow existed for the sideways scroll and went with it; a column with nowhere to
-travel needs no anchor. The borders and the two summary fills moved from the
-cells up to the `tr`, because a fill declared per cell leaves the gaps between
-grid tracks — and the whole folded line, where there is no cell at all — showing
-the card through it.
-
-**และบล็อกสรุปขึ้นมาอยู่ใต้หัวคอลัมน์.** หัวคอลัมน์ → รวมแผนก และ รวมทั้งหมด →
-แล้วจึงเป็นรายชื่อ. The roster is 20 active people, 15 of them ไพรมัส (counted
-2026-08-26), and the sheet lists whoever has OT — plus, with
-**แสดงพนักงานที่ไม่มี OT** ticked, the 13 with `role: 'employee'`. So the tall
-case is about 15 rows in one company table, roughly 1,350px, and the figures
-that are the POINT of this screen were at the bottom of it: the per-department
-split and the company's three rate buckets, which are what the paper form's 1.50
-and 3.00 columns are added up from. The company's own total was already on the
-card head as a chip; its split across the rates was not.
-
-`order` on a flex table, which is why the table is a flex column below 860px —
-**one markup, two orders**, the same mechanism `.month-card` uses to lift
-วันเกิดของเดือนนี้ over the footnotes on ตรวจสอบรายเดือน, and for the same
-reason: a phone branch in the JSX is a second document that can come to disagree
-with the first about a month. In the document the foot is still the foot, which
-is the desktop reading and the one `/api/exports/accounting.csv` and
-`AccountingPrint` follow. Above 860px no `order` is declared at all.
-
-The heading row stays at the top and governs both blocks under it, because both
-are laid out on the same five tracks — that is what the grid buys, and it is why
-the reordering needs no second heading row. The boundary moved with the block:
-`tbody` draws the line where the people begin, and the foot no longer draws one
-against the heading row's own.
-
-**รวมทุกบริษัท is left in document order.** It is three rows — one per company
-and their total — and lifting a total over the two figures it is the sum of is
-not a shortcut to anything.
-
-**และแถวถูกบีบลง — 91px เหลือ 55px.** The first version of all this shipped and
-came straight back as *ไม่สวยเลย*, which was right: the rows were airy enough
-that a two-line summary row stood as tall as a person's card, and the summary
-block read as another group of people rather than as a total. Measured on the
-live app at 360px, one รวมแผนก row:
-
-```
-tr padding-top                     10
-who-col   8 + 20 (one line) + 8  = 36
-row-gap                             2
-sum-k     8 + 17 (one line) + 8  = 33
-tr padding-bottom                  10
-                                 ────
-                                    91   for 37px of type
-```
-
-**Three things were stating the same space.** `padding: 8px 7px` is the COMPACT
-rule at the top of the phone block, written for a table where a cell IS a row's
-worth of vertical space; the `tr` states its own padding because a grid row is
-one box; and `row-gap` states the space between the two lines. Under a grid the
-cell padding is the one that means nothing — it does not separate a cell from
-the cell beside it, it inflates whichever track the cell landed in, and it did
-so twice in every row. So the folded cells give theirs up. The figures keep
-`padding: 0 3px`, which is a horizontal statement about a 46px track and has no
-vertical part to lose.
-
-Measured again after: **รวมแผนก 91 → 55px, a person's row 109 → 76px, and the
-row carrying a ค้างอนุมัติ warning 161 → 108px.** The whole ไพรมัส card now lands
-inside one 360×780 screen.
-
-**The summary's second line became a caption.** รวมแผนก at the left edge and
-2 คนมี OT at the right, both 11px and muted — one line about the figures above
-it rather than two more cells. Right-aligning the count is what makes it a line:
-left-aligned it began in the third track, under ×1.5 หยุด, and read as a value
-that had lost its heading. And `tfoot tr + tr` draws `--line-softer` between the
-summary rows, because four or five rows of one wash with nothing between them
-are a grey slab in which only the figures change.
-
-Measured at 360px: `display: flex`, `order` 0/1/2, and the three blocks at
-y = 749 / 780 / 965. At 1280px the same table computes `display: table`, every
-`order` is 0, and `tbody` (514) is above `tfoot` (642) — the desktop untouched.
-
-Walked on the built app at 360px and 320px, 2026-08-26: `scrollWidth` equals
-`clientWidth` on the page and on every `.table-wrap`, the tracks measure
-112/46/46/46/54, and at 1280px the rows still compute `display: table-row` with
-the desktop's own 168/165/52/58/58/137/300.
+**The two things that made it worth trying are still true**, and are what to
+weigh against the scroll if this comes back: seven columns of Thai do not fit
+304px at any type size that can be read — tighter padding, smaller figures and
+shortened headings together buy about 60px against a 256px overrun — and the
+roster is 20 active people, 15 of them ไพรมัส, so the tall case is about 15 rows
+in one company table.
 
 
 The **paper form** is the accounting sheet: รหัส | ชื่อ-นามสกุล | **1.50** |
@@ -3129,19 +3042,15 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1662/1662 pass in about 2 s**, measured 2026-08-26 across 101
-  files. It read "1661" earlier the same day, "1654, measured 2026-08-25", and
-  "1653", "1651", "1649", "1646", "1641", "1638" and "1601" earlier that day,
-  and "1386 across 86 files, 2026-08-24" before that. The four newest are in
-  `test/hrMonthCards.test.js` and pin สรุป OT ส่งบัญชี บนมือถือ: that
-  สรุป OT แยกแผนก is now the only table on a phone still read sideways, that
-  ส่งบัญชี folds instead — five grid tracks in every row, แผนก and หมายเหตุ under
-  the name, the desktop table untouched — that `RateHead`'s `short` is the same
-  heading one size down rather than a second spelling of it, and that the phone
-  lifts รวมแผนก and รวมทั้งหมด above the people while leaving รวมทุกบริษัท in
-  document order. They replaced one case that asserted the opposite, so the
-  total moved by three and no new file with it. Before them, the six in the
-  same file that pin
+- `npm test` — **1659/1659 pass in about 2 s**, measured 2026-08-26 across 101
+  files. It read "1654, measured 2026-08-25" until then, which was five behind
+  the tree rather than a change: the count was simply not re-run after the last
+  few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
+  and "1601" earlier that day, and "1386 across 86 files, 2026-08-24" before
+  that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
+  phone layout of its own; that was reverted the same day and its four cases
+  went with it — see §"The screen and the paper are two different documents".
+  The six newest are the cases in `test/hrMonthCards.test.js` that pin
   แถบแจ้งเตือนของเดือน — that the card holds exactly **one** `.alert` and the
   list opens inside it, what an item is made of, that its wording is the
   notice's own module's and not a copy, one toggle and one ✕ with no `<details>`

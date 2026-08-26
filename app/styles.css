@@ -4074,19 +4074,6 @@ thead th.check { vertical-align: middle; }
    code in the queue's first column. */
 .nb { white-space: nowrap; }
 
-/* ── the same heading at two widths ──────────────────────────────────────
-   `RateHead`'s optional `short`: both words are in the markup and one of them
-   is hidden, because which one fits is a question about the viewport and a
-   server-rendered heading cannot ask it. The full word is the default and the
-   short one appears nowhere until a media query turns it on — see ส่งบัญชี AND
-   รวมทุกบริษัท FIT THE SCREEN in the phone block, which is the only place it is.
-
-   NOT `visibility` AND NOT A CLIPPED BOX. The hidden half must take no width at
-   all: it is inside a `.nb` that refuses to break, so a heading carrying both
-   "วันหยุด" and "หยุด" side by side would be 67px of unbreakable text in a 46px
-   column and would set the column's width from a word nobody can see. */
-.rh-narrow { display: none; }
-
 /* Three buttons that must not break mid-label, measured as a set: 58 + 73 + 91,
    two 6px gaps, and the cell's own padding. It was 246 and the third button was
    clipped by twelve pixels — a control half off the edge of a row. */
@@ -6719,32 +6706,23 @@ table.mini tbody tr:hover { background: none; }
     font-size: 10px; letter-spacing: .03em;
   }
 
-  /* THERE WAS A RULE HERE — `.acct-table, .allco-table { table-layout: auto;
-     width: max-content; min-width: 100% }` — and it is worth saying what it did
-     before saying why it is gone, because the reasoning is still right for the
-     shape it was written for.
+  /* EVERY COLUMN SIZES ITSELF. No declared widths anywhere below — a figure
+     column is as wide as its figures and a note column as wide as its notes,
+     and a month with longer names or an extra remark widens the column that
+     grew rather than pushing something off the end of a fixed budget.
 
-     It asked each column to size itself: a figure column as wide as its figures,
-     a note column as wide as its notes. Left at the base `width: 100%` a
-     seven-column table squeezed into a 304px card is laid out at its MINIMUM
+     `width: max-content` is what asks for that. Left at the base `width: 100%`,
+     an eleven-column table squeezed into 351px is laid out at its MINIMUM
      widths instead — every column wrapping to one or two characters a line —
-     because a table only overflows once it cannot compress further. max-content
-     says the opposite: take the width the contents want, and let `.table-wrap`
-     scroll.
+     because a table only overflows once it cannot compress further. Asking for
+     max-content says the opposite: take the width the contents actually want
+     and let `.table-wrap` scroll. `min-width: 100%` keeps a short table from
+     ending in the middle of the card.
 
-     THE SCROLL IS WHAT IT TRADED, AND ON THIS SHEET THE TRADE WAS WRONG.
-     Measured on a 360px phone on 2026-08-26: the card is 304px and ส่งบัญชี's
-     seven columns came to 560px. Everything from รวม ชม. rightward was off the
-     edge — the month's total per person, and the whole หมายเหตุ column with
-     the ค้างอนุมัติ line in it, which is the one line that says a figure is not
-     final. A sheet where the number being signed for is the number you have to
-     go looking for is not a sheet.
-
-     Both tables fold instead now, to a width with no scroll in it at all. See
-     ส่งบัญชี AND รวมทุกบริษัท FIT THE SCREEN further down for what folds where.
-
-     สรุป OT แยกแผนก was never in this rule and still is not — for the opposite
-     reason, which the block below sets out. */
+     สรุป OT แยกแผนก IS NOT IN THIS RULE, and cannot be. See the block below. */
+  .acct-table, .allco-table {
+    table-layout: auto; width: max-content; min-width: 100%;
+  }
 
   /* ── สรุป OT แยกแผนก declares its widths, and has to ────────────────────
      This screen is a STACK of tables — one per department, each its own
@@ -7259,330 +7237,30 @@ table.mini tbody tr:hover { background: none; }
      search box down the screen. */
   .month-card > .alert.tight { padding: 8px 12px; }
 
-  /* ══ ส่งบัญชี AND รวมทุกบริษัท FIT THE SCREEN ═══════════════════════════
+  .acct-table :is(th, td).who-col,
+  .allco-table :is(th, td).who-col { max-width: 112px; }
+  .acct-table :is(th, td).note-col { max-width: 140px; }
+  .acct-table :is(th, td).dept-col { max-width: 88px; }
 
-     THE COLUMNS THAT COULD NOT FIT GO UNDER THE NAME INSTEAD OF OFF THE EDGE.
+  /* THE NAME COLUMN IS FROZEN. Scrolled right to read 1.50, 3.00 and รวม, the
+     one thing that stops meaning anything is whose row it is — so it stays.
+     The shadow on its right edge is what says it is pinned rather than merely
+     first.
 
-     Measured, 360px phone, before this block existed: card 304px, table 560px,
-     columns พนักงาน 112 · แผนก 80 · ×1.5 ปกติ 52 · ×1.5 วันหยุด 58 · ×3 วันหยุด
-     58 · รวม ชม. 60 · หมายเหตุ 140. Three of the seven were on screen.
-
-     THE FIGURES ARE WHAT MUST STAY IN COLUMNS, and everything else is prose.
-     That is the whole of the reasoning. The four numeric columns are read DOWN
-     — วิศวกรรม's ×1.5 against ผลิต's, each person's against the รวมแผนก line
-     under them — and a figure that has moved out of its column is a figure
-     nobody can add up by eye. แผนก and หมายเหตุ are read ACROSS, on the one row
-     you are looking at, and lose nothing by sitting under the name.
-
-     So each row becomes a grid of the same five tracks in every row of every
-     one of these tables — head, body and foot alike — and the two prose cells
-     drop to a second line spanning the whole width. 46 + 46 + 46 + 54 is 192px
-     of figures, which leaves 112px for the name on a 360px phone and 72px on a
-     320px one, where the name wraps and the code still fits on one line.
-
-     WHY A GRID AND NOT A NARROWER TABLE. The other half of what was asked for —
-     less padding, smaller figures, ×1.5 หยุด for ×1.5 วันหยุด — is all in here
-     and all of it helps, but it comes to about 60px against a 256px overrun.
-     Seven columns of Thai do not fit 304px at any type size that can be read;
-     the arithmetic above is what says so. Folding two of them is what fits.
-
-     WHY NOT THE FULL CARD ตรวจสอบรายเดือน USES. That screen's card (`.hr-table
-     tbody tr`, further up) drops the rate columns entirely and keeps one total
-     per person, because it is a screen for DECIDING — its cards carry buttons.
-     This one is a screen for CHECKING, and the three rate buckets are the check.
-     Dropping them here would mean the sheet HR closes the month with no longer
-     shows what accounting is about to be sent.
-
-     NOTHING SCROLLS SIDEWAYS ANY MORE, so nothing is pinned either: the frozen
-     `position: sticky; left: 0` name column and its shadow are gone with the
-     scroll they existed for. A column that has nowhere to travel needs no
-     anchor, and the shadow would be an edge drawn against nothing. */
-  .acct-table, .allco-table {
-    display: flex; flex-direction: column; width: 100%; min-width: 0;
+     A sticky cell needs an opaque background of its own or the rows travel
+     underneath it, and it needs one per row state, which is what the three
+     lines after each block are for. */
+  .acct-table th.who-col, .acct-table td.who-col,
+  .allco-table th.who-col, .allco-table td.who-col {
+    position: sticky; left: 0; z-index: 1;
+    box-shadow: 3px 0 6px -3px var(--shadow-1);
   }
-  .acct-table > :is(thead, tbody, tfoot),
-  .allco-table > :is(thead, tbody, tfoot) { display: block; }
-
-  /* ══ THE SUMMARY BLOCK COMES UP TO THE HEADING ══════════════════════════
-
-     หัวคอลัมน์ → รวมแผนก และ รวมทั้งหมด → then the people.
-
-     WHAT THE ROWS ARE FOR AND WHAT THE FOOT IS FOR ARE NOT THE SAME JOB, and
-     on a phone they are not the same distance away either. The foot carries the
-     figures that get signed and typed into payroll — the per-department split
-     and the company's three rate buckets, which are what the 1.50 and 3.00
-     columns of the paper form are added up from. The rows are the detail you go
-     to when one of those figures looks wrong.
-
-     The roster is 20 active people, 15 of them ไพรมัส (counted 2026-08-26), and
-     the sheet lists whoever has OT — plus, with แสดงพนักงานที่ไม่มี OT ticked,
-     the 13 with `role: 'employee'`. So the tall case is about 15 rows in one
-     company table, roughly 1,350px, and the figures that are the POINT of the
-     screen were at the bottom of it. The company's own total was already on the
-     card head as a chip; its split across the three rates was not.
-
-     `order` ON A FLEX TABLE, WHICH IS WHY THE TABLE IS A FLEX COLUMN. One
-     markup, two orders — the same mechanism `.month-card` uses to lift
-     วันเกิดของเดือนนี้ over the footnotes on ตรวจสอบรายเดือน, and for the same
-     reason: a phone branch in the JSX is a second document that can come to
-     disagree with the first about a month. Above 860px no `order` is declared
-     at all and the foot is the foot.
-
-     THE HEADING ROW STAYS AT THE TOP and governs both blocks under it, because
-     both are laid out on the same five tracks — that is what the grid buys, and
-     it is why this reordering is possible without a second heading row.
-
-     รวมทุกบริษัท IS NOT IN THIS RULE. It is three rows — one per company and
-     their total — and lifting a total over two lines is not a shortcut to
-     anything; it just puts the answer before the two figures it is the sum of. */
-  .acct-table > thead { order: 0; }
-  .acct-table > tfoot { order: 1; }
-  .acct-table > tbody { order: 2; }
-  /* And the boundary moves with it: the people begin here now. */
-  .acct-table > tbody { border-top: 1px solid var(--line); }
-
-  .acct-table tr, .allco-table tr {
-    display: grid;
-    /* The one declaration that makes these columns columns: the same five
-       tracks in every row of the table, so a figure lands under the heading
-       that names it however the rows above it wrapped. */
-    grid-template-columns: minmax(0, 1fr) 46px 46px 46px 54px;
-    align-items: start;
-  }
-
-  /* THE DESKTOP'S COLUMN WIDTHS HAVE TO BE GIVEN UP, and they do not go
-     quietly. `th.who-col { width: 168px }` and `th.rate-col { width: 52px }`
-     are in the base sheet, unscoped, for every table in the app that has these
-     columns — and a `width` on a GRID ITEM is not a column width any more, it
-     is that one box's size inside its track. So the heading row came out
-     168 + 52 + 58 + 58 + 54 = 390px of cells inside a 304px grid, each one
-     spilling over the next: the fold worked and the headings still did not fit.
-
-     `auto` hands the sizing back to the track, which is where it now belongs. */
-  .acct-table :is(th, td), .allco-table :is(th, td) { width: auto; }
-  /* `th.rate-col.wide` — the two holiday columns, 58px rather than 52 to hold
-     วันหยุด — is TWO classes and an element, and the line above is one class
-     and an element (`:is()` takes the weight of its heaviest argument, which
-     here is `th`). It lost, and only on those two columns, which is why the
-     heading row still ran 12px over after the reset. Named at its own weight. */
-  .acct-table th.rate-col.wide,
-  .allco-table th.rate-col.wide { width: auto; }
-
-  /* THE ROW PAINTS ITSELF NOW, cell by cell having become impossible: under a
-     grid every `td` draws its own border across whichever track it landed in,
-     and a `--neutral-wash` fill declared per cell leaves the gaps between the
-     tracks — and the whole second line, where there is no cell at all — showing
-     the card through it. So the borders and the two summary fills move up to
-     the `tr`, which is one box whatever its cells do. */
-  .acct-table :is(th, td), .allco-table :is(th, td) {
-    border: 0; background: none;
-  }
-  .acct-table tbody tr, .allco-table tbody tr {
-    border-bottom: 1px solid var(--line-softer);
-  }
-  .acct-table tbody tr:last-child,
-  .allco-table tbody tr:last-child { border-bottom: 0; }
-  /* No pointer on a phone, so no hover state to paint. */
-  .acct-table tbody tr:hover, .allco-table tbody tr:hover { background: none; }
-
-  .acct-table thead tr, .allco-table thead tr {
-    background: var(--neutral-wash); border-bottom: 1px solid var(--line);
-  }
-  .acct-table tfoot tr, .allco-table tfoot tr {
-    background: var(--neutral-wash);
-  }
-  /* Where the foot begins, said once. `tfoot tr + tr td { border-top: none }`
-     in the base sheet is the same decision at cell level — several summary rows
-     stack in one foot and only the first of them is a boundary. */
-  .allco-table tfoot tr:first-child { border-top: 1px solid var(--line); }
-  /* The one that gets signed for, green here as everywhere else in the app.
-     After the rule above, not before it: on รวมทุกบริษัท the grand row IS the
-     first row of the foot, and two rules of equal weight are settled by which
-     one comes last. */
-  .acct-table tfoot tr.grand, .allco-table tfoot tr.grand {
-    background: var(--green-bg); color: var(--green-dark);
-    border-top: 1.5px solid var(--line);
-  }
-  /* ส่งบัญชี's foot no longer begins anywhere — it is the block directly under
-     the heading row, whose own `border-bottom` is already that line. A boundary
-     declared here as well would be two rules drawn one pixel apart, and on a
-     company with a single department the row carrying it is `.grand`, whose
-     1.5px would land against the heading's 1px. The line between the subtotals
-     and the total they add to stays: that is `.grand`'s own, and it only has a
-     row above it to separate from when there is more than one department. */
-  .acct-table tfoot tr:first-child { border-top: 0; }
-
-  /* ══ THE FOLDED CELLS CARRY NO PADDING OF THEIR OWN ═════════════════════
-
-     THE ROW WAS 91px TALL FOR TWO LINES OF TEXT, and this is the whole of why.
-     Measured on the live app at 360px on 2026-08-26, one รวมแผนก row:
-
-       tr padding-top                     10
-       who-col   8 + 20 (one line) + 8  = 36
-       row-gap                             2
-       sum-k     8 + 17 (one line) + 8  = 33
-       tr padding-bottom                  10
-                                        ────
-                                           91   for 37px of type
-
-     THREE THINGS WERE STATING THE SAME SPACE. `padding: 8px 7px` is the COMPACT
-     rule at the top of this block, written for a table where a cell IS a row's
-     worth of vertical space; the `tr` states its own padding because a grid row
-     is one box; and `row-gap` states the space between the two lines. Under a
-     grid the cell padding is the one that means nothing — it does not separate a
-     cell from the cell beside it, it just inflates whichever grid track the cell
-     landed in, and it did so twice per row.
-
-     So the folded cells give theirs up and the row keeps the two that describe
-     the shape it actually is. The figures are NOT in this list: they already
-     took `padding: 0 3px` further down, which is a horizontal statement about a
-     46px track and has no vertical part to lose. */
-  .acct-table tbody :is(td.who-col, td.dept-col, td.note-col),
-  .acct-table tfoot :is(td.who-col, td.sum-k, td.note-col),
-  .allco-table tbody :is(td.who-col, td.head-col),
-  .allco-table tfoot :is(td.who-col, td.head-col) { padding: 0; }
-
-  /* ── ส่งบัญชี: two lines a row ──────────────────────────────────────────
-     name + the four figures · แผนก beside บริษัท and its remarks. */
-  .acct-table thead tr { grid-template-areas: 'who w15 h15 h3 tot'; }
-  .acct-table thead :is(th.dept-col, th.note-col) { display: none; }
-
-  .acct-table tbody tr {
-    grid-template-areas:
-      'who  w15  h15  h3   tot'
-      'dept dept note note note';
-    row-gap: 3px;
-    padding: 9px 0;
-  }
-  .acct-table tbody td.who-col { grid-area: who; min-width: 0; }
-  .acct-table tbody td.dept-col { grid-area: dept; }
-  .acct-table tbody td.note-col { grid-area: note; }
-
-  /* ── the summary block: the name of what is totalled, then the word ─────
-     รวมแผนก / รวมทั้งหมด sits UNDER the thing it names rather than in front of
-     it, because the figures beside the first line have to stay in the same five
-     tracks as the rows above them, and a label in the first track would push
-     วิศวกรรม out of it.
-
-     THE SECOND LINE IS A CAPTION, NOT A ROW OF ITS OWN. รวมแผนก on the left and
-     2 คนมี OT on the right, both 11px and muted, reading as one line about the
-     figures above them rather than as two more cells. Right-aligning the count
-     is what makes it a line: left-aligned it started in the third track, which
-     put it under the ×1.5 หยุด column and made it look like a value that had
-     lost its heading. */
-  .acct-table tfoot tr {
-    grid-template-areas:
-      'who  w15  h15 h3   tot'
-      'sum  sum  note note note';
-    row-gap: 3px;
-    padding: 8px 0;
-  }
-  .acct-table tfoot td.who-col { grid-area: who; min-width: 0; }
-  .acct-table tfoot td.sum-k { grid-area: sum; }
-  .acct-table tfoot td.note-col { grid-area: note; text-align: right; }
-
-  /* ONE BLOCK, NOT A STACK OF ROWS. รวมแผนก per department and then the company
-     are four or five rows of the same wash, and without a line between them
-     they run together into one grey slab where the figures are the only thing
-     that changes. `--line-softer` is the same divider the people rows take —
-     the same weight, because these are the same kind of boundary. */
-  .acct-table tfoot tr + tr { border-top: 1px solid var(--line-softer); }
-
-  /* ── รวมทุกบริษัท: two lines ────────────────────────────────────────────
-     Six columns, no notes and no แผนก — the one that folds is จำนวนคน, which
-     is a bare digit and needs the heading it loses said again beside it. */
-  .allco-table thead tr { grid-template-areas: 'who w15 h15 h3 tot'; }
-  .allco-table thead th.head-col { display: none; }
-  .allco-table tr {
-    grid-template-areas:
-      'who  w15  h15  h3   tot'
-      'head head head head head';
-    row-gap: 2px;
-    padding: 10px 0;
-  }
-  .allco-table :is(th, td).who-col { grid-area: who; min-width: 0; }
-  .allco-table :is(th, td).head-col { grid-area: head; }
-  .allco-table td.head-col {
-    text-align: left; font: 400 12px/1.5 var(--sans); color: var(--muted);
-  }
-  .allco-table td.head-col::before {
-    content: 'จำนวนคน '; color: var(--muted-2);
-  }
-
-  /* ── how the folded lines read ──────────────────────────────────────────
-     Quieter than the name above them and quieter again than the figures beside
-     it — this is the row's caption, not its content. */
-  .acct-table tbody td.who-col {
-    font: 600 14px/1.4 var(--sans);
-  }
-  /* `td` AND NOT `:is(th, td)`. The heading face is 10px for every column in
-     these tables; a rule reaching the `th` as well is one class heavier than
-     the rule that sets it, so บริษัท came out at 13px above a row of 10px
-     headings — the one heading in the row drawn as content. */
-  .acct-table tfoot td.who-col { font-size: 13px; }
-  .acct-table tbody td.dept-col,
-  .acct-table tbody td.note-col {
-    font: 400 12px/1.45 var(--sans); color: var(--muted);
-  }
-  /* The summary's caption is a step smaller again than the people's second
-     line. It is the same two words on every row of the block — รวมแผนก, then
-     รวมทั้งหมด once — so at 12px it was four repetitions of a label competing
-     with the figures it labels. 11px says it and stops. */
-  .acct-table tfoot :is(td.sum-k, td.note-col) {
-    font: 400 11px/1.5 var(--sans); color: var(--muted);
-  }
-  .acct-table tfoot td.sum-k { font-weight: 600; }
-  /* บริษัท names the row's own company on a sheet already headed by one, so it
-     is the quietest thing in the cell; the two `.note-mark` lines under it — the
-     birthday remark and ค้างอนุมัติ — keep their own colours. */
-  .acct-table td.note-col .co { color: var(--muted-2); }
-
-  /* …EXCEPT ON รวมทั้งหมด. `tfoot tr.grand td` paints every cell in that row
-     `--green-dark`, and the four rules above are each one class heavier than
-     it, so the row that gets signed for came out with grey captions on a green
-     fill. Said again here, once, for the cells that took the grey. */
-  .acct-table tfoot tr.grand :is(td.sum-k, td.note-col, td.note-col .co),
-  .allco-table tfoot tr.grand td.head-col { color: var(--green-dark); }
-  /* A pseudo-element cannot go inside `:is()` — it is dropped from a forgiving
-     selector list rather than erroring, which is a quiet way to lose a rule. So
-     the จำนวนคน label says it on its own line. */
-  .allco-table tfoot tr.grand td.head-col::before { color: var(--green-dark); }
-
-  /* ── the figures ────────────────────────────────────────────────────────
-     A step down from the 13px the rest of the table takes, and the padding with
-     it: at 46px a track has 40px of room once 3px a side is gone, which holds
-     "1234.5" in the mono face and every figure this sheet can produce. */
-  .acct-table :is(th, td):is(.rate-col, .total-col),
-  .allco-table :is(th, td):is(.rate-col, .total-col) {
-    padding: 0 3px; text-align: center;
-  }
-  .acct-table td:is(.rate-col, .total-col),
-  .allco-table td:is(.rate-col, .total-col) {
-    font-size: 12px; overflow-wrap: normal;
-  }
-  /* ×1.5 หยุด FOR ×1.5 วันหยุด. Nine pixels a column in the heading face, on
-     two of the three, which is what lets a 46px track hold a two-line heading
-     without the lower word being torn in half — the exact failure `RateHead`
-     was written to stop, arriving from the other direction. วัน is what goes:
-     ×1.5 หยุด and ×3 หยุด beside ×1.5 ปกติ still say which day each rate is
-     for, and the column they head is four characters wide. */
-  .acct-table .rh-wide, .allco-table .rh-wide { display: none; }
-  .acct-table .rh-narrow, .allco-table .rh-narrow { display: inline; }
-
-  /* The headings sit on the first line of the row they head, level with the
-     name rather than with the figures under it. */
-  .acct-table thead th, .allco-table thead th { padding: 8px 3px; }
+  .acct-table tbody td.who-col,
+  .allco-table tbody td.who-col { background: var(--card); }
   .acct-table thead th.who-col,
-  .allco-table thead th.who-col { padding-left: 0; text-align: left; }
-
-  /* The wrap has nothing left to scroll: no sideways overflow, and so no
-     shadow-and-cover gradients either — those are painted by `.table-wrap`
-     above and would be two grey smears down a table that fits.
-
-     `:has` rather than a class in the JSX, because which tables fold is decided
-     here and a second place to say it is a second place to forget. */
-  .table-wrap:has(> .acct-table),
-  .table-wrap:has(> .allco-table) { overflow: visible; background: none; }
+  .allco-table thead th.who-col { z-index: 3; background: var(--neutral-wash); }
+  .acct-table tbody tr:hover td.who-col,
+  .allco-table tbody tr:hover td.who-col { background: var(--green-wash); }
 
   /* สรุป OT แยกแผนก ONCE FROZE TWO — ลำดับที่ as well as the name, because that
      number is the line number on the printed sheet and reading the screen
@@ -7639,19 +7317,26 @@ table.mini tbody tr:hover { background: none; }
   /* Only the cells that are actually pinned are named here. `tfoot td` and
      `tr.grand td` already paint these two colours for every other cell in the
      row — a sticky cell is the only one that has to be told again, because it
-     leaves the row's own painted box behind when it moves.
-
-     สรุป OT แยกแผนก is the only table left in this rule. ส่งบัญชี and
-     รวมทุกบริษัท pinned nothing once they stopped scrolling — the two lines
-     naming them, and the block that gave `.sum-k` the pin and took it back off
-     `.who-col`, went with the frozen column on 2026-08-26. Their foot rows are
-     painted by the row now, not the cell; see ส่งบัญชี AND รวมทุกบริษัท FIT THE
-     SCREEN above. */
-  .dept-table tfoot td.who-col { background: var(--neutral-wash); }
+     leaves the row's own painted box behind when it moves. */
+  .dept-table tfoot td.who-col,
+  .allco-table tfoot td.who-col,
+  .acct-table tfoot td.sum-k { background: var(--neutral-wash); }
 
   /* `.grand` is the one that gets signed for rather than another subtotal, and
      it is green everywhere else in this app for exactly that reason. */
-  .dept-table tfoot tr.grand td.who-col { background: var(--green-bg); }
+  .dept-table tfoot tr.grand td.who-col,
+  .allco-table tfoot tr.grand td.who-col,
+  .acct-table tfoot tr.grand td.sum-k { background: var(--green-bg); }
+
+  /* ส่งบัญชี's foot is the one row shape that still differs: รวมแผนก sits in the
+     first cell and the name of what is being totalled in the SECOND, so it is
+     `.sum-k` that occupies the frozen column and takes the pin, and the name
+     cell beside it stays put. */
+  .acct-table tfoot td.sum-k {
+    position: sticky; left: 0; z-index: 1;
+    box-shadow: 3px 0 6px -3px var(--shadow-1);
+  }
+  .acct-table tfoot td.who-col { position: static; box-shadow: none; }
 
   /* ══ the export buttons ════════════════════════════════════════════════ */
 
