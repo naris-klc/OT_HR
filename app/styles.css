@@ -2275,6 +2275,27 @@ td > .approver-line { margin-top: 5px; }
    states its own rhythm with `marginTop` on each row; the 12px below was for a
    box with a list directly under it. */
 .acct-find { margin-bottom: 0; }
+
+/* ── AND THE BOX KEEPS ITS WIDTH, OR THE COUNT TAKES IT ──────────────────
+   `.field` is `flex: 1`, which is `flex: 1 1 0%` — a basis of NOTHING. In a
+   wrapping row that is the one value that guarantees no wrap ever happens: the
+   row's minimum content width is the field's `min-width: 150px` plus
+   "แสดง 3 จาก 4 คน", which is nowrap and about 90px, and 254px fits inside a
+   304px card. So the two stayed on one line and the box took what the count
+   left — 200px on a 360px phone, with the ✕ sitting against the caret.
+
+   A REAL BASIS IS THE FIX, not a `min-width`. 260px is wider than the box can
+   have on a phone once the count is beside it, so the row overflows, wraps, and
+   the count drops underneath — which is what puts the field at the card's full
+   width exactly when it needs it. On a desktop card there is room for both and
+   `flex-grow` fills the rest of the line, so nothing changes there.
+
+   `.month-find` is NOT in this rule. Its own block says it wraps "below the
+   count's own width", and it does not — the same basis-of-zero, the same
+   squeeze, just less of it because that row runs out to the card's edges on a
+   phone and has 30px more to give away. That screen was not what was reported
+   and its box is not this one; changing it is a separate decision. */
+.acct-find .field { flex: 1 1 260px; }
 /* Nothing here styles the input. It sits inside a `.field`, so it is the same
    box as every other one in the app — same height, same fill, same border, same
    focus ring — and it stays that way the day any of those change. */

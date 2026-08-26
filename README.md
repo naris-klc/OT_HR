@@ -2787,6 +2787,19 @@ for a list that runs nine screens, and an element sticky inside a card four rows
 tall unsticks the moment the card scrolls past — a mechanism that looks like it
 does something and does not.
 
+**และช่องต้องกว้างเต็มการ์ด — ตัวนับลงบรรทัดล่าง.** The field carries a real
+`flex-basis` (`flex: 1 1 260px` on `.acct-find .field`) and no inline `flex`.
+It shipped with `style={{ flex: 1 }}`, which is `flex: 1 1 0%` — a basis of
+NOTHING, and in a wrapping row that is the one value that guarantees no wrap
+ever happens: the row's minimum is the field's own 150px plus a nowrap
+"แสดง 3 จาก 4 คน" of about 90, and 254px fits inside a 304px card. So the two
+stayed on one line and the box took what the count left — 200px on a 360px
+phone, with the ✕ against the caret. With a 260px basis the row overflows,
+wraps, and the count drops underneath. Measured after: **304 of 304 at 360px
+and 264 of 264 at 320px** with the count below, **831 of 938 at 1280px** with
+it beside. The value is in the stylesheet and not on the element, because an
+inline style is the one thing the 860px block cannot reach.
+
 **รวมทุกบริษัท is the first card now, not the last.** total → per company → per
 person, which is the order somebody closing a month reads in and the opposite of
 the order the figures are built in. At the foot of two company sheets, the one

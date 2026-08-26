@@ -155,7 +155,13 @@ export default function AccountingView() {
             the screen, which is a mechanism that looks like it does something
             and does not. `.acct-find` is the same row without it. */}
         <div className="row acct-find" style={{ marginTop: 14 }}>
-          <div className="field" style={{ flex: 1, minWidth: 220 }}>
+          {/* No inline `flex` here, and that is the whole of the bug this
+              replaced: `flex: 1` is `flex: 1 1 0%`, a basis of NOTHING, so the
+              row never grew wide enough to need a second line and the box gave
+              its width away to the count beside it instead — 200px of field on
+              a 360px phone, with the ✕ against the caret. The basis is in the
+              stylesheet, where the phone block can reach it. */}
+          <div className="field">
             <label>ค้นหาพนักงาน</label>
             <div className="searchbox">
               <Icon name="search" className="searchbox-icon" />

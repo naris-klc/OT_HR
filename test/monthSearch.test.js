@@ -282,4 +282,22 @@ test('its box is `.acct-find` — the same row without the sticky phone rule', (
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.ok(!/\.acct-find/.test(phone), 'ส่งบัญชี’s box picked up a phone rule of its own');
   assert.match(css, /\.acct-find \{ margin-bottom: 0; \}/);
+
+  /*
+   * A REAL FLEX-BASIS, AND IT IS NOT DECORATION. `.field` is `flex: 1` —
+   * `flex: 1 1 0%`, a basis of nothing — which in a wrapping row is the one
+   * value that guarantees no wrap ever happens: the row's minimum is the
+   * field's 150px plus a nowrap "แสดง 3 จาก 4 คน" of about 90, and 254 fits
+   * inside a 304px card. So the box gave its width to the count and drew at
+   * 200px on a 360px phone, with the ✕ against the caret. Reported, and fixed
+   * by giving the field a basis wide enough to push the count onto its own
+   * line. Measured after: 304/304 at 360px and 264/264 at 320px with the count
+   * below, 831 of 938 at 1280px with the count beside it.
+   */
+  assert.match(css, /\.acct-find \.field \{ flex: 1 1 260px; \}/);
+  const box = acctView.slice(
+    acctView.indexOf('className="row acct-find"'),
+    acctView.indexOf('className="found"'),
+  );
+  assert.ok(!/style=\{\{[^}]*flex/.test(box), 'an inline flex came back onto the search field');
 });
