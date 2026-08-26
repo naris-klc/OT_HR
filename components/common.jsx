@@ -36,18 +36,35 @@ export function StatusChip({ status }) {
  * `of` is optional: ×3 and รวม are one word and take one line — see the
  * `vertical-align` note in app/styles.css for why they sit where they sit.
  *
+ * `short` is the same word for a column that has fewer pixels than it wants —
+ * "หยุด" for "วันหยุด" — and BOTH ARE RENDERED, one hidden per width by
+ * `.rh-wide` / `.rh-narrow` in app/styles.css. A ternary here instead would
+ * need this component to know the viewport, which a server-rendered heading
+ * cannot; CSS is the only thing on this page that does.
+ *
+ * Passed by สรุป OT ส่งบัญชี and by nowhere else so far. On the tables that do
+ * not pass it the markup is exactly what it was — no wrapper, no second copy —
+ * so a column with room keeps the full word without opting out of anything.
+ *
  * One component rather than the same two lines of JSX six times, so the six
  * tables cannot drift into six spellings. It is for the SCREEN only — the CSV
  * exports and the printed forms build their own headings, accounting reads
  * those by name, and nothing here reaches them.
  */
-export function RateHead({ rate, of = null }) {
+export function RateHead({ rate, of = null, short = null }) {
   if (!of) return rate;
   return (
     <>
       {rate}
       <br />
-      <span className="nb">{of}</span>
+      <span className="nb">
+        {short ? (
+          <>
+            <span className="rh-wide">{of}</span>
+            <span className="rh-narrow">{short}</span>
+          </>
+        ) : of}
+      </span>
     </>
   );
 }

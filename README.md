@@ -1009,9 +1009,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1654 tests
-across 101 files**, measured 2026-08-25 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework.
+and the engine know nothing about Next.js, so the whole suite — **1661 tests
+across 101 files**, measured 2026-08-26 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read
+"1654 tests … measured 2026-08-25" until then; the file count has not moved.)
 
 That is also why it stays fast: the suite finishes in **about 2 s**, which is a
 budget rather than an observation. (It read "410 tests, under 400 ms" until
@@ -2407,8 +2408,11 @@ about 60px more. Not done: it is a title, not spacing.
 
 **ตรวจสอบรายเดือน บนมือถือ: หน้าละ 5 คน แล้วเลื่อนหน้าเว็บตามปกติ.** Below
 860px this screen is one card per person — that is where **ดู / แก้ไขรายการ**
-and **พิมพ์ F-HR-027** live, and it is why this table left the sideways-
-scrolling group the two accounting ones stayed in. A card is about 150px tall
+and **พิมพ์ F-HR-027** live, and it is why this table was the first to leave the
+sideways-scrolling group. That clause read "the sideways-scrolling group the two
+accounting ones stayed in" until 2026-08-26, when the accounting two left it as
+well by a different route -- see the phone paragraph in the accounting section
+below. A card is about 150px tall
 with two buttons in it, so a sixty-person month was roughly nine screens of
 scrolling between the search box and **รวมทั้งหมด** — and everything the phone
 layout deliberately moved *up* to the total card (วันเกิดของเดือนนี้, then the
@@ -2735,6 +2739,56 @@ day as that screen, and two review tables with different column sets is how a
 month goes wrong. `/api/exports/accounting.csv` follows the screen column for
 column, in the same order.
 
+**สรุป OT ส่งบัญชี บนมือถือ: เจ็ดคอลัมน์ที่พับลงมาสองบรรทัด.** Below 860px the two
+tables on this screen — the per-company sheet and รวมทุกบริษัท — were laid out at
+`width: max-content` and scrolled sideways inside their card. Measured on a 360px
+phone on 2026-08-26: the card is 304px and the sheet came to 560px, columns
+พนักงาน 112 · แผนก 80 · ×1.5 ปกติ 52 · ×1.5 วันหยุด 58 · ×3 วันหยุด 58 · รวม ชม. 60 ·
+หมายเหตุ 140. Three of the seven were on screen. Everything from **รวม ชม.**
+rightward was off the edge — the month's total for each person, and the whole
+**หมายเหตุ** column, which is where *ค้างอนุมัติ n รายการ · ไม่นับรวม* is said. The
+one line that says a figure is **not final** was the least reachable thing on the
+sheet HR closes the month with.
+
+**Both tables now fit the card, and nothing scrolls.** Each row is a grid of the
+same five tracks in every row of the table — head, body and foot alike — so the
+four numeric columns keep their columns: **×1.5 ปกติ | ×1.5 หยุด | ×3 หยุด | รวม
+ชม.**, read *down* against the รวมแผนก and รวมทั้งหมด lines beneath them. The two
+prose columns, **แผนก** and **หมายเหตุ / บริษัท**, are read *across* on the one row
+in front of you and lose nothing by folding onto a second line under the name.
+รวมทุกบริษัท folds **จำนวนคน** the same way, with the heading it loses said again
+beside the figure.
+
+**Shorter headings and tighter cells were asked for first, and are in here — they
+were not enough on their own.** `RateHead` takes an optional `short`, so
+×1.5 วันหยุด reads ×1.5 หยุด below 860px; both words are in the markup with one
+hidden per width, because which of them fits is a question about the viewport
+that a server-rendered heading cannot ask. With the figures a size down and their
+padding at 3px a side, that comes to about 60px against a 256px overrun. Seven
+columns of Thai do not fit 304px at any type size that can be read. What fits is
+46 + 46 + 46 + 54 = 192px of figures, leaving 112px for the name on a 360px phone
+and 72px on a 320px one — where the name wraps and the employee code still lands
+on one line.
+
+**It is deliberately not the card ตรวจสอบรายเดือน uses.** That screen drops the
+rate columns and keeps one total per person, because its cards carry the two
+buttons a month is *decided* with. This screen is read rather than acted on, and
+the three rate buckets are the reading — dropping them would leave HR closing the
+month without seeing what accounting is about to be sent.
+
+**Nothing is pinned any more.** The frozen พนักงาน column and its right-edge
+shadow existed for the sideways scroll and went with it; a column with nowhere to
+travel needs no anchor. The borders and the two summary fills moved from the
+cells up to the `tr`, because a fill declared per cell leaves the gaps between
+grid tracks — and the whole folded line, where there is no cell at all — showing
+the card through it.
+
+Walked on the built app at 360px and 320px, 2026-08-26: `scrollWidth` equals
+`clientWidth` on the page and on every `.table-wrap`, the tracks measure
+112/46/46/46/54, and at 1280px the rows still compute `display: table-row` with
+the desktop's own 168/165/52/58/58/137/300.
+
+
 The **paper form** is the accounting sheet: รหัส | ชื่อ-นามสกุล | **1.50** |
 **3.00** under one ประจำเดือน banner, then the unruled remark strip. It combines วันปกติ and
 วันหยุด into the single 1.50 column because the form has one, and anyone
@@ -3005,10 +3059,17 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1654/1654 pass in about 2 s**, measured 2026-08-25 across 101
-  files. It read "1653", "1651", "1649", "1646", "1641", "1638" and "1601"
-  earlier the same day, and "1386 across 86 files, 2026-08-24" before that. The
-  six newest are the cases in `test/hrMonthCards.test.js` that pin
+- `npm test` — **1661/1661 pass in about 2 s**, measured 2026-08-26 across 101
+  files. It read "1654, measured 2026-08-25", and "1653", "1651", "1649",
+  "1646", "1641", "1638" and "1601" earlier that day, and "1386 across 86 files,
+  2026-08-24" before that. The three newest are in `test/hrMonthCards.test.js`
+  and pin สรุป OT ส่งบัญชี บนมือถือ: that สรุป OT แยกแผนก is now the only table
+  on a phone still read sideways, that ส่งบัญชี folds instead — five grid tracks
+  in every row, แผนก and หมายเหตุ under the name, the desktop table untouched —
+  and that `RateHead`'s `short` is the same heading one size down rather than a
+  second spelling of it. They replaced one case that asserted the opposite, so
+  the total moved by two and no new file with it. Before them, the six in the
+  same file that pin
   แถบแจ้งเตือนของเดือน — that the card holds exactly **one** `.alert` and the
   list opens inside it, what an item is made of, that its wording is the
   notice's own module's and not a copy, one toggle and one ✕ with no `<details>`

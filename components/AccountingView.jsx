@@ -243,8 +243,8 @@ function CompanySheet({ company, period, index }) {
                   <th className="who-col">พนักงาน</th>
                   <th className="dept-col">แผนก</th>
                   <th className="num rate-col b-15w"><RateHead rate="×1.5" of="ปกติ" /></th>
-                  <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
-                  <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
+                  <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" short="หยุด" /></th>
+                  <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" short="หยุด" /></th>
                   <th className="num total-col">รวม ชม.</th>
                   <th className="note-col">หมายเหตุ / บริษัท</th>
                 </tr>
@@ -349,8 +349,8 @@ function AllCompanies({ data }) {
               <th className="who-col">บริษัท</th>
               <th className="num head-col">จำนวนคน</th>
               <th className="num rate-col b-15w"><RateHead rate="×1.5" of="ปกติ" /></th>
-              <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
-              <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
+              <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" short="หยุด" /></th>
+              <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" short="หยุด" /></th>
               <th className="num total-col">รวม ชม.</th>
             </tr>
           </thead>
