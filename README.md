@@ -1009,10 +1009,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1706 tests
+and the engine know nothing about Next.js, so the whole suite — **1707 tests
 across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+"1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
 `test/entryRowChrome.test.js`.)
@@ -2853,6 +2853,53 @@ in them. What is left is a name long enough to run to three lines at 128px,
 which no name in the roster does today. Measured at 360px before and after:
 139 / 161 / 139 / 183, then 170 / 170 / 170 / 170.
 
+### The first card was never clipped — the ค้นหา bar was on it
+
+Reported on 2026-08-26 as "the employee name on the top card has disappeared",
+with the fix suggested as a missing top margin. It was neither.
+
+**The name was in the data and in the DOM.** `PM-0100` is `วิชัย ศรีสุข` in the
+database and the cell rendered it. **And the spacing was already right**: in
+flow the first card sits **12px** under the search box, one card-gap, the same
+distance every other card keeps from the one above it.
+
+**What covered it was `.month-find` itself**, which was `position: sticky; top:
+62px; z-index: 30`. Measured at 360px with the list scrolled to its top: the
+app bar owned 0–62, the stuck search bar 62–131, and the first card's name sat
+at **15–54** — entirely behind both. Every card passes under that bar; the
+first one is only special in being where a thumb stops.
+
+**So the bar is not sticky any more.** The alternative — leaving it and telling
+people to scroll up — was offered and declined, and the reason to keep it had
+already expired: it was written for "a card list of forty people is forty
+screens of scrolling", and the pager landed afterwards and made the list **five
+cards**. A control pinned over 131px of a 780px phone to save a scroll that is
+no longer forty screens long was paying rent it had stopped earning. It also
+cost the pager one of the three scroll positions where that control could not
+be pressed.
+
+**What was kept is the strip** — the full-bleed margins, the padding, the
+list's own `--bg` ground and the hairline under it. None of that was ever about
+stickiness; it is what says the box filters the thing below it. **What went
+with the sticky** is `position`, `top`, `z-index` and the `!important` on the
+fill, which was defending against exactly one failure — a transparent bar over
+moving cards — that no longer exists. The suggestion panel keeps its own
+`z-index: 5` and still paints over the list, which the list carries nothing to
+contest; walked and hit-tested after the change.
+
+**A fallback for a genuinely nameless employee went in anyway.** The row is
+`{row.employee.name || '—'}` now — the app's own stand-in, the one every other
+name already takes — because the row had no answer for that case and the report
+was a fair question to ask of it.
+
+**And the bottom of the page moved with it.** `.mobile-nav-spacer` was a flat
+74px against a nav bar that is **88px at 320px**, 77 at 360 and 430, and 66
+above 600 — the height is its buttons', and the six Thai labels wrap to three
+lines on the narrowest phone. It is 88 now: the tallest the bar gets, one number
+rather than a breakpoint pinned to where six words happen to rewrap. The cost is
+11–22px of air at the end of every page; the alternative was a button at the
+foot of a screen half under the bar.
+
 **It is not a filter,** and nothing that is counted, exported or printed reads
 it — which was true of every version this screen has had, and is why each could
 be swapped for the next without a single figure moving. **รวมทั้งหมด** is the
@@ -2899,8 +2946,11 @@ pressed with five cards' worth of list above the thumb; without scrolling, the
 next five people are drawn up there out of the viewport and a button whose label
 did not change appears to have done nothing. `goPage()` calls
 `scrollIntoView({ block: 'start' })` on the list wrap, and how far down to stop
-is `scroll-margin-top: 156px` in the stylesheet — 62px of `.appbar` plus about
-69 of `.month-find` plus the line the search adds when it is narrowing.
+is `scroll-margin-top: 74px` in the stylesheet — 62px of `.appbar` less the
+wrap's own 12px of padding, plus 24 of air, which puts the first card of a new
+page 24px clear of the bar. It read "156px" until 2026-08-26, when `.month-find`
+stopped being sticky: the extra 94 was that box, and a landing still sized for
+it would now leave 94px of empty ground over the first card.
 
 **In the handler, not on an effect.** While the list was a box the reset was
 `scrollTop = 0` on a `useEffect` over `[current, find, period, statusFilter]`,
@@ -2929,17 +2979,25 @@ and the page's own scroll height is **3861px**. **5 cards drawn** with **19**
 
 **The pager is pressable across its travel.** Walking the page past it in 40px
 steps, **14 of the 17** positions where it is on screen return the button itself
-under a thumb at its centre. The three that do not are the two fixed bars this
-screen has always had: on the way in it is still under the bottom nav, and at
-the far end it has gone up behind the sticky **ค้นหา** bar. Centred, both
-buttons hit themselves. With the box, the thing that covered them was the sticky
-total *inside* the list — two positions out of nineteen — which is the
-difference between a bar the reader scrolls past and one that travels with the
-control.
+under a thumb at its centre. The three that do not were the two fixed bars this
+screen had at the time: on the way in it is still under the bottom nav, and at
+the far end it had gone up behind the **ค้นหา** bar. Centred, both buttons hit
+themselves. With the box, the thing that covered them was the sticky total
+*inside* the list — two positions out of nineteen — which is the difference
+between a bar the reader scrolls past and one that travels with the control.
+
+**One of those three is gone.** `.month-find` stopped being sticky on
+2026-08-26 and scrolls away with the list now, so the only thing left that can
+cover the pager is the bottom nav on the way in — and the spacer above it grew
+from 74px to 88 the same day, because the nav is 88 tall at 320px and 77 at 360
+and the flat 74 had been short of it at every phone width. See §"The first card
+was never clipped".
 
 **ถัดไป** gave *หน้า 2 / 5 · แสดง 6–10 จาก 24 รายการ*, moved the page from
 **1000 to 674**, and put the list wrap at **156** in the viewport — the first
-card of page 2 at **24px clear** of the search bar's bottom edge.
+card of page 2 at **24px clear** of the search bar's bottom edge. Re-measured
+after the bar was un-stuck on 2026-08-26: the wrap lands at **74** and the first
+card at **86**, still **24px clear**, now of the app bar.
 
 **The one-page case, which is what the persistent pager is for.** Narrowing the
 search to two people left the pager exactly where it was, reading
@@ -3168,11 +3226,18 @@ matches at all, one empty state with a way out of it, the same as
 **The box sits with บริษัท and ประจำเดือน rather than above the sheets**, because
 that card IS the filter set — บริษัท already decides which sheets are drawn, and
 one filter inside the card with another floating outside it is the same job done
-in two places. It wears `.acct-find`, which is `.month-find` minus one phone
-rule: that class is sticky at 62px with negative margins out to the card's edges,
-for a list that runs nine screens, and an element sticky inside a card four rows
-tall unsticks the moment the card scrolls past — a mechanism that looks like it
-does something and does not.
+in two places. It wears `.acct-find`, which is `.month-find` minus its phone
+rule: that class is a full-bleed strip with negative margins out to the card's
+edges and the list's own ground behind it, and this box does not want the
+full bleed because it sits INSIDE the filter card rather than above a list.
+
+Until 2026-08-26 the difference was bigger and the reason was different:
+`.month-find` was also *sticky at 62px*, for a list that ran nine screens, and
+an element sticky inside a card four rows tall unsticks the moment the card
+scrolls past — a mechanism that looks like it does something and does not. That
+was the reason ส่งบัญชี never took the phone rule; it is no longer a reason,
+because `.month-find` is not sticky either. See §"The first card was never
+clipped".
 
 **และช่องต้องกว้างเต็มการ์ด — ตัวนับลงบรรทัดล่าง.** The field carries a real
 `flex-basis` (`flex: 1 1 260px` on `.acct-find .field`) and no inline `flex`.
@@ -3734,8 +3799,8 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1706/1706 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1707/1707 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"

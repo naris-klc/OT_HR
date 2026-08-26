@@ -149,48 +149,76 @@ test('a month with no rows at all still says that, not “not found”', () => {
 
 // ── the box, on the layout that scrolls ──────────────────────────────────────
 
-test('the box stays on screen while a long list scrolls under it', () => {
+/**
+ * ── THE BOX SCROLLS AWAY WITH THE LIST, AND THAT IS THE POINT ───────────────
+ *
+ * This test asserted the opposite until 2026-08-26. `.month-find` was
+ * `position: sticky; top: 62px; z-index: 30` with a forced opaque fill, parked
+ * under the app bar so a forty-person list could be re-filtered without
+ * scrolling back — and the assertions here pinned the fill and the layer
+ * because a transparent bar over moving cards is unreadable.
+ *
+ * WHAT TOOK IT OUT was a report of the first card's employee name having
+ * disappeared. Nothing was clipping it: in flow the first card sits 12px under
+ * this box, one card-gap, like every other card. The bar was ON it — measured
+ * at 360px, the two stuck bars owned 0–131 and the name sat at 15–54 — and the
+ * first card is only special in being where a thumb stops.
+ *
+ * AND THE REASON HAD ALREADY GONE. The bar was written for a list nine screens
+ * long; the pager made it five cards. So what is pinned now is that the phone
+ * rule is a STRIP and not a BAR: the full-bleed margins, the padding and the
+ * ground stay, because those say the box filters what is under it; the
+ * position, the layer and the `!important` are gone, and this refuses them
+ * coming back by accident.
+ */
+test('the box is a strip over the list, not a bar stuck over it', () => {
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   const at = phone.indexOf('.month-find {');
-  const rule = phone.slice(at, phone.indexOf('\n  }', at));
+  const rule = phone.slice(at, phone.indexOf('\n  }', at)).replace(/\/\*[\s\S]*?\*\//g, '');
 
-  // 62px is the app bar's height and the app bar is sticky at 0, so this is as
-  // high as this bar can go without landing ON the title: `top: 0` plus a
-  // z-index above the app bar's would bury it. The queue's bar, the app's other
-  // sticky control, sits at the same 62.
-  assert.match(rule, /position: sticky; top: 62px; z-index: 30;/);
+  assert.ok(!/position:\s*sticky/.test(rule), 'the search box went back to being stuck over the cards');
+  assert.ok(!/z-index/.test(rule), 'the search box is stacking against something again');
+  assert.ok(!/!important/.test(rule), 'the forced fill came back without the sticky that needed it');
+
+  // The strip itself — out to the card's edges, its own padding back, and the
+  // ground the card list is painted on so the two read as one zone.
+  assert.match(rule, /margin-left: -15px; margin-right: -15px;/);
+  assert.match(rule, /background: var\(--bg\);/);
+  assert.match(rule, /border-bottom: 1px solid var\(--line-soft\);/);
+
+  // คิวรออนุมัติ's bar IS still stuck, at the same 62 this one used to take —
+  // that screen is a queue worked through top to bottom, not a five-card page.
   assert.match(css, /\.queue-mobile-bar \{[\s\S]*?position: sticky; top: 62px; z-index: 20;/);
-  // 30 clears the cards (none) and the app bar (20), and ties with the phone's
-  // nav — which is fixed to the BOTTOM of the screen and never meets it. The
-  // dialogs at 80 still cover it, which is the part that must not change.
-  //
-  // THE ONE EXEMPTION IS `.dept-menu`, and it is cut out rather than the range
-  // widened. It carries 50, and it cannot be the thing this test is guarding
-  // against: it lives inside `.modal-body`, which scrolls and therefore clips
-  // its own children on both axes, so nothing it paints reaches the page at
-  // all — let alone the strip between this bar and a dialog. Anything else
-  // landing in the range is still caught.
-  // Rules only. Half this stylesheet is prose about which layer sits over
-  // which, and a paragraph that names a number is not an element that carries
-  // one — matching the comments is how this reads its own explanation as the
-  // defect it warns about.
+
+  // Desktop never had any of it.
+  const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
+  assert.ok(!/\.month-find \{[^}]*sticky/.test(desktop), 'the box went sticky on the desktop too');
+});
+
+/**
+ * NOTHING NEW MAY LAND BETWEEN THE PHONE'S BARS AND THE DIALOGS.
+ *
+ * This lived inside the test above, where it was checking the layer
+ * `.month-find` used to take. The box carries no z-index any more; the sweep
+ * does, because what it guards is the whole 40–79 band and not that one rule.
+ */
+test('nothing new is stacked between the phone bars and the dialogs', () => {
+  /*
+   * THE ONE EXEMPTION IS `.dept-menu`, and it is cut out rather than the range
+   * widened. It carries 50, and it cannot be the thing this guards against: it
+   * lives inside `.modal-body`, which scrolls and therefore clips its own
+   * children on both axes, so nothing it paints reaches the page at all.
+   *
+   * Rules only. Half this stylesheet is prose about which layer sits over
+   * which, and a paragraph that names a number is not an element that carries
+   * one — matching the comments is how this reads its own explanation as the
+   * defect it warns about.
+   */
   const own = css.indexOf('.pick-menu.dept-menu {');
   const outside = (css.slice(0, own) + css.slice(css.indexOf('}', own)))
     .replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!/z-index: (4[0-9]|[5-7][0-9])\b/.test(outside), 'something new landed between this bar and the dialogs');
   assert.match(css.slice(own, css.indexOf('}', own)), /z-index: 50;/, 'the exemption above is stale');
-
-  // Stuck, it is painted over the cards passing under it: it needs an opaque
-  // fill, out to the card's own edges or a column of list shows down each side.
-  // `--bg` is the ground the card list itself is painted on, so the bar and the
-  // gaps between the cards running under it are one colour.
-  assert.match(rule, /background: var\(--bg\) !important/);
-  assert.match(rule, /margin-left: -15px; margin-right: -15px;/);
-
-  // Desktop keeps its table with the heading row at the top; a box floating
-  // over the figures there is one more thing between a reader and them.
-  const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
-  assert.ok(!/\.month-find \{[^}]*sticky/.test(desktop), 'the box went sticky on the desktop too');
 });
 
 test('the space under the box is the space between two cards', () => {
@@ -288,9 +316,11 @@ test('its box is `.acct-find` — the same row without the sticky phone rule', (
   // press that means "none of this", and leaving a panel of matches for a query
   // that no longer exists floating over the sheet is half an answer.
   assert.match(acctView, /<ClearButton onClear=\{\(\) => \{ setFind\(''\); setOpen\(false\); \}\} \/>/);
-  // `.month-find`'s phone rule pins it under the app bar for a list nine
-  // screens long. This box sits in a card four rows tall, where sticky would
-  // unstick the moment the card scrolled past.
+  // `.month-find`'s phone rule is a full-bleed strip and nothing more since
+  // 2026-08-26 — it was sticky under the app bar until then, for a list nine
+  // screens long that the pager had already cut to five cards. This box never
+  // wanted either: it sits in a card four rows tall, where sticky would unstick
+  // the moment the card scrolled past.
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.ok(!/\.acct-find/.test(phone), 'ส่งบัญชี’s box picked up a phone rule of its own');
   assert.match(css, /\.acct-find \{ margin-bottom: 0; \}/);

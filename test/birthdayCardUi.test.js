@@ -188,38 +188,36 @@ test('the flat grey chip four other screens use did not move', () => {
   assert.ok(!/chip muted/.test(hrView));
 });
 
-// ── the sticky search bar it scrolls under ──────────────────────────────────
+// ── the search strip the list starts under ──────────────────────────────────
 
-test('the bar over the list is opaque, and is NOT blurred', () => {
-  // The declarations only — the note inside this block explains the filter it
-  // does not carry, and prose is not a stylesheet.
+/**
+ * IT IS NOT A BAR ANY MORE, AND IT IS NOT FROSTED EITHER.
+ *
+ * This test read "the bar over the list is opaque, and is NOT blurred" and
+ * pinned `position: sticky; top: 62px; z-index: 30` with a forced `--bg` fill.
+ * `.month-find` stopped being sticky on 2026-08-26 — it was covering the first
+ * card of the list, and the pager had already cut the list it was written for
+ * from nine screens to five cards. See test/monthSearch.test.js, which owns
+ * that change.
+ *
+ * WHAT SURVIVES HERE IS THE HALF THAT WAS NEVER ABOUT STICKINESS: no
+ * `backdrop-filter`, ever, on this element. A backdrop-filtered element is
+ * composited as its own layer and a composited layer stops obeying z-index —
+ * which is the bug `body.has-dialog .appbar` exists to undo, where the app bar
+ * and the phone's nav painted themselves over an open sheet.
+ *
+ * test/modalScrollFrame.test.js counts the carriers and allows exactly two.
+ * This assertion is the same fact from this end, so the reason survives next to
+ * the element somebody would be tempted to frost.
+ */
+test('the search strip is a flat fill — no blur, and no sticky behind it', () => {
   const at = phone.indexOf('.month-find {');
   const rule = phone.slice(at, phone.indexOf('\n  }', at))
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
-  // The fill and the stacking order are what stop a card showing through, and
-  // the fill is `--bg` — the ground the card list is painted on — forced, so a
-  // transparent sticky bar cannot come back by accident.
-  assert.match(rule, /background: var\(--bg\) !important;/);
-  assert.match(rule, /position: sticky; top: 62px; z-index: 30;/);
-
-  /**
-   * And a blur would make it WORSE, not safer. A backdrop-filtered element is
-   * composited as its own layer and a composited layer stops obeying z-index —
-   * which is the bug `body.has-dialog .appbar` exists to undo, where the app
-   * bar and the phone's nav painted themselves over an open sheet. There is
-   * also nothing behind an opaque fill for a blur to act on.
-   *
-   * test/modalScrollFrame.test.js counts the carriers and allows exactly two.
-   * This assertion is the same fact from this end, so the reason survives next
-   * to the bar somebody would be tempted to frost.
-   */
-  assert.ok(!/backdrop-filter/.test(rule), 'the sticky bar grew a backdrop filter');
-  // The cards it is painted over carry no z-index of their own to fight it.
-  assert.ok(
-    !/\.hr-table tbody tr \{[^}]*z-index/.test(phone),
-    'a card grew a z-index and can now be drawn over the bar',
-  );
+  assert.match(rule, /background: var\(--bg\);/);
+  assert.ok(!/backdrop-filter/.test(rule), 'the search strip grew a blur');
+  assert.ok(!/position:\s*sticky/.test(rule), 'the search box is stuck over the cards again');
 });
 
 // ── the badge in the corner ──────────────────────────────────────────────────

@@ -5780,9 +5780,37 @@ table.mini tbody tr:hover { background: none; }
   /* Clears the fixed bottom bar so the last row is never trapped under it.
      The inset is part of the height, not a detail: the bar pads past the home
      indicator (`.mobile-nav` below), so on a gesture-navigation phone it is
-     74px PLUS that inset tall, and a flat 74px spacer left the last row of
-     every table under the bar on exactly the devices the padding was for. */
-  .mobile-nav-spacer { height: calc(74px + env(safe-area-inset-bottom)); }
+     that many pixels PLUS the inset tall, and a spacer that ignored the inset
+     left the last row of every table under the bar on exactly the devices the
+     padding was for.
+
+     88 AND NOT 74, AND THE NUMBER IS THE BAR'S OWN. This read 74 and the bar
+     has not been 74 for a long time: its height is its buttons', and a button
+     is 6+6 of padding around a 24px icon, a 4px gap and a LABEL THAT WRAPS.
+     Measured on 2026-08-26 against the running app, six tabs, at four widths:
+
+         320px  →  88px   (labels run to three lines)
+         360px  →  77px   (two)
+         430px  →  77px   (two)
+         600px  →  66px   (one)
+
+     So the spacer was 14px short on the narrowest phone this app is used on
+     and 3px short on the common one — which is not "the last row is hidden"
+     on most screens, because most screens end in something with padding under
+     it, but it IS the last row of any screen that ends flush, and it is the
+     reason a button at the foot of a page can be half under the bar.
+
+     ONE NUMBER FOR THE TALLEST CASE rather than a breakpoint per wrap. Where
+     the labels rewrap is a fact about six Thai words and a font, not about a
+     device, and a breakpoint pinned to it would be wrong the first time a tab
+     is renamed. The cost is air at the end of the page — 11px at 360px, 22px
+     above 600px — at the one place on the screen where empty space costs
+     nothing.
+
+     If this is ever made exact, the way is to measure `.mobile-nav` itself and
+     publish its height as a custom property; it is not worth the observer
+     today. */
+  .mobile-nav-spacer { height: calc(88px + env(safe-area-inset-bottom)); }
   /* And the FAB, on the one screen that has one: 92px up plus 58 of button,
      rounded up so the last row's chip clears the shadow as well as the circle.
      Sized here rather than guessed at, so moving the FAB moves this too. */
@@ -7391,62 +7419,52 @@ table.mini tbody tr:hover { background: none; }
      Figures have no ceiling. They are already the width of a figure. */
   .acct-table td, .allco-table td, .dept-table td { overflow-wrap: anywhere; }
 
-  /* ── ค้นหา STAYS ON SCREEN ─────────────────────────────────────────────
-     A card list of forty people is forty screens of scrolling, and the box that
-     narrows it was at the top of the first one. Stuck, the way back from
-     "wrong person, sixteen cards down" is one tap rather than a scroll to the
-     top and a scroll back.
+  /* ── ค้นหา IS A STRIP, NOT A BAR — IT SCROLLS AWAY WITH THE LIST ───────
 
-     62px AND z-index 20, both copied from `.queue-mobile-bar` and neither
-     chosen here: 62px is the app bar's height and the app bar is itself sticky
-     at 0 and never leaves, so below it is as high as anything else on this
-     screen can go — at 0 this would slide underneath it and be invisible
-     exactly when it is stuck. 20 is over the cards, which carry none, and under
-     the phone's nav bar (30) and the dialogs (80).
+     IT WAS STICKY UNTIL 2026-08-26: `position: sticky; top: 62px; z-index: 30`
+     with an opaque `--bg` fill forced out to the card's edges, parked under the
+     app bar so that a card list forty people long could be re-filtered without
+     scrolling back to the top.
 
-     OUT TO THE CARD'S EDGES AND BACK. Stuck, it is painted over the cards
-     passing under it, so it needs an opaque fill across the full width — and
-     the card's own 15px of padding would leave a column of list showing on each
-     side of it. The negative margins take the fill out to the card's border and
-     the padding puts the box back where it was.
+     WHAT TOOK IT OUT was a screenshot of the first card with the employee's
+     name gone. Nothing was clipping it and nothing was missing: in flow the
+     first card sits 12px under this box, exactly one card-gap, the same as
+     every other card keeps from the one above it. What covered it was THIS BAR,
+     stuck, with the card passing underneath — and the first card is simply
+     where a thumb stops, so it is the one that is always half-eaten. Measured
+     at 360px: the two stuck bars owned 0–62 and 62–131, and the first card's
+     name sat at 15–54, entirely behind them.
 
-     NOT ON THE DESKTOP. There the whole month is a table read down its columns
-     with the heading row at the top; a filter box floating over the figures is
-     one more thing between the reader and them. */
+     AND THE REASON HAD ALREADY GONE. This bar was written for "a card list of
+     forty people is forty screens of scrolling"; the pager landed afterwards
+     and made the list FIVE cards, about one and a half screens. A control
+     pinned over 131px of a 780px phone — a sixth of the screen, permanently —
+     to save a scroll that is no longer forty screens long was paying rent it
+     had stopped earning. It also cost the pager: of the seventeen scroll
+     positions the walk of 2026-08-26 probed, one of the three where the pager
+     could not be pressed was where this bar had come down over it.
+
+     WHAT IS KEPT is the STRIP: out to the card's edges, its own padding back,
+     the list's own ground behind it and a hairline under it. That was never
+     about stickiness — it is what says the box filters the thing below it
+     rather than sitting among the figures — and `--bg` is still the colour the
+     card list is painted on, so the strip and the gaps between the cards under
+     it are one ground.
+
+     WHAT IS GONE WITH THE STICKY: `position`, `top`, `z-index` and the
+     `!important` on the fill. The `!important` was defending against exactly
+     one failure — a TRANSPARENT bar painted over moving cards — and there are
+     no cards passing under this any more. The z-index went for the same reason:
+     nothing is stacked against. The suggestion panel keeps its own `z-index: 5`
+     and still paints over the list, because the list carries none.
+
+     THE DESKTOP NEVER HAD ANY OF THIS. There the month is a table read down its
+     columns with the heading row at the top, and a box floating over the
+     figures is one more thing between the reader and them. */
   .month-find {
-    position: sticky; top: 62px; z-index: 30;
     margin-left: -15px; margin-right: -15px;
     padding: 10px 15px 12px;
-    /* OPAQUE, AND DELIBERATELY NOT BLURRED. The fill is what stops a card
-       showing through and `z-index: 30` is what keeps it painted over them
-       rather than under. A blur on top of that buys nothing: there is nothing
-       behind an opaque fill to blur.
-
-       AND IT WOULD COST SOMETHING REAL. A backdrop-filtered element is
-       composited as its own layer, and a composited layer stops obeying
-       z-index — that is the bug `body.has-dialog .appbar` exists to undo,
-       where the two frosted bars painted themselves over an open sheet. A
-       third frosted bar on this screen would be a third element that can
-       appear over a dialog, bought for an effect nobody can see through an
-       opaque fill. See test/modalScrollFrame.test.js, which counts them.
-
-       `--bg` AND NOT `--card`, asked for as a flat near-black: the dark theme
-       resolves it to the same ground `.table-wrap.card-list` paints
-       under the cards this bar floats over. The bar and the gaps between the
-       cards passing under it are then one colour, so nothing reads as a
-       lighter panel sliding over a darker list. Inside the card, before it
-       sticks, it reads as a filter strip ruled off from what it filters.
-
-       `!important` on the fill because a transparent sticky bar is the one
-       failure mode that makes this screen unreadable, and it is worth being
-       unarguable rather than tidy — nothing overrides it today, and the point
-       is that nothing can.
-
-       TOP IS 62px AND NOT 0. `.appbar` is `sticky; top: 0` and 62px tall, so
-       0 would park this bar ON the app title rather than under it — and at
-       z-index 30 it would win. 62 IS flush: no gap between the two bars for
-       anything to show through. */
-    background: var(--bg) !important;
+    background: var(--bg);
     border-bottom: 1px solid var(--line-soft);
   }
 
@@ -7763,14 +7781,19 @@ table.mini tbody tr:hover { background: none; }
      nothing on this screen is a scrollport at all.
 
      `scroll-margin-top` IS THE PAGER'S. ถัดไป scrolls this wrap back into view
-     — see `goPage` in components/HrView.jsx — and two bars are stuck above it:
-     `.appbar` at 62px and `.month-find` under it, 69px of `--field-h` and its
-     padding, plus about 22 more on the widths where the "แสดง n จาก n คน" line
-     wraps under the box while somebody is searching. 156 clears the tallest of
-     those, so the first card of a new page arrives under the search box instead
-     of behind it, and on the ordinary month it costs 25px of air. The number
-     lives in the stylesheet that owns both bars and not in the component. */
-  .table-wrap.card-list { overflow: visible; scroll-margin-top: 156px; }
+     — see `goPage` in components/HrView.jsx — and ONE bar is stuck above it:
+     `.appbar`, 62px. The wrap's own 12px of padding sits inside that distance,
+     so 74 puts the first card of a new page 24px clear of the app bar's bottom
+     edge. The number lives in the stylesheet that owns the bar and not in the
+     component.
+
+     IT READ 156 UNTIL 2026-08-26, and the 94px difference was `.month-find`:
+     that box was stuck under the app bar too, 69px of `--field-h` and its
+     padding plus about 22 more on the widths where "แสดง n จาก n คน" wraps
+     under it, and a new page had to arrive below BOTH. It is not sticky any
+     more — see the block headed ค้นหา IS A STRIP above — so a landing sized
+     for it would now leave 94px of empty ground over the first card. */
+  .table-wrap.card-list { overflow: visible; scroll-margin-top: 74px; }
   .hr-table tbody tr.total-row:hover { background: var(--neutral-wash); }
   .hr-table tbody tr.total-row td.total-col {
     grid-area: cap; text-align: right; white-space: nowrap;

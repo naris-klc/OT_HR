@@ -278,7 +278,7 @@ test('a new page starts at the top of the list, and only when a button asks', ()
   // appears to have done nothing. Found by walking it on 2026-08-25.
   assert.match(hrView, /const listRef = useRef\(null\);/);
   // On the WRAP, not the tbody: the wrap is the top of the list and it is what
-  // carries the `scroll-margin-top` that clears the two sticky bars.
+  // carries the `scroll-margin-top` that clears the app bar.
   assert.match(hrView, /<div className="table-wrap card-list" ref=\{listRef\}>/);
   assert.match(
     hrCode,
@@ -293,8 +293,17 @@ test('a new page starts at the top of the list, and only when a button asks', ()
   // while somebody is still typing above it.
   assert.ok(!/scrollTop = 0/.test(hrCode), 'the box’s scroll reset outlived the box');
   assert.ok(!/useEffect[^;]*scrollIntoView/.test(hrCode), 'the scroll went back onto an effect');
-  // And how far down to stop is the stylesheet's, because the bars it clears are.
-  assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible; scroll-margin-top: 156px; \}/);
+  // And how far down to stop is the stylesheet's, because the bar it clears is.
+  //
+  // 74 AND NOT 156. It was 156 while `.month-find` was stuck under the app bar
+  // as well — 62 of `.appbar` plus 69 of the box plus the line the search adds
+  // — and the box stopped being sticky on 2026-08-26 (see
+  // test/monthSearch.test.js). 74 is the app bar's 62 less the wrap's own 12px
+  // of padding plus 24 of air, which puts the first card of a new page 24px
+  // clear of the bar; the old number would now leave 94px of empty ground over
+  // it. Walked and measured, not derived: the first card landed at 86 in the
+  // viewport with the app bar's bottom edge at 62.
+  assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible; scroll-margin-top: 74px; \}/);
   layoutIsTheStylesheets();
 });
 
