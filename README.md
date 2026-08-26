@@ -1009,10 +1009,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1694 tests
+and the engine know nothing about Next.js, so the whole suite — **1697 tests
 across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+"1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when that figure was re-checked. The file count read
 "101 files" through all of them and moved with
 `test/entryRowChrome.test.js`.)
@@ -2325,13 +2325,33 @@ holds this stylesheet to.
 *"ทดสอบ calibration ชุด PM-3000 ก่อนส่งมอบ (ไม่พักเที่ยง)"* — and at the table's
 1.5 the pair closed up into a block whose last line then sat 10px above
 **กฎที่ใช้**, which is a *label* and starts at the opposite edge. Two lines of
-text and a heading, sharing one gap measured for neither. 1.7 does two things
-with one number: the pair separates, and the half-leading under the last of them
-grows from 3.5px to 4.9 — so the distance from the final glyph to the label
-below goes **16.75px → 18.15** without touching the 10px step the rest of the
-card keeps. The table's own `td` rule is left alone: on the desktop this cell is
-a column beside ten others, and a line-height set for a wrapped card value would
-loosen every row of every table in the app.
+text and a heading, sharing one gap measured for neither.
+
+**Two numbers, because one of them could only do half the job.** A line-height
+separates the two lines from each other and puts half its growth under the last
+of them — at 1.75 that is 1.75px into the gap below and no more, which is not
+what "these are two different things" looks like when the thing underneath is a
+heading. So the cell also takes `padding-bottom: 4px`, and the card's 10px flex
+gap becomes 14 under this one field: 10 for the rhythm, 4 for the fact that what
+is above it is a paragraph and what is below it is a label. Measured on the
+built app from the last glyph to the label's first: **16.75px** before any of
+it, 18.15 at 1.7 alone, **22.5** now — 10 gap + 4 padding + 5.25 of half-leading
+under the last line + 3.25 above the label's own. It read "1.7, no padding" for
+part of 2026-08-26. The table's own `td` rule is left alone: on the desktop this
+cell is a column beside ten others, and a line-height set for a wrapped card
+value would loosen every row of every table in the app.
+
+**And ตั้งโดย ฝ่ายบุคคล went a step lighter than the version it hangs under.** It
+was an inline `fontSize: 11.5` on `--muted` — the same grey as the figure above
+it, 2.5px smaller — so the pair read as one two-line value rather than as a
+figure with a note about it, and the figure is what a reader came to that column
+for. `.pv-by` carries the size and `--muted-2`, which measures **3.41:1** on
+`--card` in ธีมสว่าง: under AA, and deliberately, for four words that name a
+*shared account* rather than a person, so the words name a login and not
+somebody — and are never the answer to a question this column is being asked.
+The version number keeps `--ink`. The other two 11.5s in that file,
+*เปลี่ยนกฎการคำนวณ* and *ปนกัน*, are left alone: they inherit amber from the span
+they sit in, and greying them would take the warning off them.
 
 **The card breathes at 10px, not 8.** Every field on these cards is a label and
 a value on *one* line — floated label at the left, value flowing to the right of
@@ -2340,6 +2360,14 @@ at 8px against a 1.5 line-height six fields ran together into a block of text.
 10px is the step the cards themselves are spaced by, so a card's insides and the
 space around it are one rhythm. It is `.stack-table`'s rule, so every card list
 in the app gets it.
+
+**The bar stands 16px below the warning, not 12.** Adjacent margins collapse,
+so `.alert`'s 12 and `.audit-bar`'s 12 came to 12 — two bordered boxes twelve
+pixels apart, reading as one stack of two panels rather than as a warning and
+then a control. The number is on the bar rather than as a `margin-bottom` on
+`.alert`, which would move every notice in the app to space one bar on one
+screen; when there is no warning to show it is the gap under the card's heading
+instead, which wants the same.
 
 **The bar above the table was centred and the sentence in it was not.**
 แสดงประวัติการแก้ไขทั้งหมด is a checkbox at the left and *"6 จาก 6 รายการมี
@@ -2507,6 +2535,35 @@ stopped saying the thing it is for.
 so seventy-six characters of it is one unbreakable run three lines deep inside an
 amber box; both halves that matter survive — why this screen cannot answer, and
 which one can.
+
+**And the screen it names is now the way there.** This is the case whose whole
+content is *"the answer is somewhere else"* — `arithmeticMixed` is null because
+รายการ OT holds version numbers and not the snapshots behind them, and
+ตรวจสอบรายเดือน holds both. Naming the screen and leaving the reader to find it
+was the sentence doing half its job: กลับไปสรุปรายเดือน is at the top of the same
+card, and nothing joined the two up. **ตรวจสอบรายเดือน** is a `.link` now, and
+`HrEntries` passes its own `onClose` as the callback — leaving *is* arriving.
+It is **optional**, and that is not defensive coding: `MonthAlerts` draws this
+same notice *on* ตรวจสอบรายเดือน, where a link back to the screen you are already
+on is worse than none, so it passes nothing and gets the plain string. The shape
+is `AddBirthDateHint`'s, which degrades the same way for a หัวหน้า who has no
+ตั้งค่าระบบ tab. Each half of the wording is written once, so the string and the
+linked version cannot drift apart.
+
+**A link inside a notice takes the notice's colour, not the app's green.**
+`.link` is `--green-text` at 13px on a line-height of 1, which is right in a
+table cell and wrong twice over here: green is what this app uses for *go* and
+for *approved*, so inside an amber box it reads as a second, unrelated signal —
+and 13px/1 dropped into a 12.5px line set at 1.6 sits off the baseline of the
+words either side of it. Inside `.alert` it takes `font: inherit` with the
+weight back at 500, an underline **at rest** rather than on hover — a link in a
+coloured panel cannot use colour alone to be findable, because the whole panel
+is coloured — and the `-ink` of whichever palette it is in. `--amber-ink` on
+`--amber-bg` measures **5.46:1** in ธีมสว่าง against `--amber`'s 3.46, and in
+ธีมมืด it is the *brighter* of the two: a control is the one thing in a notice
+that has to be legible. This also picks up the link
+*ดูรายละเอียดที่หน้านโยบายการคำนวณ* in `LivePolicyNotice`, which had been green
+inside an amber box since it was written.
 
 **And the instruction is grey now, in both renderers.** Three lines in one amber
 at nearly one size is a block, and a block is read as one thing or skipped as
@@ -3522,8 +3579,8 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1694/1694 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1697/1697 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3547,10 +3604,14 @@ four role UIs.
   two halves on one axis and that the inherited `margin-bottom` which broke that
   is the explanation, that on a ยกเลิก row the live control outweighs the dead
   sentence and does it with an edge rather than a fill, and that the one value
-  which wraps carries a line-height while the table's own `td` does not. Two in
-  `test/hrMonthCards.test.js` joined them for the notice both screens draw: that
-  the panel says its instruction in the same `.say` the list does, and that the
-  shortened fourth sentence still says why and where. Before them, six in
+  which wraps carries a line-height **and** a padding, because a line-height puts
+  only half its growth under the last line and what sits below is a label. Five
+  in `test/hrMonthCards.test.js` joined them for the notice both screens draw:
+  that the panel says its instruction in the same `.say` the list does, that the
+  shortened fourth sentence still says why and where, that the screen it names is
+  a link when a caller offers one and plain text when it does not, that a link
+  inside a notice takes that notice's own `-ink` rather than the app's green, and
+  that ตั้งโดย is quieter than the version it hangs under. Before them, six in
   `test/monthSearch.test.js` pinning ตรวจสอบรายเดือน's own
   copy of that box: that it is the same combobox and not a third grammar and
   that `.acct-menu` is gone from every rule, what a suggestion holds — including

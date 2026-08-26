@@ -405,7 +405,13 @@ test('two panels became one panel — a list, not a second stack', () => {
   // …and the banner is not even imported any more. It is still a component
   // because ตรวจสอบใบของพนักงาน opens it.
   assert.ok(!/import \{[^}]*PolicyVersionBanner/.test(hrView), 'the banner is still imported here');
-  assert.match(read('components/HrEntries.jsx'), /<PolicyVersionBanner spread=\{spread\} \/>/);
+  // …and it hands the banner the way back, which is the screen the banner's
+  // fourth sentence names. See 'the sentence that names a screen offers to
+  // open it' at the foot of this file for why the callback comes from here.
+  assert.match(
+    read('components/HrEntries.jsx'),
+    /<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>/,
+  );
 });
 
 test('an item is a heading, its figures, and the one sentence that says what to do', () => {
@@ -471,8 +477,14 @@ test('one control for the whole thing, and no second ดูรายละเอ
   // Whether there is a policy notice at all, and how loud, is the notice's own
   // module to answer — asking `spread.mixed` again here is how two rules that
   // disagree start.
+  // MonthAlerts passes NO second argument, and that is the assertion: the
+  // notice's fourth sentence names ตรวจสอบรายเดือน, and this screen IS
+  // ตรวจสอบรายเดือน — a link back to where you already are is worse than none.
   assert.match(strip, /const pv = policyVersionNotice\(policy\);/);
-  assert.match(read('components/PolicyVersion.jsx'), /export function policyVersionNotice\(spread\) \{/);
+  assert.match(
+    read('components/PolicyVersion.jsx'),
+    /export function policyVersionNotice\(spread, \{ onGoMonthly \} = \{\}\) \{/,
+  );
   assert.match(read('components/PolicyVersion.jsx'), /<Alert kind=\{notice\.kind\}>/);
 });
 
@@ -674,6 +686,67 @@ test('the shortened instruction still says why and where', () => {
   // "หน้านี้ไม่ได้โหลดกฎเบื้องหลังมาด้วย — ดูที่หน้า ตรวจสอบรายเดือน ซึ่งเทียบให้แล้ว"
   // until 2026-08-26. Thai has no spaces, so 76 characters of it is one
   // unbreakable run three lines deep in an amber box.
-  assert.match(pv, /say = 'หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ตรวจสอบรายเดือน';/);
+  // Each half written once, so the plain string and the linked version cannot
+  // drift apart.
+  assert.match(pv, /const lead = 'หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ';/);
+  assert.match(pv, /const where = 'ตรวจสอบรายเดือน';/);
+  assert.match(pv, /: lead \+ where;/);
   assert.ok(!pv.includes('กฎเบื้องหลังมาด้วย'), 'the long form came back');
+});
+
+test('the sentence that names a screen offers to open it', () => {
+  const pv = read('components/PolicyVersion.jsx');
+  // The one case whose whole content is "the answer is somewhere else":
+  // `arithmeticMixed` is null because THIS screen holds version numbers and not
+  // the snapshots behind them, and ตรวจสอบรายเดือน holds both. Naming the
+  // screen and then leaving the reader to find it is the sentence doing half
+  // its job — กลับไปสรุปรายเดือน is at the top of the card, and nothing joined
+  // the two up.
+  assert.match(pv, /<button type="button" className="link" onClick=\{onGoMonthly\}>\{where\}<\/button>/);
+  assert.match(pv, /export function PolicyVersionBanner\(\{ spread, onGoMonthly \}\) \{/);
+  assert.match(pv, /policyVersionNotice\(spread, \{ onGoMonthly \}\)/);
+  // Optional, and the plain sentence is what MonthAlerts gets.
+  assert.match(pv, /say = onGoMonthly\s*\n\s*\?/);
+
+  // A LINK INSIDE A NOTICE IS THE NOTICE'S COLOUR. `.link` is `--green-text` at
+  // 13px/1 — green is what this app uses for "go" and for "approved", so inside
+  // an amber box it reads as a second, unrelated signal, and 13px on a
+  // line-height of 1 dropped into a 12.5px line set at 1.6 sits off the
+  // baseline of the words either side of it.
+  assert.match(css, /\.alert \.link \{ font: inherit; font-weight: 500; text-decoration: underline;/);
+  // Each palette takes its own `-ink`: the tuned member of the trio, not the
+  // display colour. `--amber-ink` on `--amber-bg` is 5.46:1 in ธีมสว่าง against
+  // `--amber`'s 3.46, and in ธีมมืด it is the brighter of the two. A control is
+  // the one thing in a notice that has to be legible.
+  assert.match(css, /\.alert\.warn \.link \{ color: var\(--amber-ink\); \}/);
+  assert.match(css, /\.alert\.error \.link \{ color: var\(--danger-ink\); \}/);
+  assert.match(css, /\.alert\.ok \.link \{ color: var\(--alert-ok-ink\); \}/);
+  assert.match(css, /\.alert\.info \.link \{ color: var\(--info\); \}/);
+});
+
+test('the bar below the notice stands 16px off it, not 12', () => {
+  // Adjacent margins collapse, so `.alert`'s 12 and this bar's 12 came to 12 —
+  // two bordered boxes 12px apart, reading as one stack of two panels. Set on
+  // the bar rather than as a `margin-bottom` on `.alert`, which would move
+  // every notice in the app to space one bar on one screen.
+  assert.match(css.slice(css.indexOf('.audit-bar {')), /^\.audit-bar \{[\s\S]{0,200}margin: 16px 0 0;/);
+  assert.match(css, /\.alert \{[\s\S]{0,200}margin: 12px 0;/);
+});
+
+test('who set a rule set is quieter than which rule set it is', () => {
+  const pv = read('components/PolicyVersion.jsx');
+  // An inline `fontSize: 11.5` on `--muted` until 2026-08-26 — the same grey as
+  // the figure above it and 2.5px smaller, so the pair read as one two-line
+  // value rather than as a figure with a note about it. `--muted-2` is 3.41:1
+  // on `--card` in ธีมสว่าง: under AA, and deliberately, for four words that
+  // name a shared account rather than a person and are never the answer to a
+  // question this column is being asked. The version number keeps `--ink`.
+  assert.match(pv, /<div className="pv-by">ตั้งโดย \{version\.createdByName\}<\/div>/);
+  // Scoped to this one component. The other two 11.5s in the file —
+  // เปลี่ยนกฎการคำนวณ and ปนกัน — are notes under a value that INHERITS amber
+  // from the span it is in, and greying them would take the warning off them.
+  const cell = pv.slice(pv.indexOf('export function PolicyVersionCell'), pv.indexOf('export function PolicyVersionChange'));
+  assert.ok(!/fontSize:/.test(cell), 'the inline type size came back');
+  assert.ok(!/color: 'var\(--muted\)'/.test(cell.slice(cell.indexOf('createdByName'))), 'the sub-line kept the darker grey');
+  assert.match(css, /\.pv-by \{ font: 400 11\.5px\/1\.45 var\(--sans\); color: var\(--muted-2\); \}/);
 });

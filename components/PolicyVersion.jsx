@@ -48,10 +48,14 @@ export function PolicyVersionCell({ version }) {
   return (
     <span title={version.note || undefined}>
       {versionName(version)}
+      {/* `pv-by` — who set this rule set, under which rule set it is. The two
+          lines were 11.5px on `--muted` against 14px on the ink above them, and
+          at that distance the pair read as one two-line value rather than as a
+          figure with a note about it. The class carries the size and a step
+          lighter; it replaces an inline style, which is the one thing a media
+          query cannot reach. */}
       {version.createdByName && (
-        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-          ตั้งโดย {version.createdByName}
-        </div>
+        <div className="pv-by">ตั้งโดย {version.createdByName}</div>
       )}
     </span>
   );
@@ -217,7 +221,7 @@ export function PolicyDriftBanner({ user, onOpenPolicy }) {
  * telling HR to run a migration when the real answer is "open ตรวจสอบรายเดือน"
  * sends them somewhere that will not help.
  */
-export function policyVersionNotice(spread) {
+export function policyVersionNotice(spread, { onGoMonthly } = {}) {
   if (!spread?.mixed) return null;
 
   const named = spread.used
@@ -254,7 +258,33 @@ export function policyVersionNotice(spread) {
       </>
     );
   } else {
-    say = 'หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ตรวจสอบรายเดือน';
+    /* THE ONE CASE THAT NAMES A SCREEN, AND NOW OFFERS TO OPEN IT.
+
+       This is the case whose whole content is "the answer is somewhere else":
+       `arithmeticMixed` is null because THIS screen holds version numbers and
+       not the snapshots behind them, and ตรวจสอบรายเดือน holds both. Telling
+       somebody where to go and then making them find their own way there is
+       the sentence doing half its job — กลับไปสรุปรายเดือน is at the top of
+       the card, but nothing joins the two up.
+
+       OPTIONAL, AND THAT IS NOT DEFENSIVE CODING. `MonthAlerts` draws this same
+       notice ON ตรวจสอบรายเดือน, where a link back to the screen you are
+       already on is worse than no link; it passes no callback and gets the
+       plain sentence. It is the shape `AddBirthDateHint` in components/common.jsx
+       already uses for the same reason — a link to a tab the reader does not
+       have is worse than none — and the two halves of the wording are each
+       written once here, so the string and the linked version cannot drift
+       apart. */
+    const lead = 'หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ';
+    const where = 'ตรวจสอบรายเดือน';
+    say = onGoMonthly
+      ? (
+        <>
+          {lead}
+          <button type="button" className="link" onClick={onGoMonthly}>{where}</button>
+        </>
+      )
+      : lead + where;
   }
 
   return {
@@ -268,8 +298,8 @@ export function policyVersionNotice(spread) {
   };
 }
 
-export function PolicyVersionBanner({ spread }) {
-  const notice = policyVersionNotice(spread);
+export function PolicyVersionBanner({ spread, onGoMonthly }) {
+  const notice = policyVersionNotice(spread, { onGoMonthly });
   if (!notice) return null;
 
   return (

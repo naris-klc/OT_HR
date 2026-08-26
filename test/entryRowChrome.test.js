@@ -290,7 +290,13 @@ test('the one value that wraps gets a line-height, and only that one', () => {
   // lines and a heading sharing one gap that was measured for neither.
   assert.match(jsx, /<td className="entry-desc" data-label="รายละเอียดงานที่ทำ">/);
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(phone, /\.stack-table tbody td\.entry-desc \{ line-height: 1\.7; \}/);
+  // TWO NUMBERS, because one could only do half the job: a line-height adds
+  // half its growth under the last line — 1.75 puts 1.75px into the gap below
+  // and no more — and what sits under this cell is a LABEL, not another value.
+  // The 4px takes the card's 10px flex gap to 14 under this one field. Last
+  // glyph to the label's first, measured on the built app: 16.75px before any
+  // of it, 18.15 at 1.7 alone, 22.5 now.
+  assert.match(phone, /\.stack-table tbody td\.entry-desc \{ line-height: 1\.75; padding-bottom: 4px; \}/);
   // The table's own rule is left alone: on the desktop this cell is a column
   // beside ten others, and a line-height set for a wrapped card value would
   // loosen every row of every table in the app.

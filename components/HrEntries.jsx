@@ -137,7 +137,12 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
         <Empty>ไม่มีรายการในเดือนนี้</Empty>
       ) : (
         <>
-        <PolicyVersionBanner spread={spread} />
+        {/* `onGoMonthly` is `onClose`: the screen the warning names is the screen
+            this one was opened from, so leaving is arriving. Passed rather than
+            wired inside the banner, because `MonthAlerts` draws the same notice
+            ON ตรวจสอบรายเดือน and a link back to where you already are is
+            worse than no link — it passes nothing and gets a plain sentence. */}
+        <PolicyVersionBanner spread={spread} onGoMonthly={onClose} />
 
         {/* One press to read the whole month at once, which is what closing it
             actually involves — the per-row buttons are for following a single

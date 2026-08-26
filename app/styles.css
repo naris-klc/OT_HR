@@ -3252,6 +3252,32 @@ td > .approver-line { margin-top: 5px; }
    footnote. */
 .alert-list { margin: 5px 0 0; padding-left: 17px; list-style: disc; }
 .alert-list li { margin-top: 2px; }
+/* A LINK INSIDE A NOTICE IS THE NOTICE'S COLOUR, NOT THE APP'S GREEN.
+
+   `.link` is `--green-text` at 13px/1, which is right in a table cell and wrong
+   in both directions here: green is the colour this app uses for "go" and for
+   "approved", and inside an amber box it reads as a second, unrelated signal —
+   and 13px on a line-height of 1, dropped into a 12.5px line set at 1.6, sits
+   off the baseline of the words either side of it.
+
+   `font: inherit` takes the size, the face and the leading of whatever line the
+   link is in; the weight comes back after it, because 500 against 400 is half
+   of what says this word can be pressed. The underline is the other half, and
+   it is on at rest rather than on hover: a link inside a coloured panel cannot
+   rely on colour alone to be findable, since the whole panel is coloured.
+
+   ONE RULE PER PALETTE, and each takes the `-ink` of its own — the tuned,
+   accessible member of the trio rather than the display colour. On `--amber-bg`,
+   `--amber-ink` measures 5.46:1 in ธีมสว่าง against `--amber`'s 3.46, and in
+   ธีมมืด it is the BRIGHTER of the two. A control is the one thing in a notice
+   that has to be legible. */
+.alert .link { font: inherit; font-weight: 500; text-decoration: underline; text-underline-offset: 2px; }
+.alert.warn .link { color: var(--amber-ink); }
+.alert.error .link { color: var(--danger-ink); }
+.alert.ok .link { color: var(--alert-ok-ink); }
+.alert.info .link { color: var(--info); }
+.alert .link:hover { text-decoration-thickness: 2px; }
+
 .alert.warn { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-line); }
 .alert.warn::before { content: '!'; background: var(--amber); color: var(--on-amber); }
 .alert.error { background: var(--danger-bg); color: var(--danger-ink); border-color: var(--danger-line); }
@@ -3575,9 +3601,16 @@ td > .approver-line { margin-top: 5px; }
    opens. Above rather than inside the scroll area — the table scrolls
    sideways on a narrow screen and a control that scrolls away with it is a
    control nobody finds twice. */
+/* 16px ABOVE, NOT 12, and the number is set here rather than as a
+   `margin-bottom` on `.alert`. What sits above this bar on รายการ OT is the
+   policy warning, and adjacent margins collapse — so the two boxes were 12px
+   apart while the alert's own border and the bar's own border made the pair
+   read as one stack of two panels. 16 separates them without touching every
+   other notice in the app, and when there is no warning to show it is the gap
+   under the card's heading instead, which wants the same. */
 .audit-bar {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  margin: 12px 0 0; padding: 11px 13px;
+  margin: 16px 0 0; padding: 11px 13px;
   background: var(--neutral-wash); border: 1px solid var(--line);
   border-radius: var(--radius-xs);
 }
@@ -4056,6 +4089,21 @@ table.fixed td { overflow-wrap: anywhere; }
   font: 400 12px/1.45 var(--sans);
   font-variant-numeric: normal;
 }
+
+/* ตั้งโดย ฝ่ายบุคคล — who set the rule set, under which rule set it is.
+
+   It was an inline `fontSize: 11.5` on `--muted`, which is the same grey the
+   figure above it is set in and only 2.5px smaller than it: the pair read as
+   one two-line value rather than as a figure with a note about it, and the
+   thing a reader came to this column for is the number. `--muted-2` is one
+   step lighter and measures 3.41:1 on `--card` in ธีมสว่าง — under AA, and
+   deliberately so for four words that name an account rather than a person
+   (the ฝ่ายบุคคล login is shared) and are never the answer to a question this
+   screen is being asked. The version number keeps `--ink`.
+
+   A class, not the inline style it replaces: an inline style is the one thing
+   a media query cannot reach. */
+.pv-by { font: 400 11.5px/1.45 var(--sans); color: var(--muted-2); }
 
 /* A CELL WITH A CEILING ON IT — เหตุผล on ผู้รับช่วงอนุมัติแทน, รายละเอียด on the
    entry lists. Both hold free text somebody typed, and without a cap one long
@@ -7944,14 +7992,23 @@ table.mini tbody tr:hover { background: none; }
      starts at the opposite edge. Two lines of text and a heading, sharing one
      gap that was measured for neither.
 
-     1.7 does two things with one number: the pair of lines separates, and the
-     half-leading under the last of them grows from 3.5px to 4.9 — so the
-     distance from the final glyph to the label below goes 16.75px → 18.15
-     without touching the 10px step the rest of the card keeps. The table's own
-     `td` rule is left alone: on the desktop this cell is a column beside ten
-     others, and a line-height set for a wrapped card value would loosen every
-     row of every table in the app. */
-  .stack-table tbody td.entry-desc { line-height: 1.7; }
+     TWO NUMBERS, BECAUSE ONE OF THEM COULD ONLY DO HALF THE JOB. A line-height
+     separates the two lines from each other and adds half its growth under the
+     last of them — at 1.75 the half-leading goes 3.5px → 5.25, which is 1.75px
+     of the gap below and no more. That is not what "these are two different
+     things" looks like when the thing underneath is a heading. So the cell also
+     takes `padding-bottom: 4px`, and the 10px flex gap the card keeps between
+     every other pair of fields becomes 14 under this one: 10 for the rhythm, 4
+     for the fact that what is above it is a paragraph and what is below it is a
+     label. Measured from the last glyph to the label's first: 16.75px before
+     any of this, 18.15 at 1.7 alone, 22.5 now — 10 gap + 4 padding + 5.25 of
+     half-leading under the last line + 3.25 above the label's own. It read `line-height: 1.7` with no
+     padding for part of 2026-08-26.
+
+     The table's own `td` rule is left alone: on the desktop this cell is a
+     column beside ten others, and a line-height set for a wrapped card value
+     would loosen every row of every table in the app. */
+  .stack-table tbody td.entry-desc { line-height: 1.75; padding-bottom: 4px; }
 
   /* รายการ OT's last cell, which is the foot of the card here rather than the
      eleventh column of a table. Wrapping is allowed — and only here — because a
