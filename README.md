@@ -1009,11 +1009,12 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1672 tests
+and the engine know nothing about Next.js, so the whole suite — **1678 tests
 across 101 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1654 … 2026-08-25" until then, and was already five behind when the figure was
-re-checked; the file count has not moved.)
+"1672" earlier the same day and "1654 … 2026-08-25" before that, and was already
+five behind when the earlier figure was re-checked; the file count has not
+moved.)
 
 That is also why it stays fast: the suite finishes in **about 2 s**, which is a
 budget rather than an observation. (It read "410 tests, under 400 ms" until
@@ -2488,7 +2489,16 @@ be swapped for the next without a single figure moving. **รวมทั้ง�
 server's `grandTotal` for the whole month. **พิมพ์ F-HR-027 ทุกคน** bundles
 every person the search matched, on this page or not. Both CSVs are built
 server-side and have never known what is on screen. A new month, a new
-สถานะที่นับ or a keystroke in the search box puts the page back to 1.
+สถานะที่นับ or a new search puts the page back to 1 — `query` and not `find`
+since the debounce landed, so the pager moves when the list under it does rather
+than 300ms ahead of it.
+
+**The exception, and it is not a reset.** Picking somebody from the suggestion
+list under the search box sets the page that *holds* them, because on a phone a
+person on page 7 has no card on the screen at all. That box, its dropdown and
+what a pick does — it opens **ดู / แก้ไขรายการ** for that person — are described
+in §"และกล่องแนะนำบนตรวจสอบรายเดือน", filed with สรุป OT ส่งบัญชี's box because
+the two are the same box.
 
 **A page that stops existing is clamped, not drawn empty.** `load()` can shorten
 the list without the month, the filter or the search changing — HR opens
@@ -2511,9 +2521,10 @@ to reach the other fifty-five with, so a sliced list is a month with most of the
 month missing on the layout that has always shown all of it. The phone draws
 exactly five either way; only this way leaves the desktop the month.
 
-**A new page starts at the top of the list** — the one place this component
-touches the DOM, and it is there because the walk found the bug rather than
-because it looked likely. The pager sits under the fifth card, so **ถัดไป** is
+**A new page starts at the top of the list** — the first of the two places this
+component touches the DOM (the other is the dropdown's scroll, added
+2026-08-26; it read "the one place" until then), and it is there because the
+walk found the bug rather than because it looked likely. The pager sits under the fifth card, so **ถัดไป** is
 pressed with five cards' worth of list above the thumb; without scrolling, the
 next five people are drawn up there out of the viewport and a button whose label
 did not change appears to have done nothing. `goPage()` calls
@@ -2527,7 +2538,13 @@ which was the same act as scrolling the box. With the *page* doing the scrolling
 it is not: an effect over those deps fires on mount and on every keystroke in
 the search box, and the screen would jump down to the list while somebody was
 still typing above it. Pressing one of the two buttons is the only thing that
-scrolls anything.
+scrolls the list *by itself*.
+
+It stopped being the only thing that scrolls the page on 2026-08-26, and the
+second one is deliberately not on those deps either: picking somebody from the
+suggestion list scrolls to their row — from an effect, but one that fires on
+`jump`, a request made by a click and spent once. Nothing about typing reaches
+it. See §"และกล่องแนะนำบนตรวจสอบรายเดือน".
 
 Walked 2026-08-26 at 360×780 against a clone of the database on `next dev`, the
 month seeded to 25 people (24 with approved entries) because the live August has
@@ -2896,8 +2913,8 @@ file should not know about. And `behavior` is `'smooth'` unless
 component, and it is a question about MOTION, not about layout, which stays the
 stylesheet's.
 
-**The same panel and the same keys as กรองตามพนักงาน.** `.pick-menu` with an
-`.acct-menu` modifier for the two-line row, `role="combobox"` on the input and
+**The same panel and the same keys as กรองตามพนักงาน.** `.pick-menu` with a
+`.find-menu` modifier for the two-line row, `role="combobox"` on the input and
 `role="listbox"` on the list, ↑ ↓ to walk it, Enter to take the active row,
 Escape and Tab to shut it, and the keyboard row following the pointer so there is
 one notion of "the current row" rather than two. A second combobox with its own
@@ -2907,18 +2924,27 @@ in step. Both classes are named in every rule, for the reason written over
 single-class rule loses to it on position and the symptom is a rule that is
 provably in the bundle and provably ignored.
 
+That modifier read `.acct-menu` until later the same day, when ตรวจสอบรายเดือน
+got the same box and the same list — see §"และกล่องแนะนำบนตรวจสอบรายเดือน" below.
+A panel worn by two screens cannot be named after one of them, and the second
+screen wearing a class called *acct* is how a reader ends up believing there are
+two panels to keep in step. It is named for the box it opens under instead,
+which is the one thing both callers have in common.
+
 **Nothing is drawn when nothing matches.** The card below already says
 ไม่พบพนักงานที่ค้นหา with a way out of it, and a floating panel repeating that
 over the top of it is the same sentence twice, one of them covering the button
 that answers it.
 
-**The flash is painted on the cells, not on the row**, because below 860px the
-พนักงาน column is `position: sticky` with an opaque fill of its own — a colour on
-the `<tr>` would be covered on exactly the cell carrying the name that was
-searched for. An animation beats a normal declaration in the cascade whatever the
-selectors say, so the `td` rule reaches the sticky cell too, and it fades to
-`transparent` rather than back to a colour because the row's real background is
-one of three things this file cannot name.
+**The flash is painted on the cells, not on the row** *on this screen*, because
+below 860px the พนักงาน column is `position: sticky` with an opaque fill of its
+own — a colour on the `<tr>` would be covered on exactly the cell carrying the
+name that was searched for. An animation beats a normal declaration in the
+cascade whatever the selectors say, so the `td` rule reaches the sticky cell too,
+and it fades to `transparent` rather than back to a colour because the row's real
+background is one of three things this file cannot name. ตรวจสอบรายเดือน gets the
+opposite answer to the same question, and the reason is in §"และกล่องแนะนำบน
+ตรวจสอบรายเดือน" below.
 
 **And a reader who asked for less motion still sees it.** The blanket
 `prefers-reduced-motion` rule at the foot of the stylesheet clamps every
@@ -3121,6 +3147,81 @@ It is a different decision from `SPARE_ROWS` on the departmental sheet, which is
 ลำดับที่, so each one is a promise the sequence is still running. These are
 unnumbered paper.
 
+### และกล่องแนะนำบนตรวจสอบรายเดือน — กดชื่อแล้วเข้าไปแก้ไขได้เลย
+
+The third caller of that box, added the same day, and the first where picking a
+suggestion does something other than move the page.
+
+**Everything above is unchanged and shared.** The same `personMatches`, the same
+`FIND_DEBOUNCE_MS` of 300 with its `find` / `query` pair and its early return for
+✕, the same `Highlight` computed by `matchRanges()`, the same `.pick-menu`
+`.find-menu` panel, the same five keys, the same "nothing is drawn when nothing
+matches". A row reads:
+
+```
+สมชาย ใจดี (PM-0412)
+วิศวกรรม | 15.5 / 40 ชม.
+```
+
+The second line is the difference. ส่งบัญชี prints `hours()` because its sheet has
+no ceiling column; this prints **`capFigure(row.cap.usedHours, row.cap.capHours)`
+— the same helper, over the same `row.cap`, that the สะสม / เพดาน column prints
+on the row it takes you to**, so a suggestion and the row it opens cannot quote a
+person's month differently. A department with no ceiling reads `3 ชม.` with no
+denominator, exactly as its cell does.
+
+**Picking somebody OPENS their month.** This screen is where a month is checked
+and where a wrong figure is corrected, and correcting it means being inside
+**ดู / แก้ไขรายการ** for one person — so the pick puts HR there, rather than
+scrolling to a row and stopping as it does on ส่งบัญชี, where the row *is* the
+answer.
+
+**Which makes the scroll and the flash deferred, and that is the whole of the
+mechanism.** `setOpened()` replaces this entire screen by an early return, so at
+the moment of the pick there is no row in the document to scroll to and no
+element to light — and 1800ms of flash fired then would burn down while HR was
+still reading the entries. `goToRow()` therefore records a request (`jump`) and
+an effect spends it later, when `data` is back and none of `opened`, `auditing`
+or `printing` is set. That is the moment HR presses **กลับไปสรุปรายเดือน**: the
+list is drawn again, the page moves to their row and it lights. `flash` is a
+second piece of state and not the same one, because the request and the lighting
+are two different moments.
+
+**The filter is left alone; the page is not, and they are not the same thing.**
+`goToRow()` never calls `setFind` or `setQuery` — `test/monthSearch.test.js`
+asserts both as negatives — because clearing the box would throw away the
+narrowing somebody just did and make the row they asked for one of sixty again
+the moment they came back to it. But below 860px the list is **five cards at a
+time** and everybody else carries `off-page`, which is `display: none`: a person
+on page 7 has no element on the screen to scroll to at all. So the page that
+*holds* them is set from their place in `shown`, the same list the pager counts.
+Above 860px there is no pager and `off-page` has no rule, so nothing a reader can
+see changes there.
+
+**And the flash is painted on the ROW here, the opposite of ส่งบัญชี's answer to
+the same question.** This table has no sticky column, and below 860px the `<tr>`
+*is* the card — it carries the fill, the border and 15px of padding, and the
+cells inside it are bare blocks. Lit cell by cell it would come up green in
+stripes with its own padding left plain. That card is also the one row in the app
+whose real background the stylesheet **can** name, and therefore must: `rowFlash`
+ends at `transparent`, which on a card with a `--card` fill finishes by showing
+the page's ground through it for a frame, so the phone gets `rowFlashCard`, which
+ends at `--card`. One extra `@keyframes`, and it is the only thing that differs.
+
+**Walked on the built app, 2026-08-26**, against the live month at 360px and
+1280px, and against a throwaway clone of it inflated to fourteen people so the
+pager had somewhere to go. At 360px the panel is **304px wide, 4px under the
+box**, `max-height: 264px`, `overflow-y: auto`, `z-index: 5`, `aria-expanded`
+true and `aria-activedescendant` on the first row; the marks land on whole Thai
+clusters (`สุ ส สุ สิ` for "ส"). Typing `สม` gave **11 suggestions of 14 people**;
+picking the last opened *รายการ OT — สมหมาย ก้าวหน้า*, and **กลับไปสรุปรายเดือน**
+came back on **หน้า 3 / 3** with the box still holding `สม`, the row carrying
+`row-flash` and no `off-page`, `animation-name: rowFlashCard`, the row at 474px
+of an 800px viewport, and the light gone within two seconds. At 1280px the panel
+is 806px wide, the animation is `rowFlash`, and ↓ ↓ walks to the third row with
+`aria-activedescendant` following, ↑ steps back, Escape shuts it, a click reopens
+it and Enter opens the active person's month.
+
 ---
 
 ## สรุป OT แยกแผนก — the departmental count
@@ -3240,15 +3341,25 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1672/1672 pass in about 2 s**, measured 2026-08-26 across 101
-  files. It read "1654, measured 2026-08-25" until then, which was five behind
+- `npm test` — **1678/1678 pass in about 2 s**, measured 2026-08-26 across 101
+  files. It read "1672" earlier the same day and "1654, measured 2026-08-25"
+  before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
   and "1601" earlier that day, and "1386 across 86 files, 2026-08-24" before
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The four newest are also in `test/monthSearch.test.js` and pin the suggestion
+  The six newest are in `test/monthSearch.test.js` and pin ตรวจสอบรายเดือน's own
+  copy of that box: that it is the same combobox and not a third grammar and
+  that `.acct-menu` is gone from every rule, what a suggestion holds — including
+  that its figure comes from the same `capFigure` the row's ceiling cell prints
+  — that picking somebody calls `setOpened` and never `setFind` or `setQuery`,
+  that the scroll and the flash wait for `data` and for all three sub-screens to
+  clear, that the flash is painted on the `<tr>` there and fades to `--card` on
+  the phone card, and that both screens read the same `FIND_DEBOUNCE_MS` with
+  their hooks above every early return. Before them, four in the same file
+  pinning ส่งบัญชี's suggestion
   list: that it is the app's own `.pick-menu` and the same five keys rather than
   a second combobox, what a row holds, that `goToRow()` never touches `find` or
   `query` — asserted as a negative — and that the flash is painted on the cells

@@ -7,7 +7,9 @@ import {
 import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
 import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 import { capFigure, overCap, pendingCapNote } from '@/lib/caps.js';
-import { Alert, ClearButton, Empty, AddBirthDateHint, RateHead } from './common.jsx';
+import {
+  Alert, ClearButton, Empty, AddBirthDateHint, Highlight, RateHead,
+} from './common.jsx';
 import Icon from './icons.jsx';
 import { personMatches } from '@/lib/personSearch.js';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
@@ -67,6 +69,38 @@ const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
  */
 const CARD_PAGE = 5;
 
+/**
+ * How long after the last keystroke the screen is filtered — see `find` and
+ * `query` below.
+ *
+ * THE SAME 300 สรุป OT ส่งบัญชี USES, and the number is written out in both
+ * files rather than shared from one. Two screens whose search boxes answered at
+ * different speeds would be the kind of difference nobody can name and everybody
+ * feels; if this one ever moves, components/AccountingView.jsx is the other.
+ */
+const FIND_DEBOUNCE_MS = 300;
+
+/**
+ * How long the row picked from the dropdown stays lit.
+ *
+ * Long enough to find with the eye after the page has finished moving, short
+ * enough that it is gone before it becomes a state of the row rather than an
+ * answer to a question. The fade is in the stylesheet; this is what holds the
+ * class on, and it is what a reader with `prefers-reduced-motion` gets INSTEAD
+ * of the fade — see `.row-flash`.
+ */
+const FLASH_MS = 1800;
+
+/**
+ * The id a row carries so the dropdown can scroll to it.
+ *
+ * `hr-row-` prefixed and not `acct-row-`: สรุป OT ส่งบัญชี stamps its own rows
+ * with the same employee ids, and the two screens are separate tabs of one
+ * document — a shared prefix would be two elements answering to one id the day
+ * anything renders both.
+ */
+const rowDomId = (employeeId) => `hr-row-${employeeId}`;
+
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({
   user, onOpenBirthdayQueue, onOpenRoster = null, onSettled = null,
@@ -120,24 +154,54 @@ export default function HrView({
    * and PM00511 both answer to either spelling and "ใจดี สมชาย" finds the same
    * person as "สมชาย ใจดี" — see lib/personSearch.js. An empty query matches
    * everybody, so there is no branch here for "not searching".
+   *
+   * TWO STRINGS, AND THE DIFFERENCE BETWEEN THEM IS THE DEBOUNCE — the same
+   * pair สรุป OT ส่งบัญชี carries, for the same reason. `find` is what is in
+   * the box and follows every keystroke with no delay, because a field that lags
+   * behind the finger is the one thing a debounce must never do. `query` is what
+   * the screen has been filtered BY, and it arrives FIND_DEBOUNCE_MS after
+   * typing stops. Everything a reader compares reads `query` — the rows, the
+   * count, the quoted text in the empty state, the highlight and the suggestion
+   * list — so the screen never shows one query's rows under another's count.
+   *
+   * CLEARING IS NOT A KEYSTROKE AND DOES NOT WAIT. ✕ and ล้างการค้นหา are a
+   * decision — the whole month back, now — and 300ms of an empty box over a
+   * still-filtered list reads as a control that did not work. The early return
+   * in the effect is the whole of that difference.
    */
   const [find, setFind] = useState('');
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    if (find === '') { setQuery(''); return undefined; }
+    const timer = setTimeout(() => setQuery(find), FIND_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [find]);
   const shown = React.useMemo(
-    () => (data?.employees || []).filter((row) => personMatches(row.employee, find)),
-    [data, find],
+    () => (data?.employees || []).filter((row) => personMatches(row.employee, query)),
+    [data, query],
   );
+  const searching = query.trim() !== '';
 
   /**
    * WHICH PAGE OF THE CARD LIST IS ON SCREEN — 1-based, because that is what
    * the control under the fifth card says out loud ("หน้า 2 / 12").
    *
-   * It goes back to page 1 on a new month, a new สถานะที่นับ and every keystroke
-   * in the search box, because each of those makes it a claim about a list that
-   * no longer exists: page 8 of August, left where it was, and then September
-   * loaded with 8 people in it.
+   * It goes back to page 1 on a new month, a new สถานะที่นับ and every search,
+   * because each of those makes it a claim about a list that no longer exists:
+   * page 8 of August, left where it was, and then September loaded with 8 people
+   * in it.
+   *
+   * `query` AND NOT `find` since the debounce landed. The list is rebuilt when
+   * the applied search changes, so that is when the page claim goes stale —
+   * resetting on the keystroke instead would put the pager back to 1 three
+   * hundred milliseconds before the list under it moved.
+   *
+   * PICKING SOMEBODY FROM THE DROPDOWN ALSO MOVES IT, and that is not a reset:
+   * `goToRow` sets the page that HOLDS the person asked for, so the card is
+   * drawn at all below 860px. See the note there.
    */
   const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [period, statusFilter, find]);
+  useEffect(() => { setPage(1); }, [period, statusFilter, query]);
 
   /**
    * The page count, and the page actually drawn — which is NOT always `page`.
@@ -161,8 +225,11 @@ export default function HrView({
   /**
    * A NEW PAGE STARTS AT THE TOP OF THE LIST.
    *
-   * The only place this component touches the DOM, and it is here because the
-   * walk on 2026-08-25 found the bug rather than because it looked likely: the
+   * The first of the two places this component touches the DOM — the other is
+   * the suggestion list's scroll below, which reaches a row by id because the
+   * row it wants may not have been drawn yet when the pick was made. This one is
+   * here because the walk on 2026-08-25 found the bug rather than because it
+   * looked likely: the
    * pager sits under the FIFTH card, so ถัดไป is pressed with five cards' worth
    * of list above the thumb. Without this the next five people are drawn up
    * there, out of the viewport, and the reader is left looking at a pager whose
@@ -187,6 +254,164 @@ export default function HrView({
   function goPage(next) {
     setPage(next);
     listRef.current?.scrollIntoView({ block: 'start' });
+  }
+
+  /*
+   * THE SUGGESTION LIST — a way to somebody's month, not a second filter.
+   *
+   * The box already narrows the list. This hangs under it while there is
+   * something typed, one row per match, and picking a row does not change WHAT
+   * is on screen: it opens ดู / แก้ไขรายการ for that person, which is what HR
+   * came to this screen to do. Two jobs from one box and they do not fight —
+   * the filter answers "who is in this month", the list answers "take me into
+   * their month", and on a sheet sixty people long those are different
+   * questions.
+   *
+   * WHERE THIS DIFFERS FROM สรุป OT ส่งบัญชี'S, WHICH IS THE SAME BOX. There a
+   * pick scrolls to the row and stops, because that screen is READ — the row IS
+   * the answer. Here the row is the way in to a month somebody is about to
+   * correct, so the pick opens it. The scroll and the flash still happen; they
+   * just happen on the way BACK, which is the moment they are worth anything.
+   * See `goToRow` and the effect under it.
+   *
+   * ITS CONTENTS COME FROM `query`, NOT `find` — the same debounced string the
+   * rows are filtered by, and `shown` itself rather than a second list built
+   * beside it, so it can never offer somebody the table is not showing.
+   *
+   * `active` IS A KEYBOARD POSITION, not a selection. It follows the pointer as
+   * well, so there is one notion of "the current row" rather than two — the same
+   * grammar `PickPerson` and ส่งบัญชี use, and deliberately so: a third combobox
+   * with its own keys is a third thing for a reader to learn.
+   */
+  const listId = React.useId();
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const suggestions = shown;
+  /* Clamped rather than trusted: a keystroke that narrows the list leaves
+     `active` past the end, and `aria-activedescendant` would then name an
+     element that is not on the page. */
+  const at = Math.min(active, Math.max(suggestions.length - 1, 0));
+  const menuOpen = open && searching && suggestions.length > 0;
+
+  /**
+   * The row the dropdown sent somebody to, and the row that is lit.
+   *
+   * TWO STATES BECAUSE THE TWO MOMENTS ARE NOT THE SAME MOMENT. `jump` is a
+   * request — "take the list to this person when the list is next on screen" —
+   * and it is made while the screen is being replaced by their entries, so
+   * there is nothing to scroll to yet. `flash` is what is lit right now, and it
+   * starts when the list comes back, or the 1800ms would burn down while HR was
+   * inside HrEntries and the row would be back to plain by the time they saw it.
+   *
+   * Held in state and not poked onto the DOM: React owns that `<tr>`, and an
+   * outside hand on its className is a change the next render silently undoes.
+   */
+  const [jump, setJump] = useState(null);
+  const [flash, setFlash] = useState(null);
+
+  /**
+   * The deferred half of a pick: scroll the list to them, then light the row.
+   *
+   * IT WAITS FOR THE LIST TO EXIST. `opened`, `auditing` and `printing` each
+   * replace this whole screen by an early return below, so while any of them is
+   * set there is no `<tr>` to scroll to — and `data` is null for as long as a
+   * reload is in flight, which is exactly what closing HrEntries triggers
+   * (`onChanged={load}`). The effect re-runs when each of those clears.
+   *
+   * IN A `requestAnimationFrame`, after the frame that drew the list back.
+   * Measuring a layout React has committed but the browser has not yet laid out
+   * puts the row in the wrong place, and on the phone the frame that closes the
+   * menu is also the frame that removes a 264px panel from above it.
+   *
+   * `block: 'center'` rather than 'start': the app bar is sticky at the top of
+   * every screen in this app and the search box is sticky under it below 860px,
+   * so a row scrolled to `start` lands behind both. Centring needs no arithmetic
+   * about two bars this file should not know about.
+   *
+   * SMOOTH, EXCEPT WHERE SOMEBODY HAS ASKED FOR LESS MOTION. The one
+   * `matchMedia` in this component, and it is not the layout question this file
+   * is forbidden to ask — how wide the screen is stays the stylesheet's. It is a
+   * question about MOTION, which has no CSS equivalent for an imperative scroll.
+   */
+  useEffect(() => {
+    if (!jump || !data || printing || auditing || opened) return undefined;
+    const still = typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    // Not cancelled on cleanup: the two setState calls below re-render this
+    // component before the frame fires, and a cleanup that cancelled it would
+    // cancel the scroll it was asked for. If the row has gone by then, the
+    // optional chain is the whole of the handling.
+    window.requestAnimationFrame(() => {
+      document.getElementById(rowDomId(jump))?.scrollIntoView({
+        block: 'center',
+        behavior: still ? 'auto' : 'smooth',
+      });
+    });
+    setFlash(jump);
+    setJump(null);
+    return undefined;
+  }, [jump, data, printing, auditing, opened]);
+
+  useEffect(() => {
+    if (!flash) return undefined;
+    const timer = setTimeout(() => setFlash(null), FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [flash]);
+
+  /**
+   * Picked from the list: open that person's month, and remember where they are.
+   *
+   * THE FILTER IS LEFT ALONE — `setFind` and `setQuery` are not called here and
+   * `test/monthSearch.test.js` asserts that as a negative. Clearing the box
+   * would throw away the narrowing somebody just did, and it would make the row
+   * they asked for one of sixty again the moment they came back from it.
+   *
+   * THE PAGE IS NOT LEFT ALONE, and that is not the same thing. Below 860px the
+   * list is five cards at a time and everybody else carries `off-page`, which is
+   * `display: none` — a person on page 7 has no element on the screen to scroll
+   * to at all. So the page that HOLDS them is set here, from their place in
+   * `shown`, which is the same list the pager counts. Above 860px there is no
+   * pager and no `off-page` rule, so this changes nothing a reader can see.
+   */
+  function goToRow(row) {
+    const id = row?.employee?._id;
+    if (!id) return;
+    setOpen(false);
+    const i = shown.findIndex((r) => r.employee._id === id);
+    if (i >= 0) setPage(Math.floor(i / CARD_PAGE) + 1);
+    setJump(id);
+    setOpened(row.employee);
+  }
+
+  function onFindKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!suggestions.length) return;
+      e.preventDefault();
+      if (!menuOpen) { setOpen(true); return; }
+      // Wraps, so ↑ from the first row reaches the last in one press rather
+      // than a hold on ↑ through the whole month.
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      setActive((i) => {
+        const fromRow = Math.min(i, suggestions.length - 1);
+        return (fromRow + step + suggestions.length) % suggestions.length;
+      });
+      return;
+    }
+    if (e.key === 'Enter') {
+      // Prevented whether or not the list is open: this box sits in a card of
+      // controls and Enter must not submit anything behind it.
+      e.preventDefault();
+      if (menuOpen && suggestions[at]) goToRow(suggestions[at]);
+      return;
+    }
+    if (e.key === 'Escape' && menuOpen) {
+      // Stopped only because it did something here. With the list already shut,
+      // Escape belongs to whatever is above this.
+      e.stopPropagation();
+      setOpen(false);
+      return;
+    }
+    if (e.key === 'Tab' && menuOpen) setOpen(false);
   }
 
   // The whole table as one document, or one row of it — the same sheet either
@@ -406,24 +631,101 @@ export default function HrView({
                   <Icon name="search" className="searchbox-icon" />
                   <input
                     type="text"
+                    role="combobox"
                     className={`has-icon${find ? ' has-clear' : ''}`}
                     value={find}
-                    onChange={(e) => setFind(e.target.value)}
+                    onChange={(e) => {
+                      setFind(e.target.value);
+                      // The first suggestion, not the row that was active a
+                      // keystroke ago: the list underneath is a different list
+                      // now, and Enter has to mean whatever is at the top of it.
+                      setActive(0);
+                      setOpen(e.target.value !== '');
+                    }}
+                    // Focus fires once; the click is the way back after Escape
+                    // shut the list with the caret still in the box.
+                    onFocus={() => { if (find !== '') setOpen(true); }}
+                    onClick={() => { if (find !== '') setOpen(true); }}
+                    onBlur={() => setOpen(false)}
+                    onKeyDown={onFindKeyDown}
                     placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
                     /* The placeholder is the detail; this is the name assistive
                        technology reads, and there is no visible <label> above
                        the box for it to repeat. Same pair of words as
                        ทะเบียนพนักงาน, which is the app's other search box. */
                     aria-label="ค้นหาพนักงาน"
+                    aria-expanded={menuOpen}
+                    aria-controls={listId}
+                    aria-autocomplete="list"
+                    aria-activedescendant={menuOpen && suggestions[at] ? `${listId}-${at}` : undefined}
+                    // The browser's own suggestion list would cover this one.
                     autoComplete="off"
                     spellCheck={false}
                   />
-                  {find && <ClearButton onClear={() => setFind('')} />}
+                  {find && <ClearButton onClear={() => { setFind(''); setOpen(false); }} />}
+
+                  {/* NOTHING IS DRAWN WHEN NOTHING MATCHES. The empty state
+                      below already says so, in a sentence with a way out of it
+                      underneath, and a floating panel repeating that over the
+                      top of it is the same fact twice — one of them covering the
+                      button that answers it. (Said without quoting that sentence
+                      here: three assertions in this screen's tests have caught a
+                      comment instead of the code, one of them by matching the
+                      very Thai it was checking had not been copied.) */}
+                  {menuOpen && (
+                    <ul
+                      id={listId}
+                      role="listbox"
+                      className="pick-menu find-menu"
+                      aria-label="ผลการค้นหาพนักงาน"
+                      // Selection happens on click — but mousedown's default
+                      // action is to move focus, which blurs the input and
+                      // unmounts this list before the click can land. Prevented
+                      // on the container, so a drag to scroll on a touch screen
+                      // is still a scroll.
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      {suggestions.map((row, i) => (
+                        <li
+                          key={row.employee._id}
+                          id={`${listId}-${i}`}
+                          role="option"
+                          aria-selected={i === at}
+                          data-active={i === at ? '1' : undefined}
+                          onClick={() => goToRow(row)}
+                          // Follows the pointer, so the row under the cursor is
+                          // the row Enter takes.
+                          onMouseMove={() => setActive(i)}
+                        >
+                          <span className="s-who">
+                            <Highlight text={row.employee.name} query={query} kind="name" />
+                            {' '}
+                            <span className="s-code">
+                              (<Highlight text={row.employee.code} query={query} kind="code" />)
+                            </span>
+                          </span>
+                          {/* แผนก and สะสม / เพดาน — the two things that tell two
+                              คุณสมชาย apart, and the figure this screen is about.
+                              `capFigure` and not `hours(row.summary.otHours)`:
+                              it is the same pair of numbers the cap column
+                              prints on the row this takes you to, from the same
+                              helper, so the suggestion and the row it opens
+                              cannot quote a person's month differently. */}
+                          <span className="s-meta">
+                            {row.department?.nameTh || row.department?.name || '—'}
+                            <span className="s-sep">|</span>
+                            {capFigure(row.cap.usedHours, row.cap.capHours)} ชม.
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
               {/* Only while it is narrowing something. "แสดง 24 จาก 24 คน" is
-                  a sentence about nothing. */}
-              {find && shown.length > 0 && (
+                  a sentence about nothing. `searching` and not `find`: this
+                  counts the rows below it, and those follow `query`. */}
+              {searching && shown.length > 0 && (
                 <div className="found">
                   แสดง <strong>{shown.length}</strong> จาก <strong>{data.employees.length}</strong> คน
                 </div>
@@ -435,7 +737,7 @@ export default function HrView({
                 only while the box is narrowing something, because a file that
                 comes out longer than the screen is a surprise somebody finds
                 after opening it. */}
-            {find && shown.length > 0 && (
+            {searching && shown.length > 0 && (
               <div className="hint" style={{ marginTop: -4, marginBottom: 10 }}>
                 ไฟล์ CSV และยอด “รวมทั้งหมด” ยังเป็นของทั้งเดือน ไม่ใช่เฉพาะผลการค้นหา ·
                 ปุ่มพิมพ์รวมจะพิมพ์เฉพาะ {shown.length} คนที่ค้นเจอ
@@ -444,7 +746,7 @@ export default function HrView({
 
             {shown.length === 0 ? (
               <div className="empty">
-                <div>ไม่พบข้อมูลพนักงานที่ค้นหา “{find}”</div>
+                <div>ไม่พบข้อมูลพนักงานที่ค้นหา “{query}”</div>
                 <button
                   className="btn ghost sm"
                   style={{ marginTop: 10 }}
@@ -534,7 +836,19 @@ export default function HrView({
                   {shown.map((row, i) => (
                     <tr
                       key={row.employee._id}
-                      className={i < from || i >= to ? 'off-page' : undefined}
+                      /* The dropdown's target, and the reason it is an id on the
+                         element rather than a ref: the row it has to reach may
+                         not be drawn yet when the pick is made — HR is inside
+                         that person's entries at the time — so the lookup is a
+                         document-wide one by nature. */
+                      id={rowDomId(row.employee._id)}
+                      /* TWO INDEPENDENT FACTS ABOUT ONE ROW, and neither is the
+                         other's business: `off-page` says this row is not among
+                         the five the phone's current page holds, `row-flash`
+                         says the dropdown just sent somebody here. A row can
+                         carry both — it cannot be lit while hidden, which is why
+                         `goToRow` sets the page first. */
+                      className={`${i < from || i >= to ? 'off-page' : ''}${flash === row.employee._id ? ' row-flash' : ''}`.trim() || undefined}
                     >
                       <td className="who-col">
                         {row.employee.name}

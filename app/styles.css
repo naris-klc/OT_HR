@@ -2317,19 +2317,30 @@ td > .approver-line { margin-top: 5px; }
 
 /* ── THE ROW THE DROPDOWN SENT YOU TO ────────────────────────────────────
    Picked from the suggestion list, the page scrolls to that row and lights it
-   for `FLASH_MS` (1800) — `components/AccountingView.jsx` holds the class on,
-   this decides what it looks like.
+   for `FLASH_MS` (1800) — `components/AccountingView.jsx` and
+   `components/HrView.jsx` hold the class on, this decides what it looks like.
+   ตรวจสอบรายเดือน lights it on the way BACK, when its ดู / แก้ไขรายการ screen
+   closes and the list is on screen again; the fade is the same either way.
 
-   ON THE CELLS, NOT ON THE ROW. Below 860px the พนักงาน column is `position:
-   sticky` with an opaque `--card` fill of its own, so a colour painted on the
-   `<tr>` would be covered on exactly the cell carrying the name you searched
-   for. An animation beats a normal declaration in the cascade whatever the
-   selectors say, so putting it on the `td` reaches the sticky cell too.
+   ON ส่งบัญชี'S CELLS, NOT ON ITS ROW. Below 860px that table's พนักงาน column
+   is `position: sticky` with an opaque `--card` fill of its own, so a colour
+   painted on the `<tr>` would be covered on exactly the cell carrying the name
+   you searched for. An animation beats a normal declaration in the cascade
+   whatever the selectors say, so putting it on the `td` reaches the sticky cell.
+
+   AND ON ตรวจสอบรายเดือน'S ROW, NOT ITS CELLS — the opposite answer to the same
+   question, because that table has no sticky column and below 860px the `<tr>`
+   IS the card: it carries the fill, the border and 15px of padding, and the
+   `td`s inside it are bare blocks. Lit cell by cell, the card would come up
+   green in stripes with its own padding left plain.
 
    FADES TO `transparent` AND NOT BACK TO A COLOUR. The row's real background is
    whatever it was — `--card`, the hover wash, the sticky cell's fill — and this
    file cannot name all three. Ending at transparent hands the row back to
-   whichever of them applies.
+   whichever of them applies. The phone card is the one place it CAN be named,
+   and there it has to be: that `<tr>` is a card with a `--card` fill, so a fade
+   ending at transparent finishes by showing the page's ground through the card
+   for a frame. `rowFlashCard` is that one variant and nothing else.
 
    AND A READER WHO ASKED FOR LESS MOTION STILL SEES IT. The blanket
    `prefers-reduced-motion` rule at the foot of this file clamps every animation
@@ -2341,9 +2352,18 @@ td > .approver-line { margin-top: 5px; }
   0%, 55% { background-color: var(--green-bg); }
   100% { background-color: transparent; }
 }
+@keyframes rowFlashCard {
+  0%, 55% { background-color: var(--green-bg); }
+  100% { background-color: var(--card); }
+}
 .acct-table tbody tr.row-flash > td { animation: rowFlash 1800ms ease-out; }
+.hr-table tbody tr.row-flash { animation: rowFlash 1800ms ease-out; }
+@media (max-width: 860px) {
+  .hr-table tbody tr.row-flash { animation-name: rowFlashCard; }
+}
 @media (prefers-reduced-motion: reduce) {
   .acct-table tbody tr.row-flash > td { background-color: var(--green-bg); }
+  .hr-table tbody tr.row-flash { background-color: var(--green-bg); }
 }
 
 /* ── AND THE BOX KEEPS ITS WIDTH, OR THE COUNT TAKES IT ──────────────────
@@ -2406,20 +2426,28 @@ td > .approver-line { margin-top: 5px; }
    carries no Thai (the same trap `.cell-sub.th` spells out). */
 .pick-menu li.all { font: 500 13.5px/1.4 var(--sans); color: var(--muted); }
 .pick-menu li[aria-selected='true'] { font-weight: 700; }
-/* ══ ส่งบัญชี's SUGGESTION LIST ═════════════════════════════════════════════
+/* ══ THE SUGGESTION LIST UNDER A ค้นหา BOX ══════════════════════════════════
 
-   `.pick-menu.acct-menu` — the same floating panel กรองตามพนักงาน uses, with
+   `.pick-menu.find-menu` — the same floating panel กรองตามพนักงาน uses, with
    two lines to a row instead of one. Both classes on every selector, for the
    reason written over `.dept-menu`: the shared `.pick-menu` block is FURTHER
    DOWN this file, so a single-class rule here loses to it on position and the
    symptom is a rule that is provably in the bundle and provably ignored.
 
-   WHY IT IS NOT ITS OWN PANEL. It opens under the same kind of box, it is
-   walked with the same keys, and it is dismissed the same way. A second panel
-   with its own shadow, corner and scroll behaviour would be a second thing to
-   keep in step for no gain — what actually differs is what a row HOLDS, which
-   is these four declarations. */
-.pick-menu.acct-menu li {
+   IT READ `.acct-menu` UNTIL 2026-08-26, when ตรวจสอบรายเดือน got the same box
+   and the same list. One panel worn by two screens cannot be named after one of
+   them, and the second screen wearing a class called "acct" is how a reader
+   ends up believing there are two panels. It is named for the box it opens
+   under instead, which is the one thing both callers have in common.
+
+   WHY IT IS NOT ITS OWN PANEL — the same question, now answered twice over. It
+   opens under the same kind of box, it is walked with the same keys, and it is
+   dismissed the same way. A second panel with its own shadow, corner and scroll
+   behaviour would be a second thing to keep in step for no gain; a THIRD would
+   be a screen the reader has to check against the other two. What actually
+   differs is what a row HOLDS — `แผนก | n ชม.` on ส่งบัญชี, `แผนก | สะสม /
+   เพดาน` on ตรวจสอบรายเดือน — and that is markup, not these declarations. */
+.pick-menu.find-menu li {
   /* Two lines, so the row stops being a flex ROW. `stretch` rather than the
      inherited `center`, or the second line would be centred under the first
      and the two would stop sharing a left edge. */
@@ -2435,22 +2463,23 @@ td > .approver-line { margin-top: 5px; }
 /* The employee code, in the face codes are read in everywhere else in the app,
    and a step quieter than the name it sits beside — it is how you tell two
    คุณสมชาย apart, not what you are looking for. */
-.pick-menu.acct-menu li .s-code {
+.pick-menu.find-menu li .s-code {
   font: 400 12.5px/1.35 var(--mono); color: var(--muted);
 }
-/* แผนก | n ชม. — the row's second line, quieter again. */
-.pick-menu.acct-menu li .s-meta {
+/* `แผนก | n ชม.` or `แผนก | สะสม / เพดาน` — the row's second line, quieter
+   again. Which of the two it holds is the calling screen's business. */
+.pick-menu.find-menu li .s-meta {
   font: 400 12px/1.4 var(--sans); color: var(--muted);
 }
-.pick-menu.acct-menu li .s-sep { margin: 0 6px; color: var(--muted-2); }
+.pick-menu.find-menu li .s-sep { margin: 0 6px; color: var(--muted-2); }
 /* On the row the keyboard is standing on, the mark's own wash sits on a green
    fill and comes out muddy. The colour and the weight still say where the match
    is; the wash is what has to go. */
-.pick-menu.acct-menu li[data-active='1'] .hit { background: none; }
+.pick-menu.find-menu li[data-active='1'] .hit { background: none; }
 /* Two-line rows fill a 264px panel faster than one-line rows do, and on a phone
    that panel is most of the screen. Same shape as `.dept-menu`'s cap. */
 @media (max-width: 860px) {
-  .pick-menu.acct-menu { max-height: min(264px, 46vh); }
+  .pick-menu.find-menu { max-height: min(264px, 46vh); }
 }
 
 /* Not an option and not selectable: no pointer, no highlight, no role. */

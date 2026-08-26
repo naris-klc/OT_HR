@@ -389,7 +389,7 @@ export default function AccountingView() {
                 <ul
                   id={listId}
                   role="listbox"
-                  className="pick-menu acct-menu"
+                  className="pick-menu find-menu"
                   ref={listRef}
                   aria-label="ผลการค้นหาพนักงาน"
                   // Selection happens on click — but mousedown's default action

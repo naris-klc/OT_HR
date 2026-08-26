@@ -48,6 +48,35 @@ const hrView = read('components/HrView.jsx');
  */
 const hrCode = hrView.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
+/**
+ * NOTHING IN THIS COMPONENT ASKS HOW WIDE THE SCREEN IS.
+ *
+ * The card list, the pager, the sticky search bar and every one of the eight
+ * columns a phone drops are the stylesheet's, decided at 860px in one place. A
+ * component that measured the viewport would be a second answer to a question
+ * already answered, and the two would disagree on the day one of them moved.
+ *
+ * ONE `matchMedia` IS EXEMPT AND THE GUARD NAMES IT RATHER THAN WIDENING.
+ * Since 2026-08-26 the suggestion dropdown takes the page to the row it was
+ * asked for, and it asks `prefers-reduced-motion` before deciding whether that
+ * scroll is smooth — สรุป OT ส่งบัญชี asks the same question in the same words
+ * for the same reason. It is a question about MOTION, which has no CSS
+ * equivalent for an imperative scroll; it is not a question about layout. So
+ * this counts the calls and pins the only one allowed, which is stricter than
+ * the flat ban it replaced: a second `matchMedia` of any kind fails here.
+ *
+ * Asserted from four tests rather than one, because each of them is about a
+ * different part of the one markup this file exists to protect.
+ */
+function layoutIsTheStylesheets() {
+  assert.ok(!/innerWidth|isMobile|dvh/.test(hrCode), 'the layout is the stylesheet’s to decide');
+  assert.equal(
+    (hrCode.match(/matchMedia/g) || []).length, 1,
+    'a second matchMedia landed in the component',
+  );
+  assert.match(hrCode, /window\.matchMedia\?\.\('\(prefers-reduced-motion: reduce\)'\)\.matches/);
+}
+
 /** The phone block only — everything above it is the desktop design. */
 const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
 const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
@@ -62,7 +91,7 @@ test('the desktop table is still a table, cell for cell', () => {
     'edits-col', 'rule-col', 'cap-col', 'act-col']) {
     assert.ok(head.includes(col), `the desktop head lost ${col}`);
   }
-  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
+  layoutIsTheStylesheets();
 });
 
 test('the phone layout turns that same table into cards', () => {
@@ -153,7 +182,10 @@ test('five to a page, and the page is the whole of the mechanism', () => {
   // well as everything below them.
   assert.match(hrView, /const from = \(current - 1\) \* CARD_PAGE;/);
   assert.match(hrView, /const to = from \+ CARD_PAGE;/);
-  assert.match(hrView, /className=\{i < from \|\| i >= to \? 'off-page' : undefined\}/);
+  // The class the phone reads. It shares the attribute with `row-flash` since
+  // the dropdown landed — two independent facts about one row, and the page
+  // window is the half asserted here.
+  assert.match(hrView, /\$\{i < from \|\| i >= to \? 'off-page' : ''\}/);
   // A CLASS AND NOT `shown.slice`, which is the shorter way to draw five cards
   // and draws five ROWS with it. The desktop has no pager — `.pager-row` is
   // `display: none` above 860px — so a sliced list is a month with fifty-five
@@ -162,7 +194,7 @@ test('five to a page, and the page is the whole of the mechanism', () => {
   assert.match(hrCode, /\{shown\.map\(\(row, i\) => \(/);
   // …and no `dvh`: the list is no longer a box, and it was never the
   // component's business how tall one was.
-  assert.ok(!/matchMedia|innerWidth|isMobile|dvh/.test(hrCode), 'the layout is the stylesheet’s to decide');
+  layoutIsTheStylesheets();
 });
 
 test('a page that no longer exists is clamped, not drawn empty', () => {
@@ -202,7 +234,7 @@ test('a new page starts at the top of the list, and only when a button asks', ()
   assert.ok(!/useEffect[^;]*scrollIntoView/.test(hrCode), 'the scroll went back onto an effect');
   // And how far down to stop is the stylesheet's, because the bars it clears are.
   assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible; scroll-margin-top: 156px; \}/);
-  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
+  layoutIsTheStylesheets();
 });
 
 test('nothing on this screen is a scrollport any more', () => {
@@ -319,7 +351,14 @@ test('neither the box nor the page is a filter', () => {
   // พิมพ์รวม prints every person the SEARCH matched, on this page or not.
   assert.match(hrView, /setPrinting\(\{ employees: shown\.map\(\(r\) => r\.employee\) \}\)/);
   // And the page goes back to 1 whenever the list underneath it changes.
-  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); \}, \[period, statusFilter, find\]\);/);
+  // `query` and not `find` since the debounce landed: the list is rebuilt when
+  // the APPLIED search changes, and resetting on the keystroke would put the
+  // pager back to 1 three hundred milliseconds before the list under it moved.
+  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); \}, \[period, statusFilter, query\]\);/);
+  // Picking somebody from the dropdown moves the page too, and that is NOT this
+  // reset: it is the page that HOLDS them, so the card exists to be scrolled to
+  // at all below 860px. Pinned in test/monthSearch.test.js beside `goToRow`.
+  assert.match(hrView, /if \(i >= 0\) setPage\(Math\.floor\(i \/ CARD_PAGE\) \+ 1\);/);
 });
 
 test('รวมทั้งหมด is a card too, and has no buttons to offer', () => {
@@ -460,7 +499,7 @@ test('the panel is above the marks it explains, which one of them once only clai
   // read before starting.
   const notes = hrView.slice(open, hrView.indexOf('</>', open));
   assert.ok(notes.includes('supersededCount') && notes.includes('birthDates'), 'the footnotes were pulled up too');
-  assert.ok(!/matchMedia|innerWidth|isMobile/.test(hrCode), 'the layout is the stylesheet’s to decide');
+  layoutIsTheStylesheets();
 });
 
 test('an open list cannot outlive its month, and the ✕ lasts until a reload', () => {

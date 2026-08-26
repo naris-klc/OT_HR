@@ -40,9 +40,12 @@ const css = read('app/styles.css');
 
 test('the screen asks the roster’s own search, not one of its own', () => {
   assert.match(hrView, /import \{ personMatches \} from '@\/lib\/personSearch\.js'/);
+  // `query` and not `find` since the debounce landed — the string the screen was
+  // filtered BY, which is also what the count, the empty state, the highlight
+  // and the suggestion list read. See the live-search section at the foot.
   assert.match(
     hrView,
-    /\(data\?\.employees \|\| \[\]\)\.filter\(\(row\) => personMatches\(row\.employee, find\)\)/,
+    /\(data\?\.employees \|\| \[\]\)\.filter\(\(row\) => personMatches\(row\.employee, query\)\)/,
   );
   // No second rule written by hand beside it.
   assert.ok(!/toLowerCase\(\)\.includes/.test(hrView), 'a hand-rolled match crept in beside personMatches');
@@ -102,7 +105,10 @@ test('and the exports say they did not follow it', () => {
 
 test('a magnifier at one end, a ✕ at the other, and neither is invented here', () => {
   assert.match(hrView, /<Icon name="search" className="searchbox-icon" \/>/);
-  assert.match(hrView, /\{find && <ClearButton onClear=\{\(\) => setFind\(''\)\} \/>\}/);
+  // The ✕ shuts the suggestion list as well as emptying the box: an empty query
+  // matches everybody, so a list left open would be the whole month hanging over
+  // the table it was just asked to stop narrowing.
+  assert.match(hrView, /\{find && <ClearButton onClear=\{\(\) => \{ setFind\(''\); setOpen\(false\); \}\} \/>\}/);
   assert.match(hrView, /placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"/);
   // Both ends are opt-in by class, so กรองตามพนักงาน's box is unchanged.
   assert.match(hrView, /className=\{`has-icon\$\{find \? ' has-clear' : ''\}`\}/);
@@ -462,7 +468,7 @@ test('the mark is the app’s green, not the browser’s highlighter', () => {
  */
 
 test('the dropdown is the app’s own listbox, not a second one', () => {
-  assert.match(acctView, /className="pick-menu acct-menu"/);
+  assert.match(acctView, /className="pick-menu find-menu"/);
   assert.match(acctView, /role="listbox"/);
   assert.match(acctView, /role="combobox"/);
   assert.match(acctView, /aria-expanded=\{menuOpen\}/);
@@ -480,13 +486,13 @@ test('the dropdown is the app’s own listbox, not a second one', () => {
   assert.match(acctView, /onMouseMove=\{\(\) => setActive\(i\)\}/);
   // Both classes on every rule, or the shared `.pick-menu` block further down
   // the stylesheet wins on position — the trap `.dept-menu` fell into.
-  for (const rule of ['.pick-menu.acct-menu li', '.pick-menu.acct-menu li .s-code',
-    '.pick-menu.acct-menu li .s-meta']) {
+  for (const rule of ['.pick-menu.find-menu li', '.pick-menu.find-menu li .s-code',
+    '.pick-menu.find-menu li .s-meta']) {
     assert.ok(css.includes(rule), `${rule} is not scoped to both classes`);
   }
   // The panel the phone gets has to be capped against the viewport as well as
   // in pixels: two-line rows fill 264px faster than one-line rows do.
-  assert.match(css, /\.pick-menu\.acct-menu \{ max-height: min\(264px, 46vh\); \}/);
+  assert.match(css, /\.pick-menu\.find-menu \{ max-height: min\(264px, 46vh\); \}/);
 });
 
 test('a suggestion says who, which code, which department and how many hours', () => {
@@ -529,19 +535,159 @@ test('picking a row moves the page to it and lights it — and leaves the filter
 });
 
 test('the flash reaches the sticky cell, and survives prefers-reduced-motion', () => {
-  // ON THE CELLS. Below 860px the พนักงาน column is sticky with an opaque fill
-  // of its own, so a colour on the `<tr>` is covered on exactly the cell
-  // carrying the name that was searched for.
+  // ON ส่งบัญชี'S CELLS. Below 860px the พนักงาน column there is sticky with an
+  // opaque fill of its own, so a colour on the `<tr>` is covered on exactly the
+  // cell carrying the name that was searched for.
   assert.match(css, /\.acct-table tbody tr\.row-flash > td \{ animation: rowFlash 1800ms ease-out; \}/);
   assert.match(css, /@keyframes rowFlash \{[\s\S]*?100% \{ background-color: transparent; \}/);
   // The blanket reduced-motion rule clamps every animation to .01ms, which for
   // this one would mean no highlight at all — an accessibility rule removing
   // the whole point of the feature. Stated flat there instead; the JS timer is
-  // what ends it either way.
-  assert.match(
-    css,
-    /@media \(prefers-reduced-motion: reduce\) \{\s*\.acct-table tbody tr\.row-flash > td \{ background-color: var\(--green-bg\); \}\s*\}/,
-  );
+  // what ends it either way. Both tables are named in the one block, or the
+  // screen that was added second is the one the rule quietly stops covering.
+  const still = css.match(/@media \(prefers-reduced-motion: reduce\) \{\s*\.acct-table[\s\S]*?\n\}/);
+  assert.ok(still, 'the flash lost its reduced-motion answer');
+  assert.match(still[0], /\.acct-table tbody tr\.row-flash > td \{ background-color: var\(--green-bg\); \}/);
+  assert.match(still[0], /\.hr-table tbody tr\.row-flash \{ background-color: var\(--green-bg\); \}/);
   assert.match(acctView, /const FLASH_MS = 1800;/);
   assert.match(acctView, /setTimeout\(\(\) => setFlash\(null\), FLASH_MS\)/);
+});
+
+// ── and ตรวจสอบรายเดือน has the same box, and one more thing to do with it ────
+
+/**
+ * The third caller, added 2026-08-26 — and the first where picking a suggestion
+ * does something other than move the page.
+ *
+ * ตรวจสอบรายเดือน is where a month is CHECKED and where a wrong figure is
+ * CORRECTED, and correcting it means opening ดู / แก้ไขรายการ for one person.
+ * So a pick here opens that screen, rather than scrolling to a row and stopping
+ * as it does on ส่งบัญชี where the row IS the answer. What is pinned below is
+ * the part of that flow which is easy to break and invisible when broken: the
+ * scroll and the flash are DEFERRED to the moment the list is on screen again,
+ * because at the moment of the pick there is no row to scroll to at all.
+ */
+
+test('ตรวจสอบรายเดือน’s box is the same combobox, not a third grammar', () => {
+  assert.match(hrView, /className="pick-menu find-menu"/);
+  assert.match(hrView, /role="listbox"/);
+  assert.match(hrView, /role="combobox"/);
+  assert.match(hrView, /aria-expanded=\{menuOpen\}/);
+  assert.match(hrView, /aria-autocomplete="list"/);
+  assert.match(hrView, /aria-activedescendant=\{menuOpen && suggestions\[at\] \? `\$\{listId\}-\$\{at\}` : undefined\}/);
+  for (const key of ['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Tab']) {
+    assert.ok(hrView.includes(`'${key}'`), `the box does not answer ${key}`);
+  }
+  assert.match(hrView, /onMouseDown=\{\(e\) => e\.preventDefault\(\)\}/);
+  assert.match(hrView, /onMouseMove=\{\(\) => setActive\(i\)\}/);
+  // THE PANEL IS NOT A SECOND PANEL. It was `.acct-menu` while ส่งบัญชี was its
+  // only caller; a class named after one screen worn by two is how a reader ends
+  // up believing there are two of them.
+  // Rules only. The stylesheet keeps the old name in the paragraph that explains
+  // the rename, and a test that read its own explanation as the defect it warns
+  // about is a trap this file has fallen into before.
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/acct-menu/.test(rules), 'the panel is still named after one of its two callers');
+  assert.ok(!/acct-menu/.test(acctView), 'ส่งบัญชี is still asking for the old class');
+});
+
+test('a suggestion says who, which code, which department and how far into the ceiling', () => {
+  const item = hrView.slice(hrView.indexOf('<span className="s-who">'), hrView.indexOf('</ul>'));
+  assert.match(item, /<Highlight text=\{row\.employee\.name\} query=\{query\} kind="name" \/>/);
+  assert.match(item, /<Highlight text=\{row\.employee\.code\} query=\{query\} kind="code" \/>/);
+  assert.match(item, /\{row\.department\?\.nameTh \|\| row\.department\?\.name \|\| '—'\}/);
+  // `capFigure` — the same helper the สะสม / เพดาน column prints, from the same
+  // `row.cap`, so the suggestion and the row it opens cannot quote a person's
+  // month differently. ส่งบัญชี's second line is `hours()` because that sheet
+  // has no ceiling column to agree with.
+  assert.match(item, /\{capFigure\(row\.cap\.usedHours, row\.cap\.capHours\)\} ชม\./);
+  // The list IS the filtered rows, not a second list built beside them, so it
+  // can never offer somebody the table is not showing.
+  assert.match(hrView, /const suggestions = shown;/);
+});
+
+test('picking somebody opens their month — and leaves the filter alone', () => {
+  const fn = hrView.slice(hrView.indexOf('function goToRow('), hrView.indexOf('function onFindKeyDown('));
+  assert.match(fn, /setOpen\(false\);/);
+  // The whole point of the pick on this screen: HR lands in the entries they
+  // came to correct, without a second hunt down the list for the row.
+  assert.match(fn, /setOpened\(row\.employee\);/);
+  // NOT `setFind('')`. Clearing here would throw away the narrowing somebody
+  // just did, and make the row they asked for one of sixty again the moment
+  // they came back from it.
+  assert.ok(!/setFind/.test(fn), 'picking a suggestion clears the search box');
+  assert.ok(!/setQuery/.test(fn), 'picking a suggestion rewrites the applied query');
+  // THE PAGE IS NOT LEFT ALONE, and that is a different thing. Below 860px the
+  // list is five cards and everybody else is `display: none` — a person on page
+  // 7 has no element on the screen to scroll to at all.
+  assert.match(fn, /const i = shown\.findIndex\(\(r\) => r\.employee\._id === id\);/);
+  assert.match(fn, /if \(i >= 0\) setPage\(Math\.floor\(i \/ CARD_PAGE\) \+ 1\);/);
+  assert.match(hrView, /const rowDomId = \(employeeId\) => `hr-row-\$\{employeeId\}`;/);
+  assert.match(hrView, /id=\{rowDomId\(row\.employee\._id\)\}/);
+  assert.match(hrView, /flash === row\.employee\._id \? ' row-flash' : ''/);
+});
+
+test('the scroll and the flash wait for the list to exist', () => {
+  // THE BUG THIS IS: `setOpened` replaces this whole screen by an early return,
+  // so a scroll fired in the same breath as the pick measures a document with no
+  // list in it, and 1800ms of flash burns down while HR is inside HrEntries.
+  // `jump` is the request, `flash` is what is lit, and they are two states
+  // because they are two moments.
+  assert.match(hrView, /const \[jump, setJump\] = useState\(null\);/);
+  assert.match(hrView, /const \[flash, setFlash\] = useState\(null\);/);
+  const eff = hrView.slice(hrView.indexOf('    if (!jump || !data'), hrView.indexOf('}, [jump, data, printing, auditing, opened]);'));
+  // Every screen that replaces the list is named, and so is the reload that
+  // closing HrEntries triggers (`onChanged={load}` empties `data` first).
+  assert.match(hrView, /if \(!jump \|\| !data \|\| printing \|\| auditing \|\| opened\) return undefined;/);
+  assert.match(hrView, /\}, \[jump, data, printing, auditing, opened\]\);/);
+  assert.match(eff, /window\.requestAnimationFrame\(\(\) => \{/);
+  // `center`, because the app bar is sticky at the top of every screen and the
+  // search box is sticky under it below 860px — a row sent to `start` lands
+  // behind both.
+  assert.match(eff, /block: 'center',/);
+  assert.match(eff, /behavior: still \? 'auto' : 'smooth',/);
+  assert.match(hrView, /const FLASH_MS = 1800;/);
+  assert.match(hrView, /setTimeout\(\(\) => setFlash\(null\), FLASH_MS\)/);
+});
+
+test('the flash is on ตรวจสอบรายเดือน’s row, and the phone card fades to a card', () => {
+  // THE OPPOSITE ANSWER TO ส่งบัญชี'S, from the same question. This table has no
+  // sticky column, and below 860px the `<tr>` IS the card: it carries the fill,
+  // the border and 15px of padding, and the cells inside it are bare blocks. Lit
+  // cell by cell it would come up green in stripes with its padding left plain.
+  assert.match(css, /\.hr-table tbody tr\.row-flash \{ animation: rowFlash 1800ms ease-out; \}/);
+  // And that card is the one row in the app whose real background this file CAN
+  // name — so it must, or the fade finishes by showing the page's ground through
+  // the card for a frame.
+  assert.match(css, /@keyframes rowFlashCard \{[\s\S]*?100% \{ background-color: var\(--card\); \}/);
+  assert.match(
+    css,
+    /@media \(max-width: 860px\) \{\s*\.hr-table tbody tr\.row-flash \{ animation-name: rowFlashCard; \}\s*\}/,
+  );
+});
+
+test('the two screens keep the same clock', () => {
+  // A debounce that read 300 on one screen and 150 on the other is the kind of
+  // difference nobody can name and everybody feels. Written out in both files
+  // rather than shared, so this is what keeps them equal.
+  assert.match(hrView, /const FIND_DEBOUNCE_MS = 300;/);
+  assert.match(acctView, /const FIND_DEBOUNCE_MS = 300;/);
+  assert.match(
+    hrView,
+    /if \(find === ''\) \{ setQuery\(''\); return undefined; \}\s*const timer = setTimeout\(\(\) => setQuery\(find\), FIND_DEBOUNCE_MS\);/,
+  );
+  // Everything a reader compares reads the same string on this screen too.
+  assert.match(hrView, /const searching = query\.trim\(\) !== '';/);
+  assert.match(hrView, /ไม่พบข้อมูลพนักงานที่ค้นหา “\{query\}”/);
+  // AND THE HOOKS ARE ABOVE THE EARLY RETURNS — four of them on this screen, one
+  // per sub-view. A hook written below `if (opened)` is called on some renders
+  // and not others, which is the one thing React cannot survive.
+  assert.ok(
+    hrView.indexOf('const [query, setQuery]') < hrView.indexOf('if (printing?.employees) {'),
+    'the search hooks moved below the print early-return',
+  );
+  assert.ok(
+    hrView.indexOf('const [flash, setFlash]') < hrView.indexOf('if (printing?.employees) {'),
+    'the flash hooks moved below the print early-return',
+  );
 });
