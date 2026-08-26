@@ -3596,22 +3596,68 @@ td > .approver-line { margin-top: 5px; }
 .entry-mark .chip { white-space: normal; text-align: left; }
 
 /* ── the footnote under the table ───────────────────────────────────────────
-   RULED OFF, and that is what actually makes it a footnote. It is two sentences
-   about the whole month sitting under the last card in the same grey as the
-   notes INSIDE the cards — at 12px with a hairline and 12px of air above it,
-   the eye takes it as a different kind of thing before it reads a word of it.
+   A BOX, AND THAT IS WHAT MAKES IT A FOOTNOTE. It is two rules about the whole
+   month sitting under the last card in the same grey as the notes INSIDE the
+   cards. A hairline above it was the first fix and it only half worked: a rule
+   says where this starts and says nothing about where it stops, so at the foot
+   of a long month the note still trailed off into the page. A wash with a
+   border closes both ends of it, and the eye takes it as a different kind of
+   thing before it reads a word.
 
-   12px AND NOT SMALLER, and `--muted-2` and not `--muted-3`. This is an
-   instruction about what an edit DOES to a signed month, and the light theme
-   already draws `.hint` at 3.41:1 against the card — under AA's 4.5 for body
-   text, which is a pre-existing thing this note did not want to make worse.
-   `--muted-3` would take it to 2.98. The separation does the work of the
-   hierarchy instead of the contrast doing it. (Dark, for the record: --muted-2
-   is 5.04 and --muted-3 4.20.) */
+   `--neutral-wash` and `--line-soft`, which are the pair the audit drawer and
+   the เดิม → ใหม่ rows are already drawn in — this is the app's quiet panel and
+   not a new one. In ธีมสว่าง the wash is a step DOWN from the card and in
+   ธีมมืด a step UP; both read as "set back from the card", which is the job.
+
+   12px AND NOT SMALLER, and `--muted-2` and not `--muted-3`. This is the
+   instruction about what an edit DOES to a signed month, and `.hint`'s grey is
+   already under AA's 4.5 for body text: on the card it measures 3.41:1 in
+   ธีมสว่าง, and on this wash 3.20 — the panel costs a little contrast, which
+   is the price of it. A lighter grey was asked for and is not taken:
+   `--muted-3` on this wash is 2.79:1. The box, the smaller face and the space
+   carry the hierarchy instead, and carry it without spending contrast this
+   sentence cannot spare. (ธีมมืด, for the record: --muted-2 on the wash is
+   4.59 and --muted-3 3.83.)
+
+   PADDING ON ALL FOUR SIDES, and `margin-bottom: 0` against `.card .hint`'s 14.
+   The note is the last thing in the card, so that 14 left 32px under it against
+   18 at every other edge — a card that stopped short of its own bottom. At 0
+   the box's bottom edge is 18px off the card's, the same as its left and right.
+
+   `text-align: left` is stated and not left to the default. Nothing above this
+   sets it today, but the box it now sits under is `.stack-table`, every cell of
+   which is right-aligned on a phone — and a bulleted list that inherits a
+   right-align is not a list, it is two ragged lines with the bullets floating
+   off the ends of them. One declaration is cheaper than finding that out. */
 .hint.entry-foot {
-  margin-top: 14px; padding-top: 12px;
-  border-top: 1px solid var(--line-softer);
+  margin-top: 14px; margin-bottom: 0;
+  padding: 12px 14px;
+  background: var(--neutral-wash);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
   font-size: 12px;
+  text-align: left;
+}
+/* ONE RULE PER LINE. The two were joined by a · into a single Thai sentence,
+   and Thai has no spaces — so the layout had one unbreakable string to place
+   and broke it wherever the box happened to end, which put the tail of the
+   first rule and the head of the second on one line. Each on its own line, both
+   starting at the same left edge, is what makes this scannable rather than
+   readable.
+
+   The marker is drawn rather than `list-style`, for the reason spelt out at
+   `.alerts-list`: a `list-style` disc sits outside the content box and would
+   hang into the panel's padding. `padding-left` on the item and not on the
+   list, so a rule that wraps to a second line aligns under its own first line
+   rather than under its bullet. */
+.entry-foot .foot-notes {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.entry-foot .foot-notes > li { position: relative; padding-left: 14px; }
+.entry-foot .foot-notes > li::before {
+  content: '•'; position: absolute; left: 0; top: 0;
+  opacity: .6; font-size: 13px; line-height: 1.55;
 }
 
 /* The open state of a toggle has to differ by more than the word on it —
@@ -7828,6 +7874,14 @@ table.mini tbody tr:hover { background: none; }
      and does not fit at 320. The desktop keeps them on one line; see
      `.entry-actions`. */
   .stack-table tbody td .entry-actions { flex-wrap: wrap; }
+
+  /* THE FOOTNOTE LINES UP WITH THE CARDS, NOT WITH THE CARD IT IS IN. On a
+     phone the rows are cards inset 12px by `.stack-table tbody`'s padding,
+     while the note is a sibling of the whole table and so ran the full width of
+     the `.card` — 12px wider on each side than everything it is about, which is
+     exactly what a block that has slipped out of its column looks like. The
+     same 12px here puts its left and right edges on the cards' edges. */
+  .hint.entry-foot { margin-left: 12px; margin-right: 12px; }
 
   /* ── ทะเบียนพนักงาน's three buttons: one grid, not a wrapped row ──────────
      ดูข้อมูล / ตั้งรหัสใหม่ / ดูประวัติ are three labels of three different

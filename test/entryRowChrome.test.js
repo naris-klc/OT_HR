@@ -171,19 +171,67 @@ test('the chip under a description is a statement, not the line above wrapping',
   );
 });
 
-test('the footnote is ruled off, and it is not made unreadable to say so', () => {
+test('the footnote is a boxed note, and it is not made unreadable to say so', () => {
   assert.match(jsx, /<div className="hint entry-foot">/);
   // The inline margin is gone: it is the one thing a media query cannot reach.
   assert.ok(!/className="hint" style=\{\{ marginTop: 12 \}\}/.test(jsx));
   const foot = rule('.hint.entry-foot');
-  assert.match(foot, /border-top: 1px solid var\(--line-softer\);/);
-  assert.match(foot, /margin-top: 14px; padding-top: 12px;/);
+  // A BOX AND NOT A RULE. It read `border-top: 1px solid var(--line-softer)`
+  // with `padding-top: 12px` until 2026-08-26. A hairline says where the note
+  // starts and says nothing about where it stops, so under a long month it
+  // still trailed off into the page; a bordered wash closes both ends of it.
+  assert.match(foot, /background: var\(--neutral-wash\);/);
+  assert.match(foot, /border: 1px solid var\(--line-soft\);/);
+  assert.match(foot, /border-radius: var\(--radius\);/);
+  assert.match(foot, /padding: 12px 14px;/);
   assert.match(foot, /font-size: 12px;/);
+  // Last thing in the card, so `.card .hint`'s 14 left 32px under it against 18
+  // at every other edge.
+  assert.match(foot, /margin-top: 14px; margin-bottom: 0;/);
+  // `.stack-table`'s cells are right-aligned on a phone and this box sits under
+  // them; a list that inherited that would have its bullets floating off the
+  // ends of two ragged lines.
+  assert.match(foot, /text-align: left;/);
 
-  // AND IT KEEPS `.hint`'s COLOUR. Asked for as a lighter grey; `--muted-3` on
-  // `--card` measures 2.98:1 in ธีมสว่าง, against 3.41 for the `--muted-2` this
-  // inherits — and this sentence is the instruction that says what an edit does
-  // to a signed month. The rule and the space carry the hierarchy instead.
+  // AND IT KEEPS `.hint`'s COLOUR. Asked for as a lighter grey a second time on
+  // 2026-08-26 and declined a second time: `--muted-3` on `--neutral-wash`
+  // measures 2.79:1 in ธีมสว่าง, against 3.20 for the `--muted-2` this inherits
+  // — and this is the instruction that says what an edit does to a signed
+  // month. The box, the smaller face and the space carry the hierarchy instead.
   assert.ok(!/color:/.test(foot), 'the footnote took a colour of its own');
   assert.match(css, /\.hint \{ font: 400 12\.5px\/1\.55 var\(--sans\); color: var\(--muted-2\); \}/);
+});
+
+test('the footnote is two rules, one per line, not one sentence and a middot', () => {
+  // Thai has no spaces, so the two joined by a · were a single unbreakable
+  // string as far as the layout was concerned: it broke wherever the box ended,
+  // which put the tail of the first rule and the head of the second on one line.
+  assert.match(jsx, /<ul className="foot-notes">/);
+  const items = jsx.match(/<li>[^<]*<\/li>/g) || [];
+  assert.equal(items.length, 2, 'the footnote is meant to hold exactly two rules');
+  assert.match(items[0], /คำนวณชั่วโมงใหม่ทันที/);
+  assert.match(items[0], /คงสถานะอนุมัติเดิม/);
+  assert.match(items[1], /ยกเลิกหรือไม่อนุมัติ/);
+  assert.match(items[1], /ยื่นส่งรายการเข้ามาใหม่/);
+  assert.ok(
+    !/คงสถานะการอนุมัติเดิมไว้ ·/.test(code),
+    'the two rules went back to being one sentence',
+  );
+
+  // Drawn, not `list-style` — a disc sits outside the content box and would
+  // hang into the panel's padding. Same reasoning as `.alerts-list`, and
+  // `padding-left` is on the item so a rule that wraps aligns under its own
+  // first line rather than under its bullet.
+  assert.match(rule('.entry-foot .foot-notes'), /list-style: none;/);
+  assert.match(rule('.entry-foot .foot-notes > li'), /padding-left: 14px;/);
+  assert.match(rule('.entry-foot .foot-notes > li::before'), /content: '•';/);
+});
+
+test('the footnote lines up with the cards above it on a phone', () => {
+  // `.stack-table tbody` insets the cards by 12px; the note is a sibling of the
+  // whole table and ran the full width of the `.card`, so it was 12px wider on
+  // each side than everything it is about.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(phone, /\.hint\.entry-foot \{ margin-left: 12px; margin-right: 12px; \}/);
+  assert.match(phone, /\.stack-table tbody \{ display: flex; flex-direction: column; gap: 10px; padding: 12px;/);
 });

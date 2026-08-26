@@ -1009,10 +1009,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1687 tests
+and the engine know nothing about Next.js, so the whole suite — **1689 tests
 across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+"1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when that figure was re-checked. The file count read
 "101 files" through all of them and moved with
 `test/entryRowChrome.test.js`.)
@@ -2311,16 +2311,48 @@ at 8px against a 1.5 line-height six fields ran together into a block of text.
 space around it are one rhythm. It is `.stack-table`'s rule, so every card list
 in the app gets it.
 
-**The footnote is ruled off, not faded out.** *การแก้ไขของฝ่ายบุคคลจะคำนวณ
-ชั่วโมงใหม่ทันที…* sat 12px under the last card in the same grey as the notes
-*inside* the cards, so the eye took it as one more line of the last row. It is
-12px now with a hairline and 12px of air above it. **It keeps `.hint`'s colour
-on purpose:** a lighter grey was asked for, and `--muted-3` on `--card` measures
-**2.98:1** in ธีมสว่าง against 3.41 for the `--muted-2` it inherits — this is
-the sentence that says what an edit does to a signed month, and it is already
-under AA at the size it is. The rule and the space carry the hierarchy instead
-of the contrast carrying it. (For the record, ธีมมืด: `--muted-2` is 5.04 and
-`--muted-3` 4.20 — the light theme is the half that cannot afford it.)
+**The footnote is a boxed note now, not a ruled-off one.** *การแก้ไขของฝ่ายบุคคล
+จะคำนวณชั่วโมงใหม่ทันที…* sat 12px under the last card in the same grey as the
+notes *inside* the cards, so the eye took it as one more line of the last row.
+It read "12px with a hairline and 12px of air above it" for part of 2026-08-26,
+and that only half worked: a rule says where the note starts and says nothing
+about where it stops, so at the foot of a long month it still trailed off into
+the page. It is a panel now — `--neutral-wash` behind it, a `--line-soft`
+border, `--radius` corners and 12px of padding — the same quiet pair the audit
+drawer and the เดิม → ใหม่ rows are already drawn in, so it is the app's panel
+and not a new one. `margin-bottom` goes to 0 against `.card .hint`'s 14, because
+this is the last thing in the card and that 14 left 32px under it against 18 at
+every other edge.
+
+**And the two rules are on two lines.** They were one sentence joined by a ·,
+and Thai has no spaces: the layout had a single unbreakable string to place and
+broke it wherever the box happened to end, so the tail of the first rule and the
+head of the second shared a line. Each has its own bullet now — *การแก้ไขโดย
+ฝ่ายบุคคล ระบบจะคำนวณชั่วโมงใหม่ทันที (คงสถานะอนุมัติเดิม)* and *หากรายการถูก
+ยกเลิกหรือไม่อนุมัติ พนักงานต้องยื่นส่งรายการเข้ามาใหม่* — drawn with a
+`::before` rather than `list-style`, for the reason `.alerts-list` already
+spells out: a `list-style` disc sits outside the content box and would hang into
+the panel's padding. The `padding-left` is on the item and not on the list, so a
+rule that wraps to a second line aligns under its own first line rather than
+under its bullet.
+
+**On a phone it lines up with the cards, not with the card it is in.** Below
+860px the rows are cards inset 12px by `.stack-table tbody`'s padding, while the
+note is a sibling of the whole table and so ran the full width of the `.card` —
+12px wider on each side than everything it is about, which is exactly what a
+block that has slipped out of its column looks like. The same 12px puts its left
+and right edges on the cards' edges.
+
+**It keeps `.hint`'s colour on purpose, and that is the second time.** A lighter
+grey was asked for on 2026-08-25 and asked for again on 2026-08-26, and
+`--muted-3` on the wash measures **2.79:1** in ธีมสว่าง against 3.20 for the
+`--muted-2` it inherits — this is the sentence that says what an edit does to a
+signed month, and it is already under AA at the size it is. (On `--card`, before
+the panel, those two read 2.98 and 3.41; the wash costs a little contrast, and
+that is the price of the box.) The box, the smaller face and the space carry the
+hierarchy instead of the contrast carrying it. (For the record, ธีมมืด on the
+wash: `--muted-2` is 4.59 and `--muted-3` 3.83 — the light theme is still the
+half that cannot afford it.)
 
 **Four inline greys left the file with them.** The day under the date, ข้ามคืน,
 who last edited the row and the ceiling warning were `fontSize: 12` and
@@ -3418,8 +3450,8 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1687/1687 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1689/1689 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3427,15 +3459,18 @@ four role UIs.
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The nine newest are the whole of `test/entryRowChrome.test.js`, the 102nd
-  file, and they pin the last cell of a row on รายการ OT: that the one thing
-  which can be pressed is the only thing drawn as a button and that a disabled
-  one may not come back, that nothing in a row writes its own type size any
-  more, that the flex row's wrap belongs to the card layout and not to the
-  table, that the pencil is drawn rather than typed and sized by a class, that a
-  ghost button's hover and press are a ladder and neither names a colour, the
-  10px field rhythm, the chip under a description, and that the footnote is
-  ruled off rather than faded past reading. Before them, six in
+  The eleven newest are the whole of `test/entryRowChrome.test.js`, the 102nd
+  file — it held "nine" earlier the same day — and they pin the last cell of a
+  row on รายการ OT: that the one thing which can be pressed is the only thing
+  drawn as a button and that a disabled one may not come back, that nothing in a
+  row writes its own type size any more, that the flex row's wrap belongs to the
+  card layout and not to the table, that the pencil is drawn rather than typed
+  and sized by a class, that a ghost button's hover and press are a ladder and
+  neither names a colour, the 10px field rhythm, the chip under a description,
+  and three on the footnote under the table: that it is a bordered wash rather
+  than a hairline and is still not faded past reading, that its two rules are one
+  bullet each and not one sentence joined by a ·, and that below 860px its edges
+  sit on the cards' edges rather than 12px outside them. Before them, six in
   `test/monthSearch.test.js` pinning ตรวจสอบรายเดือน's own
   copy of that box: that it is the same combobox and not a third grammar and
   that `.acct-menu` is gone from every rule, what a suggestion holds — including

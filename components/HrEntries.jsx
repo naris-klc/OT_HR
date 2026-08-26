@@ -377,19 +377,32 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
         </>
       )}
 
-      {/* THE FOOTNOTE, AND IT IS RULED OFF FROM WHAT IT IS ABOUT. Two sentences
+      {/* THE FOOTNOTE, AND IT IS A PANEL NOW RATHER THAN A RULE. Two sentences
           about the whole table sat 12px under the last card in the same grey and
           nearly the same size as the notes inside the cards, so the eye read it
-          as one more line of the last row. The margin was doing all the work of
-          saying "this is a different KIND of thing", and 12px cannot say that
-          when the card gaps are 10.
+          as one more line of the last row. A hairline above it was the first
+          repair; a bordered wash is the second, and it is the one that closes
+          the case — a rule says "something else starts here", a box says "and it
+          ends here too", which is what a note holding two independent rules
+          needs.
 
-          The class is where the size, the rule above it and the space are; the
-          inline `marginTop` it used to carry is gone, because an inline style is
-          the one thing a media query cannot reach. */}
+          TWO BULLETS, NOT ONE SENTENCE JOINED BY A MIDDOT. These are two
+          unrelated rules — what an HR edit does to a signed row, and what
+          happens to a request nobody approved — and the · that joined them made
+          one 90-character Thai line with no spaces in it, which the layout
+          treats as a single unbreakable word and wraps wherever the box happens
+          to end. One line each, both starting at the same left edge, is the
+          difference between a list that can be scanned and a paragraph that has
+          to be read.
+
+          The class is where the size, the box and the space are; the inline
+          `marginTop` it used to carry is gone, because an inline style is the
+          one thing a media query cannot reach. */}
       <div className="hint entry-foot">
-        การแก้ไขของฝ่ายบุคคลจะคำนวณชั่วโมงใหม่ทันทีและคงสถานะการอนุมัติเดิมไว้ ·
-        รายการที่ไม่อนุมัติหรือยกเลิกแล้วต้องให้พนักงานส่งใหม่
+        <ul className="foot-notes">
+          <li>การแก้ไขโดยฝ่ายบุคคล ระบบจะคำนวณชั่วโมงใหม่ทันที (คงสถานะอนุมัติเดิม)</li>
+          <li>หากรายการถูกยกเลิกหรือไม่อนุมัติ พนักงานต้องยื่นส่งรายการเข้ามาใหม่</li>
+        </ul>
       </div>
     </div>
   );
