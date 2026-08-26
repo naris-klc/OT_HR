@@ -1009,10 +1009,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1700 tests
+and the engine know nothing about Next.js, so the whole suite — **1701 tests
 across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+"1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when that figure was re-checked. The file count read
 "101 files" through all of them and moved with
 `test/entryRowChrome.test.js`.)
@@ -2450,6 +2450,28 @@ long as it did: the misalignment was inherited from four hundred lines away.
 bar cannot inherit one either. Measured on the built app at 1280px: 302.8 /
 302.8 / **295.8** before, 295.9 / 295.9 / 295.9 after.
 
+**And the left margin went too, because it was wrong on the second line.** The
+rule read `margin: 0 0 0 auto` — the sentence pushed to the right end, which is
+right on one line and wrong on two: an auto margin pushes right on a *wrapped*
+line as well, so on a phone the sentence sat alone against the far border with
+nothing to be right of. `justify-content: space-between` on the bar does the
+same job on one line and the opposite one on two, because `justify-content`
+applies to each flex **line** — and a line holding one item places that item at
+its start. The sentence lands under the label at the same left edge. Two items
+exactly, which is what makes space-between safe here; `.entry-actions` uses the
+last-child margin instead precisely because a third control can appear there.
+
+**And no breakpoint, because the words are what decide.** The bar needs
+**444.7px** of inside width to hold the longer of the two sentences on one line,
+and it has that from a viewport of about **535px** up — measured on the built
+app, not assumed: 470px of inside at a 560px viewport against 390 at 480. A
+`max-width: 860px` rule would have stacked it through the whole 540–860 band
+where it fits perfectly well, and a rule at 535 would still be wrong for the
+shorter of the two sentences, which fits down to about 439. Verified across
+360 / 400 / 480 / 560 / 700 / 860 / 1280: below 535 the label and the sentence
+both start 17px from the border, above it the label starts 17px in and the
+sentence ends 17px from the other side.
+
 **Every alert in the app breathes 2px wider.** An alert is a 17px mark, a 9px
 gap and then a block of text — so the left edge of the *words* is already 26px
 inside the box while their right edge was 14px from it, and a notice of three
@@ -3652,8 +3674,8 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1700/1700 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1701/1701 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3661,9 +3683,9 @@ four role UIs.
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The seventeen newest are the whole of `test/entryRowChrome.test.js`, the
-  102nd file — it held "nine", then "eleven", "fourteen" and "sixteen" earlier
-  the same day — and they pin the
+  The eighteen newest are the whole of `test/entryRowChrome.test.js`, the
+  102nd file — it held "nine", then "eleven", "fourteen", "sixteen" and
+  "seventeen" earlier the same day — and they pin the
   last cell of a row on รายการ OT: that the one thing which can be pressed is the
   only thing drawn as a button and that a disabled one may not come back, that
   nothing in a row writes its own type size any more, that the flex row's wrap
@@ -3682,8 +3704,10 @@ four role UIs.
   only half its growth under the last line and what sits below is a label, that
   the notice under the employee's name has one place whether or not there is a
   notice to put in it, that every row's last cell is the same two slots and they
-  line up down the month, and that a bar with nothing to show fades while the
-  sentence explaining why it is disabled does not. Five in `test/hrMonthCards.test.js` joined them for the notice both screens draw:
+  line up down the month, that a bar with nothing to show fades while the
+  sentence explaining why it is disabled does not, and that the bar puts its
+  sentence at the right end or under the label and never adrift — with no
+  breakpoint, because the width of the words is what decides. Five in `test/hrMonthCards.test.js` joined them for the notice both screens draw:
   that the panel says its instruction in the same `.say` the list does, that the
   shortened fourth sentence still says why and where, that the screen it names is
   a link when a caller offers one and plain text when it does not, that a link

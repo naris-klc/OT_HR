@@ -3633,6 +3633,24 @@ td > .approver-line { margin-top: 5px; }
    under the card's heading instead, which wants the same. */
 .audit-bar {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  /* SPACE-BETWEEN, AND IT IS THE WRAPPED CASE THAT CHOSE IT.
+
+     Two items: the checkbox and its name at the left, the count or the reason
+     at the right. On one line `space-between` and `margin-left: auto` on the
+     second item do exactly the same thing — but `justify-content` applies to each
+     flex LINE, so when the bar wraps, the line holding one item places that item
+     at its START. The sentence lands under the label at the same left edge
+     instead of stranded against the right border with nothing to be right of.
+
+     WHICH IS WHY THERE IS NO BREAKPOINT HERE. The bar needs 444.7px of inside
+     width to hold the longest of the two sentences on one line, and it has that
+     from a viewport of about 535px up — measured, not assumed: 470px of inside
+     at a 560px viewport and 390 at 480. A `max-width: 860px` rule would have
+     stacked it through the whole 540–860 band where it fits perfectly well, and
+     a rule at 535 would still be wrong for the shorter of the two sentences,
+     which fits down to about 439. One line or two is a question about the width
+     of the words, and this is the declaration that lets the words answer it. */
+  justify-content: space-between;
   /* 12px 16px, WHICH IS `.alert`'S. It read 11px 13px until 2026-08-26 — a pair
      of numbers this box arrived with and nothing else in the app used. What sits
      directly above it on รายการ OT is the policy warning, and two panels in a
@@ -3669,15 +3687,24 @@ td > .approver-line { margin-top: 5px; }
    `--muted-2`, so once the left side dims the reason is the more readable of the
    two. That is the right way round. */
 .audit-bar .check.off { color: var(--muted); opacity: .75; cursor: default; }
-/* PUSHED RIGHT, AND NOT LIFTED WITH IT. `margin-left: auto` was the whole rule
-   and the sentence came out SEVEN PIXELS ABOVE the checkbox beside it:
-   `.card .hint` gives every hint inside a card `margin-bottom: 14px`, and
-   `align-items: center` centres a flex item's MARGIN box — so 14px of nothing
-   underneath lifted the words by half of it. Nothing about the rule looked
-   wrong, which is why it stood; the misalignment was inherited from four
-   hundred lines away. All four sides are stated now, so the next thing added to
-   this bar cannot inherit one either. */
-.audit-bar .hint { margin: 0 0 0 auto; }
+/* NO MARGIN, ON ANY SIDE, AND EACH ZERO IS LOAD-BEARING.
+
+   THE BOTTOM ONE. `.card .hint` gives every hint inside a card
+   `margin-bottom: 14px`, and `align-items: center` centres a flex item's MARGIN
+   box — so 14px of nothing underneath lifted the words SEVEN PIXELS above the
+   checkbox beside them. Nothing about the rule looked wrong, which is why it
+   stood; the misalignment was inherited from four hundred lines away.
+
+   THE LEFT ONE. It read `margin: 0 0 0 auto` until 2026-08-26, which pushed the
+   sentence to the right end — correct on one line and wrong on two, because an
+   auto margin pushes right on a wrapped line as well, leaving the sentence
+   against the far border with nothing to be right of. `space-between` on the bar
+   does the same job on one line and the opposite one on two, which is what was
+   wanted; an auto margin here would beat it.
+
+   All four sides are stated, so the next thing added to this bar cannot inherit
+   one either. */
+.audit-bar .hint { margin: 0; }
 
 /* ── the last cell of a row on รายการ OT ────────────────────────────────────
    Up to four things: แก้ไข, ถอนใบวันเกิด, ดูข้อมูลเดิม, and one of two

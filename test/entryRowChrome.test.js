@@ -248,8 +248,9 @@ test('the bar centres its two halves on one axis, and the margin is why', () => 
   // the label's mid was 302.8 and the hint's 295.8.
   //
   // Stated on all four sides rather than as a bare `margin-bottom: 0`, so the
-  // next thing added to this bar cannot inherit one either.
-  assert.match(rule('.audit-bar .hint'), /margin: 0 0 0 auto;/);
+  // next thing added to this bar cannot inherit one either. It read
+  // `margin: 0 0 0 auto` until later the same day — see the wrapped-line test.
+  assert.match(rule('.audit-bar .hint'), /margin: 0;/);
   // The bar's own centring is what the fix relies on — if this ever goes, the
   // margin above stops being the explanation.
   assert.match(rule('.audit-bar'), /align-items: center;/);
@@ -380,9 +381,38 @@ test('a bar with nothing to show fades, and the reason for it does not', () => {
   // REASON the control is disabled — so it keeps `.hint`'s size and colour and
   // ends up the more readable of the two. That is the right way round.
   assert.match(jsx, /'เดือนนี้ยังไม่มีรายการใดถูกแก้ไขหรือคำนวณใหม่'/);
-  assert.match(rule('.audit-bar .hint'), /margin: 0 0 0 auto;/);
+  assert.match(rule('.audit-bar .hint'), /margin: 0;/);
   assert.ok(
     !/\.audit-bar \.hint \{[^}]*opacity/.test(css),
     'the reason faded with the control it explains',
   );
+});
+
+test('the bar puts its sentence at the right end, or under the label — never adrift', () => {
+  // Two items: the checkbox and its name at the left, the count or the reason at
+  // the right. On ONE line `space-between` and `margin-left: auto` do exactly the
+  // same thing — but `justify-content` applies to each flex LINE, so on a line
+  // holding one item it places that item at the START. When the bar wraps, the
+  // sentence lands under the label at the same left edge instead of stranded
+  // against the right border with nothing to be right of.
+  assert.match(rule('.audit-bar'), /justify-content: space-between;/);
+  assert.match(rule('.audit-bar'), /flex-wrap: wrap;/);
+  // An auto margin would beat it, which is why the hint's margin is a flat zero.
+  assert.ok(
+    !/\.audit-bar \.hint \{[^}]*auto/.test(css),
+    'the auto margin came back — it pushes right on a wrapped line too',
+  );
+
+  // AND NO BREAKPOINT. Measured on the built app: the bar needs 444.7px of
+  // inside width for the longer of the two sentences, and has 470 at a 560px
+  // viewport against 390 at 480 — so it fits from about 535px up. A
+  // `max-width: 860px` rule would have stacked it through the whole 540–860
+  // band where it fits; a rule at 535 would still be wrong for the shorter
+  // sentence, which fits down to about 439. Only exactly two children, which is
+  // what makes space-between safe here — see `.entry-actions`, where a third
+  // control is why the last-child margin is used instead.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.ok(!/\.audit-bar[^{]*\{/.test(phone), 'the bar grew a phone rule');
+  assert.match(jsx, /<div className="audit-bar">\s*\n\s*<label/);
+  assert.match(jsx, /<\/label>\s*\n\s*<span className="hint">/);
 });
