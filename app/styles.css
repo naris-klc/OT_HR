@@ -7297,9 +7297,49 @@ table.mini tbody tr:hover { background: none; }
      `position: sticky; left: 0` name column and its shadow are gone with the
      scroll they existed for. A column that has nowhere to travel needs no
      anchor, and the shadow would be an edge drawn against nothing. */
-  .acct-table, .allco-table { display: block; width: 100%; min-width: 0; }
+  .acct-table, .allco-table {
+    display: flex; flex-direction: column; width: 100%; min-width: 0;
+  }
   .acct-table > :is(thead, tbody, tfoot),
   .allco-table > :is(thead, tbody, tfoot) { display: block; }
+
+  /* ══ THE SUMMARY BLOCK COMES UP TO THE HEADING ══════════════════════════
+
+     หัวคอลัมน์ → รวมแผนก และ รวมทั้งหมด → then the people.
+
+     WHAT THE ROWS ARE FOR AND WHAT THE FOOT IS FOR ARE NOT THE SAME JOB, and
+     on a phone they are not the same distance away either. The foot carries the
+     figures that get signed and typed into payroll — the per-department split
+     and the company's three rate buckets, which are what the 1.50 and 3.00
+     columns of the paper form are added up from. The rows are the detail you go
+     to when one of those figures looks wrong.
+
+     The roster is 20 active people, 15 of them ไพรมัส (counted 2026-08-26), and
+     the sheet lists whoever has OT — plus, with แสดงพนักงานที่ไม่มี OT ticked,
+     the 13 with `role: 'employee'`. So the tall case is about 15 rows in one
+     company table, roughly 1,350px, and the figures that are the POINT of the
+     screen were at the bottom of it. The company's own total was already on the
+     card head as a chip; its split across the three rates was not.
+
+     `order` ON A FLEX TABLE, WHICH IS WHY THE TABLE IS A FLEX COLUMN. One
+     markup, two orders — the same mechanism `.month-card` uses to lift
+     วันเกิดของเดือนนี้ over the footnotes on ตรวจสอบรายเดือน, and for the same
+     reason: a phone branch in the JSX is a second document that can come to
+     disagree with the first about a month. Above 860px no `order` is declared
+     at all and the foot is the foot.
+
+     THE HEADING ROW STAYS AT THE TOP and governs both blocks under it, because
+     both are laid out on the same five tracks — that is what the grid buys, and
+     it is why this reordering is possible without a second heading row.
+
+     รวมทุกบริษัท IS NOT IN THIS RULE. It is three rows — one per company and
+     their total — and lifting a total over two lines is not a shortcut to
+     anything; it just puts the answer before the two figures it is the sum of. */
+  .acct-table > thead { order: 0; }
+  .acct-table > tfoot { order: 1; }
+  .acct-table > tbody { order: 2; }
+  /* And the boundary moves with it: the people begin here now. */
+  .acct-table > tbody { border-top: 1px solid var(--line); }
 
   .acct-table tr, .allco-table tr {
     display: grid;
@@ -7354,7 +7394,6 @@ table.mini tbody tr:hover { background: none; }
   /* Where the foot begins, said once. `tfoot tr + tr td { border-top: none }`
      in the base sheet is the same decision at cell level — several summary rows
      stack in one foot and only the first of them is a boundary. */
-  .acct-table tfoot tr:first-child,
   .allco-table tfoot tr:first-child { border-top: 1px solid var(--line); }
   /* The one that gets signed for, green here as everywhere else in the app.
      After the rule above, not before it: on รวมทุกบริษัท the grand row IS the
@@ -7364,6 +7403,14 @@ table.mini tbody tr:hover { background: none; }
     background: var(--green-bg); color: var(--green-dark);
     border-top: 1.5px solid var(--line);
   }
+  /* ส่งบัญชี's foot no longer begins anywhere — it is the block directly under
+     the heading row, whose own `border-bottom` is already that line. A boundary
+     declared here as well would be two rules drawn one pixel apart, and on a
+     company with a single department the row carrying it is `.grand`, whose
+     1.5px would land against the heading's 1px. The line between the subtotals
+     and the total they add to stays: that is `.grand`'s own, and it only has a
+     row above it to separate from when there is more than one department. */
+  .acct-table tfoot tr:first-child { border-top: 0; }
 
   /* ── ส่งบัญชี: three lines a row ────────────────────────────────────────
      name + the four figures · แผนก beside บริษัท and its remarks. */

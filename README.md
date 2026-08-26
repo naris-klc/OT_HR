@@ -1009,7 +1009,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1661 tests
+and the engine know nothing about Next.js, so the whole suite — **1662 tests
 across 101 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "1654 tests … measured 2026-08-25" until then; the file count has not moved.)
@@ -2783,6 +2783,38 @@ cells up to the `tr`, because a fill declared per cell leaves the gaps between
 grid tracks — and the whole folded line, where there is no cell at all — showing
 the card through it.
 
+**และบล็อกสรุปขึ้นมาอยู่ใต้หัวคอลัมน์.** หัวคอลัมน์ → รวมแผนก และ รวมทั้งหมด →
+แล้วจึงเป็นรายชื่อ. The roster is 20 active people, 15 of them ไพรมัส (counted
+2026-08-26), and the sheet lists whoever has OT — plus, with
+**แสดงพนักงานที่ไม่มี OT** ticked, the 13 with `role: 'employee'`. So the tall
+case is about 15 rows in one company table, roughly 1,350px, and the figures
+that are the POINT of this screen were at the bottom of it: the per-department
+split and the company's three rate buckets, which are what the paper form's 1.50
+and 3.00 columns are added up from. The company's own total was already on the
+card head as a chip; its split across the rates was not.
+
+`order` on a flex table, which is why the table is a flex column below 860px —
+**one markup, two orders**, the same mechanism `.month-card` uses to lift
+วันเกิดของเดือนนี้ over the footnotes on ตรวจสอบรายเดือน, and for the same
+reason: a phone branch in the JSX is a second document that can come to disagree
+with the first about a month. In the document the foot is still the foot, which
+is the desktop reading and the one `/api/exports/accounting.csv` and
+`AccountingPrint` follow. Above 860px no `order` is declared at all.
+
+The heading row stays at the top and governs both blocks under it, because both
+are laid out on the same five tracks — that is what the grid buys, and it is why
+the reordering needs no second heading row. The boundary moved with the block:
+`tbody` draws the line where the people begin, and the foot no longer draws one
+against the heading row's own.
+
+**รวมทุกบริษัท is left in document order.** It is three rows — one per company
+and their total — and lifting a total over the two figures it is the sum of is
+not a shortcut to anything.
+
+Measured at 360px: `display: flex`, `order` 0/1/2, and the three blocks at
+y = 749 / 780 / 965. At 1280px the same table computes `display: table`, every
+`order` is 0, and `tbody` (514) is above `tfoot` (642) — the desktop untouched.
+
 Walked on the built app at 360px and 320px, 2026-08-26: `scrollWidth` equals
 `clientWidth` on the page and on every `.table-wrap`, the tracks measure
 112/46/46/46/54, and at 1280px the rows still compute `display: table-row` with
@@ -3059,16 +3091,18 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1661/1661 pass in about 2 s**, measured 2026-08-26 across 101
-  files. It read "1654, measured 2026-08-25", and "1653", "1651", "1649",
-  "1646", "1641", "1638" and "1601" earlier that day, and "1386 across 86 files,
-  2026-08-24" before that. The three newest are in `test/hrMonthCards.test.js`
-  and pin สรุป OT ส่งบัญชี บนมือถือ: that สรุป OT แยกแผนก is now the only table
-  on a phone still read sideways, that ส่งบัญชี folds instead — five grid tracks
-  in every row, แผนก and หมายเหตุ under the name, the desktop table untouched —
-  and that `RateHead`'s `short` is the same heading one size down rather than a
-  second spelling of it. They replaced one case that asserted the opposite, so
-  the total moved by two and no new file with it. Before them, the six in the
+- `npm test` — **1662/1662 pass in about 2 s**, measured 2026-08-26 across 101
+  files. It read "1661" earlier the same day, "1654, measured 2026-08-25", and
+  "1653", "1651", "1649", "1646", "1641", "1638" and "1601" earlier that day,
+  and "1386 across 86 files, 2026-08-24" before that. The four newest are in
+  `test/hrMonthCards.test.js` and pin สรุป OT ส่งบัญชี บนมือถือ: that
+  สรุป OT แยกแผนก is now the only table on a phone still read sideways, that
+  ส่งบัญชี folds instead — five grid tracks in every row, แผนก and หมายเหตุ under
+  the name, the desktop table untouched — that `RateHead`'s `short` is the same
+  heading one size down rather than a second spelling of it, and that the phone
+  lifts รวมแผนก and รวมทั้งหมด above the people while leaving รวมทุกบริษัท in
+  document order. They replaced one case that asserted the opposite, so the
+  total moved by three and no new file with it. Before them, the six in the
   same file that pin
   แถบแจ้งเตือนของเดือน — that the card holds exactly **one** `.alert` and the
   list opens inside it, what an item is made of, that its wording is the

@@ -596,7 +596,7 @@ test('ส่งบัญชี fits the card instead: the figures keep their col
   const acct = read('components/AccountingView.jsx');
   assert.ok(!/matchMedia|innerWidth|isMobile/.test(acct), 'the layout is the stylesheet’s to decide');
 
-  assert.match(phone, /\.acct-table, \.allco-table \{ display: block; width: 100%; min-width: 0; \}/);
+  assert.match(phone, /\.acct-table, \.allco-table \{\s*display: flex; flex-direction: column; width: 100%; min-width: 0;/);
   // THE FIVE TRACKS ARE THE POINT. Same template in every row of the table, or
   // a figure no longer lands under the heading that names it.
   assert.match(phone, /grid-template-columns: minmax\(0, 1fr\) 46px 46px 46px 54px;/);
@@ -613,6 +613,31 @@ test('ส่งบัญชี fits the card instead: the figures keep their col
   }
   // The desktop is whatever it was: no grid, no folding, above 860px.
   assert.ok(!desktop.includes('.acct-table tbody tr {'), 'a folding rule leaked out of the phone block');
+});
+
+test('the phone puts รวมแผนก and รวมทั้งหมด above the people, and รวมทุกบริษัท is left alone', () => {
+  // The roster is 20 active people, 15 of them ไพรมัส, so the tall case is
+  // about 15 rows in one company table — with the figures that get signed at
+  // the bottom of it. `order` on a flex table lifts the foot to the heading.
+  assert.match(phone, /\.acct-table, \.allco-table \{\s*display: flex; flex-direction: column;/);
+  assert.match(phone, /\.acct-table > thead \{ order: 0; \}/);
+  assert.match(phone, /\.acct-table > tfoot \{ order: 1; \}/);
+  assert.match(phone, /\.acct-table > tbody \{ order: 2; \}/);
+  // ONE MARKUP, TWO ORDERS. In the document the foot is still the foot, which
+  // is the desktop reading and the one the CSV and the paper sheet follow.
+  const acct = read('components/AccountingView.jsx');
+  assert.ok(
+    acct.indexOf('<tbody>') < acct.indexOf('<tfoot>'),
+    'the document order stopped being the desktop order',
+  );
+  assert.ok(!desktop.includes('.acct-table > tfoot'), 'the phone order leaked onto the desktop');
+  // รวมทุกบริษัท is three rows — one per company and their total. Lifting a
+  // total over the two figures it is the sum of is not a shortcut to anything.
+  assert.ok(!phone.includes('.allco-table > tfoot { order'), 'รวมทุกบริษัท was reordered too');
+  // And the boundary moved with the block: the people begin at the tbody now,
+  // so the foot no longer draws one against the heading row's own.
+  assert.match(phone, /\.acct-table > tbody \{ border-top: 1px solid var\(--line\); \}/);
+  assert.match(phone, /\.acct-table tfoot tr:first-child \{ border-top: 0; \}/);
 });
 
 test('×1.5 หยุด is the same heading one size down, not a second spelling of it', () => {
