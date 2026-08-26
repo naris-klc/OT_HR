@@ -1009,7 +1009,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1663 tests
+and the engine know nothing about Next.js, so the whole suite — **1668 tests
 across 101 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "1654 … 2026-08-25" until then, and was already five behind when the figure was
@@ -2800,6 +2800,68 @@ and 264 of 264 at 320px** with the count below, **831 of 938 at 1280px** with
 it beside. The value is in the stylesheet and not on the element, because an
 inline style is the one thing the 860px block cannot reach.
 
+**พิมพ์แล้วกรองทันที หน่วง 300ms และตัวที่ตรงกับคำค้นถูกไฮไลต์.** Two of the
+three things asked for on 2026-08-26 were already true — the box filtered on
+change with no Enter to press, and the count and the empty state followed it.
+What was added is the debounce and the highlight.
+
+**Two strings, and the difference between them IS the debounce.** `find` is what
+is in the box and follows every keystroke with no delay, because a field that
+lags behind the finger is the one thing a debounce must never do. `query` is what
+the screen was filtered BY and arrives `FIND_DEBOUNCE_MS` (300) after typing
+stops. Everything a reader compares against everything else reads `query` — the
+rows, the count, the quoted text in the empty state, the highlight — so the
+screen never shows one query's rows under another query's count.
+
+**Clearing is not a keystroke and does not wait.** ✕ and ล้างการค้นหา are a
+decision — the whole month back, now — and 300ms of an empty box over a still
+filtered sheet reads as a control that did not work. One early return in the
+effect is the whole of that difference.
+
+Said plainly: **at this size the debounce buys nothing.** The roster is 20 people
+and the filter is `Array.filter` over four rows, so the re-render it defers costs
+less than the timer that defers it, and all it can do here is put 300ms between
+the last keystroke and the answer. It is in because it was asked for, it is
+harmless, and it is already the right shape if the roster ever grows.
+
+**The highlight is computed by the rule that chose the row, and that is not a
+detail.** `matchRanges()` in [`lib/personSearch.js`](lib/personSearch.js) searches
+in the same reduced space `personMatches` does and maps the positions back, so:
+
+| typed | row reads | marked |
+|---|---|---|
+| `PM0412` | `PM-0412` | **`PM-0412`** — hyphen included |
+| `สมชายใจดี` | `สมชาย ใจดี` | **`สมชาย ใจดี`** — space included |
+| `ใจดี` against a *code* | `PM-0412` | nothing — a Thai term never reaches the code test |
+
+A mark built from `indexOf` on the displayed string would mark **nothing** on
+exactly the rows the fuzzy half of the rule brought in — a row in the list with
+no visible reason to be there, which is worse than no highlight at all.
+
+**A mark never lands between a Thai letter and the vowel written on it.** "ส"
+matches the base letter of *สุจินดา* and the raw range is one code unit, so the
+mark's own background was drawn between ส and the vowel that sits on it,
+splitting one syllable into two glyphs with a gap down the middle — and Thai sets
+no space between words, so that gap reads as a word break inside a name. Every
+range is grown to whole clusters (`\p{M}`, every combining mark in Unicode), and
+`.hit` carries no horizontal padding for the same reason. Both halves were
+needed: the CSS could not have fixed it on its own, because the two characters
+were in different elements.
+
+`<mark class="hit">` — the element that means "here because you searched", drawn
+in `--green-accent` on `--green-tint` and bold, because the browser's own
+highlighter is a yellow fill stated in absolute colours that survives the dark
+theme unchanged. Only the name and the code are marked: แผนก and บริษัท are not
+what was searched, and marking a word for containing the letters would be the
+highlight disagreeing with the filter.
+
+**One trap worth writing down.** The two `useState`s and the debounce effect sit
+with the other hooks at the top of the component, above `if (printing) return
+<AccountingPrint …>`. Written below it — which is where they were first — they
+are hooks that some renders call and others do not, and React threw *rendered
+fewer hooks than expected* the moment พิมพ์แบบฟอร์ม was pressed.
+
+
 **รวมทุกบริษัท is the first card now, not the last.** total → per company → per
 person, which is the order somebody closing a month reads in and the opposite of
 the order the figures are built in. At the foot of two company sheets, the one
@@ -3112,7 +3174,7 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1663/1663 pass in about 2 s**, measured 2026-08-26 across 101
+- `npm test` — **1668/1668 pass in about 2 s**, measured 2026-08-26 across 101
   files. It read "1654, measured 2026-08-25" until then, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3120,11 +3182,19 @@ four role UIs.
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The four newest are in `test/monthSearch.test.js` and pin ส่งบัญชี's own
-  ค้นหาชื่อ หรือ รหัสพนักงาน: that it asks the roster's rule, that the spread
-  narrows `rows` and carries `totals` and `departments` through untouched, that
-  no `find` reaches a total, the CSV href or `AccountingPrint`, that the screen
-  names all three totals while narrowing, and that รวมทุกบริษัท is the first
+  The five newest are also in `test/monthSearch.test.js` and pin the live half
+  of that box: the debounce's two strings and the early return that makes ✕ act
+  at once, that the rows, the count, the empty state and the highlight all read
+  the same `query`, that the hooks sit above the print early-return, and three
+  PURE cases over `highlightParts` — a code matched without its hyphen marks the
+  hyphen, a Thai name matched without its space marks the space, a mark never
+  lands between a letter and the vowel written on it, and the pieces rejoin to
+  the original string exactly. Before them, four in the same file pinning
+  ค้นหาชื่อ หรือ รหัสพนักงาน itself: that it asks the roster's rule, that the
+  spread narrows `rows` and carries `totals` and `departments` through
+  untouched, that no query reaches a total, the CSV href or `AccountingPrint`,
+  that the screen names all three totals while narrowing, and that รวมทุกบริษัท
+  is the first
   card and gets `data` rather than the filtered list. Before them, the six in
   `test/hrMonthCards.test.js` that pin
   แถบแจ้งเตือนของเดือน — that the card holds exactly **one** `.alert` and the

@@ -6,7 +6,7 @@ import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate } from '@/lib/api.js';
 import {
   ENTERED_FIELDS, isHrVerifiedBirthday, isProxyFiled, isSystemFiled, sameSession, sameValue,
 } from '@/lib/entries.js';
-import { searchPeople } from '@/lib/personSearch.js';
+import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import { approverLine } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
 
@@ -1595,6 +1595,44 @@ export function ClearButton({ onClear, label = 'ล้างการค้น�
       ✕
     </button>
   );
+}
+
+/**
+ * One string with the part the search matched marked in it.
+ *
+ * WHY IT ASKS `lib/personSearch.js` INSTEAD OF `indexOf`. The rule that decides
+ * which rows are on screen is fuzzy in two places — a code is compared with its
+ * separators removed, a Thai name is compared with and without its spaces — so
+ * "PM0412" brings up a row whose code READS "PM-0412", and the string the user
+ * typed appears nowhere in it. A highlight built from `indexOf` would mark
+ * nothing on exactly the rows the fuzzy half of the rule brought in: a row in
+ * the list with no visible reason to be there, which is worse than not
+ * highlighting at all. `highlightParts` searches in the same reduced space the
+ * filter does and maps the positions back, so the hyphen inside a matched code
+ * and the space inside a matched name are marked along with the characters
+ * around them.
+ *
+ * `<mark>` AND NOT A `<span>`. It is the element that means "this is here
+ * because you searched for it", which is what a screen reader should hear; the
+ * browser's default yellow is replaced in the stylesheet, where a colour can
+ * answer to the theme.
+ *
+ * `kind` PICKS THE HALF OF THE RULE. A name and a code are not compared the
+ * same way, and asking the wrong one is not a near miss: 'code' on a name marks
+ * nothing at all, because a term carrying Thai never reaches the code test.
+ *
+ * An empty query returns the string unmarked and unwrapped — no `<mark>`, no
+ * fragment — so a screen with the box empty renders exactly what it rendered
+ * before this existed.
+ */
+export function Highlight({ text, query, kind = 'name' }) {
+  const parts = highlightParts(text, query, kind);
+  if (parts.length === 0) return null;
+  if (parts.length === 1 && !parts[0].hit) return parts[0].text;
+  return parts.map((part, i) => (part.hit
+    // eslint-disable-next-line react/no-array-index-key -- the parts ARE the order
+    ? <mark className="hit" key={i}>{part.text}</mark>
+    : <React.Fragment key={i}>{part.text}</React.Fragment>));
 }
 
 /**

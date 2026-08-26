@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { personMatches } from '../lib/personSearch.js';
+import { highlightParts, personMatches } from '../lib/personSearch.js';
 
 /**
  * ค้นหาพนักงานบนตรวจสอบรายเดือน.
@@ -230,9 +230,12 @@ test('ส่งบัญชี asks the same rule, and narrows rows and nothing 
   // so `totals`, `departments` and `accountingCode` are carried through by not
   // being mentioned. Rewritten as a hand-built object it would be one forgotten
   // key away from a summary that agreed with the search.
+  // `query` and not `find` since the debounce landed — the string the screen
+  // was filtered BY, which is also what the count, the empty state and the
+  // highlight read. See the live-search section at the foot of this file.
   assert.match(
     acctView,
-    /const narrowed = shown\.map\(\(c\) => \(\{\s*\.\.\.c,\s*rows: c\.rows\.filter\(\(row\) => personMatches\(row\.employee, find\)\),\s*\}\)\);/,
+    /const narrowed = shown\.map\(\(c\) => \(\{\s*\.\.\.c,\s*rows: c\.rows\.filter\(\(row\) => personMatches\(row\.employee, query\)\),\s*\}\)\);/,
   );
   assert.ok(!/toLowerCase\(\)\.includes/.test(acctView), 'a hand-rolled match crept in beside personMatches');
   // Nothing else in the file may take `find` as an argument — the totals, the
@@ -254,7 +257,7 @@ test('and it says so on screen, in the words that name the figures', () => {
   // is running is a notice that stops being read.
   assert.match(acctView, /\{searching && rowsFound > 0 && \(/);
   // No result is an answer, with a way out, the same as ตรวจสอบรายเดือน's.
-  assert.match(acctView, /ไม่พบพนักงานที่ค้นหา “\{find\}”/);
+  assert.match(acctView, /ไม่พบพนักงานที่ค้นหา “\{query\}”/);
   assert.match(acctView, /ล้างการค้นหา/);
 });
 
@@ -300,4 +303,143 @@ test('its box is `.acct-find` — the same row without the sticky phone rule', (
     acctView.indexOf('className="found"'),
   );
   assert.ok(!/style=\{\{[^}]*flex/.test(box), 'an inline flex came back onto the search field');
+});
+
+// ── live filtering: the debounce, and where the match is drawn ────────────────
+
+/**
+ * Added 2026-08-26, asked for as "Instant Live Search เหมือน Google".
+ *
+ * Two of the three things asked for were already true — the box filtered on
+ * change with no Enter, and the count and the empty state followed it. What was
+ * new is a 300ms debounce and a highlight, and the highlight is the part with a
+ * trap in it: the filter's rule is fuzzy in two places, so a mark computed by
+ * `indexOf` on the displayed string would mark NOTHING on exactly the rows the
+ * fuzzy half brought in.
+ */
+
+test('the highlight is computed by the same rule that chose the row', () => {
+  // A code typed without its hyphen marks the code WITH it. `indexOf('PM0412')`
+  // on 'PM-0412' is -1, and this row is in the list.
+  assert.deepEqual(
+    highlightParts('PM-0412', 'PM0412', 'code'),
+    [{ text: 'PM-0412', hit: true }],
+  );
+  // A Thai name typed without its space marks the name WITH it.
+  assert.deepEqual(
+    highlightParts('สมชาย ใจดี', 'สมชายใจดี', 'name'),
+    [{ text: 'สมชาย ใจดี', hit: true }],
+  );
+  // A term carrying Thai never reaches the code test, so it marks nothing there
+  // — the same guard `personMatches` uses, for the same reason.
+  assert.deepEqual(
+    highlightParts('PM-0412', 'ใจดี', 'code'),
+    [{ text: 'PM-0412', hit: false }],
+  );
+  // An empty box marks nothing at all: one unmarked piece, which is what lets
+  // the component render the plain string it rendered before this existed.
+  assert.deepEqual(
+    highlightParts('สมชาย ใจดี', '', 'name'),
+    [{ text: 'สมชาย ใจดี', hit: false }],
+  );
+});
+
+test('a mark never lands between a Thai letter and the vowel written on it', () => {
+  // "ส" matches the BASE letter of สุจินดา and the raw range is one code unit —
+  // so the mark's own background was drawn between ส and the vowel that sits on
+  // it, splitting one syllable in two. Thai sets no space between words, so
+  // that gap reads as a word break in the middle of a name.
+  assert.deepEqual(
+    highlightParts('สุจินดา แรงกสิวิทย์', 'ส', 'name'),
+    [
+      { text: 'สุ', hit: true },
+      { text: 'จินดา แรงก', hit: false },
+      { text: 'สิ', hit: true },
+      { text: 'วิทย์', hit: false },
+    ],
+  );
+  // A tone mark counts too — แป้ is one cluster.
+  assert.deepEqual(
+    highlightParts('ถาวร แป้นวงษ์', 'แป', 'name'),
+    [
+      { text: 'ถาวร ', hit: false },
+      { text: 'แป้', hit: true },
+      { text: 'นวงษ์', hit: false },
+    ],
+  );
+  // And a letter with nothing on it is still just the letter.
+  assert.deepEqual(
+    highlightParts('สมชาย ใจดี', 'ส', 'name'),
+    [{ text: 'ส', hit: true }, { text: 'มชาย ใจดี', hit: false }],
+  );
+});
+
+test('the pieces put the name back together exactly, or the screen loses characters', () => {
+  // The renderer maps over these. Anything that does not rejoin to the source is
+  // a name with a letter missing on a payroll sheet.
+  const cases = [
+    ['สุจินดา แรงกสิวิทย์', 'ส', 'name'],
+    ['สมชาย ใจดี', 'สมชายใจดี', 'name'],
+    ['ถาวร แป้นวงษ์', 'แป้น วงษ์', 'name'],
+    ['PM-0412', 'pm 0412', 'code'],
+    ['THT0074', 'THT-0074', 'code'],
+    ['วิชัย ศรีสุข', '', 'name'],
+    ['', 'ส', 'name'],
+  ];
+  for (const [text, query, kind] of cases) {
+    assert.equal(
+      highlightParts(text, query, kind).map((p) => p.text).join(''),
+      text,
+      `${kind} "${text}" × "${query}" did not rejoin`,
+    );
+  }
+});
+
+test('typing filters with no Enter, 300ms behind the box, and clearing does not wait', () => {
+  // `find` is the box and follows every keystroke; `query` is what the screen
+  // was filtered BY. A field that lagged behind the finger is the one thing a
+  // debounce must never do.
+  assert.match(acctView, /const FIND_DEBOUNCE_MS = 300;/);
+  assert.match(acctView, /const \[find, setFind\] = useState\(''\);/);
+  assert.match(acctView, /const \[query, setQuery\] = useState\(''\);/);
+  assert.match(acctView, /onChange=\{\(e\) => setFind\(e\.target\.value\)\}/);
+  assert.match(acctView, /value=\{find\}/);
+  // Clearing is a decision, not a keystroke — the early return is what makes
+  // the ✕ and ล้างการค้นหา act at once instead of 300ms later.
+  assert.match(
+    acctView,
+    /if \(find === ''\) \{ setQuery\(''\); return undefined; \}\s*const timer = setTimeout\(\(\) => setQuery\(find\), FIND_DEBOUNCE_MS\);/,
+  );
+  assert.match(acctView, /return \(\) => clearTimeout\(timer\);/);
+  // Everything the reader compares reads the SAME string, or the screen shows
+  // one query's rows under another query's count.
+  assert.match(acctView, /personMatches\(row\.employee, query\)/);
+  assert.match(acctView, /const searching = query\.trim\(\) !== '';/);
+  assert.match(acctView, /ไม่พบพนักงานที่ค้นหา “\{query\}”/);
+  assert.match(acctView, /<Highlight text=\{row\.employee\.name\} query=\{query\} kind="name" \/>/);
+  assert.match(acctView, /<Highlight text=\{row\.employee\.code\} query=\{query\} kind="code" \/>/);
+  // AND THE HOOKS ARE ABOVE THE EARLY RETURN. `if (printing)` returns before the
+  // rest of the function runs, so a hook written after it is called on some
+  // renders and not others — React threw "rendered fewer hooks than expected"
+  // the moment พิมพ์แบบฟอร์ม was pressed.
+  assert.ok(
+    acctView.indexOf('const [query, setQuery]') < acctView.indexOf('if (printing) {'),
+    'the search hooks moved below the print early-return',
+  );
+});
+
+test('the mark is the app’s green, not the browser’s highlighter', () => {
+  // `<mark>` is the element that means "here because you searched" — but the UA
+  // sheet paints it in absolute colours, so left alone it is a yellow felt-tip
+  // across a charcoal card on the dark theme. Both are replaced.
+  assert.match(read('components/common.jsx'), /<mark className="hit" key=\{i\}>/);
+  assert.match(
+    css,
+    /\.hit \{\s*background: var\(--green-tint\); color: var\(--green-accent\); font-weight: 700;/,
+  );
+  // No side padding: two pixels inside "สุจินดา" read as a word break in a
+  // script that has no spaces between words.
+  assert.match(css, /\.hit \{[\s\S]*?border-radius: 2px; padding: 0;/);
+  // A wrapped mark is two marks, not one box with a hole in it.
+  assert.match(css, /\.hit \{[\s\S]*?box-decoration-break: clone;/);
 });

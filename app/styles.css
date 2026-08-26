@@ -2276,6 +2276,45 @@ td > .approver-line { margin-top: 5px; }
    box with a list directly under it. */
 .acct-find { margin-bottom: 0; }
 
+/* ── THE PART THAT MATCHED ───────────────────────────────────────────────
+   `<mark class="hit">`, from the `Highlight` component in components/common.jsx.
+
+   THE BROWSER'S OWN `mark` IS A YELLOW FILL WITH BLACK TEXT, and it is stated
+   in absolute colours by the UA sheet — so left alone it survives the dark
+   theme unchanged and puts a highlighter pen across a charcoal card. Both
+   properties are replaced here, which is the whole reason this rule exists.
+
+   THE APP'S GREEN, AND NOT A NEW COLOUR. `--green-accent` is the one green that
+   stays saturated on both sides of the theme — which is why the outlined
+   ดู / แก้ไขรายการ button on ตรวจสอบรายเดือน's phone card takes it too — and
+   `--green-tint` is the wash that goes under it.
+   (Naming that button's class here would trip "the accent leaked out of the
+   phone block" in test/hrMonthCards.test.js, which reads the comments as well
+   as the rules. It is the third assertion in this codebase to catch a comment
+   instead of the code it describes.)
+   Bold as well as coloured: on a phone the marked run is often two Thai
+   characters, and colour alone at that size is a difference somebody has to
+   look for.
+
+   NO HORIZONTAL PADDING, AND THAI IS THE REASON. It had `padding: 0 1px`, which
+   is the ordinary way to keep a wash off the letters beside it — and Thai sets
+   no space between words, so those two pixels inside "สุจินดา" read as a word
+   break in the middle of a name. The wash on its own is legible; a gap that
+   splits a word is not a highlight, it is a typo.
+
+   (The other half of that fix is not here: `matchRanges` in lib/personSearch.js
+   grows every range to whole clusters, so a mark can no longer land between a
+   letter and the vowel written on it. This rule could not have fixed that —
+   the two characters were being put in different elements.)
+
+   `box-decoration-break` so a mark that wraps across two lines is drawn as two
+   marks rather than one box with a hole in the middle. */
+.hit {
+  background: var(--green-tint); color: var(--green-accent); font-weight: 700;
+  border-radius: 2px; padding: 0;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+
 /* ── AND THE BOX KEEPS ITS WIDTH, OR THE COUNT TAKES IT ──────────────────
    `.field` is `flex: 1`, which is `flex: 1 1 0%` — a basis of NOTHING. In a
    wrapping row that is the one value that guarantees no wrap ever happens: the

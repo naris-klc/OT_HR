@@ -11,10 +11,21 @@ import { zeroRowReason } from '@/lib/otMode.js';
 // The rule the roster's own box asks, so PM-0412 and PM00511 both answer to
 // either spelling — see lib/personSearch.js. A fourth caller, not a fourth copy.
 import { personMatches } from '@/lib/personSearch.js';
-import { Alert, ClearButton, Empty, RateHead, UnaccountedHours } from './common.jsx';
+import { Alert, ClearButton, Empty, Highlight, RateHead, UnaccountedHours } from './common.jsx';
 import Icon from './icons.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { useBackHandler } from './nav.jsx';
+
+/**
+ * How long the box waits after the last keystroke before the sheet is filtered.
+ *
+ * 300ms is the number that was asked for and it is the conventional one: long
+ * enough to swallow the gap between letters typed at speed, short enough that
+ * the answer still arrives while the finger is over the key. Named rather than
+ * inlined because it is the one value anybody would want to change, and because
+ * `test/monthSearch.test.js` reads it by name.
+ */
+const FIND_DEBOUNCE_MS = 300;
 
 /**
  * สรุป OT ส่งบัญชี — the month's approved hours, ready to hand to accounting.
@@ -36,6 +47,43 @@ export default function AccountingView() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(false);
+
+  /*
+   * TWO STRINGS, AND THE DIFFERENCE BETWEEN THEM IS THE DEBOUNCE.
+   *
+   * `find` is what is in the box — it follows every keystroke with no delay,
+   * because a field that lags behind the finger is the one thing a debounce
+   * must never do. `query` is what the screen has been filtered BY, and it
+   * arrives `FIND_DEBOUNCE_MS` after typing stops. Everything downstream reads
+   * `query`: the rows, the count, the empty state's quoted text and the
+   * highlight — so all four always describe the same search, instead of the
+   * screen showing one query's rows under another query's count.
+   *
+   * CLEARING IS NOT A KEYSTROKE AND DOES NOT WAIT. Pressing ✕ or ล้างการค้นหา
+   * is a decision — the whole month back, now — and 300ms of an empty box over
+   * a still-filtered sheet reads as a control that did not work. The early
+   * return in the effect is the whole of that difference.
+   *
+   * WORTH SAYING PLAINLY: at this size the debounce buys nothing. The roster is
+   * 20 people and the filter is `Array.filter` over four rows, so the re-render
+   * it defers costs less than the timer that defers it, and all it can actually
+   * do here is put 300ms between the last keystroke and the answer. It is in
+   * because it was asked for, it is harmless, and if the roster ever grows to
+   * where a keystroke is felt this is already the right shape.
+   *
+   * UP HERE WITH THE OTHER HOOKS, AND THAT IS NOT TIDINESS. `if (printing)`
+   * below returns before the rest of the function runs. A `useState` or a
+   * `useEffect` written after it is a hook that some renders call and others do
+   * not, which is the one thing React cannot survive — it threw
+   * "rendered fewer hooks than expected" the moment พิมพ์แบบฟอร์ม was pressed.
+   */
+  const [find, setFind] = useState('');
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    if (find === '') { setQuery(''); return undefined; }
+    const timer = setTimeout(() => setQuery(find), FIND_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [find]);
 
   // The header mark leaves the print sheet before it leaves the tab.
   useBackHandler(printing, () => setPrinting(false));
@@ -84,11 +132,10 @@ export default function AccountingView() {
    * own totals for it are still on รวมทุกบริษัท at the top of the screen, which
    * this box does not touch either.
    */
-  const [find, setFind] = useState('');
-  const searching = find.trim() !== '';
+  const searching = query.trim() !== '';
   const narrowed = shown.map((c) => ({
     ...c,
-    rows: c.rows.filter((row) => personMatches(row.employee, find)),
+    rows: c.rows.filter((row) => personMatches(row.employee, query)),
   }));
   const visible = searching ? narrowed.filter((c) => c.rows.length > 0) : narrowed;
   const rowsFound = narrowed.reduce((n, c) => n + c.rows.length, 0);
@@ -269,7 +316,11 @@ export default function AccountingView() {
           {searching && rowsFound === 0 ? (
             <div className="card">
               <Empty>
-                <div>ไม่พบพนักงานที่ค้นหา “{find}”</div>
+                {/* `query`, not `find`: this quotes the search the screen was
+                    actually filtered by. With the box already showing the next
+                    keystroke, quoting `find` would name a search whose answer
+                    is still 300ms away. */}
+                <div>ไม่พบพนักงานที่ค้นหา “{query}”</div>
                 <button
                   className="btn ghost sm"
                   style={{ marginTop: 10 }}
@@ -284,6 +335,7 @@ export default function AccountingView() {
               key={c.key}
               company={c}
               period={period}
+              query={query}
               // Numbered against the full list, not the filtered one, so
               // เดมเทค is "บริษัทที่ 2" on its own tab as well — and stays
               // "บริษัทที่ 2" when a search leaves it the only sheet drawn.
@@ -310,7 +362,7 @@ export default function AccountingView() {
  * in a second table beside it, so a figure is always read down the column it
  * belongs to.
  */
-function CompanySheet({ company, period, index }) {
+function CompanySheet({ company, period, index, query }) {
   const t = company.totals;
   return (
     <div className="card" style={{ marginTop: 18 }}>
@@ -366,9 +418,16 @@ function CompanySheet({ company, period, index }) {
               <tbody>
                 {company.rows.map((row) => (
                   <tr key={row.employee.id}>
+                    {/* The two strings the box is asked about are the two that
+                        say where it landed. Nothing else on the row is marked:
+                        แผนก and บริษัท are not what was searched, and marking a
+                        word because it happens to contain the letters would be
+                        the highlight disagreeing with the filter. */}
                     <td className="who-col">
-                      {row.employee.name}
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{row.employee.code}</div>
+                      <Highlight text={row.employee.name} query={query} kind="name" />
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                        <Highlight text={row.employee.code} query={query} kind="code" />
+                      </div>
                     </td>
                     <td className="dept-col">{row.department?.name || '—'}</td>
                     <td className="num rate-col b-15w">{cell(row.buckets[BUCKETS.OT15_WEEKDAY])}</td>
