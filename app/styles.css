@@ -3601,6 +3601,29 @@ td > .approver-line { margin-top: 5px; }
    opens. Above rather than inside the scroll area — the table scrolls
    sideways on a narrow screen and a control that scrolls away with it is a
    control nobody finds twice. */
+/* ── the notice slot on รายการ OT ───────────────────────────────────────────
+   ONE PLACE UNDER THE NAME, WHETHER OR NOT THERE IS ANYTHING IN IT.
+
+   Most months carry no policy warning, so this slot is empty on most people —
+   and while `.alert` brought its own 12px top margin and `.audit-bar` brings 16,
+   the first thing under the heading sat 12px down on a month that had a warning
+   and 16px down on one that did not. Four pixels is not the point. HR reads
+   this screen one employee after the next, and a block that moves between them
+   is a difference the eye reports every time.
+
+   THE WRAPPER HAS NO MARGIN AND THE NOTICE INSIDE IT HAS 16. An empty slot is
+   then zero pixels tall and contributes nothing at all — no `:empty` rule to get
+   right, and no way for a future notice added here to be spaced differently
+   from this one. A full slot puts the bar exactly as far below the banner as
+   the banner is below the heading.
+
+   NOT A RESERVED HEIGHT, which is the other way to stop a jump and the wrong
+   one here: the banner is two lines on one month and four on another, so there
+   is no single number to hold open, and holding the tallest open would put a
+   void under the name of every ordinary employee to spare the eye a jump it
+   only sees when moving between two of them. */
+.entry-notice > .alert { margin: 16px 0 0; }
+
 /* 16px ABOVE, NOT 12, and the number is set here rather than as a
    `margin-bottom` on `.alert`. What sits above this bar on รายการ OT is the
    policy warning, and adjacent margins collapse — so the two boxes were 12px
@@ -3643,7 +3666,30 @@ td > .approver-line { margin-top: 5px; }
    inline. A flex container ignores that, so `wrap` left on the base rule
    restacked those two rows into two lines each and made every row of a long
    month taller to fix a case that only exists on a phone. */
-.entry-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+/* TWO SLOTS, AND EVERY ROW HAS BOTH. Left: what can be DONE to this row —
+   ✏️ แก้ไข, or แก้ไขไม่ได้ where the row is ยกเลิก or ไม่อนุมัติ. Right: what can
+   be READ about it — ดูข้อมูลเดิม, or ไม่มีประวัติการแก้ไข. That pairing was
+   already true in the markup and invisible on the screen: a 6px gap starts the
+   second thing wherever the first one ended, so the right-hand control landed
+   at 1192px on the row whose left slot is the sentence แก้ไขไม่ได้ and 1221 on
+   the five whose left slot is the pencil button. A column of controls that does
+   not line up reads as a column of DIFFERENT controls — which is the opposite
+   of what this cell is: the same two questions asked of every row.
+
+   `width: 100%` FILLS THE CELL, which on the desktop is the eleventh column
+   (sized by its widest row) and on a phone is the card. `margin-left: auto` on the
+   LAST child puts the right-hand slot on the right edge of it.
+
+   THE LAST CHILD, NOT `justify-content: space-between`. Three things land here on
+   an untouched วันเกิด filing the system wrote — แก้ไข, ถอนใบวันเกิด and
+   ดูข้อมูลเดิม — and space-between would push ถอนใบวันเกิด out to the middle,
+   away from the แก้ไข it belongs with. Pushing only the last one keeps "what can
+   be done" as one group at the left however many things are in it. */
+.entry-actions {
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+  width: 100%;
+}
+.entry-actions > :last-child { margin-left: auto; }
 /* The sentences carry `.cell-sub`'s 2px top margin, which is for a line UNDER a
    value and is a nudge off-centre here. */
 .entry-actions .cell-sub { margin-top: 0; }
@@ -3730,7 +3776,7 @@ td > .approver-line { margin-top: 5px; }
    off the ends of them. One declaration is cheaper than finding that out. */
 .hint.entry-foot {
   margin-top: 14px; margin-bottom: 0;
-  padding: 12px 14px;
+  padding: 10px 14px;
   background: var(--neutral-wash);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
@@ -3751,7 +3797,7 @@ td > .approver-line { margin-top: 5px; }
    rather than under its bullet. */
 .entry-foot .foot-notes {
   list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 7px;
+  display: flex; flex-direction: column; gap: 6px;
 }
 .entry-foot .foot-notes > li { position: relative; padding-left: 14px; }
 .entry-foot .foot-notes > li::before {

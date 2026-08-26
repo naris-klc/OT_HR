@@ -183,7 +183,10 @@ test('the footnote is a boxed note, and it is not made unreadable to say so', ()
   assert.match(foot, /background: var\(--neutral-wash\);/);
   assert.match(foot, /border: 1px solid var\(--line-soft\);/);
   assert.match(foot, /border-radius: var\(--radius\);/);
-  assert.match(foot, /padding: 12px 14px;/);
+  // 10px down, not 12: two short lines in a note that is the last thing in
+  // the card, thinned on 2026-08-26 so the box reads as a margin note rather
+  // than as a fifth panel. The 14 across is unchanged.
+  assert.match(foot, /padding: 10px 14px;/);
   assert.match(foot, /font-size: 12px;/);
   // Last thing in the card, so `.card .hint`'s 14 left 32px under it against 18
   // at every other edge.
@@ -301,4 +304,55 @@ test('the one value that wraps gets a line-height, and only that one', () => {
   // beside ten others, and a line-height set for a wrapped card value would
   // loosen every row of every table in the app.
   assert.match(css, /^td \{ padding: 12px;[^}]*font: 400 14px\/1\.5 var\(--sans\);/m);
+});
+
+test('the notice under the name has one place, whether or not there is a notice', () => {
+  // Most months carry no policy warning, so this slot is empty on most people —
+  // and `.alert` brought its own 12px top margin while `.audit-bar` brings 16,
+  // so the first thing under the heading sat 12px down on a month that had a
+  // warning and 16px down on one that did not. HR reads this screen one
+  // employee after the next, and a block that moves between them is a
+  // difference the eye reports every time.
+  assert.match(jsx, /<div className="entry-notice">\s*\n\s*<PolicyVersionBanner spread=\{spread\} onGoMonthly=\{onClose\} \/>\s*\n\s*<\/div>/);
+
+  // THE WRAPPER CARRIES NO MARGIN AND THE NOTICE INSIDE IT CARRIES 16, so an
+  // empty slot is zero pixels tall and there is no `:empty` rule to get right.
+  // Asserted as a negative too: a margin on the wrapper would put 16px of air
+  // under the name of every employee who has no warning.
+  assert.match(rule('.entry-notice > .alert'), /margin: 16px 0 0;/);
+  assert.ok(!/^\.entry-notice \{/m.test(css), 'the slot took a box of its own');
+  // The same figure the bar below it takes, which is what makes the two gaps
+  // one gap repeated rather than two numbers that happen to be close.
+  assert.match(css.slice(css.indexOf('.audit-bar {')), /^\.audit-bar \{[\s\S]{0,200}margin: 16px 0 0;/);
+});
+
+test('every card footer is the same two slots, and they line up down the month', () => {
+  // Left: what can be DONE to this row — แก้ไข, or แก้ไขไม่ได้ where the row is
+  // ยกเลิก or ไม่อนุมัติ. Right: what can be READ about it — ดูข้อมูลเดิม, or
+  // ไม่มีประวัติการแก้ไข. True in the markup and invisible on the screen: an
+  // inline run with a 6px gap starts its second item wherever the first ended,
+  // so down a month of six cards the right-hand control sat at four different
+  // x-positions — and a column of controls that does not line up reads as a
+  // column of different controls.
+  // BOTH LAYOUTS, from the base rule. On the desktop the cell is the eleventh
+  // column, sized by its widest row, so the same raggedness was there: 1192px
+  // against 1221 for the five rows whose left slot is the pencil button.
+  assert.match(rule('.entry-actions'), /width: 100%;/);
+  assert.match(rule('.entry-actions > :last-child'), /margin-left: auto;/);
+  // The phone still wraps and the desktop still does not — that difference is
+  // about a 44px button beside a sentence on a 274px card, not about the slots.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(phone, /\.stack-table tbody td \.entry-actions \{ flex-wrap: wrap; \}/);
+  assert.match(rule('.entry-actions'), /flex-wrap: nowrap;/);
+
+  // THE LAST CHILD, not `justify-content: space-between`. Three things land
+  // here on an untouched วันเกิด filing — แก้ไข, ถอนใบวันเกิด, ดูข้อมูลเดิม —
+  // and space-between would push ถอนใบวันเกิด to the centre of the card, away
+  // from the แก้ไข it belongs with.
+  assert.ok(
+    !/\.entry-actions[^{]*\{[^}]*space-between/.test(css),
+    'the run went to space-between — see ถอนใบวันเกิด, which makes it three',
+  );
+  assert.match(jsx, /ถอนใบวันเกิด/);
+  assert.match(rule('.entry-actions'), /display: inline-flex;/);
 });

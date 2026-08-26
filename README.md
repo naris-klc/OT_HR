@@ -1009,10 +1009,10 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1697 tests
+and the engine know nothing about Next.js, so the whole suite — **1699 tests
 across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
-"1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
+"1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when that figure was re-checked. The file count read
 "101 files" through all of them and moved with
 `test/entryRowChrome.test.js`.)
@@ -2285,6 +2285,27 @@ all along. Nothing is lost by it: the point of saying so at all is that an
 absent control reads as a screen that forgot, and a sentence says it as plainly
 as a dead button did.
 
+**The row's last cell is two slots, and every row has both.** Left: what can be
+*done* to this row — ✏️ แก้ไข, or แก้ไขไม่ได้ where the row is ยกเลิก or
+ไม่อนุมัติ. Right: what can be *read* about it — ดูข้อมูลเดิม, or
+ไม่มีประวัติการแก้ไข. That pairing was true in the markup from the day the cell
+was written and invisible on the screen: `.entry-actions` is a flex run with a
+6px gap, so the second thing started wherever the first one ended — the
+right-hand control landed at **1192px** on the row whose left slot is the
+sentence แก้ไขไม่ได้ and **1221** on the five whose left slot is the pencil
+button, and on a phone at four different x-positions down a month of six cards.
+A column of controls that does not line up reads as a column of *different*
+controls, which is the opposite of what this cell is: the same two questions
+asked of every row. `width: 100%` fills the cell — the eleventh column on the
+desktop, the card on a phone — and `margin-left: auto` on the **last** child
+puts the right-hand slot on its right edge.
+
+**The last child, and not `justify-content: space-between`.** Three things land
+here on an untouched วันเกิด filing the system wrote — แก้ไข, ถอนใบวันเกิด and
+ดูข้อมูลเดิม — and space-between would push ถอนใบวันเกิด out to the middle, away
+from the แก้ไข it belongs with. Pushing only the last one keeps *what can be
+done* as one group at the left however many things are in it.
+
 **Then, on 2026-08-26, the two of them were told apart by weight.** On a ยกเลิก
 row the cell holds แก้ไขไม่ได้ and ดูข้อมูลเดิม side by side — a thing that
 cannot be done and a thing that can — and both were `--muted` at nearly one
@@ -2361,6 +2382,26 @@ at 8px against a 1.5 line-height six fields ran together into a block of text.
 space around it are one rhythm. It is `.stack-table`'s rule, so every card list
 in the app gets it.
 
+**The notice under the name has one place, whether or not there is a notice.**
+Most months carry no policy warning, so that slot is empty on most people — and
+`.alert` brought its own 12px top margin while `.audit-bar` brings 16, so the
+first thing under the heading sat 12px down on a month that had a warning and
+16px down on one that did not. Four pixels is not the point: HR reads this
+screen one employee after the next, and a block that moves between them is a
+difference the eye reports every time. The banner is wrapped in
+`.entry-notice`, the wrapper carries no margin, and the notice inside it carries
+**16** — the same figure the bar takes. An empty slot is then zero pixels tall
+and contributes nothing, with no `:empty` rule to get right, and a full one puts
+the bar exactly as far below the banner as the banner is below the heading.
+
+**Not a reserved height,** which is the other way to stop a jump and the wrong
+one here. The banner is two lines on one month and four on another, so there is
+no single number to hold open; holding the tallest open would put a void under
+the name of every ordinary employee to spare the eye a jump it only sees when
+moving between two of them. Nothing on this screen shifts *during* a load
+either — the heading, the notice, the bar and the table all render in one pass
+once the month is in.
+
 **The bar stands 16px below the warning, not 12.** Adjacent margins collapse,
 so `.alert`'s 12 and `.audit-bar`'s 12 came to 12 — two bordered boxes twelve
 pixels apart, reading as one stack of two panels rather than as a warning and
@@ -2397,9 +2438,14 @@ It read "12px with a hairline and 12px of air above it" for part of 2026-08-26,
 and that only half worked: a rule says where the note starts and says nothing
 about where it stops, so at the foot of a long month it still trailed off into
 the page. It is a panel now — `--neutral-wash` behind it, a `--line-soft`
-border, `--radius` corners and 12px of padding — the same quiet pair the audit
-drawer and the เดิม → ใหม่ rows are already drawn in, so it is the app's panel
-and not a new one. `margin-bottom` goes to 0 against `.card .hint`'s 14, because
+border, `--radius` corners and `10px 14px` of padding — the same quiet pair the
+audit drawer and the เดิม → ใหม่ rows are already drawn in, so it is the app's
+panel and not a new one. The padding read "12px 14px" for part of the same day:
+two short lines in the last thing on the card want the box to read as a margin
+note, not as a fifth panel. **It is outside the conditional that draws the
+table,** so it is in the same place on every employee — including a month with
+no rows at all, where ไม่มีรายการในเดือนนี้ stands where the table would be and
+the note still says what an edit would do. `margin-bottom` goes to 0 against `.card .hint`'s 14, because
 this is the last thing in the card and that 14 left 32px under it against 18 at
 every other edge.
 
@@ -3579,8 +3625,8 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1697/1697 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1699/1699 pass in about 2 s**, measured 2026-08-26 across 102
+  files. It read "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"
@@ -3588,8 +3634,8 @@ four role UIs.
   that. It also read "1662" for part of 2026-08-26, while สรุป OT ส่งบัญชี had a
   phone layout of its own; that was reverted the same day and its four cases
   went with it — see §"The screen and the paper are two different documents".
-  The fourteen newest are the whole of `test/entryRowChrome.test.js`, the 102nd
-  file — it held "nine" and then "eleven" earlier the same day — and they pin the
+  The sixteen newest are the whole of `test/entryRowChrome.test.js`, the 102nd
+  file — it held "nine", then "eleven", then "fourteen" earlier the same day — and they pin the
   last cell of a row on รายการ OT: that the one thing which can be pressed is the
   only thing drawn as a button and that a disabled one may not come back, that
   nothing in a row writes its own type size any more, that the flex row's wrap
@@ -3605,8 +3651,10 @@ four role UIs.
   is the explanation, that on a ยกเลิก row the live control outweighs the dead
   sentence and does it with an edge rather than a fill, and that the one value
   which wraps carries a line-height **and** a padding, because a line-height puts
-  only half its growth under the last line and what sits below is a label. Five
-  in `test/hrMonthCards.test.js` joined them for the notice both screens draw:
+  only half its growth under the last line and what sits below is a label, that
+  the notice under the employee's name has one place whether or not there is a
+  notice to put in it, and that every row's last cell is the same two slots and
+  they line up down the month. Five in `test/hrMonthCards.test.js` joined them for the notice both screens draw:
   that the panel says its instruction in the same `.say` the list does, that the
   shortened fourth sentence still says why and where, that the screen it names is
   a link when a caller offers one and plain text when it does not, that a link

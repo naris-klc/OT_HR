@@ -137,12 +137,35 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
         <Empty>ไม่มีรายการในเดือนนี้</Empty>
       ) : (
         <>
-        {/* `onGoMonthly` is `onClose`: the screen the warning names is the screen
+        {/* THE NOTICE SLOT — one place under the employee's name, whether or
+            not there is anything to put in it.
+
+            Most months have no policy warning, so this element is empty on
+            most people, and until 2026-08-26 that meant the first thing under
+            the heading sat 12px down on the months that DID have one and 16px
+            down on the months that did not. Four pixels is not the point: the
+            point is that HR read this screen one employee after another, and
+            the block under the heading moving between them is a difference the
+            eye reports as "something changed" every single time.
+
+            The wrapper carries no margin of its own and the notice inside it
+            carries 16 — the same figure `.audit-bar` takes — so an empty slot is
+            zero pixels tall and contributes nothing, and a full one puts the
+            bar exactly as far below the banner as the banner is below the
+            heading. NOT a reserved height: the banner is two lines on one month
+            and four on another, so there is no one number to hold open, and
+            holding open the tallest would put a void under the name of every
+            ordinary employee to spare the eye a jump it only sees when moving
+            between two people.
+
+            `onGoMonthly` is `onClose`: the screen the warning names is the screen
             this one was opened from, so leaving is arriving. Passed rather than
             wired inside the banner, because `MonthAlerts` draws the same notice
             ON ตรวจสอบรายเดือน and a link back to where you already are is
             worse than no link — it passes nothing and gets a plain sentence. */}
-        <PolicyVersionBanner spread={spread} onGoMonthly={onClose} />
+        <div className="entry-notice">
+          <PolicyVersionBanner spread={spread} onGoMonthly={onClose} />
+        </div>
 
         {/* One press to read the whole month at once, which is what closing it
             actually involves — the per-row buttons are for following a single
