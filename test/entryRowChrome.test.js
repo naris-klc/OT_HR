@@ -403,16 +403,79 @@ test('the bar puts its sentence at the right end, or under the label — never a
     'the auto margin came back — it pushes right on a wrapped line too',
   );
 
-  // AND NO BREAKPOINT. Measured on the built app: the bar needs 444.7px of
-  // inside width for the longer of the two sentences, and has 470 at a 560px
-  // viewport against 390 at 480 — so it fits from about 535px up. A
-  // `max-width: 860px` rule would have stacked it through the whole 540–860
-  // band where it fits; a rule at 535 would still be wrong for the shorter
-  // sentence, which fits down to about 439. Only exactly two children, which is
-  // what makes space-between safe here — see `.entry-actions`, where a third
-  // control is why the last-child margin is used instead.
-  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.ok(!/\.audit-bar[^{]*\{/.test(phone), 'the bar grew a phone rule');
+  // Only exactly two children, which is what makes space-between safe here —
+  // see `.entry-actions`, where a third control is why the last-child margin is
+  // used instead.
   assert.match(jsx, /<div className="audit-bar">\s*\n\s*<label/);
   assert.match(jsx, /<\/label>\s*\n\s*<span className="hint">/);
+});
+
+test('below 860 the sentence is the checkbox’s description, and stacks', () => {
+  // THE BREAKPOINT IS ABOUT WHAT THE SENTENCE IS, NOT ABOUT WHETHER IT FITS.
+  // This file said "and no breakpoint" until 2026-08-26 and had the measurements
+  // for it: the bar needs 444.7px of inside width for the longer of the two
+  // sentences and has 470 at a 560px viewport against 390 at 480, so it fits
+  // from about 535px up, and `flex-wrap` broke the line exactly there. What that
+  // could not decide is what the sentence is FOR. Below 860 the table beside it
+  // is already a column of cards; the bar is as wide as a phone; and the count
+  // is not the far end of a row any more, it is what ticking the box will show.
+  // A description goes under the thing it describes.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  const bar = phone.slice(phone.indexOf('.audit-bar {'));
+  assert.match(bar, /^\.audit-bar \{[^}]*flex-direction: column;/);
+  // `center` on the base rule centres the CROSS axis, which in a column is the
+  // horizontal one — without this the stack comes out centred, which is the one
+  // thing the wrapped line was fixed to stop doing.
+  assert.match(bar, /^\.audit-bar \{[^}]*align-items: flex-start;/);
+  // 6px, not the bar's 14: that gap was measured between two independent items
+  // side by side, and between a label and its own sub-text it is a chasm.
+  assert.match(bar, /^\.audit-bar \{[^}]*gap: 6px;/);
+  // The base rule is what still puts a wrapped line at its own start, and it is
+  // what draws this if the phone rule above ever goes.
+  assert.match(rule('.audit-bar'), /flex-wrap: wrap;/);
+});
+
+test('the drawer’s green edge sits on the card’s border, not inside it', () => {
+  // On a phone the drawer's <tr> is a card like the row above it — 15px of
+  // padding, a border, a radius — so `.audit-drawer` sat 16px in from the card's
+  // own edge with its 3px accent running down a white margin beside nothing, and
+  // its words started 35px in (16 + 3 + 16) against the 15px every field on the
+  // row above starts at. The card holds nothing but the drawer, so the padding
+  // moves to the drawer: the stripe lands on the card's border, parallel with
+  // it, and 12px of padding past a 3px stripe puts the text at the row's 15.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(phone, /\.stack-table tbody tr\.audit-row \{[^}]*padding: 0;/);
+  // The td carries `--neutral-wash` and now runs to the corners; a square wash
+  // inside a 14px radius is worse than the inset it replaces.
+  assert.match(phone, /\.stack-table tbody tr\.audit-row \{[^}]*overflow: hidden;/);
+  assert.match(
+    phone,
+    /\.stack-table tbody tr\.audit-row \.audit-drawer \{ padding: 14px 15px 15px 12px; \}/,
+  );
+  // Two classes and two elements against the card rule's one class and two
+  // elements — this wins on specificity, not on source order.
+  assert.match(rule('.stack-table tbody tr'), /padding: 15px;/);
+  // The accent itself is unchanged and stays on the shared rule: the desktop
+  // draws it against the left wall of a colSpan cell and always did.
+  assert.match(rule('.audit-drawer'), /border-left: 3px solid var\(--green\);/);
+});
+
+test('the drawer’s caption is smaller than the timestamps under it', () => {
+  // It explains what the two halves of the drawer are and is read once; the
+  // timestamps below are read every time. At `.hint`'s 12.5px it was within half
+  // a pixel of `.entry-history .who` and a whole one ABOVE `.entry-history
+  // .when` (11.5), so three lines of grey type came out the same size.
+  assert.match(rule('.audit-drawer > .hint'), /font-size: 12px;/);
+  // `--muted-2` AND NOT `--muted-3`, settled for the third time: on the drawer's
+  // own `--neutral-wash` that token is 2.79:1 in ธีมสว่าง against 3.20, and this
+  // line is already below AA. The size carries the step down on its own.
+  assert.ok(
+    !/\.audit-drawer > \.hint \{[^}]*muted-3/.test(css),
+    'the caption bought its hierarchy with contrast it cannot spare',
+  );
+  // Stated in CSS rather than on the element. The margin is there for one
+  // reason — `.card .hint`'s `margin-bottom: 14px` reaching in from four hundred
+  // lines away — and the shorthand states all four sides so it cannot come back.
+  assert.match(rule('.audit-drawer > .hint'), /margin: 2px 0 0;/);
+  assert.match(code, /<div className="hint">\s*\n\s*แถวด้านบนคือข้อมูลล่าสุด/);
 });

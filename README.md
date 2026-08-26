@@ -2461,16 +2461,58 @@ its start. The sentence lands under the label at the same left edge. Two items
 exactly, which is what makes space-between safe here; `.entry-actions` uses the
 last-child margin instead precisely because a third control can appear there.
 
-**And no breakpoint, because the words are what decide.** The bar needs
-**444.7px** of inside width to hold the longer of the two sentences on one line,
-and it has that from a viewport of about **535px** up — measured on the built
-app, not assumed: 470px of inside at a 560px viewport against 390 at 480. A
-`max-width: 860px` rule would have stacked it through the whole 540–860 band
-where it fits perfectly well, and a rule at 535 would still be wrong for the
-shorter of the two sentences, which fits down to about 439. Verified across
-360 / 400 / 480 / 560 / 700 / 860 / 1280: below 535 the label and the sentence
-both start 17px from the border, above it the label starts 17px in and the
-sentence ends 17px from the other side.
+**And below 860 it stacks, because there the sentence is a description.** This
+paragraph read *"and no breakpoint, because the words are what decide"* until
+2026-08-26, and the measurement under it still stands: the bar needs **444.7px**
+of inside width to hold the longer of the two sentences on one line and has that
+from a viewport of about **535px** up — measured on the built app, not assumed,
+470px of inside at 560 against 390 at 480 — so the wrap fell exactly where the
+words stopped fitting. What the words cannot decide is what the sentence *is*.
+Below 860 the table beside it is already a column of cards, the bar is as wide
+as a phone, and *"6 จาก 6 รายการมีประวัติให้ดู"* is not the far end of a row any
+more — it is what ticking the box will show, and that belongs under the box at
+its left edge. The phone rule sets `flex-direction: column` with
+`align-items: flex-start` (the base rule's `center` is a *cross*-axis
+instruction, and in a column the cross axis is the horizontal one, so without
+this the stack comes out centred) and a **6px** gap rather than the bar's 14 —
+that figure was measured between two independent items side by side, and between
+a label and its own sub-text it is a chasm. Above 860 nothing moved: the label
+starts 17px in and the sentence ends 17px from the other side, verified across
+360 / 400 / 480 / 560 / 700 / 860 / 1280.
+
+**The history drawer is a card on a phone, and its green edge was floating
+inside it.** ประวัติการแก้ไข opens as a second `<tr>`, which at this width is a
+card like the row above it — 15px of padding, a 1px border, a 14px radius.
+`.audit-drawer` is a panel with a 3px accent down its left side, and that accent
+is the whole of what says *this belongs to the row above*; inset by the card's
+padding and border it ran down the middle of a white margin, beside nothing, and
+the drawer's words started **35px** from the card's edge (16 + 3 + 16) against
+the **15px** every field on the row above starts at. A card inside a card, out
+of line with it. The padding moves from the card to the panel — the card holds
+nothing else — so the stripe lands on the card's own left border, parallel with
+it, and 12px of padding past the 3px stripe puts the text back at 15. `overflow:
+hidden` goes with it: the cell carries `--neutral-wash` and now reaches the
+corners, and a square wash inside a 14px radius is worse than the inset it
+replaced. The top margin is untouched — the 10px `.stack-table tbody` puts
+between every pair of cards, which is what holds the drawer to the row it opened
+from. On the desktop nothing changed; there the accent has always sat against
+the left wall of a `colSpan` cell.
+
+**And the caption under ประวัติการแก้ไข is 12px, not 12.5.** *"แถวด้านบนคือข้อมูล
+ล่าสุดที่พิมพ์ลงใบ F-HR-027…"* explains what the two halves of the drawer are,
+and it is read once, by somebody opening this for the first time. Under it stand
+the timestamps, which are read every time — and at `.hint`'s 12.5px the caption
+was within half a pixel of `.entry-history .who` and a whole one *above*
+`.entry-history .when` (11.5), so three lines of grey type came out the same size
+and the eye had nothing to start at. A lighter grey was asked for and is not
+taken, which is the third time that has been settled on this screen: `--muted-3`
+on the drawer's own `--neutral-wash` is **2.79:1** in ธีมสว่าง against
+`--muted-2`'s **3.20**, and this line is already below AA. The size carries the
+step down on its own. The margin moved out of the JSX with it — it was an inline
+style, which is there for one reason (`.card .hint` gives every hint inside a
+card `margin-bottom: 14px`, and 14px between this caption and the first
+timestamp read as a gap between two sections) and is the one place that reach is
+invisible from.
 
 **Every alert in the app breathes 2px wider.** An alert is a 17px mark, a 9px
 gap and then a block of text — so the left edge of the *words* is already 26px

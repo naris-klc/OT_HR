@@ -384,7 +384,11 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                       <td colSpan={10}>
                         <div className="audit-drawer">
                           <strong>ประวัติการแก้ไข</strong>
-                          <div className="hint" style={{ margin: '2px 0 0' }}>
+                          {/* Size, colour and spacing are all in
+                              `.audit-drawer > .hint` — the margin was an inline
+                              style here, which is the one place a rule reaching
+                              in from `.card .hint` cannot be seen from. */}
+                          <div className="hint">
                             แถวด้านบนคือข้อมูลล่าสุดที่พิมพ์ลงใบ F-HR-027 ·
                             ด้านล่างนี้คือทุกครั้งที่รายการนี้ถูกแตะ พร้อมค่าเดิมก่อนแก้แต่ละครั้ง
                             {e.refiledFrom && ' · รวมคำขอเดิมที่ถูกไม่อนุมัติ'}
