@@ -3448,7 +3448,7 @@ are drawn in the same order, each shorter. A มีใบแล้ว card at 36
 | where it went | |
 |---|---|
 | **−35** | `padding: 0` on the cells, which had never once applied — see below |
-| **−24** | บริษัท and ชั่วโมง on one line, in the second track the chip already uses |
+| **−24** | บริษัท and ชั่วโมง on one line, in the second track the chip already uses — and แผนก joined them later the same day, see below |
 | **−12** | the card's own padding, 15 → 12 |
 | **−10** | `gap`, 4 → 3, over five rows |
 | **−8** | the rule over วันเกิด, 8 + 8 → 6 + 6 |
@@ -3621,6 +3621,75 @@ two shadows, the two tokens, and that the panel has not gone back to
 recorded beside it: an unanchored lazy match reported `.modal`'s shadow as this
 panel's, and once anchored it caught **the comment written to justify it**, which
 is the seventh time in this project a test has matched its own prose.
+
+### แผนก เข้าแถวเดียวกับ บริษัท และ ชั่วโมง — 2026-08-27, และกล่องรอบรายชื่อที่ไม่มีอยู่
+
+**Two things asked for together, and only one of them was there to do.**
+
+**The birthday card loses its last spare line.** After the first compaction the
+card was five rows of one fact each, and three of those rows — แผนก, บริษัท,
+ชั่วโมง — used less than half the width between them. A third grid track puts
+all three on one line: `auto minmax(0, 1fr) auto`, so แผนก sizes itself on the
+left, บริษัท takes what is left in the middle, and ชั่วโมง lands in the same
+right-hand track the status chip already occupies — the figure reads down the
+card's right edge under the status it belongs with.
+
+| | first compaction | now |
+|---|---|---|
+| a มีใบแล้ว card at 360px | 211px | **185px** |
+| a card with no hours | 167px | **145px** |
+| the whole section | 1396px | **1249px** |
+| the page | 3131px | **2984px** |
+
+**แผนก keeps its voice and loses its row.** It is the only fact on this card
+drawn as bare grey text — no label, as on วันเกิดรอตรวจ — and moving it into a
+row with two labelled facts does not make it one of them. What it gains is a
+**6px joint on its right**, which is not padding: the grid `gap` is one number
+for the whole card and 8px of it between แผนก and บริษัท's label reads as a word
+space, so *"วิศวกรรม บริษัท"* comes out looking like one phrase in a script that
+sets no spaces between words anyway. 14px is where the eye stops joining them.
+
+**The track sizes are the risk and they were measured, not reasoned.** Three
+rows span all three tracks — the name, the status sentence and วันเกิด — and a
+spanning item's width is distributed across the tracks it covers, so a long
+วันเกิด (which is `nowrap` and cannot give way) can in principle inflate the
+`auto` track แผนก sits in. Walked on the built app at **320, 360 and 430px**:
+the row stays one line and `scrollWidth` equals `clientWidth` at all three. At
+320px the longest department on the roster — ควบคุมคุณภาพ — does push บริษัท
+into a second line inside its own cell, and that card comes out 163px instead of
+145. **That is the designed give**: `minmax(0, 1fr)` is what pays, the card grows
+one line, and the page never grows sideways.
+
+**The rule over the buttons is 6 + 6**, matching the one over วันเกิด. It was 10
++ 10, then 8 + 8, and now the card has two rules of one weight rather than two of
+two.
+
+#### …and the card around the employee list was not there to remove
+
+The other half of the same request — *"ถอดกรอบ Background Card สีดำล้อมรอบ
+รายการพนักงาน (สมชาย, ถาวร, สุจินดา), ปุ่ม Pagination และกล่องสรุปยอด 34.5"* —
+had already shipped twice, and this time it was checked a third way rather than
+answered a third time. An ancestor walk only finds a container that is an
+*ancestor*; a sibling painting behind the list would not appear in one. So the
+gaps themselves were sampled — the browser's own hit-test, at four x positions in
+the 12px between two employee cards, in the 18px between the pager and
+รวมทั้งหมด, and in the 12px between two birthday cards, each walked up to
+whatever actually paints there.
+
+**All twelve points answer the same element: `div.shell`, `rgb(16, 21, 19)`** —
+the page. The employee list, the pager, the total and the birthday cards below
+them are all standing on the one ground, and there is nothing between them and
+it. The names on screen during that check were วิชัย, สุรชัย, **สมชาย**, ถาวร
+and สุจินดา, so it was run against the same สถานะที่นับ the report was written
+from.
+
+**Which leaves the browser.** A page loaded before a deploy keeps the stylesheet
+it loaded with, and this app's chunk names are content-hashed — so a tab that was
+open across the 14:40 or 15:19 deploy is still being served the old CSS by its
+own cache until it is reloaded. Both halves of this request describe the app as
+it was before those two deploys. There is no scheduled task and no service
+worker on this box to push a new bundle at an open tab; a hard reload is the
+whole of it.
 
 ### The first card was never clipped — the ค้นหา bar was on it
 

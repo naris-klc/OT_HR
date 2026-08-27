@@ -7174,7 +7174,7 @@ table.mini tbody tr:hover { background: none; }
       ยังไม่มีบันทึกเวลาให้เทียบ
       ──────────────────────────────────────────
       วันเกิด  10 สิงหาคม 2569 วันจันทร์
-      บริษัท  ไพรมัส                  ชั่วโมง  8
+      วิศวกรรม   บริษัท ไพรมัส        ชั่วโมง  8
       ──────────────────────────────────────────
       [ บันทึก OT ให้ ]     [ ไม่ได้มาทำงาน ]
 
@@ -7267,16 +7267,46 @@ table.mini tbody tr:hover { background: none; }
       nothing today, and if a figure ever grew past the chip it would be the
       name that gave way. That is why บริษัท keeps the 1fr track and only the
       number went right. */
+  /* ══ AND THE THREE MIDDLE LINES BECAME TWO — 2026-08-27, ROUND TWO ═══════
+
+     Asked again, in the same words: make this section shorter on a phone. The
+     card had already lost 86px and what was left of it was five lines of one
+     fact each, three of them short: แผนก, บริษัท and ชั่วโมง together used less
+     than half the width and three of the card's rows.
+
+     A THIRD TRACK, AND ONLY ONE ROW USES ALL THREE. `auto minmax(0, 1fr) auto`
+     — แผนก sizes itself on the left, บริษัท takes what is left in the middle,
+     ชั่วโมง lands in the same right-hand track the chip already occupies, so
+     the figure reads down the card's right edge under the status it belongs
+     with. −22px a card, and it is the last structural line this layout has:
+     every remaining row is either full width by necessity (the name, the
+     status sentence, วันเกิด, the buttons) or already paired.
+
+     WHY แผนก LOSES ITS LABEL-LESS LINE AND NOT ITS LABEL. It never had one —
+     it is the only fact on this card drawn as bare grey text, which is what it
+     is on วันเกิดรอตรวจ too, and moving it into a row with two labelled facts
+     does not make it one of them. It keeps its own colour and size; what it
+     loses is a whole row to itself for one short word.
+
+     THE TRACK SIZES ARE THE RISK AND THEY WERE MEASURED, NOT REASONED. Three
+     rows span all three tracks — the name, the status sentence and วันเกิด —
+     and a spanning item's intrinsic width is distributed across the tracks it
+     covers, so a long วันเกิด (which is `nowrap` and cannot give way) can in
+     principle inflate the `auto` track that แผนก sits in. Walked on the built
+     app at 320, 360 and 430px against the longest department and the longest
+     date this roster holds: the row stays one line and the document's scroll
+     width stays equal to its client width. If a longer department ever arrives,
+     บริษัท's `minmax(0, 1fr)` is the give — it wraps inside its own cell and
+     the card grows one line rather than the page growing sideways. */
   .bmonth-table tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "who   state"
-      "dept  dept"
-      "note  note"
-      "date  date"
-      "co    hrs"
-      "act   act";
+      "who   who   state"
+      "note  note  note"
+      "date  date  date"
+      "dept  co    hrs"
+      "act   act   act";
     gap: 3px 8px; align-items: start;
     padding: 12px; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--card);
@@ -7307,8 +7337,21 @@ table.mini tbody tr:hover { background: none; }
      inlined here to save a line, which is exactly the difference between the
      two screens that was being asked about. */
   .bmonth-table td.who-col { grid-area: who; font: 600 15px/1.35 var(--sans); }
+  /* `padding: 1px 0` is the labelled facts' padding, and it is here for one
+     reason: since 2026-08-27 แผนก shares their row, and three cells on one line
+     whose text boxes start at three different offsets do not sit on one
+     baseline. It takes their spacing without taking their `::before`.
+
+     THE 6px ON THE RIGHT IS A JOINT, NOT PADDING. The grid `gap` is one number
+     for the whole card and 8px of it between แผนก and บริษัท's label reads as a
+     word space — "วิศวกรรม บริษัท" comes out looking like one phrase in a
+     script that sets no spaces between words anyway. 14px is where the eye
+     stops joining them. It goes on this cell rather than on the `gap` because
+     the same 8 is right everywhere else on the card, and it comes out of the
+     `auto` track this cell sizes, so บริษัท's `1fr` is what pays for it. */
   .bmonth-table td.dept-col {
-    grid-area: dept; font: 400 13px/1.45 var(--sans); color: var(--muted);
+    grid-area: dept; padding: 1px 6px 1px 0;
+    font: 400 13px/1.45 var(--sans); color: var(--muted);
   }
 
   /* Label and value on one line, the block ruled off above it. The headings
@@ -7388,11 +7431,13 @@ table.mini tbody tr:hover { background: none; }
      to the value column any more, because there are no labels beside it here. */
   .bmonth-table td.state-col > .state-note { grid-area: note; }
 
-  /* 8 + 8, down from 10 + 10 on 2026-08-27. The rule still separates the
-     decision from the facts it is made on; what it does not need is to be a
-     bigger separation than the one over วันเกิด, which is 6 + 6. */
+  /* 6 + 6, and it read 10 + 10 and then 8 + 8 on 2026-08-27. The rule still
+     separates the decision from the facts it is made on; what it does not need
+     is to be a bigger separation than the one over วันเกิด, which is 6 + 6.
+     Now it is the same, and the card has two rules of one weight rather than
+     two of two. */
   .bmonth-table td.act-col {
-    grid-area: act; margin-top: 8px; padding-top: 8px;
+    grid-area: act; margin-top: 6px; padding-top: 6px;
     border-top: 1px solid var(--line-softer);
   }
   /* `BirthdayRowActions` returns null on every row there is nothing to do

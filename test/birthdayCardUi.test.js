@@ -263,15 +263,17 @@ test('the search row carries no blur, no sticky and no fill of its own', () => {
 
 test('the status chip sits in the card’s top-right, on the name’s line', () => {
   const tr = phone.slice(phone.indexOf('.bmonth-table tr {'), phone.indexOf('table.bmonth-table td {'));
-  // Two tracks, and TWO rows use the second one since 2026-08-27 — see the next
-  // test for the one that moved into it and why it was the only candidate.
-  assert.match(tr, /grid-template-columns: minmax\(0, 1fr\) auto;/);
-  assert.match(tr, /"who\s+state"/);
-  // Everything else still STARTS at the card's left edge — the gap this card was
-  // rebuilt to remove. `hrs` is not in this list any more because it is the one
-  // cell that is deliberately not at the left edge; every other row opens there.
-  for (const area of ['dept', 'note', 'date', 'co', 'act']) {
-    assert.ok(tr.includes(`"${area} `) || tr.includes(`"${area}  `),
+  // THREE TRACKS SINCE THE SECOND COMPACTION on 2026-08-27, and it read
+  // `minmax(0, 1fr) auto` before it. The chip keeps the LAST one, which is the
+  // only thing this test is about; what changed under it is that แผนก now sizes
+  // the first and บริษัท takes the middle — see the next test.
+  assert.match(tr, /grid-template-columns: auto minmax\(0, 1fr\) auto;/);
+  assert.match(tr, /"who\s+who\s+state"/);
+  // The rows that still START at the card's left edge — the inset this card was
+  // rebuilt to remove. `co` and `hrs` are not in this list: they are the two
+  // cells deliberately not at the left edge, sharing แผนก's row.
+  for (const area of ['note', 'date', 'dept', 'act']) {
+    assert.ok(new RegExp(`"${area}\\s`).test(tr),
       `${area} no longer starts at the card's left edge`);
   }
 
@@ -286,17 +288,20 @@ test('the status chip sits in the card’s top-right, on the name’s line', () 
  * without noticing: which cell may share the second track, and the selector
  * that makes `padding: 0` apply at all.
  *
- * Measured on the built app at 360px, a มีใบแล้ว card: 297px → 211.
+ * Measured on the built app at 360px, a มีใบแล้ว card: 297px → 211 → 185.
  */
-test('บริษัท and ชั่วโมง share a line, and วันเกิด is not allowed to', () => {
+test('แผนก, บริษัท and ชั่วโมง share a line, and วันเกิด is not allowed to', () => {
   const tr = phone.slice(phone.indexOf('.bmonth-table tr {'), phone.indexOf('table.bmonth-table td {'));
-  assert.match(tr, /"co\s+hrs"/, 'the two shortest facts went back to a line each');
+  // ALL THREE SHORT FACTS ON ONE ROW. It was `"co hrs"` with แผนก on a line of
+  // its own for the few hours between the two compactions of 2026-08-27; the
+  // three together used less than half the card's width and three of its rows.
+  assert.match(tr, /"dept\s+co\s+hrs"/, 'the short facts went back to a line each');
   // AND วันเกิด KEEPS ITS OWN. It carries `white-space: nowrap` from HrView, so
   // it has no wrap to fall back on: the longest date this app draws —
   // "13 สิงหาคม 2569 วันพฤหัสบดี" — is most of a 312px card on its own, and a
   // pair that fits in August and overflows in November pushes the page sideways
   // nine months a year. The other three labelled cells wrap and are safe.
-  assert.match(tr, /"date\s+date"/, 'วันเกิด was paired with something');
+  assert.match(tr, /"date\s+date\s+date"/, 'วันเกิด was paired with something');
   assert.match(hrView, /className="date-col" style=\{\{ whiteSpace: 'nowrap' \}\}/,
     'the nowrap that makes วันเกิด the unpairable one is gone — re-check the pairing above');
   // The figure goes to the card's right edge, under the chip, with its label.
