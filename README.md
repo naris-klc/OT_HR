@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1715 tests
+and the engine know nothing about Next.js, so the whole suite — **1717 tests
 across 103 files**, measured 2026-08-27 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1715" and "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3060,7 +3060,7 @@ reaches the list. Measured at 360px, first employee card **y=798 → 777**:
 | | was | is |
 |---|---|---|
 | `.month-head` and `.month-card` padding | 15px | **12px** |
-| the gap each leaves under itself | 16px | **13px** |
+| the gap each leaves under itself | 16px | **13px** — 18 since later that day |
 | the band’s own padding | 10 / 12 | **8 / 10** |
 | the band’s bottom margin | 12px | **10px** |
 
@@ -3140,7 +3140,8 @@ day.** There is no outer border left to be crowded against — what bounds the
 list is the page’s own 12px, so an employee card runs to the same edges the
 controls card above it does, and the ground the 24 was buying is the page. The
 ends went with it: 12 at the top was the gap under the top of the card, and the
-thing above the list is now งวด…ยังเปิดอยู่ with its own 13px under it; 12 at the
+thing above the list is now งวด…ยังเปิดอยู่ with its own gap under it — it read
+"13px" until later the same day and is 18 now; 12 at the
 bottom was the gap over the foot of the card, and `.month-notes` and
 วันเกิดของเดือนนี้ declare their own 12 above them. **The 12px between two cards
 is `gap` and never moved** — ground went, rhythm stayed.
@@ -3412,6 +3413,108 @@ and the birthday one asserts the element is in the selector.
 **3609 → 3485**, the document's scroll width equal to its client width
 throughout, employee cards and birthday cards both **12..348**, and the desktop
 at 1280px unchanged.
+
+### ช่องไฟรอบตัวคั่น และการ์ดวันเกิดที่กระชับลงหนึ่งในสาม — 2026-08-27
+
+**Three asks in one message, all about the same axis: how far a thumb has to
+travel down ตรวจสอบรายเดือน on a phone.** Page height at 360px, admin,
+สิงหาคม 2569: **3485 → 3131**, with the desktop at 1280px unchanged to the pixel
+(page height 1650 both sides, every box in the same place).
+
+**1 — the pager and รวมทั้งหมด stand out of the list's own rhythm.** Asked for
+as the two of them being *"ชิดการ์ดพนักงานเกินไป"*. They were, and the number
+says why: the gap was exactly **12px**, which is the `gap` between one employee
+card and the next, so a control and a month's total were spaced into the list at
+the list's own pitch and read as the sixth and seventh people on the page.
+Taking their border and fill off — done the day before — had stopped them
+*looking* like cards; nothing had stopped them *sitting* like cards.
+
+`.pager-row` takes `margin: 6px 0`, and because `.hr-table tbody` is a flex
+column that **adds** to the 12px `gap` rather than collapsing with it, both gaps
+come out at **18**. The total states no margin of its own on purpose: the
+pager's bottom margin is the gap over รวมทั้งหมด, written once, and what follows
+the total already declares its own 12.
+
+**2 — the birthday card is about a third shorter.** Asked for as *"ปรับ Layout
+ส่วนรายชื่อวันเกิดพนักงานให้กระชับขึ้น … เพื่อประหยัดพื้นที่ Vertical Space
+บนมือถือ"*, with a horizontal carousel offered as one way and a smaller card as
+the other. **The carousel was turned down**, on the one ground that decides it:
+this section is the last thing that has to be *answered* before a month can be
+closed, and a list where five of six people are off the right-hand edge is a list
+somebody can finish without having seen them. Nothing is hidden; the same rows
+are drawn in the same order, each shorter. A มีใบแล้ว card at 360px: **297 →
+211**, and the section as a whole **1772 → 1396**.
+
+| where it went | |
+|---|---|
+| **−35** | `padding: 0` on the cells, which had never once applied — see below |
+| **−24** | บริษัท and ชั่วโมง on one line, in the second track the chip already uses |
+| **−12** | the card's own padding, 15 → 12 |
+| **−10** | `gap`, 4 → 3, over five rows |
+| **−8** | the rule over วันเกิด, 8 + 8 → 6 + 6 |
+| **−8** | the labelled lines' padding, 2 → 1 at each end, and 1.5 → 1.45 of leading |
+| **−4** | the rule over the buttons, 10 + 10 → 8 + 8 |
+
+**วันเกิด is not paired with anything, and that is a rule and not an oversight.**
+It carries `white-space: nowrap` from the component, so it has no wrap to fall
+back on: the longest date this app draws — *13 สิงหาคม 2569 วันพฤหัสบดี* — is
+most of a 312px card on its own, and a pair that fits in August and overflows in
+November would push the page sideways nine months a year. The three labelled
+cells all wrap; บริษัท and ชั่วโมง are the two that stay short in every month.
+
+**Two things were deliberately not taken.** The buttons keep `min-height: 44px`
+— they are the decision the section exists to collect, and a target that shrinks
+with the card is a target that gets missed — and the employee code stays on its
+own line under the name, because that line is what makes this card and
+วันเกิดรอตรวจ's the same object, and it was put back there on purpose the day
+before.
+
+**So the two screens are no longer the same density, and that is the price.**
+วันเกิดรอตรวจ keeps the 15px card: it *is* a screen, the cards are the only thing
+on it, and nothing above them competes for the scroll. Here the same rows are a
+section reached after five employee cards, a pager and a month's total. Same
+rows, same order, same cells, two densities — and the density is a property of
+what is above the list, not of the list.
+
+**`padding: 0` on those cells had never applied, and the card had been 35px
+taller than its arithmetic since it was written.** `table.mini th, table.mini td
+{ padding: 7px 10px; }` is two elements and a class; `.bmonth-table td` was one
+class and one element and lost to it. Every cell carried 7px above and below and
+10px in from the side — and the 10 only bit the cells *without* padding of their
+own, which is why แผนก sat ten pixels to the right of วันเกิด under it, in the
+column that had just been squared up to the page's edge. `table.bmonth-table td`
+is what wins. **This is the second time this exact trap has been sprung on this
+one element** — the first was `table.mini`'s border, three paragraphs up in the
+section before this one — and both times the rule was in the bundle, was correct,
+and did nothing. It was found by measuring the cells of a card that had just been
+compacted and still came out taller than the sum of its parts.
+
+`.bday-table` is not `mini` and never had this, which is why วันเกิดรอตรวจ needs
+no such rule and must not be given one for symmetry.
+
+**3 — งวด…ยังเปิดอยู่ stands 18px clear on both sides.** Asked for as *"เพิ่ม
+Margin-bottom ให้การ์ด งวด สิงหาคม 2569 ยังเปิดอยู่ เล็กน้อย เพื่อแยกสัดส่วน
+ระหว่าง Action Panel ด้านบน กับ Status Card ให้ชัดเจนยิ่งขึ้น"* — a property named
+on one side of the card and a reason named on the other, and one number answers
+both, because both gaps are the same rule. Three blocks stacked at an identical
+13px was a column with no joints in it; the list under them keeps its own 12px
+`gap`, so the column now reads **18 · 18 · 12 · 12 · 12** and the joint is where
+the reader's eye was already trying to put one. It is 5px against the trim
+recorded two sections up, and that trim was buying room for a list, not for the
+boundary above it — the other two changes on this page gave back about 350px the
+same afternoon.
+
+**And the card round the employee list was already off.** The first line of the
+ask repeated it; it had shipped hours earlier and is the section above. Measured
+again here rather than taken on trust: an employee card runs **12 → 348** at
+360px, the same edges the controls card and งวด…ยังเปิดอยู่ stand on, with no
+container between the list and the page.
+
+Pinned in `test/hrMonthCards.test.js` (the pager's margins, and that the tbody is
+still a flex column so they add), `test/monthSearch.test.js` (the 18) and
+`test/birthdayCardUi.test.js` (the pairing, the `nowrap` that forbids the other
+one, and the element in the selector). Verified on a built app on a scratch
+`distDir` at :3001 with :3000 left serving, per AGENTS.md.
 
 ### The first card was never clipped — the ค้นหา bar was on it
 
@@ -4271,8 +4374,20 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1715/1715 pass in about 2 s**, measured 2026-08-27 across 103
-  files. The two newest are for งวดกับช่องค้นหา going above the export buttons
+- `npm test` — **1717/1717 pass in about 2 s**, measured 2026-08-27 across 103
+  files. The two newest are in `test/birthdayCardUi.test.js` for the birthday
+  card being compacted on ตรวจสอบรายเดือน: that บริษัท and ชั่วโมง share a line
+  while วันเกิด may not — pinned together with the `white-space: nowrap` in
+  HrView that is the REASON it may not, so removing the nowrap fails the test
+  that would otherwise let the pairing spread — and that `padding: 0` on those
+  cells names the element (`table.bmonth-table td`), because the bare class had
+  been losing to `table.mini` since the card was written and every cell had been
+  carrying 7px of padding nobody had asked for. Three existing cases were
+  rewritten rather than adjusted, each with the reason: the grid-area sweep no
+  longer expects `hrs` to start a row, the pager band now asserts its 6px
+  margins and that the tbody is still a flex column so they ADD to the gap, and
+  the two containers above the list read 18px under themselves rather than 13.
+  It read "1715/1715" before them. The two before that are for งวดกับช่องค้นหา going above the export buttons
   and the card round the list coming off: that `.month-find` is inside
   `.month-head` and before `.export-row`, and that below 860px `.month-card`
   states all four of `background: none`, `border: none`, `border-radius: 0` and

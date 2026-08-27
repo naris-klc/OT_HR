@@ -376,6 +376,26 @@ test('the pager sits under the fifth card, above the total, and disables its end
   );
   // Not a card, and one band that has to stay one band.
   assert.match(phone, /\.hr-table tbody tr\.pager-row \{\s*display: block; padding: 0; border: 0; background: none;/);
+  // AND IT IS SPACED OUT OF THE LIST'S OWN RHYTHM, 2026-08-27. Asked for as the
+  // pager and รวมทั้งหมด being "ชิดการ์ดพนักงานเกินไป": they sat at exactly
+  // 12px, which is the `gap` between one employee card and the next, so a
+  // control and a month's total were spaced into the list at the list's own
+  // pitch and read as the sixth and seventh people on the page. Taking the
+  // border and the fill off had stopped them LOOKING like cards; nothing had
+  // stopped them SITTING like cards.
+  //
+  // 6 AND NOT 12, BECAUSE THE PARENT IS A FLEX COLUMN — `gap` and `margin` add
+  // here rather than collapsing, so 6 makes both gaps 18. Half again on the
+  // cards' own 12 is enough to read as a change of kind; it is also the same 18
+  // the two header blocks above the list take, so the screen has one size of
+  // joint. รวมทั้งหมด states no margin of its own on purpose: this row's bottom
+  // margin IS the gap over it, written once, and what follows the total
+  // declares its own 12.
+  assert.match(phone, /\.hr-table tbody tr\.pager-row \{[^}]*margin: 6px 0;/);
+  assert.match(phone, /\.hr-table tbody \{\s*display: flex; flex-direction: column; gap: 12px;/,
+    'the list stopped being a flex column — margin and gap no longer add up');
+  assert.ok(!/\.hr-table tbody tr\.total-row \{[^}]*margin/.test(phone),
+    'a second number appeared for the gap the pager already owns');
   // CENTRED, NOT SPREAD. It was `1fr auto 1fr` until 2026-08-26, which pinned
   // the two buttons to the ENDS of the card — the layout of a wide table's
   // footer. The three tracks take the width they need and the group is centred,

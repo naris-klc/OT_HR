@@ -262,19 +262,66 @@ test('the search row carries no blur, no sticky and no fill of its own', () => {
  */
 
 test('the status chip sits in the card’s top-right, on the name’s line', () => {
-  const tr = phone.slice(phone.indexOf('.bmonth-table tr {'), phone.indexOf('.bmonth-table td {'));
-  // Two tracks, and only the first row uses the second one.
+  const tr = phone.slice(phone.indexOf('.bmonth-table tr {'), phone.indexOf('table.bmonth-table td {'));
+  // Two tracks, and TWO rows use the second one since 2026-08-27 — see the next
+  // test for the one that moved into it and why it was the only candidate.
   assert.match(tr, /grid-template-columns: minmax\(0, 1fr\) auto;/);
   assert.match(tr, /"who\s+state"/);
-  // Everything else spans both, or แผนก and the labelled facts stop starting at
-  // the card's left edge — the gap this card was rebuilt to remove.
-  for (const area of ['dept', 'note', 'date', 'co', 'hrs', 'act']) {
+  // Everything else still STARTS at the card's left edge — the gap this card was
+  // rebuilt to remove. `hrs` is not in this list any more because it is the one
+  // cell that is deliberately not at the left edge; every other row opens there.
+  for (const area of ['dept', 'note', 'date', 'co', 'act']) {
     assert.ok(tr.includes(`"${area} `) || tr.includes(`"${area}  `),
-      `${area} no longer spans the card`);
+      `${area} no longer starts at the card's left edge`);
   }
 
   const chip = phone.slice(phone.indexOf('.bmonth-table td.state-col > .chip {'), phone.indexOf('.bmonth-table td.state-col > .state-note'));
   assert.match(chip, /grid-area: state; justify-self: end; align-self: start;/);
+});
+
+/**
+ * The card got about a third shorter on 2026-08-27, asked for as "ปรับ Layout
+ * ส่วนรายชื่อวันเกิดพนักงานให้กระชับขึ้น … เพื่อประหยัดพื้นที่ Vertical Space
+ * บนมือถือ". What is pinned below is only the part a later tidy would undo
+ * without noticing: which cell may share the second track, and the selector
+ * that makes `padding: 0` apply at all.
+ *
+ * Measured on the built app at 360px, a มีใบแล้ว card: 297px → 211.
+ */
+test('บริษัท and ชั่วโมง share a line, and วันเกิด is not allowed to', () => {
+  const tr = phone.slice(phone.indexOf('.bmonth-table tr {'), phone.indexOf('table.bmonth-table td {'));
+  assert.match(tr, /"co\s+hrs"/, 'the two shortest facts went back to a line each');
+  // AND วันเกิด KEEPS ITS OWN. It carries `white-space: nowrap` from HrView, so
+  // it has no wrap to fall back on: the longest date this app draws —
+  // "13 สิงหาคม 2569 วันพฤหัสบดี" — is most of a 312px card on its own, and a
+  // pair that fits in August and overflows in November pushes the page sideways
+  // nine months a year. The other three labelled cells wrap and are safe.
+  assert.match(tr, /"date\s+date"/, 'วันเกิด was paired with something');
+  assert.match(hrView, /className="date-col" style=\{\{ whiteSpace: 'nowrap' \}\}/,
+    'the nowrap that makes วันเกิด the unpairable one is gone — re-check the pairing above');
+  // The figure goes to the card's right edge, under the chip, with its label.
+  // Matched whole rather than sliced: `td.hrs-col` appears three times in this
+  // block — in the three-selector rule it shares with วันเกิด and บริษัท, in
+  // that group's `::before`, and here — so an index either side of it lands on
+  // the wrong one of the three.
+  assert.match(phone, /\.bmonth-table td\.hrs-col \{\s*grid-area: hrs; justify-self: end;/);
+});
+
+test('`padding: 0` on the cells names the element, or table.mini keeps winning', () => {
+  // THE SAME TRAP AS THE BORDER, ON THE SAME ELEMENT, FOUND BY MEASURING.
+  // `table.mini th, table.mini td { padding: 7px 10px; }` is two elements and a
+  // class; `.bmonth-table td` was one class and one element and lost to it, so
+  // every cell on this card had been drawn with 7px above and below it and 10px
+  // in from the side since the card was written — about 35px a card, and 10px of
+  // indent that only the cells WITHOUT their own padding had, which is why แผนก
+  // sat ten pixels right of วันเกิด under it.
+  assert.match(phone, /table\.bmonth-table td \{ display: block; border: 0; padding: 0; text-align: left; \}/);
+  assert.match(css, /table\.mini th, table\.mini td \{ padding: 7px 10px; font-size: 13px; \}/,
+    'the rule this one has to out-specify moved — re-check the selector above');
+  // `.bday-table` is not `mini` and never had this, which is why วันเกิดรอตรวจ
+  // needs no such rule and must not be given one by symmetry.
+  assert.ok(!/className="mini bday-table"|className="bday-table mini"/.test(queue));
+  assert.match(queue, /<table className="bday-table">/);
 });
 
 test('and the sentence under it is full width, not squeezed in beside it', () => {

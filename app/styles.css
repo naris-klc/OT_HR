@@ -7083,11 +7083,67 @@ table.mini tbody tr:hover { background: none; }
       วิศวกรรม
       ยังไม่มีบันทึกเวลาให้เทียบ
       ──────────────────────────────────────────
-      วันเกิด    10 สิงหาคม 2569 วันจันทร์
-      บริษัท     ไพรมัส
-      ชั่วโมง    8            ← only where there is one
+      วันเกิด  10 สิงหาคม 2569 วันจันทร์
+      บริษัท  ไพรมัส                  ชั่วโมง  8
       ──────────────────────────────────────────
       [ บันทึก OT ให้ ]     [ ไม่ได้มาทำงาน ]
+
+      ══ AND IT IS 90px SHORTER SINCE 2026-08-27 ═══════════════════════════
+
+      Asked for by name: "ปรับ Layout ส่วนรายชื่อวันเกิดพนักงานให้กระชับขึ้น
+      … เพื่อประหยัดพื้นที่ Vertical Space บนมือถือ ไม่ต้อง Scroll ลงยาวเกินไป",
+      with a horizontal carousel offered as one way to do it and a smaller card
+      as the other. This is the smaller card, and the carousel was turned down
+      on the one ground that decides it: this section is the LAST thing that has
+      to be answered before a month can be closed, `summary.due` counts the rows
+      that still ask something, and a list where five of six people are off the
+      right-hand edge is a list somebody can finish without having seen them.
+      Nothing here is hidden; the same six cards are drawn, in the same order,
+      each about a third shorter.
+
+      WHERE THE HEIGHT CAME FROM, measured on the built app at 360px against a
+      card that stood 297px:
+
+        −24  บริษัท and ชั่วโมง on ONE line. They are the two shortest facts on
+             the card — "ไพรมัส" and a number — and each had a full line to
+             itself with a 52px label in front of it. ชั่วโมง goes into the
+             second track, the one the chip already uses, so it lands under the
+             chip and reads down that edge; บริษัท keeps the left. วันเกิด is
+             NOT paired with anything, and that is deliberate: it carries
+             `white-space: nowrap` from HrView, and the longest one this app
+             draws — "13 สิงหาคม 2569 วันพฤหัสบดี" — is most of a 312px card on
+             its own. A pair that fits in August and overflows in November is
+             a card that pushes the page sideways nine months a year.
+        −12  the card's own padding, 15 → 12. The employee cards above keep 15;
+             these are a section under them rather than the screen's subject,
+             and 12 is the padding the two containers at the top of this screen
+             already take.
+        −10  `gap`, 4 → 3, over five rows that are still there.
+        −8   the rule over วันเกิด, 8 + 8 → 6 + 6.
+        −4   the rule over the buttons, 10 + 10 → 8 + 8.
+        −8   the labelled lines' own `padding`, 2 → 1 at each end of four of
+             them, and their leading from 1.5 to 1.45.
+
+      WHAT WAS NOT TOUCHED, and both would have been the easy 20px. The buttons
+      keep `min-height: 44px` — they are the decision this whole section exists
+      to collect, and a target that shrinks with the card is a target that gets
+      missed. And the code stays on its own line under the name: it was inlined
+      once to save exactly this line and was put back on 2026-08-27 because it
+      is what makes this card and วันเกิดรอตรวจ's the same object, which is the
+      paragraph directly above. A compaction that undoes the reason the two
+      screens match is a different change wearing this one's clothes.
+
+      SO THE TWO SCREENS ARE NO LONGER THE SAME CARD, AND THAT IS THE PRICE.
+      วันเกิดรอตรวจ keeps the 15px card with its facts one to a line, and it
+      should: it IS a screen — the cards are the only thing on it and there is
+      nothing above them competing for the scroll. Here the same rows are a
+      section under five employee cards, a pager and a month's total, reached
+      after about 1,500px of a 780px phone. Same rows, same order, same cells,
+      two densities, and the density is a property of what is ABOVE the list
+      rather than of the list. Everything that makes the two READ alike — the
+      corner chip, the code under the name, the ruled blocks, the button pair
+      and its outline — is untouched; every one of those is pinned by
+      test/birthdayCardUi.test.js and none of those tests moved.
 
       THE STATUS MOVED INTO THE CORNER, where วันเกิดรอตรวจ has kept its
       ค้างมาแล้ว pill all along. It used to sit six lines down, indented to the
@@ -7108,11 +7164,19 @@ table.mini tbody tr:hover { background: none; }
       That buys back the two lines the old placement cost: the chip's own line
       and the row gap over it.
 
-      TWO TRACKS, and only the first row uses the second one. Everything else
-      spans both, which is what keeps แผนก and the labelled facts starting at
-      the left edge — the gap this card used to have between วิศวกรรม and
-      · ไพรมัส came from a track being stretched by items crossing it, and
-      บริษัท lives among the labelled facts now for the same reason. */
+      TWO TRACKS, and TWO rows use the second one now. Everything else spans
+      both, which is what keeps แผนก and วันเกิด starting at the left edge — the
+      gap this card used to have between วิศวกรรม and · ไพรมัส came from a track
+      being stretched by items crossing it.
+
+      THE SECOND TRACK IS `auto` AND IT IS SHARED, which is the one thing to
+      check before moving anything into it: its width is the widest of the chip
+      and ชั่วโมง, and whatever it comes to is taken off the NAME. The chip is
+      the wider of the two in every case the app draws — "วันหยุดอยู่แล้ว" is
+      about 90px against "ชั่วโมง 8"'s 60 — so the pairing costs the name
+      nothing today, and if a figure ever grew past the chip it would be the
+      name that gave way. That is why บริษัท keeps the 1fr track and only the
+      number went right. */
   .bmonth-table tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -7121,14 +7185,33 @@ table.mini tbody tr:hover { background: none; }
       "dept  dept"
       "note  note"
       "date  date"
-      "co    co"
-      "hrs   hrs"
+      "co    hrs"
       "act   act";
-    gap: 4px 8px; align-items: start;
-    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    gap: 3px 8px; align-items: start;
+    padding: 12px; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--card);
   }
-  .bmonth-table td { display: block; border: 0; padding: 0; text-align: left; }
+  /* `table.bmonth-table td` AND NOT `.bmonth-table td`, FOR THE SECOND TIME ON
+     THIS ELEMENT AND THE SAME REASON AS THE BORDER TWENTY LINES UP.
+
+     `table.mini th, table.mini td { padding: 7px 10px; }` is an element plus a
+     class plus an element; `.bmonth-table td` was a class plus an element and
+     lost to it, so `padding: 0` had never once applied. It was in the bundle,
+     it was correct, and every cell on this card had been drawn with 7px above
+     and below it and 10px in from the sides since the card was written. That is
+     14px of height on วันเกิด's line, on แผนก's, on the name's and under the
+     buttons — about 35px a card, more than the whole of the ledger's first two
+     entries — and 10px of indent that only SOME of the cells had: the three
+     labelled lines state their own padding and so escaped it, which is why
+     แผนก sat ten pixels to the right of วันเกิด under it. Found on 2026-08-27
+     by measuring the cells of a card that had just been compacted and still
+     came out taller than the arithmetic said.
+
+     THE SAME TRAP, AND THE SAME ANSWER. `.bday-table` is not `mini` and never
+     had this — the two screens' cards were never identical in the way this
+     block's own paragraph claims; one of them was 35px taller per card and
+     nobody had put a ruler on it. Now they are. */
+  table.bmonth-table td { display: block; border: 0; padding: 0; text-align: left; }
 
   /* The code on its own line under the name, as on วันเกิดรอตรวจ — it was
      inlined here to save a line, which is exactly the difference between the
@@ -7140,22 +7223,41 @@ table.mini tbody tr:hover { background: none; }
 
   /* Label and value on one line, the block ruled off above it. The headings
      these labels replace went with the thead. `state-col` is no longer one of
-     them — it carries no label and its two halves now sit in two places. */
+     them — it carries no label and its two halves now sit in two places.
+
+     1px AND 1.45, WHICH READ 2px AND 1.5 UNTIL 2026-08-27. Four lines' worth of
+     padding at both ends and a hair of leading off each — the smallest of the
+     six cuts in the ledger at the top of this block and the only one that
+     touches type. It stops there: 13px is the size, and a section somebody has
+     to read a date out of does not get a smaller one to save a scroll.
+
+     `flex-wrap: wrap` IS THE FLOOR UNDER ALL OF IT. If a label and its value
+     ever will not fit — a narrower phone than this app has met, a longer
+     company name — the value drops under the label and the card grows a line
+     rather than pushing the page sideways. That is what makes pairing บริษัท
+     with ชั่วโมง safe and pairing anything with วันเกิด not: วันเกิด is
+     `nowrap` from the component and has no such floor. */
   .bmonth-table td.date-col,
   .bmonth-table td.co-col,
   .bmonth-table td.hrs-col {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
-    padding: 2px 0; font: 400 13px/1.5 var(--sans); text-align: left;
+    padding: 1px 0; font: 400 13px/1.45 var(--sans); text-align: left;
   }
+  /* 44 AND NOT THE 52 IT WAS. The label column only has to hold the widest of
+     the three — วันเกิด, บริษัท, ชั่วโมง — and 44 does at 11px mono; the eight
+     that came off go to the value beside it, which is what buys บริษัท and
+     ชั่วโมง the room to share a line. The three still agree with each other,
+     which is the whole point of a `min-width` here: the values start on one
+     left edge down the card. */
   .bmonth-table td.date-col::before,
   .bmonth-table td.co-col::before,
   .bmonth-table td.hrs-col::before {
-    flex: none; min-width: 52px;
-    font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
+    flex: none; min-width: 44px;
+    font: 600 11px/1.45 var(--mono); letter-spacing: .05em; color: var(--muted-2);
   }
   .bmonth-table td.date-col {
     grid-area: date;
-    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-softer);
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-softer);
   }
   .bmonth-table td.date-col::before { content: 'วันเกิด'; }
   .bmonth-table td.date-col .cell-sub { display: inline; margin: 0 0 0 5px; }
@@ -7163,8 +7265,13 @@ table.mini tbody tr:hover { background: none; }
   .bmonth-table td.co-col { grid-area: co; }
   .bmonth-table td.co-col::before { content: 'บริษัท'; }
 
+  /* Second track, on บริษัท's line — see the ledger at the top of this block.
+     `justify-self: end` puts it against the card's right edge under the chip
+     rather than leaving it floating in the middle of a track sized by one; the
+     label goes with it, so the pair reads "ชั่วโมง 8" as one object rather than
+     as a heading stranded from its figure. */
   .bmonth-table td.hrs-col {
-    grid-area: hrs;
+    grid-area: hrs; justify-self: end;
     font-family: var(--mono); font-variant-numeric: tabular-nums;
   }
   .bmonth-table td.hrs-col::before { content: 'ชั่วโมง'; }
@@ -7191,8 +7298,11 @@ table.mini tbody tr:hover { background: none; }
      to the value column any more, because there are no labels beside it here. */
   .bmonth-table td.state-col > .state-note { grid-area: note; }
 
+  /* 8 + 8, down from 10 + 10 on 2026-08-27. The rule still separates the
+     decision from the facts it is made on; what it does not need is to be a
+     bigger separation than the one over วันเกิด, which is 6 + 6. */
   .bmonth-table td.act-col {
-    grid-area: act; margin-top: 10px; padding-top: 10px;
+    grid-area: act; margin-top: 8px; padding-top: 8px;
     border-top: 1px solid var(--line-softer);
   }
   /* `BirthdayRowActions` returns null on every row there is nothing to do
@@ -7748,7 +7858,33 @@ table.mini tbody tr:hover { background: none; }
      line because test/theme.test.js reads a token as DEFINED only where the
      declaration opens a line; there is nothing left to declare. */
   .month-head { padding: 12px; }
-  .month-head, .card.period-lock { margin-bottom: 13px; }
+  /* ── AND THE STATUS CARD GETS 18, WHICH IS 5px BACK OUT OF THE 9 ABOVE ──
+
+     Asked for on 2026-08-27: "เพิ่ม Margin-bottom ให้การ์ด งวด…ยังเปิดอยู่
+     เล็กน้อย เพื่อแยกสัดส่วนระหว่าง Action Panel ด้านบน กับ Status Card ให้
+     ชัดเจนยิ่งขึ้น".
+
+     THE ASK NAMES ONE MARGIN AND THE REASON NAMES THE OTHER SIDE OF THE CARD —
+     the property is งวด…ยังเปิดอยู่'s bottom, the reason is the boundary
+     between the controls card ABOVE it and itself. Both are answered by the
+     same number because both gaps are declared here, and the answer is the
+     shape the reader was describing rather than either margin on its own: the
+     status card now stands 18px clear on both sides while the cards under it
+     keep the 12px `gap` they have between each other. Three blocks at an
+     identical 13 was a column with no joints in it; 18 · 18 · 12 · 12 · 12 has
+     one, and it is where the reader's eye was already trying to put it.
+
+     IT IS 5px AGAINST THE LEDGER ABOVE, and the ledger stands: that −9 was
+     three gaps at three pixels each, and two of them are being given back
+     because the round that took them was buying room for a list, not for the
+     boundary above it. The same afternoon's other two changes — the pager band
+     and the birthday card — give back about 600px on a six-birthday month, so
+     the 10 spent here is paid for many times over on the axis it was taken
+     from. It read "13px" from the morning of 2026-08-27 until that afternoon.
+
+     THE ALERT PANEL IS NOT IN THIS RULE and keeps `.alert`'s own `12px 0`. It
+     is a message that comes and goes; these two are furniture. */
+  .month-head, .card.period-lock { margin-bottom: 18px; }
 
   /* ══ AND THE CARD ROUND THE LIST COMES OFF ═══════════════════════════════
 
@@ -7925,9 +8061,12 @@ table.mini tbody tr:hover { background: none; }
 
      THE ENDS GO TOO, AND THEY ARE THE HALF WORTH CHECKING. 12 at the top was
      the gap between the top of the card and the first employee card; with no
-     card, the thing above is งวด…ยังเปิดอยู่ and its own 13px bottom margin is
-     that gap — 12 more here would make the list start further from the bar than
-     the bar sits from the controls card. 12 at the bottom was the gap between
+     card, the thing above is งวด…ยังเปิดอยู่ and its own bottom margin is that
+     gap — 12 more here would make the list start further from the bar than
+     the bar sits from the controls card. That margin read "13px" until later
+     the same day and is 18 now, which is the joint between the header blocks
+     and the list and is stated in one place: see `.card.period-lock` above.
+     12 at the bottom was the gap between
      รวมทั้งหมด and the foot of the card; `.month-notes` and วันเกิดของเดือนนี้
      declare their own 12px above them, and the last thing on the screen needs
      no padding under it. The 12px BETWEEN cards is `gap` and is untouched.
@@ -8112,9 +8251,34 @@ table.mini tbody tr:hover { background: none; }
   .hr-table tbody tr.off-page { display: none; }
   /* Not a card: no border, no fill, no 15px of padding. The row it sits in on
      screen is a control, and a bordered block around it reads as a sixth person
-     with nothing in them. */
+     with nothing in them.
+
+     AND 6px OF MARGIN EITHER SIDE, WHICH IS THE ONLY THING THAT SAYS SO NOW.
+     Asked for on 2026-08-27: the pager and รวมทั้งหมด were "ชิดการ์ดพนักงาน
+     เกินไป". They were — at exactly 12px, which is the `gap` between one
+     employee card and the next, so the band with the chevrons in it and the
+     month's own total were spaced into the list at the list's own rhythm and
+     read as the sixth and seventh people on the page. Taking the border and
+     the fill off (above) stopped them LOOKING like cards; nothing had yet
+     stopped them SITTING like cards.
+
+     6 AND NOT 12, AND THE PARENT IS A FLEX COLUMN. `gap` and `margin` add up
+     here rather than collapsing, so 6 makes both gaps 18 — half again on the
+     12 the cards keep between themselves, which is enough to read as a change
+     of kind and not so much that the foot of the list floats away from it. The
+     column now goes 12 · 12 · 12 · 12 (five cards) · 18 · pager · 18 · total,
+     and the two 18s are the same number the header blocks above the list take
+     between them; one screen, one size of joint.
+
+     BOTH SIDES, AND THE BOTTOM ONE IS รวมทั้งหมด's. The total row states no
+     margin of its own — it is the LAST item of this flex column and what sits
+     under it is `.month-notes` or วันเกิดของเดือนนี้, each of which declares
+     its own 12px. Giving it a top margin here would have been a third number
+     for the same gap; the pager's bottom margin is that gap, and it is written
+     once. */
   .hr-table tbody tr.pager-row {
     display: block; padding: 0; border: 0; background: none;
+    margin: 6px 0;
   }
   .hr-table tbody tr.pager-row:hover { background: none; }
 

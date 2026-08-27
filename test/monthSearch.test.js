@@ -416,9 +416,22 @@ test('the one card above the list is 12px, and the list itself is nobody’s car
   // front of a number.
   assert.ok(!phone.replace(/\/\*[\s\S]*?\*\//g, '').includes('--month-pad'),
     'the token came back');
-  // The gap a card leaves under itself, 16 everywhere else and 13 for the two
+  // The gap a card leaves under itself: 16 everywhere else, and 18 for the two
   // things that stack above this list.
-  assert.match(phone, /\.month-head, \.card\.period-lock \{ margin-bottom: 13px; \}/);
+  //
+  // IT READ 13 FROM THE MORNING OF 2026-08-27 UNTIL THAT AFTERNOON, when the
+  // ask was "เพิ่ม Margin-bottom ให้การ์ด งวด…ยังเปิดอยู่ เล็กน้อย เพื่อแยก
+  // สัดส่วนระหว่าง Action Panel ด้านบน กับ Status Card ให้ชัดเจนยิ่งขึ้น" — a
+  // property on one side of the status card, a reason on the other, and one
+  // number answers both because both gaps are this rule. Three blocks at an
+  // identical 13 was a column with no joints in it; the list under them keeps
+  // its own 12px `gap`, so the column now reads 18 · 18 · 12 · 12 · 12 and the
+  // joint is where a reader was already trying to put one.
+  //
+  // The 5px it costs against the trim this test is named for is paid back many
+  // times over the same afternoon — the pager band and the birthday card gave
+  // about 350px on this screen. Height was never the reason for the 13.
+  assert.match(phone, /\.month-head, \.card\.period-lock \{ margin-bottom: 18px; \}/);
   // ONLY THIS SCREEN. `.card` is worn by every screen in the app.
   assert.match(css, /\.card \{ padding: 15px; border-radius: var\(--radius\); \}/,
     'the phone padding of every card in the app moved');
