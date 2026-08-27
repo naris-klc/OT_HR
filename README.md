@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1719 tests
+and the engine know nothing about Next.js, so the whole suite — **1720 tests
 across 103 files**, measured 2026-08-27 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1718", "1717", "1715" and "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1719", "1718", "1717", "1715" and "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3662,10 +3662,7 @@ asymmetry in both directions.
 row cannot be shorter than the chip standing in it. That is the floor, and it is
 why this is the last round of this kind: what is left is 44px of button, 25px of
 chip row, three lines of facts and 20px of padding. **The remaining lever is the
-number of cards, not the card** — folding the settled ones behind a
-`เสร็จแล้ว n คน` toggle the way วันเกิดรอตรวจ folds its own settled lists would
-take a six-birthday month from six cards to three. That is a change to what is
-*visible* rather than to what it costs, so it is not taken here.
+number of cards, not the card** — which is the round below.
 
 **The `gap` between cards did not move and that is deliberate.** 12px is what the
 employee list keeps between its own cards; two columns of cards read down one
@@ -3695,6 +3692,55 @@ one line, and the page never grows sideways.
 **The rule over the buttons is 6 + 6**, matching the one over วันเกิด. It was 10
 + 10, then 8 + 8, and now the card has two rules of one weight rather than two of
 two.
+
+#### ดูอีก n คนที่ไม่ต้องตอบตอนนี้ — the rows that ask nothing are folded
+
+**Asked a fifth time, and the card had run out of room to give.** Two mechanisms
+were named again: วันเกิด / แผนก / บริษัท and the buttons on one horizontal
+strip, or a horizontal scroll. **The strip does not fit, and that was measured
+rather than argued.** A card at 360px is **316px** wide inside its own padding.
+The natural width of the pieces that were to go on it:
+
+| row | date | + แผนก | + บริษัท | + buttons | = |
+|---|---|---|---|---|---|
+| a settled row, no button | 130 | 80 | 63 | 0 | **297** |
+| the longest settled row | 130 | 114 | 68 | 0 | **336** |
+| one button (ดูใบ) | 130 | 81 | 63 | 49 | **355** |
+| **ต้องตรวจ — two buttons** | 130 | 82 | 63 | 316 | **592–623** |
+
+It is short even on the row with no button at all, and short by a factor of two
+on the ต้องตรวจ rows — the ones this section exists for. Nothing about that
+changes with a tidier layout; 316px is 316px.
+
+**So the lever is the number of cards.** Every row that is not ต้องตรวจ gets a
+`settled` class and is hidden below 860px behind one full-width button that says
+how many are behind it. A six-birthday August draws **three** cards instead of
+six: the section goes **1166 → 748px** and the page **2901 → 2483** — more than
+the four rounds of card compaction before it managed between them. Opening it
+puts all six back and adds only the button's own 54px.
+
+**Why this and not the carousel, at the fifth time of asking.** Both hide rows;
+they differ in *which*. A carousel hides whatever is off the right edge, and on a
+list sorted by date that is as likely to be a ต้องตรวจ row as a settled one — on
+the last screen standing between HR and closing the month, **a row that asks
+something and is not visible is the one failure this section was built to
+prevent**. The fold hides only rows that ask nothing, the count is on the button
+in both states, and nothing that needs answering ever leaves the screen. The
+class is written as an exception — `status === DUE ? undefined : 'settled'` —
+rather than by listing the other four statuses, so a status added later is folded
+by default and can never become a row that asks something off screen.
+
+**ยังไม่ถึงวัน folds with the settled ones.** A date that has not arrived asks
+nothing today either, and the summary line above still counts it separately, so
+the number is never lost.
+
+**Closed by default, and it does not persist.** A month is worked in one sitting;
+carrying "I opened the settled list once" into the next month would be a setting
+nobody set. **Above 860px nothing happens at all**: the button is `display: none`
+and the rule that hides the rows lives in the phone block, so the desktop table
+still draws every row of the month — one markup, two layouts, which is the rule
+this screen has kept throughout. Measured at 1280px before and after: page 1650,
+section 516, every birthday row 54 or 75px.
 
 #### …and the card around the employee list was not there to remove
 
@@ -4582,8 +4628,18 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1719/1719 pass in about 2 s**, measured 2026-08-27 across 103
-  files. The newest is in `test/birthdayCardUi.test.js` and pins a REVERSAL, so
+- `npm test` — **1720/1720 pass in about 2 s**, measured 2026-08-27 across 103
+  files. The newest is in `test/birthdayCardUi.test.js` for the fold on
+  วันเกิดของเดือนนี้, and what it pins is the one property that makes a fold
+  safe on this screen: WHICH rows go. The class is written as an exception —
+  `status === DUE ? undefined : 'settled'` — so a status added later folds by
+  default and can never become a row that asks something off screen; the count on
+  the button comes off the same test, so what is said and what disappears cannot
+  drift apart; the hiding rule is asserted present in the phone block and absent
+  from the desktop half of the file; and the button names both classes, because
+  `.btn` sets `display` and a bare `.bday-more` would tie with it on specificity.
+  It read "1719/1719" before it. The one before that is also in that file and
+  pins a REVERSAL, so
   that it is not tidied back: the employee code sits on the name's line on
   ตรวจสอบรายเดือน's birthday card and on its own line in วันเกิดรอตรวจ, and the
   test asserts both directions — the second is what makes the first affordable,

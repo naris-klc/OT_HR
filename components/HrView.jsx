@@ -1563,6 +1563,41 @@ function BirthdayMonth({
   const [marking, setMarking] = useState(null);
   /** A pop-up over the month table, not a screen of its own — see BirthdayQueue. */
   const [filing, setFiling] = useState(null);
+  /**
+   * THE ROWS THAT ASK NOTHING ARE FOLDED ON A PHONE — 2026-08-27, and it is the
+   * fifth round of "make this section shorter".
+   *
+   * The four before it took the CARD from 297px to 172 and that is its floor: a
+   * 44px button, a 25px chip row, three lines of facts and 20px of padding. The
+   * ask each time named a mechanism — a horizontal carousel, or วันเกิด / แผนก /
+   * บริษัท and the buttons on one strip — and the strip does not fit. Measured on
+   * the built app at 360px, where a card is 316px wide inside its padding: the
+   * shortest row needs 297 with NO button, the one-button row 355, and the
+   * ต้องตรวจ rows — the ones this section exists for — 592 to 623. It is short by
+   * a factor of two on exactly the rows that matter.
+   *
+   * SO THE LEVER IS THE NUMBER OF CARDS. `showSettled` hides every row that is
+   * not ต้องตรวจ behind one button, below 860px only. A six-birthday month draws
+   * three cards instead of six.
+   *
+   * WHY NOT THE CAROUSEL, THE FIFTH TIME OF ASKING. Both hide rows; they differ
+   * in WHICH. A carousel hides whatever is off the right edge, which on a list
+   * sorted by date is as likely to be a ต้องตรวจ row as a settled one — and this
+   * section is the last thing standing between HR and closing the month, so a row
+   * that asks something and is not on screen is the one failure it exists to
+   * prevent. The fold hides only rows that ask nothing, and the count of what is
+   * hidden is on the button. Nothing that needs answering ever leaves the screen.
+   *
+   * CLOSED BY DEFAULT, and it does not persist. A month is worked in one sitting;
+   * carrying "I opened the settled list once" into next month would be a setting
+   * nobody set. `key` on this component is the period, so it resets with it.
+   *
+   * ABOVE 860px NOTHING HAPPENS: the button is `display: none` and the rule that
+   * hides the rows lives in the phone block, so the desktop table still draws
+   * every row of the month, which is what a table read down its own columns is
+   * for. One markup, two layouts — the rule this screen has kept throughout.
+   */
+  const [showSettled, setShowSettled] = useState(false);
 
   async function load() {
     try {
@@ -1633,6 +1668,13 @@ function BirthdayMonth({
   const { rows, summary, uncheckable } = data;
   if (rows.length === 0 && uncheckable.length === 0) return null;
 
+  /* Counted off `rows` and not off `summary`, which is the server's and splits
+     the same people four ways — done, due, upcoming, total. What the button
+     hides is one thing: every row that is not ต้องตรวจ. Deriving it from the
+     rows the table is actually drawing is what keeps the number on the button
+     and the number of cards that disappear the same number. */
+  const settledCount = rows.filter((r) => r.status !== BIRTHDAY_STATUS.DUE).length;
+
   return (
     <div className="box" style={{ marginTop: 12 }}>
       <div style={{ fontWeight: 600 }}>วันเกิดของเดือนนี้</div>
@@ -1683,7 +1725,16 @@ function BirthdayMonth({
       )}
 
       {rows.length > 0 && (
-        <div className="table-wrap card-list" style={{ marginTop: 10 }}>
+        <div
+          className="table-wrap card-list"
+          style={{ marginTop: 10 }}
+          /* The handle the phone block hides `.settled` rows through — see
+             `showSettled` above for what is folded and why it is these rows and
+             not "whatever is off the right edge". An attribute rather than a
+             class because it has two named states and reads as one in the
+             stylesheet; the desktop gives it no rule at all. */
+          data-settled={showSettled ? 'shown' : 'hidden'}
+        >
           {/* Card layout below 860px, like วันเกิดรอตรวจ — the two lists are
               the same rows read for two different reasons, and both were
               scrolling their action buttons off the right of the screen.
@@ -1708,7 +1759,15 @@ function BirthdayMonth({
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.employeeId + r.date}>
+                /* `settled` is EVERY row that is not ต้องตรวจ, which includes
+                   ยังไม่ถึงวัน — a date that has not arrived asks nothing today
+                   either, and the summary above counts it separately so the
+                   number is never lost. The class is on the row and does
+                   nothing on its own; the phone block is what acts on it. */
+                <tr
+                  key={r.employeeId + r.date}
+                  className={r.status === BIRTHDAY_STATUS.DUE ? undefined : 'settled'}
+                >
                   <td className="who-col">
                     {r.name}
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.code}</div>
@@ -1752,6 +1811,33 @@ function BirthdayMonth({
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* THE BUTTON THAT SAYS WHAT IS NOT ON SCREEN, and it only exists on a
+          phone — `.btn.bday-more` is `display: none` until 860px, so the desktop
+          table, which draws every row anyway, never grows a control for a fold
+          that is not happening there.
+
+          IT CARRIES THE COUNT IN BOTH DIRECTIONS. Closed, it is the only thing
+          on the screen that says rows are hidden and how many; open, it is how
+          they go away again. A fold whose label reads the same in both states is
+          a control somebody presses to find out what it does.
+
+          DRAWN ONLY WHEN THERE IS SOMETHING TO FOLD. On a month where every
+          birthday is ต้องตรวจ nothing is hidden and no button appears; on one
+          where none is, the ✓ line above already says so and this opens the six
+          names under it. */}
+      {settledCount > 0 && (
+        <button
+          type="button"
+          className="btn ghost sm bday-more"
+          aria-expanded={showSettled}
+          onClick={() => setShowSettled((v) => !v)}
+        >
+          {showSettled
+            ? `ซ่อน ${settledCount} คนที่ไม่ต้องตอบตอนนี้`
+            : `ดูอีก ${settledCount} คนที่ไม่ต้องตอบตอนนี้`}
+        </button>
       )}
 
       {/* Kept OUT of the table on purpose: which month somebody with no วันเกิด

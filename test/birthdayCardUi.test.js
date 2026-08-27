@@ -150,7 +150,9 @@ test('12px between cards, on a ground a step back from them', () => {
   // …and the wrap that says the ground goes back. Without it the gap is the
   // card's own colour and the cards read as one block — learnt on ตรวจสอบรายเดือน.
   assert.match(queue, /<div className="table-wrap card-list">/);
-  assert.match(hrView, /<div className="table-wrap card-list" style=\{\{ marginTop: 10 \}\}>/);
+  // The month's wrap is written over several lines since it gained the fold's
+  // handle, so the two attributes are asserted rather than the one-line tag.
+  assert.match(hrView, /className="table-wrap card-list"[\s\S]{0,80}style=\{\{ marginTop: 10 \}\}/);
   assert.match(phone, /\.table-wrap\.card-list \{ background: var\(--bg\); \}/);
 });
 
@@ -310,6 +312,49 @@ test('แผนก, บริษัท and ชั่วโมง share a line, a
   // that group's `::before`, and here — so an index either side of it lands on
   // the wrong one of the three.
   assert.match(phone, /\.bmonth-table td\.hrs-col \{\s*grid-area: hrs; justify-self: end;/);
+});
+
+/**
+ * The fold, and the ONE property that makes it safe.
+ *
+ * Asked for a fifth time on 2026-08-27 as a horizontal carousel or a one-line
+ * strip. The strip does not fit — measured on the built app at 360px, where a
+ * card is 316px wide inside its padding and the ต้องตรวจ rows need 592 to 623 —
+ * so the lever became the number of cards. Both a carousel and this fold hide
+ * rows; what is pinned here is WHICH, because that is the whole difference:
+ * a carousel hides whatever is off the right edge, which on a list sorted by
+ * date is as likely to be a row that still asks something as one that does not.
+ */
+test('only the rows that ask nothing are folded, and only on a phone', () => {
+  // ต้องตรวจ is the one status that is never given the class, so it can never be
+  // the thing behind the button. Written as the exception rather than by listing
+  // the other four: a status added later is folded by default, and the failure
+  // mode of the list version — a new status nobody remembered to add — would be
+  // a row that asks something and is not on screen.
+  assert.match(hrView, /className=\{r\.status === BIRTHDAY_STATUS\.DUE \? undefined : 'settled'\}/);
+  // The count on the button is derived from the same test, so the number said
+  // and the number of cards that disappear cannot drift apart.
+  assert.match(hrView, /rows\.filter\(\(r\) => r\.status !== BIRTHDAY_STATUS\.DUE\)\.length/);
+  // …and it is drawn only when there is something to fold.
+  assert.match(hrView, /\{settledCount > 0 && \(/);
+
+  // THE RULE IS IN THE PHONE BLOCK AND NOWHERE ELSE. Above 860px this screen is
+  // a table read down its own columns and every row of the month is drawn; the
+  // attribute sits in the markup doing nothing there.
+  assert.match(phone, /\.table-wrap\.card-list\[data-settled='hidden'\] \.bmonth-table tbody tr\.settled \{\s*display: none;/);
+  const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
+  assert.ok(!/data-settled/.test(desktop), 'the desktop table just grew a fold');
+
+  // `.btn.bday-more` AND NOT `.bday-more`. `.btn` sets `display` and a bare
+  // class ties with it, so which one won would depend on file order — the trap
+  // `table.mini` sprang on this same element twice.
+  assert.match(css, /\.btn\.bday-more \{ display: none; \}/);
+  assert.match(phone, /\.btn\.bday-more \{\s*display: flex; place-content: center;/);
+  // The label says the count in BOTH states, or it is a control somebody has to
+  // press to find out what it does.
+  assert.match(hrView, /ซ่อน \$\{settledCount\} คนที่ไม่ต้องตอบตอนนี้/);
+  assert.match(hrView, /ดูอีก \$\{settledCount\} คนที่ไม่ต้องตอบตอนนี้/);
+  assert.match(hrView, /aria-expanded=\{showSettled\}/);
 });
 
 test('the code is on the name’s line here and on its own line in the queue', () => {

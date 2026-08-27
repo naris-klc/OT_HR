@@ -2619,6 +2619,21 @@ td > .approver-line { margin-top: 5px; }
   .pick-menu.find-menu { max-height: min(240px, 40vh); }
 }
 
+/* ══ ดูอีก n คนที่ไม่ต้องตอบตอนนี้ — A PHONE CONTROL, DECLARED OFF ══════════
+
+   `.btn.bday-more` and not `.bday-more`: `.btn` sets `display: inline-flex` and
+   a bare class ties with it on specificity, so which one won would depend on
+   which is written later in this file — the trap `table.mini` sprang on
+   `.bmonth-table` twice. Two classes settle it wherever either rule sits.
+
+   OFF BY DEFAULT AND ON ONLY BELOW 860px. The desktop draws every row of the
+   month — วันเกิดของเดือนนี้ is a table read down its own columns up there and
+   there is nothing to fold — so the button would be a control for a thing that
+   does not happen. See the phone block for what it does when it is on, and
+   `showSettled` in components/HrView.jsx for which rows it hides and why they
+   are those rows. */
+.btn.bday-more { display: none; }
+
 /* Not an option and not selectable: no pointer, no highlight, no role. */
 .pick-menu li.none {
   cursor: default; font: 400 13px/1.5 var(--sans); color: var(--muted-2);
@@ -7493,6 +7508,52 @@ table.mini tbody tr:hover { background: none; }
      BirthdayRowActions in components/HrView.jsx. */
   .bmonth-table td.act-col .btn:not(.ghost) {
     box-shadow: 0 3px 9px var(--green-glow-sm);
+  }
+
+  /* ══ AND THE ROWS THAT ASK NOTHING ARE FOLDED ════════════════════════════
+
+     Asked for a fifth time on 2026-08-27 — "ลดระยะความสูง … ไม่ให้ผู้ใช้งานต้อง
+     Scroll ลงมายาวเกินไป" — with two mechanisms named, and the card had run out
+     of room to give. Measured on the built app at 360px, a card is 316px wide
+     inside its own padding, and the strip that was asked for — วันเกิด, แผนก,
+     บริษัท and the buttons on one line — needs 297px on the shortest row with NO
+     button, 355 on the one-button row, and 592 to 623 on the ต้องตรวจ rows. It
+     does not fit, and it misses by a factor of two on exactly the rows this
+     section exists for. So the lever is the number of cards.
+
+     WHICH ROWS GO, AND IT IS THE WHOLE ARGUMENT AGAINST THE CAROUSEL. Both hide
+     rows; they differ in WHICH. A carousel hides whatever is off the right edge,
+     and on a list sorted by date that is as likely to be a ต้องตรวจ row as a
+     settled one — on the last screen between HR and closing the month, a row
+     that asks something and is not visible is the one failure this section was
+     built to prevent. `.settled` is every row that is not ต้องตรวจ, the count of
+     them is on the button, and nothing that needs answering ever leaves.
+
+     A six-birthday August draws three cards instead of six: the section goes
+     1166 → about 600 at 360px, which is more than the four rounds of card
+     compaction before it managed between them.
+
+     THE ATTRIBUTE IS ON THE WRAP AND THE RULE IS ONLY HERE. Above 860px this
+     selector does not exist, so `data-settled="hidden"` sits in the markup doing
+     nothing and the desktop table draws every row. One markup, two layouts. */
+  .table-wrap.card-list[data-settled='hidden'] .bmonth-table tbody tr.settled {
+    display: none;
+  }
+
+  /* Full width, 44px, and under the last card rather than over the first: it is
+     the foot of the list, and what it reveals appears above it. `margin-top`
+     matches the 10px the wrap itself takes from the summary lines.
+
+     `place-content: center` IS NOT DECORATION HERE. `.btn` is a plain block
+     with symmetric padding everywhere else in the app, so its label is centred
+     by the padding and the button is only as wide as the label — nothing in
+     that rule centres anything. Made full width, the same button draws its
+     label hard against the left padding, which reads as a list row rather than
+     as a control. Every other full-width button in this app is inside a flex
+     row that centres it; this one stands on its own. */
+  .btn.bday-more {
+    display: flex; place-content: center; align-items: center;
+    width: 100%; min-height: 44px; margin-top: 10px;
   }
 
   /* ══ นโยบายการคำนวณ — the two columns become one ════════════════════════
