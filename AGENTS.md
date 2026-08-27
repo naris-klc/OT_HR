@@ -13,6 +13,43 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 The project rules below are ours. The block above is Next.js's own and is
 rewritten by `next dev`; nothing here depends on it.
 
+## What serves this app, and why you cannot check a change by looking at :3000
+
+**The production server is `next start` on 127.0.0.1:3000, serving `.next`.**
+There is no other machine — "prod" is this laptop ([README §Status](README.md#status)) —
+so a build is a deploy and the two are the same act.
+
+Three facts about this box that decide how a change gets verified, all
+established on 2026-08-27:
+
+- **Nothing restarts the app.** The `OT server` scheduled task in README §Setup
+  has never been registered here; `Get-ScheduledTask` has been read three times
+  and the only OT job is `OT backup`. The app does not come back after a reboot
+  and nothing revives it when it dies. `C:\Users\suwan\deploy-ot.ps1` is what a
+  deploy is, and a person runs it.
+- **`next dev` has held :3000 before.** For a morning on 2026-08-27 the port was
+  served by `next dev -p 3000`, compiling the working tree — so uncommitted
+  edits were live to HR while `.next\BUILD_ID` was two days stale. If you are
+  ever surprised that an edit is or is not on :3000, check which mode is running
+  before concluding anything about the code. The pid on the port cannot tell you
+  (both modes run the same `start-server.js` worker); its **parent** can.
+- **`npm run build` takes the live app down.** `next start` holds the `BUILD_ID`
+  it booted with, so rebuilding underneath it makes every loaded page request
+  chunks that no longer exist — 500 until a restart. Never run a bare
+  `npm run build` to check that something compiles.
+
+**So: verify on a scratch `distDir`, never on `.next`.** `next.config.js`
+commits `distDir: process.env.VERIFY_DIST_DIR || '.next'` for exactly this:
+
+```bash
+VERIFY_DIST_DIR=.next-verify npm run build
+VERIFY_DIST_DIR=.next-verify npx next start -p 3001   # :3000 keeps serving
+rm -rf .next-verify
+```
+
+`.next-*/` is git-ignored. Deploying is the user's call, not a step you take on
+the way to finishing something.
+
 ## A commit that changes behaviour must find the paragraphs that describe it
 
 **Before committing, search the documents for what you just changed, and fix

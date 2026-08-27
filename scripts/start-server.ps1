@@ -58,9 +58,30 @@
     .\scripts\start-server.ps1 -Port 3001
 
 .NOTES
-    Registered as the scheduled task "OT server". The registration command, the
-    three checks that prove it works, and how to start the app by hand are in
-    README under the Setup heading.
+    THERE IS NO "OT server" SCHEDULED TASK ON THIS MACHINE, and this line said
+    there was. It read "Registered as the scheduled task 'OT server'" from the
+    day the file was written until 2026-08-27, and it was never true here:
+    `Get-ScheduledTask` has been run three times - 2026-08-20, 2026-08-25 and
+    2026-08-27 - and the only OT job on the box is "OT backup". Registering it
+    was attempted on 2026-08-20 and refused before it reached the machine.
+
+    What that costs, stated where somebody reading this file will see it: the
+    app does NOT come back after a reboot, and nothing restarts it when it
+    dies. A person starts it - by running this file, or `deploy-ot.ps1`, which
+    is what a deploy uses. The registration command and the three checks that
+    would prove it works are in README under the Setup heading, and none of the
+    three has been walked on this machine.
+
+    Everything else in this file is written FOR that task and is still right:
+    the foreground wait, the exit-code normalising and the restart signal are
+    what a scheduled task reads, and they cost nothing while there is none.
+
+    THE PORT-BUSY BRANCH IS NOT A SUCCESS SIGNAL. It exits 0 and starts
+    nothing, which is the right answer for a duplicate task run and the wrong
+    thing to read as "the app is up and it is mine". On 2026-08-27 the port was
+    held by a `next dev` for most of a morning, serving the working tree
+    instead of a build. The log line below names the pid and the command that
+    owns it, so `logs\task.log` can be read for which of the two happened.
 #>
 param(
     [int]$Port = 3000,
@@ -94,7 +115,33 @@ function Write-Task([string]$Message) {
 $busy = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
 if ($busy) {
     $held = ($busy | Select-Object -First 1).OwningProcess
-    Write-Task "port $Port is already served by pid $held - nothing to do"
+    # WHICH server, not just that there is one. "already served by pid 10392" is
+    # true of a `next dev` serving the working tree and of the built app this
+    # file exists to run, and on 2026-08-27 it was the first for a morning while
+    # this log said nothing to tell them apart.
+    #
+    # AND THE ANSWER IS ON THE PARENT, not on the pid holding the port. Both
+    # modes reach the socket through the same worker - the pid on the port is
+    # `node ...\next\dist\server\lib\start-server.js` either way, which names
+    # neither. It is the process that spawned it that reads `next dev -p 3000`
+    # or `next start -p 3000`. Walked on 2026-08-27, which is how this line
+    # came to log the parent as well as the child.
+    #
+    # Best-effort throughout: a pid can be gone by the time it is asked about,
+    # and losing the name of a process must not turn a clean exit 0 into a crash.
+    $what = ''
+    try {
+        $owner = Get-CimInstance Win32_Process -Filter "ProcessId = $held" -ErrorAction Stop
+        $mode = ''
+        try {
+            $parent = Get-CimInstance Win32_Process -Filter "ProcessId = $($owner.ParentProcessId)" -ErrorAction Stop
+            if ($parent.CommandLine -match '\bnext"?\s+dev\b')        { $mode = 'next dev - SERVING THE WORKING TREE, not a build; ' }
+            elseif ($parent.CommandLine -match '\bnext"?\s+start\b')  { $mode = 'next start; ' }
+            if ($parent.CommandLine) { $mode += "parent pid $($parent.ProcessId): $($parent.CommandLine)" }
+        } catch { $mode = "parent pid $($owner.ParentProcessId) unavailable" }
+        $what = " ($mode)"
+    } catch { $what = ' (command line unavailable)' }
+    Write-Task "port $Port is already served by pid $held$what - nothing to do"
     exit 0
 }
 

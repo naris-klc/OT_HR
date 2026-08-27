@@ -106,6 +106,41 @@ reseed leaves them pointing at people and entries that no longer exist.
 “เครื่องจริง” คือแล็ปท็อปเครื่องนี้ ([Status](#status)) ตัวที่ทำให้แอปขึ้นเองจึงเป็น
 Task Scheduler ตัวเดียวกับที่ [งานสำรองข้อมูล](#ตั้งเวลาสำรองอัตโนมัติ) ใช้อยู่
 
+> 🔴 **งาน `OT server` ยังไม่มีอยู่จริงบนเครื่องนี้ — ทั้งหัวข้อนี้เป็นสูตร ไม่ใช่รายงาน**
+> `Get-ScheduledTask` ถูกรันสามครั้ง — 2026-08-20, 2026-08-25 และ 2026-08-27 — งาน
+> OT ตัวเดียวบนเครื่องคือ `OT backup` การลงทะเบียนถูกลองเมื่อ 2026-08-20 แล้วถูก
+> ปฏิเสธก่อนถึงเครื่อง และไม่เคยถูกลองอีก
+>
+> **สิ่งที่ตามมาสามข้อ ซึ่งเป็นความจริงของเครื่องนี้วันนี้** — แอป**ไม่ขึ้นเอง**หลัง
+> รีสตาร์ตหรือหลังล็อกอิน · **ไม่มีอะไรปลุกมัน**เมื่อโปรเซสตาย (`RestartCount` ที่
+> เขียนไว้ข้างล่างเป็นค่าของงานที่ไม่มีอยู่) · คนต้องเป็นคนเริ่ม ทางที่ใช้จริงคือ
+> [`deploy-ot.ps1`](#เอาโค้ดใหม่ขึ้น--deploy-otps1) หรือรัน `start-server.ps1` ด้วยมือ
+>
+> `scripts/start-server.ps1` เองยังถูกเขียนไว้สำหรับงานตามตารางและยังถูกทุกบรรทัด
+> — การอยู่หน้าฉาก การ normalise exit code และสัญญาณ restart ไม่ได้เสียหายอะไรจาก
+> การที่ยังไม่มีงานมาอ่านมัน สูตรลงทะเบียนข้างล่างจึงยังใช้ได้ ถ้าวันหนึ่งจะรันมัน
+> ให้เดินสามข้อ [ยืนยันว่าใช้ได้จริง](#ยืนยันว่าใช้ได้จริง--สามข้อ) ด้วย เพราะยังไม่มี
+> ข้อไหนถูกเดินบนเครื่องนี้
+
+> 🔴 **โหมดที่ต้องเป็นคือ `next start` และเครื่องเคยรัน `next dev` อยู่ทั้งเช้า**
+> วันที่ 2026-08-27 พบว่า :3000 ถูกถือโดย `next dev -p 3000` — เสิร์ฟจาก working
+> tree ตรง ๆ ไม่ใช่จาก build แปลว่าโค้ดที่ยังไม่ commit ขึ้นจอ HR ทันทีที่เซฟ และ
+> `.next\BUILD_ID` ค้างอยู่ที่ของสองวันก่อนโดยที่หน้าเว็บดูปกติดี
+>
+> **วิธีดูว่าตอนนี้เป็นโหมดไหน** — pid ที่ถือพอร์ต **บอกไม่ได้** ทั้งสองโหมดลงมาที่
+> worker ตัวเดียวกันคือ `node ...\next\dist\server\lib\start-server.js` คำว่า
+> `dev` หรือ `start` อยู่ที่ **โปรเซสแม่**
+>
+> ```powershell
+> $c = Get-NetTCPConnection -LocalPort 3000 -State Listen
+> $p = Get-CimInstance Win32_Process -Filter "ProcessId = $($c.OwningProcess)"
+> (Get-CimInstance Win32_Process -Filter "ProcessId = $($p.ParentProcessId)").CommandLine
+> ```
+>
+> อีกทางที่ไม่ต้องแตะโปรเซสเลย: ขอ HTML จากเซิร์ฟเวอร์แล้วดูชื่อ chunk — build จริง
+> ได้ชื่อสั้นที่ผ่าน hash และเปลี่ยนทุก build ส่วน dev ได้ชื่อที่สะกดตามโมดูล เช่น `components_HrView_jsx` นำหน้า
+> และ `/_next/static/development/_devMiddlewareManifest.json` ตอบ 200 เฉพาะบน dev
+
 **สิ่งที่งานนี้รัน** คือ `scripts/start-server.ps1` ซึ่งห่อคำสั่งเดียว —
 `node node_modules\next\dist\bin\next start -p 3000` — สิ่งที่ตัวห่อเพิ่มเข้ามาคือ
 สี่อย่างที่งานตามตารางเวลาต้องการ: **อยู่หน้าฉาก** (Task Scheduler นับว่างานยัง
@@ -287,11 +322,56 @@ Get-NetTCPConnection -LocalPort 3000 -State Listen |
 — แอปยังทำงาน เพียงแต่ Task Scheduler จะขึ้นว่าไม่ได้รัน และตัวห่อรอบหน้าจะเจอ
 พอร์ตไม่ว่างแล้วออกด้วย 0 อย่างสงบ แต่ถ้าตั้งใจจะหยุดจริง ๆ ต้องฆ่าตามพอร์ตด้วย
 
-**เอาโค้ดใหม่ขึ้น ต้องหยุดก่อน build** `next start` ถือ `BUILD_ID` ที่มันบูตมา ดังนั้น
+#### เอาโค้ดใหม่ขึ้น — `deploy-ot.ps1`
+
+**ต้องหยุดก่อน build** `next start` ถือ `BUILD_ID` ที่มันบูตมา ดังนั้น
 `npm run build` ทับข้างใต้เซิร์ฟเวอร์ที่รันอยู่จะทำให้ทุกหน้าที่เปิดค้างไว้ขอไฟล์ที่
 ไม่มีแล้ว (500 จนกว่าจะรีสตาร์ต) และบน Windows โปรเซสที่รันอยู่ยังจับไฟล์ใน `.next`
-ไว้ด้วย ลำดับที่ถูกคือ **หยุด → `npm run build` → `Start-ScheduledTask`**
-ระหว่างนั้นแอปดับราวหนึ่งนาที
+ไว้ด้วย **เรื่องนี้เกิดจริงเมื่อ 2026-08-26** — build เวลา 16:45 ทับเซิร์ฟเวอร์ที่
+เริ่มไว้ 15:42 และเช้าวันรุ่งขึ้น :3000 ตอบ 500 ให้ CSS กับ JS ของตัวเอง
+
+ลำดับที่ถูกคือ **หยุด → `npm run build` → ปลุกใหม่** ระหว่างนั้นแอปดับราวหนึ่งนาที
+และเพราะ[ยังไม่มีงานตามตาราง](#ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน--task-scheduler)
+ขั้นสุดท้ายไม่ใช่ `Start-ScheduledTask` — สคริปต์เดียวที่ทำครบทั้งสามขั้นคือ
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\suwan\deploy-ot.ps1
+```
+
+มันบันทึกสภาพก่อนหน้า (commit, `BUILD_ID`, pid, โหมด) · บอกว่ากำลังแทนอะไรอยู่ ·
+**ฆ่าโปรเซสแม่ก่อนลูก** เพราะทั้ง `next dev` และตัวห่อ `start-server.ps1` จะปลุกลูก
+กลับมาถ้ามันรอดกว่า · `npm run build` · แล้วปลุกด้วย `Invoke-CimMethod` (ไม่ใช่
+`Start-Process` ซึ่งจะฝากเซิร์ฟเวอร์ไว้ใน job object ของหน้าต่างที่เรียก แล้วตายไป
+พร้อมกัน)
+
+> ⚠️ **ตัวจริงคือ `scripts/deploy.ps1` ใน repo — `C:\Users\suwan\deploy-ot.ps1`
+> เป็นแค่ตัวเรียกสามบรรทัด** แยกกันด้วยเหตุผลคนละข้อ · **พาธสั้น**มีไว้ให้พิมพ์จาก
+> ความจำได้โดยไม่มีช่องว่าง เพราะครั้งแรกที่วางสคริปต์นี้ไว้ในโฟลเดอร์ชั่วคราว พาธ
+> ยาวจนการใส่เครื่องหมายคำพูดเพี้ยน แล้วมีการรายงานว่าสำเร็จบนรอบที่ไม่เคยรัน ·
+> **ตัวจริงอยู่ใน repo** เพราะขั้นตอน deploy ที่ไม่ได้อยู่ใน version control คือสิ่งที่
+> ไม่มีใครรีวิว ไม่มีใครสำรอง และไม่ได้ถูกแก้ไปพร้อมกับ commit ที่ทำให้มันเปลี่ยน —
+> มันอยู่นอก repo จนถึง 2026-08-27 ซึ่งเป็นสาเหตุที่มันบรรยายเซิร์ฟเวอร์ `next start`
+> อยู่ทั้งวันในขณะที่เครื่องรัน `next dev`
+>
+> และมันต้องรันใน **หน้าต่าง PowerShell ปกติ ไม่ใช่ผ่าน Claude Code** เพราะขั้นฆ่า
+> โปรเซสคือสิ่งที่ตัวกรองสิทธิ์ปฏิเสธ · ไฟล์ใน `scripts/` เป็น ASCII ล้วนเหมือน
+> `start-server.ps1` ด้วยเหตุผลเดียวกัน และ `test/scriptEncoding.test.js` บังคับไว้
+
+**ตรวจก่อนว่ามันจะไม่พัง** — build ลง distDir สำรองแล้วเปิดบนพอร์ตอื่น โดย :3000
+ยังเสิร์ฟอยู่ตลอด `next.config.js` คอมมิต `distDir: process.env.VERIFY_DIST_DIR || '.next'`
+ไว้แล้ว จึงไม่ต้องแก้ไฟล์อะไร
+
+```powershell
+$env:VERIFY_DIST_DIR = '.next-verify'; npm run build
+$env:VERIFY_DIST_DIR = '.next-verify'; npx next start -p 3001
+# ...เดินของจริงบน :3001 แล้วค่อยลบทิ้ง
+Remove-Item -Recurse -Force .next-verify
+```
+
+**ข้อสุดท้ายคือข้อเดียวที่พิสูจน์อะไรได้** `BUILD_ID` ใหม่บนดิสก์บอกแค่ว่า build
+เกิดขึ้น ไม่ได้บอกว่าเซิร์ฟเวอร์ที่รันอยู่เสิร์ฟมัน — สองอย่างนี้แยกกันมาแล้วเมื่อ
+2026-08-26 `deploy-ot.ps1` ขั้นที่ 5 จึงดึง CSS ออกมาจากเซิร์ฟเวอร์เองแล้ว grep
+ไม่ได้อ่านไฟล์บนดิสก์
 
 ## สำรองและกู้คืนข้อมูล
 
@@ -4076,8 +4156,18 @@ four role UIs.
   it is registered.** The command is in
   [ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน](#ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน--task-scheduler),
   along with the three checks that prove it — logon, kill, reboot — and none of
-  the three is verified here. As of 2026-08-25 the server on :3000 is still a
-  process started by hand, which is exactly the state the task exists to end.
+  the three is verified here. `Get-ScheduledTask` has now been read three times
+  — 2026-08-20, 2026-08-25 and **2026-08-27** — and the only OT job on the box is
+  `OT backup`. The server on :3000 is still a process started by hand, which is
+  exactly the state the task exists to end.
+  ⚠ **And on 2026-08-27 that hand-started process was `next dev`**, not the
+  built app — serving the working tree straight from source, so uncommitted
+  edits were live to HR and `.next\BUILD_ID` was two days stale while the site
+  looked current. The way back is `deploy-ot.ps1`, and the way to TELL is the
+  parent process's command line or the shape of the chunk names, both written
+  down in the same section. `start-server.ps1` logs the mode now: its
+  port-busy line names the parent, because the pid on the port is the same
+  `start-server.js` worker in either mode and names neither.
 - `npm audit --omit=dev` — **1 high**, read 2026-08-24. `nanoid@3.3.17` wants
   `<3.3.18`, reached through `next@16.3.0 → postcss@8.5.23`; a fix is
   available. This line read "0 vulnerabilities" until then. Nothing under
