@@ -41,10 +41,12 @@ const hrView = read('components/HrView.jsx');
  * The screen with its commentary stripped — for asking what it SAYS rather than
  * what the file explains about what it says.
  *
- * Three assertions in this file have caught their own comment instead of the
+ * Four assertions in this file have caught their own comment instead of the
  * code: a note reading "there is no matchMedia here", another reading "NOT
- * sessionStorage", and one quoting the very Thai sentence it was checking had
- * not been copied. Each looked like a real failure for a minute.
+ * sessionStorage", one quoting the very Thai sentence it was checking had not
+ * been copied, and — 2026-08-26 — one asserting `.pager-where` was gone,
+ * against a file whose note beside that markup explains the wrapper it no
+ * longer has. Each looked like a real failure for a minute.
  */
 const hrCode = hrView.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
@@ -365,10 +367,10 @@ test('the pager sits under the fifth card, above the total, and disables its end
   // the two buttons to the ENDS of the card — the layout of a wide table's
   // footer. The three tracks take the width they need and the group is centred,
   // so the buttons stay the same distance from the page number whatever it
-  // comes to; `minmax(0, auto)` is what lets the middle column wrap the range
-  // line inside the card instead of pushing a button off it.
+  // comes to; `minmax(0, auto)` is what lets the page number narrow itself
+  // rather than push a chevron off the card.
   assert.match(phone, /\.pager-controls \{\s*display: grid; grid-template-columns: auto minmax\(0, auto\) auto;/);
-  assert.match(phone, /justify-content: center; align-items: center; gap: 10px;/);
+  assert.match(phone, /justify-content: center; align-items: center; gap: 1px 10px;/);
   // Both ends are the SAME SQUARE, which is what makes centring symmetrical.
   assert.match(phone, /\.pager-controls \.btn\.pager-step \{\s*width: 38px; min-width: 38px; height: 38px; padding: 0;/);
   // The words are on the buttons, not in them — see the note in HrView.jsx.
@@ -377,10 +379,30 @@ test('the pager sits under the fifth card, above the total, and disables its end
     assert.match(row, new RegExp(`aria-label="${label}"`), `the pager's ${label} lost its name`);
   }
   assert.ok(!/pager-step[^>]*aria-hidden/.test(row), 'the chevron is decoration on a nameless button');
-  // Both sentences are still said, stacked in the middle column rather than
-  // taking a row each — 38px where the two rows came to 73.
-  assert.match(row, /<div className="pager-where">/);
-  assert.match(phone, /\.pager-range \{\s*display: block; margin-top: 1px; text-wrap: balance;/);
+
+  // TWO GRID ROWS, AND THE BUTTONS ARE ON THE PAGE NUMBER'S.
+  //
+  // This is the assertion that would have caught what shipped for a few hours
+  // on 2026-08-26: the range was the second line of a `.pager-where` div in the
+  // middle COLUMN, which made the band 38px and put each chevron 8.8px below
+  // the words beside it — `align-items: center` centring a 38px square on a
+  // 37px two-line block, a true centre and the wrong one.
+  //
+  // A wrapper around the two sentences is what makes that mistake, because it
+  // takes them out of the grid the buttons are placed in. So: no wrapper, and
+  // the areas named.
+  // `hrCode` and not `hrView`: the note beside this markup EXPLAINS the wrapper
+  // it no longer has, and the first run of this assertion caught that sentence.
+  // Fourth time this file has done it to itself — see the note over `hrCode`.
+  assert.ok(!/pager-where/.test(hrCode), 'the two sentences went back inside a wrapper');
+  assert.match(phone, /grid-template-areas:\s*'prev\s+at\s+next'\s*'range range range';/);
+  assert.match(phone, /\.pager-prev \{ grid-area: prev; \}/);
+  assert.match(phone, /\.pager-next \{ grid-area: next; \}/);
+  assert.match(phone, /\.pager-at \{\s*grid-area: at;/);
+  // Spanning all three columns rather than sitting under the middle one: it has
+  // the card's full width, so it stays on one line at every width the app is
+  // used at instead of wrapping inside about 144px at 320.
+  assert.match(phone, /\.pager-range \{\s*grid-area: range; display: block; text-align: center; text-wrap: balance;/);
   // The disabled ends wear what every other disabled button in this app wears.
   assert.ok(!/pager-controls \.btn:disabled/.test(phone), 'the pager opted out of the app’s disabled treatment');
 

@@ -1022,30 +1022,33 @@ export default function HrView({
                           >
                             ‹
                           </button>
-                          {/* BOTH SENTENCES SIT IN THE MIDDLE COLUMN, stacked.
-                              They used to be two rows of the pager — the range
-                              across the full width, the page number between the
-                              buttons — and the two of them plus the gap came to
-                              73px. Side by side on one line they would want
-                              about 250px of the 240px this card has at 320px,
-                              so they are stacked instead: 38px, the height of
-                              the two buttons beside them, and neither line was
-                              dropped to get there.
+                          {/* THE PAGE NUMBER IS ON THE BUTTONS' OWN ROW, and
+                              the range spans under both — four children of one
+                              grid, placed by `grid-template-areas` rather than
+                              nested, because the two rows have to be the GRID's
+                              rows for the buttons to share a centre line with
+                              `หน้า 2 / 12` exactly.
+
+                              A `.pager-where` wrapper held these two stacked in
+                              the middle column for a few hours on 2026-08-26.
+                              It made the band 38px instead of 56 and it put the
+                              chevrons 8.8px below the words they sit beside —
+                              `align-items: center` centred each 38px square on
+                              a 37px two-line block, which is a true centre and
+                              the wrong one. Reported, measured, rebuilt.
 
                               Not `aria-hidden` even though the live region
                               announces them: they are the only thing on screen
                               that says which page this is and how long the list
                               is, and somebody reading the page rather than
                               listening to it needs them there. */}
-                          <div className="pager-where">
-                            <span className="pager-at">
-                              หน้า <strong>{current}</strong> / <strong>{pageCount}</strong>
-                            </span>
-                            <span className="pager-range">
-                              แสดง <strong>{from + 1}–{Math.min(to, shown.length)}</strong> จาก{' '}
-                              <strong>{shown.length}</strong> รายการ
-                            </span>
-                          </div>
+                          <span className="pager-at">
+                            หน้า <strong>{current}</strong> / <strong>{pageCount}</strong>
+                          </span>
+                          <span className="pager-range">
+                            แสดง <strong>{from + 1}–{Math.min(to, shown.length)}</strong> จาก{' '}
+                            <strong>{shown.length}</strong> รายการ
+                          </span>
                           <button
                             type="button"
                             className="btn ghost sm pager-step pager-next"

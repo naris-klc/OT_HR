@@ -10,6 +10,18 @@ node_modules/
 backups/
 
 .next/
+# …and every scratch build beside it. `next.config.js` commits
+# `distDir: process.env.VERIFY_DIST_DIR || '.next'`, which is how a build gets
+# verified, or a second dev server run, without touching the one `next start`
+# is serving — see README §Setup. The output lands in the repo root under
+# whatever name that variable was given, and `.next/` above does not match it.
+#
+# `.next-verify` and `.next-dev3002` were untracked-but-not-ignored until
+# 2026-08-26, when a `git add -A` staged 1185 of their files — including six
+# Turbopack cache `.sst` blobs of 14–17MB each — into a commit about CSS. The
+# glob rather than the two names, so the next scratch dir somebody invents is
+# covered before it is used.
+.next-*/
 next-env.d.ts
 
 # Per-machine Claude Code permissions. Tracked for two commits by mistake —

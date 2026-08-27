@@ -2792,7 +2792,7 @@ nothing on this screen scrolls but the page itself:
 │ ฝ่ายบุคคล              2.5      │
 └─────────────────────────────────┘
    [‹]      หน้า 1 / 5       [›]      ← the pager, straight after the fifth card
-            แสดง 1–5 จาก 25 รายการ      one 38px band, on every month, ends disabled
+        แสดง 1–5 จาก 25 รายการ          one 56px band, on every month, ends disabled
 ┌─────────────────────────────────┐
 │ รวมทั้งหมด            75.5      │ ← under the pager, static, in the flow
 └─────────────────────────────────┘
@@ -2823,7 +2823,7 @@ page both buttons come up `disabled` (`current <= 1` and `current >= pageCount`
 are both true) and the count line still states the month. `pageCount` has a
 floor of 1, so a month never says *หน้า 1 / 0*.
 
-**The pager is one band 38px tall, and it was two rows and 73px** until
+**The pager is one band 56px tall, and it was two full rows and 73px** until
 2026-08-26. The old shape put *แสดง 6–10 จาก 57 รายการ* across the full width of
 the card on a line of its own, and under it two "106×44" buttons wearing
 **‹ ก่อนหน้า** and **ถัดไป ›** with the page number between them. Nothing in it
@@ -2831,13 +2831,22 @@ was wrong. It was the tallest thing between the fifth card and **รวมทั
 on the one screen where the ground under the list is already spoken for, and it
 was asked to be made compact.
 
-**Both sentences survived; the second row did not.** *หน้า 2 / 5* and
-*แสดง 6–10 จาก 24 รายการ* are now the two stacked lines of the pager's middle
-column, the range a step quieter at 11.5px and `--muted-2`. Either side of them
-is a 38px square carrying `‹` and `›`. The words went onto `aria-label` — and
-`title`, for a desktop pointer — so a screen reader is told **ก่อนหน้า** and
-**ถัดไป** exactly as before; the chevrons are the button's *look*, not its name,
-which is why neither is `aria-hidden`.
+**Both sentences survived; the buttons' own row did not.** *หน้า 2 / 5* sits
+between two 38px squares carrying `‹` and `›`, and *แสดง 6–10 จาก 24 รายการ*
+spans underneath them, a step quieter at 11.5px and `--muted-2`. The words went
+onto `aria-label` — and `title`, for a desktop pointer — so a screen reader is
+told **ก่อนหน้า** and **ถัดไป** exactly as before; the chevrons are the button's
+*look*, not its name, which is why neither is `aria-hidden`.
+
+**It was 38px for a few hours, and the buttons were 8.8px low.** The range was
+the second line of a middle *column* rather than a row of its own, which is 18px
+shorter and puts each chevron below the words it reads as being beside:
+`align-items: center` centres a 38px square on a 37px two-line block, so the
+square and the block shared a centre line while the button and *หน้า 2 / 5* did
+not. Grid centring is honest there and the eye is not. Reported, measured at
+**8.8px**, and rebuilt as two grid **rows** — `grid-template-areas` with the
+buttons on the page number's row — which measures **0.0px** on both buttons and
+costs 18 of the 35.
 
 **38 and not 44 is a real trade.** Every other button on this card keeps the
 44px target and these two give up 6px of it. What buys that back: a chevron has
@@ -2852,13 +2861,16 @@ layout of a wide table's footer, and the opposite of compact. It is
 takes the width it needs; the two buttons stay the same distance from the middle
 whatever the page number comes to, because both of them are the same square.
 
-**The longest month wraps, and wraps evenly.** At 320px *แสดง 116–120 จาก 120
-รายการ* is wider than the space between two chevrons. `min-width: 0` on the
-middle column keeps that inside the card instead of pushing a button off it, and
-`text-wrap: balance` splits it down the middle rather than at its last space,
-which had left รายการ alone on a line. Measured by putting that exact string
-into the live element at 320px — the pager grows to 53px there and nothing
-overflows. Nothing in the seed data reaches it: the live August is four people.
+**The range spans all three columns, so the longest month stays on one line.**
+*แสดง 116–120 จาก 120 รายการ* — the longest a sixty-person month can make it —
+is about 150px against the 240 the card has at 320px. Confined to the middle
+column it had about 144 and wrapped; across the whole band it does not, at any
+width the app is used at. `text-wrap: balance` stays for the day that stops
+being true: it splits a wrapped line down the middle rather than at its last
+space, which is what left รายการ alone on a line. Measured by putting that exact
+string into the live element at 320 and 360 — one line at both, and
+`scrollWidth - clientWidth` is 0. Nothing in the seed data reaches it: the live
+August is four people.
 
 **รวมทั้งหมด lost 8px with it** — `padding: 11px 15px` where a person's card
 takes 15 all round, so the row is 46px instead of "54". The horizontal 15 is not
@@ -2961,18 +2973,23 @@ one, because the spacer is what ends the page.
 
 **So the bar measures itself now.** A `ResizeObserver` on the `<nav>` publishes
 its height as `--nav-h` on the document element, and the spacer is
-`calc(var(--nav-h) + 12px)`; an observer and not a measurement on mount, because
+`calc(var(--nav-h) + 24px)`; an observer and not a measurement on mount, because
 the height changes with no re-render behind it — a rotation, a resize, a webfont
 arriving after first paint. The measured height already includes
 `env(safe-area-inset-bottom)`, because the bar pads past the home indicator
 itself, so the inset appears in the stylesheet only inside the `var()` fallback.
 That fallback is still the 88, and it is what draws for the frame before the
 observer runs and in print, where `.no-print` takes the bar away entirely. The
-12 on top is air, not clearance: it is what makes the end of a page look ended
-rather than cut off. Measured after, at 320 / 360 / 430 / 700: the spacer is
-**100 / 89 / 89 / 78** — the bar's own 88 / 77 / 77 / 66 — and the gap between
-the end of the content and the top of the bar is **12 at all four**, where it
-had been 0 / 11 / 11 / 22.
+24 on top is air, not clearance: `var(--nav-h)` alone is already the whole of
+"nothing is trapped under the bar", and this is the gap between the last thing
+on the page and the bar once the reader has scrolled as far as the page goes. It
+was "12" for a few hours and was asked to be more — at 12 the last card of
+วันเกิดของเดือนนี้ ends flush enough against the bar to read as cut off by it
+rather than as the end of the page. 24 is **two card-gaps**, the 12px this list
+already puts between two cards taken twice, rather than a number chosen by eye.
+Measured after, at 320 / 360 / 430 / 700: the spacer is **112 / 101 / 101 / 90**
+— the bar's own 88 / 77 / 77 / 66 — and the gap between the end of the content
+and the top of the bar is **24 at all four**, where it had been 0 / 11 / 11 / 22.
 
 **`with-fab` takes the larger of the two.** The FAB on หน้า OT ของฉัน floats
 92px up from the *viewport* and is 58 tall, and it knows nothing about how tall
@@ -3062,8 +3079,12 @@ and are what the 35px it gave back is measured against — everything from
 **รวมทั้งหมด** down moved up by that much, and the total's own 8px moved
 **วันเกิดของเดือนนี้** up by 43. Re-measured on the live four-person August at
 360px rather than on that clone, so the two sets of numbers are not each other's
-replacements: the pager row **73 → 38**, the total row **54 → 46**, the page
-**3739 → 3697**.
+replacements: the pager row **73 → 56** and the total row **54 → 46**, both
+measured on the elements themselves. The page's own scroll height is NOT
+quoted here: วันเกิดของเดือนนี้ loads after first paint, so two readings of it
+are only comparable if both waited long enough, and the pair taken that day did
+not obviously do so. The two rows above are what changed and they were measured
+directly.
 
 **The pager is pressable across its travel.** Walking the page past it in 40px
 steps, **14 of the 17** positions where it is on screen return the button itself
@@ -3078,7 +3099,7 @@ between a bar the reader scrolls past and one that travels with the control.
 2026-08-26 and scrolls away with the list now, so the only thing left that can
 cover the pager is the bottom nav on the way in — and the spacer above it grew
 from 74px to "88" the same day, and then stopped being a number at all: it is
-`calc(var(--nav-h) + 12px)`, and `--nav-h` is what the bar reports. See §"The
+`calc(var(--nav-h) + 24px)`, and `--nav-h` is what the bar reports. See §"The
 first card was never clipped".
 
 **ถัดไป** gave *หน้า 2 / 5* over *แสดง 6–10 จาก 24 รายการ*, moved the page from

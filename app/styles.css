@@ -5842,9 +5842,16 @@ table.mini tbody tr:hover { background: none; }
      before the observer runs is that, and it is also what print gets, where
      `.no-print` takes the bar away entirely.
 
-     The 12 on top is air, not clearance: it is what makes the end of a page
-     look ended rather than cut off at the bar. */
-  .mobile-nav-spacer { height: calc(var(--nav-h) + 12px); }
+     THE 24 ON TOP IS AIR, NOT CLEARANCE. `var(--nav-h)` alone is already the
+     whole of "nothing is trapped under the bar"; this is the gap between the
+     last thing on the page and the top of the bar once the reader has scrolled
+     as far as the page goes. It was 12 for a few hours on 2026-08-26 and was
+     asked to be more: at 12 the last card of วันเกิดของเดือนนี้ ends flush
+     enough against the bar to read as cut off by it rather than as the end of
+     the page. 24 is TWO CARD-GAPS — the 12px this list already puts between two
+     cards, twice — rather than a number chosen by eye, so it moves with the
+     rhythm of the thing above it if that ever changes. */
+  .mobile-nav-spacer { height: calc(var(--nav-h) + 24px); }
   /* And the FAB, on the one screen that has one: 92px up plus 58 of button,
      rounded up so the last row's chip clears the shadow as well as the circle.
      Sized here rather than guessed at, so moving the FAB moves this too.
@@ -5854,7 +5861,7 @@ table.mini tbody tr:hover { background: none; }
      it grew, so on a phone where the labels run to three lines the bar can be
      the taller of the two things to clear. Whichever it is, this clears it. */
   .mobile-nav-spacer.with-fab {
-    height: max(calc(var(--nav-h) + 12px), calc(158px + env(safe-area-inset-bottom)));
+    height: max(calc(var(--nav-h) + 24px), calc(158px + env(safe-area-inset-bottom)));
   }
 
   .mobile-nav {
@@ -7749,22 +7756,36 @@ table.mini tbody tr:hover { background: none; }
   }
   .hr-table tbody tr.pager-row:hover { background: none; }
 
-  /* ‹ · หน้า 2 / 12 / แสดง 6–10 จาก 57 รายการ · › — ONE BAND, 38px TALL.
+  /* ‹ · หน้า 2 / 12 · › over แสดง 6–10 จาก 57 รายการ — ONE BAND, 56px TALL.
 
-     IT WAS 73px AND TWO ROWS until 2026-08-26: "แสดง 6–10 จาก 57 รายการ" ran
-     the full width of the card on a line of its own, and under it two 106px
+     IT WAS 73px AND TWO FULL ROWS until 2026-08-26: "แสดง 6–10 จาก 57 รายการ"
+     ran the full width of the card on a line of its own, and under it two 106px
      buttons wearing `‹ ก่อนหน้า` and `ถัดไป ›` at a 44px target held the page
      number between them. Nothing in it was wrong; it was simply the tallest
      thing between the fifth card and รวมทั้งหมด, on the one screen where the
      ground under the list is already spoken for.
 
-     WHAT THE 35px CAME FROM, and what it did not come from. The two sentences
-     are both still here — see the note over `.pager-where` in HrView.jsx — and
-     so is every state the row could be in. What went is the SECOND ROW: the
-     range is now the quiet second line of the middle column, and the buttons
-     that used to sit under it are 38px squares beside it. The words went onto
-     `aria-label`, which is why the chevrons are not `aria-hidden` decoration on
-     a labelless button.
+     WHERE THE HEIGHT WENT, and what did not go with it. Both sentences are
+     still here and so is every state the row can be in. What went is the
+     BUTTONS' row: they are 38px squares on the page number's own line now
+     rather than a 44px row of their own under it, and the words went onto
+     `aria-label` — which is why the chevrons are not `aria-hidden` decoration
+     on a labelless button.
+
+     THE RANGE IS A ROW AGAIN, AND THAT COST 18 OF THE 35. It was the second
+     line of a middle COLUMN for a few hours the same day, which made the band
+     38px — and put the buttons 8.8px BELOW the line they read as being beside.
+     Grid centring is honest there and the eye is not: `align-items: center`
+     centres a 38px square on a 37px two-line block, so the square and the block
+     shared a centre line while the button and the words `หน้า 2 / 12` did not.
+     Measured, reported and rebuilt as two grid ROWS, with the buttons on the
+     page number's row and the range spanning underneath: the two now share a
+     centre line to the pixel, and the band is 56px rather than 38.
+
+     THE RANGE SPANS ALL THREE COLUMNS rather than sitting under the middle one.
+     Under the middle column it would have to wrap inside about 144px at 320px
+     and would take two lines on any long month; across the whole band it has
+     the card's full 240 and stays on one line everywhere the app is used.
 
      `auto minmax(0, auto) auto` UNDER `justify-content: center` rather than the
      `1fr auto 1fr` this was. `1fr` either side pinned the buttons to the ENDS
@@ -7775,8 +7796,13 @@ table.mini tbody tr:hover { background: none; }
      of them are now the same 38px square. */
   .hr-table tbody tr.pager-row .pager-controls {
     display: grid; grid-template-columns: auto minmax(0, auto) auto;
-    justify-content: center; align-items: center; gap: 10px;
+    grid-template-areas:
+      'prev  at    next'
+      'range range range';
+    justify-content: center; align-items: center; gap: 1px 10px;
   }
+  .hr-table tbody tr.pager-row .pager-prev { grid-area: prev; }
+  .hr-table tbody tr.pager-row .pager-next { grid-area: next; }
   /* 38 AND NOT 44, WHICH IS A REAL TRADE AND NOT A ROUNDING.
      44px is the target every other button on this card keeps, and these two
      give up 6px of it. What buys that back: a chevron has no label to be missed
@@ -7789,15 +7815,12 @@ table.mini tbody tr:hover { background: none; }
     display: flex; align-items: center; justify-content: center;
     font: 400 20px/1 var(--sans);
   }
-  /* The middle column. `min-width: 0` so a long range line wraps inside the
-     column instead of pushing the buttons off the card — at 320px "แสดง
-     116–120 จาก 120 รายการ" is wider than the space between two chevrons, and
-     wrapping to a second quiet line is the graceful end of that, not overflow. */
-  .hr-table tbody tr.pager-row .pager-where {
-    min-width: 0; text-align: center;
-  }
+  /* The middle cell of the top row — the one the two buttons are aligned to.
+     `min-width: 0` so a page number that grows (หน้า 128 / 128) narrows itself
+     rather than pushing a chevron off the card. */
   .hr-table tbody tr.pager-row .pager-at {
-    display: block; white-space: nowrap;
+    grid-area: at; display: block; min-width: 0; white-space: nowrap;
+    text-align: center;
     font: 400 12.5px/1.35 var(--sans); color: var(--muted);
   }
   .hr-table tbody tr.pager-row .pager-at strong {
@@ -7808,15 +7831,15 @@ table.mini tbody tr:hover { background: none; }
      takes over the figure it heads. It was `--muted` at 12.5px while it had a
      row to itself.
 
-     `text-wrap: balance` FOR THE LONGEST MONTH THIS APP WILL SEE. The line the
-     seed database draws — "แสดง 1–4 จาก 4 รายการ" — fits on one line at every
-     width. A sixty-person month on the last page does not: at 320px "แสดง
-     116–120 จาก 120 รายการ" wraps, and it wraps at its last space, which leaves
-     รายการ alone on a line of its own under a full one. Balanced it splits down
-     the middle instead. Measured on 2026-08-26 by putting that exact string
-     into the live element at 320px; nothing in the seed data reaches it. */
+     `text-wrap: balance` FOR THE LONGEST MONTH THIS APP WILL SEE. Spanning the
+     whole band this line does not wrap at any width the app is used at — "แสดง
+     116–120 จาก 120 รายการ", the longest a sixty-person month can make it, is
+     about 150px against the 240 the card has at 320px. `balance` is here for
+     the day that stops being true: it splits a wrapped line down the middle
+     rather than at its last space, which is what left รายการ alone on a line
+     when this text was confined to the middle column and had 144px. */
   .hr-table tbody tr.pager-row .pager-range {
-    display: block; margin-top: 1px; text-wrap: balance;
+    grid-area: range; display: block; text-align: center; text-wrap: balance;
     font: 400 11.5px/1.35 var(--sans); color: var(--muted-2);
   }
   .hr-table tbody tr.pager-row .pager-range strong {
