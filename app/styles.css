@@ -22,6 +22,8 @@
 
   --bg: #EEF1EE;
   --card: #ffffff;
+  /** The fill of something floating ABOVE a card — see --card-lift below. */
+  --card-lift: #ffffff;
   --line: #E2E7E3;
   --line-soft: #EEF1EE;
   --line-softer: #F2F5F3;
@@ -389,6 +391,33 @@
    */
   --bg: light-dark(#EEF1EE, #101513);
   --card: light-dark(#ffffff, #1F2723);
+  /*
+   * THE SAME COLOUR AS --card ON THE LIGHT THEME, AND ONE STEP UP ON THE DARK,
+   * and that asymmetry is the whole reason the token exists rather than being
+   * an oversight in it.
+   *
+   * A light theme separates two stacked surfaces with a SHADOW: the panel stays
+   * white and the page darkens under it, which is what light falling on paper
+   * does. A dark theme cannot — a shadow is black on a page that is already
+   * nearly black, and `.dept-menu`'s note above records what happens when one
+   * is asked to try: it "lifted the panel but put a dark band across the field
+   * underneath it". What a dark theme separates with is LIGHT: the nearer
+   * surface is the paler one. So `--card` over `--bg` is the first step and
+   * this is the second, for the things that float over a card rather than over
+   * the page — today the three `.pick-menu` panels, two of which open inside a
+   * card and had been drawn in that card's own fill.
+   *
+   * #273029 is `--surface-dark-2`'s dark value and is deliberately the same
+   * number: that token is the hover step above `--surface-dark`, which is the
+   * same distance for the same reason one layer down. Nine points off neutral,
+   * inside the dozen the olive test allows.
+   *
+   * ON THE LIGHT SIDE IT MUST NOT BE A GREY. A panel a shade darker than the
+   * white card under it reads as disabled, not as nearer — the depth would be
+   * pointing the wrong way. White with a shadow is correct there and is what
+   * every floating thing in this app already is.
+   */
+  --card-lift: light-dark(#ffffff, #273029);
   --line: light-dark(#E2E7E3, #303934);
   --line-soft: light-dark(#EEF1EE, #29312C);
   --line-softer: light-dark(#F2F5F3, #232B27);
@@ -2437,13 +2466,56 @@ td > .approver-line { margin-top: 5px; }
    sticky tab strip (10). Scroll far enough and the input slides under those
    bars; a menu that drew over them would be a list hanging off the top of the
    page, attached to nothing visible. */
+/* ── AND THE RING IS WHAT SAYS "ABOVE" ON THE DARK THEME ─────────────────────
+
+   `--line-lift`, not `--line`, since 2026-08-27. Asked for as making this read
+   as a floating layer that does not swallow the controls under it, and the
+   report was right about a real thing: this panel is `--card`, and on
+   ตรวจสอบรายเดือน it opens INSIDE a `--card` box. Two identical fills, so the
+   panel had nothing separating it from its own background but a `--line`
+   hairline and a shadow — and on the dark theme that shadow is black at a third
+   opacity over a `--bg` page that is already nearly black, which is not a
+   colour anybody can see. What HR was looking at was the controls card
+   apparently growing downwards and eating the export buttons, rather than a
+   list opening over them.
+
+   THE SHADOW IS NOT THE ANSWER HERE AND THIS FILE ALREADY PAID TO FIND OUT.
+   `.dept-menu` above ran `0 10px 25px -5px var(--shadow-1)` for a round —
+   `--shadow-1` is black at half opacity on the dark side — and it "lifted the
+   panel but put a dark band across the field underneath it". More blackness on
+   a black page is weather, not depth. What separates two surfaces of the same
+   colour is the EDGE between them, so the geometry of the shadow is left alone
+   and the border goes up one step. `--line-lift` is the token this file already
+   keeps for exactly that — a clear step off `--line` on both themes, in the
+   direction the eye reads as nearer. Its two values are in the token block at
+   the top and are deliberately NOT quoted here: a hex in a rule-section comment
+   is what test/theme.test.js greps for, and it caught this paragraph doing it.
+
+   ALL THREE MENUS, NOT JUST ค้นหาพนักงาน's. `.dept-menu` overrides the shadow
+   below and keeps this ring: it opens inside a dialog, over `.modal-body`'s
+   own `--card`, which is the same two-identical-fills problem one screen over. */
 .pick-menu {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5;
   margin: 0; padding: 4px; list-style: none;
   max-height: 264px; overflow-y: auto; overscroll-behavior: contain;
-  background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--radius-sm);
-  box-shadow: 0 14px 34px var(--shadow-soft);
+  /* `--card-lift`, not `--card` — the pair of them is the depth, and the token
+     carries the reason. On the light theme this is the same white it always
+     was and the shadow below does the separating; on the dark theme it is a
+     step paler than the card this panel opens over, which is the only thing
+     that separates two surfaces on a page that cannot cast a visible shadow. */
+  background: var(--card-lift);
+  border: 1px solid var(--line-lift); border-radius: var(--radius-sm);
+  /* TWO SHADOWS, AND THE FIRST ONE IS THE EDGE. `0 14px 34px` alone is the
+     lift — it is spread over 34px, which is the right amount of nothing under a
+     panel floating over a page and not enough to mark where the panel STOPS.
+     What a reader needs at the bottom edge is the half-covered button under it
+     to look covered, and that takes a shadow tight enough to be a line:
+     `0 2px 8px -2px`, pulled in 2 so it does not leak out at the sides of a
+     panel that is the full width of its field.
+     BOTH IN `--shadow-soft`, which is the tone `.dept-menu`'s note settled on
+     after `--shadow-1` "lifted the panel but put a dark band across the field
+     underneath it". Tighter geometry, same tone — depth rather than weather. */
+  box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
 }
 /* 40px rows and no smaller. A row here is "show me this person's history",
    which is a read — but the rows are 4px apart in a list of two hundred, and a
@@ -2524,9 +2596,27 @@ td > .approver-line { margin-top: 5px; }
    is; the wash is what has to go. */
 .pick-menu.find-menu li[data-active='1'] .hit { background: none; }
 /* Two-line rows fill a 264px panel faster than one-line rows do, and on a phone
-   that panel is most of the screen. Same shape as `.dept-menu`'s cap. */
+   that panel is most of the screen. Same shape as `.dept-menu`'s cap.
+
+   240 AND 40vh SINCE 2026-08-27, and it read `min(264px, 46vh)` before. Asked
+   for together with the ring above — "จำกัด height … เพื่อไม่ให้บดบัง Action
+   Control ด้านล่างมิดเกินไป". At 48px a row, 240 is five rows with the fifth
+   cut, which is what tells a reader there is more without a scrollbar having to
+   say it; 264 was five and a half and bought nothing but height.
+
+   THE vh IS THE HALF THAT MATTERS, AND IT IS FOR THE KEYBOARD. This box is
+   typed into, so the panel is at its tallest exactly when the viewport is at
+   its shortest: on a 360×780 phone with the keyboard up the visible page is
+   nearer 400px, where 46vh was 184 and 40vh is 160. The shorter of the two
+   always wins, which is the same shape `.dept-menu` uses one block up.
+
+   WHAT THIS DOES NOT DO, said plainly: it does not stop the panel covering the
+   export buttons. Nothing can — the list opens under the box it belongs to and
+   the buttons are what is under that box. What the cap changes is how much of
+   the page goes at once, and the ring above is what makes the covering read as
+   a panel over the row rather than as the row having gone missing. */
 @media (max-width: 860px) {
-  .pick-menu.find-menu { max-height: min(264px, 46vh); }
+  .pick-menu.find-menu { max-height: min(240px, 40vh); }
 }
 
 /* Not an option and not selectable: no pointer, no highlight, no role. */
@@ -7938,6 +8028,29 @@ table.mini tbody tr:hover { background: none; }
      way. */
   .month-card > .box { padding-left: 0; padding-right: 0; border: none; }
 
+  /* ── ไม่พบข้อมูลพนักงานที่ค้นหา — 56px, BECAUSE IT LOST ITS FRAME ──────────
+
+     `.empty` is 40px 20px everywhere in the app, and that is right everywhere
+     else: it is drawn INSIDE something — a card, a fold, a dialog — and 40px of
+     air inside a frame reads as centred because the frame says where the middle
+     is. On this screen since the card came off there is no frame. The message
+     and its ล้างการค้นหา button sit on the page between งวด…ยังเปิดอยู่ and
+     วันเกิดของเดือนนี้, and 40 is the padding of a box that is not there.
+
+     Asked for on 2026-08-27 as "Padding Top-Bottom เพิ่มขึ้นเล็กน้อย เพื่อให้
+     อยู่ตรงกลางพื้นที่อย่างสวยงาม", and 56 is what makes the gap either side
+     read as one space rather than as two margins: the card above contributes 18
+     and what follows contributes 12, so the visible air comes to 74 above and
+     68 below. Not equal, and it cannot be made equal from here — the two
+     neighbours are different rules and one of them (`.month-notes`) is not
+     always drawn. 6px on 70 is under the threshold at which an eye reads a
+     block as off-centre; the rest is somebody else's margin.
+
+     THE SIDES STAY AT 20. This is a sentence with a quoted search term in it
+     and it has to wrap somewhere sensible on a 336px card; the vertical is what
+     was asked about and the vertical is what moved. */
+  .month-card .empty { padding-top: 56px; padding-bottom: 56px; }
+
   /* ONE DECLARATION, AND IT IS THE GAP OVER THE ROW — 8, which is what
      `.export-row` takes at this width and therefore what one row of this card
      is from the next. It read `margin-bottom: 10px` for the few hours the row
@@ -8009,6 +8122,47 @@ table.mini tbody tr:hover { background: none; }
      a `--card` cover on a `--bg` page is a white smear down both edges of the
      list. `background` is a shorthand, so one declaration answers both. */
   .table-wrap.card-list { background: var(--bg); }
+
+  /* ══ AND ON ตรวจสอบรายเดือน IT PAINTS NOTHING AT ALL ═════════════════════
+
+     Asked for a third time on 2026-08-27, and this time it is the right target:
+     "Remove Outer Card Background ที่ล้อมรอบกลุ่มรายชื่อพนักงานและส่วน
+     Pagination ออกทั้งหมด ให้การ์ดพนักงานวางบน Background หลักโดยตรงแบบ 100%".
+
+     THE FIRST TWO ROUNDS TOOK THE CARD OFF AND THIS BOX WAS STILL THERE. Walked
+     the ancestors of an employee card on the built app, `tr` up to `body`, and
+     asked each one whether it paints: `tbody`, `table.hr-table`,
+     `div.card.month-card`, `div.page`, `main` and `div.body` all answer no —
+     and `div.table-wrap.card-list` answers YES, with `background: var(--bg)`
+     and `border-radius: 14px`. It is a filled, rounded box around exactly the
+     group that was named: the five cards, the pager and รวมทั้งหมด, and nothing
+     else on the screen. It has been invisible because its fill is the page's
+     own colour, which is the one thing that made it survive two rounds of
+     looking.
+
+     `background: none` AND NOT DELETING THE RULE ABOVE. The shorthand there is
+     doing two jobs — see its own note — and the second is clearing the four
+     scroll-hint gradients `.table-wrap` paints at this width, two `--card`
+     covers and two shadows that promise more table to the right. There is no
+     more table, and a `--card` smear down both edges of a card list is what the
+     `--bg` was covering. `none` clears image and colour in one word, so this
+     element goes back to painting nothing while the covers stay covered.
+
+     THE RADIUS GOES WITH IT, and it is the more honest half. `overflow` is
+     `visible` here, so 14px of corner on a box that paints nothing has never
+     drawn a pixel — but it is a card's radius on a card's fill, and the two
+     together are how a container that is supposed to be gone stays in the file
+     waiting for the day the page ground changes colour underneath it.
+
+     SCOPED TO `.month-card`, WHICH IS THE WHOLE POINT. วันเกิดรอตรวจ's list
+     wears the same two classes and sits inside `<div className="card flush">`
+     — a real card — where the `--bg` IS the ground and the 12px between two
+     cards is 12px of the card's own colour without it. Same markup, two
+     grounds; the rule above still answers the queue and this one answers the
+     screen that has no card left. The birthday list further down this page is
+     inside `.month-card` too and is on the page ground for the same reason, so
+     it is deliberately in this selector. */
+  .month-card .table-wrap.card-list { background: none; border-radius: 0; }
 
   /* ══ THE LIST USED TO BE PULLED OUT THROUGH THE CARD, AND THERE IS NO CARD ═
 

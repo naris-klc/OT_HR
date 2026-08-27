@@ -696,7 +696,47 @@ test('the popover floats over the content below it and scrolls', () => {
   // because it sits on an ordinary page under the app bar.
   assert.match(css, /\.pick-menu \{\s*\n\s*position: absolute; top: calc\(100% \+ 4px\); left: 0; right: 0; z-index: 5;/);
   assert.match(css, /overflow-y: auto; overscroll-behavior: contain;/);
-  assert.match(css, /box-shadow: 0 14px 34px var\(--shadow-soft\);/);
+  // TWO SHADOWS SINCE 2026-08-27, and the lift is the second of them. It read
+  // `box-shadow: 0 14px 34px var(--shadow-soft);` alone until the ค้นหา panel on
+  // ตรวจสอบรายเดือน was reported as swallowing the export buttons under it: 34px
+  // of blur says "floating" and says nothing about where the panel STOPS, so the
+  // half-covered button at its bottom edge did not look covered. The tight one
+  // is pulled in 2px so it cannot leak out at the sides of a panel that is the
+  // full width of its field.
+  assert.match(css, /box-shadow: 0 2px 8px -2px var\(--shadow-soft\), 0 14px 34px var\(--shadow-soft\);/);
+  // AND THE TONE IS STILL `--shadow-soft` ON BOTH. `.dept-menu` spent a round on
+  // `--shadow-1` — black at half opacity on the dark side — and it "lifted the
+  // panel but put a dark band across the field underneath it". Tighter geometry,
+  // same tone; more blackness on a dark page is weather, not depth.
+  //
+  // SLICED TO THIS RULE, AND STRIPPED OF COMMENTS BEFORE IT IS READ. Two ways
+  // to get this negative assertion wrong, and this test made both. A lazy
+  // `[\s\S]*?` from the selector runs on past the closing brace until it finds
+  // a match SOMEWHERE — `.modal` is `0 26px 60px var(--shadow-1)` and is
+  // correct — so it reported the dialog's shadow as this panel's. And the rule
+  // now carries a comment that NAMES `--shadow-1` to say it was rejected, so
+  // the slice caught its own explanation. That is the seventh time in this
+  // project a test has matched the prose written to justify it.
+  const shared = css.slice(css.indexOf('.pick-menu {'));
+  const body = shared.slice(0, shared.indexOf('}')).replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/--shadow-1/.test(body),
+    'the shared panel went back to --shadow-1, which was measured and rejected');
+});
+
+test('the panel is a surface of its own, not the card it opens over', () => {
+  // WHAT A DARK THEME SEPARATES WITH IS LIGHT. This panel opens inside a `.card`
+  // on two screens, and while it was `--card` itself the two fills were the same
+  // colour and no shadow on a near-black page could be seen between them — so it
+  // read as the card growing downwards rather than as a list opening over it.
+  const css = styles();
+  assert.match(css, /\.pick-menu \{[\s\S]*?background: var\(--card-lift\);/);
+  assert.match(css, /\.pick-menu \{[\s\S]*?border: 1px solid var\(--line-lift\);/);
+  // The token is the pair, and the asymmetry is the point: the same white on the
+  // light theme, where a shadow does the separating and a greyer panel would
+  // read as disabled rather than as nearer; one step UP on the dark, where a
+  // shadow cannot be seen at all.
+  assert.match(css, /--card-lift: light-dark\(#ffffff, #273029\);/);
+  assert.match(css, /--card-lift: #ffffff;/, 'the plain light fallback is gone');
 });
 
 test('inside the dialog it is lifted, spaced and shadowed like a real layer', () => {

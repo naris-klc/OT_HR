@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1717 tests
+and the engine know nothing about Next.js, so the whole suite — **1718 tests
 across 103 files**, measured 2026-08-27 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1715" and "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1717", "1715" and "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3516,6 +3516,112 @@ still a flex column so they add), `test/monthSearch.test.js` (the 18) and
 one, and the element in the selector). Verified on a built app on a scratch
 `distDir` at :3001 with :3000 left serving, per AGENTS.md.
 
+### กล่องแนะนำเป็นชั้นลอยจริง และกล่องสุดท้ายรอบรายชื่อหายไป — 2026-08-27
+
+**Three details, and the middle one is the reason to write this section down: a
+container that had survived two rounds of "remove the card" because its fill was
+the page's own colour.**
+
+**1 — the suggestion panel is a surface of its own.** Asked for as making the
+autocomplete read as a floating layer that does not swallow the controls under
+it. The report was right about a real thing, and the cause is one line:
+`.pick-menu` was `background: var(--card)` and on this screen it opens **inside
+a `--card` box**. Two identical fills, separated by a `--line` hairline and a
+shadow that on the dark theme is black at a third opacity over a page that is
+already nearly black. What HR was looking at was the controls card apparently
+growing downwards and eating the export buttons.
+
+| | was | is |
+|---|---|---|
+| fill | `--card` | **`--card-lift`** |
+| edge | `--line` | **`--line-lift`** |
+| shadow | `0 14px 34px` | **`0 2px 8px -2px`, then `0 14px 34px`** |
+| phone cap | `min(264px, 46vh)` | **`min(240px, 40vh)`** |
+
+**`--card-lift` is the same white as `--card` on the light theme and one step
+UP on the dark, and that asymmetry is the token's whole content.** A light theme
+separates two stacked surfaces with a shadow — the panel stays white and the
+page darkens under it, which is what light falling on paper does. A dark theme
+cannot: a shadow is black on a page that is already black, and this file already
+paid to learn it. `.dept-menu` ran `--shadow-1` for a round and the note over it
+records the result — it *"lifted the panel but put a dark band across the field
+underneath it"*. What a dark theme separates with is **light**: the nearer
+surface is the paler one. `--card` over `--bg` is the first step; this is the
+second, for things that float over a card rather than over the page. On the
+light side it must **not** be a grey — a panel a shade darker than the white card
+under it reads as disabled, and the depth would point the wrong way.
+
+**The tight shadow is the edge, not the lift.** 34px of blur says "floating" and
+says nothing about where the panel *stops*, which is what a half-covered button
+at its bottom edge needs. `0 2px 8px -2px`, pulled in 2 so it cannot leak out at
+the sides of a panel that is the full width of its field — and still
+`--shadow-soft` on both, because the tone was the half that was already right.
+
+**What the cap does not do, said plainly:** it does not stop the panel covering
+the export buttons. Nothing can — the list opens under the box it belongs to and
+the buttons are what is under that box. What it changes is how much goes at
+once, and the `vh` half is for the keyboard: this box is typed into, so the panel
+is tallest exactly when the viewport is shortest. On a 360×780 phone with the
+keyboard up the visible page is nearer 400px, where 46vh was 184 and 40vh is 160.
+
+**2 — the last container around the list is gone, and it was `.table-wrap`.**
+Asked for a third time — *"Remove Outer Card Background ที่ล้อมรอบกลุ่มรายชื่อ
+พนักงานและส่วน Pagination ออกทั้งหมด … แบบ 100%"* — and this time it was found by
+walking the ancestors of an employee card on the built app, `tr` up to `body`,
+asking each one whether it paints anything:
+
+```
+DRAWS  tr                      the employee card itself
+       tbody                   —
+       table.hr-table          —
+DRAWS  div.table-wrap.card-list  background var(--bg), border-radius 14px   ← this
+       div.card.month-card     —   (the card taken off earlier that day)
+       div.page                —
+       main                    —
+       div.body                —
+DRAWS  div.shell               the page
+```
+
+**A filled, rounded box around exactly the group that was named** — the five
+cards, the pager and รวมทั้งหมด, and nothing else on the screen. It has been
+invisible for one reason: its fill is the page's own colour. That is also why it
+survived two rounds of looking at the screen, and why it took a measurement to
+find. Same class of thing as the strip and the negative margins before it —
+chrome that existed to undo a card, still in the file after the card.
+
+**`background: none`, not deleting the rule it overrides.** That shorthand is
+doing two jobs: `.table-wrap` paints four scroll-hint gradients at this width,
+two `--card` covers and two shadows that promise more table to the right, and the
+`--bg` was covering them. `none` clears image and colour in one word. **And the
+14px radius goes with it** — `overflow` is `visible` here so it has never drawn a
+pixel, but a card's radius on a card's fill is how a container that is supposed
+to be gone waits in the file for the day the page ground changes colour.
+
+**Scoped to `.month-card`, which is the point.** วันเกิดรอตรวจ's list wears the
+same two classes and sits inside a real `<div className="card flush">`, where the
+`--bg` *is* the ground and without it the 12px between two cards is 12px of the
+card's own colour. Same markup, two grounds. After this the chain from an
+employee card to the page paints nothing at all — re-walked on the built app, and
+that is the assertion, not the appearance.
+
+**3 — ไม่พบข้อมูลพนักงานที่ค้นหา takes 56px top and bottom**, up from the app-wide
+40. `.empty` is 40px everywhere else and is right everywhere else, because it is
+drawn *inside* something and a frame is what says where the middle is. On this
+screen there is no frame any more: the message and its ล้างการค้นหา button sit on
+the page between งวด…ยังเปิดอยู่ and วันเกิดของเดือนนี้, and 40 is the padding of
+a box that is not there. The card above contributes 18 and what follows
+contributes 12, so the visible air is **74 above and 68 below** — not equal, and
+not makeable equal from one rule when one of the two neighbours is not always
+drawn. The sides stay at 20: the line carries a quoted search term and has to
+wrap somewhere sensible in 336px.
+
+Pinned in `test/approverMultiDepartment.test.js`, which owns `.pick-menu` — the
+two shadows, the two tokens, and that the panel has not gone back to
+`--shadow-1`. That last assertion was written wrong twice and both ways are
+recorded beside it: an unanchored lazy match reported `.modal`'s shadow as this
+panel's, and once anchored it caught **the comment written to justify it**, which
+is the seventh time in this project a test has matched its own prose.
+
 ### The first card was never clipped — the ค้นหา bar was on it
 
 Reported on 2026-08-26 as "the employee name on the top card has disappeared",
@@ -4244,7 +4350,8 @@ ends at `--card`. One extra `@keyframes`, and it is the only thing that differs.
 **Walked on the built app, 2026-08-26**, against the live month at 360px and
 1280px, and against a throwaway clone of it inflated to fourteen people so the
 pager had somewhere to go. At 360px the panel is **304px wide, 4px under the
-box**, `max-height: 264px`, `overflow-y: auto`, `z-index: 5`, `aria-expanded`
+box**, max-height "264px" on the day of the walk and `min(240px, 40vh)` since
+2026-08-27, `overflow-y: auto`, `z-index: 5`, `aria-expanded`
 true and `aria-activedescendant` on the first row; the marks land on whole Thai
 clusters (`สุ ส สุ สิ` for "ส"). Typing `สม` gave **11 suggestions of 14 people**;
 picking the last opened *รายการ OT — สมหมาย ก้าวหน้า*, and **กลับไปสรุปรายเดือน**
@@ -4374,8 +4481,18 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1717/1717 pass in about 2 s**, measured 2026-08-27 across 103
-  files. The two newest are in `test/birthdayCardUi.test.js` for the birthday
+- `npm test` — **1718/1718 pass in about 2 s**, measured 2026-08-27 across 103
+  files. The newest is in `test/approverMultiDepartment.test.js`, which owns
+  `.pick-menu`, for the suggestion panel becoming a surface of its own rather
+  than the card it opens over: the two tokens (`--card-lift` and `--line-lift`)
+  and both halves of the light-dark pair, since the asymmetry — the same white
+  on the light theme, one step up on the dark — is the whole content of that
+  token. The case beside it gained the two-part shadow and a negative assertion
+  that the panel has not gone back to `--shadow-1`, which was measured and
+  rejected on `.dept-menu` a round earlier; that assertion was written wrong
+  twice and both ways are recorded beside it, the second being that it caught
+  the comment written to justify it. It read
+  "1717/1717" before it. The two before that are in `test/birthdayCardUi.test.js` for the birthday
   card being compacted on ตรวจสอบรายเดือน: that บริษัท and ชั่วโมง share a line
   while วันเกิด may not — pinned together with the `white-space: nowrap` in
   HrView that is the REASON it may not, so removing the nowrap fails the test
