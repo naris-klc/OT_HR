@@ -359,10 +359,28 @@ test('the pager sits under the fifth card, above the total, and disables its end
     hrView.indexOf('<tr className="total-row">') < hrView.indexOf('<BirthdayMonth'),
     'วันเกิดของเดือนนี้ came up above the month’s own total',
   );
-  // Not a card, and one line that has to stay one line.
+  // Not a card, and one band that has to stay one band.
   assert.match(phone, /\.hr-table tbody tr\.pager-row \{\s*display: block; padding: 0; border: 0; background: none;/);
-  assert.match(phone, /\.pager-controls \{\s*display: grid; grid-template-columns: 1fr auto 1fr;/);
-  assert.match(phone, /\.pager-controls \.btn \{\s*width: 100%; min-height: 44px;/);
+  // CENTRED, NOT SPREAD. It was `1fr auto 1fr` until 2026-08-26, which pinned
+  // the two buttons to the ENDS of the card — the layout of a wide table's
+  // footer. The three tracks take the width they need and the group is centred,
+  // so the buttons stay the same distance from the page number whatever it
+  // comes to; `minmax(0, auto)` is what lets the middle column wrap the range
+  // line inside the card instead of pushing a button off it.
+  assert.match(phone, /\.pager-controls \{\s*display: grid; grid-template-columns: auto minmax\(0, auto\) auto;/);
+  assert.match(phone, /justify-content: center; align-items: center; gap: 10px;/);
+  // Both ends are the SAME SQUARE, which is what makes centring symmetrical.
+  assert.match(phone, /\.pager-controls \.btn\.pager-step \{\s*width: 38px; min-width: 38px; height: 38px; padding: 0;/);
+  // The words are on the buttons, not in them — see the note in HrView.jsx.
+  // A chevron with no accessible name is a button a screen reader cannot use.
+  for (const label of ['ก่อนหน้า', 'ถัดไป']) {
+    assert.match(row, new RegExp(`aria-label="${label}"`), `the pager's ${label} lost its name`);
+  }
+  assert.ok(!/pager-step[^>]*aria-hidden/.test(row), 'the chevron is decoration on a nameless button');
+  // Both sentences are still said, stacked in the middle column rather than
+  // taking a row each — 38px where the two rows came to 73.
+  assert.match(row, /<div className="pager-where">/);
+  assert.match(phone, /\.pager-range \{\s*display: block; margin-top: 1px; text-wrap: balance;/);
   // The disabled ends wear what every other disabled button in this app wears.
   assert.ok(!/pager-controls \.btn:disabled/.test(phone), 'the pager opted out of the app’s disabled treatment');
 

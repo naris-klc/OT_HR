@@ -966,11 +966,15 @@ export default function HrView({
                       total is `static` now and the reason it stays here is the
                       plainer one.
 
-                      THE RANGE IS ITS OWN LINE. "หน้า 2 / 12" says where in the
+                      BOTH SENTENCES ARE SAID. "หน้า 2 / 12" says where in the
                       list somebody is and nothing about how long the list is;
-                      "แสดง 6–10 จาก 57 รายการ" says both. `shown.length` and not
-                      `data.employees.length`: while the search box is narrowing,
-                      the pages are over the search's results.
+                      "แสดง 6–10 จาก 57 รายการ" says both. It read "THE RANGE IS
+                      ITS OWN LINE" until 2026-08-26, when the range stopped
+                      being a row of its own and became the second line of the
+                      pager's middle column — the two sentences are unchanged,
+                      what went is the 35px the second row cost. `shown.length`
+                      and not `data.employees.length`: while the search box is
+                      narrowing, the pages are over the search's results.
 
                       `aria-live="polite"` because pressing ถัดไป changes nothing
                       a screen reader would otherwise announce — focus stays on a
@@ -993,38 +997,64 @@ export default function HrView({
                         the phone block, so it draws. */}
                     <td className="pager-col" colSpan={11}>
                       <div className="pager-say" aria-live="polite">
-                        <div className="pager-range">
-                          แสดง <strong>{from + 1}–{Math.min(to, shown.length)}</strong> จาก{' '}
-                          <strong>{shown.length}</strong> รายการ
-                        </div>
                         <div className="pager-controls">
                           {/* `disabled` rather than hidden. A control that
                               disappears at the ends moves the two beside it —
                               on page 1 ถัดไป would sit where ก่อนหน้า was, and
                               the second press of a thumb already travelling
-                              lands on the button that went back. */}
+                              lands on the button that went back.
+
+                              THE LABEL IS A CHEVRON AND THE WORD IS ON IT.
+                              `aria-label` carries ก่อนหน้า and ถัดไป, so nothing
+                              was taken from a screen reader, and `title` puts
+                              the word back under a desktop pointer. Asked for
+                              on 2026-08-26: the two worded buttons were 106px
+                              slabs either side of the page number and the row
+                              they made was the tallest thing between the fifth
+                              card and รวมทั้งหมด. A chevron is 38px square. */}
                           <button
                             type="button"
-                            className="btn ghost sm pager-prev"
+                            className="btn ghost sm pager-step pager-prev"
                             onClick={() => goPage(current - 1)}
                             disabled={current <= 1}
+                            aria-label="ก่อนหน้า"
+                            title="ก่อนหน้า"
                           >
-                            ‹ ก่อนหน้า
+                            ‹
                           </button>
-                          {/* Not `aria-hidden` even though the live region
-                              announces it: it is the only thing on screen that
-                              says which page this is, and somebody reading the
-                              page rather than listening to it needs it there. */}
-                          <span className="pager-at">
-                            หน้า <strong>{current}</strong> / <strong>{pageCount}</strong>
-                          </span>
+                          {/* BOTH SENTENCES SIT IN THE MIDDLE COLUMN, stacked.
+                              They used to be two rows of the pager — the range
+                              across the full width, the page number between the
+                              buttons — and the two of them plus the gap came to
+                              73px. Side by side on one line they would want
+                              about 250px of the 240px this card has at 320px,
+                              so they are stacked instead: 38px, the height of
+                              the two buttons beside them, and neither line was
+                              dropped to get there.
+
+                              Not `aria-hidden` even though the live region
+                              announces them: they are the only thing on screen
+                              that says which page this is and how long the list
+                              is, and somebody reading the page rather than
+                              listening to it needs them there. */}
+                          <div className="pager-where">
+                            <span className="pager-at">
+                              หน้า <strong>{current}</strong> / <strong>{pageCount}</strong>
+                            </span>
+                            <span className="pager-range">
+                              แสดง <strong>{from + 1}–{Math.min(to, shown.length)}</strong> จาก{' '}
+                              <strong>{shown.length}</strong> รายการ
+                            </span>
+                          </div>
                           <button
                             type="button"
-                            className="btn ghost sm pager-next"
+                            className="btn ghost sm pager-step pager-next"
                             onClick={() => goPage(current + 1)}
                             disabled={current >= pageCount}
+                            aria-label="ถัดไป"
+                            title="ถัดไป"
                           >
-                            ถัดไป ›
+                            ›
                           </button>
                         </div>
                       </div>

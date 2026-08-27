@@ -397,6 +397,46 @@ function Shell({ session, onLogout }) {
   // Bumped by the mobile FAB; EmployeeView opens its form when it changes.
   const [formSignal, setFormSignal] = useState(0);
 
+  /**
+   * THE SPACER'S HEIGHT IS THE BAR'S OWN, MEASURED.
+   *
+   * `.mobile-nav-spacer` is what keeps the end of every screen out from under
+   * the fixed bottom bar, and its height was a number written in the
+   * stylesheet: 88px, the tallest the bar gets. The bar's height is its
+   * LABELS' — six Thai words that wrap to three lines at 320px, two at 360 and
+   * one above 600 — and 88 was the three-line case, chosen on 2026-08-26
+   * because one number for the tallest case beat a breakpoint pinned to where
+   * six words happen to rewrap.
+   *
+   * WHAT THAT LEFT, measured the same day at the foot of ตรวจสอบรายเดือน: 11px
+   * of air at 360px and EXACTLY NONE at 320 — the last pixel of the page and
+   * the first pixel of the bar were the same one. Nothing was hidden, and
+   * anything that made the labels one line taller — a renamed tab, a larger
+   * system font, a device this was not measured on — would have hidden it.
+   *
+   * So the bar reports its own height into `--nav-h` and the stylesheet asks
+   * for that plus 12. A ResizeObserver rather than a measurement on mount,
+   * because the height changes with no re-render behind it: a rotation, a
+   * resize, a webfont arriving after first paint. The 88 stays in the
+   * stylesheet as the `var()` fallback — it is what draws before this runs.
+   */
+  const navRef = useRef(null);
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return undefined;
+    const publish = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--nav-h', `${h}px`);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty('--nav-h');
+    };
+  }, []);
+
   async function refreshCounts() {
     try { setCounts(await api.get('/entries/queue-summary')); } catch { /* not fatal */ }
   }
@@ -897,10 +937,13 @@ function Shell({ session, onLogout }) {
         {/* The spacer clears whatever is pinned to the bottom of THIS screen.
             That is the nav bar everywhere, and on หน้า OT ของฉัน the FAB as
             well — which floats 92px up and is 58 tall, so a spacer sized for
-            the nav alone left the last row's status chip underneath it. */}
+            the nav alone left the last row's status chip underneath it.
+
+            How tall it is for the BAR is no longer written down anywhere: the
+            bar measures itself into `--nav-h` — see the observer above. */}
         <div className={`mobile-nav-spacer no-print${showFab ? ' with-fab' : ''}`} />
 
-        <nav className="mobile-nav no-print">
+        <nav className="mobile-nav no-print" ref={navRef}>
           {tabs.map((t) => (
             <button
               key={t.key}

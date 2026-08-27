@@ -302,6 +302,22 @@
   --field-pad-y: 12px;
   --field-pad-x: 14px;
   --field-size: 15px;
+  /* HOW TALL THE BOTTOM BAR IS — the one token in this file that something
+     other than this file writes. `.mobile-nav` measures itself into it, on the
+     document element, from the observer over `navRef` in components/App.jsx;
+     an inline style on `:root` beats this declaration, which is why the value
+     here is a starting point and not a number anything should be edited to.
+
+     88 IS THE TALLEST THE BAR GETS and is what draws until that observer runs,
+     and in print, where `.no-print` takes the bar away entirely. The height is
+     the bar's BUTTONS' — six Thai labels that wrap to three lines at 320px, two
+     at 360 and 430, one above 600 — measured on 2026-08-26. `env()` belongs in
+     this line and not in the measured one: the bar pads past the home indicator
+     itself, so anything read off it has the inset in it already.
+
+     Only `.mobile-nav-spacer` reads this, and only below 860px. See the block
+     it is used in for why the spacer stopped being a flat number. */
+  --nav-h: calc(88px + env(safe-area-inset-bottom));
   /* The chip แผนก holds, as a number the box above can be built from rather
      than as whatever its contents happened to add up to. It was emergent —
      4px of padding around a 13px/1.5 line came to 29.5, except on the chips
@@ -5807,14 +5823,39 @@ table.mini tbody tr:hover { background: none; }
      above 600px — at the one place on the screen where empty space costs
      nothing.
 
-     If this is ever made exact, the way is to measure `.mobile-nav` itself and
-     publish its height as a custom property; it is not worth the observer
-     today. */
-  .mobile-nav-spacer { height: calc(88px + env(safe-area-inset-bottom)); }
+     IT IS EXACT NOW, AND THE 88 IS ONLY THE FALLBACK. The paragraph above
+     ended "if this is ever made exact, the way is to measure `.mobile-nav`
+     itself and publish its height as a custom property; it is not worth the
+     observer today" — it was worth it on 2026-08-26. One number for the tallest
+     case means the spacer is right at ONE width and too short at none, which is
+     safe, and exactly right at 320, which is not: the gap between the end of the
+     content and the top of the bar measured 0px at 320, 11 at 360 and 430, and
+     22 at 700. At 320 the last row of the page ended on the pixel the bar began.
+     Nothing was under the bar and nothing was clear of it either, and one more
+     line of label would have swallowed it.
+
+     `--nav-h` IS SET BY THE BAR, in the observer over `navRef` in
+     components/App.jsx, and it is a MEASURED height — which already includes
+     the inset, because the bar pads past the home indicator itself. Its
+     starting value, and the 88 with the inset added to it by hand, is declared
+     with the rest of the layout tokens at the top of this file; what draws here
+     before the observer runs is that, and it is also what print gets, where
+     `.no-print` takes the bar away entirely.
+
+     The 12 on top is air, not clearance: it is what makes the end of a page
+     look ended rather than cut off at the bar. */
+  .mobile-nav-spacer { height: calc(var(--nav-h) + 12px); }
   /* And the FAB, on the one screen that has one: 92px up plus 58 of button,
      rounded up so the last row's chip clears the shadow as well as the circle.
-     Sized here rather than guessed at, so moving the FAB moves this too. */
-  .mobile-nav-spacer.with-fab { height: calc(158px + env(safe-area-inset-bottom)); }
+     Sized here rather than guessed at, so moving the FAB moves this too.
+
+     `max()` of the two rather than the FAB's figure alone: the FAB is placed
+     from the VIEWPORT's bottom and knows nothing about how tall the bar under
+     it grew, so on a phone where the labels run to three lines the bar can be
+     the taller of the two things to clear. Whichever it is, this clears it. */
+  .mobile-nav-spacer.with-fab {
+    height: max(calc(var(--nav-h) + 12px), calc(158px + env(safe-area-inset-bottom)));
+  }
 
   .mobile-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
@@ -7707,40 +7748,84 @@ table.mini tbody tr:hover { background: none; }
     display: block; padding: 0; border: 0; background: none;
   }
   .hr-table tbody tr.pager-row:hover { background: none; }
-  /* WHERE IN THE LIST, above WHICH PAGE. Muted and 12.5px: it is the caption of
-     a control, not a figure of the month. */
-  .hr-table tbody tr.pager-row .pager-range {
-    margin: 2px 0 8px; text-align: center;
-    font: 400 12.5px/1.4 var(--sans); color: var(--muted);
-  }
-  .hr-table tbody tr.pager-row .pager-range strong {
-    font: 600 12.5px/1.4 var(--mono); color: var(--ink);
-  }
 
-  /* ‹ ก่อนหน้า · หน้า 2 / 12 · ถัดไป › — ONE LINE, AND IT HAS TO STAY ONE.
-     `1fr auto 1fr` rather than three equal columns or `space-between`: the two
-     buttons then take the same width as each other whatever their labels come
-     to, and the page number sits on the centre line of the card rather than
-     wherever the wider label happened to push it. At 360px that is two 106px
-     buttons around a 90px label, both keeping their 44px target. */
+  /* ‹ · หน้า 2 / 12 / แสดง 6–10 จาก 57 รายการ · › — ONE BAND, 38px TALL.
+
+     IT WAS 73px AND TWO ROWS until 2026-08-26: "แสดง 6–10 จาก 57 รายการ" ran
+     the full width of the card on a line of its own, and under it two 106px
+     buttons wearing `‹ ก่อนหน้า` and `ถัดไป ›` at a 44px target held the page
+     number between them. Nothing in it was wrong; it was simply the tallest
+     thing between the fifth card and รวมทั้งหมด, on the one screen where the
+     ground under the list is already spoken for.
+
+     WHAT THE 35px CAME FROM, and what it did not come from. The two sentences
+     are both still here — see the note over `.pager-where` in HrView.jsx — and
+     so is every state the row could be in. What went is the SECOND ROW: the
+     range is now the quiet second line of the middle column, and the buttons
+     that used to sit under it are 38px squares beside it. The words went onto
+     `aria-label`, which is why the chevrons are not `aria-hidden` decoration on
+     a labelless button.
+
+     `auto minmax(0, auto) auto` UNDER `justify-content: center` rather than the
+     `1fr auto 1fr` this was. `1fr` either side pinned the buttons to the ENDS
+     of a 280px card, which is the layout of a wide table's footer and reads as
+     spread out rather than compact; centring the three tracks instead lets the
+     group take only the width it needs and keeps the two buttons the same
+     distance from the middle whatever the page number comes to, because both
+     of them are now the same 38px square. */
   .hr-table tbody tr.pager-row .pager-controls {
-    display: grid; grid-template-columns: 1fr auto 1fr;
-    align-items: center; gap: 8px;
+    display: grid; grid-template-columns: auto minmax(0, auto) auto;
+    justify-content: center; align-items: center; gap: 10px;
   }
-  .hr-table tbody tr.pager-row .pager-controls .btn {
-    width: 100%; min-height: 44px; font-size: 13.5px;
+  /* 38 AND NOT 44, WHICH IS A REAL TRADE AND NOT A ROUNDING.
+     44px is the target every other button on this card keeps, and these two
+     give up 6px of it. What buys that back: a chevron has no label to be missed
+     by, the two are 10px apart with the page number between them rather than
+     side by side, and neither is destructive — a mis-press goes one page the
+     wrong way and the other button undoes it. `padding: 0` so the square is the
+     square; `line-height: 1` so the glyph sits on its centre. */
+  .hr-table tbody tr.pager-row .pager-controls .btn.pager-step {
+    width: 38px; min-width: 38px; height: 38px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    font: 400 20px/1 var(--sans);
+  }
+  /* The middle column. `min-width: 0` so a long range line wraps inside the
+     column instead of pushing the buttons off the card — at 320px "แสดง
+     116–120 จาก 120 รายการ" is wider than the space between two chevrons, and
+     wrapping to a second quiet line is the graceful end of that, not overflow. */
+  .hr-table tbody tr.pager-row .pager-where {
+    min-width: 0; text-align: center;
   }
   .hr-table tbody tr.pager-row .pager-at {
-    text-align: center; white-space: nowrap;
-    font: 400 12.5px/1.4 var(--sans); color: var(--muted);
+    display: block; white-space: nowrap;
+    font: 400 12.5px/1.35 var(--sans); color: var(--muted);
   }
   .hr-table tbody tr.pager-row .pager-at strong {
-    font: 600 14px/1.4 var(--mono); color: var(--ink);
+    font: 600 14px/1.35 var(--mono); color: var(--ink);
   }
-  /* THE ENDS OF THE LIST NEED NOTHING DECLARED HERE. `‹ ก่อนหน้า` on page 1 and
-     `ถัดไป ›` on the last carry the plain `disabled` attribute, and the app's
-     own `.btn:disabled` — a `--neutral-wash` fill with `--muted` text — draws
-     them. A fade was written here once and taken out again: that rule sets
+  /* WHERE IN THE LIST, under WHICH PAGE. `--muted-2` and 11.5px — a step
+     quieter than the page number above it, the same step `td.cap-col::before`
+     takes over the figure it heads. It was `--muted` at 12.5px while it had a
+     row to itself.
+
+     `text-wrap: balance` FOR THE LONGEST MONTH THIS APP WILL SEE. The line the
+     seed database draws — "แสดง 1–4 จาก 4 รายการ" — fits on one line at every
+     width. A sixty-person month on the last page does not: at 320px "แสดง
+     116–120 จาก 120 รายการ" wraps, and it wraps at its last space, which leaves
+     รายการ alone on a line of its own under a full one. Balanced it splits down
+     the middle instead. Measured on 2026-08-26 by putting that exact string
+     into the live element at 320px; nothing in the seed data reaches it. */
+  .hr-table tbody tr.pager-row .pager-range {
+    display: block; margin-top: 1px; text-wrap: balance;
+    font: 400 11.5px/1.35 var(--sans); color: var(--muted-2);
+  }
+  .hr-table tbody tr.pager-row .pager-range strong {
+    font: 600 11.5px/1.35 var(--mono); color: var(--ink-2);
+  }
+  /* THE ENDS OF THE LIST NEED NOTHING DECLARED HERE. `‹` on page 1 and `›` on
+     the last carry the plain `disabled` attribute, and the app's own
+     `.btn:disabled` — a `--neutral-wash` fill with `--muted` text — draws them.
+     A fade was written here once and taken out again: that rule sets
      `opacity: 1` on purpose, because a ghost faded to .45 is illegible on the
      dark theme. */
 
@@ -7764,8 +7849,16 @@ table.mini tbody tr:hover { background: none; }
      ever sticky. `box-shadow: 0 -6px 20px` pointed UP because the row was a
      floor with cards travelling beneath it; nothing travels beneath it now, and
      the z-index went with it because there is nothing left to stack against. */
+  /* 11px TOP AND BOTTOM, 15 EITHER SIDE — a person's card takes 15 all round.
+     The horizontal 15 is not a free number and stays: รวมทั้งหมด has to start
+     on the same left edge as the names above it and its figure has to end on
+     the same right edge as theirs, or the column the eye reads down bends at
+     the last row. The vertical 15 was buying nothing — this row has one line in
+     it where a person's has three — so it is 11, and the row is 46px instead of
+     54. Asked for on 2026-08-26 together with the pager above it. */
   .hr-table tbody tr.total-row {
     grid-template-areas: 'who cap';
+    padding: 11px 15px;
     background: var(--neutral-wash);
   }
   /* NO SCROLLPORT AROUND THE LIST EITHER. `.table-wrap` is `overflow-x: auto`

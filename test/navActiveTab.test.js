@@ -43,7 +43,12 @@ function bar(open) {
 }
 
 const sidebar = bar('<nav className="nav">');
-const mobile = bar('<nav className="mobile-nav no-print">');
+/* No closing `>` on this one: the bottom bar carries `ref={navRef}` as well
+   since 2026-08-26 — it measures its own height into `--nav-h` for the spacer
+   above it — and this test is about which tab lights up, not about what else is
+   on the tag. The sidebar keeps its `>` because nothing has been added there
+   and the class name is a prefix of others. */
+const mobile = bar('<nav className="mobile-nav no-print"');
 
 test('ทั้งสองแถบอ่านแท็บที่สว่างจาก tab ตัวเดียวกับที่วาดหน้าจอ', () => {
   for (const [name, src] of [['sidebar', sidebar], ['mobile-nav', mobile]]) {
