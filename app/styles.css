@@ -4182,7 +4182,17 @@ td > .approver-line { margin-top: 5px; }
    the three clauses — which is exactly where it should break. */
 .cap-note { margin-top: 10px; max-width: 92ch; }
 
-.table-wrap { overflow-x: auto; border-radius: var(--radius); }
+/* `-webkit-overflow-scrolling: touch` asked for on 2026-08-27 and added, with
+   what it is worth stated rather than implied: it turned momentum scrolling on
+   for overflow boxes in iOS Safari 12 and earlier, and since iOS 13 momentum is
+   the default and the property is ignored. So it changes nothing on any phone
+   in the office today and costs one line for the ones that never get updated.
+   It is not what makes these tables scroll — `overflow-x: auto` is, and has
+   been all along. */
+.table-wrap {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius);
+}
 
 table { width: 100%; border-collapse: collapse; }
 th {
@@ -7433,6 +7443,34 @@ table.mini tbody tr:hover { background: none; }
   .dept-table th.co-col { width: 64px; }
   .dept-table th.b-15, .dept-table th.b-3 { width: 46px; }
   .dept-table th.total-col { width: 50px; }
+
+  /* ── AND THE HEADINGS HAVE TO BE ALLOWED TO WRAP, or the widths above lie ──
+     Every figure in the list above is measured against the DATA, and two of
+     them are written down as being narrower than their own heading on purpose:
+     ลำดับที่ says "the heading is the longest thing in it and is allowed to
+     wrap rather than set it", and รวม ชม. says "its heading takes two lines".
+
+     NEITHER WAS TRUE. The base stylesheet has `th { white-space: nowrap }` at
+     one element of specificity, nothing in this table overrode it, and
+     `table-layout: fixed` gives a cell no room to grow — so instead of wrapping
+     the headings ran out of their cells and were CLIPPED. Measured at 360px on
+     2026-08-27, and reported before that as "รวม ชม. โดนตัด":
+
+         ลำดับที่   needs 41  has 34   ->  read "ลำดับ"
+         รวม ชม.    needs 53  has 50   ->  read "รวม ช"
+         จำนวนคน    needs 53  has 48   ->  on รวมทุกแผนก
+
+     One rule, and the widths above become true rather than being widened. The
+     alternative was +12px on the card table and +18 on รวมทุกแผนก, which would
+     have cost the property the whole block was tuned for — that 312px fits a
+     375px phone without scrolling at all.
+
+     THE HEADER ROW GETS A SECOND LINE, on the two tables that need one. That is
+     what the notes above already promised, and it is what สรุป OT ส่งบัญชี's
+     headings have always done a few rules up (`×1.5` over `ปกติ`). `.num`
+     keeps its right alignment, so a wrapped figure heading still sits over its
+     column. */
+  .dept-table th { white-space: normal; }
 
   /* `overflow-wrap: anywhere` is on every cell in these tables so a declared
      width can break a word rather than be pushed open. An employee code is the
