@@ -129,16 +129,26 @@ if ($busy) {
     #
     # Best-effort throughout: a pid can be gone by the time it is asked about,
     # and losing the name of a process must not turn a clean exit 0 into a crash.
+    # OWN COMMAND LINE FIRST, PARENT SECOND. The two modes are not the same
+    # shape: under `next start` the listener IS `node ... next start` and its
+    # parent is only this wrapper, while under `next dev` the listener is an
+    # anonymous `start-server.js` worker and the name is one level up. Reading
+    # the parent alone gets the production case wrong - it reported the real
+    # server as "powershell.exe" on 2026-08-27.
     $what = ''
     try {
-        $owner = Get-CimInstance Win32_Process -Filter "ProcessId = $held" -ErrorAction Stop
+        $owner  = Get-CimInstance Win32_Process -Filter "ProcessId = $held" -ErrorAction Stop
+        $parent = $null
+        try { $parent = Get-CimInstance Win32_Process -Filter "ProcessId = $($owner.ParentProcessId)" -ErrorAction Stop } catch { }
         $mode = ''
-        try {
-            $parent = Get-CimInstance Win32_Process -Filter "ProcessId = $($owner.ParentProcessId)" -ErrorAction Stop
-            if ($parent.CommandLine -match '\bnext"?\s+dev\b')        { $mode = 'next dev - SERVING THE WORKING TREE, not a build; ' }
-            elseif ($parent.CommandLine -match '\bnext"?\s+start\b')  { $mode = 'next start; ' }
-            if ($parent.CommandLine) { $mode += "parent pid $($parent.ProcessId): $($parent.CommandLine)" }
-        } catch { $mode = "parent pid $($owner.ParentProcessId) unavailable" }
+        foreach ($line in @($owner.CommandLine, $(if ($parent) { $parent.CommandLine }))) {
+            if (-not $line) { continue }
+            if ($line -match '\bnext"?\s+dev\b')   { $mode = 'next dev - SERVING THE WORKING TREE, not a build; '; break }
+            if ($line -match '\bnext"?\s+start\b') { $mode = 'next start; '; break }
+        }
+        if ($owner.CommandLine) { $mode += $owner.CommandLine }
+        if ($parent) { $mode += " (parent pid $($parent.ProcessId): $($parent.Name))" }
+        else { $mode += " (parent pid $($owner.ParentProcessId) unavailable)" }
         $what = " ($mode)"
     } catch { $what = ' (command line unavailable)' }
     Write-Task "port $Port is already served by pid $held$what - nothing to do"

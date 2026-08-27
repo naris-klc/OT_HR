@@ -56,10 +56,28 @@ function Get-Holder {
     $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $pidOnPort" -ErrorAction SilentlyContinue
     $parent = $null
     if ($proc) { $parent = Get-CimInstance Win32_Process -Filter "ProcessId = $($proc.ParentProcessId)" -ErrorAction SilentlyContinue }
+    # THE OWN COMMAND LINE FIRST, THE PARENT SECOND - the two modes are not the
+    # same shape and only checking the parent gets one of them wrong.
+    #
+    #   next dev    powershell/npx -> node ... next dev -> node ... start-server.js
+    #   next start  powershell     -> node ... next start   (that IS the listener)
+    #
+    # So under `next start` the listening process names itself and its parent is
+    # only the wrapper; under `next dev` the listener is an anonymous worker and
+    # the name is one level up. Walked 2026-08-27: this function reported the
+    # real production server as "start-server.ps1 wrapper", which is true and
+    # not the answer, and would have said "unknown" for a `next start` somebody
+    # ran by hand.
     $mode = 'unknown'
-    if ($parent -and $parent.CommandLine -match '\bnext"?\s+dev\b')       { $mode = 'next dev' }
-    elseif ($parent -and $parent.CommandLine -match '\bnext"?\s+start\b') { $mode = 'next start' }
-    elseif ($parent -and $parent.Name -eq 'powershell.exe')               { $mode = 'start-server.ps1 wrapper' }
+    $lines = @($proc.CommandLine, $(if ($parent) { $parent.CommandLine }))
+    foreach ($line in $lines) {
+        if (-not $line) { continue }
+        if ($line -match '\bnext"?\s+dev\b')   { $mode = 'next dev';   break }
+        if ($line -match '\bnext"?\s+start\b') { $mode = 'next start'; break }
+    }
+    if ($mode -eq 'unknown' -and $parent -and $parent.Name -eq 'powershell.exe') {
+        $mode = 'start-server.ps1 wrapper'
+    }
     [pscustomobject]@{
         Pid = $pidOnPort
         ParentPid = if ($parent) { $parent.ProcessId } else { $proc.ParentProcessId }
