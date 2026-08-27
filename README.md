@@ -98,6 +98,79 @@ wipe is **partial** — the audit trail, the policy versions, the delegations an
 the period locks are not among the five collections it clears, so a forced
 reseed leaves them pointing at people and entries that no longer exist.
 
+### เครื่องนี้คือ staging — แผนตอนย้ายขึ้น Production Server ของบริษัท
+
+**สถานะที่ตกลงกันเมื่อ 2026-08-27** โปรเจกต์นี้อยู่ในช่วงพัฒนา/ทดสอบบนแล็ปท็อป
+เครื่องนี้ รอย้ายไปรันบน **Production Server จริงของบริษัท** ในอนาคต สคริปต์และ
+ขั้นตอนทั้งหมดในหัวข้อถัดไปจึงเขียนไว้เพื่อ**ยกไปใช้ที่นั่น** ไม่ใช่เพื่อผูกกับ
+เครื่องนี้ — และนั่นคือเหตุผลที่[ไม่ลงงานตามตารางบนเครื่องนี้](#ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน--task-scheduler)
+
+> ⚠️ **“staging” เป็นสิ่งที่เครื่องนี้จะเป็น ไม่ใช่สิ่งที่มันเป็นอยู่แล้ว** ตอนนี้
+> ฝ่ายบุคคล ยังใช้เครื่องนี้ทำงานจริงที่ `192.168.109.119:3000` ([Status](#status))
+> ตราบใดที่ยังไม่มีเซิร์ฟเวอร์บริษัท การล่มหนึ่งครั้งยังแปลว่าไม่มีใครยื่นหรืออนุมัติ
+> OT ได้จนกว่าจะมีคนมาเปิดใหม่ ทั้งสองอย่างนี้จริงพร้อมกัน
+
+#### สิ่งที่ยกไปได้ทันที ไม่ต้องแก้
+
+`npm run build` แล้วรันด้วย `next start` คือโหมด production เต็มรูปแบบและไม่ผูกกับ
+เครื่องไหน · `scripts/deploy.ps1` หา repo root จากตำแหน่งไฟล์ตัวเองและรับ `-Port`
+เป็นพารามิเตอร์ (แก้เมื่อ 2026-08-27 — ก่อนหน้านั้นพาธถูกเขียนตายไว้ในไฟล์ จึงรันได้
+เครื่องเดียว) · `scripts/start-server.ps1` หา root จากตัวเองมาตั้งแต่แรก · คุกกี้
+session ตั้ง `secure` ตาม**การเชื่อมต่อจริง** ไม่ใช่ตาม `NODE_ENV` (ดู
+`lib/session.js` กับ `lib/httpsRequest.js`) จึงทำงานถูกทั้งบน HTTP ใน LAN และบน
+HTTPS หลัง reverse proxy โดยไม่ต้องแตะอะไร
+
+#### ถ้าเซิร์ฟเวอร์บริษัทเป็น Windows Server
+
+ใช้[สูตร S4U + AtStartup](#หรือให้ขึ้นตั้งแต่บูต-โดยไม่ต้องมีใครล็อกอิน--s4u) ได้เลย
+— มันถูกออกแบบมาสำหรับเคสนี้พอดี คือขึ้นเองตั้งแต่บูตโดยไม่ต้องมีใครล็อกอิน แล้วเดิน
+[สามข้อยืนยัน](#ยืนยันว่าใช้ได้จริง--สามข้อ) ซึ่ง**ยังไม่เคยถูกเดินที่ไหนเลย** จึงเป็น
+ของจริงที่ต้องทำ ไม่ใช่พิธีกรรม
+
+#### ถ้าเซิร์ฟเวอร์บริษัทเป็น Linux (Ubuntu/Debian)
+
+ทั้งหมดใน `scripts/*.ps1` ใช้ไม่ได้ ตัวจัดการโปรเซสเปลี่ยนเป็น **systemd** หรือ
+**PM2** ส่วนคำสั่งที่เสิร์ฟแอปยังเป็นอันเดิม — `npm start` = `next start -p 3000`
+
+```bash
+# PM2 — สั้นที่สุด
+pm2 start npm --name ot-system -- start
+pm2 save && pm2 startup       # ให้ขึ้นเองตอนบูต
+
+# หรือ systemd — ไม่ต้องมี dependency เพิ่ม และเป็นทางที่ distro รองรับเอง
+sudo tee /etc/systemd/system/ot-system.service >/dev/null <<'UNIT'
+[Unit]
+Description=PRIMUS OT system
+After=network.target mongod.service
+
+[Service]
+Type=simple
+User=ot
+WorkingDirectory=/srv/ot-system
+EnvironmentFile=/srv/ot-system/.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+sudo systemctl daemon-reload && sudo systemctl enable --now ot-system
+```
+
+`Restart=always` กับ `RestartSec=10` คือของที่ `RestartCount`/`RestartInterval` ใน
+Task Scheduler ทำอยู่ และ `After=mongod.service` แทนการหน่วง 60 วินาทีในทริกเกอร์
+ตอนบูต — ตรงกว่า เพราะมันรอ**บริการ** ไม่ใช่รอ**เวลา**
+
+#### สิ่งที่ต้องตั้งใหม่ไม่ว่าเซิร์ฟเวอร์จะเป็นอะไร
+
+`.env` ทั้งไฟล์ (`MONGODB_URI`, `JWT_SECRET`) — `JWT_SECRET` คนละค่าแปลว่าทุก
+session ที่ค้างอยู่ใช้ไม่ได้ ซึ่งถูกต้องแล้ว · **ฐานข้อมูล** ย้ายด้วย
+[`npm run backup` / `npm run restore`](#สำรองและกู้คืนข้อมูล) · **กฎไฟร์วอลล์**
+ตอนนี้เปิด `:3000` ให้เฉพาะ `192.168.109.0/24` ซึ่งเป็นซับเน็ตของออฟฟิศนี้เท่านั้น ·
+**งานสำรองข้อมูล** ปลายทางปัจจุบันอยู่บนดิสก์ลูกเดียวกับฐานข้อมูล ซึ่งบนเซิร์ฟเวอร์
+จริงควรเป็นที่อื่น
+
 ### ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน — Task Scheduler
 
 **อ่านหัวข้อนี้เมื่อ:** เปิดหน้าเว็บแล้วขึ้น "This site can't be reached" ·

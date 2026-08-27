@@ -24,14 +24,29 @@
 #
 # The app is down from step 3 until step 4 finishes - about a minute.
 #
+# PORTABLE ON PURPOSE, BECAUSE IT IS MEANT TO LEAVE THIS LAPTOP. The repo root
+# is resolved from this file and the port is a parameter, so the same script
+# runs on the company's Windows Server unchanged:
+#
+#   powershell -File <repo>\scripts\deploy.ps1 -Port 3000
+#
+# The two machine-specific things left are the launcher path above (a local
+# convenience; nothing needs it) and the assumptions listed next, which describe
+# the STAGING laptop as of 2026-08-27 and are the first things to re-check
+# anywhere else. Everything the script actually DOES is generic.
+#
+# On a Linux server none of this file applies at all - `next start` is the same
+# but the process manager is systemd or PM2. See README.
+#
 # WHAT THIS SCRIPT ASSUMES ABOUT THE MACHINE, written down because the last
 # version assumed something else and was wrong about it for a day:
 #
-#   * There is NO "OT server" scheduled task. Checked 2026-08-20, 2026-08-25 and
+#   * There is NO "OT server" scheduled task, and on the staging laptop there
+#     will not be - declined 2026-08-27. Checked 2026-08-20, 2026-08-25 and
 #     2026-08-27; the only OT job is "OT backup". So nothing restarts the app on
 #     its own, nothing brings it back after a reboot, and this script is the
-#     whole of "deploy". README's Setup section carries the registration command
-#     and it has never been run here.
+#     whole of "deploy". On a real server the task SHOULD exist, and README's
+#     Setup section carries the registration command for it.
 #   * The thing on :3000 may be `next dev` OR `next start`. On 2026-08-27 it was
 #     `next dev`, serving the working tree straight from source - which is why
 #     an edit appeared live with no build and why `.next\BUILD_ID` was two days
@@ -44,9 +59,26 @@
 # 2026-08-26 and that is exactly the failure. So step 5 pulls the CSS the server
 # hands out and greps it.
 
+param(
+    [int]$Port = 3000,
+    [string]$Root
+)
+
 $ErrorActionPreference = 'Stop'
-$repo = 'C:\Users\suwan\Documents\OT_HR'
-$port = 3000
+
+# RESOLVED FROM THIS FILE, NOT WRITTEN DOWN. `$repo` was the literal
+# 'C:\Users\suwan\Documents\OT_HR' until 2026-08-27, which made this script work
+# on exactly one machine - and the plan for it is to be carried to the company's
+# real server, where that path does not exist. scripts\start-server.ps1 has
+# always resolved its own root the same way; this is the half that had not.
+if (-not $Root) {
+    $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+}
+$repo = $Root
+$port = $Port
+if (-not (Test-Path (Join-Path $repo 'package.json'))) {
+    throw "no package.json under $repo - pass -Root explicitly if the layout moved"
+}
 Set-Location $repo
 
 function Get-Holder {
@@ -188,5 +220,5 @@ Write-Host 'A server that is alive now has died within minutes twice on this mac
 Write-Host 'and the check that runs inside the launching call proves nothing. There is' -ForegroundColor Yellow
 Write-Host 'no scheduled task to bring it back:' -ForegroundColor Yellow
 Write-Host ''
-Write-Host '    Get-NetTCPConnection -LocalPort 3000 -State Listen' -ForegroundColor Yellow
-Write-Host '    Get-Content C:\Users\suwan\Documents\OT_HR\logs\task.log -Tail 5' -ForegroundColor Yellow
+Write-Host "    Get-NetTCPConnection -LocalPort $port -State Listen" -ForegroundColor Yellow
+Write-Host "    Get-Content $repo\logs\task.log -Tail 5" -ForegroundColor Yellow
