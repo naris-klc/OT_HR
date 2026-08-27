@@ -129,6 +129,24 @@ test('12px between cards, on a ground a step back from them', () => {
   assert.match(phone, /\.bday-table tbody \{ display: flex; flex-direction: column; gap: 12px;/);
   assert.match(phone, /\.bmonth-table tbody \{ display: flex; flex-direction: column; gap: 12px;/);
 
+  // AND NO FRAME ROUND THE COLUMN. `table.mini` draws a hairline round a small
+  // ruled table, which is what วันเกิดของเดือนนี้ is above 860px; below it the
+  // same element is a column of cards on the page's own ground, and a frame
+  // round the lot is the nested layer the card round the employee list was.
+  // Undone here on 2026-08-27 with that card, and found the same way — a
+  // birthday card stood 13..347 on the built app where an employee card stood
+  // 12..348, and the pixel each side was this border. The desktop keeps it:
+  // `.mini` itself is untouched.
+  //
+  // THE ELEMENT IS IN THE SELECTOR, AND THAT IS THE ASSERTION. `table.mini` is
+  // an element and a class, so a bare `.bmonth-table` loses to it wherever in
+  // the file it sits — the first attempt shipped, was correct, was overruled,
+  // and the measurement did not move by a pixel. A rule being in the bundle is
+  // not a rule that wins.
+  assert.match(phone, /table\.bmonth-table \{ display: block; min-width: 0; table-layout: auto; border: none; \}/);
+  assert.match(css, /table\.mini \{ border: 1px solid var\(--line-soft\); \}/,
+    'the hairline was taken from every mini table in the app, not from this one at this width');
+
   // …and the wrap that says the ground goes back. Without it the gap is the
   // card's own colour and the cards read as one block — learnt on ตรวจสอบรายเดือน.
   assert.match(queue, /<div className="table-wrap card-list">/);
@@ -200,24 +218,29 @@ test('the flat grey chip four other screens use did not move', () => {
  * from nine screens to five cards. See test/monthSearch.test.js, which owns
  * that change.
  *
- * WHAT SURVIVES HERE IS THE HALF THAT WAS NEVER ABOUT STICKINESS: no
- * `backdrop-filter`, ever, on this element. A backdrop-filtered element is
- * composited as its own layer and a composited layer stops obeying z-index —
- * which is the bug `body.has-dialog .appbar` exists to undo, where the app bar
- * and the phone's nav painted themselves over an open sheet.
+ * AND IT IS NOT A FILL EITHER, SINCE 2026-08-27. The `--bg` fill this pinned
+ * was there to cover the CARD the row was sitting in; the row is not in a card
+ * any more — it sits on the page, which is `--bg` — so painting it is painting
+ * the ground its own colour. test/monthSearch.test.js owns that move.
+ *
+ * WHAT SURVIVES HERE IS THE HALF THAT WAS NEVER ABOUT STICKINESS OR ABOUT A
+ * CARD: no `backdrop-filter`, ever, on this element. A backdrop-filtered
+ * element is composited as its own layer and a composited layer stops obeying
+ * z-index — which is the bug `body.has-dialog .appbar` exists to undo, where
+ * the app bar and the phone's nav painted themselves over an open sheet.
  *
  * test/modalScrollFrame.test.js counts the carriers and allows exactly two.
  * This assertion is the same fact from this end, so the reason survives next to
  * the element somebody would be tempted to frost.
  */
-test('the search strip is a flat fill — no blur, and no sticky behind it', () => {
+test('the search row carries no blur, no sticky and no fill of its own', () => {
   const at = phone.indexOf('.month-find {');
   const rule = phone.slice(at, phone.indexOf('\n  }', at))
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
-  assert.match(rule, /background: var\(--bg\);/);
   assert.ok(!/backdrop-filter/.test(rule), 'the search strip grew a blur');
   assert.ok(!/position:\s*sticky/.test(rule), 'the search box is stuck over the cards again');
+  assert.ok(!/background/.test(rule), 'the row is painting the page its own colour again');
 });
 
 // ── the badge in the corner ──────────────────────────────────────────────────

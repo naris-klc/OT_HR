@@ -1221,7 +1221,7 @@ lib/complianceExport.js   which six events count as the exercise of a
 lib/complianceQuery.js    the four reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     102 files, run by `npm test`. Six named below as a
+test/                     103 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1707 tests
-across 102 files**, measured 2026-08-26 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read
+and the engine know nothing about Next.js, so the whole suite — **1715 tests
+across 103 files**, measured 2026-08-27 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -2817,8 +2817,15 @@ to find out whether either of them matters, which is the fold costing more than
 it saves; they are drawn **shut only**, because open the list's own headings are
 those same words.
 
-**FIRST OF EVERYTHING ON THE PAGE** — above the ประจำเดือน box, above พิมพ์
-F-HR-027 ทุกคน and the two CSVs, above the search box and the list. What it warns
+**FIRST OF EVERYTHING ON THE PAGE** — above สถานะที่นับ, above ประจำเดือน and
+the search box, above พิมพ์ F-HR-027 ทุกคน and the two CSVs, above the list. (It
+read "above the ประจำเดือน box, above พิมพ์ F-HR-027 ทุกคน and the two CSVs,
+above the search box" until 2026-08-27, when ประจำเดือน moved down to join the
+search box, and "above สถานะที่นับ, above พิมพ์ F-HR-027 ทุกคน and the two CSVs,
+above ประจำเดือน and the search box" for the rest of that day, until the two
+controls went back into the card ABOVE the buttons — see §"ประจำเดือน
+ย้ายลงมาอยู่กับช่องค้นหา" and §"งวดกับช่องค้นหาขึ้นเหนือปุ่มส่งออก
+และถอดการ์ดที่ครอบรายชื่อ" below. Still first of everything in all three.) What it warns
 about is the figures on this screen and the person it warns is the one about to
 sign them, so it is read before the controls rather than after somebody has
 already pressed พิมพ์. It sat between the policy banner and the search box until
@@ -2989,11 +2996,202 @@ the pill 108×34 shut and 62×34 open while the two buttons on every employee ca
 measured 44; 8px between the last select and พิมพ์ F-HR-027 ทุกคน, 12px at 1440px;
 the per-row chip present throughout.
 
-**What is still above the first employee card**, measured the same way: 754px
-shut, 645px with the panel dismissed. Most of what is left is the controls card —
-its own `<h2>ตรวจสอบรายเดือน</h2>` and `สิงหาคม 2569` repeat the app header and
-the alert panel directly above them, and dropping that pair below 860px is worth
+**What is still above the first employee card**, measured the same way: "754px
+shut, 645px with the panel dismissed" on 2026-08-25, and **65px less than that**
+since 2026-08-27 — see the next section for where those 65 came from and, more
+usefully, where they did NOT. Most of what is left is the controls card — its own
+`<h2>ตรวจสอบรายเดือน</h2>` and `สิงหาคม 2569` repeat the app header and the
+alert panel directly above them, and dropping that pair below 860px is worth
 about 60px more. Not done: it is a title, not spacing.
+
+### ประจำเดือน ย้ายลงมาอยู่กับช่องค้นหา — 2026-08-27
+
+**Asked for as "the screen does not say which month it is showing", and that was
+right about the symptom and wrong about the cause.** The picker was on the
+screen the whole time, in the card at the top beside สถานะที่นับ. Measured on the
+built app at 360px: it sat at y=284 and the search box at y=749 — **465px apart,
+with the export row and งวด สิงหาคม 2569 ยังเปิดอยู่ between them** — so by the
+time anybody was reading the list it was two screens back and the only thing
+naming the month was a grey line under the heading.
+
+It is now in `.month-find`, in one row with the box that filters that list.
+**ประจำเดือน first, ค้นหา second**: the month decides what is in the list and the
+search only decides which of it is drawn. On a phone the two stack inside the
+row; on a desktop they share the line, ประจำเดือน at a declared
+`flex: 0 0 170px` because `.field`’s own `flex: 1` is a basis of nothing and two
+fields grasping at nothing split the row in half.
+
+This section read "the row directly above the list … and the search box has to
+stay the last thing before the first card, which is the whole reason that row is
+where it is rather than in the card above" until later the same day. That is no
+longer where the row is: it is back in the controls card, one line under
+สถานะที่นับ and **above** the export buttons, so what it is last before is those
+buttons rather than the list.
+
+It also read "สถานะที่นับ did NOT come with it: it governs the three export
+buttons beside it, and those act on what it sets". สถานะที่นับ still is not in
+this row — it is on the heading line above it — but the reason given has gone
+with the arrangement: the buttons are not beside it any more, they are two rows
+below, and all three controls are above them. See
+§"งวดกับช่องค้นหาขึ้นเหนือปุ่มส่งออก และถอดการ์ดที่ครอบรายชื่อ" below.
+
+**The move gave back no height at all, and that was measured rather than
+assumed.** The controls card went **385px → 308** and `.month-find` went **69 →
+146**, and the first employee card did not move by a pixel — y=842 before and
+after, page height 3727 both times. Controls cost what they cost wherever they
+are put; vertical space on a phone comes from removing something, not from
+rearranging it. Worth writing down because "group these and the list gets more
+room" is a reasonable thing to expect and it is not true.
+
+**What did give room was one sentence: 44px.** *ไฟล์ CSV บันทึกด้วย UTF-8 BOM
+เปิดใน Excel ภาษาไทยได้ทันที* is gone from under the export buttons — the same
+call สรุป OT ส่งบัญชี made for the same sentence, an encoding detail that
+reassures once and is noise every month after. The export row went **150px →
+107**, the controls card **385 → 265**, and the first employee card came up to
+**y=798** with the page at 3683. The files still carry the BOM;
+`src/lib/csv.js` is where that lives and nothing about them changed.
+
+**And then the containers gave back 21 more.** Asked for as "reduce the
+padding", after the paragraph above had established that moving controls gives
+nothing. What a phone can give back without losing a control is the space
+AROUND them, and on this screen three containers stack before the reader
+reaches the list. Measured at 360px, first employee card **y=798 → 777**:
+
+| | was | is |
+|---|---|---|
+| `.month-head` and `.month-card` padding | 15px | **12px** |
+| the gap each leaves under itself | 16px | **13px** |
+| the band’s own padding | 10 / 12 | **8 / 10** |
+| the band’s bottom margin | 12px | **10px** |
+
+Two of those four rows are history by the end of the same day and are kept
+because the 21px is: the band’s own padding and its bottom margin went with the
+card the band was in, and `.month-card` stopped being a card at all — it has no
+padding to trim now, so the first row is `.month-head` alone. The 12px is still
+12px where it survives.
+
+**Only this screen.** `.card` is worn by every screen in the app and 15px is
+still its phone padding everywhere else; what is different here is the three
+containers. **And the breakpoint is 860, not the 768 that was asked for** —
+this app has one mobile breakpoint and 860 is the design’s own number, written
+at the top of the stylesheet. A second one at 768 would leave 768–860 with the
+phone layout and the desktop padding, a band nobody would ever look at and
+every future rule would have to remember.
+
+**The band’s side margins are the card’s padding, negated.** They were a
+literal `-15px` against a literal `15` — two figures in two rules that had to
+agree, with nothing saying so, and the pair broke the moment the padding came
+down. `--month-pad` was declared on both cards and the strip measured from it,
+so there was one number. That whole paragraph is history as of later the same
+day — see the section below, which took the band out of the card altogether and
+left it with no margins to negate.
+
+### ถอดกล่องการ์ดที่ครอบ ประจำเดือน กับช่องค้นหา — 2026-08-27
+
+**Asked for as "take the card off the month picker and the search box and let
+them sit on the page".** They were the first thing inside `.month-card`, which
+then went on to hold the whole list — a card inside a card, and on a phone, where
+the list is drawn as one card per person on the page’s own ground, that outer box
+read as a dark frame wrapped round two controls for no reason a reader could
+name.
+
+**Everything the phone rule for `.month-find` carried existed to undo the card
+it was in.** The negative side margins took the row out to the card’s edges, the
+padding gave back what those margins had just taken, the `--bg` fill covered the
+card’s colour and the hairline drew the boundary the fill implied. Out on the
+page there is nothing to undo: `--bg` **is** the page, and the gap under the row
+is a real gap. The rule is one declaration now — it read `margin-bottom: 10px`,
+which it already had, until the row went into the controls card that afternoon
+and the one declaration became `margin-top: 8px`, which is `.export-row`’s own
+number. One declaration either way, and none of the four is back.
+
+**And the list goes out to the card’s edges for the same reason.** The wrap
+paints `--bg` and `.hr-table tbody` insets the cards inside it; with the card’s
+own 12px of padding left in place, every card in the list was framed twice, in
+two colours — a `--card` ring around a `--bg` ring around an object that is
+already a card. The wrap takes the same negated `--month-pad` the band used to,
+and pulls up by it as well **when it is the first thing in the card**, which is
+every month that is not being searched. While ค้นหา is narrowing the list the
+CSV note sits above the wrap and keeps its own gap.
+
+**That paragraph and the one under it are history as of the same afternoon, and
+the fix they describe is one level up now.** The card came off the list
+entirely below 860px, so there is no second ground to escape and no
+`--month-pad` to negate — the three rules and the token are gone. The doubled
+ring is a real thing that happens whenever a `--bg` wrap goes inside a `--card`
+box, which is why the paragraphs stay; the arithmetic is not what runs. See
+§"งวดกับช่องค้นหาขึ้นเหนือปุ่มส่งออก และถอดการ์ดที่ครอบรายชื่อ" below.
+
+**The ring is 24 at the sides and 12 at the ends, and the sides had to be said
+out loud.** `.hr-table tbody` read `padding: 12px` for as long as the card
+around it padded by another 12, and between them an employee card stood 24px in
+from the card’s border on every side. Going full-bleed took **both** of those
+12s off the left and right at once and left the card 13px from the outer
+border: two borders that close together read as one crowded edge, and it was
+reported the same day as the cards running into the edge of the screen. So the
+sides read `24px` in that shorthand — the number they always came to — and the
+ends stayed 12, which is the gap between two cards in this list. **The 24 at the
+sides was ground; the 12 at the ends is rhythm.** At 360px an employee card ran
+**37 → 323**, exactly where it ran before the wrap moved; the 12px the move gave
+back vertically was untouched (first card still **y=746**).
+
+**The whole shorthand is `padding: 0` since the card came off later the same
+day.** There is no outer border left to be crowded against — what bounds the
+list is the page’s own 12px, so an employee card runs to the same edges the
+controls card above it does, and the ground the 24 was buying is the page. The
+ends went with it: 12 at the top was the gap under the top of the card, and the
+thing above the list is now งวด…ยังเปิดอยู่ with its own 13px under it; 12 at the
+bottom was the gap over the foot of the card, and `.month-notes` and
+วันเกิดของเดือนนี้ declare their own 12 above them. **The 12px between two cards
+is `gap` and never moved** — ground went, rhythm stayed.
+
+**Nothing on this screen is clipped, and that was measured before it was
+believed.** The same report said the export buttons were being cut off at the
+top by the header. On the built app at 320px, 360px and 1280px: no button’s
+scroll height exceeds its client height (nothing is cut off inside a control),
+the document’s scroll width equals its client width at every one of those widths
+(nothing overflows sideways), and `main` starts at **y=62** — the app bar is
+`position: sticky` and is *in flow*, so at rest nothing is under it. What **is**
+true is that a sticky bar has content pass under it while the page scrolls,
+which is what it is for.
+
+**The bar that appears across the middle of a full-page screenshot is a capture
+artifact.** CDP’s capture-beyond-viewport mode paints sticky and fixed elements
+at their viewport position, so `.appbar` and `.mobile-nav` land in the middle of
+a tall image over whatever happens to be there. Screenshot the **viewport** when
+the question is "what does this look like"; keep the full-page one for
+measuring. Two rounds of this screen’s reports have been that artifact.
+
+**Measured on the built app at 360px, first employee card y=777 → 746** — 31px,
+and every pixel is a container’s chrome rather than a control:
+
+| | px |
+|---|---|
+| the card’s top padding, no longer above the row | 12 |
+| the band’s own padding, 8 top and 10 bottom | 18 |
+| the hairline under it | 1 |
+
+Page height **3609**. The row keeps the same 10px under itself it had inside the
+card, and the first card now sits **23px** below it — the 10, the card’s border
+and the list’s own 12.
+
+**It also fixed something nobody had reported.** Inside the card, the row was
+inside the `data.employees.length === 0` branch, so a month with no entries drew
+**ไม่มีรายการในเดือนนี้** and no month picker at all: the one control that takes
+a reader out of an empty month was the control the empty month took away, and
+the only way back was a reload. The row is outside that branch now and is drawn
+whatever the month holds. `test/monthSearch.test.js` pins both.
+
+**สถานะที่นับ and the export buttons stayed in their card.** They are a group
+that acts together — the three buttons export what the select sets — and a card
+is the right thing round a group. What was wrong was a card round the two
+controls that belong to the list below them.
+
+That last sentence is the half that did not survive the afternoon: the two
+controls went back into that card, and what came off instead was the card round
+the **list**. The reading it replaces is that ประจำเดือน, สถานะที่นับ and ค้นหา
+are one group — they decide which figures exist and which are drawn — and the
+buttons act on what all three settled. See the section below.
 
 **ตรวจสอบรายเดือน บนมือถือ: หน้าละ 5 คน แล้วเลื่อนหน้าเว็บตามปกติ.** Below
 860px this screen is one card per person — that is where **ดู / แก้ไขรายการ**
@@ -3134,6 +3332,87 @@ in them. What is left is a name long enough to run to three lines at 128px,
 which no name in the roster does today. Measured at 360px before and after:
 139 / 161 / 139 / 183, then 170 / 170 / 170 / 170.
 
+### งวดกับช่องค้นหาขึ้นเหนือปุ่มส่งออก และถอดการ์ดที่ครอบรายชื่อ — 2026-08-27
+
+**Two changes asked for together, and they are the same change seen from two
+ends: fewer things between the reader and the month.**
+
+**1 — ประจำเดือน and ค้นหา are now the second row of the controls card, above
+พิมพ์ / ส่งออก.** Asked for as setting the งวด before the buttons that print it.
+The card reads top to bottom as a sentence now:
+
+| row | what it settles |
+|---|---|
+| ตรวจสอบรายเดือน + สถานะที่นับ | which statuses count |
+| ประจำเดือน + ค้นหา + *แสดง n จาก m คน* | which month, and which of it is drawn |
+| พิมพ์ F-HR-027 ทุกคน + the two CSVs | what to do with what the first two settled |
+
+It read the other way round for the rest of that day — three export buttons,
+then งวด…ยังเปิดอยู่, and only then the box saying which month any of it is
+about — which is a forty-page document offered before its period has been named.
+
+**What is given up, said plainly: ค้นหา is no longer the last thing before the
+first card.** That was the rule the morning's move was made under, and
+`.export-row` and งวด…ยังเปิดอยู่ now stand between the box and the list it
+narrows. Two things pay for it. The count — *"แสดง 3 จาก 24 คน"* — is inside
+that row, beside the box, so a narrowed list says so where the narrowing was
+done and not only where it landed. And the suggestion list is untouched: picking
+a name still jumps straight to that person's row, which is the path that never
+travels the distance at all.
+
+**สถานะที่นับ stayed on the heading line** rather than joining the row. Three
+controls on a line that already holds a heading is three widths to reconcile on
+a desktop and a stack of three on a phone; two is a row.
+
+**2 — the card round the list is gone below 860px.** Asked for as *"ถอด
+Background Card ที่ครอบกลุ่มรายชื่อพนักงานออก ปล่อยให้การ์ดพนักงานแต่ละคนวางลงบน
+Background หลักโดยตรง"*. On a phone this screen is one card per person on the
+page's own ground — and all forty of them were inside a forty-first card, which
+the eye has to account for before it can read any of them, and which put its own
+border between the last row and the edge of the screen at exactly the point
+somebody is looking for **รวมทั้งหมด**.
+
+What comes off: the fill, the border, the radius, the 12px of padding and the
+16px a card leaves under itself. What goes with it, because all of it existed to
+undo the card: the wrap's negative side margins, its `:first-child` pull-up, the
+`--month-pad` token, and `.hr-table tbody`'s `12px 24px` ring, which is
+`padding: 0` now. **An employee card ran 37 → 323 at 360px and now runs
+12 → 348** — the same left and right edges `.month-head` and งวด…ยังเปิดอยู่
+stand on, which is what makes four objects read as one column instead of a card,
+a bar and a list indented from both. วันเกิดของเดือนนี้ comes out to that edge
+too, and it took three rules rather than one, because three paddings and a
+border were between that section and the page. `.box` insets prose 15px and
+carries a transparent `1px` border for variants that colour it; `.bmonth-table`'s
+own tbody added 12 at the sides; and `table.mini` — the hairline round a small
+ruled table, which is what that element is above 860px — drew a frame round the
+whole column of cards.
+
+**The last of those is the one worth writing down.** It was found by measuring
+and not by looking: a birthday card stood **13..347** where an employee card
+stood **12..348**, and the pixel each side was that border. The first rule
+written for it, `.bmonth-table { border: none }`, shipped, was correct, and
+changed nothing — `table.mini` is an element AND a class, so a bare class loses
+to it wherever in the file it sits. `table.bmonth-table` is what wins. A rule
+being in the bundle is not a rule that runs.
+
+**`scroll-margin-top` is 86px, not 74.** The pager's landing has always said the
+same sentence — the app bar's 62 plus 24 of air over the first card — and 74 was
+enough only while the tbody's 12px of top padding sat inside the distance.
+
+**Above 860px nothing moved.** The element still wears `card` and up there it
+still is one: the desktop list is a table of eleven columns read down its own
+header row, and a table needs a ground to be read against. One markup, two
+layouts — the rule `.hr-table` itself has followed since the card list was
+written. Both halves are pinned in `test/hrMonthCards.test.js`,
+`test/monthSearch.test.js` and `test/birthdayCardUi.test.js`; the flatten test
+asserts all four declarations, because a border with no fill is still a frame,
+and the birthday one asserts the element is in the selector.
+
+**Measured on the built app at 360px, admin, สิงหาคม 2569**: page height
+**3609 → 3485**, the document's scroll width equal to its client width
+throughout, employee cards and birthday cards both **12..348**, and the desktop
+at 1280px unchanged.
+
 ### The first card was never clipped — the ค้นหา bar was on it
 
 Reported on 2026-08-26 as "the employee name on the top card has disappeared",
@@ -3141,8 +3420,11 @@ with the fix suggested as a missing top margin. It was neither.
 
 **The name was in the data and in the DOM.** `PM-0100` is `วิชัย ศรีสุข` in the
 database and the cell rendered it. **And the spacing was already right**: in
-flow the first card sits **12px** under the search box, one card-gap, the same
-distance every other card keeps from the one above it.
+flow the first card sat "12px" under the search box, one card-gap, the same
+distance every other card keeps from the one above it. (It is **23px** since
+2026-08-27 — the row left the card, so the gap is now its own 10, the card’s
+border and the list’s 12. Same fact, three pieces instead of one; see the
+section headed ถอดกล่องการ์ดที่ครอบ ประจำเดือน กับช่องค้นหา.)
 
 **What covered it was `.month-find` itself**, which was `position: sticky; top:
 62px; z-index: 30`. Measured at 360px with the list scrolled to its top: the
@@ -3236,8 +3518,9 @@ than 300ms ahead of it.
 list under the search box sets the page that *holds* them, because on a phone a
 person on page 7 has no card on the screen at all. That box, its dropdown and
 what a pick does — it opens **ดู / แก้ไขรายการ** for that person — are described
-in §"และกล่องแนะนำบนตรวจสอบรายเดือน", filed with สรุป OT ส่งบัญชี's box because
-the two are the same box.
+in §"และกล่องแนะนำบนตรวจสอบรายเดือน". That section was filed under สรุป OT
+ส่งบัญชี's box while the two were the same box; ส่งบัญชี gave its box up on
+2026-08-27 and this screen is the only caller now.
 
 **A page that stops existing is clamped, not drawn empty.** `load()` can shorten
 the list without the month, the filter or the search changing — HR opens
@@ -3268,11 +3551,16 @@ pressed with five cards' worth of list above the thumb; without scrolling, the
 next five people are drawn up there out of the viewport and a button whose label
 did not change appears to have done nothing. `goPage()` calls
 `scrollIntoView({ block: 'start' })` on the list wrap, and how far down to stop
-is `scroll-margin-top: 74px` in the stylesheet — 62px of `.appbar` less the
-wrap's own 12px of padding, plus 24 of air, which puts the first card of a new
-page 24px clear of the bar. It read "156px" until 2026-08-26, when `.month-find`
-stopped being sticky: the extra 94 was that box, and a landing still sized for
-it would now leave 94px of empty ground over the first card.
+is `scroll-margin-top: 86px` in the stylesheet — 62px of `.appbar` plus 24 of
+air, which puts the first card of a new page 24px clear of the bar. It read
+"156px" until 2026-08-26, when `.month-find` stopped being sticky: the extra 94
+was that box, and a landing still sized for it would now leave 94px of empty
+ground over the first card. It read "74px" until 2026-08-27 — the same 24 of
+air, but measured **through** `.hr-table tbody`’s own 12px of top padding, which
+sat inside the distance and made 62 + 12 enough. That padding is `0` since the
+card round the list came off, so the wrap’s top edge is the first card’s and the
+whole 24 is stated here. A figure measured through another rule’s padding goes
+stale, silently, when that padding does.
 
 **In the handler, not on an effect.** While the list was a box the reset was
 `scrollTop = 0` on a `useEffect` over `[current, find, period, statusFilter]`,
@@ -3516,224 +3804,34 @@ day as that screen, and two review tables with different column sets is how a
 month goes wrong. `/api/exports/accounting.csv` follows the screen column for
 column, in the same order.
 
-**ค้นหาชื่อ หรือ รหัสพนักงาน — และยอดรวมไม่เดินตามช่องค้นหา.** The same box
-ตรวจสอบรายเดือน has, asking the same `personMatches` from
-[`lib/personSearch.js`](lib/personSearch.js), so PM-0412 and PM00511 both answer
-to either spelling and "ใจดี สมชาย" finds the same person as "สมชาย ใจดี". It
-narrows what was already fetched: no request, no reload, and it is not in the
-URL — it is "where is ถาวร", asked and answered in a few seconds.
+**ช่องค้นหาพนักงานถูกถอดออกจากหน้านี้แล้ว — 2026-08-27.** This screen carried
+the same ค้นหาชื่อ หรือ รหัสพนักงาน box as ตรวจสอบรายเดือน from 2026-08-26, with a
+300ms debounce, a highlight, a suggestion list under it and a pick that scrolled
+to the row and lit it for 1800ms. It was asked for and it worked; it was removed
+a day later, also because it was asked for, and the reason it went is the only
+part worth keeping: **the card above the figures is the only thing between the
+tab bar and the first table on a phone.** Measured on the built app at 360px,
+that card was 488px tall and the box was 81 of them.
 
-**On this screen that filter has teeth, and one rule carries the whole of it.**
-ตรวจสอบรายเดือน is where a month is checked; this is where it is closed and the
-figures go to payroll. So the box narrows `rows` and nothing else:
+What went with it: `find` / `query` and `FIND_DEBOUNCE_MS`, the listbox and its
+five keys, `goToRow()`, `FLASH_MS` and the `acct-row-` ids, the
+"แสดง n จาก m คน" count, the sentence saying the totals and the CSV did not
+follow the box, and the ไม่พบพนักงานที่ค้นหา empty state. The stylesheet lost
+`.acct-find` and the `.acct-table` half of the row flash. Nothing shared went:
+`personMatches`, `Highlight`, `.pick-menu.find-menu` and `.hit` all still have
+callers, and `test/monthSearch.test.js` still pins every one of them for
+ตรวจสอบรายเดือน — which keeps its box. **That is where "where is ถาวร" is asked
+now.** This screen is where a month is CLOSED, and closing it is done by reading
+the sheets against the paper, not by looking one person up.
 
-```js
-const narrowed = shown.map((c) => ({
-  ...c,
-  rows: c.rows.filter((row) => personMatches(row.employee, find)),
-}));
-```
-
-The spread IS the mechanism. `totals`, `departments` and `accountingCode` are
-carried through by not being mentioned, so **รวมแผนก, รวมทั้งหมด and the chips on
-each card head stay the month's figures while the box is narrowing** — as do
-`/api/exports/accounting.csv` and the printed form, which are built by the server
-from the period and have never known the box exists. Written as a hand-built
-object instead, this would be one forgotten key away from a subtotal that agreed
-with the search — and a subtotal that quietly narrowed as somebody typed is one
-that gets signed for. All of it is pinned in
-[`test/monthSearch.test.js`](test/monthSearch.test.js), including the negative
-half: no `find` may reach a total, the CSV href or `AccountingPrint`.
-
-Said on screen too, in the words that name the figures — *ยอด “รวมแผนก”
-“รวมทั้งหมด” และ “รวมทุกบริษัท” ยังเป็นของทั้งเดือน ไม่ใช่เฉพาะผลการค้นหา · ไฟล์
-CSV และแบบฟอร์มที่พิมพ์ก็เช่นกัน* — and only while the box has something in it,
-because a notice about a search nobody is running stops being read.
-
-**A company with no match leaves while the box is narrowing.** Its heading, its
-chips and its summary block would otherwise be a screenful of figures about a
-company the reader is not asking about; the month's totals for it are still on
-รวมทุกบริษัท at the top, which the box does not touch either. When nothing
-matches at all, one empty state with a way out of it, the same as
-ตรวจสอบรายเดือน's.
-
-**The box sits with บริษัท and ประจำเดือน rather than above the sheets**, because
-that card IS the filter set — บริษัท already decides which sheets are drawn, and
-one filter inside the card with another floating outside it is the same job done
-in two places. It wears `.acct-find`, which is `.month-find` minus its phone
-rule: that class is a full-bleed strip with negative margins out to the card's
-edges and the list's own ground behind it, and this box does not want the
-full bleed because it sits INSIDE the filter card rather than above a list.
-
-Until 2026-08-26 the difference was bigger and the reason was different:
-`.month-find` was also *sticky at 62px*, for a list that ran nine screens, and
-an element sticky inside a card four rows tall unsticks the moment the card
-scrolls past — a mechanism that looks like it does something and does not. That
-was the reason ส่งบัญชี never took the phone rule; it is no longer a reason,
-because `.month-find` is not sticky either. See §"The first card was never
-clipped".
-
-**และช่องต้องกว้างเต็มการ์ด — ตัวนับลงบรรทัดล่าง.** The field carries a real
-`flex-basis` (`flex: 1 1 260px` on `.acct-find .field`) and no inline `flex`.
-It shipped with `style={{ flex: 1 }}`, which is `flex: 1 1 0%` — a basis of
-NOTHING, and in a wrapping row that is the one value that guarantees no wrap
-ever happens: the row's minimum is the field's own 150px plus a nowrap
-"แสดง 3 จาก 4 คน" of about 90, and 254px fits inside a 304px card. So the two
-stayed on one line and the box took what the count left — 200px on a 360px
-phone, with the ✕ against the caret. With a 260px basis the row overflows,
-wraps, and the count drops underneath. Measured after: **304 of 304 at 360px
-and 264 of 264 at 320px** with the count below, **831 of 938 at 1280px** with
-it beside. The value is in the stylesheet and not on the element, because an
-inline style is the one thing the 860px block cannot reach.
-
-**พิมพ์แล้วกรองทันที หน่วง 300ms และตัวที่ตรงกับคำค้นถูกไฮไลต์.** Two of the
-three things asked for on 2026-08-26 were already true — the box filtered on
-change with no Enter to press, and the count and the empty state followed it.
-What was added is the debounce and the highlight.
-
-**Two strings, and the difference between them IS the debounce.** `find` is what
-is in the box and follows every keystroke with no delay, because a field that
-lags behind the finger is the one thing a debounce must never do. `query` is what
-the screen was filtered BY and arrives `FIND_DEBOUNCE_MS` (300) after typing
-stops. Everything a reader compares against everything else reads `query` — the
-rows, the count, the quoted text in the empty state, the highlight — so the
-screen never shows one query's rows under another query's count.
-
-**Clearing is not a keystroke and does not wait.** ✕ and ล้างการค้นหา are a
-decision — the whole month back, now — and 300ms of an empty box over a still
-filtered sheet reads as a control that did not work. One early return in the
-effect is the whole of that difference.
-
-Said plainly: **at this size the debounce buys nothing.** The roster is 20 people
-and the filter is `Array.filter` over four rows, so the re-render it defers costs
-less than the timer that defers it, and all it can do here is put 300ms between
-the last keystroke and the answer. It is in because it was asked for, it is
-harmless, and it is already the right shape if the roster ever grows.
-
-**The highlight is computed by the rule that chose the row, and that is not a
-detail.** `matchRanges()` in [`lib/personSearch.js`](lib/personSearch.js) searches
-in the same reduced space `personMatches` does and maps the positions back, so:
-
-| typed | row reads | marked |
-|---|---|---|
-| `PM0412` | `PM-0412` | **`PM-0412`** — hyphen included |
-| `สมชายใจดี` | `สมชาย ใจดี` | **`สมชาย ใจดี`** — space included |
-| `ใจดี` against a *code* | `PM-0412` | nothing — a Thai term never reaches the code test |
-
-A mark built from `indexOf` on the displayed string would mark **nothing** on
-exactly the rows the fuzzy half of the rule brought in — a row in the list with
-no visible reason to be there, which is worse than no highlight at all.
-
-**A mark never lands between a Thai letter and the vowel written on it.** "ส"
-matches the base letter of *สุจินดา* and the raw range is one code unit, so the
-mark's own background was drawn between ส and the vowel that sits on it,
-splitting one syllable into two glyphs with a gap down the middle — and Thai sets
-no space between words, so that gap reads as a word break inside a name. Every
-range is grown to whole clusters (`\p{M}`, every combining mark in Unicode), and
-`.hit` carries no horizontal padding for the same reason. Both halves were
-needed: the CSS could not have fixed it on its own, because the two characters
-were in different elements.
-
-`<mark class="hit">` — the element that means "here because you searched", drawn
-in `--green-accent` on `--green-tint` and bold, because the browser's own
-highlighter is a yellow fill stated in absolute colours that survives the dark
-theme unchanged. Only the name and the code are marked: แผนก and บริษัท are not
-what was searched, and marking a word for containing the letters would be the
-highlight disagreeing with the filter.
-
-**One trap worth writing down.** The two `useState`s and the debounce effect sit
-with the other hooks at the top of the component, above `if (printing) return
-<AccountingPrint …>`. Written below it — which is where they were first — they
-are hooks that some renders call and others do not, and React threw *rendered
-fewer hooks than expected* the moment พิมพ์แบบฟอร์ม was pressed.
-
-
-**และกล่องแนะนำใต้ช่องค้นหา — กดแล้วพาไปที่แถวนั้น.** A floating list opens under
-the box while there is something typed, one row per match:
-
-```
-[PM-0100] วิชัย ศรีสุข
-วิศวกรรม | 8 ชม.
-```
-
-The name and the code are marked by the same `Highlight`; แผนก and the month's
-hours for that person are the context — they are what tells two คุณสมชาย apart,
-and the figure somebody is usually looking for anyway. `hours()` and not
-`cell()`: a nought in a suggestion is an answer, where a blank in the table is a
-column to read past.
-
-**The code leads, in square brackets** — asked for by hand on 2026-08-26; it read
-"วิชัย ศรีสุข (PM-0100)", the name first with the code trailing in round
-brackets, until then. The order earns itself beyond the preference: every row of
-a list forty long starts with a Thai name of its own length and gives the eye
-running down them nothing to line up on, while a code is fixed-width in `--mono`
-and at the left edge the forty of them make a **column**. The square brackets are
-the asked-for notation and they do a second job in a script that sets no space
-between words — they stop `[PM-0100] วิชัย` reading as one run of characters.
-`test/monthSearch.test.js` holds both screens to one expression for this, because
-two tabs of the same document ordering the same two facts differently is a thing
-a reader has to re-learn on every switch.
-
-**It is a way TO the row, not a second filter, and the difference is the whole
-design.** The box already narrows the sheet; this says where on it to look.
-Picking a row shuts the list, scrolls the page to that person's row and lights it
-for 1800ms — and changes nothing about what is on screen. `goToRow()` never
-touches `find` or `query`, and `test/monthSearch.test.js` asserts that as a
-negative: clearing the box there would throw away the narrowing somebody just
-did and make the row they asked for one of forty again, at which point the scroll
-is doing all the work and the flash none of it.
-
-Three details in that function are each a bug avoided. The scroll happens in a
-`requestAnimationFrame` **after** the frame that closes the menu, because
-measuring a layout that still has a 264px panel in it puts the row in the wrong
-place on a short sheet. It scrolls to `block: 'center'` rather than `'start'`,
-because the app bar is sticky at the top of every screen in this app and a row
-sent to `start` lands behind it — centring needs no arithmetic about a bar this
-file should not know about. And `behavior` is `'smooth'` unless
-`prefers-reduced-motion` says otherwise; that is the one `matchMedia` in the
-component, and it is a question about MOTION, not about layout, which stays the
-stylesheet's.
-
-**The same panel and the same keys as กรองตามพนักงาน.** `.pick-menu` with a
-`.find-menu` modifier for the two-line row, `role="combobox"` on the input and
-`role="listbox"` on the list, ↑ ↓ to walk it, Enter to take the active row,
-Escape and Tab to shut it, and the keyboard row following the pointer so there is
-one notion of "the current row" rather than two. A second combobox with its own
-grammar would be a second thing for a reader to learn and a second thing to keep
-in step. Both classes are named in every rule, for the reason written over
-`.dept-menu`: the shared `.pick-menu` block is further down the stylesheet, so a
-single-class rule loses to it on position and the symptom is a rule that is
-provably in the bundle and provably ignored.
-
-That modifier read `.acct-menu` until later the same day, when ตรวจสอบรายเดือน
-got the same box and the same list — see §"และกล่องแนะนำบนตรวจสอบรายเดือน" below.
-A panel worn by two screens cannot be named after one of them, and the second
-screen wearing a class called *acct* is how a reader ends up believing there are
-two panels to keep in step. It is named for the box it opens under instead,
-which is the one thing both callers have in common.
-
-**Nothing is drawn when nothing matches.** The card below already says
-ไม่พบพนักงานที่ค้นหา with a way out of it, and a floating panel repeating that
-over the top of it is the same sentence twice, one of them covering the button
-that answers it.
-
-**The flash is painted on the cells, not on the row** *on this screen*, because
-below 860px the พนักงาน column is `position: sticky` with an opaque fill of its
-own — a colour on the `<tr>` would be covered on exactly the cell carrying the
-name that was searched for. An animation beats a normal declaration in the
-cascade whatever the selectors say, so the `td` rule reaches the sticky cell too,
-and it fades to `transparent` rather than back to a colour because the row's real
-background is one of three things this file cannot name. ตรวจสอบรายเดือน gets the
-opposite answer to the same question, and the reason is in §"และกล่องแนะนำบน
-ตรวจสอบรายเดือน" below.
-
-**And a reader who asked for less motion still sees it.** The blanket
-`prefers-reduced-motion` rule at the foot of the stylesheet clamps every
-animation to `.01ms`, which for this one would mean no highlight at all — an
-accessibility rule quietly deleting the feature it was meant to soften. Under
-that preference the fill is stated flat instead, and the JS timer, which is what
-actually ends the flash, takes it away at 1800ms either way.
-
+**And the card gave back 95px in all.** 488 → 393, so รวมทุกบริษัท’s own card now
+starts at 596 instead of 691 on a 360px phone. The other 14 are the last hint no
+longer reserving `.card .hint`’s 14px under itself when nothing follows it, and
+2 are the gap over the buttons coming down to the 12 `.export-row` already
+states. **บริษัท and ประจำเดือน were tried side by side for another 63 and put
+back**: 304px inside the card leaves ~146 a column, and at that width บริษัท read
+`ทุกบริษัท · 3` and ประจำเดือน read `August 202`. The ledger and that dead end
+are written over `.acct-controls` in the stylesheet.
 
 **รวมทุกบริษัท is the first card now, not the last.** total → per company → per
 person, which is the order somebody closing a month reads in and the opposite of
@@ -3750,6 +3848,46 @@ card is 304px and the seven columns come to 560px — พนักงาน 112 
 so three of the seven are on screen and **รวม ชม. and the whole หมายเหตุ column,
 where *ค้างอนุมัติ n รายการ · ไม่นับรวม* is said, are reached by pushing the
 table sideways.**
+
+**ขอบขวาบอกว่ายังมีต่อ — และบอกเฉพาะตอนที่ยังมีจริง.** Below 860px the scroll box
+draws a fade in the card’s own colour down its right edge, **in front of the
+table rather than behind it**: a sticky `::after` pinned to the right of the
+scrollport, inert to the touch (`pointer-events: none`), pulled back across the
+table by a negative margin its own width so it adds nothing to the scroll width.
+Where the browser can follow a scroll, its opacity does — so it is gone at the
+far right and is never drawn at all on a table that fits.
+
+Measured on the built app at 360px on 2026-08-27: the card is 304px, the sheet’s
+`scrollWidth` is 560 and so is the table’s — the same figure as without it — and
+a tap at the far right edge of a row lands on `td.rate-col`, not on the fade.
+รวมทุกบริษัท comes to 399 in that 304px card, so it draws one too; on a phone
+wide enough to hold it, it would not.
+
+**It was four background gradients painted BEHIND the table** from 2026-08-17,
+honest in the same way — covers that travel with the content, shadows pinned to
+the box — but every cell with a background of its own hid them, and on these two
+sheets three kinds have one: `thead th` and `tfoot td` are `--neutral-wash` and
+`tr.grand td` is green. So the edge appeared over the rows and stopped dead at
+the heading strip and again at รวมแผนก, which reads as a smudge on the middle
+rows rather than as an edge — it was reported as no hint at all.
+
+**It fades to the card, and it is not a shadow.** The element was a shadow for
+the first afternoon of 2026-08-27, and a photograph off a phone in ธีมมืด ended
+that: a darkening laid over something already dark, with `23.` cut clean through
+the middle beside it. `--card` to `--card-fade` makes the figure DISSOLVE, which
+is the difference between a number that was cut off and a number there is more
+of. `--card-fade` is the card colour at zero alpha and exists for this —
+`transparent` is rgba(0, 0, 0, 0), so fading to it fades through grey.
+
+**The fade ships to every browser; switching itself off is the conditional
+part.** It was the other way round for the same afternoon — the whole element
+behind `@supports` — which left the phones that cannot follow a scroll with
+nothing, and nothing is the state that was reported as a bug twice. So the
+gradient is unconditional and only the opacity that follows the scroll sits
+behind the gate. The cost is stated rather than hidden: on iOS Safari before 26
+the fade is drawn at the far right too, where there is no more table. That is a
+small untruth at one end of one gesture, and it was preferred to a screen that
+says nothing at all.
 
 **That is a known trade, not an oversight, and it was re-opened and closed on
 2026-08-26.** A phone layout that fits the card was built, shipped to prod and
@@ -4133,8 +4271,46 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1707/1707 pass in about 2 s**, measured 2026-08-26 across 102
-  files. It read "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
+- `npm test` — **1715/1715 pass in about 2 s**, measured 2026-08-27 across 103
+  files. The two newest are for งวดกับช่องค้นหา going above the export buttons
+  and the card round the list coming off: that `.month-find` is inside
+  `.month-head` and before `.export-row`, and that below 860px `.month-card`
+  states all four of `background: none`, `border: none`, `border-radius: 0` and
+  `padding: 0` — all four, because a border with no fill is still a frame — with
+  no `--month-pad` and no full-bleed pair left anywhere in the rules. It read
+  "1713/1713" before them. The one before that pinned the padding the containers
+  above the list gave back that evening — it read that `.month-head` and
+  `.month-card` share one `--month-pad` and that the strip’s side margins are
+  measured from it rather than written as a number beside it, which is history
+  now that the token and the strip are both gone; what survives in it is the
+  12px on `.month-head` and that `.card`’s own 15px phone padding did NOT move
+  for the rest of the app. It read "1712/1712" before it. The four
+  before that are in the same file for ประจำเดือน moving
+  down to join ค้นหาพนักงาน on ตรวจสอบรายเดือน: that the picker is in the row
+  with the search box and appears exactly once, that the month comes first in
+  that row, that the picker declares a width of its own rather than taking half
+  the row, and that the UTF-8 BOM line under the export buttons is gone. (Two of
+  those four were reworded the same day and one clause of them dropped: the row
+  is not above the list any more, and ค้นหา is not the last thing before the
+  first card.) It read "1708/1708" before them, and **it had gone
+  DOWN by nine earlier that afternoon**, which nothing else in this
+  list has done: สรุป OT ส่งบัญชี's search box was removed and the nine cases in
+  `test/monthSearch.test.js` that pinned it went with it — its filter and what
+  may not follow it, its `.acct-find` row, its debounce, its listbox, what a
+  suggestion held, what a pick did, and the flash on its cells. That file is
+  ตรวจสอบรายเดือน's alone again and everything it shares is still pinned there.
+  It read "1717/1717" before that. The ten newest are
+  `test/acctScrollHint.test.js`, the 103rd file, and
+  the extra case `test/docsMatchCode.test.js` gains from counting it: they pin
+  the right-edge fade on สรุป OT ส่งบัญชี — that it is a phone rule, that it
+  reaches those two sheets and no other table, and the declarations that are
+  load-bearing and invisible on a laptop (the table may not shrink, the fade
+  itself is not behind the `@supports` gate while switching it off is, it fades
+  to the card rather than through grey, a table that fits draws none at all, it
+  does not take the tap meant for the cell under it, and `animation-timeline` is
+  declared after the shorthand that would reset it). It read "1715/1715" earlier
+  the same day, "1707/1707 … 2026-08-26 across 102 files" before that, and
+  "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654, measured
   2026-08-25" before that, which was five behind
   the tree rather than a change: the count was simply not re-run after the last
   few cases landed. Before that, "1653", "1651", "1649", "1646", "1641", "1638"

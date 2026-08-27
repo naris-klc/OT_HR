@@ -502,16 +502,37 @@ export default function HrView({
         />
       )}
 
-      <div className="card">
+      {/* `month-head` — a handle for the phone block, and nothing else. It is
+          the ONE container between the tab bar and the first employee card that
+          is still a card below 860px, which is what makes its padding worth a
+          rule of its own: `.month-card` was the other, and it stopped being a
+          card on 2026-08-27. Three rows in here now — the heading and
+          สถานะที่นับ, ประจำเดือน and ค้นหา, then the three export buttons — read
+          in that order because each one settles what the next acts on. */}
+      <div className="card month-head">
         <div className="row" style={{ alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
             <h2>ตรวจสอบรายเดือน</h2>
             <div className="hint" style={{ margin: 0 }}>{periodLabel(period)}</div>
           </div>
-          <div className="field" style={{ maxWidth: 170 }}>
-            <label>ประจำเดือน</label>
-            <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
-          </div>
+          {/* ประจำเดือน USED TO SIT HERE, on this line beside สถานะที่นับ. It
+              is one row down now, with ค้นหาพนักงาน — see `.month-find` below.
+              Reported on 2026-08-27 as this screen not saying which month it
+              was showing, and the report was right about the symptom without
+              being right about the cause: the picker was on the screen, 465px
+              above the search box with the export buttons and งวด…ยังเปิดอยู่
+              between them, so by the time somebody was reading the list it was
+              two screens back. It went to the row over the list that morning
+              and came back into this card the same afternoon, one row lower
+              than it started — near enough to สถานะที่นับ to be read with it,
+              and above the export buttons rather than below them.
+
+              WHY IT DOES NOT SIMPLY COME BACK ONTO THIS LINE. ค้นหา has to be
+              beside it — the two are what a reader sets before anything else on
+              the screen means anything — and a third control on a line that
+              already holds a heading is three things at three widths on a
+              desktop and a stack of three on a phone. The month is not lost
+              from this line either way: the hint under the heading prints it. */}
           <div className="field" style={{ maxWidth: 220 }}>
             <label>สถานะที่นับ</label>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -520,6 +541,172 @@ export default function HrView({
               <option value={ALL_LIVE_STATUSES}>ทั้งหมดที่ยังไม่ถูกปฏิเสธ</option>
             </select>
           </div>
+        </div>
+
+        {/* WHAT THE MONTH IS, BEFORE WHAT TO DO WITH IT — asked for on
+            2026-08-27, and it is the second move this row has made in one day.
+            It spent the morning as the first child of `.month-card`, came out
+            onto the page's own ground when that turned out to be a card inside
+            a card, and is now in the controls card itself: under the heading
+            and สถานะที่นับ, above the export buttons.
+
+            THE ORDER IS THE ARGUMENT. ประจำเดือน and สถานะที่นับ decide WHICH
+            figures exist; ค้นหา decides which of them are drawn; พิมพ์ and the
+            two ส่งออก act on whatever those three settled and can produce a
+            forty-page document. Read down the card that is now: name the month,
+            narrow it, then take it away. It read the other way round until
+            today — three export buttons, then งวด…ยังเปิดอยู่, and only then the
+            box that says which month any of it is about.
+
+            AND THE SEARCH BOX IS NO LONGER THE LAST THING BEFORE THE FIRST
+            CARD. That was this row's own rule for the few hours it sat on the
+            page ground, and it is what is given up here: `.export-row` and
+            งวด…ยังเปิดอยู่ now stand between ค้นหา and the list it narrows. Two
+            things pay for it. The count — "แสดง 3 จาก 24 คน" — is inside this
+            row, beside the box, so a narrowed list says so where the narrowing
+            was done rather than only where it landed; and the suggestion list
+            is unchanged, so the one press that jumps straight to a row never
+            travels that distance at all.
+
+            AND IT IS RENDERED WHATEVER THE MONTH HOLDS — this card is drawn
+            before `data` is read at all, so the defect that put ประจำเดือน
+            inside the `data.employees.length === 0` branch earlier the same day
+            cannot return by this route. A month with no entries drew
+            ไม่มีรายการในเดือนนี้ and NO month picker then, so the one control
+            that could take a reader out of an empty month was the one the empty
+            month took away. `shown` is `[]` while `data` is null, so the box
+            and its dropdown are safe here; only the count below reads `data`. */}
+        <div className="row month-find">
+          {/* THE MONTH AND THE FILTER, IN ONE CONTAINER. ประจำเดือน is
+              first because it decides WHAT is in the list and ค้นหา only
+              decides which of it is drawn. On a phone the two stack, so the
+              order is what the eye reads; on a desktop they share the line
+              with the count at its end. */}
+          <div className="field month-pick">
+            <label>ประจำเดือน</label>
+            <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+          </div>
+          {/* `.field` around it, and that is the whole of the styling:
+              `.field input` is what every box in this app is, and a search
+              field that is a different height or a different grey from the
+              two <select>s above it reads as a different kind of control.
+              ทะเบียนพนักงาน's search box learnt this the hard way — it
+              shipped bare and drew at the browser's default width. */}
+          <div className="field">
+            <div className="searchbox">
+              <Icon name="search" className="searchbox-icon" />
+              <input
+                type="text"
+                role="combobox"
+                className={`has-icon${find ? ' has-clear' : ''}`}
+                value={find}
+                onChange={(e) => {
+                  setFind(e.target.value);
+                  // The first suggestion, not the row that was active a
+                  // keystroke ago: the list underneath is a different list
+                  // now, and Enter has to mean whatever is at the top of it.
+                  setActive(0);
+                  setOpen(e.target.value !== '');
+                }}
+                // Focus fires once; the click is the way back after Escape
+                // shut the list with the caret still in the box.
+                onFocus={() => { if (find !== '') setOpen(true); }}
+                onClick={() => { if (find !== '') setOpen(true); }}
+                onBlur={() => setOpen(false)}
+                onKeyDown={onFindKeyDown}
+                placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
+                /* The placeholder is the detail; this is the name assistive
+                   technology reads, and there is no visible <label> above
+                   the box for it to repeat. Same pair of words as
+                   ทะเบียนพนักงาน, which is the app's other search box. */
+                aria-label="ค้นหาพนักงาน"
+                aria-expanded={menuOpen}
+                aria-controls={listId}
+                aria-autocomplete="list"
+                aria-activedescendant={menuOpen && suggestions[at] ? `${listId}-${at}` : undefined}
+                // The browser's own suggestion list would cover this one.
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {find && <ClearButton onClear={() => { setFind(''); setOpen(false); }} />}
+
+              {/* NOTHING IS DRAWN WHEN NOTHING MATCHES. The empty state
+                  below already says so, in a sentence with a way out of it
+                  underneath, and a floating panel repeating that over the
+                  top of it is the same fact twice — one of them covering the
+                  button that answers it. (Said without quoting that sentence
+                  here: three assertions in this screen's tests have caught a
+                  comment instead of the code, one of them by matching the
+                  very Thai it was checking had not been copied.) */}
+              {menuOpen && (
+                <ul
+                  id={listId}
+                  role="listbox"
+                  className="pick-menu find-menu"
+                  aria-label="ผลการค้นหาพนักงาน"
+                  // Selection happens on click — but mousedown's default
+                  // action is to move focus, which blurs the input and
+                  // unmounts this list before the click can land. Prevented
+                  // on the container, so a drag to scroll on a touch screen
+                  // is still a scroll.
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  {suggestions.map((row, i) => (
+                    <li
+                      key={row.employee._id}
+                      id={`${listId}-${i}`}
+                      role="option"
+                      aria-selected={i === at}
+                      data-active={i === at ? '1' : undefined}
+                      onClick={() => goToRow(row)}
+                      // Follows the pointer, so the row under the cursor is
+                      // the row Enter takes.
+                      onMouseMove={() => setActive(i)}
+                    >
+                      {/* THE CODE LEADS, IN BRACKETS. The same order and the
+                          same brackets ส่งบัญชี uses — see the note there
+                          for why a fixed-width code at the left edge is what
+                          makes a list of forty scannable. Two screens whose
+                          suggestion rows put the same two facts in different
+                          orders is a difference a reader has to account for
+                          every time they change tab. */}
+                      <span className="s-who">
+                        <span className="s-code">
+                          [<Highlight text={row.employee.code} query={query} kind="code" />]
+                        </span>
+                        {' '}
+                        <Highlight text={row.employee.name} query={query} kind="name" />
+                      </span>
+                      {/* แผนก and สะสม / เพดาน — the two things that tell two
+                          คุณสมชาย apart, and the figure this screen is about.
+                          `capFigure` and not `hours(row.summary.otHours)`:
+                          it is the same pair of numbers the cap column
+                          prints on the row this takes you to, from the same
+                          helper, so the suggestion and the row it opens
+                          cannot quote a person's month differently. */}
+                      <span className="s-meta">
+                        {row.department?.nameTh || row.department?.name || '—'}
+                        <span className="s-sep">|</span>
+                        {capFigure(row.cap.usedHours, row.cap.capHours)} ชม.
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          {/* Only while it is narrowing something. "แสดง 24 จาก 24 คน" is a
+              sentence about nothing. `searching` and not `find`: this counts the
+              rows below it, and those follow `query`.
+              `data.employees` IS SAFE WITHOUT A GUARD even though this row is now
+              drawn while the month is still loading: `shown` is built from
+              `data?.employees || []`, so a non-empty `shown` is itself the proof
+              that `data` arrived. */}
+          {searching && shown.length > 0 && (
+            <div className="found">
+              แสดง <strong>{shown.length}</strong> จาก <strong>{data.employees.length}</strong> คน
+            </div>
+          )}
         </div>
 
         {/* `export-row` — a flex row of three long labels stacks one per line on
@@ -586,9 +773,12 @@ export default function HrView({
           >
             ส่งออกสรุปรายเดือน (CSV)
           </button>
-          <div style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>
-            ไฟล์ CSV บันทึกด้วย UTF-8 BOM เปิดใน Excel ภาษาไทยได้ทันที
-          </div>
+          {/* THE UTF-8 BOM LINE IS GONE — 2026-08-27, and it is the same call
+              สรุป OT ส่งบัญชี made for the same sentence: an encoding detail
+              reassures once and is noise every month after. It was 46px of the
+              150 this row costs on a 360px phone, sitting between the buttons
+              and the list. The files still carry the BOM; nothing about them
+              changed. */}
         </div>
       </div>
 
@@ -606,9 +796,21 @@ export default function HrView({
           here, and only below 860px. On a desktop this is a table with its
           footnotes under it and วันเกิดของเดือนนี้ under those, read in one
           column with room to spare; on a phone the same column is four screens
-          of scrolling, and the birthday table — the one thing on this card that
-          is WORK rather than a figure — was at the bottom of the last of them.
-          See the block by this name in app/styles.css. */}
+          of scrolling, and the birthday table — the one thing in here that is
+          WORK rather than a figure — was at the bottom of the last of them.
+          See the block by this name in app/styles.css.
+
+          AND `card` IS A DESKTOP CLASS NOW. Above 860px this is a table of
+          eleven columns read down its own header row, and a table needs a
+          ground of its own to be read against, so the fill and the border stay.
+          Below it the same markup is drawn as one card per person on `--bg` —
+          and a card holding forty cards is a forty-first boundary the eye has
+          to account for before it can read any of them, with its own border
+          between the last row and the edge of the screen at exactly the point
+          somebody is looking for รวมทั้งหมด. Asked for on 2026-08-27; the phone
+          block takes the fill, the border, the radius and the padding off. One
+          markup, two layouts — the same rule `.hr-table` itself follows, one
+          container out. */}
       <div className="card month-card">
         {!data ? (
           <Empty>กำลังโหลด…</Empty>
@@ -616,129 +818,6 @@ export default function HrView({
           <Empty>ไม่มีรายการในเดือนนี้</Empty>
         ) : (
           <>
-            {/* AT THE TOP OF THE LIST, above the first card and above the
-                table's own heading row — the thing it filters starts directly
-                underneath it, on both layouts. */}
-            <div className="row month-find">
-              {/* `.field` around it, and that is the whole of the styling:
-                  `.field input` is what every box in this app is, and a search
-                  field that is a different height or a different grey from the
-                  two <select>s above it reads as a different kind of control.
-                  ทะเบียนพนักงาน's search box learnt this the hard way — it
-                  shipped bare and drew at the browser's default width. */}
-              <div className="field">
-                <div className="searchbox">
-                  <Icon name="search" className="searchbox-icon" />
-                  <input
-                    type="text"
-                    role="combobox"
-                    className={`has-icon${find ? ' has-clear' : ''}`}
-                    value={find}
-                    onChange={(e) => {
-                      setFind(e.target.value);
-                      // The first suggestion, not the row that was active a
-                      // keystroke ago: the list underneath is a different list
-                      // now, and Enter has to mean whatever is at the top of it.
-                      setActive(0);
-                      setOpen(e.target.value !== '');
-                    }}
-                    // Focus fires once; the click is the way back after Escape
-                    // shut the list with the caret still in the box.
-                    onFocus={() => { if (find !== '') setOpen(true); }}
-                    onClick={() => { if (find !== '') setOpen(true); }}
-                    onBlur={() => setOpen(false)}
-                    onKeyDown={onFindKeyDown}
-                    placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
-                    /* The placeholder is the detail; this is the name assistive
-                       technology reads, and there is no visible <label> above
-                       the box for it to repeat. Same pair of words as
-                       ทะเบียนพนักงาน, which is the app's other search box. */
-                    aria-label="ค้นหาพนักงาน"
-                    aria-expanded={menuOpen}
-                    aria-controls={listId}
-                    aria-autocomplete="list"
-                    aria-activedescendant={menuOpen && suggestions[at] ? `${listId}-${at}` : undefined}
-                    // The browser's own suggestion list would cover this one.
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  {find && <ClearButton onClear={() => { setFind(''); setOpen(false); }} />}
-
-                  {/* NOTHING IS DRAWN WHEN NOTHING MATCHES. The empty state
-                      below already says so, in a sentence with a way out of it
-                      underneath, and a floating panel repeating that over the
-                      top of it is the same fact twice — one of them covering the
-                      button that answers it. (Said without quoting that sentence
-                      here: three assertions in this screen's tests have caught a
-                      comment instead of the code, one of them by matching the
-                      very Thai it was checking had not been copied.) */}
-                  {menuOpen && (
-                    <ul
-                      id={listId}
-                      role="listbox"
-                      className="pick-menu find-menu"
-                      aria-label="ผลการค้นหาพนักงาน"
-                      // Selection happens on click — but mousedown's default
-                      // action is to move focus, which blurs the input and
-                      // unmounts this list before the click can land. Prevented
-                      // on the container, so a drag to scroll on a touch screen
-                      // is still a scroll.
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      {suggestions.map((row, i) => (
-                        <li
-                          key={row.employee._id}
-                          id={`${listId}-${i}`}
-                          role="option"
-                          aria-selected={i === at}
-                          data-active={i === at ? '1' : undefined}
-                          onClick={() => goToRow(row)}
-                          // Follows the pointer, so the row under the cursor is
-                          // the row Enter takes.
-                          onMouseMove={() => setActive(i)}
-                        >
-                          {/* THE CODE LEADS, IN BRACKETS. The same order and the
-                              same brackets ส่งบัญชี uses — see the note there
-                              for why a fixed-width code at the left edge is what
-                              makes a list of forty scannable. Two screens whose
-                              suggestion rows put the same two facts in different
-                              orders is a difference a reader has to account for
-                              every time they change tab. */}
-                          <span className="s-who">
-                            <span className="s-code">
-                              [<Highlight text={row.employee.code} query={query} kind="code" />]
-                            </span>
-                            {' '}
-                            <Highlight text={row.employee.name} query={query} kind="name" />
-                          </span>
-                          {/* แผนก and สะสม / เพดาน — the two things that tell two
-                              คุณสมชาย apart, and the figure this screen is about.
-                              `capFigure` and not `hours(row.summary.otHours)`:
-                              it is the same pair of numbers the cap column
-                              prints on the row this takes you to, from the same
-                              helper, so the suggestion and the row it opens
-                              cannot quote a person's month differently. */}
-                          <span className="s-meta">
-                            {row.department?.nameTh || row.department?.name || '—'}
-                            <span className="s-sep">|</span>
-                            {capFigure(row.cap.usedHours, row.cap.capHours)} ชม.
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-              {/* Only while it is narrowing something. "แสดง 24 จาก 24 คน" is
-                  a sentence about nothing. `searching` and not `find`: this
-                  counts the rows below it, and those follow `query`. */}
-              {searching && shown.length > 0 && (
-                <div className="found">
-                  แสดง <strong>{shown.length}</strong> จาก <strong>{data.employees.length}</strong> คน
-                </div>
-              )}
-            </div>
-
             {/* The CSVs are built by the server from the month and สถานะที่นับ;
                 they have never known about this box and cannot. Said here, and
                 only while the box is narrowing something, because a file that

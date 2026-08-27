@@ -297,15 +297,21 @@ test('a new page starts at the top of the list, and only when a button asks', ()
   assert.ok(!/useEffect[^;]*scrollIntoView/.test(hrCode), 'the scroll went back onto an effect');
   // And how far down to stop is the stylesheet's, because the bar it clears is.
   //
-  // 74 AND NOT 156. It was 156 while `.month-find` was stuck under the app bar
-  // as well — 62 of `.appbar` plus 69 of the box plus the line the search adds
-  // — and the box stopped being sticky on 2026-08-26 (see
-  // test/monthSearch.test.js). 74 is the app bar's 62 less the wrap's own 12px
-  // of padding plus 24 of air, which puts the first card of a new page 24px
-  // clear of the bar; the old number would now leave 94px of empty ground over
-  // it. Walked and measured, not derived: the first card landed at 86 in the
-  // viewport with the app bar's bottom edge at 62.
-  assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible; scroll-margin-top: 74px; \}/);
+  // NOT 156. It was 156 while `.month-find` was stuck under the app bar as
+  // well — 62 of `.appbar` plus 69 of the box plus the line the search adds —
+  // and the box stopped being sticky on 2026-08-26 (see
+  // test/monthSearch.test.js). Walked and measured, not derived: the first card
+  // landed at 86 in the viewport with the app bar's bottom edge at 62.
+  //
+  // AND 86 AND NOT 74, since the card round the list came off later on
+  // 2026-08-27. The figure says the same sentence it always did — the app bar's
+  // 62 plus 24 of air over the first card — and what moved underneath it is who
+  // owns those 24. While `.hr-table tbody` padded by 12 the wrap's top edge
+  // stood 12px above the first card and 74 was enough; that padding is 0 now,
+  // so the wrap's edge IS the card's and the whole 24 has to be stated here. A
+  // number measured THROUGH another rule's padding goes stale when that padding
+  // does, silently, which is why both halves of it are written down.
+  assert.match(phone, /\.table-wrap\.card-list \{ overflow: visible; scroll-margin-top: 86px; \}/);
   layoutIsTheStylesheets();
 });
 
@@ -320,7 +326,14 @@ test('nothing on this screen is a scrollport any more', () => {
   for (const gone of ['max-height', 'min-height', 'overflow', 'overscroll-behavior']) {
     assert.ok(!rule.includes(gone), `the list is still a box: ${gone}`);
   }
-  assert.match(rule, /display: flex; flex-direction: column; gap: 12px; padding: 12px;/);
+  // `0` since 2026-08-27, and it has been three values in one day: "12px" while
+  // the card round this list padded by another 12, "12px 24px" for the hours
+  // the wrap was pulled full-bleed through that padding, and nothing at all now
+  // the card is gone and the page's own 12px is what bounds the list. The test
+  // headed "there is no card round the list, so there is nothing to pull out
+  // through" owns that history. What this one is about is that the shorthand is
+  // still a PADDING and not a box.
+  assert.match(rule, /display: flex; flex-direction: column; gap: 12px; padding: 0;/);
   // …and the wrap must not become one by inheritance: `.table-wrap` is
   // `overflow-x: auto` at every other width, which computes `overflow-y` to
   // `auto` as well and would be the inner scrollbar all over again.
@@ -609,7 +622,12 @@ test('the panel is above the marks it explains, which one of them once only clai
   // above the search box and the list. The person it warns is the one about to
   // sign the figures, and a warning read after พิมพ์ has been pressed is a
   // warning that arrived late.
-  assert.ok(strip < hrView.indexOf('<div className="card">'), 'the panel is under the controls card');
+  // `card month-head` since 2026-08-27 — the class is the phone block's handle
+  // on this container's padding, see the ledger over `.month-head`.
+  assert.ok(
+    strip < hrView.indexOf('<div className="card month-head">'),
+    'the panel is under the controls card',
+  );
   assert.ok(strip < hrView.indexOf('<input type="month"'), 'the panel is under the period box');
   assert.ok(strip < hrView.indexOf('className="row export-row"'), 'the panel is under the export buttons');
   assert.ok(strip < hrView.indexOf('<div className="row month-find">'), 'the panel split the search box from its list');
@@ -713,7 +731,96 @@ test('the phone puts วันเกิดของเดือนนี้ unde
   assert.ok(!/marginTop: 6/.test(notes), 'a note is setting its own top margin again');
   // Nothing else is given a number: a section added to this card later lands
   // where its markup says.
-  assert.ok(!desktop.includes('.month-card'), 'the phone order leaked onto the desktop');
+  //
+  // RULES ONLY. This read the raw slice until 2026-08-27, when the desktop
+  // `.month-find` block grew a paragraph explaining that the row had just come
+  // OUT of `.month-card` — and the test failed on its own explanation, the
+  // fourth assertion in this codebase to catch a comment instead of the code it
+  // describes. Half this stylesheet is prose about which rule sits where; a
+  // paragraph that names a selector is not a rule that carries one.
+  assert.ok(
+    !desktop.replace(/\/\*[\s\S]*?\*\//g, '').includes('.month-card'),
+    'the phone order leaked onto the desktop',
+  );
+});
+
+/**
+ * THERE IS NO CARD ROUND THE LIST, SO THERE IS NOTHING TO PULL OUT THROUGH.
+ *
+ * THE DEFECT THIS REPLACES, because it is the reason the rules it pins were
+ * ever written: the wrap paints `--bg` and `.hr-table tbody` inset the cards
+ * inside it, which is the ground the list is read against — and the card the
+ * wrap sat in padded 12px of `--card` around that. Every card in the list was
+ * framed twice, in two colours, and the difference told a reader nothing. It
+ * was answered on the morning of 2026-08-27 by pulling the wrap out through the
+ * card's padding: negative side margins of `calc(var(--month-pad) * -1)`, and a
+ * negative top margin as well while the wrap was the card's `:first-child`.
+ *
+ * THE AFTERNOON'S ANSWER IS THE SAME FIX ONE LEVEL UP. "ถอด Background Card
+ * ที่ครอบกลุ่มรายชื่อพนักงานออก ปล่อยให้การ์ดพนักงานแต่ละคนวางลงบน Background
+ * หลักโดยตรง" — the card is off below 860px, so there is no second ground, no
+ * arithmetic tying two rules to one token, and no `:first-child` question about
+ * whether the CSV note is above the wrap. The list, the pager and รวมทั้งหมด
+ * stand on the page's own edges, which are the edges `.month-head` and
+ * งวด…ยังเปิดอยู่ stand on.
+ *
+ * ABOVE 860px THE CARD IS STILL A CARD, and the element still wears the class:
+ * up there the list is a table of eleven columns read down its own header row,
+ * and a table needs a ground to be read against. One markup, two layouts — the
+ * rule `.hr-table` itself has followed since the card list was written.
+ */
+test('there is no card round the list, so there is nothing to pull out through', () => {
+  // THE FOUR DECLARATIONS THE CARD WAS. Anything less than all four leaves a
+  // container that still reads as a box — a border with no fill is still a
+  // frame, and padding with neither is still an indent nothing else on the
+  // screen has.
+  const at = phone.search(/\.month-card \{\s*background: none;/);
+  assert.ok(at > 0, 'the flatten rule was not found');
+  const rule = phone.slice(at, phone.indexOf('\n  }', at));
+  for (const gone of ['background: none', 'border: none', 'border-radius: 0', 'padding: 0']) {
+    assert.ok(rule.includes(gone), 'the card is coming back: ' + gone);
+  }
+  // And the 16px a card leaves under itself, which here is 16px under the last
+  // thing on the screen.
+  assert.ok(rule.includes('margin-bottom: 0'), 'the card’s bottom margin outlived the card');
+
+  // THE FULL-BLEED PAIR IS GONE WITH WHAT IT NEGATED. Rules only — the
+  // paragraph that replaced them in the stylesheet names both selectors, and
+  // matching prose instead of code is the failure this file has caught five
+  // times.
+  const rules = phone.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!rules.includes('.month-card > .table-wrap.card-list'),
+    'the list is being pulled out through a padding that is not there');
+  assert.ok(!rules.includes('--month-pad'),
+    'the token came back with one consumer');
+
+  // …and the ground the cards are read against is now the page's own, which
+  // this declaration paints over the scroll-hint gradients `.table-wrap` puts
+  // on every wrap at this width.
+  assert.match(phone, /\.table-wrap\.card-list \{ background: var\(--bg\); \}/);
+
+  // NO RING AT ALL. The sides are the page's 12px and nothing else, so an
+  // employee card runs to the same edges the controls card above it does. The
+  // 12px BETWEEN two cards is `gap` and is untouched — ground went, rhythm
+  // stayed.
+  assert.match(phone, /\.hr-table tbody \{\s*display: flex; flex-direction: column; gap: 12px; padding: 0;/);
+
+  // AND วันเกิดของเดือนนี้ COMES OUT TO THE SAME EDGE, in two rules because two
+  // paddings were between it and the page. `.box` insets prose by 15px, which
+  // was right on a card and is 15px of nothing on the page; its transparent
+  // border goes too, or the section stands one pixel inside the cards above it.
+  // The ends keep their 13px: that is this section's gap from the total.
+  assert.match(phone, /\.month-card > \.box \{ padding-left: 0; padding-right: 0; border: none; \}/);
+  // And the birthday cards' own ring, which lined up with the employee cards
+  // only because 12 + 13 + 12 and 12 + 12 both came to 37 while everything was
+  // inside one card. One of those sums changed and the other did not, so the
+  // sides are stated as nothing here the same way `.hr-table tbody` states them.
+  assert.match(phone, /\.bmonth-table tbody \{ display: flex; flex-direction: column; gap: 12px; padding: 12px 0; \}/);
+
+  // ABOVE 860px NONE OF IT APPLIES: the desktop still gets `.card` whole, and
+  // the markup still asks for it.
+  assert.match(hrView, /className="card month-card"/);
+  layoutIsTheStylesheets();
 });
 
 // ── what did not move ────────────────────────────────────────────────────────
@@ -740,7 +847,15 @@ test('the two accounting tables still scroll — they are read down their column
   assert.match(phone, /\.acct-table th\.who-col, \.acct-table td\.who-col,\s*\.allco-table th\.who-col/);
   // ตรวจสอบรายเดือน is out of all of it: a sticky cell inside a card is a cell
   // pinned to the edge of a card, which is not a column at all.
-  const scrollers = phone.slice(phone.indexOf('.acct-table, .allco-table {'), phone.indexOf('.hr-table {'));
+  // RULES ONLY, and the reason is this screen's own history: the block between
+  // these two selectors is where the card list is declared, and its comments
+  // explain — in as many words — that `.hr-table` is a table above 860px and
+  // cards below it. This assertion read the raw slice until 2026-08-27 and
+  // failed on that paragraph, the sixth time in this codebase a test has caught
+  // a comment instead of the code it describes.
+  const scrollers = phone
+    .slice(phone.indexOf('.acct-table, .allco-table {'), phone.indexOf('.hr-table {'))
+    .replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!scrollers.includes('.hr-table'), 'the card layout is still carrying scrolling-table rules');
 });
 

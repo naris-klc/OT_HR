@@ -13,6 +13,14 @@ import { highlightParts, personMatches } from '../lib/personSearch.js';
  * no request, and cannot change a figure. Two things about it are worth holding
  * down, and neither is the typing.
  *
+ * ONE SCREEN, AND IT WAS TWO. สรุป OT ส่งบัญชี carried the same box from
+ * 2026-08-26 and gave it up on 2026-08-27 — asked for, to get the card above
+ * the figures down from 488px to 393 on a phone. Everything this file pins is
+ * ตรวจสอบรายเดือน's again. What went with it is in README and in
+ * docs/features.md; the shared pieces it used — `personMatches`, `Highlight`,
+ * `.pick-menu.find-menu`, `.hit` — all still have callers and are still
+ * pinned below.
+ *
  * THE RULE IS THE ROSTER'S RULE. `personMatches` is what ทะเบียนพนักงาน and
  * กรองตามพนักงาน already ask, so a code typed either way round finds the same
  * person on all three screens — this roster has PM-0412 and PM00511 both live
@@ -147,6 +155,94 @@ test('a month with no rows at all still says that, not “not found”', () => {
   );
 });
 
+// ── ประจำเดือน sits in this row too ──────────────────────────────────────────
+
+/**
+ * Added 2026-08-27, and it is a MOVE rather than a new control — twice in one
+ * day, which is the part worth writing down.
+ *
+ * THE FIRST MOVE. The picker was in the card at the top of the screen, beside
+ * สถานะที่นับ. It was reported that day as this screen not saying which month it
+ * was showing — true as a symptom and wrong as a cause: measured at 360px the
+ * picker was 465px above the search box, with the export row and งวด…ยังเปิดอยู่
+ * between them, so by the time anybody was reading the list it was two screens
+ * back. It went into the row directly above the list, beside ค้นหา.
+ *
+ * THE SECOND took that row back into the controls card, one row under the
+ * heading and สถานะที่นับ and ABOVE the export buttons, and it was asked for as
+ * setting the งวด before the buttons that print it. So the card reads: what the
+ * month is, then which of it to look at, then what to do with it — and the two
+ * controls that decide which figures exist are on adjacent lines again rather
+ * than 465px and a lock bar apart.
+ *
+ * WHAT IS GIVEN UP, said plainly because the test that pinned it is gone: ค้นหา
+ * is no longer the last thing before the first card. `.export-row` and
+ * งวด…ยังเปิดอยู่ are between them now. The count beside the box says how far
+ * the list was narrowed without anybody scrolling to it, and the suggestion list
+ * still jumps straight to a row, which is the path that never travels the
+ * distance at all.
+ *
+ * WHAT NEITHER MOVE DID IS SAVE HEIGHT, and that was measured rather than
+ * assumed: on the first, the header card went 385px → 308 and the new row went
+ * 69 → 146, and the first employee card did not move by a pixel (842 both times,
+ * on the built app at 360px). Controls cost what they cost wherever they are
+ * put. The 44px this screen did give back came from deleting the UTF-8 BOM line
+ * under the export buttons, which is the last test in this block; the card round
+ * the list going away is worth more than either move, and is pinned in
+ * test/hrMonthCards.test.js.
+ */
+
+test('ประจำเดือน and ค้นหา are one row, above the buttons that act on them', () => {
+  const row = hrView.slice(hrView.indexOf('className="row month-find"'), hrView.indexOf('</ul>'));
+  assert.match(row, /<input type="month" value=\{period\} onChange=\{\(e\) => setPeriod\(e\.target\.value\)\} \/>/,
+    'the month picker is not in the row that filters the list');
+  // Once, and in one place: two pickers bound to the same state is two controls
+  // a reader has to notice agree.
+  assert.equal((hrView.match(/type="month"/g) || []).length, 1,
+    'there is more than one month picker on this screen');
+  // สถานะที่นับ stays on the heading line, one row up. It is the third thing
+  // that decides which figures exist, and all three are above the buttons.
+  assert.match(hrView, /<label>สถานะที่นับ<\/label>/);
+  // THE ROW IS IN THE CARD, AND ABOVE THE BUTTONS. Both halves: inside
+  // `.month-head` says the controls are together, before `.export-row` says the
+  // งวด is settled before anything offers to print it.
+  const head = hrView.indexOf('<div className="card month-head">');
+  const find = hrView.indexOf('<div className="row month-find">');
+  const exports = hrView.indexOf('className="row export-row"');
+  const lock = hrView.indexOf('<PeriodLockBar');
+  assert.ok(head > 0 && find > head, 'the search row left the controls card');
+  assert.ok(find < exports, 'the export buttons are back above the month and the search box');
+  assert.ok(exports < lock, 'งวด…ยังเปิดอยู่ moved into the controls card');
+});
+
+test('the month comes first in the row, because it decides what the search searches', () => {
+  const row = hrView.slice(hrView.indexOf('className="row month-find"'));
+  assert.ok(
+    row.indexOf('<label>ประจำเดือน</label>') < row.indexOf('className="searchbox"'),
+    'the search box moved above the month it is searching',
+  );
+});
+
+test('the month box has a width of its own, or it takes half the line', () => {
+  // `.field` is `flex: 1`, which is `flex: 1 1 0%` — a basis of nothing. Two
+  // fields both grasping at nothing split the row in half, and half a row is too
+  // much for a month and too little for a name.
+  assert.match(css, /\.month-find \.month-pick \{ flex: 0 0 170px; \}/);
+});
+
+test('the UTF-8 BOM line is gone from under the export buttons', () => {
+  // สรุป OT ส่งบัญชี dropped this same sentence for the same reason — an
+  // encoding detail reassures once and is noise every month after — and this
+  // screen kept it until 2026-08-27. It was 43 of the 150px that row cost on a
+  // 360px phone. The files still carry the BOM; see `src/lib/csv.js`.
+  // The Thai sentence and not the words "UTF-8 BOM": the comment left in its
+  // place says those, which is a test failing on its own explanation.
+  assert.ok(
+    !/เปิดใน Excel ภาษาไทยได้ทันที/.test(hrView),
+    'the encoding note is back above the list',
+  );
+});
+
 // ── the box, on the layout that scrolls ──────────────────────────────────────
 
 /**
@@ -165,13 +261,23 @@ test('a month with no rows at all still says that, not “not found”', () => {
  * first card is only special in being where a thumb stops.
  *
  * AND THE REASON HAD ALREADY GONE. The bar was written for a list nine screens
- * long; the pager made it five cards. So what is pinned now is that the phone
- * rule is a STRIP and not a BAR: the full-bleed margins, the padding and the
- * ground stay, because those say the box filters what is under it; the
- * position, the layer and the `!important` are gone, and this refuses them
- * coming back by accident.
+ * long; the pager made it five cards.
+ *
+ * ── AND ON 2026-08-27 THE STRIP WENT WITH THE CARD IT WAS A STRIP OF ────────
+ *
+ * What was left after the sticky came out was four declarations — negative side
+ * margins, padding, a `--bg` fill and a hairline — and every one of them existed
+ * to make a row that was INSIDE `.month-card` stop looking like part of it. The
+ * row left that card, and by the end of the day it was in `.month-head` with the
+ * heading and the export buttons: an ordinary row of an ordinary card, bounded
+ * by the same padding both of those are bounded by. So the margins have nothing
+ * to negate, the padding gives back nothing, the fill would paint a card its own
+ * colour and the hairline would draw a boundary between two rows of one card.
+ *
+ * WHAT THIS PINS is that none of them comes back — and neither does the sticky,
+ * the layer or the `!important` under it.
  */
-test('the box is a strip over the list, not a bar stuck over it', () => {
+test('the box is a row of the controls card, not a strip stuck over the list', () => {
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   const at = phone.indexOf('.month-find {');
   const rule = phone.slice(at, phone.indexOf('\n  }', at)).replace(/\/\*[\s\S]*?\*\//g, '');
@@ -180,11 +286,19 @@ test('the box is a strip over the list, not a bar stuck over it', () => {
   assert.ok(!/z-index/.test(rule), 'the search box is stacking against something again');
   assert.ok(!/!important/.test(rule), 'the forced fill came back without the sticky that needed it');
 
-  // The strip itself — out to the card's edges, its own padding back, and the
-  // ground the card list is painted on so the two read as one zone.
-  assert.match(rule, /margin-left: -15px; margin-right: -15px;/);
-  assert.match(rule, /background: var\(--bg\);/);
-  assert.match(rule, /border-bottom: 1px solid var\(--line-soft\);/);
+  // The four that were the card's, and are nobody's now.
+  assert.ok(!/margin-left|margin-right/.test(rule), 'the full-bleed margins came back without the card that needed them');
+  assert.ok(!/padding/.test(rule), 'the row is giving back padding it is not being charged');
+  assert.ok(!/background/.test(rule), 'the row is painting the page its own colour');
+  assert.ok(!/border/.test(rule), 'the hairline came back over a gap that is already a gap');
+
+  // AND THE MARKUP IS THE OTHER HALF OF IT. A stylesheet cannot say which
+  // element is somebody's parent, so the rules above are only true while this
+  // is: the row is inside `.month-head` and nowhere near the list.
+  const head = hrView.indexOf('<div className="card month-head">');
+  const find = hrView.indexOf('<div className="row month-find">');
+  const list = hrView.indexOf('<div className="card month-card">');
+  assert.ok(head < find && find < list, 'the search row is back inside the month card');
 
   // คิวรออนุมัติ's bar IS still stuck, at the same 62 this one used to take —
   // that screen is a queue worked through top to bottom, not a five-card page.
@@ -193,6 +307,33 @@ test('the box is a strip over the list, not a bar stuck over it', () => {
   // Desktop never had any of it.
   const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
   assert.ok(!/\.month-find \{[^}]*sticky/.test(desktop), 'the box went sticky on the desktop too');
+});
+
+/**
+ * THE MONTH PICKER CANNOT BE INSIDE THE THING IT CHOOSES.
+ *
+ * This is the defect the move above fixed on the way past, and it is the one
+ * worth a test of its own: while the row was the first child of `.month-card`
+ * it was also inside the `data.employees.length === 0` branch, so a month with
+ * no entries drew ไม่มีรายการในเดือนนี้ and no picker at all. The one control
+ * that takes a reader OUT of an empty month was the control the empty month
+ * took away, and the only way back was the browser's reload.
+ */
+test('the month picker is drawn on a month with no entries in it', () => {
+  // ELEMENTS AND A BRANCH, NOT THE THAI AND NOT THE CONDITION. Both of those
+  // are also in the comment over the row explaining this very defect, and
+  // matching them found the explanation — the fifth assertion in this codebase
+  // to catch a comment instead of the code it describes, and it took two
+  // minutes rather than eleven days because it was written and run here.
+  const row = hrView.indexOf('<div className="row month-find">');
+  const empty = hrView.indexOf('<Empty>ไม่มีรายการในเดือนนี้</Empty>');
+  assert.ok(row > 0 && empty > 0, 'the row or the empty state was not found');
+  assert.ok(row < empty, 'the search row is drawn after the empty-month branch decides');
+  // …and the branch that decides it opens after the row, so the row is outside.
+  assert.ok(
+    row < hrView.indexOf(') : data.employees.length === 0 ? ('),
+    'the picker is back inside the “this month has entries” branch',
+  );
 });
 
 /**
@@ -221,15 +362,66 @@ test('nothing new is stacked between the phone bars and the dialogs', () => {
   assert.match(css.slice(own, css.indexOf('}', own)), /z-index: 50;/, 'the exemption above is stale');
 });
 
-test('the space under the box is the space between two cards', () => {
-  // 12px — the same gap the cards keep from each other, so the first card is
-  // not a special case of the list it is the top of.
-  // The selector gained `.acct-find` on 2026-08-26 — ส่งบัญชี's box, which is
-  // this row minus the phone rule below. See the accounting section at the
-  // foot of this file.
-  assert.match(css, /\.month-find, \.acct-find \{ align-items: center; gap: 10px 14px; margin-bottom: 12px; \}/);
+test('the space over the box is the space between two rows of one card', () => {
+  // A TOP MARGIN, AND IT IS `.export-row`'S OWN NUMBER — 12px, the gap this
+  // card puts between the heading row and this one and between this one and the
+  // buttons. It was `margin-bottom: 12px` for the few hours the row stood on the
+  // page ground between two cards, where 12 was the gap two cards keep.
+  //
+  // WHY THE SIDE IT IS ON MATTERS. `.export-row` declares its own 12px top
+  // margin, so a bottom margin here would be two adjacent margins asking for the
+  // same gap; they collapse to the larger, and the number a reader gets is not
+  // the number either rule states.
+  //
+  // The selector carried `.acct-find` beside this one from 2026-08-26 until
+  // 2026-08-27, when ส่งบัญชี's box was taken out. One caller again.
+  assert.match(css, /\.month-find \{ align-items: center; gap: 10px 14px; margin-top: 12px; \}/);
+  // …AND ON A PHONE IT IS 8, which is what `.export-row` takes at that width for
+  // the reason stated there: at 12 the gap reads as a section break between
+  // controls that belong to each other.
+  //
+  // IT IS ALSO THE ONLY THING THE PHONE RULE SAYS. The padding it used to carry
+  // — `8px var(--month-pad) 10px` — was the other half of the full-bleed
+  // margins, and both went out with the card; the test above pins that none of
+  // them comes back.
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(phone, /\.month-find \{[\s\S]*?padding: 10px 15px 12px;/);
+  assert.match(phone, /\.month-find \{[\s\S]*?margin-top: 8px;/);
+  assert.match(phone, /\.export-row \{\s*margin-top: 8px;/);
+});
+
+/**
+ * The containers this screen stacks before the list, and what is left of them.
+ *
+ * Trimmed on 2026-08-27, asked for as "reduce the padding". It was worth 21px
+ * above the first employee card, measured on the built app at 360px — 798 → 777
+ * — and that was the whole of what padding had left to give while there were
+ * three of them. The round before it had already established that MOVING
+ * controls gives nothing.
+ *
+ * THERE ARE TWO NOW, not three: `.month-card` stopped being a card later the
+ * same day, so what stacks above the list is the controls card and
+ * งวด…ยังเปิดอยู่, and the 12px this pins is one container's, not two. That was
+ * worth more than the trim was — the card's padding, its border and the 16px it
+ * left under itself, all of it above and below a list that was already drawn as
+ * cards. See test/hrMonthCards.test.js for the rule and the reasoning.
+ */
+test('the one card above the list is 12px, and the list itself is nobody’s card', () => {
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(phone, /\.month-head \{ padding: 12px; \}/,
+    'the controls card stopped stating its own padding');
+  // A LITERAL AGAIN, AND THAT IS THE POINT OF THE PAIR. It was `--month-pad`
+  // while two rules had to agree — this padding, and the negative margins that
+  // pulled the list back out through it. The list is not inside anything now, so
+  // there is one consumer, and a token with one consumer is a name standing in
+  // front of a number.
+  assert.ok(!phone.replace(/\/\*[\s\S]*?\*\//g, '').includes('--month-pad'),
+    'the token came back');
+  // The gap a card leaves under itself, 16 everywhere else and 13 for the two
+  // things that stack above this list.
+  assert.match(phone, /\.month-head, \.card\.period-lock \{ margin-bottom: 13px; \}/);
+  // ONLY THIS SCREEN. `.card` is worn by every screen in the app.
+  assert.match(css, /\.card \{ padding: 15px; border-radius: var\(--radius\); \}/,
+    'the phone padding of every card in the app moved');
 });
 
 test('the placeholder is a prompt, not an answer', () => {
@@ -242,106 +434,6 @@ test('the placeholder is a prompt, not an answer', () => {
     !/\.field input::placeholder/.test(css),
     'every field in the app just had its placeholder restyled',
   );
-});
-
-// ── สรุป OT ส่งบัญชี has the same box, and one more thing to protect ─────────
-
-/**
- * The second caller, added 2026-08-26.
- *
- * Everything above applies unchanged — same rule, same chrome, same "a screen
- * filter and nothing more". What is different is the stake. ตรวจสอบรายเดือน is
- * where a month is CHECKED; ส่งบัญชี is where it is CLOSED and the figures go to
- * payroll. So the invariant that รวมทั้งหมด does not follow the box is not a
- * nicety here, it is the whole reason the box can exist at all: a subtotal that
- * quietly narrowed as somebody typed would be signed for.
- */
-const acctView = read('components/AccountingView.jsx');
-
-test('ส่งบัญชี asks the same rule, and narrows rows and nothing else', () => {
-  assert.match(acctView, /import \{ personMatches \} from '@\/lib\/personSearch\.js'/);
-  // The spread is the mechanism: a copy of the company with ONE field replaced,
-  // so `totals`, `departments` and `accountingCode` are carried through by not
-  // being mentioned. Rewritten as a hand-built object it would be one forgotten
-  // key away from a summary that agreed with the search.
-  // `query` and not `find` since the debounce landed — the string the screen
-  // was filtered BY, which is also what the count, the empty state and the
-  // highlight read. See the live-search section at the foot of this file.
-  assert.match(
-    acctView,
-    /const narrowed = shown\.map\(\(c\) => \(\{\s*\.\.\.c,\s*rows: c\.rows\.filter\(\(row\) => personMatches\(row\.employee, query\)\),\s*\}\)\);/,
-  );
-  assert.ok(!/toLowerCase\(\)\.includes/.test(acctView), 'a hand-rolled match crept in beside personMatches');
-  // Nothing else in the file may take `find` as an argument — the totals, the
-  // CSV href and the print sheet are all built without it.
-  assert.ok(!/totals[\s\S]{0,60}find/.test(acctView), 'a total started reading the search box');
-  assert.ok(!/accounting\.csv\?[^`]*find/.test(acctView), 'the CSV started carrying the search');
-  assert.ok(
-    !/<AccountingPrint[\s\S]{0,200}find=/.test(acctView),
-    'the printed sheet started following the search',
-  );
-});
-
-test('and it says so on screen, in the words that name the figures', () => {
-  // Not a general "this is a filter" line: the three totals BY NAME, because
-  // those are the three a reader is about to act on.
-  assert.match(acctView, /ยอด “รวมแผนก” “รวมทั้งหมด” และ “รวมทุกบริษัท” ยังเป็นของทั้งเดือน/);
-  assert.match(acctView, /ไฟล์ CSV และแบบฟอร์มที่พิมพ์ก็เช่นกัน/);
-  // And only while it is narrowing something — a notice about a search nobody
-  // is running is a notice that stops being read.
-  assert.match(acctView, /\{searching && rowsFound > 0 && \(/);
-  // No result is an answer, with a way out, the same as ตรวจสอบรายเดือน's.
-  assert.match(acctView, /ไม่พบพนักงานที่ค้นหา “\{query\}”/);
-  assert.match(acctView, /ล้างการค้นหา/);
-});
-
-test('รวมทุกบริษัท is the first card, and the search box does not reach it', () => {
-  // total → per company → per person. At the foot of two sheets the covering
-  // note's own figure was the last thing on the screen.
-  const body = acctView.slice(acctView.indexOf('{!data ? ('), acctView.indexOf('function CompanySheet'));
-  assert.ok(
-    body.indexOf('<AllCompanies data={data} />') < body.indexOf('<CompanySheet'),
-    'the sheets went back above รวมทุกบริษัท',
-  );
-  // `data`, not `narrowed` — the month's two companies and their total, whole.
-  assert.match(acctView, /<AllCompanies data=\{data\} \/>/);
-  assert.ok(!/<AllCompanies[^>]*(narrowed|visible|find)/.test(acctView), 'รวมทุกบริษัท started following the search');
-});
-
-test('its box is `.acct-find` — the same row without the sticky phone rule', () => {
-  assert.match(acctView, /className="row acct-find"/);
-  // The magnifier and the ✕ are the shared components, not a second pair.
-  assert.match(acctView, /<Icon name="search" className="searchbox-icon" \/>/);
-  // The ✕ shuts the suggestion list as well as emptying the box — it is the one
-  // press that means "none of this", and leaving a panel of matches for a query
-  // that no longer exists floating over the sheet is half an answer.
-  assert.match(acctView, /<ClearButton onClear=\{\(\) => \{ setFind\(''\); setOpen\(false\); \}\} \/>/);
-  // `.month-find`'s phone rule is a full-bleed strip and nothing more since
-  // 2026-08-26 — it was sticky under the app bar until then, for a list nine
-  // screens long that the pager had already cut to five cards. This box never
-  // wanted either: it sits in a card four rows tall, where sticky would unstick
-  // the moment the card scrolled past.
-  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.ok(!/\.acct-find/.test(phone), 'ส่งบัญชี’s box picked up a phone rule of its own');
-  assert.match(css, /\.acct-find \{ margin-bottom: 0; \}/);
-
-  /*
-   * A REAL FLEX-BASIS, AND IT IS NOT DECORATION. `.field` is `flex: 1` —
-   * `flex: 1 1 0%`, a basis of nothing — which in a wrapping row is the one
-   * value that guarantees no wrap ever happens: the row's minimum is the
-   * field's 150px plus a nowrap "แสดง 3 จาก 4 คน" of about 90, and 254 fits
-   * inside a 304px card. So the box gave its width to the count and drew at
-   * 200px on a 360px phone, with the ✕ against the caret. Reported, and fixed
-   * by giving the field a basis wide enough to push the count onto its own
-   * line. Measured after: 304/304 at 360px and 264/264 at 320px with the count
-   * below, 831 of 938 at 1280px with the count beside it.
-   */
-  assert.match(css, /\.acct-find \.field \{ flex: 1 1 260px; \}/);
-  const box = acctView.slice(
-    acctView.indexOf('className="row acct-find"'),
-    acctView.indexOf('className="found"'),
-  );
-  assert.ok(!/style=\{\{[^}]*flex/.test(box), 'an inline flex came back onto the search field');
 });
 
 // ── live filtering: the debounce, and where the match is drawn ────────────────
@@ -434,39 +526,6 @@ test('the pieces put the name back together exactly, or the screen loses charact
   }
 });
 
-test('typing filters with no Enter, 300ms behind the box, and clearing does not wait', () => {
-  // `find` is the box and follows every keystroke; `query` is what the screen
-  // was filtered BY. A field that lagged behind the finger is the one thing a
-  // debounce must never do.
-  assert.match(acctView, /const FIND_DEBOUNCE_MS = 300;/);
-  assert.match(acctView, /const \[find, setFind\] = useState\(''\);/);
-  assert.match(acctView, /const \[query, setQuery\] = useState\(''\);/);
-  assert.match(acctView, /onChange=\{\(e\) => \{\s*setFind\(e\.target\.value\);/);
-  assert.match(acctView, /value=\{find\}/);
-  // Clearing is a decision, not a keystroke — the early return is what makes
-  // the ✕ and ล้างการค้นหา act at once instead of 300ms later.
-  assert.match(
-    acctView,
-    /if \(find === ''\) \{ setQuery\(''\); return undefined; \}\s*const timer = setTimeout\(\(\) => setQuery\(find\), FIND_DEBOUNCE_MS\);/,
-  );
-  assert.match(acctView, /return \(\) => clearTimeout\(timer\);/);
-  // Everything the reader compares reads the SAME string, or the screen shows
-  // one query's rows under another query's count.
-  assert.match(acctView, /personMatches\(row\.employee, query\)/);
-  assert.match(acctView, /const searching = query\.trim\(\) !== '';/);
-  assert.match(acctView, /ไม่พบพนักงานที่ค้นหา “\{query\}”/);
-  assert.match(acctView, /<Highlight text=\{row\.employee\.name\} query=\{query\} kind="name" \/>/);
-  assert.match(acctView, /<Highlight text=\{row\.employee\.code\} query=\{query\} kind="code" \/>/);
-  // AND THE HOOKS ARE ABOVE THE EARLY RETURN. `if (printing)` returns before the
-  // rest of the function runs, so a hook written after it is called on some
-  // renders and not others — React threw "rendered fewer hooks than expected"
-  // the moment พิมพ์แบบฟอร์ม was pressed.
-  assert.ok(
-    acctView.indexOf('const [query, setQuery]') < acctView.indexOf('if (printing) {'),
-    'the search hooks moved below the print early-return',
-  );
-});
-
 test('the mark is the app’s green, not the browser’s highlighter', () => {
   // `<mark>` is the element that means "here because you searched" — but the UA
   // sheet paints it in absolute colours, so left alone it is a yellow felt-tip
@@ -483,57 +542,16 @@ test('the mark is the app’s green, not the browser’s highlighter', () => {
   assert.match(css, /\.hit \{[\s\S]*?box-decoration-break: clone;/);
 });
 
-// ── the suggestion list, and the row it takes you to ─────────────────────────
-
 /**
- * Added 2026-08-26. A floating list under the box, a row per match, and a click
- * that takes the page to that person's row on the sheet.
+ * The one thing about a suggestion row that was asked for by hand, and so is
+ * pinned by shape rather than by its pieces: THE CODE LEADS, IN BRACKETS.
  *
- * The two things worth holding down are the two that would be easy to undo. It
- * is the SAME panel and the same keys as กรองตามพนักงาน — a second combobox with
- * its own grammar is a second thing for a reader to learn and for this file to
- * keep in step. And picking a row does NOT change what is on screen: it is a way
- * TO the row, not a second filter, and the moment it starts clearing the box it
- * has become one.
- */
-
-test('the dropdown is the app’s own listbox, not a second one', () => {
-  assert.match(acctView, /className="pick-menu find-menu"/);
-  assert.match(acctView, /role="listbox"/);
-  assert.match(acctView, /role="combobox"/);
-  assert.match(acctView, /aria-expanded=\{menuOpen\}/);
-  assert.match(acctView, /aria-autocomplete="list"/);
-  assert.match(acctView, /aria-activedescendant=\{menuOpen && suggestions\[at\] \? `\$\{listId\}-\$\{at\}` : undefined\}/);
-  // The same keys PickPerson answers, in the same order, including the two that
-  // are easy to leave out: Escape shuts it and Tab shuts it.
-  for (const key of ['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Tab']) {
-    assert.ok(acctView.includes(`'${key}'`), `the box does not answer ${key}`);
-  }
-  // mousedown's default action moves focus, which blurs the input and unmounts
-  // the list before the click can land.
-  assert.match(acctView, /onMouseDown=\{\(e\) => e\.preventDefault\(\)\}/);
-  // The keyboard row follows the pointer, so there is one current row, not two.
-  assert.match(acctView, /onMouseMove=\{\(\) => setActive\(i\)\}/);
-  // Both classes on every rule, or the shared `.pick-menu` block further down
-  // the stylesheet wins on position — the trap `.dept-menu` fell into.
-  for (const rule of ['.pick-menu.find-menu li', '.pick-menu.find-menu li .s-code',
-    '.pick-menu.find-menu li .s-meta']) {
-    assert.ok(css.includes(rule), `${rule} is not scoped to both classes`);
-  }
-  // The panel the phone gets has to be capped against the viewport as well as
-  // in pixels: two-line rows fill 264px faster than one-line rows do.
-  assert.match(css, /\.pick-menu\.find-menu \{ max-height: min\(264px, 46vh\); \}/);
-});
-
-/**
- * `[PM-0100] วิชัย ศรีสุข` — the code first, in square brackets, then the name.
+ * Asked for on 2026-08-26. It read "วิชัย ศรีสุข (PM-0100)" until then, and the
+ * order is the point: every row of a list forty long starts with a Thai name of
+ * its own length and the eye scanning down them has nothing to line up on. A
+ * code is fixed-width, mono, and at the left edge it makes a column.
  *
- * One expression, asserted from both screens' tests, because a suggestion row
- * that put the same two facts in different orders on two tabs is a difference a
- * reader has to account for every time they switch. Mono makes the leading code
- * a column the eye can run down; the brackets are the asked-for notation and
- * they also stop `[PM-0100] วิชัย` reading as one word in a script that sets no
- * space between them.
+ * It was two screens' rows and is one; the regex stayed as it was.
  */
 const ROW_LEADS_WITH_THE_CODE = new RegExp(
   '<span className="s-code">\\s*'
@@ -541,71 +559,6 @@ const ROW_LEADS_WITH_THE_CODE = new RegExp(
   + '</span>\\s*\\{\' \'\\}\\s*'
   + '<Highlight text=\\{row\\.employee\\.name\\} query=\\{query\\} kind="name" />',
 );
-
-test('a suggestion says who, which code, which department and how many hours', () => {
-  const item = acctView.slice(acctView.indexOf('<span className="s-who">'), acctView.indexOf('</ul>'));
-  // The two strings the box was asked about are marked; แผนก and the hours are
-  // context and are not.
-  assert.match(item, /<Highlight text=\{row\.employee\.name\} query=\{query\} kind="name" \/>/);
-  assert.match(item, /<Highlight text=\{row\.employee\.code\} query=\{query\} kind="code" \/>/);
-  assert.match(item, /\{row\.department\?\.name \|\| '—'\}/);
-  // `hours()`, not `cell()`: a nought here is an answer, not a blank to read
-  // past. `cell()` is the table's rule and belongs to the table.
-  assert.match(item, /\{hours\(row\.otHours\)\} ชม\./);
-  // The list is the filtered rows in the order the sheets draw them, so ↓ walks
-  // it in the same order the eye walks the page — and it is `narrowed`, which
-  // means it can never list somebody the sheet is not showing.
-  assert.match(acctView, /const suggestions = narrowed\.flatMap\(\(c\) => c\.rows\);/);
-  // THE CODE LEADS, IN BRACKETS — asked for by hand on 2026-08-26 and pinned
-  // here because the order is the whole of what was asked for. Both screens are
-  // checked against the same expression below.
-  assert.match(item, ROW_LEADS_WITH_THE_CODE);
-});
-
-
-test('picking a row moves the page to it and lights it — and leaves the filter alone', () => {
-  const fn = acctView.slice(acctView.indexOf('function goToRow('), acctView.indexOf('function onFindKeyDown('));
-  assert.match(fn, /setOpen\(false\);/);
-  assert.match(fn, /setFlash\(id\);/);
-  // NOT `setFind('')`. Clearing here would throw away the narrowing somebody
-  // just did and make the row they asked for one of forty again, at which point
-  // the scroll does all the work and the flash none of it.
-  assert.ok(!/setFind/.test(fn), 'picking a suggestion clears the search box');
-  assert.ok(!/setQuery/.test(fn), 'picking a suggestion rewrites the applied query');
-  // After the frame that closes the menu: measuring a layout that still has a
-  // 264px panel in it puts the row in the wrong place on a short sheet.
-  assert.match(fn, /window\.requestAnimationFrame\(\(\) => \{/);
-  // `center`, because the app bar is sticky at the top of every screen and a
-  // row scrolled to `start` lands behind it.
-  assert.match(fn, /block: 'center',/);
-  assert.match(fn, /behavior: still \? 'auto' : 'smooth',/);
-  // The id is on the element because the tables are separate components and
-  // this is a document-wide lookup by nature.
-  assert.match(acctView, /const rowDomId = \(employeeId\) => `acct-row-\$\{employeeId\}`;/);
-  assert.match(acctView, /id=\{rowDomId\(row\.employee\.id\)\}/);
-  assert.match(acctView, /className=\{flash === row\.employee\.id \? 'row-flash' : undefined\}/);
-});
-
-test('the flash reaches the sticky cell, and survives prefers-reduced-motion', () => {
-  // ON ส่งบัญชี'S CELLS. Below 860px the พนักงาน column there is sticky with an
-  // opaque fill of its own, so a colour on the `<tr>` is covered on exactly the
-  // cell carrying the name that was searched for.
-  assert.match(css, /\.acct-table tbody tr\.row-flash > td \{ animation: rowFlash 1800ms ease-out; \}/);
-  assert.match(css, /@keyframes rowFlash \{[\s\S]*?100% \{ background-color: transparent; \}/);
-  // The blanket reduced-motion rule clamps every animation to .01ms, which for
-  // this one would mean no highlight at all — an accessibility rule removing
-  // the whole point of the feature. Stated flat there instead; the JS timer is
-  // what ends it either way. Both tables are named in the one block, or the
-  // screen that was added second is the one the rule quietly stops covering.
-  const still = css.match(/@media \(prefers-reduced-motion: reduce\) \{\s*\.acct-table[\s\S]*?\n\}/);
-  assert.ok(still, 'the flash lost its reduced-motion answer');
-  assert.match(still[0], /\.acct-table tbody tr\.row-flash > td \{ background-color: var\(--green-bg\); \}/);
-  assert.match(still[0], /\.hr-table tbody tr\.row-flash \{ background-color: var\(--green-bg\); \}/);
-  assert.match(acctView, /const FLASH_MS = 1800;/);
-  assert.match(acctView, /setTimeout\(\(\) => setFlash\(null\), FLASH_MS\)/);
-});
-
-// ── and ตรวจสอบรายเดือน has the same box, and one more thing to do with it ────
 
 /**
  * The third caller, added 2026-08-26 — and the first where picking a suggestion
@@ -632,15 +585,16 @@ test('ตรวจสอบรายเดือน’s box is the same combobox
   }
   assert.match(hrView, /onMouseDown=\{\(e\) => e\.preventDefault\(\)\}/);
   assert.match(hrView, /onMouseMove=\{\(\) => setActive\(i\)\}/);
-  // THE PANEL IS NOT A SECOND PANEL. It was `.acct-menu` while ส่งบัญชี was its
-  // only caller; a class named after one screen worn by two is how a reader ends
-  // up believing there are two of them.
+  // THE PANEL IS NOT NAMED AFTER A SCREEN. It was `.acct-menu` while ส่งบัญชี
+  // was its only caller, and was renamed when this screen became the second.
+  // ส่งบัญชี has since given its box up altogether and this is the only caller
+  // again — the name still must not go back, because the roster's own picker
+  // shares the panel underneath it.
   // Rules only. The stylesheet keeps the old name in the paragraph that explains
   // the rename, and a test that read its own explanation as the defect it warns
   // about is a trap this file has fallen into before.
   const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.ok(!/acct-menu/.test(rules), 'the panel is still named after one of its two callers');
-  assert.ok(!/acct-menu/.test(acctView), 'ส่งบัญชี is still asking for the old class');
+  assert.ok(!/acct-menu/.test(rules), 'the panel is named after one screen again');
 });
 
 test('a suggestion says who, which code, which department and how far into the ceiling', () => {
@@ -706,10 +660,12 @@ test('the scroll and the flash wait for the list to exist', () => {
 });
 
 test('the flash is on ตรวจสอบรายเดือน’s row, and the phone card fades to a card', () => {
-  // THE OPPOSITE ANSWER TO ส่งบัญชี'S, from the same question. This table has no
-  // sticky column, and below 860px the `<tr>` IS the card: it carries the fill,
-  // the border and 15px of padding, and the cells inside it are bare blocks. Lit
-  // cell by cell it would come up green in stripes with its padding left plain.
+  // ON THE ROW AND NOT ON ITS CELLS. This table has no sticky column, and below
+  // 860px the `<tr>` IS the card: it carries the fill, the border and 15px of
+  // padding, and the cells inside it are bare blocks. Lit cell by cell it would
+  // come up green in stripes with its padding left plain. (ส่งบัญชี needed the
+  // opposite answer for the opposite reason and had one until 2026-08-27; the
+  // stylesheet keeps the shape of it beside `@keyframes rowFlash`.)
   assert.match(css, /\.hr-table tbody tr\.row-flash \{ animation: rowFlash 1800ms ease-out; \}/);
   // And that card is the one row in the app whose real background this file CAN
   // name — so it must, or the fade finishes by showing the page's ground through
@@ -721,12 +677,11 @@ test('the flash is on ตรวจสอบรายเดือน’s row, and
   );
 });
 
-test('the two screens keep the same clock', () => {
-  // A debounce that read 300 on one screen and 150 on the other is the kind of
-  // difference nobody can name and everybody feels. Written out in both files
-  // rather than shared, so this is what keeps them equal.
+test('the clock, and the hooks that must stay above the early returns', () => {
+  // 300ms. It read the same on ส่งบัญชี until that screen's box was removed on
+  // 2026-08-27, and this was the assertion that kept the two equal; one screen
+  // now, so what is left is the value itself.
   assert.match(hrView, /const FIND_DEBOUNCE_MS = 300;/);
-  assert.match(acctView, /const FIND_DEBOUNCE_MS = 300;/);
   assert.match(
     hrView,
     /if \(find === ''\) \{ setQuery\(''\); return undefined; \}\s*const timer = setTimeout\(\(\) => setQuery\(find\), FIND_DEBOUNCE_MS\);/,

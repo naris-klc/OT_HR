@@ -2299,24 +2299,42 @@ td > .approver-line { margin-top: 5px; }
    field is 46px, so a baseline would hang it off the bottom of the box.
 
    It wraps below the count's own width, which is what puts the count under the
-   box on a narrow phone instead of squeezing the field to half a name. */
-/* `.acct-find` is สรุป OT ส่งบัญชี's box, and it is here rather than folded into
-   `.month-find` because the two differ by exactly one thing and it is a phone
-   rule: `.month-find` is sticky at 62px with negative margins out to the card's
-   edges, for a list that runs nine screens. ส่งบัญชี's box lives among บริษัท and
-   ประจำเดือน in a card four rows tall, where a sticky element would unstick the
-   moment the card scrolled past — a mechanism that looks like it does something
-   and does not. Everything the two DO share is stated once, here. */
-.month-find, .acct-find { align-items: center; gap: 10px 14px; margin-bottom: 12px; }
-.month-find .found,
-.acct-find .found { font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
-.month-find .found strong,
-.acct-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
-/* …except the bottom margin. ส่งบัญชี's box is one row inside a card that
-   states its own rhythm with `marginTop` on each row; the 12px below was for a
-   box with a list directly under it. */
-.acct-find { margin-bottom: 0; }
+   box on a narrow phone instead of squeezing the field to half a name.
 
+   ── WHERE IT SITS, AND THE TWO MOVES IT TOOK TO GET THERE ─────────────────
+   Until the morning of 2026-08-27 this row was the first child of
+   `.month-card`, so the month picker and the search box were in a card that
+   then went on to hold the whole list — a card inside a card, which is a border
+   and two paddings claiming a boundary that is not there. It came out onto the
+   page's own ground, between งวด…ยังเปิดอยู่ and the list.
+
+   AND THE SAME AFTERNOON IT WENT INTO `.month-head`, the controls card, under
+   the heading and สถานะที่นับ and ABOVE `.export-row`. Asked for as setting the
+   งวด before the buttons that print it: ประจำเดือน and สถานะที่นับ decide which
+   figures exist and ค้นหา decides which are drawn, so all three belong above the
+   three buttons that turn them into a document. That is not a card inside a
+   card — it is a third row of the card every other control on this screen is
+   already in, beside the two rows it now sits between.
+
+   THE MARGIN IS A TOP MARGIN NOW, AND IT IS `.export-row`'S OWN NUMBER. The
+   card's three rows are separated by one gap, 12px wide and 8 on a phone, and
+   this row takes it from the row above exactly as the buttons take it from
+   this one. It was `margin-bottom: 12px` while the row stood between two cards
+   on the page ground; a bottom margin here would be the gap under the row and
+   the gap over the buttons, both, and the two would collapse to whichever was
+   larger — a number no reader could predict from either rule. */
+.month-find { align-items: center; gap: 10px 14px; margin-top: 12px; }
+/* ประจำเดือน JOINED THIS ROW ON 2026-08-27, from the card above it.
+   A fixed basis and not `.field`'s `flex: 1`, which is a basis of nothing: two
+   fields both grasping at nothing split the line in half, and half a line is
+   both too much for a month and too little for a name. 170px is what the
+   picker had in the card it came from and is what it needs to print
+   "August 2026" beside its own calendar button. The search box keeps the rest.
+   Below 860px `.field`'s `min-width: 100%` overrides this and the two stack,
+   which is the order the comment in components/HrView.jsx describes. */
+.month-find .month-pick { flex: 0 0 170px; }
+.month-find .found { font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
+.month-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
 /* ── THE PART THAT MATCHED ───────────────────────────────────────────────
    `<mark class="hit">`, from the `Highlight` component in components/common.jsx.
 
@@ -2358,22 +2376,24 @@ td > .approver-line { margin-top: 5px; }
 
 /* ── THE ROW THE DROPDOWN SENT YOU TO ────────────────────────────────────
    Picked from the suggestion list, the page scrolls to that row and lights it
-   for `FLASH_MS` (1800) — `components/AccountingView.jsx` and
-   `components/HrView.jsx` hold the class on, this decides what it looks like.
-   ตรวจสอบรายเดือน lights it on the way BACK, when its ดู / แก้ไขรายการ screen
-   closes and the list is on screen again; the fade is the same either way.
+   for `FLASH_MS` (1800) — `components/HrView.jsx` holds the class on, this
+   decides what it looks like. ตรวจสอบรายเดือน lights it on the way BACK, when
+   its ดู / แก้ไขรายการ screen closes and the list is on screen again.
 
-   ON ส่งบัญชี'S CELLS, NOT ON ITS ROW. Below 860px that table's พนักงาน column
-   is `position: sticky` with an opaque `--card` fill of its own, so a colour
-   painted on the `<tr>` would be covered on exactly the cell carrying the name
-   you searched for. An animation beats a normal declaration in the cascade
-   whatever the selectors say, so putting it on the `td` reaches the sticky cell.
+   ส่งบัญชี HAD ONE OF THESE AND DOES NOT ANY MORE. Its search box was taken out
+   on 2026-08-27, and with it the dropdown, the row id and the flash. What it
+   needed was the opposite answer to ตรวจสอบรายเดือน's and is worth keeping the
+   shape of, should a row on that sheet ever have to be pointed at again: the
+   fill went on the `td` and not on the `<tr>`, because below 860px that
+   table's พนักงาน column is `position: sticky` with an opaque fill of its own
+   and a colour painted on the row would be covered on exactly the cell carrying
+   the name.
 
-   AND ON ตรวจสอบรายเดือน'S ROW, NOT ITS CELLS — the opposite answer to the same
-   question, because that table has no sticky column and below 860px the `<tr>`
-   IS the card: it carries the fill, the border and 15px of padding, and the
-   `td`s inside it are bare blocks. Lit cell by cell, the card would come up
-   green in stripes with its own padding left plain.
+   ON ตรวจสอบรายเดือน'S ROW, NOT ITS CELLS, because that table has no sticky
+   column and below 860px the `<tr>` IS the card: it carries the fill, the
+   border and 15px of padding, and the `td`s inside it are bare blocks. Lit cell
+   by cell, the card would come up green in stripes with its own padding left
+   plain.
 
    FADES TO `transparent` AND NOT BACK TO A COLOUR. The row's real background is
    whatever it was — `--card`, the hover wash, the sticky cell's fill — and this
@@ -2397,36 +2417,14 @@ td > .approver-line { margin-top: 5px; }
   0%, 55% { background-color: var(--green-bg); }
   100% { background-color: var(--card); }
 }
-.acct-table tbody tr.row-flash > td { animation: rowFlash 1800ms ease-out; }
 .hr-table tbody tr.row-flash { animation: rowFlash 1800ms ease-out; }
 @media (max-width: 860px) {
   .hr-table tbody tr.row-flash { animation-name: rowFlashCard; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .acct-table tbody tr.row-flash > td { background-color: var(--green-bg); }
   .hr-table tbody tr.row-flash { background-color: var(--green-bg); }
 }
 
-/* ── AND THE BOX KEEPS ITS WIDTH, OR THE COUNT TAKES IT ──────────────────
-   `.field` is `flex: 1`, which is `flex: 1 1 0%` — a basis of NOTHING. In a
-   wrapping row that is the one value that guarantees no wrap ever happens: the
-   row's minimum content width is the field's `min-width: 150px` plus
-   "แสดง 3 จาก 4 คน", which is nowrap and about 90px, and 254px fits inside a
-   304px card. So the two stayed on one line and the box took what the count
-   left — 200px on a 360px phone, with the ✕ sitting against the caret.
-
-   A REAL BASIS IS THE FIX, not a `min-width`. 260px is wider than the box can
-   have on a phone once the count is beside it, so the row overflows, wraps, and
-   the count drops underneath — which is what puts the field at the card's full
-   width exactly when it needs it. On a desktop card there is room for both and
-   `flex-grow` fills the rest of the line, so nothing changes there.
-
-   `.month-find` is NOT in this rule. Its own block says it wraps "below the
-   count's own width", and it does not — the same basis-of-zero, the same
-   squeeze, just less of it because that row runs out to the card's edges on a
-   phone and has 30px more to give away. That screen was not what was reported
-   and its box is not this one; changing it is a separate decision. */
-.acct-find .field { flex: 1 1 260px; }
 /* Nothing here styles the input. It sits inside a `.field`, so it is the same
    box as every other one in the app — same height, same fill, same border, same
    focus ring — and it stays that way the day any of those change. */
@@ -7046,9 +7044,34 @@ table.mini tbody tr:hover { background: none; }
      `.bday-table` only because the two differ in one cell — see the note over
      the grid below — and not because they should look different. */
 
-  .bmonth-table { display: block; min-width: 0; table-layout: auto; }
+  /* `border: none` UNDOES `table.mini`, and it is the last nested frame on this
+     screen. `.mini` is a table style — a hairline round a small ruled table,
+     which is what this is above 860px — and at this width the same element is a
+     column of cards on the page's own ground with a frame drawn round the lot.
+     It is the same object the card round the employee list was, one section
+     down, and it was found by measuring rather than by looking: a birthday card
+     stood 13..347 on the built app where an employee card stood 12..348, and the
+     missing pixel each side was this border. Only below 860px; the desktop table
+     keeps it.
+
+     `table.bmonth-table` AND NOT `.bmonth-table`, WHICH IS WHY THE FIRST
+     ATTEMPT DID NOTHING. `table.mini` is an element and a class; a bare class
+     loses to it on specificity wherever it sits in the file, so the rule was in
+     the bundle, was correct, and was overruled — the measurement did not move by
+     a pixel. The three declarations beside it had never noticed, because nothing
+     was competing for those. */
+  table.bmonth-table { display: block; min-width: 0; table-layout: auto; border: none; }
   .bmonth-table thead { display: none; }
-  .bmonth-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+  /* 12 AT THE ENDS AND NOTHING AT THE SIDES, which is `.hr-table tbody`'s own
+     shape on the same screen and for the same reason. It read `12px` all round
+     while everything on ตรวจสอบรายเดือน was inside one card: 12 of card, 13 of
+     `.box` and 12 here came to the same 37px inset an employee card had, and
+     the two columns of cards lined up because two different sums happened to
+     agree. The card came off on 2026-08-27 and only one of the sums changed, so
+     the birthday cards stood 13px inside the employee cards above them — near
+     enough to look like a mistake and too little to look like a decision.
+     Stated as a side of nothing now, so both columns are bounded by the page. */
+  .bmonth-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 12px 0; }
 
   /*  THE SAME CARD AS วันเกิดรอตรวจ, cell for cell — the name and its code, the
       status in the corner beside them, แผนก under, then a ruled block of
@@ -7345,6 +7368,119 @@ table.mini tbody tr:hover { background: none; }
     background-attachment: local, local, scroll, scroll;
   }
 
+  /* -- ON สรุป OT ส่งบัญชี THE SAME PROMISE IS MADE IN FRONT OF THE TABLE ----
+
+     The four backgrounds above are painted BEHIND the table, which is enough
+     until a cell carries a background of its own. On this screen's two tables
+     three kinds of cell do — `thead th` is `--neutral-wash`, `tfoot td` the
+     same, `tr.grand td` green — so the shadow showed over the rows band and
+     stopped dead at the heading strip and again at รวมแผนก. Measured at 360px
+     that is not an edge; it is a smudge on the middle three rows, and it is
+     why this screen was reported twice as having no hint at all.
+
+     So the same promise is made by an ELEMENT instead: a sticky flex item
+     pinned to the right of the scrollport, over the table rather than under
+     it, the full height of the box. It costs the table nothing — the item is
+     `pointer-events: none`, a negative margin its own width pulls it back
+     across the table so it adds no scroll width, and the columns keep the
+     `width: max-content` the rule below gives them.
+
+     IT FADES TO THE CARD'S OWN COLOUR, not to a shadow. A shadow was what this
+     was first, and on ธีมมืด it is a darkening of something already dark — the
+     photograph that came back from a phone on 2026-08-27 shows `23.` cut clean
+     through the middle with nothing beside it. `--card` to `--card-fade` makes
+     the figure DISSOLVE instead, which is the difference between a number that
+     was cut off and a number there is more of. `--card-fade` is that colour at
+     zero alpha and exists for exactly this: fading to `transparent` is fading
+     through grey, because `transparent` is BLACK at zero alpha — and a rule here
+     may not name a colour of its own, which `test/theme.test.js` enforces down
+     to the comments.
+
+     `flex-shrink: 0` ON THE TABLE IS LOAD-BEARING. A flex item's default is
+     `flex: 0 1 auto`, and a table allowed to shrink is squeezed to the width
+     of the box — no overflow, no scroll, no seven columns.
+
+     THE FADE SHIPS TO EVERY BROWSER; SWITCHING ITSELF OFF IS THE PART THAT IS
+     CONDITIONAL. Where a scroll-progress timeline is available the opacity
+     follows the scroll position — no script, nothing that can fall out of step
+     — so it is gone at the far right and is never drawn at all on a table that
+     fits. Where it is not (iOS Safari before 26) the fade is simply always
+     there. That is a small untruth at one end of one gesture, and it was
+     preferred to the alternative on 2026-08-27, deliberately: the first version
+     put the whole element behind `@supports`, which meant the phones that could
+     not do it honestly got nothing — and "nothing" is the state that was
+     reported as a bug in the first place.
+
+     AND INSIDE THE GATE `opacity: 0` IS THE BASE. A scroll timeline whose
+     container has nothing to scroll is INACTIVE, and an animation on an
+     inactive timeline is not applied at all — the element falls back to its own
+     declarations. Written the other way round, รวมทุกบริษัท — six short
+     columns, the one table here that can fit a phone — drew a fade down the
+     right of a table that had nowhere to go. */
+  .table-wrap:has(> .acct-table),
+  .table-wrap:has(> .allco-table) { display: flex; background: none; }
+
+  .table-wrap:has(> .acct-table) > .acct-table,
+  .table-wrap:has(> .allco-table) > .allco-table { flex: 0 0 auto; }
+
+  .table-wrap:has(> .acct-table)::after,
+  .table-wrap:has(> .allco-table)::after {
+    content: ''; flex: 0 0 32px; margin-left: -32px; align-self: stretch;
+    position: sticky; right: 0; pointer-events: none;
+    background: linear-gradient(to left, var(--card), var(--card-fade));
+  }
+
+  @supports (animation-timeline: scroll(nearest inline)) {
+    @keyframes tableMoreRight { 0%, 90% { opacity: 1 } 100% { opacity: 0 } }
+
+    .table-wrap:has(> .acct-table)::after,
+    .table-wrap:has(> .allco-table)::after {
+      opacity: 0;
+      animation: tableMoreRight linear both;
+      /* After the shorthand, which resets it. */
+      animation-timeline: scroll(nearest inline);
+    }
+  }
+
+  /* ══ สรุป OT ส่งบัญชี — the card above the figures gives back what it can ══
+
+     This card is the only thing between the tab bar and the first table, so
+     every pixel it keeps is a row of the month pushed off the screen. Measured
+     on the built app at 360px on 2026-08-27: the card went 488px → 393, and
+     รวมทุกบริษัท's own card starts 95px higher up the page (691 → 596). Where
+     the 95 came from:
+
+       −81  ค้นหาพนักงาน, removed outright — the label, the box and the 12px
+            above it — together with the gap over the buttons coming down from
+            an inline 14 to the 12 that `.export-row` already states for this
+            exact gap. ตรวจสอบรายเดือน keeps its own search; this screen is
+            where a month is CLOSED, and closing it is done by reading the
+            sheets, not by looking one person up.
+       −14  the last hint stops reserving space under itself. `.card .hint`
+            gives every hint in a card `margin-bottom: 14px`, which is the gap
+            before whatever follows — and nothing follows this one.
+
+     บริษัท AND ประจำเดือน STAY STACKED, AND THAT WAS TRIED THE OTHER WAY.
+     Two grid columns saved another 63px and was built, measured and taken back
+     out the same hour: a 360px phone leaves the card 304px inside its padding,
+     so two columns are ~146 each, and BOTH controls lose their text at that
+     width. บริษัท read `ทุกบริษัท · 3` with the caret over the rest — and that
+     figure is the reason the dropdown carries a total at all, so that HR can
+     see which payroll they are about to close without selecting it first — and
+     ประจำเดือน read `August 202`. A month picker that cannot show its year is
+     not a tighter layout, it is a broken one. `1fr auto` does not rescue it
+     either: the picker wants about 150 of the 292 on its own and บริษัท wants
+     about 180. There is no arrangement of two controls in 304px here.
+
+     AND THE ROW GAP WAS ALREADY 10. It was written down as a fourth saving
+     and measured as nothing: this block sets `.row { gap: 10px }` for every
+     card in the app 1100 lines above, so `.acct-controls > .row` re-stating it
+     changed no height at all — and, being one specificity step heavier, it took
+     `.action-row`'s tuned 8px grid gap with it and made the buttons 2px
+     taller. It is not here any more. The only rule this screen needs is the
+     one below. */
+  .acct-controls > .hint:last-child { margin-bottom: 0; }
+
   /* COMPACT. 12px of padding on each side of every cell is 24px per column, and
      at eleven columns that is a quarter of the table's width spent on air. The
      headings come down further than the figures do: they are already two short
@@ -7530,12 +7666,12 @@ table.mini tbody tr:hover { background: none; }
      positions the walk of 2026-08-26 probed, one of the three where the pager
      could not be pressed was where this bar had come down over it.
 
-     WHAT IS KEPT is the STRIP: out to the card's edges, its own padding back,
-     the list's own ground behind it and a hairline under it. That was never
-     about stickiness — it is what says the box filters the thing below it
-     rather than sitting among the figures — and `--bg` is still the colour the
-     card list is painted on, so the strip and the gaps between the cards under
-     it are one ground.
+     WHAT WAS KEPT WAS THE STRIP: out to the card's edges, its own padding
+     back, the list's own ground behind it and a hairline under it. That was
+     never about stickiness — it is what said the box filters the thing below it
+     rather than sitting among the figures — and `--bg` was the colour the card
+     list is painted on, so the strip and the gaps between the cards under it
+     read as one ground.
 
      WHAT IS GONE WITH THE STICKY: `position`, `top`, `z-index` and the
      `!important` on the fill. The `!important` was defending against exactly
@@ -7544,14 +7680,146 @@ table.mini tbody tr:hover { background: none; }
      nothing is stacked against. The suggestion panel keeps its own `z-index: 5`
      and still paints over the list, because the list carries none.
 
+     ── AND THE STRIP IS GONE TOO, 2026-08-27, WITH THE CARD IT WAS A STRIP OF ─
+
+     Every declaration in the four lines above existed to make a row that was
+     INSIDE `.month-card` stop looking like part of the card: the negative side
+     margins took it out to the card's edges, the padding gave back what those
+     margins had just taken, the `--bg` fill covered the card's own colour and
+     the hairline drew the boundary the fill implied. The row is not inside the
+     card any more — see components/HrView.jsx and the desktop rule — so all
+     four are answering a question nobody is asking. It sits on `--bg` because
+     `--bg` is the page; nothing has to paint it there.
+
+     WHAT THAT GIVES BACK ABOVE THE FIRST EMPLOYEE CARD, at 360px: the card's
+     own 12px of top padding, the strip's 8px top and 10px bottom and the 1px
+     hairline — 31px, less the 10px this row still keeps under itself, which it
+     kept before as well. The paddings that were cut in the ledger below were
+     three pixels at a time; this one is the container.
+
      THE DESKTOP NEVER HAD ANY OF THIS. There the month is a table read down its
      columns with the heading row at the top, and a box floating over the
      figures is one more thing between the reader and them. */
+  /* ══ AND THE CONTAINERS ABOVE THE LIST GIVE BACK 23px ════════════════════
+
+     Asked for on 2026-08-27, after the round before it had established that
+     moving controls about saves nothing. This is the other half of that: what
+     a phone can give back without losing a control is the space AROUND them.
+
+     Measured at 360px, and every figure is one container’s own chrome:
+
+       −6  .month-head and .month-card at 12px of padding instead of the 15
+           every card in the app takes below 860px. Three pixels at the top and
+           three at the bottom of the two boxes between the tab bar and the
+           list. The horizontal 12 is what the employee cards get back in width.
+       −9  the 16px a card leaves under itself, three times over — under
+           .month-head, under งวด…ยังเปิดอยู่ and under the alert panel — down
+           to 13. Three gaps, three pixels each.
+       −4  the band’s own padding, 10/12 → 8/10.
+       −2  the band’s bottom margin, 12 → 10. It was the gap between two cards,
+           and the thing under it is not a card, it is the list.
+
+     THE LAST TWO LINES ARE HISTORY NOW and are kept because the total above
+     them is: the band was ค้นหา inside the card, and later the same day it left
+     the card altogether. Its 8/10 padding is not 8/10 any more, it is nothing —
+     which is a further 18px on top of the 23 this ledger counts, and 12 more
+     from the card’s own top padding no longer sitting above it. Only the
+     bottom margin survived the move, at the same 10. See the block headed
+     ค้นหา IS A STRIP above.
+
+     ONLY THIS SCREEN. .card is worn by every screen in the app and 15px is its
+     phone padding everywhere else; what is different here is that three
+     containers stack before the reader reaches the thing they came for.
+
+     AND THE BREAKPOINT IS 860, NOT THE 768 THAT WAS ASKED FOR. This app has
+     one mobile breakpoint and it is 860px — the design’s own number, written
+     at the top of this file. A second one at 768 would leave 768–860 with the
+     phone layout and the desktop padding, a band nobody would ever look at and
+     every future rule would have to remember. */
+  /* AND SINCE 2026-08-27 IT IS ONE CONTAINER, NOT TWO — see the block below.
+     `.month-card` stopped being a card at this width, so it has no padding to
+     trim; the −6 in the ledger above is now −3, taken from `.month-head` alone,
+     and the rest of what that box cost went with the box.
+
+     `--month-pad` WENT WITH IT. The token existed because two rules had to
+     agree — this padding and the negative margins that took the list back out
+     through it — and with the second gone a token with one consumer is a name
+     standing in front of a number for no reason. It was declared on its own
+     line because test/theme.test.js reads a token as DEFINED only where the
+     declaration opens a line; there is nothing left to declare. */
+  .month-head { padding: 12px; }
+  .month-head, .card.period-lock { margin-bottom: 13px; }
+
+  /* ══ AND THE CARD ROUND THE LIST COMES OFF ═══════════════════════════════
+
+     Asked for on 2026-08-27, in the same breath as moving ประจำเดือน and ค้นหา
+     into the controls card: "ถอด Background Card ที่ครอบกลุ่มรายชื่อพนักงานออก
+     ปล่อยให้การ์ดพนักงานแต่ละคนวางลงบน Background หลักโดยตรง".
+
+     WHAT THE CARD WAS DOING HERE, once the list inside it became cards, was
+     drawing a boundary round a set of objects that each already had one. A
+     phone reads this screen as: the controls card, งวด…ยังเปิดอยู่, and then
+     forty employee cards on `--bg` — except that those forty were in a
+     forty-first card, which the eye has to account for before it can read any
+     of them, and which put its own border between the last card and the edge of
+     the screen at the exact moment the reader is looking for รวมทั้งหมด.
+
+     WHAT IT TAKES OFF: the fill, the border, the radius, the 12px of padding
+     and the 16 the card leaves under itself. The cards, the pager and the total
+     row now run to the page's own edges — the same edges `.month-head` and
+     งวด…ยังเปิดอยู่ stand on, which is what makes a column of them read as one
+     column. Measured on the built app at 360px: an employee card ran 37 → 323
+     and now runs 12 → 348 — the page's own padding, and nothing else.
+
+     ONE MARKUP, TWO LAYOUTS — the same rule this screen has kept through every
+     arrangement of it. The element still wears `card` and above 860px it still
+     IS one: there the list is a table of eleven columns read down its own
+     header row, and a table needs a ground of its own to be read against.
+     `.hr-table` has been a table up there and cards down here since the card
+     list was written; this is that same split, one container out.
+
+     WHAT STAYS: `display: flex` and the `order` on `.month-notes` — the phone's
+     reading order is not the card's, and it survives the card. Both are
+     declared further down, with the reason. */
+  .month-card {
+    background: none; border: none; border-radius: 0;
+    padding: 0; margin-bottom: 0;
+  }
+  /* วันเกิดของเดือนนี้ IS PROSE, AND PROSE NO LONGER KEEPS A CARD'S PADDING.
+     `.box` insets its heading and its two hint lines by 15px, which was right
+     while they sat on a card 12px in from the page — it made them prose inside
+     a box rather than a second column of cards. With the card gone, that 15
+     is the only thing on this screen not standing on the page's own edge, and
+     the birthday cards under it were inset 15px further than the employee cards
+     above them. The ends keep their 13px: that is the gap between this section
+     and the total row over it.
+
+     AND THE BORDER GOES WITH IT, all four sides. `.box` carries
+     `1px solid transparent` so that a variant can colour it; this one has no
+     variant, and left in place it put the section's content one pixel inside
+     the page's edge — which is one pixel of difference between two columns of
+     cards that are supposed to be the same column. Nothing is drawn either
+     way. */
+  .month-card > .box { padding-left: 0; padding-right: 0; border: none; }
+
+  /* ONE DECLARATION, AND IT IS THE GAP OVER THE ROW — 8, which is what
+     `.export-row` takes at this width and therefore what one row of this card
+     is from the next. It read `margin-bottom: 10px` for the few hours the row
+     stood between two cards on the page ground.
+
+     Everything else that used to be here was chrome for being inside
+     `.month-card`; the block headed ค้นหา IS A STRIP above is the ledger of
+     what went and why.
+
+     THE SIDE MARGINS ARE THE ONE WORTH NAMING AGAIN: they were the card’s
+     padding negated — the `--month-pad` token, since deleted, multiplied by −1
+     — and before that a literal -15px against a literal 15, two numbers in two
+     rules that had to agree with nothing saying so, which is what broke the
+     moment the padding came down to 12. In `.month-head` the row is bounded by the card's own padding,
+     the same padding `.export-row` and the heading are bounded by, and there is
+     nothing to negate. */
   .month-find {
-    margin-left: -15px; margin-right: -15px;
-    padding: 10px 15px 12px;
-    background: var(--bg);
-    border-bottom: 1px solid var(--line-soft);
+    margin-top: 8px;
   }
 
   /* ══ ตรวจสอบรายเดือน IS A CARD LIST BELOW 860px ════════════════════════
@@ -7595,8 +7863,35 @@ table.mini tbody tr:hover { background: none; }
      already read against, and it inverts correctly in the dark theme, where it
      is DARKER than the card rather than lighter, so the cards lift rather than
      sink. The 12px did not change; what changed is that it is now 12px of
-     something else. */
+     something else.
+
+     AND SINCE THE CARD CAME OFF, 2026-08-27, THIS PAINTS THE GROUND ITS OWN
+     COLOUR — the wrap sits on the page, and the page is `--bg`. The
+     declaration stays for the other half of what it does: `.table-wrap` paints
+     four gradients at this width, two covers in `--card` and two shadows, and
+     they are a promise that there is more table to the right. There is not, and
+     a `--card` cover on a `--bg` page is a white smear down both edges of the
+     list. `background` is a shorthand, so one declaration answers both. */
   .table-wrap.card-list { background: var(--bg); }
+
+  /* ══ THE LIST USED TO BE PULLED OUT THROUGH THE CARD, AND THERE IS NO CARD ═
+
+     Three rules stood here for a few hours on 2026-08-27: negative side margins
+     on the wrap, each the `--month-pad` token multiplied by −1, and a negative
+     top margin as well while the wrap was the card's first child. They were the fix for the ground
+     being TWO grounds — the wrap painting `--bg` and the card padding 12px of
+     `--card` around it, so every card in the list was framed twice, in two
+     colours, and the difference told a reader nothing.
+
+     The card came off the same day, which is the same fix one level up and
+     without the arithmetic: nothing to negate, no `:first-child` question about
+     whether the CSV note is above the wrap, and no pair of numbers in two rules
+     that have to agree with nothing saying so. See the block headed
+     AND THE CARD ROUND THE LIST COMES OFF above.
+
+     Kept as a paragraph rather than deleted because the doubled ring is a real
+     thing that happens whenever a `--bg` wrap is put inside a `--card` box, and
+     this screen is where it was found. */
 
   .hr-table { display: block; width: 100%; min-width: 0; }
   .hr-table thead { display: none; }
@@ -7610,8 +7905,37 @@ table.mini tbody tr:hover { background: none; }
      `min-height: 260px`, `overflow-y: auto`, `overscroll-behavior: contain` —
      are gone with the box they described; the block headed แผงเปลี่ยนหน้า
      further down is what bounds the list now, and why. */
+  /* ── NO RING AT ALL, BECAUSE THERE IS NOTHING LEFT TO RING ──────────────
+     This padding has been three things in one day and each was the same
+     question asked of a different container. It was `12px` all round while the
+     card it sat in padded by another 12, so an employee card stood 24px in from
+     that card's border. The wrap went full-bleed through the card's padding and
+     the two 12s came off the sides at once, leaving a card 13px from the outer
+     border — two borders that close together read as one crowded edge, and it
+     was reported the same day as the cards running into the edge of the screen.
+     So the sides were stated here instead, at `12px 24px`, which is where they
+     had always come to.
+
+     THE CARD IS GONE NOW and there is no outer border to be crowded against:
+     the list is on the page, and what bounds it is the page's own 12px. So the
+     padding is 0 — an employee card runs to the same left and right edges as
+     `.month-head` above it and as งวด…ยังเปิดอยู่ between them, which is what
+     makes the four objects on this screen read as one column instead of a card,
+     a bar, and a list indented from both.
+
+     THE ENDS GO TOO, AND THEY ARE THE HALF WORTH CHECKING. 12 at the top was
+     the gap between the top of the card and the first employee card; with no
+     card, the thing above is งวด…ยังเปิดอยู่ and its own 13px bottom margin is
+     that gap — 12 more here would make the list start further from the bar than
+     the bar sits from the controls card. 12 at the bottom was the gap between
+     รวมทั้งหมด and the foot of the card; `.month-notes` and วันเกิดของเดือนนี้
+     declare their own 12px above them, and the last thing on the screen needs
+     no padding under it. The 12px BETWEEN cards is `gap` and is untouched.
+
+     Measured on the built app at 360px: an employee card runs 12 → 348. It ran
+     37 → 323. */
   .hr-table tbody {
-    display: flex; flex-direction: column; gap: 12px; padding: 12px;
+    display: flex; flex-direction: column; gap: 12px; padding: 0;
   }
   /* ONE SPLIT FOR EVERY CARD — 108px is a TRACK, not a guess at a width.
 
@@ -7936,10 +8260,17 @@ table.mini tbody tr:hover { background: none; }
 
      `scroll-margin-top` IS THE PAGER'S. ถัดไป scrolls this wrap back into view
      — see `goPage` in components/HrView.jsx — and ONE bar is stuck above it:
-     `.appbar`, 62px. The wrap's own 12px of padding sits inside that distance,
-     so 74 puts the first card of a new page 24px clear of the app bar's bottom
-     edge. The number lives in the stylesheet that owns the bar and not in the
-     component.
+     `.appbar`, 62px. 86 puts the first card of a new page 24px clear of the app
+     bar's bottom edge. The number lives in the stylesheet that owns the bar and
+     not in the component.
+
+     IT READ 74 UNTIL THE CARD CAME OFF, later on 2026-08-27, and the 12px
+     difference is the wrap's own top padding: it used to sit INSIDE this
+     distance, so 62 + 12 landed the first card 24 clear. `.hr-table tbody` pads
+     by nothing now — see the block headed NO RING AT ALL — so the same 24 has
+     to be stated here in full. This is the second number in this file measured
+     from a padding that has since gone; the first was the ring above, and both
+     are why the ledger says which container each pixel belongs to.
 
      IT READ 156 UNTIL 2026-08-26, and the 94px difference was `.month-find`:
      that box was stuck under the app bar too, 69px of `--field-h` and its
@@ -7947,7 +8278,7 @@ table.mini tbody tr:hover { background: none; }
      under it, and a new page had to arrive below BOTH. It is not sticky any
      more — see the block headed ค้นหา IS A STRIP above — so a landing sized
      for it would now leave 94px of empty ground over the first card. */
-  .table-wrap.card-list { overflow: visible; scroll-margin-top: 74px; }
+  .table-wrap.card-list { overflow: visible; scroll-margin-top: 86px; }
   .hr-table tbody tr.total-row:hover { background: var(--neutral-wash); }
   .hr-table tbody tr.total-row td.total-col {
     grid-area: cap; text-align: right; white-space: nowrap;
@@ -7956,9 +8287,9 @@ table.mini tbody tr:hover { background: none; }
 
   /* ══ วันเกิดของเดือนนี้ COMES UP TO THE CARD LIST ═══════════════════════
 
-     The card list ends with รวมทั้งหมด at the foot of its box, and directly
-     under that are the month's footnotes: the one-signature notice, the
-     superseded count, the missing-วันเกิด list. All three are conditional, all
+     The card list ends with รวมทั้งหมด, and directly under that are the month's
+     footnotes: the one-signature notice, the superseded count, the
+     missing-วันเกิด list. All three are conditional, all
      three are grey, and none of them is anything to DO. Under them sits the one
      section on this screen that is work: the birthdays, with their two buttons.
 
@@ -7971,12 +8302,17 @@ table.mini tbody tr:hover { background: none; }
      is no phone branch in HrView.jsx; `order` on one wrapper is the whole of
      it, which is why `.month-notes` had to become an element at all.
 
-     `order` NEEDS A FLEX PARENT, and making `.card` one has a cost worth
+     `order` NEEDS A FLEX PARENT, and making this container one has a cost worth
      naming: flex items do not collapse their margins, so two stacked notices
      that used to share the larger of their two gaps now add both. That is why
      `.month-notes` declares its own top margin and its first child gives its
      up — the gap above the block is stated once, here, instead of being
      whatever the first surviving `.hint` happened to carry.
+
+     IT OUTLIVED THE CARD. `.month-card` stopped being a card at this width on
+     2026-08-27 and these three rules did not change: what they order is the
+     sections of a screen, and a screen has sections whether or not something is
+     drawn round them.
 
      WHAT DOES NOT MOVE: everything else keeps `order: 0` and stays in document
      order — the policy banner, the sticky ค้นหา bar, the card list itself. Only
@@ -7989,7 +8325,7 @@ table.mini tbody tr:hover { background: none; }
   /* All three notes are conditional and the อนุมัติชั้นเดียว one moved out to
      the top of the card, so an ordinary month leaves this wrapper with no
      children at all — a flex item carrying 12px of margin and nothing else,
-     between วันเกิดของเดือนนี้ and the foot of the card. */
+     between วันเกิดของเดือนนี้ and the foot of the screen. */
   .month-card > .month-notes:empty { display: none; }
 
   /* 34px, the app's OTHER touch floor — the one `.queue-mobile-bar`'s undo has

@@ -8,45 +8,9 @@ import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 // Pure — the same function the CSV phrases its row with, so the screen and the
 // file cannot come to describe one nought two different ways.
 import { zeroRowReason } from '@/lib/otMode.js';
-// The rule the roster's own box asks, so PM-0412 and PM00511 both answer to
-// either spelling — see lib/personSearch.js. A fourth caller, not a fourth copy.
-import { personMatches } from '@/lib/personSearch.js';
-import { Alert, ClearButton, Empty, Highlight, RateHead, UnaccountedHours } from './common.jsx';
-import Icon from './icons.jsx';
+import { Alert, Empty, RateHead, UnaccountedHours } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { useBackHandler } from './nav.jsx';
-
-/**
- * How long the box waits after the last keystroke before the sheet is filtered.
- *
- * 300ms is the number that was asked for and it is the conventional one: long
- * enough to swallow the gap between letters typed at speed, short enough that
- * the answer still arrives while the finger is over the key. Named rather than
- * inlined because it is the one value anybody would want to change, and because
- * `test/monthSearch.test.js` reads it by name.
- */
-const FIND_DEBOUNCE_MS = 300;
-
-/**
- * How long the row picked from the dropdown stays lit.
- *
- * Long enough to find with the eye after the page has finished moving, short
- * enough that it is gone before it becomes a state of the row rather than an
- * answer to a question. The fade is in the stylesheet; this is what holds the
- * class on, and it is what a reader with `prefers-reduced-motion` gets INSTEAD
- * of the fade — see `.row-flash`.
- */
-const FLASH_MS = 1800;
-
-/**
- * The id a row carries so the dropdown can scroll to it.
- *
- * On the element rather than in a ref map because there is one of these per
- * company table and the tables are separate components — a ref would have to be
- * threaded down and back up, and this is a document-wide lookup by nature.
- * `acct-row-` prefixed so it cannot collide with anything else on the page.
- */
-const rowDomId = (employeeId) => `acct-row-${employeeId}`;
 
 /**
  * สรุป OT ส่งบัญชี — the month's approved hours, ready to hand to accounting.
@@ -68,83 +32,6 @@ export default function AccountingView() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(false);
-
-  /*
-   * TWO STRINGS, AND THE DIFFERENCE BETWEEN THEM IS THE DEBOUNCE.
-   *
-   * `find` is what is in the box — it follows every keystroke with no delay,
-   * because a field that lags behind the finger is the one thing a debounce
-   * must never do. `query` is what the screen has been filtered BY, and it
-   * arrives `FIND_DEBOUNCE_MS` after typing stops. Everything downstream reads
-   * `query`: the rows, the count, the empty state's quoted text and the
-   * highlight — so all four always describe the same search, instead of the
-   * screen showing one query's rows under another query's count.
-   *
-   * CLEARING IS NOT A KEYSTROKE AND DOES NOT WAIT. Pressing ✕ or ล้างการค้นหา
-   * is a decision — the whole month back, now — and 300ms of an empty box over
-   * a still-filtered sheet reads as a control that did not work. The early
-   * return in the effect is the whole of that difference.
-   *
-   * WORTH SAYING PLAINLY: at this size the debounce buys nothing. The roster is
-   * 20 people and the filter is `Array.filter` over four rows, so the re-render
-   * it defers costs less than the timer that defers it, and all it can actually
-   * do here is put 300ms between the last keystroke and the answer. It is in
-   * because it was asked for, it is harmless, and if the roster ever grows to
-   * where a keystroke is felt this is already the right shape.
-   *
-   * UP HERE WITH THE OTHER HOOKS, AND THAT IS NOT TIDINESS. `if (printing)`
-   * below returns before the rest of the function runs. A `useState` or a
-   * `useEffect` written after it is a hook that some renders call and others do
-   * not, which is the one thing React cannot survive — it threw
-   * "rendered fewer hooks than expected" the moment พิมพ์แบบฟอร์ม was pressed.
-   */
-  const [find, setFind] = useState('');
-  const [query, setQuery] = useState('');
-  useEffect(() => {
-    if (find === '') { setQuery(''); return undefined; }
-    const timer = setTimeout(() => setQuery(find), FIND_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [find]);
-
-  /*
-   * THE SUGGESTION LIST — a way to the row, not a second filter.
-   *
-   * The box already narrows the sheet. This hangs under it while there is
-   * something typed, and picking a row from it does not change WHAT is on
-   * screen, only WHERE the screen is: the page scrolls to that person's row and
-   * lights it for FLASH_MS. Two jobs from one box, and they do not fight —
-   * the filter answers "who is in this month", the list answers "take me to
-   * them", which on a sheet three screens long is a different question.
-   *
-   * ITS CONTENTS COME FROM `query`, NOT `find` — the same debounced string the
-   * rows are filtered by. A dropdown that listed one search's people over
-   * another search's rows would be the same disagreement the debounce comment
-   * above exists to prevent, moved into a floating box.
-   *
-   * `active` IS A KEYBOARD POSITION, not a selection. It follows the pointer as
-   * well, so there is one notion of "the current row" rather than two — the
-   * same grammar `PickPerson` uses in components/common.jsx, and deliberately
-   * so: this is the app's second combobox and a reader should not have to learn
-   * a second set of keys for it.
-   */
-  const listId = React.useId();
-  const listRef = React.useRef(null);
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
-
-  /**
-   * The row the dropdown last sent somebody to, lit until the timer fires.
-   *
-   * Held here and not as a class poked onto the DOM: the row is drawn by
-   * `CompanySheet`, React owns that element, and an outside hand on its
-   * className is a change the next render silently undoes.
-   */
-  const [flash, setFlash] = useState(null);
-  useEffect(() => {
-    if (!flash) return undefined;
-    const timer = setTimeout(() => setFlash(null), FLASH_MS);
-    return () => clearTimeout(timer);
-  }, [flash]);
 
   // The header mark leaves the print sheet before it leaves the tab.
   useBackHandler(printing, () => setPrinting(false));
@@ -170,114 +57,6 @@ export default function AccountingView() {
     ? data.companies.filter((c) => company === 'all' || c.key === company)
     : [];
 
-  /**
-   * ค้นหาชื่อ หรือ รหัสพนักงาน — A SCREEN FILTER, AND ON THIS SCREEN THAT
-   * SENTENCE HAS TEETH.
-   *
-   * ตรวจสอบรายเดือน has the same box and the same rule (see `find` in
-   * components/HrView.jsx). The difference is what this screen is FOR: HR
-   * closes the month here and hands the figures to payroll. So the one thing
-   * that must not happen is a narrowed total that still reads รวมทั้งหมด.
-   *
-   * IT NARROWS `rows` AND NOTHING ELSE. `company.totals`, `company.departments`
-   * and the chips on the card head are the month's and are carried through
-   * untouched — the spread below copies the company and replaces one field.
-   * The CSV and the printed sheet are built by the server from the period and
-   * have never known about this box. Both facts are said on screen while the
-   * box is narrowing something, because a total that quietly followed the
-   * search is a payroll error nobody could have seen.
-   *
-   * A COMPANY WITH NO MATCH LEAVES while the box has something in it. Its
-   * heading, its chips and its summary block would otherwise be four inches of
-   * figures about a company the reader is not asking about — and the month's
-   * own totals for it are still on รวมทุกบริษัท at the top of the screen, which
-   * this box does not touch either.
-   */
-  const searching = query.trim() !== '';
-  const narrowed = shown.map((c) => ({
-    ...c,
-    rows: c.rows.filter((row) => personMatches(row.employee, query)),
-  }));
-  const visible = searching ? narrowed.filter((c) => c.rows.length > 0) : narrowed;
-  const rowsFound = narrowed.reduce((n, c) => n + c.rows.length, 0);
-  const rowsAll = shown.reduce((n, c) => n + c.rows.length, 0);
-
-  /* Flattened across the companies, in the order the sheets draw them, so ↓
-     walks the dropdown in the same order the eye walks the page. */
-  const suggestions = narrowed.flatMap((c) => c.rows);
-  /* Clamped rather than trusted: a keystroke that narrows the list leaves
-     `active` past the end, and `aria-activedescendant` would then name an
-     element that is not on the page. */
-  const at = Math.min(active, Math.max(suggestions.length - 1, 0));
-  const menuOpen = open && searching && suggestions.length > 0;
-
-  /**
-   * Picked from the list: shut the box, light the row, take the page to it.
-   *
-   * THE FILTER IS LEFT ALONE. Clearing it here was the other option and is
-   * wrong twice over — it would throw away the narrowing the person just did,
-   * and it would make the row they asked for one of forty again, at which point
-   * the scroll is doing all the work and the flash none of it.
-   *
-   * SCROLLED AFTER THE FRAME THAT CLOSES THE MENU. `setOpen(false)` and the
-   * scroll in the same tick means measuring a layout that still has a 264px
-   * panel in it, and on a short sheet that is the difference between the row
-   * landing in the middle of the screen and landing under the app bar.
-   *
-   * `block: 'center'` rather than 'start': the app bar is sticky at the top of
-   * every screen in this app, and a row scrolled to `start` lands behind it.
-   * Centring needs no arithmetic about a bar this file should not know about.
-   *
-   * SMOOTH, EXCEPT WHERE SOMEBODY HAS ASKED FOR LESS MOTION. This is the one
-   * `matchMedia` in the component and it is not a layout question — the phone
-   * and desktop layouts are the stylesheet's business and stay there. It is a
-   * question about MOTION, which has no CSS equivalent for an imperative scroll.
-   */
-  function goToRow(row) {
-    const id = row?.employee?.id;
-    if (!id) return;
-    setOpen(false);
-    setFlash(id);
-    const still = typeof window !== 'undefined'
-      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    window.requestAnimationFrame(() => {
-      document.getElementById(rowDomId(id))?.scrollIntoView({
-        block: 'center',
-        behavior: still ? 'auto' : 'smooth',
-      });
-    });
-  }
-
-  function onFindKeyDown(e) {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      if (!suggestions.length) return;
-      e.preventDefault();
-      if (!menuOpen) { setOpen(true); return; }
-      // Wraps, so ↑ from the first row reaches the last in one press rather
-      // than a hold on ↑ through the whole list.
-      const step = e.key === 'ArrowDown' ? 1 : -1;
-      setActive((i) => {
-        const from = Math.min(i, suggestions.length - 1);
-        return (from + step + suggestions.length) % suggestions.length;
-      });
-      return;
-    }
-    if (e.key === 'Enter') {
-      // Prevented whether or not the list is open: this box sits in a card of
-      // controls and Enter must not submit anything behind it.
-      e.preventDefault();
-      if (menuOpen && suggestions[at]) goToRow(suggestions[at]);
-      return;
-    }
-    if (e.key === 'Escape' && menuOpen) {
-      // Stopped only because it did something here. With the list already shut,
-      // Escape belongs to whatever is above this.
-      e.stopPropagation();
-      setOpen(false);
-      return;
-    }
-    if (e.key === 'Tab' && menuOpen) setOpen(false);
-  }
   // Scoped to the tab, and read from the queue rather than from the rows —
   // somebody with nothing approved yet has no row to carry their backlog.
   const pending = company === 'all'
@@ -294,7 +73,13 @@ export default function AccountingView() {
 
   return (
     <>
-      <div className="card no-print">
+      {/* `acct-controls` is what the phone block tightens: the two selects pair
+          up on one line, the row gap comes down to the 10px this app uses
+          between fields, and the last hint gives back the 14px `.card .hint`
+          leaves under it. The card is the only thing between the tab bar and
+          the figures, so every one of those is a line of table brought up the
+          screen. */}
+      <div className="card no-print acct-controls">
         <div className="row" style={{ alignItems: 'flex-end' }}>
           <div style={{ flex: 1, minWidth: 220 }}>
             <h2>สรุป OT ส่งบัญชี</h2>
@@ -327,144 +112,12 @@ export default function AccountingView() {
           </div>
         </div>
 
-        {/* ค้นหา sits with บริษัท and ประจำเดือน rather than above the sheets,
-            and the reason is that this card IS the filter set: บริษัท already
-            decides which sheets are drawn, and a second filter floating between
-            รวมทุกบริษัท and the first sheet would be one control in the card and
-            one outside it, doing the same kind of job.
-
-            NOT `.month-find`. That class carries a phone rule of its own —
-            sticky at 62px with negative margins out to the card's edges —
-            written for a list nine screens long. This card is four rows tall,
-            so an element sticky inside it would stop the moment the card left
-            the screen, which is a mechanism that looks like it does something
-            and does not. `.acct-find` is the same row without it. */}
-        <div className="row acct-find" style={{ marginTop: 14 }}>
-          {/* No inline `flex` here, and that is the whole of the bug this
-              replaced: `flex: 1` is `flex: 1 1 0%`, a basis of NOTHING, so the
-              row never grew wide enough to need a second line and the box gave
-              its width away to the count beside it instead — 200px of field on
-              a 360px phone, with the ✕ against the caret. The basis is in the
-              stylesheet, where the phone block can reach it. */}
-          <div className="field">
-            <label>ค้นหาพนักงาน</label>
-            <div className="searchbox">
-              <Icon name="search" className="searchbox-icon" />
-              <input
-                type="text"
-                role="combobox"
-                className={`has-icon${find ? ' has-clear' : ''}`}
-                value={find}
-                onChange={(e) => {
-                  setFind(e.target.value);
-                  // The first suggestion, not the row that was active a
-                  // keystroke ago: the list underneath is a different list now,
-                  // and Enter has to mean whatever is at the top of it.
-                  setActive(0);
-                  setOpen(e.target.value !== '');
-                }}
-                // Focus fires once; the click is the way back after Escape shut
-                // the list with the caret still in the box.
-                onFocus={() => { if (find !== '') setOpen(true); }}
-                onClick={() => { if (find !== '') setOpen(true); }}
-                onBlur={() => setOpen(false)}
-                onKeyDown={onFindKeyDown}
-                placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
-                aria-label="ค้นหาพนักงาน"
-                aria-expanded={menuOpen}
-                aria-controls={listId}
-                aria-autocomplete="list"
-                aria-activedescendant={menuOpen && suggestions[at] ? `${listId}-${at}` : undefined}
-                // The browser's own suggestion list would cover this one.
-                autoComplete="off"
-                spellCheck={false}
-              />
-              {find && <ClearButton onClear={() => { setFind(''); setOpen(false); }} />}
-
-              {/* NOTHING IS DRAWN WHEN NOTHING MATCHES. The card below already
-                  says ไม่พบพนักงานที่ค้นหา with a way out of it, and a floating
-                  panel repeating that over the top of it is the same sentence
-                  twice, one of them covering the button that answers it. */}
-              {menuOpen && (
-                <ul
-                  id={listId}
-                  role="listbox"
-                  className="pick-menu find-menu"
-                  ref={listRef}
-                  aria-label="ผลการค้นหาพนักงาน"
-                  // Selection happens on click — but mousedown's default action
-                  // is to move focus, which blurs the input and unmounts this
-                  // list before the click can land. Prevented on the container,
-                  // so a drag to scroll on a touch screen is still a scroll.
-                  onMouseDown={(e) => e.preventDefault()}
-                >
-                  {suggestions.map((row, i) => (
-                    <li
-                      key={row.employee.id}
-                      id={`${listId}-${i}`}
-                      role="option"
-                      aria-selected={i === at}
-                      data-active={i === at ? '1' : undefined}
-                      onClick={() => goToRow(row)}
-                      // Follows the pointer, so the row under the cursor is the
-                      // row Enter takes.
-                      onMouseMove={() => setActive(i)}
-                    >
-                      {/* THE CODE LEADS, IN BRACKETS — asked for by hand on
-                          2026-08-26, and it reads "(PM-0100)" trailing the name
-                          until then. It is the better order for this list and
-                          not only a preference: every row of a sheet forty long
-                          starts with a Thai name of its own length, and the eye
-                          scanning down them has nothing to line up on. A code is
-                          fixed-width, mono, and at the left edge it makes a
-                          column — which is what a list of forty is read as. */}
-                      <span className="s-who">
-                        <span className="s-code">
-                          [<Highlight text={row.employee.code} query={query} kind="code" />]
-                        </span>
-                        {' '}
-                        <Highlight text={row.employee.name} query={query} kind="name" />
-                      </span>
-                      {/* แผนก and the month's hours for this person — the two
-                          things that tell two people with similar names apart,
-                          and the figure somebody is usually looking for anyway.
-                          `hours()` and not `cell()`: a nought here is an answer
-                          ("no OT this month"), not a blank to be read past. */}
-                      <span className="s-meta">
-                        {row.department?.name || '—'}
-                        <span className="s-sep">|</span>
-                        {hours(row.otHours)} ชม.
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-          {/* Only while it is narrowing something. "แสดง 4 จาก 4 คน" is a
-              sentence about nothing. */}
-          {searching && rowsFound > 0 && (
-            <div className="found">
-              แสดง <strong>{rowsFound}</strong> จาก <strong>{rowsAll}</strong> คน
-            </div>
-          )}
-        </div>
-
-        {/* THE ONE THING THIS SCREEN CANNOT LET A READER ASSUME. Said here,
-            directly under the box and above the export buttons it is about. */}
-        {searching && rowsFound > 0 && (
-          <div className="hint" style={{ marginTop: 6 }}>
-            ยอด “รวมแผนก” “รวมทั้งหมด” และ “รวมทุกบริษัท” ยังเป็นของทั้งเดือน
-            {' '}ไม่ใช่เฉพาะผลการค้นหา · ไฟล์ CSV และแบบฟอร์มที่พิมพ์ก็เช่นกัน
-          </div>
-        )}
-
         {/* The checkbox joins the actions rather than sitting on a row of its
             own now that the segmented buttons are gone. `.action-row` is what
             holds it at the far end of the row while there is room, and lets it
             fall back into line with the buttons on a card too narrow to keep
             all three side by side. */}
-        <div className="row action-row" style={{ marginTop: 14 }}>
+        <div className="row action-row" style={{ marginTop: 12 }}>
           <button className="btn" onClick={exportCsv}>ส่งออกไฟล์บัญชี (CSV/Excel)</button>
           <button className="btn ghost" onClick={() => setPrinting(true)}>
             พิมพ์แบบฟอร์ม / บันทึกเป็น PDF
@@ -523,39 +176,17 @@ export default function AccountingView() {
               on the screen, reached past every row of both. Read this way the
               page goes total → per company → per person, which is the order
               somebody closing a month reads in and the opposite of the order
-              the figures are built in.
-
-              It is unaffected by the search box on purpose — see `find` above. */}
+              the figures are built in. */}
           {company === 'all' && data.companies.length > 1 && (
             <AllCompanies data={data} />
           )}
-          {searching && rowsFound === 0 ? (
-            <div className="card">
-              <Empty>
-                {/* `query`, not `find`: this quotes the search the screen was
-                    actually filtered by. With the box already showing the next
-                    keystroke, quoting `find` would name a search whose answer
-                    is still 300ms away. */}
-                <div>ไม่พบพนักงานที่ค้นหา “{query}”</div>
-                <button
-                  className="btn ghost sm"
-                  style={{ marginTop: 10 }}
-                  onClick={() => setFind('')}
-                >
-                  ล้างการค้นหา
-                </button>
-              </Empty>
-            </div>
-          ) : visible.map((c) => (
+          {shown.map((c) => (
             <CompanySheet
               key={c.key}
               company={c}
               period={period}
-              query={query}
-              flash={flash}
-              // Numbered against the full list, not the filtered one, so
-              // เดมเทค is "บริษัทที่ 2" on its own tab as well — and stays
-              // "บริษัทที่ 2" when a search leaves it the only sheet drawn.
+              // Numbered against the full list, not the one บริษัท leaves on
+              // screen, so เดมเทค is "บริษัทที่ 2" on its own tab as well.
               index={data.companies.findIndex((x) => x.key === c.key) + 1}
             />
           ))}
@@ -579,7 +210,7 @@ export default function AccountingView() {
  * in a second table beside it, so a figure is always read down the column it
  * belongs to.
  */
-function CompanySheet({ company, period, index, query, flash }) {
+function CompanySheet({ company, period, index }) {
   const t = company.totals;
   return (
     <div className="card" style={{ marginTop: 18 }}>
@@ -634,20 +265,11 @@ function CompanySheet({ company, period, index, query, flash }) {
               </thead>
               <tbody>
                 {company.rows.map((row) => (
-                  <tr
-                    key={row.employee.id}
-                    id={rowDomId(row.employee.id)}
-                    className={flash === row.employee.id ? 'row-flash' : undefined}
-                  >
-                    {/* The two strings the box is asked about are the two that
-                        say where it landed. Nothing else on the row is marked:
-                        แผนก and บริษัท are not what was searched, and marking a
-                        word because it happens to contain the letters would be
-                        the highlight disagreeing with the filter. */}
+                  <tr key={row.employee.id}>
                     <td className="who-col">
-                      <Highlight text={row.employee.name} query={query} kind="name" />
+                      {row.employee.name}
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                        <Highlight text={row.employee.code} query={query} kind="code" />
+                        {row.employee.code}
                       </div>
                     </td>
                     <td className="dept-col">{row.department?.name || '—'}</td>
