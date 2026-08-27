@@ -242,6 +242,57 @@ Register-ScheduledTask -TaskName 'OT server' `
   -Force
 ```
 
+#### …หรือให้ขึ้นตั้งแต่บูต โดยไม่ต้องมีใครล็อกอิน — S4U
+
+**นี่คือรูปแบบที่เลือกใช้เมื่อ 2026-08-27** เพราะเหตุผลที่ตั้งงานนี้คือ “เครื่อง
+รีสตาร์ตแล้วเว็บต้องกลับมาเอง” และ `-AtLogOn` ตัวเดียวแก้เคสนั้นไม่ได้ — เครื่องนี้
+ไม่มี auto-logon รีบูตแล้วทิ้งไว้ที่หน้าล็อกอิน แอปก็ยังดับ
+
+ต่างจากสูตรข้างบนสามจุด: **ทริกเกอร์สองตัว** (`-AtStartup` หน่วง 60 วินาทีให้
+MongoDB ตั้งตัวก่อน และ `-AtLogOn` หน่วง 30 ไว้เป็นตาข่ายรับกรณีล็อกอินโดยไม่ได้
+รีบูต) · **`-LogonType S4U`** แทน `Interactive` — งานจึงรันได้โดยไม่มี session ของ
+ผู้ใช้ และไม่ต้องเก็บรหัสผ่านไว้ที่ไหน · และ **ต้องรันในหน้าต่างที่ Run as
+administrator** ซึ่งบัญชี `suwan` ทำได้ (อยู่ในกลุ่ม Administrators — ตรวจ
+2026-08-27)
+
+```powershell
+$repo = 'C:\Users\suwan\Documents\OT_HR'
+
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}\scripts\start-server.ps1" -Port 3000' -f $repo) `
+  -WorkingDirectory $repo
+
+# ตอนบูต: 60 วินาที เพราะตอนนั้นบริการ MongoDB เพิ่งเริ่มพร้อมกับทุกอย่างในเครื่อง
+$tStartup = New-ScheduledTaskTrigger -AtStartup
+$tStartup.Delay = 'PT60S'
+# ตอนล็อกอิน: ตาข่ายรับกรณีเปิดเครื่องค้างไว้แล้วมีคนล็อกอินทีหลัง — MultipleInstances
+# IgnoreNew กับ branch พอร์ตไม่ว่างใน start-server.ps1 ทำให้ยิงซ้ำแล้วไม่เป็นไร
+$tLogon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+$tLogon.Delay = 'PT30S'
+
+$settings = New-ScheduledTaskSettingsSet `
+  -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+  -StartWhenAvailable -MultipleInstances IgnoreNew `
+  -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
+$settings.ExecutionTimeLimit = 'PT0S'
+$settings.IdleSettings.StopOnIdleEnd = $false
+
+# S4U = “service for user” รันในนามบัญชีนี้โดยไม่ต้องมี session และไม่เก็บรหัสผ่าน
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME `
+  -LogonType S4U -RunLevel Limited
+
+Register-ScheduledTask -TaskName 'OT server' `
+  -Action $action -Trigger @($tStartup, $tLogon) -Settings $settings -Principal $principal `
+  -Description 'เสิร์ฟระบบ OT ที่พอร์ต 3000 ตั้งแต่บูต และเริ่มใหม่เองถ้าโปรเซสตาย — log อยู่ที่ logs\task.log' `
+  -Force
+```
+
+> ⚠️ **งานจะรันใน session 0 ไม่มีหน้าจอ** ซึ่งเซิร์ฟเวอร์ HTTP ไม่มีปัญหาด้วย แต่
+> แปลว่าอะไรที่ต้องการเดสก์ท็อปจะไม่ทำงานในงานนี้ · และ `$env:USERNAME` ใน
+> หน้าต่างที่ยกสิทธิ์ยังเป็น `suwan` ตราบใดที่ยกสิทธิ์ของบัญชีเดิม — ถ้าใส่รหัสของ
+> บัญชี Administrator คนละตัว งานจะถูกลงทะเบียนในนามบัญชีนั้นแทน แล้วทริกเกอร์
+> ตอนล็อกอินจะไม่มีวันยิง ตรวจด้วย `(Get-ScheduledTask -TaskName 'OT server').Principal.UserId`
+
 #### ยืนยันว่าใช้ได้จริง — สามข้อ
 
 ก่อนเริ่ม ให้ปิดเซิร์ฟเวอร์ที่สั่งเริ่มด้วยมือไว้ก่อน มิฉะนั้นตัวห่อจะเจอพอร์ตไม่ว่าง
@@ -291,8 +342,20 @@ Get-Content logs\task.log -Tail 3
 >
 > ถ้าต้องการให้ขึ้นตั้งแต่บูตโดยไม่มีใครล็อกอิน ต้องเปลี่ยน principal เป็น
 > `-LogonType S4U` (หรือ Password) แล้วเพิ่มทริกเกอร์ `-AtStartup` — ซึ่ง**ต้องรัน
-> คำสั่งในหน้าต่างที่ Run as administrator** บัญชี `suwan` ไม่ได้อยู่ในกลุ่ม
-> Administrators (ตรวจแล้ว 2026-08-25) จึงเป็นการตัดสินใจแยกอีกเรื่องหนึ่ง
+> คำสั่งในหน้าต่างที่ Run as administrator**
+>
+> **และนั่นทำได้** บรรทัดนี้เคยเขียนว่า “บัญชี `suwan` ไม่ได้อยู่ในกลุ่ม
+> Administrators (ตรวจแล้ว 2026-08-25) จึงเป็นการตัดสินใจแยกอีกเรื่องหนึ่ง” —
+> อ่านซ้ำเมื่อ 2026-08-27 ด้วย `Get-LocalGroupMember -Group 'Administrators'` แล้ว
+> เจอ `LAPTOP-TTK6SH4F\suwan` อยู่ในกลุ่ม สิ่งที่เป็นจริงคือ session ปกติ**ไม่ได้
+> ยกสิทธิ์** (`IsInRole(Administrator)` = False จนกว่าจะ Run as administrator) ซึ่ง
+> เป็นคนละเรื่องกับการไม่ได้เป็นแอดมิน
+>
+> **ข้อนี้สำคัญกับเหตุผลที่คนส่วนใหญ่มาตั้งงานนี้ตั้งแต่แรก** ถ้าเป้าหมายคือ “เครื่อง
+> รีสตาร์ตแล้วเว็บต้องกลับมาเอง” ทริกเกอร์ `-AtLogOn` ตัวเดียว**ไม่พอ** เพราะเครื่อง
+> นี้ไม่มี auto-logon — รีบูตแล้วทิ้งไว้ที่หน้าล็อกอิน แอปก็ยังดับอยู่ดี ต้องมี
+> `-AtStartup` กับ `S4U` ด้วย และงานจะรันใน session 0 แบบไม่มีหน้าจอ ซึ่งเซิร์ฟเวอร์
+> HTTP ไม่มีปัญหาอะไรกับมัน
 
 #### เช็คว่าแอปยังอยู่ไหม — และเริ่มใหม่ด้วยมือ
 
