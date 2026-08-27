@@ -65,12 +65,17 @@
     2026-08-27 - and the only OT job on the box is "OT backup". Registering it
     was attempted on 2026-08-20 and refused before it reached the machine.
 
+    AND IT IS NOT GOING TO BE, ON THIS MACHINE. Decided 2026-08-27: this box is
+    kept as a dev/test machine, so tying a scheduled task to it is not worth it.
+    That is a decision, not an outstanding task - do not re-propose it.
+
     What that costs, stated where somebody reading this file will see it: the
     app does NOT come back after a reboot, and nothing restarts it when it
-    dies. A person starts it - by running this file, or `deploy-ot.ps1`, which
-    is what a deploy uses. The registration command and the three checks that
-    would prove it works are in README under the Setup heading, and none of the
-    three has been walked on this machine.
+    dies, on a box that has had a node process die on its own twice. A person
+    starts it - by running this file, or `deploy-ot.ps1`, which is what a deploy
+    uses. The registration command and the three checks that would prove it
+    works are in README under the Setup heading, kept for a real production
+    machine; none of the three has been walked anywhere yet.
 
     Everything else in this file is written FOR that task and is still right:
     the foreground wait, the exit-code normalising and the restart signal are
