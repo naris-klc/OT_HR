@@ -835,7 +835,17 @@ test('there is no card round the list, so there is nothing to pull out through',
   // only because 12 + 13 + 12 and 12 + 12 both came to 37 while everything was
   // inside one card. One of those sums changed and the other did not, so the
   // sides are stated as nothing here the same way `.hr-table tbody` states them.
-  assert.match(phone, /\.bmonth-table tbody \{ display: flex; flex-direction: column; gap: 12px; padding: 12px 0; \}/);
+  //
+  // THE ENDS READ "12px 0" UNTIL THE FOURTH COMPACTION of 2026-08-27 and are 10
+  // now. The `gap` did NOT move and that is the half worth asserting: 12 is what
+  // the employee list keeps between its own cards, and two columns of cards read
+  // down one screen whose rhythms differ by two pixels is a difference that says
+  // nothing to anybody. The ends are boundaries, not beats — the gap under the
+  // summary lines and the gap over the footnotes — and they came down with the
+  // card's own padding.
+  assert.match(phone, /\.bmonth-table tbody \{ display: flex; flex-direction: column; gap: 12px; padding: 10px 0; \}/);
+  assert.match(phone, /\.hr-table tbody \{\s*display: flex; flex-direction: column; gap: 12px;/,
+    'the employee list’s gap moved — the two columns no longer share a rhythm');
 
   // ABOVE 860px NONE OF IT APPLIES: the desktop still gets `.card` whole, and
   // the markup still asks for it.

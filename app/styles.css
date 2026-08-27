@@ -7161,7 +7161,14 @@ table.mini tbody tr:hover { background: none; }
      the birthday cards stood 13px inside the employee cards above them — near
      enough to look like a mistake and too little to look like a decision.
      Stated as a side of nothing now, so both columns are bounded by the page. */
-  .bmonth-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 12px 0; }
+  /* 12 BETWEEN CARDS AND 10 AT THE ENDS SINCE 2026-08-27's FOURTH ROUND. The
+     gap stays 12 because it is the same 12 the employee list keeps between its
+     cards and the two columns are read as one column down this screen — a
+     section whose rhythm differs from the list above it by two pixels is a
+     difference that says nothing. The ENDS are not rhythm: 12 at the top was
+     the gap under the summary lines and 12 at the bottom the gap over the
+     footnotes, and both are boundaries rather than beats. */
+  .bmonth-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 10px 0; }
 
   /*  THE SAME CARD AS วันเกิดรอตรวจ, cell for cell — the name and its code, the
       status in the corner beside them, แผนก under, then a ruled block of
@@ -7204,24 +7211,21 @@ table.mini tbody tr:hover { background: none; }
              draws — "13 สิงหาคม 2569 วันพฤหัสบดี" — is most of a 312px card on
              its own. A pair that fits in August and overflows in November is
              a card that pushes the page sideways nine months a year.
-        −12  the card's own padding, 15 → 12. The employee cards above keep 15;
-             these are a section under them rather than the screen's subject,
-             and 12 is the padding the two containers at the top of this screen
-             already take.
+        −12  the card's own padding, 15 → 12 — and → 10 two rounds later.
         −10  `gap`, 4 → 3, over five rows that are still there.
         −8   the rule over วันเกิด, 8 + 8 → 6 + 6.
         −4   the rule over the buttons, 10 + 10 → 8 + 8.
         −8   the labelled lines' own `padding`, 2 → 1 at each end of four of
              them, and their leading from 1.5 to 1.45.
 
-      WHAT WAS NOT TOUCHED, and both would have been the easy 20px. The buttons
-      keep `min-height: 44px` — they are the decision this whole section exists
-      to collect, and a target that shrinks with the card is a target that gets
-      missed. And the code stays on its own line under the name: it was inlined
-      once to save exactly this line and was put back on 2026-08-27 because it
-      is what makes this card and วันเกิดรอตรวจ's the same object, which is the
-      paragraph directly above. A compaction that undoes the reason the two
-      screens match is a different change wearing this one's clothes.
+      WHAT WAS NOT TOUCHED. The buttons keep `min-height: 44px` — they are the
+      decision this whole section exists to collect, and a target that shrinks
+      with the card is a target that gets missed. That one still holds after
+      four rounds of asking. The code's line did NOT: it was defended here
+      earlier the same day on the ground that it is what makes this card and
+      วันเกิดรอตรวจ's the same object, and by then that symmetry had already
+      been traded away in the paragraph below. It is back on the name's line —
+      see `td.who-col`, which carries what that costs.
 
       SO THE TWO SCREENS ARE NO LONGER THE SAME CARD, AND THAT IS THE PRICE.
       วันเกิดรอตรวจ keeps the 15px card with its facts one to a line, and it
@@ -7230,10 +7234,9 @@ table.mini tbody tr:hover { background: none; }
       section under five employee cards, a pager and a month's total, reached
       after about 1,500px of a 780px phone. Same rows, same order, same cells,
       two densities, and the density is a property of what is ABOVE the list
-      rather than of the list. Everything that makes the two READ alike — the
-      corner chip, the code under the name, the ruled blocks, the button pair
-      and its outline — is untouched; every one of those is pinned by
-      test/birthdayCardUi.test.js and none of those tests moved.
+      rather than of the list. What still makes the two READ alike — the corner
+      chip, the ruled blocks, the button pair and its outline — is untouched and
+      pinned by test/birthdayCardUi.test.js.
 
       THE STATUS MOVED INTO THE CORNER, where วันเกิดรอตรวจ has kept its
       ค้างมาแล้ว pill all along. It used to sit six lines down, indented to the
@@ -7308,7 +7311,12 @@ table.mini tbody tr:hover { background: none; }
       "dept  co    hrs"
       "act   act   act";
     gap: 3px 8px; align-items: start;
-    padding: 12px; border: 1px solid var(--line); border-radius: var(--radius);
+    /* 10, and it read 15 then 12. The employee cards above keep 15 and should:
+       they are the screen's subject and each one is a decision to open. This is
+       a section under them, its cards are three lines and a button, and 10 is
+       what the containers at the top of this screen already take. Asked for by
+       name — "ลด Padding" — on 2026-08-27, the fourth round on this card. */
+    padding: 10px; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--card);
   }
   /* `table.bmonth-table td` AND NOT `.bmonth-table td`, FOR THE SECOND TIME ON
@@ -7333,10 +7341,34 @@ table.mini tbody tr:hover { background: none; }
      nobody had put a ruler on it. Now they are. */
   table.bmonth-table td { display: block; border: 0; padding: 0; text-align: left; }
 
-  /* The code on its own line under the name, as on วันเกิดรอตรวจ — it was
-     inlined here to save a line, which is exactly the difference between the
-     two screens that was being asked about. */
+  /* ── THE CODE IS BACK ON THE NAME'S LINE, AND THIS TIME IT STAYS ─────────
+
+     It read "The code on its own line under the name, as on วันเกิดรอตรวจ — it
+     was inlined here to save a line, which is exactly the difference between
+     the two screens that was being asked about."
+
+     THAT REASON HAS BEEN SPENT. The two screens stopped being one shape earlier
+     on 2026-08-27, on purpose and in writing: this card is the compact variant
+     because it is a SECTION under five employee cards, a pager and a month's
+     total, and วันเกิดรอตรวจ's is the full one because it IS a screen. Keeping
+     one line of that symmetry after the symmetry itself was traded away is
+     keeping the cost without the thing it bought — and it is the last 16px on
+     this card that does not come out of a touch target or a type size.
+
+     WHAT IS GIVEN UP, PLAINLY: a column. Down a list of codes on their own
+     line, every code starts at the same x and the eye can run the column; after
+     a Thai name of any length they start wherever the name ends. That is a real
+     loss and it is the reason the line existed. It is affordable HERE and only
+     here: this card carries at most six people, one per birthday in the month,
+     and nobody scans it by code — the queue screen, where somebody might, keeps
+     its column. Asked for a fourth time on 2026-08-27; the card is at its floor
+     otherwise.
+
+     7px, NOT THE GRID'S 8. This is a word space inside one cell, not a joint
+     between two of them — see the note over `td.dept-col`, which is the same
+     question answered the other way because those two cells are two facts. */
   .bmonth-table td.who-col { grid-area: who; font: 600 15px/1.35 var(--sans); }
+  .bmonth-table td.who-col > div { display: inline; margin-left: 7px; }
   /* `padding: 1px 0` is the labelled facts' padding, and it is here for one
      reason: since 2026-08-27 แผนก shares their row, and three cells on one line
      whose text boxes start at three different offsets do not sit on one

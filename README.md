@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1718 tests
+and the engine know nothing about Next.js, so the whole suite — **1719 tests
 across 103 files**, measured 2026-08-27 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1717", "1715" and "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1718", "1717", "1715" and "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3634,12 +3634,44 @@ left, บริษัท takes what is left in the middle, and ชั่วโ�
 right-hand track the status chip already occupies — the figure reads down the
 card's right edge under the status it belongs with.
 
-| | first compaction | now |
-|---|---|---|
-| a มีใบแล้ว card at 360px | 211px | **185px** |
-| a card with no hours | 167px | **145px** |
-| the whole section | 1396px | **1249px** |
-| the page | 3131px | **2984px** |
+| | first compaction | second | third |
+|---|---|---|---|
+| a มีใบแล้ว card at 360px | 211px | 185px | **172px** |
+| a card with no hours | 167px | 145px | **132px** |
+| the whole section | 1396px | 1249px | **1166px** |
+| the page | 3131px | 2984px | **2901px** |
+
+**The third round took the last two things that were not a touch target or a
+type size.** The card's own padding, 12 → **10** — the employee cards above keep
+15 and should, they are the screen's subject and each one is a decision to open.
+And the employee code went back onto the name's line, which is a **reversal**
+recorded as one: it was inlined here once, put back on its own line earlier the
+same day to keep this card identical to วันเกิดรอตรวจ's, and inlined again once
+that symmetry had already been traded away two paragraphs up in the same
+stylesheet. Keeping one line of a symmetry after the symmetry itself is gone is
+keeping the cost without the thing it bought.
+
+**What that costs is a column**, and it is worth saying: codes on their own line
+all start at the same x and the eye can run down them; after a Thai name of any
+length they start wherever the name ends. Affordable on a card that holds at most
+one person per birthday in the month and is never scanned by code —
+วันเกิดรอตรวจ, where somebody might, keeps its column, and a test pins that
+asymmetry in both directions.
+
+**It saved 11px and not 16**, because the status chip is 25px tall and the name's
+row cannot be shorter than the chip standing in it. That is the floor, and it is
+why this is the last round of this kind: what is left is 44px of button, 25px of
+chip row, three lines of facts and 20px of padding. **The remaining lever is the
+number of cards, not the card** — folding the settled ones behind a
+`เสร็จแล้ว n คน` toggle the way วันเกิดรอตรวจ folds its own settled lists would
+take a six-birthday month from six cards to three. That is a change to what is
+*visible* rather than to what it costs, so it is not taken here.
+
+**The `gap` between cards did not move and that is deliberate.** 12px is what the
+employee list keeps between its own cards; two columns of cards read down one
+screen whose rhythms differ by two pixels is a difference that says nothing. What
+came down to 10 is the tbody's ENDS — the gap under the summary lines and the gap
+over the footnotes — which are boundaries, not beats.
 
 **แผนก keeps its voice and loses its row.** It is the only fact on this card
 drawn as bare grey text — no label, as on วันเกิดรอตรวจ — and moving it into a
@@ -4550,8 +4582,17 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1718/1718 pass in about 2 s**, measured 2026-08-27 across 103
-  files. The newest is in `test/approverMultiDepartment.test.js`, which owns
+- `npm test` — **1719/1719 pass in about 2 s**, measured 2026-08-27 across 103
+  files. The newest is in `test/birthdayCardUi.test.js` and pins a REVERSAL, so
+  that it is not tidied back: the employee code sits on the name's line on
+  ตรวจสอบรายเดือน's birthday card and on its own line in วันเกิดรอตรวจ, and the
+  test asserts both directions — the second is what makes the first affordable,
+  since a column of codes is worth keeping on the screen somebody might scan by
+  code and not on a card that holds one person per birthday. The case beside it
+  moved with the layout: แผนก joined บริษัท and ชั่วโมง on one row, so the grid
+  is three tracks and the area sweep no longer expects `co` or `hrs` to open a
+  row. It read "1718/1718" before them. The one before that is in
+  `test/approverMultiDepartment.test.js`, which owns
   `.pick-menu`, for the suggestion panel becoming a surface of its own rather
   than the card it opens over: the two tokens (`--card-lift` and `--line-lift`)
   and both halves of the light-dark pair, since the asymmetry — the same white

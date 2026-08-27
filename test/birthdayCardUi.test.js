@@ -312,6 +312,26 @@ test('แผนก, บริษัท and ชั่วโมง share a line, a
   assert.match(phone, /\.bmonth-table td\.hrs-col \{\s*grid-area: hrs; justify-self: end;/);
 });
 
+test('the code is on the name’s line here and on its own line in the queue', () => {
+  // A REVERSAL, PINNED SO IT IS NOT TIDIED BACK. The code was inlined on this
+  // card once, put back on its own line to keep it identical to วันเกิดรอตรวจ's,
+  // and inlined again on 2026-08-27 when that symmetry had already been traded
+  // away in the same stylesheet — the two cards are a compact variant and a full
+  // one now, deliberately, because one is a section under half a screen of other
+  // things and the other IS a screen.
+  //
+  // WHAT IT COSTS is a column: codes on their own line all start at the same x
+  // and the eye can run down them; after a Thai name of any length they start
+  // wherever the name ends. Affordable on a card that holds at most one person
+  // per birthday in the month and is never scanned by code.
+  assert.match(phone, /\.bmonth-table td\.who-col > div \{ display: inline; margin-left: 7px; \}/);
+  // AND THE QUEUE KEEPS ITS COLUMN. `.bday-table` gets no such rule — that is
+  // the screen where somebody might scan by code, and it is the half of the
+  // trade that makes the other half affordable.
+  assert.ok(!/\.bday-table td\.who-col > div \{[^}]*display: inline/.test(phone),
+    'the queue’s code column was inlined by symmetry with the compact card');
+});
+
 test('`padding: 0` on the cells names the element, or table.mini keeps winning', () => {
   // THE SAME TRAP AS THE BORDER, ON THE SAME ELEMENT, FOUND BY MEASURING.
   // `table.mini th, table.mini td { padding: 7px 10px; }` is two elements and a
