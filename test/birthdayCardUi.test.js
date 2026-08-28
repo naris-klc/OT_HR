@@ -347,6 +347,35 @@ test('วันเกิด, แผนก and บริษัท share one line,
 });
 
 /**
+ * THE CARD'S LAST TWO NUMBERS, AND THEY ARE A TRADE THAT WAS REFUSED FIVE TIMES.
+ *
+ * `min-height: 44px` on these two buttons was the one thing five rounds of
+ * "make this shorter" did not take, and the stylesheet says why: they are the
+ * decision this section exists to collect. On 2026-08-28 the ask named the
+ * buttons themselves, and by then the card had nothing else left — so 44 → 40,
+ * with the reasoning written down beside it: WCAG 2.2's own minimum is 24×24,
+ * the target is 152 × 40 because the pair splits the card's width, and both
+ * answers are reversible.
+ *
+ * Pinned because the failure mode is somebody "harmonising" the two lists back
+ * to one number in either direction.
+ */
+test('the birthday card gives up 4px of button, and the employee cards do not', () => {
+  assert.match(phone, /\.bmonth-table td\.act-col \.btn \{ flex: 1 1 40%; min-height: 40px; \}/);
+  // The screen's SUBJECT keeps 44 — ดู / แก้ไขรายการ and พิมพ์ F-HR-027 are on
+  // the employee cards, not in a section under them. Same two-densities
+  // argument this card has been built on since round one.
+  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \{[\s\S]{0,120}min-height: 44px;/);
+  // And so does วันเกิดรอตรวจ, which IS a screen rather than a section.
+  assert.match(phone, /\.bday-table td\.act-col \.row-actions \.btn \{ flex: 1 1 40%; min-height: 44px; \}/);
+  // 8px of card, down from 15 → 12 → 10. Below this the border and the text
+  // read as one edge; what is left to give after it is type size, which is not
+  // on offer on a section somebody reads a date out of.
+  const tr = phone.slice(phone.indexOf('.bmonth-table tr {'), phone.indexOf('table.bmonth-table td {'));
+  assert.match(tr, /padding: 8px; border: 1px solid var\(--line\);/);
+});
+
+/**
  * The fold, and the ONE property that makes it safe.
  *
  * Asked for a fifth time on 2026-08-27 as a horizontal carousel or a one-line

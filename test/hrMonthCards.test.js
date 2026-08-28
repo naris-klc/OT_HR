@@ -408,6 +408,27 @@ test('the pager sits under the fifth card, above the total, and disables its end
   assert.match(phone, /justify-content: center; align-items: center; gap: 1px 10px;/);
   // Both ends are the SAME SQUARE, which is what makes centring symmetrical.
   assert.match(phone, /\.pager-controls \.btn\.pager-step \{\s*width: 38px; min-width: 38px; height: 38px; padding: 0;/);
+  // AND A DISABLED END IS AN OUTLINE, NOT A SLAB — 2026-08-28.
+  //
+  // `.pager-step` is a `.btn ghost`, whose live state is a transparent ground
+  // and a hairline; the app-wide `.btn:disabled` gives it a `--neutral-wash`
+  // FILL, which makes the dead control the loudest object in the band. On a
+  // month that fits on one page both ends are disabled, so it is two grey slabs
+  // either side of "หน้า 1 / 1" — and the app bar is sticky and frosted, so
+  // when the band scrolls under it they read as grey debris crossing the
+  // header. That is exactly how it was reported. The fix is the voice, not the
+  // element: the band is still drawn on every month.
+  assert.match(
+    phone,
+    /\.pager-controls \.btn\.pager-step:disabled \{\s*background: none; border-color: var\(--line\); color: var\(--muted-2\);/,
+  );
+  // The app-wide rule is untouched — this is one selector deeper, not a change
+  // to what a disabled button looks like everywhere else.
+  assert.match(css, /\.btn:disabled,[\s\S]{0,200}background: var\(--neutral-wash\);/);
+  // …and it is still not a fade: `opacity: 1` is deliberate, because a ghost at
+  // .45 is illegible on the dark theme.
+  assert.ok(!/pager-step:disabled \{[^}]*opacity/.test(phone),
+    'the disabled chevron went back to being faded');
   // The words are on the buttons, not in them — see the note in HrView.jsx.
   // A chevron with no accessible name is a button a screen reader cannot use.
   for (const label of ['ก่อนหน้า', 'ถัดไป']) {

@@ -7254,10 +7254,13 @@ table.mini tbody tr:hover { background: none; }
         −8   the labelled lines' own `padding`, 2 → 1 at each end of four of
              them, and their leading from 1.5 to 1.45.
 
-      WHAT WAS NOT TOUCHED. The buttons keep `min-height: 44px` — they are the
-      decision this whole section exists to collect, and a target that shrinks
-      with the card is a target that gets missed. That one still holds after
-      four rounds of asking. The code's line did NOT: it was defended here
+      WHAT WAS NOT TOUCHED, AND IT HELD FOR FIVE ROUNDS AND NOT SIX. It read:
+      the buttons keep `min-height: 44px` — they are the decision this whole
+      section exists to collect, and a target that shrinks with the card is a
+      target that gets missed. It is **40** since 2026-08-28, when the ask named
+      the buttons themselves and the card had nothing else left; what the trade
+      actually costs is written out over the rule, and the employee cards above
+      keep their 44. The code's line did NOT: it was defended here
       earlier the same day on the ground that it is what makes this card and
       วันเกิดรอตรวจ's the same object, and by then that symmetry had already
       been traded away in the paragraph below. It is back on the name's line —
@@ -7372,12 +7375,18 @@ table.mini tbody tr:hover { background: none; }
       "date  dept  co"
       "act   act   act";
     gap: 3px 8px; align-items: start;
-    /* 10, and it read 15 then 12. The employee cards above keep 15 and should:
-       they are the screen's subject and each one is a decision to open. This is
-       a section under them, its cards are three lines and a button, and 10 is
-       what the containers at the top of this screen already take. Asked for by
-       name — "ลด Padding" — on 2026-08-27, the fourth round on this card. */
-    padding: 10px; border: 1px solid var(--line); border-radius: var(--radius);
+    /* 8, and it read 15, then 12, then 10. The employee cards above keep 15 and
+       should: they are the screen's subject and each one is a decision to open.
+       This is a section under them, its cards are two lines and a button, and 8
+       is a card that fits its contents rather than a card with a margin inside
+       it. Asked for by name twice — "ลด Padding" on 2026-08-27 and "ปรับลด
+       Padding บน-ล่าง … ลงอีกเล็กน้อย" on 2026-08-28.
+
+       IT IS THE FLOOR. Below 8 the 1px border and the text start reading as one
+       edge, and the card stops being a card. What is left to give after this is
+       type size and touch targets, and neither is on offer: see the button
+       height below, which came down to 40 and stops there. */
+    padding: 8px; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--card);
   }
   /* `table.bmonth-table td` AND NOT `.bmonth-table td`, FOR THE SECOND TIME ON
@@ -7557,7 +7566,31 @@ table.mini tbody tr:hover { background: none; }
      through `.row-actions` missed them and they were the only decision buttons
      in the app left under 44px. */
   .bmonth-table td.act-col .row-actions { flex-wrap: wrap; gap: 8px; }
-  .bmonth-table td.act-col .btn { flex: 1 1 40%; min-height: 44px; }
+  /* ══ 40px, AND IT WAS 44 THROUGH FIVE ROUNDS OF SAYING NO ═══════════════
+
+     "WHAT WAS NOT TOUCHED" in the ledger at the top of this block reads: the
+     buttons keep `min-height: 44px`, they are the decision this whole section
+     exists to collect, and a target that shrinks with the card is a target that
+     gets missed. That held while the ask was "make the card shorter" and the
+     card had padding and rows to give. On 2026-08-28 the ask named the buttons
+     themselves — "ปรับขนาดปุ่ม … ให้มีความสูงลดลงเล็กน้อย เพื่อให้สอดคล้องกับ
+     ขนาดการ์ดรูปแบบใหม่" — and the card had nothing else left.
+
+     WHAT IS BEING TRADED, PLAINLY. 44 is Apple's HIG figure and the one this
+     app uses everywhere a finger decides something. WCAG 2.2's own minimum
+     (2.5.8, AA) is 24×24 CSS px, so 40 is not near a floor — and the target is
+     not 40px, it is **152 × 40**, because these two split the card's width.
+     Both answers are also reversible: a filed ใบ can be withdrawn and a
+     ไม่ได้มาทำงาน check has ยกเลิกการตรวจ beside it, so a mis-press costs a
+     second press rather than a wrong figure in a closed month.
+
+     40 AND NOT 38. The pager's chevrons are 38 and that is written down as a
+     real trade on a control with no label and no consequence; these two carry
+     Thai labels and DO have a consequence, so they stay the taller of the pair.
+     THE EMPLOYEE CARDS ABOVE KEEP 44 — ดู / แก้ไขรายการ and พิมพ์ F-HR-027 are
+     on the screen's subject, not in a section under it, which is the same
+     two-densities argument this card has been built on since round one. */
+  .bmonth-table td.act-col .btn { flex: 1 1 40%; min-height: 40px; }
   /* And the glow halved, the third time this rule is needed and for the reason
      spelled out over `.queue-table`'s copy: the two buttons are already the
      same 44px box, but `.btn`'s full 18px green glow spills a third of that
@@ -8725,12 +8758,40 @@ table.mini tbody tr:hover { background: none; }
   .hr-table tbody tr.pager-row .pager-range strong {
     font: 600 11.5px/1.35 var(--mono); color: var(--ink-2);
   }
-  /* THE ENDS OF THE LIST NEED NOTHING DECLARED HERE. `‹` on page 1 and `›` on
-     the last carry the plain `disabled` attribute, and the app's own
-     `.btn:disabled` — a `--neutral-wash` fill with `--muted` text — draws them.
-     A fade was written here once and taken out again: that rule sets
-     `opacity: 1` on purpose, because a ghost faded to .45 is illegible on the
-     dark theme. */
+  /* ══ THE ENDS OF THE LIST ARE OUTLINES, NOT SLABS ══════════════════════
+
+     IT READ "THE ENDS NEED NOTHING DECLARED HERE" until 2026-08-28, and what
+     the app's own `.btn:disabled` then drew was **a `--neutral-wash` fill with
+     `--muted` text**. That rule is right for the buttons it was written for and
+     wrong for these two, because it INVERTS them: `.pager-step` is a `.btn
+     ghost`, whose live state is a transparent ground and a hairline, so
+     disabling one made it the most filled object in the band. On a month that
+     fits on one page BOTH chevrons are disabled — two grey slabs that can never
+     do anything, either side of "หน้า 1 / 1".
+
+     REPORTED AS "เศษ Element สีเทาโผล่ขึ้นมาบริเวณ Top Bar", asked to be
+     deleted, and it is not a stray element: it is these two. `.appbar` is
+     `position: sticky` with `--bar-blur` and `backdrop-filter`, so the page
+     scrolls UNDER it — and a 38px `--neutral-wash` square (on the dark theme
+     that token is the same grey as รวมทั้งหมด's own card) crossing that edge is
+     a grey rounded shape half-showing through frosted glass, four lines above
+     the pager text that names it. Hit-tested at 412×887 on the deployed app before
+     anything was changed: `button.btn.ghost.sm.pager-step.pager-prev` and
+     `.pager-next`, both `disabled`, at the exact coordinates reported.
+
+     SO THE FIX IS THE VOICE, NOT THE ELEMENT. A disabled ghost keeps the ghost's
+     transparent ground and goes quiet: `--line` for the ring it already had,
+     `--muted-2` for the glyph — the same step down `.pager-range` takes on the
+     line below. Nothing is removed: the band is drawn on every month on purpose
+     (see the paragraph over `.pager-row`), and a reader can still see there is a
+     ‹ and a › and that neither is available.
+
+     STILL NOT A FADE. `opacity` stays at 1, for the reason that rule states: a
+     ghost faded to .45 is illegible on the dark theme. This changes which three
+     properties are set, not how solid the ink is. */
+  .hr-table tbody tr.pager-row .pager-controls .btn.pager-step:disabled {
+    background: none; border-color: var(--line); color: var(--muted-2);
+  }
 
   /* ══ รวมทั้งหมด IS THE ROW AFTER THE PAGER ══════════════════════════════
 

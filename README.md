@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1720 tests
-across 103 files**, measured 2026-08-27 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1719", "1718", "1717", "1715" and "1713" earlier the same day, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1721 tests
+across 103 files**, measured 2026-08-28 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1720" earlier the same day, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3247,6 +3247,15 @@ page both buttons come up `disabled` (`current <= 1` and `current >= pageCount`
 are both true) and the count line still states the month. `pageCount` has a
 floor of 1, so a month never says *หน้า 1 / 0*.
 
+**And a disabled end is an outline, not a slab** — since 2026-08-28, and the
+reason is in §"เศษสีเทาที่ขอบ Top Bar" below. The app-wide `.btn:disabled` fills
+with `--neutral-wash`, which is right for the buttons it was written for and
+backwards for a `.btn ghost` whose live state is a transparent ground: on a
+one-page month it made the two dead chevrons the most filled objects in the
+band. They now keep the ghost's ground, a `--line` ring and a `--muted-2` glyph
+— the same "a disabled control is quieter than a live one" this app states
+elsewhere, and still not a fade.
+
 **The pager is one band 56px tall, and it was two full rows and 73px** until
 2026-08-26. The old shape put *แสดง 6–10 จาก 57 รายการ* across the full width of
 the card on a line of its own, and under it two "106×44" buttons wearing
@@ -3479,6 +3488,12 @@ with the card is a target that gets missed — and the employee code stays on it
 own line under the name, because that line is what makes this card and
 วันเกิดรอตรวจ's the same object, and it was put back there on purpose the day
 before.
+
+*Both were taken later.* The code went onto the name's line the same day (see
+the section after next), and the buttons came down to **40px** on 2026-08-28
+when the ask named them directly and the card had nothing else to give — with
+what that trades written out beside the rule. The reasoning above is still why
+it was the LAST thing to go rather than the first.
 
 **So the two screens are no longer the same density, and that is the price.**
 วันเกิดรอตรวจ keeps the 15px card: it *is* a screen, the cards are the only thing
@@ -3863,6 +3878,69 @@ column that **adds** to the 12px `gap` rather than collapsing with it, both gaps
 come out at **24** — twice the cards' own pitch. The column reads 12 · 12 · 12 ·
 12 (five cards) · **24** · pager · **24** · total. รวมทั้งหมด still states no
 margin of its own: the pager's bottom margin is the gap over it, written once.
+
+### เศษสีเทาที่ขอบ Top Bar — และการ์ดวันเกิดรอบที่เจ็ด — 2026-08-28 รอบสอง
+
+Three asks after the round above went live. Measured at **412×887**, the width
+the report came in at, on the deployed app first and on a scratch build after.
+
+**1 — the card gives up its last two numbers.** *"ปรับลด Padding บน-ล่าง …
+ลงอีกเล็กน้อย"* and *"ปรับขนาดปุ่ม … ให้มีความสูงลดลงเล็กน้อย เพื่อให้สอดคล้อง
+กับขนาดการ์ดรูปแบบใหม่"*. Padding **10 → 8** and the buttons **44 → 40**: a
+ต้องตรวจ card **142 → 134**, the section **658 → 634**, the page **2405 → 2381**.
+
+**The 44 was refused five times and this is what it cost to give it up, stated
+plainly.** 44 is Apple's HIG figure and what this app uses wherever a finger
+decides something. WCAG 2.2's own minimum (2.5.8, AA) is **24×24 CSS px**, so 40
+is nowhere near a floor — and the target is not 40px, it is **152 × 40**, because
+the two buttons split the card's width. Both answers are reversible: a filed ใบ
+can be withdrawn, and ไม่ได้มาทำงาน has ยกเลิกการตรวจ beside it, so a mis-press
+costs a second press rather than a wrong figure in a closed month. **The employee
+cards above keep 44** and so does วันเกิดรอตรวจ — same two-densities rule this
+card has been built on since round one, and `test/birthdayCardUi.test.js` now
+pins all three numbers so nobody harmonises them in either direction.
+
+**8px is the floor for the padding.** Below it the 1px border and the text start
+reading as one edge. What is left after this round is type size and touch
+targets, and the card is done: there is no seventh round in it.
+
+**2 — the grey shapes at the top bar are the pager, and nothing was deleted.**
+Reported as *"มีเศษ Element สีเทาโผล่ขึ้นมาบริเวณ Top Bar (ตรงข้อความ แสดง 1-4
+จาก 4 รายการ)"* with a request to remove the leftover. **It was hit-tested before
+anything was changed**, at the reported coordinates on the deployed app at
+412×887: `button.btn.ghost.sm.pager-step.pager-prev` and `.pager-next`, both
+`disabled`. Not a leftover — the pager's own two chevrons, four lines above the
+text that names them.
+
+**What made them read as debris is that the disabled state is LOUDER than the
+live one.** `.pager-step` is a `.btn ghost`: transparent ground, hairline ring.
+The app-wide `.btn:disabled` gives it a `--neutral-wash` fill — and on a month
+that fits on one page *both* ends are disabled, so the band carries two filled
+grey squares that can never do anything. `.appbar` is `position: sticky` with
+`--bar-blur` and `backdrop-filter`, so the page scrolls under it: a 38px grey
+square crossing that edge is a rounded shape half-showing through frosted glass.
+This app already states the rule that was being broken — *"a disabled control is
+quieter than a live one everywhere else in this app"*, written for แก้ไขไม่ได้ on
+the entry rows — and names this exact failure there: `--neutral-wash` behind a
+ghost is what a dead button looks like.
+
+So the fix is the voice and not the element: `background: none`, a `--line` ring,
+a `--muted-2` glyph — one selector deeper than the app-wide rule, which is
+untouched. **Still not a fade**: `opacity` stays 1, because a ghost at .45 is
+illegible on the dark theme. The band is still drawn on every month, including
+the ones that fit, for the reason recorded above.
+
+**3 — the foot of the list already clears the bar, and here is the number.**
+Asked to check that *"ดูอีก 3 คนที่ไม่ต้องตอบตอนนี้"* is not touching or sinking
+into the bottom nav. Scrolled to the very end of the page at 412×887: the
+button's bottom edge stands **62.7px** clear of the bar's top, and `main` itself
+ends **23.7px** clear — which is `.mobile-nav-spacer`, `--nav-h + 24`, doing
+exactly what it was written to do (24 is two card-gaps; the note is above the
+rule). **Nothing was added**, and that is the finding rather than a shortcut: the
+screen has just been through seven rounds of taking vertical space out, and
+padding the foot would hand some of it back to no purpose. What the report
+describes is what a *fixed* frosted bar does mid-scroll — content passes under
+it until the scroll reaches the end.
 
 ### The first card was never clipped — the ค้นหา bar was on it
 
@@ -4723,9 +4801,20 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1720/1720 pass in about 2 s**, measured 2026-08-28 across 103
-  files. **The count did not move on 2026-08-28 and three cases changed under
-  it**, all in `test/birthdayCardUi.test.js` and `test/hrMonthCards.test.js`,
+- `npm test` — **1721/1721 pass in about 2 s**, measured 2026-08-28 across 103
+  files. The newest is in `test/birthdayCardUi.test.js` for the card's last two
+  numbers — `min-height: 40px` on its two buttons and `padding: 8px` on the card
+  — pinned **together with the 44px the employee cards and วันเกิดรอตรวจ keep**,
+  because the failure mode is somebody harmonising the three to one number in
+  either direction. The 44 was refused five times and the reasoning for giving
+  it up is over the rule: WCAG 2.2's minimum is 24×24, the target is 152 × 40,
+  and both answers are reversible. The case beside it, in
+  `test/hrMonthCards.test.js`, pins that a disabled pager chevron is an OUTLINE
+  — `background: none`, `--line`, `--muted-2` — with the app-wide
+  `.btn:disabled` asserted untouched beside it and `opacity` asserted absent,
+  since the fade was tried and rejected once already. It read "1720/1720" before
+  them. **That count did not move on 2026-08-28's first round and three cases
+  changed under it**, all in the same two files,
   because that round rewrote a layout rather than adding a behaviour: the birthday
   card's grid is `auto auto minmax(min-content, 1fr)` with วันเกิด, แผนก and
   บริษัท on ONE row and ชั่วโมง under the chip; the date is drawn twice, long and
@@ -4734,7 +4823,7 @@ four role UIs.
   the fact line; and the pager band asserts `margin: 12px 0` where it asserted 6.
   The `white-space: nowrap` case survives unchanged and now reads as the reason
   the date had to go SHORT rather than the reason it could not be paired.
-  The newest case is in `test/birthdayCardUi.test.js` for the fold on
+  The case before those is in `test/birthdayCardUi.test.js` for the fold on
   วันเกิดของเดือนนี้, and what it pins is the one property that makes a fold
   safe on this screen: WHICH rows go. The class is written as an exception —
   `status === DUE ? undefined : 'settled'` — so a status added later folds by
