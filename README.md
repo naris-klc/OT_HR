@@ -3238,14 +3238,32 @@ that sentence in half. It sat *below* the total for a few hours on 2026-08-25,
 under a total that was `position: sticky` and therefore made the pager the one
 row of the list that could never share a screen with the figure.
 
-**The pager is drawn on every month, including the ones that fit.** It used to
-be `{shown.length > CARD_PAGE && …}`, so the live four-person August had no
-pager at all: the foot of the list was a different shape depending on how many
-people filed OT, and *แสดง 1–4 จาก 4 รายการ* — the one line that says how long
-the list is — was missing from exactly the months short enough to doubt. On one
-page both buttons come up `disabled` (`current <= 1` and `current >= pageCount`
-are both true) and the count line still states the month. `pageCount` has a
-floor of 1, so a month never says *หน้า 1 / 0*.
+**The pager is drawn only when there is more than one page**, and this condition
+has now existed, been removed, and come back — so both arguments are here.
+
+*Removed on 2026-08-26:* it was `{shown.length > CARD_PAGE && …}`, so the live
+four-person August had no pager at all — the foot of the list was a different
+shape depending on how many people filed OT, and *แสดง 1–4 จาก 4 รายการ*, the one
+line that says how long the list is, was missing from exactly the months short
+enough to doubt.
+
+*Back on 2026-08-28, as `{pageCount > 1 && …}`,* after the band was reported
+twice in one day as something that should not be on the screen — first as grey
+shapes crossing under the header, then, once the disabled chevrons had been
+quietened, by name: *"Element ส่วนเกิน … หลุดขึ้นไปโผล่ใต้ Header … ลบส่วนเกินนี้
+ออก"*, naming the count line and the buttons together. On a month that fits, the
+band is a control that can do nothing — `current <= 1` and `current >= pageCount`
+are both true — sitting above a sentence about a list the reader has already
+scrolled past. **Twice reported as debris is the answer to whether it reads as a
+statement about the month.**
+
+**And the count is not lost with it**, which is what the old reasoning was
+protecting: the export button at the top of the screen says *พิมพ์ F-HR-027 ทุกคน
+(4 คน)*, every card is on screen when there is one page, and the line comes back
+the moment there is a second — which is exactly when a reader cannot see the whole
+list. `pageCount` still has a floor of 1, so a month never says *หน้า 1 / 0*.
+What it costs is still the foot's shape: ≤5 people reads card · total, more than
+five reads card · pager · total.
 
 **And a disabled end is an outline, not a slab** — since 2026-08-28, and the
 reason is in §"เศษสีเทาที่ขอบ Top Bar" below. The app-wide `.btn:disabled` fills
@@ -3447,7 +3465,11 @@ the total already declares its own 12.
 *This is the state it was left in on 2026-08-27.* The margin read "6px" and the
 gaps "18" until the same joint was asked about again the next day; both are 12
 and 24 now — see §"วันเกิด แผนก บริษัท มาอยู่บรรทัดเดียว" below for what 18 was
-missing. Everything else in this paragraph still holds.
+missing. The shorthand is `12px 0 0` — **top only** — since the pager stopped
+being drawn on a month that fits, and รวมทั้งหมด states its own `margin-top: 12px`
+now: a gap hung on an element that is sometimes absent is sometimes absent, and
+"the total states no margin of its own" was true only while the pager was
+unconditional. The rest of this paragraph still holds.
 
 **2 — the birthday card is about a third shorter.** Asked for as *"ปรับ Layout
 ส่วนรายชื่อวันเกิดพนักงานให้กระชับขึ้น … เพื่อประหยัดพื้นที่ Vertical Space
@@ -3900,9 +3922,13 @@ cards above keep 44** and so does วันเกิดรอตรวจ — sa
 card has been built on since round one, and `test/birthdayCardUi.test.js` now
 pins all three numbers so nobody harmonises them in either direction.
 
+*The buttons went to **36** the same day, one round later, and the paragraph
+above is the argument for it too — one step further along the same trade. The
+numbers in it read 40 because that is where this round left them.*
+
 **8px is the floor for the padding.** Below it the 1px border and the text start
-reading as one edge. What is left after this round is type size and touch
-targets, and the card is done: there is no seventh round in it.
+reading as one edge. What was left after this round was type size and touch
+targets, and the next round took 4px of the second.
 
 **2 — the grey shapes at the top bar are the pager, and nothing was deleted.**
 Reported as *"มีเศษ Element สีเทาโผล่ขึ้นมาบริเวณ Top Bar (ตรงข้อความ แสดง 1-4
@@ -3941,6 +3967,44 @@ screen has just been through seven rounds of taking vertical space out, and
 padding the foot would hand some of it back to no purpose. What the report
 describes is what a *fixed* frosted bar does mid-scroll — content passes under
 it until the scroll reaches the end.
+
+### แผงเปลี่ยนหน้าไม่ถูกวาดในเดือนที่พอดีหน้าเดียว — 2026-08-28 รอบสาม
+
+**The same band, reported a second time, and this round it goes.** Round two
+found that the "เศษ Element สีเทา" at the top bar was the pager's two disabled
+chevrons and quietened them; the next screenshot named the whole band —
+*"Element ส่วนเกิน (ข้อความ 'แสดง 1-4 จาก 4 รายการ' และปุ่ม Pagination) หลุดขึ้น
+ไปโผล่ใต้ Header … ลบ Element ส่วนเกินนี้ออก"*.
+
+**It is not a `position` or `z-index` fault, and that was checked before
+anything moved.** `.appbar` is `position: sticky; top: 0; z-index: 20` with
+`--bar-blur` and `backdrop-filter` — it is *in flow*, the page scrolls under it,
+and that is what a frosted bar is for. Nothing escapes it and nothing is stacked
+wrongly. What was true is the other half of the report: on a month that fits on
+one page the band **is** surplus. `{pageCount > 1 && …}` now wraps the whole row,
+and §"แผงเปลี่ยนหน้า" above carries the argument in both directions, because
+this condition has been added, removed and added again.
+
+**Removing a row moved a gap, and that is the part worth checking.**
+`.pager-row` owned `margin: 12px 0` — its bottom margin was the gap over
+รวมทั้งหมด, deliberately written once — and a gap that lives on an element which
+is sometimes absent is sometimes absent. The total would have slid back to the
+list's own 12px pitch and read as the fifth person, which is the exact defect
+that margin was added for on 2026-08-27. So the pager keeps a **top** margin only
+and รวมทั้งหมด states its own: 24px above the total either way, measured at
+431×896 with the pager gone.
+
+**And two numbers came down with it.** The birthday card's buttons **40 → 36**
+— `padding-block: 7px` beside the `min-height`, because `.btn.sm` stands about
+37.6px on its own and a `min-height` under 38 decides nothing without it, which
+is the "the rule is in the bundle, is correct, and does nothing" trap this table
+has now been caught by three times. And `.mobile-nav-spacer` **24 → 36**, three
+card-gaps, after the foot of this screen was raised a second time.
+
+**Measured at 431×896, the width the report came in at:** a ต้องตรวจ card
+**134 → 130**, the buttons exactly **36**, the fold button's clearance over the
+bar **62.7 → 74.7**, the page **2381 → 2279**, and `scrollWidth == clientWidth`.
+The section that started this week at 1772px is **622**.
 
 ### The first card was never clipped — the ค้นหา bar was on it
 
@@ -4021,11 +4085,22 @@ observer runs and in print, where `.no-print` takes the bar away entirely. The
 on the page and the bar once the reader has scrolled as far as the page goes. It
 was "12" for a few hours and was asked to be more — at 12 the last card of
 วันเกิดของเดือนนี้ ends flush enough against the bar to read as cut off by it
-rather than as the end of the page. 24 is **two card-gaps**, the 12px this list
-already puts between two cards taken twice, rather than a number chosen by eye.
-Measured after, at 320 / 360 / 430 / 700: the spacer is **112 / 101 / 101 / 90**
-— the bar's own 88 / 77 / 77 / 66 — and the gap between the end of the content
-and the top of the bar is **24 at all four**, where it had been 0 / 11 / 11 / 22.
+rather than as the end of the page. It is a multiple of the **card-gap**, the
+12px this list already puts between two cards, rather than a number chosen by
+eye. Measured when it was "24": at 320 / 360 / 430 / 700 the spacer was
+**112 / 101 / 101 / 90** — the bar's own 88 / 77 / 77 / 66 — and the gap between
+the end of the content and the top of the bar was **24 at all four**, where it
+had been 0 / 11 / 11 / 22.
+
+**It is 36 — three card-gaps — since 2026-08-28.** The foot of ตรวจสอบรายเดือน
+was raised twice in one day. The first time it was measured and reported rather
+than changed, because the numbers said it was already clear: at 412×887 the last
+control stood 62.7px off the bar and `main` itself the 24 this rule declares. The
+ask came back, which makes it a judgement about how the foot READS rather than a
+claim about the measurement — so the number moved, and the derivation did not.
+The last control now clears the bar by **74.7px**. It applies to every phone
+screen, not one: this spacer is the app's single answer to a `fixed` bar, and a
+per-screen number would be a second answer that drifts from it.
 
 **`with-fab` takes the larger of the two.** The FAB on หน้า OT ของฉัน floats
 92px up from the *viewport* and is 58 tall, and it knows nothing about how tall
@@ -4802,12 +4877,24 @@ four role UIs.
 **Verified**
 
 - `npm test` — **1721/1721 pass in about 2 s**, measured 2026-08-28 across 103
-  files. The newest is in `test/birthdayCardUi.test.js` for the card's last two
-  numbers — `min-height: 40px` on its two buttons and `padding: 8px` on the card
+  files. **The count held across three rounds that day** and the cases under it
+  moved each time; the last of them added the assertion this file most wants
+  kept — that the pager is wrapped in `{pageCount > 1 && …}` **with both
+  reasons written beside it**, because that condition has now been added,
+  removed and added again, and that the condition is on the ROW rather than on
+  the buttons inside it, since a band that keeps its height and empties itself
+  is the shape problem its 2026-08-26 removal was written about. Beside it: that
+  `.pager-row` states a TOP margin only and `รวมทั้งหมด` states its own, which is
+  what stops the gap over the total from disappearing with the row it used to
+  hang on.
+  The newest case is in `test/birthdayCardUi.test.js` for the card's last two
+  numbers — `min-height: 36px` on its two buttons and `padding: 8px` on the card
   — pinned **together with the 44px the employee cards and วันเกิดรอตรวจ keep**,
   because the failure mode is somebody harmonising the three to one number in
-  either direction. The 44 was refused five times and the reasoning for giving
-  it up is over the rule: WCAG 2.2's minimum is 24×24, the target is 152 × 40,
+  either direction, and with `.btn.sm`'s own padding asserted beside them because
+  a `min-height` under 38 decides nothing without `padding-block` coming down
+  with it. The 44 was refused five times and the reasoning for giving
+  it up is over the rule: WCAG 2.2's minimum is 24×24, the target is 152 × 36,
   and both answers are reversible. The case beside it, in
   `test/hrMonthCards.test.js`, pins that a disabled pager chevron is an OUTLINE
   — `background: none`, `--line`, `--muted-2` — with the app-wide

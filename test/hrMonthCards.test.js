@@ -376,6 +376,28 @@ test('the pager sits under the fifth card, above the total, and disables its end
   );
   // Not a card, and one band that has to stay one band.
   assert.match(phone, /\.hr-table tbody tr\.pager-row \{\s*display: block; padding: 0; border: 0; background: none;/);
+
+  // AND IT IS NOT DRAWN AT ALL ON A MONTH THAT FITS — 2026-08-28, and this is
+  // the SECOND time this condition has existed, so it is pinned with both
+  // reasons rather than left to be tidied a third time.
+  //
+  // It was `{shown.length > CARD_PAGE && …}`, was removed on 2026-08-26 so that
+  // "แสดง 1–4 จาก 4 รายการ" — the one line saying how long the list is — could
+  // not go missing from exactly the months short enough to doubt, and is back
+  // because on a month that fits the band is a control that can do nothing
+  // (both ends `disabled`) above a sentence about a list already scrolled past.
+  // Reported twice in one day as an element that should not be there.
+  //
+  // The count is not lost with it: the export button says "(N คน)" at the top
+  // of the screen, every card is on screen when there is one page, and the line
+  // returns the moment there is a second — which is when it does work.
+  assert.match(hrCode, /\{pageCount > 1 && \(\s*<tr className="pager-row">/,
+    'the pager went back to being drawn on every month, or lost its condition');
+  // The condition is on the ROW, not on the buttons inside it: a band that
+  // keeps its height and empties itself is the shape problem the 2026-08-26
+  // removal was written about.
+  assert.ok(!/\{pageCount > 1 && [\s\S]{0,120}pager-step/.test(hrCode),
+    'only part of the band is conditional — it will draw an empty 56px row');
   // AND IT IS SPACED OUT OF THE LIST'S OWN RHYTHM, 2026-08-27. Asked for as the
   // pager and รวมทั้งหมด being "ชิดการ์ดพนักงานเกินไป": they sat at exactly
   // 12px, which is the `gap` between one employee card and the next, so a
@@ -390,14 +412,20 @@ test('the pager sits under the fifth card, above the total, and disables its end
   // the last card wanting to be "โปร่งและสม่ำเสมอ", because the two things this
   // joint separates are not two borders — a bordered button 15px inside the
   // card's edge above, a filled chevron square hard against the top of the band
-  // below. 12 makes both gaps 24, twice the cards' own pitch. รวมทั้งหมด states
-  // no margin of its own on purpose: this row's bottom margin IS the gap over
-  // it, written once, and what follows the total declares its own 12.
-  assert.match(phone, /\.hr-table tbody tr\.pager-row \{[^}]*margin: 12px 0;/);
+  // below. 12 makes both gaps 24, twice the cards' own pitch.
+  //
+  // TOP ONLY, AND รวมทั้งหมด NOW STATES ITS OWN. This assertion read
+  // "margin: 12px 0" with a negative one under it forbidding any margin on the
+  // total row, on the ground that the pager's BOTTOM margin was the gap over the
+  // total, written once. That stopped being safe the moment the pager stopped
+  // being drawn on a month that fits: a gap hung on an element that is sometimes
+  // absent is sometimes absent, and the total would have slid back to the list's
+  // own 12px pitch — the exact defect the margin was added for.
+  assert.match(phone, /\.hr-table tbody tr\.pager-row \{[^}]*margin: 12px 0 0;/);
   assert.match(phone, /\.hr-table tbody \{\s*display: flex; flex-direction: column; gap: 12px;/,
     'the list stopped being a flex column — margin and gap no longer add up');
-  assert.ok(!/\.hr-table tbody tr\.total-row \{[^}]*margin/.test(phone),
-    'a second number appeared for the gap the pager already owns');
+  assert.match(phone, /\.hr-table tbody tr\.total-row \{[^}]*margin-top: 12px;/,
+    'the total went back to hanging its gap on a row that is not always drawn');
   // CENTRED, NOT SPREAD. It was `1fr auto 1fr` until 2026-08-26, which pinned
   // the two buttons to the ENDS of the card — the layout of a wide table's
   // footer. The three tracks take the width they need and the group is centred,

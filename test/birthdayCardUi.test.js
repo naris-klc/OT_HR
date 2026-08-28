@@ -353,15 +353,22 @@ test('วันเกิด, แผนก and บริษัท share one line,
  * "make this shorter" did not take, and the stylesheet says why: they are the
  * decision this section exists to collect. On 2026-08-28 the ask named the
  * buttons themselves, and by then the card had nothing else left — so 44 → 40,
- * with the reasoning written down beside it: WCAG 2.2's own minimum is 24×24,
- * the target is 152 × 40 because the pair splits the card's width, and both
- * answers are reversible.
+ * and → 36 when the same day asked once more. The reasoning is beside the rule:
+ * WCAG 2.2's own minimum is 24×24, the target is 152 × 36 because the pair
+ * splits the card's width, and both answers are reversible.
  *
  * Pinned because the failure mode is somebody "harmonising" the two lists back
  * to one number in either direction.
  */
-test('the birthday card gives up 4px of button, and the employee cards do not', () => {
-  assert.match(phone, /\.bmonth-table td\.act-col \.btn \{ flex: 1 1 40%; min-height: 40px; \}/);
+test('the birthday card gives up 8px of button, and the employee cards do not', () => {
+  assert.match(phone, /\.bmonth-table td\.act-col \.btn \{\s*flex: 1 1 40%; min-height: 36px; padding-block: 7px;/);
+  // `padding-block` IS PART OF THE NUMBER, not decoration. `.btn.sm` is 13px
+  // type in 9px of padding and stands about 37.6px on its own, so a
+  // `min-height` under 38 decides nothing until the padding comes down with
+  // it — the same "the rule is in the bundle, is correct, and does nothing"
+  // trap this table has been caught by twice over `table.mini`.
+  assert.match(css, /\.btn\.sm \{ padding: 9px 13px; font-size: 13px;/,
+    'the small button’s own padding moved — re-measure what min-height decides');
   // The screen's SUBJECT keeps 44 — ดู / แก้ไขรายการ and พิมพ์ F-HR-027 are on
   // the employee cards, not in a section under them. Same two-densities
   // argument this card has been built on since round one.

@@ -1061,16 +1061,43 @@ export default function HrView({
                       button whose label did not change, and five cards it was
                       not reading are replaced by five more.
 
-                      DRAWN ON EVERY MONTH, INCLUDING THE ONES THAT FIT. It used
-                      to be `{shown.length > CARD_PAGE && …}` and the four-person
-                      August had no pager at all — which meant the foot of this
-                      list was a different shape depending on how many people
-                      filed OT, and "แสดง 1–4 จาก 4 รายการ", the one line that
-                      says how long the list is, was missing from exactly the
-                      months short enough to doubt. Both buttons come up
-                      `disabled` on a single page; the count line is a statement
-                      about the month either way. Asked for by name on
-                      2026-08-26, and it is also one less branch. */}
+                      NOT DRAWN AT ALL WHEN THERE IS ONE PAGE — 2026-08-28, and
+                      it is a REVERSAL, so both sides are here.
+
+                      It read: "DRAWN ON EVERY MONTH, INCLUDING THE ONES THAT
+                      FIT. It used to be `{shown.length > CARD_PAGE && …}` and
+                      the four-person August had no pager at all — which meant
+                      the foot of this list was a different shape depending on
+                      how many people filed OT, and 'แสดง 1–4 จาก 4 รายการ', the
+                      one line that says how long the list is, was missing from
+                      exactly the months short enough to doubt." Asked for by
+                      name on 2026-08-26.
+
+                      WHAT DECIDED IT THE OTHER WAY. Reported twice on
+                      2026-08-28 — first as grey shapes crossing the header,
+                      then, after the disabled chevrons were quietened, as
+                      "Element ส่วนเกิน … หลุดขึ้นไปโผล่ใต้ Header … ลบส่วนเกิน
+                      นี้ออก", naming the count line and the buttons together.
+                      Both reports are of the same object: on a month that fits,
+                      this band is a control that can do nothing (`current <= 1`
+                      and `current >= pageCount` are both true) sitting above a
+                      sentence about a list the reader has already scrolled past.
+                      Twice reported as debris is the answer to "does it read as
+                      a statement about the month".
+
+                      AND THE COUNT IS NOT LOST WITH IT, which is what the old
+                      reasoning was protecting. The export button at the top of
+                      this screen says "พิมพ์ F-HR-027 ทุกคน (4 คน)", and on a
+                      month that fits, every card is on the screen to be counted.
+                      The line comes back the moment there is a second page —
+                      which is exactly when a reader cannot see the whole list
+                      and the sentence is doing work.
+
+                      THE FOOT'S SHAPE. Still the price, and it is smaller than
+                      it was: ≤5 people reads card · total, more than five reads
+                      card · pager · total. That is what a paginated list looks
+                      like everywhere else. */}
+                  {pageCount > 1 && (
                   <tr className="pager-row">
                     {/* Eleven, like every other row in this table — see the
                         `pad-col` note below. Not in the hidden-by-name list in
@@ -1143,6 +1170,7 @@ export default function HrView({
                       </div>
                     </td>
                   </tr>
+                  )}
                   {/* `total-row` names the month's own line so the phone layout
                       can give its two frozen cells the backgrounds of a summary
                       rather than of a person. It lives in `tbody` — this table
