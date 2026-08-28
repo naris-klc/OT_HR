@@ -35,6 +35,14 @@ const css = read('app/styles.css');
 const hrView = read('components/HrView.jsx');
 const queue = read('components/BirthdayQueue.jsx');
 const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+/**
+ * The screen with its commentary stripped, for asking what it SAYS rather than
+ * what the file explains about what it says — the same guard, and for the same
+ * reason, as the one at the top of test/hrMonthCards.test.js: four assertions
+ * there have caught their own comment instead of the code, and the notes in
+ * this component quote the Thai strings they are about.
+ */
+const hrCode = hrView.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 // ── the badge ────────────────────────────────────────────────────────────────
 
@@ -401,8 +409,10 @@ test('only the rows that ask nothing are folded, and only on a phone', () => {
   // a row that asks something and is not on screen.
   assert.match(hrView, /className=\{r\.status === BIRTHDAY_STATUS\.DUE \? undefined : 'settled'\}/);
   // The count on the button is derived from the same test, so the number said
-  // and the number of cards that disappear cannot drift apart.
-  assert.match(hrView, /rows\.filter\(\(r\) => r\.status !== BIRTHDAY_STATUS\.DUE\)\.length/);
+  // and the number of cards that disappear cannot drift apart. The filter is
+  // named now — `foldedRows` — because the label's wording is chosen from those
+  // same rows; see the test on that below.
+  assert.match(hrCode, /rows\.filter\(\(r\) => r\.status !== BIRTHDAY_STATUS\.DUE\)/);
   // …and it is drawn only when there is something to fold.
   assert.match(hrView, /\{settledCount > 0 && \(/);
 
@@ -420,9 +430,42 @@ test('only the rows that ask nothing are folded, and only on a phone', () => {
   assert.match(phone, /\.btn\.bday-more \{\s*display: flex; place-content: center;/);
   // The label says the count in BOTH states, or it is a control somebody has to
   // press to find out what it does.
-  assert.match(hrView, /ซ่อน \$\{settledCount\} คนที่ไม่ต้องตอบตอนนี้/);
-  assert.match(hrView, /ดูอีก \$\{settledCount\} คนที่ไม่ต้องตอบตอนนี้/);
+  assert.match(hrView, /ซ่อน\$\{foldWhat\} \(\$\{settledCount\} รายการ\)/);
+  assert.match(hrView, /ดู\$\{foldWhat\} \(\$\{settledCount\} รายการ\)/);
   assert.match(hrView, /aria-expanded=\{showSettled\}/);
+});
+
+/**
+ * AND THE LABEL HAS TO BE TRUE OF EVERY ROW BEHIND IT.
+ *
+ * Asked on 2026-08-28 to reword the fold as "ดูรายการที่ตรวจสอบแล้ว (3 รายการ)"
+ * — a better register than "ดูอีก 3 คนที่ไม่ต้องตอบตอนนี้", and not true of
+ * every month. What the fold hides is every row that is not ต้องตรวจ, and that
+ * includes ยังไม่ถึงวัน: a birthday later this month that nobody has checked and
+ * nobody CAN, because the date has not arrived and there is no scan record to
+ * check against yet. The summary two lines above counts those separately as
+ * รอถึงวัน, so a button calling them ตรวจสอบแล้ว would have the screen
+ * contradicting itself on the last stop before a month is closed.
+ *
+ * So the asked-for wording is used wherever it is true and a covering one when
+ * it is not. This is the assertion that stops the branch being tidied into one
+ * string later.
+ */
+test('the fold never calls a not-yet-due birthday “ตรวจสอบแล้ว”', () => {
+  // The word is chosen from the rows, not hard-coded into the label.
+  assert.match(hrCode, /const allChecked = foldedRows\.every\(\(r\) => SETTLED_STATUSES\.includes\(r\.status\)\);/);
+  assert.match(hrCode, /const foldWhat = allChecked \? 'รายการที่ตรวจสอบแล้ว' : 'รายการที่ไม่ต้องดำเนินการ';/);
+  // …and `SETTLED_STATUSES` is the app's own list of "nothing left to do",
+  // which excludes UPCOMING. Asserted at its source, because the whole point of
+  // reading it rather than writing `!== UPCOMING` here is that a status added
+  // later is not silently described as checked.
+  const check = read('lib/birthdayCheck.js');
+  assert.match(check, /export const SETTLED_STATUSES = Object\.freeze\(\[\s*BIRTHDAY_STATUS\.FILED, BIRTHDAY_STATUS\.ABSENT, BIRTHDAY_STATUS\.HOLIDAY,/);
+  assert.ok(!/SETTLED_STATUSES = Object\.freeze\(\[[^\]]*UPCOMING/.test(check),
+    'ยังไม่ถึงวัน joined the settled list — the fold now calls an unchecked row checked');
+  // The count is the rows the fold actually hides, and it is derived once.
+  assert.match(hrCode, /const foldedRows = rows\.filter\(\(r\) => r\.status !== BIRTHDAY_STATUS\.DUE\);/);
+  assert.match(hrCode, /const settledCount = foldedRows\.length;/);
 });
 
 test('the code is on the name’s line here and on its own line in the queue', () => {

@@ -5,7 +5,9 @@ import {
   api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, currentPeriod, periodLabel,
   BUCKETS, companyLabel,
 } from '@/lib/api.js';
-import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
+import {
+  BIRTHDAY_STATUS, SETTLED_STATUSES, STATUS_LABEL_TH, UNCHECKABLE,
+} from '@/lib/birthdayCheck.js';
 import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
@@ -1702,7 +1704,33 @@ function BirthdayMonth({
      hides is one thing: every row that is not ต้องตรวจ. Deriving it from the
      rows the table is actually drawing is what keeps the number on the button
      and the number of cards that disappear the same number. */
-  const settledCount = rows.filter((r) => r.status !== BIRTHDAY_STATUS.DUE).length;
+  const foldedRows = rows.filter((r) => r.status !== BIRTHDAY_STATUS.DUE);
+  const settledCount = foldedRows.length;
+  /**
+   * THE LABEL HAS TO BE TRUE OF EVERY ROW BEHIND IT — 2026-08-28.
+   *
+   * Asked to make the button read "ดูรายการที่ตรวจสอบแล้ว (3 รายการ)" instead
+   * of "ดูอีก 3 คนที่ไม่ต้องตอบตอนนี้", for a more formal HR register. It is
+   * the better wording and it is not always TRUE: what this fold hides is every
+   * row that is not ต้องตรวจ, and that set includes ยังไม่ถึงวัน — a birthday
+   * later this month that NOBODY has checked and nobody can, because the date
+   * has not arrived and there is no scan record to check against yet. Calling
+   * those "ตรวจสอบแล้ว" would tell HR a row had been looked at when the app's
+   * own summary line two lines above counts it separately as รอถึงวัน, on the
+   * last screen before a month is closed.
+   *
+   * So the asked-for wording is used wherever it is true — which is most
+   * months, and every month after its last birthday has passed — and a covering
+   * one when the fold holds a date that has not come round yet. `ไม่ต้อง
+   * ดำเนินการ` is the same officialese register and is true of both halves.
+   *
+   * `SETTLED_STATUSES` rather than `!== UPCOMING`: it is the list that already
+   * means "nothing left to do about this birthday", it lives beside the
+   * statuses themselves, and a status added later is then not silently
+   * described as checked by a label written before it existed.
+   */
+  const allChecked = foldedRows.every((r) => SETTLED_STATUSES.includes(r.status));
+  const foldWhat = allChecked ? 'รายการที่ตรวจสอบแล้ว' : 'รายการที่ไม่ต้องดำเนินการ';
 
   return (
     <div className="box" style={{ marginTop: 12 }}>
@@ -1883,9 +1911,17 @@ function BirthdayMonth({
           aria-expanded={showSettled}
           onClick={() => setShowSettled((v) => !v)}
         >
+          {/* THE COUNT IS IN BRACKETS AND THE UNIT IS รายการ — asked for on
+              2026-08-28 for a more formal register. It is the same count in
+              both states, which is the property above; what changed is that it
+              now reads as a heading with a figure after it rather than as a
+              sentence. `รายการ` and not `คน` because that is the wording that
+              was asked for, and it is the unit the pager over this screen
+              already counts in. The summary line above still says `6 คน`,
+              which is a statement about people rather than about rows. */}
           {showSettled
-            ? `ซ่อน ${settledCount} คนที่ไม่ต้องตอบตอนนี้`
-            : `ดูอีก ${settledCount} คนที่ไม่ต้องตอบตอนนี้`}
+            ? `ซ่อน${foldWhat} (${settledCount} รายการ)`
+            : `ดู${foldWhat} (${settledCount} รายการ)`}
         </button>
       )}
 

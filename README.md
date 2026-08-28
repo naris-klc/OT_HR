@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1721 tests
+and the engine know nothing about Next.js, so the whole suite — **1722 tests
 across 103 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1720" earlier the same day, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1721" and "1720" earlier the same day, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3741,7 +3741,7 @@ one line, and the page never grows sideways.
 + 10, then 8 + 8, and now the card has two rules of one weight rather than two of
 two.
 
-#### ดูอีก n คนที่ไม่ต้องตอบตอนนี้ — the rows that ask nothing are folded
+#### ดูรายการที่ตรวจสอบแล้ว (n รายการ) — the rows that ask nothing are folded
 
 **Asked a fifth time, and the card had run out of room to give.** Two mechanisms
 were named again: วันเกิด / แผนก / บริษัท and the buttons on one horizontal
@@ -3789,6 +3789,34 @@ and the rule that hides the rows lives in the phone block, so the desktop table
 still draws every row of the month — one markup, two layouts, which is the rule
 this screen has kept throughout. Measured at 1280px before and after: page 1650,
 section 516, every birthday row 54 or 75px.
+
+**The label was reworded on 2026-08-28, and it is chosen from the rows rather
+than written into the button.** It read *"ดูอีก 3 คนที่ไม่ต้องตอบตอนนี้"* and was
+asked to become *"ดูรายการที่ตรวจสอบแล้ว (3 รายการ)"* — a more formal HR
+register, and the better wording. **It is not true of every month.** What this
+fold hides is every row that is not ต้องตรวจ, and that set includes ยังไม่ถึงวัน:
+a birthday later this month that nobody has checked and nobody *can*, because the
+date has not arrived and there is no scan record to check against yet. The
+summary two lines above counts exactly those as รอถึงวัน, so a button calling
+them ตรวจสอบแล้ว would have the screen contradicting itself on the last stop
+before a month is closed.
+
+So the asked-for wording is used wherever it is true — most months, and every
+month once its last birthday has passed — and *"ดูรายการที่ไม่ต้องดำเนินการ
+(n รายการ)"*, the same register and true of both halves, when the fold is holding
+a date that has not come round yet. The test is `SETTLED_STATUSES` from
+[`lib/birthdayCheck.js`](lib/birthdayCheck.js) — the app's own list of "nothing
+left to do about this birthday", which is FILED, ABSENT and HOLIDAY and not
+UPCOMING — rather than a `!== UPCOMING` written here, so a status added later is
+not silently described as checked by a label written before it existed. **The
+count stays in both states and in both wordings**, which is the property this
+fold has had from the start.
+
+Walked on the built app at 320, 360 and 431px against a clone of the live
+database with one birthday moved to a Monday still ahead: closed and open, both
+wordings, each on one line. *(Moved to a **Monday** on purpose — the first
+attempt put it on the 30th, which is a Sunday, and HOLIDAY outranks UPCOMING, so
+the row came back settled and proved nothing.)*
 
 #### …and the card around the employee list was not there to remove
 
@@ -3957,7 +3985,8 @@ illegible on the dark theme. The band is still drawn on every month, including
 the ones that fit, for the reason recorded above.
 
 **3 — the foot of the list already clears the bar, and here is the number.**
-Asked to check that *"ดูอีก 3 คนที่ไม่ต้องตอบตอนนี้"* is not touching or sinking
+Asked to check that the fold button — *"ดูอีก 3 คนที่ไม่ต้องตอบตอนนี้"* as it read
+that morning — is not touching or sinking
 into the bottom nav. Scrolled to the very end of the page at 412×887: the
 button's bottom edge stands **62.7px** clear of the bar's top, and `main` itself
 ends **23.7px** clear — which is `.mobile-nav-spacer`, `--nav-h + 24`, doing
@@ -4876,8 +4905,15 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1721/1721 pass in about 2 s**, measured 2026-08-28 across 103
-  files. **The count held across three rounds that day** and the cases under it
+- `npm test` — **1722/1722 pass in about 2 s**, measured 2026-08-28 across 103
+  files. The newest is in `test/birthdayCardUi.test.js` for the fold button’s
+  wording: that the noun is CHOSEN from the folded rows — `SETTLED_STATUSES`,
+  the app’s own "nothing left to do" list, which excludes ยังไม่ถึงวัน — rather
+  than written into the label, with that list asserted at its source so a status
+  added later cannot be silently described as checked. A month with a birthday
+  still ahead reads ไม่ต้องดำเนินการ; every other month reads ตรวจสอบแล้ว, which
+  is the wording that was asked for. It read "1721/1721" before it, and **that
+  count held across three rounds the same day** and the cases under it
   moved each time; the last of them added the assertion this file most wants
   kept — that the pager is wrapped in `{pageCount > 1 && …}` **with both
   reasons written beside it**, because that condition has now been added,

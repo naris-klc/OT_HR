@@ -2619,7 +2619,7 @@ td > .approver-line { margin-top: 5px; }
   .pick-menu.find-menu { max-height: min(240px, 40vh); }
 }
 
-/* ══ ดูอีก n คนที่ไม่ต้องตอบตอนนี้ — A PHONE CONTROL, DECLARED OFF ══════════
+/* ══ ดูรายการที่ตรวจสอบแล้ว (n รายการ) — A PHONE CONTROL, DECLARED OFF ═════
 
    `.btn.bday-more` and not `.bday-more`: `.btn` sets `display: inline-flex` and
    a bare class ties with it on specificity, so which one won would depend on
