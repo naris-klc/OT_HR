@@ -3847,6 +3847,41 @@ td > .approver-line { margin-top: 5px; }
    severity, and an announcement has none. */
 .announce-mark { flex: none; font-size: 17px; line-height: 1.45; }
 .announce-body { flex: 1; min-width: 0; }
+/* The heading and the fold control on one line, the control held at the far
+   end. `flex-start` and not `center`: the heading wraps to two lines at 390px
+   once it carries its count, and centring would drop the arrow to the middle of
+   a two-line block instead of leaving it beside the first line, where the thing
+   it acts on begins. */
+.announce-top { display: flex; align-items: flex-start; gap: 8px; }
+.announce-top .announce-head { flex: 1; min-width: 0; }
+/* "(3 วัน)" — drawn only while folded, inside the heading. A step quieter than
+   the heading it rides on and not a step smaller: at 14px against 14px the two
+   read as one sentence, which is what it is. */
+.announce-count { margin-left: 6px; font-weight: 400; color: var(--ink-2); }
+
+/* ▲ / ▼ — ย่อ/กาง.
+
+   NO BORDER AND NO FILL, unlike the calendar button below it. That one is an
+   action that opens something; this one changes the shape of the panel it sits
+   in, and a bordered box in the corner of a bordered box is two frames deep for
+   a control that should read as part of the furniture. `currentColor` at .65
+   is the same voice `.notice-fold > summary` uses for the same job.
+
+   A `<button>` AND NOT A `<summary>`: the panel it controls is not a `<details>`
+   — it has to be foldable from a value in localStorage, which `<details>` can
+   only be told about by script anyway, and `aria-expanded` + `aria-controls`
+   say the same thing to a screen reader without borrowing an element whose
+   default behaviour would then have to be fought. */
+.announce-fold {
+  flex: none; border: none; background: none; cursor: pointer;
+  color: inherit; opacity: .65;
+  padding: 2px 4px; margin: -2px -4px 0 0;
+  font: 400 11px/1.4 var(--sans);
+}
+.announce-fold:hover { opacity: 1; }
+/* The heading's own bottom margin is the gap to the list. Folded there is no
+   list, and 6px of it would hang under the last thing on the panel. */
+.announce.is-folded .announce-head { margin-bottom: 0; }
 /* An <h3> by markup and 14px by eye. It is a heading — a screen reader should
    find it as one — and it is not a card title: `.card h2` is 15px and this sits
    INSIDE the page above one, so matching it would put two titles on the screen
@@ -3942,6 +3977,18 @@ td > .approver-line { margin-top: 5px; }
     display: flex; width: 100%; justify-content: center;
     min-height: 44px; margin-top: 10px;
     border-color: color-mix(in srgb, currentColor 55%, transparent);
+  }
+
+  /* THE FOLD ARROW GETS A THUMB'S WORTH OF TARGET, and takes it back out of the
+     layout with the negative margins. An 11px glyph is a 15px box; 44px is what
+     every other phone target in this app measures, and the four numbers below
+     grow the hit area in all directions while leaving the arrow drawn exactly
+     where the desktop puts it — beside the first line of the heading, not
+     pushing it down or in. */
+  .announce-fold {
+    min-width: 44px; min-height: 44px;
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    padding: 2px 4px; margin: -2px -8px -20px 0;
   }
 }
 

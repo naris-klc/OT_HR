@@ -148,16 +148,55 @@ test('the banner is on BOTH employee screens — the dashboard and the form', ()
   assert.ok(employee.includes("import HolidayBanner from './HolidayBanner.jsx'"));
 });
 
-test('nothing can dismiss it — that is the whole requirement', () => {
-  // A toast removes itself after four seconds and `MonthAlerts` has a ✕ and a
-  // module-level `alertsDismissed`. This has neither, on purpose: the point is
-  // that everybody has read the same thing before they file. If a close button
-  // is ever wanted, it is a decision to take deliberately, not something that
-  // arrives with a copied `<Alert onClose=…>`.
-  assert.ok(!/onClose=\{[^}]*setShut|alertsDismissed|alert-x/.test(banner),
-    'แถบประกาศมีปุ่มปิดแล้ว — ข้อกำหนดคือต้องคงอยู่ ไม่หายไปเอง');
+test('it folds, and there is no state in which it disappears', () => {
+  // THE REQUIREMENT SURVIVED THE FEATURE THAT LOOKED LIKE ITS OPPOSITE. The
+  // banner was built to "ให้คงอยู่บนหน้าจอ ไม่หายไปเอง เพื่อให้พนักงานรับรู้
+  // ข้อมูลตรงกัน" and shipped with no dismiss control at all; a fold with
+  // persistence was added on 2026-08-28. That is compatible, and the reason is
+  // this test: folded, the month and the day count are still on screen and only
+  // the detail goes. What must never exist is a branch that returns nothing
+  // because somebody pressed something.
+  //
+  // `!holidays` is the one early return and it is about the FETCH, not about a
+  // press — a banner cannot be drawn before its calendar arrives.
+  const returns = bannerCode.match(/return null/g) || [];
+  assert.equal(returns.length, 1, 'มีทางที่แถบประกาศจะไม่ถูกวาดเพิ่มเข้ามา');
+  assert.ok(/if \(!holidays\) return null/.test(bannerCode), 'ทางเดียวที่ไม่วาดต้องเป็นตอนที่ยังโหลดปฏิทินไม่เสร็จ');
+  assert.ok(!/alertsDismissed|alert-x/.test(bannerCode), 'แถบประกาศรับกลไกปิดถาวรมาจากที่อื่น');
+
+  // Folded, the heading is the whole announcement — so the count rides in it.
+  assert.ok(bannerCode.includes('{collapsed && <span className="announce-count">'),
+    'ย่อแล้วไม่ได้บอกจำนวนวัน — แถบสรุปบรรทัดเดียวต้องยังบอกว่ามีอะไรอยู่ข้างใน');
+  assert.ok(/hidden=\{collapsed\}/.test(bannerCode), 'รายละเอียดไม่ได้ถูกซ่อนด้วยสถานะย่อ');
+
+  // ▲/▼ and not ✕: the mark has to be honest about what the press does. An ✕
+  // promises the notice is gone, and this one comes back on the next screen.
+  assert.ok(bannerCode.includes("collapsed ? '▼' : '▲'"), 'ปุ่มย่อไม่ได้ใช้ลูกศร — ✕ สัญญาในสิ่งที่ปุ่มนี้ทำไม่ได้');
+  assert.match(bannerCode, /aria-expanded=\{!collapsed\}/, 'ไม่ได้บอกสถานะย่อ/กางให้ screen reader');
+  assert.match(bannerCode, /aria-controls=\{panelId\}/, 'ปุ่มไม่ได้ชี้ว่ามันคุมอะไร');
+
   // `onClose` on the calendar dialog is a different thing and must stay.
-  assert.ok(banner.includes('setShowCalendar(false)'), 'ปฏิทินต้องปิดได้');
+  assert.ok(bannerCode.includes('setShowCalendar(false)'), 'ปฏิทินต้องปิดได้');
+});
+
+test('the fold is remembered in this browser, and read on mount rather than in render', () => {
+  // Same rule `ThemeChoice` in components/ProfileView.jsx follows: this
+  // component renders on the server too, where there is no localStorage, and a
+  // first render that read it would throw or disagree with what the browser
+  // holds — and React would hydrate the mismatch.
+  assert.ok(/useEffect\(\(\) => \{\s*try \{\s*setCollapsed\(localStorage/.test(bannerCode),
+    'อ่าน localStorage ตอน render — จะ hydrate ไม่ตรงกับที่เบราว์เซอร์เก็บไว้');
+  // Storage throws rather than returning null in a locked-down browser, and a
+  // fold preference is not worth a blank screen.
+  assert.equal((bannerCode.match(/catch \{/g) || []).length, 2, 'การอ่านหรือการเขียน localStorage ไม่ได้อยู่ใน try/catch');
+  // `ot-` prefixed like `ot-theme`, and ONE key for both screens the banner is
+  // on: folding it on the dashboard is not a request to see it again on the form.
+  assert.ok(bannerCode.includes("const FOLD_KEY = 'ot-holiday-fold'"), 'คีย์ที่เก็บสถานะเปลี่ยนชื่อหรือหายไป');
+  assert.equal((bannerCode.match(/FOLD_KEY/g) || []).length, 4, 'มีคีย์เก็บสถานะมากกว่าหนึ่งที่');
+  // Absent key IS the default — the same shape the theme stores in, so a
+  // cleared browser and a browser never asked behave identically.
+  assert.ok(/localStorage\.removeItem\(FOLD_KEY\)/.test(bannerCode),
+    'กางแล้วไม่ได้ลบคีย์ทิ้ง — ค่าเริ่มต้นควรเป็น "ไม่มีคีย์"');
 });
 
 test('the banner is in flow and is not a third pinned band', () => {

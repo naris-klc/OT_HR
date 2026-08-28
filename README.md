@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1751 tests
+and the engine know nothing about Next.js, so the whole suite — **1752 tests
 across 105 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1592,6 +1592,78 @@ already holds for the same reason.
 calendar — the submit form needs it to label the day"* — while the maintained
 list lives on ตั้งค่าระบบ → วันหยุดบริษัท, which is admin-and-HR only. The
 ปฏิทินวันหยุดประจำปี dialog is that permission finally having a screen.
+
+### ⚑ The phone layout is signed off — these numbers are the template
+
+**Approved 2026-08-28** as the standard for this card on mobile, after five
+rounds of adjustment on one banner. What was approved is a shape, and a shape is
+only a decision if the numbers that make it are written down:
+
+| | value | why it is that and not the next number |
+| --- | --- | --- |
+| holiday entry | two lines | the date with its weekday, the name under it |
+| date | 13.5px / 600 / `--ink` | the thing being announced |
+| holiday name | 12.5px / `--ink-2` | content, subordinate to its date |
+| weekday | 12.5px / `--muted` | a *check* on the date, read once |
+| between two holidays | **10px** | the line above a date is the previous holiday's NAME |
+| date to its own name | **1px** | ten against one is what makes the pair obvious |
+| calendar button | full width, centred, **44px** | the phone target this app uses everywhere |
+| its edge | `currentColor` at 55%, no fill | outlined, and never the brand green — see below |
+| list to button | **10px** | must beat the 3px inside the list |
+| fold control | ▲/▼ top right, 44px target | added 2026-08-28; ▲/▼ and never ✕ — see below |
+| folded height | **65px** against 253px open | 8.4% of a 390px phone against 32.5% |
+
+**Every one of those is asserted in `test/holidayNotice.test.js`**, so this is a
+template the build enforces rather than a paragraph somebody has to remember. A
+future change to any of them is a deliberate departure and will say so by
+failing; that is the point. The pairs `--ink`, `--ink-2` and `--muted` on
+`--green-bg` are held to AA in `test/theme.test.js` on both themes.
+
+**The button stays outlined for a reason that outlives this card.** `+ บันทึก OT
+ใหม่` is the filled green button and the only primary action on that screen. A
+second green control one card away — even an outlined one — makes the reader
+decide which is the point. Anything copying this template onto another screen
+inherits that constraint, not just the numbers.
+
+### ย่อ / กาง — and why it does not contradict "ไม่หายไปเอง"
+
+**Added 2026-08-28**, after the template was signed off, and it is the one
+change to it that had to be argued rather than measured. This banner was built
+to a requirement that reads like the opposite of a fold — *"ให้คงอยู่บนหน้าจอ
+ไม่หายไปเอง เพื่อให้พนักงานรับรู้ข้อมูลตรงกันก่อนยื่นเอกสาร"* — and shipped with no
+dismiss control at all, pinned by a test that said so.
+
+That requirement is about the announcement being **seen**, not about its height.
+Folded, the month and the day count are still on the screen — *"📢 ประกาศวันหยุด
+ประจำเดือน สิงหาคม 2569 (3 วัน) ▼"* — and only the detail goes. **There is no
+state in the component where the section is not rendered**, and the one early
+`return null` is about the fetch, not about a press. That is now what the test
+pins, which is a better invariant than "no control exists": it survives the
+feature instead of forbidding it.
+
+**▲/▼ and never ✕**, though the request offered both. A mark has to be honest
+about what the press does. An ✕ on a notice means *"I have dealt with this, take
+it away"* — a promise this control cannot keep, because the banner is back on
+the next screen either way, and a reader who pressed ✕ and saw it again reads
+that as a bug rather than as a fold.
+
+**The state is a browser preference, not an account setting.** `ot-holiday-fold`
+in localStorage, `ot-` prefixed like `ot-theme`, stored as *"folded, or nothing
+at all"* so an absent key IS the default — a cleared browser and a browser that
+has never been asked behave identically. **Read in a mount effect and never
+during render**, the rule `ThemeChoice` follows for the same reason: this
+component renders on the server too, and a first render that read localStorage
+would throw or disagree with what the browser holds, and React would hydrate the
+mismatch. Unlike the theme it needs no boot script and has no flash — the banner
+draws nothing until its fetch returns, by which time the effect has long run.
+One key for both employee screens: folding it on the dashboard is not a request
+to see it again on the form.
+
+**Driven end to end on the built app**, because a persistence feature checked
+without a reload is a state variable: open **253px** → press ▲ → **65px**, key
+`"1"` → *reload* → still 65px → press ▼ → 253px, key removed → *reload* → still
+open. On a 390px phone that hands **188px** back to the ชั่วโมง OT card, which
+is 24% of the viewport.
 
 **Two things it got wrong on a phone, reported the day it shipped.** The
 calendar pill sat at the end of a line of text, which is right on a desktop
@@ -5347,7 +5419,7 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1751/1751 pass in about 2 s**, measured 2026-08-28 across 105
+- `npm test` — **1752/1752 pass in about 2 s**, measured 2026-08-28 across 105
   files. **The newest file is `test/holidayNotice.test.js`**, which arrived with
   ประกาศวันหยุดบริษัท: nine cases over the pure filters in `lib/holidayNotice.js`
   — month boundaries as string comparisons, a row with an unusable date dropped

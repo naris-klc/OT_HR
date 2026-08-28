@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { api, currentPeriod, periodLabel, thaiDate, dayName } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import { holidayCalendar, holidaysInMonth, nextHoliday } from '@/lib/holidayNotice.js';
@@ -46,6 +46,16 @@ import { useBackHandler } from './nav.jsx';
  * is silent: an error strip about a notice, sitting where the notice would
  * have been, is a worse screen than no notice.
  */
+/**
+ * ย่อ/กาง, remembered in this browser only.
+ *
+ * `ot-` prefixed like `ot-theme`, the app's other localStorage key, and ONE key
+ * for both screens the banner appears on: somebody who has folded the
+ * announcement on the dashboard has not asked to be shown it again the moment
+ * they open the form.
+ */
+const FOLD_KEY = 'ot-holiday-fold';
+
 export default function HolidayBanner({ period = currentPeriod() }) {
   /**
    * The year's calendar, or null while it is loading and after a failure.
@@ -57,7 +67,45 @@ export default function HolidayBanner({ period = currentPeriod() }) {
    */
   const [holidays, setHolidays] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const panelId = useId();
   const year = Number(String(period).slice(0, 4));
+
+  /**
+   * READ ON MOUNT, NEVER DURING RENDER — the same rule `ThemeChoice` in
+   * components/ProfileView.jsx follows, and for the same reason: this component
+   * is rendered on the server too, where there is no localStorage, and a first
+   * render that read it would either throw or disagree with what the browser
+   * has stored. React would then hydrate the mismatch.
+   *
+   * NO BOOT SCRIPT AND NO FLASH, unlike the theme. `data-theme` needs one
+   * because the page paints before React wakes; this banner draws nothing at
+   * all until its fetch returns (`if (!holidays) return null` below), and this
+   * effect has long since run by then. The stored answer is in hand before
+   * there is anything on screen to be wrong.
+   */
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(FOLD_KEY) === '1');
+    } catch { /* a browser with storage blocked: the banner opens, which is the safe way to be wrong */ }
+  }, []);
+
+  /**
+   * Written as "collapsed or nothing", the way the theme stores "dark or light
+   * or nothing at all": the absent key IS the default, so a cleared browser and
+   * a browser that has never been asked behave identically, and the default can
+   * be changed later without a migration for people carrying a stale value.
+   */
+  function toggleFold() {
+    setCollapsed((was) => {
+      const next = !was;
+      try {
+        if (next) localStorage.setItem(FOLD_KEY, '1');
+        else localStorage.removeItem(FOLD_KEY);
+      } catch { /* the fold still applies to this tab */ }
+      return next;
+    });
+  }
 
   useEffect(() => {
     let live = true;
@@ -84,12 +132,58 @@ export default function HolidayBanner({ period = currentPeriod() }) {
    */
   const upcoming = period === currentPeriod() ? nextHoliday(holidays, today()) : null;
 
+  /**
+   * WHAT THE FOLDED BANNER STILL SAYS, and the reason this feature does not
+   * contradict the one above it.
+   *
+   * The requirement this banner was built to — "ให้คงอยู่บนหน้าจอ ไม่หายไปเอง
+   * เพื่อให้พนักงานรับรู้ข้อมูลตรงกัน" — is about the announcement being seen,
+   * not about its height. Folded, the month and the number of days are still on
+   * the screen; what goes is the detail. There is no state in this component
+   * where the section is not rendered, and that is the invariant to keep: a ✕
+   * that removed it would be a different feature and the wrong one, which is
+   * why the control is ▲/▼ rather than the ✕ the request offered as an
+   * alternative.
+   */
+  const summary = inMonth.length > 0 ? `(${inMonth.length} วัน)` : '(ไม่มีวันหยุด)';
+
   return (
     <>
-      <section className="announce no-print" aria-label="ประกาศวันหยุดบริษัท">
+      <section
+        className={`announce no-print${collapsed ? ' is-folded' : ''}`}
+        aria-label="ประกาศวันหยุดบริษัท"
+      >
         <span className="announce-mark" aria-hidden="true">📢</span>
         <div className="announce-body">
-          <h3 className="announce-head">ประกาศวันหยุดประจำเดือน {periodLabel(period)}</h3>
+          <div className="announce-top">
+            <h3 className="announce-head">
+              ประกาศวันหยุดประจำเดือน {periodLabel(period)}
+              {/* THE COUNT IS DRAWN ONLY WHEN FOLDED, and it is drawn INSIDE the
+                  heading rather than beside it: folded, the heading is the whole
+                  of the announcement and "(3 วัน)" is part of what it says. Open,
+                  the list is directly underneath and a count over it is a number
+                  the reader can see for themselves. */}
+              {collapsed && <span className="announce-count">{summary}</span>}
+            </h3>
+            {/* ▲/▼ AND NOT ✕. Both were offered; the mark has to be honest about
+                what the press does, and this one folds rather than closes. An ✕
+                on a notice means "I have dealt with this, take it away", which is
+                a promise this control cannot keep — the banner comes back on the
+                next screen either way, and a reader who pressed ✕ and saw it
+                again would read that as a bug rather than as a fold. */}
+            <button
+              type="button"
+              className="announce-fold"
+              aria-expanded={!collapsed}
+              aria-controls={panelId}
+              aria-label={collapsed ? 'กางประกาศวันหยุด' : 'ย่อประกาศวันหยุด'}
+              onClick={toggleFold}
+            >
+              {collapsed ? '▼' : '▲'}
+            </button>
+          </div>
+
+          <div id={panelId} hidden={collapsed}>
 
           {/* TWO LINES PER HOLIDAY: the date and its weekday, then the name
               under them, smaller and quieter.
@@ -157,13 +251,14 @@ export default function HolidayBanner({ period = currentPeriod() }) {
               uses. It is drawn from `currentColor`, so it takes this panel's
               green without knowing it is in one, and reusing it keeps one press
               target in the app rather than two that drift apart. */}
-          <button
-            type="button"
-            className="fold-pill"
-            onClick={() => setShowCalendar(true)}
-          >
-            ดูปฏิทินวันหยุดประจำปี {year + 543} 📅
-          </button>
+            <button
+              type="button"
+              className="fold-pill"
+              onClick={() => setShowCalendar(true)}
+            >
+              ดูปฏิทินวันหยุดประจำปี {year + 543} 📅
+            </button>
+          </div>
         </div>
       </section>
 
