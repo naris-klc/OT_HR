@@ -9,6 +9,7 @@ import {
 import { awaitingFirstSignature, isProxyFiled, refileState } from '@/lib/entries.js';
 import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
 import OtForm from './OtForm.jsx';
+import HolidayBanner from './HolidayBanner.jsx';
 import { useBackHandler } from './nav.jsx';
 
 export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
@@ -124,6 +125,13 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   if (showForm || reusing || editing) {
     return (
       <div className="stack">
+        {/* THE SAME BANNER THE DASHBOARD SHOWS, and it is on the form for the
+            reason it exists: whether a date is a company holiday decides which
+            rate columns the hours land in, and this is the screen where the
+            date is being chosen. `currentPeriod()` and not the dashboard's
+            `period` — there is no month picker here, and the form's own default
+            date is today. */}
+        <HolidayBanner />
         {error && <Alert kind="error">{error}</Alert>}
         {/* `editing` corrects the stored row in place; `template` files a new
             request from an old one. Same fields, different write. */}
@@ -164,6 +172,15 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
 
   return (
     <div className="stack">
+      {/* ABOVE THE ERROR STRIP, WHICH IS THE ONE THING ON THIS SCREEN THAT
+          OUTRANKS IT ON URGENCY AND STILL SITS UNDER IT. `error` here is a load
+          or a withdraw failure and it is a full-width `.alert` in its own right
+          — nothing about it is easy to miss. The announcement's whole purpose
+          is that it is read BEFORE anything is filed, and a notice that moves
+          down the page whenever something else goes wrong is one somebody
+          learns to look past. It follows the month the dashboard is showing, so
+          paging back to July announces July. */}
+      <HolidayBanner period={period} />
       {error && <Alert kind="error">{error}</Alert>}
 
       {/* ── hero ─────────────────────────────────────────────────────────── */}

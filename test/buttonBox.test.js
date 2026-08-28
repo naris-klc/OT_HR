@@ -80,6 +80,39 @@ test('สองจอที่ถูกแจ้งใช้แถวเดี�
   assert.match(css, /\.action-row \{[^}]*margin-top: 12px;/, '.action-row ไม่ได้ถือระยะห่างด้านบนไว้แล้ว');
 });
 
+test('ช่องติ๊กเป็นกล่องสูงเท่าปุ่ม — แถวล่างจึงมีขอบบนและขอบล่างเส้นเดียว', () => {
+  // THE FOURTH REPORT OF THIS ROW, AND THE FIRST ONE THAT CHANGED IT. The
+  // three before were answered by measuring: centre 0.00px, text baselines
+  // 0.45px, at every desktop width from 1024 to 1920. All true, and none of it
+  // was what was being seen. What was being seen was the AIR — row 1's left
+  // column (heading + hint, 42.25px) is 23.75px shorter than its right (label +
+  // control, 66px), so with both sides of this row hanging from one row bottom
+  // the gap above the buttons measured 40.25px against the tick box's 22.75.
+  //
+  // AND THAT DIFFERENCE CANNOT BE PAID OFF IN THIS ROW. Level means both sides
+  // hang from the same line, so the air above them differs by exactly what the
+  // two columns above them differ by. A margin over each side to even the air
+  // pulls the buttons and the tick 23.75px out of level; ending row 1's columns
+  // level instead costs the heading its baseline, which is the report of the
+  // round before. One 23.75px, spendable once.
+  //
+  // SO THE ROW CHANGES WHAT THE EYE COMPARES INSTEAD. Two filled buttons beside
+  // a bare 17px tick read as a band with something floating near it; three
+  // boxes of one height read as one row. `align-self: stretch` costs no
+  // movement at all — `.check` is already a flex container that centres its own
+  // contents, so the tick and the words stay where they were (202.25px, both
+  // before and after, measured at 1440px on 2026-08-28).
+  const rule = css.slice(css.indexOf('.action-row .check {'),
+    css.indexOf('}', css.indexOf('.action-row .check {')));
+  assert.match(rule, /align-self: stretch;/, 'ช่องติ๊กไม่ได้สูงเท่าแถวแล้ว ขอบบน-ล่างจะไม่ตรงกับปุ่ม');
+  assert.match(rule, /border: 1px solid var\(--line\);/, 'ช่องติ๊กไม่มีเส้นขอบแล้ว — กล่องที่มองไม่เห็นไม่ได้ตอบรายงานนี้');
+  // `.btn.ghost`'s own two values, not a second pair that happens to match:
+  // this box stands next to that one and has to keep standing next to it.
+  assert.match(rule, /border-radius: var\(--radius-sm\);/, 'ช่องติ๊กเลิกใช้มุมเดียวกับปุ่มข้าง ๆ');
+  const ghost = css.slice(css.indexOf('.btn.ghost {'), css.indexOf('}', css.indexOf('.btn.ghost {')));
+  assert.match(ghost, /border: 1px solid var\(--line\)/, 'ปุ่ม ghost เปลี่ยนเส้นขอบ ช่องติ๊กข้าง ๆ ยังลอกค่าเดิมอยู่');
+});
+
 test('ตัวแปรที่เติมเส้นขอบไม่ได้แก้ padding ตามหลัง — และไม่ต้องแก้', () => {
   // The point of the base rule: these three add a rule and say nothing about
   // padding, and that is now correct rather than a 2px bug in each.

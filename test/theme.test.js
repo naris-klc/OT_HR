@@ -169,6 +169,18 @@ const READABLE = [
   // light theme the same declaration was fine.
   ['--toast-ok-ink', '--toast-ok-bg'],
   ['--alert-ok-ink', '--alert-ok-bg'],
+  // ประกาศวันหยุดบริษัท (`.announce`), which is the first thing in this app to
+  // put ordinary body text on a GREEN panel. `--green-bg` was already listed
+  // above, but only under `--green-dark` — the pairing an alert makes, where the
+  // ink is the panel's own hue. This banner reads as content rather than as a
+  // status, so its three weights are the neutral ones, and none of the three
+  // was checked against that background until the banner existed. The rule
+  // sentence moved from `--ink-2` to `--ink` on the day it shipped, for a
+  // contrast complaint on a phone; both are held here so the step it moved off
+  // cannot come back below the standard.
+  ['--ink', '--green-bg'],
+  ['--ink-2', '--green-bg'],
+  ['--muted', '--green-bg'],
 ];
 
 test('ธีมมืด — ตัวหนังสืออ่านออกทุกคู่ ตามมาตรฐาน AA', () => {

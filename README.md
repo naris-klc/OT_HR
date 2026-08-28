@@ -1221,7 +1221,7 @@ lib/complianceExport.js   which six events count as the exercise of a
 lib/complianceQuery.js    the four reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     104 files, run by `npm test`. Six named below as a
+test/                     105 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1728 tests
-across 104 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1748 tests
+across 105 files**, measured 2026-08-28 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1502,6 +1502,78 @@ replays them. Before deploying, list them and tell payroll which dates they are:
 ```js
 db.holidays.find({ year: { $exists: false } }).sort({ date: 1 })
 ```
+
+### ประกาศวันหยุดบริษัท — the banner an employee reads before filing
+
+**Added 2026-08-28.** `components/HolidayBanner.jsx`, at the top of both employee
+screens: the dashboard and the OT form. Asked for as an announcement rather than
+a notification, and the distinction is the whole design. A toast confirms
+something that just happened and removes itself after four seconds
+(`components/Toast.jsx`); this is true all month, nothing happened to cause it,
+and the point is that everybody has read the same thing **before** they file.
+
+**What it says.** The month's announced holidays with their weekday and name,
+then the rule — hours on those days are computed as `OT วันหยุด` automatically,
+08:00–17:00 ×1.5 and outside it ×3 — then a pill that opens the year's calendar.
+On a month with none it says so out loud (`เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้`)
+and names the next one, because an empty month and a month nobody has entered
+look identical from the screen, and the reader who assumes the second files a
+normal-rate request for a day the company was shut.
+
+**The sentence about เสาร์–อาทิตย์ is load-bearing.** Saturday and Sunday are
+holidays *by rule* and are deliberately not rows in the collection — the
+weekday decides them, in `makeIsHoliday` — so a list of announced days read on
+its own says that an unlisted Sunday is an ordinary working day. That is the one
+wrong conclusion this banner could cause, and the clause that prevents it is
+pinned in `test/holidayNotice.test.js` rather than left to survive an edit.
+
+**It is in flow at the top, not `position: sticky`.** The requirement was that it
+not go away by itself, and it does not: there is no ✕ and no dismissed flag,
+unlike `MonthAlerts`, which is HR's own working panel and is meant to be shut
+once read. Pinning it was considered and rejected for a reason about this app
+rather than about stickiness — `.appbar` is already `sticky; top: 0` and the tab
+strip `sticky; top: 62px`, and a third band would hold about 90px more of a
+780px phone. Both screens it sits on are short columns read top to bottom, so
+the top of the content is above everything either of them has.
+
+**Nothing here decides a rate**, which is why a failed fetch renders nothing
+instead of an error strip. `loadHolidaySet()` on the server is the only thing
+that decides which bucket an hour lands in, and it reads the same collection —
+the banner is a second reader of one fact, never a second source of it.
+
+**One request per YEAR, not per month.** The dashboard's month picker moves
+`period` on every press, and every API call writes a row to บันทึกระบบ by design
+(`lib/accessLog.js` records reads too — it is a traffic log under มาตรา ๒๖, not
+a business audit trail). Keyed on the month, paging through a year would be
+twelve requests and twelve log rows; the calendar dialog reuses what the banner
+already holds for the same reason.
+
+**`GET /api/holidays` was already open to everyone** — *"Everyone reads the
+calendar — the submit form needs it to label the day"* — while the maintained
+list lives on ตั้งค่าระบบ → วันหยุดบริษัท, which is admin-and-HR only. The
+ปฏิทินวันหยุดประจำปี dialog is that permission finally having a screen.
+
+**Two things it got wrong on a phone, reported the day it shipped.** The
+calendar pill sat at the end of a line of text, which is right on a desktop
+where it is read as part of the paragraph — and wrong on a phone, where that
+paragraph wraps to three lines and the pill lands alone under the last of them
+hugging the left edge with the card empty beside it. Below 860px it is the
+card's own row now: full width, centred, and **44px**, which is the height every
+other phone target in this app takes (`.action-row > .btn`, `.pick-list .check`).
+Its edge comes up with it — `.fold-pill`'s border is `currentColor` at 28%,
+tuned for a pill riding *inside* a sentence, and alone on a row it needs 55% to
+read as a control. **Still `currentColor` and still no fill**: `+ บันทึก OT ใหม่`
+is the filled green button and the only primary action on that screen, and a
+second green control one card away — even an outlined one — would make the
+reader decide which is the point.
+
+And the sentence about rates shipped as `--ink-2` at 12.5px, two steps below the
+dates at once, which made the line that says what the whole banner is FOR the
+faintest thing in it. It is `--ink` now; the step down is in size alone. The
+three neutral inks on `--green-bg` are pinned for contrast in
+`test/theme.test.js`, which had never checked that background against anything
+but `--green-dark` — an alert puts the panel's own hue on it, and this is the
+first thing in the app to put ordinary body text there.
 
 ### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — two flags, and a remark that moved
 
@@ -3158,16 +3230,39 @@ baseline comes from the BOX, not from the words beside it. `baseline` was tried
 there and measured **4.75px of centre error against 0**. The rows keep different
 values for that reason and not from neglect.
 
-**ส่งบัญชี's second row was already right, and the report about it was pointing
-at something else.** The buttons and แสดงพนักงานที่ไม่มี OT sit in `.action-row`,
-which is `align-items: center`, and the tick box's centre measured **0.00px**
-from the buttons' centre — with the two texts' baselines **0.45px** apart, which
-is the check reading past the box-centre one, made on 2026-08-28 with a ruler
-drawn across the running app at 1440px. What was actually crooked was the two
-buttons: **ส่งออกไฟล์บัญชี 38.5px beside พิมพ์แบบฟอร์ม 40.5px**, because `.btn`
-was `border: none` and `.btn.ghost` adds a 1px rule without taking the padding
-back. See §Verified for the base-rule fix and the six containers that had each
-patched it locally first.
+**ส่งบัญชี's second row was level all along, and it took four reports to find
+what was actually being seen.** The buttons and แสดงพนักงานที่ไม่มี OT sit in
+`.action-row`, which is `align-items: center`, and the tick box's centre
+measured **0.00px** from the buttons' centre — with the two texts' baselines
+**0.45px** apart, checked past the box-centre measurement on 2026-08-28 with a
+ruler drawn across the running app at 1440px, at every width from 1024 to 1920.
+All true, and none of it was the complaint. One thing that WAS crooked: the two
+buttons against each other, **ส่งออกไฟล์บัญชี 38.5px beside พิมพ์แบบฟอร์ม
+40.5px**, because `.btn` was `border: none` and `.btn.ghost` adds a 1px rule
+without taking the padding back — see §Verified for the base-rule fix and the
+six containers that had each patched it locally first.
+
+**What the eye was reading was the AIR, and that air is row 1's arithmetic, not
+row 2's.** Row 1's left column (heading + hint) is 42.25px against its right
+column's 66 — **23.75px** short — so with both ends of row 2 hanging from one
+row bottom, the gap above the buttons measured **40.25px** against the tick
+box's **22.75**. It cannot be evened out here: level means both sides hang from
+the same line, so the air above them differs by exactly what the columns above
+them differ by. Put a margin over each side to even the air and the buttons and
+the tick go 23.75px out of level; end row 1's columns level instead and the
+heading loses the baseline the paragraph above is about. **One 23.75px,
+spendable once** — and it was already spent, on the heading.
+
+**So the row changes what the eye compares.** The tick box takes the buttons'
+height and a rule of its own — `align-self: stretch` plus `.btn.ghost`'s own
+`--line` and `--radius-sm` — and row 2 becomes three boxes with one top edge and
+one bottom edge instead of a band with something floating beside it. **Nothing
+moves**: `.check` is already a flex container that centres its own contents, so
+the tick and the words measure 202.25px before and after. Top, bottom and centre
+against the buttons all read **0.00px**, and on a phone, where the row is a grid
+and the tick box takes a line of its own at `min-height: 44px`, it now matches
+the two buttons above it rather than sitting bare against the card's edge.
+Pinned in `test/buttonBox.test.js`.
 
 **The gap above that row was two numbers for one distance.** ส่งบัญชี carried
 `style={{ marginTop: 12 }}` and แยกแผนก `14`, hand-set on two cards that are
@@ -5201,14 +5296,33 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1728/1728 pass in about 2 s**, measured 2026-08-28 across 104
-  files. **The newest case is in `test/buttonBox.test.js`** and it is about two
-  screens rather than one declaration: ส่งบัญชี and แยกแผนก were both reported as
-  "the buttons do not line up with the tick box beside them", and on both the row
-  was already right — so what is pinned is that neither screen answers the
-  question locally. One shared `.action-row`, the plain/ghost pair the base rule
-  below is about, and no `alignItems` of their own. A hand-rolled row on either
-  is how one report becomes two answers. It read "1727/1727" before that.
+- `npm test` — **1748/1748 pass in about 2 s**, measured 2026-08-28 across 105
+  files. **The newest file is `test/holidayNotice.test.js`**, which arrived with
+  ประกาศวันหยุดบริษัท: nine cases over the pure filters in `lib/holidayNotice.js`
+  — month boundaries as string comparisons, a row with an unusable date dropped
+  rather than repaired, วันหยุดถัดไป counting today itself — and seven over the
+  decisions that are not arithmetic. Those last are the ones worth having: that
+  the banner is mounted on BOTH employee screens (one component returns the form
+  *instead of* the dashboard, so a single mount would miss the screen where the
+  date is chosen), that nothing can dismiss it, that it is not a third pinned
+  band, that its green comes from a token, that the sentence about เสาร์–อาทิตย์
+  rides with the one about rates, and that the calendar dialog does not re-fetch
+  what the banner already holds. **The case before it is in
+  `test/buttonBox.test.js`** and it is the fourth
+  report of one row, and the first that changed it: ส่งบัญชี and แยกแผนก were
+  reported over and over as "the buttons do not line up with the tick box beside
+  them", and three rounds answered by measuring the level — centre 0.00px, text
+  baselines 0.45px, 1024 to 1920. What was being seen was the AIR above each
+  side, which is row 1's 23.75px of column difference and cannot be paid off in
+  row 2 without taking the two out of level. The tick box takes the buttons'
+  height and a rule of its own instead, so the row has one top edge and one
+  bottom edge; the pin holds `align-self: stretch`, the border, and that its
+  radius and colour stay `.btn.ghost`'s rather than a matching pair of their
+  own. It read "1728/1728" before that, and "1727/1727" before the case beside
+  it — that one pins that neither screen answers the alignment question locally:
+  one shared `.action-row`, the plain/ghost pair the base rule below is about,
+  no `alignItems` and no `marginTop` of their own. A hand-rolled row on either
+  is how one report becomes two answers.
   **That file was the 104th when it arrived**, and it pins
   one declaration: `.btn` carries a 1px transparent rule so that `.btn.ghost`,
   `.btn.outline` and `.btn.on-dark` — which each add a real one — stop standing

@@ -2921,7 +2921,39 @@ td > .approver-line { margin-top: 5px; }
    so the two rows of the header are now spaced the way the controls inside
    each row are. Both inline styles are gone; this is the only number. */
 .action-row { container-type: inline-size; align-items: center; margin-top: 12px; }
-.action-row .check { margin-left: auto; }
+/* THE TICK BOX TAKES THE BUTTONS' HEIGHT AND A RULE OF ITS OWN, so the row has
+   ONE top edge and ONE bottom edge across its whole width.
+
+   WHY, WHEN THE ROW WAS ALREADY LEVEL TO THE PIXEL. Reported four times over
+   2026-08-28 as the buttons not lining up with แสดงพนักงานที่ไม่มี OT, and it
+   never was the level: centre 0.00px, text baselines 0.45px, at every desktop
+   width from 1024 to 1920. What the eye was reading was the AIR. Row 1's left
+   column (heading + hint, 42.25px) is 23.75px shorter than its right (label +
+   control, 66px), so with the two sides of this row hanging from one row
+   bottom, the gap above the buttons measured 40.25px against the tick's 22.75.
+
+   THAT DIFFERENCE CANNOT BE PAID OFF HERE, and the arithmetic is worth writing
+   down because it is what four rounds kept re-deriving: level means both sides
+   hang from the same line, so the air above them differs by exactly the amount
+   the two columns above them differ. Setting a margin over each side to even
+   the air pulls the buttons and the tick box 23.75px out of level — the two
+   requests are one 23.75px, spendable once. Ending row 1's columns level pays
+   it the other way and costs the heading its baseline, which is the report of
+   the round before this one. Measured, rendered and looked at, 2026-08-28.
+
+   SO THE ANSWER IS TO CHANGE WHAT THE EYE COMPARES. Two filled buttons beside
+   a bare 17px tick invite a reading of "one band, and something floating near
+   it"; three boxes of one height read as one row, and the leftover air on the
+   left stops being the thing in the frame. The text does not move a pixel —
+   `.check` is already a flex container that centres its own contents, so
+   stretching its box leaves the tick and the words exactly where they were.
+
+   `--radius-sm` and `--line` are `.btn.ghost`'s own two values, not a second
+   pair that happens to match: this box stands next to that one. */
+.action-row .check {
+  margin-left: auto; align-self: stretch; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
 @container (max-width: 660px) {
   .action-row .check { margin-left: 0; }
 }
@@ -3767,6 +3799,119 @@ td > .approver-line { margin-top: 5px; }
    line: this is the state where somebody has said they do not want a panel, and
    putting a second panel there to say so would be the joke it sounds like. */
 .alerts-recall { margin: 0 0 12px; font-size: 12.5px; }
+
+/* ══ .announce — ประกาศวันหยุดบริษัท, AND WHY IT IS NOT AN `.alert` ══════════
+
+   components/HolidayBanner.jsx. The four `.alert` kinds are STATUSES — warn,
+   error, ok, info — and every one of them is about something that has just
+   happened or is currently wrong. This is a standing announcement: nothing has
+   happened, it is true all month, and it carries a list and a control rather
+   than a sentence. Given `.alert.info` it would inherit the round `i` mark and
+   the blue, and it would read as "something to know about your last action"
+   in a place where nothing was acted on.
+
+   IT KEEPS THE ALERT FAMILY'S SHAPE, which is the part worth sharing: a mark
+   in a fixed-width column on the left, a body that is one block beside it
+   (`min-width: 0` so a long holiday name wraps instead of stretching the row),
+   the same 12px rhythm and the same `--radius-sm`. A reader should recognise
+   the object without being told it is a status.
+
+   THE GREEN IS `--green-bg`, WHICH IS A TOKEN AND NOT A DARK-MODE COLOUR.
+   Asked for as "a dark green band with a bright edge", which is the dark theme's
+   half of it: on that side the token IS a deep green panel under a green rule.
+   The same token on the light side is a pale green wash, and the edge below
+   reads there too. A hand-picked dark value would have been correct on one of
+   the two themes this app ships — and `test/theme.test.js` refuses one anyway,
+   in the comments as much as in the declarations.
+
+   THE EDGE IS `--green-accent` MIXED DOWN, not the token at full strength.
+   `--green-accent` is the one green that stays saturated on both sides of the
+   theme (it is why the outlined ดู / แก้ไขรายการ button takes it), and at 100%
+   a full border in it is the loudest object on a dashboard whose actual subject
+   is the hours below. At 45% it is unmistakably a green rule and still quieter
+   than the hero. `color-mix` rather than a fifth green token for the same reason
+   `.fold-pill` uses it: one value, derived where it is used, with nothing to
+   keep in step. */
+.announce {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 16px; margin: 0 0 12px;
+  border: 1px solid color-mix(in srgb, var(--green-accent) 45%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--green-bg); color: var(--ink);
+  font: 400 13.5px/1.6 var(--sans);
+}
+/* The emoji, in its own column so the body's left edge is one line whatever the
+   glyph's width turns out to be — the mark is 📢 and a font that renders it wider
+   than expected would otherwise ragged every row under it. No `border-radius`
+   and no fill: `.alert::before` draws a coloured disc because a status needs a
+   severity, and an announcement has none. */
+.announce-mark { flex: none; font-size: 17px; line-height: 1.45; }
+.announce-body { flex: 1; min-width: 0; }
+/* An <h3> by markup and 14px by eye. It is a heading — a screen reader should
+   find it as one — and it is not a card title: `.card h2` is 15px and this sits
+   INSIDE the page above one, so matching it would put two titles on the screen
+   with no way to tell which owns which. */
+.announce-head { margin: 0 0 6px; font: 600 14px/1.4 var(--sans); color: var(--ink); }
+/* The dates. A list by markup, a stack of lines by layout: `list-style: none`
+   because the marker would be a second mark on a panel that already has one,
+   and each row is a flex line so a long holiday name wraps under itself rather
+   than pushing the date out of the panel. */
+.announce-days { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.announce-days li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 8px; }
+.announce-days .when { font-weight: 600; }
+/* วันพุธ — the weekday, which is the half of a date this app never drops: a
+   holiday's day of the week is how somebody checks the date against their own
+   memory of the week. Quieter than the date it belongs to. */
+.announce-days .dow { font-size: 12.5px; color: var(--muted); }
+.announce-days .what { color: var(--ink-2); }
+.announce-none { margin: 0; }
+/* The rule about rates, and the sentence about weekends. A step down from the
+   list — but a step in SIZE and not in colour, which is the correction made on
+   2026-08-28 after it was read on a phone: it was `--ink-2` at 12.5px, two steps
+   below the dates at once, and the sentence that says what the whole banner is
+   FOR was the faintest thing in it. `--ink` at 12.5px keeps the hierarchy where
+   it belongs (the dates are 13.5px and 600) and stops making the reader work
+   for the part they need exactly once. The pair is pinned in test/theme.test.js
+   — `--ink` on `--green-bg` was not a combination anything checked before this
+   banner put it on screen. */
+.announce-rule { margin: 8px 0 0; font-size: 12.5px; color: var(--ink); }
+
+@media (max-width: 860px) {
+  /* The card's own padding at this width is 15px; the banner sits above a card
+     and takes the same, so its left edge is the page's rather than a third
+     indent. The mark drops a step with it — 17px of emoji beside 13.5px of type
+     is a proportion, not a size. */
+  .announce { padding: 12px 14px; gap: 9px; }
+  .announce-mark { font-size: 15px; }
+
+  /* ── THE CALENDAR BUTTON, ON A PHONE ──────────────────────────────────────
+     FULL WIDTH AND CENTRED, asked for on 2026-08-28. On a desktop the pill sits
+     at the end of a line of text and is read as part of the paragraph; on a
+     phone the paragraph above it wraps to three lines and the pill lands alone
+     under the last of them, hugging the left edge with the whole card empty to
+     its right. Stretched across the card it stops being a leftover and becomes
+     the card's one action.
+
+     44px, WHICH IS THE NUMBER THIS APP USES EVERYWHERE ELSE ON A PHONE — see
+     `.action-row > .btn` and `.pick-list .check` in the same block. The pill's
+     desktop height is about 24px, which is a tap target for a mouse.
+
+     AND THE EDGE COMES UP. `.fold-pill`'s own border is `currentColor` at 28%,
+     tuned for a pill riding INSIDE a sentence where anything stronger would
+     outshout the words it belongs to. Alone on its own row it has to read as a
+     control, so the same derivation at 55% — asked for as "ขอบเส้นสว่าง".
+
+     STILL currentColor AND STILL NO FILL, deliberately: the outline is what
+     keeps it subordinate to `+ บันทึก OT ใหม่`, which is the filled green
+     button and the only primary action on this screen. Giving this one the
+     brand green — even as an outline — would put two green controls one card
+     apart, and the reader would have to decide which one is the point. */
+  .announce .fold-pill {
+    display: flex; width: 100%; justify-content: center;
+    min-height: 44px; margin-top: 10px;
+    border-color: color-mix(in srgb, currentColor 55%, transparent);
+  }
+}
 
 /* "กฎการคำนวณคนละชุด · HR อนุมัติชั้นเดียว 1 รายการ" — which notices are in the
    panel, under the count rather than run into it. Quieter by a step, the same
