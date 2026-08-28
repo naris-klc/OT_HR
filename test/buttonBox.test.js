@@ -49,6 +49,29 @@ test('padding ชดเชยเส้นขอบพอดี กล่อง�
     'ความสูงตัวอักษรเปลี่ยน เลข 38.5 ในคอมเมนต์ข้างบนไม่จริงแล้ว');
 });
 
+test('สองจอที่ถูกแจ้งใช้แถวเดียวกันและปุ่มคู่เดียวกัน — บรรทัดล่างจึงถูกอยู่แล้ว', () => {
+  // WHAT THE REPORT SAID AND WHAT WAS ACTUALLY CROOKED. ส่งบัญชี on 2026-08-28
+  // and แยกแผนก the same day were both reported as "the buttons do not line up
+  // with แสดงพนักงานที่ไม่มี OT beside them", and on both the row was already
+  // right: `.action-row` is `align-items: center` and the tick box's centre
+  // measured 0.00px from the buttons'. What was crooked was the two buttons
+  // against EACH OTHER, which the base rule above fixes for both at once.
+  //
+  // So what is worth pinning here is that neither screen answers the question
+  // locally: one shared row class, and the plain/ghost pair that the base rule
+  // is about. A hand-rolled row on either would put the two screens back on
+  // separate answers to one question.
+  for (const file of ['components/AccountingView.jsx', 'components/DepartmentView.jsx']) {
+    const jsx = readFileSync(join(ROOT, file), 'utf8');
+    const at = jsx.indexOf('className="row action-row"');
+    assert.ok(at > 0, `${file} เลิกใช้ .action-row ที่ใช้ร่วมกัน`);
+    const row = jsx.slice(at, jsx.indexOf('</div>', at));
+    assert.ok(row.includes('className="btn"'), `${file} ไม่มีปุ่มพื้นฐานในแถวนั้นแล้ว`);
+    assert.ok(row.includes('className="btn ghost"'), `${file} ไม่มีปุ่ม ghost คู่กับปุ่มพื้นฐานแล้ว`);
+    assert.ok(!/alignItems|align-items/.test(row), `${file} ไปตอบเรื่องการจัดแนวเองในแถวนั้น`);
+  }
+});
+
 test('ตัวแปรที่เติมเส้นขอบไม่ได้แก้ padding ตามหลัง — และไม่ต้องแก้', () => {
   // The point of the base rule: these three add a rule and say nothing about
   // padding, and that is now correct rather than a 2px bug in each.

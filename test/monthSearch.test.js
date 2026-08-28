@@ -435,10 +435,21 @@ test('the heading and สถานะที่นับ start on the same line, 
   // COMMIT. ส่งบัญชี was reported with the identical row and the identical
   // 23.75px the same day; a rule named after the first card that needed it is
   // how the second card ends up with a copy of the declaration rather than a
-  // reference to it. Both callers are pinned so neither can quietly drop out
+  // reference to it. All three callers are pinned so none can quietly drop out
   // and leave a shared rule with one user and a misleading name.
   const acct = readFileSync(join(ROOT, 'components/AccountingView.jsx'), 'utf8');
   assert.ok(acct.includes('<div className="row head-split">'), 'ส่งบัญชี stopped sharing the rule');
+
+  // THE THIRD IS สรุป OT แยกแผนก, reported on 2026-08-28 in the same words as
+  // the other two and answered by adding the class and nothing else — no line
+  // of CSS was written for it, which is what a shared rule is FOR. Its number
+  // was 5.5px and not 23.75 (heading block y=114.5, fields y=109, measured on
+  // the running app at 1280px): that card's hint runs to two lines, so the left
+  // side is 61px against the field's 66.5 rather than 42.25 against 66. Ending
+  // them level simply had less to give away. Which edge lines up is the
+  // question this rule answers, and the answer does not depend on the gap.
+  const dept = readFileSync(join(ROOT, 'components/DepartmentView.jsx'), 'utf8');
+  assert.ok(dept.includes('<div className="row head-split">'), 'แยกแผนก stopped sharing the rule');
 
   // AND IT IS A CLASS, NOT THE INLINE `alignItems` IT REPLACED. Same reason
   // `.export-row` and `.deleg-head-text` are classes: the 860px block cannot

@@ -2469,16 +2469,19 @@ td > .approver-line { margin-top: 5px; }
 .month-find { align-items: flex-end; gap: 10px 14px; margin-top: 12px; }
 
 /* ── A CARD'S HEADING ROW, SPLIT BETWEEN A TITLE AND ITS CONTROLS ─────────
-   TWO SCREENS USE IT AND THE SECOND ONE IS WHY IT IS NOT CALLED
+   THREE SCREENS USE IT AND THE SECOND ONE IS WHY IT IS NOT CALLED
    `.month-head-top` ANY MORE — it was, for one commit on 2026-08-28, until
    ส่งบัญชี was reported with the identical row and the identical gap. Naming a
    shared rule after the first card that needed it is how the second card ends
-   up with a copy of the declaration instead of a reference to it.
+   up with a copy of the declaration instead of a reference to it. The THIRD
+   caller arrived the same day and cost one class name and not one line of CSS,
+   which is the whole of what the rename bought.
 
    ตรวจสอบรายเดือน: `ตรวจสอบรายเดือน` + the month on the left, `สถานะที่นับ` on
    the right. ส่งบัญชี: `สรุป OT ส่งบัญชี` + the month on the left, `บริษัท` and
-   `ประจำเดือน` on the right. Both measured 23.75px out, which is not a
-   coincidence — it is the same two boxes:
+   `ประจำเดือน` on the right. แยกแผนก: `สรุป OT แยกแผนก` + the month on the
+   left, `แผนก` and `ประจำเดือน` on the right. The first two measured 23.75px
+   out, which is not a coincidence — it is the same two boxes:
 
    A heading block on the left — a title with a line of hint under it — and
    labelled fields on the right, and the two are not the same height:
@@ -2491,6 +2494,14 @@ td > .approver-line { margin-top: 5px; }
    right column started at y=202.5 and the left at y=226.25 — **23.75px** apart,
    with the label sitting level with nothing and the heading level with the
    middle of the <select> beside it.
+
+   AND 5.5px ON แยกแผนก, WHICH IS THE SAME DEFECT WITH SHORTER ARITHMETIC.
+   Reported on 2026-08-28 in the same words as the other two; measured at 1280px
+   before anything was changed, the heading block started at y=114.5 and the
+   fields at y=109. It is a smaller number because that card's hint runs to two
+   lines — 61px of heading block against 66.5px of field, rather than 42.25
+   against 66 — so ending them level left less over. A rule that is about WHICH
+   edge lines up does not care how far apart the other edges are.
 
    `flex-end` IS WHAT IT WAS, AND IT WAS NOT ARBITRARY — it is `.row`'s own
    value, which is right for a line of controls (`.month-find` directly below

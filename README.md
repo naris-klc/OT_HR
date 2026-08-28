@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1727 tests
+and the engine know nothing about Next.js, so the whole suite — **1728 tests
 across 104 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3117,8 +3117,21 @@ and measured at the identical **23.75px**, which is not a coincidence: it is the
 same two boxes, a 42.25px heading block against a 66px labelled field. Naming a
 shared rule after the first card that needed it is how the second card ends up
 with a copy of the declaration instead of a reference to it, so the rule was
-renamed for what it does rather than where it started. Both callers are pinned
-in `test/monthSearch.test.js`.
+renamed for what it does rather than where it started. All three callers are
+pinned in `test/monthSearch.test.js`.
+
+**The third caller is สรุป OT แยกแผนก, and it cost one class name.** Reported
+later the same day in the same words — the heading low, `แผนก` and
+`ประจำเดือน` floating above it — and measured on the running app at 1280px at
+**5.5px**, not 23.75: the heading block is y=114.5 and the fields y=109. The
+smaller number is that card's hint, which runs to two lines, so the left side is
+61px against the field's 66.5 rather than 42.25 against 66, and ending the two
+level had less to give away. Same defect, shorter arithmetic — and the fix was
+`className="row head-split"` in place of the inline `alignItems`, with **not
+one line of CSS written for it**. That is what the rename above bought. After:
+the three tops measure **0.00px** apart. Its second row needed nothing, for the
+reason the next paragraph gives — measured on the same build, the two buttons
+are **38.5 / 38.5** and the tick box's centre is **0.00px** from theirs.
 
 **ส่งบัญชี's second row was already right, and the report about it was pointing
 at something else.** The buttons and แสดงพนักงานที่ไม่มี OT sit in `.action-row`,
@@ -5153,15 +5166,25 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1727/1727 pass in about 2 s**, measured 2026-08-28 across 104
-  files. **The newest file is `test/buttonBox.test.js`, the 104th**, and it pins
+- `npm test` — **1728/1728 pass in about 2 s**, measured 2026-08-28 across 104
+  files. **The newest case is in `test/buttonBox.test.js`** and it is about two
+  screens rather than one declaration: ส่งบัญชี and แยกแผนก were both reported as
+  "the buttons do not line up with the tick box beside them", and on both the row
+  was already right — so what is pinned is that neither screen answers the
+  question locally. One shared `.action-row`, the plain/ghost pair the base rule
+  below is about, and no `alignItems` of their own. A hand-rolled row on either
+  is how one report becomes two answers. It read "1727/1727" before that.
+  **That file was the 104th when it arrived**, and it pins
   one declaration: `.btn` carries a 1px transparent rule so that `.btn.ghost`,
   `.btn.outline` and `.btn.on-dark` — which each add a real one — stop standing
   2px taller than the filled button beside them. That had been patched in six
   containers one at a time before it was fixed once in the base; the padding
   drops 1px to pay for the rule, so no button that was already the right size
   changed size. Two more cases went into `test/monthSearch.test.js` for the
-  heading row `.head-split` now shared by ตรวจสอบรายเดือน and ส่งบัญชี.
+  heading row `.head-split`, now shared by ตรวจสอบรายเดือน, ส่งบัญชี and
+  สรุป OT แยกแผนก — the third caller was added without a line of CSS, which is
+  the whole of what naming the rule for what it does rather than where it
+  started was for.
   It read "1722/1722 … across 103 files", and before that **the count came DOWN
   by one**: the two
   cases in `test/modalScrollFrame.test.js` about `backdrop-filter` became one

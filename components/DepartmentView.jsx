@@ -78,7 +78,17 @@ export default function DepartmentView() {
   return (
     <>
       <div className="card no-print">
-        <div className="row" style={{ alignItems: 'flex-end' }}>
+        {/* `.head-split`, the third card to use it after ตรวจสอบรายเดือน and
+            สรุป OT ส่งบัญชี, and the same two boxes again: a heading with its
+            hint on the left, labelled fields on the right, starting level at
+            the top rather than ending level at the bottom. `.row`'s own
+            `flex-end` is right for a line of controls and wrong here — a
+            heading against a caption is compared where the eye enters the
+            card. It was an inline `alignItems: 'flex-end'` and the right side
+            floated 5.5px high, less than ส่งบัญชี's 23.75 for one reason: this
+            card's hint runs to two lines, so the heading block is 61px against
+            the field's 66.5 instead of 42.25. Same defect, shorter arithmetic. */}
+        <div className="row head-split">
           <div style={{ flex: 1, minWidth: 220 }}>
             <h2>สรุป OT แยกแผนก</h2>
             <div className="hint" style={{ margin: 0 }}>
