@@ -1134,7 +1134,32 @@ a:hover { color: var(--green-dark); }
 .appbar {
   position: sticky; top: 0; z-index: 20;
   background: var(--bar-ground);
-  border-bottom: 1px solid var(--line);
+  /* ── AND IT CASTS A SHADOW, BECAUSE THE PAGE GOES UNDER IT ──────────────
+     The fourth report of the same thing, 2026-08-28: a card or a button whose
+     top is under the header reads as "an element poking out from below the
+     bar" rather than as a list continuing under it. Three checks say there is
+     nothing to remove — the hit-test names a real `tr` of the birthday table,
+     and `.shell`, `.body`, `main` and `.table-wrap` all measure `border-radius:
+     0; overflow: visible`, so no box is being escaped and `overflow: hidden`
+     on any of them would change nothing. What was missing is the CUE: a 1px
+     hairline is not enough to say "this bar is above the page", and without it
+     the cut looks like a mistake.
+
+     A shadow under a fixed header is the standard way to say it, and it is
+     always on rather than switched by scroll position: this bar sits over a
+     page that is almost always scrollable, and a shadow that appears on the
+     first flick is a second thing moving on the screen. `--shadow-soft` on the
+     dark theme is black at .34 — it DARKENS, which is the rule
+     test/theme.test.js holds every shadow in this file to.
+
+     AND THE HAIRLINE GOES UP A STEP WITH IT, because a black shadow on a
+     near-black page is most of nothing: `--line-lift` is this app's token for
+     "the border of something sitting ABOVE the page", one step brighter than
+     `--line` on the dark theme and one step darker on the light one, which is
+     exactly what this bar is. The shadow carries the light theme, the lifted
+     hairline carries the dark one, and neither is doing the other's work. */
+  border-bottom: 1px solid var(--line-lift);
+  box-shadow: 0 6px 14px -8px var(--shadow-soft);
   padding: 0 clamp(16px, 3vw, 32px); height: 62px;
   display: flex; align-items: center; gap: 14px;
 }
@@ -6029,20 +6054,22 @@ table.mini tbody tr:hover { background: none; }
      cards — rather than a number chosen by eye, so it moves with the rhythm of
      the thing above it if that ever changes.
 
-     THREE CARD-GAPS SINCE 2026-08-28, and it read "24px" until then. Asked
-     twice in one day for the foot of ตรวจสอบรายเดือน to stand further off the
-     bar. The first time it was measured and reported rather than changed —
-     at 412×887 the last control cleared the bar by 62.7px and `main` itself by
-     the 24 declared here, both doing exactly what this rule says — and the ask
-     came back anyway, which makes it a judgement about how it READS and not a
-     claim about the number. 36 rather than a round 40 keeps the derivation:
-     the joint at the foot of a list is a multiple of the list's own gap.
+     FOUR CARD-GAPS SINCE 2026-08-28, and it read "24px" and then "36px" the
+     same day. Asked three times for the foot of ตรวจสอบรายเดือน to stand
+     further off the bar. The first two times it was measured and reported
+     rather than changed — at 412×887 the last control cleared the bar by 62.7px
+     and then 75.5, against an ask for "16–24px" — and the ask came back both
+     times, which makes it a judgement about how the foot READS and not a claim
+     about the number. The third ask named a consequence the measurements do not
+     cover: **a mis-tap landing on the menu**. That is worth 12px of scroll at
+     the very end of a page. 48 rather than a round 50 keeps the derivation: the
+     joint at the foot of a list is a multiple of the list's own 12px gap.
 
      IT IS EVERY PHONE SCREEN, not just that one. This spacer is the app's one
      answer to a `fixed` bar, and a screen-specific number would be a second
      answer that drifts from it. What it costs is 12px of scroll at the very
      bottom of a page, after the last thing on it. */
-  .mobile-nav-spacer { height: calc(var(--nav-h) + 36px); }
+  .mobile-nav-spacer { height: calc(var(--nav-h) + 48px); }
   /* And the FAB, on the one screen that has one: 92px up plus 58 of button,
      rounded up so the last row's chip clears the shadow as well as the circle.
      Sized here rather than guessed at, so moving the FAB moves this too.

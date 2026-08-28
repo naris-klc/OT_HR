@@ -4138,6 +4138,37 @@ page stopped **50px short of its end**, where the last control genuinely sits
 about 25px above the bar, which is what scrolling does and what the opaque bar
 now makes read as "under the menu" instead of "smeared into it".
 
+### เส้นขอบของแถบบน กับ 48px ที่ก้นหน้า — 2026-08-28 รอบเจ็ด
+
+**The fourth report of the thing at the top, and this time the answer is a cue
+rather than a removal.** *"ตรวจพบเศษ Text/Element ล้นออกมาบริเวณใต้ Header
+หลัก"*, with a fix proposed: `overflow: hidden` on the parent container.
+
+**Nothing is escaping a container, and that was checked rather than argued** —
+the third way of checking this same thing in two days:
+
+| what was asked | what the running app says |
+|---|---|
+| is a card's content overflowing its box? | the hit-test at those coordinates names `tr.settled` of the birthday table — a whole card, not a fragment |
+| is a parent clipping wrongly? | `.shell`, `.body`, `main` and `.table-wrap.card-list` all measure `border-radius: 0; overflow: visible` — no box is being escaped, so `overflow: hidden` on any of them clips nothing |
+| is it z-index? | `.appbar` is `sticky; top: 0; z-index: 20`, opaque since the round above, and it paints over what is under it |
+
+**What was missing is the CUE.** A list passing under a header is what every
+scrolling screen with fixed chrome does; what makes it read as debris rather
+than as continuation is a boundary too quiet to say "this bar is above the
+page". A 1px `--line` hairline was the whole of it. The bar now carries **a soft
+shadow and a lifted hairline** — `--line-lift`, this app's token for the border
+of something sitting *above* the page. The two split the work by theme: a black
+shadow does most of nothing on a near-black page, so the lifted line carries the
+dark theme and the shadow carries the light one.
+
+**And the foot of the page is 48px — four card-gaps — for a reason the first two
+asks did not give.** The third one named a consequence: *"เพื่อป้องกันปัญหาการ
+กดผิดไปโดนเมนูด้านล่าง"*. A measurement cannot answer a mis-tap, and 12px of
+scroll at the very end of a page is a cheap answer to one. At 431×896 in the
+expanded state the last control now clears the bar by **87.5px** and `main` by
+**48.5**. The derivation is unchanged and is written over `.mobile-nav-spacer`.
+
 ### The first card was never clipped — the ค้นหา bar was on it
 
 Reported on 2026-08-26 as "the employee name on the top card has disappeared",
@@ -4224,15 +4255,19 @@ eye. Measured when it was "24": at 320 / 360 / 430 / 700 the spacer was
 the end of the content and the top of the bar was **24 at all four**, where it
 had been 0 / 11 / 11 / 22.
 
-**It is 36 — three card-gaps — since 2026-08-28.** The foot of ตรวจสอบรายเดือน
-was raised twice in one day. The first time it was measured and reported rather
-than changed, because the numbers said it was already clear: at 412×887 the last
-control stood 62.7px off the bar and `main` itself the 24 this rule declares. The
-ask came back, which makes it a judgement about how the foot READS rather than a
-claim about the measurement — so the number moved, and the derivation did not.
-The last control now clears the bar by **74.7px**. It applies to every phone
-screen, not one: this spacer is the app's single answer to a `fixed` bar, and a
-per-screen number would be a second answer that drifts from it.
+**It is 48 — four card-gaps — since 2026-08-28**, and it read "24" and then
+"36" earlier the same day. The foot of ตรวจสอบรายเดือน was raised three times.
+Twice it was measured and reported rather than changed, because the numbers said
+it was already clear: at 412×887 the last control stood **62.7px** off the bar,
+then **75.5**, against an ask for *"16–24px"*. The ask came back both times,
+which makes it a judgement about how the foot READS rather than a claim about
+the measurement. **The third ask named a consequence the measurements do not
+cover** — *"เพื่อป้องกันปัญหาการกดผิดไปโดนเมนูด้านล่าง"*, a mis-tap landing on
+the menu — and that is worth 12px of scroll at the very end of a page. The
+derivation did not move: it is still a multiple of the 12px this list puts
+between two cards. The last control now clears the bar by **87px**. It applies
+to every phone screen, not one: this spacer is the app's single answer to a
+`fixed` bar, and a per-screen number would be a second answer that drifts.
 
 **`with-fab` takes the larger of the two.** The FAB on หน้า OT ของฉัน floats
 92px up from the *viewport* and is 58 tall, and it knows nothing about how tall
