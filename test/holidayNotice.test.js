@@ -120,6 +120,24 @@ const banner = readFileSync(join(ROOT, 'components/HolidayBanner.jsx'), 'utf8');
 const employee = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
 const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
 
+/**
+ * The component with its prose taken out.
+ *
+ * THE COMMENTS IN THIS FILE QUOTE THE THINGS THAT WERE REMOVED FROM IT — the
+ * rates sentence, and the word that prompted the names to go — because a
+ * deletion with no note is a deletion somebody re-adds. Every assertion about
+ * what the screen SAYS therefore has to read the code and not the file, or it
+ * passes on the strength of an explanation of why it should fail.
+ */
+const bannerCode = banner.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+/** The `.announce .fold-pill` inside the phone block, not the base one above it. */
+const phonePill = (() => {
+  const media = css.indexOf('@media (max-width: 860px)', css.indexOf('\n.announce {'));
+  const at = css.indexOf('.announce .fold-pill {', media);
+  return { media, at, rule: at > 0 ? css.slice(at, css.indexOf('}', at)) : '' };
+})();
+
 test('the banner is on BOTH employee screens — the dashboard and the form', () => {
   // Asked for as "หน้า Dashboard และหน้ายื่นคำขอ OT". On this app those are one
   // component: EmployeeView returns the form INSTEAD of the dashboard while it
@@ -160,15 +178,20 @@ test('the green is the theme\'s token, not a dark-mode hex', () => {
   assert.match(rule, /border-radius: var\(--radius-sm\)/, 'มุมไม่ได้อยู่ในตระกูลเดียวกับ .alert');
 });
 
-test('the weekend sentence rides with the rate sentence', () => {
+test('somewhere still says that เสาร์–อาทิตย์ are holidays without being announced', () => {
   // Saturday and Sunday are holidays BY RULE and are deliberately not rows in
   // the collection (see src/models/Holiday.js). A list of announced days read
   // on its own therefore says that an unlisted Sunday is an ordinary working
-  // day, which is the one wrong conclusion this banner could cause.
-  assert.ok(banner.includes('เสาร์–อาทิตย์'),
-    'แถบประกาศไม่ได้บอกว่าเสาร์–อาทิตย์เป็นวันหยุดอยู่แล้ว — คนอ่านจะสรุปว่าวันที่ไม่อยู่ในลิสต์คือวันทำงาน');
-  assert.ok(banner.includes('×1.5') && banner.includes('×3'),
-    'แถบประกาศไม่ได้บอกอัตรา OT วันหยุด');
+  // day, which is the one wrong conclusion this banner can cause.
+  //
+  // IT USED TO BE ON THE BANNER, in the rates sentence, and that sentence was
+  // removed on request on 2026-08-28. This assertion moved with the fact rather
+  // than being deleted with the paragraph: the ปฏิทินวันหยุดประจำปี dialog says
+  // it in its subtitle, one tap from the button, and that is now the only place
+  // in this component where it is said at all.
+  const dialog = bannerCode.slice(bannerCode.indexOf('function HolidayCalendar'));
+  assert.ok(dialog.includes('เสาร์–อาทิตย์'),
+    'ไม่มีที่ไหนบอกแล้วว่าเสาร์–อาทิตย์เป็นวันหยุดอยู่แล้ว — คนอ่านจะสรุปว่าวันที่ไม่อยู่ในลิสต์คือวันทำงาน');
 });
 
 test('the calendar dialog reuses the rows the banner already fetched', () => {
@@ -184,26 +207,21 @@ test('on a phone the calendar button is the card\'s own row, at a tappable heigh
   // Reported on 2026-08-28 after the banner shipped: on a phone the paragraph
   // above wraps to three lines and the pill landed alone under the last of
   // them, hugging the left edge with the card empty to its right.
-  const at = css.indexOf('.announce .fold-pill {');
-  assert.ok(at > 0, 'ไม่พบกฎปุ่มปฏิทินสำหรับจอมือถือ');
-  const rule = css.slice(at, css.indexOf('}', at));
-  assert.match(rule, /width: 100%/, 'ปุ่มไม่ได้เต็มความกว้างการ์ด');
-  assert.match(rule, /justify-content: center/, 'ข้อความในปุ่มไม่ได้อยู่กึ่งกลาง');
+  // IT IS THE ONE INSIDE THE PHONE BLOCK, not the base rule above it that sets
+  // the gap. On a desktop the pill sits at the end of a line of text and is read
+  // as part of the paragraph; stretched there it would be a 1100px-wide button
+  // for a secondary link.
+  assert.ok(phonePill.media > 0 && phonePill.at > phonePill.media, 'ไม่พบกฎปุ่มปฏิทินในบล็อกจอมือถือ');
+  assert.match(phonePill.rule, /width: 100%/, 'ปุ่มไม่ได้เต็มความกว้างการ์ด');
+  assert.match(phonePill.rule, /justify-content: center/, 'ข้อความในปุ่มไม่ได้อยู่กึ่งกลาง');
   // 44px is the number this app uses for every phone target — `.action-row > .btn`
   // and `.pick-list .check` in the same block. The pill's desktop height is
   // about 24px, which is a target for a mouse.
-  assert.match(rule, /min-height: 44px/, 'ปุ่มยังสูงเท่าขนาดเดสก์ท็อป — เล็กเกินไปสำหรับนิ้ว');
-
-  // IT IS INSIDE THE PHONE BLOCK AND NOT ABOVE IT. On a desktop the pill sits
-  // at the end of a line of text and is read as part of the paragraph; stretched
-  // there it would be a 1100px-wide button for a secondary link.
-  const phoneBlock = css.indexOf('@media (max-width: 860px)', css.indexOf('\n.announce {'));
-  assert.ok(at > phoneBlock && phoneBlock > 0, 'กฎนี้หลุดออกไปนอกบล็อกจอมือถือ');
+  assert.match(phonePill.rule, /min-height: 44px/, 'ปุ่มยังสูงเท่าขนาดเดสก์ท็อป — เล็กเกินไปสำหรับนิ้ว');
 });
 
 test('the calendar button stays outlined and stays out of the primary\'s way', () => {
-  const at = css.indexOf('.announce .fold-pill {');
-  const rule = css.slice(at, css.indexOf('}', at));
+  const rule = phonePill.rule;
   // Asked for as "ขอบเส้นสว่าง Background โปร่งใส". The transparent half was
   // already true — `.fold-pill` is `background: none` — so what moved is the
   // edge: the same currentColor derivation, from 28% to 55%.
@@ -216,17 +234,42 @@ test('the calendar button stays outlined and stays out of the primary\'s way', (
   assert.ok(!/--green/.test(rule), 'ปุ่มรองใช้สีเขียวของแบรนด์ ไปแย่งกับปุ่มหลัก');
 });
 
-test('the sentence that says what the banner is for is not the faintest thing in it', () => {
-  // It shipped as `--ink-2` at 12.5px — two steps below the dates at once — and
-  // was reported the same day as hard to read on a phone. The step down is now
-  // in SIZE only; the three neutral inks on `--green-bg` are pinned for
-  // contrast in test/theme.test.js, which had never checked that background
-  // against anything but `--green-dark`.
-  const at = css.indexOf('.announce-rule {');
-  assert.ok(at > 0, 'ไม่พบกฎ .announce-rule');
-  const rule = css.slice(at, css.indexOf('}', at));
-  assert.match(rule, /color: var\(--ink\)/, 'ข้อความเงื่อนไขกลับไปจางกว่าตัวหนังสือปกติ');
-  assert.match(rule, /font-size: 12\.5px/, 'ลำดับความสำคัญหายไป — ถ้าเท่าขนาดวันที่ก็ไม่มีอะไรนำอะไร');
+test('the banner announces WHICH DAYS — the rates sentence and the names are gone', () => {
+  // Removed on request 2026-08-28. Both had been argued for here and both were
+  // overruled, which is exactly the kind of thing worth writing down rather
+  // than leaving as a silent deletion.
+  assert.ok(!css.includes('.announce-rule'), 'กฎ .announce-rule ยังค้างอยู่ทั้งที่ไม่มีใครใช้');
+  assert.ok(!bannerCode.includes('announce-rule'), 'ย่อหน้าเงื่อนไขยังอยู่ในคอมโพเนนต์');
+  assert.ok(!css.includes('.announce-days .what'), 'กฎของชื่อวันหยุดยังค้างอยู่');
+  assert.ok(!bannerCode.includes('className="what"'), 'ชื่อวันหยุดยังถูกวาดในรายการ');
+});
+
+test('the holiday NAME is dropped for every row, never for the ones named a certain way', () => {
+  // THE DISTINCTION THIS WHOLE FILE EXISTS TO HOLD. What was asked for was
+  // "ลบคำว่า ทดสอบ ออกจากรายการวันที่ 28 และ 31" — two rows the calendar really
+  // does hold under that name, and which are staying there on purpose. A rule
+  // that hid a row, or a name, BECAUSE OF WHAT IT SAID would put this screen and
+  // `loadHolidaySet()` on different lists of which days are holidays; that is
+  // the shape of the `Holiday.year` bug that paid OT at the wrong rate for
+  // months. Dropping the column for everybody changes nothing about which dates
+  // are announced.
+  assert.ok(!/ทดสอบ/.test(bannerCode), 'คอมโพเนนต์รู้จักชื่อวันหยุดเฉพาะราย — ห้ามกรองตามเนื้อหา');
+  const list = bannerCode.slice(bannerCode.indexOf('announce-days'), bannerCode.indexOf('function HolidayCalendar'));
+  assert.ok(!/\.name/.test(list), 'รายการในแถบยังอ่านชื่อวันหยุดอยู่');
+  // …and the names still exist one tap away, in full.
+  const dialog = bannerCode.slice(bannerCode.indexOf('function HolidayCalendar'));
+  assert.ok(dialog.includes('{h.name}'), 'ปฏิทินทั้งปีต้องยังบอกชื่อวันหยุด');
+});
+
+test('the calendar button sits against the list, not where the sentence was', () => {
+  // `.fold-pill`'s own 8px separates a control from a paragraph. With the
+  // paragraph gone it left the button floating with the sentence's worth of air
+  // still under it — reported the same day as "พื้นที่ว่างส่วนเกิน". 10px,
+  // which has to beat the 3px between the list's own rows or the button reads
+  // as a fourth date.
+  const at = css.indexOf('.announce .fold-pill { margin-top');
+  assert.ok(at > 0, 'แถบไม่ได้กำหนดระยะห่างของปุ่มเอง');
+  assert.match(css.slice(at, css.indexOf('}', at)), /margin-top: 10px/);
 });
 
 test('the year is fetched per year, not per month', () => {

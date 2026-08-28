@@ -91,13 +91,26 @@ export default function HolidayBanner({ period = currentPeriod() }) {
         <div className="announce-body">
           <h3 className="announce-head">ประกาศวันหยุดประจำเดือน {periodLabel(period)}</h3>
 
+          {/* THE DATES, AND NOT THE HOLIDAYS' NAMES. Asked for on 2026-08-28 as
+              "ลบคำว่า ทดสอบ ออกจากรายการวันที่ 28 และ 31" — two rows the calendar
+              genuinely holds under that name, kept there on purpose.
+
+              THE NAME IS DROPPED FOR EVERY ROW AND NOT FOR THOSE TWO, which is
+              the whole of why this is safe. A rule that hid a row whose name
+              read a certain way would put the screen and `loadHolidaySet()` on
+              different lists of WHICH DAYS ARE HOLIDAYS, and that is the exact
+              shape of the `Holiday.year` bug that paid OT at the wrong rate for
+              months. Dropping a column changes nothing about which dates are
+              announced — the engine and this list still name the same days.
+
+              The names are one tap away in ปฏิทินวันหยุดประจำปี, which prints
+              date, weekday and name in full. */}
           {inMonth.length > 0 ? (
             <ul className="announce-days">
               {inMonth.map((h) => (
                 <li key={h.date}>
                   <span className="when">{thaiDate(h.date)}</span>
                   <span className="dow">วัน{dayName(h.date)}</span>
-                  <span className="what">{h.name}</span>
                 </li>
               ))}
             </ul>
@@ -112,22 +125,26 @@ export default function HolidayBanner({ period = currentPeriod() }) {
                 <>
                   {' · วันหยุดถัดไปคือ '}
                   <strong>{thaiDate(upcoming.date)}</strong>
-                  {` (วัน${dayName(upcoming.date)}) ${upcoming.name}`}
+                  {` (วัน${dayName(upcoming.date)})`}
                 </>
               )}
             </p>
           )}
 
-          {/* THE RULE, AND THE SENTENCE ABOUT WEEKENDS THAT HAS TO RIDE WITH IT.
-              Saturday and Sunday are holidays by rule and are deliberately NOT
-              rows in this collection (see src/models/Holiday.js), so a list of
-              announced days read on its own says that an unlisted Sunday is an
-              ordinary working day. The rates are the ones BUCKET_LABEL prints
-              on every screen that shows the columns. */}
-          <p className="announce-rule">
-            ยื่นคำขอ OT ตรงกับวันเหล่านี้ ระบบจะคิดเป็น <strong>OT วันหยุด</strong> ให้อัตโนมัติ —
-            {' '}08:00–17:00 ×1.5 · นอกเวลา ×3 · เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้วโดยไม่ต้องประกาศ
-          </p>
+          {/* THE SENTENCE ABOUT RATES USED TO BE HERE, and it is worth saying
+              what went with it. It read "ยื่นคำขอ OT ตรงกับวันเหล่านี้ ระบบจะคิด
+              เป็น OT วันหยุด ให้อัตโนมัติ — 08:00–17:00 ×1.5 · นอกเวลา ×3 ·
+              เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้วโดยไม่ต้องประกาศ", and the last
+              clause was the one doing work: Saturday and Sunday are holidays BY
+              RULE and are deliberately not rows in this collection, so a list of
+              announced days read on its own implies an unlisted Sunday is an
+              ordinary working day.
+
+              REMOVED ON REQUEST 2026-08-28, and the fact is still on screen
+              twice over — the ปฏิทินวันหยุดประจำปี dialog's subtitle says it in
+              the same words, and the OT form labels the day it is given and
+              splits the rates in front of the person filing. What is gone is the
+              standing reminder, not the answer. */}
 
           {/* `.fold-pill` — the mini pill ตรวจสอบรายเดือน's alert panel already
               uses. It is drawn from `currentColor`, so it takes this panel's

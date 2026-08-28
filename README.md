@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1748 tests
+and the engine know nothing about Next.js, so the whole suite — **1750 tests
 across 105 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1512,20 +1512,39 @@ something that just happened and removes itself after four seconds
 (`components/Toast.jsx`); this is true all month, nothing happened to cause it,
 and the point is that everybody has read the same thing **before** they file.
 
-**What it says.** The month's announced holidays with their weekday and name,
-then the rule — hours on those days are computed as `OT วันหยุด` automatically,
-08:00–17:00 ×1.5 and outside it ×3 — then a pill that opens the year's calendar.
-On a month with none it says so out loud (`เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้`)
-and names the next one, because an empty month and a month nobody has entered
-look identical from the screen, and the reader who assumes the second files a
-normal-rate request for a day the company was shut.
+**What it says.** The month's announced holidays — each date with its weekday —
+and a pill that opens the year's calendar. On a month with none it says so out
+loud (`เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้`) and names the next one, because an
+empty month and a month nobody has entered look identical from the screen, and
+the reader who assumes the second files a normal-rate request for a day the
+company was shut.
 
-**The sentence about เสาร์–อาทิตย์ is load-bearing.** Saturday and Sunday are
-holidays *by rule* and are deliberately not rows in the collection — the
+It said more when it shipped, and both of those are worth recording because both
+were argued for here and both were overruled the same day. It carried a sentence
+of rates — *"ยื่นคำขอ OT ตรงกับวันเหล่านี้ ระบบจะคิดเป็น OT วันหยุด ให้อัตโนมัติ —
+08:00–17:00 ×1.5 · นอกเวลา ×3 · เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้วโดยไม่ต้องประกาศ"* —
+and it listed each holiday's **name** beside its date.
+
+**Where the เสาร์–อาทิตย์ clause went, and why it mattered.** Saturday and Sunday
+are holidays *by rule* and are deliberately not rows in the collection — the
 weekday decides them, in `makeIsHoliday` — so a list of announced days read on
 its own says that an unlisted Sunday is an ordinary working day. That is the one
-wrong conclusion this banner could cause, and the clause that prevents it is
-pinned in `test/holidayNotice.test.js` rather than left to survive an edit.
+wrong conclusion this banner can cause. Removed from the banner on request, the
+fact is still stated in the ปฏิทินวันหยุดประจำปี dialog's subtitle, one tap from
+the button, and the OT form labels the day it is given and splits the rates in
+front of the person filing. `test/holidayNotice.test.js` did not lose that
+assertion with the paragraph — it now pins the dialog, so the fact cannot leave
+the component silently.
+
+**The names went for every row, not for the two that prompted it.** The ask was
+*"ลบคำว่า ทดสอบ ออกจากรายการวันที่ 28 และ 31"* — two days the calendar genuinely
+holds under that name, kept there on purpose. A rule that hid a row, or a name,
+**because of what it said** would put this screen and `loadHolidaySet()` on
+different lists of which days are holidays, which is the exact shape of the
+`Holiday.year` bug two sections up. Dropping the column for everybody changes
+nothing about which dates are announced; the names are in the calendar dialog in
+full. The alternative — renaming those two rows — is one `PATCH` away and was
+declined: they are test data that is staying.
 
 **It is in flow at the top, not `position: sticky`.** The requirement was that it
 not go away by itself, and it does not: there is no ✕ and no dismissed flag,
@@ -1568,12 +1587,21 @@ second green control one card away — even an outlined one — would make the
 reader decide which is the point.
 
 And the sentence about rates shipped as `--ink-2` at 12.5px, two steps below the
-dates at once, which made the line that says what the whole banner is FOR the
-faintest thing in it. It is `--ink` now; the step down is in size alone. The
-three neutral inks on `--green-bg` are pinned for contrast in
-`test/theme.test.js`, which had never checked that background against anything
-but `--green-dark` — an alert puts the panel's own hue on it, and this is the
-first thing in the app to put ordinary body text there.
+dates at once, which made the line that says what the whole banner was FOR the
+faintest thing in it; it went to `--ink`, and then the sentence itself was
+removed a few hours later. What survives from that round is the contrast pinning
+in `test/theme.test.js`: `--ink` and `--muted` on `--green-bg`, a background it
+had never checked against anything but `--green-dark` — an alert puts the panel's
+own hue on it, and this banner is the first thing in the app to put ordinary body
+text there.
+
+**And with the sentence gone, the button had its air taken back.** `.fold-pill`
+carries `margin-top: 8px` for the panel it was written for, where it follows a
+paragraph; here it now follows a list of dates, and 8px left it floating with the
+removed sentence's worth of space still under it. `.announce .fold-pill` sets
+**10px** — which has to beat the 3px between the list's own rows, or the button
+reads as a fourth date. Measured after, on the built app: the banner is **176px
+on a 390px phone**, 22.6% of that viewport, down from 289px and 37%.
 
 ### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — two flags, and a remark that moved
 
@@ -5296,18 +5324,27 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1748/1748 pass in about 2 s**, measured 2026-08-28 across 105
+- `npm test` — **1750/1750 pass in about 2 s**, measured 2026-08-28 across 105
   files. **The newest file is `test/holidayNotice.test.js`**, which arrived with
   ประกาศวันหยุดบริษัท: nine cases over the pure filters in `lib/holidayNotice.js`
   — month boundaries as string comparisons, a row with an unusable date dropped
-  rather than repaired, วันหยุดถัดไป counting today itself — and seven over the
+  rather than repaired, วันหยุดถัดไป counting today itself — and twelve over the
   decisions that are not arithmetic. Those last are the ones worth having: that
   the banner is mounted on BOTH employee screens (one component returns the form
   *instead of* the dashboard, so a single mount would miss the screen where the
   date is chosen), that nothing can dismiss it, that it is not a third pinned
-  band, that its green comes from a token, that the sentence about เสาร์–อาทิตย์
-  rides with the one about rates, and that the calendar dialog does not re-fetch
-  what the banner already holds. **The case before it is in
+  band, that its green comes from a token, that the calendar dialog does not
+  re-fetch what the banner already holds, that on a phone its button is the
+  card's own 44px row and stays outlined rather than taking the brand green off
+  the primary button a card away, and — after the rates sentence was removed on
+  request — that the fact about เสาร์–อาทิตย์ is still stated in the calendar
+  dialog. **That last pair is why the file reads the component with its comments
+  stripped**: the comments quote what was deleted and why, so an assertion made
+  against the raw file would pass on the strength of an explanation of its own
+  failure. The same trick holds the rule that the holiday NAMES are dropped for
+  every row rather than for the two whose name prompted it — a filter that read
+  what a row said would put the screen and the engine on different lists of
+  which days are holidays. **The case before it is in
   `test/buttonBox.test.js`** and it is the fourth
   report of one row, and the first that changed it: ส่งบัญชี and แยกแผนก were
   reported over and over as "the buttons do not line up with the tick box beside

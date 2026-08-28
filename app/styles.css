@@ -3854,8 +3854,13 @@ td > .approver-line { margin-top: 5px; }
 .announce-head { margin: 0 0 6px; font: 600 14px/1.4 var(--sans); color: var(--ink); }
 /* The dates. A list by markup, a stack of lines by layout: `list-style: none`
    because the marker would be a second mark on a panel that already has one,
-   and each row is a flex line so a long holiday name wraps under itself rather
-   than pushing the date out of the panel. */
+   and each row is a flex line so a date and its weekday wrap together rather
+   than one of them being pushed out of the panel.
+
+   TWO SPANS AND NOT THREE SINCE 2026-08-28. `.what` held the holiday's name and
+   is gone with it — the banner announces WHICH DAYS, and ปฏิทินวันหยุดประจำปี
+   is where the names are. See the note in components/HolidayBanner.jsx for why
+   the column goes for every row rather than for the two that prompted it. */
 .announce-days { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
 .announce-days li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 8px; }
 .announce-days .when { font-weight: 600; }
@@ -3863,18 +3868,21 @@ td > .approver-line { margin-top: 5px; }
    holiday's day of the week is how somebody checks the date against their own
    memory of the week. Quieter than the date it belongs to. */
 .announce-days .dow { font-size: 12.5px; color: var(--muted); }
-.announce-days .what { color: var(--ink-2); }
 .announce-none { margin: 0; }
-/* The rule about rates, and the sentence about weekends. A step down from the
-   list — but a step in SIZE and not in colour, which is the correction made on
-   2026-08-28 after it was read on a phone: it was `--ink-2` at 12.5px, two steps
-   below the dates at once, and the sentence that says what the whole banner is
-   FOR was the faintest thing in it. `--ink` at 12.5px keeps the hierarchy where
-   it belongs (the dates are 13.5px and 600) and stops making the reader work
-   for the part they need exactly once. The pair is pinned in test/theme.test.js
-   — `--ink` on `--green-bg` was not a combination anything checked before this
-   banner put it on screen. */
-.announce-rule { margin: 8px 0 0; font-size: 12.5px; color: var(--ink); }
+
+/* THE PILL'S OWN GAP, TAKEN BACK FROM `.fold-pill`'s 8px.
+
+   `.fold-pill` sets `margin-top: 8px` for the panel it was written for, where
+   it follows a paragraph and the 8px separates a control from a sentence. Here
+   it now follows a LIST OF DATES, and 8px under the last date left the button
+   floating with the sentence's worth of air still under it after the sentence
+   itself was removed — reported the same day as "พื้นที่ว่างส่วนเกิน".
+
+   10px and not 8: the list's own rows are 3px apart, so the step out of the
+   list has to be visibly larger than the step between its lines, or the button
+   reads as a fourth date. On a phone the number is the same and the button is
+   the card's own full-width row — see the block below. */
+.announce .fold-pill { margin-top: 10px; }
 
 @media (max-width: 860px) {
   /* The card's own padding at this width is 15px; the banner sits above a card
