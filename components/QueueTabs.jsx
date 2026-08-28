@@ -39,7 +39,7 @@ import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 export default function QueueTabs({
   user, stage, onChanged, onOpenPolicy, onOpenRoster = null,
   initialTab = null, pendingCount = 0, birthdayCount: summaryCount = 0, onCounts,
-  onSettled = null, onActiveTab = null,
+  onSettled = null,
 }) {
   /**
    * Whether this person has a birthday tab at all — asked of the same function
@@ -103,21 +103,6 @@ export default function QueueTabs({
   useEffect(() => {
     if (initialTab === 'birthday' && maySettle) setTab('birthday');
   }, [initialTab, maySettle]);
-
-  /**
-   * WHICH PILE IS IN FRONT OF THE READER, reported upward for the nav badge.
-   *
-   * The badge used to be the sum of both tabs and now follows whichever one is
-   * open — see the note over `queueBadge` in components/App.jsx for why that is
-   * safe HERE and not safe from another screen.
-   *
-   * An effect and not a call inside `show()`, because the tab this lands on is
-   * not always chosen by a press: `initialTab` steers arrivals from
-   * ตรวจสอบรายเดือน, `maySettle` decides whether the birthday tab exists at all,
-   * and the first render picks one before anybody has touched anything. One
-   * place that watches the answer covers all four.
-   */
-  useEffect(() => { onActiveTab?.(tab); }, [tab]);
 
   return (
     <div className="stack">

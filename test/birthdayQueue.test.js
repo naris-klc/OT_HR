@@ -333,49 +333,45 @@ test('ตารางในหน้ารายเดือนอ่านจ�
 
 // ── one badge, two tabs ───────────────────────────────────────────────────
 
-test('ตัวเลขบนแถบซ้ายตามแท็บที่เปิด และรวมสองแท็บเมื่อยืนอยู่หน้าอื่น', () => {
+test('ตัวเลขบนแถบซ้ายเป็นผลรวมของสองกองเสมอ ทั้งตอนเปิดอยู่และไม่ได้เปิด', () => {
   const app = strip(readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'));
 
   /**
-   * The badge follows whichever tab is open, and both nav bars read the same
-   * `tabs` array so neither can drift from the other.
+   * ONE NUMBER, EVERYWHERE. Both nav bars read the same `tabs` array so neither
+   * can drift from the other, and the number does not change when somebody
+   * walks onto the screen it counts.
    *
-   * THE FALLBACK IS THE ASSERTION THAT MATTERS. From any other screen there is
-   * no open tab to follow and the badge is the SUM again — because a badge
-   * reporting one pile while somebody stands somewhere else hides the other one
-   * completely, which is the failure this test was originally written for. On
-   * the screen it does not apply: both tabs are in view with their own chips.
+   * THIS TEST ASSERTED THE OPPOSITE FROM 2026-08-20 TO 2026-08-28, under the
+   * name ตัวเลขบนแถบซ้ายตามแท็บที่เปิด และรวมสองแท็บเมื่อยืนอยู่หน้าอื่น. A
+   * `queueBadge(key, ownPending)` returned the open tab's own pile while the
+   * screen was open and the sum from anywhere else, and this file pinned both
+   * halves of it. Reported as a bug on 2026-08-28: 6 on รอ HR ยืนยัน from
+   * ตรวจสอบรายเดือน, 3 after pressing it. Two answers to one question inside a
+   * single press, and the drop is the dangerous direction — a badge that fell
+   * from 6 to 3 looks exactly like three items somebody else just cleared.
+   *
+   * The readability that change was after is still delivered by the two chips
+   * on the tabs themselves, pinned at the foot of this test — they were there
+   * before it and they are there now.
    */
-  assert.match(app, /const birthdayBadge = counts\.birthdayPending \|\| 0;/);
-  assert.match(app, /badge: queueBadge\('approve', counts\.pendingMgr\)/);
-  assert.match(app, /badge: queueBadge\('confirm', counts\.pendingHr\)/);
+  assert.match(app, /badge: queueBadge\(counts\.pendingMgr\)/);
+  assert.match(app, /badge: queueBadge\(counts\.pendingHr\)/);
   assert.match(
     app,
-    /if \(tab !== key\) return ownPending \+ birthdayBadge;/,
-    'ยืนอยู่หน้าอื่นแล้ว badge ต้องกลับไปรวมสองกอง',
-  );
-  // On the screen it never falls back to the sum — see the note there. A badge
-  // reading 5 while the chips above it read 3 and 2 is the screen disagreeing
-  // with itself, and it did for one frame while the effect was still to run.
-  assert.match(
-    app,
-    /return \(queueActive \|\| 'entries'\) === 'birthday' \? birthdayBadge : ownPending;/,
-  );
-  // And leaving the screen forgets which tab was open, or the badge would keep
-  // following a tab nobody is looking at any more.
-  assert.match(
-    app,
-    /if \(!\['approve', 'confirm'\]\.includes\(tab\)\) setQueueActive\(null\);/,
-  );
-  // Reported by the screen that owns the tab state, on every route into it —
-  // a press, an arrival from ตรวจสอบรายเดือน, and the first render.
-  const queueTabs = strip(readFileSync(join(ROOT, 'components/QueueTabs.jsx'), 'utf8'));
-  assert.match(queueTabs, /useEffect\(\(\) => \{ onActiveTab\?\.\(tab\); \}, \[tab\]\);/);
-  assert.equal(
-    [...app.matchAll(/onActiveTab=\{setQueueActive\}/g)].length, 2,
-    'ต้องต่อทั้ง รออนุมัติ และ รอ HR ยืนยัน',
+    /const queueBadge = \(ownPending\) => ownPending \+ \(counts\.birthdayPending \|\| 0\);/,
+    'badge ต้องเป็นผลรวมของสองกอง ไม่ขึ้นกับแท็บที่เปิดอยู่',
   );
 
+  // AND THE MACHINERY THAT MADE IT FOLLOW THE TAB IS GONE, not left inert.
+  // A `queueActive` state that nothing reads is a lie about what drives the
+  // badge, and the next person to touch this would have to prove it dead
+  // before changing anything.
+  for (const dead of ['queueActive', 'setQueueActive', 'onActiveTab', 'birthdayBadge']) {
+    assert.ok(!app.includes(`${dead} =`) && !app.includes(`${dead}=`),
+      `${dead} ยังอยู่ใน App.jsx`);
+  }
+  const queueTabs = strip(readFileSync(join(ROOT, 'components/QueueTabs.jsx'), 'utf8'));
+  assert.ok(!queueTabs.includes('onActiveTab'), 'QueueTabs ยังรายงานแท็บที่เปิดขึ้นไป');
   // Inside, each tab gets its own number.
   assert.match(app, /pendingCount=\{counts\.pendingMgr\}/);
   assert.match(app, /pendingCount=\{counts\.pendingHr\}/);

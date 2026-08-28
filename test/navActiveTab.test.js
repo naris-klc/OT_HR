@@ -79,13 +79,21 @@ test('ป้ายเลขส้มขึ้นกับจำนวนงา�
 });
 
 /**
- * The number on a tab nobody is standing on is the SUM of both piles behind it
- * — see `queueBadge`. It is the half of that function this file cares about:
- * the badge on an inactive tab may never go quiet, or the grey tab that keeps
- * its badge stops being a warning and becomes a decoration.
+ * The number on a tab is the SUM of both piles behind it — see `queueBadge`,
+ * which has no other branch to take since 2026-08-28. It is the half of that
+ * function this file cares about: the badge on an inactive tab may never go
+ * quiet, or the grey tab that keeps its badge stops being a warning and
+ * becomes a decoration.
+ *
+ * IT READ `if (tab !== key) return ownPending + birthdayBadge;` until then,
+ * which pinned the same guarantee while the badge still had a second branch
+ * for the tab being stood on. That branch is what was reported as a bug — 6
+ * became 3 on arrival — and taking it out makes this file's rule the whole
+ * rule rather than half of one.
  */
-test('แท็บที่ไม่ได้เปิดอยู่ยังนับงานค้างครบทั้งสองกอง', () => {
-  has(jsx, 'if (tab !== key) return ownPending + birthdayBadge;');
+test('แท็บนับงานค้างครบทั้งสองกอง ไม่ว่าจะเปิดอยู่หรือไม่', () => {
+  has(jsx, 'const queueBadge = (ownPending) => ownPending + (counts.birthdayPending || 0);');
+  assert.ok(!jsx.includes('tab !== key'), 'badge กลับไปแยกกรณีตามแท็บที่เปิดอีกแล้ว');
 });
 
 test('สีของแถบล่าง — เทาเป็นค่าตั้งต้น เขียวเฉพาะแท็บที่เปิดอยู่', () => {

@@ -1639,6 +1639,39 @@ jobs. The badge comes from `loadBirthdayQueue(user, { countOnly: true })`, the
 same loader the tab itself runs, so the badge and the screen it opens cannot be
 two computations.
 
+**That paragraph was false for eight days and is the second time this exact
+thing has happened in this repository.** On 2026-08-20, `8428d35` made the badge
+FOLLOW the open tab — the sum from another screen, the open tab's own pile while
+standing on it — and did not touch `README.md`. Anybody reading the sentence
+above between then and 2026-08-28 was told a rule the code had stopped obeying,
+and the sentence is not a detail of wording: it is the rule somebody would have
+built against. See AGENTS.md §"A commit that changes behaviour must find the
+paragraphs that describe it", whose worked example is `019cd2c` doing the same
+thing to §Status on 2026-08-14.
+
+**It was reported as a bug on 2026-08-28 and the code came back to the
+paragraph, not the other way round.** The report: รอ HR ยืนยัน reads **6** from
+ตรวจสอบรายเดือน — three ใบ and three วันเกิด — and **3** the moment you press it.
+Walked on the running app before the change and it did exactly that. Two answers
+to one question inside a single press, and **the direction is the dangerous
+one**: the number DROPS on arrival, which is indistinguishable from three items
+somebody else cleared while you were walking over. `queueBadge` takes one
+argument now and has no branch: `ownPending + (counts.birthdayPending || 0)`,
+on the screen and off it. The `queueActive` state that fed the old branch, the
+`onActiveTab` prop QueueTabs reported it with, and the effect that cleared it on
+leaving are all deleted rather than left inert — state nothing reads is a lie
+about what drives the badge.
+
+**What the 2026-08-20 change was after is still delivered, by the thing that was
+always delivering it.** A bare 6 does not say "three and three" — true, and the
+fix for it is two centimetres above the badge: the tabs carry their own chips,
+`ใบรอยืนยัน 3` and `วันเกิดรอตรวจ 3`, and they did before that change and do
+now. The nav badge answers *is there anything for me over there*, which is a
+question about the screen; the chips answer *which pile*, which is a question
+about the tabs. A badge that answered the second one had to stop answering the
+first — and it did, at exactly the moment the reader arrived and could no longer
+see the piles it had stopped counting.
+
 **It is a list, not a warning.** Not working on your birthday is the ordinary
 case, so most names on it have a perfectly good reason to be there. It is drawn in
 the neutral box with no red and no badge count — the tone is part of what it says
