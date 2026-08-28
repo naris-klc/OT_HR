@@ -2515,16 +2515,38 @@ td > .approver-line { margin-top: 5px; }
 
        flex-end     +23.75   +32.75    card 235px   ← what was reported
        center       +11.88   +20.88    card 235px
-       baseline      −4.00    +5.00    card 239px
-       flex-start     0.00    +9.00    card 235px   ← this
+       flex-start     0.00    +9.00    card 235px   ← what three rounds shipped
+       baseline      −4.00     0.00    card 239px   ← this
 
-   `baseline` is the one that sounds right and is not. It ties the ink of
-   ตรวจสอบรายเดือน to the ink of สถานะที่นับ, which costs 4px of card height and
-   then overshoots: the label lands 4px BELOW the heading's top, so the row
-   trades one visible offset for a smaller one in the other direction. At 15px
-   against 12px uppercase mono the two texts have different cap heights anyway,
-   and flush tops is what the eye reads as one line — the 9px between their
-   baselines is the size difference itself, not a misalignment.
+   THE TOP EDGES WERE THE WRONG THING TO MEASURE, AND IT TOOK FOUR ROUNDS OF
+   THE SAME REPORT TO SEE IT. `flex-start` was shipped three times — for
+   ตรวจสอบรายเดือน, then ส่งบัญชี, then แยกแผนก — and each round closed by
+   measuring the two columns' tops at 0.00px apart and calling the row level.
+   It came back in the same words every time, because a box top is not where
+   anybody looks. The heading is 15px on a 19.5px line and the label is 12px on
+   a 12px line, so with the two BOXES flush the two lines of WRITING are 4px
+   apart: rulers drawn across the running app at 1440px on 2026-08-28 put the
+   heading's baseline at y=123 and บริษัท's at y=119, and the label's line runs
+   straight through the middle of the heading's letters. Two texts, two lines.
+
+   `baseline` IS THAT SAME 4px SPENT THE OTHER WAY. It aligns the first
+   baseline of each column — the h2's on the left, the label's on the right,
+   because a `.field` is a column flex container and its first baseline comes
+   from its first item, which is the <label> in all three of these rows. The
+   right column drops 4px, the card grows 4px, and the two texts sit on ONE
+   line: measured after, +0.00.
+
+   It costs the top edges — the labelled field now starts 4px below the heading
+   block, which is what the note above (written when `flex-start` went in) held
+   against it. That trade is settled now and it is settled by the eye: the ink
+   is what a reader sees, the box is what devtools shows, and the report was
+   always about the ink. Do not swap it back on the strength of a top-edge
+   measurement.
+
+   NOT A HAND-WRITTEN NUDGE, WHICH WAS THE OTHER WAY TO GET +0.00. A
+   `margin-top: 4px` on the fields measures identically today and is stale the
+   moment either font size moves; `baseline` re-derives it from whatever the
+   two texts turn out to be.
 
    A CLASS AND NOT THE INLINE `alignItems: 'flex-end'` IT REPLACED. Same reason
    `.export-row` and `.deleg-head-text` are classes: an inline style is the one
@@ -2532,7 +2554,7 @@ td > .approver-line { margin-top: 5px; }
    860px `.field` is `min-width: 100%` and the two sides stack, which makes
    `align-items` inert — but the next rule that needs to would have had to
    rewrite the JSX to get at it. */
-.head-split { align-items: flex-start; }
+.head-split { align-items: baseline; }
 /* ประจำเดือน JOINED THIS ROW ON 2026-08-27, from the card above it.
    A fixed basis and not `.field`'s `flex: 1`, which is a basis of nothing: two
    fields both grasping at nothing split the line in half, and half a line is
@@ -2890,8 +2912,15 @@ td > .approver-line { margin-top: 5px; }
    stranded on the right for that band.
 
    The push lives here rather than inline on the label, because an inline style
-   wins over any selector and the query below could not take it back. */
-.action-row { container-type: inline-size; align-items: center; }
+   wins over any selector and the query below could not take it back.
+
+   THE GAP TO THE ROW ABOVE LIVES HERE TOO, AND IT WAS TWO DIFFERENT NUMBERS.
+   ส่งบัญชี carried `style={{ marginTop: 12 }}` and แยกแผนก `14` — hand-set on
+   two cards that are meant to be card-for-card the same, which is how one ends
+   up 2px lower than the other with nothing saying why. 12 is `.row`'s own gap,
+   so the two rows of the header are now spaced the way the controls inside
+   each row are. Both inline styles are gone; this is the only number. */
+.action-row { container-type: inline-size; align-items: center; margin-top: 12px; }
 .action-row .check { margin-left: auto; }
 @container (max-width: 660px) {
   .action-row .check { margin-left: 0; }

@@ -69,7 +69,15 @@ test('สองจอที่ถูกแจ้งใช้แถวเดี�
     assert.ok(row.includes('className="btn"'), `${file} ไม่มีปุ่มพื้นฐานในแถวนั้นแล้ว`);
     assert.ok(row.includes('className="btn ghost"'), `${file} ไม่มีปุ่ม ghost คู่กับปุ่มพื้นฐานแล้ว`);
     assert.ok(!/alignItems|align-items/.test(row), `${file} ไปตอบเรื่องการจัดแนวเองในแถวนั้น`);
+    // AND NOT THE GAP ABOVE IT EITHER. ส่งบัญชี carried `marginTop: 12` and
+    // แยกแผนก `14` — two hand-set numbers for one distance, on two cards that
+    // are card-for-card the same, which is exactly how the second one ends up
+    // 2px lower than the first with nothing on the page saying why. The number
+    // is `.action-row`'s now, and it is 12: `.row`'s own gap, so the two rows
+    // of the header are spaced the way the controls inside each row are.
+    assert.ok(!/marginTop/.test(row), `${file} ตั้งระยะห่างบนแถวนั้นเอง แทนที่จะรับจาก .action-row`);
   }
+  assert.match(css, /\.action-row \{[^}]*margin-top: 12px;/, '.action-row ไม่ได้ถือระยะห่างด้านบนไว้แล้ว');
 });
 
 test('ตัวแปรที่เติมเส้นขอบไม่ได้แก้ padding ตามหลัง — และไม่ต้องแก้', () => {

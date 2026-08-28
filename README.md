@@ -3079,12 +3079,12 @@ the middle of the `<select>` beside it. The heading block is 42.25px tall
 (19.5 + 4 + 18.75) against the labelled field’s 66 (12 + 7 + 47); ending them
 level is what put the difference at the top, where it shows.
 
-**Both rows now line up, and they line up on opposite edges — that is the point,
-not an inconsistency.** `.month-find` ends its two boxes level at the bottom
-because a reader compares the bottom edges of two controls. `.month-head-top`
-starts its two sides level at the top because a heading and a caption are
-compared where the eye enters the card. A single rule for both rows would be
-wrong on one of them.
+**Both rows now line up, and they line up on different things — that is the
+point, not an inconsistency.** `.month-find` ends its two boxes level at the
+bottom because a reader compares the bottom edges of two controls.
+`.head-split` puts its two sides on one baseline because a heading and a caption
+are compared by the line the writing sits on. A single rule for both rows would
+be wrong on one of them.
 
 All four candidates were rendered against the running app and measured rather
 than argued — the columns are the gap between the two columns’ tops, then
@@ -3094,15 +3094,28 @@ between the two texts’ baselines, then the card’s height:
 | --- | --- | --- | --- |
 | `flex-end` (was) | +23.75px | +32.75px | 235px |
 | `center` | +11.88px | +20.88px | 235px |
-| `baseline` | −4.00px | +5.00px | 239px |
-| **`flex-start`** (is) | **0** | +9.00px | 235px |
+| `flex-start` (was, three rounds) | 0 | +9.00px | 235px |
+| **`baseline`** (is) | −4.00px | **0** | 239px |
 
-`baseline` is the one that sounds right and is not: it ties the ink of the two
-strings, costs 4px of card height, and overshoots — the label lands 4px *below*
-the heading’s top, trading one visible offset for a smaller one the other way.
-At 15px against 12px uppercase mono the two have different cap heights anyway,
-and flush tops is what reads as one line; the 9px left between their baselines
-is the size difference itself.
+**The tops were the wrong column to read, and it took a fourth round of the same
+report to see it.** `flex-start` shipped to all three cards — ตรวจสอบรายเดือน,
+then ส่งบัญชี, then แยกแผนก — and every round signed off by measuring the two
+columns’ top *edges* at 0.00px and calling the row level. It came back in the
+same words each time. A box top is not where anybody looks: the heading is 15px
+of type on a 19.5px line and the label is 12px on a 12px line, so with the two
+boxes flush the two lines of *writing* are 4px apart. Rulers drawn across the
+running app at 1440px on 2026-08-28 put the heading’s baseline at y=123 and
+บริษัท’s at y=119, with the label’s line running through the middle of the
+heading’s letters — two texts on two lines, which is what was being reported.
+
+`baseline` spends that same 4px the other way: the labelled field drops, the
+card grows 4px, and the two texts share one line (measured after: **+0.00**).
+It costs the top edges, which is what the note written when `flex-start` went in
+held against it — *“the label lands 4px below the heading’s top”*. That trade is
+settled now and the eye settles it. The ink is what a reader sees; the box is
+what devtools shows. A `margin-top: 4px` on the fields measures identically
+today and is a number copied out of two font sizes, stale the moment either
+moves — `baseline` re-derives it.
 
 **It is a class now, and it was an inline `alignItems`.** Same reason
 `.export-row` and `.deleg-head-text` are classes: the 860px block cannot reach
@@ -3128,21 +3141,43 @@ smaller number is that card's hint, which runs to two lines, so the left side is
 61px against the field's 66.5 rather than 42.25 against 66, and ending the two
 level had less to give away. Same defect, shorter arithmetic — and the fix was
 `className="row head-split"` in place of the inline `alignItems`, with **not
-one line of CSS written for it**. That is what the rename above bought. After:
-the three tops measure **0.00px** apart. Its second row needed nothing, for the
-reason the next paragraph gives — measured on the same build, the two buttons
-are **38.5 / 38.5** and the tick box's centre is **0.00px** from theirs.
+one line of CSS written for it**. That is what the rename above bought. It read
+"After: the three tops measure 0.00px apart" until 2026-08-28, when the fourth
+round of the report established that the tops were never the thing to measure;
+the three baselines are what read **0.00px** now. Its second row needed nothing,
+for the reason the next paragraph gives — measured on the same build, the two
+buttons are **38.5 / 38.5** and the tick box's centre is **0.00px** from theirs.
+
+**`baseline` is right for `.head-split` and wrong for `.action-row`, and the
+same word means two different things in the two rows.** In the heading row every
+column's first baseline is a line of type — the `<h2>` on the left, the
+`<label>` on the right, because a `.field` is a column flex container and takes
+its baseline from its first item. In the action row it is not: `.check` is a
+flex container whose first item is the 17px checkbox `<input>`, so its first
+baseline comes from the BOX, not from the words beside it. `baseline` was tried
+there and measured **4.75px of centre error against 0**. The rows keep different
+values for that reason and not from neglect.
 
 **ส่งบัญชี's second row was already right, and the report about it was pointing
 at something else.** The buttons and แสดงพนักงานที่ไม่มี OT sit in `.action-row`,
 which is `align-items: center`, and the tick box's centre measured **0.00px**
-from the buttons' centre. `align-items: baseline` was tried and is measurably
-WORSE — 4.75px of centre error against 0 — because `.check` is a flex container
-whose first baseline comes from the checkbox input, not from the text beside it.
-What was actually crooked was the two buttons: **ส่งออกไฟล์บัญชี 38.5px beside
-พิมพ์แบบฟอร์ม 40.5px**, because `.btn` was `border: none` and `.btn.ghost` adds a
-1px rule without taking the padding back. See §Verified for the base-rule fix
-and the six containers that had each patched it locally first.
+from the buttons' centre — with the two texts' baselines **0.45px** apart, which
+is the check reading past the box-centre one, made on 2026-08-28 with a ruler
+drawn across the running app at 1440px. What was actually crooked was the two
+buttons: **ส่งออกไฟล์บัญชี 38.5px beside พิมพ์แบบฟอร์ม 40.5px**, because `.btn`
+was `border: none` and `.btn.ghost` adds a 1px rule without taking the padding
+back. See §Verified for the base-rule fix and the six containers that had each
+patched it locally first.
+
+**The gap above that row was two numbers for one distance.** ส่งบัญชี carried
+`style={{ marginTop: 12 }}` and แยกแผนก `14`, hand-set on two cards that are
+otherwise card for card the same — which is how the second one sits 2px lower
+than the first with nothing on the page saying why. It is `.action-row`'s own
+`margin-top: 12px` now, `.row`'s own gap, so the two rows of the filter header
+are spaced the way the controls inside each row are; both inline styles are
+gone and `test/buttonBox.test.js` pins that neither card sets it again. With
+that and the baseline above, the two filter cards measure the same height for
+the first time: **201.75px** each at 1440px, against 197.75 and 199.75 before.
 
 This section read "the row directly above the list … and the search box has to
 stay the last thing before the first card, which is the whole reason that row is

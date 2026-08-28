@@ -82,10 +82,12 @@ export default function AccountingView() {
       <div className="card no-print acct-controls">
         {/* `.head-split`, which is ตรวจสอบรายเดือน’s heading row as well: a title
             with its hint on the left, labelled controls on the right, and the two
-            sides START level rather than ending level. `.row`’s own `flex-end` is
-            for a line of controls; this is a heading against a caption, compared
-            at the top where the eye enters the card. It was an inline
-            `alignItems: 'flex-end'` here and the right side floated 23.75px high. */}
+            sides sharing ONE baseline. `.row`’s own `flex-end` is for a line of
+            controls; this is a heading against a caption, and what a reader
+            compares is the line the writing sits on. It was an inline
+            `alignItems: 'flex-end'` here and the right side floated 23.75px high;
+            `flex-start` took that to 0 between the two BOXES and left 4px between
+            the two TEXTS, which is the report that kept coming back. */}
         <div className="row head-split">
           <div style={{ flex: 1, minWidth: 220 }}>
             <h2>สรุป OT ส่งบัญชี</h2>
@@ -122,8 +124,10 @@ export default function AccountingView() {
             own now that the segmented buttons are gone. `.action-row` is what
             holds it at the far end of the row while there is room, and lets it
             fall back into line with the buttons on a card too narrow to keep
-            all three side by side. */}
-        <div className="row action-row" style={{ marginTop: 12 }}>
+            all three side by side. It carries the gap to the row above as well
+            — this had `marginTop: 12` inline and แยกแผนก had 14, two numbers
+            for one distance on two cards that are otherwise identical. */}
+        <div className="row action-row">
           <button className="btn" onClick={exportCsv}>ส่งออกไฟล์บัญชี (CSV/Excel)</button>
           <button className="btn ghost" onClick={() => setPrinting(true)}>
             พิมพ์แบบฟอร์ม / บันทึกเป็น PDF

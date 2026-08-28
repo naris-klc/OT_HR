@@ -425,10 +425,26 @@ test('the heading and สถานะที่นับ start on the same line, 
   //
   // `.month-find` KEEPS `flex-end` AND THIS ROW DOES NOT, which is the pair
   // worth holding down together: two boxes end level because a reader compares
-  // their bottom edges, and a heading against a caption is compared at the top,
-  // where the eye enters the card. A rule that made both rows agree would be
-  // wrong on one of them.
-  assert.match(css, /\.head-split \{ align-items: flex-start; \}/);
+  // their bottom edges, and a heading against a caption is compared by the line
+  // its writing sits on. A rule that made both rows agree would be wrong on one
+  // of them.
+  //
+  // AND IT IS `baseline`, WHICH THIS ASSERTION READ AS `flex-start` FOR THREE
+  // ROUNDS. `flex-start` was shipped to all three cards and each round signed
+  // off on it by measuring the two columns' top EDGES at 0.00px apart — and the
+  // same report came back in the same words each time, because the top edge is
+  // not where anybody looks. At 15px on a 19.5px line against 12px on a 12px
+  // line, boxes flush leaves the two lines of writing 4px apart: rulers drawn
+  // across the running app at 1440px on 2026-08-28 put the heading's baseline
+  // at y=123 and บริษัท's at y=119, with the label's line running through the
+  // middle of the heading's letters. `baseline` spends that 4px the other way —
+  // the field drops, the card grows 4px, the texts share one line.
+  //
+  // A `margin-top: 4px` on the fields measures the same today. It is not what
+  // is here because it is a number copied out of two font sizes, and stale the
+  // moment either moves; `baseline` re-derives it. Do not put the top-edge
+  // measurement back on the strength of devtools — the eye reads the ink.
+  assert.match(css, /\.head-split \{ align-items: baseline; \}/);
   assert.ok(hrView.includes('<div className="row head-split">'), 'the heading row lost its class');
 
   // AND IT IS `.head-split`, NOT `.month-head-top`, WHICH IT WAS FOR ONE

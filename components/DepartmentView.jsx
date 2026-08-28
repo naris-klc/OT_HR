@@ -80,14 +80,15 @@ export default function DepartmentView() {
       <div className="card no-print">
         {/* `.head-split`, the third card to use it after ตรวจสอบรายเดือน and
             สรุป OT ส่งบัญชี, and the same two boxes again: a heading with its
-            hint on the left, labelled fields on the right, starting level at
-            the top rather than ending level at the bottom. `.row`'s own
-            `flex-end` is right for a line of controls and wrong here — a
-            heading against a caption is compared where the eye enters the
-            card. It was an inline `alignItems: 'flex-end'` and the right side
-            floated 5.5px high, less than ส่งบัญชี's 23.75 for one reason: this
-            card's hint runs to two lines, so the heading block is 61px against
-            the field's 66.5 instead of 42.25. Same defect, shorter arithmetic. */}
+            hint on the left, labelled fields on the right, and one baseline
+            under both. `.row`'s own `flex-end` is right for a line of controls
+            and wrong here — a heading against a caption is compared by the line
+            the writing sits on. It was an inline `alignItems: 'flex-end'` and
+            the right side floated 5.5px high, less than ส่งบัญชี's 23.75 for one
+            reason: this card's hint runs to two lines, so the heading block is
+            61px against the field's 66.5 instead of 42.25. Same defect, shorter
+            arithmetic — and the `flex-start` that answered it left the same 4px
+            between the two texts that ส่งบัญชี had. */}
         <div className="row head-split">
           <div style={{ flex: 1, minWidth: 220 }}>
             <h2>สรุป OT แยกแผนก</h2>
@@ -118,8 +119,11 @@ export default function DepartmentView() {
         </div>
 
         {/* Same action row as สรุป OT ส่งบัญชี, `.action-row` and all — the two
-            screens are card for card the same, so they wrap the same way. */}
-        <div className="row action-row" style={{ marginTop: 14 }}>
+            screens are card for card the same, so they wrap the same way, and
+            now they are spaced the same way too: the gap above this row was
+            `marginTop: 14` here against ส่งบัญชี's 12 and is one number in the
+            class. */}
+        <div className="row action-row">
           <button className="btn" onClick={exportCsv}>ส่งออกไฟล์แยกแผนก (CSV/Excel)</button>
           <button className="btn ghost" onClick={() => setPrinting(true)}>
             พิมพ์แบบฟอร์ม / บันทึกเป็น PDF
