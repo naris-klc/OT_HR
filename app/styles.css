@@ -2398,8 +2398,22 @@ td > .approver-line { margin-top: 5px; }
    a count on its own line would push the first card down by a line of type
    that is blank most of the time.
 
-   `align-items: center` and not `baseline`: the count is one line and the
-   field is 46px, so a baseline would hang it off the bottom of the box.
+   `align-items: flex-end` — `.row`'s own value, and this rule no longer
+   overrides it. IT READ `center` UNTIL 2026-08-28, and that is what put the
+   search box nine pixels too high on a desktop: ประจำเดือน is a `.field` WITH
+   a label (12px of type, a 7px gap, then the 46px box — 65 in all) and ค้นหา is
+   a `.field` with none, so centring the two in a 65px line hung the shorter one
+   in the middle of it. Its bottom edge landed level with nothing, ten pixels
+   above the bottom of the month picker beside it, and its top edge level with
+   ประจำเดือน's label — which reads as the box belonging to that label rather
+   than standing beside it. Aligning the bottoms is what makes two boxes of
+   different total height read as one line of controls.
+
+   THE COUNT KEEPS `center`, AS ITS OWN `align-self` — which is the whole of
+   what the row-wide `center` was ever wanted for. It is one line of type:
+   `baseline` would hang it off the bottom of a 46px box, and `flex-end` now
+   would sit it on the row's floor with its descenders below the boxes'. Centred
+   in the 65px line it crosses the middle of the two boxes it describes.
 
    It wraps below the count's own width, which is what puts the count under the
    box on a narrow phone instead of squeezing the field to half a name.
@@ -2426,7 +2440,7 @@ td > .approver-line { margin-top: 5px; }
    on the page ground; a bottom margin here would be the gap under the row and
    the gap over the buttons, both, and the two would collapse to whichever was
    larger — a number no reader could predict from either rule. */
-.month-find { align-items: center; gap: 10px 14px; margin-top: 12px; }
+.month-find { align-items: flex-end; gap: 10px 14px; margin-top: 12px; }
 /* ประจำเดือน JOINED THIS ROW ON 2026-08-27, from the card above it.
    A fixed basis and not `.field`'s `flex: 1`, which is a basis of nothing: two
    fields both grasping at nothing split the line in half, and half a line is
@@ -2436,7 +2450,7 @@ td > .approver-line { margin-top: 5px; }
    Below 860px `.field`'s `min-width: 100%` overrides this and the two stack,
    which is the order the comment in components/HrView.jsx describes. */
 .month-find .month-pick { flex: 0 0 170px; }
-.month-find .found { font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
+.month-find .found { align-self: center; font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
 .month-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
 /* ── THE PART THAT MATCHED ───────────────────────────────────────────────
    `<mark class="hit">`, from the `Highlight` component in components/common.jsx.

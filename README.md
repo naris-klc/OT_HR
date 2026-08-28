@@ -3021,6 +3021,21 @@ row; on a desktop they share the line, ประจำเดือน at a decla
 `flex: 0 0 170px` because `.field`’s own `flex: 1` is a basis of nothing and two
 fields grasping at nothing split the row in half.
 
+**The two boxes did not END on the same line until 2026-08-28**, and that is the
+cost of putting them in one row that took longest to see. `.month-find` declared
+`align-items: center`; `.row`, the rule it overrode, declares `align-items:
+flex-end` for exactly this case. ประจำเดือน is a `.field` **with** a label — 12px
+of type, a 7px gap, a 46px box, 65px in all — and ค้นหา is a `.field` with none,
+so centring the two in the taller one’s line left the search box floating nine
+pixels off the floor: its bottom edge level with nothing, its top edge level with
+the word ประจำเดือน. Reported as the search box reading like something belonging
+to that label rather than a control standing beside its box, which is what it
+was. The override is gone and the row ends its children where every other `.row`
+in the app ends them. **แสดง n จาก m คน keeps `center`, now as its own
+`align-self`** — one line of type stood on the floor of a 46px row hangs its
+descenders below the boxes’ own, and centring that count was the whole of what
+the row-wide `center` was ever wanted for.
+
 This section read "the row directly above the list … and the search box has to
 stay the last thing before the first card, which is the whole reason that row is
 where it is rather than in the card above" until later the same day. That is no

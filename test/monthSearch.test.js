@@ -375,7 +375,7 @@ test('the space over the box is the space between two rows of one card', () => {
   //
   // The selector carried `.acct-find` beside this one from 2026-08-26 until
   // 2026-08-27, when ส่งบัญชี's box was taken out. One caller again.
-  assert.match(css, /\.month-find \{ align-items: center; gap: 10px 14px; margin-top: 12px; \}/);
+  assert.match(css, /\.month-find \{ align-items: flex-end; gap: 10px 14px; margin-top: 12px; \}/);
   // …AND ON A PHONE IT IS 8, which is what `.export-row` takes at that width for
   // the reason stated there: at 12 the gap reads as a section break between
   // controls that belong to each other.
@@ -387,6 +387,32 @@ test('the space over the box is the space between two rows of one card', () => {
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.match(phone, /\.month-find \{[\s\S]*?margin-top: 8px;/);
   assert.match(phone, /\.export-row \{\s*margin-top: 8px;/);
+});
+
+test('the two boxes in that row end on the same line', () => {
+  // WHAT WAS REPORTED, on 2026-08-28: on a desktop the search box sat high
+  // beside ประจำเดือน — its bottom edge level with nothing, its top edge level
+  // with that field's LABEL — so it read as belonging to the label rather than
+  // standing beside the box under it.
+  //
+  // THE CAUSE WAS ONE WORD. `.row` is `align-items: flex-end` precisely so that
+  // fields of different total height end on one line; `.month-find` overrode it
+  // with `center`. ประจำเดือน is a `.field` WITH a label — 12px of type, a 7px
+  // gap, a 46px box, 65 in all — and ค้นหา is a `.field` with none, so centring
+  // the two in the taller one's line hung the shorter one nine pixels up.
+  //
+  // Pinned as the base rule's own value and not as a literal: if `.row` ever
+  // ends its children differently, this row is not the place that should be
+  // the one disagreeing with it.
+  const base = css.slice(css.indexOf('.row { display: flex;'));
+  assert.match(base.slice(0, base.indexOf('}')), /align-items: flex-end/, 'the base row rule moved');
+  assert.ok(!/\.month-find \{[^}]*align-items: center/.test(css), 'the row is centring its fields again');
+
+  // AND THE COUNT KEEPS `center`, WHICH IS THE WHOLE OF WHAT THE ROW-WIDE
+  // `center` WAS EVER WANTED FOR. แสดง n จาก n คน is one line of type beside two
+  // 46px boxes: stood on the row's floor its descenders would hang below
+  // theirs, so it is centred on its own.
+  assert.match(css, /\.month-find \.found \{ align-self: center;/);
 });
 
 /**
