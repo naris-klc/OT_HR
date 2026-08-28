@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { holidayCalendar, holidaysInMonth, nextHoliday } from '../lib/holidayNotice.js';
+import { holidayCalendar, holidayCalendarByMonth, holidaysInMonth, nextHoliday } from '../lib/holidayNotice.js';
 
 /**
  * ประกาศวันหยุดบริษัท — the standing banner at the top of an employee's screen,
@@ -343,4 +343,143 @@ test('the year is fetched per year, not per month', () => {
   // through one year.
   assert.ok(/\}, \[year\]\);/.test(banner), 'useEffect ไม่ได้ผูกกับปี');
   assert.ok(banner.includes('/holidays?year=${year}'), 'ไม่ได้ขอเฉพาะปีที่ต้องใช้');
+});
+
+test('ปุ่มย่อไม่ตอบเรื่องกรอบสีฟ้าเอง — มันรับจากกฎพื้นฐาน เหลือไว้แต่ระยะวงแหวน', () => {
+  // THIS BUTTON IS WHERE THE REPORT CAME FROM AND IT IS NOT WHERE THE FIX IS.
+  // A blue rectangle appeared over the arrow when it was pressed on a phone;
+  // the fix landed here first, on 2026-08-28, and moved to `html` and the base
+  // `:focus-visible` the same day when the next report said "ทุกปุ่มในระบบ".
+  // `test/pressChrome.test.js` owns the base rules; what this one pins is that
+  // the banner did not keep a copy — a second answer to a question that already
+  // has one is how two rules that disagree get written.
+  const at = css.indexOf('.announce-fold {');
+  assert.ok(at > 0, 'ไม่พบกฎ .announce-fold');
+  const rule = css.slice(at, css.indexOf('}', at));
+  assert.ok(!/-webkit-tap-highlight-color/.test(rule),
+    'ปุ่มย่อประกาศสี highlight ตอนแตะเอง ทั้งที่คุณสมบัตินี้สืบทอดมาจาก html แล้ว');
+  assert.ok(!/outline:/.test(rule), 'ปุ่มย่อไปตอบเรื่องกรอบ focus เองอีกแล้ว');
+
+  // WHAT IS LEFT IS THE OFFSET, AND ONLY THE OFFSET. 1px and not the base 2px,
+  // because on a phone this button carries a 44px hit area held out of the
+  // layout by negative margins — at 2px the ring is drawn into the heading
+  // beside it. The 6px radius is here for the same reason: the ring follows the
+  // box, and every other corner in this panel is round.
+  const fv = css.indexOf('.announce-fold:focus-visible');
+  assert.ok(fv > 0, 'ปุ่มย่อไม่ได้ขยับระยะวงแหวนแล้ว — ที่ 2px วงแหวนจะกินเข้าไปในหัวข้อข้างๆ บนมือถือ');
+  assert.match(css.slice(fv, css.indexOf('}', fv)), /outline-offset: 1px/);
+  assert.match(rule, /border-radius: 6px/, 'ไม่มีมุมโค้ง วงแหวน focus จะเป็นกล่องเหลี่ยมในแผงที่ทุกมุมโค้ง');
+});
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ปฏิทินวันหยุดประจำปี — a dialog, and deliberately not a screen.
+ *
+ * Asked for in as many words on 2026-08-28: no page of its own, no tab in the
+ * bottom bar, a Modal with a ✕ opened from the banner, and the year's holidays
+ * listed BY MONTH inside it. The first three were already true — what these
+ * pin is that they stay true, because "give it a proper screen" is the obvious
+ * next suggestion and it is the one that was turned down.
+ */
+
+test('ปีทั้งปีถูกจัดกลุ่มตามเดือน เดือนเรียงตามปฏิทิน และวันเรียงในเดือน', () => {
+  const months = holidayCalendarByMonth(YEAR);
+  assert.deepEqual(months.map((m) => m.period), ['2026-01', '2026-04', '2026-08', '2026-12']);
+
+  // THE APRIL ROWS ARE OUT OF ORDER IN THE FIXTURE ON PURPOSE — 13, 15, 14.
+  // Grouping that trusted the order it was handed would put สงกรานต์ on screen
+  // as 13, 15, 14, which reads as a typo in the calendar rather than a bug in
+  // the grouping.
+  assert.deepEqual(months[1].days.map((h) => h.date), ['2026-04-13', '2026-04-14', '2026-04-15']);
+});
+
+test('เดือนที่ไม่มีวันหยุดไม่อยู่ในผลลัพธ์ และนั่นคือการตัดสินใจ', () => {
+  // A year has twelve months and this list has about fifteen days in it. Drawn
+  // as twelve headings, eight of them saying "ไม่มีวันหยุด", the dialog becomes
+  // a page of empty boxes with the answer scattered through it. The per-month
+  // statement that IS worth making is the banner's own, about the one month
+  // somebody is filing in — see the test above about an empty month.
+  const months = holidayCalendarByMonth(YEAR);
+  assert.equal(months.length, 4, 'มีเดือนว่างโผล่เข้ามาในรายการ');
+  assert.deepEqual(holidayCalendarByMonth([]), []);
+  assert.deepEqual(holidayCalendarByMonth(null), []);
+});
+
+test('การจัดกลุ่มไม่ได้เพิ่มหรือทำวันหายไป และกรองแถวเสียแบบเดียวกับแถบประกาศ', () => {
+  // Built ON `holidayCalendar` rather than beside it. Two functions each
+  // deciding "which rows are usable" is how the dialog ends up listing a row
+  // the banner refused to draw.
+  //
+  // `usable()` checks the SHAPE and deliberately nothing else — a well-formed
+  // date in a month that does not exist is not what it drops, because every
+  // write path validates the calendar itself. What it drops is a row it cannot
+  // read as a date at all.
+  const rows = [
+    ...YEAR,
+    { name: 'ไม่มีวันที่' },
+    { date: '2026-8-1', name: 'รูปแบบผิด' },
+    { date: 'พรุ่งนี้', name: 'ไม่ใช่วันที่' },
+  ];
+  const flat = holidayCalendarByMonth(rows).flatMap((m) => m.days);
+  assert.deepEqual(flat.map((h) => h.date), holidayCalendar(rows).map((h) => h.date));
+  assert.ok(!flat.some((h) => ['ไม่มีวันที่', 'รูปแบบผิด', 'ไม่ใช่วันที่'].includes(h.name)),
+    'แถวที่อ่านวันที่ไม่ได้ ถูกจัดกลุ่มเข้ามาแทนที่จะถูกทิ้ง');
+});
+
+test('ปฏิทินทั้งปีเป็น Modal ที่เปิดจากแถบ — ไม่ใช่หน้าใหม่ ไม่ใช่แท็บใหม่', () => {
+  // POINT 1 AND 2 OF THE REQUEST, and both were already true. The invariant is
+  // worth a test anyway: this app has ONE route, and every screen is a `tab`
+  // inside it, so "give the calendar its own screen" is a two-line change that
+  // nothing else would have objected to.
+  const dialog = bannerCode.slice(bannerCode.indexOf('function HolidayCalendar'));
+  assert.ok(dialog.includes('<Modal'), 'ปฏิทินทั้งปีไม่ได้เป็น Modal แล้ว');
+  assert.ok(bannerCode.includes('setShowCalendar(true)'), 'ไม่มีปุ่มเปิดปฏิทินจากแถบประกาศ');
+
+  const app = readFileSync(join(ROOT, 'components/App.jsx'), 'utf8');
+  const tabs = app.slice(app.indexOf('const tabs = []'), app.indexOf('return ('));
+  assert.ok(!/holiday|calendar|ปฏิทิน/i.test(tabs), 'มีแท็บปฏิทินวันหยุดโผล่ในแถบเมนูล่าง');
+});
+
+test('✕ ปิดอยู่มุมขวาบนของทุก Modal รวมทั้งปฏิทิน และปุ่มปิดด้านล่างเป็นคนละปุ่ม', () => {
+  // POINT 3's other half. The ✕ is `Modal`'s own — the dialog does not draw one
+  // — so this reads the shared component: a banner that grew its own close mark
+  // would be a second answer to a question `Modal` already answers, and would
+  // drift from the sheet's drag-to-dismiss on a phone.
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
+  // Sliced from the class expression that DRAWS the header, not from the first
+  // mention of the word: both names appear in comments well above the JSX.
+  const headAt = common.indexOf("'modal-head scrolled'");
+  const head = common.slice(headAt, common.indexOf('modal-body', headAt));
+  assert.ok(headAt > 0 && head.length > 0, 'หา <header> ของ Modal ไม่เจอ');
+  assert.ok(head.includes('className="modal-x"'), 'Modal ไม่มีปุ่ม ✕ ในหัวแล้ว');
+  assert.ok(head.includes('aria-label="ปิด"'), 'ปุ่ม ✕ ไม่มีชื่อให้ screen reader');
+  const dialog = bannerCode.slice(bannerCode.indexOf('function HolidayCalendar'));
+  assert.ok(!dialog.includes('modal-x'), 'ปฏิทินวาดปุ่มปิดเองซ้ำกับที่ Modal มีให้');
+});
+
+test('เดือนเป็นกลุ่มแถวจริง ๆ ไม่ใช่ colSpan ปลอมเป็นหัวข้อ', () => {
+  const dialog = bannerCode.slice(bannerCode.indexOf('function HolidayCalendar'));
+  assert.match(dialog, /<tbody key=\{period\}>/, 'ไม่ได้แยก tbody ต่อเดือน');
+  assert.match(dialog, /scope="rowgroup"/, 'หัวเดือนไม่ได้บอกว่าเป็นหัวของกลุ่มแถว');
+
+  // AND THE ROWS UNDER IT DROP THE MONTH. `8 สิงหาคม 2569` under a heading that
+  // already says สิงหาคม 2569 is three of four words repeated on every line.
+  assert.ok(!dialog.includes('thaiDate('), 'แถวในปฏิทินยังพิมพ์เดือนซ้ำกับหัวกลุ่ม');
+  assert.match(dialog, /h\.date\.slice\(8, 10\)/, 'ช่องวันที่ไม่ได้เหลือแค่วันที่');
+});
+
+test('แถบเดือนไม่ได้แต่งตัวเป็นหัวคอลัมน์', () => {
+  // `th` in this stylesheet is 11.5px `--mono`, uppercase, .07em of tracking —
+  // a voice for `วันที่`, which names a column. `สิงหาคม 2569` names a group of
+  // rows and is Thai prose: `--mono` draws Thai from a fallback face and .07em
+  // pulls apart syllables that belong joined.
+  const at = css.indexOf('.cal-month th {');
+  assert.ok(at > 0, 'ไม่พบกฎแถบเดือน');
+  const rule = css.slice(at, css.indexOf('}', at));
+  assert.match(rule, /var\(--sans\)/, 'แถบเดือนยังใช้ฟอนต์ --mono ของหัวคอลัมน์');
+  assert.match(rule, /text-transform: none/);
+  assert.match(rule, /letter-spacing: 0/);
+  // Two grey bands stacked at the top of the table read as one heading that
+  // wrapped, so the month band is the banner's own green instead.
+  assert.match(rule, /background: var\(--green-wash\)/);
 });

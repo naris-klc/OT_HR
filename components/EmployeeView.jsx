@@ -222,7 +222,20 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
             <span className="mid">{hours(approvedHours)}</span>
             <span className="unit" style={{ fontSize: 13 }}>ชม. อนุมัติแล้ว</span>
           </div>
-          <div className="sub">รออนุมัติอีก {hours(pendingHours)} ชม.</div>
+          {/* AMBER ONLY WHILE THERE IS SOMETHING TO WAIT FOR.
+
+              The figure above is อนุมัติแล้ว — settled, nothing to do. This one
+              is hours sitting with somebody, and the two read as the same kind
+              of statement while they were the same grey. `.waiting` is what
+              separates them; see the note over `.hero .sub.waiting`.
+
+              `pendingHours > 0` AND NOT ALWAYS. "รออนุมัติอีก 0 ชม." drawn in a
+              warning colour is an alarm about nothing, and a colour that cries
+              wolf on a screen somebody opens every day is a colour they stop
+              seeing — which costs the days it IS trying to say something. */}
+          <div className={pendingHours > 0 ? 'sub waiting' : 'sub'}>
+            รออนุมัติอีก <span className="n">{hours(pendingHours)}</span> ชม.
+          </div>
         </div>
 
         <div className="hero-actions">

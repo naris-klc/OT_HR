@@ -299,6 +299,18 @@
      stops. The wash it fills with on hover is the same red at .16, and the ring
      outside it the same again at .18 — one hue, three weights. */
   --on-dark-danger: #F0A08A;
+  /* AND THE WARNING BESIDE IT, on the same reasoning and for one line:
+     "รออนุมัติอีก 23 ชม." on the hero, which used to be the same grey as the
+     ceiling sentence next to it and so said nothing about being unfinished.
+
+     THE AMBER TOKENS ABOVE COULD NOT DO IT. `--amber` (#A8791A) is tuned for
+     amber ink on a pale wash and measures 4.38 on the hero — under AA for a
+     12px line, never mind AAA. This is the same amber opened up until it
+     clears: 8.47 on the dark card and 8.37 on the light theme's hero, which is
+     the same surface. Not `--bday-due-ink`: that is one of the three chips
+     forced to fixed values by hand and borrowing it here would tie a hero line
+     to a decision about birthday badges. */
+  --on-dark-warn: #E0B04A;
   --on-dark-danger-line: rgba(228, 87, 46, .35);
   --on-dark-danger-wash: rgba(228, 87, 46, .16);
   --on-dark-danger-glow: rgba(228, 87, 46, .18);
@@ -887,6 +899,53 @@ button, input, select, textarea { font-family: inherit; color: inherit; }
 a { color: var(--green-text); }
 a:hover { color: var(--green-dark); }
 
+/* ══ THE TWO RECTANGLES A BROWSER DRAWS ON A CONTROL, AND WHERE THEY GO ══════
+
+   REPORTED 2026-08-28 as "ทุกปุ่มที่อยู่ในระบบ": a blue rectangle appears over a
+   button when it is pressed on a phone. It reads as one bug and it is two, drawn
+   by two different mechanisms, and the two lines below answer one each.
+
+   (1) THE TAP HIGHLIGHT, painted by the browser over the whole hit box while a
+   finger is down — translucent blue on Android Chrome, grey-blue on iOS Safari,
+   neither of them a colour this app owns. It is sized to the BOX, so on a
+   control whose hit area is padded out to 44px for a thumb the rectangle is far
+   larger than the mark drawn inside it: the ▲/▼ on the holiday banner is an
+   11px glyph in a 44px box, which is what made this visible enough to report.
+
+   `-webkit-tap-highlight-color` IS INHERITED, so it is declared once on the
+   root and reaches every control in the app, including the ones nobody has
+   written yet. It was on `.appbar .mark-btn` and on `.announce-fold` before
+   this and is on neither now: two copies of a rule that covers everything is
+   how a third gets added.
+
+   (2) THE FOCUS RING, the browser's own, drawn on `:focus-visible` — which is
+   the keyboard and not the thumb, and is the reason a press does not leave one
+   behind on any browser current enough to know the selector.
+
+   THE ANSWER TO IT IS NOT `outline: none`. That would delete the only sign a
+   keyboard has of where it is, on every button in the app at once, to fix a
+   complaint about a COLOUR. So the ring is replaced rather than removed:
+   `--green` at 2px with 2px of offset, which is what `.btn:focus-visible` has
+   drawn since the day buttons got a ring at all.
+
+   AND IT IS DECLARED AT THE LOWEST SPECIFICITY THERE IS — one pseudo-class, no
+   element, no class — so that every rule already in this file still beats it:
+   the inward ring in the dark sidebar, the -2px on `.searchbox-clear`, and the
+   `outline: none` that `.field input:focus` uses because its ring is a
+   box-shadow. This is the default for a control that has no opinion, and this
+   app was full of them: EIGHT controls had written this declaration out for
+   themselves one at a time — `.appbar .mark-btn`, `.dept-pill button`,
+   `.searchbox-clear`, `.password-field .reveal`, `.tip-btn`, `.modal-x`,
+   `.picked-clear`, `.announce-fold` — and two of them said so in words, "Not a
+   `.btn`, so the app's focus rule does not reach it". Four were the base values
+   exactly and are deleted; the other four differ only in the offset and are one
+   declaration each now. That is the lesson `test/buttonBox.test.js` already
+   records for `border: 1px solid transparent`, arrived at from the same
+   direction: the seventh container is the sign the answer belonged in the base
+   rule six containers ago. */
+html { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
 /* Numbers are compared down a column, so they must not shift width. */
 .num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
@@ -993,14 +1052,27 @@ a:hover { color: var(--green-dark); }
 }
 .whoami:hover { background: var(--on-dark-hover); }
 .whoami.active { background: var(--on-dark-active); }
-.whoami .chev { flex: none; color: var(--muted-2); font-size: 17px; line-height: 1; }
+/* ── AND THE SIDEBAR, WHICH WAS READING FROM THE WRONG SCALE ALTOGETHER ──────
+
+   `.whoami` sits on the sidebar, which is dark in BOTH themes — that is what
+   the `--on-dark` family exists for. These two were `--muted-2`, a token whose
+   values are chosen against a white card, and the result was 5.59 in dark and
+   4.92 in light: the light theme, where `--muted-2` is at its darkest, is where
+   a token meant for pale surfaces does worst on a near-black one.
+
+   This is the `--amber-dark` shape from test/theme.test.js in a milder form —
+   not a name that resolves to nothing, but a real name resolving on the wrong
+   surface, which no contrast assertion catches unless somebody names the pair.
+   `--on-dark-2` is 9.61 / 9.50 and is what every other line on this sidebar
+   already uses. */
+.whoami .chev { flex: none; color: var(--on-dark-2); font-size: 17px; line-height: 1; }
 .avatar {
   width: 34px; height: 34px; flex: none; border-radius: 50%;
   background: var(--green); color: var(--on-fill); display: grid; place-items: center;
   font: 600 13px/1 var(--mono); border: none;
 }
 .whoami .n { font: 500 13px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.whoami .r { font: 400 11px/1.4 var(--sans); color: var(--muted-2); }
+.whoami .r { font: 400 11px/1.4 var(--sans); color: var(--on-dark-2); }
 
 /* ── ออกจากระบบ, on the floor of the sidebar under the person's own card ─────
    WHERE IT SITS was already right, and is worth writing down because nothing
@@ -1266,7 +1338,6 @@ a:hover { color: var(--green-dark); }
   padding: 0; border: none; background: none; border-radius: 12px;
   cursor: pointer;
   transition: background .14s, transform .12s;
-  -webkit-tap-highlight-color: transparent;
 }
 .appbar .mark-btn:hover { background: var(--neutral-wash); }
 .appbar .mark-btn:hover .mark-sm { opacity: .82; }
@@ -1274,7 +1345,6 @@ a:hover { color: var(--green-dark); }
    where nothing hovers and the finger covers the button. */
 .appbar .mark-btn:active { transform: scale(.94); }
 .appbar .mark-btn:active .mark-sm { opacity: .7; }
-.appbar .mark-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
 /* `min-width: 0` against the flex default of `auto`. As a flex item of .shell,
    main is otherwise never allowed narrower than its widest child — and the
@@ -1297,12 +1367,44 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 28px);
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 22px; align-items: end;
 }
-.hero .cap { font: 400 11.5px/1 var(--mono); letter-spacing: .14em; color: var(--on-dark); }
+/* ── THE SUPPORTING TEXT ON THE HERO IS `--on-dark-2`, NOT `--on-dark` ───────
+
+   Reported 2026-08-28 as the small text on this screen being hard to read in
+   dark mode, together with the stat cards and the sidebar. Measured rather than
+   adjusted by eye: on this card `--on-dark` is 6.30 in dark and 6.23 in light —
+   over AA's 4.5 and under AAA's 7.0, the band where a line passes an automated
+   check and is still reported. `--on-dark-2` is 9.61 and 9.50.
+
+   ALL THREE MOVE TOGETHER. The cap, the unit beside the figure and the sentence
+   under it are one voice — the supporting text of one card — and leaving any of
+   them behind would make the card's own furniture a patchwork of greys with
+   nothing saying why. What separates them is size and weight, which is the
+   difference this card was already using. */
+.hero .cap { font: 400 11.5px/1 var(--mono); letter-spacing: .14em; color: var(--on-dark-2); }
 .hero .big { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
 .hero .big span:first-child { font: 600 46px/1 var(--mono); letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
-.hero .big .unit { font: 400 15px/1 var(--sans); color: var(--on-dark); }
+.hero .big .unit { font: 400 15px/1 var(--sans); color: var(--on-dark-2); }
 .hero .mid { font: 600 30px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
-.hero .sub { font: 400 12px/1.5 var(--sans); color: var(--on-dark); margin-top: 6px; }
+.hero .sub { font: 400 12px/1.5 var(--sans); color: var(--on-dark-2); margin-top: 6px; }
+/* ── "รออนุมัติอีก 23 ชม." — the only unfinished number on the screen ────────
+
+   TWO SENTENCES IN THE SAME GREY WERE SAYING TWO DIFFERENT KINDS OF THING. The
+   ceiling line under ชั่วโมง OT states a fact that needs no action; this one
+   says hours are sitting somewhere waiting for a person. Asked for on
+   2026-08-28 as a colour that separates it from อนุมัติแล้ว above it.
+
+   AMBER AND NOT RED. Nothing is wrong: a request waiting for its manager is the
+   system working. Red is what `--on-dark-danger` is for and it is two rows away
+   in this palette on purpose.
+
+   AND ONLY WHEN THERE IS SOMETHING TO WAIT FOR. The class is conditional in
+   components/EmployeeView.jsx — "รออนุมัติอีก 0 ชม." in warning amber is an
+   alarm about nothing, which is how people learn to stop reading a colour. */
+.hero .sub.waiting { color: var(--on-dark-warn); }
+/* The figure inside it takes the app's number voice — mono and tabular, like
+   every other hour on this screen — so the eye lands on the quantity and not on
+   the word in front of it. */
+.hero .sub.waiting .n { font: 600 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
 
 .meter { margin-top: 14px; height: 6px; border-radius: 3px; background: var(--meter-track); overflow: hidden; }
 .meter > i { display: block; height: 100%; border-radius: 3px; background: var(--green-lift); transition: width .3s ease; }
@@ -1315,11 +1417,25 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 
 .stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
-.stat .label { font: 400 11.5px/1 var(--mono); letter-spacing: .1em; color: var(--muted-2); }
+/* ── AND THE SAME MOVE ON THE THREE RATE CARDS, WHERE IT WAS NOT MERELY FAINT ─
+
+   `--muted-2` on `--card` measures 5.04 in dark and **3.41 in light**. The
+   second number is the one that matters: 3.41 is BELOW AA's 4.5 for text this
+   size, so "หลัง 17:00 น. ของวันทำงาน" — the line that says which hours the
+   figure above it counted — has been failing the floor in the default theme,
+   not merely sitting under the AAA target the dark-mode report was about. It
+   was reported as a dark-mode problem and the light theme was worse.
+
+   `--ink-2` is 9.33 and 9.84. THE LABEL, THE UNIT AND THE NOTE ALL TAKE IT, for
+   the reason the hero's three did: they are one card's supporting text, and a
+   card whose note is darker than the label naming it has a hierarchy that says
+   something nobody meant. The figure is still `--ink` at 26px against their
+   11.5–13px, which is what separates them. */
+.stat .label { font: 400 11.5px/1 var(--mono); letter-spacing: .1em; color: var(--ink-2); }
 .stat .value { display: flex; align-items: baseline; gap: 7px; margin-top: 9px; }
 .stat .value > span:first-child { font: 600 26px/1 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
-.stat .value .unit { font: 400 13px/1 var(--sans); color: var(--muted); }
-.stat .note { margin-top: 7px; font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); }
+.stat .value .unit { font: 400 13px/1 var(--sans); color: var(--ink-2); }
+.stat .note { margin-top: 7px; font: 400 12.5px/1.5 var(--sans); color: var(--ink-2); }
 
 /* The ×1.5 / ×3 breakdown (components/common.jsx → BucketSplit): the engine's
    answer to "which column does this session land in", read side by side. Laid
@@ -1594,14 +1710,23 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 }
 .link:hover { color: var(--green-dark); text-decoration: underline; }
 
-/* Keyboard focus. Inputs already ring on :focus; every button in the app had
-   nothing, so tabbing through it was invisible — and the approve / reject
-   buttons are the ones you least want pressed by a guess. :focus-visible, so
-   the ring appears for the keyboard and not around a button just clicked.
-   Inside the dark sidebar the ring goes inward, where there is contrast. */
-.btn:focus-visible, .link:focus-visible, .seg button:focus-visible {
-  outline: 2px solid var(--green); outline-offset: 2px;
-}
+/* THE APP'S RING WAS DECLARED HERE, and the sidebar is why a rule is still here.
+
+   `.btn`, `.link` and `.seg button` carried `outline: 2px solid var(--green)`
+   at 2px of offset from the day buttons got a ring at all: inputs already rang
+   on `:focus` and the buttons had nothing, so tabbing through them was
+   invisible — and the approve / reject pair is the last place in this app you
+   want a press made by a guess. Those three declarations are **gone from here**
+   and are the base `:focus-visible` at the top of this file, unchanged in
+   value. Every control in the app now gets them, which is what the eight
+   controls that had copied this declaration out for themselves — two of them
+   under a comment reading "Not a `.btn`, so the app's focus rule does not reach
+   it" — were each asking for, one control at a time.
+
+   THE SIDEBAR KEEPS ITS OWN, and it is a real deviation rather than a leftover.
+   It is dark: `--green` has nowhere near the contrast on it that it has on a
+   card, and +2px of offset would draw the ring on the sidebar's own edge. So
+   `--green-lift`, and inward. */
 .nav button:focus-visible, .signout:focus-visible, .whoami:focus-visible,
 .mobile-nav button:focus-visible {
   outline: 2px solid var(--green-lift); outline-offset: -2px;
@@ -1979,7 +2104,7 @@ td > .approver-line { margin-top: 5px; }
   font: 400 12px/1 var(--sans); cursor: pointer;
 }
 .dept-pill button:hover { background: var(--neutral-wash); color: var(--ink); }
-.dept-pill button:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.dept-pill button:focus-visible { outline-offset: 1px; }
 /* ── THE ROWS IN THE POPOVER ─────────────────────────────────────────────────
    `.pick-menu li` already sizes and highlights them. This adds the three-part
    layout: the tick-box, the name, and the code pushed to the far end.
@@ -2349,7 +2474,7 @@ td > .approver-line { margin-top: 5px; }
   color: var(--muted-2); font: 400 15px/1 var(--latin); cursor: pointer;
 }
 .searchbox-clear:hover { background: var(--neutral-wash); color: var(--ink); }
-.searchbox-clear:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+.searchbox-clear:focus-visible { outline-offset: -2px; }
 
 /* ══ แสดงรหัสผ่าน — the eye inside the password box ═══════════════════════
    The same shape as `.searchbox` above and deliberately to its numbers: a
@@ -2387,11 +2512,12 @@ td > .approver-line { margin-top: 5px; }
   transition: color .14s, background .14s;
 }
 .password-field .reveal:hover { background: var(--neutral-wash); color: var(--ink-2); }
-/* Not a `.btn` or a `.link`, so the app's focus rule does not reach it and a
-   keyboard would have found it invisible — the gap that rule exists to close.
-   Inset, or the ring's outer edge sits on the field's own border and reads as
-   the field being focused rather than the button. */
-.password-field .reveal:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+/* Inset, or the ring's outer edge sits on the field's own border and reads as
+   the field being focused rather than the button. That offset is the whole of
+   what is left here: this rule read "Not a `.btn` or a `.link`, so the app's
+   focus rule does not reach it" until 2026-08-28, when the ring became the base
+   `:focus-visible` and started reaching everything. */
+.password-field .reveal:focus-visible { outline-offset: -2px; }
 .password-field .reveal svg { width: 18px; height: 18px; }
 
 /* ค้นหาในทะเบียนพนักงาน — the box over the roster table.
@@ -2980,7 +3106,6 @@ td > .approver-line { margin-top: 5px; }
 }
 .tip-btn:hover { border-color: var(--green); color: var(--green-text); background: var(--green-tint); }
 .tip-btn.on { border-color: var(--green); background: var(--green); color: var(--on-fill); }
-.tip-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
 /* ══ grouped dialog form ═════════════════════════════════════════════════ */
 
@@ -3876,9 +4001,25 @@ td > .approver-line { margin-top: 5px; }
   flex: none; border: none; background: none; cursor: pointer;
   color: inherit; opacity: .65;
   padding: 2px 4px; margin: -2px -4px 0 0;
+  border-radius: 6px;
   font: 400 11px/1.4 var(--sans);
 }
 .announce-fold:hover { opacity: 1; }
+/* THE CONTROL THIS WAS FIRST REPORTED ON, and the reason the fix is not here.
+
+   Pressing the arrow on a phone flashed a blue square over it. That is the tap
+   highlight, it was never this button's to own, and it is now transparent for
+   the whole app from the `html` rule at the top of this file — see the note
+   there for why one inherited declaration replaced the two local ones this was
+   the second of.
+
+   WHAT STAYS HERE IS THE OFFSET, AND ONLY THE OFFSET. The base ring is 2px of
+   green 2px out; this one is 1px out, because on a phone the button carries a
+   44px hit area held out of the layout by negative margins, and 2px pushes the
+   ring into the heading beside it. The 6px radius above is here for the same
+   reason: a ring around a sharp box, in a panel whose every other corner is
+   round. */
+.announce-fold:focus-visible { outline-offset: 1px; }
 /* The heading's own bottom margin is the gap to the list. Folded there is no
    list, and 6px of it would hang under the last thing on the panel. */
 .announce.is-folded .announce-head { margin-bottom: 0; }
@@ -4773,6 +4914,47 @@ th.seq, td.seq {
    .table-wrap scrolls rather than compressing. */
 table.fixed { table-layout: fixed; min-width: 820px; }
 table.fixed td { overflow-wrap: anywhere; }
+
+/* ══ ปฏิทินวันหยุดประจำปี — the month bands in the dialog ═══════════════════
+
+   `.cal-table` is one `<tbody>` per month with the month's name as a `<th
+   scope="rowgroup">` across both columns — see the note in
+   components/HolidayBanner.jsx for why that and not a `<tr>` with a colSpan.
+   What is here is only what makes a row group LOOK like one.
+
+   THE BAND IS NOT A COLUMN HEADING AND MUST NOT BE DRESSED AS ONE. `th` in this
+   stylesheet is 11.5px `--mono`, uppercase, with .07em of letter-spacing — a
+   voice built for `วันที่` / `วันหยุด`, which is to say for a word that names a
+   column. `สิงหาคม 2569` names a group of rows and is Thai prose: `--mono`
+   renders Thai out of a fallback face, `text-transform: uppercase` does nothing
+   to it, and .07em pulls apart syllables that are drawn joined. So the band
+   takes all three back and speaks in `--sans` at the size the rows use.
+
+   `--green-wash` AND NOT `--neutral-wash`, which is the one thing here that is
+   a choice rather than a correction: the column heading directly above it is
+   already `--neutral-wash`, and two grey bands stacked at the top of the table
+   read as one heading that wrapped. The green is the banner's own — this dialog
+   is opened from it — and it is the palette's faintest, a step off white. */
+.cal-month th {
+  padding: 9px 12px;
+  font: 600 12.5px/1.4 var(--sans); letter-spacing: 0; text-transform: none;
+  color: var(--ink-2); background: var(--green-wash);
+  border-bottom: 1px solid var(--line);
+}
+/* The count belongs to the month, so it rides in the band rather than in a
+   column of its own — a number that appears once per group is not a column. */
+.cal-month th .n { margin-left: 8px; font-weight: 400; color: var(--muted-2); }
+/* Every band except the first closes the group above it. `tbody + tbody` and
+   not `:not(:first-of-type)`: the `<thead>` is not a tbody, so the first month
+   is the first tbody, and the sibling combinator says exactly that. */
+tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
+
+/* The day, and only the day — the month is in the band above it. `--mono` and
+   tabular because it is read DOWN the column, the same rule every figure in
+   this app follows; the weekday under it in the app's quietest ink. */
+.cal-day { white-space: nowrap; }
+.cal-day .d { font: 600 15px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.cal-day .hint { display: block; margin: 0; }
 
 /* The second line inside a cell — an employee code, a flag on the row. Sized
    and coloured in one place so the same kind of note is the same note in every
@@ -5759,12 +5941,48 @@ table.mini tbody tr:hover { background: none; }
 .modal-grab { display: none; }
 .modal-head .who { flex: 1; min-width: 0; }
 .modal-head .t { font: 600 17px/1.35 var(--sans); }
-.modal-head .s { font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); margin-top: 2px; }
+/* THE LINE UNDER THE TITLE, AND THE THREE INKS IT HAS WORN IN ONE DAY.
+
+   `--muted-2` → `--muted` → `--ink-2`, all on 2026-08-28, reported twice on the
+   ปฏิทินวันหยุด sheet and the second time about dark mode specifically. This
+   line carries a FACT rather than a label — "เสาร์–อาทิตย์เป็นวันหยุดตามปกติ
+   และไม่อยู่ในรายการนี้" is the sentence that stops somebody reading eight
+   dates and concluding an unlisted Sunday is an ordinary working day — and it
+   was the faintest thing in the header it belongs to.
+
+   THE SECOND MOVE WAS MEASURED RATHER THAN EYEBALLED, which is what settled it.
+   Against `--card`, WCAG contrast on this app's own tokens:
+
+       token        light on white    dark on card
+       --muted-2         3.41             5.04
+       --muted           5.64             6.57
+       --ink-2           9.33             9.84
+       --ink            16.78            13.12
+
+   `--muted` in dark is 6.57 — over AA's 4.5 for body text and UNDER AAA's 7.0,
+   which is exactly the band where a line passes an automated check and is still
+   reported as hard to read. `--ink-2` clears AAA in both themes with room.
+
+   IT IS STILL A SUBTITLE, and `--ink` is what would stop it being one: the
+   title beside it is that colour. What separates the two now is 12.5px/400
+   against 17px/600, which is a bigger difference than the one step of ink it
+   gives up. */
+.modal-head .s { font: 400 12.5px/1.5 var(--sans); color: var(--ink-2); margin-top: 2px; }
 /* WHO on one line, WHEN on the next. They answer two different questions and
    ran together as one grey sentence; the date is what the decision is about,
-   so it gets a line and a slightly stronger ink than the identifiers above it. */
+   so it gets a line and a slightly stronger ink than the identifiers above it.
+
+   THAT LEAD IS RELATIVE AND HAS MOVED TWICE WITH THE LINE ABOVE — `--muted`,
+   then `--ink-2`, now `--ink`. Each time `.s` stepped up this had to as well or
+   the distinction the rule exists to draw would close to nothing.
+
+   AND IT IS NOW AT THE TOP OF THE LADDER. There is no ink above `--ink`, so a
+   third request to brighten `.s` cannot be answered by moving these two again:
+   the pair would collapse into one colour. It would have to be answered some
+   other way — weight, size, or accepting that WHO and WHEN are told apart by
+   being on separate lines, which they already are. */
 .modal-head .s-who { display: block; }
-.modal-head .s-when { display: block; color: var(--muted); }
+.modal-head .s-when { display: block; color: var(--ink); }
 
 /* ── the ceiling, as chips ────────────────────────────────────────────────
    Three sentences became three numbers with a word in front of each. The mono
@@ -5877,7 +6095,6 @@ table.mini tbody tr:hover { background: none; }
   width: 34px; height: 34px; border-radius: 50%;
 }
 .modal-x:hover { color: var(--ink); background: var(--neutral-wash); }
-.modal-x:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
 .modal-body {
   flex: 1 1 auto;
@@ -5925,7 +6142,20 @@ table.mini tbody tr:hover { background: none; }
 .modal-foot {
   flex: none;
   position: relative; z-index: 1;
-  padding: 14px 20px; border-top: 1px solid var(--line-soft);
+  /* THE BOTTOM IS TWICE THE TOP, and it is not a typo. It read a flat 14px,
+     then 20px, and is 28px — twice on 2026-08-28, both times because the button
+     pair read as attached to the bottom edge of the dialog. A foot is a bar the
+     eye reads as resting ON that edge, and a bar needs more air under it than
+     over it to look like it is resting rather than slipping off it.
+
+     A THIRD REPORT ABOUT THIS EDGE IS NOT A REQUEST FOR A FOURTH NUMBER. 28
+     against a 14px top is already the widest asymmetry that still reads as one
+     bar; past it the foot stops looking like a bar with air under it and starts
+     looking like a bar that has come loose. If it is reported again the thing to
+     change is the foot itself — its fill against the body's, or the button's own
+     height — not this number. The same sentence is on the phone rule below,
+     because the two edges get reported together. */
+  padding: 14px 20px 28px; border-top: 1px solid var(--line-soft);
   display: flex; gap: 10px; justify-content: flex-end; align-items: center;
   background: var(--card); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
@@ -6645,6 +6875,19 @@ table.mini tbody tr:hover { background: none; }
        vertical pan for scrolling or for pull-to-refresh. */
     touch-action: none;
   }
+  /* ASKED TO BE DELETED ON 2026-08-28, AND KEPT. The request said "remove the
+     grey handle bar — or hide it if drag-to-close is not used", and it is used:
+     the sheet tracks the finger and closes past a quarter of its height, driven
+     and confirmed on the built app. So the condition the request set for itself
+     was not met.
+
+     `display` IS THE SWITCH FOR THE GESTURE, not just for the bar. `dragStart`
+     in components/common.jsx reads `grabRef.current.offsetParent` to ask the
+     stylesheet whether the dialog is a sheet right now — `display: none` here
+     returns null and turns the swipe off in every dialog in the app, silently.
+     Hiding it some other way (`opacity: 0`) would keep the gesture and take
+     away the only thing that says it exists, which is the trade the note over
+     `dragStart` is about. */
   .modal-grab {
     display: block; position: absolute; top: 8px; left: 50%;
     width: 38px; height: 4px; margin-left: -19px;
@@ -6661,12 +6904,19 @@ table.mini tbody tr:hover { background: none; }
        this is the last word on the foot's padding. The side insets used to be
        declared separately further up this block and were being wiped here.
 
-       BOTTOM: 16px under the buttons rather than 12px — at 12px the pair sat
-       close enough to the edge of the sheet to read as attached to it. The
-       inset is ADDED, not replaced: on a phone with a home indicator this is
-       the bar the indicator lies over, and a flat 16px would put a 46px
-       decision under it. Where there is no indicator env() is 0 and this is
-       exactly 16px.
+       BOTTOM: 30px under the buttons, and it has been four numbers in one day —
+       "12px", "16px", "22px", now 30. Every move was the same report: the pair
+       reads as attached to the bottom edge of the sheet. The inset is ADDED,
+       not replaced: on a phone with a home indicator this is the bar the
+       indicator lies over, and a flat 30px would put a 46px decision under it.
+       Where there is no indicator env() is 0 and this is exactly 30px — which
+       is also why the number keeps being reported from a desktop browser and
+       not from a phone, where the inset has been quietly paying for it.
+
+       A FIFTH NUMBER IS THE WRONG ANSWER. See the note on the base `.modal-foot`
+       rule: 30 against a 12px top is the widest this can be and still read as
+       one bar. If the edge is reported again the thing to change is the foot —
+       its fill, or the height of the button in it — not this.
 
        SIDES: `max`, not `+` — in portrait these insets are 0 and the padding
        stays the 16px it has always been; in landscape the notch is on ONE side
@@ -6676,7 +6926,7 @@ table.mini tbody tr:hover { background: none; }
     padding:
       12px
       max(16px, env(safe-area-inset-right))
-      calc(16px + env(safe-area-inset-bottom))
+      calc(30px + env(safe-area-inset-bottom))
       max(16px, env(safe-area-inset-left));
     gap: 8px;
   }
@@ -7224,9 +7474,11 @@ table.mini tbody tr:hover { background: none; }
   }
   /* Nothing frames it any more, so being unpressable has to show in the mark. */
   .picked-clear:disabled { color: var(--line); cursor: not-allowed; }
-  /* Not a `.btn`, so the app's focus rule does not reach it — the same gap
-     `.password-field .reveal` had to close. */
-  .picked-clear:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+  /* 1px and not the base 2px: this mark sits hard against the edge of the bar
+     it is in. It read "Not a `.btn`, so the app's focus rule does not reach it"
+     until 2026-08-28 — the base `:focus-visible` reaches it now, and what stays
+     here is the offset. */
+  .picked-clear:focus-visible { outline-offset: 1px; }
 
   /* The right-hand end of the single line, not a row of its own.
 

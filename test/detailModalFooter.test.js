@@ -147,17 +147,31 @@ test('the pair splits the foot evenly', () => {
  * bottom padding in the SAME declaration, where nothing can quietly reset half
  * of them.
  *
- * 16px under the buttons so the pair is not read as attached to the bottom
- * edge, with the inset ADDED to it rather than standing in for it — a flat 16px
- * would put a 46px decision under the indicator. `max` on the sides, so a phone
- * held upright, where both insets are 0, keeps exactly the 16px it always had.
+ * 30px under the buttons so the pair is not read as attached to the bottom
+ * edge, with the inset ADDED to it rather than standing in for it — a flat 30px
+ * would put a 46px decision under the indicator. `max` on the SIDES, which stay
+ * 16: a phone held upright has both insets at 0 and keeps exactly the 16px it
+ * always had, and it is the bottom edge alone that was ever reported.
+ *
+ * THE BOTTOM READ "12px", THEN "16px", THEN "22px", AND IS 30px — four numbers
+ * on 2026-08-28, every one of them the same report: the pair reads as attached
+ * to the bottom edge. The prediction written here at 22 was that a further
+ * report would be evidence the answer is not a number, and the further report
+ * came. What is pinned NOW is therefore the pair of numbers together: 30 under a
+ * 12px top is the widest asymmetry that still reads as one bar, and the note in
+ * the stylesheet says what to change instead if it is reported a fifth time —
+ * the foot's fill or the button's height, not this.
  */
 test('the foot clears every edge of the sheet, in one declaration', () => {
   const start = css.indexOf('  .modal-foot {\r\n    border-radius: 0;');
   assert.ok(start > 0, 'the phone rule for the modal foot was renamed');
   const rule = css.slice(start, css.indexOf('}', start));
   has(rule, 'max(16px, env(safe-area-inset-right))');
-  has(rule, 'calc(16px + env(safe-area-inset-bottom))');
+  has(rule, 'calc(30px + env(safe-area-inset-bottom))');
+  // The top is pinned WITH it: what makes the foot read as a bar resting on the
+  // sheet's edge is the RATIO, and a later hand that raised only one of them
+  // would be tuning half of the thing that was reported.
+  has(rule, '12px');
   has(rule, 'max(16px, env(safe-area-inset-left))');
   // And nothing sets the foot's padding after it — a second shorthand anywhere
   // below is the same defect coming back.
@@ -230,7 +244,18 @@ test('the header says who, then when', () => {
   has(code, '<span className="s-who">');
   has(code, '<span className="s-when">');
   has(css, '.modal-head .s-who { display: block; }');
-  has(css, '.modal-head .s-when { display: block; color: var(--muted); }');
+  // `--ink`, and it read `--muted` and then `--ink-2` earlier on 2026-08-28.
+  // THE LEAD IS RELATIVE: `.s` above it climbed `--muted-2` → `--muted` →
+  // `--ink-2` the same day, once for legibility and once for dark mode
+  // specifically (`--muted` measures 6.57 on the dark card — over AA, under
+  // AAA), and each time this line had to step up too or the distinction the
+  // pair exists to draw would have closed to nothing.
+  has(css, '.modal-head .s-when { display: block; color: var(--ink); }');
+  // WHAT IS PINNED IS THAT THEY ARE NOT THE SAME TOKEN — and this is now the
+  // last rung: there is no ink above `--ink`, so a further brightening of `.s`
+  // cannot be paid for by moving this one again.
+  const s = css.slice(css.indexOf('.modal-head .s {'), css.indexOf('}', css.indexOf('.modal-head .s {')));
+  assert.ok(!/var\(--ink\)/.test(s), 'บรรทัดคำอธิบายกับบรรทัดวันที่กลายเป็นสีเดียวกัน');
   // On the sheet the figure and the status chip share the name's line instead
   // of stacking under the ✕ — a whole line of a 375px screen.
   has(css, '.head-meta { flex-direction: row; align-items: center; gap: 6px; }');

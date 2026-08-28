@@ -617,3 +617,68 @@ test('the fill and the text green are two tokens, not one', () => {
     assert.ok(onFill >= 4.4, `ขาวบนสีเติม (${side}) = ${onFill.toFixed(2)}`);
   }
 });
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE SMALL PRINT ON หน้า OT ของฉัน IS HELD TO AAA, NOT AA.
+ *
+ * Reported 2026-08-28 as "อ่านยากบน Dark Mode" across three places at once —
+ * the ceiling sentence on the hero, the ×1.5 / ×3 explanations on the rate
+ * cards, and the role line in the sidebar. Every one of them PASSED the AA
+ * floor the READABLE list above enforces, and one of them did not:
+ *
+ *     --on-dark  on the hero        6.30 dark   6.23 light   AA, not AAA
+ *     --muted-2  on a card          5.04 dark   3.41 light   FAILS AA in light
+ *     --muted-2  on the sidebar     5.59 dark   4.92 light   AA by a whisker
+ *
+ * THE LIGHT NUMBER ON THE MIDDLE ROW IS THE FINDING. It was reported as a dark
+ * mode problem and the default theme was worse: 3.41 is under 4.5, so the line
+ * that says which hours a figure counted has been below the floor for everyone
+ * who never opened the theme menu. The AA list did not catch it because
+ * `--muted-2` was never a pair anybody wrote down.
+ *
+ * THE SIDEBAR ROW IS A DIFFERENT FAULT WEARING THE SAME SYMPTOM. `--muted-2` is
+ * mixed against a white card and `.whoami` sits on `--surface-dark`; the token
+ * was not too faint so much as measured against the wrong thing. That is the
+ * `--amber-dark` shape from the note further down this file in a milder form —
+ * a real name resolving on a surface nobody checked it against.
+ *
+ * SO THE FLOOR HERE IS 7.0 AND THE LIST IS OF PAIRS, not of tokens. A token is
+ * only light or dark relative to what it is drawn on, which is the whole lesson
+ * of the two rows above.
+ */
+const AAA_SUBTEXT = [
+  // The hero's cap, unit and sentence, and the sidebar's name and role line.
+  ['--on-dark-2', '--surface-dark'],
+  // "รออนุมัติอีก 23 ชม.", the one line on the hero that is a warning.
+  ['--on-dark-warn', '--surface-dark'],
+  // OT วันปกติ ×1.5 and its two neighbours: label, unit and note.
+  ['--ink-2', '--card'],
+];
+
+test('ตัวหนังสือเล็กบนหน้า OT ของฉัน ผ่าน AAA ทั้งสองธีม', () => {
+  for (const [ink, bg] of AAA_SUBTEXT) {
+    for (const theme of ['light', 'dark']) {
+      const ratio = contrast(value(ink, theme), value(bg, theme));
+      assert.ok(ratio >= 7, `${ink} บน ${bg} (${theme}) = ${ratio.toFixed(2)} (ต้อง ≥ 7)`);
+    }
+  }
+});
+
+test('ไม่มีตัวหนังสือเล็กบนหน้านั้นถอยกลับไปใช้โทเคนที่วัดแล้วไม่ผ่าน', () => {
+  // The three rules that were reported, by name. A test on the tokens alone
+  // would still pass on the day somebody put `--muted-2` back into one of them,
+  // which is exactly the move that has to be caught: the pair is only safe
+  // because these rules are the ones using it.
+  const rule = (sel) => {
+    const at = css.indexOf(`\n${sel} {`);
+    assert.ok(at > 0, `หากฎ ${sel} ไม่เจอ`);
+    return css.slice(at, css.indexOf('}', at));
+  };
+  for (const sel of ['.hero .cap', '.hero .sub', '.stat .label', '.stat .note', '.whoami .r']) {
+    assert.ok(!/var\(--muted-2\)|var\(--on-dark\)/.test(rule(sel)),
+      `${sel} กลับไปใช้โทเคนที่วัดได้ต่ำกว่า AAA บนพื้นของมัน`);
+  }
+  // And the warning is a warning: amber, and not the grey beside it.
+  assert.match(rule('.hero .sub.waiting'), /var\(--on-dark-warn\)/);
+});

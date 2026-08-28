@@ -1221,7 +1221,7 @@ lib/complianceExport.js   which six events count as the exercise of a
 lib/complianceQuery.js    the four reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     105 files, run by `npm test`. Six named below as a
+test/                     106 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1752 tests
-across 105 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1766 tests
+across 106 files**, measured 2026-08-28 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1593,6 +1593,44 @@ calendar — the submit form needs it to label the day"* — while the maintaine
 list lives on ตั้งค่าระบบ → วันหยุดบริษัท, which is admin-and-HR only. The
 ปฏิทินวันหยุดประจำปี dialog is that permission finally having a screen.
 
+**A dialog, and deliberately not a screen.** Confirmed as the structure on
+2026-08-28: no route of its own and no tab in the bottom bar — a `Modal` opened
+from the banner's own pill, which is a bottom sheet below 860px and a centred
+dialog above it, with `Modal`'s ✕ at the top right and drag-to-dismiss on a
+phone. This app has **one route**; every screen is a `tab` inside it, so giving
+the calendar a screen would have been a two-line change that nothing else would
+have objected to — which is exactly why the decision is written down here and
+pinned in `test/holidayNotice.test.js` rather than left to be re-litigated.
+
+**The year is listed by month**, one `<tbody>` per month with the month's name
+as a `<th scope="rowgroup">` across both columns. A row group is what this
+actually is, so it is one — not a `<tr>` with a `colSpan` dressed as a heading,
+which is the difference between a screen reader announcing สิงหาคม 2569 as the
+group a row belongs to and reading it out as an ordinary cell.
+
+**And the rows under a month band drop the month.** The date cell used to read
+`8 สิงหาคม 2569` on every line; under a heading that already says สิงหาคม 2569
+that is three of four words repeated, so the cell is the day number — `--mono`
+and tabular, because it is read down the column — with the weekday under it.
+`holidayCalendarByMonth()` in `lib/holidayNotice.js` does the grouping and is
+built ON `holidayCalendar()` rather than beside it, so the dialog cannot end up
+grouping a row the banner refused to draw. It takes its order from that sort
+rather than sorting again: a Map keeps insertion order, so the months come out
+chronological without the function knowing what a month is.
+
+**Months with no holiday are not in it**, which is a decision. A year has twelve
+months and this list has eight days in it; drawn as twelve headings, eight of
+them saying ไม่มีวันหยุด, the dialog becomes a page of empty boxes with the
+answer scattered through it. The per-month statement that IS worth making is the
+banner's own — *"เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้"*, about the one month
+somebody is actually filing in, where the absence changes what they do.
+
+**Walked on the built app** at 390px and 1280px as a real employee: eight days
+in four bands — มกราคม 1, เมษายน 3, สิงหาคม 3, ธันวาคม 1 — the sheet flush to
+the bottom edge of the phone and `scope="rowgroup"` on every band. The ✕ sits
+12px in from the sheet's right edge on a phone and 20px on the desktop dialog,
+which is `Modal`'s own geometry: the calendar draws no close mark of its own.
+
 ### ⚑ The phone layout is signed off — these numbers are the template
 
 **Approved 2026-08-28** as the standard for this card on mobile, after five
@@ -1697,6 +1735,27 @@ reads as a fourth date. Measured after, on the built app: the banner is **176px
 on a 390px phone**, 22.6% of that viewport, down from 289px and 37%. It reads
 **247px, 31.7%** now that the names are back on lines of their own — the whole
 of the difference, and what a three-holiday month costs to say properly.
+
+**And a blue box under the thumb, reported the same day.** Pressing the arrow on
+a phone drew a square of the browser's own highlight colour over it, and the
+focus rectangle could stay behind after the finger lifted. Two different things
+draw that box — the tap highlight while the press is down, `outline` after it —
+and both are sized to the **44px hit area**, not to the 11px glyph, so what a
+reader sees is a blue box in the corner of the announcement with an arrow
+somewhere inside it.
+
+**The fix was written here and does not live here**, which is worth recording
+because the round that moved it came a few hours later on the same day: the next
+report said *"น่าจะเป็นทุกปุ่มที่อยู่ในระบบเลย"*, and it was — see
+[The two rectangles a browser draws](#the-two-rectangles-a-browser-draws-on-a-control).
+`-webkit-tap-highlight-color` is inherited and is now declared once on `html`;
+the ring is a base `:focus-visible` at the lowest specificity in the file.
+`.announce-fold` keeps **one declaration** out of all of it — `outline-offset:
+1px` instead of the base 2px, because this button's 44px hit area is held out of
+the layout by negative margins and a ring 2px out is drawn into the heading
+beside it. The 6px radius stays with it, for the same reason: the ring follows
+the box, and every other corner in this panel is round.
+
 
 ### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — two flags, and a remark that moved
 
@@ -4793,6 +4852,97 @@ description cannot become a spreadsheet formula.
 
 ---
 
+### The two rectangles a browser draws on a control
+
+**2026-08-28, รอบแปด**, and it is the second base-rule bug this stylesheet has
+had. It was reported the day before about one button — the ▲/▼ on the holiday
+banner — and fixed there; the next report was *"น่าจะเป็นทุกปุ่มที่อยู่ในระบบเลย"*,
+which is the sentence that says the answer was in the wrong place.
+
+**A blue rectangle appears over a button when it is pressed on a phone.** It
+reads as one bug and it is two, drawn by two different mechanisms:
+
+| | What draws it | When | Sized to |
+|---|---|---|---|
+| **Tap highlight** | the browser, filling the box | while a finger is down | the hit box |
+| **Focus ring** | the browser's `outline` on `:focus-visible` | keyboard, not thumb | the border box |
+
+Both are sized to the BOX and not to the mark inside it, which is why this
+surfaced on the fold arrow first: an 11px glyph in a hit area padded out to 44px
+for a thumb, so the rectangle is four times the size of the thing it is drawn
+around.
+
+**The tap highlight is one declaration for the whole app**, because
+`-webkit-tap-highlight-color` is an **inherited** property:
+
+```css
+html { -webkit-tap-highlight-color: transparent; }
+```
+
+Two controls had declared it for themselves before this — `.appbar .mark-btn`
+and `.announce-fold` — and both are gone. A property that covers everything by
+inheritance and is written per-control instead is a list somebody has to
+remember to add to, which is the same failure in a different key as the one
+`test/buttonBox.test.js` records.
+
+**The focus ring is replaced, not removed.** `outline: none` across the app is
+the obvious reading of the report and it is the wrong fix: it deletes the only
+sign a keyboard user has of where they are, on every control at once, to answer
+a complaint about a *colour*. So there is a base ring instead, and it is
+declared at the lowest specificity there is — one pseudo-class, no element and
+no class — so that every rule already in the file still beats it:
+
+```css
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+```
+
+Those values are not new. They are what `.btn:focus-visible` had drawn since the
+day buttons got a ring at all; that rule is now deleted and this is where they
+live.
+
+**Eight controls had copied that declaration out for themselves** — `.appbar
+.mark-btn`, `.btn`/`.link`/`.seg button`, `.tip-btn`, `.modal-x`, `.dept-pill
+button`, `.searchbox-clear`, `.password-field .reveal`, `.picked-clear`, plus
+`.announce-fold` the day before — and two of them said so in a comment reading
+*"Not a `.btn`, so the app's focus rule does not reach it"*. Four were the base
+values word for word and are deleted. The other four differ only in the offset
+and are **one declaration each** now:
+
+```css
+.searchbox-clear:focus-visible      { outline-offset: -2px; }   /* inside a field */
+.password-field .reveal:focus-visible { outline-offset: -2px; }
+.dept-pill button:focus-visible     { outline-offset: 1px; }
+.picked-clear:focus-visible         { outline-offset: 1px; }
+.announce-fold:focus-visible        { outline-offset: 1px; }
+```
+
+**Two deviations are real and stay whole.** The dark sidebar keeps
+`--green-lift` and an inward `-2px`, because `--green` has nowhere near the
+contrast on that surface that it has on a card and an outward ring would be
+drawn on the sidebar's own edge. And the three controls whose ring is a
+`box-shadow` — `.state-badge`, `.stat.as-button`, `.log-tally li > button` —
+keep `outline: none` beside it, which is a control answering for itself rather
+than a blanket.
+
+**What is pinned, and what is deliberately not.** `test/pressChrome.test.js`
+parses the stylesheet into rules and asks four questions: the tap highlight is
+declared exactly once and on `html`; a base `:focus-visible` exists at bare
+specificity; no rule repeats the base ring's colour; and `outline: none` is
+never written against a selector that is not a specific control. **None of them
+pins the colour** — a ring that becomes some other token is a design decision,
+and a ring that goes back to being declared once per control is the bug
+returning.
+
+**Not fixed here, and it is a real cost:** a control with no `:active` state of
+its own now has no press feedback on a phone at all, because the browser's
+highlight was the feedback. `.btn` has one (`translateY(1px)`), and so do the
+appbar mark and a handful of others; the small marks — `.modal-x`,
+`.searchbox-clear`, `.tip-btn` — have `:hover` only, and a phone has no hover.
+Nobody has reported it and no press state has been designed, so nothing was
+invented for it.
+
+---
+
 ## Two companies: Primus / Themtech
 
 The roster spans two legal entities, which file their payroll separately, so
@@ -5419,8 +5569,22 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1752/1752 pass in about 2 s**, measured 2026-08-28 across 105
-  files. **The newest file is `test/holidayNotice.test.js`**, which arrived with
+- `npm test` — **1766/1766 pass in about 2 s**, measured 2026-08-28 across 106
+  files. **The newest file is `test/pressChrome.test.js`**, four cases over the
+  two rectangles a browser draws on a control — the tap highlight under a finger
+  and the focus ring around a keyboard — and every one of them is about WHERE
+  the declaration lives rather than what colour it is. That the tap highlight is
+  declared exactly once, on `html`, because the property is inherited and a
+  per-control list is one somebody has to remember to add to. That the focus
+  ring has a base rule at the lowest specificity there is, so every deviation
+  already in the file still beats it. That **no control repeats the base ring**,
+  which is the assertion with the history behind it: eight of them had written
+  it out for themselves. And that `outline: none` is never written across the
+  app — the answer to a ring being the wrong colour is a different colour, not
+  the deletion of the only thing a keyboard has to go on. The file parses the
+  stylesheet into rules rather than grepping it, because "no rule anywhere says
+  X" cannot be asked of a string. **The case before it is in
+  `test/holidayNotice.test.js`**, which arrived with
   ประกาศวันหยุดบริษัท: nine cases over the pure filters in `lib/holidayNotice.js`
   — month boundaries as string comparisons, a row with an unusable date dropped
   rather than repaired, วันหยุดถัดไป counting today itself — and twelve over the
@@ -5439,8 +5603,9 @@ four role UIs.
   failure. The same trick holds the rule that the holiday NAMES are dropped for
   every row rather than for the two whose name prompted it — a filter that read
   what a row said would put the screen and the engine on different lists of
-  which days are holidays. **The case before it is in
-  `test/buttonBox.test.js`** and it is the fourth
+  which days are holidays. **And the one before that is in
+  `test/buttonBox.test.js`** — the same lesson as `pressChrome` from the other
+  end of the file — and it is the fourth
   report of one row, and the first that changed it: ส่งบัญชี and แยกแผนก were
   reported over and over as "the buttons do not line up with the tick box beside
   them", and three rounds answered by measuring the level — centre 0.00px, text

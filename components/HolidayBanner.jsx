@@ -3,7 +3,7 @@
 import React, { useEffect, useId, useState } from 'react';
 import { api, currentPeriod, periodLabel, thaiDate, dayName } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
-import { holidayCalendar, holidaysInMonth, nextHoliday } from '@/lib/holidayNotice.js';
+import { holidayCalendarByMonth, holidaysInMonth, nextHoliday } from '@/lib/holidayNotice.js';
 import { Empty, Modal } from './common.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -287,16 +287,17 @@ export default function HolidayBanner({ period = currentPeriod() }) {
  * line in บันทึกระบบ saying the same thing.
  */
 function HolidayCalendar({ year, holidays, onClose }) {
-  const rows = holidayCalendar(holidays);
+  const months = holidayCalendarByMonth(holidays);
+  const total = months.reduce((n, m) => n + m.days.length, 0);
   return (
     <Modal
       title={`ปฏิทินวันหยุดบริษัท ปี ${year + 543}`}
       subtitle="วันที่บริษัทประกาศหยุด · เสาร์–อาทิตย์เป็นวันหยุดตามปกติและไม่อยู่ในรายการนี้"
-      meta={`${rows.length} วัน`}
+      meta={`${total} วัน · ${months.length} เดือน`}
       onClose={onClose}
       footer={<button className="btn ghost" onClick={onClose}>ปิด</button>}
     >
-      {rows.length === 0 ? (
+      {total === 0 ? (
         <Empty>ยังไม่มีวันหยุดของปีนี้ในระบบ — สอบถามฝ่ายบุคคลได้</Empty>
       ) : (
         /* TWO COLUMNS AND NOT THREE. The weekday belongs to the date and is
@@ -306,24 +307,44 @@ function HolidayCalendar({ year, holidays, onClose }) {
            is the shape `thaiDateShort` + the day abbreviation take in the
            queue tables for the same reason. */
         <div className="table-wrap">
-          <table>
+          <table className="cal-table">
             <thead>
               <tr>
                 <th>วันที่</th>
                 <th>วันหยุด</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((h) => (
-                <tr key={h.date}>
-                  <td>
-                    <div>{thaiDate(h.date)}</div>
-                    <div className="hint" style={{ margin: 0 }}>วัน{dayName(h.date)}</div>
-                  </td>
-                  <td>{h.name}</td>
+            {/* ONE `<tbody>` PER MONTH, which is what a row group IS in a
+                table — not a `<tr>` with a `colSpan` faking a heading inside a
+                single body. It costs nothing to write and it is the difference
+                between a screen reader announcing "สิงหาคม 2569" as the group
+                a row belongs to and reading it out as an ordinary cell.
+
+                THE MONTH IS DRAWN ONCE AND THE ROWS UNDER IT DROP IT. The date
+                cell used to read `8 สิงหาคม 2569` on every line; under a
+                heading that already says สิงหาคม 2569 that is three of four
+                words repeated, so the cell is the day number and the weekday
+                now. The number is `--mono` and tabular for the same reason
+                every figure in this app is: it is read DOWN the column. */}
+            {months.map(({ period, days }) => (
+              <tbody key={period}>
+                <tr className="cal-month">
+                  <th colSpan={2} scope="rowgroup">
+                    {periodLabel(period)}
+                    <span className="n">{days.length} วัน</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
+                {days.map((h) => (
+                  <tr key={h.date}>
+                    <td className="cal-day">
+                      <span className="d">{Number(h.date.slice(8, 10))}</span>
+                      <span className="hint">วัน{dayName(h.date)}</span>
+                    </td>
+                    <td>{h.name}</td>
+                  </tr>
+                ))}
+              </tbody>
+            ))}
           </table>
         </div>
       )}
