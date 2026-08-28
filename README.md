@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1723 tests
+and the engine know nothing about Next.js, so the whole suite — **1722 tests
 across 103 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1722", "1721" and "1720" earlier the same day, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3975,9 +3975,10 @@ text that names them.
 live one.** `.pager-step` is a `.btn ghost`: transparent ground, hairline ring.
 The app-wide `.btn:disabled` gives it a `--neutral-wash` fill — and on a month
 that fits on one page *both* ends are disabled, so the band carries two filled
-grey squares that can never do anything. `.appbar` is `position: sticky` with
-`--bar-blur` and `backdrop-filter`, so the page scrolls under it: a 38px grey
-square crossing that edge is a rounded shape half-showing through frosted glass.
+grey squares that can never do anything. `.appbar` is `position: sticky`, so the
+page scrolls under it — and the bar was **frosted glass** at the time, so a 38px
+grey square crossing that edge showed *through* the header as a rounded shape.
+(The frost went later the same day, and §"แถบบนกับแถบล่างทึบแล้ว" below is why.)
 This app already states the rule that was being broken — *"a disabled control is
 quieter than a live one everywhere else in this app"*, written for แก้ไขไม่ได้ on
 the entry rows — and names this exact failure there: `--neutral-wash` behind a
@@ -4011,10 +4012,11 @@ chevrons and quietened them; the next screenshot named the whole band —
 ไปโผล่ใต้ Header … ลบ Element ส่วนเกินนี้ออก"*.
 
 **It is not a `position` or `z-index` fault, and that was checked before
-anything moved.** `.appbar` is `position: sticky; top: 0; z-index: 20` with
-`--bar-blur` and `backdrop-filter` — it is *in flow*, the page scrolls under it,
-and that is what a frosted bar is for. Nothing escapes it and nothing is stacked
-wrongly. What was true is the other half of the report: on a month that fits on
+anything moved.** `.appbar` is `position: sticky; top: 0; z-index: 20` — it is
+*in flow*, and the page scrolls under it, which is what a header does. Nothing
+escapes it and nothing is stacked wrongly. (It was also **frosted** at the time,
+which is the half of this that *was* a defect; it is opaque since the round
+below.) What was true is the other half of the report: on a month that fits on
 one page the band **is** surplus. `{pageCount > 1 && …}` now wraps the whole row,
 and §"แผงเปลี่ยนหน้า" above carries the argument in both directions, because
 this condition has been added, removed and added again.
@@ -4084,6 +4086,57 @@ clone with nine people the fold is **absent** and the pager is there, five cards
 to a page. Searching `PM` on that clone — five matches, one page — draws **no
 fold**. At 1280px the desktop is untouched in both states: every row, no button,
 page height identical.
+
+### แถบบนกับแถบล่างทึบแล้ว — เศษที่เห็นคือเงาผ่านกระจกฝ้า — 2026-08-28 รอบหก
+
+**Three reports, one cause, and it took the third to see it.** *"เศษ Element
+สีเทาโผล่ขึ้นมาบริเวณ Top Bar"*, then the same again after the disabled chevrons
+were quietened, then *"เศษกรอบปุ่ม/Element เกินโผล่ขึ้นมาเล็กน้อย"* pointing at
+a **ดูใบ** button and a **ดูพนักงานทั้งหมด** button. Nothing was ever stray. The
+bars were **frosted glass**:
+
+```
+.appbar     background: rgba(16, 21, 19, .92)   backdrop-filter: blur(10px)
+.mobile-nav background: rgba(16, 21, 19, .96)   backdrop-filter: blur(12px)
+```
+
+At `.92` the header paints **8% of whatever is under it**, blurred. A bordered
+button crossing that edge therefore draws a soft ghost of its own frame *inside*
+the header, above where the button actually is — and on this dark ground the
+worst case is exactly what got reported: a green-ringed button, or a
+`--neutral-wash` chevron, smeared across the bar. The nav at `.96` does the same
+4% at the other end of the page, where what passes under it is the **last control
+on the screen**.
+
+**So both bars are opaque** — one token, `--bar-ground`, `light-dark(#ffffff,
+#101513)`. The values are the colours the translucent ones already composited
+to, which is why the nav's contrast figures were measured against "~#101513"
+while the token still carried an alpha: **nothing about the look moved; only what
+shows through did.**
+
+**And `backdrop-filter` went with the alpha, along with a workaround it needed.**
+A backdrop-filtered element is composited as its own layer and stops obeying
+z-index — that is a real bug this app hit, and `body.has-dialog .appbar, …
+.mobile-nav { backdrop-filter: none; }` was the answer to it. An opaque bar has
+nothing to blur, so the filter was buying nothing and keeping the hazard alive
+between dialogs. Removing it removes the class of bug instead of answering it in
+one place. `body.has-dialog` itself stays: it is what hides the nav and the FAB
+while a sheet is open, which is the rule that actually holds a sheet down.
+
+**What is left after this is a scrolled page under a header, and that is not a
+defect.** At any given scroll offset the top of the list is half under the bar
+and the foot of it is half under the nav; that is true of every scrolling screen
+with fixed chrome. What has changed is that the half that is hidden is now
+*hidden* rather than showing through as a ghost.
+
+**And the foot of the list was measured again rather than padded again.** Asked
+for a third time, as the *ซ่อนรายการที่ตรวจสอบแล้ว* button wanting **16–24px**
+of clearance over the nav. Scrolled to the very end at 431×896, in the expanded
+state the report was made in: **75.5px** — three times what was asked for, and
+`main` itself clears by 36. Nothing was added. What the screenshots show is a
+page stopped **50px short of its end**, where the last control genuinely sits
+about 25px above the bar, which is what scrolling does and what the opaque bar
+now makes read as "under the menu" instead of "smeared into it".
 
 ### The first card was never clipped — the ค้นหา bar was on it
 
@@ -4955,8 +5008,19 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1723/1723 pass in about 2 s**, measured 2026-08-28 across 103
-  files. The newest is in `test/hrMonthCards.test.js` for the fold at three over
+- `npm test` — **1722/1722 pass in about 2 s**, measured 2026-08-28 across 103
+  files. **The count came DOWN by one and that is the newest change**: the two
+  cases in `test/modalScrollFrame.test.js` about `backdrop-filter` became one
+  when the filter itself went. They used to pin the workaround — the two bars
+  dropping the filter under a dialog — and that the two were its only carriers;
+  the invariant now is the stronger one, that **nobody carries it**, so the
+  compositing hazard cannot recur rather than being answered while a dialog
+  happens to be open. Beside it, the opaque `--bar-ground` in both themes and a
+  negative on the two translucent tokens coming back. The case is also a small
+  lesson about this file: its own paragraph quotes the rule it says was removed,
+  so the negative assertion strips the commentary before searching — the trap
+  four assertions in the sibling file have been caught by.
+  The case before it is in `test/hrMonthCards.test.js` for the fold at three over
   the employee list, and what it pins is the property the seven arrangements
   before it produced: **the fold exists only where the pager does not**. Its
   three conditions are asserted as one expression — `pageCount === 1 &&

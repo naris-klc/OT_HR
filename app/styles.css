@@ -220,8 +220,35 @@
   --field-bg: #ffffff;
   --scroll-thumb: #CBD4CD;
   --scrim: rgba(20, 32, 26, .5);
-  --bar-blur: rgba(255, 255, 255, .92);
-  --bar-blur-strong: rgba(255, 255, 255, .96);
+  /**
+   * THE GROUND THE TWO FIXED BARS ARE PAINTED ON, AND IT IS OPAQUE.
+   *
+   * It was two tokens and both were translucent — `--bar-blur` at .92 for the
+   * app bar and `--bar-blur-strong` at .96 for the nav — with a
+   * `backdrop-filter` behind each, which is what made them frosted glass with
+   * the page sliding under them.
+   *
+   * WHAT THAT COST, reported three times over 2026-08-27 and 28 and each time as
+   * something that should not be on the screen: "เศษ Element สีเทาโผล่ขึ้นมา
+   * บริเวณ Top Bar", then the same again, then "เศษกรอบปุ่ม/Element เกินโผล่
+   * ขึ้นมาเล็กน้อย". None of the three was a stray element. At .92 the bar
+   * shows 8% of whatever is under it, blurred — so a bordered button crossing
+   * that edge paints a soft ghost of its own frame INSIDE the header, four
+   * lines above where it actually is. A green-ringed button on this dark ground
+   * is the worst case and it is the one that got reported.
+   *
+   * So the bars are opaque and the filter is gone with the alpha — see the note
+   * over `.appbar`. The two tokens collapse into this one: with no alpha left
+   * there is nothing to be "strong" about, and the pair only ever differed by
+   * four hundredths.
+   *
+   * THE VALUES ARE THE COLOURS THE OLD ONES COMPOSITED TO. #101513 is what
+   * `rgba(16, 21, 19, .92)` came out as over `--bg`, which is why the contrast
+   * figures for the nav's labels (see `--nav-idle` below) were measured against
+   * "~#101513" while the token still carried an alpha. Nothing about the look
+   * moved when the see-through went; only what shows through did.
+   */
+  --bar-ground: #ffffff;
   /** The fade a horizontally scrollable table draws at its edges. */
   --card-fade: rgba(255, 255, 255, 0);
 
@@ -793,8 +820,7 @@
      behind it by the contrast between them, and on a dark page a half-opacity
      scrim leaves the two almost the same colour. */
   --scrim: light-dark(rgba(20, 32, 26, .5), rgba(0, 0, 0, .74));
-  --bar-blur: light-dark(rgba(255, 255, 255, .92), rgba(16, 21, 19, .92));
-  --bar-blur-strong: light-dark(rgba(255, 255, 255, .96), rgba(16, 21, 19, .96));
+  --bar-ground: light-dark(#ffffff, #101513);
   --card-fade: light-dark(rgba(255, 255, 255, 0), rgba(31, 39, 35, 0));
 
   /* Black on the dark side, not the ink colour: a shadow works by darkening
@@ -1018,33 +1044,40 @@ a:hover { color: var(--green-dark); }
 
 .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
-/* ── THE TWO FIXED BARS, AND WHY THEY UN-BLUR UNDER A DIALOG ────────────────
-   `.appbar` and `.mobile-nav` are the only two elements in this app that carry
-   `backdrop-filter`. It is what makes them frosted over the page scrolling
-   behind them, and it is also what takes a browser off the ordinary painting
-   path for them: a backdrop-filtered element is composited as its own layer
-   against everything behind it.
+/* ── THE TWO FIXED BARS CARRIED A FILTER, AND WHAT THAT COST ────────────────
 
-   That is where they stop obeying z-index. Reported on a phone-width Chrome and
-   visible in a screenshot: the app bar drawn over the top corner of an open
+   NOTHING IN THIS APP CARRIES `backdrop-filter` ANY MORE, and this paragraph is
+   why the rule that used to live here is gone rather than why it exists.
+
+   `.appbar` and `.mobile-nav` were the only two that ever did. It is what made
+   them frosted over the page scrolling behind them, and it is also what takes a
+   browser off the ordinary painting path: a backdrop-filtered element is
+   composited as its own layer against everything behind it.
+
+   That is where they stopped obeying z-index. Reported on a phone-width Chrome
+   and visible in a screenshot: the app bar drawn over the top corner of an open
    bottom sheet, and the nav bar covering the last 77px of it with a strip of the
    page showing between the two. The geometry was never the problem — measured
    against the running app at 440×956 the backdrop is 0–956, the sheet is
    114–956 flush to the bottom, and the nav is 879–956 at z-index 30 under a
-   backdrop at 80 — the number it carried then; it is 100 now, and the note
-   over `.modal-backdrop` says why. Every number was right and the bars still
-   painted on top.
+   backdrop at 80 — the number it carried then; it is 100 now, and the note over
+   `.modal-backdrop` says why. Every number was right and the bars still painted
+   on top.
 
-   `body.has-dialog` is set by `Modal` for as long as any dialog is open (see
-   components/common.jsx) and takes the filter off both. A filter that is not
-   applied cannot be composited out of turn, and with it gone the two bars are
-   ordinary positioned elements that lose to the backdrop as they should.
+   THE WORKAROUND WAS `body.has-dialog .appbar, body.has-dialog .mobile-nav {
+   backdrop-filter: none; }` — set by `Modal` for as long as any dialog is open
+   (see components/common.jsx), because a filter that is not applied cannot be
+   composited out of turn.
 
-   Nothing else changes: they keep their own background, which is what they are
-   seen through anyway — for the whole time the class is on, both are behind the
-   scrim. */
-body.has-dialog .appbar,
-body.has-dialog .mobile-nav { backdrop-filter: none; }
+   IT WENT WITH THE FILTER ON 2026-08-28. The bars are opaque now — see the note
+   over `--bar-ground` for the three reports that decided that — and an opaque
+   bar has nothing to blur, so the declaration was doing nothing but keeping the
+   hazard alive for the rest of the time. Removing the filter removes the class
+   of bug rather than answering it in one place.
+
+   `body.has-dialog` ITSELF IS NOT GONE and still does the work below: the nav
+   and the FAB are hidden outright while a dialog is open, which is the rule
+   that actually holds a phone's sheet down. */
 
 /* AND ON A PHONE THE TWO AT THE FOOT GO AWAY ALTOGETHER, which is the rule
    that actually holds.
@@ -1090,9 +1123,17 @@ body.has-dialog .mobile-nav { backdrop-filter: none; }
    second one three thousand lines earlier is a rule nobody looking at the sheet
    would find. */
 
+/* OPAQUE, AND IT WAS FROSTED GLASS UNTIL 2026-08-28 — the background was the
+   old `--bar-blur` token at .92 over a `blur(10px)`. That token carries the whole
+   reason; the short version is that a bar at .92 shows 8% of the page sliding
+   under it, and a bordered button crossing that edge draws a ghost of its own
+   frame inside the header. Reported three times as debris, never once as an
+   effect. `position: sticky` and `z-index` are unchanged: the bar is still in
+   flow and the page still scrolls under it — which is what a header does — and
+   now what is under it is simply not visible. */
 .appbar {
   position: sticky; top: 0; z-index: 20;
-  background: var(--bar-blur); backdrop-filter: blur(10px);
+  background: var(--bar-ground);
   border-bottom: 1px solid var(--line);
   padding: 0 clamp(16px, 3vw, 32px); height: 62px;
   display: flex; align-items: center; gap: 14px;
@@ -6017,7 +6058,12 @@ table.mini tbody tr:hover { background: none; }
   .mobile-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
     display: flex;
-    background: var(--bar-blur-strong); backdrop-filter: blur(12px);
+    /* OPAQUE SINCE 2026-08-28, like the app bar and for the same report — see
+       the note over `--bar-ground`. At .96 this bar still showed 4% of every
+       card and button that passed under it, and what passes under THIS one is
+       the foot of the list: the last control on the screen, ghosting through
+       the menu while somebody scrolls to it. */
+    background: var(--bar-ground);
     border-top: 1px solid var(--line);
     padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
   }
@@ -6051,7 +6097,7 @@ table.mini tbody tr:hover { background: none; }
     position: absolute; top: -6px; right: -13px;
     min-width: 16px; height: 16px; padding: 0 4px;
     border-radius: 8px; font: 600 10px/16px var(--mono);
-    box-shadow: 0 0 0 2px var(--bar-blur-strong);
+    box-shadow: 0 0 0 2px var(--bar-ground);
   }
 
   /* `bottom` carries the inset for the same reason the spacer's height does:
@@ -8855,11 +8901,13 @@ table.mini tbody tr:hover { background: none; }
 
      REPORTED AS "เศษ Element สีเทาโผล่ขึ้นมาบริเวณ Top Bar", asked to be
      deleted, and it is not a stray element: it is these two. `.appbar` is
-     `position: sticky` with `--bar-blur` and `backdrop-filter`, so the page
-     scrolls UNDER it — and a 38px `--neutral-wash` square (on the dark theme
-     that token is the same grey as รวมทั้งหมด's own card) crossing that edge is
-     a grey rounded shape half-showing through frosted glass, four lines above
-     the pager text that names it. Hit-tested at 412×887 on the deployed app before
+     `position: sticky`, so the page scrolls UNDER it — and the bar was frosted
+     glass at the time, so a 38px `--neutral-wash` square (on the dark theme
+     that token is the same grey as รวมทั้งหมด's own card) crossing that edge
+     showed THROUGH the header as a grey rounded shape, four lines above the
+     pager text that names it. The frost is gone since later the same day — see
+     `--bar-ground` — which is what finally ended that class of report; this
+     paragraph is what the chevrons themselves needed. Hit-tested at 412×887 on the deployed app before
      anything was changed: `button.btn.ghost.sm.pager-step.pager-prev` and
      `.pager-next`, both `disabled`, at the exact coordinates reported.
 

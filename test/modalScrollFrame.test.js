@@ -200,27 +200,40 @@ test('a dialog marks the document, and the mark is counted rather than set', () 
   );
 });
 
-test('the two backdrop-filtered bars drop the filter while a dialog is open', () => {
-  // A backdrop-filtered element is composited as its own layer, which is where
-  // it stops obeying z-index: both bars were painting over an open sheet that
-  // measures 114–956 against a nav at 879–956, z-index 30 under a backdrop at
-  // 80. A filter that is not applied cannot be composited out of turn.
-  const sheet = css();
-  assert.match(
-    sheet,
-    /body\.has-dialog \.appbar,\s*\nbody\.has-dialog \.mobile-nav \{ backdrop-filter: none; \}/,
-  );
-});
+test('nothing carries a backdrop filter, so nothing can be composited out of turn', () => {
+  /* THIS TEST READ THE OTHER WAY UNTIL 2026-08-28, and the change is worth the
+     paragraph. It used to assert `body.has-dialog .appbar, body.has-dialog
+     .mobile-nav { backdrop-filter: none; }` — the workaround — and, beside it,
+     that those two were the only carriers, so a third bar growing a filter
+     could not reopen the bug silently.
 
-test('those two are still the only elements that carry a backdrop filter', () => {
-  // The rule above names them one by one, so a third bar growing a filter would
-  // reopen the bug silently. Counted here rather than written as a wildcard,
-  // because `* { backdrop-filter: none }` under a dialog would also flatten any
-  // deliberate frosting inside one.
+     A backdrop-filtered element is composited as its own layer, which is where
+     it stops obeying z-index: both bars painted over an open sheet measuring
+     114–956 against a nav at 879–956, z-index 30 under a backdrop at 80. The
+     workaround took the filter off for as long as a dialog was open, because a
+     filter that is not applied cannot be composited out of turn.
+
+     The filter is gone entirely now — the two bars are opaque, for the reason
+     over `--bar-ground` — so the hazard cannot arise at all rather than being
+     answered while a dialog happens to be open. The invariant this file wants
+     is therefore the stronger one: NOBODY carries it. If a frosted panel is
+     ever wanted again, this test is the place that says what it costs. */
   const sheet = css();
-  const carriers = [...sheet.matchAll(/([^\s{};]+)\s*\{[^}]*backdrop-filter: blur/g)]
+  /* THE COMMENTARY IS STRIPPED FIRST, and this file has been caught by that
+     before: the paragraph above quotes the rule it is saying was removed, so a
+     bare search would find the words and fail on the explanation for why they
+     are not there. Asking what the sheet SAYS means asking the declarations. */
+  const rules = sheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const carriers = [...rules.matchAll(/([^\s{};]+)\s*\{[^}]*backdrop-filter: blur/g)]
     .map((m) => m[1]);
-  assert.deepEqual([...new Set(carriers)].sort(), ['.appbar', '.mobile-nav']);
+  assert.deepEqual(carriers, [], 'something grew a backdrop filter — see the note in this test');
+  // …and the workaround went with it rather than being left as dead weight.
+  assert.ok(!/backdrop-filter: none/.test(rules),
+    'a rule still turns off a filter nothing applies');
+  // The bars are painted on the one opaque token, in both themes.
+  assert.match(sheet, /--bar-ground: #ffffff;/);
+  assert.match(sheet, /--bar-ground: light-dark\(#ffffff, #101513\);/);
+  assert.ok(!/--bar-blur(-strong)?:/.test(sheet), 'the translucent bar tokens came back');
 });
 
 test('on a phone the chrome AT THE FOOT leaves while a sheet is open', () => {
