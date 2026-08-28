@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1722 tests
+and the engine know nothing about Next.js, so the whole suite — **1723 tests
 across 103 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1721" and "1720" earlier the same day, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1722", "1721" and "1720" earlier the same day, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3206,8 +3206,11 @@ footnotes) sat below all nine of them.
 **Seven arrangements have answered that, over 2026-08-25 and 26**: a fold at
 five, a fold at ten, ten-loaded-per-press, five to a page with a pager, a
 fixed-height box with the list scrolling inside it, the box wrapped around the
-pager, and the pager on the page with no box. The shipped one is the last —
-nothing on this screen scrolls but the page itself:
+pager, and the pager on the page with no box. The shipped one was the last —
+nothing on this screen scrolls but the page itself — and since 2026-08-28 there
+is an **eighth beside it rather than instead of it**: a fold at three, on the
+months that have no pager. Which of the two a month gets is decided by
+`pageCount` in one place, and **never both at once**.
 
 ```
 ┌─────────────────────────────────┐
@@ -3215,8 +3218,10 @@ nothing on this screen scrolls but the page itself:
 │ [ ดู / แก้ไขรายการ ] [ พิมพ์ ]  │   holds: no max-height, no overflow-y
 │ ฝ่ายบุคคล              2.5      │
 └─────────────────────────────────┘
-   [‹]      หน้า 1 / 5       [›]      ← the pager, straight after the fifth card
-        แสดง 1–5 จาก 25 รายการ          one 56px band, on every month, ends disabled
+   [‹]      หน้า 1 / 5       [›]      ← the pager, on months of MORE than five
+        แสดง 1–5 จาก 25 รายการ          one 56px band, ends disabled
+                                        (a month that fits shows three cards
+                                         and [ ดูพนักงานทั้งหมด (4 ราย) ] here)
 ┌─────────────────────────────────┐
 │ รวมทั้งหมด            75.5      │ ← under the pager, static, in the flow
 └─────────────────────────────────┘
@@ -4034,6 +4039,51 @@ card-gaps, after the foot of this screen was raised a second time.
 **134 → 130**, the buttons exactly **36**, the fold button's clearance over the
 bar **62.7 → 74.7**, the page **2381 → 2279**, and `scrollWidth == clientWidth`.
 The section that started this week at 1772px is **622**.
+
+### หน้าละ 5 คน กับพับที่ 3 — สองกลไก ไม่เคยอยู่พร้อมกัน — 2026-08-28 รอบห้า
+
+**Asked for by name:** *"ให้ Limit แสดงการ์ดพนักงานเพียง 3 รายการแรกเท่านั้น"*
+with **ดูพนักงานทั้งหมด (4 ราย)** under the third card. The employee list is the
+tallest object on this screen — a card is about 170px — and everything HR comes
+here to *answer* is below it.
+
+**It is the eighth arrangement over this one list, and the first that does not
+replace the one before it.** The rule the previous seven produced is that *two*
+mechanisms over one list is the failure: a reader who can reach the ninth person
+either by pressing ถัดไป or by opening a fold has two controls and no way to tell
+which is meant. So:
+
+| the month | what it gets | why |
+|---|---|---|
+| **≤ 5 people** (no pager) | 3 cards + **ดูพนักงานทั้งหมด (n ราย)** | the whole month is behind the button; opening it shows all of it |
+| **> 5 people** | 5 cards + the pager | the pager already caps the list; a fold under it would reveal two cards |
+| **while searching** | no fold, ever | `query` narrowed the list on purpose, and hiding two of four *matches* is the search failing at the one thing it was asked to do |
+
+`pageCount === 1 && !query.trim() && shown.length > CARD_FOLD` is the whole of
+it, in one place, and `CARD_FOLD` is 3 — the number that was asked for, and the
+one that makes the button hide something on a month of four or five.
+
+**One class still says one thing.** `off-page` is what the phone reads, and the
+end of its range is `cardsTo` — the page's own end where there is a pager, the
+fold's where there is not. The desktop reads neither: `.cards-more-row` joins
+`.pager-row` in being `display: none` above 860px, and the table draws every row
+of the month as it always has. **A class and not `shown.slice`**, for the reason
+written over `CARD_PAGE`: slicing draws the desktop a month with people missing.
+
+**The dropdown opens the fold**, the way it already set the page. Below 860px the
+fourth card of a short month carries `off-page` exactly as the sixth of a long
+one does, so a person picked from the suggestion list would otherwise have no
+element on the screen to scroll to — the same defect, from the other mechanism.
+The fold also resets with the month, the filter and the search box, beside
+`page` and for the same reason: none of them is a state the reader carried in.
+
+**Measured at 431×896 on a scratch build**, with the live month (four people):
+closed **3 cards** and the page **2279 → 2165**; open **4 cards** and 2347; the
+band 44px with 24px of air on both sides, the same joint the pager takes. On a
+clone with nine people the fold is **absent** and the pager is there, five cards
+to a page. Searching `PM` on that clone — five matches, one page — draws **no
+fold**. At 1280px the desktop is untouched in both states: every row, no button,
+page height identical.
 
 ### The first card was never clipped — the ค้นหา bar was on it
 
@@ -4905,8 +4955,19 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1722/1722 pass in about 2 s**, measured 2026-08-28 across 103
-  files. The newest is in `test/birthdayCardUi.test.js` for the fold button’s
+- `npm test` — **1723/1723 pass in about 2 s**, measured 2026-08-28 across 103
+  files. The newest is in `test/hrMonthCards.test.js` for the fold at three over
+  the employee list, and what it pins is the property the seven arrangements
+  before it produced: **the fold exists only where the pager does not**. Its
+  three conditions are asserted as one expression — `pageCount === 1 &&
+  !query.trim() && shown.length > CARD_FOLD` — because each is a way a folded
+  row could become unreachable: a pager beside it, a search whose matches it
+  would swallow, or a month too short for the button to hide anything. Beside
+  them: that `off-page` now ends at `cardsTo` so one class still answers one
+  question, that `goToRow` opens the fold as well as setting the page, and that
+  `.cards-more-row` joins `.pager-row` in being `display: none` above 860px.
+  It read "1722/1722" before it.
+  The case before that is in `test/birthdayCardUi.test.js` for the fold button’s
   wording: that the noun is CHOSEN from the folded rows — `SETTLED_STATUSES`,
   the app’s own "nothing left to do" list, which excludes ยังไม่ถึงวัน — rather
   than written into the label, with that list asserted at its source so a status

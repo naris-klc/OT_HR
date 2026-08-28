@@ -248,7 +248,14 @@ test('five to a page, and the page is the whole of the mechanism', () => {
   // The class the phone reads. It shares the attribute with `row-flash` since
   // the dropdown landed — two independent facts about one row, and the page
   // window is the half asserted here.
-  assert.match(hrView, /\$\{i < from \|\| i >= to \? 'off-page' : ''\}/);
+  //
+  // `cardsTo` SINCE 2026-08-28 AND IT IS THE SAME NUMBER AS `to` HERE: on a
+  // month with a pager the two are equal, and on one without — where the pager
+  // is not drawn at all — the fold under the third card moves the end of the
+  // range. One class, one question (is this row on the phone's screen), two
+  // mechanisms that never both exist. See the fold's own test below.
+  assert.match(hrView, /\$\{i < from \|\| i >= cardsTo \? 'off-page' : ''\}/);
+  assert.match(hrCode, /const cardsTo = folding && !showAllCards \? CARD_FOLD : to;/);
   // A CLASS AND NOT `shown.slice`, which is the shorter way to draw five cards
   // and draws five ROWS with it. The desktop has no pager — `.pager-row` is
   // `display: none` above 860px — so a sliced list is a month with fifty-five
@@ -258,6 +265,54 @@ test('five to a page, and the page is the whole of the mechanism', () => {
   // …and no `dvh`: the list is no longer a box, and it was never the
   // component's business how tall one was.
   layoutIsTheStylesheets();
+});
+
+/**
+ * ONE MECHANISM AT A TIME, AND `pageCount` IS WHAT PICKS IT.
+ *
+ * The fold under the third card was asked for on 2026-08-28 — "Limit แสดงการ์ด
+ * พนักงานเพียง 3 รายการแรก" with a ดูพนักงานทั้งหมด under it. This screen has
+ * carried six mechanisms over one list and the lesson written down from the last
+ * of them is that TWO of them at once is the failure: a reader who can reach the
+ * ninth person either by pressing ถัดไป or by opening a fold has two controls
+ * and no way to tell which is meant.
+ *
+ * So the fold exists only where the pager does not, which is the assertion this
+ * test exists for. The rest — the label, the reset, the dropdown — is pinned
+ * because each is a way for a folded row to become unreachable.
+ */
+test('the fold under the third card exists only where the pager does not', () => {
+  assert.match(hrView, /const CARD_FOLD = 3;/);
+  // The three conditions, and each one is a way the fold could hide something
+  // it must not: a pager beside it, a search whose matches it would swallow, or
+  // a month short enough that the button hides nothing at all.
+  assert.match(hrCode, /const folding = pageCount === 1 && !query\.trim\(\) && shown\.length > CARD_FOLD;/);
+  // The row is drawn only then, and it is a ROW — `.hr-table tbody` is the flex
+  // column the cards live in, so anything that sits in that column has to be one.
+  assert.match(hrCode, /\{folding && \(\s*<tr className="cards-more-row">/);
+  assert.match(hrCode, /<td className="pager-col" colSpan=\{11\}>/);
+  // The count is on the button in BOTH states, like the birthday fold below it.
+  assert.match(hrView, /ดูพนักงานทั้งหมด \(\$\{shown\.length\} ราย\)/);
+  assert.match(hrView, /ย่อรายการ — แสดง \$\{CARD_FOLD\} รายแรก/);
+  assert.match(hrView, /aria-expanded=\{showAllCards\}/);
+  // AND THE DROPDOWN OPENS IT. Below 860px the fourth card of a short month
+  // carries `off-page` exactly as the sixth of a long one does, so a person
+  // picked from the suggestion list could have no element on the screen to
+  // scroll to — the same defect `setPage` is called for, from the other
+  // mechanism.
+  const jump = hrCode.slice(hrCode.indexOf('function goToRow'), hrCode.indexOf('function onFindKeyDown'));
+  assert.match(jump, /setShowAllCards\(true\);/);
+  // ABOVE 860px NEITHER ROW EXISTS. The desktop draws every row of the month,
+  // `off-page` is given no rule, and a control for a fold that is not happening
+  // is a control for nothing.
+  const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(desktop, /\.hr-table tbody tr\.cards-more-row \{ display: none; \}/);
+  assert.match(desktop, /\.hr-table tbody tr\.pager-row \{ display: none; \}/);
+  // The band stands out of the list's rhythm the same way the pager does: 12
+  // added to the flex column's own 12 makes 24, twice the pitch between cards.
+  assert.match(phone, /\.hr-table tbody tr\.cards-more-row \{\s*display: block; padding: 0; border: 0; background: none;\s*margin: 12px 0 0;/);
+  // …and the button is the birthday fold's, to the pixel.
+  assert.match(phone, /\.btn\.cards-more \{\s*display: flex; place-content: center; align-items: center;\s*width: 100%; min-height: 44px;/);
 });
 
 test('a page that no longer exists is clamped, not drawn empty', () => {
@@ -548,7 +603,9 @@ test('neither the box nor the page is a filter', () => {
   // `query` and not `find` since the debounce landed: the list is rebuilt when
   // the APPLIED search changes, and resetting on the keystroke would put the
   // pager back to 1 three hundred milliseconds before the list under it moved.
-  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); \}, \[period, statusFilter, query\]\);/);
+  // The fold under the third card resets with it and for the same reason —
+  // neither is a state the reader carried into the new list.
+  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); setShowAllCards\(false\); \}, \[period, statusFilter, query\]\);/);
   // Picking somebody from the dropdown moves the page too, and that is NOT this
   // reset: it is the page that HOLDS them, so the card exists to be scrolled to
   // at all below 860px. Pinned in test/monthSearch.test.js beside `goToRow`.

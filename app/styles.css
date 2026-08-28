@@ -5847,6 +5847,14 @@ table.mini tbody tr:hover { background: none; }
    component: an inline style beats the media query and the pager would never
    appear on a phone at all. */
 .hr-table tbody tr.pager-row { display: none; }
+/* ══ ดูพนักงานทั้งหมด (n ราย) — THE OTHER PHONE-ONLY ROW, ALSO OFF ══════════
+
+   Same reason as the pager above it: up here the table draws every row of the
+   month, `off-page` is given no rule, and a control that reveals rows nobody is
+   hiding would be a button for something that is not happening. The two rows
+   are the screen's two mechanisms and exactly one of them exists on any given
+   month — see `CARD_FOLD` in components/HrView.jsx. */
+.hr-table tbody tr.cards-more-row { display: none; }
 
 /* ══ mobile — the design's own 860px breakpoint ══════════════════════════ */
 
@@ -8646,6 +8654,15 @@ table.mini tbody tr:hover { background: none; }
      `overflow-y`, and nothing nested for a flick to hand on at its end, which
      is why `overscroll-behavior` went with it rather than being kept in case.
 
+     AND A SIXTH SINCE 2026-08-28 — A FOLD AT THREE, ON THE MONTHS WITH NO
+     PAGER. `.off-page` is the class for that too: `cardsTo` in the component is
+     the page's own end on a month that has a pager and the fold's on a month
+     that does not, so there is still ONE class saying one thing, and still
+     never two mechanisms over one list. Which of the two a month gets is
+     `pageCount`, decided in one place. See `CARD_FOLD` in HrView for why a fold
+     is safe here when the 2026-08-25 fold at five was not: this one only exists
+     where the whole month is on the screen behind it.
+
      WHAT WAS GIVEN UP WITH THE BOX, said plainly rather than left to be found.
      The box kept the card's HEIGHT fixed, so วันเกิดของเดือนนี้ sat at the same
      distance under the total in every month and could not be pushed off the
@@ -8704,6 +8721,37 @@ table.mini tbody tr:hover { background: none; }
     margin: 12px 0 0;
   }
   .hr-table tbody tr.pager-row:hover { background: none; }
+
+  /* ══ ดูพนักงานทั้งหมด (n ราย) — THE FOLD UNDER THE THIRD CARD ═══════════
+
+     Asked for on 2026-08-28: "ให้ Limit แสดงการ์ดพนักงานเพียง 3 รายการแรก" with
+     a button under the third. It is the SAME OBJECT as the pager one row up —
+     not a card, full width, standing out of the list's own rhythm — and it is
+     drawn on exactly the months the pager is not. `CARD_FOLD` in
+     components/HrView.jsx carries why the two never appear together.
+
+     THE SAME `margin: 12px 0 0` AS THE PAGER, and for the same arithmetic:
+     `.hr-table tbody` is a flex column, so this adds to the list's own 12px
+     `gap` and the joint under the third card comes out at 24 — twice the pitch
+     between two cards, which is what says "this is not the fourth person". The
+     total below states its own 12, so the column reads the same whichever of
+     the two rows is standing.
+
+     THE BUTTON ITSELF IS `.bday-more`'s, to the pixel. Two full-width folds on
+     one screen that look different are two different promises; these are the
+     same control over two lists, and the only thing that differs is what the
+     label counts. Written out rather than shared with a comma because they sit
+     in different blocks of this file and neither should move the other by
+     accident — that is what a `grep` for the property is for. */
+  .hr-table tbody tr.cards-more-row {
+    display: block; padding: 0; border: 0; background: none;
+    margin: 12px 0 0;
+  }
+  .hr-table tbody tr.cards-more-row:hover { background: none; }
+  .btn.cards-more {
+    display: flex; place-content: center; align-items: center;
+    width: 100%; min-height: 44px;
+  }
 
   /* ‹ · หน้า 2 / 12 · › over แสดง 6–10 จาก 57 รายการ — ONE BAND, 56px TALL.
 

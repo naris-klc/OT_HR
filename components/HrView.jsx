@@ -73,6 +73,34 @@ const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
 const CARD_PAGE = 5;
 
 /**
+ * How many employee cards a month that FITS opens with — 2026-08-28.
+ *
+ * Asked for by name: "ให้ Limit แสดงการ์ดพนักงานเพียง 3 รายการแรกเท่านั้น" with
+ * a "ดูพนักงานทั้งหมด (4 ราย)" under the third. The list is the tallest thing
+ * on this screen — a card is about 170px — and everything HR came here to
+ * ANSWER (วันเกิดของเดือนนี้) is below it.
+ *
+ * IT ONLY EXISTS WHEN THERE IS NO PAGER, AND THAT IS THE WHOLE DESIGN. This
+ * screen has now carried six mechanisms over one list — a fold at five, a fold
+ * at ten, ten-loaded-per-press, a pager, a box, and a pager inside a box — and
+ * the lesson written down from the last of them is that TWO of them over one
+ * list is the failure: a reader who can reach the ninth person either by
+ * pressing ถัดไป or by opening a fold has two controls and no way to tell which
+ * is meant. So: a month that fits on one page has no pager, and gets this fold;
+ * a month that does not is capped at five by the pager, and gets none. One
+ * mechanism at a time, and which one is decided by `pageCount`.
+ *
+ * WHICH IS WHY THE NUMBER IS 3 AND NOT 5. A fold that shows five of five would
+ * be a button that hides nothing; three is what the ask named, and on a month
+ * of four or five it takes the list from 850px to 510 with one control under it.
+ *
+ * NOT WHILE SEARCHING. `query` narrows the list on purpose, and hiding two of
+ * four MATCHES behind a fold is the search failing to do the one thing it was
+ * asked to do. A search that returns more than a page gets the pager, as before.
+ */
+const CARD_FOLD = 3;
+
+/**
  * How long after the last keystroke the screen is filtered — see `find` and
  * `query` below.
  *
@@ -204,7 +232,9 @@ export default function HrView({
    * drawn at all below 860px. See the note there.
    */
   const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [period, statusFilter, query]);
+  /** The fold under the third card — see `CARD_FOLD` and `folding` below. */
+  const [showAllCards, setShowAllCards] = useState(false);
+  useEffect(() => { setPage(1); setShowAllCards(false); }, [period, statusFilter, query]);
 
   /**
    * The page count, and the page actually drawn — which is NOT always `page`.
@@ -224,6 +254,26 @@ export default function HrView({
   const current = Math.min(page, pageCount);
   const from = (current - 1) * CARD_PAGE;
   const to = from + CARD_PAGE;
+
+  /**
+   * …and the fold under the third card, on the months that have no pager.
+   *
+   * `CARD_FOLD` carries why it is only those months. What is computed here:
+   *
+   *   `folding`   — this month is short enough to have no pager, is not being
+   *                 searched, and has more cards than the fold shows. On a
+   *                 three-person month it is false, and no button is drawn for
+   *                 a fold that would hide nothing.
+   *   `cardsTo`   — the end of the range actually drawn below 860px. It is the
+   *                 page's `to` in every other case, so the pager is untouched.
+   *
+   * `showAllCards` resets with the month, the filter and the search box, for the
+   * same reason `page` does one line above: none of the three is a state the
+   * reader carried into the new list, and "I opened this once" is not a setting
+   * anybody set.
+   */
+  const folding = pageCount === 1 && !query.trim() && shown.length > CARD_FOLD;
+  const cardsTo = folding && !showAllCards ? CARD_FOLD : to;
 
   /**
    * A NEW PAGE STARTS AT THE TOP OF THE LIST.
@@ -382,6 +432,11 @@ export default function HrView({
     setOpen(false);
     const i = shown.findIndex((r) => r.employee._id === id);
     if (i >= 0) setPage(Math.floor(i / CARD_PAGE) + 1);
+    /* AND THE FOLD OPENS TOO, for the reason the page is set. Below 860px the
+       fourth card of a short month carries `off-page` exactly as the sixth of a
+       long one does, so a person picked from the dropdown could have no element
+       on the screen to scroll to — the same defect, from the other mechanism. */
+    setShowAllCards(true);
     setJump(id);
     setOpened(row.employee);
   }
@@ -933,11 +988,18 @@ export default function HrView({
                       id={rowDomId(row.employee._id)}
                       /* TWO INDEPENDENT FACTS ABOUT ONE ROW, and neither is the
                          other's business: `off-page` says this row is not among
-                         the five the phone's current page holds, `row-flash`
-                         says the dropdown just sent somebody here. A row can
-                         carry both — it cannot be lit while hidden, which is why
-                         `goToRow` sets the page first. */
-                      className={`${i < from || i >= to ? 'off-page' : ''}${flash === row.employee._id ? ' row-flash' : ''}`.trim() || undefined}
+                         the ones the phone is drawing, `row-flash` says the
+                         dropdown just sent somebody here. A row can carry both —
+                         it cannot be lit while hidden, which is why `goToRow`
+                         sets the page AND opens the fold first.
+
+                         `cardsTo` AND NOT `to`: on a month with a pager they are
+                         the same number, and on one without, the fold under the
+                         third card moves the end of the range. One class covers
+                         both mechanisms because both answer the same question —
+                         is this row on the phone's screen — and the desktop
+                         still reads neither. */
+                      className={`${i < from || i >= cardsTo ? 'off-page' : ''}${flash === row.employee._id ? ' row-flash' : ''}`.trim() || undefined}
                     >
                       <td className="who-col">
                         {/* `|| '—'` — the same stand-in every other name in
@@ -1032,6 +1094,41 @@ export default function HrView({
                       </td>
                     </tr>
                   ))}
+                  {/* ── ดูพนักงานทั้งหมด (n ราย) — THE FOLD'S OWN ROW ────────
+
+                      A `<tr>` and not a div under the table, for the reason the
+                      pager below is one: `.hr-table tbody` is the flex column
+                      that holds the cards on a phone, and anything that is to
+                      sit in that column with the list's own rhythm has to be a
+                      row of it. `colSpan={11}` like every other full-width row
+                      here, and the phone block is where it is drawn at all —
+                      above 860px `.cards-more-row` is `display: none`, because
+                      up there the table draws all sixty rows and there is
+                      nothing folded to reveal.
+
+                      DRAWN ONLY WHEN IT HIDES SOMETHING. `folding` is false on a
+                      month of three, on any month with a pager, and while the
+                      search box has anything in it — see `CARD_FOLD`. The
+                      count is on the button in BOTH states, which is the rule
+                      the birthday fold below already keeps: a control whose
+                      label reads the same open and closed is one somebody has to
+                      press to find out what it does. */}
+                  {folding && (
+                    <tr className="cards-more-row">
+                      <td className="pager-col" colSpan={11}>
+                        <button
+                          type="button"
+                          className="btn ghost sm cards-more"
+                          aria-expanded={showAllCards}
+                          onClick={() => setShowAllCards((v) => !v)}
+                        >
+                          {showAllCards
+                            ? `ย่อรายการ — แสดง ${CARD_FOLD} รายแรก`
+                            : `ดูพนักงานทั้งหมด (${shown.length} ราย)`}
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                   {/* DIRECTLY AFTER THE FIFTH CARD, AND ABOVE รวมทั้งหมด — the
                       order the phone reads this screen in: the five cards, the
                       control that changes which five they are, then the sum of
