@@ -73,17 +73,30 @@ test('the sub-640 rules live inside the 860 sheet block', () => {
 });
 
 /**
- * THE PADDING COMES IN, THE TOUCH TARGETS DO NOT.
+ * THE PADDING COMES IN, THE TOUCH TARGETS DO NOT — AND NEITHER DOES THE TOP.
  *
- * 12px on the head and the body, the bottom of the range asked for. Four pixels
- * off each side is eight pixels of width handed back to every block inside, and
- * at 360px that is the difference between a คำขอ answer fitting its cell and
- * breaking across two lines.
+ * 12px on the sides and the bottom, the bottom of the range asked for. Four
+ * pixels off each side is eight pixels of width handed back to every block
+ * inside, and at 360px that is the difference between a คำขอ answer fitting its
+ * cell and breaking across two lines.
+ *
+ * THE TOP IS 20 AND IT IS NOT THIS BLOCK'S TO SPEND. This test read
+ * `padding: 12px` — all four sides — until 2026-08-28, and that shorthand was
+ * one of two wiping the `20px` the sheet's grabber needs above the title. It
+ * was measured on the built app at 421px: the grabber ended at y=12 and the
+ * title began at y=12, a nought-pixel gap, and it was reported as the header
+ * being about to run off the top of the card.
+ *
+ * It is the defect test/detailModalFooter.test.js pins for the band at the
+ * other end of the sheet, one row up: a compaction written as a shorthand on a
+ * bare selector, quietly paying for itself out of a decision made elsewhere.
+ * What is pinned now is all four sides together, because a test that checked
+ * only the sides is what let the top be taken twice.
  */
-test('the sheet is padded at 12 under 640', () => {
+test('the sheet is padded at 12 under 640, and keeps the grabber its room', () => {
   const block = phoneProper();
   assert.match(block, /\.modal-body \{ padding: 12px 12px 14px; \}/);
-  assert.match(block, /\.modal-head \{ padding: 12px; \}/);
+  assert.match(block, /\.modal-head \{ padding: 20px 12px 12px; \}/);
 });
 
 /**

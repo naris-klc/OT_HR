@@ -483,3 +483,31 @@ test('แถบเดือนไม่ได้แต่งตัวเป็�
   // wrapped, so the month band is the banner's own green instead.
   assert.match(rule, /background: var\(--green-wash\)/);
 });
+
+test('ทุกบทบาทเห็นประกาศ ไม่ใช่แค่พนักงาน — บนหน้าแรกของบทบาทนั้น', () => {
+  // Asked for on 2026-08-28: "ทุกคนที่อยู่ในระบบคือแจ้งหมดเหมือนพนักงาน". The
+  // banner lived only inside EmployeeView, so a หัวหน้า, ฝ่ายบุคคล or admin who
+  // never opened หน้า OT ของฉัน was never told which days the company is shut —
+  // and they are the people answering the requests those days produce.
+  const app = readFileSync(join(ROOT, 'components/App.jsx'), 'utf8');
+  assert.ok(app.includes("import HolidayBanner from './HolidayBanner.jsx'"),
+    'App.jsx ไม่ได้ import แถบประกาศแล้ว');
+
+  // ON THE LANDING TAB, the rule the backup strip beside it already follows:
+  // a standing announcement repeated on every screen becomes furniture.
+  const bare = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  assert.match(bare, /\{tab === home && home !== 'mine' && \(/,
+    'แถบประกาศไม่ได้ผูกกับหน้าแรกของบทบาท');
+
+  // `home` IS THE ROLE. If defaultTab stops answering for every role, this
+  // mount silently stops covering one of them — so the two are read together.
+  const def = app.slice(app.indexOf('function defaultTab'), app.indexOf('}', app.indexOf('function defaultTab')) + 1);
+  for (const role of ['manager', 'hr', 'admin']) {
+    assert.ok(def.includes(`'${role}'`), `defaultTab ไม่ได้ตอบให้บทบาท ${role} แล้ว — บทบาทนั้นจะไม่เห็นประกาศ`);
+  }
+
+  // AND NOT TWICE ON THE EMPLOYEE'S OWN SCREEN. EmployeeView draws its own
+  // there, with the month it is showing; this one has no picker to read.
+  assert.ok(bare.includes("home !== 'mine'"),
+    'ประกาศจะถูกวาดซ้อนสองอันบนหน้า OT ของฉัน');
+});

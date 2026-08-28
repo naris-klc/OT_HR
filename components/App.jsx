@@ -10,6 +10,7 @@ import { BackProvider } from './nav.jsx';
 import { PolicyProvider } from './policyContext.jsx';
 import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
+import HolidayBanner from './HolidayBanner.jsx';
 import { BackupBanner } from './BackupBanner.jsx';
 import QueueTabs from './QueueTabs.jsx';
 import HrView from './HrView.jsx';
@@ -840,6 +841,34 @@ function Shell({ session, onLogout }) {
             {tab === home && (
               <div style={{ padding: '0 18px' }}>
                 <BackupBanner user={user} />
+              </div>
+            )}
+            {/*
+              ประกาศวันหยุดบริษัท — ทุกบทบาท ไม่ใช่แค่พนักงาน
+
+              Asked for on 2026-08-28: "ทุกคนที่อยู่ในระบบคือแจ้งหมดเหมือน
+              พนักงาน". The announcement was mounted only inside EmployeeView, so
+              a หัวหน้า, ฝ่ายบุคคล or admin who never opened หน้า OT ของฉัน was
+              never told which days the company is shut — and they are the people
+              answering the requests those days produce.
+
+              ON THE LANDING TAB, which is the same rule the backup strip above
+              follows and for the same reason: this is a standing announcement,
+              equally true on every screen, and a notice repeated on all of them
+              becomes furniture. `home` differs per role — รออนุมัติ for a
+              หัวหน้า, รอ HR ยืนยัน for ฝ่ายบุคคล, ตั้งค่าระบบ for admin — so each
+              of them meets it on the first screen after they sign in, which is
+              what an employee already got on theirs.
+
+              EXCEPT WHEN home IS หน้า OT ของฉัน, because EmployeeView draws its
+              own there and two would be two. That is not a duplicate rule: the
+              employee screens can say WHICH month they are showing and pass it
+              (page back to July and the banner announces July), and this mount
+              has no month picker to read. Whoever lands here gets today's.
+            */}
+            {tab === home && home !== 'mine' && (
+              <div style={{ padding: '0 18px' }}>
+                <HolidayBanner />
               </div>
             )}
             {tab === 'mine' && <EmployeeView user={user} onChanged={refreshCounts} openSignal={formSignal} />}

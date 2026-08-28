@@ -147,13 +147,13 @@ test('the pair splits the foot evenly', () => {
  * bottom padding in the SAME declaration, where nothing can quietly reset half
  * of them.
  *
- * 30px under the buttons so the pair is not read as attached to the bottom
- * edge, with the inset ADDED to it rather than standing in for it — a flat 30px
+ * 36px under the buttons so the pair is not read as attached to the bottom
+ * edge, with the inset ADDED to it rather than standing in for it — a flat 36px
  * would put a 46px decision under the indicator. `max` on the SIDES, which stay
  * 16: a phone held upright has both insets at 0 and keeps exactly the 16px it
  * always had, and it is the bottom edge alone that was ever reported.
  *
- * THE BOTTOM READ "12px", THEN "16px", THEN "22px", AND IS 30px — four numbers
+ * THE BOTTOM READ "12px", "16px", "22px", "30px", AND IS 36px — five numbers
  * on 2026-08-28, every one of them the same report: the pair reads as attached
  * to the bottom edge. The prediction written here at 22 was that a further
  * report would be evidence the answer is not a number, and the further report
@@ -167,7 +167,7 @@ test('the foot clears every edge of the sheet, in one declaration', () => {
   assert.ok(start > 0, 'the phone rule for the modal foot was renamed');
   const rule = css.slice(start, css.indexOf('}', start));
   has(rule, 'max(16px, env(safe-area-inset-right))');
-  has(rule, 'calc(30px + env(safe-area-inset-bottom))');
+  has(rule, 'calc(36px + env(safe-area-inset-bottom))');
   // The top is pinned WITH it: what makes the foot read as a bar resting on the
   // sheet's edge is the RATIO, and a later hand that raised only one of them
   // would be tuning half of the thing that was reported.

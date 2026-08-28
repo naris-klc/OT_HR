@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1766 tests
+and the engine know nothing about Next.js, so the whole suite — **1767 tests
 across 106 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1503,11 +1503,38 @@ replays them. Before deploying, list them and tell payroll which dates they are:
 db.holidays.find({ year: { $exists: false } }).sort({ date: 1 })
 ```
 
-### ประกาศวันหยุดบริษัท — the banner an employee reads before filing
+### ประกาศวันหยุดบริษัท — the banner everybody in the system reads
 
-**Added 2026-08-28.** `components/HolidayBanner.jsx`, at the top of both employee
-screens: the dashboard and the OT form. Asked for as an announcement rather than
-a notification, and the distinction is the whole design. A toast confirms
+**Added 2026-08-28.** `components/HolidayBanner.jsx`. It read *"at the top of
+both employee screens: the dashboard and the OT form"* until later the same day,
+and it is on **four** screens now — those two, plus the landing tab of every
+other role. Asked for in as many words: *"ทุกคนที่อยู่ในระบบคือแจ้งหมดเหมือน
+พนักงาน"*. A หัวหน้า, ฝ่ายบุคคล or admin who never opened หน้า OT ของฉัน had
+never been told which days the company is shut, and they are the people
+answering the requests those days produce.
+
+**Where each role meets it**, which is `defaultTab(role)` in
+`components/App.jsx` and therefore the first screen after signing in:
+
+| Role | Landing tab | Mounted by |
+|---|---|---|
+| พนักงาน | หน้า OT ของฉัน, and the OT form | `EmployeeView` |
+| หัวหน้า | รออนุมัติ | `App` |
+| ฝ่ายบุคคล | รอ HR ยืนยัน | `App` |
+| ผู้ดูแลระบบ | ตั้งค่าระบบ | `App` |
+
+**On the landing tab and nowhere else**, the rule `BackupBanner` beside it
+already follows: a standing announcement is equally true on every screen, and
+one repeated on all of them becomes furniture.
+
+**Two mounts and not one, and they are not a duplicated rule.** `App`'s is
+skipped when the landing tab *is* หน้า OT ของฉัน, because `EmployeeView` draws
+its own there — and it draws a better one: the employee screens know which month
+they are showing and pass it, so paging back to July announces July. `App` has
+no month picker to read, so whoever lands there gets today's.
+
+Asked for as an announcement rather than a notification, and the distinction is
+the whole design. A toast confirms
 something that just happened and removes itself after four seconds
 (`components/Toast.jsx`); this is true all month, nothing happened to cause it,
 and the point is that everybody has read the same thing **before** they file.
@@ -4604,6 +4631,45 @@ scroll at the very end of a page is a cheap answer to one. At 431×896 in the
 expanded state the last control now clears the bar by **87.5px** and `main` by
 **48.5**. The derivation is unchanged and is written over `.mobile-nav-spacer`.
 
+### กระดาษขาวใต้แถบดำ — ใบ F-HR-027 กับปลายอีกข้างของรอบเจ็ด — 2026-08-28 รอบแปด
+
+**The same report as the round above, from the other end of the screen and from
+the one screen where the contrast is total.** *"ตารางและเนื้อหาภายในหน้าโผล่เลย
+ออกไปนอกแถบ Navigation Bar ทั้งด้านบนและด้านล่าง"*, with three fixes proposed:
+`overflow: hidden` on a wrapper, more padding, and an opaque fill with a
+`z-index` on the bottom bar. All three already existed; the round above had put
+the last two in that morning.
+
+**And once more nothing is escaping anything.** This time the check was the
+running app rather than the stylesheet — headless Chrome against `next start`
+on :3000, logged in as an employee at 441×908, which is the width the reported
+screenshot was taken at:
+
+| what was asked | what the running app says |
+|---|---|
+| does anything paint over a bar? | a hit-test every 2px down both boundaries names `.print-bar` above y=121.5 and `td.n` below it, `td.n` up to y=840 and `.mobile-nav` from y=842 — no pixel is shared |
+| do the bars have a fill? | both `rgb(16, 21, 19)`, fully opaque, since the round above |
+| does the page overflow sideways? | `documentElement.scrollWidth` 441 = `innerWidth` 441 |
+| is the foot of the page short? | `.mobile-nav-spacer` measures 114px against a 66px bar |
+
+**What is different on this screen is what passes underneath.** Everywhere else
+it is `--card` sliding under `--bar-ground` — one step apart, and the round
+above's hairline is enough. ใบ F-HR-027 is a sheet of **#ffffff paper**, white
+on both themes because it is a printable form, and it is cut flush by a
+near-black bar at both ends. The reporter said exactly this: *"ถ้าพื้นข้างหลัง
+มันคนละสีมันจะเห็นชัด"*. A boundary that reads as continuation at one step of
+contrast reads as a mistake at the full range.
+
+**So both bars this screen has now cast the app bar's shadow**, same falloff,
+`0 6px 14px -8px var(--shadow-soft)` — `.print-bar` down onto the paper, and
+`.mobile-nav` the same numbers negated, casting up. Neither takes the lifted
+hairline the app bar needed: `--line-lift` exists to carry ธีมมืด where a black
+shadow over a near-black page cannot, and the surface that needs carrying here
+is white on both themes, so the shadow already reaches it.
+
+**On every other screen the bottom bar's new shadow is nearly nothing, and that
+is expected.** It is not written for them.
+
 ### The first card was never clipped — the ค้นหา bar was on it
 
 Reported on 2026-08-26 as "the employee name on the top card has disappeared",
@@ -5569,7 +5635,7 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1766/1766 pass in about 2 s**, measured 2026-08-28 across 106
+- `npm test` — **1767/1767 pass in about 2 s**, measured 2026-08-28 across 106
   files. **The newest file is `test/pressChrome.test.js`**, four cases over the
   two rectangles a browser draws on a control — the tap highlight under a finger
   and the focus ring around a keyboard — and every one of them is about WHERE
@@ -5589,9 +5655,12 @@ four role UIs.
   — month boundaries as string comparisons, a row with an unusable date dropped
   rather than repaired, วันหยุดถัดไป counting today itself — and twelve over the
   decisions that are not arithmetic. Those last are the ones worth having: that
-  the banner is mounted on BOTH employee screens (one component returns the form
+  the banner is mounted on both employee screens (one component returns the form
   *instead of* the dashboard, so a single mount would miss the screen where the
-  date is chosen), that nothing can dismiss it, that it is not a third pinned
+  date is chosen) **and on the landing tab of every other role** — the second
+  half arrived when the announcement was opened to หัวหน้า, ฝ่ายบุคคล and admin,
+  and it reads `defaultTab` alongside the mount so that a role added to one and
+  not the other cannot go unannounced; that nothing can dismiss it, that it is not a third pinned
   band, that its green comes from a token, that the calendar dialog does not
   re-fetch what the banner already holds, that on a phone its button is the
   card's own 44px row and stays outlined rather than taking the brand green off

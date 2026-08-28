@@ -944,6 +944,34 @@
        grey desk and then the sheet, and either one showing through would make
        both it and the buttons unreadable. */
     background: var(--bg);
+    /* ── AND IT CASTS A SHADOW, BECAUSE WHITE PAPER GOES UNDER IT ──────────
+       Reported on 2026-08-28 as the table "โผล่ออกมาเหนือแถบ" — a row of
+       F-HR-027 sliced through by this bar's bottom edge, with the row number
+       cut in half. It was measured before it was changed: at 441×908 the bar
+       ends at y=121.5 and the first `td` starts at y=122, nothing overlaps
+       anything, and `elementFromPoint` down the whole boundary names this bar
+       above it and the paper below it. There is no overflow here to hide.
+
+       WHAT THERE IS, IS CONTRAST. This is the SAME report `.appbar` answered
+       with a shadow the same day — "a card whose top is under the header reads
+       as an element poking out from below the bar" — arriving on the one screen
+       where the thing passing under is #ffffff paper against a near-black bar.
+       Every other screen slides `--card` under `--bar-ground`, one step apart;
+       here it is the full range, and a 1px hairline cannot say "bar above page"
+       across it. The reporter said as much: "ถ้าพื้นข้างหลังมันคนละสีมัน
+       จะเห็นชัด".
+
+       THE SAME NUMBERS AS THE APP BAR, deliberately: this bar is pinned
+       directly under that one and the two are read as a pair, so a second
+       falloff would look like a mistake rather than a depth.
+
+       AND THIS IS THE ONE PLACE THE SHADOW CARRIES BOTH THEMES. `--shadow-soft`
+       DARKENS by the rule test/theme.test.js holds every shadow to, which on
+       ธีมมืด normally means black on near-black and nearly nothing — which is
+       why `.appbar` needed a lifted hairline to carry the dark theme. The paper
+       under THIS bar is white in both themes, so the shadow lands on white
+       either way and no second cue is needed. `--line-soft` stays as it was. */
+    box-shadow: 0 6px 14px -8px var(--shadow-soft);
     border-bottom: 1px solid var(--line-soft);
   }
   /* พิมพ์ takes the room, ปิด takes what it needs — one thumb-sized target for

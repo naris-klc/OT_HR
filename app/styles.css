@@ -5967,7 +5967,25 @@ table.mini tbody tr:hover { background: none; }
    title beside it is that colour. What separates the two now is 12.5px/400
    against 17px/600, which is a bigger difference than the one step of ink it
    gives up. */
-.modal-head .s { font: 400 12.5px/1.5 var(--sans); color: var(--ink-2); margin-top: 2px; }
+/* AND WHEN THE INK RAN OUT, THE ANSWER WAS SIZE AND WEIGHT.
+
+   Reported a THIRD time on 2026-08-28, again as contrast on dark. It is not
+   contrast any more: measured on the built app this line is 9.84 on the dark
+   card and 9.33 on white, both clear of AAA, and the note above says in as many
+   words that a further request could not be paid for by moving `.s` and
+   `.s-when` again. So this is the other way it said to look.
+
+   12.5px/400 → 13px/500. Half a pixel and half a weight, which on a 13px Thai
+   line is more legibility than the last ink step bought — Thai at this size
+   loses its tone marks to thin strokes long before it loses them to contrast.
+
+   AND THE REAL CULPRIT WAS NEXT DOOR. At 421px this line had 244px of a 421px
+   header to wrap in, because the header's own top padding was being wiped by
+   two later rules and the whole block was cramped — see `.modal-head` in the
+   phone section. A sentence squeezed into 58% of the width, two lines deep,
+   under a title with nought pixels of air above it, reads as "hard to see"
+   whatever its ratio measures. */
+.modal-head .s { font: 500 13px/1.5 var(--sans); color: var(--ink-2); margin-top: 2px; }
 /* WHO on one line, WHEN on the next. They answer two different questions and
    ran together as one grey sentence; the date is what the decision is about,
    so it gets a line and a slightly stronger ink than the identifiers above it.
@@ -6148,14 +6166,21 @@ table.mini tbody tr:hover { background: none; }
      eye reads as resting ON that edge, and a bar needs more air under it than
      over it to look like it is resting rather than slipping off it.
 
-     A THIRD REPORT ABOUT THIS EDGE IS NOT A REQUEST FOR A FOURTH NUMBER. 28
-     against a 14px top is already the widest asymmetry that still reads as one
-     bar; past it the foot stops looking like a bar with air under it and starts
-     looking like a bar that has come loose. If it is reported again the thing to
-     change is the foot itself — its fill against the body's, or the button's own
-     height — not this number. The same sentence is on the phone rule below,
-     because the two edges get reported together. */
-  padding: 14px 20px 28px; border-top: 1px solid var(--line-soft);
+     THE PREDICTION WRITTEN HERE AT 28 WAS THAT A FURTHER REPORT MEANT THE
+     ANSWER WAS NOT A NUMBER, AND THE FURTHER REPORT CAME. It was raised with
+     the person asking, they asked again, and 34 is their call taken rather than
+     a fifth guess. What was ALSO true that round is that the header at the
+     other end of the sheet had been losing its top padding to two later rules
+     for as long as the grabber has existed — a nought-pixel gap over the title
+     — so the sheet being read when this edge was reported was out of balance at
+     both ends and only one of them was a number.
+
+     THE THING TO CHANGE NEXT IS STILL NOT THIS NUMBER. 34 under a 14px top is
+     2.4× and the foot is at the limit of reading as a bar with air under it.
+     What is left is structural: the foot's fill is `--card`, the same as the
+     body above it, so it does not read as a band at all — give it its own and
+     the button sits IN something instead of near an edge. */
+  padding: 14px 20px 34px; border-top: 1px solid var(--line-soft);
   display: flex; gap: 10px; justify-content: flex-end; align-items: center;
   background: var(--card); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
@@ -6688,6 +6713,38 @@ table.mini tbody tr:hover { background: none; }
        the foot of the list: the last control on the screen, ghosting through
        the menu while somebody scrolls to it. */
     background: var(--bar-ground);
+    /* ── AND IT CASTS ITS SHADOW UPWARD, FOR THE APP BAR'S REASON MIRRORED ──
+       The 2026-08-28 report that gave `.appbar` its shadow named BOTH ends of
+       the screen — "ทั้งด้านบนและด้านล่าง" — and only the top one was answered
+       that morning. The picture that came with the second telling was ใบ
+       F-HR-027, where a white A4 sheet passes under this bar and its table
+       rules are cut off flush against it.
+
+       Measured before it was changed, at 441×908: this bar is 842–908 and the
+       paper's last `td` ends at 840. Nothing overlaps; `elementFromPoint` names
+       this bar at every point inside it. What the reader is seeing is a
+       maximum-contrast cut with no cue saying which side is on top, and the
+       app bar's own note is the precedent — "a 1px hairline is not enough to
+       say this bar is above the page, and without it the cut looks like a
+       mistake".
+
+       THE APP BAR'S NUMBERS, WITH THE OFFSET NEGATED, because the light falls
+       from the same place on both: a bar at the foot casts up. `--shadow-soft`
+       darkens, which is the rule test/theme.test.js holds every shadow in this
+       file to.
+
+       ON MOST SCREENS IT IS NEARLY NOTHING and that is expected — what passes
+       under this bar is usually `--card`, one step from the bar's own fill, and
+       on ธีมมืด a black shadow over a near-black card is a whisper. It is not
+       written for those screens. It is written for the one where the thing
+       underneath is white paper, and there it is the whole of the cue.
+
+       `--line` STAYS `--line` and does not go up to `--line-lift` the way the
+       app bar's did. That step exists to carry ธีมมืด where the shadow cannot,
+       and here the surface that needs carrying is the paper — which is white on
+       both themes, so the shadow already reaches it. A brighter hairline would
+       only be a brighter line against white. */
+    box-shadow: 0 -6px 14px -8px var(--shadow-soft);
     border-top: 1px solid var(--line);
     padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
   }
@@ -6904,19 +6961,22 @@ table.mini tbody tr:hover { background: none; }
        this is the last word on the foot's padding. The side insets used to be
        declared separately further up this block and were being wiped here.
 
-       BOTTOM: 30px under the buttons, and it has been four numbers in one day —
-       "12px", "16px", "22px", now 30. Every move was the same report: the pair
-       reads as attached to the bottom edge of the sheet. The inset is ADDED,
-       not replaced: on a phone with a home indicator this is the bar the
-       indicator lies over, and a flat 30px would put a 46px decision under it.
-       Where there is no indicator env() is 0 and this is exactly 30px — which
+       BOTTOM: 36px under the buttons, and it has been five numbers in one day —
+       "12px", "16px", "22px", "30px", now 36. Every move was the same report:
+       the pair reads as attached to the bottom edge of the sheet. The inset is
+       ADDED, not replaced: on a phone with a home indicator this is the bar the
+       indicator lies over, and a flat 36px would put a 46px decision under it.
+       Where there is no indicator env() is 0 and this is exactly 36px — which
        is also why the number keeps being reported from a desktop browser and
        not from a phone, where the inset has been quietly paying for it.
 
-       A FIFTH NUMBER IS THE WRONG ANSWER. See the note on the base `.modal-foot`
-       rule: 30 against a 12px top is the widest this can be and still read as
-       one bar. If the edge is reported again the thing to change is the foot —
-       its fill, or the height of the button in it — not this.
+       THE FIFTH NUMBER WAS ASKED FOR TWICE AND IS THE ASKER'S CALL, not a fifth
+       guess — see the note on the base `.modal-foot` rule. What the round that
+       set it also found is that the OTHER end of this sheet had been losing its
+       top padding to two later rules the whole time, so the thing being looked
+       at was cramped at the head and loose at the foot at once. If this edge is
+       reported a sixth time, the header is fixed now and the number is not the
+       remaining variable: the foot's fill is.
 
        SIDES: `max`, not `+` — in portrait these insets are 0 and the padding
        stays the 16px it has always been; in landscape the notch is on ONE side
@@ -6926,7 +6986,7 @@ table.mini tbody tr:hover { background: none; }
     padding:
       12px
       max(16px, env(safe-area-inset-right))
-      calc(30px + env(safe-area-inset-bottom))
+      calc(36px + env(safe-area-inset-bottom))
       max(16px, env(safe-area-inset-left));
     gap: 8px;
   }
@@ -6984,7 +7044,25 @@ table.mini tbody tr:hover { background: none; }
   /* A long name now shares its line with two chips rather than pushing them
      down, so it has to be the thing that gives. */
   .modal-head .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .modal-head { padding: 12px 16px; gap: 10px; }
+  /* ALL FOUR SIDES, INCLUDING THE 20px THE GRABBER NEEDS.
+
+     This read `padding: 12px 16px` until 2026-08-28 and it was wiping the
+     `padding: 20px 16px 14px` declared further up this same block — bare
+     `.modal-head`, same specificity, later in the file. The rule up there is
+     commented "Room above the title for the grabber" and that room has never
+     existed on a phone: measured on the built app at 421px, the grabber ended
+     at y=12 and the title began at y=12. **A nought-pixel gap**, reported as
+     "ชิดจนจะเกินการ์ดแล้ว".
+
+     This is the `.modal-foot` defect from test/detailModalFooter.test.js
+     happening again to the row above it — a compaction written as a shorthand,
+     landing on a bare selector, silently paying for itself out of a decision
+     made somewhere else. The fix is the same one: every side in ONE
+     declaration, so there is nothing left for a later rule to half-reset.
+
+     The 12px bottom is what this rule came for and it keeps it. What it may not
+     keep is the top. */
+  .modal-head { padding: 20px 16px 12px; gap: 10px; }
 
   /* ── ONE COLUMN, AND THE ✕ OUT OF IT ────────────────────────────────────
      name / รหัส · แผนก / the date / [ 3.00 ชม. ] [ รอ HR ]
@@ -7076,7 +7154,12 @@ table.mini tbody tr:hover { background: none; }
        is eight pixels of width handed back to every block inside, which at
        360px is where the คำขอ cells stop having to break their answers. */
     .modal-body { padding: 12px 12px 14px; }
-    .modal-head { padding: 12px; }
+    /* THE SIDES ARE WHAT THIS BLOCK IS FOR, AND THE TOP IS NOT ITS TO SPEND.
+       `padding: 12px` took all four and was the second rule wiping the
+       grabber's room — see the note on `.modal-head` above, and the identical
+       lesson about the button band a few lines up. 12 on the sides and the
+       bottom, 20 at the top, in one declaration. */
+    .modal-head { padding: 20px 12px 12px; }
 
     /* ── คำขอ IN TWO COLUMNS, SAID RATHER THAN ARRIVED AT ─────────────────
        `flex: 1 1 150px` puts two cells on a row at 375px by arithmetic, and the
