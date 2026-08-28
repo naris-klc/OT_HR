@@ -3864,10 +3864,14 @@ td > .approver-line { margin-top: 5px; }
    block, every entry starts at the same left edge however long the name is, and
    the announcement is still an announcement rather than a bare list of dates.
 
-   7px BETWEEN ENTRIES AND 1px INSIDE ONE. The gap that separates two holidays
+   10px BETWEEN ENTRIES AND 1px INSIDE ONE. The gap that separates two holidays
    has to be visibly larger than the gap between a date and its own name, or a
-   three-holiday month reads as six loose lines. */
-.announce-days { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+   three-holiday month reads as six loose lines. It was 7px for one round and
+   read as too tight — the previous entry's NAME sits directly above the next
+   entry's DATE, and those two lines are the ones that must not look like a
+   pair. Ten against one is the ratio that makes the grouping obvious without
+   the list turning into a paragraph. */
+.announce-days { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
 .announce-days li { display: flex; flex-direction: column; gap: 1px; }
 .announce-days .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 8px; }
 .announce-days .when { font-weight: 600; }
@@ -3875,12 +3879,19 @@ td > .approver-line { margin-top: 5px; }
    holiday's day of the week is how somebody checks the date against their own
    memory of the week. Quieter than the date it belongs to. */
 .announce-days .dow { font-size: 12.5px; color: var(--muted); }
-/* The holiday's own name, under the date it belongs to. The same step down as
-   the weekday beside it — both are the date's supporting cast, and giving them
-   two different quiet weights would invent a rank between them that means
-   nothing. `--muted` on `--green-bg` is pinned for contrast in
+/* The holiday's own name, under the date it belongs to.
+
+   ONE STEP BRIGHTER THAN THE WEEKDAY BESIDE IT, AND THAT IS A RANK ON PURPOSE.
+   This rule read `--muted` — the same as `.dow` — for one round, on the
+   reasoning that both are the date's supporting cast and separating them would
+   invent a distinction that means nothing. Read on a phone it turned out to
+   mean something: the weekday is a CHECK on the date (does 12 สิงหาคม really
+   fall on a Wednesday), read once and never again, while the name is the
+   announcement's actual content. `--ink-2` is the step between `--muted` and
+   the date's own `--ink`, so the name stays subordinate to the date it belongs
+   to and stops being as quiet as a cross-check. Pinned against `--green-bg` in
    test/theme.test.js. */
-.announce-days .what { font-size: 12.5px; color: var(--muted); }
+.announce-days .what { font-size: 12.5px; color: var(--ink-2); }
 .announce-none { margin: 0; }
 
 /* THE PILL'S OWN GAP, TAKEN BACK FROM `.fold-pill`'s 8px.

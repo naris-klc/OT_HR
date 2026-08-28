@@ -1513,8 +1513,8 @@ something that just happened and removes itself after four seconds
 and the point is that everybody has read the same thing **before** they file.
 
 **What it says.** The month's announced holidays — each one two lines, the date
-with its weekday and then the holiday's name under it, smaller and in `--muted`
-— and a pill that opens the year's calendar. On a month with none it says so out
+with its weekday and then the holiday's name under it, smaller and one step
+quieter — and a pill that opens the year's calendar. On a month with none it says so out
 loud (`เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้`) and names the next one, because an
 empty month and a month nobody has entered look identical from the screen, and
 the reader who assumes the second files a normal-rate request for a day the
@@ -1531,8 +1531,18 @@ the date it is fine until a name is `วันเฉลิมพระชนม�
 พันปีหลวง`, which on a phone wrapped to three lines and dragged the entries below
 it out of alignment; on its own line it wraps inside its own block and every
 entry still starts at the same left edge. The list gaps carry the grouping —
-**7px between two holidays against 1px between a date and its own name** — or a
-three-holiday month reads as six loose lines.
+**10px between two holidays against 1px between a date and its own name** — or a
+three-holiday month reads as six loose lines. It was 7px for one round and read
+as too tight, which the ratio explains: the line above a date is the previous
+holiday's NAME, and those two are exactly the pair that must not look like one.
+
+**Three quiet levels, not two.** The date is `--ink`, the holiday's name
+`--ink-2`, the weekday `--muted`. The name and the weekday shared `--muted` for
+a round, on the reasoning that both are the date's supporting cast — and on a
+phone that turned out to be wrong in a way worth recording: the weekday is a
+*check* on the date, read once and never again, while the name is the
+announcement's actual content. All three are pinned against `--green-bg` in
+`test/theme.test.js`.
 
 **Where the เสาร์–อาทิตย์ clause went, and why it mattered.** Saturday and Sunday
 are holidays *by rule* and are deliberately not rows in the collection — the

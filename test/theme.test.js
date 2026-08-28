@@ -176,13 +176,18 @@ const READABLE = [
   // status, so its weights are the neutral ones, and neither was checked
   // against that background until the banner existed.
   //
-  // TWO AND NOT THREE. `--ink-2` was here for one day: it coloured the rates
-  // sentence, which was removed on request on 2026-08-28. A pair listed for
-  // something no longer on screen reads as a guarantee about a combination
-  // nobody can see, so it went with the paragraph — `--ink` is the banner's
-  // body and heading, `--muted` is the weekday beside each date and the
-  // holiday's name under it.
+  // `--ink` is the banner's body and heading, `--muted` the weekday beside each
+  // date, `--ink-2` the holiday's name under it.
+  //
+  // `--ink-2` HAS BEEN IN THIS LIST TWICE AND OUT OF IT ONCE, which is worth a
+  // line because the removal was right at the time. It first coloured the rates
+  // sentence; when that sentence was removed on request the pair went with it,
+  // because a pair listed for something no longer on screen reads as a
+  // guarantee about a combination nobody can see. It is back for the holiday
+  // names, which were lifted off `--muted` a round later so that the
+  // announcement's content is not as quiet as the weekday that checks its date.
   ['--ink', '--green-bg'],
+  ['--ink-2', '--green-bg'],
   ['--muted', '--green-bg'],
 ];
 

@@ -252,11 +252,20 @@ test('each holiday is two lines: the date, then its name under it', () => {
   assert.match(li, /flex-direction: column/, 'รายการกลับไปเป็นบรรทัดเดียว ชื่อยาวจะดันรายการอื่นเสียแนว');
   const what = css.slice(css.indexOf('.announce-days .what {'), css.indexOf('}', css.indexOf('.announce-days .what {')));
   assert.match(what, /font-size: 12\.5px/, 'ชื่อวันหยุดไม่ได้เล็กกว่าบรรทัดวันที่');
-  assert.match(what, /color: var\(--muted\)/, 'ชื่อวันหยุดไม่ได้เป็นโทนรอง — จะไปแย่งเด่นกับวันที่');
+  // ONE STEP BRIGHTER THAN `.dow`, ONE STEP QUIETER THAN THE DATE. It was
+  // `--muted` — the weekday's own value — for one round and read as too faint on
+  // a phone. The weekday is a CHECK on the date, read once; the name is the
+  // announcement's content. `--ink-2` is the step between them.
+  assert.match(what, /color: var\(--ink-2\)/, 'ชื่อวันหยุดจางเท่าชื่อวัน — เนื้อหาหลักไม่ควรเงียบเท่าตัวตรวจสอบ');
+  const dow = css.slice(css.indexOf('.announce-days .dow {'), css.indexOf('}', css.indexOf('.announce-days .dow {')));
+  assert.match(dow, /color: var\(--muted\)/, 'ชื่อวันหายไปจากโทนที่เบากว่า — ลำดับสองชั้นจะพัง');
+
   // The gap between two holidays must beat the gap inside one, or a
-  // three-holiday month reads as six loose lines.
+  // three-holiday month reads as six loose lines. 7px was tried and reported as
+  // too tight: the previous entry's NAME sits directly above the next entry's
+  // DATE, and those are the two lines that must not look like a pair.
   const list = css.slice(css.indexOf('.announce-days {'), css.indexOf('}', css.indexOf('.announce-days {')));
-  assert.match(list, /gap: 7px/, 'ระยะระหว่างวันหยุดสองวันไม่ได้มากกว่าระยะในวันเดียวกัน');
+  assert.match(list, /gap: 10px/, 'ระยะระหว่างวันหยุดสองวันไม่พอ ชื่อของรายการก่อนจะชิดวันที่ของรายการถัดไป');
   assert.match(li, /gap: 1px/, 'ระยะระหว่างวันที่กับชื่อของมันเองกว้างเกินไป');
 });
 
