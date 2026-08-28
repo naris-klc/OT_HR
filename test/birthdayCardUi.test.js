@@ -265,16 +265,19 @@ test('the search row carries no blur, no sticky and no fill of its own', () => {
 
 test('the status chip sits in the card’s top-right, on the name’s line', () => {
   const tr = phone.slice(phone.indexOf('.bmonth-table tr {'), phone.indexOf('table.bmonth-table td {'));
-  // THREE TRACKS SINCE THE SECOND COMPACTION on 2026-08-27, and it read
-  // `minmax(0, 1fr) auto` before it. The chip keeps the LAST one, which is the
-  // only thing this test is about; what changed under it is that แผนก now sizes
-  // the first and บริษัท takes the middle — see the next test.
-  assert.match(tr, /grid-template-columns: auto minmax\(0, 1fr\) auto;/);
+  // THREE TRACKS, and it read "auto minmax(0, 1fr) auto" between the second
+  // compaction of 2026-08-27 and the sixth on 2026-08-28. The chip keeps the
+  // LAST one, which is the only thing this test is about; what changed under it
+  // is that the last track now has a `min-content` FLOOR — วันเกิด and แผนก
+  // size the first two and the chip must not be squeezed out of its corner by
+  // a long department. See the next test for the line they share.
+  assert.match(tr, /grid-template-columns: auto auto minmax\(min-content, 1fr\);/);
   assert.match(tr, /"who\s+who\s+state"/);
   // The rows that still START at the card's left edge — the inset this card was
   // rebuilt to remove. `co` and `hrs` are not in this list: they are the two
-  // cells deliberately not at the left edge, sharing แผนก's row.
-  for (const area of ['note', 'date', 'dept', 'act']) {
+  // cells deliberately not at the left edge, one beside แผนก and one under the
+  // chip.
+  for (const area of ['note', 'date', 'act']) {
     assert.ok(new RegExp(`"${area}\\s`).test(tr),
       `${area} no longer starts at the card's left edge`);
   }
@@ -284,34 +287,63 @@ test('the status chip sits in the card’s top-right, on the name’s line', () 
 });
 
 /**
- * The card got about a third shorter on 2026-08-27, asked for as "ปรับ Layout
- * ส่วนรายชื่อวันเกิดพนักงานให้กระชับขึ้น … เพื่อประหยัดพื้นที่ Vertical Space
- * บนมือถือ". What is pinned below is only the part a later tidy would undo
- * without noticing: which cell may share the second track, and the selector
- * that makes `padding: 0` apply at all.
+ * The card got about a third shorter on 2026-08-27 and shorter again on
+ * 2026-08-28, both times asked for in the same words — "ประหยัดพื้นที่
+ * Vertical Space บนมือถือ", the second time naming วันเกิด / แผนก / บริษัท and
+ * the buttons together. The buttons still do not fit on that line and the
+ * stylesheet carries the measurement that says so; the three facts now do.
  *
- * Measured on the built app at 360px, a มีใบแล้ว card: 297px → 211 → 185.
+ * What is pinned below is only the part a later tidy would undo without
+ * noticing: that the three share ONE row, that the date is short so they can,
+ * and the selector that makes `padding: 0` apply at all.
+ *
+ * Measured on the built app at 360px, a มีใบแล้ว card: 297px → 211 → 185 → 172
+ * → 134.
  */
-test('แผนก, บริษัท and ชั่วโมง share a line, and วันเกิด is not allowed to', () => {
+test('วันเกิด, แผนก and บริษัท share one line, and the short date is what pays for it', () => {
   const tr = phone.slice(phone.indexOf('.bmonth-table tr {'), phone.indexOf('table.bmonth-table td {'));
-  // ALL THREE SHORT FACTS ON ONE ROW. It was `"co hrs"` with แผนก on a line of
-  // its own for the few hours between the two compactions of 2026-08-27; the
-  // three together used less than half the card's width and three of its rows.
-  assert.match(tr, /"dept\s+co\s+hrs"/, 'the short facts went back to a line each');
-  // AND วันเกิด KEEPS ITS OWN. It carries `white-space: nowrap` from HrView, so
-  // it has no wrap to fall back on: the longest date this app draws —
-  // "13 สิงหาคม 2569 วันพฤหัสบดี" — is most of a 312px card on its own, and a
-  // pair that fits in August and overflows in November pushes the page sideways
-  // nine months a year. The other three labelled cells wrap and are safe.
-  assert.match(tr, /"date\s+date\s+date"/, 'วันเกิด was paired with something');
+  // ALL THREE FACTS ON ONE ROW. It was "date date date" over "dept co hrs" —
+  // two rows — until the long date stopped being drawn here.
+  assert.match(tr, /"date\s+dept\s+co"/, 'the facts went back to a line each');
+  // AND THE FIGURE WENT UP UNDER THE CHIP, onto the status sentence's row: the
+  // line it used to share is full, and มีใบแล้ว with the hours that ใบ carries
+  // reads down the card's right edge as one fact.
+  assert.match(tr, /"note\s+note\s+hrs"/, 'ชั่วโมง lost the corner it shares with the chip');
+
+  // WHY IT FITS NOW, AND THE ONE THING THAT WOULD UNDO IT. วันเกิด carries
+  // `white-space: nowrap` from HrView and has no wrap to fall back on, so the
+  // long form — "25 พฤศจิกายน 2569 วันพฤหัสบดี", 185px of a 314px card — could
+  // never share a line with anything. Both lengths are in the markup and the
+  // stylesheet picks: the desktop table keeps the long one.
   assert.match(hrView, /className="date-col" style=\{\{ whiteSpace: 'nowrap' \}\}/,
-    'the nowrap that makes วันเกิด the unpairable one is gone — re-check the pairing above');
-  // The figure goes to the card's right edge, under the chip, with its label.
-  // Matched whole rather than sliced: `td.hrs-col` appears three times in this
-  // block — in the three-selector rule it shares with วันเกิด and บริษัท, in
-  // that group's `::before`, and here — so an index either side of it lands on
-  // the wrong one of the three.
+    'the nowrap that made the long date unpairable is gone — re-check the row above');
+  assert.match(hrView, /<span className="date-full">\{thaiDate\(r\.date\)\}<\/span>/);
+  assert.match(hrView, /<span className="date-abbr">\{thaiDateShort\(r\.date\)\}<\/span>/);
+  assert.match(hrView, /<span className="date-full">วัน\{dayName\(r\.date\)\}<\/span>/);
+  assert.match(hrView, /<span className="date-abbr">\{dayAbbr\(r\.date\)\}<\/span>/);
+  // The desktop hides the short one, the phone block hides the long one, and
+  // the two rules are the same weight — so the ORDER in the file is what
+  // decides, and the phone block is the one below.
+  const desktopHalf = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(desktopHalf, /\.bmonth-table \.date-abbr \{ display: none; \}/);
+  assert.match(phone, /\.bmonth-table \.date-full \{ display: none; \}/);
+  assert.match(phone, /\.bmonth-table \.date-abbr \{ display: inline; \}/);
+  // SCOPED TO THIS TABLE. `.date-abbr` is a name the next card that wants a
+  // short date will reach for, and an unscoped `display: none` would hide it.
+  assert.ok(!/^\s*\.date-(full|abbr) \{/m.test(css), 'the short-date switch went global');
+
+  // แผนก IS THE GIVE. Its min-content is one character with this on, which is
+  // what lets the chip's track keep a floor without the row ever overflowing.
+  assert.match(phone, /\.bmonth-table td\.dept-col \{[^}]*overflow-wrap: anywhere;/);
+  // The figure keeps the card's right edge, with its label. Matched whole
+  // rather than sliced: `td.hrs-col` appears three times in this block.
   assert.match(phone, /\.bmonth-table td\.hrs-col \{\s*grid-area: hrs; justify-self: end;/);
+  // ชั่วโมง IS THE LAST LABEL ON THE CARD — วันเกิด's and บริษัท's cost 44px
+  // each of a 314px line and the section's own heading says what the date is.
+  // A bare number does not have that.
+  assert.match(phone, /\.bmonth-table td\.hrs-col::before \{ content: 'ชั่วโมง'; \}/);
+  assert.ok(!/\.bmonth-table td\.(date|co)-col::before/.test(phone),
+    'a label came back onto the fact line — re-measure it before believing it fits');
 });
 
 /**
@@ -403,7 +435,7 @@ test('and the sentence under it is full width, not squeezed in beside it', () =>
   assert.ok(!/"state\s+state"/.test(tr), 'the status got its own full-width row back');
   // …and it is no longer one of the labelled facts, which is a group that draws
   // a `::before` label the status must never grow.
-  const facts = phone.slice(phone.indexOf('.bmonth-table td.date-col,'), phone.indexOf('.bmonth-table td.date-col::before'));
+  const facts = phone.slice(phone.indexOf('.bmonth-table td.date-col,'), phone.indexOf('.bmonth-table td.hrs-col::before {'));
   assert.ok(!/state-col/.test(facts), 'the status is back among the labelled facts');
 });
 

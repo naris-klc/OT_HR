@@ -384,14 +384,16 @@ test('the pager sits under the fifth card, above the total, and disables its end
   // border and the fill off had stopped them LOOKING like cards; nothing had
   // stopped them SITTING like cards.
   //
-  // 6 AND NOT 12, BECAUSE THE PARENT IS A FLEX COLUMN — `gap` and `margin` add
-  // here rather than collapsing, so 6 makes both gaps 18. Half again on the
-  // cards' own 12 is enough to read as a change of kind; it is also the same 18
-  // the two header blocks above the list take, so the screen has one size of
-  // joint. รวมทั้งหมด states no margin of its own on purpose: this row's bottom
-  // margin IS the gap over it, written once, and what follows the total
-  // declares its own 12.
-  assert.match(phone, /\.hr-table tbody tr\.pager-row \{[^}]*margin: 6px 0;/);
+  // THE PARENT IS A FLEX COLUMN — `gap` and `margin` add here rather than
+  // collapsing, so this number is added to the list's own 12. It read "6px",
+  // and therefore 18, for a day: asked about again on 2026-08-28 as the foot of
+  // the last card wanting to be "โปร่งและสม่ำเสมอ", because the two things this
+  // joint separates are not two borders — a bordered button 15px inside the
+  // card's edge above, a filled chevron square hard against the top of the band
+  // below. 12 makes both gaps 24, twice the cards' own pitch. รวมทั้งหมด states
+  // no margin of its own on purpose: this row's bottom margin IS the gap over
+  // it, written once, and what follows the total declares its own 12.
+  assert.match(phone, /\.hr-table tbody tr\.pager-row \{[^}]*margin: 12px 0;/);
   assert.match(phone, /\.hr-table tbody \{\s*display: flex; flex-direction: column; gap: 12px;/,
     'the list stopped being a flex column — margin and gap no longer add up');
   assert.ok(!/\.hr-table tbody tr\.total-row \{[^}]*margin/.test(phone),

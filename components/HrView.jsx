@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS, companyLabel,
+  api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, currentPeriod, periodLabel,
+  BUCKETS, companyLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_STATUS, STATUS_LABEL_TH, UNCHECKABLE } from '@/lib/birthdayCheck.js';
 import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
@@ -1773,9 +1774,29 @@ function BirthdayMonth({
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.code}</div>
                   </td>
                   <td className="dept-col">{r.department || '—'}</td>
+                  {/* BOTH LENGTHS OF THE SAME DATE, AND THE STYLESHEET PICKS.
+                      The desktop table reads this column down the page and keeps
+                      "13 สิงหาคม 2569 / วันพฤหัสบดี"; the phone card puts the
+                      date, แผนก and บริษัท on ONE line and cannot afford it —
+                      "25 พฤศจิกายน 2569 วันพฤหัสบดี" measures 185px of a 314px
+                      card on its own. `thaiDateShort`/`dayAbbr` are the forms
+                      lib/api.js already built for exactly this, and here the
+                      month and the year are said twice over anyway: by the
+                      period picker at the top of the screen and by the heading
+                      วันเกิดของเดือนนี้ above the list.
+
+                      NOT A WIDTH TEST IN THE COMPONENT. Nothing in this file
+                      asks how wide the screen is — `.date-abbr` is hidden by
+                      default and unhidden inside the 860px block, one answer in
+                      one place, which is the rule this screen has kept
+                      throughout. */}
                   <td className="date-col" style={{ whiteSpace: 'nowrap' }}>
-                    {thaiDate(r.date)}
-                    <div className="cell-sub th" style={{ fontSize: 12, color: 'var(--muted)' }}>วัน{dayName(r.date)}</div>
+                    <span className="date-full">{thaiDate(r.date)}</span>
+                    <span className="date-abbr">{thaiDateShort(r.date)}</span>
+                    <div className="cell-sub th" style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      <span className="date-full">วัน{dayName(r.date)}</span>
+                      <span className="date-abbr">{dayAbbr(r.date)}</span>
+                    </div>
                   </td>
                   <td className="co-col">{companyLabel(r.company)}</td>
                   <td className="state-col">

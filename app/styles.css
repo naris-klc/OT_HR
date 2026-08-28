@@ -2634,6 +2634,21 @@ td > .approver-line { margin-top: 5px; }
    are those rows. */
 .btn.bday-more { display: none; }
 
+/* ══ "13 สิงหาคม 2569" OR "13 ส.ค. 69" — THE SAME CELL, TWO LENGTHS ═════════
+
+   Both are in the markup and this is which one the desktop shows. Up here the
+   month table is a table read down its own columns and a date is worth its full
+   length; below 860px the same cell shares ONE line with แผนก and บริษัท, where
+   the long form is 185px of a 314px card — see the phone block, which flips
+   these two. Same specificity as the rule that flips them, so the ORDER in this
+   file is what decides: that block is 4,500 lines below this one.
+
+   SCOPED TO `.bmonth-table` ON PURPOSE. `.date-full` and `.date-abbr` are the
+   kind of general-sounding names that get borrowed by the next card that wants
+   a short date, and a bare `.date-abbr { display: none }` in the sheet's middle
+   would then hide that one too, from four thousand lines away. */
+.bmonth-table .date-abbr { display: none; }
+
 /* Not an option and not selectable: no pointer, no highlight, no role. */
 .pick-menu li.none {
   cursor: default; font: 400 13px/1.5 var(--sans); color: var(--muted-2);
@@ -7185,14 +7200,20 @@ table.mini tbody tr:hover { background: none; }
      footnotes, and both are boundaries rather than beats. */
   .bmonth-table tbody { display: flex; flex-direction: column; gap: 12px; padding: 10px 0; }
 
-  /*  THE SAME CARD AS วันเกิดรอตรวจ, cell for cell — the name and its code, the
-      status in the corner beside them, แผนก under, then a ruled block of
-      labelled facts, then the buttons. The two screens are the same rows read
-      for two different reasons and there is no reason for them to be two shapes.
+  /*  FOUR ROWS AND ONE RULE — the name and its code with the status in the
+      corner beside them, the sentence that explains the status under it, then
+      every fact on ONE line, then the buttons. It read as the card below until
+      2026-08-28's round six, which took the two fact lines down to one.
 
-      วิชัย ศรีสุข                            [ต้องตรวจ]
-      PM-0100
-      วิศวกรรม
+      วิชัย ศรีสุข  PM-0100                   [ต้องตรวจ]
+      ยังไม่มีบันทึกเวลาให้เทียบ                   ชั่วโมง 8
+      10 ส.ค. 69 จ.   วิศวกรรม   ไพรมัส
+      ──────────────────────────────────────────
+      [ บันทึก OT ให้ ]     [ ไม่ได้มาทำงาน ]
+
+      It was, through rounds one to five:
+
+      วิชัย ศรีสุข  PM-0100                   [ต้องตรวจ]
       ยังไม่มีบันทึกเวลาให้เทียบ
       ──────────────────────────────────────────
       วันเกิด  10 สิงหาคม 2569 วันจันทร์
@@ -7272,58 +7293,83 @@ table.mini tbody tr:hover { background: none; }
       That buys back the two lines the old placement cost: the chip's own line
       and the row gap over it.
 
-      TWO TRACKS, and TWO rows use the second one now. Everything else spans
-      both, which is what keeps แผนก and วันเกิด starting at the left edge — the
-      gap this card used to have between วิศวกรรม and · ไพรมัส came from a track
-      being stretched by items crossing it.
+      THE CHIP'S TRACK IS SHARED, which is the one thing to check before moving
+      anything into it. It held the chip and ชั่วโมง when this was written and
+      holds บริษัท as well since round six; its floor is the widest of the
+      three's min-content and the chip is that in every case the app draws —
+      "วันหยุดอยู่แล้ว" is about 90px against "ชั่วโมง 8"'s 60 and "เดมเทค"'s 40
+      — so whatever the track comes to is the chip's own width, taken off the
+      NAME on the row above. If a figure or a company name ever grew past the
+      chip it would be the name that gave way. */
+  /* ══ THE THREE MIDDLE LINES BECAME TWO — 2026-08-27, ROUND TWO ══════════
 
-      THE SECOND TRACK IS `auto` AND IT IS SHARED, which is the one thing to
-      check before moving anything into it: its width is the widest of the chip
-      and ชั่วโมง, and whatever it comes to is taken off the NAME. The chip is
-      the wider of the two in every case the app draws — "วันหยุดอยู่แล้ว" is
-      about 90px against "ชั่วโมง 8"'s 60 — so the pairing costs the name
-      nothing today, and if a figure ever grew past the chip it would be the
-      name that gave way. That is why บริษัท keeps the 1fr track and only the
-      number went right. */
-  /* ══ AND THE THREE MIDDLE LINES BECAME TWO — 2026-08-27, ROUND TWO ═══════
+     Kept as history because the paragraph above still argues from it. Round two
+     paired แผนก with บริษัท and sent ชั่วโมง to the chip's track: the template
+     read "auto minmax(0, 1fr) auto" over five rows, with วันเกิด spanning all
+     three on a line of its own because the long form is `nowrap` and would not
+     share one. −22px a card, and it was described here as "the last structural
+     line this layout has". It was not; it was the last one available while the
+     date stayed long, which is the thing round six below changed.
 
-     Asked again, in the same words: make this section shorter on a phone. The
-     card had already lost 86px and what was left of it was five lines of one
-     fact each, three of them short: แผนก, บริษัท and ชั่วโมง together used less
-     than half the width and three of the card's rows.
+     WHY แผนก LOSES ITS LABEL-LESS LINE AND NOT ITS LABEL, from that round and
+     still true. It never had a label — it is the only fact on this card drawn
+     as bare grey text, which is what it is on วันเกิดรอตรวจ too, and sharing a
+     row with labelled facts did not make it one of them. It keeps its own
+     colour and size; what it lost is a whole row for one short word.
 
-     A THIRD TRACK, AND ONLY ONE ROW USES ALL THREE. `auto minmax(0, 1fr) auto`
-     — แผนก sizes itself on the left, บริษัท takes what is left in the middle,
-     ชั่วโมง lands in the same right-hand track the chip already occupies, so
-     the figure reads down the card's right edge under the status it belongs
-     with. −22px a card, and it is the last structural line this layout has:
-     every remaining row is either full width by necessity (the name, the
-     status sentence, วันเกิด, the buttons) or already paired.
+     THE TRACK SIZES ARE THE RISK AND THEY ARE MEASURED, NOT REASONED — the one
+     paragraph of that round that governs every round after it. A spanning
+     item's intrinsic width is distributed across the tracks it covers, so the
+     name and the status sentence can in principle inflate the `auto` tracks the
+     facts sit in. Walked on the built app at 320, 360 and 430px against the
+     longest department and the longest date this roster holds, then and again
+     on 2026-08-28: the row stays one line and the document's scroll width stays
+     equal to its client width. */
+  /* ══ AND THE TWO MIDDLE LINES BECAME ONE — 2026-08-28, ROUND SIX ═════════
 
-     WHY แผนก LOSES ITS LABEL-LESS LINE AND NOT ITS LABEL. It never had one —
-     it is the only fact on this card drawn as bare grey text, which is what it
-     is on วันเกิดรอตรวจ too, and moving it into a row with two labelled facts
-     does not make it one of them. It keeps its own colour and size; what it
-     loses is a whole row to itself for one short word.
+     Asked for again, and for the first time with the arithmetic on its side:
+     "จัดวางข้อมูล วันเกิด / แผนก / บริษัท และปุ่ม Action … ให้อยู่ในระนาบที่
+     ประหยัดพื้นที่แนวตั้ง". The buttons still do not fit on that line and the
+     ledger above says why — 592 to 623px wanted against 314 — but the three
+     FACTS now do, because the date got shorter.
 
-     THE TRACK SIZES ARE THE RISK AND THEY WERE MEASURED, NOT REASONED. Three
-     rows span all three tracks — the name, the status sentence and วันเกิด —
-     and a spanning item's intrinsic width is distributed across the tracks it
-     covers, so a long วันเกิด (which is `nowrap` and cannot give way) can in
-     principle inflate the `auto` track that แผนก sits in. Walked on the built
-     app at 320, 360 and 430px against the longest department and the longest
-     date this roster holds: the row stays one line and the document's scroll
-     width stays equal to its client width. If a longer department ever arrives,
-     บริษัท's `minmax(0, 1fr)` is the give — it wraps inside its own cell and
-     the card grows one line rather than the page growing sideways. */
+     WHAT MADE IT POSSIBLE, measured on the built app at 360px where a card is
+     314px wide inside its padding. The long date is the whole obstacle: "25
+     พฤศจิกายน 2569" + "วันพฤหัสบดี" is 185px, and 185 + แผนก 89 + บริษัท 40 +
+     two joints is 330 — over by 16 before a label is drawn. The short forms
+     lib/api.js already carries take the same two facts to 87px, and the row
+     comes to 282 at its worst (ควบคุมคุณภาพ, the longest department this
+     roster holds) with the chip's track still 90 wide beside it. The month and
+     the year are not lost: they are on the period picker at the top of the
+     screen and in the heading over this list, said once instead of six times.
+
+     AND THE TWO LABELS WENT WITH IT. `วันเกิด` and `บริษัท` cost 44px each of
+     a 314px line — they were the columns' headings, moved onto the card when
+     the thead was dropped, and on a card inside a section called
+     วันเกิดของเดือนนี้ a date can only be one date. ชั่วโมง KEEPS its label:
+     it is a bare number and nothing around it says what it counts.
+
+     THE THIRD TRACK IS SHARED BY THREE THINGS NOW — the chip, ชั่วโมง and
+     บริษัท — and `minmax(min-content, 1fr)` is what makes that safe. The floor
+     is the widest of the three's min-content, which is the chip at about 90px
+     (วันหยุดอยู่แล้ว, unbreakable in Thai), so the status can never be squeezed
+     out of its corner by a long department; the ceiling is 1fr, so บริษัท gets
+     whatever the two `auto` tracks leave. The give is แผนก, which takes
+     `overflow-wrap: anywhere` below: in the worst case it breaks mid-word and
+     the card grows a line rather than the page growing sideways.
+
+     ชั่วโมง MOVED UP UNDER THE CHIP, onto the row the status sentence uses. It
+     was on บริษัท's line and that line is now full. Under the chip is where it
+     belongs anyway — มีใบแล้ว and the hours that ใบ carries are one fact read
+     down the card's right edge — and on every ต้องตรวจ row there is no figure
+     at all (`.hrs-col.none`), so the row it sits on collapses to nothing. */
   .bmonth-table tr {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto auto minmax(min-content, 1fr);
     grid-template-areas:
       "who   who   state"
-      "note  note  note"
-      "date  date  date"
-      "dept  co    hrs"
+      "note  note  hrs"
+      "date  dept  co"
       "act   act   act";
     gap: 3px 8px; align-items: start;
     /* 10, and it read 15 then 12. The employee cards above keep 15 and should:
@@ -7384,26 +7430,34 @@ table.mini tbody tr:hover { background: none; }
      question answered the other way because those two cells are two facts. */
   .bmonth-table td.who-col { grid-area: who; font: 600 15px/1.35 var(--sans); }
   .bmonth-table td.who-col > div { display: inline; margin-left: 7px; }
-  /* `padding: 1px 0` is the labelled facts' padding, and it is here for one
-     reason: since 2026-08-27 แผนก shares their row, and three cells on one line
-     whose text boxes start at three different offsets do not sit on one
-     baseline. It takes their spacing without taking their `::before`.
+  /* `padding: 1px 0` is the other facts' padding, and it is here for one
+     reason: แผนก shares their line, and three cells on one line whose text
+     boxes start at three different offsets do not sit on one baseline.
 
      THE 6px ON THE RIGHT IS A JOINT, NOT PADDING. The grid `gap` is one number
-     for the whole card and 8px of it between แผนก and บริษัท's label reads as a
-     word space — "วิศวกรรม บริษัท" comes out looking like one phrase in a
-     script that sets no spaces between words anyway. 14px is where the eye
-     stops joining them. It goes on this cell rather than on the `gap` because
-     the same 8 is right everywhere else on the card, and it comes out of the
-     `auto` track this cell sizes, so บริษัท's `1fr` is what pays for it. */
+     for the whole card and 8px of it between แผนก and บริษัท reads as a word
+     space — "วิศวกรรม ไพรมัส" comes out looking like one phrase in a script
+     that sets no spaces between words anyway. 14px is where the eye stops
+     joining them, and it is the ONLY thing that separates them since round six
+     took บริษัท's label off. It goes on this cell rather than on the `gap`
+     because the same 8 is right everywhere else on the card, and it comes out
+     of the `auto` track this cell sizes.
+
+     `overflow-wrap: anywhere` IS THE GIVE FOR THE WHOLE ROW, and it is what
+     lets the third track keep a `min-content` floor without the card ever
+     pushing the page sideways. A Thai department is one unbreakable word, so
+     without this its min-content is its full width and a long enough one would
+     overflow the line; with it, แผนก breaks mid-word and the card grows a line
+     instead. It is the last thing on the row that may bend: วันเกิด is `nowrap`
+     from the component, and the chip's floor is the point of the floor. */
   .bmonth-table td.dept-col {
-    grid-area: dept; padding: 1px 6px 1px 0;
+    grid-area: dept; padding: 1px 6px 1px 0; min-width: 0; overflow-wrap: anywhere;
     font: 400 13px/1.45 var(--sans); color: var(--muted);
   }
 
-  /* Label and value on one line, the block ruled off above it. The headings
-     these labels replace went with the thead. `state-col` is no longer one of
-     them — it carries no label and its two halves now sit in two places.
+  /* The three facts, all on one line since 2026-08-28. Two of them carry no
+     label any more — see the round-six note above for what the 88px of label
+     bought — and ชั่วโมง keeps its, so the pair still reads label-then-value.
 
      1px AND 1.45, WHICH READ 2px AND 1.5 UNTIL 2026-08-27. Four lines' worth of
      padding at both ends and a hair of leading off each — the smallest of the
@@ -7411,45 +7465,49 @@ table.mini tbody tr:hover { background: none; }
      touches type. It stops there: 13px is the size, and a section somebody has
      to read a date out of does not get a smaller one to save a scroll.
 
-     `flex-wrap: wrap` IS THE FLOOR UNDER ALL OF IT. If a label and its value
-     ever will not fit — a narrower phone than this app has met, a longer
-     company name — the value drops under the label and the card grows a line
-     rather than pushing the page sideways. That is what makes pairing บริษัท
-     with ชั่วโมง safe and pairing anything with วันเกิด not: วันเกิด is
-     `nowrap` from the component and has no such floor. */
+     `flex-wrap: wrap` IS THE FLOOR UNDER ALL OF IT. If a cell's contents ever
+     will not fit — a narrower phone than this app has met, a longer company
+     name — they drop onto a second line inside the cell and the card grows a
+     line rather than pushing the page sideways. วันเกิด is the one that cannot:
+     it is `nowrap` from the component, which is why it went short rather than
+     being made to bend. */
   .bmonth-table td.date-col,
   .bmonth-table td.co-col,
   .bmonth-table td.hrs-col {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;
     padding: 1px 0; font: 400 13px/1.45 var(--sans); text-align: left;
   }
-  /* 44 AND NOT THE 52 IT WAS. The label column only has to hold the widest of
-     the three — วันเกิด, บริษัท, ชั่วโมง — and 44 does at 11px mono; the eight
-     that came off go to the value beside it, which is what buys บริษัท and
-     ชั่วโมง the room to share a line. The three still agree with each other,
-     which is the whole point of a `min-width` here: the values start on one
-     left edge down the card. */
-  .bmonth-table td.date-col::before,
-  .bmonth-table td.co-col::before,
+  /* ONE LABEL LEFT, and the `min-width` that lined three of them up went with
+     the other two: there is no column of values to keep a left edge with any
+     more. `flex: none` stays — a label never wraps away from its figure. */
   .bmonth-table td.hrs-col::before {
-    flex: none; min-width: 44px;
+    flex: none;
     font: 600 11px/1.45 var(--mono); letter-spacing: .05em; color: var(--muted-2);
   }
-  .bmonth-table td.date-col {
-    grid-area: date;
-    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-softer);
-  }
-  .bmonth-table td.date-col::before { content: 'วันเกิด'; }
+  /* THE FACTS' OWN JOINT, AND THE CARD IS DOWN TO ONE RULE. The hairline that
+     used to sit over วันเกิด separated the name block from a two-line block of
+     facts; the facts are one line now, and a rule over a single line makes a
+     three-line card look like three sections. 6px of margin is what is left of
+     it — the same 6 the rule over the buttons takes, so the card reads name ·
+     facts · decision with one drawn line, at the place where the reading
+     actually changes. */
+  .bmonth-table td.date-col { grid-area: date; margin-top: 6px; }
+  .bmonth-table td.co-col { grid-area: co; margin-top: 6px; }
+  .bmonth-table td.dept-col { margin-top: 6px; }
+  /* "จ." rather than "วันจันทร์", and "10 ส.ค. 69" rather than the long form —
+     both spans are in the markup and this is the half the card shows. The
+     desktop rule is 4,500 lines up and this one wins on order, not weight. */
+  .bmonth-table .date-full { display: none; }
+  .bmonth-table .date-abbr { display: inline; }
   .bmonth-table td.date-col .cell-sub { display: inline; margin: 0 0 0 5px; }
 
-  .bmonth-table td.co-col { grid-area: co; }
-  .bmonth-table td.co-col::before { content: 'บริษัท'; }
-
-  /* Second track, on บริษัท's line — see the ledger at the top of this block.
-     `justify-self: end` puts it against the card's right edge under the chip
-     rather than leaving it floating in the middle of a track sized by one; the
-     label goes with it, so the pair reads "ชั่วโมง 8" as one object rather than
-     as a heading stranded from its figure. */
+  /* UNDER THE CHIP, ON THE STATUS SENTENCE'S ROW. It shared บริษัท's line until
+     round six filled that line; the corner is where it belonged anyway —
+     มีใบแล้ว and the hours that ใบ carries are one fact read down the card's
+     right edge. `justify-self: end` puts it against the card's right edge
+     rather than leaving it floating in the middle of a track sized by the chip;
+     the label goes with it, so the pair reads "ชั่วโมง 8" as one object rather
+     than as a heading stranded from its figure. */
   .bmonth-table td.hrs-col {
     grid-area: hrs; justify-self: end;
     font-family: var(--mono); font-variant-numeric: tabular-nums;
@@ -8545,7 +8603,7 @@ table.mini tbody tr:hover { background: none; }
      screen is a control, and a bordered block around it reads as a sixth person
      with nothing in them.
 
-     AND 6px OF MARGIN EITHER SIDE, WHICH IS THE ONLY THING THAT SAYS SO NOW.
+     AND 12px OF MARGIN EITHER SIDE, WHICH IS THE ONLY THING THAT SAYS SO NOW.
      Asked for on 2026-08-27: the pager and รวมทั้งหมด were "ชิดการ์ดพนักงาน
      เกินไป". They were — at exactly 12px, which is the `gap` between one
      employee card and the next, so the band with the chevrons in it and the
@@ -8554,13 +8612,17 @@ table.mini tbody tr:hover { background: none; }
      the fill off (above) stopped them LOOKING like cards; nothing had yet
      stopped them SITTING like cards.
 
-     6 AND NOT 12, AND THE PARENT IS A FLEX COLUMN. `gap` and `margin` add up
-     here rather than collapsing, so 6 makes both gaps 18 — half again on the
-     12 the cards keep between themselves, which is enough to read as a change
-     of kind and not so much that the foot of the list floats away from it. The
-     column now goes 12 · 12 · 12 · 12 (five cards) · 18 · pager · 18 · total,
-     and the two 18s are the same number the header blocks above the list take
-     between them; one screen, one size of joint.
+     THE PARENT IS A FLEX COLUMN, so `gap` and `margin` add up here rather than
+     collapsing: this number is added to the list's own 12. It read "6px" — and
+     therefore 18 — for a day, and the same joint was asked about again on
+     2026-08-28, this time as the foot of the last card wanting to be "โปร่งและ
+     สม่ำเสมอ". 18 was measured and it was real; what it was not was ENOUGH to
+     read as a change of kind, because the two things it separates are not two
+     borders. Above it a card's last ink is a 44px bordered button 15px inside
+     its own edge; below it the band's first ink is a 38px filled chevron
+     square with no padding at all, hard against the top of its row. 12 makes
+     both gaps 24 — twice the cards' own pitch, and the column now goes
+     12 · 12 · 12 · 12 (five cards) · 24 · pager · 24 · total.
 
      BOTH SIDES, AND THE BOTTOM ONE IS รวมทั้งหมด's. The total row states no
      margin of its own — it is the LAST item of this flex column and what sits
@@ -8570,7 +8632,7 @@ table.mini tbody tr:hover { background: none; }
      once. */
   .hr-table tbody tr.pager-row {
     display: block; padding: 0; border: 0; background: none;
-    margin: 6px 0;
+    margin: 12px 0;
   }
   .hr-table tbody tr.pager-row:hover { background: none; }
 

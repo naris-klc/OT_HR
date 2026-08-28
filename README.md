@@ -3435,6 +3435,11 @@ come out at **18**. The total states no margin of its own on purpose: the
 pager's bottom margin is the gap over รวมทั้งหมด, written once, and what follows
 the total already declares its own 12.
 
+*This is the state it was left in on 2026-08-27.* The margin read "6px" and the
+gaps "18" until the same joint was asked about again the next day; both are 12
+and 24 now — see §"วันเกิด แผนก บริษัท มาอยู่บรรทัดเดียว" below for what 18 was
+missing. Everything else in this paragraph still holds.
+
 **2 — the birthday card is about a third shorter.** Asked for as *"ปรับ Layout
 ส่วนรายชื่อวันเกิดพนักงานให้กระชับขึ้น … เพื่อประหยัดพื้นที่ Vertical Space
 บนมือถือ"*, with a horizontal carousel offered as one way and a smaller card as
@@ -3461,6 +3466,12 @@ back on: the longest date this app draws — *13 สิงหาคม 2569 ว�
 most of a 312px card on its own, and a pair that fits in August and overflows in
 November would push the page sideways nine months a year. The three labelled
 cells all wrap; บริษัท and ชั่วโมง are the two that stay short in every month.
+
+*The rule held for as long as the date was long.* On 2026-08-28 the phone card
+took `thaiDateShort` and `dayAbbr` instead — 185px of date became 87 — and all
+three facts went onto one line; the `nowrap` and the reasoning above are still
+exactly why the SHORT form was the thing that had to change. The labels
+*วันเกิด* and *บริษัท* are gone from the card with it. See the section below.
 
 **Two things were deliberately not taken.** The buttons keep `min-height: 44px`
 — they are the decision the section exists to collect, and a target that shrinks
@@ -3750,9 +3761,9 @@ had already shipped twice, and this time it was checked a third way rather than
 answered a third time. An ancestor walk only finds a container that is an
 *ancestor*; a sibling painting behind the list would not appear in one. So the
 gaps themselves were sampled — the browser's own hit-test, at four x positions in
-the 12px between two employee cards, in the 18px between the pager and
-รวมทั้งหมด, and in the 12px between two birthday cards, each walked up to
-whatever actually paints there.
+the 12px between two employee cards, in the "18px" between the pager and
+รวมทั้งหมด — 24 since 2026-08-28 — and in the 12px between two birthday cards,
+each walked up to whatever actually paints there.
 
 **All twelve points answer the same element: `div.shell`, `rgb(16, 21, 19)`** —
 the page. The employee list, the pager, the total and the birthday cards below
@@ -3768,6 +3779,90 @@ own cache until it is reloaded. Both halves of this request describe the app as
 it was before those two deploys. There is no scheduled task and no service
 worker on this box to push a new bundle at an open tab; a hard reload is the
 whole of it.
+
+### วันเกิด แผนก บริษัท มาอยู่บรรทัดเดียว — และช่องไฟใต้การ์ดใบสุดท้าย — 2026-08-28
+
+**Two asks, both about ตรวจสอบรายเดือน on a phone, and the sixth round on this
+one card.** Measured on the built app at 360px on a scratch `distDir` at :3001,
+with :3000 untouched; the desktop at 1280px does not move by a pixel — page
+height, section height and every birthday row (54 or 75px) are the same before
+and after.
+
+**1 — วันเกิด / แผนก / บริษัท share one line, and the buttons still do not.**
+Asked as *"จัดวางข้อมูล วันเกิด / แผนก / บริษัท และปุ่ม Action … ให้อยู่ในระนาบ
+ที่ประหยัดพื้นที่แนวตั้ง"*. The buttons are refused for the second time by the
+same table two sections up — the ต้องตรวจ strip needs 592–623px of a 316px card
+and no layout closes a gap of that size. The three facts are a different
+question, and this time the arithmetic changed.
+
+**What changed is the date, and it was the whole obstacle.** *25 พฤศจิกายน 2569*
++ *วันพฤหัสบดี* measures **185px** of the 314px a card has inside its padding —
+185 + แผนก 89 + บริษัท 40 + two joints is 330, over the edge before a label is
+drawn, and the cell carries `white-space: nowrap` from the component so it has no
+wrap to fall back on. `thaiDateShort` and `dayAbbr` — the pair lib/api.js already
+built for คิวรออนุมัติ — say the same two facts in **87px**, and the row comes to
+**282** at its worst (ควบคุมคุณภาพ, the longest department this roster holds)
+with the chip's track still 90 wide beside it.
+
+**Nothing is lost by shortening it here.** The month and the year are on the
+period picker at the top of the screen and in the heading over the list, and this
+list is one month by construction — printing them on six cards says them seven
+times. The day of the week is *not* dropped, only abbreviated: Saturday and
+Sunday are already holidays and that is what วันหยุดอยู่แล้ว rows turn on.
+
+**Both lengths are in the markup and the stylesheet picks.** `.date-full` and
+`.date-abbr` are two spans; the desktop hides the short one, the phone block
+hides the long one, and the two rules are the same weight, so the order in the
+file is what decides. **Nothing in the component asks how wide the screen is** —
+the rule this screen has kept throughout — and the desktop table, which reads
+this column down the page, keeps *13 สิงหาคม 2569 / วันพฤหัสบดี* untouched.
+
+**The two labels went with it.** `วันเกิด` and `บริษัท` cost 44px each of a
+314px line. They were the column headings, moved onto the card when the `thead`
+was dropped; on a card inside a section called วันเกิดของเดือนนี้ a date can only
+be one date, and *ไพรมัส* is not mistakable for anything else. `ชั่วโมง` keeps
+its label — a bare number is the one value on the card that nothing around it
+explains — and moves up under the chip, onto the status sentence's row, because
+มีใบแล้ว and the hours that ใบ carries are one fact read down the right edge.
+
+| where the height went | |
+|---|---|
+| **−24** | the second fact line, gone: `"date dept co"` is one grid row where `"date date date"` over `"dept co hrs"` was two |
+| **−13** | the hairline over วันเกิด, and its 6 + 6 — the card is down to **one** rule, over the buttons, where the reading actually changes |
+
+**A ต้องตรวจ card at 360px: 172 → 142px. A settled one: 102, and a มีใบแล้ว one
+163.** With the three settled rows folded away as they are by default, the
+section goes **748 → 658** and the page **2483 → 2405** — three cards' worth of
+saving less the 12px the pager below took back in the same round. The fold is
+still the biggest lever this section has; the card is now the smaller one twice
+over.
+
+**The third track has a floor now, and that is the one thing to check before
+moving anything into it.** `grid-template-columns: auto auto minmax(min-content,
+1fr)` — วันเกิด sizes the first, แผนก the second, and the third is shared by the
+chip, ชั่วโมง and บริษัท. Its floor is the widest of those three's min-content,
+which is the chip (*วันหยุดอยู่แล้ว*, about 90px and unbreakable in Thai), so a
+long department can never squeeze the status out of its corner. **แผนก is the
+give**: `overflow-wrap: anywhere` makes its min-content one character, so in the
+worst case it breaks mid-word and the card grows a line rather than the page
+growing sideways. Walked at 320, 360 and 430px against the longest department and
+the longest date: `scrollWidth == clientWidth` at all three, and at 320 the one
+ควบคุมคุณภาพ row takes the second line it is entitled to.
+
+**2 — the foot of the last employee card, before the pager.** Asked as the
+bottom of สุจินดา's card wanting to be *"โปร่งและสม่ำเสมอกับการ์ดใบอื่น"* — the
+same joint that was reported as *ชิดเกินไป* the day before, when it was 12 and
+became 18.
+
+**18 was real and it was not enough, because the two things this joint separates
+are not two borders.** Above it, a card's last ink is a 44px bordered button
+sitting 15px inside the card's own edge; below it, the band's first ink is a 38px
+*filled* chevron square with no padding at all, hard against the top of its row.
+`.pager-row` now takes `margin: 12px 0`, and because `.hr-table tbody` is a flex
+column that **adds** to the 12px `gap` rather than collapsing with it, both gaps
+come out at **24** — twice the cards' own pitch. The column reads 12 · 12 · 12 ·
+12 (five cards) · **24** · pager · **24** · total. รวมทั้งหมด still states no
+margin of its own: the pager's bottom margin is the gap over it, written once.
 
 ### The first card was never clipped — the ค้นหา bar was on it
 
@@ -4628,8 +4723,18 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1720/1720 pass in about 2 s**, measured 2026-08-27 across 103
-  files. The newest is in `test/birthdayCardUi.test.js` for the fold on
+- `npm test` — **1720/1720 pass in about 2 s**, measured 2026-08-28 across 103
+  files. **The count did not move on 2026-08-28 and three cases changed under
+  it**, all in `test/birthdayCardUi.test.js` and `test/hrMonthCards.test.js`,
+  because that round rewrote a layout rather than adding a behaviour: the birthday
+  card's grid is `auto auto minmax(min-content, 1fr)` with วันเกิด, แผนก and
+  บริษัท on ONE row and ชั่วโมง under the chip; the date is drawn twice, long and
+  short, with the stylesheet picking — asserted in both directions, plus that the
+  switch is scoped to `.bmonth-table` and that no `::before` label came back onto
+  the fact line; and the pager band asserts `margin: 12px 0` where it asserted 6.
+  The `white-space: nowrap` case survives unchanged and now reads as the reason
+  the date had to go SHORT rather than the reason it could not be paired.
+  The newest case is in `test/birthdayCardUi.test.js` for the fold on
   วันเกิดของเดือนนี้, and what it pins is the one property that makes a fold
   safe on this screen: WHICH rows go. The class is written as an exception —
   `status === DUE ? undefined : 'settled'` — so a status added later folds by
@@ -4659,17 +4764,21 @@ four role UIs.
   twice and both ways are recorded beside it, the second being that it caught
   the comment written to justify it. It read
   "1717/1717" before it. The two before that are in `test/birthdayCardUi.test.js` for the birthday
-  card being compacted on ตรวจสอบรายเดือน: that บริษัท and ชั่วโมง share a line
+  card being compacted on ตรวจสอบรายเดือน: that the short facts share a line
   while วันเกิด may not — pinned together with the `white-space: nowrap` in
   HrView that is the REASON it may not, so removing the nowrap fails the test
-  that would otherwise let the pairing spread — and that `padding: 0` on those
+  that would otherwise let the pairing spread; that case now reads
+  "วันเกิด, แผนก and บริษัท share one line, and the short date is what pays for
+  it", which is the same assertion answered the other way round — and that
+  `padding: 0` on those
   cells names the element (`table.bmonth-table td`), because the bare class had
   been losing to `table.mini` since the card was written and every cell had been
   carrying 7px of padding nobody had asked for. Three existing cases were
   rewritten rather than adjusted, each with the reason: the grid-area sweep no
-  longer expects `hrs` to start a row, the pager band now asserts its 6px
-  margins and that the tbody is still a flex column so they ADD to the gap, and
-  the two containers above the list read 18px under themselves rather than 13.
+  longer expects `hrs` to start a row, the pager band asserted its "6px" margins
+  (12 since 2026-08-28) and that the tbody is still a flex column so they ADD to
+  the gap, and the two containers above the list read 18px under themselves
+  rather than 13.
   It read "1715/1715" before them. The two before that are for งวดกับช่องค้นหา going above the export buttons
   and the card round the list coming off: that `.month-find` is inside
   `.month-head` and before `.export-row`, and that below 860px `.month-card`
