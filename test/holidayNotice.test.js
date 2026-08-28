@@ -234,29 +234,46 @@ test('the calendar button stays outlined and stays out of the primary\'s way', (
   assert.ok(!/--green/.test(rule), 'ปุ่มรองใช้สีเขียวของแบรนด์ ไปแย่งกับปุ่มหลัก');
 });
 
-test('the banner announces WHICH DAYS — the rates sentence and the names are gone', () => {
-  // Removed on request 2026-08-28. Both had been argued for here and both were
-  // overruled, which is exactly the kind of thing worth writing down rather
-  // than leaving as a silent deletion.
+test('the rates sentence is gone and has not crept back', () => {
+  // Removed on request 2026-08-28, having been argued for here — which is
+  // exactly the kind of thing worth writing down rather than leaving as a
+  // silent deletion. The fact it carried is pinned in the calendar dialog below.
   assert.ok(!css.includes('.announce-rule'), 'กฎ .announce-rule ยังค้างอยู่ทั้งที่ไม่มีใครใช้');
   assert.ok(!bannerCode.includes('announce-rule'), 'ย่อหน้าเงื่อนไขยังอยู่ในคอมโพเนนต์');
-  assert.ok(!css.includes('.announce-days .what'), 'กฎของชื่อวันหยุดยังค้างอยู่');
-  assert.ok(!bannerCode.includes('className="what"'), 'ชื่อวันหยุดยังถูกวาดในรายการ');
 });
 
-test('the holiday NAME is dropped for every row, never for the ones named a certain way', () => {
-  // THE DISTINCTION THIS WHOLE FILE EXISTS TO HOLD. What was asked for was
-  // "ลบคำว่า ทดสอบ ออกจากรายการวันที่ 28 และ 31" — two rows the calendar really
-  // does hold under that name, and which are staying there on purpose. A rule
-  // that hid a row, or a name, BECAUSE OF WHAT IT SAID would put this screen and
-  // `loadHolidaySet()` on different lists of which days are holidays; that is
-  // the shape of the `Holiday.year` bug that paid OT at the wrong rate for
-  // months. Dropping the column for everybody changes nothing about which dates
-  // are announced.
+test('each holiday is two lines: the date, then its name under it', () => {
+  // The name rode ON the date's line, then was removed, then came back as a
+  // line of its own — three rounds on 2026-08-28. The column is what survives a
+  // long name: `วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนีพันปีหลวง` beside its date
+  // wraps to three lines on a phone and drags the entries under it out of
+  // alignment.
+  const li = css.slice(css.indexOf('.announce-days li {'), css.indexOf('}', css.indexOf('.announce-days li {')));
+  assert.match(li, /flex-direction: column/, 'รายการกลับไปเป็นบรรทัดเดียว ชื่อยาวจะดันรายการอื่นเสียแนว');
+  const what = css.slice(css.indexOf('.announce-days .what {'), css.indexOf('}', css.indexOf('.announce-days .what {')));
+  assert.match(what, /font-size: 12\.5px/, 'ชื่อวันหยุดไม่ได้เล็กกว่าบรรทัดวันที่');
+  assert.match(what, /color: var\(--muted\)/, 'ชื่อวันหยุดไม่ได้เป็นโทนรอง — จะไปแย่งเด่นกับวันที่');
+  // The gap between two holidays must beat the gap inside one, or a
+  // three-holiday month reads as six loose lines.
+  const list = css.slice(css.indexOf('.announce-days {'), css.indexOf('}', css.indexOf('.announce-days {')));
+  assert.match(list, /gap: 7px/, 'ระยะระหว่างวันหยุดสองวันไม่ได้มากกว่าระยะในวันเดียวกัน');
+  assert.match(li, /gap: 1px/, 'ระยะระหว่างวันที่กับชื่อของมันเองกว้างเกินไป');
+});
+
+test('the name drawn is whatever the calendar says, with nothing reading the text', () => {
+  // THE DISTINCTION THIS FILE EXISTS TO HOLD, and it has now been tested from
+  // both directions — the round that removed the names, and the round that
+  // brought them back. A rule that hid a row, or a name, BECAUSE OF WHAT IT
+  // SAID would put this screen and `loadHolidaySet()` on different lists of
+  // which days are holidays; that is the shape of the `Holiday.year` bug that
+  // paid OT at the wrong rate for months. A day named badly is fixed where the
+  // name is, on ตั้งค่าระบบ → วันหยุดบริษัท.
   assert.ok(!/ทดสอบ/.test(bannerCode), 'คอมโพเนนต์รู้จักชื่อวันหยุดเฉพาะราย — ห้ามกรองตามเนื้อหา');
   const list = bannerCode.slice(bannerCode.indexOf('announce-days'), bannerCode.indexOf('function HolidayCalendar'));
-  assert.ok(!/\.name/.test(list), 'รายการในแถบยังอ่านชื่อวันหยุดอยู่');
-  // …and the names still exist one tap away, in full.
+  assert.ok(list.includes('{h.name}'), 'รายการในแถบไม่ได้แสดงชื่อวันหยุด');
+  assert.ok(!/name\s*(===|!==|\.includes|\.match|\.startsWith)/.test(bannerCode),
+    'มีการอ่านเนื้อหาของชื่อวันหยุดมาตัดสินใจ');
+  // …and the dialog still prints all three columns.
   const dialog = bannerCode.slice(bannerCode.indexOf('function HolidayCalendar'));
   assert.ok(dialog.includes('{h.name}'), 'ปฏิทินทั้งปีต้องยังบอกชื่อวันหยุด');
 });

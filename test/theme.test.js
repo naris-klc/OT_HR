@@ -180,7 +180,8 @@ const READABLE = [
   // sentence, which was removed on request on 2026-08-28. A pair listed for
   // something no longer on screen reads as a guarantee about a combination
   // nobody can see, so it went with the paragraph — `--ink` is the banner's
-  // body and heading, `--muted` is the weekday beside each date.
+  // body and heading, `--muted` is the weekday beside each date and the
+  // holiday's name under it.
   ['--ink', '--green-bg'],
   ['--muted', '--green-bg'],
 ];

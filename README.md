@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1750 tests
+and the engine know nothing about Next.js, so the whole suite — **1751 tests
 across 105 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1512,18 +1512,27 @@ something that just happened and removes itself after four seconds
 (`components/Toast.jsx`); this is true all month, nothing happened to cause it,
 and the point is that everybody has read the same thing **before** they file.
 
-**What it says.** The month's announced holidays — each date with its weekday —
-and a pill that opens the year's calendar. On a month with none it says so out
+**What it says.** The month's announced holidays — each one two lines, the date
+with its weekday and then the holiday's name under it, smaller and in `--muted`
+— and a pill that opens the year's calendar. On a month with none it says so out
 loud (`เดือนนี้ไม่มีวันหยุดบริษัทที่ประกาศไว้`) and names the next one, because an
 empty month and a month nobody has entered look identical from the screen, and
 the reader who assumes the second files a normal-rate request for a day the
 company was shut.
 
-It said more when it shipped, and both of those are worth recording because both
-were argued for here and both were overruled the same day. It carried a sentence
-of rates — *"ยื่นคำขอ OT ตรงกับวันเหล่านี้ ระบบจะคิดเป็น OT วันหยุด ให้อัตโนมัติ —
-08:00–17:00 ×1.5 · นอกเวลา ×3 · เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้วโดยไม่ต้องประกาศ"* —
-and it listed each holiday's **name** beside its date.
+It said more when it shipped: a sentence of rates — *"ยื่นคำขอ OT ตรงกับวันเหล่านี้
+ระบบจะคิดเป็น OT วันหยุด ให้อัตโนมัติ — 08:00–17:00 ×1.5 · นอกเวลา ×3 ·
+เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้วโดยไม่ต้องประกาศ"* — which was argued for here and
+removed on request the same day.
+
+**The name took three rounds to find its line, and the shape is the reason.** It
+began beside the date, was removed altogether, and came back underneath. Beside
+the date it is fine until a name is `วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนี
+พันปีหลวง`, which on a phone wrapped to three lines and dragged the entries below
+it out of alignment; on its own line it wraps inside its own block and every
+entry still starts at the same left edge. The list gaps carry the grouping —
+**7px between two holidays against 1px between a date and its own name** — or a
+three-holiday month reads as six loose lines.
 
 **Where the เสาร์–อาทิตย์ clause went, and why it mattered.** Saturday and Sunday
 are holidays *by rule* and are deliberately not rows in the collection — the
@@ -1536,15 +1545,17 @@ front of the person filing. `test/holidayNotice.test.js` did not lose that
 assertion with the paragraph — it now pins the dialog, so the fact cannot leave
 the component silently.
 
-**The names went for every row, not for the two that prompted it.** The ask was
-*"ลบคำว่า ทดสอบ ออกจากรายการวันที่ 28 และ 31"* — two days the calendar genuinely
-holds under that name, kept there on purpose. A rule that hid a row, or a name,
-**because of what it said** would put this screen and `loadHolidaySet()` on
-different lists of which days are holidays, which is the exact shape of the
-`Holiday.year` bug two sections up. Dropping the column for everybody changes
-nothing about which dates are announced; the names are in the calendar dialog in
-full. The alternative — renaming those two rows — is one `PATCH` away and was
-declined: they are test data that is staying.
+**Nothing here reads a holiday's name to decide anything, and that survived the
+round that asked it to.** The ask was *"ลบคำว่า ทดสอบ ออกจากรายการวันที่ 28 และ
+31"* — two days the calendar genuinely holds under that name, kept there on
+purpose. It was answered by dropping the name column for **every** row rather
+than for those two, and when the names came back a round later they came back
+the same way: `h.name`, whatever `h.name` says. A rule that hid a row, or a
+name, **because of what it said** would put this screen and `loadHolidaySet()`
+on different lists of which days are holidays, which is the exact shape of the
+`Holiday.year` bug two sections up. A day named badly is fixed where the name
+is — ตั้งค่าระบบ → วันหยุดบริษัท — and `test/holidayNotice.test.js` refuses any
+comparison against the text in this component.
 
 **It is in flow at the top, not `position: sticky`.** The requirement was that it
 not go away by itself, and it does not: there is no ✕ and no dismissed flag,
@@ -1601,7 +1612,9 @@ paragraph; here it now follows a list of dates, and 8px left it floating with th
 removed sentence's worth of space still under it. `.announce .fold-pill` sets
 **10px** — which has to beat the 3px between the list's own rows, or the button
 reads as a fourth date. Measured after, on the built app: the banner is **176px
-on a 390px phone**, 22.6% of that viewport, down from 289px and 37%.
+on a 390px phone**, 22.6% of that viewport, down from 289px and 37%. It reads
+**247px, 31.7%** now that the names are back on lines of their own — the whole
+of the difference, and what a three-holiday month costs to say properly.
 
 ### วันเกิดพนักงานเป็นวันหยุดของคนนั้น — two flags, and a remark that moved
 
@@ -5324,7 +5337,7 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1750/1750 pass in about 2 s**, measured 2026-08-28 across 105
+- `npm test` — **1751/1751 pass in about 2 s**, measured 2026-08-28 across 105
   files. **The newest file is `test/holidayNotice.test.js`**, which arrived with
   ประกาศวันหยุดบริษัท: nine cases over the pure filters in `lib/holidayNotice.js`
   — month boundaries as string comparisons, a row with an unusable date dropped

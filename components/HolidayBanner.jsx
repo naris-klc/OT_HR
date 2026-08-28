@@ -91,26 +91,33 @@ export default function HolidayBanner({ period = currentPeriod() }) {
         <div className="announce-body">
           <h3 className="announce-head">ประกาศวันหยุดประจำเดือน {periodLabel(period)}</h3>
 
-          {/* THE DATES, AND NOT THE HOLIDAYS' NAMES. Asked for on 2026-08-28 as
-              "ลบคำว่า ทดสอบ ออกจากรายการวันที่ 28 และ 31" — two rows the calendar
-              genuinely holds under that name, kept there on purpose.
+          {/* TWO LINES PER HOLIDAY: the date and its weekday, then the name
+              under them, smaller and quieter.
 
-              THE NAME IS DROPPED FOR EVERY ROW AND NOT FOR THOSE TWO, which is
-              the whole of why this is safe. A rule that hid a row whose name
-              read a certain way would put the screen and `loadHolidaySet()` on
-              different lists of WHICH DAYS ARE HOLIDAYS, and that is the exact
-              shape of the `Holiday.year` bug that paid OT at the wrong rate for
-              months. Dropping a column changes nothing about which dates are
-              announced — the engine and this list still name the same days.
+              THE NAME WAS ON THIS LINE, THEN GONE, AND IS NOW A LINE OF ITS OWN
+              — three rounds on 2026-08-28, and the shape it landed in is the
+              one that survives a long name. `วันเฉลิมพระชนมพรรษาสมเด็จพระบรม
+              ราชชนนีพันปีหลวง` beside its date wrapped to three lines on a phone
+              and pushed the two short entries under it out of alignment; under
+              its date it wraps within its own line and every entry still starts
+              at the same left edge.
 
-              The names are one tap away in ปฏิทินวันหยุดประจำปี, which prints
-              date, weekday and name in full. */}
+              IT IS `h.name`, WHATEVER `h.name` SAYS. Nothing here reads the text
+              to decide whether to draw it. A rule that hid a row, or a name,
+              because of what it said would put this screen and `loadHolidaySet()`
+              on different lists of WHICH DAYS ARE HOLIDAYS — the exact shape of
+              the `Holiday.year` bug that paid OT at the wrong rate for months.
+              A day named badly is fixed where the name is: ตั้งค่าระบบ →
+              วันหยุดบริษัท. */}
           {inMonth.length > 0 ? (
             <ul className="announce-days">
               {inMonth.map((h) => (
                 <li key={h.date}>
-                  <span className="when">{thaiDate(h.date)}</span>
-                  <span className="dow">วัน{dayName(h.date)}</span>
+                  <div className="head">
+                    <span className="when">{thaiDate(h.date)}</span>
+                    <span className="dow">วัน{dayName(h.date)}</span>
+                  </div>
+                  <div className="what">{h.name}</div>
                 </li>
               ))}
             </ul>
