@@ -1046,10 +1046,18 @@ a:hover { color: var(--green-dark); }
 
 /* ── THE TWO FIXED BARS CARRIED A FILTER, AND WHAT THAT COST ────────────────
 
-   NOTHING IN THIS APP CARRIES `backdrop-filter` ANY MORE, and this paragraph is
+   NEITHER FIXED BAR CARRIES `backdrop-filter` ANY MORE, and this paragraph is
    why the rule that used to live here is gone rather than why it exists.
 
-   `.appbar` and `.mobile-nav` were the only two that ever did. It is what made
+   ONE CARRIER IS LEFT IN THE APP AND IT IS NOT CHROME: `.sheet-hint` in
+   app/print.css, a 2px blur on the pill that says an accounting table scrolls
+   sideways. It is `position: absolute` inside that table's own wrap and
+   `pointer-events: none`, so it has nothing to paint over — the hazard below is
+   about elements that span the viewport and outlive a dialog. Said out loud
+   because this paragraph claimed "nothing in this app" for an hour on
+   2026-08-28 and that was simply false.
+
+   `.appbar` and `.mobile-nav` were the only two BARS that ever did. It is what made
    them frosted over the page scrolling behind them, and it is also what takes a
    browser off the ordinary painting path: a backdrop-filtered element is
    composited as its own layer against everything behind it.

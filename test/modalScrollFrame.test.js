@@ -213,11 +213,17 @@ test('nothing carries a backdrop filter, so nothing can be composited out of tur
      workaround took the filter off for as long as a dialog was open, because a
      filter that is not applied cannot be composited out of turn.
 
-     The filter is gone entirely now — the two bars are opaque, for the reason
+     The filter is gone from both bars now — they are opaque, for the reason
      over `--bar-ground` — so the hazard cannot arise at all rather than being
      answered while a dialog happens to be open. The invariant this file wants
-     is therefore the stronger one: NOBODY carries it. If a frosted panel is
-     ever wanted again, this test is the place that says what it costs. */
+     is therefore the stronger one: nothing in THIS sheet carries it.
+
+     ONE CARRIER IS LEFT IN THE APP AND THIS TEST DELIBERATELY DOES NOT SEE IT:
+     `.sheet-hint` in app/print.css, a 2px blur on the pill that says an
+     accounting table scrolls sideways. It is `position: absolute` inside that
+     table's wrap and `pointer-events: none` — it cannot span the viewport and
+     cannot outlive a dialog, which is what the hazard needs. Asserted below at
+     its own file so that the exception is a written one rather than a gap. */
   const sheet = css();
   /* THE COMMENTARY IS STRIPPED FIRST, and this file has been caught by that
      before: the paragraph above quotes the rule it is saying was removed, so a
@@ -234,6 +240,20 @@ test('nothing carries a backdrop filter, so nothing can be composited out of tur
   assert.match(sheet, /--bar-ground: #ffffff;/);
   assert.match(sheet, /--bar-ground: light-dark\(#ffffff, #101513\);/);
   assert.ok(!/--bar-blur(-strong)?:/.test(sheet), 'the translucent bar tokens came back');
+
+  /* THE ONE EXCEPTION, NAMED. `app/print.css` is a second stylesheet this file
+     did not read, and for an hour on 2026-08-28 the note above claimed nothing
+     in the app carried a filter while `.sheet-hint` did. Pinned here so the
+     exception has to stay the harmless kind: absolute inside a scroll wrap and
+     unable to take a press. If it ever becomes fixed chrome, this fails. */
+  const printSheet = readFileSync(join(ROOT, 'app/print.css'), 'utf8').replace(/\r\n/g, '\n');
+  const others = [...printSheet.replace(/\/\*[\s\S]*?\*\//g, '')
+    .matchAll(/([^\s{};]+)\s*\{[^}]*backdrop-filter: blur/g)].map((m) => m[1]);
+  assert.deepEqual(others, ['.sheet-hint'],
+    'app/print.css grew a backdrop filter that is not the scroll hint');
+  const hint = printSheet.slice(printSheet.indexOf('.sheet-hint {'), printSheet.indexOf('}', printSheet.indexOf('.sheet-hint {')));
+  assert.match(hint, /position: absolute;/);
+  assert.match(hint, /pointer-events: none;/);
 });
 
 test('on a phone the chrome AT THE FOOT leaves while a sheet is open', () => {

@@ -5048,10 +5048,16 @@ four role UIs.
   cases in `test/modalScrollFrame.test.js` about `backdrop-filter` became one
   when the filter itself went. They used to pin the workaround — the two bars
   dropping the filter under a dialog — and that the two were its only carriers;
-  the invariant now is the stronger one, that **nobody carries it**, so the
+  the invariant now is that **nothing in `app/styles.css` carries it**, so the
   compositing hazard cannot recur rather than being answered while a dialog
   happens to be open. Beside it, the opaque `--bar-ground` in both themes and a
-  negative on the two translucent tokens coming back. The case is also a small
+  negative on the two translucent tokens coming back. **And the one exception is
+  named rather than left as a gap**: `.sheet-hint` in `app/print.css` still
+  carries a 2px blur, and the case asserts it is the only one there and that it
+  stays `position: absolute` with `pointer-events: none` — a pill inside a scroll
+  wrap cannot span the viewport or outlive a dialog, which is what the hazard
+  needs. That assertion exists because the paragraph beside it claimed "nothing
+  in this app" for an hour, against a second stylesheet the test did not read. The case is also a small
   lesson about this file: its own paragraph quotes the rule it says was removed,
   so the negative assertion strips the commentary before searching — the trap
   four assertions in the sibling file have been caught by.
