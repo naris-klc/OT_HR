@@ -80,7 +80,13 @@ export default function AccountingView() {
           the figures, so every one of those is a line of table brought up the
           screen. */}
       <div className="card no-print acct-controls">
-        <div className="row" style={{ alignItems: 'flex-end' }}>
+        {/* `.head-split`, which is ตรวจสอบรายเดือน’s heading row as well: a title
+            with its hint on the left, labelled controls on the right, and the two
+            sides START level rather than ending level. `.row`’s own `flex-end` is
+            for a line of controls; this is a heading against a caption, compared
+            at the top where the eye enters the card. It was an inline
+            `alignItems: 'flex-end'` here and the right side floated 23.75px high. */}
+        <div className="row head-split">
           <div style={{ flex: 1, minWidth: 220 }}>
             <h2>สรุป OT ส่งบัญชี</h2>
             <div className="hint" style={{ margin: 0 }}>

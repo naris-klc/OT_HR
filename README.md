@@ -1221,7 +1221,7 @@ lib/complianceExport.js   which six events count as the exercise of a
 lib/complianceQuery.js    the four reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     103 files, run by `npm test`. Six named below as a
+test/                     104 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1234,9 +1234,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1722 tests
-across 103 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1727 tests
+across 104 files**, measured 2026-08-28 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3104,11 +3104,32 @@ At 15px against 12px uppercase mono the two have different cap heights anyway,
 and flush tops is what reads as one line; the 9px left between their baselines
 is the size difference itself.
 
-**It is a class now, `.month-head-top`, and it was an inline `alignItems`.**
-Same reason `.export-row` and `.deleg-head-text` are classes: the 860px block
-cannot reach an inline style. Nothing needs to reach this one today — `.field`
-is `min-width: 100%` down there and the two sides stack, which makes
-`align-items` inert — which is exactly when moving it is free.
+**It is a class now, and it was an inline `alignItems`.** Same reason
+`.export-row` and `.deleg-head-text` are classes: the 860px block cannot reach
+an inline style. Nothing needs to reach this one today — `.field` is
+`min-width: 100%` down there and the two sides stack, which makes `align-items`
+inert — which is exactly when moving it is free.
+
+**The class is `.head-split`, and it was `.month-head-top` for one commit.**
+สรุป OT ส่งบัญชี was reported the same day with the identical row — `สรุป OT
+ส่งบัญชี` and its month on the left, `บริษัท` and `ประจำเดือน` on the right —
+and measured at the identical **23.75px**, which is not a coincidence: it is the
+same two boxes, a 42.25px heading block against a 66px labelled field. Naming a
+shared rule after the first card that needed it is how the second card ends up
+with a copy of the declaration instead of a reference to it, so the rule was
+renamed for what it does rather than where it started. Both callers are pinned
+in `test/monthSearch.test.js`.
+
+**ส่งบัญชี's second row was already right, and the report about it was pointing
+at something else.** The buttons and แสดงพนักงานที่ไม่มี OT sit in `.action-row`,
+which is `align-items: center`, and the tick box's centre measured **0.00px**
+from the buttons' centre. `align-items: baseline` was tried and is measurably
+WORSE — 4.75px of centre error against 0 — because `.check` is a flex container
+whose first baseline comes from the checkbox input, not from the text beside it.
+What was actually crooked was the two buttons: **ส่งออกไฟล์บัญชี 38.5px beside
+พิมพ์แบบฟอร์ม 40.5px**, because `.btn` was `border: none` and `.btn.ghost` adds a
+1px rule without taking the padding back. See §Verified for the base-rule fix
+and the six containers that had each patched it locally first.
 
 This section read "the row directly above the list … and the search box has to
 stay the last thing before the first card, which is the whole reason that row is
@@ -5132,8 +5153,17 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1722/1722 pass in about 2 s**, measured 2026-08-28 across 103
-  files. **The count came DOWN by one and that is the newest change**: the two
+- `npm test` — **1727/1727 pass in about 2 s**, measured 2026-08-28 across 104
+  files. **The newest file is `test/buttonBox.test.js`, the 104th**, and it pins
+  one declaration: `.btn` carries a 1px transparent rule so that `.btn.ghost`,
+  `.btn.outline` and `.btn.on-dark` — which each add a real one — stop standing
+  2px taller than the filled button beside them. That had been patched in six
+  containers one at a time before it was fixed once in the base; the padding
+  drops 1px to pay for the rule, so no button that was already the right size
+  changed size. Two more cases went into `test/monthSearch.test.js` for the
+  heading row `.head-split` now shared by ตรวจสอบรายเดือน and ส่งบัญชี.
+  It read "1722/1722 … across 103 files", and before that **the count came DOWN
+  by one**: the two
   cases in `test/modalScrollFrame.test.js` about `backdrop-filter` became one
   when the filter itself went. They used to pin the workaround — the two bars
   dropping the filter under a dialog — and that the two were its only carriers;
@@ -5273,8 +5303,8 @@ four role UIs.
   may not follow it, its `.acct-find` row, its debounce, its listbox, what a
   suggestion held, what a pick did, and the flash on its cells. That file is
   ตรวจสอบรายเดือน's alone again and everything it shares is still pinned there.
-  It read "1717/1717" before that. The ten newest are
-  `test/acctScrollHint.test.js`, the 103rd file, and
+  It read "1717/1717" before that. `test/acctScrollHint.test.js` was the 103rd
+  file and was the newest until `test/buttonBox.test.js` above. It arrived with
   the extra case `test/docsMatchCode.test.js` gains from counting it: they pin
   the right-edge fade on สรุป OT ส่งบัญชี — that it is a phone rule, that it
   reaches those two sheets and no other table, and the declarations that are

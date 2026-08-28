@@ -568,7 +568,7 @@ export default function HrView({
           สถานะที่นับ, ประจำเดือน and ค้นหา, then the three export buttons — read
           in that order because each one settles what the next acts on. */}
       <div className="card month-head">
-        <div className="row month-head-top">
+        <div className="row head-split">
           <div style={{ flex: 1 }}>
             <h2>ตรวจสอบรายเดือน</h2>
             <div className="hint" style={{ margin: 0 }}>{periodLabel(period)}</div>

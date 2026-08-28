@@ -428,8 +428,17 @@ test('the heading and สถานะที่นับ start on the same line, 
   // their bottom edges, and a heading against a caption is compared at the top,
   // where the eye enters the card. A rule that made both rows agree would be
   // wrong on one of them.
-  assert.match(css, /\.month-head-top \{ align-items: flex-start; \}/);
-  assert.ok(hrView.includes('<div className="row month-head-top">'), 'the heading row lost its class');
+  assert.match(css, /\.head-split \{ align-items: flex-start; \}/);
+  assert.ok(hrView.includes('<div className="row head-split">'), 'the heading row lost its class');
+
+  // AND IT IS `.head-split`, NOT `.month-head-top`, WHICH IT WAS FOR ONE
+  // COMMIT. ส่งบัญชี was reported with the identical row and the identical
+  // 23.75px the same day; a rule named after the first card that needed it is
+  // how the second card ends up with a copy of the declaration rather than a
+  // reference to it. Both callers are pinned so neither can quietly drop out
+  // and leave a shared rule with one user and a misleading name.
+  const acct = readFileSync(join(ROOT, 'components/AccountingView.jsx'), 'utf8');
+  assert.ok(acct.includes('<div className="row head-split">'), 'ส่งบัญชี stopped sharing the rule');
 
   // AND IT IS A CLASS, NOT THE INLINE `alignItems` IT REPLACED. Same reason
   // `.export-row` and `.deleg-head-text` are classes: the 860px block cannot

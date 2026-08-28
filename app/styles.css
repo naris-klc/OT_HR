@@ -1430,8 +1430,34 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 /* ══ buttons ═════════════════════════════════════════════════════════════ */
 
+/* ── EVERY BUTTON IS THE SAME BOX, BORDERED OR NOT ────────────────────────
+   `padding: 11px 17px` WITH A 1px TRANSPARENT RULE, AND IT USED TO BE
+   `padding: 12px 18px` WITH `border: none`. The two describe the same
+   rectangle — 11 + 11 + 14.5 of type + 2 of border is the same 38.5px, and
+   17 + 17 + 2 is the same width — so nothing that was already right moved.
+   What changes is what happens when a variant adds a rule.
+
+   `.btn.ghost` adds `border: 1px solid var(--line)` and did not take the
+   padding back, so it stood 2px taller and 2px wider than the filled button
+   beside it. `.btn.outline` and `.btn.on-dark` do the same. Measured on the
+   running app at 1280px on ส่งบัญชี: ส่งออกไฟล์บัญชี 38.5px against พิมพ์แบบฟอร์ม
+   40.5px, side by side in one row, tops 1px apart and bottoms 1px the other
+   way. A row of buttons that do not agree on their own height reads as
+   crooked whatever the row does about aligning them.
+
+   IT HAD ALREADY BEEN FOUND AND PATCHED SIX TIMES, each time in one
+   container: `.quick-edit-foot .btn`, `.foot-split .btn`, `.btn.quiet` and
+   three more all carry `border: 1px solid transparent` for exactly this
+   reason, and two of them have a test whose comment explains the 2px. Six
+   local answers to one question is the shape of a rule that belongs in the
+   base — see the note over `.policy-row select` for the same argument made
+   about a different pair. Those six are redundant now rather than wrong; they
+   restate what they inherit.
+
+   The transparent rule is also what keeps a hover that adds a border from
+   moving the button under the pointer. */
 .btn {
-  padding: 12px 18px; border: none; border-radius: var(--radius-sm);
+  padding: 11px 17px; border: 1px solid transparent; border-radius: var(--radius-sm);
   background: var(--green); color: var(--on-fill);
   font: 600 14.5px/1 var(--sans); cursor: pointer;
   box-shadow: 0 6px 18px var(--green-glow);
@@ -2442,9 +2468,20 @@ td > .approver-line { margin-top: 5px; }
    larger — a number no reader could predict from either rule. */
 .month-find { align-items: flex-end; gap: 10px 14px; margin-top: 12px; }
 
-/* ── หัวข้อกับสถานะที่นับ, THE FIRST ROW OF THE SAME CARD ─────────────────
-   A heading block on the left — `ตรวจสอบรายเดือน` and the month under it — and
-   one labelled <select> on the right, and the two are not the same height:
+/* ── A CARD'S HEADING ROW, SPLIT BETWEEN A TITLE AND ITS CONTROLS ─────────
+   TWO SCREENS USE IT AND THE SECOND ONE IS WHY IT IS NOT CALLED
+   `.month-head-top` ANY MORE — it was, for one commit on 2026-08-28, until
+   ส่งบัญชี was reported with the identical row and the identical gap. Naming a
+   shared rule after the first card that needed it is how the second card ends
+   up with a copy of the declaration instead of a reference to it.
+
+   ตรวจสอบรายเดือน: `ตรวจสอบรายเดือน` + the month on the left, `สถานะที่นับ` on
+   the right. ส่งบัญชี: `สรุป OT ส่งบัญชี` + the month on the left, `บริษัท` and
+   `ประจำเดือน` on the right. Both measured 23.75px out, which is not a
+   coincidence — it is the same two boxes:
+
+   A heading block on the left — a title with a line of hint under it — and
+   labelled fields on the right, and the two are not the same height:
    19.5 + 4 + 18.75 = 42.25px of heading against 12 + 7 + 47 = 66px of field.
    Whatever ends up level, something does not, and this rule is the choice of
    WHICH.
@@ -2484,7 +2521,7 @@ td > .approver-line { margin-top: 5px; }
    860px `.field` is `min-width: 100%` and the two sides stack, which makes
    `align-items` inert — but the next rule that needs to would have had to
    rewrite the JSX to get at it. */
-.month-head-top { align-items: flex-start; }
+.head-split { align-items: flex-start; }
 /* ประจำเดือน JOINED THIS ROW ON 2026-08-27, from the card above it.
    A fixed basis and not `.field`'s `flex: 1`, which is a basis of nothing: two
    fields both grasping at nothing split the line in half, and half a line is
