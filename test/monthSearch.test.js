@@ -415,6 +415,30 @@ test('the two boxes in that row end on the same line', () => {
   assert.match(css, /\.month-find \.found \{ align-self: center;/);
 });
 
+test('the heading and สถานะที่นับ start on the same line, and it is a class that says so', () => {
+  // THE ROW ABOVE `.month-find`, AND THE OPPOSITE ANSWER — deliberately.
+  // Reported on 2026-08-28, the same round as the search box below it: สถานะที่นับ
+  // floated above ตรวจสอบรายเดือน. Measured on the running app at 1280px, the
+  // right column started 23.75px above the left (y=202.5 against y=226.25),
+  // because the heading block is 42.25px tall (19.5 + 4 + 18.75) and the
+  // labelled field is 66 (12 + 7 + 47), and the row was ending them level.
+  //
+  // `.month-find` KEEPS `flex-end` AND THIS ROW DOES NOT, which is the pair
+  // worth holding down together: two boxes end level because a reader compares
+  // their bottom edges, and a heading against a caption is compared at the top,
+  // where the eye enters the card. A rule that made both rows agree would be
+  // wrong on one of them.
+  assert.match(css, /\.month-head-top \{ align-items: flex-start; \}/);
+  assert.ok(hrView.includes('<div className="row month-head-top">'), 'the heading row lost its class');
+
+  // AND IT IS A CLASS, NOT THE INLINE `alignItems` IT REPLACED. Same reason
+  // `.export-row` and `.deleg-head-text` are classes: the 860px block cannot
+  // reach an inline style, so a rule that needs to would have to rewrite the
+  // JSX first. Nothing needs to today — `.field` is `min-width: 100%` down
+  // there and the two sides stack — which is exactly when it is cheap to move.
+  assert.ok(!/alignItems/.test(hrView), 'a layout decision went back inline');
+});
+
 /**
  * The containers this screen stacks before the list, and what is left of them.
  *

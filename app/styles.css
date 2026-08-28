@@ -2441,6 +2441,50 @@ td > .approver-line { margin-top: 5px; }
    the gap over the buttons, both, and the two would collapse to whichever was
    larger — a number no reader could predict from either rule. */
 .month-find { align-items: flex-end; gap: 10px 14px; margin-top: 12px; }
+
+/* ── หัวข้อกับสถานะที่นับ, THE FIRST ROW OF THE SAME CARD ─────────────────
+   A heading block on the left — `ตรวจสอบรายเดือน` and the month under it — and
+   one labelled <select> on the right, and the two are not the same height:
+   19.5 + 4 + 18.75 = 42.25px of heading against 12 + 7 + 47 = 66px of field.
+   Whatever ends up level, something does not, and this rule is the choice of
+   WHICH.
+
+   THE TOPS. Reported on 2026-08-28 as สถานะที่นับ floating above the heading,
+   and measured on the running app at 1280px before anything was changed: the
+   right column started at y=202.5 and the left at y=226.25 — **23.75px** apart,
+   with the label sitting level with nothing and the heading level with the
+   middle of the <select> beside it.
+
+   `flex-end` IS WHAT IT WAS, AND IT WAS NOT ARBITRARY — it is `.row`'s own
+   value, which is right for a line of controls (`.month-find` directly below
+   this one is exactly that case and keeps it). It is wrong here because the
+   left side is not a control. Two boxes end level because a reader compares
+   their bottom edges; a heading and a caption are compared at the TOP, where
+   the eye enters the card.
+
+   ALL FOUR WERE RENDERED AND MEASURED RATHER THAN ARGUED — the numbers are the
+   gap between the two columns' tops, then between the two texts' baselines:
+
+       flex-end     +23.75   +32.75    card 235px   ← what was reported
+       center       +11.88   +20.88    card 235px
+       baseline      −4.00    +5.00    card 239px
+       flex-start     0.00    +9.00    card 235px   ← this
+
+   `baseline` is the one that sounds right and is not. It ties the ink of
+   ตรวจสอบรายเดือน to the ink of สถานะที่นับ, which costs 4px of card height and
+   then overshoots: the label lands 4px BELOW the heading's top, so the row
+   trades one visible offset for a smaller one in the other direction. At 15px
+   against 12px uppercase mono the two texts have different cap heights anyway,
+   and flush tops is what the eye reads as one line — the 9px between their
+   baselines is the size difference itself, not a misalignment.
+
+   A CLASS AND NOT THE INLINE `alignItems: 'flex-end'` IT REPLACED. Same reason
+   `.export-row` and `.deleg-head-text` are classes: an inline style is the one
+   thing the 860px block cannot reach. Nothing needs to reach it today — below
+   860px `.field` is `min-width: 100%` and the two sides stack, which makes
+   `align-items` inert — but the next rule that needs to would have had to
+   rewrite the JSX to get at it. */
+.month-head-top { align-items: flex-start; }
 /* ประจำเดือน JOINED THIS ROW ON 2026-08-27, from the card above it.
    A fixed basis and not `.field`'s `flex: 1`, which is a basis of nothing: two
    fields both grasping at nothing split the line in half, and half a line is

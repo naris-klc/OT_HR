@@ -3036,6 +3036,47 @@ in the app ends them. **แสดง n จาก m คน keeps `center`, now as
 descenders below the boxes’ own, and centring that count was the whole of what
 the row-wide `center` was ever wanted for.
 
+**The row ABOVE it needed the opposite answer, reported the same day.** หัวข้อ
+ตรวจสอบรายเดือน sits on the left of the first row of that card and สถานะที่นับ on
+the right, and that row was `align-items: flex-end` too — an inline style on the
+JSX, and `.row`’s own value. Measured on the running app at 1280px before
+anything moved: the right column began at y=202.5 and the left at y=226.25, so
+the label floated **23.75px** above the heading and the heading sat level with
+the middle of the `<select>` beside it. The heading block is 42.25px tall
+(19.5 + 4 + 18.75) against the labelled field’s 66 (12 + 7 + 47); ending them
+level is what put the difference at the top, where it shows.
+
+**Both rows now line up, and they line up on opposite edges — that is the point,
+not an inconsistency.** `.month-find` ends its two boxes level at the bottom
+because a reader compares the bottom edges of two controls. `.month-head-top`
+starts its two sides level at the top because a heading and a caption are
+compared where the eye enters the card. A single rule for both rows would be
+wrong on one of them.
+
+All four candidates were rendered against the running app and measured rather
+than argued — the columns are the gap between the two columns’ tops, then
+between the two texts’ baselines, then the card’s height:
+
+| `align-items` | tops | baselines | card |
+| --- | --- | --- | --- |
+| `flex-end` (was) | +23.75px | +32.75px | 235px |
+| `center` | +11.88px | +20.88px | 235px |
+| `baseline` | −4.00px | +5.00px | 239px |
+| **`flex-start`** (is) | **0** | +9.00px | 235px |
+
+`baseline` is the one that sounds right and is not: it ties the ink of the two
+strings, costs 4px of card height, and overshoots — the label lands 4px *below*
+the heading’s top, trading one visible offset for a smaller one the other way.
+At 15px against 12px uppercase mono the two have different cap heights anyway,
+and flush tops is what reads as one line; the 9px left between their baselines
+is the size difference itself.
+
+**It is a class now, `.month-head-top`, and it was an inline `alignItems`.**
+Same reason `.export-row` and `.deleg-head-text` are classes: the 860px block
+cannot reach an inline style. Nothing needs to reach this one today — `.field`
+is `min-width: 100%` down there and the two sides stack, which makes
+`align-items` inert — which is exactly when moving it is free.
+
 This section read "the row directly above the list … and the search box has to
 stay the last thing before the first card, which is the whole reason that row is
 where it is rather than in the card above" until later the same day. That is no
