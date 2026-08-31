@@ -14,10 +14,15 @@ import { ARITHMETIC_KEYS, COSMETIC_KEYS } from '../lib/policyVersion.js';
  * ยื่น OT ล่วงหน้าได้ถึงวันไหน.
  *
  * Until this rule existed nothing anywhere looked forward: `workDate` was
- * checked for shape by the schema and for one boundary by ปิดงวด, which refuses
- * a month that has FINISHED. A request dated 2027 was accepted, would sit in a
+ * checked for shape by the schema and for one boundary by ปิดงวด, which refused
+ * a month that had FINISHED. A request dated 2027 was accepted, would sit in a
  * queue nobody opens for months, and would count against a ceiling for a month
  * nobody had worked yet.
+ *
+ * ปิดงวด ITSELF WAS WITHDRAWN ON 2026-08-31 (lib/periodStatus.js: the printed and
+ * signed F-HR-027 in the filing cabinet is the record), which changes nothing
+ * about the forward rule and everything about its backward twin — see the note
+ * over the ย้อนหลัง cases below.
  *
  * `today` is an argument to every case here, never read from the clock, which is
  * the property the rule was written for — a test that took the real date would
@@ -172,7 +177,20 @@ test('the row carries the two answers that are not numbers of days', () => {
 
 const back = (max) => ({ ...DEFAULT_POLICY, maxPastSubmissionDays: max });
 
-test('the shipped answer is ไม่จำกัด — ปิดงวด stays the only backward limit', () => {
+test('the shipped answer is ไม่จำกัด, and since 2026-08-31 that means unlimited', () => {
+  /**
+   * THE VALUE DID NOT MOVE AND WHAT IT MEANS DID.
+   *
+   * This test read "ปิดงวด stays the only backward limit", and that was true:
+   * ไม่จำกัด meant unlimited WITHIN the months ฝ่ายบุคคล had not yet closed.
+   * ปิดงวด was withdrawn (lib/periodStatus.js), so with this key at null there
+   * is now no backward limit anywhere — a request may be filed today for any
+   * date in the past, and the assertion below says so in as many years.
+   *
+   * Left at null rather than given a number, because choosing one refuses work
+   * that people have actually done and that is HR's decision, not a default to
+   * arrive in a deploy. It is a decision they have not been asked to make yet.
+   */
   assert.equal(DEFAULT_POLICY.maxPastSubmissionDays, null);
   assert.equal(pastSubmissionRefusal('2019-01-01', '2026-08-19', DEFAULT_POLICY), null);
 });
@@ -256,7 +274,9 @@ test('the routes call the combined check, not one half of it', () => {
 
 test('the settings page carries the backward row beside the forward one', () => {
   assert.match(screen, /key: 'maxPastSubmissionDays'/);
-  assert.match(screen, /ไม่จำกัด — ใช้การปิดงวดเป็นตัวคุมย้อนหลัง \(ค่าเริ่มต้น\)/);
+  // The label said "ใช้การปิดงวดเป็นตัวคุมย้อนหลัง" until 2026-08-31, which
+  // pointed at a control that no longer exists. It now says what ไม่จำกัด does.
+  assert.match(screen, /ไม่จำกัด — ยื่นย้อนหลังได้ทุกวัน ไม่มีขอบเขต \(ค่าเริ่มต้น\)/);
   // Both rows in the same block, and the forward one first.
   assert.ok(
     screen.indexOf("key: 'maxAdvanceSubmissionDays'") < screen.indexOf("key: 'maxPastSubmissionDays'"),

@@ -75,27 +75,41 @@ test('the sub-640 rules live inside the 860 sheet block', () => {
 /**
  * THE PADDING COMES IN, THE TOUCH TARGETS DO NOT — AND NEITHER DOES THE TOP.
  *
- * 12px on the sides and the bottom, the bottom of the range asked for. Four
- * pixels off each side is eight pixels of width handed back to every block
- * inside, and at 360px that is the difference between a คำขอ answer fitting its
- * cell and breaking across two lines.
+ * 12px on the SIDES, which is what this compaction is for: four pixels off each
+ * side is eight pixels of width handed back to every block inside, and at 360px
+ * that is the difference between a คำขอ answer fitting its cell and breaking
+ * across two lines. 14 at the bottom of the body, 12 at the sides and bottom of
+ * the head.
  *
- * THE TOP IS 20 AND IT IS NOT THIS BLOCK'S TO SPEND. This test read
- * `padding: 12px` — all four sides — until 2026-08-28, and that shorthand was
- * one of two wiping the `20px` the sheet's grabber needs above the title. It
- * was measured on the built app at 421px: the grabber ended at y=12 and the
- * title began at y=12, a nought-pixel gap, and it was reported as the header
- * being about to run off the top of the card.
+ * THE TOP IS NOT THIS BLOCK'S TO SPEND, on either row, and it has now been
+ * taken twice by two different shorthands.
+ *
+ * The head's read `padding: 12px` — all four sides — until 2026-08-28, one of
+ * two rules wiping the `20px` its grabber needs above the title. Measured on
+ * the built app at 421px: the grabber ended at y=12 and the title began at
+ * y=12, a nought-pixel gap, reported as the header being about to run off the
+ * top of the card.
+ *
+ * **The body's read `12px 12px 14px` until 2026-08-31**, and the top 12 in it
+ * came along for the ride the same way. It was reported as the header cutting
+ * the first line of the reading in half — which, measured at twelve widths from
+ * 320 to 1600 and from a page scrolled to the bottom, it never does: the head
+ * and the body do not overlap by a pixel in any of them. What was being read as
+ * an overlap was 12px of air asked to do a margin's work under a hairline rule.
+ * It is 16 now, the same top the sheet gives its body one breakpoint up.
+ *
+ * A pixel off the TOP is the tell in both: the trade this block exists to make
+ * buys WIDTH, and the top hands width to nothing.
  *
  * It is the defect test/detailModalFooter.test.js pins for the band at the
  * other end of the sheet, one row up: a compaction written as a shorthand on a
  * bare selector, quietly paying for itself out of a decision made elsewhere.
- * What is pinned now is all four sides together, because a test that checked
- * only the sides is what let the top be taken twice.
+ * What is pinned is all four sides of both rows together, because a test that
+ * checked only the sides is what let the top be taken in the first place.
  */
-test('the sheet is padded at 12 under 640, and keeps the grabber its room', () => {
+test('the sheet narrows its sides under 640 and never its top', () => {
   const block = phoneProper();
-  assert.match(block, /\.modal-body \{ padding: 12px 12px 14px; \}/);
+  assert.match(block, /\.modal-body \{ padding: 16px 12px 14px; \}/);
   assert.match(block, /\.modal-head \{ padding: 20px 12px 12px; \}/);
 });
 

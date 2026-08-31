@@ -186,7 +186,6 @@ async function guard(force) {
     policyVersions: await count('otPolicyVersions'),
     policyConfirmations: Object.keys(settings?.policyConfirmations || {}).length,
     delegations: await count('approvaldelegations'),
-    periodLocks: await count('otPeriodLocks'),
   });
 
   if (check.ok) return;

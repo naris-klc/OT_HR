@@ -24,7 +24,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
  * development server perfectly healthy. It was found by starting the built app,
  * which nothing routinely does.
  *
- * Asserted by reading the source, for the reason test/periodLockRoutes.test.js
+ * Asserted by reading the source, for the reason test/periodStatus.test.js
  * reads its routes: the modules involved import models through the `@/` alias,
  * which only Next resolves, so this suite cannot import them and run the code.
  * A source-reading test is a poor substitute for a type, and it is what there

@@ -461,20 +461,22 @@ export const DEFAULT_POLICY = Object.freeze({
    * 0    — up to and including today (DEFAULT). Overtime here is work that has
    *        been done, and every other rule in the system treats it that way: the
    *        hours are computed from times somebody read off a scanner, the
-   *        ceiling counts what was worked, and ปิดงวด exists because a month of
-   *        it eventually stops moving. A request for next Tuesday records
-   *        nothing that has happened.
+   *        ceiling counts what was worked, and the month is printed and signed
+   *        at the end of it. A request for next Tuesday records nothing that has
+   *        happened.
    * n     — a positive number of days, for a company that rosters overtime ahead
    *        and wants the request in before the shift.
    * null  — ไม่จำกัด. The rule switched off, said out loud rather than by
    *        picking a number nothing will exceed: `maxAdvanceSubmissionDays:
    *        36500` computes the same and reads as a limit nobody can explain.
    *
-   * WHY THERE WAS NOTHING HERE UNTIL NOW. `workDate` is checked for SHAPE by the
-   * schema and for one BOUNDARY by ปิดงวด — a month HR has closed takes no new
-   * requests. Neither of them looks forward. Nothing anywhere refused a request
-   * dated 2027, and one filed today would wait in a queue nobody opens for
-   * months, inside a ceiling for a month nobody has worked yet.
+   * WHY THERE WAS NOTHING HERE UNTIL NOW. `workDate` was checked for SHAPE by
+   * the schema and for one BOUNDARY by ปิดงวด — a month HR had closed took no
+   * new requests. Neither of them looked forward. Nothing anywhere refused a
+   * request dated 2027, and one filed today would wait in a queue nobody opens
+   * for months, inside a ceiling for a month nobody has worked yet. (ปิดงวด
+   * itself was withdrawn on 2026-08-31 — see lib/periodStatus.js — so this key
+   * and its backward twin are now the only limits on `workDate` there are.)
    *
    * MEASURED AGAINST THE OFFICE'S OWN DAY, never the server's — `today()` in
    * lib/today.js. After 17:00 UTC a server running on UTC is already on tomorrow
@@ -495,12 +497,20 @@ export const DEFAULT_POLICY = Object.freeze({
   /**
    * How many days BEFORE today a `workDate` may be, at the moment it is written.
    *
-   * null — ไม่จำกัด (DEFAULT). ปิดงวด is the only backward limit, which is what
-   *        the system has always done: a month stops taking new requests when
-   *        ฝ่ายบุคคล closes it, and until then a late entry is late but not
-   *        refused. Shipped off because turning it on refuses work that people
-   *        have actually done, and that is HR's decision to make rather than a
-   *        default to arrive in a deploy.
+   * null — ไม่จำกัด (DEFAULT). No backward limit at all: a late entry is late
+   *        but not refused, however late. Shipped off because turning it on
+   *        refuses work that people have actually done, and that is HR's
+   *        decision to make rather than a default to arrive in a deploy.
+   *
+   *        THAT DEFAULT MEANT SOMETHING NARROWER WHEN IT WAS CHOSEN. ปิดงวด was
+   *        the backward limit then — a month stopped taking new requests when
+   *        ฝ่ายบุคคล closed it — and ไม่จำกัด meant "unlimited within the months
+   *        that are still open". ปิดงวด was withdrawn on 2026-08-31 (the paper
+   *        file is the record; lib/periodStatus.js), so ไม่จำกัด now means
+   *        unlimited outright: a request may be filed today for any date in the
+   *        past. Left at null rather than given a number here, because picking
+   *        one is exactly the decision this key exists to leave to HR — but it
+   *        is a decision they have not been asked to make yet.
    * n    — a positive number of days.
    *
    * THE MIRROR OF `maxAdvanceSubmissionDays` ABOVE, AND NOT ITS EQUAL. The two
@@ -511,18 +521,20 @@ export const DEFAULT_POLICY = Object.freeze({
    * answers differ (0 forward, unlimited back) and why this one warns on the
    * settings page and that one does not.
    *
-   * NOT A SECOND ปิดงวด, and the two are worth telling apart:
+   * IT USED TO BE THE SECOND OF TWO, and the distinction is worth keeping on
+   * the record because it is why this key is shaped the way it is:
    *
-   *   ปิดงวด    — a MONTH that has been sent to accounting stops moving.
+   *   ปิดงวด    — a MONTH somebody declared finished stopped moving.
    *               Deliberate, dated, reversible by an administrator with a
-   *               reason on the record. See lib/periodLock.js.
+   *               reason. Withdrawn 2026-08-31; see lib/periodStatus.js.
    *   this one  — a rolling window measured in days from today. Nobody presses
    *               anything; it moves on its own overnight, and there is no
    *               reopening it for one late entry.
    *
-   * It is therefore checked AFTER the period lock in every write path, so a
-   * request that is both late and inside a closed month is answered with ปิดงวด
-   * — the refusal that names a person who can do something about it.
+   * The one that is left is the one nobody presses. That is the trade HR made
+   * knowingly — a rule that never has to be remembered, in place of one that had
+   * to be — and it is why the refusal this key produces names a number of days
+   * rather than a person to go and ask.
    *
    * NOT ARITHMETIC, NOT ENFORCED BY THE SCHEMA, and MEASURED AGAINST THE
    * OFFICE'S OWN DAY, for the three reasons written out over

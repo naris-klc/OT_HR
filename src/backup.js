@@ -48,14 +48,19 @@ import {
  * The collections to save — asked of the DATABASE, never of the model registry.
  *
  * This is the single most important line in the file. `lib/db.js` imports six
- * models; `src/models/` holds twelve. A backup driven by what mongoose knows
+ * models; `src/models/` holds eleven. A backup driven by what mongoose knows
  * about would have quietly omitted ApprovalDelegation, BirthdayCheck,
- * EmployeeAudit, PeriodLock and PolicyReplayRun — which is to say the entire
+ * EmployeeAudit and PolicyReplayRun — which is to say the entire
  * approval-delegation history, the birthday checks, and the append-only roster
  * audit trail that exists precisely because it must not be lost.
  *
- * It would also have reported success. A backup that omits five collections and
+ * It would also have reported success. A backup that omits four collections and
  * prints "เสร็จแล้ว" is worse than no backup, because it is believed.
+ *
+ * It is also why the withdrawal of ปิดงวด on 2026-08-31 needed nothing done
+ * here: `otPeriodLocks` stopped being written and the model was deleted, and
+ * this line neither noticed nor cared — an empty collection still in the
+ * database is still backed up, and one that is dropped simply stops appearing.
  *
  * Asking the database means the answer stays right when somebody adds a model,
  * and stays right for collections no model ever described.

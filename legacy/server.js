@@ -3,10 +3,10 @@
  *
  * The app is Next.js App Router: `npm run dev`, `npm run build`, `npm start`.
  * Every endpoint below has an equivalent in app/api/ and every one of them is
- * OLDER than the rules the app now runs on — ปิดงวด, ผู้รับช่วงอนุมัติ,
+ * OLDER than the rules the app now runs on — ผู้รับช่วงอนุมัติ,
  * ขอถอนใบที่อนุมัติแล้ว, เวลาทับซ้อน. A request that reached this file's
- * `POST /api/entries` would write hours into a closed month with no overlap
- * check and no policy version stamped on them.
+ * `POST /api/entries` would write hours with no overlap check and no policy
+ * version stamped on them.
  *
  * It is kept as readable history and moved out of `src/` so that nothing can
  * start it by habit. `npm run legacy:dev` and `npm run legacy:start` are gone;

@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate } from '@/lib/api.js';
+import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate, thaiDateTime } from '@/lib/api.js';
 import {
   ENTERED_FIELDS, isHrVerifiedBirthday, isProxyFiled, isSystemFiled, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
-import { approverLine } from '@/lib/approverLine.js';
+import { approvalSteps, approverLine } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
 
 export function StatusChip({ status }) {
@@ -1216,19 +1216,107 @@ export function Field({ label, note, tip, children, style }) {
  * compete with the figure it sits under.
  *
  * `null` when there is nothing to say, so a cancelled row grows no empty line.
+ *
+ * `when` DRAWS THE MINUTE IT WAS SIGNED, and is off by default. The fact is on
+ * every decision and the room for it is not: in ประวัติการขอ OT the line sits in
+ * the status cell, a column a few characters wide that the chip above it sets,
+ * and a date there widens the whole table for every row. The pop-up passes it —
+ * there the line has a band of its own across the top and the employee opening
+ * it is asking exactly this.
  */
-export function ApproverLine({ entry, signers = null, className = '' }) {
+export function ApproverLine({ entry, signers = null, className = '', when = false }) {
   const line = approverLine(entry, signers);
   if (!line) return null;
   return (
     <div className={`approver-line ${line.tone} ${className}`.trim()}>
       <span className="mark" aria-hidden="true">{line.icon}</span>
       <span className="who">{line.text}</span>
+      {/* Its own element and not more of `.who`, so it can drop to a second line
+          on a phone while the name and the desk stay together on the first. */}
+      {when && line.at && <span className="when">{thaiDateTime(line.at)}</span>}
       {/* The reason a refusal came back, which is the only part of this line
           anybody has to act on. Quoted, like every other stored note on this
           screen, so it reads as somebody's words rather than as the app's. */}
       {line.note && <span className="why">“{line.note}”</span>}
     </div>
+  );
+}
+
+/**
+ * การอนุมัติ — every signature on the entry, in the order they were made, each
+ * with the desk it was made at and the minute it was made.
+ *
+ * WHAT IT ANSWERS THAT THE LINE ABOVE CANNOT. `ApproverLine` prints the LAST
+ * decision, which is the right way to say where a request stands and the wrong
+ * way to say what happened to it: on an ordinary approved entry the last
+ * decision is the ฝ่ายบุคคล step, so the หัวหน้า who read the request and signed
+ * it first was named on no screen the employee could open. `EntryHistory` did
+ * name them — behind ข้อมูลเดิม, which draws only when the entry was edited or
+ * re-filed, so on the ordinary request neither name was anywhere.
+ *
+ * ONE SOURCE, TWO LENSES. The rows are the entry's own history and the labels
+ * are `ACTION_META`'s, the same ones the full trail uses; `approvalSteps` only
+ * chooses which rows. Nothing here reads a roster, so a signer who has since
+ * left the company still prints, and a signer who has since been promoted still
+ * prints the desk they signed at.
+ *
+ * THE SHARED-ACCOUNT NOTE IS NOT DECORATION. ฝ่ายบุคคล is one login for the
+ * whole department, so "ฝ่ายบุคคล" on a signature is an account and not a
+ * person — and an employee reading a name beside every other row has every
+ * reason to assume this one is a person too. It says so where it is read,
+ * rather than leaving that to be discovered when somebody asks who.
+ */
+export function ApprovalSteps({ entry }) {
+  const steps = approvalSteps(entry);
+  if (!steps.length) return null;
+  const shared = steps.some((s) => s.byName && s.byName === s.desk);
+
+  return (
+    <>
+      <ol className="approval-steps">
+        {steps.map((s, i) => (
+          <li key={i} className={s.approved ? 'ok' : 'no'}>
+            <span className="mark" aria-hidden="true">{s.approved ? '✅' : '❌'}</span>
+            <div className="body">
+              <div className="act">{ACTION_META[s.action]?.label || s.action}</div>
+              <div className="who">
+                {/* A decision written before histories carried a name. Saying
+                    so beats an empty space, which reads as a bug. */}
+                {s.byName || <span className="unknown">ไม่มีบันทึกชื่อผู้อนุมัติ</span>}
+                {s.byName && s.desk && s.byName !== s.desk && (
+                  <span className="desk"> ({s.desk})</span>
+                )}
+                {/* Who acted and whose authority they used, never one collapsed
+                    into the other — the same pair, and for the same reason, as
+                    the one EntryHistory prints. */}
+                {s.onBehalfOfName && <span className="behalf"> · ทำแทน {s.onBehalfOfName}</span>}
+                {s.adminOverride && (
+                  <span className="behalf" title="แผนกนี้ไม่มีหัวหน้างานที่เซ็นให้ใบนี้ได้ ผู้ดูแลระบบจึงเซ็นในขั้นหัวหน้าแทน">
+                    {' '}· เซ็นแทนหัวหน้า (ผู้ดูแลระบบ)
+                  </span>
+                )}
+              </div>
+              {s.at && <div className="when">{thaiDateTime(s.at)}</div>}
+              {s.note && <div className="why">“{s.note}”</div>}
+            </div>
+          </li>
+        ))}
+      </ol>
+      {shared && (
+        /* THE ASTERISK IS THE POINT OF IT. The line is a footnote on the row
+           above — the one whose signer is an account and not a person — and the
+           mark is what says "this qualifies something you just read" rather
+           than "here is a new instruction". Wording set by HR on 2026-08-31; it
+           read "ฝ่ายบุคคลใช้บัญชีเดียวร่วมกันทั้งแผนก ระบบจึงบันทึกได้ว่าเป็น
+           ฝ่ายบุคคล ไม่ใช่ชื่อรายบุคคล — หากต้องการทราบว่าใครเป็นผู้กด
+           กรุณาสอบถามฝ่ายบุคคลโดยตรง" until then, which said the same thing at
+           three times the length and in the app's own voice rather than the
+           department's. */
+        <div className="hint">
+          *ฝ่ายบุคคลยืนยันรายการผ่านบัญชีส่วนกลางของฝ่ายบริหารทรัพยากรบุคคล (HR Central Account)
+        </div>
+      )}
+    </>
   );
 }
 

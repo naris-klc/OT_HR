@@ -2,7 +2,6 @@ import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { POPULATE } from '@/lib/entries.js';
-import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 
 /** §7: HR and Admin can override a cap. */
 export const POST = route(async (req, { params }) => {
@@ -11,11 +10,6 @@ export const POST = route(async (req, { params }) => {
 
   const entry = await OtEntry.findById(params.id);
   if (!entry) return fail('ไม่พบรายการ', 404);
-
-  // Recording an over-cap approval changes what the row says about a month
-  // that has been sent to accounting, so it is refused with the rest.
-  const locked = await refusePeriodLock(entry.period, 'บันทึกการอนุมัติเกินเพดาน');
-  if (locked) return fail(locked.error, locked.status);
 
   /**
    * THE REASON IS REQUIRED, like every other exception that can move a figure.
@@ -27,10 +21,11 @@ export const POST = route(async (req, { params }) => {
    * ceiling is worse than a row with the field empty, because it reads like an
    * answer and cannot be told apart from one.
    *
-   * The other four exceptions in this system all refuse without one —
-   * เปิดงวด (`reopenRefusal`), เซ็นแทนหัวหน้า (`OVERRIDE_NOTE_REQUIRED`),
-   * `includeApproved` (`authorizeReplay`) and เปลี่ยนรหัสพนักงาน
-   * (`codeChangePermission`). This one refuses now too, and the screen has
+   * The other exceptions in this system all refuse without one — เซ็นแทนหัวหน้า
+   * (`OVERRIDE_NOTE_REQUIRED`), `includeApproved` (`authorizeReplay`) and
+   * เปลี่ยนรหัสพนักงาน (`codeChangePermission`). There were four until
+   * 2026-08-31; เปิดงวด was the fourth, and it went with ปิดงวด.
+   * This one refuses now too, and the screen has
    * always demanded it: `OverrideModal` marks the field required and keeps its
    * save button disabled until something is typed, so no existing path in the
    * application can reach this refusal — it closes the door on the API, which

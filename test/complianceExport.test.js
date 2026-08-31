@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import {
   COMPLIANCE_HEADERS, EVENT_KINDS, EVENT_LABEL, PRIVILEGED_ROLES,
   actorLabel, complianceCells, complianceRows, describeFilter, fromEntries,
-  fromPeriodLocks, fromReplayRuns, fromRosterAudits, isPrivilegedRoleChange,
+  fromReplayRuns, fromRosterAudits, isPrivilegedRoleChange,
 } from '../lib/complianceExport.js';
 import { AUDITED_FIELDS } from '../lib/rosterAudit.js';
 
@@ -72,8 +72,9 @@ test('a password reset row records that it happened and nothing about the value'
 // 2 · which events are exceptions
 // ════════════════════════════════════════════════════════════════════════════
 
-test('six kinds, and the labels cover every one', () => {
-  assert.equal(EVENT_KINDS.length, 6);
+test('five kinds, and the labels cover every one', () => {
+  // It was six until 2026-08-31; `period_reopen` went with ปิดงวด.
+  assert.equal(EVENT_KINDS.length, 5);
   for (const k of EVENT_KINDS) assert.ok(EVENT_LABEL[k], `${k} has no label`);
 });
 
@@ -217,25 +218,21 @@ test('TWO overrides on one entry are two rows — the re-filing case', () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// 4 · the two that can restate a signed figure
+// 4 · the one that can restate a signed figure
 // ════════════════════════════════════════════════════════════════════════════
 
-test('a reopened งวด is a row; closing one is not', () => {
-  const rows = fromPeriodLocks([{
-    period: '2026-07',
-    events: [
-      { action: 'close', at: AUG(1), byName: 'ฝ่ายบุคคล' },
-      { action: 'reopen', at: AUG(9), byName: 'ผู้ดูแลระบบ', reason: 'บัญชีแจ้งยอดผิด' },
-      { action: 'close', at: AUG(10), byName: 'ฝ่ายบุคคล' },
-    ],
-  }]);
-  // Closing needs no reason — the reason is that the month ended. Reopening is
-  // the one path by which a paid figure becomes editable again.
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].kind, 'period_reopen');
-  assert.equal(rows[0].target, 'งวด 2026-07');
-  assert.equal(rows[0].reason, 'บัญชีแจ้งยอดผิด');
-});
+/**
+ * IT WAS TWO UNTIL 2026-08-31, and `fromPeriodLocks` was the other: a reopened
+ * งวด was a row, a closed one was not, because reopening was the one path by
+ * which a paid figure became editable again.
+ *
+ * ปิดงวด was withdrawn (lib/periodStatus.js: the printed and signed F-HR-027 in
+ * the filing cabinet is the record), and the `period_reopen` kind went with it.
+ * NOTHING WAS LOST FROM ANY PAST FILE — `otPeriodLocks` was empty on the live
+ * database every time it was counted, so no month was ever closed and no reopen
+ * was ever recorded. Had one been, the kind would have stayed and only stopped
+ * acquiring new rows.
+ */
 
 test('a replay is kept when it was ALLOWED to touch approved rows, not when it moved any', () => {
   /**
@@ -313,42 +310,51 @@ test('an actor whose account is gone still prints the name the trail stored', ()
 const SOURCES = {
   rosterAudits: [{ createdAt: AUG(5), action: 'password_reset', passwordReset: true, byName: 'ฝ่ายบุคคล', byRole: 'hr', employeeCode: 'PM-0620', changes: [] }],
   entries: [overrideEntry([{ at: AUG(20), adminOverride: true, byName: 'ผู้ดูแลระบบ', note: 'ADM', toStatus: 'pending_hr' }])],
-  periodLocks: [{ period: '2026-07', events: [{ action: 'reopen', at: AUG(9), byName: 'ผู้ดูแลระบบ', reason: 'แก้ยอด' }] }],
   replayRuns: [{ createdAt: AUG(15), includeApproved: true, byName: 'ผู้ดูแลระบบ', note: 'ตอบ OPEN 1', filter: { period: '2026-08' } }],
 };
 
-test('four collections come out as one timeline, oldest first', () => {
+test('three collections come out as one timeline, oldest first', () => {
   // Oldest first because the file is read as the story of a quarter, unlike
   // every screen in the app, which answers "what just happened".
   const rows = complianceRows(SOURCES);
   assert.deepEqual(rows.map((r) => r.kind), [
-    'password_reset', 'period_reopen', 'replay_approved', 'admin_override',
+    'password_reset', 'replay_approved', 'admin_override',
   ]);
+});
+
+test('a source the export no longer has is ignored, not crashed on', () => {
+  // A caller written against the old four-source shape — a saved script, a
+  // restored backup's tooling — still gets its other three sources merged.
+  const rows = complianceRows({
+    ...SOURCES,
+    periodLocks: [{ period: '2026-07', events: [{ action: 'reopen', at: AUG(9), byName: 'ผู้ดูแลระบบ' }] }],
+  });
+  assert.deepEqual(rows.map((r) => r.kind), ['password_reset', 'replay_approved', 'admin_override']);
 });
 
 test('the window includes the whole of the last day named', () => {
   // `to` is a date somebody typed, not an instant — the route pushes it to the
   // following midnight, and this checks the boundary lands where it is meant.
-  const only9 = complianceRows(SOURCES, { from: new Date(2026, 7, 9), to: new Date(2026, 7, 10) });
-  assert.deepEqual(only9.map((r) => r.kind), ['period_reopen']);
+  const only5 = complianceRows(SOURCES, { from: new Date(2026, 7, 5), to: new Date(2026, 7, 6) });
+  assert.deepEqual(only5.map((r) => r.kind), ['password_reset']);
   const from15 = complianceRows(SOURCES, { from: new Date(2026, 7, 15) });
   assert.deepEqual(from15.map((r) => r.kind), ['replay_approved', 'admin_override']);
 });
 
 test('the window reaches rows nested inside a document', () => {
   /**
-   * The reason the loader filters twice. A period lock and an OT entry both
-   * carry their events in an array, each with its own timestamp — the parent
-   * document's dates say nothing about them, so a query bound alone would
-   * either miss them or take the lot.
+   * The reason the loader filters twice. An OT entry carries its history in an
+   * array, each row with its own timestamp — the parent document's dates say
+   * nothing about them, so a query bound alone would either miss them or take
+   * the lot.
    */
   const rows = complianceRows(SOURCES, { from: new Date(2026, 7, 19) });
   assert.deepEqual(rows.map((r) => r.kind), ['admin_override']);
 });
 
 test('an unknown kind narrows to nothing; no kinds means all of them', () => {
-  assert.equal(complianceRows(SOURCES, { kinds: [] }).length, 4, 'empty list is not a filter');
-  assert.equal(complianceRows(SOURCES, { kinds: null }).length, 4);
+  assert.equal(complianceRows(SOURCES, { kinds: [] }).length, 3, 'empty list is not a filter');
+  assert.equal(complianceRows(SOURCES, { kinds: null }).length, 3);
   assert.equal(complianceRows(SOURCES, { kinds: ['password_reset'] }).length, 1);
 });
 

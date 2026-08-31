@@ -13,13 +13,20 @@ import { authorizeReplay, planRecompute, summariseReplay } from '../lib/policyVe
  * A birth date corrected after a request was signed off used to leave that
  * request computed under the old calendar: the day was a holiday for that
  * person and is not any more, or the reverse, and F-HR-027 prints the stale
- * split. The correction now reaches approved entries too — but only while the
- * month is open. ปิดงวด is the line, not the signature.
+ * split. The correction reaches approved entries too.
  *
- * The arithmetic is `planRecompute`'s and is already covered by
- * test/replayPeriodLock.test.js. What is pinned here is the DECISION: which
- * statuses the roster route asks for, that it says why, and that a closed month
- * still refuses — including the reasoning, so that a future reader who thinks
+ * IT USED TO STOP AT ปิดงวด — "only while the month is open", the line being
+ * the close rather than the signature. That feature was withdrawn on 2026-08-31
+ * (lib/periodStatus.js: the signed paper in the filing cabinet is the record),
+ * so the replay now reaches every month however old. That is the intended
+ * reading of HR's rule rather than a gap left in it: a wrong birth date made
+ * the paper wrong on the day it was printed, and correcting it owes visibility
+ * rather than restraint.
+ *
+ * The arithmetic is `planRecompute`'s and is covered by
+ * test/policyVersion.test.js. What is pinned here is the DECISION: which
+ * statuses the roster route asks for, that it says why, and the reasoning
+ * behind stepping around `authorizeReplay` — so that a future reader who thinks
  * the admin-only rule was simply forgotten finds the argument instead.
  */
 
@@ -40,7 +47,6 @@ test('and it says why, because the escape hatch requires a reason', () => {
   // in ประวัติรายการ, and two copies of it would drift.
   assert.match(read(ROUTE), /note: BIRTHDATE_REPLAY_NOTE/);
   assert.match(BIRTHDATE_REPLAY_NOTE, /วันเกิด/);
-  assert.match(BIRTHDATE_REPLAY_NOTE, /ยังไม่ปิดงวด/);
   // recomputeEntries throws without one — the note is load-bearing, not a label.
   assert.ok(BIRTHDATE_REPLAY_NOTE.trim().length > 0);
 });
@@ -51,28 +57,47 @@ test('rejected and cancelled rows stay out of it', () => {
   assert.doesNotMatch(route, /'cancelled'/);
 });
 
-// ── the guard that replaced the signature ───────────────────────────────────
+// ── how far back it reaches, now that nothing stops it ──────────────────────
 
-test('a closed month is left on the old birth date, whatever is asked for', () => {
+test('every month is replayed, however old — there is no closed one to stop at', () => {
+  /**
+   * THE INVERSE OF WHAT THIS TEST USED TO ASSERT, and deliberately kept in the
+   * same place so the change is legible rather than silent. It read "a closed
+   * month is left on the old birth date, whatever is asked for", handed
+   * `planRecompute` a `closedPeriods` list and checked that both rows in that
+   * month were skipped with `reason: 'period_closed'`.
+   *
+   * ปิดงวด was withdrawn on 2026-08-31 and the option went with it. What is
+   * pinned now is that a correction reaches back as far as the entries go.
+   */
   const entries = [
-    { _id: 'open-approved', status: 'approved', period: '2026-08' },
-    { _id: 'closed-approved', status: 'approved', period: '2026-07' },
-    { _id: 'closed-pending', status: 'pending_hr', period: '2026-07' },
+    { _id: 'august-approved', status: 'approved', period: '2026-08' },
+    { _id: 'july-approved', status: 'approved', period: '2026-07' },
+    { _id: 'july-pending', status: 'pending_hr', period: '2026-07' },
   ];
-  const { replay, skipped } = planRecompute(entries, {
-    includeApproved: true,
-    closedPeriods: ['2026-07'],
-  });
+  const { replay, skipped } = planRecompute(entries, { includeApproved: true });
 
-  assert.deepEqual(replay.map((e) => e._id), ['open-approved']);
-  assert.equal(skipped.length, 2);
-  for (const s of skipped) assert.equal(s.reason, 'period_closed');
+  assert.deepEqual(replay.map((e) => e._id), ['august-approved', 'july-approved', 'july-pending']);
+  assert.deepEqual(skipped, []);
 
-  // And the months come back named, so the screen can say which ones somebody
-  // has to reopen rather than reporting a count nobody can act on.
   const summary = summariseReplay({ scanned: entries, replay, skipped });
-  assert.deepEqual(summary.closedPeriods, ['2026-07']);
-  assert.equal(summary.approvedReplayed, 1);
+  assert.equal(summary.approvedReplayed, 2);
+  // The two fields that named and counted the months ปิดงวด kept out are gone,
+  // not merely always-empty: a figure that can never say anything is a figure
+  // every reader has to check before learning that.
+  assert.equal('closedPeriods' in summary, false);
+  assert.equal('skippedClosed' in summary, false);
+});
+
+test('and the approved rule is still the one thing that does stop it', () => {
+  // Without `includeApproved` a signed row is left alone, as it always was.
+  // That rule was here before ปิดงวด and outlived it.
+  const { replay, skipped } = planRecompute([
+    { _id: 'signed', status: 'approved', period: '2026-07' },
+    { _id: 'waiting', status: 'pending_hr', period: '2026-07' },
+  ]);
+  assert.deepEqual(replay.map((e) => e._id), ['waiting']);
+  assert.deepEqual(skipped, [{ id: 'signed', reason: 'approved' }]);
 });
 
 test('the admin-only clause still guards every OTHER way into an approved row', () => {
@@ -91,16 +116,18 @@ test('the reasoning is written down where the next reader will be', () => {
   // sets includeApproved without asking authorizeReplay. If somebody deletes the
   // argument, they should have to delete a failing test with it.
   const route = read(ROUTE);
-  assert.match(route, /APPROVED ENTRIES MOVE TOO, WHILE THE MONTH IS OPEN/);
+  assert.match(route, /APPROVED ENTRIES MOVE TOO/);
   assert.match(route, /A birth date is not a reading/);
 });
 
 // ── what the screen tells whoever pressed save ──────────────────────────────
 
-test('the roster screen reports the approved half and names the closed months', () => {
+test('the roster screen reports the approved half', () => {
   const view = read('components/AdminView.jsx');
   assert.match(view, /saved\.recomputed\.approvedReplayed/);
-  assert.match(view, /saved\.recomputed\.closedPeriods/);
   // The old promise must be gone: it said approved entries were never touched.
   assert.doesNotMatch(view, /ใบที่อนุมัติแล้วไม่ถูกแตะต้อง/);
+  // And so must the ⚠ line that named the months ปิดงวด kept out — there are
+  // none, so a notice that could never appear is a branch nobody can test.
+  assert.doesNotMatch(view, /recomputed\.closedPeriods/);
 });

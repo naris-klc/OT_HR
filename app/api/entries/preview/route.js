@@ -7,6 +7,7 @@ import { pickSession, isDepartmentManager } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
+import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { birthdayInYear } from '@/src/lib/otEngine.js';
 import { absentKeys, filedKey } from '@/lib/birthdayCheck.js';
 import { birthdayDirectApproval } from '@/lib/birthdayFiling.js';
@@ -141,7 +142,46 @@ export const POST = route(async (req) => {
    */
   const weekdayRefusal = employee ? weekdayOtRefusal(employee.department, result) : null;
 
+  /**
+   * หนึ่งวัน หนึ่งใบ, and เวลาทับซ้อน behind it — asked WHILE the date and the
+   * times are being typed, not only when they are sent.
+   *
+   * The write paths have refused these since lib/overlap.js existed, and that
+   * refusal was the only place either was ever said. That is one round trip too
+   * late for the mistake they are about: somebody who has already filed this
+   * day once is not typing a new request, they are typing the same one again —
+   * usually because nothing on the screen in front of them said the first one
+   * exists. Finding out on the press means the form is filled in, read back,
+   * and wrong, and the sentence lands where an error goes rather than beside
+   * the fields that caused it.
+   *
+   * `refuseDayConflict` — the very function `/entries`, `/entries/[id]` and
+   * `/birthday/entries` refuse with — rather than a second reading of the rules
+   * written for the screen. The form must not be able to offer what the write
+   * path refuses, and a browser-side copy is exactly how the two would come to
+   * disagree; the same reason `routing` and `weekdayRefusal` above are answered
+   * here instead of worked out in the browser.
+   *
+   * The whole `{ status, error, conflict }` goes back unchanged, `status` and
+   * all. It is a refusal nobody has earned yet — nothing is being written —
+   * and reshaping it here would leave the form and the 400 it would eventually
+   * get carrying two different descriptions of one mistake.
+   *
+   * `excludeId` is `entryId`, the field the ceiling above already excludes on:
+   * without it every edit would report itself as the request already occupying
+   * its own date.
+   *
+   * Costs one indexed read of three days of one person's live requests — see
+   * `neighbouringEntries` — and only when the preview knows whose they are.
+   */
+  const conflict = employee
+    ? await refuseDayConflict(session, {
+      employee: employee._id,
+      excludeId: payload.entryId || null,
+    })
+    : null;
+
   return json({
-    result, cap, routing, birthdayRouting, weekdayRefusal,
+    result, cap, routing, birthdayRouting, weekdayRefusal, conflict,
   });
 });

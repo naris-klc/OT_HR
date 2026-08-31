@@ -58,7 +58,7 @@ what you find in the SAME commit.** The documents are `README.md`, everything in
 
 ```bash
 # the name of the thing you changed, whatever shape it takes in prose
-grep -rn "recompute\|ปิดงวด\|closedPeriods" README.md docs/ AGENTS.md
+grep -rn "recompute\|periodStatus\|เพดาน" README.md docs/ AGENTS.md
 ```
 
 Search for the BEHAVIOUR, not only the identifier. A paragraph can describe a
@@ -98,9 +98,10 @@ restated; they read the paragraph that says so.
 - states a **count** that disagrees with the tree — route files, endpoints,
   components, `lib/*.js`, test files;
 - puts an **identifier** in backticks that exists nowhere in the source — this
-  is what would have caught `skippedClosed` being named as the field that
-  carries the months when it carries the count, had the wrong name not also been
-  a real one;
+  is what would have caught the README naming one replay field as the one
+  carrying the months when it carried the count, had the wrong name not also
+  been a real one. (Both fields were withdrawn on 2026-08-31 with ปิดงวด; see
+  `lib/periodStatus.js`. The failure they illustrate is the point, not them.)
 - points at a **file** that is not there.
 
 It cannot check whether a paragraph is TRUE, and it does not pretend to. That is

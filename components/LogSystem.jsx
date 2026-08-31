@@ -382,13 +382,15 @@ function Panel({ title, note, rows, empty, render }) {
 /**
  * The tone each kind of exception is drawn in.
  *
- * THREE LEVELS, NOT SIX COLOURS. A palette with one entry per kind is a legend
+ * THREE LEVELS, NOT FIVE COLOURS. A palette with one entry per kind is a legend
  * to memorise; what the eye needs is "which of these moved money, which moved
  * access, which moved a label".
  *
- *   danger — a figure somebody had signed for can have changed. เปิดงวด and
- *            คำนวณใหม่รวมใบที่อนุมัติแล้ว are the only two events in this system
- *            that can restate a number already sent to payroll.
+ *   danger — a figure somebody had signed for can have changed. คำนวณใหม่รวมใบ
+ *            ที่อนุมัติแล้ว is the only event in this system that can restate a
+ *            number already sent to payroll. เปิดงวด was the other until
+ *            2026-08-31; ปิดงวด was withdrawn (lib/periodStatus.js) and the kind
+ *            went with it, having never once been recorded.
  *   warn   — somebody's access changed hands: a new password, or a บทบาท that
  *            crossed into ฝ่ายบุคคล / ผู้ดูแลระบบ.
  *   muted  — the two that are neither, and are here because they are refused
@@ -397,7 +399,6 @@ function Panel({ title, note, rows, empty, render }) {
  *            app's word for "orientation rather than something to act on".
  */
 const KIND_TONE = {
-  period_reopen: 'danger',
   replay_approved: 'danger',
   password_reset: 'warn',
   role_change: 'warn',
@@ -448,7 +449,7 @@ function Compliance() {
       <h2>การใช้สิทธิ์พิเศษ</h2>
       <div className="hint">
         ทุกครั้งที่มีการใช้สิทธิ์ที่ระบบปกติจะปฏิเสธ — ตั้งรหัสผ่านใหม่ · ผู้ดูแลระบบเซ็นแทนหัวหน้า
-        {' '}· เปลี่ยนบทบาทเป็นฝ่ายบุคคลหรือผู้ดูแลระบบ · เปลี่ยนรหัสพนักงาน · เปิดงวดที่ปิดแล้ว
+        {' '}· เปลี่ยนบทบาทเป็นฝ่ายบุคคลหรือผู้ดูแลระบบ · เปลี่ยนรหัสพนักงาน
         {' '}· คำนวณใหม่รวมใบที่อนุมัติแล้ว
         {' · '}เรียงจากเก่าไปใหม่ เพราะไฟล์นี้อ่านเป็นลำดับเหตุการณ์ ไม่ใช่กวาดหาของล่าสุด
         {' · '}ไม่รวมงานประจำวันปกติ — งานเหล่านั้นอยู่ในสามแท็บก่อนหน้าและในประวัติของใบแต่ละใบ

@@ -19,7 +19,7 @@ the ×1.5 and ×3 buckets, and totals them. No rates, no baht, anywhere.
   ข้อมูลจริง ไม่ใช่จากไฟล์นี้ — ใช้ประเมินความเสี่ยงก่อน deploy
 - **[docs/contingency.md](docs/contingency.md)** — ฝ่ายบุคคล / หัวหน้างาน:
   ต้องทำอะไรเมื่อระบบเข้าไม่ได้ กระดาษ F-HR-027 → คีย์กลับเข้าระบบ →
-  เปิดงวดที่ปิดไปแล้ว → กระทบยอดก่อนจะปิดอีกครั้ง
+  กระทบยอดก่อนพิมพ์
 - **[docs/network.md](docs/network.md)** — คนที่ดูแลเราเตอร์: หมายเลขของเซิร์ฟเวอร์
   ทำไมมันต้องเลิกเป็น DHCP lease และขอบเขตของวง LAN ควรอยู่ตรงไหน
 
@@ -518,6 +518,14 @@ Remove-Item -Recurse -Force .next-verify
 2026-08-26 `deploy-ot.ps1` ขั้นที่ 5 จึงดึง CSS ออกมาจากเซิร์ฟเวอร์เองแล้ว grep
 ไม่ได้อ่านไฟล์บนดิสก์
 
+> ⚠️ **คำที่ grep ต้องเป็นของ*ชุดแก้นี้* ไม่ใช่คำที่ค้างมาจากรอบก่อน** ขั้นที่ 5
+> เคยฝัง `pager-step` ไว้ตายตัวตั้งแต่ 2026-08-26 ถึง 2026-08-31 ซึ่งเป็นคลาสที่
+> งานแผงเปลี่ยนหน้าเพิ่มไว้ — และ build ทุกครั้งหลังจากนั้นก็มีมันติดมาด้วย
+> การ grep จึงพิสูจน์ได้แค่ว่า *build บางอัน* ขึ้นแล้ว ไม่ใช่ว่า *build นี้* ขึ้น
+> ซึ่งเป็นความผิดพลาดชนิดเดียวกับที่ขั้นนี้มีไว้จับ ตอนนี้เป็นพารามิเตอร์
+> `-Sentinel` ตั้งต้นเป็นคลาสใหม่ล่าสุด (`period-status`) — **ย้ายมันทุกครั้งที่
+> deploy ของที่เพิ่มคลาสใหม่ และส่ง `-Sentinel` เองถ้าชุดแก้นั้นไม่ได้เพิ่มคลาส**
+
 ## สำรองและกู้คืนข้อมูล
 
 สังเกต `--` ที่อยู่หน้า flag ถ้าไม่มีมัน npm จะเก็บ flag พวกนั้นไว้ใช้เอง แล้วคำสั่ง
@@ -542,10 +550,16 @@ Extended JSON หนึ่งเอกสารต่อหนึ่งบรร
 `npm run restore`
 
 **รายชื่อ collection มาจากฐานข้อมูล ไม่ได้มาจากรายการโมเดล** `lib/db.js` import
-โมเดลมาหกตัว แต่ `src/models/` มีสิบสองตัว — การสำรองที่ขับด้วยทะเบียนโมเดลจะข้าม
-`otEmployeeAudits`, `approvaldelegations`, `otBirthdayChecks`, `otPeriodLocks`
-และ `otPolicyReplayRuns` ไปเงียบ ๆ แล้วรายงานว่าสำเร็จ ชุดสำรองที่ขาดไปห้า
+โมเดลมาหกตัว แต่ `src/models/` มีสิบเอ็ดตัว — การสำรองที่ขับด้วยทะเบียนโมเดลจะข้าม
+`otEmployeeAudits`, `approvaldelegations`, `otBirthdayChecks` และ
+`otPolicyReplayRuns` ไปเงียบ ๆ แล้วรายงานว่าสำเร็จ ชุดสำรองที่ขาดไปสี่
 collection แย่กว่าไม่มีชุดสำรองเลย เพราะมันคือสิ่งที่คนเชื่อถือ
+
+> ประโยคนี้เคยอ่านว่า "สิบสองตัว" และนับ `otPeriodLocks` เป็นข้อที่ห้า จน
+> 2026-08-31 ที่ ปิดงวด ถูกถอนออก (ดู `lib/periodStatus.js`) และโมเดลถูกลบไป
+> **นี่คือเหตุผลที่บรรทัดนั้นถามฐานข้อมูล ไม่ใช่ถามทะเบียนโมเดล** — การถอนฟีเจอร์
+> ไม่ต้องแก้อะไรตรงนี้เลย collection ที่ยังอยู่แต่ว่างก็ยังถูกสำรอง และที่ถูก drop
+> ไปแล้วก็แค่หายไปจากรายการ
 
 **ไม่มีอะไรถูกเขียนถ้าไม่มี `--yes`** การรันแบบตั้งต้นจะตรวจลายนิ้วมือทุกไฟล์
 เชื่อมต่อ พิมพ์ออกมาว่ามันจะลบอะไรบ้าง แล้วหยุด ไฟล์ถูกอ่าน ถูก hash และถูก parse
@@ -777,8 +791,7 @@ chmod +x scripts/backup.sh
 | เซ็นทั้งสองขั้นของใบเดียวกัน | ❌ | ❌ | `signedManagerStep` — §6 |
 | แก้ไขใบที่ยังไม่ปิด | ✅ | ✅ | `editPermission` |
 | **งวดและตัวเลข** | | | |
-| ปิดงวด | ✅ | ✅ | `CLOSE_ROLES` |
-| เปิดงวดที่ปิดแล้ว | ❌ | ✅ *(ต้องระบุเหตุผล)* | `REOPEN_ROLES` |
+| ดูสรุปสถานะงวด | ✅ | ✅ | `/api/periods/[period]` — ทุกคนที่ล็อกอินอ่านได้ |
 | คำนวณใหม่ (ใบที่ยังไม่อนุมัติ) | ✅ | ✅ | `authorizeReplay` |
 | คำนวณใหม่ **รวมใบที่อนุมัติแล้ว** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `authorizeReplay` |
 | ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` |
@@ -813,7 +826,7 @@ chmod +x scripts/backup.sh
   ตำแหน่งเดียวกับที่ผู้รับช่วงวางอยู่ แผนกที่*มี*หัวหน้าจึงเซ็นโดยหัวหน้าของเขาเอง
   และทางนี้จะถูกใช้ก็ต่อเมื่อไม่มีใครอื่นเซ็นได้แล้วจริง ๆ
 - **ต้องระบุเหตุผล** ไม่ระบุคือ 400 และเป็นกฎที่ปฏิเสธ ไม่ใช่ route ยืนอยู่ระดับ
-  เดียวกับ `authorizeReplay`, เปิดงวด และ เปลี่ยนรหัสพนักงาน: *อะไร*ที่เปลี่ยนไป
+  เดียวกับ `authorizeReplay` และ เปลี่ยนรหัสพนักงาน: *อะไร*ที่เปลี่ยนไป
   ประกอบขึ้นใหม่จากใบได้ทีหลัง แต่*ทำไม*ถึงอนุญาต ประกอบขึ้นใหม่ไม่ได้
 - **ร่องรอยบอกไว้** `managerDecision.adminOverride` กับแถวประวัติอีกหนึ่งแถว
   พิมพ์ใน ประวัติรายการ ว่า `· เซ็นแทนหัวหน้า (ผู้ดูแลระบบ)` พร้อมเหตุผลอยู่ใต้บรรทัดนั้น
@@ -886,16 +899,18 @@ chmod +x scripts/backup.sh
 **มันคือข้อเท็จจริงที่ถูกบันทึกผิด** วันเกิดของพนักงานเป็นวันหยุดของคนนั้น การย้าย
 วันจึงย้ายว่าวันไหนเป็นวันหยุดของเขา และใบที่อนุมัติแล้วซึ่งถูกปล่อยไว้เฉย ๆ ก็คือ
 ตัวเลขที่พิมพ์อยู่บน F-HR-027 ใต้ประเภทวันที่ตอนนี้ทุกคนเห็นตรงกันแล้วว่าผิด
-ตราบใดที่เดือนนั้นยังไม่ปิดงวด ก็ยังไม่มีอะไรถูกส่งไปที่ไหน จึงไม่มีตัวเลขข้างนอกให้
-ตัวเลขเดิมต้องตรงด้วย กระดาษใบนั้นผิดเฉย ๆ — ฝ่ายบุคคลตัดสิน 2026-08-18
+กระดาษใบนั้นผิดเฉย ๆ และผิดมาตั้งแต่วันที่พิมพ์ — ฝ่ายบุคคลตัดสิน 2026-08-18
 
 **สิ่งที่ข้อยกเว้นนี้ยังต้องจ่าย** ทุกอย่างที่ทางออกฉุกเฉินเรียกร้อง ยกเว้นการตรวจ
 บทบาท:
 
-- **ปิดงวด ยังเป็นกำแพงอยู่** `recomputeEntries` ข้ามเดือนที่ปิดแล้วเสมอไม่ว่าจะถูก
-  สั่งให้ทำอะไร เดือนที่ส่งบัญชีไปแล้วจึงยังต้องให้ผู้ดูแลระบบเปิดงวดคืนก่อน คำตอบ
-  ที่ส่งกลับมาระบุชื่อเดือนพวกนั้น และหน้าจอพิมพ์มันออกมา
-  (`⚠ เดือนที่ปิดงวดแล้วไม่ถูกแตะต้อง`)
+- **⚠️ ไม่มีกำแพงระดับเดือนแล้ว** ข้อนี้เคยอ่านว่า "**ปิดงวด ยังเป็นกำแพงอยู่** —
+  `recomputeEntries` ข้ามเดือนที่ปิดแล้วเสมอไม่ว่าจะถูกสั่งให้ทำอะไร" ปิดงวด ถูกถอน
+  ออกเมื่อ 2026-08-31 (ดู `lib/periodStatus.js`) การแก้วันเกิดจึงคำนวณใบที่อนุมัติ
+  แล้ว**ทุกเดือน**ใหม่ ไม่ว่าเก่าแค่ไหน และไม่ว่าจะพิมพ์ส่งบัญชีไปแล้วหรือยัง
+  นี่คือการอ่านกฎของฝ่ายบุคคลตามที่ตั้งใจ ไม่ใช่ช่องที่เหลือไว้ — วันเกิดที่บันทึกผิด
+  ทำให้กระดาษผิดตั้งแต่วันที่พิมพ์ สิ่งที่การแก้ติดค้างไว้คือ*ความเห็นได้* ไม่ใช่
+  *ความยับยั้ง* ซึ่งคือสามข้อที่เหลือ
 - **ทุกใบที่ตัวเลขขยับจริงจะเก็บภาพ `before` ไว้** พร้อมบรรทัด `recompute` ที่ถือ
   `BIRTHDATE_REPLAY_NOTE` การแถลงตัวเลขใหม่จึงโผล่ใน ประวัติรายการ ข้าง ๆ การแก้ไข
   ธรรมดา
@@ -930,11 +945,15 @@ curl -X POST http://127.0.0.1:3000/api/settings/recompute \
 > **สั่ง `npm run backup` ก่อน** และรัน `npm run whatif` เพื่อดูราคาของการเปลี่ยน
 > ก่อนจะรันคำสั่งนี้เพื่อเปลี่ยนจริง
 >
-> เดือนที่ปิดงวดแล้วจะถูกข้ามเสมอ ไม่ว่าจะส่งอะไรมาก็ตาม คำตอบที่ส่งกลับมาบอก
-> **จำนวน**ไว้ที่ `skippedClosed` และ**ชื่อเดือน**ไว้ที่ `closedPeriods` ส่วนแต่ละแถวใน
-> `skipped` มี `reason: 'period_closed'` กับงวดของตัวเองกำกับ — สองชื่อ ไม่ใช่ชื่อเดียว
-> เพราะหน้าจอที่อ่านค่านี้ต้องการทั้งนับและชื่อ การเปิดงวดคืนเป็นการตัดสินใจครั้งที่สอง
-> แยกต่างหาก และทิ้งเหตุผลไว้เป็นหลักฐานของตัวเอง
+> **ไม่มีเดือนไหนถูกกันไว้อีกแล้ว** ย่อหน้านี้เคยอ่านว่า "เดือนที่ปิดงวดแล้วจะถูกข้าม
+> เสมอ ไม่ว่าจะส่งอะไรมาก็ตาม" พร้อมบอกว่าคำตอบคืน**จำนวน**ไว้ที่ `skippedClosed`
+> และ**ชื่อเดือน**ไว้ที่ `closedPeriods` ปิดงวด ถูกถอนออกเมื่อ 2026-08-31 (ดู
+> `lib/periodStatus.js`) ทั้งสองฟิลด์นั้นถูกลบทิ้ง ไม่ใช่ปล่อยให้เป็นศูนย์ค้างไว้ และ
+> `skipped` เหลือเหตุผลเดียวคือ `'approved'` — ใบที่มีคนเซ็นแล้วและไม่ได้สั่ง
+> `includeApproved` มาด้วย
+>
+> **สิ่งที่ยังกั้นอยู่คือ `authorizeReplay`** ผู้ดูแลระบบเท่านั้น และต้องมี `note`
+> ซึ่งตอนนี้เป็นด่านเดียวที่เหลือระหว่างตัวเลขที่เซ็นรับไปแล้วกับการถูกแถลงใหม่
 
 ถ้าไม่ใส่ `includeApproved` endpoint เดียวกันนี้ก็เป็นงานธรรมดาที่ ฝ่ายบุคคล ทำได้
 — มันคำนวณใหม่เฉพาะใบที่ยังไม่ถูกตัดสิน:
@@ -1101,12 +1120,12 @@ collection จากฐานข้อมูลจริง ไม่ใช่�
 สี่แท็บข้าง ๆ คือข้อมูลจราจรที่หั่นมาสี่แบบ ส่วนแท็บนี้ตอบคนละคำถาม — *มีอะไรถูกทำ
 ไปบ้างที่ตามกฎแล้วควรจะถูกปฏิเสธ และทำไมถึงอนุญาต?*
 
-`otAccessLogs` ตอบคำถามนี้ไม่ได้ หกเหตุการณ์ที่สำคัญอยู่ในนั้นจริง ปนอยู่กับอีก
+`otAccessLogs` ตอบคำถามนี้ไม่ได้ ห้าเหตุการณ์ที่สำคัญอยู่ในนั้นจริง ปนอยู่กับอีก
 แสนเหตุการณ์ที่ไม่สำคัญ และ**ไม่มีเหตุการณ์ไหนถือ "ทำไม" มาด้วย** เพราะบันทึกจราจร
 ไม่เคยอ่าน request body
 
-**หกอย่างนั้น และเกณฑ์ที่ใช้คัด** เกณฑ์ไม่ใช่ "สำคัญไหม" แต่คือ *ถ้าคนทำเป็นคนอื่น
-เรื่องนี้จะถูกปฏิเสธหรือไม่ และระบบประกอบเหตุผลขึ้นใหม่เองไม่ได้ใช่หรือไม่* มีหกอย่าง
+**ห้าอย่างนั้น และเกณฑ์ที่ใช้คัด** เกณฑ์ไม่ใช่ "สำคัญไหม" แต่คือ *ถ้าคนทำเป็นคนอื่น
+เรื่องนี้จะถูกปฏิเสธหรือไม่ และระบบประกอบเหตุผลขึ้นใหม่เองไม่ได้ใช่หรือไม่* มีห้าอย่าง
 ที่ผ่านเกณฑ์ และมันคืออำนาจเฉพาะ ผู้ดูแลระบบ ในตารางข้างบนพอดี บวกอำนาจของ
 ฝ่ายบุคคล อีกหนึ่งข้อที่มีรูปร่างเดียวกัน:
 
@@ -1116,8 +1135,12 @@ collection จากฐานข้อมูลจริง ไม่ใช่�
 | `admin_override` | ผู้ดูแลระบบ เซ็นขั้นหัวหน้าในที่ที่ไม่มีหัวหน้าคนไหนเซ็นได้ | **ต้อง** |
 | `role_change` | บทบาท ข้ามเข้าหรือข้ามออกจาก ฝ่ายบุคคล / ผู้ดูแลระบบ | ไม่ |
 | `code_change` | รหัสพนักงาน ถูกเปลี่ยน | **ต้อง** |
-| `period_reopen` | งวด ที่ปิดแล้วถูกเปิดคืน | **ต้อง** |
 | `replay_approved` | ใบที่มีคนเซ็นแล้วถูกคำนวณใหม่ (`includeApproved`) | **ต้อง** |
+
+> **เคยมีหกอย่าง** ประเภทที่หกคือ `period_reopen` — "งวด ที่ปิดแล้วถูกเปิดคืน,
+> **ต้อง**ระบุเหตุผล" — ถูกถอนไปพร้อม ปิดงวด เมื่อ 2026-08-31 (ดู
+> `lib/periodStatus.js`) **ไม่มีแถวไหนหายไปจากไฟล์เก่า** เพราะ `otPeriodLocks`
+> ว่างมาตลอด ไม่เคยมีงวดไหนถูกปิด จึงไม่เคยมีการเปิดคืนให้บันทึก
 
 การเลื่อนจาก `employee → manager` **ไม่อยู่**ในนี้ — นั่นคือการรับคนเข้าทำงานตามปกติ
 และการใส่มันลงไฟล์ก็คือการกลบบัญชีที่กลายเป็น ผู้ดูแลระบบ ให้จมหายไป การอนุมัติ
@@ -1125,7 +1148,7 @@ collection จากฐานข้อมูลจริง ไม่ใช่�
 มันอยู่ในสามแท็บข้างบนและอยู่ใน ประวัติ ของแต่ละใบอยู่แล้ว และไฟล์ตรวจสอบที่รวม
 พวกนั้นเข้าไปด้วยคือไฟล์ที่ไม่มีใครอ่านจนจบ
 
-**ช่อง เหตุผล ที่ว่างคือสิ่งที่ตรวจพบ ไม่ใช่ปัญหาการจัดรูปแบบ** — สี่ในหกอย่างนั้น
+**ช่อง เหตุผล ที่ว่างคือสิ่งที่ตรวจพบ ไม่ใช่ปัญหาการจัดรูปแบบ** — สามในห้าอย่างนั้น
 ทำไม่ได้เลยถ้าไม่มีเหตุผล หน้าจอบอกจำนวนไว้เหนือตาราง และ CSV ปล่อยช่องนั้นให้ว่าง
 จริง ๆ มันจึงเรียงและกรองในฐานะช่องว่างได้ใน Excel
 
@@ -1146,12 +1169,12 @@ collection จากฐานข้อมูลจริง ไม่ใช่�
 curl -o compliance.csv --cookie 'ot_token=<…ผู้ดูแลระบบ…>' \
   'http://127.0.0.1:3000/api/exports/compliance.csv?from=2026-07-01&to=2026-09-30'
 
-# เฉพาะสองประเภทที่ตัวเลขขยับได้
+# เฉพาะประเภทที่ตัวเลขขยับได้
 curl -o compliance.csv --cookie 'ot_token=<…>' \
-  'http://127.0.0.1:3000/api/exports/compliance.csv?from=2026-07-01&to=2026-09-30&kinds=period_reopen,replay_approved'
+  'http://127.0.0.1:3000/api/exports/compliance.csv?from=2026-07-01&to=2026-09-30&kinds=replay_approved,admin_override'
 ```
 
-สี่ collection ออกมาเป็นเส้นเวลาเดียว **เรียงจากเก่าไปใหม่** — ต่างจากทุกหน้าจอใน
+สาม collection ออกมาเป็นเส้นเวลาเดียว **เรียงจากเก่าไปใหม่** — ต่างจากทุกหน้าจอใน
 แอปนี้ เพราะไฟล์นี้ถูกอ่านในฐานะเรื่องราวของหนึ่งไตรมาส ไม่ใช่ถูกกวาดตาหาสิ่งที่
 เพิ่งเกิดล่าสุด กฎอยู่ที่ `lib/complianceExport.js` (บริสุทธิ์ ทดสอบที่
 `test/complianceExport.test.js`) การอ่านอยู่ที่ `lib/complianceQuery.js` และหน้าจอ
@@ -1168,8 +1191,7 @@ src/lib/otEngine.js       the arithmetic: segmentation, buckets, break, rounding
 src/lib/csv.js            CSV in/out, UTF-8 BOM on the way out
 src/models/               AccessLog, ApprovalDelegation, BirthdayCheck,
                           Department, Employee, EmployeeAudit, Holiday,
-                          OtEntry, PeriodLock, PolicyReplayRun, PolicyVersion,
-                          Setting
+                          OtEntry, PolicyReplayRun, PolicyVersion, Setting
 src/services/otService.js engine ↔ database: compute, cap check, replay
 src/migrate-company.js    one-off: fill `company` on a pre-split database
 src/migrate-policy-version.js
@@ -1215,13 +1237,13 @@ lib/departmentSummary.js  the same month regrouped by แผนก, both compani
                           printed form
 lib/departments.js        who may write a แผนก row, and why `active` is the one
                           field ฝ่ายบุคคล do not get — pure
-lib/complianceExport.js   which six events count as the exercise of a
-                          privileged exception, and the row shape four
+lib/complianceExport.js   which five events count as the exercise of a
+                          privileged exception, and the row shape three
                           collections are normalised to — pure
-lib/complianceQuery.js    the four reads behind it, kept apart for the reason
+lib/complianceQuery.js    the three reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     106 files, run by `npm test`. Six named below as a
+test/                     104 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1234,9 +1256,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1767 tests
-across 106 files**, measured 2026-08-28 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1763 tests
+across 104 files**, measured 2026-08-31 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -2239,6 +2261,87 @@ split: the hours are in the วันหยุด columns, ยื่นถูก
 second implementation would be a second answer. Withheld on a proxy filing, since
 it would tell a หัวหน้า when their team member was born.
 
+### หนึ่งวัน หนึ่งใบ — one line per day on the paper, one request per day in here
+
+F-HR-027 gives each day of the month **one line**. That is not a layout detail
+to work around: two live requests on 5 August have nowhere to print, so the
+sheet accounting receives either loses one of them or runs a second line through
+a box sized for one. HR asked for the system to hold the paper's shape on
+2026-08-31, and **a date now carries one live request and no more** — whatever
+the hours are, and whether or not they overlap. 08:00–12:00 and 18:00–21:00 on
+one day share not a single minute and are still refused; the day's work belongs
+on the day's line, which means one entry covering it.
+
+The rule is `findSameDate` in [`lib/overlap.js`](lib/overlap.js), and the
+sentence is `sameDateMessage`: **พบรายการ OT ของวันที่ 05/08/2026 แล้ว
+กรุณาแก้ไขรายการเดิม**. The date is written the way the form's own
+`<input type="date">` writes it rather than in Thai and พ.ศ., because the person
+reading it is looking at that box; a date in prose is spelt the other way
+everywhere else in this system, and that is a different job.
+
+**Only live requests hold a day.** The rows compared against come from
+`neighbouringEntries` in [`lib/overlapQuery.js`](lib/overlapQuery.js), which
+narrows to `CAP_STATUSES` — so a **rejected** or **cancelled** request holds
+nothing. That is deliberate and load-bearing rather than an oversight in the
+strictness: **ส่งใหม่** files a fresh request for the same date after a
+rejection, and an employee may cancel their own and file again, and both are
+shipped features that this rule would otherwise have quietly removed. Neither a
+rejected nor a cancelled row ever reaches an F-HR-027 line, which is the whole
+reason the rule exists, so neither has any claim on one. *If HR does want a date
+locked by a cancelled row as well, the change is one status list in
+`neighbouringEntries` — say so and it moves.*
+
+#### เวลาทับซ้อน is still underneath it, and still needed
+
+The date rule is stricter than the minute rule on one day and **blind exactly
+where it is not**: a shift filed against Friday that runs to 02:00 prints on
+Friday's line while occupying four hours of Saturday. A request on Saturday is a
+different date, so `findSameDate` allows it, and the two claim the same hours
+anyway. That is the pair `findOverlaps` exists for — it places each session on
+one timeline shared by every date and asks whether they share a minute, with
+both ends half-open so that clocking off one job at 19:00 and onto another is
+not a clash. It was written for a pair (17:00–19:00 and 18:30–20:30 on one
+evening) that the date rule now catches first, and `latestPerSession` in
+[`lib/reports.js`](lib/reports.js) never caught at all — its key is the WHOLE
+window, so it fires only on two filings of exactly the same session.
+
+So both run, off one read, in `refuseDayConflict`: the day first, the minutes
+behind it, and **never both sentences at once** — a same-date pair is usually an
+overlapping pair too, and two sentences about one mistake reads as two mistakes.
+
+**All three write paths ask** — filing, editing, and ฝ่ายบุคคล filing from the
+scan record — with a 400 and the offending request named. `test/overlap.test.js`
+reads the tree and fails if a route that writes a session forgets to.
+An **edit** is where the day rule earns its place on `PATCH`: the commonest
+correction there is moves `workDate`, and it can land on a day that is already
+filed without the times clashing at all.
+
+**And the form says it before the press.** A refusal on บันทึก is the right
+answer at the wrong moment for this mistake: somebody filing a day twice does
+not know the first request exists — that is why they are typing it again — so
+the whole form gets filled in, read back, and only then refused.
+`POST /api/entries/preview` asks the same `refuseDayConflict` on every keystroke
+that moves the date or a time, and [`components/OtForm.jsx`](components/OtForm.jsx)
+prints **the server's own sentence** with the request it names drawn underneath
+as a row — date, window, status chip, and for an overlap the minutes shared —
+then greys บันทึก. The sentence is never re-worded in the browser, and neither
+rule is re-implemented there: what the screen holds is one month of one list,
+and a day can be taken by a request a หัวหน้า filed on this person's behalf or
+by one in a month the list is not showing.
+
+The one case that warns instead of blocking is a **proxy batch of more than one
+name**. The preview is computed against the first person ticked (`forWhom`), so
+what it found is that one person's day, and shutting the button would refuse
+seven filings over an eighth person's — `conflictBlocks` is what draws that
+line. Each POST is checked against its own person and the summary names whoever
+was refused, which is exactly how the ceiling already behaves on that screen.
+
+The rule is enforced where entries are WRITTEN, not where they are printed:
+nothing goes back and splits a day that was already double-filed. On 2026-08-31
+the database was counted for that — `{employee, workDate}` appears twice for
+nobody, at any status, in all 11 entries — so there is nothing to clean up and
+no existing row that this makes uneditable.
+
 ### Getting the birthday into the system — the file is the unit, not the row
 
 HR types `1998-03-05`. Excel displays `05/03/1998`, and saving the file writes
@@ -2452,6 +2555,32 @@ The same three ride on `managerDecision` and `hrDecision`. ประวัติ
 ผู้อนุมัติ, and the F-HR-027 note block carries it to the paper when
 `proxyNoteOnForm` is on.
 
+**And since 2026-08-31 the employee's own pop-up says it too**, under
+**การอนุมัติ** — every signature on the request, oldest first, each with the
+desk it was made at and the minute it was made: *หัวหน้างานอนุมัติ · วิชัย ศรีสุข
+(หัวหน้างาน) · 13 ส.ค. 2569 14:34 น.* The three screens above all belong to
+somebody reviewing; this is the one belonging to the person whose hours they
+are, and until then it was the only one of the four that named nobody. Not for
+want of the data — `approvalSteps` in `lib/approverLine.js` reads the same
+history rows `EntryHistory` does — but because the one line it did draw prints
+the LAST decision, and on an approved entry that is the ฝ่ายบุคคล step. **The
+bracket says the desk, and the desk is read off the `action`**, never off the
+signer's `position`: `approve_mgr` was the หัวหน้า step on the day it was pressed
+and stays it, whereas a position is live and a promotion would silently re-label
+every signature that person ever made. If a job title itself is ever wanted
+against a signature, the honest way is a `byPosition` copied onto the row beside
+`byName` at decision time — it cannot be recovered for rows already written,
+which is the whole argument against reading it live.
+
+**ฝ่ายบุคคล is still a desk and not a person there, and the block says so out
+loud.** The department shares one login (see ตาราง above), so `byName` on an
+`approve_hr` row is an account; the name is not repeated in brackets — *ฝ่ายบุคคล
+(ฝ่ายบุคคล)* reads as two parties — and a line under the list states that the
+account is shared. A reader meeting a real person's name on the row above it has
+every reason to assume this one is a person too, and the place to correct that
+is where it is read. Individual ฝ่ายบุคคล logins would be the only real fix and
+nobody has asked for them.
+
 **An expiry changes the queue, not the past.** Entries already approved keep the
 status they were given: an approval is an event that happened, not a permission
 re-evaluated on every read, and nothing recomputes one.
@@ -2469,6 +2598,15 @@ is the employee's to withdraw, after it the entry carries a decision made
 against particular hours. That line is right. What was wrong was the sentence on
 the other side of it — **“หัวหน้าอนุมัติแล้ว ยกเลิกเองไม่ได้ — ติดต่อฝ่ายบุคคล”** —
 which sent the rest of the story outside the system.
+
+**And that sentence itself stood until 2026-08-31**, months after the feature
+below replaced what it described: `cancelPermission` went on answering
+ติดต่อฝ่ายบุคคล on a signed entry, so anything that reached the rule rather than
+the screen still sent people back to the phone call. It now names the button —
+กด “ขอถอนใบ” — which makes it the mirror of `withdrawEligibility`'s own
+redirect on the other side of the same line, where a request nobody has signed
+is told to press ยกเลิก instead of asking. Two rules, one line between them, and
+each pointing at the button the other side owns.
 
 What happened out there was ฝ่ายบุคคล editing or cancelling the row on the
 employee's say-so, and what the trail recorded was **ฝ่ายบุคคลแก้ไขข้อมูล**. Who
@@ -2513,51 +2651,73 @@ a phone call as the only way through, which is what this replaced. Contrast
 
 The rules are pure and live in `lib/withdrawal.js`; `withdrawEligibility` is the
 same predicate the screen offers the button on and the route refuses with, so
-the two cannot drift. Both routes refuse a closed month — including the *ask*,
-because a request accepted into a closed month sits in a queue where it can
-never be granted while the employee has been told their withdrawal is under way.
+the two cannot drift. Both routes refused a closed month until 2026-08-31 —
+including the *ask*, because a request accepted into a closed month sat in a
+queue where it could never be granted while the employee had been told their
+withdrawal was under way. ปิดงวด was withdrawn, so neither refuses now and a
+signed entry from any month can be asked back.
 
 Reviewers find them on **คำขอถอนใบที่อนุมัติแล้ว**, above the approval queue,
 fed by `GET /api/entries?withdrawal=open` in whatever scope the caller already
 has. It is not batchable, for the reason rejection is not.
 
-### An open request blocks ปิดงวด
+### An open request is ตกค้าง, and the card says so
 
-Same stranding failure as a pending approval, wearing different clothes — and
-invisible to that count, because the entry a request sits on is `approved`.
-`withdraw/decide` refuses a closed month like every other write path, so closing
-over an open request means it can never be granted and never refused. The
-employee watches it sit there and only an administrator can undo it.
+This section read **"An open request blocks ปิดงวด"** until 2026-08-31, and the
+failure it described was real: a withdrawal request nobody had answered sat on an
+`approved` entry, so it was invisible to the pending count, and closing over it
+meant it could never be granted and never refused.
 
-`closeRefusal` names it as its own count with its own sentence, never added to
-`pendingCount`: the two are cleared by different people doing different things —
-one by working an approval queue, the other by answering a question somebody
-asked — and a single number would match neither screen.
+**ปิดงวด was withdrawn.** HR print, sign and file F-HR-027 every month, and that
+stack in the cabinet is the record — a second lock in the database bought nothing
+and made every late correction an errand for an administrator. Nothing blocks now
+and nothing can be stranded, because nothing shuts.
 
-### …and what only warns
+**What survived is the check, which was always the useful half.** Before pressing
+print, ฝ่ายบุคคล want to know whether anything in the month is still waiting for
+somebody. The card on ตรวจสอบรายเดือน — **สรุปสถานะงวด**, `components/PeriodStatus.jsx`
+— answers exactly that, in the sentence HR asked for:
 
-`closeWarnings` is the other half, and the line between them is worth stating:
+> งวด สิงหาคม 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ
 
-> A **refusal** is for a state that closing would STRAND. A **warning** is for a
-> state that is finished but worth a second look.
+### ตกค้าง and ควรตรวจ, and the line between them
 
-An entry flagged `capExceeded` or `belowMinimumFlagged` is approved: its hours
-are real, its status is final, and closing does not trap it. Refusing over one
+The old distinction is kept, because it is still true — it just no longer decides
+whether a button is pressable. `periodItems` in `lib/periodStatus.js` returns two
+lists, and what separates them is **what printing the month does to them**:
+
+> **ตกค้าง** is a thing nobody has answered. **ควรตรวจ** is a thing that is
+> finished and worth a second look.
+
+**ตกค้าง** — a request at `pending_mgr` or `pending_hr` is not on F-HR-027 at
+all, and an open withdrawal means a row that *is* on the sheet may be about to
+come off it. Print now and the paper is wrong, or goes stale the same week. Each
+is its own count with its own sentence, never added together: they are cleared by
+different people doing different things, and a single number would match neither
+screen.
+
+**ควรตรวจ** — an entry flagged `capExceeded` or `belowMinimumFlagged` is
+approved. Its hours are real, its status is final, and it prints correctly. It
+carries a flag saying somebody decided something unusual. Counting it as ตกค้าง
 would also contradict `capBehaviour: 'warn'`, which is the policy's own answer
 that an over-cap request goes through carrying a flag — under that setting HR
-approving it **is** the decision, and blocking would make the only route to a
-closed month pressing **ยกเว้นเพดาน** on every flagged row.
+approving it **is** the decision.
 
-So they are counted, and printed in the **ปิดงวด** dialog. That dialog is itself
-new: closing had no confirmation at all, while reopening — the reversible half of
-the pair — has had one since it was written. A line above a button is a line
-people stop seeing by the third month; a dialog they pass through is read on the
-sitting that matters. A clean month says so in one sentence rather than printing
-zeroes.
+Only ตกค้าง colours the card and reaches the headline. A month with two over-cap
+approvals in it is ready to print, and a flag that meant "there is something on
+this screen" would be on every month there has ever been.
 
-`GET /api/periods/<period>` returns all four counts as `checks`, from one
-`$facet`, and still returns `pending` at the top level so the reply stays a
-superset of what it was.
+**เดือนก่อนหน้า** gets one line, and only when it still has something
+unanswered. The old reminder spoke whenever last month was not *closed* — which,
+because `otPeriodLocks` was empty on the live database every time it was
+counted, meant every visit to every month, forever. A quiet finished month is now
+silent.
+
+`GET /api/periods/<period>` returns the five counts as `checks` from one
+`$facet`, plus the built `headline`, `outstanding` and `review`, and still
+returns `pending` at the top level so the reply stays a superset of what it was.
+There is no `POST`: the two endpoints that closed and reopened a month are gone
+from the tree, and `test/periodStatus.test.js` fails if either comes back.
 
 ---
 
@@ -4653,8 +4813,10 @@ screenshot was taken at:
 | is the foot of the page short? | `.mobile-nav-spacer` measures 114px against a 66px bar |
 
 **What is different on this screen is what passes underneath.** Everywhere else
-it is `--card` sliding under `--bar-ground` — one step apart, and the round
-above's hairline is enough. ใบ F-HR-027 is a sheet of **#ffffff paper**, white
+it is `--card` sliding under `--bar-ground` — one step apart, and this section
+read *"the round above's hairline is enough"* until 2026-08-31, when the same
+complaint came back from exactly there; see the round below. ใบ F-HR-027 is a
+sheet of **#ffffff paper**, white
 on both themes because it is a printable form, and it is cut flush by a
 near-black bar at both ends. The reporter said exactly this: *"ถ้าพื้นข้างหลัง
 มันคนละสีมันจะเห็นชัด"*. A boundary that reads as continuation at one step of
@@ -4662,13 +4824,42 @@ contrast reads as a mistake at the full range.
 
 **So both bars this screen has now cast the app bar's shadow**, same falloff,
 `0 6px 14px -8px var(--shadow-soft)` — `.print-bar` down onto the paper, and
-`.mobile-nav` the same numbers negated, casting up. Neither takes the lifted
-hairline the app bar needed: `--line-lift` exists to carry ธีมมืด where a black
-shadow over a near-black page cannot, and the surface that needs carrying here
-is white on both themes, so the shadow already reaches it.
+`.mobile-nav` the same numbers negated, casting up. It read *"neither takes the
+lifted hairline the app bar needed"* until 2026-08-31 — `.mobile-nav` takes it
+now, and `.print-bar`, which only ever hangs over the paper, still does not.
 
 **On every other screen the bottom bar's new shadow is nearly nothing, and that
-is expected.** It is not written for them.
+is expected.** It is not written for them. What was missed is that nothing else
+was written for them either — the round below.
+
+### เส้นขอบของแถบล่าง — ปลายที่รอบแปดยกเว้นไว้ — 2026-08-31
+
+**The fourth telling of one report, and this time from the screen the last three
+rounds set aside.** A picture of ตั้งค่าระบบ on ธีมมืด at 430px, with the
+sentence *"ข้อมูลมันโผล่"* — the foot of a `--card` list cut off flush by the
+bottom bar, ending against nothing.
+
+**Measured, nothing is escaping anything, again.** Headless Chrome against the
+running app as ผู้ดูแลระบบ at 430×740, scrolled to the middle of แผนกและเพดาน:
+
+| what was asked | what the running app says |
+|---|---|
+| does the badge leave the bar? | `.count` sits at 672–688, the bar's top edge at 663 — **9px inside** |
+| does anything of the bar paint above its own edge? | a hit-test at −1, −3 and −6px across the full width names nothing belonging to `.mobile-nav` |
+| what is the boundary made of? | `--line` `rgb(48, 57, 52)` over a card of `rgb(31, 39, 35)` — **two steps of a near-black**, under a shadow the same section above calls "nearly nothing" here |
+
+**So the cue was the thing missing, exactly as it was at the top of the screen
+three days earlier, and the answer is the one the app bar already got.**
+`.mobile-nav`'s `border-top` goes `--line` → **`--line-lift`**, `rgb(74, 85, 78)`
+against that same card. The shadow carries the light theme and the white paper;
+the lifted hairline carries ธีมมืด. Neither is doing the other's work, and the
+two bars this app pins to the edges of a phone now say the same thing in the
+same way.
+
+**What the round above got wrong was not the fix but its scope.** It asked which
+surface needed carrying, answered "the paper", and stopped — the ordinary screen
+was named in the same paragraph, called "nearly nothing", and left with a
+hairline chosen for a case that had already been shown to fail.
 
 ### The first card was never clipped — the ค้นหา bar was on it
 
@@ -5635,8 +5826,58 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1767/1767 pass in about 2 s**, measured 2026-08-28 across 106
-  files. **The newest file is `test/pressChrome.test.js`**, four cases over the
+- `npm test` — **1763/1763 pass in about 2 s**, measured 2026-08-31 across 104
+  files. **The newest six are in `test/overlap.test.js`**, over หนึ่งวัน
+  หนึ่งใบ — a date carries one live request and no more, because F-HR-027 has
+  one line per day. Two of them are the pair that says why the older minute
+  rule stayed: 08:00–12:00 and 18:00–21:00 on one day share no minute and are
+  refused anyway, and a shift filed against the 4th running to 02:00 is a
+  different DATE from a request on the 5th and shares hours with it anyway. The
+  rest pin the sentence HR asked for word for word, that an edit does not find
+  itself sitting on its own date, and that the form prints the SERVER's
+  sentence rather than a second wording of it.
+  **Before them, one case in `test/withdrawal.test.js`**: that each of
+  the two refusals either side of the first signature names the OTHER side's
+  button — ยกเลิก before it, ขอถอนใบ after it — rather than sending anybody to
+  ติดต่อฝ่ายบุคคล, which is what `cancelPermission` was still answering months
+  after ขอถอนใบที่อนุมัติแล้ว replaced that very sentence.
+  **Before them, three more in `test/overlap.test.js`**, and they are about
+  the half of เวลาทับซ้อน that is a SCREEN rather than a refusal: that
+  `app/api/entries/preview/route.js` asks the same helper the write paths refuse
+  with (it was “refuseOverlap” until หนึ่งวัน หนึ่งใบ folded both rules into
+  `refuseDayConflict`) — with `excludeId`, or editing an entry would report it
+  as clashing with itself — and that
+  `components/OtForm.jsx` prints the clash and greys บันทึก on it, except on a
+  proxy batch of more than one, where the preview belongs to the first name
+  ticked and the other seven must stay filable. The rule was never the gap; the
+  refusal arriving only after the press was.
+  **Before them, `test/periodStatus.test.js`**, which replaced
+  test/periodLock.test.js when ปิดงวด was withdrawn on 2026-08-31. Four of them
+  are unusual and worth knowing about: they read the WHOLE TREE and fail if
+  anything imports the deleted lock model, calls `refusePeriodLock`, leaves a
+  `close` or `reopen` endpoint on disk, or lets the status card grow a button.
+  A half-removed feature is worse than either state — a route still refusing a
+  month nothing can close is a refusal nobody can lift — and that is the shape
+  those four exist to catch. Two whole files went with the feature
+  (periodLockRoutes, replayPeriodLock), which is where the drop from "1780/1780
+  across 106 files" comes from.
+  **Before them were thirteen in `test/approverLine.test.js`**, over
+  การอนุมัติ — the block in the employee's own pop-up that names every signature
+  on a request rather than only the last one. They exist because the line that
+  was there answered a different question well: `approverLine` prints the LAST
+  decision, which is the right way to say where a request stands and the wrong
+  way to say who signed it, since on a fully approved entry the last decision is
+  the ฝ่ายบุคคล step and ฝ่ายบุคคล is one shared login. The หัวหน้า who read the
+  request and signed it first was on no screen the employee could open. Four of
+  the thirteen are about what the words may NOT say: that the desk is read off
+  the `action` and never off the signer's live `position`, so a promotion cannot
+  silently re-label a signature somebody made two years ago as a title they did
+  not hold; that `ฝ่ายบุคคล (ฝ่ายบุคคล)` is never printed, because a name that
+  already IS the desk repeated in brackets reads as two parties; that a stand-in
+  and an administrator's override both survive into the list, since "who signed"
+  without "on what basis" is the half of the answer nobody disputes; and that
+  nothing which has not happened yet carries a time. **The file before it is
+  `test/pressChrome.test.js`**, four cases over the
   two rectangles a browser draws on a control — the tap highlight under a finger
   and the focus ring around a keyboard — and every one of them is about WHERE
   the declaration lives rather than what colour it is. That the tap highlight is
@@ -5931,14 +6172,15 @@ four role UIs.
   §Setup about how a PowerShell script Task Scheduler runs has to be encoded —
   the file that is the whole of the 101st. The three before that are the cases
   in the same `test/hrMonthCards.test.js` that pin what ตรวจสอบรายเดือน says
-  under its total card on a phone, and the three before those the wiring cases
-  in `test/replayPeriodLock.test.js` described under `settings/recompute` below.
+  under its total card on a phone.
   The earlier count was cross-checked three ways that agreed exactly: the runner's own
   total, the sum of running each file separately, and a count of the ✔ lines.
   Worth doing once because a bare total is a figure nobody can reproduce, and
-  because four files register cases from lists rather than one `test()` each
-  (`birthdayOnPaper`, `overlap`, `periodLockRoutes`, `rejectedNeverCounted`),
-  so grepping for `test(` undercounts by 33. The suite covers all five worked
+  because three files register cases from lists rather than one `test()` each
+  (`birthdayOnPaper`, `overlap`, `rejectedNeverCounted`), so grepping for
+  `test(` undercounts. It read "four files … (`birthdayOnPaper`, `overlap`,
+  periodLockRoutes, `rejectedNeverCounted`), so grepping for `test(`
+  undercounts by 33" until 2026-08-31, when periodLockRoutes went with ปิดงวด. The suite covers all five worked
   examples from §4, the OPEN 1–5, 9 and 12 policy variants, company inference
   from the code, `editPermission()` over every role × status pair
   (`test/editPermission.test.js`), proxy filing and delegation
@@ -5958,14 +6200,15 @@ four role UIs.
   `src/migrate-*.js` plus `src/whatif.js` on 2026-08-25 —
   `test/seedEntryPoint.test.js` holds the list, checks it behaviourally, and
   fails if `package.json` learns to start a `src/` file that is not on it.
-- `npm run build` — **passes 2026-08-25**, Next 16.3 under Turbopack, and the
-  route table it prints is **59 `/api/*` routes** plus `/`, `/_not-found` and
-  `/icon.png`. Compared against the 59 `app/api/**/route.js` files on disk, in
+- `npm run build` — **passes 2026-08-31**, Next 16.3 under Turbopack, and the
+  route table it prints is **57 `/api/*` routes** plus `/`, `/_not-found` and
+  `/icon.png`. Compared against the 57 `app/api/**/route.js` files on disk, in
   both directions: nothing on disk went unbuilt and nothing was built that has
-  no file. This line read "passes 2026-08-24 … 54 routes" until then, and
-  before that "succeeds — 2026-08-14, all 50 routes". The 2026-08-24 record had
-  gone five routes out of date within a day, which is the argument for the
-  count being here at all rather than in somebody's memory.
+  no file. This line read "passes 2026-08-25 … 59 routes" until the withdrawal
+  of ปิดงวด took `close` and `reopen` off the tree, and "passes 2026-08-24 … 54
+  routes" before that, and "succeeds — 2026-08-14, all 50 routes" before that.
+  The 2026-08-24 record had gone five routes out of date within a day, which is
+  the argument for the count being here at all rather than in somebody's memory.
   **The run was made while :3000 kept serving**, against a scratch
   `VERIFY_DIST_DIR`, and that is the only way to do it: `next start` holds the
   `BUILD_ID` it booted with, so a plain rebuild under it makes every loaded
@@ -6065,14 +6308,16 @@ four role UIs.
   line, the sixth waits 1 s and the seventh 2 s, a correct password pays the
   delay it had earned and then clears the count, and the failure after it is
   fast again. No account was locked at any point, which is the whole rule.
-- Against a live MongoDB, 2026-08-14, **ปิดงวด** end to end
-  (`lib/periodLock.js`): closing a month with three requests still pending is
-  refused and the refusal names the three; closing an empty month succeeds;
-  filing into the closed month comes back 409 naming the month in Thai;
-  ฝ่ายบุคคล reopening it is 403 and an administrator without a reason is 400;
-  with a reason it opens, filing works again, and `events` holds both the close
-  and the reopen in order with the reason on the second. The throwaway entry and
-  the lock document were deleted afterwards.
+- ~~Against a live MongoDB, 2026-08-14, **ปิดงวด** end to end: closing a month
+  with three requests still pending is refused and the refusal names the three;
+  closing an empty month succeeds; filing into the closed month comes back 409
+  naming the month in Thai; ฝ่ายบุคคล reopening it is 403 and an administrator
+  without a reason is 400; with a reason it opens, filing works again, and
+  `events` holds both the close and the reopen in order with the reason on the
+  second.~~ **The feature this walked was withdrawn on 2026-08-31** — see
+  `lib/periodStatus.js`. Kept struck through rather than deleted because the walk
+  is the evidence that ปิดงวด worked: it was removed because HR did not want it,
+  not because it was broken.
 - Against a live MongoDB, 2026-08-14, **สำรองและกู้คืน** proved as a round trip
   rather than as an exit code (`82981ca`): the dump and the restored database
   compared byte for byte; indexes carried in the manifest and rebuilt after the
@@ -6146,7 +6391,9 @@ the sentence that stood here, which said the CSV exports, the CSV imports and th
 holiday and roster screens were all unexercised: the roster import ran
 2026-08-18, the holiday import 2026-08-17, and four of the six CSV exports are in
 `otAccessLogs`. What that document does confirm is a shorter and sharper list —
-ปิดงวด (`otPeriodLocks` was empty), rejection (no entry had ever been
+ปิดงวด (`otPeriodLocks` was empty — it stayed empty until the feature was
+withdrawn on 2026-08-31, and no month was ever closed on this database),
+rejection (no entry had ever been
 `rejected`), ขอถอนใบ, the admin override, the birthday queue's two write
 actions, cap-override, `npm run reset-admin` and `settings/recompute` had none
 of them ever run against real data. The arithmetic underneath them is covered by
@@ -6164,11 +6411,15 @@ restored from the snapshot and diffed document by document after each one — it
 came back identical to the snapshot all eight times, so none of it is still in
 the data.
 
-What each one showed, briefly. **ปิดงวด** refused to close สิงหาคม over its four
-pending rows and named them, closed กรกฎาคม, answered a request filed into it
-with 409, refused ฝ่ายบุคคล's reopen and an administrator's reason-less one, and
-left `events` reading close-then-reopen with the reason on the second only.
-**Rejection** produced the first `rejected` entry the database has held, at both
+What each one showed, briefly. **ปิดงวด** — the feature has since been withdrawn
+(2026-08-31, `lib/periodStatus.js`); what the walk showed was that it worked: it
+refused to close สิงหาคม over its four pending rows and named them, closed
+กรกฎาคม, answered a request filed into it with 409, refused ฝ่ายบุคคล's reopen and
+an administrator's reason-less one, and left `events` reading close-then-reopen
+with the reason on the second only. **The four pending rows it named are the
+sentence the replacement card now prints** — สรุปสถานะงวด says "งวด สิงหาคม 2569
+— มีใบรออนุมัติค้างอยู่ 4 ใบ" and stops there, which is the whole of what HR
+wanted from the check. **Rejection** produced the first `rejected` entry the database has held, at both
 stages — `reject_mgr`, and `reject_hr` through `hrMayReject` — and ส่งใหม่ spent
 its one chance: the refused row stayed exactly where it was, the replacement
 carried `refiledFrom`, and both a second claim on the same parent and a claim on
@@ -6194,36 +6445,36 @@ weekday. It was filed on วันเฉลิมพระชนมพรรษ�
 no ordinary OT still takes holiday hours, and on this roster that is the only way
 to get a genuinely unsignable row into the queue.
 
-**`settings/recompute` IS covered by ปิดงวด, and this paragraph said the
-opposite for eleven days.** It used to read that a replay was the eighth way
-into a closed month, left open on purpose on 2026-08-14 because HR had not been
-asked. That was true when it was written at 08:13 that morning and false by
-08:38, when `2c1f3ae` closed it — the same commit edited this file and did not
-edit this paragraph. Recorded rather than quietly deleted, because the failure
-worth remembering is not the hole: it is that the README went on describing a
-hole nobody could still reach, which is the kind of sentence that gets a
-decision made twice.
+**`settings/recompute` reaches every month, and the paragraph that stood here is
+worth keeping in full because of how it got things wrong twice.**
 
-**What it does now**, verified against a live database on 2026-08-25 and not
-only against the rule: a replay SKIPS every closed month, whatever is asked for
-— `includeApproved: true` from an administrator with an explicit `period` was
-answered `updated: 0`, and the entry in that month came back with its
-`updatedAt` and `__v` unmoved. The decision is `planRecompute` in
-lib/policyVersion.js and it is checked BEFORE the approved rule, so it also
-covers the pending rows a closed month can contain. The answer names what it
-left alone: `skippedClosed` is the count, `closedPeriods` the months, and each
-row of `skipped` carries `reason: 'period_closed'` with its own period. Touching
-such a month takes เปิดงวด first — a second, deliberate decision that leaves a
-reason and a record of its own, which a flag change never would. Reopening
-กรกฎาคม and running the same call again replayed the entry and wrote a
-`recompute` row into its history.
+It first read that a replay was the eighth way into a closed month, left open on
+purpose on 2026-08-14 because HR had not been asked. That was true when it was
+written at 08:13 that morning and false by 08:38, when `2c1f3ae` closed it — the
+same commit edited this file and did not edit this paragraph, and the false
+sentence stood for eleven days and went into a work plan as a thing to build. It
+was then rewritten to say the opposite: "a replay SKIPS every closed month,
+whatever is asked for", verified against a live database on 2026-08-25 —
+`includeApproved: true` from an administrator with an explicit `period` answered
+`updated: 0`, the entry's `updatedAt` and `__v` unmoved, and reopening กรกฎาคม
+and running the same call again replayed it. Both records are true of their day
+and neither describes the code now.
 
-Two kinds of test hold it. `test/replayPeriodLock.test.js` covers the rule and
-the report; the same file now also asserts the WIRING — that `recomputeEntries`
-reads the locks for the months in hand and hands them to the rule, and that the
-route replays through the service rather than writing entries itself. Those
-three cases exist because the eight before them all passed during the twenty-five
-minutes when the rule was correct and nothing called it with a real list.
+**What it does today.** ปิดงวด was withdrawn on 2026-08-31 — see
+`lib/periodStatus.js` — so there is no closed month to skip, no `closedPeriods`
+list, and no `'period_closed'` skip reason. `planRecompute` in
+lib/policyVersion.js has ONE rule left and it is the approved one: an entry
+somebody has signed is not replayed unless the caller passes `includeApproved`,
+which `authorizeReplay` allows only to an administrator and only with a `note`.
+That check is now the whole of what stands between a signed-off figure and a
+restatement.
+
+`test/policyVersion.test.js` and `test/birthDateReplay.test.js` hold the rule.
+`test/periodStatus.test.js` holds the removal — it reads the whole tree and fails
+if anything imports the lock model, calls `refusePeriodLock`, or leaves a
+`close`/`reopen` endpoint on disk. That test exists because a half-removal is
+worse than either state: a route still refusing a month nothing can close is a
+refusal nobody can lift.
 
 Install MongoDB, then `npm run seed && npm run dev` and walk one entry through
 submit → manager → HR → export before treating the API as working. The seed

@@ -563,9 +563,9 @@ otEntrySchema.index({ employee: 1, period: 1, status: 1 });
 otEntrySchema.index({ department: 1, status: 1, workDate: 1 });
 /**
  * The two questions asked about a WHOLE MONTH rather than about one person or
- * one department: สรุป OT ส่งบัญชี (`lib/accounting.js`) and the check that
- * runs every time ตรวจสอบรายเดือน re-renders the ปิดงวด button
- * (`pendingInPeriod` and the `$facet` beside it in `lib/periodLockQuery.js`).
+ * one department: สรุป OT ส่งบัญชี (`lib/accounting.js`) and the counts that
+ * สรุปสถานะงวด re-reads every time ตรวจสอบรายเดือน renders
+ * (`pendingInPeriod` and the `$facet` beside it in `lib/periodStatusQuery.js`).
  * Both are `{ period, status: { $in: […] } }` and neither is served by the two
  * above — the first is prefixed on `employee`, the second on `department`, and
  * a compound index can only be entered from its own prefix.

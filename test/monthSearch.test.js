@@ -209,10 +209,13 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   const head = hrView.indexOf('<div className="card month-head">');
   const find = hrView.indexOf('<div className="row month-find">');
   const exports = hrView.indexOf('className="row export-row"');
-  const lock = hrView.indexOf('<PeriodLockBar');
+  const status = hrView.indexOf('<PeriodStatus');
   assert.ok(head > 0 && find > head, 'the search row left the controls card');
   assert.ok(find < exports, 'the export buttons are back above the month and the search box');
-  assert.ok(exports < lock, 'งวด…ยังเปิดอยู่ moved into the controls card');
+  // สรุปสถานะงวด sits UNDER the buttons that print and export, because it is
+  // the check somebody makes on the way to pressing them. It was PeriodLockBar
+  // and the ordering argument was the same one; see lib/periodStatus.js.
+  assert.ok(exports < status, 'สรุปสถานะงวด moved into the controls card');
 });
 
 test('the month comes first in the row, because it decides what the search searches', () => {
@@ -517,7 +520,12 @@ test('the one card above the list is 12px, and the list itself is nobody’s car
   // The 5px it costs against the trim this test is named for is paid back many
   // times over the same afternoon — the pager band and the birthday card gave
   // about 350px on this screen. Height was never the reason for the 13.
-  assert.match(phone, /\.month-head, \.card\.period-lock \{ margin-bottom: 18px; \}/);
+  //
+  // THE SELECTOR IS `.period-status` SINCE 2026-08-31, AND THE 18 IS UNCHANGED.
+  // The card was renamed when ปิดงวด was withdrawn and it stopped being a lock
+  // bar (lib/periodStatus.js). The number is what was signed off that afternoon
+  // and it did not move; only the class the rule reaches it by did.
+  assert.match(phone, /\.month-head, \.card\.period-status \{ margin-bottom: 18px; \}/);
   // ONLY THIS SCREEN. `.card` is worn by every screen in the app.
   assert.match(css, /\.card \{ padding: 15px; border-radius: var\(--radius\); \}/,
     'the phone padding of every card in the app moved');

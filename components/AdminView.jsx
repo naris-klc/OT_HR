@@ -2127,16 +2127,11 @@ function Employees({ user }) {
                     && ` (ในนั้นเป็นใบที่อนุมัติแล้ว ${saved.recomputed.approvedReplayed} รายการ — เก็บค่าเดิมไว้ในประวัติรายการแล้ว)`}
                 </>
               )}
-              {/* The months this could not reach. Named, because somebody has to
-                  act on them: an administrator reopens the period and runs the
-                  recompute again, or the old date stands on paper that has
-                  already been sent. */}
-              {saved.recomputed.closedPeriods?.length > 0 && (
-                <div style={{ marginTop: 4 }}>
-                  ⚠ เดือนที่ปิดงวดแล้วไม่ถูกแตะต้อง — {saved.recomputed.closedPeriods.join(', ')}
-                  {' '}· ใบในเดือนเหล่านี้ยังคำนวณด้วยวันเกิดเดิม ต้องให้ผู้ดูแลระบบเปิดงวดแล้วสั่งคำนวณใหม่
-                </div>
-              )}
+              {/* A ⚠ line naming the months ปิดงวด had kept out of the run
+                  stood here until 2026-08-31. There is no such month now — the
+                  feature was withdrawn, see lib/periodStatus.js — so a replay
+                  reaches every entry the filter names, whatever month it is in,
+                  and the only rows it leaves are the approved ones. */}
             </div>
           )}
           <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setSaved(null)}>
@@ -4760,8 +4755,9 @@ const POLICY_SECTIONS = [
    * It opened with one row and the second arrived as expected: ล่วงหน้า and
    * ย้อนหลัง are the same rule pointed in opposite directions, they are read
    * together, and neither is comprehensible beside a rule about break
-   * deductions. The backward one shares the job with ปิดงวด, which is not on
-   * this page at all — it is a month somebody closes, not a value anybody sets.
+   * deductions. The backward one shared the job with ปิดงวด until 2026-08-31;
+   * that feature was withdrawn (lib/periodStatus.js), so it is now the only
+   * backward limit there is and this page is the only place it can be set.
    */
   { id: 5, title: 'กรอบเวลาการยื่นใบ OT' },
 ];
@@ -5095,8 +5091,9 @@ const POLICY_FIELDS = [
      * in src/config/policy.js and over the rule in lib/entries.js.
      *
      * The hint shipped as ten clauses: the timezone it is measured in, that an
-     * edit only counts when the date moves, how it differs from ปิดงวด, that the
-     * birthday queue is exempt, and that stored entries are never re-checked.
+     * edit only counts when the date moves, how it differed from ปิดงวด (which
+     * no longer exists), that the birthday queue is exempt, and that stored
+     * entries are never re-checked.
      * Every one of those is true and none of them is what somebody opening this
      * page is deciding. HR shortened it, 2026-08-19, and the trade is deliberate:
      * a paragraph nobody finishes explains less than a line everybody reads.
@@ -5135,7 +5132,7 @@ const POLICY_FIELDS = [
      * actually did into hours nobody ever claimed.
      */
     options: [
-      [null, 'ไม่จำกัด — ใช้การปิดงวดเป็นตัวคุมย้อนหลัง (ค่าเริ่มต้น)'],
+      [null, 'ไม่จำกัด — ยื่นย้อนหลังได้ทุกวัน ไม่มีขอบเขต (ค่าเริ่มต้น)'],
       [1, 'ย้อนหลังได้ 1 วัน'],
       [3, 'ย้อนหลังได้ 3 วัน'],
       [7, 'ย้อนหลังได้ 7 วัน'],
@@ -5147,7 +5144,7 @@ const POLICY_FIELDS = [
     // employee no longer can; `warn` below says it, on every setting that makes
     // it true, which is where somebody is in a position to act on it.
     hint: 'กำหนดระยะเวลาย้อนหลังที่พนักงานยื่น OT ได้นับจากวันที่ทำ '
-      + '(เลือก “ไม่จำกัด” หากต้องการใช้การปิดงวดรายเดือนคุมตามเดิม)',
+      + '(“ไม่จำกัด” = ย้อนหลังได้ไม่จำกัด — ตั้งแต่ยกเลิกการปิดงวด นี่คือตัวคุมย้อนหลังตัวเดียวที่เหลือ)',
     /**
      * On EVERY number, not on one end. The row above warns only about ไม่จำกัด,
      * because its other answers refuse nothing that exists. Every number here
@@ -5595,33 +5592,22 @@ function Policy({ user }) {
           + `${failures[0]?.error ? ` — ${failures[0].error}` : ''}`
         : '';
       /**
-       * The months ปิดงวด kept out of the replay, named — and NOTHING ABOUT HOW
-       * TO GET THEM BACK IN.
+       * A THIRD CLAUSE STOOD HERE — the months ปิดงวด kept out of the replay,
+       * named, with the count beside them.
        *
-       * An earlier draft ended this sentence with "หากต้องการให้คำนวณใหม่ด้วย
-       * ต้องให้ผู้ดูแลระบบเปิดงวดก่อน", which reads as an instruction: change a
-       * rule, then go and have the closed months reopened so they match. That is
-       * the opposite of what closing one is for. The user's rule, 2026-08-14:
-       * ปิดงวดแล้วเปลี่ยนวิธีคำนวณ ก็ไม่ต้องเอาของเก่ามาคำนวณใหม่ — a closed
-       * month keeps the figures it was closed with, and a new rule applies from
-       * here on.
+       * It is gone with the feature, 2026-08-31 (lib/periodStatus.js). What the
+       * sentence now says is complete without it: a policy change recomputes
+       * every entry the filter reaches that nobody has approved yet, in every
+       * month, and the approved ones keep the hours they were signed with unless
+       * an administrator restates them deliberately with a reason.
        *
-       * Reopening still exists and is still how a mistake in a closed month gets
-       * corrected; the refusal on the edit path says so, because there it is the
-       * right next step. Here it is not, so it is not offered.
-       *
-       * The months are still named, because the alternative is silence: a rule
-       * change that restated eleven months and not the twelfth should say which
-       * twelfth, or the difference is discovered by whoever compares two reports
-       * next year.
+       * The rule underneath it did not change and is still HR's, 2026-08-14:
+       * เปลี่ยนวิธีคำนวณ ก็ไม่ต้องเอาของเก่ามาคำนวณใหม่. It was never really the
+       * lock that held it — it is the approved check, which is still here.
        */
-      const closed = res.recomputed?.closedPeriods?.length
-        ? ` · ไม่แตะงวดที่ปิดแล้ว ${res.recomputed.closedPeriods.map(periodLabel).join(', ')}`
-          + ` (${res.recomputed.skippedClosed} รายการ) — งวดที่ปิดแล้วคงชั่วโมงเดิมไว้`
-        : '';
       setMsg(res.recomputed?.updated
-        ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ${skipped}${closed}`
-        : `บันทึกแล้ว${stamped}${skipped}${closed}`);
+        ? `บันทึกแล้ว${stamped} · คำนวณรายการที่ยังไม่อนุมัติใหม่ ${res.recomputed.updated} รายการ${skipped}`
+        : `บันทึกแล้ว${stamped}${skipped}`);
       setNote('');
       load();
     } catch (err) { setError(err.message); } finally { setBusy(false); }

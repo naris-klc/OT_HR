@@ -24,7 +24,7 @@ import { dirname, join } from 'node:path';
  * today, and the next person to reach for "when did the policy last change"
  * would have found a field that answers plausibly and wrongly.
  *
- * SOURCE-READING, for the reason test/periodLockRoutes.test.js is: the
+ * SOURCE-READING, for the reason test/periodStatus.test.js is: the
  * behaviour needs a Mongo and this suite has none. What a database DID confirm,
  * on a throwaway one the same day: the singleton is still created on an empty
  * database with `policy: {}` and `createdAt === updatedAt`; five further loads

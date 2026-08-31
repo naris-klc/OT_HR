@@ -326,20 +326,24 @@ export const PATCH = route(async (req, { params }) => {
    * stale day type until some unrelated policy save happens to sweep it up is
    * an entry whose figures nobody can explain in the meantime.
    *
-   * APPROVED ENTRIES MOVE TOO, WHILE THE MONTH IS OPEN. HR's rule, 2026-08-18.
-   * Until then this replayed only the pending statuses, on the reasoning that
-   * hours somebody signed for do not move because a birth date was corrected
-   * afterwards. What that left behind is an approved entry printed on F-HR-027
-   * under a day type everybody now agrees is wrong — and while the month is
-   * still open nothing has been sent anywhere, so there is no outside figure
-   * for the old one to agree with. The paper is simply wrong.
+   * APPROVED ENTRIES MOVE TOO. HR's rule, 2026-08-18. Until then this replayed
+   * only the pending statuses, on the reasoning that hours somebody signed for
+   * do not move because a birth date was corrected afterwards. What that left
+   * behind is an approved entry printed on F-HR-027 under a day type everybody
+   * now agrees is wrong. The paper is simply wrong, and it was wrong on the day
+   * it was printed.
    *
-   * The guard is ปิดงวด, not the signature: `recomputeEntries` skips a closed
-   * month whatever it is asked to do (test/replayPeriodLock.test.js — "a closed
-   * month is skipped", "includeApproved does not open a closed month"), so a
-   * month that HAS gone to accounting still needs an administrator to reopen
-   * it. The reply names those months, so the screen can say which ones were
-   * left standing on the old date.
+   * THE GUARD USED TO BE ปิดงวด, AND THERE IS NONE NOW. Until 2026-08-31 a
+   * month HR had closed was skipped by `recomputeEntries` whatever it was asked
+   * to do, so a corrected birth date reached every open month and stopped at the
+   * ones already sent to accounting. That feature was withdrawn — the signed
+   * paper in the filing cabinet is the record, see lib/periodStatus.js — so this
+   * replay now reaches approved entries in EVERY month, however old.
+   *
+   * That is the intended reading of HR's rule rather than a gap left in it: a
+   * wrong birth date makes the paper wrong, and it was wrong on the day it was
+   * printed too. What the correction owes is visibility, not restraint — which
+   * is the paragraph below.
    *
    * What the escape hatch asks for is still paid: every entry whose figures
    * actually move keeps a `before` snapshot and a `recompute` line carrying

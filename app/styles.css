@@ -1469,15 +1469,23 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 }
 .card h2 { font: 600 15px/1.3 var(--sans); margin-bottom: 4px; }
 .card .hint { font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); margin-bottom: 14px; }
-/* ปิดงวด — the bar that says whether this month is still moving.
-   Quiet while the month is open, because "not finished yet" is the ordinary
-   state of the month somebody is working in and does not need a colour. A
-   closed month gets the amber the ⚠ notices use: it is not an error, and it IS
-   the reason every button below it will refuse. The padding is tighter than a
-   card's because this is one line and a button, not a section. */
-.period-lock { padding: 12px 18px; }
-.period-lock.closed { background: var(--amber-bg); border-color: var(--amber-line); }
-.period-lock .hint { margin-bottom: 0; }
+/* สรุปสถานะงวด — the card that says what this month still has unanswered.
+
+   IT WAS `.period-lock` UNTIL 2026-08-31, when the card carried ปิดงวด and the
+   amber below meant "closed, and every button under it will refuse". ปิดงวด was
+   withdrawn (lib/periodStatus.js); the card is a notice now, and the colours
+   moved with the meaning rather than being kept and re-explained.
+
+   AMBER MEANS THERE IS SOMETHING TO ANSWER, which is the state worth a colour —
+   a request nobody has signed does not print on F-HR-027, so this is read
+   immediately before pressing print. A clear month is quiet: it is the ordinary
+   state and does not need one.
+
+   The padding is tighter than a card's because this is a line or two of notice,
+   not a section — unchanged from when a button sat on the right of it. */
+.period-status { padding: 12px 18px; }
+.period-status.outstanding { background: var(--amber-bg); border-color: var(--amber-line); }
+.period-status .hint { margin-bottom: 0; }
 
 .card.flush { padding: 0; overflow: hidden; }
 .card.flush > h2, .card.flush > .card-head { padding: 16px 18px; border-bottom: 1px solid var(--line-soft); margin: 0; }
@@ -1668,11 +1676,13 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 /* ── A BUTTON THAT CANNOT BE PRESSED IS GREY, not a faded version of itself ──
    `opacity: .55` was the whole of it, and on a filled green button over a dark
-   card that is still a green button: ปิดงวด on ตรวจสอบรายเดือน has been
-   correctly disabled the whole time — the month has three entries still waiting
-   for a signature — and read as the thing to press next, right beside the line
-   explaining why it could not be. The state was in the DOM and not on the
-   screen.
+   card that is still a green button. The case that found it was ปิดงวด on
+   ตรวจสอบรายเดือน — correctly disabled the whole time, the month having three
+   entries still waiting for a signature, and read as the thing to press next,
+   right beside the line explaining why it could not be. The state was in the DOM
+   and not on the screen. (That button was withdrawn on 2026-08-31 with the rest
+   of ปิดงวด — see lib/periodStatus.js — and the rule it produced is general and
+   applies to every disabled button in the app.)
 
    Grey for real, which is what this file already does one section down for a
    field somebody may not edit: "Greyed for real rather than left to the
@@ -1876,9 +1886,68 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 }
 .approver-line.lead .who { color: var(--ink-2); }
 .approver-line.lead.warn .who { color: var(--amber); }
+/* WHEN IT WAS SIGNED, on its own line under the sentence — and only in the
+   band, which is the only placement that passes `when`. `flex-basis: 100%`
+   rather than trusting it to wrap: a date that sometimes sits beside the name
+   and sometimes below it moves the whole band's height between two requests.
+   The indent is the mark plus the gap, so it hangs under the words and not
+   under the tick. `nowrap` because "16:03 น." broken across a line reads as a
+   different number. */
+.approver-line.lead { flex-wrap: wrap; }
+.approver-line .when { white-space: nowrap; }
+.approver-line.lead .when {
+  flex: 0 0 100%; margin: 2px 0 0 17px;
+  font: 400 12px/1.45 var(--sans); color: var(--muted);
+}
 /* In the full table the chip sits above it, so the line starts under the chip
    rather than beside the row. */
 td > .approver-line { margin-top: 5px; }
+
+/* การอนุมัติ — the signatures on one request, in the pop-up the employee opens.
+   Built on `.entry-history`'s bones (the same left rule, the same pill for the
+   action, the same tones) because it is the same trail through a narrower lens,
+   and a second visual language for the same rows would read as a second record.
+   What differs is what a signature needs and a trail row does not: the name
+   gets the card's ink rather than the muted grey, because on this list it is
+   the thing being looked up. */
+.approval-steps {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.approval-steps > li {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding-left: 11px; border-left: 2px solid var(--line);
+}
+.approval-steps > li.ok { border-left-color: var(--green); }
+.approval-steps > li.no { border-left-color: var(--danger); }
+.approval-steps .mark { flex: none; font-size: 12px; line-height: 1.55; }
+.approval-steps .body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.approval-steps .act {
+  align-self: flex-start; padding: 3px 10px; border-radius: 20px;
+  font: 600 11.5px/1.5 var(--sans); white-space: nowrap;
+  background: var(--neutral-wash); color: var(--muted);
+}
+.approval-steps > li.ok .act { background: var(--green-bg); color: var(--green-dark); }
+.approval-steps > li.no .act { background: var(--danger-bg); color: var(--danger-ink); }
+/* The name is the answer to the question this list exists for, so it is the
+   only line here at body size and in body ink. */
+.approval-steps .who { font: 500 13.5px/1.5 var(--sans); color: var(--ink); }
+/* The desk and the two "on what basis" marks are what qualify the name, so they
+   sit at its weight but not its ink — read second, and always read. */
+.approval-steps .who .desk,
+.approval-steps .who .behalf { font-weight: 400; color: var(--muted); }
+.approval-steps .who .unknown { font-weight: 400; font-style: italic; color: var(--muted); }
+/* `--muted` and not `--muted-2`: this draws on a card, which is the pairing
+   that measured 3.41 in the light theme — below AA — on 2026-08-28. */
+.approval-steps .when {
+  font: 400 12px/1.5 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums;
+}
+/* Quoted where it is rendered, because it is somebody's words — a reason for a
+   refusal, or the reason ผู้ดูแลระบบ had to sign the หัวหน้า step. */
+.approval-steps .why { font: 400 12.5px/1.55 var(--sans); color: var(--ink-2); }
+/* The shared-account note is about the list, not about its last row — without
+   this it sits tight against the ฝ่ายบุคคล signature and reads as part of it. */
+.approval-steps + .hint { margin-top: 9px; }
 
 .field .check { flex-direction: row; align-items: center; gap: 9px; }
 
@@ -3752,6 +3821,31 @@ td > .approver-line { margin-top: 5px; }
    footnote. */
 .alert-list { margin: 5px 0 0; padding-left: 17px; list-style: disc; }
 .alert-list li { margin-top: 2px; }
+
+/* เวลาทับซ้อน — the requests the form has just found already claiming these
+   minutes, under the sentence that says so.
+
+   NOT `.alert-list`. Those are consequences, written as prose and bulleted; each
+   of these is a ROW — a date, a window, a status chip and the shared span — and
+   a disc in front of a chip reads as a bullet that lost its sentence. So: no
+   marker, and the pieces laid out in a wrapping flex row so the chip keeps its
+   own line box and the date and the span sit either side of it.
+
+   `row-gap` smaller than the space between rows, which is what tells two lines
+   of ONE clash apart from two clashes when the box is narrow enough to wrap. */
+.clash-list { margin: 6px 0 0; padding: 0; list-style: none; }
+.clash-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12.5px;
+}
+.clash-list li + li { margin-top: 5px; }
+.clash-list .when { font-weight: 600; }
+/* The span is the fact the rule turns on and the least useful of the three to
+   the person reading — what they act on is the window. Same size, quieter. */
+.clash-list .span { opacity: 0.85; }
 /* A LINK INSIDE A NOTICE IS THE NOTICE'S COLOUR, NOT THE APP'S GREEN.
 
    `.link` is `--green-text` at 13px/1, which is right in a table cell and wrong
@@ -6739,13 +6833,24 @@ table.mini tbody tr:hover { background: none; }
        written for those screens. It is written for the one where the thing
        underneath is white paper, and there it is the whole of the cue.
 
-       `--line` STAYS `--line` and does not go up to `--line-lift` the way the
-       app bar's did. That step exists to carry ธีมมืด where the shadow cannot,
-       and here the surface that needs carrying is the paper — which is white on
-       both themes, so the shadow already reaches it. A brighter hairline would
-       only be a brighter line against white. */
+       AND THE HAIRLINE GOES UP A STEP TOO, `--line-lift`, since 2026-08-31.
+       It read `--line` until then, on the argument that "the surface that needs
+       carrying is the paper — which is white on both themes, so the shadow
+       already reaches it". That argument covered ONE of the two surfaces. The
+       other is the ordinary screen: on ธีมมืด a `--card` list is cut off flush
+       by this bar, and `--line` against that card is two steps of the same
+       near-black — so the last row of a card ends against nothing and reads as
+       poking out from under the bar. Reported on 2026-08-31 with a picture of
+       ตั้งค่าระบบ, which is the complaint the app bar had answered three days
+       before, in the same words, from the other edge of the screen.
+
+       So the two cues split the work here exactly as they do on `.appbar`: the
+       shadow carries the light theme and the white paper, the lifted hairline
+       carries ธีมมืด, and neither is doing the other's work. Over the paper the
+       step is one shade firmer than `--line`, which is what the top bar has
+       drawn across that same sheet all along. */
     box-shadow: 0 -6px 14px -8px var(--shadow-soft);
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--line-lift);
     padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
   }
   .mobile-nav button {
@@ -7152,8 +7257,19 @@ table.mini tbody tr:hover { background: none; }
   @media (max-width: 640px) {
     /* 16 → 12 on the two rows that hold the reading. Four pixels off each side
        is eight pixels of width handed back to every block inside, which at
-       360px is where the คำขอ cells stop having to break their answers. */
-    .modal-body { padding: 12px 12px 14px; }
+       360px is where the คำขอ cells stop having to break their answers.
+
+       THE TOP IS NOT PART OF THAT TRADE, and used to be. The shorthand read
+       `12px 12px 14px` and took the top down with the sides, which buys nothing
+       — a pixel off the top hands no width to anything — while spending the one
+       gap that separates the first line of the reading from the header's rule
+       above it. This is the same lesson as the rule three lines down, where
+       `.modal-head` keeps 20 at the top and narrows only its sides: the sides
+       are what this block is for, and the top is not its to spend. Reported
+       2026-08-31 as the header cutting into the text; measured at twelve widths
+       from 320 to 1600 the header never overlaps the body at all — what was
+       being read as an overlap is 12px of air doing the work of a margin. */
+    .modal-body { padding: 16px 12px 14px; }
     /* THE SIDES ARE WHAT THIS BLOCK IS FOR, AND THE TOP IS NOT ITS TO SPEND.
        `padding: 12px` took all four and was the second rule wiping the
        grabber's room — see the note on `.modal-head` above, and the identical
@@ -8352,8 +8468,9 @@ table.mini tbody tr:hover { background: none; }
     border-top: 1px solid var(--line-softer);
   }
   /* `BirthdayRowActions` returns null on every row there is nothing to do
-     about — a birthday that was already a holiday, one that has not arrived,
-     one filed on a closed month. The cell is then genuinely empty, and it was
+     about — one already filed with no ดูใบ handler, one already settled as
+     ไม่ได้มาทำงาน that this person may not retract, one in somebody else's
+     department. The cell is then genuinely empty, and it was
      still drawing its rule and its 20px of spacing: an empty bordered block at
      the foot of most of the cards on this screen. */
   .bmonth-table td.act-col:empty { display: none; }
@@ -8379,7 +8496,7 @@ table.mini tbody tr:hover { background: none; }
      not 40px, it is **152 × 40**, because these two split the card's width.
      Both answers are also reversible: a filed ใบ can be withdrawn and a
      ไม่ได้มาทำงาน check has ยกเลิกการตรวจ beside it, so a mis-press costs a
-     second press rather than a wrong figure in a closed month.
+     second press rather than a wrong figure nobody can take back.
 
      36, AND IT WAS 40 FOR ONE ROUND. Asked again the same day — "ให้เล็กลงอีก
      เล็กน้อย เพื่อให้สัดส่วนสมดุลกับการ์ดแบบ Compact" — and the trade is the
@@ -9013,7 +9130,7 @@ table.mini tbody tr:hover { background: none; }
 
      THE ALERT PANEL IS NOT IN THIS RULE and keeps `.alert`'s own `12px 0`. It
      is a message that comes and goes; these two are furniture. */
-  .month-head, .card.period-lock { margin-bottom: 18px; }
+  .month-head, .card.period-status { margin-bottom: 18px; }
 
   /* ══ AND THE CARD ROUND THE LIST COMES OFF ═══════════════════════════════
 
@@ -9258,7 +9375,7 @@ table.mini tbody tr:hover { background: none; }
      gap — 12 more here would make the list start further from the bar than
      the bar sits from the controls card. That margin read "13px" until later
      the same day and is 18 now, which is the joint between the header blocks
-     and the list and is stated in one place: see `.card.period-lock` above.
+     and the list and is stated in one place: see `.card.period-status` above.
      12 at the bottom was the gap between
      รวมทั้งหมด and the foot of the card; `.month-notes` and วันเกิดของเดือนนี้
      declare their own 12px above them, and the last thing on the screen needs

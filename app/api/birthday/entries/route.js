@@ -12,9 +12,7 @@ import {
   HR_VERIFIED_ACTION, HR_VERIFIED_NOTE,
 } from '@/lib/birthdayFiling.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
-import { refusePeriodLock } from '@/lib/periodLockQuery.js';
-import { refuseOverlap } from '@/lib/overlapQuery.js';
-import { periodOf } from '@/lib/periodLock.js';
+import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { approvalRecord } from '@/lib/delegation.js';
 import { today } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
@@ -54,19 +52,6 @@ export const POST = route(async (req) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(session.workDate)) {
     return fail('กรุณาระบุวันที่ในรูปแบบ YYYY-MM-DD', 400);
   }
-
-  /**
-   * A closed month takes no birthday filing either.
-   *
-   * This one is the likeliest of all the write paths to run into a closed
-   * period, because วันเกิดที่ยังไม่มีใบ is by nature discovered late — the
-   * queue's whole purpose is to surface days that were missed. Refusing here
-   * rather than at the end means HR is told to reopen the month before they
-   * fill anything in, and the ordinary answer for an old birthday nobody
-   * claimed remains what it already was: settle it as ไม่ได้มาทำงาน.
-   */
-  const closed = await refusePeriodLock(periodOf(session.workDate), 'บันทึกใบวันเกิดย้อนหลัง');
-  if (closed) return fail(closed.error, closed.status);
 
   /**
    * The context first, because the gate below is a question about the POLICY as
@@ -111,11 +96,16 @@ export const POST = route(async (req) => {
    *
    * BACKWARD: `maxPastSubmissionDays` would defeat the feature. วันเกิดที่ยังไม่
    * มีใบ is by nature discovered late — surfacing days that were missed is the
-   * queue's entire purpose, and the note over the ปิดงวด check above says so.
-   * A rolling window would refuse exactly the rows this screen exists to settle,
-   * and would leave ฝ่ายบุคคล holding a scan record they are not allowed to
-   * record. The backward limit that does apply here is ปิดงวด, which an
-   * administrator can reopen for a month with a reason on the record.
+   * queue's entire purpose. A rolling window would refuse exactly the rows this
+   * screen exists to settle, and would leave ฝ่ายบุคคล holding a scan record
+   * they are not allowed to record.
+   *
+   * SO THERE IS NO BACKWARD LIMIT HERE AT ALL, and since 2026-08-31 there is
+   * none behind it either: ปิดงวด used to refuse a month HR had declared
+   * finished and was the one bound this path had. It was withdrawn — the signed
+   * paper in the filing cabinet is the record, see lib/periodStatus.js — so a
+   * birthday from any month in the queue can be settled from this screen. That
+   * is what the queue is for, and it is now the whole of the rule.
    */
   const gate = birthdayDirectApproval({
     actor: user,
@@ -153,13 +143,18 @@ export const POST = route(async (req) => {
    * sit in a queue waiting for somebody to notice it; it would go straight onto
    * the month as signed-off hours claimed twice.
    *
-   * The two checks are kept apart rather than merged. `existing` is deliberately
-   * blind to status — even a cancelled ใบ for that birthday means somebody has
-   * already been here — and this one counts only live requests, because a
-   * refused request holds no minutes. Neither answer is the other's.
+   * The two checks are kept apart rather than merged, and they stayed apart
+   * when หนึ่งวัน หนึ่งใบ went into `refuseDayConflict` on 2026-08-31 — which
+   * covers the same date as `existing` does, for LIVE requests. `existing` is
+   * deliberately blind to status: even a cancelled ใบ for that birthday means
+   * somebody has already been here, and this route is the one place that is
+   * worth refusing, because a birthday is a single fact about a single day
+   * rather than a request that can be withdrawn and made again. The stricter
+   * rule stays in front, and the general one behind it also answers the
+   * midnight case. Neither answer is the other's.
    */
-  const clash = await refuseOverlap(session, { employee: employee._id });
-  if (clash) return fail(clash.error, clash.status, { overlaps: clash.overlaps });
+  const clash = await refuseDayConflict(session, { employee: employee._id });
+  if (clash) return fail(clash.error, clash.status, { conflict: clash.conflict });
 
   const { value: description, error: descriptionError } = normaliseDescription(payload.description);
   if (descriptionError) return fail(descriptionError, 400);

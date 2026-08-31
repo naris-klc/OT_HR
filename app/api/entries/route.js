@@ -14,9 +14,7 @@ import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { nobodyCanSign } from '@/lib/delegation.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
-import { refusePeriodLock } from '@/lib/periodLockQuery.js';
-import { refuseOverlap } from '@/lib/overlapQuery.js';
-import { periodOf } from '@/lib/periodLock.js';
+import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { normaliseDescription } from '@/src/config/policy.js';
@@ -227,41 +225,27 @@ export const POST = route(async (req) => {
   const { value: description, error: descriptionError } = normaliseDescription(payload.description);
   if (descriptionError) return fail(descriptionError, 400);
 
-  /**
-   * A closed month takes no new requests either.
-   *
-   * HR's rule is that a period which has been sent to accounting stops moving,
-   * and a request filed into it afterwards moves it as surely as an edit does —
-   * it would be a row nobody could approve (the approval route refuses too),
-   * sitting in a month whose total has already been reported.
-   *
-   * Checked before the engine runs rather than after. Somebody filing three
-   * weeks late should be told the month is closed, not shown their hours
-   * computed and then refused.
-   */
-  const closed = await refusePeriodLock(periodOf(session.workDate), 'บันทึกรายการย้อนหลัง');
-  if (closed) return fail(closed.error, closed.status);
-
   // The day types belong to whoever the entry is FOR. Filing for oneself that
   // is the caller, whose document is already in hand; filing for somebody else
   // it is the person just loaded, populated the same way.
   const ctx = await loadContext([session.workDate], { employee });
 
   /**
-   * MAY THIS DATE BE FILED TODAY — the window at both ends. ปิดงวด above refuses
-   * a month that has finished; this refuses a day that has not started, and a
-   * day too long past to still be claimed.
+   * MAY THIS DATE BE FILED TODAY — the window at both ends: a day that has not
+   * started, and a day too long past to still be claimed.
    *
-   * Not beside ปิดงวด, and the gap is not accidental: this rule reads two policy
-   * keys and `loadContext` is where the live policy arrives. Still before
-   * `compute`, which is the ordering that matters — the point of all three
-   * checks is that somebody filing a date they may not file is told so, rather
-   * than shown their hours worked out and then turned away.
+   * THIS IS THE ONLY BACKWARD LIMIT LEFT. Until 2026-08-31 ปิดงวด sat above it
+   * and refused a month HR had declared finished, which was the harder of the
+   * two edges and the one that named somebody who could lift it. That feature
+   * is gone — the signed paper in the filing cabinet is the record, see
+   * lib/periodStatus.js — so how far back a request may be filed is now decided
+   * entirely by `maxPastSubmissionDays`, on this line, and by nothing else.
    *
-   * AFTER ปิดงวด rather than before it, where the two overlap. A late request
-   * into a month that is also closed is answered with "งวดนี้ปิดแล้ว", which
-   * names something an administrator can reopen; the rolling window names
-   * nothing anybody can press.
+   * After `loadContext` and not before, because this rule reads two policy keys
+   * and `loadContext` is where the live policy arrives. Still before `compute`,
+   * which is the ordering that matters — the point is that somebody filing a
+   * date they may not file is told so, rather than shown their hours worked out
+   * and then turned away.
    *
    * `ctx.policy` is the LIVE policy, deliberately, where the engine below is
    * handed `policyFor(date)` — the rules in force on the work date. That is
@@ -299,20 +283,21 @@ export const POST = route(async (req) => {
   if (weekdayRefusal) return fail(weekdayRefusal, 409, { warnings: result.warnings });
 
   /**
-   * เวลาทับซ้อน — does anybody already hold these minutes?
+   * หนึ่งวัน หนึ่งใบ — is this person's day already filed? And behind it, does
+   * anybody already hold these minutes?
    *
    * Measured against the person the entry is FOR, never against the filer: a
-   * หัวหน้า filing for two people at the same hour is two people at work, and
-   * a check keyed on `user` would refuse the second one.
+   * หัวหน้า filing for two people on the same day is two people at work, and a
+   * check keyed on `user` would refuse the second one.
    *
    * After the engine and before the ceiling, which is the order the two
-   * refusals are worth reading in. A clash means the hours are wrong and the
-   * ceiling arithmetic was measuring a number nobody should have filed; being
-   * told "เกินเพดาน" first would send somebody to argue for an override over
-   * hours they had accidentally claimed twice.
+   * refusals are worth reading in. A duplicated day means the hours are wrong
+   * and the ceiling arithmetic was measuring a number nobody should have filed;
+   * being told "เกินเพดาน" first would send somebody to argue for an override
+   * over hours they had accidentally claimed twice.
    */
-  const clash = await refuseOverlap(session, { employee: employee._id });
-  if (clash) return fail(clash.error, clash.status, { overlaps: clash.overlaps });
+  const clash = await refuseDayConflict(session, { employee: employee._id });
+  if (clash) return fail(clash.error, clash.status, { conflict: clash.conflict });
 
   const period = session.workDate.slice(0, 7);
   const cap = await checkCap({

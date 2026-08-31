@@ -54,7 +54,12 @@ const code = form.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 // ── the pop-up ───────────────────────────────────────────────────────────────
 
 test('a birthday filing comes up in the same Modal ไม่ได้มาทำงาน uses', () => {
-  assert.match(form, /import \{ Alert, BucketSplit, Modal, SegmentList \} from '\.\/common\.jsx';/);
+  // `Modal`, out of the shared file, in whatever company it keeps — the list
+  // was pinned verbatim until 2026-08-31 and `StatusChip` joining it (the
+  // เวลาทับซ้อน rows) failed this for naming a component this test is not
+  // about. What is worth holding still is WHICH Modal, not how many names sit
+  // beside it on one line.
+  assert.match(form, /import \{[^}]*\bModal\b[^}]*\} from '\.\/common\.jsx';/);
   // The SAME component, named the same way, in both answers to the row — a
   // second dialog of its own would drift from this one on the first restyle.
   assert.match(actions, /import \{ Alert, Modal \} from '\.\/common\.jsx';/);

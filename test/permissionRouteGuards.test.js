@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { departmentPermission } from '../lib/departments.js';
 import { rosterPermission, codeChangePermission, selfEditPermission } from '../lib/employees.js';
 import { authorizeReplay } from '../lib/policyVersion.js';
-import { CLOSE_ROLES, REOPEN_ROLES, reopenRefusal } from '../lib/periodLock.js';
+
 import { withdrawRequestPermission } from '../lib/withdrawal.js';
 import { OVERRIDE_NOTE_REQUIRED } from '../lib/delegation.js';
 
@@ -53,7 +53,6 @@ const DEPTS = 'app/api/departments/route.js';
 const DEPT = 'app/api/departments/[id]/route.js';
 const SETTINGS = 'app/api/settings/route.js';
 const RECOMPUTE = 'app/api/settings/recompute/route.js';
-const REOPEN = 'app/api/periods/[period]/reopen/route.js';
 const LOGS = 'app/api/logs/route.js';
 const LOGS_SUMMARY = 'app/api/logs/summary/route.js';
 const LOGS_CSV = 'app/api/exports/logs.csv/route.js';
@@ -268,17 +267,26 @@ test('the birthDate replay is recorded as a birthdate run, not as a manual one',
   assert.match(read(RECOMPUTE), /source:\s*'manual'/);
 });
 
-test('it still carries a note and still cannot open a closed month', () => {
+test('it still carries a note, and still decides nothing about months itself', () => {
   const src = read(ROSTER);
   assert.match(src, /note:\s*BIRTHDATE_REPLAY_NOTE/);
-  // The guard is ปิดงวด, not the signature — `recomputeEntries` skips a closed
-  // month whatever it is asked to do (test/replayPeriodLock.test.js). Nothing
-  // in this handler may reach past that.
-  assert.doesNotMatch(src, /PeriodLock/, 'the roster route is deciding about closed months itself');
+  /**
+   * The guard used to be ปิดงวด: `recomputeEntries` skipped a closed month
+   * whatever it was asked to do, and this handler was forbidden to reach past
+   * that. ปิดงวด was withdrawn on 2026-08-31 (lib/periodStatus.js), so there is
+   * no month-level guard left anywhere — a corrected birth date now replays
+   * approved entries in every month, however old.
+   *
+   * The assertion is kept and its reason is the one that outlived the lock: a
+   * route that starts deciding for itself which months a replay may touch is a
+   * second answer to a question `recomputeEntries` owns, and two answers is how
+   * a month gets restated by one path and not another.
+   */
+  assert.doesNotMatch(src, /PeriodLock|periodStatus/, 'the roster route is deciding about months itself');
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// 5 · THE SIX THINGS ฝ่ายบุคคล STILL CANNOT DO
+// 5 · THE FIVE THINGS ฝ่ายบุคคล STILL CANNOT DO
 // ════════════════════════════════════════════════════════════════════════════
 
 test('1 · ฝ่ายบุคคล cannot hand out the ผู้ดูแลระบบ role', () => {
@@ -310,22 +318,27 @@ test('3 · ฝ่ายบุคคล cannot replay entries that were signed of
   assert.match(src, /authorizeReplay\(/);
 });
 
-test('4 · ฝ่ายบุคคล cannot reopen a closed งวด — they are who closed it', () => {
-  assert.deepEqual(CLOSE_ROLES, ['hr', 'admin']);
-  assert.deepEqual(REOPEN_ROLES, ['admin']);
-  // If the role that closes can also open, closing is a preference rather than
-  // a control, decided twice by the same person with nobody else involved.
-  assert.match(read(REOPEN), /reopenRefusal\(/);
-});
+/**
+ * THERE WERE SIX UNTIL 2026-08-31, and the fourth was "ฝ่ายบุคคล cannot reopen a
+ * closed งวด — they are who closed it". `CLOSE_ROLES` was ['hr', 'admin'] and
+ * `REOPEN_ROLES` was ['admin'], and that asymmetry was the whole design of
+ * ปิดงวด: if the role that closes can also open, closing is a preference rather
+ * than a control, decided twice by the same person with nobody else involved.
+ *
+ * ปิดงวด was withdrawn (lib/periodStatus.js), so the thing HR cannot do is gone
+ * along with the thing they could. What remains of that argument is item 3
+ * above — `authorizeReplay` is admin-only for exactly the same reason, and it
+ * is now the only path by which a signed-off figure moves.
+ */
 
-test('5 · ฝ่ายบุคคล cannot read บันทึกระบบ, by any of its three doors', () => {
+test('4 · ฝ่ายบุคคล cannot read บันทึกระบบ, by any of its three doors', () => {
   for (const file of [LOGS, LOGS_SUMMARY, LOGS_CSV]) {
     const src = read(file);
     assert.match(src, /requireRole\(await requireAuth\(req\), 'admin'\)/, `${file} is open to HR`);
   }
 });
 
-test('6 · ฝ่ายบุคคล cannot touch the ผู้ดูแลระบบ row, reset included', () => {
+test('5 · ฝ่ายบุคคล cannot touch the ผู้ดูแลระบบ row, reset included', () => {
   const may = rosterPermission({ role: 'hr' }, { target: { role: 'admin' } });
   assert.equal(may.ok, false);
   assert.equal(may.status, 403);
@@ -440,14 +453,12 @@ test('the rules that live in a pure module refuse an empty reason, and a blank o
   assert.equal(withdrawRequestPermission(owner, entry, '   ').status, 400);
   assert.equal(withdrawRequestPermission(owner, entry, 'ลงเวลาผิด').ok, true);
 
-  // เปิดงวดที่ปิดแล้ว — the one path back into a signed-off month
-  const closed = { state: 'closed', period: '2026-07' };
-  const admin = { _id: 'a1', role: 'admin' };
-  assert.equal(reopenRefusal({ user: admin, lock: closed, reason: '', period: '2026-07' }).status, 400);
-  assert.equal(reopenRefusal({ user: admin, lock: closed, reason: '  ', period: '2026-07' }).status, 400);
-  assert.equal(reopenRefusal({ user: admin, lock: closed, reason: 'ต้องแก้', period: '2026-07' }), null);
+  // เปิดงวดที่ปิดแล้ว was the second of these until 2026-08-31 and had the same
+  // shape — admin only, refused without a reason. It went with ปิดงวด; see
+  // lib/periodStatus.js.
 
   // คำนวณใหม่รวมใบที่อนุมัติแล้ว
+  const admin = { _id: 'a1', role: 'admin' };
   assert.equal(authorizeReplay({ actor: admin, includeApproved: true, note: '   ' }).status, 400);
   assert.equal(authorizeReplay({ actor: admin, includeApproved: true, note: 'HR ตอบ OPEN 1' }).ok, true);
 

@@ -12,8 +12,7 @@ import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
-import { refusePeriodLock } from '@/lib/periodLockQuery.js';
-import { refuseOverlap } from '@/lib/overlapQuery.js';
+import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { normaliseDescription } from '@/src/config/policy.js';
 
 export const GET = route(async (req, { params }) => {
@@ -32,17 +31,6 @@ export const PATCH = route(async (req, { params }) => {
 
   const entry = await OtEntry.findById(params.id).populate(POPULATE);
   if (!entry) return fail('ไม่พบรายการ', 404);
-
-  /**
-   * Is the month still open?
-   *
-   * Before the permission check on purpose. "งวดนี้ปิดแล้ว" is true of everybody
-   * — the employee, ฝ่ายบุคคล, an administrator — and answering it first means
-   * HR is told the month is closed rather than being told they may edit and
-   * then refused for a reason they have to guess at.
-   */
-  const locked = await refusePeriodLock(entry.period, 'แก้ไข');
-  if (locked) return fail(locked.error, locked.status);
 
   // Who may rewrite this, and what the edit is called in the history. The rule
   // itself lives in lib/entries.js so it can be read — and tested — on its own.
@@ -139,24 +127,30 @@ export const PATCH = route(async (req, { params }) => {
   if (weekdayRefusal) return fail(weekdayRefusal, 409, { warnings: result.warnings });
 
   /**
-   * เวลาทับซ้อน, measured the same way the submit path measures it — against
-   * the person the entry is FOR, which is not the actor when ฝ่ายบุคคล is the
-   * one editing.
+   * หนึ่งวัน หนึ่งใบ and เวลาทับซ้อน, measured the same way the submit path
+   * measures them — against the person the entry is FOR, which is not the actor
+   * when ฝ่ายบุคคล is the one editing.
+   *
+   * AN EDIT IS WHERE THE DAY RULE EARNS ITS PLACE ON THIS ROUTE. A correction
+   * that only moves `workDate` — the commonest one there is, a shift filed
+   * against the wrong day — can land on a date this person has already filed,
+   * and the times need not clash at all for the paper to have nowhere to print
+   * the result.
    *
    * `excludeId` is not an optimisation here, it is the rule: without it every
-   * edit that leaves the times alone would be refused by the entry it is
-   * editing, and an edit to the description would be impossible.
+   * edit would be refused by the entry it is editing — its own date is taken by
+   * itself — and an edit to the description would be impossible.
    *
    * Nothing is written yet. `Object.assign` above put the new session onto the
    * in-memory document, but `save()` is still eleven lines away, so the copy
    * this reads back out of Mongo is the one being replaced — which is why
    * excluding it by id is enough and no ordering trick is needed.
    */
-  const clash = await refuseOverlap(session, {
+  const clash = await refuseDayConflict(session, {
     employee: entry.employee?._id || entry.employee,
     excludeId: entry._id,
   });
-  if (clash) return fail(clash.error, clash.status, { overlaps: clash.overlaps });
+  if (clash) return fail(clash.error, clash.status, { conflict: clash.conflict });
 
   // The cap belongs to whoever the entry is FOR, which is not the actor when
   // HR is the one editing. `excludeId` keeps the entry's own current hours out

@@ -5,7 +5,6 @@ import { POPULATE, DECIDE_POPULATE } from '@/lib/entries.js';
 import { withdrawDecisionPermission, withdrawalDecision } from '@/lib/withdrawal.js';
 import { historyExtra } from '@/lib/delegation.js';
 import { heldBy, today } from '@/lib/delegationQuery.js';
-import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 
 /**
  * อนุมัติ หรือ ปฏิเสธ คำขอถอนใบ.
@@ -32,21 +31,6 @@ export const POST = route(async (req, { params }) => {
 
   const granted = Boolean(payload?.granted);
   const verb = granted ? 'อนุมัติ' : 'ปฏิเสธ';
-
-  /**
-   * Refusing is blocked in a closed month too, and that is not an oversight.
-   *
-   * It writes to the entry — a decision, a name, a date — and every write into
-   * a month that has been sent to accounting is refused by the same rule. The
-   * request can wait; the month cannot be quietly edited after it was closed.
-   *
-   * One verb for both answers, spelled as a literal rather than built from
-   * `verb` above: test/periodLockRoutes.test.js reads this file as text to
-   * prove the lock is here and names what it refused, and a template it cannot
-   * evaluate would be a guard it cannot see.
-   */
-  const locked = await refusePeriodLock(entry.period, 'ตอบคำขอถอนใบ');
-  if (locked) return fail(locked.error, locked.status);
 
   const on = today();
   const may = withdrawDecisionPermission({

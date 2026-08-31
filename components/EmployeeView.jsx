@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  ApproverLine, StatusChip, Alert, BucketSplit, Empty, EditedMark, EntryHistory, Fact, Modal,
-  ProxyMark, RateHead, RefiledNote, RequestTrail, Section, SegmentList, editsOf, trailOf,
+  ApprovalSteps, ApproverLine, StatusChip, Alert, BucketSplit, Empty, EditedMark, EntryHistory,
+  Fact, Modal, ProxyMark, RateHead, RefiledNote, RequestTrail, Section, SegmentList, editsOf,
+  trailOf,
 } from './common.jsx';
+import { approvalSteps } from '@/lib/approverLine.js';
 import { awaitingFirstSignature, isProxyFiled, refileState } from '@/lib/entries.js';
 import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
 import OtForm from './OtForm.jsx';
@@ -658,8 +660,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
           <div className="hint">
             หัวหน้างานของแผนกหรือฝ่ายบุคคลเป็นผู้พิจารณา ·
             หากอนุมัติ รายการจะเปลี่ยนเป็น “ยกเลิก” และชั่วโมงจะถูกตัดออกจากเดือนนี้ ·
-            หากไม่อนุมัติ รายการยังมีผลตามเดิม และขอใหม่ได้หากมีเหตุผลเพิ่มเติม ·
-            {' '}เดือนที่ปิดงวดแล้วขอถอนไม่ได้
+            หากไม่อนุมัติ รายการยังมีผลตามเดิม และขอใหม่ได้หากมีเหตุผลเพิ่มเติม
           </div>
         </Modal>
       )}
@@ -688,6 +689,12 @@ function EntryDetail({
   const mayAsk = withdrawEligibility(user, e).ok;
   const trail = trailOf(e);
   const hasPast = editsOf(e).length > 0 || Boolean(e.refiledFrom) || isProxyFiled(e);
+  /**
+   * Asked here rather than inside `ApprovalSteps`, because the Section around it
+   * is this screen's: a heading over an empty box on a request nobody has signed
+   * yet reads as a signature that failed to load.
+   */
+  const decided = approvalSteps(e).length > 0;
 
   return (
     <Modal
@@ -725,7 +732,7 @@ function EntryDetail({
       {/* First in the body, under the chip in the header: on the screen somebody
           opens to ask "what is happening to my request", this is the answer, and
           everything below it is detail about the hours. */}
-      <ApproverLine entry={e} signers={signers} className="lead" />
+      <ApproverLine entry={e} signers={signers} className="lead" when />
 
       <RefiledNote parent={e.refiledFrom} />
 
@@ -789,6 +796,18 @@ function EntryDetail({
       {e.segments?.length > 0 && (
         <Section title="ช่วงเวลาที่ระบบแบ่ง">
           <SegmentList segments={e.segments} />
+        </Section>
+      )}
+
+      {/* WHO SIGNED IT, AND WHEN — both signatures, not only the last one.
+          The band at the top of this pop-up says where the request stands, and
+          on an approved one that is the ฝ่ายบุคคล step; the หัวหน้า who read it
+          first and signed it first was named on no screen this person can open.
+          Above ข้อมูลเดิม because it is the same history through a narrower
+          lens, and below the hours because the hours are what the entry is. */}
+      {decided && (
+        <Section title="การอนุมัติ">
+          <ApprovalSteps entry={e} />
         </Section>
       )}
 

@@ -2,7 +2,6 @@ import OtEntry from '@/src/models/OtEntry.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { POPULATE, cancelPermission } from '@/lib/entries.js';
-import { refusePeriodLock } from '@/lib/periodLockQuery.js';
 
 /**
  * §6: own request, while nobody has approved it.
@@ -28,12 +27,6 @@ export const POST = route(async (req, { params }) => {
 
   const entry = await OtEntry.findById(params.id);
   if (!entry) return fail('ไม่พบรายการ', 404);
-
-  // A closed month refuses withdrawals as it refuses corrections — the figure
-  // has been exported either way, and removing a row from it is the larger of
-  // the two changes rather than the smaller.
-  const locked = await refusePeriodLock(entry.period, 'ยกเลิก');
-  if (locked) return fail(locked.error, locked.status);
 
   const allowed = cancelPermission(user, entry);
   if (!allowed.ok) return fail(allowed.error, allowed.status);

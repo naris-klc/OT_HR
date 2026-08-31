@@ -5,7 +5,7 @@ import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import { submissionWindow } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
-import { Alert, BucketSplit, Modal, SegmentList } from './common.jsx';
+import { Alert, BucketSplit, Modal, SegmentList, StatusChip } from './common.jsx';
 import { usePolicy } from './policyContext.jsx';
 
 const blank = () => ({
@@ -105,9 +105,9 @@ export default function OtForm({
    *
    * What is filed is still ONE REQUEST PER PERSON, posted one at a time, and
    * that is not an implementation detail: the ceiling, the day types (somebody
-   * on the list may be having a birthday), รูปแบบโอที and the overlap check are
-   * all questions about an individual, and the server has to be allowed to
-   * answer them individually. See `submit` below, and the summary it produces.
+   * on the list may be having a birthday), รูปแบบโอที and the day-conflict
+   * check are all questions about an individual, and the server has to be
+   * allowed to answer them individually. See `submit` below, and the summary it produces.
    *
    * `proxy` mode starts with NOTHING ticked, on purpose. A pre-selected first
    * name is the shape of mistake this feature could produce at scale — a
@@ -213,10 +213,28 @@ export default function OtForm({
    *
    * A sentence or null, and never derived here from the department's mode: the
    * mode alone cannot answer it, because the same evening is refused on a
-   * Tuesday and allowed on a holiday or on the person's own birthday. The
+   * Tuesday and allowed on a holiday or on the person’s own birthday. The
    * server has just run the engine over these times — see `weekdayOtRefusal`.
    */
   const [weekdayRefusal, setWeekdayRefusal] = useState(null);
+  /**
+   * The request already on the books that this day — or these minutes — belongs
+   * to.
+   *
+   * The server's own refusal, `{ status, error, conflict }`, or null, where
+   * `conflict.kind` is `'sameDate'` (หนึ่งวัน หนึ่งใบ, what F-HR-027's one line
+   * per day means) or `'overlap'` (the pair that crosses a midnight). Answered
+   * by the preview route on every keystroke that moves the date or a time, so
+   * the person finds out while looking at the fields that caused it rather than
+   * after pressing บันทึก — see the note in app/api/entries/preview/route.js.
+   *
+   * NEVER computed here, and the date rule is no more computable in the browser
+   * than the minute rule was. What this screen holds is one month of one list; a
+   * day can already be filed by a request a หัวหน้า wrote on this person's
+   * behalf, by one in a month the list is not showing, or by one filed while
+   * this form has been open.
+   */
+  const [conflict, setConflict] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const timer = useRef(null);
@@ -257,7 +275,9 @@ export default function OtForm({
       // Filing for somebody else, the preview is worthless until the server
       // knows who: the ceiling and the day types are theirs, and a split
       // computed against nobody would disagree with what saving produces.
-      if (proxy && !targets.length) { setPreview(null); setCap(null); setWeekdayRefusal(null); return; }
+      if (proxy && !targets.length) {
+        setPreview(null); setCap(null); setWeekdayRefusal(null); setConflict(null); return;
+      }
       try {
         const res = await api.post('/entries/preview', {
           ...form, entryId: entry?._id, employeeId: forWhom, birthday: fromBirthday || undefined,
@@ -267,12 +287,17 @@ export default function OtForm({
         setRouting(res.routing || null);
         setBirthdayRouting(res.birthdayRouting || null);
         setWeekdayRefusal(res.weekdayRefusal || null);
+        setConflict(res.conflict || null);
         setError('');
       } catch (err) {
         setPreview(null);
         setRouting(null);
         setBirthdayRouting(null);
         setWeekdayRefusal(null);
+        // Cleared with everything else. A clash left on the screen beside times
+        // the server could not even read is a refusal about a request that is
+        // no longer being typed.
+        setConflict(null);
         setError(err.message);
       }
     }, 250);
@@ -315,7 +340,7 @@ export default function OtForm({
          *   · Every rule the server applies here is about an individual — the
          *     monthly and weekly ceilings, the day types (a birthday on the
          *     list makes that person's whole day a holiday), รูปแบบโอที for
-         *     their department, and the overlap check against what they have
+         *     their department, and the day-conflict check against what they have
          *     already filed. A batch endpoint would need its own copy of all
          *     four, which is four places for the rules to drift apart.
          *   · A refusal belongs to a name. Posted together, the first 409 would
@@ -387,6 +412,25 @@ export default function OtForm({
   // more being typed but never truncates what is already there, so say so and
   // make shortening it the condition of saving rather than cutting it silently.
   const over = form.description.length > DESCRIPTION_MAX_CHARS;
+
+  /**
+   * Does the conflict shut the button, or only warn beside it?
+   *
+   * It shuts it whenever the preview and the press are about the SAME person:
+   * the write path answers 400 on exactly this, and offering a button the
+   * server has already said no to teaches people to press through what the
+   * screen tells them — the reason `weekdayRefusal` and a blocked ceiling grey
+   * it too.
+   *
+   * It only warns on a batch of more than one, and that is not a softer rule —
+   * it is a different question. The preview is computed against the FIRST name
+   * ticked (see `forWhom`), so a day found already filed there belongs to that
+   * one person, and shutting the button would refuse the other seven filings
+   * over somebody else's day. Each POST is checked against its own person and
+   * the summary names whoever was refused, which is the same treatment the
+   * ceiling gets three blocks below.
+   */
+  const conflictBlocks = Boolean(conflict) && !(proxy && targets.length > 1);
   const overnight = form.endsNextDay;
   const endDateLabel = overnight ? nextDay(form.workDate) : form.workDate;
 
@@ -735,7 +779,7 @@ export default function OtForm({
           columns and can ask HR, which is the same position they are in today. */}
       {/* …and withheld on a birthday-list filing for the same reason it is on a
           proxy one, twice over: the form already says whose birthday it is, and
-          "ของคุณ" would be addressed to ฝ่ายบุคคล about somebody else's. */}
+          "ของคุณ" would be addressed to ฝ่ายบุคคล about somebody else’s. */}
       {preview && !proxy && !hrEdit && !fromBirthday && isOwnBirthday(preview) && (
         <Alert kind="info">
           วันที่เลือกเป็น<strong>วันเกิดของคุณ</strong> ซึ่งนับเป็นวันหยุดของคุณคนเดียว —
@@ -749,6 +793,54 @@ export default function OtForm({
           department that pays for them. The same sentence the write path would
           answer with, so pressing บันทึก could add nothing to it. */}
       {weekdayRefusal && <Alert kind="warn">{weekdayRefusal}</Alert>}
+
+      {/* The day is already filed — above the split rather than below it,
+          because it is not a fact about these hours. It is the answer to "have I
+          already filed this?", and it has to be readable before the eye reaches
+          the numbers it would otherwise be checking instead.
+
+          THE SENTENCE IS THE SERVER'S, printed verbatim. It is the same string
+          the 400 would carry, from `sameDateMessage` or `overlapMessage`, so a
+          person who somehow reaches the refusal reads what the form had already
+          told them rather than a second wording of it — and the date in it is
+          written the way this form's own date box writes it, `05/08/2026`.
+
+          The requests it names are drawn as ROWS underneath rather than left in
+          the sentence: this is a screen, and the rows here look like the rows in
+          ประวัติการขอ OT, which is where the person has to go and look. There
+          the date IS prose, so `thaiDate` spells it, and the status wears the
+          same chip that table gives it. */}
+      {conflict && (
+        <Alert kind={conflictBlocks ? 'error' : 'warn'}>
+          <strong>{conflict.error}</strong>
+          <ul className="clash-list">
+            {conflict.conflict.entries.map((o) => (
+              <li key={o.id}>
+                <span className="when">
+                  {thaiDate(o.workDate)} · {o.startTime}–{o.endTime}
+                  {o.endsNextDay && ' (ข้ามคืน)'}
+                </span>
+                <StatusChip status={o.status} />
+                {/* Only the minute rule has a span to report. */}
+                {o.minutes != null && <span className="span">ทับกัน {o.minutes} นาที</span>}
+              </li>
+            ))}
+          </ul>
+          <div>
+            {!conflictBlocks
+              /* The batch case, said as what it is: one name's day, found on the
+                 one name the preview could be computed for. */
+              ? `เป็นของ ${nameOf(targets[0])} ซึ่งเป็นคนแรกในรายการ — คนอื่นระบบจะตรวจให้ทีละคนตอนบันทึก`
+              : conflict.conflict.kind === 'sameDate'
+                /* WHY one line, said once. Without it the rule reads as the
+                   system being difficult about a day somebody genuinely worked
+                   twice — and the answer to that day is one entry covering it,
+                   which is what the paper has always meant. */
+                ? 'ใบ F-HR-027 มีบรรทัดเดียวต่อหนึ่งวัน — ถ้าทำ OT วันนี้เพิ่ม ให้แก้เวลาในใบเดิมแทนการยื่นใบใหม่'
+                : 'กรุณาแก้เวลาให้ไม่ทับกัน หรือยกเลิก/แก้ไขใบเดิมก่อน — บันทึกซ้ำไม่ได้'}
+          </div>
+        </Alert>
+      )}
 
       {preview && (
         <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
@@ -828,6 +920,8 @@ export default function OtForm({
         form={formId}
         disabled={busy || over || !preview || preview.totals.otHours <= 0
           || (hrEdit && !note.trim()) || (proxy && !targets.length)
+          // หนึ่งวัน หนึ่งใบ / เวลาทับซ้อน — the write path answers 400 on this.
+          || conflictBlocks
           // Nothing is saved while the server says this row cannot take this
           // path — the write would 409, and the reason is already on screen.
           || (fromBirthday && birthdayRouting?.ok === false)

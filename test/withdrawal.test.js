@@ -6,6 +6,7 @@ import {
   withdrawRequestPermission,
   withdrawalDecision,
   withdrawalRequest,
+  withdrawEligibility,
 } from '../lib/withdrawal.js';
 import { cancelPermission } from '../lib/entries.js';
 
@@ -112,6 +113,25 @@ test('ใบที่รอ HR โดยหัวหน้าเซ็นแล�
   const signed = { ...approvedEntry(), status: 'pending_hr' };
   assert.equal(cancelPermission(EMP, signed).ok, false, 'ยกเลิกเองไม่ได้แล้ว');
   assert.equal(withdrawRequestPermission(EMP, signed, 'งานถูกยกเลิก').ok, true);
+});
+
+/**
+ * THE TWO REFUSALS POINT AT EACH OTHER'S BUTTON.
+ *
+ * Each rule owns one side of the first signature, so the person who lands on
+ * the wrong side has to be told which press does what they came to do. The
+ * ยกเลิก side has said so since this feature shipped; the other side went on
+ * saying ติดต่อฝ่ายบุคคล until 2026-08-31 — the exact sentence the top of
+ * lib/withdrawal.js says this feature replaced, still being answered by the
+ * route the screen never offers there.
+ */
+test('แต่ละฝั่งบอกปุ่มของอีกฝั่ง ไม่ใช่ส่งออกไปนอกระบบ', () => {
+  const signed = { ...approvedEntry(), status: 'pending_hr' };
+  assert.match(cancelPermission(EMP, signed).error, /ขอถอนใบ/);
+  assert.doesNotMatch(cancelPermission(EMP, signed).error, /ติดต่อฝ่ายบุคคล/);
+
+  const unsigned = { ...approvedEntry(), status: 'pending_mgr', managerDecision: undefined };
+  assert.match(withdrawEligibility(EMP, unsigned).error, /ยกเลิก/);
 });
 
 test('ใบที่ปิดแล้วขอถอนไม่ได้', () => {

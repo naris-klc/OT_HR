@@ -37,14 +37,16 @@ test('พนักงานที่ไม่ได้มาจาก seed ห�
 test('ร่องรอยการใช้งานจริงอย่างใดอย่างหนึ่ง ก็พอที่จะหยุด', () => {
   for (const key of [
     'filedEntries', 'rosterAudits', 'policyVersions',
-    'policyConfirmations', 'delegations', 'periodLocks',
+    'policyConfirmations', 'delegations',
+    // `periodLocks` was the sixth until 2026-08-31. ปิดงวด was withdrawn and
+    // the collection with it — see lib/periodStatus.js.
   ]) {
     assert.equal(seedSafety({ [key]: 1 }).ok, false, `${key} ไม่ได้ถูกนับ`);
   }
 });
 
 test('รายงานทุกข้อที่เจอ ไม่ใช่ข้อแรกแล้วหยุด', () => {
-  const r = seedSafety({ foreignEmployees: ['X'], filedEntries: 2, periodLocks: 1 });
+  const r = seedSafety({ foreignEmployees: ['X'], filedEntries: 2, delegations: 1 });
   assert.equal(r.findings.length, 3, 'คนอ่านต้องเห็นทั้งหมดก่อนตัดสินใจ --force');
 });
 

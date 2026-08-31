@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { approverLine, lastDecision } from '../lib/approverLine.js';
+import { approvalSteps, approverLine, lastDecision } from '../lib/approverLine.js';
+import { thaiDateTime } from '../lib/api.js';
 
 /**
  * "ใบนี้ค้างอยู่ที่ใคร" — the line under the status chip on OT ของฉัน.
@@ -83,12 +84,77 @@ test('อนุมัติแล้ว names the last person to sign', () => {
   assert.equal(line.text, 'อนุมัติโดย: ฝ่ายบุคคล');
 });
 
+/**
+ * WHICH OF THE TWO SIGNATURES THIS IS — read off the action, so it is what the
+ * signer WAS when they pressed it and not what the roster says today.
+ *
+ * It read 'อนุมัติโดย: สมหญิง' until 2026-08-31: a name, and nothing saying
+ * whether it was the หัวหน้า step or the ฝ่ายบุคคล one.
+ */
+test('an approval names the desk it was signed at, beside the person', () => {
+  const line = approverLine({
+    status: 'approved',
+    history: [{ action: 'approve_mgr', byName: 'สมหญิง ใจงาม' }],
+  });
+  assert.equal(line.text, 'อนุมัติโดย: สมหญิง ใจงาม (หัวหน้างาน)');
+});
+
+/**
+ * ฝ่ายบุคคล share one login whose name IS ฝ่ายบุคคล. "ฝ่ายบุคคล (ฝ่ายบุคคล)"
+ * reads as two parties, which is the one wrong idea this line can plant.
+ */
+test('the desk is not repeated when the account name already is the desk', () => {
+  const line = approverLine({
+    status: 'approved',
+    history: [{ action: 'approve_hr', byName: 'ฝ่ายบุคคล' }],
+  });
+  assert.equal(line.text, 'อนุมัติโดย: ฝ่ายบุคคล');
+});
+
+/** ผู้ดูแลระบบ signing the ฝ่ายบุคคล step is a name that is not the desk. */
+test('a signer who is not the shared account still gets the desk', () => {
+  const line = approverLine({
+    status: 'approved',
+    history: [{ action: 'approve_hr', byName: 'ผู้ดูแลระบบ' }],
+  });
+  assert.equal(line.text, 'อนุมัติโดย: ผู้ดูแลระบบ (ฝ่ายบุคคล)');
+});
+
 test('an approval signed under somebody else\'s authority says whose', () => {
   const line = approverLine({
     status: 'approved',
     history: [{ action: 'approve_mgr', byName: 'มานพ', onBehalfOfName: 'สมหญิง' }],
   });
-  assert.equal(line.text, 'อนุมัติโดย: มานพ (ทำแทน สมหญิง)');
+  // ONE bracket. Both facts qualify the same name; "(ทำแทน สมหญิง) (หัวหน้างาน)"
+  // arranges them so one looks like an afterthought. It read
+  // 'อนุมัติโดย: มานพ (ทำแทน สมหญิง)' until 2026-08-31.
+  assert.equal(line.text, 'อนุมัติโดย: มานพ (หัวหน้างาน · ทำแทน สมหญิง)');
+});
+
+/**
+ * เมื่อไหร่ — the other half of "ใครอนุมัติ". `history.at` has been written on
+ * every row since the first version and was on no screen but ประวัติการแก้ไข,
+ * which draws only on an entry that was edited or re-filed.
+ */
+test('an approved line carries the minute it was signed', () => {
+  const at = new Date(2026, 7, 14, 16, 3);
+  const line = approverLine({
+    status: 'approved',
+    history: [{ action: 'approve_hr', byName: 'ฝ่ายบุคคล', at }],
+  });
+  assert.equal(line.at, at);
+  assert.equal(thaiDateTime(line.at), '14 ส.ค. 2569 16:03 น.');
+});
+
+/**
+ * A time on a line about something not yet done would be read as the moment it
+ * was signed. The three waiting shapes carry the field and leave it null.
+ */
+test('nothing that has not happened yet carries a time', () => {
+  assert.equal(approverLine({ status: 'pending_hr' }).at, null);
+  assert.equal(approverLine(pending(), signers([])).at, null);
+  assert.equal(approverLine(pending(), null).at, null);
+  assert.equal(approverLine({ status: 'approved' }).at, null);
 });
 
 test('the ใบวันเกิด HR files and signs in one act still names a signer', () => {
@@ -108,7 +174,8 @@ test('ไม่อนุมัติ names who refused and carries the reason', 
     history: [{ action: 'reject_mgr', byName: 'สมหญิง' }],
   });
   assert.equal(line.icon, '❌');
-  assert.equal(line.text, 'ปฏิเสธโดย: สมหญิง');
+  // It read 'ปฏิเสธโดย: สมหญิง' until 2026-08-31.
+  assert.equal(line.text, 'ปฏิเสธโดย: สมหญิง (หัวหน้างาน)');
   assert.equal(line.note, 'เวลาไม่ตรงกับที่แจ้งไว้');
 });
 
@@ -125,7 +192,7 @@ test('the LAST decision wins, not the first', () => {
       { action: 'approve_mgr', byName: 'สมหญิง' },
     ],
   });
-  assert.equal(line.text, 'อนุมัติโดย: สมหญิง');
+  assert.equal(line.text, 'อนุมัติโดย: สมหญิง (หัวหน้างาน)');
   assert.equal(lastDecision({ history: [] }), null);
 });
 
@@ -137,6 +204,108 @@ test('a row written before histories existed prints without a name', () => {
 test('a cancelled row grows no line at all', () => {
   assert.equal(approverLine({ status: 'cancelled' }), null);
   assert.equal(approverLine({}), null);
+});
+
+// ── การอนุมัติ — every signature, not only the last ─────────────────────────
+
+/**
+ * THE ONE THE HEADLINE CANNOT SAY. `approverLine` prints the LAST decision,
+ * which is right for "where does this stand" and wrong for "who signed it": on
+ * an ordinary approved entry the last decision is the ฝ่ายบุคคล step, and
+ * ฝ่ายบุคคล is one shared account — so the หัวหน้า who read the request and
+ * signed it first was named on no screen the employee could open.
+ */
+test('a fully approved entry lists both signatures, oldest first', () => {
+  const steps = approvalSteps({
+    status: 'approved',
+    history: [
+      { action: 'submit', byName: 'สมชาย ใจดี', at: new Date(2026, 7, 13, 8, 30) },
+      { action: 'approve_mgr', byName: 'วิชัย ศรีสุข', at: new Date(2026, 7, 14, 9, 12) },
+      { action: 'approve_hr', byName: 'ฝ่ายบุคคล', at: new Date(2026, 7, 14, 16, 3) },
+    ],
+  });
+  assert.deepEqual(steps.map((s) => [s.byName, s.desk]), [
+    ['วิชัย ศรีสุข', 'หัวหน้างาน'],
+    ['ฝ่ายบุคคล', 'ฝ่ายบุคคล'],
+  ]);
+  assert.equal(thaiDateTime(steps[0].at), '14 ส.ค. 2569 09:12 น.');
+  assert.ok(steps.every((s) => s.approved));
+});
+
+test('filing and editing are not signatures — only decisions are listed', () => {
+  const steps = approvalSteps({
+    history: [
+      { action: 'submit', byName: 'ก' }, { action: 'edit', byName: 'ก' },
+      { action: 'hr_edit', byName: 'ฝ่ายบุคคล' }, { action: 'recompute' },
+      { action: 'withdraw_request', byName: 'ก' },
+    ],
+  });
+  assert.deepEqual(steps, []);
+  assert.deepEqual(approvalSteps(null), []);
+  assert.deepEqual(approvalSteps({}), []);
+});
+
+/**
+ * BOTH ENDS OF A REFUSED-THEN-APPROVED REQUEST STAY ON THE LIST. The headline
+ * is about where it stands and shows the last one; this is the record, and a
+ * record that drops the refusal is the one an employee would go asking about.
+ */
+test('a refusal stays listed beside the approval that followed it', () => {
+  const steps = approvalSteps({
+    status: 'approved',
+    history: [
+      { action: 'reject_mgr', byName: 'วิชัย ศรีสุข', note: 'เวลาไม่ตรง' },
+      { action: 'edit', byName: 'สมชาย ใจดี' },
+      { action: 'approve_mgr', byName: 'วิชัย ศรีสุข' },
+    ],
+  });
+  assert.deepEqual(steps.map((s) => [s.action, s.approved]), [
+    ['reject_mgr', false], ['approve_mgr', true],
+  ]);
+  assert.equal(steps[0].note, 'เวลาไม่ตรง');
+});
+
+/** The two "on what basis" marks reach the screen; neither is invented. */
+test('a stand-in and an admin override are carried, and absent otherwise', () => {
+  const [standIn, override, plain] = approvalSteps({
+    history: [
+      { action: 'approve_mgr', byName: 'มานพ', onBehalfOfName: 'สมหญิง' },
+      { action: 'approve_mgr', byName: 'ผู้ดูแลระบบ', adminOverride: true, note: 'แผนกไม่มีหัวหน้า' },
+      { action: 'approve_hr', byName: 'ฝ่ายบุคคล' },
+    ],
+  });
+  assert.equal(standIn.onBehalfOfName, 'สมหญิง');
+  assert.equal(standIn.adminOverride, false);
+  assert.equal(override.adminOverride, true);
+  // approvalPermission refuses an override with no reason, so the row that
+  // wears the mark always carries the sentence explaining it.
+  assert.equal(override.note, 'แผนกไม่มีหัวหน้า');
+  assert.equal(plain.onBehalfOfName, null);
+  assert.equal(plain.adminOverride, false);
+});
+
+/**
+ * ใบวันเกิดที่ฝ่ายบุคคลกรอกและอนุมัติในครั้งเดียว — one row for one event, and
+ * the only decision on the entry. Read as "filing", the list would be empty on
+ * an entry that is approved, which is the shape a reader calls a bug.
+ */
+test('the ใบวันเกิด HR files and signs in one act is one step, not none', () => {
+  const steps = approvalSteps({
+    status: 'approved',
+    history: [{ action: 'submit_hr_verified', byName: 'ฝ่ายบุคคล', at: new Date(2026, 7, 5, 11, 0) }],
+  });
+  assert.equal(steps.length, 1);
+  assert.equal(steps[0].desk, 'ฝ่ายบุคคล');
+  assert.equal(steps[0].approved, true);
+});
+
+/** A row from before histories carried `at` prints no time, not "Invalid Date". */
+test('a signature with no stored time says nothing rather than guessing one', () => {
+  const [step] = approvalSteps({ history: [{ action: 'approve_mgr', byName: 'ก' }] });
+  assert.equal(step.at, null);
+  assert.equal(thaiDateTime(step.at), '');
+  assert.equal(thaiDateTime('ไม่ใช่วันที่'), '');
+  assert.equal(thaiDateTime(null), '');
 });
 
 // ── wiring ──────────────────────────────────────────────────────────────────
@@ -163,4 +332,40 @@ test('OT ของฉัน draws it in all three places a request is shown', ()
     'รายการล่าสุด ตารางเต็ม และหน้ารายละเอียด ต้องมีครบสามที่',
   );
   has(view, "api.get('/entries/approvers')");
+});
+
+/**
+ * THE MINUTE IS DRAWN WHERE THERE IS ROOM AND NOWHERE ELSE. In ประวัติการขอ OT
+ * the line sits in the status cell — a column the chip above it keeps a few
+ * characters wide — and a date there sets that column's width for every row on
+ * the screen. The pop-up gives it a band of its own, and is the one that asks.
+ */
+test('only the pop-up asks for the signing time', () => {
+  const view = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  assert.equal((view.match(/<ApproverLine[^/]*\bwhen\b/g) || []).length, 1);
+  has(view, '<ApproverLine entry={e} signers={signers} className="lead" when />');
+});
+
+/**
+ * การอนุมัติ is drawn only on an entry that HAS one. `ApprovalSteps` returns
+ * null on an empty list, but the Section around it is the screen's — a heading
+ * over an empty box on a request nobody has signed reads as a failure to load.
+ */
+test('the signature list is asked for and is gated on there being one', () => {
+  const view = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  has(view, "import { approvalSteps } from '@/lib/approverLine.js'");
+  has(view, 'const decided = approvalSteps(e).length > 0;');
+  has(view, '{decided && (');
+  has(view, '<ApprovalSteps entry={e} />');
+
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
+  // The labels are ACTION_META's — the same ones the full trail prints. A
+  // second set of words for the same rows is a second record.
+  has(common, 'ACTION_META[s.action]?.label');
+  // ฝ่ายบุคคล is a login, not a person, and a reader meeting a name on every
+  // other row has every reason to assume this one is a person too. Wording set
+  // by HR on 2026-08-31 — it read "ฝ่ายบุคคลใช้บัญชีเดียวร่วมกันทั้งแผนก …"
+  // before that. The leading * is load-bearing: it marks the line as a footnote
+  // on the signature above rather than a new instruction.
+  has(common, '*ฝ่ายบุคคลยืนยันรายการผ่านบัญชีส่วนกลางของฝ่ายบริหารทรัพยากรบุคคล (HR Central Account)');
 });

@@ -21,7 +21,7 @@ import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayAction
 // banner renders; the banner itself is still what ตรวจสอบใบของพนักงาน opens
 // (components/HrEntries.jsx), which is why it is still a component.
 import { PolicyVersionSummaryCell, policyVersionNotice } from './PolicyVersion.jsx';
-import PeriodLockBar from './PeriodLock.jsx';
+import PeriodStatus from './PeriodStatus.jsx';
 import PrintForm from './PrintForm.jsx';
 import PrintFormBatch from './PrintFormBatch.jsx';
 import HrEntries from './HrEntries.jsx';
@@ -840,13 +840,19 @@ export default function HrView({
         </div>
       </div>
 
-      {/* Whether this month is finished, directly under the controls that
-          finish it — printing the sheets, exporting the file, then closing the
-          period is one sitting, and closing it belongs at the end of that
-          sitting rather than on a settings page nobody would think to visit.
-          `onChanged` reloads the table so the ceiling figures and the row
-          buttons are read again under the new state. */}
-      <PeriodLockBar user={user} period={period} onChanged={load} />
+      {/* What this month still has unanswered, directly under the buttons that
+          print and export it. Reading the totals, printing the sheets and
+          exporting the file is one sitting, and "is anything still waiting for
+          somebody?" is the question asked in the middle of it — a request nobody
+          has signed is simply absent from the paper that goes into the file.
+
+          NO `onChanged` AND NO `user`. This card changed both until 2026-08-31,
+          when it carried ปิดงวด: closing a month altered what every row on the
+          table below could do, so the table was reloaded, and the buttons it
+          drew depended on who was looking. It is a notice now. It changes
+          nothing, so nothing below it needs re-reading, and everybody who can
+          reach this screen reads the same counts. */}
+      <PeriodStatus period={period} />
 
       {error && <Alert kind="error">{error}</Alert>}
 

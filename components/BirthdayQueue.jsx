@@ -226,8 +226,8 @@ export default function BirthdayQueue({
                     The number that makes a backlog visible without anybody
                     subtracting dates. Amber past a fortnight — not because
                     anything is wrong (nothing here is), but because a month is
-                    closed at the end of it and an unanswered birthday is what
-                    stops สรุป OT ส่งบัญชี being final.
+                    printed, signed and filed at the end of it and an unanswered
+                    birthday is what stops สรุป OT ส่งบัญชี being final.
                   */}
                   <td className="age-col" style={{ whiteSpace: 'nowrap' }}>
                     <span style={{ color: r.ageDays >= 14 ? 'var(--amber)' : 'inherit' }}>

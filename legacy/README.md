@@ -16,7 +16,7 @@ by somebody who thought it was the app — and it predates every rule added sinc
 
 | rule | `app/api/` | `legacy/routes/` |
 |---|---|---|
-| ปิดงวด (period lock) | refuses every write path | no such check |
+| สรุปสถานะงวด (period status) | counted and shown before printing | not present |
 | ผู้รับช่วงอนุมัติ (delegation) | approve / reject / withdraw | not present |
 | ขอถอนใบที่อนุมัติแล้ว | built | not present |
 | เวลาทับซ้อน (overlap) | refuses on submit and edit | no such check |

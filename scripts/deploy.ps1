@@ -57,11 +57,18 @@
 # STEP 5 IS THE ONLY PROOF THAT MATTERS. A new BUILD_ID on disk says a build
 # happened, not that the running server is serving it - the two came apart on
 # 2026-08-26 and that is exactly the failure. So step 5 pulls the CSS the server
-# hands out and greps it.
+# hands out and greps it for -Sentinel, WHICH MUST BE A CLASS THE CHANGE BEING
+# DEPLOYED ADDS. It was hard-coded to a class from 2026-08-26 until 2026-08-31,
+# by which time every build carried it and the grep proved only that some build
+# was live - the same mistake this step exists to catch, one level up.
 
 param(
     [int]$Port = 3000,
-    [string]$Root
+    [string]$Root,
+    # A CSS class the change being deployed ADDS. Step 5 greps the stylesheet
+    # the running server hands out for it - see the note there for why a
+    # sentinel that survives every deploy is worse than none.
+    [string]$Sentinel = 'period-status'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -202,11 +209,27 @@ if (-not $after) {
         $css  = ([regex]::Matches($html, '/_next/static/chunks/[A-Za-z0-9_.\-]+\.css') |
                  ForEach-Object { $_.Value } | Select-Object -Unique)
         Write-Host "   stylesheets: $($css -join ', ')"
+        # THE SENTINEL MUST BE SOMETHING THIS DEPLOY INTRODUCES, or the check
+        # passes on a bundle from a month ago and reports it as new. It read
+        # 'pager-step' from 2026-08-26 until 2026-08-31 - a class the pager work
+        # added, which every build since has also carried. That is the same
+        # failure this whole step exists to catch, one level up: proof that A
+        # build is live, presented as proof that THIS build is.
+        #
+        # So it is a parameter now, defaulted to the newest class in the change
+        # being shipped. MOVE IT when you deploy something that adds a class,
+        # and pass -Sentinel when you deploy something that does not.
+        $found = $false
         foreach ($href in $css) {
             $body = (Invoke-WebRequest -Uri "http://127.0.0.1:$port$href" -UseBasicParsing).Content
-            if ($body -match 'pager-step') {
-                Write-Host "   $href carries .pager-step - the new bundle is live" -ForegroundColor Green
+            if ($body -match [regex]::Escape($Sentinel)) {
+                Write-Host "   $href carries .$Sentinel - the new bundle is live" -ForegroundColor Green
+                $found = $true
             }
+        }
+        if (-not $found) {
+            Write-Host "   NO stylesheet carries .$Sentinel - the server is serving an older bundle," -ForegroundColor Red
+            Write-Host '   or the sentinel is not in this change. Check which before believing either.' -ForegroundColor Red
         }
         if ($css -match 'app_.*\._\.css') {
             Write-Host '   that is a DEV chunk name - this is still not a production build' -ForegroundColor Red
