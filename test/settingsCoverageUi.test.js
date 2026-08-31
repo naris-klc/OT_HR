@@ -342,7 +342,13 @@ test('one reading of "is there more this way", shared by the sheet and the tabs'
   // rule below — the clause that is easy to leave out and impossible to notice
   // missing on the machine it was written on.
   const common = sourceOf(COMMON);
-  assert.match(common, /export function useScrollEdge\(watch\)/);
+  // It read `useScrollEdge(watch)` until the opened list on ภาพรวม of บันทึกระบบ
+  // asked the same question downwards. The axis is a PARAMETER and not a second
+  // hook — the same rule one axis further along — and it defaults to 'x', so
+  // the two horizontal callers still pass nothing.
+  assert.match(common, /export function useScrollEdge\(watch, axis = 'x'\)/);
+  assert.ok(!/function useScrollEdgeY|useVerticalScrollEdge/.test(common),
+    'a vertical copy of the hook exists — that is the drift this test is about');
   assert.match(common, /if \(slack <= 2\) \{ setEdge\('none'\); return; \}/);
   assert.match(common, /export function SheetScroll\(/);
   assert.match(common, /const \[ref, edge\] = useScrollEdge\(children\)/);

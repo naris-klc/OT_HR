@@ -1243,7 +1243,7 @@ lib/complianceExport.js   which five events count as the exercise of a
 lib/complianceQuery.js    the three reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     106 files, run by `npm test`. Six named below as a
+test/                     107 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1256,9 +1256,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1785 tests
-across 106 files**, measured 2026-08-31 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1792 tests
+across 107 files**, measured 2026-08-31 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -5865,8 +5865,16 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1785/1785 pass in about 2 s**, measured 2026-08-31 across 106
-  files. **The newest nine are in `test/holidayDeleteConfirm.test.js`**, over
+- `npm test` — **1792/1792 pass in about 2 s**, measured 2026-08-31 across 107
+  files. **The newest seven are in `test/logPanelRows.test.js`**, over the four
+  counted lists on ภาพรวม of บันทึกระบบ, which now all open on the same number
+  of rows. Two of the seven are the layout itself; the rest are the rule
+  underneath it — one number for all four cards, no larger than the smallest
+  cap the endpoint sends, opening the rest scrolls the list rather than growing
+  the card, and something on screen says so, because a card that does not
+  change height is a card that looks like the button did nothing. It read
+  "1785/1785 … across 106 files" until then.
+  **Before them the newest nine were in `test/holidayDeleteConfirm.test.js`**, over
   the ยืนยันการลบ dialog that replaced `window.confirm` on วันหยุดบริษัท. Only
   four of the nine are about that screen; the rest ban the browser's own box
   across every file in `components/`, because a `confirm()` that creeps back is

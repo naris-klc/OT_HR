@@ -1525,18 +1525,25 @@ export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
  * that a breakpoint would have had to guess at.
  */
 /**
- * Where a horizontal scroller currently stands — `none` / `start` / `middle` /
- * `end` — and the ref to hang on the scroller itself.
+ * Where a scroller currently stands — `none` / `start` / `middle` / `end` —
+ * and the ref to hang on the scroller itself.
  *
- * ONE READING, TWO SCROLLERS. It was `SheetScroll`'s alone until the ตั้งค่าระบบ
+ * ONE READING, THREE SCROLLERS. It was `SheetScroll`'s alone until the ตั้งค่าระบบ
  * tab strip needed the same answer, and a second copy of it would have been two
  * definitions of "is there more this way" drifting apart over the sub-pixel
  * rule below — which is the clause that is easy to leave out and impossible to
  * notice missing on the machine it was written on.
  *
  * What each caller does with the answer is its own: the printed sheet fades to
- * a shadow over grey, the tab strip fades to the card it sits on. They share
- * the state, not the paint.
+ * a shadow over grey, the tab strip and the opened list on ภาพรวม fade to the
+ * card they sit on. They share the state, not the paint.
+ *
+ * `axis` is the third caller's doing — `'y'` for a list that scrolls DOWN
+ * inside a card, `'x'` (the default) for the two that scroll sideways. It is
+ * one substitution of four property names and no change of meaning: `start` is
+ * still "nothing behind you", `end` still "nothing ahead". A separate vertical
+ * hook would have been the drift this one was written to prevent, one axis
+ * further along.
  *
  * `none` whenever the content fits, so nothing is drawn on a desktop and no
  * caller needs a breakpoint — which is also what keeps it right at the window
@@ -1545,22 +1552,26 @@ export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
  * `watch` is anything whose arrival changes the measurement — usually the
  * children. The ResizeObserver catches the rest.
  */
-export function useScrollEdge(watch) {
+export function useScrollEdge(watch, axis = 'x') {
   const ref = React.useRef(null);
   const [edge, setEdge] = React.useState('none');
 
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
+    const vertical = axis === 'y';
 
     const read = () => {
-      const slack = el.scrollWidth - el.clientWidth;
+      const slack = vertical
+        ? el.scrollHeight - el.clientHeight
+        : el.scrollWidth - el.clientWidth;
+      const at = vertical ? el.scrollTop : el.scrollLeft;
       // Not `> 0`: fractional layout widths leave a sub-pixel remainder behind
       // at most zoom levels, and it would light the fade on a desktop where
       // there is nothing to swipe to.
       if (slack <= 2) { setEdge('none'); return; }
-      if (el.scrollLeft <= 1) { setEdge('start'); return; }
-      setEdge(el.scrollLeft >= slack - 1 ? 'end' : 'middle');
+      if (at <= 1) { setEdge('start'); return; }
+      setEdge(at >= slack - 1 ? 'end' : 'middle');
     };
 
     read();
@@ -1570,7 +1581,7 @@ export function useScrollEdge(watch) {
     const ro = new ResizeObserver(read);
     ro.observe(el);
     return () => { el.removeEventListener('scroll', read); ro.disconnect(); };
-  }, [watch]);
+  }, [watch, axis]);
 
   return [ref, edge];
 }

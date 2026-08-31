@@ -10838,7 +10838,17 @@ table.mini tbody tr:hover { background: none; }
 .log-bar .tick { font: 400 10.5px/1 var(--mono); color: var(--muted-3); text-align: center; }
 
 /* ── the four counted lists ─────────────────────────────────────────────── */
-.log-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+/* `align-items: stretch` is the grid default and is written out because it is
+   load-bearing here: it is what makes the four cards in a row share one height
+   rather than each ending where its own list does. It is also the reason the
+   ROW COUNT had to be standardised — a stretched card is as tall as the tallest
+   in its row, so a card showing fifteen addresses handed the card beside it
+   twelve rows of empty card. `PANEL_ROWS` in LogSystem.jsx is the other half of
+   this rule; neither works alone. */
+.log-columns {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px; align-items: stretch;
+}
 /* The gap is the spacing here. `.card` carries a 16px bottom margin of its own
    for the stacked layout everything else uses, and left on inside a grid it
    adds to the row gap only — so the columns would sit 14px apart and the rows
@@ -10851,7 +10861,57 @@ table.mini tbody tr:hover { background: none; }
    own 12.5px at 1.5) starts every list on the same line; a note long enough to
    need three lines still gets them. */
 .log-columns .hint { min-height: 3em; }
+/* The heading and ดูทั้งหมด on one line. `baseline` rather than `center` so the
+   button's text sits on the heading's line however tall the button is, and the
+   `h2` keeps its own 4px bottom margin — the head is therefore exactly as tall
+   as the heading was alone, and the note under it does not move on the three
+   cards that have a button. */
+.log-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.log-panel-head h2 { min-width: 0; }
+/* Quiet and small: it opens a list, it is not the card's subject. The negative
+   margins pull its padding back off the heading's line so it takes no height of
+   its own; `flex: none` keeps it whole when a long title wants the room.
+
+   `.btn.sm.log-more` AND NOT `.log-more`, which is a real bug and not tidiness:
+   the button is `btn quiet sm log-more`, and one class loses to `.btn.sm`'s two
+   at cascade time. Written the short way the padding and the size were in the
+   bundle, were correct, and were overruled — the control measured 33px tall
+   with `.btn.sm`'s 9px/13px on it, which is the same defeat `.dept-menu` took
+   from `.pick-menu`. Three classes settle it without depending on file order. */
+.btn.sm.log-more { flex: none; padding: 4px 8px; font-size: 12px; margin: -4px -4px 0 0; }
 .log-tally { list-style: none; margin: 0; padding: 0; }
+/* Opened, the list scrolls inside the height it already had. The cap itself is
+   an inline `max-height` measured from the collapsed list — see the comment on
+   `Panel` in LogSystem.jsx for why it is measured and not written here. The
+   contained overscroll stops the page behind it scrolling on at the end. */
+.log-tally.all { overflow-y: auto; overscroll-behavior: contain; }
+
+/* ── “there is more of this list below” ─────────────────────────────────────
+   The same reading as `.tabs-view` and `.sheet-view` — `useScrollEdge`, the
+   same four values of `data-edge` — turned ninety degrees. It is here because
+   the card deliberately does not grow when ดูทั้งหมด is pressed, and a card
+   that does not change is a card that looks like the button did nothing: the
+   fourth row is real and reachable and invisible, and the overlay scrollbar
+   that was supposed to say so does not paint until the pointer is over it.
+
+   Fades to the CARD, like the tab strip and unlike the printed sheet: the row
+   underneath should dissolve into the card it is on, not fall off an edge.
+
+   The wrapper is what carries it, because a fade painted inside the scroller
+   is content and scrolls away with the row it was drawn over. And it is `none`
+   whenever the list is collapsed or fits, so a three-row card is an ordinary
+   div with nothing drawn on it. */
+.log-tally-view { position: relative; }
+.log-tally-view::before, .log-tally-view::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 26px; z-index: 1;
+  pointer-events: none; opacity: 0; transition: opacity .18s ease;
+}
+.log-tally-view::before { top: 0; background: linear-gradient(to bottom, var(--card), transparent); }
+.log-tally-view::after { bottom: 0; background: linear-gradient(to top, var(--card), transparent); }
+.log-tally-view[data-edge="start"]::after,
+.log-tally-view[data-edge="middle"]::after { opacity: 1; }
+.log-tally-view[data-edge="middle"]::before,
+.log-tally-view[data-edge="end"]::before { opacity: 1; }
 .log-tally li + li { border-top: 1px solid var(--line-softer); }
 .log-tally li > button, .log-tally li > .static {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -11026,6 +11086,19 @@ table.mini tbody tr:hover { background: none; }
      of the log. */
   .log-actions { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 20px; }
   .log-actions .btn { width: 100%; min-height: 44px; }
+
+  /* ดูทั้งหมด GETS A THUMB'S WORTH OF TARGET, and takes it back out of the
+     layout with the negative margins — the recipe `.announce-fold` already
+     uses, and 44px is what every other phone target in this app measures. A
+     12px label is a 22px box, which is a control you aim at rather than press.
+     `flex-end` keeps the words drawn where the desktop puts them, against the
+     card's right edge and level with the heading, so the hit area grows around
+     them without moving the note underneath. */
+  .btn.sm.log-more {
+    min-width: 44px; min-height: 44px;
+    display: flex; align-items: center; justify-content: flex-end;
+    margin: -11px -4px -11px 0;
+  }
 
   /* THE CARDS LINE UP WITH THE FIELDS ABOVE THEM. `.stack-table tbody` insets
      its cards by 12px, which is right where a table is the whole card — here

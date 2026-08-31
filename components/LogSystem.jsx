@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api.js';
 import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
@@ -343,35 +343,111 @@ function Tile({ label, value, unit, note, tone, onClick }) {
   );
 }
 
+/**
+ * How many rows each of the four cards opens with — THE SAME NUMBER ON ALL FOUR.
+ *
+ * The endpoint does not return the same number of rows to each of them: 3
+ * accounts, 15 addresses, 10 of each of the other two. Those are sensible caps
+ * for what each list is worth fetching and they were four different card
+ * heights on the screen — and the four sit in a grid, where a row is as tall as
+ * its tallest cell, so the fifteen-row card left the three-row one beside it
+ * under a hand's width of empty card. What each list is worth FETCHING and what
+ * a card opens SHOWING turn out to be two different questions.
+ *
+ * Three, not ten: it is the smallest of the four caps, so it is the only figure
+ * every card can actually meet. บัญชีที่ใช้งานมากที่สุด has no fourth row to
+ * offer — `TOP_ACCOUNTS` in app/api/logs/summary/route.js, deliberate and for
+ * its own reasons — and a standard one of the four cannot keep is not one.
+ */
+const PANEL_ROWS = 3;
+
 /** One of the four counted lists under the chart. */
 function Panel({ title, note, rows, empty, render }) {
+  /**
+   * ดูทั้งหมด opens the rest INSIDE the card, not underneath it.
+   *
+   * Growing the card is what this whole change is undoing: the four are one
+   * grid row, so a card that grows by twelve rows drags the three beside it
+   * along and hands each of them twelve rows of whitespace. Opened, the list
+   * scrolls within the height it already had — the card changes what it shows
+   * and not how tall it is, and nothing beside it moves.
+   */
+  const [all, setAll] = useState(false);
+  /**
+   * The collapsed list's own height, measured the moment before it opens.
+   *
+   * A number in the stylesheet would be three rows of arithmetic — 9px of
+   * padding twice, a 13.5px line and an 11.5px line 2px apart — and wrong on
+   * exactly the cards where it matters, the ones where a long account name or a
+   * Thai action wraps to a second line. Too small and pressing ดูทั้งหมด makes
+   * the card SHORTER, which is a worse surprise than the growth it was written
+   * to prevent. So it is measured rather than predicted.
+   */
+  const [cap, setCap] = useState(0);
+  /**
+   * And the fade that says the rest is down there.
+   *
+   * A card that does not change height when you press ดูทั้งหมด is a card that
+   * looks like it did nothing: the fourth row is real, the list scrolls to it,
+   * and none of that is visible from where somebody is sitting — walked on the
+   * verify build and the button read as inert. `useScrollEdge` is the answer
+   * this app already gives to "is there more this way" in two other places, on
+   * the other axis; the third caller is what put an `axis` on it.
+   */
+  const [listRef, edge] = useScrollEdge(all, 'y');
+  const toggle = () => {
+    if (!all) setCap(listRef.current?.offsetHeight || 0);
+    setAll((v) => !v);
+  };
+
+  const list = rows || [];
+  const shown = all ? list : list.slice(0, PANEL_ROWS);
+  const hidden = list.length - PANEL_ROWS;
+
   return (
     <div className="card">
-      <h2>{title}</h2>
+      {/* The heading and its control on one line, so the head costs no more
+          height than the `h2` alone did — see `.log-panel-head`. */}
+      <div className="log-panel-head">
+        <h2>{title}</h2>
+        {hidden > 0 && (
+          <button type="button" className="btn quiet sm log-more" onClick={toggle}>
+            {all ? 'ย่อ' : `ดูทั้งหมด (${list.length.toLocaleString('th-TH')})`}
+          </button>
+        )}
+      </div>
       <div className="hint">{note}</div>
-      {!rows?.length && <Empty>{empty}</Empty>}
-      {rows?.length > 0 && (
-        <ul className="log-tally">
-          {rows.map((raw) => {
-            const r = render(raw);
-            const inner = (
-              <>
-                <span className="t">
-                  <span className="main">{r.main}</span>
-                  <span className="sub">{r.sub}</span>
-                </span>
-                <span className={`n${r.tone ? ` ${r.tone}` : ''}`}>{r.n.toLocaleString('th-TH')}</span>
-              </>
-            );
-            return (
-              <li key={r.key}>
-                {r.onClick
-                  ? <button type="button" onClick={r.onClick}>{inner}</button>
-                  : <span className="static">{inner}</span>}
-              </li>
-            );
-          })}
-        </ul>
+      {!list.length && <Empty>{empty}</Empty>}
+      {list.length > 0 && (
+        // The fade hangs on the wrapper, not the list: anything painted inside
+        // a scroll container is content and scrolls away with it.
+        <div className="log-tally-view" data-edge={all ? edge : 'none'}>
+          <ul
+            ref={listRef}
+            className={`log-tally${all ? ' all' : ''}`}
+            style={all && cap ? { maxHeight: cap } : undefined}
+          >
+            {shown.map((raw) => {
+              const r = render(raw);
+              const inner = (
+                <>
+                  <span className="t">
+                    <span className="main">{r.main}</span>
+                    <span className="sub">{r.sub}</span>
+                  </span>
+                  <span className={`n${r.tone ? ` ${r.tone}` : ''}`}>{r.n.toLocaleString('th-TH')}</span>
+                </>
+              );
+              return (
+                <li key={r.key}>
+                  {r.onClick
+                    ? <button type="button" onClick={r.onClick}>{inner}</button>
+                    : <span className="static">{inner}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </div>
   );
