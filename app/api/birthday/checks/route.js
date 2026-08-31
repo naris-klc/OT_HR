@@ -48,7 +48,7 @@ export const POST = route(async (req) => {
   // BIRTHDAY_SUBJECT_ROLES. Kept as a check rather than dropped: it is what
   // makes "ทุกคน" a decision on the record instead of an absent rule.
   if (!isBirthdaySubject(employee)) {
-    return fail('บทบาทนี้ไม่อยู่ในข่ายวันหยุดวันเกิด', 400);
+    return fail('บทบาทนี้ไม่อยู่ในข่ายสวัสดิการวันเกิด', 400);
   }
 
   const on = today();
@@ -76,7 +76,7 @@ export const POST = route(async (req) => {
 
   if (outcome === OUTCOME.ABSENT) {
     if (!calendar.policy.birthdayHolidayEnabled) {
-      return fail('กฎวันหยุดวันเกิดปิดอยู่ — ไม่มีรายการวันเกิดให้บันทึก', 409);
+      return fail('กฎสวัสดิการวันเกิดปิดอยู่ — ไม่มีรายการวันเกิดให้บันทึก', 409);
     }
 
     let birthdayDate = null;
@@ -88,7 +88,7 @@ export const POST = route(async (req) => {
       return fail('วันเกิดของพนักงานคนนี้ในระบบไม่ถูกต้อง จึงตรวจสอบไม่ได้', 409);
     }
     if (!birthdayDate || birthdayDate !== workDate) {
-      return fail('วันที่ที่ระบุไม่ใช่วันหยุดวันเกิดของพนักงานคนนี้', 400);
+      return fail('วันที่ที่ระบุไม่ใช่สวัสดิการวันเกิดของพนักงานคนนี้', 400);
     }
     if (workDate > on) {
       return fail('วันเกิดนี้ยังไม่ถึง — ยังไม่มีบันทึกเวลาเข้า-ออกงานให้ตรวจสอบ', 409);

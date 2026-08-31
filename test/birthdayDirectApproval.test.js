@@ -96,17 +96,17 @@ test('ใบ OT ทั่วไปเข้าเส้นทางนี้ไ�
   const out = gate({ workDate: '2026-08-05', birthdayDate: '2026-08-04' });
   assert.equal(out.ok, false);
   assert.equal(out.status, 400);
-  assert.match(out.error, /ไม่ใช่วันหยุดวันเกิดของพนักงานคนนี้/);
+  assert.match(out.error, /ไม่ใช่สวัสดิการวันเกิดของพนักงานคนนี้/);
   assert.match(out.error, /ผ่านหัวหน้าอนุมัติ/, 'ต้องบอกทางที่ถูกด้วย');
 });
 
-test('ไม่มีวันเกิดในระบบ หรือปีนั้นไม่มีวันหยุดวันเกิด — เข้าไม่ได้', () => {
+test('ไม่มีวันเกิดในระบบ หรือปีนั้นไม่มีสวัสดิการวันเกิด — เข้าไม่ได้', () => {
   // `birthdayLeapFallback: 'none'` returns null for a 29 Feb birthday in a
   // non-leap year. No holiday is owed, so there is nothing to file.
   assert.equal(gate({ birthdayDate: null }).ok, false);
 });
 
-test('กฎวันหยุดวันเกิดปิดอยู่ — ไม่มีรายการให้บันทึก', () => {
+test('กฎสวัสดิการวันเกิดปิดอยู่ — ไม่มีรายการให้บันทึก', () => {
   const out = gate({ policy: { ...DEFAULT_POLICY, birthdayHolidayEnabled: false } });
   assert.equal(out.ok, false);
   assert.equal(out.status, 409);
@@ -167,7 +167,7 @@ test('ฝ่ายบุคคลและผู้ดูแลระบบเ�
 test('หัวหน้างานกดรายการวันเกิดไม่ได้เลย แม้แต่ลูกทีมตัวเอง', () => {
   /**
    * It used to be `departmentClaim` — own team, plus any team held under a
-   * delegation. HR's answer on 2026-08-13 was that วันหยุดวันเกิด is theirs end
+   * delegation. HR's answer on 2026-08-13 was that สวัสดิการวันเกิด is theirs end
    * to end and a หัวหน้า approves ordinary OT requests, which is the whole of
    * their part. The justification agrees: the single-signature path exists
    * because HR reads the fingerprint scanner's export, and a หัวหน้า pressing
@@ -211,7 +211,7 @@ test('ไม่ส่ง subject มา คำตอบเท่าเดิม�
   assert.equal(claim(MGR).ok, false);
 });
 
-test('วันหยุดวันเกิดมีให้หัวหน้างานด้วย — เป็นวันหยุดของบริษัท ไม่ใช่ OT', () => {
+test('สวัสดิการวันเกิดมีให้หัวหน้างานด้วย — เป็นวันหยุดของบริษัท ไม่ใช่ OT', () => {
   // §2 is about FILING OT and is untouched: `maySubmitOt` still says employees
   // only, and this gate deliberately no longer borrows it.
   assert.equal(gate({ employee: { ...STAFF, role: 'employee' } }).ok, true);

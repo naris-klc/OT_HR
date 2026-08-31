@@ -5,7 +5,7 @@ README และไม่ใช่จากความจำ วิธีที
 (§ที่มาของแต่ละคอลัมน์) เพื่อให้รันซ้ำแล้วได้ตัวเลขเดิม
 
 ขนาดของระบบ ณ วันนี้: **57 ไฟล์ `app/api/**/route.js` · 66 endpoint (method × path)
-· 31 ไฟล์ `components/*.jsx` · 49 ไฟล์ `lib/*.js` · 104 ไฟล์เทสต์**
+· 31 ไฟล์ `components/*.jsx` · 49 ไฟล์ `lib/*.js` · 105 ไฟล์เทสต์**
 
 > เคยอ่านว่า "59 ไฟล์ · 68 endpoint · 106 ไฟล์เทสต์" จนถึง 2026-08-31 ที่ ปิดงวด
 > ถูกถอนออก: หายไป 2 route (`close`, `reopen`), 2 endpoint และ 2 ไฟล์เทสต์
@@ -13,6 +13,10 @@ README และไม่ใช่จากความจำ วิธีที
 > `periodLock.js`/`periodLockQuery.js` ถูกแทนที่ด้วย
 > `periodStatus.js`/`periodStatusQuery.js` และ `components/` เท่าเดิมเพราะ
 > `PeriodLock.jsx` กลายเป็น `PeriodStatus.jsx`
+>
+> และ "104 ไฟล์เทสต์" จนถึงวันเดียวกัน ที่ สวัสดิการวันเกิด เลิกเป็นสิ่งที่
+> พนักงานยื่นเองได้: `birthdaySelfFiling` เป็นไฟล์ที่ 105 · ไม่มี route ใหม่
+> เพราะกฎนี้เป็นการ **ปฏิเสธ** บนเส้นทางเดิม ไม่ใช่ประตูใหม่
 
 ---
 
@@ -95,6 +99,8 @@ README และไม่ใช่จากความจำ วิธีที
 | แท็บย่อย `วันเกิดที่ยังไม่มีใบ` | รายชื่อคนที่วันเกิดตรงกับวันทำงาน แต่ยังไม่มีใบ OT | `app/api/birthday/queue/route.js` · `components/BirthdayQueue.jsx` | `birthdayQueue` `birthdayCheck` `birthdayCardUi` | ✅ `otAccessLogs` 4 ครั้ง 2026-08-24 |
 | **บันทึกว่าตรวจแล้ว (วันเกิด)** | ปิดรายการในคิววันเกิดโดยไม่ต้องออกใบ | `app/api/birthday/checks/route.js` · `components/birthdayActions.jsx` | `birthdayCheck` `birthdayQueue` | ⚠️ เดิน 2026-08-25 — บันทึก → หายจากคิว → ยกเลิก → กลับมา · เหลือ 2 แถว แถวแรกไม่ถูกลบ |
 | **บันทึก OT ให้จากรายการวันเกิด** | ฝ่ายบุคคลออกใบแทนและอนุมัติในขั้นเดียว | `app/api/birthday/entries/route.js` · `lib/birthdayFiling.js` | `birthdayDirectApproval` `birthdayFileSheet` | ⚠️ เดิน 2026-08-25 — `approved` ชั้นเดียว ไม่มี `managerDecision` เลย · engine หักพักเที่ยงเอง 9 ชม. → 8 ชม. |
+| **ยื่นสวัสดิการวันเกิดของตัวเองไม่ได้** (2026-08-31) | พนักงานยื่นใบ OT ในวันเกิดตัวเองไม่ได้ทุกกรณี — ทั้ง `POST /api/entries` และการ**แก้ไข**ที่ย้าย `workDate` มาลงวันนั้น ตอบ 409 ด้วยประโยคเดียวกัน · ฟอร์มถามจาก preview แล้วปิดปุ่มบันทึก ไม่ได้ตัดสินเองในเบราว์เซอร์ (เบราว์เซอร์ถือ `birthDate` ไม่ได้) · **สิ่งที่ไม่ปฏิเสธ**: หัวหน้าบันทึกแทนลูกทีมยังทำได้ตามเดิม และกะข้ามคืนที่ยื่นวันธรรมดาแล้วไหลข้ามเที่ยงคืนเข้าวันเกิดยังยื่นได้ เพราะกฎถามที่ `workDate` เท่านั้น | `lib/entries.js` (`birthdayOtRefusal`) · `app/api/entries/route.js` · `app/api/entries/[id]/route.js` · `app/api/entries/preview/route.js` · `components/OtForm.jsx` | `birthdaySelfFiling` (ใหม่) `birthdayCheck` | ⛔ ยังไม่เดินกับ Mongo จริง — กฎเป็นฟังก์ชันบริสุทธิ์ มีเทสต์ครบ แต่ยังไม่ได้ยิงผ่าน route จริง |
+| **ป้าย `OT สวัสดิการวันเกิด` บนหน้าของพนักงาน** (2026-08-31) | บอก**ประเภท**ของรายการ ไม่ใช่ว่าใครกรอก — ขึ้นครบทั้งรายการล่าสุด ตารางประวัติ และป๊อปอัปรายละเอียด · อ่านจาก `segments[].dayReason` ของ engine **ไม่ใช่จากชื่อรายการ** ซึ่งฝ่ายบุคคลพิมพ์ทับได้ · สีเขียว ไม่ใช่สีเหลืองซ้ำกับ `HR ตรวจสแกนนิ้ว` ที่อยู่แถวเดียวกัน | `lib/entries.js` (`isBirthdayWelfare`) · `components/common.jsx` (`BirthdayWelfareMark`) · `components/EmployeeView.jsx` · `app/styles.css` (`.chip.birthday`) | `birthdaySelfFiling` | ⛔ อ่านจากฟิลด์ที่ engine เขียนอยู่แล้ว ยังไม่ได้เปิดดูบนแอปที่ deploy |
 
 ### แท็บ `รออนุมัติแทน` — ฝ่ายบุคคล/ผู้ดูแลระบบ (โผล่เมื่อมีทีมที่รับช่วงอยู่)
 
@@ -279,7 +285,7 @@ README และไม่ใช่จากความจำ วิธีที
 | `npm run whatif` | ตีราคาการเปลี่ยนนโยบายก่อนเปลี่ยนจริง · อ่านอย่างเดียว ปลอดภัยกับ prod · `-- --show` บอกค่าที่ใช้อยู่จริง | `src/whatif.js` | — | ✅ ใช้ตอบข้อ [OPEN] เมื่อ 2026-08-13 |
 | `npm run migrate:company` | เติม `company` ให้แถวที่เกิดก่อนมีฟิลด์นี้ · `--dry` ดูแผนได้ | `src/migrate-company.js` | — | ❓ ไม่มีร่องรอย · วันนี้ไม่มีพนักงานคนไหนขาด `company` จึงเป็น no-op อยู่แล้ว |
 | `npm run migrate:policy-version` | สร้างเวอร์ชันที่ 1 แล้วชี้ทุกใบที่ยังไม่มีตัวชี้ไปที่นั้น | `src/migrate-policy-version.js` · `lib/policyVersion.js` | `policyVersion` (ส่วน `planBackfill`) | ❓ ทุกใบมี `policyVersionId` ครบ แต่ฐานข้อมูลถูก seed ใหม่เมื่อ 2026-08-13 ทับหลักฐานไปแล้ว |
-| `npm run migrate:birthday-rule-start` | ย้ายวันเริ่มมีผลของกฎวันหยุดวันเกิดไปต้นเดือน | `src/migrate-birthday-rule-start.js` | `birthdayCheck` `otBirthday` | ✅ เวอร์ชันที่ 10 (2026-08-20) มีเหตุผลตรงกับสิ่งที่สคริปต์นี้เขียน |
+| `npm run migrate:birthday-rule-start` | ย้ายวันเริ่มมีผลของกฎสวัสดิการวันเกิดไปต้นเดือน | `src/migrate-birthday-rule-start.js` | `birthdayCheck` `otBirthday` | ✅ เวอร์ชันที่ 10 (2026-08-20) มีเหตุผลตรงกับสิ่งที่สคริปต์นี้เขียน |
 | `npm test` | ทั้งชุด · ไม่แตะ Mongo เลย | `test/*.test.js` | — | — |
 | `npm run build` / `start` / `dev` | Next 16.3 · **สั่ง `build` ขณะ `start` ทำงานอยู่ ทำให้หน้าที่เปิดค้างพังจนกว่าจะรีสตาร์ท** | `next.config.js` | — | — |
 | `scripts/backup.ps1` | ตัวที่ Task Scheduler เรียกทุกวัน 01:00 · ต้องทดสอบด้วย `powershell.exe` ไม่ใช่ `pwsh` | `scripts/backup.ps1` | — | ✅ `backups/backup.log` มีบันทึกถึง 2026-08-25 |

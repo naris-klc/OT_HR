@@ -112,7 +112,7 @@ export default function BirthdayQueue({
   if (!data.ruleEnabled) {
     return (
       <Empty>
-        กฎวันหยุดวันเกิดปิดอยู่ — วันเกิดนับเป็นวันทำงานปกติ จึงไม่มีอะไรต้องตรวจ
+        กฎสวัสดิการวันเกิดปิดอยู่ — วันเกิดนับเป็นวันทำงานปกติ จึงไม่มีอะไรต้องตรวจ
       </Empty>
     );
   }
@@ -175,7 +175,7 @@ export default function BirthdayQueue({
             แสดงย้อนหลังถึง {window.fromDate && !window.fromDate.endsWith('-01')
               ? thaiDate(window.fromDate)
               : periodLabel(window.from)}
-            {window.bound === 'rule' && ' — เท่าที่กฎวันหยุดวันเกิดเริ่มมีผล (ก่อนหน้านั้นไม่มีวันหยุดวันเกิดให้ตรวจ)'}
+            {window.bound === 'rule' && ' — เท่าที่กฎสวัสดิการวันเกิดเริ่มมีผล (ก่อนหน้านั้นไม่มีสวัสดิการวันเกิดให้ตรวจ)'}
             {window.bound === 'cap' && ' — ย้อนหลังได้สูงสุด 12 เดือน อาจมีเก่ากว่านี้ที่ไม่ได้แสดง'}
             {window.bound === 'unversioned' && ' — ยังไม่มีบันทึกเวอร์ชันนโยบาย จึงแสดงได้เฉพาะเดือนปัจจุบัน (รัน migrate:policy-version เพื่อดูย้อนหลัง)'}
           </div>
@@ -203,7 +203,7 @@ export default function BirthdayQueue({
               <tr>
                 <th className="who-col">พนักงาน</th>
                 <th className="dept-col">แผนก</th>
-                <th className="date-col">วันหยุดวันเกิด</th>
+                <th className="date-col">วันเกิด</th>
                 <th className="age-col">ค้างมาแล้ว</th>
                 <th className="co-col">บริษัท</th>
                 <th className="mgr-col">หัวหน้าที่บันทึกแทนได้</th>
@@ -289,7 +289,7 @@ export default function BirthdayQueue({
               <thead>
                 <tr>
                   <th>พนักงาน</th>
-                  <th>วันหยุดวันเกิด</th>
+                  <th>วันเกิด</th>
                   <th>ผู้บันทึก</th>
                   <th>หมายเหตุ</th>
                   <th />

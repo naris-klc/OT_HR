@@ -81,7 +81,7 @@ test('the header carries who and when, and the body no longer repeats them', () 
   // gone. A header that cannot scroll says it better, and twice is worse than
   // once: the copy in the body is the one that leaves the screen.
   assert.ok(
-    !/วันหยุดวันเกิด · \{thaiDate\(birthday\?\.date\)\}/.test(code),
+    !/สวัสดิการวันเกิด · \{thaiDate\(birthday\?\.date\)\}/.test(code),
     'the body prints the date the header already carries',
   );
   // What is left there is the instruction, which no header can say.
@@ -125,7 +125,7 @@ test('every other filing is still a card, and both shapes share one set of field
   assert.equal((code.match(/\{fields\}/g) || []).length, 2);
   assert.match(code, /\{actions\(onCancel\)\}/);
   // The title is written once for the <h2> and the dialog header alike.
-  assert.match(code, /fromBirthday \? 'บันทึก OT ให้ — วันหยุดวันเกิด'/);
+  assert.match(code, /fromBirthday \? 'บันทึก OT ให้ — สวัสดิการวันเกิด'/);
   assert.match(code, /title=\{heading\}/);
 });
 

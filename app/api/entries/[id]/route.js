@@ -6,7 +6,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, pickSession, stampCap, editPermission, sameSession,
-  descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal,
+  descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal, birthdayOtRefusal,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
@@ -118,6 +118,23 @@ export const PATCH = route(async (req, { params }) => {
     if (error) return fail(error, 400);
     entry.description = value;
   }
+
+  /**
+   * And the same birthday rule, for the reason the department one is applied
+   * again below: an edit is a filing. The commonest correction there is moves
+   * `workDate`, and without this a person refused their birthday on the submit
+   * path could file the day before and then drag the date across.
+   *
+   * `entry.employee` and not `user`: the comparison inside decides whether this
+   * is somebody claiming their OWN สวัสดิการวันเกิด, and ฝ่ายบุคคล correcting
+   * the times on a row they filed is not that. It is also why an approved
+   * birthday entry does not become uneditable — `editPermission` above already
+   * governs who may touch it, and this adds nothing for HR.
+   */
+  const birthdayRefusal = birthdayOtRefusal({
+    filer: user, employee: entry.employee, dayTypes: ctx.dayTypes, workDate: session.workDate,
+  });
+  if (birthdayRefusal) return fail(birthdayRefusal, 409, { warnings: result.warnings });
 
   // The same department rule the submit path applies, and for the reason the
   // ceiling is measured again on an edit: an entry moved onto an ordinary

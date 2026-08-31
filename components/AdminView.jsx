@@ -555,7 +555,7 @@ function SigningCoverage({ departments, people, onGo }) {
  *
  * AND 0 IS NOT HOW YOU TURN OT OFF, which is worth the clause because it is
  * what somebody reaching for a 0 usually wants. รูปแบบโอที → ไม่มีโอที closes
- * ordinary working days and leaves วันหยุด and วันหยุดวันเกิด alone; a ceiling
+ * ordinary working days and leaves วันหยุด and สวัสดิการวันเกิด alone; a ceiling
  * of 0 is measured against every kind of hour there is, holidays included.
  */
 function capNote(policy) {
@@ -891,7 +891,7 @@ const CAP_TIP = 'ไม่บังคับ · เว้นว่างหม�
 
 /** Said in full once, because every clause of it is a thing somebody asks. */
 const OT_MODE_TIP = 'เลือก "ไม่มีโอที" หรือ "เหมารายวัน" แล้วพนักงานแผนกนี้จะยื่นโอทีของ'
-  + 'วันทำงานปกติไม่ได้ ระบบจะปฏิเสธพร้อมบอกเหตุผล · วันหยุดบริษัทและวันหยุดวันเกิด'
+  + 'วันทำงานปกติไม่ได้ ระบบจะปฏิเสธพร้อมบอกเหตุผล · วันหยุดบริษัทและสวัสดิการวันเกิด'
   + 'ยังยื่นได้ตามปกติ และฝ่ายบุคคลยังบันทึกวันเกิดให้ได้เหมือนเดิม '
   + '· ไม่เหมือนกับการตั้งเพดานเป็น 0 ซึ่งจะไปปิดวันหยุดด้วย';
 
@@ -4920,7 +4920,7 @@ const POLICY_FIELDS = [
     options: [
       ['feb28', '28 ก.พ. (ค่าเริ่มต้น)'],
       ['mar01', '1 มี.ค.'],
-      ['none', 'ไม่มีวันหยุดวันเกิดในปีนั้น'],
+      ['none', 'ไม่มีสวัสดิการวันเกิดในปีนั้น'],
     ],
   },
   {

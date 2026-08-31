@@ -265,7 +265,7 @@ test('วันเกิดเดือนอื่น ไม่อยู่ใ�
   assert.deepEqual(month([person({ birthDate: '1990-12-25' })]).rows, []);
 });
 
-test('กฎวันหยุดวันเกิดปิดอยู่ — ไม่ขึ้นอะไรเลย แม้แต่รายการที่ตรวจไม่ได้', () => {
+test('กฎสวัสดิการวันเกิดปิดอยู่ — ไม่ขึ้นอะไรเลย แม้แต่รายการที่ตรวจไม่ได้', () => {
   // With the rule off a birthday is an ordinary working day: no holiday is owed,
   // so there is no such thing as a birthday to settle. The flag is returned so
   // the screen can stay silent for a reason rather than look like a clean month.
@@ -682,6 +682,52 @@ test('ฟอร์มยื่นใบอ่านเหตุผลจาก p
   // Only on the filer's own form. A proxy filing would be telling a หัวหน้า when
   // their team member was born — and a birthday-list filing would be saying
   // "ของคุณ" to ฝ่ายบุคคล about somebody else.
-  assert.match(form, /preview && !proxy && !hrEdit && !fromBirthday && isOwnBirthday\(preview\)/);
+  //
+  // `!birthdayRefusal` joined that list on 2026-08-31. Filing the birthday
+  // ITSELF is refused now, and the refusal is drawn above this note — so what
+  // is left for the note to explain is the overnight tail, a shift filed
+  // against an ordinary day that runs past midnight into the filer's birthday.
+  // Both drawn at once would be the screen saying "ยื่นถูกแล้ว" under a
+  // sentence refusing the request.
+  assert.match(
+    form,
+    /preview && !proxy && !hrEdit && !fromBirthday && !birthdayRefusal\s*\n?\s*&& isOwnBirthday\(preview\)/,
+  );
   assert.ok(!/birthDate/.test(form), 'ฟอร์มต้องไม่แตะวันเกิดของใครเลย');
+});
+
+// ── and refuses the day itself, in the server's own words ─────────────────
+
+/**
+ * ยื่นวันเกิดตัวเองไม่ได้ — the rule HR gave on 2026-08-31, checked at the two
+ * places a person can write hours onto a day and nowhere else.
+ *
+ * READ AS SOURCE TEXT, like everything else in this file: what is being pinned
+ * is that the browser does not decide this and that neither write path can be
+ * reached around. `birthdayOtRefusal` itself is a pure function and has its own
+ * tests below.
+ */
+test('วันเกิดของตัวเอง — ทั้งสองเส้นทางที่เขียนใบปฏิเสธ และฟอร์มไม่ตัดสินเอง', () => {
+  const form = readFileSync(join(ROOT, 'components/OtForm.jsx'), 'utf8');
+  const submit = readFileSync(join(ROOT, 'app/api/entries/route.js'), 'utf8');
+  const edit = readFileSync(join(ROOT, 'app/api/entries/[id]/route.js'), 'utf8');
+  const preview = readFileSync(join(ROOT, 'app/api/entries/preview/route.js'), 'utf8');
+
+  // Filing it, and moving an existing request onto it — the second is not a
+  // afterthought: an edit that only changes วันที่ is the commonest correction
+  // there is, and without it the submit refusal is one drag of a date away.
+  for (const [name, src] of [['submit', submit], ['edit', edit]]) {
+    assert.match(src, /birthdayOtRefusal\(\{/, `${name} ไม่ได้เรียกกฎวันเกิดตัวเอง`);
+    assert.match(src, /if \(birthdayRefusal\) return fail\(birthdayRefusal, 409/, name);
+  }
+
+  // The form is TOLD, never works it out. A browser that could answer this
+  // would have to hold a birth date, which is the one thing it may not.
+  assert.match(preview, /birthdayRefusal = employee\s*\n?\s*\?\s*birthdayOtRefusal\(\{/);
+  assert.match(preview, /weekdayRefusal, birthdayRefusal, conflict,/);
+  assert.match(form, /setBirthdayRefusal\(res\.birthdayRefusal \|\| null\)/);
+  assert.match(form, /\{birthdayRefusal && <Alert kind="error">\{birthdayRefusal\}<\/Alert>\}/);
+  // And the button is greyed on it, so the form cannot offer what the write
+  // path refuses.
+  assert.match(form, /\|\| Boolean\(birthdayRefusal\)\}/);
 });

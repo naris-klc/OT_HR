@@ -166,7 +166,7 @@ test('every write path that computes hours consults the rule', () => {
   ]) {
     assert.match(read(path), /weekdayOtRefusal/, `${path} must apply the rule`);
   }
-  // And the one that deliberately does not: ฝ่ายบุคคล filing a วันหยุดวันเกิด
+  // And the one that deliberately does not: ฝ่ายบุคคล filing a สวัสดิการวันเกิด
   // off the scan record, which is granted whatever the department is paid on.
   const birthday = read('app/api/birthday/entries/route.js');
   assert.doesNotMatch(birthday, /weekdayOtRefusal\(/);

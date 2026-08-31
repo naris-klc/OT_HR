@@ -8,7 +8,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
-  capFor, takeCapped, submissionWindowRefusal, entryCompany,
+  capFor, takeCapped, submissionWindowRefusal, entryCompany, birthdayOtRefusal,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
@@ -264,6 +264,30 @@ export const POST = route(async (req) => {
       warnings: result.warnings,
     });
   }
+
+  /**
+   * สวัสดิการวันเกิด is not something a person claims for themselves.
+   *
+   * Ahead of the department rule below because it is about the DAY rather than
+   * about the hours: a birthday holiday puts every minute in the วันหยุด
+   * columns, so `weekdayOtRefusal` has nothing to say about it and would let
+   * this through in silence. `birthdayOtRefusal` holds the rule and says why a
+   * proxy filing and the tail of an overnight shift are both left alone — and
+   * why it lives in lib/entries.js rather than beside the single-signature
+   * path, which this route still cannot reach.
+   *
+   * `ctx.dayTypes` is the map the engine just computed these hours from —
+   * resolved from the employee's own stored วันเกิด under the live policy,
+   * where no payload can reach it.
+   *
+   * 409 rather than 400, like the two refusals around it: the times may be
+   * exactly right and the shift may really have happened. What refuses it is
+   * whose day it was, and the answer is ฝ่ายบุคคล's to record.
+   */
+  const birthdayRefusal = birthdayOtRefusal({
+    filer: user, employee, dayTypes: ctx.dayTypes, workDate: session.workDate,
+  });
+  if (birthdayRefusal) return fail(birthdayRefusal, 409, { warnings: result.warnings });
 
   /**
    * รูปแบบโอทีของแผนก — a department that does no ordinary OT, or is paid

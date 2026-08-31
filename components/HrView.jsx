@@ -1384,7 +1384,7 @@ export default function HrView({
                   copies easier to skip. */}
               {data.birthDates?.missing > 0 && !data.birthDates.ruleEnabled && (
                 <Alert kind="info">
-                  {`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — กรอกให้ครบก่อนเปิดกฎวันหยุดวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง`}
+                  {`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — กรอกให้ครบก่อนเปิดกฎสวัสดิการวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง`}
                   <div style={{ marginTop: 4 }}>
                     {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
                   </div>
@@ -1792,7 +1792,7 @@ function BirthdayMonth({
       <div className="box" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 600 }}>วันเกิดของเดือนนี้</div>
         <div className="hint" style={{ marginTop: 2 }}>
-          เดือนนี้อยู่ก่อนวันที่เริ่มใช้กฎวันหยุดวันเกิด — วันเกิดในเดือนนั้นยังเป็นวันทำงานปกติ
+          เดือนนี้อยู่ก่อนวันที่เริ่มใช้กฎสวัสดิการวันเกิด — วันเกิดในเดือนนั้นยังเป็นวันทำงานปกติ
           {' '}จึงไม่มีวันหยุดที่ต้องตรวจย้อนหลัง
         </div>
       </div>

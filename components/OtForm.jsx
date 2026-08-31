@@ -187,11 +187,11 @@ export default function OtForm({
         endTime: '',
         /**
          * Pre-filled, and it says what HR actually knows. The scan record gives
-         * two times and no account of the work; "OT วันหยุดวันเกิด" is the whole
+         * two times and no account of the work; "OT สวัสดิการวันเกิด" is the whole
          * of what can honestly be written from it, and it is editable for
          * anybody who does know more.
          */
-        description: 'OT วันหยุดวันเกิด',
+        description: 'OT สวัสดิการวันเกิด',
       };
     }
     return blank();
@@ -213,10 +213,21 @@ export default function OtForm({
    *
    * A sentence or null, and never derived here from the department's mode: the
    * mode alone cannot answer it, because the same evening is refused on a
-   * Tuesday and allowed on a holiday or on the person’s own birthday. The
-   * server has just run the engine over these times — see `weekdayOtRefusal`.
+   * Tuesday and allowed on a company holiday. The server has just run the
+   * engine over these times — see `weekdayOtRefusal`.
    */
   const [weekdayRefusal, setWeekdayRefusal] = useState(null);
+  /**
+   * สวัสดิการวันเกิดของตัวเอง — a sentence when this person is filing their own
+   * birthday, null otherwise.
+   *
+   * THE ONLY WAY THIS FORM CAN KNOW. There is no ประเภท OT to leave off and no
+   * date to hide: what makes a day a birthday holiday is the filer's stored
+   * วันเกิด, which this screen is not allowed to hold (`publicEmployee`). So the
+   * rule is asked of the preview, exactly as `weekdayRefusal` above is, and the
+   * answer is the very sentence POST /api/entries would refuse with.
+   */
+  const [birthdayRefusal, setBirthdayRefusal] = useState(null);
   /**
    * The request already on the books that this day — or these minutes — belongs
    * to.
@@ -276,7 +287,8 @@ export default function OtForm({
       // knows who: the ceiling and the day types are theirs, and a split
       // computed against nobody would disagree with what saving produces.
       if (proxy && !targets.length) {
-        setPreview(null); setCap(null); setWeekdayRefusal(null); setConflict(null); return;
+        setPreview(null); setCap(null); setWeekdayRefusal(null); setBirthdayRefusal(null);
+        setConflict(null); return;
       }
       try {
         const res = await api.post('/entries/preview', {
@@ -287,6 +299,7 @@ export default function OtForm({
         setRouting(res.routing || null);
         setBirthdayRouting(res.birthdayRouting || null);
         setWeekdayRefusal(res.weekdayRefusal || null);
+        setBirthdayRefusal(res.birthdayRefusal || null);
         setConflict(res.conflict || null);
         setError('');
       } catch (err) {
@@ -294,6 +307,7 @@ export default function OtForm({
         setRouting(null);
         setBirthdayRouting(null);
         setWeekdayRefusal(null);
+        setBirthdayRefusal(null);
         // Cleared with everything else. A clash left on the screen beside times
         // the server could not even read is a refusal about a request that is
         // no longer being typed.
@@ -443,7 +457,7 @@ export default function OtForm({
    */
   const heading = hrEdit ? 'แก้ไขรายละเอียด (ฝ่ายบุคคล)'
     : proxy ? 'บันทึก OT แทนลูกทีม'
-      : fromBirthday ? 'บันทึก OT ให้ — วันหยุดวันเกิด'
+      : fromBirthday ? 'บันทึก OT ให้ — สวัสดิการวันเกิด'
         : entry ? 'แก้ไขรายการที่ยื่นไว้'
           : template ? 'ส่งคำขอใหม่จากรายการเดิม'
             : 'บันทึกการทำงานล่วงเวลา';
@@ -455,7 +469,7 @@ export default function OtForm({
         NOT THE SAME SENTENCE ON A BIRTHDAY ROW, because the usual one is false
         there. "เวลาทำงานปกติ … นอกเหนือจากนี้นับเป็น OT" tells the reader that
         08:00–17:00 is ordinary time — true on a working day, and the opposite
-        of true on a วันหยุดวันเกิด, where the whole day is a holiday and every
+        of true on a สวัสดิการวันเกิด, where the whole day is a holiday and every
         hour worked is OT. The detail pop-up on a filed birthday row shows
         exactly that: 08:00–17:00 booked as OT วันหยุด ×1.5.
 
@@ -467,7 +481,7 @@ export default function OtForm({
       */}
       <div className="hint">
         {fromBirthday
-          ? 'วันหยุดวันเกิดเป็นวันหยุดทั้งวัน — ชั่วโมงที่ทำทั้งหมดนับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'
+          ? 'สวัสดิการวันเกิดเป็นวันหยุดทั้งวัน — ชั่วโมงที่ทำทั้งหมดนับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'
           : 'เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'}
       </div>
       {entry && !hrEdit && (
@@ -767,23 +781,43 @@ export default function OtForm({
 
       {error && <Alert kind="error">{error}</Alert>}
 
+      {/* "วันนี้เป็นวันเกิดคุณ — ยื่นเองไม่ได้", above the split rather than
+          under it: it is not a remark about these hours, it is the answer to
+          whether this form is the right place at all, and it has to be readable
+          before the eye reaches the numbers.
+
+          THE SERVER'S OWN SENTENCE, printed verbatim, so the person who presses
+          บันทึก anyway reads what the form had already told them rather than a
+          second wording of it. The button is greyed on it below.
+
+          Only ever set for somebody filing for THEMSELVES — see
+          `birthdayOtRefusal`. A หัวหน้า filing for their team gets null and
+          files as normal, which is also what keeps a team member's birth date
+          off this screen (`publicEmployee` in lib/employees.js). */}
+      {birthdayRefusal && <Alert kind="error">{birthdayRefusal}</Alert>}
+
       {/* "วันนี้เป็นวันเกิดคุณ" — said before the split, because it is the reason
           the split looks the way it does.
 
-          The employee filing for themselves ONLY. A birthday holiday on a
-          Tuesday puts the hours in the วันหยุด columns and nothing else on this
-          form explains why, so somebody who expected ×1.5 วันปกติ concludes they
-          filed the wrong date. On a proxy filing the note is withheld: it would
-          tell a หัวหน้า when their team member was born, and a birth date is not
-          theirs to read (see `publicEmployee` in lib/employees.js). They see the
-          columns and can ask HR, which is the same position they are in today. */}
-      {/* …and withheld on a birthday-list filing for the same reason it is on a
-          proxy one, twice over: the form already says whose birthday it is, and
-          "ของคุณ" would be addressed to ฝ่ายบุคคล about somebody else’s. */}
-      {preview && !proxy && !hrEdit && !fromBirthday && isOwnBirthday(preview) && (
+          WHAT IS LEFT OF THIS NOTE SINCE 2026-08-31 is the overnight tail, and
+          it is worth keeping for exactly the reason it was written. Filing the
+          birthday itself is refused above; what still reaches here is a shift
+          filed against an ordinary day that runs past midnight into the filer's
+          own birthday. Those hours ARE theirs to file — the request is the
+          previous day's — and some of them land in the วันหยุด columns with
+          nothing else on the form to explain why, which is how somebody who
+          expected ×1.5 วันปกติ concludes they typed the wrong date.
+
+          On a proxy filing the note is withheld: it would tell a หัวหน้า when
+          their team member was born, and a birth date is not theirs to read.
+          On a birthday-list filing it is withheld twice over — the form already
+          says whose birthday it is, and "ของคุณ" would be addressed to
+          ฝ่ายบุคคล about somebody else's. */}
+      {preview && !proxy && !hrEdit && !fromBirthday && !birthdayRefusal
+        && isOwnBirthday(preview) && (
         <Alert kind="info">
-          วันที่เลือกเป็น<strong>วันเกิดของคุณ</strong> ซึ่งนับเป็นวันหยุดของคุณคนเดียว —
-          {' '}ชั่วโมงในวันนี้จึงเข้าช่อง OT วันหยุด (08:00–17:00 ×1.5 · นอกเวลา ×3)
+          ช่วงเวลาที่ยื่นนี้กินเข้าไปใน<strong>วันเกิดของคุณ</strong> ซึ่งนับเป็นวันหยุดของคุณคนเดียว —
+          {' '}ชั่วโมงหลังเที่ยงคืนจึงเข้าช่อง OT วันหยุด (08:00–17:00 ×1.5 · นอกเวลา ×3)
           {' '}ไม่ใช่ OT วันปกติ · ยื่นถูกแล้ว
         </Alert>
       )}
@@ -926,7 +960,10 @@ export default function OtForm({
           // path — the write would 409, and the reason is already on screen.
           || (fromBirthday && birthdayRouting?.ok === false)
           // แผนกไม่มีโอที / เหมารายวัน, and these are weekday hours.
-          || Boolean(weekdayRefusal)}
+          || Boolean(weekdayRefusal)
+          // วันเกิดของตัวเอง — ฝ่ายบุคคล records it, the person it is for does
+          // not. The write path answers 409 on this.
+          || Boolean(birthdayRefusal)}
       >
         {entry ? 'บันทึกการแก้ไข'
           : proxy ? (busy
@@ -1086,6 +1123,13 @@ function nextDay(dateStr) {
  * implementation here would be a second answer to disagree with. `dayReason` is
  * what the server resolved for this exact session, so the note appears when, and
  * only when, the hours in the columns above got there that way.
+ *
+ * Every date the session touches, `workDate` included — and since 2026-08-31
+ * the first of those is refused outright before this is read (`birthdayRefusal`
+ * above), so in practice what it still catches is the tail of an overnight
+ * shift. Left as it is rather than narrowed to the second date: this answers
+ * "did a birthday put hours in the วันหยุด columns", which is one question, and
+ * which of the two rules is speaking is decided where they are drawn.
  */
 function isOwnBirthday(preview) {
   return (preview?.segments || []).some((s) => s.dayReason === 'birthday');

@@ -290,7 +290,7 @@ async function run() {
   console.log('  employee PM-0412 · manager PM-0100 · hr HR-001 · admin ADMIN');
   // The one row with a วันเกิด, and the reason it is worth naming here: it is
   // what makes วันเกิดรอตรวจ show anything at all on a fresh database.
-  console.log('  PM-0210 มาลี (ฝ่ายบุคคล, พนักงาน) เกิด 15 ส.ค. — ใช้ทดสอบวันหยุดวันเกิด');
+  console.log('  PM-0210 มาลี (ฝ่ายบุคคล, พนักงาน) เกิด 15 ส.ค. — ใช้ทดสอบสวัสดิการวันเกิด');
 
   await disconnect();
 }

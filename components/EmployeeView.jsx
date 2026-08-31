@@ -3,12 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  ApprovalSteps, ApproverLine, StatusChip, Alert, BucketSplit, Empty, EditedMark, EntryHistory,
-  Fact, Modal, ProxyMark, RateHead, RefiledNote, RequestTrail, Section, SegmentList, editsOf,
-  trailOf,
+  ApprovalSteps, ApproverLine, BirthdayWelfareMark, StatusChip, Alert, BucketSplit, Empty,
+  EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead, RefiledNote, RequestTrail, Section,
+  SegmentList, editsOf, trailOf,
 } from './common.jsx';
 import { approvalSteps } from '@/lib/approverLine.js';
-import { awaitingFirstSignature, isProxyFiled, refileState } from '@/lib/entries.js';
+import { awaitingFirstSignature, isBirthdayWelfare, isProxyFiled, refileState } from '@/lib/entries.js';
 import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
 import OtForm from './OtForm.jsx';
 import HolidayBanner from './HolidayBanner.jsx';
@@ -326,6 +326,15 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                   {e.endsNextDay && ' · ข้ามคืน'}
                   {e.noBreakTaken && ' · ไม่พักเที่ยง'}
                 </div>
+                {/* WHAT the row is, before WHO wrote it — the order the two
+                    questions arrive in on the screen an employee opens to check
+                    their month. สวัสดิการวันเกิด is the one kind of row here
+                    that they did not ask for and cannot ask for, and on the
+                    calendar it is an ordinary Tuesday; without this the hours
+                    are simply there. */}
+                {isBirthdayWelfare(e) && (
+                  <div style={{ marginTop: 4 }}><BirthdayWelfareMark entry={e} /></div>
+                )}
                 {/* A row the employee never typed. It is theirs — it counts
                     against their month and their ceiling — and the first they
                     may hear of it is seeing it here, so it says who wrote it. */}
@@ -425,6 +434,15 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                           same misalignment ผู้รับช่วงอนุมัติแทน's เหตุผล had. */}
                       <td className="cell-cap-lg" data-label="รายละเอียด">
                         {e.description}
+                        {/* ประเภทของรายการ, above who typed it: an employee
+                            scanning this column is asking what these hours
+                            were, and สวัสดิการวันเกิด is the answer that is
+                            not in the description they can edit. Its own line,
+                            like the two marks under it — a pill run in with a
+                            sentence reads as part of the sentence. */}
+                        {isBirthdayWelfare(e) && (
+                          <div style={{ marginTop: 4 }}><BirthdayWelfareMark entry={e} /></div>
+                        )}
                         {isProxyFiled(e) && (
                           <div style={{ marginTop: 4 }}><ProxyMark entry={e} /></div>
                         )}
@@ -735,6 +753,21 @@ function EntryDetail({
       <ApproverLine entry={e} signers={signers} className="lead" when />
 
       <RefiledNote parent={e.refiledFrom} />
+
+      {/* Above the บันทึกแทน panel, and saying a different thing: that one is
+          about the handwriting, this is about the entitlement. On a birthday row
+          both are drawn, in that order, because the sentence "you did not type
+          this" only makes sense after "this is the day the company gives you". */}
+      {isBirthdayWelfare(e) && (
+        <Alert kind="info">
+          <BirthdayWelfareMark entry={e} />
+          <div>
+            วันเกิดของคุณนับเป็นวันหยุดของคุณคนเดียว — ชั่วโมงที่มาทำงานในวันนั้นจึงเข้าช่อง
+            OT วันหยุดทั้งวัน · ฝ่ายบุคคลเป็นผู้บันทึกให้จากบันทึกเวลาเข้า-ออกงาน
+            รายการแบบนี้ยื่นเองไม่ได้ ถ้าตัวเลขไม่ตรงให้แจ้งฝ่ายบุคคล
+          </div>
+        </Alert>
+      )}
 
       {isProxyFiled(e) && (
         <Alert kind="info">

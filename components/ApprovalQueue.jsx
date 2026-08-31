@@ -1467,7 +1467,7 @@ function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, o
                   on a row the system generated. */}
               <strong>
                 {isUntouchedSystemFiling(e) || isSystemFiled(e)
-                  ? 'รายการนี้ระบบสร้างจากกฎวันหยุดวันเกิด ไม่มีใครกรอกแบบฟอร์ม'
+                  ? 'รายการนี้ระบบสร้างจากกฎสวัสดิการวันเกิด ไม่มีใครกรอกแบบฟอร์ม'
                   : 'รายการนี้มีผู้อื่นเป็นผู้บันทึกแทนพนักงาน'}
               </strong>
               {e.filedBy?.name && <> — ผู้บันทึก: {e.filedBy.name}</>}

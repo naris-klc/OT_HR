@@ -3677,6 +3677,14 @@ td > .approver-line { margin-top: 5px; }
    to be the mark on the row that catches the eye first. Not red: nothing is
    wrong — the scan record is better evidence than the phone call it replaces. */
 .chip.verified { background: var(--amber-bg); color: var(--amber); }
+/* OT สวัสดิการวันเกิด — what kind of row this is, not who typed it. Green, the
+   colour อนุมัติ already wears, because that is what it means here: a day the
+   company grants, recorded and signed off. It sits on the same row as
+   `.chip.verified` on every birthday entry, so it must not be amber too —
+   two amber pills side by side read as two warnings, and neither of them is
+   one. Reuses the `.chip.green` pair rather than inventing a token: a sixth
+   hue in this column would be a colour nobody can name. */
+.chip.birthday { background: var(--green-bg); color: var(--green-dark); }
 /* "· ทำแทน สมชาย" inside a history line. Not a chip and not bold: it is the
    second half of the sentence naming who acted, and it reads as one line. */
 .entry-history .who .behalf { color: var(--muted); font-weight: 500; }

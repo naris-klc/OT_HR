@@ -4,7 +4,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate, thaiDateTime } from '@/lib/api.js';
 import {
-  ENTERED_FIELDS, isHrVerifiedBirthday, isProxyFiled, isSystemFiled, sameSession, sameValue,
+  ENTERED_FIELDS, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled, isSystemFiled,
+  sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
@@ -428,7 +429,7 @@ export function ProxyMark({ entry }) {
     return (
       <span
         className="chip proxy"
-        title={`ระบบสร้างรายการนี้จากกฎวันหยุดวันเกิด${name ? ` ตามคำสั่งของ ${name}` : ''} `
+        title={`ระบบสร้างรายการนี้จากกฎสวัสดิการวันเกิด${name ? ` ตามคำสั่งของ ${name}` : ''} `
           + '— ไม่มีใครกรอกแบบฟอร์ม และยังรอฝ่ายบุคคลยืนยัน ใบนี้เป็นของพนักงานตามเดิม'}
       >
         ระบบสร้างใบวันเกิด{name ? ` · ${name}` : ''}
@@ -444,6 +445,40 @@ export function ProxyMark({ entry }) {
         : 'รายการนี้บันทึกโดยผู้อื่น ไม่ใช่พนักงานเจ้าของรายการ'}
     >
       {FILER_LABEL[entry.filedBy?.role] || 'บันทึกแทน'}{name ? ` · ${name}` : ''}
+    </span>
+  );
+}
+
+/**
+ * OT สวัสดิการวันเกิด — what KIND of row this is, which no other mark on it says.
+ *
+ * NOT THE SAME QUESTION AS `ProxyMark`, and it sits beside one rather than
+ * inside it. That chip answers "whose handwriting is this" — ฝ่ายบุคคล read the
+ * scan record and signed in one act — and it is about the ROUTE the request
+ * took. This one answers "why are these hours here at all", and the answer is a
+ * day the company gives, not overtime anybody chose to work. An employee
+ * opening แดชบอร์ด to check their month needs the second answer: the hours
+ * appear in the วันหยุด columns on what the calendar calls a Tuesday, and
+ * without a word on the row there is nothing to connect them to their birthday.
+ *
+ * `isBirthdayWelfare` reads the engine's own `dayReason`, never the
+ * description — see the note on it in lib/entries.js.
+ *
+ * Green, and deliberately not the amber `.chip.verified` wears beside it: amber
+ * on that row says an approval a reader would assume happened did not, which is
+ * something to notice. This says the company granted somebody a day. Nothing is
+ * wrong and nothing needs doing.
+ */
+export function BirthdayWelfareMark({ entry }) {
+  if (!isBirthdayWelfare(entry)) return null;
+  return (
+    <span
+      className="chip birthday"
+      title={'วันเกิดของพนักงานนับเป็นวันหยุดของคนนั้นคนเดียว — ชั่วโมงที่มาทำงานในวันนั้น '
+        + 'จึงเข้าช่อง OT วันหยุด (08:00–17:00 ×1.5 · นอกเวลา ×3) ทั้งวัน '
+        + 'ฝ่ายบุคคลเป็นผู้บันทึกและอนุมัติรายการนี้ให้'}
+    >
+      OT สวัสดิการวันเกิด
     </span>
   );
 }

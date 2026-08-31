@@ -1243,7 +1243,7 @@ lib/complianceExport.js   which five events count as the exercise of a
 lib/complianceQuery.js    the three reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     104 files, run by `npm test`. Six named below as a
+test/                     105 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1256,9 +1256,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1763 tests
-across 104 files**, measured 2026-08-31 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1776 tests
+across 105 files**, measured 2026-08-31 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -2149,6 +2149,18 @@ What the entry carries is the truth about that:
 * the chip **HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว** wherever the row appears, amber
   and distinct from the blue *บันทึกแทน* — both mean "somebody else typed this",
   only this one also means an approval a reader assumes happened did not.
+* and beside it, on the employee's own screens, the chip **OT สวัสดิการวันเกิด**
+  — a different question, which is why it is a second pill and not a longer
+  first one. That one says whose handwriting the row is in; this says what the
+  hours ARE, and the person reading แดชบอร์ด needs the second answer: on the
+  calendar the day is an ordinary Tuesday, and without a word on the row there
+  is nothing to connect หลายชั่วโมงในช่องวันหยุด to their birthday. Green, not a
+  second amber — amber there means something to notice, and a day the company
+  grants is not. Drawn in all three places a request appears on that screen (the
+  recent list, the nine-column history, the pop-up either opens), because they
+  are one screen at three widths. `isBirthdayWelfare` reads the engine's own
+  `segments[].dayReason`, **never the description**: that field is free text
+  ฝ่ายบุคคล may type over, and a row that merely mentions a birthday is not one.
 * on the หัวหน้า's **สรุปทีม**: a per-person count in the row, and its own line
   in the month's alert strip — *"HR อนุมัติชั้นเดียว 1 รายการ"* — opening to
   *"มี 1 รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — ติดป้าย HR ตรวจสแกนนิ้ว"* with the
@@ -2254,12 +2266,39 @@ was filed with, and the save reports how many were skipped and why. An entry
 already in a queue is not somewhere a 0 may appear by a rule change that nobody
 looked at it under.
 
-**The filer's own form says why their birthday looks different.** When the day
-resolved to a birthday holiday, `components/OtForm.jsx` prints a note above the
-split: the hours are in the วันหยุด columns, ยื่นถูกแล้ว. Read off the preview's
-`dayReason` rather than recomputed in the browser — the rule has three parts and a
-second implementation would be a second answer. Withheld on a proxy filing, since
-it would tell a หัวหน้า when their team member was born.
+**และวันเกิดของตัวเอง ยื่นเองไม่ได้เลย.** HR's rule, **2026-08-31**:
+สวัสดิการวันเกิด is a day the company GRANTS and ฝ่ายบุคคล records off the
+fingerprint scanner's export — it is not overtime anybody chose to work, so it is
+not something a person files for themselves. `birthdayOtRefusal` in
+[`lib/entries.js`](lib/entries.js) is the rule, and both write paths answer 409
+with its sentence: POST /api/entries, and the edit route behind it, because the
+commonest correction there is moves `workDate` and the submit refusal would
+otherwise be one drag of a date away.
+
+**It is a refusal on the ordinary path, not a hidden field.** There is no
+ประเภท OT dropdown to leave the option off: the kind of day is RESOLVED from the
+filer's stored วันเกิด, so the only thing anybody picks is a date. The form learns
+the rule the way it learns `weekdayOtRefusal` — by asking the preview, which
+returns the very sentence the write path would refuse with — and greys บันทึก on
+it. A browser that could work this out for itself would have to be sent a birth
+date, which is the one thing it may not hold (`publicEmployee`).
+
+**Two things it deliberately does NOT refuse.** A **หัวหน้า บันทึกแทนลูกทีม** on
+a day that happens to be their team member's birthday still files, and waits at
+`pending_hr` for ฝ่ายบุคคล exactly as before — the alternative was a 409 sent to
+somebody who does not know why, must not be told, and watched the shift happen.
+And the **tail of an overnight shift**: a request filed against an ordinary
+Monday that runs past midnight into the filer's birthday is Monday's request and
+files. The rule asks about `workDate` and nothing else in the map; refusing the
+whole entry over its tail would lose Monday to protect Tuesday.
+
+**What is left of the old note is that tail.** The form used to print, above the
+split, that the hours were in the วันหยุด columns and *ยื่นถูกแล้ว* — read off
+the preview's `dayReason` rather than recomputed in the browser, and withheld on
+a proxy filing since it would tell a หัวหน้า when their team member was born.
+That note still exists and all of that is still true of it, but the case it was
+written for — filing the birthday itself — is now refused above it, so what it
+still explains is the overnight tail.
 
 ### หนึ่งวัน หนึ่งใบ — one line per day on the paper, one request per day in here
 
@@ -5826,8 +5865,14 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1763/1763 pass in about 2 s**, measured 2026-08-31 across 104
-  files. **The newest six are in `test/overlap.test.js`**, over หนึ่งวัน
+- `npm test` — **1776/1776 pass in about 2 s**, measured 2026-08-31 across 105
+  files. **The newest twelve are in `test/birthdaySelfFiling.test.js`**, over
+  สวัสดิการวันเกิด ยื่นเองไม่ได้ — the rule and the badge that goes with it.
+  Half of that file is about what is still ALLOWED: a หัวหน้า filing for a team
+  member on their birthday, and a shift filed against an ordinary day that ran
+  past midnight into one. A refusal that took those away would be taking hours
+  people worked. It read "1763/1763 … across 104 files" until then.
+  **Before them the newest six were in `test/overlap.test.js`**, over หนึ่งวัน
   หนึ่งใบ — a date carries one live request and no more, because F-HR-027 has
   one line per day. Two of them are the pair that says why the older minute
   rule stayed: 08:00–12:00 and 18:00–21:00 on one day share no minute and are

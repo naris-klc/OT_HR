@@ -3,7 +3,7 @@ import BirthdayCheck from '@/src/models/BirthdayCheck.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, checkCap, loadContext } from '@/src/services/otService.js';
-import { pickSession, isDepartmentManager } from '@/lib/entries.js';
+import { pickSession, isDepartmentManager, birthdayOtRefusal } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
@@ -143,6 +143,25 @@ export const POST = route(async (req) => {
   const weekdayRefusal = employee ? weekdayOtRefusal(employee.department, result) : null;
 
   /**
+   * และวันเกิดของตัวเอง — said in the same breath and for the same reason.
+   *
+   * From `birthdayOtRefusal`, the function both write paths refuse with, over
+   * `ctx.dayTypes` — the same map, resolved from the same stored วันเกิด under
+   * the same live policy. The form greys บันทึก on this sentence rather than
+   * working out whose birthday today is, which it could not do without being
+   * sent a birth date it is not allowed to hold.
+   *
+   * Null for everybody filing for somebody else, which is what the rule says
+   * and not a shortcut taken here: the check is `filer === employee` and this
+   * route hands it the same two people the write path will.
+   */
+  const birthdayRefusal = employee
+    ? birthdayOtRefusal({
+      filer: user, employee, dayTypes: ctx.dayTypes, workDate: session.workDate,
+    })
+    : null;
+
+  /**
    * หนึ่งวัน หนึ่งใบ, and เวลาทับซ้อน behind it — asked WHILE the date and the
    * times are being typed, not only when they are sent.
    *
@@ -182,6 +201,6 @@ export const POST = route(async (req) => {
     : null;
 
   return json({
-    result, cap, routing, birthdayRouting, weekdayRefusal, conflict,
+    result, cap, routing, birthdayRouting, weekdayRefusal, birthdayRefusal, conflict,
   });
 });

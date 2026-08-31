@@ -203,7 +203,7 @@ test('เสาร์-อาทิตย์ วันหยุดบริษั
   assert.deepEqual(out.upcoming, []);
 });
 
-test('กฎวันหยุดวันเกิดปิดอยู่ — คิวว่างและบอกว่าปิดอยู่', () => {
+test('กฎสวัสดิการวันเกิดปิดอยู่ — คิวว่างและบอกว่าปิดอยู่', () => {
   const out = queue([person({ birthDate: '1980-07-14' })], { policy: OFF });
   assert.equal(out.ruleEnabled, false);
   assert.deepEqual(out.needsEntry, []);
@@ -217,7 +217,7 @@ test('กฎเริ่มกลางเดือน — วันก่อน
    * that to '2026-08' and offered every birthday in the month; the compute path
    * resolves the rules per DATE, so for the 10th it read the version in force on
    * the 10th — the rule off. ฝ่ายบุคคล opened บันทึก OT ให้ on a row the screen
-   * had just told them to work, and got a red กฎวันหยุดวันเกิดปิดอยู่ over two
+   * had just told them to work, and got a red กฎสวัสดิการวันเกิดปิดอยู่ over two
    * empty time boxes and 08:00–17:00 computing to 0 ชั่วโมง.
    *
    * The floor is a date now, so the queue offers exactly what the engine will

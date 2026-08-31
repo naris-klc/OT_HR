@@ -172,7 +172,7 @@ export const POST = route(async (req) => {
   /**
    * NO รูปแบบโอที CHECK HERE, and that is the decision rather than an omission.
    *
-   * This route files one thing only — a วันหยุดวันเกิด that ฝ่ายบุคคล has read
+   * This route files one thing only — a สวัสดิการวันเกิด that ฝ่ายบุคคล has read
    * off the scan record — and the birthday holiday is granted by the company to
    * everybody who comes in, whatever their department is paid on. A แผนก marked
    * ไม่มีโอที or เหมารายวัน is saying that staying past 17:00 on an ORDINARY day
