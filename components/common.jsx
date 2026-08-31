@@ -1157,6 +1157,65 @@ export function Modal({
 }
 
 /**
+ * ยืนยันก่อนทำ — one question, two answers, and nothing else in the box.
+ *
+ * WHY IT IS NOT `window.confirm`. The browser's own box is headed with the
+ * address the page was served from, which on this app is an IP and a port:
+ * `192.168.109.76:3000 says` above a question about a public holiday. It is
+ * also the one dialog here the app cannot theme — the browser picks the
+ * typeface, the button order, and the words on the two buttons, so a Thai
+ * question is answered in English, and the sheet geometry every other dialog
+ * on a phone shares does not apply to it.
+ *
+ * WHAT IT IS INSTEAD: the `Modal` the rest of the app already uses, with a body
+ * that says what is about to happen and a foot that names the two answers.
+ * Naming them is the point. ตกลง / ยกเลิก is the default and the pair asked for
+ * here, but a caller with something better to say should say it — ยกเลิกคำขอนี้
+ * in EmployeeView answers itself with ไม่ยกเลิกแล้ว / ยืนยันการยกเลิก, which is
+ * a question and an answer rather than a question and a shrug.
+ *
+ * `danger` decides only the colour of the second button, and this is the place
+ * for it: a filled red button is the app asking somebody to confirm a
+ * destruction, so it belongs on the press that destroys, not on the one that
+ * opens this dialog.
+ *
+ * EVERY WAY OUT OF `Modal` IS `onCancel` — ✕, Escape, the backdrop, a swipe
+ * down. Leaving the question unanswered is the same answer as ยกเลิก, and
+ * nothing is destroyed until the second button is pressed.
+ */
+export function ConfirmDialog({
+  title, subtitle, meta, children,
+  cancelLabel = 'ยกเลิก', confirmLabel = 'ตกลง',
+  danger = false, busy = false, onCancel, onConfirm,
+}) {
+  return (
+    <Modal
+      title={title}
+      subtitle={subtitle}
+      meta={meta}
+      onClose={onCancel}
+      footer={(
+        <>
+          <button type="button" className="btn ghost" onClick={onCancel} disabled={busy}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={danger ? 'btn danger' : 'btn'}
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {confirmLabel}
+          </button>
+        </>
+      )}
+    >
+      {children}
+    </Modal>
+  );
+}
+
+/**
  * One block of a detail pop-up — a kicker, an optional control beside it, and
  * whatever the block is about. Shared, because a request looks the same
  * whether it is a reviewer opening it out of คิวรออนุมัติ or the employee

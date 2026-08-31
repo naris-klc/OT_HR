@@ -35,7 +35,8 @@ import { CONFIRM_NOTE_MAX_CHARS } from '@/lib/policyConfirmations.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { searchPeople, personMatches } from '@/lib/personSearch.js';
 import {
-  Alert, Empty, Modal, Field, TipButton, PickPerson, ClearButton, useScrollEdge,
+  Alert, ConfirmDialog, Empty, Modal, Field, TipButton, PickPerson, ClearButton,
+  useScrollEdge,
 } from './common.jsx';
 import Delegation from './Delegation.jsx';
 // One clause of the เพดาน note depends on capBehaviour — see `capNote`.
@@ -4505,6 +4506,9 @@ function Holidays() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  /** The row ลบ was pressed on, waiting for an answer — the whole confirm. */
+  const [removing, setRemoving] = useState(null);
+  const [busy, setBusy] = useState(false);
   const fileRef = useRef(null);
 
   async function load() {
@@ -4528,10 +4532,30 @@ function Holidays() {
     load();
   }
 
-  async function remove(id) {
-    if (!confirm('ลบวันหยุดนี้?')) return;
-    try { await api.del(`/holidays/${id}`); load(); }
-    catch (err) { setError(err.message); }
+  /**
+   * Delete the day ลบ was pressed on, once somebody has said ตกลง.
+   *
+   * WHAT THE ANSWER COSTS, reported the way เพิ่มวันหยุด reports it: the route
+   * recomputes every OT entry filed on the day and on the day before it, and
+   * until now that number was thrown away here while the identical number from
+   * an add was shown. Removing a day moves hours out of the วันหยุด buckets and
+   * back to ordinary rates — the same size of change as putting one in, and the
+   * one thing on this screen worth saying out loud after the fact.
+   *
+   * The dialog closes on both outcomes, including the failure: the error band
+   * belongs to the card behind it, beside the list that did not change.
+   */
+  async function remove(h) {
+    setError('');
+    setBusy(true);
+    try {
+      const res = await api.del(`/holidays/${h._id}`);
+      setResult(res.recomputed?.updated
+        ? { msg: `ลบ ${thaiDate(h.date)} · ${h.name} แล้ว · คำนวณรายการเดิมใหม่ ${res.recomputed.updated} รายการ` }
+        : { msg: `ลบ ${thaiDate(h.date)} · ${h.name} แล้ว` });
+      load();
+    } catch (err) { setError(err.message); setResult(null); }
+    finally { setBusy(false); setRemoving(null); }
   }
 
   async function upload(e) {
@@ -4608,14 +4632,16 @@ function Holidays() {
                   <td data-label="วัน">วัน{dayName(h.date)}</td>
                   <td data-label="ที่มา">{h.source === 'import' ? 'นำเข้า' : 'เพิ่มเอง'}</td>
                   <td className="holiday-act">
-                    {/* Still `.btn.ghost`, not `.btn.danger` — a filled red
-                        button is the app asking somebody to confirm a deletion,
-                        and this one has no confirm behind it: `remove` fires on
-                        the press. So it is drawn as what it is, an outline in
-                        the danger colour: unmistakably the destructive control,
-                        and not the loudest thing on a card about a public
-                        holiday. */}
-                    <button className="btn ghost sm act-danger" onClick={() => remove(h._id)}>
+                    {/* Still `.btn.ghost`, not `.btn.danger`, and now for the
+                        reason that rule states rather than in spite of it: a
+                        filled red button is the app asking somebody to confirm
+                        a deletion, and since 2026-08-31 there IS a confirm —
+                        this press only asks the question, ตกลง inside the
+                        dialog is what deletes, and that one is red. So this
+                        stays an outline in the danger colour: unmistakably the
+                        destructive control, and not the loudest thing on a card
+                        about a public holiday. */}
+                    <button className="btn ghost sm act-danger" onClick={() => setRemoving(h)}>
                       ลบ
                     </button>
                   </td>
@@ -4627,6 +4653,30 @@ function Holidays() {
       )}
 
       {adding && <AddHoliday onClose={() => setAdding(false)} onSave={add} />}
+
+      {/* ยืนยันการลบ, in the app's own dialog rather than the browser's — see
+          `ConfirmDialog` in components/common.jsx for what `window.confirm` was
+          putting on the screen. The day being deleted is named in the subtitle
+          because the question used to be asked without it — "ลบวันหยุดนี้?" over a
+          table where นี้ was whichever row the finger had just left, and the
+          browser box it was asked in could not show that row. */}
+      {removing && (
+        <ConfirmDialog
+          title="ยืนยันการลบวันหยุดนี้หรือไม่?"
+          subtitle={`${thaiDate(removing.date)} · วัน${dayName(removing.date)} · ${removing.name}`}
+          danger
+          busy={busy}
+          confirmLabel={busy ? 'กำลังลบ…' : 'ตกลง'}
+          onCancel={() => setRemoving(null)}
+          onConfirm={() => remove(removing)}
+        >
+          <div className="hint">
+            วันนี้จะไม่เป็นวันหยุดบริษัทอีกต่อไป และรายการ OT ที่ยื่นไว้ในวันนั้น
+            {' '}จะถูกคำนวณใหม่ทันทีตามอัตราวันธรรมดา
+            {removing.source === 'import' && ' · วันนี้มาจากการนำเข้า CSV การลบไม่กระทบวันอื่นในไฟล์เดิม'}
+          </div>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
