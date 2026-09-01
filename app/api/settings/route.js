@@ -29,13 +29,21 @@ export const GET = route(async (req) => {
 });
 
 /**
- * ชื่อบริษัทและรหัสฟอร์ม — the words printed across the top of ใบ F-HR-027.
+ * ชื่อบริษัทและรหัสฟอร์ม — three label strings, one of which is printed on
+ * ใบ F-HR-027.
  *
  * ฝ่ายบุคคล AND ผู้ดูแลระบบ. It was Admin's alone and had no screen at all, so
- * the only way to correct a misspelled company name was an API call typed by
- * hand — which meant in practice that nobody corrected it. HR own the paper
- * these three strings appear on and they are the ones who hear from accounting
- * when the form code on the sheet stops matching the one in the QMS register.
+ * the only way to correct the form code was an API call typed by hand — which
+ * meant in practice that nobody corrected it. HR own the paper it appears on
+ * and they are the ones who hear from accounting when the form code on the
+ * sheet stops matching the one in the QMS register.
+ *
+ * ONLY `formCode` HAS A SCREEN, since 2026-08-31. ตั้งค่าระบบ → รหัสเอกสาร OT
+ * used to carry a box for each of the two company names as well, and each said
+ * on its own label that nothing prints the value — which was true, and is why
+ * they went. The FIELDS stay accepted here: they are still in the Setting
+ * singleton, still patchable by hand, and if a controlled form is ever asked to
+ * print the company name the boxes come back rather than a migration.
  *
  * NOTHING HERE IS ARITHMETIC. These are labels: no hour, no rate, no ceiling
  * and no day type reads any of them, and a value typed wrong is visible on the

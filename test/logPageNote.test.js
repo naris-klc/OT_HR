@@ -75,7 +75,22 @@ test('the page table carries the note, and only for the page that has one', () =
 });
 
 test('the heading reads the note, and shuts it on the way out', () => {
-  assert.match(app, /const \[title, meta, note\] = PAGE\[tab\] \|\| \['', '', null\];/);
+  // `PAGE_BY_ROLE` went in front on 2026-08-31, when the หัวหน้างาน tab was
+  // renamed to รายงาน OT ประจำทีม and the page it opens still said HR's
+  // ตรวจสอบประจำเดือน. It is an OVERRIDE and not a replacement: a role with no
+  // entry, or a tab that role does not override, falls through to `PAGE`, and
+  // the empty triple is still the last word so an unknown tab draws no heading
+  // rather than throwing.
+  assert.match(
+    app,
+    /const \[title, meta, note\] = PAGE_BY_ROLE\[user\.role\]\?\.\[tab\] \|\| PAGE\[tab\] \|\| \['', '', null\];/,
+  );
+  // One role overrides one tab. A second entry is allowed and is a decision —
+  // it is not allowed to arrive as a copy of `PAGE` that nobody noticed
+  // growing, which is the failure this count is here to make visible.
+  const byRole = app.slice(app.indexOf('const PAGE_BY_ROLE = {'), app.indexOf('function Shell('));
+  assert.equal((byRole.match(/\bmonthly:/g) || []).length, 1);
+  assert.match(byRole, /manager: \{ monthly: \['รายงาน OT ประจำทีม', 'TEAM SUMMARY'\] \},/);
   // A note left open follows the reader onto the next screen, where it is the
   // footer again with an extra tap in front of it.
   assert.match(app, /useEffect\(\(\) => \{ setNoteOpen\(false\); \}, \[tab\]\);/);

@@ -826,6 +826,18 @@ test('.fold-pill is a class, and the digest it shares a screen with is untouched
   assert.match(css, /\.export-row \{ margin-top: 12px; \}/);
   assert.match(phone, /\.export-row \{\s*margin-top: 8px;/);
   assert.ok(!/export-row" style=/.test(hrView), 'the export row went back to an inline margin');
+  /**
+   * AND THE TWO CSVs ARE THE SAME HEIGHT, which is not free here.
+   *
+   * `.export-row` also carries `.row`, whose `align-items: flex-end` is right
+   * for the flex line it is above 860px and wrong for the grid it becomes
+   * below. The grid inherits it, so the two buttons hung from the bottom of
+   * their row instead of filling it — invisible for as long as both labels
+   * took the same number of lines, and visible the moment one did not.
+   * Measured on the built app before the fix, at 320 and 360px: 67.5px beside
+   * 53px, the short one floating with a 14px gap over it.
+   */
+  assert.match(phone, /\.export-row \{[\s\S]*?align-items: stretch;[\s\S]*?\}/);
   // PrintFormBatch's digest is the other `.notice-fold` in the app: plain-text
   // summary, no pill, and no rule here reaches it.
   const digest = read('components/PrintFormBatch.jsx');
@@ -1052,7 +1064,7 @@ test('the shortened instruction still says why and where', () => {
   // Each half written once, so the plain string and the linked version cannot
   // drift apart.
   assert.match(pv, /const lead = 'หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ';/);
-  assert.match(pv, /const where = 'ตรวจสอบรายเดือน';/);
+  assert.match(pv, /const where = 'ตรวจสอบประจำเดือน';/);
   assert.match(pv, /: lead \+ where;/);
   assert.ok(!pv.includes('กฎเบื้องหลังมาด้วย'), 'the long form came back');
 });

@@ -36,6 +36,8 @@
   --green-lift: #12A053;
   --green-dark: #0B6E37;
   --green-bg: #E8F4ED;
+  /** The bar on the fourteen-day chart — a MARK, not a surface. See below. */
+  --chart-bar: #C7E7D3;
   --green-tint: #F3FAF5;
   --green-wash: #F7FAF8;
   --neutral-wash: #F6F8F6;
@@ -576,6 +578,25 @@
      as panels somebody placed there, not as holes in it. Lightness unchanged
      through the muting — only the colour left, so nothing re-stacks. */
   --green-bg: light-dark(#E8F4ED, #1D3023);
+  /**
+   * NOT --green-bg, and the difference is the whole reason this token exists.
+   *
+   * --green-bg is a SURFACE tint: it is chosen to disappear into the card it
+   * sits on. A bar on a chart has to do the opposite against its track, and
+   * the track is --line-softer. Measured against it, --green-bg lands at
+   * 1.04:1 in ธีมมืด and 1.03:1 in ธีมสว่าง — on the walk of 2026-08-31 the
+   * chart drew fourteen columns in which a day of 2,335 requests could not be
+   * told from a day with none.
+   *
+   * These two are the same green moved off the track until the bar is a mark:
+   * 1.21:1 and 1.47:1. Small numbers, and the ratio is the wrong ruler here —
+   * it is built for text and compresses at both ends of the range, where two
+   * blocks of flat colour separate long before it says so. The gap in
+   * luminance is the honest measure, and it moved six-fold in light and
+   * thirteen-fold in dark. Both stay quieter than --green, which the writes
+   * slice inside the bar uses.
+   */
+  --chart-bar: light-dark(#C7E7D3, #2A4A34);
   --green-tint: light-dark(#F3FAF5, #1D2921);
   /* Already at 0.016 — the row-hover wash was never the problem. Left alone so
      the diff says only what actually moved. */
@@ -1035,10 +1056,28 @@ html { -webkit-tap-highlight-color: transparent; }
 .nav button.active .icon { opacity: 1; }
 .nav .label { flex: 1; text-align: left; }
 
-/* Count badges are alarms, not decoration — one colour, used only here. */
+/* Count badges are alarms, not decoration — one colour, used only here.
+   IT IS AMBER, AND IT WAS `--danger` UNTIL 2026-08-31. Asked for on the
+   หัวหน้างาน bar and taken across the whole app in one move, because the rule
+   this comment states is the reason: one colour for every count, or the same
+   number means different things depending on who is looking at it. Four tabs
+   wear it — รายการรออนุมัติ, รออนุมัติ OT, รออนุมัติแทน, ไม่มีหัวหน้าเซ็น.
+
+   `--amber` with `--on-amber` is the pair this file already tuned for exactly
+   this object: `--on-amber`'s own note calls it "what sits ON an amber fill —
+   the count chip and the ! in a warning", and `.queue-tabs button.active
+   .count` has been drawing a count in it all along. Both themes clear AA —
+   white on the light amber, and dark ink on the lighter dark-theme amber,
+   which is the pairing white would have failed at 2.19.
+
+   WHAT IT GIVES UP, said plainly: red is gone from the nav, and with it the
+   one place this app distinguished "a fault" from "a queue". `ไม่มีหัวหน้าเซ็น`
+   IS a fault — see its note in components/App.jsx — and it now wears the same
+   amber as three ordinary queues. It keeps a tab of its own, which is the
+   distinction that was doing the work. */
 .count {
   min-width: 20px; height: 20px; padding: 0 6px; flex: none;
-  border-radius: 10px; background: var(--danger); color: var(--on-fill);
+  border-radius: 10px; background: var(--amber); color: var(--on-amber);
   font: 600 11px/20px var(--mono); text-align: center;
 }
 
@@ -10025,8 +10064,10 @@ table.mini tbody tr:hover { background: none; }
 
   /* ══ the export buttons ════════════════════════════════════════════════ */
 
-  /* Two CSVs share a line; พิมพ์ F-HR-027 ทุกคน (3 คน) keeps its own, because
-     its label is the one that cannot fit in half a phone. The note under them
+  /* Two CSVs share a line; พิมพ์ใบขออนุมัติ OT ทุกคน (3 คน) keeps its own,
+     because its label is the one that cannot fit in half a phone — and it got
+     longer on 2026-08-31, not shorter, so the full-width line it already had is
+     the reason the rename cost this stylesheet nothing. The note under them
      spans both. */
   /* 8px above, not 12. The row over it has already stacked into three
      full-width controls at this width, so 12px more before the first button
@@ -10036,6 +10077,30 @@ table.mini tbody tr:hover { background: none; }
   .export-row {
     margin-top: 8px;
     display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    /* `.row` IS ALSO ON THIS ELEMENT, and it says `align-items: flex-end` —
+       correct for the flex row it is above 860px, wrong for the grid it
+       becomes here. A grid inherits it, so the two CSV buttons stopped
+       stretching to their row and hung from its bottom edge instead.
+
+       INVISIBLE UNTIL 2026-08-31, because it only shows when the two are
+       different heights, and they were the same height for as long as their
+       labels took the same number of lines. ส่งออกรายงานสรุปประจำเดือน (CSV)
+       takes three lines at 320–360px where ส่งออกรายการ OT (CSV) takes two,
+       and measured before this line went in they were 67.5px and 53px, the
+       short one floating with a 14px gap above it beside its pair.
+
+       `stretch` is the grid default this is restoring, not a new idea. Both
+       buttons now take the row, which is what makes them read as one pair of
+       equals rather than a tall one and a short one.
+
+       `.action-row` BELOW IS THE SAME SHAPE AND IS NOT FIXED HERE. It also
+       carries `.row`, and its own rule sets `align-items: center`, so its two
+       buttons are centred rather than stretched for exactly the same reason.
+       Nothing shows there today — its note says both labels take two lines at
+       half width, and two equal heights hide the difference — so it is left
+       alone rather than changed on a screen nobody reported. It is the next
+       place this bites. */
+    align-items: stretch;
   }
   .export-row > .btn { min-height: 44px; }
   .export-row > .btn:first-child,
@@ -10817,19 +10882,47 @@ table.mini tbody tr:hover { background: none; }
    Divs, not a charting library — see the comment on it in LogSystem.jsx. It is
    flex rather than grid so a fortnight of bars shares the width evenly at any
    size, and the bars have a minimum height of their own so a day with three
-   requests is still visibly a day rather than an empty column. */
-.log-chart { display: flex; align-items: flex-end; gap: 6px; height: 132px; margin-top: 10px; }
+   requests is still visibly a day rather than an empty column.
+
+   `align-items: stretch` IS THE CHART. It read `flex-end` until 2026-08-31 and
+   drew nothing: a flex item that is not stretched is as tall as its contents,
+   so every `.log-bar` collapsed onto its own date label, `.col` — `flex: 1`
+   over a zero basis — resolved to about three pixels, and the card showed a
+   row of ticks with a red mark on the days that had a refused login. The bars
+   are already bottom-aligned by `justify-content: flex-end` INSIDE `.col`; the
+   cross-axis alignment out here only gives them the 132px to stand in. */
+.log-chart { display: flex; align-items: stretch; gap: 6px; height: 132px; margin-top: 10px; }
 .log-bar { flex: 1 1 0; display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
 .log-bar .col {
   position: relative; flex: 1;
   display: flex; flex-direction: column; justify-content: flex-end;
   background: var(--line-softer); border-radius: 4px; overflow: hidden;
 }
-.log-bar .fill { background: var(--green-bg); border-radius: 4px; min-height: 3px; display: flex; flex-direction: column; justify-content: flex-end; }
+/* THE FILL IS NOT `--green-bg`, and that is the second half of why the card
+   looked empty. It read that token until 2026-08-31, and a background tint is
+   chosen to disappear into the surface under it — the one thing a bar must not
+   do against its own track. Against `--line-softer` it measured 1.04:1 in
+   ธีมมืด and 1.03:1 in ธีมสว่าง, so the first walk after the chart got its
+   height back still showed fourteen columns with no readable difference
+   between a day of 2,335 requests and a day with none. `--chart-bar` is that
+   green moved far enough off the track to be a mark; the reasoning and the
+   figures are on the token. */
+.log-bar .fill {
+  background: var(--chart-bar);
+  border-radius: 4px; min-height: 3px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
 /* Writes are a slice of the same bar, not a second bar beside it: they are a
    subset of the requests above them, and two bars side by side would invite
-   the reader to add them together. */
-.log-bar .writes { background: var(--green); border-radius: 0 0 4px 4px; }
+   the reader to add them together.
+
+   `min-height` because that slice is nearly always a rounding error. A working
+   day on this roster is six or seven hundred requests of which three or four
+   change data, and 3/663 rounds to 0% — the dark foot the hint above the chart
+   promises would be drawn as nothing on every day that has one. The div is
+   rendered only on days whose count is above zero (see LogSystem.jsx), so the
+   floor cannot invent a mark on a day where nothing was edited. */
+.log-bar .writes { background: var(--green); border-radius: 0 0 4px 4px; min-height: 6px; }
 /* A failed login is a mark, not a height. One at the foot of the column says
    "something was refused here" without competing with the volume the bar is
    drawing — and a day with four hundred requests and one refusal must not draw

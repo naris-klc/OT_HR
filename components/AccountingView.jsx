@@ -90,7 +90,7 @@ export default function AccountingView() {
             the two TEXTS, which is the report that kept coming back. */}
         <div className="row head-split">
           <div style={{ flex: 1, minWidth: 220 }}>
-            <h2>สรุป OT ส่งบัญชี</h2>
+            <h2>รายงาน OT ฝ่ายบัญชี</h2>
             <div className="hint" style={{ margin: 0 }}>
               {periodLabel(period)} · นับเฉพาะรายการที่อนุมัติครบและ HR ยืนยันแล้ว
             </div>
@@ -161,7 +161,7 @@ export default function AccountingView() {
         <div className="box warn no-print">
           เดือนนี้ยังมีรายการค้างอนุมัติ {pending.count} รายการ ของพนักงาน {pending.employees} คน
           {' '}({hours(pending.hours)} ชม.) ซึ่ง<strong>ไม่ถูกนับ</strong>ในสรุปนี้ —
-          {' '}ปิดคิวที่หน้า “รอ HR ยืนยัน” ก่อนส่งบัญชี
+          {' '}ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนส่งบัญชี
         </div>
       )}
 

@@ -276,7 +276,7 @@ export function policyVersionNotice(spread, { onGoMonthly } = {}) {
        written once here, so the string and the linked version cannot drift
        apart. */
     const lead = 'หน้านี้ไม่ได้โหลดกฎมาเทียบ — ดูที่หน้า ';
-    const where = 'ตรวจสอบรายเดือน';
+    const where = 'ตรวจสอบประจำเดือน';
     say = onGoMonthly
       ? (
         <>

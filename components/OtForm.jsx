@@ -5,7 +5,22 @@ import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import { submissionWindow } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
-import { Alert, BucketSplit, Modal, SegmentList, StatusChip } from './common.jsx';
+import {
+  Alert, BucketSplit, ClearButton, Highlight, Modal, SegmentList, StatusChip,
+} from './common.jsx';
+import Icon from './icons.jsx';
+/**
+ * The rule that decides which names a query keeps — `lib/personSearch.js`, the
+ * fourth caller and not a fourth copy.
+ *
+ * `includes()` on the line shown would fail on the first thing anybody types
+ * here: half this roster is written PM-0412 and half PM00511, both current,
+ * and a หัวหน้า reading a code off a printed sheet types whichever they see.
+ * The same module also matches a Thai name with its space and without it,
+ * and lets "0412 สมชาย" and "สมชาย 0412" both work, because word order
+ * against a list you cannot see yet is not something anybody gets right.
+ */
+import { searchPeople } from '@/lib/personSearch.js';
 import { usePolicy } from './policyContext.jsx';
 
 const blank = () => ({
@@ -119,6 +134,22 @@ export default function OtForm({
   const [team, setTeam] = useState([]);
   const [teamError, setTeamError] = useState('');
   /**
+   * What is typed in the box over the name list — and NOTHING ELSE.
+   *
+   * IT IS A SEPARATE PIECE OF STATE FROM `targets` ON PURPOSE, and that is the
+   * whole of how a search cannot lose a tick. Narrowing changes which names are
+   * DRAWN; it never writes to `targets`, so a person ticked under one query is
+   * still ticked under the next one and still on the batch when the box is
+   * cleared. Nothing here resets it either — not typing, not clearing, not the
+   * ✕. The count in the label above is what says so out loud, and the line
+   * under the list names the ones a query is currently hiding.
+   *
+   * The alternative — filtering `targets` down to what matches — is the bug
+   * this comment exists to keep out. It reads identically on a full list and
+   * silently drops people the moment somebody types.
+   */
+  const [teamFind, setTeamFind] = useState('');
+  /**
    * What the server said about each person, once a batch has been posted.
    *
    * `null` until then. Non-null replaces the whole form with the summary —
@@ -138,6 +169,24 @@ export default function OtForm({
   const toggleTarget = (id) => setTargets((t) => (
     t.includes(id) ? t.filter((x) => x !== id) : [...t, id]
   ));
+
+  /**
+   * The names the box is currently letting through. An empty query hands back
+   * `team` itself rather than a copy — `searchPeople`'s own promise — so the
+   * unfiltered list is not rebuilt on every keystroke that clears it.
+   */
+  const shownTeam = searchPeople(team, teamFind);
+  /**
+   * How many ticked people this query is hiding.
+   *
+   * The reassurance the label's count cannot give on its own: "เลือกแล้ว 3 คน"
+   * over a list showing one ticked row is a reader's word against the screen's.
+   * This says which way the difference goes, and it is only drawn while a
+   * query is narrowing something.
+   */
+  const hiddenPicked = targets.filter(
+    (id) => !shownTeam.some((p) => String(p._id) === id),
+  ).length;
 
   const nameOf = (id) => {
     const p = team.find((e) => String(e._id) === String(id));
@@ -576,35 +625,137 @@ export default function OtForm({
         <>
           <div className="field" style={{ marginTop: 6 }}>
             <label>บันทึกแทนพนักงาน * {targets.length > 0 && `(เลือกแล้ว ${targets.length} คน)`}</label>
+            {/* ── ค้นหา, over the list and inside the same `.field` ─────────
+                THE APP'S SEARCH BOX AND NOT A NEW ONE. `.searchbox` with an
+                icon on the left and a ✕ on the right is what ตรวจสอบประจำเดือน
+                and ทะเบียนพนักงาน already draw, down to the wording of the
+                placeholder — so this is the third instance of one grammar
+                rather than a third grammar. Nothing about its colours is
+                written here: `.field input` is every box in this app and
+                follows the theme, which is what keeps it dark on ธีมมืด and
+                level with the controls around it. A box that shipped bare
+                drew at the browser's default width once already.
+
+                `team.length > 1` is the SAME gate as เลือกทั้งหมด below,
+                deliberately, rather than a second threshold nobody can
+                remember: one name is not a list to hunt through, and a search
+                box over it is furniture on a form that already has plenty. */}
+            {team.length > 1 && (
+              <div className="searchbox" style={{ marginBottom: 8 }}>
+                <Icon name="search" className="searchbox-icon" />
+                <input
+                  type="text"
+                  className={`has-icon${teamFind ? ' has-clear' : ''}`}
+                  value={teamFind}
+                  onChange={(e) => setTeamFind(e.target.value)}
+                  placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
+                  /* The name assistive technology reads — there is a <label>
+                     over this field, but it belongs to the whole picker and
+                     says บันทึกแทนพนักงาน, not what this box does. Same two
+                     words as the app's other two search boxes. */
+                  aria-label="ค้นหาพนักงาน"
+                  /* NOT role="combobox". The other two open a list of
+                     suggestions to choose from; this one narrows the list that
+                     is already on the screen, and nothing pops over anything.
+                     Borrowing the role would promise a popup that never comes
+                     and an `aria-expanded` that would always be false. */
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                {teamFind && <ClearButton onClear={() => setTeamFind('')} />}
+              </div>
+            )}
             {/* A scrolling box rather than a list that pushes the times and the
                 preview off the screen. Twelve names is the tallest a แผนก here
                 gets; the height is set so a team of that size is two or three
                 flicks rather than a page of its own. */}
             <div className="pick-list">
-              {team.map((p) => (
+              {shownTeam.map((p) => (
                 <label key={p._id} className="check">
                   <input
                     type="checkbox"
                     checked={targets.includes(String(p._id))}
                     onChange={() => toggleTarget(String(p._id))}
                   />
-                  {p.name} · {p.code}
+                  {/* ONE <span>, AND IT IS LOAD-BEARING. `.check` is a flex
+                      row with a 9px gap, and `{p.name} · {p.code}` survived
+                      that only because adjacent text collapses into a single
+                      anonymous flex item. The moment a query matches,
+                      `Highlight` returns real <mark> elements — which become
+                      flex items of their own and pull the name, the ·  and the
+                      code apart by 9px each, while typing, on every row that
+                      matched. The span puts them back in one box.
+
+                      Marked where the query actually hit, which `indexOf`
+                      cannot do here: "PM0412" matches a row whose code READS
+                      PM-0412, and the string typed appears nowhere in it.
+                      `Highlight` asks the same module the filter asked. */}
+                  <span>
+                    <Highlight text={p.name} query={teamFind} kind="name" />
+                    {' · '}
+                    <Highlight text={p.code} query={teamFind} kind="code" />
+                  </span>
                 </label>
               ))}
+              {/* Inside the box rather than under it, so the empty state is
+                  the same shape as the list it replaces and the border does
+                  not collapse to a line. The way out is the ✕ above it. */}
+              {shownTeam.length === 0 && team.length > 0 && (
+                <div className="check" style={{ color: 'var(--muted)' }}>
+                  ไม่พบพนักงานที่ตรงกับ “{teamFind}”
+                </div>
+              )}
             </div>
+            {hiddenPicked > 0 && (
+              <span className="field-note">
+                ยังเลือกไว้อีก <strong>{hiddenPicked} คน</strong> ที่ไม่อยู่ในผลค้นหานี้
+                {' '}· ล้างช่องค้นหาเพื่อดูทั้งหมด
+              </span>
+            )}
             {/* เลือกทั้งหมด is one tick and it is the common case — a whole
                 small team on one Saturday. It is BELOW the list rather than
                 above it, so it cannot be the thing a thumb lands on first. */}
             {team.length > 1 && (
               <div className="row" style={{ marginTop: 8, gap: 12 }}>
+                {/* IT ACTS ON WHAT IS ON THE SCREEN, AND IT ADDS.
+                    Two changes the search box forced, and both are about the
+                    same promise the box itself makes.
+
+                    ON THE SCREEN: it used to tick the whole `team`. Under a
+                    query showing three of twelve names, a button reading
+                    เลือกทั้งหมด (3) that quietly filed nine people nobody had
+                    looked at is the mistake this whole feature is capable of
+                    making at scale — five requests in a row, one of them on
+                    the wrong person's month, nothing on any screen flagging it.
+
+                    IT ADDS: `setTargets(shown)` would REPLACE, so ticking two
+                    names, searching for a third and pressing this would drop
+                    the first two — the search resetting a selection by the
+                    back door, which is the one thing the box promises not to
+                    do. A union keeps them, and the count in the label above
+                    goes up by what was added rather than jumping to 3. */}
                 <button
                   type="button"
                   className="btn ghost"
-                  onClick={() => setTargets(team.map((p) => String(p._id)))}
-                  disabled={targets.length === team.length}
+                  onClick={() => setTargets((t) => [
+                    ...t,
+                    ...shownTeam
+                      .map((p) => String(p._id))
+                      .filter((id) => !t.includes(id)),
+                  ])}
+                  disabled={
+                    shownTeam.length === 0
+                    || shownTeam.every((p) => targets.includes(String(p._id)))
+                  }
                 >
-                  เลือกทั้งหมด ({team.length})
+                  เลือกทั้งหมด ({shownTeam.length})
                 </button>
+                {/* This one is NOT narrowed by the query, and the difference is
+                    the label: it says ล้างที่เลือก, not "ล้างที่เลือกในผลค้นหา".
+                    A clear that left ticks behind on names the box was hiding
+                    is a control whose word for "all" means two things on one
+                    screen. `hiddenPicked` above is what makes the effect
+                    visible before it is pressed. */}
                 <button
                   type="button"
                   className="btn ghost"
@@ -634,7 +785,7 @@ export default function OtForm({
           */}
           <Alert kind="info">
             {targets.length > 1 ? 'แต่ละใบ' : 'รายการนี้'}จะเป็น<strong>ของพนักงาน</strong> ไม่ใช่ของคุณ
-            {' '}— พนักงานจะเห็นในหน้า “OT ของฉัน”
+            {' '}— พนักงานจะเห็นในหน้า “บันทึกและประวัติ OT”
             {' '}และแก้ไขเองได้ตราบใดที่ยังไม่มีผู้อนุมัติ ·
             {' '}ระบบจะบันทึกว่า<strong>คุณเป็นผู้บันทึกแทน</strong> ทั้งบนหน้าจอและในใบพิมพ์
             {/* Read off the server's own answer rather than assumed: whether

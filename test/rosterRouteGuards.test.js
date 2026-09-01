@@ -195,9 +195,24 @@ test('the record itself has no field a password could be put in later', () => {
 
 test('the ตั้งค่าระบบ tab is built for ฝ่ายบุคคล and ผู้ดูแลระบบ only', () => {
   const app = read('components/App.jsx');
-  assert.match(
-    app,
-    /if \(\['hr', 'admin'\]\.includes\(user\.role\)\) tabs\.push\(\{ key: 'admin'/,
+  /**
+   * THE PUSH LOST ITS OWN `if` ON 2026-08-31 and moved inside the
+   * ฝ่ายบุคคล/ผู้ดูแลระบบ block, when the nav was reorganised into one block
+   * per role. What this test holds is unchanged and is now stated directly
+   * rather than through the shape of one line: exactly one place builds the
+   * tab, and the role gate it sits under is the hr/admin one.
+   */
+  const builder = app.slice(app.indexOf('const tabs = [];'), app.indexOf('async function logout()'));
+  const built = builder.match(/tabs\.push\(\{ key: 'admin'/g) || [];
+  assert.equal(built.length, 1, 'the ตั้งค่าระบบ tab is built in more than one place');
+  // Every role gate the builder opens before reaching that push, in order. The
+  // last one is the block the push is inside.
+  const gates = builder
+    .slice(0, builder.indexOf("tabs.push({ key: 'admin'"))
+    .match(/user\.maySubmitOt|user\.role === '\w+'|\['hr', 'admin'\]\.includes\(user\.role\)/g) || [];
+  assert.equal(
+    gates[gates.length - 1],
+    "['hr', 'admin'].includes(user.role)",
     'the roster tab is offered to somebody outside hr/admin',
   );
   // And the deep link into it is guarded on the role rather than trusted to the

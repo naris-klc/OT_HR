@@ -91,7 +91,7 @@ export default function DepartmentView() {
             between the two texts that ส่งบัญชี had. */}
         <div className="row head-split">
           <div style={{ flex: 1, minWidth: 220 }}>
-            <h2>สรุป OT แยกแผนก</h2>
+            <h2>รายงาน OT แยกแผนก</h2>
             <div className="hint" style={{ margin: 0 }}>
               {periodLabel(period)} · นับเฉพาะรายการที่อนุมัติครบและ HR ยืนยันแล้ว ·
               {' '}นับพนักงานทั้งสองบริษัทรวมอยู่ในแผนกเดียวกัน
@@ -165,7 +165,7 @@ export default function DepartmentView() {
         <div className="box warn no-print">
           เดือนนี้ยังมีรายการค้างอนุมัติ {data.pending.count} รายการ ของพนักงาน {data.pending.employees} คน
           {' '}({hours(data.pending.hours)} ชม.) ซึ่ง<strong>ไม่ถูกนับ</strong>ในสรุปนี้ —
-          {' '}ปิดคิวที่หน้า “รอ HR ยืนยัน” ก่อนสรุปแผนก
+          {' '}ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนสรุปแผนก
         </div>
       )}
 

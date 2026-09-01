@@ -256,7 +256,13 @@ function Overview({ onOpenTab, onFilter }) {
             <div className="log-bar" key={d.date} title={`${d.date} · ${d.n} ครั้ง · แก้ไข ${d.writes} · เข้าระบบไม่สำเร็จ ${d.failedLogins}`}>
               <div className="col">
                 <div className="fill" style={{ height: `${Math.round((d.n / busiest) * 100)}%` }}>
-                  <div className="writes" style={{ height: `${d.n ? Math.round((d.writes / d.n) * 100) : 0}%` }} />
+                  {/* Only on the days that have one. The height is the share of
+                      the bar the writes are, which on real traffic rounds to 0 —
+                      `.log-bar .writes` carries a min-height for exactly that, and
+                      it must not be allowed to paint a foot on a day with none. */}
+                  {d.writes > 0 && (
+                    <div className="writes" style={{ height: `${Math.round((d.writes / d.n) * 100)}%` }} />
+                  )}
                 </div>
                 {d.failedLogins > 0 && <div className="failed" />}
               </div>
@@ -735,7 +741,7 @@ function LogList({
               className={filters.q ? 'has-clear' : undefined}
               value={filters.q}
               placeholder="เช่น PM-0620 หรือ 192.168.109."
-              aria-label="ค้นหาในบันทึกระบบ"
+              aria-label="ค้นหาในบันทึกประวัติระบบ"
               autoComplete="off"
               spellCheck={false}
               onChange={(e) => setFilter('q', e.target.value)}

@@ -392,10 +392,20 @@ test('ตั้งรหัสใหม่ is disabled on one’s own row, and s
   assert.match(code, /const mayEdit = \(row\) => isAdmin \|\| row\.role !== 'admin'/);
 });
 
-test('the ชื่อบริษัทและฟอร์ม section is on the screen both roles reach', () => {
+test('the รหัสเอกสาร OT section is on the screen both roles reach', () => {
   const code = read(SCREEN);
-  assert.match(code, /\{ key: 'identity', label: 'ชื่อบริษัทและฟอร์ม' \}/);
-  assert.match(code, /section === 'identity' && <Identity \/>/);
+  assert.match(code, /\{ key: 'docCode', label: 'รหัสเอกสาร OT' \}/);
+  assert.match(code, /section === 'docCode' && <DocumentCode \/>/);
+  /**
+   * One box, and the two company-name boxes that stood beside it until
+   * 2026-08-31 are gone — nothing printed either of them. The values and the
+   * handler are untouched (see the PATCH test above, which still names all
+   * three); what is pinned here is that the SCREEN edits only the number that
+   * comes out on paper.
+   */
+  const start2 = code.indexOf('function DocumentCode()');
+  const section = code.slice(start2, code.indexOf('\n}', start2));
+  assert.doesNotMatch(section, /companyName/, 'a company-name box came back');
   /**
    * NOT gated on `user.role` here, and that is the rule rather than an
    * oversight: every section on ตั้งค่าระบบ is reachable by both roles, which is

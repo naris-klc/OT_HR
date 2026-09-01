@@ -17,8 +17,11 @@ import { dirname, join } from 'node:path';
  *
  *   THE ORANGE BADGE says THERE IS WORK OVER THERE, and it is at its most
  *   useful on a tab nobody is standing on. So it is drawn from `t.badge` alone
- *   and knows nothing about `.active`: standing in ตั้งค่าระบบ, รอ HR ยืนยัน
- *   stays grey and still says 5.
+ *   and knows nothing about `.active`: standing in ตั้งค่าระบบ, รออนุมัติ OT
+ *   stays grey and still says 5. (It said รอ HR ยืนยัน until 2026-08-31, and
+ *   the badge itself was RED until the same day — this line had been calling
+ *   it orange the whole time. `.count` is amber now; the colour is pinned in
+ *   test/roleNavTabs.test.js, which is also where the per-role tab lists are.)
  *
  * Both bars render the same `tabs` array and never appear together — 860px
  * hides one or the other — so the rule is asserted twice on purpose. Two bars

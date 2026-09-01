@@ -345,26 +345,103 @@ const ROLE_LABEL = {
  *
  * A page whose note would change with its data does not belong here — this
  * table is a constant, and the heading is drawn before any screen has loaded.
+ *
+ * ── FIVE OF THESE WERE RENAMED ON 2026-08-31, AND THE OLD NAMES ARE STILL IN
+ * THE SOURCE ──────────────────────────────────────────────────────────────
+ *
+ * Asked for as making the menu read more formally. This table and the `tabs`
+ * array below are the two places a name is DECIDED; `.sidebar` and
+ * `.mobile-nav` render the same `tabs`, so desktop and phone cannot disagree.
+ *
+ *   รอ HR ยืนยัน        → รออนุมัติ OT          (`confirm`)
+ *   ตรวจสอบรายเดือน     → ตรวจสอบประจำเดือน     (`monthly`)
+ *   สรุป OT ส่งบัญชี     → รายงาน OT ฝ่ายบัญชี   (`accounting`)
+ *   สรุป OT แยกแผนก     → รายงาน OT แยกแผนก     (`departments`)
+ *   บันทึกระบบ          → บันทึกประวัติระบบ      (`logs`)
+ *
+ * TWO MORE ROUNDS THE SAME DAY, taking the other two bars. The หัวหน้างาน's:
+ *
+ *   รออนุมัติ           → รายการรออนุมัติ        (`approve`)
+ *   สรุปทีม             → รายงาน OT ประจำทีม     (`monthly`, and see PAGE_BY_ROLE)
+ *
+ * and the พนักงาน's, which is the one that did not go the way it was asked —
+ * see the note over the employee block in `tabs` for why the two names came
+ * back swapped:
+ *
+ *   OT ของฉัน           → บันทึกและประวัติ OT    (`mine`)
+ *   ใบ F-HR-027         → พิมพ์ใบขออนุมัติ OT     (`form`)
+ *
+ * THE KEYS DID NOT MOVE, and they are what everything else in the app is
+ * written against — `tab`, `home`, `trail`, the guards, the tests. A label is
+ * a string on a screen here and has never been an identifier.
+ *
+ * WHY GREPPING THE OLD NAMES STILL RETURNS ~180 LINES. They are comments and
+ * dated notes reasoning about these screens, and they were left alone on
+ * purpose: rewriting them would silently restate records like "reported on
+ * 2026-08-28, the badge read 6 from ตรวจสอบรายเดือน" as things that were said
+ * about a screen by a name it did not have that day. This block is the anchor
+ * for all of them — one place that says which old name is which screen.
+ *
+ * FOUR STRINGS THAT LOOK LIKE THE OLD NAMES AND ARE NOT, all checked and all
+ * deliberately untouched:
+ *   · `PolicyStatus` in AdminView draws `⚠️ รอ HR ยืนยัน` beside
+ *     `✓ HR ยืนยันแล้ว` — that is a POLICY VALUE waiting on a sign-off, not
+ *     this queue.
+ *   · `PrintFormBatch`'s `unmarked` scope is labelled `รอ HR ยืนยัน` in a list
+ *     of document CONDITIONS beside ยังไม่อนุมัติ — a state of the rows on a
+ *     sheet. "รออนุมัติ OT" next to "ยังไม่อนุมัติ" would read as a
+ *     contradiction.
+ *   · The confirm queue's own subtitle pairs ตรวจสอบรายเดือน with a หัวหน้า's
+ *     ตรวจสอบรายวัน — a cadence, and the pair is the point.
+ *   · `lib/accessLog.js` describes the log routes as เปิดดูบันทึกระบบ. Those
+ *     strings are written into `otAccessLogs`, which is append-only; changing
+ *     them splits the trail across two names for one screen and is a decision
+ *     for whoever reads it, not a rename.
  */
 const PAGE = {
-  mine: ['OT ของฉัน', 'MY OVERTIME'],
-  approve: ['รออนุมัติ', 'PENDING · MANAGER'],
+  mine: ['บันทึกและประวัติ OT', 'MY OVERTIME'],
+  // หัวหน้างาน only — ฝ่ายบุคคล's stand-in queue is `delegated` below, and no
+  // account reaches both. Renamed with its tab on 2026-08-31; it read
+  // 'รออนุมัติ' until then.
+  approve: ['รายการรออนุมัติ', 'PENDING · MANAGER'],
   delegated: ['รออนุมัติแทน', 'PENDING · DELEGATED'],
   unsigned: ['ใบที่ไม่มีหัวหน้าเซ็นได้', 'PENDING · NO APPROVER'],
-  confirm: ['รอ HR ยืนยัน', 'PENDING · HR'],
-  monthly: ['ตรวจสอบรายเดือน', 'MONTHLY REVIEW'],
-  accounting: ['สรุป OT ส่งบัญชี', 'PAYROLL SUBMISSION'],
-  departments: ['สรุป OT แยกแผนก', 'DEPARTMENT SUMMARY'],
-  form: ['ใบ F-HR-027', 'PRINTABLE FORM'],
+  confirm: ['รออนุมัติ OT', 'PENDING · HR'],
+  monthly: ['ตรวจสอบประจำเดือน', 'MONTHLY REVIEW'],
+  accounting: ['รายงาน OT ฝ่ายบัญชี', 'PAYROLL SUBMISSION'],
+  departments: ['รายงาน OT แยกแผนก', 'DEPARTMENT SUMMARY'],
+  form: ['พิมพ์ใบขออนุมัติ OT', 'PRINTABLE FORM'],
   admin: ['ตั้งค่าระบบ', 'SETTINGS & POLICY'],
   logs: [
-    'บันทึกระบบ', 'SYSTEM & ACCESS LOG',
+    'บันทึกประวัติระบบ', 'SYSTEM & ACCESS LOG',
     'ระบบเก็บบันทึกตาม พ.ร.บ. คอมพิวเตอร์ มาตรา ๒๖ (ไม่น้อยกว่า 90 วัน)'
     + ' · เพิ่มได้อย่างเดียว แก้หรือลบย้อนหลังไม่ได้'
     + ' · ไม่เก็บเนื้อหาที่ส่งเข้ามาไม่ว่ารูปแบบใด รวมทั้งรหัสผ่าน'
     + ' · รวมอยู่ในไฟล์สำรองข้อมูลรายวัน',
   ],
   profile: ['ข้อมูลส่วนตัว', 'MY PROFILE'],
+};
+
+/**
+ * THE ONE HEADING THAT DEPENDS ON WHO IS READING IT.
+ *
+ * `monthly` is a single screen key that two roles reach — ฝ่ายบุคคล open the
+ * whole company, a หัวหน้า opens their own team, and the server does the
+ * scoping. The MENU has always said two different things about it, and until
+ * 2026-08-31 the heading did not: a หัวหน้า pressed a tab reading สรุปทีม and
+ * arrived at a page titled ตรวจสอบรายเดือน, which is HR's job description and
+ * not theirs. Harmless while the label was three syllables and nobody looked
+ * twice; it stopped being harmless the moment the tab was renamed to something
+ * a person would expect the page to repeat back to them.
+ *
+ * KEYED BY ROLE AND THEN BY TAB, so a lookup that finds nothing falls through
+ * to `PAGE` and this table stays the exception rather than a second copy of it.
+ * Everything the comment above says about `PAGE` still holds — this is a
+ * constant, drawn before any screen has loaded, and its titles do not depend
+ * on a single row of data.
+ */
+const PAGE_BY_ROLE = {
+  manager: { monthly: ['รายงาน OT ประจำทีม', 'TEAM SUMMARY'] },
 };
 
 function Shell({ session, onLogout }) {
@@ -556,13 +633,121 @@ function Shell({ session, onLogout }) {
    */
   const queueBadge = (ownPending) => ownPending + (counts.birthdayPending || 0);
 
+  /**
+   * ── THE MENU, ONE BLOCK PER ROLE ──────────────────────────────────────────
+   *
+   * `.sidebar` on a desktop and `.mobile-nav` on a phone both map this array
+   * and nothing else. They are never on screen together, so there is no second
+   * place a label, an icon, a badge or an ORDER could be decided — which is why
+   * the phone bar has never needed a rule of its own and must not grow one.
+   *
+   * REORGANISED ON 2026-08-31 into the four blocks below, asked for as making
+   * the role branching explicit. Nothing about who sees what changed: the
+   * หัวหน้า's second tab used to be pushed seventy lines further down, after
+   * the ฝ่ายบุคคล block it can never enter, so moving it up to sit with the
+   * first one leaves every role's list in exactly the order it was already in.
+   *
+   * WHAT EACH ROLE ACTUALLY GETS, counted off `lib/session.js` where
+   * `maySubmitOt` is `role === 'employee'` and nothing else:
+   *
+   *   พนักงาน        2 — OT ของฉัน · ใบ F-HR-027
+   *   หัวหน้างาน      2 — รายการรออนุมัติ · รายงาน OT ประจำทีม
+   *   ฝ่ายบุคคล       5 — รออนุมัติ OT · ตรวจสอบประจำเดือน · รายงาน OT ฝ่ายบัญชี
+   *                      · รายงาน OT แยกแผนก · ตั้งค่าระบบ
+   *   ผู้ดูแลระบบ      6 — those five and บันทึกประวัติระบบ
+   *
+   * PLUS TWO THAT COME AND GO, both ฝ่ายบุคคล/ผู้ดูแลระบบ only and both
+   * conditional on the state of the data rather than on a role: รออนุมัติแทน
+   * while any team is covered, and ไม่มีหัวหน้าเซ็น while any request is stuck.
+   * So "ฝ่ายบุคคล has five" is the steady state and not a maximum — a covered
+   * team makes it six, and an admin with both faults open sees eight.
+   *
+   * NOBODY BUT AN EMPLOYEE HAS OT ของฉัน OR ใบ F-HR-027, and that is not a
+   * nav decision — §2 says หัวหน้างาน do not do OT, `Employee.maySubmitOt()`
+   * says so, and `lib/session.js` hands this component the answer. Writing
+   * `role === 'employee'` here would be that rule living in two files.
+   */
   const tabs = [];
-  if (user.maySubmitOt) tabs.push({ key: 'mine', label: 'OT ของฉัน', icon: 'clock' });
+
+  // ── พนักงาน ───────────────────────────────────────────────────────────────
+  // Both of these used to be pushed at opposite ends of this function with
+  // three role blocks between them, which read as though something could come
+  // between them in the bar. Nothing can: the two conditions are the same
+  // condition, and every role in between is a role that fails it.
+  /**
+   * BOTH LABELS SAY WHAT THE SCREEN DOES, and on 2026-08-31 that had to be
+   * argued for rather than assumed.
+   *
+   * The rename came in asking for `OT ของฉัน` → "ประวัติการทำ OT" and
+   * `ใบ F-HR-027` → "ยื่นขออนุมัติ OT". Those two names are correct Thai for
+   * the two things an employee does — and they are on the wrong tabs. Read
+   * what each screen is:
+   *
+   * · `mine` is `EmployeeView` — the hero, `+ บันทึก OT ใหม่`, the FAB on a
+   *   phone, and ประวัติการขอ OT under ดูประวัติทั้งหมด. FILING HAPPENS HERE.
+   *   It is not a history screen; history is one of the two things on it.
+   * · `form` is `MyForm` — pick a month, get `PrintForm`. It prints the sheet
+   *   that is already filed, to be signed and handed to ฝ่ายบุคคล. NOTHING ON
+   *   IT FILES ANYTHING.
+   *
+   * So the pair as asked would have swapped the two screens' meanings: a tab
+   * reading ยื่นขออนุมัติ OT that cannot file, next to a tab reading ประวัติ
+   * that is the only place you can. Raised, and the answer was to name each
+   * screen after the work it actually does.
+   *
+   * `พิมพ์ใบขออนุมัติ OT` and not `ใบ F-HR-027`, for the reason the ฝ่ายบุคคล
+   * button took the same day: the controlled-form code is what the sheet is
+   * called in the filing cabinet, not what the person pressing the button
+   * calls what they are about to print. The two now match word for word —
+   * HR's says พิมพ์ใบขออนุมัติ OT ทุกคน, an employee's is their own copy of it.
+   *
+   * THE ICONS ARE THE ONES THEY ALREADY WORE. `clock` is the whole set's only
+   * time glyph and there is no `history`; `document` is a sheet of paper with
+   * ruled lines, which is exactly what comes out of the second tab. Adding a
+   * `+` to it would promise the filing this tab does not do.
+   */
+  if (user.maySubmitOt) {
+    tabs.push({ key: 'mine', label: 'บันทึกและประวัติ OT', icon: 'clock' });
+    tabs.push({ key: 'form', label: 'พิมพ์ใบขออนุมัติ OT', icon: 'document' });
+  }
+
+  // ── หัวหน้างาน · TWO TABS, AND THEY ARE THE WHOLE SCREEN ──────────────────
+  /**
+   * A หัวหน้า files no OT, so neither OT ของฉัน nor ใบ F-HR-027 is drawn for
+   * them and these two are the entire bar — the one nav in this app where the
+   * phone bar is not a compressed version of a longer list.
+   *
+   * BOTH LABELS WERE MADE LONGER ON 2026-08-31, asked for as reading more
+   * formally, and each had a second candidate that was turned down for a
+   * reason worth keeping:
+   *
+   * · รออนุมัติ → รายการรออนุมัติ, and NOT "รออนุมัติ OT" — that is now the
+   *   ฝ่ายบุคคล tab three lines below. No one account sees both, so nothing
+   *   would collide on a screen; two different screens under one name is a
+   *   collision in every sentence written about them afterwards, which is the
+   *   cost that actually gets paid. A หัวหน้า and ฝ่ายบุคคล talking about
+   *   "รออนุมัติ OT" would be talking about two queues.
+   *
+   * · สรุปทีม → รายงาน OT ประจำทีม, and NOT "สรุป OT ภาพรวมทีม" — the other
+   *   two report tabs in this app were renamed to รายงาน OT ฝ่ายบัญชี and
+   *   รายงาน OT แยกแผนก on the same day, so this one takes the same
+   *   `รายงาน OT …` shape and the three read as one family.
+   *
+   * THE ICONS ARE THE ONES THEY ALREADY WORE — `inbox` for a queue somebody
+   * has to empty, `chart` for a sheet somebody reads. Both are in
+   * `components/icons.jsx`; neither was added for this.
+   */
   if (user.role === 'manager') {
     tabs.push({
-      key: 'approve', label: 'รออนุมัติ', icon: 'inbox', badge: queueBadge(counts.pendingMgr),
+      key: 'approve', label: 'รายการรออนุมัติ', icon: 'inbox', badge: queueBadge(counts.pendingMgr),
     });
+    // `monthly` is the same screen key ฝ่ายบุคคล open, scoped to this
+    // person's team by the server. The HEADING differs, because "ตรวจสอบ
+    // ประจำเดือน" is not what a หัวหน้า came here to do — see `PAGE_BY_ROLE`.
+    tabs.push({ key: 'monthly', label: 'รายงาน OT ประจำทีม', icon: 'chart' });
   }
+
+  // ── ฝ่ายบุคคล / ผู้ดูแลระบบ ──────────────────────────────────────────────
   /**
    * ฝ่ายบุคคล standing in for a หัวหน้า get a queue of their own.
    *
@@ -612,25 +797,23 @@ function Shell({ session, onLogout }) {
   }
   if (['hr', 'admin'].includes(user.role)) {
     tabs.push({
-      key: 'confirm', label: 'รอ HR ยืนยัน', icon: 'check', badge: queueBadge(counts.pendingHr),
+      key: 'confirm', label: 'รออนุมัติ OT', icon: 'check', badge: queueBadge(counts.pendingHr),
     });
-    tabs.push({ key: 'monthly', label: 'ตรวจสอบรายเดือน', icon: 'calendar' });
+    tabs.push({ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar' });
     // Closing the month, not checking it — hence its own tab next to the
     // review rather than a mode inside it.
-    tabs.push({ key: 'accounting', label: 'สรุป OT ส่งบัญชี', icon: 'banknote' });
+    tabs.push({ key: 'accounting', label: 'รายงาน OT ฝ่ายบัญชี', icon: 'banknote' });
     // The other question the same month answers — how many hours each แผนก
     // worked, both payrolls counted together. Its own tab rather than a mode
     // inside สรุป OT ส่งบัญชี, because it is a different sheet for different
     // readers, not a different view of the submission.
-    tabs.push({ key: 'departments', label: 'สรุป OT แยกแผนก', icon: 'org' });
+    tabs.push({ key: 'departments', label: 'รายงาน OT แยกแผนก', icon: 'org' });
+    // One label for both now that ฝ่ายบุคคล maintains ทะเบียนพนักงาน here as
+    // well — "นโยบายและวันหยุด" named the two sections HR could use back when
+    // the roster was Admin's alone, and a tab that undersells what is behind it
+    // is how HR ends up asking IT to add a new hire.
+    tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: 'sliders' });
   }
-  if (user.role === 'manager') tabs.push({ key: 'monthly', label: 'สรุปทีม', icon: 'chart' });
-  if (user.maySubmitOt) tabs.push({ key: 'form', label: 'ใบ F-HR-027', icon: 'document' });
-  // One label for both now that ฝ่ายบุคคล maintains ทะเบียนพนักงาน here as
-  // well — "นโยบายและวันหยุด" named the two sections HR could use back when the
-  // roster was Admin's alone, and a tab that undersells what is behind it is
-  // how HR ends up asking IT to add a new hire.
-  if (['hr', 'admin'].includes(user.role)) tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: 'sliders' });
   /**
    * บันทึกระบบ — ผู้ดูแลระบบ AND NOT ฝ่ายบุคคล, which is why it is its own tab
    * rather than a seventh section inside ตั้งค่าระบบ.
@@ -642,7 +825,7 @@ function Shell({ session, onLogout }) {
    * app/api/logs/route.js for why the shared ฝ่ายบุคคล login is the reason —
    * and this keeps the screen and the server saying the same thing.
    */
-  if (user.role === 'admin') tabs.push({ key: 'logs', label: 'บันทึกระบบ', icon: 'shield' });
+  if (user.role === 'admin') tabs.push({ key: 'logs', label: 'บันทึกประวัติระบบ', icon: 'shield' });
 
   async function logout() {
     await api.post('/auth/logout');
@@ -653,7 +836,7 @@ function Shell({ session, onLogout }) {
   // row out from under it.
   const showFab = user.maySubmitOt && tab === 'mine';
 
-  const [title, meta, note] = PAGE[tab] || ['', '', null];
+  const [title, meta, note] = PAGE_BY_ROLE[user.role]?.[tab] || PAGE[tab] || ['', '', null];
   /**
    * Whether the ⓘ beside the heading is showing its line.
    *

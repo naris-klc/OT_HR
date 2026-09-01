@@ -779,7 +779,8 @@ chmod +x scripts/backup.sh
 | เปิดใช้งานแผนกคืน | ❌ | ✅ | `departmentPermission` |
 | ลบแผนกถาวร | ❌ | ❌ *(ไม่มีในระบบ)* | — |
 | **ตั้งค่าระบบอื่น ๆ** | | | |
-| ชื่อบริษัท / รหัสฟอร์ม | ✅ | ✅ | `PATCH /api/settings` |
+| รหัสเอกสาร OT (`formCode`) | ✅ | ✅ | `PATCH /api/settings` |
+| ชื่อบริษัท (ไทย/อังกฤษ) | ✅ | ✅ | `PATCH /api/settings` *(ไม่มีหน้าจอ — ช่องกรอกถูกตัดออก 2026-08-31 เพราะไม่มีที่ใดพิมพ์ค่านี้)* |
 | นโยบายการคำนวณ | ✅ | ✅ | `PATCH /api/settings/policy` |
 | วันหยุดบริษัท | ✅ | ✅ | `/api/holidays` |
 | ผู้รับช่วงอนุมัติ | ✅ | ✅ | `/api/delegations` |
@@ -795,9 +796,9 @@ chmod +x scripts/backup.sh
 | คำนวณใหม่ (ใบที่ยังไม่อนุมัติ) | ✅ | ✅ | `authorizeReplay` |
 | คำนวณใหม่ **รวมใบที่อนุมัติแล้ว** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `authorizeReplay` |
 | ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` |
-| **บันทึกระบบ** | ❌ | ✅ | `/api/logs`, `/api/logs/summary`, `/api/exports/logs.csv` |
+| **บันทึกประวัติระบบ** | ❌ | ✅ | `/api/logs`, `/api/logs/summary`, `/api/exports/logs.csv` |
 
-**บันทึกระบบ เป็นสิ่งเดียวที่เป็นแท็บทั้งแท็บ ไม่ใช่หัวข้อย่อย** และตั้งใจให้เป็น
+**บันทึกประวัติระบบ เป็นสิ่งเดียวที่เป็นแท็บทั้งแท็บ ไม่ใช่หัวข้อย่อย** และตั้งใจให้เป็น
 อย่างนั้น: ทุกหัวข้อภายใน ตั้งค่าระบบ เข้าถึงได้ทั้งสองบทบาท หัวข้อที่โผล่ให้
 บทบาทเดียวจึงเป็นกฎที่ไปอยู่สองไฟล์ ส่วนเหตุผลที่ ฝ่ายบุคคล ถูกกันออกคือ
 `hr-account-is-shared` — ทั้งแผนกบุคคลใช้บัญชีเดียวกันเข้าระบบ บันทึกจราจรที่
@@ -964,8 +965,11 @@ curl -X POST http://127.0.0.1:3000/api/settings/recompute \
   -d '{"period":"2026-08"}'
 ```
 
-`PATCH /api/settings` ไม่อยู่ในรายการนี้แล้ว: ชื่อบริษัทและรหัสฟอร์ม ตอนนี้เป็น
-หัวข้อหนึ่งใน ตั้งค่าระบบ ที่ทั้งสองบทบาทเข้าถึงได้
+`PATCH /api/settings` ไม่อยู่ในรายการนี้แล้ว: รหัสเอกสาร OT ตอนนี้เป็นหัวข้อหนึ่ง
+ใน ตั้งค่าระบบ ที่ทั้งสองบทบาทเข้าถึงได้ — หัวข้อนี้เคยชื่อ ชื่อบริษัทและรหัสฟอร์ม
+จนถึง 2026-08-31 หน้าจอตอนนี้แก้ได้เฉพาะ `formCode` ที่พิมพ์ลงกระดาษจริง ส่วน
+`companyName` / `companyNameEn` ยังอยู่ในฐานข้อมูลและยังแก้ผ่าน endpoint นี้ได้
+แต่ไม่มีช่องกรอกในแอปแล้ว เพราะไม่มีหน้าจอหรือแบบฟอร์มใดพิมพ์ค่านั้นออกมา
 
 ### `npm run reset-admin` — ทางกลับเข้าบัญชี ผู้ดูแลระบบ
 
@@ -1017,7 +1021,7 @@ npm run reset-admin -- ADMIN
 
 ---
 
-## บันทึกระบบ — ข้อมูลจราจรทางคอมพิวเตอร์
+## บันทึกประวัติระบบ — ข้อมูลจราจรทางคอมพิวเตอร์
 
 **ตั้งค่าระบบ ไม่ใช่ที่อยู่ของหน้านี้ — เป็นแท็บของตัวเอง และเห็นได้เฉพาะ
 ผู้ดูแลระบบ** (`components/LogSystem.jsx`, `app/api/logs/`).
@@ -1116,7 +1120,7 @@ collection จากฐานข้อมูลจริง ไม่ใช่�
 
 ### การใช้สิทธิ์พิเศษ — the compliance report
 
-**เป็นแท็บที่ห้าของ บันทึกระบบ และเป็นแท็บเดียวที่ไม่ได้อ่าน `otAccessLogs`**
+**เป็นแท็บที่ห้าของ บันทึกประวัติระบบ และเป็นแท็บเดียวที่ไม่ได้อ่าน `otAccessLogs`**
 สี่แท็บข้าง ๆ คือข้อมูลจราจรที่หั่นมาสี่แบบ ส่วนแท็บนี้ตอบคนละคำถาม — *มีอะไรถูกทำ
 ไปบ้างที่ตามกฎแล้วควรจะถูกปฏิเสธ และทำไมถึงอนุญาต?*
 
@@ -1243,7 +1247,7 @@ lib/complianceExport.js   which five events count as the exercise of a
 lib/complianceQuery.js    the three reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     107 files, run by `npm test`. Six named below as a
+test/                     110 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1256,9 +1260,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1792 tests
-across 107 files**, measured 2026-08-31 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1814 tests
+across 110 files**, measured 2026-08-31 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนลูกทีม's name list, and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1540,10 +1544,166 @@ answering the requests those days produce.
 
 | Role | Landing tab | Mounted by |
 |---|---|---|
-| พนักงาน | หน้า OT ของฉัน, and the OT form | `EmployeeView` |
+| พนักงาน | หน้า บันทึกและประวัติ OT, and the OT form | `EmployeeView` |
 | หัวหน้า | รออนุมัติ | `App` |
-| ฝ่ายบุคคล | รอ HR ยืนยัน | `App` |
+| ฝ่ายบุคคล | รออนุมัติ OT | `App` |
 | ผู้ดูแลระบบ | ตั้งค่าระบบ | `App` |
+
+### ห้าแท็บเปลี่ยนชื่อเมื่อ 2026-08-31 — และชื่อเก่ายังอยู่ทั่วเอกสารนี้
+
+Asked for as making the menu read more formally. **Five labels, one file, two
+places in it**: the `PAGE` table is the heading on the app bar of each screen
+and the `tabs` array is the menu itself, both in `components/App.jsx`.
+`.sidebar` on a desktop and `.mobile-nav` on a phone render **the same `tabs`
+array** — they are never on screen together and cannot disagree, which is the
+same reason the queue badge is computed once.
+
+| It read, until 2026-08-31 | It reads | key | who sees it |
+|---|---|---|---|
+| รอ HR ยืนยัน | **รออนุมัติ OT** | `confirm` | ฝ่ายบุคคล · ผู้ดูแลระบบ |
+| ตรวจสอบรายเดือน | **ตรวจสอบประจำเดือน** | `monthly` | ฝ่ายบุคคล · ผู้ดูแลระบบ |
+| สรุป OT ส่งบัญชี | **รายงาน OT ฝ่ายบัญชี** | `accounting` | ฝ่ายบุคคล · ผู้ดูแลระบบ |
+| สรุป OT แยกแผนก | **รายงาน OT แยกแผนก** | `departments` | ฝ่ายบุคคล · ผู้ดูแลระบบ |
+| บันทึกระบบ | **บันทึกประวัติระบบ** | `logs` | ผู้ดูแลระบบ |
+| รออนุมัติ | **รายการรออนุมัติ** | `approve` | หัวหน้างาน |
+| สรุปทีม | **รายงาน OT ประจำทีม** | `monthly` | หัวหน้างาน |
+| OT ของฉัน | **บันทึกและประวัติ OT** | `mine` | พนักงาน |
+| ใบ F-HR-027 | **พิมพ์ใบขออนุมัติ OT** | `form` | พนักงาน |
+
+`ตั้งค่าระบบ` was asked to stay and stayed. **No key moved**, and the keys are
+what the rest of the app is written against — `tab`, `home`, `trail`, the route
+guards, every test. A label has always been a string on a screen here.
+
+**The last two landed in a second pass**, asked for the same day and about the
+หัวหน้างาน bar specifically, and each turned down a second candidate for a
+reason worth keeping. **รายการรออนุมัติ and not "รออนุมัติ OT"** — that is now
+the ฝ่ายบุคคล tab one row up. No account reaches both, so nothing would collide
+on any screen; two different queues under one name is a collision in every
+sentence written about them afterwards, which is the cost that actually gets
+paid. **รายงาน OT ประจำทีม and not "สรุป OT ภาพรวมทีม"** — the other two report
+tabs were renamed to รายงาน OT ฝ่ายบัญชี and รายงาน OT แยกแผนก an hour earlier,
+so this one takes the same shape and the three read as one family.
+
+**The พนักงาน pair came back swapped, and that is the one worth reading.** It
+was asked for as `OT ของฉัน` → "ประวัติการทำ OT" and `ใบ F-HR-027` →
+"ยื่นขออนุมัติ OT" — correct Thai for the two things an employee does, on the
+wrong two tabs. `mine` is `EmployeeView`: the hero, `+ บันทึก OT ใหม่`, the
+phone FAB, and ประวัติการขอ OT behind ดูประวัติทั้งหมด — **filing happens
+there**, and history is one of the two things on it. `form` is `MyForm`: pick a
+month, get `PrintForm`, sign it, hand it to ฝ่ายบุคคล — **nothing on it files
+anything**. Shipped as asked, the tab promising to file could not, and the only
+one that could would have read "ประวัติ". Raised before any edit; the answer was
+to name each screen after the work it does. `test/roleNavTabs.test.js` holds it
+there, and holds `showFab` to `mine` — a label that moved filing to `form`
+without moving the FAB would be a tab that says ยื่น and has no way to.
+
+**พิมพ์ใบขออนุมัติ OT and not ใบ F-HR-027**, for the reason HR's button took
+the same day: the controlled-form code is what the sheet is called in the
+filing cabinet, not what the person pressing the button calls what they are
+about to print. The two now match word for word — HR's reads พิมพ์ใบขออนุมัติ
+OT ทุกคน, and an employee's is their own copy of it.
+
+**`monthly` appears twice in that table, and that is the interesting row.** One
+screen key, two roles, two labels — ฝ่ายบุคคล open the whole company and a
+หัวหน้า opens their own team, scoped by the server. The MENU has always said
+two things about it; the HEADING did not, so a หัวหน้า pressed สรุปทีม and
+arrived at a page titled ตรวจสอบรายเดือน, which is HR's job description and not
+theirs. Harmless while the tab was three syllables and nobody looked twice, and
+not harmless once the tab was renamed to something a person would expect the
+page to repeat back. `PAGE_BY_ROLE` in `components/App.jsx` is the fix: keyed by
+role and then by tab, consulted before `PAGE` and falling through to it, so it
+stays the exception rather than a second copy.
+
+**The nav builder is one block per role now**, which is the other half of the
+same request. Nothing about who sees what changed — the หัวหน้างาน's second tab
+used to be pushed seventy lines below its first, after the ฝ่ายบุคคล block it
+can never enter, and the พนักงาน's two sat at opposite ends of the function.
+Every role between a pair fails the pair's condition, so every list came out in
+the order it was already in. `test/roleNavTabs.test.js` holds the arrangement
+there: which tab sits behind which gate, and in what order the gates open.
+
+**What each role's bar actually holds**, counted off `lib/session.js` where
+`maySubmitOt` is `role === 'employee'` and nothing else:
+
+| Role | Tabs | |
+|---|---|---|
+| พนักงาน | 2 | บันทึกและประวัติ OT · พิมพ์ใบขออนุมัติ OT |
+| หัวหน้างาน | 2 | รายการรออนุมัติ · รายงาน OT ประจำทีม |
+| ฝ่ายบุคคล | 5 | รออนุมัติ OT · ตรวจสอบประจำเดือน · รายงาน OT ฝ่ายบัญชี · รายงาน OT แยกแผนก · ตั้งค่าระบบ |
+| ผู้ดูแลระบบ | 6 | those five and บันทึกประวัติระบบ |
+
+**Five is a steady state and not a maximum.** Two more tabs come and go, both
+ฝ่ายบุคคล/ผู้ดูแลระบบ only and both keyed on the data rather than the role —
+รออนุมัติแทน while any team is covered, ไม่มีหัวหน้าเซ็น while any request is
+stuck. A covered team makes ฝ่ายบุคคล six; an admin with both faults open sees
+eight. **A หัวหน้า's two are the whole bar**, and that is the one nav in this
+app that is not a compressed version of a longer list: §2 says หัวหน้างาน do
+not do OT, so neither OT ของฉัน nor ใบ F-HR-027 is drawn for them.
+
+### What the longer labels cost the phone bar — measured, 2026-08-31
+
+Walked on the built app at :3001 against a seeded scratch database, logged in
+as each of the four roles over CDP at 320 / 360 / 390 / 430 px. **Nothing
+overflows, nothing is clipped, and no label is cut off** at any width for any
+role — `.mobile-nav` is `display: flex` with `flex: 1` buttons, Thai breaks
+inside a word, and `--nav-h` is measured from the bar itself so
+`.mobile-nav-spacer` follows whatever height it takes. What changed is HEIGHT.
+
+| Role | tabs | bar @320 | @360 | @390 | @430 |
+|---|---|---|---|---|---|
+| พนักงาน | 2 | 66px | 66px | 66px | 66px |
+| หัวหน้างาน | 2 | 66px | 66px | 66px | 66px |
+| ฝ่ายบุคคล | 5 | 77px | 77px | 77px | 77px |
+| ผู้ดูแลระบบ | 6 | **88px** | 77px | 77px | 77px |
+
+**The two-tab bars are clean** — every label sits on one line at every width,
+`บันทึกและประวัติ OT` measuring 98.5px in a 174px tab at 360. That is the bar
+this round was about and it needs nothing.
+
+**The five- and six-tab bars are the ones that paid.** At 360px each ฝ่ายบุคคล
+tab is 69.6px wide and three of five labels take two lines; for ผู้ดูแลระบบ each
+tab is 58px and five of six do. At 320px an admin's bar reaches 88px with three
+labels stacked **three lines** deep. It read **66px for every role** before the
+renames of the same day, so this is 11px of a phone screen for ฝ่ายบุคคล and 22
+for an admin at 320 — a cost the first two rounds did not measure and should
+have. It is a legibility question rather than a broken layout, and the labels
+were chosen deliberately, so it is written down here rather than quietly undone.
+
+**The count badge is amber, and it was `--danger` until 2026-08-31.** Asked for
+on the หัวหน้างาน bar and taken across the whole app in one move, because the
+stylesheet's own rule for it is *"count badges are alarms, not decoration — one
+colour, used only here"*: one colour for every count, or the same number means
+different things depending on who is logged in. Four tabs wear it —
+รายการรออนุมัติ, รออนุมัติ OT, รออนุมัติแทน, ไม่มีหัวหน้าเซ็น. `--amber` with
+`--on-amber` is the pair this file had already tuned for this exact object;
+both themes clear AA. **What it gives up, said plainly:** red is gone from the
+nav, and with it the one place this app distinguished a *fault* from a *queue* —
+ไม่มีหัวหน้าเซ็น is a fault and now wears the same amber as three ordinary
+queues. It keeps a tab of its own, which is the distinction that was doing the
+work. (`test/navActiveTab.test.js` had been calling this "THE ORANGE BADGE" in
+its own header the whole time it was red, which is how a colour drifts from
+what everybody believes it is.)
+
+**Why the old names are still everywhere below this line.** They are in dated
+records — *"reported on 2026-08-28, the badge read 6 from ตรวจสอบรายเดือน"* —
+and rewriting those would restate what was said about a screen under a name it
+did not have that day. About 180 lines of source comment are in the same
+position. The anchor for all of them is the block above `PAGE` in
+`components/App.jsx`, which is the one place that says which old name is which
+screen. Headings, the permissions table and the landing table above are live
+statements and were rewritten.
+
+**Four strings that look like the old names and are not**, each checked and
+each deliberately left: the `⚠️ รอ HR ยืนยัน` chip on ตั้งค่าระบบ →
+นโยบายการคำนวณ is a **policy value** waiting on a sign-off, not this queue;
+`PrintFormBatch`'s `unmarked` scope is labelled รอ HR ยืนยัน in a list of
+**document conditions** beside ยังไม่อนุมัติ, where "รออนุมัติ OT" would read
+as a contradiction; the confirm queue's own subtitle pairs ตรวจสอบรายเดือน with
+a หัวหน้า's ตรวจสอบรายวัน, which is a **cadence** and the pair is the point; and
+`lib/accessLog.js` describes the log routes as *เปิดดูบันทึกระบบ* — those
+strings are written into `otAccessLogs`, which is append-only, so changing them
+splits one screen's trail across two names and is a decision rather than a
+rename.
 
 **On the landing tab and nowhere else**, the rule `BackupBanner` beside it
 already follows: a standing announcement is equally true on every screen, and
@@ -2032,7 +2192,7 @@ from a role: each row carries `canAct`, answered by the server.
 | | `POST /api/birthday/entries` — บันทึก OT ให้ |
 | | `POST /api/birthday/checks` — ไม่ได้มาทำงาน, and its retraction |
 | Screens | รอ HR ยืนยัน / รออนุมัติ → tab **วันเกิดรอตรวจ** (`components/QueueTabs.jsx` → `BirthdayQueue.jsx`) |
-| | ตรวจสอบรายเดือน / สรุปทีม → the month table (`HrView.jsx` → `BirthdayMonth`) |
+| | ตรวจสอบประจำเดือน / รายงาน OT ประจำทีม → the month table (`HrView.jsx` → `BirthdayMonth`) |
 | Actions | [`components/birthdayActions.jsx`](components/birthdayActions.jsx) — the two buttons and their dialog, shared by both screens |
 | Tests | [`test/birthdayQueue.test.js`](test/birthdayQueue.test.js), [`test/birthdayCheck.test.js`](test/birthdayCheck.test.js), [`test/birthdayDirectApproval.test.js`](test/birthdayDirectApproval.test.js) |
 
@@ -2040,7 +2200,7 @@ from a role: each row carries `canAct`, answered by the server.
 is whether the day was *overlooked*, and a request that was filed and turned down
 was not. A date already dealt with never comes back onto the queue.
 
-#### วันเกิดของเดือนนี้ — the month table on ตรวจสอบรายเดือน
+#### วันเกิดของเดือนนี้ — the month table on ตรวจสอบประจำเดือน
 
 The queue is what is left. This is **everyone**, and the difference is the point.
 
@@ -2161,7 +2321,7 @@ What the entry carries is the truth about that:
   are one screen at three widths. `isBirthdayWelfare` reads the engine's own
   `segments[].dayReason`, **never the description**: that field is free text
   ฝ่ายบุคคล may type over, and a row that merely mentions a birthday is not one.
-* on the หัวหน้า's **สรุปทีม**: a per-person count in the row, and its own line
+* on the หัวหน้า's **รายงาน OT ประจำทีม**: a per-person count in the row, and its own line
   in the month's alert strip — *"HR อนุมัติชั้นเดียว 1 รายการ"* — opening to
   *"มี 1 รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — ติดป้าย HR ตรวจสแกนนิ้ว"* with the
   rest behind **ดูรายละเอียด**: no หัวหน้า signature, an empty signature box in
@@ -2431,6 +2591,55 @@ Those two must never be conflated. Filed against the หัวหน้า inste
 would land on the wrong person's month, the wrong department's cap and the
 wrong F-HR-027 — and every figure on every report would still agree with every
 other one.
+
+### ค้นหาเหนือรายชื่อ, and the one thing it must never do
+
+Added 2026-08-31 above the ticked name list, drawn only when there is more than
+one name — the same gate เลือกทั้งหมด already used, rather than a second
+threshold nobody can remember. It is **the app's search box, not a third
+grammar**: `.searchbox` with the `search` glyph at the left and a ✕ at the
+right, the same control ตรวจสอบประจำเดือน and ทะเบียนพนักงาน draw, down to the
+placeholder — *ค้นหาชื่อ หรือ รหัสพนักงาน…*. Not a `combobox`, though: the other
+two open a list of suggestions to pick from, and this one narrows the list that
+is already on screen, so borrowing the role would promise a popup that never
+comes. **No colour is written for it.** `.field input` is every box in this app
+and follows the theme, which is what keeps it dark on ธีมมืด and exactly level
+with the controls around it.
+
+**The rule is [`lib/personSearch.js`](lib/personSearch.js) — a fourth caller,
+not a fourth copy.** `includes()` on the line shown fails on the first thing
+anybody types here: half this roster is written PM-0412 and half PM00511, both
+current, and a หัวหน้า reading a code off a printed sheet types whichever they
+see. The same module matches a Thai name with its space and without it, and
+lets *0388 ธนพล* and *ธนพล 0388* both work.
+
+**And it must never lose a tick.** `teamFind` and `targets` are two separate
+pieces of state: narrowing changes which names are DRAWN and never writes to
+the selection. There are three ways that promise could have been broken and all
+three are held by [`test/proxyTeamSearch.test.js`](test/proxyTeamSearch.test.js):
+filtering `targets` itself; **เลือกทั้งหมด replacing** the selection with what is
+on screen, which turns two ticks plus a search for a third into one; and
+**เลือกทั้งหมด reaching past the filter**, which under a query showing three of
+twelve would file nine people nobody had looked at. It is a union over the
+shown list now. ล้างที่เลือก is deliberately *not* narrowed — its label says
+"ที่เลือก", and a clear that left ticks on hidden names is one word meaning two
+things on one screen. A line under the list says which ticks a query is hiding,
+because *เลือกแล้ว 2 คน* over a list showing none ticked is the screen arguing
+with itself.
+
+**One trap only the walk found.** `.check` is a flex row with a 9px gap, and
+`{p.name} · {p.code}` survived it because adjacent text collapses into a single
+anonymous flex item. `Highlight` returns real `<mark>` elements the moment a
+query matches — which become flex items of their own and pull the name, the `·`
+and the code 9px apart, while typing, on every row that matched. One `<span>`
+around the three puts them back in one box.
+
+**Walked 2026-08-31** on the built app at :3001 against a seeded scratch
+database, as `PM-0100` at 390×844 with `prefers-color-scheme: dark` forced: two
+names ticked, then `สมชาย`, `ใจดี`, `PM0388`, `pm-0388`, `0388 ธนพล`, `zzz`
+typed in turn — the label read **เลือกแล้ว 2 คน** through every one of them, and
+both were still ticked after the ✕. The box measured background `rgb(19,26,23)`,
+text `rgb(233,239,235)`, border `rgb(59,69,63)`, `padding-left: 40px`.
 
 **Who may.** หัวหน้างาน only, and only for `role: 'employee'` people in their own
 department (`proxyPermission`, [`lib/proxyFiling.js`](lib/proxyFiling.js)). Not
@@ -2916,8 +3125,54 @@ built from *segments*, not entries, so an overnight session appears on both
 dates with its hours in the correct column — Friday's row reads 17:00–24:00 and
 Saturday's 00:00–07:00.
 
-**พิมพ์ F-HR-027 ทุกคน** — the same sheet for a whole month in one document,
-one person to a side of paper. `components/PrintFormBatch.jsx` renders
+### The two CSVs beside it, and the bug their new labels exposed
+
+Renamed 2026-08-31 with the button above them: **ส่งออกรายการ OT (CSV)** (it
+read "ส่งออกรายรายการ (CSV)") and **ส่งออกรายงานสรุปประจำเดือน (CSV)** (it read
+"ส่งออกสรุปรายเดือน (CSV)"). The old pair distinguished two *grains* of one
+thing and read as a single word split in half; these name the two documents.
+**The endpoints and the downloaded filenames did not move** — `OT-2026-08.csv`
+and `OT-monthly-2026-08.csv` are what HR has been filing all along.
+
+**Nothing about the styling changed, and that was the answer rather than the
+omission.** `.btn.ghost` already carries `border: 1px solid var(--line)` and
+hovers to `--green-tint` with a `--green` border and `--green-dark` type — a
+bordered secondary that belongs to the filled green without competing with it.
+The pair were `.btn.outline` greens for a while and were deliberately taken
+back to plain ghosts, because สรุป OT ส่งบัญชี draws its second button the same
+way and two screens doing one job in two voices is a difference a reader has to
+account for.
+
+**What the longer labels did expose is real.** `.export-row` also carries
+`.row`, which declares `align-items: flex-end` — right for the flex line it is
+above 860px, wrong for the grid it becomes below, and a grid inherits it. So
+the two CSV buttons hung from the bottom of their row instead of filling it.
+That was invisible for as long as both labels wrapped to the same number of
+lines, and it stopped being invisible at 320–360px where the new right-hand
+label takes three lines and the left one takes two: measured on the built app
+before the fix, **67.5px beside 53px**, the short one floating with a 14px gap
+over it. One line — `align-items: stretch`, the grid default that was being
+overridden — puts them back to equals, and **the row's total height does not
+change**.
+
+**Measured after the fix**, built app on :3001 against a seeded scratch
+database, as `HR-001` over CDP: no button overflows and the page never scrolls
+sideways at 320 / 360 / 390 / 430 / 860 / 1280 / 1440. Desktop puts all three on
+**one line at 38.5px each**; 320 and 360 give the CSVs **67.5px each**, 390 and
+430 **53px each**, 860 **44px each**. `.action-row` on สรุป OT ส่งบัญชี and
+รายงาน OT แยกแผนก is the same shape with its own `align-items: center` and is
+deliberately left alone — both its labels take two lines, so nothing shows
+there yet. It is the next place this bites.
+
+**พิมพ์ใบขออนุมัติ OT ทุกคน** — the same sheet for a whole month in one
+document, one person to a side of paper. The button read "พิมพ์ F-HR-027 ทุกคน"
+until 2026-08-31, when the label was asked to name the document instead of the
+controlled-form code: the code is what the sheet is called in the filing
+cabinet, not what the person pressing the button calls what they are printing.
+Nothing else moved — the `title` on the button still reads *รวมใบ F-HR-027
+ของทุกคนในตารางไว้ในเอกสารเดียว*, the sheet itself is still stamped F-HR-027,
+and the per-row button in the table still says **พิมพ์ F-HR-027**.
+`components/PrintFormBatch.jsx` renders
 `F027Sheet` once per employee, each one fetched from
 `GET /api/reports/form/:period?employee=` exactly as the per-row button fetches
 it, so a page in the bundle and a page printed on its own are the same page.
@@ -3331,7 +3586,10 @@ it saves; they are drawn **shut only**, because open the list's own headings are
 those same words.
 
 **FIRST OF EVERYTHING ON THE PAGE** — above สถานะที่นับ, above ประจำเดือน and
-the search box, above พิมพ์ F-HR-027 ทุกคน and the two CSVs, above the list. (It
+the search box, above พิมพ์ใบขออนุมัติ OT ทุกคน and the two CSVs, above the
+list. (That button was called พิมพ์ F-HR-027 ทุกคน until 2026-08-31, which is
+the name it goes by in the three quoted orderings below; the position is what
+they are about and none of it moved. It
 read "above the ประจำเดือน box, above พิมพ์ F-HR-027 ทุกคน and the two CSVs,
 above the search box" until 2026-08-27, when ประจำเดือน moved down to join the
 search box, and "above สถานะที่นับ, above พิมพ์ F-HR-027 ทุกคน and the two CSVs,
@@ -3924,8 +4182,10 @@ scrolled past. **Twice reported as debris is the answer to whether it reads as a
 statement about the month.**
 
 **And the count is not lost with it**, which is what the old reasoning was
-protecting: the export button at the top of the screen says *พิมพ์ F-HR-027 ทุกคน
-(4 คน)*, every card is on screen when there is one page, and the line comes back
+protecting: the export button at the top of the screen says *พิมพ์ใบขออนุมัติ OT
+ทุกคน (4 คน)* (it read *พิมพ์ F-HR-027 ทุกคน (4 คน)* when this was decided on
+2026-08-28; the count is the half that matters here and it did not change),
+every card is on screen when there is one page, and the line comes back
 the moment there is a second — which is exactly when a reader cannot see the whole
 list. `pageCount` still has a floor of 1, so a month never says *หน้า 1 / 0*.
 What it costs is still the foot's shape: ≤5 people reads card · total, more than
@@ -4039,7 +4299,7 @@ The card reads top to bottom as a sentence now:
 |---|---|
 | ตรวจสอบรายเดือน + สถานะที่นับ | which statuses count |
 | ประจำเดือน + ค้นหา + *แสดง n จาก m คน* | which month, and which of it is drawn |
-| พิมพ์ F-HR-027 ทุกคน + the two CSVs | what to do with what the first two settled |
+| พิมพ์ใบขออนุมัติ OT ทุกคน + the two CSVs | what to do with what the first two settled |
 
 It read the other way round for the rest of that day — three export buttons,
 then งวด…ยังเปิดอยู่, and only then the box saying which month any of it is
@@ -5009,7 +5269,7 @@ whichever it is, it clears.
 **It is not a filter,** and nothing that is counted, exported or printed reads
 it — which was true of every version this screen has had, and is why each could
 be swapped for the next without a single figure moving. **รวมทั้งหมด** is the
-server's `grandTotal` for the whole month. **พิมพ์ F-HR-027 ทุกคน** bundles
+server's `grandTotal` for the whole month. **พิมพ์ใบขออนุมัติ OT ทุกคน** bundles
 every person the search matched, on this page or not. Both CSVs are built
 server-side and have never known what is on screen. A new month, a new
 สถานะที่นับ or a new search puts the page back to 1 — `query` and not `find`
@@ -5355,7 +5615,7 @@ over it, `components/AccountingView.jsx` and its tab in `components/App.jsx`,
 and the `company` handling in `app/api/employees/**` and the บริษัท column in
 `components/AdminView.jsx`.
 
-### สรุป OT ส่งบัญชี — the submission sheet
+### รายงาน OT ฝ่ายบัญชี — the submission sheet
 
 **HR and Admin only**, at `/api/reports/accounting/:period` with the matching
 `/api/exports/accounting.csv`. Both are built by `lib/accounting.js`, once: a
@@ -5659,7 +5919,7 @@ It is a different decision from `SPARE_ROWS` on the departmental sheet, which is
 ลำดับที่, so each one is a promise the sequence is still running. These are
 unnumbered paper.
 
-### และกล่องแนะนำบนตรวจสอบรายเดือน — กดชื่อแล้วเข้าไปแก้ไขได้เลย
+### และกล่องแนะนำบนตรวจสอบประจำเดือน — กดชื่อแล้วเข้าไปแก้ไขได้เลย
 
 The third caller of that box, added the same day, and the first where picking a
 suggestion does something other than move the page.
@@ -5748,7 +6008,7 @@ it and Enter opens the active person's month.
 
 ---
 
-## สรุป OT แยกแผนก — the departmental count
+## รายงาน OT แยกแผนก — the departmental count
 
 Its own tab for HR and Admin, beside สรุป OT ส่งบัญชี
 (`components/DepartmentView.jsx`, the sheet in `DepartmentPrint.jsx`, styles
@@ -5865,8 +6125,24 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1792/1792 pass in about 2 s**, measured 2026-08-31 across 107
-  files. **The newest seven are in `test/logPanelRows.test.js`**, over the four
+- `npm test` — **1814/1814 pass in about 2 s**, measured 2026-08-31 across 110
+  files. **The newest nine are in `test/proxyTeamSearch.test.js`**, over the
+  search box on บันทึก OT แทนลูกทีม — one of them is the stripper's own
+  self-test, which caught this file's first stripper eating `const shownTeam`
+  and would have let every ban in it pass against source it could not see.
+  Before them, eight in `test/roleNavTabs.test.js`, over the menu
+  now that it is built one block per role — which tab sits behind which gate,
+  in what order the gates open, and that the count badge names its colour once.
+  Before them, five in `test/logChartBars.test.js`, over
+  ปริมาณการใช้งานรายวัน on ภาพรวม of บันทึกระบบ — the fourteen-day chart that
+  drew a row of date ticks and nothing else. Every height in it is a
+  percentage, so the whole picture rested on `.log-chart` stretching its bars:
+  unstretched, each bar was as tall as its own date label. Two of the five pin
+  that, one pins the floor under คำสั่งแก้ไขข้อมูล — three writes among six
+  hundred requests rounds to 0% — and one pins that the floor cannot paint a
+  foot on a day where nothing was edited. It read "1792/1792 … across 107
+  files" until then.
+  **Before them the newest seven were in `test/logPanelRows.test.js`**, over the four
   counted lists on ภาพรวม of บันทึกระบบ, which now all open on the same number
   of rows. Two of the seven are the layout itself; the rest are the rule
   underneath it — one number for all four cards, no larger than the smallest

@@ -127,7 +127,7 @@ export const POST = route(async (req) => {
    */
   const existing = await OtEntry.exists({ employee: employee._id, workDate: session.workDate });
   if (existing) {
-    return fail('มีใบ OT ของพนักงานคนนี้ในวันดังกล่าวอยู่แล้ว — เปิดดูที่ตรวจสอบรายเดือน', 409);
+    return fail('มีใบ OT ของพนักงานคนนี้ในวันดังกล่าวอยู่แล้ว — เปิดดูที่ตรวจสอบประจำเดือน', 409);
   }
 
   /**

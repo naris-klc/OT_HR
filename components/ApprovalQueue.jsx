@@ -411,7 +411,7 @@ export default function ApprovalQueue({
         <div>
           <div className="t">
             {delegatedOnly ? 'รออนุมัติ · ทีมที่รับช่วง'
-              : isHr ? 'รอ HR ยืนยัน' : 'รอหัวหน้าอนุมัติ'}
+              : isHr ? 'รออนุมัติ OT' : 'รอหัวหน้าอนุมัติ'}
             {/* THE SAME COUNT AS THE CHIP BELOW, and only one of the two is ever
                 on screen — this one under 860px, the chip above it. Two
                 renderings rather than one moved, for the reason the chip's own
@@ -2150,7 +2150,7 @@ function QueueCleared({ cleared, isHr }) {
       <strong>เคลียร์คิวครบทุกรายการแล้ว</strong>
       <div className="hint" style={{ marginTop: 4 }}>
         {isHr
-          ? 'รายการที่ยืนยันไปแล้วอยู่ในตรวจสอบรายเดือนและรายงานส่งออก'
+          ? 'รายการที่ยืนยันไปแล้วอยู่ในตรวจสอบประจำเดือนและรายงานส่งออก'
           : 'รายการที่อนุมัติแล้วส่งต่อให้ฝ่ายบุคคลเรียบร้อย'}
       </div>
     </div>

@@ -570,7 +570,7 @@ export default function HrView({
       <div className="card month-head">
         <div className="row head-split">
           <div style={{ flex: 1 }}>
-            <h2>ตรวจสอบรายเดือน</h2>
+            <h2>ตรวจสอบประจำเดือน</h2>
             <div className="hint" style={{ margin: 0 }}>{periodLabel(period)}</div>
           </div>
           {/* ประจำเดือน USED TO SIT HERE, on this line beside สถานะที่นับ. It
@@ -810,7 +810,15 @@ export default function HrView({
             onClick={() => setPrinting({ employees: shown.map((r) => r.employee) })}
             title="รวมใบ F-HR-027 ของทุกคนในตารางไว้ในเอกสารเดียว หนึ่งคนต่อหนึ่งหน้า"
           >
-            พิมพ์ F-HR-027 ทุกคน
+            {/* THE LABEL NAMES THE DOCUMENT, NOT ITS FORM CODE — asked for on
+                2026-08-31. "F-HR-027" is what the controlled form is called in
+                the filing cabinet and on the sheet itself; it is not what
+                anybody standing at this screen calls the thing they are about
+                to print. The code did not go anywhere: the `title` above still
+                says รวมใบ F-HR-027 …, and the sheet that comes out is stamped
+                with it, so the one reader who needs the code to match a form in
+                a cabinet still finds it. */}
+            พิมพ์ใบขออนุมัติ OT ทุกคน
             {data?.employees?.length ? ` (${data.employees.length} คน)` : ''}
           </button>
           <button
@@ -820,7 +828,15 @@ export default function HrView({
               `OT-${period}.csv`,
             )}
           >
-            ส่งออกรายรายการ (CSV)
+            {/* THE PAIR SAYS WHAT IS IN THE FILE, not how finely it is cut.
+                "รายรายการ" / "สรุปรายเดือน" was a distinction between two
+                GRAINS of the same thing and read as one word split in half;
+                these two name the documents — one row per OT entry, one sheet
+                summarising the month. Renamed 2026-08-31 with the tab above
+                them. The endpoints and the downloaded filenames did not move:
+                `OT-2026-08.csv` and `OT-monthly-2026-08.csv` are what HR has
+                been filing all along. */}
+            ส่งออกรายการ OT (CSV)
           </button>
           <button
             className="btn ghost"
@@ -829,7 +845,7 @@ export default function HrView({
               `OT-monthly-${period}.csv`,
             )}
           >
-            ส่งออกสรุปรายเดือน (CSV)
+            ส่งออกรายงานสรุปประจำเดือน (CSV)
           </button>
           {/* THE UTF-8 BOM LINE IS GONE — 2026-08-27, and it is the same call
               สรุป OT ส่งบัญชี made for the same sentence: an encoding detail
@@ -1192,7 +1208,8 @@ export default function HrView({
 
                       AND THE COUNT IS NOT LOST WITH IT, which is what the old
                       reasoning was protecting. The export button at the top of
-                      this screen says "พิมพ์ F-HR-027 ทุกคน (4 คน)", and on a
+                      this screen says "พิมพ์ใบขออนุมัติ OT ทุกคน (4 คน)" (it
+                      read "พิมพ์ F-HR-027 ทุกคน (4 คน)" until 2026-08-31), and on a
                       month that fits, every card is on the screen to be counted.
                       The line comes back the moment there is a second page —
                       which is exactly when a reader cannot see the whole list

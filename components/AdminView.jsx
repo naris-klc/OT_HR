@@ -57,16 +57,19 @@ const SECTIONS = [
   // open. The pop-up on the row stays for the other question.
   { key: 'rosterAudit', label: 'ประวัติการแก้ทะเบียน' },
   /**
-   * The three strings on the paperwork. LAST, because it is the section
-   * somebody opens once a year — the tab strip is ordered by how often a tab is
-   * wanted, not by how important what is behind it feels.
+   * The document control number on the paperwork. LAST, because it is the
+   * section somebody opens once a year — the tab strip is ordered by how often
+   * a tab is wanted, not by how important what is behind it feels.
    *
-   * It had no screen at all until now and `PATCH /api/settings` was
-   * ผู้ดูแลระบบ-only, so correcting a company name meant an API call typed by
-   * hand. Both halves of that are fixed together, because either one alone
-   * leaves the value unchangeable in practice.
+   * It had no screen at all until 2026-08-24 and `PATCH /api/settings` was
+   * ผู้ดูแลระบบ-only, so correcting the number meant an API call typed by hand.
+   * Both halves of that were fixed together, because either one alone leaves
+   * the value unchangeable in practice.
+   *
+   * It was ชื่อบริษัทและฟอร์ม until 2026-08-31 and carried two company-name
+   * boxes as well; they are gone — see `DocumentCode` for why.
    */
-  { key: 'identity', label: 'ชื่อบริษัทและฟอร์ม' },
+  { key: 'docCode', label: 'รหัสเอกสาร OT' },
 ];
 
 /**
@@ -140,7 +143,7 @@ export default function AdminView({ user, initialSection }) {
       {section === 'policy' && <Policy user={user} />}
       {section === 'delegation' && <Delegation user={user} scope="all" />}
       {section === 'rosterAudit' && <RosterAudit />}
-      {section === 'identity' && <Identity />}
+      {section === 'docCode' && <DocumentCode />}
     </>
   );
 }
@@ -1763,7 +1766,7 @@ const IMPACT = {
       title: 'เปลี่ยนบริษัท — กระทบย้อนหลังทั้งหมด รวมเดือนที่ส่งบัญชีไปแล้ว',
       body: [
         `ย้ายจาก “${companyName(wasOn)}” ไป “${companyName(to)}”`,
-        'ใบ OT ไม่ได้เก็บบริษัทไว้ที่ใบ — สรุป OT ส่งบัญชี อ่านค่านี้จากทะเบียนตอนออกรายงาน',
+        'ใบ OT ไม่ได้เก็บบริษัทไว้ที่ใบ — รายงาน OT ฝ่ายบัญชี อ่านค่านี้จากทะเบียนตอนออกรายงาน',
         retroLine(wasOn, to, impact),
         'ถ้าเป็นการย้ายที่มีผลจากเดือนใดเดือนหนึ่งเป็นต้นไป ให้แจ้งบัญชีก่อนบันทึก',
       ],
@@ -1775,7 +1778,7 @@ const IMPACT = {
     body: [
       // Checked, and stated as a fact rather than a reassurance: the sheet is
       // built from entries and the roster filter only adds blank lines.
-      'ชั่วโมงที่อนุมัติแล้วไม่หายไปจากสรุป OT ส่งบัญชี '
+      'ชั่วโมงที่อนุมัติแล้วไม่หายไปจากรายงาน OT ฝ่ายบัญชี '
         + '— ชีตสร้างจากใบ OT ที่มีอยู่ ไม่ได้สร้างจากทะเบียน ตัวกรอง “เฉพาะพนักงาน” '
         + 'ใช้ตอนเติมแถวว่างของคนที่ไม่มี OT เท่านั้น · ใบที่ยังรออนุมัติก็ยังอนุมัติได้ตามปกติ',
       ...(to === 'employee'
@@ -1783,7 +1786,7 @@ const IMPACT = {
         : [
           'แต่ตั้งแต่นี้ไป คนนี้จะ “ยื่น OT ใหม่ไม่ได้” — หัวหน้างาน ฝ่ายบุคคล และผู้ดูแลระบบ '
             + 'ไม่อยู่ในข่ายขอ OT (§2)',
-          'และจะ “หลุดจากรายการตรวจวันเกิด” ทั้งในหน้าตรวจสอบรายเดือนและคิววันเกิดรอตรวจ '
+          'และจะ “หลุดจากรายการตรวจวันเกิด” ทั้งในหน้าตรวจสอบประจำเดือนและคิววันเกิดรอตรวจ '
             + '— วันเกิดของคนนี้จะไม่ถูกตรวจอีก',
         ]),
     ],
@@ -3895,19 +3898,18 @@ function TrailList({ records, depts, empty, withWho = false }) {
 }
 
 /**
- * ชื่อบริษัทและฟอร์ม — the three strings that are text on paperwork and nothing
- * else.
+ * รหัสเอกสาร OT — the one string on this screen that is printed anywhere.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY THIS SCREEN EXISTS AT ALL
  *
- * The three values have been in the Setting singleton since the first commit
- * and there has never been a control for any of them. `PATCH /api/settings` was
- * ผู้ดูแลระบบ-only, so the whole procedure for fixing a misspelled company name
- * was: open a terminal, write the JSON, send the request with the right cookie.
- * A field that can only be changed that way is a field that does not get
- * changed, and `formCode` is the one printed at the foot of every ใบ F-HR-027 —
- * the number the QMS register has to agree with when the form goes to Rev.5.
+ * `formCode` has been in the Setting singleton since the first commit and had
+ * no control for it. `PATCH /api/settings` was ผู้ดูแลระบบ-only, so the whole
+ * procedure for correcting the number was: open a terminal, write the JSON,
+ * send the request with the right cookie. A field that can only be changed that
+ * way is a field that does not get changed — and this is the number printed on
+ * every ใบ F-HR-027, the one the QMS register has to agree with when the form
+ * goes to Rev.5.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY IT IS FLAT AND HAS NO CONFIRMATION
@@ -3915,28 +3917,38 @@ function TrailList({ records, depts, empty, withWho = false }) {
  * Every other section on ตั้งค่าระบบ writes something an hour is computed from,
  * and each carries the apparatus that goes with that — a version record, a
  * ยืนยัน badge, a warning naming how many entries will move. None of it belongs
- * here. Nothing in this system reads these three strings to decide anything:
- * they are printed, and a value typed wrong is visible on the next sheet and
- * fixed by typing it again. Wrapping them in the same ceremony would teach
- * whoever reads it that the ceremony means nothing.
+ * here. Nothing in this system reads this string to decide anything: it is
+ * printed, and a value typed wrong is visible on the next sheet and fixed by
+ * typing it again. Wrapping it in the same ceremony would teach whoever reads
+ * it that the ceremony means nothing.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * EACH FIELD SAYS WHERE IT COMES OUT, AND TWO OF THEM SAY "NOWHERE YET"
+ * THE TWO COMPANY-NAME BOXES ARE GONE (2026-08-31)
  *
- * That is not a placeholder for a screen still to be built — it is the honest
- * state of the data. `formCode` is read by
+ * The section shipped with ชื่อบริษัท (ไทย) and (อังกฤษ) beside this box, each
+ * carrying a note saying in so many words that nothing prints the value. That
+ * was the honest label for a field read by nothing — `formCode` is read by
  * app/api/reports/form/[period]/route.js and printed by PrintForm; the two
- * company names are read by nothing. The sidebar footer and the browser tab
- * carry the company's name as literal text in the source, so editing the boxes
- * here will not move them. A box whose note says it changes the paperwork, and
- * does not, is worse than no box: it sends whoever typed in it looking for a
- * printer problem. Left as it is with the truth on the label, until somebody
- * decides whether a controlled form should print a name it does not print
- * today — which is a question about F-HR-027, not about this screen.
+ * names are read by no route, no report and no screen, because the sidebar
+ * footer and the browser tab carry the company's name as literal text in the
+ * source. Asked for on 2026-08-31: a box that says it does nothing is still a
+ * box, and three of them under one heading make the section look like a company
+ * profile it is not.
+ *
+ * The VALUES are untouched — they stay in the Setting singleton and
+ * `PATCH /api/settings` still accepts all three names, so nothing was migrated
+ * away and putting the boxes back is undoing one commit. What is gone is only
+ * the UI for editing something no printed sheet reads. If a controlled form is
+ * ever asked to print the company name, that is a question about F-HR-027 and
+ * the boxes come back with a note that is finally true.
  */
-function Identity() {
+function DocumentCode() {
+  // `before` is what the server has and is what `dirty` is measured against, so
+  // a save that succeeds moves the baseline and the button goes quiet again
+  // without a reload. `null` is "not loaded yet" — an empty string is a real,
+  // and invalid, value.
   const [before, setBefore] = useState(null);
-  const [form, setForm] = useState(null);
+  const [formCode, setFormCode] = useState('');
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
@@ -3944,48 +3956,39 @@ function Identity() {
   useEffect(() => {
     api.get('/settings')
       .then((res) => {
-        // Two copies deliberately: `before` is what the server has and is what
-        // `dirty` is measured against, so a save that succeeds moves the
-        // baseline and the button goes quiet again without a reload.
-        const values = {
-          companyName: res.settings?.companyName || '',
-          companyNameEn: res.settings?.companyNameEn || '',
-          formCode: res.settings?.formCode || '',
-        };
-        setBefore(values);
-        setForm(values);
+        const value = res.settings?.formCode || '';
+        setBefore(value);
+        setFormCode(value);
       })
       .catch((err) => setError(err.message));
   }, []);
 
-  if (!form) {
+  if (before == null) {
     return (
       <div className="card">
-        <h2>ชื่อบริษัทและรหัสฟอร์ม</h2>
+        <h2>รหัสเอกสาร OT</h2>
         {error ? <Alert kind="error">{error}</Alert> : <Empty>กำลังโหลด…</Empty>}
       </div>
     );
   }
 
-  const set = (patch) => { setForm((f) => ({ ...f, ...patch })); setOk(''); };
-  const dirty = Object.keys(before).some((k) => form[k].trim() !== before[k]);
-  // `formCode` is the one the server would happily store as an empty string —
-  // `!= null` accepts ''. An empty form code prints as a blank at the foot of
-  // F-HR-027, which is a controlled document with a missing control number.
-  const ready = dirty && form.formCode.trim() && form.companyName.trim();
+  const dirty = formCode.trim() !== before;
+  // The server would happily store an empty string — `!= null` accepts ''. An
+  // empty form code prints as a blank at the foot of F-HR-027, which is a
+  // controlled document with a missing control number.
+  const ready = dirty && Boolean(formCode.trim());
 
   async function save() {
     setError('');
     setBusy(true);
     try {
-      const values = {
-        companyName: form.companyName.trim(),
-        companyNameEn: form.companyNameEn.trim(),
-        formCode: form.formCode.trim(),
-      };
-      await api.patch('/settings', values);
-      setBefore(values);
-      setForm(values);
+      const value = formCode.trim();
+      // Only `formCode` goes up. The handler patches whatever it is given, so
+      // sending the names back unchanged would write them for no reason and put
+      // this screen in the audit trail of a value it no longer edits.
+      await api.patch('/settings', { formCode: value });
+      setBefore(value);
+      setFormCode(value);
       setOk('บันทึกแล้ว — ใบ F-HR-027 ที่พิมพ์หลังจากนี้จะใช้ค่าใหม่');
     } catch (err) {
       setError(err.message);
@@ -3996,65 +3999,42 @@ function Identity() {
 
   return (
     <div className="card">
-      <h2>ชื่อบริษัทและรหัสฟอร์ม</h2>
-      <div className="hint">
-        ข้อความบนหัวและท้ายกระดาษเท่านั้น — ไม่มีชั่วโมง เพดาน หรืออัตราใดอ่านค่าเหล่านี้
-        จึงไม่ต้องคำนวณใบเก่าใหม่ และแก้ผิดก็แก้กลับได้ทันที
-      </div>
+      <h2>รหัสเอกสาร OT</h2>
       {error && <Alert kind="error">{error}</Alert>}
       {ok && <Alert kind="ok">{ok}</Alert>}
 
-      <div className="form-grid">
-        <Field
-          label="รหัสฟอร์ม"
-          note="พิมพ์อยู่มุมล่างของใบ F-HR-027 ทุกใบ · เปลี่ยนเมื่อฟอร์มขึ้น Rev. ใหม่ — ต้องตรงกับทะเบียนเอกสาร"
-        >
-          <input
-            value={form.formCode}
-            placeholder="F-HR-027 Rev.4"
-            onChange={(e) => set({ formCode: e.target.value })}
-          />
-          {!form.formCode.trim() && (
-            <div className="field-note error">รหัสฟอร์มว่างไม่ได้ — ใบที่พิมพ์ออกมาจะไม่มีเลขที่เอกสาร</div>
-          )}
-        </Field>
+      {/* No `.form-grid` here on purpose: one field in a two-column grid leaves
+          half a row of nothing beside it, and the box itself holds fourteen
+          characters. Capped at 320 so the input is the width of what goes in
+          it — the same reason `.field.time` is 130.
 
-        {/* The two below carry the same note on purpose. It is one fact about
-            both of them and saying it once per field is how each box answers
-            the question its own reader is asking — "will typing here change
-            what I just printed". */}
-        <Field
-          label="ชื่อบริษัท (ไทย)"
-          note="เก็บไว้ในระบบ แต่ยังไม่มีหน้าจอหรือแบบฟอร์มใดพิมพ์ค่านี้ออกมา — ชื่อบนแถบข้างและบนแท็บเบราว์เซอร์เป็นข้อความตายตัวในโค้ด"
-        >
-          <input
-            value={form.companyName}
-            placeholder="บริษัท ไพรมัส อินสตรูเมนท์ จำกัด"
-            onChange={(e) => set({ companyName: e.target.value })}
-          />
-          {!form.companyName.trim() && (
-            <div className="field-note error">ชื่อบริษัทว่างไม่ได้</div>
-          )}
-        </Field>
+          The cap is a desktop cap and only a desktop cap: below 860px the
+          stylesheet gives every `.field` `min-width: 100%`, and a min-width
+          beats a max-width, so the box goes full-bleed on a phone. That is the
+          right answer there — 320 of a 334px card is a margin nobody asked for
+          — which is why it is left alone rather than overridden the way
+          `.field.time` overrides it. */}
+      <Field
+        style={{ maxWidth: 320, marginTop: 10 }}
+        label="รหัสฟอร์ม"
+        note="รหัสเอกสารสำหรับแสดงบนหัว/ท้ายกระดาษของ ใบขออนุมัติทำงานล่วงเวลา (F-HR-027)"
+      >
+        <input
+          value={formCode}
+          placeholder="F-HR-027 Rev.4"
+          onChange={(e) => { setFormCode(e.target.value); setOk(''); }}
+        />
+        {!formCode.trim() && (
+          <div className="field-note error">รหัสฟอร์มว่างไม่ได้ — ใบที่พิมพ์ออกมาจะไม่มีเลขที่เอกสาร</div>
+        )}
+      </Field>
 
-        <Field
-          label="ชื่อบริษัท (อังกฤษ)"
-          note="เก็บไว้ในระบบเช่นกัน และยังไม่มีที่ใดพิมพ์ออกมา · เว้นว่างได้"
-        >
-          <input
-            value={form.companyNameEn}
-            placeholder="Primus Instrument Co., Ltd."
-            onChange={(e) => set({ companyNameEn: e.target.value })}
-          />
-        </Field>
-      </div>
-
-      <div className="row" style={{ marginTop: 14 }}>
+      <div className="row" style={{ marginTop: 12 }}>
         <button className="btn" disabled={!ready || busy} onClick={save}>
           {busy ? 'กำลังบันทึก…' : 'บันทึก'}
         </button>
         {dirty && !busy && (
-          <button className="btn ghost" onClick={() => { setForm(before); setError(''); }}>
+          <button className="btn ghost" onClick={() => { setFormCode(before); setError(''); }}>
             ยกเลิกการแก้ไข
           </button>
         )}
@@ -4962,7 +4942,7 @@ const POLICY_FIELDS = [
     ],
     hint: 'เปิดแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ '
       + '· วันเกิดที่ตรงเสาร์–อาทิตย์หรือวันหยุดบริษัทอยู่แล้ว ไม่มีผลเพิ่ม '
-      + '· พนักงานที่ยังไม่มีวันเกิดในระบบจะขึ้นเตือนในหน้าตรวจสอบรายเดือน',
+      + '· พนักงานที่ยังไม่มีวันเกิดในระบบจะขึ้นเตือนในหน้าตรวจสอบประจำเดือน',
   },
   {
     section: 3,
@@ -5050,7 +5030,7 @@ const POLICY_FIELDS = [
      */
     options: [
       ['approved', 'เฉพาะรายการที่อนุมัติแล้ว (ค่าเริ่มต้น)'],
-      ['screen', 'ตาม “สถานะที่นับ” ที่เลือกบนหน้าตรวจสอบรายเดือน'],
+      ['screen', 'ตาม “สถานะที่นับ” ที่เลือกบนหน้าตรวจสอบประจำเดือน'],
       ['draft', 'รวมรายการที่รออนุมัติด้วยเสมอ (ใบร่างไว้ตรวจ)'],
     ],
     /**
