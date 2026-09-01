@@ -90,3 +90,65 @@ test('การเอากรอบออกไม่เคยถูกเข�
   assert.deepEqual(blanket.map((r) => r.sel), [],
     'มีกฎที่ลบกรอบ focus แบบเหมารวม ไม่ได้เจาะจงปุ่มใดปุ่มหนึ่ง');
 });
+
+/**
+ * ── THE THIRD ONE, AND IT WAS A TEXT-BOX RULE ON A TICK BOX ─────────────────
+ *
+ * Reported 2026-08-31 on บันทึก OT แทนลูกทีม as a square around the checkbox
+ * when you pick somebody and a plate behind it — which reads like the same
+ * complaint the two tests above answer, and is not. Nothing here draws an
+ * outline. `.field input` is the app's TEXT box, a checkbox is an `input`, and
+ * every tick list in this app sits inside a `.field`.
+ *
+ * MEASURED ON THE BUILT APP BEFORE THE FIX, at 420px on ธีมมืด: the box came
+ * out 17 × 46 — 17 wide from its own rule and 46 tall because `min-height:
+ * var(--field-h)` beats a 17px `height` — filled with `var(--field-bg)`; and a
+ * press added `box-shadow: 0 0 0 3px var(--focus-ring)` that stayed after the
+ * pointer left, because that rule is `:focus` and not `:focus-visible`.
+ *
+ * AND IT HAD KILLED THE KEYBOARD'S RING, which is the half nobody reports:
+ * `outline: none` is right for a text box whose ring is a box-shadow, so
+ * Tabbing onto a checkbox matched `:focus-visible`, computed the 2px offset,
+ * and drew nothing. Measured after the fix, a real Tab gives
+ * `outline: 2px solid rgb(46, 119, 71)` — `--green`, from the base rule.
+ */
+test('กฎของกล่องข้อความไม่เอื้อมไปถึง checkbox กับ radio', () => {
+  /**
+   * Every `.field input` rule that PAINTS A BOX has to carry the exclusion —
+   * the base rule, its `:focus` and its `:disabled` were the three that did
+   * not, and each of them alone is enough to put the plate or the halo back.
+   *
+   * A rule is exempt when its own selector cannot reach a tick box anyway:
+   * `:out-of-range` needs a range and `.invalid` is a class no checkbox wears.
+   * Listing them by hand would rot; asking whether the selector already
+   * narrows itself does not.
+   */
+  const PAINTS = /(min-height|padding|background|border|box-shadow|width):/;
+  const reach = rules.filter((r) => /(^|,)\s*\.field input(?![-\w])/.test(r.sel)
+    // …not the one rule written FOR tick boxes.
+    && !/:is\(\[type='checkbox'\]/.test(r.sel)
+    // …and not one that already cannot match a checkbox.
+    && !/:out-of-range|\.invalid/.test(r.sel)
+    && PAINTS.test(r.body));
+  assert.ok(reach.length >= 3, `พบกฎ .field input ที่วาดกล่องเพียง ${reach.length} ข้อ`);
+  for (const r of reach) {
+    assert.match(
+      r.sel,
+      /\.field input:not\(:where\(\[type='checkbox'\], \[type='radio'\]\)\)/,
+      `กฎนี้ยังเอื้อมถึง checkbox: ${r.sel.replace(/\s+/g, ' ').trim()}`,
+    );
+  }
+});
+
+test('ช่องติ๊กยังได้สีเขียวของธีม และไม่ได้มาจากกฎกล่องข้อความ', () => {
+  // `accent-color` is what paints the tick itself, and it is the theme's
+  // `--green` — not a hard-coded emerald, and not something the text-box rule
+  // was ever providing.
+  assert.match(css, /\.check input \{[^}]*accent-color: var\(--green\);/);
+  // The one thing the disabled rule WAS right about is the cursor, and it is
+  // the half a reader would not think to put back after the exclusion.
+  assert.match(
+    css,
+    /\.field input:is\(\[type='checkbox'\], \[type='radio'\]\):disabled \{ cursor: not-allowed; \}/,
+  );
+});
