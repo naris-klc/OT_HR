@@ -2092,9 +2092,77 @@ td > .approver-line { margin-top: 5px; }
   background: var(--card);
   overscroll-behavior-y: contain;
 }
+/* ── THE SCROLLBAR BELONGS TO THIS BOX, NOT TO THE PAGE ─────────────────────
+
+   The app has ONE scrollbar rule (`::-webkit-scrollbar-thumb`, at the top of
+   this file) and it is written for a bar running down the PAGE: a 10px track
+   with the thumb inset by a `border: 3px solid var(--bg)`, which is what makes
+   it read as a slim pill floating on the page's own ground rather than as a
+   groove. That border is a colour, not a transparency — so inside a container
+   whose fill is `--card` it drew three pixels of the PAGE colour down the
+   inside edge of the box, a dark stripe against the card on ธีมมืด and a light
+   one on the light theme. The bar was in the box; it did not look as though it
+   belonged to it.
+
+   ONLY THE COLOUR IS RESTATED. The width, the radius and the 3px inset are the
+   app's and stay the app's — a second geometry here is a second scrollbar for a
+   reader to learn. `transparent` rather than `var(--card)` so the one value
+   follows the box even if this container is ever put on a different fill.
+
+   `scrollbar-width`/`scrollbar-color` is the same bar for Firefox, which draws
+   none of the `::-webkit-` rules and would otherwise show its own. `thin` is
+   the nearest thing it offers to the 4px pill the inset leaves behind. */
+.pick-list { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+.pick-list::-webkit-scrollbar { width: 10px; }
+.pick-list::-webkit-scrollbar-track { background: transparent; }
+.pick-list::-webkit-scrollbar-thumb { border-color: transparent; }
+
 .pick-list .check { padding: 9px 12px; }
 .pick-list .check + .check { border-top: 1px solid var(--line-softer); }
 .pick-list .check:hover { background: var(--neutral-wash); }
+/* ── A TICKED ROW, AND IT HAS TO BE READABLE AT A GLANCE ────────────────────
+
+   A 17px checkbox at the left edge is the only thing that distinguished the
+   people who are about to have a request filed for them from the people who are
+   not — down a list where every row is the same height and the same colour, on
+   a phone, with a thumb over the left column. Asked for on 2026-09-01 as a
+   green translucent highlight around the chosen row.
+
+   `--green-bg` UNDER `--green-accent` MIXED DOWN — the pair `.announce` already
+   uses, and for the same reason its note gives: `--green-accent` is the one
+   green that stays saturated on both sides of the theme, and at full strength a
+   ring in it is louder than anything else on a form whose subject is the times
+   below. 45% is unmistakably a green edge and still quieter than the button.
+   No new token: this is the app's green wash, which HR already reads as "this
+   one" in ค้นหาพนักงาน and in the queue's dropdown.
+
+   AN INSET RING RATHER THAN A BORDER, because a border on a row inside a
+   bordered box either moves the text by a pixel when it appears or has to be
+   there in transparent the rest of the time. `inset` paints inside the row's own
+   edges, so nothing reflows and the ring closes on all four sides — which is
+   what "ล้อมรอบ" asks for and what a left bar (`.dept-menu`'s `data-active`)
+   deliberately does not do.
+
+   AND THE SEPARATORS ON BOTH SIDES OF IT GO. `.check + .check` draws a hairline
+   between neighbours; left alone, a grey line runs immediately under the ring's
+   own green one at the bottom edge and immediately over it at the top, which is
+   two edges where the eye is being shown one.
+
+   `:has()` AND NOT A CLASS FROM THE COMPONENT. The state is already in the DOM
+   — the checkbox's own `:checked` — and a `className` computed from `targets`
+   would be a second copy of it that a future edit can leave behind. This sheet
+   already leans on `:has()` in the phone block for exactly this kind of thing. */
+.pick-list .check:has(input:checked) {
+  background: var(--green-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green-accent) 45%, transparent);
+  border-top-color: transparent;
+}
+.pick-list .check:has(input:checked) + .check { border-top-color: transparent; }
+/* Hover on a row that is ALREADY ticked must not read as "not ticked".
+   `.pick-list .check:hover` is `--neutral-wash` and one class less specific
+   than the rule above, so it loses on `background` — but only by specificity,
+   which is the kind of win that survives until somebody adds a class. Stated. */
+.pick-list .check:has(input:checked):hover { background: var(--green-bg); }
 
 /* ══ แผนกที่คุม — a searchable multi-select ═══════════════════════════════════
 
@@ -2867,6 +2935,18 @@ td > .approver-line { margin-top: 5px; }
    `align-items` inert — but the next rule that needs to would have had to
    rewrite the JSX to get at it. */
 .head-split { align-items: baseline; }
+/* สถานะที่นับ — the field beside ตรวจสอบประจำเดือน's heading, and 220px is the
+   number it carried as an inline `maxWidth` from the day it was a `<select>`.
+   It became a class on 2026-09-01 with the control itself: `PickOne` renders
+   its own `.field`, so there is no longer a `<div>` in components/HrView.jsx to
+   hang a style on — and the rule the paragraph above wanted is exactly this
+   one, a width that the 860px block could reach if it ever had to.
+
+   IT IS NOT REACHED THERE TODAY, and that is unchanged behaviour rather than an
+   omission: below 860px `.field` takes `min-width: 100%`, and `min-width` beats
+   `max-width` in the cascade whichever way round they are written — so the box
+   ran the full width of the stacked card under the inline style too. */
+.head-split .status-pick { max-width: 220px; }
 /* ประจำเดือน JOINED THIS ROW ON 2026-08-27, from the card above it.
    A fixed basis and not `.field`'s `flex: 1`, which is a basis of nothing: two
    fields both grasping at nothing split the line in half, and half a line is
@@ -3762,6 +3842,19 @@ td > .approver-line { margin-top: 5px; }
    which speaks for the whole card. */
 .field-note { font: 400 12.5px/1.4 var(--sans); color: var(--muted); }
 .field-note.error { color: var(--danger-ink); }
+/* `.field-note.rule-note` STOOD HERE FOR PART OF 2026-09-01 and is deleted
+   rather than left, because a class nothing wears is a rule the next person has
+   to check before touching anything near it.
+
+   It was a third voice under a box — quieter than `.field-note`, with a small
+   calendar glyph — written for the sentence naming the date range under
+   วันที่เริ่ม on บันทึก OT. That sentence was withdrawn the same day (see the
+   note where it was drawn, in components/OtForm.jsx) and this went with it.
+
+   WHAT THE ROUND LEFT BEHIND IS A FINDING, not a class: `--muted-2` is already
+   the app's helper voice — it is `.hint`'s colour — so a note that wants to be
+   quieter than `.field-note` has somewhere to go without a fourth grey being
+   invented. Written down here so the next one starts from it. */
 
 /* The label, and the (?) that carries the sentence explaining the field.
    `min-height` so a field with no (?) reserves the same first row as one that

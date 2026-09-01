@@ -129,6 +129,59 @@ test('.one-menu ไม่ทาสีแผงใหม่ — ผิวแล�
   assert.match(css, /\.pick-menu li \{ min-height: 44px; \}/);
 });
 
+/**
+ * THE PANEL IS EXACTLY AS WIDE AS ITS BOX, AND IT IS TWO LINES THAT SAY SO.
+ *
+ * Asked for on 2026-09-01 as "กำหนดความกว้างไม่ให้กว้างเกินขอบ container หรือ
+ * หน้าจอมือถือ · จัดตำแหน่งให้ลอยพอดีอยู่ใต้ช่องกด ไม่ยื่นล้นออกไปทางขวา" —
+ * which is what a native `<select>`'s list could not promise, because that list
+ * is an OS overlay sized to its longest option and free to be put anywhere on
+ * the screen, this page's container and viewport included.
+ *
+ * IT IS NOT A WIDTH, AND THAT IS THE POINT. `.pick-menu` is `position: absolute`
+ * with BOTH `left: 0` and `right: 0` inside `.pick-one-wrap`, which is the
+ * `position: relative` the offsets resolve against. Pinned to both edges of the
+ * box's own wrapper, the panel cannot be a different width from the box and
+ * cannot stick out past it in either direction — there is no number to keep in
+ * step and no breakpoint at which it could disagree. A `width` or a
+ * `min-width: 220px` would be that number, which is why the block above bans
+ * `.one-menu` from restating the panel's size at all.
+ *
+ * THE THREE WAYS TO BREAK IT are `right` dropped from `.pick-menu` (the panel
+ * then takes its content's width and a long Thai row runs out to the right),
+ * `position: relative` dropped from `.pick-one-wrap` (the offsets then resolve
+ * against whatever ancestor is positioned, which on ตรวจสอบรายเดือน is the
+ * page), and a width restated on `.one-menu`. All three are held here.
+ *
+ * MEASURED ON THE BUILT APP at 1280, 1440, 360 and 320, ธีมมืด: the panel's left
+ * and right edges are 0.00px from the box's at every one of them, it sits 4px
+ * under it, and `document.scrollWidth` equals the viewport in all four — no
+ * sideways scroll anywhere. At 320px with ทั้งหมดที่ยังไม่ถูกปฏิเสธ selected —
+ * the longest of the three labels — the box is 270px, the panel is 270px, and
+ * the rows do not wrap.
+ */
+test('แผงกว้างเท่ากล่องพอดี ไม่ล้นออกขวา — ตรึงทั้งสองขอบ ไม่ใช่กำหนดความกว้าง', () => {
+  const rule = css.slice(css.indexOf('.pick-menu {'), css.indexOf('}', css.indexOf('.pick-menu {')));
+  assert.match(rule, /position: absolute;/, '.pick-menu ไม่ได้ลอย — แผงจะดันเนื้อหาใต้กล่องแทนที่จะทับ');
+  assert.match(rule, /left: 0; right: 0;/, '.pick-menu ไม่ได้ตรึงสองขอบ — แผงจะกว้างตามข้อความและล้นออกขวา');
+  assert.match(rule, /top: calc\(100% \+ 4px\)/, 'แผงไม่ได้ลอยอยู่ใต้กล่องพอดี');
+
+  // The containing block those offsets resolve against. Without it they reach
+  // past `.field` to whatever ancestor is positioned, and the panel is then the
+  // width of the page.
+  assert.match(css, /\.pick-one-wrap \{ position: relative; \}/,
+    'กล่องไม่มี containing block — left/right ของแผงจะไปอ้างอิงบรรพบุรุษตัวอื่น');
+
+  // And no rule anywhere may hand the panel a width of its own, which is the
+  // one thing that could put its edges somewhere other than the box's.
+  for (const s of selectors.filter((x) => x.includes('one-menu') && !/\bli\b/.test(x))) {
+    const own = css.slice(css.indexOf(`${s} {`), css.indexOf('}', css.indexOf(`${s} {`)));
+    for (const prop of ['width:', 'min-width:', 'max-width:', 'left:', 'right:']) {
+      assert.ok(!own.includes(prop), `${s} ประกาศ ${prop} เอง — ความกว้างของแผงต้องมาจากกล่องเท่านั้น`);
+    }
+  }
+});
+
 test('แผงต้องอยู่เหนือแถบ เลือกทั้งหมด ของมือถือ และยังอยู่ใต้แถบนำทาง', () => {
   /**
    * MEASURED ON THE BUILT APP AT 360×780, and it is why this rule exists at
@@ -335,7 +388,45 @@ test('ดัชนีแถวถูกหนีบไว้ในช่วง �
 test('ทุกแผนก / ทุกเดือน เป็นแถวแรกเสมอ และเป็นค่าว่าง', () => {
   // It is a command — "stop filtering" — not a department, so it is never
   // filtered out and ↑ from the top reaches it in one press.
-  assert.match(source, /const rows = \[\{ value: '', label: allLabel \}, \.\.\.\(options \|\| \[\]\)\];/);
+  assert.match(source, /const rows = hasAll \? \[\{ value: '', label: allLabel \}, \.\.\.\(options \|\| \[\]\)\]/);
   assert.match(source, /className=\{r\.value === '' \? 'all' : undefined\}/);
   assert.match(css, /\.pick-menu\.one-menu li\.all \.nm \{/);
+});
+
+/**
+ * A CALLER WITH NO "STOP FILTERING" SETTING — added 2026-09-01 with สถานะที่นับ
+ * on ตรวจสอบรายเดือน, which is the third `<select>` this component has replaced
+ * and the first whose list is not a filter with an off position.
+ *
+ * The row `allLabel` names carries `''`, and `''` has to be a value the caller
+ * can hold for that row to mean anything. แผนก and เดือน on รายการรออนุมัติ can:
+ * empty is "every department", "every month". สถานะที่นับ cannot — its widest
+ * setting is ทั้งหมดที่ยังไม่ถูกปฏิเสธ, which is a real value naming three
+ * statuses, and a fourth row above it carrying `''` would be a สถานะที่นับ the
+ * screen has no reading for.
+ *
+ * SO `allLabel` IS OPTIONAL, and the two things that counted rows against a
+ * literal `1` are what this holds down: `hasAll` decides whether the empty
+ * notice is drawn, or a one-option list with no "all" row prints ไม่มีตัวเลือก
+ * under the option it is showing.
+ */
+test('ลิสต์ที่ไม่มีแถว "ทั้งหมด" — ไม่ใส่ allLabel แล้วแถวว่างต้องไม่โผล่', () => {
+  assert.match(source, /const hasAll = allLabel != null;/);
+  assert.match(source, /rows\.length === \(hasAll \? 1 : 0\) && <li className="none"/);
+
+  // AND THE CALLER, so the option that exercises it cannot quietly go away.
+  // สถานะที่นับ hands three rows and no `allLabel`; the values are the route's
+  // own and are pinned in test/queueCapUsage.test.js, not here.
+  //
+  // STRIPPED FIRST, for the reason the block over `strip` gives: the paragraph
+  // in HrView.jsx explaining why there is no `<select>` on that screen quotes
+  // the tag, and a ban read against the prose passes on the strength of the
+  // sentence that says the code is gone.
+  const hrCode = strip(read('components/HrView.jsx'));
+  const at = hrCode.indexOf('<PickOne');
+  assert.ok(at > 0, 'สถานะที่นับ ไม่ใช่ PickOne แล้ว');
+  const call = hrCode.slice(at, at + 300);
+  assert.ok(call.includes('options={STATUS_FILTERS}'), 'สถานะที่นับ ไม่ได้ส่ง STATUS_FILTERS แล้ว');
+  assert.ok(!call.includes('allLabel'), 'สถานะที่นับ มีแถว "ทั้งหมด" ที่หน้าจอถือค่าไม่ได้');
+  assert.ok(!/<select\b/.test(hrCode), 'ตรวจสอบรายเดือน ยังมี <select> อยู่ — เมนูของ OS จะกลับมา');
 });

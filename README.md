@@ -1260,9 +1260,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1887 tests
+and the engine know nothing about Next.js, so the whole suite — **1891 tests
 across 114 files**, measured 2026-09-01 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -2592,40 +2592,59 @@ would land on the wrong person's month, the wrong department's cap and the
 wrong F-HR-027 — and every figure on every report would still agree with every
 other one.
 
-### ค้นหาเหนือรายชื่อ, and the one thing it must never do
+### กล่องเลือกลูกทีม — and the ค้นหา box that used to sit over it
 
-Added 2026-08-31 above the ticked name list, drawn only when there is more than
-one name — the same gate เลือกทั้งหมด already used, rather than a second
-threshold nobody can remember. It is **the app's search box, not a third
-grammar**: `.searchbox` with the `search` glyph at the left and a ✕ at the
-right, the same control ตรวจสอบประจำเดือน and ทะเบียนพนักงาน draw, down to the
-placeholder — *ค้นหาชื่อ หรือ รหัสพนักงาน…*. Not a `combobox`, though: the other
-two open a list of suggestions to pick from, and this one narrows the list that
-is already on screen, so borrowing the role would promise a popup that never
-comes. **No colour is written for it.** `.field input` is every box in this app
-and follows the theme, which is what keeps it dark on ธีมมืด and exactly level
-with the controls around it.
+**The search box came out on 2026-09-01**, asked for as making the picker
+compact. What settles it is the size of the thing being searched: `team` is the
+non-manager staff of **one** แผนก, and this roster's largest is ENG at four
+people (WH is two). A box over four names is furniture on a form that already
+has plenty.
 
-**The rule is [`lib/personSearch.js`](lib/personSearch.js) — a fourth caller,
-not a fourth copy.** `includes()` on the line shown fails on the first thing
-anybody types here: half this roster is written PM-0412 and half PM00511, both
-current, and a หัวหน้า reading a code off a printed sheet types whichever they
-see. The same module matches a Thai name with its space and without it, and
-lets *0388 ธนพล* and *ธนพล 0388* both work.
+**What the picker is now**, top to bottom:
 
-**And it must never lose a tick.** `teamFind` and `targets` are two separate
-pieces of state: narrowing changes which names are DRAWN and never writes to
-the selection. There are three ways that promise could have been broken and all
-three are held by [`test/proxyTeamSearch.test.js`](test/proxyTeamSearch.test.js):
-filtering `targets` itself; **เลือกทั้งหมด replacing** the selection with what is
-on screen, which turns two ticks plus a search for a third into one; and
-**เลือกทั้งหมด reaching past the filter**, which under a query showing three of
-twelve would file nine people nobody had looked at. It is a union over the
-shown list now. ล้างที่เลือก is deliberately *not* narrowed — its label says
-"ที่เลือก", and a clear that left ticks on hidden names is one word meaning two
-things on one screen. A line under the list says which ticks a query is hiding,
-because *เลือกแล้ว 2 คน* over a list showing none ticked is the screen arguing
-with itself.
+- **`บันทึกแทนพนักงาน * (เลือกแล้ว X คน)`** — and the parenthetical is drawn at
+  nought too, which it was not before. This label is the only place on the
+  screen that says how many people a press of บันทึก is about to file for, and a
+  counter absent at 0 is one a reader has to notice ARRIVING to know it exists.
+  It also stops the line reflowing as the first tick lands, which on a phone
+  moved the `*` somebody was looking at.
+- **`.pick-list`** — a scroll box, `max-height: 210px`, with the app's own
+  scrollbar **recoloured to belong to it**. The single `::-webkit-scrollbar-thumb`
+  rule at the top of the stylesheet is written for a bar running down the PAGE:
+  a 10px track with the thumb inset by `border: 3px solid var(--bg)`. That
+  border is a colour, not a transparency, so inside a `--card` container it drew
+  three pixels of the page's ground down the inside edge. Only the colour is
+  restated here — the width, the radius and the 3px inset stay the app's, and
+  `scrollbar-width`/`scrollbar-color` says the same thing to Firefox.
+- **A ticked row carries the highlight**, `--green-bg` under `--green-accent`
+  mixed to 45% — the pair `.announce` already uses, not a new colour. An INSET
+  ring rather than a border, so nothing reflows when a row is ticked and the
+  edge closes on all four sides; the hairlines on both sides of it drop out, or
+  a grey line runs immediately under the green one. It is `:has(input:checked)`
+  and not a class computed from `targets`: the state is already in the DOM, and
+  a second copy of it is what a future edit leaves behind.
+- **เลือกทั้งหมด is still a union, not a replace** — with nothing narrowing the
+  list the two compute the same array today, and the union is kept because it is
+  idempotent (a duplicate id is a second request filed for the same person) and
+  because the day this list is narrowed again by anything, a replace is a bug.
+
+**What the box was for, kept because the reasoning outlives it.** The one
+promise it existed to keep was that narrowing must never lose a tick: `teamFind`
+and `targets` were two separate pieces of state, so narrowing changed which
+names were DRAWN and never wrote to the selection. Three ways that could break
+were held by [`test/proxyTeamSearch.test.js`](test/proxyTeamSearch.test.js) —
+filtering `targets` itself; **เลือกทั้งหมด replacing** the selection with what
+was on screen; and **เลือกทั้งหมด reaching past the filter**. A line under the
+list named the ticks a query was hiding, because *เลือกแล้ว 2 คน* over a list
+showing none ticked is the screen arguing with itself. **All three are
+unreachable with nothing to narrow** — the list IS the team — which is a
+stronger guarantee than the three assertions were, and that file holds the bans
+that say none of the machinery grew back.
+
+The matcher it used, [`lib/personSearch.js`](lib/personSearch.js), is untouched
+and still has three callers; this screen was the fourth. `ClearButton`,
+`Highlight`, `Icon` and `searchPeople` left `components/OtForm.jsx` with the
+box — a dead import compiles clean and would go on being bundled for nobody.
 
 ### The plate behind the tick box — a text-box rule on a checkbox
 
@@ -2666,19 +2685,24 @@ mouse click leaves **no outline and no shadow** once the pointer moves off; and
 a real Tab gives `outline: 2px solid rgb(46, 119, 71)` — `--green`, back from
 having drawn nothing at all.
 
-**One trap only the walk found.** `.check` is a flex row with a 9px gap, and
-`{p.name} · {p.code}` survived it because adjacent text collapses into a single
-anonymous flex item. `Highlight` returns real `<mark>` elements the moment a
-query matches — which become flex items of their own and pull the name, the `·`
-and the code 9px apart, while typing, on every row that matched. One `<span>`
-around the three puts them back in one box.
+**One trap only the walk found, and the `<span>` it bought is still there.**
+`.check` is a flex row with a 9px gap, and `{p.name} · {p.code}` survives it
+because adjacent text collapses into a single anonymous flex item. `Highlight`
+returned real `<mark>` elements the moment a query matched — which become flex
+items of their own and pull the name, the `·` and the code 9px apart, while
+typing, on every row that matched. One `<span>` around the three puts them back
+in one box. The mark went with the search box on 2026-09-01; the span did not,
+because the next thing put in that row springs the same trap, and the assertion
+in `test/proxyTeamSearch.test.js` is now the only thing that says so.
 
 **Walked 2026-08-31** on the built app at :3001 against a seeded scratch
 database, as `PM-0100` at 390×844 with `prefers-color-scheme: dark` forced: two
-names ticked, then `สมชาย`, `ใจดี`, `PM0388`, `pm-0388`, `0388 ธนพล`, `zzz`
-typed in turn — the label read **เลือกแล้ว 2 คน** through every one of them, and
-both were still ticked after the ✕. The box measured background `rgb(19,26,23)`,
-text `rgb(233,239,235)`, border `rgb(59,69,63)`, `padding-left: 40px`.
+names ticked, then สมชาย, ใจดี, PM0388, pm-0388, *0388 ธนพล*, zzz typed in turn
+— the label read **เลือกแล้ว 2 คน** through every one of them, and both were
+still ticked after the ✕. The box measured background `rgb(19,26,23)`, text
+`rgb(233,239,235)`, border `rgb(59,69,63)`, `padding-left: 40px`. **That box is
+gone since 2026-09-01** and this paragraph is the record of what it did, not a
+description of the screen.
 
 ### One line for the head — and the search box the tick-box fix broke
 
@@ -3855,11 +3879,15 @@ warning unreachable, and it never touches the rows' own chips. A different
 month's different warning is then a different number in that line rather than a
 panel reappearing in front of somebody who said they did not want one.
 
-**The export buttons come up to the selects they act on.** 8px at 360px, the
+**The export buttons come up to the controls they act on.** 8px at 360px, the
 same as the gap between the buttons themselves, which is what makes them one
 block rather than a section break — at 12px the row above had already stacked
 into three full-width controls and the extra air read as a division between the
-selects and the buttons that act on what they set. 12px stays on a desktop. The
+controls and the buttons that act on what they set. 12px stays on a desktop.
+(This paragraph and the one in `components/HrView.jsx` both read "the selects"
+until 2026-09-01, when the last `<select>` on the screen became `PickOne`;
+what is above the buttons now is ประจำเดือน, ค้นหา and สถานะที่นับ, and not one
+of the three is a tag the operating system draws a list for.) The
 value moved out of an inline `marginTop` on the element to `.export-row` in the
 stylesheet, because an inline style is the one thing the 860px block cannot
 reach.
@@ -3920,7 +3948,12 @@ anything moved: the right column began at y=202.5 and the left at y=226.25, so
 the label floated **23.75px** above the heading and the heading sat level with
 the middle of the `<select>` beside it. The heading block is 42.25px tall
 (19.5 + 4 + 18.75) against the labelled field’s 66 (12 + 7 + 47); ending them
-level is what put the difference at the top, where it shows.
+level is what put the difference at the top, where it shows. (สถานะที่นับ was a
+`<select>` when this was measured and is `PickOne` since 2026-09-01. The
+geometry did not move with it: `.field .pick-one` takes the same height and
+inset as `.field select` did, out of the same rule — which is why the argument
+above is still the one this row is settled by. Its `maxWidth: 220` left the JSX
+in the same change and is `.head-split .status-pick` in the stylesheet now.)
 
 **Both rows now line up, and they line up on different things — that is the
 point, not an inconsistency.** `.month-find` ends its two boxes level at the
@@ -6230,8 +6263,39 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1887/1887 pass in about 2 s**, measured 2026-09-01 across 114
-  files. **The newest are `test/pickTime.test.js` and `test/popover.test.js`**,
+- `npm test` — **1891/1891 pass in about 2 s**, measured 2026-09-01 across 114
+  files. **The newest two are in `test/submissionWindowForm.test.js`**, and they
+  are a ban and its counterweight: the sentence under วันที่เริ่ม that said the
+  date range in words is **gone**, and neither of the two wordings it had that
+  day may come back quietly — while the BOUNDS it described are asserted to be
+  untouched, because "remove the line" and "remove the limit" look identical in
+  a diff a year from now. Those two replaced the pair that had pinned the
+  rewritten sentence a few hours earlier. The file also gained the
+  comment-stripper the other four screen-test files carry, and it earned its
+  place on the first run: the paragraph explaining the rewrite QUOTES the old
+  sentence, so the assertion that the box "says the range in words" went on
+  passing against a comment describing the wording it was there to replace.
+  Fifth time in this repo. It read "1889/1889" until then.
+  **Before them, nine REPLACED cases in
+  `test/proxyTeamSearch.test.js`** — the total did not move, because the search
+  box those nine held down came out the same day and nine cases about the picker
+  it left behind went in where they were: that no part of the search grew back
+  (the state, the filter, the `<mark>`, the four imports), that the label counts
+  at nought as well, that the box scrolls at a capped height with a scrollbar
+  recoloured to belong to it, and that a ticked row carries a green ring with
+  the hairlines on both sides of it dropping out. Three of the nine were bugs
+  the box made possible and are now unreachable rather than guarded — see
+  §หัวหน้าบันทึก OT แทนลูกทีม. **Before them, two in
+  `test/queueDropdown.test.js`**,
+  over สถานะที่นับ on ตรวจสอบรายเดือน — the last `<select>` on THAT screen
+  (ส่งบัญชี, ตั้งค่าระบบ and บันทึกระบบ still have theirs), and the first
+  `PickOne` with no "stop filtering" row to add under its options — and over the
+  panel's width, which is pinned as two offsets rather than as a number.
+  Measured on the built app in ธีมมืด at 1280, 1440, 360 and 320: the panel's
+  left and right edges are **0.00px** from the box's at every width, it sits 4px
+  under it, and `document.scrollWidth` equals the viewport in all four.
+  It read "1887/1887" and then "1888/1888" until then.
+  **Before it, `test/pickTime.test.js` and `test/popover.test.js`**,
   over เวลาเริ่ม / เวลาสิ้นสุด and over the panel all three of the app's own
   pickers now share. The time boxes were the last native popup in the app and
   the only one that was not merely a styling complaint: an `<input type="time">`
@@ -6296,8 +6360,18 @@ four role UIs.
   lines of Thai in one colour with no inter-word spaces to give the paragraph
   any texture — which moved an assertion in `test/absentCallout.test.js` rather
   than adding one.
-  Before it, twenty in `test/queueDropdown.test.js`, over the
-  แผนก and เดือน filters on รายการรออนุมัติ now that neither is a `<select>`.
+  Before it, twenty-two in `test/queueDropdown.test.js`, over the
+  แผนก and เดือน filters on รายการรออนุมัติ now that neither is a `<select>` —
+  and, since later the same day, over สถานะที่นับ on ตรวจสอบรายเดือน, which was
+  the last `<select>` on that screen and is the first caller with no "stop
+  filtering" row: `allLabel` names a row carrying `''`, and `''` is not a
+  สถานะที่นับ this app has a reading for. The twenty-second pins the panel's
+  WIDTH, and pins it as the absence of one: `.pick-menu` is `position: absolute`
+  with both `left: 0` and `right: 0` inside `.pick-one-wrap`'s
+  `position: relative`, so the panel is the box's width by construction and has
+  no number that could drift from it — which is what a native `<select>`'s list,
+  an OS overlay sized to its longest option, could never promise. It read
+  "twenty" and then "twenty-one" until then.
   The file exists because of what a stylesheet cannot reach: a `<select>`'s box
   is an element in the document and every rule in `app/styles.css` could style
   it, but its options are drawn by the browser and the operating system, are not
@@ -6324,6 +6398,9 @@ four role UIs.
   search box on บันทึก OT แทนลูกทีม — one of them is the stripper's own
   self-test, which caught this file's first stripper eating `const shownTeam`
   and would have let every ban in it pass against source it could not see.
+  (Those nine were replaced on 2026-09-01 when the box came out; the file kept
+  its name and its stripper, and the self-test now anchors on the words the
+  removal is recorded in.)
   Before them, eight in `test/roleNavTabs.test.js`, over the menu
   now that it is built one block per role — which tab sits behind which gate,
   in what order the gates open, and that the count badge names its colour once.

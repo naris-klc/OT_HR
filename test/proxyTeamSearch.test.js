@@ -4,24 +4,38 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { searchPeople } from '../lib/personSearch.js';
-
 /**
- * ค้นหาชื่อเหนือกล่องเลือกลูกทีม — บันทึก OT แทนพนักงาน's own search box.
+ * กล่องเลือกลูกทีมบน บันทึก OT แทนพนักงาน — the list a หัวหน้า ticks names in.
  * (That button read บันทึก OT แทนลูกทีม until 2026-08-31.)
  *
- * THE ONE PROMISE THIS FILE EXISTS FOR: narrowing the list must never lose a
- * tick. A หัวหน้า files for a team by ticking names, and every route by which
- * a search could quietly drop one of them ends with a request filed for the
- * wrong person's month — which nothing on any screen afterwards would flag.
- * There are three such routes and all three are held below:
+ * ── WHY THE FILE IS STILL CALLED proxyTeamSearch ────────────────────────────
+ * There is no search box on this screen any more. It came out on 2026-09-01,
+ * asked for as making the picker compact, and the name is kept rather than
+ * renamed for two reasons: the documents point at this path by name, and the
+ * paragraphs below are most of what is known about why the box existed — which
+ * is worth more attached to the screen it was on than in a git log.
  *
- *   1. filtering `targets` instead of the list drawn from it,
- *   2. `เลือกทั้งหมด` REPLACING the selection with what is on screen,
- *   3. `เลือกทั้งหมด` reaching past the filter to the whole team.
+ * ── WHAT THE BOX WAS FOR, AND WHY FOUR NAMES DO NOT NEED IT ─────────────────
+ * The one promise it existed to keep: narrowing the list must never lose a
+ * tick. A หัวหน้า files for a team by ticking names, and every route by which a
+ * search could quietly drop one ends with a request filed for the wrong
+ * person's month — which nothing on any screen afterwards would flag. Three
+ * such routes were held open here: filtering `targets` instead of the list
+ * drawn from it; `เลือกทั้งหมด` REPLACING the selection with what was on
+ * screen; and `เลือกทั้งหมด` reaching past the filter to the whole team.
  *
- * The rule itself is `lib/personSearch.js` and is tested there. What is
- * exercised here is the part of it this screen depends on, plus the wiring.
+ * ALL THREE ARE UNREACHABLE WITH NOTHING TO NARROW. `team` is the non-manager
+ * staff of ONE แผนก, and this roster's largest is ENG at four people (WH is
+ * two). The list IS the team, so what is on screen and what is ticked cannot
+ * disagree — which is a stronger guarantee than the three assertions were.
+ *
+ * WHAT IS HELD HERE NOW is the picker the box left behind: the count in the
+ * label, the scroll box, the ticked row's own highlight, and — as bans — that
+ * none of the search's machinery grew back.
+ *
+ * The matcher itself is `lib/personSearch.js` and is tested in
+ * test/personSearch.test.js, which is where the two cases that lived here went.
+ * It still has three callers; this screen was the fourth.
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -32,11 +46,12 @@ const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
  * The source with its comments taken out — the same stripper
  * test/holidayDeleteConfirm.test.js and test/modalCloseButton.test.js use.
  *
- * A BAN PROVES NOTHING WITHOUT IT, and this file caught itself: the check that
- * this box does not claim `role="combobox"` failed on the FIRST run against
- * the comment beside it explaining why it does not. That is the third time an
- * assertion on this screen's family has matched prose instead of code, and the
- * note over ตรวจสอบประจำเดือน's search box says so in as many words.
+ * A BAN PROVES NOTHING WITHOUT IT, and this file has caught itself twice. The
+ * check that the box did not claim `role="combobox"` failed on its first run
+ * against the comment beside it explaining why it did not; and the bans below
+ * are now ALL about machinery that is gone, every name of which is written out
+ * in the paragraphs recording why it went. Without the stripper this whole
+ * section passes by reading its own reasons.
  *
  * IT IS THE OTHER TWO FILES' STRIPPER VERBATIM, and that is deliberate. This
  * file first shipped a third one that matched a brace-wrapped JSX comment as
@@ -52,154 +67,235 @@ const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$
 const code = strip(form);
 
 test('the stripper actually strips — the bans below prove nothing otherwise', () => {
-  assert.ok(form.includes('role="combobox"'), 'the comment this guards against is gone');
-  assert.ok(!code.includes('role="combobox"'), 'the stripper left a comment behind');
-  assert.ok(code.includes('const shownTeam'), 'the stripper ate the code as well');
-  assert.ok(code.includes('placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"'));
+  // Every one of these three is a name the comments spell out and the code no
+  // longer holds. If the stripper stopped working, the bans further down would
+  // match those paragraphs and report the search box as still removed while it
+  // sat on the screen.
+  assert.ok(form.includes('teamFind'), 'the note recording what came out is gone');
+  assert.ok(!code.includes('teamFind'), 'the stripper left a comment behind');
+  assert.ok(form.includes('shownTeam'), 'the note recording the old list is gone');
+  assert.ok(!code.includes('shownTeam'), 'the stripper left a comment behind');
+  // …and that it did not eat the live code along with them.
+  assert.ok(code.includes('const [targets, setTargets] = useState([]);'), 'the stripper ate the code');
+  assert.ok(code.includes('<div className="pick-list">'));
 });
 
-/** The seed team a หัวหน้า of ENG actually sees. */
-const TEAM = [
-  { _id: '1', code: 'PM-0147', name: 'สุรชัย ดวงดี' },
-  { _id: '2', code: 'PM-0388', name: 'ธนพล เกษมสุข' },
-  { _id: '3', code: 'PM-0412', name: 'สมชาย ใจดี' },
-];
+// ── the search box is gone, and none of it grew back ───────────────────────
 
-// ── what the box has to match ──────────────────────────────────────────────
-
-test('a name, a surname and a code all find the row', () => {
-  const only = (q) => searchPeople(TEAM, q).map((p) => p.code);
-  assert.deepEqual(only('สมชาย'), ['PM-0412'], 'ชื่อต้น');
-  assert.deepEqual(only('ใจดี'), ['PM-0412'], 'นามสกุล');
-  assert.deepEqual(only('สมชายใจดี'), ['PM-0412'], 'ชื่อติดกันไม่เว้นวรรค');
-  assert.deepEqual(only('PM-0388'), ['PM-0388'], 'รหัสตามที่พิมพ์บนใบ');
-  // Half this roster is written PM-0412 and half PM00511, both current — so
-  // the hyphen a person types or omits cannot decide whether they find anyone.
-  assert.deepEqual(only('PM0388'), ['PM-0388'], 'รหัสไม่มีขีด');
-  assert.deepEqual(only('pm-0388'), ['PM-0388'], 'พิมพ์เล็ก');
-  // Word order against a list you cannot see yet is not something anybody
-  // gets right; each term may match a different part of the person.
-  assert.deepEqual(only('0388 ธนพล'), ['PM-0388'], 'รหัสก่อนชื่อ');
-  assert.deepEqual(only('ธนพล 0388'), ['PM-0388'], 'ชื่อก่อนรหัส');
-  assert.deepEqual(only('zzz'), [], 'ไม่ตรงใครเลย');
-});
-
-test('an empty box is not a filter — and hands back the same array', () => {
-  assert.equal(searchPeople(TEAM, ''), TEAM, 'the cleared box rebuilt the list');
-  assert.equal(searchPeople(TEAM, '   '), TEAM);
-});
-
-// ── the promise: a tick outlives every query ───────────────────────────────
-
-test('narrowing draws fewer rows and changes no tick', () => {
+test('ไม่มีช่องค้นหาเหนือกล่องรายชื่ออีกแล้ว', () => {
   /**
-   * The component's two expressions, run here as they are written there:
-   * `shownTeam` is what gets mapped into rows, `targets` is what gets filed.
-   * They are two pieces of state and only one of them reads the query.
+   * Asked for on 2026-09-01: "ลบช่องค้นหาด้านบนกล่องรายชื่อออก เพื่อให้พื้นที่
+   * กระชับขึ้น".
+   *
+   * THE BAN IS ON THE PICKER, NOT ON THE FILE, and the slice is what says so:
+   * `.searchbox` is a shape three other screens draw and one of them could
+   * legitimately arrive in this form one day. What may not come back is a box
+   * over THIS list, between the label and the names.
    */
-  const targets = ['1', '2'];
-  const shown = searchPeople(TEAM, 'สมชาย');
-  assert.deepEqual(shown.map((p) => p.code), ['PM-0412']);
-  assert.deepEqual(targets, ['1', '2'], 'the search wrote to the selection');
-
-  // Which is the count the label prints, against what is visible under it.
-  const onScreen = shown.filter((p) => targets.includes(String(p._id))).length;
-  assert.equal(onScreen, 0);
-  assert.equal(targets.length, 2, 'เลือกแล้ว 2 คน is still true with none on screen');
-
-  // …so the difference has to be said out loud, or the screen contradicts the
-  // label. This is `hiddenPicked`.
-  const hidden = targets.filter((id) => !shown.some((p) => String(p._id) === id)).length;
-  assert.equal(hidden, 2);
-});
-
-test('เลือกทั้งหมด adds what is on screen and keeps what is not', () => {
-  /**
-   * Ticking two names, searching for a third and pressing เลือกทั้งหมด must
-   * come to three. `setTargets(shown)` — a replace — comes to one, and the two
-   * that vanish are two people who do not get their OT filed.
-   */
-  const before = ['1', '2'];
-  const shown = searchPeople(TEAM, 'สมชาย');
-  const after = [
-    ...before,
-    ...shown.map((p) => String(p._id)).filter((id) => !before.includes(id)),
-  ];
-  assert.deepEqual(after, ['1', '2', '3']);
-
-  // And it never reaches past the filter. Under a query showing one of three,
-  // a button that ticked all three would file two people nobody looked at.
-  assert.equal(shown.length, 1, 'the union was built from the whole team');
-  // Pressed twice, it is the same list — no duplicate lands on the batch.
-  const twice = [
-    ...after,
-    ...shown.map((p) => String(p._id)).filter((id) => !after.includes(id)),
-  ];
-  assert.deepEqual(twice, after);
-});
-
-// ── the wiring, in the component ───────────────────────────────────────────
-
-test('the list is drawn from shownTeam and the checkbox reads targets', () => {
-  assert.match(form, /const shownTeam = searchPeople\(team, teamFind\);/);
-  assert.match(form, /\{shownTeam\.map\(\(p\) => \(/, 'the rows still map the unfiltered team');
-  assert.match(form, /checked=\{targets\.includes\(String\(p\._id\)\)\}/);
-  // The bug this file is about, stated as a ban: nothing may narrow `targets`.
-  assert.ok(
-    !/setTargets\([^)]*searchPeople/.test(form),
-    'the query is being written into the selection',
-  );
-  assert.ok(
-    !/targets\.filter\([^)]*teamFind/.test(form),
-    'the selection is being filtered by the query',
-  );
-});
-
-test('เลือกทั้งหมด is a union over shownTeam, not a replace over team', () => {
-  const button = form.slice(form.indexOf('เลือกทั้งหมด ('), form.indexOf('ล้างที่เลือก'));
-  assert.ok(!/setTargets\(team\.map/.test(form), 'select-all went back to the whole team');
-  assert.match(form, /\.\.\.shownTeam\s*\n?\s*\.map\(\(p\) => String\(p\._id\)\)/);
-  assert.match(form, /เลือกทั้งหมด \(\{shownTeam\.length\}\)/);
-  assert.ok(button.length > 0);
-  // ล้างที่เลือก says "all" and has to mean it — a clear that left ticks on
-  // hidden names is one word meaning two things on one screen.
-  assert.match(form, /onClick=\{\(\) => setTargets\(\[\]\)\}/);
-});
-
-test('the box is the app’s search box, not a third grammar', () => {
   const picker = code.slice(code.indexOf('บันทึกแทนพนักงาน *'), code.indexOf('ล้างที่เลือก'));
-  assert.match(picker, /<div className="searchbox"/);
-  assert.match(picker, /<Icon name="search" className="searchbox-icon" \/>/);
-  assert.match(picker, /placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"/);
-  assert.match(picker, /aria-label="ค้นหาพนักงาน"/);
-  assert.match(picker, /\{teamFind && <ClearButton onClear=\{\(\) => setTeamFind\(''\)\} \/>\}/);
-  // `has-icon` is what leaves room for the glyph; without it the caret starts
-  // underneath it. `has-clear` does the same at the other end, and only while
-  // there is a ✕ to make room for.
-  assert.match(picker, /className=\{`has-icon\$\{teamFind \? ' has-clear' : ''\}`\}/);
-  assert.match(css, /\.searchbox input\.has-icon \{ padding-left: 40px; \}/);
-  // NOT a combobox: nothing pops over anything here, so the role would promise
-  // a listbox that never opens and an aria-expanded that is always false.
-  assert.ok(!/role="combobox"/.test(picker), 'the in-place filter claims a popup it has not got');
-  // Same gate as เลือกทั้งหมด rather than a second threshold: one name is not
-  // a list to hunt through.
-  assert.match(picker, /\{team\.length > 1 && \(\s*<div className="searchbox"/);
+  assert.ok(picker.length > 0, 'the picker moved — this slice is measuring nothing');
+  assert.ok(!picker.includes('searchbox'), 'ช่องค้นหากลับมาอยู่เหนือรายชื่ออีกแล้ว');
+  assert.ok(!picker.includes('placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"'));
+  assert.ok(!picker.includes('aria-label="ค้นหาพนักงาน"'));
+
+  // And the state, the filter and the marking that only the box used.
+  assert.ok(!code.includes('teamFind'), 'the query state is back');
+  assert.ok(!code.includes('shownTeam'), 'the filtered list is back');
+  assert.ok(!code.includes('hiddenPicked'), 'the hidden-tick note is back with nothing to hide');
+  assert.ok(!code.includes('searchPeople'), 'the form is filtering the team again');
+  assert.ok(!code.includes('<Highlight'), 'a row is marking a query that does not exist');
+
+  // The imports went with them. A dead import compiles clean and would go on
+  // being bundled into this form for nobody.
+  //
+  // `Icon` IS NOT ON THIS LIST AND WAS, FOR ONE ROUND ON THE SAME DAY. The
+  // magnifier was its only use here when the box left, so it went out with the
+  // others — and it came back that afternoon for the calendar glyph on the date
+  // rule under วันที่เริ่ม, which is pinned in test/submissionWindowForm.test.js.
+  // The list is "imported for nobody", not "imported for the search box", so an
+  // import that found a second reader belongs off it.
+  const imports = form.slice(0, form.indexOf('const blank'));
+  for (const gone of ['ClearButton', 'Highlight', 'searchPeople']) {
+    assert.ok(!strip(imports).includes(gone), `${gone} ยังถูก import อยู่ทั้งที่ไม่มีใครใช้`);
+  }
 });
 
-test('a matched row stays one flex item beside its checkbox', () => {
+// ── the label counts, always ───────────────────────────────────────────────
+
+test('ป้ายบอกจำนวนที่เลือกเสมอ แม้ยังไม่ได้เลือกใคร', () => {
   /**
-   * `.check` is a flex row with a 9px gap, and `{p.name} · {p.code}` survived
-   * that only because adjacent text collapses into one anonymous flex item.
-   * `Highlight` returns real <mark> elements the moment a query matches — as
-   * bare children they become flex items and pull the name, the · and the code
-   * apart by 9px each, WHILE TYPING, on every row that matched.
+   * `บันทึกแทนพนักงาน * (เลือกแล้ว X คน)`, asked for on 2026-09-01 with the
+   * count "อัปเดตตามจริงแบบ Dynamic".
+   *
+   * IT READ THE COUNT OFF `targets` BEFORE THIS AND STILL DOES — the change is
+   * that the parenthetical is no longer conditional on there being one. A
+   * counter that is absent at nought is a counter a reader has to notice
+   * ARRIVING to know it exists, and this label is the only place on the screen
+   * that says how many people a press of บันทึก is about to file for.
+   *
+   * AND THE LABEL STOPS CHANGING WIDTH as the first tick lands. The line
+   * reflowed when the parenthetical appeared, which on a phone moved the `*`
+   * a reader was looking at.
+   */
+  assert.match(code, /<label>บันทึกแทนพนักงาน \* \(เลือกแล้ว \{targets\.length\} คน\)<\/label>/);
+  // Not `team.length`, not the number of rows on screen: what is COUNTED is
+  // what would be filed.
+  assert.ok(
+    !/\(เลือกแล้ว \{team\.length\}/.test(code),
+    'the label is counting the team rather than the selection',
+  );
+});
+
+// ── the list, and the box it scrolls in ────────────────────────────────────
+
+test('รายชื่อวาดจาก team และช่องติ๊กอ่านจาก targets', () => {
+  assert.match(code, /\{team\.map\(\(p\) => \(/, 'the rows are drawn from something other than the team');
+  assert.match(code, /checked=\{targets\.includes\(String\(p\._id\)\)\}/);
+  // The bug the search box was capable of, kept as a ban now that it cannot
+  // arise: nothing may narrow `targets` itself.
+  assert.ok(!/setTargets\([^)]*filter\([^)]*\bfind\b/.test(code), 'the selection is being filtered');
+});
+
+test('เลือกทั้งหมด ยังเป็นการรวม ไม่ใช่การแทนที่ — และกดซ้ำได้', () => {
+  /**
+   * A REPLACE COMPUTES THE SAME LIST TODAY, and the union is kept anyway.
+   *
+   * With nothing narrowing the list, `setTargets(team.map(...))` and the union
+   * come to the same array — so this is not load-bearing this morning. It is
+   * the shape that cannot lose a tick, it is idempotent (pressed twice it adds
+   * nothing, and a duplicate id in `targets` is a second request filed for the
+   * same person), and the day this list is narrowed again by anything at all a
+   * replace is a bug and a union is not.
+   */
+  assert.ok(!/setTargets\(team\.map/.test(code), 'select-all became a replace');
+  assert.match(code, /\.\.\.team\s*\n?\s*\.map\(\(p\) => String\(p\._id\)\)\s*\n?\s*\.filter\(\(id\) => !t\.includes\(id\)\)/);
+  assert.match(code, /เลือกทั้งหมด \(\{team\.length\}\)/);
+  // Shut when there is nothing left to add, not when the list is empty.
+  assert.match(code, /team\.every\(\(p\) => targets\.includes\(String\(p\._id\)\)\)/);
+  // ล้างที่เลือก says "all" and means it, in one press.
+  assert.match(code, /onClick=\{\(\) => setTargets\(\[\]\)\}/);
+
+  // Run the two expressions as they are written, on a team of three.
+  const team = [{ _id: '1' }, { _id: '2' }, { _id: '3' }];
+  const add = (t) => [...t, ...team.map((p) => String(p._id)).filter((id) => !t.includes(id))];
+  assert.deepEqual(add(['2']), ['2', '1', '3'], 'a tick already made was dropped or duplicated');
+  assert.deepEqual(add(add(['2'])), add(['2']), 'pressed twice it files somebody twice');
+});
+
+test('รายชื่ออยู่ในกล่องสูงคงที่ที่เลื่อนได้ ไม่ดันฟอร์มที่เหลือลงไป', () => {
+  /**
+   * The three fields that matter next (วันที่, เวลาเข้า, เวลาออก) and the live
+   * preview under them are what a หัวหน้า is actually filling in. A list of
+   * whatever length the แผนก happens to be pushes all of it below the fold and
+   * turns one screen into three.
+   *
+   * `max-height` AND NOT A FIXED ONE, so a team of two does not sit in a box of
+   * empty rules. Asked for on 2026-09-01 as "Fix Height / Max Height", which is
+   * the same request either way round: what it buys is that the rest of the
+   * form does not move when the list is long.
+   */
+  const rule = css.slice(css.indexOf('.pick-list {'), css.indexOf('}', css.indexOf('.pick-list {')));
+  assert.match(rule, /max-height: 210px;/);
+  assert.match(rule, /overflow-y: auto;/);
+  assert.match(rule, /border: 1px solid var\(--line\);/, 'the box lost the edge that makes it a box');
+  assert.match(rule, /background: var\(--card\);/);
+  // A flick inside the list must not carry on into the page behind it once the
+  // list has run out.
+  assert.match(rule, /overscroll-behavior-y: contain;/);
+});
+
+test('แถบเลื่อนเป็นของกล่อง ไม่ใช่ของหน้า — คืนเฉพาะสีเท่านั้น', () => {
+  /**
+   * The app has ONE scrollbar rule and it is written for a bar running down the
+   * PAGE: a 10px track with the thumb inset by `border: 3px solid var(--bg)`,
+   * which is what makes it a slim pill on the page's ground rather than a
+   * groove. That border is a COLOUR, not a transparency — so inside a container
+   * filled with `--card` it drew three pixels of the page's colour down the
+   * inside edge of the box.
+   *
+   * ONLY THE COLOUR IS RESTATED. Width, radius and the 3px inset stay the
+   * app's; a second geometry here is a second scrollbar for a reader to learn.
+   * `transparent` rather than `var(--card)` so the value follows the box if
+   * this container is ever put on a different fill.
+   */
+  assert.match(css, /\.pick-list::-webkit-scrollbar-thumb \{ border-color: transparent; \}/);
+  assert.match(css, /\.pick-list::-webkit-scrollbar-track \{ background: transparent; \}/);
+  // Firefox draws none of the `::-webkit-` rules and would show its own bar.
+  assert.match(css, /\.pick-list \{ scrollbar-width: thin; scrollbar-color: var\(--scroll-thumb\) transparent; \}/);
+  // The page's own rule is what is being deferred to, so it has to still exist.
+  assert.match(css, /::-webkit-scrollbar-thumb \{ background: var\(--scroll-thumb\); border-radius: 8px; border: 3px solid var\(--bg\); \}/);
+  // And this container may not restate the geometry it is borrowing.
+  const own = css.slice(css.indexOf('.pick-list::-webkit-scrollbar {'), css.indexOf('.pick-list .check {'));
+  assert.ok(!own.includes('border-radius'), '.pick-list ตั้งรูปทรงแถบเลื่อนเอง');
+  assert.ok(!own.includes('background: var(--scroll-thumb)'), '.pick-list ตั้งสีหัวแถบเลื่อนเอง');
+});
+
+test('แถวที่ติ๊กแล้วมีไฮไลต์เขียวล้อมรอบ และเส้นคั่นสองข้างหลบให้', () => {
+  /**
+   * Asked for on 2026-09-01: "เมื่อเลือกรายการ ให้แสดงแถบไฮไลต์สีเขียวโปร่งแสง
+   * ล้อมรอบการ์ดพนักงานคนนั้นอย่างชัดเจน".
+   *
+   * A 17px checkbox at the left edge was the only thing separating the people
+   * about to have a request filed for them from the people who are not — down a
+   * list where every row is the same height and the same colour, on a phone,
+   * with a thumb over the left column.
+   *
+   * THE PAIR IS `.announce`'S, not a new colour: `--green-bg` under
+   * `--green-accent` mixed to 45%. Its note carries the reason — `--green-accent`
+   * is the one green that holds on both sides of the theme, and at full strength
+   * a ring in it is louder than anything on a form whose subject is the times
+   * below.
+   *
+   * AN INSET RING RATHER THAN A BORDER, or the row moves a pixel when it is
+   * ticked. `inset` paints inside the row's own edges, closes on all four sides
+   * — which is what "ล้อมรอบ" asks for — and reflows nothing.
+   *
+   * AND THE SEPARATORS ON BOTH SIDES GO, or a grey hairline runs immediately
+   * under the ring's green one at the bottom and over it at the top: two edges
+   * where the eye is being shown one.
+   *
+   * `:has()` AND NOT A CLASS FROM THE COMPONENT. The state is already in the
+   * DOM — the checkbox's own `:checked` — and a `className` computed from
+   * `targets` is a second copy of it for a future edit to leave behind.
+   */
+  assert.match(
+    css,
+    /\.pick-list \.check:has\(input:checked\) \{\s*\n\s*background: var\(--green-bg\);\s*\n\s*box-shadow: inset 0 0 0 1px color-mix\(in srgb, var\(--green-accent\) 45%, transparent\);\s*\n\s*border-top-color: transparent;\s*\n\}/,
+  );
+  assert.match(css, /\.pick-list \.check:has\(input:checked\) \+ \.check \{ border-top-color: transparent; \}/);
+  // Hover on a row that is ALREADY ticked must not read as "not ticked" — the
+  // neutral wash is one class less specific and loses, which is the kind of win
+  // that survives only until somebody adds a class. Stated rather than left.
+  assert.match(css, /\.pick-list \.check:has\(input:checked\):hover \{ background: var\(--green-bg\); \}/);
+  // The base rules it leans on.
+  assert.match(css, /\.pick-list \.check \+ \.check \{ border-top: 1px solid var\(--line-softer\); \}/);
+  assert.match(css, /\.pick-list \.check:hover \{ background: var\(--neutral-wash\); \}/);
+  // Both classes on every selector: `.check` alone is the app's tick-box row
+  // everywhere, and a green ring on every checked box in the app is the trap
+  // `.box` sprang on the dropdown's tick-box in this same stylesheet.
+  for (const m of css.matchAll(/^([^\n{}]*:has\(input:checked\)[^\n{}]*)\{/gm)) {
+    assert.ok(m[1].includes('.pick-list'), `กฎ ${m[1].trim()} ไม่ได้จำกัดอยู่แค่กล่องเลือกลูกทีม`);
+  }
+});
+
+test('แถวหนึ่งแถวยังเป็น flex item เดียวข้างช่องติ๊ก', () => {
+  /**
+   * `.check` is a flex row with a 9px gap, and `{p.name} · {p.code}` as bare
+   * children survives that only because adjacent text collapses into one
+   * anonymous flex item. ONE element of any kind between them and the name, the
+   * · and the code become three flex items 9px apart.
+   *
+   * `Highlight` was that element and made it happen WHILE SOMEBODY TYPED, on
+   * every row that matched. It is gone with the box, and the span it forced is
+   * kept: the next thing put in that row would spring the same trap, and this
+   * assertion is the only place that says so now.
    */
   assert.match(css, /\.check \{ display: flex;[^}]*gap: 9px;/);
-  // From this label to ITS closing tag — `form.indexOf('</label>')` finds the
-  // first one in the file, which is hundreds of lines above this row.
+  // From this label to ITS closing tag — `code.indexOf('</label>')` finds the
+  // first one in the file, hundreds of lines above this row.
   const from = code.indexOf('<label key={p._id} className="check">');
   const row = code.slice(from, code.indexOf('</label>', from));
-  assert.match(row, /<span>[\s\S]*<Highlight text=\{p\.name\}[\s\S]*<Highlight text=\{p\.code\}[\s\S]*<\/span>/);
+  assert.match(row, /<span>\{p\.name\} · \{p\.code\}<\/span>/);
 });
 
 // ── the button that opens all of this ──────────────────────────────────────

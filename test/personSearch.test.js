@@ -103,6 +103,19 @@ test('an empty query is no filter at all, not an empty result', () => {
   assert.equal(searchPeople(ROSTER, null).length, ROSTER.length);
   assert.equal(searchPeople(ROSTER, undefined).length, ROSTER.length);
   assert.deepEqual(queryTerms('  \t '), []);
+  /**
+   * AND IT IS THE SAME ARRAY, not an equal one — the promise callers memoise
+   * against. `shown` on ตรวจสอบรายเดือน and on ทะเบียนพนักงาน is derived from
+   * this on every render; an identical-but-new array on the cleared box
+   * rebuilds a list of forty rows on every keystroke that empties it.
+   *
+   * Moved here from test/proxyTeamSearch.test.js on 2026-09-01, when the
+   * search box over บันทึกแทนพนักงาน came out and that file stopped calling
+   * this module at all. It is a fact about the module, and it was only ever
+   * written down beside its fourth caller.
+   */
+  assert.equal(searchPeople(ROSTER, ''), ROSTER, 'the cleared box rebuilt the list');
+  assert.equal(searchPeople(ROSTER, '   '), ROSTER);
 });
 
 test('a lone separator does not match the entire roster', () => {

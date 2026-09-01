@@ -2090,6 +2090,7 @@ export function PickOne({
   allLabel,
   disabled = false,
   emptyLabel = 'ไม่มีตัวเลือก',
+  className = '',
 }) {
   const id = React.useId();
   const [open, setOpen] = React.useState(false);
@@ -2100,8 +2101,17 @@ export function PickOne({
   const typed = React.useRef({ buf: '', at: 0 });
 
   /* ทุกแผนก / ทุกเดือน is a row like any other and is always first: it is the
-     one press back to an unfiltered list, and ↑ from the top reaches it. */
-  const rows = [{ value: '', label: allLabel }, ...(options || [])];
+     one press back to an unfiltered list, and ↑ from the top reaches it.
+
+     AND IT IS OPTIONAL, SINCE 2026-09-01. `allLabel` names a row that means "do
+     not narrow this" and carries `''` to say so — which only exists where `''`
+     is a value the caller can actually hold. สถานะที่นับ on ตรวจสอบรายเดือน is
+     the first caller where it is not: its three rows are three different
+     questions about the month and one of them is always the answer, so a fourth
+     row carrying `''` would be a filter setting the screen cannot be in. Left
+     out, and the list is the options and nothing else. */
+  const hasAll = allLabel != null;
+  const rows = hasAll ? [{ value: '', label: allLabel }, ...(options || [])] : [...(options || [])];
   const current = String(value ?? '');
   const chosen = rows.findIndex((r) => String(r.value) === current);
   // Clamped rather than trusted: a queue that reloads with fewer departments in
@@ -2257,7 +2267,7 @@ export function PickOne({
   const shown = chosen >= 0 ? rows[chosen] : rows[0];
 
   return (
-    <div className="field">
+    <div className={`field${className ? ` ${className}` : ''}`}>
       <label id={`${id}-label`}>{label}</label>
       <div className="pick-one-wrap">
         {/*
@@ -2323,7 +2333,11 @@ export function PickOne({
                 {r.count != null && <span className="ct">{r.count}</span>}
               </li>
             ))}
-            {rows.length === 1 && <li className="none" role="presentation">{emptyLabel}</li>}
+            {/* NOTHING BUT THE ทุกแผนก ROW — or, where there is none, nothing at
+                all. Counted against `hasAll` rather than against a literal 1,
+                or a list with no "all" row and one option in it would draw
+                ไม่มีตัวเลือก underneath the option it does have. */}
+            {rows.length === (hasAll ? 1 : 0) && <li className="none" role="presentation">{emptyLabel}</li>}
           </ul>
         )}
       </div>

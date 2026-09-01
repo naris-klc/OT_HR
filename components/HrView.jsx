@@ -11,7 +11,7 @@ import {
 import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
-  Alert, ClearButton, Empty, AddBirthDateHint, Highlight, RateHead,
+  Alert, ClearButton, Empty, AddBirthDateHint, Highlight, PickOne, RateHead,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -40,6 +40,27 @@ import { useBackHandler } from './nav.jsx';
  * the filter already covers the ceiling's own list.
  */
 const ALL_LIVE_STATUSES = 'approved,pending_hr,pending_mgr';
+
+/**
+ * สถานะที่นับ — the three questions this screen can be asked about a month.
+ *
+ * OUT OF THE JSX AND INTO A CONSTANT because the control changed shape on
+ * 2026-09-01: three `<option>` children became a `options` array handed to
+ * `PickOne`. The values are the ones the route already reads and are unchanged
+ * to the character — `approved`, `approved,pending_hr`, and `ALL_LIVE_STATUSES`
+ * — so nothing about the request this screen makes moved with the list.
+ *
+ * NO "ทั้งหมด" ROW IS ADDED UNDER IT. `PickOne`'s `allLabel` names a row
+ * carrying `''` that means "do not narrow", and `''` is not a สถานะที่นับ this
+ * screen can hold: the widest setting here is ทั้งหมดที่ยังไม่ถูกปฏิเสธ, which
+ * is the third row and a real value. See the note over `rows` in
+ * components/common.jsx.
+ */
+const STATUS_FILTERS = [
+  { value: 'approved', label: 'อนุมัติแล้วเท่านั้น' },
+  { value: 'approved,pending_hr', label: 'อนุมัติแล้ว + รอ HR' },
+  { value: ALL_LIVE_STATUSES, label: 'ทั้งหมดที่ยังไม่ถูกปฏิเสธ' },
+];
 
 /**
  * How many people are on one page of the card list — ON A PHONE ONLY. Above
@@ -592,14 +613,32 @@ export default function HrView({
               already holds a heading is three things at three widths on a
               desktop and a stack of three on a phone. The month is not lost
               from this line either way: the hint under the heading prints it. */}
-          <div className="field" style={{ maxWidth: 220 }}>
-            <label>สถานะที่นับ</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="approved">อนุมัติแล้วเท่านั้น</option>
-              <option value="approved,pending_hr">อนุมัติแล้ว + รอ HR</option>
-              <option value={ALL_LIVE_STATUSES}>ทั้งหมดที่ยังไม่ถูกปฏิเสธ</option>
-            </select>
-          </div>
+          {/* `PickOne` AND NOT A `<select>`, SINCE 2026-09-01 — the last one on
+              this screen, and the same argument รายการรออนุมัติ's two made a day
+              earlier. The BOX was always the app's; the LIST that dropped out of
+              it never was. A `<select>`'s options are drawn by the browser and
+              the operating system, are not in this document, and no selector in
+              `app/styles.css` can enter them — so on ธีมมืด this one opened as a
+              white sheet with the system's blue bar across it, in the middle of
+              a card that is charcoal and green, and directly beside ประจำเดือน
+              one row down which is `PickMonth` and is neither.
+
+              THE THREE ROWS ARE THE THREE `<option>`s, in the same order and
+              carrying the same values — `STATUS_FILTERS` above. What is gone is
+              the tag, not the filter.
+
+              `maxWidth: 220` WAS AN INLINE STYLE AND IS A CLASS NOW. Same reason
+              `.head-split` and `.export-row` are classes: an inline style is the
+              one thing the 860px block cannot reach, and this control now has to
+              be sized on the line it shares with a heading. The number is
+              unchanged — see `.head-split .status-pick`. */}
+          <PickOne
+            label="สถานะที่นับ"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={STATUS_FILTERS}
+            className="status-pick"
+          />
         </div>
 
         {/* WHAT THE MONTH IS, BEFORE WHAT TO DO WITH IT — asked for on
@@ -648,7 +687,11 @@ export default function HrView({
           {/* `.field` around it, and that is the whole of the styling:
               `.field input` is what every box in this app is, and a search
               field that is a different height or a different grey from the
-              two <select>s above it reads as a different kind of control.
+              two boxes above it reads as a different kind of control. (Those
+              two were `<select>`s when this was written; they are `PickMonth`
+              and `PickOne` now, and `.field .pick-box` / `.field .pick-one`
+              are in the same rule as `.field input` for exactly this reason —
+              see the note over it in `app/styles.css`.)
               ทะเบียนพนักงาน's search box learnt this the hard way — it
               shipped bare and drew at the browser's default width. */}
           <div className="field">
@@ -777,8 +820,10 @@ export default function HrView({
             query can reach. On a phone the row above it has already stacked into
             three full-width controls, and 12px more between the last of those
             and the first button is a gap the eye reads as a section break where
-            there is none — the buttons act on what the selects just set. Stated
-            in the stylesheet now, 12px wide and 8px narrow. */}
+            there is none — the buttons act on what those controls just set.
+            Stated in the stylesheet now, 12px wide and 8px narrow.
+            ("what the selects just set" until 2026-09-01, when the last
+            `<select>` on this screen became `PickOne`.) */}
         <div className="row export-row">
           {/* The month as one document instead of one press per person. Whose
               sheets are in it is exactly the table below — same order, same

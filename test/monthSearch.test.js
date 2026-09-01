@@ -205,7 +205,14 @@ test('ประจำเดือน and ค้นหา are one row, above the 
     'there is more than one month picker on this screen');
   // สถานะที่นับ stays on the heading line, one row up. It is the third thing
   // that decides which figures exist, and all three are above the buttons.
-  assert.match(hrView, /<label>สถานะที่นับ<\/label>/);
+  //
+  // `PickOne` SINCE 2026-09-01, so the label is a prop and not a `<label>` in
+  // this file — the component renders its own, with an `id` for
+  // `aria-labelledby` to point at, which the bare `<label>` this replaced never
+  // had anything to point with. The assertion follows the label rather than the
+  // tag: what it is here to hold down is that the words are on this screen and
+  // on the heading row, not which element carries them.
+  assert.match(hrView, /<PickOne\s+label="สถานะที่นับ"/);
   // THE ROW IS IN THE CARD, AND ABOVE THE BUTTONS. Both halves: inside
   // `.month-head` says the controls are together, before `.export-row` says the
   // งวด is settled before anything offers to print it.

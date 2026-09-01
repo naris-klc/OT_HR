@@ -6,23 +6,25 @@ import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import { submissionWindow } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import {
-  Alert, BucketSplit, ClearButton, Highlight, Modal, SegmentList, StatusChip,
+  Alert, BucketSplit, Modal, SegmentList, StatusChip,
 } from './common.jsx';
-import Icon from './icons.jsx';
 import { PickDate } from './PickDate.jsx';
 import { PickTime } from './PickTime.jsx';
 /**
- * The rule that decides which names a query keeps — `lib/personSearch.js`, the
- * fourth caller and not a fourth copy.
+ * `ClearButton`, `Highlight`, `Icon` and `searchPeople` LEFT THIS FILE ON
+ * 2026-09-01 — the ✕, the <mark>, the magnifier and the matcher were the ค้นหา
+ * box over บันทึกแทนพนักงาน and nothing else here used them.
  *
- * `includes()` on the line shown would fail on the first thing anybody types
- * here: half this roster is written PM-0412 and half PM00511, both current,
- * and a หัวหน้า reading a code off a printed sheet types whichever they see.
- * The same module also matches a Thai name with its space and without it,
- * and lets "0412 สมชาย" and "สมชาย 0412" both work, because word order
- * against a list you cannot see yet is not something anybody gets right.
+ * `Icon` WENT, CAME BACK AND WENT AGAIN, all on the same day, which is worth a
+ * line rather than three silent edits: it returned for the calendar glyph on
+ * the date rule under วันที่เริ่ม and left with that rule when it was
+ * withdrawn. This form draws no icon of its own now — the ones on screen belong
+ * to `PickDate` and `PickTime`, inside their own boxes.
+ * `lib/personSearch.js` still has three callers and is untouched; this one was
+ * the fourth. A dead import is not a broken build in this project, which is
+ * exactly why it is worth taking out by hand: `next build` compiles it clean
+ * and the module goes on being bundled into the form for nobody.
  */
-import { searchPeople } from '@/lib/personSearch.js';
 import { usePolicy } from './policyContext.jsx';
 
 const blank = () => ({
@@ -100,6 +102,14 @@ export default function OtForm({
    * here would grey out exactly those.
    */
   const policy = usePolicy();
+  /**
+   * `aheadDays` CAME AND WENT ON 2026-09-01 and is deliberately not here. It
+   * was carried so the sentence under the box could say "บันทึกล่วงหน้าไม่ได้"
+   * rather than quote the date that rule produced; the sentence was withdrawn
+   * the same day, and a value computed for a caption nobody draws is the kind
+   * of thing that survives for a year looking load-bearing. The BOUNDS below
+   * are unchanged and are what the calendar and the server both work from.
+   */
   const dateBounds = React.useMemo(() => {
     if (fromBirthday) return { min: undefined, max: undefined };
     const { min, max } = submissionWindow(today(), policy);
@@ -136,21 +146,28 @@ export default function OtForm({
   const [team, setTeam] = useState([]);
   const [teamError, setTeamError] = useState('');
   /**
-   * What is typed in the box over the name list — and NOTHING ELSE.
+   * THERE IS NO `teamFind` ANY MORE, and the paragraph that stood here is worth
+   * keeping as the reason it is gone rather than as a description of it.
    *
-   * IT IS A SEPARATE PIECE OF STATE FROM `targets` ON PURPOSE, and that is the
-   * whole of how a search cannot lose a tick. Narrowing changes which names are
-   * DRAWN; it never writes to `targets`, so a person ticked under one query is
-   * still ticked under the next one and still on the batch when the box is
-   * cleared. Nothing here resets it either — not typing, not clearing, not the
-   * ✕. The count in the label above is what says so out loud, and the line
-   * under the list names the ones a query is currently hiding.
+   * It read: what is typed in the box over the name list is a SEPARATE piece of
+   * state from `targets` on purpose, because narrowing must change which names
+   * are DRAWN and never write to the selection — a search that loses a tick
+   * ends with a request filed for the wrong person's month, and nothing on any
+   * screen afterwards would flag it. Three routes to that bug were held open by
+   * `test/proxyTeamSearch.test.js`.
    *
-   * The alternative — filtering `targets` down to what matches — is the bug
-   * this comment exists to keep out. It reads identically on a full list and
-   * silently drops people the moment somebody types.
+   * THE BOX CAME OUT ON 2026-09-01, asked for as making the picker compact, and
+   * what settles it is the size of the thing being searched. `team` is the
+   * non-manager staff of ONE แผนก — this roster's largest is ENG at four
+   * people, and the smallest is WH at two. A search box over four names is
+   * furniture on a form that already has plenty, and every one of those three
+   * bugs is unreachable once there is nothing to narrow: the list IS the team,
+   * so `targets` and what is on screen can no longer disagree.
+   *
+   * WHAT WENT WITH IT: `shownTeam` (the list is `team`), `hiddenPicked` (no
+   * query can hide a ticked row), the ไม่พบพนักงานที่ตรงกับ empty state, and
+   * `Highlight` on the rows — there is no query for it to mark.
    */
-  const [teamFind, setTeamFind] = useState('');
   /**
    * What the server said about each person, once a batch has been posted.
    *
@@ -171,24 +188,6 @@ export default function OtForm({
   const toggleTarget = (id) => setTargets((t) => (
     t.includes(id) ? t.filter((x) => x !== id) : [...t, id]
   ));
-
-  /**
-   * The names the box is currently letting through. An empty query hands back
-   * `team` itself rather than a copy — `searchPeople`'s own promise — so the
-   * unfiltered list is not rebuilt on every keystroke that clears it.
-   */
-  const shownTeam = searchPeople(team, teamFind);
-  /**
-   * How many ticked people this query is hiding.
-   *
-   * The reassurance the label's count cannot give on its own: "เลือกแล้ว 3 คน"
-   * over a list showing one ticked row is a reader's word against the screen's.
-   * This says which way the difference goes, and it is only drawn while a
-   * query is narrowing something.
-   */
-  const hiddenPicked = targets.filter(
-    (id) => !shownTeam.some((p) => String(p._id) === id),
-  ).length;
 
   const nameOf = (id) => {
     const p = team.find((e) => String(e._id) === String(id));
@@ -630,138 +629,90 @@ export default function OtForm({
       {proxy && (
         <>
           <div className="field" style={{ marginTop: 6 }}>
-            <label>บันทึกแทนพนักงาน * {targets.length > 0 && `(เลือกแล้ว ${targets.length} คน)`}</label>
-            {/* ── ค้นหา, over the list and inside the same `.field` ─────────
-                THE APP'S SEARCH BOX AND NOT A NEW ONE. `.searchbox` with an
-                icon on the left and a ✕ on the right is what ตรวจสอบประจำเดือน
-                and ทะเบียนพนักงาน already draw, down to the wording of the
-                placeholder — so this is the third instance of one grammar
-                rather than a third grammar. Nothing about its colours is
-                written here: `.field input` is every box in this app and
-                follows the theme, which is what keeps it dark on ธีมมืด and
-                level with the controls around it. A box that shipped bare
-                drew at the browser's default width once already.
+            {/* THE COUNT IS ALWAYS DRAWN, INCLUDING AT NOUGHT — since
+                2026-09-01, and it used to appear only once something was
+                ticked. Two reasons, and neither is the wording.
 
-                `team.length > 1` is the SAME gate as เลือกทั้งหมด below,
-                deliberately, rather than a second threshold nobody can
-                remember: one name is not a list to hunt through, and a search
-                box over it is furniture on a form that already has plenty. */}
-            {team.length > 1 && (
-              <div className="searchbox" style={{ marginBottom: 8 }}>
-                <Icon name="search" className="searchbox-icon" />
-                <input
-                  type="text"
-                  className={`has-icon${teamFind ? ' has-clear' : ''}`}
-                  value={teamFind}
-                  onChange={(e) => setTeamFind(e.target.value)}
-                  placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน…"
-                  /* The name assistive technology reads — there is a <label>
-                     over this field, but it belongs to the whole picker and
-                     says บันทึกแทนพนักงาน, not what this box does. Same two
-                     words as the app's other two search boxes. */
-                  aria-label="ค้นหาพนักงาน"
-                  /* NOT role="combobox". The other two open a list of
-                     suggestions to choose from; this one narrows the list that
-                     is already on the screen, and nothing pops over anything.
-                     Borrowing the role would promise a popup that never comes
-                     and an `aria-expanded` that would always be false. */
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                {teamFind && <ClearButton onClear={() => setTeamFind('')} />}
-              </div>
-            )}
+                The label is the only place on this screen that says how many
+                people a press of บันทึก is about to file for, and a counter
+                that is absent at 0 is a counter a reader has to notice ARRIVING
+                to know it exists. "(เลือกแล้ว 0 คน)" over an untouched list is
+                also the plainest statement of why the button below is shut.
+
+                And the label stops changing width as the first tick lands: the
+                whole line reflowed when the parenthetical appeared, which on a
+                phone moved the `*` a reader was looking at. */}
+            <label>บันทึกแทนพนักงาน * (เลือกแล้ว {targets.length} คน)</label>
             {/* A scrolling box rather than a list that pushes the times and the
-                preview off the screen. Twelve names is the tallest a แผนก here
-                gets; the height is set so a team of that size is two or three
-                flicks rather than a page of its own. */}
+                preview off the screen. The height is set so the largest แผนก on
+                this roster is a flick or two rather than a page of its own.
+
+                THE ค้นหา BOX THAT SAT HERE CAME OUT ON 2026-09-01 — see the
+                paragraph where `teamFind` used to be declared for what it was
+                for and why four names do not need it. What is left is the list
+                and nothing above it. */}
             <div className="pick-list">
-              {shownTeam.map((p) => (
+              {team.map((p) => (
                 <label key={p._id} className="check">
                   <input
                     type="checkbox"
                     checked={targets.includes(String(p._id))}
                     onChange={() => toggleTarget(String(p._id))}
                   />
-                  {/* ONE <span>, AND IT IS LOAD-BEARING. `.check` is a flex
-                      row with a 9px gap, and `{p.name} · {p.code}` survived
-                      that only because adjacent text collapses into a single
-                      anonymous flex item. The moment a query matches,
-                      `Highlight` returns real <mark> elements — which become
-                      flex items of their own and pull the name, the ·  and the
-                      code apart by 9px each, while typing, on every row that
-                      matched. The span puts them back in one box.
-
-                      Marked where the query actually hit, which `indexOf`
-                      cannot do here: "PM0412" matches a row whose code READS
-                      PM-0412, and the string typed appears nowhere in it.
-                      `Highlight` asks the same module the filter asked. */}
-                  <span>
-                    <Highlight text={p.name} query={teamFind} kind="name" />
-                    {' · '}
-                    <Highlight text={p.code} query={teamFind} kind="code" />
-                  </span>
+                  {/* ONE <span>, AND IT IS STILL LOAD-BEARING WITHOUT THE
+                      HIGHLIGHT. `.check` is a flex row with a 9px gap, and
+                      `{p.name} · {p.code}` as bare children survives that only
+                      because adjacent text collapses into a single anonymous
+                      flex item — one element of any kind between them and the
+                      name, the · and the code are three flex items 9px apart.
+                      `Highlight` was that element until 2026-09-01 and made it
+                      happen while somebody typed; the span is what stopped it
+                      then and is what keeps the row one box now. */}
+                  <span>{p.name} · {p.code}</span>
                 </label>
               ))}
-              {/* Inside the box rather than under it, so the empty state is
-                  the same shape as the list it replaces and the border does
-                  not collapse to a line. The way out is the ✕ above it. */}
-              {shownTeam.length === 0 && team.length > 0 && (
-                <div className="check" style={{ color: 'var(--muted)' }}>
-                  ไม่พบพนักงานที่ตรงกับ “{teamFind}”
-                </div>
-              )}
             </div>
-            {hiddenPicked > 0 && (
-              <span className="field-note">
-                ยังเลือกไว้อีก <strong>{hiddenPicked} คน</strong> ที่ไม่อยู่ในผลค้นหานี้
-                {' '}· ล้างช่องค้นหาเพื่อดูทั้งหมด
-              </span>
-            )}
             {/* เลือกทั้งหมด is one tick and it is the common case — a whole
                 small team on one Saturday. It is BELOW the list rather than
                 above it, so it cannot be the thing a thumb lands on first. */}
             {team.length > 1 && (
               <div className="row" style={{ marginTop: 8, gap: 12 }}>
-                {/* IT ACTS ON WHAT IS ON THE SCREEN, AND IT ADDS.
-                    Two changes the search box forced, and both are about the
-                    same promise the box itself makes.
+                {/* IT STILL ADDS RATHER THAN REPLACES, and that outlives the
+                    search box it was written for.
 
-                    ON THE SCREEN: it used to tick the whole `team`. Under a
-                    query showing three of twelve names, a button reading
-                    เลือกทั้งหมด (3) that quietly filed nine people nobody had
-                    looked at is the mistake this whole feature is capable of
-                    making at scale — five requests in a row, one of them on
-                    the wrong person's month, nothing on any screen flagging it.
+                    `setTargets(team.map(...))` would be a REPLACE, and with
+                    nothing left to narrow it happens to compute the same list
+                    today — so the union is not load-bearing this morning and is
+                    kept anyway. It is the shape that cannot lose a tick, it is
+                    idempotent (pressed twice, no duplicate reaches the batch,
+                    and a duplicate id is a second request filed for the same
+                    person), and the day this list is narrowed again by anything
+                    — a สังกัด, an รูปแบบโอที, a second search — a replace is a
+                    bug and a union is not. It read `shownTeam` until 2026-09-01.
 
-                    IT ADDS: `setTargets(shown)` would REPLACE, so ticking two
-                    names, searching for a third and pressing this would drop
-                    the first two — the search resetting a selection by the
-                    back door, which is the one thing the box promises not to
-                    do. A union keeps them, and the count in the label above
-                    goes up by what was added rather than jumping to 3. */}
+                    The `disabled` says the same thing in the same shape: shut
+                    when there is nothing to add, not when the list is empty. */}
                 <button
                   type="button"
                   className="btn ghost"
                   onClick={() => setTargets((t) => [
                     ...t,
-                    ...shownTeam
+                    ...team
                       .map((p) => String(p._id))
                       .filter((id) => !t.includes(id)),
                   ])}
                   disabled={
-                    shownTeam.length === 0
-                    || shownTeam.every((p) => targets.includes(String(p._id)))
+                    team.length === 0
+                    || team.every((p) => targets.includes(String(p._id)))
                   }
                 >
-                  เลือกทั้งหมด ({shownTeam.length})
+                  เลือกทั้งหมด ({team.length})
                 </button>
-                {/* This one is NOT narrowed by the query, and the difference is
-                    the label: it says ล้างที่เลือก, not "ล้างที่เลือกในผลค้นหา".
-                    A clear that left ticks behind on names the box was hiding
-                    is a control whose word for "all" means two things on one
-                    screen. `hiddenPicked` above is what makes the effect
-                    visible before it is pressed. */}
+                {/* ล้างที่เลือก says "all" and means it — one press back to an
+                    empty batch, whatever is ticked and wherever it sits in the
+                    list. It said "all" and had to be argued for while a query
+                    could hide ticked names; now there is nothing to hide behind
+                    and the word has only the one reading. */}
                 <button
                   type="button"
                   className="btn ghost"
@@ -856,18 +807,39 @@ export default function OtForm({
           <span style={{ fontSize: 12, color: 'var(--muted)' }}>
             วัน{dayName(form.workDate)} · {thaiDate(form.workDate)}
           </span>
-          {/* Said in words as well as drawn, because a greyed-out calendar tells
-              somebody they cannot pick a day and not why, and the answer is a
-              rule HR set rather than anything about their request. Only when a
-              bound exists — with both ends open this line would be noise on
-              every form. */}
-          {(dateBounds.min || dateBounds.max) && (
-            <span className="field-note">
-              เลือกได้ {dateBounds.min ? thaiDate(dateBounds.min) : 'ไม่จำกัด'}
-              {' – '}
-              {dateBounds.max ? thaiDate(dateBounds.max) : 'ไม่จำกัด'}
-            </span>
-          )}
+          {/* ── NOTHING SAYS THE RANGE IN WORDS ANY MORE ────────────────────
+              Withdrawn on 2026-09-01, hours after being rewritten, and the
+              history is kept because the line went round twice in one day and
+              a third attempt should start from what happened.
+
+              IT READ "เลือกได้ ไม่จำกัด – 1 กันยายน 2569" and was reported as
+              unclear — misread as "เลือกพนักงานได้ไม่จำกัดจำนวน", an unlimited
+              number of PEOPLE, with the date taken for the shift's coverage.
+              It was rewritten to name what is being chosen and to give each end
+              of the range a clause of its own, and THAT is what settled it: with
+              the sentence finally saying plainly what the rule was, the rule
+              turned out not to be worth a line. Under the shipped policy there
+              is exactly one bound — the ceiling is today — and "you cannot file
+              for work that has not happened yet" is not news to anybody filling
+              in a timesheet. The clearer sentence is what made the redundancy
+              visible; that is the whole reason both rounds are recorded here.
+
+              WHAT DID NOT GO WITH IT, and this is the part that matters. The
+              BOUNDS are untouched: `min`/`max` still come from
+              `submissionWindow` and still reach `PickDate`, so the days outside
+              the window are still `aria-disabled` cells the calendar refuses,
+              and the server still refuses them independently. What was removed
+              is a caption, not a rule.
+
+              THE ONE THING IT COST, said plainly. `maxPastSubmissionDays` is a
+              setting on ตั้งค่าระบบ and is `null` today — see §"ยื่นย้อนหลัง" in
+              README, where the absence of a backward limit is an OPEN question
+              for HR. The day somebody sets one, the calendar will grey out days
+              in the PAST with nothing on screen saying why, which is the case
+              this line was originally written for. The answer then is a line
+              that appears only for THAT bound, not this one back: a floor
+              somebody has to discover is a rule, and a ceiling of "today" is
+              not. */}
         </div>
         {/* `field time` rather than an inline `maxWidth: 130` — the two want to
             share a line at phone width, where `.field` is otherwise forced to
