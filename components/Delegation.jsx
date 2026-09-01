@@ -5,6 +5,7 @@ import { api, thaiDate } from '@/lib/api.js';
 import { Alert, Empty, Field, Modal } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
+import { PickDate } from './PickDate.jsx';
 
 /**
  * ผู้รับช่วงอนุมัติแทน — setting up, reading and ending a stand-in.
@@ -392,18 +393,18 @@ function DelegationForm({ user, all, onClose, onSaved }) {
           <div className="gh">ช่วงเวลา</div>
           <div className="form-grid">
             <Field label="ตั้งแต่วันที่">
-              <input
-                type="date"
+              <PickDate
+                label="ตั้งแต่วันที่"
                 value={form.fromDate}
-                onChange={(e) => set('fromDate', e.target.value)}
+                onChange={(v) => set('fromDate', v)}
                 disabled={busy}
               />
             </Field>
             <Field label="ถึงวันที่" note="นับรวมวันสุดท้าย · หมดอายุเองหลังจากนั้น">
-              <input
-                type="date"
+              <PickDate
+                label="ถึงวันที่"
                 value={form.toDate}
-                onChange={(e) => set('toDate', e.target.value)}
+                onChange={(v) => set('toDate', v)}
                 disabled={busy}
               />
             </Field>

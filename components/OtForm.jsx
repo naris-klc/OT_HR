@@ -9,6 +9,8 @@ import {
   Alert, BucketSplit, ClearButton, Highlight, Modal, SegmentList, StatusChip,
 } from './common.jsx';
 import Icon from './icons.jsx';
+import { PickDate } from './PickDate.jsx';
+import { PickTime } from './PickTime.jsx';
 /**
  * The rule that decides which names a query keeps — `lib/personSearch.js`, the
  * fourth caller and not a fourth copy.
@@ -505,7 +507,11 @@ export default function OtForm({
    * itself lives here, where the mode that decides it already lives.
    */
   const heading = hrEdit ? 'แก้ไขรายละเอียด (ฝ่ายบุคคล)'
-    : proxy ? 'บันทึก OT แทนลูกทีม'
+    // Renamed with the button that opens it, 2026-08-31 — it read
+    // 'บันทึก OT แทนลูกทีม'. The two are one sentence a person reads across a
+    // press: the queue's button says what is about to happen and this header
+    // says it has, so they cannot be two different words for it.
+    : proxy ? 'บันทึก OT แทนพนักงาน'
       : fromBirthday ? 'บันทึก OT ให้ — สวัสดิการวันเกิด'
         : entry ? 'แก้ไขรายการที่ยื่นไว้'
           : template ? 'ส่งคำขอใหม่จากรายการเดิม'
@@ -815,25 +821,37 @@ export default function OtForm({
               refuses any other one anyway (it recomputes the person's birthday
               holiday and compares). Disabled rather than removed so the form
               still shows what it is about to save. */}
-          {/* `min`/`max` are what grey the days out. The calendar drawn by an
-              `<input type="date">` belongs to the browser — it is not in this
-              document and no stylesheet here can reach inside it — but every
-              browser this app runs on already dims and refuses days outside the
-              range, which is the behaviour being asked for. What CSS here can
-              do is say when the BOX itself holds a date outside the range; see
-              `input:out-of-range` in app/styles.css.
+          {/* `min`/`max` are what grey the days out — AND SINCE 2026-09-01 IT
+              IS THIS APP DOING THE GREYING. This paragraph used to say the
+              calendar belonged to the browser, was not in this document, and
+              could not be reached by any stylesheet here; that was true and it
+              was why the range had to be said in words underneath as well. The
+              calendar is `PickDate` now (components/PickDate.jsx), the days
+              outside the range are `aria-disabled` cells this file's own CSS
+              draws, and the popup can be placed, themed and turned into a sheet
+              because it is finally an element somebody here renders.
 
-              `undefined` rather than `''` for an absent bound: React drops the
-              attribute entirely for undefined, where an empty string would be
-              set and is treated by some browsers as a bound of its own. */}
-          <input
-            type="date"
+              WHAT DID NOT CHANGE: the bounds themselves, the sentence under the
+              box, and `input:out-of-range` in app/styles.css — a value can
+              still be out of range without having been picked, which is the
+              case `dateBounds` drops a bound for.
+
+              `undefined` rather than `''` for an absent bound: the picker
+              treats an empty string as "no bound" too, but passing `undefined`
+              keeps the two ends spelled the same way they always were.
+
+              `required` IS GONE AND THAT IS DELIBERATE — a `<button>` is not a
+              form control and cannot be validated by the browser. It cost
+              nothing: this field opens on `today()` and there is no path
+              through the picker that empties it. See the header of
+              components/PickDate.jsx. */}
+          <PickDate
+            label="วันที่เริ่ม"
             value={form.workDate}
-            onChange={(e) => set('workDate', e.target.value)}
+            onChange={(v) => set('workDate', v)}
             min={dateBounds.min}
             max={dateBounds.max}
             disabled={fromBirthday}
-            required
           />
           <span style={{ fontSize: 12, color: 'var(--muted)' }}>
             วัน{dayName(form.workDate)} · {thaiDate(form.workDate)}
@@ -857,11 +875,11 @@ export default function OtForm({
             argue with. The 130px lives in the stylesheet now. */}
         <div className="field time">
           <label>{fromBirthday ? 'เวลาเข้า (สแกนนิ้ว)' : 'เวลาเริ่ม (จาก)'}</label>
-          <input type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required />
+          <PickTime label="เวลาเริ่ม" value={form.startTime} onChange={(v) => set('startTime', v)} />
         </div>
         <div className="field time">
           <label>{fromBirthday ? 'เวลาออก (สแกนนิ้ว)' : 'เวลาสิ้นสุด (ถึง)'}</label>
-          <input type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required />
+          <PickTime label="เวลาสิ้นสุด" value={form.endTime} onChange={(v) => set('endTime', v)} />
           {overnight && (
             <span style={{ fontSize: 12, color: 'var(--amber)' }}>วัน{dayName(endDateLabel)}ถัดไป</span>
           )}

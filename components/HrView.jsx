@@ -14,6 +14,7 @@ import {
   Alert, ClearButton, Empty, AddBirthDateHint, Highlight, RateHead,
 } from './common.jsx';
 import Icon from './icons.jsx';
+import { PickMonth } from './PickDate.jsx';
 import { personMatches } from '@/lib/personSearch.js';
 import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
 // `PolicyVersionBanner` is NOT among these any more. This screen draws that
@@ -642,7 +643,7 @@ export default function HrView({
               with the count at its end. */}
           <div className="field month-pick">
             <label>ประจำเดือน</label>
-            <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+            <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
           {/* `.field` around it, and that is the whole of the styling:
               `.field input` is what every box in this app is, and a search

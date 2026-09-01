@@ -10,6 +10,7 @@ import {
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
+import { PickMonth } from './PickDate.jsx';
 
 export function StatusChip({ status }) {
   // A class, not a style: see STATUS in lib/api.js. An unknown status falls
@@ -1753,7 +1754,7 @@ export function PeriodPicker({ value, onChange }) {
   return (
     <div className="field" style={{ maxWidth: 180 }}>
       <label>ประจำเดือน</label>
-      <input type="month" value={value} onChange={(e) => onChange(e.target.value)} />
+      <PickMonth label="ประจำเดือน" value={value} onChange={onChange} />
     </div>
   );
 }
@@ -2036,6 +2037,296 @@ export function PickPerson({
           {matches.length === 0 && <li className="none" role="presentation">{emptyLabel}</li>}
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * A dropdown that picks ONE thing off a short list — the app's own, not the
+ * operating system's.
+ *
+ * WHY IT EXISTS. A `<select>` renders its own box, which this stylesheet
+ * styles, and its OPTION LIST, which it cannot: that list is drawn by the
+ * browser and the OS, it is not in the DOM, and no selector in `app/styles.css`
+ * enters it. The note over `.field input:out-of-range` already says this about
+ * a date picker's calendar and settles for it, because a calendar is the
+ * browser's job. A list of five แผนก is not — it is five rows of this app's own
+ * Thai, and on ธีมมืด it was opening as a white sheet with the system's blue
+ * selection bar over it, which is the one thing on the queue that does not
+ * belong to the app.
+ *
+ * SO IT IS `PickPerson`'S PANEL WITH NO SEARCH BOX. Same `.pick-menu` — same
+ * fill, edge, shadow, scroll, row height and green highlight — because the two
+ * ARE the same act on screen and a second panel with its own corner and its own
+ * hover colour is a third thing for a reader to check against the other two.
+ * What differs is only what opens it: a box you type into there, a box that
+ * shows what is chosen here.
+ *
+ * WHAT A NATIVE `<select>` GAVE FOR FREE AND IS PUT BACK BY HAND. Everything
+ * below is here because dropping the tag drops it: ↑/↓ walk the rows and open a
+ * shut list, Enter and Space take the row under the cursor, Escape closes
+ * without choosing, Home/End reach the ends, and a letter jumps to the first
+ * row starting with it — the 900ms type-ahead `DeptCombo` spells out, since
+ * somebody typing at a dropdown out of habit is not doing it by accident.
+ * Escape's `stopPropagation` is deliberate and only when the list was open: with
+ * it already shut, Escape belongs to whatever is above this, and a dialog still
+ * has to close.
+ *
+ * ONE HIGHLIGHT, and the pointer writes to it — `data-active` moves on
+ * `mousemove`, exactly as it does in `PickPerson`. A CSS `:hover` beside it
+ * would be a second highlight: the mouse resting on one row while the arrow
+ * keys are on another lights two, and Enter takes the one the eye is not on.
+ *
+ * The label is rendered here rather than left to the caller so that
+ * `aria-labelledby` can name it — a `<label>` with nothing to point `for` at
+ * says nothing to a screen reader, which is what the `<select>`s it replaces
+ * had.
+ */
+export function PickOne({
+  label,
+  value,
+  onChange,
+  options,
+  allLabel,
+  disabled = false,
+  emptyLabel = 'ไม่มีตัวเลือก',
+}) {
+  const id = React.useId();
+  const [open, setOpen] = React.useState(false);
+  const [up, setUp] = React.useState(false);
+  const [active, setActive] = React.useState(0);
+  const btnRef = React.useRef(null);
+  const listRef = React.useRef(null);
+  const typed = React.useRef({ buf: '', at: 0 });
+
+  /* ทุกแผนก / ทุกเดือน is a row like any other and is always first: it is the
+     one press back to an unfiltered list, and ↑ from the top reaches it. */
+  const rows = [{ value: '', label: allLabel }, ...(options || [])];
+  const current = String(value ?? '');
+  const chosen = rows.findIndex((r) => String(r.value) === current);
+  // Clamped rather than trusted: a queue that reloads with fewer departments in
+  // it leaves `active` past the end, and aria-activedescendant would then name
+  // an element that is not on the page.
+  const at = Math.min(Math.max(active, 0), rows.length - 1);
+
+  /* Scroll the keyboard's row into view — `nearest`, so the list only moves
+     when it has to and a mouse resting elsewhere is not fought with. */
+  React.useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelector('[data-active="1"]')?.scrollIntoView({ block: 'nearest' });
+  }, [open, at]);
+
+  /**
+   * OPEN UPWARDS WHEN THERE IS NO ROOM DOWNWARDS — measured, on the panel that
+   * is already on the page.
+   *
+   * The native `<select>` this replaces did it and nobody noticed, because its
+   * list was an OS overlay that could be put anywhere on the screen. This one
+   * is an element in the page, and on a 360×780 phone the เดือน filter sits
+   * about 100px off the bottom: opened downwards its rows land under the fixed
+   * นำทาง bar, which is `z-index: 30` and opaque since 2026-08-28 precisely so
+   * that nothing ghosts through it.
+   *
+   * THE FLOOR IS THAT BAR AND NOT THE VIEWPORT, which is why this reaches for
+   * `.mobile-nav` by name rather than measuring `innerHeight` alone. A panel
+   * that merely fits on the screen can still be entirely behind 88px of
+   * navigation, and that is the case this exists for. The bar is not drawn
+   * above 860px and the floor is then the viewport, which leaves the desktop
+   * behaving exactly as it did.
+   *
+   * `useLayoutEffect`, so the class is on before the browser paints: measured
+   * in a plain effect the panel is drawn downwards for one frame and jumps.
+   *
+   * ONLY IF THERE IS ACTUALLY ROOM ABOVE. Flipping a panel that does not fit
+   * either way trades a list cut off at the bottom for one cut off at the top,
+   * and the top is where its first row is.
+   */
+  React.useLayoutEffect(() => {
+    if (!open) { setUp(false); return; }
+    const box = btnRef.current?.getBoundingClientRect();
+    const panel = listRef.current;
+    if (!box || !panel) return;
+    // `getBoundingClientRect()` ON A `display: none` BAR IS ALL ZEROS, AND
+    // THAT IS A FLOOR OF 0. The bar is in the DOM at every width — the 860px
+    // block only stops it being drawn — so reading its `top` unconditionally
+    // put the floor at the top of the screen and flipped EVERY desktop panel
+    // upwards. Measured on the built app at 1280×900 before this line existed.
+    const bar = document.querySelector('.mobile-nav')?.getBoundingClientRect();
+    const floor = Math.min(window.innerHeight, bar?.height > 0 ? bar.top : Infinity);
+    const need = panel.offsetHeight + 4;
+    setUp(box.bottom + need > floor && box.top - need > 0);
+  }, [open]);
+
+  /**
+   * THE PAGE SCROLLING CLOSES THE LIST — not a nicety, but what pays for the
+   * `z-index` this panel carries.
+   *
+   * `.pick-menu`'s own 5 is deliberately low and its note says why: scroll far
+   * enough and the box slides under the app bar, and a menu drawn over that bar
+   * would be a list hanging off the top of the page attached to nothing
+   * visible. `.one-menu` has to sit above `.queue-mobile-bar` (20) or its first
+   * row opens underneath เลือกทั้งหมด — so it takes 21, and the reason the old
+   * objection does not follow it is here: the list cannot still be open by the
+   * time its box has scrolled anywhere.
+   *
+   * CAPTURE, because `scroll` does not bubble — without it a page scroll fired
+   * at `document` is never heard. The list's OWN rows scrolling is ignored by
+   * the containment check, or reading a long list would shut it.
+   *
+   * Armed a frame late: the effect above may scroll the chosen row into view,
+   * and on a browser that lets that reach an ancestor the list would close in
+   * the same tick it opened.
+   */
+  React.useEffect(() => {
+    if (!open) return undefined;
+    let armed = false;
+    const frame = requestAnimationFrame(() => { armed = true; });
+    const shut = () => setOpen(false);
+    const onScroll = (e) => {
+      if (!armed || listRef.current?.contains(e.target)) return;
+      shut();
+    };
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', shut);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', shut);
+    };
+  }, [open]);
+
+  function openList() {
+    if (disabled || open) return;
+    // Where ↓ starts from: the row already chosen, which is where a native
+    // select opens too.
+    setActive(chosen < 0 ? 0 : chosen);
+    setOpen(true);
+  }
+
+  function pick(i) {
+    const row = rows[i];
+    if (!row) return;
+    onChange(row.value);
+    setOpen(false);
+  }
+
+  function onKeyDown(e) {
+    if (disabled) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { openList(); return; }
+      // Wraps, so ↑ from the top row is one keypress to ทุกแผนก rather than a
+      // hold on ↑ back through the whole list.
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      setActive((i) => (Math.min(Math.max(i, 0), rows.length - 1) + step + rows.length) % rows.length);
+      return;
+    }
+    if (e.key === 'Home' || e.key === 'End') {
+      if (!open) return;
+      e.preventDefault();
+      setActive(e.key === 'Home' ? 0 : rows.length - 1);
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      // preventDefault does two jobs: it keeps Enter from submitting a form
+      // behind this, and it stops the BUTTON firing its own click afterwards —
+      // which would immediately re-open the list this keypress just closed.
+      e.preventDefault();
+      if (open) pick(at); else openList();
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (!open) return;
+      e.stopPropagation();
+      setOpen(false);
+      return;
+    }
+    if (e.key === 'Tab') { if (open) setOpen(false); return; }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const now = Date.now();
+      const buf = (now - typed.current.at < 900 ? typed.current.buf : '') + e.key.toLowerCase();
+      typed.current = { buf, at: now };
+      const i = rows.findIndex((r) => String(r.label ?? '').toLowerCase().startsWith(buf));
+      if (i < 0) return;
+      e.preventDefault();
+      if (!open) setOpen(true);
+      setActive(i);
+    }
+  }
+
+  const shown = chosen >= 0 ? rows[chosen] : rows[0];
+
+  return (
+    <div className="field">
+      <label id={`${id}-label`}>{label}</label>
+      <div className="pick-one-wrap">
+        {/*
+          A REAL `<button>` wearing `role="combobox"`. The role is what says
+          "this opens a list of choices" and is what carries
+          `aria-activedescendant`; the tag is what keeps the control focusable,
+          reachable by Tab and answerable by Enter and Space without any of it
+          being re-implemented here. `DeptCombo` makes the same trade one screen
+          over, on a div that had to hold buttons.
+        */}
+        <button
+          ref={btnRef}
+          type="button"
+          className={`pick-one${open ? ' open' : ''}`}
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={`${id}-list`}
+          aria-labelledby={`${id}-label`}
+          aria-activedescendant={open && rows[at] ? `${id}-${at}` : undefined}
+          disabled={disabled}
+          onClick={() => (open ? setOpen(false) : openList())}
+          onKeyDown={onKeyDown}
+          // The way out for a pointer that goes somewhere else on the page. The
+          // list itself cannot trigger this — its `onMouseDown` is prevented
+          // below, so focus never leaves this button while a row is clicked.
+          onBlur={() => setOpen(false)}
+        >
+          <span className="val">{shown?.label}</span>
+          <span className="caret" aria-hidden="true">▾</span>
+        </button>
+        {open && (
+          <ul
+            id={`${id}-list`}
+            role="listbox"
+            className={`pick-menu one-menu${up ? ' up' : ''}`}
+            ref={listRef}
+            aria-labelledby={`${id}-label`}
+            // Selection happens on click, not here — but the default action of
+            // mousedown is to move focus, which blurs the button and unmounts
+            // this list before the click can land. Prevented on the container,
+            // so a drag to scroll on a touch screen is still just a scroll.
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {rows.map((r, i) => (
+              <li
+                key={r.value || 'all'}
+                id={`${id}-${i}`}
+                role="option"
+                aria-selected={String(r.value) === current}
+                data-active={i === at ? '1' : undefined}
+                className={r.value === '' ? 'all' : undefined}
+                onClick={() => pick(i)}
+                // Follows the pointer, so the row under the cursor is the row
+                // Enter takes — one notion of "the current row", not two.
+                onMouseMove={() => setActive(i)}
+              >
+                <span className="nm">{r.label}</span>
+                {/* The count is what the `(12)` in the old option text was, out
+                    of the sentence and against the right edge where forty of
+                    them line up into a column. Mono and tabular, like every
+                    other figure in the app. */}
+                {r.count != null && <span className="ct">{r.count}</span>}
+              </li>
+            ))}
+            {rows.length === 1 && <li className="none" role="presentation">{emptyLabel}</li>}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

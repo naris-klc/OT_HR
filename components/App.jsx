@@ -5,6 +5,7 @@ import { api, currentPeriod, periodLabel } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
 import { Alert, PasswordInput, TipButton } from './common.jsx';
 import Icon from './icons.jsx';
+import { PickMonth } from './PickDate.jsx';
 import { ToastHost } from './Toast.jsx';
 import { BackProvider } from './nav.jsx';
 import { PolicyProvider } from './policyContext.jsx';
@@ -1175,7 +1176,7 @@ function MyForm() {
           </div>
           <div className="field" style={{ maxWidth: 190, flex: 'none' }}>
             <label>ประจำเดือน · PERIOD</label>
-            <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+            <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
         </div>
       </div>

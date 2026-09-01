@@ -12,6 +12,7 @@ import { awaitingFirstSignature, isBirthdayWelfare, isProxyFiled, refileState } 
 import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
 import OtForm from './OtForm.jsx';
 import HolidayBanner from './HolidayBanner.jsx';
+import { PickMonth } from './PickDate.jsx';
 import { useBackHandler } from './nav.jsx';
 
 export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
@@ -273,11 +274,11 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
           <div className="card-head">
             <span className="t">รายการล่าสุด · {periodLabel(period)}</span>
             <div className="row" style={{ gap: 8, flex: 'none' }}>
-              <input
+              <PickMonth
                 className="period-input"
-                type="month"
+                label="ประจำเดือน"
                 value={period}
-                onChange={(e) => setPeriod(e.target.value)}
+                onChange={setPeriod}
               />
               {/* A CONTROL, NOT A SENTENCE. `.link` is for a word inside a
                   paragraph — bare green text, no padding, no box — and this one
@@ -384,7 +385,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
             </div>
             <div className="field" style={{ maxWidth: 180, flex: 'none' }}>
               <label>ประจำเดือน</label>
-              <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+              <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
             </div>
           </div>
 

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api.js';
+import { PickDate } from './PickDate.jsx';
 import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
 } from '@/lib/accessLog.js';
@@ -539,12 +540,12 @@ function Compliance() {
 
       <div className="form-grid">
         <Field label="ตั้งแต่วันที่">
-          <input type="date" max={today} value={range.from}
-            onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
+          <PickDate label="ตั้งแต่วันที่" max={today} value={range.from} clearable
+            onChange={(v) => setRange((r) => ({ ...r, from: v }))} />
         </Field>
         <Field label="ถึงวันที่" note="รวมวันที่เลือกด้วย">
-          <input type="date" max={today} value={range.to}
-            onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
+          <PickDate label="ถึงวันที่" max={today} value={range.to} clearable
+            onChange={(v) => setRange((r) => ({ ...r, to: v }))} />
         </Field>
         <Field label="เฉพาะประเภท" note="เว้นว่าง = ทุกประเภท">
           <select value={only} onChange={(e) => setOnly(e.target.value)}>
@@ -782,10 +783,10 @@ function LogList({
           </select>
         </Field>
         <Field label="ตั้งแต่วันที่">
-          <input type="date" max={today} value={filters.from} onChange={(e) => setFilter('from', e.target.value)} />
+          <PickDate label="ตั้งแต่วันที่" max={today} value={filters.from} clearable onChange={(v) => setFilter('from', v)} />
         </Field>
         <Field label="ถึงวันที่" note="รวมวันที่เลือกด้วย">
-          <input type="date" max={today} value={filters.to} onChange={(e) => setFilter('to', e.target.value)} />
+          <PickDate label="ถึงวันที่" max={today} value={filters.to} clearable onChange={(v) => setFilter('to', v)} />
         </Field>
       </div>
 

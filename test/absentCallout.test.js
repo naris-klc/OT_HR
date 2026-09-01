@@ -120,7 +120,18 @@ test('the smaller notice is opt-in, and the base size is untouched', () => {
   // the horizontal went to 16 — an alert's words start 26px in past its mark
   // and their right edge was 14px from the border, so a three-line notice sat
   // visibly off-centre in its own box.
-  assert.match(css, /\.alert \{[\s\S]{0,200}padding: 12px 16px;[\s\S]{0,120}font: 400 13\.5px\/1\.6 var\(--sans\);/);
+  //
+  // AND THE LEADING READ 1.6 UNTIL 2026-09-01, when it went to 1.75 for the
+  // blue notice on บันทึกแทน — the longest alert in the app, five lines of Thai
+  // in one colour with no inter-word spaces to give the paragraph any texture.
+  // It is on `.alert` and not on `.alert.info` on purpose: that screen shows a
+  // warn box and an info box one under the other, and two boxes with the same
+  // padding, size and face at two different leadings is worse than either.
+  assert.match(css, /\.alert \{[\s\S]{0,200}padding: 12px 16px;[\s\S]{0,120}font: 400 13\.5px\/1\.75 var\(--sans\);/);
+  // `.box` is the same four palettes and does NOT follow: `.box.total` is the
+  // รวม tile at the end of a rate split, in a row of figures whose height it
+  // sets. An alert is always a sentence; a box is sometimes a number.
+  assert.match(css, /\.box \{[\s\S]{0,160}font: 400 13\.5px\/1\.6 var\(--sans\);/);
   // The error slot in this same dialog stays full size: a refusal from the
   // server is the one thing here somebody has to read.
   assert.match(code, /\{error && <Alert kind="error">\{error\}<\/Alert>\}/);

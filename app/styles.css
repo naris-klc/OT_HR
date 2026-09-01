@@ -1805,7 +1805,72 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    the values across would have fixed today and drifted tomorrow; sharing the
    declaration cannot. See .policy-row select below for the one thing that
    does differ, and why. */
-.field input, .field select, .field textarea,
+/* ── A TICK BOX IS NOT A TEXT BOX, and `.field input` had been telling it it
+   was ─────────────────────────────────────────────────────────────────────
+   Reported 2026-08-31 on บันทึก OT แทนลูกทีม as a square around the checkbox
+   when you pick somebody, and a background rectangle behind it. Both were
+   this rule and the `:focus` one under it, reaching `<input type="checkbox">`
+   because a checkbox is an `input` and the tick lists sit in a `.field`.
+
+   MEASURED ON THE BUILT APP BEFORE THE FIX, at 420px on ธีมมืด: the box came
+   out **17 × 46** — 17 wide from `.check input`'s own `width`, and 46 TALL
+   because `min-height: var(--field-h)` beats a 17px `height` — filled with
+   `var(--field-bg)`, which is the dark plate somebody saw behind the tick.
+   On a press it also took `box-shadow: 0 0 0 3px var(--focus-ring)`, and that
+   halo does NOT go away with the pointer: it is `:focus`, so it sat there
+   until something else was clicked. That is the square in the report.
+
+   AND THE SAME RULE HAD KILLED THE KEYBOARD'S RING. `outline: none` below is
+   right for a text box, whose ring is the box-shadow — on a checkbox it meant
+   `:focus-visible` matched, computed its 2px offset, and drew nothing. Tab
+   through this list before today and there was no way to see where you were.
+
+   SO THE ANSWER IS NOT `outline: none` ANYWHERE, which is what was asked for
+   and would have deleted that ring on every control in the app to fix a
+   complaint about a shape. `:focus-visible` is already the app's rule — it is
+   the keyboard and not the thumb, and the measurement above confirms a real
+   mouse press does not match it. Take the text-box rules off the tick boxes
+   and the press leaves nothing behind while the keyboard gets its green ring
+   back, both without a single new declaration.
+
+   SIX PLACES, NOT ONE. Tick lists sit inside a `.field` on บันทึก OT แทนพนักงาน,
+   the queue, ส่งบัญชี and แยกแผนก, so the fix belongs on the rule rather than
+   on the screen that reported it — the note over `:focus-visible` above tells
+   this same story about eight controls that each wrote out their own copy.
+
+   ── AND `:where()` IS LOAD-BEARING, NOT DECORATION ─────────────────────────
+   This shipped for one day as `:not([type='checkbox']):not([type='radio'])`,
+   which is the obvious spelling and BROKE EVERY SEARCH BOX IN THE APP. A
+   `:not()` takes the specificity of its argument, so those two attribute
+   selectors pushed this rule from (0,1,1) to (0,3,1) — past
+   `.searchbox input.has-icon` at (0,2,1), whose whole job is the 40px of left
+   inset that keeps a placeholder clear of the 🔍. The text jumped back to
+   `--field-pad-x`, 14px, and sat under an icon spanning 13–30px.
+
+   Reported the next day as the placeholder overlapping the icon on the
+   หัวหน้า's queue; measured on the built app at 390px as `padding-left: 14px`
+   where it had been 40. `:where()` contributes NO specificity, so the same
+   exclusion now leaves this rule exactly where it has always been and the
+   search boxes win again. `test/pressChrome.test.js` pins the spelling.
+
+   THE LESSON IS NOT "CHECK SPECIFICITY". It is that this file already knew:
+   the note over `:focus-visible` says the base rule is "declared at the lowest
+   specificity there is … so that every rule already in this file still beats
+   it". Adding a `:not()` to a base rule is raising it. */
+/* `.field .pick-one` IS IN THIS LIST AND NOT IN A COPY OF IT. It is a button
+   standing where a `<select>` used to stand, in the same `.form-grid` and often
+   in the same row as one — see `PickOne` in components/common.jsx — and the
+   note over `.dept-combo` records what the alternative costs: three
+   hand-written numbers that had already drifted, 42px against the select's 46
+   and a 10px inset against its 14. Sharing the declaration is what stops that
+   happening again. It contains no field of its own, so unlike `.dept-combo` it
+   has nothing to keep out and can simply be one of these.
+
+   Adding it does NOT move the selectors around it: specificity is worked out
+   per selector in a list, not shared across one, so `.field select` still sits
+   where it always did — which is the whole subject of the note above. */
+.field input:not(:where([type='checkbox'], [type='radio'])),
+.field select, .field textarea, .field .pick-one, .field .pick-box,
 .policy-row select {
   border: 1px solid var(--input-line); border-radius: var(--radius-sm);
   min-height: var(--field-h);
@@ -1813,7 +1878,11 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   font: 500 var(--field-size)/1.3 var(--mono); color: var(--ink);
 }
 .field textarea { font: 400 14.5px/1.55 var(--sans); resize: vertical; min-height: 64px; }
-.field input:focus, .field select:focus, .field textarea:focus,
+/* Same exclusion, and it has to be repeated rather than inherited: this is a
+   separate selector list, and a checkbox that escaped the box above but not
+   the ring below would still wear the halo that was reported. */
+.field input:not(:where([type='checkbox'], [type='radio'])):focus,
+.field select:focus, .field textarea:focus, .field .pick-one:focus, .field .pick-box:focus,
 .policy-row select:focus {
   outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
 }
@@ -1823,12 +1892,21 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    exactly like an editable one and the only signal was that typing did nothing.
    The sentence saying WHY goes underneath in .field-note — grey on its own
    reads as "broken" rather than as "not yours". */
-.field input:disabled, .field select:disabled, .field textarea:disabled,
+/* The third of the three, excluded for the same reason as the two above and
+   found by looking rather than by being reported: `ข้ามคืน` on the queue's
+   edit form is a `disabled readOnly` checkbox sitting in a `.field`, so this
+   rule was painting `--neutral-wash` behind that tick as well. A disabled
+   checkbox already reads as disabled — the browser greys the box itself. */
+.field input:not(:where([type='checkbox'], [type='radio'])):disabled,
+.field select:disabled, .field textarea:disabled, .field .pick-one:disabled, .field .pick-box:disabled,
 .policy-row select:disabled {
   background: var(--neutral-wash);
   color: var(--muted);
   cursor: not-allowed;
 }
+/* `cursor` is the half of it that WAS right for a tick box, and it is the half
+   a reader would not think to put back. Kept, alone. */
+.field input:is([type='checkbox'], [type='radio']):disabled { cursor: not-allowed; }
 
 /* A date outside the window HR set — see `min`/`max` on วันที่เริ่ม in
    components/OtForm.jsx.
@@ -2901,7 +2979,16 @@ td > .approver-line { margin-top: 5px; }
    carry no z-index at all — and it must NOT beat the app bar (20) or the
    sticky tab strip (10). Scroll far enough and the input slides under those
    bars; a menu that drew over them would be a list hanging off the top of the
-   page, attached to nothing visible. */
+   page, attached to nothing visible.
+
+   TWO PANELS DEPART FROM IT, AND EACH PAID FOR THE DEPARTURE. `.dept-menu`
+   takes 50 because it opens inside a dialog, where none of those bars are.
+   `.one-menu` takes 21 because `.queue-mobile-bar` is sticky at 20 directly
+   under the filters it belongs to — and what makes that safe is that `PickOne`
+   closes the list on a page scroll, so the box it hangs from cannot travel
+   while it is open. The objection above is about a menu that OUTLIVES its
+   box's position; a menu that does not is a different case. Both blocks say so
+   where they raise it. */
 /* ── AND THE RING IS WHAT SAYS "ABOVE" ON THE DARK THEME ─────────────────────
 
    `--line-lift`, not `--line`, since 2026-08-27. Asked for as making this read
@@ -2973,6 +3060,485 @@ td > .approver-line { margin-top: 5px; }
    carries no Thai (the same trap `.cell-sub.th` spells out). */
 .pick-menu li.all { font: 500 13.5px/1.4 var(--sans); color: var(--muted); }
 .pick-menu li[aria-selected='true'] { font-weight: 700; }
+
+/* ══ ตัวเลือกเดียว — THE DROPDOWN THIS STYLESHEET CAN ACTUALLY REACH ═════════
+
+   `PickOne` in components/common.jsx: the box, and `.pick-menu.one-menu`, the
+   list it opens. Together they are what the แผนก and เดือน filters on
+   รายการรออนุมัติ are made of since 2026-09-01.
+
+   WHY THERE IS A BLOCK HERE AT ALL. A `<select>`'s box is an element in this
+   document and every rule above reached it; its OPTIONS are drawn by the
+   browser and the operating system, are not in the DOM, and no selector in this
+   file has ever entered one. The note over `.field input:out-of-range` says
+   exactly this about a date picker's calendar and settles for it, because a
+   calendar is the browser's to draw. Five rows of Thai are not — and on ธีมมืด
+   what dropped out of these two filters was a white sheet with the system's
+   blue selection bar on it, in the middle of a charcoal page. The only fix for
+   an element that is not in the document is to put one there.
+
+   ── THE BOX IS THE FIELD'S OWN, AND IS NOT RESTATED ─────────────────────────
+   Height, inset, border, radius, fill, focus ring and the disabled state all
+   come from the `.field input … .field select` block at the top of this file,
+   which `.field .pick-one` was added to rather than copied out of. What is left
+   here is only what a BUTTON needs that an input does not: the flex row that
+   holds the value against the arrow, a left-aligned text, and the pointer.
+
+   `appearance: none` is for iOS. Safari draws its own button chrome over the
+   fill and radius set above, so without it this control is the one thing on the
+   phone that does not match the search box beside it — which is the half of the
+   request that is about phones. */
+.pick-one-wrap { position: relative; }
+.field .pick-one {
+  appearance: none;
+  display: flex; align-items: center; gap: 8px;
+  text-align: left; cursor: pointer;
+}
+/* SANS, NOT THE `--mono` THE SHARED BLOCK SETS. What stands here is a Thai
+   department or a Thai month — the same trap `.pick-menu.find-menu li` and
+   `.cell-sub.th` both spell out, since the mono face carries no Thai and the
+   browser silently falls back to something else for every glyph in the string.
+   The figures this control shows are in the LIST, and they keep mono there.
+
+   The ellipsis is not decoration: ฝ่ายควบคุมคุณภาพ in a 150px column has
+   nowhere to go, and Thai does not break on spaces — without `min-width: 0`
+   the whole run is the item's min-content width and it pushes the ▾ out of the
+   box, which is the wrap `.dept-combo .ph` records paying for. */
+.field .pick-one .val {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 500 var(--field-size)/1.3 var(--sans);
+}
+/* The same ▾, the same 11px, the same half-turn on open as `.dept-combo`'s —
+   two controls that open the same panel must not disagree about what says so.
+   It sits in the flex row rather than pinned to the box because there are no
+   chips here to wrap underneath it. */
+.field .pick-one .caret {
+  flex: none; color: var(--muted-2); font-size: 11px; line-height: 1;
+  transition: transform .12s ease;
+}
+/* Open and focused look the same on purpose: the list is attached to this box,
+   and a box that lost its ring the moment the list appeared would leave the
+   panel hanging off nothing. Written after the shared `:focus` rule above so it
+   wins at equal specificity when both apply. */
+.field .pick-one.open {
+  border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.field .pick-one.open .caret { transform: rotate(180deg); color: var(--green); }
+@media (prefers-reduced-motion: reduce) {
+  .field .pick-one .caret { transition: none; }
+}
+
+/* ── THE ROWS ────────────────────────────────────────────────────────────────
+   EVERY SELECTOR NAMES BOTH CLASSES — `.pick-menu.one-menu`, never a bare
+   `.one-menu`. The shared `.pick-menu` rules are directly above, so a
+   single-class rule here would tie with them and win only by sitting later in
+   the file, which is the defeat `.dept-menu` took four times over and the trap
+   `.btn.sm.log-more` records at the other end of this sheet.
+
+   The panel's SKIN is not touched: fill, edge, shadow, corner, scroll and the
+   phone's 44px rows are all `.pick-menu`'s, which is the point of opening the
+   same panel. Two things about WHERE it sits are, and both were found by
+   opening the built app on a 360px phone rather than by reading this file.
+
+   ── 21, WHERE `.pick-menu` TAKES 5 ─────────────────────────────────────────
+   `.queue-mobile-bar` — เลือกทั้งหมด, the phone's own toolbar — is
+   `position: sticky; z-index: 20` and is drawn immediately under the filters.
+   At 5 this panel opened BEHIND it: measured with `elementFromPoint` down the
+   middle of the list at 360×780, the first 40px of rows came back as
+   `queue-mobile-bar`, so ทุกเดือน — the one press back to an unfiltered queue —
+   was under an opaque bar.
+
+   `.pick-menu`'s note explains why 5 is low and it is right: scroll far enough
+   and the box slides under the app bar, and a menu drawn over that bar hangs
+   off the top of the page attached to nothing. WHAT MAKES 21 SAFE IS NOT THE
+   NUMBER, it is that `PickOne` closes the list on a page scroll — see the
+   effect that does it, which carries the other half of this note. Without that
+   this line would be the bug its neighbour warns about. 21 and not 50 like
+   `.dept-menu`: one step over the bar it has to clear, and still under the
+   fixed นำทาง bar's 30, which nothing in the page may cover.
+
+   ── AND UPWARDS WHEN THERE IS NO ROOM DOWN ─────────────────────────────────
+   `.up` is put on by the same component after measuring the panel against the
+   floor — the นำทาง bar's top edge, or the viewport where that bar is not
+   drawn. `top: auto` is load-bearing: `.pick-menu` sets `top: calc(100% + 4px)`
+   and a `bottom` alone would leave both ends pinned and stretch the panel over
+   the whole field.
+
+   The 4px is the same 4px above it, so a list that flipped is the same distance
+   off its box as one that did not. */
+.pick-menu.one-menu { z-index: 21; }
+.pick-menu.one-menu.up { top: auto; bottom: calc(100% + 4px); }
+.pick-menu.one-menu li { gap: 10px; }
+/* SANS again, and for the third time in this file the same reason: these rows
+   are Thai. `.pick-menu li`'s mono is for a roster of codes. */
+.pick-menu.one-menu li .nm {
+  flex: 1; min-width: 0; overflow-wrap: anywhere;
+  font: 500 14px/1.4 var(--sans);
+}
+/* The count that used to be `(12)` inside the option's text — an `<option>` can
+   hold a string and nothing else, so it had to be. Out of the sentence and
+   against the right edge, forty of them line up into a column somebody can run
+   an eye down; tabular figures are what keep that column straight. */
+.pick-menu.one-menu li .ct {
+  flex: none; color: var(--muted);
+  font: 400 12.5px/1.4 var(--mono); font-variant-numeric: tabular-nums;
+}
+/* ทุกแผนก / ทุกเดือน is a command, not a department — the same treatment
+   `.pick-menu li.all` gives ทุกคน, restated at this block's specificity because
+   `.pick-menu.one-menu li .nm` above would otherwise overrule the font on it. */
+.pick-menu.one-menu li.all .nm { font: 500 13.5px/1.4 var(--sans); color: var(--muted); }
+.pick-menu.one-menu li[aria-selected='true'] .nm { font-weight: 700; }
+/* ONE highlight, and it is `.pick-menu`'s green — `--green-bg` over
+   `--green-dark`, which on ธีมมืด is a deep green ground under a pale green
+   ink and on the light theme is the wash HR already knows from ค้นหาพนักงาน.
+   This is the declaration the whole change is for: it is what stands where the
+   operating system's blue bar used to.
+
+   `data-active` and NOT `:hover`. The pointer writes to `data-active` on move
+   (see `PickOne`), so hover and the arrow keys drive the same one row. A CSS
+   hover beside it would light a second row whenever the mouse rested away from
+   the keyboard's, and Enter would take the one the eye is not on.
+
+   BOTH CHILDREN ARE RE-COLOURED, and they have to be by name: `.nm` and `.ct`
+   above set a colour of their own, so `color` inherited from the row would
+   never reach them and the count would stay `--muted` grey on the green. */
+.pick-menu.one-menu li[data-active='1'] { background: var(--green-bg); }
+.pick-menu.one-menu li[data-active='1'] .nm,
+.pick-menu.one-menu li[data-active='1'] .ct { color: var(--green-dark); }
+
+/* ══ ปฏิทิน — THE THIRD POPUP THIS APP HAD TO TAKE OFF THE BROWSER ══════════
+
+   `PickDate` / `PickMonth` in components/PickDate.jsx. The box is here; the
+   panel is `.cal-pop` below and is rendered into `document.body`.
+
+   SAME REASON AS `.one-menu`, ONE STEP FURTHER. An `<input type="date">`'s box
+   is in this document and everything above reached it; its CALENDAR is drawn
+   by the browser and the operating system and is not in the DOM — the note over
+   `input:out-of-range` says so and settles for it, because all that was being
+   asked of it then was to grey out the days outside `min`/`max`, which every
+   browser does. A `z-index`, a portal, an edge to flip off and a sheet on a
+   phone are none of them reachable on an element nobody here renders.
+
+   ── THE BOX ────────────────────────────────────────────────────────────────
+   `.field .pick-box` is in the shared `.field input … select` list at the top
+   of this file for the reason `.pick-one` is: it is a button standing where an
+   input stood, often in the same `.form-grid` row as one, and a control a pixel
+   off its neighbour reads as a different kind of thing. What is here is what a
+   button needs and an input does not. */
+.pick-box-wrap { position: relative; display: block; }
+/* BARE `.pick-box` FOR THE LAYOUT, `.field .pick-box` FOR THE BOX, and the
+   split is load-bearing. Seventeen of these sit in a `.field` and take their
+   height, inset, border, fill and focus ring from the shared list at the top of
+   this file. The eighteenth — รายการล่าสุด's month picker on OT ของฉัน — sits
+   in a card head wearing `.period-input`, which is a smaller box with its own
+   border and padding and has been that since long before this control existed.
+   Layout is the same for both; the box is not. */
+.pick-box {
+  appearance: none;
+  display: flex; align-items: center; gap: 8px;
+  text-align: left; cursor: pointer;
+}
+/* SANS, NOT THE `--mono` THE SHARED BLOCK SETS — the box reads `1 กันยายน
+   2569`, which is Thai, and the mono face carries none of it. This is the third
+   control in this file to say so; `.pick-menu.find-menu li` and `.cal-cell`
+   below are the other two.
+   THE SIZE IS INHERITED rather than named: 15px from a `.field`, 13 from
+   `.period-input`. Naming `--field-size` here would have drawn the compact
+   picker in the full-size face. */
+.pick-box .val {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--sans); font-size: inherit; font-weight: 500; line-height: 1.3;
+}
+/* Nothing chosen yet — the log's date range opens empty on purpose. The same
+   grey every other prompt-rather-than-value in this app uses. */
+.pick-box.empty .val { color: var(--muted-2); font-weight: 400; }
+.pick-box .pick-mark { flex: none; display: grid; color: var(--muted-2); }
+.pick-box .pick-mark svg { width: 16px; height: 16px; }
+.pick-box.open { border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
+.pick-box.open .pick-mark { color: var(--green); }
+/* THE BOX HOLDS A DATE ITS OWN RANGE WOULD REFUSE — `input:out-of-range`'s job,
+   moved. That selector needs an `<input>`, and every date box in this app is a
+   button now; the rule itself stays where it is, since it is written for any
+   ranged input and not for this control. Same amber, and the note over the
+   original is still the reason it is amber: the commonest way to see it is an
+   old request being corrected, where the date is not a mistake and nothing is
+   going to be refused. */
+.pick-box.out { border-color: var(--amber-line); background: var(--amber-bg); }
+.pick-box.out.open { border-color: var(--amber); }
+/* The ✕ sits where `.searchbox-clear` sits and IS that button — so the value
+   makes room for it, exactly as a search box's text does. */
+.pick-box-wrap.has-clear .pick-box { padding-right: 42px; }
+/* The compact one, in รายการล่าสุด's card head. `.period-input` already draws
+   the box — this only stops a `<button>` arriving with the two UA styles that
+   are not in that rule, the same pair `.item` above records having to turn off
+   when it became a real button. */
+.period-input.pick-box { width: auto; color: var(--ink); }
+
+/* ── THE PANEL ──────────────────────────────────────────────────────────────
+   `position: fixed`, AND THAT IS THE PORTAL'S DOING. Out of its trigger's
+   subtree there is no positioned ancestor to be `absolute` to, and being out of
+   it is the whole point: four of these boxes open inside a `.modal`, which
+   carries `overflow: hidden` and `isolation: isolate` — the first cuts a panel
+   off at the dialog's edge, the second stops any z-index inside it being
+   composited against anything outside. Neither can be relaxed for the calendar
+   without giving up what they do for the dialog, so the calendar leaves.
+
+   `top` and `left` ARE WRITTEN BY THE COMPONENT, from the trigger's rect: under
+   it when there is room, above when there is not, clamped 8px off every edge.
+   Nothing here can do that — CSS anchor positioning is not in the browsers on
+   this floor.
+
+   z-index 120 — OVER THE DIALOG, which is the one thing in this app that is
+   above everything else. `.modal-backdrop` is 100, `.mobile-nav` 30,
+   `.queue-mobile-bar` 20. A calendar opened from inside a dialog has to be over
+   that dialog or it is not visible at all, and it can afford to be: unlike
+   `.one-menu`, which had to argue its way past a sticky bar, this panel closes
+   on any scroll and on any press outside it, so it cannot outlive the box it
+   belongs to. */
+/* `.pop` IS THE PANEL AND `.cal-pop` / `.time-pop` ARE ONLY ITS WIDTH.
+
+   It read `.cal-pop` for everything until the time picker arrived, and the
+   split is the point rather than tidiness: three controls open the SAME panel —
+   it floats, it is portaled out of whatever would clip it, it is placed against
+   the box that opened it, it flips up at the bottom of the screen, it is a
+   sheet on a phone and it closes the same three ways. A second copy of that
+   would be a second thing to keep in step, which is how two popups that are
+   supposed to be one start behaving differently. What actually differs between
+   a calendar and a pair of number columns is how WIDE they want to be. */
+.pop {
+  position: fixed; z-index: 120;
+  padding: 10px;
+  background: var(--card-lift);
+  border: 1px solid var(--line-lift); border-radius: var(--radius-sm);
+  /* The same two shadows `.pick-menu` uses, and the note there is the reason:
+     the wide one is the lift, the tight one is the EDGE — what makes the half
+     covered control underneath look covered rather than missing. */
+  box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
+  animation: otfade .14s ease both;
+}
+/* Seven columns of days, at the width they are readable. */
+.pop.cal-pop { width: 292px; }
+/* Two columns of two digits, and no wider — a 292px panel round `17 : 00` is
+   mostly empty, and an empty panel over a form reads as one that is loading. */
+.pop.time-pop { width: 196px; }
+
+/* ‹ สิงหาคม 2569 › */
+.cal-head { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.cal-nav {
+  flex: none; width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border: none; border-radius: var(--radius-xs); padding: 0;
+  background: none; color: var(--muted);
+  font: 400 18px/1 var(--sans); cursor: pointer;
+}
+.cal-nav:hover { background: var(--neutral-wash); color: var(--ink); }
+/* THE TITLE IS A CONTROL, and it has to look like one — it is the only way up
+   to the months and the years, and `birthDate` is unusable without it: a
+   colleague born in 1985 is 492 presses of ‹ away on a calendar that can only
+   step a month. */
+.cal-title {
+  flex: 1; min-width: 0;
+  border: none; border-radius: var(--radius-xs); padding: 6px 8px;
+  background: none; color: var(--ink);
+  font: 600 14px/1.3 var(--sans); cursor: pointer;
+}
+.cal-title:hover:not(:disabled) { background: var(--neutral-wash); }
+.cal-title:disabled { cursor: default; }
+
+/* อา. จ. อ. … — a label row, not part of the grid.
+   Outside `role="grid"` on purpose: they are not cells, and a screen reader
+   walking a grid should hear seven days and not seven headings it cannot act
+   on. `aria-hidden`, with the grid's own label carrying the month. */
+.cal-dow {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 2px;
+}
+.cal-dow span {
+  text-align: center;
+  font: 500 11px/1.6 var(--sans); color: var(--muted-2);
+}
+
+.cal-grid { display: grid; gap: 2px; }
+.cal-grid.c7 { grid-template-columns: repeat(7, 1fr); }
+.cal-grid.c3 { grid-template-columns: repeat(3, 1fr); }
+.cal-grid:focus { outline: none; }
+
+/* A CELL IS 36px AND THE PHONE BLOCK DOES NOT GROW IT, which is the one place
+   this app knowingly goes under its own 44px touch floor. Seven 44px columns
+   plus the gaps is 330px of a 360px screen before any padding, and a calendar
+   that scrolls sideways is worse than one whose days are 40px. The sheet below
+   buys back what it can by widening the panel to the screen. */
+.cal-cell {
+  min-height: 36px;
+  display: grid; place-items: center;
+  border: none; border-radius: var(--radius-xs); padding: 0;
+  background: none; color: var(--ink);
+  /* Sans, for the reason above it: the month grid's cells are Thai words. The
+     day numbers are tabular so the columns line up as columns. */
+  font: 400 13px/1.3 var(--sans); font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.cal-cell:hover { background: var(--neutral-wash); }
+/* THE DAY THE KEYBOARD IS ON. Focus is real here — the cells are buttons with a
+   roving `tabindex`, which is what APG asks of a date grid — so this is the
+   app's own focus ring and not a second invented mark.
+
+   THE OFFSET ONLY. It shipped for one build as `outline: 2px solid var(--green)`
+   with the offset beside it, and `test/pressChrome.test.js` refused it in as
+   many words: eight controls once carried the base ring's own values, and a
+   copy is not wrong the day it is written but the day the base ring changes and
+   eight controls do not. Inset rather than the base's +2px because the cells
+   are 2px apart — an outward ring would be drawn over the days either side. */
+.cal-cell:focus-visible { outline-offset: -2px; }
+/* วันนี้ — a ring, not a fill, so it can be read at the same time as the
+   selection sitting on another day. */
+.cal-cell.today { box-shadow: inset 0 0 0 1px var(--green); color: var(--green-dark); }
+/* THE DAY CHOSEN — the one filled cell, in the app's own green. The white on it
+   is `--on-fill`, which is the token for text on a saturated fill and is the
+   same in both themes, so this reads on ธีมมืด without a second rule. */
+.cal-cell.on {
+  background: var(--green); color: var(--on-fill); font-weight: 600;
+}
+.cal-cell.on:hover { background: var(--green-lift); }
+/* Outside `min`/`max`. `aria-disabled` and not `disabled` — see the note in the
+   component — so it still takes focus and the arrows still cross it; what it
+   may not do is be chosen. */
+.cal-cell[aria-disabled='true'] { color: var(--muted-4); cursor: not-allowed; }
+.cal-cell[aria-disabled='true']:hover { background: none; }
+/* The blanks before the 1st. They are cells so that the grid's index arithmetic
+   keeps a column meaning a weekday; they are nothing else. */
+.cal-cell.blank { visibility: hidden; }
+
+.pop-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-softer);
+}
+
+/* ── ON A PHONE IT IS A SHEET ───────────────────────────────────────────────
+   Asked for, and it is also the only shape that fits: a 292px panel anchored to
+   a box near the foot of a 360px screen has nowhere to go that is not over the
+   นำทาง bar. Pinned to the bottom instead, it is never placed, never clipped
+   and never off an edge — there is no measurement in the phone path at all.
+
+   THE SCRIM IS PART OF THE CONTROL, not decoration. It darkens the page so the
+   sheet reads as the thing being answered, it takes the press that dismisses,
+   and it stops the list behind scrolling under a panel that no longer follows
+   it. z-index one under the panel it contains, and over everything else. */
+.pop-scrim {
+  position: fixed; inset: 0; z-index: 119;
+  background: var(--scrim);
+  animation: otfade .14s ease both;
+}
+@media (max-width: 860px) {
+  .pop.sheet {
+    /* `inset` and not a width: the sheet IS the width of the screen, so nothing
+       here has to know what that is. `top: auto` undoes the `top` the component
+       writes for the floating case — it sets both coordinates unconditionally
+       and this is where they stop applying. */
+    top: auto; left: 0; right: 0; bottom: 0;
+    width: auto; padding: 14px 14px 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: 0;
+    /* Up from the bottom, which is what says it came from there. The shared
+       `otslide` is the same 24px rise the app's other sheets use. */
+    animation: otslide .18s ease both;
+  }
+  /* The row is 44px on a phone even though the cells are 40 — a cell is a
+     square in a grid of seven and cannot be widened, but nothing stops it being
+     taller, and the height is the half a thumb misses on. */
+  .pop.sheet .cal-cell { min-height: 44px; font-size: 15px; }
+  .pop.sheet .cal-nav { width: 44px; height: 44px; }
+  .pop.sheet .cal-title { padding: 10px 8px; font-size: 15px; }
+  .pop.sheet .cal-dow span { font-size: 12px; }
+  /* Clear of the home indicator, the same way `.modal-foot` is. */
+  .pop.sheet .pop-foot {
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+    margin-top: 8px;
+  }
+  .pop.sheet .pop-foot .btn { min-height: 44px; }
+  /* THE TIME COLUMNS GET THE SAME 44px. A minute is one of sixty and the column
+     scrolls, so the row height is the whole of whether a thumb lands on 30 or
+     on 29. */
+  .pop.sheet .time-opt { min-height: 44px; font-size: 16px; }
+  .pop.sheet .time-list { max-height: min(46vh, 300px); }
+  .pop.sheet .time-cols { max-width: 340px; margin: 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pop, .pop-scrim, .pop.sheet { animation: none; }
+}
+
+/* ── เวลาเริ่ม / เวลาสิ้นสุด — TWO COLUMNS OF NUMBERS ────────────────────────
+
+   `PickTime` in components/PickTime.jsx, inside the `.pop` panel above.
+
+   THE THIRD POPUP TAKEN OFF THE BROWSER, and the only one that was not just a
+   styling complaint: an `<input type="time">` renders in the VIEWER's locale,
+   so on an English-locale Windows the stored `17:00` was drawn as `05:00 PM` —
+   in a form about overtime between 17:00 and 20:00 น., on a screen where the
+   queue's rows, the preview under the form and ใบ F-HR-027 all print 24-hour.
+   No attribute on that tag settles it; the format is the browser's business.
+   Ours is a string this app already holds, so there is nothing to format. */
+.time-cols { display: flex; align-items: stretch; gap: 10px; }
+.time-col { flex: 1; min-width: 0; }
+.time-col-head {
+  text-align: center; padding-bottom: 4px;
+  font: 500 11px/1.6 var(--sans); color: var(--muted-2);
+}
+/* SIXTY ROWS THAT SCROLL, and the cap is what makes that a list rather than a
+   page. `overscroll-behavior` stops a flick that reaches 59 carrying on into
+   the form behind — the same containment `.pick-menu` and `.modal-body` both
+   keep, for the same reason. */
+.time-list {
+  max-height: 208px; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.time-list:focus { outline: none; }
+.time-opt {
+  flex: none; min-height: 34px;
+  display: grid; place-items: center;
+  border: none; border-radius: var(--radius-xs); padding: 0;
+  background: none; color: var(--ink);
+  /* MONO AND TABULAR, unlike the calendar's cells. These are two-digit figures
+     read down a column and compared, which is the case the note at the top of
+     this file reserves mono for — and nothing here is Thai. */
+  font: 400 14px/1.3 var(--mono); font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.time-opt:hover { background: var(--neutral-wash); }
+/* The app's own ring, offset inwards past the 2px gap — the colour comes from
+   the base `:focus-visible` and is deliberately not restated. */
+.time-opt:focus-visible { outline-offset: -2px; }
+/* THE ONE CHOSEN, in the app's green — this is the declaration the request was
+   about, and what stands where the OS put its blue bar. `--on-fill` is the
+   token for text on a saturated fill and is the same in both themes, so it
+   reads on ธีมมืด without a second rule. */
+.time-opt.on { background: var(--green); color: var(--on-fill); font-weight: 600; }
+.time-opt.on:hover { background: var(--green-lift); }
+/* THERE IS NO `:` BETWEEN THE COLUMNS, AND THERE WAS FOR TWO BUILDS.
+
+   Centred, it floated in the middle of a 208px list beside nothing and read
+   as a stray glyph; moved to the first row it read as debris at the top of the
+   minutes. Both were screenshotted before the third answer, which is that the
+   columns are already LABELLED — ชั่วโมง and นาที — and a separator between
+   two named things joins nothing that was not already joined. The box above
+   the panel says `17:00` in full.
+
+   What replaced it is the gap: 10px rather than 4, which is what now says the
+   two columns are two. */
+/* 17:00 · 18:00 · 20:00 · 22:00 — the shifts this office types, in the foot
+   beside ปิด. Not a replacement for the columns: วันเกิดที่ยังไม่มีใบ is filled
+   in from a fingerprint scanner and needs 17:03. */
+.time-quick { display: flex; flex-wrap: wrap; gap: 4px; }
+.time-chip {
+  border: 1px solid var(--line); border-radius: 20px; padding: 4px 9px;
+  background: none; color: var(--ink-2);
+  font: 500 12px/1.4 var(--mono); font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.time-chip:hover { background: var(--neutral-wash); color: var(--ink); }
+.time-chip.on { background: var(--green-bg); border-color: var(--ok-line); color: var(--green-dark); }
 /* ══ THE SUGGESTION LIST UNDER A ค้นหา BOX ══════════════════════════════════
 
    `.pick-menu.find-menu` — the same floating panel กรองตามพนักงาน uses, with
@@ -3780,10 +4346,30 @@ td > .approver-line { margin-top: 5px; }
    from it, and a notice of three lines sat visibly off-centre in its own
    border. 16 is what the two sides read as level at. It was 12px 14px until
    2026-08-26. `.alert.tight` states its own padding and is untouched. */
+/* ── AND THE LINES ARE 1.75 APART, NOT 1.6 ─────────────────────────────────
+   Asked for 2026-09-01 about the blue notice on บันทึกแทน, which is the longest
+   alert in the app — four clauses about whose request this becomes, ending in a
+   conditional about the หัวหน้า step being skipped. At 1.6 it is five lines of
+   13.5px Thai in one colour, and Thai has no inter-word spaces to give a
+   paragraph its texture: the lines had nothing between them for an eye to rest
+   in, and it read as a block to be skipped rather than a notice to be read.
+
+   THE NUMBER IS SMALL ON PURPOSE. 1.6 → 1.75 is about 2px a line — enough that
+   the lines separate, not enough to make a four-line notice a card of its own.
+   And it is on `.alert` rather than on `.alert.info`: a screen that shows a
+   warn and an info box one under the other, which บันทึกแทน does, must not show
+   two boxes with the same padding, size and face set at two different leadings.
+   `.alert.tight` states only a `font-size`, so it inherits this and rescales.
+
+   `.box` ABOVE DELIBERATELY STAYS AT 1.6. It is the same four palettes and the
+   comment under it says so, but it is not always a paragraph: `.box.total` is
+   the รวม tile at the end of a rate split, sitting in a row of figures whose
+   height it sets. An alert is always a sentence somebody has to read; a box is
+   sometimes a number. */
 .alert {
   display: flex; align-items: flex-start; gap: 9px;
   padding: 12px 16px; border-radius: var(--radius-sm); margin: 12px 0;
-  font: 400 13.5px/1.6 var(--sans);
+  font: 400 13.5px/1.75 var(--sans);
   border: 1px solid transparent;
 }
 .alert::before {
@@ -4800,6 +5386,27 @@ td > .approver-line { margin-top: 5px; }
 }
 
 .hint { font: 400 12.5px/1.55 var(--sans); color: var(--muted-2); }
+/* `เฉพาะแผนกวิศวกรรม` — the clause under รออนุมัติ naming whose queue this is,
+   held together as one unbreakable run.
+
+   THE BUG IT FIXES IS A LINE BREAK THE BROWSER IS RIGHT TO BE ABLE TO MAKE.
+   Thai sets no spaces between words, and this file leans on that fact in half a
+   dozen places — `.dept-combo .ph`'s note says the min-content width of a Thai
+   run is the WHOLE string. That is only true where the browser has no
+   dictionary. Chrome has one: it finds the word boundaries inside the run and
+   breaks there, so `เฉพาะแผนก|วิศวกรรม` split under the heading and left the
+   department's own name alone on a second line, reading as a stray label rather
+   than as the end of a sentence.
+
+   IT MOVES THE BREAK RATHER THAN FORBIDDING ONE. The hint is two facts with a
+   `·` between them; with the second held whole the line gives way at the
+   separator instead, which is where a person would break it — one fact per
+   line. Nothing here says `nowrap` on the hint itself, which would overflow.
+
+   SCOPED BY BOTH CLASSES so a two-letter utility name cannot escape into
+   another component — the trap `.box` on the dropdown's tick-box sprang, in
+   this same file. It is one clause on one screen and it stays that way. */
+.hint .q-scope { white-space: nowrap; }
 /* A HINT THAT IS SEVERAL FACTS rather than one. Run together into a paragraph
    they were skipped whole: Thai sets no spaces between words, so five lines of
    `--muted-2` had no ragged edge for an eye to catch on and read as texture.
@@ -7375,6 +7982,19 @@ table.mini tbody tr:hover { background: none; }
      a fact about the request and not an empty bucket. See the JSX. */
   .ot-split .box.zero { display: none; }
 
+  /* `.card-head` IS THE THIRD PLACE A `.btn.sm` IS PRESSED WITH A THUMB, and
+     it had been missed. + บันทึก OT แทนพนักงาน sits in the right-hand group of
+     the queue's head, and measured on the built app at 320–768px it came out
+     **33px** while the same `.btn.sm` two rows below it — in `.row-actions` on
+     every card — was 44. Not a departure from anything: this is the rule those
+     buttons already keep, reaching the one button that sits above them.
+
+     THE HEAD HAS THE ROOM. `.card-head` wraps at this width, so the count chip
+     and this button are already on a line of their own under the title; the 11
+     extra pixels land in a band that is 114.8px tall on a phone either way.
+     Found while measuring the label's fit, 2026-08-31 — the label itself is
+     one line at every width from 320 to 1440 and was never the problem. */
+  .card-head .btn.sm,
   .row-actions .btn.sm, .quick-edit-foot .btn { min-height: 44px; }
 
   /* ช่องค้นหา on a phone. 44px rows, and a list that stops well short of
@@ -7614,6 +8234,106 @@ table.mini tbody tr:hover { background: none; }
      A group holding that button keeps it and is untouched. */
   .card-head .row:empty,
   .card-head .row:has(> .chip.muted:only-child) { display: none; }
+
+  /* ── AND THE BUTTON STAYS ON THE TITLE'S LINE ──────────────────────────────
+     Asked for 2026-08-31: `รออนุมัติ · 2 รายการ` and + บันทึก OT แทนพนักงาน on
+     one row rather than two. `.card-head` wraps by default, and with the count
+     now living in the title the wrap spent a whole row of a phone on one
+     button.
+
+     `nowrap` ALONE WOULD OVERFLOW, which is the trap in "nowrap everything and
+     stop the button shrinking": at 320px the head is 294px and the button
+     alone is 168, so something has to give and the only safe thing to give is
+     the WORDS. So the title column may shrink to nothing (`min-width: 0` —
+     without it a flex item refuses to go below its content) and elides; the
+     group holding the button is `flex: none` and never does either.
+
+     THE COUNT IS NOT WHAT GETS ELIDED. `.t` is a flex row of its own so the
+     name takes the squeeze and `· 2 รายการ` is `flex: none` beside it — losing
+     the digit to an ellipsis would cut the one part of this line that changes.
+
+     `.card-head` KEEPS `flex-wrap: wrap` FOR EVERY OTHER CARD. Only the head
+     that actually holds a button is turned nowrap; the others carry a month
+     picker or a chip and are the shapes that block was written for. */
+  /* ── AND IT STARTS AT 360px, BECAUSE BELOW THAT IT DOES NOT FIT ───────────
+     Measured on the built app: the title needs 129px and the button 164, which
+     with the 8px gap is 301 against the 294 a 320px screen leaves inside the
+     card. Forced onto one line there, the head scrolled sideways — a worse
+     answer than the wrap it replaced, and the only ways to buy those 7px are
+     eliding a nine-character word or shaving the button's padding until it
+     stops looking like the others.
+     So 320px keeps the two-row head it already had; 360 and up — every phone
+     anybody here actually carries — get the one-line one. A `@media` inside a
+     `@media` is plain CSS and both conditions apply. */
+  @media (min-width: 360px) {
+  .card-head:has(> .row .btn) { flex-wrap: nowrap; }
+  /* NO `min-width: 0` ON THE COLUMN, and it was there for one build. It lets a
+     flex item shrink past its own content — so the column went narrower than
+     the title, and the title, told not to shrink, overflowed its box and slid
+     toward the button instead of pushing it away. Left at `auto`, the column
+     cannot go below its min-content, which with a nowrap title IS the title;
+     the hint wraps to as many lines as it needs and nothing overhangs. */
+  .card-head:has(> .row .btn) > .row { flex: none; }
+  .card-head:has(> .row .btn) .btn { white-space: nowrap; }
+  .card-head:has(> .row .btn) .t {
+    display: flex; align-items: baseline;
+    /* 5px, AND IT IS NOT DECORATION. `.t-count` reads `{' · '}{countLabel}`,
+       and a flex item is its own formatting context — so the leading space in
+       that string is stripped as line-leading whitespace and the title drew
+       `รออนุมัติ· 2 รายการ`, the separator jammed against the last character.
+       The gap puts back what the markup had been relying on the text node for.
+       Above 860px `.t` is not a flex row and the space renders as written. */
+    gap: 5px;
+    white-space: nowrap;
+  }
+  /* THE TITLE LINE DOES NOT SHRINK — the HINT under it is what gives.
+     This shipped for one screenshot as `min-width: 0` + `text-overflow:
+     ellipsis` on the name, and at 360px it drew `รออนุ… · 2 รายการ`: nine
+     characters elided while 48px of the row sat empty. The column was being
+     squeezed to its flex share, and the share was decided by the long hint
+     below the title rather than by the title itself.
+
+     `max-content` on the name puts a floor under the column at exactly the
+     width of the words on that line, so the hint wraps to two or three lines —
+     which is what a hint is for — and the title never loses a character. */
+  .card-head:has(> .row .btn) .t > .t-name { min-width: max-content; }
+  .card-head:has(> .row .btn) .t-count { flex: none; }
+  /* 8px, not 12, between the title column and the button — the same tightening
+     `.export-row` takes at this width, and here it is what buys the title its
+     last characters on a narrow screen. */
+  .card-head:has(> .row .btn) { gap: 8px; }
+
+  /* ── 11px FOR THE HINT, AND ONLY IN THIS HEAD ──────────────────────────────
+     THIS PAYS FOR `.hint .q-scope`'s `nowrap`, AND IT IS THE ONLY REASON IT IS
+     HERE. Everything above depends on the column's min-content being THE
+     TITLE — `max-content` on the name puts a floor there, and the note above
+     says in as many words that the hint must wrap to as many lines as it needs
+     rather than decide the column's width. An unbreakable clause in the hint
+     takes that back: measured on the built app at 360px, `เฉพาะแผนก` plus the
+     longest department on the roster (ควบคุมคุณภาพ) is 142px against the
+     title's 129, so the column grew to 142 and the head went from 33px of
+     headroom to none — the button's right edge landed 2px inside the card, and
+     one more character of department name would have put this head back to
+     scrolling sideways, which is the failure the 360px floor above exists to
+     avoid.
+
+     At 11px the same clause is 125px, under the title's 129, so the column is
+     title-decided again and the geometry above is exactly what it was before
+     the clause was held together. The two changes are one change.
+
+     ASKED FOR, TOO — "text-xs หรือ text-[11px]" was one of the two ways the
+     report offered, and this is where it belongs: the head where the column is
+     130px wide, not the twenty other places `.hint` is drawn with a whole card
+     to itself. Above 860px, and at 320px where the head is two rows and the
+     hint has the card's full width, it stays 12.5px.
+
+     WHAT IS STILL TRUE AND IS NOT FIXED: the clause is unbreakable, so a
+     department named longer than about thirteen Thai characters would push
+     this head sideways again. The remedy if that day comes is not another
+     size — it is to let the hint drop below the head at this width, where it
+     has the whole card and needs neither of these rules. */
+  .card-head:has(> .row .btn) .hint { font-size: 11px; }
+  }
 
   /* ── เลือกทั้งหมด ──────────────────────────────────────────────────────── */
 

@@ -16,6 +16,7 @@ import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // they end up in.
 import { companyOf, companyLabel } from '@/src/config/companies.js';
 import PasswordSlips from './PasswordSlips.jsx';
+import { PickDate } from './PickDate.jsx';
 import { approvalDepartments, idOf, viewerId } from '@/lib/entries.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
 // with them, and both read the list from here.
@@ -2802,11 +2803,12 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
               tip={'ไม่บังคับ · เติมภายหลังได้จากปุ่ม “แก้ไข” ในตาราง '
                 + '— แต่คนที่ยังไม่มีวันเกิดจะไม่ขึ้นในรายการวันเกิดที่ต้องตรวจ'}
             >
-              <input
-                type="date"
+              <PickDate
+                label="วันเกิด"
                 value={form.birthDate}
-                onChange={(e) => set({ birthDate: e.target.value })}
+                onChange={(v) => set({ birthDate: v })}
                 disabled={busy}
+                clearable
               />
             </Field>
             <Field label="อีเมล" tip="ไม่บังคับ และไม่ใช่ชื่อผู้ใช้ — เข้าระบบด้วยรหัสพนักงานเสมอ">
@@ -3307,11 +3309,12 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
                 label="วันเกิด"
                 tip="แก้ได้จากหน้านี้เท่านั้น · พนักงานเห็นในข้อมูลส่วนตัวแต่แก้เองไม่ได้"
               >
-                <input
-                  type="date"
+                <PickDate
+                  label="วันเกิด"
                   value={form.birthDate}
-                  onChange={(e) => set({ birthDate: e.target.value })}
+                  onChange={(v) => set({ birthDate: v })}
                   disabled={disabled()}
+                  clearable
                 />
               </Field>
               <Field label="อีเมล" tip="ไม่ใช่ชื่อผู้ใช้ — เข้าระบบด้วยรหัสพนักงานเสมอ">
@@ -4726,10 +4729,10 @@ function AddHoliday({ onClose, onSave }) {
               tip={'บันทึกแล้วรายการ OT ที่ยื่นไว้ในวันนี้จะถูกคำนวณใหม่ทันที ตามอัตราวันหยุด'
                 + ' · เสาร์–อาทิตย์เป็นวันหยุดอยู่แล้ว ไม่ต้องบันทึกที่นี่'}
             >
-              <input
-                type="date"
+              <PickDate
+                label="วันที่ของวันหยุด"
                 value={form.date}
-                onChange={(e) => set({ date: e.target.value })}
+                onChange={(v) => set({ date: v })}
                 disabled={busy}
               />
             </Field>
@@ -5710,11 +5713,11 @@ function Policy({ user }) {
           */}
           <div className="field" style={{ maxWidth: 200 }}>
             <label>กฎใหม่มีผลตั้งแต่</label>
-            <input
-              type="date"
+            <PickDate
+              label="กฎใหม่มีผลตั้งแต่"
               value={effectiveFrom}
               min={todayISO}
-              onChange={(e) => setEffectiveFrom(e.target.value)}
+              onChange={setEffectiveFrom}
               disabled={busy}
             />
             <div className="field-note">

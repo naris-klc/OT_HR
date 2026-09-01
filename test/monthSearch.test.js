@@ -194,11 +194,14 @@ test('a month with no rows at all still says that, not “not found”', () => {
 
 test('ประจำเดือน and ค้นหา are one row, above the buttons that act on them', () => {
   const row = hrView.slice(hrView.indexOf('className="row month-find"'), hrView.indexOf('</ul>'));
-  assert.match(row, /<input type="month" value=\{period\} onChange=\{\(e\) => setPeriod\(e\.target\.value\)\} \/>/,
+  // `PickMonth` since 2026-09-01 — the app's own calendar, in place of the
+  // `<input type="month">` whose popup was the browser's and could not be
+  // reached by anything in this repo. Same value, same state, same row.
+  assert.match(row, /<PickMonth label="ประจำเดือน" value=\{period\} onChange=\{setPeriod\} \/>/,
     'the month picker is not in the row that filters the list');
   // Once, and in one place: two pickers bound to the same state is two controls
   // a reader has to notice agree.
-  assert.equal((hrView.match(/type="month"/g) || []).length, 1,
+  assert.equal((hrView.match(/<PickMonth/g) || []).length, 1,
     'there is more than one month picker on this screen');
   // สถานะที่นับ stays on the heading line, one row up. It is the third thing
   // that decides which figures exist, and all three are above the buttons.

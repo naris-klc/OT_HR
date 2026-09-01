@@ -7,7 +7,8 @@ import { dirname, join } from 'node:path';
 import { searchPeople } from '../lib/personSearch.js';
 
 /**
- * ค้นหาชื่อเหนือกล่องเลือกลูกทีม — บันทึก OT แทนลูกทีม's own search box.
+ * ค้นหาชื่อเหนือกล่องเลือกลูกทีม — บันทึก OT แทนพนักงาน's own search box.
+ * (That button read บันทึก OT แทนลูกทีม until 2026-08-31.)
  *
  * THE ONE PROMISE THIS FILE EXISTS FOR: narrowing the list must never lose a
  * tick. A หัวหน้า files for a team by ticking names, and every route by which
@@ -199,4 +200,148 @@ test('a matched row stays one flex item beside its checkbox', () => {
   const from = code.indexOf('<label key={p._id} className="check">');
   const row = code.slice(from, code.indexOf('</label>', from));
   assert.match(row, /<span>[\s\S]*<Highlight text=\{p\.name\}[\s\S]*<Highlight text=\{p\.code\}[\s\S]*<\/span>/);
+});
+
+// ── the button that opens all of this ──────────────────────────────────────
+
+test('the queue button and the dialog it opens say the same words', () => {
+  /**
+   * Renamed 2026-08-31: `+ บันทึก OT แทนลูกทีม` → `+ บันทึก OT แทนพนักงาน`.
+   *
+   * TWO STRINGS IN TWO FILES, and they are one sentence a person reads across
+   * a press — the queue's button says what is about to happen and the pop-up's
+   * header says it has. `OtForm`'s comment says the heading is written once
+   * because it is drawn by two different elements; nothing was making it agree
+   * with the button that opens it, and only one of the two was reported.
+   */
+  const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+  assert.match(queue, /\+ บันทึก OT แทนพนักงาน/);
+  assert.ok(!queue.includes('บันทึก OT แทนลูกทีม'), 'the queue button kept the old wording');
+  assert.match(code, /: proxy \? 'บันทึก OT แทนพนักงาน'/);
+});
+
+test('a .btn.sm in a card head is a 44px touch target on a phone', () => {
+  /**
+   * Measured on the built app while checking the label's fit: this button came
+   * out **33px** at 320–768px while the same `.btn.sm` in `.row-actions` two
+   * rows below it was 44. `.card-head` was the third place one of these is
+   * pressed with a thumb and the only one the rule had not reached.
+   *
+   * The label was never the problem — it is ONE line at every width from 320
+   * to 1440, 164.1px in a head that wraps it onto its own line well before the
+   * space runs out.
+   */
+  const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+  assert.match(
+    phone,
+    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: 44px; \}/,
+  );
+});
+
+// ── the queue's head: title, count and button on one line ──────────────────
+
+test('the count sits with the title and the button shares their line', () => {
+  /**
+   * Asked for 2026-08-31. `.card-head` wraps by default and the count had
+   * already been moved into the title for phones, so the wrap was spending a
+   * whole row of a screen on one button.
+   *
+   * FOUR RULES, AND EACH ONE IS A BUILD THAT WENT WRONG WITHOUT IT — every
+   * number below was measured on the built app rather than reasoned about:
+   *
+   *  · `flex-wrap: nowrap` alone put the head 7px over a 320px screen and made
+   *    it scroll sideways, so the whole block starts at 360px instead.
+   *  · `min-width: 0` on the column let it shrink past its own content: the
+   *    title overflowed its box and slid under the button. Removed.
+   *  · without `min-width: max-content` on the name, the column took its share
+   *    from the long hint below and the title drew `รออนุ… · 2 รายการ` — nine
+   *    characters elided with 48px of the row empty.
+   *  · `.t` is a flex row, and a flex item drops its leading whitespace, so
+   *    `{' · '}` rendered as `รออนุมัติ· 2 รายการ` until the 5px gap replaced
+   *    the space the markup had been relying on.
+   */
+  const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+  assert.match(phone, /@media \(min-width: 360px\) \{/, 'the one-line head lost its 360px floor');
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \{ flex-wrap: nowrap; \}/);
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) > \.row \{ flex: none; \}/);
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \.btn \{ white-space: nowrap; \}/);
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \.t > \.t-name \{ min-width: max-content; \}/);
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \.t-count \{ flex: none; \}/);
+  // The column must NOT be told it may shrink past its content.
+  assert.ok(
+    !/\.card-head:has\(> \.row \.btn\) > :first-child \{ min-width: 0/.test(phone),
+    'the title column can shrink past the title again',
+  );
+  // …and the head that carries no button keeps the wrap it was written with.
+  assert.match(css, /\.card-head \{ display: flex;[^}]*flex-wrap: wrap;/);
+});
+
+test('the queue heading reads รออนุมัติ, and the name is its own span', () => {
+  const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+  // STRIPPED, for the reason this file's header gives — and it caught the same
+  // trap a second time on the first run: the comment beside the heading records
+  // what it used to read, and the ban matched that instead of the code.
+  const queueCode = strip(queue);
+  assert.ok(queue.includes('รอหัวหน้าอนุมัติ'), 'the note recording the old wording is gone');
+  assert.ok(!queueCode.includes('รอหัวหน้าอนุมัติ'), 'the heading kept the old wording');
+  // `.t-name` is what the stylesheet reaches for; without the span the rules
+  // above have nothing to hold the title's width against.
+  assert.match(queue, /<span className="t-name">/);
+  assert.match(queue, /: isHr \? 'รออนุมัติ OT' : 'รออนุมัติ'/);
+});
+
+test('ชื่อแผนกใต้หัวข้อไม่ตกไปอยู่บรรทัดใหม่คนเดียว', () => {
+  /**
+   * `เฉพาะแผนกวิศวกรรม` broke as `เฉพาะแผนก` / `วิศวกรรม`, leaving the
+   * department's own name alone on a second line under the heading — reported
+   * 2026-09-01.
+   *
+   * AND THE BREAK IS THE BROWSER DOING SOMETHING CORRECT. Thai sets no spaces,
+   * and half the notes in `app/styles.css` lean on that — `.dept-combo .ph`'s
+   * says the min-content width of a Thai run is the WHOLE string. That holds
+   * only where the browser has no dictionary. Chrome has one, finds the word
+   * boundaries inside the run, and breaks at them; so the fix cannot be an
+   * `overflow-wrap` or a width, it has to say that this particular clause is
+   * one word.
+   *
+   * IT MOVES THE BREAK RATHER THAN FORBIDDING ONE — the hint is two facts with
+   * a `·` between them, and with the second held whole the line gives way at
+   * the separator instead. `nowrap` is on the clause, never on `.hint` itself,
+   * which would overflow.
+   *
+   * AND IT IS HALF A CHANGE ON ITS OWN — the 11px below is the other half, not
+   * a second opinion about the size. Every rule in the test above depends on
+   * the column's min-content being THE TITLE; an unbreakable clause in the hint
+   * takes that back. Measured on the built app at 360px: the clause with the
+   * longest department on the roster (ควบคุมคุณภาพ) is 142px against the
+   * title's 129, the column grew to 142, and the button's right edge landed 2px
+   * inside the card — no headroom at all, where the head had 33px, and one more
+   * character would have put it back to scrolling sideways.
+   *
+   * At 11px that clause is 125px, under the title, and the column is
+   * title-decided again. The size was the other way the report offered, and
+   * this is where it belongs: the head where the column is 130px wide, not the
+   * twenty other places `.hint` is drawn with a card to itself.
+   */
+  const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+  assert.match(queue, /<span className="q-scope">\s*\n?\s*เฉพาะแผนก\{user\.department\?\.name \|\| ''\}/);
+  assert.match(css, /\.hint \.q-scope \{ white-space: nowrap; \}/);
+  // Both classes, so a name this short cannot escape into another component —
+  // the trap `.box` sprang on the dropdown's tick-box, in this same stylesheet.
+  assert.ok(
+    !/(^|[^.\w])\.q-scope\b/m.test(css.replace(/\.hint \.q-scope/g, '')),
+    'a bare .q-scope rule can reach anything called that',
+  );
+  // The base size is untouched — the 11px is the squeezed head's alone, and it
+  // lives INSIDE the 360px block, with the rules whose geometry it protects.
+  assert.match(css, /\.hint \{ font: 400 12\.5px\/1\.55 var\(--sans\); color: var\(--muted-2\); \}/);
+  const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+  const opens = phone.indexOf('@media (min-width: 360px) {');
+  const rule = phone.indexOf('.card-head:has(> .row .btn) .hint { font-size: 11px; }');
+  // The block runs from that inner `@media` to the เลือกทั้งหมด section that
+  // follows it — bounded by both ends rather than by a closing brace, since
+  // the rules inside it have braces of their own on their own lines.
+  const closes = phone.indexOf('/* ── เลือกทั้งหมด');
+  assert.ok(rule > opens && rule < closes && opens > 0 && closes > 0,
+    'the 11px hint left the one-line head block it pays for');
 });

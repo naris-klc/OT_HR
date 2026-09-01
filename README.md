@@ -1247,7 +1247,7 @@ lib/complianceExport.js   which five events count as the exercise of a
 lib/complianceQuery.js    the three reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     110 files, run by `npm test`. Six named below as a
+test/                     114 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1260,9 +1260,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1814 tests
-across 110 files**, measured 2026-08-31 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนลูกทีม's name list, and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1887 tests
+across 114 files**, measured 2026-09-01 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -2155,7 +2155,7 @@ buttons:
 * **ไม่ได้มาทำงาน** — writes a **BirthdayCheck**, which is not an OT request at
   all (below). The name leaves the list so nobody checks it twice.
 
-The หัวหน้า still files through **บันทึก OT แทนลูกทีม** on their own queue when
+The หัวหน้า still files through **บันทึก OT แทนพนักงาน** on their own queue when
 they prefer, and can use either button here for their own team.
 
 **Only work is in the queue.** Three things are not, and each is folded or set
@@ -2627,6 +2627,45 @@ things on one screen. A line under the list says which ticks a query is hiding,
 because *เลือกแล้ว 2 คน* over a list showing none ticked is the screen arguing
 with itself.
 
+### The plate behind the tick box — a text-box rule on a checkbox
+
+Reported 2026-08-31 as a square around the checkbox when you pick somebody, and
+a background rectangle behind it. It reads like the focus-ring complaint of
+2026-08-28 and is not one: nothing here was drawing an outline. **`.field
+input` is the app's TEXT box, a checkbox is an `input`, and every tick list in
+this app sits inside a `.field`.**
+
+Measured on the built app before the fix, at 420px on ธีมมืด: the box came out
+**17 × 46** — 17 wide from `.check input`'s own `width`, and 46 tall because
+`min-height: var(--field-h)` beats a 17px `height` — filled with
+`var(--field-bg)`, which is the plate somebody saw. A press added
+`box-shadow: 0 0 0 3px var(--focus-ring)`, and that halo did **not** leave with
+the pointer: the rule is `:focus`, not `:focus-visible`.
+
+**And it had killed the keyboard's ring, which is the half nobody reports.**
+`outline: none` is right for a text box whose ring is a box-shadow; on a
+checkbox it meant `:focus-visible` matched, computed its 2px offset and drew
+nothing. Tabbing through that list showed no focus at all.
+
+**So the fix is not `outline: none`**, which is what was asked for and would
+have deleted that ring on every control in the app to answer a complaint about
+a shape — the rule above `:focus-visible` in the stylesheet already records
+that argument from the last time. The three `.field input` rules that paint a
+box — the base, its `:focus` and its `:disabled` — now exclude `[type=checkbox]`
+and `[type=radio]`, keeping only `cursor: not-allowed` from the disabled one.
+**Six places, not one:** tick lists sit in a `.field` on บันทึก OT แทนลูกทีม,
+the queue, รายงาน OT ฝ่ายบัญชี and รายงาน OT แยกแผนก, so it belongs on the rule.
+`accent-color: var(--green)` was already there and is what paints the tick.
+
+**Measured again after the fix**, with a real pointer and real keys over CDP —
+the DevTools protocol's own mouse and key events, dispatched at the browser's
+input layer rather than by a scripted click, because whether `:focus-visible`
+matches is decided by HOW the focus arrived:
+the box is **17 × 17** with a transparent background and no border; a real
+mouse click leaves **no outline and no shadow** once the pointer moves off; and
+a real Tab gives `outline: 2px solid rgb(46, 119, 71)` — `--green`, back from
+having drawn nothing at all.
+
 **One trap only the walk found.** `.check` is a flex row with a 9px gap, and
 `{p.name} · {p.code}` survived it because adjacent text collapses into a single
 anonymous flex item. `Highlight` returns real `<mark>` elements the moment a
@@ -2640,6 +2679,72 @@ names ticked, then `สมชาย`, `ใจดี`, `PM0388`, `pm-0388`, `0388
 typed in turn — the label read **เลือกแล้ว 2 คน** through every one of them, and
 both were still ticked after the ✕. The box measured background `rgb(19,26,23)`,
 text `rgb(233,239,235)`, border `rgb(59,69,63)`, `padding-left: 40px`.
+
+### One line for the head — and the search box the tick-box fix broke
+
+**The search box first, because it was mine.** The 2026-08-31 checkbox fix
+spelled its exclusion `:not([type='checkbox']):not([type='radio'])`, which is
+the obvious spelling and the wrong one: **a `:not()` takes the specificity of
+its argument**, so `.field input` went from (0,1,1) to **(0,3,1)** and overtook
+`.searchbox input.has-icon` at (0,2,1) — whose entire job is the 40px of left
+inset that keeps a placeholder clear of the 🔍. Every search box inside a
+`.field` fell back to `--field-pad-x`, 14px, under an icon spanning 13–30px.
+Reported the next day as the placeholder overlapping the icon. `:where()`
+contributes no specificity, so `:not(:where([type='checkbox'], [type='radio']))`
+is the same exclusion with the rule left where it was. Measured after:
+`padding-left: 40px`, text starting at 41px. **The lesson is the one this
+stylesheet already wrote down** over `:focus-visible` — a base rule belongs at
+the lowest specificity there is, and adding a `:not()` to one is raising it.
+
+**Then the head.** `รอหัวหน้าอนุมัติ` → **`รออนุมัติ`**: a หัวหน้า reading their
+own queue is the one person who does not need telling whose signature is
+missing. The count already joined the title on phones, so the wrap was spending
+a whole row on one button; `.card-head` is nowrap there now, with the button's
+group `flex: none`.
+
+**It took four passes and every number came off the built app**, which is the
+part worth keeping:
+
+| what was tried | what it did |
+|---|---|
+| `flex-wrap: nowrap` alone | 7px over a 320px screen — the head scrolled sideways, worse than the wrap |
+| `min-width: 0` on the column | the column shrank past its own content; the title overflowed and slid under the button |
+| no `min-width: max-content` on the name | column took its width from the long hint; title drew `รออนุ… · 2 รายการ` with 48px of the row empty |
+| `.t` as a flex row | a flex item drops leading whitespace, so `{' · '}` rendered as `รออนุมัติ· 2 รายการ` |
+
+So the one-line head starts at **360px** and 320px keeps the two-row shape it
+had; the column is left at `min-width: auto` so it cannot go under the title;
+the name carries `min-width: max-content`; and a 5px `gap` puts back the space
+the markup had been getting from a text node. **Measured**: one line at 360 /
+390 / 430 / 768 with the head at **88.5px** against 125.8 before, title and
+button both full, and nothing overflowing at any width including 320.
+
+### The button, and the header it opens
+
+`+ บันทึก OT แทนพนักงาน` on the หัวหน้า's own queue since 2026-08-31 — it read
+`+ บันทึก OT แทนลูกทีม` until then. **Two strings in two files**, and they are
+one sentence a person reads across a press: the button in
+`components/ApprovalQueue.jsx` says what is about to happen, and the pop-up's
+header — `heading` in `components/OtForm.jsx`, written once because two
+different elements draw it — says it has. Only the button was reported; changing
+it alone would have left two words for one thing either side of a click.
+
+**The label fits and always did.** Measured on the built app as a หัวหน้า at
+320 / 360 / 390 / 430 / 768 / 860 / 1280 / 1440: **164.1px on one line at every
+one of them**, no overflow, and the page never scrolls sideways — `.card-head`
+wraps below 860px, so the count chip and this button are on a line of their own
+long before the space runs out. (Counted off the client rects of a Range over
+the text, not by dividing the button's height by its line-height, which reports
+a one-line label as two the moment a `min-height` applies.)
+
+**What the measurement did find was the touch target.** The button came out
+**33px** at 320–860px while the same `.btn.sm` two rows below it in
+`.row-actions` was 44 — `.card-head` is the third place one of these is pressed
+with a thumb and the only one the phone rule had not reached. It is in that
+rule now, which costs the head **114.8 → 125.8px** on a phone and **69.8 →
+77px** at 768–860; the desktop is untouched at 33px. `ทั้งหมด` on
+บันทึกและประวัติ OT is the other `.btn.sm` in a `.card-head` and gets the same
+44px, which is the right direction for it too.
 
 **Who may.** หัวหน้างาน only, and only for `role: 'employee'` people in their own
 department (`proxyPermission`, [`lib/proxyFiling.js`](lib/proxyFiling.js)). Not
@@ -3694,7 +3799,7 @@ linked version cannot drift apart.
 `.link` is `--green-text` at 13px on a line-height of 1, which is right in a
 table cell and wrong twice over here: green is what this app uses for *go* and
 for *approved*, so inside an amber box it reads as a second, unrelated signal —
-and 13px/1 dropped into a 12.5px line set at 1.6 sits off the baseline of the
+and 13px/1 dropped into a 12.5px line set at 1.75 sits off the baseline of the
 words either side of it. Inside `.alert` it takes `font: inherit` with the
 weight back at 500, an underline **at rest** rather than on hover — a link in a
 coloured panel cannot use colour alone to be findable, because the whole panel
@@ -6125,8 +6230,97 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1814/1814 pass in about 2 s**, measured 2026-08-31 across 110
-  files. **The newest nine are in `test/proxyTeamSearch.test.js`**, over the
+- `npm test` — **1887/1887 pass in about 2 s**, measured 2026-09-01 across 114
+  files. **The newest are `test/pickTime.test.js` and `test/popover.test.js`**,
+  over เวลาเริ่ม / เวลาสิ้นสุด and over the panel all three of the app's own
+  pickers now share. The time boxes were the last native popup in the app and
+  the only one that was not merely a styling complaint: an `<input type="time">`
+  renders in the VIEWER's locale, so on an English-locale Windows the stored
+  `17:00` was drawn as **05:00 PM** — in a form about overtime between 17:00 and
+  20:00 น., on a screen where the queue's rows, the preview under the form and
+  ใบ F-HR-027 all print 24-hour. No attribute on that tag settles it; the format
+  is the browser's business. Drawing it ourselves is what makes 24-hour a fact.
+  `popover.test.js` exists because the panel came OUT of `PickDate.jsx` when the
+  third picker arrived — the alternative was a second copy of the placement
+  arithmetic and the three listeners, which is how two popups that are supposed
+  to be one panel start behaving differently. Its first assertion is that there
+  is one of it: only `popover.jsx` builds a `.pop`, and `Modal`'s own portal is
+  excused by name, since two things needing the same escape from
+  `overflow: hidden` is not two copies of one thing.
+  One case pins what only opening the built app found — again: both time
+  columns focused their own selected option on mount, so the one that mounted
+  second won and the panel opened with the cursor on the MINUTES, where one
+  press of ↓ turned 17:00 into 17:01. It read "1866/1866 … across 112 files"
+  until then.
+  **Before them, twenty-five in `test/pickDate.test.js`**, over
+  `PickDate` and `PickMonth` — the app's own calendar, now behind all eighteen
+  date and month boxes. The wall was the same one the queue's `<select>`s hit
+  one round earlier and one step further along: an `<input type="date">`'s box
+  is in this document and every rule in `app/styles.css` reached it, but the
+  calendar it dropped down is drawn by the browser and the OS, is not in the
+  DOM, and no selector in this app has ever entered one. Two paragraphs — the
+  note over `input:out-of-range` and the one over วันที่เริ่ม — already said so
+  and settled for it, because all that was asked of that calendar then was to
+  grey out the days outside `min`/`max`. A `z-index`, a portal, an edge to flip
+  off and a sheet on a phone are none of them reachable on an element nobody
+  here renders.
+  Three of the twenty-five pin what only opening the built app found: the panel
+  is portaled to `document.body` because `.modal` carries `overflow: hidden` and
+  `isolation: isolate` — measured at a 520px viewport, the dialog runs 31→489
+  and the calendar 218→512, hanging 23px below the dialog and fully on screen;
+  it takes `z-index: 120` over the backdrop's 100, which is a departure from
+  "nothing above the dialog" argued out in `test/modalCloseButton.test.js`; and
+  the frame before it is placed is hidden with `opacity` rather than
+  `visibility`, because a `visibility: hidden` element cannot take focus and the
+  grid's own focus call was landing on one — `document.activeElement` was `BODY`
+  with the calendar open and the arrow keys did nothing.
+  One of them also caught a plain missing import: `LogSystem.jsx` drew two
+  pickers it had never imported, which builds clean and throws the moment
+  บันทึกประวัติระบบ is opened. It read "1841/1841 … across 111 files" until then.
+  **Before them, one case in `test/proxyTeamSearch.test.js`**, over the
+  clause under รออนุมัติ that names whose queue this is. `เฉพาะแผนกวิศวกรรม`
+  was breaking as `เฉพาะแผนก` / `วิศวกรรม`, orphaning the department's own name
+  on a second line — and the break is the browser doing something correct:
+  half the notes in `app/styles.css` lean on Thai setting no spaces between
+  words, which is only true where the browser has no dictionary. Chrome has
+  one. So the fix says that clause is one word, which MOVES the break to the
+  `·` between the two facts rather than forbidding one. It is half a change:
+  an unbreakable clause has a min-content width, and on a phone this hint sits
+  in a column whose width every other rule in that head assumes is decided by
+  the TITLE. Measured at 360px, the clause with the longest department on the
+  roster is 142px against the title's 129 — the column grew and the one-line
+  head went from 33px of headroom to 2. The hint drops to 11px in that head
+  alone, which brings the clause to 125px and the geometry back to what it was.
+  It read "1840/1840" until then. The same round loosened `.alert` from 1.6 to
+  1.75 for the blue notice on บันทึกแทน — the longest alert in the app, five
+  lines of Thai in one colour with no inter-word spaces to give the paragraph
+  any texture — which moved an assertion in `test/absentCallout.test.js` rather
+  than adding one.
+  Before it, twenty in `test/queueDropdown.test.js`, over the
+  แผนก and เดือน filters on รายการรออนุมัติ now that neither is a `<select>`.
+  The file exists because of what a stylesheet cannot reach: a `<select>`'s box
+  is an element in the document and every rule in `app/styles.css` could style
+  it, but its options are drawn by the browser and the operating system, are not
+  in the DOM, and no selector in this app has ever entered one — so on ธีมมืด
+  those two filters opened as a white sheet with the system's blue selection bar
+  on it. The list is the app's own elements now, which means everything the tag
+  gave for free is given back by hand, and that is most of what these twenty
+  pin: the keys (↑↓, Enter, Space, Escape, Home/End, and the 900 ms type-ahead),
+  the ARIA the tag used to imply, that the panel is `PickPerson`'s `.pick-menu`
+  and not a fourth floating box, that the box's height and inset are the
+  `.field` tokens rather than a second copy of them, and that there is exactly
+  ONE highlight — the pointer writes to `data-active`, so a mouse resting away
+  from the keyboard's row cannot light a second one. Three of them pin what
+  only opening the built app on a phone found: the panel takes `z-index: 21`
+  because `.queue-mobile-bar` is sticky at 20 and was covering its first row,
+  it closes on a page scroll — which is what makes that number safe against
+  `.pick-menu`'s own note — and it opens UPWARDS when the box is too near the
+  bottom, measured against the fixed นำทาง bar's top edge rather than the
+  viewport's. One of them is the
+  comment-stripper's own self-test, which caught this file's first `<select>`
+  ban matching the paragraph in ApprovalQueue.jsx that explains why there is no
+  `<select>`. It read "1820/1820 … across 110 files" until then.
+  **Before them, nine in `test/proxyTeamSearch.test.js`**, over the
   search box on บันทึก OT แทนลูกทีม — one of them is the stripper's own
   self-test, which caught this file's first stripper eating `const shownTeam`
   and would have let every ban in it pass against source it could not see.

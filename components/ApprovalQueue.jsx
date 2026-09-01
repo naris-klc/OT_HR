@@ -15,11 +15,12 @@ import {
 // offers and the ones the server accepts cannot drift apart.
 import { isOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead, RefiledNote,
+  Alert, Empty, EditedMark, EntryHistory, Fact, Modal, PickOne, ProxyMark, RateHead, RefiledNote,
   RequestTrail, Section, SegmentList, StatusChip, TeamMark, editsOf,
 } from './common.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
 import WithdrawalRequests from './WithdrawalRequests.jsx';
+import { PickTime } from './PickTime.jsx';
 import OtForm from './OtForm.jsx';
 import { useToast } from './Toast.jsx';
 
@@ -410,8 +411,22 @@ export default function ApprovalQueue({
       <div className="card-head">
         <div>
           <div className="t">
-            {delegatedOnly ? 'รออนุมัติ · ทีมที่รับช่วง'
-              : isHr ? 'รออนุมัติ OT' : 'รอหัวหน้าอนุมัติ'}
+            {/* 'รออนุมัติ' since 2026-08-31; it read 'รอหัวหน้าอนุมัติ' until
+                then. A หัวหน้า reading their own queue is the one person who
+                does not need telling whose signature is missing — it is
+                theirs — and the seven characters it saves are what let the
+                count and the button share this line on a phone. */}
+            {/* `.t-name` IS THE HALF THAT MAY BE ELIDED. On a phone this line
+                is a flex row — the name, then the count — and the button
+                beside it never shrinks, so at 320px something has to give.
+                Wrapping the name marks it as the part that gives: an ellipsis
+                on `รออนุมัติ` still reads, whereas one on `· 2 รายการ` would
+                eat the only figure on the line. See `.card-head:has(...)` in
+                app/styles.css. */}
+            <span className="t-name">
+              {delegatedOnly ? 'รออนุมัติ · ทีมที่รับช่วง'
+                : isHr ? 'รออนุมัติ OT' : 'รออนุมัติ'}
+            </span>
             {/* THE SAME COUNT AS THE CHIP BELOW, and only one of the two is ever
                 on screen — this one under 860px, the chip above it. Two
                 renderings rather than one moved, for the reason the chip's own
@@ -433,7 +448,45 @@ export default function ApprovalQueue({
               ? 'คิวของหัวหน้างานที่คุณรับช่วงมา · การอนุมัติจะบันทึกว่าทำแทนเจ้าของคิว'
               : isHr
                 ? 'ตรวจสอบรายเดือน · รายการที่ยืนยันแล้วจะเข้าสู่รายงานส่งออก'
-                : `ตรวจสอบรายวัน · เฉพาะแผนก${user.department?.name || ''}`}
+                : (
+                  <>
+                    {'ตรวจสอบรายวัน · '}
+                    {/*
+                      THE DEPARTMENT CLAUSE IS ONE WORD AS FAR AS THE LINE
+                      BREAKER IS CONCERNED, and it has to be said out loud
+                      because THAI SETS NO SPACES and the browser breaks it
+                      anyway. Chrome carries a Thai dictionary and finds the
+                      word boundaries inside the run: `เฉพาะแผนกวิศวกรรม` was
+                      being cut at exactly the place a reader would not, leaving
+                      `วิศวกรรม` alone on a second line under a heading — the
+                      department's NAME orphaned from the phrase that says what
+                      it is doing there.
+
+                      `nowrap` MOVES THE BREAK, IT DOES NOT REMOVE ONE. The
+                      hint is two facts with a `·` between them, and the
+                      separator is where a person would break it. Held together,
+                      the clause takes the whole break itself and the line
+                      splits after the `·` — two facts, one per line — instead
+                      of mid-phrase.
+
+                      IT IS HALF A CHANGE ON ITS OWN, and the other half is in
+                      `app/styles.css` under `.card-head:has(> .row .btn)
+                      .hint`. Holding a clause together gives it a min-content
+                      width, and on a phone this hint sits in a column whose
+                      width is supposed to be decided by the TITLE above it:
+                      measured at 360px, the clause with the longest department
+                      on the roster is 142px against the title's 129, so the
+                      column grew and the one-line head lost every pixel of its
+                      headroom. The hint drops to 11px in that head — the size
+                      the report itself offered — which brings the clause to
+                      125px, back under the title, and the head to exactly the
+                      geometry it had before either change.
+                    */}
+                    <span className="q-scope">
+                      เฉพาะแผนก{user.department?.name || ''}
+                    </span>
+                  </>
+                )}
           </div>
         </div>
         {/* Count and action as one right-hand group, the same shape every other
@@ -445,7 +498,7 @@ export default function ApprovalQueue({
           {countLabel && <span className="chip muted">{countLabel}</span>}
           {!isHr && !delegatedOnly && user.role === 'manager' && (
             <button className="btn ghost sm" onClick={() => setFiling(true)}>
-              + บันทึก OT แทนลูกทีม
+              + บันทึก OT แทนพนักงาน
             </button>
           )}
         </div>
@@ -536,26 +589,42 @@ export default function ApprovalQueue({
               placeholder="ชื่อพนักงาน · รหัสพนักงาน · รายละเอียดงาน"
             />
           </div>
+          {/*
+            `PickOne` AND NOT A `<select>`, on both of these, since 2026-09-01.
+
+            The box was always the app's; the list that dropped out of it never
+            was. A `<select>`'s options are drawn by the browser and the OS, not
+            from this document — so on ธีมมืด these two opened as a white sheet
+            carrying the system's blue selection bar, in the middle of a screen
+            that is otherwise charcoal and green. Nothing in `app/styles.css`
+            could reach it, because there is nothing there to reach.
+
+            `PickOne` is `PickPerson`'s panel with no search box in it, so what
+            opens here is the same list HR already knows from ค้นหาพนักงาน —
+            `--card-lift` fill, `--line-lift` edge, and one green row under the
+            pointer or the arrow keys. See components/common.jsx.
+
+            THE COUNT LEFT THE OPTION TEXT. `แผนกผลิต (12)` was one string
+            because an `<option>` can hold nothing else; it is two spans now,
+            with the figure in mono against the right edge where the counts line
+            up into a column.
+          */}
           {isHr && (
-            <div className="field">
-              <label>แผนก</label>
-              <select value={dept} onChange={(e) => setDept(e.target.value)}>
-                <option value="">ทุกแผนก</option>
-                {departments.map((d) => (
-                  <option key={d.value} value={d.value}>{d.label} ({d.count})</option>
-                ))}
-              </select>
-            </div>
+            <PickOne
+              label="แผนก"
+              value={dept}
+              onChange={setDept}
+              options={departments}
+              allLabel="ทุกแผนก"
+            />
           )}
-          <div className="field">
-            <label>เดือน</label>
-            <select value={per} onChange={(e) => setPer(e.target.value)}>
-              <option value="">ทุกเดือน</option>
-              {periods.map((p) => (
-                <option key={p.value} value={p.value}>{p.label} ({p.count})</option>
-              ))}
-            </select>
-          </div>
+          <PickOne
+            label="เดือน"
+            value={per}
+            onChange={setPer}
+            options={periods}
+            allLabel="ทุกเดือน"
+          />
           {(q || dept || per) && (
             <button
               type="button"
@@ -1849,11 +1918,11 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
       <div className="row">
         <div className="field">
           <label>เวลาเริ่ม</label>
-          <input type="time" value={form.startTime} onChange={(ev) => set({ startTime: ev.target.value })} />
+          <PickTime label="เวลาเริ่ม" value={form.startTime} onChange={(v) => set({ startTime: v })} />
         </div>
         <div className="field">
           <label>เวลาสิ้นสุด</label>
-          <input type="time" value={form.endTime} onChange={(ev) => set({ endTime: ev.target.value })} />
+          <PickTime label="เวลาสิ้นสุด" value={form.endTime} onChange={(v) => set({ endTime: v })} />
         </div>
       </div>
 

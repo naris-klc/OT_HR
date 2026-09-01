@@ -5,6 +5,7 @@ import { api, hours, withHours, currentPeriod, periodLabel } from '@/lib/api.js'
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
 import { Alert, Empty, UnaccountedHours } from './common.jsx';
 import DepartmentPrint from './DepartmentPrint.jsx';
+import { PickMonth } from './PickDate.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /**
@@ -114,7 +115,7 @@ export default function DepartmentView() {
           </div>
           <div className="field" style={{ maxWidth: 170, flex: 'none' }}>
             <label>ประจำเดือน</label>
-            <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+            <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
         </div>
 

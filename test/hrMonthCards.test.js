@@ -756,7 +756,7 @@ test('the panel is above the marks it explains, which one of them once only clai
     strip < hrView.indexOf('<div className="card month-head">'),
     'the panel is under the controls card',
   );
-  assert.ok(strip < hrView.indexOf('<input type="month"'), 'the panel is under the period box');
+  assert.ok(strip < hrView.indexOf('<PickMonth'), 'the panel is under the period box');
   assert.ok(strip < hrView.indexOf('className="row export-row"'), 'the panel is under the export buttons');
   assert.ok(strip < hrView.indexOf('<div className="row month-find">'), 'the panel split the search box from its list');
   assert.ok(strip < hrView.indexOf('<table className="hr-table">'), 'the panel is still under the table');

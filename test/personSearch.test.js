@@ -159,11 +159,26 @@ test('personMatches and searchPeople agree', () => {
 
 // ── the control the rule is for ─────────────────────────────────────────────
 
+/**
+ * `PickPerson`'s source, AND NOTHING AFTER IT.
+ *
+ * It read `src.slice(at)` — to the end of the file — until 2026-09-01, which
+ * was only ever right because PickPerson happened to be the last thing in
+ * common.jsx. `PickOne` was added below it that day and the count below went
+ * from 2 to 3 without a line of PickPerson changing: a test that reports a
+ * safety property of one control while measuring two.
+ *
+ * The end is the next top-level `export`, or the end of the file when there is
+ * none — so this stays true whichever side of PickPerson the next component
+ * lands on.
+ */
 const pick = (() => {
   const src = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
   const at = src.indexOf('export function PickPerson(');
   assert.ok(at > 0, 'PickPerson หายไปจาก common.jsx');
-  return src.slice(at);
+  const rest = src.slice(at);
+  const next = rest.indexOf('\nexport ', 1);
+  return next < 0 ? rest : rest.slice(0, next);
 })();
 
 test('typing never changes who is chosen — only picking a row does', () => {
@@ -371,7 +386,11 @@ test('the search box is a Field, which is where every input style comes from', (
   assert.match(findBox, /aria-label="ค้นหาพนักงาน"/);
 
   const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
-  const rule = css.slice(css.indexOf('.field input, .field select, .field textarea,'));
+  // The selector grew a `:not()` pair on 2026-08-31 — a checkbox is an `input`
+  // too, and this text-box rule had been giving every tick box in a `.field` a
+  // 46px-tall plate. What that changed is which elements the rule REACHES;
+  // what a search box gets from it is the list below, unchanged.
+  const rule = css.slice(css.indexOf(".field input:not(:where([type='checkbox'], [type='radio'])),"));
   const body = rule.slice(0, rule.indexOf('}'));
   for (const prop of ['border:', 'border-radius:', 'padding:', 'background:', 'width: 100%']) {
     assert.ok(body.includes(prop), `.field input ต้องยังให้ ${prop}`);

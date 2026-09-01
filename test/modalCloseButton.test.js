@@ -250,10 +250,43 @@ test('the dialog outranks every other layer, the toast included', () => {
   assert.ok(backdrop > layerOf('.toast-host'),
     'toast ยังอยู่เหนือกล่องโต้ตอบ — มันกินการกดที่เล็งไปที่ปุ่มข้างล่าง');
 
-  // Nothing at all above it, so the next layer somebody adds has to come here
-  // and decide rather than inherit this defect by accident.
-  const every = [...css.matchAll(/z-index: (\d+)/g)].map((m) => Number(m[1]));
+  /**
+   * Nothing at all above it — WITH ONE EXCEPTION, AND THE EXCEPTION CAME HERE
+   * AND DECIDED, which is what the sentence that stood here asked the next
+   * person to do.
+   *
+   * `.pop` is the panel all three of the app's own pickers open — the
+   * calendar, the month grid and the two time columns — and `.pop-scrim` is the
+   * dark ground under it on a phone. Six of those boxes are INSIDE a dialog — วันเกิด
+   * on ตั้งค่าระบบ › พนักงาน, the two on ผู้รับช่วง, วันที่เริ่ม on บันทึก OT —
+   * and the panel is rendered into `document.body` to escape `.modal`'s
+   * `overflow: hidden`. Out there it is a sibling of the backdrop, so at any
+   * number below this one it is behind the dialog it belongs to and cannot be
+   * seen at all. There is no arrangement of these two that works with the
+   * calendar underneath.
+   *
+   * WHY IT IS NOT THE DEFECT THIS TEST WAS WRITTEN FOR. The toast was a layer
+   * that is THERE ANYWAY, arriving over a dialog somebody was already using and
+   * eating presses aimed at buttons underneath it. This one exists only while
+   * it is open, is the thing being used while it is, and closes on Escape, on a
+   * press outside it and on any scroll. A press it takes is a press meant for
+   * it.
+   *
+   * The pair is named rather than a ceiling being raised: a THIRD layer over a
+   * dialog still has to come here and make this argument.
+   */
+  const ABOVE_THE_DIALOG = ['.pop', '.pop-scrim'];
+  for (const sel of ABOVE_THE_DIALOG) {
+    assert.ok(layerOf(sel) > backdrop, `${sel} อยู่ใต้กล่องโต้ตอบ — จะเปิดในกล่องแล้วมองไม่เห็น`);
+  }
+  const excused = new Set(ABOVE_THE_DIALOG.map((sel) => layerOf(sel)));
+  const every = [...css.matchAll(/z-index: (\d+)/g)]
+    .map((m) => Number(m[1]))
+    .filter((n) => !excused.has(n));
   assert.equal(Math.max(...every), backdrop, 'มีชั้นที่อยู่สูงกว่ากล่องโต้ตอบ — ปุ่มจะถูกทับ');
+  // The scrim is UNDER the panel it darkens for, or the sheet is behind its own
+  // background.
+  assert.ok(layerOf('.pop') > layerOf('.pop-scrim'), 'ฉากหลังของชีตทับตัวชีตเอง');
 
   // The host itself never takes a press; only a toast that is really there.
   assert.match(rule('.toast-host'), /pointer-events: none;/);

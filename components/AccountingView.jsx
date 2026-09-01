@@ -10,6 +10,7 @@ import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { zeroRowReason } from '@/lib/otMode.js';
 import { Alert, Empty, RateHead, UnaccountedHours } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
+import { PickMonth } from './PickDate.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /**
@@ -116,7 +117,7 @@ export default function AccountingView() {
           </div>
           <div className="field" style={{ maxWidth: 170, flex: 'none' }}>
             <label>ประจำเดือน</label>
-            <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+            <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
         </div>
 
