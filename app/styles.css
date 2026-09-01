@@ -3861,6 +3861,29 @@ td > .approver-line { margin-top: 5px; }
    has it, which is what keeps the boxes below them on one line. */
 .field-head { display: flex; align-items: center; gap: 6px; min-height: 18px; }
 
+/* ── THE SAME ROW ONE LEVEL UP: a form's `<h2>` and the ⓘ beside it ─────────
+
+   บันทึก OT แทนพนักงาน since 2026-09-01, where a blue `Alert` five lines tall
+   became one 17px circle on the heading line. `.field-head` is the same shape
+   for a `<label>` and cannot simply be reused: its `min-height: 18px` is sized
+   to a label and would do nothing for a heading, and a rule that fits both is a
+   rule neither can be changed without checking the other.
+
+   `baseline` AND NOT `center`, which is the argument `.head-split` already
+   settled on ตรวจสอบรายเดือน: a 19.5px heading against a 17px circle centred
+   leaves the
+   glyph riding above the letters it belongs to. The ⓘ is a mark on a line of
+   writing, so it sits on that line.
+
+   THE `<h2>`'S OWN MARGIN IS WHAT SPACES THE CARD, so it is left alone here and
+   the row takes no margin of its own — a `margin-bottom` on this would be added
+   to the heading's and the form would gain a gap nobody asked for. */
+.form-head { display: flex; align-items: baseline; gap: 8px; }
+/* The sentence the ⓘ toggles, in the flow under the heading. `.field-note` is
+   the type and the colour; this only pulls it up under the `<h2>` whose margin
+   has already spaced the row, and gives it back the space before the fields. */
+.form-note { margin: -6px 0 14px; }
+
 /* Small, quiet, and not in the tab order's way — a question somebody may ask,
    drawn at the weight of a question rather than of an answer. */
 .tip-btn {

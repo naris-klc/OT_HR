@@ -41,6 +41,8 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const form = readFileSync(join(ROOT, 'components/OtForm.jsx'), 'utf8');
 const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+/** components/common.jsx — the ⓘ this screen now leans on lives there. */
+const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
 
 /**
  * The source with its comments taken out — the same stripper
@@ -440,4 +442,128 @@ test('ชื่อแผนกใต้หัวข้อไม่ตกไป�
   const closes = phone.indexOf('/* ── เลือกทั้งหมด');
   assert.ok(rule > opens && rule < closes && opens > 0 && closes > 0,
     'the 11px hint left the one-line head block it pays for');
+});
+
+// ── the screen was decluttered, and what left had somewhere to go ───────────
+
+/**
+ * THREE PIECES OF MICROCOPY CAME OFF บันทึก OT แทนพนักงาน ON 2026-09-01, asked
+ * for together as "ลดความรกของ UI". Two were deleted and one moved, and the
+ * difference between those two verbs is what this block is for.
+ *
+ * DELETED: the sub-header — เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. — which on
+ * THIS screen tells a หัวหน้า filing for their own team something they know.
+ * It is still drawn on every other mode of this form, because the employee's
+ * own บันทึก OT is where somebody learns what counts as OT here, and the
+ * birthday wording is a correction of a sentence that was false on that row.
+ *
+ * DELETED: "เลือกได้เฉพาะพนักงานในแผนกของคุณ", which described the box directly
+ * above it — the list IS the department and nothing else can be ticked.
+ *
+ * MOVED: everything else. The blue `Alert` and the rest of that note are behind
+ * the ⓘ beside the heading, in `proxyNote`. Nothing was shortened.
+ */
+test('หัวข้อฟอร์มบันทึกแทนไม่มีบรรทัดอธิบายใต้หัวข้อ และไม่มีบรรทัดใต้กล่องเลือกชื่อ', () => {
+  // The sub-header is behind `!proxy` — present in the file, absent on this
+  // screen. Both halves asserted: a bare deletion would take it off the
+  // employee's form too, which nobody asked for.
+  assert.match(code, /\{!proxy && \(\s*\n\s*<div className="hint">/);
+  assert.ok(code.includes('เวลาทำงานปกติ จันทร์–ศุกร์'), 'บรรทัดนี้หายไปจากฟอร์มของพนักงานเองด้วย');
+  assert.ok(
+    code.includes('สวัสดิการวันเกิดเป็นวันหยุดทั้งวัน'),
+    'คำอธิบายของแถววันเกิดหายไป — ประโยคนั้นเป็นการแก้ประโยคที่ผิดบนแถวนั้น',
+  );
+
+  // The three-clause note under the picker is gone outright.
+  assert.ok(!code.includes('เลือกได้เฉพาะพนักงานในแผนกของคุณ'), 'บรรทัดใต้กล่องเลือกชื่อกลับมาแล้ว');
+
+  // …and the blue panel with it. SCOPED TO THE PICKER BLOCK, not to the file:
+  // this form draws two other `Alert kind="info"` panels and both are about a
+  // computed preview rather than about proxy filing — the วันเกิดของคุณ overlap
+  // note, and the "this figure is one person's" caveat on a batch. A ban across
+  // the whole component would call either of those a regression.
+  const block = code.slice(
+    code.indexOf('บันทึกแทนพนักงาน *'),
+    code.indexOf("<div className=\"row\" style={{ alignItems: 'flex-start' }}>"),
+  );
+  assert.ok(block.length > 0, 'the proxy block moved — this slice is measuring nothing');
+  assert.ok(!block.includes('<Alert kind="info">'), 'กล่องฟ้ากลับมาอยู่บนหน้าจอแล้ว');
+  // The two that stay are still there, so the slice above cannot pass by the
+  // panels having been deleted wholesale.
+  assert.equal((code.match(/<Alert kind="info">/g) || []).length, 2);
+  // The warn box for an empty team is untouched — it is a fault, not a caption.
+  assert.ok(block.includes('<Alert kind="warn">ไม่พบพนักงานที่บันทึก OT ได้ในแผนกนี้</Alert>'));
+});
+
+/**
+ * WHAT THE ⓘ HAS TO STILL SAY, and the last clause is the reason this is a test
+ * rather than a note.
+ *
+ * `routing.skipped` is a POLICY FLAG read off the server: whether a proxy filing
+ * skips the หัวหน้า step is a setting, not a fact about this app. The shorter
+ * wording proposed when the panel came off was "ระบบจะบันทึกว่าคุณเป็นผู้บันทึก
+ * แทน และส่งเรื่องไปยัง HR โดยตรง", and the second half of that is a promise the
+ * settings can contradict — which the note beside `routing` has called worse
+ * than no promise since it was written. Behind an ⓘ there is room to say which
+ * of the two is true today, so it still does.
+ */
+test('ⓘ ข้างหัวข้อยังพูดครบ และประโยคเส้นทางยังอ่านจากเซิร์ฟเวอร์', () => {
+  // Whose the request is.
+  assert.ok(code.includes('จะเป็นของพนักงาน ไม่ใช่ของคุณ'));
+  // Who is recorded as having filed it.
+  assert.ok(code.includes('ระบบจะบันทึกว่าคุณเป็นผู้บันทึกแทน'));
+  // Both answers to the routing question, and neither written unconditionally.
+  assert.match(code, /routing\?\.skipped\s*\n?\s*\?\s*'และจะข้ามขั้นรอหัวหน้าไปยังรอ HR โดยตรง/);
+  assert.match(code, /:\s*routing \? 'ตามนโยบายปัจจุบัน รายการนี้จะรอหัวหน้าอนุมัติตามปกติ' : null/);
+  // Until the server has answered, it says nothing about routing at all.
+  assert.ok(code.includes('.filter(Boolean).join'), 'ประโยคที่ยังไม่มีคำตอบจะไม่ถูกกรองออก');
+
+  /**
+   * AND THE ONE CLAUSE THAT IS NOT A DESCRIPTION. One date and one pair of times
+   * are posted for everybody ticked; nothing on this screen or on the server
+   * refuses a batch whose people actually worked different hours, and the rows
+   * that come out all look correct. It was the only warning about that on the
+   * screen and it is one press away now — a weaker place, recorded as such in
+   * the component. It may not vanish entirely without somebody deciding to.
+   */
+  assert.ok(
+    code.includes('เลือกหลายคนได้เมื่อทำ OT กะเดียวกัน วันเดียวกัน เวลาเดียวกัน'),
+    'คำเตือนเรื่องกะเดียวกันหายไปจากทุกที่ — ไม่มีอะไรในระบบปฏิเสธใบชุดที่คนทำคนละเวลา',
+  );
+});
+
+/**
+ * A STRING, NOT JSX — which is what the `<strong>`s cost, and it is worth the
+ * assertion because the markup would look like an improvement to anybody
+ * editing this later.
+ *
+ * `TipButton` puts its text in `title` for a pointer as well as rendering it,
+ * and a `title` given an element is the string "[object Object]". A tip that is
+ * markup is a tip half of its readers get nothing from.
+ */
+test('ข้อความของ ⓘ เป็นสตริง ไม่ใช่ JSX — เพราะมันต้องไปอยู่ใน title ด้วย', () => {
+  const note = code.slice(code.indexOf('const proxyNote'), code.indexOf('const fields'));
+  assert.ok(note.length > 0, 'proxyNote หายไป');
+  assert.ok(!note.includes('<strong>'), 'proxyNote กลายเป็น JSX — title จะได้ [object Object]');
+  assert.match(code, /<TipButton\s*\n\s*glyph="i"\s*\n\s*text=\{proxyNote\}/);
+  // The same control the app's other two tips use, not a third thing that looks
+  // like one — see `TipButton` in components/common.jsx.
+  assert.match(common, /export function TipButton\(\{ text, of, open, onToggle, glyph = '\?' \}\)/);
+  assert.match(common, /title=\{text\}/);
+
+  // Shut on arrival, every time. The panel it replaced was always on screen; a
+  // flag that remembered "opened last time" gives those lines back to the one
+  // person who looked once.
+  assert.match(code, /const \[noteOpen, setNoteOpen\] = useState\(false\);/);
+
+  // The heading row is its own class. `.field-head` is the same shape for a
+  // <label> and its `min-height: 18px` is sized to one — a rule that fits both
+  // is a rule neither can be changed without checking the other.
+  assert.match(code, /<div className="form-head">\s*\n\s*<h2>\{heading\}<\/h2>/);
+  assert.match(css, /\.form-head \{ display: flex; align-items: baseline; gap: 8px; \}/);
+  // `baseline`, for the reason `.head-split` settled on ตรวจสอบรายเดือน: a
+  // 19.5px heading against a 17px circle centred leaves the glyph riding above
+  // the letters it belongs to.
+  assert.ok(!/\.form-head \{[^}]*align-items: center/.test(css), 'ⓘ ลอยเหนือตัวอักษรของหัวข้อ');
+  assert.match(css, /\.form-note \{ margin: -6px 0 14px; \}/);
 });

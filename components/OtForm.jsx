@@ -6,7 +6,7 @@ import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import { submissionWindow } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import {
-  Alert, BucketSplit, Modal, SegmentList, StatusChip,
+  Alert, BucketSplit, Modal, SegmentList, StatusChip, TipButton,
 } from './common.jsx';
 import { PickDate } from './PickDate.jsx';
 import { PickTime } from './PickTime.jsx';
@@ -177,6 +177,15 @@ export default function OtForm({
    * that would file them again.
    */
   const [results, setResults] = useState(null);
+  /**
+   * Whether the ⓘ beside the heading is showing its sentence.
+   *
+   * SHUT ON EVERY ARRIVAL, deliberately — it is not a preference. The panel it
+   * replaced was always on screen; the point of the swap is that this screen
+   * opens short, and a flag that remembered "opened last time" would give the
+   * five lines back to the one person who looked once.
+   */
+  const [noteOpen, setNoteOpen] = useState(false);
 
   useEffect(() => {
     if (!proxy) return;
@@ -516,6 +525,43 @@ export default function OtForm({
           : template ? 'ส่งคำขอใหม่จากรายการเดิม'
             : 'บันทึกการทำงานล่วงเวลา';
 
+  /**
+   * What บันทึก OT แทนพนักงาน has to say before anything is typed — behind the
+   * ⓘ beside the heading since 2026-09-01, in a blue `Alert` above the date
+   * fields before that.
+   *
+   * WHAT MOVED IS THE PLACE, NOT THE SENTENCES. Two things about a proxy filing
+   * surprise people and both are visible on the row afterwards whether or not
+   * anybody warned them: the request belongs to the EMPLOYEE and shows up on
+   * their screen, and it is not going to wait for the หัวหน้า who wrote it. A
+   * third — one date and one pair of times go to everybody ticked — is the only
+   * warning on this screen about a mistake the form permits, and it came here
+   * from the line under the picker when that was removed in the same round.
+   *
+   * A STRING AND NOT JSX, which costs the `<strong>`s the panel had. `TipButton`
+   * puts the text in `title` for a pointer as well as rendering it, and a
+   * `title` given an element is the string "[object Object]" — so a tip that is
+   * markup is a tip half of its readers get nothing from. The emphasis was
+   * carrying less than it looked: five bolded runs in one paragraph is a
+   * paragraph with no emphasis in it.
+   *
+   * `routing` IS READ OFF THE SERVER, and the last clause is why this is
+   * assembled rather than written out. Whether the manager's step is skipped is
+   * a policy flag; a promise the settings could contradict is worse than no
+   * promise, so the sentence says whichever is true today and says nothing at
+   * all until the server has answered.
+   */
+  const proxyNote = !proxy ? '' : [
+    `${targets.length > 1 ? 'แต่ละใบ' : 'รายการนี้'}จะเป็นของพนักงาน ไม่ใช่ของคุณ`
+      + ' — พนักงานจะเห็นในหน้า “บันทึกและประวัติ OT” และแก้ไขเองได้ตราบใดที่ยังไม่มีผู้อนุมัติ',
+    'ระบบจะบันทึกว่าคุณเป็นผู้บันทึกแทน ทั้งบนหน้าจอและในใบพิมพ์',
+    routing?.skipped
+      ? 'และจะข้ามขั้นรอหัวหน้าไปยังรอ HR โดยตรง เพราะการที่คุณอนุมัติใบที่คุณกรอกเองไม่ได้เพิ่มการตรวจสอบใด ๆ'
+      : routing ? 'ตามนโยบายปัจจุบัน รายการนี้จะรอหัวหน้าอนุมัติตามปกติ' : null,
+    'เลือกหลายคนได้เมื่อทำ OT กะเดียวกัน วันเดียวกัน เวลาเดียวกัน'
+      + ' — ระบบจะแยกบันทึกเป็นคนละใบ และคิดชั่วโมง เพดาน วันหยุด ของแต่ละคนแยกกัน',
+  ].filter(Boolean).join(' · ');
+
   /** Everything between the title and the buttons — the same fields either way. */
   const fields = (
     <>
@@ -533,11 +579,20 @@ export default function OtForm({
         shorter version of a wrong sentence is still wrong — and the replacement
         is one line instead of three, which is the space the form wanted back.
       */}
-      <div className="hint">
-        {fromBirthday
-          ? 'สวัสดิการวันเกิดเป็นวันหยุดทั้งวัน — ชั่วโมงที่ทำทั้งหมดนับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'
-          : 'เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'}
-      </div>
+      {/* ── AND NOT ON บันทึก OT แทนพนักงาน, SINCE 2026-09-01 ──────────────
+          Asked for as making that screen less crowded, and it is the one mode
+          where the sentence is telling somebody something they already know:
+          the reader is a หัวหน้า filing for their own team, not a first-time
+          filer meeting the 08:00–17:00 rule. On their OWN form it stays — that
+          screen is where somebody learns what counts as OT here — and the
+          birthday wording above stays for the reason its own note gives. */}
+      {!proxy && (
+        <div className="hint">
+          {fromBirthday
+            ? 'สวัสดิการวันเกิดเป็นวันหยุดทั้งวัน — ชั่วโมงที่ทำทั้งหมดนับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'
+            : 'เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'}
+        </div>
+      )}
       {entry && !hrEdit && (
         <div className="hint">
           แก้ไขวันที่ เวลา และรายละเอียดได้ระหว่างที่รายการยังรอหัวหน้าอนุมัติ ·
@@ -723,40 +778,47 @@ export default function OtForm({
                 </button>
               </div>
             )}
-            <span className="field-note">
-              เลือกได้เฉพาะพนักงานในแผนกของคุณ · เลือกหลายคนได้เมื่อทำ OT กะเดียวกัน วันเดียวกัน เวลาเดียวกัน
-              {' '}· ระบบจะ<strong>แยกบันทึกเป็นคนละใบ</strong> และคิดชั่วโมง เพดาน วันหยุด ของแต่ละคนแยกกัน
-            </span>
+            {/* ── THE THREE-CLAUSE NOTE THAT STOOD HERE IS GONE ──────────────
+                Removed 2026-09-01 with the sub-header, asked for as decluttering
+                this screen. What it said, and where each part went:
+
+                "เลือกได้เฉพาะพนักงานในแผนกของคุณ" — the list already IS the
+                department and nothing else can be ticked, so the sentence was
+                describing the box directly above it.
+
+                "ระบบจะแยกบันทึกเป็นคนละใบ และคิดชั่วโมง เพดาน วันหยุด ของแต่ละ
+                คนแยกกัน" — the ⓘ beside the heading carries this now, and the
+                summary after a batch shows it row by row.
+
+                "เลือกหลายคนได้เมื่อทำ OT กะเดียวกัน วันเดียวกัน เวลาเดียวกัน" is
+                THE ONE WORTH NAMING, because it is not a description — it is
+                the only warning on the screen about a mistake the form permits.
+                One date and one pair of times are posted for everybody ticked;
+                nothing here or on the server refuses a batch whose people
+                actually worked different hours, and the eight rows that come
+                out all look correct. It is in the ⓘ, one press away, and that
+                is a weaker place than a line nobody can miss. Raised when it
+                moved; put it back on the screen if HR ever meets it. */}
           </div>
           {teamError && <Alert kind="error">{teamError}</Alert>}
           {team.length === 0 && !teamError && (
             <Alert kind="warn">ไม่พบพนักงานที่บันทึก OT ได้ในแผนกนี้</Alert>
           )}
 
-          {/*
-            Said before anything is typed, not after it is saved. Two things
-            about a proxy filing surprise people, and both are visible on the
-            row afterwards whether or not anybody warned them: the request
-            belongs to the employee and shows up on their screen, and it is not
-            going to wait for the หัวหน้า who wrote it to approve it.
-          */}
-          <Alert kind="info">
-            {targets.length > 1 ? 'แต่ละใบ' : 'รายการนี้'}จะเป็น<strong>ของพนักงาน</strong> ไม่ใช่ของคุณ
-            {' '}— พนักงานจะเห็นในหน้า “บันทึกและประวัติ OT”
-            {' '}และแก้ไขเองได้ตราบใดที่ยังไม่มีผู้อนุมัติ ·
-            {' '}ระบบจะบันทึกว่า<strong>คุณเป็นผู้บันทึกแทน</strong> ทั้งบนหน้าจอและในใบพิมพ์
-            {/* Read off the server's own answer rather than assumed: whether
-                the manager's step is skipped is a policy flag, and a promise
-                the settings could contradict is worse than no promise. */}
-            {routing?.skipped && (
-              <> · และจะ<strong>ข้ามขั้นรอหัวหน้าไปยังรอ HR โดยตรง</strong>
-                {' '}เพราะการที่คุณอนุมัติใบที่คุณกรอกเองไม่ได้เพิ่มการตรวจสอบใด ๆ
-              </>
-            )}
-            {routing && !routing.skipped && (
-              <> · ตามนโยบายปัจจุบัน รายการนี้จะ<strong>รอหัวหน้าอนุมัติตามปกติ</strong></>
-            )}
-          </Alert>
+          {/* THE BLUE PANEL THAT STOOD HERE IS THE ⓘ BESIDE THE HEADING NOW —
+              2026-09-01, and the swap was offered in the same breath as
+              "make this shorter", which is what makes it the right trade: the
+              sentences are unchanged and the five lines of screen they took
+              are not. `proxyNote` builds them; see it above the heading.
+
+              WHY NONE OF IT WAS CUT TO ONE LINE INSTEAD. The one-line version
+              proposed was "ระบบจะบันทึกว่าคุณเป็นผู้บันทึกแทน และส่งเรื่องไปยัง
+              HR โดยตรง", and the second half of that is a promise this app
+              cannot make: whether the หัวหน้า step is skipped is a POLICY FLAG
+              read off the server, and the note beside `routing` has said since
+              it was written that a promise the settings could contradict is
+              worse than no promise. Behind the ⓘ there is room to say which of
+              the two is true today, so it still does. */}
         </>
       )}
 
@@ -1163,7 +1225,33 @@ export default function OtForm({
 
   return (
     <form id={formId} className="card" onSubmit={submit}>
-      <h2>{heading}</h2>
+      {/* THE APP'S OWN ⓘ, wearing the glyph `AppBar` gave it: the same 17px
+          circle that carries a `?` on every form field — same ink, same focus
+          ring, same keys — because "there is something to explain here" is one
+          promise and should not be two controls. The glyph is the difference
+          between the two things being explained: a field asks what to type, a
+          page heading does not ask anything. See `TipButton` in common.jsx.
+
+          It holds the sentence in `title` for a pointer and toggles the line
+          below for a thumb, which is the whole reason it is a button and not a
+          hover — a phone has no hover to give. */}
+      <div className="form-head">
+        <h2>{heading}</h2>
+        {proxyNote && (
+          <TipButton
+            glyph="i"
+            text={proxyNote}
+            of={heading}
+            open={noteOpen}
+            onToggle={() => setNoteOpen((v) => !v)}
+          />
+        )}
+      </div>
+      {/* In the flow rather than floating over the form, unlike ภาพรวม's
+          `.page-note`: that one hangs off a sticky bar, and this heading is an
+          `<h2>` in a card that scrolls with everything else. Opened, it costs
+          the lines the panel used to cost — the saving is that it is shut. */}
+      {proxyNote && noteOpen && <div className="field-note form-note">{proxyNote}</div>}
       {fields}
       <div className="row form-actions" style={{ marginTop: 18, justifyContent: 'flex-end' }}>
         {actions(onCancel)}

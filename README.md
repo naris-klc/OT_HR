@@ -1260,9 +1260,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1891 tests
+and the engine know nothing about Next.js, so the whole suite — **1894 tests
 across 114 files**, measured 2026-09-01 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -2627,6 +2627,48 @@ has plenty.
   list the two compute the same array today, and the union is kept because it is
   idempotent (a duplicate id is a second request filed for the same person) and
   because the day this list is narrowed again by anything, a replace is a bug.
+
+### And the prose around it, later the same day
+
+Asked for as *ลดความรกของ UI*. Three pieces came off the screen; two were
+deleted and one moved, and the difference between those verbs is the whole of
+this section.
+
+**Deleted: the sub-header** — *เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. ·
+นอกเหนือจากนี้นับเป็น OT*. On THIS screen the reader is a หัวหน้า filing for
+their own team, which is the one audience that does not need telling. It is
+**behind `!proxy`, not removed**: the employee's own บันทึก OT is where somebody
+learns what counts as OT here, and the birthday wording beside it is a
+correction of a sentence that was false on that row.
+
+**Deleted: the note under the picker.** *เลือกได้เฉพาะพนักงานในแผนกของคุณ*
+described the box directly above it — the list IS the department and nothing
+else can be ticked.
+
+**Moved: the blue panel**, into the ⓘ beside the heading — the same 17px circle
+that carries a `?` on every field, wearing the `i` the app bar's note already
+uses. Nothing was shortened. **The one-line replacement that was proposed is
+what makes this a move rather than a cut**: it read *ระบบจะบันทึกว่าคุณเป็นผู้
+บันทึกแทน และส่งเรื่องไปยัง HR โดยตรง*, and the second half is a promise this
+app cannot make — whether the หัวหน้า step is skipped is a policy flag read off
+the server, and a promise the settings could contradict is worse than no
+promise. Behind an ⓘ there is room to say which of the two is true today.
+
+**One thing is now a press away that was not.** *เลือกหลายคนได้เมื่อทำ OT
+กะเดียวกัน วันเดียวกัน เวลาเดียวกัน* is not a description — it is the only
+warning on the screen about a mistake the form permits. One date and one pair of
+times are posted for everybody ticked, and **nothing here or on the server
+refuses a batch whose people actually worked different hours**; the rows that
+come out all look correct. It is in the ⓘ, which is a weaker place than a line
+nobody can miss. Put it back on the screen if HR ever meets it.
+
+**Measured on the built app**, ธีมมืด, as `PM-0100`: at 390×844 the card is
+**751px** with the ⓘ shut and 858 open, and no `.hint`, `.alert` or
+`.field-note` is drawn in it at all — the picker, ประจำเดือน and both times fit
+on one screen, where the blue panel alone used to push the date field off. The
+ⓘ is 17×17 on the heading's baseline, carries the sentence in `title` (322
+characters with nobody ticked, 426 once the server has answered the routing
+question) and reports `aria-expanded`.
 
 **What the box was for, kept because the reasoning outlives it.** The one
 promise it existed to keep was that narrowing must never lose a tick: `teamFind`
@@ -6263,8 +6305,19 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1891/1891 pass in about 2 s**, measured 2026-09-01 across 114
-  files. **The newest two are in `test/submissionWindowForm.test.js`**, and they
+- `npm test` — **1894/1894 pass in about 2 s**, measured 2026-09-01 across 114
+  files. **The newest three are in `test/proxyTeamSearch.test.js`**, over the
+  microcopy บันทึก OT แทนพนักงาน lost — the sub-header, the note under the
+  picker and the blue panel — and over where the third of them went. Two of the
+  three are about what may NOT follow from "make this shorter": the sub-header
+  is behind `!proxy` rather than deleted, so the employee's own form and the
+  birthday row keep it; and the ⓘ still says which of the two routings applies
+  today, because that is a policy flag read off the server and the one-line
+  wording proposed in its place would have promised HR routing unconditionally.
+  The `<Alert kind="info">` ban is scoped to the picker block, since this form
+  draws two other info panels about a computed preview. It read "1891/1891"
+  until then.
+  **Before them, two in `test/submissionWindowForm.test.js`**, and they
   are a ban and its counterweight: the sentence under วันที่เริ่ม that said the
   date range in words is **gone**, and neither of the two wordings it had that
   day may come back quietly — while the BOUNDS it described are asserted to be
@@ -6359,7 +6412,9 @@ four role UIs.
   1.75 for the blue notice on บันทึกแทน — the longest alert in the app, five
   lines of Thai in one colour with no inter-word spaces to give the paragraph
   any texture — which moved an assertion in `test/absentCallout.test.js` rather
-  than adding one.
+  than adding one. (That notice went behind an ⓘ later the same day and the
+  value stays: 1.75 was never about that paragraph, it was about a solid block
+  of Thai at 13.5px.)
   Before it, twenty-two in `test/queueDropdown.test.js`, over the
   แผนก and เดือน filters on รายการรออนุมัติ now that neither is a `<select>` —
   and, since later the same day, over สถานะที่นับ on ตรวจสอบรายเดือน, which was

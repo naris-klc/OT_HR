@@ -124,9 +124,16 @@ test('the smaller notice is opt-in, and the base size is untouched', () => {
   // AND THE LEADING READ 1.6 UNTIL 2026-09-01, when it went to 1.75 for the
   // blue notice on บันทึกแทน — the longest alert in the app, five lines of Thai
   // in one colour with no inter-word spaces to give the paragraph any texture.
-  // It is on `.alert` and not on `.alert.info` on purpose: that screen shows a
+  // It was on `.alert` and not on `.alert.info` on purpose: that screen showed a
   // warn box and an info box one under the other, and two boxes with the same
   // padding, size and face at two different leadings is worse than either.
+  //
+  // THAT NOTICE WENT BEHIND AN ⓘ LATER THE SAME DAY and the value stays, which
+  // is the case for having written the reasoning down rather than the example:
+  // 1.75 was never about that paragraph, it was about a solid block of Thai at
+  // 13.5px, and the next alert to run five lines gets it without anybody having
+  // to rediscover why. The longest one on screen now is the blue สิทธิ์ notice
+  // on บันทึก OT ของฉัน.
   assert.match(css, /\.alert \{[\s\S]{0,200}padding: 12px 16px;[\s\S]{0,120}font: 400 13\.5px\/1\.75 var\(--sans\);/);
   // `.box` is the same four palettes and does NOT follow: `.box.total` is the
   // รวม tile at the end of a rate split, in a row of figures whose height it
