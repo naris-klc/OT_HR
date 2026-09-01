@@ -909,11 +909,26 @@ export default function OtForm({
             argue with. The 130px lives in the stylesheet now. */}
         <div className="field time">
           <label>{fromBirthday ? 'เวลาเข้า (สแกนนิ้ว)' : 'เวลาเริ่ม (จาก)'}</label>
-          <PickTime label="เวลาเริ่ม" value={form.startTime} onChange={(v) => set('startTime', v)} />
+          {/* EVERY MINUTE ON THE BIRTHDAY ROW, every fifth everywhere else.
+              The two boxes there are labelled `เวลาเข้า (สแกนนิ้ว)` and are
+              filled in from the fingerprint scanner, which does not round — see
+              `minuteValues` in components/PickTime.jsx for why a step is safe
+              anywhere else and why a value off the step is never lost. */}
+          <PickTime
+            label="เวลาเริ่ม"
+            value={form.startTime}
+            onChange={(v) => set('startTime', v)}
+            minuteStep={fromBirthday ? 1 : 5}
+          />
         </div>
         <div className="field time">
           <label>{fromBirthday ? 'เวลาออก (สแกนนิ้ว)' : 'เวลาสิ้นสุด (ถึง)'}</label>
-          <PickTime label="เวลาสิ้นสุด" value={form.endTime} onChange={(v) => set('endTime', v)} />
+          <PickTime
+            label="เวลาสิ้นสุด"
+            value={form.endTime}
+            onChange={(v) => set('endTime', v)}
+            minuteStep={fromBirthday ? 1 : 5}
+          />
           {overnight && (
             <span style={{ fontSize: 12, color: 'var(--amber)' }}>วัน{dayName(endDateLabel)}ถัดไป</span>
           )}

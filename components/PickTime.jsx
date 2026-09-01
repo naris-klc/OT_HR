@@ -45,19 +45,47 @@ import { Popover, PopFoot, PickerBox, usePicker } from './popover.jsx';
 const pad = (n) => String(n).padStart(2, '0');
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
 /**
- * SIXTY MINUTES, NOT TWELVE.
+ * The minute column — every `step`th minute, PLUS whatever this box is holding.
  *
- * A five-minute list is the friendlier one and it is the wrong one here.
- * วันเกิดที่ยังไม่มีใบ is filled in from the pair of times off the fingerprint
- * scanner — `เวลาเข้า (สแกนนิ้ว)` is what its label says — and a scanner does
- * not round. The native input allowed any minute; a control that allowed 12 of
- * them would be the first thing in this replacement to take something away.
+ * ── IT WAS ALL SIXTY, AND THE REASON IS WHY THIS IS A STEP AND NOT A LIST ───
+ * That paragraph read: a five-minute list is the friendlier one and it is the
+ * wrong one here, because วันเกิดที่ยังไม่มีใบ is filled in from the pair of
+ * times off the fingerprint scanner — `เวลาเข้า (สแกนนิ้ว)` is what its label
+ * says — and a scanner does not round. It was right about that case and wrong
+ * to make every other case pay for it: sixty rows is a column somebody scrolls
+ * past four screens of to reach 17:30 on the ordinary evening shift, which was
+ * reported on 2026-09-01 as exactly that.
  *
- * The engine rounds to 30 minutes when it PRICES the session (see §3), which is
- * a different question from what somebody was recorded as working.
+ * SO THE CASE KEEPS ITS PRECISION AND NOTHING ELSE PAYS FOR IT. `minuteStep` is
+ * 1 on the birthday form, where the times come off a scanner, and 5 everywhere
+ * else — twelve rows instead of sixty, and the whole column visible at once.
+ *
+ * FIVE AND NOT FIFTEEN, which was the other option offered. Fifteen is four
+ * rows and would make 17:10 and 17:20 unreachable on the ordinary form — times
+ * this office does type, and the engine's 30-minute rounding prices them
+ * without changing what somebody is recorded as having worked. Five is already
+ * a fifth of the scrolling and takes nothing away that anybody asked for.
+ *
+ * ── AND THE HELD VALUE IS ALWAYS IN THE LIST ───────────────────────────────
+ * This is the line that makes a step safe rather than lossy. An entry filed at
+ * 17:03 — off a scanner, or from before this change — opens in a box whose step
+ * is 5, and without this it would show NOTHING selected: the roving tabindex
+ * would have no home, `aria-selected` would be false on every row, and the
+ * first arrow press would silently move the value to a multiple of five. The
+ * odd minute is inserted in its own place, reads as chosen, and survives being
+ * looked at.
  */
-const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+function minuteValues(step, held) {
+  const out = [];
+  for (let m = 0; m < 60; m += step) out.push(m);
+  if (!out.includes(held) && held >= 0 && held < 60) {
+    out.push(held);
+    out.sort((a, b) => a - b);
+  }
+  return out;
+}
 
 /**
  * One column of numbers — hours or minutes.
@@ -82,14 +110,23 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 function Column({ values, value, onPick, label, active, onEnter, onSide }) {
   const ref = React.useRef(null);
 
+  /**
+   * SCROLLING AND FOCUSING ARE TWO DIFFERENT QUESTIONS, and they were one until
+   * 2026-09-01. `if (!active) return` meant the inactive column never moved to
+   * its own value — invisible while the only thing that changed a column was a
+   * press inside it, and wrong the moment a เวลาด่วน chip started setting BOTH.
+   * Pressing 22:00 moved the hour and left the minute column showing whatever
+   * it had been scrolled to, so the panel disagreed with the box above it.
+   *
+   * Every column scrolls its chosen row into view; only the active one takes
+   * the cursor. `nearest`, so a column already showing the value does not jump
+   * and the page behind never moves — `preventScroll` covers the focus, this
+   * covers the deliberate scroll.
+   */
   React.useEffect(() => {
-    if (!active) return;
     const el = ref.current?.querySelector('[data-at="1"]');
     if (!el) return;
-    el.focus({ preventScroll: true });
-    // `nearest`, so a column already showing the value does not jump, and the
-    // page behind never moves — `preventScroll` above covers the focus, this
-    // covers the deliberate scroll.
+    if (active) el.focus({ preventScroll: true });
     el.scrollIntoView({ block: 'nearest' });
   }, [value, active]);
 
@@ -163,9 +200,14 @@ function Column({ values, value, onPick, label, active, onEnter, onSide }) {
  * completed. A picker that holds a draft is a picker that can be closed in a
  * way that throws the choice away, which is the one outcome nobody expects.
  */
-function TimePanel({ value, onChange, onDone, onClose, sheet }) {
+function TimePanel({
+  value, onChange, onDone, onClose, sheet, minuteStep,
+}) {
   const held = parseTime(value) || { h: 17, m: 0 };
   const set = (h, m) => onChange(`${pad(h)}:${pad(m)}`);
+  // Rebuilt when the held minute moves, because the odd-minute row it may have
+  // to carry is the held one — see `minuteValues`.
+  const minutes = React.useMemo(() => minuteValues(minuteStep, held.m), [minuteStep, held.m]);
   /* WHICH COLUMN THE ARROWS DRIVE. It opens on the hour — that is what somebody
      opens this control to change, and it is the left-hand one, so ← / → read as
      the direction they look. */
@@ -183,7 +225,7 @@ function TimePanel({ value, onChange, onDone, onClose, sheet }) {
           onPick={(h) => set(h, held.m)}
         />
         <Column
-          values={MINUTES}
+          values={minutes}
           value={held.m}
           label="นาที"
           active={col === 'm'}
@@ -196,14 +238,32 @@ function TimePanel({ value, onChange, onDone, onClose, sheet }) {
         {/* The four times this office actually types. Not a substitute for the
             columns — วันเกิดที่ยังไม่มีใบ needs 17:03 off a scanner — but the
             ordinary evening shift is 17:00 to 20:00 and reaching it should not
-            be two scrolls. */}
+            be two scrolls.
+
+            ── A CHIP MOVES THE WHEELS AND LEAVES THE PANEL OPEN, since
+            2026-09-01. It called `onDone`, which applies the value and closes,
+            so the columns were correct for the frame nobody saw: press 20:00
+            and the panel is simply gone. Asked for as the wheels turning to
+            follow the chip, and the trade is named rather than hidden — the
+            common case (17:00 exactly) costs one more act than it did, a press
+            outside or Escape, and what it buys is that a chip is now a place to
+            start from. Press 17:00 then nudge the minute to 30 and the two
+            presses are the whole interaction.
+
+            NOTHING IS LOST BY LEAVING IT OPEN. `onChange` has already written
+            the value — the box behind says 20:00 the moment the chip is pressed
+            — so dismissing the panel any way at all keeps it. That is this
+            control's own rule and the reason it holds no draft. */}
         <span className="time-quick">
           {['17:00', '18:00', '20:00', '22:00'].map((t) => (
             <button
               key={t}
               type="button"
               className={`time-chip${t === value ? ' on' : ''}`}
-              onClick={() => onDone(t)}
+              // The one chip that is already the answer says so and does
+              // nothing, rather than re-scrolling two columns to where they are.
+              aria-pressed={t === value}
+              onClick={() => onChange(t)}
             >
               {t}
             </button>
@@ -216,6 +276,12 @@ function TimePanel({ value, onChange, onDone, onClose, sheet }) {
 
 export function PickTime({
   value, onChange, disabled = false, clearable = false, label = 'เวลา',
+  /**
+   * How far apart the minute rows are — 5 by default, and `1` on the one form
+   * whose times are read off a fingerprint scanner. See `minuteValues`, which
+   * also explains why a value not on the step is never lost.
+   */
+  minuteStep = 5,
 }) {
   const p = usePicker({ onChange, disabled });
   return (
@@ -251,6 +317,7 @@ export function PickTime({
             onDone={p.pick}
             onClose={p.close}
             sheet={p.sheet}
+            minuteStep={minuteStep}
           />
         </Popover>
       )}

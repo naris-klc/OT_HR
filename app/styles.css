@@ -3566,14 +3566,39 @@ td > .approver-line { margin-top: 5px; }
   text-align: center; padding-bottom: 4px;
   font: 500 11px/1.6 var(--sans); color: var(--muted-2);
 }
-/* SIXTY ROWS THAT SCROLL, and the cap is what makes that a list rather than a
-   page. `overscroll-behavior` stops a flick that reaches 59 carrying on into
-   the form behind — the same containment `.pick-menu` and `.modal-body` both
-   keep, for the same reason. */
+/* ROWS THAT SCROLL, and the cap is what makes that a list rather than a page.
+   `overscroll-behavior` stops a flick that reaches the end carrying on into the
+   form behind — the same containment `.pick-menu` and `.modal-body` both keep,
+   for the same reason.
+
+   (It read "sixty rows" until 2026-09-01, when the minute column became every
+   fifth minute. The hour column is still twenty-four and is the one that
+   scrolls on an ordinary form.) */
 .time-list {
   max-height: 208px; overflow-y: auto; overscroll-behavior: contain;
   display: flex; flex-direction: column; gap: 2px;
 }
+/* ── AND THE BAR ITSELF IS NOT DRAWN ────────────────────────────────────────
+
+   Reported on 2026-09-01 as a line down the middle of the panel, and that is
+   exactly where it was: the hour column's scrollbar sits at ITS right edge,
+   which in a two-column panel is the gap between ชั่วโมง and นาที. The app's
+   global thumb is a 10px pill on a `--bg` ground (see the rule at the top of
+   this file), so in a 196px popup it read as a divider rather than as a control
+   — a rule nobody drew, between two columns that are not separated by one.
+
+   `.section-tabs` does the same thing three thousand lines below and for the
+   same reason: a bar whose only job is to say "there is more" on a strip that
+   is obviously a strip.
+
+   WHAT SAYS THERE IS MORE INSTEAD. The chosen row is a green fill and is
+   scrolled into view whenever the value moves, so the column always opens
+   showing where it is rather than at the top; and the rows are cut mid-height
+   by the 208px cap, which is the same "there is more below" a table's clipped
+   last row gives. Both properties, since Firefox draws none of the `::-webkit-`
+   rules and would otherwise keep its own. */
+.time-list { scrollbar-width: none; }
+.time-list::-webkit-scrollbar { display: none; }
 .time-list:focus { outline: none; }
 .time-opt {
   flex: none; min-height: 34px;

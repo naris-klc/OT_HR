@@ -102,25 +102,70 @@ test('ค่าที่ส่งออกยังเป็น HH:mm — engine
   // else would be a change to the engine's input rather than to a control.
   const forms = ['components/OtForm.jsx', 'components/ApprovalQueue.jsx'].map((f) => strip(read(f)));
   for (const body of forms) {
-    assert.match(body, /<PickTime label="เวลาเริ่ม"/);
-    assert.match(body, /<PickTime label="เวลาสิ้นสุด"/);
+    // `\s` and not a space: บันทึก OT's two boxes went multi-line on 2026-09-01
+    // when they gained `minuteStep`, and the queue's are still one line each.
+    assert.match(body, /<PickTime\s+label="เวลาเริ่ม"/);
+    assert.match(body, /<PickTime\s+label="เวลาสิ้นสุด"/);
   }
 });
 
 // ── the columns ─────────────────────────────────────────────────────────────
 
-test('นาทีมีครบหกสิบ ไม่ใช่ทุกห้านาที', () => {
-  /**
-   * วันเกิดที่ยังไม่มีใบ is filled in from the pair of times off the fingerprint
-   * scanner — `เวลาเข้า (สแกนนิ้ว)` is what its label says — and a scanner does
-   * not round. The native input allowed any minute; a control offering twelve
-   * would be the first thing in this replacement to take something away.
-   *
-   * The engine's 30-minute rounding is a different question: it prices the
-   * session, it does not decide what somebody was recorded as working.
-   */
-  assert.match(code, /const MINUTES = Array\.from\(\{ length: 60 \}, \(_, i\) => i\);/);
+/**
+ * นาทีเดินทีละห้า และแถวที่เป็นของค่าปัจจุบันไม่เคยหาย — 2026-09-01.
+ *
+ * IT WAS ALL SIXTY UNTIL THEN, and that paragraph was right about one case and
+ * made every other case pay for it: วันเกิดที่ยังไม่มีใบ is filled in from the
+ * pair of times off the fingerprint scanner — `เวลาเข้า (สแกนนิ้ว)` is what its
+ * label says — and a scanner does not round. Sixty rows is also a column
+ * somebody scrolls past four screens of to reach 17:30 on the ordinary evening
+ * shift, which is what was reported.
+ *
+ * SO THE CASE KEEPS ITS PRECISION AND NOTHING ELSE PAYS. `minuteStep` is 1 on
+ * the birthday form and 5 everywhere else.
+ *
+ * FIVE AND NOT FIFTEEN, which was the other option offered: fifteen is four
+ * rows and would put 17:10 and 17:20 out of reach on the ordinary form. The
+ * engine's 30-minute rounding is a different question — it PRICES the session,
+ * it does not decide what somebody was recorded as working.
+ *
+ * AND THE HELD VALUE IS ALWAYS IN THE LIST, which is what makes a step safe
+ * rather than lossy. Without it an entry filed at 17:03 opens in a box whose
+ * step is 5 with NOTHING selected: no home for the roving tabindex, false on
+ * every `aria-selected`, and the first arrow press silently moving the value to
+ * a multiple of five.
+ */
+test('นาทีเดินทีละห้า แต่ค่าที่ไม่ลงตัวไม่เคยหลุดจากคอลัมน์', () => {
+  assert.match(code, /function minuteValues\(step, held\) \{/);
+  assert.match(code, /for \(let m = 0; m < 60; m \+= step\) out\.push\(m\);/);
+  assert.match(code, /if \(!out\.includes\(held\) && held >= 0 && held < 60\) \{/);
+  assert.match(code, /minuteStep = 5,/);
+  assert.match(code, /values=\{minutes\}/);
+  // Rebuilt when the held minute moves, since the odd row it may carry is that
+  // value — a memo keyed only on the step would strand it.
+  assert.match(code, /React\.useMemo\(\(\) => minuteValues\(minuteStep, held\.m\), \[minuteStep, held\.m\]\)/);
+
+  // The scanner's own form keeps every minute, and it is the ONLY caller that
+  // asks for one — a second `minuteStep={1}` somewhere else would mean the
+  // reason above had quietly become a default.
+  const form = strip(read('components/OtForm.jsx'));
+  assert.equal((form.match(/minuteStep=\{fromBirthday \? 1 : 5\}/g) || []).length, 2);
   assert.match(src, /เวลาเข้า \(สแกนนิ้ว\)|fingerprint scanner/);
+
+  // Run the helper as it is written, on the two cases that matter.
+  const values = (step, held) => {
+    const out = [];
+    for (let m = 0; m < 60; m += step) out.push(m);
+    if (!out.includes(held) && held >= 0 && held < 60) { out.push(held); out.sort((a, b) => a - b); }
+    return out;
+  };
+  assert.equal(values(5, 0).length, 12, 'คอลัมน์นาทีปกติต้องมี 12 แถว');
+  assert.deepEqual(values(5, 30).slice(0, 3), [0, 5, 10]);
+  assert.equal(values(1, 3).length, 60, 'ฟอร์มวันเกิดต้องยังมีครบหกสิบ');
+  // 17:03 off a scanner, opened in a box whose step is 5.
+  assert.ok(values(5, 3).includes(3), 'นาทีที่ไม่ลงตัวหายไปจากคอลัมน์');
+  assert.deepEqual(values(5, 3).slice(0, 4), [0, 3, 5, 10], 'แถวที่แทรกเข้ามาไม่ได้อยู่ตำแหน่งของมัน');
+  assert.equal(values(5, 3).length, 13, 'แทรกแล้วต้องเพิ่มมาแถวเดียว');
 });
 
 test('คอลัมน์เป็น listbox ไม่ใช่ grid — และลูกศรวนรอบ', () => {
@@ -158,8 +203,24 @@ test('เคอร์เซอร์เริ่มที่ชั่วโม�
   assert.match(code, /const \[col, setCol\] = React\.useState\('h'\);/);
   assert.match(code, /active=\{col === 'h'\}/);
   assert.match(code, /active=\{col === 'm'\}/);
-  // The guard that stops the inactive column stealing it back.
-  assert.match(code, /React\.useEffect\(\(\) => \{\s*\n\s*if \(!active\) return;/);
+  /**
+   * THE GUARD IS ON THE FOCUS AND NOT ON THE EFFECT, since 2026-09-01.
+   *
+   * It read `if (!active) return` at the top, which also stopped the INACTIVE
+   * column scrolling to its own value. Invisible while the only thing that
+   * moved a column was a press inside it, and wrong the moment a เวลาด่วน chip
+   * started setting both: pressing 22:00 turned the hour wheel and left the
+   * minute wheel wherever it had been scrolled, so the panel disagreed with the
+   * box above it.
+   *
+   * Every column scrolls its chosen row into view; only the active one takes
+   * the cursor. That is the whole of what `active` decides now.
+   */
+  assert.match(code, /if \(active\) el\.focus\(\{ preventScroll: true \}\);\s*\n\s*el\.scrollIntoView\(\{ block: 'nearest' \}\);/);
+  assert.ok(
+    !/React\.useEffect\(\(\) => \{\s*\n\s*if \(!active\) return;/.test(code),
+    'คอลัมน์ที่ไม่ได้ active กลับไปไม่เลื่อนตามค่าของตัวเองอีกแล้ว',
+  );
   // ← / → move between them, and a press into a column makes it the live one —
   // otherwise the cursor is in one column and the keys are in the other.
   assert.match(code, /if \(e\.key === 'ArrowLeft' \|\| e\.key === 'ArrowRight'\)/);
@@ -185,6 +246,72 @@ test('ปุ่มลัดสี่เวลาอยู่ในเท้า�
   assert.match(code, /\['17:00', '18:00', '20:00', '22:00'\]/);
   assert.match(css, /\.time-chip \{/);
   assert.match(css, /\.time-chip\.on \{ background: var\(--green-bg\); border-color: var\(--ok-line\); color: var\(--green-dark\); \}/);
+});
+
+/**
+ * ปุ่มเวลาด่วนหมุนลูกล้อ แทนที่จะปิดแผงไปเลย — asked for on 2026-09-01.
+ *
+ * IT CALLED `onDone`, which applies the value AND closes, so the columns were
+ * correct for the one frame nobody saw: press 20:00 and the panel is simply
+ * gone. What was asked for is the wheels turning to follow the chip.
+ *
+ * THE TRADE IS NAMED RATHER THAN HIDDEN. The common case — 17:00 exactly — now
+ * costs one more act, a press outside or Escape. What it buys is that a chip is
+ * a place to START from: press 17:00, nudge the minute to 30, and the two
+ * presses are the whole interaction rather than a chip followed by reopening
+ * the panel.
+ *
+ * NOTHING IS LOST BY LEAVING IT OPEN, and that is this control's own rule
+ * rather than a new one: `onChange` has already written the value, so the box
+ * behind says 20:00 the moment the chip is pressed and dismissing the panel any
+ * way at all keeps it. A picker that held a draft would be one that can be
+ * closed in a way that throws the choice away.
+ */
+test('ปุ่มเวลาด่วนหมุนลูกล้อทั้งสองคอลัมน์ และไม่ปิดแผง', () => {
+  assert.match(code, /onClick=\{\(\) => onChange\(t\)\}/);
+  assert.ok(!/onClick=\{\(\) => onDone\(t\)\}/.test(code), 'ปุ่มลัดกลับไปปิดแผงทันทีอีกแล้ว');
+  // `onDone` still exists and still belongs to the minute — the panel closes
+  // when the answer is complete, and a chip is not that moment.
+  assert.match(code, /onPick=\{\(m\) => \{ set\(held\.h, m\); onDone\(`\$\{pad\(held\.h\)\}:\$\{pad\(m\)\}`\); \}\}/);
+  // The chip that is already the answer says so to a screen reader too.
+  assert.match(code, /aria-pressed=\{t === value\}/);
+});
+
+/**
+ * แถบเลื่อนของคอลัมน์ไม่ถูกวาด — reported 2026-09-01 as a line down the middle
+ * of the panel, and that is exactly where it was.
+ *
+ * The hour column's scrollbar sits at ITS right edge, which in a two-column
+ * panel is the gap between ชั่วโมง and นาที. The app's global thumb is a 10px
+ * pill on a `--bg` ground, so in a 196px popup it read as a divider rather than
+ * as a control — a rule nobody drew, between two columns that are not separated
+ * by one.
+ *
+ * WHAT SAYS THERE IS MORE INSTEAD: the chosen row is a green fill and is
+ * scrolled into view whenever the value moves, so a column opens showing where
+ * it is rather than at the top; and the rows are cut mid-height by the 208px
+ * cap. `.section-tabs` makes the same trade in the phone block.
+ */
+test('คอลัมน์เวลาไม่วาดแถบเลื่อน — เส้นกลางแผงหายไป', () => {
+  assert.match(css, /\.time-list \{ scrollbar-width: none; \}/);
+  assert.match(css, /\.time-list::-webkit-scrollbar \{ display: none; \}/);
+  // Both properties: Firefox draws none of the `::-webkit-` rules and would
+  // otherwise keep its own bar.
+  // The list still scrolls — hiding the bar may not turn into clipping.
+  assert.match(css, /\.time-list \{\s*\n\s*max-height: 208px; overflow-y: auto; overscroll-behavior: contain;/);
+  // And the cue that replaces it is the one already in the component.
+  assert.match(code, /el\.scrollIntoView\(\{ block: 'nearest' \}\);/);
+  assert.match(css, /\.time-opt\.on \{ background: var\(--green\)/);
+  // Both selectors name `.time-list`: a bare `::-webkit-scrollbar { display:
+  // none }` would take the bar off every scrolling box in the app.
+  for (const m of css.matchAll(/^([^\n{}]*::-webkit-scrollbar[^\n{}]*)\{/gm)) {
+    const sel = m[1].trim();
+    assert.ok(
+      sel.startsWith('::-webkit-scrollbar') || sel.includes('.time-list') || sel.includes('.pick-list')
+        || sel.includes('.section-tabs'),
+      `กฎ ${sel} เอื้อมไปไกลกว่ากล่องของตัวเอง`,
+    );
+  }
 });
 
 // ── the theme, which is the other half of what was asked ────────────────────
