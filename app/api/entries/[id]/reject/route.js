@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { POPULATE, DECIDE_POPULATE } from '@/lib/entries.js';
 import { approvalPermission, approvalRecord, historyExtra } from '@/lib/delegation.js';
 import { heldBy, today } from '@/lib/delegationQuery.js';
+import { needsOverCeilingReason, overCeilingRefusal } from '@/lib/caps.js';
 
 export const POST = route(async (req, { params }) => {
   const user = requireRole(await requireAuth(req), 'manager', 'hr', 'admin');
@@ -35,6 +36,27 @@ export const POST = route(async (req, { params }) => {
     note: reason,
   });
   if (!may.ok) return fail(may.error, may.status);
+
+  /**
+   * The same rule `approve` applies, and it can never fire here.
+   *
+   * ไม่อนุมัติ has refused an empty reason since it existed — twenty lines
+   * above, before any of this runs — so `reason` is non-empty by the time the
+   * ceiling rule sees it and this returns ok every time. It is here anyway,
+   * because "the check is unnecessary in this route" is a fact about today's
+   * code that nothing would notice going stale: relax the reason requirement
+   * on refusals for any reason at all and the over-ceiling case must keep it.
+   * Costing one call to say so is cheaper than finding out later.
+   */
+  const over = overCeilingRefusal(entry, reason);
+  if (!over.ok) return fail(over.error, over.status);
+
+  // Whichever way the decision went, the sheet gets the sentence — see the
+  // longer note in the approve route. A refusal's reason is already required
+  // and already in `rejectionReason`; this is the copy สรุป OT ส่งบัญชี reads,
+  // and it exists on refused rows because HR asked to see why a person's month
+  // is short as well as why it is long.
+  if (needsOverCeilingReason(entry)) entry.overCeilingReason = reason;
 
   if (may.stage === 'mgr') {
     entry.managerDecision = approvalRecord(user, may, { note: reason });

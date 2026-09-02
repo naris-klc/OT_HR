@@ -6696,8 +6696,23 @@ td.rate-col { white-space: nowrap; }
    for figures read down a column — they sat hard against their right edge with
    the heading centred above them, and the block read as four ragged strips
    rather than one. Tabular figures still line up digit under digit; the column
-   is too narrow for the alignment to be doing any other work. */
-th.rate-col, td.rate-col { text-align: center; }
+   is too narrow for the alignment to be doing any other work.
+
+   `.total-col` IS NAMED HERE AND WAS NOT UNTIL 2026-09-02. The paragraph above
+   has said "three rates and their total" since it was written, and the selector
+   under it said only `.rate-col` — which centred the total on คิวรออนุมัติ,
+   where the cell happens to carry both classes, and left it right-aligned on
+   ตรวจสอบประจำเดือน, สรุปทีม and สรุป OT ส่งบัญชี, where it carries only
+   `total-col`. So รวม ชม. sat hard against its right edge with three centred
+   rates beside it and a centred heading above it — the ragged strip this rule
+   exists to remove, in the one column of the four that is bold.
+
+   The phone keeps its own answer: `.queue-table td.total-col` and
+   `.hr-table tr.total-row td.total-col` in the 860px block state their
+   alignment where the cell is a chip and a card field rather than a column, and
+   both are later in the file than this. */
+th.rate-col, td.rate-col,
+th.total-col, td.total-col { text-align: center; }
 
 /* ×3 IS a holiday rate — it is holiday hours outside 08:00–17:00 — so it takes
    the same second line as ×1.5 วันหยุด, and all three headings are two lines
@@ -6883,6 +6898,41 @@ tbody tr.picked:hover { background: var(--green-bg); }
    was. `.warn` is the pending one — the sheet is not final while it is there. */
 .note-mark { font: 400 11.5px/1.45 var(--sans); color: var(--muted); }
 .note-mark.warn { color: var(--amber); }
+
+/* ── รายการเกินเพดาน on สรุป OT ส่งบัญชี ─────────────────────────────────────
+   Added 2026-09-02. Every figure on that sheet is hours somebody signed for,
+   and they all read alike: 12 hours inside a department's ceiling and 12 that
+   went past it were the same number in the same colour, and the only screen
+   that showed the difference was the approval queue — which accounting does
+   not open and which no longer holds the row.
+
+   `--danger-ink` AND NOT `--danger`, and the pair is copied from `OVER_CAP` in
+   components/ApprovalQueue.jsx rather than invented: the same fact wears the
+   same red on the screen that decides it and on the sheet that reports it. The
+   ink is the darker of the two and is the one this app uses for a red that has
+   to be READ — `--danger` is for a control that refuses.
+
+   NOT A WARNING, which is the whole reason there is no amber here and no
+   background wash. These hours are approved, correct and being paid. The
+   colour says the figure was a decision somebody had to justify; the หมายเหตุ
+   column says who and why. A tint behind it would make an ordinary signed
+   month look like a problem, which is how a mark stops being read. */
+.fig-over { color: var(--danger-ink); }
+/* `help` rather than `default`: the figure carries a `title` and nothing else
+   on this sheet does, so the cursor is the only thing that says it is worth
+   hovering. It is not a button — see the note in AccountingView.jsx on why
+   this is a `title` and not a portal — so it must not read as one. */
+.fig-over[title] { cursor: help; text-decoration: underline dotted var(--danger-line); text-underline-offset: 3px; }
+.note-mark.over-cap { color: var(--danger-ink); }
+/* The reasons, one per entry. `disc` outside the text so a wrapped sentence
+   lines up under itself and not under the bullet — these run to a full line
+   more often than วันเกิด's one-liner beside them. */
+.note-mark.over-cap .over-cap-why {
+  margin: 3px 0 0; padding-left: 15px;
+  list-style: disc; color: var(--ink);
+}
+.note-mark.over-cap .over-cap-why li { margin-top: 2px; }
+.note-mark.over-cap .over-cap-why .muted { color: var(--muted-2); }
 
 /* Three buttons in one cell have to say three different things at a glance.
    Filled green commits, a red outline refuses, a plain outline only looks —

@@ -22,9 +22,19 @@ export const POST = route(async (req, { params }) => {
    * answer and cannot be told apart from one.
    *
    * The other exceptions in this system all refuse without one — เซ็นแทนหัวหน้า
-   * (`OVERRIDE_NOTE_REQUIRED`), `includeApproved` (`authorizeReplay`) and
-   * เปลี่ยนรหัสพนักงาน (`codeChangePermission`). There were four until
+   * (`OVERRIDE_NOTE_REQUIRED`), `includeApproved` (`authorizeReplay`),
+   * เปลี่ยนรหัสพนักงาน (`codeChangePermission`) and, since 2026-09-02,
+   * DECIDING an entry that is over a ceiling at all — อนุมัติ as much as
+   * ไม่อนุมัติ (`overCeilingRefusal` in lib/caps.js). There were four until
    * 2026-08-31; เปิดงวด was the fourth, and it went with ปิดงวด.
+   *
+   * That last one is the near neighbour of this route and is not the same act.
+   * This one WAIVES the ceiling — an exception granted to the rule, which
+   * clears `capExceeded` — and only ฝ่ายบุคคล and ผู้ดูแลระบบ may grant it.
+   * The other is a หัวหน้า saying why they signed a request that is over the
+   * limit, which grants nothing and leaves the flag exactly where it was. An
+   * entry can collect both, and สรุป OT ส่งบัญชี prints them on separate lines.
+   *
    * This one refuses now too, and the screen has
    * always demanded it: `OverrideModal` marks the field required and keeps its
    * save button disabled until something is typed, so no existing path in the

@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  api, hours, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES, accountingLabel,
+  api, hours, thaiDateShort, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES,
+  accountingLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 // Pure — the same function the CSV phrases its row with, so the screen and the
@@ -288,7 +289,7 @@ function CompanySheet({ company, period, index }) {
                     <td className="num rate-col b-15h">{cell(row.buckets[BUCKETS.OT15_HOLIDAY])}</td>
                     <td className="num rate-col b-3h">{cell(row.buckets[BUCKETS.OT3_HOLIDAY])}</td>
                     <td className="num total-col">
-                      <strong>{cell(row.otHours)}</strong>
+                      <OverCeilingFigure row={row} />
                     </td>
                     <td className="note-col">
                       <span className="co">{row.companyLabel}</span>
@@ -310,6 +311,17 @@ function CompanySheet({ company, period, index }) {
                           ค้างอนุมัติ {row.pendingCount} รายการ · ไม่นับรวม
                         </div>
                       )}
+                      {/* THE SAME FACT THE RED FIGURE CARRIES, WRITTEN OUT.
+                          The number's `title` answers a hover, which is the
+                          quickest way to ask and the one thing a printed sheet
+                          and a phone both have no equivalent of. This is the
+                          answer for everybody else — and for the case a
+                          tooltip is worst at, which is being read twice while
+                          somebody checks a figure against a queue. It sits
+                          with วันเกิด and ค้างอนุมัติ because it is the third
+                          thing on this sheet that says why a figure reads the
+                          way it does. */}
+                      <OverCeilingNote over={row.overCeiling} />
                       {/* A nought that will always be a nought, said only where
                           there IS a nought: on a row with hours the department's
                           mode explains nothing, and a mark on every row of a
@@ -420,3 +432,87 @@ function AllCompanies({ data }) {
  * blanks is how accounting spots who to ask about.
  */
 const cell = (n) => (n ? hours(n) : '');
+
+/* ── รายการเกินเพดาน on the sheet ───────────────────────────────────────────
+   Added 2026-09-02. Every figure on this sheet is hours somebody signed for,
+   and until now they all read alike: 12 hours inside a department's ceiling
+   and 12 that went past it were the same number in the same colour. The only
+   screen that ever showed the difference is the approval queue, which
+   accounting does not open and which no longer holds the row anyway. */
+
+const OVER_CEILING_MARK = 'รายการเกินเพดาน';
+
+/** One entry's line — "5 ส.ค. · 4.50 ชม." — shared by the tooltip and the note. */
+const noteLine = (n) => `${n.workDate ? thaiDateShort(n.workDate) : '—'} · ${hours(n.hours)} ชม.`;
+
+/**
+ * What a hover says, as one string, because `title` is one string.
+ *
+ * The shape asked for — `รายการเกินเพดาน | เหตุผลผู้อนุมัติ: …` — with the
+ * waived rows named separately: a ceiling ฝ่ายบุคคล waived and a ceiling a
+ * หัวหน้า signed past are two different decisions by two different people, and
+ * running them together would put HR's sentence under the หัวหน้า's name.
+ */
+function tipTextOf(over) {
+  const parts = [`${OVER_CEILING_MARK} ${over.count} รายการ · ${hours(over.hours)} ชม.`];
+  for (const n of over.notes) {
+    if (n.reason) parts.push(`${noteLine(n)} | เหตุผลผู้อนุมัติ: ${n.reason}`);
+    if (n.waivedReason) parts.push(`${noteLine(n)} | ยกเว้นเพดานโดยฝ่ายบุคคล: ${n.waivedReason}`);
+    if (!n.reason && !n.waivedReason) parts.push(`${noteLine(n)} | ไม่ได้บันทึกเหตุผลไว้`);
+  }
+  return parts.join('\n');
+}
+
+/**
+ * The row's total — red when any of it went past a ceiling.
+ *
+ * A `<span>` with a `title`, and NOT a portal-backed popover, which is what
+ * this reached for first. The table it sits in is a horizontal scroller
+ * (`overflow-x: auto`), so anything positioned inside a cell is clipped by it
+ * — the problem components/popover.jsx exists to solve, at the cost of a
+ * portal, a placement pass and a dismiss listener. None of that is worth it
+ * here, because the same words are on the row already: `OverCeilingNote` below
+ * prints them in the หมายเหตุ column, where they survive a phone, a print
+ * preview and a second reading. The tooltip is the shortcut, not the record.
+ *
+ * NOT a warning colour, deliberately. These hours are approved, correct and
+ * being paid; the red says this figure was a decision somebody had to justify,
+ * and the justification is one hover or one glance to the right.
+ */
+function OverCeilingFigure({ row }) {
+  const over = row.overCeiling;
+  if (!over?.count) return <strong>{cell(row.otHours)}</strong>;
+  return (
+    <strong className="fig-over" title={tipTextOf(over)}>
+      {cell(row.otHours)}
+    </strong>
+  );
+}
+
+/** The same account, written into the หมายเหตุ column rather than hovered for. */
+function OverCeilingNote({ over }) {
+  if (!over?.count) return null;
+  return (
+    <div className="note-mark over-cap">
+      <strong>{OVER_CEILING_MARK}</strong> · {over.count} รายการ · {hours(over.hours)} ชม.
+      <ul className="over-cap-why">
+        {over.notes.map((n, i) => (
+          // Index: two entries can share a date (a split shift), and nothing
+          // else on this row identifies one — `entries` never leaves the
+          // server, so there is no id here to key on.
+          <li key={`${n.workDate}-${i}`}>
+            {noteLine(n)}
+            {n.reason && <> · เหตุผลผู้อนุมัติ: {n.reason}</>}
+            {n.waivedReason && <> · ยกเว้นเพดานโดยฝ่ายบุคคล: {n.waivedReason}</>}
+            {!n.reason && !n.waivedReason && (
+              /* Approved before 2026-09-02, when nobody was asked for one. Said
+                 out loud rather than left blank: an empty space after a colon
+                 reads as a reason that failed to load. */
+              <> · <span className="muted">ไม่ได้บันทึกเหตุผลไว้ (อนุมัติก่อนเริ่มใช้กฎนี้)</span></>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

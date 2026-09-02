@@ -212,7 +212,12 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                 <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
                 <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
                 <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
-                <th className="num">รวม</th>
+                {/* `total-col` so the figure centres with the three rates
+                    beside it — this table is the drill-down on ตรวจสอบประจำเดือน
+                    and its รวม was the one column in the block still hard
+                    against its right edge. See the rate-column block in
+                    app/styles.css; the class carries no width of its own. */}
+                <th className="num total-col">รวม</th>
                 <th>รายละเอียดงานที่ทำ</th>
                 <th>กฎที่ใช้</th>
                 <th>สถานะ</th>
@@ -254,7 +259,7 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT3_HOLIDAY])}</td>
-                    <td className="num" data-label="รวม (ชม.)">
+                    <td className="num total-col" data-label="รวม (ชม.)">
                       <strong>{hours(e.totals?.otHours)}</strong>
                     </td>
                     {/* `entry-desc` — the only cell on the card whose value runs

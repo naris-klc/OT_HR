@@ -392,7 +392,21 @@ test('the reason box is compulsory on that queue and nowhere else', () => {
   const queue = read('components/ApprovalQueue.jsx');
   assert.match(queue, /const needsReason = unsignedOnly/);
   assert.match(queue, /disabled=\{busy \|\| !ready\}/);
-  assert.match(queue, /const ready = !needsReason \|\| why\.trim\(\)\.length > 0/);
+  /**
+   * It read `const ready = !needsReason || why.trim().length > 0` until
+   * 2026-09-02, when a SECOND rule learnt to demand the same box: a request
+   * that was over its department's ceiling when it was filed
+   * (`needsOverCeilingReason`). The two are independent — one is about who is
+   * signing, the other about what is being signed — and `mustExplain` is their
+   * or. What this case still guards is unchanged and is the line below it: the
+   * screen may not demand a reason the server would not.
+   */
+  assert.match(queue, /const mustExplain = needsReason \|\| overCeiling;/);
+  assert.match(queue, /const ready = !mustExplain \|\| why\.trim\(\)\.length > 0/);
+  // And the second rule is read off the ROWS, never off the queue's mode — a
+  // screen-wide flag would demand a reason for entries that are under their
+  // ceiling and get a 200 from a server that asked for nothing.
+  assert.match(queue, /const capReason = \(list = \[\]\) => list\.some\(\(e\) => needsOverCeilingReason\(e\)\);/);
   // The screen must not demand more than the route: an administrator signing
   // from รออนุมัติแทน on a real delegation is not overriding anything, and the
   // server asks them for nothing.

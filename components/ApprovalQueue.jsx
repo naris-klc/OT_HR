@@ -6,7 +6,7 @@ import {
 } from '@/lib/api.js';
 import {
   capChips, capFigure, capPair, describeBreaches, overCapLine,
-  pendingCapNote,
+  pendingCapNote, needsOverCeilingReason, OVER_CEILING_REASON_REQUIRED,
 } from '@/lib/caps.js';
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
@@ -57,6 +57,23 @@ export default function ApprovalQueue({
    * real delegation signs from รออนุมัติแทน with no reason demanded, exactly as
    * ฝ่ายบุคคล does, because there the server does not demand one either.
    */
+  /**
+   * SECOND REASON THIS DIALOG CAN DEMAND A SENTENCE, added 2026-09-02, and it
+   * is a property of the ROWS rather than of the screen.
+   *
+   * The one above is about who is signing; this one is about what is being
+   * signed — a request that was over a department ceiling when it was filed.
+   * They are independent: a batch can need a reason for both, for one, or for
+   * neither, and the dialog collects ONE sentence because one person is making
+   * one decision. It reaches the server as `note`, which is the field the
+   * administrator override already reads and the field the ceiling rule now
+   * reads too, so one box satisfies both refusals.
+   *
+   * Worked out per batch rather than per screen because the queue mixes them:
+   * ticking three rows of which one is over its ceiling has to ask, and
+   * unticking that row has to stop asking.
+   */
+  const capReason = (list = []) => list.some((e) => needsOverCeilingReason(e));
   const needsReason = unsignedOnly;
   const toast = useToast();
 
@@ -1075,6 +1092,7 @@ export default function ApprovalQueue({
           verb={verb}
           isHr={isHr}
           needsReason={needsReason}
+          overCeiling={capReason(confirming)}
           busy={busy}
           onClose={() => setConfirming(null)}
           onConfirm={(note) => { const list = confirming; setConfirming(null); approve(list, note); }}
@@ -1110,7 +1128,23 @@ export default function ApprovalQueue({
           busy={busy}
           mine={isOwnFiling(detail, user)}
           onClose={() => setDetail(null)}
-          onApprove={() => { const e = detail; setDetail(null); approve([e]); }}
+          /**
+           * THE ONE PATH THAT COULD REACH THE SERVER WITHOUT A REASON.
+           *
+           * อนุมัติ inside รายละเอียด signs immediately — no confirmation, by
+           * design, because the reviewer has just read the whole request. On a
+           * row over its ceiling that now means a 400 from the rule in
+           * lib/caps.js: correct, and a red error box is the wrong way to
+           * learn that a sentence is owed. So a row that needs one is handed
+           * to the same dialog every other over-ceiling approval goes through,
+           * and every other row signs straight away exactly as before.
+           */
+          onApprove={() => {
+            const e = detail;
+            setDetail(null);
+            if (needsReason || needsOverCeilingReason(e)) setConfirming([e]);
+            else approve([e]);
+          }}
           onReject={(reason, notify) => { const e = detail; setDetail(null); reject([e], reason, notify); }}
           onEntryChanged={afterEntryChange}
         />
@@ -1145,7 +1179,9 @@ function pileLabel(isHr, count) {
  * ยืนยัน is one click away from payroll, so it gets a stop — but a short one.
  * A batch shows what it is about to move; a single row shows the row.
  */
-function ConfirmModal({ entries, verb, isHr, busy, needsReason = false, onClose, onConfirm }) {
+function ConfirmModal({
+  entries, verb, isHr, busy, needsReason = false, overCeiling = false, onClose, onConfirm,
+}) {
   const total = entries.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
   const capped = entries.filter((e) => e.capExceeded);
   const many = entries.length > 1;
@@ -1159,7 +1195,22 @@ function ConfirmModal({ entries, verb, isHr, busy, needsReason = false, onClose,
    * type and this is not a screen anybody visits daily.
    */
   const [why, setWhy] = useState('');
-  const ready = !needsReason || why.trim().length > 0;
+  /**
+   * TWO RULES, ONE BOX, ONE `ready`.
+   *
+   * `needsReason` is the administrator signing where no หัวหน้า exists;
+   * `overCeiling` is a request that was over its department's ceiling when it
+   * was filed. Either one demands a sentence, and both are satisfied by the
+   * same one — it goes to the server as `note`, which both refusals read.
+   *
+   * A second textarea for the second rule was the obvious first shape and is
+   * wrong: one person is making one decision, and two boxes on one sheet ask
+   * them to say the same thing twice and then disagree with themselves in the
+   * record. What changes with two rules is the WORDING above the box, not the
+   * number of boxes.
+   */
+  const mustExplain = needsReason || overCeiling;
+  const ready = !mustExplain || why.trim().length > 0;
 
   // Same verb and same count as the button that opened this — see `pileLabel`.
   const confirmLabel = pileLabel(isHr, entries.length);
@@ -1194,7 +1245,7 @@ function ConfirmModal({ entries, verb, isHr, busy, needsReason = false, onClose,
           <button
             className="btn"
             disabled={busy || !ready}
-            onClick={() => onConfirm(needsReason ? why.trim() : null)}
+            onClick={() => onConfirm(mustExplain ? why.trim() : null)}
           >
             {confirmLabel}
           </button>
@@ -1216,8 +1267,45 @@ function ConfirmModal({ entries, verb, isHr, busy, needsReason = false, onClose,
           a batch of forty. It gets said again, here, with the names attached. */}
       {capped.length > 0 && (
         <Alert kind="warn">
-          {capped.length} รายการเกินเพดานแผนก — {capped.map((e) => e.employee?.name).join(', ')} ·
-          {' '}ปิดหน้าต่างนี้แล้วใช้ “อนุมัติเกินเพดาน” หากตั้งใจให้ผ่าน
+          {capped.length} รายการเกินเพดานแผนก — {capped.map((e) => e.employee?.name).join(', ')}
+          {/* Every ceiling each of them passed, by name. It read only the list
+              of people until 2026-09-02, which told the reviewer that
+              something was over a limit but not which limit or by how much —
+              and a reason is now being demanded for exactly this, so the sheet
+              has to carry enough to write one from. `describeBreaches` is the
+              same wording the row underneath and the pop-up already use. */}
+          <ul style={{ marginTop: 6, marginLeft: 18 }}>
+            {capped.map((e) => (
+              <li key={e._id}>
+                {e.employee?.name} · {thaiDate(e.workDate)} ·
+                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก'}
+              </li>
+            ))}
+          </ul>
+          {/* Still true, and still the other way out — but no longer the ONLY
+              one, which is what this sentence implied while a reason could not
+              be given at this step. */}
+          {isHr && (
+            <div style={{ marginTop: 6 }}>
+              หากต้องการยกเว้นเพดานให้ใบเหล่านี้ถาวร ปิดหน้าต่างนี้แล้วใช้ “อนุมัติเกินเพดาน”
+              {' '}— ต่างจากการให้เหตุผลด้านล่าง ตรงที่การยกเว้นจะปลดธงเกินเพดานออกจากใบ
+            </div>
+          )}
+        </Alert>
+      )}
+
+      {/* THE MANDATORY REASON FOR A CEILING, above the box that collects it and
+          below the list of what was breached — the order somebody reads in:
+          what is over, then what they owe. Separate from the override alert
+          because the two rules are separate: an administrator signing for an
+          absent หัวหน้า on a row that is comfortably inside its ceiling sees
+          only that one, and a หัวหน้า signing an over-ceiling row sees only
+          this one. A batch that is both shows both, and one box answers them. */}
+      {overCeiling && (
+        <Alert kind="warn">
+          <strong>{OVER_CEILING_REASON_REQUIRED}</strong>
+          {' — '}เหตุผลจะถูกบันทึกไว้ในประวัติของใบ และแสดงบนสรุป OT ส่งบัญชี
+          {' '}ตรงตัวเลขชั่วโมงของคนนี้
         </Alert>
       )}
 
@@ -1226,30 +1314,42 @@ function ConfirmModal({ entries, verb, isHr, busy, needsReason = false, onClose,
           under a collapsible list of forty rows is a required field somebody
           hunts for after the button refuses to work. */}
       {needsReason && (
-        <>
-          <Alert kind="warn">
-            <strong>ใบนี้ไม่มีหัวหน้าแผนกที่เซ็นได้</strong>
-            {' — '}คุณกำลังเซ็นในขั้นหัวหน้าแทน · จะถูกบันทึกไว้ในประวัติของใบว่าเป็นการเซ็นแทน
-            โดยผู้ดูแลระบบ พร้อมเหตุผลที่กรอก
-            {' · '}หลังจากนี้ใบจะไปรอขั้นฝ่ายบุคคล และ<strong>คุณจะเซ็นขั้นนั้นของใบเดียวกันไม่ได้</strong>
-            {' '}ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ
-          </Alert>
-          <div className="field" style={{ marginTop: 12 }}>
-            <div className="field-head">
-              <label htmlFor="override-why">เหตุผลที่เซ็นแทนหัวหน้า *</label>
-            </div>
-            <textarea
-              id="override-why"
-              rows={2}
-              value={why}
-              placeholder="เช่น แผนก ADM ยังไม่มีหัวหน้างาน · หัวหน้าลาออกเมื่อ 20 ส.ค. ยังไม่ได้ตั้งคนใหม่"
-              onChange={(ev) => setWhy(ev.target.value)}
-            />
-            <div className="field-note">
-              {OVERRIDE_NOTE_REQUIRED}
-            </div>
+        <Alert kind="warn">
+          <strong>ใบนี้ไม่มีหัวหน้าแผนกที่เซ็นได้</strong>
+          {' — '}คุณกำลังเซ็นในขั้นหัวหน้าแทน · จะถูกบันทึกไว้ในประวัติของใบว่าเป็นการเซ็นแทน
+          โดยผู้ดูแลระบบ พร้อมเหตุผลที่กรอก
+          {' · '}หลังจากนี้ใบจะไปรอขั้นฝ่ายบุคคล และ<strong>คุณจะเซ็นขั้นนั้นของใบเดียวกันไม่ได้</strong>
+          {' '}ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ
+        </Alert>
+      )}
+
+      {/* ONE BOX FOR BOTH RULES — see `mustExplain` above. What changes with
+          which rule fired is the label and the example, because those are what
+          tell somebody what to write; a second textarea would be asking one
+          person to justify one decision twice. */}
+      {mustExplain && (
+        <div className="field" style={{ marginTop: 12 }}>
+          <div className="field-head">
+            <label htmlFor="override-why">
+              {needsReason && overCeiling ? 'เหตุผลที่เซ็นแทนหัวหน้า และเหตุผลที่ให้ผ่านเกินเพดาน *'
+                : needsReason ? 'เหตุผลที่เซ็นแทนหัวหน้า *'
+                  : `เหตุผลที่${verb}ทั้งที่เกินเพดาน *`}
+            </label>
           </div>
-        </>
+          <textarea
+            id="override-why"
+            rows={2}
+            value={why}
+            placeholder={needsReason
+              ? 'เช่น แผนก ADM ยังไม่มีหัวหน้างาน · หัวหน้าลาออกเมื่อ 20 ส.ค. ยังไม่ได้ตั้งคนใหม่'
+              : 'เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมข้ามคืน · ปิดงบสิ้นเดือน'}
+            onChange={(ev) => setWhy(ev.target.value)}
+          />
+          <div className="field-note">
+            {needsReason ? OVERRIDE_NOTE_REQUIRED : OVER_CEILING_REASON_REQUIRED}
+            {many && ' · เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้'}
+          </div>
+        </div>
       )}
 
       <EntryPeek entries={entries} collapsed={many} />
@@ -1262,6 +1362,18 @@ function ConfirmModal({ entries, verb, isHr, busy, needsReason = false, onClose,
 function RejectModal({ entries, busy, onClose, onReject }) {
   const [state, setState] = useState({ reason: '', notify: { employee: true, manager: false } });
   const many = entries.length > 1;
+  /**
+   * NOTHING TO ENFORCE HERE, AND SOMETHING TO SAY.
+   *
+   * ไม่อนุมัติ has demanded a reason from everybody since it existed — the
+   * button below is already disabled on an empty box — so the ceiling rule
+   * adds no requirement to this dialog and the field needs no second asterisk.
+   * What it does add is that this particular sentence will be READ somewhere
+   * the reviewer is not expecting: it goes onto สรุป OT ส่งบัญชี beside the
+   * person's hours, not only to the employee being refused. Somebody writing
+   * "ไม่อนุมัติตามที่คุยกัน" for an audience of one deserves to know that.
+   */
+  const capped = entries.filter((e) => needsOverCeilingReason(e));
 
   return (
     <Modal
@@ -1282,6 +1394,25 @@ function RejectModal({ entries, busy, onClose, onReject }) {
         </>
       )}
     >
+      {capped.length > 0 && (
+        <Alert kind="warn">
+          <strong>
+            {many ? `${capped.length} รายการที่เลือกไว้เกินเพดาน OT ที่กำหนด` : 'รายการนี้เกินเพดาน OT ที่กำหนด'}
+          </strong>
+          <ul style={{ marginTop: 6, marginLeft: 18 }}>
+            {capped.map((e) => (
+              <li key={e._id}>
+                {e.employee?.name} · {thaiDate(e.workDate)} ·
+                {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก'}
+              </li>
+            ))}
+          </ul>
+          <div style={{ marginTop: 6 }}>
+            เหตุผลที่กรอกด้านล่างจะถูกบันทึกไว้ในประวัติของใบ และแสดงบนสรุป OT ส่งบัญชี
+            {' '}ตรงตัวเลขชั่วโมงของคนนี้ด้วย
+          </div>
+        </Alert>
+      )}
       <RejectFields value={state} onChange={setState} many={many} />
       <EntryPeek entries={entries} collapsed={many} />
     </Modal>

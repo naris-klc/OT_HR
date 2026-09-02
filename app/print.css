@@ -150,7 +150,23 @@
 .f027 th.dateh .b { display: block; margin-top: 6mm; font-size: 6.8pt; }
 
 .f027 td.c { text-align: center; }
-.f027 td.n { text-align: right; font-variant-numeric: tabular-nums; }
+/* CENTRED, NOT RIGHT — asked for on 2026-09-02 and it read `right` until then.
+   The three จำนวนชั่วโมง columns are 22mm wide holding four characters, under a
+   heading that is centred and beside จาก/ถึง which is centred (`td.c` above):
+   right-aligned, the figures sat against a rule with a hand's width of paper to
+   their left, and the five columns read as two blocks pulling apart rather than
+   one grid. Tabular figures still line the digits up under each other, which is
+   all the right edge was buying at this width.
+
+   ONE RULE FOR THE SCREEN AND THE PAPER, because print.css is imported in
+   app/layout.js beside styles.css rather than wrapped in `@media print` — the
+   `.f027-screen` preview and the sheet coming out of the printer are the same
+   element under the same declaration and cannot be aligned two ways.
+
+   The headings above are untouched, and so is everything else on the sheet:
+   F-HR-027 Rev.4 is a controlled form, this moves figures inside cells the
+   paper already has. */
+.f027 td.n { text-align: center; font-variant-numeric: tabular-nums; }
 /* The number alone. Nothing is printed under it — the birthday remark this
    column used to carry now sits on สรุป OT ส่งบัญชี (see .acct td.note). */
 .f027 td.day { font-weight: 600; }

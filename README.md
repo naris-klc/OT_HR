@@ -873,6 +873,7 @@ normalize และยังเปิดด้วยคีย์เดิมไ�
 | คำนวณใหม่ (ใบที่ยังไม่อนุมัติ) | ✅ | ✅ | `authorizeReplay` |
 | คำนวณใหม่ **รวมใบที่อนุมัติแล้ว** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `authorizeReplay` |
 | ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` |
+| เซ็นใบที่เกินเพดาน **โดยไม่บอกเหตุผล** | ❌ | ❌ | `overCeilingRefusal` — หัวหน้าก็ไม่ได้ ทั้ง อนุมัติ และ ไม่อนุมัติ |
 | **บันทึกประวัติระบบ** | ❌ | ✅ | `/api/logs`, `/api/logs/summary`, `/api/exports/logs.csv` |
 
 ### ลบแผนก — the row that says ❌ ❌ *(ไม่มีในระบบ)* until 2026-09-02
@@ -1378,7 +1379,7 @@ lib/smartDate.js          ปี พ.ศ. หรือ ค.ศ. — the one plac
                           the one 2400, and the leap years judged in ค.ศ.;
                           read by the roster form, both roster endpoints, the
                           CSV importer and both holiday calendars — pure
-test/                     116 files, run by `npm test`. Six named below as a
+test/                     118 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1391,9 +1392,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1977 tests
-across 116 files**, measured 2026-09-02 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **2006 tests
+across 118 files**, measured 2026-09-02 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1621,6 +1622,83 @@ The arithmetic is pure and lives in `lib/caps.js`; `checkCap` in
 `src/services/otService.js` supplies each window's numbers. The weekly query
 runs on a **date range rather than a period**, since the week of 30 November
 opens in one month and closes in the next.
+
+### เกินเพดานแล้วยังเซ็น — the sentence that costs, and where it is read
+
+**2026-09-02.** ไม่อนุมัติ has demanded a reason from everybody since it
+existed. อนุมัติ never had — and an entry carrying `capExceeded` is exactly the
+one where that asymmetry bites: the hours are past a limit somebody set on
+purpose, they are on their way to payroll, and the only record of why anybody
+thought that was all right was that a button had been pressed. The flag was
+shown on two screens, both of them the approval queue, which accounting does
+not open and which no longer holds the row by the time a month is closed.
+
+So **deciding a flagged entry now costs a sentence, either way and at either
+step** — `overCeilingRefusal` in `lib/caps.js`, applied by both
+`/api/entries/[id]/approve` and `/api/entries/[id]/reject`. The rule is in
+`caps.js` rather than in the routes for the reason `approvalPermission` is:
+อนุมัติ and ไม่อนุมัติ are two halves of one decision made by the same people
+at the same moment, and a check living in one of them is a check the other was
+always going to be missing. On `reject` it can never fire — that route refuses
+an empty reason twenty lines earlier — and it is called anyway, because "this
+is unnecessary here" is a fact about today's code that nothing would notice
+going stale.
+
+- **One box, two rules.** The confirmation dialog already demanded a sentence
+  for a different reason: an administrator signing the หัวหน้า step of a
+  department that has no หัวหน้า (`OVERRIDE_NOTE_REQUIRED`). The two are
+  independent — one is about who is signing, the other about what is being
+  signed — and a batch can need both. They share the one textarea and reach
+  the server as one `note`, because one person is making one decision; what
+  changes with which rule fired is the label above the box, not the number of
+  boxes.
+- **A waived entry is not asked twice.** `capOverride` is ฝ่ายบุคคล granting
+  the exception in writing, and asking the next signer to justify it again
+  would be asking them to re-decide something that is not theirs. The reason
+  they produced would be a restatement of HR's.
+- **The reason lands in two places.** `history` gets it through `entry.log()`,
+  one row per step, and that is the account that cannot be overwritten. The
+  entry also gets `overCeilingReason`, which the last decision overwrites —
+  that copy exists because สรุป OT ส่งบัญชี holds a month of rows and cannot
+  walk every entry's history to colour a number.
+- **There is no `isOverCeiling` field, deliberately.** `capExceeded` has meant
+  precisely that since the ceiling existed and a dozen screens, reports and
+  tests read it; a second boolean for one idea is two booleans that will one
+  day disagree with nobody able to say which is right. `test/overCeiling.test.js`
+  fails the build if one appears.
+
+**And the sheet says it.** On สรุป OT ส่งบัญชี the row's `รวม ชม.` is drawn in
+`--danger-ink` when any entry behind it went over a ceiling — the same red the
+queue uses for the same fact — with the account in the หมายเหตุ column and a
+hover tooltip reading `รายการเกินเพดาน | เหตุผลผู้อนุมัติ: …`. It is **not a
+warning**: the hours are approved, correct and being paid, and the colour says
+this figure was a decision somebody had to justify. A tint or an amber would
+make an ordinary signed month look like a problem, which is how a mark stops
+being read.
+
+Three things about that figure are worth stating because each was a wrong first
+guess:
+
+- **The report asks a different question from the queue.** `wasOverCeiling`
+  counts an entry whose ceiling was later WAIVED, because the waive sets
+  `capExceeded` false — so the rows accounting most needs are exactly the ones
+  the live flag has stopped naming. `capSnapshot.breaches` survives a waive and
+  is what proves it; the waiver itself is the fallback for rows filed before
+  the weekly ceiling existed, which carry no `breaches` at all.
+- **The approver's reason and HR's waiver are separate lines.** Two people, two
+  questions — merging them would print HR's sentence under the หัวหน้า's name.
+- **The hours quoted are the flagged entries', not the row's total.** Somebody
+  with four ordinary shifts and one long night went over on the night. The row
+  still prints its full total; saying 40.5 in the tooltip would claim the whole
+  month was over a limit when one shift was.
+
+The tooltip is a `title`, not a portal-backed popover, and that is a decision
+rather than an omission: the table is a horizontal scroller, so anything
+positioned inside a cell is clipped by it — the problem `components/popover.jsx`
+exists to solve, at the cost of a portal, a placement pass and a dismiss
+listener. None of it is worth paying for here, because the same words are on
+the row already, where they survive a phone, a print preview and a second
+reading. The tooltip is the shortcut; the หมายเหตุ column is the record.
 
 ### ⚠ วันหยุดบริษัท: `year` is not what decides anything, and once it was
 
@@ -6662,8 +6740,40 @@ four role UIs.
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **1977/1977 pass in about 3 s**, measured 2026-09-02 across 116
-  files. **The newest is `test/smartDate.test.js`** — the era rule had been
+- `npm test` — **2006/2006 pass in about 3 s**, measured 2026-09-02 across 118
+  files. **The newest is `test/hoursColumnCentred.test.js`** — the hour figures
+  are in the middle of their cells now, on the printed
+  ใบขออนุมัติทำงานล่วงเวลา and on ตรวจสอบประจำเดือน, and that is the whole
+  change: one declaration in `app/print.css` and one selector in
+  `app/styles.css`. **Six of the ten cases are about what did not move**, which
+  is the shape of the ask rather than caution — three wider readings were
+  offered the same morning and all three were declined. So the file pins the
+  sheet's headings as they are (`เริ่ม 17.01-07.59` included, whose dots are
+  the open question in docs/hr-briefing.md §ข้อ 0), the blank an hour cell keeps
+  when the day has no OT — "-" and "0" were both offered and neither was wanted
+  — and the 52px and 58px the screen's rate columns are still measured at,
+  which is why the paper's long labels could not go on them. The four that are
+  about the change: `.f027 td.n` centres, `.f027 td.c` still does beside it, the
+  rule sits above every `@media` block in a stylesheet `app/layout.js` imports
+  unconditionally — so the `.f027-screen` preview and the paper cannot be
+  aligned two ways — and the shared rate-column rule now names `.total-col`
+  alongside `.rate-col`. That last one had been half-written since it went in:
+  the paragraph over it said "three rates and their total", and the selector
+  under it said only `.rate-col`, so `รวม ชม.` centred on คิวรออนุมัติ, where
+  the cell happens to carry both classes, and stayed right-aligned on
+  ตรวจสอบประจำเดือน, สรุปทีม and สรุป OT ส่งบัญชี. It read "1996/1996" until then.
+  **Before it, `test/overCeiling.test.js`** — an entry over a
+  department ceiling cannot be signed without a sentence any more, either way
+  and at either step. ไม่อนุมัติ has demanded one since it existed; อนุมัติ
+  never had, which left the only record of why hours past a deliberate limit
+  were sent to payroll being that a button was pressed. Nineteen cases: the
+  rule refusing a blank and an all-spaces reason, a waived entry NOT being
+  asked twice, that same waived entry still counting as over-ceiling for the
+  accounting sheet, the approver's reason and ฝ่ายบุคคล's waiver staying on
+  separate lines, the tooltip's hours being the long night rather than the
+  whole month, and a ban on any `isOverCeiling` boolean existing beside
+  `capExceeded`. It read "1977/1977" until then.
+  **Before it, `test/smartDate.test.js`** — the era rule had been
   written four times by that morning (`lib/holidays.js`,
   `legacy/routes/holidays.js`, `lib/birthDate.js`, and nowhere at all on the
   roster form), and all four now read `lib/smartDate.js`. Nineteen cases: the

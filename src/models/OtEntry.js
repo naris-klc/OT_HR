@@ -504,6 +504,39 @@ const otEntrySchema = new mongoose.Schema(
     },
 
     /**
+     * WHY THE PERSON WHO SIGNED THIS SIGNED IT, on an entry that was over a
+     * ceiling when it was filed — required of อนุมัติ and of ไม่อนุมัติ alike
+     * since 2026-09-02. See `overCeilingRefusal` in lib/caps.js.
+     *
+     * NOT A SECOND `capExceeded`. There is no `isOverCeiling` beside this and
+     * there must not be: `capExceeded` above has meant exactly that since the
+     * ceiling existed, a dozen screens, reports and tests read it, and a second
+     * boolean for one idea is two booleans that will one day disagree with
+     * nobody able to say which is right. This field is only the REASON, which
+     * nothing held before.
+     *
+     * NOT `capOverride.reason` either, and the difference is what the sentence
+     * is about. `capOverride` is ฝ่ายบุคคล WAIVING the ceiling — an exception
+     * granted to the rule, which clears `capExceeded` — and its reason answers
+     * "why is this allowed past the limit". This one answers "why did I sign a
+     * request that is over the limit", is written by whoever pressed อนุมัติ or
+     * ไม่อนุมัติ at either step, and changes nothing about the entry's hours.
+     * A row can carry both: HR waived the ceiling, and the หัวหน้า who signed
+     * it earlier said why they were passing it up. สรุป OT ส่งบัญชี prints them
+     * as two separate lines for that reason.
+     *
+     * The reason is also in `history` — `entry.log()` records it beside the
+     * decision, which is the account that cannot be overwritten. This field is
+     * the shortcut a REPORT needs: the accounting sheet holds a month of rows
+     * and cannot walk every entry's history to colour a number.
+     *
+     * 200 characters, the same ceiling `withdrawal.reason` and the rejection
+     * reason carry, so no one of the four reasons in this schema is the odd one
+     * out at the moment somebody types a paragraph into it.
+     */
+    overCeilingReason: { type: String, trim: true, maxlength: 200 },
+
+    /**
      * ขอถอนใบที่อนุมัติแล้ว — the employee asking for a signed entry back, and
      * the answer. Rules in lib/withdrawal.js; this is only the shape.
      *
