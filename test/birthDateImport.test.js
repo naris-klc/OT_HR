@@ -115,29 +115,84 @@ test('ไฟล์ที่มีหลักฐานขัดกันเอ�
 });
 
 // ── ปี พ.ศ. ─────────────────────────────────────────────────────────────────
+//
+// เดิมปฏิเสธทั้งแถว ("ต้องใช้ปี ค.ศ.") — เปลี่ยนเป็นแปลงให้อัตโนมัติเมื่อ
+// 2026-09-02 เพราะ 2515 อ่านได้ทางเดียว ไม่มีอะไรให้เดา ต่างจากลำดับ วัน/เดือน
+// ข้างบนซึ่งยังปฏิเสธเหมือนเดิม สิ่งที่ต้องกันไว้จึงกลายเป็น "แปลงแล้วต้องบอก"
 
-test('ปี พ.ศ. → ปฏิเสธแถวนั้นพร้อมบอกว่าต้องใช้ ค.ศ. และแปลงให้ดู', () => {
+test('ปี พ.ศ. → ลบ 543 ให้อัตโนมัติ และนับไว้ว่าแปลงกี่รายการ', () => {
   const r = resolveBirthDateColumn(rowsOf('15/05/2541'));
 
-  assert.equal(r.ok, true, 'เป็นปัญหาของแถว ไม่ใช่ของทั้งไฟล์');
-  assert.equal(r.cells[0].date, null, 'ห้ามลบ 543 ให้เอง');
-  assert.match(r.cells[0].error, /พ\.ศ\./);
-  assert.match(r.cells[0].error, /ค\.ศ\. 1998/, 'บอกค่าที่ถูกต้องไปเลย จะได้แก้ได้ทันที');
-  assert.deepEqual(r.rowErrors.map((e) => e.line), [2]);
+  assert.equal(r.ok, true);
+  assert.equal(r.cells[0].date, '1998-05-15', '2541 − 543 = 1998');
+  assert.equal(r.cells[0].error, null, 'ไม่ใช่ความผิดอีกต่อไป');
+  assert.equal(r.cells[0].converted, true);
+  assert.deepEqual(r.rowErrors, [], 'ไม่มีแถวไหนตกเพราะปี พ.ศ.');
+  assert.deepEqual(r.converted, [{ line: 2, raw: '15/05/2541', date: '1998-05-15' }]);
 });
 
-test('ปี พ.ศ. ในรูป YYYY-MM-DD ก็ถูกปฏิเสธเหมือนกัน', () => {
-  const r = resolveBirthDateColumn(rowsOf('2541-03-05'));
-  assert.match(r.cells[0].error, /พ\.ศ\./);
-});
-
-test('ปี พ.ศ. ที่กำกวมไม่นับเป็นตัวชี้ขาด และไม่ทำให้ทั้งไฟล์ล้ม', () => {
-  // 05/03/2541 อ่านไม่ออกเพราะปีผิด — จึงไม่ใช่ทั้งหลักฐานและไม่ใช่ความกำกวม
-  const r = resolveBirthDateColumn(rowsOf('05/03/2541', '1989-05-12'));
+test('ตัวอย่างที่ HR ให้มา — แปลงได้ครบทั้งสามแบบในไฟล์เดียว', () => {
+  // 19 กับ 08 เป็นเดือนไม่ได้ จึงเป็นตัวชี้ขาดว่าไฟล์นี้เป็น วัน/เดือน/ปี
+  const r = resolveBirthDateColumn(rowsOf('19/09/2515', '08/02/2526', '05/03/1998'));
 
   assert.equal(r.ok, true);
-  assert.equal(r.rowErrors.length, 1, 'แถวปี พ.ศ. ตกไปแถวเดียว');
-  assert.equal(r.cells[1].date, '1989-05-12', 'แถวที่ถูกต้องยังนำเข้าได้');
+  assert.deepEqual(
+    r.cells.map((c) => c.date),
+    ['1972-09-19', '1983-02-08', '1998-03-05'],
+  );
+  assert.deepEqual(r.cells.map((c) => c.converted), [true, true, false]);
+  assert.equal(r.converted.length, 2, 'ค.ศ. อยู่แล้วต้องไม่ถูกนับว่าแปลง');
+});
+
+test('ปี พ.ศ. ในรูป YYYY-MM-DD ก็แปลงเหมือนกัน', () => {
+  const r = resolveBirthDateColumn(rowsOf('2541-03-05'));
+  assert.equal(r.cells[0].date, '1998-03-05');
+  assert.equal(r.cells[0].converted, true);
+  assert.equal(r.order, 'iso');
+});
+
+test('คั่นด้วย - หรือ / ก็อ่านได้เท่ากันทั้งสองรูปแบบ', () => {
+  for (const raw of ['19/09/2515', '19-09-2515', '2515-09-19', '2515/09/19']) {
+    const r = resolveBirthDateColumn(rowsOf(raw));
+    assert.equal(r.cells[0].date, '1972-09-19', `"${raw}" ต้องอ่านได้`);
+    assert.equal(r.cells[0].error, null, `"${raw}" ต้องไม่เป็นความผิด`);
+  }
+});
+
+test('ขอบเขต 2400 — 2400 ยังเป็น ค.ศ. 2401 เป็น พ.ศ.', () => {
+  // เส้นเดียวกับ normaliseDate() ของปฏิทินวันหยุด (lib/holidays.js) โดยตั้งใจ
+  assert.equal(resolveBirthDateColumn(rowsOf('2400-01-01')).cells[0].date, '2400-01-01');
+  assert.equal(resolveBirthDateColumn(rowsOf('2401-01-01')).cells[0].date, '1858-01-01');
+});
+
+test('ปี พ.ศ. ที่กำกวมยังกำกวมเหมือนเดิม — การแปลงปีไม่ได้ตอบเรื่องวัน/เดือน', () => {
+  // 05/03/2526 เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม เท่ากับตอนเป็น ค.ศ. ทุกประการ
+  const r = resolveBirthDateColumn(rowsOf('05/03/2526'));
+
+  assert.equal(r.ok, false, 'ไม่มีตัวชี้ขาดในไฟล์ → ปฏิเสธทั้งไฟล์เหมือนเดิม');
+  assert.deepEqual(r.ambiguous, [{ line: 2, raw: '05/03/2526' }]);
+  // และสองทางที่ยกมาให้เทียบต้องเป็น ค.ศ. ที่แปลงแล้ว
+  assert.match(r.fileError, /5 มีนาคม 1983/);
+  assert.match(r.fileError, /3 พฤษภาคม 1983/);
+});
+
+test('ปี พ.ศ. ที่ถูกตัดสินโดยแถวอื่น ก็ยังถูกนับว่าแปลง', () => {
+  const r = resolveBirthDateColumn(rowsOf('05/03/2526', '15/05/2541'));
+
+  assert.equal(r.ok, true, '15/05 ชี้ขาดให้ทั้งไฟล์');
+  assert.deepEqual(r.cells.map((c) => c.date), ['1983-03-05', '1998-05-15']);
+  assert.equal(r.converted.length, 2);
+});
+
+test('ปฏิทินถูกตรวจด้วยปี ค.ศ. ที่แปลงแล้ว ไม่ใช่ปี พ.ศ. ในไฟล์', () => {
+  // 2539 หารสี่ลงตัว แต่ปีที่ใช้จริงคือ 1996 ซึ่งเป็นอธิกสุรทินพอดี
+  assert.equal(resolveBirthDateColumn(rowsOf('29/02/2539')).cells[0].date, '1996-02-29');
+  // 2541 ก็หารสี่ลงตัว แต่ 1998 ไม่ใช่ปีอธิกสุรทิน — ต้องตกและบอกปีที่ตรวจด้วย
+  const bad = resolveBirthDateColumn(rowsOf('29/02/2541'));
+  assert.equal(bad.cells[0].date, null);
+  assert.match(bad.cells[0].error, /ไม่มีอยู่จริง/);
+  assert.match(bad.cells[0].error, /ค\.ศ\. 1998/, 'ต้องบอกว่าตรวจปีไหน ไม่งั้นนับปีอธิกสุรทินกันคนละปฏิทิน');
+  assert.deepEqual(bad.converted, [], 'แถวที่ตกไปต้องไม่ถูกนับว่าแปลงสำเร็จ');
 });
 
 // ── ปฏิทินจริง ──────────────────────────────────────────────────────────────
@@ -213,8 +268,16 @@ test('ตัวอย่างผลการตีความ แสดงอ�
 });
 
 test('ตัวอย่างบอกด้วยเมื่อแถวนั้นใช้ไม่ได้ ไม่ใช่แสดงช่องว่าง', () => {
-  const preview = birthDatePreview(resolveBirthDateColumn(rowsOf('15/05/2541')));
-  assert.match(preview[0].text, /15\/05\/2541 → .*พ\.ศ\./);
+  const preview = birthDatePreview(resolveBirthDateColumn(rowsOf('31/04/1998', '15/05/1998')));
+  assert.match(preview[0].text, /31\/04\/1998 → .*ไม่มีอยู่จริง/);
+});
+
+test('ตัวอย่างกำกับไว้ที่แถวที่แปลงปีให้ ไม่ใช่บอกแค่ยอดรวม', () => {
+  const preview = birthDatePreview(resolveBirthDateColumn(rowsOf('19/09/2515', '05/03/1998')));
+
+  assert.equal(preview[0].text, '19/09/2515 → 19 กันยายน 1972 (พ.ศ. → ค.ศ.)');
+  assert.equal(preview[0].converted, true);
+  assert.equal(preview[1].text, '05/03/1998 → 5 มีนาคม 1998', 'แถวที่เป็น ค.ศ. อยู่แล้วต้องไม่มีวงเล็บห้อย');
 });
 
 test('readableDate เป็น ค.ศ. — ปีเดียวกับที่อยู่ในไฟล์', () => {
@@ -296,4 +359,52 @@ test('หน้าทะเบียนพนักงานแสดงตั�
   assert.ok(hintAt > 0, 'การ์ดนี้ต้องมีคำอธิบาย');
   assert.match(hint, /Excel/, 'คำเตือนเรื่อง Excel บันทึกทับต้องอยู่ในคำอธิบายของหน้านี้');
   assert.match(hint, /05\/03\/1998/, 'ต้องยกค่าที่อ่านได้สองแบบให้เห็น ไม่ใช่เตือนลอย ๆ');
+});
+
+/**
+ * WHAT ตรวจก่อนนำเข้า SAYS ABOUT A CONVERTED YEAR, and what colour it says it in.
+ *
+ * Both halves matter and they fail differently. A conversion nobody is told
+ * about is a birthday moved 543 years by a machine in silence; a clean file
+ * wearing the amber "!" panel is HR being told to worry about a file with
+ * nothing wrong with it, which is how a warning stops being read at all.
+ */
+test('พรีวิวบอกจำนวนที่แปลงปีให้ และไม่ทาสีเตือนไฟล์ที่ไม่มีอะไรผิด', () => {
+  const file = read('components/AdminView.jsx');
+  const src = file.slice(file.indexOf('function Employees('), file.indexOf('function ResetPassword('));
+  const panel = src.slice(src.indexOf('{pending && ('), src.indexOf('{result && ('));
+
+  assert.match(panel, /pending\.dates\.converted\.length > 0/, 'ต้องมีเงื่อนไขซ่อนบรรทัดนี้เมื่อไม่ได้แปลงอะไร');
+  assert.match(panel, /แปลงปี พ\.ศ\. เป็น ค\.ศ\. ให้อัตโนมัติแล้ว/, 'ต้องบอก HR ว่าระบบแปลงปีให้');
+  assert.match(panel, /pending\.dates\.converted\.length\}/, 'ต้องบอกจำนวน ไม่ใช่บอกว่าแปลงเฉย ๆ');
+  assert.ok(
+    !/ต้องใช้ปี ค\.ศ\./.test(src),
+    'คำเตือนเดิมที่ให้ HR ไปแก้ไฟล์เองต้องหายไป ไม่ใช่ค้างอยู่คู่กับตัวแปลงอัตโนมัติ',
+  );
+
+  // ไฟล์อ่านได้และไม่มีแถวตก → เขียว · มีแถวตก → เหลือง · ทั้งไฟล์เสีย → แดง
+  assert.match(
+    panel,
+    /pending\.dates\.ok \? \(pending\.dates\.rowErrors\.length \? 'warn' : 'ok'\) : 'error'/,
+    'สีของแผงต้องมาจากว่ามีแถวตกจริงหรือไม่ ไม่ใช่เตือนไว้ก่อนทุกไฟล์',
+  );
+
+  // ปุ่มยืนยันต้องเป็น `.btn` เต็มใบ (สีเขียวของแอป) และกดได้ทันที ติดแค่ตอนกำลังส่ง
+  assert.match(
+    panel,
+    /<button\s+className="btn"\s+onClick=\{confirmImport\}\s+disabled=\{sending\}/,
+    'ปุ่มยืนยันนำเข้าต้องเป็นปุ่มเขียวที่กดได้ ไม่ใช่ ghost หรือถูกปิดไว้',
+  );
+});
+
+test('ผลการนำเข้าที่เซิร์ฟเวอร์ตอบกลับ นับจำนวนที่แปลงปีมาด้วย', () => {
+  const route = read('app/api/employees/import/route.js');
+  assert.match(route, /converted: dates\.converted\.length/, 'ต้องส่งจำนวนที่แปลงกลับมาให้หน้าจอ');
+
+  const view = read('components/AdminView.jsx');
+  assert.match(
+    view,
+    /result\.birthDates\.converted > 0/,
+    'หน้าจอต้องพูดตัวเลขเดียวกันซ้ำหลังนำเข้า ไม่งั้นเทียบกับพรีวิวไม่ได้',
+  );
 });

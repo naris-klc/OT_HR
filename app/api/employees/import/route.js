@@ -5,9 +5,9 @@ import { route, uploadText, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { parseCsv, pick } from '@/src/lib/csv.js';
 import {
-  dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission, unsignedStaff,
+  defaultPassword, dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
+  unsignedStaff,
 } from '@/lib/employees.js';
-import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 import { resolveBirthDateColumn } from '@/lib/birthDate.js';
@@ -172,10 +172,11 @@ export const POST = route(async (req) => {
       const role = (pick(row, 'role', 'บทบาท') || 'employee').toLowerCase();
       if (!ROLES.includes(role)) { errors.push({ line, error: `บทบาทไม่ถูกต้อง "${role}"` }); continue; }
 
-      // Optional, and rejected loudly rather than silently dropped — a birthday
-      // written 12/05/2532 is a mistake worth showing HR, not worth guessing at.
-      // Read against the whole file above; what is left per row is a cell no
-      // reading of the file could save.
+      // Optional, and rejected loudly rather than silently dropped — a cell no
+      // reading of the file could save is a mistake worth showing HR, not worth
+      // guessing at. Read against the whole file above. A พ.ศ. year is NOT one
+      // of those: 12/05/2532 is converted to 1989 and counted, because 2532 has
+      // only one meaning — see lib/birthDate.js.
       const cell = dates.byLine.get(line);
       if (cell?.error) { errors.push({ line, error: cell.error }); continue; }
       const birthDate = cell?.date || '';
@@ -278,7 +279,7 @@ export const POST = route(async (req) => {
           company,
         });
         /**
-         * Generated here, per row, and never read from the file.
+         * Decided here, per row, and never read from the file.
          *
          * A `password` column used to be honoured. That put every new hire's
          * password in a spreadsheet that gets mailed around, opened on a shared
@@ -286,22 +287,31 @@ export const POST = route(async (req) => {
          * template, so it was a path nobody was told about and nobody could
          * audit. Anything in it is now ignored, and the row is flagged below so
          * whoever wrote it finds out rather than assuming it took.
+         *
+         * Ignoring the column is UNCHANGED by the default becoming the employee
+         * code on 2026-09-02, and is the half of this that still matters: a
+         * spreadsheet column is a place a password can differ per row, sit in
+         * Downloads and be believed months later. `defaultPassword` reads the
+         * row that was just built, so the value cannot come from the file even
+         * by accident.
          */
-        const issued = generateTempPassword();
+        const issued = defaultPassword(employee.code);
         await employee.setPassword(issued);
         // Issued by the system on HR's behalf, so the same obligation as the
         // form: the account cannot reach any other screen until it is replaced.
         employee.mustChangePassword = true;
         await employee.save();
-        // Carried back so HR can hand them out. This is the only moment they
-        // are readable — see the create route.
+        // Carried back so HR can hand them out — and so the slips print what
+        // was stored rather than what the screen assumes. It read "This is the
+        // only moment they are readable" until 2026-09-02; a lost slip now
+        // costs a look at the roster.
         issuedPasswords.push({ code: employee.code, name: employee.name, password: issued });
         if (pick(row, 'password')) {
           warnings.push({
             line,
             code,
             warning: 'ไฟล์มีคอลัมน์ password — ระบบไม่ใช้ค่านั้น '
-              + 'และสร้างรหัสผ่านชั่วคราวให้เองตามรายการด้านล่าง',
+              + 'รหัสผ่านแรกเข้าของทุกแถวคือรหัสพนักงานของคนนั้นเอง ตามรายการด้านล่าง',
           });
         }
         if (!(await recordRosterChange({
@@ -371,7 +381,14 @@ export const POST = route(async (req) => {
     auditUnlogged,
     // How the วันเกิด column was read, so the confirmation says it too — the
     // preview HR agreed to and the import that happened are then the same
-    // claim, checkable against each other.
-    birthDates: { order: dates.order, count: dates.cells.length, decidedBy: dates.decidedBy },
+    // claim, checkable against each other. `converted` is the count of years
+    // that arrived as พ.ศ. and were stored as ค.ศ.; it is on both screens for
+    // the same reason the order is.
+    birthDates: {
+      order: dates.order,
+      count: dates.cells.length,
+      decidedBy: dates.decidedBy,
+      converted: dates.converted.length,
+    },
   });
 });

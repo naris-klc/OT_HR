@@ -4,9 +4,9 @@ import React from 'react';
 import { PrintChrome } from './common.jsx';
 
 /**
- * รหัสผ่านชั่วคราว ตัดแจกทีละใบ.
+ * รหัสผ่านแรกเข้า ตัดแจกทีละใบ.
  *
- * WHAT THIS REPLACES. After a CSV import the temporary passwords come back as
+ * WHAT THIS REPLACES. After a CSV import the first passwords come back as
  * one table on one screen — copyable, downloadable, and correct. Handing them
  * out from it is not: sixty people means reading sixty passwords off a screen
  * one at a time, and the fallback everybody reaches for is downloading the CSV,
@@ -73,7 +73,15 @@ export default function PasswordSlips({ rows, onClose }) {
                 <dl className="slip-fields">
                   <dt>รหัสพนักงาน</dt>
                   <dd className="slip-mono">{r.code}</dd>
-                  <dt>รหัสผ่านชั่วคราว</dt>
+                  {/* Still printed rather than replaced by "ใช้รหัสพนักงาน".
+                      Since 2026-09-02 the two lines usually carry the same
+                      string, and a slip that said so instead of showing it
+                      would be a slip that makes somebody work out their own
+                      password — and would print nothing at all for the account
+                      ฝ่ายบุคคล chose a password for by hand, which is still a
+                      case (see AddEmployee's ตั้งเอง). The value comes from the
+                      server's response either way; nothing here derives it. */}
+                  <dt>รหัสผ่านแรกเข้า</dt>
                   <dd className="slip-mono slip-secret">{r.password}</dd>
                 </dl>
                 <div className="slip-foot">

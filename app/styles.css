@@ -1591,6 +1591,155 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .item-go { flex: none; font: 400 20px/1 var(--latin); color: var(--muted-2); }
 .item:hover .item-go { color: var(--green-text); }
 
+/* ── ขอถอนใบที่อนุมัติแล้ว's row — A GRID, BECAUSE A FLEX LINE HAD ONE
+      SHRINKABLE ITEM AND IT WAS THE SENTENCE ─────────────────────────────────
+   Five items in one `.item`: the date chip, the whole of what is being read,
+   the figure, the status and two buttons. Four of the five were `flex: none`
+   and came to about 430px between them; only the middle one could give, and
+   `min-width: 0` said it could give everything. Under 470px of card it was
+   drawn at nought and Thai broke between letters — a ribbon two characters
+   wide running down the row, which is the bug this block is the repair for.
+
+   The grid deals the space out instead. `minmax(0, 1fr)` is the declaration
+   that does the work: an `auto` column would still size to its content and
+   overflow, and a plain `1fr` would refuse to go below its minimum content
+   width. The right-hand column holds ONE thing now — the two buttons — and
+   the text keeps everything else.
+
+   THREE CELLS, NOT FIVE, since 2026-09-02. The figure moved into the clock
+   line it belongs to and the status pill went altogether: a green `อนุมัติ`
+   sitting a few pixels from `อนุมัติให้ถอน` was read as a third decision, and
+   on this card of all cards that is the confusion that cannot be afforded.
+   The one thing the pill said that the card's own heading does not is drawn
+   as a grey clause at the foot of the text — see `.withdraw-unsigned`.
+
+   THE NAME BAND IS ITS OWN ROW, so the date chip can be centred against the
+   employee's name rather than against a four-line block. Both cells sit in
+   row 1 and both are `align-self: center`, so they share the row's centre
+   line exactly — an alignment that stays true when the name wraps, which a
+   measured `margin-top` would not. Row 2's first cell is empty and the
+   column keeps the chip's width, so the prose stays indented under the name.
+
+   `.item.withdraw-item` and not `.withdraw-item`: at one class each these
+   would tie with `.item`'s own `display: flex` and be settled by which came
+   later in this file, which is not a thing to leave to an edit two years from
+   now. The same reason `.item.row-link` is written that way in the 860px
+   block. */
+.item.withdraw-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "date who  actions"
+    ".    rest actions";
+  align-items: start;
+  gap: 4px 14px;
+  /* TIGHTER THAN AN `.item`'s 15px, since 2026-09-02, and the reason is the
+     ceiling below: this is the only stack in the app whose height is decided
+     by how many people asked for something, so four pixels a row is four rows
+     more of it visible before the scroll starts. Not tighter than 11px — the
+     card is four lines tall and the rule between two of them has to read as a
+     gap between cards, not as an underline. */
+  padding: 11px 18px;
+  /* Nothing here opens anything — the two buttons are the only way in — so the
+     row does not offer the finger that every other `.item` does. */
+  cursor: default;
+}
+
+/* ── THE STACK HAS A CEILING ───────────────────────────────────────────────
+   This card sits above รออนุมัติ OT, the queue somebody works every day, and
+   its height is set by how many people asked for something — ten open
+   requests at ~110px each put the queue's first row a screen and a half down
+   the page. 400px is between three and four cards: enough that the next one
+   is cut rather than hidden — a half-drawn row is what tells a reader there
+   is more — and not so much that this panel decides where the page begins.
+
+   `overflow-y: auto` and NOT `scroll` — one request draws no track. Every row
+   stays in the DOM, so Ctrl-F and a screen reader's list still find all of
+   them, which is the half a "แสดงเพิ่ม" button gives away. `contain` keeps a
+   flick that reaches the end of the list from carrying on into the page. */
+.withdraw-list { max-height: 400px; overflow-y: auto; overscroll-behavior: contain; }
+
+/* ลำดับที่ — the number a reviewer says out loud, and the only thing that
+   tells three cards apart when the same employee has asked for all three.
+   Mono, muted and a size down: every other figure on this card is hours, and
+   this one is not about the request at all. `tabular-nums` so 9. and 10. put
+   the name in the same place. */
+.withdraw-no {
+  flex: none; font: 600 12.5px/1.4 var(--mono); font-variant-numeric: tabular-nums;
+  color: var(--muted-2);
+}
+.item.withdraw-item:hover { background: var(--card); }
+.item.withdraw-item > .date { grid-area: date; align-self: center; }
+.withdraw-rest { grid-area: rest; min-width: 0; }
+
+/* Bottom right, under the last line of what they are deciding about. The
+   argument is the one the card is built on: the reason is read first and the
+   two ways to answer it come after, not beside. */
+.withdraw-actions {
+  grid-area: actions; justify-self: end; align-self: end;
+  display: flex; gap: 6px;
+}
+/* อนุมัติให้ถอน is a decision, not a paragraph. A label that wraps at the
+   width its own row happens to leave is a label that has been read wrong. */
+.withdraw-actions .btn { white-space: nowrap; }
+
+/* The name and the code · department are one line of two runs, and the break
+   may only fall BETWEEN them — the flex wrap is what puts the second on a line
+   of its own once the first has taken the width. `keep-all` on the name is the
+   Thai half of that: a full name is two short runs with a space in the middle,
+   so the space stays the only place it can come apart. Not applied to any of
+   the prose below, where forbidding every break inside a Thai run would push
+   the sentence out through the side of the card instead of wrapping it. */
+.withdraw-who {
+  grid-area: who; min-width: 0; align-self: center;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
+  font: 500 14.5px/1.4 var(--sans);
+}
+.withdraw-who .nm { word-break: keep-all; }
+
+/* WHAT THE ROW COMES TO, said where the hours were worked rather than in a
+   column of its own — `17:00–21:00  4 ชม.`. It is one fact with the clock, so
+   it lives inside the same `.nb` run and cannot be wrapped away from it; the
+   quiet fill is the `.chip.muted` family's, at the size of the line it sits
+   in rather than of a heading. */
+.withdraw-hrs {
+  padding: 1px 6px; border-radius: 5px;
+  background: var(--neutral-wash); color: var(--ink-2);
+  font: 600 12px/1.5 var(--mono); font-variant-numeric: tabular-nums;
+}
+
+.withdraw-reason { margin-top: 4px; font: 500 13px/1.5 var(--sans); }
+.withdraw-reason .lbl { white-space: nowrap; color: var(--muted); }
+
+/* The half of the status pill that was worth keeping: this entry has ONE
+   signature, not two, so granting takes back a figure ฝ่ายบุคคล never
+   confirmed. A clause in the provenance line and not a chip — a chip is what
+   was mistaken for a button, and nothing in this column can be pressed. */
+.withdraw-unsigned { font-weight: 600; color: var(--ink-2); }
+
+/* ── อนุมัติให้ถอนทั้งหมด ────────────────────────────────────────────────────
+   `.btn.ghost.warn` is the outline amber the sheet already tunes — the card
+   below it holds a filled red on every row, and a second filled thing in the
+   heading would read as the same press said twice. Amber and not red for what
+   it does: it opens a list, it writes nothing. */
+.withdraw-batch { flex: none; }
+
+/* THE LIST INSIDE THE DIALOG IS THE DIALOG. Every reason in full, one card per
+   request, with a rule between them rather than a box round each — a box would
+   make ten of them ten objects to get through, and the point is that they are
+   read down as one page. The scroll is `.modal-body`'s own, so this list is
+   the ordinary flow of the sheet and not a second scrolling area inside it. */
+.withdraw-batch-list { margin: 12px 0 4px; border-top: 1px solid var(--line-softer); }
+.withdraw-batch-row { padding: 10px 0; border-bottom: 1px solid var(--line-softer); }
+.withdraw-batch-row:last-child { border-bottom: none; }
+/* The same band the row wears, for the same reason: the number, the name and
+   the code · แผนก are one label with exactly two places it may come apart. */
+.withdraw-batch-who {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px;
+  font: 500 14.5px/1.4 var(--sans);
+}
+.withdraw-batch-who .nm { word-break: keep-all; }
+
 /* ══ buttons ═════════════════════════════════════════════════════════════ */
 
 /* ── EVERY BUTTON IS THE SAME BOX, BORDERED OR NOT ────────────────────────
@@ -3455,6 +3604,65 @@ td > .approver-line { margin-top: 5px; }
 .pop.time-pop::-webkit-scrollbar { width: 10px; }
 .pop.time-pop::-webkit-scrollbar-track { background: transparent; }
 .pop.time-pop::-webkit-scrollbar-thumb { border-color: transparent; }
+
+/* ── พิมพ์วันที่ — the typing row, on the วันเกิด panel only ────────────────
+   `typeable` in components/PickDate.jsx, and this is the only place in the app
+   where a date box and a text box are the same control. It sits ABOVE the head
+   rather than under the grid because it is the primary way in for the one
+   field it is switched on for: HR opens วันเกิด with the personnel sheet in
+   hand and the caret is already where the typing goes.
+
+   THE RULE UNDER IT IS THE SEPARATOR, not decoration — everything below the
+   line is the calendar exactly as every other box in the app draws it, and the
+   line is what says the two are alternatives rather than a form to fill in.
+
+   The reading line is `--info` for the reason `.era-badge` is: it reports what
+   the machine understood, which is neither a warning nor a thing to act on.
+   The refusal is `--danger-ink` and takes its place rather than sitting beside
+   it, so the row is never two claims at once. */
+.cal-type {
+  margin-bottom: 8px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.cal-type-row { display: flex; align-items: center; gap: 6px; }
+/* SANS AND TABULAR, the same pair `.cal-cell` and `.pick-box .val` settle on:
+   the placeholder and the refusal are Thai, which `--mono` has no glyphs for,
+   and the digits are a date being checked against a sheet. */
+.cal-type-in {
+  flex: 1; min-width: 0;
+  height: 34px; padding: 0 9px;
+  border: 1px solid var(--input-line); border-radius: var(--radius-xs);
+  background: var(--card); color: var(--ink);
+  font: 500 14px/1.3 var(--sans); font-variant-numeric: tabular-nums;
+}
+.cal-type-in::placeholder { color: var(--muted-2); font-weight: 400; }
+.cal-type-in:focus {
+  outline: none;
+  border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring);
+}
+/* Disabled until the box holds a date this field can actually take — a button
+   whose only answer is a refusal is worse than a button that waits. */
+.cal-type-go { flex: none; height: 34px; padding: 0 10px; font-size: 13px; }
+.cal-type-read, .cal-type-bad, .cal-type-hint {
+  margin-top: 5px;
+  font: 400 12.5px/1.45 var(--sans);
+  word-break: break-word;
+}
+.cal-type-read { color: var(--info); font-weight: 500; }
+/* The two halves of the reading, quieter than the date itself: what HR checks
+   against the sheet is `19 กันยายน 2515`, and the ค.ศ. that will be stored is
+   there to be findable rather than read every time. */
+.cal-type-era, .cal-type-iso { font-weight: 400; color: var(--muted); }
+.cal-type-iso { font-variant-numeric: tabular-nums; }
+.cal-type-bad { color: var(--danger-ink); }
+.cal-type-hint { color: var(--muted-2); }
+/* On a phone the panel is a sheet and the 44px touch floor applies — the grid
+   below is the one place this app knowingly goes under it, and a text box with
+   a button beside it is not that place. */
+@media (max-width: 640px) {
+  .cal-type-in, .cal-type-go { height: 44px; }
+  .cal-type-in { font-size: 16px; } /* under 16px, iOS zooms the whole sheet */
+}
 
 /* ‹ สิงหาคม 2569 › */
 .cal-head { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
@@ -5711,6 +5919,27 @@ td > .approver-line { margin-top: 5px; }
 .hint-list li + li { margin-top: 6px; }
 .note { font: 400 12.5px/1.55 var(--sans); color: var(--muted); }
 
+/* THE พ.ศ. → ค.ศ. LINE on ตรวจก่อนนำเข้า.
+
+   Its own strip inside the panel rather than another sentence in the stack,
+   because it is the one line reporting something the machine DID to the file
+   rather than something it read: a year the roster wrote as 2515 is stored as
+   1972, and that has to be visible without being alarming.
+
+   `--info`, so it cannot be mistaken for either of the two colours that mean
+   act on this — the panel around it is green when the file is clean and amber
+   when rows are being dropped, and both of those are about whether to press
+   ยืนยันนำเข้า. This one never is. A left border rather than a full chip, so it
+   reads as a note attached to the reading above it, and it keeps the panel's
+   own font size instead of shrinking: HR is meant to read it. */
+.era-badge {
+  margin-top: 8px; padding: 7px 10px;
+  border-left: 3px solid var(--info-line);
+  border-radius: var(--radius-xs);
+  background: var(--info-bg); color: var(--info);
+  font-weight: 500; line-height: 1.5;
+}
+
 /* ══ tables ══════════════════════════════════════════════════════════════ */
 
 /* ── แผนกและเพดาน ──────────────────────────────────────────────────────────
@@ -5760,6 +5989,26 @@ td > .approver-line { margin-top: 5px; }
 .deptset-table td.state-col .state-badge,
 .deptset-table td.act-col .link { white-space: nowrap; }
 
+/* ── A CLOSED แผนก IS FADED, AND TWO CELLS ARE NOT ─────────────────────────
+   Asked for as 50%, and 50% is what the row gets: it is still on the screen,
+   still readable, and no longer competing with the departments that are live.
+   This is the same list read two ways — the chip above the table hides them,
+   this says which ones they are when the chip is off.
+
+   THE สถานะ CELL AND THE จัดการ CELL COME BACK TO FULL. Fading a row is a way
+   of saying "this one is closed"; drawing the badge that SAYS SO at half
+   strength is saying it twice, the second time illegibly — and a control at
+   50% reads as disabled, which the toggle and แก้ไข are not. So the row fades
+   and the two cells that answer "what is this and what can I do about it"
+   are excepted, which is the same division the cell's own comment makes.
+
+   `opacity` and not a colour: it takes the whole cell with it — the code, the
+   name, the mode note under it, the หัวหน้า badges, the ceiling boxes — with
+   nothing to keep in step, in both themes, for free. */
+.deptset-table tbody tr.off > td { opacity: .5; }
+.deptset-table tbody tr.off > td.state-col,
+.deptset-table tbody tr.off > td.act-col { opacity: 1; }
+
 /* สถานะ — a badge that is also the switch.
 
    Shaped like `.chip` on purpose: everywhere else in the app a pill with a
@@ -5801,6 +6050,42 @@ td > .approver-line { margin-top: 5px; }
 .state-badge:disabled { cursor: default; }
 .state-badge:disabled:hover { border-color: var(--line); color: var(--muted); }
 .state-badge.on:disabled:hover { border-color: var(--green-bg); color: var(--green-dark); }
+
+/* ── THE DOT IS THE STATE, AND OFF IS RED SINCE 2026-09-02 ─────────────────
+   It was `--muted-2` — the same grey as the word beside it, which meant the
+   two states differed by the WORD and by a green that was only there on one of
+   them. Asked for as 🟢/🔴, and the ask is right: a pill scanned down a column
+   of eight is read by its colour before it is read at all, and "grey" is what
+   a control looks like when it is disabled rather than when it is off.
+
+   THE DOT AND NOTHING ELSE. A red fill and a red border would make a closed
+   department look like a failed one — it is not an error, it is a decision
+   somebody made on purpose, and the row is already faded to say so. One red
+   dot on the app's own quiet pill says "off" without saying "wrong". */
+.state-badge .dot { background: var(--danger); }
+.state-badge.on .dot { background: var(--green); }
+
+/* ── สถานะ IN แก้ไขแผนก — the pill, and the (?) beside the heading ─────────
+   THE SENTENCE THAT USED TO STAND BESIDE IT IS BEHIND THE (?) NOW, and the
+   row it needed went with it. `.dept-state-row` was a flex pair — pill, then
+   two lines of prose written two ways, one for on and one for off — standing
+   open in a dialog whose other four controls each keep their explanation
+   behind a `TipButton`. It was the one block of grey that had to be read past
+   to reach the foot, which is the argument `Field` already makes on this
+   screen: a wall of grey is read as decoration and the sentence that matters
+   is skipped with the rest.
+
+   What is left is a `.gh` with a (?) on its line and the pill under it, which
+   is the shape every other group in this form has. No rule of its own is
+   needed for the pill — `.state-badge` is already an inline-flex box that
+   sizes to its own words. */
+
+/* A GROUP HEADING THAT ASKS SOMETHING, borrowing `.field-head`'s row so the
+   (?) sits on the heading's line at the same 6px a field's does. The heading's
+   own 14px bottom margin moves to the row, or the (?) would be spaced off the
+   control it is about by a margin belonging to the word beside it. */
+.gh-head { margin-bottom: 14px; }
+.gh-head > .gh { margin-bottom: 0; }
 
 /* The heading line เพิ่มแผนก now shares. `.card h2` carries a 4px bottom margin
    for the hint that follows it; inside a centred flex row that margin lifts the
@@ -7232,6 +7517,58 @@ table.mini tbody tr:hover { background: none; }
    this is a step back, not a different button. */
 .modal-foot .btn.ghost { color: var(--muted); }
 
+/* ── THE ONE BUTTON THAT IS NOT AT THE END OF THE BAR ──────────────────────
+   ลบแผนก in แก้ไขแผนก. The foot's rule is "the actions sit at the end", which
+   is right for ยกเลิก and บันทึก: they are two ways of finishing the same job
+   and the eye should find them in one place. A destructive action is not a
+   third way of finishing that job, and put beside them it becomes the button
+   nearest the thumb on a phone.
+
+   `margin-right: auto` and not `justify-content: space-between` on the foot:
+   the foot is shared by every dialog in the app, most of which have no such
+   button, and a rule about all of them to place one of them is how the other
+   dialogs' feet get quietly rearranged. This says "this button does not sit
+   with the others", which is a statement about the button. */
+.modal-foot .foot-left { margin-right: auto; }
+
+/* ── AND IT IS NOT A FILLED BUTTON ─────────────────────────────────────────
+   It was `.btn.danger` — the solid orange the app uses for ยืนยันการถอนใบ and
+   the other presses that MOVE something. In a dialog foot that made ลบแผนก the
+   loudest object on screen, louder than บันทึก, for an action nobody performs
+   in a normal week: the eye landed on the destructive button first every time
+   the dialog opened, which is the opposite of what a rarely-used irreversible
+   control should do.
+
+   Danger-light instead — the same three tokens `.foot-split .btn.ghost.danger`
+   uses for a refusal, and the same reasoning: enough to be visibly the
+   destructive one, nowhere near enough to compete with the green. Solid red is
+   for the press that is already committed to, which here is the ลบแผนก inside
+   the confirmation, not the one that opens it.
+
+   FOUR CLASSES, and that is deliberate. `.modal-foot .btn.ghost` sets
+   `color: var(--muted)` a few rules above and is three; at three each this
+   would tie and be settled by source order, which is exactly the defeat the
+   comment on `.foot-split .btn.ghost.danger` records happening to that button
+   the first time round. */
+.modal-foot .btn.ghost.foot-left {
+  background: var(--reject-bg); color: var(--reject-ink);
+  border: 1px solid var(--reject-line);
+  box-shadow: 0 3px 10px -4px var(--shadow-3);
+}
+.modal-foot .btn.ghost.foot-left:hover:not(:disabled) {
+  background: var(--reject-bg); border-color: var(--reject-ink);
+}
+.modal-foot .btn.ghost.foot-left:active:not(:disabled) { box-shadow: none; }
+/* Disabled for ฝ่ายบุคคล, and the general `.modal-foot .btn:disabled` below
+   would repaint it in the neutral wash — which on the one destructive button in
+   the dialog reads as an ordinary secondary rather than as something switched
+   off. Kept in its own colours at the app's disabled opacity, so what is greyed
+   out is still recognisably the thing it is. */
+.modal-foot .btn.ghost.foot-left:disabled {
+  background: var(--reject-bg); color: var(--reject-ink);
+  box-shadow: none; opacity: .45;
+}
+
 /* A dialog's primary action is off while there is nothing to save, and the
    global `opacity: .55` said that by draining the green — which does not read
    as "not yet", it reads as a button somebody drew in a lighter colour. Grey
@@ -8038,6 +8375,31 @@ table.mini tbody tr:hover { background: none; }
     gap: 8px;
   }
   .modal-foot .btn { flex: 1 1 0; min-height: 46px; padding-left: 10px; padding-right: 10px; }
+  /* ── ลบแผนก DOES NOT TAKE A THIRD OF THE BAR ────────────────────────────
+     `flex: 1 1 0` above is written for a foot of TWO, where equal halves are
+     right: they are two ways of finishing the same job. A destructive third
+     button dealt an equal share becomes one of three identical targets, 8px
+     from ยกเลิก, on the row a thumb reaches first — measured at 390px as three
+     114px buttons at x=16, 138 and 260, which is the arrangement the desktop
+     placement exists to avoid.
+
+     NOTHING GROWS IN A FOOT THAT HAS ONE, and it has to be all three: an auto
+     margin can only take FREE space, so leaving ยกเลิก and บันทึก at
+     `flex: 1 1 0` gives it none and `margin-right: auto` becomes a no-op. That
+     was the first attempt, measured at 390 as 92 + 125 + 125 with the
+     destructive button 8px from ยกเลิก — the same defect in different widths.
+
+     At content width the three come to about 240 of the 358 available at
+     390px, so the gap the auto margin opens is real: the pair sits at the
+     right edge and ลบแผนก is a thumb's width away from either of them.
+     `min-width` keeps the two on the right from shrinking to their four Thai
+     letters and reading as links rather than buttons.
+
+     Written with `:has`, which degrades to the state above rather than to a
+     broken one — a browser without it draws three equal buttons, which is what
+     this foot did the day before. */
+  .modal-foot:has(.foot-left) .btn { flex: 0 1 auto; }
+  .modal-foot:has(.foot-left) .btn:not(.foot-left) { min-width: 88px; }
   /* ── the question, on a sheet ───────────────────────────────────────────
      The band replaces the footer, so it inherits that shorthand's side insets
      and only the two ends are restated here — see the note over
@@ -8467,6 +8829,45 @@ table.mini tbody tr:hover { background: none; }
   .item.row-link > .item-hours { grid-area: hours; }
   .item.row-link > .chip { grid-area: chip; justify-self: start; }
   .item.row-link > .item-go { grid-area: go; }
+
+  /* ── ขอถอนใบที่อนุมัติแล้ว on a phone ───────────────────────────────────
+     Three rows, and the third is the decision.
+
+     The wide row already gives the sentence its own column; at 360px there is
+     no room for a second column beside it at all — two Thai buttons want about
+     300px on their own. So they come out of the line and become a row under
+     the text.
+
+     The name band and the chip beside it stay row 1, so the alignment the wide
+     row makes holds here too; the prose keeps its indent under the name from
+     row 2's empty first cell.
+
+     The buttons take the full width and split it evenly, at 44px tall like
+     every other pair of decisions on a phone in this sheet. Two decisions of
+     equal standing at equal width, on the line where a thumb ends up — the
+     argument `.alert-actions` makes higher up in this block, and the reason
+     they are not left to trail off the end of the reason they answer. */
+  .item.withdraw-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "date    who"
+      ".       rest"
+      "actions actions";
+    gap: 6px 12px;
+    /* 11px, down from 14px, on the argument the wide rule gives: the ceiling
+       below is 400px on a phone too, and a phone card is the taller of the two
+       — the buttons are a row of their own here. */
+    padding: 11px 12px;
+  }
+  .item.withdraw-item > .withdraw-actions { justify-self: stretch; gap: 8px; margin-top: 4px; }
+  .item.withdraw-item .withdraw-actions .btn { flex: 1 1 0; min-height: 44px; }
+
+  /* อนุมัติให้ถอนทั้งหมด takes the whole line under the heading. `.card-head`
+     wraps, so at 320px it would otherwise sit on a line of its own at its own
+     width and read as a chip — and it is the one control on this card that
+     acts on everything below it. 44px for the thumb, like every other decision
+     on a phone in this sheet. */
+  .withdraw-batch { flex: 1 1 100%; min-height: 44px; }
 
   /* One control per line — a filter you have to pinch at is a filter nobody
      uses, and the batch buttons are the reason the bar is there at all.
@@ -11429,7 +11830,15 @@ table.mini tbody tr:hover { background: none; }
      two lines tall while its neighbours stayed one. */
   .stack-table tbody td .roster-actions {
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-    gap: 8px; width: 100%;
+    /* 6px, and it was 8px until 2026-09-02. Measured, not chosen: at 375px the
+       three equal columns are 82.3px each at 8px, and ตั้งรหัสใหม่ becoming
+       รีเซ็ตรหัสผ่าน took the longest label from 55px of text to 74px against
+       74.3px of room — 0.3px, which is not a margin, it is a coincidence.
+       `white-space: nowrap` below means the failure mode is a clipped label
+       rather than a wrapped one, on the one button in this row that cannot be
+       undone. Two pixels off each gap and two off each side's padding buy 5.3px
+       back, which is 7% of the label. */
+    gap: 6px; width: 100%;
   }
   /* 36px, not the 44 `.stack-table tbody td .btn` gives every other list, and
      13px/500 rather than 14.5/600. Three buttons across a 375px card at 44px
@@ -11439,7 +11848,11 @@ table.mini tbody tr:hover { background: none; }
      one place on the phone where the touch floor gives way to the reading. */
   .stack-table tbody td .roster-actions .btn {
     width: 100%; min-width: 0; min-height: 36px;
-    padding: 8px 4px; text-align: center; white-space: nowrap;
+    /* 2px of side padding, down from 4px on 2026-09-02 — see the gap above.
+       The buttons are `text-align: center` and full-width, so this decides only
+       how close the longest label may come to its own edge, and the vertical
+       8px (which is what makes the 36px box) is untouched. */
+    padding: 8px 2px; text-align: center; white-space: nowrap;
     font: 500 13px/1 var(--sans);
     /* `.btn` transitions background, transform and box-shadow — written for the
        filled buttons, which only ever change their fill. These three change
@@ -11498,7 +11911,7 @@ table.mini tbody tr:hover { background: none; }
     background: var(--green-tint); border-color: var(--ok-line); color: var(--green-dark);
   }
 
-  /* ตั้งรหัสใหม่ and ดูประวัติ. Deliberately identical, and deliberately still
+  /* รีเซ็ตรหัสผ่าน and ดูประวัติ. Deliberately identical, and deliberately still
      two class names: what they do is different enough to want marking in the
      markup, and giving one of them a tone again is then a one-line change
      rather than an archaeology exercise.

@@ -503,7 +503,19 @@ test('the roster decides whether there is a search box, not a developer', () => 
   // The old combobox's own classes stay gone — this is not that control back.
   assert.ok(!/dept-combo-input/.test(code) && !/dept-combo-input/.test(css), 'the old search box is back');
   assert.ok(!/dept-combo-icon/.test(code) && !/dept-combo-icon/.test(css), 'the 🔍 is back');
-  assert.ok(!/import Icon from/.test(code), 'an unused Icon import was left behind');
+  /**
+   * IT READ `!/import Icon from/` UNTIL 2026-09-02, and while the 🔍 was the
+   * only icon this file had ever imported, "no import" and "no magnifier" were
+   * the same assertion. ลบแผนก brought a trash can, so they are not any more —
+   * and banning the import would ban every future icon on this screen to keep
+   * one that was removed from coming back.
+   *
+   * What is actually being protected is that the DEPARTMENT PICKER draws no
+   * icon, which is what the two lines above and this one now say between them.
+   */
+  const combo = code.slice(code.indexOf('function DeptCombo('), code.indexOf('function ApprovalBadge('));
+  assert.ok(combo.length > 0, 'DeptCombo changed shape');
+  assert.ok(!/<Icon/.test(combo), 'an icon is back inside the department picker');
 });
 
 test('the field is not dressed as a field, because it sits inside one', () => {

@@ -5,7 +5,7 @@ import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
-  chosenPasswordPermission, dropsAnAdmin, unsignedStaff,
+  chosenPasswordPermission, defaultPassword, dropsAnAdmin, unsignedStaff,
 } from '@/lib/employees.js';
 import {
   ACCOUNTING_SENSITIVE, AUDITED_FIELDS, FIELD_LABEL, rosterChanges,
@@ -35,10 +35,15 @@ import { inertReason, INERT_KEYS } from '@/lib/policyInert.js';
 import { CONFIRM_NOTE_MAX_CHARS } from '@/lib/policyConfirmations.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { searchPeople, personMatches } from '@/lib/personSearch.js';
+// The refusal sentence itself, so the dialog that opens when ลบแผนก is pressed
+// and the route that refuses the request are quoting one string rather than two
+// translations of one idea.
+import { DEPARTMENT_DELETE_BLOCKED } from '@/lib/departments.js';
 import {
-  Alert, ConfirmDialog, Empty, Modal, Field, TipButton, PickPerson, ClearButton,
+  Alert, ConfirmDialog, Empty, Fact, Modal, Field, TipButton, PickPerson, ClearButton,
   useScrollEdge,
 } from './common.jsx';
+import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
 // One clause of the เพดาน note depends on capBehaviour — see `capNote`.
 import { usePolicy } from './policyContext.jsx';
@@ -582,8 +587,24 @@ function capNote(policy) {
  * and the useful answer names the consequence, not just the role.
  */
 const DEPT_ACTIVE_LOCK = 'ปิด/เปิดใช้งานแผนก ทำได้โดยผู้ดูแลระบบเท่านั้น '
-  + '— เป็นการลบแผนกอย่างเดียวที่ระบบนี้มี พนักงานในแผนกจะยื่น OT ไม่ได้ '
+  + '— เป็นวิธีเดียวที่จะเอาแผนกซึ่งมีประวัติแล้วออกจากระบบ พนักงานในแผนกจะยื่น OT ไม่ได้ '
   + 'และแผนกจะหายจากช่องเลือกทุกที่ · ชื่อ รหัส เพดาน หัวหน้า และรูปแบบโอที แก้ได้ตามปกติที่ปุ่ม “แก้ไข”';
+
+/** What ปิดใช้งาน DOES, behind the (?) beside สถานะ in แก้ไขแผนก.
+
+    ONE WORDING FOR BOTH DIRECTIONS. The pair of sentences this replaced said
+    the same fact from the two sides of the switch, so the paragraph rewrote
+    itself every time the pill was pressed — which reads as the rule changing
+    rather than the state. This is the rule; the pill is the state. */
+const DEPT_ACTIVE_TIP = 'ปิดใช้งานแล้วแผนกจะถูกซ่อนจากตัวเลือก พนักงานจะไม่สามารถ'
+  + 'ยื่น OT ได้ แต่ประวัติย้อนหลังยังคงอยู่';
+
+/** Said on the button itself, because it is the answer to "why is this greyed
+    out on the one department I actually want to remove". */
+const DEPT_DELETE_TIP = 'ลบได้เฉพาะแผนกที่ยังไม่มีพนักงานและไม่มีใบ OT ใดอ้างถึง '
+  + '· แผนกที่มีประวัติแล้วให้ใช้ “ปิดใช้งาน” แทน · ลบแล้วเรียกคืนไม่ได้';
+
+const DEPT_DELETE_LOCK = 'ลบแผนก ทำได้โดยผู้ดูแลระบบเท่านั้น — ' + DEPT_DELETE_TIP;
 
 function Departments({ user, onGo, roster }) {
   const { rows, people, reload: load } = roster;
@@ -598,6 +619,13 @@ function Departments({ user, onGo, roster }) {
    * `mayEdit` has to `rosterPermission` on the พนักงาน screen.
    */
   const mayClose = user?.role === 'admin';
+  /**
+   * Mirrors `departmentDeletePermission`. The same role as `mayClose` and a
+   * separate name on purpose: they are two rules that happen to agree today,
+   * and one constant serving both is how a change to one silently moves the
+   * other. Nothing here is the enforcement — the route is.
+   */
+  const mayDelete = user?.role === 'admin';
   /** Whether เพิ่มแผนก is open — the only way this screen creates a row. */
   const [adding, setAdding] = useState(false);
   /**
@@ -608,7 +636,8 @@ function Departments({ user, onGo, roster }) {
    * survives a reload would leave HR looking at three of eight departments with
    * no memory of having asked for that.
    */
-  const [onlyGaps, setOnlyGaps] = useState(false);
+  const [view, setView] = useState('all');
+  const onlyGaps = view === 'gaps';
   /**
    * The row แก้ไขแผนก is open on, or null.
    *
@@ -617,6 +646,17 @@ function Departments({ user, onGo, roster }) {
    * caused it rather than closing the form and printing on the card behind.
    */
   const [editing, setEditing] = useState(null);
+  /**
+   * The ลบแผนก question, once the server has said which question it is.
+   *
+   * `null` while nothing is being deleted; `{ dept, deletable, blockReason,
+   * references }` once `GET /api/departments/:id` has answered. TWO DIALOGS
+   * COME OUT OF ONE STATE because they are two answers to one press, and a
+   * `confirming`/`refusing` pair would have to be kept mutually exclusive by
+   * hand — which is how both end up open.
+   */
+  const [deleting, setDeleting] = useState(null);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
@@ -633,7 +673,20 @@ function Departments({ user, onGo, roster }) {
    * again — which is the private copy of the rule `signingGaps` exists to stop.
    */
   const gapOf = new Map(gaps.map((g) => [String(g.dept._id), g]));
-  const shownRows = onlyGaps ? rows.filter((d) => gapOf.has(String(d._id))) : rows;
+  /**
+   * THREE WAYS TO READ ONE TABLE, one at a time.
+   *
+   * `view` is a single value and not two independent switches, because "only
+   * the ones that are on" and "only the ones with nobody to sign" are two ways
+   * of asking the same table a question, and crossing them gives four states
+   * of which two are worth having. One chip lit, one reading.
+   */
+  const closed = rows.filter((d) => d.active === false);
+  const shownRows = rows.filter((d) => {
+    if (view === 'gaps') return gapOf.has(String(d._id));
+    if (view === 'active') return d.active !== false;
+    return true;
+  });
 
   /**
    * Create one row from the dialog.
@@ -657,6 +710,61 @@ function Departments({ user, onGo, roster }) {
       setOk('บันทึกแล้ว');
       load();
     } catch (err) { setError(err.message); }
+  }
+
+  /**
+   * ASK FIRST, THEN ASK. Pressing ลบแผนก does not open a confirmation — it
+   * opens a READ, and what comes back decides which dialog the person sees.
+   *
+   * The order matters and it is the whole of what was asked for: "are you sure
+   * you want to delete this?" followed by "actually you cannot" is a dialog
+   * apologising for its own question, and it teaches people to press through
+   * confirmations because the system evidently has not made up its mind. A
+   * department that is being held says so instead, and says what to do about
+   * it — ปิดใช้งาน, which is the thing they actually wanted.
+   *
+   * `headcount` already on the row cannot answer this: it counts ACTIVE
+   * employees, and a department whose whole team was deactivated last year
+   * reads 0 there while every one of those rows still names it. The server
+   * counts both employees and entries, all states, all months.
+   */
+  async function askDelete(dept) {
+    setError('');
+    setChecking(true);
+    try {
+      const res = await api.get(`/departments/${dept._id}`);
+      setDeleting({
+        dept,
+        deletable: res.deletable,
+        blockReason: res.blockReason,
+        references: res.references,
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally { setChecking(false); }
+  }
+
+  /**
+   * The delete itself. The server counts AGAIN before it acts — the answer
+   * `askDelete` got is a fact about a moment that has passed, and somebody may
+   * have been moved into this department while the dialog was open. If that
+   * happened the refusal arrives here, in the dialog, rather than as a
+   * department quietly disappearing out from under an entry.
+   */
+  async function confirmDelete() {
+    const { dept } = deleting;
+    setChecking(true);
+    try {
+      await api.del(`/departments/${dept._id}`);
+      setOk(`ลบแผนก ${dept.code} · ${dept.nameTh || dept.name} แล้ว`);
+      setDeleting(null);
+      setEditing(null);
+      load();
+    } catch (err) {
+      // Stays open holding the refusal — the row is still there and the
+      // sentence explaining why is the only thing worth reading on screen.
+      setDeleting((d) => ({ ...d, deletable: false, blockReason: err.message }));
+    } finally { setChecking(false); }
   }
 
   return (
@@ -701,27 +809,51 @@ function Departments({ user, onGo, roster }) {
           reading “ไม่มีหัวหน้า (0)” on a healthy roster is a control that can
           only ever be pressed to show nothing, sitting where the warning would
           be — furniture that says every day what it should only say on the day
-          it is true. Nothing to fix, nothing here. */}
-      {gaps.length > 0 && (
+          it is true. Nothing to fix, nothing here.
+
+          THE SAME TEST, CHIP BY CHIP. เฉพาะที่ใช้งานอยู่ arrived on 2026-09-02
+          with ลบแผนก and follows the rule the gaps chip set rather than
+          softening it: a roster where every department is on has nothing for
+          it to hide, so it is not drawn. The strip appears when EITHER has
+          something to say, and holds only the chips that do.
+
+          ทั้งหมด IS THE DEFAULT AND STAYS THE DEFAULT. This is the screen that
+          answers "what departments exist" — opening it already filtered would
+          leave somebody looking for a department they switched off last month
+          and concluding it had been deleted. */}
+      {(gaps.length > 0 || closed.length > 0) && (
         <div className="filter-chips" role="group" aria-label="กรองรายการแผนก">
           <button
             type="button"
-            className={`filter-chip ${onlyGaps ? '' : 'on'}`}
-            aria-pressed={!onlyGaps}
-            onClick={() => setOnlyGaps(false)}
+            className={`filter-chip ${view === 'all' ? 'on' : ''}`}
+            aria-pressed={view === 'all'}
+            onClick={() => setView('all')}
           >
             แสดงทั้งหมด
             <span className="n">{rows.length}</span>
           </button>
-          <button
-            type="button"
-            className={`filter-chip warn ${onlyGaps ? 'on' : ''}`}
-            aria-pressed={onlyGaps}
-            onClick={() => setOnlyGaps(true)}
-          >
-            ไม่มีหัวหน้างาน
-            <span className="n">{gaps.length}</span>
-          </button>
+          {closed.length > 0 && (
+            <button
+              type="button"
+              className={`filter-chip ${view === 'active' ? 'on' : ''}`}
+              aria-pressed={view === 'active'}
+              onClick={() => setView('active')}
+            >
+              เฉพาะที่ใช้งานอยู่
+              <span className="n">{rows.length - closed.length}</span>
+            </button>
+          )}
+          {gaps.length > 0 && (
+            <button
+              type="button"
+              className={`filter-chip warn ${view === 'gaps' ? 'on' : ''}`}
+              aria-pressed={view === 'gaps'}
+              onClick={() => setView('gaps')}
+            >
+              ไม่มีหัวหน้างาน
+              <span className="n">{gaps.length}</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -745,7 +877,14 @@ function Departments({ user, onGo, roster }) {
           </thead>
           <tbody>
             {shownRows.map((d) => (
-              <tr key={d._id}>
+              /* A CLOSED DEPARTMENT IS FADED, AND ITS สถานะ CELL IS NOT.
+                 `.deptset-table tbody tr.off` drops the row to half — it is
+                 still on the screen, still readable, and no longer competing
+                 with the eight that are live. The two things it does NOT fade
+                 are the badge that says it is closed and the buttons: a state
+                 drawn at 50% is a state somebody has to lean in to read, and
+                 that state is the reason the row is faded in the first place. */
+              <tr key={d._id} className={d.active === false ? 'off' : undefined}>
                 <td className="code-col">{d.code}</td>
                 <td className="name-col">
                   {d.nameTh || d.name}
@@ -870,6 +1009,9 @@ function Departments({ user, onGo, roster }) {
       {editing && (
         <DepartmentForm
           department={editing}
+          mayActive={mayClose}
+          mayDelete={mayDelete}
+          onDelete={askDelete}
           onClose={() => setEditing(null)}
           onSave={async (values) => {
             await api.patch(`/departments/${editing._id}`, values);
@@ -878,6 +1020,78 @@ function Departments({ user, onGo, roster }) {
             load();
           }}
         />
+      )}
+
+      {/* ── ONE PRESS, TWO DIALOGS, AND THE SERVER PICKS ────────────────────
+          Which of these opens is not this component's judgement — it is
+          `departmentDeleteBlock` answering through `GET /api/departments/:id`.
+          A screen that decided for itself would be a second copy of the rule,
+          and it would be the copy that cannot count entries. */}
+      {deleting && !deleting.deletable && (
+        <Modal
+          title="ลบแผนกนี้ไม่ได้"
+          subtitle={`${deleting.dept.code} · ${deleting.dept.nameTh || deleting.dept.name}`}
+          onClose={() => setDeleting(null)}
+          footer={(
+            <>
+              <button className="btn ghost" onClick={() => setDeleting(null)}>ปิด</button>
+              {/* The way out is offered here rather than described, because
+                  "ใช้ปิดใช้งานแทน" printed in a refusal that then closes back
+                  to a table is an instruction to go and find a pill two
+                  columns wide. Admin only, and greyed with the reason for
+                  everybody else — the same rule as the badge in the row. */}
+              <button
+                className="btn"
+                disabled={!mayClose || deleting.dept.active === false}
+                title={mayClose ? undefined : DEPT_ACTIVE_LOCK}
+                onClick={async () => {
+                  await update(deleting.dept._id, { active: false });
+                  setDeleting(null);
+                  setEditing(null);
+                }}
+              >
+                {deleting.dept.active === false ? 'ปิดใช้งานอยู่แล้ว' : 'ปิดใช้งานแผนกนี้แทน'}
+              </button>
+            </>
+          )}
+        >
+          <Alert kind="warn">{deleting.blockReason || DEPARTMENT_DELETE_BLOCKED}</Alert>
+          {/* The counts as facts, not as a sentence. "มีข้อมูลประวัติในระบบ"
+              is true and it is also the thing somebody argues with; the two
+              numbers are what settles it, and they are what says which of the
+              two problems this is. */}
+          <dl className="fact-grid">
+            <Fact k="พนักงานที่อยู่ในแผนกนี้" v={`${deleting.references?.employees ?? 0} คน`} />
+            <Fact k="ใบ OT ที่อ้างถึงแผนกนี้" v={`${deleting.references?.entries ?? 0} ใบ`} />
+          </dl>
+          <div className="hint">
+            นับรวมทุกสถานะและทุกเดือน — พนักงานที่ลาออกแล้วและใบเก่ายังอ้างถึงแผนกนี้อยู่
+            · ปิดใช้งานแล้วประวัติทั้งหมดยังอยู่ครบ รายงานย้อนหลังยังอ่านชื่อแผนกได้เหมือนเดิม
+            และเปิดกลับได้ทุกเมื่อ
+          </div>
+        </Modal>
+      )}
+
+      {deleting?.deletable && (
+        <ConfirmDialog
+          title="ยืนยันการลบแผนกนี้หรือไม่?"
+          subtitle={`${deleting.dept.code} · ${deleting.dept.nameTh || deleting.dept.name}`}
+          danger
+          busy={checking}
+          cancelLabel="ยกเลิก"
+          confirmLabel="ลบแผนก"
+          onCancel={() => setDeleting(null)}
+          onConfirm={confirmDelete}
+        >
+          <Alert kind="warn">
+            แผนกนี้จะถูกลบออกจากระบบ<strong>ถาวร แก้กลับไม่ได้</strong> —
+            สร้างใหม่ได้ แต่จะเป็นแผนกคนละแถวกับของเดิม
+          </Alert>
+          <div className="hint">
+            ตรวจแล้วไม่มีพนักงานและไม่มีใบ OT ใดอ้างถึงแผนกนี้ จึงไม่มีประวัติหรือรายงานใดเปลี่ยน
+            · ระบบจะตรวจซ้ำอีกครั้งตอนกดลบ
+          </div>
+        </ConfirmDialog>
       )}
     </div>
   );
@@ -928,7 +1142,9 @@ const OT_MODE_TIP = 'เลือก "ไม่มีโอที" หรือ 
  * department is unheaded until somebody is put in it from the พนักงาน screen.
  * The row shows who that is, and says so when the answer is nobody.
  */
-function DepartmentForm({ department = null, onClose, onSave }) {
+function DepartmentForm({
+  department = null, mayActive = false, mayDelete = false, onClose, onSave, onDelete,
+}) {
   const editing = Boolean(department);
   const before = editing
     ? {
@@ -942,11 +1158,29 @@ function DepartmentForm({ department = null, onClose, onSave }) {
       // department's mode unchangeable after creation — which is the mistake
       // รหัส and ชื่อแผนก spent a year in.
       otMode: otModeOf(department),
+      /**
+       * IN THE DIALOG AS WELL AS IN THE TABLE, since 2026-09-02, and the
+       * duplication is deliberate.
+       *
+       * The badge in the row is the fast way — one press from a table of
+       * eight. This is the other reading of the same field: somebody who
+       * opened แก้ไขแผนก to fix a code and then wants to switch the department
+       * off should not have to close the dialog, find the row again and press
+       * a pill two columns away. The dialog said "สถานะแก้ที่ปุ่มในตาราง" for
+       * exactly as long as that was true, which is not an argument for it
+       * staying true.
+       *
+       * Both write the same field through the same PATCH and the same rule, so
+       * there is no second answer to keep in step — only a second door.
+       */
+      active: department.active !== false,
     }
     : BLANK_DEPT;
   const [form, setForm] = useState(before);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  /** Whether the (?) beside สถานะ is open. Same shape as `Field`'s own. */
+  const [stateTip, setStateTip] = useState(false);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
@@ -965,9 +1199,11 @@ function DepartmentForm({ department = null, onClose, onSave }) {
       };
       // A create carries the ceilings it was given; an edit does not mention
       // them at all, so the row's own boxes stay the only thing that writes
-      // them — `undefined` is "not mentioned" on the server.
+      // them — `undefined` is "not mentioned" on the server. `active` rides
+      // with the edit and NOT with the create: `POST /departments` does not
+      // accept the field and a new row is active — see the note there.
       await onSave(editing
-        ? values
+        ? { ...values, active: form.active }
         : { ...values, monthlyCapHours: form.monthlyCapHours, weeklyCapHours: form.weeklyCapHours });
     } catch (err) {
       // Stays open, with everything still typed in it — see `create`.
@@ -986,6 +1222,34 @@ function DepartmentForm({ department = null, onClose, onSave }) {
       dirty={dirty && !busy}
       footer={(requestClose) => (
         <>
+          {/* ── THE FAR END OF THE BAR, and that is the whole placement ──────
+              ลบแผนก is not a third way of finishing what ยกเลิก and บันทึก
+              finish. Put beside them it becomes a button in a row of buttons,
+              one of which is destructive and none of which says so by where it
+              sits — and on a phone it would be the one nearest the thumb.
+
+              `margin-right: auto` on `.foot-left` rather than a
+              `justify-content` change on the foot: the foot is shared by every
+              dialog in the app and its rule is "the actions sit at the end".
+              This says "and this one does not", which is a statement about
+              this button rather than about the bar.
+
+              GREYED FOR ฝ่ายบุคคล, not hidden — the same treatment and the same
+              argument as the สถานะ badge in the table: a control that
+              disappears for one role teaches that role the feature is not
+              there, and the tooltip on a disabled button is where the reason
+              goes. */}
+          {editing && onDelete && (
+            <button
+              type="button"
+              className="btn ghost danger sm with-icon foot-left"
+              onClick={() => onDelete(department)}
+              disabled={busy || !mayDelete}
+              title={mayDelete ? DEPT_DELETE_TIP : DEPT_DELETE_LOCK}
+            >
+              <Icon name="trash" className="btn-icon" /> ลบแผนก
+            </button>
+          )}
           <button className="btn ghost" onClick={requestClose} disabled={busy}>ยกเลิก</button>
           <button className="btn" onClick={save} disabled={!ready || busy}>
             {busy ? 'กำลังบันทึก…' : 'บันทึก'}
@@ -1039,7 +1303,77 @@ function DepartmentForm({ department = null, onClose, onSave }) {
         </section>
 
         {editing ? (
-          <div className="hint">เพดานชั่วโมงแก้ที่ช่องในตาราง · สถานะแก้ที่ปุ่มในตาราง</div>
+          <>
+            {/* ── สถานะ, as the SAME control the table draws ─────────────────
+                `.state-badge` and not a switch of its own: this is the second
+                door onto one field, and two doors that look different are read
+                as two settings. Whoever presses the pill in the row and then
+                opens this dialog sees the thing they just pressed.
+
+                Disabled for ฝ่ายบุคคล with the reason on it, exactly as in the
+                table — `departmentPermission` is what actually refuses, and
+                this only means the control nobody may press does not look
+                pressable.
+
+                IT DOES NOT SAVE ON PRESS. Everything else in this dialog waits
+                for บันทึก, and one control that acts immediately in the middle
+                of a form is how somebody closes a dialog with ยกเลิก and finds
+                the department switched off anyway. The row's pill is the
+                one-press path and it is still there. */}
+            {/* ── THE SENTENCE MOVED BEHIND THE (?) ──────────────────────────
+                It was two lines of prose standing beside the pill, written two
+                ways — one for on, one for off. On screen at all times, in a
+                dialog whose other four controls each keep their explanation
+                behind a (?), it was the one block of grey that had to be read
+                past to reach the foot. `Field` has made that argument on this
+                screen since the tips went in: a wall of grey is read as
+                decoration, and the one sentence that matters gets skipped along
+                with the rest.
+
+                ONE WORDING NOW, NOT TWO. The old pair said the same fact from
+                the two sides of the switch, which meant the sentence changed
+                under the reader every time they pressed it. What is behind the
+                (?) is the rule itself, true in both directions, and the pill
+                says which direction it is currently in. */}
+            <section className="form-group">
+              <div className="field-head gh-head">
+                <div className="gh">สถานะ</div>
+                <TipButton
+                  text={DEPT_ACTIVE_TIP}
+                  of="สถานะ"
+                  open={stateTip}
+                  onToggle={() => setStateTip((v) => !v)}
+                />
+              </div>
+              <button
+                type="button"
+                className={`state-badge ${form.active ? 'on' : 'off'}`}
+                aria-pressed={form.active}
+                disabled={busy || !mayActive}
+                title={mayActive
+                  ? (form.active ? 'กดเพื่อปิดใช้งานแผนกนี้' : 'กดเพื่อเปิดใช้งานแผนกนี้')
+                  : DEPT_ACTIVE_LOCK}
+                onClick={() => set({ active: !form.active })}
+              >
+                <span className="dot" aria-hidden="true" />
+                {form.active ? 'ใช้งาน' : 'ปิดใช้งาน'}
+              </button>
+              {/* Under the control, the way `Field` puts an opened tip under
+                  its box — hover gives it through `title`, a click opens it in
+                  place, and nothing is shortened either way. */}
+              {stateTip && <div className="field-note">{DEPT_ACTIVE_TIP}</div>}
+              {/* The one thing that is NOT behind the (?): ฝ่ายบุคคล cannot
+                  press this at all, and a reason that arrives only on hover is
+                  a reason that arrives after the click that did nothing. */}
+              {!mayActive && <div className="field-note">{DEPT_ACTIVE_LOCK}</div>}
+            </section>
+            {/* Its own group, so the form's own divider separates it from the
+                pill above. It was a bare `.hint` and it sat flush under the
+                สถานะ badge — which, once the paragraph beside that badge moved
+                behind the (?), read as the sentence explaining the pill. It is
+                about the ceilings, which are two columns away in the table. */}
+            <div className="form-group hint">เพดานชั่วโมงแก้ที่ช่องในตาราง</div>
+          </>
         ) : (
         <section className="form-group">
           <div className="gh">เพดานชั่วโมง</div>
@@ -1661,13 +1995,17 @@ const BLANK = {
   /**
    * The first password, and how it is being decided.
    *
-   * 'generate' sends no password at all and the server makes one — the default,
-   * and the only thing this form could do at all until HR asked for the other.
+   * 'default' sends no password at all and the server decides — which is the
+   * new row's own รหัสพนักงาน since 2026-09-02, and was a random value from
+   * `generateTempPassword()` before that. This mode was called 'generate' while
+   * that was true; the name changed with the meaning so nothing reads as though
+   * a generator is still involved.
+   *
    * 'choose' sends what is in the box. Kept as a mode rather than as "a filled
    * box means chosen", so leaving a character behind while switching back to
-   * ให้ระบบสุ่ม cannot quietly set it.
+   * the default cannot quietly set it.
    */
-  passwordMode: 'generate',
+  passwordMode: 'default',
   password: '',
 };
 
@@ -1914,7 +2252,7 @@ function Employees({ user }) {
   const isAdmin = user?.role === 'admin';
   const mayEdit = (row) => isAdmin || row.role !== 'admin';
   /**
-   * ตั้งรหัสใหม่ is narrower than แก้ไข by exactly one row: your own.
+   * รีเซ็ตรหัสผ่าน is narrower than แก้ไข by exactly one row: your own.
    *
    * Mirrors `selfEditPermission` the way `mayEdit` mirrors `rosterPermission`,
    * and it is a second predicate rather than a tightening of the first because
@@ -2082,7 +2420,16 @@ function Employees({ user }) {
       */}
       <ul className="hint hint-list">
         <li>
-          วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD เป็น ค.ศ. (เช่น 1998-03-05) — ถ้าเปิดแล้วบันทึกทับด้วย Excel
+          วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD หรือ DD/MM/YYYY ก็ได้ (คั่นด้วย / หรือ - ก็ได้)
+          {' '}และกรอกเป็น <strong>พ.ศ. หรือ ค.ศ. ก็ได้</strong> — ปีที่เกิน 2400 ระบบถือว่าเป็น พ.ศ.
+          {' '}และลบ 543 ให้เอง (2515 → 1972) แล้วบอกจำนวนที่แปลงให้ดูก่อนนำเข้า
+        </li>
+        <li>
+          {/* The one that has to land before Excel is ever opened — see the
+              note above the list. The era is settled per cell and needs no
+              help; วัน/เดือน order is settled by the file and cannot be
+              guessed, which is why only this half is still a warning. */}
+          ที่ต้องระวังคือ <strong>ลำดับวัน/เดือน</strong> ไม่ใช่ปี — ถ้าเปิดแล้วบันทึกทับด้วย Excel
           คอลัมน์นี้จะถูกเขียนใหม่ตามการตั้งค่าของเครื่อง และ “05/03/1998” เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
         </li>
         <li>
@@ -2161,7 +2508,7 @@ function Employees({ user }) {
                 {' '}— เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา และระบบเก็บไว้แบบเข้ารหัสทางเดียว
               </div>
               <div style={{ marginTop: 4, fontSize: 12.5 }}>
-                บัญชีนี้ยังเข้าระบบไม่ได้จนกว่าจะออกรหัสใหม่ — กดปุ่ม “ตั้งรหัสใหม่” ที่แถวของคนนี้
+                บัญชีนี้ยังเข้าระบบไม่ได้จนกว่าจะรีเซ็ต — กดปุ่ม “รีเซ็ตรหัสผ่าน” ที่แถวของคนนี้
                 {' '}และแจ้งผู้ดูแลระบบว่าเกิดเหตุนี้ขึ้น
               </div>
             </>
@@ -2172,23 +2519,23 @@ function Employees({ user }) {
               </div>
               <div style={{ marginTop: 4, fontSize: 12.5 }}>
                 ระบบไม่แสดงรหัสนั้นซ้ำที่ใดอีก เพราะเก็บไว้แบบเข้ารหัสทางเดียว — หากจำไม่ได้
-                {' '}ให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง
+                {' '}ให้ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” ซึ่งจะตั้งกลับเป็นรหัสพนักงาน
                 {' '}· ระบบจะบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
               </div>
             </>
           ) : (
             <>
               <div>
-                {issued.reset ? 'ตั้งรหัสผ่านใหม่ให้' : 'สร้างบัญชี'} {issued.code} · {issued.name} แล้ว
-                {' '}— รหัสผ่านชั่วคราวคือ{' '}
+                {issued.reset ? 'รีเซ็ตรหัสผ่านให้' : 'สร้างบัญชี'} {issued.code} · {issued.name} แล้ว
+                {' '}— รหัสผ่านแรกเข้าคือ{' '}
                 <strong style={{ fontFamily: 'var(--mono, monospace)', fontSize: 17, letterSpacing: '.04em' }}>
                   {issued.password}
                 </strong>
               </div>
               <div style={{ marginTop: 4, fontSize: 12.5 }}>
                 แจ้งรหัสนี้ให้พนักงาน · ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
-                {' '}· ระบบสุ่มรหัสนี้ขึ้นมาและเก็บไว้แบบเข้ารหัสทางเดียว
-                {' '}<strong>แสดงเพียงครั้งเดียว</strong> ปิดแล้วดูซ้ำไม่ได้ — หากพลาดให้ตั้งใหม่อีกครั้ง
+                {' '}· นี่คือรหัสพนักงานของคนนี้เอง จึงดูซ้ำได้จากทะเบียนตลอด — แต่ระหว่างที่ยังไม่ได้เปลี่ยน
+                {' '}<strong>ใครที่เห็นรหัสพนักงานก็เข้าบัญชีนี้ได้</strong> จึงควรให้เข้าระบบตั้งรหัสของตัวเองโดยเร็ว
               </div>
             </>
           )}
@@ -2223,7 +2570,22 @@ function Employees({ user }) {
 
       {/* The interpretation, before it is applied rather than after. */}
       {pending && (
-        <Alert kind={pending.dates.ok ? 'warn' : 'error'}>
+        /*
+          THREE COLOURS, NOT TWO, and the middle one is the point.
+
+          The panel was `warn` for every readable file — amber, with the "!"
+          mark — which put a file that read perfectly under the same colour as
+          one with rows about to be skipped. HR read the colour before the
+          words, and an ordinary roster looked like a problem. `ok` is now the
+          answer for a file with nothing wrong with it, `warn` is kept for the
+          one thing that IS a warning (rows that will be dropped), and `error`
+          still means nothing will be imported at all.
+
+          A converted พ.ศ. year is not any of those: it is a fact about how the
+          file was read, and it rides in the ℹ️ line below rather than in the
+          colour of the box.
+        */
+        <Alert kind={pending.dates.ok ? (pending.dates.rowErrors.length ? 'warn' : 'ok') : 'error'}>
           <strong>ตรวจก่อนนำเข้า</strong> — {pending.file.name} · {pending.rows} แถว
           {!pending.dates.ok ? (
             <>
@@ -2243,6 +2605,20 @@ function Employees({ user }) {
           ) : (
             <>
               <div style={{ marginTop: 6 }}>{interpretation(pending.dates)}</div>
+              {/*
+                WHAT THE READING DID TO THE FILE, in one line.
+
+                A พ.ศ. year used to fail its row here, and what HR did about it
+                was retype a column by hand. It is converted now — 2515 has one
+                meaning — but a conversion that says nothing is a birthday moved
+                543 years by a machine with nobody told, so it is counted and
+                shown. Absent entirely on a ค.ศ. file, which is most of them.
+              */}
+              {pending.dates.converted.length > 0 && (
+                <div className="era-badge">
+                  ℹ️ ระบบได้แปลงปี พ.ศ. เป็น ค.ศ. ให้อัตโนมัติแล้ว {pending.dates.converted.length} รายการ
+                </div>
+              )}
               {pending.preview.length > 0 && (
                 <ul style={{ marginTop: 6, marginLeft: 18, fontFamily: 'var(--mono, monospace)' }}>
                   {pending.preview.map((p) => <li key={p.line}>บรรทัด {p.line}: {p.text}</li>)}
@@ -2315,6 +2691,11 @@ function Employees({ user }) {
           {result.birthDates?.order && (
             <div style={{ fontSize: 12.5 }}>
               วันเกิด {result.birthDates.count} ค่า อ่านเป็น {ORDER_LABEL[result.birthDates.order]}
+              {/* The same count the preview showed, from the server this time.
+                  The two agreeing is the only way anybody can check that the
+                  file HR approved is the file that was imported. */}
+              {result.birthDates.converted > 0
+                && ` · แปลงปี พ.ศ. เป็น ค.ศ. ${result.birthDates.converted} รายการ`}
             </div>
           )}
           {result.errors?.length > 0 && (
@@ -2478,7 +2859,7 @@ function Employees({ user }) {
                       spaces buttons by — not a bare `row` with an inline
                       `flexWrap: 'nowrap'`, which is what this was. Three
                       44px buttons held on one line inside a 440px card came
-                      out narrow and 6px apart, and ตั้งรหัสใหม่ — the one
+                      out narrow and 6px apart, and รีเซ็ตรหัสผ่าน — the one
                       press here that cannot be undone — sat between the two
                       harmless ones. Allowed to wrap, they take a full line
                       each when the card is too narrow to hold three. The
@@ -2508,11 +2889,17 @@ function Employees({ user }) {
                       className="btn ghost sm act-security"
                       onClick={() => setResetting(p)}
                       disabled={!mayReset(p)}
-                      title={mayReset(p) ? 'ตั้งรหัสผ่านใหม่ให้พนักงานคนนี้' : RESET_LOCK[
+                      title={mayReset(p) ? 'ตั้งรหัสผ่านกลับเป็นรหัสพนักงาน' : RESET_LOCK[
                         isSelf(p) ? 'self' : 'adminRow'
                       ]}
                     >
-                      ตั้งรหัสใหม่
+                      {/* Read ตั้งรหัสใหม่ until 2026-09-02. Renamed to match the
+                          button now sitting inside แก้ไข → สิทธิ์และสถานะ: one
+                          action reached from two places must not have two names.
+                          Ten advancing glyphs against the eight this had, which
+                          `.roster-actions` still holds on one nowrap line in a
+                          third of a 375px card. */}
+                      รีเซ็ตรหัสผ่าน
                     </button>
                     <button
                       className="btn ghost sm act-info"
@@ -2576,6 +2963,21 @@ function Employees({ user }) {
             await update(editing._id, patch);
             setEditing(null);
           }}
+          /**
+           * รีเซ็ตรหัสผ่าน from inside the record — the same dialog the table's
+           * button opens, on the same row.
+           *
+           * The edit dialog CLOSES first, and unsaved field edits go with it.
+           * Two modals stacked would put the reset's own confirmation behind a
+           * form that still has a บันทึก button, and "which of these two am I
+           * confirming" is not a question to ask somebody about a password. A
+           * reset is its own request either way, so nothing typed here was ever
+           * going to travel with it.
+           */
+          onReset={() => {
+            setResetting(editing);
+            setEditing(null);
+          }}
         />
       )}
 
@@ -2614,7 +3016,7 @@ const LOCK_NOTE = {
 };
 
 /**
- * The two reasons ตั้งรหัสใหม่ is not available on a row, as the button's own
+ * The two reasons รีเซ็ตรหัสผ่าน is not available on a row, as the button's own
  * tooltip.
  *
  * Its own map rather than two more keys on `LOCK_NOTE`, because these hang on a
@@ -2632,7 +3034,7 @@ const RESET_LOCK = {
   self: 'นี่คือบัญชีของคุณเอง — ตั้งรหัสผ่านใหม่ให้ตัวเองจากหน้านี้ไม่ได้ '
     + 'เพราะหน้านี้ออกรหัสใหม่โดยไม่ถามรหัสเดิม '
     + '· ถ้าต้องการเปลี่ยนรหัสผ่านของตัวเอง ให้ไปที่หน้าโปรไฟล์ ซึ่งต้องกรอกรหัสเดิมก่อน',
-  adminRow: 'บัญชีผู้ดูแลระบบตั้งรหัสใหม่ได้โดยผู้ดูแลระบบเท่านั้น',
+  adminRow: 'บัญชีผู้ดูแลระบบรีเซ็ตรหัสผ่านได้โดยผู้ดูแลระบบเท่านั้น',
 };
 
 /**
@@ -2657,17 +3059,23 @@ const LOCK_SHORT = {
 };
 
 /**
- * รหัสผ่านไม่ได้อยู่ในหน้านี้ — the short line, and the whole of it.
+ * ไม่มีช่องรหัสผ่านในหน้านี้ — the short line, and the whole of it.
  *
- * It explains something that happens somewhere else, to somebody who is in the
- * middle of editing a name. One line is the whole of what they need at that
- * moment; the rest is there for the reader who wonders why the field is missing
- * rather than merely noticing that it is.
+ * It explains a MISSING FIELD to somebody in the middle of editing a name. One
+ * line is the whole of what they need at that moment; the rest is there for the
+ * reader who wonders why the field is absent rather than merely noticing that
+ * it is.
+ *
+ * `short` read "ใช้ปุ่ม “ตั้งรหัสใหม่” ในตารางทะเบียนพนักงาน" until 2026-09-02,
+ * when the button arrived in สิทธิ์และสถานะ on this very dialog — a note
+ * pointing at a table behind the window the reader is looking at was an errand,
+ * and it is now three lines up instead.
  */
 const PASSWORD_NOTE = {
-  short: 'รหัสผ่านไม่ได้อยู่ในหน้านี้ — ใช้ปุ่ม “ตั้งรหัสใหม่” ในตารางทะเบียนพนักงาน',
-  full: 'ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสเดิมได้ '
-    + '· ประวัติการแก้ทะเบียนไม่เคยบันทึกตัวรหัสผ่าน บันทึกเพียงว่ามีการตั้งรหัสใหม่',
+  short: 'ไม่มีช่องรหัสผ่านให้แก้ในหน้านี้ — ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” ในหัวข้อ สิทธิ์และสถานะ ด้านบน',
+  full: 'ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรหัสที่พนักงานตั้งเองได้ '
+    + '· การรีเซ็ตจะตั้งรหัสผ่านกลับเป็นรหัสพนักงานเสมอ ไม่ใช่ค่าที่พิมพ์เอง '
+    + '· ประวัติการแก้ทะเบียนไม่เคยบันทึกตัวรหัสผ่าน บันทึกเพียงว่ามีการรีเซ็ต',
 };
 
 /**
@@ -2678,15 +3086,21 @@ const PASSWORD_NOTE = {
  * `full` has to cover both, because it sits behind the (?) on the control that
  * switches between them.
  *
- * Both halves say the same underlying thing: whichever way the password is
- * decided, the system never shows it again, and the recovery is ตั้งรหัสใหม่.
+ * The two halves no longer say the same thing, and that is the change of
+ * 2026-09-02. `short` read "ระบบสุ่มให้เอง และแสดงครั้งเดียวหลังกดบันทึก"
+ * while the default was random: the sentence that mattered was "you cannot see
+ * this twice". The default is now the person's own รหัสพนักงาน, so the sentence
+ * that matters is the opposite one — nobody has to write anything down, and the
+ * value is on the row in front of them. ตั้งเอง still cannot be re-read, so
+ * `full` has to keep saying so for that half alone.
  */
 const NEW_PASSWORD_NOTE = {
-  short: 'ไม่ต้องตั้งรหัสผ่าน — ระบบสุ่มให้เอง และแสดงครั้งเดียวหลังกดบันทึก',
-  full: 'ให้ระบบสุ่มให้: รหัสจะขึ้นบนหน้านี้ครั้งเดียวหลังกดบันทึก ให้จดไปแจ้งพนักงาน ปิดแล้วดูซ้ำไม่ได้ '
-    + '· ตั้งเอง: ใช้เมื่อต้องบอกรหัสกับพนักงานตรงนั้นเลย ระบบจะไม่แสดงค่านั้นซ้ำเช่นกัน '
-    + '· ทั้งสองแบบ ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว หากลืมให้ใช้ปุ่ม “ตั้งรหัสใหม่” ในตาราง '
-    + 'และบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรกเสมอ',
+  short: 'ไม่ต้องตั้งรหัสผ่าน — รหัสผ่านแรกเข้าคือรหัสพนักงานของคนนี้เอง',
+  full: 'ใช้รหัสพนักงาน: รหัสผ่านสำหรับเข้าใช้งานครั้งแรกคือรหัสพนักงาน พิมพ์ให้ตรงตัวรวมทั้งขีดกลาง '
+    + 'ไม่มีอะไรต้องจด และดูซ้ำได้ตลอดจากทะเบียนพนักงาน '
+    + '· ตั้งเอง: ใช้เมื่อต้องบอกรหัสอื่นกับพนักงานตรงนั้นเลย ระบบจะไม่แสดงค่านั้นซ้ำที่ใดอีก '
+    + '· ทั้งสองแบบ ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว หากลืมให้ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” '
+    + 'ซึ่งจะรีเซ็ตกลับเป็นรหัสพนักงาน และบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรกเสมอ',
 };
 
 /**
@@ -2800,15 +3214,22 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
             </Field>
             <Field
               label="วันเกิด"
-              tip={'ไม่บังคับ · เติมภายหลังได้จากปุ่ม “แก้ไข” ในตาราง '
+              tip={'ไม่บังคับ · พิมพ์เป็น พ.ศ. หรือ ค.ศ. ก็ได้ (19/09/2515 หรือ 1972-09-19) '
+                + '· เติมภายหลังได้จากปุ่ม “แก้ไข” ในตาราง '
                 + '— แต่คนที่ยังไม่มีวันเกิดจะไม่ขึ้นในรายการวันเกิดที่ต้องตรวจ'}
             >
+              {/* `typeable` — the one box in the app that has it. A new hire's
+                  วันเกิด is thirty years from today and is being copied off a
+                  personnel sheet that writes it in พ.ศ.; a grid is the wrong
+                  shape for that, and asking HR to subtract 543 by hand is a
+                  wrong birthday waiting to happen. See components/PickDate.jsx. */}
               <PickDate
                 label="วันเกิด"
                 value={form.birthDate}
                 onChange={(v) => set({ birthDate: v })}
                 disabled={busy}
                 clearable
+                typeable
               />
             </Field>
             <Field label="อีเมล" tip="ไม่บังคับ และไม่ใช่ชื่อผู้ใช้ — เข้าระบบด้วยรหัสพนักงานเสมอ">
@@ -2936,14 +3357,15 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
                 onChange={(e) => set({ passwordMode: e.target.value })}
                 disabled={busy}
               >
-                <option value="generate">ให้ระบบสุ่มให้ (แนะนำ)</option>
+                <option value="default">ใช้รหัสพนักงานเป็นรหัสผ่าน (แนะนำ)</option>
                 <option value="choose">ตั้งเอง</option>
               </select>
             </Field>
             {choosing && (
               <Field
                 label="รหัสผ่าน"
-                note={form.password && !passwordCheck.ok ? null : `อย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`}
+                note={form.password && !passwordCheck.ok ? null
+                  : `อย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร · ไทย อังกฤษ ตัวเลข หรืออักขระพิเศษ`}
                 tip={'พนักงานยังต้องเปลี่ยนรหัสนี้เมื่อเข้าระบบครั้งแรกอยู่ดี '
                   + '· อย่าตั้งรูปแบบเดียวกันให้ทุกคน — บัญชีที่ยังไม่มีใครเข้าคือบัญชีที่ถูกใช้ผิดแล้วไม่มีใครรู้'}
               >
@@ -2969,7 +3391,29 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
             )}
           </div>
           {!choosing && (
-            <FoldedNote short={NEW_PASSWORD_NOTE.short} full={NEW_PASSWORD_NOTE.full} />
+            <>
+              {/*
+                The value itself, as soon as there is a รหัสพนักงาน to build it
+                from — a sentence saying "the password is the employee code" is
+                a rule, and what HR is about to read out is a string. Showing
+                the string removes the one step where somebody types the hyphen
+                out of PM-0620 on their way to telling somebody else.
+
+                DISPLAY ONLY. Nothing here is sent: `createPayload` drops
+                everything but the mode, and the server computes this again from
+                the code it stored. That distinction is the whole reason the old
+                `defaultPassword()` had to go — see lib/employees.js.
+              */}
+              {defaultPassword(form.code) && (
+                <div className="field-note" style={{ marginTop: 6 }}>
+                  รหัสผ่านแรกเข้าจะเป็น{' '}
+                  <strong style={{ fontFamily: 'var(--mono, monospace)', letterSpacing: '.04em' }}>
+                    {defaultPassword(form.code)}
+                  </strong>
+                </div>
+              )}
+              <FoldedNote short={NEW_PASSWORD_NOTE.short} full={NEW_PASSWORD_NOTE.full} />
+            </>
           )}
         </section>
       </div>
@@ -3076,7 +3520,9 @@ function showValue(field, value, depts = []) {
  * test/rosterRouteGuards.test.js. What is disabled here is disabled so that
  * nobody is invited to type something that will be refused.
  */
-function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, onSave }) {
+function EditEmployee({
+  employee, depts, user, otherActiveAdmins = 0, onClose, onSave, onReset,
+}) {
   const isAdmin = user?.role === 'admin';
   /** ฝ่ายบุคคล opening the ผู้ดูแลระบบ row: readable, not writable. */
   const rowLocked = !isAdmin && employee.role === 'admin';
@@ -3123,6 +3569,14 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
   const selfLocked = (field) => isSelf && SELF_LOCKED_FIELDS.includes(field);
   const roleLocked = selfLocked('role') || isLastAdmin;
   const activeLocked = selfLocked('active') || isLastAdmin;
+  /**
+   * The same two refusals the table's รีเซ็ตรหัสผ่าน button applies, said in this
+   * dialog's own vocabulary: `rowLocked` IS the table's `!mayEdit(row)`, and
+   * `isSelf` is the self-reset rule `selfEditPermission` enforces on both
+   * servers. Derived from what is already here rather than passed in, so the
+   * two buttons cannot come to different answers about one row.
+   */
+  const mayReset = !rowLocked && !isSelf;
 
   const before = formOf(employee);
   const [form, setForm] = useState(before);
@@ -3156,6 +3610,20 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
 
   const reasonMissing = codeChanged && !reason.trim();
   const ready = changes.length > 0 && !reasonMissing && !rowLocked;
+
+  /**
+   * Why รีเซ็ตรหัสผ่าน cannot be pressed right now, or '' — the button's title
+   * and the sentence beside it, from one expression so the two cannot differ.
+   *
+   * Order matters: an unsaved form is the one of the three that is the reader's
+   * to clear, so it must not be hidden behind a permission sentence they can do
+   * nothing about.
+   */
+  const resetBlocked = !mayReset
+    ? RESET_LOCK[isSelf ? 'self' : 'adminRow']
+    : changes.length > 0
+      ? 'ยังมีการแก้ไขที่ยังไม่ได้บันทึก — กดบันทึก หรือปิดหน้าต่างนี้ทิ้ง แล้วจึงรีเซ็ตรหัสผ่าน'
+      : '';
 
   /**
    * A company move that has not been counted yet — or could not be — blocks the
@@ -3307,14 +3775,21 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
               </Field>
               <Field
                 label="วันเกิด"
-                tip="แก้ได้จากหน้านี้เท่านั้น · พนักงานเห็นในข้อมูลส่วนตัวแต่แก้เองไม่ได้"
+                tip={'แก้ได้จากหน้านี้เท่านั้น · พนักงานเห็นในข้อมูลส่วนตัวแต่แก้เองไม่ได้ '
+                  + '· พิมพ์เป็น พ.ศ. หรือ ค.ศ. ก็ได้ (19/09/2515 หรือ 1972-09-19)'}
               >
+                {/* Typeable for the same reason the create form is, with one
+                    more on top of it: this is the box a CORRECTION to a
+                    birthday is typed into, and a correction replays the
+                    person's approved entries. A date got wrong here is not a
+                    field left odd — it restates a signed-off month. */}
                 <PickDate
                   label="วันเกิด"
                   value={form.birthDate}
                   onChange={(v) => set({ birthDate: v })}
                   disabled={disabled()}
                   clearable
+                  typeable
                 />
               </Field>
               <Field label="อีเมล" tip="ไม่ใช่ชื่อผู้ใช้ — เข้าระบบด้วยรหัสพนักงานเสมอ">
@@ -3463,6 +3938,62 @@ function EditEmployee({ employee, depts, user, otherActiveAdmins = 0, onClose, o
                 </select>
               </Field>
             </div>
+
+            {/*
+              รีเซ็ตรหัสผ่าน, in the group it belongs to rather than only on the
+              table row behind this dialog.
+
+              WHY IT IS HERE AS WELL. Somebody dealing with "สมชายเข้าระบบไม่ได้"
+              opens the person's record — that is where a record is looked at —
+              and until 2026-09-02 what they found was a sentence telling them
+              to close the dialog and find a button in the table. A note that
+              says where the button is, on a screen that could hold the button,
+              is a screen sending its reader on an errand.
+
+              NOT A FIELD ON THIS FORM. It hands off to the same ResetPassword
+              dialog the table opens: a reset is its own request with its own
+              confirmation, and folding it into ordinary field edits would make
+              บันทึก sometimes also change a password — which is exactly what
+              `resetPassword` on the PATCH is careful to keep separate.
+
+              WHICH IS WHY IT WAITS FOR AN UNSAVED FORM. Handing off closes this
+              dialog, and this dialog's ✕ asks before dropping typing
+              (`dirty={changes.length > 0}`); a button that closed it from the
+              inside would walk straight past that question and take the typing
+              with it. Greyed with the reason on it, rather than opening a second
+              modal over the first — "which of these two am I confirming" is not
+              a question to ask somebody about a password.
+
+              The two refusals are the table's, unchanged and for the same
+              reasons (`RESET_LOCK`): never on one's own row, and an ผู้ดูแลระบบ
+              row only by another ผู้ดูแลระบบ. The button is rendered greyed
+              rather than dropped, so somebody looking for it finds the sentence
+              saying why instead of finding nothing.
+            */}
+            <div className="row" style={{ marginTop: 12, gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={onReset}
+                disabled={busy || !mayReset || changes.length > 0}
+                title={resetBlocked || 'ตั้งรหัสผ่านกลับเป็นรหัสพนักงาน'}
+              >
+                รีเซ็ตรหัสผ่าน
+              </button>
+              <div className="field-note" style={{ margin: 0, flex: '1 1 220px' }}>
+                {resetBlocked || (
+                  <>
+                    รหัสผ่านจะกลับเป็นรหัสพนักงาน
+                    {/* nowrap on the value, and it is not cosmetic: at 390px
+                        `PM-0100` broke after the hyphen onto two lines, and a
+                        password with a line break in the middle of it is one
+                        somebody types wrong. The brackets go with it. */}
+                    {' '}<strong style={{ whiteSpace: 'nowrap' }}>({defaultPassword(employee.code)})</strong>
+                    {' '}และพนักงานต้องตั้งรหัสของตัวเองเมื่อเข้าระบบครั้งถัดไป
+                  </>
+                )}
+              </div>
+            </div>
           </section>
 
           {/* ── ขอบเขตการอนุมัติ — its own group, and only for a หัวหน้างาน ──
@@ -3601,8 +4132,16 @@ const ISSUED_FILENAME = 'temporary-passwords-DELETE-AFTER-HANDOUT.csv';
  * back on the wire and give them a URL — and a URL is a thing that gets pasted
  * into a chat window.
  *
- * The one-shot rule is unchanged: nothing here re-fetches, so navigating away
- * loses the lot and the recovery is ตั้งรหัสใหม่ per person.
+ * WHAT STOPPED BEING TRUE ON 2026-09-02. It read "The one-shot rule is
+ * unchanged: nothing here re-fetches, so navigating away loses the lot and the
+ * recovery is ตั้งรหัสใหม่ per person." Nothing here re-fetches still — but the
+ * value is each person's own รหัสพนักงาน now, so navigating away loses a
+ * convenience and not a credential, and the recovery is the roster.
+ *
+ * The two warnings on the download stay exactly as they were, and are the part
+ * of this that a guessable default does not soften: a CSV of working passwords
+ * against real names, sitting in Downloads, is a file worth deleting whatever
+ * the passwords are made of.
  */
 function IssuedPasswords({ rows }) {
   const [done, setDone] = useState('');
@@ -3659,9 +4198,10 @@ function IssuedPasswords({ rows }) {
 
   return (
     <Alert kind="ok">
-      <strong>รหัสผ่านชั่วคราวของ {rows.length} บัญชีที่เพิ่งสร้าง</strong>
-      {' '}— <strong>แสดงเพียงครั้งเดียว</strong> ออกจากหน้านี้แล้วดูซ้ำไม่ได้
-      {' '}ถ้าพลาดต้องตั้งรหัสใหม่ทีละคน
+      <strong>รหัสผ่านแรกเข้าของ {rows.length} บัญชีที่เพิ่งสร้าง</strong>
+      {' '}— ทุกคนได้<strong>รหัสพนักงานของตัวเอง</strong>เป็นรหัสผ่าน
+      {' '}ตารางนี้จึงเป็นเพียงรายการสำหรับแจก ไม่ใช่ค่าที่หายแล้วหาไม่ได้
+      {' '}· ระบบจะบังคับให้ทุกคนตั้งรหัสของตัวเองเมื่อเข้าระบบครั้งแรก
 
       <div className="row" style={{ marginTop: 10, marginBottom: 4 }}>
         {/* FIRST of the three, because it is the one that hands a password to a
@@ -3683,7 +4223,7 @@ function IssuedPasswords({ rows }) {
           ดาวน์โหลดแล้วเป็นไฟล์ <strong>{ISSUED_FILENAME}</strong>
           {' '}— ไฟล์นี้มีรหัสผ่านชั่วคราวแบบอ่านได้ทั้งหมด
           {' '}<strong>ลบทิ้งทันทีที่แจกเสร็จ</strong> และอย่าส่งต่อทางอีเมลหรือแชท
-          {' '}· ถ้าไฟล์หลุด ให้ตั้งรหัสใหม่ให้ทุกคนในรายการนี้
+          {' '}· ถ้าไฟล์หลุด ให้รีเซ็ตรหัสผ่านให้ทุกคนในรายการนี้
         </div>
       )}
       {done === 'failed' && (
@@ -4232,45 +4772,44 @@ function RosterAudit() {
  * ตั้งรหัสผ่านใหม่ให้พนักงาน — the counterpart to creating the account, for the
  * day somebody forgets.
  *
- * NO FIELD TO TYPE ONE IN, AND THAT IS THE POINT. This dialog used to open with
- * `defaultPassword(employee.code)` already in the box and PATCH whatever was
- * left there — so the value a password was reset to was computed in the BROWSER,
- * from the employee code, which is printed on every form the company files.
- * Anybody who noticed the shape had every account that had not yet been logged
- * into. Now the button asks the server for one; `generateTempPassword` makes it
- * with `node:crypto` and it comes back exactly once.
+ * TWO STEPS: SAY WHAT IT WILL BECOME, THEN SAY WHAT IT BECAME.
+ *
+ * Since 2026-09-02 a reset puts the account back to its own รหัสพนักงาน, so the
+ * first step can name the value before anything is written — "รีเซ็ตรหัสผ่านของ
+ * สมชาย ถาวร กลับเป็นรหัสพนักงาน (PM-0620) หรือไม่". That is a confirmation
+ * somebody can actually check, which is a different thing from the "are you
+ * sure" this used to open with: the old dialog could only promise a random
+ * value nobody could see yet.
+ *
+ * NO FIELD TO TYPE ONE IN, AND THAT IS STILL THE POINT. This dialog used to
+ * open with `defaultPassword(employee.code)` already in the box and PATCH
+ * whatever was left there — so the value a password was reset to was computed
+ * in the BROWSER and the server obeyed. That is the bug, and it is not the same
+ * bug as the value being guessable: what this screen shows is read back out of
+ * the server's response (`res.password`), never assembled here and sent. A
+ * `password` field in that PATCH is still a 400.
  *
  * Confirming rather than composing also removes the other failure this had: the
  * quickest way past a "type a password" box is to type a memorable one, and HR
  * resetting six accounts in a morning types the same memorable one six times.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * IT SHOWS THE PASSWORD ITSELF, AND THAT IS THE SECOND FIX.
+ * WHAT WAS HERE UNTIL 2026-09-02, AND WHY IT COULD GO
  *
- * It used to hand the value up to the roster screen and close, and the roster
- * screen put it in a notice at the top of the card — above the ~40-line hint
- * paragraph, above the add-employee form, above the table. The button that
- * starts a reset is in a row of that table. On a roster of any size the person
- * who clicked it was scrolled past the notice, so the dialog vanished and
- * nothing appeared: the password was rendered, once, into a part of the page
- * nobody was looking at, and by the time they scrolled up or clicked anything
- * it was gone for good. That is how PM-00511 was reset twice in a minute and
- * locked out anyway.
+ * The second step used to be a vault. The password was random and stored only
+ * as a hash, so this dialog was the one moment it existed anywhere readable —
+ * it held a จดรหัสผ่านไว้แล้ว tick that gated เสร็จสิ้น, and ×, Escape and the
+ * backdrop all went through the Modal's `dirty` guard so a reflex could not
+ * lose it. (That machinery was itself a fix: the value used to be handed up to
+ * the roster screen, which rendered it in a notice at the top of a card the
+ * clicker had long scrolled past. PM-00511 was reset twice in a minute and
+ * locked out anyway.)
  *
- * Creating an account and importing a CSV write to the same notice and never
- * showed the symptom, because both of those actions happen at the top of the
- * page with the notice in view. Same code, different scroll position — which is
- * exactly why the display has to belong to the thing that was clicked.
- *
- * So the value never leaves this component until somebody says they have it:
- *
- *   · shown here, in the dialog that asked for it, at a size meant to be read
- *     aloud down a phone;
- *   · a copy button, because the block form is easy to mistype;
- *   · a คัดลอกแล้ว/จดแล้ว tick that gates the only ordinary way out. A button
- *     that closes on the first click is a password lost to a reflex;
- *   · ×, Escape and the backdrop go through the Modal's `dirty` guard, so the
- *     reflexive ways out ask first.
+ * None of that is load-bearing for a password that is printed on the person's
+ * own card. Closing this dialog a moment too early now costs a glance at the
+ * roster, not another reset — so the tick is gone and ✕ closes. What stays is
+ * everything that saves a step rather than preventing a loss: the value at a
+ * size that can be read aloud, a copy button, and the printable slip.
  *
  * The server holds the other half of this: the new hash is not written until
  * everything else in the request has succeeded (app/api/employees/[id]/route.js),
@@ -4283,8 +4822,6 @@ function ResetPassword({ employee, onClose, onDone }) {
   const [password, setPassword] = useState('');
   /** '' · 'copied' · 'failed' — see the same three states on IssuedPasswords. */
   const [copied, setCopied] = useState('');
-  /** Ticked by hand. Nothing closes this dialog the easy way until it is. */
-  const [written, setWritten] = useState(false);
   /**
    * Showing the printable slip instead of the dialog.
    *
@@ -4313,7 +4850,7 @@ function ResetPassword({ employee, onClose, onDone }) {
       if (!res.password) {
         setError(
           'เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านกลับมา — รหัสผ่านของบัญชีนี้อาจถูกเปลี่ยนไปแล้ว '
-          + 'โดยไม่มีใครทราบค่าใหม่ กรุณาแจ้งผู้ดูแลระบบและกด “สร้างรหัสผ่านชั่วคราว” อีกครั้ง',
+          + 'โดยไม่มีใครทราบค่าใหม่ กรุณาแจ้งผู้ดูแลระบบและกด “รีเซ็ตรหัสผ่าน” อีกครั้ง',
         );
         setBusy(false);
         return;
@@ -4337,9 +4874,6 @@ function ResetPassword({ employee, onClose, onDone }) {
       if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(password);
       else legacyCopy(password);
       setCopied('copied');
-      // Copying IS having it. Ticking the box by hand afterwards would be a
-      // second click for something the first one already proved.
-      setWritten(true);
     } catch {
       setCopied('failed');
     }
@@ -4355,7 +4889,7 @@ function ResetPassword({ employee, onClose, onDone }) {
    * have to undo both.
    *
    * ปิด comes back here with the password still in state, so the dialog is
-   * exactly where it was — including the tick, which printing has already set.
+   * exactly where it was.
    */
   if (printing) {
     return (
@@ -4369,46 +4903,24 @@ function ResetPassword({ employee, onClose, onDone }) {
   if (password) {
     return (
       <Modal
-        title="รหัสผ่านชั่วคราว"
+        title="รีเซ็ตรหัสผ่านแล้ว"
         subtitle={`${employee.code} · ${employee.name}`}
         onClose={onClose}
-        // The × and Escape ask first — and they ask about losing a password,
-        // not about losing typing. `dirtyBlocksClose` is what keeps them asking:
-        // everywhere else in the app ✕ is one press and closes outright, because
-        // everywhere else what is at stake is typing that can be typed again.
-        // This password cannot be shown a second time by any screen, so the one
-        // press that reads as "I am done here" must not also be the one that
-        // loses it.
-        dirty={!written}
-        dirtyBlocksClose
-        dirtyPrompt={'ยังไม่ได้ยืนยันว่าจดรหัสผ่านไว้แล้ว — ปิดหน้าต่างนี้แล้วจะไม่มีทางดูรหัสนี้ซ้ำได้อีก '
-          + 'และต้องตั้งรหัสใหม่ให้พนักงานคนนี้อีกครั้ง'}
-        dirtyStayLabel="กลับไปดูรหัส"
-        dirtyLeaveLabel="ปิดทั้งที่ยังไม่ได้จด"
-        footer={(requestClose) => (
-          <>
-            <label className="row" style={{ gap: 6, marginRight: 'auto', cursor: 'pointer' }}>
-              <input type="checkbox" checked={written} onChange={(e) => setWritten(e.target.checked)} />
-              <span>จดรหัสผ่านนี้ไว้แล้ว</span>
-            </label>
-            {/* Disabled until the tick, and the reason is on the button rather
-                than left to be guessed at a grey box. `requestClose` rather
-                than `onClose`, so this route out asks the same question the ×
-                does if the box is somehow still clear. */}
-            <button
-              className="btn"
-              onClick={requestClose}
-              disabled={!written}
-              title={written ? undefined : 'ยืนยันก่อนว่าจดรหัสผ่านไว้แล้ว'}
-            >
-              เสร็จสิ้น
-            </button>
-          </>
-        )}
+        // No `dirty` guard any more. It was here because this dialog held the
+        // only readable copy of a random password and one reflexive ✕ lost it;
+        // the value is now the employee code on the row behind this window, so
+        // the guard would ask a question whose answer no longer costs anything.
+        footer={<button className="btn" onClick={onClose}>เสร็จสิ้น</button>}
       >
+        {/*
+          The success notification, and it names the value rather than merely
+          reporting that something happened — "รีเซ็ตแล้ว" on its own sends the
+          reader looking for what it was reset TO, which is the one thing this
+          screen already knows.
+        */}
         <Alert kind="ok">
-          ตั้งรหัสผ่านใหม่ให้ {employee.code} · {employee.name} แล้ว
-          {' '}— รหัสผ่านเดิมใช้ไม่ได้แล้วตั้งแต่ตอนนี้
+          <strong>รีเซ็ตรหัสผ่านของ {employee.name} เรียบร้อยแล้ว</strong>
+          {' '}— รหัสผ่านใหม่คือรหัสพนักงาน · รหัสผ่านเดิมใช้ไม่ได้แล้วตั้งแต่ตอนนี้
         </Alert>
 
         {/* The value, at the size of the thing this whole dialog exists to
@@ -4422,15 +4934,9 @@ function ResetPassword({ employee, onClose, onDone }) {
         <div className="row" style={{ marginTop: 10 }}>
           {/* FIRST, because it is the way that hands a password to a person
               without anybody reading it aloud or writing it down — the same
-              reason พิมพ์สลิปแจก leads the row on IssuedPasswords.
-
-              Printing IS having it, so it sets the tick, exactly as copying
-              does. A second confirmation for something the printer has already
-              done is a click that teaches people to click. */}
-          <button
-            className="btn"
-            onClick={() => { setWritten(true); setPrinting(true); }}
-          >
+              reason พิมพ์สลิปแจก leads the row on IssuedPasswords. It no longer
+              doubles as a "I have it" tick, because there is no longer a tick. */}
+          <button className="btn" onClick={() => setPrinting(true)}>
             พิมพ์สลิป
           </button>
           <button className="btn ghost" onClick={copy}>คัดลอกรหัสผ่าน</button>
@@ -4445,9 +4951,11 @@ function ResetPassword({ employee, onClose, onDone }) {
         )}
 
         <Alert kind="warn">
-          <strong>ดูซ้ำไม่ได้</strong> — ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว ไม่มีหน้าใดแสดงรหัสนี้อีก
-          {' '}ปิดหน้าต่างนี้ไปโดยยังไม่ได้จด ต้องตั้งรหัสใหม่ให้พนักงานคนนี้อีกครั้ง
-          {' '}· แจ้งรหัสนี้ให้พนักงาน แล้วระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+          แจ้งพนักงานว่า <strong>รหัสผ่านเริ่มต้นสำหรับเข้าใช้งานครั้งแรก หรือหลังการรีเซ็ต
+          คือ รหัสพนักงานของตัวเอง</strong> พิมพ์ให้ตรงตัวรวมทั้งขีดกลาง
+          {' '}· ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองทันทีที่เข้าระบบ
+          {' '}<strong>ให้รีบเข้าระบบและตั้งรหัสของตัวเองโดยเร็ว</strong>
+          {' '}— ระหว่างที่ยังไม่ได้เปลี่ยน ใครที่เห็นรหัสพนักงานบนใบ OT ก็เข้าบัญชีนี้ได้
         </Alert>
       </Modal>
     );
@@ -4455,26 +4963,44 @@ function ResetPassword({ employee, onClose, onDone }) {
 
   return (
     <Modal
-      title="ตั้งรหัสผ่านใหม่"
+      title="รีเซ็ตรหัสผ่าน"
       subtitle={`${employee.code} · ${employee.name}`}
       onClose={onClose}
       footer={<>
         <button className="btn ghost" onClick={onClose} disabled={busy}>ยกเลิก</button>
         <button className="btn" onClick={submit} disabled={busy}>
-          {busy ? 'กำลังสร้าง…' : 'สร้างรหัสผ่านชั่วคราว'}
+          {busy ? 'กำลังรีเซ็ต…' : 'รีเซ็ตรหัสผ่าน'}
         </button>
       </>}
     >
+      {/*
+        The question, with both halves of it named. `defaultPassword` rather
+        than `employee.code` written out, so the sentence cannot drift from the
+        rule the server applies — and it is the roster's stored code, which the
+        model has already trimmed and upper-cased, so what is shown here is what
+        the account will actually take.
+      */}
       <div className="hint">
-        ระบบจะสุ่มรหัสผ่านชั่วคราวให้ และ<strong>แสดงเพียงครั้งเดียว</strong>หลังกดปุ่มนี้
-        {' '}— แสดงในหน้าต่างนี้ ปิดแล้วดูซ้ำไม่ได้ ถ้าพลาดต้องตั้งใหม่อีกครั้ง
-        {' '}· รหัสผ่านเดิมของพนักงานคนนี้จะใช้ไม่ได้ทันที
-        {' '}· เมื่อเข้าระบบด้วยรหัสชั่วคราว ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองก่อนใช้งาน
+        คุณต้องการรีเซ็ตรหัสผ่านของ <strong>{employee.name}</strong>
+        {' '}กลับเป็นรหัสพนักงาน{' '}
+        {/* The brackets are inside the nowrap span with the value, so a narrow
+            phone cannot break `PM-0100` after its hyphen — see the same guard
+            on the note in แก้ไข → สิทธิ์และสถานะ. */}
+        <strong style={{ fontFamily: 'var(--mono, monospace)', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>
+          ({defaultPassword(employee.code)})
+        </strong>
+        {' '}หรือไม่?
       </div>
       {error && <Alert kind="error">{error}</Alert>}
+      <div className="hint">
+        รหัสผ่านเดิมของพนักงานคนนี้จะใช้ไม่ได้ทันที
+        {' '}· เมื่อเข้าระบบด้วยรหัสพนักงาน ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองก่อนใช้งาน
+      </div>
       <Alert kind="warn">
-        เตรียมที่จดไว้ก่อนกด — รหัสนี้ต้องอ่านให้พนักงานฟัง และระบบเก็บไว้แบบเข้ารหัสทางเดียว
-        {' '}จึงไม่มีหน้าใดแสดงซ้ำได้
+        รหัสพนักงานถูกพิมพ์อยู่บนใบ OT ทุกใบและในไฟล์ที่ส่งบัญชี
+        {' '}ระหว่างที่พนักงานยังไม่ได้เข้าระบบมาตั้งรหัสของตัวเอง
+        {' '}<strong>ใครที่เห็นเอกสารเหล่านั้นก็เข้าบัญชีนี้ได้</strong>
+        {' '}— แจ้งพนักงานให้เข้าระบบตั้งรหัสใหม่โดยเร็ว
       </Alert>
     </Modal>
   );
@@ -4990,13 +5516,12 @@ const POLICY_FIELDS = [
   {
     section: 4,
     key: 'capBasis', open: 9, label: 'เพดานนับชั่วโมงแบบใด',
-    options: [['clock', 'ชั่วโมงที่ทำจริง (ตัวอย่าง D = 14)'], ['weighted', 'ชั่วโมงคูณอัตรา (ตัวอย่าง D = 31.5)']],
-    hint: 'ใช้กับทั้งเพดานรายเดือนและรายสัปดาห์ — ทั้งสองนับด้วยเกณฑ์เดียวกันเสมอ '
-      + '· ตัวอย่างสั้น ๆ: ทำ OT วันหยุดนอกเวลา (×3) 2 ชม. — “ชั่วโมงที่ทำจริง” ตัดเพดานไป 2 ชม. '
-      + 'ส่วน “ชั่วโมงคูณอัตรา” ตัดไป 6 ชม. คนเดียวกันจึงชนเพดานเร็วกว่ากันสามเท่าในวันหยุด '
-      + '· “ตัวอย่าง D” คือเคสในเอกสารข้อกำหนด — ศุกร์ 17:00 ถึงเช้าเสาร์ 07:00 '
-      + 'ได้ 14 ชม. จริง (ศุกร์ 7 ชม. ×1.5 + เสาร์ 7 ชม. ×3) เท่ากับ 31.5 ชม. เมื่อคูณอัตรา '
-      + '· ไม่กระทบชั่วโมงที่จ่ายจริง เปลี่ยนเฉพาะว่าเพดานเต็มเมื่อใด',
+    options: [
+      ['clock', 'นับจากชั่วโมงทำงานจริง (OT วันหยุด 2 ชม. = นับ 2 ชม.)'],
+      ['weighted', 'นับจากชั่วโมงคูณอัตรา OT (OT วันหยุด 3x ทำ 2 ชม. = นับ 6 ชม.)'],
+    ],
+    hint: 'กำหนดเกณฑ์การนับชั่วโมง OT เพื่อเช็กการชนเพดานรายสัปดาห์/รายเดือน '
+      + '(ไม่มีผลต่อการคำนวณเงินค่า OT ที่จ่ายจริง)',
   },
   {
     section: 4,

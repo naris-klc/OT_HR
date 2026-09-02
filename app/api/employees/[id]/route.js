@@ -3,16 +3,16 @@ import { COMPANY_KEYS } from '@/src/config/companies.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
-  codeChangePermission, dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
-  signingScope, signingCoveragePermission, approvalScope,
+  codeChangePermission, defaultPassword, dropsAnAdmin, lastAdminPermission, rosterPermission,
+  selfEditPermission, signingScope, signingCoveragePermission, approvalScope,
 } from '@/lib/employees.js';
 import Department from '@/src/models/Department.js';
-import { generateTempPassword } from '@/lib/tempPassword.js';
 import { BIRTHDATE_REPLAY_NOTE, rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 import { codeMatcher, sameCode } from '@/src/lib/employeeCode.js';
 import { recomputeEntries } from '@/src/services/otService.js';
 import { PENDING_STATUSES } from '@/lib/accounting.js';
+import { smartDate } from '@/lib/smartDate.js';
 
 export const PATCH = route(async (req, { params }) => {
   const actor = await requireAuth(req);
@@ -30,15 +30,17 @@ export const PATCH = route(async (req, { params }) => {
   /**
    * A caller-chosen password is refused rather than ignored.
    *
-   * The server issues these now — `generateTempPassword`, from `node:crypto` —
-   * and the field used to be filled in by the BROWSER with a value computed
-   * from the employee code. Accepting one silently would leave that path open
-   * for anything still sending it, and a request that thought it set a password
-   * and did not is worse than one that was told.
+   * The server decides these — `defaultPassword(employee.code)` — and the field
+   * used to be filled in by the BROWSER with a value computed from the employee
+   * code, which is the bug that got the whole scheme withdrawn once. The value
+   * being guessable again does not make it the caller's to send: accepting one
+   * silently would leave that path open for anything still sending it, and a
+   * request that thought it set a password and did not is worse than one that
+   * was told.
    */
   if (password !== undefined) {
     return fail(
-      'ระบบเป็นผู้สร้างรหัสผ่านชั่วคราวเอง — ส่งค่า resetPassword: true เพื่อขอรหัสใหม่',
+      'ระบบเป็นผู้ตั้งรหัสผ่านให้เอง — ส่งค่า resetPassword: true เพื่อรีเซ็ตกลับเป็นรหัสพนักงาน',
       400,
     );
   }
@@ -59,7 +61,7 @@ export const PATCH = route(async (req, { params }) => {
    * half-mutated document cannot answer.
    *
    * `resetPassword` is passed in as the request sent it, and it is checked HERE
-   * rather than beside `generateTempPassword()` two hundred lines below, where
+   * rather than beside `defaultPassword()` two hundred lines below, where
    * it would be a refusal issued after the ceiling checks, the coverage loop and
    * `employee.save()` had all already run. A request that is going to be refused
    * must be refused before it writes anything: the trail would otherwise carry a
@@ -144,9 +146,22 @@ export const PATCH = route(async (req, { params }) => {
   if (name != null) employee.name = name;
   if (email !== undefined) employee.email = email || undefined;
   if (position != null) employee.position = position;
-  // `undefined` means "not mentioned"; '' means "clear it". Storing '' instead
-  // would fail the schema's YYYY-MM-DD match.
-  if (birthDate !== undefined) employee.birthDate = birthDate || undefined;
+  /**
+   * `undefined` means "not mentioned"; '' means "clear it". Storing '' instead
+   * would fail the schema's YYYY-MM-DD match.
+   *
+   * Read through `smartDate` for the reason the create route gives at length:
+   * `2515-09-19` passes the schema's shape check and is five centuries wrong,
+   * and this is the endpoint a CORRECTION to a birthday comes through — the
+   * one edit in the whole app that is allowed to restate an approved entry
+   * (`BIRTHDATE_REPLAY_NOTE`, a few lines down). A พ.ศ. year accepted here does
+   * not sit quietly in one field; it replays somebody's signed-off month.
+   */
+  if (birthDate !== undefined) {
+    const birth = smartDate(birthDate, { label: 'วันเกิด' });
+    if (birth.error) return fail(birth.error, 400);
+    employee.birthDate = birth.date || undefined;
+  }
   if (department != null) employee.department = department;
   if (role != null) employee.role = role;
   if (company != null) {
@@ -193,10 +208,19 @@ export const PATCH = route(async (req, { params }) => {
    * the flag alone: a corrected job title is not a reason to ask somebody for a
    * new password.
    *
-   * The value is made here and returned once. It is never read from the request,
-   * which is the whole of the earlier fix: the browser used to compute it.
+   * The value is decided here and never read from the request, which is the
+   * whole of the earlier fix: the browser used to compute it and PATCH it. That
+   * still holds now that the value is guessable again — what the screen shows
+   * is what came back from here, and a `password` field in the body is a 400
+   * two hundred lines above.
    *
-   * GENERATED AND HASHED HERE, WRITTEN AT THE VERY END. Nothing about this
+   * FROM `employee.code`, WHICH IS THE CODE AS THIS REQUEST WILL LEAVE IT. The
+   * assignments are all above; a request that renames PM-0620 to PM-0641 and
+   * resets in one go sets the password to PM-0641, which is the code the person
+   * is about to be told is theirs. Reading `before.code` here would hand out a
+   * password for a row that no longer exists.
+   *
+   * HASHED HERE, WRITTEN AT THE VERY END. Nothing about this
    * account's password moves until every other thing this request does has
    * already succeeded — see the write below. A password that reached the
    * database and not the person who asked for it is not a failed reset, it is a
@@ -205,7 +229,7 @@ export const PATCH = route(async (req, { params }) => {
    * is another reset. Every other failure in this handler must therefore leave
    * the old password working.
    */
-  const issued = resetPassword ? generateTempPassword() : null;
+  const issued = resetPassword ? defaultPassword(employee.code) : null;
   const issuedHash = issued ? await Employee.hashPassword(issued) : null;
 
   /**
@@ -434,13 +458,14 @@ export const PATCH = route(async (req, { params }) => {
   return json({
     employee: populated,
     /**
-     * The issued password, exactly once, and only for a reset.
+     * The password this reset set, and only for a reset.
      *
-     * This response is the ONLY moment it is readable: the database holds a
-     * hash and every roster read goes through `publicEmployee`, so a screen
-     * that loses it has no way to ask again — the recovery is another reset.
-     * It used to be absent here on the grounds that the caller had just typed
-     * the value; now the caller has not seen it, and cannot.
+     * It read "This response is the ONLY moment it is readable" until
+     * 2026-09-02, when the default became the employee code — a screen that
+     * loses it now reads the roster instead of ordering another reset. It is
+     * still sent, and the screen still shows THIS value rather than one it
+     * worked out for itself: the server is what decides, and a screen guessing
+     * along beside it is a screen that will be wrong the day the rule changes.
      */
     password: issued,
     /**

@@ -5,10 +5,10 @@ import Department from '../../src/models/Department.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../../src/lib/csv.js';
 import {
-  PASSWORD_MIN_LENGTH, chosenPasswordPermission, codeChangePermission, dropsAnAdmin,
-  lastAdminPermission, publicEmployee, rosterPermission, selfEditPermission,
+  chosenPasswordPermission, codeChangePermission, defaultPassword, dropsAnAdmin,
+  lastAdminPermission, passwordShapePermission, publicEmployee, rosterPermission,
+  selfEditPermission,
 } from '../../lib/employees.js';
-import { generateTempPassword } from '../../lib/tempPassword.js';
 import { rosterChanges } from '../../lib/rosterAudit.js';
 import { recordRosterChange } from '../../lib/rosterAuditLog.js';
 import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '../../src/lib/employeeCode.js';
@@ -79,7 +79,10 @@ router.post('/', requireRole('admin', 'hr'), wrap(async (req, res) => {
   }
 
   const employee = new Employee({ code, name, email: email || undefined, position, department, role: role || 'employee' });
-  const issued = chosen ?? generateTempPassword();
+  // The row's own รหัสพนักงาน when HR chose nothing — the same default the App
+  // Router sets, from the same function, because two servers with two ideas of
+  // what somebody's first password is means a first password that half works.
+  const issued = chosen ?? defaultPassword(employee.code);
   await employee.setPassword(issued);
   employee.mustChangePassword = true;
   await employee.save();
@@ -144,7 +147,7 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   }
   if (password !== undefined) {
     return res.status(400).json({
-      error: 'ระบบเป็นผู้สร้างรหัสผ่านชั่วคราวเอง — ส่งค่า resetPassword: true เพื่อขอรหัสใหม่',
+      error: 'ระบบเป็นผู้ตั้งรหัสผ่านให้เอง — ส่งค่า resetPassword: true เพื่อรีเซ็ตกลับเป็นรหัสพนักงาน',
     });
   }
 
@@ -159,15 +162,21 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
   if (role != null) employee.role = role;
   if (active != null) employee.active = Boolean(active);
   /**
-   * Made here, returned once, never read from the request — and written LAST.
+   * Decided here, returned, never read from the request — and written LAST.
    *
    * The same ordering as the App Router's PATCH, for the same reason: a hash
    * that reaches the database while the response carrying its plaintext does
    * not is an employee locked out of an account nobody can open. Hashing is the
    * slow part and it happens here, while failing is still free; the write is a
    * single field update at the end, after everything else has succeeded.
+   *
+   * The ordering matters less than it did now that the value is the employee
+   * code and can be looked up again — and is kept exactly as it was, because
+   * "the hash moved and nobody knows to what" is still the shape of the
+   * failure, and this router accepts no รหัสพนักงาน change to make the value
+   * recoverable from anything but the row it just wrote.
    */
-  const issued = resetPassword ? generateTempPassword() : null;
+  const issued = resetPassword ? defaultPassword(employee.code) : null;
   const issuedHash = issued ? await Employee.hashPassword(issued) : null;
 
   const changes = rosterChanges(before, snapshot(employee));
@@ -215,9 +224,10 @@ router.patch('/:id', requireRole('admin', 'hr'), wrap(async (req, res) => {
 /** Change own password. */
 router.post('/me/password', wrap(async (req, res) => {
   const { current, next } = req.body || {};
-  if (!next || String(next).length < PASSWORD_MIN_LENGTH) {
-    return res.status(400).json({ error: `รหัสผ่านใหม่ต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร` });
-  }
+  // The same rule the App Router applies, from the same function — a character
+  // set enforced by one of two servers is not a character set.
+  const shape = passwordShapePermission(next);
+  if (!shape.ok) return res.status(shape.status).json({ error: shape.error });
   if (String(next) === String(current || '')) {
     return res.status(400).json({ error: 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม' });
   }
@@ -342,9 +352,10 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
           department: department._id,
           role,
         });
-        // Generated, never read from the file. A `password` column used to be
-        // honoured here — that put every new hire's password in a spreadsheet.
-        const issued = generateTempPassword();
+        // The row's own รหัสพนักงาน, never read from the file. A `password`
+        // column used to be honoured here — that put every new hire's password
+        // in a spreadsheet, which is still refused whatever the default is.
+        const issued = defaultPassword(employee.code);
         await employee.setPassword(issued);
         employee.mustChangePassword = true;
         await employee.save();

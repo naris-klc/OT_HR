@@ -4,6 +4,7 @@ import Holiday, { yearOf } from '../../src/models/Holiday.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../../src/lib/csv.js';
 import { recomputeEntries } from '../../src/services/otService.js';
+import { smartDate } from '../../lib/smartDate.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });
@@ -96,17 +97,19 @@ router.post('/import', requireRole('admin', 'hr'), upload.single('file'), wrap(a
   return res.json({ imported: dates.length, errors, recomputed });
 }));
 
-/** Accepts YYYY-MM-DD, DD/MM/YYYY and D/M/YYYY, including Buddhist-era years. */
+/**
+ * Accepts YYYY-MM-DD, DD/MM/YYYY and D/M/YYYY, either separator, either era.
+ *
+ * THE SAME READER THE APP ROUTER USES, and that is the point of the import.
+ * This was a hand copy of `lib/holidays.js`'s copy of a rule that lived in
+ * three places, and the whole family of them collapsed into `lib/smartDate.js`
+ * on 2026-09-02. A legacy router that lags on FEATURES is expected here; one
+ * that lags on how a พ.ศ. year is read would file the same uploaded calendar
+ * under a different year than the Next.js server does, which is not a lag but
+ * a disagreement.
+ */
 function normaliseDate(raw) {
-  const s = String(raw || '').trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-  const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(s);
-  if (!m) return null;
-  const [, d, mo, y] = m;
-  // A year past 2400 is พ.ศ. — Excel exports from a Thai locale do this.
-  const year = Number(y) > 2400 ? Number(y) - 543 : Number(y);
-  return `${year}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  return smartDate(raw).date;
 }
 
 /**

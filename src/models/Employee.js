@@ -178,16 +178,57 @@ employeeSchema.pre('validate', function inferCompany() {
  * slowest thing in the request, so it happens up front while a failure is still
  * free, and the write at the end is a single field update.
  */
+/**
+ * THE ONE PLACE A PASSWORD BECOMES BYTES, and why it normalises first.
+ *
+ * bcryptjs takes the JS string, encodes it UTF-8 and hashes those bytes — which
+ * is correct and is not the hazard. The hazard is that two Thai strings that
+ * are the same word, look identical on any screen and were typed on the same
+ * keyboard can be different byte sequences:
+ *
+ *   ก + ุ (below vowel) + ่ (tone)   U+0E01 U+0E38 U+0E48
+ *   ก + ่ (tone) + ุ (below vowel)   U+0E01 U+0E48 U+0E38
+ *
+ * The marks have different combining classes, so Unicode says these are the
+ * same text and NFC puts them in one order — but bcrypt is hashing bytes, so
+ * without this line the second spelling is a wrong password with nothing on
+ * screen to show for it. That is exactly the สระ/วรรณยุกต์เพี้ยน failure, and
+ * it is invisible from both ends: the person sees their own password refused
+ * and ฝ่ายบุคคล sees a correct password that does not work.
+ *
+ * Latin, digits and punctuation are unaffected — NFC is the identity on all of
+ * them, so nothing about the employee-code default or any existing ASCII
+ * password moves.
+ */
+const canonical = (plain) => String(plain ?? '').normalize('NFC');
+
 employeeSchema.statics.hashPassword = function hashPassword(plain) {
-  return bcrypt.hash(plain, 10);
+  return bcrypt.hash(canonical(plain), 10);
 };
 
 employeeSchema.methods.setPassword = async function setPassword(plain) {
   this.passwordHash = await this.constructor.hashPassword(plain);
 };
 
-employeeSchema.methods.verifyPassword = function verifyPassword(plain) {
-  return bcrypt.compare(plain, this.passwordHash);
+/**
+ * Verify, and accept a password stored before the line above existed.
+ *
+ * The raw string is tried FIRST, which is what keeps this change incapable of
+ * locking anybody out: any hash written before 2026-09-02 was made from
+ * un-normalised bytes, and if somebody's stored password happens to be in a
+ * non-canonical order then the raw compare is the one that matches it — exactly
+ * as it did yesterday.
+ *
+ * The second compare runs only when normalising actually CHANGED the string,
+ * which it never does for ASCII and rarely does for Thai. So the ordinary login
+ * pays for one bcrypt compare as before, and the only request that pays for two
+ * is one that would otherwise have been refused.
+ */
+employeeSchema.methods.verifyPassword = async function verifyPassword(plain) {
+  const raw = String(plain ?? '');
+  if (await bcrypt.compare(raw, this.passwordHash)) return true;
+  const nfc = canonical(raw);
+  return nfc === raw ? false : bcrypt.compare(nfc, this.passwordHash);
 };
 
 /** Managers do not submit OT (§2). */

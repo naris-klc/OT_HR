@@ -216,6 +216,26 @@ const ICONS = {
       <path d="M14.4 6.4 17.6 9.6" />
     </>
   ),
+
+  /**
+   * ลบแผนก — the only irreversible button on ตั้งค่าระบบ.
+   *
+   * A LID, A BODY AND TWO RIBS, and the ribs are not decoration: a bin drawn as
+   * an outline and a line across the top is a shopping bag at 15px. The lid
+   * overhangs the body by a quarter unit on each side, which is what makes the
+   * two read as separate objects rather than as one box with a stripe.
+   *
+   * The handle is a shallow arc rather than a rectangle — a second box on top
+   * of a box goes muddy at this size, and the arc survives being drawn at 13.
+   */
+  trash: (
+    <>
+      <path d="M4.5 6.75h15" />
+      <path d="M9.5 6.75V5.5a1.25 1.25 0 0 1 1.25-1.25h2.5A1.25 1.25 0 0 1 14.5 5.5v1.25" />
+      <path d="M6.25 6.75l.8 11.4a1.75 1.75 0 0 0 1.75 1.6h6.4a1.75 1.75 0 0 0 1.75-1.6l.8-11.4" />
+      <path d="M10.25 10.5v5.5M13.75 10.5v5.5" />
+    </>
+  ),
 };
 
 /**

@@ -699,29 +699,101 @@ chmod +x scripts/backup.sh
 รหัสผ่านร่วมนั้นเป็น **ของสำหรับการพัฒนาเท่านั้น** และใช้ได้เฉพาะกับแถวที่
 `npm run seed` เขียนขึ้น ไม่ใช่วิธีที่บัญชีจริงได้รหัสผ่านมา — ดูหัวข้อถัดไป
 
-### รหัสผ่านชั่วคราว: สุ่มขึ้นมา แสดงครั้งเดียว และไม่เคยคำนวณจากอะไร
+### รหัสผ่านแรกเข้า: คือรหัสพนักงาน และต้องเปลี่ยนทันทีที่เข้าครั้งแรก
 
-บัญชีที่ถูกสร้างจาก ทะเบียนพนักงาน — ทีละคนหรือด้วย CSV — จะได้รหัสผ่านจาก
-`generateTempPassword()` ใน `lib/tempPassword.js`: ใช้ `node:crypto` ทำงานบน
-เซิร์ฟเวอร์ ได้หน้าตาแบบ `gof-mez-tab-4827` เป็นบล็อกที่อ่านออกเสียงได้ ตัวพิมพ์เล็ก
-ทั้งหมด และไม่มี `0 1 l i O` เลย เพราะ ฝ่ายบุคคล ต้องอ่านมันทางโทรศัพท์ แล้วอีกคน
-ต้องพิมพ์มันบนเครื่องหน้าโรงงาน
+หัวข้อนี้ชื่อ “รหัสผ่านชั่วคราว: สุ่มขึ้นมา แสดงครั้งเดียว และไม่เคยคำนวณจากอะไร”
+จนถึง **2026-09-02** ซึ่งเป็นวันที่ ฝ่ายบุคคล ขอรหัสพนักงานกลับมาเป็นค่าเริ่มต้น
+ประวัติทั้งหมดอยู่ท้ายหัวข้อนี้ — อ่านก่อนจะแก้อะไรตรงนี้
 
-**มันถูกส่งกลับมาเพียงครั้งเดียว** ในคำตอบของการสร้าง / นำเข้า / ตั้งรหัสใหม่ ที่ทำ
-ให้มันเกิดขึ้น และแสดงบนหน้าจอนั้นจนกว่าจะถูกปิด ฐานข้อมูลเก็บเฉพาะ hash
-(`setPassword`) และการอ่านทะเบียนทุกครั้งเดินผ่าน `publicEmployee()` จึงไม่มีการดู
-ครั้งที่สอง: ทางแก้คือตั้งรหัสใหม่อีกครั้ง `mustChangePassword` ถูกตั้งไปพร้อมกัน
-บัญชีนั้นจึงไปหน้าจอไหนไม่ได้เลยนอกจาก ตั้งรหัสผ่านใหม่ จนกว่าคนที่ถือมันจะเปลี่ยน
-ค่าที่ออกให้ทิ้ง
+บัญชีที่ถูกสร้างจาก ทะเบียนพนักงาน — ทีละคนหรือด้วย CSV — จะได้ **รหัสพนักงานของ
+ตัวเอง** เป็นรหัสผ่าน ผ่าน `defaultPassword()` ใน `lib/employees.js` ซึ่งอ่าน
+`employee.code` ของแถวที่เพิ่งเขียน (ผ่าน `trim` + `uppercase` ของ schema มาแล้ว)
+เก็บขีดกลางไว้ตามที่พิมพ์อยู่บนบัตร — `PM-0620` คือ `PM-0620` ไม่ใช่ `PM0620`
+เพราะคนที่พิมพ์มันที่หน้าล็อกอินกำลังลอกจากสิ่งที่ถืออยู่ในมือ
 
-**ไม่มีผู้เรียกคนไหนเลือกรหัสผ่านเองได้** `POST /api/employees` และ
-`PATCH /api/employees/:id` ตอบ 400 เมื่อเจอฟิลด์ `password` แทนที่จะทำตาม การตั้ง
-รหัสใหม่ขอด้วย `resetPassword: true` และคอลัมน์ `password` ในไฟล์ CSV นำเข้าจะถูก
-เพิกเฉยพร้อมคำเตือนบนแถวนั้น สิ่งนี้มาแทน `defaultPassword()` ซึ่งเคยเป็น `Primus@`
-ต่อด้วยรหัสพนักงาน — คำนวณออกมาได้จากทะเบียนที่พิมพ์อยู่บนใบ F-HR-027 ทุกใบและใน
-ทุกไฟล์ที่ส่งบัญชี และที่แย่กว่านั้นคือมันถูกคำนวณใน*เบราว์เซอร์* โดยกล่อง
-ตั้งรหัสใหม่ ซึ่ง PATCH อะไรก็ตามที่ค้างอยู่ในช่องนั้นขึ้นไป ตรึงไว้ด้วย
-`test/tempPassword.test.js`
+**การกดปุ่ม “รีเซ็ตรหัสผ่าน”** ในทะเบียนพนักงาน หรือใน แก้ไข →
+สิทธิ์และสถานะ ตั้งค่ากลับเป็นค่าเดียวกันนี้ กล่องยืนยันบอกทั้งชื่อและค่าก่อนเขียน
+(“คุณต้องการรีเซ็ตรหัสผ่านของ … กลับเป็นรหัสพนักงาน (PM-0620) หรือไม่”)
+แล้วจึงแจ้งผลพร้อมค่าที่เซิร์ฟเวอร์ตอบกลับมาจริง
+
+**สิ่งที่จ่ายค่าให้กับความเดาได้นี้คือ `mustChangePassword`** ซึ่งถูกตั้งพร้อมกัน
+ทุกครั้ง จากทุกเส้นทางที่ออกรหัสให้ บัญชีนั้นจึงไปหน้าจอไหนไม่ได้เลยนอกจาก
+ตั้งรหัสผ่านของตัวเอง จนกว่าคนที่ถือมันจะเปลี่ยน — ช่วงที่รหัสเดาได้ใช้งานได้จริงคือ
+“จนกว่าจะล็อกอินครั้งแรก” ไม่ใช่ “ตลอดไป” และ `POST /api/employees/me/password`
+ปฏิเสธรหัสใหม่ที่ซ้ำกับรหัสเดิม จึงไม่มีใครล้างธงนี้ด้วยการพิมพ์รหัสพนักงานกลับเข้าไป
+
+**ไม่มีผู้เรียกคนไหนเลือกรหัสผ่านเองได้ นอกจากตอนสร้าง**
+`PATCH /api/employees/:id` ตอบ 400 เมื่อเจอฟิลด์ `password` แทนที่จะทำตาม การรีเซ็ต
+ขอด้วย `resetPassword: true` เท่านั้น และคอลัมน์ `password` ในไฟล์ CSV นำเข้าจะถูก
+เพิกเฉยพร้อมคำเตือนบนแถวนั้น `POST /api/employees` รับรหัสที่ ฝ่ายบุคคล พิมพ์เองได้
+แต่เดินผ่าน `chosenPasswordPermission()` ซึ่งยัง **ปฏิเสธรหัสผ่านทุกตัวที่มีรหัส
+พนักงานอยู่ในนั้น** — `pm0620`, `Primus@PM-0620`, `xxPM0620xx` ถูกปฏิเสธหมด
+ข้อยกเว้นเดียวคือค่าที่ตรงกับค่าเริ่มต้นเป๊ะ ๆ เพราะนั่นคือสิ่งที่การไม่พิมพ์อะไรเลย
+จะได้อยู่แล้ว ทั้งหมดตรึงไว้ด้วย `test/tempPassword.test.js`
+
+**สิ่งที่ยังคำนวณบนเบราว์เซอร์ไม่ได้คือ*ค่าที่ถูกเก็บ*** หน้าจอคำนวณค่านี้ได้และ
+เอาไปเขียนเป็นประโยคให้อ่าน แต่ค่าที่เข้าฐานข้อมูลมาจากเซิร์ฟเวอร์เสมอ และหน้าจอ
+แสดงค่าที่ *ตอบกลับมา* ไม่ใช่ค่าที่ตัวเองเดาไว้ — นี่คือครึ่งหนึ่งของบั๊กเดิมที่ยัง
+ปิดอยู่ ดูย่อหน้าถัดไป
+
+### รหัสผ่านที่ตั้งเอง: ยาวอย่างน้อย 4 · ไทยได้ · และมีเพดานที่ bcrypt
+
+`passwordShapePermission()` ใน `lib/employees.js` คือกฎเดียวที่ใช้ทั้ง
+`POST /api/employees` (ผ่าน `chosenPasswordPermission`) และ
+`POST /api/employees/me/password` ของทั้งสองเซิร์ฟเวอร์ · เพิ่มเมื่อ **2026-09-02**
+พร้อมการรองรับภาษาไทย
+
+- **ยาวอย่างน้อย `PASSWORD_MIN_LENGTH` = 4** เดิมคือ 6 · นับเป็น UTF-16 code unit
+  ซึ่ง**ไม่เท่ากับจำนวนตัวที่คนเห็น**สำหรับภาษาไทย: `ก่อ` คือสองตัวบนจอแต่สาม
+  หน่วย เพราะวรรณยุกต์เป็นหน่วยของตัวเอง
+- **อักขระที่ใช้ได้** ไทยทั้งบล็อก `฀-๿` (พยัญชนะ สระ วรรณยุกต์ เลขไทย ฿)
+  · `a-zA-Z0-9` · และเครื่องหมาย ``!@#$%^&*()_+-=[]{};':"\|,.<>/?`` ·
+  `PASSWORD_ALLOWED` คือกฎเดียวกันในรูปที่สั่งมา ส่วนที่ทำงานจริงคือตัวกลับด้าน
+  เพราะมันบอกได้ว่า**ตัวไหน**ผิด ซึ่งจำเป็นเมื่ออักขระนั้นมองไม่เห็น
+- **ที่ใช้ไม่ได้ และควรรู้ไว้** ช่องว่าง (`ดอก ไม้` ถูกปฏิเสธ) · `~` และ backtick ·
+  ทุกอย่างนอกไทยกับ ASCII เช่น `é` `中` และอิโมจิ · ข้อความปฏิเสธจะบอกตัวอักษร
+  พร้อมรหัส `U+XXXX` เสมอ
+- **`PASSWORD_MAX_BYTES` = 72** เพราะ **bcrypt อ่านแค่ 72 ไบต์แล้วตัดที่เหลือทิ้ง
+  เงียบ ๆ** และไทยตัวละ 3 ไบต์ เพดานจริงจึงราว **24 ตัวอักษรไทย** ไม่ใช่ 72 ·
+  วัดกับ `bcryptjs` ของเครื่องนี้แล้ว: hash `ก`×24 + `A` แล้ว compare
+  `ก`×24 + `B` ได้ `true` — สองรหัสผ่าน หนึ่งบัญชี ไม่มีอะไรฟ้อง · จึงปฏิเสธ
+  ตั้งแต่ต้นทางแทนที่จะรับแล้วตัด
+
+**กฎนี้ทำงานเฉพาะตอน*ตั้ง* รหัสผ่าน ไม่เคยทำงานตอน*ตรวจ*** รหัสผ่านที่เก็บไว้แล้ว
+จึงใช้ได้ต่อไม่ว่ากฎจะแคบลงหรือกว้างขึ้น — เป็นเหตุผลที่ขยายรายการอักขระทีหลังได้
+โดยไม่ต้อง migrate อะไร และตรึงไว้เป็นเทสต์ ไม่ได้ปล่อยเป็นคำอ้าง
+
+**ภาษาไทยกับ hash: NFC** `Employee.hashPassword()` normalize เป็น NFC ก่อนเสมอ
+เพราะ `ก` + `ุ` + `่` กับ `ก` + `่` + `ุ` เป็นคำเดียวกัน หน้าตาเหมือนกันบนทุกจอ
+แต่เป็นคนละลำดับไบต์ — เครื่องหมายสองตัวนี้มี combining class ต่างกัน Unicode จึง
+ถือว่าเป็นข้อความเดียวกันและ NFC จัดลำดับให้ · ถ้าไม่ normalize คนที่พิมพ์อีกลำดับ
+หนึ่งจะเจอ “รหัสผ่านเดิมไม่ถูกต้อง” โดยที่บนจอถูกทุกตัว นี่คืออาการ
+*สระ/วรรณยุกต์เพี้ยน* ตัวจริง · `verifyPassword()` ลองค่า**ดิบก่อน** แล้วค่อยลอง
+NFC จึงไม่มีใครถูกล็อกออก: hash ที่เขียนไว้ก่อน 2026-09-02 ทำจากไบต์ที่ยังไม่
+normalize และยังเปิดด้วยคีย์เดิมได้ · การเทียบครั้งที่สองเกิดเฉพาะเมื่อ normalize
+แล้วค่าเปลี่ยนจริง ซึ่งไม่เคยเกิดกับ ASCII
+
+**UTF-8 ตลอดทาง** `fetch` เข้ารหัส body เป็น UTF-8 อยู่แล้ว JSON เป็น UTF-8 ตาม
+นิยาม (RFC 8259) และ `req.text()` ถอดเป็น UTF-8 เมื่อไม่มี charset กำกับ — ทั้งสาม
+ข้อเป็น *ค่าเริ่มต้น* `lib/api.js` จึงส่ง `application/json; charset=utf-8` ออกไป
+ตรง ๆ ตั้งแต่ 2026-09-02 ไม่ได้แก้บั๊กอะไร แต่ทำให้ไม่ต้องเดา
+
+> **ประวัติของค่านี้ — สามรุ่น**
+>
+> 1. `defaultPassword()` = `Primus@` + รหัสพนักงาน ถูกถอดออกเพราะทะเบียนถูกพิมพ์อยู่
+>    บนใบ F-HR-027 ทุกใบและในทุกไฟล์ที่ส่งบัญชี รหัสผ่านของทุกบัญชีที่ยังไม่มีใคร
+>    ล็อกอินจึงเป็นข้อมูลสาธารณะ — และที่แย่กว่านั้นคือมันถูกคำนวณใน*เบราว์เซอร์*
+>    โดยกล่อง ตั้งรหัสใหม่ ซึ่ง PATCH อะไรก็ตามที่ค้างอยู่ในช่องนั้นขึ้นไป
+> 2. `generateTempPassword()` ใน `lib/tempPassword.js` — `node:crypto` บนเซิร์ฟเวอร์
+>    หน้าตาแบบ `gof-mez-tab-4827` อ่านออกเสียงได้ ตัวพิมพ์เล็กทั้งหมด ไม่มี
+>    `0 1 l i O` เลย **แสดงครั้งเดียว** ปิดแล้วดูซ้ำไม่ได้
+> 3. รหัสพนักงาน (2026-09-02, ปัจจุบัน) เพราะรุ่นที่สองต้องอ่านทางโทรศัพท์ พิมพ์ผิด
+>    บ่อย และบนทะเบียนที่คนส่วนใหญ่ไม่มีอีเมล มันหายไปเลยเมื่อกล่องถูกปิดเร็วไปหนึ่ง
+>    จังหวะ **ราคาที่จ่ายคือข้อ 1 กลับมา** และสิ่งที่กันไว้คือ `mustChangePassword`
+>
+> `generateTempPassword()` **ยังอยู่และยังมีผู้เรียกหนึ่งราย** คือ
+> `npm run reset-admin` เท่านั้น บัญชี ADMIN คือทางกู้ของทุกบัญชีอื่น จึงมีรหัสผ่านที่
+> อ่านออกจากทะเบียนไม่ได้ — และรหัสพนักงานคือสิ่งที่พิมพ์ที่หน้าล็อกอินอยู่แล้ว
 
 ### ไม่มีใครล็อกตัวเองออกจากระบบได้
 
@@ -731,14 +803,19 @@ chmod +x scripts/backup.sh
 - **บทบาท และ สถานะการใช้งาน บนแถวของตัวเอง** (`selfEditPermission`) ทั้งสองอย่าง
   ห่างจากบัญชีที่เข้าไม่ถึงหน้าจอที่จะใช้ย้อนการบันทึกนั้น อยู่แค่การกดบันทึกครั้งเดียว
   ฟิลด์อื่นทุกฟิลด์บนแถวของตัวเองเป็นเรื่องปกติ
-- **ตั้งรหัสผ่านใหม่ บนแถวของตัวเอง** (`selfEditPermission` เพิ่มเมื่อ 2026-08-24)
+- **รีเซ็ตรหัสผ่าน บนแถวของตัวเอง** (`selfEditPermission` เพิ่มเมื่อ 2026-08-24)
   ถูกปฏิเสธด้วยเหตุผลคนละอย่างกับสองข้อบน — ไม่ใช่เพราะ*คุณ*ย้อนคืนไม่ได้ แต่เพราะ
-  คนอื่นอาจเป็นคนกด การตั้งรหัสใหม่จาก ทะเบียนพนักงาน ไม่ถามรหัสผ่านปัจจุบัน และ
-  พิมพ์รหัสใหม่ออกมาตรงนั้นเลย เครื่องที่ปล่อยทิ้งไว้โดยยังล็อกอินเป็น ฝ่ายบุคคล จึง
-  ห่างจากการที่คนแปลกหน้าถือรหัสที่ใช้ได้จริงอยู่แค่ปุ่มเดียว โดยเจ้าของตัวจริงถูกล็อก
-  ออกและแยกไม่ออกว่าต่างจากการลืมรหัสตรงไหน หน้าโปรไฟล์ ทำงานเดียวกันและถามรหัสผ่าน
-  ปัจจุบันก่อน **ผู้ดูแลระบบ ไม่ได้รับการยกเว้น** — ดู `npm run reset-admin` ข้างล่าง
+  คนอื่นอาจเป็นคนกด การรีเซ็ตจาก ทะเบียนพนักงาน ไม่ถามรหัสผ่านปัจจุบัน เครื่องที่
+  ปล่อยทิ้งไว้โดยยังล็อกอินเป็น ฝ่ายบุคคล จึงห่างจากการที่คนแปลกหน้าถือรหัสที่ใช้ได้
+  จริงอยู่แค่ปุ่มเดียว โดยเจ้าของตัวจริงถูกล็อกออกและแยกไม่ออกว่าต่างจากการลืมรหัส
+  ตรงไหน · **ข้อนี้หนักขึ้นตั้งแต่ 2026-09-02 ไม่ใช่เบาลง** ย่อหน้านี้เคยอธิบายว่า
+  หน้าจอ “พิมพ์รหัสใหม่ออกมาตรงนั้นเลย” ตอนนี้ไม่ต้องพิมพ์ด้วยซ้ำ — ค่าใหม่คือรหัส
+  พนักงานซึ่งอยู่บนแถวเดียวกันนั้นเอง คนที่เดินผ่านโต๊ะจึงไม่ต้องอ่านอะไรจากหน้าจอเลย
+  · หน้าโปรไฟล์ ทำงานเดียวกันและถามรหัสผ่านปัจจุบันก่อน
+  **ผู้ดูแลระบบ ไม่ได้รับการยกเว้น** — ดู `npm run reset-admin` ข้างล่าง
   ซึ่งเป็นสิ่งที่ทำให้กฎแบบไม่มีข้อยกเว้นข้อนี้ปลอดภัย
+  · ปุ่มนี้อยู่สองที่ตั้งแต่ 2026-09-02 — ในตารางทะเบียนพนักงาน และใน แก้ไข →
+  สิทธิ์และสถานะ — ทั้งสองปุ่มปฏิเสธด้วยกฎเดียวกันและเปิดกล่องเดียวกัน
 - **ผู้ดูแลระบบ คนสุดท้ายที่ยังใช้งานอยู่** (`lastAdminPermission`) จะถูกลดบทบาท
   หรือปิดใช้งานโดยใครไม่ได้เลย ฝ่ายบุคคล สร้าง Admin ขึ้นมาไม่ได้
   (`HR_ASSIGNABLE_ROLES`) ระบบที่ไม่มี Admin ที่ใช้งานอยู่เลยจึงไม่มีทางสร้างขึ้นมา
@@ -767,17 +844,17 @@ chmod +x scripts/backup.sh
 | เพิ่ม / แก้ไขพนักงาน | ✅ | ✅ | `rosterPermission` |
 | ตั้งบทบาท พนักงาน / หัวหน้างาน | ✅ | ✅ | `HR_ASSIGNABLE_ROLES` |
 | ตั้งบทบาท ฝ่ายบุคคล / ผู้ดูแลระบบ | ❌ | ✅ | `HR_ASSIGNABLE_ROLES` |
-| แก้ไขแถวที่เป็น ผู้ดูแลระบบ (รวมตั้งรหัสใหม่) | ❌ | ✅ | `rosterPermission` |
+| แก้ไขแถวที่เป็น ผู้ดูแลระบบ (รวมรีเซ็ตรหัสผ่าน) | ❌ | ✅ | `rosterPermission` |
 | เปลี่ยนรหัสพนักงาน | ❌ | ✅ *(ต้องระบุเหตุผล)* | `codeChangePermission` |
-| ตั้งรหัสผ่านใหม่ให้คนอื่น | ✅ | ✅ | `rosterPermission` |
-| ตั้งรหัสผ่านใหม่ให้ **ตัวเอง** | ❌ | ❌ | `selfEditPermission` |
+| รีเซ็ตรหัสผ่านให้คนอื่น | ✅ | ✅ | `rosterPermission` |
+| รีเซ็ตรหัสผ่านให้ **ตัวเอง** | ❌ | ❌ | `selfEditPermission` |
 | นำเข้าพนักงานจาก CSV | ✅ | ✅ | `rosterPermission` ต่อแถว |
 | **แผนก** | | | |
 | เพิ่มแผนก | ✅ | ✅ | `departmentPermission` |
 | แก้ชื่อ / รหัส / เพดาน / รูปแบบโอที | ✅ | ✅ | `departmentPermission` |
 | ปิดใช้งานแผนก | ❌ | ✅ | `departmentPermission` |
 | เปิดใช้งานแผนกคืน | ❌ | ✅ | `departmentPermission` |
-| ลบแผนกถาวร | ❌ | ❌ *(ไม่มีในระบบ)* | — |
+| ลบแผนกถาวร — **เฉพาะแผนกที่ไม่มีอะไรอ้างถึง** | ❌ | ✅ | `departmentDeletePermission` + `departmentDeleteBlock` |
 | **ตั้งค่าระบบอื่น ๆ** | | | |
 | รหัสเอกสาร OT (`formCode`) | ✅ | ✅ | `PATCH /api/settings` |
 | ชื่อบริษัท (ไทย/อังกฤษ) | ✅ | ✅ | `PATCH /api/settings` *(ไม่มีหน้าจอ — ช่องกรอกถูกตัดออก 2026-08-31 เพราะไม่มีที่ใดพิมพ์ค่านี้)* |
@@ -797,6 +874,50 @@ chmod +x scripts/backup.sh
 | คำนวณใหม่ **รวมใบที่อนุมัติแล้ว** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `authorizeReplay` |
 | ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` |
 | **บันทึกประวัติระบบ** | ❌ | ✅ | `/api/logs`, `/api/logs/summary`, `/api/exports/logs.csv` |
+
+### ลบแผนก — the row that says ❌ ❌ *(ไม่มีในระบบ)* until 2026-09-02
+
+The table above read **`| ลบแผนกถาวร | ❌ | ❌ *(ไม่มีในระบบ)* | — |`**, and
+`test/permissionRouteGuards.test.js` held it there with a test called *"there is
+no way to delete a department, in any handler"* that walked the whole route
+folder looking for `export const DELETE`. The reason it gave is still true and
+is still the thing being protected:
+
+> `OtEntry.department` is a required reference, set when the request was filed —
+> the แผนก is snapshotted onto the entry on purpose, so a mid-month transfer
+> leaves the hours where they were worked. Delete the row and `groupByDepartment`
+> collapses every entry that pointed at it into one unnamed `ไม่ระบุแผนก`
+> bucket, permanently, shared with every other department ever deleted.
+
+**What that paragraph could not say is that every word of it is about a row
+something POINTS AT.** A department created with a typo in its code five minutes
+ago, that no employee has ever belonged to and no entry has ever named, costs
+none of it: deleting it changes no figure, empties no queue and renames nothing
+in any report, because there is nothing on the other end of the reference to
+rename. That was the one case the blanket refusal could not tell apart, and it
+left every mistyped department on the screen for ever, switched off, in a list
+of eight.
+
+**So the refusal moved from the handler to the data.** `departmentDeleteBlock`
+in `lib/departments.js` is the whole rule and it counts nothing itself — the
+caller counts and it decides:
+
+| | |
+|---|---|
+| **who** | ผู้ดูแลระบบ only (`departmentDeletePermission`) — the guard makes a wrong press cheap, but it is still irreversible, and a recreated row is a different `_id` |
+| **what** | zero rows in `employees` naming it **and** zero in `otentries`, both **all-time** — not the `headcount` on the table, which counts ACTIVE employees and reads 0 for a department whose whole team was deactivated last year |
+| **asked twice** | `GET /api/departments/:id` answers it for the screen before the button is offered; `DELETE` counts again before it acts, so a stale page or a `curl` cannot get past it |
+
+**Pressing ลบแผนก opens a read, not a confirmation.** What comes back picks the
+dialog: a department that is being held gets *"ไม่สามารถลบแผนกนี้ได้เนื่องจาก
+มีข้อมูลประวัติในระบบ แนะนำให้เปลี่ยนสถานะเป็น 'ปิดใช้งาน' แทน"* with the two
+counts printed under it and a button that **does** the ปิดใช้งาน; one that is
+free gets the ordinary confirmation. The order is the point — *"are you sure?"*
+followed by *"actually you cannot"* is a dialog apologising for its own
+question, and it teaches people to press through confirmations.
+
+`active: false` is still the removal this system reaches for first, and it is
+still the only one available for a department with any history at all.
 
 **บันทึกประวัติระบบ เป็นสิ่งเดียวที่เป็นแท็บทั้งแท็บ ไม่ใช่หัวข้อย่อย** และตั้งใจให้เป็น
 อย่างนั้น: ทุกหัวข้อภายใน ตั้งค่าระบบ เข้าถึงได้ทั้งสองบทบาท หัวข้อที่โผล่ให้
@@ -1012,8 +1133,14 @@ npm run reset-admin -- ADMIN
   เป็นใคร การใส่ชื่อใครลงไปตรงนั้นคือการแต่งขึ้น และร่องรอยที่แต่งขึ้นหนึ่งช่องก็ไม่ใช่
   หลักฐานสำหรับช่องอื่น ๆ อีกต่อไป ประวัติการแก้ทะเบียน พิมพ์มันออกมาว่า
   `ตั้งรหัสผ่านใหม่ (สคริปต์บนเซิร์ฟเวอร์)`
-- **รหัสผ่านชั่วคราวใช้ `generateTempPassword()`** ตัวเดียวกับที่หน้าจอใช้ ไม่มีสูตร
-  ที่สอง ดูหัวข้อ *รหัสผ่านชั่วคราว* ข้างบนว่าทำไมเรื่องนี้ถึงสำคัญ
+- **รหัสผ่านชั่วคราวใช้ `generateTempPassword()`** และตั้งแต่ **2026-09-02**
+  นี่คือ *ผู้เรียกรายเดียว* ของฟังก์ชันนั้นทั้งระบบ บรรทัดนี้เคยอ่านว่า “ตัวเดียวกับ
+  ที่หน้าจอใช้ ไม่มีสูตรที่สอง” ซึ่งไม่จริงแล้ว — หน้าจอตั้งรหัสผ่านเป็น **รหัสพนักงาน**
+  ส่วนสคริปต์นี้ยังสุ่ม และตั้งใจให้ต่างกัน: ADMIN คือทางกู้ของทุกบัญชีอื่น ไม่มี
+  ฝ่ายบุคคล อยู่เหนือมันคอยสังเกตว่ามีคนแปลกหน้าไปถึงก่อน และรหัสพนักงานคือสิ่งที่
+  พิมพ์อยู่ที่หน้าล็อกอินอยู่แล้ว ดูหัวข้อ *รหัสผ่านแรกเข้า* ข้างบนว่าทำไมเรื่องนี้ถึง
+  สำคัญ · ตรึงจากทั้งสองด้านด้วย `test/permissionRouteGuards.test.js` และ
+  `test/tempPassword.test.js`
 
 ถ้าบัญชีที่เข้าไม่ได้เป็นบัญชี **ฝ่ายบุคคล** สคริปต์นี้ไม่ใช่คำตอบ: ให้ ฝ่ายบุคคล
 คนอื่นหรือ ผู้ดูแลระบบ ตั้งรหัสใหม่ให้จาก ทะเบียนพนักงาน ซึ่งเร็วกว่าและบันทึกชื่อคน
@@ -1247,7 +1374,11 @@ lib/complianceExport.js   which five events count as the exercise of a
 lib/complianceQuery.js    the three reads behind it, kept apart for the reason
                           policyConfirmSave.js is; one loader for the screen
                           and the CSV so they cannot disagree
-test/                     114 files, run by `npm test`. Six named below as a
+lib/smartDate.js          ปี พ.ศ. หรือ ค.ศ. — the one place that subtracts 543,
+                          the one 2400, and the leap years judged in ค.ศ.;
+                          read by the roster form, both roster endpoints, the
+                          CSV importer and both holiday calendars — pure
+test/                     116 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1260,9 +1391,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1900 tests
-across 114 files**, measured 2026-09-02 on a clean checkout of this commit — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1977 tests
+across 116 files**, measured 2026-09-02 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -2553,11 +2684,32 @@ itself. Every other bad cell in this system announces itself; this one does not.
 So `lib/birthDate.js` interprets the whole column at once, before a single row
 is written:
 
-- **Accepted:** `YYYY-MM-DD`, `DD/MM/YYYY`, `D/M/YYYY`, ค.ศ. only. A year past
-  2500 is พ.ศ. and is **rejected with the ค.ศ. equivalent named** (`พ.ศ. 2541 =
-  ค.ศ. 1998`) rather than quietly having 543 subtracted — unlike the holiday
-  calendar's `normaliseDate()`, which converts, because a holiday that lands
-  543 years off is visibly absurd and a birthday is not.
+- **Accepted:** `YYYY-MM-DD`, `DD/MM/YYYY`, `D/M/YYYY`, either separator (`/`
+  or `-`), **in either era**. A year past 2400 is พ.ศ. and has 543 subtracted —
+  `19/09/2515` is stored as `1972-09-19` — read by `lib/smartDate.js`, which is
+  now the ONLY place in the tree that subtracts 543 or compares a year against
+  2400. The calendar check runs on the CONVERTED year: 29 February exists in
+  2539 only because it exists in 1996.
+
+  This read *"on the same floor the holiday calendar's `normaliseDate()` uses,
+  so the two readers of the era in this codebase cannot drift apart"* until
+  later the same day. Two readers agreeing on a number is not the same as one
+  reader, and there were four of them by then — `lib/holidays.js`,
+  `legacy/routes/holidays.js`, this module, and nothing at all on the roster
+  form. See [ปี พ.ศ. หรือ ค.ศ. — one reader for the whole
+  system](#ปี-พศ-หรือ-คศ--one-reader-for-the-whole-system).
+
+  This paragraph read *"ค.ศ. only … **rejected with the ค.ศ. equivalent named**
+  (`พ.ศ. 2541 = ค.ศ. 1998`) rather than quietly having 543 subtracted"* until
+  **2026-09-02**. The refusal was argued from the ambiguity below it, and the
+  two are not the same question: วัน/เดือน order is a guess about a file,
+  while `2515` has exactly one reading. What the refusal produced in practice
+  was HR retyping a column by hand out of a personnel file that keeps birthdays
+  in พ.ศ. — a worse source of wrong dates than the conversion it prevented. It
+  is **not quiet**: `resolveBirthDates` returns `converted`, the preview shows
+  `ℹ️ ระบบได้แปลงปี พ.ศ. เป็น ค.ศ. ให้อัตโนมัติแล้ว N รายการ` above the sample
+  rows and marks each converted row `(พ.ศ. → ค.ศ.)`, and the confirmation after
+  the import repeats the same count from the server.
 - **Evidence beats preference.** `15/05/1998` can only be read one way — no
   month is 15 — so it settles the order for every ambiguous row beside it, and
   the screen names the row that decided it. Excel rewrites the column as a
@@ -2575,6 +2727,81 @@ lands, the พนักงาน screen **shows the interpretation before it is 
 `05/03/1998 → 5 มีนาคม 1998` for the first rows, plus the rows that will be
 skipped — and uploads nothing until someone confirms. The preview runs the same
 pure module the route does; the server is still what enforces it.
+
+**The panel's colour is a claim about the file, not a standing caution.** It
+was amber for every readable file until 2026-09-02, which put a roster with
+nothing wrong with it under the same "!" as one with rows about to be dropped —
+and a warning that is always on is a warning nobody reads. It is now green when
+the file imports whole, amber only when `rowErrors` names rows that will be
+skipped, and red when nothing will be imported at all. ยืนยันนำเข้า is the
+app's ordinary green button and is live the moment the preview appears; a
+converted era rides in the ℹ️ line, which is `--info` precisely so it is not
+one of the two colours that mean *decide something*.
+
+### ปี พ.ศ. หรือ ค.ศ. — one reader for the whole system
+
+The rule is four lines long, which is exactly why it had been written four
+times by **2026-09-02**:
+
+> ปี **> 2400** → พ.ศ. → **ลบ 543** (`2515` → `1972`) · ปี **≤ 2400** → ค.ศ. →
+> ใช้ตามนั้น
+
+`lib/holidays.js` had it, `legacy/routes/holidays.js` had a hand copy of that,
+`lib/birthDate.js` had a third with a comment saying its 2400 was *"the same
+2400 the holiday calendar uses"* — a copy admitting to being one — and the
+roster form had none at all. All four now call **`lib/smartDate.js`**, and
+`test/smartDate.test.js` fails the build if any other file in `app/`, `lib/`,
+`src/`, `components/` or `legacy/` subtracts 543 or compares a year to 2400
+again. Adding 543 is not banned and could not be: every screen that prints a
+date does it, and a display that is wrong is seen the same day. Subtracting is
+what decides what gets **stored**, and that is wrong where nobody can see it.
+
+Collapsing them closed two holes that were live until that day:
+
+- **`normaliseDate()` handed back any `YYYY-MM-DD` untouched.** Of the four ways
+  one date can be written, the two ISO ones therefore skipped the era rule
+  entirely: an uploaded calendar saying `19/09/2569` imported as 2026 and one
+  saying `2569-09-19` imported as **the year 2569**, filing `Holiday.year` in a
+  century no screen in this app can draw. The same passthrough skipped the
+  calendar, so `2026-02-30` became a holiday on a day that does not exist.
+- **The roster form and its two endpoints never read the era at all.**
+  `Employee.birthDate` is matched against `^\d{4}-\d{2}-\d{2}$`, and
+  `2515-09-19` satisfies that perfectly — so a พ.ศ. year in ISO shape reached
+  the database verbatim from anything that was not the CSV import, and was then
+  read back as a birthday five centuries away, silently, because a birthday is
+  only ever compared against itself. `POST /api/employees` and
+  `PATCH /api/employees/:id` now read it through the same function and refuse a
+  cell they cannot read rather than dropping it — a วันเกิด is optional, so a
+  value quietly discarded looks exactly like a value nobody typed.
+
+**And the วันเกิด box can be typed into now**, which is the reason any of this
+came up. Every other date in this app is near today; a birthday is thirty to
+sixty years away, and HR is copying it off a personnel sheet that keeps it in
+พ.ศ. `PickDate` takes a `typeable` flag — **on for the two วันเกิด boxes and
+nothing else in the app** — which puts a `พิมพ์วันที่` row above the calendar
+that accepts either era in either shape and **says back what it understood
+before it is committed to**:
+
+```
+19/09/2515
+→ 19 กันยายน 2515 · แปลง พ.ศ. → ค.ศ. ให้แล้ว · เก็บเป็น ค.ศ. 1972-09-19
+```
+
+That echo is also what makes `DD/MM/YYYY` safe to assume for a typed value
+where a CSV column cannot assume it: `05/03/1998` is read as 5 มีนาคม **and
+says so**, to somebody standing there who can see that it is wrong. A value
+that is only wrong because it is the other way round — `03/25/1998` — is
+refused with the swap named (`25/03/1998`) rather than performed, which is the
+same guess the CSV importer refuses, declined in the one place a person could
+answer it. It commits on Enter or on ใช้วันที่นี้ and **never on blur**: a
+half-typed value committing itself when the reader clicks a day in the grid
+below would answer with the date they abandoned.
+
+**Storage is ค.ศ.; display stays พ.ศ. everywhere, unchanged.** `thaiDate` adds
+543 for every screen, and `thaiText` in `lib/smartDate.js` is the same sentence
+for the server side, where `lib/api.js` — which reaches for `fetch` and a token
+— has no business being. A test asserts the two agree rather than leaving it to
+hope.
 
 ---
 
@@ -3078,7 +3305,105 @@ signed entry from any month can be asked back.
 
 Reviewers find them on **คำขอถอนใบที่อนุมัติแล้ว**, above the approval queue,
 fed by `GET /api/entries?withdrawal=open` in whatever scope the caller already
-has. It is not batchable, for the reason rejection is not.
+has. This paragraph ended **"It is not batchable, for the reason rejection is
+not"** until 2026-09-02, when **อนุมัติให้ถอนทั้งหมด** was asked for and built —
+several requests do land together, and answering ten identical ones a card at a
+time is its own kind of not-reading.
+
+**What the old argument bought is the shape of the button.** It is drawn only
+above two or more; it writes nothing itself; and the box it opens is the
+single-request dialog repeated — every name, date, figure and **reason in full**,
+with the total coming off the books at the head of it. The thing the one-at-a-
+time rule was protecting, that somebody read what they are granting, is still
+what stands between the press and the write. The writes are then the ordinary
+one-entry POSTs in a loop, in order, because there is no batch endpoint and each
+grant is its own `history` row; a failure part-way leaves the grants before it
+standing, so what failed is **named** and the list is re-fetched rather than
+assumed.
+
+**There is still no batch refusal, and that is the half of the old sentence that
+was right.** A refusal carries a sentence the employee reads and one sentence
+cannot be written to five people at once — the same reason the queue never
+batches a rejection.
+
+### The row is a grid, and it was a flex line with one item allowed to shrink
+
+Fixed 2026-09-02, reported as *"ข้อความบีบอัดตกบรรทัดเป็นแนวตั้ง"*. The row held
+five things in one `.item` flex line — the date chip, the sentence, the figure,
+the status chip and two buttons — and four of the five were `flex: none`,
+about 430px between them. Only the middle one could give, and `min-width: 0`
+said it could give **everything**.
+
+**Measured on the built app at 360px, with the old rule set put back on the row
+from the console: the text column was 0.0px wide.** Not narrow — nought. The
+row came out **934.8px tall**, and the reason the employee had typed wrapped
+onto **21 lines** — the whole of what a reviewer is meant to read running down
+the left of the row one or two characters at a time, while the figure and the
+chip beside it held the width that would have fixed it. After the change, at
+the same width: text column **252px**, row **259.3px**.
+
+`.item.withdraw-item` in `app/styles.css` is a grid instead, and the space is
+dealt out rather than fought over:
+
+| | above 860px | below |
+|---|---|---|
+| the name band | row 1, beside the date chip | the same |
+| the rest of the text | row 2, `minmax(0, 1fr)`, indented under the name | the same, full width |
+| the two buttons | the right-hand column, bottom | own row, full width, 44px tall, equal halves |
+
+`minmax(0, 1fr)` is the declaration doing the work: an `auto` column sizes to
+its content and overflows, a plain `1fr` refuses to go below its minimum
+content width, and only `minmax(0, 1fr)` both takes what is left and gives it
+back.
+
+**What is nowrap and what is not** is the other half, and they are not the same
+answer. The employee code, the day with its clock span, the hours figure and
+both button labels are single facts and carry `.nb` — a decision whose label
+wraps at whatever width its row happened to leave has been read wrong. The name
+carries `word-break: keep-all`, so a Thai full name may only come apart at the
+space between its two runs. **The prose does not**: `เหตุผลที่ขอถอน` is free
+text somebody typed, and forbidding every break inside a Thai run would push
+the sentence out through the side of the card instead of wrapping it. The label
+`เหตุผลที่ขอถอน:` is nowrap; what follows it is not.
+
+The inline styles the row carried are gone in the same edit, for the reason
+`.item-main` records — an inline style is the one thing the 860px block cannot
+take back, and below 860px this row is a different shape entirely.
+
+### The row went from five cells to three the same day
+
+It read **"the figure and the status take a column of their own, stacked over
+two rows"** until later on 2026-09-02, and that is what the table above used to
+say. Three things changed, all asked for and all measured on the built app:
+
+**1 — the green `อนุมัติ` pill is gone.** It was `<StatusChip>`, drawing the
+entry's own status, and it was correct: these rows are still approved and still
+counted. But it sat a few pixels from a button reading **อนุมัติให้ถอน** — two
+small rounded objects side by side, one of them pressable, both saying อนุมัติ.
+It was reported as a duplicate button, which is exactly how it read.
+
+**What is NOT gone is the one thing it said that the card's heading does not.**
+These rows are `approved` **or** `pending_hr` — `cancelPermission` opens the ask
+at the *first* signature, not the last — and on a `pending_hr` row a grant takes
+back a figure ฝ่ายบุคคล never confirmed. That is said now as a grey clause at
+the end of the provenance line, `ใบนี้ยังรอฝ่ายบุคคลยืนยัน` (`.withdraw-unsigned`),
+in a column where nothing can be pressed. A chip was what got mistaken for a
+button; prose cannot be.
+
+**2 — the hours moved into the line they belong to.** `17:00–21:00  3.5 ชม.`,
+a quiet fill in the `.chip.muted` family at the size of the line it sits in,
+**inside the same `.nb` run as the clock**. That is not decoration: the figure
+is what a grant takes off the books, and a figure that can wrap away from the
+clock it belongs to is how the wrong row gets withdrawn.
+
+**3 — the date chip is centred on the NAME**, not on the four-line block. The
+name band is its own grid row and both cells are `align-self: center`, so they
+share the row's centre line — **measured at 0.00px apart at every width from
+360 to 1440**. A `margin-top` on the chip would have hit the same number once
+and drifted the first time a long name wrapped.
+
+The row is `date · name` over `· rest` with the buttons down the right, and the
+second row's first cell is empty so the prose keeps the chip's indent.
 
 ### An open request is ตกค้าง, and the card says so
 
@@ -6305,13 +6630,87 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1900/1900 pass in about 2 s**, measured 2026-09-02 across 114
-  files — **in a `git worktree` of this commit rather than in the working tree**,
-  which is the only way to count a tree while another round's files are sitting
-  uncommitted beside it. It read "1901" for two commits, and that figure was a
-  working-tree measurement with three of those files stashed: near enough to be
-  believed and one case out. **The newest is in `test/pickTime.test.js`** and the
-  count did not move — one case replaced another: the minute wheel carries **all sixty
+- **ลบแผนก, walked end to end on the built app** — 2026-09-02, `:3001` on a
+  restored copy of the real database (`primus_ot_deptwalk`; `:3000` never
+  touched). Six API calls with real cookies and both dialogs pressed through
+  with a pointer:
+  · `DELETE` on **ENG** as ผู้ดูแลระบบ → **409**, *"ไม่สามารถลบแผนกนี้ได้…
+  (พนักงาน 5 คน · ใบ OT 8 ใบ)"*
+  · a department created empty → HR **403**, admin **200 deleted**, then **404**
+  · **the race the second count exists for**: free when the screen asked,
+  somebody moved into it, `DELETE` → **409 (พนักงาน 1 คน)**; moved back out →
+  deleted.
+  On screen at 390 and 1280px: three chips — ทั้งหมด 5 / เฉพาะที่ใช้งานอยู่ 4 /
+  ไม่มีหัวหน้างาน 1 — the closed row's cells at **opacity 0.5** with its สถานะ
+  and จัดการ cells at **1.0**, the dot **rgb(46,119,71)** on and
+  **rgb(239,107,65)** off, and ลบแผนก at **x=16 of a 390px foot with 82px of
+  gap** before ยกเลิก. Pressing it on a held department opened *ลบแผนกนี้ไม่ได้*
+  with both counts printed; on the empty one, the confirmation — and pressing
+  through removed the row and said *"ลบแผนก ZZFREE · แผนกว่าง แล้ว"*.
+- **แก้ไขแผนก's สถานะ block, tightened the same day.** The paragraph beside the
+  pill went behind a (?) — it was two lines written *two ways*, one for on and
+  one for off, so it rewrote itself on every press, which reads as the rule
+  changing rather than the state. One wording now, true in both directions,
+  with the pill saying which direction it is in. Measured on the built app at
+  1280 and 390px, as both roles: **nothing but the pill in the block when the
+  tip is closed** (0 notes), one when it is opened, and the (?) **0.00px off
+  the heading's centre line**. The one sentence that did NOT go behind it is
+  the reason ฝ่ายบุคคล cannot press the pill — measured as the single note
+  standing open in the HR session, because a reason that arrives on hover
+  arrives after the click that did nothing. **ลบแผนก stopped being a filled
+  button** in the same pass: `--reject-bg` / `--reject-ink` / `--reject-line`,
+  the danger-light the refusal in `.foot-split` already wears, measured as
+  `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
+  still `disabled` for HR without losing its colours.
+- `npm test` — **1977/1977 pass in about 3 s**, measured 2026-09-02 across 116
+  files. **The newest is `test/smartDate.test.js`** — the era rule had been
+  written four times by that morning (`lib/holidays.js`,
+  `legacy/routes/holidays.js`, `lib/birthDate.js`, and nowhere at all on the
+  roster form), and all four now read `lib/smartDate.js`. Nineteen cases: the
+  rule, the 2400 line tested from both sides, the four spellings of one date,
+  29 February judged in ค.ศ., the `03/25/1998` refusal that names the swap
+  rather than making it, and — the two that are the reason the file exists —
+  **no other source file may subtract 543 or compare a year to 2400**. Adding
+  543 stays legal everywhere: a display that is wrong is seen the same day, and
+  a stored year that is wrong is seen by nobody. It read "1940/1940" until then.
+  **Before it, `test/birthDateImport.test.js`** — the roster CSV
+  reads พ.ศ. and ค.ศ. both, so the three cases that pinned the refusal are
+  gone and eleven stand in their place: `19/09/2515 → 1972-09-19`, the 2400
+  floor shared with the holiday calendar, `/` and `-` on both shapes,
+  29 February judged in ค.ศ. and not in พ.ศ., วัน/เดือน still refused when
+  nothing in the file settles it, and the count the preview owes HR. It read
+  "1932/1932" until then.
+  **Before it, `test/settingsCoverageUi.test.js`** — the สถานะ
+  block in แก้ไขแผนก holds the pill and nothing else, the sentence is behind a
+  `TipButton` in one wording rather than open in two, `.dept-state-row` may not
+  come back as a rule, and ลบแผนก is `.btn.ghost.danger` in the four-class
+  selector that cannot lose the tie to `.modal-foot .btn.ghost`. It read
+  "1931/1931" until then.
+  **Before it, `test/withdrawalRowLayout.test.js`** — twenty-one cases
+  over the reviewer's card on คำขอถอนใบที่อนุมัติแล้ว. It read "1915/1915" and
+  "thirteen cases" until that card learnt to answer several requests at once.
+  **Nine of the twenty-one are that round**: the count moved into the heading
+  and the chip that used to repeat it is gone; `.withdraw-list` holds the stack
+  to 400px and scrolls, because this card sits above the queue somebody works
+  every day and its height is set by how many people asked for something; and
+  the shape of **อนุมัติให้ถอนทั้งหมด** — above two or more only, an amber
+  outline that writes nothing, a box that prints every reason in full, one POST
+  per entry in order, and no ไม่อนุมัติทั้งหมด beside it.
+  **The row underneath** was five things in
+  one flex line with four of them `flex: none` and only the sentence allowed to
+  give. What is pinned there is the allocation: `minmax(0, 1fr)` on the text
+  column, the date chip and the name band sharing one grid row so their centres
+  cannot drift, the two-class selector that keeps `display: grid` from being
+  settled against `.item` by file order, and the split between what is held
+  together (a code, a clock span *with the figure inside it*, a button label)
+  and what is left to wrap (every line of Thai prose in the row).
+  **Three of the first twelve are about what is NOT drawn**: the row offers exactly
+  two buttons, `ไม่อนุมัติการถอน` and `อนุมัติให้ถอน`, and no chip of any kind —
+  the green `อนุมัติ` status pill beside them was read as a third decision.
+  What the pill said that the heading does not is kept as prose, and the test
+  fails if it is made a chip again. It read "1912" until then.
+  **Before it, in `test/pickTime.test.js`**, and the count did not
+  move — one case replaced another: the minute wheel carries **all sixty
   minutes on every form**, so the five-minute step, the `minuteStep` prop and
   the rule that inserted a held value into the list are all withdrawn. They were
   one arrangement and it existed for one reason, which was the scrolling: while

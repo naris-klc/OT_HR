@@ -4,7 +4,12 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { departmentPermission } from '../lib/departments.js';
+import {
+  DEPARTMENT_DELETE_BLOCKED,
+  departmentDeleteBlock,
+  departmentDeletePermission,
+  departmentPermission,
+} from '../lib/departments.js';
 import { rosterPermission, codeChangePermission, selfEditPermission } from '../lib/employees.js';
 import { authorizeReplay } from '../lib/policyVersion.js';
 
@@ -125,20 +130,62 @@ test('the edit handler hands the rule the STORED value, not the incoming one', (
   );
 });
 
-test('there is no way to delete a department, in any handler', () => {
+/**
+ * THIS TEST READ "there is no way to delete a department, in any handler"
+ * UNTIL 2026-09-02, and it walked the folder asserting that no file in it
+ * contained `export const DELETE` or any of mongoose's removal calls.
+ *
+ * The reason it gave has not changed and is repeated below, because it is still
+ * the thing being protected: `OtEntry.department` is a required reference, set
+ * when the request was filed — the แผนก is snapshotted onto the entry on
+ * purpose, so a mid-month transfer leaves the hours where they were worked.
+ * Delete a row entries point at and `groupByDepartment`
+ * (lib/departmentSummary.js) collapses every one of them into a single unnamed
+ * 'ไม่ระบุแผนก' bucket, permanently, shared with every other department ever
+ * deleted.
+ *
+ * WHAT THE OLD ASSERTION COULD NOT SAY is that all of that is about a row
+ * something POINTS AT. A department created with a typo in its code and never
+ * used costs none of it, and the blanket refusal left every one of those on the
+ * screen for ever. So the guard moved from "no handler" to "no row that anything
+ * references", which is checkable rather than assumed — and what is pinned here
+ * now is that the check is actually there and actually runs on the write path.
+ */
+test('a department that anything points at cannot be deleted, and the write path is what says so', () => {
+  const src = read(DEPT);
+  const del = src.slice(src.indexOf('export const DELETE'));
+  assert.ok(del, 'the DELETE handler is gone — the screen still offers ลบแผนก');
+
+  // The permission rule, from lib/, not roles named inline in the handler.
+  assert.match(del, /departmentDeletePermission\(await requireAuth\(req\)\)/);
+
   /**
-   * NOT AN OMISSION — THE POINT.
-   *
-   * `OtEntry.department` is a required reference, set when the request was
-   * filed: the แผนก is snapshotted onto the entry on purpose, so a mid-month
-   * transfer leaves the hours where they were worked. Delete the row and
-   * `groupByDepartment` (lib/departmentSummary.js) collapses every entry that
-   * pointed at it into one unnamed 'ไม่ระบุแผนก' bucket, permanently, together
-   * with every other department ever deleted. `active: false` costs none of
-   * that.
-   *
-   * Checked across the whole folder rather than on the two files named above,
-   * because the way this rule dies is a third route file appearing beside them.
+   * THE COUNT IS INSIDE THE DELETE HANDLER, not only in the GET the screen
+   * reads. A guard that runs only where the button is drawn is a guard that is
+   * off for a stale page and for `curl` — and the window it leaves open is
+   * exactly the one that matters: somebody moved into the department while the
+   * confirmation dialog was on screen.
+   */
+  assert.match(del, /departmentDeleteBlock\(await referencesTo\(/);
+  assert.match(
+    del.slice(0, del.indexOf('deleteOne')),
+    /if \(block\) return fail\(/,
+    'the delete runs before, or without, the block being checked',
+  );
+
+  // And the counts themselves name both collections, all-time — `headcount` on
+  // the list endpoint counts ACTIVE employees and is the wrong number here.
+  const counts = src.slice(src.indexOf('async function referencesTo'), src.indexOf('export const GET'));
+  assert.match(counts, /Employee\.countDocuments\(\{ department: id \}\)/);
+  assert.match(counts, /OtEntry\.countDocuments\(\{ department: id \}\)/);
+  assert.ok(!/active/.test(counts), 'the reference count started filtering by active');
+});
+
+test('…and no OTHER department handler removes anything', () => {
+  /**
+   * Checked across the whole folder rather than on the file above, because the
+   * way this rule dies is a third route file appearing beside them — one that
+   * deletes without asking `departmentDeleteBlock` first.
    */
   const dir = join(ROOT, 'app/api/departments');
   const walk = (p) => readdirSync(p, { withFileTypes: true }).flatMap((e) => (
@@ -146,8 +193,41 @@ test('there is no way to delete a department, in any handler', () => {
   ));
   for (const file of walk(dir)) {
     const src = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    assert.doesNotMatch(src, /export const DELETE/, `${file} deletes departments`);
-    assert.doesNotMatch(src, /deleteOne|deleteMany|findByIdAndDelete/, `${file} deletes departments`);
+    const removals = src.match(/deleteOne|deleteMany|findByIdAndDelete|remove\(\)/g) || [];
+    if (!removals.length) continue;
+    assert.equal(
+      file, join(dir, '[id]', 'route.js'),
+      `${file} removes departments — only the guarded handler may`,
+    );
+    assert.equal(removals.length, 1, `${file} has more than one removal path`);
+    assert.match(src, /departmentDeleteBlock/, `${file} removes without the guard`);
+  }
+});
+
+test('the guard is a pure rule, and it refuses on either count alone', () => {
+  // One employee and no entries is still a department somebody belongs to;
+  // one entry and no employees is still a month's report that resolves its
+  // แผนก label through this row. Either is enough.
+  assert.equal(departmentDeleteBlock({ employees: 0, entries: 0 }), null);
+  assert.equal(departmentDeleteBlock(), null, 'called with nothing, it must not refuse');
+  for (const held of [{ employees: 1, entries: 0 }, { employees: 0, entries: 1 }, { employees: 3, entries: 9 }]) {
+    const block = departmentDeleteBlock(held);
+    assert.equal(block.status, 409);
+    assert.ok(block.error.startsWith(DEPARTMENT_DELETE_BLOCKED), 'the refusal stopped quoting the shared sentence');
+    // The advice is the point of the sentence — a refusal that only refuses
+    // leaves somebody with a department they cannot get rid of.
+    assert.match(block.error, /ปิดใช้งาน/);
+  }
+});
+
+test('deleting is ผู้ดูแลระบบ’s, and the refusal says what may be deleted at all', () => {
+  assert.equal(departmentDeletePermission({ role: 'admin' }).ok, true);
+  assert.equal(departmentDeletePermission(null).status, 401);
+  for (const role of ['hr', 'manager', 'employee']) {
+    const no = departmentDeletePermission({ role });
+    assert.equal(no.ok, false);
+    assert.equal(no.status, 403);
+    assert.match(no.error, /ผู้ดูแลระบบ/);
   }
 });
 
@@ -189,7 +269,11 @@ test('the roster handler passes resetPassword into the self rule', () => {
 test('the refusal happens before anything is written or generated', () => {
   const src = read(ROSTER);
   const asked = src.indexOf('selfEditPermission(');
-  const generated = src.indexOf('generateTempPassword()');
+  // `defaultPassword(employee.code)` since 2026-09-02 — it was
+  // `generateTempPassword()` while the first password was random. What the
+  // ordering is about is unchanged: the refusal must land before the handler
+  // decides a password at all, and long before it writes one.
+  const generated = src.indexOf('defaultPassword(employee.code)');
   const saved = src.indexOf('await employee.save()');
   assert.ok(asked > 0 && generated > 0 && saved > 0, 'the roster handler changed shape');
   assert.ok(
@@ -219,10 +303,25 @@ test('and the way back for an Admin who forgot is off the web entirely', () => {
   const src = read(RESET_SCRIPT);
   assert.ok(existsSync(join(ROOT, RESET_SCRIPT)), 'the recovery script is gone');
 
-  // The same generator as every other reset. A second formula here is how the
-  // derived-from-the-employee-code password came back last time.
+  /**
+   * STILL THE RANDOM GENERATOR, AND THIS IS NOW THE ONLY PLACE THAT USES IT.
+   *
+   * Every reset a screen can ask for became `defaultPassword(employee.code)` on
+   * 2026-09-02. This one deliberately did not, and the reason is the account:
+   * ADMIN is the row that can restate a signed-off month and read บันทึกระบบ,
+   * `npm run reset-admin` is the ONE way back into it, and there is no
+   * ฝ่ายบุคคล above it to notice a stranger got there first. A password
+   * anybody could read off the roster is an acceptable trade for a พนักงาน who
+   * will be made to change it at their next login; it is not one for the
+   * account that recovers every other account.
+   *
+   * It also cannot be one. The employee code is the thing typed at the login
+   * screen — so a recovery that set ADMIN's password to ADMIN's own code would
+   * hand the whole system to anybody who has ever seen an admin row.
+   */
   assert.match(src, /generateTempPassword\(\)/);
-  assert.doesNotMatch(src, /Math\.random|Primus@/, 'the script invented its own password scheme');
+  assert.doesNotMatch(src, /defaultPassword|Math\.random|Primus@/,
+    'the recovery script hands out a password computable from the roster');
 
   // It forces the replacement, like every reset the screen makes.
   assert.match(src, /mustChangePassword:\s*true/);

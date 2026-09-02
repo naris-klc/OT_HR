@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
-import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
+import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
 import { Alert, PasswordInput } from './common.jsx';
 import Delegation from './Delegation.jsx';
 
@@ -184,6 +184,22 @@ function Details({ user }) {
 const MIN_LENGTH = PASSWORD_MIN_LENGTH; // one number, shared with the server
 
 /**
+ * The sentence under the box, and the whole of what somebody needs before
+ * typing.
+ *
+ * It read "รหัสผ่านใหม่ต้องยาวอย่างน้อย 6 ตัวอักษร" until 2026-09-02 and said
+ * nothing about which characters were allowed — which was fine while the answer
+ * was "any", and stopped being fine the moment the server grew a character set.
+ * A rule the server enforces and the form does not mention is a rule somebody
+ * meets as a refusal.
+ *
+ * Said in one line rather than as a list of classes: the point of the change is
+ * that Thai works, so Thai is named first.
+ */
+const PASSWORD_HELP = `รหัสผ่านต้องมีความยาวอย่างน้อย ${MIN_LENGTH} ตัวอักษร `
+  + '(สามารถใช้ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข หรืออักขระพิเศษได้)';
+
+/**
  * WHAT THE BROWSER AND ITS EXTENSIONS MUST NOT DO TO THIS FORM.
  *
  * Three boxes in a row, two of them named "password", is the exact shape a
@@ -249,12 +265,23 @@ export function ChangePassword({ onDone, hint }) {
   // Checked here as well as on the server: the server never sees `confirm`,
   // so a typo in it is only catchable on this side.
   const mismatch = confirm.length > 0 && next !== confirm;
-  const tooShort = next.length > 0 && next.length < MIN_LENGTH;
+  /**
+   * The server's own rule, run on what is in the box — imported rather than
+   * restated, for the reason AddEmployee imports it too: a length and a
+   * character set written twice is a pair that agrees until one is edited.
+   *
+   * It replaced a bare `next.length < MIN_LENGTH` on 2026-09-02. The message
+   * matters more than the check does: when a refusal is about a character
+   * rather than a length, "สั้นเกินไป" sends somebody to add letters to a
+   * password that will be refused again — the shared rule names the character
+   * instead, including the ones that render as nothing.
+   */
+  const shape = next.length > 0 ? passwordShapePermission(next) : { ok: true };
   // Re-typing the issued password would clear mustChangePassword without
   // changing anything, so the server refuses it — said here too, before the
   // round trip, where the typing is still on screen.
   const unchanged = next.length > 0 && next === current;
-  const ready = current && next.length >= MIN_LENGTH && next === confirm && !unchanged;
+  const ready = current && next.length > 0 && shape.ok && next === confirm && !unchanged;
 
   async function submit(e) {
     e.preventDefault();
@@ -280,8 +307,8 @@ export function ChangePassword({ onDone, hint }) {
       <h2>เปลี่ยนรหัสผ่าน</h2>
       <div className="hint">
         {hint || <>
-          รหัสผ่านใหม่ต้องยาวอย่างน้อย {MIN_LENGTH} ตัวอักษร
-          · เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
+          {PASSWORD_HELP}
+          {' '}· เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
         </>}
       </div>
 
@@ -314,7 +341,7 @@ export function ChangePassword({ onDone, hint }) {
             minLength={MIN_LENGTH}
             required
           />
-          {tooShort && <div className="field-note error">สั้นเกินไป — ต้องยาวอย่างน้อย {MIN_LENGTH} ตัวอักษร</div>}
+          {!shape.ok && <div className="field-note error">{shape.error}</div>}
           {unchanged && <div className="field-note error">รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม</div>}
         </div>
 
@@ -351,7 +378,7 @@ export function ChangePassword({ onDone, hint }) {
           <button className="btn" disabled={busy || !ready}>
             {busy ? 'กำลังบันทึก…' : 'บันทึกรหัสผ่านใหม่'}
           </button>
-          {!ready && !busy && !tooShort && !unchanged && !mismatch && (
+          {!ready && !busy && shape.ok && !unchanged && !mismatch && (
             <div className="field-note">กรอกให้ครบทั้งสามช่อง ปุ่มจึงจะเป็นสีเขียวและกดบันทึกได้</div>
           )}
         </div>

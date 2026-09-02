@@ -113,11 +113,17 @@ export default function App() {
  * ตั้งรหัสผ่านของคุณเอง — the gate between an HR-issued password and the rest
  * of the system.
  *
- * The initial password is derived from the employee code, which is printed on
+ * The initial password is the employee's own รหัสพนักงาน, which is printed on
  * every form in the building, so anybody who has seen a roster can log in as
  * anybody who never changed it. The gate is what makes "แล้วค่อยให้พนักงาน
  * เปลี่ยนรหัสผ่านทีหลัง" a step that actually happens rather than one everyone
  * means to get around to.
+ *
+ * That sentence was written for the scheme this system had before 2026-08, was
+ * left standing while the default was a random `generateTempPassword()` value,
+ * and became true again on 2026-09-02 when HR asked for the employee code back
+ * (see lib/employees.js). It is the whole justification for this gate existing:
+ * remove the gate and the roster becomes a list of working logins.
  *
  * ออกจากระบบ is the only other way out, and it leaves the flag set — coming
  * back lands here again.
@@ -136,8 +142,18 @@ function FirstLogin({ user, onDone, onLogout }) {
         <ChangePassword
           onDone={onDone}
           hint={<>
-            “รหัสผ่านเดิม” คือรหัสที่ฝ่ายบุคคลแจ้งให้ทราบ
-            {' '}· รหัสผ่านใหม่ต้องยาวอย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร และต้องไม่ซ้ำกับรหัสเดิม
+            {/* Named outright rather than left as "รหัสที่ฝ่ายบุคคลแจ้งให้ทราบ".
+                Whoever is reading this got here by typing that value a moment
+                ago — but the ones who get stuck are the ones who were told
+                nothing and guessed, and for them this line is the answer. */}
+            “รหัสผ่านเดิม” คือ<strong>รหัสผ่านเริ่มต้นสำหรับเข้าใช้งานครั้งแรก หรือหลังการรีเซ็ต
+            {' '}ซึ่งคือรหัสพนักงานของคุณ</strong> (หรือรหัสอื่นที่ฝ่ายบุคคลแจ้งให้ทราบ)
+            {/* The character set named here as well as on หน้าโปรไฟล์, because
+                this gate is where most people meet the form for the only time —
+                and it is the screen where somebody is most likely to reach for
+                a Thai word. */}
+            {' '}· รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร
+            {' '}(ใช้ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข หรืออักขระพิเศษได้) และต้องไม่ซ้ำกับรหัสเดิม
           </>}
         />
         <div className="card">
@@ -318,7 +334,15 @@ function Login({ onLogin }) {
               {busy ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
             </button>
           </form>
+          {/* The line that answers "I have never logged in" without anybody
+              having to ask. It goes under the form rather than beside the
+              password box: somebody who knows their password reads neither, and
+              somebody who does not is looking at the bottom of the card for a
+              way out — which used to be ติดต่อฝ่ายบุคคล and one phone call. */}
           <div className="foot">
+            รหัสผ่านเริ่มต้นสำหรับเข้าใช้งานครั้งแรก หรือหลังการรีเซ็ต คือ <strong>รหัสพนักงานของคุณ</strong>
+            {' '}— ระบบจะให้ตั้งรหัสผ่านของตัวเองทันทีที่เข้าครั้งแรก
+            <br />
             ระบบใช้งานได้ทั้งบนมือถือและคอมพิวเตอร์ · หากลืมรหัสผ่าน ติดต่อฝ่ายบุคคล
           </div>
         </div>

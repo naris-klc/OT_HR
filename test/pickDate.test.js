@@ -158,7 +158,14 @@ test('สามระดับ — วัน เดือน ปี — แล�
    * caption.
    */
   assert.match(code, /const \[view, setView\] = React\.useState\(mode === 'day' \? 'day' : 'month'\);/);
-  assert.match(code, /onUp=\{\(\) => setView\('month'\)\}/);
+  /**
+   * It read `onUp={() => setView('month')}` until 2026-09-02, when `typeable`
+   * arrived and the way up became the moment the reader chooses the grid over
+   * the typing box: the day view they come back DOWN to has to take the focus
+   * the ordinary way, and `typing` is what says so. The step up is still one
+   * press and still lands on the months — that is what this line is here for.
+   */
+  assert.match(code, /onUp=\{\(\) => \{ setTyping\(false\); setView\('month'\); \}\}/);
   assert.match(code, /onUp=\{\(\) => setView\('year'\)\}/);
   // A month picked in a DAY picker comes back down; in a month picker it IS the
   // answer, because a งวด is a month.

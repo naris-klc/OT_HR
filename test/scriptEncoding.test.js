@@ -78,6 +78,16 @@ test('scripts/backup.ps1 keeps its BOM — it is written in Thai', () => {
   assert.ok(nonAscii(buf).length > 0, 'backup.ps1 has no Thai left; the BOM rule was about that');
 });
 
+test('scripts/lan-url.ps1 keeps its BOM — it is written in Thai', () => {
+  // Same answer as backup.ps1 and for the same reason: the person who runs it is
+  // the one who has been told "เข้าเว็บไม่ได้", not a developer. It is run by
+  // hand rather than by Task Scheduler, but `powershell.exe` is still 5.1 on
+  // this box, so an editor that eats the three bytes breaks it exactly as badly.
+  const buf = readFileSync(join(SCRIPTS, 'lan-url.ps1'));
+  assert.ok(hasBom(buf), 'scripts/lan-url.ps1 lost its UTF-8 BOM — see the 🔴 box in README');
+  assert.ok(nonAscii(buf).length > 0, 'lan-url.ps1 has no Thai left; the BOM rule was about that');
+});
+
 test('scripts/start-server.ps1 stays ASCII — it needs no BOM to lose', () => {
   // The other answer to the same problem. Nothing in it is outside ASCII, so
   // there is no encoding for an editor to get wrong; the Thai that explains it

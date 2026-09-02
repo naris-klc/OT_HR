@@ -4,13 +4,13 @@ import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
   approvalScope, publicEmployee, rosterPermission, chosenPasswordPermission, signingScope,
-  signingCoveragePermission,
+  signingCoveragePermission, defaultPassword,
 } from '@/lib/employees.js';
 import { approvalDepartments } from '@/lib/entries.js';
 import Department from '@/src/models/Department.js';
-import { generateTempPassword } from '@/lib/tempPassword.js';
 import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
+import { smartDate } from '@/lib/smartDate.js';
 
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
@@ -130,6 +130,24 @@ export const POST = route(async (req) => {
    * Read only when there is something to check: the ordinary create sends
    * nothing and must not pay for a collection scan of แผนก to be told so.
    */
+  /**
+   * วันเกิด, in whichever era and shape it arrived in.
+   *
+   * READ ON THE SERVER AND NOT ONLY IN THE BOX, and the reason is the schema
+   * one line further down: `birthDate` is matched against `^\d{4}-\d{2}-\d{2}$`,
+   * which `2515-09-19` satisfies perfectly. A พ.ศ. year in ISO shape was
+   * therefore stored verbatim by anything that did not go through the form —
+   * and then read back as a birthday five centuries away, silently, because
+   * nothing downstream compares a birthday against anything but itself.
+   *
+   * The refusal is loud rather than a dropped field: a วันเกิด is optional, so
+   * a value quietly discarded for being unreadable looks exactly like a value
+   * nobody typed. `smartDate` treats an empty string as no value at all, which
+   * is what keeps the field clearable.
+   */
+  const birth = smartDate(birthDate, { label: 'วันเกิด' });
+  if (birth.error) return fail(birth.error, 400);
+
   let extraDepts;
   if (approvesDepartments !== undefined) {
     const known = await Department.find().select('_id').lean();
@@ -145,9 +163,10 @@ export const POST = route(async (req) => {
     company: company || undefined,
     approvesCompany: signs.value,
     ...(extraDepts === undefined ? {} : { approvesDepartments: extraDepts }),
-    // Optional. An empty string must become undefined, not '', or the schema's
-    // YYYY-MM-DD match rejects the whole save.
-    birthDate: birthDate || undefined,
+    // Optional, and always ค.ศ. by the time it reaches here — see `birth`
+    // above. `null` from an empty box must become undefined, not '', or the
+    // schema's YYYY-MM-DD match rejects the whole save.
+    birthDate: birth.date || undefined,
   });
   /**
    * A NEW ROW CAN BE STRANDED THE MOMENT IT EXISTS — a Themtech พนักงาน created
@@ -197,7 +216,18 @@ export const POST = route(async (req) => {
   );
   if (!cover.ok) return fail(cover.error, 409);
 
-  const issued = chosen ?? generateTempPassword();
+  /**
+   * The first password: what HR typed, or — when they left the box alone — the
+   * new row's own รหัสพนักงาน.
+   *
+   * `employee.code` rather than the `code` off the body, so the value hashed
+   * here is the one the roster will actually show. They are the same string
+   * today; reading the document is what keeps them the same string if the model
+   * ever normalizes a code on the way in, and a first password that differs
+   * from the printed code by one character is indistinguishable from a wrong
+   * password to everybody involved.
+   */
+  const issued = chosen ?? defaultPassword(employee.code);
   await employee.setPassword(issued);
   // Somebody else knows this password — it is not the employee's until they
   // have replaced it, and until then the client will not let the account
@@ -237,9 +267,12 @@ export const POST = route(async (req) => {
     actor,
   });
 
-  // The GENERATED password comes back so the screen that created the account can
-  // show HR what to hand over. It is never readable again: only the hash is
-  // stored, and every roster read goes through publicEmployee().
+  // The password the SERVER decided comes back, so the screen that created the
+  // account can show HR what to hand over rather than working it out a second
+  // time. It read "It is never readable again" until 2026-09-02, when the
+  // default became the employee code — losing it now costs a look at the
+  // roster, not a reset. Sent regardless, because the screen must show what was
+  // stored and not what it assumes was stored.
   //
   // One HR typed is not echoed. They already have it — it is in the box they
   // typed it into — and sending it back would put a password the server never

@@ -59,18 +59,29 @@ test('and .btn.ghost.danger still draws red, after .btn.ghost', () => {
 test('the submit button is the plain green .btn — no variant to dilute it', () => {
   const code = sourceOf(PROFILE);
   assert.match(code, /<button className="btn" disabled=\{busy \|\| !ready\}>/);
-  // ready is what turns it green; the four conditions are the whole gate.
+  /**
+   * `ready` is what turns it green, and the four conditions are the whole gate.
+   *
+   * The length half read `next.length >= MIN_LENGTH` until 2026-09-02, when the
+   * server grew a character set and a byte ceiling alongside the length and the
+   * form started asking `passwordShapePermission` — the same function, imported
+   * rather than restated, so the button and the 400 cannot disagree about what
+   * is typeable. `next.length > 0` is still here beside it because the shared
+   * rule is only consulted once something has been typed: an empty box is not
+   * scolded for being empty before anybody has had a turn.
+   */
   assert.match(
     code,
-    /const ready = current && next\.length >= MIN_LENGTH && next === confirm && !unchanged;/,
+    /const ready = current && next\.length > 0 && shape\.ok && next === confirm && !unchanged;/,
   );
+  assert.match(code, /passwordShapePermission\(next\)/, 'the form checks a rule of its own');
 });
 
 test('a grey button says why it is grey — and stands down when a field already has', () => {
   const code = sourceOf(PROFILE);
   assert.match(
     code,
-    /\{!ready && !busy && !tooShort && !unchanged && !mismatch && \(/,
+    /\{!ready && !busy && shape\.ok && !unchanged && !mismatch && \(/,
     'the readiness note must not talk over a field-level error',
   );
   assert.match(code, /ปุ่มจึงจะเป็นสีเขียวและกดบันทึกได้/);

@@ -208,8 +208,13 @@ test('ยังไม่ถึงวัน is blue because it is information, no
 test('the flat grey chip four other screens use did not move', () => {
   // `.chip.neutral` is a new class, not a change to `.chip.muted`.
   assert.match(css, /\.chip\.muted \{ background: var\(--neutral-wash\); color: var\(--muted\); \}/);
+  // WithdrawalRequests.jsx was the fourth of these until 2026-09-02, when its
+  // `{n} คำขอ` chip went and the count moved into the heading — the right of
+  // that line is อนุมัติให้ถอนทั้งหมด now, and one line does not print the same
+  // figure twice. Three witnesses are still three; what this test is about is
+  // that `.chip.muted` itself did not move, not how many screens wear it.
   for (const f of ['components/ApprovalQueue.jsx', 'components/DepartmentView.jsx',
-    'components/WithdrawalRequests.jsx', 'components/BirthdayQueue.jsx']) {
+    'components/BirthdayQueue.jsx']) {
     assert.match(read(f), /className="chip muted"/, `${f} lost its plain chip`);
   }
   // …and no birthday status is still wearing it.

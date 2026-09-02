@@ -149,30 +149,43 @@ test('and there is one door, so all four reach the same answer', () => {
 });
 
 /**
- * AND ONE DIALOG OPTS BACK IN. ตั้งรหัสผ่านใหม่ borrows `dirty` to mean "you
- * have not written this password down", and no amount of retyping brings that
- * back — so there, and only there, the ways out ask first.
+ * AND NOW NOTHING OPTS BACK IN.
+ *
+ * ตั้งรหัสผ่านใหม่ used to, and was the only one: it borrowed `dirty` to mean
+ * "you have not written this password down", because the value was random and
+ * stored only as a hash, so one reflexive ✕ lost it for good and the repair was
+ * another reset. It read `dirty={!written}` with `dirtyBlocksClose` beside it,
+ * and this test asserted exactly one caller in the app.
+ *
+ * On 2026-09-02 the first password became the employee's own รหัสพนักงาน
+ * (lib/employees.js), and with it the thing being guarded stopped being
+ * unrecoverable — closing that dialog early now costs a glance at the roster.
+ * The guard came off, and what this test pins is that it stays off: every way
+ * out of every dialog in this app is one action.
+ *
+ * The prop still exists on Modal and is still honoured. Keeping it is what
+ * makes the next genuinely unrecoverable dialog a one-line opt-in rather than a
+ * re-derivation — and this test is what makes adding one a deliberate act.
  */
-test('the unrecoverable one keeps the question in front of every way out', () => {
-  const admin = readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  const dialog = admin.slice(admin.indexOf('title="รหัสผ่านชั่วคราว"'), admin.indexOf('footer={(requestClose)', admin.indexOf('title="รหัสผ่านชั่วคราว"')));
-  assert.match(dialog, /dirty=\{!written\}/);
-  assert.match(dialog, /dirtyBlocksClose/, 'หน้ารหัสผ่านปิดได้ในกดเดียว — รหัสหายถาวร');
-
-  // It is the only caller that sets it: a second one is either a second
-  // unrecoverable thing (worth knowing about) or the guard creeping back across
-  // the app. Counted on the stripped source — the note beside it names the prop
-  // too, and prose is not a caller.
-  assert.equal([...admin.matchAll(/dirtyBlocksClose/g)].length, 1);
-
-  // Nowhere else in the app, either.
-  const others = ['components/OtForm.jsx', 'components/birthdayActions.jsx',
-    'components/ApprovalQueue.jsx', 'components/EmployeeView.jsx', 'components/Delegation.jsx'];
-  for (const file of others) {
-    assert.ok(!readFileSync(join(ROOT, file), 'utf8').includes('dirtyBlocksClose'),
+test('nothing in the app holds a dialog shut any more', () => {
+  const screens = ['components/AdminView.jsx', 'components/OtForm.jsx',
+    'components/birthdayActions.jsx', 'components/ApprovalQueue.jsx',
+    'components/EmployeeView.jsx', 'components/Delegation.jsx'];
+  for (const file of screens) {
+    // Comments stripped: the note in AdminView explains why the guard came off
+    // and names the prop doing it, and prose is not a caller.
+    const src = readFileSync(join(ROOT, file), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(!src.includes('dirtyBlocksClose'),
       `${file} เปิดยามกลับมาแล้ว — ทางออกจะกลายเป็นสองจังหวะอีก`);
   }
+
+  // And the reset dialog specifically: no tick, nothing gating เสร็จสิ้น.
+  const admin = readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const start = admin.indexOf('function ResetPassword(');
+  const dialog = admin.slice(start, admin.indexOf('function Holidays(', start));
+  assert.ok(!/written/.test(dialog), 'จดรหัสผ่านไว้แล้ว กลับมาแล้ว — ปุ่มปิดจะถูกล็อกอีก');
 });
 
 test('“ปิดโดยไม่บันทึก” takes the dialog down, with nothing standing in its way', () => {

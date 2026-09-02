@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { THAI_MONTHS, thaiDate, periodLabel } from '@/lib/api.js';
+import { smartDate } from '@/lib/smartDate.js';
 import { Popover, PopFoot, PickerBox, usePicker } from './popover.jsx';
 
 /**
@@ -43,6 +44,15 @@ import { Popover, PopFoot, PickerBox, usePicker } from './popover.jsx';
  * `min`/`max` grey the days out and refuse them. The keyboard walks the grid.
  * The popup is dismissed by Escape, by a press outside, and by the page
  * scrolling under it.
+ *
+ * ── AND ONE THING THE NATIVE INPUT NEVER DID ──────────────────────────────
+ * `typeable` puts a พิมพ์วันที่ box at the top of the panel that takes a date
+ * in either era — `19/09/2515` or `1972-09-19` — reads it with the same
+ * `lib/smartDate.js` the CSV import and the roster endpoints use, and says
+ * back what it understood before it commits. OFF everywhere by default and ON
+ * for วันเกิด alone, which is the only date in this app that is decades from
+ * today and the only one anybody already has written down in พ.ศ. in front of
+ * them. See `TypeRow`.
  *
  * `required` IS THE ONE THING NOT CARRIED OVER, and it is named here rather
  * than left to be discovered. A `<button>` is not a form control, so the
@@ -117,16 +127,28 @@ const DOW_SHORT = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.']
  * the same keys, the roving focus is the same focus, and a second copy of it is
  * a second thing to keep in step with the first.
  */
-function Grid({ cols, cells, at, onMove, onPick, label }) {
+function Grid({ cols, cells, at, onMove, onPick, label, autoFocus = true }) {
   const ref = React.useRef(null);
+  /* MOUNT IS THE ONLY RUN `autoFocus` CAN SPEAK FOR, and it has to be told
+     apart from the others by hand: every later run of the effect is the cursor
+     moving, which is the reader's own keypress and must land where they sent
+     it. A `typeable` panel opens with the caret in its พิมพ์วันที่ box, so the
+     grid does not take the focus out from under the first keystroke — but it
+     still takes it on the way back down from เลือกปี, where the box is not
+     rendered and a grid that declined to focus would leave the reader nowhere.
+     See `typing` in `Calendar`. */
+  const first = React.useRef(true);
 
   /* The focused cell is the only one in the tab order — the APG pattern for a
      date grid — so Tab leaves the calendar rather than walking 42 days, and the
      arrows are what move inside it. Focus follows the cursor on every change,
      which is also what puts focus INTO the panel when it opens. */
   React.useEffect(() => {
+    const opening = first.current;
+    first.current = false;
+    if (opening && !autoFocus) return;
     ref.current?.querySelector('[data-at="1"]')?.focus({ preventScroll: true });
-  }, [at, cells.length]);
+  }, [at, cells.length, autoFocus]);
 
   function onKeyDown(e) {
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.key];
@@ -179,6 +201,117 @@ function Grid({ cols, cells, at, onMove, onPick, label }) {
   );
 }
 
+/**
+ * พิมพ์วันที่ — the one box in this control a person may type into.
+ *
+ * WHY A BIRTHDAY NEEDED IT. Every other date in this app is near today: a
+ * วันที่เริ่ม opens on today, a งวด is this month or last. `birthDate` is the
+ * only field whose answer is thirty to sixty years away, and a grid is the
+ * wrong shape for that even with the year page — a colleague born in 2515 is
+ * two taps into เลือกปี, four turns of a twelve-year page, then a month, then a
+ * day, and HR has the date on the personnel sheet in front of them in the
+ * shape they would type in one second. So this row sits above the grid and the
+ * grid stays exactly as it was, for the people using it the other way.
+ *
+ * IT ACCEPTS BOTH ERAS AND BOTH SHAPES, which is the whole point of it: what
+ * is on that personnel sheet is `19/09/2515`, and a box that only took
+ * `1972-09-19` would be asking HR to do the subtraction — by hand, once per
+ * employee, with nothing checking it. `lib/smartDate.js` does the reading, the
+ * same function the CSV import and both roster endpoints use, so a birthday
+ * typed here and the same birthday uploaded in a file cannot be read
+ * differently.
+ *
+ * AND IT SAYS WHAT IT UNDERSTOOD BEFORE IT IS COMMITTED TO. The line under the
+ * box is the whole safety of typing: `19 กันยายน 2515` reads back in the era
+ * HR reads in, and `เก็บเป็น ค.ศ. 1972-09-19` says what will actually be
+ * stored, so the two numbers can never be mistaken for one another. That echo
+ * is also what makes DD/MM/YYYY safe to assume here where a CSV column cannot
+ * assume it: `05/03/1998` is read as 5 มีนาคม and SAYS SO, to a person who is
+ * standing right there and can see that it is wrong.
+ *
+ * ENTER OR ใช้วันที่นี้, and deliberately not blur. A half-typed value
+ * committing itself when the reader clicks a day in the grid below would
+ * answer with the date they abandoned rather than the one they just pressed.
+ */
+function TypeRow({ min, max, onPick }) {
+  const [text, setText] = React.useState('');
+  const [refused, setRefused] = React.useState('');
+
+  const typed = text.trim();
+  const read = typed ? smartDate(typed, { label: 'วันที่' }) : null;
+  // A date this box may not hold is not a reading error — it parsed perfectly,
+  // and saying "ไม่ใช่รูปแบบที่รองรับ" about it would send the reader looking
+  // at their typing instead of at the range.
+  const outOfRange = Boolean(read?.date) && dayBlocked(read.date, min, max);
+  const usable = Boolean(read?.date) && !outOfRange;
+
+  const commit = () => {
+    if (!typed) return;
+    if (!read.date) { setRefused(read.error); return; }
+    if (outOfRange) { setRefused('วันที่นี้อยู่นอกช่วงที่เลือกได้ในช่องนี้'); return; }
+    onPick(read.date);
+  };
+
+  return (
+    <div className="cal-type">
+      <div className="cal-type-row">
+        <input
+          className="cal-type-in"
+          type="text"
+          /* NOT `type="date"`. The ban this file exists under is about the
+             browser's CALENDAR, which `type="date"` brings with it and which no
+             selector in app/styles.css can reach — and it would refuse a พ.ศ.
+             year besides, since it parses to the browser's own calendar. This
+             is a text box that hands its contents to our reader. */
+          inputMode="numeric"
+          autoComplete="off"
+          /* The panel is opened BY a press on the box and exists to be answered
+             — the caret belongs here, not two Tab presses away. `Grid` is told
+             to keep its hands off on the same mount; see `autoFocus` there. */
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
+          aria-label="พิมพ์วันที่ พ.ศ. หรือ ค.ศ. ก็ได้"
+          placeholder="เช่น 19/09/2515"
+          value={text}
+          onChange={(e) => { setText(e.target.value); setRefused(''); }}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            // The panel can sit inside a <form> — บันทึก OT แทนพนักงาน is one —
+            // and an unswallowed Enter submits it with a half-filled date.
+            e.preventDefault();
+            commit();
+          }}
+          /* EXPLAINS, NEVER COMMITS — the distinction is the whole reason this
+             is not `onBlur={commit}`. Leaving the box with something in it that
+             cannot be read is the moment to say why, and ใช้วันที่นี้ is greyed
+             out precisely then, so Enter would otherwise be the only way to
+             find out. Nothing is picked here: a half-typed value committing
+             itself when the reader clicks a day in the grid below would answer
+             with the date they abandoned. */
+          onBlur={() => { if (typed && !read.date) setRefused(read.error); }}
+        />
+        <button type="button" className="btn ghost cal-type-go" onClick={commit} disabled={!usable}>
+          ใช้วันที่นี้
+        </button>
+      </div>
+      {/* One line, and which line it is says everything: the reading when there
+          is one, the refusal when the reader has asked for it by pressing, and
+          the format hint while the box is still empty. */}
+      {usable && (
+        <div className="cal-type-read">
+          → {thaiDate(read.date)}
+          {read.converted && <span className="cal-type-era"> · แปลง พ.ศ. → ค.ศ. ให้แล้ว</span>}
+          <span className="cal-type-iso"> · เก็บเป็น ค.ศ. {read.date}</span>
+        </div>
+      )}
+      {!usable && refused && <div className="cal-type-bad">{refused}</div>}
+      {!usable && !refused && (
+        <div className="cal-type-hint">พิมพ์ DD/MM/YYYY หรือ YYYY-MM-DD · ปีเกิน 2400 ระบบอ่านเป็น พ.ศ.</div>
+      )}
+    </div>
+  );
+}
+
 /** ‹ สิงหาคม 2569 › — and the title is the way UP a level, not decoration. */
 function Head({ onPrev, onNext, onUp, upLabel, title, prevLabel, nextLabel }) {
   return (
@@ -206,11 +339,21 @@ function Head({ onPrev, onNext, onUp, upLabel, title, prevLabel, nextLabel }) {
  * four hundred and ninety-two presses of `‹` away from a calendar that can only
  * step a month at a time.
  */
-function Calendar({ mode, value, min, max, onPick, onClose, sheet }) {
+function Calendar({ mode, value, min, max, onPick, onClose, sheet, typeable = false }) {
   const today = todayISO();
   const picked = mode === 'day' ? parseDay(value) : parseMonth(value);
   const start = picked || parseDay(today);
   const [view, setView] = React.useState(mode === 'day' ? 'day' : 'month');
+  /**
+   * WHERE THE CARET IS, and the only thing it decides is who takes the focus
+   * when a grid mounts.
+   *
+   * True while the panel is still the typing panel it opened as. Dropped for
+   * good the moment the reader goes UP to เลือกเดือน — they have chosen the
+   * grid, and the day view they come back down to must take the focus the
+   * ordinary way rather than reach for a box that is no longer the point.
+   */
+  const [typing, setTyping] = React.useState(typeable);
   const [ym, setYm] = React.useState({ y: start.y, m: start.m });
   /* The DAY grid's cursor, kept as a value and not an index: an index into a
      day grid stops meaning the same day the moment the month under it changes,
@@ -259,6 +402,7 @@ function Calendar({ mode, value, min, max, onPick, onClose, sheet }) {
     };
     return (
       <>
+        {typeable && <TypeRow min={min} max={max} onPick={onPick} />}
         <Head
           title={`${THAI_MONTHS[ym.m - 1]} ${ym.y + 543}`}
           prevLabel="เดือนก่อนหน้า"
@@ -266,7 +410,7 @@ function Calendar({ mode, value, min, max, onPick, onClose, sheet }) {
           upLabel="เลือกเดือนและปี"
           onPrev={() => setYm(shiftMonth(ym.y, ym.m, -1))}
           onNext={() => setYm(shiftMonth(ym.y, ym.m, 1))}
-          onUp={() => setView('month')}
+          onUp={() => { setTyping(false); setView('month'); }}
         />
         <div className="cal-dow" aria-hidden="true">
           {DOW_SHORT.map((d) => <span key={d}>{d}</span>)}
@@ -278,6 +422,7 @@ function Calendar({ mode, value, min, max, onPick, onClose, sheet }) {
           onMove={move}
           onPick={(c) => c.iso && onPick(c.iso)}
           label={`${THAI_MONTHS[ym.m - 1]} ${ym.y + 543}`}
+          autoFocus={!typing}
         />
         <PopFoot sheet={sheet} onClose={onClose}>
           {/* วันนี้ — offered only when today is a day this box may hold. A
@@ -410,6 +555,7 @@ function Calendar({ mode, value, min, max, onPick, onClose, sheet }) {
 
 export function PickDate({
   value, onChange, min, max, disabled = false, clearable = false, label = 'วันที่',
+  typeable = false,
 }) {
   const p = usePicker({ onChange, disabled });
   // The panel's height changes with the view, and the placement has to be told.
@@ -419,8 +565,9 @@ export function PickDate({
    *
    * `.field input:out-of-range` used to say this and cannot any more — that
    * selector needs an `<input>` and this is a button. The state is rarer than
-   * it was: nothing can be typed into this box and no day outside the range can
-   * be pressed, so the two ways it used to arise are gone. It is not
+   * it was: no day outside the range can be pressed, and the `typeable` panel's
+   * พิมพ์วันที่ box refuses one rather than handing it up (see `TypeRow`), so
+   * the two ways it used to arise are still gone. It is not
    * impossible — a value can come from a record, or a bound can move under a
    * value already held — and carrying it over costs three lines against
    * discovering later that the app quietly stopped saying so.
@@ -444,7 +591,7 @@ export function PickDate({
       {p.open && (
         <Popover anchorRef={p.anchorRef} sheet={p.sheet} shape={shape} label={label} onClose={p.close} className="cal-pop">
           <CalendarShape onShape={setShape}>
-            <Calendar mode="day" value={value} min={min} max={max} onPick={p.pick} onClose={p.close} sheet={p.sheet} />
+            <Calendar mode="day" value={value} min={min} max={max} onPick={p.pick} onClose={p.close} sheet={p.sheet} typeable={typeable} />
           </CalendarShape>
         </Popover>
       )}

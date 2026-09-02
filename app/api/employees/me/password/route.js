@@ -1,16 +1,27 @@
 import Employee from '@/src/models/Employee.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
+import { passwordShapePermission } from '@/lib/employees.js';
 
 /** Change own password. */
 export const POST = route(async (req) => {
   const user = await requireAuth(req);
   const { current, next } = await body(req);
 
-  if (!next || String(next).length < PASSWORD_MIN_LENGTH) {
-    return fail(`รหัสผ่านใหม่ต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`, 400);
-  }
+  /**
+   * The same rule ฝ่ายบุคคล's box obeys — length, character set and the byte
+   * ceiling — from `lib/employees.js`.
+   *
+   * It checked only a length until 2026-09-02, which meant this route, the one
+   * where Thai is actually typed, was the one door with no character rule at
+   * all. What it does NOT borrow is `chosenPasswordPermission`: that refuses a
+   * password containing the employee code, and that rule is about a password
+   * SOMEBODY ELSE chose for you. This person is choosing their own and is the
+   * only one who will know it.
+   */
+  const shape = passwordShapePermission(next);
+  if (!shape.ok) return fail(shape.error, shape.status);
+
   // Setting it back to what HR issued leaves the account exactly as exposed as
   // it was, while clearing the flag that says so.
   if (String(next) === String(current || '')) {
