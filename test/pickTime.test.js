@@ -217,49 +217,53 @@ test('พิมพ์แล้ววงล้อหมุนตาม — ร่
 // ── the wheels ──────────────────────────────────────────────────────────────
 
 /**
- * นาทีเดินทีละห้า และค่าที่ถืออยู่มีที่ยืนบนวงล้อเสมอ.
+ * นาทีครบหกสิบ ทุกฟอร์ม — 2026-09-02, and the third and last word on a
+ * question this control has been through three times.
  *
- * IT WAS ALL SIXTY, and that paragraph was right about one case and made every
- * other case pay for it: วันเกิดที่ยังไม่มีใบ is filled in from the pair of
- * times off the fingerprint scanner — `เวลาเข้า (สแกนนิ้ว)` is what its label
- * says — and a scanner does not round.
+ * IT WAS ALL SIXTY, THEN A STEP OF FIVE, AND IT IS ALL SIXTY AGAIN. The step
+ * existed for one reason and the reason was the scrolling: while a column was
+ * the only way in, sixty rows was four screens of dragging to reach 17:30 on an
+ * ordinary evening shift, and that was reported. Five was the compromise, and
+ * `minuteValues` had to insert the held value beside it so that 17:03 — off the
+ * fingerprint scanner on วันเกิดที่ยังไม่มีใบ, where `เวลาเข้า (สแกนนิ้ว)` is
+ * the label — still had a row to be selected on.
  *
- * THE STEP IS NO LONGER A CEILING, which is new with the header: a minute that
- * is not on the wheel can be TYPED, so 17:03 on the ordinary form is two
- * keystrokes. The step decides what a flick lands on, not what the control
- * accepts.
+ * THE HEADER PAID FOR SIXTY. A minute is typed now rather than reached, so the
+ * length of the wheel is no longer what it costs to enter a time. The step, the
+ * `minuteStep` prop and the insertion rule all went with it — the last of those
+ * being a patch over the step rather than a feature: a list of all sixty cannot
+ * fail to contain the value it holds.
  */
-test('นาทีเดินทีละห้า แต่ค่าที่ไม่ลงตัวไม่เคยหลุดจากวงล้อ', () => {
-  assert.match(code, /function minuteValues\(step, held\) \{/);
-  assert.match(code, /for \(let m = 0; m < 60; m \+= step\) out\.push\(m\);/);
-  assert.match(code, /if \(!out\.includes\(held\) && held >= 0 && held < 60\) \{/);
-  assert.match(code, /minuteStep = 5,/);
-  assert.match(code, /values=\{minutes\}/);
-  // Rebuilt when the held minute moves, since the odd stop it may carry is that
-  // value — a memo keyed only on the step would strand it.
-  assert.match(code, /React\.useMemo\(\(\) => minuteValues\(minuteStep, draft\.m\), \[minuteStep, draft\.m\]\)/);
+test('วงล้อนาทีมีครบหกสิบจุด และไม่มี step เหลืออยู่ที่ไหนอีก', () => {
+  assert.match(code, /const MINUTES = Array\.from\(\{ length: 60 \}, \(_, i\) => i\);/);
+  assert.match(code, /values=\{MINUTES\}/);
+  // Two digits always — the same `pad` the hours and the header use, so `3`
+  // is drawn `03` and the column reads as a column.
+  assert.match(code, /\{pad\(v\)\}/);
+  assert.match(code, /const pad = \(n\) => String\(n\)\.padStart\(2, '0'\);/);
 
-  // The scanner's own form keeps every minute, and it is the ONLY caller that
-  // asks for one — a second `minuteStep={1}` somewhere else would mean the
-  // reason above had quietly become a default.
-  const form = strip(read('components/OtForm.jsx'));
-  assert.equal((form.match(/minuteStep=\{fromBirthday \? 1 : 5\}/g) || []).length, 2);
+  // Nothing anywhere still asks for a step, and the two call sites that passed
+  // one pass nothing now.
+  for (const gone of ['minuteStep', 'minuteValues']) {
+    assert.ok(!code.includes(gone), `${gone} ยังอยู่ในคอมโพเนนต์`);
+    const form = strip(read('components/OtForm.jsx'));
+    assert.ok(!form.includes(gone), `${gone} ยังถูกส่งมาจาก OtForm`);
+  }
+  // The scanner's form keeps its precision — it just is not the exception any
+  // more, because every form has it.
   assert.match(src, /เวลาเข้า \(สแกนนิ้ว\)|fingerprint scanner/);
 
-  // Run the helper as it is written, on the two cases that matter.
-  const values = (step, held) => {
-    const out = [];
-    for (let m = 0; m < 60; m += step) out.push(m);
-    if (!out.includes(held) && held >= 0 && held < 60) { out.push(held); out.sort((a, b) => a - b); }
-    return out;
-  };
-  assert.equal(values(5, 0).length, 12, 'วงล้อนาทีปกติต้องมี 12 จุดหยุด');
-  assert.deepEqual(values(5, 30).slice(0, 3), [0, 5, 10]);
-  assert.equal(values(1, 3).length, 60, 'ฟอร์มวันเกิดต้องยังมีครบหกสิบ');
-  // 17:03 off a scanner — or typed into the header — on a wheel whose step is 5.
-  assert.ok(values(5, 3).includes(3), 'นาทีที่ไม่ลงตัวหายไปจากวงล้อ');
-  assert.deepEqual(values(5, 3).slice(0, 4), [0, 3, 5, 10], 'จุดที่แทรกเข้ามาไม่ได้อยู่ตำแหน่งของมัน');
-  assert.equal(values(5, 3).length, 13, 'แทรกแล้วต้องเพิ่มมาจุดเดียว');
+  // Build the list as the component builds it.
+  const minutes = Array.from({ length: 60 }, (_, i) => i);
+  const pad = (n) => String(n).padStart(2, '0');
+  assert.equal(minutes.length, 60, 'วงล้อนาทีต้องมีครบหกสิบจุด');
+  assert.deepEqual(minutes.slice(0, 6).map(pad), ['00', '01', '02', '03', '04', '05']);
+  assert.deepEqual(minutes.slice(-2).map(pad), ['58', '59']);
+  // 17:03 needs no insertion any more — it is simply a stop, on every form.
+  assert.ok(minutes.includes(3));
+  assert.equal(minutes.indexOf(3), 3, 'จุดที่สี่ต้องเป็นนาทีที่ 3 — ไม่มีการแทรกอะไรอีก');
+  // And the wheel arithmetic still lands on it: stop 43 centres at 43 × slot.
+  assert.equal(Math.round((43 * 34) / 34), 43);
 });
 
 /**

@@ -1260,8 +1260,8 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1901 tests
-across 114 files**, measured 2026-09-02 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **1900 tests
+across 114 files**, measured 2026-09-02 on a clean checkout of this commit — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
@@ -6305,8 +6305,23 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1901/1901 pass in about 2 s**, measured 2026-09-02 across 114
-  files. **The newest are in `test/pickTime.test.js`**, over เวลาเริ่ม /
+- `npm test` — **1900/1900 pass in about 2 s**, measured 2026-09-02 across 114
+  files — **in a `git worktree` of this commit rather than in the working tree**,
+  which is the only way to count a tree while another round's files are sitting
+  uncommitted beside it. It read "1901" for two commits, and that figure was a
+  working-tree measurement with three of those files stashed: near enough to be
+  believed and one case out. **The newest is in `test/pickTime.test.js`** and the
+  count did not move — one case replaced another: the minute wheel carries **all sixty
+  minutes on every form**, so the five-minute step, the `minuteStep` prop and
+  the rule that inserted a held value into the list are all withdrawn. They were
+  one arrangement and it existed for one reason, which was the scrolling: while
+  a column was the only way in, sixty rows was four screens of dragging to reach
+  17:30. The header pays for it now — a minute is typed rather than reached —
+  and the case that used to run `minuteValues` over 17:03 instead asserts that
+  03 needs no insertion because it is simply the fourth stop. The birthday form
+  loses its exception with it: `เวลาเข้า (สแกนนิ้ว)` keeps every minute by being
+  like every other form rather than by asking for one.
+  **Before it, in the same file**, over เวลาเริ่ม /
   เวลาสิ้นสุด being a HYBRID: two number boxes at the top that a keypad types
   into, over two wheels that snap to a band drawn across both of them. The file
   went from nineteen cases to twenty-five and it is the same control's third
@@ -6370,10 +6385,13 @@ four role UIs.
   except on the birthday form where the times come off a fingerprint scanner,
   and the assertion that matters most is that **a held value not on the step is
   inserted into the list** — without it an entry filed at 17:03 opens with
-  nothing selected and the first arrow press moves it silently. (The wheel those
-  first two cases were about came out later the same day — see the newest entry
-  above. The **step** and the held-value rule outlived it: they are what the
-  minute GRID is built from, and 17:03 still opens with 03 in its own place.)
+  nothing selected and the first arrow press moves it silently. (**All three of
+  those are gone now**, and the newest entry above says why: the step, the
+  `minuteStep` prop and the held-value insertion were one arrangement, and it
+  existed because a column somebody scrolls made sixty rows expensive. The
+  header made a minute something you type, so the minutes went back to all sixty
+  on 2026-09-02 — on every form, the birthday one included, which is no longer
+  the exception. 17:03 needs no insertion when 03 is simply a stop.)
   It read "1894/1894" until then.
   **Before them, three in `test/proxyTeamSearch.test.js`**, over the
   microcopy บันทึก OT แทนพนักงาน lost — the sub-header, the note under the

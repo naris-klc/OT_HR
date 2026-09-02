@@ -76,47 +76,38 @@ const pad = (n) => String(n).padStart(2, '0');
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
+/**
+ * ALL SIXTY, AND THE STEP IS GONE — 2026-09-02.
+ *
+ * ── WHAT WAS HERE, BECAUSE IT WAS ARGUED OVER THREE TIMES ──────────────────
+ * This was `minuteValues(step, held)`: every `step`th minute plus whatever the
+ * box happened to be holding, with `minuteStep` 1 on the birthday form — where
+ * the times come off a fingerprint scanner and `เวลาเข้า (สแกนนิ้ว)` is the
+ * label — and 5 everywhere else. The step existed for ONE reason: while the
+ * only way into this control was a column somebody scrolls, sixty rows was four
+ * screens of dragging to reach 17:30 on an ordinary evening shift, and that was
+ * reported. Five was the compromise, and it needed a second rule beside it —
+ * the held value inserted into the list — so that 17:03, which is not a
+ * multiple of five, still had a row of its own to be selected on.
+ *
+ * ── THE HEADER IS WHAT PAID FOR SIXTY ──────────────────────────────────────
+ * Asked for on 2026-09-02, and it costs nothing this time. Nobody has to scroll
+ * to a minute any more: two keystrokes in the box above put the wheel on it,
+ * and the wheel is for browsing rather than for arriving. What sixty buys is
+ * that every minute this office can work is a stop somebody can see and press —
+ * 17:03 among them, on every form rather than on one.
+ *
+ * AND THE INSERTION RULE GOES WITH IT, which is the part worth reading twice.
+ * It was never a feature; it was a patch over the step. A list of all sixty
+ * cannot fail to contain the value it is holding, so there is nothing left for
+ * that rule to protect against — and a rule kept past the thing it guarded is a
+ * line the next reader has to work out the purpose of.
+ */
+const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+
 /** 17:00 · 18:00 · 20:00 · 22:00 — the shifts this office actually types. */
 const QUICK = ['17:00', '18:00', '20:00', '22:00'];
 
-/**
- * The minute values — every `step`th minute, PLUS whatever this box is holding.
- *
- * ── IT WAS ALL SIXTY, AND THE REASON IS WHY THIS IS A STEP AND NOT A LIST ───
- * That paragraph read: a five-minute list is the friendlier one and it is the
- * wrong one here, because วันเกิดที่ยังไม่มีใบ is filled in from the pair of
- * times off the fingerprint scanner — `เวลาเข้า (สแกนนิ้ว)` is what its label
- * says — and a scanner does not round. It was right about that case and wrong
- * to make every other case pay for it.
- *
- * SO THE CASE KEEPS ITS PRECISION AND NOTHING ELSE PAYS FOR IT. `minuteStep` is
- * 1 on the birthday form, where the times come off a scanner, and 5 everywhere
- * else — twelve stops on the wheel instead of sixty.
- *
- * AND THE STEP IS NOT A CEILING ANY MORE, which is new with the header. A
- * minute that is not on the wheel can be TYPED: 17:03 on the ordinary form is
- * two keystrokes, and the wheel below it stops between 00 and 05 showing the
- * value it was given. The step decides what a flick lands on, not what the
- * control accepts.
- *
- * ── AND THE HELD VALUE IS ALWAYS ON THE WHEEL ──────────────────────────────
- * This is the line that makes a step safe rather than lossy. An entry filed at
- * 17:03 — off a scanner, typed here, or from before any of this — opens in a
- * box whose step is 5, and without this there would be no stop for it: the
- * roving tabindex would have no home, `aria-selected` would be false on every
- * row, and the first arrow press would silently move the value to a multiple of
- * five. The odd minute is inserted in its own place, reads as chosen, and
- * survives being looked at.
- */
-function minuteValues(step, held) {
-  const out = [];
-  for (let m = 0; m < 60; m += step) out.push(m);
-  if (!out.includes(held) && held >= 0 && held < 60) {
-    out.push(held);
-    out.sort((a, b) => a - b);
-  }
-  return out;
-}
 
 /** How long after the last scroll event a wheel is treated as having settled. */
 const SETTLE = 90;
@@ -315,13 +306,10 @@ function reading(text, max) {
  * an invalid one does not, and blurring drops the text so the box goes back to
  * reading the draft.
  */
-function TimePanel({ value, onDone, onClose, minuteStep }) {
+function TimePanel({ value, onDone, onClose }) {
   const [draft, setDraft] = React.useState(() => parseTime(value) || { h: 17, m: 0 });
   const [hText, setHText] = React.useState(null);
   const [mText, setMText] = React.useState(null);
-  // Rebuilt when the held minute moves, because the odd-minute stop it may have
-  // to carry is the held one — see `minuteValues`.
-  const minutes = React.useMemo(() => minuteValues(minuteStep, draft.m), [minuteStep, draft.m]);
 
   const badH = hText !== null && hText !== '' && reading(hText, 23) === null;
   const badM = mText !== null && mText !== '' && reading(mText, 59) === null;
@@ -393,8 +381,11 @@ function TimePanel({ value, onDone, onClose, minuteStep }) {
           autoFocus
           onPick={(h) => set({ h, m: draft.m })}
         />
+        {/* ALL SIXTY, ON EVERY FORM — see `MINUTES`. The wheel is longer to
+            flick than the twelve-stop one it replaces, and that is the trade
+            the header pays for: nobody has to arrive at :43 by dragging. */}
         <Wheel
-          values={minutes}
+          values={MINUTES}
           value={draft.m}
           label="นาที"
           onPick={(m) => set({ h: draft.h, m })}
@@ -440,15 +431,14 @@ function TimePanel({ value, onDone, onClose, minuteStep }) {
   );
 }
 
+/**
+ * THERE IS NO `minuteStep` PROP ANY MORE — withdrawn 2026-09-02 with the step
+ * itself. It was 1 on the birthday form and 5 elsewhere, and the two callers
+ * that passed it (บันทึก OT's pair of boxes) now pass nothing: every form gets
+ * all sixty minutes. See `MINUTES` for why that stopped costing anything.
+ */
 export function PickTime({
   value, onChange, disabled = false, clearable = false, label = 'เวลา',
-  /**
-   * How far apart the wheel's minute stops are — 5 by default, and `1` on the
-   * one form whose times are read off a fingerprint scanner. See
-   * `minuteValues`, which also explains why a value not on the step is never
-   * lost and why the step no longer decides what can be entered at all.
-   */
-  minuteStep = 5,
 }) {
   const p = usePicker({ onChange, disabled });
   return (
@@ -476,8 +466,9 @@ export function PickTime({
           /* `0` — MEASURED ONCE, because this panel opens at the height it
              keeps. The calendar passes a real `shape` because its day, month
              and year views are three different heights; a header over two
-             wheels is one, and it is the same height whether the minutes have
-             twelve stops or sixty — that is what a wheel is for. The one thing
+             wheels is one, and it is the same height whether a wheel carries
+             twenty-four stops or sixty — that is what a wheel is for, and it is
+             why the minutes going to sixty changed nothing here. The one thing
              that changes it is the range line, which appears under a figure out
              of range and takes a line; it grows DOWNWARD from a panel that is
              already placed, and a panel that grows at the bottom cannot lose
@@ -491,7 +482,6 @@ export function PickTime({
             value={value}
             onDone={p.pick}
             onClose={p.close}
-            minuteStep={minuteStep}
           />
         </Popover>
       )}

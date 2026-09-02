@@ -909,16 +909,18 @@ export default function OtForm({
             argue with. The 130px lives in the stylesheet now. */}
         <div className="field time">
           <label>{fromBirthday ? 'เวลาเข้า (สแกนนิ้ว)' : 'เวลาเริ่ม (จาก)'}</label>
-          {/* EVERY MINUTE ON THE BIRTHDAY ROW, every fifth everywhere else.
-              The two boxes there are labelled `เวลาเข้า (สแกนนิ้ว)` and are
-              filled in from the fingerprint scanner, which does not round — see
-              `minuteValues` in components/PickTime.jsx for why a step is safe
-              anywhere else and why a value off the step is never lost. */}
+          {/* EVERY MINUTE, ON THIS ROW AND ON EVERY OTHER — 2026-09-02.
+              These two boxes passed `minuteStep={fromBirthday ? 1 : 5}` until
+              then: the birthday row is filled in from the fingerprint scanner,
+              which does not round, and the rest of the form got a five-minute
+              wheel because sixty rows was too far to scroll. The picker's own
+              header answers that now — a minute is typed rather than reached —
+              so the step is gone and this row is no longer the exception. See
+              `MINUTES` in components/PickTime.jsx. */}
           <PickTime
             label="เวลาเริ่ม"
             value={form.startTime}
             onChange={(v) => set('startTime', v)}
-            minuteStep={fromBirthday ? 1 : 5}
           />
         </div>
         <div className="field time">
@@ -927,7 +929,6 @@ export default function OtForm({
             label="เวลาสิ้นสุด"
             value={form.endTime}
             onChange={(v) => set('endTime', v)}
-            minuteStep={fromBirthday ? 1 : 5}
           />
           {overnight && (
             <span style={{ fontSize: 12, color: 'var(--amber)' }}>วัน{dayName(endDateLabel)}ถัดไป</span>
