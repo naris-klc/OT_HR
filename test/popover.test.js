@@ -57,8 +57,17 @@ test('มีแผงเดียว และทั้งสามตัวเ�
   const panels = files.filter((f) => /className=\{`pop /.test(strip(read(`components/${f}`))));
   assert.deepEqual(panels, ['popover.jsx'], `มีแผงลอยของตัวเลือกมากกว่าหนึ่งที่: ${panels.join(', ')}`);
 
+  /**
+   * `common.jsx` JOINED THE LIST ON 2026-09-01, and it is the point of the
+   * paragraph above rather than an exception to it. `PickOne` — the dropdown
+   * behind แผนก, เดือน and สถานะที่นับ — had its OWN placement effect, its own
+   * flip class and its own scroll-and-resize listeners: a second copy of this
+   * file, which is exactly what its header says two panels that are supposed to
+   * be one start out as. It opens this one now, so the arithmetic is in a
+   * single place and the dropdown is portaled out of whatever would clip it.
+   */
   const users = files.filter((f) => /<Popover\b/.test(strip(read(`components/${f}`))));
-  assert.deepEqual(users.sort(), ['PickDate.jsx', 'PickTime.jsx']);
+  assert.deepEqual(users.sort(), ['PickDate.jsx', 'PickTime.jsx', 'common.jsx']);
   for (const f of users) {
     assert.match(read(`components/${f}`), /from '\.\/popover\.jsx'/, `${f} ไม่ได้เอาแผงมาจาก popover.jsx`);
   }
@@ -98,11 +107,18 @@ test('ชั้นของแผงอยู่เหนือกล่อง�
 });
 
 test('ความกว้างเป็นของแต่ละตัว ส่วนที่เหลือเป็นของแผง', () => {
-  // The one thing a calendar and a pair of number columns genuinely disagree
+  // The one thing a calendar and two grids of numbers genuinely disagree
   // about. Everything else — fill, edge, shadow, corner, placement, the sheet —
   // is `.pop`'s, or it is two things to keep in step.
+  //
+  // `.time-pop` is a block rather than a one-liner since 2026-09-01: it is six
+  // cells wide (272px, where it was 196 for two scrolling columns) and it is
+  // the one panel that can outgrow a short screen — ten rows of minutes on the
+  // birthday form — so it carries a `max-height` as well. The width is still
+  // the only thing asserted here; the cap is pinned in test/pickTime.test.js
+  // beside the grid it is a floor under.
   assert.match(css, /\.pop\.cal-pop \{ width: 292px; \}/);
-  assert.match(css, /\.pop\.time-pop \{ width: 196px; \}/);
+  assert.match(css, /\.pop\.time-pop \{\s*\n\s*width: 272px;/);
   const panel = css.slice(css.indexOf('.pop {'), css.indexOf('}', css.indexOf('.pop {')));
   assert.ok(!/width:/.test(panel), 'แผงกลับไปกำหนดความกว้างเอง');
   for (const prop of ['background:', 'border:', 'box-shadow:', 'border-radius:']) {
@@ -122,7 +138,29 @@ test('ไม่มีที่ข้างล่างก็เปิดขึ�
   // …and re-placed when the panel changes shape, because a calendar's day,
   // month and year views are three heights and a panel placed ABOVE its box is
   // positioned from its own.
-  assert.match(code, /\}, \[sheet, shape, anchorRef\]\)/);
+  assert.match(code, /\}, \[sheet, shape, anchorRef, matchWidth\]\)/);
+
+  /**
+   * `matchWidth` — THE PANEL IS THE TRIGGER'S WIDTH, AND IT IS MEASURED.
+   *
+   * Added 2026-09-01 with `PickOne`. The three pickers this file was written
+   * for are all WIDER than their box and carry a fixed width in the stylesheet;
+   * a dropdown is not, and a list of choices that is not the width of the box
+   * it fell out of reads as a different control. `PickOne` had that for free
+   * while it was `absolute` inside its own wrapper with `left: 0; right: 0`.
+   *
+   * STILL NOT A NUMBER, which is what that arrangement was protecting: the
+   * width is read off the anchor on every placement, so nothing in the
+   * stylesheet or the component can drift from the box's actual width at any
+   * breakpoint.
+   */
+  assert.match(code, /const w = matchWidth \? a\.width : p\.offsetWidth;/);
+  assert.match(code, /setPos\(\{ top, left, width: matchWidth \? w : undefined \}\);/);
+  assert.match(code, /matchWidth = false,/, 'ค่าปริยายต้องเป็น false — อีกสามแผงกว้างตามสไตล์ชีต');
+  // The clamp reads the SAME `w`, so a panel pulled back from the right edge is
+  // pulled back by its real width rather than by the one it happened to have
+  // before the style was applied.
+  assert.match(code, /Math\.min\(a\.left, window\.innerWidth - w - EDGE\)/);
 });
 
 test('เฟรมก่อนวัดเสร็จซ่อนด้วย opacity ไม่ใช่ visibility — ไม่งั้นคีย์บอร์ดเข้าไม่ถึง', () => {

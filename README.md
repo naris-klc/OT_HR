@@ -106,7 +106,7 @@ reseed leaves them pointing at people and entries that no longer exist.
 เครื่องนี้ — และนั่นคือเหตุผลที่[ไม่ลงงานตามตารางบนเครื่องนี้](#ให้แอปขึ้นเองทุกครั้งที่ล็อกอิน--task-scheduler)
 
 > ⚠️ **“staging” เป็นสิ่งที่เครื่องนี้จะเป็น ไม่ใช่สิ่งที่มันเป็นอยู่แล้ว** ตอนนี้
-> ฝ่ายบุคคล ยังใช้เครื่องนี้ทำงานจริงที่ `192.168.109.119:3000` ([Status](#status))
+> ฝ่ายบุคคล ยังใช้เครื่องนี้ทำงานจริงที่ `192.168.109.76:3000` ([Status](#status))
 > ตราบใดที่ยังไม่มีเซิร์ฟเวอร์บริษัท การล่มหนึ่งครั้งยังแปลว่าไม่มีใครยื่นหรืออนุมัติ
 > OT ได้จนกว่าจะมีคนมาเปิดใหม่ ทั้งสองอย่างนี้จริงพร้อมกัน
 
@@ -192,7 +192,7 @@ Task Scheduler ตัวเดียวกับที่ [งานสำรอ
 > [`deploy-ot.ps1`](#เอาโค้ดใหม่ขึ้น--deploy-otps1) หรือรัน `start-server.ps1` ด้วยมือ
 >
 > ⚠️ **และ ณ วันที่ตัดสินใจ เครื่องนี้ยังเป็นตัวที่ ฝ่ายบุคคล ใช้อยู่จริง** ที่
-> `192.168.109.119:3000` ผ่านกฎไฟร์วอลล์ของ LAN ([Status](#status)) — “dev/test”
+> `192.168.109.76:3000` ผ่านกฎไฟร์วอลล์ของ LAN ([Status](#status)) — “dev/test”
 > เป็นสิ่งที่เครื่องนี้จะเป็น ไม่ใช่สิ่งที่มันเป็นอยู่แล้ว ตราบใดที่ยังไม่มีเครื่อง
 > production แยก การล่มหนึ่งครั้งยังแปลว่าไม่มีใครยื่นหรืออนุมัติ OT ได้จนกว่าจะมี
 > คนมาเปิดใหม่
@@ -1260,9 +1260,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1896 tests
+and the engine know nothing about Next.js, so the whole suite — **1894 tests
 across 114 files**, measured 2026-09-01 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1894" until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1896" until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -6305,8 +6305,45 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1896/1896 pass in about 2 s**, measured 2026-09-01 across 114
-  files. **The newest two are in `test/pickTime.test.js`**, over the quick-time
+- `npm test` — **1894/1894 pass in about 2 s**, measured 2026-09-01 across 114
+  files. **The newest are in `test/pickTime.test.js`**, over เวลาเริ่ม /
+  เวลาสิ้นสุด being two GRIDS instead of two scrolling wheels — and **the count
+  did not move**: nineteen cases in that file before and nineteen after, because
+  most of them changed shape rather than number. The wheel was reported as
+  laying out wrong and hard to use, and the shape was what was wrong with it: a
+  208px column shows six of twenty-four rows, so the number somebody wants is
+  usually off screen when the panel opens. All twenty-four hours are on screen
+  now, six to a row, with the minutes two rows under them — ten rows on the
+  birthday form, where the times come off a fingerprint scanner and every minute
+  is kept. **Three cases are reversals of what stood there**: `role="grid"`
+  where a note argued that a column of hours is not two-dimensional, ←/→
+  wrapping where ↑/↓ used to, and **nothing written until ตกลง** where the rule
+  had been that every press applies immediately. The last is the one to read
+  twice — ตกลง / ยกเลิก were asked for, and a ยกเลิก that could not take
+  anything back would be a lie in a control that files somebody's hours, so the
+  panel holds a draft and every way out except ตกลง leaves the field as it was
+  found. What it costs is what the old rule bought: a panel walked away from
+  mid-choice now keeps nothing. **Two more pin what the wheel left behind** —
+  no `scrollIntoView` anywhere in the component, and none of `.time-cols`,
+  `.time-col-head`, `.time-list` or `.time-opt` in the stylesheet. **Six popular
+  hours (17:00–22:00) was the other shape offered** for the hour grid and it was
+  refused on the value rather than the layout: this same control is
+  เวลาสิ้นสุด, where a shift ending 00:30 is ordinary, and OT on a holiday
+  starts at 08:00. Neither is between 17 and 22.
+  **Before them, in `test/queueDropdown.test.js` and
+  `test/popover.test.js`**, over `PickOne`'s panel being portaled. The count
+  went DOWN: four cases about this list placing itself in the page — a
+  `z-index: 21` clearing the queue's sticky toolbar, a `.up` flip measured
+  against `.mobile-nav`, its own scroll-and-resize listeners, and the
+  `left: 0; right: 0` that made it its box's width — became two about not having
+  to. `Popover` does all of it, which is what `popover.jsx`'s own header said
+  from the day it was written: a second copy of the placement arithmetic is how
+  two popups that are supposed to be one panel start behaving differently. They
+  already had — the calendar could escape a `.modal`'s `overflow: hidden` and
+  this could not. The one thing a dropdown needs that the other three do not is
+  `matchWidth`, and it is still not a number: the width is read off the anchor
+  on every placement. It read "1896/1896" until then.
+  **Before them, two in `test/pickTime.test.js`**, over the quick-time
   chips now moving the wheels instead of closing the panel, and over the minute
   column no longer drawing a scrollbar — which in a two-column popup was a line
   down the middle, because the hour column's bar sits at ITS right edge. Three
@@ -6314,8 +6351,11 @@ four role UIs.
   except on the birthday form where the times come off a fingerprint scanner,
   and the assertion that matters most is that **a held value not on the step is
   inserted into the list** — without it an entry filed at 17:03 opens with
-  nothing selected and the first arrow press moves it silently. It read
-  "1894/1894" until then.
+  nothing selected and the first arrow press moves it silently. (The wheel those
+  first two cases were about came out later the same day — see the newest entry
+  above. The **step** and the held-value rule outlived it: they are what the
+  minute GRID is built from, and 17:03 still opens with 03 in its own place.)
+  It read "1894/1894" until then.
   **Before them, three in `test/proxyTeamSearch.test.js`**, over the
   microcopy บันทึก OT แทนพนักงาน lost — the sub-header, the note under the
   picker and the blue panel — and over where the third of them went. Two of the
@@ -6377,8 +6417,10 @@ four role UIs.
   One case pins what only opening the built app found — again: both time
   columns focused their own selected option on mount, so the one that mounted
   second won and the panel opened with the cursor on the MINUTES, where one
-  press of ↓ turned 17:00 into 17:01. It read "1866/1866 … across 112 files"
-  until then.
+  press of ↓ turned 17:00 into 17:01. The columns themselves came out on
+  2026-09-01 and the case outlived them: two GRIDS have the same defect
+  available to them, so exactly one of them holds the cursor and it is the
+  hours. It read "1866/1866 … across 112 files" until then.
   **Before them, twenty-five in `test/pickDate.test.js`**, over
   `PickDate` and `PickMonth` — the app's own calendar, now behind all eighteen
   date and month boxes. The wall was the same one the queue's `<select>`s hit

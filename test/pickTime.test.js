@@ -30,11 +30,23 @@ const css = read('app/styles.css');
  * that tag settles it: the format is the browser's business and not the page's,
  * which is the same wall as the popup itself.
  *
+ * IT WAS TWO SCROLLING COLUMNS FOR THREE ROUNDS AND IS TWO GRIDS SINCE
+ * 2026-09-01. The wheel was reported as laying out wrong and being hard to use,
+ * and the shape was what was wrong with it: a 208px column shows six of its
+ * rows, so the number somebody wants is usually off screen when the panel
+ * opens. The cases below that used to pin a column now pin a grid, and the ones
+ * that pinned "every press applies immediately" pin the opposite — the panel
+ * holds a draft and ตกลง is what writes it.
+ *
  * The panel it opens is the shared one — test/popover.test.js.
  */
 
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const code = strip(src);
+/* The stylesheet's own comments name the rules that were REMOVED — that is what
+   §"A commit that changes behaviour" asks a document to do — so the bans below
+   have to read declarations rather than text. */
+const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
 const components = readdirSync(join(ROOT, 'components'))
   .filter((f) => f.endsWith('.jsx'))
   .map((f) => [f, strip(read(`components/${f}`))]);
@@ -43,6 +55,11 @@ test('the stripper actually strips — the bans below prove nothing otherwise', 
   assert.ok(src.includes('`<input type="time">`'), 'the paragraph this guards against is gone');
   assert.ok(!code.includes('<input type="time">'), 'the stripper left a comment behind');
   assert.ok(code.includes('export function PickTime('), 'the stripper ate the code as well');
+  // The same for the stylesheet's: `.time-opt` is named in the note about what
+  // came out, and a ban that could not tell that from a rule would pass forever.
+  assert.ok(css.includes('`.time-opt`'), 'the paragraph naming what was removed is gone');
+  assert.ok(!rules.includes('.time-opt'), 'the CSS stripper left a comment behind');
+  assert.ok(rules.includes('.time-cell'), 'the CSS stripper ate the rules as well');
 });
 
 test('ไม่มี <input type="time"> เหลืออยู่ในแอปแล้ว', () => {
@@ -78,17 +95,22 @@ test('24 ชั่วโมงเสมอ และไม่ได้ถาม�
   assert.match(code, /display=\{value\}/);
   // Nothing anywhere near this control asks a locale a question.
   assert.ok(!/toLocaleTimeString|hour12|Intl\./.test(code), 'มีการจัดรูปแบบเวลาตาม locale');
-  // The hours run 00–23, which is the other half of saying 24-hour.
+  // The hours run 00–23, which is the other half of saying 24-hour — and since
+  // 2026-09-01 all twenty-four are ON THE SCREEN AT ONCE rather than in a
+  // column that scrolls. Six popular ones was the other option offered and it
+  // was refused for a reason the value contract makes: this same control is
+  // เวลาสิ้นสุด, where a shift ending 00:30 is ordinary, and OT on a holiday
+  // starts at 08:00. Neither is between 17 and 22.
   assert.match(code, /const HOURS = Array\.from\(\{ length: 24 \}, \(_, i\) => i\);/);
   assert.match(code, /const pad = \(n\) => String\(n\)\.padStart\(2, '0'\);/);
-  assert.match(code, /set = \(h, m\) => onChange\(`\$\{pad\(h\)\}:\$\{pad\(m\)\}`\)/);
+  assert.match(code, /const text = `\$\{pad\(draft\.h\)\}:\$\{pad\(draft\.m\)\}`;/);
 });
 
 test('parseTime รับเฉพาะเวลาที่เป็นเวลาจริง', () => {
   assert.deepEqual(parseTime('17:00'), { h: 17, m: 0 });
   assert.deepEqual(parseTime('00:00'), { h: 0, m: 0 });
   assert.deepEqual(parseTime('23:59'), { h: 23, m: 59 });
-  // A single-digit hour is what some records carry; the columns still open on it.
+  // A single-digit hour is what some records carry; the grid still opens on it.
   assert.deepEqual(parseTime('9:05'), { h: 9, m: 5 });
   // And the ones that are not times at all — `endsNextDayFor`'s own note says an
   // empty value sorts before every real time, so guessing at one is the bug.
@@ -109,41 +131,41 @@ test('ค่าที่ส่งออกยังเป็น HH:mm — engine
   }
 });
 
-// ── the columns ─────────────────────────────────────────────────────────────
+// ── the grids ───────────────────────────────────────────────────────────────
 
 /**
- * นาทีเดินทีละห้า และแถวที่เป็นของค่าปัจจุบันไม่เคยหาย — 2026-09-01.
+ * นาทีเดินทีละห้า และเซลล์ของค่าปัจจุบันไม่เคยหาย.
  *
- * IT WAS ALL SIXTY UNTIL THEN, and that paragraph was right about one case and
- * made every other case pay for it: วันเกิดที่ยังไม่มีใบ is filled in from the
- * pair of times off the fingerprint scanner — `เวลาเข้า (สแกนนิ้ว)` is what its
- * label says — and a scanner does not round. Sixty rows is also a column
- * somebody scrolls past four screens of to reach 17:30 on the ordinary evening
- * shift, which is what was reported.
+ * IT WAS ALL SIXTY, and that paragraph was right about one case and made every
+ * other case pay for it: วันเกิดที่ยังไม่มีใบ is filled in from the pair of
+ * times off the fingerprint scanner — `เวลาเข้า (สแกนนิ้ว)` is what its label
+ * says — and a scanner does not round.
  *
  * SO THE CASE KEEPS ITS PRECISION AND NOTHING ELSE PAYS. `minuteStep` is 1 on
  * the birthday form and 5 everywhere else.
  *
- * FIVE AND NOT FIFTEEN, which was the other option offered: fifteen is four
- * rows and would put 17:10 and 17:20 out of reach on the ordinary form. The
- * engine's 30-minute rounding is a different question — it PRICES the session,
- * it does not decide what somebody was recorded as working.
+ * FOUR CELLS — 00, 15, 30, 45 — WAS ASKED FOR AND WITHDRAWN in the same
+ * exchange on 2026-09-01. Four is the shape a picker takes when the times it
+ * files are quarters of an hour, and these are not: 17:10 and 17:20 are typed
+ * on this form and 17:03 comes off a scanner. The engine's 30-minute rounding
+ * is a different question — it PRICES the session, it does not decide what
+ * somebody was recorded as working.
  *
- * AND THE HELD VALUE IS ALWAYS IN THE LIST, which is what makes a step safe
+ * AND THE HELD VALUE IS ALWAYS IN THE GRID, which is what makes a step safe
  * rather than lossy. Without it an entry filed at 17:03 opens in a box whose
  * step is 5 with NOTHING selected: no home for the roving tabindex, false on
  * every `aria-selected`, and the first arrow press silently moving the value to
  * a multiple of five.
  */
-test('นาทีเดินทีละห้า แต่ค่าที่ไม่ลงตัวไม่เคยหลุดจากคอลัมน์', () => {
+test('นาทีเดินทีละห้า แต่ค่าที่ไม่ลงตัวไม่เคยหลุดจากตาราง', () => {
   assert.match(code, /function minuteValues\(step, held\) \{/);
   assert.match(code, /for \(let m = 0; m < 60; m \+= step\) out\.push\(m\);/);
   assert.match(code, /if \(!out\.includes\(held\) && held >= 0 && held < 60\) \{/);
   assert.match(code, /minuteStep = 5,/);
   assert.match(code, /values=\{minutes\}/);
-  // Rebuilt when the held minute moves, since the odd row it may carry is that
+  // Rebuilt when the held minute moves, since the odd cell it may carry is that
   // value — a memo keyed only on the step would strand it.
-  assert.match(code, /React\.useMemo\(\(\) => minuteValues\(minuteStep, held\.m\), \[minuteStep, held\.m\]\)/);
+  assert.match(code, /React\.useMemo\(\(\) => minuteValues\(minuteStep, draft\.m\), \[minuteStep, draft\.m\]\)/);
 
   // The scanner's own form keeps every minute, and it is the ONLY caller that
   // asks for one — a second `minuteStep={1}` somewhere else would mean the
@@ -159,156 +181,180 @@ test('นาทีเดินทีละห้า แต่ค่าที่�
     if (!out.includes(held) && held >= 0 && held < 60) { out.push(held); out.sort((a, b) => a - b); }
     return out;
   };
-  assert.equal(values(5, 0).length, 12, 'คอลัมน์นาทีปกติต้องมี 12 แถว');
+  assert.equal(values(5, 0).length, 12, 'ตารางนาทีปกติต้องมี 12 ช่อง — สองแถวเต็ม');
   assert.deepEqual(values(5, 30).slice(0, 3), [0, 5, 10]);
   assert.equal(values(1, 3).length, 60, 'ฟอร์มวันเกิดต้องยังมีครบหกสิบ');
   // 17:03 off a scanner, opened in a box whose step is 5.
-  assert.ok(values(5, 3).includes(3), 'นาทีที่ไม่ลงตัวหายไปจากคอลัมน์');
-  assert.deepEqual(values(5, 3).slice(0, 4), [0, 3, 5, 10], 'แถวที่แทรกเข้ามาไม่ได้อยู่ตำแหน่งของมัน');
-  assert.equal(values(5, 3).length, 13, 'แทรกแล้วต้องเพิ่มมาแถวเดียว');
+  assert.ok(values(5, 3).includes(3), 'นาทีที่ไม่ลงตัวหายไปจากตาราง');
+  assert.deepEqual(values(5, 3).slice(0, 4), [0, 3, 5, 10], 'ช่องที่แทรกเข้ามาไม่ได้อยู่ตำแหน่งของมัน');
+  assert.equal(values(5, 3).length, 13, 'แทรกแล้วต้องเพิ่มมาช่องเดียว');
 });
 
-test('คอลัมน์เป็น listbox ไม่ใช่ grid — และลูกศรวนรอบ', () => {
-  // A month is two-dimensional and a column of hours is not, so ↑/↓ are the
-  // only arrows that mean anything here. Sharing the calendar's `Grid` would
-  // have meant a one-column grid answering the same question twice.
-  assert.match(code, /role="listbox"/);
-  assert.match(code, /role="option"/);
+test('เป็น grid ไม่ใช่ listbox — หกช่องต่อแถว และลูกศรซ้ายขวาวนรอบ', () => {
+  /**
+   * A REVERSAL OF THIS CONTROL'S OWN NOTE, which read: a month is
+   * two-dimensional and a column of hours is not, so ↑/↓ are the only arrows
+   * that mean anything. True of a column and false of this — 24 hours laid out
+   * six to a row ARE two-dimensional, and there is no second column left for
+   * ←/→ to move between.
+   */
+  assert.match(code, /role="grid"/);
+  assert.match(code, /role="gridcell"/);
   assert.match(code, /aria-selected=\{v === value\}/);
-  // WRAPS: 23:00 → ↓ → 00:00 in one press. A session that ends after midnight is
-  // ordinary here — `endsNextDayFor` exists for it — and a column stopping at 23
-  // would make the commonest late shift the slowest thing to enter.
-  assert.match(code, /const n = \(at \+ step \+ values\.length \* 5\) % values\.length;/);
-  assert.match(code, /\{ ArrowUp: -1, ArrowDown: 1, PageUp: -5, PageDown: 5 \}/);
-});
-
-test('roving tabindex และค่าที่เลือกถูกเลื่อนเข้ามาให้เห็น', () => {
-  // Tab leaves the panel rather than walking sixty minutes; the focused option
-  // is what the arrows move, and focusing it is also what puts focus INTO the
-  // panel when it opens.
-  assert.match(code, /tabIndex=\{v === value \? 0 : -1\}/);
-  assert.match(code, /el\.focus\(\{ preventScroll: true \}\)/);
-  // `nearest`, so a column already showing the value does not jump.
-  assert.match(code, /el\.scrollIntoView\(\{ block: 'nearest' \}\)/);
-});
-
-test('เคอร์เซอร์เริ่มที่ชั่วโมง และมีคอลัมน์เดียวที่รับโฟกัส', () => {
-  /**
-   * THE DEFECT THE WALKTHROUGH FOUND. Both columns focused their own selected
-   * option on mount, so the one that mounted second won and the panel opened
-   * with the cursor on the MINUTES — measured on the built app at 1280px,
-   * `document.activeElement` was the minute `00`, and one press of ↓ turned
-   * 17:00 into 17:01. The hour is what somebody opens this to change.
-   */
-  assert.match(code, /const \[col, setCol\] = React\.useState\('h'\);/);
-  assert.match(code, /active=\{col === 'h'\}/);
-  assert.match(code, /active=\{col === 'm'\}/);
-  /**
-   * THE GUARD IS ON THE FOCUS AND NOT ON THE EFFECT, since 2026-09-01.
-   *
-   * It read `if (!active) return` at the top, which also stopped the INACTIVE
-   * column scrolling to its own value. Invisible while the only thing that
-   * moved a column was a press inside it, and wrong the moment a เวลาด่วน chip
-   * started setting both: pressing 22:00 turned the hour wheel and left the
-   * minute wheel wherever it had been scrolled, so the panel disagreed with the
-   * box above it.
-   *
-   * Every column scrolls its chosen row into view; only the active one takes
-   * the cursor. That is the whole of what `active` decides now.
-   */
-  assert.match(code, /if \(active\) el\.focus\(\{ preventScroll: true \}\);\s*\n\s*el\.scrollIntoView\(\{ block: 'nearest' \}\);/);
-  assert.ok(
-    !/React\.useEffect\(\(\) => \{\s*\n\s*if \(!active\) return;/.test(code),
-    'คอลัมน์ที่ไม่ได้ active กลับไปไม่เลื่อนตามค่าของตัวเองอีกแล้ว',
+  assert.ok(!/role="listbox"|role="option"/.test(code), 'ยังมีคอลัมน์แบบ listbox เหลืออยู่');
+  // Six, once, for both grids — 24 and 12 both divide by it, so no row is
+  // ragged. `.cal-grid` takes its count from a class because a calendar has
+  // three views; a number that never varies would be a second place to look.
+  assert.match(code, /const COLS = 6;/);
+  assert.match(rules, /\.time-grid \{ display: grid; grid-template-columns: repeat\(6, 1fr\); gap: 2px; \}/);
+  assert.match(code, /\{ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -COLS, ArrowDown: COLS \}/);
+  // ←/→ WRAP AND ↑/↓ DO NOT. 23 → → → 00 is one press, because a session that
+  // ends after midnight is ordinary here — `endsNextDayFor` exists for it. A ↑
+  // off the top row would land six cells away with nothing to say why.
+  assert.match(code, /if \(n >= 0 && n < values\.length\) onPick\(values\[n\]\);/);
+  assert.match(
+    code,
+    /else if \(step === -1 \|\| step === 1\) onPick\(values\[\(n \+ values\.length\) % values\.length\]\);/,
   );
-  // ← / → move between them, and a press into a column makes it the live one —
-  // otherwise the cursor is in one column and the keys are in the other.
-  assert.match(code, /if \(e\.key === 'ArrowLeft' \|\| e\.key === 'ArrowRight'\)/);
-  assert.match(code, /onFocus=\{onEnter\}/);
 });
 
-test('ทุกการกดมีผลทันที และแผงปิดตอนเลือกนาที', () => {
+test('roving tabindex และไม่มีอะไรต้องเลื่อนเข้ามาให้เห็นอีกแล้ว', () => {
+  // Tab leaves the panel for ยกเลิก / ตกลง rather than walking sixty minutes;
+  // the chosen cell is what the arrows move, and focusing it is also what puts
+  // focus INTO the panel when it opens.
+  assert.match(code, /tabIndex=\{v === value \? 0 : -1\}/);
+  assert.match(code, /\?\.focus\(\{ preventScroll: true \}\)/);
+  // `scrollIntoView` was the wheel's whole reason for existing: a column opened
+  // on its own value because six of twenty-four rows were visible. A grid shows
+  // all of them, so a call that scrolls anything here is a column coming back.
+  assert.ok(!/scrollIntoView/.test(code), 'มีการเลื่อนแถวเข้ามาให้เห็น — ลูกล้อกลับมาแล้ว');
+});
+
+test('เคอร์เซอร์เริ่มที่ตารางชั่วโมง และมีตารางเดียวที่ถือมันไว้', () => {
   /**
-   * NOTHING IS PENDING. The box behind updates on every press, so what the
-   * field says is what will be saved even if the panel is dismissed rather than
-   * completed — a picker that holds a draft is one that can be closed in a way
-   * that throws the choice away, which is the outcome nobody expects.
+   * THE DEFECT THE WALKTHROUGH FOUND, and it outlives the wheel. Both columns
+   * focused their own selected option on mount, so the one that mounted second
+   * won and the panel opened with the cursor on the MINUTES — measured on the
+   * built app at 1280px, `document.activeElement` was the minute `00`, and one
+   * press of ↓ turned 17:00 into 17:01. The hour is what somebody opens this
+   * control to change.
    *
-   * The minute is the last thing anybody chooses, so closing there is closing
-   * when the answer is complete; closing on the hour would shut the panel
-   * halfway through.
+   * `own` IS WHY A เวลาด่วน CHIP CANNOT SNATCH THE CURSOR BACK. A chip sets
+   * both halves, so both grids re-run their focus effect; the hours may only
+   * act on it when the cursor is already theirs.
    */
-  assert.match(code, /onPick=\{\(h\) => set\(h, held\.m\)\}/);
-  assert.match(code, /onPick=\{\(m\) => \{ set\(held\.h, m\); onDone\(`\$\{pad\(held\.h\)\}:\$\{pad\(m\)\}`\); \}\}/);
-});
-
-test('ปุ่มลัดสี่เวลาอยู่ในเท้าแผง และไม่ได้แทนที่คอลัมน์', () => {
-  assert.match(code, /\['17:00', '18:00', '20:00', '22:00'\]/);
-  assert.match(css, /\.time-chip \{/);
-  assert.match(css, /\.time-chip\.on \{ background: var\(--green-bg\); border-color: var\(--ok-line\); color: var\(--green-dark\); \}/);
-});
-
-/**
- * ปุ่มเวลาด่วนหมุนลูกล้อ แทนที่จะปิดแผงไปเลย — asked for on 2026-09-01.
- *
- * IT CALLED `onDone`, which applies the value AND closes, so the columns were
- * correct for the one frame nobody saw: press 20:00 and the panel is simply
- * gone. What was asked for is the wheels turning to follow the chip.
- *
- * THE TRADE IS NAMED RATHER THAN HIDDEN. The common case — 17:00 exactly — now
- * costs one more act, a press outside or Escape. What it buys is that a chip is
- * a place to START from: press 17:00, nudge the minute to 30, and the two
- * presses are the whole interaction rather than a chip followed by reopening
- * the panel.
- *
- * NOTHING IS LOST BY LEAVING IT OPEN, and that is this control's own rule
- * rather than a new one: `onChange` has already written the value, so the box
- * behind says 20:00 the moment the chip is pressed and dismissing the panel any
- * way at all keeps it. A picker that held a draft would be one that can be
- * closed in a way that throws the choice away.
- */
-test('ปุ่มเวลาด่วนหมุนลูกล้อทั้งสองคอลัมน์ และไม่ปิดแผง', () => {
-  assert.match(code, /onClick=\{\(\) => onChange\(t\)\}/);
-  assert.ok(!/onClick=\{\(\) => onDone\(t\)\}/.test(code), 'ปุ่มลัดกลับไปปิดแผงทันทีอีกแล้ว');
-  // `onDone` still exists and still belongs to the minute — the panel closes
-  // when the answer is complete, and a chip is not that moment.
-  assert.match(code, /onPick=\{\(m\) => \{ set\(held\.h, m\); onDone\(`\$\{pad\(held\.h\)\}:\$\{pad\(m\)\}`\); \}\}/);
-  // The chip that is already the answer says so to a screen reader too.
-  assert.match(code, /aria-pressed=\{t === value\}/);
+  assert.match(code, /const own = React\.useRef\(autoFocus\);/);
+  assert.match(code, /if \(!own\.current\) return;/);
+  assert.match(code, /onFocus=\{\(\) => \{ own\.current = true; \}\}/);
+  // `relatedTarget` is where the focus WENT: moving between two cells of one
+  // grid is not the cursor leaving it.
+  assert.match(
+    code,
+    /onBlur=\{\(e\) => \{ if \(!ref\.current\?\.contains\(e\.relatedTarget\)\) own\.current = false; \}\}/,
+  );
+  // The hours open with it and the minutes do not.
+  const hours = code.slice(code.indexOf('values={HOURS}'), code.indexOf('values={minutes}'));
+  assert.match(hours, /autoFocus/);
+  assert.ok(!/autoFocus/.test(code.slice(code.indexOf('values={minutes}'))), 'ตารางนาทีแย่งเคอร์เซอร์ตอนเปิด');
 });
 
 /**
- * แถบเลื่อนของคอลัมน์ไม่ถูกวาด — reported 2026-09-01 as a line down the middle
- * of the panel, and that is exactly where it was.
+ * ตกลง / ยกเลิก — AND THIS IS A REVERSAL, ASKED FOR ON 2026-09-01.
  *
- * The hour column's scrollbar sits at ITS right edge, which in a two-column
- * panel is the gap between ชั่วโมง and นาที. The app's global thumb is a 10px
- * pill on a `--bg` ground, so in a 196px popup it read as a divider rather than
- * as a control — a rule nobody drew, between two columns that are not separated
- * by one.
+ * "Nothing is pending" was this control's own rule: every press wrote through
+ * to the box behind, so a panel dismissed any way at all kept what had been
+ * chosen, and the panel closed on the minute because that is when the answer is
+ * complete.
  *
- * WHAT SAYS THERE IS MORE INSTEAD: the chosen row is a green fill and is
- * scrolled into view whenever the value moves, so a column opens showing where
- * it is rather than at the top; and the rows are cut mid-height by the 208px
- * cap. `.section-tabs` makes the same trade in the phone block.
+ * A footer with ตกลง in it that applied nothing would be a button that does what
+ * the last press already did, and a ยกเลิก that could not take anything back
+ * would be a lie in a control that files somebody's hours. So the draft is real:
+ * the box behind does not move until ตกลง, and every other way out — ยกเลิก,
+ * Escape, a press on the page — leaves the field as it was found.
+ *
+ * WHAT IT COSTS is named here rather than hidden: a panel walked away from
+ * mid-choice now keeps nothing.
  */
-test('คอลัมน์เวลาไม่วาดแถบเลื่อน — เส้นกลางแผงหายไป', () => {
-  assert.match(css, /\.time-list \{ scrollbar-width: none; \}/);
-  assert.match(css, /\.time-list::-webkit-scrollbar \{ display: none; \}/);
-  // Both properties: Firefox draws none of the `::-webkit-` rules and would
-  // otherwise keep its own bar.
-  // The list still scrolls — hiding the bar may not turn into clipping.
-  assert.match(css, /\.time-list \{\s*\n\s*max-height: 208px; overflow-y: auto; overscroll-behavior: contain;/);
-  // And the cue that replaces it is the one already in the component.
-  assert.match(code, /el\.scrollIntoView\(\{ block: 'nearest' \}\);/);
-  assert.match(css, /\.time-opt\.on \{ background: var\(--green\)/);
-  // Both selectors name `.time-list`: a bare `::-webkit-scrollbar { display:
-  // none }` would take the bar off every scrolling box in the app.
-  for (const m of css.matchAll(/^([^\n{}]*::-webkit-scrollbar[^\n{}]*)\{/gm)) {
+test('ไม่มีอะไรถูกเขียนจนกว่าจะกดตกลง และยกเลิกคืนค่าเดิม', () => {
+  assert.match(code, /const \[draft, setDraft\] = React\.useState\(\(\) => parseTime\(value\) \|\| \{ h: 17, m: 0 \}\);/);
+  // The two grids move the draft and nothing else.
+  assert.match(code, /onPick=\{\(h\) => setDraft\(\(d\) => \(\{ \.\.\.d, h \}\)\)\}/);
+  assert.match(code, /onPick=\{\(m\) => setDraft\(\(d\) => \(\{ \.\.\.d, m \}\)\)\}/);
+  // `onDone` is `usePicker`'s `pick`: it writes AND closes, and it is reached
+  // from exactly one press.
+  assert.equal((code.match(/onDone\(/g) || []).length, 1, 'มีทางเขียนค่ามากกว่าปุ่มตกลงทางเดียว');
+  assert.match(code, /onClick=\{\(\) => onDone\(text\)\}/);
+  assert.match(code, /onDone=\{p\.pick\}/);
+  // ยกเลิก is `close`, which is the same thing Escape and a press outside do —
+  // and the panel never called `onChange` on the way, so there is nothing to
+  // put back.
+  assert.match(code, /onClick=\{onClose\}/);
+  assert.match(code, /onClose=\{p\.close\}/);
+  assert.ok(!/onChange=\{onChange\}/.test(code), 'แผงยังรับ onChange ไปเขียนค่าระหว่างทาง');
+});
+
+test('ปุ่ม ตกลง และ ยกเลิก อยู่ในเท้าแผงทั้งสองความกว้าง', () => {
+  /**
+   * NOT `PopFoot`, which draws its ปิด on a sheet only — a floating panel is
+   * dismissed by pressing the page behind it, and that argument ends the moment
+   * a panel holds a draft. ยกเลิก has to be reachable at 1280px too, since what
+   * it now does is put the field back.
+   *
+   * `.pop-foot` is still the class, so the divider, the gap and the sheet's
+   * 44px buttons are the shared ones.
+   */
+  assert.match(code, /<div className="pop-foot time-foot">/);
+  assert.match(code, /className="btn ghost sm" onClick=\{onClose\}>ยกเลิก<\/button>/);
+  assert.match(code, /className="btn sm" onClick=\{\(\) => onDone\(text\)\}>ตกลง<\/button>/);
+  assert.ok(!/PopFoot/.test(code), 'กลับไปใช้เท้าแผงที่มีปุ่มเฉพาะบนมือถือ');
+  const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+  assert.match(phone, /\.pop\.sheet \.pop-foot \.btn \{ min-height: 44px; \}/);
+});
+
+test('ปุ่มเวลาด่วนตั้งทั้งชั่วโมงและนาทีในร่าง และไม่ปิดแผง', () => {
+  // The one thing two grids cannot do in a single press. A chip is a place to
+  // START from — press 17:00, nudge the minute to 30 — and it is no longer a
+  // question whether it should close the panel, because ตกลง is what closes it.
+  assert.match(code, /const QUICK = \['17:00', '18:00', '20:00', '22:00'\];/);
+  assert.match(code, /onClick=\{\(\) => setDraft\(parseTime\(t\)\)\}/);
+  // The chip that is already the answer says so to a screen reader too — and it
+  // reads the DRAFT, not the field, or it would go dark the moment a grid moved.
+  assert.match(code, /aria-pressed=\{t === text\}/);
+  assert.match(rules, /\.time-chip \{/);
+  assert.match(
+    rules,
+    /\.time-chip\.on \{ background: var\(--green-bg\); border-color: var\(--ok-line\); color: var\(--green-dark\); \}/,
+  );
+});
+
+/**
+ * ลูกล้อหายไปจริง ๆ — 2026-09-01, and this case is the one that would notice it
+ * coming back.
+ *
+ * Five rules went with it: `.time-cols` (a flex pair), `.time-col`,
+ * `.time-col-head`, `.time-list` (208px with `overflow-y: auto`) and
+ * `.time-opt`, along with the two declarations that hid the column's scrollbar
+ * — a 10px pill on a `--bg` ground, which in a 196px panel read as a rule down
+ * the middle between two columns that were not separated by one.
+ *
+ * THE SCOPING GUARD STAYS AND IS THE REASON THIS CASE IS NOT JUST A BAN. A bare
+ * `::-webkit-scrollbar { display: none }` would take the bar off every scrolling
+ * box in the app, so every selector that touches one has to name its own box —
+ * `.pop.time-pop` is now one of them, for the cap under the birthday form's ten
+ * rows of minutes.
+ */
+test('คอลัมน์ที่เลื่อนได้ไม่เหลืออยู่แล้ว — และไม่มีกฎแถบเลื่อนตัวไหนเอื้อมออกนอกกล่องตัวเอง', () => {
+  for (const gone of ['.time-cols', '.time-col ', '.time-col-head', '.time-list', '.time-opt']) {
+    assert.ok(!rules.includes(gone), `${gone} ยังอยู่ในสไตล์ชีต`);
+  }
+  for (const gone of ['time-cols', 'time-col-head', 'time-list', 'time-opt']) {
+    assert.ok(!code.includes(gone), `${gone} ยังอยู่ในคอมโพเนนต์`);
+  }
+  for (const m of rules.matchAll(/^([^\n{}]*::-webkit-scrollbar[^\n{}]*)\{/gm)) {
     const sel = m[1].trim();
     assert.ok(
-      sel.startsWith('::-webkit-scrollbar') || sel.includes('.time-list') || sel.includes('.pick-list')
-        || sel.includes('.section-tabs'),
+      sel.startsWith('::-webkit-scrollbar') || sel.includes('.pick-list')
+        || sel.includes('.time-pop') || sel.includes('.section-tabs'),
       `กฎ ${sel} เอื้อมไปไกลกว่ากล่องของตัวเอง`,
     );
   }
@@ -316,38 +362,59 @@ test('คอลัมน์เวลาไม่วาดแถบเลื่�
 
 // ── the theme, which is the other half of what was asked ────────────────────
 
-test('รายการที่เลือกเป็นสีเขียวของธีม ไม่ใช่แถบน้ำเงินของระบบ', () => {
-  // The declaration the request was about: what stands where the OS put its
-  // blue bar. `--on-fill` is the token for text on a saturated fill and is the
-  // same in both themes, so it reads on ธีมมืด without a second rule.
-  assert.match(css, /\.time-opt\.on \{ background: var\(--green\); color: var\(--on-fill\); font-weight: 600; \}/);
-  assert.match(css, /\.time-opt:hover \{ background: var\(--neutral-wash\); \}/);
+test('ช่องที่เลือกเป็นเขียวเข้มตัวหนังสือขาว ไม่ใช่แถบน้ำเงินของระบบ', () => {
+  // The declaration two rounds of this control were about: what stands where
+  // the OS put its blue bar. `--green` is #2E7747 on ธีมมืด and #0F8A46 on the
+  // light theme; `--on-fill` is the token for text on a saturated fill and is
+  // white in both, so this reads on ธีมมืด without a second rule.
+  assert.match(rules, /\.time-cell\.on \{ background: var\(--green\); color: var\(--on-fill\); font-weight: 600; \}/);
+  assert.match(rules, /\.time-cell:hover \{ background: var\(--neutral-wash\); \}/);
+  assert.match(rules, /\.time-cell\.on:hover \{ background: var\(--green-lift\); \}/);
   // The panel's own dark ground is `.pop`'s — see test/popover.test.js.
   assert.match(css, /\.pop \{[\s\S]*?background: var\(--card-lift\);/);
 });
 
-test('ตัวเลขเป็น mono และ tabular — คอลัมน์ที่อ่านลงมาต้องตรงกัน', () => {
+test('ตัวเลขเป็น mono และ tabular — ตัวเลขที่อ่านเทียบกันต้องตรงกัน', () => {
   // Unlike the calendar's cells, which are Thai month names. Two-digit figures
-  // read down a column and compared is the case this stylesheet reserves mono
-  // for, and nothing in these columns is Thai.
-  assert.match(css, /\.time-opt \{[\s\S]*?font: 400 14px\/1\.3 var\(--mono\); font-variant-numeric: tabular-nums;/);
+  // read across a row and compared is the case this stylesheet reserves mono
+  // for, and nothing in these grids is Thai.
+  assert.match(rules, /\.time-cell \{[\s\S]*?font: 400 13\.5px\/1\.3 var\(--mono\); font-variant-numeric: tabular-nums;/);
+  // The read-out over them is the same figures, larger — it is the only place
+  // the whole answer exists while the panel is open.
+  assert.match(rules, /\.time-now \{[\s\S]*?font: 600 21px\/1\.2 var\(--mono\); font-variant-numeric: tabular-nums;/);
+  assert.match(code, /<div className="time-now" aria-live="polite">\{text\}<\/div>/);
 });
 
 test('วงแหวน focus ไม่ประกาศสีซ้ำกับกฎพื้นฐาน', () => {
   // `test/pressChrome.test.js` refuses a copy of the base ring's colour, and it
   // caught the calendar's cells doing exactly this a round earlier.
-  assert.match(css, /\.time-opt:focus-visible \{ outline-offset: -2px; \}/);
-  assert.ok(!/\.time-opt:focus-visible \{[^}]*outline: 2px solid/.test(css));
+  assert.match(rules, /\.time-cell:focus-visible \{ outline-offset: -2px; \}/);
+  assert.ok(!/\.time-cell:focus-visible \{[^}]*outline: 2px solid/.test(rules));
 });
 
-test('บนมือถือแถวสูง 44px และลิสต์ไม่กินทั้งจอ', () => {
-  const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
-  assert.match(phone, /\.pop\.sheet \.time-opt \{ min-height: 44px; font-size: 16px; \}/);
-  assert.match(phone, /\.pop\.sheet \.time-list \{ max-height: min\(46vh, 300px\); \}/);
+test('บนมือถือช่องสูง 44px — หกคอลัมน์เป็นตารางเดียวในแอปที่ทำได้', () => {
+  const phone = rules.slice(rules.indexOf('@media (max-width: 860px)'));
+  assert.match(phone, /\.pop\.sheet \.time-cell \{ min-height: 44px; font-size: 16px; \}/);
+  assert.match(phone, /\.pop\.sheet \.time-grid \{ max-width: 340px; margin: 0 auto; \}/);
+  // The calendar knowingly stays at 36 because seven 44px columns do not fit a
+  // 360px screen. Six do: 6 × 44 plus five 2px gaps is 274.
+  assert.match(phone, /\.pop\.sheet \.cal-cell \{ min-height: 44px;/);
 });
 
-test('ลิสต์หกสิบแถวเลื่อนในตัวเอง และไม่ลากหน้าที่อยู่ข้างหลังไปด้วย', () => {
-  // The same containment `.pick-menu` and `.modal-body` both keep: a flick that
-  // reaches 59 must not carry on into the form behind.
-  assert.match(css, /\.time-list \{\s*\n\s*max-height: 208px; overflow-y: auto; overscroll-behavior: contain;/);
+test('แผงกว้างเท่าหกช่อง และมีเพดานกันไม่ให้ล้นจอเตี้ย', () => {
+  /**
+   * 272px IS ARITHMETIC: six `1fr` cells, 2px gaps, 10px of `.pop` padding a
+   * side — 40.3px a cell. It read 196px while this was two columns of two
+   * digits.
+   *
+   * THE CAP IS FOR ONE FORM. `minuteStep` is 1 on วันเกิดที่ยังไม่มีใบ, so its
+   * minute grid is ten rows, and on a short viewport the foot with ตกลง in it
+   * would sit below the bottom edge with no way to reach it. `Popover` measures
+   * `offsetHeight` after the cap, so the panel is still placed correctly.
+   */
+  assert.match(rules, /\.pop\.time-pop \{\s*\n\s*width: 272px;\s*\n\s*max-height: calc\(100vh - 16px\); overflow-y: auto;/);
+  const phone = rules.slice(rules.indexOf('@media (max-width: 860px)'));
+  // A sheet is pinned to the BOTTOM, so a panel taller than the screen loses
+  // its top — the hours — rather than its foot.
+  assert.match(phone, /\.pop\.sheet\.time-pop \{ max-height: 90vh; \}/);
 });

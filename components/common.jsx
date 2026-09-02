@@ -11,6 +11,9 @@ import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
+/* `PickOne` opens the panel the three pickers already share — see the note at
+   its `<Popover>`. Nothing else in this file uses it. */
+import { Popover, PopFoot, useSheet } from './popover.jsx';
 
 export function StatusChip({ status }) {
   // A class, not a style: see STATUS in lib/api.js. An unknown status falls
@@ -2094,11 +2097,21 @@ export function PickOne({
 }) {
   const id = React.useId();
   const [open, setOpen] = React.useState(false);
-  const [up, setUp] = React.useState(false);
   const [active, setActive] = React.useState(0);
   const btnRef = React.useRef(null);
   const listRef = React.useRef(null);
   const typed = React.useRef({ buf: '', at: 0 });
+  /* Whether the panel is a sheet — `Popover`'s own hook, read here because the
+     component has to hand it down. Below 860px this list is a bottom sheet over
+     a scrim, which is what answers the `.mobile-nav` case the old placement
+     effect existed for. */
+  const sheet = useSheet();
+  /* Closing puts the cursor back on the box, the way `usePicker` does for the
+     other three. Without it Escape leaves focus on a panel that has gone. */
+  const close = React.useCallback(() => {
+    setOpen(false);
+    btnRef.current?.focus();
+  }, []);
 
   /* ทุกแผนก / ทุกเดือน is a row like any other and is always first: it is the
      one press back to an unfiltered list, and ↑ from the top reaches it.
@@ -2127,84 +2140,34 @@ export function PickOne({
   }, [open, at]);
 
   /**
-   * OPEN UPWARDS WHEN THERE IS NO ROOM DOWNWARDS — measured, on the panel that
-   * is already on the page.
+   * THE PLACEMENT AND THE THREE WAYS OUT ARE `Popover`'S NOW — 2026-09-01.
    *
-   * The native `<select>` this replaces did it and nobody noticed, because its
-   * list was an OS overlay that could be put anywhere on the screen. This one
-   * is an element in the page, and on a 360×780 phone the เดือน filter sits
-   * about 100px off the bottom: opened downwards its rows land under the fixed
-   * นำทาง bar, which is `z-index: 30` and opaque since 2026-08-28 precisely so
-   * that nothing ghosts through it.
+   * WHAT STOOD HERE, and it was two effects and a piece of state. The first
+   * measured the panel against the floor and set an `up` class to flip it,
+   * reaching for `.mobile-nav` BY NAME, because a panel that merely fits on
+   * the screen can still be entirely behind 88px of navigation. The second
+   * closed the list on a page scroll, which is what paid for its z-index: a
+   * menu that OUTLIVES its box's position is a list hanging off nothing, and
+   * one that cannot still be open by then is a different case.
    *
-   * THE FLOOR IS THAT BAR AND NOT THE VIEWPORT, which is why this reaches for
-   * `.mobile-nav` by name rather than measuring `innerHeight` alone. A panel
-   * that merely fits on the screen can still be entirely behind 88px of
-   * navigation, and that is the case this exists for. The bar is not drawn
-   * above 860px and the floor is then the viewport, which leaves the desktop
-   * behaving exactly as it did.
+   * BOTH WERE A SECOND COPY OF WHAT `components/popover.jsx` ALREADY DID for
+   * the calendar and the time panel — the same measuring, the same flip, the
+   * same scroll-and-resize listeners — which is the exact shape that file's
+   * own header warns about: two popups that are supposed to be one panel
+   * start behaving differently. They already had. The date panel escaped a
+   * `.modal`’s `overflow: hidden` through a portal and this one could not,
+   * which is what was asked for on 2026-09-01 and is the reason for the move.
    *
-   * `useLayoutEffect`, so the class is on before the browser paints: measured
-   * in a plain effect the panel is drawn downwards for one frame and jumps.
+   * THE PHONE CASE IS ANSWERED BETTER THAN IT WAS. `.mobile-nav` was measured
+   * because the list opened downwards into it; below 860px this is a bottom
+   * SHEET now, over a scrim, at `.pop`'s z-index — there is no bar left to
+   * open into. Above 860px the bar is not drawn and the floor was the
+   * viewport, which is what `Popover` clamps to.
    *
-   * ONLY IF THERE IS ACTUALLY ROOM ABOVE. Flipping a panel that does not fit
-   * either way trades a list cut off at the bottom for one cut off at the top,
-   * and the top is where its first row is.
+   * WHAT DID NOT MOVE is everything a `<select>` gave for free and this had
+   * to give back by hand: the keys, the 900ms type-ahead, the one roving
+   * highlight, the ARIA. Those are below and are this component's own.
    */
-  React.useLayoutEffect(() => {
-    if (!open) { setUp(false); return; }
-    const box = btnRef.current?.getBoundingClientRect();
-    const panel = listRef.current;
-    if (!box || !panel) return;
-    // `getBoundingClientRect()` ON A `display: none` BAR IS ALL ZEROS, AND
-    // THAT IS A FLOOR OF 0. The bar is in the DOM at every width — the 860px
-    // block only stops it being drawn — so reading its `top` unconditionally
-    // put the floor at the top of the screen and flipped EVERY desktop panel
-    // upwards. Measured on the built app at 1280×900 before this line existed.
-    const bar = document.querySelector('.mobile-nav')?.getBoundingClientRect();
-    const floor = Math.min(window.innerHeight, bar?.height > 0 ? bar.top : Infinity);
-    const need = panel.offsetHeight + 4;
-    setUp(box.bottom + need > floor && box.top - need > 0);
-  }, [open]);
-
-  /**
-   * THE PAGE SCROLLING CLOSES THE LIST — not a nicety, but what pays for the
-   * `z-index` this panel carries.
-   *
-   * `.pick-menu`'s own 5 is deliberately low and its note says why: scroll far
-   * enough and the box slides under the app bar, and a menu drawn over that bar
-   * would be a list hanging off the top of the page attached to nothing
-   * visible. `.one-menu` has to sit above `.queue-mobile-bar` (20) or its first
-   * row opens underneath เลือกทั้งหมด — so it takes 21, and the reason the old
-   * objection does not follow it is here: the list cannot still be open by the
-   * time its box has scrolled anywhere.
-   *
-   * CAPTURE, because `scroll` does not bubble — without it a page scroll fired
-   * at `document` is never heard. The list's OWN rows scrolling is ignored by
-   * the containment check, or reading a long list would shut it.
-   *
-   * Armed a frame late: the effect above may scroll the chosen row into view,
-   * and on a browser that lets that reach an ancestor the list would close in
-   * the same tick it opened.
-   */
-  React.useEffect(() => {
-    if (!open) return undefined;
-    let armed = false;
-    const frame = requestAnimationFrame(() => { armed = true; });
-    const shut = () => setOpen(false);
-    const onScroll = (e) => {
-      if (!armed || listRef.current?.contains(e.target)) return;
-      shut();
-    };
-    window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', shut);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', shut);
-    };
-  }, [open]);
-
   function openList() {
     if (disabled || open) return;
     // Where ↓ starts from: the row already chosen, which is where a native
@@ -2299,11 +2262,43 @@ export function PickOne({
           <span className="val">{shown?.label}</span>
           <span className="caret" aria-hidden="true">▾</span>
         </button>
+        {/* ── OUT OF THE PAGE AND INTO A PORTAL, 2026-09-01 ─────────────────
+            `Popover` is the panel the calendar and the time picker already
+            open: portaled to `document.body`, placed by measurement, flipped
+            when it meets the bottom, a sheet below 860px, and dismissed by
+            Escape, by a press outside and by the page scrolling. See the note
+            where this component's own copies of all of that used to be.
+
+            `matchWidth` IS THE ONE THING A DROPDOWN NEEDS THAT THE OTHER THREE
+            DO NOT. A calendar is seven columns wide and a time panel two, both
+            fixed in the stylesheet; a list of choices has to be the width of
+            the box it dropped out of or it reads as a different control. This
+            had it for free while it was `absolute` inside `.pick-one-wrap` with
+            `left: 0; right: 0` — out here the same fact is measured off the
+            anchor on every placement, which is still not a number anybody has
+            to keep in step.
+
+            `.one-pop` IS A SHELL AND NOT A SECOND PANEL. The `<ul>` keeps
+            `.pick-menu`, so the fill, the edge, the shadow, the corner, the
+            scroll and the 44px phone rows are all still the ones ค้นหาพนักงาน
+            draws — the whole point of opening the same panel. What `.one-pop`
+            does is take `.pop`'s own skin off, so two panels are not drawn one
+            inside the other, and make the list `static` now that there is no
+            wrapper for `left: 0; right: 0` to resolve against. */}
         {open && (
+          <Popover
+            anchorRef={btnRef}
+            sheet={sheet}
+            shape={rows.length}
+            label={label}
+            onClose={close}
+            className="one-pop"
+            matchWidth
+          >
           <ul
             id={`${id}-list`}
             role="listbox"
-            className={`pick-menu one-menu${up ? ' up' : ''}`}
+            className="pick-menu one-menu"
             ref={listRef}
             aria-labelledby={`${id}-label`}
             // Selection happens on click, not here — but the default action of
@@ -2339,6 +2334,16 @@ export function PickOne({
                 ไม่มีตัวเลือก underneath the option it does have. */}
             {rows.length === (hasAll ? 1 : 0) && <li className="none" role="presentation">{emptyLabel}</li>}
           </ul>
+          {/* ปิด, ON A SHEET ONLY — `PopFoot` draws nothing on a floating panel,
+              which is why it is rendered unconditionally. Its own note is the
+              reason it is here at all: a panel is dismissed by pressing the page
+              it is over, which is right there; a sheet has a scrim over that
+              page, and "press the dark part" is a convention rather than a
+              control. Escape is the other way out and a phone has no Escape.
+              Missed on the first build of this portal — found by opening the
+              sheet at 360px and looking for the way out of it. */}
+          <PopFoot sheet={sheet} onClose={close} />
+          </Popover>
         )}
       </div>
     </div>

@@ -3221,34 +3221,33 @@ td > .approver-line { margin-top: 5px; }
    same panel. Two things about WHERE it sits are, and both were found by
    opening the built app on a 360px phone rather than by reading this file.
 
-   ── 21, WHERE `.pick-menu` TAKES 5 ─────────────────────────────────────────
-   `.queue-mobile-bar` — เลือกทั้งหมด, the phone's own toolbar — is
+   ── THE TWO RULES ABOUT WHERE IT SITS ARE GONE, 2026-09-01 ───────────────
+   They were `z-index: 21` and `.up`, and both were this list placing itself
+   in the page. It is portaled now — `.pop.one-pop`, above — so `Popover`
+   places it, flips it, and gives it `.pop`’s own stacking order.
+
+   WHAT THEY SAID, because the reasoning is what the next panel inherits.
+   `.queue-mobile-bar` — เลือกทั้งหมด, the phone’s own toolbar — is
    `position: sticky; z-index: 20` and is drawn immediately under the filters.
-   At 5 this panel opened BEHIND it: measured with `elementFromPoint` down the
-   middle of the list at 360×780, the first 40px of rows came back as
-   `queue-mobile-bar`, so ทุกเดือน — the one press back to an unfiltered queue —
-   was under an opaque bar.
+   At `.pick-menu`’s own 5 this panel opened BEHIND it: measured with
+   `elementFromPoint` down the middle of the list at 360×780, the first 40px
+   of rows came back as `queue-mobile-bar`, so ทุกเดือน — the one press back to
+   an unfiltered queue — was under an opaque bar. 21 cleared it, and what made
+   21 safe against `.pick-menu`’s own note was that the list closed on a page
+   scroll: the objection is to a menu that OUTLIVES its box’s position, and
+   one that cannot still be open by then is a different case.
 
-   `.pick-menu`'s note explains why 5 is low and it is right: scroll far enough
-   and the box slides under the app bar, and a menu drawn over that bar hangs
-   off the top of the page attached to nothing. WHAT MAKES 21 SAFE IS NOT THE
-   NUMBER, it is that `PickOne` closes the list on a page scroll — see the
-   effect that does it, which carries the other half of this note. Without that
-   this line would be the bug its neighbour warns about. 21 and not 50 like
-   `.dept-menu`: one step over the bar it has to clear, and still under the
-   fixed นำทาง bar's 30, which nothing in the page may cover.
+   `.up` flipped the panel when it met the floor — the นำทาง bar’s top edge,
+   or the viewport where that bar is not drawn.
 
-   ── AND UPWARDS WHEN THERE IS NO ROOM DOWN ─────────────────────────────────
-   `.up` is put on by the same component after measuring the panel against the
-   floor — the นำทาง bar's top edge, or the viewport where that bar is not
-   drawn. `top: auto` is load-bearing: `.pick-menu` sets `top: calc(100% + 4px)`
-   and a `bottom` alone would leave both ends pinned and stretch the panel over
-   the whole field.
+   NONE OF IT IS NEEDED OUT OF THE FLOW. Below 860px the list is a bottom
+   SHEET over a scrim, so there is no toolbar and no nav bar left to open
+   into; above it, `Popover` measures against the viewport and flips by
+   coordinates rather than by a class. The `.pick-menu` note’s objection is
+   answered the same way it is for the calendar: the panel closes on a scroll,
+   and that listener is `Popover`’s now.
 
-   The 4px is the same 4px above it, so a list that flipped is the same distance
-   off its box as one that did not. */
-.pick-menu.one-menu { z-index: 21; }
-.pick-menu.one-menu.up { top: auto; bottom: calc(100% + 4px); }
+   THE ROWS BELOW STAY, and so does the rule about naming both classes. */
 .pick-menu.one-menu li { gap: 10px; }
 /* SANS again, and for the third time in this file the same reason: these rows
    are Thai. `.pick-menu li`'s mono is for a roster of codes. */
@@ -3386,7 +3385,10 @@ td > .approver-line { margin-top: 5px; }
    sheet on a phone and it closes the same three ways. A second copy of that
    would be a second thing to keep in step, which is how two popups that are
    supposed to be one start behaving differently. What actually differs between
-   a calendar and a pair of number columns is how WIDE they want to be. */
+   a calendar and a pair of number grids is how WIDE they want to be — and,
+   since 2026-09-01, how TALL the time one is allowed to get: see the
+   `max-height` on `.pop.time-pop`, which is a floor under one form rather than
+   a second panel. */
 .pop {
   position: fixed; z-index: 120;
   padding: 10px;
@@ -3398,11 +3400,59 @@ td > .approver-line { margin-top: 5px; }
   box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
   animation: otfade .14s ease both;
 }
+/* ── AND THE THIRD SHAPE: A SHELL, NOT A PANEL ──────────────────────────────
+
+   `.one-pop` carries `PickOne`'s list, which came out into this portal on
+   2026-09-01 so it could stop being clipped by whatever it opens inside.
+
+   IT IS THE ONE `.pop` THAT DRAWS NOTHING. The `<ul>` inside keeps `.pick-menu`
+   — the same fill, edge, shadow, corner, scroll and 44px phone rows that
+   ค้นหาพนักงาน and แผนกที่คุม draw, which is the whole point of the three of
+   them opening the same panel. Left alone, `.pop` would draw a second panel
+   round the first: two borders, two shadows, 10px of ground between them.
+
+   So the skin comes off and what is left is the positioning, the portal and the
+   `z-index`. No `width` here either — `matchWidth` measures the trigger, since
+   a list of choices narrower or wider than the box it fell out of reads as a
+   different control.
+
+   `position: static` ON THE LIST is the other half. `.pick-menu` is `absolute`
+   with `top: calc(100% + 4px); left: 0; right: 0`, which is how it was the
+   width of its own wrapper — out here there is no wrapper, and left as-is the
+   panel would have no height at all, its only child being out of the flow. */
+.pop.one-pop {
+  padding: 0; background: none; border: 0; box-shadow: none;
+}
+.pop.one-pop .pick-menu.one-menu { position: static; }
 /* Seven columns of days, at the width they are readable. */
 .pop.cal-pop { width: 292px; }
-/* Two columns of two digits, and no wider — a 292px panel round `17 : 00` is
-   mostly empty, and an empty panel over a form reads as one that is loading. */
-.pop.time-pop { width: 196px; }
+/* SIX CELLS OF NUMBERS ACROSS — 272px, and the number is arithmetic rather
+   than taste: `COLS` in components/PickTime.jsx is 6, the cells are `1fr` with
+   a 2px gap and the panel's own padding is 10px a side, so a cell lands on
+   40.3px. It read `196px` while this was two scrolling columns of two digits.
+
+   ── AND A FLOOR UNDER THE ONE PANEL THAT CAN OUTGROW THE SCREEN ────────────
+   Every other shape here is a fixed height: 24 hours and 12 minutes are six
+   rows of cells whatever the screen. The birthday form is the exception —
+   `minuteStep` is 1 there, so the minute grid is TEN rows, and on a short
+   viewport (a 1280×720 laptop, a window shared to half a screen) the foot with
+   ตกลง in it would be below the bottom edge with no way to reach it.
+
+   `max-height` with `overflow-y: auto` is the floor: `Popover` measures
+   `offsetHeight` AFTER the cap, so the panel is still placed correctly, and
+   `100vh - 16px` is the same 8px edge the placement keeps. The scroll it adds
+   closes nothing — the panel's own listener ignores scrolls that begin inside
+   it. The colour is `.pick-list`'s: the app's global thumb is inset with a
+   3px border of the PAGE's ground, which inside a `--card-lift` panel draws a
+   stripe of the wrong colour down the edge. Geometry stays the app's. */
+.pop.time-pop {
+  width: 272px;
+  max-height: calc(100vh - 16px); overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent;
+}
+.pop.time-pop::-webkit-scrollbar { width: 10px; }
+.pop.time-pop::-webkit-scrollbar-track { background: transparent; }
+.pop.time-pop::-webkit-scrollbar-thumb { border-color: transparent; }
 
 /* ‹ สิงหาคม 2569 › */
 .cal-head { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
@@ -3538,18 +3588,30 @@ td > .approver-line { margin-top: 5px; }
     margin-top: 8px;
   }
   .pop.sheet .pop-foot .btn { min-height: 44px; }
-  /* THE TIME COLUMNS GET THE SAME 44px. A minute is one of sixty and the column
-     scrolls, so the row height is the whole of whether a thumb lands on 30 or
-     on 29. */
-  .pop.sheet .time-opt { min-height: 44px; font-size: 16px; }
-  .pop.sheet .time-list { max-height: min(46vh, 300px); }
-  .pop.sheet .time-cols { max-width: 340px; margin: 0 auto; }
+  /* THE TIME CELLS GET THE SAME 44px, AND HERE THEY CAN HAVE IT. The calendar
+     above knowingly stays at 36 because seven 44px columns do not fit a 360px
+     screen; six do — 6 × 44 plus five 2px gaps is 274 of the 332 a sheet has
+     inside its padding. So the one grid in this app that can afford the touch
+     floor takes it. */
+  .pop.sheet .time-cell { min-height: 44px; font-size: 16px; }
+  .pop.sheet .time-grid { max-width: 340px; margin: 0 auto; }
+  .pop.sheet .time-quick { justify-content: center; }
+  /* The read-out is the only thing on a sheet that says what ตกลง will write,
+     and a sheet is read at arm's length. */
+  .pop.sheet .time-now { font-size: 24px; }
+  /* THE SAME FLOOR AS THE FLOATING PANEL, for the same one case: ten rows of
+     minutes on the birthday form. A sheet is pinned to the BOTTOM, so a panel
+     taller than the screen loses its top — the hours — rather than its foot,
+     and the reader would be looking at the minutes of a time whose hour they
+     cannot reach. `90vh` leaves the page visible behind it, which is what says
+     a sheet is over the form rather than being the page. */
+  .pop.sheet.time-pop { max-height: 90vh; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pop, .pop-scrim, .pop.sheet { animation: none; }
 }
 
-/* ── เวลาเริ่ม / เวลาสิ้นสุด — TWO COLUMNS OF NUMBERS ────────────────────────
+/* ── เวลาเริ่ม / เวลาสิ้นสุด — TWO GRIDS OF NUMBERS ──────────────────────────
 
    `PickTime` in components/PickTime.jsx, inside the `.pop` panel above.
 
@@ -3559,83 +3621,92 @@ td > .approver-line { margin-top: 5px; }
    in a form about overtime between 17:00 and 20:00 น., on a screen where the
    queue's rows, the preview under the form and ใบ F-HR-027 all print 24-hour.
    No attribute on that tag settles it; the format is the browser's business.
-   Ours is a string this app already holds, so there is nothing to format. */
-.time-cols { display: flex; align-items: stretch; gap: 10px; }
-.time-col { flex: 1; min-width: 0; }
-.time-col-head {
-  text-align: center; padding-bottom: 4px;
+   Ours is a string this app already holds, so there is nothing to format.
+
+   ── IT WAS TWO SCROLLING COLUMNS UNTIL 2026-09-01 ──────────────────────────
+   Five rules and two scrollbar-hiding declarations stood here and are gone:
+   `.time-cols` (a flex pair), `.time-col`, `.time-col-head`, `.time-list` (a
+   208px box with `overflow-y: auto` and `overscroll-behavior: contain`) and
+   `.time-opt`. They were reported on 2026-09-01 as laying out wrong and being
+   hard to use, and it was the shape rather than any one declaration: a column
+   208px tall shows six of its rows, so the number somebody wants is usually off
+   screen when the panel opens and reaching it is a drag on a bar that had
+   itself been hidden the round before for reading as a divider between the two
+   columns.
+
+   WHAT EACH OF THEM WAS FOR, AND WHERE THAT FACT LIVES NOW:
+
+     · the 208px cap and `overflow-y: auto` — "there is more below". A grid of
+       24 has no below; every hour is on screen.
+     · `scrollbar-width: none` and the `::-webkit-scrollbar` pair — hiding a bar
+       that read as a rule down the middle of a 196px panel. Nothing scrolls
+       here, so there is no bar to hide. The one place a scrollbar can still
+       appear is the panel itself on a short screen, and `.pop.time-pop` above
+       recolours it the way `.pick-list` does.
+     · `.time-col-head` — the ชั่วโมง / นาที labels. `.time-head` below is the
+       same label over a grid instead of beside one.
+     · the green fill on the chosen row — kept, on `.time-cell.on`, and it is
+       the declaration two rounds of this control were about.
+
+   THE PANEL IS 272px WIDE AND THAT NUMBER IS SIX CELLS. See `COLS` in the
+   component: 24 hours and 12 minutes both divide by six, so neither grid ends
+   in a ragged row. */
+.time-now {
+  text-align: center; padding: 1px 0 7px;
+  /* MONO, TABULAR AND BIG. This is the whole answer being assembled — the box
+     behind no longer moves until ตกลง, so while the panel is open this is the
+     only place `17:30` exists. Tabular so the two digits do not shuffle
+     sideways as the minute changes under them. */
+  font: 600 21px/1.2 var(--mono); font-variant-numeric: tabular-nums;
+  color: var(--ink); letter-spacing: .5px;
+}
+.time-head {
+  padding-bottom: 4px;
   font: 500 11px/1.6 var(--sans); color: var(--muted-2);
 }
-/* ROWS THAT SCROLL, and the cap is what makes that a list rather than a page.
-   `overscroll-behavior` stops a flick that reaches the end carrying on into the
-   form behind — the same containment `.pick-menu` and `.modal-body` both keep,
-   for the same reason.
-
-   (It read "sixty rows" until 2026-09-01, when the minute column became every
-   fifth minute. The hour column is still twenty-four and is the one that
-   scrolls on an ordinary form.) */
-.time-list {
-  max-height: 208px; overflow-y: auto; overscroll-behavior: contain;
-  display: flex; flex-direction: column; gap: 2px;
-}
-/* ── AND THE BAR ITSELF IS NOT DRAWN ────────────────────────────────────────
-
-   Reported on 2026-09-01 as a line down the middle of the panel, and that is
-   exactly where it was: the hour column's scrollbar sits at ITS right edge,
-   which in a two-column panel is the gap between ชั่วโมง and นาที. The app's
-   global thumb is a 10px pill on a `--bg` ground (see the rule at the top of
-   this file), so in a 196px popup it read as a divider rather than as a control
-   — a rule nobody drew, between two columns that are not separated by one.
-
-   `.section-tabs` does the same thing three thousand lines below and for the
-   same reason: a bar whose only job is to say "there is more" on a strip that
-   is obviously a strip.
-
-   WHAT SAYS THERE IS MORE INSTEAD. The chosen row is a green fill and is
-   scrolled into view whenever the value moves, so the column always opens
-   showing where it is rather than at the top; and the rows are cut mid-height
-   by the 208px cap, which is the same "there is more below" a table's clipped
-   last row gives. Both properties, since Firefox draws none of the `::-webkit-`
-   rules and would otherwise keep its own. */
-.time-list { scrollbar-width: none; }
-.time-list::-webkit-scrollbar { display: none; }
-.time-list:focus { outline: none; }
-.time-opt {
-  flex: none; min-height: 34px;
+.time-head + .time-grid { margin-bottom: 2px; }
+.time-grid + .time-head { margin-top: 9px; }
+/* SIX COLUMNS, WRITTEN ONCE. `.cal-grid` next door takes its column count from
+   a class (`c7`, `c3`) because a calendar has three views with three of them;
+   both grids here are six and a modifier for a number that never varies is a
+   second place to look. */
+.time-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
+.time-grid:focus { outline: none; }
+/* A CELL IS `.cal-cell`'s TWIN, and deliberately: a day and an hour are the
+   same act in the same panel, and two cells that differ by a pixel in a form
+   whose date box sits beside its time box read as two controls. 34px rather
+   than the calendar's 36 — six columns instead of seven leaves the width for
+   it, and two grids stacked is where the panel's height comes from. */
+.time-cell {
+  min-height: 34px;
   display: grid; place-items: center;
   border: none; border-radius: var(--radius-xs); padding: 0;
   background: none; color: var(--ink);
   /* MONO AND TABULAR, unlike the calendar's cells. These are two-digit figures
      read down a column and compared, which is the case the note at the top of
      this file reserves mono for — and nothing here is Thai. */
-  font: 400 14px/1.3 var(--mono); font-variant-numeric: tabular-nums;
+  font: 400 13.5px/1.3 var(--mono); font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.time-opt:hover { background: var(--neutral-wash); }
+.time-cell:hover { background: var(--neutral-wash); }
 /* The app's own ring, offset inwards past the 2px gap — the colour comes from
    the base `:focus-visible` and is deliberately not restated. */
-.time-opt:focus-visible { outline-offset: -2px; }
-/* THE ONE CHOSEN, in the app's green — this is the declaration the request was
-   about, and what stands where the OS put its blue bar. `--on-fill` is the
-   token for text on a saturated fill and is the same in both themes, so it
-   reads on ธีมมืด without a second rule. */
-.time-opt.on { background: var(--green); color: var(--on-fill); font-weight: 600; }
-.time-opt.on:hover { background: var(--green-lift); }
-/* THERE IS NO `:` BETWEEN THE COLUMNS, AND THERE WAS FOR TWO BUILDS.
-
-   Centred, it floated in the middle of a 208px list beside nothing and read
-   as a stray glyph; moved to the first row it read as debris at the top of the
-   minutes. Both were screenshotted before the third answer, which is that the
-   columns are already LABELLED — ชั่วโมง and นาที — and a separator between
-   two named things joins nothing that was not already joined. The box above
-   the panel says `17:00` in full.
-
-   What replaced it is the gap: 10px rather than 4, which is what now says the
-   two columns are two. */
-/* 17:00 · 18:00 · 20:00 · 22:00 — the shifts this office types, in the foot
-   beside ปิด. Not a replacement for the columns: วันเกิดที่ยังไม่มีใบ is filled
-   in from a fingerprint scanner and needs 17:03. */
-.time-quick { display: flex; flex-wrap: wrap; gap: 4px; }
+.time-cell:focus-visible { outline-offset: -2px; }
+/* THE ONE CHOSEN — a dark green fill with white on it, which is what was asked
+   for and what stands where the OS put its blue bar. `--green` is the app's
+   saturated green and is already the darker of its two values on ธีมมืด;
+   `--on-fill` is the token for text on a saturated fill and is white in both
+   themes, so this reads on ธีมมืด without a second rule. (No literal colour
+   here or anywhere in this half of the file — test/theme.test.js reads the
+   rules AND their comments, and a hex written down as an illustration is
+   indistinguishable from one a component put in in a hurry.) Same pair as
+   `.cal-cell.on`, for the reason above it. */
+.time-cell.on { background: var(--green); color: var(--on-fill); font-weight: 600; }
+.time-cell.on:hover { background: var(--green-lift); }
+/* 17:00 · 18:00 · 20:00 · 22:00 — the shifts this office types, over the foot.
+   Not a replacement for the grids: they set BOTH halves in one press, which is
+   the one thing two grids cannot do. */
+.time-quick { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
 .time-chip {
   border: 1px solid var(--line); border-radius: 20px; padding: 4px 9px;
   background: none; color: var(--ink-2);
@@ -3644,6 +3715,18 @@ td > .approver-line { margin-top: 5px; }
 }
 .time-chip:hover { background: var(--neutral-wash); color: var(--ink); }
 .time-chip.on { background: var(--green-bg); border-color: var(--ok-line); color: var(--green-dark); }
+/* ── ยกเลิก AND ตกลง, AT BOTH WIDTHS ────────────────────────────────────────
+
+   `.pop-foot` is the shared foot and supplies the divider, the gap and the
+   `space-between` that puts one button at each end. What this adds is that the
+   two of them are the whole foot: `PopFoot` draws its ปิด on a sheet only,
+   because a floating panel is dismissed by pressing the page behind it — and
+   that argument ends the moment a panel holds a draft. ยกเลิก has to be
+   reachable at 1280px too, since what it now does is put the field back.
+
+   THE PAIR IS ALSO WHY THE FOOT IS NOT `sm` ON A PHONE: `.pop.sheet .pop-foot
+   .btn` above already gives both 44px. */
+.time-foot { margin-top: 10px; }
 /* ══ THE SUGGESTION LIST UNDER A ค้นหา BOX ══════════════════════════════════
 
    `.pick-menu.find-menu` — the same floating panel กรองตามพนักงาน uses, with

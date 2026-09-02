@@ -84,7 +84,9 @@ export function useSheet() {
  * to be re-placed when it grows or its top runs off the screen. `shape` is what
  * the caller passes to say so.
  */
-export function Popover({ anchorRef, sheet, shape, label, onClose, className = '', children }) {
+export function Popover({
+  anchorRef, sheet, shape, label, onClose, className = '', matchWidth = false, children,
+}) {
   const panelRef = React.useRef(null);
   const [pos, setPos] = React.useState(null);
 
@@ -97,7 +99,25 @@ export function Popover({ anchorRef, sheet, shape, label, onClose, className = '
       const GAP = 6;
       const EDGE = 8;
       const h = p.offsetHeight;
-      const w = p.offsetWidth;
+      /**
+       * `matchWidth` — THE PANEL IS THE TRIGGER'S WIDTH, MEASURED.
+       *
+       * The three pickers this file was written for are all wider than their
+       * box: a calendar is seven columns and a time panel is six, and both
+       * carry a fixed width in the stylesheet (`.cal-pop`, `.time-pop`). A
+       * dropdown is not — a list of choices that is not the width of the box it
+       * dropped out of reads as a different control, and `PickOne` had that for
+       * free while it was `position: absolute` inside its own wrapper with
+       * `left: 0; right: 0`. Out in a portal there is no wrapper to be pinned
+       * to, so the same fact has to be measured.
+       *
+       * IT IS STILL NOT A NUMBER, which is what that arrangement was protecting.
+       * The width is read off the anchor every time the panel is placed —
+       * on open and on every resize — so there is nothing in the stylesheet or
+       * the component that could drift from the box's actual width at any
+       * breakpoint. See test/queueDropdown.test.js, which pins exactly this.
+       */
+      const w = matchWidth ? a.width : p.offsetWidth;
       let top = a.bottom + GAP;
       // Above the trigger only when below does not fit AND above does — a flip
       // that trades a panel cut off at the bottom for one cut off at the top
@@ -107,12 +127,12 @@ export function Popover({ anchorRef, sheet, shape, label, onClose, className = '
       // Left edge with the trigger, pulled back in if that would hang the panel
       // off the right — the fields on ตั้งค่าระบบ sit in a right-hand column.
       const left = Math.max(EDGE, Math.min(a.left, window.innerWidth - w - EDGE));
-      setPos({ top, left });
+      setPos({ top, left, width: matchWidth ? w : undefined });
     };
     place();
     window.addEventListener('resize', place);
     return () => window.removeEventListener('resize', place);
-  }, [sheet, shape, anchorRef]);
+  }, [sheet, shape, anchorRef, matchWidth]);
 
   /**
    * THE WAYS OUT, and the page scrolling is one of them.
@@ -124,7 +144,10 @@ export function Popover({ anchorRef, sheet, shape, label, onClose, className = '
    * sheet is not anchored to anything to come adrift from.
    *
    * CAPTURE, because `scroll` does not bubble. Scrolls that begin INSIDE the
-   * panel are ignored, or a sixty-row minute column could not be read.
+   * panel are ignored — it was a sixty-row minute column that could not have
+   * been read otherwise, and since that became a grid it is the time panel
+   * itself on a short screen, where `max-height` caps it and the foot with
+   * ตกลง in it is below the fold until somebody scrolls to it.
    */
   React.useEffect(() => {
     const onKey = (e) => {
@@ -171,6 +194,10 @@ export function Popover({ anchorRef, sheet, shape, label, onClose, className = '
       style={sheet ? undefined : {
         top: pos?.top ?? 0,
         left: pos?.left ?? 0,
+        // `undefined` unless the caller asked to match the trigger — the other
+        // three panels take their width from the stylesheet and must not have
+        // one written over it.
+        width: pos?.width,
         opacity: pos ? undefined : 0,
         pointerEvents: pos ? undefined : 'none',
       }}

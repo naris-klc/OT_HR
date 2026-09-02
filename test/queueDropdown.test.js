@@ -27,6 +27,8 @@ const read = (f) => readFileSync(join(ROOT, f), 'utf8');
 const common = read('components/common.jsx');
 const queue = read('components/ApprovalQueue.jsx');
 const css = read('app/styles.css');
+/** The panel `PickOne` opens since 2026-09-01 — see the portal test below. */
+const popover = read('components/popover.jsx');
 
 /** `PickOne`'s source and nothing after it — the trap personSearch fell into. */
 const source = (() => {
@@ -93,7 +95,10 @@ test('เมนูที่เปิดออกมาคือ .pick-menu ใ�
    * being written twice, and it is why ค้นหาพนักงาน, แผนกที่คุม and these two
    * filters are one thing for a reader to learn instead of four.
    */
-  assert.match(source, /className=\{`pick-menu one-menu\$\{up \? ' up' : ''\}`\}/);
+  // Plain since 2026-09-01: the `up` class that used to be appended here was
+  // this list flipping itself, and `Popover` places it now — see the portal
+  // test below.
+  assert.match(source, /className="pick-menu one-menu"/);
   assert.ok(
     selectors.every((s) => !s.includes('one-menu') || s.includes('.pick-menu')),
     `กฎของ .one-menu ต้องเขียน .pick-menu กำกับทุกตัว: ${selectors.filter((s) => s.includes('one-menu') && !s.includes('.pick-menu')).join(' · ')}`,
@@ -130,51 +135,51 @@ test('.one-menu ไม่ทาสีแผงใหม่ — ผิวแล�
 });
 
 /**
- * THE PANEL IS EXACTLY AS WIDE AS ITS BOX, AND IT IS TWO LINES THAT SAY SO.
+ * แผงกว้างเท่ากล่องพอดี — และตั้งแต่ 2026-09-01 มันถูกวัด ไม่ได้ถูกตรึง.
  *
- * Asked for on 2026-09-01 as "กำหนดความกว้างไม่ให้กว้างเกินขอบ container หรือ
- * หน้าจอมือถือ · จัดตำแหน่งให้ลอยพอดีอยู่ใต้ช่องกด ไม่ยื่นล้นออกไปทางขวา" —
- * which is what a native `<select>`'s list could not promise, because that list
- * is an OS overlay sized to its longest option and free to be put anywhere on
- * the screen, this page's container and viewport included.
+ * WHAT IT WAS: `.pick-menu` is `position: absolute` with BOTH `left: 0` and
+ * `right: 0` inside `.pick-one-wrap`'s `position: relative`, so the panel was
+ * the box's width by construction, could not stick out, and had no number to
+ * keep in step. That is still true of the two menus that stayed in the flow —
+ * ค้นหาพนักงาน's and แผนกที่คุม's — and the first half of this test is theirs.
  *
- * IT IS NOT A WIDTH, AND THAT IS THE POINT. `.pick-menu` is `position: absolute`
- * with BOTH `left: 0` and `right: 0` inside `.pick-one-wrap`, which is the
- * `position: relative` the offsets resolve against. Pinned to both edges of the
- * box's own wrapper, the panel cannot be a different width from the box and
- * cannot stick out past it in either direction — there is no number to keep in
- * step and no breakpoint at which it could disagree. A `width` or a
- * `min-width: 220px` would be that number, which is why the block above bans
- * `.one-menu` from restating the panel's size at all.
+ * WHAT CHANGED: `PickOne`'s list is portaled now, so there is no wrapper for
+ * those offsets to resolve against and the same fact has to be measured.
+ * `Popover`'s `matchWidth` reads the anchor's width on every placement — on
+ * open and on every resize — which keeps the promise the offsets kept: there is
+ * no width in the stylesheet or the component that could drift from the box's
+ * actual width at any breakpoint.
  *
- * THE THREE WAYS TO BREAK IT are `right` dropped from `.pick-menu` (the panel
- * then takes its content's width and a long Thai row runs out to the right),
- * `position: relative` dropped from `.pick-one-wrap` (the offsets then resolve
- * against whatever ancestor is positioned, which on ตรวจสอบรายเดือน is the
- * page), and a width restated on `.one-menu`. All three are held here.
- *
- * MEASURED ON THE BUILT APP at 1280, 1440, 360 and 320, ธีมมืด: the panel's left
- * and right edges are 0.00px from the box's at every one of them, it sits 4px
- * under it, and `document.scrollWidth` equals the viewport in all four — no
- * sideways scroll anywhere. At 320px with ทั้งหมดที่ยังไม่ถูกปฏิเสธ selected —
- * the longest of the three labels — the box is 270px, the panel is 270px, and
- * the rows do not wrap.
+ * THE BAN SURVIVES THE MOVE AND IS WHAT MAKES THAT TRUE. No `.one-menu` rule
+ * and no `.one-pop` rule may declare a width, or the measurement would be
+ * overruled by a number somebody wrote down.
  */
-test('แผงกว้างเท่ากล่องพอดี ไม่ล้นออกขวา — ตรึงทั้งสองขอบ ไม่ใช่กำหนดความกว้าง', () => {
+test('แผงกว้างเท่ากล่องพอดี ไม่ล้นออกขวา — วัดจากกล่อง ไม่ใช่เลขที่เขียนไว้', () => {
+  // The two menus still in the flow, unchanged.
   const rule = css.slice(css.indexOf('.pick-menu {'), css.indexOf('}', css.indexOf('.pick-menu {')));
   assert.match(rule, /position: absolute;/, '.pick-menu ไม่ได้ลอย — แผงจะดันเนื้อหาใต้กล่องแทนที่จะทับ');
   assert.match(rule, /left: 0; right: 0;/, '.pick-menu ไม่ได้ตรึงสองขอบ — แผงจะกว้างตามข้อความและล้นออกขวา');
   assert.match(rule, /top: calc\(100% \+ 4px\)/, 'แผงไม่ได้ลอยอยู่ใต้กล่องพอดี');
-
-  // The containing block those offsets resolve against. Without it they reach
-  // past `.field` to whatever ancestor is positioned, and the panel is then the
-  // width of the page.
   assert.match(css, /\.pick-one-wrap \{ position: relative; \}/,
     'กล่องไม่มี containing block — left/right ของแผงจะไปอ้างอิงบรรพบุรุษตัวอื่น');
 
-  // And no rule anywhere may hand the panel a width of its own, which is the
-  // one thing that could put its edges somewhere other than the box's.
-  for (const s of selectors.filter((x) => x.includes('one-menu') && !/\bli\b/.test(x))) {
+  // The portaled one, measured.
+  assert.match(source, /matchWidth\s*\n?\s*>/, 'PickOne ไม่ได้ขอให้แผงกว้างเท่ากล่อง');
+  assert.match(popover, /const w = matchWidth \? a\.width : p\.offsetWidth;/);
+  // …and `static`, or the list keeps `left: 0; right: 0` against a panel that
+  // is not its wrapper — and a `.pop` whose only child is out of the flow has
+  // no height at all.
+  assert.match(css, /\.pop\.one-pop \.pick-menu\.one-menu \{ position: static; \}/);
+
+  // No width written down anywhere, on the list or on the shell it sits in.
+  // The PANEL's rules only — `.field .pick-one .val` is the box's own text and
+  // its `min-width: 0` is what lets a long Thai label ellipsis instead of
+  // pushing the ▾ out, which is a different question and has its own note.
+  const named = [
+    ...selectors.filter((x) => x.includes('one-menu')),
+    ...[...css.matchAll(/^([^\n{}]*one-pop[^\n{}]*)\{/gm)].map((m) => m[1].trim()),
+  ];
+  for (const s of named.filter((x) => !/\bli\b/.test(x))) {
     const own = css.slice(css.indexOf(`${s} {`), css.indexOf('}', css.indexOf(`${s} {`)));
     for (const prop of ['width:', 'min-width:', 'max-width:', 'left:', 'right:']) {
       assert.ok(!own.includes(prop), `${s} ประกาศ ${prop} เอง — ความกว้างของแผงต้องมาจากกล่องเท่านั้น`);
@@ -182,67 +187,67 @@ test('แผงกว้างเท่ากล่องพอดี ไม่�
   }
 });
 
-test('แผงต้องอยู่เหนือแถบ เลือกทั้งหมด ของมือถือ และยังอยู่ใต้แถบนำทาง', () => {
-  /**
-   * MEASURED ON THE BUILT APP AT 360×780, and it is why this rule exists at
-   * all: at `.pick-menu`'s own `z-index: 5` the panel opened BEHIND
-   * `.queue-mobile-bar`, which is `position: sticky; z-index: 20` and drawn
-   * immediately under the filters. `elementFromPoint` down the middle of the
-   * open list returned `queue-mobile-bar` for its first 40px — ทุกเดือน, the
-   * one press back to an unfiltered queue, under an opaque bar.
-   *
-   * 21 and no higher. `.mobile-nav` is fixed at 30 and nothing in the page may
-   * cover it; that one is answered by opening upwards instead, below.
-   */
-  assert.match(css, /\.pick-menu\.one-menu \{ z-index: 21; \}/);
-  assert.match(css, /\.queue-mobile-bar \{[\s\S]*?position: sticky; top: 62px; z-index: 20;/);
+/**
+ * แผงลอยออกไปนอกทุกอย่างที่จะตัดมันได้ — ขอมา 2026-09-01 ข้อสาม.
+ *
+ * WHAT IT REPLACED, and both halves were this list placing itself in the page:
+ * a `z-index: 21` that had to clear `.queue-mobile-bar`'s sticky 20 while
+ * staying under `.mobile-nav`'s fixed 30 — found with `elementFromPoint` down
+ * the middle of the open list at 360×780, which returned `queue-mobile-bar` for
+ * its first 40px — and a `.up` class set by measuring the panel against the nav
+ * bar's top edge. Both were a second copy of what
+ * `components/popover.jsx` already did for the calendar and the time panel,
+ * which is the shape that file's own header warns about.
+ *
+ * AND NEITHER SURVIVES THE MOVE. Below 860px the list is a bottom SHEET over a
+ * scrim, so there is no toolbar and no nav bar left to open into; above it,
+ * `Popover` places by coordinates and flips by measurement. The panel is out of
+ * `document.body`, where the only thing that decides what covers what is
+ * `z-index` — `.pop`'s 120, over every bar in the app.
+ */
+test('แผงเป็น portal ผ่าน Popover — ไม่วางตัวเองในหน้าอีกแล้ว', () => {
+  assert.match(source, /<Popover\s*\n\s*anchorRef=\{btnRef\}/);
+  assert.match(source, /className="one-pop"/);
+  assert.match(source, /const sheet = useSheet\(\);/);
+  assert.match(common, /import \{ Popover, PopFoot, useSheet \} from '\.\/popover\.jsx';/);
+
+  // The shell draws nothing — the `<ul>` keeps `.pick-menu`, so the fill, the
+  // edge, the shadow, the corner and the scroll are still the ones ค้นหาพนักงาน
+  // draws. Left alone `.pop` would draw a second panel round the first.
+  assert.match(css, /\.pop\.one-pop \{\s*\n\s*padding: 0; background: none; border: 0; box-shadow: none;\s*\n\}/);
+  assert.match(source, /className="pick-menu one-menu"/);
+
+  // The two rules that placed it are gone, and so is the state and the two
+  // effects behind them.
+  assert.ok(!/\.pick-menu\.one-menu \{ z-index: 21; \}/.test(css), 'z-index ของ .one-menu กลับมาแล้ว');
+  assert.ok(!/\.pick-menu\.one-menu\.up \{/.test(css), 'คลาส .up กลับมาแล้ว');
+  assert.ok(!/setUp\(/.test(source), 'PickOne กลับไปวัดตำแหน่งเอง');
+  assert.ok(!/document\.querySelector\('\.mobile-nav'\)/.test(source), 'PickOne ยังไปวัดแถบนำทางเอง');
+  assert.ok(!/window\.addEventListener\('scroll'/.test(source), 'PickOne ยังฟัง scroll เอง');
+
+  // …because `Popover` does all three, and the panel it opens is above every
+  // bar this app draws.
+  assert.match(popover, /window\.addEventListener\('scroll', onScroll, true\)/);
+  assert.match(popover, /createPortal\(/);
+  assert.match(css, /\.pop \{\s*\n\s*position: fixed; z-index: 120;/);
   assert.match(css, /\.mobile-nav \{\s*\n\s*position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;/);
-});
+  assert.match(css, /\.queue-mobile-bar \{[\s\S]*?position: sticky; top: 62px; z-index: 20;/);
 
-test('ปิดเมื่อหน้าเลื่อน — นี่คือสิ่งที่ทำให้ z-index 21 ไม่ผิดกฎของ .pick-menu', () => {
-  /**
-   * `.pick-menu`'s note bars a menu from drawing over the app bar, because a
-   * box that has scrolled under it leaves the list hanging off nothing. That
-   * objection is about a menu that OUTLIVES its box's position — so the answer
-   * is not a lower number, it is that this one cannot.
-   *
-   * CAPTURE, since `scroll` does not bubble; and a scroll of the list's own
-   * rows is ignored, or reading a long list would shut it.
-   */
-  assert.match(source, /window\.addEventListener\('scroll', onScroll, true\)/);
-  assert.match(source, /window\.removeEventListener\('scroll', onScroll, true\)/);
-  assert.match(source, /listRef\.current\?\.contains\(e\.target\)/);
-  assert.match(source, /window\.addEventListener\('resize', shut\)/);
-  // Armed a frame late, or the chosen row being scrolled into view can close
-  // the list in the same tick it opened.
-  assert.match(source, /requestAnimationFrame\(\(\) => \{ armed = true; \}\)/);
-});
+  // Escape and a press outside are `Popover`'s too, and closing puts the cursor
+  // back on the box — the way `usePicker` does for the other three, or Escape
+  // leaves focus on a panel that has gone.
+  assert.match(source, /const close = React\.useCallback\(\(\) => \{\s*\n\s*setOpen\(false\);\s*\n\s*btnRef\.current\?\.focus\(\);/);
+  assert.match(source, /onClose=\{close\}/);
 
-test('ไม่มีที่ข้างล่างก็เปิดขึ้นบน และพื้นคือแถบนำทาง ไม่ใช่ขอบจอ', () => {
-  /**
-   * A panel that merely FITS on the screen can still be entirely behind 88px of
-   * fixed navigation, which is the case on a 360×780 phone where the เดือน
-   * filter sits about 100px off the bottom. So the floor is `.mobile-nav`'s top
-   * edge when that bar is drawn, and the viewport where it is not — which
-   * leaves the desktop exactly as it was.
-   */
-  assert.match(source, /document\.querySelector\('\.mobile-nav'\)\?\.getBoundingClientRect\(\)/);
-  // `bar.height > 0` AND NOT A BARE `bar`. The bar is in the DOM at every
-  // width — the 860px block only stops it being DRAWN — and a `display: none`
-  // element's rect is all zeros, which is a floor at the top of the screen.
-  // Read unconditionally it flipped every desktop panel upwards; measured on
-  // the built app at 1280×900 before the guard was there.
-  assert.match(source, /Math\.min\(window\.innerHeight, bar\?\.height > 0 \? bar\.top : Infinity\)/);
-  // Only if there is room above: flipping a panel that fits neither way trades
-  // a list cut off at the bottom for one cut off at the top, where its first
-  // row is.
-  assert.match(source, /setUp\(box\.bottom \+ need > floor && box\.top - need > 0\)/);
-  // Before the paint, or the panel is drawn downwards for a frame and jumps.
-  assert.match(source, /React\.useLayoutEffect/);
-  // `top: auto` is load-bearing: `.pick-menu` pins `top`, and a `bottom` alone
-  // would leave both ends fixed and stretch the panel over the whole field.
-  assert.match(css, /\.pick-menu\.one-menu\.up \{ top: auto; bottom: calc\(100% \+ 4px\); \}/);
-  assert.match(source, /className=\{`pick-menu one-menu\$\{up \? ' up' : ''\}`\}/);
+  // AND A SHEET NEEDS A WAY OUT THAT IS A CONTROL. `PopFoot` draws nothing on a
+  // floating panel, so it is rendered unconditionally; on a sheet it is the ปิด
+  // button, which is the one press that must always be available and on a phone
+  // has to be a real 44px target — a panel is dismissed by pressing the page it
+  // is over, but a sheet has a scrim over that page and "press the dark part" is
+  // a convention rather than a control. Missed on the first build of this portal
+  // and found by opening the sheet at 360px and looking for the way out of it.
+  assert.match(source, /<PopFoot sheet=\{sheet\} onClose=\{close\} \/>/);
+  assert.match(common, /import \{ Popover, PopFoot, useSheet \} from '\.\/popover\.jsx';/);
 });
 
 // ── the highlight, which is what the request was about ──────────────────────
