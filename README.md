@@ -1260,9 +1260,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1894 tests
-across 114 files**, measured 2026-09-01 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1896" until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1901 tests
+across 114 files**, measured 2026-09-02 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -6305,17 +6305,34 @@ four role UIs.
 
 **Verified**
 
-- `npm test` — **1894/1894 pass in about 2 s**, measured 2026-09-01 across 114
+- `npm test` — **1901/1901 pass in about 2 s**, measured 2026-09-02 across 114
   files. **The newest are in `test/pickTime.test.js`**, over เวลาเริ่ม /
-  เวลาสิ้นสุด being two GRIDS instead of two scrolling wheels — and **the count
-  did not move**: nineteen cases in that file before and nineteen after, because
-  most of them changed shape rather than number. The wheel was reported as
-  laying out wrong and hard to use, and the shape was what was wrong with it: a
-  208px column shows six of twenty-four rows, so the number somebody wants is
-  usually off screen when the panel opens. All twenty-four hours are on screen
-  now, six to a row, with the minutes two rows under them — ten rows on the
-  birthday form, where the times come off a fingerprint scanner and every minute
-  is kept. **Three cases are reversals of what stood there**: `role="grid"`
+  เวลาสิ้นสุด being a HYBRID: two number boxes at the top that a keypad types
+  into, over two wheels that snap to a band drawn across both of them. The file
+  went from nineteen cases to twenty-five and it is the same control's third
+  shape in two days — which is not indecision, it is each shape answering what
+  the last one was actually wrong about. The wheel alone was hard to use because
+  a 208px column shows six of twenty-four rows; the grids answered that by
+  spending the whole panel on cells nobody presses, and still could not answer
+  "I know the time, let me type it". **What makes the wheel bearable is the
+  header above it** — being the only way in was the problem, not the scrolling.
+  **Six of the new cases are about the two directions of the binding**: a valid
+  keystroke writes the draft, which turns the wheel; a wheel that settles writes
+  the draft, which fills the boxes; and `scrollTop === index × slot` is true for
+  every stop, which is the arithmetic both directions rest on — two stops of
+  padding at each end are what make it so. **Two are about what is refused and
+  what is only marked**: a non-digit and a third digit never reach the box, but
+  `25` stands with a red ring, `aria-invalid`, a line naming the ranges, and
+  ตกลง shut — because the draft still holds the last good figure and applying
+  THAT would be applying a time the screen is not showing. **And one bans the
+  other two shapes by name**, `.time-opt` and `.time-grid` alike, so half of an
+  old panel cannot survive in the stylesheet. It read "1896/1896" until then.
+  **Before it, in the same file**, over เวลาเริ่ม / เวลาสิ้นสุด being two GRIDS
+  instead of two scrolling wheels — **the count did not move**: nineteen cases
+  in that file before and nineteen after, because most of them changed shape
+  rather than number. (The grids lasted an evening. What survived them is the
+  draft, ตกลง / ยกเลิก, and the reason the hours are all twenty-four.)
+  **Three of its cases were reversals of what stood there**: `role="grid"`
   where a note argued that a column of hours is not two-dimensional, ←/→
   wrapping where ↑/↓ used to, and **nothing written until ตกลง** where the rule
   had been that every press applies immediately. The last is the one to read
@@ -6323,10 +6340,12 @@ four role UIs.
   anything back would be a lie in a control that files somebody's hours, so the
   panel holds a draft and every way out except ตกลง leaves the field as it was
   found. What it costs is what the old rule bought: a panel walked away from
-  mid-choice now keeps nothing. **Two more pin what the wheel left behind** —
-  no `scrollIntoView` anywhere in the component, and none of `.time-cols`,
-  `.time-col-head`, `.time-list` or `.time-opt` in the stylesheet. **Six popular
-  hours (17:00–22:00) was the other shape offered** for the hour grid and it was
+  mid-choice now keeps nothing. **Two more pinned what the first wheel left
+  behind**, and both still hold under the second one: no `scrollIntoView`
+  anywhere in the component — the wheel that came back turns by writing
+  `scrollTop`, which is exact — and none of `.time-cols`, `.time-col-head`,
+  `.time-list` or `.time-opt` in the stylesheet. **Six popular hours
+  (17:00–22:00) was the other shape offered** for the hour grid and it was
   refused on the value rather than the layout: this same control is
   เวลาสิ้นสุด, where a shift ending 00:30 is ordinary, and OT on a holiday
   starts at 08:00. Neither is between 17 and 22.

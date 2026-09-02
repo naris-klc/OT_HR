@@ -32,37 +32,35 @@ import { Popover, PickerBox, usePicker } from './popover.jsx';
  *
  * Drawing it ourselves is what makes 24-hour a fact rather than a preference.
  *
- * ── THE WHEELS CAME OUT ON 2026-09-01, AND WHAT REPLACED THEM ──────────────
- * For three rounds this panel was two scrolling columns — a listbox of 24 hours
- * beside one of 12 or 60 minutes, each scrolling its chosen row into view. It
- * was reported as laying out wrong and being hard to use, and the shape is what
- * was wrong with it rather than any one of its rules: a column that scrolls
- * shows perhaps six of its rows, so the answer somebody wants is usually not on
- * screen when the panel opens, and finding it means dragging a 208px box with a
- * bar that had already been hidden for reading as a divider. Every fix that
- * round was a fix to a symptom of that.
+ * ── WHEEL, THEN GRID, AND NOW BOTH — WHICH IS NOT INDECISION ───────────────
+ * This panel has been three shapes in one day and the third is the one that
+ * answers what each of the first two was actually wrong about.
  *
- * A GRID SHOWS ALL OF IT AT ONCE. Twenty-four hours are four rows of six and
- * nothing scrolls; the minutes are two more rows under them. Nothing is behind
- * a drag, the panel has one height on the ordinary form, and the cell somebody
- * is reaching for is on the screen the moment it opens. It is also the shape
- * this app's calendar already is — `Grid` in components/PickDate.jsx — so the
- * two panels are now walked with the same four arrow keys.
+ *   · TWO SCROLLING COLUMNS. Reported as laying out wrong and hard to use, and
+ *     the complaint was real: a 208px column shows six of twenty-four rows, so
+ *     17:30 on an ordinary evening shift was three flicks away and the number
+ *     somebody wanted was usually off screen when the panel opened.
+ *   · TWO GRIDS. Everything visible at once, nothing to drag — and it bought
+ *     that by spending the panel's whole height on cells nobody presses. It
+ *     also could not answer "I already know the time, let me type it", which
+ *     is the fastest thing a keyboard can do and the one thing neither shape
+ *     offered.
+ *   · A HEADER YOU CAN TYPE IN, OVER WHEELS THAT SNAP. Asked for on
+ *     2026-09-01 as a hybrid. The header is the fast path — two number boxes,
+ *     a numeric keypad on a phone, `00–23` and `00–59` refused as you type —
+ *     and the wheels are the browsing path for somebody who does not know the
+ *     number yet. They are bound both ways: a wheel that settles writes the
+ *     boxes, and a box that takes a valid figure turns the wheel to it.
  *
- * ── AND IT HOLDS A DRAFT NOW, WHICH IS A REVERSAL ──────────────────────────
- * "Nothing is pending" was this control's own rule: every press wrote through
- * to the box behind, so a panel dismissed any way at all kept what had been
- * chosen. ตกลง / ยกเลิก were asked for on 2026-09-01, and they are not
- * decoration — a footer with ตกลง in it that applied nothing would be a button
- * that does what the last press already did, and a ยกเลิก beside it that could
- * not take anything back would be a lie in a control that files somebody's
- * hours.
+ * WHAT MAKES THE WHEEL BEARABLE THIS TIME is not the wheel, it is the header
+ * above it. The scrolling was never the problem on its own; being the ONLY way
+ * in was.
  *
- * So the draft is real: the hour and the minute are held here, the box behind
- * does not move until ตกลง, and ยกเลิก — like Escape, like a press on the page
- * outside — leaves the field exactly as it was found. What it costs is the one
- * thing the old rule bought: a panel that is walked away from mid-choice now
- * keeps nothing. What it buys is that ยกเลิก means what it says.
+ * ── AND IT HOLDS A DRAFT ───────────────────────────────────────────────────
+ * The box behind does not move until ตกลง; ยกเลิก, Escape and a press on the
+ * page all leave the field exactly as it was found. That arrived with the grid
+ * and outlives it, and the header makes it load-bearing rather than merely
+ * consistent: a half-typed hour must not reach the form.
  *
  * ── THE VALUE CONTRACT IS THE NATIVE ONE, TO THE CHARACTER ─────────────────
  * `HH:mm`, zero-padded, 24-hour, `''` when empty — exactly what the input read
@@ -78,27 +76,11 @@ const pad = (n) => String(n).padStart(2, '0');
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-/**
- * SIX TO A ROW, AND THE SAME SIX FOR BOTH GRIDS.
- *
- * Twenty-four hours divide into it four times and twelve minutes twice, so
- * neither grid ends in a ragged row — which is what "เรียงแถวเท่ากัน" asks for
- * and what a `repeat(auto-fill)` could not promise. It is also what sets the
- * panel's width: six cells of about 40px is 272px in the stylesheet, wide
- * enough for a 44px touch target on a phone sheet and narrow enough that the
- * panel is not a second card over the form.
- *
- * The one grid that does end ragged is 60 minutes on the birthday form — ten
- * rows, and the last one is full too. Only a held odd minute can break the
- * rhythm, by inserting a thirteenth cell; see `minuteValues`.
- */
-const COLS = 6;
-
 /** 17:00 · 18:00 · 20:00 · 22:00 — the shifts this office actually types. */
 const QUICK = ['17:00', '18:00', '20:00', '22:00'];
 
 /**
- * The minute cells — every `step`th minute, PLUS whatever this box is holding.
+ * The minute values — every `step`th minute, PLUS whatever this box is holding.
  *
  * ── IT WAS ALL SIXTY, AND THE REASON IS WHY THIS IS A STEP AND NOT A LIST ───
  * That paragraph read: a five-minute list is the friendlier one and it is the
@@ -109,24 +91,22 @@ const QUICK = ['17:00', '18:00', '20:00', '22:00'];
  *
  * SO THE CASE KEEPS ITS PRECISION AND NOTHING ELSE PAYS FOR IT. `minuteStep` is
  * 1 on the birthday form, where the times come off a scanner, and 5 everywhere
- * else — twelve cells in two rows instead of sixty in ten.
+ * else — twelve stops on the wheel instead of sixty.
  *
- * FOUR CELLS — 00, 15, 30, 45 — WAS ASKED FOR AND WITHDRAWN in the same
- * exchange on 2026-09-01. Four is the shape a picker takes when the times it
- * files are quarters of an hour, and these are not: 17:10 and 17:20 are typed
- * on this form, and 17:03 comes off a scanner. The engine's 30-minute rounding
- * is a separate question — it PRICES a session and does not decide what
- * somebody is recorded as having worked. So the step stayed, and what the grid
- * changed is that twelve cells are no longer twelve rows to scroll.
+ * AND THE STEP IS NOT A CEILING ANY MORE, which is new with the header. A
+ * minute that is not on the wheel can be TYPED: 17:03 on the ordinary form is
+ * two keystrokes, and the wheel below it stops between 00 and 05 showing the
+ * value it was given. The step decides what a flick lands on, not what the
+ * control accepts.
  *
- * ── AND THE HELD VALUE IS ALWAYS IN THE GRID ───────────────────────────────
+ * ── AND THE HELD VALUE IS ALWAYS ON THE WHEEL ──────────────────────────────
  * This is the line that makes a step safe rather than lossy. An entry filed at
- * 17:03 — off a scanner, or from before this change — opens in a box whose step
- * is 5, and without this it would show NOTHING selected: the roving tabindex
- * would have no home, `aria-selected` would be false on every cell, and the
- * first arrow press would silently move the value to a multiple of five. The
- * odd minute is inserted in its own place, reads as chosen, and survives being
- * looked at.
+ * 17:03 — off a scanner, typed here, or from before any of this — opens in a
+ * box whose step is 5, and without this there would be no stop for it: the
+ * roving tabindex would have no home, `aria-selected` would be false on every
+ * row, and the first arrow press would silently move the value to a multiple of
+ * five. The odd minute is inserted in its own place, reads as chosen, and
+ * survives being looked at.
  */
 function minuteValues(step, held) {
   const out = [];
@@ -138,63 +118,94 @@ function minuteValues(step, held) {
   return out;
 }
 
+/** How long after the last scroll event a wheel is treated as having settled. */
+const SETTLE = 90;
+
 /**
- * One block of numbers — the hours, or the minutes.
+ * One wheel — hours or minutes, snapping to the band drawn across the middle.
  *
- * A GRID AND NOT A LISTBOX, WHICH IS A REVERSAL OF THIS FILE'S OWN NOTE. It
- * read: a month is two-dimensional and a column of hours is not, so ↑/↓ are the
- * only arrows that mean anything. That was true of a column and is not true of
- * this — twenty-four hours laid out six to a row ARE two-dimensional, ←/→ walk
- * one and ↑/↓ walk six, and the panel no longer has two columns for ←/→ to move
- * between. `role="grid"` with `role="gridcell"` children is what the calendar
- * next door already declares.
+ * ── THE SNAP IS CSS AND THE VALUE IS ARITHMETIC ────────────────────────────
+ * `scroll-snap-type: y mandatory` on the scroller and `scroll-snap-align:
+ * center` on the stops are what make a flick stop ON a line rather than between
+ * two. The stops are padded top and bottom by exactly two of themselves, so
+ * stop `i` centres at `scrollTop === i * slot` — which is the whole of both
+ * directions of the binding: read `scrollTop / slot` to learn what the wheel
+ * settled on, write `i * slot` to turn it to a value that came from somewhere
+ * else.
  *
- * IT IS NOT `Grid` FROM components/PickDate.jsx, and that is a judgement rather
- * than an oversight. That one carries a calendar's cell vocabulary — `today`,
- * `blank`, `aria-disabled` for days outside `min`/`max` — and takes an `onMove`
- * whose clamping lives in the caller because a month's edges are where the next
- * month begins. None of that exists in a block of 24 numbers with no edges and
- * no disabled members, and the shared version would have to grow an option for
- * each. What the two do share is the keyboard, and it is written once each.
+ * THE HEIGHT IS READ RATHER THAN ASSUMED. A stop is 34px on a screen and 44 on
+ * a phone sheet — the touch floor — and the number lives in `--slot` in the
+ * stylesheet. Reading `offsetHeight` off a real stop is what keeps one number
+ * in one place; a constant here would be a second copy that disagrees at
+ * exactly one breakpoint.
  *
- * ROVING TABINDEX, so Tab leaves the panel for ยกเลิก / ตกลง rather than
- * walking sixty minutes, and the chosen cell is what the arrows move.
+ * IT SETTLES BEFORE IT SPEAKS. `scroll` fires all the way through a flick, and
+ * committing on every frame would write a dozen values the reader never chose —
+ * on a two-way binding that also means the header counting up as the thumb
+ * moves. `SETTLE` after the last event is when the wheel has stopped, and it is
+ * the only moment this column tells anybody anything.
  *
- * ONLY ONE GRID HOLDS THE CURSOR, AND THAT IS A FIX RATHER THAN A DESIGN. Both
- * columns focused their own selected option on mount when this was a wheel, so
- * the second one mounted won and the panel opened with the cursor on the
- * MINUTES: measured on the built app, one press of ↓ turned 17:00 into 17:01.
- * `own` is this grid's answer to "is the cursor mine" — it starts true only on
- * the hours, which is what somebody opens this control to change, and it moves
- * on a real focus rather than on a value. That matters because a เวลาด่วน chip
- * sets BOTH halves: without the `own` check, the hour grid would snatch the
- * cursor back out of whichever grid the reader had put it in.
+ * ONLY ONE WHEEL HOLDS THE CURSOR, AND THAT IS A FIX RATHER THAN A DESIGN.
+ * Both columns focused their own selected option on mount in the first wheel
+ * round, so the one that mounted second won and the panel opened with the
+ * cursor on the MINUTES: measured on the built app, one press of ↓ turned 17:00
+ * into 17:01. `own` is this wheel's answer to "is the cursor mine" — true to
+ * start on the hours only, and moved by a real focus afterwards, so a เวลาด่วน
+ * chip or a typed hour cannot snatch it back out of the column the reader is in.
  */
-function Grid({ values, value, onPick, label, autoFocus = false }) {
+function Wheel({ values, value, onPick, label, autoFocus = false }) {
   const ref = React.useRef(null);
   const own = React.useRef(autoFocus);
+  const timer = React.useRef(0);
 
-  /* Focus follows the chosen cell — on mount for the hours, and afterwards only
-     while the cursor is already in this grid. `preventScroll`, because the page
-     behind a portaled panel must not move when the panel takes the keyboard. */
-  React.useEffect(() => {
-    if (!own.current) return;
-    ref.current?.querySelector('[data-at="1"]')?.focus({ preventScroll: true });
-  }, [value]);
+  const slotHeight = () => ref.current?.querySelector('.time-slot')?.offsetHeight || 34;
+
+  /* TURN THE WHEEL TO THE VALUE — the "typed → the wheel follows" half of the
+     binding, and also what opens a column on its own figure rather than at 00.
+
+     LAYOUT AND NOT AN ORDINARY EFFECT: mandatory snapping resolves against the
+     scroll position the browser has when it lays the column out, so a scroll
+     written after the paint is a scroll the snap can argue with. Before the
+     paint there is nothing to argue with.
+
+     The 1px test is what stops this fighting the reader: a wheel that has just
+     settled where the reader put it is already at the target, and re-writing
+     `scrollTop` mid-momentum would drag it back. */
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const i = values.indexOf(value);
+    if (i < 0) return;
+    const top = i * slotHeight();
+    if (Math.abs(el.scrollTop - top) > 1) el.scrollTo({ top });
+    if (own.current) el.querySelector('[data-at="1"]')?.focus({ preventScroll: true });
+  }, [value, values]);
+
+  React.useEffect(() => () => clearTimeout(timer.current), []);
+
+  function onScroll() {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      const el = ref.current;
+      if (!el) return;
+      const i = Math.max(0, Math.min(values.length - 1, Math.round(el.scrollTop / slotHeight())));
+      if (values[i] !== value) onPick(values[i]);
+    }, SETTLE);
+  }
 
   function onKeyDown(e) {
     const at = values.indexOf(value);
-    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -COLS, ArrowDown: COLS }[e.key];
+    const step = { ArrowUp: -1, ArrowDown: 1, PageUp: -5, PageDown: 5 }[e.key];
     if (step) {
       e.preventDefault();
-      const n = at + step;
-      // ←/→ WRAP AND ↑/↓ DO NOT. 23 → → → 00 is one press, which the column
-      // before this had for the same reason: an OT session that ends after
-      // midnight is ordinary here and `endsNextDayFor` exists for it. A ↑ off
-      // the top row would land six cells away with nothing to say why, so it
-      // stops instead — the same asymmetry the calendar's rows have.
-      if (n >= 0 && n < values.length) onPick(values[n]);
-      else if (step === -1 || step === 1) onPick(values[(n + values.length) % values.length]);
+      // WRAPS, so 23:00 → ↓ → 00:00 is one press. An OT session that ends after
+      // midnight is ordinary here — `endsNextDayFor` exists for it — and a
+      // column that stopped at 23 would make the commonest late shift the
+      // slowest thing to enter. ←/→ are NOT bound: the two wheels are two tab
+      // stops now, and the header above them is where a reader who wants to
+      // move between hour and minute in one key is already going.
+      const n = (at + step + values.length * 5) % values.length;
+      onPick(values[n]);
       return;
     }
     if (e.key === 'Home' || e.key === 'End') {
@@ -203,85 +214,194 @@ function Grid({ values, value, onPick, label, autoFocus = false }) {
     }
   }
 
+  /* THE LABEL IS AN `aria-label` AND NOT A HEADING INSIDE THIS ELEMENT. The
+     ชั่วโมง / นาที words are drawn one level up, in `.time-heads`, because the
+     band has to be centred on the SCROLLER: a heading inside `.time-wheels`
+     would push each column down by its own height and the one band across the
+     pair would be centred on the container instead. */
   return (
     <div
-      ref={ref}
-      className="time-grid"
-      role="grid"
+      className="time-wheel"
+      role="listbox"
       aria-label={label}
+      ref={ref}
+      onScroll={onScroll}
       onKeyDown={onKeyDown}
       onFocus={() => { own.current = true; }}
-      // `relatedTarget` is where the focus WENT — a move between two cells of
-      // this grid is not the cursor leaving it.
+      // `relatedTarget` is where the focus WENT — a move between two stops of
+      // this wheel is not the cursor leaving it.
       onBlur={(e) => { if (!ref.current?.contains(e.relatedTarget)) own.current = false; }}
     >
-      {values.map((v) => (
-        <button
-          key={v}
-          type="button"
-          role="gridcell"
-          className={`time-cell${v === value ? ' on' : ''}`}
-          aria-selected={v === value}
-          data-at={v === value ? '1' : undefined}
-          tabIndex={v === value ? 0 : -1}
-          onClick={() => onPick(v)}
-        >
-          {pad(v)}
-        </button>
-      ))}
+      <div className="time-slots">
+        {values.map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="option"
+            className={`time-slot${v === value ? ' on' : ''}`}
+            aria-selected={v === value}
+            data-at={v === value ? '1' : undefined}
+            tabIndex={v === value ? 0 : -1}
+            // A press picks it and the effect above brings it to the band —
+            // a tap on the row you can see beats dragging it into the middle.
+            onClick={() => onPick(v)}
+          >
+            {pad(v)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
 /**
- * ชั่วโมง และ นาที — and the answer is not written down until ตกลง.
+ * One of the two figures at the top — an `<input>`, and every word of that.
+ *
+ * `inputMode="numeric"` IS THE WHOLE REASON A PHONE SHOWS A KEYPAD, and
+ * `type="text"` is why it is not a number field: `type="number"` brings
+ * spinners, accepts `e` and `-`, and hands back a value the browser has already
+ * had opinions about. Two digits with a keypad is exactly the ask.
+ *
+ * FOCUS SELECTS, so the first digit typed REPLACES rather than appends. Tapping
+ * `17` and typing `9` means nine o'clock, which is what somebody who tapped a
+ * number and started typing meant.
+ *
+ * WHAT IS REFUSED AND WHAT IS ONLY MARKED. Anything that is not a digit never
+ * reaches the field, and neither does a third digit. `25` is a different case:
+ * it is two digits, it is what somebody typed, and taking the `5` away silently
+ * would leave `2` on screen and no explanation. It stands, marked — the ring
+ * goes red, `aria-invalid` says so, the line under the header names the ranges
+ * and ตกลง is shut until it is fixed. Leaving the box puts back the value the
+ * draft actually holds.
+ */
+function NumBox({ label, value, text, onText, max, bad }) {
+  const editing = text !== null;
+  return (
+    <input
+      className={`time-num${bad ? ' bad' : ''}`}
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      maxLength={2}
+      aria-label={label}
+      aria-invalid={bad || undefined}
+      value={editing ? text : pad(value)}
+      onFocus={(e) => { onText(pad(value)); e.target.select(); }}
+      onChange={(e) => onText(e.target.value.replace(/\D/g, '').slice(0, 2))}
+      onBlur={() => onText(null)}
+    />
+  );
+}
+
+/** `'17'` → 17 when it is a figure this half of the clock can hold. */
+function reading(text, max) {
+  if (text === null || !/^\d{1,2}$/.test(text)) return null;
+  const n = Number(text);
+  return n <= max ? n : null;
+}
+
+/**
+ * The header, the wheels, and the two buttons — with one draft under all three.
  *
  * THE DRAFT IS THIS COMPONENT'S STATE AND IT IS SEEDED ONCE. `PickTime` renders
  * the panel only while it is open, so every opening is a fresh mount reading
  * the field's current value; there is no path by which a stale draft outlives
  * the panel that held it.
  *
- * THE READ-OUT AT THE TOP IS NOT DECORATION. The box behind used to be the
- * running answer — it changed on every press — and with a draft it no longer
- * does, so `17:30` has to be legible somewhere while it is being assembled out
- * of two grids that each show only half of it.
+ * THE TWO TEXTS ARE NOT THE VALUE. `hText`/`mText` are `null` unless somebody
+ * is typing in that box, and while they are not null they are what the box
+ * SHOWS — a half-typed `1` is a real state a wheel cannot be in. The draft is
+ * still the one truth: every valid keystroke writes it (which turns the wheel),
+ * an invalid one does not, and blurring drops the text so the box goes back to
+ * reading the draft.
  */
 function TimePanel({ value, onDone, onClose, minuteStep }) {
   const [draft, setDraft] = React.useState(() => parseTime(value) || { h: 17, m: 0 });
-  // Rebuilt when the held minute moves, because the odd-minute cell it may have
+  const [hText, setHText] = React.useState(null);
+  const [mText, setMText] = React.useState(null);
+  // Rebuilt when the held minute moves, because the odd-minute stop it may have
   // to carry is the held one — see `minuteValues`.
   const minutes = React.useMemo(() => minuteValues(minuteStep, draft.m), [minuteStep, draft.m]);
+
+  const badH = hText !== null && hText !== '' && reading(hText, 23) === null;
+  const badM = mText !== null && mText !== '' && reading(mText, 59) === null;
   const text = `${pad(draft.h)}:${pad(draft.m)}`;
+
+  const typeHour = (t) => {
+    setHText(t);
+    const n = reading(t, 23);
+    if (n !== null) setDraft((d) => ({ ...d, h: n }));
+  };
+  const typeMinute = (t) => {
+    setMText(t);
+    const n = reading(t, 59);
+    if (n !== null) setDraft((d) => ({ ...d, m: n }));
+  };
+  /* A chip or a wheel has to put the boxes back on the draft, or a figure typed
+     a moment ago would sit over a value that has since moved. */
+  const set = (next) => { setHText(null); setMText(null); setDraft(next); };
 
   return (
     <>
-      <div className="time-now" aria-live="polite">{text}</div>
-      {/* ALL TWENTY-FOUR, AND SIX POPULAR ONES WAS THE OTHER OPTION OFFERED.
-          17:00–22:00 is the evening shift and it is not the whole roster: this
-          same control is เวลาสิ้นสุด, where a shift that ends 00:30 is ordinary
-          — the wrap on ←/→ exists for exactly that — and OT on a holiday starts
-          at 08:00. Six cells would have made those two unfileable, with nothing
-          on screen saying why. The popular hours are in the grid, on the rows
-          they belong on, and cost the same one press. */}
-      <div className="time-head">ชั่วโมง</div>
-      <Grid
-        values={HOURS}
-        value={draft.h}
-        label="ชั่วโมง"
-        autoFocus
-        onPick={(h) => setDraft((d) => ({ ...d, h }))}
-      />
-      <div className="time-head">นาที</div>
-      <Grid
-        values={minutes}
-        value={draft.m}
-        label="นาที"
-        onPick={(m) => setDraft((d) => ({ ...d, m }))}
-      />
-      {/* The chips set BOTH halves at once, which is the only thing the grids
-          cannot do in one press. They move the draft and nothing else — there
-          is no longer a question of whether a chip should close the panel,
-          because ตกลง is what closes it. */}
+      {/* THE HEADER IS THE CONTROL, NOT A READ-OUT. It read `17:00` as text
+          until 2026-09-01 and the change is the point of this round: the two
+          figures are boxes, a tap opens a keypad, and the wheels below follow
+          what is typed into them. The `:` between is not one — it is a
+          separator, it takes no focus, and nothing can be typed into it. */}
+      <div className="time-set">
+        <NumBox
+          label="ชั่วโมง"
+          value={draft.h}
+          text={hText}
+          onText={typeHour}
+          max={23}
+          bad={badH}
+        />
+        <span className="time-colon" aria-hidden="true">:</span>
+        <NumBox
+          label="นาที"
+          value={draft.m}
+          text={mText}
+          onText={typeMinute}
+          max={59}
+          bad={badM}
+        />
+      </div>
+      {/* Only while something is actually wrong. A rule that is always on
+          screen is a rule nobody reads by the second week; one that appears at
+          the moment it is broken is an answer to a question just asked. */}
+      {(badH || badM) && (
+        <div className="time-bad" role="alert">ชั่วโมง 00–23 · นาที 00–59</div>
+      )}
+      {/* ── THE BAND IS DRAWN ONCE, ACROSS BOTH WHEELS ────────────────────────
+          One element in the middle of the pair rather than a highlight inside
+          each column: two of them are two things to keep level, and the ask was
+          that the hour and the minute line up. Drawn behind the stops and
+          `aria-hidden` — what it marks is already `aria-selected` on the stop
+          sitting in it, and a screen reader being told there is a green stripe
+          learns nothing about the time. */}
+      <div className="time-heads" aria-hidden="true">
+        <span>ชั่วโมง</span>
+        <span>นาที</span>
+      </div>
+      <div className="time-wheels">
+        <div className="time-band" aria-hidden="true" />
+        <Wheel
+          values={HOURS}
+          value={draft.h}
+          label="ชั่วโมง"
+          autoFocus
+          onPick={(h) => set({ h, m: draft.m })}
+        />
+        <Wheel
+          values={minutes}
+          value={draft.m}
+          label="นาที"
+          onPick={(m) => set({ h: draft.h, m })}
+        />
+      </div>
+      {/* The chips set BOTH halves at once, which is the one thing neither the
+          wheels nor two number boxes do in a single press. */}
       <div className="time-quick">
         {QUICK.map((t) => (
           <button
@@ -289,7 +409,7 @@ function TimePanel({ value, onDone, onClose, minuteStep }) {
             type="button"
             className={`time-chip${t === text ? ' on' : ''}`}
             aria-pressed={t === text}
-            onClick={() => setDraft(parseTime(t))}
+            onClick={() => set(parseTime(t))}
           >
             {t}
           </button>
@@ -300,10 +420,21 @@ function TimePanel({ value, onDone, onClose, minuteStep }) {
           at every width here: ยกเลิก is the only way to put the field back on a
           phone, where there is no Escape and no page to press, and ตกลง is the
           only thing that writes at all. `.pop-foot` is still the class, so the
-          divider, the gap and the 44px sheet height are the shared ones. */}
+          divider, the gap and the 44px sheet height are the shared ones.
+
+          ตกลง IS SHUT WHILE A BOX IS OUT OF RANGE. The draft still holds the
+          last good figure, so the button could apply THAT — and it would be
+          applying a time the screen is not showing. */}
       <div className="pop-foot time-foot">
         <button type="button" className="btn ghost sm" onClick={onClose}>ยกเลิก</button>
-        <button type="button" className="btn sm" onClick={() => onDone(text)}>ตกลง</button>
+        <button
+          type="button"
+          className="btn sm"
+          disabled={badH || badM}
+          onClick={() => onDone(text)}
+        >
+          ตกลง
+        </button>
       </div>
     </>
   );
@@ -312,9 +443,10 @@ function TimePanel({ value, onDone, onClose, minuteStep }) {
 export function PickTime({
   value, onChange, disabled = false, clearable = false, label = 'เวลา',
   /**
-   * How far apart the minute cells are — 5 by default, and `1` on the one form
-   * whose times are read off a fingerprint scanner. See `minuteValues`, which
-   * also explains why a value not on the step is never lost.
+   * How far apart the wheel's minute stops are — 5 by default, and `1` on the
+   * one form whose times are read off a fingerprint scanner. See
+   * `minuteValues`, which also explains why a value not on the step is never
+   * lost and why the step no longer decides what can be entered at all.
    */
   minuteStep = 5,
 }) {
@@ -343,12 +475,13 @@ export function PickTime({
           sheet={p.sheet}
           /* `0` — MEASURED ONCE, because this panel opens at the height it
              keeps. The calendar passes a real `shape` because its day, month
-             and year views are three different heights; two grids of a known
-             number of cells are one. The single exception only ever makes it
-             SHORTER: a box opened on 17:03 carries a thirteenth minute cell
-             into a third row, and pressing any other minute drops it. A panel
-             that shrinks leaves a gap under itself; it cannot be cut off, which
-             is what re-measuring is for. */
+             and year views are three different heights; a header over two
+             wheels is one, and it is the same height whether the minutes have
+             twelve stops or sixty — that is what a wheel is for. The one thing
+             that changes it is the range line, which appears under a figure out
+             of range and takes a line; it grows DOWNWARD from a panel that is
+             already placed, and a panel that grows at the bottom cannot lose
+             its head. */
           shape={0}
           label={label}
           onClose={p.close}

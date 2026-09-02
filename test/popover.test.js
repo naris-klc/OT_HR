@@ -111,14 +111,14 @@ test('ความกว้างเป็นของแต่ละตัว �
   // about. Everything else — fill, edge, shadow, corner, placement, the sheet —
   // is `.pop`'s, or it is two things to keep in step.
   //
-  // `.time-pop` is a block rather than a one-liner since 2026-09-01: it is six
-  // cells wide (272px, where it was 196 for two scrolling columns) and it is
-  // the one panel that can outgrow a short screen — ten rows of minutes on the
-  // birthday form — so it carries a `max-height` as well. The width is still
-  // the only thing asserted here; the cap is pinned in test/pickTime.test.js
-  // beside the grid it is a floor under.
+  // `.time-pop` is a block rather than a one-liner since 2026-09-01: it is as
+  // wide as its own header — 232px, where it was 272 for two grids of cells and
+  // 196 for two bare columns — and it is the one panel that can outgrow a short
+  // screen, so it carries a `max-height` as well. The width is still the only
+  // thing asserted here; the cap is pinned in test/pickTime.test.js beside the
+  // wheels it is a floor under.
   assert.match(css, /\.pop\.cal-pop \{ width: 292px; \}/);
-  assert.match(css, /\.pop\.time-pop \{\s*\n\s*width: 272px;/);
+  assert.match(css, /\.pop\.time-pop \{\s*\n\s*width: 232px;/);
   const panel = css.slice(css.indexOf('.pop {'), css.indexOf('}', css.indexOf('.pop {')));
   assert.ok(!/width:/.test(panel), 'แผงกลับไปกำหนดความกว้างเอง');
   for (const prop of ['background:', 'border:', 'box-shadow:', 'border-radius:']) {

@@ -103,7 +103,8 @@ export function Popover({
        * `matchWidth` — THE PANEL IS THE TRIGGER'S WIDTH, MEASURED.
        *
        * The three pickers this file was written for are all wider than their
-       * box: a calendar is seven columns and a time panel is six, and both
+       * box: a calendar is seven columns wide and a time panel is as wide as
+       * the two number boxes in its header, and both
        * carry a fixed width in the stylesheet (`.cal-pop`, `.time-pop`). A
        * dropdown is not — a list of choices that is not the width of the box it
        * dropped out of reads as a different control, and `PickOne` had that for

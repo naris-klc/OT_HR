@@ -3385,10 +3385,10 @@ td > .approver-line { margin-top: 5px; }
    sheet on a phone and it closes the same three ways. A second copy of that
    would be a second thing to keep in step, which is how two popups that are
    supposed to be one start behaving differently. What actually differs between
-   a calendar and a pair of number grids is how WIDE they want to be — and,
+   a calendar and a pair of number wheels is how WIDE they want to be — and,
    since 2026-09-01, how TALL the time one is allowed to get: see the
-   `max-height` on `.pop.time-pop`, which is a floor under one form rather than
-   a second panel. */
+   `max-height` on `.pop.time-pop`, which is a floor under a short screen rather
+   than a second panel. */
 .pop {
   position: fixed; z-index: 120;
   padding: 10px;
@@ -3426,17 +3426,19 @@ td > .approver-line { margin-top: 5px; }
 .pop.one-pop .pick-menu.one-menu { position: static; }
 /* Seven columns of days, at the width they are readable. */
 .pop.cal-pop { width: 292px; }
-/* SIX CELLS OF NUMBERS ACROSS — 272px, and the number is arithmetic rather
-   than taste: `COLS` in components/PickTime.jsx is 6, the cells are `1fr` with
-   a 2px gap and the panel's own padding is 10px a side, so a cell lands on
-   40.3px. It read `196px` while this was two scrolling columns of two digits.
+/* TWO WHEELS AND THE PAIR OF BOXES OVER THEM — 232px, which is what the header
+   asks for rather than what the wheels do: two 78px number boxes and the `:`
+   between them come to 170, and a panel narrower than its own heading is a
+   panel with the heading wrapped. The wheels take what is left, 101px each.
+   It read `272px` while this was two grids six cells wide, and `196px` while it
+   was two columns of two digits and nothing above them.
 
-   ── AND A FLOOR UNDER THE ONE PANEL THAT CAN OUTGROW THE SCREEN ────────────
-   Every other shape here is a fixed height: 24 hours and 12 minutes are six
-   rows of cells whatever the screen. The birthday form is the exception —
-   `minuteStep` is 1 there, so the minute grid is TEN rows, and on a short
-   viewport (a 1280×720 laptop, a window shared to half a screen) the foot with
-   ตกลง in it would be below the bottom edge with no way to reach it.
+   ── AND A FLOOR, FOR A SCREEN SHORTER THAN THE PANEL ───────────────────────
+   The panel is ONE height now whatever the form: a wheel with sixty stops is
+   the same five stops tall as one with twelve, which is the thing a wheel is
+   for and the reason this cap no longer has a form's name on it. What is left
+   is the short screen — a 1280×720 laptop, a window shared to half of one —
+   where the foot with ตกลง in it would sit below the bottom edge.
 
    `max-height` with `overflow-y: auto` is the floor: `Popover` measures
    `offsetHeight` AFTER the cap, so the panel is still placed correctly, and
@@ -3446,7 +3448,7 @@ td > .approver-line { margin-top: 5px; }
    3px border of the PAGE's ground, which inside a `--card-lift` panel draws a
    stripe of the wrong colour down the edge. Geometry stays the app's. */
 .pop.time-pop {
-  width: 272px;
+  width: 232px;
   max-height: calc(100vh - 16px); overflow-y: auto;
   scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent;
 }
@@ -3588,30 +3590,34 @@ td > .approver-line { margin-top: 5px; }
     margin-top: 8px;
   }
   .pop.sheet .pop-foot .btn { min-height: 44px; }
-  /* THE TIME CELLS GET THE SAME 44px, AND HERE THEY CAN HAVE IT. The calendar
-     above knowingly stays at 36 because seven 44px columns do not fit a 360px
-     screen; six do — 6 × 44 plus five 2px gaps is 274 of the 332 a sheet has
-     inside its padding. So the one grid in this app that can afford the touch
-     floor takes it. */
-  .pop.sheet .time-cell { min-height: 44px; font-size: 16px; }
-  .pop.sheet .time-grid { max-width: 340px; margin: 0 auto; }
-  .pop.sheet .time-quick { justify-content: center; }
-  /* The read-out is the only thing on a sheet that says what ตกลง will write,
-     and a sheet is read at arm's length. */
-  .pop.sheet .time-now { font-size: 24px; }
-  /* THE SAME FLOOR AS THE FLOATING PANEL, for the same one case: ten rows of
-     minutes on the birthday form. A sheet is pinned to the BOTTOM, so a panel
-     taller than the screen loses its top — the hours — rather than its foot,
-     and the reader would be looking at the minutes of a time whose hour they
-     cannot reach. `90vh` leaves the page visible behind it, which is what says
-     a sheet is over the form rather than being the page. */
+  /* A STOP IS 44px ON A SHEET — the touch floor, and the whole of whether a
+     thumb lands on 30 or on 29. One number moves the wheel, the padding under
+     the stops and the band across them, because all three are `--slot`; the
+     component measures a real stop rather than carrying a copy. */
+  .pop.sheet .time-wheels {
+    --slot: 44px;
+  }
+  .pop.sheet .time-slot { font-size: 16px; }
+  .pop.sheet .time-wheels { max-width: 340px; margin: 0 auto; }
+  .pop.sheet .time-heads { max-width: 340px; margin: 0 auto; }
+  /* The same 340px the wheels are held to, so the chips are a row under them
+     rather than a row across the whole sheet. */
+  .pop.sheet .time-quick { max-width: 340px; margin-left: auto; margin-right: auto; }
+  /* The header is what a thumb aims at first on a phone and it is also the
+     keypad's target, so it gets the touch floor and the larger figures. */
+  .pop.sheet .time-num { min-height: 52px; width: 92px; font-size: 30px; }
+  /* THE SAME FLOOR AS THE FLOATING PANEL. A sheet is pinned to the BOTTOM, so a
+     panel taller than the screen loses its TOP — here the two boxes somebody
+     types into — rather than its foot. `90vh` leaves the page visible behind
+     it, which is what says a sheet is over the form rather than being the
+     page. */
   .pop.sheet.time-pop { max-height: 90vh; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pop, .pop-scrim, .pop.sheet { animation: none; }
 }
 
-/* ── เวลาเริ่ม / เวลาสิ้นสุด — TWO GRIDS OF NUMBERS ──────────────────────────
+/* ── เวลาเริ่ม / เวลาสิ้นสุด — TWO BOXES YOU TYPE IN, OVER TWO WHEELS ────────
 
    `PickTime` in components/PickTime.jsx, inside the `.pop` panel above.
 
@@ -3623,92 +3629,150 @@ td > .approver-line { margin-top: 5px; }
    No attribute on that tag settles it; the format is the browser's business.
    Ours is a string this app already holds, so there is nothing to format.
 
-   ── IT WAS TWO SCROLLING COLUMNS UNTIL 2026-09-01 ──────────────────────────
-   Five rules and two scrollbar-hiding declarations stood here and are gone:
-   `.time-cols` (a flex pair), `.time-col`, `.time-col-head`, `.time-list` (a
-   208px box with `overflow-y: auto` and `overscroll-behavior: contain`) and
-   `.time-opt`. They were reported on 2026-09-01 as laying out wrong and being
-   hard to use, and it was the shape rather than any one declaration: a column
-   208px tall shows six of its rows, so the number somebody wants is usually off
-   screen when the panel opens and reaching it is a drag on a bar that had
-   itself been hidden the round before for reading as a divider between the two
-   columns.
+   ── THREE SHAPES IN ONE DAY, AND THIS ONE IS BOTH OF THE OTHER TWO ─────────
+   It was two scrolling columns (`.time-cols` / `.time-list` / `.time-opt`),
+   then two grids (`.time-grid` / `.time-cell`), and is now a header of two
+   number boxes over two snapping wheels. None of those rules survive; the
+   reasoning does, so it is written down once here rather than lost with them.
 
-   WHAT EACH OF THEM WAS FOR, AND WHERE THAT FACT LIVES NOW:
+     · THE WHEEL'S COMPLAINT WAS REAL. A 208px column shows six of twenty-four
+       rows, so the figure somebody wants is usually off screen when the panel
+       opens and getting to it is a drag.
+     · THE GRID ANSWERED IT BY SPENDING THE WHOLE PANEL. Twenty-four cells plus
+       twelve is most of a screen given to numbers nobody presses, and it still
+       could not answer "I know the time, let me type it".
+     · SO THE FAST PATH IS THE HEADER AND THE BROWSING PATH IS THE WHEEL. What
+       made scrolling unbearable was being the only way in, not the scrolling.
 
-     · the 208px cap and `overflow-y: auto` — "there is more below". A grid of
-       24 has no below; every hour is on screen.
-     · `scrollbar-width: none` and the `::-webkit-scrollbar` pair — hiding a bar
-       that read as a rule down the middle of a 196px panel. Nothing scrolls
-       here, so there is no bar to hide. The one place a scrollbar can still
-       appear is the panel itself on a short screen, and `.pop.time-pop` above
-       recolours it the way `.pick-list` does.
-     · `.time-col-head` — the ชั่วโมง / นาที labels. `.time-head` below is the
-       same label over a grid instead of beside one.
-     · the green fill on the chosen row — kept, on `.time-cell.on`, and it is
-       the declaration two rounds of this control were about.
-
-   THE PANEL IS 272px WIDE AND THAT NUMBER IS SIX CELLS. See `COLS` in the
-   component: 24 hours and 12 minutes both divide by six, so neither grid ends
-   in a ragged row. */
-.time-now {
-  text-align: center; padding: 1px 0 7px;
-  /* MONO, TABULAR AND BIG. This is the whole answer being assembled — the box
-     behind no longer moves until ตกลง, so while the panel is open this is the
-     only place `17:30` exists. Tabular so the two digits do not shuffle
-     sideways as the minute changes under them. */
-  font: 600 21px/1.2 var(--mono); font-variant-numeric: tabular-nums;
-  color: var(--ink); letter-spacing: .5px;
+   ── THE ARITHMETIC THE COMPONENT DEPENDS ON, IN ONE PLACE ──────────────────
+   `--slot` is the height of one stop and the height of the band, and the wheel
+   is five stops tall with two stops of padding at each end. That padding is
+   what lets the FIRST and LAST value reach the middle, and it is what makes
+   `scrollTop === index * slot` true for every stop — which is both directions
+   of the binding in components/PickTime.jsx: the component reads that ratio to
+   learn what a flick landed on and writes it to turn a wheel to a typed
+   figure. Change `--slot` and both keep working; the component measures a real
+   stop rather than carrying a copy of this number. */
+.time-set { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 1px 0 8px; }
+/* THE FIGURES ARE INPUTS NOW — this is the round's whole point, so the box has
+   to LOOK like something you can type in rather than like a heading that
+   happens to be selectable. Same edge, fill and focus ring as every `.field`
+   input in the app; only the size is its own, because two digits at 26px is the
+   panel's largest thing and it is what the eye lands on when the panel opens. */
+.time-num {
+  width: 78px; min-height: 46px; text-align: center;
+  border: 1px solid var(--input-line); border-radius: var(--radius-sm);
+  background: var(--field-bg); color: var(--ink);
+  font: 600 26px/1 var(--mono); font-variant-numeric: tabular-nums;
 }
-.time-head {
-  padding-bottom: 4px;
+.time-num:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--focus-ring); }
+/* OUT OF RANGE — 25 for an hour. It is not refused (see the note over `NumBox`:
+   taking the digit away silently would leave `2` on screen and no reason), it
+   is MARKED, and ตกลง is shut while it stands. The app's own red, and the same
+   pair `.field input:out-of-range` a few thousand lines up uses. */
+.time-num.bad { border-color: var(--danger); color: var(--danger-ink); }
+.time-num.bad:focus { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-bg); }
+.time-colon { font: 600 24px/1 var(--mono); color: var(--muted-2); }
+/* Only on screen while something is out of range — a rule that is always shown
+   is a rule nobody reads by the second week. */
+.time-bad {
+  text-align: center; padding-bottom: 7px;
+  font: 500 11.5px/1.5 var(--sans); color: var(--danger-ink);
+}
+.time-heads { display: flex; gap: 10px; }
+.time-heads span {
+  flex: 1; text-align: center; padding-bottom: 4px;
   font: 500 11px/1.6 var(--sans); color: var(--muted-2);
 }
-.time-head + .time-grid { margin-bottom: 2px; }
-.time-grid + .time-head { margin-top: 9px; }
-/* SIX COLUMNS, WRITTEN ONCE. `.cal-grid` next door takes its column count from
-   a class (`c7`, `c3`) because a calendar has three views with three of them;
-   both grids here are six and a modifier for a number that never varies is a
-   second place to look. */
-.time-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
-.time-grid:focus { outline: none; }
-/* A CELL IS `.cal-cell`'s TWIN, and deliberately: a day and an hour are the
-   same act in the same panel, and two cells that differ by a pixel in a form
-   whose date box sits beside its time box read as two controls. 34px rather
-   than the calendar's 36 — six columns instead of seven leaves the width for
-   it, and two grids stacked is where the panel's height comes from. */
-.time-cell {
-  min-height: 34px;
+.time-wheels {
+  /* ON ITS OWN LINE, and that is not formatting: test/theme.test.js reads every
+     token definition with a line-anchored pattern, so a `--slot` tucked in
+     beside a `position` is a token the app uses four times and the suite
+     believes is undefined. */
+  --slot: 34px;
+  position: relative; display: flex; gap: 10px;
+}
+/* ── THE BAND IS ONE ELEMENT ACROSS BOTH WHEELS ─────────────────────────────
+   Asked for as the two columns' highlights lining up. One band centred on the
+   pair cannot be out of line with itself, which two highlights — one inside
+   each scroller, each riding its own scroll position — could always become.
+
+   BEHIND THE STOPS AND UNDER NO POINTER. The wheels carry no background of
+   their own, so this shows through them; `pointer-events: none` keeps it out of
+   the way of the press that picks a stop.
+
+   `--green-bg` UNDER `--green-accent` MIXED DOWN is the pair `.pick-list`'s
+   ticked row uses, and for the reason written there: `--green-accent` is the
+   one green that stays saturated on both sides of the theme, and at full
+   strength a ring in it is louder than the figures it is meant to frame. */
+.time-band {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  height: var(--slot); z-index: 0; pointer-events: none;
+  border-radius: var(--radius-xs);
+  background: var(--green-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green-accent) 45%, transparent);
+}
+/* FIVE STOPS TALL, PADDED BY TWO AT EACH END. `overscroll-behavior` stops a
+   flick that reaches 23 carrying on into the form behind — the same
+   containment `.pick-list` and `.modal-body` both keep. */
+.time-wheel {
+  position: relative; z-index: 1;
+  flex: 1; min-width: 0;
+  height: calc(var(--slot) * 5);
+  overflow-y: auto; overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+}
+.time-slots { padding: calc(var(--slot) * 2) 0; }
+/* ── AND THE BAR ITSELF IS NOT DRAWN ────────────────────────────────────────
+   Asked for, and it was reported the first time round as a line down the middle
+   of the panel — which is exactly where it was: the hour wheel's scrollbar sits
+   at ITS right edge, which in a two-column panel is the gap between ชั่วโมง and
+   นาที. The app's global thumb is a 10px pill on a `--bg` ground, so in a
+   narrow popup it reads as a divider rather than as a control.
+
+   WHAT SAYS THERE IS MORE INSTEAD: the stop above and the stop below the band
+   are both visible and half-lit, which is what a wheel looks like. Both
+   properties, since Firefox draws none of the `::-webkit-` rules and would
+   otherwise keep its own. */
+.time-wheel { scrollbar-width: none; }
+.time-wheel::-webkit-scrollbar { display: none; }
+.time-wheel:focus { outline: none; }
+/* `center` IS WHAT MAKES THE SNAP LAND ON THE BAND — the band is centred on the
+   scroller and so is the stop the snap chooses, so they are the same line by
+   construction rather than by two numbers agreeing. */
+.time-slot {
+  scroll-snap-align: center;
+  width: 100%; height: var(--slot);
   display: grid; place-items: center;
   border: none; border-radius: var(--radius-xs); padding: 0;
-  background: none; color: var(--ink);
+  background: none; color: var(--ink-2);
   /* MONO AND TABULAR, unlike the calendar's cells. These are two-digit figures
      read down a column and compared, which is the case the note at the top of
      this file reserves mono for — and nothing here is Thai. */
-  font: 400 13.5px/1.3 var(--mono); font-variant-numeric: tabular-nums;
+  font: 400 14px/1.3 var(--mono); font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.time-cell:hover { background: var(--neutral-wash); }
-/* The app's own ring, offset inwards past the 2px gap — the colour comes from
-   the base `:focus-visible` and is deliberately not restated. */
-.time-cell:focus-visible { outline-offset: -2px; }
-/* THE ONE CHOSEN — a dark green fill with white on it, which is what was asked
-   for and what stands where the OS put its blue bar. `--green` is the app's
-   saturated green and is already the darker of its two values on ธีมมืด;
-   `--on-fill` is the token for text on a saturated fill and is white in both
-   themes, so this reads on ธีมมืด without a second rule. (No literal colour
-   here or anywhere in this half of the file — test/theme.test.js reads the
-   rules AND their comments, and a hex written down as an illustration is
-   indistinguishable from one a component put in in a hurry.) Same pair as
-   `.cal-cell.on`, for the reason above it. */
-.time-cell.on { background: var(--green); color: var(--on-fill); font-weight: 600; }
-.time-cell.on:hover { background: var(--green-lift); }
+.time-slot:hover { color: var(--ink); }
+/* The app's own ring, offset inwards — the colour comes from the base
+   `:focus-visible` and is deliberately not restated. */
+.time-slot:focus-visible { outline-offset: -2px; }
+/* THE ONE IN THE BAND. The band is the fill, so this is the text on it and not
+   a second highlight: `--green-dark` is the app's readable green on
+   `--green-bg` in both themes — the same pair `.time-chip.on` below uses. */
+.time-slot.on { color: var(--green-dark); font-weight: 600; }
 /* 17:00 · 18:00 · 20:00 · 22:00 — the shifts this office types, over the foot.
-   Not a replacement for the grids: they set BOTH halves in one press, which is
-   the one thing two grids cannot do. */
-.time-quick { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+   The one thing neither the wheels nor two number boxes do in a single press:
+   set both halves at once. */
+/* FOUR EQUAL COLUMNS AND NOT A WRAPPING FLEX ROW. At 232px the four chips came
+   to 216 with their padding and the last one wrapped onto a line of its own —
+   found by opening the built panel, and it is the same "เรียงแถวเท่ากัน" the
+   wheels are held to. A grid gives them one width each, whatever the panel's
+   is, so the phone sheet's wider row stays even too. */
+.time-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 10px; }
 .time-chip {
-  border: 1px solid var(--line); border-radius: 20px; padding: 4px 9px;
+  /* No side padding — the grid column is the width now, and 9px of it plus a
+     five-character figure is what overflowed. */
+  border: 1px solid var(--line); border-radius: 20px; padding: 4px 0;
   background: none; color: var(--ink-2);
   font: 500 12px/1.4 var(--mono); font-variant-numeric: tabular-nums;
   cursor: pointer;
