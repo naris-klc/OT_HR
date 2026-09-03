@@ -448,6 +448,30 @@
   font-family: 'IBM Plex Sans Thai', 'TH Sarabun New', sans-serif;
   font-size: 9pt;
   line-height: 1.3;
+  /* A PAGE, NOT A STRIP — the same fix .otdept was given, and for the same
+     report: the preview did not look like paper.
+
+     The note under .otdept's own min-height says this sheet already filled its
+     side "by a fixed ROWS_PER_PAGE with pad bands top and bottom". That was
+     read off ROWS_PER_PAGE = 37 and it is not what the component does:
+     `filler` is `Math.min(SPARE_LINES, room)` and SPARE_LINES is 5, so a
+     company with four people gets four ruled rows and five blank ones. Nine
+     rows at 7mm inside 22mm of band is 85mm — a strip a third of a page deep,
+     floating on the grey, next to a departmental sheet that looks like a
+     document. The blank rows are lines to write on, never a page filler, and
+     nothing else was setting the height.
+
+     295mm AND NOT 297, for the reason written out under .otdept: the bands
+     here are horizontal only (`padding: 0 8mm` in .acct-screen), so this is
+     the whole height of the page, and the 2mm of slack is what stops a sheet
+     measuring 297.1mm from ejecting a blank side into the middle of a bundle.
+
+     PRINT IS UNCHANGED BY IT, which is the point. A company shorter than a
+     page already had the page to itself — `.acct + .acct` breaks before the
+     next one — so this moves nothing on paper and no figure with it. What it
+     changes is the preview, where the height IS the difference between a strip
+     and a document. */
+  min-height: 295mm;
 }
 .acct + .acct { break-before: page; page-break-before: always; }
 
@@ -638,8 +662,12 @@
   /* A PAGE, NOT A STRIP — the last of the four sheets to get one.
 
      Every other document in this file already fills its side: .f027 by
-     min-height and a flex column, .slips by five 55mm rows, .acct by a fixed
-     ROWS_PER_PAGE with pad bands top and bottom. This one had nothing, so a
+     min-height and a flex column, .slips by five 55mm rows — and .acct, this
+     note said until 2026-09-02, "by a fixed ROWS_PER_PAGE with pad bands top
+     and bottom". IT DID NOT. ROWS_PER_PAGE is what the flag arithmetic counts
+     against; the filler is capped at SPARE_LINES = 5, so the accounting sheet
+     was a strip too and nobody had looked. It has a min-height of its own now,
+     written the same way as this one. This one had nothing, so a
      department with four people rendered as a white strip a third of a page
      deep, floating on the grey — while the accounting sheet beside it looked
      like paper. The break rule below always did put one department on each
