@@ -51,7 +51,9 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
   async function load() {
     try {
       const [list, use] = await Promise.all([
-        api.get('/entries?limit=200'),
+        // `scope=mine` and not a bare list: a บทบาท that signs for a แผนก is
+        // scoped to that แผนก by default, and this screen is about one person.
+        api.get('/entries?limit=200&scope=mine'),
         api.get(`/entries/usage/${period}`),
       ]);
       setEntries(list.entries);

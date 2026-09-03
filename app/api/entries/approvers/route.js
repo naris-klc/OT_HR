@@ -1,5 +1,5 @@
 import Employee from '@/src/models/Employee.js';
-import { SIGNER_ROLES } from '@/lib/roles.js';
+import { SIGNER_ROLES, mayApproveRole } from '@/lib/roles.js';
 import ApprovalDelegation from '@/src/models/ApprovalDelegation.js';
 import { route, json } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
@@ -54,7 +54,24 @@ export const GET = route(async (req) => {
     active: { $ne: false },
   }).select('code name position role department company approvesCompany approvesDepartments').lean();
 
-  const eligible = managers.filter((m) => isDepartmentManager(m, departmentId, company));
+  /**
+   * WHO WOULD SIGN THE VIEWER'S OWN REQUEST — and since 2026-09-03 that is two
+   * filters, not one.
+   *
+   * `isDepartmentManager` is the แผนก and payroll half, unchanged. The other
+   * two are what stops this line naming somebody the approve route would then
+   * refuse — which is the exact failure this route was written to prevent:
+   *
+   *   · **not the viewer themselves.** Every บทบาท files its own OT now, so a
+   *     หัวหน้างาน asking who will sign their request would otherwise be told
+   *     their own name.
+   *   · **only a บทบาท the routing matrix puts on their request.** แผนกผลิต2
+   *     holds four หัวหน้างาน; none of them signs for another, so listing all
+   *     four under "รอการอนุมัติจาก" would name three people who cannot.
+   */
+  const eligible = managers.filter((m) => isDepartmentManager(m, departmentId, company))
+    .filter((m) => String(m._id) !== String(user._id))
+    .filter((m) => mayApproveRole(m.role, user.role));
 
   /**
    * And whoever is standing in for them today.

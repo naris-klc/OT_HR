@@ -59,7 +59,26 @@ export const GET = route(async (req) => {
    * that is not a mongo filter — see `nobodyCanSign`.
    */
   const unsignedOnly = scope === 'unsigned' && user.role === 'admin';
-  const q = scope === 'delegated'
+
+  /**
+   * `scope=mine` — MY requests, whoever I am.
+   *
+   * บันทึกและประวัติ OT is one person's own filing history, and until
+   * 2026-09-03 it needed no scope of its own: only `role: 'employee'` could
+   * file, and `scopeFor` answers `{ employee: user._id }` for them. Every
+   * บทบาท files now, and `scopeFor` answers a DEPARTMENT for the four that
+   * hold one — so that screen started showing a หัวหน้างาน their whole team's
+   * requests under a heading that says ของฉัน, with the hour totals to match.
+   *
+   * Written as its own scope rather than as `?employee=<my id>` from the
+   * browser: the client cannot get this one wrong, and there is no reading of
+   * it that widens anything. It REPLACES the department filter rather than
+   * narrowing it — my own requests are mine whether or not the แผนก they are
+   * in is one I sign for.
+   */
+  const q = scope === 'mine'
+    ? { employee: user._id }
+    : scope === 'delegated'
     // `{ department: null }` and not `{}` when nothing is covered: an empty
     // filter on this screen would answer with the whole company.
     ? { ...(reach.delegated ?? { department: null }) }

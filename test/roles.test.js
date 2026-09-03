@@ -416,3 +416,51 @@ test('a null signer list is "nobody asked", not "nobody exists"', () => {
   assert.equal(filing(EMP, null).status, 'pending_mgr');
   assert.equal(filing(EMP, undefined).status, 'pending_mgr');
 });
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// บันทึกและประวัติ OT IS ONE PERSON'S OWN, WHATEVER THEIR บทบาท
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * THE REGRESSION THIS PINS, WHICH WAS REPORTED FROM THE REAL SCREEN.
+ *
+ * `scopeFor` answers a DEPARTMENT for the four บทบาท that hold one, and until
+ * 2026-09-03 that was harmless: those บทบาท could not file OT, so they never
+ * opened บันทึกและประวัติ OT. The moment every บทบาท could file, that screen —
+ * which asked for a bare list — started showing a หัวหน้างาน their whole team's
+ * requests under a heading that says ของฉัน, with the hour totals to match and
+ * "รอการอนุมัติจาก: <their own name>" under each row.
+ *
+ * Three things had to agree to fix it, so all three are read here.
+ */
+
+const src = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
+
+test('the list route has a scope that means MY requests, and it replaces the แผนก one', () => {
+  const route = src('app/api/entries/route.js');
+  assert.match(route, /const q = scope === 'mine'\n\s*\? \{ employee: user\._id \}/);
+  // Replaces rather than narrows: my own requests are mine whether or not the
+  // แผนก they sit in is one I sign for.
+  assert.doesNotMatch(route, /scope === 'mine'[\s\S]{0,80}\.\.\.reach\.scope/);
+});
+
+test('บันทึกและประวัติ OT asks for that scope rather than a bare list', () => {
+  assert.match(src('components/EmployeeView.jsx'), /\/entries\?limit=200&scope=mine/);
+});
+
+test('nobody is offered as the person who will sign their own request', () => {
+  const route = src('app/api/entries/approvers/route.js');
+  assert.match(route, /String\(m\._id\) !== String\(user\._id\)/);
+  // and only บทบาท the matrix actually puts on this person's request
+  assert.match(route, /mayApproveRole\(m\.role, user\.role\)/);
+});
+
+test('the same two rules the approve route decides by, not a second reading', () => {
+  // A screen that names somebody the server would refuse sends the person
+  // asking "who signs this" to the wrong desk — which is what this endpoint
+  // exists to prevent, so it may not answer the question its own way.
+  const route = src('app/api/entries/approvers/route.js');
+  assert.match(route, /isDepartmentManager\(m, departmentId, company\)/);
+  assert.match(route, /from '@\/lib\/roles\.js'/);
+});
