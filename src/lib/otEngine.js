@@ -299,6 +299,29 @@ function readDayType(dayTypes, dateStr) {
 
 // ── rounding ────────────────────────────────────────────────────────────────
 
+/**
+ * ผ่อนปรนการปัดขึ้น, in minutes, or 0 when nothing is being forgiven.
+ *
+ * Exported because two other readings of the same rule exist and neither may
+ * derive it again: `roundingZeroesUnder` in lib/policyInert.js, which tells the
+ * settings page how short a session has to be to round away to nothing, and the
+ * badge's `reading` in src/config/policy.js. A grace that this function ignores
+ * and one of those two prints is the settings page describing an engine that is
+ * not running.
+ *
+ * Ignored rather than clamped when it is not smaller than the block: a grace of
+ * 15 on a 15-minute block would hand a whole block to a session of nought, and
+ * silently halving it to 7.5 would run a rule nobody picked off a dropdown that
+ * looks like it worked.
+ */
+export function roundingGraceOf(policy = {}) {
+  if (policy.roundingMode !== 'floor') return 0;
+  const inc = Number(policy.roundingIncrementMinutes);
+  if (!inc || inc <= 1) return 0;
+  const grace = Number(policy.roundingGraceMinutes) || 0;
+  return grace > 0 && grace < inc ? grace : 0;
+}
+
 function roundMinutes(minutes, policy) {
   // 'exact' — คิดตามจริงเป็นทศนิยม. A fourth answer to [OPEN 3] rather than a
   // fourth block, so the increment is not read and not cleared: switching back
@@ -306,12 +329,18 @@ function roundMinutes(minutes, policy) {
   if (policy.roundingMode === 'exact') return minutes;
   const inc = policy.roundingIncrementMinutes;
   if (!inc || inc <= 1) return minutes;
-  const q = minutes / inc;
-  const rounded =
-    policy.roundingMode === 'ceil' ? Math.ceil(q)
-      : policy.roundingMode === 'nearest' ? Math.round(q)
-        : Math.floor(q);
-  return rounded * inc;
+  if (policy.roundingMode === 'ceil') return Math.ceil(minutes / inc) * inc;
+  if (policy.roundingMode === 'nearest') return Math.round(minutes / inc) * inc;
+  /**
+   * 'floor', with the grace window folded into it rather than branched around.
+   * Adding the grace before flooring IS the rule — the last `grace` minutes of
+   * a block land in the next one — and it keeps the two answers a single
+   * expression, so there is no arm of an `if` where one of them was forgotten.
+   *
+   * A grace of nought is the plain floor, unchanged and exactly as it was.
+   * A grace of half a block is `nearest`, arrived at from the other side.
+   */
+  return Math.floor((minutes + roundingGraceOf(policy)) / inc) * inc;
 }
 
 // ── interval algebra ────────────────────────────────────────────────────────

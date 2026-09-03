@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  needsOverCeilingReason, overCeilingRefusal, wasOverCeiling,
-  OVER_CEILING_REASON_REQUIRED,
+  needsOverCeilingReason, overCeilingRefusal, wasOverCeiling, overCeilingApproveHead,
+  OVER_CEILING_REASON_REQUIRED, OVER_CEILING_REASON_APPROVE,
 } from '../lib/caps.js';
 import { overCeilingOf } from '../lib/accountingRows.js';
 
@@ -256,6 +256,94 @@ test('กล่องบอกว่าเกินเพดานอะไร�
   // เมื่อบังคับให้เขียนเหตุผล ก็ต้องให้ข้อมูลพอที่จะเขียนได้
   const queue = read('components/ApprovalQueue.jsx');
   assert.match(queue, /describeBreaches\(e\)\.map\(\(b\) => b\.text\)\.join\(' · '\)/);
+});
+
+// ── กล่องเดียว ปุ่มเดียว (2026-09-02) ────────────────────────────────────────
+
+test('หัวข้อของแผ่นยืนยัน พูดถึงการยืนยันอย่างเดียว และนับใบให้ถูกเมื่อเป็นกอง', () => {
+  /**
+   * แผ่น "ยืนยันรายการนี้" มีปุ่มเดียวและมันแปลว่าใช่ การพิมพ์ "อนุมัติ/ไม่อนุมัติ"
+   * เป็นหัวข้อคือการเสนอทางเลือกที่แผ่นนั้นไม่มี ตรงบรรทัดที่คนอ่านเพื่อรู้ว่า
+   * กำลังถูกขออะไร — ส่วนครึ่งแรกซึ่งเป็นข้อเท็จจริง ต้องเป็นประโยคเดียวกับที่
+   * เซิร์ฟเวอร์ปฏิเสธ ไม่งั้นจอกับ 400 จะอ่านเหมือนคนละกฎ
+   */
+  assert.equal(overCeilingApproveHead(1), OVER_CEILING_REASON_APPROVE);
+  assert.equal(
+    OVER_CEILING_REASON_APPROVE,
+    'รายการนี้เกินเพดาน OT ที่กำหนด กรุณาระบุเหตุผลการยืนยันอนุมัติรายบุคคล',
+  );
+  assert.equal(
+    overCeilingApproveHead(9),
+    '9 รายการที่เลือกไว้เกินเพดาน OT ที่กำหนด กรุณาระบุเหตุผลการยืนยันอนุมัติรายบุคคล',
+    '"รายการนี้" เหนือรายชื่อเก้าคน คือแผ่นที่พูดถึงใบเดียวแต่โชว์เก้าใบ',
+  );
+  const fact = 'รายการนี้เกินเพดาน OT ที่กำหนด';
+  assert.ok(OVER_CEILING_REASON_REQUIRED.startsWith(fact), 'ข้อเท็จจริงต้องมาจากที่เดียวกัน');
+  assert.ok(OVER_CEILING_REASON_APPROVE.startsWith(fact));
+  assert.doesNotMatch(OVER_CEILING_REASON_APPROVE, /ไม่อนุมัติ/);
+  // ส่วนประโยคของเซิร์ฟเวอร์ยังพูดครบสองครึ่ง เพราะสองเราต์ใช้ร่วมกัน
+  assert.match(OVER_CEILING_REASON_REQUIRED, /อนุมัติ\/ไม่อนุมัติ/);
+});
+
+test('แผ่นยืนยันเตือนเรื่องเพดานกล่องเดียว และไม่พูดถึงการยกเว้นเพดานอีก', () => {
+  /**
+   * เดิมเป็นกล่องเหลืองสองกล่องเรียงกัน ทั้งคู่ขับด้วยแถวชุดเดียวกัน กล่องแรก
+   * ลิสต์ว่าใครเกิน กล่องที่สองบอกว่าต้องมีเหตุผล — ทั้งสองขึ้นต้นด้วยคำว่า
+   * เกินเพดาน แผ่นจึงพูดเรื่องเดิมสองรอบก่อนจะพูดอะไรใหม่ และบนมือถือมันดัน
+   * ช่องกรอกตกขอบจอ บนกล่องที่ทั้งกล่องมีไว้เพื่อให้พิมพ์อะไรลงไป
+   */
+  const queue = strip(read('components/ApprovalQueue.jsx'));
+  const confirmModal = queue.slice(
+    queue.indexOf('function ConfirmModal('),
+    queue.indexOf('function RejectModal('),
+  );
+  assert.ok(confirmModal.length > 200, 'หา ConfirmModal ไม่เจอ — เทสต์นี้กำลังตรวจของว่าง');
+  assert.equal(
+    (confirmModal.match(/overCeilingApproveHead\(/g) || []).length,
+    1,
+    'หัวข้อเตือนเรื่องเพดานต้องวาดครั้งเดียว',
+  );
+  assert.equal(
+    (confirmModal.match(/<Alert kind="warn"/g) || []).length,
+    2,
+    'เหลือสองกล่อง: เพดานหนึ่ง และ "ไม่มีหัวหน้าเซ็นได้" อีกหนึ่ง ซึ่งเป็นคนละกฎ',
+  );
+  assert.doesNotMatch(
+    confirmModal,
+    /ยกเว้นเพดาน/,
+    'ประโยคเรื่องยกเว้นเพดานถาวรชี้ไปยังปุ่มที่ไม่มีอยู่แล้ว',
+  );
+  // และสิ่งที่กล่องเดียวนั้นต้องพูดครบ: รายชื่อ + เหตุผลนี้จะไปโผล่ที่ไหน
+  assert.match(confirmModal, /\{thaiDate\(e\.workDate\)\}/);
+  assert.match(confirmModal, /นำไปแสดงบนรายงานสรุป OT ส่งบัญชี/);
+  // ช่องกรอกไม่พิมพ์ประโยคเดิมซ้ำใต้กล่องอีก
+  assert.doesNotMatch(
+    confirmModal.slice(confirmModal.indexOf('field-note')),
+    /OVER_CEILING_REASON_REQUIRED/,
+  );
+});
+
+test('ปุ่ม อนุมัติเกินเพดาน ไม่เหลืออยู่บนการ์ดหรือในกล่องใดทั้งสิ้น', () => {
+  /**
+   * ปุ่มที่สี่บนการ์ดที่ขึ้นเฉพาะบางแถวและเฉพาะบางบทบาท คือปุ่มที่ทำให้การ์ด
+   * สองใบข้างกันมีทางออกไม่เท่ากัน — และมันเป็นทางเดียวที่ล้างธง capExceeded
+   * ทิ้ง ซึ่งคือธงที่ใบส่งบัญชีใช้ระบายสีแดง ตอนนี้ทุกใบตัดสินด้วยปุ่มเดียวกัน
+   * และธงอยู่ที่เดิม
+   */
+  const queue = strip(read('components/ApprovalQueue.jsx'));
+  assert.doesNotMatch(queue, /อนุมัติเกินเพดาน/, 'ปุ่มถูกถอดออกจากทุกจอและทุกกล่อง');
+  assert.doesNotMatch(queue, /OverrideModal|setOverriding|cap-override/, 'กล่องกับสายไฟของมันไปด้วย');
+
+  // การ์ดที่ตัดสินได้ เหลือสามปุ่มมาตรฐานเท่ากันทุกใบ — กล่องสุดท้ายในสามกล่อง
+  // (อีกสองกล่องคือใบที่ถอนได้ กับใบที่คนอ่านเป็นคนยื่นเอง)
+  const decide = queue.slice(queue.lastIndexOf('<div className="row-actions">'));
+  const cell = decide.slice(0, decide.indexOf('</div>'));
+  assert.equal((cell.match(/<button/g) || []).length, 3, 'ยืนยัน · ไม่อนุมัติ · รายละเอียด');
+  assert.match(cell, /\{verb\}/);
+  assert.match(cell, /ไม่อนุมัติ/);
+  assert.match(cell, /รายละเอียด/);
+  // และปุ่มยืนยันบนแถวเปิดกล่องเสมอ ไม่เคยยิงตรง — กล่องคือที่ที่เหตุผลถูกขอ
+  assert.match(cell, /onClick=\{\(\) => setConfirming\(\[e\]\)\}/);
 });
 
 test('ใบรายงานบัญชี — ตัวเลขแดง มีทูลทิป และมีข้อความเต็มในช่องหมายเหตุ', () => {

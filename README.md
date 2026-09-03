@@ -872,7 +872,7 @@ normalize และยังเปิดด้วยคีย์เดิมไ�
 | ดูสรุปสถานะงวด | ✅ | ✅ | `/api/periods/[period]` — ทุกคนที่ล็อกอินอ่านได้ |
 | คำนวณใหม่ (ใบที่ยังไม่อนุมัติ) | ✅ | ✅ | `authorizeReplay` |
 | คำนวณใหม่ **รวมใบที่อนุมัติแล้ว** | ❌ | ✅ *(ต้องระบุเหตุผล)* | `authorizeReplay` |
-| ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` |
+| ยกเว้นเพดานให้ใบหนึ่ง | ✅ | ✅ | `/api/entries/[id]/cap-override` *(ไม่มีหน้าจอ — ปุ่ม **อนุมัติเกินเพดาน** และกล่องของมันถูกถอดออก 2026-09-02 เราต์ยังอยู่และยังปฏิเสธเหตุผลว่าง)* |
 | เซ็นใบที่เกินเพดาน **โดยไม่บอกเหตุผล** | ❌ | ❌ | `overCeilingRefusal` — หัวหน้าก็ไม่ได้ ทั้ง อนุมัติ และ ไม่อนุมัติ |
 | **บันทึกประวัติระบบ** | ❌ | ✅ | `/api/logs`, `/api/logs/summary`, `/api/exports/logs.csv` |
 
@@ -1379,7 +1379,7 @@ lib/smartDate.js          ปี พ.ศ. หรือ ค.ศ. — the one plac
                           the one 2400, and the leap years judged in ค.ศ.;
                           read by the roster form, both roster endpoints, the
                           CSV importer and both holiday calendars — pure
-test/                     118 files, run by `npm test`. Six named below as a
+test/                     120 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1392,9 +1392,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2006 tests
-across 118 files**, measured 2026-09-02 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **2060 tests
+across 120 files**, measured 2026-09-02 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "2033 across 119 files" until หนึ่งวัน หนึ่งใบ reached the printed sheet as well as the filing form — `oneRowPerDate` is the 120th file, fifteen cases, and the ones that matter are about the hours the sheet now drops rather than the rows it no longer draws — and "2025" until หน้ารายละเอียด on รายการ OT ของฉัน started drawing the reviewer's three cards — eight new cases in `approverLine`, and NO new file, which is the point of that round: `ReasonCard`, `CapCard` and `SignatureFacts` moved into `components/common.jsx` and both pop-ups read them, so what would have been a second file of assertions about a second copy is two blocks added to the files `description` and `queueCapUsage` already had — and "2006 across 118 files" until the two ลงชื่อ columns on F-HR-027 started printing the names — `formSignatures` is the 119th file, nineteen cases, and most of them are about the rows where a name may NOT be printed — and "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1450,7 +1450,7 @@ signed-off number is worse than an inconsistency.
 |---|---|---|---|
 | 1 | Break on every session? | Only the part overlapping 12:00–13:00 | `breakMode: 'lunchWindow'` |
 | 2 | Overnight: one break or two? | One per lunch window crossed | `breakPerCalendarDay: true` |
-| 3 | Round down / up / nearest? | Down, per bucket, to 30-minute blocks | `roundingMode: 'floor'`, `roundingIncrementMinutes: 30` |
+| 3 | Round down / up / nearest? | Down, per bucket, to 30-minute blocks, forgiving nothing | `roundingMode: 'floor'`, `roundingIncrementMinutes: 30`, `roundingGraceMinutes: 0` |
 | 4 | Under 1 hour: accept, raise or reject? | Accept the real hours, flag for HR ⚠ | `belowMinimum: 'accept'` |
 | 5 | OT starts 17:00 or 17:01? | 17:00 — 17:00–20:00 is 3 h | `otStartsAtCoreEnd: true` |
 | 6 | Per-department shifts? | No | `shiftPatternsEnabled: false` |
@@ -1468,18 +1468,42 @@ Two later flags sit beside them, both COSMETIC and neither an [OPEN] item:
 
 ### What HR sets about the arithmetic itself
 
-Three of the rows above are the whole of how a session's minutes become hours,
+Four of the rows above are the whole of how a session's minutes become hours,
 and they are read in this order — break, buffer, block, minimum:
 
 | Setting | Flag | Offered | Ships as |
 |---|---|---|---|
 | วิธีการปัดเศษ | `roundingMode` | ปัดลงทั้งหมด · ปัดขึ้นทั้งหมด · ปัดเข้าหาค่าใกล้ที่สุด · คิดตามจริงเป็นทศนิยม | `'floor'` |
 | ปัดเศษทีละกี่นาที | `roundingIncrementMinutes` | 5 · 10 · 15 · 30 · 60 | `30` ⚠ |
+| ผ่อนปรน — ใกล้ครบบล็อกแล้วปัดขึ้นให้ | `roundingGraceMinutes` | ไม่ใช้ · 5 · 10 · 15 | `0` — off ⚠ |
 | เวลาขั้นต่ำในการเริ่มนับ OT | `minimumBufferMinutes` | ไม่ใช้ · 5 · 10 · 15 · 30 · 60 | `0` — off |
 
 **`'exact'` is a fourth answer, not a fourth block.** It rounds nothing and does
 not read the increment — and does not clear it either, so switching back to
 floor/ceil/nearest restores whichever block HR last chose.
+
+**ผ่อนปรน is the last few minutes of a block rounding up instead of down.**
+Added 2026-09-02 on a request for "บวกลบ 5 หรือ 10 และ 15 นาที", with 29 นาที →
+0.5 ชม. and 55 นาที → 1 ชม. as the worked examples. The floor is unchanged
+underneath it — a session that has not reached the window still rounds down, so
+under floor/30 with a grace of 5: 24 → 0, 25 → 30, 49 → 30, 55 → 60. The ลบ half
+needs no setting; the block already does it, and this key only ever adds.
+
+- **Read under `'floor'` alone.** `'ceil'` rounds every remainder up already,
+  `'nearest'` forgives half a block by construction, `'exact'` rounds nothing.
+- **A grace of half a block *is* `'nearest'`,** minute for minute — 15 under a
+  30-minute block, 30 under a 60-minute one. Two ways to one rule, not a stack.
+- **Ignored, never clamped, when it is not smaller than the block.** 15 on a
+  15-minute block would hand a whole block to a session of nought, so the engine
+  falls back to the plain floor and the row says so rather than quietly running
+  a 7.5 nobody chose. `roundingGraceOf` in
+  [`src/lib/otEngine.js`](src/lib/otEngine.js) is the single place that decides
+  this; `roundingZeroesUnder` and the badge's reading both import it.
+- ⚠ **It moves the line short work is refused at.** Rounding alone zeroes
+  everything under `increment − grace`, not under `increment` — so floor/30 with
+  a grace of 10 stops refusing the 20–29 minute callouts it used to refuse, and
+  `minimumBufferMinutes: 0` becomes an unanswered question again. The two are
+  one question asked twice.
 
 **The buffer is not a second `minimumHours`.** They answer different questions
 and run in that order:
@@ -1513,21 +1537,29 @@ lost — every figure is stored in the unit it is printed in — but a form whos
 columns miss its total by 0.01 is a question somebody will ask. Blocks of 15, 30
 and 60 are exact at two decimals and cannot drift.
 
-### ⚠ Four of these are unanswered, and the system says so
+### ⚠ Five of these are unrecorded, and the system says so
 
 "Default" covers two very different things, and printing both the same way is
 how one of them gets forgotten. Most rows above are a recommendation from the
-requirements doc that nobody has objected to. Four are something else. Three are
+requirements doc that nobody has objected to. Five are something else. Three are
 values **reverse-engineered from how the old paper appears to have been filled
-in**; the fourth is a value nobody ever gave at all. None is confirmed by anyone
-in HR, and each one can move hours.
+in**; the other two are values nobody ever gave at all. Each one can move hours,
+and none of them is on the record.
+
+It read "Four of these are **unanswered**" until 2026-09-02, and both halves
+changed that day. HR answered the rounding increment out loud — 30 นาที — and
+the badge stayed up, correctly: what this list tracks is whose answer is
+**recorded**, and a rule agreed to in a corridor is exactly as unrecorded as one
+nobody has considered. Pressing ยืนยัน is the act that writes down who said it
+and when. The fifth item arrived the same day.
 
 | Question | What the system does today | Why it is that |
 |---|---|---|
-| Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with. The badge used to sit on `roundingMode`'s row for want of one of its own; the increment has its own dropdown now, so it moved. `roundingMode` is *not* unconfirmed — `'floor'` is the doc's own recommendation |
+| Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with. The badge used to sit on `roundingMode`'s row for want of one of its own; the increment has its own dropdown now, so it moved. `roundingMode` is *not* unconfirmed — `'floor'` is the doc's own recommendation. **HR answered this on 2026-09-02: ปัดเศษทีละ 30 นาที**, which is the value already running. Nothing changes and nothing replays; the badge comes off when somebody presses ยืนยัน, which records who took the answer |
+| ผ่อนปรนการปัดขึ้น | **Off — 0** (`roundingGraceMinutes`), so 29 minutes is nought and the entry is refused | Added 2026-09-02 for "บวกลบ 5 หรือ 10 และ 15 นาที". It shared the increment's badge for one morning, on the reasoning that the block and the grace are one answer — and was split back out the same afternoon, when HR answered the increment and said nothing about the grace, which did not exist when they were asked. One badge over both would have made ยืนยัน on their answer *also* record them as choosing ปิด. **A badge covers exactly as much as one answer covers**: splitting a question HR answers in one breath makes them press twice, merging two they answer separately puts their name on something they never said, and only the second is a lie |
 | Under the 1-hour minimum | Record the hours actually worked and flag the entry (`belowMinimumFlagged`) | The reading that keeps every answer open. It was `'reject'` — read off a `'reject'` override that sat in `settings` against a file saying `'raise'` — and refusing the entry means not recording work that was done, which is a liability rather than a conservative default. HR has still not answered, so the badge stays |
 | What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h (`minimumHoursScope: 'sheet'`) | `computeSession` has only ever done it this way, and it is the reading that refuses least. The per-column reading is `'bucket'`: the same rule asked of each rate column, so a Friday-night shift running into Saturday is measured twice. Having a flag is not an answer — HR still has not given one, and the badge now sits on the dropdown |
-| Start buffer — เวลาขั้นต่ำในการเริ่มนับ OT | **No threshold — 0** (`minimumBufferMinutes`) | Added 2026-08-13 on HR's request, with 30 นาที used only as the worked example in the ask, never as an instruction. It ships at 0 because any other value would have restated hours for a rule nobody had switched on — and 0 is the *absence* of a guess rather than a guess, which is why it carried no badge until one was added. ⚠ It is also **inert**: floor/30 already refuses everything shorter than a block, so any buffer up to 30 changes only the wording of the refusal |
+| Start buffer — เวลาขั้นต่ำในการเริ่มนับ OT | **No threshold — 0** (`minimumBufferMinutes`) | Added 2026-08-13 on HR's request, with 30 นาที used only as the worked example in the ask, never as an instruction. It ships at 0 because any other value would have restated hours for a rule nobody had switched on — and 0 is the *absence* of a guess rather than a guess, which is why it carried no badge until one was added. ⚠ It is also **inert** *while ผ่อนปรน is off*: floor/30 already refuses everything shorter than a block, so any buffer up to 30 changes only the wording of the refusal. Turning on a grace lowers that line to `30 − grace` and the buffer starts biting from there — which is why the settings row derives its note rather than stating a number |
 
 These carry a **รอ HR ยืนยัน** badge on ตั้งค่าระบบ → นโยบายการคำนวณ. Pressing
 ยืนยัน records who signed it off and when — it changes no value, appends no
@@ -1538,27 +1570,31 @@ engine. See [`src/config/policy.js`](src/config/policy.js) (`HR_UNCONFIRMED`),
 [`lib/policyConfirmations.js`](lib/policyConfirmations.js) and
 `test/policyConfirmation.test.js`.
 
-All four sit on a dropdown now. Two of them did not: the minimum's scope was a
+All five sit on a dropdown now. Two of them did not: the minimum's scope was a
 rule the engine had and the policy had no key for, and the rounding increment
 was a number in `src/config/policy.js` with no row on the page. Both borrowed a
 neighbouring row, or none at all, until the flag they are about existed. Having
-a dropdown is not an answer — HR has still not given one, and the badge moved
-onto the control rather than off the page.
+a dropdown is not an answer, and neither is having been told one in a meeting —
+the badge moved onto the control rather than off the page, and it comes off on
+a signature.
 
 An item with **no** `keys` remains a supported shape, and the read-only row it
 gets is the reason: a rule with nothing on the settings page is the one nobody
 can find by reading the settings.
 
-**Two of the four are the same question.** The start buffer asks "was this OT at
+**Two of the five are the same question.** The start buffer asks "was this OT at
 all"; the rounding increment answers it as a side effect, because a session
 shorter than one block floors to nought and is refused before the buffer is ever
 consulted. Verified against the engine on 2026-08-14: `--set
 minimumBufferMinutes=15` and `=30` both report no entry affected, and that is the
 rules overlapping rather than a thin database. The consequence is a trap worth
-stating out loud — answering the buffer "0" is only correct *while the increment
-is 30*, and the day somebody lowers the increment the buffer becomes a live
-question again with its badge already cleared.
-[`src/config/policy.js`](src/config/policy.js) says so on both keys.
+stating out loud — answering the buffer "0" is only correct *while rounding
+alone refuses everything under 30 minutes*, and there are now two ways to stop
+that being true: lowering the increment, and turning on ผ่อนปรน. Either one
+makes the buffer a live question again with its badge already cleared.
+[`src/config/policy.js`](src/config/policy.js) says so on all three keys, and
+`roundingZeroesUnder` in [`lib/policyInert.js`](lib/policyInert.js) derives the
+line rather than stating it, so the settings row cannot go stale.
 
 ### Why OPEN 1's default is the lunch window, not a threshold
 
@@ -1652,6 +1688,30 @@ going stale.
   the server as one `note`, because one person is making one decision; what
   changes with which rule fired is the label above the box, not the number of
   boxes.
+- **One banner, and no fourth button.** *(2026-09-02, later the same day.)* The
+  dialog opened on two amber boxes driven by the same rows — a list of who was
+  over, then a notice saying a reason was required — so it said เกินเพดาน twice
+  before it said anything new, and on a phone the pair pushed the textarea
+  below the fold, on the one dialog whose whole point is that something has to
+  be typed into it. They are one box now: the headline
+  (`overCeilingApproveHead`), the rows with every ceiling each of them passed
+  (`describeBreaches`), and the line saying where the sentence will be read.
+  The headline says **ยืนยันอนุมัติ** rather than the server's
+  อนุมัติ/ไม่อนุมัติ, because this sheet has one button and it says yes; both
+  sentences are built from one `OVER_CEILING_FACT`, so they cannot end up
+  describing different ceilings, and `OVER_CEILING_REASON_REQUIRED` is
+  untouched — it is what the routes refuse with and what กล่องไม่อนุมัติ prints.
+- **อนุมัติเกินเพดาน is gone from every screen.** The fourth button on an HR
+  card, and `OverrideModal` behind it, were withdrawn the same day: a row over
+  its ceiling is signed with the same ยืนยัน as every other row, and the
+  dialog that opens is what collects the sentence. The difference that made
+  the button worth removing is the flag — waiving CLEARS `capExceeded`, and
+  deciding with a reason leaves it standing, which is what draws the figure
+  red on สรุป OT ส่งบัญชี. A button that quietly took a row off that report,
+  sitting a thumb away from the one that does not, is not a second way to do
+  the same thing. `POST /api/entries/[id]/cap-override` is still mounted and
+  still refuses an empty reason; nothing in the application reaches it, and
+  the `capOverride` on rows written before that date is still read.
 - **A waived entry is not asked twice.** `capOverride` is ฝ่ายบุคคล granting
   the exception in writing, and asking the next signer to justify it again
   would be asking them to re-decide something that is not theirs. The reason
@@ -3694,7 +3754,26 @@ For the record, the rules it invented and this scaffold does not have:
 portrait, one employee per month, laid out cell for cell like the paper: วันที่
 1–31, เวลาทำ OT (จาก/ถึง), the three yellow-headed hour columns,
 รายละเอียดงานที่ทำ, per-row ลงชื่อ columns for พนักงาน and หัวหน้างาน, สรุปรวม,
-and the dashed เฉพาะฝ่ายบุคคล box beside the ผู้ตรวจสอบ line. Rows are
+and the dashed เฉพาะฝ่ายบุคคล box beside the ผู้ตรวจสอบ line.
+
+**The two ลงชื่อ columns are typed, not signed** — since 2026-09-02, and they
+"stayed empty for hand signing" until then. HR asked for the names to print and
+asked for them AS the signature: the sheet is not signed by hand once it is off
+the printer. Nothing new is recorded to do it. `managerSignature` in
+`lib/approverLine.js` reads `byName` off the entry's own `approve_mgr` history
+row — the same rows การอนุมัติ in the pop-up prints — so the two cannot come to
+name different people, and a row nobody signed at that step prints blank rather
+than borrowing a plausible name. The ฝ่ายบุคคล step is not one of the two: it
+keeps its own box at the foot of the sheet, with a rule to sign on.
+
+**The given name alone, in bold, with no surname and no punctuation** — the box
+carries a name and nothing else. No date beside it either, because the column is
+19mm; each signature's minute is still recorded and still shown on การอนุมัติ.
+`firstName` in `lib/api.js` is the split. Which rows print blank, and the page
+counts that set the 7.2pt type size, are in §Status under
+`test/formSignatures.test.js`.
+
+Rows are
 built from *segments*, not entries, so an overnight session appears on both
 dates with its hours in the correct column — Friday's row reads 17:00–24:00 and
 Saturday's 00:00–07:00.
@@ -6740,8 +6819,99 @@ four role UIs.
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2006/2006 pass in about 3 s**, measured 2026-09-02 across 118
-  files. **The newest is `test/hoursColumnCentred.test.js`** — the hour figures
+- `npm test` — **2060/2060 pass in about 3 s**, measured 2026-09-02 across 120
+  files. **The newest is `test/oneRowPerDate.test.js`** — หนึ่งวัน หนึ่งใบ now
+  holds on the printed sheet as well as at the filing form.
+
+  **The rule at the form was already there** and needed nothing: `findSameDate`
+  has refused a second live request on a date since 2026-08-31, on all four
+  paths that write a session — filing, editing, the birthday sheet and the
+  form's own live preview — with the sentence
+  *พบรายการ OT ของวันที่ 05/08/2026 แล้ว กรุณาแก้ไขรายการเดิม*, and a refused or
+  withdrawn request does not block the day, because `CAP_STATUSES` is what
+  counts as live. `findOverlaps` catches a clash of minutes beside it.
+
+  **What that rule could never reach was one request occupying two dates.** An
+  overnight session filed against the 7th put its 00:00–07:00 on the 8th, above
+  the 8th's own request — the only way left for a date to draw two lines. HR
+  asked for that line off the sheet on 2026-09-02 and asked twice, with the cost
+  stated both times, so `printsOn` now prints a segment only on the date its
+  request was filed against.
+
+  ⚠️ **THE HOURS ARE DROPPED, NOT MOVED, AND THE SHEET IS NOW SHORT ON PURPOSE.**
+  They leave the rows and สรุปรวม together — a total counting a line the paper
+  does not show would be worse than a short one — but every other document for
+  the month still counts them: ตรวจสอบประจำเดือน, both CSVs, สรุป OT ส่งบัญชี and
+  the department ceiling all read entries and segments rather than this route.
+  So an overnight month will not reconcile against its own F-HR-027, and the
+  difference is exactly `notPrintedHours`. That figure and the nights behind it
+  are returned to the screen and raised as the second notice above the sheet —
+  behind ยังไม่อนุมัติ, which decides whether to sign at all, and ahead of
+  everything else, which this outranks — and as the second digest on a bundle of
+  forty, so whoever is reconciling knows which sheets are short and by how much.
+  It stays off the paper: adding a line to a controlled form to explain a line
+  taken off it is not a trade this sheet makes.
+
+  **Counted on the live database, read-only, on 2026-09-02: one entry.** Of 21
+  live entries, exactly one crosses a midnight — in งวด 2026-08, dropping
+  **7 hours from `ot3_holiday`**, the ×3 bucket and the most expensive one there
+  is. It is the row in the screenshot the change was asked from. So the cost
+  today is one person's August sheet reading 7 hours short against every other
+  document for that month, and the cost tomorrow is every overnight OT filed
+  from here on.
+
+  `continuedFromPreviousDay` and the (ต่อจากคืนก่อน) mark went with the row —
+  the flag could only ever be false once `printsOn` existed, and a flag that
+  cannot be true is a false lead rather than a spare part.
+  It read "2033/2033" until then.
+  **Before it, `test/formSignatures.test.js`** — nineteen cases;
+  the other eight of the twenty-seven since the figure before it landed in
+  the same tree from other work the same afternoon, so the totals either side of
+  this entry are not its arithmetic alone. ลงชื่อพนักงาน and
+  ลงชื่อหัวหน้างาน are typed onto F-HR-027 now, and typed as a REPLACEMENT: HR
+  asked for the printed name to BE the signature, so the sheet is not signed by
+  hand after it prints. Nothing new is recorded to do it — `byName` on the
+  entry's own history rows is what prints, through `managerSignature` in
+  `lib/approverLine.js`, which is the module การอนุมัติ in the pop-up already
+  reads. The paper and the screen therefore cannot come to name two different
+  people.
+
+  **Most of the nineteen cases are about when a name is NOT printed**, and that
+  is the shape of the risk rather than caution. A blank box on a hand-signed
+  form is an unsigned row somebody chases; a blank box on a form whose names are
+  typed stays honest only while nothing prints a name nobody made. Three ways
+  exist in this database for a row to have no real signature and all three are
+  on prod: a request still at รอหัวหน้า; `submit_hr_verified`, which ฝ่ายบุคคล
+  filed off the fingerprint scanner and approved in the same act, so it has no
+  หัวหน้า signature and never will; and an entry old enough that its history
+  carries no `byName`. All three print blank. `approve_hr` prints blank too —
+  it is the second signature and it has its own box at the foot of the sheet.
+  An `adminOverride` row DOES print, with the administrator's own name: ADM has
+  no หัวหน้า, somebody signed that step, and this is who.
+
+  **The box holds a given name in bold and nothing else** — no surname, no
+  brackets, no punctuation of any kind. `firstName` in `lib/api.js` is the split
+  and it is the first whitespace-separated word, which is safe on THIS roster
+  rather than in general: counted off the live database the same day, not one of
+  the 22 writes a title as a separate word, so the first word is never a bare
+  นาย/นาง/นางสาว. Five of the 22 have no surname at all and two of those five
+  are the accounts that sign things — `ฝ่ายบุคคล` and `ผู้ดูแลระบบ` — so a
+  single-word name comes back whole, or the box would go blank on exactly the
+  rows an administrator signed for a แผนก with no หัวหน้า.
+
+  **The type size was measured, not chosen — twice, and the pair is the point.**
+  The sheet is rendered to PDF through Chrome and counted by PAGE. With
+  ชื่อ-นามสกุล in a 19mm box, 6pt put a 25-row month onto two sides and so did a
+  31-row one, and only 5.5pt held; widening the columns to 22 and 24mm fixed
+  nothing, because what costs the row its height is the SECOND line and a long
+  Thai name took one at every width. **Dropping the surname is what actually
+  removed that line**, and the size went back up to the sheet's own 7.2pt, bold
+  — 31 filled rows on one side with the longest signer on the roster
+  (`ผู้ดูแลระบบ`, 11 characters), and 9pt would still fit. Through both rounds
+  the `colgroup` never moved and รายละเอียดงานที่ทำ kept every millimetre.
+  It read "( ชื่อ นามสกุล ) at 5.5pt" for one afternoon.
+  It read "2006/2006" until then.
+  **Before it, `test/hoursColumnCentred.test.js`** — the hour figures
   are in the middle of their cells now, on the printed
   ใบขออนุมัติทำงานล่วงเวลา and on ตรวจสอบประจำเดือน, and that is the whole
   change: one declaration in `app/print.css` and one selector in

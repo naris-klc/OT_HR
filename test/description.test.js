@@ -49,21 +49,34 @@ test('Thai vowels and tone marks each count as a character, as the input does', 
  * that stops it being read as an accident: a card, a heading in words, and a
  * sentence of its own when the field is empty — which is a different thing
  * from a description that happens to be short.
+ *
+ * IT IS `ReasonCard` IN common.jsx SINCE 2026-09-02. หน้ารายการ OT ของฉัน was
+ * asked for the same card, and the field had a fourth shape there — a `wide`
+ * cell in the คำขอ grid, which is one of the two shapes this test was written
+ * against. Both pop-ups draw the one component now, so the assertions below are
+ * on the component, plus one apiece that each screen still calls it.
  */
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
 const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
 const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
 
-test('คิวอนุมัติแสดงรายละเอียดงานเป็นการ์ดที่มีหัวข้อ ไม่ใช่ข้อความลอย', () => {
-  assert.match(queue, /<div className="reason-card">/, 'การ์ดรายละเอียดงานหายไป');
-  assert.match(queue, /รายละเอียดงานที่ขอ OT/, 'หัวข้อของการ์ดหายไป');
-  assert.match(queue, /\? <p className="reason-text">\{e\.description\}<\/p>/);
+test('รายละเอียดงานเป็นการ์ดที่มีหัวข้อ ไม่ใช่ข้อความลอย', () => {
+  assert.match(common, /<div className="reason-card">/, 'การ์ดรายละเอียดงานหายไป');
+  assert.match(common, /รายละเอียดงานที่ขอ OT/, 'หัวข้อของการ์ดหายไป');
+  assert.match(common, /\? <p className="reason-text">\{description\}<\/p>/);
   // The field is required on the form (see the tests above), so an empty one
   // means a row nobody filled a form for — a birthday filing the rule made.
-  assert.match(queue, /ไม่ได้ระบุรายละเอียดงาน/, 'การ์ดว่างเปล่าเมื่อไม่มีรายละเอียด');
-  // Not a bare paragraph any more, and not a cell in the คำขอ grid either.
-  assert.doesNotMatch(queue, /<p className="note"[^>]*>\{e\.description\}<\/p>/);
-  assert.doesNotMatch(queue, /k="รายละเอียดงาน" v=\{e\.description\}/);
+  assert.match(common, /ไม่ได้ระบุรายละเอียดงาน/, 'การ์ดว่างเปล่าเมื่อไม่มีรายละเอียด');
+
+  // Both readers ask for it, and neither has gone back to a shape of its own:
+  // not a bare paragraph, and not a cell in the คำขอ grid either.
+  for (const [name, src] of [['คิวรออนุมัติ', queue], ['รายการ OT ของฉัน', mine]]) {
+    assert.match(src, /<ReasonCard description=\{e\.description\} \/>/, `${name} ไม่ได้เรียกการ์ด`);
+    assert.doesNotMatch(src, /<p className="note"[^>]*>\{e\.description\}<\/p>/, name);
+    assert.doesNotMatch(src, /k="รายละเอียดงาน" v=\{e\.description\}/, name);
+  }
 });
 
 /**
@@ -82,7 +95,7 @@ test('คิวอนุมัติแสดงรายละเอียด�
 const holds = (text) => assert.ok(css.includes(text), `หาไม่เจอใน styles.css: ${text}`);
 
 test('หัวข้อกับเนื้อความในการ์ดรายละเอียด แยกน้ำหนักกันชัด', () => {
-  assert.ok(queue.includes('<div className="reason-label">'), 'ป้ายกลับไปเป็น kicker แล้ว');
+  assert.ok(common.includes('<div className="reason-label">'), 'ป้ายกลับไปเป็น kicker แล้ว');
   holds('.reason-label { font: 500 12px/1.4 var(--sans); color: var(--reason-label); }');
   holds('font: 400 14px/1.55 var(--sans); color: var(--reason-value);');
   // Both halves, at the values they were specified at. The plain pair is the

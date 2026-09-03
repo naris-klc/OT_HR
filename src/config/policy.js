@@ -86,7 +86,9 @@ export const DEFAULT_POLICY = Object.freeze({
    *
    * ⚠ LOWERING THIS RE-OPENS `minimumBufferMinutes`, SILENTLY. The buffer is
    * inert at any value up to one block, because a session shorter than a block
-   * already floors to nought and is already refused by the 0-hour rule. So a
+   * already floors to nought and is already refused by the 0-hour rule —
+   * `roundingGraceMinutes` below moves that same bound, and for the same
+   * reason, so the two of them are read together in `roundingZeroesUnder`. So a
    * buffer answered "0" under a 30-minute block is an unanswered question again
    * under a 15-minute one — and by then the รอ HR ยืนยัน badge is gone, so
    * nothing on the settings page will say so. The two keys are one question
@@ -98,6 +100,49 @@ export const DEFAULT_POLICY = Object.freeze({
    * below: until they answer, this is a reading of the old paper, not a rule.
    */
   roundingIncrementMinutes: 30,
+  /**
+   * ผ่อนปรน — how near the next block is near enough to be given it.
+   *
+   * Read ONLY under 'floor', and only while it is SMALLER than the block. The
+   * minutes are floored exactly as before, except that the last `grace` minutes
+   * of a block round up instead of down — `Math.floor((m + grace) / inc) * inc`
+   * in `roundMinutes`:
+   *
+   *   floor/30, grace 5   24 → 0 · 25 → 30 · 29 → 30 · 49 → 30 · 55 → 60
+   *   floor/30, grace 10  19 → 0 · 20 → 30 · 29 → 30 · 50 → 60
+   *   floor/30, grace 15  14 → 0 · 15 → 30 · 44 → 30 · 45 → 60
+   *
+   * 0 — off (DEFAULT), plain ปัดลง. That is what every figure in the database
+   * was computed with, and shipping anything else would restate hours on the
+   * first deploy for a rule nobody had switched on. The three levels the
+   * settings page offers — 5, 10, 15 — were asked for on 2026-09-02 in the
+   * words "บวกลบ 5 หรือ 10 และ 15 นาที", with 29 → 0.5 ชม. and 55 → 1 ชม. as
+   * the worked examples. The ลบ half of that is what 'floor' already does: a
+   * session that has not reached the window keeps rounding down. This key only
+   * ever adds, and it is not confirmed policy — see HR_UNCONFIRMED below, where
+   * it shares the increment's badge because it is the same question.
+   *
+   * ⚠ A GRACE OF HALF A BLOCK IS 'nearest', EXACTLY. 15 under a 30-minute block
+   * computes what ปัดเข้าหาค่าใกล้ที่สุด computes, minute for minute, and 30
+   * under a 60-minute one does too. That is not a clash — it is two ways to
+   * reach one rule — but the settings page says so, because a reader who sets
+   * both is entitled to know they have not stacked anything.
+   *
+   * ⚠ NOT READ AT ALL UNDER 'ceil', 'nearest' OR 'exact', and IGNORED when it
+   * is not smaller than the block — a grace of 15 on a 15-minute block would
+   * hand a whole block to a session of nought, so it falls back to plain floor
+   * rather than being clamped into a number nobody chose. `lib/policyInert.js`
+   * prints the row's own reason in both cases; the value stays stored and comes
+   * back the moment the mode or the block moves.
+   *
+   * ⚠ AND IT RE-OPENS `minimumBufferMinutes`, the same way lowering the block
+   * does. Rounding alone zeroes everything under `inc - grace`, not under `inc`
+   * — floor/30 with a grace of 10 stops refusing the 20–29 minute callouts it
+   * used to refuse, and a buffer answered "0" against a 30-minute screen is an
+   * unanswered question again against a 20-minute one. The two keys are one
+   * question asked twice and have to be answered together.
+   */
+  roundingGraceMinutes: 0,
   /**
    * 'bucket'  — round each rate bucket independently (DEFAULT). Bucket totals
    *             then sum exactly to the session total, which is what the paper
@@ -550,12 +595,23 @@ export const DEFAULT_POLICY = Object.freeze({
  *
  * Every value in DEFAULT_POLICY is a default, and saying so on the settings
  * page — as its subtitle already does — tells a reader nothing, because it is
- * equally true of the twenty flags HR has no opinion about. These three are
+ * equally true of the twenty flags HR has no opinion about. The items below are
  * different in kind: they were reverse-engineered from how the old paper
- * appears to have been filled in, they each move hours, and no one has
- * confirmed any of them. A default nobody chose and a default somebody read off
- * a stack of 2025 timesheets both print as "ค่าเริ่มต้น" and only one of them
- * is a liability.
+ * appears to have been filled in, or invented outright, and they each move
+ * hours. A default nobody chose and a default somebody read off a stack of 2025
+ * timesheets both print as "ค่าเริ่มต้น" and only one of them is a liability.
+ *
+ * It read "These three" until 2026-09-02 and there have been more than three
+ * since `startBuffer` arrived on 2026-08-13. A count belongs in the list, which
+ * can be counted, and not in a sentence, which cannot.
+ *
+ * NOT "unanswered" — UNRECORDED. ฝ่ายบุคคล answered `roundingIncrement` on
+ * 2026-09-02, out loud, and the badge stayed up because nobody had pressed
+ * anything. That is the design working rather than failing: what this list
+ * tracks is whose answer is on the record, and a rule somebody agreed to in a
+ * corridor is exactly as unrecorded as one nobody has considered. Do not
+ * shorten an item out of this file because the answer is known — press ยืนยัน,
+ * which is the one act that writes down who said it and when.
  *
  * So the state is recorded rather than described in prose: the badge on the
  * settings page is generated from this list, and pressing ยืนยัน on an item
@@ -590,6 +646,25 @@ export const HR_UNCONFIRMED = Object.freeze([
      * actually about. `roundingMode` is not unconfirmed: 'floor' is the
      * requirements doc's own recommendation.
      */
+    /**
+     * `roundingGraceMinutes` SHARED THIS BADGE FOR ONE DAY, on the reasoning
+     * that "ปัดลงทีละ 30 นาที" and "และ 29 นาทีได้ศูนย์" are one answer and two
+     * badges would let HR sign off half of it. That was written on the morning
+     * of 2026-09-02 and was wrong by the afternoon of the same day, in the
+     * exact way it feared and from the other side: ฝ่ายบุคคล answered the
+     * increment — 30 นาที — and said nothing about the grace, which did not
+     * exist when they were asked. One badge over both would have made pressing
+     * ยืนยัน on their answer ALSO record them as having chosen ผ่อนปรน: ปิด,
+     * which is a value nobody has ever put to them.
+     *
+     * The rule the two cases share, and the one to keep: a badge covers exactly
+     * as much as one answer covers. Splitting a question HR answers in one
+     * breath makes them press twice; merging two they answer separately puts
+     * their name on something they never said. Only the second is a lie, so
+     * when the shape is unclear the item splits.
+     *
+     * See `roundingGrace` below, which is where it went.
+     */
     keys: Object.freeze(['roundingIncrementMinutes']),
     reading: (policy) => (policy.roundingMode === 'exact'
       ? 'ไม่ปัดเศษ — คิดตามจริงเป็นทศนิยม'
@@ -605,8 +680,48 @@ export const HR_UNCONFIRMED = Object.freeze([
      * silently (see `npm run whatif -- --show`).
      */
     note: '30 นาที (ครึ่งชั่วโมง) มาจากเอกสารข้อกำหนด และเป็นค่าที่ทุกใบในระบบถูกคำนวณมา '
-      + '— ไม่ใช่คำตอบที่ใครในฝ่ายบุคคลเคยให้ไว้ '
+      + '· ฝ่ายบุคคลตอบมาแล้วเมื่อ 2 ก.ย. 2569 ว่าปัดเศษทีละ 30 นาที ตรงกับค่าที่ใช้อยู่ '
+      + '— กด ยืนยัน เพื่อบันทึกว่าใครรับคำตอบนี้และเมื่อไร ป้ายจะได้เลิกเป็นการเดา '
+      + '· ข้อนี้ไม่ได้ตอบเรื่องการผ่อนปรนปัดขึ้นข้างล่าง ซึ่งยังไม่มีใครถูกถาม '
       + '· เปลี่ยนข้อนี้แล้วชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม',
+  }),
+  Object.freeze({
+    /**
+     * ผ่อนปรนการปัดขึ้น — the half of [OPEN 3] that ฝ่ายบุคคล have not been
+     * asked. Its own item since 2026-09-02; see the note on `roundingIncrement`
+     * above for why it is not on that badge.
+     *
+     * `since` is its own date and not HR_UNCONFIRMED_SINCE. The question was
+     * put to nobody before the key existed, and printing 7 ส.ค. beside it would
+     * age it by four weeks it did not exist for — the same reason `startBuffer`
+     * carries its own date.
+     */
+    id: 'roundingGrace',
+    label: 'เกือบครบบล็อกแล้ว ปัดขึ้นให้กี่นาที',
+    since: '2026-09-02',
+    keys: Object.freeze(['roundingGraceMinutes']),
+    reading: (policy) => {
+      if (policy.roundingMode === 'exact') return 'ไม่ปัดเศษ จึงไม่มีอะไรให้ผ่อนปรน';
+      /**
+       * Read through the same test the engine uses, not off the stored number.
+       * Under 'ceil' and 'nearest' the key is not read at all, and a grace the
+       * size of the block or larger falls back to plain floor — a row printing
+       * "ผ่อนปรน 15 นาที" over an engine that forgives nothing would be the one
+       * thing `reading` exists to prevent, which is why the line above it says
+       * ไม่ปัดเศษ under 'exact'.
+       */
+      const grace = Number(policy.roundingGraceMinutes) || 0;
+      const live = policy.roundingMode === 'floor'
+        && grace > 0 && grace < Number(policy.roundingIncrementMinutes);
+      if (live) return `ปัดขึ้นให้เมื่อเหลืออีกไม่เกิน ${grace} นาที`;
+      if (grace > 0) return 'ไม่ผ่อนปรน — ค่าที่ตั้งไว้ไม่ถูกอ่านกับการปัดเศษแบบนี้';
+      return 'ไม่ผ่อนปรน — ปัดลงอย่างเดียว';
+    },
+    note: 'ปิดอยู่ แปลว่าทำ 29 นาทีได้ 0 ชม. และงานนั้นถูกปฏิเสธไม่บันทึกอะไรเลย '
+      + 'ซึ่งเป็นการอ่านจากวิธีกรอกกระดาษเดิม ไม่ใช่คำตอบที่ใครในฝ่ายบุคคลเคยให้ไว้ '
+      + '· ตั้งได้ 5, 10 หรือ 15 นาที — ตัวอย่างที่ 5: ทำ 29 นาทีได้ 0.5 ชม. และ 55 นาทีได้ 1 ชม. '
+      + '· เป็นคนละข้อกับ “ปัดเศษทีละกี่นาที” ข้างบน ที่ฝ่ายบุคคลตอบแล้ว '
+      + '· เปลี่ยนข้อนี้แล้วชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม และเส้นที่ระบบปฏิเสธงานสั้น ๆ จะขยับตามไปด้วย',
   }),
   Object.freeze({
     /**

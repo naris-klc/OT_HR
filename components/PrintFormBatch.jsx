@@ -194,6 +194,22 @@ const DIGEST_KINDS = [
     title: (sheets, rows) => `พบใบที่มีรายการยังไม่อนุมัติ ${sheets} ใบ · ${rows} รายการ`,
   },
   {
+    /**
+     * SECOND OF THE FIVE, in the same order the per-sheet blocks take and for
+     * the same reason: ยังไม่อนุมัติ above decides whether a sheet should be
+     * signed at all, and this decides whether its total can be believed against
+     * any other document for the month. It is the only notice here that makes
+     * the paper disagree with a report — a department's bundle is short against
+     * สรุป OT ส่งบัญชี by the sum of these — and the person holding forty sheets
+     * to reconcile is exactly who needs to know which of them.
+     */
+    key: 'notPrinted',
+    level: 'warn',
+    label: 'ชั่วโมงหลังเที่ยงคืนที่ไม่ได้พิมพ์',
+    rows: (form) => form.notPrinted || [],
+    title: (sheets, rows) => `พบใบที่ไม่ได้พิมพ์ชั่วโมงหลังเที่ยงคืน ${sheets} ใบ · ${rows} ช่วง`,
+  },
+  {
     key: 'hidden',
     level: 'warn',
     label: 'ซ่อนรายการที่ซ้ำช่วงเวลาเดิม',

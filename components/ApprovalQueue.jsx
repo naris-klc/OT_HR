@@ -5,8 +5,9 @@ import {
   api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, periodLabel, BUCKETS, BUCKET_LABEL,
 } from '@/lib/api.js';
 import {
-  capChips, capFigure, capPair, describeBreaches, overCapLine,
-  pendingCapNote, needsOverCeilingReason, OVER_CEILING_REASON_REQUIRED,
+  capPair, describeBreaches, overCapLine,
+  pendingCapNote, needsOverCeilingReason, overCeilingApproveHead,
+  OVER_CEILING_REASON_REQUIRED,
 } from '@/lib/caps.js';
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
@@ -15,8 +16,9 @@ import {
 // offers and the ones the server accepts cannot drift apart.
 import { isOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, Fact, Modal, PickOne, ProxyMark, RateHead, RefiledNote,
-  RequestTrail, Section, SegmentList, StatusChip, TeamMark, editsOf,
+  Alert, CapCard, Empty, EditedMark, EntryHistory, Fact, Modal, PickOne, ProxyMark, RateHead,
+  ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, StatusChip, TeamMark,
+  editsOf,
 } from './common.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
 import WithdrawalRequests from './WithdrawalRequests.jsx';
@@ -138,7 +140,6 @@ export default function ApprovalQueue({
   // ── modals ────────────────────────────────────────────────────────────────
   const [confirming, setConfirming] = useState(null); // entry[]
   const [rejecting, setRejecting] = useState(null);   // entry[] — batch only
-  const [overriding, setOverriding] = useState(null); // entry
   const [detail, setDetail] = useState(null);         // entry
 
   /** Was there ever something in this queue this session? Drives the two
@@ -369,12 +370,6 @@ export default function ApprovalQueue({
     (n, all) => (n === 1
       ? `ไม่อนุมัติรายการของ ${all[0].employee?.name} · บันทึกเหตุผลแล้ว`
       : `ไม่อนุมัติ ${n} รายการ · บันทึกเหตุผลไว้ในทุกรายการแล้ว`),
-  );
-
-  const override = (entry, reason) => run(
-    [entry],
-    (e) => api.post(`/entries/${e._id}/cap-override`, { reason }),
-    () => 'บันทึกการอนุมัติเกินเพดานแล้ว',
   );
 
   /**
@@ -1038,9 +1033,12 @@ export default function ApprovalQueue({
                             a card that loses its actions says where they went.
                             รายละเอียด stays — reading a row is not deciding it,
                             and it is how somebody checks a row before confirming
-                            the pile. So does อนุมัติเกินเพดาน below: the batch bar
-                            has no equivalent, so hiding it would take away the
-                            only way to reach it while anything is ticked. */}
+                            the pile — and since 2026-09-02 it is the only
+                            thing left beside the tick, because อนุมัติเกินเพดาน
+                            was withdrawn from every card and every dialog. A
+                            row over its ceiling is signed with the same ยืนยัน
+                            as every other row; the sentence it costs is
+                            collected by the dialog that button opens. */}
                         {/* It read "✓ เลือกไว้แล้ว · ใช้แถบด้านล่าง" until the bar
                             moved to the top of the list, at which point the card
                             was pointing at a place with nothing in it. The
@@ -1067,15 +1065,6 @@ export default function ApprovalQueue({
                         <button className="btn ghost sm" onClick={() => setDetail(e)}>
                           รายละเอียด
                         </button>
-                        {isHr && e.capExceeded && (
-                          <button
-                            className="btn ghost warn sm"
-                            disabled={busy}
-                            onClick={() => setOverriding(e)}
-                          >
-                            อนุมัติเกินเพดาน
-                          </button>
-                        )}
                       </div>
                     )}
                   </td>
@@ -1109,15 +1098,6 @@ export default function ApprovalQueue({
             setRejecting(null);
             reject(list, reason, notify);
           }}
-        />
-      )}
-
-      {overriding && (
-        <OverrideModal
-          entry={overriding}
-          busy={busy}
-          onClose={() => setOverriding(null)}
-          onSave={(reason) => { const e = overriding; setOverriding(null); override(e, reason); }}
         />
       )}
 
@@ -1183,7 +1163,14 @@ function ConfirmModal({
   entries, verb, isHr, busy, needsReason = false, overCeiling = false, onClose, onConfirm,
 }) {
   const total = entries.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
-  const capped = entries.filter((e) => e.capExceeded);
+  /**
+   * `needsOverCeilingReason` rather than the raw `capExceeded` this read until
+   * 2026-09-02 — the same predicate `overCeiling` is computed from, so the box
+   * that lists the rows and the rule that demands a sentence for them cannot
+   * answer differently about one entry. They agree today; a waived row is the
+   * case that would split them.
+   */
+  const capped = entries.filter((e) => needsOverCeilingReason(e));
   const many = entries.length > 1;
   /**
    * The reason an administrator gives for signing in a หัวหน้า's place.
@@ -1263,18 +1250,31 @@ function ConfirmModal({
         </div>
       </div>
 
-      {/* A cap breach that was fine to see on a row is not fine to lose inside
-          a batch of forty. It gets said again, here, with the names attached. */}
+      {/* ONE BOX FOR THE CEILING — what is over, and what the sentence being
+          demanded is for. Merged 2026-09-02.
+
+          It was two amber boxes stacked, and they were driven by the same rows:
+          the first listed who was over, the second said a reason was required.
+          Both opened on the word เกินเพดาน, so the sheet said the same thing
+          twice before it said anything new — and on a phone the pair pushed the
+          textarea below the fold, on the one dialog whose whole point is that
+          something has to be typed into it.
+
+          The waiver sentence that used to close the first box went with the
+          button it pointed at: อนุมัติเกินเพดาน was withdrawn from every card
+          and every dialog the same day, and "close this window and go find
+          another one" is not an instruction any more.
+
+          `mark={false}` because the headline carries its own ⚠️ — the amber
+          badge `.alert` draws would be a second mark for one warning. */}
       {capped.length > 0 && (
-        <Alert kind="warn">
-          {capped.length} รายการเกินเพดานแผนก — {capped.map((e) => e.employee?.name).join(', ')}
-          {/* Every ceiling each of them passed, by name. It read only the list
-              of people until 2026-09-02, which told the reviewer that
-              something was over a limit but not which limit or by how much —
-              and a reason is now being demanded for exactly this, so the sheet
-              has to carry enough to write one from. `describeBreaches` is the
-              same wording the row underneath and the pop-up already use. */}
-          <ul style={{ marginTop: 6, marginLeft: 18 }}>
+        <Alert kind="warn" mark={false}>
+          <strong>⚠️ {overCeilingApproveHead(capped.length)}</strong>
+          {/* Every ceiling each of them passed, by name. `describeBreaches` is
+              the same wording the row underneath and the pop-up already use —
+              a reason is being demanded for exactly this, so the sheet has to
+              carry enough to write one from: which limit, and what it was. */}
+          <ul className="alert-list">
             {capped.map((e) => (
               <li key={e._id}>
                 {e.employee?.name} · {thaiDate(e.workDate)} ·
@@ -1282,30 +1282,14 @@ function ConfirmModal({
               </li>
             ))}
           </ul>
-          {/* Still true, and still the other way out — but no longer the ONLY
-              one, which is what this sentence implied while a reason could not
-              be given at this step. */}
-          {isHr && (
-            <div style={{ marginTop: 6 }}>
-              หากต้องการยกเว้นเพดานให้ใบเหล่านี้ถาวร ปิดหน้าต่างนี้แล้วใช้ “อนุมัติเกินเพดาน”
-              {' '}— ต่างจากการให้เหตุผลด้านล่าง ตรงที่การยกเว้นจะปลดธงเกินเพดานออกจากใบ
-            </div>
-          )}
-        </Alert>
-      )}
-
-      {/* THE MANDATORY REASON FOR A CEILING, above the box that collects it and
-          below the list of what was breached — the order somebody reads in:
-          what is over, then what they owe. Separate from the override alert
-          because the two rules are separate: an administrator signing for an
-          absent หัวหน้า on a row that is comfortably inside its ceiling sees
-          only that one, and a หัวหน้า signing an over-ceiling row sees only
-          this one. A batch that is both shows both, and one box answers them. */}
-      {overCeiling && (
-        <Alert kind="warn">
-          <strong>{OVER_CEILING_REASON_REQUIRED}</strong>
-          {' — '}เหตุผลจะถูกบันทึกไว้ในประวัติของใบ และแสดงบนสรุป OT ส่งบัญชี
-          {' '}ตรงตัวเลขชั่วโมงของคนนี้
+          {/* WHERE THE SENTENCE IS READ, which is the part a reviewer cannot
+              guess: not only this entry's history but สรุป OT ส่งบัญชี, beside
+              this person's hours, months later. `.say` is the grey step off the
+              amber this notice uses for the line that is not a finding. */}
+          <div className="say">
+            เหตุผลที่ระบุจะถูกบันทึกไว้ในประวัติของใบคำขอ และนำไปแสดงบนรายงานสรุป OT ส่งบัญชี
+            {' '}(ตรงตัวเลขชั่วโมงของพนักงานคนนี้)
+          </div>
         </Alert>
       )}
 
@@ -1345,8 +1329,13 @@ function ConfirmModal({
               : 'เช่น งานส่งลูกค้าเลื่อนไม่ได้ · เครื่องจักรเสียต้องซ่อมข้ามคืน · ปิดงบสิ้นเดือน'}
             onChange={(ev) => setWhy(ev.target.value)}
           />
+          {/* NOT the ceiling sentence a second time. The banner above carries
+              it word for word, and this note sits under the box that sentence
+              is telling somebody to fill in — the short form is what is left to
+              say, and it is the one ไม่อนุมัติ has printed under its own box
+              since it existed. */}
           <div className="field-note">
-            {needsReason ? OVERRIDE_NOTE_REQUIRED : OVER_CEILING_REASON_REQUIRED}
+            {needsReason ? OVERRIDE_NOTE_REQUIRED : `ต้องกรอกเหตุผลก่อนจึงจะ${verb}ได้`}
             {many && ' · เหตุผลเดียวกันนี้จะถูกบันทึกกับทุกรายการที่เลือกไว้'}
           </div>
         </div>
@@ -1396,8 +1385,13 @@ function RejectModal({ entries, busy, onClose, onReject }) {
     >
       {capped.length > 0 && (
         <Alert kind="warn">
+          {/* The single-row case prints `OVER_CEILING_REASON_REQUIRED` itself
+              — the sentence the server refuses with, both halves of which are
+              live on this sheet — rather than a paraphrase of its first half. */}
           <strong>
-            {many ? `${capped.length} รายการที่เลือกไว้เกินเพดาน OT ที่กำหนด` : 'รายการนี้เกินเพดาน OT ที่กำหนด'}
+            {many
+              ? `${capped.length} รายการที่เลือกไว้เกินเพดาน OT ที่กำหนด`
+              : OVER_CEILING_REASON_REQUIRED}
           </strong>
           <ul style={{ marginTop: 6, marginLeft: 18 }}>
             {capped.map((e) => (
@@ -1419,41 +1413,18 @@ function RejectModal({ entries, busy, onClose, onReject }) {
   );
 }
 
-/** §7 — waiving the department cap for one entry, with the reason on record. */
-function OverrideModal({ entry, busy, onClose, onSave }) {
-  const [reason, setReason] = useState('');
-  return (
-    <Modal
-      title="อนุมัติเกินเพดานแผนก"
-      subtitle={`${entry.employee?.name} · ${thaiDate(entry.workDate)}`}
-      onClose={onClose}
-      dirty={reason.trim().length > 0}
-      footer={(
-        <>
-          <button className="btn ghost" onClick={onClose}>ยกเลิก</button>
-          <button className="btn" disabled={busy || !reason.trim()} onClick={() => onSave(reason.trim())}>
-            บันทึกการอนุมัติ
-          </button>
-        </>
-      )}
-    >
-      {/* One waiver covers the entry, but it has to name everything being
-          waived — approving past a weekly ceiling while believing it was the
-          monthly one is a decision made on the wrong facts. */}
-      <Alert kind="warn">
-        {describeBreaches(entry).map((b) => (
-          <div key={b.scope + b.text}>
-            {b.text}{b.detail ? ` · ${b.detail}` : ''}
-          </div>
-        ))}
-      </Alert>
-      <div className="field">
-        <label>เหตุผลในการอนุมัติเกินเพดาน *</label>
-        <textarea value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
-      </div>
-    </Modal>
-  );
-}
+/* §7 — ยกเว้นเพดานให้ใบหนึ่ง (`OverrideModal`) stood here until 2026-09-02.
+
+   It went with the อนุมัติเกินเพดาน button that opened it, on the card and in
+   the dialogs. A row over its ceiling is now decided with the same ยืนยัน or
+   ไม่อนุมัติ as every other row: the reason goes onto the entry as
+   `overCeilingReason` and the flag is LEFT STANDING, which is the difference —
+   a waiver cleared `capExceeded`, and สรุป OT ส่งบัญชี draws the figure red off
+   exactly that fact.
+
+   `POST /api/entries/[id]/cap-override` is still mounted and still refuses an
+   empty reason; nothing in the application reaches it any more, and the
+   `capOverride` already on stored rows is still read by `wasOverCeiling`. */
 
 /** The reason and the notification choice, shared by the batch dialog and the
     in-pop-up refusal so the two cannot drift apart. */
@@ -1526,9 +1497,6 @@ function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, o
   const [editing, setEditing] = useState(false);
   const [editDirty, setEditDirty] = useState(false);
   const [trail, setTrail] = useState(null);
-
-  const filed = lastAction(e, 'submit');
-  const mgr = lastAction(e, 'approve_mgr');
 
   /**
    * Only fetched when there is a chain to fetch. A request nobody re-filed is
@@ -1733,126 +1701,11 @@ function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, o
             </div>
           </Section>
 
-          {/*
-            THE REASON THE REQUEST EXISTS, ON A CARD THAT SAYS SO.
-
-            This has moved twice, and both moves were the same defect. It was a
-            bare <p> under the multiplier strip — the description with nothing in
-            front of it, between two cards — and a filing reading "ทดสอบ" was
-            twice taken for a stray word left in the markup and twice asked to be
-            deleted. It is not stray: it is the sentence the request is asking to
-            be paid for, and the same value the queue's รายละเอียด column prints.
-
-            A cell in the คำขอ grid fixed the label and not the shape: prose in a
-            box built for 17:30–19:30 and 2.00 ชม. still reads as a field that
-            overflowed. It is not a measurement, it is the answer to "why", so it
-            gets the width of the sheet and a label in words.
-
-            BETWEEN THE HOURS AND THE CEILING, which is the order the reading
-            goes: what was asked for, why, and then where the month stands.
-
-            AND IT SPEAKS WHEN IT IS EMPTY. `normaliseDescription` refuses a blank
-            on the form, so a filing cannot arrive without one — but a row the
-            birthday rule generated was never on a form. A card with a heading
-            and nothing under it is a question the pop-up asked itself and left
-            hanging; "ไม่ได้ระบุรายละเอียดงาน" is the answer, and it is a
-            different thing from a description that happens to be short.
-          */}
-          <div className="reason-card">
-            {/* NOT a `kicker-sm`. Every other heading in this pop-up is one —
-                mono, uppercase, tracked out — which is right for a heading over
-                a column of figures and wrong over a sentence: it turns the
-                label into the loudest thing in a card whose point is the words
-                under it. Sans, one size down from them, and grey. */}
-            <div className="reason-label">รายละเอียดงานที่ขอ OT</div>
-            {e.description
-              ? <p className="reason-text">{e.description}</p>
-              : <p className="reason-text none">ไม่ได้ระบุรายละเอียดงาน</p>}
-          </div>
-
-          {/*
-            THE MONTH, NOT THE REQUEST — so it is not in the request's grid.
-
-            This was a full-width cell at the end of "คำขอ", among เวลาที่ขอ,
-            พักเที่ยง and ชั่วโมงตามนาฬิกา. Those four cells answer "what was
-            asked for"; this one answers "where does this person's month
-            stand", which is a different question with a different subject and
-            the only thing on the pop-up that is true of other requests too.
-            Sharing a grid with them, it read as a fifth property of the
-            request — and it is the one figure here that a reviewer looks up
-            rather than reads past.
-
-            So: its own card, tinted, with the figure and the three chips
-            inside it. `capExceeded` in the grid above stays where it is —
-            that IS a property of the request: what the ceilings said on the
-            day it was filed. This card is what they say now.
-          */}
-          {e.usage?.month && (
-            <div className={e.usage.month.exceeded ? 'cap-card over' : 'cap-card'}>
-              <div className="cap-card-head">
-                {/* The column's own heading, plus the month it is about. Named
-                    "สะสมทั้งเดือน" until the two screens' headings were settled
-                    on สะสม / เพดาน — a pop-up opened from a column should not
-                    rename the column on the way. */}
-                <span className="kicker-sm">
-                  สะสม / เพดาน · {periodLabel(e.usage.month.period)}
-                </span>
-                {/*
-                  THE ROW'S HEADLINE, NOT THE CEILING'S TOTAL.
-                  This led with `usedHours` — 38.5 where the row it was opened
-                  from led with 7.5. The qualifier was carried across
-                  faithfully and the NUMBER underneath it was not, so a
-                  reviewer who opened this pop-up because they distrusted the
-                  figure on the row was shown a different figure, in a larger
-                  type, with no way to tell which of the two the ceiling was
-                  about. Both numbers are still here; they are simply in the
-                  order the row, this card and ตรวจสอบรายเดือน all now use.
-                */}
-                <span className="cap-card-fig">
-                  {capFigure(e.usage.month.approvedHours, e.usage.month.capHours)} ชม.
-                </span>
-              </div>
-              {/*
-                THREE NUMBERS, DRAWN AS THREE NUMBERS.
-
-                This was three sentences stacked under the figure — the split,
-                the room left over, and the ceiling's own total — and read once
-                each they are a word and a number apiece. Four lines of prose
-                under a fact that is already a fraction is a paragraph nobody
-                reads twice, on the one pop-up that has to stay short enough to
-                decide from.
-
-                Red on a chip carries what the prose said in words: อนุมัติแล้ว
-                goes red when the APPROVED hours alone are past the ceiling,
-                which is a fact nothing in this queue undoes, and เกิน goes red
-                when the total does — which may still be a projection. See
-                `capChips` in lib/caps.js.
-              */}
-              <div className="cap-chips">
-                {capChips(e.usage.month).map((c) => (
-                  <span key={c.k} className={c.over ? 'cap-chip over' : 'cap-chip'}>
-                    {c.k} <b>{hours(c.v)}</b> ชม.
-                  </span>
-                ))}
-              </div>
-              {/*
-                SAID ONLY WHEN IT IS NOT TRUE.
-
-                "ไม่รวมใบนี้" is not a reassurance, it is an exception: a newer
-                request for the same shift has replaced this one in the count,
-                so every figure on this card is about a month this request is
-                not in. Rare, and it changes what all three chips mean.
-
-                Its ordinary half — "รวมใบนี้ 3 ชม. แล้ว — ไม่ต้องบวกเพิ่ม" —
-                was a line printed under every request to head off one piece of
-                mental arithmetic. The รออนุมัติ chip names those hours as a
-                number now, which is the same warning without the sentence.
-              */}
-              {!e.usage.counted && (
-                <div className="cap-card-note">ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน</div>
-              )}
-            </div>
-          )}
+          {/* Why the request exists, and where the month stands — both cards
+              now live in common.jsx, because หน้ารายการ OT ของฉัน draws the same
+              two. See the note over them there. */}
+          <ReasonCard description={e.description} />
+          <CapCard month={e.usage?.month} counted={e.usage?.counted} />
 
           <Section
             title="การแบ่งช่วงเวลา"
@@ -1881,35 +1734,11 @@ function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, o
             )}
           </Section>
 
+          {/* The two names and the two minutes — shared with หน้ารายการ OT
+              ของฉัน, which asks the same question of the same history. See
+              `SignatureFacts` in common.jsx. */}
           <Section title="ผู้อนุมัติ">
-            <dl className="fact-grid">
-              <Fact
-                k="ยื่นคำขอโดย"
-                v={filed?.byName || e.employee?.name}
-                /* Named outright rather than left to the reader to work out
-                   from two names that happen to differ. */
-                sub={[
-                  isProxyFiled(e) ? `บันทึกแทน ${e.employee?.name}` : null,
-                  stamp(filed?.at),
-                ].filter(Boolean).join(' · ') || undefined}
-              />
-              <Fact
-                k="หัวหน้างานอนุมัติ"
-                v={mgr?.byName || (e.status === 'pending_hr' && !e.managerDecision?.at
-                  ? 'ข้ามขั้นหัวหน้า — ผู้บันทึกคือผู้อนุมัติเอง'
-                  : 'ยังไม่ผ่านหัวหน้างาน')}
-                /* Who signed, and whose authority they signed under. Left as
-                   one name, a reviewer cannot tell an approval made by the
-                   department's own หัวหน้า from one made by a stand-in — and
-                   the second is the one with a window on it that either
-                   covered the day or did not. */
-                sub={[
-                  mgr?.onBehalfOfName ? `ทำแทน ${mgr.onBehalfOfName}` : null,
-                  mgr ? stamp(mgr.at) : undefined,
-                ].filter(Boolean).join(' · ') || undefined}
-              />
-            </dl>
-            {mgr?.note && <p className="note" style={{ marginTop: 8 }}>บันทึกจากหัวหน้างาน — {mgr.note}</p>}
+            <SignatureFacts entry={e} />
           </Section>
 
           {/* One request's history, or the whole chain when this one replaced
@@ -2378,11 +2207,8 @@ function optionsBy(entries, pick) {
   return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label, 'th'));
 }
 
-/** The most recent time `action` was taken on the entry. */
-function lastAction(entry, action) {
-  const items = entry?.history || [];
-  for (let i = items.length - 1; i >= 0; i--) if (items[i].action === action) return items[i];
-  return null;
-}
-
-const stamp = (at) => (at ? new Date(at).toLocaleString('th-TH') : undefined);
+/* `lastAction` and `stamp` stood here until 2026-09-02. Both walked one
+   entry's history for a pop-up, and both moved when the employee's own pop-up
+   started asking the same questions of it — the walk is in lib/entries.js and
+   the stamp is in common.jsx, next to `SignatureFacts`, which is the only thing
+   that was reading either. */

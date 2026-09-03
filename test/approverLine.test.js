@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 
 import { approvalSteps, approverLine, lastDecision } from '../lib/approverLine.js';
 import { thaiDateTime } from '../lib/api.js';
+import { FILING_ACTIONS, filingOf, lastAction } from '../lib/entries.js';
 
 /**
  * "ใบนี้ค้างอยู่ที่ใคร" — the line under the status chip on OT ของฉัน.
@@ -368,4 +369,199 @@ test('the signature list is asked for and is gated on there being one', () => {
   // before that. The leading * is load-bearing: it marks the line as a footnote
   // on the signature above rather than a new instruction.
   has(common, '*ฝ่ายบุคคลยืนยันรายการผ่านบัญชีส่วนกลางของฝ่ายบริหารทรัพยากรบุคคล (HR Central Account)');
+});
+
+// ── หน้ารายละเอียดของพนักงาน — the reviewer's pop-up, minus the decision ─────
+
+/**
+ * 2026-09-02. รายละเอียด on หน้ารายการ OT ของฉัน was a screen of its own, on the
+ * argument that an owner and a reviewer ask different questions of a request.
+ * They do — but the owner's screen was missing three answers the reviewer's had
+ * all along, and HR were reading คิวรออนุมัติ over people's shoulders to supply
+ * them: why the request exists, where the month stands against the ceiling, and
+ * who signed what and when.
+ *
+ * What is pinned below is that the two pop-ups now draw those from ONE set of
+ * components, and that the employee's foot still holds none of the decisions.
+ */
+
+test('the two pop-ups read one set of cards, not two copies of them', () => {
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
+  const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+
+  for (const name of ['ReasonCard', 'CapCard', 'SignatureFacts']) {
+    has(common, `export function ${name}(`, `${name} ไม่ได้อยู่ใน common.jsx`);
+    assert.ok(queue.includes(`<${name}`), `คิวรออนุมัติ ไม่ได้เรียก ${name}`);
+    assert.ok(mine.includes(`<${name}`), `รายการ OT ของฉัน ไม่ได้เรียก ${name}`);
+  }
+
+  /* The markup left the queue rather than being copied out of it — a component
+     that still had its own <div className="cap-card"> beside the shared one is
+     the two-answers-for-one-question this move exists to end. */
+  for (const [label, src] of [['ApprovalQueue', queue], ['EmployeeView', mine]]) {
+    assert.doesNotMatch(src, /<div className="reason-card">/, `${label} ยังมีการ์ดของตัวเอง`);
+    assert.doesNotMatch(src, /'cap-card over' : 'cap-card'/, `${label} ยังมีการ์ดเพดานของตัวเอง`);
+  }
+});
+
+/**
+ * THE CEILING CARD IS NOT DRAWN OVER THE WRONG MONTH.
+ *
+ * The employee's dashboard loads usage for the month its picker is on, and
+ * every row that can open the pop-up belongs to that month — but the card is
+ * headed with the month it is about, and a July request under a card reading
+ * "สะสม / เพดาน · สิงหาคม 2569" is the wrong person's answer to the one figure
+ * on the pop-up that is not about this request. The guard is in the component,
+ * where a later change to which rows the list holds cannot walk past it.
+ */
+test('the ceiling card is only drawn for the month its figures are about', () => {
+  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  has(mine, 'const month = usage?.period === e.period ? usage : null;');
+  has(mine, '<CapCard month={month} counted={!month || month.countedIds?.includes(String(e._id))} />');
+
+  // And the server is what says which requests those figures were made of, so
+  // "ไม่รวมใบนี้" cannot be guessed at by the screen.
+  const usage = readFileSync(join(ROOT, 'app/api/entries/usage/[period]/route.js'), 'utf8');
+  has(usage, 'countedIds: [...counted],');
+  has(usage, 'exceeded: overCap(usedHours, employee.department?.monthlyCapHours ?? null),');
+});
+
+/**
+ * ผู้อนุมัติ IS A PAIR AND A LIST, AND THEY ARE NOT THE SAME ANSWER TWICE.
+ *
+ * `SignatureFacts` says where the request is now — who put it in and whether
+ * the หัวหน้า has signed — and is drawn on a request nobody has touched.
+ * `ApprovalSteps` says what happened to it, and appears only once something
+ * has. The pair is also the only one of the two that names the FILER.
+ */
+test('the owner sees both the pair and the list, under one heading', () => {
+  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const section = mine.slice(mine.indexOf('<Section title="ผู้อนุมัติ">'));
+  const head = section.slice(0, section.indexOf('</Section>'));
+  assert.match(head, /<SignatureFacts entry=\{e\} \/>/, 'คู่ผู้ยื่น–ผู้อนุมัติหายไป');
+  assert.match(head, /\{decided && \(/, 'รายการลายเซ็นไม่ได้ถูกกั้นด้วย decided');
+  assert.match(head, /<ApprovalSteps entry=\{e\} \/>/, 'รายการลายเซ็นหายไป');
+  // One heading. Two sections a word apart — ผู้อนุมัติ and การอนุมัติ — is the
+  // reader being asked to tell two headings apart that mean the same thing.
+  assert.ok(!mine.includes('<Section title="การอนุมัติ">'), 'หัวข้อสองอันที่แปลว่าเรื่องเดียวกัน');
+});
+
+/**
+ * ประวัติรายการ IS NOT GATED ON THERE HAVING BEEN A CORRECTION.
+ *
+ * It was headed ข้อมูลเดิม and drawn only when the request had a past — an
+ * edit, a refused request it replaced, or a filing somebody else made. On an
+ * ordinary request the sequence an employee chasing it wants — filed 14:02,
+ * หัวหน้า signed 16:31, waiting on ฝ่ายบุคคล — was on no screen they could open.
+ */
+test('the owner’s history section draws on any request that has one', () => {
+  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  has(mine, "{(e.history || []).length > 0 && (");
+  has(mine, "<Section title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>");
+  // The ข้อมูลเดิม explanation is still there, and is still only said on the
+  // rows it is about: on those the trail carries เดิม → ใหม่ blocks, and a
+  // reader has to be told which version F-HR-027 prints.
+  has(mine, '{hasPast && (');
+});
+
+/**
+ * THE FOOT IS THE WHOLE OF THE DIFFERENCE BETWEEN THE TWO POP-UPS.
+ *
+ * ไม่อนุมัติ and ยืนยันใบ OT decide somebody else's request. แก้ไขชั่วโมง is
+ * ฝ่ายบุคคล correcting a figure against a scan record — on the owner's screen it
+ * would let an employee rewrite hours their หัวหน้า has already signed for,
+ * which is exactly the rule `editPermission` refuses.
+ */
+test('none of the reviewer’s three decisions is on the owner’s pop-up', () => {
+  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  for (const word of ['ยืนยันใบ OT', 'แก้ไขชั่วโมง', '>ไม่อนุมัติ</button>']) {
+    assert.ok(!mine.includes(word), `ปุ่มของฝ่ายบุคคลโผล่บนจอพนักงาน: ${word}`);
+  }
+  /* The WORDS are still allowed here: "เหตุผลที่ไม่อนุมัติ" heads the panel that
+     tells the owner why a request came back, which is the thing on this pop-up
+     they most need to find. What may not appear is a BUTTON. */
+  has(mine, 'เหตุผลที่ไม่อนุมัติ');
+  // What is there instead: the way out, and the three things an owner may do.
+  has(mine, '<button className="btn ghost" onClick={onClose}>ปิดหน้าต่าง</button>');
+  has(mine, 'onClick={onAskWithdraw}>ยื่นขอถอนใบ OT</button>');
+  has(mine, 'onClick={onCancel}>ยกเลิกคำขอ</button>');
+  has(mine, 'onClick={onEdit}>แก้ไข</button>');
+});
+
+/**
+ * THE ROW SAYS WHERE IT GOES, AND IS STILL ONE BUTTON.
+ *
+ * The card in รายการล่าสุด has been pressable since it was written and said so
+ * with a chevron alone; the reviewer's queue has carried a รายละเอียด button on
+ * every row all along. The word is here now — drawn as a button, and NOT one,
+ * because the row itself is the button and a real <button> inside it would put
+ * back the nesting that was removed when แก้ไข left the row.
+ */
+test('the row carries the word รายละเอียด without nesting a button in a button', () => {
+  const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8');
+  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+
+  has(mine, '<span className="t">รายละเอียด</span>');
+  // The row is still the one pressable thing, and the glyph is still the only
+  // part hidden from a screen reader — the name of the row now ends in the word.
+  has(mine, 'className="item row-link"');
+  assert.match(mine, /<span aria-hidden="true">›<\/span>/);
+
+  // The frame is drawn by a class of its own and never by `.btn`, whose rules
+  // carry a cursor, a focus ring and a press state this element cannot honour.
+  assert.ok(css.includes('.item-go .t {'), 'ไม่มีกฎกรอบของคำว่ารายละเอียด');
+  assert.doesNotMatch(mine, /className="item-go[^"]*btn/, 'ป้ายถูกทำเป็นปุ่มจริง');
+
+  // And the full table offers the same thing as a real button, where a real
+  // button is legal: a cell of its own, beside the row's other actions.
+  const cell = mine.slice(mine.indexOf('<div className="row-actions">'));
+  assert.match(
+    cell.slice(0, cell.indexOf('</div>')),
+    /<button\s+className="btn ghost sm"\s+onClick=\{\(\) => setDetailId\(e\._id\)\}\s*>\s*รายละเอียด\s*<\/button>/,
+    'ตารางเต็มไม่มีปุ่มรายละเอียด หรือมันไม่ได้มาก่อนปุ่มอื่นในแถว',
+  );
+});
+
+/**
+ * WHO FILED IT, ON THE FOUR ROWS THAT DO NOT SAY 'submit'.
+ *
+ * `lastAction(entry, 'submit')` was what the reviewer's pop-up looked for. A
+ * หัวหน้า filing for their team writes `submit_proxy`, the birthday rule writes
+ * `submit_birthday`, ฝ่ายบุคคล filing off a scan record writes
+ * `submit_hr_verified`, and a re-filed request begins with `resubmit` — so on
+ * all four the lookup returned null and the cell printed the employee's name
+ * with NO TIME AGAINST IT, on precisely the rows where "who put this in, and
+ * when" is the question being asked.
+ */
+test('the filing row is found however the request was filed', () => {
+  for (const action of FILING_ACTIONS) {
+    const entry = { history: [{ action, byName: 'ผู้กรอก', at: '2026-09-02T09:00:00.000Z' }] };
+    assert.equal(filingOf(entry)?.byName, 'ผู้กรอก', `${action} ไม่ถูกนับเป็นการยื่น`);
+  }
+  // An approval is not a filing, and a request with no history at all answers
+  // null rather than throwing.
+  assert.equal(filingOf({ history: [{ action: 'approve_mgr' }] }), null);
+  assert.equal(filingOf({}), null);
+  assert.equal(filingOf(null), null);
+});
+
+/**
+ * BACKWARDS, so a row signed twice reports the signature that stands. Nothing
+ * writes two filings into one history, so the direction only shows on the
+ * approval side — which is where it matters.
+ */
+test('lastAction reads the most recent matching row, and takes a list', () => {
+  const entry = {
+    history: [
+      { action: 'submit', byName: 'ก' },
+      { action: 'approve_mgr', byName: 'ข' },
+      { action: 'reject_mgr', byName: 'ค' },
+      { action: 'approve_mgr', byName: 'ง' },
+    ],
+  };
+  assert.equal(lastAction(entry, 'approve_mgr').byName, 'ง');
+  assert.equal(lastAction(entry, ['reject_mgr', 'approve_mgr']).byName, 'ง');
+  assert.equal(lastAction(entry, 'approve_hr'), null);
 });

@@ -3,12 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, currentPeriod, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  ApprovalSteps, ApproverLine, BirthdayWelfareMark, StatusChip, Alert, BucketSplit, Empty,
-  EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead, RefiledNote, RequestTrail, Section,
-  SegmentList, editsOf, trailOf,
+  ApprovalSteps, ApproverLine, BirthdayWelfareMark, CapCard, StatusChip, Alert, BucketSplit, Empty,
+  EditedMark, EntryHistory, Fact, Modal, ProxyMark, RateHead, ReasonCard, RefiledNote, RequestTrail,
+  Section, SegmentList, SignatureFacts, editsOf, stamp, trailOf,
 } from './common.jsx';
 import { approvalSteps } from '@/lib/approverLine.js';
-import { awaitingFirstSignature, isBirthdayWelfare, isProxyFiled, refileState } from '@/lib/entries.js';
+import {
+  awaitingFirstSignature, filingOf, isBirthdayWelfare, isProxyFiled, refileState,
+} from '@/lib/entries.js';
 import { hasOpenWithdrawal, withdrawEligibility } from '@/lib/withdrawal.js';
 import OtForm from './OtForm.jsx';
 import HolidayBanner from './HolidayBanner.jsx';
@@ -351,10 +353,27 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                 {hours(e.totals?.otHours)}<span className="u"> ชม.</span>
               </div>
               <StatusChip status={e.status} />
-              {/* Says the row goes somewhere. It is the only thing left at this
-                  end of the row, so a reader who used to aim for แก้ไข lands on
-                  the row that offers it rather than on nothing. */}
-              <span className="item-go" aria-hidden="true">›</span>
+              {/* THE WORD, NOT ONLY THE CHEVRON — asked for on 2026-09-02
+                  against the reviewer's screen, where every row carries a
+                  รายละเอียด button and nobody has to guess.
+
+                  IT IS A LABEL AND NOT A <button>, and that is the whole
+                  design of this row rather than a shortcut. The row IS the
+                  button — it was made one when its แก้ไข moved into the pop-up,
+                  precisely so there would be no button inside a button — so a
+                  second <button> here would put back the nesting that was
+                  removed, and would make two thirds of a pressable row press
+                  nothing while a small box at the end pressed something.
+
+                  What the word buys is what the chevron could not say: WHERE
+                  the row goes. The aria-hidden mark therefore comes off the text and
+                  stays on the glyph — the accessible name of the row now ends
+                  in "รายละเอียด", which is the announcement the chevron never
+                  made. */}
+              <span className="item-go">
+                <span className="t">รายละเอียด</span>
+                <span aria-hidden="true">›</span>
+              </span>
             </button>
           ))}
         </div>
@@ -479,6 +498,18 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                           wrap and grow to a 44px touch target. */}
                       <td>
                         <div className="row-actions">
+                          {/* FIRST, AND ON EVERY ROW — the one action here that
+                              is always available and never changes anything.
+                              Same button, same words and same place as the
+                              reviewer's queue: the nine columns of this table
+                              are a sideways scroll on a phone, and this is
+                              where the ones that do not fit are. */}
+                          <button
+                            className="btn ghost sm"
+                            onClick={() => setDetailId(e._id)}
+                          >
+                            รายละเอียด
+                          </button>
                           {/* Only while nobody has signed it. Once the manager
                               approves, the hours carry a decision and the row is
                               HR's to correct. That is not the same as "while it
@@ -584,6 +615,13 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
           entry={detail}
           user={user}
           signers={signers}
+          /* The month the ceiling card is about. Every row that can open this
+             pop-up is one of `monthEntries`, so the figures already loaded for
+             `period` are this entry's own month — but the guard is in
+             EntryDetail rather than assumed here, because "the list and the
+             usage are always the same month" is a fact about two pieces of
+             state that a later filter could quietly separate. */
+          usage={usage}
           onClose={() => setDetailId(null)}
           onEdit={() => { setDetailId(null); setEditing(detail); }}
           onRefile={() => { setDetailId(null); setReusing(detail); }}
@@ -688,21 +726,32 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
 }
 
 /**
- * รายละเอียด — one of the employee's own requests, opened by pressing its row.
+ * รายละเอียด — one of the employee's own requests, opened from its row.
  *
- * THE SAME SHAPE AS THE REVIEWER'S POP-UP (ApprovalQueue's DetailModal), and
- * deliberately not the same content. A reviewer is deciding, so theirs leads
- * with who filed it, the month's running total against the ceiling, and the two
- * decision buttons. This one is read by the person whose hours they are, and it
- * answers a different question: what did I ask for, how did the system split
- * it, where has it got to, and what can I still do about it.
+ * THE REVIEWER'S POP-UP, MINUS THE DECISION. It was written as a screen of its
+ * own on the argument that a reviewer and an owner ask different questions, and
+ * on 2026-09-02 that was overruled by the people reading it: HR were showing
+ * employees the คิวรออนุมัติ pop-up over their shoulder to answer "why is my
+ * request still sitting there", because the employee's own screen did not carry
+ * the ceiling card, the two signatures with their minutes, or the history. It
+ * carries all three now, from the same components — `ReasonCard`, `CapCard`,
+ * `SignatureFacts` and `EntryHistory` in common.jsx — so the two screens cannot
+ * answer the same question differently.
  *
- * Nothing here is new information. It is the nine columns of ประวัติการขอ OT,
- * which on a phone were a sideways scroll — so the row's own summary stays
- * short and everything it cannot hold is one press away instead.
+ * WHAT IS STILL NOT SHARED IS THE FOOT, and that is the whole of the
+ * difference. ไม่อนุมัติ and ยืนยันใบ OT decide somebody else's request and are
+ * not on this pop-up at all; neither is แก้ไขชั่วโมง, which is ฝ่ายบุคคล
+ * correcting a figure against a scan record and would let an employee rewrite
+ * hours their หัวหน้า has already signed for. What is here instead is the way
+ * out, and the three things an owner may actually do — see the foot.
+ *
+ * AND THE ALERTS ARE STILL THIS SCREEN'S. A reviewer needs to be told the
+ * request in front of them was written by somebody else; the owner needs to be
+ * told it was written FOR them, which is a different sentence, and needs the
+ * withdrawal answer that a reviewer has no use for.
  */
 function EntryDetail({
-  entry: e, user, signers = null, onClose, onEdit, onRefile, onCancel, onAskWithdraw,
+  entry: e, user, signers = null, usage = null, onClose, onEdit, onRefile, onCancel, onAskWithdraw,
 }) {
   const mayEdit = awaitingFirstSignature(e);
   const mayAsk = withdrawEligibility(user, e).ok;
@@ -714,15 +763,55 @@ function EntryDetail({
    * yet reads as a signature that failed to load.
    */
   const decided = approvalSteps(e).length > 0;
+  /* When it was put in — the header's third line. `filingOf` and not
+     history[0], because a re-filed request's own first row is `resubmit`. */
+  const filed = filingOf(e);
+  /**
+   * THE CEILING CARD IS DRAWN ONLY FOR THE MONTH THE FIGURES ARE ABOUT.
+   *
+   * The dashboard loads one month's usage — the one its picker is on — and
+   * every row that can open this pop-up belongs to that month. The guard is
+   * here anyway: a card headed "สะสม / เพดาน · สิงหาคม 2569" over a request from
+   * July is not a rounding error, it is the wrong person's answer to the one
+   * question on this pop-up that is not about this request.
+   */
+  const month = usage?.period === e.period ? usage : null;
 
   return (
     <Modal
       wide
-      /* What was pressed: a date. The description is the body's business — it
-         is a sentence, and a sentence in a sheet's header wraps the total off
-         the screen. */
-      title={`${thaiDate(e.workDate)} · วัน${dayName(e.workDate)}`}
-      subtitle={`${e.startTime}–${e.endTime}${e.endsNextDay ? ' · ข้ามคืน' : ''}${e.noBreakTaken ? ' · ไม่พักเที่ยง' : ''}`}
+      /*
+       * WHOSE REQUEST, THEN WHEN — the reviewer's header, on the owner's
+       * screen, and the repetition is the point rather than an oversight.
+       *
+       * The date alone was the title until 2026-09-02. That is what was
+       * PRESSED, and it is the right heading for a sheet nobody but the owner
+       * will ever see — but this pop-up is read over a shoulder and screenshot
+       * into a chat with ฝ่ายบุคคล, and a picture of somebody's hours with no
+       * name and no รหัสพนักงาน on it is a picture of nobody's hours. The name
+       * is also what makes the two screens one screen: a หัวหน้า and the person
+       * they are answering are now looking at the same header.
+       */
+      title={e.employee?.name || user.name}
+      subtitle={(
+        <>
+          <span className="s-who">
+            {e.employee?.code} · {e.department?.nameTh || e.department?.name}
+          </span>
+          {/* What the request is ABOUT, which is the line the decision and the
+              pay both turn on — see `.modal-head .s-when`, where it is given
+              the stronger ink for exactly this reason. */}
+          <span className="s-when">
+            {thaiDate(e.workDate)} (วัน{dayName(e.workDate)})
+          </span>
+          {/* AND WHEN IT WAS PUT IN, which is a different date and the one an
+              employee asking "how long has this been sitting there" is
+              counting from. Quiet, below both: it dates the paperwork, not the
+              work. Absent on a row written before histories carried a name,
+              rather than drawn empty. */}
+          {filed?.at && <span className="s-filed">ยื่นคำขอเมื่อ {stamp(filed.at)}</span>}
+        </>
+      )}
       meta={(
         <div className="head-meta">
           <div className="total">
@@ -736,13 +825,35 @@ function EntryDetail({
       onClose={onClose}
       footer={(
         <>
-          <button className="btn ghost" onClick={onClose}>ปิด</button>
+          {/*
+            ปิดหน้าต่าง, AND IT KEEPS ITS PLACE HERE.
+
+            The reviewer's pop-up dropped its ปิด on the argument that a dialog
+            with two answers should not give a third of its foot to the button
+            that answers nothing — and that argument is about a dialog whose
+            foot is a QUESTION. This one is a reading, and on most rows the two
+            buttons beside it are not offered at all: an approved request that
+            is past the withdrawal window has no actions, and a foot that then
+            held nothing would leave the ✕ as the only visible way out of a
+            sheet filling a phone screen.
+
+            "ปิดหน้าต่าง" and not "ปิด", because it sits in a row with ยกเลิกคำขอ
+            — which also closes something, permanently. One word of object each
+            is what keeps the two apart at a glance.
+          */}
+          <button className="btn ghost" onClick={onClose}>ปิดหน้าต่าง</button>
           {/* The same rules the full table's action column uses, in the same
               order of consequence. A button the server would refuse is worse
               than no button, so each asks the rule rather than the status —
               see awaitingFirstSignature and withdrawEligibility. */}
           {mayEdit && <button className="btn ghost danger" onClick={onCancel}>ยกเลิกคำขอ</button>}
-          {mayAsk && <button className="btn ghost" onClick={onAskWithdraw}>ขอถอนใบ</button>}
+          {/* NAMED IN FULL, because it is the one button here that does not do
+              what it says on the reviewer's screen. Theirs takes the hours off
+              the books; this one asks somebody to, and the row stays อนุมัติ
+              with its hours counted until they answer. The dialog it opens says
+              so in a warning panel — this is the same sentence compressed to
+              the width of a button. */}
+          {mayAsk && <button className="btn ghost" onClick={onAskWithdraw}>ยื่นขอถอนใบ OT</button>}
           {refileState(e) === 'open' && <button className="btn" onClick={onRefile}>ส่งใหม่</button>}
           {mayEdit && <button className="btn" onClick={onEdit}>แก้ไข</button>}
         </>
@@ -816,9 +927,23 @@ function EntryDetail({
           />
           <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
           <Fact k="ชั่วโมงตามนาฬิกา" v={`${hours(e.totals?.clockHours)} ชม.`} />
-          <Fact wide k="รายละเอียดงาน" v={e.description} />
         </dl>
       </Section>
+
+      {/* รายละเอียดงาน was the fourth cell of that grid — `wide`, so the three
+          short facts beside it were not stretched to the height of a paragraph.
+          It is a card of its own now, the same card the reviewer reads, for the
+          reason written over `ReasonCard`: it is not a measurement, it is the
+          answer to "why". */}
+      <ReasonCard description={e.description} />
+
+      {/* WHERE THE MONTH STANDS — new here on 2026-09-02, and the reason the
+          pop-up was asked for. The hero at the top of the dashboard says this
+          for the month as a whole; an employee who has opened one request is
+          asking it about the request, and was being sent back up the page to a
+          figure they then had to hold in their head. Same card, same arithmetic
+          and same words as the reviewer's, from lib/caps.js. */}
+      <CapCard month={month} counted={!month || month.countedIds?.includes(String(e._id))} />
 
       {/* Why the total is what it is. The three cards at the top of the screen
           say this for the whole month; this says it for the one request, which
@@ -827,31 +952,66 @@ function EntryDetail({
         <BucketSplit buckets={e.buckets} total={e.totals?.otHours} />
       </Section>
 
+      {/* Named as the reviewer names it. It read "ช่วงเวลาที่ระบบแบ่ง", which is
+          the same list under a heading that only this screen used — and the two
+          are now read side by side often enough that one name is worth more
+          than the shade of meaning the other carried. */}
       {e.segments?.length > 0 && (
-        <Section title="ช่วงเวลาที่ระบบแบ่ง">
+        <Section title="การแบ่งช่วงเวลา">
           <SegmentList segments={e.segments} />
         </Section>
       )}
 
-      {/* WHO SIGNED IT, AND WHEN — both signatures, not only the last one.
-          The band at the top of this pop-up says where the request stands, and
-          on an approved one that is the ฝ่ายบุคคล step; the หัวหน้า who read it
-          first and signed it first was named on no screen this person can open.
-          Above ข้อมูลเดิม because it is the same history through a narrower
-          lens, and below the hours because the hours are what the entry is. */}
-      {decided && (
-        <Section title="การอนุมัติ">
-          <ApprovalSteps entry={e} />
-        </Section>
-      )}
+      {/*
+        WHO SIGNED IT, AND WHEN — one heading over both answers.
 
-      {hasPast && (
-        <Section title="ข้อมูลเดิม">
-          <div className="hint" style={{ margin: '0 0 6px' }}>
-            ด้านบนคือข้อมูลล่าสุด ซึ่งเป็นข้อมูลที่พิมพ์ลงใบ F-HR-027 ·
-            ด้านล่างคือข้อมูลเดิมก่อนการแก้ไขแต่ละครั้ง
-            {e.refiledFrom && ' · รวมคำขอเดิมที่ถูกไม่อนุมัติ'}
-          </div>
+        `SignatureFacts` is the pair the reviewer reads: who put the request in
+        and whether the หัวหน้า has signed, each with its minute, plus the note
+        the หัวหน้า left. `ApprovalSteps` is the list underneath — every
+        signature in order, with the desk each was made at, which is what this
+        screen has had since 2026-08-31 and what the reviewer's has never
+        carried.
+
+        Both, because they are not the same answer twice. The pair says where
+        the request is now and is drawn on a request nobody has touched; the
+        list says what happened to it and appears only once something has. And
+        the pair is what names the FILER, whom the list never mentions.
+      */}
+      <Section title="ผู้อนุมัติ">
+        <SignatureFacts entry={e} />
+        {decided && (
+          <>
+            <div className="kicker-sm" style={{ marginTop: 12 }}>ลายเซ็นทุกขั้น</div>
+            <ApprovalSteps entry={e} />
+          </>
+        )}
+      </Section>
+
+      {/*
+        ประวัติรายการ — THE WHOLE TRAIL, NOT ONLY THE PART THAT WAS REWRITTEN.
+
+        This section was headed ข้อมูลเดิม and drawn only when there WAS
+        something earlier: an edit, a refused request this one replaced, or a
+        filing somebody else made. On an ordinary request — filed, signed,
+        waiting on ฝ่ายบุคคล — it drew nothing at all, and "ยื่นคำขอ 14:02 →
+        หัวหน้างานอนุมัติ 16:31" was on no screen the owner could open, which is
+        exactly the sequence somebody chasing a request wants to see.
+
+        So it is the reviewer's section now, under the reviewer's heading and
+        with the reviewer's gate: every row of the history, whenever there is
+        one. The ข้อมูลเดิม hint stays, because on the rows that have a past the
+        trail carries เดิม → ใหม่ blocks and a reader has to be told which of the
+        two versions the printed form uses.
+      */}
+      {(e.history || []).length > 0 && (
+        <Section title={trail ? 'ประวัติรายการ (รวมคำขอเดิม)' : 'ประวัติรายการ'}>
+          {hasPast && (
+            <div className="hint" style={{ margin: '0 0 6px' }}>
+              ด้านบนคือข้อมูลล่าสุด ซึ่งเป็นข้อมูลที่พิมพ์ลงใบ F-HR-027 ·
+              ด้านล่างคือข้อมูลเดิมก่อนการแก้ไขแต่ละครั้ง
+              {e.refiledFrom && ' · รวมคำขอเดิมที่ถูกไม่อนุมัติ'}
+            </div>
+          )}
           {trail
             ? <RequestTrail requests={trail} liveStatus={e.status} />
             : <EntryHistory entry={e} />}

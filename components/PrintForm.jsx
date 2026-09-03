@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, hours, thaiDate, BUCKETS } from '@/lib/api.js';
+import { api, hours, thaiDate, firstName, BUCKETS } from '@/lib/api.js';
 import { Alert, PrintChrome, SheetScroll } from './common.jsx';
 
 /**
@@ -30,7 +30,18 @@ export function sheetQuery({ employeeId = '', status = '' } = {}) {
  *
  * The layout follows the paper form cell for cell: วันที่ 1–31 down the left,
  * เวลาทำ OT (จาก/ถึง), the three จำนวนชั่วโมง columns, รายละเอียดงานที่ทำ, and
- * two signature columns that stay empty for hand signing.
+ * two ลงชื่อ columns.
+ *
+ * THE TWO ลงชื่อ COLUMNS ARE FILLED IN, and read "stayed empty for hand
+ * signing" until 2026-09-02. HR asked for the names to be printed and asked for
+ * them AS the signature — the sheet is not signed by hand after it comes off
+ * the printer. Nothing new is recorded to do it: `byName` on the entry's own
+ * history rows is what prints, so the paper says exactly what การอนุมัติ in the
+ * pop-up says, from the same rows. See `Signed` at the foot of this file and
+ * `managerSignature` in lib/approverLine.js.
+ *
+ * The ฝ่ายบุคคล step is NOT one of the two. It has its own box at the foot of
+ * the sheet with a rule to sign on, and it stayed as it was.
  *
  * Rows come from the server already segmented, so a session that ran from
  * Friday evening into Saturday morning appears on both dates with its hours in
@@ -173,6 +184,42 @@ export function FormNotices({ form, who = null, asked = '' }) {
               ให้ตัดสินรายการที่ค้างให้ครบก่อนพิมพ์ หรือเปลี่ยน
               “นโยบายการพิมพ์ใบขออนุมัติ OT” ในตั้งค่าระบบเป็น
               “เฉพาะรายการที่อนุมัติแล้ว”
+            </div>
+          </Alert>
+        </div>
+      )}
+
+      {/* THE HOURS AFTER A MIDNIGHT, which this sheet no longer has a line for.
+
+          SECOND, behind ยังไม่อนุมัติ and ahead of everything else. The block
+          above decides whether the sheet should be signed at all, which nothing
+          outranks; this one decides whether the total on it can be believed
+          against any other document for the month, which everything below it
+          does outrank. ซ่อน at the foot is its near neighbour and the opposite
+          case — those are a duplicate filing no report counts, these are hours
+          every other report DOES count, so the paper is the short one.
+
+          The total leads, because that figure IS the difference between this
+          sheet and ตรวจสอบประจำเดือน; then the nights, because "which one" is
+          the next question and the paper cannot answer it either. */}
+      {form.notPrinted?.length > 0 && (
+        <div className="no-print" style={{ marginBottom: 12 }}>
+          <Alert kind="warn">
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+              {of}ใบนี้ไม่ได้พิมพ์ชั่วโมงหลังเที่ยงคืน {hours(form.notPrintedHours)} ชม.
+              {' '}จาก {form.notPrinted.length} ช่วง — ยอดบนใบจึงน้อยกว่ายอดจริงเท่ากับจำนวนนี้
+            </div>
+            {form.notPrinted.map((n, i) => (
+              <div key={`${n.id}-${i}`} style={{ fontSize: 12.5 }}>
+                คืนวันที่ {thaiDate(n.workDate)} · ต่อเข้า {thaiDate(n.onDate)}
+                {' '}{n.from}–{n.to} · {hours(n.hours)} ชม. · {n.statusLabel} · {n.description}
+              </div>
+            ))}
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              ใบ F-HR-027 ให้หนึ่งวันหนึ่งบรรทัด ชั่วโมงที่ข้ามเที่ยงคืนไปวันถัดไปจึงไม่มีบรรทัดจะลง ·
+              {' '}ชั่วโมงเหล่านี้ยังอยู่ครบในระบบ และยังถูกนับใน ตรวจสอบประจำเดือน ·
+              {' '}สรุป OT ส่งบัญชี และไฟล์ CSV ทั้งสอง — <strong>ใบนี้กับรายงานเหล่านั้นจะไม่ตรงกัน</strong>
+              {' '}เท่ากับจำนวนข้างต้น หากต้องการให้ตรงกัน ต้องแยกยื่นเป็นสองใบคนละวัน
             </div>
           </Alert>
         </div>
@@ -352,6 +399,25 @@ export function F027Sheet({ form }) {
             // A date with no OT still prints its row — the paper form is a
             // full month and HR reads the blanks as "no OT that day".
             const sessions = row.sessions.length ? row.sessions : [null];
+            /**
+             * WHETHER THE DATE'S TWO SESSIONS WERE SIGNED BY THE SAME หัวหน้า.
+             *
+             * The two ลงชื่อ cells have spanned the date's rows since the sheet
+             * was written, because the paper merges them and because the person
+             * signing was signing the day. Now that the name is printed rather
+             * than written, the merge can hide a real difference: a date worked
+             * in two sessions is two requests, they can reach two different
+             * queues, and a stand-in may have signed one of them.
+             *
+             * So the merge stays wherever it is true — which is every ordinary
+             * date, and every date with no OT at all — and gives way only on
+             * the date where it would be a claim rather than a layout. An
+             * ordinary sheet is the sheet it always was, cell for cell.
+             *
+             * The พนักงาน cell never splits: one sheet is one person, and their
+             * name is the same on every row of it.
+             */
+            const oneApprover = new Set(sessions.map((s) => s?.approverName || '')).size === 1;
             return sessions.map((s, i) => (
               <tr key={`${row.date}-${i}`}>
                 {/* The day number and nothing under it. A birthday note
@@ -381,7 +447,13 @@ export function F027Sheet({ form }) {
                       others is not a revision of it. What it means is spelt out
                       under the grid. */}
                   {s && pendingIds.has(s.entryId) ? ' (รออนุมัติ)' : ''}
-                  {s?.continuedFromPreviousDay ? ' (ต่อจากคืนก่อน)' : ''}
+                  {/* (ต่อจากคืนก่อน) WAS THE THIRD MARK and came off on
+                      2026-09-02 with the row it belonged to. It labelled the
+                      line an overnight session drew on the date it ran INTO;
+                      the sheet gives each date one line now and that line is
+                      not drawn, so the mark had nothing left to qualify. The
+                      hours it used to head are on `form.notPrinted` and are
+                      named on the screen above the sheet. */}
                   {s?.noBreakTaken ? ' [ไม่พักเที่ยง]' : ''}
                   {/* Six characters, in the cell that already carries the
                       other per-row remarks. Not a new column and not a
@@ -390,8 +462,43 @@ export function F027Sheet({ form }) {
                       paper. What (แทน) means is spelt out under the grid. */}
                   {s?.filedByProxy ? ' (แทน)' : ''}
                 </td>
-                {i === 0 && <td className="sig" rowSpan={sessions.length} />}
-                {i === 0 && <td className="sig" rowSpan={sessions.length} />}
+                {/* THE TWO SIGNATURES, TYPED. HR asked for this on 2026-09-02
+                    and asked for it as a replacement: the printed name IS the
+                    signature and the sheet is not signed by hand afterwards.
+                    What stands behind it is the trail the app already kept —
+                    who pressed which button, at which minute, under whose
+                    authority — which is why nothing new is recorded for this
+                    and only `byName` is read.
+
+                    THE NAME ALONE, NO TIMESTAMP. Also asked for, and the
+                    column is why: 19mm at 6pt holds a Thai name and not a name
+                    over a date. The minute each signature was made is not lost
+                    — it is on การอนุมัติ in the entry's own pop-up, from the
+                    same history rows this reads. */}
+                {i === 0 && (
+                  <td className="sig" rowSpan={sessions.length}>
+                    {/* The person the sheet is for, on every row that has hours
+                        and on none that has not. A blank date is a day they did
+                        no OT, and a name against it would be a declaration
+                        about a day nobody claimed.
+
+                        A row filed by a หัวหน้า on their behalf carries their
+                        name too — asked for explicitly, and the row is not
+                        silent about it either way: (แทน) is already in the
+                        รายละเอียดงานที่ทำ cell beside it. */}
+                    <Signed name={row.sessions.length ? form.employee.name : null} />
+                  </td>
+                )}
+                {/* Blank on a row nobody has signed at the หัวหน้า step — still
+                    at รอหัวหน้า, or filed and approved by ฝ่ายบุคคล off the
+                    fingerprint scanner, which never had that signature at all.
+                    An unsigned box is what an unsigned form looks like, and it
+                    is the same blank this column has always printed. */}
+                {(i === 0 || !oneApprover) && (
+                  <td className="sig" rowSpan={oneApprover ? sessions.length : 1}>
+                    <Signed name={s?.approverName} />
+                  </td>
+                )}
               </tr>
             ));
           })}
@@ -520,3 +627,24 @@ function ActingNote({ form }) {
     </div>
   );
 }
+
+/**
+ * One typed signature, in the shape a Thai form puts a name in — `( สมหญิง ใจงาม )`.
+ *
+ * RETURNS NULL, NOT AN EMPTY SPAN, when there is no name. The two ลงชื่อ
+ * columns are blank on most of the 31 rows of most sheets, and an element with
+ * a line-height in every one of them would set a floor under the row height on
+ * a sheet whose whole layout is the 31 rows fitting one side of A4. Nothing is
+ * added to a row that has nothing to say — the same rule `ActingNote` follows
+ * below, and for the same reason.
+ *
+ * THE BRACKETS ARE THE FORM, not decoration. A bare name in a box on a document
+ * that is filed is read as a label; a name in brackets under a heading that
+ * says ลงชื่อ is read as a signature, which is what HR asked for it to be.
+ */
+function Signed({ name }) {
+  const only = firstName(name);
+  if (!only) return null;
+  return <span className="nm">{only}</span>;
+}
+

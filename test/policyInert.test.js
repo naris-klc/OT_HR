@@ -86,6 +86,111 @@ test('the buffer note matches the engine, block by block', () => {
   }
 });
 
+/**
+ * The same sweep again with ผ่อนปรนการปัดขึ้น turned on, under 'floor' only.
+ *
+ * Only 'floor' reads the grace — `roundingGraceOf` in src/lib/otEngine.js is
+ * where that is decided, and test/otEngine.test.js pins it against the other
+ * three modes — so sweeping the grace across all four would be four times the
+ * work to re-prove three-quarters of it. What it MUST cover is the interaction
+ * the grace creates: it moves the line under which rounding alone zeroes a
+ * session, so a buffer that was inert becomes live at the same value. Under
+ * floor/30 a buffer of 30 does nothing today and refuses the 25–29 minute
+ * callouts the moment a 5-minute grace starts keeping them.
+ */
+test('the buffer note survives ผ่อนปรน, block by block', () => {
+  const increments = [5, 10, 15, 30, 60];
+  const buffers = [5, 10, 15, 30, 60];
+  const graces = [5, 10, 15];
+
+  for (const roundingIncrementMinutes of increments) {
+    for (const roundingGraceMinutes of graces) {
+      for (const minimumBufferMinutes of buffers) {
+        const rounding = {
+          roundingMode: 'floor', roundingIncrementMinutes, roundingGraceMinutes,
+        };
+        const policy = { ...DEFAULT_POLICY, ...rounding, minimumBufferMinutes };
+        const claimedInert = inertReason('minimumBufferMinutes', policy) !== null;
+        const actuallyMoves = bufferChangesSomething(rounding, minimumBufferMinutes);
+        const where = `floor/${roundingIncrementMinutes} grace=${roundingGraceMinutes} buffer=${minimumBufferMinutes}`;
+        assert.equal(
+          claimedInert, !actuallyMoves,
+          `${where}: หน้าจอบอกว่า${claimedInert ? 'ไม่มีผล' : 'มีผล'} แต่เอนจิน${actuallyMoves ? 'เปลี่ยนผล' : 'ไม่เปลี่ยนผล'}`,
+        );
+      }
+    }
+  }
+});
+
+/** Does `roundingGraceMinutes` change any outcome at all under this rounding? */
+function graceChangesSomething(overrides, grace) {
+  for (let m = 1; m <= 120; m += 1) {
+    const off = eveningHours(m, { ...overrides, roundingGraceMinutes: 0, belowMinimum: 'accept' });
+    const on = eveningHours(m, { ...overrides, roundingGraceMinutes: grace, belowMinimum: 'accept' });
+    if (off !== on) return true;
+  }
+  return false;
+}
+
+test('the ผ่อนปรน note matches the engine, mode by mode and block by block', () => {
+  // The two shapes of inert this row has — a mode that does not read it, and a
+  // grace that is not smaller than the block — checked the only way that
+  // cannot rot: against the engine, at every combination the page can produce.
+  for (const roundingMode of ['floor', 'ceil', 'nearest', 'exact']) {
+    for (const roundingIncrementMinutes of [5, 10, 15, 30, 60]) {
+      for (const roundingGraceMinutes of [5, 10, 15]) {
+        const rounding = { roundingMode, roundingIncrementMinutes };
+        const policy = { ...DEFAULT_POLICY, ...rounding, roundingGraceMinutes };
+        const claimedInert = inertReason('roundingGraceMinutes', policy) !== null;
+        const actuallyMoves = graceChangesSomething(rounding, roundingGraceMinutes);
+        const where = `${roundingMode}/${roundingIncrementMinutes} grace=${roundingGraceMinutes}`;
+        assert.equal(
+          claimedInert, !actuallyMoves,
+          `${where}: หน้าจอบอกว่า${claimedInert ? 'ไม่มีผล' : 'มีผล'} แต่เอนจิน${actuallyMoves ? 'เปลี่ยนผล' : 'ไม่เปลี่ยนผล'}`,
+        );
+      }
+    }
+  }
+});
+
+test('the two shapes of an inert ผ่อนปรน send the reader to different rows', () => {
+  // Both say "this is doing nothing", and the fix is not the same one: a mode
+  // that does not read the grace is fixed on the mode's row, a grace as wide as
+  // the block is fixed on the block's. `causes` is what the page links to.
+  const at = (overrides) => inertReason('roundingGraceMinutes', { ...DEFAULT_POLICY, ...overrides });
+
+  for (const roundingMode of ['ceil', 'nearest', 'exact']) {
+    const reason = at({ roundingMode, roundingGraceMinutes: 10 });
+    assert.ok(reason, `${roundingMode} does not read the grace and must say so`);
+    assert.deepEqual(reason.causes, ['roundingMode']);
+  }
+
+  const tooWide = at({ roundingIncrementMinutes: 15, roundingGraceMinutes: 15 });
+  assert.ok(tooWide);
+  assert.deepEqual(tooWide.causes, ['roundingIncrementMinutes']);
+  assert.match(tooWide.text, /ยกทั้งบล็อก/);
+
+  // Off, and live, are both silent.
+  assert.equal(at({ roundingGraceMinutes: 0 }), null, '“ไม่ใช้” already says it');
+  assert.equal(at({ roundingGraceMinutes: 5 }), null, 'floor/30 grace 5 is live');
+});
+
+test('the grace moves the line rounding alone zeroes at', () => {
+  // The whole reason the buffer's note had to learn about this key. Read
+  // through `roundingZeroesUnder`, which is what the sentence is built from.
+  const at = (overrides) => roundingZeroesUnder({ ...DEFAULT_POLICY, ...overrides });
+
+  assert.equal(at({}), 30, 'the shipped floor/30 zeroes everything under 30');
+  assert.equal(at({ roundingGraceMinutes: 5 }), 25);
+  assert.equal(at({ roundingGraceMinutes: 10 }), 20);
+  assert.equal(at({ roundingGraceMinutes: 15 }), 15, 'half a block — the same as nearest/30');
+  assert.equal(at({ roundingMode: 'nearest' }), 15);
+
+  // Ignored where the engine ignores it, so the line does not move either.
+  assert.equal(at({ roundingMode: 'ceil', roundingGraceMinutes: 10 }), 0);
+  assert.equal(at({ roundingIncrementMinutes: 15, roundingGraceMinutes: 15 }), 15);
+});
+
 test('the buffer switched off is not reported as inert', () => {
   // 'ไม่ใช้ — นับทุกนาทีที่ทำ' already says it. A note under it saying the same
   // thing in more words is the page talking to itself.
@@ -234,6 +339,11 @@ test('every rule names real keys, and every noted row has somewhere to print', (
   // as well, not just a key.
   const policies = [
     { ...DEFAULT_POLICY, minimumBufferMinutes: 15 },
+    // A live grace puts a third row into the buffer's `causes`, so it has to be
+    // swept for a row to be sent to as well.
+    { ...DEFAULT_POLICY, minimumBufferMinutes: 15, roundingGraceMinutes: 10 },
+    { ...DEFAULT_POLICY, roundingGraceMinutes: 10, roundingMode: 'nearest' },
+    { ...DEFAULT_POLICY, roundingGraceMinutes: 15, roundingIncrementMinutes: 15 },
     { ...DEFAULT_POLICY, roundingMode: 'exact' },
     { ...DEFAULT_POLICY, breakMode: 'none' },
     { ...DEFAULT_POLICY, birthdayHolidayEnabled: false },

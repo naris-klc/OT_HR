@@ -223,8 +223,17 @@ test('the row mark rides in the description cell, beside the remarks already the
   // Not a column, not a row: either would move a measured layout.
   const code = sourceOf(FORM);
   const cell = code.slice(code.indexOf('<td className="desc"'), code.indexOf('</td>', code.indexOf('<td className="desc"')));
-  assert.match(cell, /continuedFromPreviousDay/, 'this is the cell that carries per-row remarks');
+  assert.match(cell, /noBreakTaken \? ' \[ไม่พักเที่ยง\]' : ''/, 'this is the cell that carries per-row remarks');
   assert.match(cell, /filedByProxy \? ' \(แทน\)' : ''/);
+  /**
+   * (ต่อจากคืนก่อน) WAS THE THIRD MARK HERE and is gone since 2026-09-02, with
+   * the row it qualified. It headed the line an overnight session drew on the
+   * date it ran INTO; the sheet gives each date one line now and does not draw
+   * that one, so the mark had nothing left to label. Asserted absent rather
+   * than simply removed from the list above: a mark that comes back without its
+   * row would print on somebody else's line.
+   */
+  assert.doesNotMatch(cell, /continuedFromPreviousDay/);
 });
 
 test('F-HR-027 still draws one row per date and nothing counts the note', () => {

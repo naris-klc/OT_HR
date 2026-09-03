@@ -616,18 +616,27 @@ test('ชิปเพดาน — ไม่มีเพดาน ก็ไม�
  * What the (?) used to hold had to land somewhere, and the pop-up already had
  * all of it: which month, whether this row is inside the figure, the room left
  * over. Nothing was dropped when the icon was.
+ *
+ * THE CARD MOVED ON 2026-09-02 and this test moved with it. It was markup
+ * inside ApprovalQueue's DetailModal; หน้ารายการ OT ของฉัน was asked for the
+ * same card, so it is `CapCard` in components/common.jsx and BOTH pop-ups call
+ * it. What is asserted here is unchanged — the card still says which month,
+ * still names the pending hours, still says when the figure excludes the row it
+ * was opened from — plus the one thing the move added: that the reviewer's
+ * pop-up is still handing it a window and did not quietly stop drawing it.
  */
 test('everything the (?) held is still in the รายละเอียด pop-up', () => {
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
   /* Anchored on the card the ceiling now has to itself — it was a cell in the
      คำขอ grid until it was given one. A miss returns -1 and slices from the end
      of the file, which reads as a passing test over the wrong text — the trap
      `function WeekUsage` fell into when it was deleted — so it is asserted. */
-  const from = queue.indexOf('{e.usage?.month && (');
+  const from = common.indexOf('export function CapCard(');
   assert.ok(from > 0, 'the ceiling card was renamed and this slice no longer finds it');
-  const popup = queue.slice(from, queue.indexOf('<Section', from));
+  const card = common.slice(from, common.indexOf('export function SignatureFacts', from));
 
-  assert.match(popup, /periodLabel\(e\.usage\.month\.period\)/, 'which month');
+  assert.match(card, /periodLabel\(month\.period\)/, 'which month');
   /* "รวมใบนี้ 3 ชม. แล้ว — ไม่ต้องบวกเพิ่ม" was printed under every request to
      head off one piece of mental arithmetic: the figure counts pending hours
      from the moment a request is filed, so adding this request to it
@@ -638,13 +647,21 @@ test('everything the (?) held is still in the รายละเอียด pop
      request is NOT in the figure at all, because a newer one for the same shift
      replaced it. That is an exception, not a reassurance, and it changes what
      every chip above it means. */
-  assert.match(popup, /capChips\(e\.usage\.month\)/, 'the pending hours are not named anywhere');
-  assert.match(popup, /!e\.usage\.counted && \(/, 'the pop-up stopped saying when the figure excludes this row');
-  assert.match(popup, /ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน/);
+  assert.match(card, /capChips\(month\)/, 'the pending hours are not named anywhere');
+  assert.match(card, /!counted && \(/, 'the card stopped saying when the figure excludes this row');
+  assert.match(card, /ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน/);
   // The room left over is a chip now rather than a sentence — same number, same
   // window, worked out in lib/caps.js instead of in the component. See
   // `capChips` there, and test/detailModalFooter.test.js for the shape.
-  assert.match(popup, /capChips\(e\.usage\.month\)/, 'the room left over');
+  assert.match(card, /capChips\(month\)/, 'the room left over');
+
+  // And the reviewer's pop-up still asks for it, with the row's own window and
+  // the row's own answer to "is this request inside these figures".
+  assert.match(
+    queue,
+    /<CapCard month=\{e\.usage\?\.month\} counted=\{e\.usage\?\.counted\} \/>/,
+    'คิวรออนุมัติ stopped drawing the ceiling card',
+  );
 });
 
 /**
@@ -828,20 +845,22 @@ test('no cap cell in the CSV carries a slash, a unit, or a rendered figure', () 
  * sentence that does — `capNote`, from lib/caps.js — carries its own wording.
  */
 test('the รายละเอียด pop-up still shows the whole story', () => {
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  /* Same anchor as 'everything the (?) held…' above — the ceiling's own card. */
-  const from = queue.indexOf('{e.usage?.month && (');
+  /* Same anchor as 'everything the (?) held…' above — the ceiling's own card,
+     which since 2026-09-02 lives in common.jsx and is drawn by both pop-ups. */
+  const from = common.indexOf('export function CapCard(');
   assert.ok(from > 0, 'the ceiling card was renamed and this slice no longer finds it');
-  const popup = queue.slice(from, queue.indexOf('<Section', from));
+  const card = common.slice(from, common.indexOf('export function SignatureFacts', from));
 
   assert.match(
-    popup,
-    /capFigure\(e\.usage\.month\.approvedHours/,
+    card,
+    /capFigure\(month\.approvedHours/,
     'the pop-up no longer leads with the figure its row leads with',
   );
   assert.doesNotMatch(
-    popup,
-    /capFigure\(e\.usage\.month\.usedHours/,
+    card,
+    /capFigure\(month\.usedHours/,
     'the ceiling total is back in the headline, where it disagrees with the row',
   );
   /*
@@ -856,7 +875,7 @@ test('the รายละเอียด pop-up still shows the whole story', ()
    * figure stands alone — so it is asserted there instead, and a change that
    * removed it from both would still fail.
    */
-  assert.doesNotMatch(popup, /capNote\(e\.usage\.month\)/, 'the sentence is back under the chips');
+  assert.doesNotMatch(card, /capNote\(/, 'the sentence is back under the chips');
   assert.match(queue, /\{capNote\(month\) && <div className="cap-sub">/, 'the row lost the ceiling total');
   /*
    * THE SPLIT AND THE ROOM ARE CHIPS NOW, NOT SENTENCES.
@@ -868,11 +887,11 @@ test('the รายละเอียด pop-up still shows the whole story', ()
    * gets all three of them from that window, and that the component did not
    * start doing the subtraction itself.
    */
-  assert.match(popup, /capChips\(e\.usage\.month\)/, 'the pop-up lost the split and the room');
-  assert.doesNotMatch(popup, /capHours\s*-/, 'the component is subtracting from the ceiling itself again');
+  assert.match(card, /capChips\(month\)/, 'the pop-up lost the split and the room');
+  assert.doesNotMatch(card, /capHours\s*-/, 'the component is subtracting from the ceiling itself again');
   // See the note in 'everything the (?) held…' above: the reassurance became the
   // รออนุมัติ chip, and only the exception is still a sentence.
-  assert.match(popup, /ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน/);
+  assert.match(card, /ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน/);
 
   /*
    * AND IT IS NOT IN THE คำขอ GRID AT ALL ANY MORE.
@@ -887,10 +906,20 @@ test('the รายละเอียด pop-up still shows the whole story', ()
    * `capExceeded` stays in the grid: what the ceilings said on the day this was
    * filed IS a property of the request. This card is what they say now.
    */
-  const grid = queue.slice(queue.indexOf('<dl className="fact-grid">'), from);
+  const gridFrom = queue.indexOf('<dl className="fact-grid">');
+  const grid = queue.slice(gridFrom, queue.indexOf('<ReasonCard', gridFrom));
+  assert.ok(gridFrom > 0 && grid.length < 4000, 'the คำขอ grid or the card after it moved');
   assert.doesNotMatch(grid, /สะสม \/ เพดาน/, 'the ceiling is back among the request\'s own facts');
   assert.match(grid, /k="เกินเพดานแผนก"/, 'the filed-day breach left the grid with it');
-  assert.match(popup, /className=\{e\.usage\.month\.exceeded \? 'cap-card over' : 'cap-card'\}/,
+  /*
+   * AND THE TINT IS STILL THE SERVER'S ANSWER, NOT THE CARD'S.
+   *
+   * `exceeded` arrives on the window — from `queueCapUsage` for the reviewer and
+   * from GET /api/entries/usage for the employee — so the card never works out
+   * for itself whether a month is past its ceiling. A component deriving that
+   * would be a second rule about ceilings, out of reach of lib/caps.js.
+   */
+  assert.match(card, /className=\{month\.exceeded \? 'cap-card over' : 'cap-card'\}/,
     'the card stopped colouring itself when the month is past its ceiling');
 });
 

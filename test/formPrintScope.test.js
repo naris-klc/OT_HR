@@ -336,9 +336,14 @@ test('whoever pressed print is told what the paper cannot say', () => {
     code.indexOf('export function FormNotices'),
     code.indexOf('export function F027Sheet'),
   );
+  // SIX SINCE 2026-09-02, and it read 5 until then: the hours a sheet drops
+  // after a midnight got a block of their own. It is the one notice here that
+  // reports a disagreement between this sheet and the other reports for the
+  // month rather than something about the sheet alone, so it may least of all
+  // be allowed onto the paper by accident.
   assert.equal(
     (notices.match(/className="no-print"/g) || []).length,
-    5,
+    6,
     'every notice block above the sheet must be marked no-print',
   );
 });

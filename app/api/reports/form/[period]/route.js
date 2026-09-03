@@ -9,6 +9,7 @@ import {
 import { loadHolidaySet } from '@/src/services/otService.js';
 import { companyOf } from '@/src/config/companies.js';
 import { isDepartmentManager } from '@/lib/entries.js';
+import { managerSignature } from '@/lib/approverLine.js';
 import {
   PERIOD_RE, actingNotes, previousPeriod, thaiMonth, min, max, latestPerSession,
   formDayTypes, formPrintStatuses, formPendingStatuses,
@@ -124,11 +125,61 @@ export const GET = route(async (req, { params }) => {
   // figure the sheet cannot be checked against.
   const { shown, hidden } = latestPerSession(entries);
 
+  /**
+   * ONE DATE, ONE LINE — and after 2026-09-02 that is a rule about the SHEET as
+   * well as about filing.
+   *
+   * `findSameDate` in lib/overlap.js has refused a second live request on a
+   * date since 2026-08-31, so two requests can no longer meet on one line. The
+   * one thing that still could was an overnight session: it is ONE request, and
+   * its segments land on two dates, so the night filed against the 7th drew a
+   * second line on the 8th above the 8th's own request. HR asked for that line
+   * off the sheet on 2026-09-02, having been shown what it costs.
+   *
+   * SO A SEGMENT PRINTS ONLY ON THE DATE ITS REQUEST WAS FILED AGAINST. The
+   * hours after midnight are not moved anywhere — they are dropped from the
+   * rows AND from สรุปรวม together, because a total that counted a line the
+   * sheet does not show is the one thing worse than a short total.
+   *
+   * ⚠ THIS SHEET NOW UNDER-REPORTS AN OVERNIGHT MONTH, on purpose and by
+   * exactly the hours after midnight. ตรวจสอบประจำเดือน, the CSVs and
+   * สรุป OT ส่งบัญชี all still count them — they read entries and segments, not
+   * this route — so a month with an overnight session will not reconcile
+   * against the paper, and the difference is `notPrinted` below. That list is
+   * returned so the screen can say so before anybody signs; see `FormNotices`
+   * in components/PrintForm.jsx.
+   *
+   * The neighbouring-month case was already this way and is the precedent: a
+   * segment landing outside the grid has never printed. What is new is that a
+   * segment landing INSIDE the grid, on a date that is not its own, no longer
+   * prints either.
+   */
+  const printsOn = (entry, seg) => seg.date === entry.workDate && byDate.has(seg.date);
+
   const inPeriod = [];
+  /** Hours a segment of one of these requests worked, that no line will show. */
+  const notPrinted = [];
   for (const entry of shown) {
     for (const seg of entry.segments || []) {
       const row = byDate.get(seg.date);
       if (!row) continue; // segment belongs to the neighbouring month
+      if (!printsOn(entry, seg)) {
+        // The hours after a midnight. Counted nowhere on this sheet — not in a
+        // row and not in สรุปรวม — and named here so the screen can.
+        notPrinted.push({
+          id: String(entry._id),
+          workDate: entry.workDate,
+          onDate: seg.date,
+          from: seg.start,
+          to: seg.end,
+          hours: seg.hours,
+          bucket: seg.bucket,
+          description: entry.description,
+          status: entry.status,
+          statusLabel: STATUS_LABEL_TH[entry.status],
+        });
+        continue;
+      }
       let session = row.sessions.find((s) => s.entryId === String(entry._id));
       if (!session) {
         session = {
@@ -139,15 +190,40 @@ export const GET = route(async (req, { params }) => {
           status: entry.status,
           statusLabel: STATUS_LABEL_TH[entry.status],
           noBreakTaken: entry.noBreakTaken,
-          continuedFromPreviousDay: seg.date !== entry.workDate,
+          /**
+           * `continuedFromPreviousDay` WAS HERE and is gone (2026-09-02). It
+           * was `seg.date !== entry.workDate`, which `printsOn` above now
+           * refuses outright — so the field could only ever be false, and the
+           * (ต่อจากคืนก่อน) mark it drove could never draw. A flag that cannot
+           * be true is a reader's false lead, not a spare part.
+           */
           /**
            * This row was filled in by somebody other than the person the sheet
            * is for. Printed as a short mark in the description cell, where
-           * (ต่อจากคืนก่อน) and [ไม่พักเที่ยง] already are — the one place on
-           * this form that carries per-row remarks and the one HR already
-           * reads. Read off the history so a leaver's filing still says so.
+           * [ไม่พักเที่ยง] already is — the one place on this form that carries
+           * per-row remarks and the one HR already reads. Read off the history
+           * so a leaver's filing still says so.
            */
           filedByProxy: (entry.history || []).some((h) => h.action === 'submit_proxy'),
+          /**
+           * WHO SIGNED THE หัวหน้างาน STEP — the name that prints in the
+           * ลงชื่อหัวหน้างาน column, and null where that column stays blank.
+           *
+           * Per SESSION and not per sheet, because it is per ENTRY: a month is
+           * signed a request at a time, by whichever หัวหน้า was on the queue
+           * that day, and a stand-in may have signed some of them. One name at
+           * the foot of the sheet would be one of those names presented as all
+           * of them.
+           *
+           * `managerSignature` decides which history row that is (lib/
+           * approverLine.js) — the same module the pop-up's การอนุมัติ list
+           * reads, so the paper and the screen cannot come to disagree about
+           * who signed. A row still at รอหัวหน้า, and one ฝ่ายบุคคล filed and
+           * approved from the fingerprint scanner, both answer null: nobody has
+           * signed that step, and a blank box is what an unsigned form looks
+           * like.
+           */
+          approverName: managerSignature(entry)?.name || null,
           [BUCKETS.OT15_WEEKDAY]: 0,
           [BUCKETS.OT15_HOLIDAY]: 0,
           [BUCKETS.OT3_HOLIDAY]: 0,
@@ -169,7 +245,17 @@ export const GET = route(async (req, { params }) => {
    * what counts as being on this sheet at all. A row is on it when a segment
    * of it lands on a date the grid has, which is what put it in `rows` above.
    */
-  const onSheet = (e) => (e.segments || []).some((s) => byDate.has(s.date));
+  /**
+   * `printsOn` AND NOT `byDate.has` ALONE, since 2026-09-02.
+   *
+   * The three lists below say what this sheet is carrying and what it is not,
+   * and they have to mean the same thing by "on it" as the grid does. A request
+   * filed against 31 August that runs to 02:00 has a segment on 1 September:
+   * under the old test it was "on" the September sheet and could be reported as
+   * pending or unmarked there, while now no line of that sheet shows it. One
+   * predicate, so a request cannot be listed under a month it does not print in.
+   */
+  const onSheet = (e) => (e.segments || []).some((s) => printsOn(e, s));
   const brief = (e) => ({
     id: String(e._id),
     workDate: e.workDate,
@@ -256,6 +342,30 @@ export const GET = route(async (req, { params }) => {
        * dropped rather than let them vanish between two documents.
        */
       hidden: hidden.filter((e) => onSheet(e)).map(brief),
+      /**
+       * THE HOURS AFTER A MIDNIGHT — worked, approved, in the database, and on
+       * no line of this sheet since 2026-09-02, when หนึ่งวัน หนึ่งใบ was
+       * extended from filing to the paper itself.
+       *
+       * The mirror of `hidden` above and a strictly worse case than it, which
+       * is why it is its own list rather than folded in. `hidden` is a
+       * duplicate FILING that the sheet is right to drop and that no other
+       * report counts either; this is hours every other report DOES count. So
+       * the sheet and ตรวจสอบประจำเดือน disagree by exactly this list, and the
+       * person holding both has to be told which side is short and by how much.
+       *
+       * On the screen only, like every other list here — the paper is the thing
+       * that is silent about them, and adding a note to it would be adding a
+       * line to a controlled form to explain a line that was taken off it.
+       */
+      notPrinted,
+      /**
+       * Their sum — the exact figure by which this sheet is short against every
+       * other document for the month. Added here rather than totted up in the
+       * browser because it is the one number the notice leads with, and a total
+       * derived twice is a total that can disagree with its own list.
+       */
+      notPrintedHours: Math.round(notPrinted.reduce((n, s) => n + (s.hours || 0), 0) * 100) / 100,
       /** สรุปรวม — one total per hour column. */
       summary: summary.buckets,
       totalHours: summary.otHours,

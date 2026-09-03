@@ -101,7 +101,7 @@ test('the rules nobody in HR has answered are the ones that are listed', () => {
   // nobody chose, and was the only one of the four with no badge saying so.
   assert.deepEqual(
     HR_UNCONFIRMED.map((i) => i.id),
-    ['roundingIncrement', 'belowMinimumAction', 'minimumScope', 'startBuffer'],
+    ['roundingIncrement', 'roundingGrace', 'belowMinimumAction', 'minimumScope', 'startBuffer'],
   );
   assert.equal(HR_UNCONFIRMED_SINCE, '2026-08-07');
 });
@@ -315,6 +315,11 @@ test('the rounding increment’s badge sits on the increment, not on the mode', 
   // badge borrowed `roundingMode`'s row; the increment has its own dropdown now.
   // `roundingMode` is not an unconfirmed rule — 'floor' is the requirements
   // doc's own recommendation — and a badge left on it would say it was.
+  //
+  // ผ่อนปรนการปัดขึ้น shared this item for one day and was split back out on
+  // 2026-09-02, when ฝ่ายบุคคล answered the increment and said nothing about the
+  // grace: one badge over both would have recorded their name on a value nobody
+  // had put to them. A badge covers exactly as much as one answer covers.
   const item = HR_UNCONFIRMED.find((i) => i.id === 'roundingIncrement');
   assert.deepEqual(item.keys, ['roundingIncrementMinutes']);
   assert.equal(unconfirmedKeys({}).has('roundingMode'), false);
@@ -329,6 +334,53 @@ test('the increment’s reading says so when no rounding is happening at all', (
 
   assert.equal(readingOf({ roundingIncrementMinutes: 15 }), 'ทีละ 15 นาที');
   assert.match(readingOf({ roundingMode: 'exact' }), /ไม่ปัดเศษ/);
+});
+
+test('ผ่อนปรน is its own item, and the increment’s reading says nothing about it', () => {
+  /**
+   * The split of 2026-09-02. ฝ่ายบุคคล answered the increment and were never
+   * asked about the grace, so the two questions cannot share one ยืนยัน —
+   * pressing it on their answer would have recorded them as choosing ปิด.
+   */
+  const items = (policy) => unconfirmedState({ ...DEFAULT_POLICY, ...policy }, {});
+  const readingOf = (id, policy) => items(policy).find((i) => i.id === id).reading;
+
+  // The increment's reading is about the block and nothing else, at any grace.
+  assert.equal(readingOf('roundingIncrement', { roundingGraceMinutes: 5 }), 'ทีละ 30 นาที');
+
+  // Neither badge stands on the other's row.
+  const grace = items({}).find((i) => i.id === 'roundingGrace');
+  assert.deepEqual(grace.keys, ['roundingGraceMinutes']);
+  assert.equal(grace.since, '2026-09-02', 'asked of nobody before the key existed');
+  assert.ok(grace.label, 'it has no dropdown label of its own to borrow');
+});
+
+test('the ผ่อนปรน reading follows the engine, not the stored number', () => {
+  /**
+   * The same failure as 'exact' above, one row down. A grace is stored under
+   * every rounding mode and read under one of them, and it is ignored outright
+   * when it is not smaller than the block — so a reading that printed the
+   * stored number would tell HR they are paying for 29-minute callouts on a
+   * policy that refuses them.
+   */
+  const readingOf = (policy) => unconfirmedState({ ...DEFAULT_POLICY, ...policy }, {})
+    .find((i) => i.id === 'roundingGrace').reading;
+
+  assert.equal(readingOf({ roundingGraceMinutes: 5 }), 'ปัดขึ้นให้เมื่อเหลืออีกไม่เกิน 5 นาที');
+  assert.equal(readingOf({ roundingGraceMinutes: 0 }), 'ไม่ผ่อนปรน — ปัดลงอย่างเดียว');
+
+  // Stored but not read: the reading says so rather than printing the number.
+  for (const roundingMode of ['ceil', 'nearest']) {
+    assert.match(readingOf({ roundingMode, roundingGraceMinutes: 10 }), /ไม่ถูกอ่าน/);
+  }
+  assert.match(readingOf({ roundingMode: 'exact', roundingGraceMinutes: 10 }), /ไม่มีอะไรให้ผ่อนปรน/);
+
+  // …nor when it is the whole block, which the engine ignores rather than
+  // clamping. See `roundingGraceOf`.
+  assert.match(
+    readingOf({ roundingIncrementMinutes: 15, roundingGraceMinutes: 15 }),
+    /ไม่ถูกอ่าน/,
+  );
 });
 
 test('the minimum’s scope now has a flag, and its badge sits on it', () => {

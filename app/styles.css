@@ -1587,9 +1587,36 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 }
 .item-hours .u { font: 400 11px/1 var(--sans); color: var(--muted-2); }
 /* Not an arrow and not a button — the whole row is the button. This is the
-   mark that says so, at the end a reader's eye already finishes on. */
-.item-go { flex: none; font: 400 20px/1 var(--latin); color: var(--muted-2); }
+   mark that says so, at the end a reader's eye already finishes on.
+
+   AND SINCE 2026-09-02 IT SAYS WHERE. The chevron alone said "somewhere"; the
+   reviewer's queue has carried a รายละเอียด button on every row all along, and
+   the employee's card was asked to say the same word. It is drawn as a button
+   and is NOT one — see the note in EmployeeView where it is written: a real
+   <button> here would be nested inside the row's own, and would take the press
+   away from the other 90% of the row.
+
+   `display: flex` on the wrapper because it now holds two things; the glyph
+   keeps the size it had, and the word sits in a boxed `.t` beside it so the
+   pair reads as one control rather than as a caption with an arrow after it. */
+.item-go {
+  flex: none; display: flex; align-items: center; gap: 6px;
+  font: 400 20px/1 var(--latin); color: var(--muted-2);
+}
+/* THE SAME FRAME `.btn.ghost.sm` DRAWS, and deliberately not that class: the
+   stylesheet's button rules carry a cursor, a focus ring and an active state,
+   and every one of those would be a promise this element cannot keep — the
+   focus lands on the row, which is where the press is. Border, radius, ink and
+   size only, which is the whole of what makes the word look pressable. */
+.item-go .t {
+  font: 500 12.5px/1 var(--sans); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px;
+  white-space: nowrap;
+}
+/* Hover is on `.item`, not on this: the row is the hit area, so the frame has
+   to light up wherever on the row the pointer is. */
 .item:hover .item-go { color: var(--green-text); }
+.item:hover .item-go .t { color: var(--green-text); border-color: var(--ok-line); }
 
 /* ── ขอถอนใบที่อนุมัติแล้ว's row — A GRID, BECAUSE A FLEX LINE HAD ONE
       SHRINKABLE ITEM AND IT WAS THE SENTENCE ─────────────────────────────────
@@ -7372,6 +7399,16 @@ table.mini tbody tr:hover { background: none; }
    being on separate lines, which they already are. */
 .modal-head .s-who { display: block; }
 .modal-head .s-when { display: block; color: var(--ink); }
+/* AND A THIRD LINE ON ONE POP-UP ONLY — "ยื่นคำขอเมื่อ …" on the employee's own
+   รายละเอียด. It is a third date in a header that already carries two, so it
+   goes BELOW the ladder rather than on it: smaller than `.s` and in `--muted`,
+   which is the ink every secondary line in this app uses and one step under the
+   pair above. The distinction the two rules above draw is between WHO and WHEN;
+   this is neither, it is when the paperwork was filed, and it must not read as
+   a competing answer to the date the request is about. */
+.modal-head .s-filed {
+  display: block; font: 400 12px/1.5 var(--sans); color: var(--muted); margin-top: 1px;
+}
 
 /* ── the ceiling, as chips ────────────────────────────────────────────────
    Three sentences became three numbers with a word in front of each. The mono
@@ -8857,16 +8894,28 @@ table.mini tbody tr:hover { background: none; }
 
      Two rows instead. The description gets the full width; the figure and the
      status sit under it, left-aligned, where they read as one pair rather than
-     as two more columns. The date chip and the chevron span both rows, so the
-     row still runs from one anchor on the left to one on the right.
+     as two more columns. The date chip spans both rows, so the row still has one
+     anchor on the left.
+
+     AND THE WAY OUT SITS ON THE SECOND ROW, NOT IN A COLUMN OF ITS OWN. It did
+     span both rows, beside the date chip — right while it was a 20px chevron,
+     and wrong the moment it became the word รายละเอียด on 2026-09-02. At 360px
+     the card is 334px wide; a spanning column 98px across took a third of it out
+     of `main` for the whole height of the row, and "รอการอนุมัติจาก: วิชัย ศรีสุข ·
+     ผู้จัดการฝ่ายวิศวกรรม" went from two lines to three. The description is what
+     this block exists to give the full width to, and a label was taking it back.
+
+     So `main` spans all three content columns and the label ends the row the
+     figure and the chip are on — which is where the eye finishes anyway, and
+     which is what the note over `.item-go` has always claimed the mark does.
 
      Keyed on .row-link and not on .item: the same class draws a reviewer's row on
      ขอถอนใบที่อนุมัติแล้ว, which holds different cells and buttons of its own. */
   .item.row-link {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-columns: auto auto auto minmax(0, 1fr);
     grid-template-areas:
-      "date main  main  go"
+      "date main  main  main"
       "date hours chip  go";
     align-items: center;
     gap: 7px 12px;
@@ -8878,7 +8927,9 @@ table.mini tbody tr:hover { background: none; }
   .item.row-link > .item-main { grid-area: main; }
   .item.row-link > .item-hours { grid-area: hours; }
   .item.row-link > .chip { grid-area: chip; justify-self: start; }
-  .item.row-link > .item-go { grid-area: go; }
+  /* Pushed to the right edge of the card: it is the last thing on the row and
+     the column it now sits in is the one that stretches. */
+  .item.row-link > .item-go { grid-area: go; justify-self: end; }
 
   /* ── ขอถอนใบที่อนุมัติแล้ว on a phone ───────────────────────────────────
      Three rows, and the third is the decision.

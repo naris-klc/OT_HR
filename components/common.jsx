@@ -2,10 +2,13 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { STATUS, BUCKETS, BUCKET_LABEL, hours, thaiDate, thaiDateTime } from '@/lib/api.js';
 import {
-  ENTERED_FIELDS, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled, isSystemFiled,
-  sameSession, sameValue,
+  STATUS, BUCKETS, BUCKET_LABEL, hours, periodLabel, thaiDate, thaiDateTime,
+} from '@/lib/api.js';
+import { capChips, capFigure } from '@/lib/caps.js';
+import {
+  ENTERED_FIELDS, filingOf, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled, isSystemFiled,
+  lastAction, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
@@ -1296,6 +1299,221 @@ export function Field({ label, note, tip, children, style }) {
       {note && <div className="field-note">{note}</div>}
       {tip && open && <div className="field-note">{tip}</div>}
     </div>
+  );
+}
+
+// ── the two entry pop-ups' shared cards ─────────────────────────────────────
+
+/*
+ * ONE POP-UP'S CARDS, READ BY TWO POP-UPS.
+ *
+ * คิวรออนุมัติ's รายละเอียด was the only place these three blocks existed, and on
+ * 2026-09-02 หน้ารายการ OT ของฉัน was asked for the same reading: what was asked
+ * for and why, where the month stands against the ceiling, and who put their
+ * name to it. Copying the markup across would have made "why is this request
+ * here" and "where does this month stand" two answers apiece, kept in two
+ * files, with nothing holding them to the same words — which is the failure
+ * AGENTS.md names outright.
+ *
+ * So they moved here, comments and all, and both pop-ups call them. What is NOT
+ * shared is the decision: the reviewer's foot carries ไม่อนุมัติ and ยืนยันใบ OT,
+ * and this file knows nothing about either.
+ */
+
+/**
+ * "14/8/2569 16:03:22" — the dense form, seconds included, because two rows
+ * written in the same minute are ordered by nothing else.
+ *
+ * `thaiDateTime` is the headline form and is what a signature being READ gets
+ * (see `ApprovalSteps`); this is the form for a pair of stamps being checked
+ * against each other. The note over `thaiDateTime` in lib/api.js is where the
+ * two are told apart.
+ */
+export const stamp = (at) => (at ? new Date(at).toLocaleString('th-TH') : undefined);
+
+/**
+ * THE REASON THE REQUEST EXISTS, ON A CARD THAT SAYS SO.
+ *
+ * This has moved twice, and both moves were the same defect. It was a bare <p>
+ * under the multiplier strip — the description with nothing in front of it,
+ * between two cards — and a filing reading "ทดสอบ" was twice taken for a stray
+ * word left in the markup and twice asked to be deleted. It is not stray: it is
+ * the sentence the request is asking to be paid for, and the same value the
+ * queue's รายละเอียด column prints.
+ *
+ * A cell in the คำขอ grid fixed the label and not the shape: prose in a box
+ * built for 17:30–19:30 and 2.00 ชม. still reads as a field that overflowed. It
+ * is not a measurement, it is the answer to "why", so it gets the width of the
+ * sheet and a label in words.
+ *
+ * BETWEEN THE HOURS AND THE CEILING, which is the order the reading goes: what
+ * was asked for, why, and then where the month stands.
+ *
+ * AND IT SPEAKS WHEN IT IS EMPTY. `normaliseDescription` refuses a blank on the
+ * form, so a filing cannot arrive without one — but a row the birthday rule
+ * generated was never on a form. A card with a heading and nothing under it is
+ * a question the pop-up asked itself and left hanging; "ไม่ได้ระบุรายละเอียดงาน"
+ * is the answer, and it is a different thing from a description that happens to
+ * be short.
+ */
+export function ReasonCard({ description }) {
+  return (
+    <div className="reason-card">
+      {/* NOT a `kicker-sm`. Every other heading in these pop-ups is one — mono,
+          uppercase, tracked out — which is right for a heading over a column of
+          figures and wrong over a sentence: it turns the label into the loudest
+          thing in a card whose point is the words under it. Sans, one size down
+          from them, and grey. */}
+      <div className="reason-label">รายละเอียดงานที่ขอ OT</div>
+      {description
+        ? <p className="reason-text">{description}</p>
+        : <p className="reason-text none">ไม่ได้ระบุรายละเอียดงาน</p>}
+    </div>
+  );
+}
+
+/**
+ * THE MONTH, NOT THE REQUEST — so it is not in the request's grid.
+ *
+ * This was a full-width cell at the end of "คำขอ", among เวลาที่ขอ, พักเที่ยง and
+ * ชั่วโมงตามนาฬิกา. Those four cells answer "what was asked for"; this one
+ * answers "where does this person's month stand", which is a different question
+ * with a different subject and the only thing on the pop-up that is true of
+ * other requests too. Sharing a grid with them, it read as a fifth property of
+ * the request — and it is the one figure here that a reader looks up rather
+ * than reads past.
+ *
+ * So: its own card, tinted, with the figure and the three chips inside it.
+ * `capExceeded` in the reviewer's grid stays where it is — that IS a property of
+ * the request: what the ceilings said on the day it was filed. This card is
+ * what they say now.
+ *
+ * ONE SHAPE, BUILT ON THE SERVER, FOR BOTH READERS. The queue's window comes
+ * from `queueCapUsage` and the employee's from GET /api/entries/usage, and both
+ * hand over the same six fields — period, usedHours, approvedHours,
+ * pendingHours, capHours, exceeded. `exceeded` is the server's on purpose and is
+ * not re-derived here: a card working out for itself whether a month is past its
+ * ceiling would be a second rule about ceilings, living in a component, where
+ * lib/caps.js cannot reach it.
+ *
+ * `counted` is whether the request the pop-up is showing is itself inside these
+ * figures. Almost always yes — see the sentence at the foot of the card.
+ */
+export function CapCard({ month, counted = true }) {
+  if (!month) return null;
+  return (
+    <div className={month.exceeded ? 'cap-card over' : 'cap-card'}>
+      <div className="cap-card-head">
+        {/* The column's own heading, plus the month it is about. Named
+            "สะสมทั้งเดือน" until the two screens' headings were settled on
+            สะสม / เพดาน — a pop-up opened from a column should not rename the
+            column on the way. */}
+        <span className="kicker-sm">
+          สะสม / เพดาน · {periodLabel(month.period)}
+        </span>
+        {/*
+          THE ROW'S HEADLINE, NOT THE CEILING'S TOTAL.
+          This led with `usedHours` — 38.5 where the row it was opened from led
+          with 7.5. The qualifier was carried across faithfully and the NUMBER
+          underneath it was not, so a reviewer who opened this pop-up because
+          they distrusted the figure on the row was shown a different figure, in
+          a larger type, with no way to tell which of the two the ceiling was
+          about. Both numbers are still here; they are simply in the order the
+          row, this card and ตรวจสอบรายเดือน all now use.
+        */}
+        <span className="cap-card-fig">
+          {capFigure(month.approvedHours, month.capHours)} ชม.
+        </span>
+      </div>
+      {/*
+        THREE NUMBERS, DRAWN AS THREE NUMBERS.
+
+        This was three sentences stacked under the figure — the split, the room
+        left over, and the ceiling's own total — and read once each they are a
+        word and a number apiece. Four lines of prose under a fact that is
+        already a fraction is a paragraph nobody reads twice, on the one pop-up
+        that has to stay short enough to decide from.
+
+        Red on a chip carries what the prose said in words: อนุมัติแล้ว goes red
+        when the APPROVED hours alone are past the ceiling, which is a fact
+        nothing in the queue undoes, and เกิน goes red when the total does —
+        which may still be a projection. See `capChips` in lib/caps.js.
+      */}
+      <div className="cap-chips">
+        {capChips(month).map((c) => (
+          <span key={c.k} className={c.over ? 'cap-chip over' : 'cap-chip'}>
+            {c.k} <b>{hours(c.v)}</b> ชม.
+          </span>
+        ))}
+      </div>
+      {/*
+        SAID ONLY WHEN IT IS NOT TRUE.
+
+        "ไม่รวมใบนี้" is not a reassurance, it is an exception: a newer request
+        for the same shift has replaced this one in the count, so every figure on
+        this card is about a month this request is not in. Rare, and it changes
+        what all three chips mean.
+
+        Its ordinary half — "รวมใบนี้ 3 ชม. แล้ว — ไม่ต้องบวกเพิ่ม" — was a line
+        printed under every request to head off one piece of mental arithmetic.
+        The รออนุมัติ chip names those hours as a number now, which is the same
+        warning without the sentence.
+      */}
+      {!counted && (
+        <div className="cap-card-note">ไม่รวมใบนี้ — มีใบใหม่กว่าของกะเดียวกัน</div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ผู้อนุมัติ — the two names on a request and the minute each was written, as
+ * two facts rather than as a story.
+ *
+ * NOT A SECOND `ApprovalSteps`. That one lists EVERY signature in order, which
+ * is what somebody auditing a finished row wants; this pair is what a reader
+ * holding one request asks first — who put it in, and did the หัวหน้า sign it.
+ * The employee's pop-up draws both, in that order, under one heading.
+ *
+ * THE FILING ROW IS FOUND BY `filingOf`, NOT BY 'submit'. Four of the five ways
+ * a request can be filed write some other action, and on every one of them the
+ * old lookup came back null — so this cell printed the employee's name with no
+ * time against it, on precisely the rows where "who put this in, and when" is
+ * the question. See FILING_ACTIONS in lib/entries.js.
+ */
+export function SignatureFacts({ entry: e }) {
+  const filed = filingOf(e);
+  const mgr = lastAction(e, 'approve_mgr');
+  return (
+    <>
+      <dl className="fact-grid">
+        <Fact
+          k="ยื่นคำขอโดย"
+          v={filed?.byName || e.employee?.name}
+          /* Named outright rather than left to the reader to work out from two
+             names that happen to differ. */
+          sub={[
+            isProxyFiled(e) ? `บันทึกแทน ${e.employee?.name}` : null,
+            stamp(filed?.at),
+          ].filter(Boolean).join(' · ') || undefined}
+        />
+        <Fact
+          k="หัวหน้างานอนุมัติ"
+          v={mgr?.byName || (e.status === 'pending_hr' && !e.managerDecision?.at
+            ? 'ข้ามขั้นหัวหน้า — ผู้บันทึกคือผู้อนุมัติเอง'
+            : 'ยังไม่ผ่านหัวหน้างาน')}
+          /* Who signed, and whose authority they signed under. Left as one
+             name, a reader cannot tell an approval made by the department's own
+             หัวหน้า from one made by a stand-in — and the second is the one with
+             a window on it that either covered the day or did not. */
+          sub={[
+            mgr?.onBehalfOfName ? `ทำแทน ${mgr.onBehalfOfName}` : null,
+            mgr ? stamp(mgr.at) : undefined,
+          ].filter(Boolean).join(' · ') || undefined}
+        />
+      </dl>
+      {mgr?.note && <p className="note" style={{ marginTop: 8 }}>บันทึกจากหัวหน้างาน — {mgr.note}</p>}
+    </>
   );
 }
 

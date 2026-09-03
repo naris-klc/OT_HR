@@ -35,11 +35,21 @@ export const POST = route(async (req, { params }) => {
    * limit, which grants nothing and leaves the flag exactly where it was. An
    * entry can collect both, and สรุป OT ส่งบัญชี prints them on separate lines.
    *
-   * This one refuses now too, and the screen has
-   * always demanded it: `OverrideModal` marks the field required and keeps its
-   * save button disabled until something is typed, so no existing path in the
-   * application can reach this refusal — it closes the door on the API, which
+   * This one refuses now too. The screen always demanded it as well —
+   * `OverrideModal` marked the field required and kept its save button
+   * disabled until something was typed — and on 2026-09-02 that screen went:
+   * the อนุมัติเกินเพดาน button and the dialog behind it were withdrawn from
+   * every card and every pop-up, so NOTHING IN THE APPLICATION CALLS THIS
+   * ROUTE any more. The refusal below is the whole of the door now, rather
+   * than the second lock on it, which is the case it was written for: the API
    * is where the ceiling could quietly be waived with nothing said.
+   *
+   * The route is left mounted rather than deleted because the act still
+   * exists on stored rows — `capOverride` written before that date is read by
+   * `wasOverCeiling` and printed by สรุป OT ส่งบัญชี — and because waiving a
+   * ceiling is a decision HR may yet want back. Deciding an over-ceiling entry
+   * does NOT go through here: it leaves the flag standing (see `README`
+   * §เกินเพดานแล้วยังเซ็น).
    */
   const reason = String(payload?.reason || '').trim();
   if (!reason) return fail('กรุณาระบุเหตุผลในการอนุมัติเกินเพดาน', 400);

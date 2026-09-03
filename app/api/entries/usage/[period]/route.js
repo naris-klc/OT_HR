@@ -3,7 +3,7 @@ import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import Setting from '@/src/models/Setting.js';
 import { monthlyUsage, weeklyUsage } from '@/src/services/otService.js';
-import { weekStartOf, weekEndOf } from '@/lib/caps.js';
+import { overCap, weekStartOf, weekEndOf } from '@/lib/caps.js';
 import { addDays } from '@/src/lib/otEngine.js';
 
 /** Usage against the ceilings — the month, and each week that touches it. */
@@ -17,7 +17,7 @@ export const GET = route(async (req, { params }) => {
 
   const policy = await Setting.effectivePolicy();
   const {
-    summary, usedHours, approvedHours, pendingHours, basis,
+    summary, usedHours, approvedHours, pendingHours, basis, counted,
   } = await monthlyUsage(employee._id, params.period, { policy });
 
   /**
@@ -64,6 +64,37 @@ export const GET = route(async (req, { params }) => {
     pendingHours,
     basis,
     capHours: employee.department?.monthlyCapHours ?? null,
+    /**
+     * Is the month past its ceiling — THE SERVER'S ANSWER, not the screen's.
+     *
+     * `CapCard` (components/common.jsx) tints itself from this, and the same
+     * card is drawn on the reviewer's pop-up from a window `queueCapUsage`
+     * builds. That one has carried `exceeded` since it was written; this one
+     * did not, so the shared card would have had to work it out for itself for
+     * one of its two callers — a second rule about ceilings, living in a
+     * component, out of reach of lib/caps.js and of its tests.
+     *
+     * `usedHours` and not `approvedHours`, which is what `overCap` is asked
+     * everywhere else: the ceiling counts requests nobody has answered yet, and
+     * a card that went quiet until they were signed would say a month was
+     * inside its limit on the day it stopped being.
+     */
+    exceeded: overCap(usedHours, employee.department?.monthlyCapHours ?? null),
+    /**
+     * WHICH requests the figures above are made of, as ids.
+     *
+     * A superseded filing — a later request for the same shift replaced it —
+     * counts nowhere, and the pop-up on หน้ารายการ OT ของฉัน draws a ceiling
+     * card that would otherwise claim every open row is inside the total. The
+     * reviewer's queue answers the same question per row (`counted` in
+     * `queueCapUsage`); this is the same answer for a whole month at once,
+     * which is the shape a screen holding the month already has.
+     *
+     * An array rather than the Set `usageInMonth` returns, because this is
+     * going over the wire. Strings, so `includes` works against an id a screen
+     * read off a row.
+     */
+    countedIds: [...counted],
     weeklyCapHours,
     weekStartsOn: policy.weekStartsOn,
     weeks,

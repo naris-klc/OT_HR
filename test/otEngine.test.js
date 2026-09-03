@@ -231,6 +231,93 @@ test('[OPEN 3] the block is configurable: 17:00–20:20 under 5 / 15 / 60 minute
 });
 
 /**
+ * ผ่อนปรนการปัดขึ้น — the block stays 30, but the last few minutes of it round
+ * up instead of down. Asked for on 2026-09-02 in the words "บวกลบ 5 หรือ 10 และ
+ * 15 นาที", with these two as the worked examples.
+ */
+test('[OPEN 3] ผ่อนปรน 5: 29 นาที → 0.5 ชม. และ 55 นาที → 1 ชม.', () => {
+  const p = { roundingGraceMinutes: 5, belowMinimum: 'accept' };
+  const at = (endTime) => run({ workDate: '2026-08-05', startTime: '17:00', endTime }, p).totals.otHours;
+
+  assert.equal(at('17:29'), 0.5, '29 minutes is within 5 of the block, so it gets the block');
+  assert.equal(at('17:55'), 1, '55 → 60');
+  assert.equal(at('17:25'), 0.5, 'the window opens at 25');
+  assert.equal(at('17:24'), 0, 'and not a minute before it — 24 still rounds away');
+  assert.equal(at('17:49'), 0.5, 'nothing is forgiven in the middle of a block');
+});
+
+test('[OPEN 3] the three levels are three different answers to one session', () => {
+  // 20 minutes: refused outright today, half an hour under ผ่อนปรน 10 or 15.
+  const at = (roundingGraceMinutes) => run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '17:20' },
+    { roundingGraceMinutes, belowMinimum: 'accept' },
+  ).totals.otHours;
+
+  assert.equal(at(0), 0, 'the shipped default is the plain floor, unchanged');
+  assert.equal(at(5), 0, '20 is still 10 short of the window');
+  assert.equal(at(10), 0.5);
+  assert.equal(at(15), 0.5);
+});
+
+test('[OPEN 3] a grace of half a block IS nearest, minute for minute', () => {
+  // Two ways to reach one rule, and the settings page says so. If this ever
+  // stops holding, one of the two has been changed without the other.
+  for (let m = 1; m <= 180; m += 1) {
+    const end = `${String(17 + Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    const entry = { workDate: '2026-08-05', startTime: '17:00', endTime: end, noBreakTaken: true };
+    assert.equal(
+      run(entry, { roundingGraceMinutes: 15, belowMinimum: 'accept' }).totals.otHours,
+      run(entry, { roundingMode: 'nearest', belowMinimum: 'accept' }).totals.otHours,
+      `${m} minutes: floor/30 grace 15 and nearest/30 disagree`,
+    );
+  }
+});
+
+test('[OPEN 3] ผ่อนปรน is read under floor alone, and never at the size of the block', () => {
+  const at = (overrides) => run(
+    { workDate: '2026-08-05', startTime: '17:00', endTime: '20:20' },
+    { belowMinimum: 'accept', ...overrides },
+  ).totals.otHours;
+
+  // 200 minutes. Under floor/30 the grace of 15 lifts it to 210 (3.5 h).
+  assert.equal(at({ roundingGraceMinutes: 15 }), 3.5);
+  // Under the other three the key is not read, so each is exactly what it was.
+  assert.equal(at({ roundingMode: 'ceil', roundingGraceMinutes: 15 }), 3.5, 'ceil was already 3.5');
+  assert.equal(at({ roundingMode: 'nearest', roundingGraceMinutes: 15 }), 3.5);
+  assert.equal(at({ roundingMode: 'exact', roundingGraceMinutes: 15 }), 3.33, 'exact rounds nothing');
+
+  /**
+   * A grace that is not smaller than the block is ignored rather than clamped
+   * — clamping would run a rule off a dropdown nobody set it to. Under a
+   * 15-minute block a 15-minute grace would hand a whole block to a session of
+   * nought, so it falls back to the plain floor: 200 → 195.
+   */
+  assert.equal(at({ roundingIncrementMinutes: 15, roundingGraceMinutes: 15 }), 3.25);
+  assert.equal(
+    at({ roundingIncrementMinutes: 5, roundingGraceMinutes: 15 }), 3.33,
+    'a grace three blocks wide does not hand out three blocks',
+  );
+  assert.equal(
+    run({ workDate: '2026-08-05', startTime: '17:00', endTime: '17:01' },
+      { roundingIncrementMinutes: 15, roundingGraceMinutes: 15 }).totals.otHours,
+    0,
+    'and a session of one minute is never given a whole block',
+  );
+});
+
+test('[OPEN 3] ผ่อนปรน rounds each rate column, and the columns still sum', () => {
+  // Fri 7 Aug 22:00 → Sat 8 Aug 02:00 splits across the weekday and holiday
+  // columns; `roundingScope: 'bucket'` rounds each one, so the grace is applied
+  // per column and the three must still add up to the printed total.
+  const r = run(
+    { workDate: '2026-08-07', startTime: '22:20', endTime: '02:25', endsNextDay: true },
+    { roundingGraceMinutes: 10, belowMinimum: 'accept' },
+  );
+  const sum = Object.values(r.buckets).reduce((a, b) => a + b, 0);
+  assert.equal(sum, r.totals.otHours, 'the columns must sum to the total, grace or no grace');
+});
+
+/**
  * The fourth answer to [OPEN 3]: no block at all.
  *
  * Distinct from `roundingIncrementMinutes: 0`, which the tests above this one

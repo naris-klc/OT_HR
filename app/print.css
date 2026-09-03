@@ -170,6 +170,61 @@
 /* The number alone. Nothing is printed under it — the birthday remark this
    column used to carry now sits on สรุป OT ส่งบัญชี (see .acct td.note). */
 .f027 td.day { font-weight: 600; }
+
+/* ── the two ลงชื่อ columns, now that they carry a name ────────────────────
+   They had no rule at all until 2026-09-02, because they had no content: two
+   empty 19mm boxes per row, drawn by the table and signed by hand.
+
+   7.2pt BOLD — the sheet's own body size, so the signature reads as part of
+   the form rather than as a footnote under it, with the weight doing the work
+   of standing out. Asked for on 2026-09-02, in the same breath as the given
+   name alone and the brackets off.
+
+   IT READ "5.5pt" FOR ONE AFTERNOON, and the reason it could go back up is the
+   surname. Both numbers were measured the same way — the sheet rendered to PDF
+   through Chrome and counted by PAGE — and the ledger is worth keeping, because
+   it is the ledger of a constraint that moved rather than of a taste:
+
+     with ชื่อ-นามสกุล, up to 29 characters in the box
+       6pt   at 19mm — 31 filled rows printed on TWO pages, and so did 25
+       6pt   at 22mm — one page for an ordinary name, two for a long one
+       6pt   at 24mm — the same; the width was never what was wrong
+       5.5pt at 19mm — one page at 31 filled rows
+
+     with the ชื่อ alone, longest on this roster 11 characters (ผู้ดูแลระบบ)
+       7.2pt bold at 19mm — ONE page at 31 filled rows
+       9pt   bold at 19mm — also one page, with room to spare
+
+   What cost the row its height was always the SECOND line, never the width —
+   which is why widening the columns to 22 and 24mm fixed nothing and dropping
+   the surname fixed everything. `colgroup` in components/PrintForm.jsx has
+   never moved, and รายละเอียดงานที่ทำ has kept every millimetre through both
+   rounds.
+
+   ⚠ A LONGER NAME THAN THIS ROSTER HAS COULD STILL WRAP, and two lines is what
+   the row can afford — 31 rows share out ~210mm, about 6.7mm each, and two
+   lines of 7.2pt plus padding is ~6mm. Three would not fit. The 9pt reading
+   above is the headroom, not an invitation: it was measured on 11 characters.
+
+   `break-word` is inherited from the cell rule above and is deliberate here:
+   Thai has no spaces, so a long name is one word as far as the layout is
+   concerned and would otherwise print through the neighbouring column.
+
+   NOT CENTRED VERTICALLY BY ACCIDENT — `vertical-align: middle` is the cell
+   default this form sets, and a name on a merged two-session row belongs on the
+   line between them rather than against the top rule. */
+.f027 td.sig { text-align: center; }
+.f027 td.sig .nm {
+  display: block;
+  font-size: 7.2pt;
+  /* BOLD, asked for on 2026-09-02 along with the given name alone. It is the
+     one thing in a row of light 7.2pt figures that a reader is looking FOR
+     rather than reading past — whose signature is on this line — and it is now
+     the only content of the cell, since the brackets came off with the surname. */
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: break-word;
+}
 .f027 td.desc { font-size: 6.8pt; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* The three yellow headings are the only fill on the sheet — holidays are not
    tinted, exactly as on the paper form. */

@@ -5409,6 +5409,59 @@ const POLICY_FIELDS = [
   },
   {
     section: 2,
+    key: 'roundingGraceMinutes', open: 3, label: 'ผ่อนปรน — ใกล้ครบบล็อกแล้วปัดขึ้นให้', num: true,
+    options: [
+      [0, 'ไม่ใช้ — ปัดลงอย่างเดียว (ค่าเริ่มต้น)'],
+      [5, 'เหลืออีกไม่เกิน 5 นาที ปัดขึ้นให้'],
+      [10, 'เหลืออีกไม่เกิน 10 นาที ปัดขึ้นให้'],
+      [15, 'เหลืออีกไม่เกิน 15 นาที ปัดขึ้นให้'],
+    ],
+    /**
+     * The worked example is on the shipped block (30) and stays a fixed
+     * sentence, unlike the inert note under the row — because a hint says what
+     * the CONTROL does, and it has to be readable by somebody who has not
+     * chosen anything yet. What it must not do is state the live block as if it
+     * were the rule; "บล็อก 30 นาที" appears here inside the word ตัวอย่าง, and
+     * the row's own reason underneath is the thing that reads the live policy.
+     */
+    hint: 'ทำ OT เกือบครบบล็อกแล้วให้ปัดขึ้นเป็นบล็อกเต็ม '
+      + '— ตัวอย่างบนบล็อก 30 นาที ตั้งผ่อนปรน 5 นาที: ทำ 29 นาที ได้ 0.5 ชม. · ทำ 55 นาที ได้ 1 ชม. '
+      + 'ส่วน 24 นาทียังได้ 0 เพราะยังไม่เข้าเขตผ่อนปรน '
+      + '· ฝั่งลบไม่ต้องตั้ง — ที่ยังไม่ถึงเขตนี้ก็ปัดลงตามเดิมอยู่แล้ว ข้อนี้เพิ่มอย่างเดียวไม่เคยลด '
+      + '· อ่านเฉพาะเมื่อวิธีการปัดเศษข้างบนคือ “ปัดลงทั้งหมด” '
+      + '· ผ่อนปรนครึ่งบล็อกพอดี ให้ผลเท่ากับ “ปัดเข้าหาค่าใกล้ที่สุด” ทุกนาที '
+      + '· ⚠ ข้อนี้ขยับเส้นที่ระบบปฏิเสธงานสั้น ๆ ด้วย — ปัดลง 30 นาทีเคยปฏิเสธทุกอย่างที่ต่ำกว่า 30 นาที '
+      + 'ผ่อนปรน 10 นาทีทำให้เส้นนั้นเหลือ 20 นาที ควรทบทวน “เวลาขั้นต่ำในการเริ่มนับ OT” ข้างล่างพร้อมกัน '
+      + '· เปลี่ยนแล้วจะคำนวณใบที่ยังไม่อนุมัติใหม่ทั้งหมด ใบที่อนุมัติแล้วไม่ขยับ',
+    /**
+     * Two traps, and neither is the inert note's job.
+     *
+     * `lib/policyInert.js` says a value is doing nothing, quietly, under the row
+     * it is standing on. This fires in ConfirmPolicyChange as well — at the one
+     * moment the answer can still be changed — and it says the answer has a
+     * cost or is not the answer it looks like. A grace at or above the block is
+     * the second: it is not a smaller grace, it is no grace at all, and the
+     * reader is about to save a row that will read "ผ่อนปรน 15 นาที" while the
+     * engine floors exactly as before.
+     */
+    warn: (value, policy) => {
+      const grace = Number(value) || 0;
+      const inc = Number(policy.roundingIncrementMinutes);
+      if (!grace || policy.roundingMode !== 'floor') return '';
+      if (grace >= inc) {
+        return `⚠️ ผ่อนปรน ${grace} นาที ไม่น้อยกว่าบล็อกที่ปัด (${inc} นาที) `
+          + 'ซึ่งจะเท่ากับยกทั้งบล็อกให้งานที่ยังไม่ได้ทำ ระบบจะข้ามค่านี้และปัดลงตามปกติ '
+          + '— ตั้งบล็อกที่ปัดให้มากกว่านี้ก่อน';
+      }
+      if (grace * 2 === inc) {
+        return `⚠️ ผ่อนปรน ${grace} นาที บนบล็อก ${inc} นาที ให้ผลเท่ากับ `
+          + '“ปัดเข้าหาค่าใกล้ที่สุด” ทุกนาที ไม่ได้ผ่อนปรนมากกว่านั้น';
+      }
+      return '';
+    },
+  },
+  {
+    section: 2,
     key: 'minimumBufferMinutes', label: 'เวลาขั้นต่ำในการเริ่มนับ OT', num: true,
     options: [
       [0, 'ไม่ใช้ — นับทุกนาทีที่ทำ (ค่าเริ่มต้น)'],
