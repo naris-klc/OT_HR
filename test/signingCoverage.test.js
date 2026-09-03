@@ -17,7 +17,7 @@ import { unsignedStaff, signingCoveragePermission } from '../lib/employees.js';
 
 const DEPT = 'dept-qc';
 const mgr = (code, approvesCompany = null, company = 'primus') => ({
-  _id: code, code, name: code, role: 'manager', department: DEPT, company, approvesCompany,
+  _id: code, code, name: code, role: 'supervisor', department: DEPT, company, approvesCompany,
 });
 const staff = (code, company) => ({
   _id: code, code, name: code, role: 'employee', department: DEPT, company,

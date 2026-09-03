@@ -1,4 +1,5 @@
-import Employee, { ROLES } from '@/src/models/Employee.js';
+import Employee from '@/src/models/Employee.js';
+import { ROLES, SIGNER_ROLES, isSigner } from '@/lib/roles.js';
 import { COMPANY_KEYS, companyOf } from '@/src/config/companies.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
@@ -30,7 +31,7 @@ export const GET = route(async (req) => {
    * `$in` on one id is the same index lookup as equality, so the ordinary
    * หัวหน้า pays nothing for the general form.
    */
-  if (user.role === 'manager') filter.department = { $in: approvalDepartments(user) };
+  if (isSigner(user.role)) filter.department = { $in: approvalDepartments(user) };
   else if (user.role === 'employee') filter._id = user._id;
   if (q.department && ['hr', 'admin'].includes(user.role)) filter.department = q.department;
   if (q.company) filter.company = q.company;
@@ -59,7 +60,7 @@ export const GET = route(async (req) => {
    * ฝ่ายบุคคล and Admin are untouched. Their scope is the whole roster and the
    * `?company=` filter above is theirs to ask for.
    */
-  const employees = user.role === 'manager' && user.approvesCompany
+  const employees = isSigner(user.role) && user.approvesCompany
     ? found.filter((e) => companyOf(e) === user.approvesCompany)
     : found;
 
@@ -194,7 +195,7 @@ export const POST = route(async (req) => {
    * lists below.
    */
   const signers = await Employee
-    .find({ role: 'manager', active: true })
+    .find({ role: { $in: SIGNER_ROLES }, active: true })
     .select('code name role department company approvesCompany approvesDepartments')
     .lean();
   const arriving = {
@@ -207,7 +208,7 @@ export const POST = route(async (req) => {
     approvesCompany: employee.approvesCompany,
     approvesDepartments: employee.approvesDepartments,
   };
-  const withNew = employee.role === 'manager' ? [...signers, arriving] : signers;
+  const withNew = isSigner(employee.role) ? [...signers, arriving] : signers;
   const cover = signingCoveragePermission(
     peers,
     [...peers, arriving],

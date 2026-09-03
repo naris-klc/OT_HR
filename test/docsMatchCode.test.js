@@ -253,14 +253,14 @@ for (const doc of DOCS) {
  *
  * WHAT THIS CATCHES is the first of those — a heading promising a role the
  * route's own `requireRole` refuses. WHAT IT CANNOT CATCH is the second: the
- * three birthday routes list `'manager'` in `requireRole` and then refuse them
+ * three birthday routes list `'supervisor'` in `requireRole` and then refuse them
  * inside, through `birthdayActionPermission`. A guard that is wider than the
  * rule behind it reads as permissive from here, and the document says so in
  * the same words rather than leaving the gap unstated.
  */
 const HEADING_ROLES = [
   // heading text → the role that must not be excluded by any route it lists
-  [/^### .*— หัวหน้างาน\s*$/, 'manager', 'หัวหน้างาน'],
+  [/^### .*— หัวหน้างาน\s*$/, 'supervisor', 'หัวหน้างาน'],
 ];
 
 test('docs/features.md does not file a feature under a tab its role cannot reach', () => {

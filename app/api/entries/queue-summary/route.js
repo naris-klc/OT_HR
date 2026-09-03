@@ -4,16 +4,46 @@ import { route, json } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { nobodyCanSign } from '@/lib/delegation.js';
-import { DECIDE_POPULATE, entryCompany } from '@/lib/entries.js';
+import { DECIDE_POPULATE, approvalDepartments, entryCompany } from '@/lib/entries.js';
+import { ROLES, SIGNER_ROLES, isSigner, mayApproveRole } from '@/lib/roles.js';
 
 /** Queue counts for the manager's daily review and HR's monthly review (§2). */
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
   const { scope, delegated: coveredScope, covered } = await resolveScope(user);
+
+  /**
+   * THE BADGE COUNTS WHAT THIS READER CAN SIGN, NOT WHAT IS IN THEIR แผนก.
+   *
+   * `scope` is departments and payroll — it says which rows they may SEE, and
+   * since 2026-09-03 that is a wider set than the rows they may sign. แผนกผลิต2
+   * holds four หัวหน้างาน and every one of them files their own OT now; without
+   * this clause each of their badges counts the other three's requests, and the
+   * number over รายการรออนุมัติ is a number of things they cannot do.
+   *
+   * The same complaint the queue's own header answered on 2026-08-28 — one
+   * question answered two ways on one screen — so the badge and
+   * `signableHere` are made to agree here rather than left to differ by a rule.
+   *
+   * A roster read, not a join: the entry stores a reference to its owner and
+   * nothing about their บทบาท, deliberately (see `entryCompany`), so the roles
+   * have to be read where they live. The roster is small and this is one
+   * indexed query. ฝ่ายบุคคล and ผู้ดูแลระบบ skip it — they sign the second step
+   * and their `pending_mgr` count is a count of what is waiting elsewhere.
+   */
+  let signable = null;
+  if (isSigner(user.role)) {
+    const roles = ROLES.filter((r) => mayApproveRole(user.role, r));
+    const people = await Employee
+      .find({ role: { $in: roles }, department: { $in: approvalDepartments(user) } })
+      .select('_id').lean();
+    signable = { employee: { $in: people.map((p) => p._id).filter((id) => String(id) !== String(user._id)) } };
+  }
+
   const [
     pendingMgr, pendingHr, delegated, withdrawalOpen, withdrawalOpenPending,
   ] = await Promise.all([
-    OtEntry.countDocuments({ ...scope, status: 'pending_mgr' }),
+    OtEntry.countDocuments({ ...scope, ...signable, status: 'pending_mgr' }),
     OtEntry.countDocuments({ ...scope, status: 'pending_hr' }),
     /**
      * How much of that first number is somebody else's team.
@@ -90,7 +120,7 @@ export const GET = route(async (req) => {
     try {
       const [waiting, managers] = await Promise.all([
         OtEntry.find({ status: 'pending_mgr' }).populate(DECIDE_POPULATE).lean(),
-        Employee.find({ role: 'manager', active: true })
+        Employee.find({ role: { $in: SIGNER_ROLES }, active: true })
           .select('code name role department company approvesCompany approvesDepartments').lean(),
       ]);
       unsigned = waiting.filter((e) => nobodyCanSign(e, managers, entryCompany(e))).length;

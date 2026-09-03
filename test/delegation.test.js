@@ -22,9 +22,9 @@ const ENG = 'dept-eng';
 const QA = 'dept-qa';
 const SALES = 'dept-sales';
 
-const A = { _id: 'mgr-a', name: 'สมชาย', role: 'manager', department: ENG };
-const B = { _id: 'mgr-b', name: 'สมหญิง', role: 'manager', department: QA };
-const C = { _id: 'mgr-c', name: 'สมปอง', role: 'manager', department: SALES };
+const A = { _id: 'mgr-a', name: 'สมชาย', role: 'supervisor', department: ENG };
+const B = { _id: 'mgr-b', name: 'สมหญิง', role: 'supervisor', department: QA };
+const C = { _id: 'mgr-c', name: 'สมปอง', role: 'supervisor', department: SALES };
 const HR = { _id: 'hr-1', name: 'ฝ่ายบุคคล', role: 'hr', department: ENG };
 const ADMIN = { _id: 'adm-1', name: 'แอดมิน', role: 'admin' };
 // `company` on every person a request can be FOR: the permission rules read

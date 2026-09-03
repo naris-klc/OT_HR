@@ -223,7 +223,7 @@ test('the guard is a pure rule, and it refuses on either count alone', () => {
 test('deleting is ผู้ดูแลระบบ’s, and the refusal says what may be deleted at all', () => {
   assert.equal(departmentDeletePermission({ role: 'admin' }).ok, true);
   assert.equal(departmentDeletePermission(null).status, 401);
-  for (const role of ['hr', 'manager', 'employee']) {
+  for (const role of ['hr', 'supervisor', 'employee']) {
     const no = departmentDeletePermission({ role });
     assert.equal(no.ok, false);
     assert.equal(no.status, 403);

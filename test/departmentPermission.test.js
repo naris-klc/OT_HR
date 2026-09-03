@@ -22,7 +22,7 @@ import { DEPARTMENT_ROLES, departmentPermission } from '../lib/departments.js';
 
 const hr = { _id: 'a', role: 'hr' };
 const admin = { _id: 'b', role: 'admin' };
-const manager = { _id: 'c', role: 'manager' };
+const manager = { _id: 'c', role: 'supervisor' };
 const employee = { _id: 'd', role: 'employee' };
 
 // ── who is on this screen at all ────────────────────────────────────────────

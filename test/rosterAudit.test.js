@@ -9,7 +9,7 @@ import { codeChangePermission, rosterPermission, HR_ASSIGNABLE_ROLES } from '../
 
 const HR = { _id: 'hr-1', name: 'สมหญิง', role: 'hr' };
 const ADMIN = { _id: 'adm-1', name: 'ผู้ดูแล', role: 'admin' };
-const MANAGER = { _id: 'mgr-1', role: 'manager' };
+const MANAGER = { _id: 'mgr-1', role: 'supervisor' };
 const EMPLOYEE = { _id: 'emp-1', role: 'employee' };
 
 const ROW = {
@@ -208,7 +208,8 @@ test('no session is 401 here too — there is nobody to refuse yet', () => {
 test('HR reaching the roster screen did not widen who may be made an Admin', () => {
   assert.equal(rosterPermission(HR, { role: 'admin' }).ok, false);
   assert.equal(rosterPermission(HR, { target: { role: 'employee' }, role: 'admin' }).ok, false);
-  assert.deepEqual(HR_ASSIGNABLE_ROLES, ['employee', 'manager']);
+  assert.deepEqual(HR_ASSIGNABLE_ROLES,
+    ['employee', 'supervisor', 'finance', 'dept_manager', 'division_manager']);
 });
 
 test('nor did it let a หัวหน้า or a พนักงาน near the roster at all', () => {
@@ -222,7 +223,7 @@ test('HR may edit every field the screen offers on an ordinary row', () => {
   // The permission is per-row, not per-field: what HR may not do is set the
   // admin role (above) and change a รหัสพนักงาน (above that). Everything the
   // table edits goes through this one check.
-  for (const role of ['employee', 'manager']) {
+  for (const role of ['employee', 'supervisor']) {
     assert.deepEqual(rosterPermission(HR, { target: { role } }), { ok: true }, role);
   }
 });

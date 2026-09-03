@@ -36,10 +36,10 @@ const DEPARTMENTS = [
 
 const PEOPLE = [
   // managers — one per department (§9). They do not submit OT (§2).
-  { code: 'PM-0100', name: 'วิชัย ศรีสุข', position: 'ผู้จัดการฝ่ายวิศวกรรม', dept: 'ENG', role: 'manager' },
-  { code: 'PM-0101', name: 'ประเสริฐ วงศ์ทอง', position: 'ผู้จัดการฝ่ายผลิต', dept: 'PROD', role: 'manager' },
-  { code: 'PM-0102', name: 'สุนีย์ มั่นคง', position: 'ผู้จัดการฝ่าย QC', dept: 'QC', role: 'manager' },
-  { code: 'PM-0103', name: 'อนันต์ ทรัพย์เจริญ', position: 'ผู้จัดการคลังสินค้า', dept: 'WH', role: 'manager' },
+  { code: 'PM-0100', name: 'วิชัย ศรีสุข', position: 'ผู้จัดการฝ่ายวิศวกรรม', dept: 'ENG', role: 'supervisor' },
+  { code: 'PM-0101', name: 'ประเสริฐ วงศ์ทอง', position: 'ผู้จัดการฝ่ายผลิต', dept: 'PROD', role: 'supervisor' },
+  { code: 'PM-0102', name: 'สุนีย์ มั่นคง', position: 'ผู้จัดการฝ่าย QC', dept: 'QC', role: 'supervisor' },
+  { code: 'PM-0103', name: 'อนันต์ ทรัพย์เจริญ', position: 'ผู้จัดการคลังสินค้า', dept: 'WH', role: 'supervisor' },
 
   /**
    * The two function logins — NOT people, and named so that nobody reads them
@@ -241,7 +241,7 @@ async function run() {
     await employee.setPassword(PASSWORD);
     await employee.save();
     people.set(p.code, employee);
-    if (p.role === 'manager') {
+    if (p.role === 'supervisor') {
       await Department.findByIdAndUpdate(depts.get(p.dept)._id, { manager: employee._id });
     }
   }

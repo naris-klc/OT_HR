@@ -1,4 +1,5 @@
 import OtEntry, { STATUS_LABEL_TH } from '@/src/models/OtEntry.js';
+import { SIGNER_ROLES, isSigner } from '@/lib/roles.js';
 import { route, query, csvResponse } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
@@ -17,7 +18,7 @@ import { approvalDepartments, signsForCompany } from '@/lib/entries.js';
  * renders every ชื่อ-สกุล as mojibake.
  */
 export const GET = route(async (req) => {
-  const user = requireRole(await requireAuth(req), 'hr', 'admin', 'manager');
+  const user = requireRole(await requireAuth(req), 'hr', 'admin', ...SIGNER_ROLES);
   const q = query(req);
 
   const filter = {};
@@ -33,7 +34,7 @@ export const GET = route(async (req) => {
   // Every department this หัวหน้า signs for, not only their own — the same list
   // `isDepartmentManager` decides each row from. A report narrower than the
   // approve rule hides hours its reader is responsible for.
-  if (user.role === 'manager') filter.department = { $in: approvalDepartments(user) };
+  if (isSigner(user.role)) filter.department = { $in: approvalDepartments(user) };
   else if (q.department) filter.department = q.department;
 
   const found = await OtEntry.find(filter)
@@ -54,7 +55,7 @@ export const GET = route(async (req) => {
    *
    * ฝ่ายบุคคล and Admin are untouched — they read the whole month either way.
    */
-  const all = user.role === 'manager' && user.approvesCompany
+  const all = isSigner(user.role) && user.approvesCompany
     ? found.filter((e) => signsForCompany(user, companyOf(e.employee)))
     : found;
 

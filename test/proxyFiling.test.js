@@ -19,8 +19,8 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
 const ENG = 'dept-eng';
 const QA = 'dept-qa';
 
-const MANAGER = { _id: 'mgr-1', role: 'manager', department: ENG };
-const OTHER_MANAGER = { _id: 'mgr-2', role: 'manager', department: QA };
+const MANAGER = { _id: 'mgr-1', role: 'supervisor', department: ENG };
+const OTHER_MANAGER = { _id: 'mgr-2', role: 'supervisor', department: QA };
 const MEMBER = { _id: 'emp-1', role: 'employee', department: ENG, active: true };
 const OUTSIDER = { _id: 'emp-9', role: 'employee', department: QA, active: true };
 const HR = { _id: 'hr-1', role: 'hr', department: ENG };
@@ -48,7 +48,7 @@ test('the department is compared, not assumed from who is asking', () => {
 test('a manager without a department of their own files for nobody', () => {
   // An unset department must never read as "matches", or one broken roster row
   // would open every team in the company to that account.
-  const stray = { _id: 'mgr-3', role: 'manager', department: null };
+  const stray = { _id: 'mgr-3', role: 'supervisor', department: null };
   assert.equal(proxyPermission(stray, { ...MEMBER, department: null }).ok, false);
 });
 
@@ -64,7 +64,7 @@ test('the target has to be somebody who could have filed it themselves', () => {
   // §2 says managers do not submit OT. Filing one for them by hand would
   // create exactly the request that rule exists to prevent.
   for (const target of [
-    { ...MEMBER, role: 'manager' },
+    { ...MEMBER, role: 'supervisor' },
     { ...MEMBER, role: 'hr' },
     { ...MEMBER, role: 'admin' },
   ]) {

@@ -30,7 +30,7 @@ router.get('/form/:period', wrap(async (req, res) => {
   const employee = await Employee.findById(employeeId).populate('department');
   if (!employee) return res.status(404).json({ error: 'ไม่พบพนักงาน' });
 
-  if (req.user.role === 'manager'
+  if (req.user.role === 'supervisor'
     && String(employee.department?._id) !== String(req.user.department?._id)) {
     return res.status(403).json({ error: 'ดูได้เฉพาะพนักงานในแผนกของตน' });
   }
@@ -135,13 +135,13 @@ router.get('/form/:period', wrap(async (req, res) => {
 router.get('/monthly/:period', wrap(async (req, res) => {
   const { period } = req.params;
   if (!PERIOD_RE.test(period)) return res.status(400).json({ error: 'ประจำเดือนต้องเป็นรูปแบบ YYYY-MM' });
-  if (!['hr', 'admin', 'manager'].includes(req.user.role)) {
+  if (!['hr', 'admin', 'supervisor'].includes(req.user.role)) {
     return res.status(403).json({ error: 'ไม่มีสิทธิ์ใช้งานส่วนนี้' });
   }
 
   const policy = await Setting.effectivePolicy();
   const query = { period };
-  if (req.user.role === 'manager') query.department = req.user.department?._id;
+  if (req.user.role === 'supervisor') query.department = req.user.department?._id;
   else if (req.query.department) query.department = req.query.department;
   query.status = { $in: String(req.query.status || 'approved,pending_hr,pending_mgr').split(',') };
 

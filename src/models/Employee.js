@@ -3,7 +3,9 @@ import { model } from './model.js';
 import bcrypt from 'bcryptjs';
 import { COMPANY_KEYS, DEFAULT_COMPANY, companyFromCode } from '../config/companies.js';
 
-export const ROLES = ['employee', 'manager', 'hr', 'admin'];
+// The seven บทบาท and their Thai names live in lib/roles.js, which the BROWSER
+// can import and this file is not — see the note at the top of that file.
+import { ROLES } from '../../lib/roles.js';
 
 /**
  * พนักงาน. Every employee belongs to exactly one department and reports to
@@ -61,7 +63,7 @@ const employeeSchema = new mongoose.Schema(
      * the state of every row until somebody says otherwise — is ทุกบริษัท: the
      * behaviour this system had before the field existed.
      *
-     * Read ONLY for role 'manager', and only alongside the department rule it
+     * Read ONLY for role 'supervisor', and only alongside the department rule it
      * narrows. A หัวหน้า signs for their own department, and — once this is set
      * — only for the people in it whom this company pays. Two หัวหน้า can
      * therefore share one แผนก and split it by payroll without the department
@@ -119,7 +121,7 @@ const employeeSchema = new mongoose.Schema(
      * a second shape, and the arrangement that would need it (two departments
      * split differently by company, one signer for both) has not been asked for.
      *
-     * Read ONLY for role 'manager', like `approvesCompany`, and left in place
+     * Read ONLY for role 'supervisor', like `approvesCompany`, and left in place
      * when somebody stops being one for the same reason: the same list means the
      * same thing if they are appointed again.
      *
@@ -231,9 +233,24 @@ employeeSchema.methods.verifyPassword = async function verifyPassword(plain) {
   return nfc === raw ? false : bcrypt.compare(nfc, this.passwordHash);
 };
 
-/** Managers do not submit OT (§2). */
+/**
+ * EVERY บทบาท FILES ITS OWN OT — since 2026-09-03, and this is a reversal.
+ *
+ * It read `this.role === 'employee'` and its doc line read "Managers do not
+ * submit OT (§2)". §2 existed to remove the question "who approves the
+ * หัวหน้า", and the seven-บทบาท structure answers that question outright
+ * instead: a หัวหน้างาน's request goes to a ผู้จัดการแผนก, whose own goes to a
+ * ผู้จัดการฝ่าย, whose own goes to ฝ่ายบุคคล. See `APPROVED_BY` in
+ * lib/roles.js for the whole ladder.
+ *
+ * So this is now true for everybody and is kept as a method rather than
+ * deleted. Two reasons: `publicUser` and the filing route both ask it, and
+ * "may this account file" is exactly the sort of rule that grows a condition
+ * again — a contractor บทบาท, or somebody suspended. A predicate that is
+ * currently always true has somewhere for that to go; a deleted one does not.
+ */
 employeeSchema.methods.maySubmitOt = function maySubmitOt() {
-  return this.role === 'employee';
+  return ROLES.includes(this.role);
 };
 
 export default model('Employee', employeeSchema);

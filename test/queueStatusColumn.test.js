@@ -105,7 +105,13 @@ test('โหมดรับช่วงและโหมดใบที่ไ�
  * somebody presses it.
  */
 test('signableHere ถูกถามที่ประตูทั้งสี่ ไม่ได้เขียนกฎซ้ำ', () => {
-  assert.match(code, /const signableHere = \(e\) => e\?\.status === stage;/);
+  // TWO CLAUSES SINCE 2026-09-03, still one rule. The status clause is the
+  // original: is this row at the step this queue is. The second is the routing
+  // matrix, and it exists because a แผนก can hold four หัวหน้างาน who all file
+  // their own OT now — without it each of them is offered two buttons on the
+  // other three’s requests, and both answer 403.
+  assert.match(code, /const signableHere = \(e\) => e\?\.status === stage$/m);
+  assert.match(code, /&& \(isHr \|\| maySignFirstStep\(user, e\)\);/);
 
   // the tick box
   assert.match(code, /disabled=\{!signableHere\(e\)/);

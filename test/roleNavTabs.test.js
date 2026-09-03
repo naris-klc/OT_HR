@@ -49,7 +49,7 @@ const at = (key) => {
 
 test('the builder opens one block per role, พนักงาน → หัวหน้า → ฝ่ายบุคคล → admin', () => {
   const employee = builder.indexOf('if (user.maySubmitOt) {');
-  const manager = builder.indexOf("if (user.role === 'manager') {");
+  const manager = builder.indexOf('if (isSigner(user.role)) {');
   const hr = builder.indexOf("if (['hr', 'admin'].includes(user.role)) {");
   const admin = builder.indexOf("if (user.role === 'admin') tabs.push({ key: 'logs'");
 
@@ -63,8 +63,12 @@ test('the builder opens one block per role, พนักงาน → หัว�
 
 // ── หัวหน้างาน · the two tabs that are the whole bar ───────────────────────
 
-test('หัวหน้างาน get exactly two tabs, and both are inside the manager block', () => {
-  const open = builder.indexOf("if (user.role === 'manager') {");
+test('the four แผนก signers get exactly two tabs, both inside that block', () => {
+  // It read "หัวหน้างาน get exactly two tabs" until บทบาท became seven on
+  // 2026-09-03. The block is opened by `isSigner` now, so การเงิน,
+  // ผู้จัดการแผนก and ผู้จัดการฝ่าย reach the same two tabs — which rows each
+  // of them then sees is `scopeFor` and the routing matrix, on the server.
+  const open = builder.indexOf('if (isSigner(user.role)) {');
   // The block runs to the ฝ่ายบุคคล comment banner that follows it.
   const block = builder.slice(open, builder.indexOf('// ── ฝ่ายบุคคล'));
   const pushes = block.match(/tabs\.push\(\{/g) || [];

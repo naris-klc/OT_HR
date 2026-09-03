@@ -95,10 +95,10 @@ test('an ordinary roster edit produces no row at all', () => {
 test('a บทบาท change counts only when it crosses into ฝ่ายบุคคล or ผู้ดูแลระบบ', () => {
   assert.deepEqual(PRIVILEGED_ROLES, ['hr', 'admin']);
   // Ordinary onboarding — not an exception.
-  assert.equal(isPrivilegedRoleChange({ field: 'role', from: 'employee', to: 'manager' }), false);
+  assert.equal(isPrivilegedRoleChange({ field: 'role', from: 'employee', to: 'supervisor' }), false);
   // Into one, and out of one: the second is how a privileged account quietly
   // stops being audited as one, and reads the same event backwards.
-  assert.equal(isPrivilegedRoleChange({ field: 'role', from: 'manager', to: 'admin' }), true);
+  assert.equal(isPrivilegedRoleChange({ field: 'role', from: 'supervisor', to: 'admin' }), true);
   assert.equal(isPrivilegedRoleChange({ field: 'role', from: 'hr', to: 'employee' }), true);
   // And it is about `role`, not about any field that happens to hold the word.
   assert.equal(isPrivilegedRoleChange({ field: 'position', from: 'x', to: 'admin' }), false);

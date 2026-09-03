@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { isSigner } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
 import { Alert, PasswordInput } from './common.jsx';
@@ -30,7 +31,7 @@ export default function ProfileView({ user, onLogout }) {
       {/* Where a หัวหน้า arranges their own cover — on the page they are
           already on when they know they will be away. ฝ่ายบุคคล have the same
           screen under ตั้งค่าระบบ for the หัวหน้า who is already gone. */}
-      {user.role === 'manager' && <Delegation user={user} scope="mine" />}
+      {isSigner(user.role) && <Delegation user={user} scope="mine" />}
       <ThemeChoice />
       <ChangePassword />
       {/* On mobile the sidebar — and with it the ออกจากระบบ button — is not on

@@ -6,7 +6,7 @@ import { BUCKETS, summariseEntries, hrSummary } from '../../src/lib/otEngine.js'
 import { sendCsv } from '../../src/lib/csv.js';
 
 const router = Router();
-router.use(requireAuth, requireRole('hr', 'admin', 'manager'));
+router.use(requireAuth, requireRole('hr', 'admin', 'supervisor'));
 
 /**
  * §10 data export — for HR to hand to whoever runs payroll.
@@ -28,7 +28,7 @@ router.get('/entries.csv', wrap(async (req, res) => {
   // Default to approved only: the export feeds payroll, and an unapproved
   // request is not yet a fact.
   query.status = { $in: String(req.query.status || 'approved').split(',') };
-  if (req.user.role === 'manager') query.department = req.user.department?._id;
+  if (req.user.role === 'supervisor') query.department = req.user.department?._id;
   else if (req.query.department) query.department = req.query.department;
 
   const entries = await OtEntry.find(query)
@@ -75,7 +75,7 @@ router.get('/monthly.csv', wrap(async (req, res) => {
 
   const policy = await Setting.effectivePolicy();
   const query = { period, status: { $in: String(req.query.status || 'approved').split(',') } };
-  if (req.user.role === 'manager') query.department = req.user.department?._id;
+  if (req.user.role === 'supervisor') query.department = req.user.department?._id;
   else if (req.query.department) query.department = req.query.department;
 
   const entries = await OtEntry.find(query)

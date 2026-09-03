@@ -502,7 +502,12 @@ test('ทุกบทบาทเห็นประกาศ ไม่ใช่�
   // `home` IS THE ROLE. If defaultTab stops answering for every role, this
   // mount silently stops covering one of them — so the two are read together.
   const def = app.slice(app.indexOf('function defaultTab'), app.indexOf('}', app.indexOf('function defaultTab')) + 1);
-  for (const role of ['manager', 'hr', 'admin']) {
+  // The four แผนก signers are answered by one `isSigner` branch since
+  // 2026-09-03 rather than by a literal each, so the branch is what is checked
+  // for them; ฝ่ายบุคคล and ผู้ดูแลระบบ still have a line of their own.
+  assert.ok(def.includes('isSigner(role)'),
+    'defaultTab ไม่ได้ตอบให้บทบาทที่เซ็นในแผนกแล้ว — บทบาทเหล่านั้นจะไม่เห็นประกาศ');
+  for (const role of ['hr', 'admin']) {
     assert.ok(def.includes(`'${role}'`), `defaultTab ไม่ได้ตอบให้บทบาท ${role} แล้ว — บทบาทนั้นจะไม่เห็นประกาศ`);
   }
 

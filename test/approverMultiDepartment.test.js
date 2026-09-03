@@ -41,12 +41,12 @@ const QC = '000000000000000000000004';
 
 /** A หัวหน้า of PROD who has also been ticked into ADM. */
 const WIDE = {
-  _id: 'm1', code: 'PM-0101', name: 'ประเสริฐ', role: 'manager',
+  _id: 'm1', code: 'PM-0101', name: 'ประเสริฐ', role: 'supervisor',
   department: PROD, approvesCompany: null, approvesDepartments: [ADM],
 };
 /** The same person before anybody ticked anything. */
 const NARROW = {
-  _id: 'm1', code: 'PM-0101', name: 'ประเสริฐ', role: 'manager',
+  _id: 'm1', code: 'PM-0101', name: 'ประเสริฐ', role: 'supervisor',
   department: PROD, approvesCompany: null,
 };
 /** Ticked into ADM and narrowed to one payroll. */
@@ -219,7 +219,7 @@ test('unticking a department is refused when it strands the people in it', () =>
 
 test('unticking is allowed when somebody else already covers that department', () => {
   const other = {
-    _id: 'm2', code: 'PM-0100', name: 'วิชัย', role: 'manager',
+    _id: 'm2', code: 'PM-0100', name: 'วิชัย', role: 'supervisor',
     department: ENG, approvesCompany: null, approvesDepartments: [ADM],
   };
   const admRoster = [pm('a1', ADM)];
@@ -329,7 +329,7 @@ test('no route narrows a manager to their own department alone any more', () => 
       if (statSync(full).isDirectory()) { walk(full); continue; }
       if (!/route\.js$/.test(name)) continue;
       const src = sourceOf(full.replace(`${ROOT}\\`, '').replace(`${ROOT}/`, ''));
-      if (!/role === 'manager'/.test(src)) continue;
+      if (!/role === 'supervisor'/.test(src)) continue;
       if (/user\??\.department/.test(src)) {
         offences.push(full.replace(ROOT, '').replace(/\\/g, '/'));
       }
@@ -365,11 +365,11 @@ test('the settings table names a หัวหน้า on every row they cover',
 // ── one แผนก field that changes shape with บทบาท ─────────────────────────────
 
 test('there is ONE แผนก field, and its shape follows บทบาท', () => {
-  // Two facts, one control. `approvesDepartments` is read for role 'manager'
+  // Two facts, one control. `approvesDepartments` is read for role 'supervisor'
   // and nobody else, so a ticked list on any other row would grant nothing.
   const code = sourceOf('components/AdminView.jsx');
   assert.match(code, /function DepartmentField\(\{ role, department, extras, onChange, depts, disabled, allowBlank \}\)/);
-  assert.match(code, /if \(role !== 'manager'\) \{[\s\S]*?<Field label="แผนก" tip=\{DEPT_TIP_STAFF\}>[\s\S]*?<select/);
+  assert.match(code, /if \(!isSigner\(role\)\) \{[\s\S]*?<Field label="แผนก" tip=\{DEPT_TIP_STAFF\}>[\s\S]*?<select/);
   assert.match(code, /<Field label="แผนก" tip=\{DEPT_TIP_MANAGER\}>[\s\S]*?<DeptCombo/);
 
   // The two-field arrangement is gone, label and all.
@@ -400,7 +400,7 @@ test('แผนก sits in ข้อมูลการทำงาน; ขอบ
   // ขอบเขตการอนุมัติ appears only for a หัวหน้างาน and holds เซ็นให้บริษัท plus
   // the badge — the one place the whole grant is said out loud, since the two
   // halves of it now live in different groups.
-  assert.match(code, /\{form\.role === 'manager' && \(\s*\n\s*<section className="form-group">\s*\n\s*<div className="gh">ขอบเขตการอนุมัติ<\/div>/);
+  assert.match(code, /\{isSigner\(form\.role\) && \(\s*\n\s*<section className="form-group">\s*\n\s*<div className="gh">ขอบเขตการอนุมัติ<\/div>/);
   const scope = code.slice(code.indexOf('>ขอบเขตการอนุมัติ<'));
   const block = scope.slice(0, scope.indexOf('</section>'));
   assert.match(block, /<SignsForField/);
@@ -928,7 +928,7 @@ test('the badge is drawn from the form and says both halves of the grant', () =>
   // says what the PAIR comes to — the join is where the mistake lives.
   const code = sourceOf('components/AdminView.jsx');
   assert.match(code, /function ApprovalBadge\(\{ role, department, extras, company, depts \}\)/);
-  assert.match(code, /if \(role !== 'manager'\) return null;/);
+  assert.match(code, /if \(!isSigner\(role\)\) return null;/);
   assert.match(code, /department=\{form\.department\}/);
   assert.match(code, /extras=\{form\.approvesDepartments\}/);
   assert.match(code, /company=\{form\.approvesCompany\}/);

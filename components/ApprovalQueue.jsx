@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { isSigner } from '@/lib/roles.js';
 import {
   api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, periodLabel, BUCKETS, BUCKET_LABEL,
   STATUS,
@@ -12,6 +13,7 @@ import {
 } from '@/lib/caps.js';
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
+  maySignFirstStep,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
@@ -88,7 +90,21 @@ export default function ApprovalQueue({
    * `'pending_mgr'` so it stays true of every queue: on a หัวหน้า's, `listed`
    * holds nothing else and this is true of every row.
    */
-  const signableHere = (e) => e?.status === stage;
+  /**
+   * AND — at the first step only — whether the routing matrix puts this
+   * reviewer's บทบาท on this particular row, added 2026-09-03 with the seven
+   * บทบาท. A แผนก can hold four หัวหน้างาน (แผนกผลิต2 does) and each of them
+   * files their own OT now: without this, all four see each other's requests
+   * wearing two buttons that answer 403.
+   *
+   * `maySignFirstStep` is the same pure rule `approvalPermission` decides by,
+   * and it is a SUBSET of it — it hides buttons and never offers one. The rows
+   * themselves stay listed: a หัวหน้างาน may see their แผนก's requests, and a
+   * row with a sentence where its buttons would be is the shape this screen
+   * already uses for the ones it cannot sign.
+   */
+  const signableHere = (e) => e?.status === stage
+    && (isHr || maySignFirstStep(user, e));
   /**
    * ใบที่ไม่มีหัวหน้าเซ็นได้ — every row here is one an administrator is signing
    * IN PLACE OF a หัวหน้า who does not exist, so every decision on this screen
@@ -623,7 +639,7 @@ export default function ApprovalQueue({
             because it is what the button acts on. */}
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           {countLabel && <span className="chip muted">{countLabel}</span>}
-          {!isHr && !delegatedOnly && user.role === 'manager' && (
+          {!isHr && !delegatedOnly && isSigner(user.role) && (
             <button className="btn ghost sm" onClick={() => setFiling(true)}>
               + บันทึก OT แทนพนักงาน
             </button>

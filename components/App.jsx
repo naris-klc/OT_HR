@@ -20,6 +20,7 @@ import AdminView from './AdminView.jsx';
 import LogSystem from './LogSystem.jsx';
 import ProfileView, { ChangePassword } from './ProfileView.jsx';
 import PrintForm from './PrintForm.jsx';
+import { isSigner } from '@/lib/roles.js';
 
 /**
  * The company mark, in the three places it appears.
@@ -781,7 +782,11 @@ function Shell({ session, onLogout }) {
    * has to empty, `chart` for a sheet somebody reads. Both are in
    * `components/icons.jsx`; neither was added for this.
    */
-  if (user.role === 'manager') {
+  // All four บทบาท that hold a แผนก reach this since 2026-09-03 — the queue
+  // and the team report belong to whoever signs the first step there, not to
+  // หัวหน้างาน alone. Which ROWS each of them sees is `scopeFor` and the
+  // routing matrix, on the server; this only decides that the tab exists.
+  if (isSigner(user.role)) {
     tabs.push({
       key: 'approve', label: 'รายการรออนุมัติ', icon: 'inbox', badge: queueBadge(counts.pendingMgr),
     });
@@ -1218,7 +1223,7 @@ function MyForm() {
 }
 
 function defaultTab(role) {
-  if (role === 'manager') return 'approve';
+  if (isSigner(role)) return 'approve';
   if (role === 'hr') return 'confirm';
   if (role === 'admin') return 'admin';
   return 'mine';

@@ -5,7 +5,7 @@ import { editPermission } from '../lib/entries.js';
 
 const OWNER = { _id: 'emp-1', role: 'employee' };
 const OTHER = { _id: 'emp-2', role: 'employee' };
-const MANAGER = { _id: 'mgr-1', role: 'manager' };
+const MANAGER = { _id: 'mgr-1', role: 'supervisor' };
 const HR = { _id: 'hr-1', role: 'hr' };
 const ADMIN = { _id: 'adm-1', role: 'admin' };
 

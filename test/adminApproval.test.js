@@ -53,7 +53,7 @@ const read = (file) => readFileSync(join(ROOT, file), 'utf8')
 const ENG = 'dept-eng';
 const ADM = 'dept-adm';
 
-const MGR = { _id: 'mgr-a', name: 'สมชาย', role: 'manager', department: ENG, active: true };
+const MGR = { _id: 'mgr-a', name: 'สมชาย', role: 'supervisor', department: ENG, active: true };
 const HR = { _id: 'hr-1', name: 'ฝ่ายบุคคล', role: 'hr' };
 const HR2 = { _id: 'hr-2', name: 'ฝ่ายบุคคลสอง', role: 'hr' };
 const ADMIN = { _id: 'adm-1', name: 'ผู้ดูแลระบบ', role: 'admin' };
@@ -279,7 +279,15 @@ test('ไม่อนุมัติ passes its own reason, which it has always 
 // ════════════════════════════════════════════════════════════════════════════
 
 test('ผู้ดูแลระบบ may be named as a ผู้รับช่วงอนุมัติ, which ฝ่ายบุคคล always could', () => {
-  assert.deepEqual(DELEGATE_ROLES, ['manager', 'hr', 'admin']);
+  // It read `['supervisor', 'hr', 'admin']` until บทบาท became seven on
+  // 2026-09-03. All four who hold a แผนก are nameable now, for the reason
+  // ผู้ดูแลระบบ was added here on 2026-08-24: a person who signs the first step
+  // in their own right and cannot be named as a stand-in is an omission that
+  // reads as a decision. It widens nothing — a ผู้รับช่วง exercises the GIVER's
+  // claim, and `approvalPermission` asks the routing matrix of the giver's
+  // บทบาท, never the holder's.
+  assert.deepEqual(DELEGATE_ROLES,
+    ['supervisor', 'finance', 'dept_manager', 'division_manager', 'hr', 'admin']);
   const may = delegationPermission({
     actor: HR,
     from: MGR,
@@ -321,7 +329,7 @@ test('a delegation still cannot be given BY somebody who is not a หัวห�
 // ════════════════════════════════════════════════════════════════════════════
 
 const covering = (over = {}) => ({
-  _id: 'm', role: 'manager', active: true, department: ENG,
+  _id: 'm', role: 'supervisor', active: true, department: ENG,
   approvesCompany: null, approvesDepartments: [], ...over,
 });
 

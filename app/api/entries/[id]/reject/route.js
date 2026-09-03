@@ -1,4 +1,5 @@
 import OtEntry from '@/src/models/OtEntry.js';
+import { SIGNER_ROLES } from '@/lib/roles.js';
 import Setting from '@/src/models/Setting.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
@@ -8,7 +9,7 @@ import { heldBy, today } from '@/lib/delegationQuery.js';
 import { needsOverCeilingReason, overCeilingRefusal } from '@/lib/caps.js';
 
 export const POST = route(async (req, { params }) => {
-  const user = requireRole(await requireAuth(req), 'manager', 'hr', 'admin');
+  const user = requireRole(await requireAuth(req), ...SIGNER_ROLES, 'hr', 'admin');
   const payload = await body(req);
 
   const entry = await OtEntry.findById(params.id).populate(DECIDE_POPULATE);

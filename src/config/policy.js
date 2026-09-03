@@ -344,9 +344,18 @@ export const DEFAULT_POLICY = Object.freeze({
   /** true — HR may reject a pending_hr request. */
   hrMayReject: true,
   /**
-   * Where a HR rejection lands: 'employee' (DEFAULT — becomes `rejected`, the
-   * employee corrects and resubmits, restarting at the manager) or 'manager'
-   * (back to `pending_mgr` for the manager to re-review).
+   * Where a HR rejection lands. Two values, and both name a PLACE rather than a
+   * บทบาท — `hrRejectReturnsTo: 'employee'` (DEFAULT) makes the entry
+   * `rejected`, so the person corrects it and files again from the start;
+   * `hrRejectReturnsTo: 'manager'` sends it back to `pending_mgr` for whoever
+   * holds that step to read again.
+   *
+   * The second value keeps the word the first step has always been called, and
+   * is the one place in this system where it survives: the บทบาท of that name
+   * was retired on 2026-09-03, when หัวหน้างาน became `supervisor` and a real
+   * ผู้จัดการแผนก took the rung above it (see lib/roles.js). This value is
+   * already stored in `Setting.policy` on live databases, and renaming it would
+   * need a migration of its own to buy nothing.
    */
   hrRejectReturnsTo: 'employee',
 

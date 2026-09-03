@@ -18,6 +18,7 @@ import { companyOf, companyLabel } from '@/src/config/companies.js';
 import PasswordSlips from './PasswordSlips.jsx';
 import { PickDate } from './PickDate.jsx';
 import { approvalDepartments, idOf, viewerId } from '@/lib/entries.js';
+import { ROLES, ROLE_LABEL_TH, isSigner } from '@/lib/roles.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
 // with them, and both read the list from here.
 import {
@@ -233,7 +234,7 @@ function signingGaps(departments, people) {
    * `headsOf` below asks the same question for the column. Neither of them
    * decides it here.
    */
-  const signers = active.filter((p) => p.role === 'manager');
+  const signers = active.filter((p) => isSigner(p.role));
   return (departments || [])
     .map((d) => {
       const roster = active.filter((p) => idOf(p.department) === String(d._id));
@@ -263,7 +264,7 @@ function signingGaps(departments, people) {
 function headsOf(people, department) {
   const id = String(department._id);
   return (people || []).filter(
-    (p) => p.active !== false && p.role === 'manager' && approvalDepartments(p).includes(id),
+    (p) => p.active !== false && isSigner(p.role) && approvalDepartments(p).includes(id),
   );
 }
 
@@ -1404,12 +1405,12 @@ function DepartmentForm({
 
 // ── employees ───────────────────────────────────────────────────────────────
 
-const ROLE_OPTIONS = [
-  { value: 'employee', label: 'พนักงาน' },
-  { value: 'manager', label: 'หัวหน้างาน' },
-  { value: 'hr', label: 'ฝ่ายบุคคล' },
-  { value: 'admin', label: 'ผู้ดูแลระบบ' },
-];
+/**
+ * The dropdown on ทะเบียนพนักงาน — built from lib/roles.js so a role added
+ * there cannot be missing here, which is how the label maps drifted before.
+ * Lowest บทบาท first, the order ROLES itself is in.
+ */
+const ROLE_OPTIONS = ROLES.map((value) => ({ value, label: ROLE_LABEL_TH[value] }));
 
 const SIGNS_FOR_TIP = 'หัวหน้าเซ็นให้เฉพาะแผนกของตนอยู่แล้ว — ช่องนี้แคบลงอีกชั้นว่าเซ็นให้คนของ'
   + 'บริษัทไหนในแผนกนั้น · เว้นไว้ = ทุกบริษัท ซึ่งเป็นพฤติกรรมเดิมของระบบ '
@@ -1493,7 +1494,7 @@ const DEPT_TIP_MANAGER = 'เลือกได้หลายแผนก — �
  * แผนกและเพดาน for.
  */
 function DepartmentField({ role, department, extras, onChange, depts, disabled, allowBlank }) {
-  if (role !== 'manager') {
+  if (!isSigner(role)) {
     return (
       <Field label="แผนก" tip={DEPT_TIP_STAFF}>
         <select
@@ -1954,7 +1955,7 @@ function DeptCombo({ home, extras, onChange, depts, disabled }) {
  * badge saying so on every พนักงาน's dialog is furniture.
  */
 function ApprovalBadge({ role, department, extras, company, depts }) {
-  if (role !== 'manager') return null;
+  if (!isSigner(role)) return null;
 
   const ids = [...new Set([String(department || ''), ...(extras || [])].filter(Boolean))];
   const names = ids.map((id) => nameOfDept(depts, id) || id);
@@ -2837,7 +2838,7 @@ function Employees({ user }) {
                     column would narrow the nine that are meaningful on all. */}
                 <td data-label="บทบาท" style={{ whiteSpace: 'nowrap' }}>
                   {ROLE_LABEL[p.role] || p.role}
-                  {p.role === 'manager' && p.approvesCompany && (
+                  {isSigner(p.role) && p.approvesCompany && (
                     <div className="cell-sub th">เซ็นให้ {companyShort(p.approvesCompany)}</div>
                   )}
                 </td>
@@ -3325,7 +3326,7 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
             it is as likely to be part of creating their account as of editing
             it afterwards. One component and one validator on the server: two
             doors that cannot disagree. */}
-        {form.role === 'manager' && (
+        {isSigner(form.role) && (
           <section className="form-group">
             <div className="gh">ขอบเขตการอนุมัติ</div>
             <div className="form-grid">
@@ -4013,7 +4014,7 @@ function EditEmployee({
               could never be appointed from a control that only exists once they
               already are one. It sits directly above this heading, which is
               near enough to read as one thought. */}
-          {form.role === 'manager' && (
+          {isSigner(form.role) && (
             <section className="form-group">
               <div className="gh">ขอบเขตการอนุมัติ</div>
               <div className="form-grid">

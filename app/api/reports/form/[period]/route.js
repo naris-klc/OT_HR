@@ -1,4 +1,5 @@
 import OtEntry, { STATUS_LABEL_TH } from '@/src/models/OtEntry.js';
+import { isSigner } from '@/lib/roles.js';
 import Employee from '@/src/models/Employee.js';
 import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
@@ -45,7 +46,7 @@ export const GET = route(async (req, { params }) => {
    * reviewer who may approve somebody's request and may not print the sheet
    * that request goes onto. One function, so the two cannot come apart again.
    */
-  if (user.role === 'manager'
+  if (isSigner(user.role)
     && !isDepartmentManager(user, employee.department, companyOf(employee))) {
     return fail('ดูได้เฉพาะพนักงานในแผนกของตน', 403);
   }

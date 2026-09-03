@@ -45,7 +45,7 @@ const ROW = {
 
 const HR = { _id: 'hr-1', role: 'hr' };
 const ADMIN = { _id: 'adm-1', role: 'admin' };
-const MANAGER = { _id: 'mgr-1', role: 'manager' };
+const MANAGER = { _id: 'mgr-1', role: 'supervisor' };
 const COLLEAGUE = { _id: 'emp-2', role: 'employee' };
 const SELF = { _id: 'emp-1', role: 'employee' };
 

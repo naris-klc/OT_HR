@@ -1,4 +1,5 @@
 import Employee from '@/src/models/Employee.js';
+import { SIGNER_ROLES, isSigner } from '@/lib/roles.js';
 import { route, json } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { publicEmployee } from '@/lib/employees.js';
@@ -23,11 +24,11 @@ import { DELEGATE_ROLES } from '@/lib/delegation.js';
  * department for the dozen people who sign things is not roster access.
  */
 export const GET = route(async (req) => {
-  const user = requireRole(await requireAuth(req), 'manager', 'hr', 'admin');
+  const user = requireRole(await requireAuth(req), ...SIGNER_ROLES, 'hr', 'admin');
 
   const people = await Employee.find({
     active: true,
-    role: { $in: [...new Set([...DELEGATE_ROLES, 'manager'])] },
+    role: { $in: [...new Set([...DELEGATE_ROLES, ...SIGNER_ROLES])] },
   })
     // `approvesCompany` so the form can state what is being handed over rather
     // than implying the whole department — see components/Delegation.jsx.
@@ -39,7 +40,7 @@ export const GET = route(async (req) => {
   const shaped = people.map((p) => publicEmployee(p, user));
   return json({
     /** Whose queue may be covered — a manager's, and only a manager's. */
-    managers: shaped.filter((p) => p.role === 'manager'),
+    managers: shaped.filter((p) => isSigner(p.role)),
     /** Who may cover one. */
     candidates: shaped.filter((p) => DELEGATE_ROLES.includes(p.role)),
   });

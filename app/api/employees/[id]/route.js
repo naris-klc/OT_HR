@@ -1,4 +1,5 @@
-import Employee, { ROLES } from '@/src/models/Employee.js';
+import Employee from '@/src/models/Employee.js';
+import { ROLES, SIGNER_ROLES, isSigner } from '@/lib/roles.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
@@ -309,12 +310,12 @@ export const PATCH = route(async (req, { params }) => {
    * true.
    */
   const otherManagers = await Employee
-    .find({ role: 'manager', active: true, _id: { $ne: employee._id } })
+    .find({ role: { $in: SIGNER_ROLES }, active: true, _id: { $ne: employee._id } })
     .select('code name role department company approvesCompany approvesDepartments')
     .lean();
-  const wasSigner = before.role === 'manager' && before.active !== false
+  const wasSigner = isSigner(before.role) && before.active !== false
     ? [asPerson(before, before.department)] : [];
-  const nowSigner = employee.role === 'manager' && employee.active !== false
+  const nowSigner = isSigner(employee.role) && employee.active !== false
     ? [asPerson(employee, employee.department)] : [];
   const signers = {
     before: [...otherManagers, ...wasSigner],

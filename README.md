@@ -844,13 +844,57 @@ normalize และยังเปิดด้วยคีย์เดิมไ�
 ว่าทุกกฎในหน้านี้อยู่ที่ฝั่งเซิร์ฟเวอร์ และไม่มีปุ่มไหนถูกยื่นให้คนที่เซิร์ฟเวอร์
 จะปฏิเสธ
 
+### เจ็ดบทบาท — และคำว่า `manager` ที่ถูกปลดระวาง
+
+บทบาทเพิ่มจากสี่เป็นเจ็ดเมื่อ **2026-09-03** รายชื่อกับชื่อภาษาไทยอยู่ที่
+`lib/roles.js` **ที่เดียว** — ก่อนหน้านั้นถูกเขียนไว้สามที่ที่ต้องตรงกันเอง
+(enum ของโมเดล · `ROLE_OPTIONS` บน ทะเบียนพนักงาน · `ROLE_LABEL` ในรายงาน
+การใช้สิทธิ์พิเศษ) และที่ที่มักถูกลืมคือชื่อภาษาไทย จอจึงโชว์คีย์ดิบให้คนที่มัน
+เป็นตำแหน่งของเขาเอง
+
+เรียงจากล่างขึ้นบน — และ**ลำดับนี้มีผล** เพราะ `outranks` อ่านคำตอบจาก index
+ของ `ROLES`:
+
+| คีย์ที่เก็บ | ชื่อไทย | หมายเหตุ |
+|---|---|---|
+| `employee` | พนักงาน | |
+| `supervisor` | หัวหน้างาน | เดิมเก็บว่า `manager` |
+| `finance` | การเงิน | **เทียบเท่าหัวหน้างาน ไม่ได้อยู่เหนือ** — คนละแผนกกัน และเซ็นให้กันไม่ได้ |
+| `dept_manager` | ผู้จัดการแผนก | |
+| `division_manager` | ผู้จัดการฝ่าย | |
+| `hr` | ฝ่ายบุคคล | |
+| `admin` | ผู้ดูแลระบบ | |
+
+**`manager` ถูกปลดระวาง ไม่ใช่เอามาใช้ต่อ** ของเดิมแปลว่า *หัวหน้างาน* —
+คอมเมนต์ทุกบรรทัดในรีโปที่เขียนก่อนวันนั้นเขียนว่า หัวหน้า ตรงที่โค้ดเขียนว่า
+`manager` และตารางชื่อไทยทั้งสองชุดก็แปลว่า "หัวหน้างาน" เจ็ดบทบาทใหม่มี
+*ผู้จัดการแผนก* จริง ๆ อยู่เหนือหัวหน้างานหนึ่งขั้น ถ้าเก็บสตริงเดิมไว้แล้วให้
+ความหมายใหม่ ทุกการเปรียบเทียบที่เขียนไว้แล้วจะยัง compile ผ่านและเริ่มตอบคนละ
+คำถาม — จึงเปลี่ยนชื่อทิ้ง เพื่อให้ที่ที่ตกหล่นกลายเป็น "ไม่ตรงกับใครเลย" ซึ่ง
+เห็นทันที แทนที่จะเป็น "ยกคิวของหัวหน้างานให้ผู้จัดการแผนกเงียบ ๆ"
+`test/roles.test.js` ห้ามสตริงนั้นกลับเข้ามาใน `app/` `lib/` `src/`
+`components/` และ `legacy/`
+
+**ที่เดียวที่คำเดิมยังอยู่คือ `hrRejectReturnsTo: 'manager'`** ซึ่งเป็น*ค่าของ
+policy* ที่ชี้ไปที่**ขั้น** `pending_mgr` ไม่ใช่บทบาท ขั้นแรกยังชื่อ mgr อยู่
+ไม่ว่าใครจะถือ และค่านี้ถูกเก็บใน `Setting.policy` บนฐานข้อมูลจริงไปแล้ว
+เปลี่ยนชื่อจึงต้องมี migration ของตัวเองโดยไม่ได้อะไรกลับมา — `Department.manager`
+ก็เป็น *ฟิลด์* ไม่ใช่บทบาทเช่นกัน
+
+**แถวที่เก็บ `manager` ไว้ย้ายด้วย `npm run migrate:roles`** (`--dry` เพื่อดู
+อย่างเดียว, `--yes` เพื่อยืนยัน) รันบนฐานข้อมูลนี้แล้วเมื่อ 2026-09-03 — ห้าแถว
+กลายเป็น `supervisor` · สคริปต์แตะ `Employee.role` อย่างเดียว **ไม่แตะ**
+`OtEntry.history[].action` (`approve_mgr` บอก*ขั้น*ที่เซ็น ไม่ใช่บทบาทของคนเซ็น)
+`OtEntry.status` หรือแถว `EmployeeAudit` — ร่องรอยที่ถูกเขียนใหม่ให้ตรงกับวันนี้
+ไม่ใช่ร่องรอย
+
 ### ตาราง
 
 | | ฝ่ายบุคคล | ผู้ดูแลระบบ | กฎอยู่ที่ |
 |---|---|---|---|
 | **ทะเบียนพนักงาน** | | | |
 | เพิ่ม / แก้ไขพนักงาน | ✅ | ✅ | `rosterPermission` |
-| ตั้งบทบาท พนักงาน / หัวหน้างาน | ✅ | ✅ | `HR_ASSIGNABLE_ROLES` |
+| ตั้งบทบาท พนักงาน / หัวหน้างาน / การเงิน / ผู้จัดการแผนก / ผู้จัดการฝ่าย | ✅ | ✅ | `HR_ASSIGNABLE_ROLES` |
 | ตั้งบทบาท ฝ่ายบุคคล / ผู้ดูแลระบบ | ❌ | ✅ | `HR_ASSIGNABLE_ROLES` |
 | แก้ไขแถวที่เป็น ผู้ดูแลระบบ (รวมรีเซ็ตรหัสผ่าน) | ❌ | ✅ | `rosterPermission` |
 | เปลี่ยนรหัสพนักงาน | ❌ | ✅ *(ต้องระบุเหตุผล)* | `codeChangePermission` |
@@ -1387,7 +1431,7 @@ lib/smartDate.js          ปี พ.ศ. หรือ ค.ศ. — the one plac
                           the one 2400, and the leap years judged in ค.ศ.;
                           read by the roster form, both roster endpoints, the
                           CSV importer and both holiday calendars — pure
-test/                     117 files, run by `npm test`. Six named below as a
+test/                     118 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1400,9 +1444,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **1983 tests
-across 117 files**, measured 2026-09-03 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "2096 across 122 files" until สวัสดิการวันเกิด went back to being filed by the person whose birthday it is and ฝ่ายบุคคล’s birthday work was withdrawn — the only round in this history where the file count went DOWN: seven files left (absentCallout, birthdayCardUi, birthdayCheck, birthdayDirectApproval, birthdayFileSheet, birthdayQueue, birthdaySelfFiling) and two arrived, `birthdayTick` for the claim the tick makes and `flatDaily` for the eight-hour day — and "2070 across 121 files" until ฝ่ายบุคคล's queue started listing a request from the moment it was filed — `queueStatusColumn` is the 122nd file, twenty-one cases, and only four of them are about the สถานะ column that was asked for: the rest are about what a queue has to stop offering once it holds a row its reader cannot sign, and about the two things the twelfth column pushed out of shape — the sentence that stands in place of a row's buttons, and the ceiling figure that went under them — and "2060 across 120 files" until Ctrl+P on รายงาน OT ฝ่ายบัญชี stopped dropping the last three columns — `screenTablePrint` is the 121st file, seven cases, and two of them pin rules that go AGAINST a browser default rather than with it: `@page` stays at margin 0, and `tfoot` is forced back to a row group so รวมทั้งหมด cannot reprint at the foot of every page — and "2033 across 119 files" until หนึ่งวัน หนึ่งใบ reached the printed sheet as well as the filing form — `oneRowPerDate` is the 120th file, fifteen cases, and the ones that matter are about the hours the sheet now drops rather than the rows it no longer draws — and "2025" until หน้ารายละเอียด on รายการ OT ของฉัน started drawing the reviewer's three cards — eight new cases in `approverLine`, and NO new file, which is the point of that round: `ReasonCard`, `CapCard` and `SignatureFacts` moved into `components/common.jsx` and both pop-ups read them, so what would have been a second file of assertions about a second copy is two blocks added to the files `description` and `queueCapUsage` already had — and "2006 across 118 files" until the two ลงชื่อ columns on F-HR-027 started printing the names — `formSignatures` is the 119th file, nineteen cases, and most of them are about the rows where a name may NOT be printed — and "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **2000 tests
+across 118 files**, measured 2026-09-03 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "1983 across 117 files" until **บทบาท went from four to seven** — `roles` is the 118th file, seventeen cases, and only the first handful are about the seven themselves: the rest are about the rename underneath them, because the retired `manager` used to BE a role and used to mean หัวหน้างาน. The two that earn the file are the ban on that spelling returning to `app/`, `lib/`, `src/`, `components/` or `legacy/` — with `hrRejectReturnsTo` and `Department.manager` named as the only lines allowed to keep it — and the case that fails if `ROLES` is ever tidied into alphabetical order, which would silently make ผู้ดูแลระบบ the lowest rung because `outranks` reads its answer off that array's index — and "2096 across 122 files" until สวัสดิการวันเกิด went back to being filed by the person whose birthday it is and ฝ่ายบุคคล’s birthday work was withdrawn — the only round in this history where the file count went DOWN: seven files left (absentCallout, birthdayCardUi, birthdayCheck, birthdayDirectApproval, birthdayFileSheet, birthdayQueue, birthdaySelfFiling) and two arrived, `birthdayTick` for the claim the tick makes and `flatDaily` for the eight-hour day — and "2070 across 121 files" until ฝ่ายบุคคล's queue started listing a request from the moment it was filed — `queueStatusColumn` is the 122nd file, twenty-one cases, and only four of them are about the สถานะ column that was asked for: the rest are about what a queue has to stop offering once it holds a row its reader cannot sign, and about the two things the twelfth column pushed out of shape — the sentence that stands in place of a row's buttons, and the ceiling figure that went under them — and "2060 across 120 files" until Ctrl+P on รายงาน OT ฝ่ายบัญชี stopped dropping the last three columns — `screenTablePrint` is the 121st file, seven cases, and two of them pin rules that go AGAINST a browser default rather than with it: `@page` stays at margin 0, and `tfoot` is forced back to a row group so รวมทั้งหมด cannot reprint at the foot of every page — and "2033 across 119 files" until หนึ่งวัน หนึ่งใบ reached the printed sheet as well as the filing form — `oneRowPerDate` is the 120th file, fifteen cases, and the ones that matter are about the hours the sheet now drops rather than the rows it no longer draws — and "2025" until หน้ารายละเอียด on รายการ OT ของฉัน started drawing the reviewer's three cards — eight new cases in `approverLine`, and NO new file, which is the point of that round: `ReasonCard`, `CapCard` and `SignatureFacts` moved into `components/common.jsx` and both pop-ups read them, so what would have been a second file of assertions about a second copy is two blocks added to the files `description` and `queueCapUsage` already had — and "2006 across 118 files" until the two ลงชื่อ columns on F-HR-027 started printing the names — `formSignatures` is the 119th file, nineteen cases, and most of them are about the rows where a name may NOT be printed — and "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -6630,7 +6674,33 @@ that continues onto a second page with the banner and column headings repeated
 Written and complete: engine, models, API, exports, printable form, and the
 four role UIs.
 
+⚠ **บทบาทมีเจ็ด แต่หน้าจอยังมีสี่** ตั้งแต่ 2026-09-03 — `finance`
+`dept_manager` และ `division_manager` เก็บได้ ตั้งได้จาก ทะเบียนพนักงาน และมี
+ชื่อไทยของตัวเองแล้ว แต่**ยังไม่มีสิทธิ์อะไรเลย**: `maySubmitOt` ยังเป็น
+`role === 'employee'` และ `defaultTab` กับตัวสร้างเมนูใน `components/App.jsx`
+ยังรู้จักแค่ `supervisor` `hr` `admin` — บัญชีที่ตั้งเป็นสามบทบาทใหม่วันนี้จะ
+ล็อกอินเข้ามาเจอแท็บว่างเปล่า **จึงยังไม่ควรตั้งให้ใครจนกว่าขั้นที่สองจะลง**
+(กฎลำดับชั้นการอนุมัติ) และไม่มีแถวไหนในฐานข้อมูลนี้ถือสามบทบาทนั้นอยู่
+
 **Verified**
+
+- **บทบาทสี่ → เจ็ด, และ `manager` ถูกปลดระวาง** — 2026-09-03 · `lib/roles.js`
+  เป็นที่เดียวที่เก็บรายชื่อ ชื่อไทย และลำดับขั้น (`outranks` · การเงินกับ
+  หัวหน้างานเป็น**เพื่อนร่วมขั้น** เซ็นให้กันไม่ได้) · โมเดล จอ ทะเบียนพนักงาน และ
+  รายงานการใช้สิทธิ์พิเศษ อ่านจากไฟล์นั้นทั้งสามที่ แทนที่จะถือสำเนาของตัวเอง ·
+  **120 จุดในโค้ดเปลี่ยนชื่อ `manager` → `supervisor`** ใน 48 ไฟล์ เว้นไว้
+  เฉพาะที่ที่คำนั้นไม่ใช่บทบาท (`hrRejectReturnsTo` · `Department.manager`) ซึ่ง
+  `test/roles.test.js` ตรึงไว้ว่าเป็นข้อยกเว้นสองข้อนั้นเท่านั้น ·
+  **`npm run migrate:roles --yes` รันบนฐานข้อมูลจริงแล้ว** — ห้าแถว
+  (`PM-0100` `PM-0101` `PM-0102` `PM-0103` `THT0012`) กลายเป็น
+  `supervisor` · สำรองไว้ก่อนรันที่ `backups/primus_ot-20260903-061810` ·
+  ทดลองเส้นทางเขียนบนฐานข้อมูลชั่วคราวก่อน แล้วรันซ้ำเพื่อยืนยันว่ารันสองครั้งได้ ·
+  **เดินจริงบนแอปที่ build แล้วที่ `:3001` คนละ `distDir`** (`:3000` เสิร์ฟอยู่
+  ตลอดและไม่ถูก build ทับ): `/api/entries` ตอบ 401 ไม่ใช่ 500 — กับดัก
+  re-export ไม่ติด — และด้วยคุกกี้ที่ mint เอง `/api/employees`
+  `/api/entries/approvers` `/api/logs` `/api/entries/queue-summary` ตอบ 200 ทั้งหมด ·
+  `PM-0101` ที่เพิ่งถูก migrate ยังเห็นใบของแผนกตัวเองใบเดียวเหมือนเดิม และยังถูก
+  ระบุชื่อเป็นผู้เซ็นของแผนกนั้น
 
 - **สวัสดิการวันเกิด กลับมาเป็นใบที่พนักงานยื่นเอง + ช่องติ๊ก เหมารายวัน,
   walked on the built app** — 2026-09-03, `:3001` on a scratch `distDir` against
@@ -6689,9 +6759,11 @@ four role UIs.
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **1983/1983 pass in about 3 s**, measured 2026-09-03 across 117
-  files. **The newest are `test/flatDaily.test.js` and `test/birthdayTick.test.js`**
-  — the eight-hour เหมารายวัน day, and the claim the วันเกิด tick makes. (It read
+- `npm test` — **2000/2000 pass in about 3 s**, measured 2026-09-03 across 118
+  files. **The newest is `test/roles.test.js`** — the seven บทบาท, who outranks
+  whom, and the ban that stops the retired `manager` spelling coming back. (It
+  read "1983/1983 … across 117 files. The newest are `test/flatDaily.test.js`
+  and `test/birthdayTick.test.js`" until บทบาท became seven the same day, and
   "2096/2096 … across 122 files. The newest is `test/queueStatusColumn.test.js`"
   until the same day, when ฝ่ายบุคคล’s birthday work was withdrawn and seven
   files went with it, and "2070/2070 … across 121 files.

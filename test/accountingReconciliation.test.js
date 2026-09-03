@@ -74,7 +74,7 @@ test('a manager who worked OT is on the sheet with their hours', () => {
   // §2 says managers do not submit OT, so they are not in the roster query
   // that adds blank lines. If one has an approved entry anyway, the entry is
   // what puts them on the sheet — and it must, or the month is short.
-  const boss = person('m1', 'PM-0001', 'manager');
+  const boss = person('m1', 'PM-0001', 'supervisor');
   const entries = [entry(boss, 16.5)];
 
   const { groups, unaccounted } = groupEntriesByEmployee(entries);
@@ -101,7 +101,7 @@ test('somebody who has left keeps the hours they worked before they left', () =>
 test('the whole month balances with managers, leavers and ordinary staff mixed', () => {
   const entries = [
     entry(person('e1', 'PM-0002'), 12.5),
-    entry(person('m1', 'PM-0001', 'manager'), 16.5),
+    entry(person('m1', 'PM-0001', 'supervisor'), 16.5),
     entry(person('e9', 'PM-0412', 'employee', false), 8),
     entry(person('e1', 'PM-0002'), 3, { ot15: 0, ot3: 3 }),
     entry(person('h1', 'HR-001', 'hr'), 4),

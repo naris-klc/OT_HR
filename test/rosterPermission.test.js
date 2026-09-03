@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { rosterPermission, HR_ASSIGNABLE_ROLES } from '../lib/employees.js';
 
 const EMPLOYEE = { _id: 'emp-1', role: 'employee' };
-const MANAGER = { _id: 'mgr-1', role: 'manager' };
+const MANAGER = { _id: 'mgr-1', role: 'supervisor' };
 const HR = { _id: 'hr-1', role: 'hr' };
 const ADMIN = { _id: 'adm-1', role: 'admin' };
 
@@ -35,7 +35,7 @@ test('ฝ่ายบุคคล may not touch the Admin row at all, with no ro
 
 test('ฝ่ายบุคคล may reset an ordinary account’s password', () => {
   assert.deepEqual(rosterPermission(HR, { target: { role: 'employee' } }), { ok: true });
-  assert.deepEqual(rosterPermission(HR, { target: { role: 'manager' } }), { ok: true });
+  assert.deepEqual(rosterPermission(HR, { target: { role: 'supervisor' } }), { ok: true });
 });
 
 test('ฝ่ายบุคคล may not promote an existing employee to Admin either', () => {

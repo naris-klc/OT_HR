@@ -29,7 +29,7 @@ const POPULATE = [
 /** Role scoping (§2): own / own department / everything. */
 function scopeFor(user) {
   if (user.role === 'employee') return { employee: user._id };
-  if (user.role === 'manager') return { department: user.department?._id };
+  if (user.role === 'supervisor') return { department: user.department?._id };
   return {}; // hr, admin
 }
 
@@ -286,14 +286,14 @@ router.post('/:id/cancel', wrap(async (req, res) => {
 
 // ── approve ─────────────────────────────────────────────────────────────────
 
-router.post('/:id/approve', requireRole('manager', 'hr', 'admin'), wrap(async (req, res) => {
+router.post('/:id/approve', requireRole('supervisor', 'hr', 'admin'), wrap(async (req, res) => {
   const entry = await OtEntry.findById(req.params.id).populate('department');
   if (!entry) return res.status(404).json({ error: 'ไม่พบรายการ' });
 
   const note = req.body?.note;
   const from = entry.status;
 
-  if (req.user.role === 'manager') {
+  if (req.user.role === 'supervisor') {
     if (entry.status !== 'pending_mgr') return res.status(409).json({ error: 'รายการนี้ไม่ได้อยู่ในขั้นรอหัวหน้า' });
     if (String(entry.department._id) !== String(req.user.department?._id)) {
       return res.status(403).json({ error: 'อนุมัติได้เฉพาะรายการในแผนกของตน' });
@@ -318,7 +318,7 @@ router.post('/:id/approve', requireRole('manager', 'hr', 'admin'), wrap(async (r
 
 // ── reject ──────────────────────────────────────────────────────────────────
 
-router.post('/:id/reject', requireRole('manager', 'hr', 'admin'), wrap(async (req, res) => {
+router.post('/:id/reject', requireRole('supervisor', 'hr', 'admin'), wrap(async (req, res) => {
   const entry = await OtEntry.findById(req.params.id).populate('department');
   if (!entry) return res.status(404).json({ error: 'ไม่พบรายการ' });
 
@@ -328,7 +328,7 @@ router.post('/:id/reject', requireRole('manager', 'hr', 'admin'), wrap(async (re
   const policy = await Setting.effectivePolicy();
   const from = entry.status;
 
-  if (req.user.role === 'manager') {
+  if (req.user.role === 'supervisor') {
     if (entry.status !== 'pending_mgr') return res.status(409).json({ error: 'รายการนี้ไม่ได้อยู่ในขั้นรอหัวหน้า' });
     if (String(entry.department._id) !== String(req.user.department?._id)) {
       return res.status(403).json({ error: 'ดำเนินการได้เฉพาะรายการในแผนกของตน' });

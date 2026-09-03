@@ -1,4 +1,5 @@
-import Employee, { ROLES } from '@/src/models/Employee.js';
+import Employee from '@/src/models/Employee.js';
+import { ROLES, isSigner } from '@/lib/roles.js';
 import Department from '@/src/models/Department.js';
 import { COMPANY_KEYS, DEFAULT_COMPANY, companyFromCode } from '@/src/config/companies.js';
 import { route, uploadText, json, fail } from '@/lib/http.js';
@@ -101,7 +102,7 @@ export const POST = route(async (req) => {
      * strength of a signer it simply could not see, and the CSV that did
      * nothing wrong would be the one carrying the warning.
      */
-    const signers = all.filter((p) => p.role === 'manager');
+    const signers = all.filter((p) => isSigner(p.role));
     return [...byDept.entries()]
       .flatMap(([dept, roster]) => unsignedStaff(roster, dept, signers));
   };

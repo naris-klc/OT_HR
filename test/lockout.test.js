@@ -142,7 +142,7 @@ test('resetting somebody ELSE’s password is untouched — that is HR’s job',
 });
 
 test('somebody else’s row is somebody else’s row', () => {
-  assert.deepEqual(selfEditPermission(ADMIN, { target: OTHER, role: 'manager' }), { ok: true });
+  assert.deepEqual(selfEditPermission(ADMIN, { target: OTHER, role: 'supervisor' }), { ok: true });
   assert.deepEqual(selfEditPermission(ADMIN, { target: OTHER, active: false }), { ok: true });
   // Ids compared as strings: one side is an ObjectId and the other is whatever
   // the session put there, and `===` on those two is false for the same person.
@@ -180,7 +180,7 @@ test('the rule counts ACTIVE admins — a deactivated one is not a way back in',
 
 test('editing a row that is not an active admin can never trip it', () => {
   // Cheap and pure, so the routes ask this before spending a count query.
-  assert.equal(dropsAnAdmin(OTHER, { role: 'manager' }), false);
+  assert.equal(dropsAnAdmin(OTHER, { role: 'supervisor' }), false);
   assert.equal(dropsAnAdmin(HR, { active: false }), false);
   assert.equal(dropsAnAdmin({ role: 'admin', active: false }, { role: 'employee' }), false,
     'an already-deactivated admin is not counted, so removing them lowers nothing');
@@ -198,11 +198,18 @@ test('and the rule is a no-op for everybody else, so no query is wasted', () => 
 });
 
 test('why the floor is one ADMIN and not one HR', () => {
-  // ฝ่ายบุคคล may hand out employee and หัวหน้างาน and nothing else, so a system
-  // with HR but no Admin cannot mint an Admin. If this list ever gained 'admin'
-  // the last-admin rule would be redundant — and this assertion is how that
-  // change gets noticed rather than silently making the rule pointless.
-  assert.deepEqual(HR_ASSIGNABLE_ROLES, ['employee', 'manager']);
+  // ฝ่ายบุคคล may hand out พนักงาน and the four บทบาท that sign inside a แผนก,
+  // and nothing else — so a system with HR but no Admin cannot mint an Admin. If
+  // this list ever gained 'admin' the last-admin rule would be redundant, and
+  // this assertion is how that change gets noticed rather than silently making
+  // the rule pointless.
+  //
+  // It read "['employee', 'manager']" until the บทบาท became seven on
+  // 2026-09-03: หัวหน้างาน gained three colleagues who also sign inside a แผนก,
+  // and none of them gained a rank ฝ่ายบุคคล could not already hand out.
+  assert.deepEqual(HR_ASSIGNABLE_ROLES,
+    ['employee', 'supervisor', 'finance', 'dept_manager', 'division_manager']);
+  assert.equal(HR_ASSIGNABLE_ROLES.includes('hr'), false);
   assert.equal(HR_ASSIGNABLE_ROLES.includes('admin'), false);
 });
 

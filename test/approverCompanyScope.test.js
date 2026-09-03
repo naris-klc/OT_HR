@@ -39,15 +39,15 @@ const PROD = 'dept-prod';
 const QC = 'dept-qc';
 
 // ── the two หัวหน้า of one department ───────────────────────────────────────
-const BOTH = { _id: 'mgr-both', name: 'หัวหน้ารวม', role: 'manager', department: PROD };
+const BOTH = { _id: 'mgr-both', name: 'หัวหน้ารวม', role: 'supervisor', department: PROD };
 const PM_ONLY = {
-  _id: 'mgr-pm', name: 'หัวหน้าไพรมัส', role: 'manager', department: PROD, approvesCompany: 'primus',
+  _id: 'mgr-pm', name: 'หัวหน้าไพรมัส', role: 'supervisor', department: PROD, approvesCompany: 'primus',
 };
 const THT_ONLY = {
-  _id: 'mgr-tht', name: 'หัวหน้าเดมเทค', role: 'manager', department: PROD, approvesCompany: 'themtech',
+  _id: 'mgr-tht', name: 'หัวหน้าเดมเทค', role: 'supervisor', department: PROD, approvesCompany: 'themtech',
 };
 const OTHER_DEPT = {
-  _id: 'mgr-qc', name: 'หัวหน้า QC', role: 'manager', department: QC, approvesCompany: 'primus',
+  _id: 'mgr-qc', name: 'หัวหน้า QC', role: 'supervisor', department: QC, approvesCompany: 'primus',
 };
 const HR = { _id: 'hr-1', name: 'ฝ่ายบุคคล', role: 'hr' };
 
@@ -175,8 +175,8 @@ test('every route that narrows a manager by department also narrows by company',
        * check is worth the most.
        */
       const byDept = /user\??\.department|approvalDepartments\(/;
-      const narrows = new RegExp(`role === 'manager'[\\s\\S]{0,200}?(${byDept.source})`).test(src)
-        || new RegExp(`(${byDept.source})[\\s\\S]{0,200}?role === 'manager'`).test(src);
+      const narrows = new RegExp(`role === 'supervisor'[\\s\\S]{0,200}?(${byDept.source})`).test(src)
+        || new RegExp(`(${byDept.source})[\\s\\S]{0,200}?role === 'supervisor'`).test(src);
       if (!narrows) continue;
       if (!/approvesCompany|signsForCompany|isDepartmentManager|resolveScope/.test(src)) {
         offences.push(full.replace(ROOT, '').replace(/\\/g, '/'));
@@ -361,7 +361,7 @@ test('a scoped claim with no roster set throws rather than widening', () => {
 test('an empty claim list is nothing, not everything', () => {
   assert.equal(claimFilter([], null), null);
   // And what scopeFor does with it: a filter that matches no row, never `{}`.
-  assert.deepEqual(scopeFor({ role: 'manager' }, []), { department: null });
+  assert.deepEqual(scopeFor({ role: 'supervisor' }, []), { department: null });
 });
 
 // ── filing on somebody's behalf ─────────────────────────────────────────────

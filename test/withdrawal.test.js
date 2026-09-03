@@ -23,8 +23,8 @@ import { cancelPermission } from '../lib/entries.js';
 // belongs to before deciding whose row it is, and refuses to guess.
 const EMP = { _id: 'e1', name: 'สมชาย', role: 'employee', department: 'd1', company: 'primus' };
 const OTHER = { _id: 'e2', name: 'สมหญิง', role: 'employee', department: 'd1', company: 'primus' };
-const MGR = { _id: 'm1', name: 'หัวหน้าเอ', role: 'manager', department: 'd1' };
-const MGR_OTHER = { _id: 'm2', name: 'หัวหน้าบี', role: 'manager', department: 'd2' };
+const MGR = { _id: 'm1', name: 'หัวหน้าเอ', role: 'supervisor', department: 'd1' };
+const MGR_OTHER = { _id: 'm2', name: 'หัวหน้าบี', role: 'supervisor', department: 'd2' };
 const HR = { _id: 'h1', name: 'ฝ่ายบุคคล', role: 'hr' };
 
 /** An entry the manager has signed — the first case that needs asking. */

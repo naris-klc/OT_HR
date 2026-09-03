@@ -1,4 +1,5 @@
 import OtEntry from '@/src/models/OtEntry.js';
+import { SIGNER_ROLES, isSigner } from '@/lib/roles.js';
 import PolicyVersion from '@/src/models/PolicyVersion.js';
 import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
@@ -16,7 +17,7 @@ export const GET = route(async (req, { params }) => {
   const user = await requireAuth(req);
   const { period } = params;
   if (!PERIOD_RE.test(period)) return fail('ประจำเดือนต้องเป็นรูปแบบ YYYY-MM', 400);
-  if (!['hr', 'admin', 'manager'].includes(user.role)) {
+  if (!['hr', 'admin', ...SIGNER_ROLES].includes(user.role)) {
     return fail('ไม่มีสิทธิ์ใช้งานส่วนนี้', 403);
   }
 
@@ -26,7 +27,7 @@ export const GET = route(async (req, { params }) => {
   // Every department this หัวหน้า signs for, not only their own — the same list
   // `isDepartmentManager` decides each row from. A report narrower than the
   // approve rule hides hours its reader is responsible for.
-  if (user.role === 'manager') filter.department = { $in: approvalDepartments(user) };
+  if (isSigner(user.role)) filter.department = { $in: approvalDepartments(user) };
   else if (q.department) filter.department = q.department;
   // Withdrawn and refused requests are not on any report, whatever the URL asks
   // for — see `reportStatuses`.
@@ -59,7 +60,7 @@ export const GET = route(async (req, { params }) => {
    *
    * ฝ่ายบุคคล and Admin are untouched — they read the whole month either way.
    */
-  const all = user.role === 'manager' && user.approvesCompany
+  const all = isSigner(user.role) && user.approvesCompany
     ? found.filter((e) => signsForCompany(user, companyOf(e.employee)))
     : found;
 

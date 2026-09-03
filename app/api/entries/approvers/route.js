@@ -1,4 +1,5 @@
 import Employee from '@/src/models/Employee.js';
+import { SIGNER_ROLES } from '@/lib/roles.js';
 import ApprovalDelegation from '@/src/models/ApprovalDelegation.js';
 import { route, json } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
@@ -49,7 +50,7 @@ export const GET = route(async (req) => {
    */
   const managers = await Employee.find({
     $or: [{ department: departmentId }, { approvesDepartments: departmentId }],
-    role: 'manager',
+    role: { $in: SIGNER_ROLES },
     active: { $ne: false },
   }).select('code name position role department company approvesCompany approvesDepartments').lean();
 

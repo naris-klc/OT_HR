@@ -49,7 +49,7 @@ test('the gap is computed once, by a function all three places call', () => {
   assert.match(code, /function signingGaps\(departments, people\)/);
   // Every หัวหน้า on the roster is offered to every department, because one
   // ticked into another แผนก is on neither its roster nor its headcount.
-  assert.match(code, /const signers = active\.filter\(\(p\) => p\.role === 'manager'\)/);
+  assert.match(code, /const signers = active\.filter\(\(p\) => isSigner\(p\.role\)\)/);
   assert.match(code, /const stranded = unsignedStaff\(roster, String\(d\._id\), signers\)/);
 
   // The banner, the chip and the tab badge — each asks the same function.

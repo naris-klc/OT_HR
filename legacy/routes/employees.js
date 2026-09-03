@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
-import Employee, { ROLES } from '../../src/models/Employee.js';
+import Employee from '../../src/models/Employee.js';
+import { ROLES } from '../../lib/roles.js';
 import Department from '../../src/models/Department.js';
 import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { parseCsv, pick, toCsv } from '../../src/lib/csv.js';
@@ -44,7 +45,7 @@ router.use(requireAuth);
 router.get('/', wrap(async (req, res) => {
   const query = {};
   // A manager only ever needs their own 5–6 people (§9).
-  if (req.user.role === 'manager') query.department = req.user.department?._id;
+  if (req.user.role === 'supervisor') query.department = req.user.department?._id;
   else if (req.user.role === 'employee') query._id = req.user._id;
   if (req.query.department && ['hr', 'admin'].includes(req.user.role)) query.department = req.query.department;
   if (!req.query.all) query.active = true;

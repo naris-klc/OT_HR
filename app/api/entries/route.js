@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import OtEntry from '@/src/models/OtEntry.js';
 import Employee from '@/src/models/Employee.js';
+import { SIGNER_ROLES, filesStraightToHr } from '@/lib/roles.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
@@ -122,7 +123,7 @@ export const GET = route(async (req) => {
    */
   const narrowed = unsignedOnly
     ? await (async () => {
-      const managers = await Employee.find({ role: 'manager', active: true })
+      const managers = await Employee.find({ role: { $in: SIGNER_ROLES }, active: true })
         .select('code name role department company approvesCompany approvesDepartments').lean();
       return matched.filter((e) => nobodyCanSign(e, managers, entryCompany(e)));
     })()
@@ -216,8 +217,13 @@ export const POST = route(async (req) => {
     if (!may.ok) return fail(may.error, may.status);
     employee = target;
   } else if (!user.maySubmitOt()) {
-    // §2: managers are not eligible to submit OT for themselves. HR and Admin
-    // are not either — they administer the process rather than take part in it.
+    /**
+     * True for every บทบาท since 2026-09-03, so this refuses nothing today —
+     * see `Employee.maySubmitOt()` for why the predicate is kept anyway. It
+     * used to carry §2, which barred หัวหน้างาน, ฝ่ายบุคคล and ผู้ดูแลระบบ from
+     * filing at all; the ladder in `APPROVED_BY` replaced that bar with an
+     * answer to the question it was avoiding.
+     */
     return fail('ตำแหน่งนี้ไม่สามารถบันทึก OT ได้', 403);
   }
 
@@ -406,11 +412,31 @@ export const POST = route(async (req) => {
    * `ctx.policy` is the same resolved policy the hours were computed under, so
    * the routing answer and the figures come from one reading of the settings.
    */
+  /**
+   * WHO COULD SIGN THE FIRST STEP FOR THIS PERSON — read from the roster, so
+   * that a แผนก with nobody on the rungs above them files to ฝ่ายบุคคล instead
+   * of waiting at a step no living person holds.
+   *
+   * The four signer บทบาท and not just หัวหน้างาน: แผนกผลิต1 has 25 people and
+   * its named signer in the หน่วยงาน table is a ผู้จัดการแผนก. `initialStatus`
+   * narrows this list by department, payroll and rung — this query only has to
+   * be a superset of the people it might pick.
+   *
+   * Skipped entirely for the บทบาท that file straight to ฝ่ายบุคคล, because
+   * their answer does not depend on the roster and a query nobody reads is a
+   * query not worth making.
+   */
+  const signers = filesStraightToHr(employee.role) ? null : await Employee
+    .find({ role: { $in: SIGNER_ROLES }, active: true })
+    .select('code name role department company approvesCompany approvesDepartments active')
+    .lean();
+
   const start = initialStatus({
     filer: user,
     employee,
     department: employee.department,
     policy: ctx.policy,
+    signers,
   });
 
   const entry = new OtEntry({

@@ -1,4 +1,5 @@
 import Employee from '@/src/models/Employee.js';
+import { SIGNER_ROLES, filesStraightToHr } from '@/lib/roles.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, checkCap, loadContext } from '@/src/services/otService.js';
@@ -19,7 +20,13 @@ export const POST = route(async (req) => {
   // The preview is what the employee sees while filling the form in, and a
   // birthday moves the hours between columns — a preview computed without the
   // person it is for would disagree with what submitting the same form saves.
-  const employeeId = user.role === 'employee' ? user._id : payload.employeeId;
+  // ONE’S OWN BY DEFAULT, whatever the บทบาท — it read
+  // `user.role === 'employee' ? user._id : payload.employeeId` while พนักงาน
+  // were the only people who could file. Every บทบาท files its own OT since
+  // 2026-09-03, and under the old line a หัวหน้างาน previewing their own form
+  // got `routing: null` and no cap: the two things the form prints back.
+  // Naming somebody else is still the proxy case, and still checked below.
+  const employeeId = payload.employeeId || user._id;
   const employee = employeeId
     ? await Employee.findById(employeeId).populate('department')
     : null;
@@ -69,12 +76,25 @@ export const POST = route(async (req) => {
    * reads twice. Same pure rule the write path uses, over the same resolved
    * policy, so the two cannot drift.
    */
+  /**
+   * The same roster read the write path makes, for the same reason and with the
+   * same narrowing left to `initialStatus`. A preview that said รอหัวหน้า over
+   * a แผนก whose request will actually go to ฝ่ายบุคคล would be wrong in the one
+   * sentence the person filing reads twice.
+   */
+  const signers = employee && !filesStraightToHr(employee.role)
+    ? await Employee.find({ role: { $in: SIGNER_ROLES }, active: true })
+      .select('code name role department company approvesCompany approvesDepartments active')
+      .lean()
+    : null;
+
   const routing = employee
     ? initialStatus({
       filer: user,
       employee,
       department: employee.department,
       policy: ctx.policy,
+      signers,
     })
     : null;
 
