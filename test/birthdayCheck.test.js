@@ -657,11 +657,17 @@ test('คิวอนุมัติถามคำถามเดียวก�
 
   // Such a row cannot be ticked into a batch either — a batch of three that
   // fails on one is three presses to work out which.
-  // Both row-level refusals keep a row out of a batch, for the one reason.
-  assert.match(queue, /disabled=\{isOwnFiling\(e, user\) \|\| signedManagerStep\(e, user\)\}/);
+  // Every row-level refusal keeps a row out of a batch, for the one reason.
+  // `signableHere` joined the pair on 2026-09-03, when ฝ่ายบุคคล's queue began
+  // listing the รอหัวหน้า rows as well: those are on the screen to be read, and
+  // the server gives HR nothing at that step either.
   assert.match(
     queue,
-    /const actionable = useMemo\(\s*\(\) => shown\.filter\(\(e\) => !isOwnFiling\(e, user\) && !signedManagerStep\(e, user\)\)/,
+    /disabled=\{!signableHere\(e\)\s*\r?\n\s*\|\| isOwnFiling\(e, user\) \|\| signedManagerStep\(e, user\)\}/,
+  );
+  assert.match(
+    queue,
+    /const actionable = useMemo\(\s*\(\) => shown\.filter\(\s*\(e\) => signableHere\(e\) && !isOwnFiling\(e, user\) && !signedManagerStep\(e, user\),\s*\)/,
   );
   assert.match(queue, /selected\.size === actionable\.length/);
 
@@ -669,7 +675,7 @@ test('คิวอนุมัติถามคำถามเดียวก�
   // drawn at all on such a row — there is no third thing for it to offer, and
   // the ✕ closes the pop-up. See test/detailModalFooter.test.js.
   assert.match(queue, /mine=\{isOwnFiling\(detail, user\)\}/);
-  assert.match(queue, /\) : mine \? null : \(/);
+  assert.match(queue, /\) : \(mine \|\| watching\) \? null : \(/);
 });
 
 // ── the form tells the filer why their birthday looks different ───────────

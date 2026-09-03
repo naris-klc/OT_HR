@@ -45,7 +45,9 @@ test('the approval names the slip for ฝ่ายบุคคล and stays อ�
   // Not `verb`: this pop-up is handed the flag, not the word, because the two
   // roles do not take the same shape here — one names its object and one does
   // not. A template over `verb` cannot say that.
-  has(src, 'function DetailModal({ entry: e, isHr,');
+  // The signature wrapped onto its own line when `watching` joined it on
+  // 2026-09-03; what is pinned is the flag being a PROP, not where the brace is.
+  has(src, 'entry: e, isHr, busy, mine = false, watching = false,');
   has(src, '          isHr={isHr}');
   assert.ok(!code.includes('{verb}'), 'ปุ่มยังประกอบจาก verb — สองบทบาทใช้รูปประโยคต่างกัน');
 });
@@ -81,10 +83,15 @@ test('nothing in the foot merely closes the pop-up', () => {
  *
  * `mine` (the reviewer's own filing) has no answers to offer, so it has no foot
  * at all rather than a bar holding one button that means "go away".
+ *
+ * `watching` is the second of those, from 2026-09-03: ฝ่ายบุคคล's queue lists
+ * the รอหัวหน้า rows now, and a request that has not reached this reader's step
+ * has nothing here for them to answer either. One expression covers both, so a
+ * third case cannot be added to one and forgotten in the other.
  */
 test('the foot is two answers, or it is not drawn', () => {
   has(code, '<button className="btn quiet" onClick={() => setMode(\'view\')}>ย้อนกลับ</button>');
-  has(code, ') : mine ? null : (');
+  has(code, ') : (mine || watching) ? null : (');
   // Both branches lay their pair out the same way.
   assert.equal((code.match(/<div className="foot-split">/g) || []).length, 2,
     'สองสถานะของท้ายกล่องต้องจัดวางแบบเดียวกัน');

@@ -85,7 +85,10 @@ test('รายการรออนุมัติ and รออนุมัต
   // about every sentence written afterwards: two screens under one name is a
   // sentence that cannot say which one it means.
   assert.match(builder, /key: 'approve', label: 'รายการรออนุมัติ'/);
-  assert.match(builder, /key: 'confirm', label: 'รออนุมัติ OT'/);
+  // The `confirm` entry wrapped onto its own lines on 2026-09-03, when its
+  // badge gained the withdrawal overlap argument. What is pinned is the key
+  // paired with the label, not the two of them sharing a line.
+  assert.match(builder, /key: 'confirm',\s*\r?\n?\s*label: 'รออนุมัติ OT'/);
   assert.ok(at('approve') < at('confirm'), 'the two queue tabs changed places');
 });
 

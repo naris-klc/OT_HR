@@ -333,7 +333,7 @@ test('ตารางในหน้ารายเดือนอ่านจ�
 
 // ── one badge, two tabs ───────────────────────────────────────────────────
 
-test('ตัวเลขบนแถบซ้ายเป็นผลรวมของสองกองเสมอ ทั้งตอนเปิดอยู่และไม่ได้เปิด', () => {
+test('ตัวเลขบนแถบซ้ายเป็นผลรวมของทุกกองเสมอ ทั้งตอนเปิดอยู่และไม่ได้เปิด', () => {
   const app = strip(readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'));
 
   /**
@@ -355,12 +355,35 @@ test('ตัวเลขบนแถบซ้ายเป็นผลรวม�
    * before it and they are there now.
    */
   assert.match(app, /badge: queueBadge\(counts\.pendingMgr\)/);
-  assert.match(app, /badge: queueBadge\(counts\.pendingHr\)/);
+  assert.match(app, /badge: queueBadge\(counts\.pendingHr, counts\.withdrawalOpenPendingHr\)/);
+  /**
+   * THREE PILES SINCE 2026-09-03, and it read "two" until then — คำขอถอนใบ was
+   * a card on both these screens and in nobody's count, so with no ใบ waiting
+   * and no birthday outstanding an open request carried no badge at all.
+   *
+   * `overlap` is the second argument and it is not decoration: an open request
+   * sits on an entry that is `approved` or `pending_hr`, so ฝ่ายบุคคล's
+   * `pending_hr` ones are already inside `counts.pendingHr`. Added whole the
+   * badge would double-count them — and only on the days somebody asks about an
+   * unconfirmed ใบ, which is the kind of wrong that gets explained away. A
+   * หัวหน้า's pile is `pendingMgr`, which no open request can be in, so they
+   * pass nothing.
+   */
   assert.match(
     app,
-    /const queueBadge = \(ownPending\) => ownPending \+ \(counts\.birthdayPending \|\| 0\);/,
-    'badge ต้องเป็นผลรวมของสองกอง ไม่ขึ้นกับแท็บที่เปิดอยู่',
+    /const queueBadge = \(ownPending, overlap = 0\) => ownPending\s*\r?\n\s*\+ \(counts\.birthdayPending \|\| 0\)\s*\r?\n\s*\+ Math\.max\(0, \(counts\.withdrawalOpen \|\| 0\) - overlap\);/,
+    'badge ต้องเป็นผลรวมของทุกกอง ไม่ขึ้นกับแท็บที่เปิดอยู่ และต้องหักส่วนที่นับซ้ำ',
   );
+  // The server hands over both halves, and the overlap is counted with the same
+  // filter the card's own list uses inside the same scope.
+  const summary = readFileSync(join(ROOT, 'app/api/entries/queue-summary/route.js'), 'utf8');
+  assert.match(summary, /OtEntry\.countDocuments\(\{ \.\.\.scope, 'withdrawal\.state': 'requested' \}\)/);
+  assert.match(
+    summary,
+    /OtEntry\.countDocuments\(\{ \.\.\.scope, 'withdrawal\.state': 'requested', status: 'pending_hr' \}\)/,
+  );
+  assert.match(summary, /withdrawalOpen,/);
+  assert.match(summary, /withdrawalOpenPendingHr: withdrawalOpenPending,/);
 
   // AND THE MACHINERY THAT MADE IT FOLLOW THE TAB IS GONE, not left inert.
   // A `queueActive` state that nothing reads is a lie about what drives the

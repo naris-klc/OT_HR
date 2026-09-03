@@ -94,8 +94,14 @@ test('ป้ายเลขส้มขึ้นกับจำนวนงา�
  * became 3 on arrival — and taking it out makes this file's rule the whole
  * rule rather than half of one.
  */
-test('แท็บนับงานค้างครบทั้งสองกอง ไม่ว่าจะเปิดอยู่หรือไม่', () => {
-  has(jsx, 'const queueBadge = (ownPending) => ownPending + (counts.birthdayPending || 0);');
+test('แท็บนับงานค้างครบทุกกอง ไม่ว่าจะเปิดอยู่หรือไม่', () => {
+  // Three piles since 2026-09-03 — คำขอถอนใบ joined the two. What this file
+  // cares about is unchanged and is the reason the assertion is on the SHAPE of
+  // the expression rather than on its terms: there must be no branch on the
+  // open tab anywhere in it.
+  has(jsx, 'const queueBadge = (ownPending, overlap = 0) => ownPending');
+  has(jsx, '+ (counts.birthdayPending || 0)');
+  has(jsx, '+ Math.max(0, (counts.withdrawalOpen || 0) - overlap);');
   assert.ok(!jsx.includes('tab !== key'), 'badge กลับไปแยกกรณีตามแท็บที่เปิดอีกแล้ว');
 });
 

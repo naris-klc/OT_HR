@@ -6634,9 +6634,21 @@ tfoot tr.grand td {
 
 /* ══ approval queue — filter bar, batch bar, row actions ═════════════════ */
 
-/* ── the queue's eleven columns ──────────────────────────────────────────
+/* ── the queue's eleven columns — twelve on ฝ่ายบุคคล's ───────────────────
    Nothing here changes a figure, a colour or a field. It decides only which
    columns may wrap and which may not.
+
+   ELEVEN IS THE หัวหน้า'S TABLE and the number every measurement below is
+   against. ฝ่ายบุคคล's draws สถานะ as well since 2026-09-03 — one more 84px
+   column, its own block further down — because that is the only queue whose
+   rows are at more than one step. Nothing else differs between the two.
+
+   AND THAT COLUMN IS PAID FOR IN SIDEWAYS SCROLL, said out loud because it is
+   the trade this block was already making and the new column deepens it: the
+   card measures 1178px on a 1920 screen, so the eleven columns were 84px over
+   before and the twelve are 168. What scrolls under the pinned action column is
+   `why-col` — the description — which is the one thing in the row that is also
+   printed in full inside the รายละเอียด pop-up.
 
    The queue is the widest table in the system and it lives in a card that is
    rarely wider than about 1100px. Left to `table-layout: auto` every column was
@@ -6694,6 +6706,32 @@ th.span-col { width: 108px; }
    at every width, so the figure stays whole and the rows stay level. */
 th.cap-col { width: 224px; }
 
+/* ── AND ON THE QUEUE IT READS FROM THE LEFT, WHICH IS A BUG FIX ──────────
+   คิวรออนุมัติ is the only screen that gives this cell `num`, so it was the
+   only one right-aligning it; ตรวจสอบประจำเดือน has printed the same two lines
+   from the same function against the LEFT edge all along. That was already one
+   figure set two ways across two screens read in one sitting — the exact
+   complaint the heading itself was renamed to settle.
+
+   IT IS ALSO WHAT PUTS THE CEILING BACK ON SCREEN. The action column is pinned
+   to the right of `.table-wrap` and paints over whatever the table overflows
+   by: measured in the built app at 1920 on 2026-09-03, the card is 1178 and
+   every column except `why-col` comes to 1196, so the pinned buttons cover the
+   last 18px of the table's flow — which, right-aligned, is exactly where
+   `0 / 40` and the last letter of the heading sat. `สะสม / เพดา|น` and `0 / 4|0`
+   were both cut, and the twelfth column is what pushed them under.
+
+   LEFT-ALIGNED, THE FIGURE IS 200px CLEAR OF THAT EDGE and stays readable at
+   every width the table is used at, instead of at none of them. What still
+   slides under the buttons is the tail of the qualifying sentence and the
+   description beside it — prose, both of which the รายละเอียด pop-up prints in
+   full. `num` is kept, so the figures are still mono and still tabular; only
+   which edge they hang from has changed.
+
+   Scoped to `.queue-table`: `.deptset-table td.cap-col` is an input box on
+   แก้ไขแผนก and `.hr-table`'s is already left. */
+.queue-table th.cap-col, .queue-table td.cap-col { text-align: left; }
+
 /* ── the rate columns, on every table that has them ──────────────────────
    Six tables on four screens carry ×1.5 ปกติ · ×1.5 วันหยุด · ×3, and these
    rules are deliberately NOT scoped to the queue: the three columns are the
@@ -6740,6 +6778,35 @@ td.rate-col { white-space: nowrap; }
    both are later in the file than this. */
 th.rate-col, td.rate-col,
 th.total-col, td.total-col { text-align: center; }
+
+/* ── สถานะ, and only on ฝ่ายบุคคล's queue ────────────────────────────────────
+   Added 2026-09-03 with the รอหัวหน้า rows: that screen lists two statuses now
+   and a chip is what tells them apart. A หัวหน้า's queue does not draw the cell
+   at all (see ApprovalQueue.jsx), so its table is the same eleven columns and
+   the same 1262px it always was — which is why nothing here touches
+   `.queue-table`'s `min-width`. With `table-layout: fixed` and every column
+   given a width, a twelfth simply makes HR's table 1358 and scrolls; the
+   action column stays pinned to the right through it.
+
+   84px, AND THE 8px GUTTERS ARE HALF OF WHERE IT COMES FROM. Measured in the
+   built app at 1920 on 2026-09-03: the widest chip is `รอหัวหน้า` at 66.1px in
+   `.chip`'s 11.5px semibold (`รอ HR` is 51.8), and the heading `สถานะ` is 38.6
+   in the `th` face with its letter-spacing. Neither may wrap — a status broken
+   across two lines stops reading as one label — so the column is the larger of
+   the two plus its gutters: 66 + 16 = 82, rounded to the 4px the rest of this
+   block is measured on.
+
+   The gutters are 8px rather than `td`'s 12 for the same reason `.rate-col`
+   takes 8: this cell holds ONE object with padding of its own, and the column's
+   12px would be a third margin around a pill that is already a pill. It buys
+   back 12px of the sideways scroll this column costs, on a table whose last
+   prose column is the one that pays for it. */
+th.status-col { width: 84px; }
+th.status-col, td.status-col { padding-left: 8px; padding-right: 8px; }
+/* The chip is an inline-block with its own padding; the cell adds nothing but
+   the column's own gutters, and the row's height is set by the cells either
+   side of it. */
+td.status-col { white-space: nowrap; }
 
 /* ×3 IS a holiday rate — it is holiday hours outside 08:00–17:00 — so it takes
    the same second line as ×1.5 วันหยุด, and all three headings are two lines
@@ -6898,8 +6965,26 @@ tbody tr.picked:hover { background: var(--green-bg); }
 /* "คุณเป็นผู้บันทึกรายการนี้…" — the sentence that stands where a row's two
    buttons would be. Held to the width of the action column so it wraps into
    the column rather than widening the table; the card layout below 860px lets
-   it out again. */
+   it out again.
+
+   …AND IT HAD NOT WRAPPED SINCE `.row-actions` WENT `nowrap`, which is a rule
+   about the three BUTTONS: 58 + 73 + 91 with two 6px gaps is exactly the 234
+   the column leaves, and a label breaking mid-word there is a control that
+   reads as broken. A sentence inherits it too, so the `max-width` above was
+   capping a box whose content could not fold into it: the note ran straight
+   out of the cell and pushed รายละเอียด off the right edge of the table.
+
+   Rare enough to go unnoticed until now — it took a row the reviewer had filed
+   themselves. On 2026-09-03 ฝ่ายบุคคล's queue began listing the รอหัวหน้า
+   rows, each of which carries a sentence in place of its two decisions, and it
+   was five rows out of nine.
+
+   `:has(> .own-note)` rather than loosening `.row-actions` for everybody: this
+   is the cell in its sentence state, and the button row's geometry is
+   untouched. The note takes a line of its own and the one button that still
+   works sits under it. */
 .own-note { max-width: 190px; }
+.row-actions:has(> .own-note) { flex-wrap: wrap; white-space: normal; }
 
 /* "✓ เลือกไว้แล้ว · ใช้แถบด้านล่าง" — what stands where a ticked row's two
    buttons were.
@@ -9364,6 +9449,33 @@ table.mini tbody tr:hover { background: none; }
     padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--card);
   }
+  /* ── AND A ROW FOR สถานะ, ON THE QUEUE THAT DRAWS THE CELL ────────────────
+     ฝ่ายบุคคล's rows carry a twelfth cell since 2026-09-03; a หัวหน้า's do not,
+     and their card must not pay a grid row and a 4px gap for an area with
+     nothing in it. `:has(> td.status-col)` asks the row itself rather than
+     adding a class the component would have to remember to set — the same
+     move `.card-head:has(> .row .btn)` makes for the same reason.
+
+     BETWEEN THE TIME AND THE CEILING, which is where the reading turns. The two
+     rows above it are the request — who, when, how long — and everything below
+     is what to make of it. The chip is the first thing on that side of the
+     line, and on this layout it is also the answer to why the card may have no
+     buttons at the bottom.
+
+     Not beside the hours badge in the first row: that row is the name against
+     the figure, the two things a card is picked out of a list by, and a third
+     object in it makes the name shrink on a 360px screen. */
+  .queue-table tr:has(> td.status-col) {
+    grid-template-areas:
+      "check who  who  total"
+      "check when span span"
+      "stat  stat stat stat"
+      "cap   cap  cap  cap"
+      "why   why  why  why"
+      "act   act  act  act";
+  }
+  .queue-table td.status-col { grid-area: stat; margin-top: 6px; }
+
   /* Ticked, said with the border as well as the fill — a wash alone is hard to
      read against a phone's own brightness in a workshop. */
   .queue-table tbody tr.picked { border-color: var(--green); background: var(--green-tint); }

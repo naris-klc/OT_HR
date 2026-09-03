@@ -74,15 +74,40 @@ test('ไม่มี <select> เหลืออยู่บนหน้า ร
   assert.ok(!/<select\b/.test(queueCode), 'ApprovalQueue ยังมี <select> อยู่ — เมนูของ OS จะกลับมา');
 });
 
-test('ทั้ง แผนก และ เดือน ใช้ PickOne ตัวเดียวกัน', () => {
+test('ทั้ง สถานะ แผนก และ เดือน ใช้ PickOne ตัวเดียวกัน', () => {
   // Including the month box, which is the half of the request that is easy to
   // leave behind: it is the one HR opens most and it is a second control, not a
   // second kind of control.
+  //
+  // สถานะ is the third, added 2026-09-03 with the รอหัวหน้า rows. It is on this
+  // list rather than in a file of its own because the whole point of the round
+  // that put `PickOne` here was that a filter bar has ONE kind of dropdown on
+  // it: a third control drawn any other way is the OS menu back on one field.
   assert.match(common, /export function PickOne\(/);
   assert.match(queue, /import \{[\s\S]*?\bPickOne\b[\s\S]*?\} from '\.\/common\.jsx'/);
+  assert.match(queue, /<PickOne\s+label="สถานะ"[\s\S]*?allLabel="ทุกสถานะ"/);
   assert.match(queue, /<PickOne\s+label="แผนก"[\s\S]*?allLabel="ทุกแผนก"/);
   assert.match(queue, /<PickOne\s+label="เดือน"[\s\S]*?allLabel="ทุกเดือน"/);
-  assert.equal((queue.match(/<PickOne\b/g) || []).length, 2);
+  assert.equal((queue.match(/<PickOne\b/g) || []).length, 3);
+});
+
+/**
+ * AND สถานะ IS FIRST — between ค้นหา and แผนก, which is where it was asked for.
+ *
+ * The order of a filter bar is the order the filters narrow, and this one reads
+ * as a sentence: which step of the flow, then whose department, then which
+ * month. Pinned as source ORDER rather than as a rendered position, for the
+ * reason every other assertion in this file is source: there is no DOM here.
+ */
+test('สถานะ อยู่ระหว่างช่องค้นหากับ แผนก', () => {
+  const search = queueCode.indexOf('placeholder="ชื่อพนักงาน');
+  const status = queueCode.indexOf('label="สถานะ"');
+  const dept = queueCode.indexOf('label="แผนก"');
+  const month = queueCode.indexOf('label="เดือน"');
+  assert.ok(search > 0 && status > 0 && dept > 0 && month > 0, 'ตัวกรองหายไปหนึ่งตัว');
+  assert.ok(search < status, 'สถานะ ต้องอยู่หลังช่องค้นหา');
+  assert.ok(status < dept, 'สถานะ ต้องอยู่ก่อน แผนก');
+  assert.ok(dept < month, 'แผนก ต้องอยู่ก่อน เดือน');
 });
 
 // ── it is the panel HR already knows, not a fourth one ──────────────────────

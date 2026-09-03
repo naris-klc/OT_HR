@@ -11,7 +11,9 @@ import { loadBirthdayQueue } from '@/lib/birthdayQueueQuery.js';
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
   const { scope, delegated: coveredScope, covered } = await resolveScope(user);
-  const [pendingMgr, pendingHr, delegated, birthday] = await Promise.all([
+  const [
+    pendingMgr, pendingHr, delegated, birthday, withdrawalOpen, withdrawalOpenPending,
+  ] = await Promise.all([
     OtEntry.countDocuments({ ...scope, status: 'pending_mgr' }),
     OtEntry.countDocuments({ ...scope, status: 'pending_hr' }),
     /**
@@ -42,6 +44,39 @@ export const GET = route(async (req) => {
     loadBirthdayQueue(user, { countOnly: true })
       .then((q) => q.needsEntry.length)
       .catch(() => 0),
+    /**
+     * ── คำขอถอนใบที่อนุมัติแล้ว — THE THIRD PILE ON THAT SCREEN ──────────────
+     *
+     * The card at the top of รออนุมัติ OT (and of รายการรออนุมัติ). It was on
+     * the screen and in nobody's count until 2026-09-03: with no ใบ waiting and
+     * no birthday outstanding, an employee could ask for an approved entry to be
+     * withdrawn and the nav would show no badge at all. Nothing anywhere said to
+     * go and look.
+     *
+     * THE SAME FILTER THE CARD'S OWN LIST USES — `withdrawal=open` on
+     * app/api/entries, which is `withdrawal.state: 'requested'` inside the
+     * caller's ordinary scope. Written out again here rather than shared,
+     * because it is two words; what must not drift is the SCOPE, and both read
+     * `resolveScope`'s `scope`.
+     */
+    OtEntry.countDocuments({ ...scope, 'withdrawal.state': 'requested' }),
+    /**
+     * …AND HOW MANY OF THOSE `pendingHr` HAS ALREADY COUNTED.
+     *
+     * A request can be asked from the first signature onwards, so an open one
+     * sits on an entry that is either `approved` or `pending_hr`
+     * (`OPEN_STATUSES` in lib/withdrawal.js). The `pending_hr` ones are inside
+     * the `pendingHr` figure above — the same entry, waiting for the same
+     * person, on the same screen — so a badge that added the two piles whole
+     * would count them twice, and would do it only sometimes, which is worse
+     * than doing it always.
+     *
+     * Subtracted by the CLIENT rather than folded in here, because the answer
+     * depends on which pile that reader's badge is built on: a หัวหน้า's is
+     * `pendingMgr`, which no open request can ever be in, so for them there is
+     * nothing to subtract. See `queueBadge` in components/App.jsx.
+     */
+    OtEntry.countDocuments({ ...scope, 'withdrawal.state': 'requested', status: 'pending_hr' }),
   ]);
 
   /**
@@ -94,6 +129,16 @@ export const GET = route(async (req) => {
      * apart, because they are two different jobs.
      */
     birthdayPending: birthday,
+    /**
+     * คำขอถอนใบ — every open one in scope, which is what the card at the top of
+     * the screen lists, and how many of them `pendingHr` is already counting.
+     *
+     * Both, rather than one pre-subtracted number, so the caller can take the
+     * overlap off the pile their own badge is built on — see the note beside
+     * the queries and `queueBadge` in components/App.jsx.
+     */
+    withdrawalOpen,
+    withdrawalOpenPendingHr: withdrawalOpenPending,
     /**
      * How many teams are being covered — which is what decides whether the
      * screen exists, not the count above it. A covered queue that happens to be

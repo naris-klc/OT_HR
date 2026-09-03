@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, periodLabel, BUCKETS, BUCKET_LABEL,
+  STATUS,
 } from '@/lib/api.js';
 import {
   capPair, describeBreaches, overCapLine,
@@ -27,6 +28,30 @@ import OtForm from './OtForm.jsx';
 import { useToast } from './Toast.jsx';
 
 /**
+ * ── WHAT ฝ่ายบุคคล'S QUEUE LISTS, AND IT IS MORE THAN WHAT THEY SIGN ─────────
+ *
+ * Asked for on 2026-09-03: HR wanted to see a request FROM THE MOMENT AN
+ * EMPLOYEE FILES IT — while it is still waiting on a หัวหน้า — rather than only
+ * once it had reached them. Somebody rings up asking where their overtime went,
+ * and the only screen that could answer was ตรวจสอบประจำเดือน, which is a
+ * report of a month and not a picture of what is in flight.
+ *
+ * IN FLOW ORDER, and the order is what the dropdown is built from. `รอหัวหน้า`
+ * comes before `รอ HR` because that is the direction a request travels, and a
+ * status filter sorted alphabetically would put the second step first — the one
+ * arrangement of two rows that has to be read to be understood.
+ *
+ * THE ROWS ARE NOT THE SAME KIND OF ROW, and that is the whole of the care this
+ * change needs. A `pending_mgr` row on this screen is being WATCHED, not
+ * decided: `approvalPermission` gives ฝ่ายบุคคล nothing at that step (only
+ * ผู้ดูแลระบบ may override it, with a reason, and from their own tab), so every
+ * button that would 403 is withheld and the tick-box is refused — see
+ * `signableHere`. The หัวหน้า's own queue is unaffected: `stage` is
+ * `pending_mgr` there and this list collapses to it.
+ */
+const HR_QUEUE_STATUSES = Object.freeze(['pending_mgr', 'pending_hr']);
+
+/**
  * Manager review (daily) and HR confirmation (monthly) are the same table with
  * a different queue behind it (§2), so they share this component.
  *
@@ -45,6 +70,25 @@ export default function ApprovalQueue({
 }) {
   const isHr = stage === 'pending_hr';
   const verb = isHr ? 'ยืนยัน' : 'อนุมัติ';
+  /**
+   * WHICH STATUSES THIS SCREEN ASKS THE SERVER FOR — one place, read by the
+   * fetch, by the สถานะ dropdown and by the empty states.
+   *
+   * `isHr` is enough to decide it and no second flag is needed: the two other
+   * modes this component runs in (`delegatedOnly`, `unsignedOnly`) are both
+   * `pending_mgr` queues, so `stage` is already the whole of their list.
+   */
+  const listed = isHr ? HR_QUEUE_STATUSES : [stage];
+  /**
+   * Is this a row THIS queue signs, or one it is only showing?
+   *
+   * The second kind exists on ฝ่ายบุคคล's screen alone, and every place a
+   * decision could be offered asks this first — the tick-box, `actionable`, and
+   * the row's action cell. Written against `stage` rather than against
+   * `'pending_mgr'` so it stays true of every queue: on a หัวหน้า's, `listed`
+   * holds nothing else and this is true of every row.
+   */
+  const signableHere = (e) => e?.status === stage;
   /**
    * ใบที่ไม่มีหัวหน้าเซ็นได้ — every row here is one an administrator is signing
    * IN PLACE OF a หัวหน้า who does not exist, so every decision on this screen
@@ -88,6 +132,16 @@ export default function ApprovalQueue({
   const [q, setQ] = useState('');
   const [dept, setDept] = useState('');
   const [per, setPer] = useState('');
+  /**
+   * สถานะ — ฝ่ายบุคคล only, and only because their list has two of them in it.
+   *
+   * Every other queue on this component asks the server for one status and gets
+   * one back, so a filter there would be a control with a single option that
+   * can never change what is on screen. `listed` below is the one place that
+   * decides which, and this dropdown is drawn off the rows that arrived rather
+   * than off a constant — a status with nothing waiting in it is not offered.
+   */
+  const [st, setSt] = useState('');
   /*
    * THE FILTERS DO NOT FOLD. They were briefly put behind a กรองข้อมูล button
    * on phones, to buy back the two thirds of a 375px screen the three stacked
@@ -176,12 +230,15 @@ export default function ApprovalQueue({
       // this stage that NOBODY on the roster covers. See app/api/entries.
       const scope = delegatedOnly ? '&scope=delegated' : (unsignedOnly ? '&scope=unsigned' : '');
       const res = await api.get(
-        `/entries?status=${stage}&usage=cap${scope}`
+        `/entries?status=${listed.join(',')}&usage=cap${scope}`
         + `${limit ? `&limit=${limit}` : ''}`,
       );
       setEntries(res.entries);
       setCut(res.truncated ? { shown: res.entries.length, total: res.total } : null);
-      if (res.entries.length) everHadRows.current = true;
+      // The reader's OWN pile, not the row count: "you just cleared it" is
+      // about signatures given, and on ฝ่ายบุคคล's queue the list can be full
+      // of รอหัวหน้า rows that were never theirs to clear.
+      if (res.entries.some(signableHere)) everHadRows.current = true;
       return res.entries;
     } catch (err) { setError(err.message); return null; }
   }
@@ -190,6 +247,10 @@ export default function ApprovalQueue({
     setEntries(null);
     setSelected(new Set());
     setAsked(null);
+    // The สถานะ filter is drawn from the rows in hand, and the rows are about to
+    // be replaced — a queue arriving with `st` still set to a status that is not
+    // in it shows an empty table under a filter nothing offered.
+    setSt('');
     everHadRows.current = false;
     // Passed rather than read off `asked`: the reset above lands on the next
     // render, so the closure here would still be holding the old queue's.
@@ -206,14 +267,36 @@ export default function ApprovalQueue({
     e.period, periodLabel(e.period),
   ]), [entries]);
 
+  /**
+   * NOT `optionsBy`, and the difference is the ORDER.
+   *
+   * That helper sorts its rows by label, which is right for แผนก and for เดือน
+   * — a list somebody scans for a name they already have in mind. These two are
+   * a sequence: a request is at รอหัวหน้า and then at รอ HR, and sorted by
+   * their Thai labels they come out the other way round. So the flow decides
+   * the order and the rows decide which of the two are offered — a status with
+   * nothing waiting in it is not a filter anybody needs.
+   *
+   * The labels are `STATUS`'s, the same words the chip in the row prints, so
+   * the dropdown and the column can never be two names for one state.
+   */
+  const statuses = useMemo(() => {
+    const seen = new Map();
+    for (const e of entries || []) seen.set(e.status, (seen.get(e.status) || 0) + 1);
+    return listed
+      .filter((s) => seen.has(s))
+      .map((s) => ({ value: s, label: STATUS[s]?.label || s, count: seen.get(s) }));
+  }, [entries, isHr, stage]);
+
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return (entries || []).filter((e) => (
       (!dept || String(e.department?._id) === dept)
       && (!per || e.period === per)
+      && (!st || e.status === st)
       && (!needle || haystack(e).includes(needle))
     ));
-  }, [entries, q, dept, per]);
+  }, [entries, q, dept, per, st]);
 
   /** How much of this queue is somebody else's team. */
   const coveredCount = useMemo(
@@ -240,7 +323,7 @@ export default function ApprovalQueue({
   /**
    * The rows this reviewer can actually decide.
    *
-   * TWO EXCLUSIONS, and they are the same kind of thing: a row no button of
+   * THREE EXCLUSIONS, and they are the same kind of thing: a row no button of
    * theirs can move.
    *
    *   · the ones they FILED themselves (`isOwnFiling`);
@@ -249,13 +332,20 @@ export default function ApprovalQueue({
    *     this is where that is made to mean two people. Only ever true on รอ HR
    *     ยืนยัน, and only for somebody who reached the first step through a
    *     delegation or through the administrator's override.
+   *   · the ones that have not REACHED this step yet (`signableHere`), added
+   *     2026-09-03 with the รอหัวหน้า rows. `approvalPermission` hands
+   *     ฝ่ายบุคคล nothing at the หัวหน้า step, so a ticked `pending_mgr` row is
+   *     a 403 waiting to be pressed — and inside a batch it is a 403 that takes
+   *     the reviewer three presses to attribute to a row.
    *
    * เลือกทั้งหมด and the tick-box state are both counted against this rather than
    * against `shown`, so a batch cannot be built out of rows that will 403.
    */
   const actionable = useMemo(
-    () => shown.filter((e) => !isOwnFiling(e, user) && !signedManagerStep(e, user)),
-    [shown, user],
+    () => shown.filter(
+      (e) => signableHere(e) && !isOwnFiling(e, user) && !signedManagerStep(e, user),
+    ),
+    [shown, user, stage],
   );
 
   useEffect(() => {
@@ -282,14 +372,39 @@ export default function ApprovalQueue({
   const pickedHours = picked.reduce((n, e) => n + (e.totals?.otHours || 0), 0);
   const filtered = entries && shown.length !== entries.length;
   /**
-   * "12 รายการ", or "3 / 12 รายการ" while a filter is narrowing the list. Held
-   * here rather than written out at each of the two places that print it — the
-   * heading on a phone and the chip on a desktop — so that a screen cannot end
-   * up quoting two different numbers for one queue.
+   * ── THE TWO PILES, COUNTED APART ──────────────────────────────────────────
+   *
+   * `mine` is what this queue is FOR — the rows waiting on the reader's own
+   * signature — and `watching` is the rest, which since 2026-09-03 is the
+   * รอหัวหน้า rows ฝ่ายบุคคล asked to be able to see. On every other queue
+   * `watching` is empty and nothing below changes by a character.
+   *
+   * THEY ARE NOT ADDED TOGETHER, and that is the point. `counts.pendingHr`
+   * drives the nav badge and the ใบรอยืนยัน chip two centimetres above this
+   * head, and both count signatures owed. A heading that answered 7 where those
+   * say 4 is the 2026-08-28 report again — one question answered two ways
+   * within one screen — so the first figure stays the one they are quoting and
+   * the second is named rather than folded into it.
    */
-  const countLabel = entries?.length > 0
-    ? `${filtered ? `${shown.length} / ${entries.length}` : entries.length} รายการ`
-    : null;
+  const mine = (entries || []).filter(signableHere);
+  const mineShown = shown.filter(signableHere);
+  const watching = (entries || []).length - mine.length;
+  const watchingShown = shown.length - mineShown.length;
+  /**
+   * "12 รายการ", or "3 / 12 รายการ" while a filter is narrowing the list, with
+   * "· รอหัวหน้า 3" after it where there is a second pile. Held here rather
+   * than written out at each of the two places that print it — the heading on a
+   * phone and the chip on a desktop — so that a screen cannot end up quoting
+   * two different numbers for one queue.
+   */
+  const countLabel = [
+    mine.length > 0
+      ? `${filtered ? `${mineShown.length} / ${mine.length}` : mine.length} รายการ`
+      : null,
+    watching > 0
+      ? `รอหัวหน้า ${filtered ? `${watchingShown} / ${watching}` : watching}`
+      : null,
+  ].filter(Boolean).join(' · ') || null;
 
   function toggle(id) {
     setSelected((prev) => {
@@ -620,7 +735,29 @@ export default function ApprovalQueue({
             because an `<option>` can hold nothing else; it is two spans now,
             with the figure in mono against the right edge where the counts line
             up into a column.
+
+            THERE ARE THREE OF THEM SINCE 2026-09-03, and สถานะ is FIRST —
+            between ค้นหา and แผนก, where it was asked to be. It reads in the
+            order the filters narrow: which step of the flow, then whose
+            department, then which month. It is ฝ่ายบุคคล's alone, on the same
+            `isHr` test แผนก uses and for the same kind of reason: a หัวหน้า's
+            queue holds one status by construction, and a dropdown that cannot
+            change the screen is furniture on a toolbar three fields wide.
+
+            DRAWN EVEN WHEN THE QUEUE HAPPENS TO HOLD ONE STATUS TODAY. It is a
+            control on a toolbar, not a notice: one that came and went as the
+            last รอหัวหน้า row was signed would move แผนก and เดือน sideways
+            underneath somebody mid-filter.
           */}
+          {isHr && (
+            <PickOne
+              label="สถานะ"
+              value={st}
+              onChange={setSt}
+              options={statuses}
+              allLabel="ทุกสถานะ"
+            />
+          )}
           {isHr && (
             <PickOne
               label="แผนก"
@@ -637,11 +774,11 @@ export default function ApprovalQueue({
             options={periods}
             allLabel="ทุกเดือน"
           />
-          {(q || dept || per) && (
+          {(q || dept || per || st) && (
             <button
               type="button"
               className="btn ghost sm"
-              onClick={() => { setQ(''); setDept(''); setPer(''); }}
+              onClick={() => { setQ(''); setDept(''); setPer(''); setSt(''); }}
             >
               ล้างตัวกรอง
             </button>
@@ -816,6 +953,29 @@ export default function ApprovalQueue({
 
       {error && <div style={{ padding: '0 18px' }}><Alert kind="error">{error}</Alert></div>}
 
+      {/*
+        ── "YOU JUST CLEARED IT", ON A SCREEN THAT STILL HAS ROWS ON IT ───────
+
+        `QueueCleared` below draws the ✓ panel when the LIST is empty, and until
+        2026-09-03 that was the same thing as the reader's pile being empty. It
+        is not any more: ฝ่ายบุคคล can sign the last ใบ waiting on them and be
+        left looking at a table full of รอหัวหน้า rows, with no ✓ anywhere and
+        the ใบรอยืนยัน chip above quietly reading 0.
+
+        So the moment is said here instead, as a line over the table rather than
+        in place of it, and the rows that are left are named — they are the
+        answer to "then why is this screen still full".
+      */}
+      {entries?.length > 0 && mine.length === 0 && everHadRows.current && (
+        <div style={{ padding: '0 18px' }}>
+          <Alert kind="ok">
+            <strong>ยืนยันครบทุกใบที่ถึงคิวแล้ว</strong>
+            {' — '}ที่เหลือ {watching} ใบยังรอหัวหน้าแผนกอนุมัติ
+            {' '}และจะเข้าคิวนี้เองเมื่อเซ็นแล้ว
+          </Alert>
+        </div>
+      )}
+
       {/* ── table ──────────────────────────────────────────────────────────── */}
       {!entries ? (
         <Empty>กำลังโหลด…</Empty>
@@ -854,6 +1014,22 @@ export default function ApprovalQueue({
                 <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
                 <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>
                 <th className="num rate-col total-col"><RateHead rate="รวม" /></th>
+                {/* RIGHT AFTER รวม, WHERE IT WAS ASKED TO BE — 2026-09-03.
+                    The four columns to its left are the arithmetic and the two
+                    to its right are the judgement (how much of a ceiling is
+                    spent, what the work was); "which step is this on" sits on
+                    the seam between them, and it is the last thing read before
+                    the buttons at the end of the row.
+
+                    ฝ่ายบุคคล'S QUEUE ONLY, on the same `isHr` test the แผนก
+                    column's filter uses. A หัวหน้า's list is one status by
+                    construction — every row on it is waiting on the person
+                    reading it — so the column would be the same amber chip
+                    forty times, and it is not free: the table is `fixed` and
+                    already 1262px against a card measured at 1178 on a 1920
+                    screen, so a twelfth column is 84px more sideways scrolling
+                    bought for a word the page title has already said. */}
+                {isHr && <th className="status-col">สถานะ</th>}
                 {/* THE SAME HEADING ตรวจสอบรายเดือน USES, over the same cell.
                     The two screens had already been made to print the same two
                     lines about the same hours (see CapUsage) and then named the
@@ -880,7 +1056,8 @@ export default function ApprovalQueue({
                     <input
                       type="checkbox"
                       checked={selected.has(e._id)}
-                      disabled={isOwnFiling(e, user) || signedManagerStep(e, user)}
+                      disabled={!signableHere(e)
+                        || isOwnFiling(e, user) || signedManagerStep(e, user)}
                       onChange={() => toggle(e._id)}
                       aria-label={`เลือกรายการของ ${e.employee?.name}`}
                     />
@@ -918,6 +1095,23 @@ export default function ApprovalQueue({
                       pop-up and this is the only figure left on the card — it
                       is the class that tells them apart. */}
                   <td className="num rate-col total-col"><strong>{hours(e.totals?.otHours)}</strong></td>
+                  {/* THE SAME CHIP THE REST OF THE APP DRAWS FOR A STATUS —
+                      `StatusChip`, off `STATUS` in lib/api.js, which is what
+                      the employee's own history and the รายละเอียด pop-up
+                      already print. A second vocabulary for five states is how
+                      one screen comes to call a request รอหัวหน้า while another
+                      calls it ยังไม่อนุมัติ.
+
+                      THE CHIP AND NOTHING UNDER IT. A second line saying "there
+                      is nothing to press here yet" was drafted and taken out
+                      again: the action cell at the end of the same row already
+                      says it in a whole sentence, and on the card layout the
+                      two would sit a centimetre apart. The column answers
+                      "where is this ใบ"; what that means for the reader belongs
+                      where the buttons would have been. */}
+                  {isHr && (
+                    <td className="status-col"><StatusChip status={e.status} /></td>
+                  )}
                   {/* The width now comes from th.cap-col, which the three rate
                       columns pay for — a minWidth here only ever grew the
                       table. */}
@@ -982,7 +1176,35 @@ export default function ApprovalQueue({
                         offering a 409 twice; offering nothing at all would
                         leave a row that simply refuses to do anything with no
                         explanation on it. See `signedManagerStep`. */}
-                    {!isOwnFiling(e, user) && signedManagerStep(e, user) ? (
+                    {/* THE FIRST QUESTION IS WHETHER THE ROW IS HERE TO BE
+                        DECIDED AT ALL — asked before the other two, because
+                        both of those are about WHO is signing and this one is
+                        about WHETHER anything can be signed yet.
+
+                        A รอหัวหน้า row on ฝ่ายบุคคล's queue is here to be
+                        watched: `approvalPermission` gives them nothing at that
+                        step, so ยืนยัน and ไม่อนุมัติ would both be a 403 and
+                        the row gets the sentence saying so instead. รายละเอียด
+                        stays, and it is the point of the row — the whole reason
+                        this list widened was somebody ringing up to ask where
+                        their ใบ had got to. */}
+                    {!signableHere(e) ? (
+                      <div className="row-actions">
+                        {/* SHORT, because the chip in the สถานะ column has
+                            already said รอหัวหน้า and this cell is 190px wide.
+                            What is left for it to say is the thing the chip
+                            does not: why there are no buttons here. The whole
+                            sentence is in the รายละเอียด pop-up, which is one
+                            press away and is where somebody who wants the
+                            detail is going anyway. */}
+                        <span className="cell-sub own-note">
+                          ยังไม่ถึงขั้นยืนยัน{' — '}รอหัวหน้าแผนกเซ็นก่อน
+                        </span>
+                        <button className="btn ghost sm" onClick={() => setDetail(e)}>
+                          รายละเอียด
+                        </button>
+                      </div>
+                    ) : !isOwnFiling(e, user) && signedManagerStep(e, user) ? (
                       <div className="row-actions">
                         <span className="cell-sub own-note">
                           คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว
@@ -1107,6 +1329,8 @@ export default function ApprovalQueue({
           isHr={isHr}
           busy={busy}
           mine={isOwnFiling(detail, user)}
+          // The row's own rule, handed down rather than asked again inside.
+          watching={!signableHere(detail)}
           onClose={() => setDetail(null)}
           /**
            * THE ONE PATH THAT COULD REACH THE SERVER WITHOUT A REASON.
@@ -1489,7 +1713,20 @@ function RejectFields({ value, onChange, many }) {
  * history and the scan comparison at the exact moment they are being explained
  * in writing. The refusal happens here, over the top of the same header.
  */
-function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, onReject, onEntryChanged }) {
+/**
+ * `watching` — this row is on the queue to be READ, not decided.
+ *
+ * True only of the รอหัวหน้า rows ฝ่ายบุคคล's queue started listing on
+ * 2026-09-03. It is the same fact `signableHere` decides in the table, passed
+ * down rather than worked out again here: the pop-up is reached from a row, and
+ * a pop-up that offered ยืนยัน on a row whose own action cell refuses it would
+ * be the second reading of one rule — which is exactly how a screen comes to
+ * offer a button the server answers 403 to.
+ */
+function DetailModal({
+  entry: e, isHr, busy, mine = false, watching = false,
+  onClose, onApprove, onReject, onEntryChanged,
+}) {
   const [mode, setMode] = useState('view'); // 'view' | 'rejecting'
   const [rejectState, setRejectState] = useState({
     reason: '', notify: { employee: true, manager: false },
@@ -1529,6 +1766,10 @@ function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, o
    * `mine` — the reviewer's own filing — has no answers to offer, so it gets no
    * foot at all rather than a bar holding one button that means "go away". The
    * body says why the decisions are not there, and the ✕ closes it.
+   *
+   * `watching` is the second of those, added with the รอหัวหน้า rows: the
+   * request has not reached this reader's step, so there is nothing here to
+   * answer yet. Same treatment, and the body says why for the same reason.
    */
   const footer = mode === 'rejecting' ? (
     <div className="foot-split">
@@ -1545,7 +1786,7 @@ function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, o
         ยืนยันไม่อนุมัติ
       </button>
     </div>
-  ) : mine ? null : (
+  ) : (mine || watching) ? null : (
     <div className="foot-split">
       {/* Both decisions are shut while the hours are open for editing: a
           correction half-typed is not a basis for either one. */}
@@ -1622,6 +1863,20 @@ function DetailModal({ entry: e, isHr, busy, mine = false, onClose, onApprove, o
         </>
       ) : (
         <>
+          {/* FIRST, BECAUSE IT IS ABOUT WHETHER THIS PAGE HAS A DECISION ON IT.
+              A reader who works out at the foot of the pop-up that there are no
+              buttons has already read the request as though they were about to
+              answer it. `kind="info"` and not the amber the notices below use:
+              a request waiting on its own หัวหน้า is the ordinary state of a
+              new request, not a fault. */}
+          {watching && (
+            <Alert kind="info">
+              <strong>ใบนี้ยังอยู่ที่ขั้นหัวหน้าแผนก</strong>
+              {' — '}เปิดดูได้ แต่ยังยืนยันหรือไม่อนุมัติจากที่นี่ไม่ได้
+              {' '}เมื่อหัวหน้าเซ็นแล้ว ใบจะเข้าคิวนี้ให้ยืนยันเอง
+            </Alert>
+          )}
+
           {/* Above the hours on purpose — see RefiledNote. */}
           <RefiledNote parent={e.refiledFrom} />
 
