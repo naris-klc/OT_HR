@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, firstName, BUCKETS } from '@/lib/api.js';
+import { printName } from '@/lib/printFile.js';
 import { Alert, PrintChrome, SheetScroll } from './common.jsx';
 
 /**
@@ -75,7 +76,11 @@ export default function PrintForm({ employeeId, period, status = '', onClose }) 
 
   return (
     <>
-      <PrintChrome onClose={onClose} {...f027Chrome(form)} />
+      <PrintChrome
+        onClose={onClose}
+        filename={printName.form({ code: form.employee.code, period })}
+        {...f027Chrome(form)}
+      />
       <FormNotices form={form} asked={status} />
       <SheetScroll className="f027-screen">
         <F027Sheet form={form} />

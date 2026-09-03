@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
+import { printName } from '@/lib/printFile.js';
 import { Alert, Empty, PrintChrome, SheetScroll } from './common.jsx';
 import { f027Chrome, F027Sheet, narrowedByPolicy, sheetQuery } from './PrintForm.jsx';
 
@@ -113,6 +114,14 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
       <PrintChrome
         onClose={onClose}
         disabled={loading}
+        /* The count is the sheets that will actually be in the file, not the
+           names asked for — a bundle four of whose people failed to load is a
+           bundle of the rest, and the name says so. `employees.length` while it
+           loads, so the tab is named before the first sheet lands. */
+        filename={printName.formBatch({
+          count: forms ? forms.length : employees.length,
+          period,
+        })}
         graphics={chrome.graphics}
         footer={chrome.footer}
         hints={[{

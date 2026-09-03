@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
+import { printName } from '@/lib/printFile.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
 import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
 
@@ -54,6 +55,7 @@ export default function DepartmentPrint({ period, onClose }) {
     <>
       <PrintChrome
         onClose={onClose}
+        filename={printName.department({ period })}
         hints={[{ label: 'หมายเหตุ', text: '1 แผนกต่อ 1 หน้า ปิดท้ายด้วยใบรวมทุกแผนก' }]}
         footer="ช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา"
       />

@@ -6,6 +6,7 @@ import {
   STATUS, BUCKETS, BUCKET_LABEL, hours, periodLabel, thaiDate, thaiDateTime,
 } from '@/lib/api.js';
 import { capChips, capFigure } from '@/lib/caps.js';
+import { savePdf } from '@/lib/printFile.js';
 import {
   ENTERED_FIELDS, filingOf, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled, isSystemFiled,
   lastAction, sameSession, sameValue,
@@ -1862,6 +1863,20 @@ export function SheetScroll({ className, hint = '← ปัดซ้าย-ข�
  * mattered after the printing was mixed in with the three that stopped
  * mattering the moment it started.
  *
+ * `filename` IS THE DOCUMENT'S NAME AND NOT A DECORATION. It names the browser
+ * tab while the sheet is up, which is what the print dialog's own
+ * “บันทึกเป็น PDF” calls the file it saves, and it names the file the
+ * บันทึกเป็น PDF button downloads. One string, both doors, so a month's sheet
+ * cannot arrive twice under two names — the builders are in lib/printFile.js
+ * and every caller uses one.
+ *
+ * `pdf` is how a view says NO to the second door. One does: the password slips
+ * exist precisely so that a stack of first passwords can be handed out without
+ * a file of them being created (see PasswordSlips.jsx, and the `password`
+ * column that was taken out of the import template for the same reason). A
+ * ดาวน์โหลด button there would undo that decision quietly, so it is off, and
+ * the slips still take a `filename` for the tab and the print dialog.
+ *
  * TWO SIBLINGS, NOT ONE WRAPPER, and that is what makes the bar sticky on a
  * phone: `position: sticky` is measured against the PARENT box, so a bar
  * nested in a chrome div would come unstuck the moment that div scrolled past —
@@ -1870,12 +1885,75 @@ export function SheetScroll({ className, hint = '← ปัดซ้าย-ข�
  */
 export function PrintChrome({
   onClose, disabled = false, graphics = 'แถบสีหัวตาราง', hints = [], footer = null,
+  filename = null, pdf = true,
 }) {
+  const [saving, setSaving] = React.useState(false);
+  const [failed, setFailed] = React.useState('');
+
+  /**
+   * THE TAB'S NAME IS THE FILE'S NAME, and that is the whole of what makes the
+   * browser's own “บันทึกเป็น PDF” usable.
+   *
+   * Chrome and Edge name a saved PDF after `document.title`, so before this the
+   * month's forty sheets all saved as `ระบบขออนุมัติทำงานล่วงเวลา · Primus.pdf`
+   * — a name that says which SYSTEM produced the file and nothing about which
+   * document it is. Whoever saved two of them had to rename both by hand, from
+   * memory, after the dialog had closed.
+   *
+   * SET FOR AS LONG AS THE SHEET IS ON THE SCREEN, rather than around the call
+   * to `window.print()`. The dialog is not modal to this script — `print()`
+   * returns while the preview is still being built — so a title set just before
+   * it and restored just after would be a race with a print engine, decided
+   * differently on a slow machine. A title that is simply true while the sheet
+   * is up cannot lose that race, and it also names the tab correctly for
+   * somebody who has three of these open.
+   */
+  React.useEffect(() => {
+    if (!filename) return undefined;
+    const previous = document.title;
+    document.title = filename;
+    return () => { document.title = previous; };
+  }, [filename]);
+
+  /**
+   * The file, made on the server by a headless browser (app/api/print/pdf).
+   *
+   * The failure worth designing for is a machine with no Chromium on it, which
+   * is a deployment fact and not something the person pressing the button did
+   * wrong — so the message says what is missing AND that พิมพ์ still works, and
+   * the bar keeps both buttons rather than hiding the one that just failed.
+   */
+  async function save() {
+    setSaving(true);
+    setFailed('');
+    try {
+      await savePdf(filename);
+    } catch (err) {
+      setFailed(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /** No name, no file — see `printName` in lib/printFile.js. */
+  const canSave = Boolean(pdf && filename);
+
   const lines = [
     { label: 'ตั้งค่าพิมพ์', text: 'A4 แนวตั้ง | ขอบกระดาษ “เริ่มต้น” (ไม่ต้องปรับขนาด)' },
     graphics && {
       label: 'ตัวเลือกเพิ่มเติม',
       text: `ติ๊กเปิด “กราฟิกพื้นหลัง” เพื่อให้${graphics}ติดมาด้วย`,
+    },
+    /**
+     * WHAT THE TWO BUTTONS ARE FOR, said once, because they overlap and the
+     * overlap is the confusing part: the print dialog can save a PDF too. The
+     * line names the difference that decides which to press — a dialog to walk
+     * through and a printer to choose, against a file that simply arrives.
+     */
+    canSave && {
+      label: 'สองปุ่มต่างกันตรงนี้',
+      text: 'พิมพ์ = เปิดกล่องพิมพ์ของเบราว์เซอร์ (เลือกบันทึกเป็น PDF ในนั้นได้) '
+        + `· บันทึกเป็น PDF = ได้ไฟล์ ${filename}.pdf ทันที ไม่ต้องผ่านกล่องพิมพ์`,
     },
     ...hints,
   ].filter((line) => line && line.text);
@@ -1884,10 +1962,23 @@ export function PrintChrome({
     <>
       <div className="print-bar no-print">
         <button className="btn print-go" onClick={() => window.print()} disabled={disabled}>
-          พิมพ์ / บันทึกเป็น PDF
+          พิมพ์
         </button>
+        {canSave && (
+          <button className="btn" onClick={save} disabled={disabled || saving}>
+            {saving ? 'กำลังสร้างไฟล์…' : 'บันทึกเป็น PDF'}
+          </button>
+        )}
         {onClose && <button className="btn ghost" onClick={onClose}>ปิด</button>}
       </div>
+
+      {failed && (
+        <div className="no-print" style={{ marginBottom: 12 }}>
+          <Alert kind="error" onClose={() => setFailed('')}>
+            บันทึกเป็นไฟล์ PDF ไม่สำเร็จ — {failed}
+          </Alert>
+        </div>
+      )}
 
       {/* The sheet carries nothing the paper form does not, so what the figures
           on it mean is said here instead of on the form. One line each: this is

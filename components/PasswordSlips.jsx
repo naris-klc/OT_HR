@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { PrintChrome } from './common.jsx';
+import { printName } from '@/lib/printFile.js';
 
 /**
  * รหัสผ่านแรกเข้า ตัดแจกทีละใบ.
@@ -47,6 +48,29 @@ export default function PasswordSlips({ rows, onClose }) {
     <>
       <PrintChrome
         onClose={onClose}
+        filename={printName.slips({ count: rows.length })}
+        /**
+         * THE ONE PRINT VIEW WITH NO บันทึกเป็น PDF BUTTON, and the reason is
+         * the reason this component exists.
+         *
+         * The note at the head of this file is about the file that is NOT
+         * created: a stack of slips is the way of handing sixty people their
+         * first password without a document containing all sixty existing
+         * anywhere — the same judgement that took the `password` column out of
+         * the import template. A PDF of these pages is that document, and it
+         * would sit in Downloads long after the slips had been cut up and
+         * handed out.
+         *
+         * The CSV button on the panel behind this one still makes one, under a
+         * filename that says to delete it and two warnings that say why. That
+         * is a deliberate exception with its own alarms on it, not a precedent
+         * for a quiet second one.
+         *
+         * `filename` is still passed: the tab is named, and the browser's own
+         * print dialog — which can save a PDF, and always could — puts a
+         * sensible name on it if somebody chooses to.
+         */
+        pdf={false}
         // The cut lines are dashed BORDERS, which print whether or not the
         // “กราฟิกพื้นหลัง” box is ticked — so this page does not ask for it.
         graphics={null}

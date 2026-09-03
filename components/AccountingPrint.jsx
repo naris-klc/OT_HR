@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, THAI_MONTHS } from '@/lib/api.js';
+import { printName } from '@/lib/printFile.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
 
@@ -80,6 +81,7 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
     <>
       <PrintChrome
         onClose={onClose}
+        filename={printName.accounting({ period, company })}
         hints={[{ label: 'หมายเหตุ', text: '1 บริษัทต่อ 1 หน้า' }]}
         footer="ช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา"
       />
