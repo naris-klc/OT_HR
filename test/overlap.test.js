@@ -271,10 +271,12 @@ test('slashDate leaves a value it cannot read alone rather than inventing one', 
  * the hours of sessions that are already stored and moves no dates or times, so
  * it can neither create a conflict nor resolve one.
  */
+/* `app/api/birthday/entries/route.js` — ฝ่ายบุคคล filing from the scan record —
+   was the third of these until 2026-09-03, when it was deleted with the queue
+   that opened it. A birthday request is filed through the first row now. */
 const DAY_GUARDED = [
   ['app/api/entries/route.js', 'filing a new request'],
   ['app/api/entries/[id]/route.js', "an employee's own edit and HR's correction"],
-  ['app/api/birthday/entries/route.js', 'ฝ่ายบุคคล filing from the scan record'],
 ];
 
 for (const [file, what] of DAY_GUARDED) {

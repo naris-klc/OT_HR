@@ -417,18 +417,17 @@ test('the pager sits under the fifth card, above the total, and disables its end
   assert.match(row, /colSpan=\{11\}/);
 
   // THE ORDER OF THE WHOLE SCREEN: five cards, the pager directly under the
-  // fifth of them, รวมทั้งหมด under that, then วันเกิดของเดือนนี้. The pager
-  // belongs to the cards — "แสดง 6–10 จาก 57 รายการ" is a sentence about the
-  // five immediately above it — and a month's total read in between breaks that
-  // sentence in half.
+  // fifth of them, then รวมทั้งหมด. The pager belongs to the cards —
+  // "แสดง 6–10 จาก 57 รายการ" is a sentence about the five immediately above it
+  // — and a month's total read in between breaks that sentence in half.
+  //
+  // วันเกิดของเดือนนี้ closed the screen under the total until 2026-09-03. It
+  // was removed with ฝ่ายบุคคล's birthday work; the footnotes end the card now.
   assert.ok(
     hrView.indexOf('<tr className="pager-row">') < hrView.indexOf('<tr className="total-row">'),
     'the pager ended up under รวมทั้งหมด',
   );
-  assert.ok(
-    hrView.indexOf('<tr className="total-row">') < hrView.indexOf('<BirthdayMonth'),
-    'วันเกิดของเดือนนี้ came up above the month’s own total',
-  );
+  assert.ok(!hrView.includes('<BirthdayMonth'), 'วันเกิดของเดือนนี้ came back');
   // Not a card, and one band that has to stay one band.
   assert.match(phone, /\.hr-table tbody tr\.pager-row \{\s*display: block; padding: 0; border: 0; background: none;/);
 
@@ -848,18 +847,27 @@ test('.fold-pill is a class, and the digest it shares a screen with is untouched
   assert.ok(!css.includes('fold-shut') && !css.includes('fold-open'), 'the two-label rules outlived their markup');
 });
 
-test('the phone puts วันเกิดของเดือนนี้ under the total and the footnotes after it', () => {
-  // One markup, two orders — the same rule the card list itself follows.
+test('the footnotes close the card, and their gap is stated once', () => {
   assert.match(hrView, /className="card month-card"/);
   assert.match(hrView, /<div className="month-notes">/);
-  // In the MARKUP the notes still come first, which is the desktop reading:
-  // a table, its footnotes, then the birthdays.
-  assert.ok(
-    hrView.indexOf('<div className="month-notes">') < hrView.indexOf('<BirthdayMonth'),
-    'the document order stopped being the desktop order',
-  );
+  /**
+   * IT WAS AN `order` SWAP UNTIL 2026-09-03. วันเกิดของเดือนนี้ sat under these
+   * footnotes in the markup, and the phone gave `.month-notes` `order: 1` to put
+   * the birthdays — the only rows on the screen that were work — straight under
+   * the total instead of behind a paragraph of grey.
+   *
+   * That table is gone, so the swap has nothing to swap with and the `order` is
+   * dropped rather than left pointing at nothing. What must NOT go with it is
+   * the flex parent: flex items do not collapse margins, which is what lets the
+   * gap above the block be stated once instead of being whatever the first
+   * surviving note happened to carry.
+   */
   assert.match(phone, /\.month-card \{ display: flex; flex-direction: column; \}/);
-  assert.match(phone, /\.month-card > \.month-notes \{ order: 1; margin-top: 12px; \}/);
+  assert.match(phone, /\.month-card > \.month-notes \{ margin-top: 12px; \}/);
+  assert.ok(
+    !/\.month-notes \{[^}]*order:/.test(phone),
+    'the order came back with nothing to order against',
+  );
   // Flex items do not collapse margins, so the gap above the block is stated
   // once here instead of being whatever the first surviving note carried.
   assert.match(phone, /\.month-card > \.month-notes > :first-child \{ margin-top: 0; \}/);

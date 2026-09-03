@@ -5,10 +5,6 @@ import {
   api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, currentPeriod, periodLabel,
   BUCKETS, companyLabel,
 } from '@/lib/api.js';
-import {
-  BIRTHDAY_STATUS, SETTLED_STATUSES, STATUS_LABEL_TH, UNCHECKABLE,
-} from '@/lib/birthdayCheck.js';
-import { birthdayActionPermission } from '@/lib/birthdayFiling.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
   Alert, ClearButton, Empty, AddBirthDateHint, Highlight, PickOne, RateHead,
@@ -16,7 +12,8 @@ import {
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { personMatches } from '@/lib/personSearch.js';
-import { AbsentModal, BirthdayFileForm, useRetractCheck } from './birthdayActions.jsx';
+// components/birthdayActions.jsx — the two answers to a birthday row, one pop-up
+// each — was deleted on 2026-09-03 with everything that opened it.
 // `PolicyVersionBanner` is NOT among these any more. This screen draws that
 // warning as a line in `MonthAlerts` from the same `policyVersionNotice()` the
 // banner renders; the banner itself is still what ตรวจสอบใบของพนักงาน opens
@@ -156,7 +153,11 @@ const rowDomId = (employeeId) => `hr-row-${employeeId}`;
 
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({
-  user, onOpenBirthdayQueue, onOpenRoster = null, onSettled = null,
+  // `onOpenBirthdayQueue` and `onSettled` went with วันเกิดของเดือนนี้ on
+  // 2026-09-03 — the first opened คิววันเกิด from its footer, the second told
+  // the shell to re-count the nav badge after a row was settled. Neither has
+  // anything left to point at.
+  user, onOpenRoster = null,
 }) {
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
@@ -1441,13 +1442,22 @@ export default function HrView({
                   weekday of theirs was ever a holiday, which looks identical to
                   an employee whose birthday fell on a Sunday.
 
-                  Only while the rule is OFF. Once it is on, the same gap is said
-                  by the birthday check — in the list of people whose month
-                  cannot be checked — and saying it twice on one screen makes both
-                  copies easier to skip. */}
-              {data.birthDates?.missing > 0 && !data.birthDates.ruleEnabled && (
+                  SHOWN WHETHER THE RULE IS ON OR OFF, SINCE 2026-09-03, and the
+                  widening is the direct cost of a removal. It used to be drawn
+                  only while the rule was OFF, because with it on the same gap was
+                  said better by วันเกิดของเดือนนี้ — in its list of people whose
+                  month could not be checked — and saying it twice on one screen
+                  made both copies easier to skip. That table is gone with the
+                  rest of ฝ่ายบุคคล's birthday work, and this is now the only place
+                  anybody is told. It matters MORE with the rule on, not less: a
+                  person with no วันเกิด on record cannot tick the box on their own
+                  request, and the refusal they meet says to ask ฝ่ายบุคคล. */}
+              {data.birthDates?.missing > 0 && (
                 <Alert kind="info">
-                  {`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ — กรอกให้ครบก่อนเปิดกฎสวัสดิการวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง`}
+                  {`ยังไม่มีวันเกิดของพนักงาน ${data.birthDates.missing} คนในระบบ`}
+                  {data.birthDates.ruleEnabled
+                    ? ' — คนเหล่านี้ติ๊กช่อง “วันเกิด” ในใบขอ OT ไม่ได้ จนกว่าจะกรอกวันเกิดให้'
+                    : ' — กรอกให้ครบก่อนเปิดกฎสวัสดิการวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง'}
                   <div style={{ marginTop: 4 }}>
                     {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
                   </div>
@@ -1461,31 +1471,14 @@ export default function HrView({
           </>
         )}
 
-        {/*
-          The month's birthdays — ALL of them, settled or not.
+        {/* วันเกิดของเดือนนี้ STOOD HERE UNTIL 2026-09-03. It was outside the
+            "does this month have entries" branch on purpose — a month where
+            nobody filed any OT would otherwise print "ไม่มีรายการในเดือนนี้" and
+            nothing else, and that was exactly the month where an unclaimed
+            birthday holiday was most likely and least visible.
 
-          OUTSIDE the "does this month have entries" branch, deliberately. A
-          month where nobody filed any OT would otherwise print
-          "ไม่มีรายการในเดือนนี้" and nothing else, and that is exactly the month
-          where an unclaimed birthday holiday is most likely and least visible.
-
-          The outstanding rows are ALSO in วันเกิดรอตรวจ on the confirmation
-          screen, which spans every month and is what the nav badge counts. This
-          one is scoped to the month on screen, because closing a period is a
-          question about that period. The two numbers are meant to differ.
-        */}
-        {/* ฝ่ายบุคคล only since 2026-08-13 — the route refuses everybody else,
-            and a หัวหน้า opening สรุปทีม must not be shown a red error where a
-            section used to be. Same predicate the route decides with. */}
-        {data && birthdayActionPermission({ user }).ok && (
-          <BirthdayMonth
-            period={period}
-            onOpenQueue={onOpenBirthdayQueue}
-            onOpenEntries={setOpened}
-            onOpenRoster={onOpenRoster}
-            onSettled={onSettled}
-          />
-        )}
+            That is no longer a thing this screen can know. See the note at the
+            foot of this file for what the table did and what its removal cost. */}
       </div>
     </>
   );
@@ -1731,570 +1724,31 @@ function CapCell({ cap }) {
 }
 
 /**
- * วันเกิดของเดือนนี้ — every one of them, settled or not, in one table.
+ * `BirthdayMonth`, `BirthdayStatusCell` and `BirthdayRowActions` LEFT THIS FILE
+ * ON 2026-09-03 — 570 lines of วันเกิดของเดือนนี้, its five statuses, its two
+ * buttons and the counts above them.
  *
- * WHY THE WHOLE MONTH AND NOT WHAT IS LEFT. This screen is where a period gets
- * closed, and closing it means knowing every birthday in it was dealt with. A
- * list of outstanding rows cannot say that: a name that was settled and a name
- * nobody ever looked at are both simply missing from it, and absence is not an
- * answer. So one row per birthday with one of five statuses, and the counts above
- * them — "เดือนนี้มีวันเกิด 6 คน · ต้องตรวจ 1 · เสร็จแล้ว 4 · รอถึงวัน 1".
+ * WHAT THE TABLE WAS FOR, so that nobody rebuilds it by accident. ฝ่ายบุคคล had
+ * to know that every birthday in a month had been dealt with before they could
+ * call the month finished, and a birthday was invisible until somebody went
+ * looking: the person was owed a day off, might have come in anyway, and only
+ * the fingerprint scanner knew. The table listed every birthday in the month —
+ * settled, refused, still to check, not yet arrived — because a name that was
+ * settled and a name nobody had looked at are both simply absent from a list of
+ * what is outstanding.
  *
- * IT IS NOT THE QUEUE, and the two numbers are meant to differ. วันเกิดรอตรวจ on
- * รอ HR ยืนยัน spans EVERY month, because a backlog must not be hidden by a
- * dropdown, and it holds only the ต้องตรวจ rows, because that is the only status
- * that is work. This table is one month and every status. Only the ต้องตรวจ rows
- * here are also in that queue; a row settled from either place leaves both.
+ * WHY IT IS NOT NEEDED. HR withdrew the whole arrangement on 2026-09-03: the
+ * birthday holiday is claimed by the person whose birthday it is, on the
+ * ordinary OT form with the วันเกิด box ticked, and it arrives in the ordinary
+ * queue with the ordinary two signatures. There is nothing left for ฝ่ายบุคคล to
+ * chase, because an unclaimed birthday is now the same thing as an unclaimed
+ * evening: hours nobody filed for. คิว “วันเกิดรอตรวจ”, the ไม่ได้มาทำงาน record
+ * and app/api/reports/birthday-check went with it.
  *
- * The buttons are the same two, from components/birthdayActions.jsx — settling a
- * birthday from the month you happen to be reading is the natural move, and
- * sending somebody to another screen to do it is how a row gets left.
+ * WHAT IT COST, stated plainly rather than left to be discovered. Nothing now
+ * notices a person who worked their birthday and never filed — the system has
+ * no way to know they were here, which is the same blind spot it has for every
+ * other unfiled hour. That is a deliberate trade and not an oversight: it was
+ * bought by taking a whole second workflow, a second write path and a second
+ * kind of signature out of the system. See README §สวัสดิการวันเกิด.
  */
-function BirthdayMonth({
-  period, onOpenQueue, onOpenEntries, onOpenRoster = null, onSettled = null,
-}) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-  /** The confirmation the two answers leave behind — see `done` below. */
-  const [ok, setOk] = useState('');
-  const [marking, setMarking] = useState(null);
-  /** A pop-up over the month table, not a screen of its own — see BirthdayQueue. */
-  const [filing, setFiling] = useState(null);
-  /**
-   * THE ROWS THAT ASK NOTHING ARE FOLDED ON A PHONE — 2026-08-27, and it is the
-   * fifth round of "make this section shorter".
-   *
-   * The four before it took the CARD from 297px to 172 and that is its floor: a
-   * 44px button, a 25px chip row, three lines of facts and 20px of padding. The
-   * ask each time named a mechanism — a horizontal carousel, or วันเกิด / แผนก /
-   * บริษัท and the buttons on one strip — and the strip does not fit. Measured on
-   * the built app at 360px, where a card is 316px wide inside its padding: the
-   * shortest row needs 297 with NO button, the one-button row 355, and the
-   * ต้องตรวจ rows — the ones this section exists for — 592 to 623. It is short by
-   * a factor of two on exactly the rows that matter.
-   *
-   * SO THE LEVER IS THE NUMBER OF CARDS. `showSettled` hides every row that is
-   * not ต้องตรวจ behind one button, below 860px only. A six-birthday month draws
-   * three cards instead of six.
-   *
-   * WHY NOT THE CAROUSEL, THE FIFTH TIME OF ASKING. Both hide rows; they differ
-   * in WHICH. A carousel hides whatever is off the right edge, which on a list
-   * sorted by date is as likely to be a ต้องตรวจ row as a settled one — and this
-   * section is the last thing standing between HR and closing the month, so a row
-   * that asks something and is not on screen is the one failure it exists to
-   * prevent. The fold hides only rows that ask nothing, and the count of what is
-   * hidden is on the button. Nothing that needs answering ever leaves the screen.
-   *
-   * CLOSED BY DEFAULT, and it does not persist. A month is worked in one sitting;
-   * carrying "I opened the settled list once" into next month would be a setting
-   * nobody set. `key` on this component is the period, so it resets with it.
-   *
-   * ABOVE 860px NOTHING HAPPENS: the button is `display: none` and the rule that
-   * hides the rows lives in the phone block, so the desktop table still draws
-   * every row of the month, which is what a table read down its own columns is
-   * for. One markup, two layouts — the rule this screen has kept throughout.
-   */
-  const [showSettled, setShowSettled] = useState(false);
-
-  async function load() {
-    try {
-      const res = await api.get(`/reports/birthday-check/${period}`);
-      setData(res);
-      setError('');
-    } catch (err) { setError(err.message); }
-  }
-
-  useEffect(() => { setData(null); load(); }, [period]);
-
-  /**
-   * Where the two answers say so — in the flow, above the list they changed.
-   *
-   * `load()` is what makes this necessary rather than merely nicer. Answering a
-   * row REMOVES it, so by the time the confirmation could be read the row it
-   * names is gone from the table, and without a sentence somewhere the screen
-   * just silently loses a line. It used to be a toast — see the note in
-   * components/birthdayActions.jsx for why a fixed box was the wrong place for
-   * it on a phone.
-   *
-   * Clearing `error` too: these are two slots reporting the same act, and a
-   * stale failure sitting above a fresh success is a screen contradicting
-   * itself.
-   */
-  /**
-   * AND THE BADGES, WHICH THIS TABLE USED TO LEAVE ALONE ENTIRELY.
-   *
-   * `load()` re-reads ONE MONTH — `/reports/birthday-check/${period}` — and the
-   * nav badge counts every month, so nothing here can work the badge out for
-   * itself. It reported nothing at all before, which meant settling a row from
-   * ตรวจสอบรายเดือน left รอ HR ยืนยัน counting a row that no longer existed
-   * until somebody happened to change tabs. Same call the queue settles with.
-   */
-  function done(message) {
-    setOk(message);
-    setError('');
-    load();
-    onSettled?.();
-  }
-
-  const retract = useRetractCheck(done, setError);
-
-  if (error) return <Alert kind="error">{error}</Alert>;
-  // The rule being off is not a gap in the data: a birthday is then an ordinary
-  // working day and there is no such thing as a birthday holiday to settle.
-  if (!data || !data.ruleEnabled) return null;
-
-  /**
-   * A month that ended before the rule was ever turned on.
-   *
-   * Said out loud rather than shown as an empty table, and certainly not shown
-   * as a table full of ต้องตรวจ: nothing was owed then, and a button offering to
-   * file it would grant a holiday that did not exist on the date it carries.
-   */
-  if (!data.ruleActiveInPeriod) {
-    return (
-      <div className="box" style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 600 }}>วันเกิดของเดือนนี้</div>
-        <div className="hint" style={{ marginTop: 2 }}>
-          เดือนนี้อยู่ก่อนวันที่เริ่มใช้กฎสวัสดิการวันเกิด — วันเกิดในเดือนนั้นยังเป็นวันทำงานปกติ
-          {' '}จึงไม่มีวันหยุดที่ต้องตรวจย้อนหลัง
-        </div>
-      </div>
-    );
-  }
-
-  const { rows, summary, uncheckable } = data;
-  if (rows.length === 0 && uncheckable.length === 0) return null;
-
-  /* Counted off `rows` and not off `summary`, which is the server's and splits
-     the same people four ways — done, due, upcoming, total. What the button
-     hides is one thing: every row that is not ต้องตรวจ. Deriving it from the
-     rows the table is actually drawing is what keeps the number on the button
-     and the number of cards that disappear the same number. */
-  const foldedRows = rows.filter((r) => r.status !== BIRTHDAY_STATUS.DUE);
-  const settledCount = foldedRows.length;
-  /**
-   * THE LABEL HAS TO BE TRUE OF EVERY ROW BEHIND IT — 2026-08-28.
-   *
-   * Asked to make the button read "ดูรายการที่ตรวจสอบแล้ว (3 รายการ)" instead
-   * of "ดูอีก 3 คนที่ไม่ต้องตอบตอนนี้", for a more formal HR register. It is
-   * the better wording and it is not always TRUE: what this fold hides is every
-   * row that is not ต้องตรวจ, and that set includes ยังไม่ถึงวัน — a birthday
-   * later this month that NOBODY has checked and nobody can, because the date
-   * has not arrived and there is no scan record to check against yet. Calling
-   * those "ตรวจสอบแล้ว" would tell HR a row had been looked at when the app's
-   * own summary line two lines above counts it separately as รอถึงวัน, on the
-   * last screen before a month is closed.
-   *
-   * So the asked-for wording is used wherever it is true — which is most
-   * months, and every month after its last birthday has passed — and a covering
-   * one when the fold holds a date that has not come round yet. `ไม่ต้อง
-   * ดำเนินการ` is the same officialese register and is true of both halves.
-   *
-   * `SETTLED_STATUSES` rather than `!== UPCOMING`: it is the list that already
-   * means "nothing left to do about this birthday", it lives beside the
-   * statuses themselves, and a status added later is then not silently
-   * described as checked by a label written before it existed.
-   */
-  const allChecked = foldedRows.every((r) => SETTLED_STATUSES.includes(r.status));
-  const foldWhat = allChecked ? 'รายการที่ตรวจสอบแล้ว' : 'รายการที่ไม่ต้องดำเนินการ';
-
-  return (
-    <div className="box" style={{ marginTop: 12 }}>
-      <div style={{ fontWeight: 600 }}>วันเกิดของเดือนนี้</div>
-      {ok && <Alert kind="ok" onClose={() => setOk('')}>{ok}</Alert>}
-
-      {/* The summary, above the table it counts. `done` is the three statuses
-          that mean nothing is left to do — filed, checked, or already a holiday
-          — so the four numbers add up to the first one and a reader can check
-          them against each other. */}
-      <div className="hint" style={{ marginTop: 2 }}>
-        {rows.length === 0
-          ? 'ไม่มีพนักงานที่วันเกิดตรงกับเดือนนี้'
-          : (
-            <>
-              เดือนนี้มีวันเกิด <strong>{summary.total} คน</strong> ·
-              {' '}ต้องตรวจ <strong style={{ color: summary.due ? 'var(--amber)' : 'inherit' }}>{summary.due}</strong> ·
-              {' '}เสร็จแล้ว {summary.done}
-              {summary.upcoming > 0 && ` · รอถึงวัน ${summary.upcoming}`}
-            </>
-          )}
-      </div>
-
-      {/* Said out loud rather than left as an absence. A blank space and a month
-          that has been fully checked look identical, and the difference matters
-          most to whoever is about to send a file to accounting. */}
-      {rows.length > 0 && summary.due === 0 && (
-        <div className="hint" style={{ marginTop: 2, color: 'var(--green-dark)' }}>
-          ✓ ตรวจครบแล้ว — ไม่มีวันเกิดของเดือนนี้ที่ยังต้องตอบก่อนปิดเดือน
-        </div>
-      )}
-      {/* Was three clauses. "ตรวจจากบันทึกเวลาเข้า-ออก (สแกนนิ้ว) แล้วตอบได้
-          จากปุ่มในตาราง" is gone: the second half told the reader that the
-          buttons in front of them are buttons, and the first half is said again
-          on the form those buttons open, in the same words. What is left is the
-          one thing that is NOT visible from the screen — that an unanswered row
-          means hours missing from this month's total. */}
-      {summary.due > 0 && (
-        <div className="hint" style={{ marginTop: 2 }}>
-          รายการที่ยังไม่ตรวจอาจเป็นชั่วโมง OT ที่ยังไม่อยู่ในยอดของเดือนนี้
-          {onOpenQueue && (
-            <>
-              {' '}· <button type="button" className="link" onClick={onOpenQueue}>
-                เปิดคิว “วันเกิดรอตรวจ”
-              </button> เพื่อดูของค้างทุกเดือน
-            </>
-          )}
-        </div>
-      )}
-
-      {rows.length > 0 && (
-        <div
-          className="table-wrap card-list"
-          style={{ marginTop: 10 }}
-          /* The handle the phone block hides `.settled` rows through — see
-             `showSettled` above for what is folded and why it is these rows and
-             not "whatever is off the right edge". An attribute rather than a
-             class because it has two named states and reads as one in the
-             stylesheet; the desktop gives it no rule at all. */
-          data-settled={showSettled ? 'shown' : 'hidden'}
-        >
-          {/* Card layout below 860px, like วันเกิดรอตรวจ — the two lists are
-              the same rows read for two different reasons, and both were
-              scrolling their action buttons off the right of the screen.
-
-              Its OWN class rather than `bday-table` even so. The two differ in
-              the cell that matters most: the queue's is "ค้าง 4 วัน", a short
-              pill that belongs in the corner beside the name, while this one is
-              `BirthdayStatusCell` — a chip AND a sentence explaining it. Forced
-              into one grid template, whichever table lost would be the one
-              squeezing a sentence into a corner. */}
-          <table className="mini bmonth-table">
-            <thead>
-              <tr>
-                <th className="who-col">พนักงาน</th>
-                <th className="dept-col">แผนก</th>
-                <th className="date-col">วันเกิด</th>
-                <th className="co-col">บริษัท</th>
-                <th className="state-col">สถานะ</th>
-                <th className="num hrs-col">ชั่วโมง</th>
-                <th className="act-col" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                /* `settled` is EVERY row that is not ต้องตรวจ, which includes
-                   ยังไม่ถึงวัน — a date that has not arrived asks nothing today
-                   either, and the summary above counts it separately so the
-                   number is never lost. The class is on the row and does
-                   nothing on its own; the phone block is what acts on it. */
-                <tr
-                  key={r.employeeId + r.date}
-                  className={r.status === BIRTHDAY_STATUS.DUE ? undefined : 'settled'}
-                >
-                  <td className="who-col">
-                    {r.name}
-                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>{r.code}</div>
-                  </td>
-                  <td className="dept-col">{r.department || '—'}</td>
-                  {/* BOTH LENGTHS OF THE SAME DATE, AND THE STYLESHEET PICKS.
-                      The desktop table reads this column down the page and keeps
-                      "13 สิงหาคม 2569 / วันพฤหัสบดี"; the phone card puts the
-                      date, แผนก and บริษัท on ONE line and cannot afford it —
-                      "25 พฤศจิกายน 2569 วันพฤหัสบดี" measures 185px of a 314px
-                      card on its own. `thaiDateShort`/`dayAbbr` are the forms
-                      lib/api.js already built for exactly this, and here the
-                      month and the year are said twice over anyway: by the
-                      period picker at the top of the screen and by the heading
-                      วันเกิดของเดือนนี้ above the list.
-
-                      NOT A WIDTH TEST IN THE COMPONENT. Nothing in this file
-                      asks how wide the screen is — `.date-abbr` is hidden by
-                      default and unhidden inside the 860px block, one answer in
-                      one place, which is the rule this screen has kept
-                      throughout. */}
-                  <td className="date-col" style={{ whiteSpace: 'nowrap' }}>
-                    <span className="date-full">{thaiDate(r.date)}</span>
-                    <span className="date-abbr">{thaiDateShort(r.date)}</span>
-                    <div className="cell-sub th" style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      <span className="date-full">วัน{dayName(r.date)}</span>
-                      <span className="date-abbr">{dayAbbr(r.date)}</span>
-                    </div>
-                  </td>
-                  <td className="co-col">{companyLabel(r.company)}</td>
-                  <td className="state-col">
-                    <BirthdayStatusCell row={r} />
-                  </td>
-                  {/* `none` marks the rows where there is no figure and there
-                      never could be — anything not filed, and anything filed on
-                      a month since closed. The dash is right in a table, where
-                      the column has to keep its shape down the page; on the
-                      phone's card there is no column to keep, and a labelled
-                      line reading "ชั่วโมง —" on three rows out of five is a
-                      line that says nothing. The class lets the card drop it
-                      while the table keeps it. */}
-                  <td className={
-                    r.status === BIRTHDAY_STATUS.FILED && !r.allClosed
-                      ? 'num hrs-col' : 'num hrs-col none'
-                  }>
-                    {r.status === BIRTHDAY_STATUS.FILED && !r.allClosed
-                      ? <strong>{hours(r.otHours)}</strong>
-                      : <span style={{ color: 'var(--muted)' }}>—</span>}
-                  </td>
-                  <td className="act-col">
-                    <BirthdayRowActions
-                      row={r}
-                      onFile={setFiling}
-                      onMark={setMarking}
-                      onRetract={retract}
-                      onOpenEntries={onOpenEntries}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* THE BUTTON THAT SAYS WHAT IS NOT ON SCREEN, and it only exists on a
-          phone — `.btn.bday-more` is `display: none` until 860px, so the desktop
-          table, which draws every row anyway, never grows a control for a fold
-          that is not happening there.
-
-          IT CARRIES THE COUNT IN BOTH DIRECTIONS. Closed, it is the only thing
-          on the screen that says rows are hidden and how many; open, it is how
-          they go away again. A fold whose label reads the same in both states is
-          a control somebody presses to find out what it does.
-
-          DRAWN ONLY WHEN THERE IS SOMETHING TO FOLD. On a month where every
-          birthday is ต้องตรวจ nothing is hidden and no button appears; on one
-          where none is, the ✓ line above already says so and this opens the six
-          names under it. */}
-      {settledCount > 0 && (
-        <button
-          type="button"
-          className="btn ghost sm bday-more"
-          aria-expanded={showSettled}
-          onClick={() => setShowSettled((v) => !v)}
-        >
-          {/* THE COUNT IS IN BRACKETS AND THE UNIT IS รายการ — asked for on
-              2026-08-28 for a more formal register. It is the same count in
-              both states, which is the property above; what changed is that it
-              now reads as a heading with a figure after it rather than as a
-              sentence. `รายการ` and not `คน` because that is the wording that
-              was asked for, and it is the unit the pager over this screen
-              already counts in. The summary line above still says `6 คน`,
-              which is a statement about people rather than about rows. */}
-          {showSettled
-            ? `ซ่อน${foldWhat} (${settledCount} รายการ)`
-            : `ดู${foldWhat} (${settledCount} รายการ)`}
-        </button>
-      )}
-
-      {/* Kept OUT of the table on purpose: which month somebody with no วันเกิด
-          belongs to is the one thing nobody knows, so a row for them in a table
-          sorted by date would have to invent a date to sit at. "Cannot check" is
-          a different answer from "nothing outstanding", and a roster still mostly
-          empty must not read as a clean month. */}
-      {uncheckable.length > 0 && (
-        <div style={{ marginTop: 10 }}>
-          <div style={{ fontWeight: 600, fontSize: 13 }}>
-            ไม่มีข้อมูลวันเกิด ตรวจไม่ได้ — {uncheckable.length} คน
-          </div>
-          <div className="hint" style={{ marginTop: 2 }}>
-            ไม่ทราบว่าเกิดเดือนไหน จึงไม่อยู่ในตารางด้านบน ·
-            {' '}<AddBirthDateHint onOpen={onOpenRoster} />
-          </div>
-          <div style={{ marginTop: 6, fontSize: 12.5 }}>
-            {uncheckable.map((r) => (
-              <div key={r.employeeId}>
-                {r.code} {r.name}
-                <span style={{ color: 'var(--muted)' }}>
-                  {' '}· {r.department || '—'} · {companyLabel(r.company)}
-                  {r.reason === 'invalid' ? ` · ${UNCHECKABLE.invalid}` : ''}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Both answers to a birthday row are pop-ups over this table — the same
-          pair, drawn the same way, as on วันเกิดรอตรวจ. */}
-      {filing && (
-        <BirthdayFileForm
-          birthday={filing}
-          onCancel={() => setFiling(null)}
-          onSaved={(res, message) => { setFiling(null); done(message); }}
-        />
-      )}
-
-      {marking && (
-        <AbsentModal
-          row={marking}
-          onClose={() => setMarking(null)}
-          onDone={(message) => { setMarking(null); done(message); }}
-        />
-      )}
-    </div>
-  );
-}
-
-/**
- * The status, and the one extra fact that makes it useful.
- *
- * The label alone is not the answer for three of the five: "มีใบแล้ว" without the
- * hours is a row HR still has to go and open, "ตรวจแล้ว" without a name is an
- * assertion with nobody behind it, and "วันหยุดอยู่แล้ว" is worth saying WHY.
- * `STATUS_LABEL_TH` comes from the same module the statuses do, so a wording
- * change lands in one place.
- *
- * The sentences under the chip are wrapped in ONE `.state-note` div rather than
- * left loose beside it. On the phone the cell becomes `display: contents` so the
- * chip can sit in the card's top-right corner while its explanation stays full
- * width under the name — and a grid places items, not fragments, so two loose
- * divs would both land in the note area and paint over each other.
- */
-function BirthdayStatusCell({ row }) {
-  const label = STATUS_LABEL_TH[row.status] || row.status;
-
-  if (row.status === BIRTHDAY_STATUS.FILED) {
-    return (
-      <>
-        <span className="chip green">{label}</span>
-        {(row.allClosed || row.alreadyHoliday) && (
-          <div className="state-note">
-            {row.allClosed && (
-              <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-                ใบถูกไม่อนุมัติหรือยกเลิก — ไม่มีชั่วโมงเข้ายอด
-              </div>
-            )}
-            {row.alreadyHoliday && (
-              <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>วันนั้นเป็นวันหยุดอยู่แล้ว</div>
-            )}
-          </div>
-        )}
-      </>
-    );
-  }
-
-  if (row.status === BIRTHDAY_STATUS.ABSENT) {
-    return (
-      <>
-        <span className="chip neutral">{label}</span>
-        <div className="state-note">
-          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-            {row.check?.by || '—'}
-            {row.check?.at ? ` · ${new Date(row.check.at).toLocaleString('th-TH')}` : ''}
-          </div>
-          {row.check?.note && (
-            <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{row.check.note}</div>
-          )}
-        </div>
-      </>
-    );
-  }
-
-  if (row.status === BIRTHDAY_STATUS.HOLIDAY) {
-    return (
-      <>
-        <span className="chip neutral">{label}</span>
-        <div className="state-note">
-          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-            กฎวันเกิดไม่ได้เพิ่มอะไร ไม่ต้องทำอะไร
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (row.status === BIRTHDAY_STATUS.UPCOMING) {
-    return (
-      <>
-        <span className="chip upcoming">{label}</span>
-        <div className="state-note">
-          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-            ยังไม่มีบันทึกเวลาให้เทียบ
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  /* ต้องตรวจ — `due` and not the `edited` chip it borrowed for a long time.
-     The two are the same amber and mean different things: แก้ไขแล้ว reports a
-     state, this one is the only birthday status that is WORK, and it is the
-     number the summary above the table counts and colours. Its own class is
-     what lets it be drawn as the thing being asked for without repainting a
-     chip on four other screens. */
-  return <span className="chip due">{label}</span>;
-}
-
-/**
- * What each status lets somebody do — and, for three of the five, nothing.
- *
- * A row with no action gets no button rather than a disabled one: there is
- * nothing being withheld here, the birthday is simply settled or not yet
- * arrived. `canAct` is the server's answer for the two that do have buttons.
- */
-function BirthdayRowActions({ row, onFile, onMark, onRetract, onOpenEntries }) {
-  if (row.status === BIRTHDAY_STATUS.FILED) {
-    return onOpenEntries ? (
-      <button
-        className="btn ghost sm"
-        onClick={() => onOpenEntries({ _id: row.employeeId, name: row.name, code: row.code })}
-      >
-        ดูใบ
-      </button>
-    ) : null;
-  }
-
-  if (row.status === BIRTHDAY_STATUS.ABSENT) {
-    return row.canAct ? (
-      <button
-        className="btn ghost sm"
-        onClick={() => onRetract(row)}
-        title="เขียนแถวใหม่ทับความหมายเดิม ไม่ลบของเดิม — ชื่อจะกลับมาต้องตรวจ"
-      >
-        ยกเลิกการตรวจ
-      </button>
-    ) : null;
-  }
-
-  if (row.status !== BIRTHDAY_STATUS.DUE) return null;
-
-  if (!row.canAct) return <span style={{ fontSize: 12, color: 'var(--muted)' }}>ไม่ใช่แผนกของคุณ</span>;
-
-  return (
-    // `row-actions`, which is the class the phone layout sizes buttons by —
-    // without it these two were the only decision buttons in the app not given
-    // a 44px target. The inline `flexWrap: 'nowrap'` went with it: below 860px
-    // `.row-actions` is meant to wrap, and an inline style cannot be overruled.
-    <div className="row row-actions" style={{ gap: 6 }}>
-      {/* FILLED, not ghost — the same button on วันเกิดรอตรวจ already is, and
-          these are not two buttons that happen to share a label: they open the
-          same form, over the same row, and write the same entry. Two outlines
-          side by side said the two decisions were equals, and they are not.
-          บันทึก OT ให้ is the answer for somebody who came in on their
-          birthday, which is the case the whole ต้องตรวจ chip exists to chase
-          down; ไม่ได้มาทำงาน is the other one. Reading the two screens in a
-          row, the same act looked like a different act on each. */}
-      <button
-        className="btn sm"
-        onClick={() => onFile({
-          employeeId: row.employeeId, name: row.name, code: row.code, date: row.date,
-        })}
-        title="กรอกเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง"
-      >
-        บันทึก OT ให้
-      </button>
-      <button
-        className="btn ghost sm"
-        onClick={() => onMark(row)}
-        title="บันทึกว่าวันนั้นเขาไม่ได้มาทำงาน — ไม่ใช่ใบ OT ไม่มีชั่วโมง ไม่เข้ารายงานใด และยกเลิกได้"
-      >
-        ไม่ได้มาทำงาน
-      </button>
-    </div>
-  );
-}

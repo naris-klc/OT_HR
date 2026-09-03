@@ -120,7 +120,10 @@ export const DEFAULT_POLICY = Object.freeze({
    * the worked examples. The ลบ half of that is what 'floor' already does: a
    * session that has not reached the window keeps rounding down. This key only
    * ever adds, and it is not confirmed policy — see HR_UNCONFIRMED below, where
-   * it shares the increment's badge because it is the same question.
+   * it carries a badge of its own. It shared the increment's for the morning of
+   * 2026-09-02, on the reasoning that the block and the grace are one answer,
+   * and was split back out the same afternoon when ฝ่ายบุคคล answered the block
+   * and said nothing about the grace.
    *
    * ⚠ A GRACE OF HALF A BLOCK IS 'nearest', EXACTLY. 15 under a 30-minute block
    * computes what ปัดเข้าหาค่าใกล้ที่สุด computes, minute for minute, and 30
@@ -389,37 +392,25 @@ export const DEFAULT_POLICY = Object.freeze({
    */
   proxyNoteOnForm: false,
 
-  // ── ฝ่ายบุคคลบันทึก OT ให้ จากรายการวันเกิด ─────────────────────────────────
-  /**
-   * When ฝ่ายบุคคล files a birthday-holiday request from วันเกิดที่ยังไม่มีใบ,
-   * having read the in and out times off the fingerprint scanner, does that one
-   * act both file and approve it?
-   *
-   * true  — the request is written `approved` (DEFAULT), carrying a single
-   *         `submit_hr_verified` history row that names HR as both the person
-   *         who filled it in and the person who signed it, with the reason on
-   *         it. `managerDecision` stays empty, because no หัวหน้า saw it.
-   * false — it starts at `pending_mgr` like any other request and waits for the
-   *         department's หัวหน้า.
-   *
-   * The default is the shortcut because the evidence is genuinely in HR's hands
-   * for this one case: the scan record answers both questions a หัวหน้า would be
-   * asked, and asking them to repeat it down the phone adds a signature and no
-   * information. "We want the หัวหน้า in the loop regardless" is a defensible
-   * answer HR is entitled to give, which is why it is a flag rather than an
-   * assumption.
-   *
-   * NARROW BY CONSTRUCTION. It is read in exactly one place —
-   * `birthdayDirectApproval` in lib/birthdayFiling.js — which refuses outright
-   * unless the date is the one the birthday rule itself produced for that
-   * person. It cannot widen to ordinary OT: POST /api/entries has no branch that
-   * reaches it and no branch that can write `approved`.
-   *
-   * COSMETIC in the sense lib/policyVersion.js means: it changes which desk a
-   * request lands on and not one figure on it. The hours come from the engine
-   * over the times that were typed, identically either way.
-   */
-  hrDirectApproveBirthday: true,
+  /* ── `hrDirectApproveBirthday` WAS HERE AND WAS WITHDRAWN ─────────────────
+     Removed 2026-09-03 with the arrangement it governed. It decided whether
+     ฝ่ายบุคคล filing a birthday holiday from วันเกิดที่ยังไม่มีใบ — having read
+     the in and out times off the fingerprint scanner — both filed and approved
+     it in one act, writing a single `submit_hr_verified` history row that named
+     them as filer and signer with the reason on it.
+
+     There is no such press now: a birthday request is filed by the person whose
+     birthday it is and takes both signatures like every other request. Nothing
+     in this system can reach `approved` in one act any more.
+
+     THE ROWS IT PRODUCED ARE STILL IN THE DATABASE and are still marked as what
+     they are — `isHrVerifiedBirthday` in lib/entries.js reads them, and
+     ตรวจสอบรายเดือน still counts them for the months they fall in. A key that no
+     longer exists is not a key that never ran.
+
+     A stored `Setting.policy` may still carry it. It is ignored, not migrated:
+     nothing reads it, and rewriting somebody's stored settings to tidy up a name
+     is how a policy version comes to disagree with what produced the hours. */
 
   // ── [OPEN 8] Hitting the department cap: block or warn? ────────────────────
   /** 'warn' — allow through with a flag for HR (DEFAULT). 'block' — refuse. */
@@ -637,15 +628,57 @@ export const HR_UNCONFIRMED_SINCE = '2026-08-07';
 
 export const HR_UNCONFIRMED = Object.freeze([
   Object.freeze({
-    id: 'roundingIncrement',
     /**
-     * The badge used to sit on `roundingMode`, because the increment was a
-     * number in this file with no row on the settings page to wear it — the
-     * same stand-in `minimumScope` had, and retired the same way. The increment
-     * has its own dropdown now, so the badge moved onto the flag the question is
-     * actually about. `roundingMode` is not unconfirmed: 'floor' is the
-     * requirements doc's own recommendation.
+     * ปัดขึ้นหรือปัดลง — the half of [OPEN 3] that has never been put to
+     * anybody, and the one that moves the most hours of any item in this list.
+     *
+     * IT USED TO BE MISSING, and the way it went missing is the reason it is
+     * first now. The badge originally sat on `roundingMode` as a stand-in,
+     * because the increment was a number in this file with no row of its own to
+     * wear it. When the increment got its dropdown on 2026-09-02 the badge
+     * moved onto it — correctly, the increment IS a question — and this file
+     * wrote down that `roundingMode` "is not unconfirmed: 'floor' is the
+     * requirements doc's own recommendation." A stand-in was retired and the
+     * rule it had been standing in for was recorded as answered on its way out.
+     *
+     * A recommendation in the requirements doc is exactly what every other item
+     * here is: reverse-engineered from how the old paper appears to have been
+     * filled in. `belowMinimumAction` and `minimumScope` are on this list on
+     * those same grounds. Nothing distinguished `roundingMode` except that it
+     * had once carried somebody else's badge.
+     *
+     * ฝ่ายบุคคล ANSWERED "ปัดเศษทีละ 30 นาที" on 2026-09-02, and that is the
+     * increment — it says how big the block is and not which way a part-block
+     * goes. Under this file's own rule (a badge covers exactly as much as one
+     * answer covers) it cannot reach `roundingMode`, and the two readings of
+     * their sentence are 29 นาที → 0 ชม. and 29 นาที → 0.5 ชม.
+     *
+     * `roundingDirection`, not `roundingMode`: an id that collides with a policy
+     * key makes `{ [id]: {...} }` read as a policy override to anything scanning
+     * the settings document loosely — the trap `belowMinimumAction` and
+     * `startBuffer` were both named out of.
      */
+    id: 'roundingDirection',
+    since: '2026-09-03',
+    label: 'เศษที่ไม่ครบบล็อก ปัดขึ้นหรือปัดลง',
+    keys: Object.freeze(['roundingMode']),
+    reading: (policy) => {
+      if (policy.roundingMode === 'exact') return 'ไม่ปัดเศษ — คิดตามจริงเป็นทศนิยม';
+      if (policy.roundingMode === 'ceil') return 'ปัดขึ้นทั้งหมด';
+      if (policy.roundingMode === 'nearest') return 'ปัดเข้าหาค่าใกล้ที่สุด';
+      return 'ปัดลงทั้งหมด — เศษที่ไม่ครบบล็อกถูกตัดทิ้ง';
+    },
+    note: 'ข้อนี้ถามคนละอย่างกับ “ปัดเศษทีละกี่นาที” ข้างล่าง ที่ฝ่ายบุคคลตอบมาแล้วว่า 30 นาที '
+      + '— คำตอบนั้นบอกว่าบล็อกใหญ่เท่าไร ไม่ได้บอกว่าเศษที่ไม่ครบบล็อกไปทางไหน '
+      + '· “ปัดลงทั้งหมด” เป็นข้อแนะนำในเอกสารข้อกำหนด ไม่ใช่คำตอบที่ใครในฝ่ายบุคคลเคยให้ไว้ '
+      + 'และเป็นค่าที่ทุกใบในระบบถูกคำนวณมา '
+      + '· ⚠ เป็นข้อที่ขยับชั่วโมงมากที่สุดในรายการนี้ — ปัดลงกับปัดเข้าหาค่าใกล้ที่สุด '
+      + 'ต่างกันได้ถึงเกือบครึ่งชั่วโมงต่อใบ และการปัดลงอย่างเดียวคือการไม่จ่ายเวลาที่ทำไปแล้ว '
+      + '· ถ้าตอบว่า “ปัดลง แต่ขาดอีกไม่กี่นาทีให้ครบ” นั่นคือแถวผ่อนปรนข้างล่าง ไม่ใช่แถวนี้ '
+      + '· เปลี่ยนข้อนี้แล้วชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม',
+  }),
+  Object.freeze({
+    id: 'roundingIncrement',
     /**
      * `roundingGraceMinutes` SHARED THIS BADGE FOR ONE DAY, on the reasoning
      * that "ปัดลงทีละ 30 นาที" and "และ 29 นาทีได้ศูนย์" are one answer and two
@@ -715,10 +748,19 @@ export const HR_UNCONFIRMED = Object.freeze([
         && grace > 0 && grace < Number(policy.roundingIncrementMinutes);
       if (live) return `ปัดขึ้นให้เมื่อเหลืออีกไม่เกิน ${grace} นาที`;
       if (grace > 0) return 'ไม่ผ่อนปรน — ค่าที่ตั้งไว้ไม่ถูกอ่านกับการปัดเศษแบบนี้';
+      /**
+       * A grace of nought under a mode that never reads it is not the same
+       * sentence as a grace of nought under 'floor'. "ปัดลงอย่างเดียว" is a
+       * claim about the ROUNDING, and printing it beside ปัดเข้าหาค่าใกล้ที่สุด
+       * would describe an engine that is not running — the row above says
+       * nearest and this one would say floor.
+       */
+      if (policy.roundingMode !== 'floor') return 'ไม่ผ่อนปรน — การปัดเศษแบบนี้ไม่ได้อ่านค่านี้';
       return 'ไม่ผ่อนปรน — ปัดลงอย่างเดียว';
     },
-    note: 'ปิดอยู่ แปลว่าทำ 29 นาทีได้ 0 ชม. และงานนั้นถูกปฏิเสธไม่บันทึกอะไรเลย '
+    note: 'ปิดไว้ *ใต้การปัดลง* แปลว่าทำ 29 นาทีได้ 0 ชม. และงานนั้นถูกปฏิเสธไม่บันทึกอะไรเลย '
       + 'ซึ่งเป็นการอ่านจากวิธีกรอกกระดาษเดิม ไม่ใช่คำตอบที่ใครในฝ่ายบุคคลเคยให้ไว้ '
+      + '· ใต้การปัดแบบอื่นค่านี้ไม่ถูกอ่านเลย แถวข้างบนเป็นตัวตัดสิน '
       + '· ตั้งได้ 5, 10 หรือ 15 นาที — ตัวอย่างที่ 5: ทำ 29 นาทีได้ 0.5 ชม. และ 55 นาทีได้ 1 ชม. '
       + '· เป็นคนละข้อกับ “ปัดเศษทีละกี่นาที” ข้างบน ที่ฝ่ายบุคคลตอบแล้ว '
       + '· เปลี่ยนข้อนี้แล้วชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม และเส้นที่ระบบปฏิเสธงานสั้น ๆ จะขยับตามไปด้วย',
@@ -780,8 +822,14 @@ export const HR_UNCONFIRMED = Object.freeze([
       + 'วัดจากนาทีที่ทำจริงทั้งใบ ก่อนปัดเศษ · ใบที่ไม่ผ่านเกณฑ์นี้จะถูกปฏิเสธตั้งแต่หน้ากรอก '
       + 'ไม่ใช่บันทึกเป็น 0 · ระบบส่งมาที่ “ไม่มีเกณฑ์” เพราะยังไม่เคยมีใครในฝ่ายบุคคลระบุตัวเลขมา '
       + 'ไม่ใช่เพราะตอบแล้วว่าไม่ต้องมี '
-      + '· ⚠ ขณะที่ปัดลงทีละ 30 นาที ข้อนี้ยังไม่มีผลไม่ว่าตั้งเท่าไหร่ — งานที่สั้นกว่า 30 นาที '
-      + 'ถูกปัดเหลือ 0 และถูกปฏิเสธอยู่แล้ว · จะเริ่มมีผลก็ต่อเมื่อตั้งเกิน 30 หรือลดขนาดการปัดเศษลง',
+      + '· ⚠ การปัดเศษตอบคำถามเดียวกันนี้ก่อน และตอบไปแล้วบางส่วนเสมอ — งานที่สั้นกว่า '
+      + '“บล็อก ลบ ผ่อนปรน” ถูกปัดเหลือ 0 และถูกปฏิเสธอยู่แล้ว ข้อนี้จึงเริ่มมีผลจริงเหนือเส้นนั้นขึ้นไป '
+      + '· เส้นนั้นขยับได้สามทาง คือเปลี่ยนวิธีปัด เปลี่ยนขนาดบล็อก หรือเปิดผ่อนปรน '
+      + 'ประโยคใต้ช่องนี้บนหน้าตั้งค่าคำนวณเส้นใหม่ทุกครั้ง (`roundingZeroesUnder` ใน lib/policyInert.js) '
+      + 'จึงอ่านที่นั่น อย่าอ่านตัวเลขจากประโยคนี้ '
+      + '· ⚠ และข้อนี้ทำงานก่อนผ่อนปรน วัดจากนาทีที่ทำจริง — ตั้งข้อนี้ไว้สูงกว่าเส้นข้างบน '
+      + 'จะบังผ่อนปรนทิ้งทั้งช่วง: ผ่อนปรน 5 เปิดไว้ให้ 25–29 นาทีได้ 0.5 ชม. แต่ถ้าข้อนี้เป็น 30 '
+      + 'คนกลุ่มนั้นยังถูกปฏิเสธเหมือนเดิม ตอบสองข้อนี้พร้อมกันเสมอ',
   }),
 ]);
 

@@ -99,9 +99,14 @@ test('the rules nobody in HR has answered are the ones that are listed', () => {
   // here rather than discover on the settings page — which is how `startBuffer`
   // came to be added on 2026-08-13: the buffer moved hours, shipped at a figure
   // nobody chose, and was the only one of the four with no badge saying so.
+  //
+  // `roundingDirection` came on 2026-09-03 the other way round — not overlooked,
+  // but recorded as ANSWERED while it was retiring a badge it had only ever been
+  // holding for the increment. ฝ่ายบุคคล said "ปัดเศษทีละ 30 นาที", which sizes
+  // the block and does not say which way a part-block goes.
   assert.deepEqual(
     HR_UNCONFIRMED.map((i) => i.id),
-    ['roundingIncrement', 'roundingGrace', 'belowMinimumAction', 'minimumScope', 'startBuffer'],
+    ['roundingDirection', 'roundingIncrement', 'roundingGrace', 'belowMinimumAction', 'minimumScope', 'startBuffer'],
   );
   assert.equal(HR_UNCONFIRMED_SINCE, '2026-08-07');
 });
@@ -112,7 +117,28 @@ test('an item added after the catalogue opened is dated from when it arrived', (
   const state = unconfirmedState(DEFAULT_POLICY, {});
   const byId = Object.fromEntries(state.map((i) => [i.id, i]));
   assert.equal(byId.startBuffer.since, '2026-08-13');
+  assert.equal(byId.roundingDirection.since, '2026-09-03');
   assert.equal(byId.roundingIncrement.since, HR_UNCONFIRMED_SINCE);
+});
+
+test('the direction a part-block goes is its own question from the increment', () => {
+  // The two are one sentence on the settings page and two answers underneath it.
+  // ฝ่ายบุคคล gave the increment on 2026-09-02 and nobody has ever been asked
+  // the direction, so a reading that moved with the increment — or a badge that
+  // came off when the increment was confirmed — would put their name on it.
+  const readingOf = (roundingMode) => unconfirmedState({ ...DEFAULT_POLICY, roundingMode }, {})
+    .find((i) => i.id === 'roundingDirection').reading;
+
+  assert.match(readingOf('floor'), /ปัดลง/);
+  assert.match(readingOf('ceil'), /ปัดขึ้น/);
+  assert.match(readingOf('nearest'), /ใกล้ที่สุด/);
+  assert.match(readingOf('exact'), /ไม่ปัดเศษ/);
+
+  // Same key, both directions: the item points at `roundingMode` and at nothing
+  // else, so confirming the increment cannot reach it.
+  const byId = Object.fromEntries(HR_UNCONFIRMED.map((i) => [i.id, i]));
+  assert.deepEqual(byId.roundingDirection.keys, ['roundingMode']);
+  assert.ok(!byId.roundingIncrement.keys.includes('roundingMode'));
 });
 
 // ── what a screen is told ───────────────────────────────────────────────────
@@ -309,12 +335,16 @@ test('ที่มาของคำตอบ is optional, capped, and refused r
   assert.equal(tooLong.value, undefined);
 });
 
-test('the rounding increment’s badge sits on the increment, not on the mode', () => {
+test('the rounding increment’s badge sits on the increment, and the mode keeps one of its own', () => {
   // Same move `minimumScope` made below, for the same reason. The increment was
   // a number in src/config/policy.js with no row on the settings page, so the
   // badge borrowed `roundingMode`'s row; the increment has its own dropdown now.
-  // `roundingMode` is not an unconfirmed rule — 'floor' is the requirements
-  // doc's own recommendation — and a badge left on it would say it was.
+  //
+  // THIS TEST USED TO ASSERT `roundingMode` WORE NO BADGE, on the grounds that
+  // 'floor' is the requirements doc's own recommendation. That is what every
+  // other item in the catalogue is, and the assertion was what held the mistake
+  // in place: retiring a stand-in recorded the rule it had stood in for as
+  // answered. The two rows carry two badges now — see `roundingDirection`.
   //
   // ผ่อนปรนการปัดขึ้น shared this item for one day and was split back out on
   // 2026-09-02, when ฝ่ายบุคคล answered the increment and said nothing about the
@@ -322,7 +352,7 @@ test('the rounding increment’s badge sits on the increment, not on the mode', 
   // had put to them. A badge covers exactly as much as one answer covers.
   const item = HR_UNCONFIRMED.find((i) => i.id === 'roundingIncrement');
   assert.deepEqual(item.keys, ['roundingIncrementMinutes']);
-  assert.equal(unconfirmedKeys({}).has('roundingMode'), false);
+  assert.equal(unconfirmedKeys({}).has('roundingMode'), true);
 });
 
 test('the increment’s reading says so when no rounding is happening at all', () => {
@@ -372,6 +402,14 @@ test('the ผ่อนปรน reading follows the engine, not the stored numbe
   // Stored but not read: the reading says so rather than printing the number.
   for (const roundingMode of ['ceil', 'nearest']) {
     assert.match(readingOf({ roundingMode, roundingGraceMinutes: 10 }), /ไม่ถูกอ่าน/);
+  }
+
+  // …and a grace of NOUGHT under those modes must not claim the rounding is
+  // ปัดลง. It read 'ไม่ผ่อนปรน — ปัดลงอย่างเดียว' under every mode until
+  // 2026-09-03: true of the grace, false about the engine, and about to be
+  // printed on a page whose row above it says ปัดเข้าหาค่าใกล้ที่สุด.
+  for (const roundingMode of ['ceil', 'nearest']) {
+    assert.doesNotMatch(readingOf({ roundingMode, roundingGraceMinutes: 0 }), /ปัดลง/);
   }
   assert.match(readingOf({ roundingMode: 'exact', roundingGraceMinutes: 10 }), /ไม่มีอะไรให้ผ่อนปรน/);
 

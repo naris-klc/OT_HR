@@ -1,17 +1,12 @@
 import Employee from '@/src/models/Employee.js';
-import BirthdayCheck from '@/src/models/BirthdayCheck.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, checkCap, loadContext } from '@/src/services/otService.js';
-import { pickSession, isDepartmentManager, birthdayOtRefusal } from '@/lib/entries.js';
+import { pickSession, isDepartmentManager, birthdayTickRefusal } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
-import { birthdayInYear } from '@/src/lib/otEngine.js';
-import { absentKeys, filedKey } from '@/lib/birthdayCheck.js';
-import { birthdayDirectApproval } from '@/lib/birthdayFiling.js';
-import { today } from '@/lib/delegationQuery.js';
 
 /** Compute without saving, so the form can show the split live. */
 export const POST = route(async (req) => {
@@ -84,52 +79,18 @@ export const POST = route(async (req) => {
     : null;
 
   /**
-   * And the same question for บันทึก OT ให้ จากรายการวันเกิด, when the form
-   * asks it.
+   * `birthdayRouting` LEFT THIS ROUTE ON 2026-09-03 and is not coming back.
    *
-   * Answered by `birthdayDirectApproval` — the very function the write route
-   * refuses with, over the same recomputed birthday date and the same live
-   * policy — rather than by the browser reasoning from a role and a flag. The
-   * form prints one sentence off this ("จะอนุมัติทันที" or "จะรอหัวหน้าอนุมัติ")
-   * and it is the sentence anybody reads twice; a browser-side copy of the rule
-   * would be wrong the first time `hrDirectApproveBirthday` moved.
+   * It answered one question — would ฝ่ายบุคคล's press file AND approve in one
+   * act, or leave the request waiting — and that question stopped existing with
+   * the queue it was asked from. A birthday request is now filed by the person
+   * whose birthday it is and routed by `routing` above, exactly like every other
+   * request; there is one door and one answer about where a filing lands.
    *
-   * Only computed when asked for. Every other caller of this route gets `null`
-   * and pays for none of the lookups below.
+   * With it went this route's only reads of `BirthdayCheck`, `birthdayInYear`
+   * and the live calendar for the day — which is why the preview is now a
+   * cheaper call for everybody, not only for the form that used to ask.
    */
-  let birthdayRouting = null;
-  if (payload.birthday && employee) {
-    let birthdayDate = null;
-    let badBirthDate = false;
-    try {
-      birthdayDate = employee.birthDate
-        ? birthdayInYear(employee.birthDate, Number(session.workDate.slice(0, 4)), ctx.policy)
-        : null;
-    } catch {
-      badBirthDate = true;
-    }
-
-    if (badBirthDate) {
-      birthdayRouting = { ok: false, error: 'วันเกิดของพนักงานคนนี้ในระบบไม่ถูกต้อง จึงตรวจสอบไม่ได้' };
-    } else {
-      const checks = await BirthdayCheck.find({ employee: employee._id, workDate: session.workDate })
-        .select('employee workDate outcome checkedAt').lean();
-
-      const gate = birthdayDirectApproval({
-        actor: user,
-        employee,
-        workDate: session.workDate,
-        birthdayDate,
-        isCompanyHoliday: ctx.isHoliday(session.workDate),
-        today: today(),
-        policy: ctx.policy,
-        alreadyAbsent: absentKeys(checks).has(filedKey(employee._id, session.workDate)),
-      });
-      birthdayRouting = gate.ok
-        ? { ok: true, direct: Boolean(gate.direct), reason: gate.reason || null }
-        : { ok: false, error: gate.error };
-    }
-  }
 
   /**
    * Said before the form is sent, rather than after it is refused.
@@ -143,21 +104,21 @@ export const POST = route(async (req) => {
   const weekdayRefusal = employee ? weekdayOtRefusal(employee.department, result) : null;
 
   /**
-   * และวันเกิดของตัวเอง — said in the same breath and for the same reason.
+   * และช่อง “วันเกิด” ที่ติ๊กไว้ — said in the same breath and for the same
+   * reason.
    *
-   * From `birthdayOtRefusal`, the function both write paths refuse with, over
+   * From `birthdayTickRefusal`, the function both write paths refuse with, over
    * `ctx.dayTypes` — the same map, resolved from the same stored วันเกิด under
-   * the same live policy. The form greys บันทึก on this sentence rather than
-   * working out whose birthday today is, which it could not do without being
-   * sent a birth date it is not allowed to hold.
+   * the same policy. The form greys บันทึก on this sentence rather than working
+   * out whose birthday the date is, which it could not do without being sent a
+   * birth date it is not allowed to hold (`publicEmployee`).
    *
-   * Null for everybody filing for somebody else, which is what the rule says
-   * and not a shortcut taken here: the check is `filer === employee` and this
-   * route hands it the same two people the write path will.
+   * Null when the box is not ticked, which is most requests: the tick is a
+   * claim, and there is nothing to check until somebody makes it.
    */
   const birthdayRefusal = employee
-    ? birthdayOtRefusal({
-      filer: user, employee, dayTypes: ctx.dayTypes, workDate: session.workDate,
+    ? birthdayTickRefusal({
+      ticked: payload.birthdayWelfare, dayTypes: ctx.dayTypes, workDate: session.workDate,
     })
     : null;
 
@@ -201,6 +162,6 @@ export const POST = route(async (req) => {
     : null;
 
   return json({
-    result, cap, routing, birthdayRouting, weekdayRefusal, birthdayRefusal, conflict,
+    result, cap, routing, weekdayRefusal, birthdayRefusal, conflict,
   });
 });

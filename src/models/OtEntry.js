@@ -95,6 +95,10 @@ const snapshotSchema = new mongoose.Schema(
     endTime: String,
     endsNextDay: Boolean,
     noBreakTaken: Boolean,
+    /* เหมารายวัน. Optional like every field here — a snapshot written before
+       2026-09-03 has no answer, and `sameValue` reads absent as false, which is
+       what it was. */
+    flatDaily: Boolean,
     description: String,
     /** The hours those values computed to — what the form printed at the time. */
     buckets: {
@@ -139,8 +143,13 @@ const historySchema = new mongoose.Schema(
       // scanner, and approving it in the same act. ONE row for one event, and
       // the only action in this list whose `toStatus` is 'approved' without an
       // 'approve_*' before it — which is the fact it exists to record. There is
-      // no matching manager block on the entry, deliberately: see
-      // lib/birthdayFiling.js.
+      // no matching manager block on the entry, deliberately.
+      //
+      // RETIRED 2026-09-03. No new row can carry this action — the queue, the
+      // route and the policy flag behind it were all withdrawn — but rows that
+      // already do are still in the database and still have to load, which is
+      // why the value stays in this enum and `isHrVerifiedBirthday` still reads
+      // it.
       // 'withdraw_request' is the employee ASKING for a signed entry to be
       // taken back, and it is the only action in this list that changes no
       // status — the entry stays approved and keeps counting until somebody
@@ -295,6 +304,24 @@ const otEntrySchema = new mongoose.Schema(
 
     /** ไม่พักเที่ยง — skip the break deduction (§3). New in v1 per §12. */
     noBreakTaken: { type: Boolean, default: false },
+
+    /**
+     * เหมารายวัน — this day was hired whole, so it counts eight hours however
+     * long the person stayed. `flatDailyMinutes` in src/lib/otEngine.js does the
+     * cutting; this is the tick that asks for it.
+     *
+     * AN ENTERED FIELD, not a computed one. It is on the request because HR's
+     * rule (2026-09-03) is that flat days are neither every day nor everybody —
+     * the department-wide `otMode: 'daily'` beside it (lib/otMode.js) answers a
+     * different question and still answers it. So this cannot be derived from
+     * the roster or the calendar: only the person filling the form in knows
+     * which day was sold that way, which is why it is in `ENTERED_FIELDS` and
+     * why an edit that only toggles it is a real edit with a `before` on it.
+     *
+     * `false` on every row written before 2026-09-03, which is correct rather
+     * than merely convenient: nothing was capped before the tick existed.
+     */
+    flatDaily: { type: Boolean, default: false },
 
     /**
      * รายละเอียดงานที่ทำ — prints in the form's description column.
@@ -631,6 +658,7 @@ otEntrySchema.methods.snapshot = function snapshot() {
     endTime: this.endTime,
     endsNextDay: Boolean(this.endsNextDay),
     noBreakTaken: Boolean(this.noBreakTaken),
+    flatDaily: Boolean(this.flatDaily),
     description: this.description,
     buckets: {
       [BUCKETS.OT15_WEEKDAY]: this.buckets?.[BUCKETS.OT15_WEEKDAY] ?? 0,

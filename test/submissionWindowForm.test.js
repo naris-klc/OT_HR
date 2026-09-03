@@ -110,7 +110,7 @@ test('the stripper actually strips — the string matches below prove nothing ot
 });
 
 test('the date box reads its bounds from the shared window', () => {
-  has(form, "import { submissionWindow } from '@/lib/entries.js'");
+  has(form, "import { submissionWindow, isBirthdayWelfare } from '@/lib/entries.js'");
   has(form, 'min={dateBounds.min}');
   has(form, 'max={dateBounds.max}');
 });
@@ -138,8 +138,24 @@ test('an entry already outside the window keeps its bound dropped', () => {
   assert.ok(!formCode.includes('aheadDays'), 'ฟอร์มคำนวณ aheadDays ไว้โดยไม่มีใครใช้');
 });
 
-test('a birthday row carries no bounds — that path is exempt on the server too', () => {
-  has(formCode, 'if (fromBirthday) return { min: undefined, max: undefined }');
+/**
+ * NOBODY IS EXEMPT ANY MORE — 2026-09-03, and this case is the reverse of what
+ * it was. It read `if (fromBirthday) return { min: undefined, max: undefined }`:
+ * ฝ่ายบุคคล settling a birthday from วันเกิดที่ยังไม่มีใบ got no bounds at all,
+ * because that queue existed to catch days that had been MISSED — sometimes
+ * weeks back — and a bound would have greyed out exactly those.
+ *
+ * The queue is gone. A birthday request is filed by the person whose birthday it
+ * is, on this form, under the same window as every other request — so the memo
+ * has no early return and there is no second door that could still reach a date
+ * this one refuses.
+ */
+test('the window has no exemptions — every filing path meets the same bounds', () => {
+  assert.ok(
+    !formCode.includes('fromBirthday'),
+    'a mode-shaped exemption came back to the date bounds',
+  );
+  has(formCode, 'const { min, max } = submissionWindow(today(), policy)');
 });
 
 test('the form opens on the office day, not on UTC', () => {
@@ -213,7 +229,7 @@ test('ไม่มีบรรทัดบอกช่วงวันที่�
  * look identical in a diff a year from now.
  */
 test('ขอบเขตวันที่ยังอยู่ครบ — ที่ถูกลบคือคำอธิบาย ไม่ใช่กฎ', () => {
-  has(formCode, "import { submissionWindow } from '@/lib/entries.js'");
+  has(formCode, "import { submissionWindow, isBirthdayWelfare } from '@/lib/entries.js'");
   has(formCode, 'min={dateBounds.min}');
   has(formCode, 'max={dateBounds.max}');
   has(formCode, 'const { min, max } = submissionWindow(today(), policy)');

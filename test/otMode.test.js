@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -166,11 +166,20 @@ test('every write path that computes hours consults the rule', () => {
   ]) {
     assert.match(read(path), /weekdayOtRefusal/, `${path} must apply the rule`);
   }
-  // And the one that deliberately does not: ฝ่ายบุคคล filing a สวัสดิการวันเกิด
-  // off the scan record, which is granted whatever the department is paid on.
-  const birthday = read('app/api/birthday/entries/route.js');
-  assert.doesNotMatch(birthday, /weekdayOtRefusal\(/);
-  assert.match(birthday, /NO รูปแบบโอที CHECK HERE/);
+  // THERE IS NO EXEMPT PATH ANY MORE. app/api/birthday/entries was the one
+  // route that deliberately skipped this rule — ฝ่ายบุคคล filing a
+  // สวัสดิการวันเกิด off the scan record, granted whatever the department was
+  // paid on — and it was deleted on 2026-09-03 with the queue that opened it.
+  //
+  // A birthday request is one of the three above now and meets รูปแบบโอที like
+  // every other request. That costs the exemption nothing: the rule reads the
+  // ot15_weekday bucket, and a real birthday holiday puts every minute in the
+  // two วันหยุด buckets — which is what the case above this one pins.
+  assert.equal(
+    existsSync(join(ROOT, 'app/api/birthday')),
+    false,
+    'the birthday door is gone — a new one would need this rule written into it',
+  );
 });
 
 test('the department the rule reads is populated with the field', () => {

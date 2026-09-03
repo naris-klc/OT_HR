@@ -6,7 +6,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, pickSession, stampCap, editPermission, sameSession,
-  descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal, birthdayOtRefusal,
+  descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal, birthdayTickRefusal,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
@@ -122,17 +122,17 @@ export const PATCH = route(async (req, { params }) => {
   /**
    * And the same birthday rule, for the reason the department one is applied
    * again below: an edit is a filing. The commonest correction there is moves
-   * `workDate`, and without this a person refused their birthday on the submit
-   * path could file the day before and then drag the date across.
+   * `workDate`, and without this a request ticked วันเกิด could be filed on the
+   * one day the tick is true and then dragged onto any other.
    *
-   * `entry.employee` and not `user`: the comparison inside decides whether this
-   * is somebody claiming their OWN สวัสดิการวันเกิด, and ฝ่ายบุคคล correcting
-   * the times on a row they filed is not that. It is also why an approved
-   * birthday entry does not become uneditable — `editPermission` above already
-   * governs who may touch it, and this adds nothing for HR.
+   * The tick comes off the payload, like every other entered field on this
+   * path. An edit that does not send it is an edit that is taking it OFF, which
+   * is a correction anybody may make: an untick simply files the day as
+   * ordinary OT, and the hours do not move — `resolveDayTypes` decides those,
+   * and it has never read this box.
    */
-  const birthdayRefusal = birthdayOtRefusal({
-    filer: user, employee: entry.employee, dayTypes: ctx.dayTypes, workDate: session.workDate,
+  const birthdayRefusal = birthdayTickRefusal({
+    ticked: payload.birthdayWelfare, dayTypes: ctx.dayTypes, workDate: session.workDate,
   });
   if (birthdayRefusal) return fail(birthdayRefusal, 409, { warnings: result.warnings });
 

@@ -17,6 +17,7 @@ const SESSION = {
   endTime: '20:00',
   endsNextDay: false,
   noBreakTaken: false,
+  flatDaily: false,
   description: 'สอบเทียบชุด PM-3000',
 };
 
@@ -31,6 +32,7 @@ test('every entered field on its own marks the entry as changed', () => {
     endTime: '21:00',
     endsNextDay: true,
     noBreakTaken: true,
+    flatDaily: true,
     description: 'สอบเทียบชุด PM-4000',
   };
   for (const field of ENTERED_FIELDS) {
@@ -43,7 +45,9 @@ test('every entered field on its own marks the entry as changed', () => {
 });
 
 test('a missing boolean and an explicit false are the same answer', () => {
-  const { endsNextDay, noBreakTaken, ...withoutFlags } = SESSION;
+  const {
+    endsNextDay, noBreakTaken, flatDaily, ...withoutFlags
+  } = SESSION;
   assert.equal(sameSession(SESSION, withoutFlags), true);
   assert.equal(sameValue(undefined, false), true);
   assert.equal(sameValue(undefined, true), false);

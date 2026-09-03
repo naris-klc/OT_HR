@@ -13,7 +13,6 @@ import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
 import HolidayBanner from './HolidayBanner.jsx';
 import { BackupBanner } from './BackupBanner.jsx';
-import QueueTabs from './QueueTabs.jsx';
 import HrView from './HrView.jsx';
 import AccountingView from './AccountingView.jsx';
 import DepartmentView from './DepartmentView.jsx';
@@ -474,16 +473,14 @@ function Shell({ session, onLogout }) {
   const home = defaultTab(user.role);
   const [tab, setTab] = useState(home);
   const [counts, setCounts] = useState({
-    pendingMgr: 0, pendingHr: 0, pendingMgrDelegated: 0, delegatedTeams: 0, birthdayPending: 0,
+    pendingMgr: 0, pendingHr: 0, pendingMgrDelegated: 0, delegatedTeams: 0,
   });
   /**
-   * Which sub-tab the queue screen should open on, when something sent us there.
-   *
-   * Same shape as `adminSection` below and cleared the same way — a signal for
-   * one arrival, not a stored preference. The status line at the foot of
-   * ตรวจสอบรายเดือน is the only thing that sets it.
+   * `queueTab` STOOD HERE UNTIL 2026-09-03 — the sub-tab the queue screen was
+   * to open on, set by the status line at the foot of ตรวจสอบรายเดือน when it
+   * sent somebody to วันเกิดรอตรวจ. The queue screen has no sub-tabs now, so
+   * there is nothing to steer and nothing to clear on the way out.
    */
-  const [queueTab, setQueueTab] = useState(null);
   /**
    * Which section ตั้งค่าระบบ should open on, when something sent us there.
    * Cleared on leaving the tab (below), so it steers the one arrival it was set
@@ -538,7 +535,6 @@ function Shell({ session, onLogout }) {
   }
   useEffect(() => { refreshCounts(); }, [tab]);
   useEffect(() => { if (tab !== 'admin') setAdminSection(null); }, [tab]);
-  useEffect(() => { if (!['approve', 'confirm'].includes(tab)) setQueueTab(null); }, [tab]);
 
   /**
    * Rows just left a queue. Take them off the badge now and ask the server
@@ -627,18 +623,20 @@ function Shell({ session, onLogout }) {
   }
 
   /**
-   * ONE NUMBER, EVERYWHERE, AND IT IS THE SUM OF BOTH PILES.
+   * ONE NUMBER, EVERYWHERE.
    *
-   * รออนุมัติ and รอ HR ยืนยัน each hold two piles of work: requests waiting for
-   * a signature, and birthdays waiting for somebody to check the scan record.
-   * The badge counts both, on the screen and off it, and it counts them the
-   * same way in `.sidebar` and `.mobile-nav` — those render the same `tabs`
-   * array and never appear together, so two rules would agree on every device
-   * and disagree the moment a window is dragged across 860px.
+   * รออนุมัติ and รอ HR ยืนยัน held two piles of work until 2026-09-03 — requests
+   * waiting for a signature, and birthdays waiting for somebody to check the
+   * scan record — and the badge was the sum. The second pile no longer exists
+   * (`birthdayPending` and its tab went with ฝ่ายบุคคล's birthday work), so what
+   * is left is the requests and the open withdrawal asks below. It is still
+   * counted the same way in `.sidebar` and `.mobile-nav` — those render the same
+   * `tabs` array and never appear together, so two rules would agree on every
+   * device and disagree the moment a window is dragged across 860px.
    *
    * IT FOLLOWED THE OPEN TAB FROM 2026-08-20 TO 2026-08-28, and that is what
    * this rewrite undoes. `queueBadge(key, ownPending)` took the current tab, a
-   * `queueActive` state reported upward by QueueTabs, and returned the open
+   * `queueActive` state reported upward by the queue screen, and returned the open
    * tab's own pile while the screen was open and the sum from anywhere else.
    * Reported on 2026-08-28: the badge read 6 from ตรวจสอบรายเดือน and 3 after
    * pressing it, which is the same question answered two ways within one
@@ -647,19 +645,16 @@ function Shell({ session, onLogout }) {
    * from three items that somebody else just cleared.
    *
    * THE READABILITY IT WAS SOLVING IS STILL SOLVED, by the thing that was
-   * always solving it: each tab carries its own chip — ใบรอยืนยัน 3,
-   * วันเกิดรอตรวจ 3 — two centimetres above the badge. The nav badge answers
-   * "is there anything for me over there", which is a question about the
-   * screen; the chips answer "which pile", which is a question about the tabs.
-   * A badge that answered the second one had to stop answering the first.
+   * always solving it: the tab carries its own chip — ใบรอยืนยัน 3 — two
+   * centimetres above the badge. The nav badge answers "is there anything for me
+   * over there", which is a question about the screen; the chip answers "which
+   * pile", which is a question about the tabs. A badge that answered the second
+   * one had to stop answering the first.
    *
-   * `birthdayPending` is scoped to the caller by the server, so a หัวหน้า's
-   * number is their team's and ฝ่ายบุคคล's is everybody's.
-   *
-   * ── AND A THIRD PILE FROM 2026-09-03: คำขอถอนใบที่อนุมัติแล้ว ──────────────
+   * ── AND A SECOND PILE FROM 2026-09-03: คำขอถอนใบที่อนุมัติแล้ว ─────────────
    *
    * The card at the top of both these screens, and it was in nobody's count.
-   * With no ใบ waiting and no birthday outstanding, an employee could ask for
+   * With no ใบ waiting, an employee could ask for
    * an approved entry to be withdrawn and the nav would carry no badge at all —
    * the one state where the badge's own question, *is there anything for me
    * over there*, was being answered wrongly rather than coarsely.
@@ -673,14 +668,13 @@ function Shell({ session, onLogout }) {
    * A หัวหน้า's pile is `pendingMgr`, which no open request can be in, so they
    * pass nothing and nothing is taken off.
    *
-   * NO THIRD CHIP GOES WITH IT, and the difference is what a chip is for. A
-   * chip tells you what is behind a tab you cannot see — that is why
-   * วันเกิดรอตรวจ has one. This pile is a CARD at the top of the tab the badge
-   * already lands you on, with its own count in its own heading. It cannot be
-   * missed once you are there; the badge exists to get you there.
+   * NO CHIP GOES WITH IT, and the difference is what a chip is for. A chip
+   * tells you what is behind a tab you cannot see — that is what วันเกิดรอตรวจ
+   * had one for. This pile is a CARD at the top of the tab the badge already
+   * lands you on, with its own count in its own heading. It cannot be missed
+   * once you are there; the badge exists to get you there.
    */
   const queueBadge = (ownPending, overlap = 0) => ownPending
-    + (counts.birthdayPending || 0)
     + Math.max(0, (counts.withdrawalOpen || 0) - overlap);
 
   /**
@@ -1110,21 +1104,16 @@ function Shell({ session, onLogout }) {
               </div>
             )}
             {tab === 'mine' && <EmployeeView user={user} onChanged={refreshCounts} openSignal={formSignal} />}
+            {/* ONE LIST AGAIN SINCE 2026-09-03. This was `QueueTabs` — ใบรอยืนยัน
+                beside วันเกิดรอตรวจ — and with the birthday pile gone the
+                wrapper was a tab bar with one tab in it. components/QueueTabs.jsx
+                was deleted rather than left holding a single child. */}
             {tab === 'approve' && (
-              <QueueTabs
+              <ApprovalQueue
                 user={user}
                 stage="pending_mgr"
-                pendingCount={counts.pendingMgr}
-                // The nav badge is the sum of this screen's two tabs, so the
-                // birthday half of it is already known here — and the tab that
-                // has not been opened yet has no other way to know it.
-                birthdayCount={counts.birthdayPending}
-                initialTab={queueTab}
-                onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
-                onSettled={refreshCounts}
                 onChanged={queueDone}
                 onOpenPolicy={openPolicy}
-                onOpenRoster={mayOpenRoster ? openRoster : null}
               />
             )}
             {/* The covered queue stays a single list: a ฝ่ายบุคคล standing in for
@@ -1139,28 +1128,17 @@ function Shell({ session, onLogout }) {
                 the mode it was given. */}
             {tab === 'unsigned' && <ApprovalQueue user={user} stage="pending_mgr" unsignedOnly onChanged={queueDone} onOpenPolicy={openPolicy} />}
             {tab === 'confirm' && (
-              <QueueTabs
+              <ApprovalQueue
                 user={user}
                 stage="pending_hr"
-                pendingCount={counts.pendingHr}
-                birthdayCount={counts.birthdayPending}
-                initialTab={queueTab}
-                onCounts={(n) => setCounts((c) => ({ ...c, birthdayPending: n }))}
-                onSettled={refreshCounts}
                 onChanged={queueDone}
                 onOpenPolicy={openPolicy}
-                onOpenRoster={mayOpenRoster ? openRoster : null}
               />
             )}
             {tab === 'monthly' && (
               <HrView
                 user={user}
-                onSettled={refreshCounts}
                 onOpenRoster={mayOpenRoster ? openRoster : null}
-                onOpenBirthdayQueue={() => {
-                  setQueueTab('birthday');
-                  goTab(user.role === 'manager' ? 'approve' : 'confirm');
-                }}
               />
             )}
             {tab === 'accounting' && <AccountingView />}

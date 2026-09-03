@@ -21,11 +21,18 @@
  * time boxes, with 08:00–17:00 computing to 0 ชั่วโมง — for วิชัย ศรีสุข,
  * 10 สิงหาคม 2026, the one date on this database that fell in the gap.
  *
- * The queue's rounding has been removed (see `queueWindow`), which closes the
- * contradiction — but on its own it closes it the other way, by dropping the
+ * The queue's rounding was removed (in `queueWindow`), which closed the
+ * contradiction — but on its own it closed it the other way, by dropping the
  * row. HR's answer on 2026-08-20 was the opposite: the benefit belongs to the
  * whole month it started in. This script is that answer written where the
  * arithmetic can read it.
+ *
+ * THE QUEUE ITSELF IS GONE — 2026-09-03, with the rest of ฝ่ายบุคคล's birthday
+ * work. Half of what this script was reconciling therefore no longer exists;
+ * the other half does, and it is the half that matters: the compute path still
+ * resolves rules per DATE through `versionForDate`, so the backdated version
+ * this wrote is still what makes a 10 August birthday a holiday. This script has
+ * been run and is kept as the record of why version 10 carries the date it does.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY A NEW VERSION AND NOT AN EDIT

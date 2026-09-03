@@ -526,6 +526,27 @@
 .acct td.code { text-align: left; font-variant-numeric: tabular-nums; }
 .acct td.n { text-align: center; font-variant-numeric: tabular-nums; }
 
+/* ชั่วโมงที่เซ็นเกินเพดาน — the same mark `.fig-over` puts on รวม ชม. on the
+   screen, on the figure accounting actually signs. See `figureClass` in
+   AccountingPrint.jsx for which cells get it and why it is both of them.
+
+   #c00 and not the app's --danger-ink: this sheet is printed, so it holds its
+   own colours in hex like every other rule in this block. It is the same red
+   the ไม่ถูกนับ flag uses in the band above, which is the point — one red on
+   the sheet means one thing, "this figure needed a signature".
+
+   THE COLOUR ADJUST IS THE RULE THAT MATTERS. `color` is a foreground property
+   and browsers do keep those when printing, so this line is belt and braces for
+   the figure — but `.acct td.n` carries a `#deeaf6` background, and a printer
+   set to drop backgrounds would leave red on white rather than red on tint.
+   Stated here so the pair travels together. */
+.acct td.n.over {
+  color: #c00;
+  font-weight: 700;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 /* The white strip: paper, not a column. No rules on any side — including the
    one the grid closes with, which `.acct table tbody tr:last-child td` would
    otherwise draw right across it — and no heading above it. It inherits the

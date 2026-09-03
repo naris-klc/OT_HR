@@ -3,10 +3,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
-import { submissionWindow } from '@/lib/entries.js';
+import { submissionWindow, isBirthdayWelfare } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import {
-  Alert, BucketSplit, Modal, SegmentList, StatusChip, TipButton,
+  // `Modal` left with the birthday pop-up on 2026-09-03 — see the note where
+  // that shape used to be chosen, near the foot of this file. A dead import is
+  // not a broken build here, which is exactly why it goes out by hand.
+  Alert, BucketSplit, SegmentList, StatusChip, TipButton,
 } from './common.jsx';
 import { PickDate } from './PickDate.jsx';
 import { PickTime } from './PickTime.jsx';
@@ -43,8 +46,31 @@ const blank = () => ({
   endTime: '20:00',
   endsNextDay: false,
   noBreakTaken: false,
+  /** เหมารายวัน — see `flatDaily` on the model. Stored with the request. */
+  flatDaily: false,
+  /**
+   * วันเกิด — NOT stored. It is a claim the write path checks and then has no
+   * further use for: what makes the hours a birthday holiday is the person's
+   * stored วันเกิด, which `resolveDayTypes` has already read, and every screen
+   * that marks such a row reads it back off `segments[].dayReason`
+   * (`isBirthdayWelfare`). A second copy on the entry could disagree with the
+   * engine, and there would be no way to tell which one was lying.
+   */
+  birthdayWelfare: false,
   description: '',
 });
+
+/**
+ * เวลาทำงานปกติ — what both boxes fill in, and one constant so they cannot come
+ * to fill in two different days.
+ *
+ * The office day, and the same pair `coreStartMinute`/`coreEndMinute` give the
+ * engine. Written out rather than computed from the policy because this is a
+ * DEFAULT somebody may type over, not a rule: a form that opened on times
+ * derived from the live policy would silently change what it suggests the day a
+ * setting moved, with nothing on screen saying so.
+ */
+const STANDARD_DAY = Object.freeze({ startTime: '08:00', endTime: '17:00' });
 
 /**
  * The submit form — and, with `mode="hr"`, the form HR corrects an entry in.
@@ -64,20 +90,30 @@ const blank = () => ({
  * — it is how an employee re-submits after a rejection without retyping, and
  * what it writes is a NEW request.
  *
- * `mode="birthday"` is the same form with two fields nailed shut, opened from a
- * row of วันเกิดที่ยังไม่มีใบ: the person and the date are the row, and what is
- * being entered is the pair of times off the fingerprint scanner. It shares
- * every line below it deliberately — the split, the ceiling, the refusal of a
- * 0-hour session and the live preview are the engine's answers and must be the
- * same answers here, or this would be the one request on the sheet arrived at a
- * different way. `birthday` carries `{ employeeId, name, code, date }`.
+ * `mode="birthday"` LEFT THIS FILE ON 2026-09-03, with the queue that opened
+ * it. It was the same form with the person and the date nailed shut, filled in
+ * by ฝ่ายบุคคล off the fingerprint scanner and posted to a door of its own that
+ * could reach `approved` in one press. HR withdrew the whole arrangement: a
+ * สวัสดิการวันเกิด request is filed by the person whose birthday it is, on THIS
+ * form, with the วันเกิด box ticked, and it goes to the หัวหน้า and then to
+ * ฝ่ายบุคคล like every other request. One form, one door, two signatures.
+ *
+ * WHAT THE TWO TICK-BOXES ARE, since neither is a preference:
+ *
+ *   · วันเกิด — a claim that this date is the filer's own สวัสดิการวันเกิด. It
+ *     fills the standard day in and it is CHECKED: the preview asks the server,
+ *     which resolves the day from the stored วันเกิด and answers with the very
+ *     sentence the write path would refuse with. It cannot be checked here —
+ *     this screen is not allowed to hold a birth date (`publicEmployee`).
+ *   · เหมารายวัน — a day hired whole, which counts eight hours however long the
+ *     person stayed. The cap is the engine's (`flatDailyMinutes`), so the
+ *     preview shows the capped figure before anybody presses บันทึก.
  */
 export default function OtForm({
-  entry, template, onSaved, onCancel, mode = 'employee', employeeId, birthday = null,
+  entry, template, onSaved, onCancel, mode = 'employee', employeeId,
 }) {
   const hrEdit = mode === 'hr';
   const proxy = mode === 'proxy';
-  const fromBirthday = mode === 'birthday';
 
   /**
    * WHICH DAYS THE CALENDAR MAY OFFER — the same window the server enforces.
@@ -96,10 +132,15 @@ export default function OtForm({
    * is written to avoid (it measures a date only when the date CHANGES). The
    * picker has to make the same allowance or it re-introduces it in the browser.
    *
-   * NOT APPLIED ON A BIRTHDAY ROW. The date there is the row, the box is
-   * disabled, and app/api/birthday/entries is exempt from the window on purpose
-   * — วันเกิดที่ยังไม่มีใบ exists to settle days that were missed, and a bound
-   * here would grey out exactly those.
+   * IT APPLIES TO A BIRTHDAY REQUEST TOO, SINCE 2026-09-03, and that is a real
+   * change rather than a tidy-up. ฝ่ายบุคคล's queue was exempt from the window
+   * on purpose — it existed to settle days that had been MISSED, sometimes weeks
+   * back, and a bound would have greyed out exactly those. Nobody is exempt now:
+   * a birthday request is filed by the person whose birthday it is, through this
+   * form, under `maxPastSubmissionDays` like every other request. That key is
+   * `null` today (README §ยื่นย้อนหลัง), so nothing is out of reach yet — but
+   * the day HR sets a number, a birthday nobody filed in time goes out of reach
+   * with the rest, and there is no longer a second door that could still open it.
    */
   const policy = usePolicy();
   /**
@@ -111,14 +152,13 @@ export default function OtForm({
    * are unchanged and are what the calendar and the server both work from.
    */
   const dateBounds = React.useMemo(() => {
-    if (fromBirthday) return { min: undefined, max: undefined };
     const { min, max } = submissionWindow(today(), policy);
     const held = entry?.workDate;
     return {
       min: min && (!held || held >= min) ? min : undefined,
       max: max && (!held || held <= max) ? max : undefined,
     };
-  }, [fromBirthday, policy, entry?.workDate]);
+  }, [policy, entry?.workDate]);
 
   /**
    * Who the request is FOR, when that is not whoever is filling the form in.
@@ -215,7 +255,7 @@ export default function OtForm({
    * The authority was never this preview in any case — every person is
    * recomputed and re-checked by the server when the batch is posted.
    */
-  const forWhom = proxy ? (targets[0] || '') : (fromBirthday ? birthday?.employeeId : employeeId);
+  const forWhom = proxy ? (targets[0] || '') : employeeId;
 
   const [form, setForm] = useState(() => {
     const from = entry || template;
@@ -226,31 +266,22 @@ export default function OtForm({
         endTime: from.endTime,
         endsNextDay: from.endsNextDay,
         noBreakTaken: from.noBreakTaken,
-        description: from.description,
-      };
-    }
-    if (fromBirthday) {
-      return {
-        ...blank(),
-        workDate: birthday?.date || '',
+        flatDaily: Boolean(from.flatDaily),
         /**
-         * The times start EMPTY rather than at the usual 17:00–20:00.
+         * READ BACK OFF THE HOURS, not off a field, because there is no field —
+         * see `birthdayWelfare` in `blank()`. `isBirthdayWelfare` asks whether
+         * the engine made this day a holiday because of whose day it was, which
+         * is the same question the tick asks and the only one with a stored
+         * answer.
          *
-         * A birthday holiday is a whole วันหยุด, so its hours are typically a
-         * day shift and nothing like the evening default — and these two fields
-         * are the only thing on this form that is being read off a machine. A
-         * pre-filled pair that happens to compute to a plausible number of hours
-         * is exactly the kind of default somebody saves without reading.
+         * So re-opening a birthday request finds the box ticked, and re-opening
+         * a request whose birthday status has CHANGED — the rule turned off, a
+         * วันเกิด corrected in the roster — finds it as the hours now are. That
+         * is the right way round: the box must agree with the figures, and the
+         * figures are recomputed on every save.
          */
-        startTime: '',
-        endTime: '',
-        /**
-         * Pre-filled, and it says what HR actually knows. The scan record gives
-         * two times and no account of the work; "OT สวัสดิการวันเกิด" is the whole
-         * of what can honestly be written from it, and it is editable for
-         * anybody who does know more.
-         */
-        description: 'OT สวัสดิการวันเกิด',
+        birthdayWelfare: isBirthdayWelfare(from),
+        description: from.description,
       };
     }
     return blank();
@@ -261,12 +292,11 @@ export default function OtForm({
   /** Where the server says this would land — see the preview route. */
   const [routing, setRouting] = useState(null);
   /**
-   * And the same answer for a birthday filing: whether this press files and
-   * approves in one act, or files something the หัวหน้า/ฝ่ายบุคคล still has to
-   * sign. From `birthdayDirectApproval` on the server, never worked out here —
-   * see the note on it in the preview route.
+   * `birthdayRouting` WENT WITH THE QUEUE ON 2026-09-03. It held one answer —
+   * would this press file and approve in one act — and there is no such press
+   * any more: a birthday request lands where `routing` above says every request
+   * lands. See the note left in app/api/entries/preview/route.js.
    */
-  const [birthdayRouting, setBirthdayRouting] = useState(null);
   /**
    * รูปแบบโอทีของแผนก, answered by the server for THESE hours.
    *
@@ -277,14 +307,14 @@ export default function OtForm({
    */
   const [weekdayRefusal, setWeekdayRefusal] = useState(null);
   /**
-   * สวัสดิการวันเกิดของตัวเอง — a sentence when this person is filing their own
-   * birthday, null otherwise.
+   * ติ๊ก “วันเกิด” ไว้แต่วันนั้นไม่ใช่วันเกิด — a sentence when the claim is
+   * wrong, null otherwise (and null whenever the box is not ticked at all).
    *
-   * THE ONLY WAY THIS FORM CAN KNOW. There is no ประเภท OT to leave off and no
-   * date to hide: what makes a day a birthday holiday is the filer's stored
-   * วันเกิด, which this screen is not allowed to hold (`publicEmployee`). So the
-   * rule is asked of the preview, exactly as `weekdayRefusal` above is, and the
-   * answer is the very sentence POST /api/entries would refuse with.
+   * THE ONLY WAY THIS FORM CAN KNOW. What makes a day a birthday holiday is the
+   * person's stored วันเกิด, which this screen is not allowed to hold
+   * (`publicEmployee`). So the claim is asked of the preview, exactly as
+   * `weekdayRefusal` above is, and the answer is the very sentence
+   * POST /api/entries would refuse with.
    */
   const [birthdayRefusal, setBirthdayRefusal] = useState(null);
   /**
@@ -322,19 +352,40 @@ export default function OtForm({
   const formId = React.useId();
 
   /**
-   * Is there typing here that closing would throw away?
+   * `dirty` — "is there typing here that closing would throw away" — LEFT WITH
+   * THE POP-UP on 2026-09-03. It was asked by nothing else: only a dialog puts a
+   * question in front of ✕, Escape, the backdrop and a swipe down, and this form
+   * is a card again, closed by a ยกเลิก the person is looking at.
    *
-   * Asked only by the pop-up, which puts a question in front of ✕, Escape, the
-   * backdrop and a swipe down. It cannot be "the fields are not blank": on a
-   * birthday row the two times START empty and รายละเอียด starts filled in. So
-   * it is "different from what the form opened with", compared against the
-   * opening state itself — a change to those defaults cannot leave this line
-   * behind.
+   * Worth a line rather than a silent deletion, because the shape it was written
+   * for was subtle and would have to be got right again: it compared against
+   * what the form OPENED with, not against a blank one, so a mode with
+   * pre-filled fields did not read as unsaved typing the moment it appeared.
    */
-  const openedWith = useRef(form);
-  const dirty = Object.keys(form).some((k) => form[k] !== openedWith.current[k]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  /**
+   * เหมารายวัน and วันเกิด — the two ticks that also write into the time boxes.
+   *
+   * ONE FUNCTION FOR BOTH, because they fill in the same day and the whole
+   * reason they do is the same: each says "this was the standard day", and
+   * typing 08:00 and 17:00 by hand every time is the thing HR asked to be rid
+   * of. Two copies of the fill would be two places for the office day to drift.
+   *
+   * TICKING FILLS IN; UNTICKING LEAVES THE CLOCK ALONE. Restoring 17:00–20:00
+   * on an untick would throw away times somebody had typed over, on a press that
+   * is not about the clock at all — and with two boxes able to ask for the same
+   * fill, an untick of one would otherwise undo the other's.
+   *
+   * `f.startTime`/`f.endTime` are written unconditionally on a tick rather than
+   * only when they are still at the default. "I ticked it and the times did not
+   * change" is the report that follows the careful version, and there is nothing
+   * to protect: the form is in front of the person who just pressed it.
+   */
+  const tickDay = (k, on) => setForm((f) => (
+    on ? { ...f, [k]: true, ...STANDARD_DAY } : { ...f, [k]: false }
+  ));
 
   // Debounced live preview. Every keystroke in a time field would otherwise
   // hit the engine.
@@ -351,12 +402,11 @@ export default function OtForm({
       }
       try {
         const res = await api.post('/entries/preview', {
-          ...form, entryId: entry?._id, employeeId: forWhom, birthday: fromBirthday || undefined,
+          ...form, entryId: entry?._id, employeeId: forWhom,
         });
         setPreview(res.result);
         setCap(res.cap);
         setRouting(res.routing || null);
-        setBirthdayRouting(res.birthdayRouting || null);
         setWeekdayRefusal(res.weekdayRefusal || null);
         setBirthdayRefusal(res.birthdayRefusal || null);
         setConflict(res.conflict || null);
@@ -364,7 +414,6 @@ export default function OtForm({
       } catch (err) {
         setPreview(null);
         setRouting(null);
-        setBirthdayRouting(null);
         setWeekdayRefusal(null);
         setBirthdayRefusal(null);
         // Cleared with everything else. A clash left on the screen beside times
@@ -375,7 +424,15 @@ export default function OtForm({
       }
     }, 250);
     return () => clearTimeout(timer.current);
-  }, [form.workDate, form.startTime, form.endTime, form.endsNextDay, form.noBreakTaken, forWhom]);
+  }, [
+    form.workDate, form.startTime, form.endTime, form.endsNextDay, form.noBreakTaken,
+    // Both ticks move an ANSWER and not only a label, so both re-ask: เหมารายวัน
+    // changes the hours the split shows (the engine caps them), and วันเกิด is
+    // the claim `birthdayRefusal` is the verdict on. Left out, a person could
+    // tick a wrong วันเกิด and see nothing until the 409.
+    form.flatDaily, form.birthdayWelfare,
+    forWhom,
+  ]);
 
   async function submit(e) {
     e.preventDefault();
@@ -387,23 +444,12 @@ export default function OtForm({
       // form, or one filled from `template`) this writes a new request.
       if (entry) await api.patch(`/entries/${entry._id}`, { ...form, note });
       /**
-       * A door of its own, not `/entries` with a flag on it.
-       *
-       * The single-signature rule lives behind this endpoint and nowhere else,
-       * and `/entries` has no branch that can reach `approved` — see
-       * lib/birthdayFiling.js. Posting the same body to the ordinary route would
-       * file an ordinary request, which is a safe way to be wrong and not a way
-       * to get round anything.
+       * `/birthday/entries` WAS A DOOR OF ITS OWN AND IS GONE — 2026-09-03,
+       * with the queue that opened it and the single signature behind it. A
+       * birthday request is one of these three cases now, the same as any
+       * other, and `/entries` is the only door there is.
        */
-      else if (fromBirthday) {
-        const res = await api.post('/birthday/entries', {
-          ...form,
-          workDate: birthday?.date,
-          employeeId: birthday?.employeeId,
-        });
-        onSaved(res);
-        return;
-      } else if (proxy) {
+      else if (proxy) {
         /**
          * ONE POST PER PERSON, IN ORDER, AND NOTHING IS ABANDONED ON A FAILURE.
          *
@@ -520,10 +566,9 @@ export default function OtForm({
     // press: the queue's button says what is about to happen and this header
     // says it has, so they cannot be two different words for it.
     : proxy ? 'บันทึก OT แทนพนักงาน'
-      : fromBirthday ? 'บันทึก OT ให้ — สวัสดิการวันเกิด'
-        : entry ? 'แก้ไขรายการที่ยื่นไว้'
-          : template ? 'ส่งคำขอใหม่จากรายการเดิม'
-            : 'บันทึกการทำงานล่วงเวลา';
+      : entry ? 'แก้ไขรายการที่ยื่นไว้'
+        : template ? 'ส่งคำขอใหม่จากรายการเดิม'
+          : 'บันทึกการทำงานล่วงเวลา';
 
   /**
    * What บันทึก OT แทนพนักงาน has to say before anything is typed — behind the
@@ -566,29 +611,28 @@ export default function OtForm({
   const fields = (
     <>
       {/*
-        NOT THE SAME SENTENCE ON A BIRTHDAY ROW, because the usual one is false
-        there. "เวลาทำงานปกติ … นอกเหนือจากนี้นับเป็น OT" tells the reader that
-        08:00–17:00 is ordinary time — true on a working day, and the opposite
-        of true on a สวัสดิการวันเกิด, where the whole day is a holiday and every
-        hour worked is OT. The detail pop-up on a filed birthday row shows
-        exactly that: 08:00–17:00 booked as OT วันหยุด ×1.5.
+        NOT THE SAME SENTENCE WHEN วันเกิด IS TICKED, because the usual one is
+        false there. "เวลาทำงานปกติ … นอกเหนือจากนี้นับเป็น OT" tells the reader
+        that 08:00–17:00 is ordinary time — true on a working day, and the
+        opposite of true on a สวัสดิการวันเกิด, where the whole day is a holiday
+        and every hour worked is OT. The detail pop-up on a filed birthday row
+        shows exactly that: 08:00–17:00 booked as OT วันหยุด ×1.5.
 
-        So ฝ่ายบุคคล were reading, immediately above the two boxes they were
-        about to type scan times into, a rule that contradicted what the form
-        was going to do with them. Replaced rather than merely shortened — the
-        shorter version of a wrong sentence is still wrong — and the replacement
-        is one line instead of three, which is the space the form wanted back.
+        It moved from a MODE to a TICK on 2026-09-03 and the sentence came with
+        it: it was written for ฝ่ายบุคคล typing scan times into a form whose rule
+        line contradicted what the form was about to do with them, and it is the
+        same contradiction for the employee ticking the box themselves.
+
+        ── AND NOT ON บันทึก OT แทนพนักงาน, SINCE 2026-09-01 ──────────────
+        Asked for as making that screen less crowded, and it is the one mode
+        where the sentence is telling somebody something they already know: the
+        reader is a หัวหน้า filing for their own team, not a first-time filer
+        meeting the 08:00–17:00 rule. On their OWN form it stays — that screen is
+        where somebody learns what counts as OT here.
       */}
-      {/* ── AND NOT ON บันทึก OT แทนพนักงาน, SINCE 2026-09-01 ──────────────
-          Asked for as making that screen less crowded, and it is the one mode
-          where the sentence is telling somebody something they already know:
-          the reader is a หัวหน้า filing for their own team, not a first-time
-          filer meeting the 08:00–17:00 rule. On their OWN form it stays — that
-          screen is where somebody learns what counts as OT here — and the
-          birthday wording above stays for the reason its own note gives. */}
       {!proxy && (
         <div className="hint">
-          {fromBirthday
+          {form.birthdayWelfare
             ? 'สวัสดิการวันเกิดเป็นวันหยุดทั้งวัน — ชั่วโมงที่ทำทั้งหมดนับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'
             : 'เวลาทำงานปกติ จันทร์–ศุกร์ 08:00–17:00 น. · นอกเหนือจากนี้นับเป็น OT · ระบบจะแยกอัตรา ×1.5 และ ×3 ให้อัตโนมัติ'}
         </div>
@@ -608,77 +652,17 @@ export default function OtForm({
         </div>
       )}
 
-      {/* ── a row of วันเกิดที่ยังไม่มีใบ, opened ─────────────────────────── */}
-      {fromBirthday && (
-        <>
-          {/* THE NAME AND THE DATE ARE IN THE HEADER NOW, and they are not said
-              twice.
+      {/* ── THE BIRTHDAY PANEL STOOD HERE AND IS GONE — 2026-09-03 ─────────
+          Three notices and an instruction, all of them about a press that no
+          longer exists: “กรอกเฉพาะเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว”, and the
+          pair of lines saying whether ฝ่ายบุคคล’s save would approve the request
+          in the same act or leave it in the queue.
 
-              They stood here in a `.box` because the form used to BE the
-              screen: it replaced the queue it was opened from, and nothing else
-              on it said whose birthday was being filed. As a pop-up it has a
-              header that does not scroll, and that header carries the same
-              three facts — ชื่อ · รหัส · วันที่ — over the fields for as long as
-              the sheet is open. Of two copies the one inside the body is the
-              one that scrolls away, so it is the one that goes.
-
-              Both are still nailed shut and still checked against the roster by
-              the server; วันที่เริ่ม below is rendered `disabled` and looks it.
-              What is left here is the half that is an instruction, which is not
-              something a header can say. */}
-          <div className="hint">
-            กรอกเฉพาะเวลาเข้า-ออกที่อ่านจากบันทึกสแกนนิ้ว — ระบบคำนวณชั่วโมงและอัตราให้เอง
-          </div>
-
-          {/*
-            What this press will actually do, from the server's own answer.
-
-            Two sentences, and only one of them is on screen at a time, because
-            the difference between them is the whole of what is unusual here: a
-            request that goes straight to อนุมัติ has no หัวหน้า behind it and the
-            person pressing is signing for it alone. Reading that AFTER saving
-            would be reading it too late.
-
-            ── CUT DOWN TO ONE LINE, ASKED FOR BY HAND ──────────────────────
-
-            It said five things and now says three. What went, and where each
-            fact still lives, because a notice this one replaces is the last
-            place any of them was stated on screen:
-
-              · "ไม่ผ่านหัวหน้างานและไม่ผ่านคิวรอ HR" — the mechanism behind
-                "ขั้นตอนเดียว", which the shorter line still names.
-              · "ช่องลายเซ็นหัวหน้างานจะว่างไว้ตามจริง" — a PRINT consequence,
-                and the only warning anywhere that the filed F-HR-027 comes out
-                with an empty signature box. It is now visible only by printing
-                one. components/PrintForm.jsx prints the reason line instead.
-              · "ใบนี้เป็นของพนักงาน · หัวหน้าแผนกจะเห็นในสรุปทีม" — both are
-                true and both are visible on those screens; neither changes what
-                this press does, which is what the box is for.
-
-            `tight` because this is a DIALOG — see the note over Alert in
-            components/common.jsx. 12.5px is the size that variant exists to
-            give, and every line this box takes is a line of the form that has
-            to be scrolled past on a phone. The INFO twin below takes it too:
-            they are one slot in two states, and a box that changed size with
-            the routing would read as two different kinds of notice.
-          */}
-          {birthdayRouting?.ok && birthdayRouting.direct && (
-            <Alert kind="warn" tight mark={false}>
-              ⚡ บันทึกและอนุมัติทันทีในขั้นตอนเดียว — ระบบจะบันทึกว่า
-              {' '}<strong>คุณเป็นทั้งผู้กรอกและผู้อนุมัติ</strong> (อ้างอิงจากเวลาสแกนนิ้ว)
-            </Alert>
-          )}
-          {birthdayRouting?.ok && !birthdayRouting.direct && (
-            <Alert kind="info" tight>
-              บันทึกแล้วรายการนี้จะ<strong>เข้าคิวรออนุมัติตามปกติ</strong>
-              {birthdayRouting.reason ? ` — ${birthdayRouting.reason}` : ''}
-            </Alert>
-          )}
-          {birthdayRouting && !birthdayRouting.ok && (
-            <Alert kind="error">{birthdayRouting.error}</Alert>
-          )}
-        </>
-      )}
+          None of it has a home to move to, which is the point rather than a
+          loss: the request is filed by the person whose birthday it is, from
+          their own times, and it goes to the หัวหน้า like the rest. What used to
+          need a notice is now the ordinary case, and the ordinary case needs
+          none. The tick’s own line is the ⓘ hint above. */}
 
       {/* ── whose request this is ─────────────────────────────────────────── */}
       {proxy && (
@@ -830,10 +814,13 @@ export default function OtForm({
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <div className="field">
           <label>วันที่เริ่ม</label>
-          {/* Locked on a birthday row: the date IS the row, and the server
-              refuses any other one anyway (it recomputes the person's birthday
-              holiday and compares). Disabled rather than removed so the form
-              still shows what it is about to save. */}
+          {/* NEVER LOCKED NOW. It was `disabled` on a birthday row until
+              2026-09-03, when the date WAS the row and the server refused any
+              other one. There is no such row: the date is picked here like every
+              other date, and a ticked วันเกิด that names the wrong one is
+              refused in words (`birthdayRefusal`) rather than made unreachable —
+              which is the only way round when the box cannot know whose
+              birthday is when. */}
           {/* `min`/`max` are what grey the days out — AND SINCE 2026-09-01 IT
               IS THIS APP DOING THE GREYING. This paragraph used to say the
               calendar belonged to the browser, was not in this document, and
@@ -864,7 +851,6 @@ export default function OtForm({
             onChange={(v) => set('workDate', v)}
             min={dateBounds.min}
             max={dateBounds.max}
-            disabled={fromBirthday}
           />
           <span style={{ fontSize: 12, color: 'var(--muted)' }}>
             วัน{dayName(form.workDate)} · {thaiDate(form.workDate)}
@@ -908,14 +894,14 @@ export default function OtForm({
             100%, and an inline max-width is the one thing a media query cannot
             argue with. The 130px lives in the stylesheet now. */}
         <div className="field time">
-          <label>{fromBirthday ? 'เวลาเข้า (สแกนนิ้ว)' : 'เวลาเริ่ม (จาก)'}</label>
+          <label>เวลาเริ่ม (จาก)</label>
           {/* EVERY MINUTE, ON THIS ROW AND ON EVERY OTHER — 2026-09-02.
-              These two boxes passed `minuteStep={fromBirthday ? 1 : 5}` until
-              then: the birthday row is filled in from the fingerprint scanner,
+              These two boxes passed a `minuteStep` that differed by mode until
+              then: the birthday row was filled in from the fingerprint scanner,
               which does not round, and the rest of the form got a five-minute
               wheel because sixty rows was too far to scroll. The picker's own
               header answers that now — a minute is typed rather than reached —
-              so the step is gone and this row is no longer the exception. See
+              so the step is gone and there is no exception left to make. See
               `MINUTES` in components/PickTime.jsx. */}
           <PickTime
             label="เวลาเริ่ม"
@@ -924,7 +910,7 @@ export default function OtForm({
           />
         </div>
         <div className="field time">
-          <label>{fromBirthday ? 'เวลาออก (สแกนนิ้ว)' : 'เวลาสิ้นสุด (ถึง)'}</label>
+          <label>เวลาสิ้นสุด (ถึง)</label>
           <PickTime
             label="เวลาสิ้นสุด"
             value={form.endTime}
@@ -937,7 +923,14 @@ export default function OtForm({
       </div>
 
       {/* One per line on a phone — see .form-checks. Side by side they were two
-          17px boxes about 6px apart with wrapped labels between them. */}
+          17px boxes about 6px apart with wrapped labels between them.
+
+          FOUR NOW, AND THE ORDER IS NOT ALPHABETICAL. The two that were here
+          describe the SHIFT (did it cross midnight, was there a break); the two
+          added on 2026-09-03 describe the DAY (was it hired whole, was it this
+          person's birthday holiday), and only those two write into the boxes
+          above them. Shift first, day second, so the pair that reaches back up
+          the form sits together and closest to what it changes. */}
       <div className="row form-checks" style={{ marginTop: 14 }}>
         <label className="check">
           <input type="checkbox" checked={form.endsNextDay} onChange={(e) => set('endsNextDay', e.target.checked)} />
@@ -947,7 +940,58 @@ export default function OtForm({
           <input type="checkbox" checked={form.noBreakTaken} onChange={(e) => set('noBreakTaken', e.target.checked)} />
           ไม่พักเที่ยง
         </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={form.flatDaily}
+            onChange={(e) => tickDay('flatDaily', e.target.checked)}
+          />
+          เหมารายวัน (คิดเต็มวัน ไม่เกิน 8 ชม.)
+        </label>
+        {/* NOT ON บันทึก OT แทนพนักงาน, and this is a rule rather than tidying.
+            The claim is "this is MY สวัสดิการวันเกิด" — HR's whole reason for
+            moving it off ฝ่ายบุคคล's desk is that the person whose day it is
+            makes it — and a หัวหน้า is not in a position to make it for
+            somebody: they are not told when their team member was born
+            (`publicEmployee` keeps `birthDate` off the roster they hold), so a
+            box they could only tick by guessing is a box that teaches them the
+            answer through its refusal.
+            IT COSTS THE TEAM MEMBER NOTHING. The hours do not come from this
+            box: `resolveDayTypes` reads the stored วันเกิด and puts the whole
+            day in the วันหยุด columns whoever filed it, so a proxy filing on a
+            team member's birthday pays exactly as their own would. */}
+        {!proxy && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={form.birthdayWelfare}
+              onChange={(e) => tickDay('birthdayWelfare', e.target.checked)}
+            />
+            วันเกิด (สวัสดิการวันเกิดของตัวเอง)
+          </label>
+        )}
       </div>
+
+      {/* WHAT THE TWO NEW TICKS DO TO THE TIMES, said once under them rather
+          than twice inside `onChange`.
+
+          Both fill in 08:00–17:00 and NEITHER LOCKS IT. HR asked for the fill
+          because a flat day and a birthday holiday are both the standard day,
+          typed the same way every time; they asked for it to stay editable in
+          the same breath, because somebody who came in at 07:30 should file
+          07:30. เหมารายวัน then still counts eight hours — the cap is the
+          engine's, and the preview below shows the capped figure.
+
+          IT ONLY EVER FILLS IN — untick and the times STAY. Putting 17:00–20:00
+          back would throw away a pair somebody had just typed over, on a press
+          that says nothing about the clock; and a person who ticks the wrong box
+          by accident has lost nothing but a tick. */}
+      {(form.flatDaily || form.birthdayWelfare) && (
+        <div className="hint" style={{ marginTop: 8 }}>
+          เติมเวลาให้เป็น 08:00–17:00 น. ตามเวลางานปกติแล้ว — แก้ได้ถ้าเข้า-ออกจริงไม่ตรงนี้
+          {form.flatDaily && ' · เหมารายวันคิดให้ไม่เกิน 8 ชั่วโมง แม้จะอยู่เกินเวลา'}
+        </div>
+      )}
 
       <div className="field" style={{ marginTop: 14 }}>
         <label>
@@ -1000,39 +1044,41 @@ export default function OtForm({
 
       {error && <Alert kind="error">{error}</Alert>}
 
-      {/* "วันนี้เป็นวันเกิดคุณ — ยื่นเองไม่ได้", above the split rather than
-          under it: it is not a remark about these hours, it is the answer to
-          whether this form is the right place at all, and it has to be readable
-          before the eye reaches the numbers.
+      {/* "วันที่เลือกไม่ใช่สวัสดิการวันเกิด", above the split rather than under
+          it: it is not a remark about these hours, it is the answer to whether
+          the box that was ticked belongs on this date at all, and it has to be
+          readable before the eye reaches the numbers.
 
           THE SERVER'S OWN SENTENCE, printed verbatim, so the person who presses
           บันทึก anyway reads what the form had already told them rather than a
           second wording of it. The button is greyed on it below.
 
-          Only ever set for somebody filing for THEMSELVES — see
-          `birthdayOtRefusal`. A หัวหน้า filing for their team gets null and
-          files as normal, which is also what keeps a team member's birth date
-          off this screen (`publicEmployee` in lib/employees.js). */}
+          Only ever set when the box IS ticked — see `birthdayTickRefusal`. An
+          untouched form never meets it, and neither does a หัวหน้า filing for
+          their team without it, which is also what keeps a team member's birth
+          date off this screen (`publicEmployee` in lib/employees.js). */}
       {birthdayRefusal && <Alert kind="error">{birthdayRefusal}</Alert>}
 
       {/* "วันนี้เป็นวันเกิดคุณ" — said before the split, because it is the reason
           the split looks the way it does.
 
-          WHAT IS LEFT OF THIS NOTE SINCE 2026-08-31 is the overnight tail, and
-          it is worth keeping for exactly the reason it was written. Filing the
-          birthday itself is refused above; what still reaches here is a shift
-          filed against an ordinary day that runs past midnight into the filer's
-          own birthday. Those hours ARE theirs to file — the request is the
-          previous day's — and some of them land in the วันหยุด columns with
-          nothing else on the form to explain why, which is how somebody who
-          expected ×1.5 วันปกติ concludes they typed the wrong date.
+          IT WIDENED ON 2026-09-03 rather than narrowing, and the note is worth
+          keeping for exactly the reason it was written. Until then filing one's
+          own birthday was refused outright, so all that could reach here was the
+          overnight tail — a shift filed against an ordinary day that runs past
+          midnight into the filer's birthday. Now the day itself can be filed
+          too, and this is what explains the split to somebody who did NOT tick
+          the box: their hours landed in the วันหยุด columns with nothing on the
+          form saying why, which is how a person who expected ×1.5 วันปกติ
+          concludes they typed the wrong date.
 
-          On a proxy filing the note is withheld: it would tell a หัวหน้า when
-          their team member was born, and a birth date is not theirs to read.
-          On a birthday-list filing it is withheld twice over — the form already
-          says whose birthday it is, and "ของคุณ" would be addressed to
-          ฝ่ายบุคคล about somebody else's. */}
-      {preview && !proxy && !hrEdit && !fromBirthday && !birthdayRefusal
+          WITHHELD WHEN วันเกิด IS TICKED. They know; the ⓘ line at the top of
+          the form has already said it, and a second notice saying the same thing
+          reads as a warning about something else.
+
+          On a proxy filing it is withheld too: it would tell a หัวหน้า when
+          their team member was born, and a birth date is not theirs to read. */}
+      {preview && !proxy && !hrEdit && !form.birthdayWelfare && !birthdayRefusal
         && isOwnBirthday(preview) && (
         <Alert kind="info">
           ช่วงเวลาที่ยื่นนี้กินเข้าไปใน<strong>วันเกิดของคุณ</strong> ซึ่งนับเป็นวันหยุดของคุณคนเดียว —
@@ -1175,13 +1221,10 @@ export default function OtForm({
           || (hrEdit && !note.trim()) || (proxy && !targets.length)
           // หนึ่งวัน หนึ่งใบ / เวลาทับซ้อน — the write path answers 400 on this.
           || conflictBlocks
-          // Nothing is saved while the server says this row cannot take this
-          // path — the write would 409, and the reason is already on screen.
-          || (fromBirthday && birthdayRouting?.ok === false)
           // แผนกไม่มีโอที / เหมารายวัน, and these are weekday hours.
           || Boolean(weekdayRefusal)
-          // วันเกิดของตัวเอง — ฝ่ายบุคคล records it, the person it is for does
-          // not. The write path answers 409 on this.
+          // ติ๊กวันเกิดไว้แต่ไม่ใช่วันเกิด — the write path answers 409 on this,
+          // and the sentence is already on screen above.
           || Boolean(birthdayRefusal)}
       >
         {entry ? 'บันทึกการแก้ไข'
@@ -1192,52 +1235,24 @@ export default function OtForm({
             // worth being sure of at that moment.
             : `${routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
               + (targets.length > 1 ? ` · ${targets.length} คน` : ''))
-            : fromBirthday
-              ? (birthdayRouting?.direct ? 'บันทึกและอนุมัติ' : 'บันทึกและส่งเข้าคิว')
-              : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
+            : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
       </button>
     </>
   );
 
   /**
-   * A BIRTHDAY FILING IS A POP-UP, NOT A SCREEN.
+   * THE POP-UP SHAPE WENT WITH THE QUEUE — 2026-09-03.
    *
-   * It used to replace whichever list it was opened from — วันเกิดรอตรวจ or
-   * วันเกิดของเดือนนี้ — the way HR's sub-views do. That is the wrong shape for
-   * this one act, and the phone is where it showed:
+   * A birthday filing was a `Modal` over the list it was opened from, with the
+   * name, the code and the date in a header that did not scroll and the two
+   * buttons pinned to its foot. All three of those facts were the ROW; there is
+   * no row now, and this form is again what it always was for everybody else: a
+   * card on the employee’s own screen, filled in by the person it is about.
    *
-   *   · The row it is about is gone the moment the form is up, so the two facts
-   *     being typed against (whose birthday, which date) survived only as a box
-   *     the form drew for itself, which then scrolled away above the fields.
-   *   · Its two buttons sat at the foot of a long form, which on a phone is a
-   *     scroll away from the times somebody has just typed.
-   *   · ไม่ได้มาทำงาน — the OTHER answer to the same row, one button along — has
-   *     been a sheet from the bottom of the screen all along. Two answers to one
-   *     question arriving as two different kinds of thing is the queue's own
-   *     shape telling somebody they are doing two different sorts of act.
-   *
-   * So it comes up in the same `Modal` `AbsentModal` uses, which is a centred
-   * dialog on a desktop and a bottom sheet below 860px, and which brings the
-   * scrim, Escape, the swipe-down, the focus trap and the unsaved-typing
-   * question with it. The list stays on screen behind the scrim.
+   * `formId` survives it and is not dead weight — see the note on it above: it
+   * points a button at its own parent form here, and it is what any future foot
+   * outside the <form> would need again.
    */
-  if (fromBirthday) {
-    return (
-      <Modal
-        title={heading}
-        subtitle={`${birthday?.name} · ${birthday?.code} · ${thaiDate(birthday?.date)} (วัน${dayName(birthday?.date)})`}
-        onClose={onCancel}
-        dirty={dirty}
-        footer={actions}
-      >
-        {/* The <form> is the dialog's body; the button that submits it is in the
-            foot outside — see `formId` above. */}
-        <form id={formId} className="modal-form" onSubmit={submit}>
-          {fields}
-        </form>
-      </Modal>
-    );
-  }
 
   return (
     <form id={formId} className="card" onSubmit={submit}>
@@ -1369,12 +1384,13 @@ function nextDay(dateStr) {
  * what the server resolved for this exact session, so the note appears when, and
  * only when, the hours in the columns above got there that way.
  *
- * Every date the session touches, `workDate` included — and since 2026-08-31
- * the first of those is refused outright before this is read (`birthdayRefusal`
- * above), so in practice what it still catches is the tail of an overnight
- * shift. Left as it is rather than narrowed to the second date: this answers
- * "did a birthday put hours in the วันหยุด columns", which is one question, and
- * which of the two rules is speaking is decided where they are drawn.
+ * Every date the session touches, `workDate` included. Between 2026-08-31 and
+ * 2026-09-03 the first of those was refused outright before this was read, so
+ * all it could catch was the tail of an overnight shift; filing one's own
+ * birthday is the ordinary case again, and this is what explains the columns to
+ * somebody who did not tick the box. Unchanged either way, because it answers
+ * one question — "did a birthday put hours in the วันหยุด columns" — and which
+ * rule is speaking is decided where the note is drawn.
  */
 function isOwnBirthday(preview) {
   return (preview?.segments || []).some((s) => s.dayReason === 'birthday');

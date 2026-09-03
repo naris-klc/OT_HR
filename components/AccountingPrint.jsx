@@ -212,8 +212,8 @@ function Sheet({ company, period, unaccounted }) {
             <tr key={row.employee.id}>
               <td className="code">{row.employee.code}</td>
               <td>{row.employee.name}</td>
-              <td className="n">{amount(row.ot15Hours)}</td>
-              <td className="n">{amount(row.ot3Hours)}</td>
+              <td className={figureClass(row)}>{amount(row.ot15Hours)}</td>
+              <td className={figureClass(row)}>{amount(row.ot3Hours)}</td>
               <td className="note">{remark(row)}</td>
             </tr>
           ))}
@@ -270,4 +270,38 @@ const amount = (n) => (n ? Number(n).toFixed(2) : '');
 function remark(row) {
   if (!(row.birthdayHours > 0)) return '';
   return BIRTHDAY_REMARK;
+}
+
+/**
+ * The two rate cells, red when any entry behind them was signed over its
+ * department's ceiling.
+ *
+ * THE SCREEN HAS DONE THIS SINCE 2026-09-02 AND THE PAPER HAD NOT. `.fig-over`
+ * colours รวม ชม. on รายงาน OT ฝ่ายบัญชี and carries the reasons in a tooltip;
+ * `overCeiling` has been on every row of this same payload the whole time (see
+ * `overCeilingOf` in lib/accountingRows.js) and this component simply never
+ * read it. The figure accounting signs was the one place the mark was missing,
+ * which is the wrong way round — the screen is checked by the person who
+ * already knows, the sheet is read by the person who does not.
+ *
+ * BOTH RATE CELLS, not one. `overCeiling` counts entries and hours; it does not
+ * split them by rate column, and it cannot without deciding which bucket a
+ * night over the ceiling belonged to. Colouring one column would put that
+ * decision on the paper. Colouring both says what is true: some of this row's
+ * hours needed a signature, and the CSV and the screen are where the split is.
+ *
+ * NOT A WARNING COLOUR, the same as on screen. These hours are approved,
+ * correct and being paid. The red says this figure was a decision somebody had
+ * to justify — and on this sheet it also says which rows to ask about, which is
+ * the only question accounting has ever sent a sheet back over.
+ *
+ * ⚠ IT SURVIVES A PRINTER AND NOT A PHOTOCOPIER. Red ink is the whole mark
+ * here, because the strip beside the grid is reserved for วันเกิด and adding a
+ * second remark to it would be changing the form rather than styling it. A
+ * black-and-white copy of a signed sheet therefore carries no mark at all. If
+ * that turns out to matter, the fix is a word in the strip and it is HR's and
+ * accounting's to ask for, not this component's to take.
+ */
+function figureClass(row) {
+  return row.overCeiling?.count ? 'n over' : 'n';
 }

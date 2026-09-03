@@ -272,11 +272,14 @@ test('the overnight-break note follows breakMode, checked against the engine', (
   }
 });
 
-test('the birthday rule switched off takes two rows down with it', () => {
+test('the birthday rule switched off takes a row down with it', () => {
   const off = { ...DEFAULT_POLICY, birthdayHolidayEnabled: false };
   const on = { ...DEFAULT_POLICY, birthdayHolidayEnabled: true };
 
-  for (const key of ['birthdayLeapFallback', 'hrDirectApproveBirthday']) {
+  // TWO ROWS UNTIL 2026-09-03. `hrDirectApproveBirthday` was the other, and it
+  // was withdrawn with the single-signature filing it governed rather than
+  // going live — so the rule that reported it inert went with it.
+  for (const key of ['birthdayLeapFallback']) {
     assert.ok(inertReason(key, off), `${key} must be inert while the birthday rule is off`);
     assert.equal(inertReason(key, on), null);
     assert.deepEqual(inertReason(key, off).causes, ['birthdayHolidayEnabled']);
@@ -302,19 +305,22 @@ test('where an HR rejection lands is inert when there is no HR rejection', () =>
   assert.equal(inertReason('hrRejectReturnsTo', { ...DEFAULT_POLICY, hrMayReject: true }), null);
 });
 
-test('the file defaults ship with two rows already inert', () => {
+test('the file defaults ship with one row already inert', () => {
   /**
    * Not an accident and not a complaint: `birthdayHolidayEnabled` is false in
-   * src/config/policy.js, so on a fresh install the two rows underneath it are
-   * settings that do nothing — which is the whole reason a reader needs to be
+   * src/config/policy.js, so on a fresh install the row underneath it is a
+   * setting that does nothing — which is the whole reason a reader needs to be
    * told, since nothing else on the page says so.
+   *
+   * It was two rows until 2026-09-03; the other was `hrDirectApproveBirthday`,
+   * withdrawn with the filing path it governed.
    *
    * Pinned as an exact set so that a new rule cannot quietly start firing
    * against the shipped defaults without somebody reading this line.
    */
   assert.deepEqual(
     Object.keys(inertReasons(DEFAULT_POLICY)).sort(),
-    ['birthdayLeapFallback', 'hrDirectApproveBirthday'],
+    ['birthdayLeapFallback'],
   );
 
   // And the policy this system actually runs on — the birthday rule has been on

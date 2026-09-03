@@ -5535,19 +5535,12 @@ const POLICY_FIELDS = [
       ['none', 'ไม่มีสวัสดิการวันเกิดในปีนั้น'],
     ],
   },
-  {
-    section: 3,
-    key: 'hrDirectApproveBirthday', label: 'ฝ่ายบุคคลบันทึก OT ให้จากรายการวันเกิด', bool: true,
-    options: [
-      [true, 'บันทึกและอนุมัติในขั้นตอนเดียว (ค่าเริ่มต้น)'],
-      [false, 'บันทึกแล้วส่งให้หัวหน้าอนุมัติตามปกติ'],
-    ],
-    hint: 'ใช้ได้เฉพาะรายการที่มาจากวันเกิดที่ยังไม่มีใบ และเฉพาะวันที่ผ่านมาแล้ว '
-      + '— ใบ OT ทั่วไปต้องผ่านหัวหน้าอนุมัติเสมอ ไม่มีข้อยกเว้น '
-      + '· เหตุผลที่อนุมัติชั้นเดียวได้คือฝ่ายบุคคลอ่านเวลาเข้า-ออกจากบันทึกสแกนนิ้วเอง '
-      + '· ระบบบันทึกไว้ตามจริงว่าผู้กรอกคือผู้อนุมัติ และเว้นช่องลายเซ็นหัวหน้าไว้ว่าง '
-      + '· ไม่กระทบชั่วโมงในช่องใดเลย เปลี่ยนแล้วไม่มีการคำนวณใหม่',
-  },
+  /* “ฝ่ายบุคคลบันทึก OT ให้จากรายการวันเกิด” (`hrDirectApproveBirthday`) was a
+     row here until 2026-09-03. It chose between บันทึกและอนุมัติในขั้นตอนเดียว
+     and บันทึกแล้วส่งให้หัวหน้าอนุมัติตามปกติ, for requests filed from
+     วันเกิดที่ยังไม่มีใบ. There is no such filing now — the person whose birthday
+     it is files it, and it takes both signatures — so the setting was withdrawn
+     rather than fixed at one of its two values. */
   // No row for the printed birthday remark: ใบ F-HR-027 does not carry the word
   // (HR, 2026-08-10) and สรุป OT ส่งบัญชี always prints it beside the row it
   // explains. Neither is a setting — see src/config/policy.js.
@@ -5703,8 +5696,10 @@ const POLICY_FIELDS = [
      *
      * The hint shipped as ten clauses: the timezone it is measured in, that an
      * edit only counts when the date moves, how it differed from ปิดงวด (which
-     * no longer exists), that the birthday queue is exempt, and that stored
-     * entries are never re-checked.
+     * no longer exists), that the birthday queue was exempt (that queue no
+     * longer exists either — since 2026-09-03 there is no exempt path and this
+     * window reaches every filing), and that stored entries are never
+     * re-checked.
      * Every one of those is true and none of them is what somebody opening this
      * page is deciding. HR shortened it, 2026-08-19, and the trade is deliberate:
      * a paragraph nobody finishes explains less than a line everybody reads.
@@ -6547,9 +6542,10 @@ function ConfirmPolicyChange({
    *   them.
    *
    * `disables` — the reverse, and the half nobody would think to look for: this
-   *   change switches OTHER rows off. Turning the birthday rule off leaves two
-   *   dropdowns below it inert, and the settings page will go on showing their
-   *   values as if they were rules. Compared against the policy before the
+   *   change switches OTHER rows off. Turning the birthday rule off leaves the
+   *   dropdown below it inert, and the settings page will go on showing its
+   *   value as if it were a rule. (It was two until 2026-09-03, when
+   *   ฝ่ายบุคคลบันทึก OT ให้จากรายการวันเกิด was withdrawn with its feature.) Compared against the policy before the
    *   change so a row that was already inert is not reported as a consequence
    *   of this one.
    */

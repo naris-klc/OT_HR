@@ -68,12 +68,17 @@ test('a refused or withdrawn request does not block the day', () => {
 });
 
 test('every path that writes a session asks the same question', () => {
-  // Filing, editing, the birthday sheet, and the form's own live preview. A
-  // path that skipped it would be a way to put two requests on one date.
+  // Filing, editing, and the form's own live preview. A path that skipped it
+  // would be a way to put two requests on one date.
+  //
+  // THERE WERE FOUR UNTIL 2026-09-03. app/api/birthday/entries — ฝ่ายบุคคล
+  // settling a สวัสดิการวันเกิด off the scan record — was the fourth, and it was
+  // deleted with the queue that opened it, not exempted. A birthday request now
+  // goes through the first of these three like any other, which is why the list
+  // got shorter without the rule getting narrower.
   for (const file of [
     'app/api/entries/route.js',
     'app/api/entries/[id]/route.js',
-    'app/api/birthday/entries/route.js',
     'app/api/entries/preview/route.js',
   ]) {
     assert.match(sourceOf(file), /refuseDayConflict\(/, `${file} does not enforce หนึ่งวัน หนึ่งใบ`);

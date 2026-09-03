@@ -5,14 +5,13 @@ import { requireAuth } from '@/lib/session.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
 import { nobodyCanSign } from '@/lib/delegation.js';
 import { DECIDE_POPULATE, entryCompany } from '@/lib/entries.js';
-import { loadBirthdayQueue } from '@/lib/birthdayQueueQuery.js';
 
 /** Queue counts for the manager's daily review and HR's monthly review (§2). */
 export const GET = route(async (req) => {
   const user = await requireAuth(req);
   const { scope, delegated: coveredScope, covered } = await resolveScope(user);
   const [
-    pendingMgr, pendingHr, delegated, birthday, withdrawalOpen, withdrawalOpenPending,
+    pendingMgr, pendingHr, delegated, withdrawalOpen, withdrawalOpenPending,
   ] = await Promise.all([
     OtEntry.countDocuments({ ...scope, status: 'pending_mgr' }),
     OtEntry.countDocuments({ ...scope, status: 'pending_hr' }),
@@ -29,29 +28,19 @@ export const GET = route(async (req) => {
       ? OtEntry.countDocuments({ ...coveredScope, status: 'pending_mgr' })
       : 0,
     /**
-     * The second tab of the same screen.
-     *
-     * Not a `countDocuments` and it cannot be one: an unanswered birthday is the
-     * absence of two different documents, decided against a roster, a calendar
-     * and the live policy. So it runs the queue loader the tab itself runs —
-     * `countOnly`, which skips the manager names and the answered list — because
-     * a badge and the screen it opens must be one computation. Two would be one
-     * refactor away from disagreeing, and the badge is the half nobody checks.
-     *
-     * Not fatal: a queue count that fails should cost a badge, not the two
-     * numbers beside it.
-     */
-    loadBirthdayQueue(user, { countOnly: true })
-      .then((q) => q.needsEntry.length)
-      .catch(() => 0),
-    /**
-     * ── คำขอถอนใบที่อนุมัติแล้ว — THE THIRD PILE ON THAT SCREEN ──────────────
+     * ── คำขอถอนใบที่อนุมัติแล้ว — THE SECOND PILE ON THAT SCREEN ─────────────
      *
      * The card at the top of รออนุมัติ OT (and of รายการรออนุมัติ). It was on
-     * the screen and in nobody's count until 2026-09-03: with no ใบ waiting and
-     * no birthday outstanding, an employee could ask for an approved entry to be
-     * withdrawn and the nav would show no badge at all. Nothing anywhere said to
-     * go and look.
+     * the screen and in nobody's count until 2026-09-03: with no ใบ waiting, an
+     * employee could ask for an approved entry to be withdrawn and the nav would
+     * show no badge at all. Nothing anywhere said to go and look.
+     *
+     * It was the THIRD pile for a few hours on the same day. วันเกิดรอตรวจ was
+     * the second and was counted here by running the queue loader itself — an
+     * unanswered birthday being the absence of two documents rather than
+     * anything a `countDocuments` could find. Both the queue and the loader were
+     * withdrawn later that day; nothing replaced the count, because there is no
+     * longer a pile to count.
      *
      * THE SAME FILTER THE CARD'S OWN LIST USES — `withdrawal=open` on
      * app/api/entries, which is `withdrawal.state: 'requested'` inside the
@@ -87,15 +76,14 @@ export const GET = route(async (req) => {
    * over the pending list, which is not a price to pay on every poll for a
    * number nobody would be shown.
    *
-   * Not a `countDocuments`, and it cannot be one for the reason วันเกิดรอตรวจ
-   * above cannot: whether a row is stuck depends on the roster and on the
-   * owner's payroll, not on anything stored on the entry. So it runs the same
-   * predicate the LIST runs — a badge and the screen it opens have to be one
-   * computation, and this one has the additional property that a wrong badge
-   * would send an administrator looking for a request that is not stuck.
+   * Not a `countDocuments`, and it cannot be one: whether a row is stuck depends
+   * on the roster and on the owner's payroll, not on anything stored on the
+   * entry. So it runs the same predicate the LIST runs — a badge and the screen
+   * it opens have to be one computation, and this one has the additional
+   * property that a wrong badge would send an administrator looking for a
+   * request that is not stuck.
    *
-   * Not fatal, like the birthday count beside it: a badge is worth less than
-   * the two numbers it sits next to.
+   * Not fatal: a badge is worth less than the numbers it sits next to.
    */
   let unsigned = 0;
   if (user.role === 'admin') {
@@ -122,13 +110,6 @@ export const GET = route(async (req) => {
      * that has been repaired should stop being on screen.
      */
     unsignedPending: unsigned,
-    /**
-     * วันเกิดรอตรวจ — outstanding across ALL months, unlike everything else on
-     * this route, which is the point of the queue. The nav adds it to the tab's
-     * own number so the badge counts the whole screen; the screen shows the two
-     * apart, because they are two different jobs.
-     */
-    birthdayPending: birthday,
     /**
      * คำขอถอนใบ — every open one in scope, which is what the card at the top of
      * the screen lists, and how many of them `pendingHr` is already counting.

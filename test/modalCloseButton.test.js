@@ -168,8 +168,10 @@ test('and there is one door, so all four reach the same answer', () => {
  * re-derivation — and this test is what makes adding one a deliberate act.
  */
 test('nothing in the app holds a dialog shut any more', () => {
+  // components/birthdayActions.jsx was on this list and was deleted on
+  // 2026-09-03 with ฝ่ายบุคคล's birthday work.
   const screens = ['components/AdminView.jsx', 'components/OtForm.jsx',
-    'components/birthdayActions.jsx', 'components/ApprovalQueue.jsx',
+    'components/ApprovalQueue.jsx',
     'components/EmployeeView.jsx', 'components/Delegation.jsx'];
   for (const file of screens) {
     // Comments stripped: the note in AdminView explains why the guard came off

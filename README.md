@@ -64,16 +64,20 @@ nothing anywhere errors. See
 migration is needed otherwise: `filedBy` absent means self-filed, which is what
 every existing entry is.
 
-**Deploying the birthday check-and-settle work?** One new key joins
-`DEFAULT_POLICY` — `hrDirectApproveBirthday` (default `true`) — with the same
-consequence every joining key has: the effective policy stops matching the newest
-recorded version, so **press บันทึกกฎที่ใช้อยู่เป็นเวอร์ชัน** under ตั้งค่าระบบ →
-นโยบายการคำนวณ, or every entry filed from that moment carries no
-`policyVersionId` and nothing anywhere errors. No migration otherwise: the
-`otBirthdayChecks` collection starts empty, which is the correct state (nobody has
-been asked yet), and the new `submit_hr_verified` history action only has to exist
-in the enum before a row can use it. See
-[วันเกิดที่ยังไม่มีใบ](#วันเกิดที่ยังไม่มีใบ--the-one-holiday-people-forget-to-claim).
+**Deploying the birthday check-and-settle work?** It read: *one new key joins
+`DEFAULT_POLICY` — “hrDirectApproveBirthday” (default true) — with the same
+consequence every joining key has, so press บันทึกกฎที่ใช้อยู่เป็นเวอร์ชัน; no
+migration otherwise, the “otBirthdayChecks” collection starts empty and the new
+`submit_hr_verified` history action only has to exist in the enum before a row
+can use it.* **That whole arrangement was withdrawn on 2026-09-03** — see
+[สวัสดิการวันเกิด](#สวัสดิการวันเกิด--เจ้าของวันเกิดยื่นเอง-ผ่านหัวหน้าเหมือนใบปกติ).
+There is no key to add and nothing to press for it. A database that already ran
+it keeps both the collection and the rows, and neither is read any more.
+
+**Deploying the เหมารายวัน tick?** Nothing to do. `flatDaily` is a field on the
+entry with a `false` default, not a policy key, so no version is left unmatched
+and no month is restated: every row written before 2026-09-03 was written under
+no cap, and `false` is exactly what that was.
 
 Upgrading a database from before policy versioning? Run
 `npm run migrate:policy-version` once — see
@@ -550,16 +554,20 @@ Extended JSON หนึ่งเอกสารต่อหนึ่งบรร
 `npm run restore`
 
 **รายชื่อ collection มาจากฐานข้อมูล ไม่ได้มาจากรายการโมเดล** `lib/db.js` import
-โมเดลมาหกตัว แต่ `src/models/` มีสิบเอ็ดตัว — การสำรองที่ขับด้วยทะเบียนโมเดลจะข้าม
-`otEmployeeAudits`, `approvaldelegations`, `otBirthdayChecks` และ
-`otPolicyReplayRuns` ไปเงียบ ๆ แล้วรายงานว่าสำเร็จ ชุดสำรองที่ขาดไปสี่
-collection แย่กว่าไม่มีชุดสำรองเลย เพราะมันคือสิ่งที่คนเชื่อถือ
+โมเดลมาหกตัว แต่ `src/models/` มีสิบตัว — การสำรองที่ขับด้วยทะเบียนโมเดลจะข้าม
+`otEmployeeAudits`, `approvaldelegations` และ `otPolicyReplayRuns` ไปเงียบ ๆ
+แล้วรายงานว่าสำเร็จ ชุดสำรองที่ขาดไปสาม collection แย่กว่าไม่มีชุดสำรองเลย
+เพราะมันคือสิ่งที่คนเชื่อถือ
 
 > ประโยคนี้เคยอ่านว่า "สิบสองตัว" และนับ `otPeriodLocks` เป็นข้อที่ห้า จน
-> 2026-08-31 ที่ ปิดงวด ถูกถอนออก (ดู `lib/periodStatus.js`) และโมเดลถูกลบไป
+> 2026-08-31 ที่ ปิดงวด ถูกถอนออก (ดู `lib/periodStatus.js`) และโมเดลถูกลบไป ·
+> เคยอ่านว่า "สิบเอ็ดตัว" และนับ “otBirthdayChecks” เป็นข้อที่สาม จน 2026-09-03
+> ที่งานวันเกิดฝั่งฝ่ายบุคคลถูกถอน
 > **นี่คือเหตุผลที่บรรทัดนั้นถามฐานข้อมูล ไม่ใช่ถามทะเบียนโมเดล** — การถอนฟีเจอร์
 > ไม่ต้องแก้อะไรตรงนี้เลย collection ที่ยังอยู่แต่ว่างก็ยังถูกสำรอง และที่ถูก drop
-> ไปแล้วก็แค่หายไปจากรายการ
+> ไปแล้วก็แค่หายไปจากรายการ · **และนี่คือครั้งที่สองที่มันพิสูจน์ตัวเอง**:
+> “otBirthdayChecks” ยังมีเอกสารจริงอยู่ข้างใน ไม่มีอะไรอ่านมันแล้ว และมันยังถูก
+> สำรองครบทุกคืนโดยไม่ต้องมีใครไปเพิ่มชื่อมันไว้ที่ไหน
 
 **ไม่มีอะไรถูกเขียนถ้าไม่มี `--yes`** การรันแบบตั้งต้นจะตรวจลายนิ้วมือทุกไฟล์
 เชื่อมต่อ พิมพ์ออกมาว่ามันจะลบอะไรบ้าง แล้วหยุด ไฟล์ถูกอ่าน ถูก hash และถูก parse
@@ -1379,7 +1387,7 @@ lib/smartDate.js          ปี พ.ศ. หรือ ค.ศ. — the one plac
                           the one 2400, and the leap years judged in ค.ศ.;
                           read by the roster form, both roster endpoints, the
                           CSV importer and both holiday calendars — pure
-test/                     122 files, run by `npm test`. Six named below as a
+test/                     117 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1392,9 +1400,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2096 tests
-across 122 files**, measured 2026-09-03 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "2070 across 121 files" until ฝ่ายบุคคล's queue started listing a request from the moment it was filed — `queueStatusColumn` is the 122nd file, twenty-one cases, and only four of them are about the สถานะ column that was asked for: the rest are about what a queue has to stop offering once it holds a row its reader cannot sign, and about the two things the twelfth column pushed out of shape — the sentence that stands in place of a row's buttons, and the ceiling figure that went under them — and "2060 across 120 files" until Ctrl+P on รายงาน OT ฝ่ายบัญชี stopped dropping the last three columns — `screenTablePrint` is the 121st file, seven cases, and two of them pin rules that go AGAINST a browser default rather than with it: `@page` stays at margin 0, and `tfoot` is forced back to a row group so รวมทั้งหมด cannot reprint at the foot of every page — and "2033 across 119 files" until หนึ่งวัน หนึ่งใบ reached the printed sheet as well as the filing form — `oneRowPerDate` is the 120th file, fifteen cases, and the ones that matter are about the hours the sheet now drops rather than the rows it no longer draws — and "2025" until หน้ารายละเอียด on รายการ OT ของฉัน started drawing the reviewer's three cards — eight new cases in `approverLine`, and NO new file, which is the point of that round: `ReasonCard`, `CapCard` and `SignatureFacts` moved into `components/common.jsx` and both pop-ups read them, so what would have been a second file of assertions about a second copy is two blocks added to the files `description` and `queueCapUsage` already had — and "2006 across 118 files" until the two ลงชื่อ columns on F-HR-027 started printing the names — `formSignatures` is the 119th file, nineteen cases, and most of them are about the rows where a name may NOT be printed — and "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **1983 tests
+across 117 files**, measured 2026-09-03 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "2096 across 122 files" until สวัสดิการวันเกิด went back to being filed by the person whose birthday it is and ฝ่ายบุคคล’s birthday work was withdrawn — the only round in this history where the file count went DOWN: seven files left (absentCallout, birthdayCardUi, birthdayCheck, birthdayDirectApproval, birthdayFileSheet, birthdayQueue, birthdaySelfFiling) and two arrived, `birthdayTick` for the claim the tick makes and `flatDaily` for the eight-hour day — and "2070 across 121 files" until ฝ่ายบุคคล's queue started listing a request from the moment it was filed — `queueStatusColumn` is the 122nd file, twenty-one cases, and only four of them are about the สถานะ column that was asked for: the rest are about what a queue has to stop offering once it holds a row its reader cannot sign, and about the two things the twelfth column pushed out of shape — the sentence that stands in place of a row's buttons, and the ceiling figure that went under them — and "2060 across 120 files" until Ctrl+P on รายงาน OT ฝ่ายบัญชี stopped dropping the last three columns — `screenTablePrint` is the 121st file, seven cases, and two of them pin rules that go AGAINST a browser default rather than with it: `@page` stays at margin 0, and `tfoot` is forced back to a row group so รวมทั้งหมด cannot reprint at the foot of every page — and "2033 across 119 files" until หนึ่งวัน หนึ่งใบ reached the printed sheet as well as the filing form — `oneRowPerDate` is the 120th file, fifteen cases, and the ones that matter are about the hours the sheet now drops rather than the rows it no longer draws — and "2025" until หน้ารายละเอียด on รายการ OT ของฉัน started drawing the reviewer's three cards — eight new cases in `approverLine`, and NO new file, which is the point of that round: `ReasonCard`, `CapCard` and `SignatureFacts` moved into `components/common.jsx` and both pop-ups read them, so what would have been a second file of assertions about a second copy is two blocks added to the files `description` and `queueCapUsage` already had — and "2006 across 118 files" until the two ลงชื่อ columns on F-HR-027 started printing the names — `formSignatures` is the 119th file, nineteen cases, and most of them are about the rows where a name may NOT be printed — and "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -1537,29 +1545,31 @@ lost — every figure is stored in the unit it is printed in — but a form whos
 columns miss its total by 0.01 is a question somebody will ask. Blocks of 15, 30
 and 60 are exact at two decimals and cannot drift.
 
-### ⚠ Five of these are unrecorded, and the system says so
+### ⚠ Six of these are unrecorded, and the system says so
 
 "Default" covers two very different things, and printing both the same way is
 how one of them gets forgotten. Most rows above are a recommendation from the
-requirements doc that nobody has objected to. Five are something else. Three are
+requirements doc that nobody has objected to. Six are something else. Four are
 values **reverse-engineered from how the old paper appears to have been filled
 in**; the other two are values nobody ever gave at all. Each one can move hours,
 and none of them is on the record.
 
-It read "Four of these are **unanswered**" until 2026-09-02, and both halves
-changed that day. HR answered the rounding increment out loud — 30 นาที — and
-the badge stayed up, correctly: what this list tracks is whose answer is
-**recorded**, and a rule agreed to in a corridor is exactly as unrecorded as one
+It read "Five of these are unrecorded" until 2026-09-03, and "Four of these are
+**unanswered**" until 2026-09-02. HR answered the rounding increment out loud on
+2026-09-02 — 30 นาที — and the badge stayed up, correctly: what this list tracks
+is whose answer is **recorded**, and a rule agreed to in a corridor is exactly as
+unrecorded as one
 nobody has considered. Pressing ยืนยัน is the act that writes down who said it
-and when. The fifth item arrived the same day.
+and when. The fifth item arrived the same day, and the sixth on 2026-09-03.
 
 | Question | What the system does today | Why it is that |
 |---|---|---|
-| Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with. The badge used to sit on `roundingMode`'s row for want of one of its own; the increment has its own dropdown now, so it moved. `roundingMode` is *not* unconfirmed — `'floor'` is the doc's own recommendation. **HR answered this on 2026-09-02: ปัดเศษทีละ 30 นาที**, which is the value already running. Nothing changes and nothing replays; the badge comes off when somebody presses ยืนยัน, which records who took the answer |
-| ผ่อนปรนการปัดขึ้น | **Off — 0** (`roundingGraceMinutes`), so 29 minutes is nought and the entry is refused | Added 2026-09-02 for "บวกลบ 5 หรือ 10 และ 15 นาที". It shared the increment's badge for one morning, on the reasoning that the block and the grace are one answer — and was split back out the same afternoon, when HR answered the increment and said nothing about the grace, which did not exist when they were asked. One badge over both would have made ยืนยัน on their answer *also* record them as choosing ปิด. **A badge covers exactly as much as one answer covers**: splitting a question HR answers in one breath makes them press twice, merging two they answer separately puts their name on something they never said, and only the second is a lie |
-| Under the 1-hour minimum | Record the hours actually worked and flag the entry (`belowMinimumFlagged`) | The reading that keeps every answer open. It was `'reject'` — read off a `'reject'` override that sat in `settings` against a file saying `'raise'` — and refusing the entry means not recording work that was done, which is a liability rather than a conservative default. HR has still not answered, so the badge stays |
-| What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h (`minimumHoursScope: 'sheet'`) | `computeSession` has only ever done it this way, and it is the reading that refuses least. The per-column reading is `'bucket'`: the same rule asked of each rate column, so a Friday-night shift running into Saturday is measured twice. Having a flag is not an answer — HR still has not given one, and the badge now sits on the dropdown |
-| Start buffer — เวลาขั้นต่ำในการเริ่มนับ OT | **No threshold — 0** (`minimumBufferMinutes`) | Added 2026-08-13 on HR's request, with 30 นาที used only as the worked example in the ask, never as an instruction. It ships at 0 because any other value would have restated hours for a rule nobody had switched on — and 0 is the *absence* of a guess rather than a guess, which is why it carried no badge until one was added. ⚠ It is also **inert** *while ผ่อนปรน is off*: floor/30 already refuses everything shorter than a block, so any buffer up to 30 changes only the wording of the refusal. Turning on a grace lowers that line to `30 − grace` and the buffer starts biting from there — which is why the settings row derives its note rather than stating a number |
+| Rounding direction | **Down** — a part-block is cut (`roundingMode: 'floor'`) | Added 2026-09-03, and it was missing for the opposite reason to every other item here: not overlooked, but written down as **answered**. The badge originally sat on `roundingMode`'s row as a stand-in, because the increment was a number in the file with no row of its own. When the increment got its dropdown on 2026-09-02 the badge moved onto it — correctly — and this table gained the sentence "`roundingMode` is *not* unconfirmed — `'floor'` is the doc's own recommendation." **That is what every other item in this list is**: `belowMinimum` and `minimumHoursScope` are here on exactly those grounds. Retiring a stand-in had quietly recorded the rule it stood in for as settled. **HR's answer of 30 นาที sizes the block and does not say which way a part-block goes** — the two readings of their sentence are 29 นาที → 0 ชม. and 29 นาที → 0.5 ชม. It moves more hours than anything else on the list. **A proposed answer was written up on 2026-09-03** — `nearest`, block 30, buffer 0, grace 0 — with the reasoning, the evidence and the impact in `docs/hr-briefing.md`. It is a proposal: nothing on the machine has been changed for it |
+| Rounding increment | 30 minutes (half hour) | The requirements doc, and what every figure in the database was computed with. The badge used to sit on `roundingMode`'s row for want of one of its own; the increment has its own dropdown now, so it moved — and the direction kept a badge of its own, see the row above. **HR answered this on 2026-09-02: ปัดเศษทีละ 30 นาที**, which is the value already running. Nothing changes and nothing replays. It read "the badge comes off when somebody presses ยืนยัน" until 2026-09-03 — **it was pressed on 2026-09-02 at 16:09 and the badge is up again**, for a different reason: the sign-off was recorded against `{ roundingIncrementMinutes: 30, roundingGraceMinutes: 0 }`, because the grace shared this badge that morning. The grace moved to 5 that afternoon, so the signature no longer covers what is running and the item reports itself unconfirmed again. **That is the merge this catalogue was split to prevent, and it had already happened before the split** — the sign-off records HR as having chosen ผ่อนปรน: ปิด, which is a value nobody put to them |
+| ผ่อนปรนการปัดขึ้น | **5 minutes** on this machine (`roundingGraceMinutes`), so 25–29 minutes reaches the buffer as half an hour. It ships at 0 and the table read "**Off — 0**, so 29 minutes is nought and the entry is refused" until 2026-09-03 | Added 2026-09-02 for "บวกลบ 5 หรือ 10 และ 15 นาที". It shared the increment's badge for one morning, on the reasoning that the block and the grace are one answer — and was split back out the same afternoon, when HR answered the increment and said nothing about the grace, which did not exist when they were asked. One badge over both would have made ยืนยัน on their answer *also* record them as choosing ปิด. **A badge covers exactly as much as one answer covers**: splitting a question HR answers in one breath makes them press twice, merging two they answer separately puts their name on something they never said, and only the second is a lie |
+| Under the 1-hour minimum | Record the hours actually worked and flag the entry (`belowMinimumFlagged`) | The reading that keeps every answer open. It was `'reject'` — read off a `'reject'` override that sat in `settings` against a file saying `'raise'` — and refusing the entry means not recording work that was done, which is a liability rather than a conservative default. It read "HR has still not answered, so the badge stays" until 2026-09-03 — **somebody pressed ยืนยัน on this machine on 2026-09-02 at 16:09**, through the shared ฝ่ายบุคคล account, so the record now names an account rather than a person. Whether that was an answer or a pass through the settings page is not something a signature can say |
+| What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h (`minimumHoursScope: 'sheet'`) | `computeSession` has only ever done it this way, and it is the reading that refuses least. The per-column reading is `'bucket'`: the same rule asked of each rate column, so a Friday-night shift running into Saturday is measured twice. Having a flag is not an answer. It read "HR still has not given one, and the badge now sits on the dropdown" until 2026-09-03 — this was also signed on 2026-09-02 at 16:09, six seconds after the row above it |
+| Start buffer — เวลาขั้นต่ำในการเริ่มนับ OT | **30 minutes** on this machine (`minimumBufferMinutes`); it ships at 0, and this column read "**No threshold — 0**" until 2026-09-03 | Added 2026-08-13 on HR's request, with 30 นาที used only as the worked example in the ask, never as an instruction. It ships at 0 because any other value would have restated hours for a rule nobody had switched on — and 0 is the *absence* of a guess rather than a guess, which is why it carried no badge until one was added. ⚠ It is **inert** only while rounding already refuses everything it would refuse: floor/30 with no grace zeroes every session under a block, so a buffer up to 30 changes nothing but the wording of the refusal. A grace lowers that line to `30 − grace` and the buffer starts biting from there — which is why the settings row derives its note rather than stating a number. ⚠ **It runs *before* the grace, on the minutes as worked**, so a buffer set above that line cancels the grace over exactly the range the grace was turned on for. That is the state this machine has been in since 2026-09-02: grace 5 opens 25–29 minutes, buffer 30 refuses them anyway. The two are one question and have to be answered together |
 
 These carry a **รอ HR ยืนยัน** badge on ตั้งค่าระบบ → นโยบายการคำนวณ. Pressing
 ยืนยัน records who signed it off and when — it changes no value, appends no
@@ -1707,7 +1717,11 @@ going stale.
   dialog that opens is what collects the sentence. The difference that made
   the button worth removing is the flag — waiving CLEARS `capExceeded`, and
   deciding with a reason leaves it standing, which is what draws the figure
-  red on สรุป OT ส่งบัญชี. A button that quietly took a row off that report,
+  red on รายงาน OT ฝ่ายบัญชี — on the screen since 2026-09-02, and on the
+  PRINTED sheet since later the same day, which is the half that was missing:
+  the screen is checked by the person who already knows what they signed, and
+  the sheet is read by accounting, who does not. A button that quietly took a
+  row off that report,
   sitting a thumb away from the one that does not, is not a second way to do
   the same thing. `POST /api/entries/[id]/cap-override` is still mounted and
   still refuses an empty reason; nothing in the application reaches it, and
@@ -2330,379 +2344,104 @@ consistency argument, and it is pinned as absent.
 `birthDate` itself remains not colleague-visible: `publicEmployee()` filters it out
 of the roster for everyone except the person, HR and admin — managers included.
 
-### วันเกิดที่ยังไม่มีใบ — the one holiday people forget to claim
+### สวัสดิการวันเกิด — เจ้าของวันเกิดยื่นเอง ผ่านหัวหน้าเหมือนใบปกติ
 
-A birthday falling Mon–Fri is a holiday for one person, and **the day looks
-exactly like a working day**: same shift, same colleagues, nothing on any
-calendar, nothing on any screen. So the request goes unfiled — unlike a Saturday,
-which announces itself. The benefit ends up granted in the settings and claimed by
-nobody, and nobody finds out until somebody happens to look.
+**HR's rule, 2026-09-03**, and it reverses the arrangement this section used to
+describe end to end. The birthday holiday is claimed by the person whose
+birthday it is, on the ordinary OT form, with a **วันเกิด** tick-box on it, and
+the request goes to the หัวหน้า and then to ฝ่ายบุคคล like every other request.
+Two signatures, §6 unbent, one door.
 
-**It is a queue, and it lives on the queue screen.** วันเกิดรอตรวจ is the second
-tab of **รอ HR ยืนยัน** (and of **รออนุมัติ**, for a หัวหน้า) — every employee
-whose birthday fell on a Mon–Fri that is not a company holiday, with no ใบ against
-that date and no check recorded. Name, แผนก, the date, how long it has been
-waiting, บริษัท, and the **หัวหน้า** of their department.
+#### What the tick does, and what it does not
 
-**Not scoped to a month, and that is the point of it.** It used to sit at the
-foot of ตรวจสอบรายเดือน and follow that screen's month picker, which got it wrong
-twice: you had to scroll past a month's totals to find work, and a birthday
-overlooked in August disappeared the moment anybody looked at September — the
-rows waiting longest were the ones hardest to see. The queue carries every
-outstanding month at once, **oldest first**, with `ageDays` printed on each row
-("ค้าง 12 วัน", amber past a fortnight).
+It is **a claim, not a label**. Ticking it fills 08:00–17:00 into the two time
+boxes — a สวัสดิการวันเกิด is a whole day off, so its hours are a day shift and
+nothing like the 17:00–20:00 the form otherwise opens on — and then the server
+checks it: `birthdayTickRefusal()` in [`lib/entries.js`](lib/entries.js) reads
+the `dayTypes` map `loadContext` already resolved and answers with a sentence
+when the day is not what the tick says. `POST /api/entries`, the edit path and
+the preview all refuse with that one sentence, so the line on the screen and the
+line in the 409 are the same line.
 
-**How far back, and why it stops there.** `queueWindow` reaches back to the month
-the birthday rule was first recorded as on — read off `otPolicyVersions`, because
-before that flag a birthday was an ordinary working day and no holiday was owed,
-so listing those months would fill the queue with names nobody ever had anything
-to do about. Capped at `BACKLOG_MONTHS` (12) so a queue stays a queue; rounded to
-the first of the month, because a flag flipped mid-month replays that whole
-month. Whichever bound applied is returned and **printed on screen** — a queue
-that silently drops its own tail reads as "you are up to date". A database with no
-version records at all shows this month only and says so rather than inventing a
-year of history.
+It does **not** decide the hours. `resolveDayTypes()` has already read the
+person's stored วันเกิด under the policy in force on the work date and answered
+holiday-because-birthday, so an untouched form filed on one's own birthday
+computes and pays exactly as a ticked one. Nothing is stored either: the tick is
+not a field on `OtEntry`, and every screen that marks such a row reads it back
+off `segments[].dayReason` (`isBirthdayWelfare()`). A second copy on the entry
+could disagree with the engine, and there would be no way to tell which one was
+lying.
 
-**A tab, not a nav entry.** Two piles of work for the same person on the same
-screen; a fifth sidebar item would be permanent chrome for a list that is empty
-most months. The **sidebar badge carries the sum of both tabs** — it is about the
-screen — while each tab shows its own number, because they are two different
-jobs. The badge comes from `loadBirthdayQueue(user, { countOnly: true })`, the
-same loader the tab itself runs, so the badge and the screen it opens cannot be
-two computations.
+Two refusals, because the two mistakes have different ways out:
 
-**That paragraph was false for eight days and is the second time this exact
-thing has happened in this repository.** On 2026-08-20, `8428d35` made the badge
-FOLLOW the open tab — the sum from another screen, the open tab's own pile while
-standing on it — and did not touch `README.md`. Anybody reading the sentence
-above between then and 2026-08-28 was told a rule the code had stopped obeying,
-and the sentence is not a detail of wording: it is the rule somebody would have
-built against. See AGENTS.md §"A commit that changes behaviour must find the
-paragraphs that describe it", whose worked example is `019cd2c` doing the same
-thing to §Status on 2026-08-14.
+- **an ordinary workday** — the tick is on the wrong date. Pick the day that
+  matches ทะเบียนพนักงาน, or take the tick off and file ordinary OT.
+- **a Saturday or a company holiday** — the day was already วันหยุด for
+  everybody, so the birthday rule added nothing (`resolveDayTypes` answers
+  `weekend` / `companyHoliday`, never `birthday`). The sentence says the hours
+  **still count in full** as an ordinary holiday request, because being told
+  only “ไม่ได้” over a day somebody worked reads as their hours being refused.
 
-**It was reported as a bug on 2026-08-28 and the code came back to the
-paragraph, not the other way round.** The report: รอ HR ยืนยัน reads **6** from
-ตรวจสอบรายเดือน — three ใบ and three วันเกิด — and **3** the moment you press it.
-Walked on the running app before the change and it did exactly that. Two answers
-to one question inside a single press, and **the direction is the dangerous
-one**: the number DROPS on arrival, which is indistinguishable from three items
-somebody else cleared while you were walking over. `queueBadge` takes one
-argument now and has no branch: `ownPending + (counts.birthdayPending || 0)`,
-on the screen and off it. The `queueActive` state that fed the old branch, the
-`onActiveTab` prop QueueTabs reported it with, and the effect that cleared it on
-leaving are all deleted rather than left inert — state nothing reads is a lie
-about what drives the badge.
+The form cannot check any of this itself and is not asked to: `publicEmployee()`
+keeps `birthDate` off the roster the browser holds, so the preview answers and
+the form prints what it gets back — the same shape `weekdayRefusal` has.
 
-**What the 2026-08-20 change was after is still delivered, by the thing that was
-always delivering it.** A bare 6 does not say "three and three" — true, and the
-fix for it is two centimetres above the badge: the tabs carry their own chips,
-`ใบรอยืนยัน 3` and `วันเกิดรอตรวจ 3`, and they did before that change and do
-now. The nav badge answers *is there anything for me over there*, which is a
-question about the screen; the chips answer *which pile*, which is a question
-about the tabs. A badge that answered the second one had to stop answering the
-first — and it did, at exactly the moment the reader arrived and could no longer
-see the piles it had stopped counting.
+#### ~~วันเกิดที่ยังไม่มีใบ~~ — what was withdrawn with it, and what that cost
 
-**And on 2026-09-03 a third figure arrived on that screen without breaking any
-of it.** ฝ่ายบุคคล asked to see a request from the moment an employee files it —
-while it is still waiting on a หัวหน้า — so รออนุมัติ OT now lists `pending_mgr`
-rows beside its own. That could have made the head of the queue card read **9**
-under a `ใบรอยืนยัน 4` chip: the same failure again, one question answered two
-ways within one screen. It does not, because the two piles are counted apart
-rather than added — `4 รายการ · รอหัวหน้า 5`. The first figure is still
-`counts.pendingHr`, which is still what the badge and the chip are quoting; the
-second has a name of its own and is nobody's signature. `ApprovalQueue` calls
-them `mine` and `watching`.
+Everything ฝ่ายบุคคล used to do about birthdays went on the same day: the queue
+**วันเกิดรอตรวจ**, the month table **วันเกิดของเดือนนี้**, the two buttons on
+every row, the “ไม่ได้มาทำงาน” record, the single-signature filing, four routes,
+three components, three lib files, one model and one policy flag.
 
-**The badge counts three piles, not two, from 2026-09-03 — and the third one
-had been on the screen since 2026-08-14 in nobody's count.** คำขอถอนใบที่อนุมัติ
-แล้ว is a card at the top of รออนุมัติ OT and of รายการรออนุมัติ. With no ใบ
-waiting and no birthday outstanding, an employee could ask for an approved entry
-to be withdrawn and the nav would carry **no badge at all** — the one state where
-the badge's own question, *is there anything for me over there*, was answered
-wrongly rather than coarsely. `queue-summary` returns `withdrawalOpen` now and
-`queueBadge` adds it.
+**The problem it existed for was real, and is worth stating before the reason it
+went.** A birthday falling Mon–Fri is a holiday for one person, and the day
+looks exactly like a working day: same shift, same colleagues, nothing on any
+calendar. So the request went unfiled — unlike a Saturday, which announces
+itself — and the benefit ended up granted in the settings and claimed by nobody.
+ฝ่ายบุคคล chased it: a queue listed every birthday with no request against it,
+they read the fingerprint scanner's own export for that person on that date, and
+they typed the two times. Because they were holding the evidence a หัวหน้า would
+have been asked for, that one act both filed and approved the request — the only
+filing in this system that ever reached `approved` with a single signature on
+it, recorded honestly as `submit_hr_verified` with the reason on the row.
 
-**It subtracts an overlap, and that is the whole of why the function takes a
-second argument.** A withdrawal may be asked for from the first signature
-onwards, so an open request sits on an entry that is `approved` **or**
-`pending_hr` (`OPEN_STATUSES` in `lib/withdrawal.js`). ฝ่ายบุคคล's `pending_hr`
-ones are already inside `counts.pendingHr` — the same entry, the same person, the
-same screen — so added whole the badge would count them twice, and only on the
-days somebody happens to ask about an unconfirmed ใบ, which is the kind of wrong
-that gets explained away rather than found. `withdrawalOpenPendingHr` is that
-overlap; a หัวหน้า's pile is `pendingMgr`, which no open request can ever be in,
-so they pass nothing and nothing comes off. Walked on a clone of the database on
-2026-09-03: opening a request on a `pending_hr` entry left the badge at 5 where a
-naïve sum read 6, and the card still listed both rows.
+**Why it is not needed.** The person whose birthday it is knows it is their
+birthday. Nothing else in this system chases unfiled hours — an evening nobody
+files is simply an evening nobody files — and once the day is theirs to claim,
+an unclaimed birthday is the same kind of thing.
 
-**No third chip goes with it, and the difference is what a chip is for.** A chip
-tells you what is behind a tab you cannot see — which is why วันเกิดรอตรวจ has
-one. This pile is a **card at the top of the tab the badge already lands you
-on**, carrying its own count in its own heading (`คำขอถอนใบที่อนุมัติแล้ว
-(1 รายการ)`). It cannot be missed once you are there; the badge exists to get you
-there.
+**What it cost, said plainly rather than left to be discovered.** Nothing now
+notices somebody who worked their birthday and never filed. The system has no
+way to know they were here; the fingerprint scanner is not connected to it and
+never was — a person read that export. That is a deliberate trade, and what it
+bought is a second workflow, a second write path, a second kind of signature and
+a whole screen out of the system.
 
-**It is a list, not a warning.** Not working on your birthday is the ordinary
-case, so most names on it have a perfectly good reason to be there. It is drawn in
-the neutral box with no red and no badge count — the tone is part of what it says
-— and it renders nothing at all when there is nothing to show, or when
-`birthdayHolidayEnabled` is off (a birthday is then an ordinary working day and no
-hours are owed).
+**Two more consequences worth writing down**, because each was a property of the
+withdrawn path and not of the feature it served:
 
-**Both answers are settled from here, one press each.** The screen used to say
-that ฝ่ายบุคคล could not know whether somebody was at work, and send the reader to
-the หัวหน้า. That was never the situation in this office: HR opens the fingerprint
-scanner's own export and reads the in and out times for that date — the same times
-a หัวหน้า would repeat down the phone. So each row of the first group carries two
-buttons:
+- **The submission window now reaches birthdays too.** “app/api/birthday/entries”
+  was deliberately exempt from `maxPastSubmissionDays` — the queue existed to
+  settle days that had been MISSED, sometimes weeks back, and a rolling window
+  would have greyed out exactly those. There is no exempt door now. That key is
+  `null` today (see §ยื่นย้อนหลัง), so nothing is out of reach yet; the day HR
+  sets a number, a birthday nobody filed in time goes out of reach with
+  everything else, and no second path can still open it.
+- **หัวหน้า have no route to their own birthday.** §2 keeps them out of
+  `POST /api/entries` (`maySubmitOt()` is `role === 'employee'` and nothing
+  else), and the birthday holiday was always granted to them too — ฝ่ายบุคคล
+  simply filed it for them. That path is gone and nothing replaced it in this
+  change. **[OPEN]** — HR's answer on 2026-09-03 is that approvers will get a way
+  to file their own OT, with rules still to be given.
 
-* **บันทึก OT ให้** — opens the submit form with the person and the date nailed
-  shut and only the two scanned times to enter. The engine computes the hours;
-  there is no field anywhere that takes a number of hours.
-* **ไม่ได้มาทำงาน** — writes a **BirthdayCheck**, which is not an OT request at
-  all (below). The name leaves the list so nobody checks it twice.
+#### The rows it wrote are still in the database, and still say what they are
 
-The หัวหน้า still files through **บันทึก OT แทนพนักงาน** on their own queue when
-they prefer, and can use either button here for their own team.
-
-**Only work is in the queue.** Three things are not, and each is folded or set
-apart rather than mixed into the count:
-
-* **กำลังจะถึง** — a birthday whose date has not arrived has no scan record to
-  compare against, so there is nothing to press and nothing to decide. Folded at
-  the foot, counted nowhere. Kept rather than cut because it is the only forward
-  view there is: a roster gap is worth fixing *before* the day arrives, and folded
-  it costs one line. The split is the server's — `birthdayQueue()` against
-  Asia/Bangkok's date, the same `today()` delegation uses — and it is enforced
-  again in `birthdayDirectApproval`, not merely by which buttons were drawn.
-* **ตรวจแล้ว · ไม่ได้มาทำงาน** — folded, and the only place a check can be
-  retracted from. A checked row leaves the queue by design; if it left the screen
-  too, an append-only record would be one nobody could append the retraction to.
-* **ไม่มีข้อมูลวันเกิด ตรวจไม่ได้** — not folded, because it is the one thing here
-  somebody has to go and fix. "Cannot check" is a different answer from "nothing
-  outstanding", and a roster still mostly empty must not read as a clean queue.
-
-**Who may press.** ฝ่ายบุคคล and Admin for everybody; a หัวหน้า for their own team;
-a ผู้รับช่วง for the teams whose queue they hold **today**. That is
-`birthdayActionPermission` → `departmentClaim` — the same function
-`approvalPermission` decides an approval with, so a delegation window closing takes
-this screen with it on the same day and by the same rule. The screen never decides
-from a role: each row carries `canAct`, answered by the server.
-
-| | |
-|---|---|
-| Rules | [`lib/birthdayCheck.js`](lib/birthdayCheck.js) — pure. `birthdayMonth()` gives one row per birthday with one of five statuses; `birthdayQueue()` spans months and keeps only `DUE`, adding `ageDays`; `absentKeys()` decides which checks are live |
-| | [`lib/birthdayFiling.js`](lib/birthdayFiling.js) — pure. Who may act, and whether the filing takes the single-signature path |
-| Loader | [`lib/birthdayQueueQuery.js`](lib/birthdayQueueQuery.js) — the reads, the clock and `queueWindow`. One loader; the queue tab and the nav badge are both it |
-| Endpoints | `GET /api/birthday/queue` — the queue. **Takes no period at all** |
-| | `GET /api/reports/birthday-check/[period]` — one month, every status, for the table |
-| | `POST /api/birthday/entries` — บันทึก OT ให้ |
-| | `POST /api/birthday/checks` — ไม่ได้มาทำงาน, and its retraction |
-| Screens | รอ HR ยืนยัน / รออนุมัติ → tab **วันเกิดรอตรวจ** (`components/QueueTabs.jsx` → `BirthdayQueue.jsx`) |
-| | ตรวจสอบประจำเดือน / รายงาน OT ประจำทีม → the month table (`HrView.jsx` → `BirthdayMonth`) |
-| Actions | [`components/birthdayActions.jsx`](components/birthdayActions.jsx) — the two buttons and their dialog, shared by both screens |
-| Tests | [`test/birthdayQueue.test.js`](test/birthdayQueue.test.js), [`test/birthdayCheck.test.js`](test/birthdayCheck.test.js), [`test/birthdayDirectApproval.test.js`](test/birthdayDirectApproval.test.js) |
-
-**ANY status counts as "has a ใบ"** — refused and withdrawn included. The question
-is whether the day was *overlooked*, and a request that was filed and turned down
-was not. A date already dealt with never comes back onto the queue.
-
-#### วันเกิดของเดือนนี้ — the month table on ตรวจสอบประจำเดือน
-
-The queue is what is left. This is **everyone**, and the difference is the point.
-
-Closing a period is a real question with a real deadline: before สรุป OT ส่งบัญชี
-goes to accounting, HR has to know that August's birthdays were all dealt with.
-A list of outstanding rows cannot say that — a name that was settled and a name
-nobody ever looked at are both simply missing from it, and **absence is not an
-answer**. So one row per birthday in the month, each with one of five statuses:
-
-| Status | Means | Row carries | Buttons |
-|---|---|---|---|
-| **มีใบแล้ว** | a ใบ exists for that date | hours (live ones only), a link to open it | ดูใบ |
-| **ตรวจแล้ว: ไม่ได้มาทำงาน** | a BirthdayCheck says so | who checked, when, any note | ยกเลิกการตรวจ |
-| **วันหยุดอยู่แล้ว** | Sat/Sun/company holiday | — | none: nothing was ever owed |
-| **ต้องตรวจ** | the day passed, nobody answered | — | บันทึก OT ให้ · ไม่ได้มาทำงาน |
-| **ยังไม่ถึงวัน** | the date has not arrived | — | none: no scan record yet |
-
-Above it: *"เดือนนี้มีวันเกิด 6 คน · ต้องตรวจ 1 · เสร็จแล้ว 4 · รอถึงวัน 1"* —
-`done` is the three settled statuses, so the four numbers add up to the first and
-a reader can check them against each other. When nothing is outstanding it **says
-so** rather than rendering nothing: a blank space and a fully-checked month look
-identical, and the difference matters most to whoever is about to send a file.
-
-**Precedence, where two facts are true at once** — FILED > ABSENT > HOLIDAY >
-UPCOMING > DUE. A ใบ is the strongest thing that can be true of a date (its hours
-are what HR came to see), so it outranks a Saturday, with `alreadyHoliday` riding
-along so the row can still say the birthday was beside the point. ABSENT above
-HOLIDAY is the deliberate one: the write route refuses to record "ไม่ได้มาทำงาน"
-against a company holiday so the pair should not occur — but a row written before
-that rule would otherwise show as HOLIDAY and lose its ยกเลิก button, leaving a
-stored check nobody could retract.
-
-**A month before the rule started shows no table at all.** The month picker
-reaches back further than `birthdayHolidayEnabled` does, and applying today's
-policy to last year would mark ordinary working days ต้องตรวจ — with a button
-that *works*, filing an approved request for a holiday that did not exist on the
-date it carries. `birthdayRuleStart()` is passed in as `activeFrom`; the queue's
-window is built on the same fact, so the two cannot disagree about when the
-benefit began.
-
-**Only ต้องตรวจ is in the queue**, and that is a filter over these same statuses
-(`birthdayQueue` keeps `status === DUE`) rather than a second set of rules — which
-is what keeps the nav badge honest. The badge counts every month; this table
-counts one. Given the same data those are different numbers on purpose, and
-`test/birthdayQueue.test.js` pins the difference in both directions.
-
-**ไม่มีข้อมูลวันเกิด stays out of the table**, listed separately: which month
-somebody with no วันเกิด belongs to is the one thing nobody knows, so a row for
-them in a table sorted by date would have to invent a date to sit at.
-
-The two buttons come from `components/birthdayActions.jsx`, shared with the queue
-— the dialog in front of ไม่ได้มาทำงาน explains what the stored record is and is
-not, and written twice that sentence would one day read two ways on two screens
-describing the same document.
-
-**Separate from ตรวจสอบรายเดือน's own route.** That
-report is open to หัวหน้า for their own team and is pinned to reporting a *count*
-of missing birth dates and never a date; a role-shaped branch in one payload would
-leave the guarantee resting on which branch ran. Two routes, one rule each. A date
-of birth still never leaves the server either way — what goes out is the date of
-the **holiday** being asked about.
-
-#### BirthdayCheck — "ไม่ได้มาทำงาน", written down
-
-Append-only, exactly as `PolicyVersion` is and by the same mechanism: every field
-is `immutable`, so mongoose refuses a write that would restate a row. Getting one
-wrong is undone by writing a second row with `outcome: 'cancelled'`; the first
-stays. The **live** answer for a person and a date is the newest row for that pair
-— `absentKeys()`, ordered by `checkedAt` with `_id` breaking a tie — so a birthday
-that was marked and then un-marked comes straight back onto the list. Asked as
-"does a row exist", the retraction would be written, stored, visible in the
-collection and change nothing anybody can see.
-
-**It is not an OT request and it cannot become one.** The model holds no hours, no
-status, no approval, no department and no period, so there is nothing a rollup
-*could* count — a stronger guarantee than a flag on `OtEntry` that every total
-would have to remember to exclude, one by one, for ever. It eats no cap and
-reaches no report. `test/birthdayCheck.test.js` pins both halves: the absent
-fields, and that nothing in `lib/accounting.js`, `lib/reports.js`, `lib/caps.js`,
-`src/services/otService.js` or any export route so much as names it.
-
-There is deliberately no `'present'` outcome. Somebody who *was* at work is
-recorded by the ใบ filed for them, and a second document saying the same thing is a
-second account to disagree with the first.
-
-Checks stay on screen for the month they are about, under **ตรวจแล้ว ·
-ไม่ได้มาทำงาน**, each naming who gave the answer and when — which is where the
-retraction button is, and what stops two people checking the same name twice.
-
-#### One signature, and the trail says so
-
-`hrDirectApproveBirthday` (default `true`, COSMETIC). When ฝ่ายบุคคล press
-**บันทึก OT ให้**, the request is written `approved` in that one act. §6's two
-steps do not bend anywhere else; here the second person already holds the first
-one's evidence, because the scan record answers both questions a หัวหน้า would be
-asked. There is no fact left to add.
-
-What the entry carries is the truth about that:
-
-* history: **one** row, `submit_hr_verified`, naming HR as both the person who
-  filled it in and the person who signed it, with the reason on it.
-* `hrDecision`: written, because it happened.
-* `managerDecision`: **left empty**, because it did not. Filling it in would be
-  the same lie `initialStatus` refuses to tell — two signatures on the page, one
-  person behind them, and nothing afterwards able to tell the difference.
-* the chip **HR ตรวจสแกนนิ้ว · อนุมัติชั้นเดียว** wherever the row appears, amber
-  and distinct from the blue *บันทึกแทน* — both mean "somebody else typed this",
-  only this one also means an approval a reader assumes happened did not.
-* and beside it, on the employee's own screens, the chip **OT สวัสดิการวันเกิด**
-  — a different question, which is why it is a second pill and not a longer
-  first one. That one says whose handwriting the row is in; this says what the
-  hours ARE, and the person reading แดชบอร์ด needs the second answer: on the
-  calendar the day is an ordinary Tuesday, and without a word on the row there
-  is nothing to connect หลายชั่วโมงในช่องวันหยุด to their birthday. Green, not a
-  second amber — amber there means something to notice, and a day the company
-  grants is not. Drawn in all three places a request appears on that screen (the
-  recent list, the nine-column history, the pop-up either opens), because they
-  are one screen at three widths. `isBirthdayWelfare` reads the engine's own
-  `segments[].dayReason`, **never the description**: that field is free text
-  ฝ่ายบุคคล may type over, and a row that merely mentions a birthday is not one.
-* on the หัวหน้า's **รายงาน OT ประจำทีม**: a per-person count in the row, and its own line
-  in the month's alert strip — *"HR อนุมัติชั้นเดียว 1 รายการ"* — opening to
-  *"มี 1 รายการที่ฝ่ายบุคคลอนุมัติชั้นเดียว — ติดป้าย HR ตรวจสแกนนิ้ว"* with the
-  rest behind **ดูรายละเอียด**: no หัวหน้า signature, an empty signature box in
-  the history, and where to find the rows. Their team's hours went up while their
-  queue never rang; that is the one figure on the page they could not otherwise
-  account for. See **แถบแจ้งเตือนของเดือน** below for the panel itself.
-
-  Two things about it were wrong for as long as it existed, and the second hid
-  the first. It read "a line above the table" until 2026-08-25 and the line was
-  four sentences of grey **below** it — on a phone, seven lines of `--muted-2`
-  between the month's total and วันเกิดของเดือนนี้, which is the shape of text a
-  reader scrolls past. Folding it that morning left one line, and left it where
-  it was: **under the table**, while the comment above it in the source had said
-  "above the marks it explains" the whole time. The marks are the per-row
-  *HR อนุมัติชั้นเดียว n* and the chip on the rows themselves, and a reader who
-  has finished the rows has finished asking. So it moved to the top of the card
-  the same day, on the argument that already put `PolicyVersionBanner` there:
-  what warns about the figures goes above the figures.
-
-  It has **no fold, no ✕ and no panel of its own** any more. For a few hours on
-  2026-08-25 it kept its own `<details>` one level inside the alert panel, which
-  meant a *ดูรายละเอียด* two levels down and a reader asking which of the two
-  they had just pressed. It is now an item of the panel's list — heading,
-  figures, one sentence — and the panel carries the only toggle and the only ✕.
-  Two dismiss buttons one inside the other are two different promises about what
-  closing means.
-
-`submit_hr_verified` is deliberately **not** in `SYSTEM_FILED_ACTIONS`. That list
-means *no form was filled in*; here a person read a clock record and typed two
-times, so the "ระบบสร้างใบวันเกิด" chip and the no-questions `ถอนใบวันเกิด` exit
-must not follow.
-
-**The limit is enforced at function level, not by hiding a button.**
-`birthdayDirectApproval` refuses outright — 400/409, whoever is asking — unless the
-date is the one the birthday rule itself produced for that person, recomputed by
-the route from their stored `birthDate` under the live policy. It also refuses a
-date that has not arrived, a birthday already on a company holiday, and one
-already checked as absent. Turn the flag off, or let a **หัวหน้า** press it, and
-the answer is not an error: the request is filed and routed by `initialStatus`
-like any other (`pending_mgr`, or `pending_hr` for a หัวหน้า's own team). A
-หัวหน้า gets no shortcut because theirs is the *first* signature — there is no
-second step for them to spend early.
-
-And it is two doors, not one door with a flag: `POST /api/entries` neither imports
-`lib/birthdayFiling.js` nor contains the string `'approved'`, which
-`test/birthdayDirectApproval.test.js` pins. The ordinary path cannot be talked
-into the shortcut by any payload at all.
-
-**An earlier attempt at HR filing these was withdrawn.** For one release ฝ่ายบุคคล
-could write the whole month's birthday requests from a list — *generated from a
-calendar*, with nobody filling a form in, which is the thing this system must not
-contain and is not what the path above does. The rows it wrote are still in the
-database —
-which is what `isUntouchedSystemFiling()` and the **ถอนใบวันเกิด** button are for:
-an `approved` entry can otherwise be removed by nobody, and those were generated
-rather than claimed. The `submit_birthday` and `void` history actions stay for the
-same reason — a value dropped from that enum makes the entries carrying it
-unsaveable.
-
-Those rows also exposed a **general** gap, since fixed: `approvalPermission`
-refuses ยืนยัน *and* ไม่อนุมัติ on a request whose reviewer filed it, and
-รอ HR ยืนยัน offered both buttons anyway. Pressing either returned 403 and the
-screen had no third option — the withdrawal was two screens away behind a status
-filter that hid the row. The first clause of that rule is now the exported
-predicate `isOwnFiling()` in [`lib/delegation.js`](lib/delegation.js), and
-`ApprovalQueue` asks it: such a row is not tickable, is excluded from
-เลือกทั้งหมด and the batch bar, states why in place of the two decisions, and
-carries **ถอนใบวันเกิด** when the row is a generated one. The same predicate on
-both sides is the point — a component that re-implemented it would eventually
-hide work somebody could do, or offer work the server refuses. The trap also bites
-without birthdays: set `proxySkipsOwnApproval: false` and a หัวหน้า's own filing
-waits at `pending_mgr` for the person who wrote it.
+`submit_hr_verified` stays in `OtEntry`'s history enum, `isHrVerifiedBirthday()`
+still reads it, and ตรวจสอบประจำเดือน still counts those rows for the months
+they fall in — “HR อนุมัติชั้นเดียว *n* รายการ”. A row filed under a rule that
+has since been withdrawn is still a row somebody signed for. The same goes for
+the “otBirthdayChecks” collection the “ไม่ได้มาทำงาน” button wrote to: nothing
+reads it any more, and nothing deletes it.
 
 ### A request that computes to nothing is refused, in words
 
@@ -2735,39 +2474,93 @@ was filed with, and the save reports how many were skipped and why. An entry
 already in a queue is not somewhere a 0 may appear by a rule change that nobody
 looked at it under.
 
-**และวันเกิดของตัวเอง ยื่นเองไม่ได้เลย.** HR's rule, **2026-08-31**:
-สวัสดิการวันเกิด is a day the company GRANTS and ฝ่ายบุคคล records off the
-fingerprint scanner's export — it is not overtime anybody chose to work, so it is
-not something a person files for themselves. `birthdayOtRefusal` in
-[`lib/entries.js`](lib/entries.js) is the rule, and both write paths answer 409
-with its sentence: POST /api/entries, and the edit route behind it, because the
-commonest correction there is moves `workDate` and the submit refusal would
-otherwise be one drag of a date away.
+**และช่อง “วันเกิด” ที่ติ๊กไว้ ต้องเป็นวันเกิดจริง.** It read *“และวันเกิดของ
+ตัวเอง ยื่นเองไม่ได้เลย”* from **2026-08-31** to **2026-09-03**: สวัสดิการวันเกิด
+was a day the company granted and ฝ่ายบุคคล recorded off the fingerprint
+scanner's export, so it was not something a person filed for themselves, and
+`birthdayOtRefusal` answered 409 on both write paths. HR reversed that with the
+queue behind it — see §สวัสดิการวันเกิด above. What refuses now is the opposite
+mistake: `birthdayTickRefusal()` in [`lib/entries.js`](lib/entries.js) answers
+409 when the **วันเกิด** box is ticked and the day is not one, on POST
+/api/entries and on the edit route behind it — the commonest correction there is
+moves `workDate`, and without it a ticked request could be filed on the one day
+the tick is true and dragged onto any other.
 
 **It is a refusal on the ordinary path, not a hidden field.** There is no
-ประเภท OT dropdown to leave the option off: the kind of day is RESOLVED from the
-filer's stored วันเกิด, so the only thing anybody picks is a date. The form learns
-the rule the way it learns `weekdayOtRefusal` — by asking the preview, which
-returns the very sentence the write path would refuse with — and greys บันทึก on
-it. A browser that could work this out for itself would have to be sent a birth
-date, which is the one thing it may not hold (`publicEmployee`).
+ประเภท OT dropdown and the tick is not one: the kind of day is RESOLVED from the
+person's stored วันเกิด, and the box only says what the filer believes about it.
+The form learns the answer the way it learns `weekdayOtRefusal` — by asking the
+preview, which returns the very sentence the write path would refuse with — and
+greys บันทึก on it. A browser that could work this out for itself would have to
+be sent a birth date, which is the one thing it may not hold (`publicEmployee`).
 
 **Two things it deliberately does NOT refuse.** A **หัวหน้า บันทึกแทนลูกทีม** on
-a day that happens to be their team member's birthday still files, and waits at
-`pending_hr` for ฝ่ายบุคคล exactly as before — the alternative was a 409 sent to
-somebody who does not know why, must not be told, and watched the shift happen.
-And the **tail of an overnight shift**: a request filed against an ordinary
-Monday that runs past midnight into the filer's birthday is Monday's request and
-files. The rule asks about `workDate` and nothing else in the map; refusing the
-whole entry over its tail would lose Monday to protect Tuesday.
+a day that happens to be their team member's birthday files as it always did:
+the tick is not theirs to give, they are not told whose birthday it is, and the
+hours land in the วันหยุด columns anyway because the engine put them there. And
+the **tail of an overnight shift**: a request filed against an ordinary Monday
+that runs past midnight into the filer's birthday is Monday's request and files.
+The rule asks about `workDate` and nothing else in the map — a tick on such a
+request would be a claim about the wrong day, and *not* ticking it costs nothing.
 
-**What is left of the old note is that tail.** The form used to print, above the
-split, that the hours were in the วันหยุด columns and *ยื่นถูกแล้ว* — read off
-the preview's `dayReason` rather than recomputed in the browser, and withheld on
-a proxy filing since it would tell a หัวหน้า when their team member was born.
-That note still exists and all of that is still true of it, but the case it was
-written for — filing the birthday itself — is now refused above it, so what it
-still explains is the overnight tail.
+**The note above the split is what explains that tail** — and, since 2026-09-03,
+the day itself for anybody who did not tick the box. The form prints, above the
+figures, that the hours went to the วันหยุด columns because the date is the
+filer's own birthday and *ยื่นถูกแล้ว*, read off the preview's `dayReason` rather
+than recomputed in the browser. It is withheld on a proxy filing, since it would
+tell a หัวหน้า when their team member was born, and withheld when the box IS
+ticked, since the ⓘ line at the top of the form has already said it.
+
+### เหมารายวัน — a day hired whole counts eight hours
+
+**HR's rule, 2026-09-03**, asked for in these words: some departments do work
+เหมา, *but not every day and not everybody*. So it is a **tick on the request**
+and not the department-wide `otMode: 'daily'` beside it, which answers a
+different question — “does ordinary weekday OT exist in this department at all”
+— and goes on answering it unchanged. Only the person filling the form in knows
+which day was sold that way, which is why `flatDaily` is an entered field on the
+entry, is in `ENTERED_FIELDS`, and makes an edit that toggles it a real edit with
+a `before` on it.
+
+Ticking it fills 08:00–17:00 in, like the **วันเกิด** box beside it and through
+the same one handler, so the two cannot come to fill in different days. **The
+times stay editable** — that was asked for in the same breath, because somebody
+who came in at 07:30 files 07:30 — and the day still counts eight hours: HR's
+answer to what happens when the times are then stretched was *“แก้ได้ แต่นับแค่
+8 ชั่วโมง”*.
+
+**Eight is not a setting.** `flatDailyMinutes()` in
+[`src/lib/otEngine.js`](src/lib/otEngine.js) derives it from
+`coreEndMinute − coreStartMinute` less the lunch hour — the same arithmetic the
+ordinary day is already drawn out of — so a company that moves its core hours
+moves this with it and there is no second number in ตั้งค่าระบบ for the two to
+disagree over.
+
+**The cap runs last, after the buffer, the rounding and the minimum**, and the
+order is the rule: those three ask *how much of this is OT*, and this one asks
+*how much of that is paid*, which is a question about the day. Run earlier,
+rounding could hand back minutes the flat day had already refused and
+`belowMinimum: 'raise'` could pad a capped session past the cap.
+
+**It trims from the END, in clock order.** A flat day is the standard day plus
+whatever came after it, and what the tick says is that the tail is not
+separately payable — so 08:00–20:00 on a holiday keeps eight hours of
+`ot15_holiday` and drops the three of `ot3_holiday`. Spending the cap out of the
+longest segment (the way a flat break is spent, see `applyFlatDeduction`) would
+take the hours out of the middle of the day and leave the evening on the sheet,
+which is the opposite of what anybody ticking this box means.
+
+**The clock times stay as worked**; only the counted minutes drop, which is the
+same split §3 already makes for the lunch hour. `totals.clockHours` is still the
+whole shift, the printed form still shows when the person was here, and
+`flatDailyTrimmed` on the result — with a `FLAT_DAILY_CAPPED` warning beside it —
+is the only place the two figures can still be told apart. A short เหมา day is
+**not** padded up: the cap is a ceiling, not a figure, and inventing an afternoon
+nobody worked is not something this system does anywhere else either.
+
+An overnight เหมา shift is still **one day**: the cap is per request, so a
+Saturday evening running to 06:00 Sunday counts eight hours in total rather than
+eight per date, and the Sunday morning is the part that goes.
 
 ### หนึ่งวัน หนึ่งใบ — one line per day on the paper, one request per day in here
 
@@ -4206,7 +3999,7 @@ inside the box while their right edge was 14px from it, and a notice of three
 lines sat visibly off-centre in its own border. The padding is `12px 16px`; it
 read "12px 14px" until 2026-08-26. `.alert.tight`, the one-size-down notice a
 bottom sheet uses, states its own and is untouched — which is the relationship
-`test/absentCallout.test.js` was written to hold.
+“test/absentCallout.test.js” (ลบแล้ว 2026-09-03) was written to hold.
 
 **The footnote is a boxed note now, not a ruled-off one.** *การแก้ไขของฝ่ายบุคคล
 จะคำนวณชั่วโมงใหม่ทันที…* sat 12px under the last card in the same grey as the
@@ -4846,7 +4639,8 @@ months that have no pager. Which of the two a month gets is decided by
 ┌─────────────────────────────────┐
 │ รวมทั้งหมด            75.5      │ ← under the pager, static, in the flow
 └─────────────────────────────────┘
-วันเกิดของเดือนนี้                    ← last, and the only work on the screen
+                                        (วันเกิดของเดือนนี้ closed this screen
+                                         until 2026-09-03 — see below)
 ```
 
 **The page bounds the distance, and nothing bounds the height.** Five cards, the
@@ -4857,12 +4651,23 @@ because `overflow-x: auto` at every other width computes `overflow-y` to `auto`
 as well. The cost of paging at all is written down over `CARD_PAGE` in
 [`components/HrView.jsx`](components/HrView.jsx).
 
-**The order is cards → pager → total → วันเกิดของเดือนนี้.** The pager belongs
-to the cards, not to what follows them: *แสดง 6–10 จาก 57 รายการ* is a sentence
-about the five immediately above it, and a month's total read in between breaks
-that sentence in half. It sat *below* the total for a few hours on 2026-08-25,
-under a total that was `position: sticky` and therefore made the pager the one
-row of the list that could never share a screen with the figure.
+**The order is cards → pager → total.** The pager belongs to the cards, not to
+what follows them: *แสดง 6–10 จาก 57 รายการ* is a sentence about the five
+immediately above it, and a month's total read in between breaks that sentence
+in half. It sat *below* the total for a few hours on 2026-08-25, under a total
+that was `position: sticky` and therefore made the pager the one row of the list
+that could never share a screen with the figure.
+
+It read *"cards → pager → total → วันเกิดของเดือนนี้"* until **2026-09-03**. That
+last section — every birthday in the month, with the two buttons that settled
+one — was the only thing on this screen that was WORK rather than a figure, and
+several of the rounds recorded below are about getting a reader to it. It was
+withdrawn with the rest of ฝ่ายบุคคล's birthday work; the footnotes end the card
+now, and the phone's `order` swap that used to lift the birthdays over them went
+with it. **Every dated round below that argues about where วันเกิดของเดือนนี้ sat,
+what its card measured or how its fold was worded is a record of a screen that no
+longer exists** — kept because the reasoning is about this card and this phone,
+and would have to be had again by anyone adding a section here.
 
 **The pager is drawn only when there is more than one page**, and this condition
 has now existed, been removed, and come back — so both arguments are here.
@@ -5060,7 +4865,7 @@ still is one: the desktop list is a table of eleven columns read down its own
 header row, and a table needs a ground to be read against. One markup, two
 layouts — the rule `.hr-table` itself has followed since the card list was
 written. Both halves are pinned in `test/hrMonthCards.test.js`,
-`test/monthSearch.test.js` and `test/birthdayCardUi.test.js`; the flatten test
+`test/monthSearch.test.js` and “test/birthdayCardUi.test.js” (ลบแล้ว 2026-09-03); the flatten test
 asserts all four declarations, because a border with no fill is still a frame,
 and the birthday one asserts the element is in the selector.
 
@@ -5188,7 +4993,7 @@ container between the list and the page.
 
 Pinned in `test/hrMonthCards.test.js` (the pager's margins, and that the tbody is
 still a flex column so they add), `test/monthSearch.test.js` (the 18) and
-`test/birthdayCardUi.test.js` (the pairing, the `nowrap` that forbids the other
+“test/birthdayCardUi.test.js” (ลบแล้ว 2026-09-03) (the pairing, the `nowrap` that forbids the other
 one, and the element in the selector). Verified on a built app on a scratch
 `distDir` at :3001 with :3000 left serving, per AGENTS.md.
 
@@ -5432,8 +5237,8 @@ before a month is closed.
 So the asked-for wording is used wherever it is true — most months, and every
 month once its last birthday has passed — and *"ดูรายการที่ไม่ต้องดำเนินการ
 (n รายการ)"*, the same register and true of both halves, when the fold is holding
-a date that has not come round yet. The test is `SETTLED_STATUSES` from
-[`lib/birthdayCheck.js`](lib/birthdayCheck.js) — the app's own list of "nothing
+a date that has not come round yet. The test is “SETTLED_STATUSES” from
+“lib/birthdayCheck.js” (ลบแล้ว 2026-09-03) — the app's own list of "nothing
 left to do about this birthday", which is FILED, ABSENT and HOLIDAY and not
 UPCOMING — rather than a `!== UPCOMING` written here, so a status added later is
 not silently described as checked by a label written before it existed. **The
@@ -5575,7 +5380,7 @@ the two buttons split the card's width. Both answers are reversible: a filed ใ
 can be withdrawn, and ไม่ได้มาทำงาน has ยกเลิกการตรวจ beside it, so a mis-press
 costs a second press rather than a wrong figure in a closed month. **The employee
 cards above keep 44** and so does วันเกิดรอตรวจ — same two-densities rule this
-card has been built on since round one, and `test/birthdayCardUi.test.js` now
+card has been built on since round one, and “test/birthdayCardUi.test.js” (ลบแล้ว 2026-09-03) now
 pins all three numbers so nobody harmonises them in either direction.
 
 *The buttons went to **36** the same day, one round later, and the paragraph
@@ -6827,6 +6632,31 @@ four role UIs.
 
 **Verified**
 
+- **สวัสดิการวันเกิด กลับมาเป็นใบที่พนักงานยื่นเอง + ช่องติ๊ก เหมารายวัน,
+  walked on the built app** — 2026-09-03, `:3001` on a scratch `distDir` against
+  the live database, read-only (`/entries/preview` writes nothing; `:3000` kept
+  serving throughout and was never rebuilt under). Nine calls with a minted
+  cookie, as two real employees:
+  · **เหมารายวัน caps the day**: a Saturday 08:00–20:00 previewed **11.00 ชม.**
+  untouched and **8.00 ชม.** with the box ticked — `clockHours` still **12**,
+  `flatDailyTrimmed` **3**, one `FLAT_DAILY_CAPPED` warning, and the three hours
+  came off `ot3_holiday` while `ot15_holiday` kept all eight. The tail, not the
+  middle.
+  · **the tick is checked, in three shapes**: PM-0412's real birthday
+  (13 Oct 2026, a Tuesday) previewed clean with `dayReason: 'birthday'` and
+  `routing.status` **`pending_mgr`** — the หัวหน้า step, which is the whole ask;
+  an ordinary Tuesday returned *"วันที่เลือกไม่ใช่สวัสดิการวันเกิดของพนักงานคนนี้…"*;
+  and a birthday that lands on a Saturday (PM-0210, 15 Aug 2026) returned the
+  OTHER sentence — *"…เป็นวันหยุดของทั้งบริษัทอยู่แล้ว … ชั่วโมงยังนับเท่าเดิม"* —
+  which is the case worth having walked, because it is the one where refusing
+  the tick must not read as refusing the hours.
+  · **the same day with the box untouched previews identically** — 8.00 ชม.,
+  same buckets, same `dayReason`. The tick is a claim, not an input to the
+  arithmetic.
+  · **the four doors are shut**: `GET /api/birthday/queue`,
+  `POST /api/birthday/entries`, `POST /api/birthday/checks` and
+  `GET /api/reports/birthday-check/2026-08` all answer **404** on the built app,
+  and `/api/entries/queue-summary` no longer carries a `birthdayPending` field.
 - **ลบแผนก, walked end to end on the built app** — 2026-09-02, `:3001` on a
   restored copy of the real database (`primus_ot_deptwalk`; `:3000` never
   touched). Six API calls with real cookies and both dialogs pressed through
@@ -6859,10 +6689,12 @@ four role UIs.
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2096/2096 pass in about 3 s**, measured 2026-09-03 across 122
-  files. **The newest is `test/queueStatusColumn.test.js`** — รออนุมัติ OT lists
-  a request from the moment it is filed, and stops offering ยืนยัน on the ones
-  that have not reached ฝ่ายบุคคล yet. (It read "2070/2070 … across 121 files.
+- `npm test` — **1983/1983 pass in about 3 s**, measured 2026-09-03 across 117
+  files. **The newest are `test/flatDaily.test.js` and `test/birthdayTick.test.js`**
+  — the eight-hour เหมารายวัน day, and the claim the วันเกิด tick makes. (It read
+  "2096/2096 … across 122 files. The newest is `test/queueStatusColumn.test.js`"
+  until the same day, when ฝ่ายบุคคล’s birthday work was withdrawn and seven
+  files went with it, and "2070/2070 … across 121 files.
   The newest is `test/screenTablePrint.test.js`" until 2026-09-03, and
   "2060/2060 … across 120 files. The newest is `test/oneRowPerDate.test.js`"
   before that.)
@@ -7223,7 +7055,7 @@ four role UIs.
   It read "1840/1840" until then. The same round loosened `.alert` from 1.6 to
   1.75 for the blue notice on บันทึกแทน — the longest alert in the app, five
   lines of Thai in one colour with no inter-word spaces to give the paragraph
-  any texture — which moved an assertion in `test/absentCallout.test.js` rather
+  any texture — which moved an assertion in “test/absentCallout.test.js” (ลบแล้ว 2026-09-03) rather
   than adding one. (That notice went behind an ⓘ later the same day and the
   value stays: 1.75 was never about that paragraph, it was about a solid block
   of Thai at 13.5px.)
@@ -7294,7 +7126,7 @@ four role UIs.
   across every file in `components/`, because a `confirm()` that creeps back is
   visible from nowhere except the running app, on a press nobody re-walks. It
   read "1776/1776 … across 105 files" until then.
-  **Before them the newest twelve were in `test/birthdaySelfFiling.test.js`**, over
+  **Before them the newest twelve were in “test/birthdaySelfFiling.test.js” (ลบแล้ว 2026-09-03)**, over
   สวัสดิการวันเกิด ยื่นเองไม่ได้ — the rule and the badge that goes with it.
   Half of that file is about what is still ALLOWED: a หัวหน้า filing for a team
   member on their birthday, and a shift filed against an ordinary day that ran
@@ -7443,8 +7275,8 @@ four role UIs.
   question, that `goToRow` opens the fold as well as setting the page, and that
   `.cards-more-row` joins `.pager-row` in being `display: none` above 860px.
   It read "1722/1722" before it.
-  The case before that is in `test/birthdayCardUi.test.js` for the fold button’s
-  wording: that the noun is CHOSEN from the folded rows — `SETTLED_STATUSES`,
+  The case before that is in “test/birthdayCardUi.test.js” (ลบแล้ว 2026-09-03) for the fold button’s
+  wording: that the noun is CHOSEN from the folded rows — “SETTLED_STATUSES”,
   the app’s own "nothing left to do" list, which excludes ยังไม่ถึงวัน — rather
   than written into the label, with that list asserted at its source so a status
   added later cannot be silently described as checked. A month with a birthday
@@ -7460,7 +7292,7 @@ four role UIs.
   `.pager-row` states a TOP margin only and `รวมทั้งหมด` states its own, which is
   what stops the gap over the total from disappearing with the row it used to
   hang on.
-  The newest case is in `test/birthdayCardUi.test.js` for the card's last two
+  The newest case is in “test/birthdayCardUi.test.js” (ลบแล้ว 2026-09-03) for the card's last two
   numbers — `min-height: 36px` on its two buttons and `padding: 8px` on the card
   — pinned **together with the 44px the employee cards and วันเกิดรอตรวจ keep**,
   because the failure mode is somebody harmonising the three to one number in
@@ -7483,7 +7315,7 @@ four role UIs.
   the fact line; and the pager band asserts `margin: 12px 0` where it asserted 6.
   The `white-space: nowrap` case survives unchanged and now reads as the reason
   the date had to go SHORT rather than the reason it could not be paired.
-  The case before those is in `test/birthdayCardUi.test.js` for the fold on
+  The case before those is in “test/birthdayCardUi.test.js” (ลบแล้ว 2026-09-03) for the fold on
   วันเกิดของเดือนนี้, and what it pins is the one property that makes a fold
   safe on this screen: WHICH rows go. The class is written as an exception —
   `status === DUE ? undefined : 'settled'` — so a status added later folds by
@@ -7512,7 +7344,7 @@ four role UIs.
   rejected on `.dept-menu` a round earlier; that assertion was written wrong
   twice and both ways are recorded beside it, the second being that it caught
   the comment written to justify it. It read
-  "1717/1717" before it. The two before that are in `test/birthdayCardUi.test.js` for the birthday
+  "1717/1717" before it. The two before that are in “test/birthdayCardUi.test.js” (ลบแล้ว 2026-09-03) for the birthday
   card being compacted on ตรวจสอบรายเดือน: that the short facts share a line
   while วันเกิด may not — pinned together with the `white-space: nowrap` in
   HrView that is the REASON it may not, so removing the nowrap fails the test
@@ -7673,13 +7505,15 @@ four role UIs.
   `src/migrate-*.js` plus `src/whatif.js` on 2026-08-25 —
   `test/seedEntryPoint.test.js` holds the list, checks it behaviourally, and
   fails if `package.json` learns to start a `src/` file that is not on it.
-- `npm run build` — **passes 2026-08-31**, Next 16.3 under Turbopack, and the
-  route table it prints is **57 `/api/*` routes** plus `/`, `/_not-found` and
-  `/icon.png`. Compared against the 57 `app/api/**/route.js` files on disk, in
+- `npm run build` — **passes 2026-09-03**, Next 16.3 under Turbopack, and the
+  route table it prints is **53 `/api/*` routes** plus `/`, `/_not-found` and
+  `/icon.png`. Compared against the 53 `app/api/**/route.js` files on disk, in
   both directions: nothing on disk went unbuilt and nothing was built that has
-  no file. This line read "passes 2026-08-25 … 59 routes" until the withdrawal
-  of ปิดงวด took `close` and `reopen` off the tree, and "passes 2026-08-24 … 54
-  routes" before that, and "succeeds — 2026-08-14, all 50 routes" before that.
+  no file. This line read "passes 2026-08-31 … 57 routes" until the four birthday
+  routes were withdrawn with ฝ่ายบุคคล's birthday work, and "passes 2026-08-25 …
+  59 routes" until the withdrawal of ปิดงวด took `close` and `reopen` off the
+  tree, and "passes 2026-08-24 … 54 routes" before that, and "succeeds —
+  2026-08-14, all 50 routes" before that.
   The 2026-08-24 record had gone five routes out of date within a day, which is
   the argument for the count being here at all rather than in somebody's memory.
   **The run was made while :3000 kept serving**, against a scratch
@@ -7823,7 +7657,7 @@ queue's floor, not the engine — `src/lib/otEngine.js` is untouched by it — a
 its four edge cases (a missing date in `dayTypes`, an overnight session
 straddling a birthday, 29 February in a common year, a birthday landing on a
 Saturday or a company holiday) are covered by `test/otBirthday.test.js` and
-`test/birthdayCheck.test.js`, checked 2026-08-24.
+“test/birthdayCheck.test.js” (ลบแล้ว 2026-09-03), checked 2026-08-24.
 
 **Not yet verified**
 
@@ -7905,7 +7739,7 @@ absent rather than null, and the same administrator was then refused the
 ฝ่ายบุคคล step of that same entry. **The birthday queue's two writes** produced
 an entry `approved` in one step with no `managerDecision` on it at all, and a
 check that took a row off the list and a retraction that put it back — two rows
-in `otBirthdayChecks`, the first one untouched. **cap-override** cleared
+in “otBirthdayChecks”, the first one untouched. **cap-override** cleared
 `capExceeded` while `capSnapshot.breaches` kept the record of what had been
 breached. **`npm run reset-admin`** was refused three ways, then issued a
 password that logged in over HTTP with `mustChangePassword` set, leaving an

@@ -63,13 +63,18 @@ const PEOPLE = [
    *
    * `role: 'employee'`, not 'hr': the role is what a login may DO, and the
    * ฝ่ายบุคคล work is done from HR-001. This row is มาลี as a member of staff —
-   * she has a birthday, is owed the holiday, and it is settled from HR-001,
-   * which is a different account, so nothing self-approves. She is here rather
-   * than left out precisely so that path can be tested.
+   * she has a birthday and is owed the holiday like anybody else.
    *
-   * `birthDate` is the only one in this file, and one is enough to work with:
-   * every other row lands in `uncheckable / missing`, which is itself the state
-   * the birthday screens most need to be seen in.
+   * IT USED TO BE HERE FOR A PATH THAT NO LONGER EXISTS: ฝ่ายบุคคล settled her
+   * birthday from HR-001, a different account, so nothing self-approved, and the
+   * row existed precisely so that could be walked. Since 2026-09-03 she files it
+   * herself with the วันเกิด box ticked, which is the same path everybody else
+   * uses — so the row is now here for the ordinary reason, that a roster with a
+   * birth date on it is worth having.
+   *
+   * `birthDate` is still the only one in this file, and one is still enough:
+   * every other row has none, which is the ordinary state of the field on a real
+   * roster and the state the refusal on the tick has to be readable in.
    */
   {
     code: 'PM-0210',
@@ -228,8 +233,9 @@ async function run() {
       department: depts.get(p.dept)._id,
       role: p.role,
       // Only where the row has one. Absent is the ordinary state of this field
-      // on a real roster and the birthday screens are built around saying so, so
-      // seeding a date onto everybody would hide the case they exist for.
+      // on a real roster, so seeding a date onto everybody would hide the case
+      // the tick's refusal is written for — a person who cannot claim their own
+      // birthday because ทะเบียนพนักงาน does not know when it is.
       ...(p.birthDate ? { birthDate: p.birthDate } : {}),
     });
     await employee.setPassword(PASSWORD);

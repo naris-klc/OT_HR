@@ -382,3 +382,55 @@ test('ไม่มี isOverCeiling ที่ไหนในซอร์ส — 
   // และฟิลด์ที่เพิ่มเข้ามาจริงมีตัวเดียว คือเหตุผล ซึ่งเมื่อก่อนไม่มีที่เก็บ
   assert.match(strip(read('src/models/OtEntry.js')), /overCeilingReason: \{ type: String, trim: true, maxlength: 200 \}/);
 });
+
+test('ตัวเลขที่เซ็นเกินเพดาน ขึ้นแดงบนใบที่พิมพ์ ไม่ใช่แค่บนจอ', () => {
+  /**
+   * จอทำมาตั้งแต่ 2026-09-02 แล้ว กระดาษไม่ได้ทำ — และมันกลับด้าน: จอถูกอ่าน
+   * โดยคนที่รู้อยู่แล้วว่าเซ็นอะไรไป ส่วนใบที่พิมพ์ถูกอ่านโดยฝ่ายบัญชีที่ไม่รู้
+   *
+   * `overCeiling` อยู่บนทุกแถวของ payload ชุดเดียวกันมาตลอด (accounting.js
+   * ใส่ให้ตั้งแต่ประกอบแถว) AccountingPrint แค่ไม่เคยอ่านมัน
+   */
+  const sheet = strip(read('components/AccountingPrint.jsx'));
+
+  // ทั้งสองช่องอัตรา ไม่ใช่ช่องเดียว — overCeiling นับใบกับชั่วโมง ไม่ได้แยก
+  // ตามช่องอัตรา การระบายช่องเดียวคือการตัดสินแทนข้อมูลที่ไม่มี
+  assert.match(sheet, /figureClass\(row\)/, 'ช่องอัตราต้องอ่านสถานะเกินเพดาน');
+  assert.equal(
+    (sheet.match(/className=\{figureClass\(row\)\}/g) || []).length,
+    2,
+    'ต้องเป็นทั้ง 1.50 และ 3.00',
+  );
+  assert.ok(sheet.includes("row.overCeiling?.count ? 'n over' : 'n'"));
+
+  // แถวเติมยังเป็น n เปล่า — เส้นว่างเป็นส่วนหนึ่งของกริด ไม่ใช่ข้อมูล
+  const filler = sheet.slice(sheet.indexOf('fill-'));
+  assert.doesNotMatch(filler.slice(0, 400), /figureClass/, 'แถวเติมไม่มีสถานะให้ระบาย');
+});
+
+test('สีแดงบนใบพิมพ์ถูกสั่งให้รอดจากเครื่องพิมพ์', () => {
+  const css = read('app/print.css');
+  const rule = css.slice(css.indexOf('.acct td.n.over'));
+  const body = rule.slice(0, rule.indexOf('}'));
+  assert.ok(body.length > 10, 'ไม่พบกฎ .acct td.n.over ใน app/print.css');
+  assert.match(body, /color:\s*#c00/, 'แดงตัวเดียวกับธง ไม่ถูกนับ ในแถบด้านบน');
+  assert.match(body, /font-weight:\s*700/);
+  assert.match(body, /print-color-adjust:\s*exact/);
+  assert.match(body, /-webkit-print-color-adjust:\s*exact/);
+});
+
+test('ช่องหมายเหตุบนใบพิมพ์ยังเป็นของ วันเกิด อย่างเดียว', () => {
+  /**
+   * ฟอร์มไม่ถูกแก้ ตามที่สั่งไว้ — สีคือการจัดสไตล์ การเติมคำลงในแถบข้าง
+   * กริดคือการแก้แบบฟอร์มที่ฝ่ายบัญชีเซ็น และเป็นคนละเรื่องกัน
+   *
+   * ราคาของการเลือกแบบนี้ถูกเขียนไว้ในคอมเมนต์ของ `figureClass`: สำเนาขาวดำ
+   * ของใบที่เซ็นแล้วจะไม่มีเครื่องหมายอะไรเลย ถ้าวันหนึ่งเรื่องนั้นสำคัญ
+   * ทางแก้คือคำในแถบ และเป็นสิ่งที่ฝ่ายบุคคลกับฝ่ายบัญชีต้องขอ
+   */
+  const sheet = strip(read('components/AccountingPrint.jsx'));
+  const fn = sheet.slice(sheet.indexOf('function remark(row)'));
+  const body = fn.slice(0, fn.indexOf(String.fromCharCode(10) + '}'));
+  assert.match(body, /BIRTHDAY_REMARK/);
+  assert.doesNotMatch(body, /overCeiling|เกินเพดาน/, 'แถบนี้ไม่รับหมายเหตุชนิดที่สอง');
+});

@@ -61,6 +61,30 @@ export const DAY_REASONS = Object.freeze({
 
 const MINUTES_PER_DAY = 1440;
 
+/**
+ * เหมารายวัน — how many counted minutes one flat day is worth, and it is a
+ * constant here rather than a policy key on purpose.
+ *
+ * HR's rule, 2026-09-03: some departments hire a day at a time, and not every
+ * day and not everybody — so it is a tick on the request rather than the
+ * department-wide `otMode` beside it (lib/otMode.js), which answers a different
+ * question and keeps answering it. What the tick means is "this day was bought
+ * whole": the standard day is 08:00–17:00 less the hour at noon, which is eight
+ * hours, and staying past it adds nothing because the day was already paid for.
+ *
+ * NOT A POLICY KEY, and that is the part worth defending. The eight hours are
+ * `coreEndMinute - coreStartMinute` less the lunch hour — the same figure
+ * `bucketFor` already draws the ordinary day out of — so a company that moves
+ * its core hours moves this too, and a second number in ตั้งค่าระบบ would be a
+ * way for the two to disagree. Derived below rather than written as 480 for
+ * exactly that reason.
+ */
+export function flatDailyMinutes(policy = DEFAULT_POLICY) {
+  const span = policy.coreEndMinute - policy.coreStartMinute;
+  const lunch = policy.breakMode === 'none' ? 0 : (policy.breakMinutes || 0);
+  return Math.max(0, span - lunch);
+}
+
 export class OtValidationError extends Error {
   constructor(code, message) {
     super(message);
@@ -774,6 +798,47 @@ export function computeSession(session, options = {}) {
   // order the segmentation produced them.
   if (seeded) workingSegments.sort(byClock);
 
+  /**
+   * เหมารายวัน — the day was bought whole, so it counts eight hours and no
+   * more, however long the person actually stayed.
+   *
+   * LAST OF ALL THE RULES, and the order is the rule. The buffer, rounding and
+   * the minimum each ask "how much of this is OT"; this one asks "how much of
+   * that is PAID", which is a question about the day and not about the minutes.
+   * Running it earlier would let rounding hand back minutes the flat day had
+   * already refused, and would let 'raise' pad a capped session past the cap.
+   *
+   * TRIMMED FROM THE END, in clock order. A flat day is the standard day plus
+   * whatever came after it, and what the tick says is that the tail is not
+   * separately payable — so the tail is what goes. Trimming from the largest
+   * segment (the way `applyFlatDeduction` spends a break) would take the hours
+   * out of the middle of the day and leave the evening on the sheet, which is
+   * the opposite of what anybody ticking this box means.
+   *
+   * The clock times stay exactly as worked and only the counted minutes drop —
+   * the same split §3 already makes for the lunch hour, and the reason
+   * `applyFlatDeduction` is written the way it is. The paper form still shows
+   * when the person was here; the hour columns show what the day was worth.
+   */
+  let flatDailyTrimmed = 0;
+  if (session.flatDaily) {
+    let budget = flatDailyMinutes(policy);
+    for (const seg of [...workingSegments].sort(byClock)) {
+      const keep = Math.min(seg.minutes, Math.max(0, budget));
+      flatDailyTrimmed += seg.minutes - keep;
+      seg.minutes = keep;
+      budget -= keep;
+    }
+    if (flatDailyTrimmed > 0) {
+      warnings.push({
+        code: 'FLAT_DAILY_CAPPED',
+        minutes: flatDailyTrimmed,
+        message: `${minutesToHours(flatDailyTrimmed)} h beyond the flat day (เหมารายวัน) `
+          + `is not counted; the day is capped at ${minutesToHours(flatDailyMinutes(policy))} h.`,
+      });
+    }
+  }
+
   const totalMinutes = workingSegments.reduce((s, x) => s + x.minutes, 0);
   const buckets = totalBuckets(workingSegments);
 
@@ -819,6 +884,17 @@ export function computeSession(session, options = {}) {
      * emptied a session that was filled in correctly.
      */
     belowBufferZeroed: belowBuffer,
+    /**
+     * How many minutes the flat day refused — 0 on every session that was not
+     * ticked เหมารายวัน, and 0 on a ticked one that never reached eight hours.
+     *
+     * A number rather than a boolean because it is the only place the hours a
+     * person worked and the hours the day is worth can still be told apart:
+     * `totals.clockHours` is the whole shift and `totals.otHours` is what the
+     * cap left, and the difference is also the break. Stored on the entry with
+     * the warnings, so a row can say why it reads eight.
+     */
+    flatDailyTrimmed: minutesToHours(flatDailyTrimmed),
     warnings,
   };
 }

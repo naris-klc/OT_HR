@@ -48,11 +48,18 @@ import {
  * The collections to save — asked of the DATABASE, never of the model registry.
  *
  * This is the single most important line in the file. `lib/db.js` imports six
- * models; `src/models/` holds eleven. A backup driven by what mongoose knows
- * about would have quietly omitted ApprovalDelegation, BirthdayCheck,
- * EmployeeAudit and PolicyReplayRun — which is to say the entire
- * approval-delegation history, the birthday checks, and the append-only roster
- * audit trail that exists precisely because it must not be lost.
+ * models; `src/models/` holds ten. A backup driven by what mongoose knows about
+ * would have quietly omitted ApprovalDelegation, EmployeeAudit and
+ * PolicyReplayRun — which is to say the entire approval-delegation history and
+ * the append-only roster audit trail that exists precisely because it must not
+ * be lost.
+ *
+ * AND IT HAS NOW PROVED ITSELF FROM THE OTHER DIRECTION. BirthdayCheck was on
+ * that list until 2026-09-03, when the model was deleted with ฝ่ายบุคคล's
+ * birthday work. Its collection is still in the database with real documents in
+ * it, nothing in the app reads them any more, and they are still backed up every
+ * night — because this file asks the database what is there rather than asking
+ * a registry that has forgotten.
  *
  * It would also have reported success. A backup that omits four collections and
  * prints "เสร็จแล้ว" is worse than no backup, because it is believed.

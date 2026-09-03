@@ -8,7 +8,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
-  capFor, takeCapped, submissionWindowRefusal, entryCompany, birthdayOtRefusal,
+  capFor, takeCapped, submissionWindowRefusal, entryCompany, birthdayTickRefusal,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
@@ -266,26 +266,29 @@ export const POST = route(async (req) => {
   }
 
   /**
-   * สวัสดิการวันเกิด is not something a person claims for themselves.
+   * ติ๊ก “วันเกิด” ไว้ — and this had better be one.
    *
    * Ahead of the department rule below because it is about the DAY rather than
    * about the hours: a birthday holiday puts every minute in the วันหยุด
-   * columns, so `weekdayOtRefusal` has nothing to say about it and would let
-   * this through in silence. `birthdayOtRefusal` holds the rule and says why a
-   * proxy filing and the tail of an overnight shift are both left alone — and
-   * why it lives in lib/entries.js rather than beside the single-signature
-   * path, which this route still cannot reach.
+   * columns, so `weekdayOtRefusal` has nothing to say about it and would let a
+   * wrong tick through in silence. `birthdayTickRefusal` holds the rule, and
+   * its header records what stood here until 2026-09-03 — a ban on filing one's
+   * own birthday at all, which HR withdrew along with ฝ่ายบุคคล's queue and the
+   * single-signature route behind it. This request goes to the หัวหน้า and then
+   * to ฝ่ายบุคคล like every other one; nothing here routes it anywhere special.
    *
    * `ctx.dayTypes` is the map the engine just computed these hours from —
-   * resolved from the employee's own stored วันเกิด under the live policy,
-   * where no payload can reach it.
+   * resolved from the employee's own stored วันเกิด under the policy in force on
+   * the work date, where no payload can reach it. The tick is a CLAIM about that
+   * map, which is the only thing the browser is allowed to send: it holds no
+   * birth dates (`publicEmployee`) and so cannot check itself.
    *
    * 409 rather than 400, like the two refusals around it: the times may be
    * exactly right and the shift may really have happened. What refuses it is
-   * whose day it was, and the answer is ฝ่ายบุคคล's to record.
+   * what the tick says about the day.
    */
-  const birthdayRefusal = birthdayOtRefusal({
-    filer: user, employee, dayTypes: ctx.dayTypes, workDate: session.workDate,
+  const birthdayRefusal = birthdayTickRefusal({
+    ticked: payload.birthdayWelfare, dayTypes: ctx.dayTypes, workDate: session.workDate,
   });
   if (birthdayRefusal) return fail(birthdayRefusal, 409, { warnings: result.warnings });
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -285,16 +285,26 @@ test('the settings page carries the backward row beside the forward one', () => 
 });
 
 /**
- * The one path the backward window must NOT reach. วันเกิดที่ยังไม่มีใบ exists
- * to surface days that were missed, so a rolling window would refuse exactly the
- * rows the screen is for.
+ * THE WINDOW REACHES EVERY FILING PATH — 2026-09-03, and this case is the
+ * reverse of the one it replaces.
+ *
+ * app/api/birthday/entries was deliberately left outside it: วันเกิดที่ยังไม่มีใบ
+ * existed to surface days that had been MISSED, so a rolling backward window
+ * would have refused exactly the rows that screen was for. That route was
+ * deleted with the queue, and a birthday request is filed through
+ * POST /api/entries like any other — so `maxPastSubmissionDays` now decides how
+ * far back one can be claimed, with no second door behind it.
+ *
+ * The key is `null` today (README §ยื่นย้อนหลัง, an open question for HR), so
+ * nothing is out of reach yet. The day a number is set, a birthday nobody filed
+ * in time goes out of reach with everything else — which is the consequence this
+ * case exists to keep visible.
  */
-test('the birthday filing path is left outside the window', () => {
-  const src = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), '..', 'app/api/birthday/entries/route.js'),
-    'utf8',
+test('there is no filing path left outside the window', () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  assert.ok(!existsSync(join(root, 'app/api/birthday')), 'a second filing door came back');
+  assert.match(
+    readFileSync(join(root, 'app/api/entries/route.js'), 'utf8'),
+    /submissionWindowRefusal\(/,
   );
-  assert.doesNotMatch(src, /submissionWindowRefusal\(|pastSubmissionRefusal\(/);
-  // And the reason is written down where somebody would otherwise add it.
-  assert.match(src, /NO `submissionWindowRefusal` HERE/);
 });

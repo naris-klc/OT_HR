@@ -9617,7 +9617,26 @@ table.mini tbody tr:hover { background: none; }
      ไม่ได้มาทำงาน) are the last of them. On a phone they sat off the right edge
      of the screen: the only way to answer a birthday was to scroll a table
      sideways, press, and scroll back. Nothing here is rendered differently —
-     the cells are placed by the classes they carry, as on the queue. */
+     the cells are placed by the classes they carry, as on the queue.
+
+     ⚠ NOTHING WRITES `.bday-table` OR `.bmonth-table` ANY MORE — 2026-09-03.
+     คิววันเกิด and วันเกิดของเดือนนี้ were withdrawn with the rest of
+     ฝ่ายบุคคล's birthday work, and these two blocks (down to the end of
+     `.btn.bday-more`, plus the `--bday-*` tokens at the top of the file) are
+     rules for markup that no component renders.
+
+     LEFT IN, DELIBERATELY, AND NOT AS AN OVERSIGHT. This is the phone layout
+     that was argued out over eight rounds between 2026-08-27 and 2026-08-28 —
+     the grid areas, the two densities of touch target, the short-date swap, the
+     two `table.`-prefixed selectors that exist because a bare class lost to
+     `table.mini` twice — and every pixel of it is pinned in
+     test/hrMonthCards.test.js, which is the signed-off template for this screen.
+     Deleting five hundred lines interleaved with the LIVE `.hr-table`,
+     `.month-card` and `.table-wrap.card-list` rules is a separate change with
+     its own way of going wrong, and it should be made deliberately rather than
+     as the tail of a feature removal. Anyone doing it: the tests come out with
+     it, and the README rounds that argue about these numbers become history
+     with nothing to point at. */
 
   .bday-table { display: block; min-width: 0; table-layout: auto; }
   .bday-table thead { display: none; }
@@ -11517,47 +11536,37 @@ table.mini tbody tr:hover { background: none; }
     font: 600 15.5px/1.4 var(--mono); font-variant-numeric: tabular-nums;
   }
 
-  /* ══ วันเกิดของเดือนนี้ COMES UP TO THE CARD LIST ═══════════════════════
+  /* ══ THE MONTH’S FOOTNOTES, UNDER THE CARD LIST ════════════════════════
 
-     The card list ends with รวมทั้งหมด, and directly under that are the month's
-     footnotes: the one-signature notice, the superseded count, the
-     missing-วันเกิด list. All three are conditional, all
-     three are grey, and none of them is anything to DO. Under them sits the one
-     section on this screen that is work: the birthdays, with their two buttons.
+     The card list ends with รวมทั้งหมด, and directly under that are the
+     month’s footnotes: the one-signature notice, the superseded count, the
+     missing-วันเกิด list. All three are conditional and all three are grey.
 
-     On a 375px screen that order costs a scroll through a paragraph of grey to
-     reach the only rows that need answering before the month can be closed. So
-     the phone puts the birthdays straight under the total and the footnotes
-     after them.
+     THESE RULES WERE AN `order` SWAP UNTIL 2026-09-03. Under the footnotes sat
+     วันเกิดของเดือนนี้ — the one section on this screen that was work, with two
+     buttons on every row — and on a 375px screen that order cost a scroll
+     through a paragraph of grey to reach the only rows that needed answering
+     before the month could be closed. So the phone gave `.month-notes`
+     `order: 1` and put the birthdays straight under the total. One markup, two
+     orders, no phone branch in HrView.jsx.
 
-     ONE MARKUP, TWO ORDERS — the same rule the card list itself follows. There
-     is no phone branch in HrView.jsx; `order` on one wrapper is the whole of
-     it, which is why `.month-notes` had to become an element at all.
+     That table is gone and there is nothing left to swap with: the footnotes
+     are the last thing on the card in both orders now, so the `order` is
+     dropped rather than kept pointing at nothing.
 
-     `order` NEEDS A FLEX PARENT, and making this container one has a cost worth
-     naming: flex items do not collapse their margins, so two stacked notices
-     that used to share the larger of their two gaps now add both. That is why
-     `.month-notes` declares its own top margin and its first child gives its
-     up — the gap above the block is stated once, here, instead of being
-     whatever the first surviving `.hint` happened to carry.
-
-     IT OUTLIVED THE CARD. `.month-card` stopped being a card at this width on
-     2026-08-27 and these three rules did not change: what they order is the
-     sections of a screen, and a screen has sections whether or not something is
-     drawn round them.
-
-     WHAT DOES NOT MOVE: everything else keeps `order: 0` and stays in document
-     order — the policy banner, the sticky ค้นหา bar, the card list itself. Only
-     the footnotes are given a number, so a section added to this card later
-     lands where its markup says rather than somewhere this rule decided for
-     it. */
+     WHAT IS KEPT, AND WHY IT IS NOT DEAD WITH IT. `display: flex` is what
+     stops two stacked notices sharing the larger of their two gaps — flex items
+     do not collapse margins — which is why `.month-notes` states its own top
+     margin and its first child gives its up: the gap above the block is said
+     once, here, instead of being whatever the first surviving `.hint` carried.
+     Take the flex away and the gap moves about by month. */
   .month-card { display: flex; flex-direction: column; }
-  .month-card > .month-notes { order: 1; margin-top: 12px; }
+  .month-card > .month-notes { margin-top: 12px; }
   .month-card > .month-notes > :first-child { margin-top: 0; }
   /* All three notes are conditional and the อนุมัติชั้นเดียว one moved out to
      the top of the card, so an ordinary month leaves this wrapper with no
-     children at all — a flex item carrying 12px of margin and nothing else,
-     between วันเกิดของเดือนนี้ and the foot of the screen. */
+     children at all — a flex item carrying 12px of margin and nothing else at
+     the foot of the screen. */
   .month-card > .month-notes:empty { display: none; }
 
   /* 34px, the app's OTHER touch floor — the one `.queue-mobile-bar`'s undo has
