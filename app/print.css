@@ -1119,6 +1119,132 @@
   .otdept td.gap { background: none; }
 }
 
+/* ══ ตารางบนจอ เมื่อมีคนสั่งพิมพ์หน้าจอตรง ๆ ═════════════════════════════════
+ *
+ * THE OTHER WAY THE ACCOUNTING REPORT REACHES PAPER, and until 2026-09-02 the
+ * only one of the two that had never been designed for it.
+ *
+ * รายงาน OT ฝ่ายบัญชี has a purpose-built A4 sheet — the พิมพ์ button swaps the
+ * screen for `AccountingPrint`, and `.acct` above is that sheet: 194mm of body
+ * inside 8mm bands, 9pt, fixed columns, pad rows carrying the top and bottom
+ * margin onto every page. Everything a printed report needs is there.
+ *
+ * But Ctrl+P is a key on the keyboard and nobody is obliged to press the button
+ * first. Take that route and what goes to the printer is the SCREEN table, and
+ * a screen table is built out of exactly the things paper cannot do:
+ *
+ *   `.table-wrap` is a scroll container. A page break cannot be put inside one,
+ *   so the browser prints the visible width and drops the rest — the report
+ *   comes out with ×3 วันหยุด, รวม ชม. and หมายเหตุ simply missing, and nothing
+ *   on the sheet says they were cut.
+ *
+ *   `who-col` is `position: sticky` with a shadow, which is an answer to
+ *   sideways scrolling and means nothing on a page that does not scroll.
+ *
+ *   `max-width` caps on who-col, dept-col and note-col hold the columns to a
+ *   card's width in px on a sheet measured in mm.
+ *
+ * So this block is not a second design. It is the screen table told that it is
+ * on paper now: stop scrolling, stop freezing, fill the width, and break like a
+ * document.
+ *
+ * ⚠ THE MARGIN IS PADDING, AND IT HAS TO BE. The `@page` at the head of this
+ * file is `margin: 0` and the note above it is the reason — give it 10mm and
+ * every F-HR-027 spills its last band onto a second side, forty forms print
+ * eighty pages. `@page` is not scopable to one screen, so the 15mm sides and
+ * 10mm top asked for here live on the card that holds the table, INSIDE the
+ * page box, the same trick `.f027` and `.acct` already use.
+ *
+ * What padding cannot do is repeat. Side padding applies on every page; top and
+ * bottom padding applies once, at the start and the end of the block. A report
+ * running to three pages therefore has its 10mm on page 1 and page 3 and none
+ * in between — which is what `.acct tr.pad` exists to solve on the sheet, and
+ * what `thead` repeating solves here: the column headings are redrawn at the
+ * top of every page with their own padding under them, so no page starts with a
+ * figure hard against the paper edge.
+ */
+@media print {
+  /* A scroll box cannot be broken across pages, so it stops being one. The
+     fade over its right edge is drawn by `::after` and has no class to be
+     hidden by — it is a gradient painted over live figures if it survives. */
+  .table-wrap {
+    display: block !important;
+    overflow: visible !important;
+    max-width: none !important;
+  }
+  .table-wrap::after { display: none !important; }
+
+  /* The margin. `:has()` rather than a new class on the card, for the reason
+     styles.css already reaches for it on these same three tables: the table is
+     what makes the card a document, and a card that stops holding one stops
+     being padded without anybody having to remember to take a class off. */
+  .card:has(.acct-table),
+  .card:has(.allco-table),
+  .card:has(.dept-table) { padding: 10mm 15mm; }
+
+  /* Fill the page rather than the card. `table-layout: auto` lets the columns
+     be measured from their contents at 8pt, which is the whole reason the
+     figures fit: held to the px widths the screen gave them, seven columns
+     come to more than 180mm and the last one goes over the edge. */
+  .acct-table, .allco-table, .dept-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+    border-collapse: collapse;
+    font-size: 8pt;
+  }
+
+  /* 180mm of printable width across seven columns is about 25mm each, which
+     Thai at 8pt fits by wrapping — so the caps come off and the ellipsis with
+     them. A truncated name on a screen is recoverable by widening the window;
+     on paper it is a person nobody can identify. */
+  .acct-table :is(th, td),
+  .allco-table :is(th, td),
+  .dept-table :is(th, td) {
+    padding: 1.2mm 1.6mm !important;
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: break-word;
+    line-height: 1.35;
+    /* Freezing a column is an answer to sideways scrolling. There is none. */
+    position: static !important;
+    box-shadow: none !important;
+  }
+
+  /* The card-coloured fill under a frozen column is there to hide the rows
+     sliding beneath it, and on paper it only lightens one column against the
+     rest. The totals tints below are left alone — those mark the figure the
+     sheet is read for, and they are the sheet rather than decoration. */
+  .acct-table tbody td.who-col,
+  .allco-table tbody td.who-col { background: none !important; }
+
+  /* No name split across the fold, and the column headings redrawn at the top
+     of every page — the two rules a table longer than a side cannot do without.
+     Both are what `.acct` above already does; a reader who reached paper by the
+     other route gets the same document. */
+  .acct-table tr, .allco-table tr, .dept-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .acct-table thead, .allco-table thead, .dept-table thead {
+    display: table-header-group;
+  }
+
+  /* ⚠ AND tfoot IS FORCED BACK TO A NORMAL ROW GROUP, which is the one rule
+     here that goes against the browser's default rather than with it.
+     `tfoot` defaults to `table-footer-group`, so a browser repeats it at the
+     bottom of every page — and on these three tables tfoot is not a running
+     footer, it is รวมแผนก and รวมทั้งหมด. A grand total reprinted at the foot
+     of page 1 of 3 is not a convenience; it is three different documents each
+     claiming to be the month's total, handed to accounting. It prints once,
+     where it belongs, at the end. */
+  .acct-table tfoot, .allco-table tfoot, .dept-table tfoot {
+    display: table-row-group;
+  }
+}
+
 /* ══ สลิปรหัสผ่านชั่วคราว ═══════════════════════════════════════════════════
  *
  * The fourth sheet in this file, and the only one that is not a document. The
