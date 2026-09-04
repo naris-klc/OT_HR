@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '@/lib/api.js';
+import { api, thaiStamp } from '@/lib/api.js';
 import { PickDate } from './PickDate.jsx';
 import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
 } from '@/lib/accessLog.js';
 import {
-  Alert, Empty, Field, Modal, ClearButton, useScrollEdge,
+  Alert, Empty, Field, Modal, PickOne, ClearButton, useScrollEdge,
 } from './common.jsx';
 
 /**
@@ -85,9 +85,17 @@ const ROLE_LABEL = {
   employee: 'พนักงาน', manager: 'หัวหน้างาน', hr: 'ฝ่ายบุคคล', admin: 'ผู้ดูแลระบบ',
 };
 
-/** Bangkok, spelled out — see the timezone comments on the two endpoints. */
-const at = (iso) => (iso ? new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'medium' }) : '—');
-const atShort = (iso) => (iso ? new Date(iso).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+/**
+ * Bangkok, in the reader's own zone — see the timezone comments on the two
+ * endpoints.
+ *
+ * The two used to be `dateStyle: 'medium'` and `'short'`, which on th-TH is
+ * "14 ส.ค. 2569 16:03:22" against "14/8/2569 16:03" — two shapes for one
+ * column, on one screen, chosen by a word that does not say which shape it
+ * means. They differ by the seconds now and by nothing else.
+ */
+const at = (iso) => thaiStamp(iso) || '—';
+const atShort = (iso) => thaiStamp(iso, { seconds: false }) || '—';
 
 /** `2026-08-24`, local — what the two date inputs speak. */
 function ymd(d) {
@@ -547,16 +555,27 @@ function Compliance() {
           <PickDate label="ถึงวันที่" max={today} value={range.to} clearable
             onChange={(v) => setRange((r) => ({ ...r, to: v }))} />
         </Field>
-        <Field label="เฉพาะประเภท" note="เว้นว่าง = ทุกประเภท">
-          <select value={only} onChange={(e) => setOnly(e.target.value)}>
-            <option value="">ทุกประเภท</option>
-            {Object.entries(labels).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}{data?.counts?.[k] != null ? ` (${data.counts[k]})` : ''}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {/* `PickOne` AND NOT A `<select>`, SINCE 2026-09-04 — the round that
+            took the last of the operating system's own menus off this app. The
+            box was always this stylesheet's and the list that dropped out of it
+            never was: drawn by the browser, absent from the document, and on
+            ธีมมืด a white sheet with the system's blue bar over it, beside two
+            `PickDate` boxes in the same grid that are the app's own.
+
+            THE COUNT LEFT THE OPTION TEXT, exactly as it did on the queue's
+            filters: `(3)` had to be inside the string because an `<option>` can
+            hold nothing else, and it is the `.ct` column now — mono, tabular,
+            against the right edge where the figures line up. */}
+        <PickOne
+          label="เฉพาะประเภท"
+          note="เว้นว่าง = ทุกประเภท"
+          value={only}
+          onChange={setOnly}
+          allLabel="ทุกประเภท"
+          options={Object.entries(labels).map(([k, v]) => ({
+            value: k, label: v, count: data?.counts?.[k],
+          }))}
+        />
       </div>
 
       <div className="row" style={{ marginBottom: 12 }}>
@@ -750,38 +769,49 @@ function LogList({
             {filters.q && <ClearButton onClear={() => setFilter('q', '')} />}
           </div>
         </Field>
-        <Field label="กรองตามบัญชี" note="รายชื่อมาจากบันทึกเอง — ไม่ใช่ทะเบียนวันนี้">
-          <select value={filters.actor} onChange={(e) => setFilter('actor', e.target.value)}>
-            <option value="">— ทุกบัญชี —</option>
-            {/* The rows nobody's session is attached to: refused logins, and
-                requests turned away before a session existed. Its own choice
-                because it is the one somebody scanning for trouble wants. */}
-            <option value="none">— ไม่มีบัญชี (ยังไม่ได้เข้าระบบ) —</option>
-            {(data?.actors || []).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.code || '—'} · {a.name || '—'}{a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {/* All three are `PickOne` since 2026-09-04 — see the note over
+            เฉพาะประเภท on the tab above, which is the same argument and the same
+            round. A filter bar has ONE kind of dropdown on it: one control drawn
+            any other way is the OS menu back on one field. */}
+        <PickOne
+          label="กรองตามบัญชี"
+          note="รายชื่อมาจากบันทึกเอง — ไม่ใช่ทะเบียนวันนี้"
+          value={filters.actor}
+          onChange={(v) => setFilter('actor', v)}
+          allLabel="— ทุกบัญชี —"
+          options={[
+            /* The rows nobody's session is attached to: refused logins, and
+               requests turned away before a session existed. Its own choice
+               because it is the one somebody scanning for trouble wants. */
+            { value: 'none', label: '— ไม่มีบัญชี (ยังไม่ได้เข้าระบบ) —' },
+            ...(data?.actors || []).map((a) => ({
+              value: a.id,
+              label: `${a.code || '—'} · ${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
+            })),
+          ]}
+        />
         {tab === 'auth' && (
-          <Field label="กรองตามเหตุการณ์">
-            <select value={filters.event} onChange={(e) => setFilter('event', e.target.value)}>
-              <option value="">— ทั้งหมด —</option>
-              <option value="login">{EVENT_LABEL.login}</option>
-              <option value="login_failed">{EVENT_LABEL.login_failed}</option>
-              <option value="logout">{EVENT_LABEL.logout}</option>
-            </select>
-          </Field>
+          <PickOne
+            label="กรองตามเหตุการณ์"
+            value={filters.event}
+            onChange={(v) => setFilter('event', v)}
+            allLabel="— ทั้งหมด —"
+            options={[
+              { value: 'login', label: EVENT_LABEL.login },
+              { value: 'login_failed', label: EVENT_LABEL.login_failed },
+              { value: 'logout', label: EVENT_LABEL.logout },
+            ]}
+          />
         )}
-        <Field label="กรองตามผลลัพธ์">
-          <select value={filters.status} onChange={(e) => setFilter('status', e.target.value)}>
-            <option value="">— ทุกผลลัพธ์ —</option>
-            {Object.entries(STATUS_CLASS_LABEL)
-              .filter(([k]) => k !== 'unknown')
-              .map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-          </select>
-        </Field>
+        <PickOne
+          label="กรองตามผลลัพธ์"
+          value={filters.status}
+          onChange={(v) => setFilter('status', v)}
+          allLabel="— ทุกผลลัพธ์ —"
+          options={Object.entries(STATUS_CLASS_LABEL)
+            .filter(([k]) => k !== 'unknown')
+            .map(([k, label]) => ({ value: k, label }))}
+        />
         <Field label="ตั้งแต่วันที่">
           <PickDate label="ตั้งแต่วันที่" max={today} value={filters.from} clearable onChange={(v) => setFilter('from', v)} />
         </Field>

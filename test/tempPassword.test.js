@@ -375,10 +375,14 @@ test('the helper text under the box says the rule the server applies', () => {
   // typed as a 4 that can drift away from PASSWORD_MIN_LENGTH.
   assert.match(code, /รหัสผ่านต้องมีความยาวอย่างน้อย \$\{MIN_LENGTH\} ตัวอักษร/);
   assert.match(code, /สามารถใช้ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข หรืออักขระพิเศษได้/);
-  // And the first-login gate, which is where most people meet this form once.
-  assert.match(
+  // It was said twice until 2026-09-04 — here and on the first-login screen,
+  // which is where most people met this form once. That screen is gone, so
+  // this form is the only place the rule is written, and the second assertion
+  // is now that nowhere ELSE writes it: a copy on another screen is a sentence
+  // that drifts away from PASSWORD_HELP without anything failing.
+  assert.doesNotMatch(
     readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'),
-    /ใช้ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข หรืออักขระพิเศษได้/,
+    /ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข/,
   );
 });
 
@@ -490,10 +494,9 @@ test('a reset is asked for by a flag, and the value it set comes back', () => {
 });
 
 test('every path that issues one also demands it be replaced', () => {
-  // The whole of what makes a guessable default affordable: the window in which
-  // it works is "until the first login", not "forever". One path that forgot
-  // this flag would be a permanently guessable account and nothing on any
-  // screen would say so.
+  // The whole of what makes a guessable default affordable: the flag that says
+  // this password is not the account's own. One path that forgot it would be a
+  // permanently guessable account and nothing on any screen would say so.
   const paths = [
     'app/api/employees/route.js',
     'app/api/employees/[id]/route.js',
@@ -509,10 +512,12 @@ test('every path that issues one also demands it be replaced', () => {
     );
   }
 
-  // And the shell honours it: an account carrying the flag reaches exactly one
-  // screen. Without this the flag is a field nobody reads.
+  // And something on screen honours it. It was a gate — one screen an account
+  // could reach and no other — until 2026-09-03; it is a strip on the landing
+  // tab now. What must never be true is that NOTHING reads the flag, which is
+  // what deleting the gate would have left had the strip not gone in with it.
   const app = strip(readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'));
-  assert.match(app, /if \(session\.user\.mustChangePassword\)/);
+  assert.match(app, /tab === home && user\.mustChangePassword && \(/);
 
   // Cleared in one place only, by the person who typed the new value.
   const self = strip(readFileSync(join(ROOT, 'app/api/employees/me/password/route.js'), 'utf8'));
@@ -520,6 +525,44 @@ test('every path that issues one also demands it be replaced', () => {
   // …and never by typing the issued value straight back in, which would clear
   // the flag while leaving the account exactly as exposed as it was.
   assert.match(self, /String\(next\) === String\(current \|\| ''\)/);
+});
+
+test('signing in reaches the app, and the flag is said in ink instead', () => {
+  // 2026-09-04, TWO ASKS IN ONE DAY. First: let somebody who does not want to
+  // change their password work anyway (a ข้ามไปก่อน button on the gate).
+  // Then, once that was built and walked: "ไม่ต้องเข้ามาหน้านี้แล้ว ไม่เอา
+  // หน้านี้แล้ว" — delete the screen. Both halves of this test are about the
+  // SECOND ask, and the danger it carries is not the deletion. It is that
+  // `mustChangePassword` becomes a field nothing on any screen reads, which
+  // looks like nothing at all going wrong.
+  const app = strip(readFileSync(join(ROOT, 'components/App.jsx'), 'utf8'));
+
+  // 1. NO SCREEN STANDS BETWEEN A SIGN-IN AND THE SHELL. Not the deleted
+  //    component, not an early return reading the flag, and not a revival of
+  //    either under another name — a second screen with a way past it is the
+  //    thing that was asked to go.
+  assert.doesNotMatch(app, /FirstLogin[^\n]*\(/, 'the first-login screen is back');
+  assert.doesNotMatch(app, /if \(session\.user\.mustChangePassword/, 'the flag gates a screen again');
+  assert.doesNotMatch(app, /postponed/, 'the skip state is back, which means the gate is too');
+
+  // 2. AND THE FLAG IS STILL READ, on the landing tab, by the one thing left
+  //    that says a รหัสพนักงาน printed on every ใบ OT is this account's
+  //    working password.
+  assert.match(app, /function PasswordReminder\(/);
+  assert.match(app, /tab === home && user\.mustChangePassword && \(/);
+  assert.match(app, /<PasswordReminder onOpenProfile=\{\(\) => goTab\('profile'\)\}/);
+
+  // Nothing on the way in writes to the flag: it is cleared by typing a new
+  // password and by nothing else, least of all by arriving.
+  assert.doesNotMatch(app, /mustChangePassword[^\n]*api\.(post|patch)/);
+
+  // …and the page the strip points at says it too, on the form that fixes it —
+  // including the sentence the deleted screen carried, which named the issued
+  // password outright for whoever was told nothing and guessed.
+  const profile = strip(readFileSync(join(ROOT, 'components/ProfileView.jsx'), 'utf8'));
+  assert.match(profile, /<ChangePassword pending=\{user\.mustChangePassword\}/);
+  assert.match(profile, /\{pending && <>[^]*ซึ่งคือรหัสพนักงานของคุณ/);
+  assert.match(profile, /\{pending && !ok && \(/);
 });
 
 // ── the screen may say the value; it may never send one ─────────────────────

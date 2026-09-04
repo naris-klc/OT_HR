@@ -13,14 +13,16 @@ import { dirname, join } from 'node:path';
  * columns, thirty values of 1.50 reconciled against the paper, and a card per
  * person destroys that. ตรวจสอบรายเดือน looked like the same kind of screen and
  * is not: it is where an employee's month is OPENED and where their F-HR-027 is
- * PRINTED, and those two buttons were the eleventh column of eleven — off the
+ * PRINTED, and those two buttons were the last column of eleven — off the
  * right edge, reached by pushing the whole month sideways past the figures.
+ * (Eleven until กฎที่ใช้ came off on 2026-09-04; ten since, and the buttons are
+ * still the last of them.)
  *
  * So it is a card list below 860px, and the desktop table is untouched. What is
  * pinned here is the part a later edit can quietly undo:
  *
  *   - ONE markup, two layouts. The desktop table must still be a table — same
- *     eleven columns, same order, same cells — or "Desktop Preserved" stopped
+ *     ten columns, same order, same cells — or "Desktop Preserved" stopped
  *     being true the moment somebody edited the JSX instead of the stylesheet.
  *   - both buttons on every card, side by side, at a 44px target.
  *   - the card keeps name, code and สะสม / เพดาน, and nothing has to be
@@ -90,9 +92,13 @@ test('the desktop table is still a table, cell for cell', () => {
   // a phone branch in the JSX — the two layouts can disagree about a month.
   const head = hrView.slice(hrView.indexOf('<table className="hr-table">'), hrView.indexOf('<tbody>'));
   for (const col of ['who-col', 'dept-col', 'rate-col', 'total-col', 'count-col',
-    'edits-col', 'rule-col', 'cap-col', 'act-col']) {
+    'edits-col', 'cap-col', 'act-col']) {
     assert.ok(head.includes(col), `the desktop head lost ${col}`);
   }
+  // `rule-col` was among these until 2026-09-04. It is asserted ABSENT now, and
+  // from the whole component: กฎที่ใช้ was taken off this screen deliberately,
+  // and a column that comes back by accident is the same bug in reverse.
+  assert.ok(!hrView.includes('rule-col'), 'กฎที่ใช้ is back on ตรวจสอบรายเดือน');
   layoutIsTheStylesheets();
 });
 
@@ -105,7 +111,7 @@ test('the phone layout turns that same table into cards', () => {
 
 // ── what the card carries ────────────────────────────────────────────────────
 
-test('name, code and สะสม / เพดาน — and the eight columns that do not fit are named', () => {
+test('name, code and สะสม / เพดาน — and the seven columns that do not fit are named', () => {
   // The code sits under the name in the same cell, on both layouts — and the
   // name takes the app's own stand-in when the roster has none, so a card is
   // never headed by a blank line with a code under it.
@@ -114,10 +120,10 @@ test('name, code and สะสม / เพดาน — and the eight columns th
   assert.match(phone, /\.hr-table tbody td\.cap-col \{/);
   assert.match(phone, /content: 'สะสม \/ เพดาน'/);
 
-  // Hidden by name rather than by a blanket rule with exceptions, so a twelfth
-  // column shows up on a phone instead of silently disappearing.
+  // Hidden by name rather than by a blanket rule with exceptions, so an
+  // eleventh column shows up on a phone instead of silently disappearing.
   const hidden = phone.slice(phone.indexOf('.hr-table tbody td.dept-col,'));
-  for (const col of ['dept-col', 'rate-col', 'count-col', 'edits-col', 'rule-col', 'pad-col']) {
+  for (const col of ['dept-col', 'rate-col', 'count-col', 'edits-col', 'pad-col']) {
     assert.ok(hidden.slice(0, 300).includes(`.hr-table tbody td.${col}`), `${col} is not accounted for`);
   }
 });
@@ -133,7 +139,13 @@ test('รวม ชม. is dropped because สะสม is the same figure, not 
 
 test('both buttons are on every card, side by side, at a thumb-sized target', () => {
   const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
-  assert.match(cell, /ดู \/ แก้ไขรายการ/);
+  // The first button's LABEL moved into `openRowLabel` on 2026-09-03: four
+  // บทบาท read this screen and only ฝ่ายบุคคล/ผู้ดูแลระบบ may correct a row, so
+  // the other two get "ดูรายการ" rather than an offer the route answers 403 to.
+  // Both names are pinned at the helper, and what matters here is that the cell
+  // asks it rather than writing one of them out.
+  assert.match(cell, /\{openRowLabel\(mayCorrect\)\}/);
+  assert.match(hrView, /const openRowLabel = \(mayCorrect\) => \(mayCorrect \? 'ดู \/ แก้ไขรายการ' : 'ดูรายการ'\);/);
   assert.match(cell, /พิมพ์ F-HR-027/);
 
   assert.match(phone, /\.hr-table tbody td\.act-col \{[\s\S]*?grid-area: act;/);
@@ -290,7 +302,7 @@ test('the fold under the third card exists only where the pager does not', () =>
   // The row is drawn only then, and it is a ROW — `.hr-table tbody` is the flex
   // column the cards live in, so anything that sits in that column has to be one.
   assert.match(hrCode, /\{folding && \(\s*<tr className="cards-more-row">/);
-  assert.match(hrCode, /<td className="pager-col" colSpan=\{11\}>/);
+  assert.match(hrCode, /<td className="pager-col" colSpan=\{10\}>/);
   // The count is on the button in BOTH states, like the birthday fold below it.
   assert.match(hrView, /ดูพนักงานทั้งหมด \(\$\{shown\.length\} ราย\)/);
   assert.match(hrView, /ย่อรายการ — แสดง \$\{CARD_FOLD\} รายแรก/);
@@ -414,7 +426,7 @@ test('the pager sits under the fifth card, above the total, and disables its end
   // button that goes back.
   assert.ok(!/\{current > 1 && \(\s*<button/.test(row), 'ก่อนหน้า is hidden at page 1 instead of disabled');
   assert.match(row, /<div className="pager-say" aria-live="polite">/);
-  assert.match(row, /colSpan=\{11\}/);
+  assert.match(row, /colSpan=\{10\}/);
 
   // THE ORDER OF THE WHOLE SCREEN: five cards, the pager directly under the
   // fifth of them, then รวมทั้งหมด. The pager belongs to the cards —
@@ -913,7 +925,7 @@ test('the footnotes close the card, and their gap is stated once', () => {
  * งวด…ยังเปิดอยู่ stand on.
  *
  * ABOVE 860px THE CARD IS STILL A CARD, and the element still wears the class:
- * up there the list is a table of eleven columns read down its own header row,
+ * up there the list is a table of ten columns read down its own header row,
  * and a table needs a ground to be read against. One markup, two layouts — the
  * rule `.hr-table` itself has followed since the card list was written.
  */

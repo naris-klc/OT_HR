@@ -65,9 +65,17 @@ test('มีแผงเดียว และทั้งสามตัวเ�
    * file, which is exactly what its header says two panels that are supposed to
    * be one start out as. It opens this one now, so the arithmetic is in a
    * single place and the dropdown is portaled out of whatever would clip it.
+   *
+   * `App.jsx` JOINED ON 2026-09-04 FOR THE SAME REASON ONE STEP OUT. The phone
+   * bar's รายงาน and เพิ่มเติม slots open a list of destinations, and a bottom
+   * bar is the worst place in this app to build a second panel: it is `fixed`
+   * at the foot of the screen, so a list that opened out of it would need its
+   * own placement, its own flip, its own scrim and its own way out — which is
+   * this file, retyped, in the one component nobody opens on a desktop. See
+   * `BarSlot`.
    */
   const users = files.filter((f) => /<Popover\b/.test(strip(read(`components/${f}`))));
-  assert.deepEqual(users.sort(), ['PickDate.jsx', 'PickTime.jsx', 'common.jsx']);
+  assert.deepEqual(users.sort(), ['App.jsx', 'PickDate.jsx', 'PickTime.jsx', 'common.jsx']);
   for (const f of users) {
     assert.match(read(`components/${f}`), /from '\.\/popover\.jsx'/, `${f} ไม่ได้เอาแผงมาจาก popover.jsx`);
   }
@@ -212,6 +220,36 @@ test('บนมือถือเป็นชีตขึ้นมาจาก�
   assert.match(body, /animation: otslide/);
   // Clear of the home indicator, the same way `.modal-foot` is.
   assert.match(css, /padding: 10px 0 calc\(10px \+ env\(safe-area-inset-bottom\)\);/);
+});
+
+/**
+ * ── A SHEET TALLER THAN THE SCREEN — 2026-09-04 ────────────────────────────
+ *
+ * `.pop.sheet` is `bottom: 0` and had no cap, which was safe for as long as
+ * every sheet in this app was short by construction: a calendar is six rows, a
+ * time panel five stops, a slot's menu four destinations. The drawer under the
+ * app bar's avatar is the WHOLE menu and measured 814px. A panel pinned to the
+ * bottom grows upward, so at 360×780 its top came out at **-34px** with the
+ * name at the head of it off the screen; at 360×667 it was **-147** and four
+ * rows could not be reached, because nothing scrolled either.
+ *
+ * THE CAP IS ON THE PANEL, THE SCROLL IS ON THE LIST, and that split is the
+ * assertion: `overflow-y` on the panel would carry the head and the ปิด button
+ * away with the rows, and ปิด is the one control on a sheet a phone can be sure
+ * of. `dvh` and not `vh` because `vh` is the tallest the viewport gets on a
+ * phone with a retracting address bar — a panel measured in it hangs off the
+ * bottom for as long as that bar is showing.
+ */
+test('ชีตที่สูงกว่าจอ — แผงถูกจำกัดความสูง รายการเลื่อนเอง หัวกับปุ่มปิดอยู่กับที่', () => {
+  const sheet = css.slice(css.indexOf('.pop.sheet { max-height'));
+  assert.match(sheet.slice(0, 200), /max-height: 88dvh; display: flex; flex-direction: column;/);
+  // The list scrolls; the panel does not.
+  assert.match(css, /\.pop\.sheet > \.nav-sheet \{ overflow-y: auto; overscroll-behavior: contain; \}/);
+  // …and the two fixed parts refuse to be squeezed by it.
+  assert.match(css, /\.pop\.sheet > \.drawer-who, \.pop\.sheet > \.nav-sheet-head, \.pop\.sheet > \.pop-foot \{ flex: none; \}/);
+  // `vh` here would be the bug this fixes, wearing the fix's clothes.
+  assert.ok(!/max-height: \d+vh/.test(css.slice(css.indexOf('.pop.sheet { max-height'), css.indexOf('.pop.sheet .cal-cell'))),
+    'the sheet cap is in vh — on a phone that is the tallest the viewport ever gets');
 });
 
 test('ปุ่มปิดมีเฉพาะบนชีต', () => {

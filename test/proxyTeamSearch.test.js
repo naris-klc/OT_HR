@@ -422,7 +422,22 @@ test('ชื่อแผนกใต้หัวข้อไม่ตกไป�
    * twenty other places `.hint` is drawn with a card to itself.
    */
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  assert.match(queue, /<span className="q-scope">\s*\n?\s*เฉพาะแผนก\{user\.department\?\.name \|\| ''\}/);
+  /**
+   * TWO CLAUSES INSIDE THE ONE SPAN SINCE 2026-09-04, and the span is what
+   * carries the `nowrap` — so a ผู้จัดการฝ่าย who signs for several แผนก reads
+   * a counted clause rather than the name of the one their own hours are
+   * reported against, and it is held together exactly as the named one is.
+   *
+   * NEITHER IS WIDER THAN THE CASE THE 11px WAS MEASURED FOR: the counted
+   * clause is shorter than `เฉพาะแผนกควบคุมคุณภาพ`, the longest department on
+   * the roster, which is what the head's headroom was worked out against.
+   */
+  const scope = queue.slice(
+    queue.indexOf('<span className="q-scope">'),
+    queue.indexOf('</span>', queue.indexOf('<span className="q-scope">')),
+  );
+  assert.ok(scope.includes("`เฉพาะแผนก${user.department?.name || ''}`"), 'ชื่อแผนกเดียวหายไปจากหัวข้อ');
+  assert.ok(scope.includes('`เฉพาะ ${user.coversDepartments.length} แผนกที่คุณดูแล`'), 'คนที่ดูแลหลายแผนกยังถูกบอกว่าเห็นแผนกเดียว');
   assert.match(css, /\.hint \.q-scope \{ white-space: nowrap; \}/);
   // Both classes, so a name this short cannot escape into another component —
   // the trap `.box` sprang on the dropdown's tick-box, in this same stylesheet.

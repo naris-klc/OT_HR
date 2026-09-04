@@ -155,11 +155,12 @@ export function FormNotices({ form, who = null, asked = '' }) {
    * does not say where to look, and the whole reason this line exists is that
    * the paper beside it is silent.
    *
-   * Full `thaiDate` rather than the short table form, and that is not a style
-   * choice: the route widens its query by one period so an overnight session
-   * started on the 31st is on this sheet, and its workDate belongs to the month
-   * before. A day number with no month would name the wrong day exactly on the
-   * rows that are hardest to find.
+   * THE MONTH IS PART OF THE DATE HERE, and that is not a style choice: the
+   * route widens its query by one period so an overnight session started on the
+   * 31st is on this sheet, and its workDate belongs to the month before. A day
+   * number with no month would name the wrong day exactly on the rows that are
+   * hardest to find. `thaiDate` carries it — and since 2026-09-04 there is no
+   * abbreviated form left that could drop it.
    */
   const unmarkedDates = [...new Set((form.unmarked || []).map((u) => u.workDate))]
     .sort()

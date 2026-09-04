@@ -45,11 +45,18 @@ export const GET = route(async (req) => {
  * singleton, still patchable by hand, and if a controlled form is ever asked to
  * print the company name the boxes come back rather than a migration.
  *
- * NOTHING HERE IS ARITHMETIC. These are labels: no hour, no rate, no ceiling
- * and no day type reads any of them, and a value typed wrong is visible on the
- * next form printed and fixed by typing it again. That is the whole test this
- * handler had to pass to move — compare `PATCH /api/settings/policy`, which is
- * a different route precisely because it changes what the engine computes.
+ * NOTHING HERE IS ARITHMETIC. No hour, no rate, no ceiling and no day type
+ * reads any of these, and nothing already stored moves when one changes. That
+ * is the whole test this handler had to pass to move — compare
+ * `PATCH /api/settings/policy`, which is a different route precisely because it
+ * changes what the engine computes.
+ *
+ * IT CARRIED ONE FIELD THAT WAS NOT A LABEL, for a day. `csvDateOrder` said
+ * which way round a roster CSV's `05/03/1998` was to be read — a stored
+ * birthday rather than a printed string, and the one value on this route whose
+ * wrong setting was not visible on the next thing printed. It went on
+ * 2026-09-04 with the machinery it fed: the importer reads วัน/เดือน/ปี and
+ * nothing chooses. Everything left here is a label again.
  *
  * The policy half of this collection is NOT reachable from here: `doc.policy`
  * is not in the payload and never was, so widening this handler cannot widen

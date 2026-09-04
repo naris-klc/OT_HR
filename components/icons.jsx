@@ -74,6 +74,49 @@ const ICONS = {
     </>
   ),
 
+  /**
+   * OT ส่วนตัว — the heading over an employee's own two screens, added with
+   * the sidebar's three blocks on 2026-09-03.
+   *
+   * ONE FIGURE, AND THAT IS THE WHOLE DISTINCTION FROM `users` ABOVE IT. Two
+   * people means a queue whose rows belong to somebody else; one means the
+   * person reading the screen. They are a single path apart and sit next to
+   * each other here on purpose, so that the day one of them is redrawn the
+   * other is in view.
+   *
+   * NOT `clock`, which is worn by the first screen INSIDE this group. A parent
+   * row wearing its own child's glyph says the two are the same thing, and the
+   * group exists to say they are not.
+   */
+  user: (
+    <>
+      <circle cx="12" cy="7.75" r="3.75" />
+      <path d="M4.75 20.25v-1.5a4.75 4.75 0 0 1 4.75-4.75h5a4.75 4.75 0 0 1 4.75 4.75v1.5" />
+    </>
+  ),
+
+  /**
+   * ออกจากระบบ — a door with the way out drawn through it.
+   *
+   * ADDED 2026-09-04 with the drawer the app bar's avatar opens (`NavDrawer` in
+   * components/App.jsx), which is the first list in this app where ออกจากระบบ is
+   * a ROW among other rows. The sidebar's `.signout` is a bare button on its own
+   * line and needs no glyph; in a list where every other row carries one, the
+   * one row without would read as the odd item rather than as the last one.
+   *
+   * THE ARROW POINTS OUT, and that is the whole of what makes it "leave" rather
+   * than "enter" — the same drawing reversed is every sign-IN icon ever made. It
+   * leaves the panel on the side the panel is open on, so the shape reads as
+   * going through the gap rather than at the wall.
+   */
+  logout: (
+    <>
+      <path d="M15.25 4.75H18a1.5 1.5 0 0 1 1.5 1.5v11.5a1.5 1.5 0 0 1-1.5 1.5h-2.75" />
+      <path d="M10.75 15.75 14.5 12l-3.75-3.75" />
+      <path d="M14.5 12h-10" />
+    </>
+  ),
+
   /** รอ HR ยืนยัน — the last signature, so: the tick that closes it. */
   check: (
     <>

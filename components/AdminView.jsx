@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { api, thaiDate, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
+import { api, thaiDate, thaiStamp, dayName, periodLabel, COMPANIES } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import {
   HR_ASSIGNABLE_ROLES, PASSWORD_MIN_LENGTH, SELF_LOCKED_FIELDS,
@@ -40,9 +40,13 @@ import { searchPeople, personMatches } from '@/lib/personSearch.js';
 // and the route that refuses the request are quoting one string rather than two
 // translations of one idea.
 import { DEPARTMENT_DELETE_BLOCKED } from '@/lib/departments.js';
+// `useScrollEdge` was imported here for the section strip's "there is more this
+// way" fade, which went with the strip's phone layout on 2026-09-04 — below
+// 860px the sections are a dropdown now and there is nothing to scroll. The
+// hook itself is still the app's one reading of that question; SheetScroll and
+// the printed sheets use it.
 import {
-  Alert, ConfirmDialog, Empty, Fact, Modal, Field, TipButton, PickPerson, ClearButton,
-  useScrollEdge,
+  Alert, ConfirmDialog, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, ClearButton,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
@@ -89,7 +93,6 @@ const SECTIONS = [
 export default function AdminView({ user, initialSection }) {
   const [section, setSection] = useState(initialSection || 'departments');
   const roster = useRoster();
-  const [tabsRef, tabsEdge] = useScrollEdge(null);
 
   /**
    * The number on แผนกและเพดาน — departments nobody can sign for.
@@ -105,41 +108,77 @@ export default function AdminView({ user, initialSection }) {
 
   return (
     <>
-      <div className="card">
-        {/* `.section-tabs` is what keeps these flush when they wrap — six
-            labels of six different lengths otherwise leave a ragged right
-            edge on every screen narrower than a desktop.
+      {/* ── EIGHT SECTIONS, TWO CONTROLS, ONE LIST ─────────────────────────
+          `SECTIONS` is the whole of what the choices are and in what order;
+          these two are how the choice is MADE, and which one is on screen is
+          decided by width alone — the strip above 860px, the dropdown below.
+          Neither is a second menu, exactly as `.sidebar` and `.mobile-nav` are
+          not two menus.
 
-            The wrapper is not decoration: below 860px the strip stops wrapping
-            and scrolls, and `data-edge` is what puts a fade on whichever side
-            still has tabs behind it. It hangs on the WRAPPER because anything
-            painted inside a scroll container scrolls away with the content —
-            a fade that slides off the edge it marks says the tabs have run out
-            at the moment they have not. Above the breakpoint the strip wraps,
-            nothing overflows, `data-edge` reads `none` and this is an ordinary
-            div. See `useScrollEdge` in common.jsx. */}
-        <div className="tabs-view" data-edge={tabsEdge}>
-          <div className="row section-tabs" ref={tabsRef}>
-            {SECTIONS.map((s) => (
-              <button
-                key={s.key}
-                className={`btn ${section === s.key ? '' : 'ghost'}`}
-                onClick={() => setSection(s.key)}
-              >
-                {s.label}
-                {/* On the tab, not beside it: the count belongs to the section
-                    and has to travel with it when the strip scrolls. Rendered
-                    only when there is something to count — a permanent “0”
-                    would leave the one state that matters looking like the
-                    other five tabs. */}
-                {s.key === 'departments' && gapCount > 0 && (
-                  <span className="tab-badge" aria-label={`${gapCount} แผนกที่ยังไม่มีหัวหน้างาน`}>
-                    {gapCount}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          THE DROPDOWN REPLACED A SWIPEABLE STRIP ON 2026-09-04. What was here
+          was the same eight buttons, `flex-wrap: nowrap` with `overflow-x`,
+          bled out to the card's edges with a fade at whichever end still had
+          tabs behind it. It worked, and what was asked for is what it cost:
+          the current section was the only one on screen, so finding another
+          meant flicking a strip left and right with no way to see the set —
+          and it took a full row of a phone's height to say so. A dropdown says
+          which section you are in, in words, in one line, and shows all eight
+          at once when it is opened. */}
+      <div className="card">
+        {/* `.section-tabs` is what keeps these flush when they wrap — eight
+            labels of eight different lengths otherwise leave a ragged right
+            edge on every screen narrower than a desktop. It never overflows:
+            `.row` wraps, and below 860px this is not the control being drawn. */}
+        <div className="row section-tabs">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.key}
+              className={`btn ${section === s.key ? '' : 'ghost'}`}
+              onClick={() => setSection(s.key)}
+            >
+              {s.label}
+              {/* On the tab, not beside it: the count belongs to the section
+                  and has to travel with it. Rendered only when there is
+                  something to count — a permanent “0” would leave the one
+                  state that matters looking like the other seven tabs. */}
+              {s.key === 'departments' && gapCount > 0 && (
+                <span className="tab-badge" aria-label={`${gapCount} แผนกที่ยังไม่มีหัวหน้างาน`}>
+                  {gapCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        {/* THE PHONE'S CONTROL — `PickOne`, which is the panel this app already
+            opens for every other choice of one thing out of a list: a box
+            showing what is chosen, a sheet of rows below 860px, and everything
+            a native `<select>` gives for free put back by hand (the keys, the
+            type-ahead, the one roving highlight, the ARIA).
+
+            THE BADGE RIDES OUTSIDE THE BOX and not on the row inside it, which
+            is the one thing the strip did that a dropdown cannot: a count that
+            only appears once the list is open is a warning you have to go
+            looking for. It is the same `.tab-badge`, with the same sentence
+            behind it, and it is drawn whichever section is open — it counts
+            แผนกที่ยังไม่มีหัวหน้างาน, which is true of the roster and not of the
+            screen. The row inside the list carries the figure too, because
+            `PickOne` puts a `count` against the right edge. */}
+        <div className="section-pick">
+          <PickOne
+            label="หน้าตั้งค่า"
+            value={section}
+            onChange={setSection}
+            options={SECTIONS.map((s) => ({
+              value: s.key,
+              label: s.label,
+              count: s.key === 'departments' && gapCount > 0 ? gapCount : undefined,
+            }))}
+          />
+          {gapCount > 0 && (
+            <span className="tab-badge" aria-label={`${gapCount} แผนกที่ยังไม่มีหัวหน้างาน`}>
+              {gapCount}
+            </span>
+          )}
         </div>
       </div>
       {section === 'departments' && (
@@ -1289,17 +1328,14 @@ function DepartmentForm({
         <section className="form-group">
           <div className="gh">รูปแบบโอที</div>
           <div className="form-grid">
-            <Field label="โอทีวันทำงานปกติ" tip={OT_MODE_TIP}>
-              <select
-                value={form.otMode}
-                onChange={(e) => set({ otMode: e.target.value })}
-                disabled={busy}
-              >
-                {OT_MODES.map((m) => (
-                  <option key={m} value={m}>{OT_MODE_LABEL_TH[m]}</option>
-                ))}
-              </select>
-            </Field>
+            <PickOne
+              label="โอทีวันทำงานปกติ"
+              tip={OT_MODE_TIP}
+              value={form.otMode}
+              onChange={(v) => set({ otMode: v })}
+              disabled={busy}
+              options={OT_MODES.map((m) => ({ value: m, label: OT_MODE_LABEL_TH[m] }))}
+            />
           </div>
         </section>
 
@@ -1427,14 +1463,17 @@ const SIGNS_FOR_TIP = 'หัวหน้าเซ็นให้เฉพาะ
  */
 function SignsForField({ value, onChange, disabled }) {
   return (
-    <Field label="เซ็นให้บริษัท" tip={SIGNS_FOR_TIP}>
-      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-        <option value="">ทุกบริษัท</option>
-        {COMPANIES.map((c) => (
-          <option key={c.key} value={c.key}>เฉพาะ{c.label}</option>
-        ))}
-      </select>
-    </Field>
+    <PickOne
+      label="เซ็นให้บริษัท"
+      tip={SIGNS_FOR_TIP}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      // ทุกบริษัท IS the empty value here — "do not narrow this" in the literal
+      // sense the model stores, so it is `allLabel` rather than a first option.
+      allLabel="ทุกบริษัท"
+      options={COMPANIES.map((c) => ({ value: c.key, label: `เฉพาะ${c.label}` }))}
+    />
   );
 }
 
@@ -1496,18 +1535,25 @@ const DEPT_TIP_MANAGER = 'เลือกได้หลายแผนก — �
 function DepartmentField({ role, department, extras, onChange, depts, disabled, allowBlank }) {
   if (!isSigner(role)) {
     return (
-      <Field label="แผนก" tip={DEPT_TIP_STAFF}>
-        <select
-          value={String(department || '')}
-          onChange={(e) => onChange({ department: e.target.value })}
-          disabled={disabled}
-        >
-          {allowBlank && <option value="">— เลือก —</option>}
-          {depts.map((d) => (
-            <option key={d._id} value={d._id}>{d.nameTh || d.name}</option>
-          ))}
-        </select>
-      </Field>
+      /* `PickOne` since 2026-09-04, and it is `DeptCombo`'s own argument one
+         branch over: the ticked list a หัวหน้างาน gets was built out of this
+         app's elements because the OS draws the other kind, and leaving the
+         plain branch a `<select>` meant one แผนก field opening the app's panel
+         and the other opening the system's, from the same label, in the same
+         dialog, depending on บทบาท.
+
+         `— เลือก —` IS `allLabel` because it is literally the empty value: the
+         placeholder shown while a new row has no department yet, offered only
+         while `allowBlank` says the model would still accept one. */
+      <PickOne
+        label="แผนก"
+        tip={DEPT_TIP_STAFF}
+        value={String(department || '')}
+        onChange={(v) => onChange({ department: v })}
+        disabled={disabled}
+        allLabel={allowBlank ? '— เลือก —' : undefined}
+        options={depts.map((d) => ({ value: String(d._id), label: d.nameTh || d.name }))}
+      />
     );
   }
   return (
@@ -2192,18 +2238,18 @@ const companyShort = (key) => COMPANIES.find((c) => c.key === key)?.shortTh || c
 /**
  * What the preview claims the file means, in one sentence.
  *
- * `decidedBy` is named because it is the whole argument: an ambiguous column is
- * read วัน/เดือน not out of preference but because one row in that same column
- * could be read no other way. HR can check that row against the roster; they
- * cannot check a preference.
+ * It named the row that DECIDED the order until 2026-09-04 — "ตัดสินจากบรรทัด
+ * 12" — because an ambiguous column was read วัน/เดือน on the strength of one
+ * row in it that could be read no other way, and that row was the whole
+ * argument. Nothing decides anything now: every file is read วัน/เดือน/ปี, so
+ * the sentence has one job left, which is to say how many cells were read and
+ * in which of the two accepted shapes they were written.
  */
 function interpretation(dates) {
   if (!dates.order) {
     return 'ไฟล์นี้ไม่มีคอลัมน์วันเกิด — นำเข้าข้อมูลอื่นตามปกติ และวันเกิดที่มีอยู่แล้วในระบบจะไม่ถูกลบ';
   }
-  const head = `อ่านวันเกิด ${dates.cells.length} ค่า เป็นรูปแบบ ${ORDER_LABEL[dates.order]}`;
-  if (!dates.decidedBy) return head;
-  return `${head} — ตัดสินจากบรรทัด ${dates.decidedBy.line} (“${dates.decidedBy.raw}”) ซึ่งอ่านเป็นเดือนไม่ได้`;
+  return `อ่านวันเกิด ${dates.cells.length} ค่า เป็นรูปแบบ ${ORDER_LABEL[dates.order]}`;
 }
 
 function Employees({ user }) {
@@ -2244,8 +2290,32 @@ function Employees({ user }) {
   const [saved, setSaved] = useState(null);
   /** A chosen file, read but not yet sent — see `choose` below. */
   const [pending, setPending] = useState(null);
+  /**
+   * A file the SERVER refused, with whatever it named as the reason.
+   *
+   * Separate from `error`, which is the card's general-purpose message, because
+   * this one is about a file and has a file's repair: it carries the name of
+   * the file that was refused, the lines it was refused over, and a button that
+   * opens the picker again. `error` cannot say any of that — it is a string.
+   *
+   * Most refusals never get here: the preview runs the same module on the same
+   * bytes and stops the upload before it happens. What DOES arrive here is
+   * everything the preview cannot know — two rows spelling one รหัสพนักงาน
+   * (`codeCollisions`, a server-only check), a permission the roster refuses, a
+   * file changed on disk between the preview and the confirm.
+   */
+  const [importError, setImportError] = useState(null);
   const [sending, setSending] = useState(false);
   const fileRef = useRef(null);
+  /**
+   * Re-open the file picker from wherever the reader currently is.
+   *
+   * Every refusal on this card ends with the same instruction — go back to
+   * Excel, fix the column, upload again — and the control that does it is a
+   * <label> at the top of a card that by then is several screens tall. The
+   * button is put where the sentence telling them to do it is.
+   */
+  const pickFile = () => fileRef.current?.click();
 
   // Mirrors rosterPermission() on the server. Not a substitute for it — the
   // server is what enforces this — but an option nobody may pick is better not
@@ -2267,6 +2337,7 @@ function Employees({ user }) {
   /** The rows the table draws. `rows` stays the register, for the count. */
   const shown = React.useMemo(() => searchPeople(rows, find), [rows, find]);
 
+
   async function load() {
     try {
       const [e, d] = await Promise.all([api.get('/employees?all=1'), api.get('/departments?all=1')]);
@@ -2274,6 +2345,7 @@ function Employees({ user }) {
       setDepts(d.departments);
     } catch (err) { setError(err.message); }
   }
+
   useEffect(() => { load(); }, []);
 
   /**
@@ -2355,9 +2427,13 @@ function Employees({ user }) {
    * Choosing a file no longer imports it. The file is read here first and the
    * วันเกิด column is interpreted in front of HR, because "05/03/1998" on the
    * screen is not evidence of what anybody typed — Excel rewrote it on save,
-   * and after the import a wrong reading looks exactly like a right one. The
-   * only person who can tell 5 March from 3 May is the one who knows the
-   * roster, and this is the last moment they can be asked.
+   * and after the import a wrong reading looks exactly like a right one.
+   *
+   * SINCE 2026-09-04 THAT PREVIEW IS THE WHOLE CHECK. The reading is strict —
+   * วัน/เดือน/ปี, every row, no question asked and no file refused — so the
+   * list of `05/03/1998 → 5 มีนาคม 1998` lines below is the only place a
+   * month-first file can still be caught, and it is caught by a person reading
+   * it rather than by the machine. See the header of lib/birthDate.js.
    *
    * The reading shown is not the reading enforced: the server runs the same
    * module on the same bytes when the upload arrives. This is a preview of that
@@ -2369,21 +2445,56 @@ function Employees({ user }) {
     if (!file) return;
     setError('');
     setResult(null);
+    // The previous file's refusal is about the previous file. Left on screen
+    // beside a fresh preview it reads as this file's, which is the one thing a
+    // refusal must never be wrong about.
+    setImportError(null);
     try {
-      const rows = parseCsv(await file.text());
-      const dates = resolveBirthDateColumn(rows);
-      setPending({ file, rows: rows.length, dates, preview: birthDatePreview(dates) });
+      const parsed = parseCsv(await file.text());
+      const dates = resolveBirthDateColumn(parsed);
+      // Five rather than three, and the failed rows first — see
+      // `birthDatePreview`. A skipped row is usually evidence about the whole
+      // column, and it is the line worth the reader's three seconds.
+      setPending({ file, rows: parsed.length, dates, preview: birthDatePreview(dates, 5) });
     } catch (err) { setError(err.message); }
   }
 
+  /**
+   * Upload the file the preview was computed from.
+   *
+   * A failure here keeps `pending` — the preview stays open beside the refusal,
+   * so the file name in both is the same file name and ยืนยันนำเข้า is still
+   * there for a refusal that a re-try can beat (the server was down, the
+   * session had lapsed). What must not happen is the card silently emptying
+   * itself and leaving one red sentence with no file in it.
+   */
   async function confirmImport() {
     if (!pending) return;
     setSending(true);
+    setImportError(null);
     try {
+      // The bytes and nothing else. There is no order to declare any more,
+      // and the dates on this screen are a preview: the server reads the file
+      // again through the same module rather than trusting them.
       setResult(await api.upload('/employees/import', pending.file));
       setPending(null);
       load();
-    } catch (err) { setError(err.message); } finally { setSending(false); }
+    } catch (err) {
+      /**
+       * `lib/api.js` hangs the whole 400 body on the error as `payload`, which
+       * is where the routes put their lists — the birthday column's blocking
+       * lines and the clashing รหัสพนักงาน. Read here rather than dropped, so a
+       * server refusal names lines the way the preview does instead of arriving
+       * as one sentence about a two-hundred-row file.
+       */
+      const payload = err.payload || {};
+      const lines = [
+        ...(payload.codeCollisions || []).flatMap(({ code, rows: clashing }) => (
+          (clashing || []).map((line) => ({ line, raw: code, reason: 'รหัสพนักงานซ้ำกับอีกแถวในไฟล์เดียวกัน' }))
+        )),
+      ].sort((a, b) => a.line - b.line);
+      setImportError({ name: pending.file.name, message: err.message, lines });
+    } finally { setSending(false); }
   }
 
   return (
@@ -2434,14 +2545,67 @@ function Employees({ user }) {
           คอลัมน์นี้จะถูกเขียนใหม่ตามการตั้งค่าของเครื่อง และ “05/03/1998” เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
         </li>
         <li>
-          ระบบจะแสดงผลการอ่านให้ตรวจก่อนนำเข้าเสมอ และถ้าตีความไม่ได้แน่ชัดจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา
+          {/* This said "ถ้าตีความไม่ได้แน่ชัดจะไม่นำเข้าทั้งไฟล์แทนที่จะเดา" until
+              2026-09-04 and then, for part of the same day, that an unsettled
+              file was read under a company-wide setting. Neither is true: the
+              reading is strict and there is nothing left to settle. What has
+              been true throughout is the half that matters on this card —
+              the rows are on the screen before anything is written. */}
+          ระบบอ่านคอลัมน์วันเกิดเป็น <strong>วัน/เดือน/ปี</strong> เสมอทุกแถว
+          {' '}(รับทั้ง <strong>/</strong> และ <strong>-</strong> · ปีเกิน 2400 อ่านเป็น พ.ศ. แล้วลบ 543 ให้)
+          {' '}และจะแสดงผลการอ่านให้ตรวจก่อนนำเข้าเสมอ — <strong>บรรทัดที่แสดงชื่อเดือนเป็นตัวหนังสือ
+          คือจุดเดียวที่จับได้</strong>ว่าไฟล์เขียนสลับเป็น เดือน/วัน/ปี มาหรือเปล่า
         </li>
         <li>
           ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
           {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
         </li>
       </ul>
-      {error && <Alert kind="error">{error}</Alert>}
+      {/* Dismissible, like every other notice on this card. It is the one that
+          had no way off the screen: a failed load or a refused save stayed
+          above the table for the rest of the session, and the only way out was
+          reloading the page — which loses the search you were in the middle
+          of. `Alert` has taken an `onClose` all along. */}
+      {error && <Alert kind="error" onClose={() => setError('')}>{error}</Alert>}
+
+      {/*
+        A FILE THE SERVER REFUSED — the file named, the lines listed, the picker
+        one button away.
+
+        Almost every refusal is caught by the preview below and never reaches
+        here. This is for the ones the preview cannot see: a รหัสพนักงาน written
+        twice in one file, a row this account may not touch, a file edited
+        between the preview and the confirm. Nothing was imported — not one row
+        of it — and that sentence goes first, because the question after a
+        refused upload is never "what went wrong", it is "is half of it in the
+        roster now".
+      */}
+      {importError && (
+        <Alert kind="error" onClose={() => setImportError(null)}>
+          <div>
+            <strong>นำเข้าไม่สำเร็จ — {importError.name}</strong>
+            {' '}· ยังไม่มีข้อมูลใดถูกบันทึกลงทะเบียน แม้แต่แถวเดียว
+          </div>
+          <div style={{ marginTop: 6 }}>{importError.message}</div>
+          {importError.lines.length > 0 && (
+            <ul style={{ marginTop: 6, marginLeft: 18 }}>
+              {importError.lines.map((l, i) => (
+                <li key={`${l.line}-${i}`}>
+                  บรรทัด {l.line}{l.raw ? ` (“${l.raw}”)` : ''}: {l.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div style={{ marginTop: 6, fontSize: 12.5 }}>
+            แก้ตามบรรทัดข้างบนใน Excel · บันทึกเป็น .csv (คอลัมน์วันเกิดควรเป็น YYYY-MM-DD)
+            {' '}แล้วเลือกไฟล์ใหม่อีกครั้ง
+          </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <button className="btn" onClick={pickFile}>เลือกไฟล์ใหม่</button>
+            <button className="btn ghost" onClick={() => setImportError(null)}>ปิด</button>
+          </div>
+        </Alert>
+      )}
 
       {/*
         What the last save did beyond writing the field.
@@ -2521,7 +2685,7 @@ function Employees({ user }) {
               <div style={{ marginTop: 4, fontSize: 12.5 }}>
                 ระบบไม่แสดงรหัสนั้นซ้ำที่ใดอีก เพราะเก็บไว้แบบเข้ารหัสทางเดียว — หากจำไม่ได้
                 {' '}ให้ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” ซึ่งจะตั้งกลับเป็นรหัสพนักงาน
-                {' '}· ระบบจะบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+                {' '}· พนักงานเข้าใช้งานได้ทันที และจะมีแถบเตือนให้ตั้งรหัสผ่านของตัวเองจนกว่าจะเปลี่ยน
               </div>
             </>
           ) : (
@@ -2534,7 +2698,7 @@ function Employees({ user }) {
                 </strong>
               </div>
               <div style={{ marginTop: 4, fontSize: 12.5 }}>
-                แจ้งรหัสนี้ให้พนักงาน · ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+                แจ้งรหัสนี้ให้พนักงาน · เข้าใช้งานได้ทันที และมีแถบเตือนให้ตั้งรหัสของตัวเองจนกว่าจะเปลี่ยน
                 {' '}· นี่คือรหัสพนักงานของคนนี้เอง จึงดูซ้ำได้จากทะเบียนตลอด — แต่ระหว่างที่ยังไม่ได้เปลี่ยน
                 {' '}<strong>ใครที่เห็นรหัสพนักงานก็เข้าบัญชีนี้ได้</strong> จึงควรให้เข้าระบบตั้งรหัสของตัวเองโดยเร็ว
               </div>
@@ -2586,25 +2750,24 @@ function Employees({ user }) {
           file was read, and it rides in the ℹ️ line below rather than in the
           colour of the box.
         */
-        <Alert kind={pending.dates.ok ? (pending.dates.rowErrors.length ? 'warn' : 'ok') : 'error'}>
+        <Alert kind={pending.dates.rowErrors.length ? 'warn' : 'ok'}>
           <strong>ตรวจก่อนนำเข้า</strong> — {pending.file.name} · {pending.rows} แถว
-          {!pending.dates.ok ? (
+          {(
             <>
-              <div style={{ marginTop: 6 }}>{pending.dates.fileError}</div>
-              {pending.dates.ambiguous.length > 0 && (
-                <ul style={{ marginTop: 6, marginLeft: 18 }}>
-                  {pending.dates.ambiguous.map((a) => (
-                    <li key={a.line}>บรรทัด {a.line}: “{a.raw}”</li>
-                  ))}
-                </ul>
-              )}
-              <div style={{ marginTop: 6, fontSize: 12.5 }}>
-                ไฟล์นี้จะไม่ถูกนำเข้าเลย แม้แต่แถวที่อ่านได้ — แก้ไฟล์แล้วเลือกใหม่อีกครั้ง
-              </div>
-              <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setPending(null)}>ปิด</button>
-            </>
-          ) : (
-            <>
+              {/*
+                WHAT THE FILE WAS READ AS.
+
+                `interpretation()` is a sentence about the file — how many
+                cells the วันเกิด column had and which of the two accepted
+                shapes they were written in — and it is checkable by anybody
+                holding the CSV.
+
+                It shared this spot with a second line until 2026-09-04, in its
+                own colour, saying "คุณระบุว่าไฟล์นี้เขียนแบบ …" whenever somebody
+                had answered the order question. There is no question and no
+                answer now, so there is one line, and it is the one nobody can
+                be wrong about.
+              */}
               <div style={{ marginTop: 6 }}>{interpretation(pending.dates)}</div>
               {/*
                 WHAT THE READING DID TO THE FILE, in one line.
@@ -2620,6 +2783,18 @@ function Employees({ user }) {
                   ℹ️ ระบบได้แปลงปี พ.ศ. เป็น ค.ศ. ให้อัตโนมัติแล้ว {pending.dates.converted.length} รายการ
                 </div>
               )}
+              {/*
+                THE ROWS, AS THEY WILL BE STORED — and since 2026-09-04 this
+                list is the entire check on the วัน/เดือน order.
+
+                Nothing above it is a question any more: the file is read
+                วัน/เดือน/ปี whatever it holds, and no screen afterwards can
+                contradict a birthday that was read the wrong way round. So
+                `readableDate` spells the month as a word here — `05/03/1998 →
+                5 มีนาคม 1998` — because the numerals are what HR is already
+                looking at and are exactly what does not tell 5 March from
+                3 May. Do not shorten these to numerals to tidy the panel.
+              */}
               {pending.preview.length > 0 && (
                 <ul style={{ marginTop: 6, marginLeft: 18, fontFamily: 'var(--mono, monospace)' }}>
                   {pending.preview.map((p) => <li key={p.line}>บรรทัด {p.line}: {p.text}</li>)}
@@ -2638,6 +2813,15 @@ function Employees({ user }) {
                   {sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
                 </button>
                 <button className="btn ghost" onClick={() => setPending(null)} disabled={sending}>ยกเลิก</button>
+                {/* Only when rows are about to be dropped, which is the only
+                    state here where fixing the file is the better answer than
+                    importing it. On a clean file a third button would be a
+                    third thing to read before pressing the green one. */}
+                {pending.dates.rowErrors.length > 0 && (
+                  <button className="btn ghost" onClick={pickFile} disabled={sending}>
+                    เลือกไฟล์ใหม่
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -2692,6 +2876,13 @@ function Employees({ user }) {
           {result.birthDates?.order && (
             <div style={{ fontSize: 12.5 }}>
               วันเกิด {result.birthDates.count} ค่า อ่านเป็น {ORDER_LABEL[result.birthDates.order]}
+              {/* Two more clauses hung here until 2026-09-04 — "ตามลำดับที่คุณ
+                  ระบุเอง" and "อ่านตามค่าเริ่มต้นขององค์กร" — and both existed
+                  because the order could come from somewhere other than the
+                  file. It cannot now, so what is left is a description of the
+                  shape, which the preview said in the same words before the
+                  upload: the two agreeing is how anybody checks that the file
+                  HR approved is the file that was imported. */}
               {/* The same count the preview showed, from the server this time.
                   The two agreeing is the only way anybody can check that the
                   file HR approved is the file that was imported. */}
@@ -3101,7 +3292,7 @@ const NEW_PASSWORD_NOTE = {
     + 'ไม่มีอะไรต้องจด และดูซ้ำได้ตลอดจากทะเบียนพนักงาน '
     + '· ตั้งเอง: ใช้เมื่อต้องบอกรหัสอื่นกับพนักงานตรงนั้นเลย ระบบจะไม่แสดงค่านั้นซ้ำที่ใดอีก '
     + '· ทั้งสองแบบ ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว หากลืมให้ใช้ปุ่ม “รีเซ็ตรหัสผ่าน” '
-    + 'ซึ่งจะรีเซ็ตกลับเป็นรหัสพนักงาน และบังคับให้พนักงานตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรกเสมอ',
+    + 'ซึ่งจะรีเซ็ตกลับเป็นรหัสพนักงาน แล้วพนักงานจะเห็นแถบเตือนให้ตั้งรหัสของตัวเองจนกว่าจะเปลี่ยน',
 };
 
 /**
@@ -3273,50 +3464,44 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
               disabled={busy}
               allowBlank
             />
-            <Field
+            <PickOne
               label="บริษัท"
               tip="ใช้แบ่งไฟล์ส่งบัญชี PM / THT — เว้นไว้ได้ ระบบจะเดาจากคำนำหน้ารหัส (PM… = ไพรมัส, THT… = เดมเทค)"
-            >
-              <select
-                value={form.company}
-                onChange={(e) => set({ company: e.target.value })}
-                disabled={busy}
-              >
-                <option value="">— เดาจากรหัส —</option>
-                {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-              </select>
-            </Field>
+              value={form.company}
+              onChange={(v) => set({ company: v })}
+              disabled={busy}
+              allLabel="— เดาจากรหัส —"
+              options={COMPANIES.map((c) => ({ value: c.key, label: c.label }))}
+            />
           </div>
         </section>
 
         <section className="form-group">
           <div className="gh">สิทธิ์</div>
           <div className="form-grid">
-            <Field
+            {/* Whole list with the refused entries greyed, as in the edit
+                dialog: a list that silently omits “ผู้ดูแลระบบ” answers
+                "why can I not create one" with nothing at all. `PickOne`
+                carries `disabled` on a row for exactly this — see the note over
+                it in components/common.jsx. */}
+            <PickOne
               label="บทบาท"
               note={isAdmin ? null : LOCK_SHORT.role}
               tip={isAdmin
                 ? 'กำหนดว่าคนนี้ยื่น OT ได้ อนุมัติได้ หรือดูแลระบบได้'
                 : LOCK_NOTE.role}
-            >
-              {/* Whole list with the refused entries greyed, as in the edit
-                  dialog: a list that silently omits “ผู้ดูแลระบบ” answers
-                  "why can I not create one" with nothing at all. */}
-              <select
-                value={form.role}
-                onChange={(e) => set({ role: e.target.value })}
-                disabled={busy}
-              >
-                {ROLE_OPTIONS.map((o) => {
-                  const refused = !isAdmin && !HR_ASSIGNABLE_ROLES.includes(o.value);
-                  return (
-                    <option key={o.value} value={o.value} disabled={refused}>
-                      {o.label}{refused ? ' — ผู้ดูแลระบบเท่านั้น' : ''}
-                    </option>
-                  );
-                })}
-              </select>
-            </Field>
+              value={form.role}
+              onChange={(v) => set({ role: v })}
+              disabled={busy}
+              options={ROLE_OPTIONS.map((o) => {
+                const refused = !isAdmin && !HR_ASSIGNABLE_ROLES.includes(o.value);
+                return {
+                  value: o.value,
+                  label: `${o.label}${refused ? ' — ผู้ดูแลระบบเท่านั้น' : ''}`,
+                  disabled: refused,
+                };
+              })}
+            />
           </div>
         </section>
 
@@ -3349,25 +3534,23 @@ function AddEmployee({ depts, isAdmin, onClose, onSave }) {
         <section className="form-group">
           <div className="gh">รหัสผ่านแรกเข้า</div>
           <div className="form-grid">
-            <Field
+            <PickOne
               label="วิธีตั้งรหัสผ่าน"
               tip={NEW_PASSWORD_NOTE.full}
-            >
-              <select
-                value={form.passwordMode}
-                onChange={(e) => set({ passwordMode: e.target.value })}
-                disabled={busy}
-              >
-                <option value="default">ใช้รหัสพนักงานเป็นรหัสผ่าน (แนะนำ)</option>
-                <option value="choose">ตั้งเอง</option>
-              </select>
-            </Field>
+              value={form.passwordMode}
+              onChange={(v) => set({ passwordMode: v })}
+              disabled={busy}
+              options={[
+                { value: 'default', label: 'ใช้รหัสพนักงานเป็นรหัสผ่าน (แนะนำ)' },
+                { value: 'choose', label: 'ตั้งเอง' },
+              ]}
+            />
             {choosing && (
               <Field
                 label="รหัสผ่าน"
                 note={form.password && !passwordCheck.ok ? null
                   : `อย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร · ไทย อังกฤษ ตัวเลข หรืออักขระพิเศษ`}
-                tip={'พนักงานยังต้องเปลี่ยนรหัสนี้เมื่อเข้าระบบครั้งแรกอยู่ดี '
+                tip={'พนักงานจะเห็นแถบเตือนให้เปลี่ยนรหัสนี้จนกว่าจะเปลี่ยนอยู่ดี '
                   + '· อย่าตั้งรูปแบบเดียวกันให้ทุกคน — บัญชีที่ยังไม่มีใครเข้าคือบัญชีที่ถูกใช้ผิดแล้วไม่มีใครรู้'}
               >
                 {/*
@@ -3836,22 +4019,18 @@ function EditEmployee({
                 disabled={disabled()}
                 allowBlank={!before.department}
               />
-              <Field
+              {/* `allLabel` only while it IS blank: the model has no "no
+                  company" state to go back to, so offering it on a row that has
+                  one would be offering a save the server refuses. */}
+              <PickOne
                 label="บริษัท"
                 tip="ใช้แบ่งไฟล์ส่งบัญชี PM / THT — อ่านจากทะเบียนตอนออกรายงาน ไม่ได้เก็บไว้ที่ใบ"
-              >
-                <select
-                  value={form.company}
-                  onChange={(e) => set({ company: e.target.value })}
-                  disabled={disabled()}
-                >
-                  {/* Only while it IS blank: the model has no "no company" state
-                      to go back to, so offering it on a row that has one would be
-                      offering a save the server refuses. */}
-                  {!before.company && <option value="">— เดาจากรหัส —</option>}
-                  {COMPANIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-                </select>
-              </Field>
+                value={form.company}
+                onChange={(v) => set({ company: v })}
+                disabled={disabled()}
+                allLabel={before.company ? undefined : '— เดาจากรหัส —'}
+                options={COMPANIES.map((c) => ({ value: c.key, label: c.label }))}
+              />
             </div>
 
             {/* Out of the grid and full width: it appears mid-edit, and a box
@@ -3878,7 +4057,17 @@ function EditEmployee({
           <section className="form-group">
             <div className="gh">สิทธิ์และสถานะ</div>
             <div className="form-grid">
-              <Field
+              {/*
+                Rendered whole, with what HR may not pick disabled rather than
+                dropped. A list that silently omits “ผู้ดูแลระบบ” answers the
+                question "why can I not make this person an admin" with nothing
+                at all; a greyed row answers it, and the note below says who can.
+
+                The row's CURRENT role stays selectable whatever it is, so
+                changing away from it and back leaves the form where it started
+                instead of stranding it on a value the server would refuse.
+              */}
+              <PickOne
                 label="บทบาท"
                 // The lockout reasons win over the role-list one: a locked field
                 // needs the sentence that explains THIS lock, and "ฝ่ายบุคคลตั้งได้
@@ -3893,51 +4082,35 @@ function EditEmployee({
                 tip={selfLocked('role') ? LOCK_NOTE.selfRole
                   : isLastAdmin ? LOCK_NOTE.lastAdmin
                     : isAdmin ? 'กำหนดว่าคนนี้ยื่น OT ได้ อนุมัติได้ หรือดูแลระบบได้' : LOCK_NOTE.role}
-              >
-                {/*
-                  Rendered whole, with what HR may not pick disabled rather than
-                  dropped. A list that silently omits “ผู้ดูแลระบบ” answers the
-                  question "why can I not make this person an admin" with nothing
-                  at all; a greyed row answers it, and the note below says who can.
-
-                  The row's CURRENT role stays selectable whatever it is, so
-                  changing away from it and back leaves the form where it started
-                  instead of stranding it on a value the server would refuse.
-                */}
-                <select
-                  value={form.role}
-                  onChange={(e) => set({ role: e.target.value })}
-                  disabled={disabled(roleLocked)}
-                >
-                  {ROLE_OPTIONS.map((o) => {
-                    const refused = !isAdmin
-                      && !HR_ASSIGNABLE_ROLES.includes(o.value)
-                      && o.value !== before.role;
-                    return (
-                      <option key={o.value} value={o.value} disabled={refused}>
-                        {o.label}{refused ? ' — ผู้ดูแลระบบเท่านั้น' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </Field>
-              <Field
+                value={form.role}
+                onChange={(v) => set({ role: v })}
+                disabled={disabled(roleLocked)}
+                options={ROLE_OPTIONS.map((o) => {
+                  const refused = !isAdmin
+                    && !HR_ASSIGNABLE_ROLES.includes(o.value)
+                    && o.value !== before.role;
+                  return {
+                    value: o.value,
+                    label: `${o.label}${refused ? ' — ผู้ดูแลระบบเท่านั้น' : ''}`,
+                    disabled: refused,
+                  };
+                })}
+              />
+              <PickOne
                 label="สถานะการใช้งาน"
                 note={selfLocked('active') ? LOCK_SHORT.selfActive
                   : isLastAdmin ? LOCK_SHORT.lastAdmin : null}
                 tip={selfLocked('active') ? LOCK_NOTE.selfActive
                   : isLastAdmin ? LOCK_NOTE.lastAdmin
                     : 'ปิดใช้งานแล้วเข้าระบบไม่ได้ · ชั่วโมงที่อนุมัติแล้วยังอยู่ในรายงานตามเดิม'}
-              >
-                <select
-                  value={form.active ? 'yes' : 'no'}
-                  onChange={(e) => set({ active: e.target.value === 'yes' })}
-                  disabled={disabled(activeLocked)}
-                >
-                  <option value="yes">ใช้งาน</option>
-                  <option value="no">ปิดใช้งาน</option>
-                </select>
-              </Field>
+                value={form.active ? 'yes' : 'no'}
+                onChange={(v) => set({ active: v === 'yes' })}
+                disabled={disabled(activeLocked)}
+                options={[
+                  { value: 'yes', label: 'ใช้งาน' },
+                  { value: 'no', label: 'ปิดใช้งาน' },
+                ]}
+              />
             </div>
 
             {/*
@@ -4202,7 +4375,7 @@ function IssuedPasswords({ rows }) {
       <strong>รหัสผ่านแรกเข้าของ {rows.length} บัญชีที่เพิ่งสร้าง</strong>
       {' '}— ทุกคนได้<strong>รหัสพนักงานของตัวเอง</strong>เป็นรหัสผ่าน
       {' '}ตารางนี้จึงเป็นเพียงรายการสำหรับแจก ไม่ใช่ค่าที่หายแล้วหาไม่ได้
-      {' '}· ระบบจะบังคับให้ทุกคนตั้งรหัสของตัวเองเมื่อเข้าระบบครั้งแรก
+      {' '}· ทุกคนเข้าใช้งานได้ทันที และจะมีแถบเตือนให้ตั้งรหัสของตัวเองจนกว่าจะเปลี่ยน
 
       <div className="row" style={{ marginTop: 10, marginBottom: 4 }}>
         {/* FIRST of the three, because it is the one that hands a password to a
@@ -4259,7 +4432,7 @@ function IssuedPasswords({ rows }) {
       </div>
 
       <div style={{ marginTop: 6, fontSize: 12.5 }}>
-        ทุกบัญชีจะถูกบังคับให้ตั้งรหัสผ่านของตัวเองเมื่อเข้าระบบครั้งแรก
+        ทุกบัญชีเข้าใช้งานได้ทันที และจะเห็นแถบเตือนให้ตั้งรหัสผ่านของตัวเองจนกว่าจะเปลี่ยน
         {' '}· ระบบเก็บรหัสผ่านแบบเข้ารหัสทางเดียว จึงไม่มีหน้าใดแสดงรายการนี้ซ้ำได้
       </div>
     </Alert>
@@ -4417,7 +4590,7 @@ function TrailList({ records, depts, empty, withWho = false }) {
               <span className="who">{r.employee?.code} · {r.employee?.name || '—'}</span>
             )}
             {r.by && <span className="who">โดย {r.by}</span>}
-            <span className="when">{new Date(r.at).toLocaleString('th-TH')}</span>
+            <span className="when">{thaiStamp(r.at)}</span>
           </div>
           {r.reason && <div className="note">“{r.reason}”</div>}
           {r.passwordReset && (
@@ -4681,12 +4854,21 @@ function RosterAudit() {
         the bottom of a different-height label.
       */}
       <div className="form-grid" style={{ marginBottom: 12 }}>
-        {/* The one filter here that is not a short fixed list. The other
-            three hold four, ten and however many accounts have ever written to
-            the trail — a <select> is the right control for those and they keep
-            it. This one holds the roster, so it gets the box you can type a
-            name or a code into; see PickPerson in common.jsx for what that
-            costs as well as what it buys. */}
+        {/* The one filter here that is not a short fixed list, and the only one
+            of the four with a SEARCH box in it. This one holds the roster, so it
+            gets a box you can type a name or a code into; see PickPerson in
+            common.jsx for what that costs as well as what it buys.
+
+            THE OTHER THREE ARE `PickOne` SINCE 2026-09-04, and they were the
+            `<select>`s this comment used to defend keeping. The argument it made
+            was about the SEARCH FIELD — four options do not need one, and asking
+            somebody to type where one tap used to do is worse than the tag —
+            and every word of that is still true and is why they are not
+            `PickPerson`. What it got wrong is that those were the only two
+            choices: `PickOne` is the same panel with no search box in it, one
+            tap per row, and the list is drawn out of this document instead of by
+            the operating system. Reported from a phone in the same round that
+            took the last of the OS's own menus off every other screen. */}
         <Field
           label="กรองตามพนักงาน"
           note="พิมพ์เพื่อค้นหา · ค้นได้ทั้งรหัสและชื่อ · เว้นว่างไว้คือทุกคน"
@@ -4697,43 +4879,37 @@ function RosterAudit() {
             onChange={(id) => setFilter('employee', id)}
           />
         </Field>
-        <Field
+        <PickOne
           label="กรองตามสิ่งที่ถูกแก้"
           tip={'แสดงเฉพาะรายการที่แก้ฟิลด์นั้น เช่น วันเกิด '
             + '· การแก้ครั้งเดียวเปลี่ยนได้หลายฟิลด์พร้อมกัน รายการที่ผ่านตัวกรองจึงยังแสดงฟิลด์อื่นที่แก้พร้อมกันด้วย '
             + '· การตั้งรหัสผ่านใหม่ไม่ได้แก้ฟิลด์ใด จึงไม่อยู่ในผลของตัวกรองนี้'}
-        >
-          <select value={filters.field} onChange={(e) => setFilter('field', e.target.value)}>
-            <option value="">— ทุกอย่าง —</option>
-            {AUDITED_FIELDS.map((f) => (
-              <option key={f} value={f}>{FIELD_LABEL[f] || f}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="กรองตามประเภท">
-          <select value={filters.action} onChange={(e) => setFilter('action', e.target.value)}>
-            <option value="">— ทุกประเภท —</option>
-            {Object.entries(ACTION_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </Field>
+          value={filters.field}
+          onChange={(v) => setFilter('field', v)}
+          allLabel="— ทุกอย่าง —"
+          options={AUDITED_FIELDS.map((f) => ({ value: f, label: FIELD_LABEL[f] || f }))}
+        />
+        <PickOne
+          label="กรองตามประเภท"
+          value={filters.action}
+          onChange={(v) => setFilter('action', v)}
+          allLabel="— ทุกประเภท —"
+          options={Object.entries(ACTION_LABEL).map(([value, label]) => ({ value, label }))}
+        />
         {/* Named บัญชีผู้แก้ไข, not ผู้แก้ไข: ฝ่ายบุคคล is one shared login for
             the whole department, so what is on the record — and all this can
             filter by — is which ACCOUNT made the change. */}
-        <Field
+        <PickOne
           label="กรองตามบัญชีผู้แก้ไข"
           note="รายชื่อมาจากประวัติเอง — ไม่ใช่ทะเบียนวันนี้"
-        >
-          <select value={filters.by} onChange={(e) => setFilter('by', e.target.value)}>
-            <option value="">— ทุกบัญชี —</option>
-            {actors.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name || '—'}{a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}
-              </option>
-            ))}
-          </select>
-        </Field>
+          value={filters.by}
+          onChange={(v) => setFilter('by', v)}
+          allLabel="— ทุกบัญชี —"
+          options={actors.map((a) => ({
+            value: a.id,
+            label: `${a.name || '—'}${a.role ? ` · ${ROLE_LABEL[a.role] || a.role}` : ''}`,
+          }))}
+        />
       </div>
 
       {narrowed && (
@@ -4954,7 +5130,7 @@ function ResetPassword({ employee, onClose, onDone }) {
         <Alert kind="warn">
           แจ้งพนักงานว่า <strong>รหัสผ่านเริ่มต้นสำหรับเข้าใช้งานครั้งแรก หรือหลังการรีเซ็ต
           คือ รหัสพนักงานของตัวเอง</strong> พิมพ์ให้ตรงตัวรวมทั้งขีดกลาง
-          {' '}· ระบบจะบังคับให้ตั้งรหัสผ่านของตัวเองทันทีที่เข้าระบบ
+          {' '}· ระบบมีแถบเตือนให้ตั้งรหัสผ่านของตัวเองจนกว่าจะเปลี่ยน แต่ไม่ได้บังคับ
           {' '}<strong>ให้รีบเข้าระบบและตั้งรหัสของตัวเองโดยเร็ว</strong>
           {' '}— ระหว่างที่ยังไม่ได้เปลี่ยน ใครที่เห็นรหัสพนักงานบนใบ OT ก็เข้าบัญชีนี้ได้
         </Alert>
@@ -6378,26 +6554,41 @@ function Policy({ user }) {
                   ))}
                 </div>
                 <div className="policy-row-a">
-                  <select
+                  {/* `PickOne` AND NOT A `<select>`, SINCE 2026-09-04 — the last
+                      seventeen on the roster, and the ones with the longest
+                      rows: these options are whole sentences, and a sentence is
+                      the thing an OS menu wraps or truncates however it likes.
+                      The panel here is the app's own, drawn out of this
+                      document, so the rows wrap in the app's sans face and the
+                      highlight is the same green ค้นหาพนักงาน uses.
+
+                      `hideLabel` BECAUSE THE QUESTION IS ALREADY ON THE ROW, one
+                      column to the left in `.policy-label`. The `<label>` is
+                      still in the document for `aria-labelledby` — see PickOne —
+                      so a screen reader naming this control says the rule rather
+                      than saying nothing.
+
+                      THE VALUES STILL TRAVEL AS STRINGS AND ARE STILL COERCED.
+                      Not because a `PickOne` must — it hands back whatever the
+                      row carried, so the typed value could be put straight on
+                      the row — but because `String(v)` is what compares the
+                      chosen row against `shown`, and one place that turns a
+                      screen string into a stored value is better than two. The
+                      reason it matters is unchanged: store "1" where the policy
+                      stores 1 and `canonicalPolicy` reads a changed answer,
+                      minting a version on every save that changed nothing. */}
+                  <PickOne
+                    label={f.label}
+                    hideLabel
                     disabled={!canEdit || busy}
-                    /* The proposed answer while its dialog is up, so the option
+                    /* The proposed answer while its dialog is up, so the row
                        being confirmed is the one on screen behind it. Cancelling
-                       clears `pending` and the select falls back to the stored
+                       clears `pending` and the box falls back to the stored
                        value on its own — there is no second copy to reset. */
                     value={String(shown)}
-                    /* A <select> hands back a string whatever the option held.
-                       Coerced on the way out or the policy would store "1" where
-                       it stores 1 — `canonicalPolicy` compares values, so a saved
-                       string reads as a changed answer and mints a version on
-                       every save that changed nothing. */
-                    onChange={(e) => setPending({
-                      field: f, value: coerce(f, e.target.value),
-                    })}
-                  >
-                    {f.options.map(([v, l]) => (
-                      <option key={String(v)} value={String(v)}>{l}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setPending({ field: f, value: coerce(f, v) })}
+                    options={f.options.map(([v, l]) => ({ value: String(v), label: l }))}
+                  />
                   {/* Against the control rather than against the question: it is
                       about the option that is selected, and it appears as the
                       selection is made. ConfirmPolicyChange carries the same
@@ -6824,7 +7015,7 @@ function PolicyHistory({ versions, unversioned, live }) {
                 <tr key={v._id}>
                   <td className="seq-col"><strong>{v.seq}</strong></td>
                   <td className="when-col" style={{ whiteSpace: 'nowrap' }}>
-                    {v.createdAt ? new Date(v.createdAt).toLocaleString('th-TH') : '—'}
+                    {thaiStamp(v.createdAt) || '—'}
                   </td>
                   <td className="who-col">
                     {v.createdByName || <span style={{ color: 'var(--muted)' }}>ระบบ</span>}

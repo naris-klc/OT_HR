@@ -369,7 +369,13 @@ test('there is ONE แผนก field, and its shape follows บทบาท', (
   // and nobody else, so a ticked list on any other row would grant nothing.
   const code = sourceOf('components/AdminView.jsx');
   assert.match(code, /function DepartmentField\(\{ role, department, extras, onChange, depts, disabled, allowBlank \}\)/);
-  assert.match(code, /if \(!isSigner\(role\)\) \{[\s\S]*?<Field label="แผนก" tip=\{DEPT_TIP_STAFF\}>[\s\S]*?<select/);
+  /* THE PLAIN BRANCH IS A `PickOne` SINCE 2026-09-04 and not a `<select>`, which
+     is the same argument `DeptCombo` beside it already made: the list a
+     `<select>` drops is drawn by the operating system and is not in this
+     document. One แผนก field opening the app's own panel for a หัวหน้างาน and
+     the OS's for everybody else — same label, same dialog, decided by บทบาท —
+     is the disagreement this one field exists to prevent. */
+  assert.match(code, /if \(!isSigner\(role\)\) \{[\s\S]*?<PickOne\s*\n\s*label="แผนก"\s*\n\s*tip=\{DEPT_TIP_STAFF\}/);
   assert.match(code, /<Field label="แผนก" tip=\{DEPT_TIP_MANAGER\}>[\s\S]*?<DeptCombo/);
 
   // The two-field arrangement is gone, label and all.

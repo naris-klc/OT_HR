@@ -144,7 +144,7 @@ test('an approved line carries the minute it was signed', () => {
     history: [{ action: 'approve_hr', byName: 'ฝ่ายบุคคล', at }],
   });
   assert.equal(line.at, at);
-  assert.equal(thaiDateTime(line.at), '14 ส.ค. 2569 16:03 น.');
+  assert.equal(thaiDateTime(line.at), '14/08/2569 16:03 น.');
 });
 
 /**
@@ -229,7 +229,7 @@ test('a fully approved entry lists both signatures, oldest first', () => {
     ['วิชัย ศรีสุข', 'หัวหน้างาน'],
     ['ฝ่ายบุคคล', 'ฝ่ายบุคคล'],
   ]);
-  assert.equal(thaiDateTime(steps[0].at), '14 ส.ค. 2569 09:12 น.');
+  assert.equal(thaiDateTime(steps[0].at), '14/08/2569 09:12 น.');
   assert.ok(steps.every((s) => s.approved));
 });
 

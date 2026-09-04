@@ -3,11 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, ProxyMark, RateHead, RequestTrail, StatusChip,
-  editsOf, trailOf,
+  Alert, Empty, EditedMark, EntryHistory, FlatDailyMark, ProxyMark, RateHead,
+  RequestTrail, ScanDayPunches, ScanMismatchMark, ScanMissingOtStartMark,
+  StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isProxyFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
 import { describeBreaches } from '@/lib/caps.js';
+import { SCAN_MATCH_TOLERANCE_MINUTES, summariseScanChecks } from '@/lib/scanMatch.js';
 import { versionSpread } from '@/lib/policyVersion.js';
 import { PolicyVersionBanner, PolicyVersionCell } from './PolicyVersion.jsx';
 import OtForm from './OtForm.jsx';
@@ -21,8 +23,23 @@ import { useBackHandler } from './nav.jsx';
  * looks wrong. Rows an employee can no longer touch — already approved, or
  * sitting with the manager — are exactly the ones HR needs to be able to fix,
  * so the edit button is offered on all of them except rejected and cancelled.
+ *
+ * ── `mayEdit` · AND WHY IT IS A PROP RATHER THAN A ROLE CHECK HERE ──────────
+ *
+ * The correction path is ฝ่ายบุคคล's and ผู้ดูแลระบบ's alone. Everybody else who
+ * reaches this screen reads it: the three signers on the แผนก they sign for,
+ * and การเงิน on every แผนก since 2026-09-03. `HrView` asks
+ * `mayCorrectEntries` once for the whole screen and hands the answer down, so
+ * the row button that opened this list and the two controls inside it can never
+ * disagree about who is reading.
+ *
+ * WHAT `false` TAKES AWAY IS EXACTLY THE CONTROLS, and nothing else on the
+ * page: every figure, every status, the whole ประวัติการแก้ไข drawer and the
+ * policy banner are the same for all four บทบาท. The refusal behind them is
+ * `editPermission`/`cancelPermission` and was already there — this stops the
+ * buttons being offered to somebody the route is about to answer 403.
  */
-export default function HrEntries({ employee, period, onClose, onChanged }) {
+export default function HrEntries({ employee, period, mayEdit = false, onClose, onChanged }) {
   const [entries, setEntries] = useState(null);
   /**
    * How many refused requests this month's rows stand in for.
@@ -33,6 +50,16 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
    * can never describe a list that has since been reloaded.
    */
   const [replacedCount, setReplacedCount] = useState(0);
+  /**
+   * Whether this month had ANY scan evidence for this person to be compared
+   * against.
+   *
+   * `false` and "every row agreed" are opposite answers that look identical
+   * from a table with no chips on it, and the difference matters: one means the
+   * month reconciles, the other means nobody has imported the file yet. The
+   * line under the table says which — see `scanChecked` in the entries route.
+   */
+  const [scanChecked, setScanChecked] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
   /**
@@ -51,10 +78,24 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
       // evening listed twice, once closed and once live, is the thing this
       // screen is least able to afford. Nothing is lost: the drawer on the
       // surviving row draws both requests in full.
+      // `scope=report` — the rows behind a figure on ตรวจสอบประจำเดือน, in the
+      // reach that screen was drawn with rather than in this reader's own. It
+      // is การเงิน who need it: they read every แผนก's month and sign for one,
+      // so without it a total they can see opens onto an empty list. It gives
+      // nobody else anything — see the scope's own note in
+      // app/api/entries/route.js.
+      // `scan=check` — the row's own times against the fingerprint scanner's
+      // file, computed on the server from the same module the preview on
+      // ตรวจสอบประจำเดือน uses. THIS SCREEN AND NOT บันทึกและประวัติ OT: the
+      // question "does the machine agree with this row" is asked by whoever is
+      // reconciling a month against evidence, and an employee reading their own
+      // history cannot answer it. Nothing on the row changes — see the flag's
+      // own note in app/api/entries/route.js.
       const res = await api.get(
-        `/entries?employee=${employee._id}&period=${period}&replaced=hide`,
+        `/entries?employee=${employee._id}&period=${period}&replaced=hide&scope=report&scan=check`,
       );
       setEntries(res.entries);
+      setScanChecked(Boolean(res.scanChecked));
       setReplacedCount(res.replacedCount || 0);
       setError('');
     } catch (err) { setError(err.message); }
@@ -70,6 +111,18 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
   useEffect(() => { setOpen(new Set()); }, [employee._id, period]);
 
   const auditable = (entries || []).filter(hasAuditTrail);
+
+  /**
+   * The month's rows in the two piles HR asked to be able to tell apart —
+   * counted from the rows ON SCREEN, so the number can never describe a list
+   * that has since been reloaded (the same reason `replacedCount` is written
+   * beside `entries` rather than fetched on its own).
+   *
+   * The counting rule lives in `lib/scanMatch.js`, not here: a flat day being
+   * excluded from the warning piles is the whole point of the separation, and a
+   * rule with a test on it does not quietly become an `if` somebody edits.
+   */
+  const scanCounts = summariseScanChecks(entries || []);
 
   /**
    * Computed from the rows on screen rather than fetched.
@@ -189,6 +242,64 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
           </span>
         </div>
 
+        {/* WHAT THE CHIPS IN THE จาก–ถึง COLUMN MEAN, said BEFORE the reader
+            meets one — and, more importantly, said on a month that has no chips
+            at all.
+
+            A table with nothing marked means one of two opposite things: every
+            row agreed with the scanner, or nobody has imported the scanner's
+            file for this month. A table is silent in exactly the same way for
+            both, so the difference has to be stated outright.
+
+            NOT IN `.entry-foot` BELOW, though that is where the table's other
+            two rules live. That footnote is pinned at exactly two lines by
+            `test/entryRowChrome.test.js`, and the pin is not arbitrary: it went
+            from a wall of prose to two lines because a wall is what nobody
+            reads. A third rule of a different kind, about evidence from outside
+            this system rather than about what a correction does, is how it
+            grows back. Here instead, beside the other line that describes the
+            SHAPE of the table (`replacedCount` below).
+
+            The tolerance is said out loud because a reader who thinks 15 นาที is
+            the wrong number is exactly the person whose answer would fix it —
+            see `SCAN_MATCH_TOLERANCE_MINUTES`, which nobody at HR has been
+            asked about. */}
+        <div className="hint" style={{ marginTop: 6 }}>
+          {scanChecked ? (
+            <>
+              เทียบเวลากับไฟล์สแกนนิ้วแล้ว — ถือว่าตรงกันเมื่อห่างกันไม่เกิน
+              {' '}{SCAN_MATCH_TOLERANCE_MINUTES} นาที
+              {' '}· <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
+              {/* THE TWO PILES, AS A NUMBER, FOR THE WHOLE MONTH.
+                  The chips separate flat days from real mismatches row by row,
+                  in colour; this separates them for the month, which is the
+                  question somebody scrolling thirty rows actually has — *"how
+                  many here need a look, and how many are flat days that never
+                  did"*. Asked for in those words on 2026-09-04: แจ้งเตือนเพื่อ
+                  ให้ HR แยกออกระหว่างงานเหมากับเวลาไม่ตรงงานปกติ.
+                  A flat day is never counted into the warning piles — see
+                  `summariseScanChecks`, where that exclusion is the point. */}
+              <div style={{ marginTop: 2 }}>
+                เดือนนี้:
+                {' '}<strong>{scanCounts.mismatch}</strong> แถวเวลาไม่ตรง ·
+                {' '}<strong>{scanCounts.noScan}</strong> แถวไม่มีข้อมูลสแกน ·
+                {' '}<strong>{scanCounts.flatDaily}</strong> แถวเป็นใบเหมารายวัน
+                {scanCounts.flatDaily > 0 && ' (ไม่นับเป็นเวลาไม่ตรง — ใบเหมาไม่ต้องตรงกับสแกน)'}
+              </div>
+            </>
+          ) : (
+            <>
+              ยังไม่ได้เทียบกับไฟล์สแกนนิ้ว — เดือนนี้ยังไม่มีข้อมูลสแกนของพนักงานคนนี้
+              {' '}· นำเข้าไฟล์ได้ที่หน้า ตรวจสอบประจำเดือน
+              {/* The flat-day count still stands without any scan file — it is a
+                  fact about how the requests were FILED, and the chips on those
+                  rows are drawn on this month too. */}
+              {scanCounts.flatDaily > 0
+                && ` · เดือนนี้มี ${scanCounts.flatDaily} แถวที่เป็นใบเหมารายวัน`}
+            </>
+          )}
+        </div>
+
         {/* Said on the screen rather than left as a gap in the table. The rows
             are not deleted and not merely filtered — each one is folded into
             the request that replaced it, and the sentence points at the button
@@ -255,6 +366,43 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                       {e.endsNextDay && (
                         <div className="cell-note">ข้ามคืน</div>
                       )}
+                      {/* BESIDE THE TIMES, not beside the description with the
+                          other marks. This one is about these two numbers and
+                          nothing else on the row; the reader whose eye it has to
+                          catch is already looking at the cell it disagrees with.
+                          `entry-mark` gives it the same 6px and the same width
+                          cap the description's chips get on a phone card. */}
+                      {/* TWO MARKS, ONE CELL, AND THE GATES ARE DIFFERENT.
+                          `เหมารายวัน` is a fact about the FILING — true on a
+                          month nobody has imported a scanner file for — so it
+                          is drawn from `e.flatDaily` alone. The scan warning
+                          needs evidence to have been compared, so it is gated
+                          on `scanChecked`. Only one of the two ever draws on a
+                          given row: `ScanMismatchMark` stands down on a flat
+                          day, because there the difference is expected and the
+                          green chip is the answer.
+
+                          THREE SINCE 2026-09-04, AND THE THIRD IS NOT A THIRD
+                          WARNING. `ไม่ได้สแกนเข้า OT` is grey and says what the
+                          machine did not witness; it can sit beside a row whose
+                          verdict is fine, which is most of them, and that is
+                          why it is not `ScanMismatchMark`'s business. It stands
+                          down on flat days and on `no_scan` rows — both gates
+                          are `showsMissingOtStart`'s, not this file's. */}
+                      {(e.flatDaily || (scanChecked && e.scanCheck)) && (
+                        <div className="entry-mark">
+                          <FlatDailyMark entry={e} />
+                          {scanChecked && <ScanMissingOtStartMark entry={e} />}
+                          {scanChecked && <ScanMismatchMark entry={e} />}
+                        </div>
+                      )}
+                      {/* THE DAY'S SCANS, ON EVERY ROW THAT HAS ANY — under
+                          the chips and under the times they exist to be read
+                          against. NOT inside `entry-mark`: that class caps its
+                          content against the phone card because it holds pills,
+                          and this is a line of text that should wrap the way the
+                          ข้ามคืน note above it does. */}
+                      {scanChecked && <ScanDayPunches entry={e} />}
                     </td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                     <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
@@ -320,7 +468,13 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                         and cannot be done by a margin. */}
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <span className="entry-actions">
-                      {closed ? (
+                      {/* NOTHING AT ALL FOR A READER WHO CANNOT CORRECT — not
+                          even แก้ไขไม่ได้, which is a statement about THIS ROW
+                          (it is refused or cancelled) and would be read as one.
+                          On a read-only screen the true sentence is about the
+                          screen, and it is already said by the absence of a
+                          correction path anywhere on it. See `mayEdit` above. */}
+                      {!mayEdit ? null : closed ? (
                         <span className="cell-sub th">แก้ไขไม่ได้</span>
                       ) : (
                         /* THE ONE ACTION ON THE ROW, and the only thing in this
@@ -340,7 +494,7 @@ export default function HrEntries({ employee, period, onClose, onChanged }) {
                           gave of hours worked. The button disappears the moment
                           the row is edited or signed — see
                           `isUntouchedSystemFiling`. */}
-                      {isUntouchedSystemFiling(e) && (
+                      {mayEdit && isUntouchedSystemFiling(e) && (
                         <button
                           className="btn ghost sm"
                           onClick={() => voidEntry(e)}

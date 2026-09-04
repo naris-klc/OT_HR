@@ -304,8 +304,8 @@ function HolidayCalendar({ year, holidays, onClose }) {
            not a column anybody scans on its own, and at 390px a third column
            pushes the holiday's name — the one thing being looked up — off the
            right into `.table-wrap`'s scroller. It rides under the date, which
-           is the shape `thaiDateShort` + the day abbreviation take in the
-           queue tables for the same reason. */
+           is the shape `thaiDate` + the day abbreviation take in the queue
+           tables for the same reason. */
         <div className="table-wrap">
           <table className="cal-table">
             <thead>

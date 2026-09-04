@@ -40,6 +40,14 @@ export const GET = route(async (req) => {
     signable = { employee: { $in: people.map((p) => p._id).filter((id) => String(id) !== String(user._id)) } };
   }
 
+  /**
+   * The badge counts what its reader can SIGN, which is the narrower of the two
+   * ladders and therefore already inside what they may SEE — `mayApproveRole`
+   * is one rung, `visibleRolesFor` is every rung below. So no second clause is
+   * needed here, and adding one would be two rules where the queue screen has
+   * one. See `visibleEmployeeClause` for the reading half.
+   */
+
   const [
     pendingMgr, pendingHr, delegated, withdrawalOpen, withdrawalOpenPending,
   ] = await Promise.all([

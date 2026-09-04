@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
-import { Alert, Empty, Field, Modal } from './common.jsx';
+import { Alert, Empty, Field, Modal, PickOne } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
 import { PickDate } from './PickDate.jsx';
@@ -343,32 +343,48 @@ function DelegationForm({ user, all, onClose, onSaved }) {
         <section className="form-group">
           <div className="gh">ใคร</div>
           <div className="form-grid">
+            {/* `PickOne` AND NOT `<select>`s, SINCE 2026-09-04 — the round that
+                took the last of the operating system's own menus off this app.
+                A `<select>`'s box is an element this stylesheet reaches and its
+                OPTION LIST is not: it is drawn by the browser, is not in the
+                document, and on ธีมมืด it opened as a white sheet with the
+                system's blue bar in the middle of a dialog that is charcoal and
+                green. These two are also the pair that most needed it — they are
+                the only controls in this dialog that are not already the app's
+                own, วันที่ below being `PickDate`.
+
+                THE PLACEHOLDER IS `allLabel`, which is what that row already is:
+                `''`, first, and drawn in `.pick-menu li.all`'s quieter grey
+                because "— เลือกหัวหน้างาน —" is an instruction rather than a
+                person. `ready` below still refuses a save while it is the
+                answer, exactly as it did when the row was an `<option>`. */}
             {all && (
-              <Field
+              <PickOne
                 label="คิวของหัวหน้างาน"
                 tip="คิวที่จะถูกอนุมัติแทน — หัวหน้างานคนนี้ยังอนุมัติเองได้ตามปกติ"
-              >
-                <select value={form.from} onChange={(e) => set('from', e.target.value)} disabled={busy}>
-                  <option value="">— เลือกหัวหน้างาน —</option>
-                  {managers.map((p) => (
-                    <option key={p._id} value={p._id}>
-                      {p.name} · {p.department?.nameTh || p.department?.name || '—'}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+                value={form.from}
+                onChange={(v) => set('from', v)}
+                disabled={busy}
+                allLabel="— เลือกหัวหน้างาน —"
+                options={managers.map((p) => ({
+                  value: p._id,
+                  label: `${p.name} · ${p.department?.nameTh || p.department?.name || '—'}`,
+                }))}
+              />
             )}
-            <Field label="ผู้รับช่วง" note="เลือกได้เฉพาะหัวหน้างานหรือฝ่ายบุคคล">
-              <select value={form.to} onChange={(e) => set('to', e.target.value)} disabled={busy}>
-                <option value="">— เลือกผู้รับช่วง —</option>
-                {candidates.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name} · {ROLE[p.role]} · {p.department?.nameTh || p.department?.name || '—'}
-                    {p.approvesCompany ? ` · เซ็นให้${companyLabel(p.approvesCompany)}` : ''}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <PickOne
+              label="ผู้รับช่วง"
+              note="เลือกได้เฉพาะหัวหน้างานหรือฝ่ายบุคคล"
+              value={form.to}
+              onChange={(v) => set('to', v)}
+              disabled={busy}
+              allLabel="— เลือกผู้รับช่วง —"
+              options={candidates.map((p) => ({
+                value: p._id,
+                label: `${p.name} · ${ROLE[p.role]} · ${p.department?.nameTh || p.department?.name || '—'}`
+                  + (p.approvesCompany ? ` · เซ็นให้${companyLabel(p.approvesCompany)}` : ''),
+              }))}
+            />
           </div>
           {/* Out of the grid and full width: it is a sentence, and a sentence in
               a 1fr column wraps four times. */}

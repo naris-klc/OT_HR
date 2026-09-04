@@ -1,16 +1,19 @@
 import OtEntry from '@/src/models/OtEntry.js';
-import { SIGNER_ROLES, isSigner } from '@/lib/roles.js';
+import { SIGNER_ROLES } from '@/lib/roles.js';
 import PolicyVersion from '@/src/models/PolicyVersion.js';
 import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
-import { PERIOD_RE, latestPerSession, editTally, reportStatuses } from '@/lib/reports.js';
+import {
+  PERIOD_RE, latestPerSession, editTally, reportStatuses, teamScoped,
+} from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { approvalDepartments, isHrVerifiedBirthday, signsForCompany } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
+import { compareCodes } from '@/src/lib/employeeCode.js';
 
 /** HR's monthly review: every employee's totals for a period, in one table. */
 export const GET = route(async (req, { params }) => {
@@ -24,10 +27,24 @@ export const GET = route(async (req, { params }) => {
   const q = query(req);
   const policy = await Setting.effectivePolicy();
   const filter = { period };
-  // Every department this หัวหน้า signs for, not only their own — the same list
-  // `isDepartmentManager` decides each row from. A report narrower than the
-  // approve rule hides hours its reader is responsible for.
-  if (isSigner(user.role)) filter.department = { $in: approvalDepartments(user) };
+  /**
+   * Every department this หัวหน้า signs for, not only their own — the same list
+   * `isDepartmentManager` decides each row from. A report narrower than the
+   * approve rule hides hours its reader is responsible for.
+   *
+   * `teamScoped` AND NOT `isSigner` SINCE 2026-09-03, in two steps the same
+   * day. First: การเงิน is a signer who reads the whole company — they hold
+   * แผนกบัญชีและการเงิน's signature and reconcile every แผนก's hours against
+   * payroll, two facts `lib/roles.js` keeps apart — so narrowed by บทบาท alone
+   * they got one แผนก here and every แผนก on รายงาน OT ฝ่ายบัญชี, for the same
+   * month. Then: they were given the team report as a tab of its own, so the
+   * request has to be able to say which of the two readings it wants.
+   *
+   * `?scope=team` is that request, and it can only ever narrow — see
+   * `teamScoped` in lib/reports.js.
+   */
+  const teamOnly = teamScoped(user.role, q.scope);
+  if (teamOnly) filter.department = { $in: approvalDepartments(user) };
   else if (q.department) filter.department = q.department;
   // Withdrawn and refused requests are not on any report, whatever the URL asks
   // for — see `reportStatuses`.
@@ -58,9 +75,10 @@ export const GET = route(async (req, { params }) => {
    * way: nothing on an entry records a company, and a row whose `company` was
    * never filled in is still on a payroll that only the code prefix knows.
    *
-   * ฝ่ายบุคคล and Admin are untouched — they read the whole month either way.
+   * ฝ่ายบุคคล, ผู้ดูแลระบบ and การเงิน are untouched — all three read the whole
+   * month either way, so `teamOnly` and not `isSigner` here as well.
    */
-  const all = isSigner(user.role) && user.approvesCompany
+  const all = teamOnly && user.approvesCompany
     ? found.filter((e) => signsForCompany(user, companyOf(e.employee)))
     : found;
 
@@ -183,8 +201,13 @@ export const GET = route(async (req, { params }) => {
        * beside the name turns that from a discrepancy into a row to open.
        */
       hrVerified: group.entries.filter(isHrVerifiedBirthday).length,
-      /** Which rules produced this person's hours — and whether that is one set. */
-      policy: versionSpread(group.entries, policyVersions),
+      /*
+       * `policy` — the per-person `versionSpread` — used to sit here and fed
+       * ตรวจสอบรายเดือน's กฎที่ใช้ column. The column went on 2026-09-04 and
+       * this went with it: a field no screen reads is one the next reader has
+       * to work out the fate of. The MONTH's spread below is still sent, and
+       * is what the banner on that screen is drawn from.
+       */
       summary,
       hrSection: hrSummary(summary, policy),
       /**
@@ -197,7 +220,19 @@ export const GET = route(async (req, { params }) => {
        */
       cap,
     };
-  }).sort((a, b) => a.employee.code.localeCompare(b.employee.code));
+  /**
+   * เรียงตามลำดับตัวเลขของรหัสพนักงาน — `compareCodes`, not a bare
+   * `localeCompare`, since 2026-09-03.
+   *
+   * The register carries two spellings of one shape (PM-0412 and PM00416) and a
+   * character-by-character sort reads the second as smaller at its fourth
+   * character, so every five-digit code climbed above every four-digit one.
+   * `compareCodes` compares the digit runs as numbers; see
+   * src/lib/employeeCode.js, which is also what รายงาน OT ฝ่ายบัญชี, both CSVs
+   * and รายงาน OT แยกแผนก order by — one comparator, so the four documents of a
+   * month cannot be read against each other in four different orders.
+   */
+  }).sort((a, b) => compareCodes(a.employee?.code, b.employee?.code));
 
   const grand = summariseEntries(entries);
   return json({

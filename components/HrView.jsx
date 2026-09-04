@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  api, hours, thaiDate, thaiDateShort, dayName, dayAbbr, currentPeriod, periodLabel,
+  api, hours, thaiDate, dayName, dayAbbr, currentPeriod, periodLabel,
   BUCKETS, companyLabel,
 } from '@/lib/api.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
@@ -18,13 +18,15 @@ import { personMatches } from '@/lib/personSearch.js';
 // warning as a line in `MonthAlerts` from the same `policyVersionNotice()` the
 // banner renders; the banner itself is still what ตรวจสอบใบของพนักงาน opens
 // (components/HrEntries.jsx), which is why it is still a component.
-import { PolicyVersionSummaryCell, policyVersionNotice } from './PolicyVersion.jsx';
+import { policyVersionNotice } from './PolicyVersion.jsx';
 import PeriodStatus from './PeriodStatus.jsx';
+import ScanImport from './ScanImport.jsx';
 import PrintForm from './PrintForm.jsx';
 import PrintFormBatch from './PrintFormBatch.jsx';
 import HrEntries from './HrEntries.jsx';
 import HrEdits from './HrEdits.jsx';
 import { useBackHandler } from './nav.jsx';
+import { mayCorrectEntries } from '@/lib/entries.js';
 
 /**
  * The widest this screen goes: every request that has not been refused or
@@ -151,6 +153,25 @@ const FLASH_MS = 1800;
  */
 const rowDomId = (employeeId) => `hr-row-${employeeId}`;
 
+/**
+ * WHAT THE ROW'S FIRST BUTTON IS CALLED — and it is a promise, not a flourish.
+ *
+ * FOUR บทบาท read this screen: ฝ่ายบุคคล and ผู้ดูแลระบบ, who may correct a row
+ * once they are inside it; the three signers, on the แผนก they sign for; and
+ * การเงิน, on every แผนก. Only the first two may change anything —
+ * `editPermission` in lib/entries.js has always said so — and the button said
+ * "ดู / แก้ไขรายการ" to all of them, which offered the other four a screen whose
+ * every แก้ไข answers 403. README §สิทธิ์ names that as the one thing a screen
+ * may not do, and it had been true of a หัวหน้างาน since the day they could
+ * reach this screen at all; การเงิน is what made somebody look.
+ *
+ * ONE FUNCTION AND NOT A TERNARY AT EACH SITE, because the label is written in
+ * two places — on the button, and inside `MonthAlerts`, which tells a reader to
+ * go and press it. A notice naming a control by a name it does not have on this
+ * particular screen is the same failure one layer out.
+ */
+const openRowLabel = (mayCorrect) => (mayCorrect ? 'ดู / แก้ไขรายการ' : 'ดูรายการ');
+
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({
   // `onOpenBirthdayQueue` and `onSettled` went with วันเกิดของเดือนนี้ on
@@ -158,7 +179,28 @@ export default function HrView({
   // the shell to re-count the nav badge after a row was settled. Neither has
   // anything left to point at.
   user, onOpenRoster = null,
+  /**
+   * WHICH MONTH THIS SCREEN IS SHOWING — `'company'` or `'team'`.
+   *
+   * Two tabs draw this one component (see `PAGE` in components/App.jsx):
+   * ตรวจสอบประจำเดือน is every แผนก and both payrolls, รายงาน OT ประจำทีม is
+   * the แผนก whose first signature is the reader's. Nothing else about the
+   * screen differs — same columns, same exports, same read-only rule — so it is
+   * one component with one argument rather than two screens to keep in step.
+   *
+   * IT IS A REQUEST, NOT A PERMISSION. `'company'` from a หัวหน้างาน still
+   * comes back as their own แผนก: the server narrows by `readsOwnTeamOnly`
+   * whatever this says, and only widens for the บทบาท that read the whole
+   * company anyway. What this decides is that a การเงิน — who may have either —
+   * gets the one whose tab they pressed.
+   *
+   * Defaults to `'company'`, which is what every caller before 2026-09-03 meant
+   * by passing nothing.
+   */
+  scope = 'company',
 }) {
+  /** The query string both the table and its two CSVs carry. */
+  const scopeParam = scope === 'team' ? '&scope=team' : '';
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
   /**
@@ -177,16 +219,31 @@ export default function HrView({
   const [opened, setOpened] = useState(null); // employee whose entries HR is in
   const [auditing, setAuditing] = useState(null); // employee whose edits HR is reading
 
+  /**
+   * May this reader change a row, or only read one? See `openRowLabel` above.
+   *
+   * Read from lib/entries.js rather than spelt out here, so the control this
+   * screen draws and the rule the route enforces are the same sentence. It is
+   * passed DOWN to `HrEntries` for the same reason it is not re-derived there:
+   * one answer, decided once, for the whole of this screen and everything that
+   * opens off it.
+   */
+  const mayCorrect = mayCorrectEntries(user);
+
   async function load() {
     try {
       setData(null);
-      const res = await api.get(`/reports/monthly/${period}?status=${statusFilter}`);
+      const res = await api.get(`/reports/monthly/${period}?status=${statusFilter}${scopeParam}`);
       setData(res);
       setError('');
     } catch (err) { setError(err.message); }
   }
 
-  useEffect(() => { load(); }, [period, statusFilter]);
+  // `scope` is in the list because the two tabs are two mounts of this
+  // component and a remount runs the effect anyway — but a prop the request is
+  // built from and the effect does not watch is a bug waiting for the day
+  // somebody drops the `key` in components/App.jsx.
+  useEffect(() => { load(); }, [period, statusFilter, scope]);
 
   // Three sub-views, all reached from this table and all closed the same
   // way. Mutually exclusive by the early returns below, so registering each
@@ -337,7 +394,8 @@ export default function HrView({
    *
    * The box already narrows the list. This hangs under it while there is
    * something typed, one row per match, and picking a row does not change WHAT
-   * is on screen: it opens ดู / แก้ไขรายการ for that person, which is what HR
+   * is on screen: it opens that person's own rows — the row button, whichever
+   * of its two names this reader sees (`openRowLabel`) — which is what somebody
    * came to this screen to do. Two jobs from one box and they do not fight —
    * the filter answers "who is in this month", the list answers "take me into
    * their month", and on a sheet sixty people long those are different
@@ -542,6 +600,7 @@ export default function HrView({
       <HrEntries
         employee={opened}
         period={period}
+        mayEdit={mayCorrect}
         onClose={() => setOpened(null)}
         onChanged={load}
       />
@@ -580,6 +639,7 @@ export default function HrView({
           periodName={periodLabel(period)}
           policy={data.policy}
           hrVerifiedCount={data.hrVerifiedCount}
+          rowAction={openRowLabel(mayCorrect)}
         />
       )}
 
@@ -593,8 +653,22 @@ export default function HrView({
       <div className="card month-head">
         <div className="row head-split">
           <div style={{ flex: 1 }}>
-            <h2>ตรวจสอบประจำเดือน</h2>
-            <div className="hint" style={{ margin: 0 }}>{periodLabel(period)}</div>
+            {/* THE CARD SAYS WHAT THE TAB SAID, which it did not until
+                2026-09-03. This was the literal `ตรวจสอบประจำเดือน` for every
+                reader, so a หัวหน้างาน pressed รายงาน OT ประจำทีม, watched the
+                app bar say TEAM SUMMARY — `PAGE_BY_ROLE` had fixed that much on
+                2026-08-31 — and then read HR's job description on the card
+                under it. Half a rename is how a screen ends up with two names
+                on it at once, and the half that was missed is the one at the
+                top of the thing somebody is actually reading. */}
+            <h2>{scope === 'team' ? 'รายงาน OT ประจำทีม' : 'ตรวจสอบประจำเดือน'}</h2>
+            <div className="hint" style={{ margin: 0 }}>
+              {periodLabel(period)}
+              {/* Whose rows these are, said once and only where it is not the
+                  whole company — the wide screen needs no qualifier, and a
+                  reader who has both tabs needs to know which one is open. */}
+              {scope === 'team' && ' · เฉพาะแผนกที่คุณเซ็นอนุมัติ'}
+            </div>
           </div>
           {/* ประจำเดือน USED TO SIT HERE, on this line beside สถานะที่นับ. It
               is one row down now, with ค้นหาพนักงาน — see `.month-find` below.
@@ -870,8 +944,12 @@ export default function HrView({
           </button>
           <button
             className="btn ghost"
+            /* `scopeParam` on both files, so what is exported is what is on
+               screen. Without it a การเงิน on รายงาน OT ประจำทีม would download
+               the whole company from a table showing one แผนก — the export
+               button's one promise is that it is the table it sits under. */
             onClick={() => api.download(
-              `/exports/entries.csv?period=${period}&status=${statusFilter}`,
+              `/exports/entries.csv?period=${period}&status=${statusFilter}${scopeParam}`,
               `OT-${period}.csv`,
             )}
           >
@@ -888,7 +966,7 @@ export default function HrView({
           <button
             className="btn ghost"
             onClick={() => api.download(
-              `/exports/monthly.csv?period=${period}&status=${statusFilter}`,
+              `/exports/monthly.csv?period=${period}&status=${statusFilter}${scopeParam}`,
               `OT-monthly-${period}.csv`,
             )}
           >
@@ -917,6 +995,26 @@ export default function HrView({
           reach this screen reads the same counts. */}
       <PeriodStatus period={period} />
 
+      {/* ไฟล์สแกนนิ้วมือ — a monthly act, on the monthly screen.
+
+          UNDER THE MONTH'S STATUS AND ABOVE THE TABLE. The order of this screen
+          is "what month, what is still open, then the rows"; a file that
+          describes the month belongs in the second part, not among the buttons
+          that print and export the first.
+
+          `mayCorrect && scope !== 'team'` — the same pair the route enforces
+          (`requireRole(…, 'hr', 'admin')` on app/api/scans/route.js), and the
+          reason is not that the punch log is secret from a การเงิน: it is that
+          a record of when people were at the door is a different fact about a
+          person from the OT they filed, and it is ฝ่ายบุคคล's to hold. A
+          หัวหน้า reading รายงาน OT ประจำทีม is looking at their own team's
+          hours and is never offered this, whatever their บทบาท.
+
+          IT CHANGES NO FIGURE ON THIS SCREEN, so there is no `onChanged` and
+          nothing below it is reloaded when a file is imported — see the card's
+          own header, which says the same thing to the person pressing it. */}
+      {mayCorrect && scope !== 'team' && <ScanImport period={period} status={statusFilter} />}
+
       {error && <Alert kind="error">{error}</Alert>}
 
       {/* `month-card` — the stylesheet's handle on the ORDER of what is in
@@ -928,7 +1026,7 @@ export default function HrView({
           See the block by this name in app/styles.css.
 
           AND `card` IS A DESKTOP CLASS NOW. Above 860px this is a table of
-          eleven columns read down its own header row, and a table needs a
+          ten columns read down its own header row, and a table needs a
           ground of its own to be read against, so the fill and the border stay.
           Below it the same markup is drawn as one card per person on `--bg` —
           and a card holding forty cards is a forty-first boundary the eye has
@@ -981,8 +1079,8 @@ export default function HrView({
                 bars stuck above it. On the tbody instead, the wrap's own 12px
                 of padding would be scrolled past. */}
             <div className="table-wrap card-list" ref={listRef}>
-              {/* `hr-table` — below 860px the stylesheet lays these eleven cells
-                  out as a card, placing each by its class. Eleven columns on a
+              {/* `hr-table` — below 860px the stylesheet lays these ten cells
+                  out as a card, placing each by its class. Ten columns on a
                   375px screen put รวม ชม., the figure the whole screen is about,
                   off the right edge behind a sideways scroll. */}
               <table className="hr-table">
@@ -1002,7 +1100,6 @@ export default function HrView({
                     <th className="num total-col">รวม ชม.</th>
                     <th className="num count-col">รายการ</th>
                     <th className="num edits-col">แก้ไข</th>
-                    <th className="rule-col">กฎที่ใช้</th>
                     {/* No blanket note under the header any more. It said
                         "ไม่รวมใบที่รออนุมัติ" on every row of the column the
                         moment the filter narrowed, including the rows with
@@ -1029,7 +1126,7 @@ export default function HrView({
                       and it only decides yes below 860px. Above it the class is
                       still written into the markup and no rule reads it, so the
                       desktop table draws all sixty rows exactly as it always
-                      has: eleven narrow columns read at a glance and down their
+                      has: ten narrow columns read at a glance and down their
                       columns are not improved by being served five at a time.
 
                       One markup, two layouts — the rule this screen has kept
@@ -1126,13 +1223,14 @@ export default function HrView({
                           </div>
                         )}
                       </td>
-                      {/* Per person as well as per month: the month banner says
-                          the sheet is not uniform, this says whose rows to open.
-                          A version that spans one employee's own total is the
-                          case HR can actually do something about. */}
-                      <td className="rule-col"><PolicyVersionSummaryCell spread={row.policy} /></td>
+                      {/* กฎที่ใช้ WAS HERE — a per-person `เวอร์ชัน N` beside
+                          the month banner that says the same thing. Taken off
+                          on 2026-09-04: HR does not read a version number while
+                          checking a month, and the banner in `MonthAlerts`
+                          still names every version in the month and what to do
+                          about it, which is the part that was being used. */}
                       <td className="cap-col"><CapCell cap={row.cap} /></td>
-                      {/* THE FOOT OF THE CARD below 860px, and the eleventh
+                      {/* THE FOOT OF THE CARD below 860px, and the tenth
                           column above it — same markup, both times. The phone
                           layout lays this table out as one card per person and
                           gives this cell the full width of it, so the two
@@ -1151,7 +1249,7 @@ export default function HrView({
                             className="btn ghost sm act-open"
                             onClick={() => setOpened(row.employee)}
                           >
-                            ดู / แก้ไขรายการ
+                            {openRowLabel(mayCorrect)}
                           </button>
                           <button
                             className="btn ghost sm"
@@ -1169,7 +1267,7 @@ export default function HrView({
                       pager below is one: `.hr-table tbody` is the flex column
                       that holds the cards on a phone, and anything that is to
                       sit in that column with the list's own rhythm has to be a
-                      row of it. `colSpan={11}` like every other full-width row
+                      row of it. `colSpan={10}` like every other full-width row
                       here, and the phone block is where it is drawn at all —
                       above 860px `.cards-more-row` is `display: none`, because
                       up there the table draws all sixty rows and there is
@@ -1184,7 +1282,7 @@ export default function HrView({
                       press to find out what it does. */}
                   {folding && (
                     <tr className="cards-more-row">
-                      <td className="pager-col" colSpan={11}>
+                      <td className="pager-col" colSpan={10}>
                         <button
                           type="button"
                           className="btn ghost sm cards-more"
@@ -1268,10 +1366,10 @@ export default function HrView({
                       like everywhere else. */}
                   {pageCount > 1 && (
                   <tr className="pager-row">
-                    {/* Eleven, like every other row in this table — see the
+                    {/* Ten, like every other row in this table — see the
                         `pad-col` note below. Not in the hidden-by-name list in
                         the phone block, so it draws. */}
-                    <td className="pager-col" colSpan={11}>
+                    <td className="pager-col" colSpan={10}>
                       <div className="pager-say" aria-live="polite">
                         <div className="pager-controls">
                           {/* `disabled` rather than hidden. A control that
@@ -1349,7 +1447,7 @@ export default function HrView({
                       see the note in DepartmentView. The frozen name column has
                       to exist in this row too, or scrolling sideways leaves a
                       hole in it exactly where the month's own total is. The
-                      trailing `pad-col` keeps the cell count at eleven. */}
+                      trailing `pad-col` keeps the cell count at ten. */}
                   <tr className="total-row">
                     {/* THE FIGURES BELOW ARE THE MONTH'S, ALWAYS. They come from
                         `data.grandTotal`, which the server computed over every
@@ -1371,7 +1469,7 @@ export default function HrView({
                     <td className="num rate-col b-15h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
                     <td className="num rate-col b-3h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>
                     <td className="num total-col"><strong>{hours(data.grandTotal.otHours)}</strong></td>
-                    <td className="pad-col" colSpan={5} />
+                    <td className="pad-col" colSpan={4} />
                   </tr>
                 </tbody>
               </table>
@@ -1550,7 +1648,16 @@ let alertsDismissed = false;
  * read, not warnings to read before starting, and pulling them up would make
  * this count a number about two unrelated things.
  */
-function MonthAlerts({ periodName, policy, hrVerifiedCount }) {
+function MonthAlerts({
+  periodName, policy, hrVerifiedCount,
+  /**
+   * What the row button below this notice is called on THIS reader's screen —
+   * "ดู / แก้ไขรายการ" for ฝ่ายบุคคล and ผู้ดูแลระบบ, "ดูรายการ" for everybody
+   * else. Passed in rather than written out, because a notice that says press X
+   * when the button says Y is a dead end for the one person following it.
+   */
+  rowAction,
+}) {
   const [open, setOpen] = useState(false);
   const [shut, setShut] = useState(alertsDismissed);
 
@@ -1583,7 +1690,7 @@ function MonthAlerts({ periodName, policy, hrVerifiedCount }) {
       say: (
         <>
           บันทึกและอนุมัติในขั้นตอนเดียว <strong>ไม่ผ่านหัวหน้างาน</strong> ·
-          {' '}เปิดดูที่ “ดู / แก้ไขรายการ” ของพนักงาน
+          {' '}เปิดดูที่ “{rowAction}” ของพนักงาน
         </>
       ),
     });

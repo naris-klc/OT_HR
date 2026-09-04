@@ -3,6 +3,7 @@ import { route, query, csvResponse } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { toCsv } from '@/src/lib/csv.js';
 import { describeRequest, deviceLabel, EVENT_LABEL, STATUS_CLASS_LABEL, statusClass } from '@/lib/accessLog.js';
+import { thaiStampText } from '@/lib/smartDate.js';
 
 /**
  * บันทึกระบบ as a file — the form the log is handed over in.
@@ -74,7 +75,7 @@ export const GET = route(async (req) => {
   const body = toCsv(headers, rows.map((r) => [
     // Sorted oldest-first and printed in the office's own timezone: this file
     // is read as a narrative of an evening, not scanned like the screen.
-    new Date(r.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
+    thaiStampText(r.createdAt, { timeZone: 'Asia/Bangkok' }),
     EVENT_LABEL[r.event] || r.event,
     describeRequest(r.method, r.path),
     r.method,

@@ -86,9 +86,13 @@ test('ทั้ง สถานะ แผนก และ เดือน ใช
   assert.match(common, /export function PickOne\(/);
   assert.match(queue, /import \{[\s\S]*?\bPickOne\b[\s\S]*?\} from '\.\/common\.jsx'/);
   assert.match(queue, /<PickOne\s+label="สถานะ"[\s\S]*?allLabel="ทุกสถานะ"/);
+  assert.match(queue, /<PickOne\s+label="บทบาท"[\s\S]*?allLabel="ทุกบทบาท"/);
   assert.match(queue, /<PickOne\s+label="แผนก"[\s\S]*?allLabel="ทุกแผนก"/);
   assert.match(queue, /<PickOne\s+label="เดือน"[\s\S]*?allLabel="ทุกเดือน"/);
-  assert.equal((queue.match(/<PickOne\b/g) || []).length, 3);
+  // FOUR SINCE 2026-09-04. บทบาท is the signers' half of the first slot — see
+  // test/queueRoleFilter.js — and it takes the same control for the same
+  // reason: a filter bar has one kind of dropdown on it.
+  assert.equal((queue.match(/<PickOne\b/g) || []).length, 4);
 });
 
 /**
@@ -297,7 +301,10 @@ test('ไฮไลต์มีอันเดียว — ตัวชี้เ
    * not on. On this screen the row is a department whose whole queue is about
    * to be filtered to.
    */
-  assert.match(source, /onMouseMove=\{\(\) => setActive\(i\)\}/);
+  // Guarded on `r.disabled` since 2026-09-04: the pointer still writes to the
+  // same one piece of state, but it does not write a row Enter would then
+  // refuse — see the greyed-row test below.
+  assert.match(source, /onMouseMove=\{\(\) => \{ if \(!r\.disabled\) setActive\(i\); \}\}/);
   assert.ok(
     !selectors.some((s) => s.includes('one-menu') && s.includes(':hover')),
     'มีกฎ :hover ของ .one-menu — จะได้ไฮไลต์สองแถวพร้อมกัน',
@@ -352,7 +359,10 @@ test('เปิดอยู่แล้ววงแหวนยังอยู�
 test('คีย์บอร์ดทำได้ทุกอย่างที่ <select> เคยทำให้ฟรี', () => {
   assert.match(source, /e\.key === 'ArrowDown' \|\| e\.key === 'ArrowUp'/);
   // ↑ from the top row is one press to ทุกแผนก, not a hold back through the list.
-  assert.match(source, /% rows\.length\)/);
+  // The modulo moved into `nextRow` on 2026-09-04 with the greyed rows — the
+  // wrap is the same wrap, walked one row at a time so a refused row can be
+  // stepped over rather than landed on.
+  assert.match(source, /% n;/);
   assert.match(source, /e\.key === 'Home' \|\| e\.key === 'End'/);
   assert.match(source, /e\.key === 'Enter' \|\| e\.key === ' '/);
   assert.match(source, /if \(e\.key === 'Tab'\) \{ if \(open\) setOpen\(false\); return; \}/);
@@ -394,8 +404,18 @@ test('หน้าจออ่านออก — role, สถานะเปิ
    * one reason: `aria-labelledby` needs something to point at. The `<select>`s
    * this replaced sat under a `<label>` with no `for`, which says nothing to a
    * screen reader at all — so this is not parity, it is a fix.
+   *
+   * WHERE THAT `<label>` IS DRAWN MOVED ON 2026-09-04 and the fact did not. It
+   * was a bare `<label id={…}>` in this component's own `.field`; the wrapper is
+   * `Field`'s now — the one component in the app that draws a label, a (?) and
+   * the two kinds of sentence under a control — and `labelId` is what carries
+   * the id there. Both halves are pinned: the id this component mints and hands
+   * up, and the `<label>` in `Field` that wears it. A `Field` that quietly
+   * stopped rendering it would leave every dropdown in the app unnamed.
    */
-  assert.match(source, /<label id=\{`\$\{id\}-label`\}>\{label\}<\/label>/);
+  assert.match(source, /labelId=\{`\$\{id\}-label`\}/);
+  assert.match(common, /export function Field\(\{ label, note, tip, children, style, className, labelId \}\)/);
+  assert.match(common, /<label id=\{labelId\}>\{label\}<\/label>/);
   assert.match(source, /role="combobox"/);
   assert.match(source, /aria-haspopup="listbox"/);
   assert.match(source, /aria-expanded=\{open\}/);
@@ -412,15 +432,58 @@ test('หน้าจออ่านออก — role, สถานะเปิ
 test('ดัชนีแถวถูกหนีบไว้ในช่วง — คิวที่โหลดใหม่แล้วสั้นลงต้องไม่ชี้เลยท้ายลิสต์', () => {
   assert.match(source, /const at = Math\.min\(Math\.max\(active, 0\), rows\.length - 1\);/);
   // Opens on the row already chosen, which is where a native select opened too.
-  assert.match(source, /setActive\(chosen < 0 \? 0 : chosen\);/);
+  // `firstRow()` and not `0` since 2026-09-04: with nothing chosen the list
+  // opens on the first row that can actually be taken, which on บทบาท for
+  // ฝ่ายบุคคล is not necessarily the first row drawn.
+  assert.match(source, /setActive\(chosen < 0 \? firstRow\(\) : chosen\);/);
 });
 
 test('ทุกแผนก / ทุกเดือน เป็นแถวแรกเสมอ และเป็นค่าว่าง', () => {
   // It is a command — "stop filtering" — not a department, so it is never
   // filtered out and ↑ from the top reaches it in one press.
   assert.match(source, /const rows = hasAll \? \[\{ value: '', label: allLabel \}, \.\.\.\(options \|\| \[\]\)\]/);
-  assert.match(source, /className=\{r\.value === '' \? 'all' : undefined\}/);
+  // The class is built from a list since 2026-09-04, because a row can now wear
+  // `off` as well — the two are independent and the "all" row is never greyed.
+  assert.match(source, /\[r\.value === '' \? 'all' : '', r\.disabled \? 'off' : ''\]/);
   assert.match(css, /\.pick-menu\.one-menu li\.all \.nm \{/);
+});
+
+/**
+ * A ROW THAT IS ON THE LIST AND IS NOT THIS PERSON'S TO TAKE — 2026-09-04, with
+ * ทะเบียนพนักงาน's บทบาท.
+ *
+ * WHY IT HAD TO EXIST BEFORE THAT SCREEN COULD DROP ITS TAG. บทบาท is drawn
+ * WHOLE for ฝ่ายบุคคล with ผู้ดูแลระบบ greyed rather than dropped, because a
+ * list that silently omits it answers "why can I not make this person an admin"
+ * with nothing at all. `<option disabled>` did that for free; an `<li>` has no
+ * such attribute, so all of it is here by hand — and a row that merely LOOKS
+ * refused while Enter still takes it is worse than no greying at all.
+ *
+ * FOUR WAYS IN, ALL FOUR SHUT: the pointer, Enter/Space, ↑/↓, and the letter
+ * somebody types out of habit. Home and End land on the ends that can be taken
+ * rather than on the ends of the array, which is the same rule stated for the
+ * one place it is easy to forget — ผู้ดูแลระบบ is the LAST row of that list.
+ */
+test('แถวที่ถูกปิดไว้ — เห็นได้ แต่กดไม่ได้ทั้งเมาส์และคีย์บอร์ด', () => {
+  // The pointer: `pick` refuses before it calls back, so a click on a greyed
+  // row changes nothing at all.
+  assert.match(source, /if \(!row \|\| row\.disabled\) return;/);
+  // ↑/↓: `nextRow` walks until it lands on a row that can be taken, and the
+  // counter is what keeps a wholly-greyed list from looping for ever.
+  assert.match(source, /function nextRow\(from, step\) \{/);
+  assert.match(source, /if \(!rows\[i\]\?\.disabled\) return i;/);
+  assert.match(source, /for \(let tries = 0; tries < n; tries \+= 1\)/);
+  // Home and End reach the ends that can be taken.
+  assert.match(source, /setActive\(e\.key === 'Home' \? firstRow\(\) : lastRow\(\)\);/);
+  // The type-ahead skips them too, or ผ would jump to ผู้ดูแลระบบ and stop.
+  assert.match(source, /!r\.disabled && String\(r\.label \?\? ''\)\.toLowerCase\(\)\.startsWith\(buf\)/);
+  // Said out loud to a screen reader. NOT `disabled`, which is not an attribute
+  // an `<li>` has — React would drop it and leave a row that looks refused and
+  // is not.
+  assert.match(source, /aria-disabled=\{r\.disabled \? true : undefined\}/);
+  // And drawn as refused. `not-allowed` plus the fade is what the tag gave.
+  assert.match(css, /\.pick-menu\.one-menu li\.off \{ cursor: not-allowed; \}/);
+  assert.match(css, /\.pick-menu\.one-menu li\.off \.nm,\s*\n\.pick-menu\.one-menu li\.off \.ct \{/);
 });
 
 /**

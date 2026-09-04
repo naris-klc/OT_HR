@@ -536,9 +536,21 @@ test('every chip says which one is pressed, in markup and not only in colour', (
   }
 });
 
-// ── 3 · the tab strip on a phone ─────────────────────────────────────────────
+// ── 3 · how the eight sections are chosen, on each device ────────────────────
+//
+// IT WAS A SWIPEABLE STRIP ON A PHONE UNTIL 2026-09-04 and this section held
+// it: `.tabs-view` wrapping an `overflow-x` scroller, bled out to the card's
+// edges, with a per-edge fade lit from `useScrollEdge`. Every part of that
+// answered "there are more sections this way" and none of them could answer
+// "which ones" — finding a section meant flicking a line past labels that leave
+// the screen as they pass, and it spent a row of a phone's height doing it.
+//
+// A dropdown answers both at once, so the strip is the desktop's control and
+// `.section-pick` is the phone's. What this section holds now is that there is
+// still ONE list behind the two, and that the hook the fade used is still the
+// app's single reading of the question it answers.
 
-test('one reading of "is there more this way", shared by the sheet and the tabs', () => {
+test('one reading of "is there more this way", and the settings strip is no longer one of its callers', () => {
   // A second copy would be two definitions drifting apart over the sub-pixel
   // rule below — the clause that is easy to leave out and impossible to notice
   // missing on the machine it was written on.
@@ -546,7 +558,7 @@ test('one reading of "is there more this way", shared by the sheet and the tabs'
   // It read `useScrollEdge(watch)` until the opened list on ภาพรวม of บันทึกระบบ
   // asked the same question downwards. The axis is a PARAMETER and not a second
   // hook — the same rule one axis further along — and it defaults to 'x', so
-  // the two horizontal callers still pass nothing.
+  // the remaining horizontal caller still passes nothing.
   assert.match(common, /export function useScrollEdge\(watch, axis = 'x'\)/);
   assert.ok(!/function useScrollEdgeY|useVerticalScrollEdge/.test(common),
     'a vertical copy of the hook exists — that is the drift this test is about');
@@ -554,50 +566,56 @@ test('one reading of "is there more this way", shared by the sheet and the tabs'
   assert.match(common, /export function SheetScroll\(/);
   assert.match(common, /const \[ref, edge\] = useScrollEdge\(children\)/);
 
-  const settings = sourceOf(SETTINGS);
-  assert.match(settings, /const \[tabsRef, tabsEdge\] = useScrollEdge\(null\)/);
-  assert.match(settings, /<div className="tabs-view" data-edge=\{tabsEdge\}>/);
-  assert.match(settings, /<div className="row section-tabs" ref=\{tabsRef\}>/);
-});
-
-test('the fade hangs on the wrapper, never inside the scroller', () => {
-  // Anything painted inside a scroll container is content and scrolls away with
-  // it — a fade that slides off the edge it marks says the tabs have run out at
-  // the moment they have not.
-  const css = styles();
-  assert.match(css, /\.tabs-view \{ position: relative; \}/);
-  assert.match(css, /\.tabs-view::before, \.tabs-view::after \{/);
-  assert.match(css, /\.tabs-view\[data-edge="start"\]::after,\s*\n\s*\.tabs-view\[data-edge="middle"\]::after \{ opacity: 1; \}/);
-  assert.match(css, /\.tabs-view\[data-edge="middle"\]::before,\s*\n\s*\.tabs-view\[data-edge="end"\]::before \{ opacity: 1; \}/);
-});
-
-test('the bleed moved to the wrapper, so the fade sits on the card edge', () => {
-  // While the wrapper stayed inside the card's padding the two edges were 15px
-  // apart — a gradient floating in the middle of the card with a tab sliding
-  // out from under it.
-  const css = styles();
-  assert.match(css, /\.tabs-view \{ margin: -15px; \}/);
-  const strip = css.slice(css.indexOf('.section-tabs {\n    flex-wrap: nowrap;'));
-  const rule = strip.slice(0, strip.indexOf('}'));
-  assert.match(rule, /overflow-x: auto;/);
-  assert.match(rule, /scroll-snap-type: x proximity;/);
-  // Left matches the card's own inset so the first tab lines up with the
-  // heading; right is larger because it is not an inset but the end of the
-  // scroll — what the last tab comes to rest against instead of the edge.
-  assert.match(rule, /padding: 15px 20px 15px 15px;/);
-  assert.ok(!/margin: -15px/.test(rule), 'the scroller kept the bleed as well as the wrapper');
-
-  // The clip that keeps a scrolled tab inside the card's rounded corner has to
-  // reach through the new wrapper.
-  assert.match(css, /\.card:has\(\.section-tabs\) \{ overflow: hidden; \}/);
-});
-
-test('the fade fades to the card, and the print one still fades to a shadow', () => {
-  // Same state contract, deliberately different paint: these tabs sit on a
-  // white panel and the next button should dissolve into it. A shadow there
-  // reads as a dropped edge.
-  const css = styles();
-  assert.match(css, /\.tabs-view::after \{\s*\n\s*right: 0;\s*\n\s*background: linear-gradient\(to left, var\(--card\), transparent\);/);
-
+  // The hook lost a caller, not its job. The printed sheet still asks it.
   assert.match(printCss(), /\.sheet-view\[data-edge="start"\]::after/, 'the printed sheet kept its own fade');
+
+  const settings = sourceOf(SETTINGS);
+  assert.ok(!settings.includes('useScrollEdge'), 'the settings strip is scrolling again');
+  assert.ok(!settings.includes('tabs-view'), 'the fade wrapper is back');
+  const css = styles();
+  assert.ok(!/^\.tabs-view/m.test(css), 'the fade wrapper still has rules of its own');
+});
+
+test('two controls, one list — the strip above 860px and the dropdown below it', () => {
+  const settings = sourceOf(SETTINGS);
+  // Both are built by mapping SECTIONS. Neither is a second list of sections.
+  assert.match(settings, /<div className="row section-tabs">\s*\n\s*\{SECTIONS\.map\(\(s\) => \(/);
+  assert.match(settings, /<div className="section-pick">/);
+  assert.match(settings, /options=\{SECTIONS\.map\(\(s\) => \(\{/);
+  // `PickOne`, which is the panel this app opens for every other choice of one
+  // thing out of a set — not a bare `<select>` and not a panel of its own.
+  const pick = settings.slice(settings.indexOf('<div className="section-pick">'));
+  assert.match(pick.slice(0, pick.indexOf('</div>')), /<PickOne/);
+  assert.match(settings, /value=\{section\}\s*\n\s*onChange=\{setSection\}/);
+
+  // Exactly one of the two is drawn at any width.
+  const css = styles();
+  assert.match(css, /\.section-pick \{ display: none; align-items: flex-end; gap: 10px; \}/);
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(phone, /\.section-tabs \{ display: none; \}/);
+  assert.match(phone, /\.section-pick \{ display: flex; \}/);
+  // And the scroller's parts went with it — a clip on a card that no longer
+  // overflows is a rule waiting to cut something else off.
+  assert.ok(!/\.card:has\(\.section-tabs\) \{ overflow: hidden; \}/.test(css),
+    'the scroller\'s clip is still on the card');
+  assert.ok(!/scroll-snap-type: x proximity;[\s\S]{0,200}section-tabs/.test(phone));
+});
+
+test('the gap count stands beside the dropdown, not only inside the list', () => {
+  // A warning that only appears once the list is opened is a warning somebody
+  // has to go looking for. It counts แผนกที่ยังไม่มีหัวหน้างาน, which is a fact
+  // about the roster and not about the section on screen, so it is drawn
+  // whichever section is open.
+  const settings = sourceOf(SETTINGS);
+  const pick = settings.slice(settings.indexOf('<div className="section-pick">'));
+  assert.match(pick, /\{gapCount > 0 && \(\s*\n\s*<span className="tab-badge"/);
+  assert.match(pick, /aria-label=\{`\$\{gapCount\} แผนกที่ยังไม่มีหัวหน้างาน`\}/);
+  // And the row inside the list carries the figure too — `PickOne` draws a
+  // `count` against the right edge.
+  assert.match(settings, /count: s\.key === 'departments' && gapCount > 0 \? gapCount : undefined,/);
+  // The scoped rule is written BELOW the badge's own definition, or the slice
+  // the geometry test takes would measure this one instead.
+  const css = styles();
+  assert.ok(css.indexOf('.tab-badge {') < css.indexOf('.section-pick .tab-badge'),
+    'a scoped .tab-badge rule was written above the definition');
 });

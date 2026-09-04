@@ -1,15 +1,16 @@
 import OtEntry from '@/src/models/OtEntry.js';
-import { SIGNER_ROLES, isSigner } from '@/lib/roles.js';
+import { SIGNER_ROLES } from '@/lib/roles.js';
 import Setting from '@/src/models/Setting.js';
 import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS, summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
-import { latestPerSession, reportStatuses } from '@/lib/reports.js';
+import { latestPerSession, reportStatuses, teamScoped } from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { companyOf } from '@/src/config/companies.js';
 import { approvalDepartments, signsForCompany } from '@/lib/entries.js';
+import { compareCodes } from '@/src/lib/employeeCode.js';
 
 /** One row per employee per month — the shape HR actually reviews. */
 export const GET = route(async (req) => {
@@ -26,7 +27,13 @@ export const GET = route(async (req) => {
   // Every department this หัวหน้า signs for, not only their own — the same list
   // `isDepartmentManager` decides each row from. A report narrower than the
   // approve rule hides hours its reader is responsible for.
-  if (isSigner(user.role)) filter.department = { $in: approvalDepartments(user) };
+  //
+  // The same `teamScoped` the report route asks, `?scope=` and all: this file
+  // is the export button under that table, and a CSV that did not answer the
+  // scope its own screen was showing would be a discrepancy discovered in a
+  // spreadsheet — either way round, and only by whoever is reconciling it.
+  const teamOnly = teamScoped(user.role, q.scope);
+  if (teamOnly) filter.department = { $in: approvalDepartments(user) };
   else if (q.department) filter.department = q.department;
 
   const found = await OtEntry.find(filter)
@@ -44,9 +51,10 @@ export const GET = route(async (req) => {
    * way: nothing on an entry records a company, and a row whose `company` was
    * never filled in is still on a payroll that only the code prefix knows.
    *
-   * ฝ่ายบุคคล and Admin are untouched — they read the whole month either way.
+   * ฝ่ายบุคคล, ผู้ดูแลระบบ and การเงิน are untouched — all three read the whole
+   * month either way.
    */
-  const all = isSigner(user.role) && user.approvesCompany
+  const all = teamOnly && user.approvesCompany
     ? found.filter((e) => signsForCompany(user, companyOf(e.employee)))
     : found;
 
@@ -93,7 +101,9 @@ export const GET = route(async (req) => {
   ];
 
   const rows = [...grouped.values()]
-    .sort((a, b) => String(a.employee?.code).localeCompare(String(b.employee?.code)))
+    // The order of the screen this file is exported from — `compareCodes`, so
+    // the digits sort as numbers. See src/lib/employeeCode.js.
+    .sort((a, b) => compareCodes(a.employee?.code, b.employee?.code))
     .map((g) => {
       const s = summariseEntries(g.list);
       const hr = hrSummary(s, policy);

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import OtEntry from '@/src/models/OtEntry.js';
 import Employee from '@/src/models/Employee.js';
-import { SIGNER_ROLES, filesStraightToHr } from '@/lib/roles.js';
+import { SIGNER_ROLES, filesStraightToHr, readsCompanyReports } from '@/lib/roles.js';
 import { route, body, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import {
@@ -12,13 +12,14 @@ import {
   capFor, takeCapped, submissionWindowRefusal, entryCompany, birthdayTickRefusal,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
-import { resolveScope } from '@/lib/delegationQuery.js';
+import { resolveScope, visibleEmployeeClause } from '@/lib/delegationQuery.js';
 import { nobodyCanSign } from '@/lib/delegation.js';
 import { proxyPermission, initialStatus } from '@/lib/proxyFiling.js';
 import { refuseDayConflict } from '@/lib/overlapQuery.js';
 import { blockedMessage } from '@/lib/caps.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
 import { normaliseDescription } from '@/src/config/policy.js';
+import { scanChecksFor } from '@/lib/scanMatchQuery.js';
 
 // ── list ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ export const GET = route(async (req) => {
   const user = await requireAuth(req);
   const {
     status, period, employee, department, from, to, limit, replaced, scope, usage, withdrawal,
+    scan,
   } = query(req);
 
   /**
@@ -76,8 +78,33 @@ export const GET = route(async (req) => {
    * narrowing it — my own requests are mine whether or not the แผนก they are
    * in is one I sign for.
    */
+  /**
+   * `scope=report` — the rows BEHIND a figure on ตรวจสอบประจำเดือน.
+   *
+   * Asked for by the two sub-screens that open off that table — one employee's
+   * requests for one month, and their ประวัติการแก้ไข — and it exists for
+   * การเงิน, who read every แผนก's month there and sign for exactly one.
+   * Without it their own `scopeFor` narrowing follows them into the drill-in: a
+   * total they can see on the table opens onto an empty list, which reads as
+   * the row having no entries rather than as a scope refusing them.
+   *
+   * NARROWER THAN IT LOOKS, and deliberately so:
+   *
+   * · Only the บทบาท that already read the whole company get anything from it —
+   *   `readsCompanyReports`, the same predicate the monthly report is scoped by,
+   *   so this can never hand out reach that screen did not already grant. A
+   *   หัวหน้างาน passing it gets their own team, exactly as before.
+   * · It is not the queue. `scopeFor` is untouched, so รายการรออนุมัติ still
+   *   lists only what its reader may sign — a การเงิน widened THERE would be
+   *   offered every pending request in the company with two buttons that answer
+   *   403, which is the failure lib/entries.js's own header warns about.
+   */
   const q = scope === 'mine'
     ? { employee: user._id }
+    // The whole company, and only for the บทบาท that already read it. Anybody
+    // else falls through to their ordinary scope below, unchanged.
+    : scope === 'report' && readsCompanyReports(user.role)
+    ? {}
     : scope === 'delegated'
     // `{ department: null }` and not `{}` when nothing is covered: an empty
     // filter on this screen would answer with the whole company.
@@ -104,6 +131,24 @@ export const GET = route(async (req) => {
    */
   if (withdrawal === 'open') q['withdrawal.state'] = 'requested';
   if (period) q.period = period;
+  /**
+   * WHOSE REQUESTS THIS READER MAY SEE AT ALL — the chain of command, applied
+   * to every path above except `mine` (already one person) and `report` (a
+   * whole-company reading that has its own บทบาท gate).
+   *
+   * HR's rule on 2026-09-03: a บทบาท reads the requests of everybody BELOW them
+   * and of nobody level with or above them. Until then this list answered with
+   * the whole แผนก, so four หัวหน้างาน in แผนกผลิต2 read each other's requests
+   * and a หัวหน้างาน read their own ผู้จัดการแผนก's.
+   *
+   * As `$and` and not `q.employee`: the `?employee=` filter below writes that
+   * key too, and the narrower of the two has to win rather than the later one.
+   */
+  if (scope !== 'mine' && !(scope === 'report' && readsCompanyReports(user.role))) {
+    const visible = await visibleEmployeeClause(user);
+    if (visible) q.$and = [...(q.$and || []), visible];
+  }
+
   if (employee && user.role !== 'employee') q.employee = employee;
   if (department && ['hr', 'admin'].includes(user.role)) q.department = department;
   if (from || to) {
@@ -188,6 +233,34 @@ export const GET = route(async (req) => {
   }
 
   /**
+   * `scan=check` — does each row's time agree with the fingerprint scanner?
+   *
+   * Opt-in for the same reason `usage=cap` is: it costs two queries, and only
+   * the screens where somebody is RECONCILING a month against evidence want it.
+   * The employee's own history does not — a warning on a request they filed
+   * themselves, about a file ฝ่ายบุคคล import, is a question they cannot answer.
+   *
+   * ── IT CHANGES NOTHING. THAT IS THE FEATURE. ───────────────────────────────
+   *
+   * No hour, bucket, ceiling or status moves; `scanCheck` rides beside the row
+   * and every figure on it is the same figure it was before this flag existed.
+   * The rule is written into src/models/ScanPunch.js and it is the whole reason
+   * the punch store was allowed to be built before anybody decided how to read
+   * it: a machine may not restate a sheet two people signed. It may raise a
+   * question about one, and this is that question.
+   *
+   * `scanChecked` beside the rows rather than inferred from them, because "no
+   * row has a warning" and "no file was ever imported for this month" look
+   * identical from the client and mean opposite things.
+   */
+  let scanChecked = false;
+  if (scan === 'check' && entries.length) {
+    const { checks, hasScans } = await scanChecksFor(entries);
+    scanChecked = hasScans;
+    for (const entry of entries) entry.scanCheck = checks.get(String(entry._id)) || null;
+  }
+
+  /**
    * `total` is DOCUMENTS MATCHED, not rows drawn, and only when the list was
    * cut short.
    *
@@ -208,6 +281,8 @@ export const GET = route(async (req) => {
     replacedCount: hidden.length,
     truncated,
     total: truncated ? await OtEntry.countDocuments(q) : null,
+    /** Whether these rows had any scan evidence to be compared against at all. */
+    scanChecked,
   });
 });
 

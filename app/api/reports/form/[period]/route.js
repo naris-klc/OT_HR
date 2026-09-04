@@ -1,5 +1,5 @@
 import OtEntry, { STATUS_LABEL_TH } from '@/src/models/OtEntry.js';
-import { isSigner } from '@/lib/roles.js';
+import { readsOwnTeamOnly } from '@/lib/roles.js';
 import Employee from '@/src/models/Employee.js';
 import Setting from '@/src/models/Setting.js';
 import { route, query, json, fail } from '@/lib/http.js';
@@ -45,8 +45,14 @@ export const GET = route(async (req, { params }) => {
    * หัวหน้า could be ticked into another แผนก, at which point it became a
    * reviewer who may approve somebody's request and may not print the sheet
    * that request goes onto. One function, so the two cannot come apart again.
+   *
+   * `readsOwnTeamOnly` AND NOT `isSigner`, since 2026-09-03: การเงิน reads
+   * every แผนก's month and prints each row's F-HR-027 from it — the per-row
+   * button and พิมพ์ใบขออนุมัติ OT ทุกคน both come through here, so leaving this
+   * on the บทบาท alone would give them a table whose two buttons answer 403 on
+   * every row but their own แผนก's.
    */
-  if (isSigner(user.role)
+  if (readsOwnTeamOnly(user.role)
     && !isDepartmentManager(user, employee.department, companyOf(employee))) {
     return fail('ดูได้เฉพาะพนักงานในแผนกของตน', 403);
   }

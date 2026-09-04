@@ -2,14 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  api, hours, thaiDateShort, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES,
+  api, hours, thaiDate, withHours, currentPeriod, periodLabel, BUCKETS, COMPANIES,
   accountingLabel,
 } from '@/lib/api.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 // Pure — the same function the CSV phrases its row with, so the screen and the
 // file cannot come to describe one nought two different ways.
 import { zeroRowReason } from '@/lib/otMode.js';
-import { Alert, Empty, RateHead, UnaccountedHours } from './common.jsx';
+import { Alert, Empty, PickOne, RateHead, UnaccountedHours } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { useBackHandler } from './nav.jsx';
@@ -99,25 +99,47 @@ export default function AccountingView() {
           </div>
           {/* บริษัท and ประจำเดือน are the two things that decide what this
               screen shows, so they sit together. The dropdown carries each
-              company's month total in its own option — that is what the
+              company's month total in its own row — that is what the
               segmented buttons it replaces were for, and it is worth keeping:
               it lets HR see which payroll they are about to close without
               selecting it first. */}
-          <div className="field" style={{ maxWidth: 260, flex: 'none' }}>
-            <label>บริษัท</label>
-            <select value={company} onChange={(e) => setCompany(e.target.value)}>
-              <option value="all">{withHours('ทุกบริษัท', data && data.grandTotal.otHours)}</option>
-              {COMPANIES.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {/* `?? 0` only once the month has arrived: a company with
-                      nothing approved reads 0.0 ชม., not as still loading. */}
-                  {withHours(accountingLabel(c), data && (data.companies.find((x) => x.key === c.key)?.totals.otHours ?? 0))}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* `PickOne` AND NOT A `<select>`, SINCE 2026-09-04 — reported from a
+              phone, where this was the box on screen when the list that dropped
+              out of it was the operating system's: a white sheet with the
+              system's blue bar over the rows, beside a ประจำเดือน one column
+              along that is `PickMonth` and is the app's own. The box was always
+              this stylesheet's; the OPTIONS never were, are not in the document,
+              and no selector in `app/styles.css` can enter them. See `PickOne`
+              in components/common.jsx for what a `<select>` gave for free and
+              what had to be put back by hand to drop the tag.
+
+              THE HOURS STAY IN THE ROW'S LABEL rather than moving to the `.ct`
+              column the queue's counts use, and that is deliberate: `.ct` is
+              drawn in the open LIST only, and the whole point of this figure is
+              that HR reads the month's total off the CLOSED box before deciding
+              which payroll to open.
+
+              NO `allLabel`. ทุกบริษัท is a real value on this screen — the
+              string `'all'`, which the partition below reads — not the empty
+              string that means "stop filtering". A row carrying `''` would be a
+              บริษัท this screen has no reading for. */}
+          <PickOne
+            label="บริษัท"
+            style={{ maxWidth: 260, flex: 'none' }}
+            value={company}
+            onChange={setCompany}
+            options={[
+              { value: 'all', label: withHours('ทุกบริษัท', data && data.grandTotal.otHours) },
+              /* `?? 0` only once the month has arrived: a company with
+                 nothing approved reads 0.0 ชม., not as still loading. */
+              ...COMPANIES.map((c) => ({
+                value: c.key,
+                label: withHours(accountingLabel(c), data && (data.companies.find((x) => x.key === c.key)?.totals.otHours ?? 0)),
+              })),
+            ]}
+          />
           <div className="field" style={{ maxWidth: 170, flex: 'none' }}>
-            <label>ประจำเดือน</label>
+            <div className="field-head"><label>ประจำเดือน</label></div>
             <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
         </div>
@@ -442,8 +464,8 @@ const cell = (n) => (n ? hours(n) : '');
 
 const OVER_CEILING_MARK = 'รายการเกินเพดาน';
 
-/** One entry's line — "5 ส.ค. · 4.50 ชม." — shared by the tooltip and the note. */
-const noteLine = (n) => `${n.workDate ? thaiDateShort(n.workDate) : '—'} · ${hours(n.hours)} ชม.`;
+/** One entry's line — "05/08/2569 · 4.50 ชม." — shared by the tooltip and the note. */
+const noteLine = (n) => `${n.workDate ? thaiDate(n.workDate) : '—'} · ${hours(n.hours)} ชม.`;
 
 /**
  * What a hover says, as one string, because `title` is one string.

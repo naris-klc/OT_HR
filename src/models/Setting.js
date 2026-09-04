@@ -30,6 +30,21 @@ const settingSchema = new mongoose.Schema(
      * more than one flag, and one of them covers no flag at all.
      */
     policyConfirmations: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+    /**
+     * `csvDateOrder` LIVED HERE FOR ONE DAY — 2026-09-04 — and is gone.
+     *
+     * It held the company's standing answer to "which way round is this roster
+     * CSV's `05/03/1998`?", which the import route read and passed to
+     * lib/birthDate.js as a fallback. The question was withdrawn the same day:
+     * the importer reads วัน/เดือน/ปี, every row, unconditionally, so a stored
+     * preference could only be a control that changed nothing.
+     *
+     * NOT MIGRATED AWAY, and that is deliberate. Mongoose ignores a field the
+     * schema no longer declares, so the value sitting on the singleton is inert
+     * — and a `$unset` over the one document in this collection would be a
+     * write against prod to tidy a key nobody reads. If it ever needs to go,
+     * it goes with the next real migration.
+     */
     companyName: { type: String, default: 'บริษัท ไพรมัส อินสตรูเมนท์ จำกัด' },
     companyNameEn: { type: String, default: 'Primus Instrument Co., Ltd.' },
     formCode: { type: String, default: 'F-HR-027 Rev.4' },

@@ -93,31 +93,19 @@ export function PolicyVersionChange({ before, after }) {
   );
 }
 
-/**
- * The rule sets behind one row of a summary — which is a set, not a value.
+/*
+ * `PolicyVersionSummaryCell` STOOD HERE — the per-person cell behind
+ * ตรวจสอบรายเดือน's กฎที่ใช้ column, printing "เวอร์ชัน 1 + เวอร์ชัน 10 · ปนกัน"
+ * against one employee's month. Both went on 2026-09-04: HR does not read a
+ * version number while checking a month, and the one thing the cell answered
+ * that the month banner does not — WHOSE rows are mixed — was never the
+ * question being asked of that screen.
  *
- * `spread` is what versionSpread() returned for that row's entries. A row using
- * one version prints it plainly; a row spanning two prints both in amber,
- * because that person's own monthly total is then a sum of hours that were not
- * all worked out the same way.
+ * The rest of this module is untouched. `policyVersionNotice()` still says the
+ * month is not uniform on both screens that draw it, ตรวจสอบใบของพนักงาน still
+ * prints a version per entry, and ประวัติการแก้ไข still prints the pair either
+ * side of a correction.
  */
-export function PolicyVersionSummaryCell({ spread }) {
-  if (!spread) return <span style={{ color: 'var(--muted)' }}>—</span>;
-
-  const names = spread.used.map((u) => (u.seq != null ? `เวอร์ชัน ${u.seq}` : 'ไม่ทราบเวอร์ชัน'));
-  if (spread.unversioned) names.push('ไม่ระบุ');
-
-  if (!names.length) return <span style={{ color: 'var(--muted)' }}>—</span>;
-
-  return (
-    <span style={{ color: spread.mixed ? 'var(--amber)' : 'inherit' }}>
-      {names.join(' + ')}
-      {spread.mixed && (
-        <div style={{ fontSize: 11.5 }}>ปนกัน</div>
-      )}
-    </span>
-  );
-}
 
 /**
  * The live rules are not on record — said on the screens people actually open.

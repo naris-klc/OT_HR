@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, thaiDate, dayName, periodLabel } from '@/lib/api.js';
+import { api, thaiDate, thaiStamp, dayName, periodLabel } from '@/lib/api.js';
 import { Alert, Empty, Changes, StatusChip, editsOf } from './common.jsx';
 import { PolicyVersionChange } from './PolicyVersion.jsx';
 
@@ -37,8 +37,12 @@ export default function HrEdits({ employee, period, status, onClose }) {
   async function load() {
     try {
       setEntries(null);
+      // `scope=report`, for the reason components/HrEntries.jsx gives: this
+      // list hangs off ตรวจสอบประจำเดือน and has to reach as far as the table
+      // that opened it. It widens nothing for anybody that screen did not
+      // already show — see app/api/entries/route.js.
       const res = await api.get(
-        `/entries?employee=${employee._id}&period=${period}&status=${status}`,
+        `/entries?employee=${employee._id}&period=${period}&status=${status}&scope=report`,
       );
       setEntries(res.entries);
       setError('');
@@ -110,7 +114,7 @@ export default function HrEdits({ employee, period, status, onClose }) {
                       <div style={{ marginTop: 4 }}><StatusChip status={h.entry.status} /></div>
                     </td>
                     <td data-label="แก้ไขเมื่อ" style={{ whiteSpace: 'nowrap' }}>
-                      {h.at ? new Date(h.at).toLocaleString('th-TH') : '—'}
+                      {thaiStamp(h.at) || '—'}
                     </td>
                     <td data-label="ผู้แก้ไข">
                       {h.byName || '—'}

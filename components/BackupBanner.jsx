@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api } from '@/lib/api.js';
+import { api, thaiStamp } from '@/lib/api.js';
 import { backupNeedsAttention } from '@/lib/backupStatus.js';
 import { Alert } from './common.jsx';
 
@@ -108,13 +108,13 @@ export function BackupBanner({ user }) {
           )}
           {state === 'stale' && newest && (
             <>
-              ชุดล่าสุดเมื่อ {new Date(newest.takenAt).toLocaleString('th-TH')}
+              ชุดล่าสุดเมื่อ {thaiStamp(newest.takenAt)}
               {' '}({Math.floor(ageHours)} ชม.ที่แล้ว) — งานสำรองอัตโนมัติน่าจะล้มเหลว · {where}
             </>
           )}
           {!broken && newest && (
             <>
-              ชุดล่าสุดเมื่อ {new Date(newest.takenAt).toLocaleString('th-TH')}
+              ชุดล่าสุดเมื่อ {thaiStamp(newest.takenAt)}
               {' '}({newest.totalDocuments} รายการ) สำรองสำเร็จ · {where}
             </>
           )}

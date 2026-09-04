@@ -7,6 +7,7 @@ import { zeroRowReason } from '@/lib/otMode.js';
 import { toCsv } from '@/src/lib/csv.js';
 import { PERIOD_RE, thaiMonth } from '@/lib/reports.js';
 import { COMPANY_KEYS } from '@/src/config/companies.js';
+import { COMPANY_REPORT_ROLES } from '@/lib/roles.js';
 
 /**
  * The file HR sends to accounting.
@@ -25,9 +26,13 @@ import { COMPANY_KEYS } from '@/src/config/companies.js';
  *
  * UTF-8 BOM via toCsv (§10), without which Excel on Thai Windows renders every
  * ชื่อ-สกุล as mojibake.
+ *
+ * The same three บทบาท the screen itself is open to — this is its export
+ * button, and a reader who can see every figure on the page and not take the
+ * file away has been given half a screen.
  */
 export const GET = route(async (req) => {
-  requireRole(await requireAuth(req), 'hr', 'admin');
+  requireRole(await requireAuth(req), ...COMPANY_REPORT_ROLES);
   const q = query(req);
 
   const period = String(q.period || '');

@@ -2,12 +2,15 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api, currentPeriod, periodLabel } from '@/lib/api.js';
-import { PASSWORD_MIN_LENGTH } from '@/lib/employees.js';
 import { Alert, PasswordInput, TipButton } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { ToastHost } from './Toast.jsx';
 import { BackProvider } from './nav.jsx';
+// The panel the three pickers already open — portaled out of whatever would
+// clip it, dismissed by Escape and by a press outside, and a bottom sheet below
+// 860px. The phone bar's slot menus ARE that panel; see `BarSlot`.
+import { Popover, PopFoot, useSheet } from './popover.jsx';
 import { PolicyProvider } from './policyContext.jsx';
 import EmployeeView from './EmployeeView.jsx';
 import ApprovalQueue from './ApprovalQueue.jsx';
@@ -18,9 +21,16 @@ import AccountingView from './AccountingView.jsx';
 import DepartmentView from './DepartmentView.jsx';
 import AdminView from './AdminView.jsx';
 import LogSystem from './LogSystem.jsx';
-import ProfileView, { ChangePassword } from './ProfileView.jsx';
+import ProfileView from './ProfileView.jsx';
 import PrintForm from './PrintForm.jsx';
-import { isSigner } from '@/lib/roles.js';
+// `ROLES` and `readsOwnTeamOnly` were imported here for `PAGE_BY_ROLE`, which
+// went on 2026-09-03 — see the note where it stood. `readsOwnTeamOnly` is still
+// the rule, on the server, where the scoping it decides actually happens.
+// `seesEveryRole` is read for ONE thing here and it is not a permission: it
+// names ฝ่ายบุคคล and ผู้ดูแลระบบ, the two บทบาท whose phone bar is already
+// full of other people's work, so their own พิมพ์ใบขออนุมัติ OT keeps its place
+// in เพิ่มเติม rather than taking a fifth column. See `BAR_SLOTS`.
+import { isSigner, roleLabel, seesEveryRole } from '@/lib/roles.js';
 
 /**
  * The company mark, in the three places it appears.
@@ -75,92 +85,82 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function signOut() {
-    await api.post('/auth/logout').catch(() => {});
-    setSession(null);
-  }
-
   if (loading) return <div className="empty">กำลังโหลด…</div>;
   if (!session) return <Login onLogin={setSession} />;
-  // An account whose password ฝ่ายบุคคล set gets exactly one screen until the
-  // person holding it has replaced that password. Placed here rather than
-  // inside the shell on purpose: there is no tab to wander off to, no queue
-  // loading behind it, and no version of this that can be dismissed.
-  if (session.user.mustChangePassword) {
-    return (
-      <FirstLogin
-        user={session.user}
-        onDone={async () => setSession(await api.get('/auth/me'))}
-        onLogout={signOut}
-      />
-    );
-  }
+  /**
+   * THERE IS NO SCREEN BETWEEN SIGNING IN AND THE APP. Signing in lands on the
+   * shell, for everybody, including an account still carrying the password
+   * ฝ่ายบุคคล issued it.
+   *
+   * `FirstLogin` STOOD HERE UNTIL 2026-09-04 — ตั้งรหัสผ่านของคุณ, the only
+   * screen an account with `mustChangePassword` could reach, with ออกจากระบบ
+   * the only way out. It was asked for twice that day and withdrawn the same
+   * day: first for a ข้ามไปก่อน button beside ออกจากระบบ, then — once that was
+   * built and walked — for the page to go altogether ("ไม่ต้องเข้ามาหน้านี้แล้ว
+   * ไม่เอาหน้านี้แล้ว"). A page whose every visitor is looking for the way past
+   * it is a page that is only costing them a click.
+   *
+   * `mustChangePassword` IS STILL SET, STILL READ, AND STILL MEANS WHAT IT
+   * MEANT. What changed is who it talks to and how loudly: it draws
+   * `PasswordReminder` on the landing tab and a notice over the form on
+   * ข้อมูลส่วนตัว, and it is cleared by exactly one thing — somebody typing a
+   * new password. Nothing here writes to it, so nothing here can quietly turn
+   * "this password is on every OT form in the building" into a settled matter.
+   */
   return (
     <ToastHost>
       {/* Outside Shell, so every screen and every form opened over one reads
           the same copy — see components/policyContext.jsx for why this is not
           a prop. `session.policy` is what /auth/me sent. */}
       <PolicyProvider policy={session.policy}>
-        <Shell session={session} onLogout={() => setSession(null)} />
+        {/* `onRefresh` re-reads the session in place, without a reload and
+            without signing anybody out. One caller: เปลี่ยนรหัสผ่าน on
+            ข้อมูลส่วนตัว, which is what clears `mustChangePassword` — and the
+            reminder on the landing tab is drawn from that same field, so
+            without this it would still be there after the thing it asks for
+            had been done. */}
+        <Shell
+          session={session}
+          onRefresh={async () => setSession(await api.get('/auth/me'))}
+          onLogout={() => setSession(null)}
+        />
       </PolicyProvider>
     </ToastHost>
   );
 }
 
-// ── first login ─────────────────────────────────────────────────────────────
+// ── the account still using the password ฝ่ายบุคคล issued ───────────────────
 
 /**
- * ตั้งรหัสผ่านของคุณเอง — the gate between an HR-issued password and the rest
- * of the system.
+ * คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ — the whole of what is left of the
+ * first-login screen, and the only thing in the app that says this.
  *
- * The initial password is the employee's own รหัสพนักงาน, which is printed on
- * every form in the building, so anybody who has seen a roster can log in as
- * anybody who never changed it. The gate is what makes "แล้วค่อยให้พนักงาน
- * เปลี่ยนรหัสผ่านทีหลัง" a step that actually happens rather than one everyone
- * means to get around to.
+ * WITHOUT IT, NOTHING WOULD. The screen that was deleted on 2026-09-04 was the
+ * one place an employee was told that the password they are using is their
+ * รหัสพนักงาน — a value printed on every ใบ OT in the building — and with the
+ * screen gone the app would look, on every tab, exactly like an account whose
+ * password only its owner knows. A notice that follows somebody is a smaller
+ * thing than a page that stops them, which is the point; a notice that is not
+ * there at all is a different decision, and it was not the one asked for.
  *
- * That sentence was written for the scheme this system had before 2026-08, was
- * left standing while the default was a random `generateTempPassword()` value,
- * and became true again on 2026-09-02 when HR asked for the employee code back
- * (see lib/employees.js). It is the whole justification for this gate existing:
- * remove the gate and the roster becomes a list of working logins.
+ * ON THE LANDING TAB, once — the same trade the backup strip and the holiday
+ * announcement beside it make. A standing condition repeated on every screen
+ * becomes furniture.
  *
- * ออกจากระบบ is the only other way out, and it leaves the flag set — coming
- * back lands here again.
+ * It is not dismissible. `onClose` on an Alert is for a confirmation, and this
+ * is a condition — it goes away when the password changes, which is what the
+ * button is for.
  */
-function FirstLogin({ user, onDone, onLogout }) {
+function PasswordReminder({ onOpenProfile }) {
   return (
-    <div className="page">
-      <div className="stack">
-        <div className="card">
-          <h2>ตั้งรหัสผ่านของคุณ</h2>
-          <div className="hint" style={{ marginBottom: 0 }}>
-            สวัสดี {user.name} · รหัสผ่านที่ใช้อยู่ตอนนี้เป็นรหัสที่ฝ่ายบุคคลตั้งให้
-            {' '}จึงมีคนอื่นทราบด้วย — กรุณาตั้งรหัสผ่านของคุณเองก่อนเริ่มใช้งาน
-          </div>
-        </div>
-        <ChangePassword
-          onDone={onDone}
-          hint={<>
-            {/* Named outright rather than left as "รหัสที่ฝ่ายบุคคลแจ้งให้ทราบ".
-                Whoever is reading this got here by typing that value a moment
-                ago — but the ones who get stuck are the ones who were told
-                nothing and guessed, and for them this line is the answer. */}
-            “รหัสผ่านเดิม” คือ<strong>รหัสผ่านเริ่มต้นสำหรับเข้าใช้งานครั้งแรก หรือหลังการรีเซ็ต
-            {' '}ซึ่งคือรหัสพนักงานของคุณ</strong> (หรือรหัสอื่นที่ฝ่ายบุคคลแจ้งให้ทราบ)
-            {/* The character set named here as well as on หน้าโปรไฟล์, because
-                this gate is where most people meet the form for the only time —
-                and it is the screen where somebody is most likely to reach for
-                a Thai word. */}
-            {' '}· รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร
-            {' '}(ใช้ตัวอักษรไทย ตัวอักษรอังกฤษ ตัวเลข หรืออักขระพิเศษได้) และต้องไม่ซ้ำกับรหัสเดิม
-          </>}
-        />
-        <div className="card">
-          <button className="btn ghost" onClick={onLogout}>ออกจากระบบ</button>
-        </div>
+    <Alert kind="warn">
+      <strong>คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่</strong>
+      {' '}— รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย
+      {' '}แนะนำให้เปลี่ยนเป็นรหัสผ่านของคุณเองเมื่อสะดวก
+      <div style={{ marginTop: 8 }}>
+        <button className="btn ghost" onClick={onOpenProfile}>เปลี่ยนรหัสผ่าน</button>
       </div>
-    </div>
+    </Alert>
   );
 }
 
@@ -268,17 +268,17 @@ function Login({ onLogin }) {
           <div className="kicker">OVERTIME SYSTEM</div>
           <h1>ระบบบันทึกและอนุมัติ<br />ค่าล่วงเวลา</h1>
           <p>
-            บันทึก OT วันธรรมดาหลัง 17:00 น. และวันหยุดเสาร์–อาทิตย์
-            ส่งให้หัวหน้างานอนุมัติ แล้วส่งต่อ HR เพื่อประมวลผลเงินเดือน
+            บันทึกข้อมูลการทำงานล่วงเวลาสำหรับวันทำงานปกติ และวันหยุดเสาร์–อาทิตย์
+            เพื่อส่งอนุมัติตามลำดับสายงาน
           </p>
         </div>
-        <div className="ver">F-HR-027 Rev.4 · Primus Instrument Co., Ltd.</div>
+        <div className="ver">F-HR-027 Rev.4 · Primus Co., Ltd.</div>
       </div>
 
       <div className="login-form">
         <div className="inner">
           <h2>เข้าสู่ระบบ</h2>
-          <p className="lede">ใช้รหัสพนักงานและรหัสผ่านของบริษัท</p>
+          <p className="lede">กรุณากรอกรหัสพนักงานและรหัสผ่านเพื่อเข้าใช้งานระบบ</p>
           {/* `noValidate` turns off the browser's own “โปรดกรอกฟิลด์นี้”; the
               check it was doing now lives in `submit`, in this page's words. */}
           <form onSubmit={submit} noValidate>
@@ -334,16 +334,21 @@ function Login({ onLogin }) {
               {busy ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
             </button>
           </form>
-          {/* The line that answers "I have never logged in" without anybody
-              having to ask. It goes under the form rather than beside the
-              password box: somebody who knows their password reads neither, and
-              somebody who does not is looking at the bottom of the card for a
-              way out — which used to be ติดต่อฝ่ายบุคคล and one phone call. */}
+          {/* One line, and it is the way out: somebody who knows their password
+              reads nothing here, and somebody who does not is looking at the
+              bottom of the card for who to ask.
+
+              IT SAID MORE THAN THIS UNTIL 2026-09-04 — that the first password
+              is the employee code, that the app asks for a new one at once, and
+              that it works on a phone. Asked to make the page formal and short,
+              and all three went. The first is the one that cost something: the
+              login screen no longer answers "I have never logged in", so an
+              account that has not signed in once now depends on ฝ่ายบุคคล
+              saying it. After a sign-in the sentence is still on screen — the
+              PasswordReminder strip above and the form in ProfileView both say
+              the password is the employee code. Before one, only this line did. */}
           <div className="foot">
-            รหัสผ่านเริ่มต้นสำหรับเข้าใช้งานครั้งแรก หรือหลังการรีเซ็ต คือ <strong>รหัสพนักงานของคุณ</strong>
-            {' '}— ระบบจะให้ตั้งรหัสผ่านของตัวเองทันทีที่เข้าครั้งแรก
-            <br />
-            ระบบใช้งานได้ทั้งบนมือถือและคอมพิวเตอร์ · หากลืมรหัสผ่าน ติดต่อฝ่ายบุคคล
+            หากพบปัญหาในการเข้าใช้งาน หรือต้องการรีเซ็ตรหัสผ่าน กรุณาติดต่อฝ่ายทรัพยากรบุคคล (HR)
           </div>
         </div>
       </div>
@@ -353,9 +358,22 @@ function Login({ onLogin }) {
 
 // ── shell ───────────────────────────────────────────────────────────────────
 
-const ROLE_LABEL = {
-  employee: 'พนักงาน', manager: 'หัวหน้างาน', hr: 'ฝ่ายบุคคล', admin: 'ผู้ดูแลระบบ',
-};
+/**
+ * `ROLE_LABEL` STOOD HERE UNTIL 2026-09-03 — a fourth copy of the บทบาท names,
+ * written `{ employee, manager, hr, admin }` and never updated when บทบาท went
+ * from four to seven.
+ *
+ * The whoami block at the foot of the sidebar reads it, so a การเงิน, a
+ * ผู้จัดการแผนก and a ผู้จัดการฝ่าย saw a BLANK where their job title goes —
+ * `ROLE_LABEL['finance']` is undefined — and a หัวหน้างาน saw one too, because
+ * their key is `supervisor` now and this table still said `manager`. That is
+ * the exact failure lib/roles.js was created to end, arriving in the one file
+ * the migration did not look at.
+ *
+ * `roleLabel` from lib/roles.js is what draws it now, and it falls back to the
+ * raw key rather than to nothing, so a row carrying a spelling from before a
+ * migration is still readable on the screen used to correct it.
+ */
 
 /**
  * Page heading, the mono kicker under it, and — where a page has one — the one
@@ -432,6 +450,25 @@ const PAGE = {
   delegated: ['รออนุมัติแทน', 'PENDING · DELEGATED'],
   unsigned: ['ใบที่ไม่มีหัวหน้าเซ็นได้', 'PENDING · NO APPROVER'],
   confirm: ['รออนุมัติ OT', 'PENDING · HR'],
+  /**
+   * TWO KEYS, ONE COMPONENT — the month as the whole company, and the month as
+   * the แผนก this person signs for.
+   *
+   * They were one key (`monthly`) until 2026-09-03, scoped by บทบาท on the
+   * server and re-titled by a `PAGE_BY_ROLE` override on the screen. That held
+   * while no บทบาท needed both readings, and การเงิน needs both: the whole
+   * company to reconcile รายงาน OT ฝ่ายบัญชี against, and their own แผนก
+   * because they sign its first signature. One key cannot be two tabs in one
+   * bar, so the reading a screen is asking for is now the key rather than a
+   * consequence of who is holding it.
+   *
+   * WHICH ALSO RETIRED THE OVERRIDE, and that is the better half of this. A
+   * table of headings keyed by บทบาท had already gone stale once — it said
+   * `manager:` after that spelling stopped being a บทบาท, and matched nobody
+   * for a day without failing. Two keys carry their own two titles here, where
+   * every other screen's title is, and nothing has to agree with anything.
+   */
+  team: ['รายงาน OT ประจำทีม', 'TEAM SUMMARY'],
   monthly: ['ตรวจสอบประจำเดือน', 'MONTHLY REVIEW'],
   accounting: ['รายงาน OT ฝ่ายบัญชี', 'PAYROLL SUBMISSION'],
   departments: ['รายงาน OT แยกแผนก', 'DEPARTMENT SUMMARY'],
@@ -448,28 +485,470 @@ const PAGE = {
 };
 
 /**
- * THE ONE HEADING THAT DEPENDS ON WHO IS READING IT.
+ * `PAGE_BY_ROLE` STOOD HERE — a heading table keyed by บทบาท, existing for one
+ * entry: the `monthly` tab, titled ตรวจสอบประจำเดือน for ฝ่ายบุคคล and
+ * รายงาน OT ประจำทีม for a หัวหน้า, because one screen key served both jobs and
+ * the server decided which by reading the บทบาท.
  *
- * `monthly` is a single screen key that two roles reach — ฝ่ายบุคคล open the
- * whole company, a หัวหน้า opens their own team, and the server does the
- * scoping. The MENU has always said two different things about it, and until
- * 2026-08-31 the heading did not: a หัวหน้า pressed a tab reading สรุปทีม and
- * arrived at a page titled ตรวจสอบรายเดือน, which is HR's job description and
- * not theirs. Harmless while the label was three syllables and nobody looked
- * twice; it stopped being harmless the moment the tab was renamed to something
- * a person would expect the page to repeat back to them.
+ * IT WENT WITH THAT ARRANGEMENT ON 2026-09-03, when การเงิน were given both
+ * readings at once (`team` and `monthly` are two keys in `PAGE` above). With
+ * the reading named by the key, no title depends on who is holding it, and
+ * there is nothing left for this table to override.
  *
- * KEYED BY ROLE AND THEN BY TAB, so a lookup that finds nothing falls through
- * to `PAGE` and this table stays the exception rather than a second copy of it.
- * Everything the comment above says about `PAGE` still holds — this is a
- * constant, drawn before any screen has loaded, and its titles do not depend
- * on a single row of data.
+ * ── WHY IT IS WORTH A PARAGRAPH RATHER THAN A DELETION ─────────────────────
+ *
+ * It had already failed once, silently, in the way a role-keyed table fails:
+ * it read `manager: { monthly: … }`, `manager` stopped being a บทบาท that
+ * morning, and the lookup then matched NOBODY — every signer pressed a tab
+ * reading รายงาน OT ประจำทีม and arrived at a page headed ตรวจสอบประจำเดือน,
+ * which is the exact fault the override had been added to fix. A lookup that
+ * finds nothing is indistinguishable from a บทบาท with no override, so nothing
+ * failed and nothing said anything.
+ *
+ * The repair that morning was to derive the keys from `ROLES`. The repair that
+ * afternoon was to stop needing them: a heading is a property of the SCREEN,
+ * and every other one in this app is written once in `PAGE`.
  */
-const PAGE_BY_ROLE = {
-  manager: { monthly: ['รายงาน OT ประจำทีม', 'TEAM SUMMARY'] },
-};
 
-function Shell({ session, onLogout }) {
+/**
+ * ── THE SIDEBAR'S THREE BLOCKS ─────────────────────────────────────────────
+ *
+ * Asked for on 2026-09-03: งานส่วนตัว and งานบริหาร/อนุมัติ had to stop being
+ * one undivided column. The reason is the change of 2026-09-03 that put them in
+ * one column in the first place — §2 was withdrawn, `maySubmitOt` became true
+ * for every บทบาท, and from that morning a ฝ่ายบุคคล's bar opened with two
+ * screens about their OWN OT and then continued into five about everybody
+ * else's. Nothing marked where one job ended and the other began.
+ *
+ * WHAT THIS IS NOT: a second place the menu is decided. `tabs` below is still
+ * the whole menu — who sees what, in what order, with which icon and badge —
+ * and this table only says which heading a row is drawn under. A group is a
+ * FIELD ON THE PUSH for exactly that reason: a lookup table keyed by tab would
+ * be a second list to keep in step with the first, and the failure would be a
+ * tab that quietly stopped being drawn.
+ *
+ * AND THE PHONE BAR IGNORES IT ENTIRELY. `.mobile-nav` maps flat `tabs` as it
+ * always has — a bottom bar of five buttons has no room for headings and no
+ * need of them. That is safe because the grouping is a PARTITION THAT PRESERVES
+ * ORDER: every role's tabs already come out of the builder personal-first and
+ * system-last, so filtering by group and concatenating gives back the same
+ * sequence. The two bars still show one order; one of them draws lines in it.
+ * `test/roleNavTabs.test.js` holds that, because it is the property that keeps
+ * "the two bars cannot disagree" true.
+ *
+ * `parent` IS ON ONE GROUP AND ONE ONLY. ข้อมูลส่วนตัว collapses behind a
+ * single row reading OT ส่วนตัว; the other two are flat lists under their
+ * heading. Asked for that way — the personal pair is what every account
+ * carries and what most accounts use least, so it is the pair worth folding.
+ * A collapsible การอนุมัติ & รายงาน would be hiding the work somebody signed in
+ * to do.
+ */
+const NAV_GROUPS = Object.freeze([
+  { key: 'personal', label: 'ข้อมูลส่วนตัว', parent: { label: 'OT ส่วนตัว', icon: 'user' } },
+  { key: 'work', label: 'การอนุมัติ & รายงาน' },
+  /**
+   * ASKED FOR AS ผู้ดูแลระบบ AND SHIPPED AS การตั้งค่าระบบ, which is the one
+   * place this differs from the request, and the reason is a rule this app
+   * already paid for once.
+   *
+   * ฝ่ายบุคคล reach ตั้งค่าระบบ — they maintain ทะเบียนพนักงาน, นโยบาย and
+   * วันหยุด there — and they are not ผู้ดูแลระบบ. A heading naming a บทบาท
+   * over rows that a DIFFERENT บทบาท can press is the `PAGE_BY_ROLE` fault
+   * exactly: a หัวหน้า pressing รายงาน OT ประจำทีม and landing on a page headed
+   * ตรวจสอบประจำเดือน, which is HR's job description and not theirs. It is
+   * worse here, because in a system where บทบาท decides what a person may do,
+   * a menu that files somebody under the wrong one is read as a statement about
+   * their access.
+   *
+   * The other two headings name WHOSE WORK IS BEHIND THEM and stay right for
+   * every reader; this one now names the SCREENS. It is the group's own name
+   * from the request — การตั้งค่าระบบ — so the change is one heading, and
+   * ผู้ดูแลระบบ is still what บันทึกประวัติระบบ is gated on.
+   */
+  { key: 'system', label: 'การตั้งค่าระบบ' },
+]);
+
+/**
+ * Where a tab lands if its push forgot to say.
+ *
+ * A tab with no group would otherwise match no block and be drawn NOWHERE on a
+ * desktop while still appearing on the phone — the exact "two bars disagree"
+ * failure the array is built to prevent, arriving silently and on the device
+ * nobody develops on. การอนุมัติ & รายงาน is where all but four of the app's
+ * screens belong anyway, so the fallback lands somewhere defensible; the test
+ * is what says the push should have been explicit.
+ */
+const DEFAULT_NAV_GROUP = 'work';
+
+/**
+ * ── THE PHONE BAR'S SLOTS — FIVE DECLARED, NEVER MORE THAN FOUR DRAWN ──────
+ *
+ * Asked for on 2026-09-04: the bottom bar had grown to eight buttons for
+ * ผู้ดูแลระบบ and seven for ฝ่ายบุคคล, sharing 360px between them — about 45px
+ * a tab, with a 22px glyph and a Thai label wrapping to three lines under it.
+ * Four is what a bottom bar holds.
+ *
+ * WHAT IT IS NOT: a second menu. `tabs` is still the whole of who sees what, in
+ * what order, with which label, icon and badge — the slots hold the SAME
+ * entries, and a slot with more than one of them opens a sheet listing them
+ * with the labels and glyphs they already wear. Nothing is hidden from a phone
+ * that a desktop has, and nothing is named twice.
+ *
+ * `bar` IS A FIELD ON THE PUSH, exactly as `group` is, and for the reason
+ * written over `NAV_GROUPS`: a lookup table keyed by tab would be a second list
+ * to keep in step with the first, and the way it fails is a tab that quietly
+ * stops being drawn. Two fields, two partitions, one array.
+ *
+ * AND THE TWO PARTITIONS AGREE ABOUT ORDER, which is what keeps the two bars
+ * one menu. The slots are a REFINEMENT of the sidebar's three blocks —
+ * `personal` splits into the two personal screens, `work` into the queues and
+ * the reports, `system` becomes เพิ่มเติม — so
+ * personal < form < queue < reports < more holds for every role, exactly as
+ * personal < work < system does. `test/roleNavTabs.test.js` asserts the
+ * ordering property rather than any one role's list.
+ *
+ * ── A SLOT WEARS A SHORT NAME, AND WHOSE IT IS DEPENDS ON WHAT IT HOLDS ────
+ *
+ * IT READ *"A SLOT HOLDING EXACTLY ONE TAB IS THAT TAB — its label, its glyph,
+ * its badge, and one press to the screen"* until the 3rd round of 2026-09-04,
+ * and *"A SLOT ALWAYS WEARS ITS OWN LABEL"* until the 5th. The press and the
+ * glyph never moved in either round; the LABEL is what both were about.
+ *
+ * WHAT THE 3rd ROUND FIXED, reported with a picture of ตั้งค่าระบบ at 360px —
+ * *"ยัดเยียดและตัวอักษรทับกัน"*. A screen's name in this app is a sentence:
+ * บันทึกและประวัติ OT, พิมพ์ใบขออนุมัติ OT, รายการรออนุมัติ, รายงาน OT ประจำทีม.
+ * Eighteen to nineteen characters. A quarter of a 360px bar is about 81px,
+ * which is twelve or thirteen characters of Thai at 11px — so every one of a
+ * หัวหน้างาน's four labels wrapped, and the round before it had just spent 10px
+ * of line-height stopping the two lines colliding. The bar was 104px tall and
+ * still looked full. Category names of nine to eleven characters ended that,
+ * and NOTHING BELOW GIVES ANY OF IT BACK: every label on this bar is still
+ * ten characters or fewer.
+ *
+ * WHAT THE 5th ROUND ASKED FOR, later the same day, is the ผู้เซ็น's bar named
+ * screen by screen — ประวัติ OT · พิมพ์ใบ OT · รออนุมัติ · รายงานทีม. Those are
+ * not the screens' own sentences; they are SHORT names at nine and ten
+ * characters, so this is a change of WHICH short name a button wears, not a
+ * return to the sentences that wrapped.
+ *
+ * THREE OF THE FOUR ARE THE SLOT'S OWN NAME and are written in the table below:
+ * `personal` is ประวัติ OT, `form` is พิมพ์ใบ OT, `queue` was already
+ * รออนุมัติ. Each of those slots holds the same screen or the same kind of
+ * screen for every บทบาท, so one word over one glyph is true for every reader.
+ *
+ * `reports` IS THE ONE THAT CANNOT HAVE ONE TRUE NAME, and a per-tab `short` is
+ * the whole of what was added for it. The slot holds รายงาน OT ประจำทีม for a
+ * ผู้เซ็น and ตรวจสอบประจำเดือน · รายงาน OT ฝ่ายบัญชี · รายงาน OT แยกแผนก for
+ * ฝ่ายบุคคล — one แผนก against every แผนก, which is the difference
+ * `readsOwnTeamOnly` exists to draw. รายงานทีม over ฝ่ายบุคคล's three would say
+ * something false about what the sheet shows. So the rule is: A SLOT HOLDING
+ * ONE TAB MAY WEAR THAT TAB'S `short`, AND A SLOT HOLDING SEVERAL ALWAYS WEARS
+ * ITS OWN. ฝ่ายบุคคล keep รายงาน; a ผู้เซ็น reads รายงานทีม.
+ *
+ * `short` IS NOT A SECOND PLACE A SCREEN IS NAMED. It sits ON THE PUSH beside
+ * the label, the way `bar` and `group` do and for the reason written over
+ * `NAV_GROUPS` — a lookup table keyed by tab is the shape that goes stale. It
+ * is OPTIONAL and there is exactly one, on `team`; `test/roleNavTabs.test.js`
+ * caps it at twelve characters so the next one cannot bring the wrapping back.
+ *
+ * ── AND `form` HAS A SLOT OF ITS OWN AGAIN — FOR EVERY บทบาท BUT TWO ───────
+ *
+ * It had one for a single round earlier the same day: the round that split the
+ * bar into ส่วนตัว and จัดการทีม halves, which needed the two personal screens
+ * adjacent to have a line to draw between them. The halves were withdrawn by
+ * the report that asked for the redesign ("เอาหัวข้อแยกกลุ่ม ส่วนตัว /
+ * จัดการทีม ออกจาก Bottom Bar เพื่อลดความสูงและความแออัด") and `form` went back
+ * to เพิ่มเติม with them — the reason for the slot had gone with the halves.
+ *
+ * THE 5th ROUND IS A DIFFERENT REASON AND IT IS ABOUT THE ผู้เซ็น'S BAR: it
+ * names พิมพ์ใบ OT as their second button and asks for no เพิ่มเติม at all —
+ * *"ไม่ต้องมีเมนู เพิ่มเติม หรือ Dropdown ซ้อนทับอีกต่อไป"*. With `form` in slot
+ * two, all four of a ผู้เซ็น's slots hold one tab each: four presses, four
+ * screens, no sheet anywhere on the bar.
+ *
+ * ฝ่ายบุคคล AND ผู้ดูแลระบบ ARE THE EXCEPTION, AND IT IS ARITHMETIC RATHER THAN
+ * PREFERENCE. Their queues fill one slot and their reports another; ตั้งค่าระบบ
+ * and, for one of them, บันทึกประวัติระบบ still have to go somewhere. A slot
+ * for `form` on top of those is a FIFTH column, on the one bar in this app that
+ * cannot spend a pixel. So their own once-a-month print sheet keeps its place
+ * in เพิ่มเติม — which is the trade `form` has always made and is the same one
+ * it made when it lived there for everybody: the daily screen keeps a slot, the
+ * monthly one goes to the back. Nobody's bar is over four buttons wide.
+ *
+ * SO THE FIFTH SLOT IS DECLARED AND THE BAR STILL DRAWS FOUR. An empty slot is
+ * not drawn at all (see the derivation below), and no บทบาท fills five: a
+ * พนักงาน has two, a ผู้เซ็น and การเงิน four, ฝ่ายบุคคล and ผู้ดูแลระบบ four
+ * with sheets behind two of them. `test/roleNavTabs.test.js` counts them.
+ *
+ * `seesEveryRole` IS THE PREDICATE AND IT IS ASKED ON THE PUSH, where every
+ * other role rule in this builder is asked. The derivation below still knows
+ * nothing about บทบาท, which is the property that keeps the phone bar from
+ * becoming a second menu.
+ */
+const BAR_SLOTS = Object.freeze([
+  { key: 'personal', label: 'ประวัติ OT', icon: 'clock' },
+  { key: 'form', label: 'พิมพ์ใบ OT', icon: 'document' },
+  { key: 'queue', label: 'รออนุมัติ', icon: 'check' },
+  { key: 'reports', label: 'รายงาน', icon: 'chart' },
+  { key: 'more', label: 'เพิ่มเติม', icon: 'sliders' },
+]);
+
+/**
+ * Where a tab lands if its push forgot to say — เพิ่มเติม, which is the slot
+ * that can hold anything without lying about it. `DEFAULT_NAV_GROUP`'s note is
+ * the rest of the reasoning; the test is what says the push should have been
+ * explicit.
+ */
+const DEFAULT_BAR_SLOT = 'more';
+
+/**
+ * One button on the phone bar.
+ *
+ * TWO SHAPES, AND WHICH ONE IS DECIDED BY HOW MANY TABS ARE BEHIND IT. With
+ * one, this is that tab: `.active` when it is the open screen, `aria-current`
+ * saying the same thing to somebody who cannot see the green. With more, it is
+ * a menu — `aria-haspopup`, `aria-expanded`, and `.current` while the open
+ * screen is behind it.
+ *
+ * `.current` AND NOT `.active`, for the reason the sidebar's fold takes it: the
+ * mark means *this is the page you are on*, and pressing this opens a list. Two
+ * controls wearing one mark is how a person stops trusting the mark. The row
+ * inside the sheet is the page, and it is the one that carries `aria-current`.
+ */
+function BarSlot({ slot, tab, onGo }) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef(null);
+  /* Always true while this bar is drawn — `.mobile-nav` is `display: none`
+     above 860px — and read rather than assumed, because the one thing that must
+     not happen is a floating panel measured against a bar that is not there. */
+  const sheet = useSheet();
+  const single = slot.items.length === 1 ? slot.items[0] : null;
+  const holds = slot.items.some((t) => t.key === tab);
+  /* Closing puts the cursor back on the button, the way `usePicker` does for
+     the pickers. Without it Escape drops the reader at the top of the page. */
+  const close = useCallback(() => {
+    setOpen(false);
+    anchorRef.current?.focus();
+  }, []);
+
+  return (
+    <>
+      <button
+        ref={anchorRef}
+        className={single ? (tab === single.key ? 'active' : '') : (holds ? 'current' : '')}
+        /* The same pair the sidebar draws, off the same state — see the note
+           there. Only a slot that IS a screen may claim to be the page. */
+        aria-current={single && tab === single.key ? 'page' : undefined}
+        aria-haspopup={single ? undefined : 'menu'}
+        aria-expanded={single ? undefined : open}
+        onClick={() => (single ? onGo(single.key) : setOpen((v) => !v))}
+      >
+        <span className="icon">
+          <Icon name={slot.icon} />
+          {/* Keyed on the number: React remounts the span when the count
+              moves, which replays the CSS pop. At 0 the badge leaves instead.
+              On a menu slot it is the SUM of what is behind it — the bar
+              answers "is there anything for me over there", and over there is
+              now a sheet rather than a screen. */}
+          {slot.badge > 0 && <span className="count" key={slot.badge}>{slot.badge}</span>}
+        </span>
+        {/* The caret is INSIDE the label and not a third row of the column.
+            The button is a column — glyph over label — so a sibling span would
+            be a line of its own under the words, and the bar's height is its
+            labels'. Inline, it sits after the last word and wraps with it.
+
+            Only on a slot that opens a list. It is the whole of what tells a
+            thumb that this press is a menu and not a screen: the green says
+            where you are and cannot also say what a press will do. */}
+        <span className="label">
+          {slot.label}
+          {!single && <span className="chev" aria-hidden="true">▾</span>}
+        </span>
+      </button>
+      {open && !single && (
+        <Popover
+          anchorRef={anchorRef}
+          sheet={sheet}
+          shape={slot.items.length}
+          label={slot.label}
+          onClose={close}
+          className="nav-pop"
+        >
+          <div className="nav-sheet-head">{slot.label}</div>
+          <div className="nav-sheet" role="menu" aria-label={slot.label}>
+            {slot.items.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="menuitem"
+                className={tab === t.key ? 'active' : ''}
+                aria-current={tab === t.key ? 'page' : undefined}
+                onClick={() => { setOpen(false); onGo(t.key); }}
+              >
+                <span className="icon"><Icon name={t.icon} /></span>
+                <span className="label">{t.label}</span>
+                {t.badge > 0 && <span className="count">{t.badge}</span>}
+              </button>
+            ))}
+          </div>
+          {/* ปิด, on a sheet only. A floating panel is dismissed by pressing the
+              page it is over; a sheet has a scrim over that page, and "press the
+              dark part" is a convention rather than a control. */}
+          <PopFoot sheet={sheet} onClose={close} />
+        </Popover>
+      )}
+    </>
+  );
+}
+
+/**
+ * THE WHOLE MENU, UNDER THE AVATAR — a phone's answer to the sidebar.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY IT EXISTS, AND IT IS WHERE THE GROUPING WENT
+ *
+ * Asked for on 2026-09-04: *"หากต้องการสลับโหมดระหว่าง ส่วนตัว กับ จัดการทีม ให้
+ * ใช้การสลับผ่าน Top Bar / Profile Drawer ด้านบนแทน"*. The round before had put
+ * those two headings ON the bottom bar, in two halves with a rule between them,
+ * and the same report is what took them off again: a bottom bar has room for
+ * four glyphs and one line of type under each, and a heading over them is 17px
+ * of height on the one bar that cannot afford any.
+ *
+ * The grouping is a real thing and did not stop being one — it moved to the
+ * place a phone has room for it. This is that place.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * IT IS `navGroups`, WHICH IS THE SIDEBAR'S OWN CUT
+ *
+ * ข้อมูลส่วนตัว · การอนุมัติ & รายงาน · การตั้งค่าระบบ, in that order, holding
+ * exactly what the desktop sidebar draws under those same three headings — see
+ * `NAV_GROUPS`. Not a fourth partition of `tabs` and not a list of its own: the
+ * whole point of a drawer at this size is that a phone can reach the menu a
+ * desktop has, and a second arrangement of it would be a second menu to keep in
+ * step. `test/roleNavTabs.test.js` holds the drawer to reading `navGroups` and
+ * nothing else.
+ *
+ * SO EVERY SCREEN IS HERE, including the four the bottom bar shows. That is not
+ * duplication, it is the point: the bar is the four places a thumb goes all day
+ * and the drawer is *everything, with the headings that say whose work it is*.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHAT THE AVATAR USED TO DO, AND WHY IT IS WORTH SAYING
+ *
+ * It went straight to ข้อมูลส่วนตัว. That screen is the first row of this
+ * drawer's foot now, with ออกจากระบบ under it — the same two the sidebar's
+ * `whoami` block has always carried, in the same order. Nothing is further away
+ * than it was: ข้อมูลส่วนตัว was one press and is now two, and what the second
+ * press buys is every other screen in the app at the same depth.
+ *
+ * A SHEET, NOT A SIDE PANEL. `Popover` in its below-860px form is what the app
+ * already opens for the pickers and for เพิ่มเติม — a bottom sheet over a scrim,
+ * dismissed by Escape, by a press outside and by ปิด. A drawer sliding in from
+ * the edge would be a fourth kind of panel in an app that has one.
+ */
+function NavDrawer({ groups, tab, user, initials, onGo, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef(null);
+  const sheet = useSheet();
+  const close = useCallback(() => {
+    setOpen(false);
+    anchorRef.current?.focus();
+  }, []);
+  /* How tall the sheet is asked to be — the same count `BarSlot` hands over,
+     which is `Popover`'s only input for that. The two rows in the foot are part
+     of what is on screen, so they are in the number. */
+  const rows = groups.reduce((n, g) => n + g.items.length, 0) + 2;
+
+  return (
+    <>
+      <button
+        ref={anchorRef}
+        className={`avatar${open ? ' open' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="เมนูและข้อมูลส่วนตัว"
+        title="เมนูและข้อมูลส่วนตัว"
+      >
+        {initials}
+      </button>
+      {open && (
+        <Popover
+          anchorRef={anchorRef}
+          sheet={sheet}
+          shape={rows}
+          label="เมนู"
+          onClose={close}
+          className="nav-pop drawer-pop"
+        >
+          {/* WHO IS SIGNED IN, at the top, because this panel is opened from a
+              button that shows two letters and nothing else. The sidebar's
+              `whoami` block says the same three things in the same order and
+              this is the phone's copy of it. */}
+          <div className="drawer-who">
+            <div className="avatar lg" aria-hidden="true">{initials}</div>
+            <div className="drawer-who-text">
+              <div className="nm">{user.name}</div>
+              <div className="sub">{roleLabel(user.role)} · {user.code}</div>
+            </div>
+          </div>
+          <div className="nav-sheet drawer-sheet" role="menu" aria-label="เมนู">
+            {groups.map((g) => (
+              <React.Fragment key={g.key}>
+                {/* The heading the bottom bar gave up. `role="presentation"` —
+                    a `<div>` inside a `role="menu"` is not a menu item, and
+                    leaving it unlabelled would have a screen reader announce a
+                    row that cannot be pressed. */}
+                <div className="drawer-group" role="presentation">{g.label}</div>
+                {g.items.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    role="menuitem"
+                    className={tab === t.key ? 'active' : ''}
+                    aria-current={tab === t.key ? 'page' : undefined}
+                    onClick={() => { setOpen(false); onGo(t.key); }}
+                  >
+                    <span className="icon"><Icon name={t.icon} /></span>
+                    <span className="label">{t.label}</span>
+                    {t.badge > 0 && <span className="count">{t.badge}</span>}
+                  </button>
+                ))}
+              </React.Fragment>
+            ))}
+            {/* บัญชีของฉัน — the pair the sidebar's foot carries, in its order.
+                Separated by a rule rather than a heading: they are not a fourth
+                block of the menu, they are what you do with the account rather
+                than with the OT. */}
+            <div className="drawer-group foot" role="presentation">บัญชี</div>
+            <button
+              type="button"
+              role="menuitem"
+              className={tab === 'profile' ? 'active' : ''}
+              aria-current={tab === 'profile' ? 'page' : undefined}
+              onClick={() => { setOpen(false); onGo('profile'); }}
+            >
+              <span className="icon"><Icon name="user" /></span>
+              <span className="label">ข้อมูลส่วนตัว</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="danger"
+              onClick={() => { setOpen(false); onLogout(); }}
+            >
+              <span className="icon"><Icon name="logout" /></span>
+              <span className="label">ออกจากระบบ</span>
+            </button>
+          </div>
+          <PopFoot sheet={sheet} onClose={close} />
+        </Popover>
+      )}
+    </>
+  );
+}
+
+function Shell({ session, onRefresh, onLogout }) {
   const { user } = session;
   const home = defaultTab(user.role);
   const [tab, setTab] = useState(home);
@@ -691,26 +1170,34 @@ function Shell({ session, onLogout }) {
    * หัวหน้า's second tab used to be pushed seventy lines further down, after
    * the ฝ่ายบุคคล block it can never enter, so moving it up to sit with the
    * first one leaves every role's list in exactly the order it was already in.
+   * A fifth block — การเงิน's — joined them on 2026-09-03.
    *
    * WHAT EACH ROLE ACTUALLY GETS, counted off `lib/session.js` where
-   * `maySubmitOt` is `role === 'employee'` and nothing else:
+   * `maySubmitOt` is true for EVERY บทบาท since 2026-09-03 (it read
+   * `role === 'employee'` until then, and §2 barred หัวหน้างาน from filing at
+   * all — see `Employee.maySubmitOt()` for what replaced that bar):
    *
-   *   พนักงาน        2 — OT ของฉัน · ใบ F-HR-027
-   *   หัวหน้างาน      2 — รายการรออนุมัติ · รายงาน OT ประจำทีม
-   *   ฝ่ายบุคคล       5 — รออนุมัติ OT · ตรวจสอบประจำเดือน · รายงาน OT ฝ่ายบัญชี
-   *                      · รายงาน OT แยกแผนก · ตั้งค่าระบบ
-   *   ผู้ดูแลระบบ      6 — those five and บันทึกประวัติระบบ
+   *   พนักงาน        2 — บันทึกและประวัติ OT · พิมพ์ใบขออนุมัติ OT
+   *   หัวหน้างาน      4 — those two, then รายการรออนุมัติ · รายงาน OT ประจำทีม
+   *   ผู้จัดการแผนก    4 — the same four; so does ผู้จัดการฝ่าย
+   *   การเงิน         5 — the พนักงาน pair, รายการรออนุมัติ, then
+   *                      ตรวจสอบประจำเดือน · รายงาน OT ฝ่ายบัญชี — ฝ่ายบุคคล's
+   *                      own two screens, whole, and read-only
+   *   ฝ่ายบุคคล       7 — the พนักงาน pair, then รออนุมัติ OT ·
+   *                      ตรวจสอบประจำเดือน · รายงาน OT ฝ่ายบัญชี ·
+   *                      รายงาน OT แยกแผนก · ตั้งค่าระบบ
+   *   ผู้ดูแลระบบ      8 — those seven and บันทึกประวัติระบบ
    *
    * PLUS TWO THAT COME AND GO, both ฝ่ายบุคคล/ผู้ดูแลระบบ only and both
    * conditional on the state of the data rather than on a role: รออนุมัติแทน
    * while any team is covered, and ไม่มีหัวหน้าเซ็น while any request is stuck.
-   * So "ฝ่ายบุคคล has five" is the steady state and not a maximum — a covered
-   * team makes it six, and an admin with both faults open sees eight.
+   * So "ฝ่ายบุคคล has seven" is the steady state and not a maximum — a covered
+   * team makes it eight, and an admin with both faults open sees ten.
    *
-   * NOBODY BUT AN EMPLOYEE HAS OT ของฉัน OR ใบ F-HR-027, and that is not a
-   * nav decision — §2 says หัวหน้างาน do not do OT, `Employee.maySubmitOt()`
-   * says so, and `lib/session.js` hands this component the answer. Writing
-   * `role === 'employee'` here would be that rule living in two files.
+   * THE FIRST TWO ARE EVERYBODY'S, and that is not a nav decision —
+   * `Employee.maySubmitOt()` says who may file and `lib/session.js` hands this
+   * component the answer. Writing a role list here would be that rule living in
+   * two files, and it is the rule that changed most recently.
    */
   const tabs = [];
 
@@ -752,15 +1239,27 @@ function Shell({ session, onLogout }) {
    * `+` to it would promise the filing this tab does not do.
    */
   if (user.maySubmitOt) {
-    tabs.push({ key: 'mine', label: 'บันทึกและประวัติ OT', icon: 'clock' });
-    tabs.push({ key: 'form', label: 'พิมพ์ใบขออนุมัติ OT', icon: 'document' });
+    tabs.push({ key: 'mine', label: 'บันทึกและประวัติ OT', icon: 'clock', group: 'personal', bar: 'personal' });
+    // THE ONE ROW WHOSE SLOT DEPENDS ON WHO IS READING IT, and the only row
+    // where the two cuts can disagree. `group` puts it in the sidebar's personal
+    // fold beside `mine` for everybody. The phone gives it a slot of its own —
+    // พิมพ์ใบ OT, the ผู้เซ็น's second button, asked for on 2026-09-04 — except
+    // for the two บทบาท who would then be four slots deep before their own
+    // ตั้งค่าระบบ had anywhere to go, and they keep it in เพิ่มเติม so that no
+    // bar is five columns wide. See BAR_SLOTS for the arithmetic and the round
+    // before this one, where it was in เพิ่มเติม for everybody.
+    const formSlot = seesEveryRole(user.role) ? 'more' : 'form';
+    tabs.push({ key: 'form', label: 'พิมพ์ใบขออนุมัติ OT', icon: 'document', group: 'personal', bar: formSlot });
   }
 
-  // ── หัวหน้างาน · TWO TABS, AND THEY ARE THE WHOLE SCREEN ──────────────────
+  // ── ผู้ที่เซ็นขั้นแรก · THE QUEUE AND THE REPORT THAT GOES WITH IT ────────
   /**
-   * A หัวหน้า files no OT, so neither OT ของฉัน nor ใบ F-HR-027 is drawn for
-   * them and these two are the entire bar — the one nav in this app where the
-   * phone bar is not a compressed version of a longer list.
+   * THESE TWO WERE THE WHOLE BAR UNTIL 2026-09-03, and the sentence that stood
+   * here said why: "a หัวหน้า files no OT, so neither OT ของฉัน nor ใบ F-HR-027
+   * is drawn for them". §2 was withdrawn that day — every บทบาท files its own
+   * OT now (`Employee.maySubmitOt()`) — so the พนักงาน block above runs for
+   * them too and these are the third and fourth tabs rather than the first two.
+   * Nothing about the two themselves changed.
    *
    * BOTH LABELS WERE MADE LONGER ON 2026-08-31, asked for as reading more
    * formally, and each had a second candidate that was turned down for a
@@ -788,12 +1287,67 @@ function Shell({ session, onLogout }) {
   // routing matrix, on the server; this only decides that the tab exists.
   if (isSigner(user.role)) {
     tabs.push({
-      key: 'approve', label: 'รายการรออนุมัติ', icon: 'inbox', badge: queueBadge(counts.pendingMgr),
+      key: 'approve', label: 'รายการรออนุมัติ', icon: 'inbox', group: 'work', bar: 'queue',
+      badge: queueBadge(counts.pendingMgr),
     });
-    // `monthly` is the same screen key ฝ่ายบุคคล open, scoped to this
-    // person's team by the server. The HEADING differs, because "ตรวจสอบ
-    // ประจำเดือน" is not what a หัวหน้า came here to do — see `PAGE_BY_ROLE`.
-    tabs.push({ key: 'monthly', label: 'รายงาน OT ประจำทีม', icon: 'chart' });
+    /**
+     * `team` — the same component ฝ่ายบุคคล's ตรวจสอบประจำเดือน draws, asking
+     * the server for the แผนก this person signs for rather than the company.
+     *
+     * ALL FOUR SIGNERS, UNCONDITIONALLY, and that is what changed on
+     * 2026-09-03: การเงิน was briefly excluded here, because the tab was keyed
+     * `monthly` and their own block below pushes a `monthly` of its own, so
+     * building both would have been two buttons in one bar opening one screen.
+     * HR asked for การเงิน to have the team report as well — they sign
+     * แผนกบัญชีและการเงิน's first signature and its month is theirs to read —
+     * so the two readings became two keys and the exclusion had nothing left
+     * to prevent. See `PAGE`.
+     */
+    // `short` — the ONE tab that carries a second, shorter name, and it is worn
+    // only while this slot holds nothing else: a ผู้เซ็น's รายงาน slot is this
+    // screen alone, so the button says รายงานทีม. การเงิน's holds three and
+    // ฝ่ายบุคคล's holds three that are not this one, and both keep รายงาน. See
+    // BAR_SLOTS for why the reports slot is the one that cannot have one name.
+    tabs.push({ key: 'team', label: 'รายงาน OT ประจำทีม', short: 'รายงานทีม', icon: 'chart', group: 'work', bar: 'reports' });
+  }
+
+  // ── การเงิน · TWO MORE, AND BOTH ARE READ-ONLY ───────────────────────────
+  /**
+   * WHAT THIS BLOCK IS AND IS NOT. การเงิน have the four tabs above already —
+   * their own บันทึกและประวัติ OT and พิมพ์ใบขออนุมัติ OT from the พนักงาน
+   * block, and รายการรออนุมัติ plus รายงาน OT ประจำทีม from the signer block,
+   * where they sign for แผนกบัญชีและการเงิน exactly as a หัวหน้างาน signs for
+   * theirs. These two are what they have on top: the month as ฝ่ายบุคคล see it,
+   * and the sheet that goes to their own desk.
+   *
+   * SO THEY HOLD THE SAME MONTH TWICE, AT TWO WIDTHS, and that is the point of
+   * the pair rather than a duplicate. รายงาน OT ประจำทีม is the แผนก whose
+   * first signature is theirs — what they are answerable for — and
+   * ตรวจสอบประจำเดือน is every แผนก, which is what รายงาน OT ฝ่ายบัญชี on the
+   * next tab is a summary of. Asked for on 2026-09-03, after the wide pair had
+   * shipped without the narrow one.
+   *
+   * SO THE LABELS ARE ฝ่ายบุคคล'S, WORD FOR WORD, and that is the point rather
+   * than an oversight. ตรวจสอบประจำเดือน here is not a team report under
+   * another name — it is every แผนก and both payrolls, the same rows the
+   * ฝ่ายบุคคล tab of the same name draws, because a การเงิน reconciling
+   * รายงาน OT ฝ่ายบัญชี against the month has to be looking at the same month.
+   * Two names for one screen is what makes a sentence about it unwritable.
+   *
+   * AND NOTHING ON EITHER OF THEM WRITES. `mayCorrectEntries` is what the
+   * screens ask before they draw a control, and `editPermission` is what the
+   * server answers with — one rule, in lib/entries.js, so the row's button and
+   * the route's refusal cannot come apart. Asked for that way on 2026-09-03:
+   * เห็นเมนู … แต่ไม่สามารถแก้ไขข้อมูลได้.
+   *
+   * `user.role === 'finance'` AND NOT `readsCompanyReports`, which ฝ่ายบุคคล and
+   * ผู้ดูแลระบบ also answer true to — they build these same two tabs in their
+   * own block below, with three more beside them, and this block must not be a
+   * second place either of those two is decided.
+   */
+  if (user.role === 'finance') {
+    tabs.push({ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar', group: 'work', bar: 'reports' });
+    tabs.push({ key: 'accounting', label: 'รายงาน OT ฝ่ายบัญชี', icon: 'banknote', group: 'work', bar: 'reports' });
   }
 
   // ── ฝ่ายบุคคล / ผู้ดูแลระบบ ──────────────────────────────────────────────
@@ -817,6 +1371,8 @@ function Shell({ session, onLogout }) {
       key: 'delegated',
       label: 'รออนุมัติแทน',
       icon: 'users',
+      group: 'work',
+      bar: 'queue',
       badge: counts.pendingMgrDelegated,
     });
   }
@@ -841,6 +1397,8 @@ function Shell({ session, onLogout }) {
       key: 'unsigned',
       label: 'ไม่มีหัวหน้าเซ็น',
       icon: 'users',
+      group: 'work',
+      bar: 'queue',
       badge: counts.unsignedPending,
     });
   }
@@ -849,24 +1407,26 @@ function Shell({ session, onLogout }) {
       key: 'confirm',
       label: 'รออนุมัติ OT',
       icon: 'check',
+      group: 'work',
+      bar: 'queue',
       // The overlap is theirs alone: an open withdrawal request on a
       // `pending_hr` entry is already inside `pendingHr`. See `queueBadge`.
       badge: queueBadge(counts.pendingHr, counts.withdrawalOpenPendingHr),
     });
-    tabs.push({ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar' });
+    tabs.push({ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar', group: 'work', bar: 'reports' });
     // Closing the month, not checking it — hence its own tab next to the
     // review rather than a mode inside it.
-    tabs.push({ key: 'accounting', label: 'รายงาน OT ฝ่ายบัญชี', icon: 'banknote' });
+    tabs.push({ key: 'accounting', label: 'รายงาน OT ฝ่ายบัญชี', icon: 'banknote', group: 'work', bar: 'reports' });
     // The other question the same month answers — how many hours each แผนก
     // worked, both payrolls counted together. Its own tab rather than a mode
     // inside สรุป OT ส่งบัญชี, because it is a different sheet for different
     // readers, not a different view of the submission.
-    tabs.push({ key: 'departments', label: 'รายงาน OT แยกแผนก', icon: 'org' });
+    tabs.push({ key: 'departments', label: 'รายงาน OT แยกแผนก', icon: 'org', group: 'work', bar: 'reports' });
     // One label for both now that ฝ่ายบุคคล maintains ทะเบียนพนักงาน here as
     // well — "นโยบายและวันหยุด" named the two sections HR could use back when
     // the roster was Admin's alone, and a tab that undersells what is behind it
     // is how HR ends up asking IT to add a new hire.
-    tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: 'sliders' });
+    tabs.push({ key: 'admin', label: 'ตั้งค่าระบบ', icon: 'sliders', group: 'system', bar: 'more' });
   }
   /**
    * บันทึกระบบ — ผู้ดูแลระบบ AND NOT ฝ่ายบุคคล, which is why it is its own tab
@@ -879,18 +1439,92 @@ function Shell({ session, onLogout }) {
    * app/api/logs/route.js for why the shared ฝ่ายบุคคล login is the reason —
    * and this keeps the screen and the server saying the same thing.
    */
-  if (user.role === 'admin') tabs.push({ key: 'logs', label: 'บันทึกประวัติระบบ', icon: 'shield' });
+  if (user.role === 'admin') tabs.push({ key: 'logs', label: 'บันทึกประวัติระบบ', icon: 'shield', group: 'system', bar: 'more' });
 
   async function logout() {
     await api.post('/auth/logout');
     onLogout();
   }
 
+  /**
+   * The same tabs, cut into the blocks `.sidebar` draws headings over.
+   *
+   * A FILTER AND NOT A SORT, which is the whole of why the phone bar can go on
+   * ignoring this. `Array.prototype.filter` keeps the order it found things in,
+   * and the builder above already emits personal-first and system-last for every
+   * บทบาท, so concatenating the three blocks reproduces `tabs` exactly. Sort the
+   * groups differently and the two bars would list one menu in two orders —
+   * which is the thing `tabs` exists to make impossible.
+   *
+   * An EMPTY block draws nothing at all, heading included: พนักงาน have no
+   * การอนุมัติ & รายงาน and a heading with no rows under it is a promise of a
+   * screen they do not have.
+   */
+  const navGroups = NAV_GROUPS
+    .map((g) => ({ ...g, items: tabs.filter((t) => (t.group || DEFAULT_NAV_GROUP) === g.key) }))
+    .filter((g) => g.items.length > 0);
+
+  /**
+   * The same tabs again, cut into the four slots the phone bar draws — the
+   * second partition of the one array, and the same kind of cut: a filter,
+   * which keeps the order it found things in. See `BAR_SLOTS`.
+   *
+   * THE GLYPH FOLLOWS A SLOT HOLDING ONE TAB, because a glyph is not a
+   * sentence: a single-tab `personal` shows the clock `mine` wears rather than
+   * the slot's own, so the bar is still the icons a reader recognises from the
+   * sidebar.
+   *
+   * AND SO DOES THE LABEL, BUT ONLY AS FAR AS `short` — never the screen's own
+   * name, which is the sentence that wrapped. A tab with no `short` leaves its
+   * slot wearing the slot's name, which is what all but one of them do. See the
+   * note over `BAR_SLOTS` for the two rounds this rule has been through and why
+   * `team` is the one that carries a name of its own.
+   *
+   * THE BADGE IS THE SUM OF WHAT IS BEHIND IT, which is what the badge has
+   * always meant: *is there anything for me over there*. Over there is a sheet
+   * now rather than a screen, and each row in it carries its own count, so the
+   * question is still answered at both depths — see `queueBadge`.
+   */
+  const barSlots = BAR_SLOTS
+    .map((s) => ({ ...s, items: tabs.filter((t) => (t.bar || DEFAULT_BAR_SLOT) === s.key) }))
+    .filter((s) => s.items.length > 0)
+    .map((s) => ({
+      ...s,
+      icon: s.items.length === 1 ? s.items[0].icon : s.icon,
+      label: (s.items.length === 1 && s.items[0].short) || s.label,
+      badge: s.items.reduce((n, t) => n + (t.badge || 0), 0),
+    }));
+
+  /**
+   * Whether OT ส่วนตัว is folded open — and `null` until somebody has said.
+   *
+   * THE THIRD STATE IS THE POINT. With a plain boolean the initial value would
+   * have to be one answer for everybody, and the right answer differs by who
+   * signed in: a พนักงาน lands ON one of these two screens and would meet a
+   * closed fold hiding the page they are looking at, while ฝ่ายบุคคล land on
+   * รออนุมัติ OT and want the column short. `null` means "nobody has pressed
+   * it", and the fold then follows the tab — open exactly when the current
+   * screen is inside it.
+   *
+   * A PRESS PINS IT AND KEEPS IT PINNED, in both directions, for the rest of the
+   * session. That is the difference between a control and a suggestion: a fold
+   * that re-opened itself the next time navigation happened to land inside it
+   * would be undoing the press that closed it, which is the one thing a person
+   * who pressed it is sure they did.
+   */
+  const [personalToggled, setPersonalToggled] = useState(null);
+  const personalItems = navGroups.find((g) => g.parent)?.items || [];
+  const personalOpen = personalToggled ?? personalItems.some((t) => t.key === tab);
+
   // Read twice — by the FAB itself and by the spacer that has to keep the last
   // row out from under it.
   const showFab = user.maySubmitOt && tab === 'mine';
 
-  const [title, meta, note] = PAGE_BY_ROLE[user.role]?.[tab] || PAGE[tab] || ['', '', null];
+  // `PAGE_BY_ROLE[user.role]?.[tab] ||` came first here until 2026-09-03 — see
+  // the note where that table used to be. One lookup now, and the empty triple
+  // is still the last word so an unknown tab draws no heading rather than
+  // throwing.
+  const [title, meta, note] = PAGE[tab] || ['', '', null];
   /**
    * Whether the ⓘ beside the heading is showing its line.
    *
@@ -945,30 +1579,69 @@ function Shell({ session, onLogout }) {
           </div>
         </div>
 
-        <nav className="nav">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              className={tab === t.key ? 'active' : ''}
-              /* `aria-current` says what the colour says.
+        {/* Three blocks with a heading each, and the rows inside them are the
+            same rows the phone bar draws flat — see `navGroups` and NAV_GROUPS.
 
-                 The open tab is marked by a fill here and by green type on
-                 the phone bar, and neither of those reaches somebody who is
-                 not looking at the screen — so the one button that is the
-                 page they are on was, to a screen reader, the fourth button
-                 in a row of eight. Read off the same `tab === t.key` as the
-                 class, so the two can never come apart. */
-              aria-current={tab === t.key ? 'page' : undefined}
-              onClick={() => goTab(t.key)}
-            >
-              <span className="icon"><Icon name={t.icon} /></span>
-              <span className="label">{t.label}</span>
-              {/* Keyed on the number: React remounts the span when the count
-                  moves, which replays the CSS pop. The queue emptying is the
-                  one change worth noticing out of the corner of an eye, and
-                  at 0 the badge leaves instead. */}
-              {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
-            </button>
+            ONE BUTTON IS WRITTEN HERE, ONCE. The fold does not get a copy of
+            the row markup for its children: it decides whether the list is
+            rendered, not what a row looks like. Two copies of this button is
+            how one of them keeps an `active` rule the other loses, which is
+            the failure test/navActiveTab.test.js counts occurrences to catch. */}
+        <nav className="nav">
+          {navGroups.map((g) => (
+            <div className="nav-group" key={g.key}>
+              {/* Not a heading element. It labels a list of links inside a
+                  <nav> that already has one; an <h3> here would put a level
+                  into the document outline for something that is a divider. */}
+              <div className="nav-group-label">{g.label}</div>
+              {g.parent && (
+                <button
+                  type="button"
+                  /* `current` and deliberately NOT `active`. This row is not a
+                     screen — pressing it folds a list — so it must never wear
+                     the mark that means "the page you are on". What it says,
+                     and only while the fold is shut, is that the page you are
+                     on is behind it. */
+                  className={`nav-parent${!personalOpen && personalItems.some((t) => t.key === tab) ? ' current' : ''}`}
+                  aria-expanded={personalOpen}
+                  aria-controls={`nav-${g.key}`}
+                  onClick={() => setPersonalToggled(!personalOpen)}
+                >
+                  <span className="icon"><Icon name={g.parent.icon} /></span>
+                  <span className="label">{g.parent.label}</span>
+                  <span className="chev" aria-hidden="true">›</span>
+                </button>
+              )}
+              {(!g.parent || personalOpen) && (
+                <div className={`nav-items${g.parent ? ' sub' : ''}`} id={`nav-${g.key}`}>
+                  {g.items.map((t) => (
+                    <button
+                      key={t.key}
+                      className={tab === t.key ? 'active' : ''}
+                      /* `aria-current` says what the colour says.
+
+                         The open tab is marked by a fill here and by green type
+                         on the phone bar, and neither of those reaches somebody
+                         who is not looking at the screen — so the one button
+                         that is the page they are on was, to a screen reader,
+                         the fourth button in a row of eight. Read off the same
+                         `tab === t.key` as the class, so the two can never come
+                         apart. */
+                      aria-current={tab === t.key ? 'page' : undefined}
+                      onClick={() => goTab(t.key)}
+                    >
+                      <span className="icon"><Icon name={t.icon} /></span>
+                      <span className="label">{t.label}</span>
+                      {/* Keyed on the number: React remounts the span when the
+                          count moves, which replays the CSS pop. The queue
+                          emptying is the one change worth noticing out of the
+                          corner of an eye, and at 0 the badge leaves instead. */}
+                      {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
 
@@ -984,7 +1657,7 @@ function Shell({ session, onLogout }) {
             <div className="avatar">{initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="n">{user.name}</div>
-              <div className="r">{ROLE_LABEL[user.role]} · {user.department?.name || '—'}</div>
+              <div className="r">{roleLabel(user.role)} · {user.department?.name || '—'}</div>
             </div>
             <span className="chev">›</span>
           </button>
@@ -1039,10 +1712,19 @@ function Shell({ session, onLogout }) {
             </div>
             <div className="meta">{meta}</div>
           </div>
-          {/* On mobile the sidebar is gone, so this is the way to ข้อมูลส่วนตัว —
-              and to ออกจากระบบ, which now lives on that page rather than one
-              mistap away here. */}
-          <button className="avatar" onClick={() => goTab('profile')} title="ข้อมูลส่วนตัว">{initials}</button>
+          {/* On mobile the sidebar is gone, and since 2026-09-04 this is the way
+              to the WHOLE of it: the three headed blocks, then ข้อมูลส่วนตัว and
+              ออกจากระบบ. It went straight to ข้อมูลส่วนตัว until then — see the
+              note over `NavDrawer` for what that press buys and what it costs.
+              The grouping the bottom bar gave up that day is what this holds. */}
+          <NavDrawer
+            groups={navGroups}
+            tab={tab}
+            user={user}
+            initials={initials}
+            onGo={goTab}
+            onLogout={logout}
+          />
           {/* OVER THE PAGE, NOT IN IT. Inside the bar because the bar is what it
               is anchored to — `.appbar` is sticky, which makes it the containing
               block for this, so the panel hangs under the heading it belongs to
@@ -1078,6 +1760,24 @@ function Shell({ session, onLogout }) {
             {tab === home && (
               <div style={{ padding: '0 18px' }}>
                 <BackupBanner user={user} />
+              </div>
+            )}
+            {/*
+              คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ — ทุกบทบาท
+
+              THE ONLY PLACE THIS IS SAID, since ตั้งรหัสผ่านของคุณ was deleted
+              on 2026-09-04. Every account carrying the flag now signs straight
+              into the shell, so a person whose password is their own
+              รหัสพนักงาน — a value printed on every ใบ OT — meets this strip or
+              meets nothing.
+
+              On the landing tab, the same rule the strip above and the
+              announcement below follow: a standing condition drawn on every
+              screen becomes furniture.
+            */}
+            {tab === home && user.mustChangePassword && (
+              <div style={{ padding: '0 18px' }}>
+                <PasswordReminder onOpenProfile={() => goTab('profile')} />
               </div>
             )}
             {/*
@@ -1140,9 +1840,27 @@ function Shell({ session, onLogout }) {
                 onOpenPolicy={openPolicy}
               />
             )}
-            {tab === 'monthly' && (
+            {/* ONE COMPONENT, TWO TABS, and the `key` is what keeps them two
+                screens rather than one that changes under the reader.
+
+                Without it React reuses the mounted `HrView` when the tab
+                changes between these two — same type, same position — so the
+                month picker, สถานะที่นับ, the search box, the page of cards and
+                any open sub-view all carry across from a table of the whole
+                company onto a table of one แผนก. The prop changes, the request
+                is re-made, and for one paint the old rows sit under the new
+                heading. Keyed, the second tab is a fresh screen, which is what
+                a person pressing a different button in the bar is asking for.
+
+                `scope` decides which month it asks the server for; see
+                components/HrView.jsx. Everything else about the screen — the
+                columns, the exports, the read-only rule — is the same on both,
+                because it is the same screen. */}
+            {(tab === 'monthly' || tab === 'team') && (
               <HrView
+                key={tab}
                 user={user}
+                scope={tab === 'team' ? 'team' : 'company'}
                 onOpenRoster={mayOpenRoster ? openRoster : null}
               />
             )}
@@ -1151,7 +1869,9 @@ function Shell({ session, onLogout }) {
             {tab === 'form' && <MyForm />}
             {tab === 'admin' && <AdminView user={user} initialSection={adminSection} />}
             {tab === 'logs' && <LogSystem />}
-            {tab === 'profile' && <ProfileView user={user} onLogout={logout} />}
+            {tab === 'profile' && (
+              <ProfileView user={user} onPasswordChanged={onRefresh} onLogout={logout} />
+            )}
           </div>
         </main>
 
@@ -1164,22 +1884,25 @@ function Shell({ session, onLogout }) {
             bar measures itself into `--nav-h` — see the observer above. */}
         <div className={`mobile-nav-spacer no-print${showFab ? ' with-fab' : ''}`} />
 
+        {/* FOUR BUTTONS AT MOST, FLAT, and they hold the same `tabs` the sidebar
+            draws — see `BAR_SLOTS` and the derivation above. A slot with one tab
+            behind it goes straight to that screen; a slot with more opens a
+            bottom sheet listing them under the names and glyphs they already
+            wear. Every button is a short label on one line: the slot's own,
+            or — where the slot holds one tab that carries a `short` — that
+            screen's. A ผู้เซ็น's four are ประวัติ OT · พิมพ์ใบ OT · รออนุมัติ ·
+            รายงานทีม, one press to a screen apiece and no sheet on the bar.
+
+            THE ส่วนตัว / จัดการทีม HEADINGS STOOD HERE FOR ONE ROUND on
+            2026-09-04 — two `.nav-side` halves with a rule between them — and
+            were withdrawn the same day by the report that asked for this one:
+            *"เอาหัวข้อแยกกลุ่ม ส่วนตัว / จัดการทีม ออกจาก Bottom Bar เพื่อลด
+            ความสูงและความแออัด"*. The grouping is not gone, it moved: it is what
+            the drawer under the app bar's avatar is made of, where there is room
+            for headings. See `NavDrawer`. */}
         <nav className="mobile-nav no-print" ref={navRef}>
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              className={tab === t.key ? 'active' : ''}
-              /* The same pair as the sidebar, off the same state — see the
-                 note there. */
-              aria-current={tab === t.key ? 'page' : undefined}
-              onClick={() => goTab(t.key)}
-            >
-              <span className="icon">
-                <Icon name={t.icon} />
-                {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
-              </span>
-              <span className="label">{t.label}</span>
-            </button>
+          {barSlots.map((s) => (
+            <BarSlot key={s.key} slot={s} tab={tab} onGo={goTab} />
           ))}
         </nav>
 

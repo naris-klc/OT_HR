@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  BUDDHIST_ERA_FLOOR, ERA_OFFSET, readEra, isRealDate, smartDate, thaiText,
+  BUDDHIST_ERA_FLOOR, ERA_OFFSET, readEra, isRealDate, smartDate, thaiText, thaiWords, thaiStampText,
 } from '../lib/smartDate.js';
 import { normaliseDate } from '../lib/holidays.js';
 import { thaiDate } from '../lib/api.js';
@@ -73,7 +73,9 @@ test('สี่รูปแบบที่เขียนวันเดีย�
   }
   // และแบบเดียวกันในปี ค.ศ. ต้องไม่ถูกนับว่าแปลง
   for (const raw of ['19/09/1972', '1972-09-19']) {
-    assert.deepEqual(smartDate(raw), { date: '1972-09-19', converted: false, error: null });
+    assert.deepEqual(smartDate(raw), {
+      date: '1972-09-19', converted: false, error: null, reason: null, meant: null,
+    });
   }
 });
 
@@ -105,7 +107,9 @@ test('ปฏิทินถูกตรวจด้วยปี ค.ศ. ที�
 
 test('ช่องว่างไม่ใช่ความผิด — วันเกิดเป็นฟิลด์ที่ล้างได้', () => {
   for (const blank of ['', '   ', null, undefined]) {
-    assert.deepEqual(smartDate(blank), { date: null, converted: false, error: null });
+    assert.deepEqual(smartDate(blank), {
+      date: null, converted: false, error: null, reason: null, meant: null,
+    });
   }
 });
 
@@ -131,16 +135,48 @@ test('ค่าที่ไม่ใช่วันที่เลย บอก�
   assert.match(r.error, /พ\.ศ\. หรือ ค\.ศ\./);
 });
 
-test('thaiText แสดงเป็น พ.ศ. และตรงกับ thaiDate ของหน้าจอ', () => {
+test('thaiText เป็น DD/MM/YYYY พ.ศ. และตรงกับ thaiDate ของหน้าจอ', () => {
   /**
    * ตัวหนึ่งอยู่ฝั่งเซิร์ฟเวอร์ อีกตัวอยู่ใน lib/api.js ที่หยิบ fetch กับโทเคน
    * มาด้วย — เอามาใช้ในเราต์ไม่ได้ จึงมีสองที่ และเทสต์นี้คือสิ่งที่ทำให้ทั้งสอง
    * ตรงกันจริง ไม่ใช่แค่หวังว่าจะตรง
    */
-  assert.equal(thaiText('1972-09-19'), '19 กันยายน 2515');
+  assert.equal(thaiText('1972-09-19'), '19/09/2515');
   for (const iso of ['1972-09-19', '1998-03-05', '2026-12-31', '1996-02-29']) {
     assert.equal(thaiText(iso), thaiDate(iso), `${iso} ต้องอ่านเหมือนกันทั้งสองฝั่ง`);
   }
+});
+
+test('thaiWords ยังสะกดเดือน — และมีที่ใช้ที่เดียว', () => {
+  /**
+   * ข้อยกเว้นเดียวของรูปแบบ DD/MM/YYYY และเป็นข้อยกเว้นโดยตั้งใจ: ประโยคที่มี
+   * หน้าที่บอกว่า 05/03 กับ 03/05 ต่างกันอย่างไร จะตอบด้วยตัวเลขชุดที่สามไม่ได้
+   * มันคือการถามคำถามเดิมซ้ำ
+   */
+  assert.equal(thaiWords('1972-09-19'), '19 กันยายน 2515');
+  assert.equal(thaiWords('1998-03-05'), '5 มีนาคม 2541');
+  assert.equal(thaiWords('ไม่ทราบ'), 'ไม่ทราบ');
+
+  // และที่เรียกใช้มีที่เดียวจริง — ข้อความปฏิเสธ เดือน/วัน/ปี ในไฟล์นี้เอง
+  const src = readFileSync(new URL('../lib/smartDate.js', import.meta.url), 'utf8');
+  const uses = src.split('thaiWords(').length - 1;
+  assert.equal(uses, 2, 'นิยามหนึ่งครั้ง เรียกใช้หนึ่งครั้ง — ห้ามมีจอไหนหยิบไปใช้ให้วันที่ดูสวยขึ้น');
+});
+
+test('thaiStampText พิมพ์เวลาตามเขตเวลาที่ผู้เรียกระบุ ไม่ใช่ของเครื่อง', () => {
+  /**
+   * ไฟล์ CSV สองใบที่ออกจากเครื่องนี้ (บันทึกระบบ · รายงานการใช้สิทธิ์พิเศษ) เป็น
+   * หลักฐานเรื่องเย็นวันหนึ่งในกรุงเทพ แต่ถูกเปิดที่ไหนก็ได้ เขตเวลาจึงต้องมาจาก
+   * ผู้เรียก ไม่ใช่จากเครื่องที่เปิดไฟล์
+   */
+  const tz = { timeZone: 'Asia/Bangkok' };
+  assert.equal(thaiStampText('2026-08-14T09:03:22Z', tz), '14/08/2569 16:03:22');
+  assert.equal(thaiStampText('2026-08-14T09:03:22Z', { ...tz, seconds: false }), '14/08/2569 16:03');
+  // เที่ยงคืนคือ 00 ไม่ใช่ 24 — เป็นชั่วโมงที่ใบ OT ตอนดึกถูกประทับเวลาไว้
+  assert.equal(thaiStampText('2026-08-14T17:15:00Z', tz), '15/08/2569 00:15:00');
+  // ไม่มีค่า และค่าที่อ่านไม่ออก คืนค่าว่าง ไม่ใช่ "Invalid Date"
+  assert.equal(thaiStampText(null, tz), '');
+  assert.equal(thaiStampText('ไม่ทราบ', tz), '');
 });
 
 // ── ตัวอ่านมีตัวเดียว ───────────────────────────────────────────────────────
@@ -226,14 +262,26 @@ test('ปฏิทินวันหยุดทั้งสองฝั่ง�
   assert.equal(normaliseDate('ไม่ใช่วันที่'), null, 'สัญญาเดิมของฟังก์ชัน — คืน null');
 });
 
-test('lib/birthDate.js ยืมเลขคณิตมาใช้ ไม่ได้ถือสำเนาของตัวเอง', () => {
+test('lib/birthDate.js ยืมตัวอ่านทั้งตัวมาใช้ ไม่ได้ถือสำเนาของตัวเอง', () => {
+  /**
+   * ข้อนี้เข้มขึ้นเมื่อ 2026-09-04 ไม่ใช่อ่อนลง
+   *
+   * เดิมไฟล์นั้นยืมแค่ *เลขคณิต* (ศักราช ปฏิทิน รูปร่าง) แล้วเก็บคำถามที่ตัวอ่าน
+   * กลางตอบไม่ได้ไว้เอง — คือ "เลขตัวไหนคือวัน" ซึ่งเป็นข้อเท็จจริงของทั้งไฟล์
+   * ตอนนี้ไม่มีคำถามนั้นแล้ว ทุกไฟล์อ่านเป็น วัน/เดือน/ปี เหมือนค่าที่พิมพ์เข้ามา
+   * ไฟล์นั้นจึงเรียก `smartDate()` ตัวเดียวกับที่ฟอร์มและสองเราต์ทะเบียนเรียก
+   * และวันที่ที่อ่านจากไฟล์ กับที่พิมพ์เข้าช่อง อ่านต่างกันไม่ได้อีกต่อไป
+   */
   const code = strip(read('lib/birthDate.js'));
   assert.match(code, /from '\.\/smartDate\.js'/);
-  assert.match(code, /readEra as readYear/, 'ชื่อเดิมในไฟล์ยังอ่านเหมือนเดิม');
+  assert.match(code, /smartDate\(s, \{ label: 'วันเกิด' \}\)/, 'ต้องอ่านผ่านตัวอ่านกลาง');
   assert.ok(!/function readYear\(/.test(code), 'ยังมีสำเนาของตัวอ่านศักราชอยู่ในไฟล์');
   assert.ok(!/function daysInMonth\(/.test(code), 'ยังมีสำเนาปฏิทินอยู่ในไฟล์');
-  // สิ่งที่ไฟล์นั้นยังเป็นเจ้าของ คือคำถามที่ตัวอ่านกลางตอบไม่ได้
-  assert.match(code, /evidence: 'dmy'/, 'ลำดับวัน/เดือนยังถูกตัดสินจากไฟล์ทั้งไฟล์');
+  assert.ok(!/isRealDate\(/.test(code), 'ยังตรวจปฏิทินเองอยู่ แทนที่จะให้ตัวอ่านกลางตรวจ');
+  // และกลไกเดาลำดับต้องไม่กลับมา ไม่ว่าจะสะกดว่าอะไร
+  for (const gone of [/evidence: '/, /ambiguous/, /declaredOrder/, /fallbackOrder/, /'mdy'/]) {
+    assert.ok(!gone.test(code), 'กลไกเดาลำดับกลับมาแล้ว: ' + gone);
+  }
 });
 
 // ── ทางเข้าทุกทางของวันเกิด ─────────────────────────────────────────────────
@@ -258,7 +306,13 @@ test('ทั้งสองเราต์ทะเบียนพนักง�
 
 test('การนำเข้า CSV ยังอ่านทั้งคอลัมน์พร้อมกัน และนับจำนวนที่แปลงส่งกลับ', () => {
   const code = strip(read('app/api/employees/import/route.js'));
+  // เส้นทาง CSV อ่านทั้งคอลัมน์ทีเดียว ไม่ใช่เรียก smartDate() รายค่าเหมือนสอง
+  // เราต์ข้างบน — ไม่ใช่เพราะลำดับต้องตัดสินจากทั้งไฟล์ (ไม่มีการตัดสินแล้ว) แต่
+  // เพราะแผงตรวจก่อนนำเข้าต้องการยอดรวมของทั้งคอลัมน์: อ่านได้กี่ค่า แปลง พ.ศ.
+  // ไปกี่แถว และแถวไหนบ้างที่จะถูกข้าม
   assert.match(code, /resolveBirthDateColumn\(rows\)/);
+  // และต้องไม่มีทางส่งลำดับเข้าไปได้อีก — ไม่ผ่าน query ไม่ผ่านค่าตั้งต้นขององค์กร
+  assert.ok(!/declaredOrder|fallbackOrder|csvDateOrder/.test(code), 'ยังส่งลำดับวัน/เดือนเข้าไป');
   assert.match(code, /converted: dates\.converted\.length/, 'หน้ายืนยันต้องได้จำนวนที่แปลงไปด้วย');
 });
 

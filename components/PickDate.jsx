@@ -222,12 +222,18 @@ function Grid({ cols, cells, at, onMove, onPick, label, autoFocus = true }) {
  * differently.
  *
  * AND IT SAYS WHAT IT UNDERSTOOD BEFORE IT IS COMMITTED TO. The line under the
- * box is the whole safety of typing: `19 กันยายน 2515` reads back in the era
- * HR reads in, and `เก็บเป็น ค.ศ. 1972-09-19` says what will actually be
- * stored, so the two numbers can never be mistaken for one another. That echo
- * is also what makes DD/MM/YYYY safe to assume here where a CSV column cannot
- * assume it: `05/03/1998` is read as 5 มีนาคม and SAYS SO, to a person who is
- * standing right there and can see that it is wrong.
+ * box is the whole safety of typing, and it has two halves that are doing two
+ * different jobs. `19/09/2515` reads back in the era HR reads in; `เก็บเป็น
+ * ค.ศ. 1972-09-19` says what will actually be stored, so the two numbers can
+ * never be mistaken for one another.
+ *
+ * IT IS THE ISO HALF THAT MAKES DD/MM/YYYY SAFE TO ASSUME HERE where a CSV
+ * column cannot assume it. The echo used to spell the month — "5 มีนาคม" — and
+ * since 2026-09-04 it does not, because the app has one date form; what is left
+ * saying which number was the month is `เก็บเป็น ค.ศ. 1998-03-05`, which says
+ * it unambiguously, to a person who is standing right there and can see that it
+ * is wrong. That is why the ISO half is not decoration and must not be dropped
+ * to shorten the line.
  *
  * ENTER OR ใช้วันที่นี้, and deliberately not blur. A half-typed value
  * committing itself when the reader clicks a day in the grid below would

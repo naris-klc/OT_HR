@@ -29,13 +29,21 @@ export const POST = route(async (req) => {
 
   const rows = parseCsv(text);
 
-  // Before a single row is written. Excel rewrites the whole วันเกิด column
-  // when HR opens and saves the file, so whether "05/03/1998" is March or May
-  // is a fact about the file, not about the row — and a file whose order
-  // nothing settles is refused entire. Importing the readable half of it would
-  // just be the same guess made quietly. See lib/birthDate.js.
+  /**
+   * The วันเกิด column, read STRICTLY วัน/เดือน/ปี — no options, and no place
+   * for one to come from.
+   *
+   * This call used to carry two: `?order=` from the person uploading, and the
+   * organisation's `csvDateOrder` read off the Setting singleton, both feeding
+   * the machinery that decided which way round `05/03/1998` was. Neither
+   * exists any more. A file is read one way, so there is nothing to ask, no
+   * standing answer to look up and no whole-file refusal to return: a cell that
+   * is not a real date under that reading fails ITS OWN ROW below, at
+   * `dates.byLine`, and the rest of the file imports. See lib/birthDate.js —
+   * including the paragraph on what a month-first file now costs, which is the
+   * reason the preview on the พนักงาน card spells its months out.
+   */
   const dates = resolveBirthDateColumn(rows);
-  if (!dates.ok) return fail(dates.fileError, 400, { birthDateAmbiguous: dates.ambiguous });
 
   /**
    * The other question that is about the file rather than about a row, and
@@ -299,7 +307,10 @@ export const POST = route(async (req) => {
         const issued = defaultPassword(employee.code);
         await employee.setPassword(issued);
         // Issued by the system on HR's behalf, so the same obligation as the
-        // form: the account cannot reach any other screen until it is replaced.
+        // form: the account is marked as still using a password somebody else
+        // chose, and says so on screen until it is replaced. It used to be a
+        // gate — one screen and no other — until that screen was deleted on
+        // 2026-09-04; the flag itself is unchanged and set on every path.
         employee.mustChangePassword = true;
         await employee.save();
         // Carried back so HR can hand them out — and so the slips print what
@@ -388,7 +399,6 @@ export const POST = route(async (req) => {
     birthDates: {
       order: dates.order,
       count: dates.cells.length,
-      decidedBy: dates.decidedBy,
       converted: dates.converted.length,
     },
   });

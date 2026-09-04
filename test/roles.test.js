@@ -5,9 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  APPROVED_BY, ROLES, ROLE_LABEL_TH, SIGNER_ROLES, approverRolesFor, filesStraightToHr,
-  isSigner, mayApproveRole, outranks, roleFromLabel, roleLabel,
+  APPROVED_BY, COMPANY_REPORT_ROLES, ROLES, ROLE_LABEL_TH, SIGNER_ROLES, approverRolesFor,
+  filesStraightToHr, isSigner, mayApproveRole, outranks, readsCompanyReports, readsOwnTeamOnly,
+  maySeeRole, roleFromLabel, roleLabel, seesEveryRole, visibleRolesFor,
 } from '../lib/roles.js';
+import { mayCorrectEntries } from '../lib/entries.js';
+import { teamScoped } from '../lib/reports.js';
 import { approvalPermission } from '../lib/delegation.js';
 import { initialStatus } from '../lib/proxyFiling.js';
 import { HR_ASSIGNABLE_ROLES } from '../lib/employees.js';
@@ -456,6 +459,185 @@ test('nobody is offered as the person who will sign their own request', () => {
   assert.match(route, /mayApproveRole\(m\.role, user\.role\)/);
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// การเงิน READ THE WHOLE COMPANY'S MONTH, AND WRITE NONE OF IT
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Asked for on 2026-09-03, in one sentence: การเงิน get บันทึกและประวัติ OT and
+ * พิมพ์ใบขออนุมัติ OT of their own, the queue of พนักงาน in their แผนก the way
+ * any approver has it — "แต่จะเห็นเมนูตรวจสอบประจำเดือน และ รายงาน OT ฝ่ายบัญชี
+ * แต่ไม่สามารถแก้ไขข้อมูลได้".
+ *
+ * The two halves of that pull in opposite directions and are what these cases
+ * hold apart. They are a SIGNER, so `scopeFor` narrows them to แผนกบัญชีและ
+ * การเงิน — right for the queue, and wrong for the two report screens, where it
+ * would have given them one แผนก on ตรวจสอบประจำเดือน and every แผนก on
+ * รายงาน OT ฝ่ายบัญชี in the same month. And they are NOT ฝ่ายบุคคล, so nothing
+ * they can now see may be given a button that changes it.
+ */
+
+test('three บทบาท read every แผนก’s month; the other three signers read their own', () => {
+  assert.deepEqual(COMPANY_REPORT_ROLES, ['finance', 'hr', 'admin']);
+  for (const role of ['finance', 'hr', 'admin']) {
+    assert.equal(readsCompanyReports(role), true, role);
+    assert.equal(readsOwnTeamOnly(role), false, `${role} was narrowed to a team`);
+  }
+  assert.deepEqual(
+    ROLES.filter(readsOwnTeamOnly),
+    ['supervisor', 'dept_manager', 'division_manager'],
+  );
+  // A พนักงาน reads neither — they are on no report screen at all, and this
+  // predicate must not become the thing that decides that.
+  assert.equal(readsCompanyReports('employee'), false);
+  assert.equal(readsOwnTeamOnly('employee'), false);
+  // An unknown บทบาท reads nothing, like everywhere else in this file.
+  assert.equal(readsCompanyReports('manager'), false);
+  assert.equal(readsOwnTeamOnly(undefined), false);
+});
+
+test('การเงิน are still signers, and still peers of a หัวหน้างาน', () => {
+  // The reading right is not a promotion. Everything about who they sign for
+  // is untouched by it.
+  assert.equal(isSigner('finance'), true);
+  assert.equal(outranks('finance', 'supervisor'), false);
+  assert.equal(mayApproveRole('finance', 'employee'), true);
+  assert.equal(mayApproveRole('finance', 'supervisor'), false);
+});
+
+test('reading a report is not permission to correct one — that stays ฝ่ายบุคคล’s', () => {
+  for (const role of ['hr', 'admin']) {
+    assert.equal(mayCorrectEntries({ role }), true, role);
+  }
+  for (const role of ['finance', 'supervisor', 'dept_manager', 'division_manager', 'employee']) {
+    assert.equal(mayCorrectEntries({ role }), false, role);
+  }
+  assert.equal(mayCorrectEntries(undefined), false);
+});
+
+test('the three monthly documents narrow through teamScoped, and none on isSigner', () => {
+  /**
+   * ONE PREDICATE, THREE ROUTES. Each of these spelt the narrowing as
+   * `isSigner(user.role)` — correct until a signer who reads the whole company
+   * existed. Missed on any ONE of them, a การเงิน gets a table and its own
+   * export button disagreeing about the same month, which is a discrepancy
+   * found by whoever is reconciling it and by nobody before them.
+   *
+   * `teamScoped` takes the `?scope=` with it, because since การเงิน hold BOTH
+   * readings the request has to be able to say which one it is. It can only
+   * narrow — see lib/reports.js.
+   */
+  for (const file of [
+    'app/api/reports/monthly/[period]/route.js',
+    'app/api/exports/monthly.csv/route.js',
+    'app/api/exports/entries.csv/route.js',
+  ]) {
+    const text = src(file);
+    assert.match(text, /const teamOnly = teamScoped\(user\.role, q\.scope\);/, file);
+    assert.ok(!/isSigner\(user\.role\)/.test(text), `${file} still narrows on isSigner`);
+  }
+  // The printable sheet takes no `?scope=`: it is one employee, and whether
+  // this reader may print THAT employee is a question about the person, not
+  // about how wide a table they were looking at.
+  const form = src('app/api/reports/form/[period]/route.js');
+  assert.match(form, /readsOwnTeamOnly\(user\.role\)/);
+  assert.ok(!/isSigner\(user\.role\)/.test(form), 'the form route still narrows on isSigner');
+});
+
+test('scope=team narrows and never widens — which is the only direction that matters', () => {
+  // A หัวหน้างาน asking for the company still gets their team; ฝ่ายบุคคล asking
+  // for a team still get the company, because they sign no แผนก. The one บทบาท
+  // it moves is การเงิน, who hold both tabs.
+  assert.equal(teamScoped('supervisor', undefined), true);
+  assert.equal(teamScoped('supervisor', 'team'), true);
+  assert.equal(teamScoped('supervisor', 'company'), true);
+  assert.equal(teamScoped('hr', 'team'), false);
+  assert.equal(teamScoped('admin', 'team'), false);
+  assert.equal(teamScoped('finance', undefined), false, 'their wide tab');
+  assert.equal(teamScoped('finance', 'team'), true, 'their narrow tab');
+  // A บทบาท that reads no report at all is not handed one by asking.
+  assert.equal(teamScoped('employee', 'team'), false);
+  assert.equal(teamScoped('employee', undefined), false);
+  // Anything that is not the word means the reader's ordinary answer.
+  for (const junk of ['', 'all', 'TEAM', null, 0]) {
+    assert.equal(teamScoped('finance', junk), false, String(junk));
+  }
+});
+
+test('a การเงิน scoped to one payroll still reads BOTH companies on the reports', () => {
+  /**
+   * `approvesCompany` is the field that narrows a signer to one payroll, and it
+   * is the trap in this feature: it is right for the QUEUE — a การเงิน who
+   * signs only for เดมเทค signs only for เดมเทค — and wrong for the two report
+   * screens, which the same person reads across both companies. Asked for
+   * outright on 2026-09-03: "สามารถเห็นได้ทั้ง 2 บริษัทเลย".
+   *
+   * The three report routes each apply that filter behind `teamOnly`, which is
+   * false for การเงิน, so the filter is skipped whatever `approvesCompany`
+   * says. Pinned as source shape because the alternative failure is silent: the
+   * sheet simply comes up short by one payroll, on a screen whose whole job is
+   * to be complete.
+   */
+  for (const file of [
+    'app/api/reports/monthly/[period]/route.js',
+    'app/api/exports/monthly.csv/route.js',
+    'app/api/exports/entries.csv/route.js',
+  ]) {
+    const text = src(file);
+    assert.match(text, /const teamOnly = teamScoped\(user\.role, q\.scope\);/, file);
+    assert.match(text, /teamOnly && user\.approvesCompany/, file);
+    // …and never the old spelling, which would have narrowed them by payroll.
+    assert.ok(!/isSigner\(user\.role\) && user\.approvesCompany/.test(text), file);
+  }
+  // On รายงาน OT ประจำทีม the payroll filter is BACK ON for them, and rightly:
+  // that tab is the แผนก they sign for, and `approvesCompany` is exactly what
+  // says which half of it their signature covers. Both readings come out of the
+  // one `teamOnly` above, so the two can never be set differently.
+  // สรุป OT ส่งบัญชี partitions BY company rather than filtering to one, and
+  // the only narrowing is the reader's own dropdown (`?company=`), which
+  // defaults to every company on the screen that opens it.
+  assert.match(src('components/AccountingView.jsx'), /useState\('all'\)/);
+});
+
+test('สรุป OT ส่งบัญชี and its CSV take the list of readers, not a third literal pair', () => {
+  for (const file of [
+    'app/api/reports/accounting/[period]/route.js',
+    'app/api/exports/accounting.csv/route.js',
+  ]) {
+    assert.match(src(file), /requireRole\(await requireAuth\(req\), \.\.\.COMPANY_REPORT_ROLES\)/, file);
+  }
+});
+
+test('the drill-in has a scope of its own, and the QUEUE is not widened by it', () => {
+  const route = src('app/api/entries/route.js');
+  // `scope=report` — gated on the same predicate the report itself is scoped
+  // by, so it can hand out no reach that screen did not already grant.
+  assert.match(route, /scope === 'report' && readsCompanyReports\(user\.role\)\n\s*\? \{\}/);
+  // And `scopeFor` is untouched: a การเงิน widened there would be shown every
+  // pending request in the company with two buttons that answer 403.
+  assert.ok(!/scopeFor\([^)]*readsCompanyReports/.test(route));
+  assert.ok(!src('lib/entries.js').includes('readsCompanyReports'),
+    'scopeFor learnt about company reports — the queue and the report are two questions');
+  // Both screens that hang off ตรวจสอบประจำเดือน ask for it.
+  for (const screen of ['components/HrEntries.jsx', 'components/HrEdits.jsx']) {
+    assert.match(src(screen), /&scope=report/, screen);
+  }
+});
+
+test('the screens ask the same rule the route refuses by, so no button is offered twice over', () => {
+  // README §สิทธิ์: every rule is enforced at the route, and no control is
+  // handed to somebody the server will refuse. `editPermission` is the rule;
+  // `mayCorrectEntries` is its บทบาท half, exported so the screens can ask it.
+  assert.match(src('lib/entries.js'), /if \(mayCorrectEntries\(user\)\) \{/);
+  const view = src('components/HrView.jsx');
+  assert.match(view, /const mayCorrect = mayCorrectEntries\(user\);/);
+  assert.match(view, /mayEdit=\{mayCorrect\}/);
+  // …and the two controls that write are the two that disappear.
+  const entries = src('components/HrEntries.jsx');
+  assert.match(entries, /\{!mayEdit \? null : closed \? \(/);
+  assert.match(entries, /\{mayEdit && isUntouchedSystemFiling\(e\) && \(/);
+});
+
 test('the same two rules the approve route decides by, not a second reading', () => {
   // A screen that names somebody the server would refuse sends the person
   // asking "who signs this" to the wrong desk — which is what this endpoint
@@ -463,4 +645,114 @@ test('the same two rules the approve route decides by, not a second reading', ()
   const route = src('app/api/entries/approvers/route.js');
   assert.match(route, /isDepartmentManager\(m, departmentId, company\)/);
   assert.match(route, /from '@\/lib\/roles\.js'/);
+});
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// THE VISIBILITY LADDER — every rung below, not just the one you sign
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * HR's chart, 2026-09-03:
+ *
+ *     ผู้ดูแลระบบ  — ทุกอย่าง
+ *     ฝ่ายบุคคล ▸ ผู้จัดการฝ่าย ▸ ผู้จัดการแผนก ▸ หัวหน้างาน ▸ พนักงาน
+ *     ฝ่ายบุคคล ▸ การเงิน ▸ พนักงาน
+ *
+ * Reading is not signing and the difference is the point: a ผู้จัดการฝ่าย reads
+ * a พนักงาน's request three rungs down and, where a หัวหน้างาน exists, is not
+ * the one who signs it.
+ */
+
+test('the chart HR drew, read straight off visibleRolesFor', () => {
+  assert.deepEqual(visibleRolesFor('employee'), []);
+  assert.deepEqual(visibleRolesFor('supervisor'), ['employee']);
+  assert.deepEqual(visibleRolesFor('finance'), ['employee']);
+  assert.deepEqual(visibleRolesFor('dept_manager'), ['employee', 'supervisor']);
+  assert.deepEqual(visibleRolesFor('division_manager'), ['employee', 'supervisor', 'dept_manager']);
+});
+
+test('ฝ่ายบุคคล and ผู้ดูแลระบบ read every บทบาท there is', () => {
+  for (const viewer of ['hr', 'admin']) {
+    assert.deepEqual(visibleRolesFor(viewer), [...ROLES], viewer);
+    assert.equal(seesEveryRole(viewer), true, viewer);
+  }
+  for (const viewer of ['employee', ...SIGNER_ROLES]) {
+    assert.equal(seesEveryRole(viewer), false, viewer);
+  }
+});
+
+test('the two branches cannot see into each other', () => {
+  // การเงิน hangs off ฝ่ายบุคคล with พนักงาน under them and nothing else.
+  assert.equal(maySeeRole('division_manager', 'finance'), false);
+  assert.equal(maySeeRole('dept_manager', 'finance'), false);
+  assert.equal(maySeeRole('finance', 'supervisor'), false);
+  assert.equal(maySeeRole('finance', 'dept_manager'), false);
+  // …and both branches still meet at ฝ่ายบุคคล.
+  assert.equal(maySeeRole('hr', 'finance'), true);
+  assert.equal(maySeeRole('hr', 'division_manager'), true);
+});
+
+test('nobody below ฝ่ายบุคคล reads their own บทบาท’s requests', () => {
+  // Two หัวหน้างาน in one แผนก — แผนกผลิต2 has four — do not read each other.
+  for (const role of ['employee', ...SIGNER_ROLES]) {
+    assert.equal(maySeeRole(role, role), false, role);
+  }
+});
+
+test('seeing is WIDER than signing, never narrower', () => {
+  // The invariant that keeps a queue from offering a row its own list hides.
+  for (const viewer of ROLES) {
+    for (const applicant of ROLES) {
+      if (!mayApproveRole(viewer, applicant)) continue;
+      assert.equal(
+        maySeeRole(viewer, applicant), true,
+        `${viewer} may sign for ${applicant} but may not see them`,
+      );
+    }
+  }
+});
+
+test('an unknown บทบาท is read by ฝ่ายบุคคล and ผู้ดูแลระบบ only', () => {
+  assert.equal(maySeeRole('hr', 'manager'), true);
+  assert.equal(maySeeRole('admin', 'manager'), true);
+  assert.equal(maySeeRole('division_manager', 'manager'), false);
+  assert.equal(maySeeRole('manager', 'employee'), false);
+});
+
+test('it is computed from APPROVED_BY, so the two cannot drift', () => {
+  // Walking up the matrix from each applicant reproduces the chart. Written as
+  // a second walk rather than as a second table: a hand-written table is the
+  // thing that would still say the old answer a year from now.
+  for (const applicant of ROLES) {
+    const seen = new Set(['hr', 'admin']);
+    const queue = [...approverRolesFor(applicant)];
+    while (queue.length) {
+      const next = queue.shift();
+      if (seen.has(next)) continue;
+      seen.add(next);
+      queue.push(...approverRolesFor(next));
+    }
+    for (const viewer of ROLES) {
+      assert.equal(maySeeRole(viewer, applicant), seen.has(viewer), `${viewer} → ${applicant}`);
+    }
+  }
+});
+
+test('the list route asks the ladder, and as $and so ?employee= cannot widen it', () => {
+  const route = src('app/api/entries/route.js');
+  assert.match(route, /const visible = await visibleEmployeeClause\(user\);/);
+  assert.match(route, /q\.\$and = \[\.\.\.\(q\.\$and \|\| \[\]\), visible\];/);
+  // `mine` is one person already; `report` is a whole-company reading with
+  // its own บทบาท gate. Neither is narrowed twice.
+  assert.match(route, /scope !== 'mine' && !\(scope === 'report'/);
+});
+
+test('the clause keeps the reader’s own row, because ownership is not a บทบาท', () => {
+  const q = src('lib/delegationQuery.js');
+  assert.match(q, /export async function visibleEmployeeClause\(user\)/);
+  assert.match(q, /\[\.\.\.people\.map\(\(p\) => p\._id\), user\._id\]/);
+  // ฝ่ายบุคคล and ผู้ดูแลระบบ get no clause at all rather than one listing
+  // every employee in the company.
+  assert.match(q, /if \(seesEveryRole\(user\?\.role\)\) return null;/);
 });

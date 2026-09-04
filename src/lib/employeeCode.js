@@ -80,11 +80,81 @@ export function sameCode(a, b) {
 export const CODE_LOCALE = 'en';
 
 /**
- * Order two employee codes — by normalised form, so PM-0620 and PM0620 sort as
- * the same string rather than a hyphen's distance apart.
+ * One run of digits or one run of letters — what `compareCodes` walks.
+ *
+ * The normalised code is [A-Z0-9] only, so these two classes partition it with
+ * nothing left over and no third case to decide.
+ */
+const RUNS = /\d+|[A-Z]+/g;
+
+/**
+ * Order two employee codes — **numerically**, run by run, on the normalised
+ * form so PM-0620 and PM0620 sort as one code rather than a hyphen's distance
+ * apart.
+ *
+ * ── WHY THIS IS NOT `localeCompare` ON THE WHOLE STRING ─────────────────────
+ *
+ * It was, until 2026-09-03, and it was wrong on this roster in a way that only
+ * shows up once both spellings of a code are in one list. Asked for that day as
+ * *"ใบต้องเรียงตามลำดับตัวเลข"* — the two report screens were putting people in
+ * an order nobody could account for:
+ *
+ *     string:  PM00416 · PM00512 · PM-0100 · PM-0101 … PM-0620
+ *     numeric: PM-0100 · PM-0101 … PM00416 · PM-0412 is 412, so it comes first
+ *
+ * Character by character, `PM00416` beats `PM-0100` at the fourth character —
+ * `0` against `1` — because the five-digit spelling pads where the four-digit
+ * one does not. **The digits are a NUMBER, and a number is not compared by
+ * reading it left to right against a number of a different length.** So every
+ * PM005xx and PM004xx on the register sorted above every PM-0xxx, and a reader
+ * looking for 0412 found it in the middle of the sheet with 00416 above it.
+ *
+ * ── HOW IT ORDERS ───────────────────────────────────────────────────────────
+ *
+ * The code is split into runs and the runs compared in order:
+ *
+ *   · two digit runs      → as numbers, so 0620 > 511 and 0100 < 416
+ *   · two letter runs     → `localeCompare` in `CODE_LOCALE`, so PM before THT
+ *   · one of each         → digits first, so PM1 sorts above PMA
+ *   · one list runs out   → the shorter code first, so PM before PM0001
+ *
+ * ── AND IT NEVER RETURNS 0 FOR TWO DIFFERENT CODES ──────────────────────────
+ *
+ * `0620` and `620` are the same NUMBER and the same run comparison, so a
+ * numeric-only rule would call PM-0620 and PM620 equal — two different people
+ * on this roster, handed to `.sort()` as ties, landing in whatever order the
+ * engine happened to hold them. The sheet would then reorder itself between two
+ * exports of one month with nothing changed. The tie-break on the normalised
+ * string is what makes this a TOTAL order; it is reached only by codes that are
+ * numerically equal and spelled differently.
+ *
+ * Two identical codes still compare 0 — `sameCode` is the rule that says they
+ * are one person, and this must not disagree with it.
  */
 export function compareCodes(a, b) {
-  return normalizeCode(a).localeCompare(normalizeCode(b), CODE_LOCALE);
+  const left = normalizeCode(a);
+  const right = normalizeCode(b);
+  if (left === right) return 0;
+
+  const ls = left.match(RUNS) || [];
+  const rs = right.match(RUNS) || [];
+
+  for (let i = 0; i < Math.min(ls.length, rs.length); i++) {
+    const l = ls[i];
+    const r = rs[i];
+    const lNum = /\d/.test(l[0]);
+    const rNum = /\d/.test(r[0]);
+    if (lNum !== rNum) return lNum ? -1 : 1;
+    if (lNum) {
+      if (Number(l) !== Number(r)) return Number(l) < Number(r) ? -1 : 1;
+    } else if (l !== r) {
+      return l.localeCompare(r, CODE_LOCALE);
+    }
+  }
+
+  if (ls.length !== rs.length) return ls.length < rs.length ? -1 : 1;
+  // Numerically equal, differently spelled — see the note above.
+  return left.localeCompare(right, CODE_LOCALE);
 }
 
 /**

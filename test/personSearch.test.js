@@ -261,28 +261,42 @@ test('one row is highlighted, and it is the one Enter takes', () => {
 
 test('the roster picker is used where the list is long and nowhere else', () => {
   /**
-   * A combobox on a four-option filter is worse than the <select> it replaced:
-   * it gives up the operating system's own picker on a phone and asks somebody
-   * to type where one tap used to do. กรองตามพนักงาน holds the roster; the
-   * three filters beside it hold four, ten, and however many accounts have
-   * ever written to the trail.
+   * A SEARCH BOX on a four-option filter is worse than no search box: it asks
+   * somebody to decide what to type where one tap used to do. กรองตามพนักงาน
+   * holds the roster; the three filters beside it hold four, ten, and however
+   * many accounts have ever written to the trail.
+   *
+   * WHAT THIS TEST USED TO SAY, and it is worth keeping because the correction
+   * is the interesting part. It counted three `<select>`s beside the picker and
+   * required them to STAY `<select>`s — on the grounds that the alternative to a
+   * roster combobox was the operating system's own menu, which every assistive
+   * technology on a phone already knows. That was two claims wearing one coat.
+   * The one about the SEARCH FIELD is still true and is what this test is now
+   * about. The one about the TAG stopped being true when `PickOne` existed: the
+   * same panel with no field on top of it, one tap per row, drawn out of this
+   * document instead of by the OS — and on 2026-09-04 the three took it, with
+   * the last `<select>` in the app.
    */
   /**
    * COMMENTS COME OFF FIRST, the same stripper theme.test.js needs and for the
-   * same reason. The comment introducing this very control contains the words
-   * "a <select> is the right control for those" — and counted as markup that
-   * sentence is a fourth dropdown. A test that prose can satisfy, or break, is
-   * not testing the screen.
+   * same reason. The paragraph introducing this very control still argues about
+   * `<select>`s by name, and counted as markup those sentences are dropdowns
+   * that do not exist. A test that prose can satisfy, or break, is not testing
+   * the screen.
    */
   const admin = readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8')
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
   // Prove the stripper works, or the counts below mean nothing.
-  assert.doesNotMatch(admin, /is the right control for those/, 'ตัวตัดคอมเมนต์ไม่ทำงาน');
+  assert.doesNotMatch(admin, /the `<select>`s this comment used to defend/, 'ตัวตัดคอมเมนต์ไม่ทำงาน');
   assert.equal((admin.match(/<PickPerson/g) || []).length, 1);
   const filters = admin.slice(admin.indexOf('กรองตามพนักงาน'), admin.indexOf('ล้างตัวกรองทั้งหมด'));
-  assert.equal((filters.match(/<select/g) || []).length, 3, 'ตัวกรองที่รายการสั้นต้องยังเป็น <select>');
+  assert.equal((filters.match(/<select/g) || []).length, 0, 'ตัวกรองยังมี <select> — เมนูของ OS จะกลับมา');
+  assert.equal((filters.match(/<PickOne/g) || []).length, 3, 'ตัวกรองที่รายการสั้นต้องเป็น PickOne');
+  // …and none of the three grew a search box on the way across: the slice opens
+  // ON กรองตามพนักงาน, so the one `<PickPerson` in it is that control itself and
+  // the count above is what holds the other three to none.
 });
 
 test('the rows are a real touch target on a phone', () => {

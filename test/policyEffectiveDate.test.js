@@ -147,7 +147,13 @@ const screen = readFileSync(
 
 test('choosing an answer proposes it — the PATCH waits for the dialog', () => {
   // The dropdown holds the proposal; nothing but the dialog's own button saves.
-  assert.match(screen, /onChange=\{\(e\) => setPending\(\{/, 'the dropdown saves on change again');
+  //
+  // NO `e` SINCE 2026-09-04. The control is a `PickOne` and not a `<select>` —
+  // seventeen sentence-long answers that the operating system was drawing
+  // outside this document — so what arrives is the row's own value rather than
+  // an event to read `target.value` off. What is asserted is unchanged and is
+  // the whole of the point: choosing PROPOSES, and only the dialog saves.
+  assert.match(screen, /onChange=\{\(v\) => setPending\(\{ field: f, value: coerce\(f, v\) \}\)\}/, 'the dropdown saves on change again');
   assert.match(screen, /onConfirm=\{\(\) => save\(pending\.field\.key, pending\.value\)\}/);
   // And cancelling sends nothing at all.
   assert.match(screen, /onCancel=\{\(\) => setPending\(null\)\}/);

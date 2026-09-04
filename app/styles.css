@@ -351,16 +351,44 @@
      an inline style on `:root` beats this declaration, which is why the value
      here is a starting point and not a number anything should be edited to.
 
-     88 IS THE TALLEST THE BAR GETS and is what draws until that observer runs,
-     and in print, where `.no-print` takes the bar away entirely. The height is
-     the bar's BUTTONS' — six Thai labels that wrap to three lines at 320px, two
-     at 360 and 430, one above 600 — measured on 2026-08-26. `env()` belongs in
-     this line and not in the measured one: the bar pads past the home indicator
-     itself, so anything read off it has the inset in it already.
+     79 IS THE BAR'S HEIGHT, FULL STOP, and that is new: it is not "the tallest
+     case" any more but the ONLY case. Measured on 2026-09-04 against the built
+     app for a พนักงาน, a ผู้เซ็น and a ผู้ดูแลระบบ at 320 · 360 · 390 · 430 ·
+     600 · 820px — **79px in all eighteen**. Every label on this bar is one line
+     at every width, because the labels are SHORT names now rather than the
+     screens' own sentences; see `BAR_SLOTS` in components/App.jsx and
+     `.mobile-nav .label` below.
+
+     IT SAID "the SLOTS' short names" UNTIL LATER THE SAME DAY, when the 5th
+     round gave the reports slot a ผู้เซ็น's own รายงานทีม — a per-tab `short`,
+     ten characters, on a bar whose longest label is now ประวัติ OT at ten.
+     Nothing measured here moved, and the cap that keeps it that way is in
+     test/roleNavTabs.test.js rather than in this file.
+
+     `env()` belongs in this line and not in the measured one: the bar pads past
+     the home indicator itself, so anything read off it has the inset in it
+     already.
+
+     THE NUMBER MOVED THREE TIMES ON 2026-09-04 and the history is the reason to
+     trust this one. It read **88** from a 2026-08-26 measurement of six flat
+     tabs whose labels ran to three lines at 320px. The slots took the bar to
+     four or five buttons wrapping twice; the ส่วนตัว / จัดการทีม halves added a
+     17px strip and `11px/1.45` added room for Thai tone marks, which is where
+     **104** came from; then the redesign took the strip off, cut the fifth slot
+     and stopped putting a screen's name under a glyph — and the wrapping that
+     every one of those figures was really measuring stopped happening at all.
+     A constant is what a bar of one-line labels is.
+
+     A FIFTH SLOT IS DECLARED AGAIN SINCE THE 5th ROUND — `form`, so a ผู้เซ็น
+     presses พิมพ์ใบ OT rather than เพิ่มเติม — and **79 is unchanged**, because
+     no บทบาท fills more than four of the five and every label is still one
+     line. The figure to distrust would be a bar that drew five columns; see
+     `BAR_SLOTS` for why none does.
 
      Only `.mobile-nav-spacer` reads this, and only below 860px. See the block
-     it is used in for why the spacer stopped being a flat number. */
-  --nav-h: calc(88px + env(safe-area-inset-bottom));
+     it is used in for why the spacer stopped being a flat number — that reason
+     is unchanged and is why this is still a fallback and not the source. */
+  --nav-h: calc(79px + env(safe-area-inset-bottom));
   /* The chip แผนก holds, as a number the box above can be built from rather
      than as whatever its contents happened to add up to. It was emergent —
      4px of padding around a 13px/1.5 line came to 29.5, except on the chips
@@ -1055,6 +1083,94 @@ html { -webkit-tap-highlight-color: transparent; }
 /* The active row is the one place the icon should not be held back. */
 .nav button.active .icon { opacity: 1; }
 .nav .label { flex: 1; text-align: left; }
+
+/* ── THE THREE BLOCKS, AND THE LINE THAT SEPARATES THEM ─────────────────────
+
+   Asked for on 2026-09-03: ข้อมูลส่วนตัว, การอนุมัติ & รายงาน and ผู้ดูแลระบบ,
+   drawn apart rather than as one column. What made them one column was the same
+   day's withdrawal of §2 — every บทบาท files its own OT now, so a ฝ่ายบุคคล's
+   menu opens with two screens about their own hours and continues into five
+   about everybody else's, with nothing marking the seam.
+
+   THE SEPARATION IS SPACE FIRST AND A HEADING SECOND. 14px between blocks
+   against 2px between rows is a seven-to-one gap and does the work on its own;
+   the heading names what the gap already showed. A rule (`border-top`) was
+   tried against this and is not here: the sidebar already carries exactly one
+   horizontal line — `.sidebar-foot`'s, which separates the app's navigation
+   from the person using it — and three more would make that one mean nothing.
+
+   WHICH BLOCKS EXIST IS NOT DECIDED HERE. `navGroups` in components/App.jsx
+   drops a block with no rows, so a พนักงาน sees ข้อมูลส่วนตัว and nothing else,
+   with no empty heading under it. */
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-group + .nav-group { margin-top: 14px; }
+
+/* NO `text-transform` AND NO WIDE `letter-spacing`, which is what the app's
+   other kickers (`.brand .kicker`, the mono meta on the app bar) use to say
+   "this is a label, not content". Both of those are rules for Latin: Thai has
+   no upper case, and letter-spacing pulls a Thai word apart into syllables that
+   read as separate words. The label is held back by SIZE, WEIGHT and COLOUR
+   instead — 11px against the rows' 14, and `--on-dark-2`, which is the grey
+   `.whoami .r` already uses on this same dark ground and measures 9.5 on it.
+   `--on-dark` is the greyer one and is the token test/theme.test.js records as
+   failing AAA on a dark surface. */
+.nav-group-label {
+  padding: 0 12px 4px;
+  font: 600 11px/1.5 var(--sans);
+  color: var(--on-dark-2);
+}
+
+/* ── OT ส่วนตัว, the one row that folds ────────────────────────────────────
+
+   It is shaped exactly like a nav row and is not one: `.nav button` above gives
+   it its box, its type and its hover, and everything here is about the two ways
+   it must differ from the rows it sits over.
+
+   IT NEVER TAKES `.active`. That mark means "this is the page you are on", and
+   pressing this opens a list instead of a screen. When the fold is SHUT over
+   the current page it takes `.current` — a white overlay wash and a green bar
+   down its left edge — which says the page is behind this row without claiming
+   to be it. `--green-lift` and not `--green`: this is a 2px marker on a
+   near-black ground rather than a fill with white type on it, and the lifted
+   green clears 3:1 against the sidebar in both themes where the fill does not.
+
+   The bar is an inset shadow rather than a `::before`, so it follows the
+   button's own `border-radius` and needs no second box to position. */
+.nav-parent .chev {
+  flex: none; color: var(--on-dark-2); font-size: 17px; line-height: 1;
+  transition: transform .16s;
+}
+.nav-parent[aria-expanded='true'] .chev { transform: rotate(90deg); }
+.nav-parent.current {
+  background: var(--on-dark-active); color: var(--on-fill);
+  box-shadow: inset 2px 0 0 var(--green-lift);
+}
+.nav-parent.current .chev { color: var(--on-fill); }
+
+/* ── the rows inside the fold ──────────────────────────────────────────────
+
+   INDENTED AGAINST A GUIDE LINE, because indentation alone stops reading as
+   containment the moment the fold is shut and the parent is gone: what is left
+   is two rows that start 15px further right than the ones above them, for no
+   visible reason. The line is the reason, and it is the same `--on-dark-line`
+   as the one rule in the sidebar's foot.
+
+   AND THE ACTIVE ROW COLOURS ITS OWN SEGMENT OF THAT LINE. The row itself is
+   the ordinary green pill — one mark for "the page you are on", everywhere in
+   this app — but the pill sits inside the indent, so at a glance the fold shows
+   which of its two children is open only by reading the labels. The segment is
+   the glance. It is drawn OUTSIDE the pill, on the sidebar's own ground, which
+   is why it can be green next to a green fill and still be seen. */
+.nav-items { display: flex; flex-direction: column; gap: 2px; }
+.nav-items.sub {
+  margin-left: 15px; padding-left: 10px;
+  border-left: 1px solid var(--on-dark-line);
+}
+.nav-items.sub button { position: relative; }
+.nav-items.sub button.active::before {
+  content: ''; position: absolute; left: -11px; top: 7px; bottom: 7px;
+  width: 2px; border-radius: 1px; background: var(--green-lift);
+}
 
 /* Count badges are alarms, not decoration — one colour, used only here.
    IT IS AMBER, AND IT WAS `--danger` UNTIL 2026-08-31. Asked for on the
@@ -3444,6 +3560,18 @@ td > .approver-line { margin-top: 5px; }
    `.pick-menu.one-menu li .nm` above would otherwise overrule the font on it. */
 .pick-menu.one-menu li.all .nm { font: 500 13.5px/1.4 var(--sans); color: var(--muted); }
 .pick-menu.one-menu li[aria-selected='true'] .nm { font-weight: 700; }
+/* ── A ROW THAT IS ON THE LIST AND IS NOT THIS PERSON'S TO TAKE ──────────────
+   บทบาท on ทะเบียนพนักงาน, where ฝ่ายบุคคล see ผู้ดูแลระบบ greyed rather than
+   missing: a list that silently drops it answers "why can I not make this
+   person an admin" with nothing at all, and the row's own tail says who can.
+
+   `not-allowed` and the fade are what a `<select>`'s disabled `<option>` drew
+   for free and this had to put back. `data-active` never lands here — `PickOne`
+   steps ↑/↓, Home/End, the type-ahead and the pointer over these rows — so
+   there is no highlight state to undo, only the resting one to dim. */
+.pick-menu.one-menu li.off { cursor: not-allowed; }
+.pick-menu.one-menu li.off .nm,
+.pick-menu.one-menu li.off .ct { color: var(--muted-2); opacity: .75; }
 /* ONE highlight, and it is `.pick-menu`'s green — `--green-bg` over
    `--green-dark`, which on ธีมมืด is a deep green ground under a pale green
    ink and on the light theme is the wash HR already knows from ค้นหาพนักงาน.
@@ -3600,6 +3728,129 @@ td > .approver-line { margin-top: 5px; }
   padding: 0; background: none; border: 0; box-shadow: none;
 }
 .pop.one-pop .pick-menu.one-menu { position: static; }
+
+/* ── AND THE FOURTH: WHAT IS BEHIND A SLOT ON THE PHONE BAR ─────────────────
+   `.mobile-nav`'s รายงาน and เพิ่มเติม open this — the tabs that used to be
+   buttons of their own on a bar of eight. See `BAR_SLOTS` in
+   components/App.jsx for why there are four slots and not eight.
+
+   IT IS ALWAYS A SHEET IN PRACTICE, because the bar that opens it is
+   `display: none` above 860px, so `.pop.sheet` further down is what actually
+   draws it: full width, off the bottom edge, over a scrim. The width here is
+   for the one frame before `useSheet` has read `matchMedia` — a panel measured
+   at no width would be placed against the wrong edge and then jump.
+
+   ROWS, NOT OPTIONS. `.pick-menu` is a list of VALUES and is right for
+   `PickOne`; these are destinations, each with the glyph it wears in the bar
+   and on the sidebar, and one of them is the page you are already on. So they
+   are buttons rather than `role="option"` rows, and the mark for the open one
+   is the app's ordinary green pill. */
+.pop.nav-pop { width: 260px; padding: 8px; }
+/* The slot's own name over its rows — the one thing the sheet has to say that
+   the rows do not, since the button that opened it is behind a scrim by the
+   time this is on screen. Mono and uppercase like every kicker in this app. */
+.nav-sheet-head {
+  padding: 2px 12px 8px;
+  font: 600 11px/1.4 var(--mono); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--muted-2);
+}
+.nav-sheet { display: flex; flex-direction: column; gap: 2px; }
+.nav-sheet button {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  /* 52 and not 44: this is a menu of destinations read with a thumb, and the
+     rows are the whole of what the sheet is for. The app's floor is 44 and
+     nothing here is below it. */
+  min-height: 52px; padding: 0 12px;
+  border: 0; border-radius: var(--radius-sm); background: none; cursor: pointer;
+  color: var(--ink); font: 500 15px/1.35 var(--sans); text-align: left;
+}
+.nav-sheet button .icon { flex: none; display: grid; place-items: center; color: var(--muted); }
+.nav-sheet button .icon svg { width: 20px; height: 20px; display: block; }
+.nav-sheet button .label { flex: 1; min-width: 0; }
+.nav-sheet button:hover { background: var(--neutral-wash); }
+/* The page you are on, wearing the mark it wears everywhere else in this app.
+   Written after `:hover` for the reason the bar's own rules are: a finger
+   resting on the open row must not take its green away. */
+.nav-sheet button.active {
+  background: var(--green-bg); color: var(--green-dark); font-weight: 700;
+}
+.nav-sheet button.active .icon { color: var(--green-dark); }
+
+/* ══ THE DRAWER — the whole menu, under the app bar's avatar ════════════════
+
+   `NavDrawer` in components/App.jsx, since 2026-09-04. It is `.nav-pop` with
+   two things added — a who-is-this head, and headings between the groups — so
+   everything about a row, its height, its glyph and its green is `.nav-sheet`'s
+   above and is not restated here.
+
+   WHY IT EXISTS IS ONE LINE UP IN THE STYLESHEET'S HISTORY: this is where the
+   ส่วนตัว / จัดการทีม grouping went when it was taken off `.mobile-nav`. A
+   heading costs nothing on a panel that is over the page; on a bar fixed under
+   it, every pixel is a pixel the page gives up. See the block where those
+   classes stood.
+
+   WIDER THAN `.nav-pop`'s 260 — 300 — because these rows carry full screen
+   names (บันทึกและประวัติ OT, รายงาน OT ฝ่ายบัญชี) rather than the four or five
+   a slot's sheet holds. As with that one the width is for the single frame
+   before `useSheet` reads `matchMedia`; below 860px `.pop.sheet` takes over and
+   this is full width. */
+.pop.drawer-pop { width: 300px; }
+
+/* WHO IS SIGNED IN. The button that opens this panel shows two letters, and by
+   the time the panel is up that button is behind a scrim — so the panel says in
+   full what the avatar says in initials. Same three facts and same order as the
+   sidebar's `.whoami` block, which is the desktop's version of this. */
+.drawer-who {
+  display: flex; align-items: center; gap: 12px;
+  padding: 4px 12px 12px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.drawer-who .avatar.lg {
+  flex: none; width: 40px; height: 40px; font-size: 13px;
+  /* `.appbar .avatar` is `display: none` above 860px — this one is inside a
+     panel and is drawn at every width, so it states its own display rather than
+     inheriting a rule written for the bar. */
+  display: grid;
+}
+.drawer-who-text { min-width: 0; }
+.drawer-who-text .nm {
+  font: 600 15px/1.3 var(--sans); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.drawer-who-text .sub {
+  margin-top: 2px;
+  font: 400 12px/1.35 var(--mono); color: var(--muted-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* THE HEADING OVER A GROUP OF ROWS — `.nav-sheet-head`'s type exactly, because
+   it is the same voice doing the same job one level in. It is not that rule
+   with a second selector added: that one is the panel's TITLE and sits above
+   everything, this one repeats down the list, and the two differ in the spacing
+   that says so. First-child loses its top margin — a heading against the rule
+   under `.drawer-who` needs no gap of its own. */
+.drawer-group {
+  padding: 10px 12px 4px;
+  font: 600 11px/1.4 var(--mono); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--muted-2);
+}
+.drawer-sheet > .drawer-group:first-child { padding-top: 2px; }
+/* บัญชี — the two rows that are about the ACCOUNT rather than about the OT.
+   A rule above it as well as a heading, because it is the end of the menu and
+   ออกจากระบบ is under it: the one row in this app that cannot be undone by
+   pressing something else. */
+.drawer-group.foot {
+  margin-top: 6px; padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+/* ออกจากระบบ, in the app's refusal colour rather than in `--ink`.
+   NOT `--danger` on the ink alone: `.btn.danger`'s own note settles this — what
+   marks a destructive control in this app is the three-token danger light, and
+   a row in a menu takes the ink of it. The glyph goes with the text, or the
+   drawing beside a red word reads as a different row. */
+.nav-sheet button.danger { color: var(--danger); }
+.nav-sheet button.danger .icon { color: var(--danger); }
+.nav-sheet button.danger:hover { background: var(--reject-bg); }
 /* Seven columns of days, at the width they are readable. */
 .pop.cal-pop { width: 292px; }
 /* TWO WHEELS AND THE PAIR OF BOXES OVER THEM — 232px, which is what the header
@@ -3815,6 +4066,36 @@ td > .approver-line { margin-top: 5px; }
   /* The row is 44px on a phone even though the cells are 40 — a cell is a
      square in a grid of seven and cannot be widened, but nothing stops it being
      taller, and the height is the half a thumb misses on. */
+  /* ── A SHEET TALLER THAN THE SCREEN — the drawer, 2026-09-04 ─────────────
+     Every other sheet in this app is short by construction: a calendar is six
+     rows, a time panel is five stops, a slot's menu is at most four
+     destinations. The drawer under the app bar's avatar is the whole menu —
+     ten rows for a ผู้ดูแลระบบ, plus a head saying who is signed in and a foot
+     with ปิด in it — and it measured **814px**. Walked at 360×780 the panel's
+     top came out at **-34px**, so the name at the head of it was off the screen;
+     at 360×667 it was -147 and four rows could not be reached at all, because
+     nothing here capped a height and nothing scrolled.
+
+     THE CAP IS ON THE PANEL AND THE SCROLL IS ON THE LIST, which is what keeps
+     the two fixed parts fixed. `.pop.sheet` is `bottom: 0`, so a panel taller
+     than the screen grows UPWARD past the top edge — capping it is what brings
+     the head back on screen. Putting `overflow-y` on the panel instead would
+     scroll the head and the ปิด button away with the rows, and ปิด is the only
+     control on a sheet a phone can be sure of.
+
+     `dvh` AND NOT `vh`: on a phone with a retracting address bar `vh` is the
+     TALLEST the viewport gets, so a panel measured in it is off the bottom of
+     the screen for as long as the bar is showing. 88 leaves the page visible
+     above the sheet — a sheet that reaches the top edge is a dialog, and this
+     one is dismissed by pressing the page it is over.
+
+     IT APPLIES TO EVERY SHEET AND ONLY BITES ON THE TALL ONE, which is better
+     than naming the drawer here: the next long list to open as a sheet gets
+     the same treatment without anybody remembering to ask for it. */
+  .pop.sheet { max-height: 88dvh; display: flex; flex-direction: column; }
+  .pop.sheet > .nav-sheet { overflow-y: auto; overscroll-behavior: contain; }
+  .pop.sheet > .drawer-who, .pop.sheet > .nav-sheet-head, .pop.sheet > .pop-foot { flex: none; }
+
   .pop.sheet .cal-cell { min-height: 44px; font-size: 15px; }
   .pop.sheet .cal-nav { width: 44px; height: 44px; }
   .pop.sheet .cal-title { padding: 10px 8px; font-size: 15px; }
@@ -4268,6 +4549,23 @@ td > .approver-line { margin-top: 5px; }
    has it, which is what keeps the boxes below them on one line. */
 .field-head { display: flex; align-items: center; gap: 6px; min-height: 18px; }
 
+/* ── A FIELD WHOSE QUESTION IS ALREADY ON THE SCREEN ─────────────────────────
+   นโยบายการคำนวณ, where the rule is the left column of `.policy-row` and its
+   answer is the right: the dropdown there is a `PickOne` since 2026-09-04, and
+   `PickOne` renders a `<label>` because `aria-labelledby` has to point at
+   something. Printed, it would be the question asked twice on one row.
+
+   TAKEN OUT OF THE PICTURE AND LEFT IN THE DOCUMENT — the standard clip, not
+   `display: none` and not `visibility: hidden`, both of which take the element
+   out of the accessibility tree as well and would leave seventeen comboboxes on
+   that page with no name at all. `position: absolute` is also what keeps it from
+   being a flex item of `.field`, so the 7px gap above the control goes with it
+   rather than being left behind as a 7px space. */
+.field.label-off > .field-head {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
 /* ── THE SAME ROW ONE LEVEL UP: a form's `<h2>` and the ⓘ beside it ─────────
 
    บันทึก OT แทนพนักงาน since 2026-09-01, where a blue `Alert` five lines tall
@@ -4490,9 +4788,18 @@ td > .approver-line { margin-top: 5px; }
 }
 .queue-tabs button.active .count { background: var(--amber); color: var(--on-amber); }
 
-/* ตั้งค่าระบบ's six section buttons — the same job as .queue-tabs above, but
-   six choices instead of two, so they have to be allowed to wrap and cannot be
-   one segmented bar.
+/* ตั้งค่าระบบ's eight section buttons — the same job as .queue-tabs above, but
+   eight choices instead of two, so they have to be allowed to wrap and cannot
+   be one segmented bar.
+
+   IT IS THE DESKTOP'S CONTROL ONLY, SINCE 2026-09-04. Below 860px the sections
+   are `.section-pick`, a dropdown; this strip is `display: none` there. What it
+   read until then was one swipeable line — `flex-wrap: nowrap` with an
+   `overflow-x` scroller, bled out to the card's edges, with a fade on whichever
+   end still had buttons behind it — and the objection is what it cost: the
+   section you are in was the only one on screen, so finding another meant
+   flicking a strip with no way to see the set, and it took a row of a phone's
+   height to say so.
 
    `.row` on its own left every button at the width of its own label, and a
    wrapped row therefore ended wherever its last label happened to end: three
@@ -4503,15 +4810,36 @@ td > .approver-line { margin-top: 5px; }
    `flex: 1 1 auto` hands each row the card's full width to share out among
    whatever landed on it, in proportion to label length, so every row ends
    flush at both edges. Deliberately NOT equal-width columns: a two-column
-   phone track is about 182px and ประวัติการแก้ทะเบียน needs about 190px, so a
-   grid would break that label over two lines and pull its whole row taller,
-   trading one kind of untidy for another. */
+   track is about 182px and ประวัติการแก้ทะเบียน needs about 190px, so a grid
+   would break that label over two lines and pull its whole row taller, trading
+   one kind of untidy for another. */
 .section-tabs .btn {
   flex: 1 1 auto;
   /* The label and its badge on one line, centred together — a tab carrying a
-     number is otherwise a hair taller than the five beside it. */
+     number is otherwise a hair taller than the seven beside it. */
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
 }
+
+/* ── AND THE PHONE'S OWN CONTROL ────────────────────────────────────────────
+   Not drawn above 860px, where the strip is. Exactly one of the two is on
+   screen at any width, which is the same arrangement `.sidebar` and
+   `.mobile-nav` have: one list of sections, two ways to choose from it, never
+   both at once. See `AdminView`.
+
+   THE BADGE SITS BESIDE THE BOX, not inside the list. A count that only
+   appears once the list is opened is a warning somebody has to go looking for,
+   and this one is about the roster rather than about the section on screen —
+   so it is drawn whichever section is open, at the end of the line, where the
+   strip used to carry it on the tab itself. */
+.section-pick { display: none; align-items: flex-end; gap: 10px; }
+/* `.field` is `min-width: 100%` on a phone (see the 860px block), which would
+   push the badge off the end of the line. It takes what is left of the row
+   instead, and the badge keeps its own size. */
+.section-pick .field { flex: 1; min-width: 0; margin: 0; }
+/* Where this row's own `.tab-badge` rule is: BELOW the badge's definition, not
+   here. `test/settingsCoverageUi.test.js` reads the badge's geometry by
+   slicing the stylesheet at the first `.tab-badge {` it finds, so a scoped rule
+   written above the definition is the rule it measures. */
 
 /* ── the count on a section tab ──────────────────────────────────────────────
    HOW MANY THINGS ARE WRONG BEHIND THIS TAB, on the tab itself.
@@ -4550,37 +4878,26 @@ td > .approver-line { margin-top: 5px; }
   align-self: center; position: relative; top: .5px;
   flex: 0 0 auto;
 }
+/* The same badge on the phone's dropdown row, where it stands beside the box
+   rather than on a button. `flex-end` lines the row up on the box's bottom
+   edge, and this lifts the badge to the middle of it rather than leaving it on
+   the baseline of a control it is not inside. */
+.section-pick .tab-badge { margin-bottom: 13px; }
 
-/* ── “there are more tabs this way” ──────────────────────────────────────────
-   The wrapper around `.section-tabs`, carrying a fade at whichever edge still
-   has tabs behind it. `data-edge` comes from `useScrollEdge` in common.jsx —
-   the same reading `.sheet-view` uses on the printed forms, and deliberately
-   the same four values, so there is one answer in this app to "is there more
-   this way" and two ways of painting it.
+/* `.tabs-view` STOOD HERE — the wrapper around `.section-tabs`, carrying a fade
+   at whichever edge still had buttons behind it, painted from `data-edge` off
+   `useScrollEdge`.
 
-   It fades to the CARD, where the print one fades to a shadow: these tabs sit
-   on a white panel and what should happen at the edge is that the next button
-   dissolves into it. A shadow there would read as a dropped edge.
+   IT WENT WITH THE SWIPEABLE STRIP ON 2026-09-04. The fade answered "there is
+   more this way", and there was only ever more this way below 860px, where the
+   strip scrolled; above it `.row` wraps and `data-edge` read `none`, so the two
+   pseudo-elements were never drawn. With the phone's sections a dropdown, the
+   scroller is gone and the fade had nothing left to mark.
 
-   No breakpoint. Above 860px the strip wraps, nothing overflows, `data-edge` is
-   `none` and neither pseudo-element is drawn. */
-.tabs-view { position: relative; }
-.tabs-view::before, .tabs-view::after {
-  content: ''; position: absolute; top: 0; bottom: 0; width: 34px; z-index: 1;
-  pointer-events: none; opacity: 0; transition: opacity .18s ease;
-}
-.tabs-view::before {
-  left: 0;
-  background: linear-gradient(to right, var(--card), transparent);
-}
-.tabs-view::after {
-  right: 0;
-  background: linear-gradient(to left, var(--card), transparent);
-}
-.tabs-view[data-edge="start"]::after,
-.tabs-view[data-edge="middle"]::after { opacity: 1; }
-.tabs-view[data-edge="middle"]::before,
-.tabs-view[data-edge="end"]::before { opacity: 1; }
+   `useScrollEdge` ITSELF IS NOT GONE and is still the app's one reading of that
+   question — `SheetScroll` and the printed forms' `.sheet-view` use it, and
+   `test/settingsCoverageUi.test.js` still holds that there is exactly one of
+   it. What this deletion removes is a caller, not the rule. */
 
 /* ── the chips above แผนก ────────────────────────────────────────────────────
    TWO WAYS TO READ ONE TABLE, and they are chips rather than buttons because
@@ -4648,6 +4965,49 @@ td > .approver-line { margin-top: 5px; }
    because that is what it is asking of the reader rather than a warning. */
 .chip.edited { background: var(--amber-bg); color: var(--amber); }
 .chip.green { background: var(--green-bg); color: var(--green-dark); }
+/* เวลาไม่ตรงกับไฟล์สแกน — the same amber as แก้ไขแล้ว, and for the same reason:
+   it asks the reader to look at a row, it does not say the row is wrong. The
+   machine has no authority over a signed sheet (src/models/ScanPunch.js); it
+   raises a question and a person answers it.
+
+   ITS OWN CLASS RATHER THAN `.chip.edited`, though they are the same two
+   declarations today. A chip that says one thing while wearing a class named
+   after another is how `.box` came to size a dropdown's tick-box — and these
+   two will not stay identical: `แก้ไขแล้ว` is about this system's own history
+   and this one is about evidence from outside it. */
+.chip.scan-off { background: var(--amber-bg); color: var(--amber); }
+/* ไม่มีข้อมูลสแกน — a GAP in the evidence, not a disagreement with it, so it
+   takes the quiet tone. A month whose file was never imported must not look
+   like a month full of bad requests. */
+.chip.scan-none { background: var(--neutral-wash); color: var(--muted); }
+/* ไม่ได้สแกนเข้า OT — the start of an OT that no door event witnessed, which at
+   this company is what MOST rows look like: people scan before 08:00, work the
+   shift, and scan once more when the OT is over, so 17:00 passes with them
+   already inside. Asked for on 2026-09-04, after the verdict had stopped
+   counting that start against the row.
+
+   QUIET, AND FOR THE REASON THE COUNT GIVES. It lands on 25 rows of 27 on a
+   real month — the same count that made the amber version unreadable. A grey
+   chip on twenty-five rows is a column of labels; an amber one is twenty-five
+   errands that turn out to be none, which is what teaches a reader to stop
+   opening the amber chips that are not.
+
+   ITS OWN CLASS, though it matches `.chip.scan-none` today. "No scan at all"
+   and "no scan at the start" are different statements about a day, and the one
+   that moves must not drag the other with it. */
+.chip.scan-noin { background: var(--neutral-wash); color: var(--muted); }
+/* เหมารายวัน — THE SAME GREEN `OT สวัสดิการวันเกิด` wears, and deliberately so:
+   both are facts about how a request was FILED that change how its hours were
+   counted, neither is a problem, and a reader who has learnt one of them has
+   learnt the other.
+
+   GREEN AGAINST THE AMBER ABOVE IS THE WHOLE POINT. On a flat day the hours are
+   bought whole, so a scan that disagrees with the times is expected rather than
+   wrong (HR, 2026-09-04). Wearing the warning colour for it would ask somebody
+   to go and check a row where there is nothing to find — and a warning that
+   turns out to be nothing is what teaches a reader to stop reading the amber
+   ones that are not. */
+.chip.scan-flat { background: var(--green-bg); color: var(--green-dark); }
 /* ต้องตรวจ — the same amber fill as แก้ไขแล้ว above, RINGED.
 
    It is the one birthday status that is work: every other row on วันเกิดของ
@@ -5907,6 +6267,16 @@ td > .approver-line { margin-top: 5px; }
   padding: 40px 20px; text-align: center; color: var(--muted-2);
   font: 400 14px/1.6 var(--sans);
 }
+/* The HEADING of an empty state, when it has one — 2026-09-04, with the queue
+   that keeps its toolbar and its column headings at nought rows.
+
+   The same face `.empty.cleared strong` already wears, because the two are one
+   moment told two ways ("nothing has arrived" / "you just finished") and a
+   reader moving between them should see one thing change: the words. `block`
+   so the sentence under it starts a line of its own — the `.hint` beside it is
+   a `div` and would clear it anyway, and saying so here keeps the pair legible
+   if either ever becomes a span. */
+.empty strong { display: block; font: 600 15px/1.4 var(--sans); color: var(--ink); }
 
 .hint { font: 400 12.5px/1.55 var(--sans); color: var(--muted-2); }
 /* `เฉพาะแผนกวิศวกรรม` — the clause under รออนุมัติ naming whose queue this is,
@@ -5966,6 +6336,42 @@ td > .approver-line { margin-top: 5px; }
   background: var(--info-bg); color: var(--info);
   font-weight: 500; line-height: 1.5;
 }
+
+/* ── ตรวจก่อนนำเข้า: the question, and the answer ──────────────────────────
+   Two blocks inside the import panel, sharing the ℹ️ vocabulary above rather
+   than inventing a third colour, because neither is a warning: one is a
+   question being asked and the other is the answer being repeated back.
+
+   Boxed, and that is the point of both. The panel around them is already red
+   (nothing will be imported) or green (this will be), and a colour that means
+   "decide something" cannot also mean "somebody decided". The frame is what
+   separates the sentence a person is ANSWERING FOR from the sentences the file
+   itself proved — see the note over `.order-said` in AdminView.jsx. */
+.order-ask, .order-said {
+  margin-top: 10px; padding: 9px 11px;
+  border-left: 3px solid var(--info-line);
+  border-radius: var(--radius-xs);
+  background: var(--info-bg); color: var(--info);
+  line-height: 1.55;
+}
+/* The answer is the standing claim, so it carries the whole frame rather than
+   one edge of it: this is what the reader is being asked to check. */
+.order-said { border: 1px solid var(--info-line); border-left-width: 3px; }
+
+/* ── ตั้งค่าระบบ → รูปแบบวันที่ใน CSV ────────────────────────────────────────
+
+   Two rows, so the 210px ceiling `.pick-list` carries for a roster of names is
+   irrelevant here — and left in place it would be a scroll container that can
+   never scroll, which is one more thing that can be wrong later. Released.
+
+   `.cell-sub` is used as a block everywhere else in the app (it is a <div> in
+   every other caller). Inside a `.check` row it has to be a <span> to be legal
+   markup under a <label>, so the display is stated here rather than inline on
+   the element: the example under each option — “05/03/1998 จะถูกอ่านเป็น 5
+   มีนาคม 1998” — IS the setting, and beside the label rather than under it, it
+   reads as a continuation of the format string. */
+.csv-order { max-height: none; }
+.csv-order .check .cell-sub { display: block; }
 
 /* ══ tables ══════════════════════════════════════════════════════════════ */
 
@@ -6603,6 +7009,36 @@ tbody tr:hover { background: var(--green-wash); }
   font: 400 14px/1.35 var(--sans);
   padding-inline: 12px;
 }
+/* ── AND THE CONTROL IS A `PickOne` SINCE 2026-09-04 ─────────────────────────
+   The `<select>` above is gone from this screen; the rule is kept because the
+   two paragraphs over it are the reasoning this one inherits, and because
+   `.policy-row select` is still what a reader searches for.
+
+   THE SAME TWO DEPARTURES, RESTATED ON THE BOX THIS SCREEN NOW DRAWS. The type
+   lives on `.val` rather than on the button, because `.field .pick-one .val` is
+   where the shared block's mono is overridden for the value — set on the button
+   it would lose to that rule and the sentence would be mono again, which is the
+   whole subject of the note above.
+
+   THE VALUE DOES NOT ELLIPSIS HERE, and that is the third departure and it is
+   this control's own. `.pick-one .val` truncates on one line, which is right for
+   a แผนก in a 150px filter and wrong for "หักเฉพาะช่วงที่คาบเกี่ยว
+   12:00–13:00 (ค่าเริ่มต้น)" — an answer nobody can read is an answer nobody can
+   check. So it wraps, and the box grows with it: `min-height` is what the shared
+   block sets, not `height`, so nothing has to be re-stated for that to work.
+   The ▾ stays on the first line by `align-items` on the row. */
+.policy-row .pick-one { align-items: flex-start; padding-inline: 12px; }
+.policy-row .pick-one .val {
+  font: 400 14px/1.35 var(--sans);
+  overflow: visible; white-space: normal; text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+/* The caret is a mark on the first line of the answer, not a glyph floating in
+   the middle of a box two lines tall. `line-height` matched to the value's so
+   the two sit on one baseline row. */
+.policy-row .pick-one .caret { line-height: 1.35; font-size: 11px; }
+/* The rows of the panel are the same sentences, and `.pick-menu.one-menu li .nm`
+   already wraps them — 14px there against 14px here, so nothing is restated. */
 
 /* ยืนยันการเปลี่ยนกฎการคำนวณ — the dialog between choosing an answer and saving
    it (ConfirmPolicyChange in components/AdminView.jsx).
@@ -8066,7 +8502,7 @@ table.mini tbody tr:hover { background: none; }
    else — and it is this rule, with its pair in the 860px block, that decides
    whether being off the page means anything.
 
-   Above 860px it does not. A sixty-row table of eleven narrow columns is read
+   Above 860px it does not. A sixty-row table of ten narrow columns is read
    at a glance and down its columns; paging it would hide fifty-five rows behind
    a control. So the pager is removed here and `.off-page` is deliberately
    given NO rule at all, which is what leaves every row drawn.
@@ -8148,8 +8584,17 @@ table.mini tbody tr:hover { background: none; }
      in this block are safe: none of them is re-declared with a shorthand. */
 
   .appbar .mark-btn { display: flex; }
-  /* 44px here too — the way to ข้อมูลส่วนตัว and to ออกจากระบบ. */
+  /* 44px here too — the way into the whole menu since 2026-09-04: the three
+     headed blocks, then ข้อมูลส่วนตัว and ออกจากระบบ. See `NavDrawer`. */
   .appbar .avatar { display: grid; width: 44px; height: 44px; cursor: pointer; }
+  /* HELD OPEN WHILE ITS PANEL IS. The scrim dims the bar behind it, so without
+     this the button somebody just pressed is the least visible thing on screen
+     and there is nothing on the page saying where the sheet came from. The same
+     ring `.pick-one.open` takes, for the same reason and out of the same two
+     tokens. */
+  .appbar .avatar.open {
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
 
   /* Longhand, because the shorthand had the two insets the wrong way round —
      `padding: t r b l` was giving the RIGHT edge inset-left and the left edge
@@ -8178,6 +8623,14 @@ table.mini tbody tr:hover { background: none; }
          360px  →  77px   (two)
          430px  →  77px   (two)
          600px  →  66px   (one)
+
+     THOSE FOUR FIGURES ARE 2026-08-26'S AND ARE KEPT AS THE RECORD OF WHY THIS
+     STOPPED BEING A FLAT NUMBER. None of them is the bar today: it draws four
+     slots rather than six flat tabs, and the label under a glyph is the slot's
+     short name rather than a screen's sentence — so nothing wraps and the bar is
+     ONE height at every width and for every บทบาท. The live figure is in the
+     `--nav-h` note at the top of this file — 79 — and the reason it does not
+     have to be copied into this rule is the paragraph below.
 
      So the spacer was 14px short on the narrowest phone this app is used on
      and 3px short on the common one — which is not "the last row is hidden"
@@ -8304,9 +8757,46 @@ table.mini tbody tr:hover { background: none; }
     border-top: 1px solid var(--line-lift);
     padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
   }
+
+  /* ══ THE BAR'S TWO HALVES STOOD HERE — ส่วนตัว | จัดการทีม ═══════════════
+
+     `.nav-side`, `.nav-side-head` and the rule between them, for the round on
+     2026-09-04 that put those two headings on this bar. They were withdrawn
+     the same day by the report that asked for them to go: *"เอาหัวข้อแยกกลุ่ม
+     ส่วนตัว / จัดการทีม ออกจาก Bottom Bar เพื่อลดความสูงและความแออัด"*.
+
+     WHAT THE ROUND LEFT BEHIND IS THE FINDING, not the classes. A heading strip
+     costs this bar 17px and the bar is the one surface in the app that cannot
+     spend any: it is fixed over the foot of every page, and `--nav-h` turns
+     every pixel of it into a pixel the page below gives up. The grouping was
+     real and is still drawn — in the drawer the app bar's avatar opens, where
+     a heading costs nothing because the panel is over the page rather than
+     under it. See `.drawer-group` below and `NavDrawer` in components/App.jsx.
+
+     Deleted rather than left unused, for the reason `.field-note.rule-note`'s
+     own note gives at the other end of this file: a class nothing wears is a
+     rule the next person has to check before touching anything near it. */
+
+  /* ── ONE COLUMN, AND THE NUMBERS ARE THE 2026-09-04 REDESIGN'S ───────────
+     `24px glyph · 11px label · one line · room around it`, asked for in those
+     words after a picture of ตั้งค่าระบบ at 360px showed five columns of Thai
+     wrapping into each other.
+
+     `gap: 6px` AND `padding: 8px 4px`, from 4 and 6/2. The glyph grew and the
+     label stopped wrapping, so the height the labels gave back is spent on the
+     air between them instead — which is the negative space the request named,
+     and it is what makes four columns read as four things rather than as a
+     strip of text.
+
+     `min-width: 0` IS LOAD-BEARING and is what actually lets the label
+     ellipsis. A flex item's floor is its content's min-content width; Thai
+     breaks inside a word, so without this the longest label sets the button's
+     width and `text-overflow` never fires because nothing is ever overflowing.
+     With it, four buttons divide the bar evenly whatever is written on them. */
   .mobile-nav button {
-    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-    border: none; background: none; cursor: pointer; padding: 6px 2px;
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    border: none; background: none; cursor: pointer; padding: 8px 4px;
     color: var(--nav-idle);
   }
   /* BEFORE `.active`, and that is the whole of what decides it: the two
@@ -8314,16 +8804,129 @@ table.mini tbody tr:hover { background: none; }
      would take the selected tab's green away under a finger. */
   .mobile-nav button:hover { color: var(--nav-idle-lift); }
   .mobile-nav button.active { color: var(--nav-active); }
+  /* ── AND THE SLOT THAT HOLDS THE OPEN SCREEN WITHOUT BEING IT ────────────
+     `.active` means *this is the page you are on*; a slot with a menu behind it
+     is not a page, and pressing it opens a list. It takes `.current`, the same
+     mark and the same reasoning as the sidebar's OT ส่วนตัว fold — see
+     `.nav-parent.current`.
+
+     THE SAME GREEN, DELIBERATELY, and the caret is what tells the two apart. A
+     dimmer green for "the page is behind this" would be a third state to learn
+     on a bar that has four buttons on it; what a reader needs from the colour
+     is *you are here*, and both marks say exactly that. What differs is what a
+     press DOES, and that is the caret's job — see `.mobile-nav .label .chev`.
+
+     WRITTEN AFTER `:hover` for the reason `.active` is, and it is the stronger
+     case of the two: this bar's menu slots are the ones a thumb rests on while
+     a sheet is open underneath it. */
+  .mobile-nav button.current { color: var(--nav-active); }
   /* `position: relative` is load-bearing — the count badge is absolutely
      positioned against this box, not against the button, so it rides on the
      icon's top-right corner rather than the whole tab's. */
   .mobile-nav .icon { position: relative; display: grid; place-items: center; }
-  .mobile-nav .icon svg { width: 22px; height: 22px; display: block; }
-  .mobile-nav .label { font: 500 11px/1 var(--sans); }
+  /* 24 SINCE 2026-09-04, from 22. Asked for as a number and it is also what the
+     rest of this round bought: the labels are one line now, so the glyph is the
+     part of the button doing the identifying and it can afford the two pixels
+     the labels gave up. */
+  .mobile-nav .icon svg { width: 24px; height: 24px; display: block; }
+  /* ── THE MARK UNDER THE OPEN SCREEN'S GLYPH ──────────────────────────────
+     Asked for on 2026-09-04 as making the active state *เห็นชัดเจน*. Until
+     then it was ink alone — `--nav-active` on a 22px stroked glyph and an 11px
+     label — and on ธีมมืด, where `--nav-idle` is a pale neutral and the green
+     is a mint, the difference between the lit tab and the four beside it is one
+     hue at two small sizes. (Both values are in the token block at the top and
+     are deliberately NOT quoted here: a hex in a rule-section comment is what
+     test/theme.test.js greps for, and it caught this paragraph doing it.) A
+     wash behind the glyph is a SHAPE, which is what survives being glanced at
+     from arm's length and what a reader who does not separate those two hues
+     gets instead of nothing.
+
+     BEHIND THE GLYPH AND NOT BEHIND THE BUTTON. The button is a column whose
+     width is a quarter of the bar and whose label is ellipsised to fit it, so a
+     pill around the whole thing would be a wide rectangle with a small drawing
+     floating at the top of it. The glyph is 24px on every tab and every width.
+
+     30×30 AT `--radius-sm`, which is `.icon`'s own 24 plus 3 either side: big
+     enough to read as a held shape, small enough that four of them do not
+     become a row of buttons-inside-buttons. It is drawn by `padding` + a
+     negative `margin` rather than a fixed size, so nothing here has to be kept
+     in step with the 24px above.
+
+     `--green-bg` IS THE FILL THE APP ALREADY USES FOR "THIS ROW IS THE ONE" —
+     `.pick-menu li[data-active='1']` and `.pick-menu.one-menu li[data-active]`
+     draw the same wash under the same green. One idea, one colour.
+
+     BOTH `.active` AND `.current`, because both mean *the page you are on is
+     here* — see the note over `.mobile-nav button.current` above for why they
+     share the green, and the caret for what tells them apart. */
+  .mobile-nav button.active .icon,
+  .mobile-nav button.current .icon {
+    background: var(--green-bg);
+    border-radius: var(--radius-sm);
+    padding: 3px; margin: -3px;
+  }
+  /* ── 1.45 AND NOT 1, SINCE 2026-09-04 ────────────────────────────────────
+     It was `11px/1` from the day the bar had labels, and the reason was the one
+     stated all over this block: the bar's height is what its labels take, so a
+     line-height is pixels off the bottom of every page in the app. That is true
+     and it was being paid for by the wrong thing.
+
+     THAI DOES NOT FIT INSIDE ITS OWN FONT SIZE. A line of it is four levels
+     deep — upper vowel, tone mark, base, lower vowel — and in a line box
+     exactly as tall as the type there is nowhere for the outer two to go. Every
+     label on this bar wraps at 320px, and `รออนุมัติ OT` was rendering with the
+     mark on its last syllable sitting through the `OT` beneath it. Found in a
+     3× crop of the bar at 320px, not in a browser at 100%.
+
+     1.45 AND NOT 1.25, and the middle value is why this says so: 1.25 was tried
+     first, measured, and still collided — half a fix looks like a fix in a
+     screenshot. Checked again at 1.45 on the same crop and the two lines clear
+     each other.
+
+     IT IS KEPT NOW THAT NOTHING WRAPS, and that is deliberate rather than a
+     leftover. `1` clips a Thai line's own marks against the box, not only
+     against the line under it — the tone mark on `ตั้` reaches above the cap
+     height and the box was cutting it. One line at 1.45 costs 5px against `1`
+     and is the difference between a label and a label with its head shaved.
+
+     ── ONE LINE, ELLIPSISED — 2026-09-04, the redesign round ────────────────
+     *"ข้อความใต้ไอคอนต้องยาวไม่เกิน 1 บรรทัด และไม่ซ้อนทับกัน"*. What made that
+     possible is not this rule: it is that the bar stopped putting a SCREEN'S
+     name under a glyph and started putting the SLOT'S — OT ส่วนตัว · รออนุมัติ ·
+     รายงาน · เพิ่มเติม, nine to eleven characters against the eighteen and
+     nineteen of บันทึกและประวัติ OT and รายงาน OT ประจำทีม. See `BAR_SLOTS` in
+     components/App.jsx.
+
+     SO THE ELLIPSIS IS A GUARD AND NOT THE MECHANISM. Every label fits at every
+     width this app is opened at, measured; `nowrap` is what makes a future
+     longer one degrade into a truncation rather than into the two-line collision
+     this bar has now been reported for twice. `min-width: 0` on the button is
+     the other half of it — without that the label can never overflow, so it can
+     never be trimmed either. */
+  .mobile-nav .label {
+    font: 500 11px/1.45 var(--sans);
+    max-width: 100%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* ── "THIS ONE OPENS A LIST" ─────────────────────────────────────────────
+     INSIDE the label, inline, and not a row of its own. The button is a column
+     — glyph over label — and the bar's height is what its labels take, so a
+     third row would make every phone in the office lose eleven pixels of page
+     to a caret. Inline it sits after the last word and wraps with it.
+
+     9px against the label's 11: it is a mark, not a word, and at the label's
+     own size the ▾ reads as a character somebody typed. `.7` because it must
+     survive on the four idle slots as well as the lit one, where the ink is
+     already `--nav-idle`. */
+  .mobile-nav .label .chev {
+    display: inline-block; margin-left: 3px; font-size: 9px;
+    line-height: 1; vertical-align: middle; opacity: .7;
+  }
   /* Weight on the LABEL and not the button, so the icon — which is a stroked
      SVG and does not have a weight — is not asked for one. Only ever one tab
      at a time, which is what keeps this from widening the whole row. */
   .mobile-nav button.active .label { font-weight: 600; }
+  .mobile-nav button.current .label { font-weight: 600; }
   /* Clear of the glyph, not on top of it. At -4/-11 the badge sat five pixels
      inside a 22px icon and a two-digit count buried eleven — on รอ HR ยืนยัน,
      where the icon is the tick, that is the part of the mark it covered. Moved
@@ -8881,67 +9484,32 @@ table.mini tbody tr:hover { background: none; }
   .field { min-width: 100%; }
   .card { padding: 15px; border-radius: var(--radius); }
 
-  /* ── ตั้งค่าระบบ's six sections on a phone ────────────────────────────────
-     ONE SWIPEABLE STRIP, not a wrapped block.
+  /* ── ตั้งค่าระบบ's eight sections on a phone — A DROPDOWN, 2026-09-04 ──────
+     One line reading แผนกและเพดาน ▾ where a strip of eight buttons used to be.
 
-     `flex: 1 1 auto` (see .section-tabs above) is right on a wide screen and
-     wrong here: six labels of six different lengths sharing 375px wrapped into
-     three or four rows, so a third of the screen was spent on navigation before
-     any setting was on it — and the labels that had to share a row with a long
-     one came out squeezed, with นโยบายการคำนวณ breaking across two lines.
+     WHAT WAS HERE, AND WHY IT WENT. The strip was `flex-wrap: nowrap` with an
+     `overflow-x` scroller, bled out to the card's edges by `.tabs-view`'s
+     `margin: -15px`, hiding its scrollbar and leaning on two other signals
+     instead: the cut at the screen edge, and a per-edge fade lit from the
+     scroll position. Every one of those parts was there to answer the same
+     question — *there are more sections this way* — and none of them could
+     answer the one after it, which is *which ones*. Finding a section meant
+     flicking a line left and right past labels that leave the screen as they
+     pass, and it spent a full row of a phone's height doing it.
 
-     Nowrap plus overflow-x is what a phone expects of a tab bar: the current
-     section is on screen, the rest are a thumb-flick away, and no label is ever
-     compressed or broken. `flex: 0 0 auto` is the load-bearing half of that —
-     without it flex would still shrink every button to fit and there would be
-     nothing to scroll.
+     A dropdown answers both at once: the section you are in, in words, on one
+     line, and all eight on screen the moment it is opened. It is `PickOne`, so
+     the list is the sheet this app opens for every other choice of one thing
+     out of a set — the same rows, the same 44px, the same keys.
 
-     THE SCROLLBAR IS HIDDEN, and two things replace it as the "there is more
-     this way" signal. The first is the bleed: negative margins pull the strip
-     out to the card's own edges and the padding puts the inset back inside the
-     scroller, so the next button is cut by the screen edge rather than sitting
-     neatly short of it. A strip that ends flush looks like the whole set.
-
-     The second is the fade on `.tabs-view` (see the rule in the main block
-     above), which is the half the bleed cannot do: a cut edge says there is
-     more, and says it just as loudly when the strip is scrolled to the end and
-     there is not. The fade is lit per edge from the scroll position, so it also
-     answers the question the bleed leaves open — whether the flick went
-     anywhere, and whether it can be undone.
-
-     THE BLEED MOVED ONTO THE WRAPPER when the fade arrived, and it had to: the
-     fade is painted at the wrapper's edges, and while the wrapper stayed inside
-     the card's padding the two edges were 15px apart — a gradient floating in
-     the middle of the card with a tab sliding out from under it. The scroller
-     keeps the padding, so the buttons still start where the card's text does.
-
-     THE TWO SIDES ARE NOT THE SAME NUMBER, and the asymmetry is the point.
-     Left is 15px because that is the card's own inset: the first tab has to
-     line up with the heading and the table below it, and 20px there would set
-     the whole strip a notch in from everything else on the screen.
-
-     Right is 20px because it is not an inset, it is the END OF THE SCROLL. The
-     strip used to be built so that the last tab was cut by the card's edge —
-     that WAS the "there is more this way" signal, before the fade existed. It
-     is now the fade's job, and it does it better, per edge and only while there
-     is something behind it. What the cut leaves behind at the end of the flick
-     is a tab pressed flat against the edge with nothing after it, which reads
-     as clipped rather than as finished. The 20px is what the scroll comes to
-     rest against.
-
-     `proximity`, not `mandatory`: mandatory snapping fights a short flick and
-     drags a tab you were only peeking at into place. */
-  .tabs-view { margin: -15px; }
-  .section-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    padding: 15px 20px 15px 15px;
-  }
-  .section-tabs::-webkit-scrollbar { display: none; }
+     THE STRIP IS STILL THE DESKTOP'S. Above 860px eight buttons wrap into two
+     tidy rows and every section is one press away with nothing hidden, which is
+     what a wide screen is for. Exactly one of the two controls is drawn at any
+     width; neither is a second menu, because `SECTIONS` is still the one list.
+     `flex: 1 1 auto`, `.tabs-view`, the fade, the bleed and the snap points all
+     went with the scroller — see the note where `.tabs-view` stood. */
+  .section-tabs { display: none; }
+  .section-pick { display: flex; }
 
   /* ── the way out on a warning banner ─────────────────────────────────────
      STACKED, not wrapped.
@@ -8963,12 +9531,13 @@ table.mini tbody tr:hover { background: none; }
   }
   .alert-actions > span { margin-bottom: 2px; }
   .alert-actions .btn { width: 100%; }
-  /* The bleed above runs the scroller out to the card's border box, and the
-     card's corners are 14px round — a button sliding past one of them would
-     otherwise clear the curve and sit outside the card. The strip's own 15px
-     of padding keeps every focus ring well inside what this clips. */
-  .card:has(.section-tabs) { overflow: hidden; }
-  .section-tabs .btn { flex: 0 0 auto; scroll-snap-align: start; min-height: 44px; }
+  /* AN `overflow: hidden` ON THE CARD HOLDING THE STRIP STOOD HERE, together
+     with the strip's own `flex: 0 0 auto`, its scroll-snap alignment and its
+     44px floor. All four belonged to the scroller: the clip kept a button
+     sliding past the card's 14px corner from landing outside it, and the snap
+     points were what a flick came to rest on. The strip is not drawn at this
+     width any more — see the note above — and a clip on a card that no longer
+     overflows is a rule waiting to cut something else off. */
 
   /* ── รายการล่าสุด on a phone ──────────────────────────────────────────────
      Five things in one flex line — date chip, what the work was, how many
@@ -10389,7 +10958,9 @@ table.mini tbody tr:hover { background: none; }
      ตรวจสอบรายเดือน USED TO BE IN THE FIRST GROUP AND IS NOW IN THE SECOND.
      It is the one screen of the three that is not only read: it is where an
      employee's month is opened and where their F-HR-027 is printed from, and
-     those two buttons sat in an eleventh column at the far right — so the one
+     those two buttons sat in an eleventh column at the far right (the table
+     ran to eleven until กฎที่ใช้ came off on 2026-09-04; they are the tenth
+     now, and still the last) — so the one
      thing HR came to do was behind a sideways scroll past the figures. Its card
      block is below, with what it keeps and what it drops. The reconciling is
      still done on the two that remain tables, and on the paper. */
@@ -10843,7 +11414,7 @@ table.mini tbody tr:hover { background: none; }
 
      ONE MARKUP, TWO LAYOUTS — the same rule this screen has kept through every
      arrangement of it. The element still wears `card` and above 860px it still
-     IS one: there the list is a table of eleven columns read down its own
+     IS one: there the list is a table of ten columns read down its own
      header row, and a table needs a ground of its own to be read against.
      `.hr-table` has been a table up there and cards down here since the card
      list was written; this is that same split, one container out.
@@ -10917,7 +11488,7 @@ table.mini tbody tr:hover { background: none; }
 
   /* ══ ตรวจสอบรายเดือน IS A CARD LIST BELOW 860px ════════════════════════
 
-     WHAT THE CARD CARRIES, and it is three things out of eleven columns:
+     WHAT THE CARD CARRIES, and it is three things out of ten columns:
 
         ┌──────────────────────────────────┐
         │ ปรีชา ทองแท้        16.5 / 40 ชม. │  ← name + code, สะสม / เพดาน
@@ -11114,14 +11685,13 @@ table.mini tbody tr:hover { background: none; }
     overflow-wrap: anywhere;
   }
 
-  /* The eight the card does not have room for. Named rather than hidden with a
-     blanket rule and three exceptions, so adding a twelfth column to this table
-     shows up on a phone instead of silently disappearing. */
+  /* The seven the card does not have room for. Named rather than hidden with a
+     blanket rule and three exceptions, so adding an eleventh column to this
+     table shows up on a phone instead of silently disappearing. */
   .hr-table tbody td.dept-col,
   .hr-table tbody td.rate-col,
   .hr-table tbody td.count-col,
   .hr-table tbody td.edits-col,
-  .hr-table tbody td.rule-col,
   .hr-table tbody td.pad-col { display: none; }
   /* รวม ชม. is the same figure as สะสม, which the card already prints beside
      the name. It comes back for รวมทั้งหมด below, which has no ceiling cell. */
@@ -12334,7 +12904,21 @@ table.mini tbody tr:hover { background: none; }
 
   .deptset-table { display: block; min-width: 0; }
   .deptset-table thead { display: none; }
-  .deptset-table tbody { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+  /* ── THE THIRD INSET WENT ON 2026-09-04 ─────────────────────────────────
+     This read `gap: 10px; padding: 12px`, and the 12 was the problem: the list
+     sits inside `.table-wrap`, which sits inside a `.card` that is already 15px
+     in from the screen at this width, and each department is a card of its own
+     with 15 more. Three nested paddings put the department's NAME 42px from the
+     edge of a 360px phone — a quarter of the width spent on nothing, three
+     times over, before a word of it is content.
+
+     The list takes the card's own inset now and adds none of its own. What is
+     left of the padding is vertical: 10 above, to part the first department
+     from the chips over it, and nothing below, because the last card's own
+     border is where the list ends. */
+  .deptset-table tbody {
+    display: flex; flex-direction: column; gap: 8px; padding: 10px 0 0;
+  }
 
   .deptset-table tr {
     display: grid;
@@ -12346,10 +12930,16 @@ table.mini tbody tr:hover { background: none; }
       "capm  capm"
       "capw  capw"
       "act   act";
-    gap: 10px 12px; align-items: start;
-    /* 15px, the same padding `.card` takes at this width — one card inset in the
-       app rather than one per screen. */
-    padding: 15px; border: 1px solid var(--line); border-radius: var(--radius);
+    /* 8px down, from 10. Six rows deep, so the four pixels saved between each
+       pair are twenty down the card, and it is the vertical run that decides
+       how many departments a phone holds at once. Across is 12 still — that gap
+       separates รหัส from ชื่อแผนก on the heading line and is read once. */
+    gap: 8px 12px; align-items: start;
+    /* 12px, from 15. It is no longer echoing the app's card inset, because the
+       list around it no longer has one — see the tbody note above. What it has
+       to be is enough that a 1px border and the type inside it do not read as
+       one edge, which is the floor this app already found at 8. */
+    padding: 12px; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--card);
   }
   /* A card is not a row to be pointed at, and a phone has no pointer anyway. */

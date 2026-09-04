@@ -20,7 +20,7 @@ const ROLE_LABEL = {
  * matches against, so a self-service edit would silently restate submitted
  * forms. They are shown read-only, with a line saying who to ask.
  */
-export default function ProfileView({ user, onLogout }) {
+export default function ProfileView({ user, onPasswordChanged, onLogout }) {
   return (
     /* `profile-page` is not a layout — `.stack` is still doing that. It is the
        handle the stylesheet needs to give THESE cards 24px of padding without
@@ -33,7 +33,12 @@ export default function ProfileView({ user, onLogout }) {
           screen under ตั้งค่าระบบ for the หัวหน้า who is already gone. */}
       {isSigner(user.role) && <Delegation user={user} scope="mine" />}
       <ThemeChoice />
-      <ChangePassword />
+      {/* `pending` is the flag itself: this is where the reminder strip on the
+          landing tab sends somebody, and since the first-login screen was
+          deleted it is the only screen that explains what their current
+          password is. The form is the same one either way — the flag adds the
+          two sentences that screen used to carry. */}
+      <ChangePassword pending={user.mustChangePassword} onDone={onPasswordChanged} />
       {/* On mobile the sidebar — and with it the ออกจากระบบ button — is not on
           screen, and the appbar avatar now opens this page instead of signing
           out. This is the only sign-out there, so it is not hidden on desktop
@@ -235,13 +240,25 @@ const NO_AUTOFILL = {
 };
 
 /**
- * เปลี่ยนรหัสผ่าน — the same form on ข้อมูลส่วนตัว and on the first-login gate.
+ * เปลี่ยนรหัสผ่าน — on ข้อมูลส่วนตัว, and NOWHERE ELSE since 2026-09-04.
  *
- * `onDone` is how the gate finds out it can let go: it re-reads /auth/me, sees
- * mustChangePassword cleared, and the shell appears. On the profile page nobody
- * passes it and the form simply says it worked.
+ * It was on two screens: here, and the first-login gate in components/App.jsx,
+ * which passed its own `hint` naming the issued password outright. That screen
+ * was deleted the day the ข้ามไปก่อน button was added to it, so `hint` went with
+ * it — a prop with no caller is a second way of drawing this form that nothing
+ * draws.
+ *
+ * WHAT THE DELETED SCREEN SAID IS NOT DELETED WITH IT. It told people two
+ * things: that รหัสผ่านเดิม is their own รหัสพนักงาน, and that other people can
+ * read it. Both now hang off `pending` — set from `mustChangePassword`, so the
+ * form says them to exactly the people the screen used to say them to, and to
+ * nobody else. Somebody who chose their own password sees the plain form.
+ *
+ * `onDone` re-reads the session so the reminder strip on the landing tab goes
+ * as soon as the flag does. Passing nothing is fine — the form then simply says
+ * it worked.
  */
-export function ChangePassword({ onDone, hint }) {
+export function ChangePassword({ onDone, pending = false }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -307,12 +324,26 @@ export function ChangePassword({ onDone, hint }) {
     <div className="card">
       <h2>เปลี่ยนรหัสผ่าน</h2>
       <div className="hint">
-        {hint || <>
-          {PASSWORD_HELP}
-          {' '}· เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
+        {/* The line the deleted first-login screen used to carry, drawn for the
+            people it was written for: whoever has never changed their password
+            does not know what to type in รหัสผ่านเดิม, and "รหัสที่ฝ่ายบุคคล
+            แจ้งให้ทราบ" is not an answer to somebody who was told nothing and
+            guessed. Everybody else already knows their own password and gets
+            the plain sentence. */}
+        {pending && <>
+          “รหัสผ่านเดิม” คือ<strong>รหัสผ่านเริ่มต้นสำหรับเข้าใช้งานครั้งแรก หรือหลังการรีเซ็ต
+          {' '}ซึ่งคือรหัสพนักงานของคุณ</strong> (หรือรหัสอื่นที่ฝ่ายบุคคลแจ้งให้ทราบ) ·{' '}
         </>}
+        {PASSWORD_HELP}
+        {' '}· เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
       </div>
 
+      {pending && !ok && (
+        <Alert kind="warn">
+          คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ ซึ่งคือรหัสพนักงานของคุณ — มีคนอื่นทราบด้วย
+          {' '}จึงควรเปลี่ยนเป็นรหัสผ่านของคุณเองที่ฟอร์มนี้
+        </Alert>
+      )}
       {error && <Alert kind="error">{error}</Alert>}
       {ok && <Alert kind="ok">{ok}</Alert>}
 

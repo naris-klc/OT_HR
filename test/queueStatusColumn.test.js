@@ -68,9 +68,15 @@ test('the stripper actually strips — the bans below prove nothing otherwise', 
  * read that one place. Two lists — one in the query string and one in the
  * filter — is how a screen comes to offer a สถานะ row that filters to nothing.
  */
-test('ฝ่ายบุคคล ขอสองสถานะ · คิวหัวหน้าขอสถานะเดียว', () => {
-  assert.match(code, /const HR_QUEUE_STATUSES = Object\.freeze\(\['pending_mgr', 'pending_hr'\]\)/);
-  assert.match(code, /const listed = isHr \? HR_QUEUE_STATUSES : \[stage\];/);
+test('คิวปกติขอสองสถานะ · สองโหมดพิเศษขอสถานะเดียว', () => {
+  assert.match(code, /const FLOW_STATUSES = Object\.freeze\(\['pending_mgr', 'pending_hr'\]\)/);
+  // BOTH ENDS OF THE FLOW SINCE 2026-09-04. It read `isHr ? … : [stage]` while
+  // ฝ่ายบุคคล were the only ones reading the whole thing; ผู้จัดการฝ่าย asked
+  // for the same view of their own แผนก — from filing until it is confirmed —
+  // and a queue that dropped every row the moment a หัวหน้า signed it was the
+  // screen that could not answer "what happened to my ใบ".
+  assert.match(code, /const wholeFlow = !delegatedOnly && !unsignedOnly;/);
+  assert.match(code, /const listed = wholeFlow \? FLOW_STATUSES : \[stage\];/);
   // The query string is built from `listed` and from nothing else — a literal
   // `status=pending_hr` here would be a third copy of the same decision.
   assert.match(code, /\/entries\?status=\$\{listed\.join\(','\)\}&usage=cap/);
@@ -81,15 +87,21 @@ test('ฝ่ายบุคคล ขอสองสถานะ · คิวห
 });
 
 /**
- * `isHr` IS ENOUGH, and no second flag is added for it. The other two modes
- * this component runs in — `delegatedOnly` and `unsignedOnly` — are both
- * `pending_mgr` queues, so `stage` is already the whole of their list. A flag
- * that repeats what `stage` says is a flag that can disagree with it.
+ * THE TWO SPECIAL MODES STAY NARROW, and now they are the ONLY narrow ones — so
+ * the flag that keeps them so is named after them rather than after ฝ่ายบุคคล.
+ *
+ * `delegatedOnly` is a queue somebody was handed: the first step of the teams
+ * they are covering, and nothing else. `unsignedOnly` is the rows at that step
+ * that nobody on the roster can sign. Widening either would pull in
+ * `pending_hr` rows that are not what the tab is for — on the first, requests
+ * the stand-in has already finished with; on the second, rows that are by
+ * definition not stuck.
  */
 test('โหมดรับช่วงและโหมดใบที่ไม่มีใครเซ็น ไม่ได้กว้างขึ้นตามไปด้วย', () => {
   assert.match(code, /const isHr = stage === 'pending_hr';/);
+  assert.match(code, /const wholeFlow = !delegatedOnly && !unsignedOnly;/);
   assert.ok(
-    !/delegatedOnly[^\n]*HR_QUEUE_STATUSES|unsignedOnly[^\n]*HR_QUEUE_STATUSES/.test(code),
+    !/delegatedOnly[^\n]*FLOW_STATUSES|unsignedOnly[^\n]*FLOW_STATUSES/.test(code),
     'สองโหมดนั้นเป็นคิว pending_mgr อยู่แล้ว การกว้างขึ้นจะพาใบของคนอื่นเข้ามา',
   );
 });
@@ -163,8 +175,15 @@ test('ตัวเลือกสถานะเรียงตามลำด�
   const memo = code.slice(at, code.indexOf('const shown = useMemo(', at));
   assert.ok(!memo.includes('optionsBy'), 'ใช้ optionsBy แล้วลำดับจะกลับกัน');
   assert.ok(!memo.includes('localeCompare'), 'เรียงตามตัวอักษรคือลำดับที่กลับกัน');
-  // Built off `listed`, so the order is the flow's and the file has one list.
-  assert.match(memo, /return listed\s*\r?\n?\s*\.filter\(\(s\) => seen\.has\(s\)\)/);
+  /**
+   * Built off `listed`, so the order is the flow's and the file has one list —
+   * and off ALL of it since 2026-09-04. It filtered to the statuses that had
+   * rows (`.filter((s) => seen.has(s))`) until the toolbar was made to survive
+   * an empty queue, at which point that control opened on ไม่มีตัวเลือก. The
+   * count still comes off the rows, so a step with nothing at it is a name with
+   * no figure beside it rather than a missing row.
+   */
+  assert.match(memo, /return listed\.map\(\(s\) => \(\{ value: s, label: STATUS\[s\]\?\.label \|\| s, count: seen\.get\(s\) \}\)\);/);
 });
 
 /**
@@ -202,8 +221,8 @@ test('สถานะ วาดตาม isHr ไม่ใช่ตามจำ�
 
 /** It clears with ล้างตัวกรอง, and it resets when the queue underneath changes. */
 test('สถานะ ถูกล้างพร้อมตัวกรองอื่น และรีเซ็ตเมื่อเปลี่ยนคิว', () => {
-  assert.match(code, /\{\(q \|\| dept \|\| per \|\| st\) && \(/);
-  assert.match(code, /setQ\(''\); setDept\(''\); setPer\(''\); setSt\(''\);/);
+  assert.match(code, /\{\(q \|\| dept \|\| per \|\| st \|\| applicant\) && \(/);
+  assert.match(code, /setQ\(''\); setDept\(''\); setPer\(''\); setSt\(''\); setApplicant\(''\);/);
   // The options are built from the rows in hand, and the rows are about to be
   // replaced: a queue arriving with `st` still set shows an empty table under a
   // filter nothing offered.
@@ -236,19 +255,21 @@ test('คอลัมน์ สถานะ อยู่ถัดจาก ร�
 });
 
 /**
- * ฝ่ายบุคคล'S QUEUE ONLY, and both halves guarded.
+ * DRAWN EXACTLY WHERE TWO STATUSES WERE ASKED FOR — `wholeFlow`, the same name
+ * that decides the list, so a table can never hold two kinds of row without the
+ * column that tells them apart. It was `isHr` until 2026-09-04.
  *
- * A หัวหน้า's list is one status by construction, so the column would be the
- * same amber chip forty times — and it is not free: the table is `fixed` and
- * already 1262px against a laptop's card. A heading drawn without its cell (or
- * the other way round) is a table whose columns are off by one, which no
- * assertion about widths would catch.
+ * รออนุมัติแทน and ใบที่ไม่มีหัวหน้าเซ็น still go without: one status by
+ * construction, so the column would be the same amber chip forty times — and it
+ * is not free, the table is `fixed` and already 1262px against a laptop's card.
+ * A heading drawn without its cell (or the other way round) is a table whose
+ * columns are off by one, which no assertion about widths would catch.
  */
-test('คอลัมน์นี้เป็นของคิว ฝ่ายบุคคล เท่านั้น — ทั้งหัวและเซลล์', () => {
-  assert.match(code, /\{isHr && <th className="status-col">สถานะ<\/th>\}/);
+test('คอลัมน์ สถานะ อยู่บนคิวที่ลิสต์ทั้งสายเท่านั้น — ทั้งหัวและเซลล์', () => {
+  assert.match(code, /\{wholeFlow && <th className="status-col">สถานะ<\/th>\}/);
   assert.match(
     code,
-    /\{isHr && \(\s*\r?\n\s*<td className="status-col"><StatusChip status=\{e\.status\} \/><\/td>\s*\r?\n\s*\)\}/,
+    /\{wholeFlow && \(\s*\r?\n\s*<td className="status-col"><StatusChip status=\{e\.status\} \/><\/td>\s*\r?\n\s*\)\}/,
   );
 });
 
@@ -274,7 +295,17 @@ test('หัวการ์ดนับสองกองแยกกัน — 
   assert.match(code, /const watching = \(entries \|\| \[\]\)\.length - mine\.length;/);
   // The first figure is `mine`, not `entries.length`.
   assert.match(code, /\$\{filtered \? `\$\{mineShown\.length\} \/ \$\{mine\.length\}` : mine\.length\} รายการ/);
-  assert.match(code, /รอหัวหน้า \$\{filtered \? `\$\{watchingShown\} \/ \$\{watching\}` : watching\}/);
+  /**
+   * AND THE SECOND PILE IS COUNTED PER STEP, NOT NAMED ONCE — 2026-09-04.
+   *
+   * `รอหัวหน้า 3` was right while ฝ่ายบุคคล were the only reader with a watched
+   * pile. A signer's queue watches the rows that have gone PAST them (รอ HR)
+   * and can watch rows at their own step that are not theirs to sign — four
+   * หัวหน้างาน in one แผนก each see the other three's. One hard-coded word
+   * would be right on one queue and a lie on the other.
+   */
+  assert.match(code, /const watchedBy = listed$/m);
+  assert.match(code, /\$\{STATUS\[w\.status\]\?\.label \|\| w\.status\} \$\{filtered \? `\$\{w\.shown\} \/ \$\{w\.all\}` : w\.all\}/);
   // …and nothing in the label reaches for the whole table. Scoped to
   // `countLabel`'s own expression: `entries` is also the name the two batch
   // dialogs give the list they were handed, and `${entries.length} รายการ`
@@ -322,7 +353,11 @@ test('แถวที่ยังไม่ถึงคิว มีประโ�
   const at = code.indexOf('{!signableHere(e) ? (');
   assert.ok(at > 0, 'สาขาของแถวที่ยังไม่ถึงคิวหายไป');
   const branch = code.slice(at, code.indexOf('signedManagerStep(e, user) ? (', at));
-  assert.ok(branch.includes('ยังไม่ถึงขั้นยืนยัน'), 'แถวไม่ได้บอกว่าทำไมไม่มีปุ่ม');
+  // THE SENTENCE COMES FROM `watchingNote` SINCE 2026-09-04, because there are
+  // three of them now and the row must not pick one by writing it out: a signer
+  // reading a รอ HR row is told the opposite of what ฝ่ายบุคคล are told about a
+  // รอหัวหน้า one — theirs has gone past and is not coming back.
+  assert.ok(branch.includes('{watchingNote(e, stage, isHr, user).short}'), 'แถวไม่ได้บอกว่าทำไมไม่มีปุ่ม');
   assert.ok(branch.includes('className="cell-sub own-note"'), 'ประโยคต้องอยู่ในกล่องที่มีความกว้างจำกัด');
   assert.ok(branch.includes('setDetail(e)'), 'รายละเอียด หายไปจากแถวที่มีไว้ให้อ่าน');
   assert.ok(!branch.includes('setConfirming'), 'ยังเสนอปุ่มยืนยันบนใบที่เซิร์ฟเวอร์จะตอบ 403');
@@ -332,9 +367,13 @@ test('แถวที่ยังไม่ถึงคิว มีประโ�
 /** And the pop-up says it at the TOP, before the request has been read. */
 test('รายละเอียด บอกตั้งแต่บรรทัดแรกว่าใบนี้ยังไม่ถึงขั้นยืนยัน', () => {
   const modal = code.slice(code.indexOf('function DetailModal('));
-  const at = modal.indexOf('{watching && (');
+  const at = modal.indexOf('{watching && watchNote && (');
   assert.ok(at > 0, 'กล่องรายละเอียดไม่ได้บอกอะไรเลย');
-  assert.ok(modal.slice(at, at + 400).includes('ใบนี้ยังอยู่ที่ขั้นหัวหน้าแผนก'));
+  // The same three sentences the row reads, handed down rather than written a
+  // second time here — see `watchNote` at the call site.
+  assert.ok(modal.slice(at, at + 400).includes('{watchNote.head}'));
+  assert.ok(modal.slice(at, at + 400).includes('{watchNote.body}'));
+  assert.match(code, /watchNote=\{watchingNote\(detail, stage, isHr, user\)\}/);
   // Above the request, not under it: a reader who finds out at the foot has
   // already read the whole thing as though about to answer it.
   assert.ok(at < modal.indexOf('<RefiledNote'), 'ประโยคนี้ต้องอยู่เหนือคำขอ');

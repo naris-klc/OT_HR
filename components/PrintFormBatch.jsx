@@ -244,10 +244,10 @@ const DIGEST_KINDS = [
 /**
  * The days one kind of notice falls on, in date order, one entry per date.
  *
- * The same rule the per-sheet block follows: full `thaiDate`, because an overnight
- * session started on the last day of the previous month is on this sheet with a
- * workDate belonging to the month before, and a bare day number would name the
- * wrong day exactly on the rows that are hardest to find.
+ * The same rule the per-sheet block follows: `thaiDate` with its month, because
+ * an overnight session started on the last day of the previous month is on this
+ * sheet with a workDate belonging to the month before, and a bare day number
+ * would name the wrong day exactly on the rows that are hardest to find.
  */
 const datesOf = (rows) => [...new Set(rows.map((r) => r.workDate))]
   .sort()

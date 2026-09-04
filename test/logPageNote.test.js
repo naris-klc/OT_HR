@@ -75,22 +75,36 @@ test('the page table carries the note, and only for the page that has one', () =
 });
 
 test('the heading reads the note, and shuts it on the way out', () => {
-  // `PAGE_BY_ROLE` went in front on 2026-08-31, when the หัวหน้างาน tab was
-  // renamed to รายงาน OT ประจำทีม and the page it opens still said HR's
-  // ตรวจสอบประจำเดือน. It is an OVERRIDE and not a replacement: a role with no
-  // entry, or a tab that role does not override, falls through to `PAGE`, and
-  // the empty triple is still the last word so an unknown tab draws no heading
-  // rather than throwing.
+  /**
+   * ONE LOOKUP, IN `PAGE`, SINCE 2026-09-03 — and the empty triple is still the
+   * last word, so an unknown tab draws no heading rather than throwing.
+   *
+   * `PAGE_BY_ROLE[user.role]?.[tab] ||` came first here from 2026-08-31: one
+   * screen key (`monthly`) served both the company review and a หัวหน้า's team
+   * report, so the TITLE had to be decided from the บทบาท. That table went when
+   * การเงิน were given both readings at once and they became two keys — a
+   * heading is a property of the screen, and there is nothing left to override.
+   *
+   * A heading table keyed by บทบาท is also a thing that had already failed once
+   * without saying so: it read `manager:` after that spelling stopped being a
+   * บทบาท, matched nobody for a day, and every signer read HR's job description
+   * on the page under their own tab's name.
+   */
   assert.match(
     app,
-    /const \[title, meta, note\] = PAGE_BY_ROLE\[user\.role\]\?\.\[tab\] \|\| PAGE\[tab\] \|\| \['', '', null\];/,
+    /const \[title, meta, note\] = PAGE\[tab\] \|\| \['', '', null\];/,
   );
-  // One role overrides one tab. A second entry is allowed and is a decision —
-  // it is not allowed to arrive as a copy of `PAGE` that nobody noticed
-  // growing, which is the failure this count is here to make visible.
-  const byRole = app.slice(app.indexOf('const PAGE_BY_ROLE = {'), app.indexOf('function Shell('));
-  assert.equal((byRole.match(/\bmonthly:/g) || []).length, 1);
-  assert.match(byRole, /manager: \{ monthly: \['รายงาน OT ประจำทีม', 'TEAM SUMMARY'\] \},/);
+  assert.ok(!/const PAGE_BY_ROLE =/.test(app), 'the role-keyed heading table is back');
+
+  // The two keys that replaced it, each with its own title, in `PAGE` where
+  // every other screen's title is.
+  const page = app.slice(app.indexOf('const PAGE = {'), app.indexOf('function Shell('));
+  assert.match(page, /team: \['รายงาน OT ประจำทีม', 'TEAM SUMMARY'\],/);
+  assert.match(page, /monthly: \['ตรวจสอบประจำเดือน', 'MONTHLY REVIEW'\],/);
+  // …and exactly one entry each, so a third copy of either name cannot creep in.
+  assert.equal((page.match(/'รายงาน OT ประจำทีม'/g) || []).length, 1);
+  assert.equal((page.match(/'ตรวจสอบประจำเดือน'/g) || []).length, 1);
+
   // A note left open follows the reader onto the next screen, where it is the
   // footer again with an extra tap in front of it.
   assert.match(app, /useEffect\(\(\) => \{ setNoteOpen\(false\); \}, \[tab\]\);/);

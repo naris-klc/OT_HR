@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, withHours, currentPeriod, periodLabel } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
-import { Alert, Empty, UnaccountedHours } from './common.jsx';
+import { Alert, Empty, PickOne, UnaccountedHours } from './common.jsx';
 import DepartmentPrint from './DepartmentPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { useBackHandler } from './nav.jsx';
@@ -102,19 +102,31 @@ export default function DepartmentView() {
               บริษัท then ประจำเดือน sit on สรุป OT ส่งบัญชี: the two things that
               decide what the screen shows, with the narrower question first. A
               dropdown rather than a row of buttons — departments are a list
-              that grows — and each option carries its hours, so the month can
-              be read off the closed select without opening it. */}
-          <div className="field" style={{ maxWidth: 260, flex: 'none' }}>
-            <label>แผนก</label>
-            <select value={selected} onChange={(e) => setOnly(e.target.value)} disabled={!data}>
-              <option value="all">{withHours('ทุกแผนก', data && total.otHours)}</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{withHours(d.name, d.totals.otHours)}</option>
-              ))}
-            </select>
-          </div>
+              that grows — and each row carries its hours, so the month can
+              be read off the closed box without opening it. */}
+          {/* `PickOne` AND NOT A `<select>`, SINCE 2026-09-04 — the same round
+              and the same argument as บริษัท on สรุป OT ส่งบัญชี, which this
+              screen is card for card the same as. A `<select>`'s options are
+              drawn by the browser and the operating system, are not in this
+              document, and on ธีมมืด opened as a white sheet with the system's
+              blue bar over rows of this app's own Thai.
+
+              THE HOURS STAY IN THE LABEL, not in the `.ct` column: the sentence
+              above is the reason — this figure exists to be read off the box
+              while it is shut, and `.ct` is drawn in the open list only. */}
+          <PickOne
+            label="แผนก"
+            style={{ maxWidth: 260, flex: 'none' }}
+            value={selected}
+            onChange={setOnly}
+            disabled={!data}
+            options={[
+              { value: 'all', label: withHours('ทุกแผนก', data && total.otHours) },
+              ...departments.map((d) => ({ value: d.id, label: withHours(d.name, d.totals.otHours) })),
+            ]}
+          />
           <div className="field" style={{ maxWidth: 170, flex: 'none' }}>
-            <label>ประจำเดือน</label>
+            <div className="field-head"><label>ประจำเดือน</label></div>
             <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
         </div>

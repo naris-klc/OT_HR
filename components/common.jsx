@@ -3,7 +3,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import {
-  STATUS, BUCKETS, BUCKET_LABEL, hours, periodLabel, thaiDate, thaiDateTime,
+  STATUS, BUCKETS, BUCKET_LABEL, hours, periodLabel, thaiDate, thaiDateTime, thaiStamp,
 } from '@/lib/api.js';
 import { capChips, capFigure } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
@@ -12,6 +12,10 @@ import {
   lastAction, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
+import {
+  MISSING_OT_START, SCAN_MATCH, dayPunchLine, scanMismatchDetail, scanMismatchNote,
+  showsMissingOtStart,
+} from '@/lib/scanMatch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -493,6 +497,212 @@ export function BirthdayWelfareMark({ entry }) {
 }
 
 /**
+ * เวลาไม่ตรงกับไฟล์สแกนนิ้ว — the row's own times against the machine's.
+ *
+ * ── IT RAISES A QUESTION, IT DOES NOT MAKE A CLAIM ─────────────────────────
+ *
+ * Nothing about the row changes: the hours, the buckets, the ceiling and the
+ * status are all exactly what they were, and this chip is a suggestion that
+ * somebody look. The rule behind that restraint is in `src/models/ScanPunch.js`
+ * — a machine may not restate a sheet two people signed — and it is what let
+ * the punch store be built before anybody answered how to READ a punch. The
+ * comparison here needs none of those answers: a scan near 17:30 is evidence
+ * somebody was at the door at 17:30, whichever direction they were walking.
+ *
+ * ── เหมารายวัน WARNS TOO, AND SAYS SO ──────────────────────────────────────
+ *
+ * Asked for in those terms on 2026-09-04. A flat day counts eight hours however
+ * long the person stayed, so a mismatch at the END usually moves no figure —
+ * which is a reason to LABEL the warning rather than to suppress it. The times
+ * on the request are still what prints on F-HR-027 and gets signed, and a start
+ * time no scan supports is worth the same question either way. The label is
+ * what stops a reader chasing a discrepancy that the arithmetic already ignores.
+ *
+ * The sentence is `lib/scanMatch.js`'s, not this component's — the same module
+ * the route ran to reach the verdict, so the chip and the tooltip can never
+ * describe a different comparison from the one that was made.
+ */
+/**
+ * เวลาสแกนของวันนั้น ทั้งวัน — printed on the row, in clock order.
+ *
+ * ── WHY THE EVIDENCE AND NOT ONLY A VERDICT ────────────────────────────────
+ *
+ * Asked for on 2026-09-04 (*"เอาเวลาที่สแกนเข้าออกตลอดทั้งวันมาโชว์ ในแต่ละวัน"*)
+ * after the first real month was walked. The rows read
+ * `ใบ 17:00–19:30 · สแกน 07:21, 19:30`: people scan twice, arriving and
+ * leaving, and **nobody scans at 17:00 when the OT begins** — 17:00 is the end
+ * of the normal shift, not an event at the door. Twenty-five of twenty-seven
+ * rows were being flagged on a start time the machine was never in a position
+ * to record.
+ *
+ * A system that cannot know which punch was meant to be which can still print
+ * what the machine said. That costs nothing, assumes nothing, and lets the
+ * person holding the sheet do the comparison a rule could not.
+ *
+ * THAT WAS HALF THE ANSWER, AND THE VERDICT WAS FIXED ON 2026-09-04 TOO. The
+ * line above described a screen that printed the evidence and went on marking
+ * the row amber anyway. Told the pattern in full — most people scan twice, a
+ * minority four times, and nobody at 17:00 — `lib/scanMatch.js` stopped
+ * counting a start with no punch near it against a day the person was already
+ * inside for. These times are still drawn on every row: they are why a reader
+ * can see for themselves that the quiet rows are quiet for a reason.
+ *
+ * DRAWN ON EVERY ROW WITH SCANS, matching or not. The times are not a warning
+ * and must not appear only where something is wrong: a reader who sees them on
+ * three rows out of thirty learns to read them AS a warning, which is the thing
+ * they were added to replace.
+ */
+export function ScanDayPunches({ entry }) {
+  const line = dayPunchLine(entry?.scanCheck);
+  if (!line) return null;
+  return (
+    <div className="cell-sub th" title="เวลาที่เครื่องสแกนบันทึกไว้ทั้งวัน — เครื่องไม่ได้บอกว่าครั้งไหนเข้าครั้งไหนออก">
+      สแกน {line}
+    </div>
+  );
+}
+
+/**
+ * ไม่ได้สแกนเข้า OT — the start of this OT has no witness at the door.
+ *
+ * ── A THIRD MARK, AND IT IS NOT A THIRD WARNING ────────────────────────────
+ *
+ * Asked for on 2026-09-04 (*"แสดง Badge/Flag Warning … ไม่ได้สแกนเข้า OT"*),
+ * after the verdict had stopped counting that start against the row. Both are
+ * right, and they are answers to different questions: the VERDICT decides
+ * whether somebody has to go and look at this row, and the answer there is no;
+ * the MARK says what the machine did and did not witness, and that is worth
+ * printing on a row nobody has to act on.
+ *
+ * ── SO IT IS GREY, AND THE GREY IS THE POINT ───────────────────────────────
+ *
+ * It lands on most rows of most months — 25 of 27 on the first real one — which
+ * is precisely the count that made this amber unbearable. A grey chip on
+ * twenty-five rows reads as a column of labels; an amber one on twenty-five
+ * rows teaches a reader to stop opening amber. `.chip.scan-noin` is its own
+ * class rather than `.chip.scan-none`'s, though the two declarations match
+ * today: "no scan at all" and "no scan at the start" are different statements
+ * and the one that changes should not drag the other with it.
+ *
+ * THE SENTENCE CARRIES THE SECOND HALF. `ไม่ได้สแกนเข้า OT` alone reads as a
+ * problem; the `title` says why it is the ordinary shape of a day here and
+ * which scan the comparison is actually resting on. Both strings come from
+ * `MISSING_OT_START` in lib/scanMatch.js, beside the flag they describe.
+ *
+ * `showsMissingOtStart` holds the three gates — flat days and `no_scan` rows
+ * draw nothing — so this component and the counting cannot come to different
+ * answers about one row.
+ */
+export function ScanMissingOtStartMark({ entry }) {
+  if (!showsMissingOtStart(entry?.scanCheck)) return null;
+  return (
+    <span className="chip scan-noin" title={MISSING_OT_START.SAY}>
+      {MISSING_OT_START.LABEL}
+    </span>
+  );
+}
+
+export function ScanMismatchMark({ entry }) {
+  const check = entry?.scanCheck;
+  if (!check || check.state === SCAN_MATCH.OK) return null;
+
+  /**
+   * A FLAT DAY IS NEVER MARKED AMBER HERE — `FlatDailyMark` below has the row.
+   *
+   * Settled on 2026-09-04, and it reverses the first reading of the same ask:
+   * **ถ้าติ๊กเหมารายวัน เวลาสแกนไม่ตรงไม่เป็นไร แต่ต้องมีแจ้งเตือนว่าเขา
+   * เหมารายวัน.** The day was bought whole, so the times on the request are not
+   * a claim the machine can contradict, and a warning colour on that row asks
+   * somebody to check something with nothing in it. What survives is the
+   * NUMBERS — they are still worth having beside the row — and they go out
+   * under the green chip in the quiet voice, not under an amber one.
+   */
+  if (check.flatDaily) return null;
+
+  const missing = check.state === SCAN_MATCH.NO_SCAN;
+  return (
+    <>
+      <span
+        className={`chip ${missing ? 'scan-none' : 'scan-off'}`}
+        title={`${scanMismatchNote(check)}`
+          + `${missing ? '' : ` · ระบบถือว่าตรงกันเมื่อห่างกันไม่เกิน ${check.tolerance} นาที`}`
+          + ' · ตัวเลขชั่วโมงบนแถวนี้ไม่ได้ถูกแก้จากไฟล์สแกน'}
+      >
+        {missing ? 'ไม่มีข้อมูลสแกน' : 'เวลาไม่ตรงกับสแกน'}
+      </span>
+      {/* THE NUMBERS, WHERE A FINGER CAN REACH THEM.
+          The `title` above holds the whole sentence and a title is a HOVER,
+          which a phone does not have — so the part that makes the warning
+          actionable ("อีก 40 นาที" rather than "ไม่ตรง") is printed as well.
+          `cell-sub th` is the same quiet second line วัน…, ข้ามคืน and the
+          editor's name already use in this table, so it is not a new voice.
+          Only on a real mismatch: `ไม่มีข้อมูลสแกน` says the whole of itself. */}
+      {!missing && (
+        <div className="cell-sub th">{scanMismatchDetail(check)}</div>
+      )}
+    </>
+  );
+}
+
+/**
+ * เหมารายวัน — this day was hired whole, said on the row.
+ *
+ * ── IT IS NOT PART OF THE SCAN CHECK, AND IT IS DRAWN WITHOUT ONE ──────────
+ *
+ * `entry.flatDaily` is a fact about the FILING: the tick the person put on the
+ * form, and the reason the engine capped the day at eight hours however long
+ * they stayed. It is true on a month whose scanner file nobody has imported,
+ * and it was true before this system could read a punch at all. So it is read
+ * off the entry and never off `scanCheck` — a mark that appeared only once
+ * somebody uploaded a `.txt` would be a mark that means two different things.
+ *
+ * ── AND IT IS WHY THE ROW IS NOT AMBER ─────────────────────────────────────
+ *
+ * HR asked for it in exactly that shape on 2026-09-04: on a flat day a scan
+ * that disagrees with the times **ไม่เป็นไร** — but the row must SAY it is a
+ * flat day. So this chip carries the answer to "why don't these times have to
+ * match", and `ScanMismatchMark` above stands down on those rows. The numbers
+ * still print underneath, in the quiet voice, because "70 นาที" is worth
+ * knowing even when it is nothing to fix.
+ *
+ * The green is `OT สวัสดิการวันเกิด`'s green on purpose — see `.chip.scan-flat`.
+ * The two are the same kind of fact and a reader who has learnt one has learnt
+ * the other.
+ */
+export function FlatDailyMark({ entry }) {
+  if (!entry?.flatDaily) return null;
+  const check = entry.scanCheck;
+  const detail = check && check.state !== SCAN_MATCH.OK ? scanMismatchDetail(check) : null;
+  return (
+    <>
+      <span
+        className="chip scan-flat"
+        title={scanMismatchNote(check)
+          || 'ใบนี้เป็นการยื่นขอ OT แบบเหมารายวัน — คิดให้ไม่เกิน 8 ชั่วโมง ไม่ว่าจะอยู่นานแค่ไหน'}
+      >
+        เหมารายวัน
+      </span>
+      {detail && (
+        <div className="cell-sub th">
+          {detail}
+          {/* WHY THE DIFFERENCE IS HERE AND IS NOT A PROBLEM, on the row rather
+              than only in the tooltip. Without it the numbers under a green chip
+              read as a warning wearing the wrong colour, which is the confusion
+              this whole arrangement exists to remove.
+
+              ON ALL THREE SHAPES, INCLUDING `no_scan`. HR named them — ไม่ได้
+              สแกนนิ้ว, สแกนออกก่อนเวลา, สแกนเข้าแต่ไม่ได้สแกนออก — and the answer
+              to every one is the same: the sheet still gets its eight hours.
+              Not scanning at all is a KIND of flat day, not a gap in one, and
+              this line used to fall silent on exactly that case. */}
+          {' — ยังได้ 8 ชั่วโมงตามเดิม'}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
  * The team a row belongs to, on the queue of somebody standing in for two.
  *
  * Only drawn when the reviewer is covering somebody else's queue as well as
@@ -594,7 +804,7 @@ export function EntryHistory({ entry }) {
                   )}
                 </span>
               )}
-              {h.at && <span className="when">{new Date(h.at).toLocaleString('th-TH')}</span>}
+              {h.at && <span className="when">{thaiStamp(h.at)}</span>}
             </div>
             {moved && (
               <div className="flow">
@@ -1288,13 +1498,28 @@ export function Empty({ children }) {
  * the one sentence that mattered got skipped along with the rest. Hover gives
  * it through `title`, a click opens it in place; nothing is shortened or
  * dropped either way.
+ *
+ * `labelId` AND `className` EXIST FOR `PickOne`, WHICH RENDERS THROUGH THIS
+ * SINCE 2026-09-04 — see the note over that component. It is not a `<label for>`
+ * that names its control but an `aria-labelledby` that points BACK here, so the
+ * id has to be handed in from the thing being labelled; and a caller that has to
+ * size the field on the line it shares (`.status-pick`, `.month-pick`) needs a
+ * class on the wrapper this owns. Both are optional and every other caller is
+ * unchanged.
+ *
+ * THE HEAD IS RENDERED WHETHER OR NOT THERE IS A (?), and that is the reason
+ * `.field-head` sets a `min-height`: a field with no tip has to reserve the same
+ * first row as one that has, or the boxes under them sit on two lines. So this
+ * is also why `PickOne` cannot draw a bare `<label>` when it happens to have no
+ * tip — one dropdown 6px above the field beside it is the defect the rule exists
+ * to prevent.
  */
-export function Field({ label, note, tip, children, style }) {
+export function Field({ label, note, tip, children, style, className, labelId }) {
   const [open, setOpen] = React.useState(false);
   return (
-    <div className="field" style={style}>
+    <div className={className ? `field ${className}` : 'field'} style={style}>
       <div className="field-head">
-        <label>{label}</label>
+        <label id={labelId}>{label}</label>
         {tip && <TipButton text={tip} of={label} open={open} onToggle={() => setOpen((v) => !v)} />}
       </div>
       {children}
@@ -1323,15 +1548,22 @@ export function Field({ label, note, tip, children, style }) {
  */
 
 /**
- * "14/8/2569 16:03:22" — the dense form, seconds included, because two rows
+ * "14/08/2569 16:03:22" — the dense form, seconds included, because two rows
  * written in the same minute are ordered by nothing else.
  *
  * `thaiDateTime` is the headline form and is what a signature being READ gets
  * (see `ApprovalSteps`); this is the form for a pair of stamps being checked
- * against each other. The note over `thaiDateTime` in lib/api.js is where the
- * two are told apart.
+ * against each other. The note over `thaiStamp` in lib/api.js is where the two
+ * are told apart.
+ *
+ * A THIN WRAPPER SINCE 2026-09-04, when every stamp in the app became
+ * `thaiStamp`. It is kept rather than inlined because `stamp` is the name eight
+ * call sites across three files already read by, and because it returns
+ * `undefined` where `thaiStamp` returns '' — which is what the `?:` and the
+ * `.filter(Boolean).join(' · ') || undefined` around those call sites were
+ * written against.
  */
-export const stamp = (at) => (at ? new Date(at).toLocaleString('th-TH') : undefined);
+export const stamp = (at) => (at ? thaiStamp(at) : undefined);
 
 /**
  * THE REASON THE REQUEST EXISTS, ON A CARD THAT SAYS SO.
@@ -2157,9 +2389,17 @@ export function Highlight({ text, query, kind = 'name' }) {
  * opens the operating system's own picker: a big wheel, styled by the OS,
  * reachable by every assistive technology on the device without this file
  * having to be right about anything. A custom listbox has to earn all of that
- * back in markup and key handling, which is why this is only worth using where
- * the list is long enough to hunt through. The three four-option filters
- * beside it on the same screen stay plain <select>s, and should.
+ * back in markup and key handling, which is why the SEARCH BOX is only worth
+ * having where the list is long enough to hunt through. The three short filters
+ * beside it on the same screen have none and should not — they are `PickOne`,
+ * which is this panel with the field taken off the top: one tap per row, no
+ * decision about what to type.
+ *
+ * THAT SENTENCE ONCE ENDED "…stay plain <select>s, and should", and it was
+ * wrong in a way worth recording rather than deleting: it took the cost above
+ * to be the price of leaving the operating system, when it is the price of the
+ * SEARCH FIELD. Once `PickOne` existed the two came apart, and on 2026-09-04
+ * the last `<select>` in the app went with them — see that component.
  *
  * THE SELECTION AND THE SEARCH ARE TWO DIFFERENT THINGS, and keeping them
  * apart is most of what the state here is for. `query` is what has been typed
@@ -2394,6 +2634,37 @@ export function PickPerson({
  * `aria-labelledby` can name it — a `<label>` with nothing to point `for` at
  * says nothing to a screen reader, which is what the `<select>`s it replaces
  * had.
+ *
+ * ── IT IS A `Field` NOW, AND THAT IS WHAT LET IT REACH THE DIALOGS ──────────
+ * 2026-09-04, when the last twenty `<select>`s in the app were asked to become
+ * this control — ทะเบียนพนักงาน's forms, ผู้รับช่วงอนุมัติแทน, บันทึกประวัติระบบ,
+ * นโยบายการคำนวณ, and the two report screens.
+ *
+ * WHY IT COULD NOT REACH THEM BEFORE. Every one of those `<select>`s stood
+ * inside a `<Field>` — the wrapper that carries the (?) and the two kinds of
+ * sentence under a control. This component drew a `.field` and a bare `<label>`
+ * of its own, so putting it there nested a field inside a field and printed the
+ * label twice; and it had nowhere to PUT a `tip`, which on ทะเบียนพนักงาน is
+ * where the reason a control is locked is written.
+ *
+ * So the wrapper is `Field`'s, and `note` and `tip` are passed straight through
+ * to it. `Field` grew a `labelId` for this: the pointing goes the other way here
+ * — the button carries `aria-labelledby` and the label is what it points at — so
+ * the id is minted by this component and handed up.
+ *
+ * WHAT CHANGED ON SCREEN WHERE IT ALREADY STOOD: the `.field-head` row, which
+ * reserves 18px whether or not there is a (?) beside the label. That is the
+ * point of it — see the note over `Field` — and it is why the search boxes that
+ * share a toolbar with these dropdowns were given the same wrapper in the same
+ * round rather than left as bare `.field` divs 6px shorter.
+ *
+ * ── A ROW THAT CANNOT BE TAKEN ──────────────────────────────────────────────
+ * An option may carry `disabled: true`, which is the other thing a `<select>`
+ * gave for free and ทะเบียนพนักงาน depends on: บทบาท is drawn WHOLE for
+ * ฝ่ายบุคคล with ผู้ดูแลระบบ greyed, because a list that silently omits it
+ * answers "why can I not make this person an admin" with nothing at all. A
+ * greyed row is skipped by ↑/↓, by Home/End and by the type-ahead, and refuses
+ * Enter and the pointer — the same list a native select walks.
  */
 export function PickOne({
   label,
@@ -2401,6 +2672,16 @@ export function PickOne({
   onChange,
   options,
   allLabel,
+  note,
+  tip,
+  style,
+  /* THE ONE SCREEN WHERE THE QUESTION IS NOT OVER THE BOX — นโยบายการคำนวณ,
+     whose rows put the rule in the left column and its answer in the right, so
+     a `<label>` over the control would print the question twice. Hidden from the
+     eye and KEPT IN THE DOCUMENT, because `aria-labelledby` still has to point
+     at something: the seventeen dropdowns on that page are otherwise seventeen
+     comboboxes a screen reader can only call "ตัวเลือกเดียว". */
+  hideLabel = false,
   disabled = false,
   emptyLabel = 'ไม่มีตัวเลือก',
   className = '',
@@ -2482,16 +2763,42 @@ export function PickOne({
     if (disabled || open) return;
     // Where ↓ starts from: the row already chosen, which is where a native
     // select opens too.
-    setActive(chosen < 0 ? 0 : chosen);
+    setActive(chosen < 0 ? firstRow() : chosen);
     setOpen(true);
   }
 
   function pick(i) {
     const row = rows[i];
-    if (!row) return;
+    // A greyed row refuses the pointer and the keyboard alike. It is on the list
+    // to say the setting EXISTS and is somebody else's — see the note at the
+    // top — so taking it has to be impossible rather than merely discouraged.
+    if (!row || row.disabled) return;
     onChange(row.value);
     setOpen(false);
   }
+
+  /* ↑/↓ AND THE GREYED ROWS. A native select steps OVER a disabled option
+     rather than stopping on it, and so does this: `step` walks until it lands on
+     a row that can be taken, wrapping the way it always did. The counter is what
+     makes it safe on a list that is entirely greyed — every step refused, no row
+     to land on, and without it this is a loop that never ends. */
+  function nextRow(from, step) {
+    const n = rows.length;
+    if (!n) return 0;
+    let i = Math.min(Math.max(from, 0), n - 1);
+    for (let tries = 0; tries < n; tries += 1) {
+      i = (i + step + n) % n;
+      if (!rows[i]?.disabled) return i;
+    }
+    return from;
+  }
+
+  /* Home and End reach the ENDS THAT CAN BE TAKEN, not the ends of the array:
+     ผู้ดูแลระบบ is the last row of บทบาท and is greyed for ฝ่ายบุคคล, so End
+     landing on it would be End landing on nothing. Started one outside the list
+     so that `nextRow`'s first step is the first row itself. */
+  const firstRow = () => nextRow(-1, 1);
+  const lastRow = () => nextRow(rows.length, -1);
 
   function onKeyDown(e) {
     if (disabled) return;
@@ -2501,13 +2808,13 @@ export function PickOne({
       // Wraps, so ↑ from the top row is one keypress to ทุกแผนก rather than a
       // hold on ↑ back through the whole list.
       const step = e.key === 'ArrowDown' ? 1 : -1;
-      setActive((i) => (Math.min(Math.max(i, 0), rows.length - 1) + step + rows.length) % rows.length);
+      setActive((i) => nextRow(i, step));
       return;
     }
     if (e.key === 'Home' || e.key === 'End') {
       if (!open) return;
       e.preventDefault();
-      setActive(e.key === 'Home' ? 0 : rows.length - 1);
+      setActive(e.key === 'Home' ? firstRow() : lastRow());
       return;
     }
     if (e.key === 'Enter' || e.key === ' ') {
@@ -2529,7 +2836,11 @@ export function PickOne({
       const now = Date.now();
       const buf = (now - typed.current.at < 900 ? typed.current.buf : '') + e.key.toLowerCase();
       typed.current = { buf, at: now };
-      const i = rows.findIndex((r) => String(r.label ?? '').toLowerCase().startsWith(buf));
+      // Greyed rows are not typed to either, for the same reason ↓ steps over
+      // them: ผ would otherwise jump to ผู้ดูแลระบบ and stop there.
+      const i = rows.findIndex((r) => (
+        !r.disabled && String(r.label ?? '').toLowerCase().startsWith(buf)
+      ));
       if (i < 0) return;
       e.preventDefault();
       if (!open) setOpen(true);
@@ -2540,8 +2851,19 @@ export function PickOne({
   const shown = chosen >= 0 ? rows[chosen] : rows[0];
 
   return (
-    <div className={`field${className ? ` ${className}` : ''}`}>
-      <label id={`${id}-label`}>{label}</label>
+    /* `Field` AND NOT A `.field` OF ITS OWN — see the note at the top. The
+       wrapper, the (?) and the two kinds of sentence under a control are one
+       component's job in this app, and this was the second copy of the first
+       third of it. `labelId` is the one thing that had to be added there: the
+       button below points AT the label rather than the label pointing at it. */
+    <Field
+      label={label}
+      note={note}
+      tip={tip}
+      style={style}
+      className={[className, hideLabel ? 'label-off' : ''].filter(Boolean).join(' ') || undefined}
+      labelId={`${id}-label`}
+    >
       <div className="pick-one-wrap">
         {/*
           A REAL `<button>` wearing `role="combobox"`. The role is what says
@@ -2623,12 +2945,19 @@ export function PickOne({
                 id={`${id}-${i}`}
                 role="option"
                 aria-selected={String(r.value) === current}
+                /* NOT `disabled` — an `<li>` has no such attribute and React
+                   would drop it, leaving a row that looks refused and is not.
+                   `aria-disabled` is what a listbox option says it with, and it
+                   is what the stylesheet greys on. */
+                aria-disabled={r.disabled ? true : undefined}
                 data-active={i === at ? '1' : undefined}
-                className={r.value === '' ? 'all' : undefined}
+                className={[r.value === '' ? 'all' : '', r.disabled ? 'off' : ''].filter(Boolean).join(' ') || undefined}
                 onClick={() => pick(i)}
                 // Follows the pointer, so the row under the cursor is the row
-                // Enter takes — one notion of "the current row", not two.
-                onMouseMove={() => setActive(i)}
+                // Enter takes — one notion of "the current row", not two. A
+                // greyed row is skipped here as well, or the pointer would move
+                // the highlight onto a row Enter then refuses.
+                onMouseMove={() => { if (!r.disabled) setActive(i); }}
               >
                 <span className="nm">{r.label}</span>
                 {/* The count is what the `(12)` in the old option text was, out
@@ -2656,6 +2985,6 @@ export function PickOne({
           </Popover>
         )}
       </div>
-    </div>
+    </Field>
   );
 }

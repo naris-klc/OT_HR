@@ -62,6 +62,8 @@ const ENTRY_POINTS = [
   'src/migrate-policy-version.js',
   'src/migrate-birthday-rule-start.js',
   'src/migrate-roles.js',
+  'src/import-departments.js',
+  'src/rehome-demo-roster.js',
 ];
 
 /** Somewhere nothing is listening, in case both the guard and the stub fail.

@@ -8,10 +8,13 @@ import {
   resolveBirthDateColumn,
   birthDatePreview,
   readableDate,
+  ORDER_LABEL,
 } from '../lib/birthDate.js';
 
 /**
- * The วันเกิด column of a roster CSV, and the one wrong answer nothing catches.
+ * The วันเกิด column of a roster CSV — read STRICTLY วัน/เดือน/ปี.
+ *
+ * WHAT THIS FILE USED TO PIN, AND WHY IT DOES NOT ANY MORE.
  *
  * HR types 1998-03-05. Excel displays 05/03/1998 and writes that back on save,
  * so the file that reaches the importer is in an order the machine's locale
@@ -19,11 +22,19 @@ import {
  * import, an employee whose birthday holiday falls two months off, and no error
  * anywhere ever — a birthday is only ever compared against itself.
  *
- * That is why the rules pinned here are about the FILE and not the row. Excel
- * rewrites the whole column at once, so one row that can be read only one way
- * settles the order for every ambiguous row beside it, and a file with no such
- * row is refused entire. "Import the rows we could read" is the same guess made
- * quietly, so it is tested against explicitly.
+ * For a month the answer to that was a machine that refused to guess: evidence
+ * gathered across the whole file, a refusal when nothing settled it, then a
+ * question on the import screen and a company-wide default behind it. Fifty-two
+ * cases in this file pinned that machinery. It was withdrawn on 2026-09-04 —
+ * "ให้ Strict เป็น วัน-เดือน-ปี ถาวร" — and the cases went with it.
+ *
+ * WHAT IS PINNED NOW IS THE OTHER SHAPE OF THE SAME WORRY. The reading is
+ * unconditional, so what these cases have to hold is that it is unconditional
+ * in BOTH directions: no row in a file may bend it (§ตีความคงที่), no caller may
+ * pass an order that bends it (§ห้ามมีทางลัดกลับมา), and the two things left
+ * standing between HR and a silently transposed roster stay standing — the
+ * preview that spells its months out, and a row that cannot be วัน/เดือน saying
+ * why by name rather than as "ไม่มีอยู่จริงในปฏิทิน".
  *
  * Run with: npm test
  */
@@ -34,255 +45,215 @@ const rowsOf = (...birthDates) => parseCsv(
     .join('\n'),
 );
 
-// ── the three accepted shapes ───────────────────────────────────────────────
+/** The dates, in file order, for the cases that only care about the reading. */
+const datesOf = (...raw) => resolveBirthDateColumn(rowsOf(...raw)).cells.map((c) => c.date);
+
+// ── the shapes that are accepted ────────────────────────────────────────────
 
 test('อ่านได้ทั้ง YYYY-MM-DD, DD/MM/YYYY และ D/M/YYYY', () => {
-  // 15/05 is the decider that lets the two ambiguous rows beside it be read.
-  const r = resolveBirthDateColumn(rowsOf('1989-05-12', '15/05/1998', '5/3/1998'));
+  const r = resolveBirthDateColumn(rowsOf('1998-03-05', '15/05/1998', '1/2/1997'));
+  assert.deepEqual(r.cells.map((c) => c.date), ['1998-03-05', '1998-05-15', '1997-02-01']);
+  assert.deepEqual(r.rowErrors, []);
+});
 
-  assert.equal(r.ok, true, 'ไฟล์นี้ตีความได้ ไม่ควรถูกปฏิเสธ');
+test('คั่นด้วย / หรือ - ก็อ่านได้เท่ากัน ทั้งสองรูปแบบ', () => {
+  // เลขสี่หลักนำหน้าเป็นปีได้อย่างเดียว เลขหนึ่งถึงสองหลักเป็นปีไม่ได้เลย สองรูป
+  // จึงชนกันไม่ได้ ไม่ว่าจะคั่นด้วยอะไร
   assert.deepEqual(
-    r.cells.map((c) => c.date),
-    ['1989-05-12', '1998-05-15', '1998-03-05'],
-    'ทั้งสามรูปแบบต้องได้ ค.ศ. YYYY-MM-DD เหมือนกัน',
+    datesOf('12/05/1989', '12-05-1989', '1989-05-12', '1989/05/12'),
+    ['1989-05-12', '1989-05-12', '1989-05-12', '1989-05-12'],
   );
-  assert.equal(r.rowErrors.length, 0);
 });
 
-test('ไฟล์ที่เป็น YYYY-MM-DD ล้วน รายงานว่าอ่านแบบ iso', () => {
-  const r = resolveBirthDateColumn(rowsOf('1989-05-12', '1998-03-05'));
-  assert.equal(r.order, 'iso');
-  assert.equal(r.decidedBy, null, 'ไม่มีอะไรต้องตัดสิน จึงไม่ควรอ้างแถวใดเป็นตัวชี้ขาด');
+test('ไฟล์ที่เป็น YYYY-MM-DD ล้วน รายงานว่าอ่านแบบ iso · มีทับปนอยู่ = mixed', () => {
+  assert.equal(resolveBirthDateColumn(rowsOf('1998-03-05', '1997-01-01')).order, 'iso');
+  assert.equal(resolveBirthDateColumn(rowsOf('05/03/1998', '01/01/1997')).order, 'dmy');
+  assert.equal(resolveBirthDateColumn(rowsOf('1998-03-05', '01/01/1997')).order, 'mixed');
+  // และป้ายของทั้งสามต้องมีจริง ไม่ใช่ค่าที่จอเอาไปแสดงเป็น undefined
+  for (const key of ['iso', 'dmy', 'mixed']) assert.ok(ORDER_LABEL[key], key);
 });
 
-// ── the dangerous case ──────────────────────────────────────────────────────
+// ── ตีความคงที่: ไม่มีแถวไหนในไฟล์ที่เปลี่ยนการอ่านของแถวอื่นได้ ──────────────
 
-test('05/03/1998 เดี่ยว ๆ ในไฟล์ที่ไม่มีตัวชี้ขาด → ปฏิเสธทั้งไฟล์ ไม่ใช่เดา', () => {
+test('05/03/1998 เดี่ยว ๆ อ่านเป็น 5 มีนาคม ทันที ไม่ถามและไม่ปฏิเสธ', () => {
+  /**
+   * นี่คือเคสที่ทั้งโมดูลเคยมีอยู่เพื่อปฏิเสธ และตอนนี้คือเคสปกติ
+   *
+   * ผลที่ตามมาเขียนไว้ที่หัวไฟล์ lib/birthDate.js แล้ว: ถ้าไฟล์นี้มาจากเครื่องที่
+   * ตั้งเป็นภาษาอังกฤษจริง ๆ ค่านี้คือ 3 พฤษภาคม และจะถูกเก็บเป็น 5 มีนาคม โดย
+   * ไม่มีจอไหนแย้งได้ — จุดที่จับได้จุดเดียวคือบรรทัดพรีวิวข้างล่าง
+   */
   const r = resolveBirthDateColumn(rowsOf('05/03/1998'));
-
-  assert.equal(r.ok, false, 'ต้องปฏิเสธ ไม่ใช่เลือกทางใดทางหนึ่ง');
-  assert.deepEqual(r.ambiguous, [{ line: 2, raw: '05/03/1998' }], 'ต้องบอกเลขบรรทัดและค่าที่มีปัญหา');
-  assert.match(r.fileError, /5 มีนาคม 1998/, 'ข้อความต้องบอกทางเลือกที่หนึ่ง');
-  assert.match(r.fileError, /3 พฤษภาคม 1998/, 'ข้อความต้องบอกทางเลือกที่สอง');
-  assert.match(r.fileError, /YYYY-MM-DD/, 'ต้องบอกวิธีแก้');
-  assert.equal(r.cells.length, 0, 'ปฏิเสธแล้วต้องไม่มีค่าใดถูกตีความไว้ให้ใช้ต่อ');
-});
-
-test('ปฏิเสธทั้งไฟล์ — ห้ามปล่อยแถวที่อ่านได้ผ่านไปแถวเดียว', () => {
-  // 1989-05-12 อ่านได้แน่นอน แต่ต้องไม่ถูกนำเข้า: แถวที่เหลือตีความไม่ได้
-  // และการนำเข้าครึ่งไฟล์คือการเดาแบบเงียบ ๆ อยู่ดี
-  const r = resolveBirthDateColumn(rowsOf('1989-05-12', '05/03/1998'));
-
-  assert.equal(r.ok, false);
-  assert.equal(r.byLine.size, 0, 'ไม่มีบรรทัดใดถูกส่งต่อให้ผู้เรียกใช้');
-  assert.equal(r.rowErrors.length, 0, 'ไม่ใช่ปัญหารายแถว — ทั้งไฟล์ต้องหยุด');
-});
-
-test('ไฟล์ที่มี 15/05/1998 ปนอยู่ → ตีความทั้งไฟล์เป็น DD/MM และบอกว่าใครเป็นตัวตัดสิน', () => {
-  const r = resolveBirthDateColumn(rowsOf('05/03/1998', '15/05/1998', '12/12/1975'));
-
-  assert.equal(r.ok, true);
+  assert.deepEqual(r.cells.map((c) => c.date), ['1998-03-05']);
+  assert.deepEqual(r.rowErrors, []);
   assert.equal(r.order, 'dmy');
+});
+
+test('แถวที่เคยเป็น "ตัวชี้ขาด" ไม่มีอำนาจพิเศษแล้ว', () => {
+  // 15/05 เคยชี้ขาดให้ทั้งคอลัมน์ ตอนนี้มันเป็นแค่แถวหนึ่งที่อ่านเหมือนแถวอื่น
+  assert.deepEqual(datesOf('15/05/1998', '05/03/1998'), ['1998-05-15', '1998-03-05']);
+  assert.deepEqual(datesOf('05/03/1998'), ['1998-03-05'], 'อยู่คนเดียวก็ต้องได้วันเดียวกัน');
+});
+
+test('แถวที่อ่านแบบ วัน/เดือน ไม่ได้ ตกเฉพาะแถวนั้น ไม่ลากทั้งไฟล์ไปด้วย', () => {
+  const r = resolveBirthDateColumn(rowsOf('05/25/1998', '05/03/1998', '1997-01-01'));
+  assert.equal(r.cells[0].date, null, 'ไม่มีเดือนที่ 25');
   assert.deepEqual(
-    r.cells.map((c) => c.date),
-    ['1998-03-05', '1998-05-15', '1975-12-12'],
-    'ทุกแถวต้องอ่านแบบเดียวกัน รวมถึงแถวที่กำกวมในตัวเอง',
+    r.cells.slice(1).map((c) => c.date),
+    ['1998-03-05', '1997-01-01'],
+    'แถวที่เหลือยังอ่านเป็น วัน/เดือน/ปี เหมือนเดิม ไม่ถูกสลับตาม',
   );
-  assert.deepEqual(
-    r.decidedBy,
-    { line: 3, raw: '15/05/1998' },
-    'ผู้ใช้ต้องเห็นว่าอะไรทำให้ตีความแบบนี้ ไม่ใช่แค่ผลลัพธ์',
-  );
+  assert.deepEqual(r.rowErrors.map((e) => e.line), [2]);
 });
 
-test('ไฟล์ที่เขียนแบบ MM/DD/YYYY → ปฏิเสธทั้งไฟล์ พร้อมเรียกชื่อรูปแบบ', () => {
-  // Excel บนเครื่อง locale อังกฤษเขียนแบบนี้ ระบบไม่รับ และการบอกว่า
-  // "เดือน 25 ไม่ถูกต้อง" ไม่ช่วยให้ HR รู้ว่าไฟล์มาจากเครื่องแบบไหน
-  const r = resolveBirthDateColumn(rowsOf('05/25/1998', '03/05/1998'));
-
-  assert.equal(r.ok, false);
-  assert.match(r.fileError, /MM\/DD\/YYYY/);
-  assert.match(r.fileError, /บรรทัด 2 \("05\/25\/1998"\)/, 'ต้องชี้บรรทัดที่เป็นหลักฐาน');
+test('แถวที่อ่านไม่ได้ บอกว่าน่าจะเป็นไฟล์ เดือน/วัน/ปี และบอกวันที่มันน่าจะเป็น', () => {
+  /**
+   * เหตุผลอยู่ที่หัว lib/birthDate.js: ตั้งแต่เลิกปฏิเสธไฟล์ทั้งไฟล์ แถวที่ตกคือ
+   * *สัญญาณเรื่องทั้งคอลัมน์* ไม่ใช่ปัญหาของคนคนเดียว ข้อความว่า "ไม่มีอยู่จริงใน
+   * ปฏิทิน" จะส่งคนไปหาความผิดในวันที่ที่ตัวเลขถูกทุกตัว
+   */
+  const [err] = resolveBirthDateColumn(rowsOf('05/25/1998')).rowErrors;
+  assert.match(err.error, /เดือน\/วัน\/ปี/, 'ต้องเรียกชื่อรูปแบบที่ไฟล์น่าจะเป็น');
+  assert.match(err.error, /25 พฤษภาคม 1998/, 'ต้องบอกว่าวันที่นั้นน่าจะคือวันไหน');
+  assert.match(err.error, /ทั้งคอลัมน์/, 'ต้องบอกว่าให้แก้ทั้งคอลัมน์ ไม่ใช่แก้แถวเดียว');
+  assert.ok(!/ไม่มีอยู่จริงในปฏิทิน/.test(err.error), 'ต้องไม่ปนกับความผิดของปฏิทิน');
 });
 
-test('ไฟล์ที่มีหลักฐานขัดกันเอง → ปฏิเสธ ไม่เลือกข้าง', () => {
-  const r = resolveBirthDateColumn(rowsOf('15/05/1998', '05/25/1998'));
+// ── ห้ามมีทางลัดกลับมา ──────────────────────────────────────────────────────
 
-  assert.equal(r.ok, false);
-  assert.match(r.fileError, /ไม่สอดคล้องกัน/);
-  assert.match(r.fileError, /15\/05\/1998/);
-  assert.match(r.fileError, /05\/25\/1998/);
-});
-
-// ── ปี พ.ศ. ─────────────────────────────────────────────────────────────────
-//
-// เดิมปฏิเสธทั้งแถว ("ต้องใช้ปี ค.ศ.") — เปลี่ยนเป็นแปลงให้อัตโนมัติเมื่อ
-// 2026-09-02 เพราะ 2515 อ่านได้ทางเดียว ไม่มีอะไรให้เดา ต่างจากลำดับ วัน/เดือน
-// ข้างบนซึ่งยังปฏิเสธเหมือนเดิม สิ่งที่ต้องกันไว้จึงกลายเป็น "แปลงแล้วต้องบอก"
-
-test('ปี พ.ศ. → ลบ 543 ให้อัตโนมัติ และนับไว้ว่าแปลงกี่รายการ', () => {
-  const r = resolveBirthDateColumn(rowsOf('15/05/2541'));
-
-  assert.equal(r.ok, true);
-  assert.equal(r.cells[0].date, '1998-05-15', '2541 − 543 = 1998');
-  assert.equal(r.cells[0].error, null, 'ไม่ใช่ความผิดอีกต่อไป');
-  assert.equal(r.cells[0].converted, true);
-  assert.deepEqual(r.rowErrors, [], 'ไม่มีแถวไหนตกเพราะปี พ.ศ.');
-  assert.deepEqual(r.converted, [{ line: 2, raw: '15/05/2541', date: '1998-05-15' }]);
-});
-
-test('ตัวอย่างที่ HR ให้มา — แปลงได้ครบทั้งสามแบบในไฟล์เดียว', () => {
-  // 19 กับ 08 เป็นเดือนไม่ได้ จึงเป็นตัวชี้ขาดว่าไฟล์นี้เป็น วัน/เดือน/ปี
-  const r = resolveBirthDateColumn(rowsOf('19/09/2515', '08/02/2526', '05/03/1998'));
-
-  assert.equal(r.ok, true);
-  assert.deepEqual(
-    r.cells.map((c) => c.date),
-    ['1972-09-19', '1983-02-08', '1998-03-05'],
-  );
-  assert.deepEqual(r.cells.map((c) => c.converted), [true, true, false]);
-  assert.equal(r.converted.length, 2, 'ค.ศ. อยู่แล้วต้องไม่ถูกนับว่าแปลง');
-});
-
-test('ปี พ.ศ. ในรูป YYYY-MM-DD ก็แปลงเหมือนกัน', () => {
-  const r = resolveBirthDateColumn(rowsOf('2541-03-05'));
-  assert.equal(r.cells[0].date, '1998-03-05');
-  assert.equal(r.cells[0].converted, true);
-  assert.equal(r.order, 'iso');
-});
-
-test('คั่นด้วย - หรือ / ก็อ่านได้เท่ากันทั้งสองรูปแบบ', () => {
-  for (const raw of ['19/09/2515', '19-09-2515', '2515-09-19', '2515/09/19']) {
-    const r = resolveBirthDateColumn(rowsOf(raw));
-    assert.equal(r.cells[0].date, '1972-09-19', `"${raw}" ต้องอ่านได้`);
-    assert.equal(r.cells[0].error, null, `"${raw}" ต้องไม่เป็นความผิด`);
+test('ไม่มีทางส่ง "ลำดับ" เข้ามาเปลี่ยนการอ่านได้อีก', () => {
+  /**
+   * เคยมีสองประตู — `declaredOrder` จากคนที่อัปโหลด และ `fallbackOrder` จาก
+   * ตั้งค่าระบบ — ทั้งสองถูกปิดตายเมื่อ 2026-09-04 ข้อนี้พิสูจน์ว่าปิดจริง ไม่ใช่
+   * แค่ไม่มีใครเรียก: ส่งอะไรเข้ามาก็ได้ผลเท่าเดิม
+   */
+  const rows = rowsOf('05/03/1998');
+  const plain = resolveBirthDateColumn(rows).cells[0].date;
+  assert.equal(plain, '1998-03-05');
+  for (const opts of [
+    { declaredOrder: 'mdy' }, { fallbackOrder: 'mdy' },
+    { declaredOrder: 'dmy' }, { order: 'mdy' }, null, undefined,
+  ]) {
+    assert.equal(
+      resolveBirthDateColumn(rows, opts).cells[0].date,
+      plain,
+      `ตัวเลือก ${JSON.stringify(opts)} ต้องไม่เปลี่ยนอะไรเลย`,
+    );
   }
 });
 
+test('ผลลัพธ์ไม่มีร่องรอยของกลไกเดาลำดับเหลืออยู่', () => {
+  // ฟิลด์ที่ยังอยู่แต่ไม่มีความหมาย คือสถานะที่แย่ที่สุดในสามแบบ — จอจะยังวาด
+  // ปุ่มถามลำดับต่อไปได้โดยที่ไม่มีอะไรตอบ
+  const r = resolveBirthDateColumn(rowsOf('05/03/1998'));
+  for (const gone of ['ok', 'fileError', 'blocking', 'ambiguous', 'answerable',
+    'answered', 'declared', 'fallback', 'decidedBy']) {
+    assert.ok(!(gone in r), `ยังมี ${gone} ค้างอยู่ในผลลัพธ์`);
+  }
+  assert.deepEqual(
+    Object.keys(r).sort(),
+    ['byLine', 'cells', 'converted', 'order', 'rowErrors'],
+  );
+});
+
+// ── ปี พ.ศ. ─────────────────────────────────────────────────────────────────
+
+test('ปี พ.ศ. → ลบ 543 ให้อัตโนมัติ และนับไว้ว่าแปลงกี่รายการ', () => {
+  const r = resolveBirthDateColumn(rowsOf('12/05/2532', '1/2/2540', '2515-09-19', '05/03/1998'));
+  assert.deepEqual(
+    r.cells.map((c) => c.date),
+    ['1989-05-12', '1997-02-01', '1972-09-19', '1998-03-05'],
+  );
+  assert.equal(r.converted.length, 3, 'ปี ค.ศ. ต้องไม่ถูกนับว่าแปลง');
+  assert.deepEqual(r.converted.map((c) => c.line), [2, 3, 4]);
+});
+
 test('ขอบเขต 2400 — 2400 ยังเป็น ค.ศ. 2401 เป็น พ.ศ.', () => {
-  // เส้นเดียวกับ normaliseDate() ของปฏิทินวันหยุด (lib/holidays.js) โดยตั้งใจ
-  assert.equal(resolveBirthDateColumn(rowsOf('2400-01-01')).cells[0].date, '2400-01-01');
-  assert.equal(resolveBirthDateColumn(rowsOf('2401-01-01')).cells[0].date, '1858-01-01');
-});
-
-test('ปี พ.ศ. ที่กำกวมยังกำกวมเหมือนเดิม — การแปลงปีไม่ได้ตอบเรื่องวัน/เดือน', () => {
-  // 05/03/2526 เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม เท่ากับตอนเป็น ค.ศ. ทุกประการ
-  const r = resolveBirthDateColumn(rowsOf('05/03/2526'));
-
-  assert.equal(r.ok, false, 'ไม่มีตัวชี้ขาดในไฟล์ → ปฏิเสธทั้งไฟล์เหมือนเดิม');
-  assert.deepEqual(r.ambiguous, [{ line: 2, raw: '05/03/2526' }]);
-  // และสองทางที่ยกมาให้เทียบต้องเป็น ค.ศ. ที่แปลงแล้ว
-  assert.match(r.fileError, /5 มีนาคม 1983/);
-  assert.match(r.fileError, /3 พฤษภาคม 1983/);
-});
-
-test('ปี พ.ศ. ที่ถูกตัดสินโดยแถวอื่น ก็ยังถูกนับว่าแปลง', () => {
-  const r = resolveBirthDateColumn(rowsOf('05/03/2526', '15/05/2541'));
-
-  assert.equal(r.ok, true, '15/05 ชี้ขาดให้ทั้งไฟล์');
-  assert.deepEqual(r.cells.map((c) => c.date), ['1983-03-05', '1998-05-15']);
-  assert.equal(r.converted.length, 2);
+  assert.deepEqual(datesOf('01/01/2400'), ['2400-01-01']);
+  assert.deepEqual(datesOf('01/01/2401'), ['1858-01-01']);
 });
 
 test('ปฏิทินถูกตรวจด้วยปี ค.ศ. ที่แปลงแล้ว ไม่ใช่ปี พ.ศ. ในไฟล์', () => {
-  // 2539 หารสี่ลงตัว แต่ปีที่ใช้จริงคือ 1996 ซึ่งเป็นอธิกสุรทินพอดี
-  assert.equal(resolveBirthDateColumn(rowsOf('29/02/2539')).cells[0].date, '1996-02-29');
-  // 2541 ก็หารสี่ลงตัว แต่ 1998 ไม่ใช่ปีอธิกสุรทิน — ต้องตกและบอกปีที่ตรวจด้วย
-  const bad = resolveBirthDateColumn(rowsOf('29/02/2541'));
-  assert.equal(bad.cells[0].date, null);
-  assert.match(bad.cells[0].error, /ไม่มีอยู่จริง/);
-  assert.match(bad.cells[0].error, /ค\.ศ\. 1998/, 'ต้องบอกว่าตรวจปีไหน ไม่งั้นนับปีอธิกสุรทินกันคนละปฏิทิน');
-  assert.deepEqual(bad.converted, [], 'แถวที่ตกไปต้องไม่ถูกนับว่าแปลงสำเร็จ');
+  // 2539 หารสี่ลงตัวและ 1996 เป็นอธิกสุรทิน · 2541 ก็หารสี่ลงตัวแต่ 1998 ไม่ใช่
+  assert.deepEqual(datesOf('29/02/2539'), ['1996-02-29']);
+  const r = resolveBirthDateColumn(rowsOf('29/02/2541'));
+  assert.equal(r.cells[0].date, null);
+  assert.match(r.rowErrors[0].error, /ค\.ศ\. 1998/, 'ต้องเรียกปีที่ใช้ตรวจจริงออกมาให้เห็น');
 });
 
-// ── ปฏิทินจริง ──────────────────────────────────────────────────────────────
+test('แถวที่แปลงปีแล้วแต่วันไม่มีจริง ต้องไม่ถูกนับว่าแปลงสำเร็จ', () => {
+  const r = resolveBirthDateColumn(rowsOf('29/02/2541', '12/05/2532'));
+  assert.equal(r.converted.length, 1, 'นับเฉพาะแถวที่ได้วันที่จริง ๆ');
+  assert.equal(r.converted[0].line, 3);
+});
+
+// ── ปฏิทินจริง และแถวที่ใช้ไม่ได้ ────────────────────────────────────────────
 
 test('29 ก.พ. ปีอธิกสุรทิน ผ่าน — ปีปกติไม่ผ่าน', () => {
-  const leap = resolveBirthDateColumn(rowsOf('29/02/1996'));
-  assert.equal(leap.ok, true);
-  assert.equal(leap.cells[0].date, '1996-02-29', '1996 เป็นปีอธิกสุรทิน');
-  assert.equal(leap.cells[0].error, null);
-
-  const common = resolveBirthDateColumn(rowsOf('29/02/1998'));
-  assert.equal(common.cells[0].date, null);
-  assert.match(common.cells[0].error, /ไม่มีอยู่จริง/);
-
-  // ทางร้อยปีที่คนพลาดกันบ่อย: 1900 ไม่ใช่ปีอธิกสุรทิน แต่ 2000 ใช่
-  assert.equal(resolveBirthDateColumn(rowsOf('29/02/2000')).cells[0].date, '2000-02-29');
-  assert.equal(resolveBirthDateColumn(rowsOf('29/02/1900')).cells[0].date, null);
-  // และรูปแบบ ISO ต้องถูกตรวจปฏิทินเหมือนกัน ไม่ใช่แค่ตรวจหน้าตา
-  assert.match(resolveBirthDateColumn(rowsOf('1998-02-29')).cells[0].error, /ไม่มีอยู่จริง/);
+  assert.deepEqual(datesOf('29/02/1996'), ['1996-02-29']);
+  assert.equal(resolveBirthDateColumn(rowsOf('29/02/1998')).cells[0].date, null);
 });
 
-test('วันที่ผิดแบบไม่ว่าอ่านทางไหนก็ผิด → ตกเป็นความผิดของแถว ไม่ใช่หลักฐานของไฟล์', () => {
-  // 31/04 ไม่มีจริง (เมษายนมี 30 วัน) จึงต้องไม่ถูกใช้ตัดสินว่าไฟล์เป็น DD/MM
-  const r = resolveBirthDateColumn(rowsOf('31/04/1998', '05/03/1998'));
-
-  assert.equal(r.ok, false, 'เหลือ 05/03/1998 ที่ไม่มีตัวชี้ขาด → ต้องปฏิเสธทั้งไฟล์');
-  assert.deepEqual(r.ambiguous, [{ line: 3, raw: '05/03/1998' }]);
+test('ค่าที่ไม่ใช่วันที่เลย ผิดเฉพาะแถว และไฟล์ที่เหลือยังนำเข้าได้', () => {
+  const r = resolveBirthDateColumn(rowsOf('ไม่ทราบ', '31/04/1998', '12/05/1989'));
+  assert.deepEqual(r.rowErrors.map((e) => e.line), [2, 3]);
+  assert.equal(r.cells[2].date, '1989-05-12');
+  assert.match(r.rowErrors[0].error, /DD\/MM\/YYYY/, 'ต้องบอกรูปแบบที่รับ');
 });
 
-test('ค่าที่ไม่ใช่วันที่เลย → ผิดเฉพาะแถว', () => {
-  const r = resolveBirthDateColumn(rowsOf('ไม่ทราบ', '1989-05-12'));
-  assert.equal(r.ok, true);
-  assert.match(r.rowErrors[0].error, /ไม่ใช่รูปแบบที่รองรับ/);
-  assert.equal(r.rowErrors[0].line, 2);
-});
+// ── ไฟล์ที่ไม่มีคอลัมน์วันเกิด และช่องว่าง ────────────────────────────────────
 
-// ── ไฟล์ที่ไม่มีคอลัมน์วันเกิด ───────────────────────────────────────────────
-
-test('ไฟล์ที่ไม่มีคอลัมน์วันเกิด → ยังนำเข้าได้เหมือนเดิม', () => {
-  const rows = parseCsv('code,name,department\nPM001,สมชาย ใจดี,ENG\nPM002,สมหญิง ดีใจ,PROD');
+test('ไฟล์ที่ไม่มีคอลัมน์วันเกิด → อ่านได้ตามปกติ ไม่มีอะไรให้ตีความ', () => {
+  const rows = parseCsv('code,name,department\nPM01,คนที่ 1,ENG');
   const r = resolveBirthDateColumn(rows);
-
-  assert.equal(r.ok, true, 'ไม่มีวันเกิดไม่ใช่ความผิด');
   assert.equal(r.order, null);
-  assert.equal(r.fileError, null);
   assert.deepEqual(r.cells, []);
   assert.deepEqual(r.rowErrors, []);
 });
 
 test('คอลัมน์วันเกิดที่เว้นว่างไว้ ถูกข้ามไปเงียบ ๆ', () => {
-  const r = resolveBirthDateColumn(rowsOf('', '1989-05-12', ''));
-  assert.equal(r.ok, true);
-  assert.deepEqual(r.cells.map((c) => c.line), [3], 'มีแค่แถวที่กรอกไว้จริง');
+  const r = resolveBirthDateColumn(rowsOf('', '12/05/1989'));
+  assert.equal(r.cells.length, 1, 'ช่องว่างไม่ใช่แถวที่ต้องอ่าน');
+  assert.equal(r.cells[0].date, '1989-05-12');
 });
 
 test('หัวคอลัมน์ภาษาไทยและแบบขีดล่างก็อ่านได้', () => {
-  for (const header of ['วันเกิด', 'birth_date']) {
-    const r = resolveBirthDateColumn(parseCsv(`code,${header}\nPM001,15/05/1998`));
-    assert.equal(r.cells[0]?.date, '1998-05-15', `หัวคอลัมน์ "${header}" ต้องถูกอ่าน`);
+  for (const header of ['วันเกิด', 'birth_date', 'birthDate']) {
+    const rows = parseCsv(`code,name,${header}\nPM01,คนที่ 1,12/05/1989`);
+    assert.equal(resolveBirthDateColumn(rows).cells[0]?.date, '1989-05-12', header);
   }
 });
 
-// ── สิ่งที่ HR เห็นก่อนกดยืนยัน ──────────────────────────────────────────────
+// ── สิ่งที่ HR เห็นก่อนกดยืนยัน — และตอนนี้คือด่านเดียวที่เหลือ ────────────────
 
-test('ตัวอย่างผลการตีความ แสดงอย่างน้อย 3 แถวแรกในรูปที่คนอ่านออก', () => {
-  const r = resolveBirthDateColumn(rowsOf('05/03/1998', '15/05/1998', '12/12/1975', '01/01/1980'));
-  const preview = birthDatePreview(r);
-
-  assert.equal(preview.length, 3, 'อย่างน้อยสามแถวแรก');
-  assert.equal(preview[0].text, '05/03/1998 → 5 มีนาคม 1998', 'ต้องอ่านออกโดยไม่ต้องแปลเอง');
-  assert.equal(preview[1].text, '15/05/1998 → 15 พฤษภาคม 1998');
-  assert.deepEqual(preview.map((p) => p.line), [2, 3, 4], 'มีเลขบรรทัดให้ไปตามหาในไฟล์ได้');
+test('ตัวอย่างสะกดชื่อเดือนเป็นคำ ไม่ใช่ตัวเลขซ้ำกับที่อยู่ในไฟล์', () => {
+  /**
+   * ทั้งแอปแสดงวันที่เป็น DD/MM/YYYY ตั้งแต่ 2026-09-04 และบรรทัดนี้คือหนึ่งใน
+   * ข้อยกเว้นที่ตั้งใจไว้ (ดู test/dateFormat.test.js) เหตุผลอยู่ที่นี่: ตัวเลข
+   * คือสิ่งที่ HR มองอยู่ในไฟล์แล้ว และเป็นสิ่งที่แยก 5 มีนาคม กับ 3 พฤษภาคม
+   * ไม่ออก ชื่อเดือนคือสิ่งเดียวที่เอาไปเทียบกับคนที่รับเข้ามาได้
+   */
+  const p = birthDatePreview(resolveBirthDateColumn(rowsOf('05/03/1998')));
+  assert.equal(p[0].text, '05/03/1998 → 5 มีนาคม 1998');
+  assert.ok(!/05\/03\/2541/.test(p[0].text), 'ถ้าอ่านกลับเป็นตัวเลข บรรทัดนี้ก็ไม่ได้ตรวจอะไร');
 });
 
-test('ตัวอย่างบอกด้วยเมื่อแถวนั้นใช้ไม่ได้ ไม่ใช่แสดงช่องว่าง', () => {
-  const preview = birthDatePreview(resolveBirthDateColumn(rowsOf('31/04/1998', '15/05/1998')));
-  assert.match(preview[0].text, /31\/04\/1998 → .*ไม่มีอยู่จริง/);
+test('ตัวอย่างเอาแถวที่ใช้ไม่ได้ขึ้นก่อน — แถวแรกของไฟล์ไม่ใช่แถวที่ต้องอ่าน', () => {
+  const rows = rowsOf('1997-01-01', '1997-01-02', '1997-01-03', '05/25/1998');
+  const p = birthDatePreview(resolveBirthDateColumn(rows), 3);
+  assert.equal(p[0].line, 5, 'แถวที่ตกต้องมาก่อน แม้จะอยู่ท้ายไฟล์');
+  assert.equal(p.length, 3);
 });
 
 test('ตัวอย่างกำกับไว้ที่แถวที่แปลงปีให้ ไม่ใช่บอกแค่ยอดรวม', () => {
-  const preview = birthDatePreview(resolveBirthDateColumn(rowsOf('19/09/2515', '05/03/1998')));
-
-  assert.equal(preview[0].text, '19/09/2515 → 19 กันยายน 1972 (พ.ศ. → ค.ศ.)');
-  assert.equal(preview[0].converted, true);
-  assert.equal(preview[1].text, '05/03/1998 → 5 มีนาคม 1998', 'แถวที่เป็น ค.ศ. อยู่แล้วต้องไม่มีวงเล็บห้อย');
+  const p = birthDatePreview(resolveBirthDateColumn(rowsOf('12/05/2532')));
+  assert.match(p[0].text, /\(พ\.ศ\. → ค\.ศ\.\)/);
+  assert.equal(p[0].converted, true);
 });
 
 test('readableDate เป็น ค.ศ. — ปีเดียวกับที่อยู่ในไฟล์', () => {
-  // ต่างจาก thaiDate() ในหน้าจออื่นที่บวก 543 โดยตั้งใจ: ตัวอย่างนี้มีไว้ให้
-  // เทียบกับค่าในไฟล์ ถ้าแปลงปีให้ด้วยก็เทียบไม่ได้แล้ว
+  // ต่างจาก thaiDate() ในหน้าจออื่นที่บวก 543 โดยตั้งใจ: บรรทัดนี้มีไว้ให้เทียบ
+  // กับคอลัมน์ที่เปิดค้างอยู่ตรงหน้า
   assert.equal(readableDate('1998-03-05'), '5 มีนาคม 1998');
   assert.equal(readableDate('1996-02-29'), '29 กุมภาพันธ์ 1996');
 });
@@ -297,14 +268,54 @@ test('readableDate เป็น ค.ศ. — ปีเดียวกับท�
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (file) => readFileSync(join(ROOT, file), 'utf8');
 
-test('เส้นทางนำเข้าตัดสินวันเกิดทั้งไฟล์ ก่อนเขียนแถวใดลงฐานข้อมูล', () => {
+test('แม่แบบ CSV ต้องรอดจากการเปิด-บันทึกด้วย Excel ได้ด้วยตัวมันเอง', () => {
+  /**
+   * เหตุผลเปลี่ยนไปเมื่อ 2026-09-04 แต่คำตอบยังเป็นตัวเดิม
+   *
+   * เดิม: `1989-05-12` ที่ Excel เขียนทับเป็น `12/05/1989` ทำให้ไฟล์กำกวมและ
+   * ถูกปฏิเสธ · ตอนนี้ไม่มีการปฏิเสธแล้ว แต่ถ้าเครื่องที่เปิดตั้งเป็นภาษาอังกฤษ
+   * มันจะเขียนเป็น `05/12/1989` ซึ่งอ่านได้เงียบ ๆ เป็น 5 ธันวาคม — วันเกิน 12
+   * ทำให้เส้นทางนั้นกลายเป็นแถวที่ *ตกและร้อง* แทนที่จะเป็นวันที่ผิดที่เงียบสนิท
+   */
+  const template = read('app/api/employees/import/template/route.js');
+  const sample = /'(\d{4})-(\d{2})-(\d{2})'/.exec(template);
+  assert.ok(sample, 'แม่แบบต้องมีตัวอย่างวันเกิดเป็น YYYY-MM-DD');
+  assert.ok(
+    Number(sample[3]) > 12,
+    `ตัวอย่างวันเกิดในแม่แบบต้องมีวันเกิน 12 (ตอนนี้ ${sample[0]})`,
+  );
+
+  // และเดินทั้งสองเส้นทางจริง ๆ ไม่ใช่เชื่อตัวเลข
+  const thaiExcel = `${Number(sample[3])}/${sample[2]}/${sample[1]}`;
+  assert.equal(
+    resolveBirthDateColumn(rowsOf(thaiExcel)).cells[0].date,
+    `${sample[1]}-${sample[2]}-${sample[3]}`,
+    'Excel ไทยเขียนทับแล้วต้องอ่านกลับได้วันเดิม',
+  );
+  const enExcel = `${sample[2]}/${Number(sample[3])}/${sample[1]}`;
+  assert.equal(
+    resolveBirthDateColumn(rowsOf(enExcel)).cells[0].date,
+    null,
+    'Excel อังกฤษเขียนทับแล้วต้องตกและร้อง ไม่ใช่กลายเป็นวันอื่นเงียบ ๆ',
+  );
+});
+
+test('เส้นทางนำเข้าอ่านวันเกิดทั้งคอลัมน์ ก่อนเขียนแถวใดลงฐานข้อมูล', () => {
   const src = read('app/api/employees/import/route.js');
 
   const check = src.indexOf('resolveBirthDateColumn(rows)');
   const loop = src.indexOf('for (const [i, row] of rows.entries())');
-  assert.ok(check > 0, 'route ต้องเรียกตัวตีความรวมของทั้งไฟล์');
-  assert.ok(check < loop, 'ต้องตรวจก่อนวนแถว มิฉะนั้นจะเขียนบางแถวลงไปแล้วค่อยพบว่าไฟล์ใช้ไม่ได้');
-  assert.match(src, /if \(!dates\.ok\) return fail\(/, 'ไฟล์ที่ตีความไม่ได้ต้องจบด้วย 400 ไม่ใช่นำเข้าบางส่วน');
+  assert.ok(check > 0, 'route ต้องเรียกตัวอ่านรวมของทั้งไฟล์ โดยไม่มีตัวเลือกใด ๆ');
+  assert.ok(check < loop, 'ต้องอ่านก่อนวนแถว มิฉะนั้นแผงยืนยันจะนับไม่ตรงกับสิ่งที่เขียนไป');
+
+  // ตรวจบนโค้ดล้วน ไม่นับคอมเมนต์ — คอมเมนต์ในเราต์นั้นเรียกชื่อสองประตูที่ถูก
+  // ปิดไปโดยตั้งใจ ว่าเคยมีอะไรอยู่ตรงนั้น การห้ามคำเหล่านั้นในคอมเมนต์ด้วย คือ
+  // การห้ามไม่ให้ใครอธิบายว่าอะไรหายไป
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  // ไม่มีการปฏิเสธทั้งไฟล์เพราะเรื่องลำดับอีกแล้ว และไม่มีทางรับลำดับเข้ามา
+  assert.ok(!/dates\.ok/.test(code), 'ยังมีการปฏิเสธทั้งไฟล์เพราะตีความไม่ได้ค้างอยู่');
+  assert.ok(!/order=|declaredOrder|csvDateOrder|Setting/.test(code), 'ยังมีทางรับลำดับเข้ามา');
+  assert.match(src, /const cell = dates\.byLine\.get\(line\);/, 'แถวที่อ่านไม่ได้ต้องตกเป็นรายแถว');
 
   assert.ok(
     !/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$/.test(src),
@@ -315,7 +326,7 @@ test('เส้นทางนำเข้าตัดสินวันเก�
 test('หน้าทะเบียนพนักงานแสดงตัวอย่างก่อน แล้วจึงอัปโหลดเมื่อยืนยัน', () => {
   const file = read('components/AdminView.jsx');
   // The holidays card in the same file still uploads on pick, and should: a
-  // calendar has no ambiguous column to read. Only the roster card is pinned.
+  // calendar has no column to preview. Only the roster card is pinned.
   const src = file.slice(file.indexOf('function Employees('), file.indexOf('function ResetPassword('));
 
   assert.match(src, /birthDatePreview\(/, 'ต้องสร้างตัวอย่างให้ดูก่อน');
@@ -333,42 +344,30 @@ test('หน้าทะเบียนพนักงานแสดงตั�
     !/api\.upload/.test(chooseBody),
     'การอ่านไฟล์เพื่อทำตัวอย่างต้องไม่ส่งอะไรขึ้นเซิร์ฟเวอร์',
   );
-  /**
-   * The Excel warning, pinned by what it has to contain rather than by the
-   * sentence it is currently written in.
-   *
-   * Scoped to the `.hint-list` element on purpose. `src` also holds the
-   * comment on `choose()` explaining the same thing to whoever is reading the
-   * code, so a match against the whole function would go on passing with the
-   * warning deleted from the screen — which is the only place it is any use.
-   * The file is built in Excel before this card is ever open, so the preview
-   * underneath cannot replace it: by then the damage is in the file.
-   *
-   * `hint-list` rather than the plain `hint` this used to look for: the card
-   * opens with several `.hint` blocks and the first one in the file is not
-   * reliably this one — it moved once already, and the failure that caused was
-   * this assertion reading a different card's text. The list class names one
-   * block, and it is the block the warning has to be in.
-   *
-   * The value is pinned as well as the word. "Excel may reformat dates" is a
-   * caution people read past; 05/03/1998 being two different birthdays is the
-   * part that makes anybody check.
-   */
-  const hintAt = src.indexOf('className="hint hint-list"');
-  const hint = src.slice(hintAt, src.indexOf('</ul>', hintAt));
-  assert.ok(hintAt > 0, 'การ์ดนี้ต้องมีคำอธิบาย');
-  assert.match(hint, /Excel/, 'คำเตือนเรื่อง Excel บันทึกทับต้องอยู่ในคำอธิบายของหน้านี้');
-  assert.match(hint, /05\/03\/1998/, 'ต้องยกค่าที่อ่านได้สองแบบให้เห็น ไม่ใช่เตือนลอย ๆ');
+
+  // อัปโหลดคือไฟล์เปล่า ๆ ไม่มีลำดับติดไปด้วยอีกแล้ว
+  assert.match(src, /api\.upload\('\/employees\/import', pending\.file\)/);
 });
 
-/**
- * WHAT ตรวจก่อนนำเข้า SAYS ABOUT A CONVERTED YEAR, and what colour it says it in.
- *
- * Both halves matter and they fail differently. A conversion nobody is told
- * about is a birthday moved 543 years by a machine in silence; a clean file
- * wearing the amber "!" panel is HR being told to worry about a file with
- * nothing wrong with it, which is how a warning stops being read at all.
- */
+test('การ์ดทะเบียนบอกว่าอ่านเป็น วัน/เดือน/ปี เสมอ และเตือนเรื่อง Excel', () => {
+  /**
+   * คำเตือนเรื่อง Excel ยิ่งสำคัญขึ้นหลัง 2026-09-04 ไม่ใช่น้อยลง: ไฟล์ถูกสร้าง
+   * ใน Excel ก่อนที่การ์ดนี้จะถูกเปิด และเครื่องไม่ปฏิเสธไฟล์ที่สลับมาแล้ว
+   *
+   * ผูกกับ `.hint-list` เท่านั้น เพราะ `src` มีคอมเมนต์ในโค้ดที่อธิบายเรื่อง
+   * เดียวกันอยู่ด้วย การแมตช์ทั้งฟังก์ชันจะยังผ่านแม้คำเตือนถูกลบออกจากจอ
+   */
+  const file = read('components/AdminView.jsx');
+  const src = file.slice(file.indexOf('function Employees('), file.indexOf('function ResetPassword('));
+  const hintAt = src.indexOf('className="hint hint-list"');
+  assert.ok(hintAt > 0, 'การ์ดนี้ต้องมีคำอธิบาย');
+  const hint = src.slice(hintAt, src.indexOf('</ul>', hintAt));
+  assert.match(hint, /Excel/, 'คำเตือนเรื่อง Excel บันทึกทับต้องอยู่ในคำอธิบายของหน้านี้');
+  assert.match(hint, /05\/03\/1998/, 'ต้องยกค่าที่อ่านได้สองแบบให้เห็น ไม่ใช่เตือนลอย ๆ');
+  assert.match(hint, /วัน\/เดือน\/ปี/, 'ต้องบอกว่าระบบอ่านทางไหน');
+  assert.match(hint, /2400/, 'ต้องบอกกฎปี พ.ศ. ด้วย');
+});
+
 test('พรีวิวบอกจำนวนที่แปลงปีให้ และไม่ทาสีเตือนไฟล์ที่ไม่มีอะไรผิด', () => {
   const file = read('components/AdminView.jsx');
   const src = file.slice(file.indexOf('function Employees('), file.indexOf('function ResetPassword('));
@@ -377,34 +376,66 @@ test('พรีวิวบอกจำนวนที่แปลงปีใ�
   assert.match(panel, /pending\.dates\.converted\.length > 0/, 'ต้องมีเงื่อนไขซ่อนบรรทัดนี้เมื่อไม่ได้แปลงอะไร');
   assert.match(panel, /แปลงปี พ\.ศ\. เป็น ค\.ศ\. ให้อัตโนมัติแล้ว/, 'ต้องบอก HR ว่าระบบแปลงปีให้');
   assert.match(panel, /pending\.dates\.converted\.length\}/, 'ต้องบอกจำนวน ไม่ใช่บอกว่าแปลงเฉย ๆ');
-  assert.ok(
-    !/ต้องใช้ปี ค\.ศ\./.test(src),
-    'คำเตือนเดิมที่ให้ HR ไปแก้ไฟล์เองต้องหายไป ไม่ใช่ค้างอยู่คู่กับตัวแปลงอัตโนมัติ',
-  );
 
-  // ไฟล์อ่านได้และไม่มีแถวตก → เขียว · มีแถวตก → เหลือง · ทั้งไฟล์เสีย → แดง
+  // ไม่มีแถวตก → เขียว · มีแถวตก → เหลือง · ไม่มีสีแดงแล้ว เพราะไม่มีการปฏิเสธ
   assert.match(
     panel,
-    /pending\.dates\.ok \? \(pending\.dates\.rowErrors\.length \? 'warn' : 'ok'\) : 'error'/,
-    'สีของแผงต้องมาจากว่ามีแถวตกจริงหรือไม่ ไม่ใช่เตือนไว้ก่อนทุกไฟล์',
+    /kind=\{pending\.dates\.rowErrors\.length \? 'warn' : 'ok'\}/,
+    'สีของแผงต้องมาจากว่ามีแถวตกจริงหรือไม่',
   );
+  assert.ok(!/'error'/.test(panel), 'ไม่มีสถานะ "ไม่นำเข้าทั้งไฟล์" ให้ทาสีแดงอีกแล้ว');
 
-  // ปุ่มยืนยันต้องเป็น `.btn` เต็มใบ (สีเขียวของแอป) และกดได้ทันที ติดแค่ตอนกำลังส่ง
+  // ปุ่มยืนยันต้องเป็น `.btn` เต็มใบ และกดได้ทันที ติดแค่ตอนกำลังส่ง
   assert.match(
     panel,
     /<button\s+className="btn"\s+onClick=\{confirmImport\}\s+disabled=\{sending\}/,
     'ปุ่มยืนยันนำเข้าต้องเป็นปุ่มเขียวที่กดได้ ไม่ใช่ ghost หรือถูกปิดไว้',
   );
+  // และแถวที่จะถูกข้ามยังต้องถูกลงรายการไว้ ไม่ใช่แค่สรุปเป็นจำนวน
+  assert.match(panel, /pending\.dates\.rowErrors\.map/, 'ต้องลงรายการแถวที่จะถูกข้าม');
+});
+
+test('คำถามเรื่องลำดับวัน/เดือน ถูกถอดออกจากจอทั้งหมด', () => {
+  const admin = read('components/AdminView.jsx');
+  for (const gone of [
+    'declareOrder', 'undeclare', 'declaredOrder', 'answerable', 'csvDateOrder',
+    'CsvDateFormat', 'blockedLines', 'ไฟล์นี้เป็น วัน/เดือน/ปี', 'อ่านไฟล์นี้เป็น',
+  ]) {
+    assert.ok(!admin.includes(gone), `ยังมี "${gone}" ค้างอยู่บนจอ`);
+  }
+  // และหัวข้อใน ตั้งค่าระบบ ต้องหายไปด้วย ไม่ใช่เหลือหัวข้อที่กดแล้วว่างเปล่า
+  assert.ok(!admin.includes("key: 'csvDates'"), 'หัวข้อ ตั้งค่าระบบ ยังอยู่');
+});
+
+test('ค่าเริ่มต้นขององค์กรถูกถอดออกจากทั้งเราต์ตั้งค่าและสคีมา', () => {
+  /**
+   * ฟิลด์ที่ยังรับค่าได้แต่ไม่มีใครอ่าน คือกับดัก: จะมีคนตั้งค่ามันแล้วเชื่อว่า
+   * ไฟล์ถัดไปจะถูกอ่านตามนั้น
+   */
+  const route = read('app/api/settings/route.js');
+  assert.ok(!/csvDateOrder: doc\.csvDateOrder/.test(route), 'GET ยังส่งค่านั้นออกไป');
+  assert.ok(!/doc\.csvDateOrder = /.test(route), 'PATCH ยังรับค่านั้นเข้ามา');
+  assert.match(route, /const \{ companyName, companyNameEn, formCode \} = await body\(req\);/);
+
+  const model = read('src/models/Setting.js');
+  assert.ok(
+    !/^\s{4}csvDateOrder: \{/m.test(model),
+    'สคีมายังประกาศฟิลด์นั้นอยู่ — mongoose จะยังเก็บและ validate ให้',
+  );
+  assert.match(model, /csvDateOrder/, 'แต่ต้องเหลือคอมเมนต์บอกว่ามันเคยอยู่ตรงไหนและหายไปทำไม');
 });
 
 test('ผลการนำเข้าที่เซิร์ฟเวอร์ตอบกลับ นับจำนวนที่แปลงปีมาด้วย', () => {
-  const route = read('app/api/employees/import/route.js');
-  assert.match(route, /converted: dates\.converted\.length/, 'ต้องส่งจำนวนที่แปลงกลับมาให้หน้าจอ');
+  const src = read('app/api/employees/import/route.js');
+  const body = src.slice(src.indexOf('birthDates: {'), src.indexOf('});', src.indexOf('birthDates: {')));
+  assert.match(body, /order: dates\.order/);
+  assert.match(body, /count: dates\.cells\.length/);
+  assert.match(body, /converted: dates\.converted\.length/);
+  assert.ok(!/declared|fallback|decidedBy/.test(body), 'ไม่มีลำดับให้อ้างว่ามาจากใครอีกแล้ว');
+});
 
-  const view = read('components/AdminView.jsx');
-  assert.match(
-    view,
-    /result\.birthDates\.converted > 0/,
-    'หน้าจอต้องพูดตัวเลขเดียวกันซ้ำหลังนำเข้า ไม่งั้นเทียบกับพรีวิวไม่ได้',
-  );
+test('ข้อความผิดพลาดบนการ์ดทะเบียน ปิดได้', () => {
+  const file = read('components/AdminView.jsx');
+  const src = file.slice(file.indexOf('function Employees('), file.indexOf('function ResetPassword('));
+  assert.match(src, /onClose=\{\(\) => setError\(''\)\}/, 'แถบแดงบนการ์ดนี้ต้องมีปุ่มปิด');
 });
