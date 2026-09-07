@@ -427,9 +427,15 @@ export default function ScanImport({ period, status = 'approved' }) {
           <Alert kind={compare.counts.mismatch ? 'warn' : 'ok'} mark={false}>
             <strong>ผลเทียบกับใบ OT ของเดือนนี้</strong>
             <span className="hint">{' '}({compare.entryCount} ใบ · ตาม “สถานะที่นับ” ที่เลือกไว้ด้านบน)</span>
+            {/* THE SAME FOUR WORDS AS ตรวจสอบรายเดือน, in the same order —
+                HR's own vocabulary of 2026-09-07. Two screens naming one
+                comparison differently is how a reader ends up believing they
+                are two comparisons. */}
             <div style={{ marginTop: 6 }}>
-              <strong>{compare.counts.mismatch}</strong> แถวเวลาไม่ตรง ·
-              {' '}<strong>{compare.counts.noScan}</strong> แถวไม่มีข้อมูลสแกน ·
+              <strong>{compare.counts.short}</strong> แถวไม่ครบ ·
+              {' '}<strong>{compare.counts.startOff}</strong> แถวเวลาเริ่มไม่ตรง ·
+              {' '}<strong>{compare.counts.noScan}</strong> แถวไม่ตรง (ไม่มีสแกนนิ้ว) ·
+              {' '}<strong>{compare.counts.overTime}</strong> แถวเกินเวลา ·
               {' '}<strong>{compare.counts.flatDaily}</strong> แถวเป็นใบเหมารายวัน
             </div>
 

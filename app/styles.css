@@ -4996,6 +4996,22 @@ td > .approver-line { margin-top: 5px; }
    and "no scan at the start" are different statements about a day, and the one
    that moves must not drag the other with it. */
 .chip.scan-noin { background: var(--neutral-wash); color: var(--muted); }
+/* เกินเวลา — สแกนออกหลังเวลาที่ขอ OT มา ตั้งแต่หนึ่งบล็อก OT ขึ้นไป.
+
+   GREY BECAUSE HR SAID GREY, and their reason is the right one: *ข้อเท็จจริง
+   ป้ายเทา ไม่นับกองที่ต้องตรวจ* (2026-09-07). The person worked longer than
+   they claimed. Nobody is owed a correction, the company is not out of pocket,
+   and the hours on the row are the hours on the request — so the mark is a
+   statement, not an errand, and it wears the tone this table gives statements.
+
+   Amber here would be the screen marking somebody for UNDER-claiming, which is
+   the exact reading the end-side rule was rewritten earlier the same day to
+   stop making (`metEnd` is `>=`, and an overrun is still ครบตามขอ).
+
+   ITS OWN CLASS, matching `.chip.scan-none` and `.chip.scan-noin` today — three
+   different statements about a day that happen to share a colour, and the one
+   that moves must not drag the other two with it. */
+.chip.scan-over { background: var(--neutral-wash); color: var(--muted); }
 /* เหมารายวัน — THE SAME GREEN `OT สวัสดิการวันเกิด` wears, and deliberately so:
    both are facts about how a request was FILED that change how its hours were
    counted, neither is a problem, and a reader who has learnt one of them has
@@ -6117,6 +6133,98 @@ td > .approver-line { margin-top: 5px; }
    the app puts a sentence in a chip. */
 .entry-mark { margin-top: 6px; }
 .entry-mark .chip { white-space: normal; text-align: left; }
+/* TWO CHIPS CAN LAND HERE SINCE 2026-09-04, and before that no two ever could:
+   `เหมารายวัน` and `เวลาไม่ตรงกับสแกน` are mutually exclusive by construction,
+   so the cell never needed to say what sits between two pills. `ไม่ได้สแกนเข้า
+   OT` is the third and it is NOT exclusive with the amber one — a row that
+   forgot to scan out has both, and JSX puts no whitespace between adjacent
+   expressions, so without this they touch and read as one long pill.
+
+   A margin on the second and not a flex `gap` on the container: the phone card
+   floats the description's label and lets the value flow round it, which is
+   what the wrap rule above is tuned for, and turning this into a flex row would
+   take that layout with it. */
+.entry-mark .chip + .chip { margin-left: 6px; }
+
+/* ── the two columns that hold prose ───────────────────────────────────────
+   ตรวจสอบใบของพนักงาน is nine columns of figures, times and dates plus two that
+   hold language: รายละเอียดงานที่ทำ, which is a sentence somebody typed, and
+   สถานะ, which is a chip with up to two เกินเพดาน notes stacked under it.
+
+   `table-layout: auto` gives a column what its contents ask for, and a figure
+   asks for four characters and gets them. The two below ask for as much as they
+   can have and were therefore the two that gave way — the sentence wrapped to
+   three lines beside eight columns that were already comfortable.
+
+   THE WIDTHS WENT ON WHEN กฎที่ใช้ CAME OFF, on 2026-09-04, and that pairing is
+   the whole point: removing a column returns its room to the TABLE, spread over
+   every column by whatever the layout algorithm makes of the contents — which
+   on a month of short descriptions is mostly the date and the times. Naming the
+   two that were supposed to get it is what makes the removal do the thing it
+   was asked for.
+
+   THE FIGURES ARE MEASURED, AND THE FIRST PAIR WAS WRONG. All of these are
+   `th` widths on the built app at 1440px, one employee's September, the
+   longest description this app has in it:
+
+     before, with กฎที่ใช้ still a column   324 / 65     (10 columns)
+     after, these two rules                  397 / 122    (9 columns)
+
+   34% was the first try and it made รายละเอียดงานที่ทำ NARROWER — 373 against
+   the 406 the same nine-column table gives it with both rules switched off. A
+   percentage on a `th` under auto layout is not the "request" the first
+   version of this note called it: the engine takes it as the column's preferred
+   width and will shrink a column to reach it.
+
+   NEITHER RULE IS INERT, and that was checked rather than assumed. With only
+   the สถานะ rule the pair measures 346 / 132: the 12% comes out of the one
+   flexible column beside it, which is รายละเอียดงานที่ทำ, and 40% is what
+   defends it — 397 / 122 is the trade, ten pixels of สถานะ for fifty of the
+   sentence. Both columns still end up well above where they were.
+
+   ON THE `th` ONLY. The `td` is left alone because `.entry-desc` carries a
+   phone-only line-height and is pinned by name in test/entryRowChrome.test.js.
+
+   NOT INSIDE THE PHONE BLOCK, and nothing needs to be: `thead` is
+   `display: none` below 860px, so a width on a `th` reaches nothing there. */
+.stack-table th.desc-col { width: 40%; }
+.stack-table th.status-col { width: 12%; }
+
+/* ── จาก–ถึง, WHICH IS NOT A PAIR OF TIMES ANY MORE ────────────────────────
+   The third column that holds more than a figure, and the one that was worst
+   off — because when it was written it held `17:00–19:30` and nothing else, so
+   nobody thought to give it a width. It now carries the times, up to two chips,
+   the day's scan line and the mismatch detail.
+
+   MEASURED ON THE BUILT APP AT 1440px, against a clone of the real July scan
+   file, with the two rules above already in place: the column came out **79px**
+   while รายละเอียดงานที่ทำ had 363 and the button column 204. At 79px the
+   `ไม่ได้สแกนเข้า OT` pill rendered **55×60** — three lines of text inside one
+   pill, which is not a pill — `สแกน 07:34 , 19:30` wrapped to three lines, and
+   a row whose description is ONE line stood **187px** tall.
+
+   THE FLOOR IS THE CONTENT'S, IN PIXELS. A time string, a pill and
+   `สแกน 07:34 , 19:30` are fixed widths — they do not get shorter on a narrower
+   screen — so a percentage alone would let a 1280 laptop squeeze them back into
+   the shape this rule exists to undo. `min-width` holds the floor at the widest
+   of the three; the percentage asks for a little more where there is room.
+
+   WHERE THE ROOM COMES FROM: the button column, which auto-sized to 204px for
+   two ghost buttons, and วันที่ at 102. NOT from รายละเอียดงานที่ทำ, which was
+   asked to grow in the same breath and keeps its 40%. */
+.stack-table th.when-col { width: 15%; min-width: 172px; }
+
+/* ── which rules computed this row, in the drawer that opened for it ───────
+   กฎที่ใช้ was a column until 2026-09-04 and is one line of the ประวัติการแก้ไข
+   drawer now. It is a standing FACT about the row, sitting above a trail of
+   events, so it takes the drawer's own quiet voice rather than the ink of the
+   entries below it — and a little space under it, because what follows is a
+   heading-and-list of a different kind. */
+.audit-policy {
+  margin-top: 8px; padding-bottom: 2px;
+  font: 400 12.5px/1.5 var(--sans); color: var(--muted);
+}
+.audit-policy .pv-by { color: var(--muted-2); }
 
 /* ── the footnote under the table ───────────────────────────────────────────
    A BOX, AND THAT IS WHAT MAKES IT A FOOTNOTE. It is two rules about the whole
@@ -7598,7 +7706,11 @@ table.mini tbody tr:hover { background: none; }
   padding: 10px 12px; border-radius: var(--radius-xs);
   background: var(--card); border: 1px solid var(--ok-line);
 }
-.quick-edit .checks .check { font: 400 14px/1.4 var(--sans); color: var(--ink-2); }
+/* `flex-wrap` because a label and its bracket are two flex items, not one run
+   of text — an anonymous item cannot break across a line boundary, so without
+   this the longest of the four (วันเกิด, whose bracket names the benefit) runs
+   out of the strip on a phone instead of folding under itself. */
+.quick-edit .checks .check { font: 400 14px/1.4 var(--sans); color: var(--ink-2); flex-wrap: wrap; }
 /* What the switch DOES, in the filing form's own bracket convention. A step
    down and a step quieter, so the label is still the thing being read. */
 .quick-edit .check-note { font: 400 11.5px/1.4 var(--sans); color: var(--muted-2); }

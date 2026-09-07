@@ -14,15 +14,16 @@ import {
 } from '@/lib/caps.js';
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
-  maySignFirstStep, isOwnRequest,
+  maySignFirstStep, isOwnRequest, flatDayEnd, FLAT_DAY_SPAN_MINUTES, isBirthdayWelfare,
+  mayCorrectEntries,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
 import { isOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
 import {
-  Alert, CapCard, Empty, EditedMark, EntryHistory, Fact, Modal, PickOne, ProxyMark, RateHead,
-  ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, StatusChip, TeamMark,
-  editsOf,
+  Alert, CapCard, Empty, EditedMark, EntryHistory, Fact, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, StatusChip,
+  TeamMark, editsOf,
 } from './common.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
 import WithdrawalRequests from './WithdrawalRequests.jsx';
@@ -1861,6 +1862,9 @@ export default function ApprovalQueue({
           // reads — a pop-up that explained the silence differently from the
           // row it was opened off would be two answers to one question.
           watchNote={watchingNote(detail, stage, isHr, user)}
+          // The บทบาท rule, not the stage: `isHr` above says which STEP this
+          // queue is showing, and a correction is answered on who is asking.
+          mayCorrect={mayCorrectEntries(user)}
           onClose={() => setDetail(null)}
           /**
            * THE ONE PATH THAT COULD REACH THE SERVER WITHOUT A REASON.
@@ -2253,8 +2257,15 @@ function RejectFields({ value, onChange, many }) {
  * be the second reading of one rule — which is exactly how a screen comes to
  * offer a button the server answers 403 to.
  */
+/**
+ * `mayCorrect` — whether this reader is one of the two บทบาท `editPermission`
+ * accepts a correction from. Handed down rather than worked out here, from the
+ * same `mayCorrectEntries` the server refuses on, so the box this screen draws
+ * and the one the write path accepts cannot drift apart. It decides only the
+ * วันเกิด tick inside แก้ไขชั่วโมง — see the note beside it.
+ */
 function DetailModal({
-  entry: e, isHr, busy, mine = false, watching = false, watchNote = null,
+  entry: e, isHr, busy, mine = false, watching = false, watchNote = null, mayCorrect = false,
   onClose, onApprove, onReject, onEntryChanged,
 }) {
   const [mode, setMode] = useState('view'); // 'view' | 'rejecting'
@@ -2502,6 +2513,7 @@ function DetailModal({
             {editing ? (
               <QuickEdit
                 entry={e}
+                mayCorrect={mayCorrect}
                 onDirty={setEditDirty}
                 onCancel={() => { setEditing(false); setEditDirty(false); }}
                 onSaved={(updated) => {
@@ -2563,13 +2575,42 @@ function DetailModal({
  *
  * Saving does NOT confirm the entry. Correcting a number and vouching for it
  * are two decisions, and they get two presses.
+ *
+ * ── THE TWO THINGS A CORRECTION COULD NOT REACH UNTIL 2026-09-07 ────────────
+ *
+ * เหมารายวัน and วันเกิด were on the filing form and nowhere else, so the two
+ * mistakes they describe had only one way out of this screen: refuse the whole
+ * request and have it filed again with the right box ticked. That is the very
+ * round trip this panel exists to spare — and it is worse for these two than
+ * for a mistyped minute, because both change what the day IS rather than how
+ * long it was, and neither is visible on the request as filed. A flat day filed
+ * without the tick reads as an ordinary twelve-hour shift and pays like one.
+ *
+ * WHAT IS DIFFERENT HERE FROM OtForm, and it is the same difference twice:
+ * ticking a box does NOT fill 08:00–17:00 in. On the filing form those times
+ * are a default nobody has typed over yet; here they are the record of when a
+ * person was on the premises, printed on F-HR-027 and signed. Overwriting that
+ * because a reviewer ticked เหมารายวัน would falsify the sheet to change a
+ * figure the sheet does not carry — a flat day is eight hours whatever the
+ * clock says. Re-picking เวลาเริ่ม is what re-derives the end, exactly as it
+ * does on a stored flat row opened in the filing form.
  */
-function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
+function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
   const [form, setForm] = useState(() => ({
     startTime: entry.startTime,
     endTime: entry.endTime,
     endsNextDay: Boolean(entry.endsNextDay),
     noBreakTaken: Boolean(entry.noBreakTaken),
+    /** เหมารายวัน — an entered field, stored on the entry. */
+    flatDaily: Boolean(entry.flatDaily),
+    /**
+     * วันเกิด — READ BACK OFF THE HOURS, because there is no field to read.
+     * The tick is a claim the server checks and then has no further use for;
+     * what makes a day สวัสดิการวันเกิด is the stored วันเกิด, and
+     * `isBirthdayWelfare` asks the engine's own `dayReason` about it. Same
+     * function, same reasoning as OtForm's own edit case — see `blank()` there.
+     */
+    birthdayWelfare: isBirthdayWelfare(entry),
   }));
   const [note, setNote] = useState('');
   const [preview, setPreview] = useState(null);
@@ -2579,7 +2620,12 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
   const moved = form.startTime !== entry.startTime
     || form.endTime !== entry.endTime
     || form.endsNextDay !== Boolean(entry.endsNextDay)
-    || form.noBreakTaken !== Boolean(entry.noBreakTaken);
+    || form.noBreakTaken !== Boolean(entry.noBreakTaken)
+    // Both ticks move an ANSWER and not only a label: เหมารายวัน rewrites what
+    // the day is worth, and วันเกิด is a claim the server either accepts or
+    // refuses. A tick alone is a saveable correction, so it counts as movement.
+    || form.flatDaily !== Boolean(entry.flatDaily)
+    || form.birthdayWelfare !== isBirthdayWelfare(entry);
 
   useEffect(() => { onDirty?.(moved || note.trim().length > 0); }, [moved, note]);
 
@@ -2628,12 +2674,48 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
    *
    * Derived on CHANGE, not on render, so opening the pop-up on a stored entry
    * does not mark the form dirty before anybody has touched it.
+   *
+   * ── AND ON A เหมารายวัน DAY THE END IS DERIVED TOO ─────────────────────────
+   *
+   * A flat day is a fixed length — `FLAT_DAY_SPAN_MINUTES`, nine on the clock
+   * for the eight it pays — so once the box is ticked the end is an answer to
+   * เวลาเริ่ม rather than a second thing to type, exactly as it is on the
+   * filing form (`setStart` in OtForm, and `flatDayEnd` in lib/entries.js is
+   * the one place either screen computes it). ข้ามคืน falls out of the same
+   * press, because a flat day begun at 16:00 finishes at 01:00 and an end
+   * before its start is `END_BEFORE_START` out of the engine.
+   *
+   * ONLY ON A PRESS OF THE START BOX. Ticking เหมารายวัน leaves both times
+   * alone — see the note over this component: they are the record of when
+   * somebody was here, and the tick is not a statement about the clock.
    */
   const set = (patch) => setForm((f) => {
     const next = { ...f, ...patch };
+    if (patch.startTime !== undefined && next.flatDaily) next.endTime = flatDayEnd(patch.startTime);
     return { ...next, endsNextDay: endsNextDayFor(next.startTime, next.endTime) };
   });
   const nextHours = preview?.result?.totals?.otHours;
+
+  /**
+   * The two sentences the server would refuse this correction with, said while
+   * it is still being made.
+   *
+   * Both come off the preview — `birthdayTickRefusal` and `weekdayOtRefusal`,
+   * the very functions PATCH /api/entries/[id] answers 409 with — so the line
+   * on the screen and the line in the refusal are one line, and this panel
+   * cannot offer a save the write path is about to reject.
+   *
+   * วันเกิด is the claim: the box says "this date is this person's สวัสดิการ
+   * วันเกิด", and only the server can check it, because no screen may hold a
+   * `birthDate` (`publicEmployee`). เหมารายวัน needs the second one because
+   * UNTICKING it is now possible here: a flat row in a แผนก that does not do
+   * weekday OT becomes ordinary weekday hours the moment the tick comes off,
+   * which is the one refusal `รูปแบบโอที` exists to make.
+   */
+  const birthdayRefusal = preview?.birthdayRefusal || null;
+  const weekdayRefusal = preview?.weekdayRefusal || null;
+  /** Either of them is a 409 waiting to happen, so บันทึก goes quiet on it. */
+  const refused = Boolean(birthdayRefusal || weekdayRefusal);
 
   /*
    * ONE PLACE THAT SAYS WHAT IS WRONG.
@@ -2654,6 +2736,8 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
    */
   const problems = [
     err || null,
+    birthdayRefusal,
+    weekdayRefusal,
     !note.trim() ? 'กรุณาระบุเหตุผลการแก้ไข' : null,
   ].filter(Boolean);
 
@@ -2666,12 +2750,28 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
         </div>
         <div className="field">
           <label>เวลาสิ้นสุด</label>
-          <PickTime label="เวลาสิ้นสุด" value={form.endTime} onChange={(v) => set({ endTime: v })} />
+          {/* SHUT ON A เหมารายวัน DAY, the same box the filing form shuts and
+              for the same reason: the figure is an answer to เวลาเริ่ม, not a
+              second thing to type. Disabled rather than hidden — the time is
+              the record of when the person was here and it prints on the row.
+              An already-flat entry opens on its OWN end and is not re-derived
+              on the way in; re-picking the start is what moves it. */}
+          <PickTime
+            label="เวลาสิ้นสุด"
+            value={form.endTime}
+            disabled={form.flatDaily}
+            onChange={(v) => set({ endTime: v })}
+          />
+          {form.flatDaily && (
+            <span className="field-note">
+              บวกจากเวลาเริ่ม {FLAT_DAY_SPAN_MINUTES / 60} ชม. ให้อัตโนมัติ
+            </span>
+          )}
         </div>
       </div>
 
       {/*
-        THE TWO SWITCHES, IN A BOX OF THEIR OWN, ON THE LINE UNDER THE TIMES.
+        THE SWITCHES, IN A BOX OF THEIR OWN, ON THE LINE UNDER THE TIMES.
 
         They belong to the times above them — one reports what those times mean,
         the other changes what is deducted from them — and standing loose in the
@@ -2680,12 +2780,19 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
         says "these are about what you just typed" without a heading to say it.
 
         THE WORDS COME FROM THE FILING FORM, not from here. OtForm says
-        "ทำงานข้ามคืน (สิ้นสุดวันถัดไป)" and "ไม่พักเที่ยง", and this is the same
-        two switches on the same entry — a reviewer correcting a filing should
-        not have to work out that two differently-worded boxes are the box they
-        already know. The clarifier in brackets is that form's convention too;
-        ไม่พักเที่ยง gets one here because what it actually does — stop the break
-        being deducted — is the part a reviewer is deciding about.
+        "ทำงานข้ามคืน (สิ้นสุดวันถัดไป)", "ไม่พักเที่ยง", "เหมารายวัน (นับ 8 ชม.
+        ต่อวัน)" and "วันเกิด", and this is the same entry's own switches — a
+        reviewer correcting a filing should not have to work out that two
+        differently-worded boxes are the box they already know. The clarifier in
+        brackets is that form's convention too; ไม่พักเที่ยง gets one here
+        because what it actually does — stop the break being deducted — is the
+        part a reviewer is deciding about.
+
+        FOUR NOW, AND THE ORDER IS THE FILING FORM'S. The first two describe the
+        SHIFT (did it cross midnight, was there a break); the two added on
+        2026-09-07 describe the DAY (was it hired whole, was it this person's
+        birthday holiday). Shift first, day second, in the order somebody who
+        files OT has already learnt them.
       */}
       <div className="checks">
         {/* Read-only: it reports what the two times above add up to. See `set`. */}
@@ -2701,10 +2808,48 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
           />
           ไม่พักเที่ยง <span className="check-note">(ไม่หักเวลาพัก)</span>
         </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={form.flatDaily}
+            onChange={(ev) => set({ flatDaily: ev.target.checked })}
+          />
+          เหมารายวัน <span className="check-note">(นับ 8 ชม. ต่อวัน)</span>
+        </label>
+        {/* WHO MAY MAKE THE CLAIM, and it is the same rule OtForm draws when it
+            withholds this box from บันทึก OT แทนพนักงาน — turned around, because
+            here the box is offered to ฝ่ายบุคคล and withheld from everybody
+            else. A หัวหน้า is not told when their team member was born
+            (`publicEmployee` keeps `birthDate` off the roster they hold), so a
+            box they could only tick by guessing is a box that teaches them the
+            answer through its refusal. ฝ่ายบุคคล and ผู้ดูแลระบบ hold the
+            วันเกิด already, and they are also the only two `editPermission`
+            lets save a correction here at all — see `mayCorrectEntries`. */}
+        {mayCorrect && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={form.birthdayWelfare}
+              onChange={(ev) => set({ birthdayWelfare: ev.target.checked })}
+            />
+            วันเกิด <span className="check-note">(สวัสดิการวันเกิดของคนนี้)</span>
+          </label>
+        )}
         {/* Once, for the box, rather than beside the mark: a disabled control
             with no reason given is the thing somebody presses twice and then
-            reports as broken. */}
-        <div className="checks-note">“ข้ามคืน” คำนวณจากเวลาที่กรอก จึงติ๊กเองไม่ได้</div>
+            reports as broken. The second sentence answers the question the two
+            new ticks raise straight away — "did ticking that just move the
+            times?" — because on the filing form it would have. */}
+        <div className="checks-note">
+          “ข้ามคืน” คำนวณจากเวลาที่กรอก จึงติ๊กเองไม่ได้
+          {(form.flatDaily || form.birthdayWelfare) && (
+            <>
+              {' · '}
+              ติ๊กแล้วเวลาที่กรอกไว้ไม่ถูกแก้ — เป็นเวลาที่พิมพ์บนใบและเซ็นไปแล้ว
+              {form.flatDaily && ` · แก้ “เวลาเริ่ม” แล้วเวลาสิ้นสุดจะบวกให้เอง ${FLAT_DAY_SPAN_MINUTES / 60} ชม.`}
+            </>
+          )}
+        </div>
       </div>
 
       {moved && (
@@ -2712,6 +2857,15 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
           <div className="kicker-sm">ผลหลังแก้ไข</div>
           {preview ? (
             <>
+              {/* เหมารายวัน — SAID BEFORE THE FIGURE, NOT AFTER IT, the same way
+                  round the filing form says it. The delta below is about to read
+                  8.00 against times that may say five hours or twelve, which on
+                  any other correction would mean the form is wrong; here it
+                  means the tick did what it was ticked for. `kind="ok"` and not
+                  "warn" — the same green the row's own chip wears, because it is
+                  the same fact, and `FLAT_DAILY_SAY` is that chip's own sentence
+                  rather than a second wording of it. */}
+              {form.flatDaily && <Alert kind="ok">{FLAT_DAILY_SAY}</Alert>}
               <div className="delta">
                 <span className="was">{hours(entry.totals?.otHours)} ชม.</span>
                 <span className="to">→</span>
@@ -2765,7 +2919,11 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
             two boxes the same size to the pixel. The save keeps the fill, the
             weight and the glow; this keeps only its outline. */}
         <button className="btn ghost" onClick={onCancel} disabled={saving}>ยกเลิก</button>
-        <button className="btn" onClick={save} disabled={saving || !moved || !note.trim()}>
+        {/* Greyed on the two refusals as well — see `refused` above, which is
+            the server's own sentence rather than a second reading of the rule
+            behind it. Both are in the banner above too, so the button going
+            quiet is never the only thing that happened. */}
+        <button className="btn" onClick={save} disabled={saving || !moved || !note.trim() || refused}>
           {saving ? 'กำลังบันทึก…' : 'บันทึกชั่วโมงใหม่'}
         </button>
       </div>

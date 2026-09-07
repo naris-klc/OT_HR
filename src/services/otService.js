@@ -25,7 +25,7 @@ import {
   CAP_STATUSES, capBreaches, monthWindowOf, overCap, periodOf, usageInMonth, usageInWeeks,
   weekEndOf, weekLabel, weeksOfEntry,
 } from '../../lib/caps.js';
-import { idOf, noOtHoursMessage } from '../../lib/entries.js';
+import { idOf, noOtHoursMessage, zeroOtHoursAllowed } from '../../lib/entries.js';
 import { latestPerSession } from '../../lib/reports.js';
 import {
   planRecompute, samePolicy, figuresMoved, summariseReplay, versionForDate,
@@ -812,12 +812,27 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
       const signedOff = entry.status === 'approved';
       const before = signedOff ? entry.snapshot() : null;
 
+      /**
+       * EVERY ENTERED FIELD THE ENGINE READS, and `flatDaily` was missing from
+       * this list from the day it was added (2026-09-03) until 2026-09-04.
+       *
+       * A replay rebuilds the session from the stored document and recomputes
+       * it. Left out, the tick was silently `undefined` here — so a policy
+       * change or a holiday-calendar edit would replay a เหมารายวัน day as an
+       * ordinary one and write the OT hours it does not claim straight back
+       * onto an approved entry, with a `recompute` row in its history saying
+       * the policy did it.
+       *
+       * It never fired on prod: `recomputeEntries` has not been run since the
+       * tick existed. It would have fired on the first replay after one.
+       */
       const session = {
         workDate: entry.workDate,
         startTime: entry.startTime,
         endTime: entry.endTime,
         endsNextDay: entry.endsNextDay,
         noBreakTaken: entry.noBreakTaken,
+        flatDaily: entry.flatDaily,
       };
       const ctx = contextFor(calendar, session, {
         birthDate: birthDates.get(String(entry.employee?._id || entry.employee)) || null,
@@ -841,8 +856,13 @@ export async function recomputeEntries(filter = {}, actor = null, options = {}) 
        * the run reports it. `belowMinimum: 'reject'` already lands here by
        * throwing from the engine, and this is the same outcome for the answer
        * that returns a nought rather than refusing.
+       *
+       * เหมารายวัน is exempt here as on the other four, and it has to be: a
+       * flat entry reads nought in every rate column BEFORE the replay and
+       * after it, so failing it would report every flat day in the month as a
+       * casualty of a rule change that did not touch it.
        */
-      if (result.totals.otHours <= 0) {
+      if (result.totals.otHours <= 0 && !zeroOtHoursAllowed(session)) {
         throw new OtValidationError(
           'NO_OT_HOURS',
           `กฎใหม่ทำให้รายการนี้ไม่เหลือชั่วโมง OT — ${noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result)}`,

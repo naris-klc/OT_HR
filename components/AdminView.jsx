@@ -5773,14 +5773,21 @@ const POLICY_FIELDS = [
     section: 4,
     key: 'formPrintScope', label: 'นโยบายการพิมพ์ใบขออนุมัติ OT',
     /**
-     * STRICT IS FIRST AND IS THE SHIPPED ANSWER. The first option in a list
-     * reads as the recommended one, and on this rule it is: the sheet has two
-     * signature columns on it, and a row nobody has approved sitting in a total
-     * somebody is about to sign for is the failure this setting exists to stop.
-     * The other two answers are for reading a month, not for filing one.
+     * THE SHIPPED ANSWER IS FIRST, and it changed on 2026-09-07. The first
+     * option in a list reads as the recommended one, and it now names the FIRST
+     * signature rather than the last: *ข้อมูลที่พนักงานยื่นขอโอที ต้องขึ้นใน
+     * ใบขออนุมัติทำงานล่วงเวลา ตั้งแต่ตอนที่มีคนกดอนุมัติ*.
+     *
+     * The failure the setting exists to stop is unchanged and is still stopped
+     * by the top two answers: a row NOBODY has approved sitting in a total
+     * somebody is about to sign for. รอหัวหน้า is that row, and it reaches the
+     * paper under the bottom two only. The old strict answer keeps its place
+     * directly below, because a month printed to file after ฝ่ายบุคคล have
+     * confirmed it is a real document and somebody may still want it.
      */
     options: [
-      ['approved', 'เฉพาะรายการที่อนุมัติแล้ว (ค่าเริ่มต้น)'],
+      ['signed', 'ตั้งแต่หัวหน้าอนุมัติ — อนุมัติแล้ว + รอ HR (ค่าเริ่มต้น)'],
+      ['approved', 'เฉพาะรายการที่ฝ่ายบุคคลยืนยันแล้ว'],
       ['screen', 'ตาม “สถานะที่นับ” ที่เลือกบนหน้าตรวจสอบประจำเดือน'],
       ['draft', 'รวมรายการที่รออนุมัติด้วยเสมอ (ใบร่างไว้ตรวจ)'],
     ],
@@ -5815,20 +5822,30 @@ const POLICY_FIELDS = [
      * choosing; the statuses are how it is done.
      */
     optionHints: {
-      approved: 'พิมพ์เฉพาะรายการที่ผ่านการอนุมัติครบถ้วน เหมาะสำหรับเป็นเอกสารจริงส่งฝ่ายบัญชี',
+      signed: 'ใบขึ้นทันทีที่หัวหน้ากดอนุมัติ — รายการ “รอ HR” จึงอยู่บนใบที่ฝ่ายบุคคลถือไว้ยืนยัน '
+        + 'ซึ่งคือช่อง “เฉพาะฝ่ายบุคคล” ที่ท้ายใบนั้นเอง · รายการ “รอหัวหน้า” ยังไม่ขึ้น',
+      approved: 'พิมพ์เฉพาะรายการที่ฝ่ายบุคคลยืนยันครบแล้ว เหมาะกับการพิมพ์เก็บเข้าแฟ้มหลังปิดเดือน '
+        + '— ระหว่างเดือนใบจะยังไม่มีรายการที่หัวหน้าเพิ่งเซ็น',
       screen: 'ยึดข้อมูลตามฟิลเตอร์บนหน้าจอขณะสั่งพิมพ์ (ยืดหยุ่นตามการใช้งาน)',
       draft: 'ดึงทุกรายการรวมถึงรายการค้างอนุมัติ โดยจะแสดงแท็ก “(รออนุมัติ)” '
         + 'ในช่องรายละเอียดงาน เหมาะสำหรับพิมพ์เป็นใบร่างเดินเรื่อง',
     },
     /**
-     * On both loose answers, because both put unapproved hours onto a document
-     * with signature columns. What the warning names is the consequence that is
-     * not visible from this page: the sheet is signed and filed, and the row it
-     * carried can still be refused afterwards.
+     * On the two answers that can put a รอหัวหน้า row onto a document with
+     * signature columns — the row NOBODY has approved. What the warning names
+     * is the consequence that is not visible from this page: the sheet is
+     * signed and filed, and the row it carried can still be refused afterwards.
+     *
+     * NOT ON `signed`, and that is the whole distinction the answer is for. A
+     * รอ HR row has the หัวหน้า's approval already; the step it is waiting on is
+     * the เฉพาะฝ่ายบุคคล box at the foot of this very sheet, so the paper is not
+     * getting ahead of anybody's decision — it is carrying it. See
+     * `formPendingStatuses` in lib/reports.js, which has said so since before
+     * this was the default.
      */
-    warn: (value) => (value === 'approved'
+    warn: (value) => (['signed', 'approved'].includes(value)
       ? ''
-      : '⚠️ คำเตือน: เอกสารที่พิมพ์จะรวมรายการที่ยังไม่อนุมัติเข้ามาด้วย '
+      : '⚠️ คำเตือน: เอกสารที่พิมพ์จะรวมรายการที่ยังไม่มีใครอนุมัติเข้ามาด้วย '
         + 'หากนำไปลงลายเซ็นอาจทำให้ยอดในกระดาษไม่ตรงกับยอดจ่ายจริงในระบบ '
         + 'หากรายการนั้นถูกปฏิเสธในภายหลัง'),
   },

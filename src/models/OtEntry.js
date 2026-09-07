@@ -108,6 +108,13 @@ const snapshotSchema = new mongoose.Schema(
     },
     otHours: Number,
     /**
+     * ชั่วโมงทำงานปกติ, so that toggling เหมารายวัน leaves a readable trail.
+     * That one tick moves a day's hours OUT of the rate columns and into this
+     * figure, and a `before` holding only `otHours` would record the entry
+     * dropping to nought with nothing saying where the eight went.
+     */
+    normalHours: Number,
+    /**
      * And which rule set produced them. Without it a `before` block says the
      * hours moved but not whether the session did — an edit and a policy change
      * leave the same trace, and only one of them is the employee's doing.
@@ -306,9 +313,11 @@ const otEntrySchema = new mongoose.Schema(
     noBreakTaken: { type: Boolean, default: false },
 
     /**
-     * เหมารายวัน — this day was hired whole, so it counts eight hours however
-     * long the person stayed. `flatDailyMinutes` in src/lib/otEngine.js does the
-     * cutting; this is the tick that asks for it.
+     * เหมารายวัน — this day was hired whole, so it counts eight NORMAL hours
+     * and no OT at all, however long the person stayed and whatever the scanner
+     * recorded. `flatDailyMinutes` in src/lib/otEngine.js is the eight; the
+     * branch in `computeSession` is what empties the three rate columns. This
+     * is the tick that asks for both.
      *
      * AN ENTERED FIELD, not a computed one. It is on the request because HR's
      * rule (2026-09-03) is that flat days are neither every day nor everybody —
@@ -348,6 +357,29 @@ const otEntrySchema = new mongoose.Schema(
       ot3Hours: { type: Number, default: 0 },
       clockHours: { type: Number, default: 0 },
       breakHours: { type: Number, default: 0 },
+      /**
+       * ชั่วโมงทำงานปกติ — hours that are not OT and are in none of the three
+       * columns above. **Nothing writes a non-zero here any more.**
+       *
+       * It held the eight hours of a เหมารายวัน day for exactly three days:
+       * 2026-09-04, when the flat rule stopped claiming OT, until 2026-09-07,
+       * when HR made those eight hours OT ×1.5 in the column the day type
+       * decides (*ถ้าวันหยุดก็ใส่ 8 ชั่วโมงวันหยุด ถ้าไม่ใช่วันหยุดก็ใส่ 8
+       * ชั่วโมงวันปกติ แต่แค่เป็นแบบเหมา*). A flat day now carries its figure in
+       * a rate column like every other request.
+       *
+       * KEPT, NOT DELETED, and the rows are the reason: entries written in those
+       * three days still hold their eight here, and they keep them until
+       * somebody recomputes the month. A field removed from this schema is a
+       * field mongoose drops the next time one of those documents is saved —
+       * which is how the only record of how a figure was arrived at disappears
+       * during an unrelated approval. Same decision, and the same reasoning, as
+       * `csvDateOrder` in src/models/Setting.js.
+       *
+       * `0` everywhere else, which is right rather than merely the default: an
+       * OT request makes no claim about ordinary working hours at all.
+       */
+      normalHours: { type: Number, default: 0 },
     },
     /**
      * e.g. NORMAL_HOURS_IGNORED, RAISED_TO_MINIMUM — shown to reviewers.
@@ -666,6 +698,7 @@ otEntrySchema.methods.snapshot = function snapshot() {
       [BUCKETS.OT3_HOLIDAY]: this.buckets?.[BUCKETS.OT3_HOLIDAY] ?? 0,
     },
     otHours: this.totals?.otHours ?? 0,
+    normalHours: this.totals?.normalHours ?? 0,
     policyVersionId: this.policyVersionId || undefined,
   };
 };

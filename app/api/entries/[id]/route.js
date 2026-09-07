@@ -7,6 +7,7 @@ import {
 import {
   POPULATE, pickSession, stampCap, editPermission, sameSession,
   descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal, birthdayTickRefusal,
+  zeroOtHoursAllowed,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope } from '@/lib/delegationQuery.js';
@@ -82,8 +83,10 @@ export const PATCH = route(async (req, { params }) => {
 
   const result = await compute(session, ctx);
   // Same refusal and the same sentence as the submit path — an edit that leaves
-  // no OT is the same mistake, arriving one screen later.
-  if (result.totals.otHours <= 0) {
+  // no OT is the same mistake, arriving one screen later. And the same
+  // exemption: an edit that TICKS เหมารายวัน empties the rate columns on
+  // purpose, which is the point of ticking it.
+  if (result.totals.otHours <= 0 && !zeroOtHoursAllowed(session)) {
     return fail(noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result), 400, {
       warnings: result.warnings,
     });

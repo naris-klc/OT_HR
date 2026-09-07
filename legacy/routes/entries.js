@@ -15,7 +15,9 @@ import {
 // version it replaced, and a second copy that drifted would lose forms rather
 // than merely disagree about them. lib/entries.js imports nothing, so plain
 // node can load it as happily as Next can.
-import { sameSession, noOtHoursMessage, submissionWindowRefusal } from '../../lib/entries.js';
+import {
+  sameSession, noOtHoursMessage, submissionWindowRefusal, zeroOtHoursAllowed,
+} from '../../lib/entries.js';
 import { today } from '../../lib/today.js';
 
 const router = Router();
@@ -129,7 +131,8 @@ router.post('/', wrap(async (req, res) => {
 
   const result = await compute(session, ctx);
 
-  if (result.totals.otHours <= 0) {
+  // เหมารายวัน computes to nought on purpose — see `zeroOtHoursAllowed`.
+  if (result.totals.otHours <= 0 && !zeroOtHoursAllowed(session)) {
     return res.status(400).json({
       error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result),
       warnings: result.warnings,
@@ -224,7 +227,8 @@ router.patch('/:id', wrap(async (req, res) => {
   }
 
   const result = await compute(session, ctx);
-  if (result.totals.otHours <= 0) {
+  // เหมารายวัน computes to nought on purpose — see `zeroOtHoursAllowed`.
+  if (result.totals.otHours <= 0 && !zeroOtHoursAllowed(session)) {
     return res.status(400).json({
       error: noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result),
       warnings: result.warnings,

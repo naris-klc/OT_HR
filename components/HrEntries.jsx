@@ -260,15 +260,19 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
             grows back. Here instead, beside the other line that describes the
             SHAPE of the table (`replacedCount` below).
 
-            The tolerance is said out loud because a reader who thinks 15 นาที is
-            the wrong number is exactly the person whose answer would fix it —
-            see `SCAN_MATCH_TOLERANCE_MINUTES`, which nobody at HR has been
-            asked about. */}
+            BOTH RULES ARE SAID OUT LOUD, because they are not the same rule and
+            a reader who has only been told one of them will read the chips
+            wrongly. The end is a DIRECTION — สแกนออกไม่ก่อนเวลาสิ้นสุด OT คือ
+            ครบตามขอ, however long past it they stayed (2026-09-07) — and the
+            start is a DISTANCE, `SCAN_MATCH_TOLERANCE_MINUTES`, which ฝ่ายบุคคล
+            answered on 2026-09-04 was neither too tight nor too loose. Printed
+            rather than buried, because the reader who thinks either is the wrong
+            rule is exactly the person whose answer would fix it. */}
         <div className="hint" style={{ marginTop: 6 }}>
           {scanChecked ? (
             <>
-              เทียบเวลากับไฟล์สแกนนิ้วแล้ว — ถือว่าตรงกันเมื่อห่างกันไม่เกิน
-              {' '}{SCAN_MATCH_TOLERANCE_MINUTES} นาที
+              เทียบเวลากับไฟล์สแกนนิ้วแล้ว — สแกนออกไม่ก่อนเวลาสิ้นสุด OT ถือว่าทำครบตามที่ขอ
+              {' '}· เวลาเริ่มถือว่าตรงกันเมื่อห่างกันไม่เกิน {SCAN_MATCH_TOLERANCE_MINUTES} นาที
               {' '}· <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
               {/* THE TWO PILES, AS A NUMBER, FOR THE WHOLE MONTH.
                   The chips separate flat days from real mismatches row by row,
@@ -279,12 +283,21 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                   ให้ HR แยกออกระหว่างงานเหมากับเวลาไม่ตรงงานปกติ.
                   A flat day is never counted into the warning piles — see
                   `summariseScanChecks`, where that exclusion is the point. */}
+              {/* HR'S OWN FOUR WORDS, IN THE ORDER THEY DEFINED THEM
+                  (2026-09-07): ไม่ครบ · ไม่ตรง · เกินเวลา · เหมารายวัน.
+                  Only the FIRST is an errand. เกินเวลา and เหมารายวัน are
+                  facts and ไม่ตรง is a gap in the evidence, so the line says
+                  which pile is the one to work through rather than leaving
+                  four numbers to be read as one total. */}
               <div style={{ marginTop: 2 }}>
                 เดือนนี้:
-                {' '}<strong>{scanCounts.mismatch}</strong> แถวเวลาไม่ตรง ·
-                {' '}<strong>{scanCounts.noScan}</strong> แถวไม่มีข้อมูลสแกน ·
+                {' '}<strong>{scanCounts.short}</strong> แถวไม่ครบ ·
+                {' '}<strong>{scanCounts.startOff}</strong> แถวเวลาเริ่มไม่ตรง ·
+                {' '}<strong>{scanCounts.noScan}</strong> แถวไม่ตรง (ไม่มีสแกนนิ้ว) ·
+                {' '}<strong>{scanCounts.overTime}</strong> แถวเกินเวลา ·
                 {' '}<strong>{scanCounts.flatDaily}</strong> แถวเป็นใบเหมารายวัน
-                {scanCounts.flatDaily > 0 && ' (ไม่นับเป็นเวลาไม่ตรง — ใบเหมาไม่ต้องตรงกับสแกน)'}
+                {(scanCounts.overTime > 0 || scanCounts.flatDaily > 0)
+                  && ' — แถวเกินเวลาและใบเหมาไม่ต้องตรวจ'}
               </div>
             </>
           ) : (
@@ -319,7 +332,19 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
             <thead>
               <tr>
                 <th>วันที่</th>
-                <th>จาก–ถึง</th>
+                {/* THE THIRD COLUMN THAT NEEDS A WIDTH, and it needed one most.
+                    This cell stopped being a pair of times on 2026-09-04: it
+                    now carries the times, up to two chips, the day's scan line
+                    and the mismatch detail. Measured on the built app at
+                    1440px before this class existed, against the real July
+                    file: the column was **79px**, the `ไม่ได้สแกนเข้า OT` pill
+                    came out **55×60** — three lines of text inside one pill —
+                    `สแกน 07:34 , 19:30` wrapped to three, and the row stood
+                    187px tall over a one-line description.
+
+                    See `.stack-table th.when-col` for what the width is and
+                    where it comes from. */}
+                <th className="when-col">จาก–ถึง</th>
                 <th className="num rate-col"><RateHead rate="×1.5" of="ปกติ" /></th>
                 <th className="num rate-col wide"><RateHead rate="×1.5" of="วันหยุด" /></th>
                 <th className="num rate-col wide"><RateHead rate="×3" of="วันหยุด" /></th>

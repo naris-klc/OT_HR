@@ -156,7 +156,10 @@ function coerce(shipped, raw, key) {
 function evaluate(session, ctx) {
   try {
     const r = computeSession(session, ctx);
-    if (r.totals.otHours <= 0) {
+    // A เหมารายวัน day is nought in every rate column under every policy, so it
+    // is not refused — it is priced at what it is. Reporting it as "ปัดแล้ว
+    // เหลือ 0" would blame a rule change for a figure the tick decided.
+    if (r.totals.otHours <= 0 && !session.flatDaily) {
       return { refused: true, why: r.belowBufferZeroed ? 'ต่ำกว่า buffer' : 'ปัดแล้วเหลือ 0' };
     }
     return {
@@ -282,6 +285,11 @@ async function run() {
       endTime: entry.endTime,
       endsNextDay: entry.endsNextDay,
       noBreakTaken: entry.noBreakTaken,
+      // เหมารายวัน, like the replay this tool prices — see the same list in
+      // `recomputeEntries`. Left out, every flat day in the sample would be
+      // repriced as an ordinary one and the report would name hours no policy
+      // change can produce.
+      flatDaily: entry.flatDaily,
     };
     const birthDate = birthDates.get(String(entry.employee?._id || entry.employee)) || null;
     const ctx = (which) => ({

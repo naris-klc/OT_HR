@@ -10,6 +10,7 @@ import {
 import {
   POPULATE, scopeFor, pickSession, stampCap, latestPerChain, noOtHoursMessage,
   capFor, takeCapped, submissionWindowRefusal, entryCompany, birthdayTickRefusal,
+  zeroOtHoursAllowed, byEmployeeThenLatest,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import { resolveScope, visibleEmployeeClause } from '@/lib/delegationQuery.js';
@@ -208,9 +209,27 @@ export const GET = route(async (req) => {
    * Folded here rather than in the component so that a screen's rows and the
    * count it prints beside them can never come from two different lists.
    */
-  const { shown: entries, hidden } = replaced === 'hide'
+  const { shown: listed, hidden } = replaced === 'hide'
     ? latestPerChain(found)
     : { shown: found, hidden: [] };
+
+  /**
+   * เรียงตามรหัสพนักงาน — every list of ใบ this endpoint answers, for every
+   * บทบาท (2026-09-07).
+   *
+   * Sorted HERE and not on the query, because `employee` is an ObjectId until
+   * `populate` fills it in: mongo does not refuse `sort({ 'employee.code': 1 })`
+   * on a path no document has, it just orders by nothing — which is exactly how
+   * ส่งออกรายการ OT (CSV) spent months claiming a column it was not sorted by.
+   * The query's own `{ workDate: -1 }` still decides WHICH rows come back when
+   * the list is capped; see `byEmployeeThenLatest` in lib/entries.js for why
+   * that is the right way round and why the dates stay newest-first inside each
+   * person.
+   *
+   * After `latestPerChain`, so a folded chain is placed by the row that is
+   * actually drawn rather than by the refused filing behind it.
+   */
+  const entries = [...listed].sort(byEmployeeThenLatest);
 
   /**
    * `usage=cap` — how much of each row's ceilings that row's employee has
@@ -359,7 +378,9 @@ export const POST = route(async (req) => {
 
   // Refused, not stored as a nought — see `noOtHoursMessage`, which is also
   // where the sentence lives, so all four write paths say the same thing.
-  if (result.totals.otHours <= 0) {
+  // เหมารายวัน is the one nought that is an answer rather than a mistake, and
+  // `zeroOtHoursAllowed` beside that sentence is where the exemption lives.
+  if (result.totals.otHours <= 0 && !zeroOtHoursAllowed(session)) {
     return fail(noOtHoursMessage(session, ctx.policy, ctx.dayTypes, result), 400, {
       warnings: result.warnings,
     });

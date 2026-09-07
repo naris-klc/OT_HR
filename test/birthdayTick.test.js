@@ -325,3 +325,42 @@ test('ฟอร์มบันทึกแทนพนักงานไม่�
   const flat = block.slice(block.indexOf("tickDay('flatDaily'"));
   assert.ok(!flat.slice(0, flat.indexOf('</label>')).includes('!proxy'));
 });
+
+/**
+ * และหน้ารออนุมัติ OT ก็ติ๊กได้ — 2026-09-07, inside รายละเอียด → แก้ไขชั่วโมง.
+ *
+ * The claim is the same claim, made by a different person about somebody else's
+ * day, and that is why the box is not offered to every reader of that queue.
+ * ฝ่ายบุคคล and ผู้ดูแลระบบ hold the วันเกิด already and are the only two
+ * `editPermission` accepts a correction from at all; a หัวหน้า is not told when
+ * their team member was born (`publicEmployee` keeps `birthDate` off the roster
+ * they hold), so a box they could only tick by guessing is a box that teaches
+ * them the answer through its refusal. Same rule OtForm draws when it withholds
+ * the tick from บันทึก OT แทนพนักงาน, turned around.
+ *
+ * `mayCorrectEntries` IS THE RULE, not a second reading of it — the same
+ * predicate the route refuses on.
+ */
+test('หน้ารออนุมัติ — ช่องติ๊กวันเกิดมีเฉพาะฝ่ายบุคคล/ผู้ดูแลระบบ', () => {
+  const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+  const edit = queue.slice(queue.indexOf('function QuickEdit'), queue.indexOf('const OVER_CAP'));
+
+  // Drawn behind the บทบาท rule, and the rule comes from lib/entries.js.
+  assert.match(edit, /\{mayCorrect && \(\s*<label className="check">/);
+  assert.match(queue, /mayCorrect=\{mayCorrectEntries\(user\)\}/);
+  // เหมารายวัน is NOT behind that guard: whether a day was hired whole is not a
+  // private fact about the person, and every reader of this queue may see it.
+  const flat = edit.slice(edit.indexOf('checked={form.flatDaily}'));
+  assert.ok(!flat.slice(0, flat.indexOf('</label>')).includes('mayCorrect'));
+
+  // The box opens on the HOURS, because there is no field to open on.
+  assert.match(edit, /birthdayWelfare: isBirthdayWelfare\(entry\)/);
+  assert.match(edit, /form\.birthdayWelfare !== isBirthdayWelfare\(entry\)/);
+
+  // And the claim is checked by the server, whose sentence goes in the one
+  // banner this panel has — with บันทึก greyed on it, so the screen cannot
+  // offer a save the write path is about to answer 409 to.
+  assert.match(edit, /const birthdayRefusal = preview\?\.birthdayRefusal \|\| null;/);
+  assert.match(edit, /const refused = Boolean\(birthdayRefusal \|\| weekdayRefusal\);/);
+  assert.match(edit, /!note\.trim\(\) \|\| refused\}/);
+});

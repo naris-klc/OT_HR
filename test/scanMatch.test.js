@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  SCAN_MATCH, SCAN_MATCH_TOLERANCE_MINUTES, checkEntryAgainstScans,
-  scanMismatchDetail, scanMismatchNote, summariseScanChecks, groupScanChecksByPerson,
-  dayPunchLine, showsMissingOtStart, MISSING_OT_START,
+  SCAN_BADGE, SCAN_MATCH, SCAN_MATCH_TOLERANCE_MINUTES, checkEntryAgainstScans,
+  scanBadgeLabel, scanMismatchDetail, scanMismatchNote, summariseScanChecks,
+  groupScanChecksByPerson, dayPunchLine, showsMissingOtStart, MISSING_OT_START,
 } from '../lib/scanMatch.js';
 
 /**
@@ -29,6 +29,22 @@ import {
  *      imported the file" must not produce the same screen.
  *   3. **An overnight row read against the clock face** rather than against one
  *      number line, which would make every ข้ามคืน request a false mismatch.
+ *   4. **A row marked for working longer than it claimed.** Added 7 ก.ย. 2569,
+ *      when the end stopped being a distance and became a direction: สแกนออก
+ *      ตั้งแต่เวลาสิ้นสุดบนใบเป็นต้นไป = ทำครบตามขอ, and the row is quiet. The
+ *      nearest-punch reading marked those rows amber for forty minutes nobody
+ *      was ever going to pay for. §1ค.
+ *
+ * ── คำสี่คำที่ฝ่ายบุคคลให้มา (7 ก.ย. 2569) ───────────────────────────────────
+ *
+ *   · **ไม่ครบ** — ขอโอทีมามากกว่าเวลาที่ทำจริง · ป้ายส้ม กองที่ต้องตรวจ
+ *   · **เกินเวลา** — ขอโอทีมาน้อยกว่าที่ทำจริง · ป้ายเทา *ไม่* นับกองที่ต้องตรวจ
+ *   · **ไม่ตรง** — ไม่มีการสแกนนิ้วแต่ยื่นขอโอที · ป้ายเทา
+ *   · **เหมารายวัน** — ป้ายเขียว ไม่ต้องตรงกับสแกนทุกรูปแบบ
+ *
+ * ฝั่งเวลาเริ่มไม่ได้อยู่ในสี่คำนี้ และมีป้ายชื่อยาวของตัวเอง — ดู `SCAN_BADGE`.
+ * ฝั่งจบไม่มีค่ายอมรับแล้ว (*ถ้าเวลาไม่ตรงกันขึ้นทุกกรณี*) ส่วน 15 นาทีเหลือไว้ที่
+ * ฝั่งเริ่มที่เดียว.
  *
  * เหมารายวัน is the fourth, and it is the one that got answered twice. The first
  * reading was *warn, but label it*; the second, the same day, settled it the
@@ -61,33 +77,98 @@ test('มีสแกนใกล้ทั้งเวลาเริ่มแ�
   assert.equal(scanMismatchNote(check), null, 'แถวที่ตรงกันต้องไม่มีประโยคเตือน');
 });
 
-test('สแกนห่างเกินกำหนดข้างเดียว = เตือน และบอกว่าห่างกี่นาที', () => {
-  // สิ้นสุด 20:00 แต่สแกนออก 20:40 — ห่าง 40 นาที
+test('สแกนออกหลังเวลาสิ้นสุด OT = ทำงานครบตามขอ ไม่ต้องขึ้นป้ายเวลาขาด', () => {
+  /**
+   * ── กลับด้านเมื่อ 7 ก.ย. 2569 ─────────────────────────────────────────────
+   *
+   * สั่งมาตรง ๆ ว่า *เวลาสแกนออกจริง >= เวลาสิ้นสุด OT ในใบขอ = ถือว่าทำงานครบ
+   * ตามขอ ไม่ต้องแสดง Badge แจ้งเตือนเวลาขาด* · แถวนี้เคยขึ้นสีส้มว่า "ห่าง 40
+   * นาที" ทั้งที่คนอยู่ทำงานเกินกว่าที่ตัวเองขอไป 40 นาที และไม่มีใครจ่ายให้ด้วย
+   * — เป็นการทำเครื่องหมายคนที่อยู่นานกว่าที่ขอ ซึ่งไม่ใช่ข้อทักท้วงของใครเลย
+   */
   const check = checkEntryAgainstScans(entry(), [
     punch('2026-09-01', '17:28:00'),
     punch('2026-09-01', '20:40:00'),
   ]);
+  assert.equal(check.state, SCAN_MATCH.OK);
+  assert.equal(check.start.matched, true);
+  assert.equal(check.end.matched, true, 'ถึงเวลาที่ขอแล้ว = ฝั่งจบผ่าน');
+  assert.equal(check.endShortMinutes, 0, 'ไม่มีเวลาขาดให้เตือน ซึ่งคือทั้งหมดที่ข้อนี้ขอ');
+
+  /**
+   * แถวที่อยู่เกินยังได้ป้ายเทา `เกินเวลา` ตามคำนิยามที่ฝ่ายบุคคลให้มาทีหลังในวัน
+   * เดียวกัน — แต่มันคือ*ข้อเท็จจริง* ไม่ใช่ป้ายเวลาขาด และคำตัดสินยังเป็น OK
+   * ดูหมวด 1ค
+   */
+  assert.equal(check.overTime, true);
+  assert.equal(scanBadgeLabel(check), 'เกินเวลา · เกิน 40 นาที');
+
+  // และแถวที่อยู่เกินไม่ถึงหนึ่งบล็อก OT ไม่มีป้ายอะไรเลย — ครบตามขอ เงียบสนิท
+  const quiet = checkEntryAgainstScans(entry(), [
+    punch('2026-09-01', '17:28:00'),
+    punch('2026-09-01', '20:10:00'),
+  ]);
+  assert.equal(quiet.state, SCAN_MATCH.OK);
+  assert.equal(quiet.overTime, false);
+  assert.equal(scanBadgeLabel(quiet), null, 'ไม่มีป้ายบนแถวที่ทำครบ');
+  assert.equal(scanMismatchNote(quiet), null);
+});
+
+test('สแกนออกก่อนเวลาสิ้นสุด OT = เวลาขาด และป้ายบอกว่าขาดกี่นาที', () => {
+  // สิ้นสุด 20:00 แต่ประตูขยับครั้งสุดท้าย 19:20 — ขาด 40 นาที
+  const check = checkEntryAgainstScans(entry(), [
+    punch('2026-09-01', '17:28:00'),
+    punch('2026-09-01', '19:20:00'),
+  ]);
   assert.equal(check.state, SCAN_MATCH.MISMATCH);
   assert.equal(check.start.matched, true);
   assert.equal(check.end.matched, false);
-  assert.equal(check.end.diff, 40);
+  assert.equal(check.endShortMinutes, 40);
+  assert.equal(scanBadgeLabel(check), 'ไม่ครบ · ขาด 40 นาที');
   const note = scanMismatchNote(check);
   assert.match(note, /เวลาไม่ตรงกับไฟล์สแกนนิ้ว/);
-  assert.match(note, /20:40/, 'ต้องอ้างเวลาสแกนที่ใกล้ที่สุด ไม่ใช่บอกแค่ว่าไม่ตรง');
-  assert.match(note, /40 นาที/);
+  assert.match(note, /19:20/, 'ต้องอ้างเวลาสแกนที่ยกมา ไม่ใช่บอกแค่ว่าไม่ตรง');
+  assert.match(note, /ขาดอีก 40 นาที/);
   assert.ok(!/เวลาเริ่ม/.test(note), 'ข้างที่ตรงแล้วไม่ต้องพูดถึง');
 });
 
-test('เส้นแบ่งอยู่ที่ 15 นาทีพอดี — 15 ยังตรง 16 ไม่ตรง', () => {
-  const at = (time) => checkEntryAgainstScans(
+test('ฝั่งจบไม่มีค่ายอมรับแล้ว — ขาดนาทีเดียวก็ขึ้น', () => {
+  /**
+   * ถามเมื่อ 7 ก.ย. 2569 ว่าเส้นแบ่งควรอยู่ที่ตัวเลขบนใบหรือที่ค่ายอมรับ 15 นาที
+   * และตอบมาว่า **ถ้าเวลาไม่ตรงกันขึ้นทุกกรณี** · ฝั่งจบจึงวัดกับเวลาบนใบตรง ๆ
+   * ไม่มีหน้าต่างให้สแกนไปยืนอยู่ข้างในอีกแล้ว
+   */
+  const end = (time) => checkEntryAgainstScans(
+    entry({ startTime: '17:30', endTime: '20:00' }),
+    [punch('2026-09-01', '17:30:00'), punch('2026-09-01', time)],
+  );
+  assert.equal(end('20:00:00').state, SCAN_MATCH.OK, 'ตรงเป๊ะคือครบ');
+  assert.equal(end('20:15:00').state, SCAN_MATCH.OK);
+  assert.equal(end('19:59:00').state, SCAN_MATCH.MISMATCH, 'ขาดนาทีเดียวก็คือขาด');
+  assert.equal(end('19:59:00').endShortMinutes, 1);
+  assert.equal(scanBadgeLabel(end('19:59:00')), 'ไม่ครบ · ขาด 1 นาที');
+  assert.equal(end('19:45:00').endShortMinutes, 15, 'เคยตรงเพราะอยู่ในค่ายอมรับ ตอนนี้ไม่แล้ว');
+  assert.equal(end('19:45:00').state, SCAN_MATCH.MISMATCH);
+});
+
+test('เส้นแบ่ง 15 นาทีเหลือไว้ที่ฝั่งเวลาเริ่ม — 15 ยังตรง 16 ไม่ตรง', () => {
+  /**
+   * ฝ่ายบุคคลตอบเมื่อ 4 ก.ย. 2569 ว่า 15 ไม่แคบไปและไม่กว้างไป เลขนี้จึงยืนอยู่บน
+   * คำตอบแล้ว ไม่ใช่บนเหตุผลของเราเอง · เทสต์นี้เคยวัดสี่จุดจากฝั่งเริ่มอย่างเดียว
+   * และข้อ `17:14 = ไม่ตรง` ถูกถอนออกในวันเดียวกัน ดูหมวด 1ก² — ค่ายอมรับไม่ได้
+   * ตัดสินสแกนที่อยู่ *ก่อน* เวลาเริ่มอีกต่อไป · เคยย้ายมาวัดที่ฝั่งจบด้วย แล้ว
+   * ย้ายกลับเมื่อ 7 ก.ย. 2569 เพราะฝั่งจบเลิกใช้ค่ายอมรับไปแล้ว เหลือฝั่งเริ่ม
+   * เป็นที่เดียวที่เลขนี้ยังตัดสินอะไร
+   */
+  assert.equal(SCAN_MATCH_TOLERANCE_MINUTES, 15);
+
+  const start = (time) => checkEntryAgainstScans(
     entry({ startTime: '17:30', endTime: '20:00' }),
     [punch('2026-09-01', time), punch('2026-09-01', '20:00:00')],
   );
-  assert.equal(SCAN_MATCH_TOLERANCE_MINUTES, 15);
-  assert.equal(at('17:15:00').state, SCAN_MATCH.OK);
-  assert.equal(at('17:14:00').state, SCAN_MATCH.MISMATCH);
-  assert.equal(at('17:45:00').state, SCAN_MATCH.OK);
-  assert.equal(at('17:46:00').state, SCAN_MATCH.MISMATCH);
+  assert.equal(start('17:45:00').state, SCAN_MATCH.OK);
+  assert.equal(start('17:46:00').state, SCAN_MATCH.MISMATCH, 'หลังเวลาเริ่ม เส้นเดิม');
+  assert.equal(start('17:14:00').state, SCAN_MATCH.OK, 'ก่อนเวลาเริ่ม = อยู่ข้างในแล้ว');
 });
 
 test('ค่ายอมรับเปลี่ยนได้จากผู้เรียก — เผื่อวันที่ฝ่ายบุคคลตอบมาว่าควรเป็นเท่าไร', () => {
@@ -104,15 +185,27 @@ test('ค่ายอมรับเปลี่ยนได้จากผู�
 test('สแกนตอนเช้าต้องไม่ถูกใช้ตอบแทนเวลาเริ่มของใบตอนเย็น', () => {
   /**
    * นี่คือทางที่ฟีเจอร์นี้จะกลายเป็นเสียงรบกวน: ถ้าเอา "สแกนที่ใกล้ที่สุดทั้งวัน"
-   * มาตอบ ใบเย็นที่ไม่มีสแกนเลยจะได้สแกน 07:26 เป็นคำตอบ แล้วบอกว่าห่าง 604 นาที
-   * ซึ่งอ่านแล้วไม่ได้ความอะไร — จึงมีขอบว่า "ไกลเกินกว่าจะเอ่ยถึง"
+   * มาตอบ*ฝั่งเริ่ม* ใบเย็นที่ไม่มีสแกนเลยจะได้สแกน 07:26 เป็นคำตอบเรื่องเวลามาถึง
+   * ซึ่งเป็นเรื่องที่เกิดขึ้นเกือบทุกแถว — ฝั่งเริ่มจึงยังมีขอบ 2 ชม. อยู่
+   *
+   * ── แต่ฝั่งจบไม่มีขอบแล้วตั้งแต่ 7 ก.ย. 2569 ──────────────────────────────
+   *
+   * สั่งมาว่า *"ถ้ามีเวลาสแกนหลายเวลา ให้เอาเวลาที่ใกล้ที่สุดกับเวลาที่ยื่นขอโอทีมา"*
+   * · ฝั่งจบคือเหตุการณ์เดียวของวันโอทีที่เครื่องมีโอกาสบันทึกจริง สแกนที่ไกลจึงเป็น
+   * ข้อค้นพบ ไม่ใช่ความบังเอิญ และ 07:26 ที่ยกมาพร้อมระยะแบบ ชม./นาที อ่านออกว่า
+   * "ทั้งวันมีแค่สแกนเช้า" ซึ่งเป็นประโยคที่จริงและใช้ได้ ต่างจาก "604 นาที" ที่
+   * อ่านแล้วเหมือนระบบพัง
    */
   const check = checkEntryAgainstScans(entry(), [punch('2026-09-01', '07:26:22')]);
   assert.equal(check.state, SCAN_MATCH.MISMATCH);
-  assert.equal(check.start, null, 'สแกนเช้าไกลเกินกว่าจะยกมาอ้าง');
-  assert.equal(check.end, null);
-  assert.equal(check.punchCount, 1, 'แต่ยังนับได้ว่าวันนั้นมีการสแกนอยู่');
-  assert.match(scanMismatchNote(check), /ไม่มีสแกนใกล้เคียง/);
+  assert.equal(check.start, null, 'สแกนเช้าไกลเกินกว่าจะยกมาอ้างเรื่องเวลาเริ่ม');
+  assert.equal(check.end.time.slice(0, 5), '07:26', 'แต่ฝั่งจบยกมา — มันคือสแกนเดียวที่มี');
+  assert.equal(check.punchCount, 1, 'และยังนับได้ว่าวันนั้นมีการสแกนอยู่');
+  assert.match(scanMismatchNote(check), /เวลาสิ้นสุด สแกน 07:26 · ขาดอีก \d+ ชม\./);
+  assert.ok(!/เวลาเริ่ม/.test(scanMismatchNote(check)), 'ไม่พูดถึงเวลาเริ่มบนวันที่คนอยู่ข้างในอยู่แล้ว');
+  // และบอกด้วยว่านี่คือรูปแบบ "สแกนเข้าแต่ไม่ได้สแกนออก" ไม่ใช่คนที่เดินออกก่อนเวลา
+  assert.equal(check.missingScanOut, true, 'ทั้งวันไม่มีเหตุการณ์ที่ประตูหลังเวลาเริ่ม OT เลย');
+  assert.match(scanMismatchNote(check), /อาจลืมสแกนออก/);
 });
 
 test('สแกนที่ใกล้ที่สุดจริง ๆ ต้องเป็นตัวที่ถูกยกมาอ้าง ไม่ใช่ตัวที่บังเอิญอยู่ในกรอบ', () => {
@@ -128,10 +221,91 @@ test('สแกนที่ใกล้ที่สุดจริง ๆ ต้
   const check = checkEntryAgainstScans(entry({ startTime: '17:30', endTime: '20:00' }), [
     punch('2026-09-01', '17:29:00'), punch('2026-09-01', '21:10:00'),
   ]);
-  assert.equal(check.state, SCAN_MATCH.MISMATCH);
   assert.equal(check.start.matched, true, 'ฝั่งเริ่มตรง');
   assert.equal(check.end.time.slice(0, 5), '21:10', 'ฝั่งจบต้องอ้าง 21:10 ไม่ใช่ 17:29');
   assert.equal(check.end.diff, 70);
+  /**
+   * ── คำตัดสินของแถวนี้กลับด้านเมื่อ 7 ก.ย. 2569 ────────────────────────────
+   *
+   * 21:10 อยู่*หลัง* 20:00 แปลว่าเขาอยู่ครบตามที่ขอแล้วบวกอีก 70 นาที · แถวนี้
+   * เคยเป็นสีส้ม ตอนนี้เงียบ — ส่วนที่เทสต์นี้ปกป้องคือหลักฐานที่ยกมาต้องเป็น
+   * 21:10 ไม่ใช่ 17:29 ซึ่งยังจริงอยู่และเป็นคนละเรื่องกับคำตัดสิน
+   */
+  assert.equal(check.state, SCAN_MATCH.OK);
+  assert.equal(check.endShortMinutes, 0);
+});
+
+test('มีสแกนหลายเวลา — ฝั่งไหนก็หยิบตัวที่ใกล้เวลาบนใบที่สุด', () => {
+  /**
+   * สั่งมาเมื่อ 7 ก.ย. 2569: *"ถ้ามีเวลาที่สแกนเข้าออกงานหลายเวลา ให้เปรียบเทียบ
+   * เวลาที่ยื่นขอโอทีและเอาเวลาสแกนนิ้วที่ใกล้ที่สุดกับเวลาที่ยื่นขอโอทีมา"*
+   *
+   * วันสี่รอบที่มีสองรอบอยู่แถวเวลาเริ่ม: 17:05 ห่าง 25 นาที และ 17:40 ห่าง 10 นาที
+   * ตัวที่ใกล้กว่าต้องชนะ ไม่ใช่ตัวแรกที่เจอในลิสต์
+   */
+  const check = checkEntryAgainstScans(entry({ startTime: '17:30', endTime: '20:00' }), [
+    punch('2026-09-01', '07:30:00'), punch('2026-09-01', '17:05:00'),
+    punch('2026-09-01', '17:40:00'), punch('2026-09-01', '20:05:00'),
+  ]);
+  assert.equal(check.start.time.slice(0, 5), '17:40', 'ไม่ใช่ 17:05 ที่ไกลกว่า');
+  assert.equal(check.end.time.slice(0, 5), '20:05');
+  assert.equal(check.state, SCAN_MATCH.OK);
+});
+
+test('สแกนที่ใกล้ที่สุดของฝั่งจบถูกยกมาเสมอ ไม่ว่าจะห่างแค่ไหน', () => {
+  /**
+   * ── ขอบของฝั่งจบถูกถอดออกเมื่อ 7 ก.ย. 2569 ────────────────────────────────
+   *
+   * เดิมมีขอบ 2 ชม. ครอบอยู่ แถวนี้จึงเคยขึ้นว่า `เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง`
+   * ทั้งที่บรรทัดใต้แถวเดียวกันพิมพ์ `สแกน 07:30 , 22:15` อยู่ — หน้าจอเถียงกันเอง
+   * ด้วยเส้นที่คนอ่านมองไม่เห็น และ 22:15 หลุดขอบไปแค่ 15 นาที · ตระกูลเดียวกับ
+   * บั๊ก 21:10 ข้างบน ซึ่งเคยแก้ด้วยการขยายขอบ แล้วมันก็กลับมากัดที่ขอบใหม่
+   *
+   * ระยะที่เกินสองชั่วโมงเขียนเป็น ชม./นาที เพราะ "135 นาที" อ่านเหมือนตัวเลขที่
+   * เครื่องคิดไม่ออก ส่วนใต้สองชั่วโมงยังเป็นนาทีเหมือนเดิม — ถ้อยคำที่ฝ่ายบุคคล
+   * อ่านอยู่แล้วจึงไม่มีอันไหนเปลี่ยน
+   */
+  const far = checkEntryAgainstScans(entry({ startTime: '17:00', endTime: '20:00' }), [
+    punch('2026-09-01', '07:30:00'), punch('2026-09-01', '22:15:00'),
+  ]);
+  assert.equal(far.end.time.slice(0, 5), '22:15', 'ไม่ใช่ 07:30 และไม่ใช่ "ไม่มีสแกนใกล้เคียง"');
+  assert.equal(far.state, SCAN_MATCH.OK, 'และตั้งแต่ 7 ก.ย. 2569 มันแปลว่าอยู่ครบ ไม่ใช่ไม่ตรง');
+  assert.equal(far.missingOtStart, true, 'ฝั่งเริ่มยังเงียบเหมือนเดิม — คนอยู่ข้างในอยู่แล้ว');
+
+  // ฝั่งที่ยังเตือน: ไกลเท่ากันแต่อยู่*ก่อน*เวลาเลิก — ระยะเขียนเป็น ชม./นาที
+  const short = checkEntryAgainstScans(entry({ startTime: '17:00', endTime: '23:00' }), [
+    punch('2026-09-01', '07:30:00'), punch('2026-09-01', '20:45:00'),
+  ]);
+  assert.equal(short.state, SCAN_MATCH.MISMATCH);
+  assert.equal(short.end.time.slice(0, 5), '20:45');
+  assert.equal(short.endShortMinutes, 135);
+  assert.match(scanMismatchNote(short), /เวลาสิ้นสุด สแกน 20:45 · ขาดอีก 2 ชม\. 15 นาที/);
+  assert.equal(scanBadgeLabel(short), 'ไม่ครบ · ขาด 2 ชม. 15 นาที');
+});
+
+test('ฝั่งจบหยิบสแกนที่ถึงเวลาเลิกแล้ว ไม่ใช่ตัวที่ใกล้ที่สุดเฉย ๆ', () => {
+  /**
+   * ── กฎ "ใกล้ที่สุด" อย่างเดียวใช้ไม่ได้แล้วเมื่อฝั่งจบกลายเป็นเรื่องทิศทาง ──
+   *
+   * วันที่สแกน 07:34 · 19:55 · 23:00 กับใบที่จบ 20:00 · ตัวที่ใกล้ที่สุดคือ 19:55
+   * (ห่าง 5 นาที) แล้วแถวจะขึ้นว่าขาด 5 นาที ทั้งที่ 23:00 พิมพ์อยู่บนแถวเดียวกัน
+   * และบอกว่าคนยังอยู่ต่ออีกสามชั่วโมง · "เวลาสแกนออกจริง" ของวันนั้นคือ 23:00
+   */
+  const check = checkEntryAgainstScans(entry({ startTime: '17:00', endTime: '20:00' }), [
+    punch('2026-09-01', '07:34:00'), punch('2026-09-01', '19:55:00'),
+    punch('2026-09-01', '23:00:00'),
+  ]);
+  assert.equal(check.end.time.slice(0, 5), '23:00');
+  assert.equal(check.state, SCAN_MATCH.OK, 'อยู่ครบ ไม่ใช่ขาด 5 นาที');
+  assert.equal(check.endShortMinutes, 0);
+  assert.equal(scanBadgeLabel(check), 'เกินเวลา · เกิน 3 ชม.', 'และเป็นแถวเกินเวลา ไม่ใช่แถวไม่ครบ');
+});
+
+test('ระยะใต้สองชั่วโมงยังเป็นนาที — ถ้อยคำเดิมไม่ถูกเขียนใหม่', () => {
+  const check = checkEntryAgainstScans(entry({ startTime: '17:00', endTime: '19:30' }), [
+    punch('2026-09-01', '07:30:00'), punch('2026-09-01', '18:20:00'),
+  ]);
+  assert.match(scanMismatchNote(check), /เวลาสิ้นสุด สแกน 18:20 · ขาดอีก 70 นาที/);
 });
 
 test('วินาทีถูกปัดลง ไม่ใช่ปัดขึ้น — 17:29:59 คือนาที 17:29', () => {
@@ -140,8 +314,20 @@ test('วินาทีถูกปัดลง ไม่ใช่ปัดข�
   const check = checkEntryAgainstScans(entry({ startTime: '17:30' }), [
     punch('2026-09-01', '17:14:59'), punch('2026-09-01', '20:00:00'),
   ]);
-  assert.equal(check.start.diff, 16);
-  assert.equal(check.state, SCAN_MATCH.MISMATCH);
+  assert.equal(check.start.diff, 16, 'ปัดขึ้นจะได้ 15 แล้วกลายเป็นตรงพอดี');
+
+  /**
+   * เส้นเดียวกัน วัดที่ฝั่งซึ่งค่ายอมรับยังตัดสินผลอยู่ · 17:14:59 ก่อนเวลาเริ่ม
+   * จึงเงียบตามกฎทิศทาง (หมวด 1ก²) ระยะ 16 นาทียังคำนวณและยกมาโชว์เหมือนเดิม
+   * แต่ไม่ได้เปลี่ยนคำตัดสินแล้ว — ตัวที่เปลี่ยนคือตัวที่อยู่หลังเวลาเริ่ม
+   */
+  const late = (time) => checkEntryAgainstScans(entry({ startTime: '17:30' }), [
+    punch('2026-09-01', time), punch('2026-09-01', '20:00:00'),
+  ]);
+  assert.equal(late('17:45:59').start.diff, 15);
+  assert.equal(late('17:45:59').state, SCAN_MATCH.OK);
+  assert.equal(late('17:46:00').start.diff, 16);
+  assert.equal(late('17:46:00').state, SCAN_MATCH.MISMATCH);
 });
 
 // ── 1ก. ไม่มีใครสแกนตอน 17:00 — และนั่นไม่ใช่ความผิดพลาด ───────────────────
@@ -164,7 +350,25 @@ test('แบบสองรอบ (เช้า + ตอนเลิกโอท
   assert.equal(check.start, null);
   assert.equal(check.end.matched, true, 'ฝั่งที่เครื่องบันทึกได้จริงคือฝั่งเลิกโอที');
   assert.equal(scanMismatchNote(check), null);
-  assert.equal(dayPunchLine(check), '07:42 , 19:33', 'เวลายังโชว์ครบเหมือนเดิม');
+  assert.equal(scanBadgeLabel(check), null, 'ไม่มีป้ายเวลาขาดบนแถวที่สแกนออกหลังเวลาเลิก');
+  assert.equal(dayPunchLine(check), '07:42, 19:33', 'เวลายังโชว์ครบเหมือนเดิม');
+});
+
+test('แบบสองรอบที่ขอมา: สแกนเข้าก่อน 08:00 แล้วสแกนอีกทีตอนเลิก OT', () => {
+  /**
+   * รูปที่ขอมาเมื่อ 7 ก.ย. 2569 · *"สแกนเข้า < 08:00 น. และสแกนถัดไปเป็นเวลาออก
+   * OT (โดยไม่มีสแกนตอน 17:00 น.)"* — ต้องจับคู่ฝั่งจบให้ถูกตัว ขึ้นป้ายเทา
+   * `ไม่ได้สแกนเข้า OT` และโชว์เวลาสแกนทั้งวันเสมอ เช่น "สแกน 07:34, 19:30"
+   */
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '17:00', endTime: '19:30' }),
+    [punch('2026-09-01', '07:34:00'), punch('2026-09-01', '19:30:00')],
+  );
+  assert.equal(check.end.time.slice(0, 5), '19:30', 'สแกนถัดจากเช้าคือเวลาออก OT');
+  assert.equal(check.state, SCAN_MATCH.OK, 'ถึงเวลาที่ขอพอดี = ครบ');
+  assert.equal(scanBadgeLabel(check), null, 'ไม่มีป้ายส้ม');
+  assert.equal(showsMissingOtStart(check), true, 'แต่มีป้ายเทา ไม่ได้สแกนเข้า OT');
+  assert.equal(dayPunchLine(check), '07:34, 19:30');
 });
 
 test('แบบสี่รอบ (สแกน 17:00 และตอนเข้าโอทีด้วย) ก็ตรงตามปกติ', () => {
@@ -211,8 +415,10 @@ test('ลืมสแกนตอนเลิกโอที ยังเตื�
   );
   assert.equal(check.state, SCAN_MATCH.MISMATCH);
   const note = scanMismatchNote(check);
-  assert.match(note, /เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง/);
+  // ยกสแกนเช้ามาเป็นหลักฐานของฝั่งจบ พร้อมระยะที่อ่านออกว่า "ไม่มีสแกนตอนเลิกเลย"
+  assert.match(note, /เวลาสิ้นสุด สแกน 07:42 · ขาดอีก 11 ชม\. 48 นาที — อาจลืมสแกนออก/);
   assert.ok(!/เวลาเริ่ม/.test(note), 'ไม่พูดถึงเวลาเริ่มบนวันที่คนอยู่ข้างในอยู่แล้ว');
+  assert.equal(check.missingScanOut, true);
 });
 
 test('สแกนตัวเดียวตอบสองฝั่งไม่ได้ ถ้ามันคือตัวที่ใช้ตอบฝั่งจบไปแล้ว', () => {
@@ -226,9 +432,19 @@ test('สแกนตัวเดียวตอบสองฝั่งไม�
     entry({ startTime: '17:00', endTime: '18:30' }),
     [punch('2026-09-01', '07:42:10'), punch('2026-09-01', '18:25:00')],
   );
-  assert.equal(check.state, SCAN_MATCH.OK);
   assert.equal(check.start, null, 'สแกนตอนกลับบ้านไม่ถูกยกมาตอบฝั่งเริ่ม');
-  assert.equal(check.end.diff, 5);
+  assert.equal(check.startFinding, false, 'และไม่กลายเป็นข้อค้นพบเรื่องเวลาเริ่ม');
+  /**
+   * ── และตั้งแต่ 7 ก.ย. 2569 เกณฑ์ที่กันไว้คือ "ฝั่งจบยกตัวไหนมา" ไม่ใช่
+   * "ฝั่งจบตรงไหม" ──
+   *
+   * เดิมกันเฉพาะสแกนที่ฝั่งจบ*ตรง*กับมัน · พอ 18:25 กลายเป็นขาด 5 นาที (ไม่ตรง
+   * แล้ว) เกณฑ์เดิมจะปล่อยมันกลับไปให้ฝั่งเริ่ม แล้วแถวนี้จะขึ้นว่า `เวลาเริ่ม
+   * สแกน 18:25 หลังเวลา 1 ชม. 25 นาที` เรื่องคนกำลังกลับบ้าน — บั๊ก 21:10 ซ้ำ
+   */
+  assert.equal(check.state, SCAN_MATCH.MISMATCH, 'ขาด 5 นาที และตอนนี้ 5 นาทีก็คือขาด');
+  assert.equal(check.endShortMinutes, 5);
+  assert.equal(scanMismatchDetail(check), 'เวลาสิ้นสุด สแกน 18:25 · ขาดอีก 5 นาที');
 });
 
 test('แต่ถ้าสแกนตัวเดียวนั้นใกล้ทั้งสองฝั่งจริง ก็ตอบได้ทั้งสองฝั่ง', () => {
@@ -238,9 +454,70 @@ test('แต่ถ้าสแกนตัวเดียวนั้นใก�
     entry({ startTime: '17:00', endTime: '17:20' }),
     [punch('2026-09-01', '17:10:00')],
   );
-  assert.equal(check.state, SCAN_MATCH.OK);
   assert.equal(check.start.time.slice(0, 5), '17:10');
+  assert.equal(check.start.matched, true, 'ฝั่งเริ่มยังใช้มันได้ ไม่ถูกกันออก');
   assert.equal(check.end.time.slice(0, 5), '17:10');
+  // ฝั่งจบยังอ่านตามกฎของตัวเอง: 17:10 อยู่ก่อน 17:20 จึงขาด 10 นาที
+  assert.equal(check.endShortMinutes, 10);
+});
+
+// ── 1ก². ก่อนเวลาเริ่ม = คนอยู่ข้างในแล้ว ไม่ว่าจะก่อนกี่นาที ────────────────
+//
+// ฝ่ายบุคคลตอบเมื่อ 4 ก.ย. 2569 ว่า **พักเที่ยงไม่ต้องสแกนนิ้ว** และ **ไม่มีกะดึก**
+// วันหนึ่งจึงมีสองรอบหรือสี่รอบ และสองรอบกลางคือตอนเลิกงาน 17:00 กับตอนเข้ามาทำ
+// โอที — ไม่ใช่พักเที่ยง · เกณฑ์ฝั่งเริ่มจึงเปลี่ยนจาก "มีสแกนใกล้ไหม" เป็น
+// "สแกนอยู่ก่อนหรือหลังเวลาที่ใบอ้าง" ซึ่งอ่านได้โดยไม่ต้องรู้ว่าครั้งไหนเข้าครั้งไหนออก
+
+test('ใบ 18:00 บนวันสแกนสี่รอบ: 17:35 อยู่ก่อนเวลาเริ่ม = เดินกลับเข้ามา ไม่ใช่ข้อผิด', () => {
+  /**
+   * เกณฑ์เดิม (`!start && ...`) เงียบเฉพาะวันสองรอบ เพราะวันสี่รอบมีสแกนใกล้
+   * เวลาเริ่มเสมอ — ใบนี้เคยรายงาน `เวลาเริ่ม สแกน 17:35 ก่อนเวลา 25 นาที`
+   * ทั้งที่คนอยู่ข้างในมาตั้งแต่ 17:35 คือเสียงรบกวน 25 จาก 27 แถวในรูปใหม่
+   */
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '18:00', endTime: '20:00' }),
+    [punch('2026-09-01', '07:21:00'), punch('2026-09-01', '17:02:00'),
+      punch('2026-09-01', '17:35:00'), punch('2026-09-01', '20:05:00')],
+  );
+  assert.equal(check.state, SCAN_MATCH.OK);
+  assert.equal(check.startFinding, false, 'สแกนก่อนเวลาเริ่มไม่ใช่ข้อค้นพบ');
+  assert.equal(check.end.diff, 5);
+  assert.equal(scanMismatchNote(check), null);
+});
+
+test('แถวนั้นยังได้ป้ายเทา — เงียบไม่ได้แปลว่าไม่มีอะไรจะบอก', () => {
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '18:00', endTime: '20:00' }),
+    [punch('2026-09-01', '07:21:00'), punch('2026-09-01', '17:35:00'),
+      punch('2026-09-01', '20:05:00')],
+  );
+  assert.equal(check.missingOtStart, true, 'ตอน 18:00 ไม่มีใครแตะประตูจริง ๆ');
+  assert.equal(showsMissingOtStart(check), true);
+});
+
+test('ไกลแค่ไหนไม่สำคัญ — สแกน 07:21 กับใบที่เริ่ม 21:00 ก็ยังคือคนอยู่ข้างใน', () => {
+  // ทิศ ไม่ใช่ระยะ · ไม่มีกะดึกจึงไม่มีการอ่านแบบอื่นที่ทำให้สแกนก่อนเวลาเริ่ม
+  // แปลว่าคนอยู่ข้างนอก
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '21:00', endTime: '23:00' }),
+    [punch('2026-09-01', '07:21:00'), punch('2026-09-01', '23:04:00')],
+  );
+  assert.equal(check.state, SCAN_MATCH.OK);
+  assert.equal(check.startFinding, false);
+  assert.equal(check.missingOtStart, true);
+});
+
+test('แต่สแกนหลังเวลาเริ่มยังเตือน แม้วันนั้นจะมีสแกนก่อนหน้าด้วย', () => {
+  // ประตูขยับตอนที่โอทีควรจะเดินอยู่แล้ว — อันนี้ขัดกันจริง จึงยังยกมาพูด
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '17:00', endTime: '19:30' }),
+    [punch('2026-09-01', '07:21:00'), punch('2026-09-01', '17:40:00'),
+      punch('2026-09-01', '19:33:00')],
+  );
+  assert.equal(check.state, SCAN_MATCH.MISMATCH);
+  assert.equal(check.startFinding, true);
+  assert.equal(check.missingOtStart, false, 'ป้ายเทากับป้ายส้มไม่ขึ้นพร้อมกัน');
+  assert.match(scanMismatchNote(check), /เวลาเริ่ม สแกน 17:40 หลังเวลา 40 นาที/);
 });
 
 test('กลับบ้านตอนเที่ยง ไม่ได้อยู่ทำโอที — ยังจับได้จากฝั่งจบ', () => {
@@ -250,7 +527,10 @@ test('กลับบ้านตอนเที่ยง ไม่ได้อ�
     [punch('2026-09-01', '07:42:10'), punch('2026-09-01', '12:10:00')],
   );
   assert.equal(check.state, SCAN_MATCH.MISMATCH);
-  assert.match(scanMismatchNote(check), /เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง/);
+  // และตั้งแต่ 7 ก.ย. 2569 บอกด้วยว่าเห็นอะไร: 12:10 คือหลักฐานว่าเขากลับไปแล้ว
+  // ซึ่งเป็นคำตอบที่ตรงกว่า "ไม่มีสแกนใกล้เคียง" มาก ทั้งที่ 12:10 พิมพ์อยู่บนแถวนั้น
+  assert.match(scanMismatchNote(check), /เวลาสิ้นสุด สแกน 12:10 · ขาดอีก 7 ชม\. 20 นาที/);
+  assert.equal(check.missingScanOut, true, 'ประตูไม่ขยับอีกเลยหลัง 17:00 — คือรูปลืมสแกนออก');
 });
 
 // ── 1ข. ไม่ใช่ข้อผิดพลาด แต่ยังต้องพูด — ป้าย `ไม่ได้สแกนเข้า OT` ──────────
@@ -319,6 +599,87 @@ test('ผลเทียบที่ยังไม่ได้เทียบ �
   assert.equal(showsMissingOtStart({}), false);
 });
 
+// ── 1ค. เกินเวลา — ขอโอทีมาน้อยกว่าที่ทำจริง ────────────────────────────────
+//
+// ฝ่ายบุคคลให้คำสี่คำมาเมื่อ 7 ก.ย. 2569 พร้อมนิยาม: **เกินเวลา** (ขอมาน้อยกว่า
+// ที่ทำจริง) · **ไม่ครบ** (ขอมามากกว่าที่ทำจริง) · **ไม่ตรง** (ไม่มีสแกนแต่ยื่นใบ)
+// · และ **เหมารายวัน** · พร้อมคำตอบว่าเกินเวลาคือ *ข้อเท็จจริง ป้ายเทา ไม่นับกอง
+// ที่ต้องตรวจ* และเส้นแบ่งอยู่ที่ *เกิน 30 นาที (เท่าบล็อก OT)*
+//
+// สองอย่างที่เทสต์หมวดนี้ปกป้อง: เกินเวลา**ไม่ใช่**คำเตือน (คำตัดสินยังเป็น OK
+// และไม่เข้ากองที่ต้องตรวจ) และมันไม่ขึ้นบนแถวที่มีอะไรให้ทำอยู่แล้ว
+
+test('ป้ายทั้งสี่ใช้คำของฝ่ายบุคคล ไม่ใช่คำของเราเอง', () => {
+  assert.equal(SCAN_BADGE.SHORT, 'ไม่ครบ');
+  assert.equal(SCAN_BADGE.OVER, 'เกินเวลา');
+  assert.equal(SCAN_BADGE.NO_SCAN, 'ไม่ตรง');
+  // คำที่ห้าไม่ใช่ของฝ่ายบุคคล และตั้งใจให้ยาวกว่า — มันคือฝั่งเวลาเริ่มโดยเฉพาะ
+  // ถ้าเรียกมันว่า "ไม่ตรง" จะชนกับคำที่แปลว่า "ไม่มีสแกนเลย" เต็ม ๆ
+  assert.equal(SCAN_BADGE.START_OFF, 'เวลาเริ่มไม่ตรงกับสแกน');
+});
+
+test('เส้นแบ่งเกินเวลาอยู่ที่หนึ่งบล็อก OT — 29 นาทีเงียบ 30 นาทีขึ้น', () => {
+  /**
+   * ใต้ 30 นาทีคือเวลาที่ต่อให้ยื่นขอมาก็คิดเป็น OT ไม่ได้ (`floor/30`) การไป
+   * ชี้ว่ามีนาทีเหล่านั้นอยู่จึงเป็นการชี้ไปที่สิ่งที่ไม่มีใบไหนพกได้ · และถ้าไม่มี
+   * เส้นเลย ป้ายนี้จะขึ้นแทบทุกแถว เพราะไม่มีใครแตะประตูตรงนาทีที่ใบจบพอดี
+   */
+  const over = (time) => checkEntryAgainstScans(
+    entry({ startTime: '17:00', endTime: '20:00' }),
+    [punch('2026-09-01', '07:30:00'), punch('2026-09-01', time)],
+  );
+  assert.equal(over('20:29:00').overTime, false, '29 นาที = ไม่ถึงหนึ่งบล็อก');
+  assert.equal(scanBadgeLabel(over('20:29:00')), null);
+  assert.equal(over('20:30:00').overTime, true);
+  assert.equal(scanBadgeLabel(over('20:30:00')), 'เกินเวลา · เกิน 30 นาที');
+  // ระยะยังรายงานครบทุกขนาด แม้แถวที่ไม่ได้ติดป้าย — ป้ายคือการตัดสินใจว่าจะพูด
+  assert.equal(over('20:29:00').endOverMinutes, 29);
+});
+
+test('เกินเวลาไม่ขึ้นบนแถวที่มีข้อค้นพบฝั่งเวลาเริ่มอยู่แล้ว', () => {
+  // กฎเดียวกับป้ายเทา `ไม่ได้สแกนเข้า OT` — แถวที่กำลังขอให้ไปดูอยู่แล้ว ไม่ต้อง
+  // มีป้ายที่สองมาบอกว่าการดูเป็นทางเลือก
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '17:00', endTime: '19:30' }),
+    [punch('2026-09-01', '07:21:00'), punch('2026-09-01', '17:40:00'),
+      punch('2026-09-01', '21:00:00')],
+  );
+  assert.equal(check.startFinding, true);
+  assert.equal(check.endOverMinutes, 90, 'ข้อเท็จจริงยังคำนวณไว้');
+  assert.equal(check.overTime, false, 'แต่ไม่ติดป้าย');
+  assert.equal(scanBadgeLabel(check), 'เวลาเริ่มไม่ตรงกับสแกน');
+});
+
+test('ใบเหมารายวันไม่ได้ป้ายเกินเวลา — ป้ายเขียวคือคำตอบของแถวนั้นแล้ว', () => {
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '17:00', endTime: '19:30', flatDaily: true }),
+    [punch('2026-09-01', '07:42:00'), punch('2026-09-01', '21:00:00')],
+  );
+  assert.equal(check.endOverMinutes, 90, 'ระยะยังคำนวณไว้ให้อ่านได้');
+  assert.equal(check.overTime, false, 'แต่ธงไม่ถูกยกบนแถวเหมา');
+  assert.equal(scanBadgeLabel(check), null, 'และไม่มีป้ายไหนวาดบนแถวเหมา');
+});
+
+test('เดือนหนึ่งนับแถวเกินเวลาแยกกอง ไม่ปนกับกองที่ต้องตรวจ', () => {
+  const row = (punches, over = {}) => ({
+    scanCheck: checkEntryAgainstScans(
+      entry({ startTime: '17:00', endTime: '19:30', ...over }), punches,
+    ),
+    ...over,
+  });
+  const counts = summariseScanChecks([
+    // เกินเวลา 1 ชม. — คำตัดสิน OK จึงไม่เข้ากอง mismatch
+    row([punch('2026-09-01', '07:30:00'), punch('2026-09-01', '20:30:00')]),
+    // ไม่ครบ 30 นาที — กองที่ต้องตรวจ
+    row([punch('2026-09-01', '07:30:00'), punch('2026-09-01', '19:00:00')]),
+    // ไม่ตรง — ไม่มีสแกนเลย
+    row([]),
+  ]);
+  assert.deepEqual(counts, {
+    mismatch: 1, short: 1, startOff: 0, noScan: 1, flatDaily: 0, checked: 3, overTime: 1,
+  });
+});
+
 // ── 2. ช่องว่างของหลักฐาน ต่างจากความไม่ตรงกัน ─────────────────────────────
 
 test('ไม่มีสแกนเลยทั้งวัน = คนละคำตอบกับ "เวลาไม่ตรง"', () => {
@@ -367,49 +728,53 @@ test('ใบข้ามคืนนับสแกนของเช้าว�
 
 // ── 4. เหมารายวัน — เวลาไม่ตรงไม่เป็นไร แต่ต้องบอกว่าเป็นใบเหมา ────────────
 
-test('ใบเหมารายวันที่เวลาไม่ตรง ประโยคขึ้นต้นด้วยกฎเหมา ไม่ใช่ด้วยคำว่าไม่ตรง', () => {
+test('ใบเหมารายวันไม่พูดเรื่องเวลาขาดเลย — ไม่ว่าสแกนจะออกมาแบบไหน', () => {
   /**
-   * ── นี่คือคำตอบรอบสอง และมันกลับด้านกับรอบแรก ─────────────────────────────
+   * ── รอบสาม และรอบนี้ตัดประโยคทิ้ง ไม่ได้เปลี่ยนสี ────────────────────────
    *
-   * รอบแรกอ่านว่า "เตือน แต่ติดป้ายว่าเหมา" · รอบสองในวันเดียวกันบอกชัดว่า
-   * **ถ้าติ๊กเหมารายวัน เวลาสแกนไม่ตรงไม่เป็นไร แต่ต้องมีแจ้งเตือนว่าเขาเหมารายวัน**
+   * รอบแรก (4 ก.ย.) อ่านว่า "เตือน แต่ติดป้ายว่าเหมา" · รอบสองวันเดียวกัน
+   * กลับเป็นป้ายเขียว แต่*เก็บตัวเลขไว้ต่อท้าย* ด้วยเหตุผลว่า "70 นาที ก็ยัง
+   * น่ารู้" · รอบสาม (7 ก.ย.) แจ้งมาเป็นบั๊ก และมันเป็นบั๊กจริง — แถวเดียวกัน
+   * พูดสองประโยคที่ค้านกันเอง: ครึ่งแรกบอกว่าเวลาบนใบไม่ใช่ข้อกล่าวอ้างที่
+   * เครื่องจะมาวัดว่าขาดได้ ครึ่งหลังวัดว่าขาดไปกี่นาที
    *
-   * วันที่ถูกเหมาไปทั้งวันแล้ว เวลาบนใบจึงไม่ใช่ข้อกล่าวอ้างที่เครื่องจะมาค้านได้
-   * สิ่งที่ฝ่ายบุคคลต้องการบนแถวนั้นไม่ใช่ "ไปดูหน่อย" แต่คือ "ใบนี้เป็นใบเหมา"
-   *
-   * ทำผิดทางแรกไม่ใช่เรื่องเล็ก — ป้ายสีเตือนบนแถวที่ไม่มีอะไรให้หา คือสิ่งที่สอน
-   * ให้คนเลิกเปิดป้ายสีเตือนอันที่มีอะไรจริง ๆ
+   * **ไม่มีการตัดเวลา** คือทั้งหมดของกฎ — แปดชั่วโมงไม่ถูกหักด้วยอะไรที่เครื่อง
+   * บันทึกไว้ จึงไม่มี "เวลาขาด" ให้พูดถึงตั้งแต่แรก
    */
   const check = checkEntryAgainstScans(
     entry({ flatDaily: true }),
-    [punch('2026-09-01', '17:28:00'), punch('2026-09-01', '21:10:00')],
+    [punch('2026-09-01', '17:28:00'), punch('2026-09-01', '18:50:00')],
   );
-  assert.equal(check.state, SCAN_MATCH.MISMATCH, 'ยังอ่านออกว่าไม่ตรง — แค่ไม่ใช่ปัญหา');
   assert.equal(check.flatDaily, true);
-
-  const note = scanMismatchNote(check);
-  assert.match(note, /^ใบนี้เป็นการยื่นขอ OT แบบเหมารายวัน/, 'ต้องขึ้นต้นด้วยกฎเหมา');
-  assert.match(note, /(ไม่ต้องแก้)/, 'และต้องบอกว่าไม่ต้องไปแก้อะไร');
-  assert.ok(
-    !/^เวลาไม่ตรงกับไฟล์สแกนนิ้ว/.test(note),
-    'ห้ามขึ้นต้นแบบใบปกติ — ประโยคที่นำด้วยคำว่าไม่ตรงคือคำเตือน',
-  );
-  // ตัวเลขยังอยู่ครบ เพราะ "70 นาที" ยังน่ารู้ แม้จะไม่ใช่สิ่งที่ต้องแก้
-  assert.match(note, /21:10/);
-  assert.match(note, /70 นาที/);
+  assert.equal(check.endShortMinutes, 70, 'การเทียบยังทำอยู่ — ที่ตัดออกคือการพูดถึงมัน');
+  assert.equal(scanBadgeLabel(check), null, 'ป้ายส้มไม่ขึ้นบนใบเหมา ไม่ว่าผลเทียบจะเป็นอะไร');
+  assert.equal(scanMismatchDetail(check), null, 'และไม่มีบรรทัดตัวเลขต่อท้ายด้วย');
+  assert.equal(scanMismatchNote(check), null, 'tooltip ก็ไม่มี — ป้ายเขียวใช้ประโยคของตัวเอง');
 });
 
-test('ใบเหมาทั้งสามแบบที่ฝ่ายบุคคลบอกมา อ่านออกมาว่า "ไม่ต้องแก้" เหมือนกันหมด', () => {
+test('ใบเหมาที่อยู่เกินเวลา ก็ไม่พูดเหมือนกัน — วันที่ไม่ได้อ้างความยาวไว้ ไม่มีอะไรให้เกิน', () => {
+  const check = checkEntryAgainstScans(
+    entry({ flatDaily: true, startTime: '08:00', endTime: '17:00' }),
+    [punch('2026-09-01', '07:58:00'), punch('2026-09-01', '19:40:00')],
+  );
+  assert.equal(check.overTime, false);
+  assert.equal(scanMismatchDetail(check), null);
+  assert.equal(scanBadgeLabel(check), null);
+});
+
+test('ใบเหมาทั้งสามแบบที่ฝ่ายบุคคลบอกมา เงียบเหมือนกันหมด', () => {
   /**
    * ฝ่ายบุคคลระบุสามแบบเมื่อ 4 ก.ย. 2569: **ไม่ได้สแกนนิ้ว · สแกนออกก่อนเวลา ·
    * สแกนเข้าแต่ไม่ได้สแกนออก** — คำตอบของทั้งสามแบบคืออันเดียวกัน คือใบยังได้
    * 8 ชั่วโมงตามเดิม และไม่มีใครต้องทำอะไร
    *
-   * **การไม่สแกนเลยเป็น *ชนิดหนึ่ง* ของใบเหมา ไม่ใช่ *ช่องโหว่* ของใบเหมา** ซึ่ง
-   * เป็นที่เดียวที่ประโยคนี้ยังอ่านเหมือนมีปัญหาอยู่ก่อนหน้านี้
+   * **เทสต์นี้เคยตรวจว่าทั้งสามแบบ*พูด*เหมือนกัน ตอนนี้ตรวจว่าทั้งสามแบบ*เงียบ*
+   * เหมือนกัน** (7 ก.ย. 2569) · ประโยคเดิมขึ้นต้นด้วยกฎเหมาแล้วต่อท้ายด้วยระยะ
+   * ที่ขาด ซึ่งอ่านแล้วค้านกันเอง — ดูเทสต์ข้างบน · แถวยังพิมพ์เวลาสแกนของวันนั้น
+   * อยู่ (`dayPunchLine`) หลักฐานไม่ได้หายไปไหน หายไปแค่การคิดเลขกับมัน
    */
-  const flat = (punches) => scanMismatchNote(
-    checkEntryAgainstScans(entry({ flatDaily: true, startTime: '08:00', endTime: '17:00' }), punches),
+  const flat = (punches) => checkEntryAgainstScans(
+    entry({ flatDaily: true, startTime: '08:00', endTime: '17:00' }), punches,
   );
 
   const cases = {
@@ -418,17 +783,16 @@ test('ใบเหมาทั้งสามแบบที่ฝ่ายบ�
     'สแกนเข้าแต่ไม่ได้สแกนออก': flat([punch('2026-09-01', '07:58:00')]),
   };
 
-  for (const [name, note] of Object.entries(cases)) {
-    assert.ok(note, `${name}: ต้องมีข้อความบอกว่าเป็นใบเหมา`);
-    assert.match(note, /^ใบนี้เป็นการยื่นขอ OT แบบเหมารายวัน/, name);
-    assert.match(note, /คิดให้ 8 ชั่วโมงตามเดิม/, `${name}: ต้องยืนยันว่าชั่วโมงไม่ขยับ`);
-    assert.match(note, /\(ไม่ต้องแก้\)/, `${name}: ต้องบอกว่าไม่ต้องทำอะไร`);
+  for (const [name, check] of Object.entries(cases)) {
+    assert.equal(scanMismatchNote(check), null, `${name}: ต้องไม่มีประโยคเตือนเลย`);
+    assert.equal(scanMismatchDetail(check), null, `${name}: และไม่มีบรรทัดตัวเลขด้วย`);
+    assert.equal(scanBadgeLabel(check), null, `${name}: และไม่มีป้าย`);
+    assert.equal(showsMissingOtStart(check), false, `${name}: ป้ายเทาก็ไม่ขึ้นบนใบเหมา`);
   }
 
-  // และแต่ละแบบยังบอกได้ว่าเกิดอะไรขึ้น ไม่ใช่ประโยคเดียวกันเป๊ะทั้งสามแบบ
-  assert.match(cases['ไม่ได้สแกนนิ้วเลย'], /ไม่มีข้อมูลสแกนของวันนี้/);
-  assert.match(cases['สแกนออกก่อนเวลา'], /เวลาสิ้นสุด สแกน 15:40 ก่อนเวลา 80 นาที/);
-  assert.match(cases['สแกนเข้าแต่ไม่ได้สแกนออก'], /เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง/);
+  // สิ่งที่ยังเหลืออยู่บนแถวคือเวลาสแกนดิบ ๆ ของวันนั้น ให้คนอ่านตรวจเอง
+  assert.equal(dayPunchLine(cases['สแกนออกก่อนเวลา']), '07:58, 15:40');
+  assert.equal(dayPunchLine(cases['ไม่ได้สแกนนิ้วเลย']), null, 'วันที่ไม่มีสแกน ก็ไม่มีอะไรให้พิมพ์');
 });
 
 test('บอกว่าสแกนอยู่ "ก่อนเวลา" หรือ "หลังเวลา" — แต่ไม่พูดว่าเข้าหรือออก', () => {
@@ -441,25 +805,40 @@ test('บอกว่าสแกนอยู่ "ก่อนเวลา" ห�
   const early = scanMismatchDetail(checkEntryAgainstScans(entry(), [
     punch('2026-09-01', '17:28:00'), punch('2026-09-01', '18:50:00'),
   ]));
-  assert.match(early, /เวลาสิ้นสุด สแกน 18:50 ก่อนเวลา 70 นาที/);
+  assert.match(early, /เวลาสิ้นสุด สแกน 18:50 · ขาดอีก 70 นาที/);
 
   const late = scanMismatchDetail(checkEntryAgainstScans(entry(), [
     punch('2026-09-01', '17:28:00'), punch('2026-09-01', '20:40:00'),
   ]));
-  assert.match(late, /เวลาสิ้นสุด สแกน 20:40 หลังเวลา 40 นาที/);
+  assert.match(late, /เวลาสิ้นสุด สแกน 20:40 · หลังเวลาที่ขอ 40 นาที/);
 
-  for (const text of [early, late]) {
+  // ฝั่งเวลาเริ่มยังพูดด้วยคำว่า ก่อนเวลา / หลังเวลา เหมือนเดิมทุกตัวอักษร
+  const startOff = scanMismatchDetail(checkEntryAgainstScans(
+    entry({ startTime: '17:00', endTime: '19:30' }),
+    [punch('2026-09-01', '07:21:00'), punch('2026-09-01', '17:40:00'),
+      punch('2026-09-01', '19:33:00')],
+  ));
+  assert.match(startOff, /เวลาเริ่ม สแกน 17:40 หลังเวลา 40 นาที/);
+
+  for (const text of [early, late, startOff]) {
     assert.ok(!/สแกนเข้า|สแกนออก/.test(text), 'ห้ามอ้างว่าเป็นการสแกนเข้าหรือสแกนออก');
   }
 });
 
-test('ใบปกติที่เวลาไม่ตรง ยังนำด้วยคำว่าไม่ตรงเหมือนเดิม', () => {
+test('ใบปกติที่เวลาไม่ครบ ยังนำด้วยคำว่าไม่ตรงเหมือนเดิม', () => {
   // ครึ่งที่ต้องไม่ขยับตามการกลับด้านข้างบน
   const note = scanMismatchNote(checkEntryAgainstScans(entry(), [
-    punch('2026-09-01', '17:28:00'), punch('2026-09-01', '20:40:00'),
+    punch('2026-09-01', '17:28:00'), punch('2026-09-01', '18:50:00'),
   ]));
   assert.match(note, /^เวลาไม่ตรงกับไฟล์สแกนนิ้ว/);
   assert.ok(!/เหมารายวัน/.test(note));
+
+  // และแถวเกินเวลานำด้วยประโยคของตัวเอง ไม่ใช่ประโยคของแถวที่ต้องไปแก้
+  const over = scanMismatchNote(checkEntryAgainstScans(entry(), [
+    punch('2026-09-01', '17:28:00'), punch('2026-09-01', '20:40:00'),
+  ]));
+  assert.match(over, /^ทำงานเกินเวลาที่ขอ OT มา/);
+  assert.match(over, /ชั่วโมงคิดตามใบที่ยื่น ไม่ได้บวกเพิ่มให้/, 'ต้องตอบคำถามถัดไปว่านาทีพวกนั้นได้เงินไหม');
 });
 
 test('ใบเหมารายวันที่เวลาตรง ไม่มีอะไรจะพูดจากฝั่งการเทียบเวลา', () => {
@@ -545,7 +924,7 @@ test('แถวหนึ่งพกเวลาสแกนของทั้�
     { time: '07:21', next: false },
     { time: '19:30', next: false },
   ]);
-  assert.equal(dayPunchLine(check), '07:21 , 19:30');
+  assert.equal(dayPunchLine(check), '07:21, 19:30');
 });
 
 test('เวลาสแกนโชว์ทุกแถวที่มีสแกน แม้แถวนั้นจะตรงกันดีอยู่แล้ว', () => {
@@ -557,7 +936,7 @@ test('เวลาสแกนโชว์ทุกแถวที่มีส�
     punch('2026-09-01', '17:28:10'), punch('2026-09-01', '20:04:55'),
   ]);
   assert.equal(ok.state, SCAN_MATCH.OK);
-  assert.equal(dayPunchLine(ok), '17:28 , 20:04');
+  assert.equal(dayPunchLine(ok), '17:28, 20:04');
 });
 
 test('ใบข้ามคืน: สแกนของเช้าวันรุ่งขึ้นติด (+1) ไว้', () => {
@@ -570,7 +949,7 @@ test('ใบข้ามคืน: สแกนของเช้าวันร
     { time: '21:55', next: false },
     { time: '02:04', next: true },
   ]);
-  assert.equal(dayPunchLine(check), '21:55 , 02:04 (+1)');
+  assert.equal(dayPunchLine(check), '21:55, 02:04 (+1)');
 });
 
 test('วันที่ไม่มีสแกนเลย ไม่มีบรรทัดเวลาให้โชว์', () => {
@@ -609,14 +988,18 @@ test('ใบเหมาไม่ถูกนับเป็น "เวลาไ
     row({ flatDaily: true, scanCheck: { state: SCAN_MATCH.MISMATCH } }),
     row({ flatDaily: true, scanCheck: { state: SCAN_MATCH.NO_SCAN } }),
   ]);
-  assert.deepEqual(counts, { mismatch: 2, noScan: 1, flatDaily: 3, checked: 4 });
+  assert.deepEqual(counts, {
+    mismatch: 2, short: 0, startOff: 2, noScan: 1, flatDaily: 3, checked: 4, overTime: 0,
+  });
 });
 
 test('เดือนที่ยังไม่ได้นำเข้าไฟล์สแกน ยังนับใบเหมาได้ — มันเป็นเรื่องของวิธียื่นใบ', () => {
   const counts = summariseScanChecks([
     { flatDaily: true }, { flatDaily: true }, {}, {},
   ]);
-  assert.deepEqual(counts, { mismatch: 0, noScan: 0, flatDaily: 2, checked: 0 });
+  assert.deepEqual(counts, {
+    mismatch: 0, short: 0, startOff: 0, noScan: 0, flatDaily: 2, checked: 0, overTime: 0,
+  });
 });
 
 test('รายชื่อคนที่ต้องดู มีเฉพาะคนที่มีอะไรให้ดูจริง และเรียงตามปริมาณ', () => {
@@ -651,9 +1034,11 @@ test('แถวที่ไม่มีพนักงานผูกอยู�
 });
 
 test('รายการว่างนับได้เป็นศูนย์ ไม่ใช่พัง', () => {
-  assert.deepEqual(summariseScanChecks(), { mismatch: 0, noScan: 0, flatDaily: 0, checked: 0 });
+  assert.deepEqual(summariseScanChecks(), {
+    mismatch: 0, short: 0, startOff: 0, noScan: 0, flatDaily: 0, checked: 0, overTime: 0,
+  });
   assert.deepEqual(summariseScanChecks([null, undefined]), {
-    mismatch: 0, noScan: 0, flatDaily: 0, checked: 0,
+    mismatch: 0, short: 0, startOff: 0, noScan: 0, flatDaily: 0, checked: 0, overTime: 0,
   });
 });
 
@@ -667,7 +1052,8 @@ test('ผลลัพธ์ไม่มีชั่วโมง ไม่มี�
   const check = checkEntryAgainstScans(entry(), [punch('2026-09-01', '18:30:00')]);
   assert.deepEqual(
     Object.keys(check).sort(),
-    ['dayPunches', 'end', 'flatDaily', 'missingOtStart', 'punchCount', 'start',
-      'state', 'tolerance'],
+    ['dayPunches', 'end', 'endOverMinutes', 'endShortMinutes', 'flatDaily',
+      'missingOtStart', 'missingScanOut', 'overThreshold', 'overTime', 'punchCount',
+      'start', 'startFinding', 'state', 'tolerance'],
   );
 });

@@ -13,7 +13,7 @@ import {
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import {
-  MISSING_OT_START, SCAN_MATCH, dayPunchLine, scanMismatchDetail, scanMismatchNote,
+  MISSING_OT_START, SCAN_MATCH, dayPunchLine, scanBadgeLabel, scanMismatchDetail, scanMismatchNote,
   showsMissingOtStart,
 } from '@/lib/scanMatch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
@@ -604,7 +604,18 @@ export function ScanMissingOtStartMark({ entry }) {
 
 export function ScanMismatchMark({ entry }) {
   const check = entry?.scanCheck;
-  if (!check || check.state === SCAN_MATCH.OK) return null;
+  /**
+   * THE GATE IS THE BADGE, NOT THE VERDICT — 2026-09-07, with เกินเวลา.
+   *
+   * It read `check.state === SCAN_MATCH.OK` until then, and that was the same
+   * sentence as "there is nothing to draw" only while every mark on this row
+   * was a mismatch. เกินเวลา is a mark on an `OK` row, so the two sentences
+   * have come apart and `scanBadgeLabel` is the one that answers the question
+   * this component is actually asking. It already holds the flat-day rule and
+   * the three-way choice; letting it hold this one too is what keeps the chip
+   * and the label from disagreeing about which rows are marked.
+   */
+  if (!scanBadgeLabel(check)) return null;
 
   /**
    * A FLAT DAY IS NEVER MARKED AMBER HERE — `FlatDailyMark` below has the row.
@@ -620,23 +631,47 @@ export function ScanMismatchMark({ entry }) {
   if (check.flatDaily) return null;
 
   const missing = check.state === SCAN_MATCH.NO_SCAN;
+  /**
+   * ── THREE TONES, AND ONLY ONE OF THEM IS AN ERRAND ────────────────────────
+   *
+   * `scan-off` is the amber one and it means *go and look at this row*: ไม่ครบ,
+   * or a start the machine disagrees with. `scan-none` (ไม่ตรง) and `scan-over`
+   * (เกินเวลา) are grey, and grey is the tone this table already uses for a
+   * fact nobody has to act on — see `.chip.scan-noin`.
+   *
+   * เกินเวลา is grey by HR's own answer on 2026-09-07: *ข้อเท็จจริง ป้ายเทา
+   * ไม่นับกองที่ต้องตรวจ*. The person worked longer than they claimed, which
+   * costs nobody anything and asks nobody for a correction. Drawn amber it
+   * would be this screen marking somebody for under-claiming, which is the
+   * mistake the end-side rule was rewritten earlier the same day to avoid.
+   *
+   * `scan-over` is its own class rather than `scan-none`'s, on the same
+   * reasoning `.chip.scan-noin` is: "no scan at all" and "stayed past the end"
+   * are different statements, and the one that changes should not drag the
+   * other with it.
+   */
+  const tone = missing ? 'scan-none' : (check.overTime ? 'scan-over' : 'scan-off');
   return (
     <>
       <span
-        className={`chip ${missing ? 'scan-none' : 'scan-off'}`}
+        className={`chip ${tone}`}
         title={`${scanMismatchNote(check)}`
-          + `${missing ? '' : ` · ระบบถือว่าตรงกันเมื่อห่างกันไม่เกิน ${check.tolerance} นาที`}`
+          + `${missing ? '' : ' · ถือว่าทำครบเมื่อสแกนออกไม่ก่อนเวลาสิ้นสุด OT'
+            + ` · ขึ้นว่าเกินเวลาเมื่อสแกนออกหลังเวลาสิ้นสุด OT ตั้งแต่ ${check.overThreshold} นาทีขึ้นไป`
+            + ` · ฝั่งเวลาเริ่มถือว่าตรงกันเมื่อห่างกันไม่เกิน ${check.tolerance} นาที`}`
           + ' · ตัวเลขชั่วโมงบนแถวนี้ไม่ได้ถูกแก้จากไฟล์สแกน'}
       >
-        {missing ? 'ไม่มีข้อมูลสแกน' : 'เวลาไม่ตรงกับสแกน'}
+        {scanBadgeLabel(check)}
       </span>
       {/* THE NUMBERS, WHERE A FINGER CAN REACH THEM.
           The `title` above holds the whole sentence and a title is a HOVER,
-          which a phone does not have — so the part that makes the warning
-          actionable ("อีก 40 นาที" rather than "ไม่ตรง") is printed as well.
+          which a phone does not have — so the part that makes the mark legible
+          ("อีก 40 นาที" rather than "ไม่ครบ") is printed as well.
           `cell-sub th` is the same quiet second line วัน…, ข้ามคืน and the
           editor's name already use in this table, so it is not a new voice.
-          Only on a real mismatch: `ไม่มีข้อมูลสแกน` says the whole of itself. */}
+          Not on ไม่ตรง: `ไม่มีข้อมูลสแกน` says the whole of itself. เกินเวลา
+          DOES get the line, because the one thing a reader wants next — were
+          those minutes paid — is in it and is not in the chip. */}
       {!missing && (
         <div className="cell-sub th">{scanMismatchDetail(check)}</div>
       )}
@@ -650,8 +685,8 @@ export function ScanMismatchMark({ entry }) {
  * ── IT IS NOT PART OF THE SCAN CHECK, AND IT IS DRAWN WITHOUT ONE ──────────
  *
  * `entry.flatDaily` is a fact about the FILING: the tick the person put on the
- * form, and the reason the engine capped the day at eight hours however long
- * they stayed. It is true on a month whose scanner file nobody has imported,
+ * form, and the reason the row reads eight hours however long they stayed. It
+ * is true on a month whose scanner file nobody has imported,
  * and it was true before this system could read a punch at all. So it is read
  * off the entry and never off `scanCheck` — a mark that appeared only once
  * somebody uploaded a `.txt` would be a mark that means two different things.
@@ -669,35 +704,68 @@ export function ScanMismatchMark({ entry }) {
  * The two are the same kind of fact and a reader who has learnt one has learnt
  * the other.
  */
+/**
+ * ── ONE SENTENCE, AND IT HAS BEEN THREE DIFFERENT ONES ──────────────────────
+ *
+ * *นับ 8 ชั่วโมงปกติ ไม่คิดชั่วโมง OT* from 2026-09-04 to 2026-09-07, when the
+ * eight hours were the ordinary day and the three rate columns read 0.00 —
+ * which is what that wording existed to explain. HR then made them **OT ×1.5 in
+ * the column the day decides** (*ถ้าวันหยุดก็ใส่ 8 ชั่วโมงวันหยุด ถ้าไม่ใช่
+ * วันหยุดก็ใส่ 8 ชั่วโมงวันปกติ แต่แค่เป็นแบบเหมา*), so there is no nought left
+ * to explain and the sentence that explained it would now be false.
+ *
+ * WHAT IT SAYS INSTEAD IS THE PART A READER CANNOT WORK OUT FROM THE ROW: that
+ * the eight is the DAY'S OWN LENGTH and not a measurement of the times printed
+ * beside it. The column is on the row already; "why does a 12-hour shift read
+ * 8.00" is not.
+ *
+ * IT DOES NOT NAME THE COLUMN, deliberately. One string for both kinds of day —
+ * a sentence that said "วันหยุด" would be wrong on half the rows, and a
+ * template with the column in it is a sentence nobody can grep for. For one day
+ * (2026-09-07) there was a second constant, `FLAT_DAILY_BIRTHDAY_SAY`, for
+ * flat days that fell on a วันเกิด; the rule stopped being about วันเกิด the
+ * same day and both it and its chooser went with it.
+ */
+export const FLAT_DAILY_SAY = 'พนักงานเหมารายวัน — นับ 8 ชั่วโมงเป็น OT ×1.5 ไม่ว่าจะอยู่นานแค่ไหน';
+
 export function FlatDailyMark({ entry }) {
   if (!entry?.flatDaily) return null;
   const check = entry.scanCheck;
-  const detail = check && check.state !== SCAN_MATCH.OK ? scanMismatchDetail(check) : null;
   return (
     <>
-      <span
-        className="chip scan-flat"
-        title={scanMismatchNote(check)
-          || 'ใบนี้เป็นการยื่นขอ OT แบบเหมารายวัน — คิดให้ไม่เกิน 8 ชั่วโมง ไม่ว่าจะอยู่นานแค่ไหน'}
-      >
+      <span className="chip scan-flat" title={FLAT_DAILY_SAY}>
         เหมารายวัน
       </span>
-      {detail && (
-        <div className="cell-sub th">
-          {detail}
-          {/* WHY THE DIFFERENCE IS HERE AND IS NOT A PROBLEM, on the row rather
-              than only in the tooltip. Without it the numbers under a green chip
-              read as a warning wearing the wrong colour, which is the confusion
-              this whole arrangement exists to remove.
+      {/* ── THE SENTENCE IS UNCONDITIONAL NOW, AND THAT IS THE CHANGE ────────
+          It used to draw only where a scan disagreed, because all it had to add
+          was that the disagreement was fine. Since 2026-09-04 it carries the
+          RULE — eight hours whatever the clock says — and that is the answer to
+          the question every reader of this row asks first: why does a shift
+          from 08:00 to 20:00 read 8.00? Drawn only on the rows with a scan
+          mismatch, the figure would be unexplained on every other flat row and
+          would read as a row that failed to compute.
 
-              ON ALL THREE SHAPES, INCLUDING `no_scan`. HR named them — ไม่ได้
-              สแกนนิ้ว, สแกนออกก่อนเวลา, สแกนเข้าแต่ไม่ได้สแกนออก — and the answer
-              to every one is the same: the sheet still gets its eight hours.
-              Not scanning at all is a KIND of flat day, not a gap in one, and
-              this line used to fall silent on exactly that case. */}
-          {' — ยังได้ 8 ชั่วโมงตามเดิม'}
-        </div>
-      )}
+          `cell-sub th` is the quiet second line วัน…, ข้ามคืน and สแกน … already
+          use in this table, so a fact is stated in the voice facts get. */}
+      {/* ── AND NOTHING IS APPENDED TO IT — 2026-09-07 ────────────────────
+          It used to carry the scan finding as well — the shortfall from
+          `scanMismatchDetail`, followed by a reassurance that the eight hours
+          stood anyway — on the reasoning that the numbers were worth knowing
+          even where nothing was wrong. Reported as a bug, and it is one: the
+          first half of the line says the times on this request are not
+          something the machine can be short against, and the second half then
+          measures a shortfall against them. **ไม่มีการตัดเวลา** — the eight
+          hours are not reduced by anything a scanner recorded, so there is no
+          shortfall to print.
+
+          The exact wording is not repeated here on purpose:
+          `test/flatDaily.test.js` fails on finding it anywhere in this
+          component, which is what stops it being pasted back.
+
+          The row is not left without evidence: `ScanDayPunches` prints the
+          day's own scan times underneath, as it does on every row that has any.
+          What is gone is the arithmetic against a claim this row never made. */}
+      <div className="cell-sub th">{FLAT_DAILY_SAY}</div>
     </>
   );
 }

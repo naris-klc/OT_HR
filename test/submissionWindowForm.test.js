@@ -110,7 +110,11 @@ test('the stripper actually strips — the string matches below prove nothing ot
 });
 
 test('the date box reads its bounds from the shared window', () => {
-  has(form, "import { submissionWindow, isBirthdayWelfare } from '@/lib/entries.js'");
+  // The names rather than the whole line: the import went multi-line on
+  // 2026-09-07 when the เหมารายวัน rule added three more, and a pinned line
+  // that fails on a fourth import is pinning the wrong thing.
+  has(form, 'submissionWindow, isBirthdayWelfare, zeroOtHoursAllowed,');
+  has(form, "} from '@/lib/entries.js';");
   has(form, 'min={dateBounds.min}');
   has(form, 'max={dateBounds.max}');
 });
@@ -229,7 +233,8 @@ test('ไม่มีบรรทัดบอกช่วงวันที่�
  * look identical in a diff a year from now.
  */
 test('ขอบเขตวันที่ยังอยู่ครบ — ที่ถูกลบคือคำอธิบาย ไม่ใช่กฎ', () => {
-  has(formCode, "import { submissionWindow, isBirthdayWelfare } from '@/lib/entries.js'");
+  has(formCode, 'submissionWindow, isBirthdayWelfare, zeroOtHoursAllowed,');
+  has(formCode, "} from '@/lib/entries.js';");
   has(formCode, 'min={dateBounds.min}');
   has(formCode, 'max={dateBounds.max}');
   has(formCode, 'const { min, max } = submissionWindow(today(), policy)');

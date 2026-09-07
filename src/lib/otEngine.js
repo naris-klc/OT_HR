@@ -62,15 +62,23 @@ export const DAY_REASONS = Object.freeze({
 const MINUTES_PER_DAY = 1440;
 
 /**
- * เหมารายวัน — how many counted minutes one flat day is worth, and it is a
- * constant here rather than a policy key on purpose.
+ * เหมารายวัน — how many minutes one flat day is worth, and it is a constant
+ * here rather than a policy key on purpose.
  *
  * HR's rule, 2026-09-03: some departments hire a day at a time, and not every
  * day and not everybody — so it is a tick on the request rather than the
  * department-wide `otMode` beside it (lib/otMode.js), which answers a different
  * question and keeps answering it. What the tick means is "this day was bought
  * whole": the standard day is 08:00–17:00 less the hour at noon, which is eight
- * hours, and staying past it adds nothing because the day was already paid for.
+ * hours, and staying past it adds nothing because the length was agreed.
+ *
+ * WHAT THESE MINUTES ARE has been answered three times. A CEILING on the rate
+ * columns (2026-09-03), the ORDINARY DAY with all three buckets at nought
+ * (2026-09-04, `totals.normalHours`), and since 2026-09-07 **eight hours of OT
+ * ×1.5 in the column the day type decides** — *ถ้าวันหยุดก็ใส่ 8 ชั่วโมงวันหยุด
+ * ถ้าไม่ใช่วันหยุดก็ใส่ 8 ชั่วโมงวันปกติ แต่แค่เป็นแบบเหมา*. The number below
+ * never moved through any of it; what moved is where it lands. See the branch in
+ * `computeSession`.
  *
  * NOT A POLICY KEY, and that is the part worth defending. The eight hours are
  * `coreEndMinute - coreStartMinute` less the lunch hour — the same figure
@@ -645,6 +653,169 @@ export function computeSession(session, options = {}) {
   // shows one row per bucket per day, not one per boundary crossing.
   segments = mergeSegments(segments);
 
+  /**
+   * เหมารายวัน — the day was hired whole, so it counts EIGHT HOURS OF OT ×1.5,
+   * IN THE COLUMN THE DAY ITSELF DECIDES, whatever the clock says.
+   *
+   * ── THE RULE, IN HR'S OWN WORDS ───────────────────────────────────────────
+   *
+   * **ให้คิดตามวันไปเลย ถ้าวันหยุดก็ใส่ 8 ชั่วโมงวันหยุด ถ้าไม่ใช่วันหยุดก็ใส่ 8
+   * ชั่วโมงวันปกติ แต่แค่เป็นแบบเหมา** (2026-09-07). Three sentences, and each
+   * decides one thing:
+   *
+   *   *ตามวัน* — the BUCKET is the ordinary one for the kind of day. A holiday
+   *   (Saturday, Sunday, the company calendar, or the filer's own วันเกิด) puts
+   *   the eight hours in `ot15_holiday`; an ordinary working day puts them in
+   *   `ot15_weekday`. Nothing here re-decides what kind of day it is —
+   *   `resolveDayTypes` has already answered that, for this employee, and the
+   *   answer is read rather than recomputed.
+   *
+   *   *8 ชั่วโมง* — the LENGTH is `flatDailyMinutes(policy)` and nothing else.
+   *   Early in, early out, or stayed to 20:00: the figure does not move, in
+   *   either direction (*สแกนเข้าก่อนหรือออกก่อนหรือหลัง 17:00 น. ก็คือ 8
+   *   ชั่วโมง*, 2026-09-04, which survives every reversal around it).
+   *
+   *   *×1.5 เสมอ* — the RATE, asked for in those words the same day. On a
+   *   holiday every minute is a holiday minute, so reading the bucket off the
+   *   clock would put an evening start in `ot3_holiday`; the multiplier is
+   *   written here and never clocked. `ot3_holiday` is nought on every flat day
+   *   there is.
+   *
+   * ── WHAT THIS REPLACED, TWICE ─────────────────────────────────────────────
+   *
+   * Between 2026-09-03 and 2026-09-04 the tick was a CEILING: the day was
+   * computed the ordinary way and trimmed back to eight from the end, so an
+   * evening kept its `ot3_holiday` if it fell inside the first eight hours.
+   * Between 2026-09-04 and 2026-09-07 it was NOT OT AT ALL: all three rate
+   * columns at nought and the eight hours in `totals.normalHours`, on the
+   * reasoning that the flat rate had already bought the ordinary day.
+   *
+   * Neither is what runs. `normalHours` is nought on every session this engine
+   * computes now, and it stays on the result and on the model for the rows
+   * written in those three days — see the field's own note in
+   * src/models/OtEntry.js.
+   *
+   * ── SO IT SHORT-CIRCUITS, AND THE SHORT CIRCUIT IS THE RULE ───────────────
+   *
+   * The buffer, the rounding block and the minimum each ask *how much of what
+   * was worked is payable OT*, and this day does not answer that question: the
+   * figure is the day's own length, agreed in advance. Run in front of it,
+   * `belowMinimum: 'reject'` would throw a flat evening out of the form for
+   * being under an hour of OT it is not measuring, and `'raise'` would pad a
+   * figure that is already exact.
+   *
+   * `nonOtMinutes` and the NORMAL_HOURS_IGNORED warning are dropped with them,
+   * for the same reason: nothing on a flat day is ignored for falling inside
+   * ordinary hours. The whole day is the claim.
+   *
+   * ── WHAT SURVIVES ────────────────────────────────────────────────────────
+   *
+   * `totals.clockHours` is still the shift exactly as worked and `breakMinutes`
+   * is still the break that was taken — the times on the request are a record
+   * of when the person was here and are not touched by any of this. What the
+   * screen shows beside them is the day's own scan punches, unfiltered, which
+   * is the evidence a reader compares them against.
+   *
+   * `flatDailyTrimmed` is the hours that FELL IN THE OT WINDOW and were not
+   * counted, which is the tail past the day's length — its meaning under the
+   * ceiling, restored with the arithmetic that gives it one. It is 0 on a day
+   * shorter than the flat eight, because nothing was cut: the day was hired
+   * whole in both directions.
+   */
+  if (session.flatDaily) {
+    const otWindowMinutes = segments.reduce((s, x) => s + x.minutes, 0);
+    const flatMinutes = flatDailyMinutes(policy);
+    /**
+     * THE DAY THE REQUEST IS FOR — `workDate`, and never the second date of an
+     * overnight shift. A flat day is one day bought whole; a Saturday evening
+     * running into Sunday is one purchase, and the segment below is dated the
+     * day it began. Reading the far side would let the column depend on how
+     * late somebody stayed, which is exactly what "แบบเหมา" says it does not.
+     */
+    const { type: flatDayType, reason: flatDayReason } = readDayType(dayTypes, workDate);
+    const bucket = flatDayType === DAY_TYPES.HOLIDAY
+      ? BUCKETS.OT15_HOLIDAY
+      : BUCKETS.OT15_WEEKDAY;
+    const trimmedMinutes = Math.max(0, otWindowMinutes - flatMinutes);
+
+    const flatWarnings = [];
+    /**
+     * Only when there is something to say — the same "nothing to say, so
+     * nothing is said" every other rule in here keeps. A flat day that put
+     * fewer than eight hours in the OT window had nothing cut off it, and a
+     * notice about a trim that did not happen is a notice about a rule that
+     * never fired.
+     */
+    if (trimmedMinutes > 0) {
+      flatWarnings.push({
+        code: 'FLAT_DAILY_CAPPED',
+        minutes: trimmedMinutes,
+        message: `${minutesToHours(trimmedMinutes)} h beyond the flat day (เหมารายวัน) `
+          + `is not counted; the day is ${minutesToHours(flatMinutes)} h of OT ×1.5 `
+          + `in the ${BUCKET_LABEL_TH[bucket]} column.`,
+      });
+    }
+
+    return {
+      /**
+       * ONE ROW, AT THE TIMES THAT WERE WORKED, FOR THE HOURS THE DAY IS WORTH.
+       *
+       * `minutes` is deliberately not `end − start`, which is not new here:
+       * `applyFlatDeduction` has always shortened a segment without moving its
+       * clock. The times are the record of when the person was on the premises
+       * and print on F-HR-027 as such; the figure beside them is the flat
+       * eight.
+       *
+       * A ROW AT ALL IS THE CHANGE OF 2026-09-07. A flat day had no segments
+       * between 2026-09-04 and then — no OT hours, nothing to put in a rate
+       * column — so it never reached the printed sheet. It has hours now, so it
+       * has a row, and `onSheet` in the form report follows without being told.
+       * `dayReason` rides along as it does on every other segment, which is what
+       * keeps the OT สวัสดิการวันเกิด chip on a flat birthday row.
+       */
+      segments: [{
+        date: workDate,
+        start: formatTime(startAbs),
+        end: endAbs % MINUTES_PER_DAY === 0 ? '24:00' : formatTime(endAbs),
+        dayType: flatDayType,
+        dayReason: flatDayReason,
+        bucket,
+        multiplier: BUCKET_MULTIPLIER[bucket],
+        minutes: flatMinutes,
+        hours: minutesToHours(flatMinutes),
+      }],
+      buckets: {
+        [BUCKETS.OT15_WEEKDAY]: bucket === BUCKETS.OT15_WEEKDAY ? minutesToHours(flatMinutes) : 0,
+        [BUCKETS.OT15_HOLIDAY]: bucket === BUCKETS.OT15_HOLIDAY ? minutesToHours(flatMinutes) : 0,
+        /** Never, on any flat day: ×1.5 เสมอ is the rate half of the rule. */
+        [BUCKETS.OT3_HOLIDAY]: 0,
+      },
+      totals: {
+        otHours: minutesToHours(flatMinutes),
+        weightedHours: minutesToHours(flatMinutes * 1.5),
+        ot15Hours: minutesToHours(flatMinutes),
+        ot3Hours: 0,
+        clockHours: minutesToHours(clockMinutes),
+        breakHours: minutesToHours(breakMinutes),
+        /**
+         * NOUGHT, and that is what pays for the rate column. The eight hours
+         * are claimed once, as overtime; carried here as well they would be the
+         * same day counted twice on one document.
+         */
+        normalHours: 0,
+      },
+      breakMinutes,
+      endsNextDay,
+      // Neither rule ran, and `false` says so. Left to carry whatever an
+      // earlier pass had put there, `belowMinimumFlagged` would ask HR to look
+      // at a row for being short of a minimum it was never measured against.
+      belowMinimumFlagged: false,
+      belowBufferZeroed: false,
+      flatDailyTrimmed: minutesToHours(trimmedMinutes),
+      warnings: flatWarnings,
+    };
+  }
+
   const warnings = [];
   if (nonOtMinutes > 0) {
     warnings.push({
@@ -798,47 +969,6 @@ export function computeSession(session, options = {}) {
   // order the segmentation produced them.
   if (seeded) workingSegments.sort(byClock);
 
-  /**
-   * เหมารายวัน — the day was bought whole, so it counts eight hours and no
-   * more, however long the person actually stayed.
-   *
-   * LAST OF ALL THE RULES, and the order is the rule. The buffer, rounding and
-   * the minimum each ask "how much of this is OT"; this one asks "how much of
-   * that is PAID", which is a question about the day and not about the minutes.
-   * Running it earlier would let rounding hand back minutes the flat day had
-   * already refused, and would let 'raise' pad a capped session past the cap.
-   *
-   * TRIMMED FROM THE END, in clock order. A flat day is the standard day plus
-   * whatever came after it, and what the tick says is that the tail is not
-   * separately payable — so the tail is what goes. Trimming from the largest
-   * segment (the way `applyFlatDeduction` spends a break) would take the hours
-   * out of the middle of the day and leave the evening on the sheet, which is
-   * the opposite of what anybody ticking this box means.
-   *
-   * The clock times stay exactly as worked and only the counted minutes drop —
-   * the same split §3 already makes for the lunch hour, and the reason
-   * `applyFlatDeduction` is written the way it is. The paper form still shows
-   * when the person was here; the hour columns show what the day was worth.
-   */
-  let flatDailyTrimmed = 0;
-  if (session.flatDaily) {
-    let budget = flatDailyMinutes(policy);
-    for (const seg of [...workingSegments].sort(byClock)) {
-      const keep = Math.min(seg.minutes, Math.max(0, budget));
-      flatDailyTrimmed += seg.minutes - keep;
-      seg.minutes = keep;
-      budget -= keep;
-    }
-    if (flatDailyTrimmed > 0) {
-      warnings.push({
-        code: 'FLAT_DAILY_CAPPED',
-        minutes: flatDailyTrimmed,
-        message: `${minutesToHours(flatDailyTrimmed)} h beyond the flat day (เหมารายวัน) `
-          + `is not counted; the day is capped at ${minutesToHours(flatDailyMinutes(policy))} h.`,
-      });
-    }
-  }
-
   const totalMinutes = workingSegments.reduce((s, x) => s + x.minutes, 0);
   const buckets = totalBuckets(workingSegments);
 
@@ -864,6 +994,26 @@ export function computeSession(session, options = {}) {
       ot3Hours: minutesToHours(ot3Minutes),
       clockHours: minutesToHours(clockMinutes),
       breakHours: minutesToHours(breakMinutes),
+      /**
+       * ชั่วโมงทำงานปกติ — hours a day is worth OUTSIDE the rate columns, and
+       * **nought on every session this engine computes**, this branch and the
+       * flat one alike.
+       *
+       * IT IS NOT DEAD AND IT IS NOT REMOVED. It carried the eight hours of a
+       * เหมารายวัน day for the three days between 2026-09-04 and 2026-09-07, and
+       * the rows written then still hold theirs until something recomputes them.
+       * A field that stops being written is not a field that can be deleted from
+       * under the documents that have it — see `normalHours` in
+       * src/models/OtEntry.js, and `csvDateOrder` in src/models/Setting.js for
+       * the same decision made about a value that lived one day.
+       *
+       * A nought here has always meant "this form makes no claim about ordinary
+       * hours", not "none were worked": an ordinary Tuesday evening request sits
+       * on top of a full working day this system has never been asked to count,
+       * and that day's normal hours are payroll's, from the scanner and the
+       * roster.
+       */
+      normalHours: 0,
     },
     breakMinutes,
     endsNextDay,
@@ -885,16 +1035,13 @@ export function computeSession(session, options = {}) {
      */
     belowBufferZeroed: belowBuffer,
     /**
-     * How many minutes the flat day refused — 0 on every session that was not
-     * ticked เหมารายวัน, and 0 on a ticked one that never reached eight hours.
-     *
-     * A number rather than a boolean because it is the only place the hours a
-     * person worked and the hours the day is worth can still be told apart:
-     * `totals.clockHours` is the whole shift and `totals.otHours` is what the
-     * cap left, and the difference is also the break. Stored on the entry with
-     * the warnings, so a row can say why it reads eight.
+     * Always 0 down here, and stated rather than left off: a session that was
+     * not ticked เหมารายวัน never met the rule, and a caller should read a
+     * number rather than tell `0` from `undefined`. The ticked sessions return
+     * above, where the figure is worked out — see the branch after
+     * `mergeSegments`.
      */
-    flatDailyTrimmed: minutesToHours(flatDailyTrimmed),
+    flatDailyTrimmed: 0,
     warnings,
   };
 }

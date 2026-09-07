@@ -74,10 +74,50 @@ can use it.* **That whole arrangement was withdrawn on 2026-09-03** — see
 There is no key to add and nothing to press for it. A database that already ran
 it keeps both the collection and the rows, and neither is read any more.
 
-**Deploying the เหมารายวัน tick?** Nothing to do. `flatDaily` is a field on the
-entry with a `false` default, not a policy key, so no version is left unmatched
-and no month is restated: every row written before 2026-09-03 was written under
-no cap, and `false` is exactly what that was.
+**Deploying the เหมารายวัน tick?** Nothing to do for rows filed before it:
+`flatDaily` is a field on the entry with a `false` default, not a policy key, so
+no version is left unmatched and no month is restated — every row written before
+2026-09-03 was filed under no such rule, and `false` is exactly what that was.
+
+**Rows filed WITH it ticked before 2026-09-07 were computed under one of two
+withdrawn readings**, and neither is what the engine says now. Nothing rewrites
+them on deploy — the figures on a stored entry move only when something
+recomputes it — so **look before deploying**, one query:
+`db.otentries.find({ flatDaily: true })`. Run against this database on
+2026-09-07 it returns **three rows, all of them the July scan demo seed's**
+(`src/seed-scan-people.js`), nothing anybody filed:
+
+| row | as stored | what a replay gives now |
+|---|---|---|
+| `2026-07-11` PM00112 (Sat) approved | `ot15_holiday` 8 | `ot15_holiday` 8 — unchanged |
+| `2026-07-06` THT0107 (Mon) approved | `ot15_weekday` 8 | `ot15_weekday` 8 — unchanged |
+| `2026-07-22` PM00112 (Wed) pending | three noughts, `normalHours` 8 | `ot15_weekday` 8 |
+
+The two approved rows are ceiling-era and land on exactly the figures they
+already hold, which is not luck: a ceiling and a flat eight agree whenever the
+day ran at least eight hours in the OT window. **Neither signed figure moves.**
+The third is the 2026-09-04 reading, is `pending_hr`, and would gain eight hours
+of OT the first time the month is replayed. That is the right answer under the
+rule and it is still a figure changing under somebody, so it is worth saying out
+loud rather than discovering in a total.
+
+A row that is not demo data is not a migration to write on your own: restating a
+signed figure is HR’s call. `npm run whatif` prices a POLICY change read-only and
+is the tool for one; it cannot price this, because a code change is on both
+sides of its comparison — the table above was produced by replaying the three
+sessions through `loadContext`/`compute` and printing the result instead of
+saving it.
+
+*(This paragraph read “**An empty result is the likely answer (the tick was one
+day old and prod has not been deployed to since)**” until 2026-09-07, of the
+narrower query `{ flatDaily: true, "totals.otHours": { $gt: 0 } }`. The query was
+then actually run, and it was not empty.)*
+
+**And the rule is LIVE on this installation the moment this ships**, including
+its วันเกิด corner: `birthdayHolidayEnabled` is **false in the file and `true` in
+`Setting.policy`** here (`npm run whatif -- --show`, read 2026-09-07). Do not
+read the default and conclude a birthday is an ordinary day — see
+[The policy file is not what runs](#which-rules-produced-this-figure).
 
 Upgrading a database from before policy versioning? Run
 `npm run migrate:policy-version` once — see
@@ -1741,9 +1781,9 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2195 tests
-across 124 files**, measured 2026-09-04 — runs with plain `node --test`, no
-server and no database. Only `app/` and `lib/` touch the framework. (It read "2165" until **a month of scanner files became FOUR files rather than two** — six more cases in `scanFile` and NO new file, because the reading did not change: what arrived is the other half of a file's identity. Two of the six are the machine numbering, which is a LABEL nobody can check against the bytes and is therefore pinned here; two are the company, decided from the roster and never from the `PM` / `THT` prefix, with a disagreement REPORTED rather than resolved; and two are the grid — that four is `SCAN_FORMATS.length × companies.length` and never a literal, and that a file which fits no slot is not quietly counted into one. — and "2157 across 121 files" until **the last twenty `<select>`s in the app became `PickOne`** — `noNativeSelect` is the 122nd file, four cases, and it is one rule over the whole tree rather than the per-screen bans that preceded it: no component draws a `<select>`, a `type="date"`, a `type="month"` or a `type="time"`, and every list that opens is `.pick-menu`. The fifth case is in `queueDropdown` and is the thing that had to exist before ทะเบียนพนักงาน could drop its tag — a row that is ON the list and is not this person's to take, refused to the pointer, to Enter, to ↑/↓, to Home/End and to the letter somebody types out of habit, because `<option disabled>` did all five for free and an `<li>` has none of them — and "2139 across 120 files" until **ไฟล์ .txt จากเครื่องสแกนนิ้วมือ became something ฝ่ายบุคคล can import from ตรวจสอบประจำเดือน** — `scanFile` is the 121st file, eighteen cases, and the samples in it are the two real files byte for byte rather than tidied-up ones: the TIS-620 header, the UTF-8 byte-order mark and the space padding are the whole of what the module has to survive. Only five of the eighteen are about reading a good line. The rest are the silent failures available to a file that arrives once a month from a machine nobody here configured — a header counted as a scan, `07/25` read as 7 January, a TIS-620 byte becoming `�` in the copy of the file the system keeps, and the same person at the same second stored twice — plus the one property that makes the preview checkable instead of believable: every line of the file lands in exactly one of four piles and the four add up. **Nothing in the app reads what it stores**, which is the state on purpose and is written into the model — and "2123" until **the question got a standing answer** — sixteen more cases in `birthDateImport`, for ตั้งค่าระบบ → รูปแบบวันที่ใน CSV and the decision that an unsettleable file is now READ under it rather than refused. Nine of the sixteen are the boundary rather than the feature: the interpreter called with no options still refusing, evidence still beating the setting and not being REPORTED as the setting, a month-first file still refused whatever is set, a self-contradicting file still refused, a per-file answer still outranking the company's, and a bad setting throwing instead of going quiet. The rest are the setting itself — it cannot hold a value the interpreter would throw on, it is not inside `policy` where it could mint a version, the screen previewing a file reads the same value the route will, and the panel says out loud which rows it read that way — and "2110" until **the ambiguous วันเกิด column started being a QUESTION** — thirteen more cases in `birthDateImport` and one rewritten in `smartDate`, for the round that let HR say "this file is วัน/เดือน/ปี" instead of being sent back to Excel to retype a column by hand. Eight of the thirteen are refusals that must SURVIVE the feature: a declaration the file contradicts, in both directions; a file that contradicts itself, under every declaration and none; an unrecognised order that has to throw rather than quietly become "nobody answered"; and the plain ambiguous file with nobody answering, which must be refused exactly as it always was. The other five are the promise the feature rests on — the answer comes from a person, the rows are read back before anything is written, and what travels with the upload is the answer rather than the dates the screen computed from it — and "2088" until **a refused roster CSV started naming every line it was refused over, `01/01/2540` stopped being called ambiguous, and the picker moved to the sentence telling HR to use it** — eleven cases in `birthDateImport` and NO new file, because the interpretation rule did not change then: the three refusals are the same three, and what they now carry is `blocking`, the whole of the evidence rather than the first line of it. Four are about that list — every ambiguous row, both sides of an inconsistent file in line order, the ambiguous rows that ride along with a month-first one because they are wrong too, and the empty list a file that IMPORTS has to keep. Four are the case that had no business being refused at all: a cell whose day and month are the SAME NUMBER reads identically either way, and it was being listed as `เป็นได้ทั้ง 1 มกราคม 1997 และ 1 มกราคม 1997` and helping refuse whole files over a doubt with no consequence — with one of the four on the template, which wrote `1989-05-12` and so could not survive being opened and saved in the Excel it is handed to somebody to type into. The other three are about the screen: the panel that lists the lines, the server refusal that used to arrive as one sentence with its payload dropped, and the error message that had no way off the card. The rest of the move to 2108 landed in the same tree from the queue and roster work, not from this round — and "2074 across 119 files" until **the queues of the four who sign the first step started listing a request until it is confirmed** — `queueRoleFilter` is the 120th file, and the fourteen cases in it are mostly not about the `บทบาท` dropdown that was asked for: they are about the two silent failures the round could have shipped, a queue offering a decision on a row its reader may not sign, and a filter the SCREEN sets that empties the table without saying it did — and "2071" until **ตั้งรหัสผ่านของคุณ was deleted** — the screen an account with `mustChangePassword` used to meet before anything else. One case in `tempPassword` and NO new file: the case that used to say the flag reaches a gate now says it reaches a strip on the landing tab, and bans the gate coming back under any name. The count moved by one because the sentence naming the character set went from being asked for on two screens to being banned everywhere but the form — and "2000 across 118 files" until **บันทึกเป็น PDF started producing a file** rather than naming a destination in the browser's own print dialog — `printPdf` is the 119th file, twenty-six cases, and eleven of them are one table: every way a script, a frame or a fetch can be spelled in markup that arrives from a browser, each its own case, because the failure that matters is ONE of them starting to get through while the rest still do not. The cases that are not about that lock are about the promise the feature rests on — that the file is the DOM the printer would have been given, never a second rendering of the month — and the one print view that refuses to make a file at all, which is the password slips — and "1983 across 117 files" until **บทบาท went from four to seven** — `roles` is the 118th file, seventeen cases, and only the first handful are about the seven themselves: the rest are about the rename underneath them, because the retired `manager` used to BE a role and used to mean หัวหน้างาน. The two that earn the file are the ban on that spelling returning to `app/`, `lib/`, `src/`, `components/` or `legacy/` — with `hrRejectReturnsTo` and `Department.manager` named as the only lines allowed to keep it — and the case that fails if `ROLES` is ever tidied into alphabetical order, which would silently make ผู้ดูแลระบบ the lowest rung because `outranks` reads its answer off that array's index — and "2096 across 122 files" until สวัสดิการวันเกิด went back to being filed by the person whose birthday it is and ฝ่ายบุคคล’s birthday work was withdrawn — the only round in this history where the file count went DOWN: seven files left (absentCallout, birthdayCardUi, birthdayCheck, birthdayDirectApproval, birthdayFileSheet, birthdayQueue, birthdaySelfFiling) and two arrived, `birthdayTick` for the claim the tick makes and `flatDaily` for the eight-hour day — and "2070 across 121 files" until ฝ่ายบุคคล's queue started listing a request from the moment it was filed — `queueStatusColumn` is the 122nd file, twenty-one cases, and only four of them are about the สถานะ column that was asked for: the rest are about what a queue has to stop offering once it holds a row its reader cannot sign, and about the two things the twelfth column pushed out of shape — the sentence that stands in place of a row's buttons, and the ceiling figure that went under them — and "2060 across 120 files" until Ctrl+P on รายงาน OT ฝ่ายบัญชี stopped dropping the last three columns — `screenTablePrint` is the 121st file, seven cases, and two of them pin rules that go AGAINST a browser default rather than with it: `@page` stays at margin 0, and `tfoot` is forced back to a row group so รวมทั้งหมด cannot reprint at the foot of every page — and "2033 across 119 files" until หนึ่งวัน หนึ่งใบ reached the printed sheet as well as the filing form — `oneRowPerDate` is the 120th file, fifteen cases, and the ones that matter are about the hours the sheet now drops rather than the rows it no longer draws — and "2025" until หน้ารายละเอียด on รายการ OT ของฉัน started drawing the reviewer's three cards — eight new cases in `approverLine`, and NO new file, which is the point of that round: `ReasonCard`, `CapCard` and `SignatureFacts` moved into `components/common.jsx` and both pop-ups read them, so what would have been a second file of assertions about a second copy is two blocks added to the files `description` and `queueCapUsage` already had — and "2006 across 118 files" until the two ลงชื่อ columns on F-HR-027 started printing the names — `formSignatures` is the 119th file, nineteen cases, and most of them are about the rows where a name may NOT be printed — and "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
+and the engine know nothing about Next.js, so the whole suite — **2240 tests
+across 124 files**, measured 2026-09-07 — runs with plain `node --test`, no
+server and no database. Only `app/` and `lib/` touch the framework. (It read "2195 tests across 124 files … measured 2026-09-04" until **เรียงใบตามรหัสพนักงาน reached every list of ใบ rather than the two report screens alone** — six cases and NO new file, because the comparator is one function in `lib/entries.js` and the endpoint that reads it is one endpoint: five of the six are in `entryListCap`, beside the cap they have to be read with, since the query still orders by date and what a full list drops is still the OLDEST and not whoever falls past the middle of the register. — and "2165" until **a month of scanner files became FOUR files rather than two** — six more cases in `scanFile` and NO new file, because the reading did not change: what arrived is the other half of a file's identity. Two of the six are the machine numbering, which is a LABEL nobody can check against the bytes and is therefore pinned here; two are the company, decided from the roster and never from the `PM` / `THT` prefix, with a disagreement REPORTED rather than resolved; and two are the grid — that four is `SCAN_FORMATS.length × companies.length` and never a literal, and that a file which fits no slot is not quietly counted into one. — and "2157 across 121 files" until **the last twenty `<select>`s in the app became `PickOne`** — `noNativeSelect` is the 122nd file, four cases, and it is one rule over the whole tree rather than the per-screen bans that preceded it: no component draws a `<select>`, a `type="date"`, a `type="month"` or a `type="time"`, and every list that opens is `.pick-menu`. The fifth case is in `queueDropdown` and is the thing that had to exist before ทะเบียนพนักงาน could drop its tag — a row that is ON the list and is not this person's to take, refused to the pointer, to Enter, to ↑/↓, to Home/End and to the letter somebody types out of habit, because `<option disabled>` did all five for free and an `<li>` has none of them — and "2139 across 120 files" until **ไฟล์ .txt จากเครื่องสแกนนิ้วมือ became something ฝ่ายบุคคล can import from ตรวจสอบประจำเดือน** — `scanFile` is the 121st file, eighteen cases, and the samples in it are the two real files byte for byte rather than tidied-up ones: the TIS-620 header, the UTF-8 byte-order mark and the space padding are the whole of what the module has to survive. Only five of the eighteen are about reading a good line. The rest are the silent failures available to a file that arrives once a month from a machine nobody here configured — a header counted as a scan, `07/25` read as 7 January, a TIS-620 byte becoming `�` in the copy of the file the system keeps, and the same person at the same second stored twice — plus the one property that makes the preview checkable instead of believable: every line of the file lands in exactly one of four piles and the four add up. **Nothing in the app reads what it stores**, which is the state on purpose and is written into the model — and "2123" until **the question got a standing answer** — sixteen more cases in `birthDateImport`, for ตั้งค่าระบบ → รูปแบบวันที่ใน CSV and the decision that an unsettleable file is now READ under it rather than refused. Nine of the sixteen are the boundary rather than the feature: the interpreter called with no options still refusing, evidence still beating the setting and not being REPORTED as the setting, a month-first file still refused whatever is set, a self-contradicting file still refused, a per-file answer still outranking the company's, and a bad setting throwing instead of going quiet. The rest are the setting itself — it cannot hold a value the interpreter would throw on, it is not inside `policy` where it could mint a version, the screen previewing a file reads the same value the route will, and the panel says out loud which rows it read that way — and "2110" until **the ambiguous วันเกิด column started being a QUESTION** — thirteen more cases in `birthDateImport` and one rewritten in `smartDate`, for the round that let HR say "this file is วัน/เดือน/ปี" instead of being sent back to Excel to retype a column by hand. Eight of the thirteen are refusals that must SURVIVE the feature: a declaration the file contradicts, in both directions; a file that contradicts itself, under every declaration and none; an unrecognised order that has to throw rather than quietly become "nobody answered"; and the plain ambiguous file with nobody answering, which must be refused exactly as it always was. The other five are the promise the feature rests on — the answer comes from a person, the rows are read back before anything is written, and what travels with the upload is the answer rather than the dates the screen computed from it — and "2088" until **a refused roster CSV started naming every line it was refused over, `01/01/2540` stopped being called ambiguous, and the picker moved to the sentence telling HR to use it** — eleven cases in `birthDateImport` and NO new file, because the interpretation rule did not change then: the three refusals are the same three, and what they now carry is `blocking`, the whole of the evidence rather than the first line of it. Four are about that list — every ambiguous row, both sides of an inconsistent file in line order, the ambiguous rows that ride along with a month-first one because they are wrong too, and the empty list a file that IMPORTS has to keep. Four are the case that had no business being refused at all: a cell whose day and month are the SAME NUMBER reads identically either way, and it was being listed as `เป็นได้ทั้ง 1 มกราคม 1997 และ 1 มกราคม 1997` and helping refuse whole files over a doubt with no consequence — with one of the four on the template, which wrote `1989-05-12` and so could not survive being opened and saved in the Excel it is handed to somebody to type into. The other three are about the screen: the panel that lists the lines, the server refusal that used to arrive as one sentence with its payload dropped, and the error message that had no way off the card. The rest of the move to 2108 landed in the same tree from the queue and roster work, not from this round — and "2074 across 119 files" until **the queues of the four who sign the first step started listing a request until it is confirmed** — `queueRoleFilter` is the 120th file, and the fourteen cases in it are mostly not about the `บทบาท` dropdown that was asked for: they are about the two silent failures the round could have shipped, a queue offering a decision on a row its reader may not sign, and a filter the SCREEN sets that empties the table without saying it did — and "2071" until **ตั้งรหัสผ่านของคุณ was deleted** — the screen an account with `mustChangePassword` used to meet before anything else. One case in `tempPassword` and NO new file: the case that used to say the flag reaches a gate now says it reaches a strip on the landing tab, and bans the gate coming back under any name. The count moved by one because the sentence naming the character set went from being asked for on two screens to being banned everywhere but the form — and "2000 across 118 files" until **บันทึกเป็น PDF started producing a file** rather than naming a destination in the browser's own print dialog — `printPdf` is the 119th file, twenty-six cases, and eleven of them are one table: every way a script, a frame or a fetch can be spelled in markup that arrives from a browser, each its own case, because the failure that matters is ONE of them starting to get through while the rest still do not. The cases that are not about that lock are about the promise the feature rests on — that the file is the DOM the printer would have been given, never a second rendering of the month — and the one print view that refuses to make a file at all, which is the password slips — and "1983 across 117 files" until **บทบาท went from four to seven** — `roles` is the 118th file, seventeen cases, and only the first handful are about the seven themselves: the rest are about the rename underneath them, because the retired `manager` used to BE a role and used to mean หัวหน้างาน. The two that earn the file are the ban on that spelling returning to `app/`, `lib/`, `src/`, `components/` or `legacy/` — with `hrRejectReturnsTo` and `Department.manager` named as the only lines allowed to keep it — and the case that fails if `ROLES` is ever tidied into alphabetical order, which would silently make ผู้ดูแลระบบ the lowest rung because `outranks` reads its answer off that array's index — and "2096 across 122 files" until สวัสดิการวันเกิด went back to being filed by the person whose birthday it is and ฝ่ายบุคคล’s birthday work was withdrawn — the only round in this history where the file count went DOWN: seven files left (absentCallout, birthdayCardUi, birthdayCheck, birthdayDirectApproval, birthdayFileSheet, birthdayQueue, birthdaySelfFiling) and two arrived, `birthdayTick` for the claim the tick makes and `flatDaily` for the eight-hour day — and "2070 across 121 files" until ฝ่ายบุคคล's queue started listing a request from the moment it was filed — `queueStatusColumn` is the 122nd file, twenty-one cases, and only four of them are about the สถานะ column that was asked for: the rest are about what a queue has to stop offering once it holds a row its reader cannot sign, and about the two things the twelfth column pushed out of shape — the sentence that stands in place of a row's buttons, and the ceiling figure that went under them — and "2060 across 120 files" until Ctrl+P on รายงาน OT ฝ่ายบัญชี stopped dropping the last three columns — `screenTablePrint` is the 121st file, seven cases, and two of them pin rules that go AGAINST a browser default rather than with it: `@page` stays at margin 0, and `tfoot` is forced back to a row group so รวมทั้งหมด cannot reprint at the foot of every page — and "2033 across 119 files" until หนึ่งวัน หนึ่งใบ reached the printed sheet as well as the filing form — `oneRowPerDate` is the 120th file, fifteen cases, and the ones that matter are about the hours the sheet now drops rather than the rows it no longer draws — and "2025" until หน้ารายละเอียด on รายการ OT ของฉัน started drawing the reviewer's three cards — eight new cases in `approverLine`, and NO new file, which is the point of that round: `ReasonCard`, `CapCard` and `SignatureFacts` moved into `components/common.jsx` and both pop-ups read them, so what would have been a second file of assertions about a second copy is two blocks added to the files `description` and `queueCapUsage` already had — and "2006 across 118 files" until the two ลงชื่อ columns on F-HR-027 started printing the names — `formSignatures` is the 119th file, nineteen cases, and most of them are about the rows where a name may NOT be printed — and "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
 "101 files" through all of them and moved with
@@ -3227,7 +3267,23 @@ than recomputed in the browser. It is withheld on a proxy filing, since it would
 tell a หัวหน้า when their team member was born, and withheld when the box IS
 ticked, since the ⓘ line at the top of the form has already said it.
 
-### เหมารายวัน — a day hired whole counts eight hours
+**And ฝ่ายบุคคล can put the tick right without refusing the request — 2026-09-07.**
+The box is in `แก้ไขชั่วโมง` inside รายละเอียด on รออนุมัติ OT as well as on the
+filing form (`QuickEdit` in [`components/ApprovalQueue.jsx`](components/ApprovalQueue.jsx)),
+because a request filed with the box in the wrong state had one way out of that
+screen and it was ไม่อนุมัติ — the round trip the panel exists to spare. It is
+the same claim checked the same way: the panel asks the preview, prints
+`birthdayRefusal` in its one banner and greys บันทึกชั่วโมงใหม่ on it.
+
+**Only ฝ่ายบุคคล and ผู้ดูแลระบบ are shown that box**, through
+`mayCorrectEntries` — the very predicate `editPermission` accepts a correction
+from, so the tick cannot be drawn for somebody the route would answer 403 to. It
+is the หัวหน้า rule of the paragraph above, turned around: a signer is not told
+when their team member was born, so a box they could only tick by guessing is a
+box that teaches them the answer through its refusal. **เหมารายวัน is NOT behind
+that gate** — whether a day was hired whole is not a private fact about a person.
+
+### เหมารายวัน — a day hired whole counts eight hours of OT ×1.5, in the column the day decides
 
 **HR's rule, 2026-09-03**, asked for in these words: some departments do work
 เหมา, *but not every day and not everybody*. So it is a **tick on the request**
@@ -3239,11 +3295,111 @@ entry, is in `ENTERED_FIELDS`, and makes an edit that toggles it a real edit wit
 a `before` on it.
 
 Ticking it fills 08:00–17:00 in, like the **วันเกิด** box beside it and through
-the same one handler, so the two cannot come to fill in different days. **The
-times stay editable** — that was asked for in the same breath, because somebody
-who came in at 07:30 files 07:30 — and the day still counts eight hours: HR's
-answer to what happens when the times are then stretched was *“แก้ได้ แต่นับแค่
-8 ชั่วโมง”*.
+the same one handler, so the two cannot come to fill in different days. **เวลาเริ่ม
+stays editable** — that was asked for in the same breath, because somebody who
+came in at 07:30 files 07:30 — and on a flat day the times then change **nothing
+at all** in the figures.
+
+**เวลาสิ้นสุด is not typed; it is เวลาเริ่ม plus nine hours.** HR, 2026-09-07:
+*เปลี่ยนเวลาเริ่มได้ แต่เวลาจบไม่สามารถปรับได้ ให้บวกจากเวลาเริ่ม 9 ชั่วโมงอัตโนมัติ
+… คือ บวกเวลาพักด้วย*. Start at 07:00 and the box reads 16:00; the box is greyed
+out and moves only when the start does. A flat day is a **fixed length** — the
+office day bought whole — so its finish is an answer to where it began rather
+than a second thing to be typed, and 07:00–18:00 was a row that read as eleven
+hours, paid eight, and carried nothing explaining the gap.
+
+> This section read “**The times stay editable**” until 2026-09-07, of both
+> boxes. Only the start half of that survives. The วันเกิด tick beside it is
+> **unchanged** and both of its times are still free: a birthday is an ordinary
+> shift on a day that happens to be a holiday, and its length is whatever it was.
+
+**Nine on the clock, eight on the pay, and both are true.** The span is
+`FLAT_DAY_SPAN_MINUTES` in [`lib/entries.js`](lib/entries.js) — eight hours of
+work with the hour at noon in the middle of them — and it decides only what the
+two boxes read. The figure stays `flatDailyMinutes()`, derived from the policy
+below, so **ใบขออนุมัติทำงานล่วงเวลา counts eight hours, break excluded**, on a
+07:00–16:00 day exactly as on an 08:00–17:00 one. `flatDayEnd('08:00')` is
+`'17:00'`, which is what keeps the fill and the rule from drifting apart;
+test/flatDaily.test.js holds them to it.
+
+The derived end **wraps**, and ทำงานข้ามคืน is greyed out with it: a flat day
+begun at 16:00 finishes at 01:00, and an end before its start with that box
+unticked is `END_BEFORE_START` out of the engine, on a time nobody typed. The
+same press that computes the end computes whether it crossed midnight. **A flat
+row already stored keeps its own times** and is not re-derived when the form
+opens it — 08:00–20:00 was a legal flat day before this rule, its end is the
+record of when somebody was on the premises, and the figures are eight either
+way. Re-picking เวลาเริ่ม is what re-derives it.
+
+**The tick is also in `แก้ไขชั่วโมง` on รออนุมัติ OT — 2026-09-07 — and there it
+fills in nothing at all.** A request filed without it reads as an ordinary
+twelve-hour shift and pays like one, with nothing on the row saying a tick is
+missing; before this, putting that right meant refusing the request and having
+it filed again. What does NOT come across from the filing form is the
+08:00–17:00 fill: on that form those two times are a default nobody has typed
+over yet, and in the review panel they are the times printed on F-HR-027 and
+signed. Overwriting them would falsify the sheet to move a figure the sheet does
+not carry — eight hours whatever the clock says. The rest is the same rule from
+the same `flatDayEnd`: the end box is greyed, and re-picking เวลาเริ่ม is what
+moves it. See `QuickEdit` in [`components/ApprovalQueue.jsx`](components/ApprovalQueue.jsx).
+
+#### The eight hours are OT ×1.5, and the day says which column
+
+**HR settled it on 2026-09-07, in one sentence:** *ให้คิดตามวันไปเลย **ถ้าวันหยุด
+ก็ใส่ 8 ชั่วโมงวันหยุด ถ้าไม่ใช่วันหยุดก็ใส่ 8 ชั่วโมงวันปกติ** แต่แค่เป็นแบบเหมา*.
+Three decisions in one line, and they are separable:
+
+- **The column is the day's.** A holiday — Saturday, Sunday, the company
+  calendar, or the filer's own วันเกิด — puts the eight hours in `ot15_holiday`;
+  an ordinary working day puts them in `ot15_weekday`. Nothing in the flat branch
+  re-decides what kind of day it is: `resolveDayTypes` has already answered that
+  for this employee, and the answer is read rather than recomputed.
+- **The length is the tick's.** `flatDailyMinutes(policy)` and nothing else,
+  in both directions — *สแกนเข้าก่อนหรือออกก่อนหรือหลัง 17:00 น. ก็คือ 8 ชั่วโมง*.
+- **The rate is ×1.5 always.** On a holiday every minute is a holiday minute, so
+  reading the bucket off the clock would put an evening start in `ot3_holiday`.
+  **`ot3_holiday` is nought on every flat day there is** — the multiplier is
+  written into the branch and never clocked.
+
+**An overnight flat shift is one day and one row**, dated `workDate`. A Saturday
+evening running to 06:00 Sunday is eight hours in total rather than eight per
+date, and the column is Saturday's — reading the far side would let it depend on
+how late somebody stayed, which is the opposite of *แบบเหมา*.
+
+**A flat day now spends the ceiling and reaches payroll's multiplier**, and that
+is the part to say out loud rather than leave to be discovered in a total: hours
+in a rate column are counted by `lib/caps.js` against the department's monthly
+and weekly limits and are weighted ×1.5 on สรุป OT ส่งบัญชี. Under the
+2026-09-04 reading they did neither — they were `normalHours`, which no ceiling
+reads. Walked on 2026-09-07: filing one flat weekday for an employee already at
+34 hours of a 40-hour month put the row over the limit, and signing it cost the
+approver a written reason, exactly as any other over-ceiling row does.
+
+> **This has been answered three times and the two withdrawn readings are worth
+> keeping**, because each explains a shape in the code and in the tests.
+>
+> **A ceiling** (2026-09-03 → 2026-09-04): the day was computed the ordinary way
+> and trimmed back to eight from the end. An evening beginning at 20:00 kept its
+> `ot3_holiday`, and a half day was paid a half day, because a ceiling is a
+> maximum.
+>
+> **Not OT at all** (2026-09-04 → 2026-09-07): *ก็คือ 8 ชั่วโมงไม่มีบวกเพิ่ม*
+> read as the ordinary day. All three rate columns at nought and the eight hours
+> in `totals.normalHours`, on the reasoning that a day already paid for by the
+> flat rate could not also be an overtime claim.
+>
+> For part of 2026-09-07 there was a fourth, narrower rule between them: OT ×1.5
+> **only** on a flat day that fell on the filer's own วันเกิด, *เฉพาะวันที่ไม่ได้
+> เป็นวันเสาร์อาทิตย์และวันหยุดบริษัท*, with every other flat day still eight
+> normal hours. It was widened the same day to the rule above, and the carve-out
+> went with the narrowing that needed it.
+>
+> What survived all four is the LENGTH. `totals.normalHours` is nought on every
+> session the engine computes now, and stays on the model for the rows written in
+> those three days — see the field's own note in
+> [`src/models/OtEntry.js`](src/models/OtEntry.js). The warning is
+> `FLAT_DAILY_CAPPED`, its ceiling-era name, restored with the arithmetic that
+> gives it one; `FLAT_DAILY_NO_OT` went out with the reading that produced it.
 
 **Eight is not a setting.** `flatDailyMinutes()` in
 [`src/lib/otEngine.js`](src/lib/otEngine.js) derives it from
@@ -3252,31 +3408,53 @@ ordinary day is already drawn out of — so a company that moves its core hours
 moves this with it and there is no second number in ตั้งค่าระบบ for the two to
 disagree over.
 
-**The cap runs last, after the buffer, the rounding and the minimum**, and the
-order is the rule: those three ask *how much of this is OT*, and this one asks
-*how much of that is paid*, which is a question about the day. Run earlier,
-rounding could hand back minutes the flat day had already refused and
-`belowMinimum: 'raise'` could pad a capped session past the cap.
+**It short-circuits the other four rules rather than running after them**, and
+the ordering is the rule. The buffer, the rounding block and the minimum each ask
+*how much of what was worked is payable OT*, and a flat day does not answer that
+question: the figure is the day's own length, agreed in advance. Left in front of
+it, `belowMinimum: 'reject'` would throw a flat evening out of the form for being
+under an hour of overtime it is not measuring, and `'raise'` would pad a figure
+that is already exact. `NORMAL_HOURS_IGNORED` is dropped with them: nothing on a
+flat day is ignored for falling inside ordinary hours — the whole day is the
+claim.
 
-**It trims from the END, in clock order.** A flat day is the standard day plus
-whatever came after it, and what the tick says is that the tail is not
-separately payable — so 08:00–20:00 on a holiday keeps eight hours of
-`ot15_holiday` and drops the three of `ot3_holiday`. Spending the cap out of the
-longest segment (the way a flat break is spent, see `applyFlatDeduction`) would
-take the hours out of the middle of the day and leave the evening on the sheet,
-which is the opposite of what anybody ticking this box means.
+**Eight however long they stayed — and however short.** *เข้าก่อน / ออกก่อน /
+หลัง 17:00* all read the same: a flat RATE is a price, not a measurement, so a
+day that was sold whole is worth the whole day even if somebody went home at
+noon. This is the half that reverses the ceiling outright, which did not pad a
+short day because a ceiling is a maximum. The hours beyond eight are
+`flatDailyTrimmed` and are named by `FLAT_DAILY_CAPPED` — 08:00–20:00 on a
+holiday is eight counted and three trimmed. A day shorter than eight trims
+nothing and says nothing.
 
-**The clock times stay as worked**; only the counted minutes drop, which is the
-same split §3 already makes for the lunch hour. `totals.clockHours` is still the
-whole shift, the printed form still shows when the person was here, and
-`flatDailyTrimmed` on the result — with a `FLAT_DAILY_CAPPED` warning beside it —
-is the only place the two figures can still be told apart. A short เหมา day is
-**not** padded up: the cap is a ceiling, not a figure, and inventing an afternoon
-nobody worked is not something this system does anywhere else either.
+**The clock times stay as worked.** `totals.clockHours` is still the whole
+shift, `totals.breakHours` is still the break that was taken, the row prints the
+times somebody was here, and every scan punch of the day is drawn beside them.
+The segment's `minutes` is deliberately not `end − start` — `applyFlatDeduction`
+has always shortened a segment without moving its clock.
 
-An overnight เหมา shift is still **one day**: the cap is per request, so a
-Saturday evening running to 06:00 Sunday counts eight hours in total rather than
-eight per date, and the Sunday morning is the part that goes.
+**A flat day prints on F-HR-027**, and that follows from the rule rather than
+from a decision about the paper: the sheet is filled from `entry.segments`,
+`onSheet` keeps a request off a month it has no segment in, and a flat day has
+one segment carrying eight hours in a rate column. **This is new on 2026-09-07.**
+Under the 2026-09-04 reading a flat request had no segments at all — no OT hours,
+nothing to put in a rate column — so it was in the system, signed off, and absent
+from the overtime form; and the **[OPEN]** item asking ฝ่ายบุคคล whether they
+wanted those days listed on paper anyway is **closed by the rule**, not by an
+answer. They are on the sheet, in the column the day gives them.
+
+**It was the one request this system stored with no OT hours on it**, and it is
+not any more. Every write path refuses `otHours <= 0` — the 0-hour rule, whose
+sentence is `noOtHoursMessage` in [`lib/entries.js`](lib/entries.js) — because a
+stored nought is a row in a queue, a line on F-HR-027 and a name in a monthly
+total all saying somebody worked no overtime, which reads as a mistake and cannot
+be told apart from one. `zeroOtHoursAllowed` beside that sentence exempted the
+flat day, is still asked by POST, by PUT, by the legacy router, by the replay and
+by the บันทึก button, and now **has almost nothing left to excuse**: a flat day
+arrives with eight hours like any other request. The one way back to nought is a
+policy whose core day is zero-length, and on that policy the exemption is still
+the right answer — the alternative is refusing every เหมารายวัน request with a
+message about times that are not the problem.
 
 ### หนึ่งวัน หนึ่งใบ — one line per day on the paper, one request per day in here
 
@@ -3801,9 +3979,58 @@ requires none of them: a scan near 17:30 is evidence somebody was at the door at
 
 | | means | tone |
 |---|---|---|
-| `ok` | the end has a scan within the tolerance, and so does the start **or** the start had no scan to have (see below) | no chip |
-| `mismatch` | the end has no scan near it, or the start has one that disagrees — the nearest is quoted with its distance | amber, `.chip.scan-off` |
+| `ok` | the scan-out **reached** the end the request claims (`>=`, no window — 2026-09-07), and the start either has a scan within the tolerance **or** had no scan to have (see below) | no chip, unless it overran by a block — see เกินเวลา |
+| `mismatch` | the scan-out came **before** the requested end (ไม่ครบ, by any amount), or the start has a scan that disagrees — the punch is quoted with the shortfall | amber, `.chip.scan-off` |
 | `no_scan` | this person has no punches at all that day | quiet, `.chip.scan-none` |
+
+#### The words on the badges are HR's own — เกินเวลา · ไม่ครบ · ไม่ตรง
+
+**2026-09-07**, given as definitions rather than as a change request, which is
+how the vocabulary and the arithmetic came to be settled in one go:
+
+| word | ฝ่ายบุคคล's definition | the comparison | chip |
+|---|---|---|---|
+| **เกินเวลา** | *ขอโอทีมาน้อยกว่าที่ทำจริง — ขอมา 19:00 น. แต่สแกนออก 19:30 น.* | scan-out ≥ end + `SCAN_OVER_MINUTES` | grey, `.chip.scan-over` |
+| **ไม่ครบ** | *ขอโอทีมามากกว่าเวลาที่ทำจริง — ขอมาถึง 20:00 น. แต่สแกนออก 19:30 น.* | scan-out < end, by any amount | amber, `.chip.scan-off` |
+| **ไม่ตรง** | *ไม่มีการสแกนนิ้วแต่ยื่นขอโอที* | no punches at all that day | grey, `.chip.scan-none` |
+
+The three are named **from the request's point of view** — how the paper
+compares with the day — which is why เกินเวลา and ไม่ครบ are opposites rather
+than degrees of one thing. `SCAN_BADGE` in `lib/scanMatch.js` holds the words.
+
+> `ไม่มีข้อมูลสแกนนิ้ว` and `สแกนออกก่อนเวลา OT` were the wordings until
+> 2026-09-07; they are **ไม่ตรง** and **ไม่ครบ** now. A fourth badge is NOT one
+> of the three and keeps a longer name for that reason —
+> `เวลาเริ่มไม่ตรงกับสแกน` (`SCAN_BADGE.START_OFF`), a start the machine
+> actively disagrees with on a row whose end is fine. Calling it ไม่ตรง would
+> collide head-on with the word that now means *no scan at all*.
+
+##### เกินเวลา is a fact, and `state` does not move for it
+
+**A row that overran is still `SCAN_MATCH.OK`.** Asked and answered on
+2026-09-07 — *ข้อเท็จจริง ป้ายเทา ไม่นับกองที่ต้องตรวจ* — and the split is the
+one this feature keeps arriving at: the **verdict** answers *does somebody have
+to look at this row* and the answer is no, while the **mark** says what the
+machine witnessed. `metEnd` stays `>=` and the earlier decision of the same day
+stands; `overTime` is a flag beside it, built exactly as `missingOtStart` is.
+
+**The threshold is one OT block — `SCAN_OVER_MINUTES`, 30 นาที**, asked for as
+*เกิน 30 นาที (เท่าบล็อก OT)*. Two reasons and both matter. The engine floors OT
+to whole 30-minute blocks, so an overrun shorter than a block contains no OT the
+person could have claimed even had they filed it. And nobody's last door event
+lands on the exact minute their request ends — at zero grace a 20:03 scan on a
+20:00 request is เกินเวลา and so is most of the month, which is the
+mark-on-every-row failure this module has already paid for twice. **The short
+side keeps no grace at all** (*ถ้าเวลาไม่ตรงกันขึ้นทุกกรณี*): a shortfall is a
+claim to money, an overrun is a gift, and a gift three minutes wide is not news.
+
+**The line under the chip says the minutes were not paid** — *ชั่วโมงคิดตามใบที่
+ยื่น ไม่ได้บวกเพิ่มให้*. Without it, "the machine saw more than the paper" reads
+as an amount owed. Nothing here has ever moved a figure and this does not either.
+
+**Never on a เหมารายวัน row.** A day bought whole never claimed a length, so
+there is nothing for a scan to exceed; `overTime` carries `!flatDaily` so the
+new sentence cannot appear under the green chip.
 
 **And one MARK that is not a verdict**, drawn beside any of them:
 `ไม่ได้สแกนเข้า OT` (`missingOtStart`, quiet, `.chip.scan-noin`) — the start of
@@ -3822,61 +4049,150 @@ person may have been at another site. They ask different things of the reader.
 #### เหมารายวัน is a FACT, not a warning — the row is green
 
 **ถ้าติ๊กเหมารายวัน เวลาสแกนไม่ตรงไม่เป็นไร แต่ต้องมีแจ้งเตือนว่าเขาเหมารายวัน**
-(HR, 2026-09-04). A flat day is bought whole — the hours are eight however long
-the person stayed — so **the times on that request are not a claim the machine
-can contradict.** What the row needs to say is not "look at this", it is "this
-one was filed flat".
+(HR, 2026-09-04). A flat day is bought whole — eight hours however long the
+person stayed — so **the times on that request are not a claim the machine can
+contradict.** What the row needs to say is not "look at this", it is "this one
+was filed flat". (Which column those eight hours land in is the day's answer —
+see the rule above — and it changes nothing here: no flat day states a length a
+scan can be short against.)
 
 So a `flatDaily` row draws `FlatDailyMark`: the green chip **เหมารายวัน**, the
 same green `OT สวัสดิการวันเกิด` wears, because the two are the same kind of
 fact — how a request was filed, and why its hours were counted the way they
 were. `ScanMismatchMark` stands down entirely on those rows; there is never an
-amber mark on a flat day. The NUMBERS survive underneath in the quiet voice,
-because 70 minutes is worth knowing even when it is nothing to fix — and every
-one of them ends **— ยังได้ 8 ชั่วโมงตามเดิม**.
+amber mark on a flat day. This paragraph went on **“The NUMBERS survive
+underneath in the quiet voice … and every one of them ends — ยังได้ 8 ชั่วโมง
+ตามเดิม”** until later the same day: the shortfall was withdrawn from flat rows
+altogether on 2026-09-07 — see the fix below the table.
+
+**Under the chip, on every flat row, the rule itself**: `FLAT_DAILY_SAY` —
+**พนักงานเหมารายวัน — นับ 8 ชั่วโมงเป็น OT ×1.5 ไม่ว่าจะอยู่นานแค่ไหน**. That line
+is unconditional, and it has to be: the rate column beside it reads `8.00`
+against times that may say five hours or twelve, which on any other row would
+mean the entry failed to compute. Drawn only where a scan disagreed — which is
+what it did while it only had to say the disagreement was fine — the figure would
+be unexplained on every other flat row. One exported constant, used by the badge
+and by the form’s preview, so the screen that files a flat day and the screen
+that reviews one cannot word the rule twice.
+
+**It does not name the column, and that is deliberate.** The one string is drawn
+on วันหยุด rows and วันปกติ rows alike, so a sentence saying "วันหยุด" would be
+wrong on half of them — and the column is on the row already. What is not on the
+row is why a twelve-hour shift reads 8.00.
+
+> It read **พนักงานเหมารายวัน — นับ 8 ชั่วโมงปกติ ไม่คิดชั่วโมง OT** while there
+> were three noughts to explain (2026-09-04 → 2026-09-07), and for part of
+> 2026-09-07 there were TWO constants — `FLAT_DAILY_BIRTHDAY_SAY` beside it and
+> `flatDailySay()` choosing between them off the engine's `dayReason` — while the
+> OT reading was a rule about วันเกิด days only. Both went out with that
+> distinction the same day.
 
 **It is drawn from `entry.flatDaily`, never from `scanCheck`** — so it is on the
 row in a month whose scanner file nobody has imported, and it was true before
 this system could read a punch at all. A mark that appeared only once somebody
 uploaded a `.txt` would mean two different things on two different months.
 
-##### The three shapes a flat day takes, and why they read alike
+##### The four shapes a flat day takes, and why they all read as ONE LINE
 
-HR named them: **ไม่ได้สแกนนิ้ว · สแกนออกก่อนเวลา · สแกนเข้าแต่ไม่ได้สแกนออก.**
-All three land on the same answer — the sheet still gets its eight hours and
-nobody does anything — so all three end in the same reassurance:
+HR named three: **ไม่ได้สแกนนิ้ว · สแกนออกก่อนเวลา · สแกนเข้าแต่ไม่ได้สแกนออก**,
+and an overrun is the fourth. All four land on the same answer — the sheet gets
+its eight hours and nobody does anything — and since **2026-09-07** they all
+print the same single line, with nothing after it:
 
-| what happened | the row says |
+| what happened | the row says under the green chip |
 |---|---|
-| no punch at all that day | `ไม่มีข้อมูลสแกนของวันนี้ — ยังได้ 8 ชั่วโมงตามเดิม` |
-| left before the claimed end | `เวลาสิ้นสุด สแกน 15:40 ก่อนเวลา 80 นาที — ยังได้ 8 ชั่วโมงตามเดิม` |
-| punched once, nothing at the end | `เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง — ยังได้ 8 ชั่วโมงตามเดิม` |
+| no punch at all that day | `พนักงานเหมารายวัน — นับ 8 ชั่วโมงเป็น OT ×1.5 ไม่ว่าจะอยู่นานแค่ไหน` |
+| left before the claimed end | *(the same line)* |
+| punched once, nothing at the end | *(the same line)* |
+| stayed past the claimed end | *(the same line)* |
+| the times agree with the file | *(the same line)* |
 
-**Not scanning at all is a KIND of flat day, not a gap in one** — and that was
-the one place the sentence still read as a problem after the first reversal:
-`no_scan` was getting the bare "ไม่มีข้อมูลสแกน" with no reassurance after it.
+One line for every kind of flat day as well as every kind of scan: a วันหยุด row
+and a วันปกติ row say the same thing here, because what differs between them is
+the column, and the column is on the row.
 
-**ก่อนเวลา / หลังเวลา, never เข้า / ออก.** The scanners write no in/out flag, so
-"สแกนออกก่อนเวลา 80 นาที" would be this module inventing the one field the file
-does not have. Which SIDE of the claimed time a punch fell on says the same
-useful thing and claims nothing about which way the person was walking.
+> **This is a fix, and the thing it fixes is a sentence that argued with
+> itself.** Until then the line carried the scan finding as well — `… ไม่คิด
+> ชั่วโมง OT · เวลาสิ้นสุด สแกน 15:40 · ขาดอีก 80 นาที — ยังได้ 8 ชั่วโมง
+> ตามเดิม` — on the reasoning that the numbers were worth knowing even where
+> nothing was wrong. Reported as a bug on 2026-09-07 and it is one: the first
+> half says the times on this request are not something the machine can be short
+> against, and the second half measures a shortfall against them anyway.
+> **ไม่มีการตัดเวลา** — the eight hours are not reduced by anything a scanner
+> recorded, so there is no shortfall to state. The same edit took it off the
+> chip's `title`, which had carried the long `ใบนี้เป็นใบเหมารายวัน … (ไม่ต้อง
+> แก้)` version of the same contradiction.
+>
+> `scanMismatchDetail` returns null on a flat row now — first, above `no_scan`
+> and above เกินเวลา — so no screen can print it: the chip, its tooltip, the
+> line beneath it and the badge all read one answer.
 
-**The eight hours were checked against the engine, not assumed** — on a holiday,
-`08:00–17:00` `flatDaily` computes to exactly 8 h (nine hours less the
-12:00–13:00 break), and `08:00–20:00` computes to 8 h with 3 h trimmed. Worth
-one caveat: on an ordinary WEEKDAY those same times are core hours and compute
-to **0** OT with or without the tick — a whole day is hired on a holiday, which
-is where the figure people mean actually appears.
+**The row is not left without evidence.** `ScanDayPunches` still prints the
+day's own scan times under it, as it does on every row that has any. What is
+gone is the arithmetic against a claim a flat day never made — a reader who
+wants to check the filing has the raw times and can do it themselves.
+
+###### A row reading `08:00–17:00` on an ordinary Wednesday is a flat day, and that is the whole of it
+
+Reported alongside the sentence above — *ช่วง 08:00–17:00 ในวันทำงานปกติ … ไม่
+ควรถูกนำมาคำนวณเป็นรายการ OT* — and the row it names (22/07/2569, PM00112) is
+`flatDaily: true`, `totals.otHours` **0**, `totals.normalHours` **8**. It is not
+being counted as OT: every rate column on it is nought, which is the rule since
+2026-09-04. The 17:00 is the form's own arithmetic — a เหมารายวัน filed at 08:00
+gets a nine-hour span (8 + lunch) and the end box is not typed.
+
+**No OTHER row can be in that state.** `zeroOtHoursAllowed` in lib/entries.js
+returns `flatDaily` and nothing else, so every write path — submit, the employee
+edit, the HR correction, the legacy router and the replay — refuses a request
+that computes to no OT hours, with `noOtHoursMessage` naming the reason.
+Counted on the database on 2026-09-07: **0** non-flat rows with `otHours ≤ 0`.
+That is why the flat-day gate above is the complete answer to "hide the OT
+shortfall warning on a row that claims no OT" — there is no second kind of row
+to hide it on.
+
+**ก่อนเวลา / หลังเวลา, never เข้า / ออก** on the rows that *do* still get a
+sentence. The scanners write no in/out flag, so "สแกนออกก่อนเวลา 80 นาที" would
+be this module inventing the one field the file does not have. Which SIDE of the
+claimed time a punch fell on says the same useful thing and claims nothing about
+which way the person was walking.
+
+**The eight hours were checked against the engine, not assumed** —
+`flatDaily` on `08:00–17:00` and on `08:00–20:00` both compute to
+`totals.normalHours` **8** with every rate column at nought, on a holiday and on
+a weekday alike. Since 2026-09-04 the day of the week no longer changes the
+answer at all, which is the point of the rule and was not true of the ceiling
+that preceded it: **a paragraph here used to have to caveat that a weekday flat
+day computed to 0 while a holiday one computed to 8.** Both are the same eight
+normal hours now, and neither is OT.
 
 ##### Telling the two piles apart for the whole month
 
 *"แจ้งเตือนเพื่อให้ HR แยกออกระหว่างงานเหมากับเวลาไม่ตรงงานปกติ"* — the chips do
 that row by row, in colour. `summariseScanChecks` does it for the month, in a
-number, above the table: **`1` แถวเวลาไม่ตรง · `0` แถวไม่มีข้อมูลสแกน · `3`
-แถวเป็นใบเหมารายวัน**. A flat day is never counted into the warning piles,
-whatever its scan verdict — that exclusion IS the separation, written as
-arithmetic instead of as a colour, and it is where the rule can have a test on
-it rather than being an `if` inside a component.
+number, above the table: **`1` แถวไม่ครบ · `1` แถวเวลาเริ่มไม่ตรง · `0`
+แถวไม่ตรง (ไม่มีสแกนนิ้ว) · `2` แถวเกินเวลา · `3` แถวเป็นใบเหมารายวัน** — HR's own
+words in the order they defined them, and **only the first two are errands**. A
+flat day is never counted into the warning piles, whatever its scan verdict;
+เกินเวลา is counted ALONGSIDE the verdict rather than instead of it, since an
+overrun row is `ok` and can never double-count with the piles above it. Those
+exclusions ARE the separation, written as arithmetic instead of as a colour, and
+it is where the rule can have a test on it rather than being an `if` inside a
+component.
+
+**`mismatch` is still the whole errand pile and `short` + `startOff` partition
+it**, split on `endShortMinutes` — the same field `scanBadgeLabel` chooses
+between the two amber badges on, so a count and a chip cannot disagree about
+which shape a row is. That split was **found by walking the built app, not by a
+test**: the arithmetic was right, and a card reading `2 แถวไม่ครบ` over one
+ไม่ครบ row and one เวลาเริ่มไม่ตรงกับสแกน row was naming a pile after half of
+what was in it.
+
+> It read "**`1` แถวเวลาไม่ตรง · `0` แถวไม่มีข้อมูลสแกน · `3` แถวเป็นใบ
+> เหมารายวัน**" until 2026-09-07, with no เกินเวลา column and with the word
+> ไม่ตรง used as the umbrella for every mismatch. Both screens that draw this
+> line — ตรวจสอบรายเดือน and the import card on ตรวจสอบประจำเดือน — carry the
+> same four words, because two screens naming one comparison differently is how
+> a reader comes to believe they are two comparisons.
 
 The flat-day count still prints on a month with no scan file at all, because it
 is a fact about how the requests were filed.
@@ -3888,13 +4204,40 @@ is a fact about how the requests were filed.
 > find is exactly what teaches a reader to stop opening the amber marks that are
 > not nothing.
 
-**Matching needs no window; QUOTING does.** Whether a side matches is simply
-"is there a punch within the tolerance", and no window can affect that answer.
-What needs a bound is which punch gets NAMED when a side does not match: without
-one, the 07:26 arrival is quoted as the scan nearest a 17:30 start, 604 minutes
-away, and the sentence reads as broken. Past **eight tolerances** (two hours at
-the default, measured per side) it says ไม่มีสแกนใกล้เคียง instead, which is
-true.
+**Matching needs no window, and since 2026-09-07 the END does not either.**
+Whether the START matches is simply "is there a punch within the tolerance", and
+no window can affect that answer; the END stopped asking that question the same
+day and asks `>=` instead, which no window can affect either. It read "What
+needs a bound is which punch gets
+NAMED when a side does not match … past **eight tolerances** (two hours at the
+default, measured per side) it says ไม่มีสแกนใกล้เคียง instead, which is true"
+until then — and on the end that bound was making the screen contradict itself.
+A row printing `สแกน 07:30 , 22:15` underneath said `เวลาสิ้นสุด ไม่มีสแกน
+ใกล้เคียง` above it, because 22:15 was 135 minutes from a 20:00 claim and the
+bound was 120.
+
+Asked for in the shape of the fix — *ถ้ามีเวลาที่สแกนเข้าออกงานหลายเวลา ให้
+เปรียบเทียบเวลาที่ยื่นขอโอทีและเอาเวลาสแกนนิ้วที่ใกล้ที่สุดกับเวลาที่ยื่นขอโอที
+มา* — so **the end takes the nearest punch of the day however far it is**, and a
+gap over two hours is written in ชม./นาที (`gapText`) because "604 นาที" printed
+in the same words as a 40-minute discrepancy is what made a far punch read as a
+number the machine could not make sense of. Under two hours the wording is
+unchanged, so no sentence HR already reads was reworded.
+
+**No verdict moved with the WINDOW.** A punch inside the tolerance was inside
+the old window too, so lifting the bound changed evidence, not arithmetic. What
+did move verdicts, later the same day, is the rule the end is read by — `>=`
+instead of a distance — and that is stated as its own change above rather than
+folded into this one.
+
+**The START keeps the two-hour window**, and keeps it for the reason the bound
+existed: there the far punch is the 07:26 morning arrival, on nearly every row
+of the month, and quoting it as the scan nearest a 17:30 start is the noise this
+feature nearly died of. Past that window the start has no witness at all, which
+is what `ไม่ได้สแกนเข้า OT` below is the answer to. The end is safe unbounded
+because it is the one event of an OT day the machine is in a position to record,
+so a far punch there is a finding rather than a coincidence — `07:42` alone
+against a 19:30 end is HR's own third shape, สแกนเข้าแต่ไม่ได้สแกนออก.
 
 > That bound was `tolerance * 4` measured from the request's own ends, and it
 > was **wrong in the way that matters** — found by walking a built app on
@@ -3918,8 +4261,13 @@ after the first REAL month was walked. Every row with any punches now carries
 
 ```
 17:00–19:30
-สแกน 07:21 , 19:30
+สแกน 07:21, 19:30
 ```
+
+> The separator lost its leading space on 2026-09-07 — asked for in the shape
+> *แสดงเวลาสแกนนิ้วทั้งหมดของวันนั้นเสมอ เช่น "สแกน 07:34, 19:30"*. It reads as
+> an ordinary Thai list now rather than as a machine listing; nothing else about
+> the line changed.
 
 **Why a verdict alone was not enough, measured on the real July file.** The two
 people in it scan **twice a day** — arriving around 07:2x and leaving at 19:30 —
@@ -3939,7 +4287,7 @@ a bug but from how the door is actually used.
 **A system that cannot know which punch was meant to be which can still print
 what the machine said.** It costs nothing, assumes nothing, and hands the
 comparison to the person holding the sheet — who can see at a glance that
-`ใบ 17:00–19:30` against `สแกน 07:21 , 19:30` is an ordinary day.
+`ใบ 17:00–19:30` against `สแกน 07:21, 19:30` is an ordinary day.
 
 **Drawn on every row that has scans, matching or not.** Times that appeared only
 where something was wrong would be read AS a warning, which is the thing they
@@ -3975,23 +4323,51 @@ check something the reader could already see was fine.
 So: **a start with no punch near it is not a finding on a day that has a punch
 earlier than it.** That earlier punch IS the explanation — the person was inside
 — and the verdict then rests on the END, which is the one event of an OT day the
-machine is in a position to record. `missingOtStart` on the check carries it,
-so the verdict and the sentence cannot disagree about which rows have a start
-worth mentioning.
+machine is in a position to record.
+
+##### And the test is DIRECTION, not presence
+
+The rule above read `!start && onDay.some(...)` — *no punch near the start at
+all*, plus one earlier in the day — until 2026-09-04. On the two-punch day that
+is right. On the FOUR-punch day it silenced nothing, because there a punch near
+the start always exists.
+
+Two more answers from ฝ่ายบุคคล the same day settle what those extra punches
+are. **พักเที่ยงไม่ต้องสแกนนิ้ว**, so a day is two punches or four and the
+middle two are never lunch — they are 17:00 ตอนเลิกงาน and ตอนเข้ามาทำโอที, one
+trip out and back at the shift boundary. And **ไม่มีกะดึก**, so nobody's shift
+begins in the small hours and an earlier punch cannot be the start of something
+else.
+
+That is what makes the direction readable with no in/out flag. A request filed
+`18:00–20:00` on the four-punch day quoted `เวลาเริ่ม สแกน 17:35 ก่อนเวลา 25
+นาที` — and 17:35 is the person walking back **in**. They were inside from 17:35
+onward exactly as the two-punch person is inside from 07:42 onward. Presence
+cannot tell those apart; which side of the claimed start the punch fell on can.
+
+`startFinding` on the check carries the verdict and the sentence both, and
+`missingOtStart` is what is LEFT when there is no finding — never both on one
+row.
 
 | the day's punches, against a request `17:00–19:30` | before | now |
 |---|---|---|
-| `07:42 , 19:33` — two punches, the common shape | ⚠️ `เวลาเริ่ม ไม่มีสแกนใกล้เคียง` | ✅ no chip |
-| `07:42 , 17:02 , 17:28 , 19:31` — four punches | ✅ no chip | ✅ no chip |
-| `07:42 , 17:22 , 17:40 , 19:33` — left the shift 22 นาที late | ⚠️ | ⚠️ `เวลาเริ่ม สแกน 17:22 หลังเวลา 22 นาที` |
+| `07:34, 19:30` — two punches, the common shape (**Case A**) | ⚠️ `เวลาเริ่ม ไม่มีสแกนใกล้เคียง` | ⬜ `ไม่ได้สแกนเข้า OT` only — the scan-out reached 19:30 |
+| `07:42, 17:02, 17:28, 19:31` — four punches (**Case B**) | ✅ no chip | ✅ no chip |
+| `07:42, 17:22, 17:40, 19:33` — left the shift 22 นาที late | ⚠️ | ⚠️ `เวลาเริ่มไม่ตรงกับสแกน` · `เวลาเริ่ม สแกน 17:22 หลังเวลา 22 นาที` |
 | `19:33` alone — nothing before the OT began | ⚠️ | ⚠️ `เวลาเริ่ม ไม่มีสแกนใกล้เคียง` |
-| `07:42` alone — forgot to scan out | ⚠️ both sides | ⚠️ `เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง` |
-| `07:42 , 12:10` — went home at lunch | ⚠️ both sides | ⚠️ `เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง` |
+| `07:42` alone — forgot to scan out | ⚠️ both sides | ⬜ + ⚠️ `ไม่ครบ · ขาด 11 ชม. 48 นาที` · `เวลาสิ้นสุด สแกน 07:42 · ขาดอีก 11 ชม. 48 นาที — อาจลืมสแกนออก` |
+| `07:42, 12:10` — went home at lunch | ⚠️ both sides | ⬜ + ⚠️ `ไม่ครบ · ขาด 7 ชม. 20 นาที` |
+| `07:42, 19:20` — left 10 นาที early | ✅ no chip (inside the 15-นาที tolerance) | ⬜ + ⚠️ `ไม่ครบ · ขาด 10 นาที` — no grace on this side since 2026-09-07 |
+| `07:30, 22:15` against **`17:00–20:00`** — stayed past the claim | ⚠️ `เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง` | ⬜ + ⬜ `เกินเวลา · เกิน 2 ชม. 15 นาที` — **no longer a warning** |
+| `07:21, 17:02, 17:35, 20:05` against **`18:00–20:00`** | ⚠️ `เวลาเริ่ม สแกน 17:35 ก่อนเวลา 25 นาที` | ⬜ `ไม่ได้สแกนเข้า OT` only (20:05 is 5 นาที over — under the 30-นาที block) |
+| any of these, filed **เหมารายวัน** | 🟩 green only | 🟩 green only |
 
-**What still warns was asked for in that shape.** A punch that IS near the start
-and disagrees is quoted — something happened at the door near the claimed time —
-and a start with nothing at all before it is a genuine gap, because at this
-company the morning scan is the reliable one.
+**What still warns was asked for in that shape.** A punch AFTER the claimed
+start that disagrees is quoted — the door moved once the OT was supposed to be
+running — and a start with nothing at all before it is a genuine gap, because at
+this company the morning scan is the reliable one. A punch BEFORE the claimed
+start is neither, **however far before**: the tolerance no longer decides that
+side at all.
 
 ##### …but not a finding is not the same as not worth saying: `ไม่ได้สแกนเข้า OT`
 
@@ -4001,7 +4377,7 @@ halves are right, and they answer different questions:
 
 | | question it answers | on Case A |
 |---|---|---|
-| the VERDICT (`เวลาไม่ตรงกับสแกน`, amber) | does somebody have to go and look at this row? | **no** — silent |
+| the VERDICT (`ไม่ครบ` / `เวลาเริ่มไม่ตรงกับสแกน`, amber) | does somebody have to go and look at this row? | **no** — silent |
 | the MARK (`ไม่ได้สแกนเข้า OT`, grey) | what did the machine witness, and what did it not? | **the start had no witness** — said |
 
 **So it is grey, and the grey is the argument.** It lands on 25 rows of 27 —
@@ -4056,10 +4432,16 @@ So the card carries the month's answer, and it **names the people**:
 
 ```
 ผลเทียบกับใบ OT ของเดือนนี้  (7 ใบ · ตาม “สถานะที่นับ” ที่เลือกไว้ด้านบน)
-3 แถวเวลาไม่ตรง · 1 แถวไม่มีข้อมูลสแกน · 1 แถวเป็นใบเหมารายวัน
+1 แถวไม่ครบ · 1 แถวเวลาเริ่มไม่ตรง · 1 แถวไม่ตรง (ไม่มีสแกนนิ้ว) · 1 แถวเกินเวลา · 1 แถวเป็นใบเหมารายวัน
 ดูได้ที่ปุ่ม ดู / แก้ไขรายการ ของคนเหล่านี้ในตารางด้านล่าง
 สมชาย ใจดี (PM00112) — เวลาไม่ตรง 2 · สมหญิง รักงาน (PM-0620) — เวลาไม่ตรง 1 · ไม่มีสแกน 1
 ```
+
+**เกินเวลา is on the count line and NOT in the list of names.** The names answer
+*who do I have to go and look at*, and nobody has to look at a row where the
+person worked longer than they claimed — the same reasoning that keeps the owner
+of a flat day off that list. `groupScanChecksByPerson` is untouched by the new
+mark for exactly that reason.
 
 **The card says WHO, the table below is HOW.** The block deliberately links
 nowhere: the control that opens a person is already on their row, and a second
@@ -4090,14 +4472,24 @@ the grid is a MAP and not a target — an empty row reads `ยังไม่ไ
 whatever arrived. `missing` is still computed, because "which of the four is
 this" is what the grid is for; what changed is that it is not a debt.
 
-#### [OPEN] The tolerance is 15 นาที and nobody at HR has been asked
+#### The tolerance is 15 นาที, and HR were asked on 2026-09-04
 
-`SCAN_MATCH_TOLERANCE_MINUTES` in `lib/scanMatch.js`. Fifteen is chosen from the
-two facts available: a person walks to the door and back, and the OT arithmetic
-already refuses anything under a 30-minute block, so half a block cannot make a
-difference the hours would notice. **If it is wrong, the feature is noise** —
-which is why the number is printed on the screen above the table rather than
-left in the source, and why the checker takes it as an argument.
+This heading read "**[OPEN]** The tolerance is 15 นาที and nobody at HR has been
+asked" until then. Asked whether fifteen was too tight or too loose, ฝ่ายบุคคล
+answered **ไม่** — neither. The number does not move; what changed is that it
+now stands on an answer rather than on our own reasoning.
+
+`SCAN_MATCH_TOLERANCE_MINUTES` in `lib/scanMatch.js`. That reasoning is kept
+because it is still why fifteen was a safe thing to have been wrong about: a
+person walks to the door and back, and the OT arithmetic already refuses
+anything under a 30-minute block, so half a block cannot make a difference the
+hours would notice. The number stays printed on the screen above the table
+rather than left in the source, and the checker still takes it as an argument —
+an answer given once is not an answer that can never change.
+
+**It decides one side of one comparison, and fewer sides than it used to.**
+Since the direction rule above it does not judge a punch that falls *before* a
+request's start; it decides the end, and the start only for a punch after it.
 
 It is deliberately **not** in `Setting.policy`: a key in there mints a policy
 version and gets stamped onto entries, and this decides nothing about pay — it
@@ -8164,6 +8556,77 @@ build แล้ว
 
 **Verified**
 
+- **เรียงใบตามรหัสพนักงาน ทุก role ไม่ใช่แค่สองจอรายงาน** — 2026-09-07, สั่งมาว่า
+  *เอางี้ดีกว่าคือเรียงใบตามรหัสพนักงานทุก role เลยดีกว่า* ต่อจากรอบ 3 ก.ย. ที่แก้
+  ไว้เฉพาะ `ตรวจสอบประจำเดือน` กับ `รายงาน OT ฝ่ายบัญชี`
+  · **แก้ที่เดียว** — หกจอที่ลิสต์ใบ (`รายการรออนุมัติ` · `รออนุมัติ OT` ·
+  `รออนุมัติแทน` · `ไม่มีหัวหน้าเซ็น` · `คำขอถอนใบ` · `บันทึกและประวัติ OT`) เป็น
+  `GET /api/entries` เราต์เดียวกันหมด ตัวเปรียบเทียบคือ `byEmployeeThenLatest`
+  ใน `lib/entries.js` ซึ่งถาม `compareCodes` ตัวเดียวกับอีกห้าเอกสาร
+  · **`?scope=mine` ไม่ขยับ** และวันที่ยังใหม่ไปเก่า*ภายในคนคนเดียว* เพราะ
+  `รายการล่าสุด` บน `บันทึกและประวัติ OT` คือห้าแถวแรกของรายการนี้ตรง ๆ
+  · **เพดาน 500 ยังตัดใบที่เก่าที่สุดเหมือนเดิม** — `sort` บน query ไม่ได้ถูกถอด
+  มันตัดสินว่าแถวไหนได้กลับมา ส่วนตัวเปรียบเทียบตัดสินว่าวางเรียงยังไง
+  · ⚠ **ยังไม่ได้เดินด้วยตาบนหน้าจอ และยังไม่ได้ deploy** — ตรึงไว้ด้วยเทสต์
+  (`entryListCap` ห้าเคส · `employeeCode` หนึ่งเคสที่อ่านซอร์สของเราต์) `npm test`
+  2240/2240 ผ่าน · `:3000` ยังเสิร์ฟของเดิม
+- **เหมารายวัน คิดตามวัน — แปดชั่วโมงเป็น OT ×1.5 ลงคอลัมน์ที่วันนั้นเป็น** —
+  2026-09-07, สั่งมาว่า *ให้คิดตามวันไปเลย **ถ้าวันหยุดก็ใส่ 8 ชั่วโมงวันหยุด
+  ถ้าไม่ใช่วันหยุดก็ใส่ 8 ชั่วโมงวันปกติ** แต่แค่เป็นแบบเหมา*.
+  **คอลัมน์เป็นของวัน** — เสาร์อาทิตย์ วันหยุดบริษัท หรือวันเกิดของคนยื่นเอง ลง
+  `ot15_holiday` · วันทำงานลง `ot15_weekday` · ไม่มีโค้ดตรงไหนตัดสินชนิดของวันซ้ำ
+  `resolveDayTypes` ตอบไว้แล้วและสาขานี้แค่อ่าน.
+  **ความยาวเป็นของช่องติ๊ก** — `flatDailyMinutes(policy)` เท่านั้น เข้าก่อน ออกก่อน
+  หรืออยู่ถึงสองทุ่มก็เท่าเดิม.
+  **อัตราคือ ×1.5 เสมอ ไม่อ่านจากนาฬิกา** — บนวันหยุดทุกนาทีเป็นนาทีวันหยุด ถ้าอ่าน
+  ตามเวลาจริง เริ่มงานตอนเย็นจะได้ ×3 · `ot3_holiday` เป็นศูนย์บนใบเหมาทุกใบ.
+  **กลับด้านกับกฎ 4 ก.ย. ทั้งข้อ** — `totals.normalHours` เป็นศูนย์ทุกใบแล้ว ฟิลด์
+  ยังอยู่บนโมเดลเพื่อแถวที่เขียนไว้ในสามวันนั้น · `FLAT_DAILY_NO_OT` ออกไปพร้อมกฎ
+  ที่สร้างมัน และ `FLAT_DAILY_CAPPED` ของยุคเพดานกลับมาพร้อมเลขคณิตที่ทำให้มันมี
+  ความหมาย (08:00–20:00 วันหยุด = นับ 8 ตัด 3).
+  **ระหว่างวันเดียวกันเคยเป็นกฎที่แคบกว่านี้** — *เฉพาะใบเหมาที่ตรงวันเกิด และเฉพาะ
+  วันที่ไม่ได้เป็นเสาร์อาทิตย์หรือวันหยุดบริษัท* — แล้วขยายเป็นกฎข้างบนในวันเดียวกัน
+  ข้อยกเว้นจึงหายไปพร้อมความแคบที่ต้องการมัน · `FLAT_DAILY_BIRTHDAY_SAY` กับ
+  `flatDailySay()` ที่เกิดในรอบนั้นถูกถอนออกด้วย เหลือประโยคเดียวที่ไม่เอ่ยชื่อ
+  คอลัมน์ เพราะมันถูกวาดบนทั้งสองแบบ.
+  **ใบเหมาขึ้น F-HR-027 แล้ว** — มี segment หนึ่งแถว `onSheet` จึงรับเข้าโดยไม่ต้อง
+  แก้ตามที่ไหน · ข้อ **[OPEN]** ที่ค้างว่า “จะให้ใบเหมาไปโผล่บนกระดาษที่ไหนไหม”
+  ปิดด้วยกฎ ไม่ใช่ด้วยคำตอบ · และใบเหมาไม่ใช่ “ใบเดียวที่เก็บโดยไม่มีชั่วโมง OT”
+  อีกต่อไป `zeroOtHoursAllowed` ยังอยู่ครบทั้งห้าทางแต่แทบไม่มีอะไรให้ยกเว้นแล้ว.
+  **อ่านฐานจริงแล้ว (อ่านอย่างเดียว) 7 ก.ย.** — `birthdayHolidayEnabled` เป็น `true`
+  ใน `Setting.policy` (ไฟล์เป็น `false`) กฎนี้จึงมีผลทันทีที่ deploy · มีใบ
+  `flatDaily` 3 ใบ ทั้งหมดเป็นแถว seed ของเดือนกรกฎา · **สองใบที่อนุมัติแล้วคิดใหม่
+  ได้เท่าเดิมทุกช่อง** (เพดานเดิมกับเหมาแปดชั่วโมงตรงกันเมื่อวันนั้นยาวถึงแปด) ·
+  ใบที่สามยัง `pending_hr` และจะเปลี่ยนจาก 0 เป็น 8 ชม. `ot15_weekday` เมื่อ replay.
+  **เดินบนแอปที่ build แล้วครบทุกรูปของวัน** — `:3001` คนละ `distDir` คนละฐาน:
+  วันทำงาน 08:00–17:00 และเย็นวันทำงานได้ `ot15_weekday` 8 · เสาร์ 08:00–20:00 ได้
+  `ot15_holiday` 8 ตัด 3 · วันหยุดบริษัทเริ่มสองทุ่มได้ `ot15_holiday` 8 (ไม่ใช่ ×3) ·
+  วันเกิดวันอังคารได้ `ot15_holiday` 8 พร้อม `dayReason: 'birthday'` · แล้วยื่นจริง
+  หนึ่งใบ เซ็นครบสองขั้น และ**เห็นแถวนั้นบน F-HR-027 จริง** ที่ 17:00–20:00 · 8.00
+  ในช่อง OT วันปกติ · **ระหว่างทางเจอผลข้างเคียงที่ตั้งใจ**: ใบเหมากินเพดานเดือน
+  แล้ว การเซ็นใบนี้จึงต้องมีเหตุผลกำกับเพราะเกิน 40 ชม.
+  **ยังไม่ได้ deploy** — `npm test` 2240/2240 ผ่าน; `:3000` ยังเสิร์ฟของเดิม.
+- **เหมารายวัน เลิกเป็นเพดาน — เป็น 8 ชั่วโมงปกติ ไม่มี OT เลย** — 2026-09-04,
+  a reversal of the rule shipped the day before, asked for in one sentence:
+  *ถ้าติ๊กแบบเหมารายวันไม่ว่าจะสแกนเข้าก่อนหรือออกก่อนหรือหลัง 17:00 น. ก็คือ 8
+  ชั่วโมงไม่มีบวกเพิ่ม*.
+  **ทั้งสามคอลัมน์เป็นศูนย์** — `ot15_weekday`, `ot15_holiday`, `ot3_holiday` —
+  และแปดชั่วโมงไปอยู่ที่ `totals.normalHours` ซึ่งเป็นฟิลด์ใหม่บนใบ. เพดานเดิม
+  ให้ยอดรวมถูกแต่ให้**คอลัมน์ผิด** และคอลัมน์คือสิ่งที่เงินถูกคิดจากมัน.
+  **สั้นกว่าแปดก็ยังแปด**: เหมาคือ*ราคา*ของวัน ไม่ใช่*การวัด*วัน — ออกก่อนเที่ยง
+  ก็ยังเป็นวันที่ถูกเหมาไปแล้ว ซึ่งเป็นครึ่งที่กลับด้านกับเพดานเดิมตรง ๆ.
+  **กฎ OT อีกสี่ข้อไม่ทำงานกับใบนี้เลย** แทนที่จะทำงานแล้วถูกเขียนทับ — ไม่งั้น
+  `belowMinimum: 'reject'` จะปฏิเสธเย็นวันเหมาที่ไม่ถึงชั่วโมง OT ที่มันไม่ได้ขอ.
+  **และใบเหมาคือใบเดียวที่ระบบเก็บโดยไม่มีชั่วโมง OT** — `zeroOtHoursAllowed` ใน
+  `lib/entries.js` เป็นข้อยกเว้นเดียวของกฎ 0 ชั่วโมง และถูกถามจากทั้งห้าทาง
+  (POST · PUT · legacy · replay · ปุ่มบันทึก) จากฟังก์ชันเดียว.
+  **พบบั๊กเก่าระหว่างทาง**: `recomputeEntries` และ `npm run whatif` ประกอบ
+  session ขึ้นใหม่จากเอกสารโดย**ไม่ได้ส่ง `flatDaily` ไปด้วย** ตั้งแต่วันที่ช่องนี้
+  เกิด — replay ครั้งแรกหลังจากนั้นจะเขียนชั่วโมง OT กลับลงใบเหมาที่อนุมัติแล้ว
+  พร้อมแถว `recompute` ที่บอกว่านโยบายเป็นคนทำ · ยังไม่เคยเกิดจริงเพราะยังไม่มี
+  การ replay หลังวันนั้น · `test/flatDaily.test.js` ตรึงทั้งสองที่ไว้แล้ว.
+  **ยังไม่ได้ deploy** — เดินบน `npm test` และบน build ที่ `:3001` คนละ
+  `distDir` เท่านั้น; `:3000` ยังเสิร์ฟของเดิมอยู่.
 - **The phone's bottom bar was redesigned whole: four icons, one line of type
   under each, and the menu moved to a drawer under the avatar** — 2026-09-04,
   the third round on that bar in one day and the one that undid the second.
@@ -8533,9 +8996,16 @@ build แล้ว
   cookie, as two real employees:
   · **เหมารายวัน caps the day**: a Saturday 08:00–20:00 previewed **11.00 ชม.**
   untouched and **8.00 ชม.** with the box ticked — `clockHours` still **12**,
-  `flatDailyTrimmed` **3**, one `FLAT_DAILY_CAPPED` warning, and the three hours
+  `flatDailyTrimmed` **3**, one **FLAT_DAILY_CAPPED** warning, and the three hours
   came off `ot3_holiday` while `ot15_holiday` kept all eight. The tail, not the
-  middle.
+  middle. **ทั้งย่อหน้านี้ถูกแทนที่ไปแล้วสองรอบ** — on 2026-09-04 the same request
+  previewed **0.00 ชม.** in all three columns with `normalHours` **8** and the
+  warning code `FLAT_DAILY_NO_OT`; since 2026-09-07 it previews **8.00 ชม.** of
+  `ot15_holiday` with `normalHours` **0**, `flatDailyTrimmed` **3** and
+  `FLAT_DAILY_CAPPED` back — which is, in figures, exactly what this walk saw on
+  2026-09-03. Kept because it is what the screen really said that day, and
+  because the shape of the mistake it was corrected for — right total, wrong
+  columns — is the reason the rule moved at all.
   · **the tick is checked, in three shapes**: PM-0412's real birthday
   (13 Oct 2026, a Tuesday) previewed clean with `dayReason: 'birthday'` and
   `routing.status` **`pending_mgr`** — the หัวหน้า step, which is the whole ask;
