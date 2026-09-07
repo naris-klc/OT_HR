@@ -44,6 +44,7 @@ import mongoose from 'mongoose';
  *                                  included
  *   · `migrate-birthday-rule-start.js` backdates a policy version, changing
  *                                  which days counted as somebody's holiday
+ *   · `migrate-first-password.js`  overwrites password hashes on employee rows
  *
  * `whatif.js` is on the list too and writes nothing. It is here so that the
  * rule has no judgement in it: a reader deciding per file whether a script is
@@ -62,6 +63,7 @@ const ENTRY_POINTS = [
   'src/migrate-policy-version.js',
   'src/migrate-birthday-rule-start.js',
   'src/migrate-roles.js',
+  'src/migrate-first-password.js',
   'src/import-departments.js',
   'src/rehome-demo-roster.js',
 ];

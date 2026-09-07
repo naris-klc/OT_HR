@@ -9,6 +9,9 @@ import {
   PASSWORD_ALLOWED, PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH,
   chosenPasswordPermission, defaultPassword, passwordShapePermission,
 } from '../lib/employees.js';
+// Safe to import: the script runs nothing and opens no connection unless it is
+// the process entry point — the property test/seedEntryPoint.test.js pins.
+import { repairRefusal } from '../src/migrate-first-password.js';
 
 /** Any valid ObjectId — the Employee documents below are never saved. */
 const OID = '6a97c79abe61c297a2e7d9a4';
@@ -913,6 +916,64 @@ test('the downloaded file says what it is, in the one place that travels with it
   const block = raw.slice(raw.indexOf("done === 'downloaded'"), raw.indexOf("done === 'failed'"));
   assert.match(block, /ลบทิ้งทันทีที่แจกเสร็จ/);
   assert.match(block, /อย่าส่งต่อทางอีเมลหรือแชท/);
+});
+
+// ── the repair for the rows that predate the rule ───────────────────────────
+
+/**
+ * `npm run migrate:first-password` may only touch an account NOBODY CAN LOG
+ * INTO.
+ *
+ * This is the whole of what keeps it from being the script
+ * src/reset-admin-password.js refuses to be — "a script that would reset
+ * anybody turns 'has a shell on this server' into 'is any employee'". The
+ * refusal is a pure function so both halves can be pinned here without a
+ * database, and a future edit that drops either half fails this test rather
+ * than being noticed by whoever loses an account to it.
+ */
+test('the first-password repair skips every row somebody can already use', () => {
+  const row = (over) => ({ code: 'PM-0620', mustChangePassword: true, ...over });
+
+  // The only shape it touches: flag still set, and the code does not open it.
+  assert.equal(repairRefusal(row(), false), null);
+
+  // The flag is cleared by POST /api/employees/me/password and by nothing else
+  // — and that route asks for the CURRENT password. A cleared flag is therefore
+  // proof that the person holding the account had it, so this is where an
+  // account in daily use is protected. Seeded rows are on this branch too:
+  // src/seed.js never sets the flag.
+  assert.notEqual(repairRefusal(row({ mustChangePassword: false }), false), null);
+
+  // Already on the current rule — left alone rather than re-hashed, which is
+  // what makes a second run a no-op instead of a fresh round of writes.
+  assert.notEqual(repairRefusal(row(), true), null);
+
+  // Both reasons to skip, and a missing row, still answer with a sentence
+  // rather than throwing: this runs inside a loop over the whole roster.
+  assert.notEqual(repairRefusal(row({ mustChangePassword: false }), true), null);
+  assert.notEqual(repairRefusal(null, false), null);
+});
+
+test('the repair writes the same value the routes issue, and keeps the flag up', () => {
+  const src = strip(readFileSync(join(ROOT, 'src/migrate-first-password.js'), 'utf8'));
+
+  // `defaultPassword(employee.code)` — the stored, trimmed, upper-cased code,
+  // exactly as the three routes read it. A migration that built the value some
+  // other way would leave rows that disagree with the screen showing them.
+  assert.match(src, /defaultPassword\(employee\.code\)/);
+  assert.doesNotMatch(src, /generateTempPassword|Primus@|Math\.random/,
+    'the repair grew a second password scheme');
+
+  // `mustChangePassword: true` goes down with the hash in ONE $set. The flag is
+  // the entire price paid for a guessable default (README §รหัสผ่านแรกเข้า), so
+  // a repair that issued the value without it would be handing out passwords
+  // with nothing left saying they are temporary.
+  assert.match(src, /\$set: \{ passwordHash, mustChangePassword: true \}/);
+
+  // It writes nothing without being asked twice — the line every migration in
+  // src/ carries, and this one writes credentials.
+  assert.match(src, /--yes/);
+  assert.match(src, /--dry/);
 });
 
 /** Comments say what the code should do; these tests are about what it does. */

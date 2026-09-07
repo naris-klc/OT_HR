@@ -320,8 +320,32 @@ function Login({ onLogin }) {
                 onChange={edit('password', setPassword)}
                 required
               />
-              {blanks.password && (
+              {blanks.password ? (
                 <div className="field-note error" id="login-password-blank">กรุณากรอกรหัสผ่าน</div>
+              ) : (
+                /* THE LOGIN SCREEN ANSWERS "I HAVE NEVER LOGGED IN" AGAIN —
+                   asked for on 2026-09-07, reversing part of the 2026-09-04
+                   trim recorded in the .foot comment below. That trim was for
+                   a formal, short page and this is the one sentence out of the
+                   three it removed that cost something: without it the screen
+                   is silent about a password the person has never been told,
+                   and the only way to find out is to ring ฝ่ายบุคคล — who then
+                   press รีเซ็ตรหัสผ่าน on an account that did not need it.
+
+                   IT NAMES THE CASE ON PURPOSE. `defaultPassword` upper-cases,
+                   and the code box does not care about case while this box has
+                   to (`bcrypt.compare` is exact) — so somebody typing `pm00416`
+                   into both gets in with neither. That asymmetry is invisible,
+                   and this line is what makes it visible. It is the reason the
+                   sentence is worth two clauses rather than one.
+
+                   Saying the value out loud gives nothing away: it is printed
+                   on every ใบ F-HR-027 and on the roster — see
+                   README §รหัสผ่านแรกเข้า for the trade, and PasswordReminder
+                   above for what keeps saying it after a sign-in. */
+                <div className="field-note">
+                  เข้าใช้งานครั้งแรก · รหัสผ่านคือรหัสพนักงานของคุณ พิมพ์เป็นตัวพิมพ์ใหญ่ตามที่อยู่บนบัตร
+                </div>
               )}
             </div>
             {error && (
