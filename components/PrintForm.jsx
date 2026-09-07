@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, firstName, BUCKETS } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
+import { formPrintStatuses, FORM_PRINT_SCOPE_SAY } from '@/lib/reports.js';
 import { Alert, PrintChrome, SheetScroll } from './common.jsx';
 
 /**
@@ -15,8 +16,8 @@ import { Alert, PrintChrome, SheetScroll } from './common.jsx';
  * that happens quietly. Both callers build their URL here.
  *
  * What the status parameter is WORTH is not decided here and cannot be: the
- * route weighs it against `formPrintScope` and ignores it under two of the
- * three answers (see `formPrintStatuses` in lib/reports.js). This is a screen
+ * route weighs it against `formPrintScope` and ignores it under three of the
+ * four answers (see `formPrintStatuses` in lib/reports.js). This is a screen
  * saying what it is looking at, never a screen choosing what may be printed.
  */
 export function sheetQuery({ employeeId = '', status = '' } = {}) {
@@ -41,8 +42,11 @@ export function sheetQuery({ employeeId = '', status = '' } = {}) {
  * pop-up says, from the same rows. See `Signed` at the foot of this file and
  * `managerSignature` in lib/approverLine.js.
  *
- * The ฝ่ายบุคคล step is NOT one of the two. It has its own box at the foot of
- * the sheet with a rule to sign on, and it stayed as it was.
+ * The เฉพาะฝ่ายบุคคล box at the foot is NOT one of the two. It is a rule to
+ * sign by hand, it stayed as it was, and a name in the ลงชื่อหัวหน้างาน column
+ * never fills it in — that box is the SECOND signature on an entry that has
+ * two. Since 2026-09-07 the ลงชื่อหัวหน้างาน column can carry a ฝ่ายบุคคล name
+ * even so, on the rows that reach อนุมัติ with no หัวหน้า step to sign at all.
  *
  * Rows come from the server already segmented, so a session that ran from
  * Friday evening into Saturday morning appears on both dates with its hours in
@@ -115,10 +119,22 @@ export function f027Chrome(form) {
 }
 
 /**
- * The screen asked for rows the policy would not print. True only under
- * เฉพาะรายการที่อนุมัติแล้ว and only when สถานะที่นับ was set wider than that —
- * so an ordinary print says nothing, and the one print whose total will not
- * match the table it was pressed from explains itself.
+ * The screen asked for rows the policy would not print — so an ordinary print
+ * says nothing, and the one print whose total will not match the table it was
+ * pressed from explains itself.
+ *
+ * ASKED OF `formPrintStatuses` RATHER THAN OF THE SCOPE'S NAME, since
+ * 2026-09-07. It read `printScope === 'approved'` against the literal
+ * `'approved'`, which was the whole table while the strict answer was the only
+ * one that ignored `?status=` and printed one status. With ตั้งแต่หัวหน้าอนุมัติ
+ * shipping — two statuses, `?status=` ignored just the same — that spelling
+ * answers `false` on every sheet it was written for, and a print narrowed from
+ * a wide สถานะที่นับ would go back to being silent about it.
+ *
+ * The pure resolver is the rule and it is one import away, so the question is
+ * put to it: what would this policy print, and did the screen ask for anything
+ * outside that. A second reading of the table in a component is exactly how the
+ * paper and the route came to disagree in the first place.
  *
  * Exported because the bundle asks it of forty sheets at once and answers for
  * the whole document rather than one page (see components/PrintFormBatch.jsx).
@@ -127,8 +143,9 @@ export function f027Chrome(form) {
  * two files" is how the two stop agreeing.
  */
 export function narrowedByPolicy(form, asked = '') {
-  return form.printScope === 'approved'
-    && String(asked).split(',').some((s) => s.trim() && s.trim() !== 'approved');
+  const { scope, statuses } = formPrintStatuses({ formPrintScope: form?.printScope }, asked);
+  if (scope === 'screen') return false;
+  return String(asked).split(',').some((s) => s.trim() && !statuses.includes(s.trim()));
 }
 
 /**
@@ -260,9 +277,9 @@ export function FormNotices({ form, who = null, asked = '' }) {
       {narrowed && (
         <div className="no-print" style={{ marginBottom: 12 }}>
           <Alert kind="info">
-            {of}ใบนี้พิมพ์เฉพาะรายการที่อนุมัติแล้ว ตามนโยบายการพิมพ์ใบขออนุมัติ OT
-            ในตั้งค่าระบบ — ไม่ได้ใช้ “สถานะที่นับ” ที่เลือกไว้บนหน้าตรวจสอบประจำเดือน
-            ยอดบนใบจึงน้อยกว่ายอดในตารางได้
+            {of}ใบนี้พิมพ์เฉพาะรายการ{FORM_PRINT_SCOPE_SAY[form.printScope] || 'ตามนโยบาย'}
+            {' '}ตามนโยบายการพิมพ์ใบขออนุมัติ OT ในตั้งค่าระบบ — ไม่ได้ใช้ “สถานะที่นับ”
+            ที่เลือกไว้บนหน้าตรวจสอบประจำเดือน ยอดบนใบจึงน้อยกว่ายอดในตารางได้
           </Alert>
         </div>
       )}
@@ -495,11 +512,16 @@ export function F027Sheet({ form }) {
                     <Signed name={row.sessions.length ? form.employee.name : null} />
                   </td>
                 )}
-                {/* Blank on a row nobody has signed at the หัวหน้า step — still
-                    at รอหัวหน้า, or filed and approved by ฝ่ายบุคคล off the
-                    fingerprint scanner, which never had that signature at all.
-                    An unsigned box is what an unsigned form looks like, and it
-                    is the same blank this column has always printed. */}
+                {/* WHOEVER PRESSED อนุมัติ — the หัวหน้า who signed the first
+                    step, and on a row that never had one (ฝ่ายบุคคล's own OT,
+                    the other บทบาท that file straight to them, a row filed and
+                    approved off the fingerprint scanner) the ฝ่ายบุคคล who
+                    approved it. Asked for in those words on 2026-09-07; see
+                    `managerSignature`, which is where the order is written.
+
+                    Blank on a row nobody has approved yet, and on one whose
+                    approval predates `byName`. An unsigned box is what an
+                    unsigned form looks like. */}
                 {(i === 0 || !oneApprover) && (
                   <td className="sig" rowSpan={oneApprover ? sessions.length : 1}>
                     <Signed name={s?.approverName} />

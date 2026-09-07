@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
+import { FORM_PRINT_SCOPE_SAY } from '@/lib/reports.js';
 import { Alert, Empty, PrintChrome, SheetScroll } from './common.jsx';
 import { f027Chrome, F027Sheet, narrowedByPolicy, sheetQuery } from './PrintForm.jsx';
 
@@ -29,7 +30,7 @@ import { f027Chrome, F027Sheet, narrowedByPolicy, sheetQuery } from './PrintForm
  * to, so a bundle printed under อนุมัติแล้วเท่านั้น carried totals larger than
  * the table it was pressed from with nothing on the paper saying which rows the
  * difference was. The route now weighs the request against `formPrintScope` and
- * ignores it under two of the three answers — see `formPrintStatuses` in
+ * ignores it under three of the four answers — see `formPrintStatuses` in
  * lib/reports.js. The bundle's job is only to ask the same question the
  * per-person button asks, which `sheetQuery` is what guarantees.
  *
@@ -288,7 +289,9 @@ function NoticeDigest({ forms, asked = '' }) {
 
         {narrowed && (
           <div style={{ fontSize: 12.5, marginTop: groups.length ? 4 : 0 }}>
-            ทั้งชุดพิมพ์เฉพาะรายการที่อนุมัติแล้ว ตามนโยบายการพิมพ์ใบขออนุมัติ OT ในตั้งค่าระบบ
+            ทั้งชุดพิมพ์เฉพาะรายการ
+            {FORM_PRINT_SCOPE_SAY[forms[0]?.printScope] || 'ตามนโยบาย'}
+            {' '}ตามนโยบายการพิมพ์ใบขออนุมัติ OT ในตั้งค่าระบบ
             — ไม่ได้ใช้ “สถานะที่นับ” ที่เลือกไว้ ยอดบนใบจึงน้อยกว่ายอดในตารางได้
           </div>
         )}

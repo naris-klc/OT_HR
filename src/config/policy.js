@@ -463,11 +463,14 @@ export const DEFAULT_POLICY = Object.freeze({
    * Which requests reach the printed F-HR-027 — the approved ones, or the ones
    * still waiting in a queue as well.
    *
-   * 'approved' — เฉพาะรายการที่อนุมัติแล้ว (DEFAULT). The sheet is the one that
-   *              gets wet-signed and filed, so what is on it is what payroll
-   *              will pay. `?status=` is IGNORED under this answer, which is
-   *              the point of it: the strict setting has to be strict against a
-   *              hand-edited URL too, or it is a suggestion.
+   * 'signed'   — ตั้งแต่หัวหน้าอนุมัติ: อนุมัติแล้ว + รอ HR (DEFAULT since
+   *              2026-09-07). `?status=` is IGNORED, as under 'approved'.
+   * 'approved' — เฉพาะรายการที่ฝ่ายบุคคลยืนยันแล้ว. The narrower half of the
+   *              answer above, kept because it is a different document: a
+   *              month already settled, printed to file. `?status=` is IGNORED
+   *              under this answer too, which is the point of it — a strict
+   *              setting has to be strict against a hand-edited URL, or it is a
+   *              suggestion. It was the DEFAULT until 2026-09-07.
    * 'screen'   — whatever สถานะที่นับ on ตรวจสอบรายเดือน is set to, clamped by
    *              `reportStatuses`. The screen and the paper then quote the same
    *              figures for the same person, which they do not today.
@@ -475,19 +478,42 @@ export const DEFAULT_POLICY = Object.freeze({
    *              unconditionally before this flag existed: a working copy for
    *              reading a month before it is closed.
    *
-   * THE DEFAULT CHANGES BEHAVIOUR, and that is the reason it exists. The route
-   * shipped with the 'draft' list hard-coded and no mark on the paper, so HR
-   * could select อนุมัติแล้วเท่านั้น, read a total off ตรวจสอบรายเดือน, press
+   * ── WHY THE DEFAULT MOVED, AND WHAT IT WAS GETTING WRONG ──────────────────
+   *
+   * HR, 2026-09-07: *ข้อมูลที่พนักงานยื่นขอโอที **ต้องขึ้นในใบขออนุมัติทำงาน
+   * ล่วงเวลา ตั้งแต่ตอนที่มีคนกดอนุมัติ***. The old default was the LAST
+   * signature and the rule is the FIRST one: a request the หัวหน้า had approved
+   * was off the sheet until ฝ่ายบุคคล confirmed it — on the very sheet
+   * ฝ่ายบุคคล confirm from, whose foot carries the เฉพาะฝ่ายบุคคล box that IS
+   * that confirmation. The paper could not be printed for the step it exists to
+   * carry out, and a หัวหน้า who signed in the app then found the row missing
+   * from the month they were handed.
+   *
+   * IT REVERSES A RECORDED DECISION and the history is worth keeping: on
+   * 2026-08-24 the live policy was set back to 'approved' with the note
+   * *กลับเป็นค่าเริ่มต้น — ใบที่เซ็นรับต้องมีเฉพาะรายการที่อนุมัติแล้ว*. Both
+   * sentences are about the same fear and they differ on one word: อนุมัติแล้ว
+   * meant `status: 'approved'` to this code — both signatures — and means
+   * "somebody pressed อนุมัติ" in the sentence above. 'signed' is that reading,
+   * and 'approved' is still here for the other one.
+   *
+   * THE DEFAULT CHANGES BEHAVIOUR, and that is the reason this flag exists. The
+   * route shipped with the 'draft' list hard-coded and no mark on the paper, so
+   * HR could select อนุมัติแล้วเท่านั้น, read a total off ตรวจสอบรายเดือน, press
    * พิมพ์ and get a larger total on a sheet with two signature lines on it —
    * with nothing on the page saying which rows the difference was. A หัวหน้า
    * signing that sheet signs rows the app still has waiting for their decision.
+   * `signed` does not reopen that hole: a รอหัวหน้า row is still off the sheet
+   * under it, which is the row that failure was about.
    *
-   * Under the two answers that do let a pending row through, the row says so on
+   * Under the answers that let a รอหัวหน้า row through, that row says so on
    * the paper: `(รออนุมัติ)` prints in the รายละเอียดงานที่ทำ cell, where
    * (ต่อจากคืนก่อน), [ไม่พักเที่ยง] and (แทน) already sit. Not a column and not
    * a row — F-HR-027 Rev.4 is a controlled form measured in millimetres against
    * the paper, and a remark in the cell HR already reads is not a revision of
-   * it.
+   * it. A รอ HR row carries NO mark and never did: the step it waits on is the
+   * box at the foot of the sheet itself (`formPendingStatuses`), and the screen
+   * lists those rows instead (`unmarked`).
    *
    * COSMETIC in the strict sense lib/policyVersion.js means. Every hour on the
    * sheet comes from stored `segments`, resolved when the entry was filed; this
@@ -497,7 +523,7 @@ export const DEFAULT_POLICY = Object.freeze({
    * The rule is `formPrintStatuses` in lib/reports.js, and it is applied by the
    * ROUTE rather than by the screen — see app/api/reports/form/[period]/route.js.
    */
-  formPrintScope: 'approved',
+  formPrintScope: 'signed',
 
   // ── ยื่น OT ล่วงหน้าได้ถึงวันไหน ─────────────────────────────────────────────
   /**

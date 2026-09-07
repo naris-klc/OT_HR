@@ -22,6 +22,7 @@
     "migrate:birthday-rule-start": "node src/migrate-birthday-rule-start.js",
     "migrate:roles": "node src/migrate-roles.js",
     "migrate:first-password": "node src/migrate-first-password.js",
+    "refresh:signature-names": "node src/refresh-signature-names.js",
     "import:departments": "node src/import-departments.js",
     "rehome:demo-roster": "node src/rehome-demo-roster.js",
     "setup": "npm install"

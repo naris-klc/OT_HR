@@ -213,7 +213,7 @@ export const GET = route(async (req, { params }) => {
            */
           filedByProxy: (entry.history || []).some((h) => h.action === 'submit_proxy'),
           /**
-           * WHO SIGNED THE หัวหน้างาน STEP — the name that prints in the
+           * WHO APPROVED THIS REQUEST — the name that prints in the
            * ลงชื่อหัวหน้างาน column, and null where that column stays blank.
            *
            * Per SESSION and not per sheet, because it is per ENTRY: a month is
@@ -225,10 +225,12 @@ export const GET = route(async (req, { params }) => {
            * `managerSignature` decides which history row that is (lib/
            * approverLine.js) — the same module the pop-up's การอนุมัติ list
            * reads, so the paper and the screen cannot come to disagree about
-           * who signed. A row still at รอหัวหน้า, and one ฝ่ายบุคคล filed and
-           * approved from the fingerprint scanner, both answer null: nobody has
-           * signed that step, and a blank box is what an unsigned form looks
-           * like.
+           * who signed. The หัวหน้า's signature wins wherever there is one; on
+           * a row that never had that step — a บทบาท that files straight to
+           * ฝ่ายบุคคล, or one ฝ่ายบุคคล filed and approved off the fingerprint
+           * scanner — it is the name of whoever pressed อนุมัติ (2026-09-07).
+           * A row nobody has approved yet still answers null, and a blank box
+           * is what an unsigned form looks like.
            */
           approverName: managerSignature(entry)?.name || null,
           [BUCKETS.OT15_WEEKDAY]: 0,
@@ -292,11 +294,11 @@ export const GET = route(async (req, { params }) => {
       },
       rows,
       /**
-       * Which of the three answers to `formPrintScope` produced this sheet.
+       * Which of the four answers to `formPrintScope` produced this sheet.
        *
        * Returned on every print, not only the ones it changed, because the
        * screen has to be able to explain a sheet that ignored สถานะที่นับ. Under
-       * เฉพาะรายการที่อนุมัติแล้ว the filter is deliberately not consulted, and
+       * the two strict answers the filter is deliberately not consulted, and
        * a print that quietly disagrees with the table above it — with no reason
        * on the page — is the thing this whole setting exists to stop.
        */

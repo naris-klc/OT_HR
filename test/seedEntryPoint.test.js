@@ -64,6 +64,7 @@ const ENTRY_POINTS = [
   'src/migrate-birthday-rule-start.js',
   'src/migrate-roles.js',
   'src/migrate-first-password.js',
+  'src/refresh-signature-names.js',
   'src/import-departments.js',
   'src/rehome-demo-roster.js',
 ];

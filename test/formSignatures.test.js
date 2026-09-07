@@ -15,14 +15,20 @@ import { firstName } from '../lib/api.js';
  * box on a form that is signed by hand is an unsigned row somebody will notice
  * and chase; a blank box on a form whose names are typed is the same thing, and
  * it stays honest only for as long as nothing prints a name that nobody made.
- * There are three ways in this database for a row to have no real signature,
- * and every one of them exists on prod today:
+ * There are two ways in this database for a row to have no signature to print,
+ * and both exist on prod today:
  *
- *   - a request still at รอหัวหน้า — nobody has signed it yet;
- *   - `submit_hr_verified` — ฝ่ายบุคคล filed it off the fingerprint scanner and
- *     approved it in the same act, so it has NO หัวหน้า signature and never
- *     will. The หัวหน้า's own month alert says exactly this about those rows;
+ *   - a request nobody has approved yet — still at รอหัวหน้า or รอ HR;
  *   - an entry old enough that its history carries no `byName`.
+ *
+ * THERE WERE THREE UNTIL 2026-09-07. The third was the row ฝ่ายบุคคล approved
+ * themselves — `approve_hr` on an entry with no หัวหน้า step, and
+ * `submit_hr_verified` off the fingerprint scanner — and this file used to pin
+ * the blank on both as the true statement. HR reversed it: the column names
+ * WHOEVER PRESSED อนุมัติ, and on those rows that is ฝ่ายบุคคล. What did not
+ * change, and is asserted below in its own right, is that a หัวหน้า's signature
+ * still wins wherever there is one — ฝ่ายบุคคล confirming an ordinary sheet
+ * afterwards does not overwrite the name of the หัวหน้า who signed it.
  *
  * `managerSignature` is a pure function of one entry, so those are checked
  * against real shapes rather than by reading the source. What cannot be run
@@ -63,25 +69,68 @@ test('a request still at รอหัวหน้า has no signature to print',
   assert.equal(managerSignature({ history: [h('submit', 'สมชาย ใจดี')] }), null);
 });
 
-test('ฝ่ายบุคคล signing the SECOND step is not the หัวหน้า signature', () => {
-  // approve_hr belongs to the เฉพาะฝ่ายบุคคล box at the foot of the sheet. In
-  // this column it would print ฝ่ายบุคคล's name under a heading that says
-  // หัวหน้างาน — and ฝ่ายบุคคล share one login, so it would not even be a
-  // person's name.
-  const entry = { history: [h('submit', 'สมชาย'), h('approve_hr', 'ฝ่ายบุคคล')] };
-  assert.equal(managerSignature(entry), null);
+test('ฝ่ายบุคคล confirming AFTER a หัวหน้า does not take the หัวหน้า’s place', () => {
+  /**
+   * THE ORDINARY SHEET, and the case that decides the whole rule. Every
+   * approved พนักงาน entry in the database carries both rows: the หัวหน้า
+   * signed, then ฝ่ายบุคคล confirmed. Reading simply the LAST approval would
+   * rewrite all of them to say ฝ่ายบุคคล — asked about explicitly on
+   * 2026-09-07 and rejected. `approve_mgr` is looked for first and wins.
+   */
+  const entry = {
+    history: [h('submit', 'สมชาย'), h('approve_mgr', 'สมหญิง ใจงาม'), h('approve_hr', 'ฝ่ายบุคคล')],
+  };
+  assert.equal(managerSignature(entry).name, 'สมหญิง ใจงาม');
 });
 
-test('an entry ฝ่ายบุคคล filed off the scanner has NO หัวหน้า signature', () => {
+test('a request with no หัวหน้า step names the ฝ่ายบุคคล who approved it', () => {
+  /**
+   * ฝ่ายบุคคล's own OT, and the row that reversed this rule. `APPROVED_BY.hr`
+   * is empty, so the request files straight to the ฝ่ายบุคคล step; HR may
+   * approve their own (`approvalPermission` exempts them, 2026-09-03); and the
+   * sheet used to come off the printer approved with this box empty. It has one
+   * approval and this is who made it.
+   *
+   * The same shape covers การเงิน, ผู้จัดการฝ่าย and ผู้ดูแลระบบ, whose matrix
+   * rows are empty too, and any แผนก whose entries route past a step nobody
+   * holds.
+   */
+  const entry = { history: [h('submit', 'ฝ่ายบุคคล'), h('approve_hr', 'ฝ่ายบุคคล')] };
+  assert.equal(managerSignature(entry).name, 'ฝ่ายบุคคล');
+});
+
+test('an entry ฝ่ายบุคคล filed off the scanner names the ฝ่ายบุคคล who approved it', () => {
   // `submit_hr_verified` is the one action whose toStatus is 'approved' with no
-  // approve row before it. The entry is approved and the column is still blank,
-  // because no หัวหน้า ever read it — which is the fact the หัวหน้า's month
-  // alert exists to surface.
+  // approve row before it — filing and approving in a single act. No หัวหน้า
+  // ever read it, which the หัวหน้า's month alert still says; the box names the
+  // person who did approve it rather than staying empty.
   const entry = { history: [h('submit_hr_verified', 'ฝ่ายบุคคล')] };
-  assert.equal(managerSignature(entry), null);
+  assert.equal(managerSignature(entry).name, 'ฝ่ายบุคคล');
   // …and it IS an approval, so the two readings must not have merged.
   assert.equal(approvalSteps(entry).length, 1);
   assert.equal(approvalSteps(entry)[0].approved, true);
+});
+
+test('a request nobody has approved yet prints blank at either step', () => {
+  // รอ HR on a บทบาท that files straight there — filed, not approved. The
+  // fallback added on 2026-09-07 reads an APPROVAL row and there is none.
+  assert.equal(managerSignature({ history: [h('submit', 'ฝ่ายบุคคล')] }), null);
+  // And a refusal is not an approval, at either desk.
+  assert.equal(managerSignature({ history: [h('submit', 'ก'), h('reject_hr', 'ฝ่ายบุคคล')] }), null);
+  assert.equal(managerSignature({ history: [h('submit', 'ก'), h('reject_mgr', 'สมหญิง')] }), null);
+});
+
+test('a หัวหน้า row with no byName stays the signature — it does not fall through', () => {
+  /**
+   * THE FALLBACK IS OFF THE ROW, NOT OFF THE NAME. An entry approved before
+   * histories carried `byName` prints blank, and blank is the honest answer:
+   * dropping to the ฝ่ายบุคคล confirmation underneath it would put a name in
+   * the box that nobody at that desk ever put there.
+   */
+  const entry = {
+    history: [{ action: 'approve_mgr', at: new Date() }, h('approve_hr', 'ฝ่ายบุคคล')],
+  };
+  assert.equal(managerSignature(entry).name, null);
 });
 
 test('ผู้ดูแลระบบ standing in for a แผนก with no หัวหน้า signs with their own name', () => {

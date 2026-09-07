@@ -963,6 +963,25 @@ policy* ที่ชี้ไปที่**ขั้น** `pending_mgr` ไม�
 `OtEntry.status` หรือแถว `EmployeeAudit` — ร่องรอยที่ถูกเขียนใหม่ให้ตรงกับวันนี้
 ไม่ใช่ร่องรอย
 
+**และกฎข้อนั้นมีคู่ตรงข้ามของมัน: `npm run refresh:signature-names`** (2026-09-07)
+ซึ่งเขียนทับ `OtEntry.history[].byName` โดยตั้งใจ ต่างกันตรงว่าแตะครึ่งไหนของแถว
+· `by` คือ**ตัวตน** เป็น id บอกว่าใครกด และสคริปต์ไม่เขียนลงไปเลย ใช้แค่อ่านว่า
+ชื่อไหนเป็นของแถวนั้น · สิ่งที่เปลี่ยนคือ**การสะกดชื่อของบัญชีเดิมนั้น** แถวยัง
+บอกว่า `HR-001` อนุมัติใบนี้เมื่อนาทีนั้น เพียงแต่เริ่มสะกด `HR-001` แบบที่ทะเบียน
+สะกดวันนี้ · **ที่ต้องมีเพราะ `byName` เป็นสำเนา** เขียนตอนกดปุ่ม (`byName:
+actor?.name` ใน `OtEntry.log`) เพื่อให้คนที่ลาออกไปแล้วยังมีชื่อติดอยู่กับสิ่งที่
+เคยเซ็น — ซึ่งดีทุกอย่างยกเว้นตอนที่**บัญชีถูกเปลี่ยนชื่อ** `HR-001` ถูกเปลี่ยนจาก
+`ฝ่ายบุคคล` เป็น `ยิ่งยง` เมื่อ 2026-09-07 01:40 และ F-HR-027 ก็พิมพ์ผลลัพธ์ออกมา
+ตรง ๆ: ช่องลงชื่อพนักงานอ่านทะเบียนสดได้ `ยิ่งยง` ช่องลงชื่อหัวหน้างานอ่านสำเนา
+ได้ `ฝ่ายบุคคล` บนแถวเดียวกัน เรื่องคนคนเดียว · **รันบนฐานข้อมูลนี้แล้ว — 116 แถว**
+(`approve_hr` 41 · `recompute` 73 · `submit_hr_verified` 1 · `submit` 1) ไม่มีบัญชี
+อื่นเข้าเงื่อนไข · **แถวร่องรอยที่บันทึกการเปลี่ยนชื่อเอง (`EmployeeAudit.changes[].from`
+= `ฝ่ายบุคคล`) ไม่ถูกแตะ** — สคริปต์ที่ลบหลักฐานว่าทำไมตัวเองต้องมีอยู่ ก็คือ
+สคริปต์ที่ไม่ควรมีอยู่ · เอกสารอื่นที่เก็บสำเนาชื่อไว้เหมือนกัน (`otAccessLogs`
+`otPolicyReplayRuns` `otPolicyVersions` `ApprovalDelegation`) **ไม่ถูกแตะ และสคริปต์
+พิมพ์จำนวนแถวออกมาทุกครั้ง** เพื่อให้คำถาม "ทำไม log ยังเรียกชื่อเดิม" มีคำตอบก่อน
+ที่ใครจะต้องไปตามหา
+
 ### ใบของใคร ไปหาใครเซ็น — the routing matrix
 
 **ทุกบทบาทยื่น OT ของตัวเองได้ ตั้งแต่ 2026-09-03** และนั่นคือการกลับข้อ §2 ซึ่ง
@@ -4553,13 +4572,27 @@ against a signature, the honest way is a `byPosition` copied onto the row beside
 `byName` at decision time — it cannot be recovered for rows already written,
 which is the whole argument against reading it live.
 
-**ฝ่ายบุคคล is still a desk and not a person there, and the block says so out
-loud.** The department shares one login (see ตาราง above), so `byName` on an
-`approve_hr` row is an account; the name is not repeated in brackets — *ฝ่ายบุคคล
-(ฝ่ายบุคคล)* reads as two parties — and a line under the list states that the
-account is shared. A reader meeting a real person's name on the row above it has
-every reason to assume this one is a person too, and the place to correct that
-is where it is read. Individual ฝ่ายบุคคล logins would be the only real fix and
+**ฝ่ายบุคคล was a desk and not a person there, and the block said so out loud —
+and as of 2026-09-07 it no longer says anything.** The department shares one
+login (see ตาราง above), so `byName` on an `approve_hr` row was an account; the
+name was not repeated in brackets — *ฝ่ายบุคคล (ฝ่ายบุคคล)* reads as two parties
+— and a line under the list stated that the account is shared. A reader meeting
+a real person's name on the row above has every reason to assume this one is a
+person too, and the place to correct that is where it is read.
+
+**That footnote is keyed on the account's NAME and the account has been
+renamed.** `const shared = steps.some((s) => s.byName && s.byName === s.desk)` —
+it drew only while the signer's stored name was the literal string `ฝ่ายบุคคล`,
+which is what `HR-001` was called until an administrator renamed it to `ยิ่งยง`
+at 01:40 that morning (roster audit; `position` became `ฝ่ายบุคคล` in the same
+save). Nothing else changed and nothing failed: the note simply stopped
+appearing, on old rows as well as new ones once
+`npm run refresh:signature-names` brought the stored copies up to date. **Two
+questions are open and neither is answerable from the code**: whether the login
+is still shared by the department at all now that it carries a person's name,
+and — if it is — what the note should key on instead, since a rule that reads a
+person's NAME to decide what to draw is the mistake §วันหยุด records under
+`Holiday.year`. Individual ฝ่ายบุคคล logins would be the only real fix and
 nobody has asked for them.
 
 **An expiry changes the queue, not the past.** Entries already approved keep the
@@ -4768,12 +4801,19 @@ lists, and what separates them is **what printing the month does to them**:
 > **ตกค้าง** is a thing nobody has answered. **ควรตรวจ** is a thing that is
 > finished and worth a second look.
 
-**ตกค้าง** — a request at `pending_mgr` or `pending_hr` is not on F-HR-027 at
-all, and an open withdrawal means a row that *is* on the sheet may be about to
-come off it. Print now and the paper is wrong, or goes stale the same week. Each
-is its own count with its own sentence, never added together: they are cleared by
-different people doing different things, and a single number would match neither
-screen.
+**ตกค้าง** — a request at `pending_mgr` is not on F-HR-027 at all, and an open
+withdrawal means a row that *is* on the sheet may be about to come off it. Print
+now and the paper is wrong, or goes stale the same week. Each is its own count
+with its own sentence, never added together: they are cleared by different people
+doing different things, and a single number would match neither screen.
+
+> This read "**a request at `pending_mgr` or `pending_hr` is not on F-HR-027 at
+> all**" until 2026-09-07. Half of it stopped being true when the shipped
+> `formPrintScope` became ตั้งแต่หัวหน้าอนุมัติ: a `pending_hr` row IS on the
+> sheet now, and unmarked — see §นโยบายการพิมพ์ใบขออนุมัติ OT below. It is still
+> ตกค้าง, and for the reason that list exists: nobody has answered it. What
+> changed is what printing the month does to it, which is what separates the two
+> lists — printing a `pending_hr` row is now the ordinary way it gets answered.
 
 **ควรตรวจ** — an entry flagged `capExceeded` or `belowMinimumFlagged` is
 approved. Its hours are real, its status is final, and it prints correctly. It
@@ -4961,11 +5001,23 @@ and the dashed เฉพาะฝ่ายบุคคล box beside the ผู�
 "stayed empty for hand signing" until then. HR asked for the names to print and
 asked for them AS the signature: the sheet is not signed by hand once it is off
 the printer. Nothing new is recorded to do it. `managerSignature` in
-`lib/approverLine.js` reads `byName` off the entry's own `approve_mgr` history
-row — the same rows การอนุมัติ in the pop-up prints — so the two cannot come to
-name different people, and a row nobody signed at that step prints blank rather
-than borrowing a plausible name. The ฝ่ายบุคคล step is not one of the two: it
-keeps its own box at the foot of the sheet, with a rule to sign on.
+`lib/approverLine.js` reads `byName` off the entry's own history rows — the same
+rows การอนุมัติ in the pop-up prints — so the two cannot come to name different
+people, and a row nobody has approved prints blank rather than borrowing a
+plausible name.
+
+**ลงชื่อหัวหน้างาน names whoever pressed อนุมัติ** — asked for in those words on
+2026-09-07, and it read "reads `byName` off the entry's own `approve_mgr` history
+row" until then, blanking the box on every row ฝ่ายบุคคล approved themselves.
+`approve_mgr` is still looked for first and still wins, so an ordinary sheet is
+unchanged: the หัวหน้า signs, ฝ่ายบุคคล confirm after them, and the column keeps
+naming the หัวหน้า. Where that step never happened the column names the
+ฝ่ายบุคคล who approved instead — a บทบาท whose `APPROVED_BY` row is empty files
+straight to their desk (ฝ่ายบุคคล's own OT among them, since they may approve it
+themselves), and `submit_hr_verified` files and approves in one act off the
+fingerprint scanner. The เฉพาะฝ่ายบุคคล box at the foot of the sheet is
+untouched by any of this: it is the second signature on a two-signature entry,
+it keeps its rule to sign on, and a name in the column does not fill it in.
 
 **The given name alone, in bold, with no surname and no punctuation** — the box
 carries a name and nothing else. No date beside it either, because the column is
@@ -5039,12 +5091,57 @@ Who is in the bundle is the rows of ตรวจสอบรายเดือ�
 same **สถานะที่นับ**. Somebody with no OT that month has no row and gets no
 sheet — a blank F-HR-027 is a page nobody signs — and somebody whose only hours
 are still in a queue is in or out according to the filter, which is the same
-lever that decided whether their row was on the screen at all. The filter never
-reaches the sheets themselves: each is fetched with the form route's own
-statuses (อนุมัติแล้ว + ค้างอนุมัติ), which is what the paper has always shown,
-since it is the sheet the approval is signed onto. Sheets are fetched four at a
-time, and an employee whose sheet fails is named above the stack rather than
-silently missing from it.
+lever that decided whether their row was on the screen at all. What the filter is
+worth ON the sheets is not the bundle's decision and never the screen's: each is
+fetched with the statuses `formPrintScope` resolves to, which under three of its
+four answers ignore `?status=` entirely — see the next section. Sheets are
+fetched four at a time, and an employee whose sheet fails is named above the
+stack rather than silently missing from it.
+
+> That last sentence read "**each is fetched with the form route's own statuses
+> (อนุมัติแล้ว + ค้างอนุมัติ), which is what the paper has always shown**" until
+> 2026-09-07, and it had been describing a route that no longer existed since the
+> flag went in: the list stopped being fixed the day HR could choose it.
+
+### นโยบายการพิมพ์ใบขออนุมัติ OT — which rows reach the paper
+
+**`formPrintScope`, four answers, and the shipped one is ตั้งแต่หัวหน้าอนุมัติ.**
+HR, 2026-09-07: *ข้อมูลที่พนักงานยื่นขอโอที **ต้องขึ้นในใบขออนุมัติทำงานล่วงเวลา
+ตั้งแต่ตอนที่มีคนกดอนุมัติ***. The table is `formPrintStatuses` in
+[`lib/reports.js`](lib/reports.js), applied by the ROUTE and never by the screen.
+
+| answer | the sheet carries | `?status=` |
+|---|---|---|
+| `signed` — ตั้งแต่หัวหน้าอนุมัติ (**shipped**) | อนุมัติแล้ว + รอ HR | ignored |
+| `approved` — เฉพาะที่ฝ่ายบุคคลยืนยันแล้ว | อนุมัติแล้ว | ignored |
+| `screen` — ตาม สถานะที่นับ | whatever the filter says | followed |
+| `draft` — ใบร่างเดินเรื่อง | all three live statuses | ignored |
+
+**The default was `approved` until 2026-09-07, and it was the LAST signature
+rather than the first.** A request the หัวหน้า had approved was off the sheet
+until ฝ่ายบุคคล confirmed it — on the very sheet ฝ่ายบุคคล confirm *from*, whose
+foot carries the **เฉพาะฝ่ายบุคคล** box that is that confirmation. The paper
+could not be printed for the step it exists to carry out, and a หัวหน้า who
+signed in the app found the row missing from the month they were handed. Walked
+on 2026-09-07 against the live database: THT0074's สิงหาคม sheet printed one day
+and 8.00 ชม. with a 3-hour row the หัวหน้า had approved nowhere on it.
+
+**It reverses a decision recorded on 2026-08-24**, and the note that recorded it
+is worth keeping: *กลับเป็นค่าเริ่มต้น — ใบที่เซ็นรับต้องมีเฉพาะรายการที่อนุมัติ
+แล้ว*. Both sentences are about the same fear and they differ on one word —
+อนุมัติแล้ว meant `status: 'approved'` to this code, both signatures, and means
+"somebody pressed อนุมัติ" in the newer one. `signed` is that reading; `approved`
+is still there for the other, and is the right answer for a month printed to file
+after it is settled.
+
+**The failure the flag exists for is untouched.** A `pending_mgr` row — the one
+NOBODY has approved — is as far off this sheet as it ever was, and reaches paper
+only under `screen` and `draft`, where it prints `(รออนุมัติ)` in the
+รายละเอียดงานที่ทำ cell and where ตั้งค่าระบบ carries a warning. A `pending_hr`
+row carries **no mark and never did** — `formPendingStatuses` has said since it
+was written that รอ HR is settled *on the paper* while no รอหัวหน้า row can reach
+the same sheet, because the only step left is the box at the foot. What the
+screen above the sheet does say, with dates, is which rows those are.
 
 **รายละเอียดงานที่ทำ is capped at 22 characters** — `DESCRIPTION_MAX_CHARS` in
 [`src/config/policy.js`](src/config/policy.js), enforced by
@@ -8602,18 +8699,30 @@ build แล้ว
   reads. The paper and the screen therefore cannot come to name two different
   people.
 
-  **Most of the nineteen cases are about when a name is NOT printed**, and that
+  **Most of the cases are about when a name is NOT printed**, and that
   is the shape of the risk rather than caution. A blank box on a hand-signed
   form is an unsigned row somebody chases; a blank box on a form whose names are
-  typed stays honest only while nothing prints a name nobody made. Three ways
-  exist in this database for a row to have no real signature and all three are
-  on prod: a request still at รอหัวหน้า; `submit_hr_verified`, which ฝ่ายบุคคล
-  filed off the fingerprint scanner and approved in the same act, so it has no
-  หัวหน้า signature and never will; and an entry old enough that its history
-  carries no `byName`. All three print blank. `approve_hr` prints blank too —
-  it is the second signature and it has its own box at the foot of the sheet.
-  An `adminOverride` row DOES print, with the administrator's own name: ADM has
+  typed stays honest only while nothing prints a name nobody made. Two ways
+  exist in this database for a row to have no signature to print and both are on
+  prod: a request nobody has approved yet — still at รอหัวหน้า or รอ HR — and an
+  entry old enough that its history carries no `byName`. Both print blank. An
+  `adminOverride` row DOES print, with the administrator's own name: ADM has
   no หัวหน้า, somebody signed that step, and this is who.
+
+  **There were THREE such ways until 2026-09-07**, and this paragraph read
+  "`submit_hr_verified`, which ฝ่ายบุคคล filed off the fingerprint scanner and
+  approved in the same act, so it has no หัวหน้า signature and never will" and
+  "`approve_hr` prints blank too — it is the second signature and it has its own
+  box at the foot of the sheet". HR reversed both: ลงชื่อหัวหน้างาน names
+  **whoever pressed อนุมัติ**, so a row approved at the ฝ่ายบุคคล desk with no
+  หัวหน้า step behind it carries that desk's name. The reversal was forced by
+  ฝ่ายบุคคล's own OT — they file straight to their own step and may approve it
+  themselves (2026-09-03), and those sheets printed approved with the box empty.
+  `approve_mgr` is still read FIRST and still wins wherever it exists, which was
+  asked about explicitly: taking simply the last approval would have rewritten
+  every ordinary sheet in the database to say ฝ่ายบุคคล. The fallback reads the
+  ROW and not the name, so an old `approve_mgr` carrying no `byName` still
+  prints blank instead of dropping through to the confirmation underneath it.
 
   **The box holds a given name in bold and nothing else** — no surname, no
   brackets, no punctuation of any kind. `firstName` in `lib/api.js` is the split

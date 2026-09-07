@@ -564,9 +564,10 @@ export default function HrView({
         period={period}
         // สถานะที่นับ, the same value the table and both CSVs are read with.
         // What it is worth on the paper is the route's decision — under the
-        // shipped `formPrintScope` it is ignored and the sheets are
-        // approved-only — but the screen must say what it is looking at, or a
-        // strict policy and a wide filter cannot tell each other apart.
+        // shipped `formPrintScope` it is ignored and the sheets carry อนุมัติ
+        // แล้ว + รอ HR (it was approved-only until 2026-09-07) — but the screen
+        // must say what it is looking at, or a strict policy and a wide filter
+        // cannot tell each other apart.
         status={statusFilter}
         onClose={() => setPrinting(null)}
       />
