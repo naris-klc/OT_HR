@@ -289,6 +289,37 @@ test('the entries CSV no longer asks mongo to sort by a path no document has', (
   assert.match(text, /String\(a\.startTime\)\.localeCompare\(String\(b\.startTime\)\)/);
 });
 
+test('the list of ใบ every บทบาท reads is ordered by the same comparator', () => {
+  /**
+   * 2026-09-07, and it is the sixth document rather than a sixth rule: the five
+   * above describe a month for the people who close it, and this is the screen
+   * everybody else spends their day on — รายการรออนุมัติ, รออนุมัติ OT,
+   * รออนุมัติแทน, ไม่มีหัวหน้าเซ็น, คำขอถอนใบ and บันทึกและประวัติ OT are all
+   * one endpoint. Somebody checking a queue against a printed sheet was the
+   * only reader whose two documents were still in different orders.
+   *
+   * The comparator is in `lib/entries.js` rather than in the route, because the
+   * route resolves `@/…` and `node --test` does not — the same reason
+   * lib/accountingRows.js was split out of lib/accounting.js. It is behaviour,
+   * so it is tested as behaviour in test/entryListCap.test.js; what is checked
+   * here is only that the route still uses it and that nothing has quietly
+   * spelled a second comparison beside it.
+   */
+  const lib = code('lib/entries.js');
+  assert.match(lib, /compareCodes\(a\?\.employee\?\.code, b\?\.employee\?\.code\)/);
+
+  const route = code('app/api/entries/route.js');
+  assert.match(route, /\.sort\(byEmployeeThenLatest\)/, 'the list no longer orders by code');
+  /**
+   * AND THE MONGO SORT STAYS. It decides which rows survive the 500-row cap,
+   * and dropping the oldest is the trade-off `capFor` documents and the banner
+   * over the table reports. Ordering by code in the database is not available
+   * (`employee` is an ObjectId until `populate` runs) and faking it would drop
+   * everybody past the middle of the register instead.
+   */
+  assert.match(route, /\.sort\(\{ workDate: -1, createdAt: -1 \}\)/, 'the cap has lost its order');
+});
+
 // ── the copy that used to live in src/config/companies.js ────────────────────
 
 test('companyFromCode still reads both shapes, now through the shared rule', () => {

@@ -354,9 +354,19 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                     against its right edge. See the rate-column block in
                     app/styles.css; the class carries no width of its own. */}
                 <th className="num total-col">รวม</th>
-                <th>รายละเอียดงานที่ทำ</th>
-                <th>กฎที่ใช้</th>
-                <th>สถานะ</th>
+                {/* THE TWO COLUMNS THAT ARE READ AS PROSE, and the only two
+                    here carrying a width. Everything else on this row is a
+                    figure, a time or a date and is already as wide as it needs
+                    to be; these two hold a sentence and a stack of chips, and
+                    under `table-layout: auto` they were the columns that
+                    surrendered their room to whatever else wanted it.
+
+                    The width went on when กฎที่ใช้ came off on 2026-09-04 —
+                    taking a column out gives its room to the table, not to any
+                    column in particular, and the point of taking it out was to
+                    give the room to these. See `.stack-table th.desc-col`. */}
+                <th className="desc-col">รายละเอียดงานที่ทำ</th>
+                <th className="status-col">สถานะ</th>
                 <th />
               </tr>
             </thead>
@@ -467,12 +477,24 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                         </div>
                       )}
                     </td>
-                    {/* The row this screen exists to answer questions about.
-                        Beside the hours rather than in the drawer: which rules
-                        produced a figure is part of reading it, not part of
-                        investigating it. */}
-                    <td data-label="กฎที่ใช้"><PolicyVersionCell version={e.policyVersionId} /></td>
-                    <td>
+                    {/* กฎที่ใช้ WAS HERE, and it read: "beside the hours rather
+                        than in the drawer — which rules produced a figure is
+                        part of reading it, not part of investigating it."
+
+                        It came off on 2026-09-04, asked for in those terms: a
+                        version number is audit, and audit belongs where somebody
+                        goes looking for it. It is in the ประวัติการแก้ไข drawer
+                        below now, on the same row, one press away.
+
+                        WHAT THAT COSTS, since nothing else on this screen says
+                        it: a row nobody has ever touched has no drawer to open —
+                        the button is ไม่มีประวัติการแก้ไข — so its version is not
+                        readable here at all. What still catches the case that
+                        matters is `PolicyVersionBanner` at the top, which fires
+                        when the month is NOT uniform; a month computed end to
+                        end under one rule set says so once, above the table,
+                        rather than forty times down a column. */}
+                    <td className="status-col">
                       <StatusChip status={e.status} />
                       {describeBreaches(e).map((b) => (
                         <div
@@ -565,7 +587,12 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                   </tr>
                   {open.has(e._id) && (
                     <tr className="audit-row">
-                      <td colSpan={10}>
+                      {/* Nine since 2026-09-04. It read {10} while กฎที่ใช้ was
+                          a column of its own — a colSpan that outlives the
+                          column it counted leaves a phantom cell at the end of
+                          the drawer row, which no test would catch and every
+                          reader would see. */}
+                      <td colSpan={9}>
                         <div className="audit-drawer">
                           <strong>ประวัติการแก้ไข</strong>
                           {/* Size, colour and spacing are all in
@@ -576,6 +603,23 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                             แถวด้านบนคือข้อมูลล่าสุดที่พิมพ์ลงใบ F-HR-027 ·
                             ด้านล่างนี้คือทุกครั้งที่รายการนี้ถูกแตะ พร้อมค่าเดิมก่อนแก้แต่ละครั้ง
                             {e.refiledFrom && ' · รวมคำขอเดิมที่ถูกไม่อนุมัติ'}
+                          </div>
+                          {/* WHICH RULE SET COMPUTED THIS ROW — moved off the
+                              table on 2026-09-04 and landed here.
+
+                              ABOVE THE TRAIL, NOT INSIDE IT. The trail below is
+                              a sequence of events; this is one standing fact
+                              about the row, and a fact filed among events reads
+                              as the most recent of them. It sits with the `hint`
+                              that describes the drawer for the same reason.
+
+                              `PolicyVersionChange` still prints the pair either
+                              side of a correction inside the trail, and that is
+                              a different claim: this says what the live figure
+                              was computed under, that says what a correction
+                              moved between. */}
+                          <div className="audit-policy">
+                            กฎที่ใช้คำนวณ · <PolicyVersionCell version={e.policyVersionId} />
                           </div>
                           {/* A re-filed request's own log starts at submit and
                               explains nothing. The refusal that produced it is

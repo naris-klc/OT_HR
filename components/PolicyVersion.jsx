@@ -101,10 +101,16 @@ export function PolicyVersionChange({ before, after }) {
  * that the month banner does not — WHOSE rows are mixed — was never the
  * question being asked of that screen.
  *
+ * `PolicyVersionCell` OUTLIVED IT BY HALF A DAY. It was still a column on
+ * ตรวจสอบใบของพนักงาน — one version per entry, beside the hours — until the
+ * afternoon of 2026-09-04, when that came off too on the same argument: a
+ * version number is audit, and audit belongs where somebody goes looking for
+ * it. The cell is alive and is drawn once, in that screen's ประวัติการแก้ไข
+ * drawer. Nothing draws it in a table any more.
+ *
  * The rest of this module is untouched. `policyVersionNotice()` still says the
- * month is not uniform on both screens that draw it, ตรวจสอบใบของพนักงาน still
- * prints a version per entry, and ประวัติการแก้ไข still prints the pair either
- * side of a correction.
+ * month is not uniform on both screens that draw it, and ประวัติการแก้ไข still
+ * prints the pair either side of a correction.
  */
 
 /**

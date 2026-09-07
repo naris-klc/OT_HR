@@ -6055,7 +6055,9 @@ td > .approver-line { margin-top: 5px; }
    one `gap` cannot be forgotten on the fourth thing somebody adds here.
 
    NOWRAP HERE, AND THE WRAP IS THE PHONE'S ONLY. On the desktop this is the
-   eleventh column of a table and the cell already carries `white-space: nowrap`
+   LAST column of a table — the ninth since กฎที่ใช้ came off on 2026-09-04, and
+   this paragraph read "the eleventh" for longer than that was true — and the
+   cell already carries `white-space: nowrap`
    — which is what kept แก้ไข and ดูข้อมูลเดิม side by side when they were
    inline. A flex container ignores that, so `wrap` left on the base rule
    restacked those two rows into two lines each and made every row of a long
@@ -6070,7 +6072,7 @@ td > .approver-line { margin-top: 5px; }
    not line up reads as a column of DIFFERENT controls — which is the opposite
    of what this cell is: the same two questions asked of every row.
 
-   `width: 100%` FILLS THE CELL, which on the desktop is the eleventh column
+   `width: 100%` FILLS THE CELL, which on the desktop is the last column
    (sized by its widest row) and on a phone is the card. `margin-left: auto` on the
    LAST child puts the right-hand slot on the right edge of it.
 
@@ -12645,9 +12647,15 @@ table.mini tbody tr:hover { background: none; }
      read as the space between a fact and the next fact. รายละเอียดงานที่ทำ is
      the one that runs to two — "ทดสอบ calibration ชุด PM-3000 ก่อนส่งมอบ
      (ไม่พักเที่ยง)" — and at the table's 1.5 the two lines close up into a
-     block whose last line then sits 10px above กฎที่ใช้, which is a LABEL and
-     starts at the opposite edge. Two lines of text and a heading, sharing one
-     gap that was measured for neither.
+     block whose last line then sat 10px above the next field, sharing one gap
+     that was measured for neither.
+
+     THE FIELD UNDERNEATH IS NOW สถานะ, WHICH CARRIES NO LABEL. It was กฎที่ใช้
+     until 2026-09-04 — a label starting at the opposite edge, which is what the
+     measurements below were taken against. The two numbers are kept: a chip
+     needs the separation from a paragraph at least as much as a label did, and
+     re-deriving them for a pill would be a change to a figure this card's
+     layout is pinned at. See test/entryRowChrome.test.js.
 
      TWO NUMBERS, BECAUSE ONE OF THEM COULD ONLY DO HALF THE JOB. A line-height
      separates the two lines from each other and adds half its growth under the
@@ -12663,7 +12671,7 @@ table.mini tbody tr:hover { background: none; }
      padding for part of 2026-08-26.
 
      The table's own `td` rule is left alone: on the desktop this cell is a
-     column beside ten others, and a line-height set for a wrapped card value
+     column beside eight others, and a line-height set for a wrapped card value
      would loosen every row of every table in the app. */
   .stack-table tbody td.entry-desc { line-height: 1.75; padding-bottom: 4px; }
 

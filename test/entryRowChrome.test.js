@@ -479,3 +479,110 @@ test('the drawer’s caption is smaller than the timestamps under it', () => {
   assert.match(rule('.audit-drawer > .hint'), /margin: 2px 0 0;/);
   assert.match(code, /<div className="hint">\s*\n\s*แถวด้านบนคือข้อมูลล่าสุด/);
 });
+
+// ── กฎที่ใช้ came off the table on 2026-09-04 ────────────────────────────────
+
+/**
+ * WHAT WAS ASKED FOR, and it is two things rather than one.
+ *
+ * "ลบคอลัมน์ กฎที่ใช้ ออกจากทั้ง Header และ Body" is the visible half. The half
+ * that decides whether it was done properly is the second sentence — "ขยาย
+ * พื้นที่ของคอลัมน์ รายละเอียดงานที่ทำ และ สถานะ ให้กว้างขึ้น" — because taking
+ * a column out of an `auto` table returns its room to the ALGORITHM, not to any
+ * column in particular. On a month of short descriptions most of it goes to the
+ * date and the times, and the screen ends up with the same cramped sentence and
+ * one fewer fact on it.
+ */
+test('กฎที่ใช้ is not a column on this table, in either half of it', () => {
+  assert.ok(!code.includes('<th>กฎที่ใช้</th>'), 'the header still has it');
+  assert.ok(!code.includes('data-label="กฎที่ใช้"'), 'the body still has it');
+  // และไม่กลับมาในชื่ออื่น — เซลล์นั้นเป็นตัวเดียวที่วาด PolicyVersionCell ในตาราง
+  const head = jsx.slice(jsx.indexOf('<thead>'), jsx.indexOf('</thead>'));
+  assert.ok(!/PolicyVersion/.test(head), 'a version cell is back in the header');
+});
+
+test('the two columns that hold prose are the two that were widened', () => {
+  assert.match(code, /<th className="desc-col">รายละเอียดงานที่ทำ<\/th>/);
+  assert.match(code, /<th className="status-col">สถานะ<\/th>/);
+  assert.match(code, /<td className="status-col">\s*<StatusChip/);
+
+  // A class with no rule behind it is the failure this pair exists to prevent:
+  // the column comes off, the markup says it was compensated for, and nothing
+  // on screen moved.
+  assert.match(css, /\.stack-table th\.desc-col \{ width: \d+%; \}/);
+  assert.match(css, /\.stack-table th\.status-col \{ width: \d+%; \}/);
+
+  // และต้องอยู่นอกบล็อกมือถือ — ที่นั่น thead เป็น display:none ความกว้างจึงไม่ถึงใคร
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.ok(!/th\.desc-col/.test(phone), 'the width was written where thead is hidden');
+});
+
+/**
+ * จาก–ถึง IS THE THIRD COLUMN THAT HOLDS MORE THAN A FIGURE, and it was the one
+ * left out when the other two were widened.
+ *
+ * It was written when the cell held `17:00–19:30` and nothing else, so it never
+ * got a width. It now carries the times, up to two chips, the day's scan line
+ * and the mismatch detail. MEASURED on the built app at 1440px against a clone
+ * of the real July scan file, with `desc-col` and `status-col` already in
+ * place: the column came out **79px**, the `ไม่ได้สแกนเข้า OT` pill rendered
+ * **55×60** — three lines of text inside one pill — `สแกน 07:34 , 19:30`
+ * wrapped to three lines, and a row whose description is ONE line stood 187px
+ * tall. With the rule below: 172px, the pill 104×25, the scan line one line,
+ * the row 97px.
+ *
+ * THE FLOOR IS IN PIXELS AND THAT IS THE POINT. A time string, a pill and
+ * `สแกน 07:34 , 19:30` do not get shorter on a narrower screen, so a percentage
+ * alone lets a 1280 laptop squeeze them back into the shape the rule exists to
+ * undo. A `%`-only rule here would pass a test that only looked for a width.
+ */
+test('จาก–ถึง has a width, and its floor is a pixel one', () => {
+  assert.match(code, /<th className="when-col">จาก–ถึง<\/th>/);
+
+  const rule = /\.stack-table th\.when-col \{ width: \d+%; min-width: (\d+)px; \}/.exec(css);
+  assert.ok(rule, 'จาก–ถึง has no width rule behind its class');
+  // 148px of content is what the pill and the scan line need side by side; the
+  // cell's own padding is 12px each side. Below this the pill breaks in half.
+  assert.ok(Number(rule[1]) >= 168, `the floor fell to ${rule[1]}px — the chip wraps under ~168`);
+
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.ok(!/th\.when-col/.test(phone), 'the width was written where thead is hidden');
+});
+
+/**
+ * A colSpan that outlives the column it counted.
+ *
+ * The drawer is one cell spanning the whole row. Leave it at ten after taking a
+ * column out and the browser draws a phantom eleventh — an empty cell at the
+ * end of every open drawer, which no assertion about markup would notice and
+ * every reader would see. Counted from the header rather than written down, so
+ * the next column to arrive or leave fails this rather than being remembered.
+ */
+test('the drawer spans exactly the columns the header declares', () => {
+  const head = jsx.slice(jsx.indexOf('<thead>'), jsx.indexOf('</thead>'));
+  const columns = (head.match(/<th[\s>/]/g) || []).length;
+  assert.equal(columns, 9, 'the table is nine columns wide since 2026-09-04');
+  const span = /<td colSpan=\{(\d+)\}>/.exec(code);
+  assert.ok(span, 'the drawer must span the row');
+  assert.equal(Number(span[1]), columns, 'colSpan and the header disagree');
+});
+
+/**
+ * The audit fact has to land somewhere, and "somewhere" is checkable.
+ *
+ * Asked for as "ย้ายไปแสดงใน Modal ดูข้อมูลเดิม หรือ ประวัติการแก้ไข" — so the
+ * version being absent from the table is only half of what was requested, and
+ * the half that is easy to leave undone.
+ */
+test('the rule set moved into the drawer, above the trail rather than inside it', () => {
+  const drawer = code.slice(code.indexOf('audit-drawer'), code.indexOf('</tbody>'));
+  assert.match(drawer, /<PolicyVersionCell version=\{e\.policyVersionId\} \/>/, 'the version is nowhere');
+  assert.match(drawer, /className="audit-policy"/);
+
+  // เหนือร่องรอย ไม่ใช่ปนอยู่ในนั้น: อันหนึ่งคือข้อเท็จจริงคงที่ อีกอันคือลำดับเหตุการณ์
+  assert.ok(
+    drawer.indexOf('audit-policy') < drawer.indexOf('<RequestTrail'),
+    'the standing fact is filed among the events',
+  );
+  assert.match(css, /\.audit-policy \{/, 'the line has no style of its own');
+});

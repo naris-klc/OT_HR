@@ -1672,7 +1672,8 @@ curl -o compliance.csv --cookie 'ot_token=<…>' \
 
 สาม collection ออกมาเป็นเส้นเวลาเดียว **เรียงจากเก่าไปใหม่** — ต่างจากทุกหน้าจอใน
 แอปนี้ เพราะไฟล์นี้ถูกอ่านในฐานะเรื่องราวของหนึ่งไตรมาส ไม่ใช่ถูกกวาดตาหาสิ่งที่
-เพิ่งเกิดล่าสุด กฎอยู่ที่ `lib/complianceExport.js` (บริสุทธิ์ ทดสอบที่
+เพิ่งเกิดล่าสุด (จอที่ลิสต์ใบจัดกลุ่มตามรหัสพนักงานก่อนตั้งแต่ 2026-09-07 แต่
+*ภายในคนคนเดียว*ยังใหม่ไปเก่าเหมือนเดิม — ดู §`เรียงตามลำดับตัวเลข`) กฎอยู่ที่ `lib/complianceExport.js` (บริสุทธิ์ ทดสอบที่
 `test/complianceExport.test.js`) การอ่านอยู่ที่ `lib/complianceQuery.js` และหน้าจอ
 กับไฟล์เรียกตัวโหลดตัวเดียวกัน จึงเป็นไปไม่ได้ที่สองอย่างนั้นจะรายงานคนละไตรมาส
 
@@ -5289,12 +5290,21 @@ append-only, and logged last so that losing the audit row can never lose the
 recompute.
 
 **The screens say so.** ตรวจสอบรายเดือน carries a banner when the month is not
-uniform; ดู / แก้ไขรายการ carries the version per entry; ประวัติการแก้ไข prints
-`เวอร์ชัน 2 → เวอร์ชัน 3` against a correction that crossed a boundary. It read
-"ตรวจสอบรายเดือน carries a กฎที่ใช้ column and a banner" until 2026-09-04, when
-the column was taken off at HR's request: a version number per person was not
-what that screen is read for, and the banner — which names every version in the
-month and says what to do about it — is the half that was being used. The banner
+uniform; ดู / แก้ไขรายการ carries the version per entry **in the ประวัติการแก้ไข
+drawer**, one press from the row; ประวัติการแก้ไข prints `เวอร์ชัน 2 → เวอร์ชัน 3`
+against a correction that crossed a boundary.
+
+**No table has a กฎที่ใช้ column any more, and both went on 2026-09-04.** This
+read "ตรวจสอบรายเดือน carries a กฎที่ใช้ column and a banner" until that morning,
+when the per-person column came off: a version number per person was not what
+that screen is read for, and the banner — which names every version in the month
+and says what to do about it — is the half that was being used. The per-entry
+column on ดู / แก้ไขรายการ went the same afternoon, on the same argument,
+with the room it freed given to รายละเอียดงานที่ทำ and สถานะ rather than back to
+the table. **What that costs:** a row nobody has ever edited has no drawer to
+open, so its version is not readable on that screen at all — the banner is what
+catches the case that matters, a month whose rows were not all computed the same
+way. The banner
 distinguishes three cases rather than firing on
 all of them — flags that move numbers, flags that only move permissions, and
 rows whose rules were never recorded — because a banner that fires when
@@ -5680,9 +5690,11 @@ holds this stylesheet to.
 **And the one value that wraps got a line-height of its own.**
 รายละเอียดงานที่ทำ is the only cell on the card whose value runs to two lines —
 *"ทดสอบ calibration ชุด PM-3000 ก่อนส่งมอบ (ไม่พักเที่ยง)"* — and at the table's
-1.5 the pair closed up into a block whose last line then sat 10px above
-**กฎที่ใช้**, which is a *label* and starts at the opposite edge. Two lines of
-text and a heading, sharing one gap measured for neither.
+1.5 the pair closed up into a block whose last line then sat 10px above the
+next field, sharing one gap measured for neither. The field underneath was
+**กฎที่ใช้** — a *label*, starting at the opposite edge — until 2026-09-04; it is
+สถานะ now, which carries no label, and the two numbers below are kept because a
+chip needs that separation from a paragraph at least as much as a label did.
 
 **Two numbers, because one of them could only do half the job.** A line-height
 separates the two lines from each other and puts half its growth under the last
@@ -8012,11 +8024,44 @@ and the `company` handling in `app/api/employees/**` and the บริษัท 
 เสมอ `.sort()` จะสลับที่กันเองระหว่างการส่งออกสองครั้งของเดือนที่ไม่มีอะไรเปลี่ยน
 จึงตัดสินด้วยสตริงที่ normalize แล้วเป็นด่านสุดท้าย
 
-**ที่เดียว ห้าเอกสาร** — ตาราง `ตรวจสอบประจำเดือน` · `ส่งออกรายการ OT (CSV)` ·
+**ที่เดียว หกเอกสาร** — ตาราง `ตรวจสอบประจำเดือน` · `ส่งออกรายการ OT (CSV)` ·
 `ส่งออกรายงานสรุปประจำเดือน (CSV)` · `รายงาน OT ฝ่ายบัญชี` (จอ ใบพิมพ์ และ CSV
 อ่านจาก `lib/accounting.js` ตัวเดียวกัน) · `รายงาน OT แยกแผนก` ซึ่งถาม
-`compareCodes` มาตั้งแต่เขียน · คนที่กระทบยอดใบที่เซ็นแล้วกับไฟล์ไล่นิ้วลงทั้งสอง
-ใบพร้อมกัน สองใบคนละลำดับคือการทำงานนั้นสองรอบ
+`compareCodes` มาตั้งแต่เขียน · และตั้งแต่ **2026-09-07** คือ**รายการใบทุกใบที่
+`GET /api/entries` ตอบ** ดูหัวข้อถัดไป · คนที่กระทบยอดใบที่เซ็นแล้วกับไฟล์ไล่นิ้ว
+ลงทั้งสองใบพร้อมกัน สองใบคนละลำดับคือการทำงานนั้นสองรอบ
+
+#### ทุก role ไม่ใช่แค่สองจอรายงาน — 2026-09-07
+
+ขอมาเป็นประโยคเดียว: *"เรียงใบตามรหัสพนักงานทุก role"* · รอบ 3 ก.ย. แก้เฉพาะ
+เอกสารของคนที่**ปิดเดือน** ส่วนจอที่คนอื่นเปิดทั้งวันคือรายการใบ ซึ่งยังเรียงตาม
+วันที่อยู่ — `รายการรออนุมัติ` · `รออนุมัติ OT` · `รออนุมัติแทน` ·
+`ไม่มีหัวหน้าเซ็น` · `คำขอถอนใบ` · `บันทึกและประวัติ OT` ทั้งหมดนี้คือ
+`GET /api/entries` เราต์เดียว จึงเป็นการแก้ที่เดียวเช่นกัน ตัวเปรียบเทียบชื่อ
+`byEmployeeThenLatest` อยู่ใน `lib/entries.js`
+
+**ใหม่ไปเก่าเหมือนเดิม*ภายในคนคนเดียว*** — คีย์วันที่ยังเรียงจากมากไปน้อย ไม่ใช่
+ความสวยงามแต่เป็นของที่พังได้จริง: `components/EmployeeView.jsx` วาด
+`รายการล่าสุด` จาก `monthEntries.slice(0, 5)` ซึ่งคือห้าแถวแรกของรายการนี้ ถ้าเรียง
+วันจากน้อยไปมาก การ์ดที่หัวเขียนว่า *ล่าสุด* จะโชว์ห้าใบที่**เก่าที่สุด**ของเดือน
+โดยไม่มีอะไรบนจอบอก · และแปลว่า `?scope=mine` **ไม่ขยับเลย** เพราะรายการของคนเดียว
+มีรหัสเดียว คีย์แรกจึงไม่ตัดสินอะไร · ไฟล์ที่ส่งออกยังเรียงวันจากเก่าไปใหม่ตามเดิม
+ซึ่งเป็นเส้นแบ่งที่ `lib/complianceExport.js` เขียนไว้อยู่แล้วว่าจอตอบ *"เพิ่งเกิด
+อะไรขึ้น"* ส่วนไฟล์ถูกอ่านจากบนลงล่าง
+
+**คีย์ที่สามและสี่คือ `startTime` แล้ว `createdAt`** — คนหนึ่งถือสองใบในวันเดียว
+ได้เมื่อมีใบข้ามคืน และใบที่ยื่นใหม่ชนกันได้ทั้งวันและเวลา สองแถวที่เท่ากันทุกคีย์
+คือรายการที่สลับลำดับตัวเองระหว่างการเปิดสองครั้งของเดือนที่ไม่มีอะไรเปลี่ยน
+
+**แต่ `.sort({ workDate: -1, createdAt: -1 })` บน query ยังอยู่ และต้องอยู่** — มัน
+ตัดสินว่า*แถวไหนได้กลับมา*เมื่อรายการชนเพดาน 500 (`capFor`) ไม่ใช่ว่าวางเรียงยังไง
+มองโกเรียงตาม `employee.code` ไม่ได้เลย (เป็น ObjectId จนกว่า `populate` จะเติม —
+กับดักเดียวกับที่ `ส่งออกรายการ OT (CSV)` ติดมาหลายเดือน) แถวที่หลุดเพดานจึงยังเป็น
+**ใบที่เก่าที่สุด** ตามที่แบนเนอร์เหนือตารางบอก ถ้าไปตัดตามรหัสแทน คนครึ่งหลังของ
+ทะเบียนจะหายทั้งคนโดยไม่มีอะไรบอก
+
+**`legacy/routes/entries.js` ไม่ได้แก้** — เป็น Express ที่ปลดระวางแล้วและตามหลัง
+อยู่ก่อนแล้วในเรื่อง proxy filing กับ delegation (ดู §โครงสร้าง)
 
 **และ `ส่งออกรายการ OT (CSV)` ไม่เคยเรียงตามรหัสเลย** — เจอวันเดียวกัน · เดิมเขียน
 `.sort({ 'employee.code': 1, workDate: 1 })` ไว้บน query แต่ `employee` บนใบเป็น
@@ -9053,9 +9098,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2195 tests, all green**, about 3.5 s, measured 2026-09-04 across 124
-  files. (It read "2165 tests" until a month of scanner files became four rather
-  than two, and "2157 tests … across 121 files" until the last
+- `npm test` — **2240 tests, all green**, about 3.1 s, measured 2026-09-07 across 124
+  files. (It read "2195 tests … measured 2026-09-04" until เรียงใบตามรหัสพนักงาน
+  reached every list of ใบ, and "2165 tests" until a month of scanner files
+  became four rather than two, and "2157 tests … across 121 files" until the last
   twenty `<select>`s in the app became `PickOne` the same day.)
   **This is the first green figure in this bullet for two rounds**, and what the
   two ⚠️ notes it replaces recorded is worth keeping: both were measured while
