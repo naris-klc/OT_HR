@@ -195,6 +195,157 @@ test('the screen banner stays off the paper', () => {
   assert.match(banner.slice(0, 400), /className="box error no-print"/);
 });
 
+// ── the three previews are stacks of A4 sheets ──────────────────────────────
+
+/**
+ * ONE ELEMENT, ONE SIDE OF PAPER — asked for on 2026-09-08, in those words:
+ * not one container with a perforation drawn across it, an actual sheet per
+ * side, with the column headings repeated on every one and a new company always
+ * starting a new sheet.
+ *
+ * That moved where the pagination is decided. It used to be the browser's: one
+ * `.acct` was a company, `ROWS_PER_PAGE` was a number that had to AGREE with
+ * where the paginator would break, and the thead/tfoot groups were what put the
+ * headings and the margin bands back on side two. It is now this code's: the
+ * rows are cut here, each page is its own element inside the 297mm page box
+ * with `break-before: page` between them, and there is nothing left to break.
+ *
+ * So what these cases hold is the arithmetic and the chrome, from the source —
+ * there is no DOM in this suite and measuring millimetres in one would be a
+ * heavier promise than a stylesheet can keep anyway.
+ */
+
+test('every preview page carries a label, and no printer ever sees one', () => {
+  // Three documents, three labels, one class — and `no-print` on every one of
+  // them. Each has its own reason to stay off the paper: the accounting sheet
+  // was asked for WITHOUT a company heading, the departmental paper has no page
+  // number above its banner, and F-HR-027 is a controlled form.
+  for (const file of [ACCOUNTING, DEPARTMENT, FORM]) {
+    const code = sourceOf(file);
+    assert.match(
+      code,
+      /className="sheet-tag no-print"/,
+      `${file}: the page label can now reach the paper`,
+    );
+  }
+
+  // The accounting label is the one that names a company out loud, which is
+  // exactly the sentence that was taken off that sheet.
+  const acct = sourceOf(ACCOUNTING);
+  const tag = acct.slice(acct.indexOf('function PageTag'), acct.indexOf('function monthHead'));
+  assert.match(tag, /accountingLabel\(company\)/, 'the label no longer names the company on screen');
+
+  // F-HR-027 counts FORMS, not pages: one person's sheet is a side of paper in
+  // an ordinary month and runs onto a second when a month has enough split
+  // sessions, so a page count is a number that component cannot promise.
+  assert.match(sourceOf(FORM), /ใบที่ \{sheet\.no\} \/ \{sheet\.of\}/);
+});
+
+test('the page label is lifted out of the margin band, so the band keeps its height', () => {
+  const css = readFileSync(join(ROOT, 'app/print.css'), 'utf8');
+  const rule = css.slice(css.indexOf('.sheet-tag {'), css.indexOf('}', css.indexOf('.sheet-tag {')));
+
+  assert.match(rule, /position: absolute;/, 'the page label is in the flow — it now costs every page a line');
+  assert.match(rule, /right: 8mm;/);
+});
+
+/**
+ * Pages are decided by the names, and the blank lines cannot move the count —
+ * the property SPARE_LINES has been written under since 2026-08-25, now that
+ * the cut is ours to make rather than the browser's to guess.
+ */
+test('สรุป OT ส่งบัญชี cuts its own sides, and a company always starts one', () => {
+  const code = sourceOf(ACCOUNTING);
+  const fn = code.slice(code.indexOf('function paginate'), code.indexOf('function PageTag'));
+
+  // One page element per side, holding that side's rows.
+  assert.match(fn, /Math\.max\(1, Math\.ceil\(company\.rows\.length \/ ROWS_PER_PAGE\)\)/);
+  assert.match(fn, /company\.rows\.slice\(p \* ROWS_PER_PAGE, \(p \+ 1\) \* ROWS_PER_PAGE\)/);
+  // The five blank lines belong under the LAST name in the company.
+  assert.match(fn, /filler: p === pages - 1 \? filler : 0/);
+  // A new company starts a new element, which is what makes the company break
+  // fall out of the loop rather than being a second rule.
+  assert.match(fn, /for \(const company of companies\)/);
+});
+
+test('the departmental sheet cuts at its own height, and closes on the last side only', () => {
+  const code = sourceOf(DEPARTMENT);
+
+  // 33, not 37: 7.5mm rows under a 9mm banner are a different measurement from
+  // the accounting sheet's, and neither may be derived from the other.
+  assert.match(code, /const ROWS_PER_PAGE = 33;/);
+
+  const fn = code.slice(code.indexOf('function pagesOf'), code.indexOf('function pageNumbers'));
+  // The closing block travels with the last name rather than being orphaned.
+  assert.match(fn, /const tail = spare \+ 1 \+ \(unaccounted\?\.count \? 2 : 0\);/);
+  assert.match(fn, /rest \+ tail <= ROWS_PER_PAGE/);
+  assert.match(fn, /Math\.max\(1, Math\.min\(ROWS_PER_PAGE, rest - 1\)\)/);
+
+  // …and the total is printed once, on that page. A รวมชั่วโมงทำOT at the foot
+  // of every side would be two documents each claiming to be the total.
+  assert.match(code, /\{page\.last && \(/);
+  const closing = code.slice(code.indexOf('{page.last && ('));
+  assert.ok(
+    closing.indexOf('รวมชั่วโมงทำOT') > 0 && closing.indexOf('รวมชั่วโมงทำOT') < closing.indexOf('</tbody>'),
+    'the total row is outside the last-page block',
+  );
+
+  // The ลำดับที่ keeps running across the fold — 1–33 then 34–40, never two
+  // sequences that both start at 1.
+  assert.match(code, /\{page\.offset \+ n \+ 1\}/);
+});
+
+/**
+ * ⚠ THE ONE THAT COSTS MONEY RATHER THAN LOOKS.
+ *
+ * All three sheets are `box-sizing: content-box` at 194mm inside two 8mm bands
+ * — exactly the 210mm of the page box. The preview draws a 1px edge on each so
+ * a stack of white cards on a grey desk reads as separate sheets, and 1px of
+ * border makes the sheet WIDER THAN THE PAPER, which a browser answers by
+ * scaling the whole form down. Every figure on it moves. The edges are allowed
+ * to exist only because the print blocks take them off again.
+ */
+test('every preview is a white card the printer never sees', () => {
+  const css = readFileSync(join(ROOT, 'app/print.css'), 'utf8');
+
+  const SHEETS = [
+    { screen: '.acct-screen .acct {', gap: '.acct-screen .acct + .acct', paper: '.acct-screen { background: #fff;' },
+    { screen: '.f027-screen .f027 {', gap: '.f027-screen .f027 + .f027', paper: '.f027-screen { background: #fff;' },
+    { screen: '.otdept-screen .otdept {', gap: '.otdept-screen .otdept + .otdept', paper: '.otdept-screen { background: #fff;' },
+  ];
+
+  for (const sheet of SHEETS) {
+    const screen = css.slice(css.indexOf(sheet.screen), css.indexOf(sheet.gap));
+    assert.match(screen, /border: 1px solid var\(--paper-edge\);/, `${sheet.screen} has no paper edge`);
+    assert.match(screen, /border-radius: 2px;/, `${sheet.screen} has no corner`);
+    assert.match(screen, /position: relative;/, `${sheet.screen} cannot position its label`);
+
+    // A clear band of desk between one sheet and the next: 16px reads as a gap
+    // in a list, 32px reads as two objects.
+    assert.match(css.slice(css.indexOf(sheet.gap)).slice(0, 120), /margin-top: 32px;/);
+
+    // Sliced from the line that whitens the desk, so a rule outside
+    // @media print cannot be mistaken for the reset.
+    const paper = css.slice(css.indexOf(sheet.paper));
+    const reset = paper.slice(paper.indexOf(sheet.screen), paper.indexOf(sheet.gap));
+    assert.match(reset, /border: 0;/, `${sheet.screen} prints 210mm plus 2px — the browser will scale it`);
+    assert.match(reset, /border-radius: 0;/);
+    assert.match(reset, /position: static;/);
+    assert.match(paper.slice(paper.indexOf(sheet.gap)).slice(0, 120), /margin-top: 0;/);
+  }
+});
+
+test('no sheet draws a page break inside itself any more', () => {
+  // The dashed fold was the previous answer — one element per company with a
+  // rule across it where the paper would end. It was replaced on request by an
+  // element per side, and a stray fold rule left behind would draw a line
+  // across the middle of a page that is now a whole page.
+  const css = readFileSync(join(ROOT, 'app/print.css'), 'utf8');
+  assert.doesNotMatch(css, /tr\.fold/, 'the fold rule outlived the fold');
+  assert.doesNotMatch(sourceOf(ACCOUNTING), /foldAt|className=\{fold/, 'the fold marker is still being rendered');
+});
+
+
 // ── F-HR-027: the acting note costs an ordinary sheet nothing ───────────────
 
 /**

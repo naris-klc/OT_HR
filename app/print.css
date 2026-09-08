@@ -339,7 +339,7 @@
    phone shows a real sheet a bit at a time instead of a shrunken whole one. */
 .f027-screen {
   background: var(--paper-desk);
-  padding: 16px;
+  padding: 24px 16px;
   overflow-x: auto;
   /* A sideways swipe on the sheet must not also drag the page or trigger the
      browser's back gesture once the sheet hits its end. */
@@ -347,13 +347,26 @@
   -webkit-overflow-scrolling: touch;
 }
 /* The same bands the paper is printed with, so the preview is the sheet — see
-   the @page note at the foot of this file for where the figures come from. */
-.f027-screen .f027 { box-shadow: 0 2px 12px var(--paper-shadow); padding: 18mm 8mm 22mm; }
+   the @page note at the foot of this file for where the figures come from —
+   plus the screen-only edge every preview in this file now draws. The border
+   and the radius are what make a bundle of forty read as forty sheets rather
+   than as one white scroll; ⚠ both come off in the print block below, and the
+   border is the one that has to: `.f027` is `box-sizing: content-box` and
+   194mm + 8mm + 8mm is exactly the 210mm of the page box, so 1px of border is a
+   sheet wider than the paper and a browser answers that by scaling the form. */
+.f027-screen .f027 {
+  position: relative;
+  box-shadow: 0 2px 12px var(--paper-shadow);
+  padding: 18mm 8mm 22mm;
+  border: 1px solid var(--paper-edge);
+  border-radius: 2px;
+}
 /* A whole month printed in one go puts every employee's sheet in the same
    wrapper — one person to a side, the same rule the other two multi-sheet
    documents carry (.acct, .otdept). One sheet on its own has no sibling and is
-   therefore untouched by this. */
-.f027-screen .f027 + .f027 { margin-top: 16px; }
+   therefore untouched by this. 32px rather than 16: half a centimetre of desk
+   reads as a gap in a list, a whole one reads as two objects. */
+.f027-screen .f027 + .f027 { margin-top: 32px; }
 
 @media print {
   /* The page box is 210 × 297mm and the sheet is drawn to fill it, so anything
@@ -371,8 +384,15 @@
      meaning on paper anyway — the sheet is 194mm and the paper is 210mm. */
   .f027-screen { background: #fff; padding: 0; overflow: visible; }
   /* Padding is NOT reset: it is the sheet's own margin bands, and on paper it
-     is doing the same job it does in the preview. Only the shadow goes. */
-  .f027-screen .f027 { box-shadow: none; }
+     is doing the same job it does in the preview. What goes is the screen's
+     chrome — the shadow, the edge, the corner and the containing block for the
+     ใบที่ label, which is itself `no-print` and not in this tree at all. */
+  .f027-screen .f027 {
+    position: static;
+    box-shadow: none;
+    border: 0;
+    border-radius: 0;
+  }
   .f027-screen .f027 + .f027 { margin-top: 0; }
 
   /* ONE PERSON TO A SIDE, in a batch of forty.
@@ -632,24 +652,73 @@
    and the reasoning above it applies here unchanged — 194mm is the paper. */
 .acct-screen {
   background: var(--paper-desk);
-  padding: 16px;
+  /* 24px of desk above and below, 16px either side. The extra at the top is
+     the room the หน้า n / m label sits in visually — it is INSIDE the paper
+     (see .sheet-tag) but it reads as the top of a page, and a page whose top
+     edge is 16px from the top of a scroll container reads as a panel. */
+  padding: 24px 16px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
-.acct-screen .acct { box-shadow: 0 2px 12px var(--paper-shadow); padding: 0 8mm; }
-.acct-screen .acct + .acct { margin-top: 16px; }
+/* THE CARD IS THE PAPER, and every property here is screen-only chrome that
+   the @media print block below takes off again.
+
+   The sheet is already A4 to the millimetre and has been since it was written:
+   194mm of body plus these 8mm bands is 210mm across, and `min-height: 295mm`
+   above is the side. What was missing was the EDGE. A white block on a light
+   grey desk, with a soft shadow and nothing else, has no line where the paper
+   stops — so a five-side bundle read as one continuous scroll of white, and
+   the question this preview exists to answer ("how many sheets is this?") was
+   answered by the print dialog instead.
+
+   ⚠ THE BORDER MUST COME OFF FOR THE PRINTER, and it is not cosmetic. `.acct`
+   is `box-sizing: content-box`: 194mm + 8mm + 8mm is exactly the 210mm of the
+   page box, so a 1px border makes the sheet WIDER THAN THE PAPER, and a browser
+   fitting the page to its printable area answers that by scaling the whole
+   sheet down. Every figure on it moves. The reset below is the rule that
+   matters; this line is only allowed to exist because of it. */
+.acct-screen .acct {
+  position: relative;
+  box-shadow: 0 2px 12px var(--paper-shadow);
+  padding: 0 8mm;
+  border: 1px solid var(--paper-edge);
+  border-radius: 2px;
+}
+/* One clear band of desk between one sheet of paper and the next — 16px read
+   as a gap in a list, 32px reads as two objects. It is the screen's only
+   statement that these are separate sheets; on paper that job is done by
+   `.acct + .acct { break-before: page }` further up, and the margin is zeroed
+   below so the two never both apply. */
+.acct-screen .acct + .acct { margin-top: 32px; }
+
+/* The page label is `.sheet-tag`, shared with the other two previews — see the
+   block above `.print-bar` at the foot of this file. */
 
 @media print {
-  /* `overflow: visible` — a roster is the sheet that most needs to break
-     across pages, and a scroll container cannot be broken at all. */
+  /* `overflow: visible` — a scroll container is one unbreakable box to the
+     paginator, and the roster is many pages of them. */
   .acct-screen { background: #fff; padding: 0; overflow: visible; }
-  .acct-screen .acct { box-shadow: none; }
+  /* Every screen-only property of the card, taken off together. `border` is
+     the one that would cost money rather than looks — 2px on a sheet that is
+     exactly 210mm wide is a sheet wider than the paper, and the browser answers
+     that by scaling the form down. `position` goes back to `static` because a
+     positioned box is a fragmentation question nothing here needs an answer to;
+     the label it was positioning is `no-print` and is not in the print tree. */
+  .acct-screen .acct {
+    position: static;
+    box-shadow: none;
+    border: 0;
+    border-radius: 0;
+  }
   .acct-screen .acct + .acct { margin-top: 0; }
-  /* A name must not be split across the fold. */
+  /* Belt and braces since 2026-09-08, when a `.acct` stopped being a company
+     and became a SIDE: the rows are cut to 37 in components/AccountingPrint.jsx
+     and a page is 295mm of content in a 297mm box, so there is nothing here for
+     the paginator to break. These three say what should happen if that ever
+     stops being true — a row stays whole, and the headings and the margin bands
+     come with the rows onto whatever page they land on. */
   .acct tr { page-break-inside: avoid; }
-  /* Both groups repeat on every page: thead carries the column headings and
-     the top margin above them, tfoot the bottom margin. */
   .acct thead { display: table-header-group; }
   .acct tfoot { display: table-footer-group; }
 }
@@ -801,26 +870,80 @@
   line-height: 0;
 }
 
-/* As .f027-screen and .acct-screen — see the note above the first of them. */
+/* As .f027-screen and .acct-screen — see the note above the first of them, and
+   the same ⚠ about the border: 194mm + two 8mm bands is exactly 210mm, so the
+   edge that makes this read as paper would make it wider than paper. */
 .otdept-screen {
   background: var(--paper-desk);
-  padding: 16px;
+  padding: 24px 16px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
-.otdept-screen .otdept { box-shadow: 0 2px 12px var(--paper-shadow); padding: 0 8mm; }
-.otdept-screen .otdept + .otdept { margin-top: 16px; }
+.otdept-screen .otdept {
+  position: relative;
+  box-shadow: 0 2px 12px var(--paper-shadow);
+  padding: 0 8mm;
+  border: 1px solid var(--paper-edge);
+  border-radius: 2px;
+}
+.otdept-screen .otdept + .otdept { margin-top: 32px; }
 
 @media print {
   .otdept-screen { background: #fff; padding: 0; overflow: visible; }
-  .otdept-screen .otdept { box-shadow: none; }
+  .otdept-screen .otdept {
+    position: static;
+    box-shadow: none;
+    border: 0;
+    border-radius: 0;
+  }
   .otdept-screen .otdept + .otdept { margin-top: 0; }
-  /* A name must not be split across the fold — but a department is a page, so
-     in practice nothing here breaks at all. */
+  /* Belt and braces, as on .acct: a department longer than a side is cut into
+     pages in components/DepartmentPrint.jsx (33 rows, 288mm of a 297mm box), so
+     the paginator has nothing left to break. These say what should happen if
+     that ever stops being true. */
   .otdept tr { page-break-inside: avoid; }
   .otdept thead { display: table-header-group; }
   .otdept tfoot { display: table-footer-group; }
+}
+
+/* ══ ป้ายบอกหน้ากระดาษ — บนจอเท่านั้น ═════════════════════════════════════════
+ *
+ * "หน้า 3 / 5 (PM · ไพรมัส)", "หน้า 7 / 19 (แผนกผลิต 1)", "ใบที่ 12 / 40
+ * (สมชาย ใจดี)" — one rule for all three previews, in the top-right of every
+ * A4 card.
+ *
+ * ⚠ NEVER PRINTED. Every caller writes `no-print` beside this class and each
+ * has its own reason: the accounting sheet was asked for WITHOUT a company
+ * heading, the departmental sheet's paper has no page number above its green
+ * banner, and F-HR-027 is a controlled form. A label in the same ink as the
+ * form invites somebody to believe the paper says it. `.no-print` is
+ * `display: none !important` in app/styles.css's print block, and each sheet's
+ * own print rules put its `position` back to `static` beside that.
+ *
+ * `right: 8mm` is the sheet's own side band, so the label's right edge lines up
+ * with the right rule of the grid under it rather than with the paper edge.
+ * Absolute, so it costs the margin band no height: the preview stays millimetre
+ * for millimetre the printed sheet, which is the whole reason those bands are
+ * measured in the first place.
+ *
+ * A quiet pill and not a heading — it is the one thing on these screens that is
+ * not paper and it is meant to read as chrome. Raw colours rather than tokens,
+ * like `.sheet-hint` above: it lies on white paper, which does not follow the
+ * theme, so neither may it. */
+.sheet-tag {
+  position: absolute;
+  top: 2.4mm;
+  right: 8mm;
+  z-index: 1;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(20, 32, 26, .07);
+  color: rgba(20, 32, 26, .62);
+  font: 600 11px/1.3 var(--sans);
+  white-space: nowrap;
+  /* The paper underneath stays the target of every tap and swipe. */
+  pointer-events: none;
 }
 
 /* ══ the bar above the paper ═════════════════════════════════════════════════

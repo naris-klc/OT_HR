@@ -343,8 +343,22 @@ export function FormNotices({ form, who = null, asked = '' }) {
  * Rendered inside a `.f027-screen`, which is what puts it on a grey page on
  * the screen and takes the grey away on the paper. A second sheet in the same
  * wrapper starts a new page (see `.f027 + .f027` in app/print.css).
+ *
+ * `sheet` IS THE PREVIEW'S LABEL AND NOTHING ELSE — `{ no, of }`, drawn in the
+ * white band above the title and carried by `no-print`. It is passed by the
+ * bundle (PrintFormBatch.jsx), where forty sheets in one scroller had no way of
+ * saying which one you were looking at; a single person's print passes nothing
+ * and gets no label, because "ใบที่ 1 / 1" over one sheet is furniture.
+ *
+ * ⚠ IT SAYS ใบที่ AND NOT หน้า, deliberately, and สรุป OT ส่งบัญชี's label says
+ * หน้า. There the element IS a side of paper — the rows are cut to fit one, so
+ * the count is exact. Here the element is one person's FORM, which is a side of
+ * paper in every ordinary month and runs onto a second one when a month has
+ * enough split sessions (see the note above `.f027` in app/print.css, which
+ * lets it run rather than shrinking the grid). Counting forms is true either
+ * way; counting pages would be a number this component cannot promise.
  */
-export function F027Sheet({ form }) {
+export function F027Sheet({ form, sheet = null }) {
   const cell = (v) => (v ? hours(v) : '');
   /**
    * Which sessions carry (รออนุมัติ) — READ OFF `form.pending`, the same list
@@ -361,6 +375,11 @@ export function F027Sheet({ form }) {
 
   return (
     <div className="f027">
+      {sheet && (
+        <div className="sheet-tag no-print">
+          ใบที่ {sheet.no} / {sheet.of} ({form.employee.name})
+        </div>
+      )}
       <div className="f027-title">
         ใบขออนุมัติทำงานล่วงเวลา/ทำงานในวันหยุด (Overtime&nbsp;&nbsp;Work&nbsp;&nbsp;Authorization)
       </div>
@@ -420,7 +439,11 @@ export function F027Sheet({ form }) {
         <tbody>
           {form.rows.map((row) => {
             // A date with no OT still prints its row — the paper form is a
-            // full month and HR reads the blanks as "no OT that day".
+            // full month and HR reads the blanks as "no OT that day". Since
+            // 2026-09-08 the grid is 31 rows in every month, so on the short
+            // months the last one to three rows are days the year does not
+            // have: `row.date` is null there and they can never hold a
+            // session. See `formGridDays` in lib/reports.js.
             const sessions = row.sessions.length ? row.sessions : [null];
             /**
              * WHETHER THE DATE'S TWO SESSIONS WERE SIGNED BY THE SAME หัวหน้า.
@@ -442,7 +465,10 @@ export function F027Sheet({ form }) {
              */
             const oneApprover = new Set(sessions.map((s) => s?.approverName || '')).size === 1;
             return sessions.map((s, i) => (
-              <tr key={`${row.date}-${i}`}>
+              // Keyed by the DAY NUMBER, which every row has: the three rows a
+              // February sheet ends with have no date, and `${row.date}-${i}`
+              // would give all three the key `null-0`.
+              <tr key={`${row.day}-${i}`}>
                 {/* The day number and nothing under it. A birthday note
                     used to sit here to explain a Tuesday in the วันหยุด
                     column; HR asked for it off the controlled form, and the
@@ -657,7 +683,14 @@ function ActingNote({ form }) {
 }
 
 /**
- * One typed signature, in the shape a Thai form puts a name in — `( สมหญิง ใจงาม )`.
+ * One typed signature — the given name and nothing else. `นางสาวสมหญิง ใจงาม`
+ * signs as `สมหญิง`.
+ *
+ * THE TITLE AND THE SURNAME BOTH COME OFF, and `firstName` in lib/api.js is
+ * where both cuts are made and where the roster they were measured against is
+ * written down. The surname went on 2026-09-02 — it was what put a second line
+ * in a 19mm column and a 25-row month onto two sides of A4 — and the คำนำหน้า
+ * on 2026-09-08, when HR read `นายไพฑูร` in a box headed ลงชื่อ.
  *
  * RETURNS NULL, NOT AN EMPTY SPAN, when there is no name. The two ลงชื่อ
  * columns are blank on most of the 31 rows of most sheets, and an element with
@@ -666,9 +699,10 @@ function ActingNote({ form }) {
  * added to a row that has nothing to say — the same rule `ActingNote` follows
  * below, and for the same reason.
  *
- * THE BRACKETS ARE THE FORM, not decoration. A bare name in a box on a document
- * that is filed is read as a label; a name in brackets under a heading that
- * says ลงชื่อ is read as a signature, which is what HR asked for it to be.
+ * NO BRACKETS, NO PUNCTUATION OF ANY KIND. It read `( ชื่อ นามสกุล )` for one
+ * afternoon on 2026-09-02, on the reasoning that brackets under a ลงชื่อ
+ * heading are what make a name read as a signature rather than a label; HR
+ * asked for the name alone the same day, and the box carries a name alone.
  */
 function Signed({ name }) {
   const only = firstName(name);

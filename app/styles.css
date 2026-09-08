@@ -1018,6 +1018,15 @@
    */
   --paper-desk: #e8ebe9;
   --paper-shadow: rgba(0, 0, 0, .18);
+  /* The line where the paper stops. The shadow says "lying on something"; it
+     does not say where the sheet ends, and on a five-side bundle of white
+     cards on a light grey desk that is the difference between reading one
+     document and reading five sheets of paper. Darker than the desk on
+     purpose — an edge lighter than what it sits on is not an edge. Screen
+     only: print.css takes the border off before the sheet reaches the printer,
+     where 1px would make it wider than A4. One value in both themes, for the
+     same reason the desk above it is one value. */
+  --paper-edge: #ccd3cf;
   /* ตั้งค่าการพิมพ์ — the card above the paper. Asked for by hand as
      zinc-800/70 · zinc-700/60 · zinc-300, a dark translucent panel, and it
      stays dark in both themes the way the swipe hint below it and the desk

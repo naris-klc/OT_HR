@@ -13,7 +13,7 @@ import { isDepartmentManager } from '@/lib/entries.js';
 import { managerSignature } from '@/lib/approverLine.js';
 import {
   PERIOD_RE, actingNotes, previousPeriod, thaiMonth, min, max, latestPerSession,
-  formDayTypes, formPrintStatuses, formPendingStatuses,
+  formDayTypes, formGridDays, formPrintStatuses, formPendingStatuses,
 } from '@/lib/reports.js';
 
 /**
@@ -93,12 +93,18 @@ export const GET = route(async (req, { params }) => {
     status: { $in: statuses },
   }).sort({ workDate: 1, startTime: 1 }).lean();
 
-  const [year, month] = period.split('-').map(Number);
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const [year] = period.split('-').map(Number);
   const holidays = await loadHolidaySet([year]);
 
   /**
-   * The calendar down the left of the sheet — the company one, for everybody.
+   * THIRTY-ONE ROWS, whatever month this is — `formGridDays` in lib/reports.js,
+   * where why is written down. February's sheet has the same lines as March's
+   * and the last three of them are blank.
+   *
+   * The day types are asked for the dates that EXIST. 30 February is a row on
+   * the paper and not a day in the year, so it gets no entry in the map and
+   * nothing looks one up for it: `byDate` below is built from the dated rows
+   * alone, which is what keeps a segment from ever landing on one of the three.
    *
    * `formDayTypes` takes no birth date and this route has none to give it: the
    * sheet carries no birthday remark since HR asked for it off F-HR-027
@@ -107,24 +113,23 @@ export const GET = route(async (req, { params }) => {
    * resolved when each entry was filed, so a Tuesday somebody's birthday made a
    * holiday still prints in the วันหยุด columns with the day number beside it.
    */
-  const dates = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    dates.push(`${period}-${String(day).padStart(2, '0')}`);
-  }
+  const grid = formGridDays(period);
+  const dates = grid.filter((d) => d.date).map((d) => d.date);
   const dayTypes = formDayTypes(dates, {
     isHoliday: makeIsHoliday(holidays, policy),
     policy,
   });
 
-  const rows = dates.map((date, i) => ({
-    day: i + 1,
+  const rows = grid.map(({ day, date }) => ({
+    day,
     date,
     /** The company calendar's answer, and no reason field — so no row can
-        explain a holiday by naming whose day it was. */
-    isHoliday: dayTypes[date].type === 'holiday',
+        explain a holiday by naming whose day it was. A row past the end of the
+        month is not a holiday and is not a working day; it is not a day. */
+    isHoliday: date ? dayTypes[date].type === 'holiday' : false,
     sessions: [],
   }));
-  const byDate = new Map(rows.map((r) => [r.date, r]));
+  const byDate = new Map(rows.filter((r) => r.date).map((r) => [r.date, r]));
 
   // Two filings of one session print as one row — the newest. This runs before
   // the row and summary loop rather than after it, so สรุปรวม counts exactly

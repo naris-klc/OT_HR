@@ -166,7 +166,17 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
           // Keyed by position: two people can share a name, and a roster with
           // two shapes of employee code (PM-0620 / PM00511) is not something to
           // build a react key out of.
-          <F027Sheet key={`${form.employee.code}-${i}`} form={form} />
+          //
+          // `sheet` is the preview's label, `no-print` and counted in FORMS
+          // rather than in pages — see F027Sheet. `forms.length`, not
+          // `employees.length`: the bundle is the sheets that actually loaded,
+          // and a label that counted the failures would say 40 over a document
+          // of 36.
+          <F027Sheet
+            key={`${form.employee.code}-${i}`}
+            form={form}
+            sheet={{ no: i + 1, of: forms.length }}
+          />
         ))}
       </SheetScroll>
     </>

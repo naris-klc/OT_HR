@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { findSameDate, sameDateMessage } from '../lib/overlap.js';
 import { CAP_STATUSES } from '../lib/caps.js';
+import { FORM_DAY_ROWS, formGridDays } from '../lib/reports.js';
 
 /**
  * หนึ่งวัน หนึ่งใบ, ON THE SHEET as well as at the filing form — 2026-09-02.
@@ -83,6 +84,62 @@ test('every path that writes a session asks the same question', () => {
   ]) {
     assert.match(sourceOf(file), /refuseDayConflict\(/, `${file} does not enforce หนึ่งวัน หนึ่งใบ`);
   }
+});
+
+// ── how many lines the sheet has at all ─────────────────────────────────────
+
+/**
+ * THIRTY-ONE ROWS IN EVERY MONTH — asked for on 2026-09-08, and the grid was
+ * the length of the month until then.
+ *
+ * It belongs in this file because it is the same question every rule above
+ * answers: which lines does F-HR-027 have, and what may land on one. The three
+ * rows February gains are the strongest form of "nothing lands here" — they are
+ * not dates, so `byDate` cannot know them and no segment can reach them.
+ */
+test('the grid is 31 rows whatever the month is worth', () => {
+  assert.equal(FORM_DAY_ROWS, 31);
+  for (const period of ['2026-01', '2026-02', '2024-02', '2026-04', '2026-09', '2026-12']) {
+    assert.equal(formGridDays(period).length, 31, `${period} does not print 31 rows`);
+  }
+});
+
+test('the rows past the end of the month carry a day number and no date', () => {
+  const feb = formGridDays('2026-02');
+  assert.deepEqual(feb.slice(28), [
+    { day: 29, date: null },
+    { day: 30, date: null },
+    { day: 31, date: null },
+  ]);
+  // The dated rows are the real calendar, in order, with nothing invented
+  // inside it — a leap February has 29 of them and April has 30.
+  assert.deepEqual(feb.slice(0, 3).map((d) => d.date), ['2026-02-01', '2026-02-02', '2026-02-03']);
+  assert.equal(feb[27].date, '2026-02-28');
+  assert.equal(formGridDays('2024-02').filter((d) => d.date).length, 29);
+  assert.equal(formGridDays('2026-04').filter((d) => d.date).length, 30);
+  assert.equal(formGridDays('2026-01').filter((d) => d.date).length, 31);
+});
+
+test('a dateless row can never be matched by a segment', () => {
+  /**
+   * `2026-02-30` DOES NOT EXIST AND MUST NOT BE INVENTED. A row carrying it
+   * would be a key `byDate` answers to, and an entry filed with a bad workDate
+   * would print on the paper below the month's own last day.
+   */
+  assert.equal(formGridDays('2026-02').filter((d) => d.date === '2026-02-30').length, 0);
+  const code = sourceOf(ROUTE);
+  assert.match(code, /const byDate = new Map\(rows\.filter\(\(r\) => r\.date\)\.map\(\(r\) => \[r\.date, r\]\)\)/);
+  // The day types are asked for the dates that exist, so a null never reaches
+  // the calendar and the three extra rows are neither holiday nor working day.
+  assert.match(code, /const dates = grid\.filter\(\(d\) => d\.date\)\.map\(\(d\) => d\.date\)/);
+  assert.match(code, /isHoliday: date \? dayTypes\[date\]\.type === 'holiday' : false/);
+});
+
+test('the sheet keys its rows by the day number, not by the date', () => {
+  // Three rows with `date: null` would share the React key `null-0`.
+  const code = sourceOf(SHEET);
+  assert.match(code, /<tr key=\{`\$\{row\.day\}-\$\{i\}`\}>/);
+  assert.doesNotMatch(code, /<tr key=\{`\$\{row\.date\}/);
 });
 
 // ── and the rule on the sheet, which is new ─────────────────────────────────

@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { api, THAI_MONTHS } from '@/lib/api.js';
+import { accountingLabel, api, THAI_MONTHS } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
 
 /**
- * สรุป OT ส่งบัญชี rendered for print — one sheet per company, A4 portrait.
+ * สรุป OT ส่งบัญชี rendered for print — one element per SIDE of A4 portrait,
+ * cut by `paginate` below, a new company always starting a new side.
  *
  * The sheet is the table and nothing else: รหัส, ชื่อ-นามสกุล and the two rate
  * columns headed 1.50 and 3.00 under one ประจำเดือน banner. No company
@@ -33,7 +34,10 @@ import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from
  * reads. Every roster member is listed, including the ones with no OT — a
  * blank line is accounting's evidence that somebody was checked rather than
  * missed, which is why this always fetches `includeZero=1` regardless of the
- * screen's checkbox. Sheets after the first start on a new page.
+ * screen's checkbox. Sheets after the first start on a new page — which since
+ * 2026-09-08 is a statement about elements rather than about rows: every page
+ * of the roster is its own `.acct`, so the preview is a stack of A4 sheets and
+ * the printer is handed them already cut.
  */
 /**
  * "มีใบที่ไม่ถูกนับ …" — on the paper, not only on the screen.
@@ -97,8 +101,16 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
       <SheetScroll className="acct-screen">
         {data.companies.length === 0 ? (
           <div className="empty">ไม่มีข้อมูลสำหรับเดือนนี้</div>
-        ) : data.companies.map((c) => (
-          <Sheet key={c.key} company={c} period={period} unaccounted={data.unaccounted} />
+        ) : paginate(data.companies).map((sheet) => (
+          <Sheet
+            key={`${sheet.company.key}-${sheet.page.no}`}
+            company={sheet.company}
+            rows={sheet.rows}
+            filler={sheet.filler}
+            period={period}
+            unaccounted={data.unaccounted}
+            page={sheet.page}
+          />
         ))}
       </SheetScroll>
     </>
@@ -106,10 +118,25 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
 }
 
 /**
- * Body rows one A4 side holds: 297mm of paper, less the 10mm and 12mm margin
- * rows, less the two 7mm heading rows the browser repeats on every page, over
- * a 7mm row — 37, and measured at 37 in a print render rather than only
- * derived. Re-check it if the row height, the margins or the heading change.
+ * Body rows one A4 side holds — and since 2026-09-08 that is not a prediction
+ * about where the browser will break, it is the size of a page THIS FILE cuts.
+ *
+ * 36mm of the side is spoken for on every page: the 10mm margin band in thead,
+ * the two 7mm heading rows under it, and the 12mm band in tfoot. 37 rows at 7mm
+ * is 259mm, and 36 + 259 is **295mm** — which is `min-height` on `.acct` in
+ * app/print.css to the millimetre, and 2mm inside the 297mm A4 has. That 2mm is
+ * the same slack every sheet in that file keeps: a page measuring 297.1mm ejects
+ * a blank side into the middle of a bundle.
+ *
+ * IT WAS ALREADY 37 AND IT WAS ALREADY MEASURED, in a print render rather than
+ * only derived, back when the whole company was one element and the browser did
+ * the cutting. What changed is who the number binds: it used to have to AGREE
+ * with the browser's pagination, and now it decides it, because each page is its
+ * own `.acct` with `break-before: page` between them. A page that is 295mm of
+ * content in a 297mm box cannot be broken again.
+ *
+ * Re-check it if the row height, the margin bands or the heading change — and
+ * check it by measuring a printed page, not by trusting this sum.
  */
 const ROWS_PER_PAGE = 37;
 
@@ -140,27 +167,20 @@ const ROWS_PER_PAGE = 37;
  */
 const SPARE_LINES = 5;
 
-function Sheet({ company, period, unaccounted }) {
-  /**
-   * `room` is the rest of the page the last name is on — a whole page when
-   * there are no names at all, and nothing when the names happen to end
-   * exactly on a page boundary.
-   *
-   * The `length > 0` clause is what tells those two apart: `0 % 37` and
-   * `37 % 37` are both 0, and they want opposite answers. An empty sheet used
-   * to be special-cased to a full page of 37 ruled rows; it now takes the same
-   * five lines as every other sheet, which is the whole of what the empty case
-   * needs — the route does not emit a company with no rows (a month with no
-   * entries returns only the companies that have some), so this branch is
-   * reached by nothing today and is written to agree with the rule rather than
-   * to be a second rule nobody exercises.
-   */
-  const used = company.rows.length % ROWS_PER_PAGE;
-  const room = used === 0 && company.rows.length > 0 ? 0 : ROWS_PER_PAGE - used;
-  const filler = Math.min(SPARE_LINES, room);
-
+/**
+ * ONE `.acct` IS ONE SIDE OF PAPER — not one company, since 2026-09-08.
+ *
+ * It took the rows of ONE page: `paginate` below cut them, and the heading, the
+ * two margin bands and the ไม่ถูกนับ flag are re-rendered inside every one of
+ * them rather than left to `display: table-header-group` to repeat. A page that
+ * comes loose from the stapled set therefore carries its own column headings on
+ * the screen exactly as it does on the paper, which is what makes the preview a
+ * stack of sheets rather than a scroll with rules drawn across it.
+ */
+function Sheet({ company, rows, filler, period, unaccounted, page }) {
   return (
     <div className="acct">
+      <PageTag page={page} company={company} />
       {/* Four ruled columns, and the white strip beside them.
 
           The grid still stops after 3.00 — that is the form accounting knows,
@@ -210,7 +230,7 @@ function Sheet({ company, period, unaccounted }) {
           </tr>
         </thead>
         <tbody>
-          {company.rows.map((row) => (
+          {rows.map((row) => (
             <tr key={row.employee.id}>
               <td className="code">{row.employee.code}</td>
               <td>{row.employee.name}</td>
@@ -235,6 +255,112 @@ function Sheet({ company, period, unaccounted }) {
           <tr className="pad" aria-hidden="true"><td colSpan={5} /></tr>
         </tfoot>
       </table>
+    </div>
+  );
+}
+
+/**
+ * THE SIDES OF PAPER THIS MONTH IS, CUT HERE — one entry per printed page,
+ * carrying the rows that go on it.
+ *
+ * It replaces a preview that was one element per COMPANY with a dashed rule
+ * drawn across it at each page boundary, and the reason for the change is that
+ * a rule drawn across a continuous white block is a picture of a page break
+ * rather than a page. Asked for on 2026-09-08 in those terms: no single
+ * container with a perforation in it, an actual sheet per side.
+ *
+ * WHAT THAT MOVES, AND WHAT IT DOES NOT. The browser used to decide where the
+ * page ended and `ROWS_PER_PAGE` had to AGREE with it; now this decides, and
+ * the browser has nothing left to break — every page is its own `.acct`, each
+ * one 295mm of content in a 297mm page box, with `break-before: page` between
+ * them. The sheet on the paper is the same sheet it was: same grid, same
+ * headings on every side, same margin bands, same five blank lines under the
+ * last name.
+ *
+ * A NEW COMPANY ALWAYS STARTS A PAGE, which falls out of the loop rather than
+ * being a rule of its own — a company's rows are cut into its own pages and the
+ * next company's first page is the next element. That was already true on paper
+ * and is now true on the screen as well.
+ *
+ * `room` and the five blank lines are UNCHANGED and are computed once per
+ * company, not once per page: they belong under the last name in the company,
+ * which is the last page's business alone.
+ *
+ * `Math.max(1, …)` is for a company with no rows at all. The route does not
+ * emit one today — a month with no entries returns only the companies that have
+ * some — but a sheet is still a sheet when it is empty, and no page at all for
+ * a company that is on the screen is a bundle that is quietly one side short.
+ */
+function paginate(companies) {
+  const sheets = [];
+
+  for (const company of companies) {
+    /**
+     * `room` is the rest of the page the last name is on — a whole page when
+     * there are no names at all, and nothing when the names happen to end
+     * exactly on a page boundary.
+     *
+     * The `length > 0` clause is what tells those two apart: `0 % 37` and
+     * `37 % 37` are both 0, and they want opposite answers. An empty sheet used
+     * to be special-cased to a full page of 37 ruled rows; it now takes the same
+     * five lines as every other sheet, which is the whole of what the empty case
+     * needs — the route does not emit a company with no rows (a month with no
+     * entries returns only the companies that have some), so this branch is
+     * reached by nothing today and is written to agree with the rule rather than
+     * to be a second rule nobody exercises.
+     */
+    const used = company.rows.length % ROWS_PER_PAGE;
+    const room = used === 0 && company.rows.length > 0 ? 0 : ROWS_PER_PAGE - used;
+    const filler = Math.min(SPARE_LINES, room);
+
+    const pages = Math.max(1, Math.ceil(company.rows.length / ROWS_PER_PAGE));
+    for (let p = 0; p < pages; p += 1) {
+      sheets.push({
+        company,
+        rows: company.rows.slice(p * ROWS_PER_PAGE, (p + 1) * ROWS_PER_PAGE),
+        // The blank lines are the last page's, and only the last page's.
+        filler: p === pages - 1 ? filler : 0,
+      });
+    }
+  }
+
+  return sheets.map((sheet, i) => ({ ...sheet, page: { no: i + 1, of: sheets.length } }));
+}
+
+/**
+ * "หน้า 3 / 5 (PM · ไพรมัส)" — the preview's page label, in the top-right of
+ * the paper card.
+ *
+ * ⚠ IT IS `no-print` AND THAT IS NOT TIDINESS, IT IS THE FORM. Read the note
+ * at the top of this file: accounting asked for this sheet WITHOUT a company
+ * heading, and the รหัส column with its PM- / THT- prefixes is what places a
+ * page that has come loose from the stapled set. This label names the company
+ * out loud — which is exactly the thing that was taken off the paper — so it
+ * exists on the screen and may never reach the printer. `.no-print` is
+ * `display: none !important` in app/styles.css's print block, and print.css
+ * puts the sheet's `position` back to `static` beside it.
+ *
+ * WHAT IT IS FOR is the question this screen could not answer before: how many
+ * sheets of paper is this, and which company is on which one. The preview was
+ * one long scroll of white and a roster of 163 people is four sides; the person
+ * pressing พิมพ์ was finding that out from the browser's own print dialog,
+ * after deciding to print.
+ *
+ * ONE NUMBER, NOT A RANGE, since the card became one side rather than one
+ * company. `ประจำเดือน` is not repeated here: the banner over the rate columns
+ * carries the month on every page, on the paper itself.
+ *
+ * Positioned inside the 10mm thead margin band, top-right, opposite the
+ * ไม่ถูกนับ flag which is bottom-left of the same band (see PaperFlag). It is
+ * absolutely positioned so it costs the band no height — the preview must stay
+ * millimetre for millimetre what comes out of the printer, and a label that
+ * pushed the grid down by its own line would break exactly that.
+ */
+function PageTag({ page, company }) {
+  if (!page) return null;
+  return (
+    <div className="sheet-tag no-print">
+      หน้า {page.no} / {page.of} ({accountingLabel(company)})
     </div>
   );
 }

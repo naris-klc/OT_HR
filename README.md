@@ -5492,6 +5492,18 @@ portrait, one employee per month, laid out cell for cell like the paper: วั�
 รายละเอียดงานที่ทำ, per-row ลงชื่อ columns for พนักงาน and หัวหน้างาน, สรุปรวม,
 and the dashed เฉพาะฝ่ายบุคคล box beside the ผู้ตรวจสอบ line.
 
+**วันที่ 1–31 is thirty-one rows in every month** — asked for on 2026-09-08, and
+the grid was the length of the month until then: 28 rows in February, 30 in
+April. The paper form is ruled 1–31 whichever month is written at the top of it,
+and a file of signed sheets is read across months by eye, so a February sheet
+three rows shorter than March's is one somebody has to measure before they can
+compare it. The rows past the end of the month carry their day number and
+nothing else — the same blank line a day nobody worked has always printed — and
+they carry **no date**: `formGridDays` in `lib/reports.js` answers `null` there,
+so there is no `2026-02-30` for a segment to be matched against and the three
+extra lines are blank by construction. A 31-row sheet was already the ordinary
+case and still fits one side of A4; the short months now print the same page.
+
 **The two ลงชื่อ columns are typed, not signed** — since 2026-09-02, and they
 "stayed empty for hand signing" until then. HR asked for the names to print and
 asked for them AS the signature: the sheet is not signed by hand once it is off
@@ -5514,17 +5526,30 @@ fingerprint scanner. The เฉพาะฝ่ายบุคคล box at the f
 untouched by any of this: it is the second signature on a two-signature entry,
 it keeps its rule to sign on, and a name in the column does not fill it in.
 
-**The given name alone, in bold, with no surname and no punctuation** — the box
-carries a name and nothing else. No date beside it either, because the column is
+**The given name alone, in bold, with no คำนำหน้า, no surname and no
+punctuation** — the box carries a name and nothing else. `นางสาวปิยะนุช
+พรมประชุม` signs as `ปิยะนุช`. No date beside it either, because the column is
 19mm; each signature's minute is still recorded and still shown on การอนุมัติ.
-`firstName` in `lib/api.js` is the split. Which rows print blank, and the page
-counts that set the 7.2pt type size, are in §Status under
-`test/formSignatures.test.js`.
+`firstName` in `lib/api.js` is the split, and it makes two cuts: the surname
+went on 2026-09-02 (it was the second line that put a 25-row month onto two
+sides of A4), and the title on 2026-09-08. It read "the first whitespace-
+separated word" until then, with a note beside it saying that was safe because
+nobody on the roster wrote a title as a word of its own — measured on 22 seeded
+people, still true when the real 164 arrived, and no protection at all, because
+every title on that roster is written *joined* to the given name. The box read
+`นายไพฑูร`. `NAME_TITLES` is the list, นางสาว before นาง because นาง is a prefix
+of it; a title not on the list prints as part of the name, where somebody can
+see it. Which rows print blank, and the page counts that set the 7.2pt type
+size, are in §Status under `test/formSignatures.test.js`.
 
-Rows are
-built from *segments*, not entries, so an overnight session appears on both
-dates with its hours in the correct column — Friday's row reads 17:00–24:00 and
-Saturday's 00:00–07:00.
+Rows are built from *segments*, not entries, so an overnight session's hours
+land in the column the clock decides. **Only the date it was filed against gets
+a line**, though: since 2026-09-02 the segment after a midnight prints nowhere,
+and the hours it holds are named on the screen above the sheet
+(`notPrintedHours`) instead. This paragraph read "an overnight session appears on
+both dates … Friday's row reads 17:00–24:00 and Saturday's 00:00–07:00" until
+2026-09-08, which had been false for six days — see §หนึ่งวัน หนึ่งใบ and
+`test/oneRowPerDate.test.js`.
 
 ### The two CSVs beside it, and the bug their new labels exposed
 
@@ -8513,6 +8538,65 @@ sheet**: the two file separately, so a page carrying both would have to be cut
 up by hand. A roster longer than a page breaks across pages with the column
 headings repeated rather than being shrunk to fit — unlike F-HR-027, this
 sheet has no fixed number of rows to preserve.
+
+**The preview is a stack of A4 sheets, and one element is one side.** The sheet
+has been A4 to the millimetre since it was written — 194mm of body inside two
+8mm bands is the 210mm width, and `min-height: 295mm` is the side, the 2mm of
+slack being what stops a sheet measuring 297.1mm from ejecting a blank page into
+the middle of a bundle. What it had no line for was where one sheet *stopped*:
+white paper on a light grey desk, a soft shadow and 16px between, so a four-side
+bundle read as one continuous scroll of white, and the question this screen
+exists to answer — how many sheets of paper is this, and which company is on
+which one — was answered by the print dialog, after deciding to print. Every
+side is now its own `.acct`: a white card with a hairline edge (`--paper-edge`)
+and a 2px radius, 32px of desk between one and the next, and a label in the top
+right — `หน้า 3 / 4 (PM · ไพรมัส)`.
+
+**It read differently for one afternoon on 2026-09-08.** The first answer was
+one card per COMPANY with a dashed fold rule drawn across it at each page
+boundary, and the argument for it is worth keeping because it is the argument
+this had to answer: the card was the unit the *printer* broke on, so cutting the
+preview into sides was a second pagination standing beside the browser's own,
+with the sheet riding on the two agreeing. What settled it is that the second
+pagination is now the *only* one. `paginate` in `components/AccountingPrint.jsx`
+cuts the rows at `ROWS_PER_PAGE`, and 36mm of bands and headings plus 37 rows of
+7mm is 295mm inside a 297mm page box — so every element is a page the paginator
+has nothing left to break, and `.acct + .acct { break-before: page }` puts one
+on each side. A rule drawn across a continuous white block was a picture of a
+page break; this is a page.
+
+**Every side carries its own headings and its own margin bands**, rendered into
+each element rather than left to `display: table-header-group` to repeat — so a
+page that comes loose from the stapled set looks on the screen exactly like the
+one in your hand. A new company always starts a new side, which now falls out of
+the loop rather than being a rule of its own. The five blank ruled lines stay
+where they were: under the last name in the company, on the last side only.
+
+**None of the card reaches the printer, and two parts of it may not.** The label
+names the company — the one thing accounting asked to have taken off this sheet,
+which is why a page that comes loose is placed by the PM- / THT- prefixes in the
+รหัส column instead — so it is `no-print`. And the border is 1px on a block that
+is `box-sizing: content-box` and exactly 210mm: left on, the sheet is wider than
+the paper, and a browser fitting the page to its printable area answers that by
+scaling the whole form down, moving every figure on it. The `@media print` block
+in `app/print.css` takes the edge, the radius, the positioning and the gap off
+again. `test/printFlagLayout.test.js` pins each of those, beside the ไม่ถูกนับ
+flag it already held to the same promise.
+
+**The same treatment is on the other two print views**, and one of them needed
+the same cut. **สรุปชั่วโมงทำ OT แยกแผนก** (`components/DepartmentPrint.jsx`) is
+33 rows to a side — 12mm band, 9mm banner, 7.5mm headings, 12mm band and 33 rows
+of 7.5mm is 288mm — and a department longer than that runs onto a second side
+with its green banner and its column headings repeated and its ลำดับที่ still
+running, 1–33 then 34–45. The closing block — the two blank numbered lines,
+รวมชั่วโมงทำOT and the ไม่ถูกนับ line — travels to the **last** side and only
+that one, because a total at the foot of every side is two pages each claiming to
+be the department's total. **F-HR-027** (`components/PrintForm.jsx`) needed no
+cut: it is a fixed 31-row form that is one side by design, so the bundle only
+gained the card and a label that counts **forms** rather than pages —
+`ใบที่ 12 / 40 (สมชาย ใจดี)` — because a month with enough split sessions is
+allowed to run onto a second side and a page count would be a number that
+component cannot promise.
 
 **Five blank ruled lines follow the last name, and no more.** They are what the
 paper form gave you: somewhere to write in somebody who was missed between

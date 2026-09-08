@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { managerSignature, approvalSteps } from '../lib/approverLine.js';
-import { firstName } from '../lib/api.js';
+import { firstName, NAME_TITLES } from '../lib/api.js';
 
 /**
  * ลงชื่อพนักงาน and ลงชื่อหัวหน้างาน are typed onto F-HR-027 — asked for on
@@ -227,14 +227,59 @@ test('the given name alone reaches the box, never the surname', () => {
   assert.equal(firstName('สมชาย ใจดี'), 'สมชาย');
   assert.equal(firstName('  ประเสริฐ   วงศ์ทอง  '), 'ประเสริฐ');
   /**
-   * FIVE OF THE 22 ON THIS ROSTER HAVE NO SURNAME, and two of them are accounts
-   * that sign things. Returning '' for those would blank the box on exactly the
-   * rows an administrator signed for a แผนก with no หัวหน้า.
+   * A NAME WITH NO SURNAME COMES BACK WHOLE. The account that signs for a แผนก
+   * with no หัวหน้า is `ผู้ดูแลระบบ` — one word, no title — and returning ''
+   * for it would blank the box on exactly the rows an administrator signed.
    */
   assert.equal(firstName('ฝ่ายบุคคล'), 'ฝ่ายบุคคล');
   assert.equal(firstName('ผู้ดูแลระบบ'), 'ผู้ดูแลระบบ');
   // Nothing to sign with is still nothing — the cell draws no element at all.
   for (const empty of ['', '   ', null, undefined]) assert.equal(firstName(empty), '');
+});
+
+/**
+ * THE คำนำหน้า COMES OFF TOO — asked for on 2026-09-08, and the box read
+ * `นายไพฑูร` until then.
+ *
+ * The rule that shipped on 2026-09-02 was "the first whitespace-separated word",
+ * and the note beside it said that was safe because no one on the roster wrote a
+ * title as a word of its own. That was measured on 22 seeded people and stayed
+ * true when the real roster of 164 arrived — every title on it is JOINED to the
+ * given name, which is the spelling the note never considered. So the sentence
+ * remained correct while the box filled up with นาย and นางสาว.
+ */
+test('the คำนำหน้า comes off, whichever way it is spelt', () => {
+  assert.equal(firstName('นายไพฑูร พยุงศรี'), 'ไพฑูร');
+  assert.equal(firstName('นางสาวปิยะนุช พรมประชุม'), 'ปิยะนุช');
+  assert.equal(firstName('นางนิรวดี บุญเจริญ'), 'นิรวดี');
+  // Joined is how all 163 titled rows of the live roster are written; apart is
+  // the spelling the old rule was measured against. Both answer the same name.
+  assert.equal(firstName('นาย สมชาย ใจดี'), 'สมชาย');
+  assert.equal(firstName('นางสาว   ปิยะนุช พรมประชุม'), 'ปิยะนุช');
+});
+
+test('นางสาว is tested before นาง, or the box reads สาว…', () => {
+  /**
+   * นาง IS A PREFIX OF นางสาว. Tested in the other order, `นางสาวปิยะนุช` loses
+   * three characters instead of six and signs as `สาวปิยะนุช` — a name, in the
+   * right box, that is not anybody's. The order is the rule, so it is pinned
+   * here rather than left to the order the array happens to be written in.
+   */
+  assert.deepEqual([...NAME_TITLES], ['นางสาว', 'นาง', 'นาย']);
+  assert.equal(firstName('นางสาวสาวลักษณ์ ประกอบแสง'), 'สาวลักษณ์');
+});
+
+test('a name that is nothing but a title never empties the box', () => {
+  // A signature box on a controlled form is not a place to answer '' because a
+  // name was spelt in a way the list did not expect.
+  assert.equal(firstName('นางสาว'), 'นางสาว');
+  assert.equal(firstName('นาย'), 'นาย');
+  /**
+   * A TITLE THIS LIST DOES NOT KNOW PRINTS AS PART OF THE NAME — visible on the
+   * paper, where somebody can say so, rather than silently cut to something
+   * shorter. The fix is a line in `NAME_TITLES`, not a cleverer split.
+   */
+  assert.equal(firstName('ว่าที่ร.ต.สมชาย ใจดี'), 'ว่าที่ร.ต.สมชาย');
 });
 
 test('a day with no OT gets no signature', () => {
