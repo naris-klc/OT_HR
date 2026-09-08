@@ -14067,6 +14067,53 @@ table.mini tbody tr:hover { background: none; }
 }
 .log-tally .n.warn { color: var(--amber-ink); }
 
+/* ── การใช้สิทธิ์พิเศษ: THREE FILTERS AND THE TWO BUTTONS, ONE LINE ─────────
+   It was `.form-grid` — two columns — with the buttons in a `.row` under it,
+   so the tab opened on ตั้งแต่วันที่/ถึงวันที่, then เฉพาะประเภท alone beside a
+   gap, then a line of buttons: three rows of controls above a table that is the
+   reason anybody opened the tab.
+
+   FLEX AND NOT A FOUR-COLUMN GRID, because the last cell is not a column. The
+   three boxes share what is left after the buttons have what they need, and on
+   a narrower window the pair drops to a line of its own without a breakpoint
+   being asked to guess where that happens. 190px is the basis every filter box
+   in this app is readable at.
+
+   `align-items: start`, the same reason `.form-grid` gives: two of the three
+   fields carry a note under them, and pinning the row by its bottom edge would
+   stand the third box a line higher than the two beside it. */
+.compliance-filters { display: flex; flex-wrap: wrap; align-items: start; gap: 18px 16px; }
+.compliance-filters > .field { flex: 1 1 190px; }
+/* THE PADDING IS THE LABEL LINE. A `.field` is a `.field-head` (18px) over its
+   control with a 7px gap between, so 25px is where the three boxes start —
+   without it the buttons sit level with the LABELS, a line above every control
+   on the row. Two numbers from two rules, and if either moves this is wrong by
+   the difference: test/complianceFilterRow.test.js reads all three.
+
+   `margin-left: auto` for the case the flex line has room to spare, which is
+   most desktop widths: the pair is held against the right edge of the card
+   rather than drifting up against เฉพาะประเภท. */
+.compliance-filters .compliance-actions {
+  flex: none; display: flex; gap: 8px; align-items: center;
+  margin-left: auto; padding-top: 25px;
+}
+/* The paragraph the ⓘ opens, under the one line that is always drawn. Held to
+   the reading measure the rest of the app's prose uses — a 1200px card would
+   otherwise give this one sentence a 150-character line. */
+.compliance-about { margin: -6px 0 14px; max-width: 80ch; }
+
+/* One box per line before they get too narrow to read what is in them — 560
+   is `.form-grid`'s own breakpoint, which is where these three fields were
+   until this row was written, and flex-wrap covers everything above it without
+   a second guess about where the buttons go. On their own line the right-hand
+   pull and the label-line padding both come off, and the pair takes the width
+   at the 44px every other phone target in this app measures. */
+@media (max-width: 560px) {
+  .compliance-filters > .field { flex-basis: 100%; }
+  .compliance-filters .compliance-actions { margin-left: 0; padding-top: 0; width: 100%; }
+  .compliance-filters .compliance-actions .btn { flex: 1; min-height: 44px; }
+}
+
 /* ล้างตัวกรอง and ดาวน์โหลด CSV. On a wide screen this is an ordinary `.row`;
    what it needs from a class is the margin, which the phone block below
    changes rather than restating an inline style in two places. */

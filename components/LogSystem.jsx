@@ -462,7 +462,29 @@ const KIND_TONE = {
 };
 
 /**
- * รายงานการใช้สิทธิ์พิเศษ — six kinds of exception, on one timeline.
+ * What this report counts, and how to read it — behind the ⓘ beside the
+ * heading, the way บันทึก OT แทนพนักงาน carries its own standing context.
+ *
+ * A STRING AND NOT JSX, which is `TipButton`'s own constraint: it puts the
+ * text in `title` for a pointer as well as drawing it, and a `title` given an
+ * element is the string "[object Object]".
+ *
+ * WHY NOT อ่านต่อ, WHICH IS THE APP'S OTHER ANSWER TO A LONG EXPLANATION: the
+ * standard settled on 2026-09-07 is that a card's subtitle is drawn in full and
+ * never clamped — folded for an hour across nine components that afternoon and
+ * withdrawn, because what it bought was a screen opening on a heading and the
+ * word อ่านต่อ. `Disclosure` is for the text under ONE setting. So the line
+ * under this heading was SHORTENED to the one sentence that says what the tab
+ * is, and the five kinds and the two notes about reading order came here —
+ * which is where ภาพรวม's four lines of the same sort of context already went.
+ */
+const ABOUT = 'สิ่งที่นับเป็นการใช้สิทธิ์พิเศษ — ตั้งรหัสผ่านใหม่ · ผู้ดูแลระบบเซ็นแทนหัวหน้า'
+  + ' · เปลี่ยนบทบาทเป็นฝ่ายบุคคลหรือผู้ดูแลระบบ · เปลี่ยนรหัสพนักงาน · คำนวณใหม่รวมใบที่อนุมัติแล้ว'
+  + ' · เรียงจากเก่าไปใหม่ เพราะไฟล์นี้อ่านเป็นลำดับเหตุการณ์ ไม่ใช่กวาดหาของล่าสุด'
+  + ' · ไม่รวมงานประจำวันปกติ — งานเหล่านั้นอยู่ในสามแท็บก่อนหน้าและในประวัติของใบแต่ละใบ';
+
+/**
+ * รายงานการใช้สิทธิ์พิเศษ — five kinds of exception, on one timeline.
  *
  * ITS OWN STATE AND ITS OWN FILTERS, not the ones the four traffic tabs share.
  * Those filter `otAccessLogs` by ip, event, status and actor — none of which
@@ -471,10 +493,30 @@ const KIND_TONE = {
  * worst possible place for a filter somebody has forgotten about.
  */
 function Compliance() {
+  /**
+   * Whether the ⓘ is showing its paragraph. Shut on arrival, like the one on
+   * the page heading: it answers a question somebody asks once.
+   */
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [range, setRange] = useState({ from: '', to: '' });
   const [only, setOnly] = useState('');
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
+
+  /**
+   * WHERE THE PAGE IS CUT, AND IT IS CUT IN THE BROWSER — the opposite of the
+   * traffic list next door, and for a reason that belongs to this endpoint.
+   *
+   * `/logs/compliance` is uncapped on purpose: it reads four collections
+   * through one loader shared with the CSV, so that the screen and the file can
+   * never report different quarters. Asking it for a page would mean teaching
+   * that loader to skip, which is the second way of reading the same period.
+   * It sends every row; this decides how many of them are on screen at once.
+   *
+   * NOTHING IS BEHIND A FOLD, which is the property the route's own header
+   * insists on. A cut list has rows below it reachable by nothing; a paged one
+   * has every row on some page, with the total printed under the table.
+   */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const params = useMemo(() => {
     const p = new URLSearchParams();
@@ -484,12 +526,28 @@ function Compliance() {
     return p.toString();
   }, [range, only]);
 
-  useEffect(() => {
-    setData(null);
-    api.get(`/logs/compliance?${params}`)
-      .then((res) => { setData(res); setError(''); })
-      .catch((err) => setError(err.message));
-  }, [params]);
+  // Back to the first page when the three filters change the list underneath —
+  // see `usePageReset`. Not on `data`, or the fetch for page 4 would bounce.
+  usePageReset(setPage, [params, pageSize]);
+
+  /**
+   * PRESSING › HERE NEVER REACHED THE NETWORK, AND THE CARD IS KEPT ANYWAY.
+   *
+   * This table pages in the browser — `page` is not in `params`, so a chevron
+   * changes which rows are sliced and nothing is fetched. That is why the jump
+   * reported on 2026-09-08 was the traffic list's alone, and why this half of
+   * the screen needed no repair to answer it.
+   *
+   * It uses `useKeptFetch` regardless, because the same collapse is available
+   * here through the other door: a reader scrolled to the bottom of a long
+   * quarter who narrows เฉพาะประเภท was, until now, dropped back to the top of
+   * the page by `setData(null)` in exactly the way the chevron dropped the
+   * other table. One loader, one behaviour, and no second place for this to be
+   * got wrong.
+   */
+  const {
+    data, error, busy, setError,
+  } = useKeptFetch(() => api.get(`/logs/compliance?${params}`), [params]);
 
   const download = () => {
     const name = `การใช้สิทธิ์พิเศษ_${range.from || 'เริ่มต้น'}_${range.to || 'ล่าสุด'}.csv`;
@@ -499,18 +557,39 @@ function Compliance() {
   const today = ymd(new Date());
   const labels = data?.labels || {};
 
+  /* The rows this page holds. Named `shown` and never `list`, so nothing here
+     reads as the `list.slice(` that test/logPanelRows.test.js forbids — that
+     assertion is about ภาพรวม's four cards, where a slice put rows behind a
+     button that no longer exists, and this is a different mechanism on a
+     different table. */
+  const all = data?.rows || [];
+  const shown = all.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div className="card">
-      <h2>การใช้สิทธิ์พิเศษ</h2>
-      <div className="hint">
-        ทุกครั้งที่มีการใช้สิทธิ์ที่ระบบปกติจะปฏิเสธ — ตั้งรหัสผ่านใหม่ · ผู้ดูแลระบบเซ็นแทนหัวหน้า
-        {' '}· เปลี่ยนบทบาทเป็นฝ่ายบุคคลหรือผู้ดูแลระบบ · เปลี่ยนรหัสพนักงาน
-        {' '}· คำนวณใหม่รวมใบที่อนุมัติแล้ว
-        {' · '}เรียงจากเก่าไปใหม่ เพราะไฟล์นี้อ่านเป็นลำดับเหตุการณ์ ไม่ใช่กวาดหาของล่าสุด
-        {' · '}ไม่รวมงานประจำวันปกติ — งานเหล่านั้นอยู่ในสามแท็บก่อนหน้าและในประวัติของใบแต่ละใบ
+      {/* `.form-head` and the 17px circle are the app's own — the same control
+          บันทึก OT แทนพนักงาน puts beside its heading, with the `i` glyph
+          rather than `?` because a heading is not asking the reader anything.
+          See `TipButton` in common.jsx. */}
+      <div className="form-head">
+        <h2>การใช้สิทธิ์พิเศษ</h2>
+        <TipButton
+          glyph="i"
+          text={ABOUT}
+          of="การใช้สิทธิ์พิเศษ"
+          open={aboutOpen}
+          onToggle={() => setAboutOpen((v) => !v)}
+        />
       </div>
+      <div className="hint">บันทึกทุกครั้งที่มีการใช้สิทธิ์ระดับสูง หรือสิทธิ์ที่ระบบปกติจะปฏิเสธ</div>
+      {aboutOpen && <div className="field-note compliance-about">{ABOUT}</div>}
 
-      <div className="form-grid">
+      {/* THREE FILTERS AND THE TWO BUTTONS ON ONE LINE — see `.compliance-filters`.
+          The pair used to be a `.row` under the grid, which on a two-column
+          grid put ตั้งแต่วันที่/ถึงวันที่ on one line, เฉพาะประเภท alone on the
+          next and the buttons on a third: three rows of chrome over a table
+          that is the reason for the screen. */}
+      <div className="compliance-filters">
         <Field label="ตั้งแต่วันที่">
           <PickDate label="ตั้งแต่วันที่" max={today} value={range.from} clearable
             onChange={(v) => setRange((r) => ({ ...r, from: v }))} />
@@ -540,17 +619,22 @@ function Compliance() {
             value: k, label: v, count: data?.counts?.[k],
           }))}
         />
-      </div>
-
-      <div className="row" style={{ marginBottom: 12 }}>
-        {(range.from || range.to || only) && (
-          <button className="btn ghost sm" onClick={() => { setRange({ from: '', to: '' }); setOnly(''); }}>
-            ล้างตัวกรองทั้งหมด
+        {/* Last cell of the row, and the padding is what puts the buttons on
+            the line of the three boxes rather than of the three labels — see
+            `.compliance-filters .compliance-actions`. ล้างตัวกรองทั้งหมด keeps its place to
+            the left of ดาวน์โหลด: it appears only when something is filtering,
+            and a button that comes and goes must not be the one whose position
+            the other is found by. */}
+        <div className="compliance-actions">
+          {(range.from || range.to || only) && (
+            <button className="btn ghost sm" onClick={() => { setRange({ from: '', to: '' }); setOnly(''); }}>
+              ล้างตัวกรองทั้งหมด
+            </button>
+          )}
+          <button className="btn ghost sm" onClick={download} disabled={!data?.total}>
+            ดาวน์โหลด CSV ตามตัวกรอง
           </button>
-        )}
-        <button className="btn ghost sm" onClick={download} disabled={!data?.total}>
-          ดาวน์โหลด CSV ตามตัวกรอง
-        </button>
+        </div>
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}
