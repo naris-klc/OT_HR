@@ -116,7 +116,7 @@ test('ช่องติ๊กเป็นกล่องสูงเท่า�
 test('ตัวแปรที่เติมเส้นขอบไม่ได้แก้ padding ตามหลัง — และไม่ต้องแก้', () => {
   // The point of the base rule: these three add a rule and say nothing about
   // padding, and that is now correct rather than a 2px bug in each.
-  for (const variant of ['.btn.ghost {', '.btn.outline {', '.btn.on-dark ']) {
+  for (const variant of ['.btn.ghost {', '.btn.outline {', '.btn.on-hero ']) {
     const at = css.indexOf(variant);
     assert.ok(at > 0, `หาไม่เจอ ${variant}`);
     const rule = css.slice(at, css.indexOf('}', at));

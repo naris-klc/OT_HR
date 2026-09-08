@@ -161,6 +161,19 @@ const READABLE = [
   ['--info', '--info-bg'],
   ['--on-amber', '--amber'],
   ['--on-fill', '--surface-dark'],
+  // The rail and the hero, which took `--surface-dark` until 2026-09-07 and
+  // are `--panel-rail` / `--panel-hero` now. Two grounds and one ink scale, so
+  // every step of that scale is measured against both: `--on-panel` is the
+  // figure and the heading, `--on-panel-quiet` the kicker under the wordmark,
+  // and `--on-panel-2` is held higher still by AAA_SUBTEXT at the foot of this
+  // file. `--on-panel-3` is the outlined button on the hero and shares
+  // `--on-panel-2`'s light value, which is why it is listed on the hero only.
+  ['--on-panel', '--panel-rail'],
+  ['--on-panel', '--panel-hero'],
+  ['--on-panel-quiet', '--panel-rail'],
+  ['--on-panel-3', '--panel-hero'],
+  ['--on-panel-danger', '--panel-rail'],
+  ['--hero-figure', '--panel-hero'],
   // The success notice, in both the shapes it takes: floating on the screens
   // that still use a toast, and in the flow on the two birthday screens. Listed
   // because the pair they replaced was NOT — .toast.ok filled itself with
@@ -513,7 +526,12 @@ test('ธีมมืด — พื้นและเส้นขอบส้ม
 test('ธีมมืด — พื้นผิวแต่ละระดับแยกจากกันได้', () => {
   const bg = value('--bg', 'dark');
   const card = value('--card', 'dark');
-  const rail = value('--surface-dark', 'dark');
+  // THROUGH `--panel-rail`, NOT `--surface-dark`. This line read the latter
+  // and called it `rail`, which was the same value and the same object until
+  // 2026-09-07. It is now the same value and a DIFFERENT object — the toast
+  // and the login splash — so left alone this assertion would have gone on
+  // passing while saying nothing about the column it names.
+  const rail = value('--panel-rail', 'dark');
   const line = value('--line', 'dark');
 
   assert.ok(contrast(card, bg) >= 1.18, `การ์ดกับพื้นหน้าใกล้กันเกินไป = ${contrast(card, bg).toFixed(2)}`);
@@ -537,7 +555,8 @@ test('ธีมมืด — เทาต้องไม่อมเขียว
     const ch = [0, 2, 4].map((i) => parseInt(s.slice(i, i + 2), 16));
     return Math.max(...ch) - Math.min(...ch);
   };
-  for (const n of ['--bg', '--card', '--surface-dark', '--neutral-wash', '--field-bg']) {
+  for (const n of ['--bg', '--card', '--surface-dark', '--panel-rail', '--panel-hero',
+    '--neutral-wash', '--field-bg']) {
     const v = value(n, 'dark');
     assert.ok(spread(v) <= 12, `${n} = ${v} อมเขียวเกินไป (${spread(v)})`);
   }
@@ -647,11 +666,27 @@ test('the fill and the text green are two tokens, not one', () => {
  * only light or dark relative to what it is drawn on, which is the whole lesson
  * of the two rows above.
  */
+/**
+ * AND THE TWO GROUNDS ARE NAMED TWICE EACH, which is the 2026-09-07 half of
+ * this note. The pairs were `--on-dark-2` on `--surface-dark` and its warning
+ * beside it, one ground for both lines because the rail and the hero were one
+ * colour. They still are one colour in ธีมมืด and are two in ธีมสว่าง — white
+ * for the rail, a pale green wash for the hero — so a single pair can no
+ * longer stand for both, and the hero (the darker of the two by seven points)
+ * is the one that decides whether the ink clears.
+ *
+ * THAT IS WHAT MOVED THE WARNING. `--amber-ink`, the token this app mixed for
+ * amber on a pale wash, measures 5.77 on `--panel-hero` — AA, and this line is
+ * held to AAA. It is the same finding as the dark half of the pair, arrived at
+ * from the opposite side of the palette, and the list below is what forces it
+ * to be arrived at rather than assumed.
+ */
 const AAA_SUBTEXT = [
-  // The hero's cap, unit and sentence, and the sidebar's name and role line.
-  ['--on-dark-2', '--surface-dark'],
+  // The hero's cap, unit and sentence, and the rail's name and role line.
+  ['--on-panel-2', '--panel-rail'],
+  ['--on-panel-2', '--panel-hero'],
   // "รออนุมัติอีก 23 ชม.", the one line on the hero that is a warning.
-  ['--on-dark-warn', '--surface-dark'],
+  ['--on-panel-warn', '--panel-hero'],
   // OT วันปกติ ×1.5 and its two neighbours: label, unit and note.
   ['--ink-2', '--card'],
 ];
@@ -676,9 +711,9 @@ test('ไม่มีตัวหนังสือเล็กบนหน้�
     return css.slice(at, css.indexOf('}', at));
   };
   for (const sel of ['.hero .cap', '.hero .sub', '.stat .label', '.stat .note', '.whoami .r']) {
-    assert.ok(!/var\(--muted-2\)|var\(--on-dark\)/.test(rule(sel)),
+    assert.ok(!/var\(--muted-2\)|var\(--on-dark\)|var\(--on-panel-quiet\)/.test(rule(sel)),
       `${sel} กลับไปใช้โทเคนที่วัดได้ต่ำกว่า AAA บนพื้นของมัน`);
   }
   // And the warning is a warning: amber, and not the grey beside it.
-  assert.match(rule('.hero .sub.waiting'), /var\(--on-dark-warn\)/);
+  assert.match(rule('.hero .sub.waiting'), /var\(--on-panel-warn\)/);
 });

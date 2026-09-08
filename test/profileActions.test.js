@@ -188,25 +188,40 @@ test('.signout is the destructive sub-action, not another grey nav row', () => {
   const at = css.indexOf('.signout {');
   assert.ok(at > 0, '.signout is gone');
   const rule = css.slice(at, css.indexOf('}', at));
-  assert.match(rule, /color: var\(--on-dark-danger\)/, 'the letters went back to grey');
-  assert.match(rule, /border: 1px solid var\(--on-dark-danger-line\)/, 'the red line is gone');
+  assert.match(rule, /color: var\(--on-panel-danger\)/, 'the letters went back to grey');
+  assert.match(rule, /border: 1px solid var\(--on-panel-danger-line\)/, 'the red line is gone');
   assert.match(rule, /background: transparent/, 'outlined, never filled — see the note above the rule');
   assert.match(rule, /transition:/, 'the hover arrives instantly again');
 
   const hover = css.slice(css.indexOf('.signout:hover {'), css.indexOf('.body {'));
-  assert.match(hover, /background: var\(--on-dark-danger-wash\)/);
-  assert.match(hover, /box-shadow: 0 0 0 3px var\(--on-dark-danger-glow\)/, 'the hover glow is gone');
+  assert.match(hover, /background: var\(--on-panel-danger-wash\)/);
+  assert.match(hover, /box-shadow: 0 0 0 3px var\(--on-panel-danger-glow\)/, 'the hover glow is gone');
 });
 
-test('its red is un-themed, because the sidebar is dark in both themes', () => {
+/**
+ * THIS TEST USED TO ASSERT THE OPPOSITE, and the flip is the point rather than
+ * a loosening. It read "its red is un-themed, because the sidebar is dark in
+ * both themes", and it enforced exactly that: none of the four tokens might
+ * carry a light-dark(), on the argument that a colour whose GROUND does not
+ * change must not change either.
+ *
+ * The argument was right and its premise expired on 2026-09-07, when the rail
+ * went white in ธีมสว่าง. The same reasoning now demands the opposite: the
+ * ground moves, so the red has to move with it — #F0A08A was mixed to carry on
+ * charcoal and measures 1.9 on white, which is a stain rather than a word.
+ *
+ * WHAT IS KEPT IS THE TEST'S REAL SUBJECT, which was never the alpha: the
+ * sign-out may not reach for the themed `--danger-*` set. That set is the
+ * app's alert red, chosen for a pale panel inside a card, and borrowing it here
+ * would tie this button to a decision about error states — which is the whole
+ * reason `--on-panel-danger` exists as a name of its own.
+ */
+test('its red follows the rail, and is still not --danger-*', () => {
   const css = styles();
-  for (const token of ['--on-dark-danger', '--on-dark-danger-line', '--on-dark-danger-wash', '--on-dark-danger-glow']) {
-    const at = css.indexOf(`  ${token}:`);
-    assert.ok(at > 0, `${token} is gone`);
-    const decl = css.slice(at, css.indexOf(';', at));
+  for (const token of ['--on-panel-danger', '--on-panel-danger-line', '--on-panel-danger-wash', '--on-panel-danger-glow']) {
     assert.ok(
-      !decl.includes('light-dark('),
-      `${token} was themed — the ground under it is not, so the button would change colour for no reason`,
+      css.includes(`  ${token}: light-dark(`),
+      `${token} is gone, or stopped following the theme — the ground under it does`,
     );
   }
   // Not --danger-ink: that one IS themed, and its light value is unreadable here.

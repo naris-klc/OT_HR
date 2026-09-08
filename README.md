@@ -7859,10 +7859,17 @@ and are **one declaration each** now:
 .announce-fold:focus-visible        { outline-offset: 1px; }
 ```
 
-**Two deviations are real and stay whole.** The dark sidebar keeps
-`--green-lift` and an inward `-2px`, because `--green` has nowhere near the
-contrast on that surface that it has on a card and an outward ring would be
-drawn on the sidebar's own edge. And the three controls whose ring is a
+**Two deviations are real and stay whole.** The sidebar keeps `--green-lift`
+and an inward `-2px`. The offset is the durable half of that: a nav row is the
+full width of the rail, so an outward ring would be drawn on the rail's own
+edge whatever colour it is. The reason given for the *colour* read "the **dark**
+sidebar... `--green` has nowhere near the contrast on that surface that it has
+on a card", and **since 2026-09-07 that is true in ธีมมืด only** — the rail is
+`--panel-rail`, which is white in ธีมสว่าง. The deviation stands anyway, and
+the phone bar is why: `.mobile-nav button:focus-visible` is in the same
+selector list and has been drawing this ring on a white bar since the bar
+existed. `--green-lift` measures **3.40:1** on white, over the 3:1 a ring is
+held to. And the three controls whose ring is a
 `box-shadow` — `.state-badge`, `.stat.as-button`, `.log-tally li > button` —
 keep `outline: none` beside it, which is a control answering for itself rather
 than a blanket.
@@ -9712,7 +9719,7 @@ build แล้ว
   is how one report becomes two answers.
   **That file was the 104th when it arrived**, and it pins
   one declaration: `.btn` carries a 1px transparent rule so that `.btn.ghost`,
-  `.btn.outline` and `.btn.on-dark` — which each add a real one — stop standing
+  `.btn.outline` and `.btn.on-hero` — which each add a real one — stop standing
   2px taller than the filled button beside them. That had been patched in six
   containers one at a time before it was fixed once in the base; the padding
   drops 1px to pay for the rule, so no button that was already the right size

@@ -247,7 +247,7 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
 
         <div className="hero-actions">
           <button className="btn" onClick={() => setShowForm(true)}>+ บันทึก OT ใหม่</button>
-          <button className="btn on-dark" onClick={() => setShowAll((v) => !v)}>
+          <button className="btn on-hero" onClick={() => setShowAll((v) => !v)}>
             {showAll ? 'ย่อประวัติ' : 'ดูประวัติทั้งหมด'}
           </button>
         </div>

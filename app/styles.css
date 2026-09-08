@@ -43,9 +43,15 @@
   --neutral-wash: #F6F8F6;
 
   /* ── on dark ─────────────────────────────────────────────────────────── */
+  /* ONE TOKEN AND ONE READER IS ALL THAT IS LEFT HERE: the ✕ on the toast.
+     `--on-dark-2` and `--on-dark-3` used to sit beside it and are gone. They
+     belonged to the sidebar and the hero, and on 2026-09-07 those two stopped
+     being dark in ธีมสว่าง — their ink moved into the `--on-panel-*` family
+     further down, which follows the theme. A name that says "on dark" may
+     only be read by something that IS dark in both themes, and of the four
+     panels that comment at `--surface-dark` lists, the toast and the login
+     splash are the two still answering to it. */
   --on-dark: #8FA298;
-  --on-dark-2: #B9C6BE;
-  --on-dark-3: #D6E0DA;
 
   /* ── status ──────────────────────────────────────────────────────────── */
   --danger: #E4572E;
@@ -204,16 +210,24 @@
    *               bars — which invert rather than darken.
    */
   /**
-   * THE DARK SURFACE — the sidebar, the hero card, the toast, the login panel.
+   * THE DARK SURFACE — the toast and the login panel.
+   *
+   * IT READ "the sidebar, the hero card, the toast, the login panel" UNTIL
+   * 2026-09-07, and the two that left are the whole of that day's change: the
+   * rail and the OT summary card are `--panel-rail` and `--panel-hero` now,
+   * which are pale in ธีมสว่าง and this exact charcoal in ธีมมืด. What is left
+   * here is the two panels that are dark whatever the theme says — an overlay
+   * and a splash screen, neither of which is part of the page.
    *
    * These were `var(--ink)`, which is also the colour of ordinary TEXT. One
    * token doing both jobs is fine while the app has one theme and breaks the
    * moment it has two: ธีมมืด needs text to become near-white and needs these
-   * four panels to stay dark, and a single token cannot go both ways. Split
-   * before the dark palette was written rather than discovered afterwards by a
-   * white sidebar.
+   * panels to stay dark, and a single token cannot go both ways. Split before
+   * the dark palette was written rather than discovered afterwards by a white
+   * sidebar — which is a sentence worth reading twice now that the sidebar is
+   * deliberately white in one theme and this token is not why.
    *
-   * In the light theme it is exactly what it was, so nothing moves today.
+   * In the light theme it is exactly what it was.
    */
   --surface-dark: #14201A;
   --surface-dark-2: #3C4A42;
@@ -271,53 +285,134 @@
   --focus-ring: rgba(15, 138, 70, .13);
   --danger-glow: rgba(228, 87, 46, .28);
 
-  /* ── the sidebar, which is dark in BOTH themes ───────────────────────── */
-  /* These are overlays on `--ink`, so they survive the theme unchanged. They
-     are tokens anyway: a reader looking for "what colour is that hover" should
-     not have to know that this one corner of the app was never themed. */
-  --on-dark-hover: rgba(255, 255, 255, .07);
-  --on-dark-active: rgba(255, 255, 255, .1);
-  --on-dark-line: rgba(255, 255, 255, .09);
-  --on-dark-border: rgba(255, 255, 255, .14);
-  --on-dark-border-2: rgba(255, 255, 255, .18);
+  /* ── THE RAIL AND THE HERO ────────────────────────────────────────────
 
-  /* ออกจากระบบ's red, which is also not themed.
+     THESE WERE THE `--on-dark-*` FAMILY AND THE COMMENT HERE READ "the
+     sidebar, which is dark in BOTH themes". That stopped being true on
+     2026-09-07: ธีมสว่าง was reported as having two dark slabs on an
+     otherwise pale page — the rail down the left and the OT summary card at
+     the top — with nothing else on any screen sharing their colour.
 
-     `--danger-*` cannot serve here. Its light-theme values are a dark red
-     designed to be read on white — #B4402F on the sidebar is 1.4:1, a stain
-     rather than a word — and its readable dark-theme values only arrive when
-     somebody has picked มืด. The ground under this button does not change with
-     that setting, so its colour must not either.
+     THE RENAME IS THE CHANGE, not decoration on it. `--on-dark-2` resolving
+     to #3C4A42 on a white sidebar is the `--amber-dark` fault this file
+     already records twice: a real name measured against a surface it no
+     longer sits on. So the family is named for the two panels it draws on
+     rather than for what those panels used to be, and the two grounds are
+     tokens beside it instead of borrowing `--surface-dark` — which stays
+     exactly where it was, because the toast and the login splash still want
+     it and did not move.
 
-     The hue is the app's own warm `--danger` (#E4572E) lightened until it
-     carries on the dark ground, not the cool red every dark UI reaches for
-     first: in a palette whose reds are all warm, a cool one reads as another
-     system's button that wandered in. #F0A08A clears 8:1 on both sidebar
-     surfaces; the cool equivalent managed 6.1 and matched nothing.
+     ONE FAMILY FOR TWO PANELS, and it is one because they were never two:
+     the rail and the hero were the same colour before this change and take
+     the same ink after it. Splitting them into `--on-rail-*` and `--on-hero-*`
+     would be two copies of one scale, which is the shape this file spends the
+     `light-dark` note arguing against.
 
-     The line is that red at .35 — found when you look at the button, not
-     before. The sign-out is a sub-action sitting under somebody's own name on
-     every screen in the app, and a solid red rule there is an alarm that never
-     stops. The wash it fills with on hover is the same red at .16, and the ring
-     outside it the same again at .18 — one hue, three weights. */
-  --on-dark-danger: #F0A08A;
+     THE GROUNDS. The rail is the card white, so the page (`--bg`, a grey-green)
+     falls away from it the way it does under every other panel in the app. The
+     hero is a pale green wash instead: white would make the summary card and
+     the three rate cards below it the same object, and the hero is the one
+     that answers "how many hours" — it may not read as a fourth `.stat`.
+
+     AND IN ธีมมืด NOTHING BECAME PALE. The dark halves below are the values
+     this family already had, with one deliberate exception: the hover and the
+     active wash were .07 and .1 and are now .1 and .16. The rail was reported
+     as ทึบ in the same breath as the two slabs — at 7% over #171E1A a hovered
+     row was a guess. */
+  --panel-rail: #ffffff;
+  --panel-hero: #F3FAF5;
+  /* The rail's right edge. In ธีมมืด it is the rail's OWN colour and so draws
+     nothing: a dark rail is told from the page by being lighter than it, which
+     is the same argument `--card-lift` makes one layer up, and a line there
+     would be a second answer to a question already answered. */
+  --panel-rail-line: #E2E7E3;
+  /* The hero's, which is a real edge in both themes for the opposite reason:
+     its wash is seven points off the page and would float without one. */
+  --panel-hero-line: #C5E3D2;
+
+  /* The ink, three steps. `--on-panel` is the figure and the heading,
+     `--on-panel-2` the supporting line held to AAA on both grounds (see
+     AAA_SUBTEXT in test/theme.test.js), `--on-panel-quiet` the one kicker
+     under the wordmark that is allowed to be quieter than either.
+
+     `--on-panel-quiet` EXISTS BECAUSE THE RENAME WOULD OTHERWISE HAVE COST A
+     LINE. `.brand .kicker` was `--muted-2`, which is 4.92 on the old dark rail
+     and 3.41 on white — the same trap `.whoami .r` fell into from the other
+     direction, and the move to a pale rail would have sprung it. #5B6B62 is
+     `--muted`'s light value and measures 5.64 there; the dark half is
+     `--muted-2`'s own dark value, so ธีมมืด keeps the kicker it had. */
+  --on-panel: #14201A;
+  --on-panel-2: #3C4A42;
+  /* THE SAME VALUE AS `--on-panel-2` IN ธีมสว่าง, and that is not a mistake to
+     be tidied away. On a dark ground there is a step ABOVE the supporting
+     grey — brighter, for the outlined button on the hero — and on a pale one
+     there is not: brighter than the body text on white is fainter, which is
+     the wrong direction. The two steps merge here and part in ธีมมืด, which
+     is the same asymmetry `--card-lift` has one comment above. */
+  --on-panel-3: #3C4A42;
+  --on-panel-quiet: #5B6B62;
+  --on-panel-hover: rgba(15, 138, 70, .08);
+  --on-panel-active: rgba(15, 138, 70, .13);
+  --on-panel-line: #E2E7E3;
+  --on-panel-border: #B9CFC4;
+
+  /* ออกจากระบบ's red, which IS themed now — and the paragraph it replaces is
+     kept in quotation marks below, because it was right and it is the whole
+     reason this one exists.
+
+     It read: "`--danger-*` cannot serve here. Its light-theme values are a
+     dark red designed to be read on white — #B4402F on the sidebar is 1.4:1,
+     a stain rather than a word... The ground under this button does not
+     change with that setting, so its colour must not either." Every word of
+     that held while the rail was dark in both themes. The ground DOES change
+     now, so the colour has to — and the light half is exactly the #B4402F
+     that paragraph ruled out, measuring 5.65 on the white rail, which is the
+     surface it was mixed for in the first place.
+
+     THE DARK HALF IS UNTOUCHED and keeps its own argument: the hue is the
+     app's own warm `--danger` (#E4572E) lightened until it carries on a
+     near-black ground, not the cool red every dark UI reaches for first — in
+     a palette whose reds are all warm, a cool one reads as another system's
+     button that wandered in. #F0A08A clears 8:1 there; the cool equivalent
+     managed 6.1 and matched nothing.
+
+     The line is that red at .35 in ธีมมืด — found when you look at the button,
+     not before. The sign-out is a sub-action sitting under somebody's own name
+     on every screen in the app, and a solid red rule there is an alarm that
+     never stops. The wash it fills with on hover is the same red at .16, and
+     the ring outside it the same again at .18 — one hue, three weights. The
+     light halves are those three weights turned down, because the same red at
+     the same alpha over white is a far louder mark than it is over charcoal. */
+  --on-panel-danger: #B4402F;
   /* AND THE WARNING BESIDE IT, on the same reasoning and for one line:
      "รออนุมัติอีก 23 ชม." on the hero, which used to be the same grey as the
      ceiling sentence next to it and so said nothing about being unfinished.
 
-     THE AMBER TOKENS ABOVE COULD NOT DO IT. `--amber` (#A8791A) is tuned for
-     amber ink on a pale wash and measures 4.38 on the hero — under AA for a
-     12px line, never mind AAA. This is the same amber opened up until it
-     clears: 8.47 on the dark card and 8.37 on the light theme's hero, which is
-     the same surface. Not `--bday-due-ink`: that is one of the three chips
-     forced to fixed values by hand and borrowing it here would tie a hero line
-     to a decision about birthday badges. */
-  --on-dark-warn: #E0B04A;
-  --on-dark-danger-line: rgba(228, 87, 46, .35);
-  --on-dark-danger-wash: rgba(228, 87, 46, .16);
-  --on-dark-danger-glow: rgba(228, 87, 46, .18);
+     THE AMBER TOKENS COULD NOT DO IT IN EITHER THEME, and the light half is a
+     second helping of that finding rather than a copy of it. On the old dark
+     hero `--amber` (#A8791A) measured 4.38 — under AA for a 12px line, never
+     mind AAA — so the dark half is that amber opened up until it clears, 8.47.
+     On the pale hero the obvious answer is `--amber-ink` (#815B0B), the token
+     mixed for amber ink on exactly this kind of wash, and it measures 5.77:
+     over AA, under the AAA floor this one line is held to. #6B4B08 is the same
+     hue — 79° in OKLCH, to the degree — carried down until it reads 7.52.
 
-  --meter-track: rgba(255, 255, 255, .13);
+     Not `--bday-due-ink` on either side: that is one of the three chips forced
+     to fixed values by hand, and borrowing it would tie a hero line to a
+     decision about birthday badges. */
+  --on-panel-warn: #6B4B08;
+  --on-panel-danger-line: rgba(228, 87, 46, .28);
+  --on-panel-danger-wash: rgba(228, 87, 46, .09);
+  --on-panel-danger-glow: rgba(228, 87, 46, .14);
+
+  /* The big figure on the hero, in the brand green — see the themed half for
+     what it is and why it is not green in ธีมมืด. */
+  --hero-figure: #0B6E37;
+
+  /* The track behind the ceiling meter, which lives on the hero and moves
+     with it. A white overlay is invisible on a pale green wash, so the light
+     half is a solid step down from that wash instead of an overlay on it. */
+  --meter-track: #D7EADF;
 
   --radius-lg: 16px;
   --radius: 14px;
@@ -426,7 +521,9 @@
      --on-fill      white text on a filled colour. The fill stays saturated in
                     both themes, so what sits on it does not move.
      --logo-plate   the white plate behind the Pm mark, for the same reason.
-     --on-dark-*    overlays on the sidebar, which is dark in both themes.
+     --on-dark      the ✕ on the toast, which IS dark in both themes. Its two
+                    former neighbours are `--on-panel-*` below and are here,
+                    because the sidebar and the hero stopped being.
 
    The green lifts from #0F8A46 to #17A65B. The brand colour is unchanged on
    paper and in the light theme; on a near-black page the original reads as a
@@ -516,10 +613,80 @@
      invisible, so it sits BELOW the surface instead of level with it. */
   --field-bg: light-dark(#ffffff, #131A17);
 
-  /* Already dark in the light theme. It lifts a little here so the sidebar
-     does not merge into the page behind it. */
+  /* Already dark in the light theme. It lifts a little here so the toast and
+     the login splash do not merge into the page behind them.
+
+     THE COMMENT USED TO SAY "so the sidebar does not merge", and the sidebar
+     is no longer one of the things this token draws — see `--panel-rail`
+     below, which took it and the hero away on 2026-09-07. The lift is still
+     right for the two panels left. */
   --surface-dark: light-dark(#14201A, #171E1A);
   --surface-dark-2: light-dark(#3C4A42, #273029);
+
+  /* ── the rail and the hero, which follow the theme now ────────────────
+
+     THE DARK HALVES ARE THE VALUES THIS PAIR ALREADY HAD. `--panel-rail` is
+     `--surface-dark`'s dark value to the digit, because in ธีมมืด nothing
+     about the rail changed — the whole of the 2026-09-07 change is on the
+     light side. `--panel-hero` is the same again: the hero and the rail were
+     one colour there and stay one colour there.
+
+     THE LIGHT HALVES ARE THE CHANGE. The rail takes the card white, so the
+     page falls away under it the way it does under every other panel. The
+     hero takes a pale green wash rather than white, because white would make
+     it the fourth `.stat` on a screen where it is the one card answering
+     "how many hours".
+
+     BOTH EDGES EXIST FOR ธีมสว่าง AND DRAW NOTHING IN ธีมมืด, where each is
+     set to its own panel's colour. That is the reason `--line-lift` gives
+     one comment up, in the direction that applies here: on the pale side a
+     panel has to state its own outline or it floats, and on the dark side it
+     is told from the page by being LIGHTER than it — an edge there would be
+     a second answer to a question already answered, and neither panel had
+     one before this change. */
+  --panel-rail: light-dark(#ffffff, #171E1A);
+  --panel-hero: light-dark(#F3FAF5, #171E1A);
+  --panel-rail-line: light-dark(#E2E7E3, #171E1A);
+  --panel-hero-line: light-dark(#C5E3D2, #171E1A);
+
+  --on-panel: light-dark(#14201A, #ffffff);
+  --on-panel-2: light-dark(#3C4A42, #B9C6BE);
+  --on-panel-3: light-dark(#3C4A42, #D6E0DA);
+  --on-panel-quiet: light-dark(#5B6B62, #8A9791);
+
+  /* THE OVERLAYS ARE A WASH IN ONE THEME AND A VEIL IN THE OTHER, which is
+     why they cannot be one alpha stated once. White at 8% over #ffffff is
+     nothing at all, so the light halves are the brand green at low alpha —
+     the same hue the active row fills with, two steps quieter.
+
+     AND THE DARK HALVES WENT UP: .07 → .1 for hover, .1 → .16 for the wash
+     under a shut fold and the open ข้อมูลส่วนตัว card. Asked for on
+     2026-09-07 alongside the pale rail — at 7% over #171E1A a hovered row
+     was a guess, and the reason to keep it that low (a fill competing with
+     the green pill beside it) was measured and is not one: the pill is a
+     saturated green, these are grey. */
+  --on-panel-hover: light-dark(rgba(15, 138, 70, .08), rgba(255, 255, 255, .1));
+  --on-panel-active: light-dark(rgba(15, 138, 70, .13), rgba(255, 255, 255, .16));
+  --on-panel-line: light-dark(#E2E7E3, rgba(255, 255, 255, .09));
+  --on-panel-border: light-dark(#B9CFC4, rgba(255, 255, 255, .18));
+
+  --on-panel-danger: light-dark(#B4402F, #F0A08A);
+  --on-panel-danger-line: light-dark(rgba(228, 87, 46, .28), rgba(228, 87, 46, .35));
+  --on-panel-danger-wash: light-dark(rgba(228, 87, 46, .09), rgba(228, 87, 46, .16));
+  --on-panel-danger-glow: light-dark(rgba(228, 87, 46, .14), rgba(228, 87, 46, .18));
+  --on-panel-warn: light-dark(#6B4B08, #E0B04A);
+
+  /* The big figure on the hero. Emerald on the pale wash, asked for on
+     2026-09-07 as the thing the eye should land on; `--green-dark` measures
+     6.00 there, and at 46px it is past every floor twice over. It stays the
+     panel's own white in ธีมมืด — green type at that size on a near-black
+     card is a neon sign, which is the fault `สีเน้นต้องตุ่น` in
+     test/theme.test.js exists to catch. */
+  --hero-figure: light-dark(#0B6E37, #ffffff);
+
+  /* An overlay on the old dark hero; a solid step down from the pale wash on
+     the new one, since a white veil over pale green is nothing. */
+  --meter-track: light-dark(#D7EADF, rgba(255, 255, 255, .13));
 
   /**
    * ONE GREEN CANNOT DO BOTH JOBS, and the numbers say so exactly.
@@ -1009,9 +1176,20 @@ html { -webkit-tap-highlight-color: transparent; }
 
 .shell { min-height: 100vh; display: flex; background: var(--bg); }
 
+/* WHITE IN ธีมสว่าง, CHARCOAL IN ธีมมืด, which it was not until 2026-09-07:
+   it took `--surface-dark` and was the one dark column on an otherwise pale
+   page. `--panel-rail` and the `--on-panel-*` family it draws its rows in
+   carry the whole of that; nothing about the layout here moved.
+
+   THE EDGE IS A RULE AND NOT A SHADOW. A shadow down a 100vh column reads as
+   the page curling, and the rail is not floating over anything — it is beside
+   the page, which is what a line says. In ธีมมืด `--panel-rail-line` is the
+   rail's own colour and this border draws nothing; see its note in the token
+   block. `box-sizing: border-box` is global, so the column is still 248px. */
 .sidebar {
   width: 248px; flex: none;
-  background: var(--surface-dark); color: var(--on-fill);
+  background: var(--panel-rail); color: var(--on-panel);
+  border-right: 1px solid var(--panel-rail-line);
   padding: 22px 16px;
   display: flex; flex-direction: column;
   position: sticky; top: 0; height: 100vh;
@@ -1056,17 +1234,19 @@ html { -webkit-tap-highlight-color: transparent; }
   padding: 1px;
 }
 .brand .name { font: 600 13px/1.1 var(--latin); letter-spacing: .14em; }
-.brand .kicker { font: 400 10.5px/1.4 var(--mono); color: var(--muted-2); letter-spacing: .08em; }
+.brand .kicker { font: 400 10.5px/1.4 var(--mono); color: var(--on-panel-quiet); letter-spacing: .08em; }
 
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav button {
   display: flex; align-items: center; gap: 11px;
   width: 100%; padding: 10px 12px;
-  border: none; background: transparent; color: var(--on-dark-2);
+  border: none; background: transparent; color: var(--on-panel-2);
   border-radius: var(--radius-xs); cursor: pointer;
   font: 500 14px/1 var(--sans); text-align: left;
 }
-.nav button:hover { background: var(--on-dark-hover); color: var(--on-fill); }
+/* `--on-panel` and not `--on-fill` on hover. They were the same colour while
+   the rail was dark; on a white one, white is the row disappearing. */
+.nav button:hover { background: var(--on-panel-hover); color: var(--on-panel); }
 .nav button.active { background: var(--green); color: var(--on-fill); }
 /* The slot is a fixed 18px box so every label starts on the same left edge —
    it did that by `width` + `text-align` when the icon was a character, and it
@@ -1110,14 +1290,15 @@ html { -webkit-tap-highlight-color: transparent; }
    "this is a label, not content". Both of those are rules for Latin: Thai has
    no upper case, and letter-spacing pulls a Thai word apart into syllables that
    read as separate words. The label is held back by SIZE, WEIGHT and COLOUR
-   instead — 11px against the rows' 14, and `--on-dark-2`, which is the grey
-   `.whoami .r` already uses on this same dark ground and measures 9.5 on it.
-   `--on-dark` is the greyer one and is the token test/theme.test.js records as
-   failing AAA on a dark surface. */
+   instead — 11px against the rows' 14, and `--on-panel-2`, which is the grey
+   `.whoami .r` already uses on this same ground and is held to AAA on it in
+   both themes: 9.50 on the white rail, 9.61 on the charcoal one. The step
+   below it in that family, `--on-panel-quiet`, is not AAA on either and is
+   spent on the one kicker under the wordmark. */
 .nav-group-label {
   padding: 0 12px 4px;
   font: 600 11px/1.5 var(--sans);
-  color: var(--on-dark-2);
+  color: var(--on-panel-2);
 }
 
 /* ── OT ส่วนตัว, the one row that folds ────────────────────────────────────
@@ -1137,22 +1318,22 @@ html { -webkit-tap-highlight-color: transparent; }
    The bar is an inset shadow rather than a `::before`, so it follows the
    button's own `border-radius` and needs no second box to position. */
 .nav-parent .chev {
-  flex: none; color: var(--on-dark-2); font-size: 17px; line-height: 1;
+  flex: none; color: var(--on-panel-2); font-size: 17px; line-height: 1;
   transition: transform .16s;
 }
 .nav-parent[aria-expanded='true'] .chev { transform: rotate(90deg); }
 .nav-parent.current {
-  background: var(--on-dark-active); color: var(--on-fill);
+  background: var(--on-panel-active); color: var(--on-panel);
   box-shadow: inset 2px 0 0 var(--green-lift);
 }
-.nav-parent.current .chev { color: var(--on-fill); }
+.nav-parent.current .chev { color: var(--on-panel); }
 
 /* ── the rows inside the fold ──────────────────────────────────────────────
 
    INDENTED AGAINST A GUIDE LINE, because indentation alone stops reading as
    containment the moment the fold is shut and the parent is gone: what is left
    is two rows that start 15px further right than the ones above them, for no
-   visible reason. The line is the reason, and it is the same `--on-dark-line`
+   visible reason. The line is the reason, and it is the same `--on-panel-line`
    as the one rule in the sidebar's foot.
 
    AND THE ACTIVE ROW COLOURS ITS OWN SEGMENT OF THAT LINE. The row itself is
@@ -1164,7 +1345,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .nav-items { display: flex; flex-direction: column; gap: 2px; }
 .nav-items.sub {
   margin-left: 15px; padding-left: 10px;
-  border-left: 1px solid var(--on-dark-line);
+  border-left: 1px solid var(--on-panel-line);
 }
 .nav-items.sub button { position: relative; }
 .nav-items.sub button.active::before {
@@ -1197,7 +1378,7 @@ html { -webkit-tap-highlight-color: transparent; }
   font: 600 11px/20px var(--mono); text-align: center;
 }
 
-.sidebar-foot { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--on-dark-line); }
+.sidebar-foot { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--on-panel-line); }
 /* A button since it opens ข้อมูลส่วนตัว — reset the browser chrome that comes
    with one, and keep the flex row it had as a div. */
 .whoami {
@@ -1205,29 +1386,35 @@ html { -webkit-tap-highlight-color: transparent; }
   border: none; background: transparent; border-radius: 8px;
   color: inherit; text-align: left; font: inherit; cursor: pointer;
 }
-.whoami:hover { background: var(--on-dark-hover); }
-.whoami.active { background: var(--on-dark-active); }
+.whoami:hover { background: var(--on-panel-hover); }
+.whoami.active { background: var(--on-panel-active); }
 /* ── AND THE SIDEBAR, WHICH WAS READING FROM THE WRONG SCALE ALTOGETHER ──────
 
-   `.whoami` sits on the sidebar, which is dark in BOTH themes — that is what
-   the `--on-dark` family exists for. These two were `--muted-2`, a token whose
-   values are chosen against a white card, and the result was 5.59 in dark and
-   4.92 in light: the light theme, where `--muted-2` is at its darkest, is where
-   a token meant for pale surfaces does worst on a near-black one.
+   `.whoami` sits on the sidebar, and these two were `--muted-2`, a token whose
+   values are chosen against a white card. On the sidebar of the day — which
+   was dark in BOTH themes — that read 5.59 in dark and 4.92 in light: the
+   light theme, where `--muted-2` is at its darkest, was where a token meant
+   for pale surfaces did worst on a near-black one.
 
    This is the `--amber-dark` shape from test/theme.test.js in a milder form —
    not a name that resolves to nothing, but a real name resolving on the wrong
    surface, which no contrast assertion catches unless somebody names the pair.
-   `--on-dark-2` is 9.61 / 9.50 and is what every other line on this sidebar
-   already uses. */
-.whoami .chev { flex: none; color: var(--on-dark-2); font-size: 17px; line-height: 1; }
+   `--on-panel-2` is 9.61 / 9.50 and is what every other line on this rail
+   already uses.
+
+   AND THE FIX SURVIVED THE RAIL GOING WHITE ON 2026-09-07 because of what it
+   was: the pair, not the token. `--on-panel-2` is themed, so the same name
+   still measures 9.50 against the ground `.whoami` actually sits on. Putting
+   `--muted-2` back would now be right by accident and wrong the moment
+   somebody picks ธีมมืด — which is the same trap read from the other end. */
+.whoami .chev { flex: none; color: var(--on-panel-2); font-size: 17px; line-height: 1; }
 .avatar {
   width: 34px; height: 34px; flex: none; border-radius: 50%;
   background: var(--green); color: var(--on-fill); display: grid; place-items: center;
   font: 600 13px/1 var(--mono); border: none;
 }
 .whoami .n { font: 500 13px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.whoami .r { font: 400 11px/1.4 var(--sans); color: var(--on-dark-2); }
+.whoami .r { font: 400 11px/1.4 var(--sans); color: var(--on-panel-2); }
 
 /* ── ออกจากระบบ, on the floor of the sidebar under the person's own card ─────
    WHERE IT SITS was already right, and is worth writing down because nothing
@@ -1237,12 +1424,12 @@ html { -webkit-tap-highlight-color: transparent; }
    name. No positioning, no fixed offset, nothing to keep in sync with the
    sidebar's height.
 
-   WHAT IT LOOKS LIKE is the change. Drawn in `--on-dark-2` inside
-   `--on-dark-border` it was the same object as the nav rows above it, in a
-   column where every other grey thing navigates — and this is the one control
-   in the sidebar that takes something away. It now borrows the voice
-   `.btn.ghost.danger` already uses on the card side, translated to the tokens
-   that survive a ground which is dark in both themes.
+   WHAT IT LOOKS LIKE is the change. Drawn in the sidebar grey inside a plain
+   white rule it was the same object as the nav rows above it, in a column
+   where every other grey thing navigates — and this is the one control in the
+   sidebar that takes something away. It now borrows the voice
+   `.btn.ghost.danger` already uses on the card side, in the `--on-panel-*`
+   copy of those tokens.
 
    OUTLINED AND NOT FILLED, and a step quieter than the card's version. Filled
    red is reserved for what cannot be taken back; signing out is undone by
@@ -1251,22 +1438,24 @@ html { -webkit-tap-highlight-color: transparent; }
    button answers "yes, this one" under the pointer rather than shouting from
    the corner of every screen.
 
-   The colour never moves. `--on-dark-danger` is the resting letter colour AND
-   the hover one, because there is nowhere brighter to go that is still this
-   red: at 8:1 on the sidebar it is already legible, and the ordinary
-   dim-then-brighten would have meant shipping a resting state dimmer than it
-   needs to be purely to leave room for the hover. */
+   The colour never moves BETWEEN THE TWO STATES. `--on-panel-danger` is the
+   resting letter colour AND the hover one, because there is nowhere further to
+   go that is still this red: it is already legible at rest — 8:1 on the dark
+   rail, 5.65 on the white one — and the ordinary dim-then-brighten would have
+   meant shipping a resting state dimmer than it needs to be purely to leave
+   room for the hover. It DOES move between the two THEMES, which it did not
+   before 2026-09-07; see the token, which carries why. */
 .signout {
   width: 100%; margin-top: 6px; padding: 9px;
-  border: 1px solid var(--on-dark-danger-line); background: transparent;
-  color: var(--on-dark-danger); border-radius: 8px;
+  border: 1px solid var(--on-panel-danger-line); background: transparent;
+  color: var(--on-panel-danger); border-radius: 8px;
   font: 500 12.5px/1 var(--sans); cursor: pointer;
   transition: background .16s, border-color .16s, box-shadow .16s;
 }
 .signout:hover {
-  background: var(--on-dark-danger-wash);
-  border-color: var(--on-dark-danger);
-  box-shadow: 0 0 0 3px var(--on-dark-danger-glow);
+  background: var(--on-panel-danger-wash);
+  border-color: var(--on-panel-danger);
+  box-shadow: 0 0 0 3px var(--on-panel-danger-glow);
 }
 
 .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -1517,30 +1706,70 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 .stack { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
 
+/* A PALE GREEN CARD IN ธีมสว่าง SINCE 2026-09-07, and a charcoal one still in
+   ธีมมืด. It was `--surface-dark` in both — the second of the two dark slabs
+   reported on an otherwise pale page, and the larger of them.
+
+   WHY THE WASH AND NOT WHITE. White was the obvious answer and is the wrong
+   one: three `.stat` cards sit directly under this on the same screen, white
+   on `--line`, and a white hero joins them. It is not one of them — it is the
+   card that answers "กี่ชั่วโมง" and the three below it break that number
+   into buckets — so it keeps a surface of its own. `--panel-hero` is the same
+   pale green the app already washes a quiet panel in, one step off the page.
+
+   AND IT GAINS A BORDER, which it never needed while it was near-black. The
+   wash is seven points off `--bg`; without an edge the card has no corner,
+   only a slightly different green. In ธีมมืด the border is the hero's own
+   colour and draws nothing, which is what that theme was already doing. */
 .hero {
-  background: var(--surface-dark); color: var(--on-fill);
+  background: var(--panel-hero); color: var(--on-panel);
+  border: 1px solid var(--panel-hero-line);
   border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 28px);
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 22px; align-items: end;
 }
-/* ── THE SUPPORTING TEXT ON THE HERO IS `--on-dark-2`, NOT `--on-dark` ───────
+/* ── THE SUPPORTING TEXT ON THE HERO IS `--on-panel-2`, NOT `--on-panel` ────
 
    Reported 2026-08-28 as the small text on this screen being hard to read in
    dark mode, together with the stat cards and the sidebar. Measured rather than
-   adjusted by eye: on this card `--on-dark` is 6.30 in dark and 6.23 in light —
-   over AA's 4.5 and under AAA's 7.0, the band where a line passes an automated
-   check and is still reported. `--on-dark-2` is 9.61 and 9.50.
+   adjusted by eye: on the dark card the token these three used to take was
+   6.30 in dark and 6.23 in light — over AA's 4.5 and under AAA's 7.0, the band
+   where a line passes an automated check and is still reported. Its
+   replacement measured 9.61 and 9.50 on that card, and 8.80 on the pale one
+   this card became on 2026-09-07 — still AAA, which is the floor
+   test/theme.test.js holds these three to on BOTH grounds.
 
    ALL THREE MOVE TOGETHER. The cap, the unit beside the figure and the sentence
    under it are one voice — the supporting text of one card — and leaving any of
    them behind would make the card's own furniture a patchwork of greys with
    nothing saying why. What separates them is size and weight, which is the
    difference this card was already using. */
-.hero .cap { font: 400 11.5px/1 var(--mono); letter-spacing: .14em; color: var(--on-dark-2); }
+.hero .cap { font: 400 11.5px/1 var(--mono); letter-spacing: .14em; color: var(--on-panel-2); }
 .hero .big { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
-.hero .big span:first-child { font: 600 46px/1 var(--mono); letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
-.hero .big .unit { font: 400 15px/1 var(--sans); color: var(--on-dark-2); }
+/* ── THE HOURS ARE GREEN IN ธีมสว่าง AND WHITE IN ธีมมืด ─────────────────────
+
+   Asked for on 2026-09-07 with the pale card: the figure is what the screen is
+   for, and on a wash the app's own emerald is what says so. `--hero-figure` is
+   `--green-dark` there — 6.00 on `--panel-hero`, past AA for body text and
+   twice past the 3:1 large text is measured at.
+
+   BOTH FIGURES, NOT THE BIG ONE ONLY. `.mid` — ชม. อนุมัติแล้ว — is the first
+   child of its own `.big`, so this rule already reached it and now colours it
+   too. That is right rather than incidental: they are two readings of the same
+   quantity, and one green hour beside one ink hour would say they are different
+   kinds of thing. What separates them is 46px against 30px, which is what was
+   separating them before.
+
+   AND NOT GREEN IN ธีมมืด. Emerald type at 46px on a near-black card is a neon
+   sign — the fault `ธีมมืด — สีเน้นต้องตุ่น` in test/theme.test.js exists to
+   catch — so the dark half of the token is the panel's own white, which is
+   what these figures have always been there. */
+.hero .big span:first-child {
+  font: 600 46px/1 var(--mono); letter-spacing: -1.5px; font-variant-numeric: tabular-nums;
+  color: var(--hero-figure);
+}
+.hero .big .unit { font: 400 15px/1 var(--sans); color: var(--on-panel-2); }
 .hero .mid { font: 600 30px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
-.hero .sub { font: 400 12px/1.5 var(--sans); color: var(--on-dark-2); margin-top: 6px; }
+.hero .sub { font: 400 12px/1.5 var(--sans); color: var(--on-panel-2); margin-top: 6px; }
 /* ── "รออนุมัติอีก 23 ชม." — the only unfinished number on the screen ────────
 
    TWO SENTENCES IN THE SAME GREY WERE SAYING TWO DIFFERENT KINDS OF THING. The
@@ -1549,13 +1778,13 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    2026-08-28 as a colour that separates it from อนุมัติแล้ว above it.
 
    AMBER AND NOT RED. Nothing is wrong: a request waiting for its manager is the
-   system working. Red is what `--on-dark-danger` is for and it is two rows away
+   system working. Red is what `--on-panel-danger` is for and it is two rows away
    in this palette on purpose.
 
    AND ONLY WHEN THERE IS SOMETHING TO WAIT FOR. The class is conditional in
    components/EmployeeView.jsx — "รออนุมัติอีก 0 ชม." in warning amber is an
    alarm about nothing, which is how people learn to stop reading a colour. */
-.hero .sub.waiting { color: var(--on-dark-warn); }
+.hero .sub.waiting { color: var(--on-panel-warn); }
 /* The figure inside it takes the app's number voice — mono and tabular, like
    every other hour on this screen — so the eye lands on the quantity and not on
    the word in front of it. */
@@ -1894,7 +2123,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
    `.btn.ghost` adds `border: 1px solid var(--line)` and did not take the
    padding back, so it stood 2px taller and 2px wider than the filled button
-   beside it. `.btn.outline` and `.btn.on-dark` do the same. Measured on the
+   beside it. `.btn.outline` and `.btn.on-hero` do the same. Measured on the
    running app at 1280px on ส่งบัญชี: ส่งออกไฟล์บัญชี 38.5px against พิมพ์แบบฟอร์ม
    40.5px, side by side in one row, tops 1px apart and bottoms 1px the other
    way. A row of buttons that do not agree on their own height reads as
@@ -2037,13 +2266,25 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   box-shadow: none;
   cursor: not-allowed;
 }
-.btn.on-dark:disabled {
+/* ── `.on-hero`, WHICH WAS `.on-dark` UNTIL 2026-09-07 ──────────────────────
+
+   ดูประวัติทั้งหมด, and it is the only button in the app wearing this. The
+   class was named for the ground it sat on, that ground stopped being dark in
+   ธีมสว่าง, and a class called `on-dark` drawn on a pale green card is the
+   same kind of lie a token called `--on-dark-2` resolving to a dark ink on a
+   white rail would be. It is named for the card now, which cannot come untrue
+   the same way.
+
+   It is still an outline and still transparent: on either ground this is the
+   quieter of the two buttons in `.hero-actions`, and + บันทึก OT ใหม่ beside it
+   is the filled one. */
+.btn.on-hero:disabled {
   opacity: .55; background: transparent;
-  border: 1px solid var(--on-dark-border-2); color: var(--on-dark-3);
+  border: 1px solid var(--on-panel-border); color: var(--on-panel-3);
   cursor: not-allowed;
 }
-.btn.on-dark { border: 1px solid var(--on-dark-border-2); background: transparent; color: var(--on-dark-3); box-shadow: none; font-weight: 500; }
-.btn.on-dark:hover:not(:disabled) { background: var(--on-dark-hover); color: var(--on-fill); }
+.btn.on-hero { border: 1px solid var(--on-panel-border); background: transparent; color: var(--on-panel-3); box-shadow: none; font-weight: 500; }
+.btn.on-hero:hover:not(:disabled) { background: var(--on-panel-hover); color: var(--on-panel); }
 
 .link {
   border: none; background: none; color: var(--green-text);
