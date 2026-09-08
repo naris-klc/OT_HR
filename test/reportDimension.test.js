@@ -8,35 +8,42 @@ import { groupEntriesByEmployee } from '../lib/accountingRows.js';
 import { companyOf } from '../src/config/companies.js';
 
 /**
- * แผนก IS SNAPSHOTTED ONTO THE ENTRY · บริษัท IS READ FROM THE ROSTER AT REPORT
- * TIME — and this file exists so that stops being an accident.
+ * แผนก AND บริษัท ARE BOTH READ FROM THE ROSTER AT REPORT TIME — and this file
+ * exists so that stops being an accident.
  *
  * The two are the same KIND of thing everywhere else: dimensions the monthly
  * reports are split by, adjacent dropdowns on ทะเบียนพนักงาน, both changed by HR
- * with one gesture. They behave oppositely.
+ * with one gesture. They now behave the same way as well.
  *
- *   แผนก   OtEntry.department is required and indexed and is written when the
- *          request is filed. Every report groups by the entry's copy. Editing
- *          the roster moves nothing that already exists.
+ *   แผนก   OtEntry.department is still required and indexed and is still written
+ *          when the request is filed — but no report reads it any more.
+ *          `groupEntriesByEmployee` lists everybody under their สังกัดหลัก, the
+ *          department on the roster, so today's value decides which department
+ *          every month ever filed is counted under.
  *   บริษัท The entry records nothing. สรุป OT ส่งบัญชี asks
  *          `companyOf(entry.employee)` while it is building the sheet, so
  *          today's roster value decides which payroll file EVERY month that
  *          person has ever filed belongs to — closed months included.
  *
- * That asymmetry is load-bearing for the warning ทะเบียนพนักงาน shows before a
- * save (only บริษัท gets a count of what it would restate — see
- * lib/rosterImpact.js) and it is written up in the README under "แผนก is
- * snapshotted onto the entry · บริษัท is not".
+ * ⚠ THEY WERE OPPOSITE UNTIL 2026-09-08, and the reversal is what this file is
+ * mostly for. It read: "แผนก IS SNAPSHOTTED ONTO THE ENTRY · บริษัท IS READ FROM
+ * THE ROSTER AT REPORT TIME", and every warning on ทะเบียนพนักงาน was written
+ * around that — แผนก was the reassuring paragraph, บริษัท the red one with the
+ * count. HR asked for one person to appear under one department, their สังกัดหลัก
+ * (see components/DepartmentPrint.jsx and lib/accountingRows.js), and the price
+ * of that is this: **a department move now restates closed months**, which
+ * nothing in the app refuses since ปิดงวด was withdrawn. Measured on the live
+ * database the day it changed, 0 of 2 entries were filed under a department
+ * other than their owner's, so no figure moved on the way in.
  *
- * IF YOU CAME HERE BECAUSE THIS FILE WENT RED: most likely somebody copied
- * `company` onto OtEntry so that history stops moving. That may well be the
- * right change. It is a change to what a closed month MEANS, so it is one to
- * make on purpose — decide what the existing entries get backfilled with (the
- * only value available is today's roster value, which reproduces exactly the
- * restatement the change is meant to stop), update the README section and the
- * dialog copy in components/AdminView.jsx, and then update this file to pin the
- * new behaviour. What must not happen is the behaviour changing quietly and
- * three screens' worth of warnings going on saying the old thing.
+ * IF YOU CAME HERE BECAUSE THIS FILE WENT RED: the likely change is somebody
+ * putting one of the two back on the entry so that history stops moving. That
+ * may well be the right change. It is a change to what a closed month MEANS, so
+ * it is one to make on purpose — decide what the existing entries get backfilled
+ * with, update the README section, the dialog copy in components/AdminView.jsx
+ * and `RETROACTIVE_FIELDS` in lib/rosterImpact.js, and then update this file to
+ * pin the new behaviour. What must not happen is the behaviour changing quietly
+ * and three screens' worth of warnings going on saying the old thing.
  *
  * Run with: npm test
  */
@@ -54,13 +61,12 @@ const entry = (employee, department, otHours) => ({
   totals: { otHours },
 });
 
-// ── แผนก: what was filed stays where it was worked ──────────────────────────
+// ── แผนก: the roster decides, every time the sheet is built ─────────────────
 
-test('a department moved on the roster does not move hours that were already filed', () => {
-  // The person worked these hours in วิศวกรรม and the entries say so. HR moves
-  // them to ผลิต 1 today. Last month's sheet must still count them under
-  // วิศวกรรม — the manager who signed them owns them, and the department's
-  // ceiling was measured against them.
+test('a department moved on the roster moves hours that were already filed', () => {
+  // The entries were filed under วิศวกรรม and still say so. The person sits in
+  // ผลิต 1 on the roster today — and that is where the month counts them, in
+  // every month, because HR asked for one person under one department.
   const worked = { _id: 'e1', code: 'PM-0412', name: 'สมชาย ใจดี', department: PRODUCTION };
   const entries = [entry(worked, ENGINEERING, 8), entry(worked, ENGINEERING, 3.5)];
 
@@ -69,18 +75,29 @@ test('a department moved on the roster does not move hours that were already fil
 
   assert.equal(
     group.department,
-    ENGINEERING,
-    'the report grouped by the roster’s department instead of the entry’s — '
-    + 'ทุกเดือนที่ปิดไปแล้วจะย้ายแผนกตามการแก้ทะเบียน ซึ่งเป็นพฤติกรรมของ “บริษัท” ไม่ใช่ของ “แผนก”',
+    PRODUCTION,
+    'the report went back to grouping by the entry’s department — '
+    + 'คนหนึ่งคนจะโผล่ในแผนกที่ไม่ใช่สังกัดหลักของตัวเอง ซึ่งเป็นสิ่งที่ HR ขอให้เลิกทำเมื่อ 2026-09-08',
   );
-  assert.equal(group.department.nameTh, 'วิศวกรรม');
+  assert.equal(group.department.nameTh, 'ผลิต 1');
 });
 
-test('the entry carries its own department, and the model requires it', () => {
-  // The property above is only true because the field exists on the entry and
-  // cannot be left off. A department that were optional would leave old rows
-  // with nothing to group by, and the natural repair is to read the roster —
-  // which is how แผนก would quietly become บริษัท.
+test('the entry department is the fallback, not the rule', () => {
+  // It is reached only when the roster row has no department to resolve — a
+  // hard-deleted แผนก, a half-finished restore. Dropping the row into
+  // ไม่ระบุแผนก when the entry still remembers one would lose a name off a
+  // department's sheet to fix a problem that is not that department's.
+  const orphan = { _id: 'e2', code: 'PM-0100', name: 'ไม่มีสังกัด' };
+  const [group] = [...groupEntriesByEmployee([entry(orphan, ENGINEERING, 4)]).groups.values()];
+  assert.equal(group.department, ENGINEERING);
+});
+
+test('the entry still carries its own department, and the model still requires it', () => {
+  // Nothing reads it for a report any more, and it is not therefore dead: it is
+  // what the ไม่ถูกนับ list names an orphaned entry's department by (there is no
+  // employee left to ask), it is the fallback above, and it is the only record
+  // of where an hour was actually worked. Making it optional would throw that
+  // away as a side effect of a report change.
   const src = readFileSync(join(ROOT, 'src/models/OtEntry.js'), 'utf8');
   const code = strip(src);
 
@@ -136,7 +153,7 @@ test('nothing on the entry records a company — there is no snapshot to read', 
   );
 });
 
-test('the sheet resolves the company through companyOf, not off the entry', () => {
+test('the sheet resolves both dimensions off the employee, not off the entry', () => {
   // lib/accounting.js resolves `@/…` through the Next alias and cannot be
   // imported by node --test, so this reads it as text — the same approach
   // test/accountingReconciliation.test.js takes, for the same reason.
@@ -144,29 +161,37 @@ test('the sheet resolves the company through companyOf, not off the entry', () =
 
   assert.match(code, /groupEntriesByEmployee\(entries,\s*\{\s*companyOf\s*\}\)/);
   assert.doesNotMatch(code, /entry\.company/, 'the sheet started reading a company off the entry');
+  // The employee's own department has to be fetched for the grouping to be able
+  // to prefer it — an entry populate that dropped it would send every row
+  // through the fallback and quietly restore the old behaviour.
+  assert.match(code, /populate:\s*\{\s*path:\s*'department'/);
 
-  // And the grouping helper asks it of the EMPLOYEE the entry points at, which
-  // is the step that makes it a live read rather than a stored one.
+  // And the grouping helper asks both of the EMPLOYEE the entry points at,
+  // which is the step that makes them live reads rather than stored ones.
   const rows = strip(readFileSync(join(ROOT, 'lib/accountingRows.js'), 'utf8'));
   assert.match(rows, /company:\s*companyOf\(entry\.employee\)/);
-  assert.match(rows, /department:\s*entry\.department/);
+  assert.match(rows, /department:\s*entry\.employee\?\.department \|\| entry\.department/);
 });
 
 // ── the two warnings that depend on all of the above ────────────────────────
 
-test('the roster screen warns about both, and counts only the one with something to count', () => {
-  // A count for แผนก would be a warning that is not true, and a warning that is
-  // not true is the one people learn to click past — which would take the
-  // บริษัท warning beside it down as well.
+test('the roster screen warns about both, and counts both', () => {
+  // Both restate months that have already been sent, so both get a number.
+  // บทบาท still gets none: a count that is always zero is a warning people
+  // learn to click past, and these two are the ones that must not be.
   const impact = strip(readFileSync(join(ROOT, 'lib/rosterImpact.js'), 'utf8'));
-  assert.match(impact, /RETROACTIVE_FIELDS\s*=\s*Object\.freeze\(\['company'\]\)/);
+  assert.match(impact, /RETROACTIVE_FIELDS\s*=\s*Object\.freeze\(\['company', 'department'\]\)/);
 
   const screen = strip(readFileSync(join(ROOT, 'components/AdminView.jsx'), 'utf8'));
-  // Both are explained before the save; only one of the two paragraphs is fed a
-  // count from the server.
-  assert.match(screen, /department:\s*\(\{\s*depts,\s*from,\s*to\s*\}\)/);
+  // Both paragraphs are fed a count from the server, and both are red.
+  assert.match(screen, /department:\s*\(\{\s*depts,\s*from,\s*to,\s*impact\s*\}\)/);
   assert.match(screen, /company:\s*\(\{\s*from,\s*to,\s*impact\s*\}\)/);
-  assert.match(screen, /retroLine\(wasOn,\s*to,\s*impact\)/);
+  assert.equal([...screen.matchAll(/retroLine\(/g)].length, 3, 'one call each, plus the definition');
+
+  // And the endpoint answers for both out of one read of the entries.
+  const route = strip(readFileSync(join(ROOT, 'app/api/employees/[id]/impact/route.js'), 'utf8'));
+  assert.match(route, /company:\s*\{\s*from,\s*to,\s*moved,/);
+  assert.match(route, /department:\s*\{/);
 });
 
 /** Comments say what the code should do; these tests are about what it does. */

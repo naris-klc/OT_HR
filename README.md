@@ -1274,6 +1274,14 @@ is still the thing being protected:
 > collapses every entry that pointed at it into one unnamed `ไม่ระบุแผนก`
 > bucket, permanently, shared with every other department ever deleted.
 
+**The middle sentence stopped being true on 2026-09-08** — the reports read
+สังกัดหลัก now, not the entry's copy, so a mid-month transfer moves the hours
+with the person (see *แผนก and บริษัท are both read from the roster at report
+time* below). The conclusion is untouched and is now reached by a shorter route:
+a hard-deleted department leaves every ROSTER row that pointed at it with nothing
+to resolve, the entry's copy resolves to nothing either, and `groupByDepartment`
+collapses them into the same permanent `ไม่ระบุแผนก` bucket.
+
 **What that paragraph could not say is that every word of it is about a row
 something POINTS AT.** A department created with a typo in its code five minutes
 ago, that no employee has ever belonged to and no entry has ever named, costs
@@ -1388,9 +1396,12 @@ route ปฏิเสธ — และแผนกที่ **ฝ่ายบุ
 
 ### ทำไม “ลบแผนก” จึงไม่มี
 
-`OtEntry.department` เป็น **reference ที่บังคับมี และถูกกำหนดตอนยื่นใบ** — แผนก
-ถูกถ่ายภาพนิ่งลงบนใบโดยตั้งใจ การย้ายแผนกกลางเดือนจึงทิ้งชั่วโมงไว้ที่ที่มันถูกทำ
-(ดู *แผนก is snapshotted onto the entry* ข้างล่าง) ถ้าลบแถวแผนกทิ้ง ทุกใบที่ชี้มา
+`OtEntry.department` เป็น **reference ที่บังคับมี และถูกกำหนดตอนยื่นใบ** — แต่
+**ตั้งแต่ 2026-09-08 ไม่มีรายงานไหนอ่านมันแล้ว** ทุกใบถูกจัดตาม *สังกัดหลัก* ใน
+ทะเบียน (ดู *แผนก and บริษัท are both read from the roster at report time*
+ข้างล่าง) ย่อหน้านี้เคยอ่านว่า “แผนกถูกถ่ายภาพนิ่งลงบนใบโดยตั้งใจ การย้ายแผนก
+กลางเดือนจึงทิ้งชั่วโมงไว้ที่ที่มันถูกทำ” ซึ่งจริงจนถึงวันนั้น · ข้อสรุปไม่เปลี่ยน
+ถ้าลบแถวแผนกทิ้ง ทุกใบที่ชี้มา
 ที่มันจะยุบรวมเป็นถัง `ไม่ระบุแผนก` ถังเดียวไม่มีชื่อใน `groupByDepartment` —
 อย่างถาวร และรวมกับทุกแผนกอื่นที่เคยถูกลบด้วย ส่วน `active: false` ไม่ต้องจ่ายอะไร
 แบบนั้นเลย: แผนกหายไปจากทุกช่องเลือก คนในแผนกยื่นใบไม่ได้อีก และทุกเดือนที่ปิดไป
@@ -8078,40 +8089,54 @@ JavaScript rather than as a mongo filter, because a row whose `company` was neve
 filled in is still on a payroll and a query cannot see that. With nobody scoped
 the query is byte-for-byte the one it always was.
 
-### แผนก is snapshotted onto the entry · บริษัท is not — and that is why one edit is retroactive and the other is not
+### แผนก and บริษัท are both read from the roster at report time — so both edits are retroactive
 
-Both are dimensions the same monthly reports are split by, and they behave
-oppositely when somebody edits the roster. This is not a coincidence and it is
-not visible from either field, so it is written down here.
+Both are dimensions the same monthly reports are split by. They used to behave
+oppositely; since **2026-09-08** they behave the same, and the change is the
+point of this section. The heading read *"แผนก is snapshotted onto the entry ·
+บริษัท is not — and that is why one edit is retroactive and the other is not"*
+until that day.
 
 | | where the report reads it from | editing the roster row |
 |---|---|---|
-| **แผนก** | `entry.department` — a required, indexed field **on the entry**, set when the request was filed (`src/models/OtEntry.js`) | **not retroactive.** Every closed month keeps its hours under the department they were worked in. Only entries filed from now on land somewhere new. |
+| **แผนก** | `entry.employee.department` — the **สังกัดหลัก on the roster**, asked at report time (`groupEntriesByEmployee` in `lib/accountingRows.js`). `entry.department` is still written and still required; nothing reads it for a report any more. | **fully retroactive since 2026-09-08.** Every month that person has ever filed is counted under whichever department the roster says today, closed months included. |
 | **บริษัท** | `companyOf(entry.employee)` — asked **at report time** (`lib/accounting.js`, via `groupEntriesByEmployee`). Nothing on the entry records a company. | **fully retroactive.** Every month that person has ever filed moves between the PM and THT files the instant the field is saved, closed months included. |
 
-So *the same edit gesture on two adjacent dropdowns has two completely different
-blast radii*, and the smaller one is the one that looks scarier (a department
-transfer feels like a bigger deal than a payroll relabel). ทะเบียนพนักงาน warns
-about both, but only the บริษัท warning carries a count — how many months, how
-many ใบ, how many hours — because only บริษัท has anything to count. See
-`lib/rosterImpact.js`, which explains why giving แผนก a number too would be a
-warning that is not true.
+ทะเบียนพนักงาน warns about both and **both warnings now carry a count** — how
+many months, how many ใบ, how many hours — from one read of that person's
+approved entries (`/api/employees/:id/impact`, `moveImpact` in
+`lib/rosterImpact.js`). บทบาท still gets no number, and should not: the sheet is
+built entries-first so the roster filter only adds blank lines, and a count that
+is always zero is a warning people learn to click past.
 
-**Why they differ.** แผนก was snapshotted because a mid-month transfer has to
+**Why แผนก changed.** It was snapshotted because a mid-month transfer has to
 leave the hours where they were worked — the manager who signed them owns them,
-and the department's ceiling was measured against them. บริษัท was never
-snapshotted because it started life as a *relabelling* of an existing roster
-(`npm run migrate:company` filled it in from code prefixes), so at the time the
-field was added, reading it live was the only way old months could split at all.
-Both decisions were right for their own problem; nobody ever compared them.
+and the department's ceiling was measured against them. That reading lost to a
+different requirement on 2026-09-08: HR asked that **one person appear under one
+department, their สังกัดหลัก**, on both สรุป OT ส่งบัญชี and สรุป OT แยกแผนก.
+A person cannot be in one place and also stay where their old hours were worked;
+the roster won. The price is stated plainly because it is real: **moving somebody
+between departments restates months whose sheets have already been signed**, and
+nothing in the app refuses that — ปิดงวด was withdrawn on 2026-08-31, so the
+signed paper is the record and a restatement is invisible from inside. The guard
+is the red dialog and its count. Measured on the live database the day it
+changed, **0 of 2 entries were filed under a department other than their
+owner's**, so nothing moved on the way in.
 
-**If you are about to change this** — most likely by copying `company` onto
-`OtEntry` so that history stops moving — `test/reportDimension.test.js` will go
-red, deliberately. It pins today's behaviour on both axes so the change has to
+**Why บริษัท was always this way.** It started life as a *relabelling* of an
+existing roster (`npm run migrate:company` filled it in from code prefixes), so
+at the time the field was added, reading it live was the only way old months
+could split at all.
+
+**If you are about to change this** — most likely by putting one of the two back
+on the entry so that history stops moving — `test/reportDimension.test.js` will
+go red, deliberately. It pins today's behaviour on both axes so the change has to
 be made on purpose rather than arrived at. Making it would also need a decision
 about what to backfill the existing entries with (today's roster value is the
 only thing available, which reproduces exactly the retroactive restatement the
-change is meant to stop) and would obsolete the count in `lib/rosterImpact.js`.
+change is meant to stop) and would need `RETROACTIVE_FIELDS` in
+`lib/rosterImpact.js` and the dialog copy in `components/AdminView.jsx` to move
+with it.
 
 **Removing it.** If the two-company split is dropped for good: delete
 `src/config/companies.js`, the `company` field and `pre('validate')` hook in
@@ -8448,10 +8473,21 @@ down the column it belongs to. A subtotal of zero prints blank like the people
 in it; the company line always prints a figure, because a blank where the total
 that gets signed for belongs reads as "not filled in".
 
-**แสดงพนักงานที่ไม่มี OT** lists active `employee`-role people with no hours as
-blank rows, the way the paper sheet does — a blank line is accounting's
-evidence that somebody was checked, not skipped. A zero prints blank rather
-than `0.00`, on the screen and in the CSV alike.
+**แสดงพนักงานที่ไม่มี OT** lists **every active person with no hours**,
+whatever their บทบาท, as blank rows — the way the paper sheet does. A blank line
+is accounting's evidence that somebody was checked, not skipped. A zero prints
+blank rather than `0.00`, on the screen and in the CSV alike.
+
+It read "active `employee`-role people" until **2026-09-08**, and that filter was
+leaving **21 of the 164 active people off both sheets**: 10 ผู้จัดการแผนก,
+7 หัวหน้างาน, and one each of การเงิน, ฝ่ายบุคคล and ผู้จัดการฝ่าย. §2 says a
+manager's ordinary OT is not payable; it does not say the department has fewer
+people in it, and a หัวหน้างาน with no line at all is indistinguishable from one
+who was missed. The one exclusion is the **ADMIN** account — `ผู้ดูแลระบบ`, the
+system escalation login rather than somebody on a payroll (`ADMIN_ROLE` in
+`lib/accounting.js`). If it ever files OT its entries put it on the sheet anyway:
+this filter decides blank lines and nothing else, which is the property
+`test/accountingReconciliation.test.js` exists to hold.
 
 **The printed sheet** (`components/AccountingPrint.jsx`, styles under `.acct`
 in `app/print.css`) is the paper form HR already sends, and only that: four

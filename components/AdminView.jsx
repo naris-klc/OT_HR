@@ -10,6 +10,10 @@ import {
 import {
   ACCOUNTING_SENSITIVE, AUDITED_FIELDS, FIELD_LABEL, rosterChanges,
 } from '@/lib/rosterAudit.js';
+// Which roster edits restate figures already sent to accounting — read here
+// rather than listed again, so the screen and the endpoint that counts them
+// cannot come to disagree about which fields those are.
+import { RETROACTIVE_FIELDS } from '@/lib/rosterImpact.js';
 import { parseCsv, toCsv } from '@/src/lib/csv.js';
 // Pure config, no mongoose — the same resolution the accounting sheet uses, so
 // the column showing which payroll somebody is on cannot disagree with the file
@@ -2189,35 +2193,46 @@ const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map((o) => [o.value, o.label]
  * Each `body` below is the answer to "does this touch what has already been sent
  * to accounting", and the answers genuinely differ:
  *
- *   department — no. OtEntry stores its own `department` (required, indexed)
- *                and every report groups by it, so history stays where it was
- *                worked. Only future filings move.
- *   company    — YES, all of it. Nothing on the entry records a company;
- *                สรุป OT ส่งบัญชี asks `companyOf(entry.employee)` at report
- *                time, so today's value restates every month ever filed. This
- *                is the only one that gets counted — see lib/rosterImpact.js.
+ *   department — YES, SINCE 2026-09-08, and this paragraph used to say the
+ *                opposite. OtEntry still stores its own `department`, but the
+ *                reports stopped reading it: everybody is listed under their
+ *                สังกัดหลัก now, so today's value restates every month ever
+ *                filed. Counted, like บริษัท.
+ *   company    — YES, all of it, and always was. Nothing on the entry records a
+ *                company; สรุป OT ส่งบัญชี asks `companyOf(entry.employee)` at
+ *                report time. See lib/rosterImpact.js.
  *   role       — no hours are lost. The submission sheet is built entries-first
- *                and the `role: 'employee'` filter only decides who gets a
- *                blank line. What does change is what the person can do next.
+ *                and the roster filter only decides who gets a blank line. What
+ *                does change is what the person can do next.
  *   birthDate  — approved entries never move (recomputeEntries refuses them);
  *                the ones still in flight are replayed, because the day types
  *                they were computed under have changed.
  *
- * The asymmetry between the first two is the load-bearing fact on this screen
- * and it is not obvious from either field: both are dimensions the same reports
- * are split by. It is written up in the README and pinned by
- * test/reportDimension.test.js.
+ * THE FIRST TWO WERE OPPOSITE FOR A YEAR and this screen was written around
+ * that asymmetry — แผนก was the reassuring paragraph, บริษัท the red one. They
+ * are the same kind of thing now. It is written up in the README and pinned by
+ * test/reportDimension.test.js, which is the file that fails if the reports ever
+ * go back to grouping by the entry's copy without this copy following.
  */
 const IMPACT = {
-  department: ({ depts, from, to }) => ({
-    tone: 'warn',
-    title: 'เปลี่ยนแผนก — ชั่วโมงที่บันทึกไว้แล้วไม่ขยับ',
+  /**
+   * RED SINCE 2026-09-08, AND IT USED TO BE THE REASSURING ONE. It read
+   * "ชั่วโมงที่บันทึกไว้แล้วไม่ขยับ", which was true while the reports grouped by
+   * the entry's own copy of the department. They group by สังกัดหลัก now, so a
+   * แผนก move restates every month that person has ever filed — the same thing
+   * บริษัท does, counted the same way, and said in the same voice.
+   */
+  department: ({ depts, from, to, impact }) => ({
+    tone: 'error',
+    title: 'เปลี่ยนแผนก — กระทบย้อนหลังทั้งหมด รวมเดือนที่ส่งบัญชีไปแล้ว',
     body: [
       `ย้ายจาก “${nameOfDept(depts, from) || '—'}” ไป “${nameOfDept(depts, to) || '—'}”`,
-      'ใบ OT แต่ละใบเก็บแผนกไว้ที่ตัวใบเอง และทุกรายงานอ่านจากใบ '
-        + '— รายงานย้อนหลังจึงยังนับชั่วโมงเดิมไว้ที่แผนกเดิมตามที่ทำงานจริง',
-      'ที่เปลี่ยนคือใบที่ยื่นหลังจากนี้: จะไปนับในรายงานของแผนกใหม่ '
-        + 'และถูกวัดกับเพดาน ชม./เดือน และ ชม./สัปดาห์ ของแผนกใหม่ ซึ่งเป็นคนละตัวกับของเดิม',
+      'รายงาน OT แยกแผนก จัดคนตาม “สังกัดหลัก” ที่อยู่ในทะเบียน ไม่ได้อ่านแผนกที่ผูกไว้บนใบ '
+        + '— ชั่วโมงเดิมของคนนี้จะย้ายออกจากแผนกเดิมไปอยู่แผนกใหม่ทุกเดือน',
+      retroLine(nameOfDept(depts, from) || '—', nameOfDept(depts, to) || '—', impact, 'แผนก'),
+      'ใบที่ยื่นหลังจากนี้จะถูกวัดกับเพดาน ชม./เดือน และ ชม./สัปดาห์ ของแผนกใหม่ '
+        + 'ซึ่งเป็นคนละตัวกับของเดิม',
+      'ถ้าเป็นการย้ายที่มีผลจากเดือนใดเดือนหนึ่งเป็นต้นไป ให้แจ้งบัญชีก่อนบันทึก',
     ],
   }),
   /**
@@ -2260,7 +2275,7 @@ const IMPACT = {
       body: [
         `ย้ายจาก “${companyName(wasOn)}” ไป “${companyName(to)}”`,
         'ใบ OT ไม่ได้เก็บบริษัทไว้ที่ใบ — รายงาน OT ฝ่ายบัญชี อ่านค่านี้จากทะเบียนตอนออกรายงาน',
-        retroLine(wasOn, to, impact),
+        retroLine(companyName(wasOn), companyName(to), impact, 'ไฟล์'),
         'ถ้าเป็นการย้ายที่มีผลจากเดือนใดเดือนหนึ่งเป็นต้นไป ให้แจ้งบัญชีก่อนบันทึก',
       ],
     };
@@ -2272,8 +2287,9 @@ const IMPACT = {
       // Checked, and stated as a fact rather than a reassurance: the sheet is
       // built from entries and the roster filter only adds blank lines.
       'ชั่วโมงที่อนุมัติแล้วไม่หายไปจากรายงาน OT ฝ่ายบัญชี '
-        + '— ชีตสร้างจากใบ OT ที่มีอยู่ ไม่ได้สร้างจากทะเบียน ตัวกรอง “เฉพาะพนักงาน” '
-        + 'ใช้ตอนเติมแถวว่างของคนที่ไม่มี OT เท่านั้น · ใบที่ยังรออนุมัติก็ยังอนุมัติได้ตามปกติ',
+        + '— ชีตสร้างจากใบ OT ที่มีอยู่ ไม่ได้สร้างจากทะเบียน · และตั้งแต่ 2026-09-08 '
+        + 'แถวว่างก็ขึ้นครบทุกบทบาทอยู่แล้ว บทบาทจึงไม่ได้ตัดสินว่าใครมีชื่อบนใบ '
+        + '· ใบที่ยังรออนุมัติก็ยังอนุมัติได้ตามปกติ',
       ...(to === 'employee'
         ? ['คนนี้จะยื่น OT ได้ และจะกลับเข้าไปอยู่ในรายการตรวจวันเกิดตั้งแต่นี้ไป']
         : [
@@ -2307,19 +2323,27 @@ const IMPACT = {
 };
 
 /**
- * The retroactive line for a company move — how much, or that it is still being
- * counted, or that there is nothing to count.
+ * The retroactive line for a move — how much, or that it is still being counted,
+ * or that there is nothing to count.
  *
  * Three states rather than a number defaulting to zero. "ไม่มีใบที่กระทบ" and
  * "ยังนับไม่เสร็จ" are opposite answers and a dialog that prints 0 for both is
  * one that will eventually tell somebody a move is free when it is not.
+ *
+ * TWO CALLERS SINCE 2026-09-08 — บริษัท and แผนก — so `from` and `to` arrive as
+ * the NAMES to print and `unit` is the word between them. They used to arrive as
+ * company keys and be resolved in here, which worked exactly as long as there
+ * was one caller: `companyName()` falls through to its argument for anything it
+ * does not know, so a department name would have printed correctly by accident
+ * and a company key that lost its row would have printed as the key. The
+ * resolution belongs where the field is known.
  */
-function retroLine(from, to, impact) {
-  const move = `จากไฟล์ ${companyName(from)} ไปไฟล์ ${companyName(to)}`;
+function retroLine(from, to, impact, unit) {
+  const move = `จาก${unit} ${from} ไป${unit} ${to}`;
   if (!impact) return `กำลังนับรายงานย้อนหลังที่กระทบ… (ย้าย${move})`;
   if (!impact.entries) {
     return 'คนนี้ยังไม่มีใบ OT ที่อนุมัติแล้ว จึงไม่มีเดือนย้อนหลังที่ต้องแก้ '
-      + `— ชั่วโมงตั้งแต่นี้ไปจะไปอยู่ในไฟล์ ${companyName(to)}`;
+      + `— ชั่วโมงตั้งแต่นี้ไปจะไปอยู่ใน${unit} ${to}`;
   }
   const months = impact.periods.map((p) => periodLabel(p.period)).join(' · ');
   return `กระทบรายงานย้อนหลัง ${impact.months} เดือน · ${impact.entries} ใบ · ${impact.hours} ชั่วโมง `
@@ -3950,7 +3974,12 @@ function EditEmployee({
   const [reason, setReason] = useState('');
   /** 'edit' → the form · 'confirm' → what is about to happen. */
   const [step, setStep] = useState('edit');
-  /** Counted by the server for a company move; null until it arrives. */
+  /**
+   * Counted by the server for a company or a department move; null until it
+   * arrives. The whole payload, keyed by field — `impact.company`,
+   * `impact.department` — so the two paragraphs cannot be handed each other's
+   * numbers.
+   */
   const [impact, setImpact] = useState(null);
   /** 'idle' · 'counting' · 'done' · 'failed' — see `counting` below. */
   const [countState, setCountState] = useState('idle');
@@ -3962,7 +3991,14 @@ function EditEmployee({
   const changes = rosterChanges(before, form);
   const changed = (field) => changes.some((c) => c.field === field);
   const codeChanged = changed('code');
-  const companyChanged = changed('company');
+  /**
+   * The edits that restate months already sent out, and whether there is a
+   * value to ask the server about. Both are needed: บริษัท is a required select
+   * and แผนก is a required ref, so an empty one is a half-finished form rather
+   * than a move to count.
+   */
+  const askImpact = RETROACTIVE_FIELDS.filter((f) => changed(f) && Boolean(form[f]));
+  const retroChanged = askImpact.length > 0;
 
   /**
    * Which changes get a paragraph before they are saved: the three the
@@ -4001,20 +4037,25 @@ function EditEmployee({
    * "กำลังนับ…". The count is the whole content of that warning, so no count is
    * no warning, and the answer to no warning is not to proceed anyway.
    */
-  const counting = companyChanged && countState !== 'done';
+  const counting = retroChanged && countState !== 'done';
 
-  /** Move to the review, counting the company impact first when there is one. */
+  /** Whether the save button is the red one — either retroactive field moved. */
+  const retroMoved = RETROACTIVE_FIELDS.some((f) => impact?.[f]?.moved);
+
+  /** Move to the review, counting the retroactive impact first when there is one. */
   async function review() {
     setError('');
     setStep('confirm');
-    if (!companyChanged || !form.company) return;
+    if (!retroChanged) return;
     setImpact(null);
     setCountState('counting');
     try {
-      const res = await api.get(
-        `/employees/${employee._id}/impact?company=${encodeURIComponent(form.company)}`,
-      );
-      setImpact(res.company);
+      // Both fields in one request: they restate the same rows, so the server
+      // reads that list once and answers for whichever of the two moved.
+      const params = new URLSearchParams();
+      for (const field of askImpact) params.set(field, form[field]);
+      const res = await api.get(`/employees/${employee._id}/impact?${params}`);
+      setImpact(res);
       setCountState('done');
     } catch (err) {
       setCountState('failed');
@@ -4086,7 +4127,7 @@ function EditEmployee({
               warning still reads "กำลังนับ…" is a move confirmed against no
               number at all, which is the thing this step exists to prevent. */}
           <button
-            className={impact?.moved ? 'btn danger' : 'btn'}
+            className={retroMoved ? 'btn danger' : 'btn'}
             onClick={save}
             disabled={!ready || busy || counting}
           >
@@ -4440,7 +4481,9 @@ function EditEmployee({
 
           {explained.map((field) => {
             const c = changes.find((x) => x.field === field);
-            const note = IMPACT[field]({ depts, from: c.from, to: c.to, impact });
+            const note = IMPACT[field]({
+              depts, from: c.from, to: c.to, impact: impact?.[field] ?? null,
+            });
             return (
               <Alert kind={note.tone} key={field}>
                 <strong>{note.title}</strong>

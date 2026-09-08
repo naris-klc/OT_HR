@@ -35,7 +35,11 @@ test('the sheet carries the field the answer is read from', () => {
   // with nothing to say it has.
   const accounting = read('lib/accounting.js');
   assert.match(accounting, /otMode: d\.otMode \|\| 'normal'/);
-  assert.equal([...accounting.matchAll(/'code name nameTh otMode'/g)].length, 2);
+  // THREE SINCE 2026-09-08, not two. The third is the department populated
+  // inside the employee populate — สังกัดหลัก, which is what every row is now
+  // grouped by. A populate that fetched it without otMode would make every
+  // department read as ordinary, which is the same failure one selector along.
+  assert.equal([...accounting.matchAll(/'code name nameTh otMode'/g)].length, 3);
 });
 
 test('screen and CSV say it, the printed sheet does not', () => {

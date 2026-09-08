@@ -28,7 +28,9 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
  * entry collection to the roster the sheet prints.
  *
  * The failure it guards is specific and quiet. สรุป OT ส่งบัญชี lists the whole
- * roster, and the roster query is filtered — `active: true, role: 'employee'`.
+ * roster, and the roster query is filtered — `active: true` and every บทบาท
+ * but the ADMIN account since 2026-09-08, `active: true, role: 'employee'`
+ * before that.
  * Read quickly that looks like the sheet's population, and if it were, then
  * every manager's OT and every leaver's OT would be missing from the totals
  * with nothing anywhere saying so: the rows would still agree with the
@@ -71,8 +73,9 @@ const rowsFrom = (groups) => [...groups.values()].map((g) => ({
 // ── the roster filter cannot lose an hour ───────────────────────────────────
 
 test('a manager who worked OT is on the sheet with their hours', () => {
-  // §2 says managers do not submit OT, so they are not in the roster query
-  // that adds blank lines. If one has an approved entry anyway, the entry is
+  // §2 says managers do not submit OT. They DO get a blank line since
+  // 2026-09-08 — but if one has an approved entry anyway, it is the entry
+  // that puts them on the sheet with hours on it, not the roster pass.
   // what puts them on the sheet — and it must, or the month is short.
   const boss = person('m1', 'PM-0001', 'supervisor');
   const entries = [entry(boss, 16.5)];
@@ -239,6 +242,36 @@ test('the company an entry is filed under comes from the employee on the entry',
   });
   assert.equal([...groups.values()][0].company, 'themtech');
 });
+
+test('every active บทบาท gets a blank line, and the ADMIN account does not', () => {
+  /**
+   * WHAT THE ROSTER FILTER IS ALLOWED TO DECIDE, checked where it lives.
+   *
+   * It read `active: true, role: 'employee'` until 2026-09-08, which left 21 of
+   * 164 active people off both sheets — 10 ผู้จัดการแผนก, 7 หัวหน้างาน, and one
+   * each of การเงิน, ฝ่ายบุคคล and ผู้จัดการฝ่าย. A person who is not on the
+   * sheet at all is indistinguishable from one who was missed, and the blank
+   * line exists precisely to tell those two apart.
+   *
+   * The ADMIN account is the one exclusion and it is not about permissions: it
+   * is the system escalation login (ผู้ดูแลระบบ), not somebody on a payroll.
+   * If it ever files OT the entries put it on the sheet anyway — which is the
+   * property every test above this one holds.
+   */
+  const src = readFileSync(join(ROOT, 'lib/accounting.js'), 'utf8');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  assert.ok(
+    code.includes('Employee.find({ active: true, role: { $ne: ADMIN_ROLE } })'),
+    'the roster pass is not the widened one — check whose blank line it prints',
+  );
+  assert.ok(code.includes("const ADMIN_ROLE = 'admin';"), 'ADMIN_ROLE is gone or renamed');
+  assert.ok(
+    !code.includes("active: true, role: 'employee'"),
+    'the roster pass is back to พนักงาน only — 21 of 164 people lose their line',
+  );
+});
+
 
 // ── the order the sheet is built in ─────────────────────────────────────────
 
