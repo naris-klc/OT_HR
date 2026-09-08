@@ -4823,54 +4823,192 @@ function RosterTrail({ employee, depts, onClose }) {
 }
 
 /**
+ * Whether a record has anything under its heading line at all.
+ *
+ * A ตั้งรหัสผ่านใหม่ changes no field, so its `changes` is empty and the only
+ * thing below the head is the sentence saying the password itself was never
+ * written down — which is still worth a fold. A record with none of the three
+ * has an empty body, and a fold over nothing is a control that lies about there
+ * being more: those rows keep the plain heading they have always had, with no
+ * chevron and nothing to press.
+ */
+const hasTrailDetail = (r) => r.changes.length > 0 || Boolean(r.reason) || Boolean(r.passwordReset);
+
+/**
  * The records themselves, rendered once for both screens that show them: one
  * person's trail in the pop-up above, and everybody's in the section below.
  *
  * Shared rather than written twice because the two are the same records read
  * with two different questions in mind, and a second copy would be the one that
  * still printed a field after its label changed. `withWho` is the only
- * difference: the pop-up already names the person in its subtitle, so repeating
- * it on every line there would be noise.
+ * difference in what is SAID: the pop-up already names the person in its
+ * subtitle, so repeating it on every line there would be noise.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `foldable` IS THE OTHER DIFFERENCE, AND IT IS ABOUT LENGTH, NOT TASTE
+ *
+ * Asked for 2026-09-08 on ประวัติการแก้ทะเบียน: fold each record down to its
+ * heading line so the list can be scanned. That list is everybody's changes at
+ * once, up to the endpoint's cap, and a record that moved four fields prints
+ * four `ค่าเดิม → ค่าใหม่` lines under its head — so "who touched the roster on
+ * Tuesday" was answered with two screens of arrows.
+ *
+ * THE POP-UP IS DELIBERATELY NOT FOLDED. It holds ONE person's trail, opened
+ * from that person's row, by somebody who has already said whose history they
+ * want: the diff is the whole of what they came for, and folding it would put a
+ * press between a question and its answer. Two shapes for one list is a
+ * divergence, and this is the reason for it. `foldable` says so at the call
+ * site rather than being inferred from `withWho`, which means something else
+ * and would tie the two together for no reason but that they happen to agree
+ * today.
  */
-function TrailList({ records, depts, empty, withWho = false }) {
+function TrailList({
+  records, depts, empty, withWho = false, foldable = false, openByDefault = false,
+}) {
+  const [open, setOpen] = useState(() => new Set());
+
+  /**
+   * A NEW LIST LANDS IN THE STATE THAT LIST ASKED FOR, not in whatever the last
+   * one was left in. `records` is a fresh array on every fetch, so this runs
+   * when a filter changes — without it the ids in the old set keep matching
+   * whichever records happen to carry them, and a list nobody has touched opens
+   * with three rows already unfolded.
+   *
+   * `openByDefault` is กรองตามสิ่งที่ถูกแก้ being set, and it is the one case
+   * where folded is the wrong default: somebody who has just asked for only the
+   * records that changed วันเกิด is asking about the diff, and a screen that
+   * answers with a column of headings has hidden the thing they filtered for.
+   * Every other arrival starts folded.
+   */
+  useEffect(() => {
+    setOpen(openByDefault && records
+      ? new Set(records.filter(hasTrailDetail).map((r) => r.id))
+      : new Set());
+  }, [records, openByDefault]);
+
   if (!records.length) return <Empty>{empty}</Empty>;
+
+  const foldables = foldable ? records.filter(hasTrailDetail) : [];
+  const toggle = (id) => setOpen((prev) => {
+    const next = new Set(prev);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
+  const allOpen = foldables.length > 0 && foldables.every((r) => open.has(r.id));
+
   return (
-    <ol className="entry-history">
-      {records.map((r) => (
-        <li key={r.id} className={TONE[r.action] || 'off'}>
-          <div className="head">
-            <span className="act">
-              {ACTION_LABEL[r.action] || r.action}
-              {SOURCE_LABEL[r.source] || ''}
-            </span>
-            {/* The code and name as they stood when the record was written —
-                see src/models/EmployeeAudit.js. A renumbering's own record must
-                not relabel itself with the code it produced. */}
-            {withWho && (
-              <span className="who">{r.employee?.code} · {r.employee?.name || '—'}</span>
-            )}
-            {r.by && <span className="who">โดย {r.by}</span>}
-            <span className="when">{thaiStamp(r.at)}</span>
-          </div>
-          {r.reason && <div className="note">“{r.reason}”</div>}
-          {r.passwordReset && (
-            <div className="note">ตั้งรหัสผ่านใหม่ให้บัญชีนี้ — ระบบไม่ได้บันทึกตัวรหัสผ่าน</div>
-          )}
-          {r.changes.length > 0 && (
-            <ul className="entry-diff">
-              {r.changes.map((c) => (
-                <li key={c.field}>
-                  <span className="k">{FIELD_LABEL[c.field] || c.field}</span>
-                  <span className="was">{showValue(c.field, c.from, depts)}</span>
-                  <span className="to">→</span>
-                  <span className="now">{showValue(c.field, c.to, depts)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </li>
-      ))}
-    </ol>
+    <>
+      {/* ONE BUTTON, TWO WORDS, AND ABSENT WHEN IT WOULD DO NOTHING.
+          A list whose every record is a bare heading — a run of password resets,
+          say — has nothing to expand, and a control that presses to no visible
+          effect is worse than no control at all.
+
+          It reads its own label off the folds rather than keeping a flag beside
+          them, so unfolding the last folded record by hand turns this into
+          หุบทั้งหมด without anything having to tell it. */}
+      {foldables.length > 0 && (
+        <div className="row trail-tools">
+          <button
+            className="btn ghost sm"
+            onClick={() => setOpen(allOpen ? new Set() : new Set(foldables.map((r) => r.id)))}
+          >
+            {allOpen ? 'หุบทั้งหมด' : 'ขยายทั้งหมด'}
+          </button>
+        </div>
+      )}
+      <ol className="entry-history">
+        {records.map((r) => {
+          const detail = foldable && hasTrailDetail(r);
+          const shown = open.has(r.id);
+          /* The heading line, written once: it is the same words whether it is a
+             heading or the button that opens one. */
+          const summary = (
+            <>
+              <span className="act">
+                {ACTION_LABEL[r.action] || r.action}
+                {SOURCE_LABEL[r.source] || ''}
+              </span>
+              {/* The code and name as they stood when the record was written —
+                  see src/models/EmployeeAudit.js. A renumbering's own record must
+                  not relabel itself with the code it produced. */}
+              {withWho && (
+                <span className="who">{r.employee?.code} · {r.employee?.name || '—'}</span>
+              )}
+              {r.by && <span className="who">โดย {r.by}</span>}
+              <span className="when">{thaiStamp(r.at)}</span>
+            </>
+          );
+          const body = (
+            <>
+              {r.reason && <div className="note">“{r.reason}”</div>}
+              {r.passwordReset && (
+                <div className="note">ตั้งรหัสผ่านใหม่ให้บัญชีนี้ — ระบบไม่ได้บันทึกตัวรหัสผ่าน</div>
+              )}
+              {r.changes.length > 0 && (
+                <ul className="entry-diff">
+                  {r.changes.map((c) => (
+                    <li key={c.field}>
+                      <span className="k">{FIELD_LABEL[c.field] || c.field}</span>
+                      <span className="was">{showValue(c.field, c.from, depts)}</span>
+                      <span className="to">→</span>
+                      <span className="now">{showValue(c.field, c.to, depts)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          );
+          return (
+            <li key={r.id} className={`${TONE[r.action] || 'off'}${detail ? ' foldable' : ''}`}>
+              {detail ? (
+                /* THE WHOLE HEADING IS THE CONTROL, not a chevron at the end of
+                   it: the heading is what a reader is already pointing at, and a
+                   glyph this size is a target nobody hits with a thumb. A real
+                   `<button>` and not a div with an onClick, so it answers to
+                   Enter and Space and announces its own state. */
+                <button
+                  type="button"
+                  className="head trail-head"
+                  aria-expanded={shown}
+                  aria-controls={`trail-${r.id}`}
+                  onClick={() => toggle(r.id)}
+                >
+                  {summary}
+                  {/* ONE GLYPH TURNED OVER, not two swapped. The rotation is the
+                      movement the fold itself makes and takes the same 180ms;
+                      swapping ▼ for ▲ is two pictures with a jump between them.
+                      `aria-hidden`, because `aria-expanded` on the button above
+                      already says this and says it in words. */}
+                  <span className="fold" aria-hidden="true">▼</span>
+                </button>
+              ) : (
+                <div className="head">{summary}</div>
+              )}
+              {detail ? (
+                /* The slide and the visibility handoff are `Disclosure`'s, class
+                   for class — see `.disclosure-slide` in app/styles.css for why
+                   it is a `0fr → 1fr` grid row and why the body has to be an
+                   element sitting INSIDE it rather than the row itself. What is
+                   not reused is the control: `Disclosure` draws its own อ่านต่อ
+                   link and cannot be handed another, and here the heading is the
+                   control. Same mechanism, different handle — so the
+                   `prefers-reduced-motion` rule and the @media print block that
+                   unfolds everything for paper both reach this without having
+                   been told it exists. */
+                <div className={`disclosure-slide${shown ? ' open' : ''}`}>
+                  <div
+                    id={`trail-${r.id}`}
+                    className={`disclosure-body trail-detail${shown ? '' : ' clamp-whole'}`}
+                  >
+                    {body}
+                  </div>
+                </div>
+              ) : body}
+            </li>
+          );
+        })}
+      </ol>
+    </>
   );
 }
 
@@ -5196,6 +5334,15 @@ function RosterAudit() {
           records={records}
           depts={depts}
           withWho
+          /* Folded to one line each — this is the list the fold was asked for.
+             See TrailList for why the pop-up next door is not folded. */
+          foldable
+          /* …except when the question is itself about a field. กรองตามสิ่งที่ถูกแก้
+             is the one filter whose answer lives in the diff rather than in the
+             heading, so a list narrowed by it arrives open. The other three
+             narrow WHO and WHAT KIND, both of which are already on the heading
+             line, and they arrive folded like everything else. */
+          openByDefault={Boolean(filters.field)}
           empty={narrowed
             ? 'ไม่มีการแก้ไขที่ตรงกับตัวกรองนี้ — ลองล้างตัวกรองบางข้อออก'
             : 'ยังไม่มีการแก้ไขที่บันทึกไว้ — ทะเบียนเริ่มเก็บประวัติตั้งแต่รุ่นนี้เป็นต้นไป'}

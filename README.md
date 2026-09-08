@@ -8840,6 +8840,96 @@ build แล้ว
 
 **Verified**
 
+- **ประวัติการแก้ทะเบียน folds each record down to its heading line** —
+  2026-09-08, asked for as a collapsible list: the badge, the code and name, the
+  account and the stamp on one row with a chevron at the end of it, and the
+  `ค่าเดิม → ค่าใหม่` diff sliding open underneath.
+  **The list is everybody's changes at once**, newest first, up to the
+  endpoint's cap of 100 — and a record that moved four fields printed four
+  arrow lines under its head. So "who touched the roster on Tuesday", the
+  question this section exists to answer and which nothing else in the system
+  can, was answered with two screens of diffs about fields nobody had asked
+  after. **Measured on the built app: the list is 3,513px folded against
+  27,786px with every record open at 1280, and 8,733 against 66,735 at 360px** —
+  the same hundred records in **an eighth of the height**.
+  **`TrailList` draws two screens and only one of them folds.** The same
+  function renders the ประวัติการแก้ทะเบียน pop-up opened from one person's row,
+  and that one is left flat on purpose: it holds ONE person's trail and was
+  opened by somebody who has already said whose history they want, so the diff
+  is the whole of what they came for and a fold would put a press between a
+  question and its answer. `foldable` is its own prop rather than being read off
+  `withWho`, which means something else and agrees with it only by accident.
+  **กรองตามสิ่งที่ถูกแก้ arrives open**, and it is the one filter of the four
+  that does. Somebody who has just asked for only the records that changed
+  วันเกิด is asking about the DIFF; a column of headings would have hidden the
+  thing they filtered for. The other three narrow who and what kind, both of
+  which are already on the heading line.
+  **The slide is `Disclosure`'s, class for class** — `.disclosure-slide` around
+  a `.disclosure-body`, the `0fr → 1fr` grid row that animates to a height
+  nothing had to measure. Reused rather than rewritten, so the visibility
+  handoff that keeps folded content off the tab order, the
+  `prefers-reduced-motion` rule and the `@media print` block that unfolds
+  everything for paper all reach this without having been told it exists. What
+  is NOT reused is the control: `Disclosure` draws its own อ่านต่อ link and
+  cannot be handed another, and here the whole heading is the handle — a real
+  `<button>`, because a 9px glyph is a target nobody hits with a thumb.
+  **A record with nothing under its heading gets no chevron.** A fold over
+  nothing is a control that lies about there being more. A ตั้งรหัสผ่านใหม่
+  changes no field, but the sentence saying the password itself was never
+  written down IS its body, so it folds like the rest.
+  ⚠️ **One bug found in this round's own CSS and fixed before it shipped.** The
+  5px between a heading and its diff went in as `padding-top` on the body, and
+  the fold then never closed: measured folded, `grid-template-rows` computed to
+  **5px** instead of 0. `min-height: 0` is what lets a `0fr` track resolve to
+  nothing and it is about the CONTENT box — padding sits outside it, so five
+  pixels of padding are five pixels the track cannot give up. It is a margin on
+  the first child now, inside the box the slide already clips.
+  **Walked on the built app at :3001 against a clone of the live database
+  (`:3000` untouched, and `primus_ot_verify` dropped after)**, as ADMIN over
+  CDP, dark theme, at 1280 and 360px. 100 records, **all 100 foldable and none
+  drawn with a dead chevron**. Folded: `grid-template-rows: 0px`, body
+  `visibility: hidden`, chevron `transform: none`. Open: `52.5px` at 1280 and
+  `133.25px` at 360, body visible, chevron `matrix(-1, 0, 0, -1, 0, 0)` — one
+  glyph turned over rather than two swapped. The heading is a `BUTTON` with
+  `cursor: pointer` and `aria-expanded` flipping false → true. ขยายทั้งหมด
+  relabels itself หุบทั้งหมด off the folds rather than off a flag of its own,
+  and the round trip lands back on the exact figure it started from: card
+  **3,951.6 → 28,224.6 → 3,951.6px**. No overflow on the card and none on the
+  document at either width.
+
+- **ใบ F-HR-027 มี 31 บรรทัดทุกเดือน และช่องลงชื่อเหลือแค่ชื่อ** — 2026-09-08,
+  สั่งมาสองประโยคพร้อมชื่อใบเต็ม: *ฟิควันที่ 1-31 วันทุกเดือนเสมอ · ช่องลงชื่อพนักงาน
+  และช่องลงชื่อหัวหน้างาน ตัดคำนำหน้านาย นาง นางสาวและนามสกุลออก เหลือแค่ชื่ออย่างเดียว*.
+  **ข้อแรกคือรูปของกระดาษ ไม่ใช่ปฏิทิน** — ตารางเคยยาวเท่าจำนวนวันจริงของเดือน
+  (กุมภาพันธ์ 28 บรรทัด เมษายน 30) ส่วนแบบฟอร์มกระดาษตีเส้น 1–31 ไว้ทุกใบ · แฟ้มที่
+  เซ็นแล้วถูกอ่านเทียบข้ามเดือนด้วยตา ใบที่สั้นกว่าเพื่อนสามบรรทัดจึงเป็นใบที่ต้องนับก่อน
+  ถึงจะเทียบได้ · **บรรทัดที่เกินปลายเดือนไม่มีวันที่ (`date: null`)** ไม่ใช่แค่ว่างเปล่า —
+  ไม่มี `2026-02-30` ให้ segment ไหนไปตรงกับมันได้ และ `byDate` สร้างจากแถวที่มีวันที่
+  เท่านั้น สามบรรทัดนั้นจึงว่างโดยโครงสร้าง ไม่ใช่ว่างเพราะบังเอิญไม่มีใครลง ·
+  `formGridDays` อยู่ใน `lib/reports.js` ข้าง `formDayTypes` เพราะจำนวนบรรทัดของใบ
+  ต้องถูกตัดสินที่เดียว · **คีย์ของแถวเปลี่ยนจากวันที่เป็นเลขวัน** ไม่งั้นสามแถวท้าย
+  กุมภาพันธ์ได้คีย์ `null-0` เหมือนกันหมด.
+  **ข้อสองเป็นการกลับคำอธิบายที่เขียนไว้เองเมื่อ 6 วันก่อน** — `firstName` ตัดนามสกุล
+  มาตั้งแต่ 2026-09-02 ด้วยกฎ "คำแรกที่คั่นด้วยช่องว่าง" และมีโน้ตกำกับว่าปลอดภัยเพราะ
+  *ไม่มีใครในทะเบียนเขียนคำนำหน้าแยกเป็นคำ* — วัดจาก 22 คนที่ seed ไว้ และยัง**จริง**
+  เมื่อทะเบียนจริง 164 คนเข้ามา · ประโยคที่จริงแต่ไม่ได้ป้องกันอะไรเลย เพราะทะเบียนจริง
+  เขียนคำนำหน้า**ติด**กับชื่อ ช่องลงชื่อจึงพิมพ์ `นายไพฑูร` และ `นางสาวปิยะนุช` ·
+  **`NAME_TITLES` เรียง นางสาว ก่อน นาง** เพราะ นาง เป็นคำนำหน้าของ นางสาว — สลับ
+  ลำดับแล้ว `นางสาวปิยะนุช` จะเซ็นว่า `สาวปิยะนุช` ซึ่งเป็นชื่อที่อ่านได้แต่ไม่ใช่ของใคร ·
+  **ชื่อที่เหลือต้องไม่ว่าง** ชื่อที่มีแต่คำนำหน้า หรือเขียนคำนำหน้าแยกคำ ตกไปใช้คำถัดไป
+  แทนที่จะคืนค่าว่าง · **คำนำหน้าที่ไม่อยู่ในลิสต์พิมพ์ติดไปกับชื่อ** (ว่าที่ ร.ต. · ดร.)
+  เห็นบนกระดาษและแก้ด้วยการเติมอีกบรรทัดในลิสต์ ไม่ใช่ด้วยการเดา · **หัวใบ ชื่อ-สกุล
+  ไม่ถูกแตะ** ยังพิมพ์ชื่อเต็มพร้อมคำนำหน้า สิ่งที่ขอคือสองช่องลงชื่อ.
+  ✅ `npm test` **2313/2313** ผ่าน (เดิม 2306 · เจ็ดเคส ไม่มีไฟล์ใหม่) · **เดินบนแอปที่
+  build แล้วที่ :3001** (`VERIFY_DIST_DIR=.next-verify` · :3000 ให้บริการตลอดและยัง
+  เสิร์ฟอยู่หลังจบ · ลบ distDir แล้ว) เข้าเป็น `PM00002 นางสาวปิยะนุช พรมประชุม` จริง:
+  **กันยายน 2569 (30 วัน) ตารางมี 31 บรรทัด** บรรทัดที่ 31 ว่างเปล่า และแถววันที่ 7
+  พิมพ์ `ปิยะนุช` กับ `ปรเมษฐ์` ในสองช่องลงชื่อ · **กุมภาพันธ์ 2569 (28 วัน) ก็ 31
+  บรรทัด** ครบถึงเลข 31 · `Page.printToPDF` ขนาด A4 ทั้งสองเดือน **ได้ 1 หน้า** ·
+  API ตอบ 31 แถวทุกเดือนที่ลอง (2569-01 · 02 · 04 · 09 และ 2567-02 ปีอธิกสุรทิน
+  ได้ 29 แถวที่มีวันที่ + 2 แถวว่าง) · ❓ ยังไม่ได้พิมพ์ลงกระดาษ A4 จริง · ❓ ยังไม่ได้
+  deploy — `:3000` ยังเสิร์ฟ build เดิม.
+
 - **ตัวอักษรไทยทั้งระบบเป็นตัวมีหัวแล้ว — `IBM Plex Sans Thai` → `IBM Plex Sans
   Thai Looped`** — 2026-09-07, สั่งมาว่า *เปลี่ยนตัวอักษรทั้งระบบให้เป็นตัวอักษรที่มีหัว
   ทั้งระบบเลยให้มันอ่านได้ง่าย ๆ*.

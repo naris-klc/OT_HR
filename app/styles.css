@@ -6231,6 +6231,90 @@ td > .approver-line { margin-top: 5px; }
 .entry-history > li.edit .act { background: var(--amber-bg); color: var(--amber); }
 .entry-history > li.off { border-left-color: var(--line); }
 
+/* ── ประวัติการแก้ทะเบียน folds each record down to its heading ─────────────
+   Asked for 2026-09-08. Only the list on ตั้งค่าระบบ takes these — the same
+   `TrailList` draws one person's trail in a pop-up and passes no `foldable`,
+   so nothing here reaches it. Everything below hangs off classes the component
+   only writes when it folds; `.entry-history` itself is untouched and the ใบ OT
+   history that shares it (`EntryHistory`, common.jsx) draws exactly as before.
+
+   THE SLIDE IS NOT HERE, AND THAT IS THE POINT. The body is a
+   `.disclosure-slide` holding a `.disclosure-body`, the same two classes
+   `Disclosure` uses for ซ่อนทั้งหมด, so the `0fr → 1fr` grid row, the
+   visibility handoff that keeps folded content off the tab order, the
+   `prefers-reduced-motion` rule and the @media print block that unfolds
+   everything for paper are all already written and all already reach this. What
+   this list does not reuse is the CONTROL: `Disclosure` draws its own อ่านต่อ
+   link and cannot be handed another, and here the whole heading is the handle. */
+
+/* `li` spaces its children 5px apart, and a folded record's second child is a
+   grid row of zero height — which still takes the gap, and 5px of nothing under
+   every heading in a list of thirty is a list that looks loosely set for no
+   reason. The spacing moves inside the fold instead, where it is only paid for
+   when there is something to space. */
+.entry-history > li.foldable { gap: 0; }
+
+/* THE HEADING IS THE BUTTON. Reset to the line it replaces — a `<button>` brings
+   its own font, colour, border and centred text, and every one of those would
+   redraw a row that is meant to look exactly as it did. `.head` above still
+   lays it out; this only undoes the chrome and adds the two things a control
+   owes a reader: a pointer and something that happens under it.
+
+   NO `width`. The `li` is a flex column, so a stretched child is already the
+   full width; a declared 100% plus the negative margins below would come out
+   16px narrow on the right. */
+.entry-history .trail-head {
+  margin: -5px -8px; padding: 5px 8px;
+  border: 0; border-radius: var(--radius-sm);
+  background: none; color: inherit; font: inherit; text-align: start;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.entry-history .trail-head:hover { background: var(--neutral-wash); }
+/* `.head` is `flex-wrap: wrap`, so on a narrow card the glyph goes to the end
+   of whichever line is last rather than off the side of the card — which is
+   where a reader looks for it either way. */
+.entry-history .trail-head .fold {
+  margin-inline-start: auto;
+  font-size: 9px; line-height: 1; color: var(--muted-2);
+  transition: transform 180ms ease;
+}
+/* Read off `aria-expanded` rather than a class of its own: the attribute is
+   already there because a control that folds has to say so out loud, and a
+   second flag beside it is a second thing that can disagree with the fold. */
+.entry-history .trail-head[aria-expanded='true'] .fold { transform: rotate(180deg); }
+
+/* The gap the `li` used to give, moved in — see `li.foldable` above.
+
+   THE SPACING IS A MARGIN ON THE FIRST CHILD AND NOT PADDING ON THIS BOX, and
+   it shipped as `padding-top: 5px` for one build. Measured on the built app,
+   folded: `grid-template-rows` computed to **5px** instead of 0 and the row
+   never closed. `min-height: 0` on the slide's child is what lets a `0fr` track
+   resolve to nothing — and `min-height` is about the CONTENT box. Padding sits
+   outside it, so five pixels of it are five pixels the track cannot give up:
+   the phantom gap this rule exists to remove, put back by the rule removing it.
+
+   A margin inside the content box is clipped with everything else by the
+   `overflow: hidden` the slide already puts on its child. `.entry-diff` carries
+   its own `margin: 5px 0 0` and lands on the same figure; the selector is here
+   for the bodies that open on a `.note` instead — a เหตุผล, or the sentence a
+   ตั้งรหัสผ่านใหม่ is the whole of. */
+.trail-detail { display: flex; flex-direction: column; gap: 5px; }
+.trail-detail > :first-child { margin-top: 5px; }
+
+/* Above the list and against the right edge: it acts on every row below it,
+   which is the one control here that is not about a single record.
+   ล้างตัวกรองทั้งหมด sits left in its own row a few lines up, so the two do not
+   read as a pair of filters. */
+.trail-tools { justify-content: flex-end; margin: 0 0 8px; }
+
+/* Movement is the optional part; the fold, the hover and the glyph are not.
+   Same rule `.disclosure-slide` states for itself a few thousand lines up. */
+@media (prefers-reduced-motion: reduce) {
+  .entry-history .trail-head,
+  .entry-history .trail-head .fold { transition: none; }
+}
+
 /* ── refiled requests ───────────────────────────────────────────────────── */
 
 /* "แก้มาจากคำขอเดิมที่ไม่อนุมัติ" — the first thing in the pop-up, because a
