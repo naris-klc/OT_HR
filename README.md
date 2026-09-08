@@ -4915,8 +4915,9 @@ the lowest specificity there is, and adding a `:not()` to one is raising it.
 **Then the head.** `รอหัวหน้าอนุมัติ` → **`รออนุมัติ`**: a หัวหน้า reading their
 own queue is the one person who does not need telling whose signature is
 missing. The count already joined the title on phones, so the wrap was spending
-a whole row on one button; `.card-head` is nowrap there now, with the button's
-group `flex: none`.
+a whole row on one button; `.card-head` was made nowrap there, with the button's
+group `flex: none`. **That half lasted eight days — [the reversal is
+below](#and-the-line-lasted-eight-days).**
 
 **It took four passes and every number came off the built app**, which is the
 part worth keeping:
@@ -4928,12 +4929,88 @@ part worth keeping:
 | no `min-width: max-content` on the name | column took its width from the long hint; title drew `รออนุ… · 2 รายการ` with 48px of the row empty |
 | `.t` as a flex row | a flex item drops leading whitespace, so `{' · '}` rendered as `รออนุมัติ· 2 รายการ` |
 
-So the one-line head starts at **360px** and 320px keeps the two-row shape it
-had; the column is left at `min-width: auto` so it cannot go under the title;
-the name carries `min-width: max-content`; and a 5px `gap` puts back the space
-the markup had been getting from a text node. **Measured**: one line at 360 /
-390 / 430 / 768 with the head at **88.5px** against 125.8 before, title and
-button both full, and nothing overflowing at any width including 320.
+So the one-line head started at **360px** and 320px kept the two-row shape it
+had; the column was left at `min-width: auto` so it could not go under the
+title; the name carried `min-width: max-content`; and a 5px `gap` put back the
+space the markup had been getting from a text node. **Measured then**: one line
+at 360 / 390 / 430 / 768 with the head at **88.5px** against 125.8 before, title
+and button both full, and nothing overflowing at any width including 320.
+
+### And the line lasted eight days
+
+**Reported 2026-09-08: `+ บันทึก OT แทนพนักงาน` was cut off at the card's right
+edge on a phone.** It reads as an overflow and it is one — but the queue's card
+is `.card.flush`, which has carried `overflow: hidden` since it was written, so
+nothing spilled onto the page and the page never scrolled sideways. The button
+was **clipped**, which is why the label looked chopped rather than the screen
+looking broken. `document.documentElement.scrollWidth` was clean at every width,
+before and after; the only witness was `head.scrollWidth - head.clientWidth`.
+
+**The one-line head named its own expiry and nobody was watching for it.** Every
+rule in it rested on one measurement — that the title column's min-content is
+THE TITLE — and `.hint .q-scope` took that back a day later by holding
+`เฉพาะแผนก…` together as one word. The 11px hint bought the geometry back, and
+the note that shipped with it said, in as many words, that a department named
+longer than about thirteen Thai characters would undo it again, and that the
+remedy then was **not another size** but letting the head stop being one line.
+
+**The roster import was that day.** The live หน่วยงาน table is 18 departments
+since 2026-09-08, and what the screen prints is `nameTh` ([`lib/session.js`](lib/session.js)),
+not `name` — the two longest are **`แผนกการตลาดและกราฟฟิคดีไซน์` and
+`แผนกออกแบบและวิจัยผลิตภัณฑ์`, 27 characters each**, against the 12 of
+`ควบคุมคุณภาพ` the geometry had been worked out against. At 11px that clause
+measures **226px** where the title is 129, so the column took 226, the button's
+group was `flex: none` and could not give, and the pair ran off the end.
+
+**Measured on the built app at :3001 against a clone of the live database**, as
+a หัวหน้า moved into the longest-named department, `prefers-color-scheme: dark`:
+
+| width | head over its card, before | + บันทึก OT แทนพนักงาน past the card edge | after |
+|---|---|---|---|
+| 320px | 0 | — | 0 — the 360px floor meant this width never had the one-line head |
+| 360px | **93px** | **91.5px** of a 174.6px button | 0 |
+| 390px | 63px | 61.5px | 0 |
+| 430px | 23px | 21.5px | 0 |
+| 768 / 860px | 0 | — | 0 |
+| 1280px | 0 | — | 0, and untouched: still a row, 174.6px, 33px tall |
+
+**So the head is a column below 860px.** The title and its hint take the card's
+full width — the width a hint was always drawn to wrap inside — and the button
+lands on the line beneath them at the card's full width: **258 / 298 / 328 / 368
+/ 706 / 798px** at 320 / 360 / 390 / 430 / 768 / 860, 44px tall, its label one
+line, and its right edge 19px inside the card at every one of them. `.card-head`
+centres its items, so `align-items: stretch` is the half that makes it full
+width rather than a chip floating in the middle of its own line. It costs the
+head **123.8px** where it was 77–84, and **142.5px** at 320–390 where it already
+was 142.5. A full-width action at this width is not a new shape here:
+`.withdraw-batch` — อนุมัติให้ถอนทั้งหมด on the card directly above — has taken
+the whole line at ≤860px since it was written.
+
+**Everything the one line needed went with it**: `flex-wrap: nowrap`, the
+`@media (min-width: 360px)` floor that only nowrap ever needed, `.t` as a flex
+row with the 5px gap standing in for the space a flex item strips, `min-width:
+max-content` on the name, `flex: none` on the count and on the group, and the
+hint's 11px — which puts the hint back to the 12.5px every other card draws it
+at. The 44px touch target stays; that rule is about thumbs, not about lines.
+
+**And the same rule was clipping a head nobody had reported.**
+บันทึกและประวัติ OT's head matches the same selector, and at 360px it was
+running **102px** past its card with ทั้งหมด's right edge 101.5px outside it —
+worse than the queue's, because a month picker beside the button made the
+`flex: none` group wider still. `flex: 1 1 auto` on *every* control in the group
+rather than on the button alone is what shares that line: the picker and
+ทั้งหมด come out 130.4 / 115.8px at 360, and on the queue, where the count chip
+beside the button is `display: none` and therefore not a flex item at all, the
+button takes the whole width by itself.
+
+**What is still true and is still not fixed.** `.hint .q-scope` is still one
+unbreakable word, and at 320px it measures **256.8px inside a 258px column** —
+1.2px of headroom. It fits, and it fits at every width above that, because the
+hint now has the card rather than a share of a line. But a department renamed
+longer than the two 27-character ones would overflow it, and `.card.flush` would
+clip that too. The remedy is the one this section already demonstrates: nothing
+in the head's geometry may be allowed to depend on a name somebody types into
+ตั้งค่าระบบ.
 
 ### The button, and the header it opens
 
@@ -4947,11 +5024,16 @@ it alone would have left two words for one thing either side of a click.
 
 **The label fits and always did.** Measured on the built app as a หัวหน้า at
 320 / 360 / 390 / 430 / 768 / 860 / 1280 / 1440: **164.1px on one line at every
-one of them**, no overflow, and the page never scrolls sideways — `.card-head`
-wraps below 860px, so the count chip and this button are on a line of their own
-long before the space runs out. (Counted off the client rects of a Range over
-the text, not by dividing the button's height by its line-height, which reports
-a one-line label as two the moment a `min-height` applies.)
+one of them** — 174.6px re-measured 2026-09-08 with the 44px padding on it —
+and the page has never scrolled sideways. (Counted off the client rects of a
+Range over the text, not by dividing the button's height by its line-height,
+which reports a one-line label as two the moment a `min-height` applies.) It
+read "no overflow, and … `.card-head` wraps below 860px, so the count chip and
+this button are on a line of their own long before the space runs out" until
+2026-09-08. The wrap was replaced by the one-line head a paragraph later the
+same day, the one-line head OVERFLOWED eight days after that, and the label was
+never what did it — [the head is a column now](#and-the-line-lasted-eight-days),
+and the button has the whole of it.
 
 **What the measurement did find was the touch target.** The button came out
 **33px** at 320–860px while the same `.btn.sm` two rows below it in
@@ -10085,11 +10167,15 @@ build แล้ว
   one. So the fix says that clause is one word, which MOVES the break to the
   `·` between the two facts rather than forbidding one. It is half a change:
   an unbreakable clause has a min-content width, and on a phone this hint sits
-  in a column whose width every other rule in that head assumes is decided by
-  the TITLE. Measured at 360px, the clause with the longest department on the
-  roster is 142px against the title's 129 — the column grew and the one-line
-  head went from 33px of headroom to 2. The hint drops to 11px in that head
-  alone, which brings the clause to 125px and the geometry back to what it was.
+  in a column whose width every other rule in that head assumed was decided by
+  the TITLE. Measured at 360px, the clause with the longest department then on
+  the roster was 142px against the title's 129 — the column grew and the
+  one-line head went from 33px of headroom to 2. It read "The hint drops to
+  11px in that head alone, which brings the clause to 125px and the geometry
+  back to what it was" until 2026-09-08, when the roster import made that
+  clause 27 Thai characters, the head overflowed its card by 93px, and the head
+  stopped being one line — which is what the 11px note itself had said the
+  remedy would have to be. The hint is back at 12.5px everywhere.
   It read "1840/1840" until then. The same round loosened `.alert` from 1.6 to
   1.75 for the blue notice on บันทึกแทน — the longest alert in the app, five
   lines of Thai in one colour with no inter-word spaces to give the paragraph

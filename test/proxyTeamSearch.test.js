@@ -336,42 +336,77 @@ test('a .btn.sm in a card head is a 44px touch target on a phone', () => {
   );
 });
 
-// ── the queue's head: title, count and button on one line ──────────────────
+// ── the queue's head: the button on a line of its own ──────────────────────
 
-test('the count sits with the title and the button shares their line', () => {
+test('the button takes a full-width line under the title on a phone', () => {
   /**
-   * Asked for 2026-08-31. `.card-head` wraps by default and the count had
-   * already been moved into the title for phones, so the wrap was spending a
-   * whole row of a screen on one button.
+   * REVERSED 2026-09-08. It was asked on 2026-08-31 that `รออนุมัติ · 2 รายการ`
+   * and + บันทึก OT แทนพนักงาน share one row; the report that undid it is that
+   * the button came out CUT OFF at the card's right edge on a phone — clipped
+   * rather than spilled, because the queue's card is `.card.flush` and that has
+   * always carried `overflow: hidden`.
    *
-   * FOUR RULES, AND EACH ONE IS A BUILD THAT WENT WRONG WITHOUT IT — every
-   * number below was measured on the built app rather than reasoned about:
+   * THE ONE-LINE HEAD NAMED ITS OWN EXPIRY. Every rule in it depended on the
+   * title column's min-content being THE TITLE, and the note that shipped with
+   * the 11px hint said a department named longer than about thirteen Thai
+   * characters would take that back — and that the remedy then was not another
+   * size but letting the head stop being one line.
    *
-   *  · `flex-wrap: nowrap` alone put the head 7px over a 320px screen and made
-   *    it scroll sideways, so the whole block starts at 360px instead.
-   *  · `min-width: 0` on the column let it shrink past its own content: the
-   *    title overflowed its box and slid under the button. Removed.
-   *  · without `min-width: max-content` on the name, the column took its share
-   *    from the long hint below and the title drew `รออนุ… · 2 รายการ` — nine
-   *    characters elided with 48px of the row empty.
-   *  · `.t` is a flex row, and a flex item drops its leading whitespace, so
-   *    `{' · '}` rendered as `รออนุมัติ· 2 รายการ` until the 5px gap replaced
-   *    the space the markup had been relying on.
+   * THE ROSTER IMPORT WAS THAT DAY. 18 English หน่วยงาน names since 2026-09-08,
+   * the longest `Marketing and Graphic Design`: `เฉพาะแผนก` plus that is 28
+   * characters against the 12 the geometry was measured for, so the column grew
+   * past 200px while the button group was `flex: none` and could not give.
+   *
+   * A COLUMN CANNOT FAIL THAT WAY. The title and hint take the card's full
+   * width — the width the hint was always written to wrap inside — and the
+   * button takes the whole line beneath them, which is also the widest a thumb
+   * will ever have it. Nothing in the block depends on a measured width any
+   * more, so nothing in it can be undone by a name typed into ตั้งค่าระบบ.
    */
   const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
-  assert.match(phone, /@media \(min-width: 360px\) \{/, 'the one-line head lost its 360px floor');
-  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \{ flex-wrap: nowrap; \}/);
-  assert.match(phone, /\.card-head:has\(> \.row \.btn\) > \.row \{ flex: none; \}/);
-  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \.btn \{ white-space: nowrap; \}/);
-  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \.t > \.t-name \{ min-width: max-content; \}/);
-  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \.t-count \{ flex: none; \}/);
-  // The column must NOT be told it may shrink past its content.
-  assert.ok(
-    !/\.card-head:has\(> \.row \.btn\) > :first-child \{ min-width: 0/.test(phone),
-    'the title column can shrink past the title again',
+  assert.match(
+    phone,
+    /\.card-head:has\(> \.row \.btn\) \{ flex-direction: column; align-items: stretch; gap: 10px; \}/,
   );
-  // …and the head that carries no button keeps the wrap it was written with.
+  // `align-items: stretch` is half of "full width" — `.card-head` centres its
+  // items, and in a column that centres them horizontally.
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) > \.row \{ width: 100%; \}/);
+  // EVERY control in the group, not only the button: the queue's button is
+  // alone at this width (the chip beside it is `display: none`, and that is not
+  // a flex item) so it takes the line, while บันทึกและประวัติ OT's month picker
+  // and ทั้งหมด share one. That head was running 102px past its card before
+  // this change — the same bug in the same rule, unreported.
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) > \.row > \* \{ flex: 1 1 auto; \}/);
+  // The label is the one thing in this head that must not be cut, which is what
+  // was reported. It may never be allowed to wrap or elide.
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) > \.row \.btn \{ white-space: nowrap; \}/);
+  // Every rule that existed to hold one line together is gone with the line.
+  // Left in place they do not merely do nothing: `flex: none` on the group and
+  // `nowrap` on the head are the two that produced the clipping.
+  for (const dead of [
+    '.card-head:has(> .row .btn) { flex-wrap: nowrap; }',
+    '.card-head:has(> .row .btn) > .row { flex: none; }',
+    '.card-head:has(> .row .btn) .t > .t-name { min-width: max-content; }',
+    '.card-head:has(> .row .btn) .t-count { flex: none; }',
+    '.card-head:has(> .row .btn) .hint { font-size: 11px; }',
+  ]) {
+    assert.ok(!phone.includes(dead), `the one-line head left a rule behind: ${dead}`);
+  }
+  // …and the 360px floor that only `flex-wrap: nowrap` ever needed.
+  assert.ok(
+    !phone.includes('@media (min-width: 360px) {'),
+    'the 360px floor outlived the one-line head it was propping up',
+  );
+  // The count still joins the title on a phone — that half was never the
+  // problem, and the chip beside the button is still the wide screen's.
+  assert.match(phone, /\.card-head \.t-count \{ display: inline; \}/);
+  // The head that carries no button keeps the wrap it was written with.
   assert.match(css, /\.card-head \{ display: flex;[^}]*flex-wrap: wrap;/);
+  // The 44px touch target is about thumbs, not about lines, and stays.
+  assert.match(
+    phone,
+    /\.card-head \.btn\.sm,\s*\n\s*\.row-actions \.btn\.sm, \.quick-edit-foot \.btn \{ min-height: 44px; \}/,
+  );
 });
 
 test('the queue heading reads รออนุมัติ, and the name is its own span', () => {
@@ -407,19 +442,19 @@ test('ชื่อแผนกใต้หัวข้อไม่ตกไป�
    * the separator instead. `nowrap` is on the clause, never on `.hint` itself,
    * which would overflow.
    *
-   * AND IT IS HALF A CHANGE ON ITS OWN — the 11px below is the other half, not
-   * a second opinion about the size. Every rule in the test above depends on
-   * the column's min-content being THE TITLE; an unbreakable clause in the hint
-   * takes that back. Measured on the built app at 360px: the clause with the
-   * longest department on the roster (ควบคุมคุณภาพ) is 142px against the
-   * title's 129, the column grew to 142, and the button's right edge landed 2px
-   * inside the card — no headroom at all, where the head had 33px, and one more
-   * character would have put it back to scrolling sideways.
+   * IT USED TO COST 11px AND IT COSTS NOTHING NOW. An unbreakable clause has a
+   * min-content width of its own, and while the head next door was one line
+   * that width decided the whole head: at 360px the clause with the longest
+   * department then on the roster (ควบคุมคุณภาพ) was 142px against the title's
+   * 129, so the column grew to 142 and the button's right edge landed 2px
+   * inside the card. Dropping the hint to 11px in that head alone brought the
+   * clause to 125px and gave the geometry back.
    *
-   * At 11px that clause is 125px, under the title, and the column is
-   * title-decided again. The size was the other way the report offered, and
-   * this is where it belongs: the head where the column is 130px wide, not the
-   * twenty other places `.hint` is drawn with a card to itself.
+   * THE HEAD IS A COLUMN SINCE 2026-09-08 and the 11px went with it — see the
+   * test above. The clause now sits in a hint that has the card's full width,
+   * which is what a hint was always drawn in, and its own width decides
+   * nothing but how many lines it takes. So this rule is back to being the one
+   * thing it says it is: the clause is one word.
    */
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
   /**
@@ -427,10 +462,6 @@ test('ชื่อแผนกใต้หัวข้อไม่ตกไป�
    * carries the `nowrap` — so a ผู้จัดการฝ่าย who signs for several แผนก reads
    * a counted clause rather than the name of the one their own hours are
    * reported against, and it is held together exactly as the named one is.
-   *
-   * NEITHER IS WIDER THAN THE CASE THE 11px WAS MEASURED FOR: the counted
-   * clause is shorter than `เฉพาะแผนกควบคุมคุณภาพ`, the longest department on
-   * the roster, which is what the head's headroom was worked out against.
    */
   const scope = queue.slice(
     queue.indexOf('<span className="q-scope">'),
@@ -445,18 +476,14 @@ test('ชื่อแผนกใต้หัวข้อไม่ตกไป�
     !/(^|[^.\w])\.q-scope\b/m.test(css.replace(/\.hint \.q-scope/g, '')),
     'a bare .q-scope rule can reach anything called that',
   );
-  // The base size is untouched — the 11px is the squeezed head's alone, and it
-  // lives INSIDE the 360px block, with the rules whose geometry it protects.
+  // One size everywhere now. The base was never touched, and the head that used
+  // to shrink it no longer needs to — a hint drawn at two sizes in two heads
+  // was only ever the price of holding a line together.
   assert.match(css, /\.hint \{ font: 400 12\.5px\/1\.55 var\(--sans\); color: var\(--muted-2\); \}/);
-  const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
-  const opens = phone.indexOf('@media (min-width: 360px) {');
-  const rule = phone.indexOf('.card-head:has(> .row .btn) .hint { font-size: 11px; }');
-  // The block runs from that inner `@media` to the เลือกทั้งหมด section that
-  // follows it — bounded by both ends rather than by a closing brace, since
-  // the rules inside it have braces of their own on their own lines.
-  const closes = phone.indexOf('/* ── เลือกทั้งหมด');
-  assert.ok(rule > opens && rule < closes && opens > 0 && closes > 0,
-    'the 11px hint left the one-line head block it pays for');
+  assert.ok(
+    !css.includes('.card-head:has(> .row .btn) .hint { font-size: 11px; }'),
+    'the squeezed head kept an 11px hint after the squeeze was removed',
+  );
 });
 
 // ── the screen was decluttered, and what left had somewhere to go ───────────
