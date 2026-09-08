@@ -2366,7 +2366,39 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    (The property is deliberately not spelled here. `test/disclosure.test.js`
    counts every place this file names it, and the count is the ban on a second
    clamp growing somewhere with no button under it.) */
-.disclosure-body.clamp-whole { display: none; }
+.disclosure-body.clamp-whole { visibility: hidden; transition: visibility 0s 180ms; }
+
+/* THE SLIDE, AND WHY IT IS A GRID ROW AND NOT A HEIGHT.
+
+   `grid-template-rows: 0fr → 1fr` animates to a height nothing had to measure,
+   which is the whole difficulty: a `max-height` big enough for the longest fold
+   makes every shorter one close at the wrong speed, and a measured height is
+   JavaScript deciding the geometry again.
+
+   THE CLIP AND THE VISIBILITY ARE TWO DIFFERENT JOBS. `overflow: hidden` on the
+   row is what makes 0fr hide anything at all; `visibility` is what keeps the
+   folded content out of the accessibility tree and off the tab order, which is
+   what `display: none` used to do here on its own. It comes back at the START
+   of the opening and leaves at the END of the closing — a 0s transition with a
+   delay — so nothing is ever announced to a reader who cannot see it move, and
+   nothing vanishes mid-slide.
+
+   The first paint is still folded: 0fr is the state the class ships in, so this
+   is the same guarantee the clamp gives, with a transition on top of it. */
+.disclosure-slide {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows 180ms ease;
+}
+.disclosure-slide > * { min-height: 0; overflow: hidden; }
+.disclosure-slide.open { grid-template-rows: 1fr; }
+.disclosure-slide.open > .disclosure-body { visibility: visible; transition: visibility 0s; }
+
+/* Movement is the part that is optional. The fold, the button and the words
+   are not, so only the transition goes. */
+@media (prefers-reduced-motion: reduce) {
+  .disclosure-slide { transition: none; }
+  .disclosure-body.clamp-whole { transition: none; }
+}
 /* 12px medium in the brand green — one size under `.hint`'s 12.5, because this
    is a control beside text rather than more text. It read `font-size: 12.5px`
    on `.link`'s 13px/1 until 2026-09-07; the leading is now the paragraph's own
@@ -14319,6 +14351,8 @@ table.mini tbody tr:hover { background: none; }
      a page that printed two lines of a paragraph would be reporting the screen
      rather than the text. */
   .disclosure-body.clamp, .disclosure-body.clamp-whole { display: block; -webkit-line-clamp: none; overflow: visible; }
+  .disclosure-body.clamp-whole { visibility: visible; }
+  .disclosure-slide { display: block; }
   .disclosure-more { display: none !important; }
   .shell { display: block; }
   .card { border: none; box-shadow: none; }

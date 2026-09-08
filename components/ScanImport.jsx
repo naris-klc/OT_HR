@@ -223,9 +223,24 @@ export default function ScanImport({ period, status = 'approved' }) {
         been true since the card was written; what changed is the control. It
         was a `.btn ghost` reading รายละเอียด, in the header row beside
         นำเข้าไฟล์สแกน — a second button, the same weight as the one that does
-        the work, for something that only reads. Every other explanation in the
-        app now opens on อ่านต่อ, and a card that keeps its own word for the
+        the work, for something that only reads. The rest of the app opens its
+        explanations on `Disclosure`, and a card that keeps its own word for the
         gesture is a card somebody has to learn twice.
+
+        THAT LAST SENTENCE IS OWED A DEBT SINCE 2026-09-08. It read "Every other
+        explanation in the app now opens on อ่านต่อ", which stopped being true
+        the day ทะเบียนพนักงาน — the card next to this one, folding a bullet
+        list of the same shape for the same reason — was asked to say
+        ดูรายละเอียด instead. So the two whole-body folds on ตั้งค่าระบบ now use
+        two words for one gesture, which is the exact thing the sentence above
+        warns about, and this card is the one that did not change.
+
+        NOT CHANGED HERE ON ITS OWN. The word for a `lines={0}` fold is a
+        decision about all three of them — this card, ทะเบียนพนักงาน and
+        นโยบายการคำนวณ's nineteen rows — and `Disclosure`'s own header carries
+        the argument for making ดูรายละเอียด the default when nothing is
+        clamped. One card changing quietly to match another is how a rule ends
+        up existing in two places and agreeing in neither.
       */}
       <Disclosure as="ul" lines={0} className="hint hint-list" style={{ marginTop: 10 }} of="ไฟล์สแกนนิ้วมือ">
         <li>

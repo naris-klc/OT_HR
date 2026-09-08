@@ -208,11 +208,18 @@ test('a dozen buttons reading อ่านต่อ are not a dozen identical bu
 });
 
 test('the two words say which direction they go', () => {
-  // ย่อ alone is what บันทึกระบบ's four cards say when they close a LIST of
-  // rows; this one closes a paragraph and says so, because the two controls can
-  // be a thumb's width apart on ประวัติการแก้ทะเบียน.
+  /*
+   * ย่อ alone is what a card closing a LIST of rows says; this one closes a
+   * paragraph and says so, because the two controls can be a thumb's width
+   * apart on ประวัติการแก้ทะเบียน.
+   *
+   * ONLY THIS COMPONENT'S OWN WORD IS ASSERTED. It read the ย่อ off
+   * `components/LogSystem.jsx` as evidence of the pair until 2026-09-08, and
+   * went red the afternoon somebody reworked that card — a case that fails
+   * because a screen it does not own was edited is a case that costs more than
+   * it proves. The distinction it exists for is in the prose above.
+   */
   assert.match(common, /more = 'อ่านต่อ', less = 'ย่อข้อความ'/);
-  assert.match(read('components/LogSystem.jsx'), /\{all \? 'ย่อ'/);
 });
 
 // ── paper has no button to press ────────────────────────────────────────────
@@ -245,15 +252,19 @@ test('a policy row is cut by CONTENT: the answer stands, everything else folds',
     row.indexOf('<PolicyReading') < row.indexOf('<Disclosure'),
     'ค่าที่ใช้อยู่ ต้องอยู่เหนือรอยพับ ไม่ใช่ในนั้น',
   );
-  assert.match(admin, /ค่าที่ใช้อยู่: <strong>\{item\.reading\}<\/strong>/);
+  // It read its value off an HR_UNCONFIRMED item until 2026-09-08 and so
+  // appeared on the six rows that list covered; it reads the live policy now
+  // and appears on every row that has a dropdown. `shown` and not the stored
+  // value, so a change waiting in its dialog says what it is about to be.
+  assert.match(admin, /<PolicyReading field=\{f\} value=\{shown\} \/>/);
+  assert.match(admin, /ค่าที่ใช้อยู่: <strong>\{said\}<\/strong>/);
   // ONE fold in the row, and the three things behind it
   assert.equal((row.match(/<Disclosure\b/g) || []).length, 1, 'แถวหนึ่งต้องมีรอยพับเดียว');
   const fold = row.slice(row.indexOf('<Disclosure'), row.indexOf('</Disclosure>'));
   assert.match(fold, /\{f\.hint && <div className="hint policy-help">\{f\.hint\}<\/div>\}/);
   assert.match(fold, /\{f\.optionHints && \(/);
-  assert.match(fold, /<PolicySource key=\{u\.id\} item=\{u\} \/>/);
   // and a row with nothing behind its answer draws no control at all
-  assert.match(admin, /const detail = Boolean\(\r?\n\s*f\.hint \|\| f\.optionHints/);
+  assert.match(admin, /const detail = Boolean\(f\.hint \|\| f\.optionHints\);/);
   assert.match(row, /\{detail && \(\r?\n\s*<Disclosure as="div" lines=\{0\}/);
 });
 
@@ -280,17 +291,17 @@ test('what somebody is DECIDING on keeps four lines, not two', () => {
    * had not finished. รายละเอียดงานที่ขอ OT is what อนุมัติ is being pressed
    * about — 500 characters of it, see `description` on the model.
    *
-   * IT WAS TWO SITES UNTIL 2026-09-07. ที่มาของค่าที่ใช้อยู่ was the other, and
-   * it went into the policy row's single fold when that page started cutting by
-   * content: the note is still never summarised and still sits under the value
-   * it explains, and the value being signed for is still on the line above,
-   * outside the fold. What it stopped having is a second control of its own.
+   * IT WAS TWO SITES UNTIL 2026-09-07 AND IS ONE AGAIN. ที่มาของค่าที่ใช้อยู่
+   * was the other — 891 characters of evidence under a ยืนยัน button. It lost
+   * its own control on 2026-09-07 when นโยบายการคำนวณ started cutting by
+   * content, and on 2026-09-08 it went altogether with the sign-off it was
+   * evidence for. Nothing on that page is signed any more, so nothing on it
+   * needs four lines.
    */
   assert.match(common, /<Disclosure className="reason-text" lines=\{4\}/);
   assert.match(read('src/models/OtEntry.js'), /description: \{[^}]*maxlength: 500/);
-  assert.doesNotMatch(admin, /<Disclosure[^>]*policy-open-note/, 'ที่มาของค่าที่ใช้อยู่ ยังมีปุ่มของตัวเอง');
-  assert.match(admin, /<div className="hint policy-open-note">/);
-  assert.match(admin, /function PolicySource\(\{ item \}\)/);
+  assert.ok(!admin.includes('policy-open-note'), 'ที่มาของค่าที่ใช้อยู่ ยังอยู่บนหน้าจอ');
+  assert.ok(!admin.includes('PolicySource'), 'PolicySource ยังไม่ถูกถอนออก');
 });
 
 test('ซ่อนทั้งหมด is for the two cards that explain themselves in bullets', () => {
@@ -328,9 +339,39 @@ test('with nothing showing, the control is unconditional', () => {
    */
   assert.match(common, /const whole = !\(lines > 0\);/);
   assert.match(common, /const \[over, setOver\] = React\.useState\(whole\);/);
-  // The cut is still the stylesheet's, for the same reason the clamp is.
-  assert.match(css, /\.disclosure-body\.clamp-whole \{ display: none; \}/);
-  assert.match(common, /clamp\$\{whole \? ' clamp-whole' : ''\}/);
+  // The cut is still the stylesheet's, for the same reason the clamp is: 0fr is
+  // the state the class ships in, so the first paint is folded.
+  assert.match(css, /\.disclosure-slide \{\r?\n\s*display: grid; grid-template-rows: 0fr;/);
+  assert.match(css, /\.disclosure-slide\.open \{ grid-template-rows: 1fr; \}/);
+  // A whole fold carries `clamp-whole` and NOT `clamp`. It carried both while
+  // this was `display: none` and nothing was drawn either way; with the slide
+  // the text is on screen for the 180ms it takes to close, and a line clamp
+  // under it would truncate the paragraph on the way down.
+  assert.match(common, /disclosure-body\$\{open \? '' : \(whole \? ' clamp-whole' : ' clamp'\)\}/);
+});
+
+test('the slide is a wrapper, so a folded list is still a list', () => {
+  /*
+   * `grid-template-rows: 0fr → 1fr` animates to a height nothing measured,
+   * which is the whole difficulty — a `max-height` big enough for the longest
+   * fold closes every shorter one at the wrong speed, and a measured one is
+   * JavaScript deciding the geometry again. But the grid has to be an element
+   * the body SITS IN: two of the three whole folds are a `<ul>`, and a list
+   * told to be a grid loses its markers the way `-webkit-box` takes them.
+   */
+  assert.match(common, /\? <div className=\{`disclosure-slide\$\{open \? ' open' : ''\}`\}>\{body\}<\/div>/);
+  assert.match(css, /\.disclosure-slide > \* \{ min-height: 0; overflow: hidden; \}/);
+  /*
+   * AND THE CLIP IS NOT THE WHOLE JOB. `overflow: hidden` is what makes 0fr
+   * hide anything; `visibility` is what keeps folded content off the tab order
+   * and out of the accessibility tree, which is what `display: none` did here
+   * on its own. It leaves at the END of the closing — a 0s transition carrying
+   * the slide's own delay — so nothing blinks out from under a reader mid-slide.
+   */
+  assert.match(css, /\.disclosure-body\.clamp-whole \{ visibility: hidden; transition: visibility 0s 180ms; \}/);
+  assert.match(css, /\.disclosure-slide\.open > \.disclosure-body \{ visibility: visible; transition: visibility 0s; \}/);
+  // Movement is the optional part; the fold, the button and the words are not.
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\r?\n\s*\.disclosure-slide \{ transition: none; \}/);
 });
 
 // ── and the two kinds of text that are never folded ─────────────────────────
@@ -402,7 +443,7 @@ test('the alert that folds keeps its alarm outside the fold', () => {
   assert.ok(live.indexOf('{moved.map((d) => (') < foldAt, 'ชิปของค่าที่ต่างถูกพับลงไปด้วย');
   // … and what is behind it is the half that is not a warning
   assert.match(live.slice(foldAt), /ตรึงไว้เท่ากับค่าตั้งต้นวันนี้/);
-  assert.match(live, /more="ดูรายละเอียดเพิ่มเติม"\r?\n\s*less="ซ่อนรายละเอียด"/);
+  assert.match(live, /more="ดูรายละเอียด"\r?\n\s*less="ซ่อนรายละเอียด"/);
   // the warning next door has a button in it and is not folded at all
   const unrecorded = admin.slice(admin.indexOf('function UnrecordedPolicy(')).split(/\r?\nfunction /)[0];
   assert.match(unrecorded, /บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่/);
@@ -411,13 +452,25 @@ test('the alert that folds keeps its alarm outside the fold', () => {
 
 test('an override is a chip, and the ones that move hours say so in words', () => {
   /*
-   * Colour is not a thing a reader by ear or without it can act on, so the
-   * amber chips carry the sentence too. The quiet ones carry nothing: the half
-   * that is marked is the half that matters.
+   * ONE COLOUR ABOVE THE FOLD, AND IT IS AMBER. The chip's colour carried the
+   * arithmetic flag until 2026-09-08 — amber for the values that move hours,
+   * grey for the ones that do not — which put a grey chip in the banner's top
+   * half that could not be told from the grey chips of ตรึงไว้เท่ากับค่าตั้งต้น
+   * in its folded half: two meanings in one shade. Every chip up here is a
+   * value this installation CHANGED, which is the banner's whole subject.
+   *
+   * Whether it moves hours is said in WORDS, which is where it had to be said
+   * anyway: colour alone is not a thing a reader by ear or without it can act
+   * on. The quiet ones carry nothing — the half that is marked is the half that
+   * matters.
    */
   const live = admin.slice(admin.indexOf('function LivePolicy(')).split(/\r?\nfunction /)[0];
-  assert.match(live, /className=\{`chip \${d\.arithmetic \? 'edited' : 'muted'}`\}/);
+  assert.match(live, /className="chip edited"/);
+  assert.doesNotMatch(live, /d\.arithmetic \? 'edited' : 'muted'/);
   assert.match(live, /\{d\.arithmetic && ' · มีผลต่อชั่วโมง'\}/);
+  // …and grey is left meaning one thing: a value stored at the figure the
+  // program ships today, which is what the fold holds.
+  assert.match(live, /<span key=\{k\} className="chip muted">/);
   // The chip's label is the rule's own, so it cannot drift from the row it is
   // about; the values stay raw because the option labels here are sentences.
   assert.match(live, /\{CHANGE_LABEL\[d\.key\] \|\| d\.key\}: \{JSON\.stringify\(d\.from\)\}/);

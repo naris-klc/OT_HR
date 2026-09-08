@@ -384,10 +384,28 @@ test('คำอธิบายของการ์ดถูกพับไว�
   const file = read('components/AdminView.jsx');
   const src = file.slice(file.indexOf('function Employees('), file.indexOf('function ResetPassword('));
 
-  // ลิสต์เดียว พับทั้งก้อน และเป็น `ul` ไม่ใช่ย่อหน้า
-  assert.match(src, /<Disclosure as="ul" lines=\{0\} className="hint hint-list" of="[^"]+">/);
+  /**
+   * ลิสต์เดียว พับทั้งก้อน และเป็น `ul` ไม่ใช่ย่อหน้า
+   *
+   * เคยตรึงทั้งแท็กไว้เป็นบรรทัดเดียว — `<Disclosure as="ul" lines={0}
+   * className="hint hint-list" of="…">` — จนถึง 2026-09-08 ที่การ์ดนี้ถูกสั่งให้
+   * เปลี่ยนคำบนปุ่มจาก อ่านต่อ เป็น ดูรายละเอียด แล้วแท็กก็ยาวเกินหนึ่งบรรทัด
+   * สิ่งที่เคสนี้มีไว้ยืนยันคือ*ทรงของก้อน* ไม่ใช่ว่ามี prop กี่ตัว จึงอ่านทีละ
+   * attribute แทน
+   */
+  const openTag = src.slice(src.indexOf('<Disclosure'), src.indexOf('>', src.indexOf('<Disclosure')) + 1);
+  assert.match(openTag, /as="ul"/, 'ต้องเป็นลิสต์ ไม่ใช่ย่อหน้า');
+  assert.match(openTag, /lines=\{0\}/, 'ต้องพับทั้งก้อน — สองบรรทัดจากหกข้อไม่ใช่ตัวอย่างของอะไรเลย');
+  assert.match(openTag, /className="hint hint-list"/);
+  assert.match(openTag, /of="[^"]+"/, 'ปุ่มต้องมีชื่อของตัวเอง ไม่งั้นคนอ่านด้วยหูได้ยินแค่ "ดูรายละเอียด"');
+
+  // คำบนปุ่ม — ไม่มีอะไร "ต่อ" ให้อ่าน เพราะทั้งลิสต์ถูกซ่อน ไม่มีบรรทัดแรกค้างไว้
+  // ให้อ่านค้างอยู่ · คู่คำเป็นคู่เดียวกับที่ `LivePolicy` ใช้กับรอยพับทั้งก้อนของมัน
+  assert.match(openTag, /more="ดูรายละเอียด"/, 'การ์ดนี้ถูกสั่งให้ใช้ ดูรายละเอียด ไม่ใช่ อ่านต่อ');
+  assert.match(openTag, /less="ซ่อนรายละเอียด"/, 'คำปิดต้องเป็นคู่ของคำเปิด ไม่ใช่ ย่อข้อความ ที่เป็นของรอยพับแบบตัดบรรทัด');
+
   // บรรทัดบันทึกประวัติกลับเข้าไปอยู่ในลิสต์ ไม่ได้ยืนอยู่ข้างนอกอีกแล้ว
-  const list = src.slice(src.indexOf('<Disclosure as="ul"'), src.indexOf('</Disclosure>'));
+  const list = src.slice(src.indexOf('<Disclosure'), src.indexOf('</Disclosure>'));
   assert.match(list, /ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้/, 'บรรทัดบันทึกประวัติต้องอยู่ในลิสต์เดียวกัน');
   assert.equal((list.match(/<li>/g) || []).length, 6, 'ต้องเป็นหกข้อในลิสต์เดียว');
 

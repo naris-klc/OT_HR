@@ -2669,12 +2669,39 @@ function Employees({ user }) {
         control on it.
       */}
       {/*
-        BEHIND อ่านต่อ, ALL SIX OF THEM — 2026-09-07, and the second shape this
-        block took that day. It spent the morning split: five bullets behind a
-        `.btn ghost` reading วิธีเตรียมไฟล์นำเข้า in the row of controls, and
-        the audit line left standing under the heading. What was asked for
-        instead is the app's own อ่านต่อ, everywhere, hiding the whole of it —
-        so the split has no work left to do and the list is one list again.
+        BEHIND ดูรายละเอียด, ALL SIX OF THEM — 2026-09-07, and the second shape
+        this block took that day. It spent the morning split: five bullets
+        behind a `.btn ghost` reading วิธีเตรียมไฟล์นำเข้า in the row of
+        controls, and the audit line left standing under the heading. What was
+        asked for instead is the app's own fold, everywhere, hiding the whole of
+        it — so the split has no work left to do and the list is one list again.
+
+        THE WORD READ อ่านต่อ UNTIL 2026-09-08, which is `Disclosure`'s default
+        and is the right word for what that default is FOR: a paragraph clamped
+        at two lines, where the reader has the first half in front of them and
+        the control offers the rest. `…อ่านต่อ` even rides the end of the second
+        line, over the ellipsis, so it reads as the sentence continuing.
+
+        NOTHING IS CONTINUING HERE. This is `lines={0}` — the whole list is
+        hidden, there is no first line to have been reading, and the button
+        stands under a heading with nothing above it but the card's title. Asked
+        to be ดูรายละเอียด, and the pair it takes is the one `LivePolicy` two
+        thousand lines down already uses for a whole-body fold of its own:
+        ดูรายละเอียด / ซ่อนรายละเอียด. `ย่อข้อความ` is left with the clamp,
+        where there is text to shorten rather than a detail to put away.
+
+        THE OTHER `lines={0}` FOLDS STILL SAY อ่านต่อ, and that is now an
+        inconsistency this file cannot settle on its own — ไฟล์สแกนนิ้วมือ folds
+        an identical bullet list on ตั้งค่าระบบ's neighbouring card, and
+        `ScanImport` says in as many words that a card keeping its own word for
+        the gesture is a card somebody has to learn twice. Raised rather than
+        changed: only this card was asked for.
+      */}
+      {/*
+        WHY THE PAIR AND NOT JUST THE OPENING WORD. ดูรายละเอียด paired with
+        ย่อข้อความ is two different metaphors on one control — a detail put away
+        against text made shorter — read one after the other by the same person
+        within a second of each other.
 
         A LIST, NOT A PARAGRAPH, which is why this is `as="ul"`. These facts
         ran together with · into five lines of unbroken grey once, and Thai sets
@@ -2687,7 +2714,14 @@ function Employees({ user }) {
         here, because the file it is about is built in Excel before this screen
         is ever opened.
       */}
-      <Disclosure as="ul" lines={0} className="hint hint-list" of="ทะเบียนพนักงาน">
+      <Disclosure
+        as="ul"
+        lines={0}
+        className="hint hint-list"
+        of="ทะเบียนพนักงาน"
+        more="ดูรายละเอียด"
+        less="ซ่อนรายละเอียด"
+      >
         <li>
           วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD หรือ DD/MM/YYYY ก็ได้ (คั่นด้วย / หรือ - ก็ได้)
           {' '}และกรอกเป็น <strong>พ.ศ. หรือ ค.ศ. ก็ได้</strong> — ปีที่เกิน 2400 ระบบถือว่าเป็น พ.ศ.

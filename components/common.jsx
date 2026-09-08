@@ -2121,7 +2121,18 @@ export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
  * manual for a CSV built in Excel before the screen is ever opened) and
  * ไฟล์สแกนนิ้วมือ. A `-webkit-box` cut through a `<ul>` takes the markers with
  * it, and two bullets of six is not a preview of anything — so those fold
- * whole, on the same word, and `as` draws them as the `<ul>` they are.
+ * whole, and `as` draws them as the `<ul>` they are.
+ *
+ * IT READ "ON THE SAME WORD" UNTIL 2026-09-08, and the two now differ:
+ * ทะเบียนพนักงาน was asked for ดูรายละเอียด / ซ่อนรายละเอียด and ไฟล์สแกนนิ้วมือ
+ * still takes the default. The word is the one thing about a whole-body fold
+ * that `lines={0}` arguably should decide for itself — nothing is CONTINUING
+ * behind a control with no first line above it, which is what อ่านต่อ promises
+ * and what `…อ่านต่อ` riding the end of a clamped second line delivers. Three
+ * call sites pass `lines={0}` today (those two and นโยบายการคำนวณ's rows) and
+ * `LivePolicy` overrides the pair by hand for exactly this reason. Making it
+ * the default would change all three screens at once, so it is written down
+ * here rather than done quietly.
  *
  * ── `of` IS NOT DECORATION ─────────────────────────────────────────────────
  *
@@ -2161,18 +2172,37 @@ export function Disclosure({
      absolutely placed control in an empty box has nowhere to be. */
   const tail = over && !open && !whole;
 
+  /*
+   * THE BODY, AND THE ONE CASE THAT GETS A WRAPPER AROUND IT.
+   *
+   * ซ่อนทั้งหมด opens with a slide — `0fr` to `1fr` on a one-row grid, which is
+   * the only way to animate to a height nobody knows in advance. The grid has
+   * to be an element the body SITS IN rather than the body itself: two of the
+   * three callers are a `<ul>`, and a list told to be a grid loses its markers
+   * the same way `-webkit-box` takes them.
+   *
+   * A clamped fold gets no wrapper and no animation. Its two states are two
+   * line counts and the text reflows between them; sliding a paragraph that is
+   * already showing its first lines animates a jump rather than a reveal.
+   */
+  const body = (
+    <Tag
+      id={id}
+      ref={ref}
+      className={`${className} disclosure-body${open ? '' : (whole ? ' clamp-whole' : ' clamp')}`.trim()}
+      style={open || whole ? undefined : { '--disclosure-lines': lines }}
+    >
+      {children}
+    </Tag>
+  );
+
   return (
     /* The caller's spacing goes on the WRAPPER, not on the body: folded whole,
        the body is not drawn and a margin it carries is a margin nothing has. */
     <div className={`disclosure${tail ? ' at-tail' : ''}`} style={style}>
-      <Tag
-        id={id}
-        ref={ref}
-        className={`${className} disclosure-body${open ? '' : ` clamp${whole ? ' clamp-whole' : ''}`}`.trim()}
-        style={open || whole ? undefined : { '--disclosure-lines': lines }}
-      >
-        {children}
-      </Tag>
+      {whole
+        ? <div className={`disclosure-slide${open ? ' open' : ''}`}>{body}</div>
+        : body}
       {(over || open) && (
         <button
           type="button"
