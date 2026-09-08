@@ -290,6 +290,69 @@ test('ธีมสว่าง — ไม่มีคู่ไหนแย่ล
 });
 
 /**
+ * ── หลอดเพดานต้องแยกส่วนที่เต็มออกจากส่วนที่ว่างได้ ──────────────────────────
+ *
+ * THE ONE THING IN THE 2026-09-08 CHANGE THAT WAS NOT A PREFERENCE. The hero
+ * was asked to become a white card, and the meter came with it: a white veil
+ * over white is nothing, so the track became a solid grey. The FILL then had to
+ * move too, and nothing in this file would have said so.
+ *
+ * `--green-lift` was the bar, chosen when the track was a veil on a near-black
+ * card. Against the light track it measures 2.71 — under the 3:1 a graphical
+ * object is held to, which for a progress bar means the full part and the empty
+ * part stop being tellable apart. That is the whole content of the control.
+ * `--green` measures 3.54, and is what the primary button beside it is drawn in.
+ *
+ * A PAIR AND NOT A TOKEN, for the reason AAA_SUBTEXT gives at the foot of this
+ * file: a fill is only light or dark relative to the track under it, and both
+ * halves of both tokens are free to move.
+ *
+ * ธีมมืด IS PINNED AT WHAT IT HAS, NOT AT 3.0. On the veiled dark track the
+ * lift measures 2.64 and `--green` would be 2.10 — neither clears, and the
+ * shortfall is inherited rather than made here. Raising it is a change to how
+ * ธีมมืด has always looked, which is not something to slip in under a request
+ * about the light theme; it is named here so the next person does not have to
+ * rediscover it, and so that FIXING it fails this test and gets a decision.
+ */
+test('หลอดเพดาน — สีเติมต้องตัดกับรางที่มันวิ่งอยู่', () => {
+  const light = contrast(value('--meter-fill', 'light'), value('--meter-track', 'light'));
+  assert.ok(light >= 3, `สีเติมบนรางในธีมสว่าง = ${light.toFixed(2)} (ต้อง ≥ 3)`);
+
+  // The dark track is a white veil, so it is composited rather than read.
+  const veil = css.match(/--meter-track: light-dark\([^,]+,\s*(rgba\([^)]*\))\)/)[1];
+  const [r, g, b, a] = veil.match(/[\d.]+/g).map(Number);
+  const under = value('--panel-hero', 'dark').replace('#', '');
+  const track = '#' + [0, 2, 4]
+    .map((i, k) => Math.round([r, g, b][k] * a + parseInt(under.slice(i, i + 2), 16) * (1 - a)))
+    .map((c) => c.toString(16).padStart(2, '0'))
+    .join('');
+  const dark = contrast(value('--meter-fill', 'dark'), track);
+  assert.ok(dark >= 2.6, `สีเติมบนรางในธีมมืดแย่ลงกว่าเดิม = ${dark.toFixed(2)} (เคยได้ 2.64)`);
+  assert.ok(dark < 3, "ธีมมืดผ่าน 3:1 แล้ว — ถ้าตั้งใจแก้ ให้ลบเพดานนี้ทิ้งพร้อมกัน");
+});
+
+/**
+ * ── การ์ดสรุปกับการ์ดอัตราสามใบเป็นสีเดียวกัน สิ่งที่แยกคือเงา ─────────────
+ *
+ * `--panel-hero` was a pale green wash for one day so that the summary card
+ * would not read as a fourth `.stat`. It is white now, on request, and the
+ * separation moved to a LIFT — which means the shadow is load-bearing rather
+ * than decoration: take it away and the hero is a `.stat` at a larger size.
+ *
+ * The assertion is on the RULE and not on the token, because a token that
+ * nothing reads is not a lift.
+ */
+test('การ์ดสรุปยกตัวขึ้นจากพื้น ไม่ได้ต่างด้วยสีพื้น', () => {
+  const at = css.indexOf('\n.hero {');
+  const rule = css.slice(at, css.indexOf('}', at));
+  assert.match(rule, /box-shadow: [^;]*var\(--hero-shadow\)/, 'ฮีโร่ไม่มีเงาแล้ว — มันจะกลายเป็น .stat ใบที่สี่');
+
+  // And the lift exists in ธีมสว่าง only: a shadow on a near-black page is
+  // either nothing or a dark band across what is under it.
+  assert.match(css, /--hero-shadow: light-dark\(rgba\([^)]*\),\s*transparent\)/);
+});
+
+/**
  * The one pair that does not clear 4.5, and the dark theme did not cause it.
  *
  * Green text on white is #0F8A46 on #ffffff — 4.43, the brand green this app

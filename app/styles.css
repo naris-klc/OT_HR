@@ -320,11 +320,16 @@
      would be two copies of one scale, which is the shape this file spends the
      `light-dark` note arguing against.
 
-     THE GROUNDS. The rail is the card white, so the page (`--bg`, a grey-green)
-     falls away from it the way it does under every other panel in the app. The
-     hero is a pale green wash instead: white would make the summary card and
-     the three rate cards below it the same object, and the hero is the one
-     that answers "how many hours" — it may not read as a fourth `.stat`.
+     THE GROUNDS ARE BOTH THE CARD WHITE, so the page (`--bg`, a grey-green)
+     falls away from them the way it does under every other panel in the app.
+
+     THE HERO WAS A PALE GREEN WASH FOR ONE DAY. This paragraph read: "white
+     would make the summary card and the three rate cards below it the same
+     object, and the hero is the one that answers 'how many hours' — it may
+     not read as a fourth `.stat`." That was the argument for the wash, it was
+     put and it was answered: seen on screen, one tone across the four cards
+     is what was wanted, and the hero is separated by a shadow the three
+     below it do not have rather than by a fill. Withdrawn 2026-09-08.
 
      AND IN ธีมมืด NOTHING BECAME PALE. The dark halves below are the values
      this family already had, with one deliberate exception: the hover and the
@@ -332,15 +337,22 @@
      as ทึบ in the same breath as the two slabs — at 7% over #171E1A a hovered
      row was a guess. */
   --panel-rail: #ffffff;
-  --panel-hero: #F3FAF5;
+  --panel-hero: #ffffff;
   /* The rail's right edge. In ธีมมืด it is the rail's OWN colour and so draws
      nothing: a dark rail is told from the page by being lighter than it, which
      is the same argument `--card-lift` makes one layer up, and a line there
      would be a second answer to a question already answered. */
   --panel-rail-line: #E2E7E3;
-  /* The hero's, which is a real edge in both themes for the opposite reason:
-     its wash is seven points off the page and would float without one. */
-  --panel-hero-line: #C5E3D2;
+  /* The hero's edge is `--line`'s value to the digit, which is the point: the
+     three `.stat` cards under it draw that border and the hero is now the same
+     card at a larger size. It stays a token rather than becoming `var(--line)`
+     because the two part company in ธีมมืด — see the themed half. */
+  --panel-hero-line: #E2E7E3;
+  /* The lift the three cards below do NOT have, and it is what carries the
+     hierarchy now that the fill does not. `transparent` in ธีมมืด: a shadow on
+     a near-black page is either nothing or a dark band across whatever is
+     under it — `.dept-menu` has the note about the time one was tried. */
+  --hero-shadow: rgba(20, 32, 26, .07);
 
   /* The ink, three steps. `--on-panel` is the figure and the heading,
      `--on-panel-2` the supporting line held to AAA on both grounds (see
@@ -366,7 +378,11 @@
   --on-panel-hover: rgba(15, 138, 70, .08);
   --on-panel-active: rgba(15, 138, 70, .13);
   --on-panel-line: #E2E7E3;
-  --on-panel-border: #B9CFC4;
+  /* The outlined button on the hero. It was `#B9CFC4`, a green-grey mixed for
+     the pale green card this was drawn on for one day; on white that reads as
+     an outline from another palette. `--input-line`'s value instead — a hair
+     firmer than the card's own edge, which is what a control wants. */
+  --on-panel-border: #DDE4DF;
 
   /* ออกจากระบบ's red, which IS themed now — and the paragraph it replaces is
      kept in quotation marks below, because it was right and it is the whole
@@ -404,10 +420,16 @@
      second helping of that finding rather than a copy of it. On the old dark
      hero `--amber` (#A8791A) measured 4.38 — under AA for a 12px line, never
      mind AAA — so the dark half is that amber opened up until it clears, 8.47.
-     On the pale hero the obvious answer is `--amber-ink` (#815B0B), the token
-     mixed for amber ink on exactly this kind of wash, and it measures 5.77:
-     over AA, under the AAA floor this one line is held to. #6B4B08 is the same
-     hue — 79° in OKLCH, to the degree — carried down until it reads 7.52.
+     On the light hero the obvious answer is `--amber-ink` (#815B0B), the token
+     mixed for amber ink on exactly this kind of pale panel, and it measures
+     6.11 on white: over AA, under the AAA floor this one line is held to.
+     #6B4B08 is the same hue — 79° in OKLCH, to the degree — carried down until
+     it reads 7.97.
+
+     THE PAIR OF NUMBERS MOVED ON 2026-09-08 AND THE ANSWER DID NOT. On the
+     pale green wash the card wore for one day they were 5.77 and 7.52; the
+     card is white now and both rose by the same third of a point. The darker
+     amber is still the one that clears, which is the only reason it is here.
 
      Not `--bday-due-ink` on either side: that is one of the three chips forced
      to fixed values by hand, and borrowing it would tie a hero line to a
@@ -421,10 +443,31 @@
      what it is and why it is not green in ธีมมืด. */
   --hero-figure: #0B6E37;
 
-  /* The track behind the ceiling meter, which lives on the hero and moves
-     with it. A white overlay is invisible on a pale green wash, so the light
-     half is a solid step down from that wash instead of an overlay on it. */
-  --meter-track: #D7EADF;
+  /* The ceiling meter, which lives on the hero and moves with it. A white
+     overlay is invisible on a white card, so the light track is a solid grey —
+     `--line`'s value, the same quiet grey the card's own edge is drawn in.
+
+     AND THE FILL HAD TO MOVE WITH IT, which is the one thing in the
+     2026-09-08 change that was not a preference. The bar was `--green-lift`,
+     chosen when this track was a white veil on a near-black card. On the light
+     track that green measures **2.71** — under the 3:1 a graphical object is
+     held to, so the empty part and the full part of the bar stop being
+     tellable apart. `--green`, the brand fill, measures **3.54** on it and is
+     also what the primary button beside it is drawn in.
+
+     THE DARK HALF IS `--green-lift`'s DARK VALUE TO THE DIGIT, because there
+     the comparison runs the other way: on the veiled track `--green`'s dark
+     value measures 2.10 against 2.64 for the lift. Neither clears 3:1 and
+     that is a shortfall this file inherited rather than made — raising it is a
+     change to how ธีมมืด has always looked, which is not something to slip in
+     under a request about the light theme.
+
+     `.meter.over` KEEPS `--danger` AND NEEDS NO TOKEN. Red on the light track
+     is 2.94, and it does not matter: `pct` is `Math.min(100, …)` in
+     components/EmployeeView.jsx, so the over state fills the track completely
+     and the red is read against the CARD, where it is 3.42. */
+  --meter-track: #E2E7E3;
+  --meter-fill: #0F8A46;
 
   --radius-lg: 16px;
   --radius: 14px;
@@ -643,11 +686,21 @@
      light side. `--panel-hero` is the same again: the hero and the rail were
      one colour there and stay one colour there.
 
-     THE LIGHT HALVES ARE THE CHANGE. The rail takes the card white, so the
-     page falls away under it the way it does under every other panel. The
-     hero takes a pale green wash rather than white, because white would make
-     it the fourth `.stat` on a screen where it is the one card answering
-     "how many hours".
+     THE LIGHT HALVES ARE THE CHANGE, and both are the card white so the page
+     falls away under them the way it does under every other panel.
+
+     `--panel-hero` WAS `#F3FAF5` FOR ONE DAY — a pale green wash, on the
+     argument that "white would make it the fourth `.stat` on a screen where it
+     is the one card answering how many hours". Asked for as white on
+     2026-09-08 after it was seen, to hold one tone across the four cards, and
+     the hierarchy moved to `--hero-shadow` instead: the hero is the card that
+     is lifted, not the card that is tinted.
+
+     THE TWO TOKENS STILL EARN THEIR NAMES even though the light halves now
+     equal `--card` and `--line` exactly. In ธีมมืด they do not: the hero is
+     #171E1A against `--card`'s #1F2723, because it belongs with the rail
+     rather than with the panels it sits above. Reaching for `var(--card)` at
+     the rule would be right in one theme and wrong in the other.
 
      BOTH EDGES EXIST FOR ธีมสว่าง AND DRAW NOTHING IN ธีมมืด, where each is
      set to its own panel's colour. That is the reason `--line-lift` gives
@@ -657,9 +710,10 @@
      a second answer to a question already answered, and neither panel had
      one before this change. */
   --panel-rail: light-dark(#ffffff, #171E1A);
-  --panel-hero: light-dark(#F3FAF5, #171E1A);
+  --panel-hero: light-dark(#ffffff, #171E1A);
   --panel-rail-line: light-dark(#E2E7E3, #171E1A);
-  --panel-hero-line: light-dark(#C5E3D2, #171E1A);
+  --panel-hero-line: light-dark(#E2E7E3, #171E1A);
+  --hero-shadow: light-dark(rgba(20, 32, 26, .07), transparent);
 
   --on-panel: light-dark(#14201A, #ffffff);
   --on-panel-2: light-dark(#3C4A42, #B9C6BE);
@@ -680,7 +734,7 @@
   --on-panel-hover: light-dark(rgba(15, 138, 70, .08), rgba(255, 255, 255, .1));
   --on-panel-active: light-dark(rgba(15, 138, 70, .13), rgba(255, 255, 255, .16));
   --on-panel-line: light-dark(#E2E7E3, rgba(255, 255, 255, .09));
-  --on-panel-border: light-dark(#B9CFC4, rgba(255, 255, 255, .18));
+  --on-panel-border: light-dark(#DDE4DF, rgba(255, 255, 255, .18));
 
   --on-panel-danger: light-dark(#B4402F, #F0A08A);
   --on-panel-danger-line: light-dark(rgba(228, 87, 46, .28), rgba(228, 87, 46, .35));
@@ -688,17 +742,21 @@
   --on-panel-danger-glow: light-dark(rgba(228, 87, 46, .14), rgba(228, 87, 46, .18));
   --on-panel-warn: light-dark(#6B4B08, #E0B04A);
 
-  /* The big figure on the hero. Emerald on the pale wash, asked for on
-     2026-09-07 as the thing the eye should land on; `--green-dark` measures
-     6.00 there, and at 46px it is past every floor twice over. It stays the
+  /* The big figure on the hero. Emerald on the card, asked for on 2026-09-07 as
+     the thing the eye should land on and kept when the card went white on
+     2026-09-08; `--green-dark` measures 6.36 on white (6.00 on the wash it wore
+     for the day between), and at 46px it is past every floor twice over. It
+     stays the
      panel's own white in ธีมมืด — green type at that size on a near-black
      card is a neon sign, which is the fault `สีเน้นต้องตุ่น` in
      test/theme.test.js exists to catch. */
   --hero-figure: light-dark(#0B6E37, #ffffff);
 
-  /* An overlay on the old dark hero; a solid step down from the pale wash on
-     the new one, since a white veil over pale green is nothing. */
-  --meter-track: light-dark(#D7EADF, rgba(255, 255, 255, .13));
+  /* A veil on the dark hero; a solid grey on the white one, since a white veil
+     over white is nothing. The fill goes the opposite way in each theme — see
+     the fallback block, which carries the four numbers that decided it. */
+  --meter-track: light-dark(#E2E7E3, rgba(255, 255, 255, .13));
+  --meter-fill: light-dark(#0F8A46, #3C8855);
 
   /**
    * ONE GREEN CANNOT DO BOTH JOBS, and the numbers say so exactly.
@@ -1727,24 +1785,41 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
 .stack { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; margin: 0 auto; width: 100%; animation: otfade .2s ease both; }
 
-/* A PALE GREEN CARD IN ธีมสว่าง SINCE 2026-09-07, and a charcoal one still in
-   ธีมมืด. It was `--surface-dark` in both — the second of the two dark slabs
-   reported on an otherwise pale page, and the larger of them.
+.sidebar.collapsed ~ .body .page,
+.sidebar.collapsed ~ .body .stack,
+.shell.sidebar-collapsed .page,
+.shell.sidebar-collapsed .stack {
+  max-width: none;
+}
 
-   WHY THE WASH AND NOT WHITE. White was the obvious answer and is the wrong
-   one: three `.stat` cards sit directly under this on the same screen, white
-   on `--line`, and a white hero joins them. It is not one of them — it is the
-   card that answers "กี่ชั่วโมง" and the three below it break that number
-   into buckets — so it keeps a surface of its own. `--panel-hero` is the same
-   pale green the app already washes a quiet panel in, one step off the page.
+/* A WHITE CARD IN ธีมสว่าง SINCE 2026-09-08, and a charcoal one still in ธีมมืด.
+   It was `--surface-dark` in both until 2026-09-07 — the larger of the two
+   dark slabs reported on an otherwise pale page.
 
-   AND IT GAINS A BORDER, which it never needed while it was near-black. The
-   wash is seven points off `--bg`; without an edge the card has no corner,
-   only a slightly different green. In ธีมมืด the border is the hero's own
-   colour and draws nothing, which is what that theme was already doing. */
+   IT WAS A PALE GREEN WASH FOR ONE DAY IN BETWEEN, and the paragraph that put
+   it there is worth keeping because it is the objection this shape had to
+   answer: "White was the obvious answer and is the wrong one: three `.stat`
+   cards sit directly under this on the same screen, white on `--line`, and a
+   white hero joins them. It is not one of them — it is the card that answers
+   'กี่ชั่วโมง' and the three below it break that number into buckets — so it
+   keeps a surface of its own."
+
+   THAT OBJECTION WAS PUT BEFORE THE WASH SHIPPED AND ANSWERED AFTER IT WAS
+   SEEN: one tone across the four cards is what was wanted, and joining them is
+   the point rather than the cost. What the hero keeps of its own is a LIFT —
+   `--hero-shadow`, which the three below it do not have. Depth says "this one
+   is nearer" without saying "this one is a different kind of thing", and it is
+   the separation a white card can carry that a tint cannot.
+
+   THE BORDER IS `--line`'s VALUE, so the four cards draw the same edge. In
+   ธีมมืด both the border and the shadow are inert — the border is the hero's
+   own colour and the shadow is `transparent` — which is what that theme was
+   already doing, and the reason is the one `--card-lift` gives: a dark panel
+   is told from the page by being lighter than it, never by a shadow. */
 .hero {
   background: var(--panel-hero); color: var(--on-panel);
   border: 1px solid var(--panel-hero-line);
+  box-shadow: 0 1px 3px -1px var(--hero-shadow);
   border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 28px);
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 22px; align-items: end;
 }
@@ -1755,9 +1830,10 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    adjusted by eye: on the dark card the token these three used to take was
    6.30 in dark and 6.23 in light — over AA's 4.5 and under AAA's 7.0, the band
    where a line passes an automated check and is still reported. Its
-   replacement measured 9.61 and 9.50 on that card, and 8.80 on the pale one
-   this card became on 2026-09-07 — still AAA, which is the floor
-   test/theme.test.js holds these three to on BOTH grounds.
+   replacement measured 9.61 and 9.50 on that card, and 9.33 on the white one
+   this card became on 2026-09-08 — still AAA, which is the floor
+   test/theme.test.js holds these three to on BOTH grounds. (It read 8.80 for
+   the day the card was a pale green wash.)
 
    ALL THREE MOVE TOGETHER. The cap, the unit beside the figure and the sentence
    under it are one voice — the supporting text of one card — and leaving any of
@@ -1769,9 +1845,10 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* ── THE HOURS ARE GREEN IN ธีมสว่าง AND WHITE IN ธีมมืด ─────────────────────
 
    Asked for on 2026-09-07 with the pale card: the figure is what the screen is
-   for, and on a wash the app's own emerald is what says so. `--hero-figure` is
-   `--green-dark` there — 6.00 on `--panel-hero`, past AA for body text and
-   twice past the 3:1 large text is measured at.
+   for, and the app's own emerald is what says so. `--hero-figure` is
+   `--green-dark` — 6.36 on the white `--panel-hero`, past AA for body text and
+   twice past the 3:1 large text is measured at. (It read 6.00 for the day the
+   card was a pale green wash; the colour never moved, the ground did.)
 
    BOTH FIGURES, NOT THE BIG ONE ONLY. `.mid` — ชม. อนุมัติแล้ว — is the first
    child of its own `.big`, so this rule already reached it and now colours it
@@ -1812,7 +1889,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .hero .sub.waiting .n { font: 600 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
 
 .meter { margin-top: 14px; height: 6px; border-radius: 3px; background: var(--meter-track); overflow: hidden; }
-.meter > i { display: block; height: 100%; border-radius: 3px; background: var(--green-lift); transition: width .3s ease; }
+.meter > i { display: block; height: 100%; border-radius: 3px; background: var(--meter-fill); transition: width .3s ease; }
 .meter.over > i { background: var(--danger); }
 
 .hero-actions { display: flex; flex-direction: column; gap: 8px; }
@@ -2291,7 +2368,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 
    ดูประวัติทั้งหมด, and it is the only button in the app wearing this. The
    class was named for the ground it sat on, that ground stopped being dark in
-   ธีมสว่าง, and a class called `on-dark` drawn on a pale green card is the
+   ธีมสว่าง, and a class called `on-dark` drawn on a white card is the
    same kind of lie a token called `--on-dark-2` resolving to a dark ink on a
    white rail would be. It is named for the card now, which cannot come untrue
    the same way.
