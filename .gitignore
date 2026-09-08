@@ -29,3 +29,10 @@ next-env.d.ts
 # so it conflicts on every pull and tells nobody anything. `.claude/settings.json`
 # (shared, deliberate) is NOT ignored.
 .claude/settings.local.json
+
+# Scratch scripts an agent wrote while walking the app — one-off mongo
+# queries, mock-data builders, and `tokens.json`, which holds SIGNED JWTs
+# minted for real accounts so a headless browser could open the app as them.
+# A token in the history is a working credential in the history, and these
+# are throwaway by construction: nothing here is meant to be read twice.
+.tmp-edits/
