@@ -7217,16 +7217,22 @@ function LivePolicy({ policy, defaults, overrides }) {
           จันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น' is one of them — and a chip
           holding two of those is not a chip.
 
-          The amber ones are the values that move HOURS, and the word is in the
-          chip as well as in the colour, because colour alone is not something a
-          reader by ear or without it can act on. Nothing on the quiet ones: the
-          half that is marked is the half that matters. */}
+          ONE COLOUR FOR "CHANGED", AND IT IS THE AMBER ONE. It read the
+          arithmetic flag off the chip's colour until 2026-09-08 — amber for the
+          values that move hours, grey for the ones that do not — which put a
+          grey chip in the banner's top half that was indistinguishable from the
+          grey chips of ตรึงไว้เท่ากับค่าตั้งต้น in the folded half, two
+          different meanings in one shade. Every chip up here is a value this
+          installation changed, which is the whole subject of the banner, so
+          every one of them is amber; whether it moves hours is said in WORDS in
+          the chip, which is where it had to be said anyway — colour alone is
+          not something a reader by ear or without it can act on. */}
       {moved.length > 0 && (
         <div className="policy-diffs">
           {moved.map((d) => (
             <span
               key={d.key}
-              className={`chip ${d.arithmetic ? 'edited' : 'muted'}`}
+              className="chip edited"
               title={d.arithmetic ? 'ค่านี้มีผลต่อชั่วโมงที่คำนวณได้' : 'ค่านี้ไม่มีผลต่อชั่วโมง'}
             >
               {CHANGE_LABEL[d.key] || d.key}: {JSON.stringify(d.from)} → <strong>{JSON.stringify(d.to)}</strong>
@@ -7254,7 +7260,7 @@ function LivePolicy({ policy, defaults, overrides }) {
           as="div"
           lines={0}
           of="ค่าที่ตรึงไว้เท่ากับค่าตั้งต้น"
-          more="ดูรายละเอียดเพิ่มเติม"
+          more="ดูรายละเอียด"
           less="ซ่อนรายละเอียด"
         >
           <div className="hint">ตรึงไว้เท่ากับค่าตั้งต้นวันนี้:</div>
@@ -7288,7 +7294,39 @@ function LivePolicy({ policy, defaults, overrides }) {
  * real, and one that was in force for ten minutes and computed nothing is not
  * the same object as one a whole month hangs off.
  */
-function PolicyHistory({ versions, unversioned, live }) {
+function PolicyHistory({
+  versions, unversioned, live, total,
+}) {
+  /**
+   * ── WHERE THE PAGE IS CUT, AND WHY IT IS CUT HERE AND NOT AT THE ENDPOINT ──
+   *
+   * `changes` FOR ROW i IS COMPUTED FROM ROW i+1. The route diffs each version
+   * against the one before it, and it can only do that for versions it loaded
+   * — which is why the oldest row on the list says `ไม่ได้โหลดเวอร์ชันก่อนหน้า
+   * มาเทียบ` rather than `—`. Asking the endpoint for ten rows starting at row
+   * twenty would therefore break the สิ่งที่เปลี่ยน column on the FIRST ROW OF
+   * EVERY PAGE: each page's oldest version would have no predecessor in its own
+   * result and would print that sentence, on nine rows out of ten that have a
+   * predecessor sitting one page away.
+   *
+   * So the whole chain is loaded and the browser cuts it. That is a property of
+   * the data — a version means nothing except against the one before it — and
+   * not a shortcut. It is the same conclusion การใช้สิทธิ์พิเศษ reached from a
+   * different direction, where the loader is shared with a CSV.
+   *
+   * `5 · 10 · 20` AND NOT THE LOG'S FOUR. See `SHORT_PAGE_SIZES`: this list
+   * gains a row when somebody changes a rule, so 50 and 100 would be two
+   * choices that both mean "all of it".
+   */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  /* Page 1 when the length of a page changes, so this table behaves the way the
+     two on บันทึกประวัติระบบ do. Not on `versions`: `recordLive()` reloads the
+     list after adding a version, and a reader who was reading page 3 should
+     still be on page 3. See `usePageReset`. */
+  usePageReset(setPage, [pageSize]);
+
   if (!versions) return null;
 
   /* CLAMPED BEFORE SLICING, not only for display. `TablePager` clamps what it
