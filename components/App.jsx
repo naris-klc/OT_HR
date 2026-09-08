@@ -294,7 +294,30 @@ function Login({ onLogin }) {
                 onChange={edit('code', setCode)}
                 autoFocus
                 required
-                placeholder="PM-0412"
+                /* TWO COMPANIES, TWO PREFIXES — asked for on 2026-09-08.
+
+                   It read `PM-0412`, which was one company and, since the real
+                   roster was imported, a shape that is not on it any more:
+                   counted on the live database that day, all 163 employee codes
+                   are plain — 89 `PM…`, 74 `THT…`, not one hyphen. So the
+                   example a เดมเทค employee was shown named the wrong company
+                   in the wrong shape, on a screen whose only other word is
+                   PRIMUS and which therefore says nothing about whether they
+                   are in the right place at all.
+
+                   THE HYPHEN IS STILL ACCEPTED and this changes no rule.
+                   `codeMatcher` and `sameCode` in src/lib/employeeCode.js match
+                   `PM-0620` against `PM0620` either way round — which is what
+                   lets a placeholder name one shape without refusing the other.
+                   A placeholder is an example, not a pattern.
+
+                   ⚠ THE PASSWORD BOX IS NOT SO FORGIVING. `defaultPassword()`
+                   keeps punctuation on purpose (see lib/employees.js), so an
+                   account whose stored code has a hyphen has a first password
+                   with the hyphen in it. That is what "ตามที่อยู่บนบัตร" in the
+                   note under that box is doing, and it is why the note says
+                   card and not this example. */
+                placeholder="PM00111 / THT1111"
               />
               {blanks.code && (
                 <div className="field-note error" id="login-code-blank">กรุณากรอกรหัสพนักงาน</div>
@@ -343,8 +366,18 @@ function Login({ onLogin }) {
                    on every ใบ F-HR-027 and on the roster — see
                    README §รหัสผ่านแรกเข้า for the trade, and PasswordReminder
                    above for what keeps saying it after a sign-in. */
+                /* "ทั้ง PM และ THT" JOINS THIS LINE TO THE EXAMPLE ABOVE IT —
+                   2026-09-08, in the same breath as the placeholder. The box
+                   now shows two prefixes and this is the sentence that says
+                   what to do with them, so it may not read as though it is
+                   about one company; two words is the whole cost.
+
+                   The digits are NOT repeated here. They are three centimetres
+                   above in the box that this sentence is about, and a note that
+                   restates the example is a note people stop reading. */
                 <div className="field-note">
-                  เข้าใช้งานครั้งแรก · รหัสผ่านคือรหัสพนักงานของคุณ พิมพ์เป็นตัวพิมพ์ใหญ่ตามที่อยู่บนบัตร
+                  เข้าใช้งานครั้งแรก · รหัสผ่านคือรหัสพนักงานของคุณ ทั้ง PM และ THT
+                  {' '}พิมพ์เป็นตัวพิมพ์ใหญ่ตามที่อยู่บนบัตร
                 </div>
               )}
             </div>
