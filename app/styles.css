@@ -7729,6 +7729,46 @@ tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
 .cell-cap-lg { max-width: 260px; }
 
 .cell-note { margin-top: 3px; font: 400 11.5px/1.45 var(--sans); color: var(--amber); }
+
+/* ไม่พักเที่ยง — A HIGHLIGHT, NOT A COLOURED LINE. Asked for on 2026-09-08 in
+   those words: *ตรงไม่พักเที่ยงขอเป็นไฮไลท์สีแดง*.
+
+   WHY THIS FLAG IS LOUDER THAN THE ONE ABOVE IT. `.cell-note` carries ข้ามคืน
+   in the same cell, and that one describes the shift — it says which day the
+   end time belongs to and moves no figure by itself. ไม่พักเที่ยง is the one
+   flag on the row that ADDS AN HOUR to the total beside it: the lunch hour is
+   deducted from every other request in the column and not from this one. A
+   reviewer scanning รออนุมัติ OT for the rows that need a second look is
+   looking for exactly that, so it is drawn as a mark on the words rather than
+   as a quieter grey line under them.
+
+   A BLOCK WITH `fit-content`, so it takes its own line under the times and the
+   fill stops at the end of the word. `display: block` alone would wash the
+   whole cell — which is a table cell of unknown width and reads as a state of
+   the ROW, not as a mark on four characters.
+
+   `--danger-bg` / `--danger-ink` and NOT a red written out here: both are
+   `light-dark()` pairs (see the token block), so the highlight follows ธีมมืด
+   without a second rule, and it is the same pair ไม่อนุมัติ wears — one red in
+   the app rather than two that nearly match.
+
+   It is NOT a `.chip`: a chip is a pill and every other one on this row is a
+   STATUS (รอหัวหน้า, รอ HR, เหมารายวัน). This is a mark on a sentence, and
+   giving it the status shape would put a fourth pill on the row that is not a
+   status. It does not go on the printed form either — `[ไม่พักเที่ยง]` in
+   app/print.css is paper, which has no theme and no colour here. */
+.cell-flag {
+  display: block; width: fit-content;
+  margin-top: 3px; padding: 1px 6px; border-radius: 4px;
+  font: 600 11.5px/1.45 var(--sans);
+  background: var(--danger-bg); color: var(--danger-ink);
+  /* `nowrap` BECAUSE A FILL MAKES A LINE BREAK VISIBLE. Plain text that wraps
+     mid-phrase is read as a sentence continuing; the same wrap inside a
+     coloured block is read as a broken box — measured on ประวัติการขอ OT,
+     where the เวลา column is 86px and the words came out as two stacked pink
+     rectangles. The same reason `.chip` has carried it since it existed. */
+  white-space: nowrap;
+}
 tbody tr:hover { background: var(--green-wash); }
 
 /* ══ นโยบายการคำนวณ — one ruled row per rule ═══════════════════════════════

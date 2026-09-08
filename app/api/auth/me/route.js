@@ -22,6 +22,22 @@ export const GET = route(async (req) => {
       // Which day a week opens on, so the screens can name the span a weekly
       // breach is about rather than printing a bare date.
       weekStartsOn: policy.weekStartsOn,
+      /**
+       * WHICH DAYS ARE THE WEEKEND — added 2026-09-08 for `isCompanyOffDay` in
+       * lib/entries.js, which decides whether บันทึก OT draws the ไม่พักเที่ยง
+       * box (HR: เฉพาะวันหยุดเสาร์อาทิตย์และวันหยุดของบริษัท ไม่รวมวันเกิด).
+       *
+       * IT IS NOT A BIRTH DATE AND CANNOT BECOME ONE, which is the whole reason
+       * the rule is answered in the browser at all: this list plus the company
+       * holiday calendar is exactly the half of `resolveDayTypes` that is about
+       * everybody, and the half HR asked to be excluded is the half the screen
+       * is not allowed to hold. See the function's own note.
+       *
+       * `weekStartsOn` above is a different key and answers a different
+       * question — where a WEEK begins, for naming the span of a weekly cap
+       * breach. Nothing in this app should read one for the other.
+       */
+      weekendDays: policy.weekendDays,
       hrSummaryBasis: policy.hrSummaryBasis,
       hrMayReject: policy.hrMayReject,
       /**

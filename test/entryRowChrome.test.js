@@ -767,3 +767,61 @@ test('the rule set moved into the drawer, above the trail rather than inside it'
   );
   assert.match(css, /\.audit-policy \{/, 'the line has no style of its own');
 });
+
+/**
+ * ไม่พักเที่ยง เป็นไฮไลท์สีแดง — 2026-09-08, asked for in those words while
+ * reading รออนุมัติ OT.
+ *
+ * WHY IT IS LOUDER THAN THE LINE ABOVE IT, and why that is the assertion worth
+ * having: ข้ามคืน describes the shift and moves no figure by itself, while
+ * ไม่พักเที่ยง is the one flag in that cell that ADDS AN HOUR to the total two
+ * columns along — the lunch hour is deducted from every other row and not from
+ * this one. The two are pinned apart here so a later tidy-up cannot quietly
+ * fold them back into one grey voice.
+ *
+ * AND ONE MARK ACROSS BOTH SCREENS. The employee reading their own month and
+ * the reviewer reading it beside them are looking at the same square of the
+ * same table about the same request; two marks for one fact is the failure the
+ * `.cell-sub` / `.cell-note` classes exist to prevent, and this file already
+ * holds ข้ามคืน to it three tests up.
+ */
+test('ไม่พักเที่ยง ขึ้นเป็นไฮไลท์สีแดง และเป็นมาร์กเดียวกันทั้งสองจอ', () => {
+  const queue = read('components/ApprovalQueue.jsx');
+  const mine = read('components/EmployeeView.jsx');
+
+  // The queue — the screen it was asked on.
+  assert.match(queue, /<div className="cell-flag">\u0e44\u0e21\u0e48\u0e1e\u0e31\u0e01\u0e40\u0e17\u0e35\u0e48\u0e22\u0e07<\/div>/);
+  // …and the employee’s own month table, the same cell of the same table.
+  assert.match(mine, /<div className="cell-flag">\u0e44\u0e21\u0e48\u0e1e\u0e31\u0e01\u0e40\u0e17\u0e35\u0e48\u0e22\u0e07<\/div>/);
+  // The grey voice it left is gone from both, or the change is half-applied.
+  assert.ok(!queue.includes('className="cell-sub th">ไม่พักเที่ยง'), 'คิวยังวาดเป็นบรรทัดเทาอยู่');
+  assert.ok(!mine.includes('className="hint">ไม่พักเที่ยง'), 'หน้าของพนักงานยังวาดเป็นบรรทัดเทาอยู่');
+
+  // A MARK ON THE WORDS, not a wash across a cell of unknown width.
+  const flag = rule('.cell-flag');
+  assert.ok(flag.includes('display: block; width: fit-content;'), 'ไฮไลท์กินความกว้างทั้งช่อง');
+  assert.ok(flag.includes('background: var(--danger-bg); color: var(--danger-ink);'));
+  // AND IT DOES NOT WRAP. Plain text that breaks mid-phrase reads as a sentence
+  // continuing; the same break inside a fill reads as a broken box — which is
+  // what it did in ประวัติการขอ OT, where the เวลา column is under 100px.
+  assert.ok(flag.includes('white-space: nowrap;'), 'ไฮไลท์ตัดคำได้ จะกลายเป็นสองก้อน');
+  // TOKENS AND NOT A RED WRITTEN OUT HERE — both are `light-dark()` pairs, so
+  // the highlight follows ธีมมืด without a second rule.
+  assert.ok(css.includes('--danger-bg: light-dark('));
+  assert.ok(css.includes('--danger-ink: light-dark('));
+
+  // ข้ามคืน KEEPS THE QUIET AMBER in the same cell. It says which day the end
+  // time belongs to; it does not move the figure beside it.
+  assert.ok(rule('.cell-note').includes('color: var(--amber);'));
+  assert.ok(queue.includes('<div className="cell-note">ข้ามคืน</div>'));
+
+  // NOT A CHIP. Every pill on that row is a STATUS (รอหัวหน้า · รอ HR ·
+  // เหมารายวัน); a fourth one that is not a status is how a reader learns the
+  // shape means nothing.
+  assert.ok(!/className="chip[^"]*">ไม่พักเที่ยง/.test(queue));
+  // AND NOT ON PAPER. The printed form has no theme and no colour here.
+  const print = read('components/PrintForm.jsx');
+  assert.ok(print.includes('[ไม่พักเที่ยง]'));
+  assert.ok(!print.includes('cell-flag'));
+  assert.ok(!read('app/print.css').includes('cell-flag'));
+});

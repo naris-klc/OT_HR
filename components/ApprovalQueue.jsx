@@ -1556,7 +1556,14 @@ export default function ApprovalQueue({
                   <td className="span-col">
                     {e.startTime}–{e.endTime}
                     {e.endsNextDay && <div className="cell-note">ข้ามคืน</div>}
-                    {e.noBreakTaken && <div className="cell-sub th">ไม่พักเที่ยง</div>}
+                    {/* THE ONE FLAG IN THIS CELL THAT MOVES THE FIGURE BESIDE
+                        IT — the lunch hour is deducted from every other row in
+                        the column and not from this one — so it is a red
+                        highlight rather than the grey line it was until
+                        2026-09-08. Asked for in those words; see `.cell-flag`
+                        in app/styles.css for why it is not a chip and why
+                        ข้ามคืน above it keeps the quieter amber. */}
+                    {e.noBreakTaken && <div className="cell-flag">ไม่พักเที่ยง</div>}
                   </td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                   <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
