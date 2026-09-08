@@ -1540,6 +1540,26 @@ function Shell({ session, onRefresh, onLogout }) {
   const personalItems = navGroups.find((g) => g.parent)?.items || [];
   const personalOpen = personalToggled ?? personalItems.some((t) => t.key === tab);
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        setSidebarCollapsed(localStorage.getItem('primus_sidebar_collapsed') === 'true');
+      }
+    } catch {}
+  }, []);
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('primus_sidebar_collapsed', String(next));
+        }
+      } catch {}
+      return next;
+    });
+  };
+
   // Read twice — by the FAB itself and by the spacer that has to keep the last
   // row out from under it.
   const showFab = user.maySubmitOt && tab === 'mine';
@@ -1593,14 +1613,27 @@ function Shell({ session, onRefresh, onLogout }) {
 
   return (
     <BackProvider register={register}>
-    <div className="shell">
-      <aside className="sidebar no-print">
+    <div className={`shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+      <aside className={`sidebar no-print${sidebarCollapsed ? ' collapsed' : ''}`}>
         <div className="brand">
-          <BrandMark className="mark" />
-          <div>
-            <div className="name">PRIMUS</div>
-            <div className="kicker">OT SYSTEM</div>
+          <div className="brand-main">
+            <BrandMark className="mark" />
+            <div className="brand-text">
+              <div className="name">PRIMUS</div>
+              <div className="kicker">OT SYSTEM</div>
+            </div>
           </div>
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? 'ขยายแถบเมนู' : 'พับเก็บแถบเมนู'}
+            title={sidebarCollapsed ? 'ขยายแถบเมนู' : 'พับเก็บแถบเมนู'}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {sidebarCollapsed ? <path d="m9 18 6-6-6-6" /> : <path d="m15 18-6-6 6-6" />}
+            </svg>
+          </button>
         </div>
 
         {/* Three blocks with a heading each, and the rows inside them are the
@@ -1634,6 +1667,7 @@ function Shell({ session, onRefresh, onLogout }) {
                   <span className="icon"><Icon name={g.parent.icon} /></span>
                   <span className="label">{g.parent.label}</span>
                   <span className="chev" aria-hidden="true">›</span>
+                  <span className="nav-tip">{g.parent.label}</span>
                 </button>
               )}
               {(!g.parent || personalOpen) && (
@@ -1661,6 +1695,7 @@ function Shell({ session, onRefresh, onLogout }) {
                           emptying is the one change worth noticing out of the
                           corner of an eye, and at 0 the badge leaves instead. */}
                       {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
+                      <span className="nav-tip">{t.label}{t.badge > 0 ? ` (${t.badge})` : ''}</span>
                     </button>
                   ))}
                 </div>
@@ -1684,6 +1719,7 @@ function Shell({ session, onRefresh, onLogout }) {
               <div className="r">{roleLabel(user.role)} · {user.department?.name || '—'}</div>
             </div>
             <span className="chev">›</span>
+            <span className="nav-tip">{user.name}</span>
           </button>
           <button className="signout" onClick={logout}>ออกจากระบบ</button>
         </div>

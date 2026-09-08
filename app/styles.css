@@ -1264,17 +1264,47 @@ html { -webkit-tap-highlight-color: transparent; }
    the page curling, and the rail is not floating over anything — it is beside
    the page, which is what a line says. In ธีมมืด `--panel-rail-line` is the
    rail's own colour and this border draws nothing; see its note in the token
-   block. `box-sizing: border-box` is global, so the column is still 248px. */
+   block. `box-sizing: border-box` is global, so the column is still 248px.
+
+   `z-index: 32` IS WHAT LETS THE COLLAPSED RAIL'S TOOLTIP BE SEEN. A sticky
+   box makes a stacking context whatever its z-index says, so `.nav-tip`'s own
+   25 only ever sorted it against the rest of the rail — outside, the whole
+   column painted at 0 and `.body`, drawn later, covered every pixel of the
+   tooltip that reached past the 68px rail. It read "รา" and stopped at the
+   first card.
+
+   32 AND NOT 40, because 40–79 is a band this stylesheet keeps empty on
+   purpose — `test/monthSearch.test.js` sweeps for it — so that nothing can
+   land between the phone's bars and the dialogs. The rail is not an exception
+   asking to be let in: it needs to beat `.appbar`'s 20 and nothing higher,
+   since the only things over it are `.pick-menu` 50, the toast host 95, and
+   the dialog with its scrim at 100–120, all of which must cover it. The phone
+   bar's 30 and the FAB's 35 do not enter into it — the rail is `display: none`
+   at the width where either exists. */
 .sidebar {
   width: 248px; flex: none;
   background: var(--panel-rail); color: var(--on-panel);
   border-right: 1px solid var(--panel-rail-line);
   padding: 22px 16px;
   display: flex; flex-direction: column;
-  position: sticky; top: 0; height: 100vh;
+  position: sticky; top: 0; height: 100vh; z-index: 32;
+  transition: width .3s cubic-bezier(0.4, 0, 0.2, 1), padding .3s ease;
+  box-sizing: border-box;
 }
 
-.brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 22px; }
+.brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 22px 8px; }
+.brand-main { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.brand-text { display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-toggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex: none;
+  border: 1px solid var(--on-panel-line); background: transparent;
+  color: var(--on-panel-2); border-radius: 6px; cursor: pointer;
+  transition: background .16s, color .16s, border-color .16s;
+}
+.sidebar-toggle:hover {
+  background: var(--on-panel-hover); color: var(--on-panel); border-color: var(--on-panel);
+}
 .brand .mark {
   width: 34px; height: 34px; flex: none; border-radius: 8px;
   background: var(--green); display: grid; place-items: center;
@@ -1342,6 +1372,137 @@ html { -webkit-tap-highlight-color: transparent; }
 /* The active row is the one place the icon should not be held back. */
 .nav button.active .icon { opacity: 1; }
 .nav .label { flex: 1; text-align: left; }
+
+/* ── Tooltip when hovering collapsed sidebar icons ── */
+.nav-tip { display: none; }
+@keyframes tipfade {
+  from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+/* ── Collapsed / Mini Sidebar (68px) ── */
+.sidebar.collapsed {
+  width: 68px;
+  padding: 22px 8px;
+}
+.sidebar.collapsed .brand {
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 0 18px;
+}
+.sidebar.collapsed .brand-text {
+  display: none;
+}
+.sidebar.collapsed .sidebar-toggle {
+  width: 26px; height: 26px;
+}
+.sidebar.collapsed .nav-group-label {
+  display: none;
+}
+.sidebar.collapsed .nav button,
+.sidebar.collapsed .nav-parent {
+  justify-content: center;
+  width: 44px; height: 44px;
+  padding: 0;
+  margin: 0 auto;
+  border-radius: 10px;
+  position: relative;
+}
+.sidebar.collapsed .nav .label,
+.sidebar.collapsed .nav-parent .chev {
+  display: none;
+}
+.sidebar.collapsed .nav-items.sub {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: none;
+}
+.sidebar.collapsed .nav-items.sub button.active::before {
+  display: none;
+}
+.sidebar.collapsed .nav button.active {
+  background: var(--green);
+  color: var(--on-fill);
+  box-shadow: 0 2px 8px var(--shadow-soft);
+}
+.sidebar.collapsed .nav button.active .icon {
+  opacity: 1;
+}
+.sidebar.collapsed .nav-parent.current {
+  box-shadow: 0 0 0 2px var(--green-lift);
+}
+.sidebar.collapsed .nav span[class~="count"] {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 17px;
+  border-radius: 9px;
+  box-shadow: 0 1px 3px var(--shadow-tab);
+}
+.sidebar.collapsed .sidebar-foot:not([hidden]) {
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sidebar.collapsed .whoami {
+  justify-content: center;
+  width: 44px; height: 44px;
+  padding: 0;
+  margin: 0 auto;
+  position: relative;
+}
+.sidebar.collapsed .whoami .avatar {
+  width: 32px; height: 32px;
+  font-size: 12px;
+}
+.sidebar.collapsed .whoami .n,
+.sidebar.collapsed .whoami .r,
+.sidebar.collapsed .whoami .chev {
+  display: none;
+}
+.sidebar.collapsed .sidebar-foot > button:last-child {
+  display: none;
+}
+
+.sidebar.collapsed .nav button:hover .nav-tip,
+.sidebar.collapsed .nav-parent:hover .nav-tip,
+.sidebar.collapsed .whoami:hover .nav-tip {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface-dark);
+  color: var(--on-fill);
+  font: 500 12.5px/1.4 var(--sans);
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 25;
+  box-shadow: 0 4px 16px var(--shadow-1);
+  border: 1px solid var(--on-panel-line);
+  animation: tipfade .15s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.sidebar.collapsed .nav button:hover .nav-tip::before,
+.sidebar.collapsed .nav-parent:hover .nav-tip::before,
+.sidebar.collapsed .whoami:hover .nav-tip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: var(--surface-dark);
+}
 
 /* ── THE THREE BLOCKS, AND THE LINE THAT SEPARATES THEM ─────────────────────
 
@@ -4130,8 +4291,9 @@ td > .approver-line { margin-top: 5px; }
    this floor.
 
    z-index 120 — OVER THE DIALOG, which is the one thing in this app that is
-   above everything else. `.modal-backdrop` is 100, `.mobile-nav` 30,
-   `.queue-mobile-bar` 20. A calendar opened from inside a dialog has to be over
+   above everything else. `.modal-backdrop` is 100, `.sidebar` 32,
+   `.mobile-nav` 30, `.queue-mobile-bar` 20. A calendar opened from inside a
+   dialog has to be over
    that dialog or it is not visible at all, and it can afford to be: unlike
    `.one-menu`, which had to argue its way past a sticky bar, this panel closes
    on any scroll and on any press outside it, so it cannot outlive the box it
