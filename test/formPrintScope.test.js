@@ -548,5 +548,13 @@ test('the glosses are drawn from the same strings the dropdown shows', () => {
   assert.match(code, /<dd>\{f\.optionHints\[String\(v\)\]\}<\/dd>/);
   // Optional per field: every other row on the page declares none and draws
   // nothing. If this ever renders unconditionally it grows twenty blank blocks.
+  //
+  // BOTH OF THESE ARE INSIDE THE ROW'S FOLD SINCE 2026-09-07 — the page cuts by
+  // CONTENT now: a row stands at its question and at ค่าที่ใช้อยู่, and what the
+  // question means and what each option is for are behind one อ่านต่อ under
+  // that line. What this case still holds is the `&&` on each of them, which is
+  // what keeps a row that declares neither from drawing an empty block. The
+  // fold's own shape is test/disclosure's.
   assert.match(code, /\{f\.hint && <div className="hint policy-help">\{f\.hint\}<\/div>\}/);
+  assert.match(code, /\{detail && \(/);
 });

@@ -1100,7 +1100,11 @@ export default function HrView({
                     <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
                     <th className="num total-col">รวม ชม.</th>
                     <th className="num count-col">รายการ</th>
-                    <th className="num edits-col">แก้ไข</th>
+                    {/* NOT `num`, since 2026-09-07: the cells under it hold a
+                        centred pill rather than a figure read down a column,
+                        and `td.num, th.num` right-aligns both. The heading now
+                        sits over the pill instead of over its right edge. */}
+                    <th className="edits-col">แก้ไข</th>
                     {/* No blanket note under the header any more. It said
                         "ไม่รวมใบที่รออนุมัติ" on every row of the column the
                         moment the filter narrowed, including the rows with
@@ -1206,22 +1210,46 @@ export default function HrView({
                           ones the employee filed. This is where a month that
                           was corrected after the fact announces itself, before
                           HR signs anything off. */}
-                      <td className="num edits-col">
+                      {/* ── ONE PILL, TWO LINES, AND IT IS STILL THE BUTTON ──
+                          Asked for on 2026-09-07: กะทัดรัด, the count bold over
+                          ฝ่ายบุคคล N in the quiet voice, centred in its column,
+                          and padded off its own border.
+
+                          THE SUB-LINE MOVED INSIDE. It was a `<div>` UNDER the
+                          button — so the cell held a full-height `.btn.ghost.sm`
+                          with a stray line beneath it, right-aligned by `num`
+                          against a heading that is one short word: two objects
+                          where the reader is being told one thing. `hrCount` is
+                          a PART of `count` (`editTally` in lib/reports.js counts
+                          `hr_edit` among the same snapshots), so it belongs
+                          inside the number it qualifies and can never be drawn
+                          without it.
+
+                          NOT `btn ghost sm`: that class is a 13px/9px control
+                          built for a row of actions, and this is one figure to
+                          press. `.edits-pill` states the whole of itself in
+                          app/styles.css — the geometry is the stylesheet's, and
+                          the two inline styles this cell used to set are gone
+                          with it.
+
+                          STILL A `<button>`, because pressing it is what opens
+                          ประวัติการแก้ไข. A badge that merely looked like this
+                          would be a figure with no way to ask what it counts. */}
+                      <td className="edits-col">
                         {row.edits?.count ? (
                           <button
-                            className="btn ghost sm"
+                            type="button"
+                            className="edits-pill"
                             onClick={() => setAuditing(row.employee)}
                             title="ดูว่าแก้ไขอะไร โดยใคร และค่าเดิมคืออะไร"
                           >
-                            {row.edits.count} ครั้ง
+                            <span className="n">{row.edits.count} ครั้ง</span>
+                            {row.edits.hrCount > 0 && (
+                              <span className="sub">ฝ่ายบุคคล {row.edits.hrCount}</span>
+                            )}
                           </button>
                         ) : (
-                          <span style={{ color: 'var(--muted)' }}>—</span>
-                        )}
-                        {row.edits?.hrCount > 0 && (
-                          <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-                            ฝ่ายบุคคล {row.edits.hrCount}
-                          </div>
+                          <span className="edits-none">—</span>
                         )}
                       </td>
                       {/* กฎที่ใช้ WAS HERE — a per-person `เวอร์ชัน N` beside

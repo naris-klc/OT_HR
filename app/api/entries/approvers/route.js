@@ -1,5 +1,5 @@
 import Employee from '@/src/models/Employee.js';
-import { SIGNER_ROLES, mayApproveRole } from '@/lib/roles.js';
+import { SIGNER_ROLES, mayApproveRole, hrHeadsDepartment } from '@/lib/roles.js';
 import ApprovalDelegation from '@/src/models/ApprovalDelegation.js';
 import { route, json } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
@@ -34,6 +34,22 @@ export const GET = route(async (req) => {
   if (!departmentId) return json({ departmentId: null, people: [] });
 
   const company = companyOf(user);
+
+  /**
+   * A แผนก whose หัวหน้างาน is ฝ่ายบุคคล has no first step to name, and saying
+   * so here is what keeps this screen and `initialStatus` telling one story.
+   *
+   * Without it the two would disagree the day such a department gained a
+   * ผู้จัดการแผนก: the entry would (correctly) start at รอฝ่ายบุคคล while this
+   * route named that manager as the person waiting to sign it. `people: []` is
+   * an ANSWER here and always has been — see the note above — and the employee
+   * reads รอการยืนยันจาก: ฝ่ายบุคคล off the status, which is the truth.
+   *
+   * `user.department` is populated by `requireAuth`, so the flag is readable
+   * without a second query.
+   */
+  if (hrHeadsDepartment(user.department)) return json({ departmentId, people: [] });
+
 
   /**
    * Everybody who might sign for this department — the ones IN it, and the ones

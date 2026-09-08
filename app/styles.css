@@ -3,9 +3,21 @@
  * design" (OT System.dc.html).
  *
  * Two type families do different jobs there and the distinction is load-bearing:
- * IBM Plex Sans Thai carries Thai prose, IBM Plex Mono carries every number,
- * field label and metadata line. Hours are read down a column and compared, so
- * they are tabular figures, never proportional.
+ * IBM Plex Sans Thai Looped carries Thai prose, IBM Plex Mono carries every
+ * number, field label and metadata line. Hours are read down a column and
+ * compared, so they are tabular figures, never proportional.
+ *
+ * THE THAI FACE IS THE LOOPED CUT, and that is the whole of the 2026-09-07
+ * change. The design shipped IBM Plex Sans Thai, which is the loopless
+ * (ไม่มีหัว) cut; HR reads this app all day and asked for ตัวอักษรที่มีหัว.
+ * The หัว on ก ถ ภ ญ is what school and every government form teach, and it
+ * is what separates ด/ค, ต/ค and น/ม at a glance down a table of sixty rows.
+ * The Looped family is IBM's own sibling of the same design — same metrics,
+ * same four weights — so not one size, leading or box in this file moved
+ * with it. `TH Sarabun New` stands behind it because Windows otherwise falls
+ * back to Leelawadee UI, which is loopless again, and a fallback that undoes
+ * the change is not a fallback. `--latin` and `--mono` are untouched: loops
+ * are a property of Thai letterforms and neither face carries Thai.
  *
  * The mobile breakpoint is 860px, taken from the design's own note: "ดีไซน์
  * เดียวกัน ปรับเป็นแถบเมนูล่าง + ปุ่มลอยเมื่อจอแคบกว่า 860px".
@@ -492,7 +504,7 @@
      that has a ✕ in it, which is most of them. */
   --chip-h: 30px;
 
-  --sans: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --sans: 'IBM Plex Sans Thai Looped', 'TH Sarabun New', 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --latin: 'IBM Plex Sans', system-ui, sans-serif;
 
@@ -2291,6 +2303,89 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   font: 500 13px/1 var(--sans); cursor: pointer; padding: 0;
 }
 .link:hover { color: var(--green-dark); text-decoration: underline; }
+
+/* ── อ่านต่อ — a paragraph with its first lines showing ────────────────────
+   The cut is made HERE and not in the component, so a folded paragraph is
+   folded in the first paint rather than a frame after it. `Disclosure` in
+   components/common.jsx measures what this rule left standing and draws the
+   button only when something is actually hidden.
+
+   `-webkit-line-clamp` with the old `-webkit-box` display is not a legacy
+   spelling: it is the only line clamp every browser this app meets implements,
+   and the modern `line-clamp` is the same three declarations under a newer
+   name. The count comes from the caller as a custom property — two lines under
+   a rule on นโยบายการคำนวณ, four under a description somebody typed — declared
+   on the class below with the default it takes, so a component that forgets to
+   send one clamps at two rather than not at all.
+
+   `pre-wrap` and `overflow-wrap` come from the paragraph's own class
+   (`.reason-text` sets both) and survive the box: what changes is how many
+   lines are drawn, not how the text inside them breaks. */
+/* ── AND THE LEADING IS PART OF THE CUT ───────────────────────────────────
+   A paragraph that will be cut AT A LINE has to have line boxes its own ink
+   fits inside, or the cut shows the tops of the line it just removed.
+
+   Measured on the built app at 360px: `.hint` computes to 12.5px text in an
+   18.75px line box, and a line of Thai in it is **21px of ink** — two-level
+   vowels and tone marks stand about a pixel above the box and a pixel below
+   it. Clamped at two lines the box ends at 37.5px, the third line's marks
+   start at 36.4, and what showed under `อ่านต่อ` was a faint dotted row that
+   reads as a rendering fault rather than as a fold.
+
+   1.7 is the smallest leading that holds 12.5px Thai ink (21.25 ≥ 21), and it
+   holds the 14px of `.reason-text` as well (23.8 ≥ 23.5). It is set for BOTH
+   states, folded and open: putting it on `.clamp` alone would re-space the
+   paragraph under the thumb that pressed อ่านต่อ.
+
+   Two classes deep because `.reason-text`'s `font:` shorthand is later in this
+   file and carries a line-height of its own — one class each would make the
+   winner depend on where in the file this block sits. */
+.disclosure .disclosure-body {
+  --disclosure-lines: 2;
+  line-height: 1.7;
+}
+.disclosure-body.clamp {
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--disclosure-lines, 2);
+  overflow: hidden;
+}
+/* ซ่อนทั้งหมด — the default since 2026-09-07, and the reason it is `display:
+   none` rather than a clamp of zero lines: the clamp property takes no zero,
+   and a box told to show no lines still draws its own height. Nothing folded
+   here is drawn, measured, focused or read out.
+
+   (The property is deliberately not spelled here. `test/disclosure.test.js`
+   counts every place this file names it, and the count is the ban on a second
+   clamp growing somewhere with no button under it.) */
+.disclosure-body.clamp-whole { display: none; }
+/* 12px medium in the brand green — one size under `.hint`'s 12.5, because this
+   is a control beside text rather than more text. It read `font-size: 12.5px`
+   on `.link`'s 13px/1 until 2026-09-07; the leading is now the paragraph's own
+   1.7 so the two sit on the same rhythm when the button rides a line of it. */
+.link.disclosure-more {
+  margin-top: 4px;
+  font: 500 12px/1.7 var(--sans);
+}
+
+/* …อ่านต่อ AT THE END OF THE SECOND LINE, not adrift on a line of its own.
+
+   The clamp draws its own ellipsis at the cut; the button is placed over it,
+   with a short fade so the word it covers does not end mid-letter against the
+   label. `--card-fade` is `--card` at zero alpha, which is the only way to
+   fade to a colour in both themes — a plain `transparent` fades through grey
+   in some engines. Everything folded sits on `--card`: the policy rows, and
+   `.reason-card` which sets that background itself.
+
+   Only `.at-tail`, which the component sets when something is CLAMPED and
+   closed. Folded whole there is no line to ride, and open the control belongs
+   under the text where the reader's eye finishes. */
+.disclosure.at-tail { position: relative; }
+.disclosure.at-tail .disclosure-more {
+  position: absolute; right: 0; bottom: 0; margin-top: 0;
+  padding-left: 30px;
+  background: linear-gradient(to right, var(--card-fade), var(--card) 22px);
+}
+.disclosure.at-tail .disclosure-more::before { content: '… '; color: var(--muted-2); }
 
 /* THE APP'S RING WAS DECLARED HERE, and the sidebar is why a rule is still here.
 
@@ -6389,6 +6484,86 @@ td > .approver-line { margin-top: 5px; }
    take that layout with it. */
 .entry-mark .chip + .chip { margin-left: 6px; }
 
+/* ── จาก–ถึง holds FOUR things, and they were three grey lines in a stack ────
+   The cell prints, top to bottom: the times, the scan badge, the badge's own
+   explanation, and the day's punches as the machine recorded them. Reported on
+   2026-09-07 as "กล่องข้อความเตือน ... ชิดกับบรรทัดเวลาด้านบนเกินไป", and the
+   screenshot showed the other half of it: the badge's explanation and the
+   machine's line were the SAME 12px in the SAME grey, 2px apart, so the two
+   read as one four-line paragraph of grey with a pill on top of it.
+
+   Three rules, and each one is doing a different job.
+
+   ONE — 8px UNDER THE TIMES rather than `.entry-mark`'s 6. The 6 is right where
+   that class does its usual job (a chip under a line of work, on a phone card
+   whose label floats); here it is separating a finding from the two numbers the
+   finding is ABOUT, and 6px read as the times' own second line.
+
+   TWO — THE EXPLANATION GOES A STEP QUIETER, and this is the half that fixes
+   the wall of grey. 11.5px is not a new size: it is `.cell-note`'s, the size
+   this app already writes a note under a figure in. `--muted-2` is one step
+   down from `--muted`, which the punches line keeps — so the hierarchy the
+   reader wanted is now in the type: the machine's own times stay the loudest
+   thing under the badge, and the sentence explaining the badge sits under them.
+   The minutes are still in it ("ขาดอีก 3 ชม. 2 นาที"), which is why it goes to
+   `--muted-2` and no further: `--muted-3` at 11.5px is 2.79:1 on the card in
+   ธีมสว่าง and this line carries a figure somebody may act on.
+
+   THREE — 6px OVER THE PUNCHES, not 2. It is the only line in the cell that is
+   not this system talking: it is what the scanner recorded. 4px was measured
+   too and is 2px cheaper; 6 is what actually reads as a separate statement.
+
+   WHAT IT COSTS, MEASURED (1440px, built app, July, THT0107's 21 rows): the
+   tallest row 170 → 178 and the median 116 → 122. The round before this one
+   bought 188 → 170 by widening the column; this gives eight of those eighteen
+   back, on the rows that carry a finding, and that is the trade — a row that
+   is legible at a glance against a row that is shorter. */
+.stack-table td.when-cell .entry-mark { margin-top: 8px; }
+.stack-table td.when-cell .entry-mark .cell-sub.th {
+  margin-top: 4px;
+  font-size: 11.5px; line-height: 1.5;
+  color: var(--muted-2);
+}
+.stack-table td.when-cell > .cell-sub.th { margin-top: 6px; }
+
+/* ── TWO BADGES THAT NO LONGER FIT SIDE BY SIDE ─────────────────────────────
+   Reported on 2026-09-07 as "แท็กมันซ้อน ๆ กัน" and measured: on a row carrying
+   both `ไม่ได้สแกนเข้า OT` (104px) and `ไม่ครบ · ขาด 47 นาที` (120px) the pair
+   wants 230px and the cell has 191, so the second wraps — and it wrapped into
+   the two defects below. The column being widened this same day is what made
+   the pair NEARLY fit, which is why this surfaced now rather than in September.
+
+   ONE — THE PILLS TOUCHED. Measured gap: **0px**. `.chip` is `inline-block`, so
+   two of them on consecutive line boxes stack their margin boxes edge to edge:
+   an amber pill's top border sitting on a grey pill's bottom border, which is
+   what reads as one badge overlapping another. 4px is the same step `.entry-mark`
+   uses everywhere else in this cell.
+
+   TWO — THE SECOND ONE WAS INDENTED 6px. `.entry-mark .chip + .chip` puts the
+   gap on the SECOND chip's left, which is right while they share a line and
+   becomes a left indent the moment they do not: the wrapped pill started 6px in
+   from the pill above it and from the two lines below it, so nothing in the
+   cell lined up. The gap moves to the first chip's RIGHT, where it means the
+   same thing on one line and nothing at all on two.
+
+   ONLY THE HORIZONTAL HALF IS DESKTOP-SCOPED, and that is not tidiness: below
+   860px this cell is a card field whose value is RIGHT-aligned, so a trailing
+   margin-right would push the pill 6px off the edge every other value on the
+   card lines up with. The vertical 4px is unscoped because a stack is a stack
+   in both layouts. Measured at 360px: the two pills sit side by side there (the
+   field is wider than the desktop column), so neither rule changes anything —
+   which is the answer this scoping is written to guarantee, not an accident.
+
+   `:not(:last-of-type)` and not `:first-child`: the last SPAN in this cell is
+   the last chip (the explanation under them is a `div`), so the trailing pill
+   never carries a margin into whatever follows it. A one-chip row — most rows —
+   matches nothing here and costs nothing. */
+.stack-table td.when-cell .entry-mark .chip:not(:last-of-type) { margin-bottom: 4px; }
+@media (min-width: 861px) {
+  .stack-table td.when-cell .entry-mark .chip { margin-left: 0; }
+  .stack-table td.when-cell .entry-mark .chip:not(:last-of-type) { margin-right: 6px; }
+}
+
 /* ── the two columns that hold prose ───────────────────────────────────────
    ตรวจสอบใบของพนักงาน is nine columns of figures, times and dates plus two that
    hold language: รายละเอียดงานที่ทำ, which is a sentence somebody typed, and
@@ -6429,8 +6604,20 @@ td > .approver-line { margin-top: 5px; }
    phone-only line-height and is pinned by name in test/entryRowChrome.test.js.
 
    NOT INSIDE THE PHONE BLOCK, and nothing needs to be: `thead` is
-   `display: none` below 860px, so a width on a `th` reaches nothing there. */
-.stack-table th.desc-col { width: 40%; }
+   `display: none` below 860px, so a width on a `th` reaches nothing there.
+
+   IT READ `width: 40%` UNTIL 2026-09-07, when จาก–ถึง was widened underneath
+   it and this column was asked to give the room back — "ข้อความส่วนใหญ่เป็น
+   ข้อความสั้น ๆ", which the database agrees with: the longest description in
+   it is 55 characters and the median is under 20. Measured at 1440px on the
+   built app against a clone of the real July file, twenty-one rows: 280 → 232.
+   NOT TRUNCATED, and that was asked about. This is the sentence ฝ่ายบุคคล
+   reconcile a month against a signed sheet by; an ellipsis hides the half that
+   settles an argument, and the row has the height to wrap into — it is already
+   as tall as the chips beside it. Wrapping is the answer here, and the 40%
+   this replaces was itself only ever defending the wrap against a narrower
+   neighbour. */
+.stack-table th.desc-col { width: 32%; }
 .stack-table th.status-col { width: 12%; }
 
 /* ── จาก–ถึง, WHICH IS NOT A PAIR OF TIMES ANY MORE ────────────────────────
@@ -6454,8 +6641,43 @@ td > .approver-line { margin-top: 5px; }
 
    WHERE THE ROOM COMES FROM: the button column, which auto-sized to 204px for
    two ghost buttons, and วันที่ at 102. NOT from รายละเอียดงานที่ทำ, which was
-   asked to grow in the same breath and keeps its 40%. */
-.stack-table th.when-col { width: 15%; min-width: 172px; }
+   asked to grow in the same breath and kept its 40% then — it is 32% now, and
+   this column is what it gave the eight points to. See the note over
+   `desc-col`.
+
+   IT READ `width: 15%; min-width: 172px` UNTIL 2026-09-07, and what moved was
+   not the rule but the CELL: 172px was measured when a day's scan line read
+   `สแกน 07:34 , 19:30` and fitted on one. The July file has days with three,
+   six and seven punches in them, so the same column now wraps
+   `สแกน 07:26, 00:59 (+1), 07:23 (+1)` to THREE lines and stands the row at
+   188px — which is the shape 172px was written to undo, arrived at from the
+   other side.
+
+   MEASURED AGAIN THE SAME WAY: built app, clone of the real database, July,
+   THT0107's twenty-one rows, at 1440 and 1280. The floor was swept in
+   12px steps and it has two thresholds, both of them content's:
+
+     172   the scan line takes 3 lines · tallest row 188px   (today)
+     184   the scan line falls to 2                          · row still 188
+     204   the tallest row falls to 170px
+     214   nothing further moves — 204 is where it stops
+
+   So the floor is 204 and not a round number: it is the second threshold, and
+   the first one below it buys half the fix. A seven-punch day still wraps and
+   is supposed to — `สแกน 07:26, 00:59 (+1), … 20:11 (+1)` needs 447px on one
+   line, which is a column no screen has room for.
+
+   THE PERCENTAGE IS 21 AND NOT 30. 30% was offered; at 1440 it takes the
+   sentence column below what its longest row needs while the chips it would
+   buy room for are already whole at 220. 21% measures 220 at 1440 (+28% on the
+   172 it replaces, which is the ask) and drops to the 204 floor at 1280.
+
+   WHAT IT COSTS, STATED: at 1280 the table is already 8px wider than its
+   `.table-wrap` and scrolls inside it; this makes that 50px, because
+   รายละเอียดงานที่ทำ is at its own content floor there (138px) and has nothing
+   left to give. The row is 18px shorter and the scan line one line shorter in
+   exchange. At 1440 nothing scrolls, before or after. */
+.stack-table th.when-col { width: 21%; min-width: 204px; }
 
 /* ── which rules computed this row, in the drawer that opened for it ───────
    กฎที่ใช้ was a column until 2026-09-04 and is one line of the ประวัติการแก้ไข
@@ -6505,13 +6727,34 @@ td > .approver-line { margin-top: 5px; }
    off the ends of them. One declaration is cheaper than finding that out. */
 .hint.entry-foot {
   margin-top: 14px; margin-bottom: 0;
-  padding: 10px 14px;
+  padding: 14px 16px;
   background: var(--neutral-wash);
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   font-size: 12px;
   text-align: left;
 }
+/* IT READ `padding: 10px 14px` AND `border: 1px solid var(--line-soft)` UNTIL
+   2026-09-07, when the box was asked to read as a callout rather than as two
+   sentences that happen to have a tint behind them.
+
+   THE BORDER IS THE CHANGE, AND IT IS ONE STEP. In ธีมมืด `--line-soft` and
+   this box's own `--neutral-wash` are three values apart on each channel —
+   a border nobody can see, so the box was a wash with no edge, and the round
+   that asked for "a thin border" was asking for the one it already had on
+   paper. `--line` is a step further out in both themes: an edge you can see,
+   and still the quietest edge this app draws. (The figures are in the token
+   block at the top of this file; they are not repeated here, because a hex
+   written down in a rule is a colour that has stopped following the theme —
+   see `no rule names a colour of its own` in test/theme.test.js.) NOT a
+   coloured or accent border: the two lines in here are standing rules about
+   what an edit does, not a warning, which is the same reason the box is
+   `--neutral-wash` and not an amber panel.
+
+   4px MORE PADDING ON EACH AXIS, measured at 64px tall → 73px. What was asked
+   for was p-4 (16px all round); 14/16 is what the app's own boxes take — the
+   audit drawer is 14/16/16 — and a 16px top on a 12px two-line note reads as a
+   gap rather than as padding. */
 /* ONE RULE PER LINE. The two were joined by a · into a single Thai sentence,
    and Thai has no spaces — so the layout had one unbreakable string to place
    and broke it wherever the box happened to end, which put the tail of the
@@ -6526,12 +6769,18 @@ td > .approver-line { margin-top: 5px; }
    rather than under its bullet. */
 .entry-foot .foot-notes {
   list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 7px;
 }
 .entry-foot .foot-notes > li { position: relative; padding-left: 14px; }
+/* THE DOT IS A COLOUR NOW, NOT AN OPACITY. `opacity: .6` on a `--muted` glyph
+   lands somewhere between `--muted-2` and `--muted-3` and lands somewhere
+   ELSE the day either token moves — an opacity is a number about pixels, and
+   what this wants to say is "one step quieter than the sentence". `--muted-3`
+   says that in the palette's own words, and it is the token the other quiet
+   marks in this app take. */
 .entry-foot .foot-notes > li::before {
   content: '•'; position: absolute; left: 0; top: 0;
-  opacity: .6; font-size: 13px; line-height: 1.55;
+  color: var(--muted-3); font-size: 13px; line-height: 1.55;
 }
 
 /* The open state of a toggle has to differ by more than the word on it —
@@ -7077,7 +7326,7 @@ tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
    down a column. IBM Plex Mono carries no Thai at all, so Thai set in it does not
    come out mono — the digits take the mono and the letters drop past it to
    whatever the system happens to have, which is the one font on the page that is
-   not IBM Plex Sans Thai. Two fonts inside one short line, and the line looks
+   not IBM Plex Sans Thai Looped. Two fonts inside one short line, and the line looks
    broken rather than quiet. Same size, same colour, same margin; sans, and the
    tabular-numeral setting dropped with it since a sentence has nothing to line
    up against. (The policy dropdowns three hundred lines down are the same
@@ -7151,7 +7400,7 @@ tbody tr:hover { background: var(--green-wash); }
    alignment to work is the one where the numeral says what it counts.
    Sans, not the mono a figure would take: mono carries no Thai at all, so
    กลุ่มที่ set in it would come out in whatever the system falls back to — the
-   one font on the page that is not IBM Plex Sans Thai. */
+   one font on the page that is not IBM Plex Sans Thai Looped. */
 .policy-section-title .n {
   font: 600 11.5px/1.6 var(--sans); letter-spacing: .02em; color: var(--muted-2);
 }
@@ -7265,6 +7514,27 @@ tbody tr:hover { background: var(--green-wash); }
    explains what is being asked, and the answer to it is opposite. */
 .policy-help { margin-top: 5px; }
 
+/* ที่มาของค่าที่ใช้อยู่ — the note under a รอ HR ยืนยัน row, folded at four
+   lines by `Disclosure`. It was an inline `margin-top: 2` on a `<div>` inside
+   the `.hint`; the fold renders a `<p>`, so the gap is named here rather than
+   passed through the component as a style. Everything else it wears — 12.5px,
+   `--muted-2` — it still inherits from the `.hint` it sits in. */
+.policy-open-note { margin-top: 2px; }
+
+/* ── ค่าที่ต่างจากค่าตั้งต้น, as chips ─────────────────────────────────────
+
+   The banner on นโยบายการคำนวณ listed one line per override — `ชื่อข้อ: เก่า →
+   ใหม่ (มีผลต่อชั่วโมง)` — under a heading and a sentence, and on this database
+   that was most of a phone screen standing between the page's title and its
+   first question. Three chips on one or two rows say the same thing.
+
+   `.chip` is `white-space: nowrap` because it usually holds a status word.
+   These hold a RULE'S OWN NAME, which runs to 46 characters on this page, so
+   they have to wrap inside the chip rather than push the alert sideways —
+   `.entry-mark .chip` makes the same exception for the same reason. */
+.policy-diffs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.policy-diffs .chip { white-space: normal; }
+
 /* What each answer means, under the question that offers them.
 
    A <dl> rather than a list of sentences: the option is the term and the gloss
@@ -7347,7 +7617,7 @@ tbody tr:hover { background: var(--green-wash); }
    12:00–13:00 (ค่าเริ่มต้น)". IBM Plex Mono carries no Thai at all, so mono on
    this control would not even be mono: the digits would take the fallback and
    the Thai would drop past it to whatever the system happens to have, which is
-   the one font on the page that is not IBM Plex Sans Thai. The other selects in
+   the one font on the page that is not IBM Plex Sans Thai Looped. The other selects in
    the app hold a name or a filter word and the difference does not show;
    seventeen sentences is where it would.
 
@@ -7565,6 +7835,81 @@ td.rate-col { white-space: nowrap; }
    both are later in the file than this. */
 th.rate-col, td.rate-col,
 th.total-col, td.total-col { text-align: center; }
+
+/* ── แก้ไข on ตรวจสอบประจำเดือน — one pill, two lines ──────────────────────
+   Asked for on 2026-09-07: *ให้กะทัดรัด ความสูงเหมาะสม ไม่ใหญ่เทอะทะ · บรรทัด
+   แรก "1 ครั้ง" ตัวหนา บรรทัดสอง "ฝ่ายบุคคล 1" ตัวเล็ก · จัดกลางคอลัมน์ ·
+   อย่าให้ตัวหนังสือชิดขอบกล่อง*.
+
+   WHAT IT REPLACED: a `.btn.ghost.sm` — a 13px control in 9px of padding, built
+   for a row of actions and about 37px tall — with a second line living OUTSIDE
+   it as a bare `<div>`, both right-aligned by `num` under a one-word heading.
+   Two objects, ragged against an edge, saying one thing.
+
+   THE COLUMN IS CENTRED, HEADING AND CELL TOGETHER, for the same reason the
+   four rate columns above are: this cell is not a figure read down a column
+   against the ones above and below it, it is one object sitting in a column
+   sized by its heading. Right-aligned it hung off the edge with the pill's
+   border a pixel from the next cell.
+
+   Scoped to `.hr-table`: `edits-col` exists on this screen only, and a rule
+   with no table in front of it is a rule the next table to use the name
+   inherits without asking.
+
+   THE PILL IS GREEN, and that is the palette this app already has for it —
+   `--green-bg` / `--green` / `--green-dark` are the theme-aware pair of the
+   `emerald-950/40 · emerald-600/50 · emerald-400` the request was written in,
+   and they are the same three the `เหมารายวัน` and `OT สวัสดิการวันเกิด` chips
+   wear. The second line is quieted from the pill's OWN ink rather than with
+   the app's grey — see the note over `.sub` for why the obvious `--muted-2`
+   does not survive being read on a green ground.
+
+   The 44px thumb target every other pressable thing gets is deliberately NOT
+   asked of it — this column is hidden below 860px (see the phone block), so a
+   pointer is the only thing that ever reaches it. */
+.hr-table th.edits-col, .hr-table td.edits-col { text-align: center; }
+
+.hr-table td.edits-col .edits-pill {
+  display: inline-flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  /* 4px top and bottom is what keeps two lines off their own border; 10px at
+     the sides is the same air `.chip` gives one line of Thai. */
+  padding: 4px 10px; gap: 1px;
+  border: 1px solid color-mix(in srgb, var(--green) 50%, transparent);
+  border-radius: var(--radius-xs);
+  background: var(--green-bg); color: var(--green-dark);
+  cursor: pointer; text-align: center; white-space: nowrap;
+  transition: background .16s, border-color .16s, transform .16s;
+}
+/* THE LINE IS "1 ครั้ง" — A DIGIT AND A THAI WORD — SO IT IS NOT `--mono`.
+   IBM Plex Mono carries no Thai at all: the figure would take the mono face and
+   ครั้ง would drop past it to whatever the system has, which is two faces in one
+   short line. The same trap `.cell-sub.th` spells out. `tabular-nums` is kept so
+   1 and 12 hold the same width down a column of pills. */
+.hr-table td.edits-col .edits-pill .n {
+  font: 600 12.5px/1.35 var(--sans); font-variant-numeric: tabular-nums;
+}
+/* Thai, so not `--mono` — IBM Plex Mono carries none of it and the line would
+   come out in two faces. The same trap `.cell-sub.th` spells out.
+
+   QUIETED BY SIZE AND WEIGHT, and only barely by colour. `--muted-2` was the
+   obvious pick — it is what every second line in this app takes — but it is
+   tuned against `--card`, and on the pill's own `--green-bg` it measures about
+   3.2:1 in ธีมสว่าง, which is under AA for eleven-pixel text. Fifteen per cent
+   off the pill's own ink keeps the pair reading as figure-and-qualifier and
+   stays the right side of 4.5:1 in both themes. */
+.hr-table td.edits-col .edits-pill .sub {
+  font: 400 11px/1.3 var(--sans);
+  color: color-mix(in srgb, var(--green-dark) 85%, transparent);
+}
+.hr-table td.edits-col .edits-pill:hover {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, var(--green-bg));
+}
+.hr-table td.edits-col .edits-pill:active { transform: translateY(1px); }
+/* A month nobody corrected. `--muted` and not the pill's green: there is no
+   object here, only the absence of one. */
+.hr-table td.edits-col .edits-none { color: var(--muted); }
 
 /* ── สถานะ, and only on ฝ่ายบุคคล's queue ────────────────────────────────────
    Added 2026-09-03 with the รอหัวหน้า rows: that screen lists two statuses now
@@ -13987,6 +14332,12 @@ table.mini tbody tr:hover { background: none; }
   .no-print, .sidebar, .appbar, .mobile-nav, .mobile-nav-spacer, .fab,
   .modal-backdrop, .toast-host { display: none !important; }
   main { padding: 0 !important; }
+  /* Paper has no อ่านต่อ to press. A clamp is a way of asking the reader
+     whether they want the rest; a printout is the answer already being yes, and
+     a page that printed two lines of a paragraph would be reporting the screen
+     rather than the text. */
+  .disclosure-body.clamp, .disclosure-body.clamp-whole { display: block; -webkit-line-clamp: none; overflow: visible; }
+  .disclosure-more { display: none !important; }
   .shell { display: block; }
   .card { border: none; box-shadow: none; }
   /* Screen tables carry a declared geometry so the cards stack straight; paper

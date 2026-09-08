@@ -681,7 +681,7 @@ export function computeSession(session, options = {}) {
    *   written here and never clocked. `ot3_holiday` is nought on every flat day
    *   there is.
    *
-   * ── WHAT THIS REPLACED, TWICE ─────────────────────────────────────────────
+   * ── WHAT THIS REPLACED, TWICE — AND WHAT CAME BACK FOR AN AFTERNOON ───────
    *
    * Between 2026-09-03 and 2026-09-04 the tick was a CEILING: the day was
    * computed the ordinary way and trimmed back to eight from the end, so an
@@ -694,6 +694,24 @@ export function computeSession(session, options = {}) {
    * computes now, and it stays on the result and on the model for the rows
    * written in those three days — see the field's own note in
    * src/models/OtEntry.js.
+   *
+   * ── AND THE SECOND READING CAME BACK FOR AN AFTERNOON ─────────────────────
+   *
+   * Later on 2026-09-07 the WORKING-DAY half was reversed again, reported as a
+   * bug in these words: *ห้ามใส่เลข 8 ในช่อง ×1.5 ปกติ เพราะเวลาทำงานปกติ 8 ชม.
+   * ไม่ใช่ชั่วโมง OT*. For that afternoon a flat Monday-to-Friday computed to
+   * nought in all three rate columns with eight hours in `totals.normalHours`
+   * and no segments at all, and F-HR-027 grew a fourth จำนวนชั่วโมง column to
+   * print them.
+   *
+   * HR WITHDREW IT THE SAME DAY, shown the sheet: *ไม่ต้องมีช่องเหมารายวัน
+   * 8.00-17.00 (วันจ.-ศ.) คือเหมารายวันคือใส่ชั่วโมงในช่องเริ่ม 17.01-07.59
+   * (วันจ.-ศ.)* — and, asked whether the eight hours in that column are
+   * therefore OT ×1.5, **ใช่ — เป็น OT ×1.5**. That column is the one ฝ่ายบุคคล
+   * total into the OT×1.5 วันปกติ box at the foot of the sheet, so printing a
+   * figure there that is not overtime would be a sheet that adds itself up
+   * wrong. Nothing of that afternoon survives here; it is written down so the
+   * fourth column is not built a second time.
    *
    * ── SO IT SHORT-CIRCUITS, AND THE SHORT CIRCUIT IS THE RULE ───────────────
    *

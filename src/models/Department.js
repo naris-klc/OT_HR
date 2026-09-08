@@ -20,6 +20,34 @@ const departmentSchema = new mongoose.Schema(
     manager: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
 
     /**
+     * ฝ่ายบุคคลเป็นหัวหน้างานของแผนกนี้ — so this department has no first
+     * signature to collect, and a request filed in it goes straight to the
+     * ฝ่ายบุคคล step.
+     *
+     * A RULE ABOUT THE แผนก, WHICH IS THE WHOLE POINT OF THE FIELD. Both
+     * แผนกจัดซื้อ and แผนกทรัพยากรมนุษย์ already routed this way before it
+     * existed — but only because `initialStatus` could find nobody on the
+     * roster to sign for them, which is an ACCIDENT of who happens to be
+     * employed. The หน่วยงาน table writes ฝ่ายบุคคล into their หัวหน้างาน column
+     * outright, and HR said it in those words on 2026-09-07: ฝ่ายบุคคลเป็น
+     * หัวหน้าของแผนกจัดซื้อและแผนกทรัพยากรมนุษย์. Appoint a ผู้จัดการแผนกจัดซื้อ
+     * tomorrow and, without this, every purchasing request would silently start
+     * waiting for that signature instead — a routing rule changed by a roster
+     * edit, with nothing anywhere saying so.
+     *
+     * IT ALSO MAKES THE RULE VISIBLE, which the accident could not. A แผนก with
+     * nobody to sign wears ⚠ ยังไม่มีหัวหน้า on ตั้งค่าระบบ and counts towards
+     * the แผนกมีปัญหา filter — the right warning for a department that has been
+     * left without one, and the wrong one for these two, where the empty
+     * column IS the answer rather than the problem.
+     *
+     * DEFAULT false, so that adding the field changes nothing for the sixteen
+     * departments that do have a หัวหน้า and a row written before it existed
+     * reads back as the ordinary department it has always been.
+     */
+    signedByHr: { type: Boolean, default: false },
+
+    /**
      * [OPEN 8 / 9] null = no cap for this department. Counted per calendar
      * month on the basis set by policy.capBasis.
      */

@@ -30,8 +30,11 @@ import mongoose from 'mongoose';
  */
 
 /**
- * EVERY FILE IN src/ THAT IS AN ENTRY POINT. All eight, no exceptions and no
- * exemptions — that is the whole point of the list.
+ * EVERY FILE IN src/ THAT IS AN ENTRY POINT. All of them, no exceptions and no
+ * exemptions — that is the whole point of the list. (It read "All eight" until
+ * 2026-09-07, and had been wrong since the fifth was added: a count in the
+ * prose beside a list the reader can see is a fact with no reader, so this now
+ * says what the rule is instead of how long the list happens to be.)
  *
  * The three migrations joined it on 2026-08-25 and were the reason the list
  * became a list. Each one calls `run()` at module scope until that day, each
@@ -45,6 +48,10 @@ import mongoose from 'mongoose';
  *   · `migrate-birthday-rule-start.js` backdates a policy version, changing
  *                                  which days counted as somebody's holiday
  *   · `migrate-first-password.js`  overwrites password hashes on employee rows
+ *   · `migrate-hr-headed-departments.js` marks แผนกจัดซื้อ and
+ *                                  แผนกทรัพยากรมนุษย์ as headed by ฝ่ายบุคคล,
+ *                                  which decides where their next request is
+ *                                  routed
  *
  * `whatif.js` is on the list too and writes nothing. It is here so that the
  * rule has no judgement in it: a reader deciding per file whether a script is
@@ -67,6 +74,7 @@ const ENTRY_POINTS = [
   'src/refresh-signature-names.js',
   'src/import-departments.js',
   'src/rehome-demo-roster.js',
+  'src/migrate-hr-headed-departments.js',
 ];
 
 /** Somewhere nothing is listening, in case both the guard and the stub fail.

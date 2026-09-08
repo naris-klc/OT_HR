@@ -261,6 +261,13 @@ test('every row still has nine cells however the signatures fall', () => {
    * span now varies. Counted here rather than trusted, because a row one cell
    * short does not fail loudly — it shifts every value after it one column left
    * on a document that gets filed.
+   *
+   * IT WAS TEN FOR AN AFTERNOON ON 2026-09-07 — เวลาทำงานปกติ (เหมารายวัน)
+   * was a fourth จำนวนชั่วโมง column, for the hours a flat day on an ordinary
+   * working day was briefly worth outside the rate columns. HR asked for the
+   * column off the sheet the same day (*ไม่ต้องมีช่องเหมารายวัน …*) and for
+   * those hours to go in เริ่ม 17.01-07.59 (วันจ.-ศ.) with the rest of the
+   * วันปกติ OT, which is where the engine puts them again.
    */
   const cellsFor = (sessionCount, oneApprover) => {
     const rows = [];
@@ -279,6 +286,26 @@ test('every row still has nine cells however the signatures fall', () => {
   assert.deepEqual(cellsFor(2, true), [9, 9]);
   assert.deepEqual(cellsFor(2, false), [9, 9]);
   assert.deepEqual(cellsFor(3, false), [9, 9, 9]);
+
+  /**
+   * AND THE HEADER SPANS ADD UP TO THE SAME NINE, which the count above cannot
+   * see: a `colSpan` left at 4 over three columns does not shorten a body row,
+   * it shifts every heading one column left over values that are still right.
+   * Added the afternoon the fourth hour column came off again, because that
+   * is exactly the edit that leaves a span behind.
+   */
+  const code = jsxOf(FORM);
+  const head = code.slice(code.indexOf('<thead>'), code.indexOf('</thead>'));
+  assert.match(head, /<th colSpan=\{2\}>เวลาทำ OT<\/th>/);
+  assert.match(head, /<th colSpan=\{3\}>จำนวนชั่วโมง<\/th>/);
+  // วันที่ 1 + เวลาทำ OT 2 + จำนวนชั่วโมง 3 + รายละเอียด 1 + two signatures = 9.
+  const colgroup = code.slice(code.indexOf('<colgroup>'), code.indexOf('</colgroup>'));
+  // `<col ` / `<col/`, so the opening `<colgroup>` is not counted as a
+  // tenth column.
+  assert.equal((colgroup.match(/<col[ /]/g) || []).length, 9, 'the colgroup and the grid disagree');
+  // The สรุปรวม row: blank + สรุปรวม(2) + three figures + blank(3).
+  const total = code.slice(code.indexOf('<tr className="total">'));
+  assert.match(total.slice(0, total.indexOf('</tr>')), /colSpan=\{3\} \/>/);
 });
 
 test('no timestamp is printed beside either name', () => {

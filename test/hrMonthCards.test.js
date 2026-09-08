@@ -1145,3 +1145,88 @@ test('who set a rule set is quieter than which rule set it is', () => {
   assert.ok(!/color: 'var\(--muted\)'/.test(cell.slice(cell.indexOf('createdByName'))), 'the sub-line kept the darker grey');
   assert.match(css, /\.pv-by \{ font: 400 11\.5px\/1\.45 var\(--sans\); color: var\(--muted-2\); \}/);
 });
+
+/**
+ * แก้ไข — one pill, two lines, centred in its column.
+ *
+ * Asked for on 2026-09-07: *ให้กะทัดรัด ความสูงเหมาะสม ไม่ใหญ่เทอะทะ · บรรทัด
+ * แรก "1 ครั้ง" ตัวหนา บรรทัดสอง "ฝ่ายบุคคล 1" ตัวเล็ก · จัดกลางคอลัมน์ ·
+ * อย่าให้ตัวหนังสือชิดขอบกล่อง*.
+ *
+ * WHAT IS PINNED IS THE PART THAT CAN QUIETLY COME BACK. It was a
+ * `.btn.ghost.sm` — a control built for a row of actions — with the second line
+ * living OUTSIDE it as a bare `<div>` carrying two inline styles, both cells
+ * right-aligned by `num` under a one-word heading. The count and the qualifier
+ * are one fact: `hrCount` is counted among the same snapshots as `count`
+ * (`editTally` in lib/reports.js), so it can never be drawn without it, and the
+ * markup now says so by nesting it.
+ *
+ * The geometry is the stylesheet's, like everything else on this screen.
+ */
+test('the แก้ไข cell is one pill with the count over its qualifier', () => {
+  const cell = hrCode.slice(hrCode.indexOf('<td className="edits-col">'));
+  const body = cell.slice(0, cell.indexOf('</td>'));
+
+  // ONE object, and it is still the button that opens ประวัติการแก้ไข — a badge
+  // that only looked like this would be a figure with no way to ask what it
+  // counts.
+  assert.match(body, /<button\s+type="button"\s+className="edits-pill"/);
+  assert.match(body, /onClick=\{\(\) => setAuditing\(row\.employee\)\}/);
+  assert.match(body, /<span className="n">\{row\.edits\.count\} ครั้ง<\/span>/);
+  assert.match(body, /<span className="sub">ฝ่ายบุคคล \{row\.edits\.hrCount\}<\/span>/);
+  // …and the qualifier is INSIDE it, not a sibling under the button.
+  assert.ok(
+    body.indexOf('className="sub"') < body.indexOf('</button>'),
+    'ฝ่ายบุคคล N is back outside the pill',
+  );
+  // The control class is gone with it: `.btn.ghost.sm` is 13px in 9px of
+  // padding and is why the cell was too tall for what it holds.
+  assert.ok(!/btn ghost sm/.test(body), 'the action-row button came back');
+  // No inline geometry — this screen's layout is the stylesheet's.
+  assert.ok(!/fontSize:|style=\{\{/.test(body), 'an inline style came back into the cell');
+
+  // Centred, heading and cell together, which is why neither carries `num`:
+  // `td.num, th.num` right-aligns, and this cell holds one object rather than a
+  // figure read down a column.
+  assert.ok(!/<th className="num edits-col">/.test(hrCode), 'the heading is right-aligned again');
+  assert.match(desktop, /\.hr-table th\.edits-col, \.hr-table td\.edits-col \{ text-align: center; \}/);
+
+  // Compact, and padded off its own border — the two halves of the request.
+  const pill = desktop.slice(desktop.indexOf('.hr-table td.edits-col .edits-pill {'));
+  const rule = pill.slice(0, pill.indexOf('}'));
+  assert.match(rule, /display: inline-flex; flex-direction: column;/);
+  assert.match(rule, /align-items: center; justify-content: center;/);
+  assert.match(rule, /padding: 4px 10px;/);
+  assert.match(rule, /border: 1px solid color-mix\(in srgb, var\(--green\) 50%, transparent\);/);
+  assert.match(rule, /background: var\(--green-bg\); color: var\(--green-dark\);/);
+
+  // The second line is quieted from the pill's own ink. `--muted-2` is the grey
+  // every other sub-line takes, and it is tuned against `--card`: on
+  // `--green-bg` it measures about 3.2:1 in ธีมสว่าง, under AA at 11px.
+  const sub = desktop.slice(desktop.indexOf('.hr-table td.edits-col .edits-pill .sub {'));
+  assert.match(sub.slice(0, sub.indexOf('}')), /color: color-mix\(in srgb, var\(--green-dark\) 85%, transparent\);/);
+
+  // And the rules are above the phone block, where this column does not exist
+  // at all — it is one of the five the card hides by name.
+  assert.ok(!phone.includes('.edits-pill'), 'a desktop-only pill leaked into the card block');
+  layoutIsTheStylesheets();
+});
+
+/**
+ * …and neither line of that pill is set in a face that cannot draw it.
+ *
+ * `1 ครั้ง` is a digit and a Thai word in one short line. `--mono` was the
+ * obvious pick for a figure and is wrong here for the reason `.cell-sub.th`
+ * spells out at the top of the tables section: IBM Plex Mono carries no Thai,
+ * so the numeral would take the mono face and ครั้ง would drop past it to
+ * whatever the system has. Two faces, one line, and it reads as broken rather
+ * than as quiet. `tabular-nums` survives the move, which is the half of `--mono`
+ * this column actually wanted.
+ */
+test('the pill is set in the Thai face, with the figures still tabular', () => {
+  const n = desktop.slice(desktop.indexOf('.hr-table td.edits-col .edits-pill .n {'));
+  const rule = n.slice(0, n.indexOf('}'));
+  assert.match(rule, /font: 600 12\.5px\/1\.35 var\(--sans\);/);
+  assert.match(rule, /font-variant-numeric: tabular-nums;/);
+  assert.ok(!/--mono/.test(rule), 'ครั้ง is back in a face that cannot draw it');
+});

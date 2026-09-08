@@ -65,7 +65,20 @@ const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
 test('รายละเอียดงานเป็นการ์ดที่มีหัวข้อ ไม่ใช่ข้อความลอย', () => {
   assert.match(common, /<div className="reason-card">/, 'การ์ดรายละเอียดงานหายไป');
   assert.match(common, /รายละเอียดงานที่ขอ OT/, 'หัวข้อของการ์ดหายไป');
-  assert.match(common, /\? <p className="reason-text">\{description\}<\/p>/);
+  /* FOUR LINES OF IT, AND อ่านต่อ FOR THE REST — 2026-09-07. The field takes
+     500 characters and this card sits above ผู้อนุมัติ and ประวัติรายการ in a
+     pop-up; what changed is how much of a long description is drawn at once,
+     not what the card is. `lines={4}` is pinned because two — the number a
+     policy hint keeps — would be a reviewer pressing อนุมัติ on a sentence they
+     have not finished reading. `Disclosure` draws no button under a description
+     that fits, which is nearly all of them. */
+  assert.match(
+    common,
+    /\? <Disclosure className="reason-text" lines=\{4\}[^>]*>\{description\}<\/Disclosure>/,
+  );
+  // The empty case is NOT folded: it is one short sentence, and a fold under it
+  // would be a control offering to reveal nothing.
+  assert.match(common, /<p className="reason-text none">/);
   // The field is required on the form (see the tests above), so an empty one
   // means a row nobody filled a form for — a birthday filing the rule made.
   assert.match(common, /ไม่ได้ระบุรายละเอียดงาน/, 'การ์ดว่างเปล่าเมื่อไม่มีรายละเอียด');

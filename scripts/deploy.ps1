@@ -68,7 +68,7 @@ param(
     # A CSS class the change being deployed ADDS. Step 5 greps the stylesheet
     # the running server hands out for it - see the note there for why a
     # sentinel that survives every deploy is worse than none.
-    [string]$Sentinel = 'period-status'
+    [string]$Sentinel = 'policy-diffs'
 )
 
 $ErrorActionPreference = 'Stop'

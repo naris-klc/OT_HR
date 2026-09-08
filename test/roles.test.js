@@ -6,14 +6,14 @@ import { dirname, join } from 'node:path';
 
 import {
   APPROVED_BY, COMPANY_REPORT_ROLES, ROLES, ROLE_LABEL_TH, SIGNER_ROLES, approverRolesFor,
-  filesStraightToHr, isSigner, mayApproveRole, outranks, readsCompanyReports, readsOwnTeamOnly,
-  maySeeRole, roleFromLabel, roleLabel, seesEveryRole, visibleRolesFor,
+  filesStraightToHr, hrHeadsDepartment, isSigner, mayApproveRole, outranks, readsCompanyReports,
+  readsOwnTeamOnly, maySeeRole, roleFromLabel, roleLabel, seesEveryRole, visibleRolesFor,
 } from '../lib/roles.js';
 import { mayCorrectEntries } from '../lib/entries.js';
 import { teamScoped } from '../lib/reports.js';
 import { approvalPermission } from '../lib/delegation.js';
 import { initialStatus } from '../lib/proxyFiling.js';
-import { HR_ASSIGNABLE_ROLES } from '../lib/employees.js';
+import { HR_ASSIGNABLE_ROLES, unsignedStaff } from '../lib/employees.js';
 
 /**
  * THE SEVEN บทบาท, AND THE ONE SPELLING THAT MAY NOT COME BACK.
@@ -410,6 +410,74 @@ test('the four บทบาท with no first step ignore the roster entirely', (
     assert.equal(start.skipped, false, 'no step was skipped by anybody’s judgement');
     assert.equal(start.note, null);
   }
+});
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * A แผนก WHOSE หัวหน้างาน IS ฝ่ายบุคคล — the rule, not the empty roster.
+ *
+ * แผนกจัดซื้อ and แผนกทรัพยากรมนุษย์ have ฝ่ายบุคคล written into the
+ * หัวหน้างาน column of the หน่วยงาน table, and HR restated it on 2026-09-07.
+ * Both already routed to ฝ่ายบุคคล before `signedByHr` existed, because the
+ * roster check above could find nobody to sign for them — which is the whole
+ * reason these tests are worth writing separately from those. The roster
+ * answer moves with the next hire; this one does not, and the case that tells
+ * them apart is the third assertion.
+ */
+const HR_DEPT = { _id: 'dept-pur', signedByHr: true };
+const hrDeptFiling = (employee, signers) => initialStatus({
+  filer: employee, employee, department: HR_DEPT, policy: {}, signers,
+});
+
+test('ฝ่ายบุคคล as the แผนก\'s หัวหน้างาน sends the request straight to them', () => {
+  const start = hrDeptFiling(EMP, []);
+  assert.equal(start.status, 'pending_hr');
+  assert.equal(start.skipped, false, 'no step was passed over — there was none to pass over');
+  assert.equal(start.note, null);
+});
+
+test('and it outranks the roster, which is the whole reason the field exists', () => {
+  // Appoint a ผู้จัดการแผนกจัดซื้อ and the roster check above would route every
+  // purchasing request to them. The department's own row is what stops it.
+  const dm = person('dm-pur', 'dept_manager', { department: HR_DEPT._id });
+  assert.equal(
+    filing(EMP, [{ ...dm, department: DEPT }]).status, 'pending_mgr',
+    'the control: this is what the roster alone would answer',
+  );
+  assert.equal(hrDeptFiling(EMP, [dm]).status, 'pending_hr');
+});
+
+test('a หัวหน้า filing for somebody in such a แผนก has skipped nothing', () => {
+  // The proxy branch marks `skipped` and writes a SKIP_NOTE when the filer
+  // could have signed the step themselves. Here there is no step, so the entry
+  // must not arrive at ฝ่ายบุคคล carrying a note saying one was passed over.
+  const dm = person('dm-pur', 'dept_manager', { department: HR_DEPT._id });
+  const start = initialStatus({
+    filer: dm, employee: EMP, department: HR_DEPT, policy: {}, signers: [dm],
+  });
+  assert.equal(start.status, 'pending_hr');
+  assert.equal(start.skipped, false);
+  assert.equal(start.note, null);
+});
+
+test('a bare department id reads as "not marked", never as marked', () => {
+  // `hrHeadsDepartment` takes the document. A caller that hands in an id gets
+  // the ordinary roster answer — a request routed to a step somebody is
+  // watching — rather than one quietly declared ฝ่ายบุคคล's on the strength of
+  // a field nobody read.
+  assert.equal(hrHeadsDepartment(HR_DEPT), true);
+  assert.equal(hrHeadsDepartment('dept-pur'), false);
+  assert.equal(hrHeadsDepartment(null), false);
+  assert.equal(hrHeadsDepartment({ _id: 'dept-prod' }), false, 'an ordinary แผนก');
+});
+
+test('nobody in such a แผนก is reported as stranded on ตั้งค่าระบบ', () => {
+  // The screen's ⚠ ยังไม่มีหัวหน้า is for a department left without a signer,
+  // not for one where the empty column IS the answer. Both readings come from
+  // `unsignedStaff`, so they cannot disagree with the routing above.
+  const roster = [EMP, person('emp-2', 'employee')];
+  assert.equal(unsignedStaff(roster, DEPT, []).length, 2, 'the control');
+  assert.deepEqual(unsignedStaff(roster, HR_DEPT, []), []);
 });
 
 test('a null signer list is "nobody asked", not "nobody exists"', () => {

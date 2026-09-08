@@ -396,7 +396,15 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                       {thaiDate(e.workDate)}
                       <div className="cell-sub th">วัน{dayName(e.workDate)}</div>
                     </td>
-                    <td data-label="จาก–ถึง">
+                    {/* `when-cell` — a CLASS, and the `data-label` beside it
+                        stays because that is what the phone card prints as the
+                        cell's heading. The three spacing rules this column now
+                        has (see `.stack-table td.when-cell` in app/styles.css)
+                        could have been hung off `[data-label="จาก–ถึง"]`, and
+                        that would key the layout to a Thai HEADING — rename the
+                        column and the spacing silently goes. The same reason
+                        `when-col` on the `th` is a class. */}
+                    <td className="when-cell" data-label="จาก–ถึง">
                       {e.startTime}–{e.endTime}
                       {e.endsNextDay && (
                         <div className="cell-note">ข้ามคืน</div>

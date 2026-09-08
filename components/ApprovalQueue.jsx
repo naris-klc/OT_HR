@@ -15,13 +15,14 @@ import {
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
   maySignFirstStep, isOwnRequest, flatDayEnd, FLAT_DAY_SPAN_MINUTES, isBirthdayWelfare,
-  mayCorrectEntries,
+  mayCorrectEntries, humanHistory,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
 import { isOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
 import {
-  Alert, CapCard, Empty, EditedMark, EntryHistory, Fact, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
+  Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FlatDailyMark,
+  FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
   RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, StatusChip,
   TeamMark, editsOf,
 } from './common.jsx';
@@ -1589,6 +1590,39 @@ export default function ApprovalQueue({
                   <td className="num cap-col"><CapUsage usage={e.usage} /></td>
                   <td className="why-col">
                     {e.description}
+                    {/* ── WHAT KIND OF DAY THIS IS, BEFORE ANYTHING ABOUT WHO
+                        TOUCHED IT ─────────────────────────────────────────────
+                        Asked for on 2026-09-07: the two ticks on the filing form
+                        that change what the day IS — เหมารายวัน and วันเกิด —
+                        were visible to the person who filed and to ฝ่ายบุคคล on
+                        รายการ OT, and nowhere on the screen where somebody signs.
+                        A reviewer reading 08:00–20:00 against 8.00 ชม., or three
+                        holiday-rate hours on what the วัน column calls a Tuesday,
+                        had nothing on the row to explain either figure.
+
+                        FIRST IN THE CELL because the marks under it answer "who
+                        wrote this" and "has it changed", and both of those are
+                        questions about a request whose hours the reader has
+                        already understood.
+
+                        The same two components the employee's own screen and
+                        รายการ OT draw — one vocabulary for one fact, so a chip
+                        does not come to mean something different depending on
+                        which screen it is read from. `FlatDailyMark` prints the
+                        rule underneath as well (why eight hours), which is the
+                        thing this cell was missing.
+
+                        Neither is a tick READ BACK off the form: `flatDaily` is
+                        stored on the request, and วันเกิด is `dayReason` off the
+                        segments the engine computed — see `isBirthdayWelfare`.
+                        A row whose owner's วันเกิด was corrected after filing
+                        therefore says what the hours ARE, not what was claimed. */}
+                    {(e.flatDaily || isBirthdayWelfare(e)) && (
+                      <div className="entry-mark">
+                        <BirthdayWelfareMark entry={e} />
+                        <FlatDailyMark entry={e} />
+                      </div>
+                    )}
                     {/* Whose team this row is from, when the reviewer is
                         holding more than one. */}
                     {covered.length > 0 && (
@@ -2453,6 +2487,28 @@ function DetailModal({
           )}
 
           <Section title="คำขอ">
+            {/* ── THE SAME TWO MARKS THE ROW CARRIES, ABOVE THE FIGURES THEY
+                EXPLAIN ──────────────────────────────────────────────────────
+                The pop-up is where the decision is made and where the four
+                bucket boxes are read, so the answer to "why is a twelve-hour
+                shift 8.00" and "why are these hours in a วันหยุด column on a
+                Tuesday" has to be here and not only on the row behind it. A
+                fact that shows up in the list and vanishes when the list is
+                opened is a fact whose truth appears to depend on the width of
+                the window.
+
+                ABOVE `dl.fact-grid`, because เวลาที่ขอ is the first thing under
+                it and on a เหมารายวัน day those times are exactly what the mark
+                is warning the reader not to multiply out.
+
+                `entry-mark` is the 6px-and-wrap the same chips get on รายการ OT
+                — see the note over it in components/HrEntries.jsx. */}
+            {(e.flatDaily || isBirthdayWelfare(e)) && (
+              <div className="entry-mark">
+                <BirthdayWelfareMark entry={e} />
+                <FlatDailyMark entry={e} />
+              </div>
+            )}
             <dl className="fact-grid">
               <Fact k="เวลาที่ขอ" v={`${e.startTime}–${e.endTime}${e.endsNextDay ? ' (ข้ามคืน)' : ''}`} />
               <Fact k="พักเที่ยง" v={e.noBreakTaken ? 'ไม่พัก' : 'หักตามนโยบาย'} />
@@ -2540,19 +2596,35 @@ function DetailModal({
           {/* One request's history, or the whole chain when this one replaced
               a refused request. The trail arrives a moment after the pop-up
               does, so until it lands this row's own history stands in rather
-              than the section flickering empty. */}
+              than the section flickering empty.
+
+              `hideSystem` — WHAT A REVIEWER IS BEING ASKED ABOUT. This list is
+              read while somebody decides whether to sign, and the question it
+              answers is who filed this, who has signed it already, and whether
+              anybody changed it after it was filed. ระบบคำนวณใหม่ตามนโยบาย
+              answers none of those: it is a run that walked the month, and
+              after a policy change or a holiday-calendar edit EVERY request in
+              the queue carries one, pushing the three rows that matter below
+              the fold on a phone. The rows are not deleted and nothing stops
+              anybody reading them — ประวัติ OT ของฉัน, ตรวจสอบประจำเดือน and
+              the trail endpoint all still draw them in full. See
+              `SYSTEM_LOG_ACTIONS` in lib/entries.js.
+
+              And the emptiness test moves with it: `humanHistory` rather than
+              `e.history`, or an entry whose whole history is replays would get
+              a heading standing over nothing. */}
           {trail?.requests?.length > 1 ? (
             <Section title="ประวัติรายการ (รวมคำขอเดิม)">
-              <RequestTrail requests={trail.requests} liveStatus={e.status} />
+              <RequestTrail requests={trail.requests} liveStatus={e.status} hideSystem />
               {trail.truncated && (
                 <div className="hint">
                   แสดงย้อนหลังได้สูงสุด 20 คำขอ · อาจมีคำขอเก่ากว่านี้ที่ไม่ได้แสดง
                 </div>
               )}
             </Section>
-          ) : (e.history || []).length > 0 && (
+          ) : humanHistory(e).length > 0 && (
             <Section title="ประวัติรายการ">
-              <EntryHistory entry={e} />
+              <EntryHistory entry={e} hideSystem />
             </Section>
           )}
         </>

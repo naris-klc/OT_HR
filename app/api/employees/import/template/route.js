@@ -22,8 +22,16 @@ export const GET = route(async (req) => {
       // settle, so the importer refused the template's own file. A day past 12
       // survives the same round trip as `25/05/1989`, which can only be read
       // one way and settles the order for every ambiguous row typed beside it.
-      ['PM00412', 'สมชาย ใจดี', 'somchai@primus.co.th', 'ช่างเทคนิค', '1989-05-25', 'ENG', 'employee', 'primus'],
-      ['THT0074', 'สุจินดา แรงกสิวิทย์', '', 'เจ้าหน้าที่ผลิต', '', 'PROD', 'employee', 'themtech'],
+      //
+      // THE TWO ROWS SPELL แผนก AND บทบาท TWO DIFFERENT WAYS ON PURPOSE, because
+      // both are read. `department` takes รหัสแผนก, ชื่อไทย or ชื่ออังกฤษ, and
+      // `role` takes the Thai label every screen prints as readily as the
+      // English key — so a roster typed the way HR speaks imports as it stands.
+      // The sample departments must also EXIST: this read `ENG` and `PROD`
+      // until 2026-09-07, and neither is a department on this roster, so the
+      // template's own rows were two of the errors it was handed out to avoid.
+      ['PM00412', 'สมชาย ใจดี', 'somchai@primus.co.th', 'ช่างเทคนิค', '1989-05-25', 'PROD1', 'employee', 'primus'],
+      ['THT0074', 'สุจินดา แรงกสิวิทย์', '', 'เจ้าหน้าที่ผลิต', '', 'แผนกบริการ', 'พนักงาน', 'themtech'],
     ],
   );
   return csvResponse('employee-import-template.csv', csv);

@@ -50,7 +50,11 @@ test('the gap is computed once, by a function all three places call', () => {
   // Every หัวหน้า on the roster is offered to every department, because one
   // ticked into another แผนก is on neither its roster nor its headcount.
   assert.match(code, /const signers = active\.filter\(\(p\) => isSigner\(p\.role\)\)/);
-  assert.match(code, /const stranded = unsignedStaff\(roster, String\(d\._id\), signers\)/);
+  // The DEPARTMENT and not its id, since 2026-09-07: `unsignedStaff` reads
+  // `signedByHr` off the document, and a แผนก headed by ฝ่ายบุคคล strands
+  // nobody. It read `String(d._id)` until then, which made แผนกจัดซื้อ and
+  // แผนกทรัพยากรมนุษย์ four stranded people and two ⚠ rows.
+  assert.match(code, /const stranded = unsignedStaff\(roster, d, signers\)/);
 
   // The banner, the chip and the tab badge — each asks the same function.
   assert.match(code, /const gaps = signingGaps\(departments, people\)/, 'the banner');

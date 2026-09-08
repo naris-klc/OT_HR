@@ -18,7 +18,7 @@ import { companyOf, companyLabel } from '@/src/config/companies.js';
 import PasswordSlips from './PasswordSlips.jsx';
 import { PickDate } from './PickDate.jsx';
 import { approvalDepartments, idOf, viewerId } from '@/lib/entries.js';
-import { ROLES, ROLE_LABEL_TH, isSigner } from '@/lib/roles.js';
+import { ROLES, ROLE_LABEL_TH, isSigner, hrHeadsDepartment } from '@/lib/roles.js';
 // Pure as well — the settings screen names the modes and the write paths refuse
 // with them, and both read the list from here.
 import {
@@ -40,13 +40,38 @@ import { searchPeople, personMatches } from '@/lib/personSearch.js';
 // and the route that refuses the request are quoting one string rather than two
 // translations of one idea.
 import { DEPARTMENT_DELETE_BLOCKED } from '@/lib/departments.js';
+
+/**
+ * WHAT THE TWO UPLOAD BUTTONS ACCEPT — one string, so the file picker's filter
+ * and the sentence under it cannot drift apart.
+ *
+ * `.xlsx` is read directly since 2026-09-07 (src/lib/xlsx.js): a workbook is a
+ * ZIP of XML and the server unzips it, which removes the "Save As → CSV UTF-8"
+ * step and, with it, the whole class of transposed birthdays that step causes.
+ * The old `.xls` — the pre-2007 binary — is NOT in the list, because it is a
+ * different format entirely and would be accepted only to fail on the server.
+ */
+const SPREADSHEET_ACCEPT = '.csv,.xlsx,text/csv,'
+  + 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/**
+ * Is this a workbook rather than a CSV?
+ *
+ * BY NAME HERE, BY BYTES ON THE SERVER, and the difference is deliberate. This
+ * only decides whether to draw the วันเกิด preview, so being wrong costs a
+ * preview; `readUploadedTable` decides what is actually parsed and reads the
+ * first four bytes, so a mislabelled file still imports correctly. Reading the
+ * bytes here would mean shipping a second xlsx reader to the browser.
+ */
+const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // `useScrollEdge` was imported here for the section strip's "there is more this
 // way" fade, which went with the strip's phone layout on 2026-09-04 — below
 // 860px the sections are a dropdown now and there is nothing to scroll. The
 // hook itself is still the app's one reading of that question; SheetScroll and
 // the printed sheets use it.
 import {
-  Alert, ConfirmDialog, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne, ClearButton,
+  Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne,
+  ClearButton,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
@@ -277,7 +302,10 @@ function signingGaps(departments, people) {
   return (departments || [])
     .map((d) => {
       const roster = active.filter((p) => idOf(p.department) === String(d._id));
-      const stranded = unsignedStaff(roster, String(d._id), signers);
+      // The DOCUMENT and not its id, so `unsignedStaff` can read `signedByHr`
+      // off it — a แผนก headed by ฝ่ายบุคคล strands nobody and must not appear
+      // here. `isDepartmentManager` inside it takes either, via `idOf`.
+      const stranded = unsignedStaff(roster, d, signers);
       return {
         dept: d,
         managers: headsOf(signers, d),
@@ -417,8 +445,27 @@ function Heads({ department, people, depts, gap, onGo }) {
    */
   const nobody = heads.length === 0;
 
+  /**
+   * ฝ่ายบุคคล IS THE ANSWER IN THIS COLUMN, not a hole in it.
+   *
+   * แผนกจัดซื้อ and แผนกทรัพยากรมนุษย์ have ฝ่ายบุคคล written into their
+   * หัวหน้างาน column in the หน่วยงาน table (`signedByHr` on the department),
+   * and until this the row drew ⚠ ยังไม่มีหัวหน้า with a แก้ไขสิทธิ์พนักงาน ↗
+   * beside it — a warning about a state that is correct, pointing at a screen
+   * where the fix would be to appoint somebody HR does not want appointed.
+   *
+   * A plain badge and not the ⚠ one, because nothing here needs doing. It is
+   * drawn even when the department also has heads on it: the two are different
+   * facts and the routing follows this one, so a row showing only the names
+   * would say the opposite of what happens to the requests.
+   */
+  const hrHeads = hrHeadsDepartment(department);
+
   return (
     <div className="head-badges">
+      {hrHeads && (
+        <span className="head-badge" title={HR_HEAD_TIP}>ฝ่ายบุคคล</span>
+      )}
       {heads.map((h) => (
         <span key={h._id} className={`head-badge${visiting(h) ? ' visiting' : ''}`}>
           {h.name}
@@ -441,7 +488,11 @@ function Heads({ department, people, depts, gap, onGo }) {
         </span>
       ))}
 
-      {(nobody || stranded.length > 0) && (
+      {/* `stranded` is already empty for a แผนก ฝ่ายบุคคล heads — `unsignedStaff`
+          answers that — and `nobody` is not, because ฝ่ายบุคคล hold no แผนก and
+          so are on nobody's `headsOf`. Both have to be checked or the row would
+          wear the badge above and the ⚠ below it at the same time. */}
+      {!hrHeads && (nobody || stranded.length > 0) && (
         <>
           {/* The same ⚠ the cap-breach note wears in the approval queue — one
               mark for "this row needs somebody to do something", not a second
@@ -470,6 +521,14 @@ function Heads({ department, people, depts, gap, onGo }) {
     </div>
   );
 }
+
+/**
+ * What the ฝ่ายบุคคล badge MEANS, since a name in this column normally belongs
+ * to somebody who signs the first step and this one does not — ฝ่ายบุคคล sign
+ * the second, and it is the whole of the approval here.
+ */
+const HR_HEAD_TIP = 'ฝ่ายบุคคลเป็นหัวหน้างานของแผนกนี้'
+  + ' · ใบ OT ที่ยื่นในแผนกนี้ไปที่ “รอฝ่ายบุคคล” ทันที ไม่ผ่านขั้นหัวหน้า';
 
 /** What a gap badge costs, said where the pill has no room to say it. */
 const HEAD_GAP_TIP = 'ใบ OT ที่พนักงานกลุ่มนี้ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดอนุมัติได้'
@@ -1139,6 +1198,10 @@ function Departments({ user, onGo, roster }) {
 
 const BLANK_DEPT = {
   code: '', name: '', nameTh: '', monthlyCapHours: '', weeklyCapHours: '', otMode: 'normal',
+  // A STRING and not the Boolean the server stores, for the reason every other
+  // field here is a string: `dirty` compares `form[k] !== before[k]`, and
+  // `PickOne` compares option values with `===`. Converted once, at `save`.
+  signedByHr: 'dept',
 };
 
 /** Said in both เพดาน fields, because the distinction is the whole of what
@@ -1147,6 +1210,15 @@ const BLANK_DEPT = {
     same reason the table uses them — see the note on the cell. */
 const CAP_TIP = 'ไม่บังคับ · เว้นว่างหมายถึงไม่จำกัดเพดาน ซึ่งไม่เหมือนกับเพดาน 0'
   + ' · แก้ภายหลังได้จากช่องในตารางด้านล่าง';
+
+/**
+ * Said in full once, for the same reason `OT_MODE_TIP` is: every clause of it
+ * is a question somebody asks the first time they meet the control.
+ */
+const SIGNED_BY_HR_TIP = 'ปกติใบ OT ต้องผ่านหัวหน้างานในแผนกก่อน แล้วจึงถึงฝ่ายบุคคล'
+  + ' · เลือก "ฝ่ายบุคคล" สำหรับแผนกที่ตาราง หน่วยงาน ระบุให้ฝ่ายบุคคลเป็นหัวหน้างาน'
+  + ' (แผนกจัดซื้อ และ แผนกทรัพยากรมนุษย์) ใบที่ยื่นใหม่จะไปที่ "รอฝ่ายบุคคล" ทันที'
+  + ' และมีลายเซ็นเดียว · ใบที่ยื่นไปแล้วยังค้างอยู่ขั้นเดิม ไม่ย้ายตาม';
 
 /** Said in full once, because every clause of it is a thing somebody asks. */
 const OT_MODE_TIP = 'เลือก "ไม่มีโอที" หรือ "เหมารายวัน" แล้วพนักงานแผนกนี้จะยื่นโอทีของ'
@@ -1198,6 +1270,10 @@ function DepartmentForm({
       // department's mode unchangeable after creation — which is the mistake
       // รหัส and ชื่อแผนก spent a year in.
       otMode: otModeOf(department),
+      // Same argument as `otMode` above: there is no control for this in the
+      // table row, so leaving it out of the dialog too would make it settable
+      // only from the database.
+      signedByHr: department.signedByHr ? 'hr' : 'dept',
       /**
        * IN THE DIALOG AS WELL AS IN THE TABLE, since 2026-09-02, and the
        * duplication is deliberate.
@@ -1236,6 +1312,7 @@ function DepartmentForm({
     try {
       const values = {
         code: form.code.trim(), name: form.name.trim(), nameTh: form.nameTh, otMode: form.otMode,
+        signedByHr: form.signedByHr === 'hr',
       };
       // A create carries the ceilings it was given; an edit does not mention
       // them at all, so the row's own boxes stay the only thing that writes
@@ -1307,8 +1384,9 @@ function DepartmentForm({
               label="รหัส"
               tip={editing
                 ? 'ชั่วโมงและพนักงานไม่ขยับ — ทั้งสองอย่างผูกกับตัวแผนก ไม่ใช่กับรหัส '
-                  + '· แต่ไฟล์ CSV นำเข้าพนักงานจับคู่แผนกจากรหัสนี้ ไฟล์เก่าที่ยังใช้รหัสเดิม'
-                  + 'จะจับคู่ไม่ได้และจะรายงานเป็นข้อผิดพลาดรายบรรทัด'
+                  + '· ไฟล์ CSV นำเข้าพนักงานจับคู่แผนกได้ทั้งจากรหัสนี้ ชื่อไทย และชื่ออังกฤษ '
+                  + 'ไฟล์เก่าที่อ้างถึงรหัสเดิมจะจับคู่ไม่ได้และจะรายงานเป็นข้อผิดพลาดรายบรรทัด '
+                  + 'แต่ไฟล์ที่กรอกเป็นชื่อแผนกจะไม่กระทบ'
                 : 'ตัวพิมพ์เล็กจะถูกเปลี่ยนเป็นตัวพิมพ์ใหญ่ · ห้ามซ้ำกับแผนกอื่น'}
             >
               <input value={form.code} onChange={(e) => set({ code: e.target.value })} disabled={busy} />
@@ -1335,6 +1413,38 @@ function DepartmentForm({
               onChange={(v) => set({ otMode: v })}
               disabled={busy}
               options={OT_MODES.map((m) => ({ value: m, label: OT_MODE_LABEL_TH[m] }))}
+            />
+          </div>
+        </section>
+
+        {/* ── ใครเซ็นขั้นที่ 1 ────────────────────────────────────────────────
+            A QUESTION ABOUT THE แผนก, which is why it is here and not on the
+            พนักงาน screen where every other approval right is set. Those say
+            "this PERSON signs for that department"; this one says the
+            department has no first step to sign at all, and no roster row can
+            express that — the absence of a หัวหน้า cannot be told apart from
+            nobody having been appointed yet, which is the whole reason the
+            two แผนก the หน่วยงาน table hands to ฝ่ายบุคคล have looked like a
+            gap on this screen since the roster was imported.
+
+            IT IS THE ONE CONTROL IN THIS DIALOG THAT MOVES A REQUEST. Switch
+            it on and the next OT filed in the department goes straight to
+            รอฝ่ายบุคคล; requests already filed stay where they were routed.
+            The tip says both, because "does this change the ones already in
+            the queue" is the first thing anybody asks of it. */}
+        <section className="form-group">
+          <div className="gh">การอนุมัติ</div>
+          <div className="form-grid">
+            <PickOne
+              label="ใครเซ็นขั้นที่ 1"
+              tip={SIGNED_BY_HR_TIP}
+              value={form.signedByHr}
+              onChange={(v) => set({ signedByHr: v })}
+              disabled={busy}
+              options={[
+                { value: 'dept', label: 'หัวหน้างานในแผนก' },
+                { value: 'hr', label: 'ฝ่ายบุคคล (ไม่มีขั้นหัวหน้า)' },
+              ]}
             />
           </div>
         </section>
@@ -2450,6 +2560,22 @@ function Employees({ user }) {
     // refusal must never be wrong about.
     setImportError(null);
     try {
+      /**
+       * A WORKBOOK IS NOT PREVIEWED, AND THAT IS NOT A GAP.
+       *
+       * Everything this preview exists to catch is a property of CSV. A .xlsx
+       * stores a date as a NUMBER with the display format kept separately, so
+       * the cell showing `05/03/1998` is the same number in Bangkok and in
+       * Boston and there is no order left to guess — see src/lib/xlsx.js. The
+       * line the reader is asked to check would be checking nothing.
+       *
+       * Reading it here anyway would mean a second xlsx reader, in the browser,
+       * against `node:zlib` not existing there — and a second reader is the one
+       * that comes to disagree with the server about which row is the header.
+       * The server reads the file once, and its confirmation says which sheet
+       * it read.
+       */
+      if (isWorkbook(file)) { setPending({ file, workbook: true }); return; }
       const parsed = parseCsv(await file.text());
       const dates = resolveBirthDateColumn(parsed);
       // Five rather than three, and the failed rows first — see
@@ -2522,25 +2648,36 @@ function Employees({ user }) {
         control on it.
       */}
       {/*
-        A LIST, not a paragraph. The words are the same words; what changed is
-        that they were four separate facts run together with · into five lines
-        of unbroken grey, and Thai sets no spaces between words, so there was
-        no ragged edge for an eye to catch on — the whole block read as one
-        texture and got skipped. Split, the one that has to land before Excel
-        is ever opened is a line of its own at the top. The class carries a
-        darker grey with it as well — see `.hint-list` in styles.css.
+        BEHIND อ่านต่อ, ALL SIX OF THEM — 2026-09-07, and the second shape this
+        block took that day. It spent the morning split: five bullets behind a
+        `.btn ghost` reading วิธีเตรียมไฟล์นำเข้า in the row of controls, and
+        the audit line left standing under the heading. What was asked for
+        instead is the app's own อ่านต่อ, everywhere, hiding the whole of it —
+        so the split has no work left to do and the list is one list again.
+
+        A LIST, NOT A PARAGRAPH, which is why this is `as="ul"`. These facts
+        ran together with · into five lines of unbroken grey once, and Thai sets
+        no spaces between words, so there was no ragged edge for an eye to catch
+        on — the block read as one texture and got skipped even by somebody who
+        had opened it on purpose. `.hint-list` in styles.css carries the darker
+        grey.
+
+        Folded, not deleted: the วัน/เดือน warning has to be reachable from
+        here, because the file it is about is built in Excel before this screen
+        is ever opened.
       */}
-      <ul className="hint hint-list">
+      <Disclosure as="ul" lines={0} className="hint hint-list" of="ทะเบียนพนักงาน">
         <li>
           วันเกิดในไฟล์ CSV ใช้ YYYY-MM-DD หรือ DD/MM/YYYY ก็ได้ (คั่นด้วย / หรือ - ก็ได้)
           {' '}และกรอกเป็น <strong>พ.ศ. หรือ ค.ศ. ก็ได้</strong> — ปีที่เกิน 2400 ระบบถือว่าเป็น พ.ศ.
           {' '}และลบ 543 ให้เอง (2515 → 1972) แล้วบอกจำนวนที่แปลงให้ดูก่อนนำเข้า
         </li>
         <li>
-          {/* The one that has to land before Excel is ever opened — see the
-              note above the list. The era is settled per cell and needs no
-              help; วัน/เดือน order is settled by the file and cannot be
-              guessed, which is why only this half is still a warning. */}
+          {/* The one that has to land before Excel is ever opened — see
+              the note over this list. The era is settled per
+              cell and needs no help; วัน/เดือน order is settled by the file
+              and cannot be guessed, which is why only this half is still a
+              warning. */}
           ที่ต้องระวังคือ <strong>ลำดับวัน/เดือน</strong> ไม่ใช่ปี — ถ้าเปิดแล้วบันทึกทับด้วย Excel
           คอลัมน์นี้จะถูกเขียนใหม่ตามการตั้งค่าของเครื่อง และ “05/03/1998” เป็นได้ทั้ง 5 มีนาคม และ 3 พฤษภาคม
         </li>
@@ -2557,10 +2694,28 @@ function Employees({ user }) {
           คือจุดเดียวที่จับได้</strong>ว่าไฟล์เขียนสลับเป็น เดือน/วัน/ปี มาหรือเปล่า
         </li>
         <li>
+          {/* The same class of fact as the วันเกิด lines above it, and there
+              for the same reason: it is needed in Excel, before this screen is
+              open. It is here because HR's own roster is typed in Thai and the
+              importer read neither column that way until 2026-09-07 — the file
+              was right and every row of it was refused. */}
+          อัปโหลดได้ทั้ง <strong>.xlsx</strong> และ <strong>.csv</strong> — ถ้าเป็นไฟล์ Excel
+          {' '}ให้ส่งไฟล์ .xlsx มาตรง ๆ <strong>ไม่ต้อง Save As เป็น CSV</strong> เพราะขั้นตอนนั้น
+          {' '}คือจุดที่ลำดับวัน/เดือนของวันเกิดสลับได้ · ระบบอ่านแผ่นงานแรกของไฟล์
+        </li>
+        <li>
+          คอลัมน์ <strong>แผนก</strong> กรอกเป็น <strong>รหัสแผนก ชื่อไทย หรือชื่ออังกฤษ</strong> ก็ได้
+          {' '}(คำว่า แผนก/ฝ่าย/สาขา นำหน้าจะมีหรือไม่มีก็ได้) และคอลัมน์ <strong>บทบาท</strong>
+          {' '}กรอกเป็นภาษาไทยได้ตามที่เห็นบนจอ — พนักงาน · หัวหน้างาน · ผู้จัดการแผนก ·
+          {' '}ผู้จัดการฝ่าย · การเงิน · ฝ่ายบุคคล · ผู้ดูแลระบบ ·
+          {' '}<strong>หนึ่งคนมีสังกัดหลักได้แผนกเดียว</strong> ถ้าเป็นหัวหน้าที่ต้องเซ็นให้แผนกอื่นด้วย
+          {' '}ให้กด “แก้ไข” แล้วติ๊กแผนกเพิ่มในช่อง “แผนก” หลังนำเข้า
+        </li>
+        <li>
           ทุกการแก้ไขถูกบันทึกไว้ว่าใครแก้ ฟิลด์ไหน ค่าเดิมเป็นอะไร เมื่อไหร่
           {' '}(ดูรายคนได้ที่ปุ่ม “ดูประวัติ” · ดูรวมทุกคนได้ที่แท็บ “ประวัติการแก้ทะเบียน”)
         </li>
-      </ul>
+      </Disclosure>
       {/* Dismissible, like every other notice on this card. It is the one that
           had no way off the screen: a failed load or a refused save stayed
           above the table for the rest of the session, and the only way out was
@@ -2725,13 +2880,14 @@ function Employees({ user }) {
         </button>
         <label className="btn ghost" style={{ cursor: 'pointer' }}>
           นำเข้ารายชื่อจาก CSV
-          <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={choose} style={{ display: 'none' }} />
+          <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} onChange={choose} style={{ display: 'none' }} />
         </label>
         {/* Beside the import, because they are the same decision asked twice —
             one person or a file of them — and the dialog behind it is the same
             form the row's แก้ไข opens. */}
         <button className="btn" onClick={() => setAdding(true)}>เพิ่มพนักงาน</button>
       </div>
+
 
       {/* The interpretation, before it is applied rather than after. */}
       {pending && (
@@ -2750,9 +2906,29 @@ function Employees({ user }) {
           file was read, and it rides in the ℹ️ line below rather than in the
           colour of the box.
         */
-        <Alert kind={pending.dates.rowErrors.length ? 'warn' : 'ok'}>
-          <strong>ตรวจก่อนนำเข้า</strong> — {pending.file.name} · {pending.rows} แถว
-          {(
+        <Alert kind={!pending.workbook && pending.dates.rowErrors.length ? 'warn' : 'ok'}>
+          <strong>ตรวจก่อนนำเข้า</strong> — {pending.file.name}
+          {!pending.workbook && ` · ${pending.rows} แถว`}
+          {/*
+            A WORKBOOK GETS A SENTENCE WHERE A CSV GETS A LIST, and the sentence
+            says why there is nothing to check rather than leaving a blank space
+            that reads as a preview that failed to load.
+
+            The row count is missing here on purpose too: it would mean reading
+            the file in the browser, which means a second xlsx reader that can
+            disagree with the server's about which row is the header. The
+            confirmation after the upload carries the count, from the reader
+            that actually did the work.
+          */}
+          {pending.workbook && (
+            <div style={{ marginTop: 6 }}>
+              ไฟล์ <strong>.xlsx</strong> เก็บวันที่เป็นวันที่จริง ไม่ใช่ข้อความ —
+              {' '}<strong>ไม่ต้องตรวจลำดับวัน/เดือน</strong> เพราะไม่มีทางกำกวมได้เลย
+              {' '}· ระบบจะอ่าน<strong>แผ่นงานแรก</strong>ของไฟล์ และบอกชื่อแผ่นงานที่อ่าน
+              {' '}พร้อมจำนวนแถวหลังนำเข้าเสร็จ
+            </div>
+          )}
+          {!pending.workbook && (
             <>
               {/*
                 WHAT THE FILE WAS READ AS.
@@ -2808,23 +2984,26 @@ function Employees({ user }) {
                   </ul>
                 </div>
               )}
-              <div className="row" style={{ marginTop: 10 }}>
-                <button className="btn" onClick={confirmImport} disabled={sending}>
-                  {sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
-                </button>
-                <button className="btn ghost" onClick={() => setPending(null)} disabled={sending}>ยกเลิก</button>
-                {/* Only when rows are about to be dropped, which is the only
-                    state here where fixing the file is the better answer than
-                    importing it. On a clean file a third button would be a
-                    third thing to read before pressing the green one. */}
-                {pending.dates.rowErrors.length > 0 && (
-                  <button className="btn ghost" onClick={pickFile} disabled={sending}>
-                    เลือกไฟล์ใหม่
-                  </button>
-                )}
-              </div>
             </>
           )}
+          {/* OUTSIDE the CSV branch: a workbook is confirmed and cancelled with
+              the same two buttons, and a panel whose only control lived inside
+              the preview would leave .xlsx with nothing to press. */}
+          <div className="row" style={{ marginTop: 10 }}>
+            <button className="btn" onClick={confirmImport} disabled={sending}>
+              {sending ? 'กำลังนำเข้า…' : 'ยืนยันนำเข้า'}
+            </button>
+            <button className="btn ghost" onClick={() => setPending(null)} disabled={sending}>ยกเลิก</button>
+            {/* Only when rows are about to be dropped, which is the only
+                state here where fixing the file is the better answer than
+                importing it. On a clean file a third button would be a
+                third thing to read before pressing the green one. */}
+            {!pending.workbook && pending.dates.rowErrors.length > 0 && (
+              <button className="btn ghost" onClick={pickFile} disabled={sending}>
+                เลือกไฟล์ใหม่
+              </button>
+            )}
+          </div>
         </Alert>
       )}
 
@@ -2835,6 +3014,13 @@ function Employees({ user }) {
         }
         >
           นำเข้าใหม่ {result.created} คน · ปรับปรุง {result.updated} คน
+          {/* WHICH SHEET THOSE ROWS CAME OUT OF — from the reader that did the
+              work, not from the file's name. A workbook with five tabs has four
+              this did not look at, and "163 แถว" with no tab named is a number
+              nobody can act on when it is the wrong one. */}
+          {result.source?.kind === 'xlsx' && result.source.sheet && (
+            <span> · จากไฟล์ .xlsx แผ่นงาน “{result.source.sheet}”</span>
+          )}
           {/*
             FIRST, and `error` rather than `warn`.
 
@@ -5290,7 +5476,7 @@ function Holidays() {
         </button>
         <label className="btn ghost" style={{ cursor: 'pointer' }}>
           นำเข้าปฏิทินจาก CSV
-          <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={upload} style={{ display: 'none' }} />
+          <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} onChange={upload} style={{ display: 'none' }} />
         </label>
         {/* Beside the import, because they are the same decision asked twice —
             one day or a calendar of them. */}
@@ -6121,6 +6307,53 @@ function coerce(field, raw) {
 }
 
 /**
+ * ค่าที่ใช้อยู่ — the one line of ANSWER a row shows without being asked.
+ *
+ * THE CUT ON THIS PAGE IS MADE BY CONTENT, NOT BY LINES — 2026-09-07, and it
+ * is the third rule this page has had in a day. A row now stands at its
+ * question and this sentence: what the rule is set to, in the words the
+ * dropdown uses. Everything behind it — what the question means, what each
+ * option is for, where the current value came from — is one fold, opened once,
+ * by whoever came to change that row.
+ *
+ * It used to be the other way round: the explanation stood between the question
+ * and this line, with a fold of its own, so a reader met two อ่านต่อ per row
+ * before reaching the only sentence most visits are for.
+ *
+ * Nothing here for a rule whose sign-off still stands — `ConfirmedBy` says
+ * more, and two blocks narrating one sign-off is the page arguing with itself.
+ */
+function PolicyReading({ item }) {
+  if (!item || item.stands) return null;
+  return (
+    <div className="hint" style={{ marginTop: 5 }}>
+      ค่าที่ใช้อยู่: <strong>{item.reading}</strong>
+      {item.state === 'never' && <> · ยังไม่มีใครใน HR ตอบข้อนี้ ตั้งแต่ {item.since}</>}
+    </div>
+  );
+}
+
+/**
+ * ที่มาของค่าที่ใช้อยู่ — the longest strings on any screen in this app.
+ *
+ * Six notes running to 891 characters, and on a 360px phone the longest of them
+ * was fifteen lines standing between the question and the button that signs it.
+ * They are the evidence somebody is being asked to put their name to, so they
+ * are not deleted and not summarised — they go inside the row's fold, under the
+ * paragraph explaining the question, and the value being confirmed stays on the
+ * line above it where a signature can see it.
+ */
+function PolicySource({ item }) {
+  const note = item?.stands ? item.confirmed?.note : item?.note;
+  if (!note) return null;
+  return (
+    <div className="hint policy-open-note">
+      {item.stands ? 'ที่มาของคำตอบที่ยืนยันไว้' : 'ที่มาของค่าที่ใช้อยู่'}: {note}
+    </div>
+  );
+}
+
+/**
  * What an unanswered rule says, and the one button that removes it.
  *
  * The pill itself is drawn beside the question by `PolicyStatus`, so that a
@@ -6157,17 +6390,6 @@ function Unconfirmed({ item, canEdit, busy, onConfirm }) {
 
   return (
     <div style={{ marginTop: 4 }}>
-      <div className="hint" style={{ marginTop: 4 }}>
-        {/* "ตั้งตามพฤติกรรมเดิม" was said of every item and is true of only
-            some: the rounding increment came off the requirements doc and the
-            buffer came off nobody at all — it ships at "no threshold" because
-            no figure was ever given, which is not the same as an answer of
-            none. Where each value came from is now its own `note`. */}
-        ค่าที่ใช้อยู่: <strong>{item.reading}</strong>
-        {item.state === 'never' && <> · ยังไม่มีใครใน HR ตอบข้อนี้ ตั้งแต่ {item.since}</>}
-        {item.note && <div style={{ marginTop: 2 }}>{item.note}</div>}
-      </div>
-
       {/* A sign-off that no longer covers the value under it. The row says what
           was agreed and what it is now, because "ยืนยันใหม่" with neither on
           screen is a button asking somebody to re-agree to something they
@@ -6237,13 +6459,14 @@ function Unconfirmed({ item, canEdit, busy, onConfirm }) {
  */
 function ConfirmedBy({ item }) {
   if (!item?.stands) return null;
-  const { byName, at, reading, note } = item.confirmed || {};
+  const { byName, at, reading } = item.confirmed || {};
   return (
     <div className="hint" style={{ marginTop: 4, color: 'var(--green-dark)' }}>
       ยืนยันแล้ว{byName ? ` โดย ${byName}` : ''}
       {at ? ` · ${thaiDate(String(at).slice(0, 10))}` : ''}
       {reading ? ` · ที่ค่า “${reading}”` : ''}
-      {note && <div style={{ marginTop: 2 }}>ที่มา: {note}</div>}
+      {/* ที่มา moved into the row's fold on 2026-09-07 — see `PolicySource`.
+          What stays here is the signature: who, when, and at which value. */}
     </div>
   );
 }
@@ -6531,6 +6754,14 @@ function Policy({ user }) {
           /* One question can cover more than one flag, so a row can carry more
              than one of these. */
           const items = unconfirmed.filter((u) => u.keys.includes(f.key));
+          /* Whether this row has anything BEHIND its answer line. A fold that
+             opens onto nothing is a press that appears to do nothing, and four
+             of the nineteen rules explain neither themselves nor their options
+             and have never been asked about. */
+          const detail = Boolean(
+            f.hint || f.optionHints
+            || items.some((u) => (u.stands ? u.confirmed?.note : u.note)),
+          );
 
           return (
             <React.Fragment key={f.key}>
@@ -6544,24 +6775,40 @@ function Policy({ user }) {
                     {OPEN_LABEL[i] ? `ข้อ ${OPEN_LABEL[i]}` : ''}
                   </span>
                   <div className="policy-label">{f.label}</div>
-                  {f.hint && <div className="hint policy-help">{f.hint}</div>}
-                  {/* What each answer is for, under the question and not under
-                      the control, for the reason `.policy-help` above it is:
-                      this explains what is being ASKED, and the answer to it is
-                      in the opposite column. Optional per field — a rule whose
-                      options need no gloss declares none and renders nothing,
-                      which is every other row on this page today. */}
-                  {f.optionHints && (
-                    <dl className="policy-options">
-                      {f.options
-                        .filter(([v]) => f.optionHints[String(v)])
-                        .map(([v, l]) => (
-                          <React.Fragment key={String(v)}>
-                            <dt>{l}</dt>
-                            <dd>{f.optionHints[String(v)]}</dd>
-                          </React.Fragment>
-                        ))}
-                    </dl>
+                  {/* THE ANSWER, THEN ONE FOLD — 2026-09-07, and the shape this
+                      page settled on after three in a day.
+
+                      A row stands at its question and at ค่าที่ใช้อยู่, and
+                      everything else about it — what the question means, what
+                      each option is for, where the value came from — is behind
+                      one อ่านต่อ under that line. It had TWO folds before, one
+                      over this line and one under it, so a reader met two
+                      buttons per row before reaching the sentence most visits
+                      to this page are for. */}
+                  {items.map((u) => <PolicyReading key={u.id} item={u} />)}
+                  {detail && (
+                    <Disclosure as="div" lines={0} className="policy-detail" of={f.label}>
+                      {/* What the rule does. Twelve of the nineteen explain
+                          themselves here and the longest runs to 671
+                          characters. */}
+                      {f.hint && <div className="hint policy-help">{f.hint}</div>}
+                      {/* What each answer is for. Optional per field — a rule
+                          whose options need no gloss declares none and renders
+                          nothing, which is every other row on this page. */}
+                      {f.optionHints && (
+                        <dl className="policy-options">
+                          {f.options
+                            .filter(([v]) => f.optionHints[String(v)])
+                            .map(([v, l]) => (
+                              <React.Fragment key={String(v)}>
+                                <dt>{l}</dt>
+                                <dd>{f.optionHints[String(v)]}</dd>
+                              </React.Fragment>
+                            ))}
+                        </dl>
+                      )}
+                      {items.map((u) => <PolicySource key={u.id} item={u} />)}
+                    </Disclosure>
                   )}
                   {items.map((u) => (
                     <React.Fragment key={u.id}>
@@ -6945,29 +7192,88 @@ function LivePolicy({ policy, defaults, overrides }) {
 
   return (
     <Alert kind={arithmetic ? 'warn' : 'info'}>
-      <strong>ค่าที่ระบบนี้ใช้จริง ไม่ตรงกับค่าตั้งต้นของโปรแกรมทั้งหมด</strong>
+      {/* NO EMOJI IN THE HEADING. `Alert` draws its own mark — the circled
+          glyph at the left of every notice in this app — and a ⚠️ typed into
+          the text beside it is a second icon saying the same thing. */}
+      {moved.length > 0 ? (
+        <strong>มีการปรับแต่งค่าจากโปรแกรมเดิม {moved.length} รายการ</strong>
+      ) : (
+        <strong>ไม่มีค่าใดต่างจากโปรแกรมเดิม — แต่มี {pinned.length} ข้อที่ถูกเก็บค่าไว้แล้ว</strong>
+      )}
+
+      {/* ONE LINE, AND IT DOES NOT NAME WHO. A value can arrive here from this
+          page or from a migration, and the screen cannot tell the two apart —
+          who changed what is ประวัติเวอร์ชันนโยบาย's question and it is two
+          cards down. What this line has to carry is where the reader goes
+          next, which is the column on the right of the row they came for. */}
       {moved.length > 0 && (
-        <div style={{ marginTop: 8, fontSize: 12.5 }}>
-          <div style={{ color: 'var(--muted)' }}>ต่างจากค่าตั้งต้น — ค่าที่ใช้คำนวณจริงคือค่าทางขวา:</div>
+        <div className="hint" style={{ marginTop: 2 }}>
+          ระบบกำลังใช้งานค่าที่ถูกแก้จากค่าตั้งต้นของโปรแกรม
+          {' '}(ดูค่าปัจจุบันได้ทางขวามือของแต่ละหัวข้อ)
+        </div>
+      )}
+
+      {/* CHIPS, NOT A PARAGRAPH EACH — 2026-09-07. Three overrides were three
+          lines of `ชื่อข้อ: เก่า → ใหม่ (มีผลต่อชั่วโมง)` under a heading and a
+          sentence, which is most of a phone screen before the first question.
+
+          The label is the field's own, read off `CHANGE_LABEL`, so a chip
+          cannot drift from the row it is about. The VALUES stay raw: the option
+          labels on this page are whole sentences — 'ใช่ — วันเกิดที่ตรง
+          จันทร์–ศุกร์ นับเป็นวันหยุดเฉพาะคนนั้น' is one of them — and a chip
+          holding two of those is not a chip.
+
+          The amber ones are the values that move HOURS, and the word is in the
+          chip as well as in the colour, because colour alone is not something a
+          reader by ear or without it can act on. Nothing on the quiet ones: the
+          half that is marked is the half that matters. */}
+      {moved.length > 0 && (
+        <div className="policy-diffs">
           {moved.map((d) => (
-            <div key={d.key}>
+            <span
+              key={d.key}
+              className={`chip ${d.arithmetic ? 'edited' : 'muted'}`}
+              title={d.arithmetic ? 'ค่านี้มีผลต่อชั่วโมงที่คำนวณได้' : 'ค่านี้ไม่มีผลต่อชั่วโมง'}
+            >
               {CHANGE_LABEL[d.key] || d.key}: {JSON.stringify(d.from)} → <strong>{JSON.stringify(d.to)}</strong>
-              {d.arithmetic
-                ? <span style={{ color: 'var(--amber)' }}> (มีผลต่อชั่วโมง)</span>
-                : <span style={{ color: 'var(--muted)' }}> (ไม่มีผลต่อชั่วโมง)</span>}
-            </div>
+              {d.arithmetic && ' · มีผลต่อชั่วโมง'}
+            </span>
           ))}
         </div>
       )}
+
+      {/* THE ONE FOLD INSIDE AN ALERT IN THIS APP, AND WHAT STANDS ABOVE IT IS
+          WHY IT IS ALLOWED.
+
+          The heading, the line under it and the chips are the warning, and none
+          of them is behind a press. What folds is the other half — the values
+          stored at the same figure the program ships TODAY. Nothing is wrong
+          about those and nothing is being asked; they matter on the day a
+          release moves a default and this installation does not follow it,
+          which is a fact about a future deploy rather than about this screen.
+
+          `test/disclosure.test.js` names this component as the only place a
+          fold may appear inside an `Alert`. A second name added there is a
+          decision, not a fix for a failing case. */}
       {pinned.length > 0 && (
-        <div style={{ marginTop: 8, fontSize: 12.5 }}>
-          <div style={{ color: 'var(--muted)' }}>ตรึงไว้เท่ากับค่าตั้งต้นวันนี้:</div>
-          <div>{pinned.map((k) => CHANGE_LABEL[k] || k).join(' · ')}</div>
-          <div style={{ color: 'var(--muted)', marginTop: 2 }}>
+        <Disclosure
+          as="div"
+          lines={0}
+          of="ค่าที่ตรึงไว้เท่ากับค่าตั้งต้น"
+          more="ดูรายละเอียดเพิ่มเติม"
+          less="ซ่อนรายละเอียด"
+        >
+          <div className="hint">ตรึงไว้เท่ากับค่าตั้งต้นวันนี้:</div>
+          <div className="policy-diffs">
+            {pinned.map((k) => (
+              <span key={k} className="chip muted">{CHANGE_LABEL[k] || k}</span>
+            ))}
+          </div>
+          <div className="hint" style={{ marginTop: 6 }}>
             เท่ากันอยู่ตอนนี้ แต่ถูกเก็บค่าไว้แล้ว — ถ้าโปรแกรมเวอร์ชันใหม่เปลี่ยนค่าตั้งต้นของข้อเหล่านี้
             ระบบนี้จะไม่เปลี่ยนตาม
           </div>
-        </div>
+        </Disclosure>
       )}
     </Alert>
   );

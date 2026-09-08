@@ -181,12 +181,24 @@ test('the footnote is a boxed note, and it is not made unreadable to say so', ()
   // starts and says nothing about where it stops, so under a long month it
   // still trailed off into the page; a bordered wash closes both ends of it.
   assert.match(foot, /background: var\(--neutral-wash\);/);
-  assert.match(foot, /border: 1px solid var\(--line-soft\);/);
+  /*
+   * THE EDGE, AND IT READ `--line-soft` UNTIL 2026-09-07. That token is #29312c
+   * in ธีมมืด against this box's own #262e2a — three units apart, which is a
+   * border nobody can see, so the box was a wash with no edge and the round
+   * that asked for "a callout with a thin border" was asking for the border it
+   * already had on paper. `--line` is #303934 there and #e2e7e3 in ธีมสว่าง:
+   * visible in both, and still the quietest edge this app draws. What is
+   * pinned is that it stays a NEUTRAL edge — an amber or accent border would
+   * make a warning out of two standing rules about what an edit does.
+   */
+  assert.match(foot, /border: 1px solid var\(--line\);/);
   assert.match(foot, /border-radius: var\(--radius\);/);
-  // 10px down, not 12: two short lines in a note that is the last thing in
-  // the card, thinned on 2026-08-26 so the box reads as a margin note rather
-  // than as a fifth panel. The 14 across is unchanged.
-  assert.match(foot, /padding: 10px 14px;/);
+  // 14/16, up from 10/14 on 2026-09-07 — measured 64px tall → 73px. p-4 (16 all
+  // round) was what was asked for; 16px over a 12px two-line note reads as a
+  // gap rather than as padding, and 14/16 is the step the audit drawer beside
+  // it already takes. It read "10px down, not 12 … the 14 across is unchanged"
+  // from 2026-08-26 until then.
+  assert.match(foot, /padding: 14px 16px;/);
   assert.match(foot, /font-size: 12px;/);
   // Last thing in the card, so `.card .hint`'s 14 left 32px under it against 18
   // at every other edge.
@@ -228,6 +240,129 @@ test('the footnote is two rules, one per line, not one sentence and a middot', (
   assert.match(rule('.entry-foot .foot-notes'), /list-style: none;/);
   assert.match(rule('.entry-foot .foot-notes > li'), /padding-left: 14px;/);
   assert.match(rule('.entry-foot .foot-notes > li::before'), /content: '•';/);
+  /*
+   * AND THE DOT IS A COLOUR, NOT AN OPACITY — 2026-09-07. `opacity: .6` on a
+   * `--muted` glyph lands between `--muted-2` and `--muted-3`, and lands
+   * somewhere else again the day either token moves: an opacity is a number
+   * about pixels, and what the dot means is "one step quieter than the
+   * sentence". The palette has words for that.
+   */
+  assert.match(rule('.entry-foot .foot-notes > li::before'), /color: var\(--muted-3\);/);
+  assert.ok(
+    !/opacity: \.6;/.test(rule('.entry-foot .foot-notes > li::before')),
+    'the bullet went back to being an opacity',
+  );
+  // space-y-1.5 in the words this stylesheet uses. 6px until 2026-09-07, when
+  // the box's padding grew and 6 read as tight inside it.
+  assert.match(rule('.entry-foot .foot-notes'), /gap: 7px;/);
+});
+
+/**
+ * จาก–ถึง HOLDS FOUR THINGS AND THEY ARE NOT ALL THE SAME KIND OF THING.
+ *
+ * Top to bottom: the times somebody typed, the scan badge, the badge's own
+ * explanation, and the punches as the machine recorded them. Reported on
+ * 2026-09-07 — "กล่องข้อความเตือน … ชิดกับบรรทัดเวลาด้านบนเกินไป" — and the
+ * screenshot showed the other half: the explanation and the machine's line were
+ * the same 12px in the same grey, 2px apart, so all four read as one paragraph
+ * of grey under a pill.
+ *
+ * WHAT IS PINNED IS THE HIERARCHY, not the pixel counts for their own sake. The
+ * explanation must be quieter than the punches line, because the punches are
+ * the evidence and the explanation is this system talking about it — and the
+ * explanation must not go quieter than `--muted-2`, because it carries the
+ * minutes ("ขาดอีก 3 ชม. 2 นาที") and `--muted-3` at 11.5px measures 2.79:1 on
+ * the card in ธีมสว่าง.
+ *
+ * Measured on the built app at 1440px against a clone of the real database
+ * (July, THT0107, 21 rows): the tallest row 170 → 178, the median 116 → 122.
+ */
+test('the four things in จาก–ถึง are spaced and voiced as four things', () => {
+  // A class, not the Thai `data-label` — see the note over the cell. The label
+  // stays because the phone card prints it as the cell's heading.
+  assert.match(jsx, /<td className="when-cell" data-label="จาก–ถึง">/);
+
+  // 8px under the times, not `.entry-mark`'s usual 6: this is a finding being
+  // separated from the two numbers it is about.
+  assert.match(
+    rule('.stack-table td.when-cell .entry-mark'),
+    /margin-top: 8px;/,
+  );
+
+  const detail = rule('.stack-table td.when-cell .entry-mark .cell-sub.th');
+  assert.match(detail, /font-size: 11\.5px;/);   // .cell-note's size, not a new one
+  assert.match(detail, /color: var\(--muted-2\);/);
+  assert.match(detail, /margin-top: 4px;/);
+  assert.ok(!/--muted-3/.test(detail), 'the line carrying the minutes went a step too quiet');
+
+  // The machine's own line keeps `.cell-sub`'s 12px/--muted and gets 6px of
+  // its own, so it reads as a separate statement rather than as the tail of
+  // the explanation above it.
+  assert.match(rule('.stack-table td.when-cell > .cell-sub.th'), /margin-top: 6px;/);
+
+  // AND NONE OF IT IS INSIDE THE PHONE BLOCK. There the cell is a card field
+  // with a floated label, spaced by `.stack-table tbody tr`'s 10px gap — a
+  // margin written in here would be spacing that block cannot see.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.ok(!/td\.when-cell/.test(phone), 'the cell was styled where the card block cannot reach');
+});
+
+/**
+ * TWO BADGES ON ONE ROW, AND THE CELL IS NOT WIDE ENOUGH FOR BOTH.
+ *
+ * Reported on 2026-09-07 as "แท็กมันซ้อน ๆ กัน" and measured on the built app:
+ * a row carrying `ไม่ได้สแกนเข้า OT` (104px) and `ไม่ครบ · ขาด 47 นาที` (120px)
+ * wants 230px against the cell's 191, so the second wraps — and wrapping broke
+ * it twice.
+ *
+ * ONE, the pills TOUCHED: a measured 0px between them. `.chip` is
+ * `inline-block`, so two on consecutive line boxes stack margin box against
+ * margin box — an amber border sitting on a grey one, which is what reads as
+ * one badge overlapping another.
+ *
+ * TWO, the second was INDENTED 6px, because `.entry-mark .chip + .chip` puts
+ * the gap on the second chip's LEFT. That is right while they share a line and
+ * is a left indent the moment they do not — the wrapped pill lined up with
+ * nothing else in the cell.
+ *
+ * The horizontal half is scoped above 860px ON PURPOSE: below that this cell is
+ * a card field whose value is right-aligned, and a trailing margin-right would
+ * push the pill 6px off the edge every other value lines up with. Measured at
+ * 360px, the two pills sit side by side there and neither rule changes
+ * anything.
+ */
+test('two badges that wrap sit clear of each other and line up', () => {
+  // The gap moves from the second chip's left to the first chip's right, where
+  // it means the same thing on one line and nothing at all on two.
+  assert.match(
+    rule('.stack-table td.when-cell .entry-mark .chip:not(:last-of-type)'),
+    /margin-bottom: 4px;/,
+  );
+  /*
+   * FOUND WITH A REGEX, NOT WITH A LITERAL `\n`. `core.autocrlf` is true on the
+   * machine this is developed on, so this file is CRLF here and LF in the
+   * repository — a literal newline inside the needle finds nothing in one of
+   * the two and the assertion then runs against the wrong slice of the file.
+   * That is the trap test/theme.test.js has written up at its own `indexOf`.
+   */
+  const block = /@media \(min-width: 861px\) \{\r?\n\s*\.stack-table td\.when-cell[\s\S]*?\r?\n\}/.exec(css);
+  assert.ok(block, 'the horizontal half lost its media block');
+  assert.match(block[0], /\.stack-table td\.when-cell \.entry-mark \.chip \{ margin-left: 0; \}/);
+  assert.match(block[0], /\.chip:not\(:last-of-type\) \{ margin-right: 6px; \}/);
+
+  // `:not(:last-of-type)` and not `:first-child`: the last span in the cell is
+  // the last chip (the explanation under them is a div), so the trailing pill
+  // carries no margin into what follows it, and a one-chip row costs nothing.
+  assert.ok(
+    !/\.when-cell \.entry-mark \.chip:first-child/.test(css),
+    'the margin went onto the first chip, which is not the same set',
+  );
+
+  // The phone keeps the shared rule: below 860px the value is right-aligned,
+  // and a margin-right there would be 6px of nothing against every other
+  // value's edge.
+  const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.ok(!/when-cell .entry-mark .chip/.test(phone), 'the chips were re-spaced inside the card block');
 });
 
 test('the footnote lines up with the cards above it on a phone', () => {
@@ -512,6 +647,27 @@ test('the two columns that hold prose are the two that were widened', () => {
   assert.match(css, /\.stack-table th\.desc-col \{ width: \d+%; \}/);
   assert.match(css, /\.stack-table th\.status-col \{ width: \d+%; \}/);
 
+  /*
+   * AND รายละเอียดงานที่ทำ IS THE COLUMN THAT PAYS. It was 40% until
+   * 2026-09-07, when จาก–ถึง was widened and this was the only flexible column
+   * left to take the room from — every other one on the row sits at its own
+   * min-content. 32% keeps it above the 232px its longest row measured at
+   * 1440, which is what a 55-character description (the longest in the
+   * database) needs to stay inside two lines.
+   *
+   * The second assertion bans the shortcut that was offered instead of the
+   * wrap: a truncation. This sentence is what ฝ่ายบุคคล reconcile a month
+   * against a signed sheet by, and an ellipsis hides the half that settles the
+   * argument.
+   */
+  const descRule = /\.stack-table th\.desc-col \{ width: (\d+)%; \}/.exec(css);
+  assert.ok(Number(descRule[1]) >= 30, `รายละเอียดงานที่ทำ fell to ${descRule[1]}%`);
+  const entryDesc = css.indexOf('.entry-desc {');
+  assert.ok(
+    !/text-overflow:\s*ellipsis/.test(css.slice(entryDesc, entryDesc + 400)),
+    'the description is being truncated',
+  );
+
   // และต้องอยู่นอกบล็อกมือถือ — ที่นั่น thead เป็น display:none ความกว้างจึงไม่ถึงใคร
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.ok(!/th\.desc-col/.test(phone), 'the width was written where thead is hidden');
@@ -528,22 +684,47 @@ test('the two columns that hold prose are the two that were widened', () => {
  * place: the column came out **79px**, the `ไม่ได้สแกนเข้า OT` pill rendered
  * **55×60** — three lines of text inside one pill — `สแกน 07:34 , 19:30`
  * wrapped to three lines, and a row whose description is ONE line stood 187px
- * tall. With the rule below: 172px, the pill 104×25, the scan line one line,
- * the row 97px.
+ * tall. With the rule as it then was: 172px, the pill 104×25, the scan line one
+ * line, the row 97px.
  *
- * THE FLOOR IS IN PIXELS AND THAT IS THE POINT. A time string, a pill and
- * `สแกน 07:34 , 19:30` do not get shorter on a narrower screen, so a percentage
+ * THE FLOOR IS IN PIXELS AND THAT IS THE POINT. A time string, a pill and a
+ * day's scan line do not get shorter on a narrower screen, so a percentage
  * alone lets a 1280 laptop squeeze them back into the shape the rule exists to
  * undo. A `%`-only rule here would pass a test that only looked for a width.
+ *
+ * ── THE FLOOR MOVED ON 2026-09-07, AND THE CELL IS WHY ──────────────────────
+ *
+ * 172px was measured when a day's scan line read `สแกน 07:34 , 19:30` and
+ * fitted on one. The months since carry days with three, six and seven punches,
+ * so the SAME rule now wraps `สแกน 07:26, 00:59 (+1), 07:23 (+1)` to three
+ * lines and stands the row at 188px — the shape 172px exists to undo, arrived
+ * at from the other side. Re-measured the same way (built app, clone of the
+ * real database, July, THT0107's twenty-one rows, at 1440 and 1280), sweeping
+ * the floor in 12px steps:
+ *
+ *     172   scan line 3 lines · tallest row 188px
+ *     184   scan line 2 lines · tallest row 188px
+ *     204   scan line 2 lines · tallest row 170px
+ *     214   nothing further moves
+ *
+ * The assertion below is 204 and not 168 for that reason: 184 buys half the
+ * fix, 204 buys the rest, and past it the column is taking room from the
+ * sentence for nothing. THE NUMBER IS A MEASUREMENT, so a later round that has
+ * re-measured is free to move it — what it may not do is drop the floor to a
+ * bare percentage, which is the shape this assertion pins.
  */
 test('จาก–ถึง has a width, and its floor is a pixel one', () => {
   assert.match(code, /<th className="when-col">จาก–ถึง<\/th>/);
 
   const rule = /\.stack-table th\.when-col \{ width: \d+%; min-width: (\d+)px; \}/.exec(css);
   assert.ok(rule, 'จาก–ถึง has no width rule behind its class');
-  // 148px of content is what the pill and the scan line need side by side; the
-  // cell's own padding is 12px each side. Below this the pill breaks in half.
-  assert.ok(Number(rule[1]) >= 168, `the floor fell to ${rule[1]}px — the chip wraps under ~168`);
+  // 180px of content is what a three-punch scan line needs to stop at two
+  // lines and let the row close to 170px; the cell's own padding is 12px each
+  // side. Below this the tallest row goes back to 188.
+  assert.ok(
+    Number(rule[1]) >= 204,
+    `the floor fell to ${rule[1]}px — under 204 the tallest row goes back to 188`,
+  );
 
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.ok(!/th\.when-col/.test(phone), 'the width was written where thead is hidden');

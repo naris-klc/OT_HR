@@ -80,8 +80,16 @@ const DEPARTMENTS = [
   { code: 'BR-PTE', nameTh: 'สาขาปทุมธานี', name: 'Pathum Thani Branch', monthlyCapHours: 40 },
   { code: 'IT', nameTh: 'แผนกIT', name: 'Information Technology', monthlyCapHours: 30 },
   { code: 'ACCFIN', nameTh: 'แผนกบัญชีและการเงิน', name: 'Accounting and Finance', monthlyCapHours: 30 },
-  { code: 'PUR', nameTh: 'แผนกจัดซื้อ', name: 'Purchasing', monthlyCapHours: 30 },
-  { code: 'HRD', nameTh: 'แผนกทรัพยากรมนุษย์', name: 'Human Resources', monthlyCapHours: 30 },
+  /**
+   * THE TWO ROWS WHERE THE หัวหน้างาน COLUMN OF THE หน่วยงาน TABLE READS "HR".
+   *
+   * Not an empty cell and not a name nobody filled in — ฝ่ายบุคคล sign for
+   * these two, which HR restated in those words on 2026-09-07. See `signedByHr`
+   * on src/models/Department.js for what the field does and why the rule is
+   * stored rather than left to be inferred from an empty roster.
+   */
+  { code: 'PUR', nameTh: 'แผนกจัดซื้อ', name: 'Purchasing', monthlyCapHours: 30, signedByHr: true },
+  { code: 'HRD', nameTh: 'แผนกทรัพยากรมนุษย์', name: 'Human Resources', monthlyCapHours: 30, signedByHr: true },
   { code: 'WH-FG', nameTh: 'แผนกคลังสินค้าสำเร็จรูป', name: 'Finished Goods Warehouse', monthlyCapHours: 30 },
   { code: 'SHIP', nameTh: 'แผนกจัดส่ง', name: 'Shipping', monthlyCapHours: 30 },
 ];

@@ -72,13 +72,27 @@ export function parseCsv(text) {
   }
   if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
 
-  const nonEmpty = rows.filter((r) => r.some((v) => v.trim() !== ''));
+  return gridToRows(rows);
+}
+
+/**
+ * A GRID OF CELLS → the rows an importer reads: first non-empty row is the
+ * header, every value trimmed.
+ *
+ * Split out of `parseCsv` so `parseXlsx` can be the same function with a
+ * different front end. A spreadsheet and a CSV of the same roster have to
+ * produce the same objects or the two paths are two importers, and the second
+ * one is the one nobody tests — which is how the .xlsx path would come to
+ * disagree about a blank cell or about which row is the header.
+ */
+export function gridToRows(rows) {
+  const nonEmpty = rows.filter((r) => r.some((v) => String(v ?? '').trim() !== ''));
   if (!nonEmpty.length) return [];
 
-  const headers = nonEmpty[0].map((h) => h.trim());
+  const headers = nonEmpty[0].map((h) => String(h ?? '').trim());
   return nonEmpty.slice(1).map((r) => {
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = (r[i] ?? '').trim(); });
+    headers.forEach((h, i) => { obj[h] = String(r[i] ?? '').trim(); });
     return obj;
   });
 }

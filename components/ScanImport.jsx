@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { api, periodLabel, companyLabel } from '@/lib/api.js';
-import { Alert, stamp } from './common.jsx';
+import { Alert, Disclosure, stamp } from './common.jsx';
 import {
   SCAN_FORMATS, SCAN_MAX_BYTES, MIXED_COMPANY, decodeScanText, parseScanFile,
   scanSummary, scanDateRange, periodMismatchNote, formatLabel, machineLabel,
@@ -79,7 +79,6 @@ export default function ScanImport({ period, status = 'approved' }) {
    * there. The card names the people; the table below is how you reach them.
    */
   const [compare, setCompare] = useState(null);
-  const [open, setOpen] = useState(false);
 
   async function load() {
     try {
@@ -213,41 +212,46 @@ export default function ScanImport({ period, status = 'approved' }) {
               style={{ display: 'none' }}
             />
           </label>
-          {/* The detail is folded because it is read once, by whoever imports a
-              file for the first time, and is furniture on every visit after. */}
-          <button className="btn ghost" onClick={() => setOpen((v) => !v)}>
-            {open ? 'ซ่อนรายละเอียด' : 'รายละเอียด'}
-          </button>
         </div>
       </div>
 
-      {open && (
-        <ul className="hint hint-list" style={{ marginTop: 10 }}>
-          <li>
-            <strong>ไฟล์นี้ถูกเก็บไว้เฉย ๆ</strong> — ยอดชั่วโมง ใบขออนุมัติ OT
-            {' '}และรายงานทุกใบยังคิดจากใบที่ยื่นและเซ็นเหมือนเดิม การนำเข้าไม่ทำให้ตัวเลขใดขยับ
-          </li>
-          <li>
-            <strong>เดือนหนึ่งมีได้ถึง {grid ? grid.slots.length : 4} ไฟล์</strong> — เครื่องละสองไฟล์ แยกไพรมัสกับเดมเทค
-            {' '}· อัปโหลดทีละไฟล์ ลำดับไหนก่อนก็ได้ ระบบดูออกเองว่าไฟล์ไหนเป็นของเครื่องไหนบริษัทไหน
-            {' '}· <strong>ไม่ต้องนำเข้าครบทุกไฟล์ก็ได้</strong> ระบบเทียบเท่าที่มี
-          </li>
-          <li>
-            <strong>เครื่องไหน</strong> ดูจากรูปแบบบรรทัดในไฟล์ —
-            {' '}{SCAN_FORMATS.map((f) => `${f.short}: ${f.example}`).join('  ·  ')}
-            {' '}· <strong>บริษัทไหน</strong> ดูจากทะเบียนพนักงานของคนในไฟล์ ไม่ได้ดูจากคำนำหน้ารหัส
-          </li>
-          <li>
-            <strong>นำเข้าไฟล์ใหม่ทับของเดิมได้</strong> — ถ้าเป็นเครื่องเดียวกัน บริษัทเดียวกัน
-            {' '}และวันที่ซ้ำกัน ระบบจะ<strong>ลบรายการเดิมในช่วงวันนั้นออกแล้วใช้ไฟล์ใหม่แทน</strong>
-            {' '}พร้อมบอกว่าทับไฟล์ไหนไปกี่รายการ · ตัวไฟล์เดิมยังเก็บไว้ในระบบ
-            {' '}· ทับเฉพาะเครื่องและบริษัทเดียวกัน ไฟล์ของอีกเครื่องในวันเดียวกันไม่ถูกแตะ
-          </li>
-          <li>
-            เครื่องสแกนไม่ได้บอกว่าครั้งไหนคือเข้าและครั้งไหนคือออก ระบบจึงเก็บไว้ตามที่เครื่องบันทึกมา
-          </li>
-        </ul>
-      )}
+      {/*
+        THE SAME FOLD THE REST OF THE APP USES — 2026-09-07.
+
+        The detail is folded because it is read once, by whoever imports a file
+        for the first time, and is furniture on every visit after. That much has
+        been true since the card was written; what changed is the control. It
+        was a `.btn ghost` reading รายละเอียด, in the header row beside
+        นำเข้าไฟล์สแกน — a second button, the same weight as the one that does
+        the work, for something that only reads. Every other explanation in the
+        app now opens on อ่านต่อ, and a card that keeps its own word for the
+        gesture is a card somebody has to learn twice.
+      */}
+      <Disclosure as="ul" lines={0} className="hint hint-list" style={{ marginTop: 10 }} of="ไฟล์สแกนนิ้วมือ">
+        <li>
+          <strong>ไฟล์นี้ถูกเก็บไว้เฉย ๆ</strong> — ยอดชั่วโมง ใบขออนุมัติ OT
+          {' '}และรายงานทุกใบยังคิดจากใบที่ยื่นและเซ็นเหมือนเดิม การนำเข้าไม่ทำให้ตัวเลขใดขยับ
+        </li>
+        <li>
+          <strong>เดือนหนึ่งมีได้ถึง {grid ? grid.slots.length : 4} ไฟล์</strong> — เครื่องละสองไฟล์ แยกไพรมัสกับเดมเทค
+          {' '}· อัปโหลดทีละไฟล์ ลำดับไหนก่อนก็ได้ ระบบดูออกเองว่าไฟล์ไหนเป็นของเครื่องไหนบริษัทไหน
+          {' '}· <strong>ไม่ต้องนำเข้าครบทุกไฟล์ก็ได้</strong> ระบบเทียบเท่าที่มี
+        </li>
+        <li>
+          <strong>เครื่องไหน</strong> ดูจากรูปแบบบรรทัดในไฟล์ —
+          {' '}{SCAN_FORMATS.map((f) => `${f.short}: ${f.example}`).join('  ·  ')}
+          {' '}· <strong>บริษัทไหน</strong> ดูจากทะเบียนพนักงานของคนในไฟล์ ไม่ได้ดูจากคำนำหน้ารหัส
+        </li>
+        <li>
+          <strong>นำเข้าไฟล์ใหม่ทับของเดิมได้</strong> — ถ้าเป็นเครื่องเดียวกัน บริษัทเดียวกัน
+          {' '}และวันที่ซ้ำกัน ระบบจะ<strong>ลบรายการเดิมในช่วงวันนั้นออกแล้วใช้ไฟล์ใหม่แทน</strong>
+          {' '}พร้อมบอกว่าทับไฟล์ไหนไปกี่รายการ · ตัวไฟล์เดิมยังเก็บไว้ในระบบ
+          {' '}· ทับเฉพาะเครื่องและบริษัทเดียวกัน ไฟล์ของอีกเครื่องในวันเดียวกันไม่ถูกแตะ
+        </li>
+        <li>
+          เครื่องสแกนไม่ได้บอกว่าครั้งไหนคือเข้าและครั้งไหนคือออก ระบบจึงเก็บไว้ตามที่เครื่องบันทึกมา
+        </li>
+      </Disclosure>
 
       {error && <div style={{ marginTop: 10 }}><Alert kind="error">{error}</Alert></div>}
 

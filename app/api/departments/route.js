@@ -41,7 +41,7 @@ export const POST = route(async (req) => {
   const may = departmentPermission(await requireAuth(req));
   if (!may.ok) return fail(may.error, may.status);
   const {
-    code, name, nameTh, manager, monthlyCapHours, weeklyCapHours, otMode,
+    code, name, nameTh, manager, monthlyCapHours, weeklyCapHours, otMode, signedByHr,
   } = await body(req);
   if (!code || !name) return fail('ต้องระบุรหัสและชื่อแผนก', 400);
 
@@ -58,6 +58,11 @@ export const POST = route(async (req) => {
     monthlyCapHours: capHoursFrom(monthlyCapHours),
     weeklyCapHours: capHoursFrom(weeklyCapHours),
     otMode: mode,
+    // ฝ่ายบุคคลเป็นหัวหน้างานของแผนกนี้ — see `signedByHr` on the model. A
+    // plain Boolean and not `otModeFrom`'s refuse-the-unknown treatment: there
+    // are two answers and anything that is not the true one is the false one,
+    // which is also what the schema default says.
+    signedByHr: Boolean(signedByHr),
   });
   return json({ department }, 201);
 });

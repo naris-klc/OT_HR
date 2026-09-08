@@ -1,10 +1,11 @@
 import Employee from '@/src/models/Employee.js';
-import { ROLES, isSigner } from '@/lib/roles.js';
+import { isSigner, roleFromLabel } from '@/lib/roles.js';
 import Department from '@/src/models/Department.js';
 import { COMPANY_KEYS, DEFAULT_COMPANY, companyFromCode } from '@/src/config/companies.js';
-import { route, uploadText, json, fail } from '@/lib/http.js';
+import { route, uploadFile, uploadText, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { parseCsv, pick } from '@/src/lib/csv.js';
+import { pick } from '@/src/lib/csv.js';
+import { readUploadedTable, NO_TABLE_UPLOADED } from '@/src/lib/importTable.js';
 import {
   defaultPassword, dropsAnAdmin, lastAdminPermission, rosterPermission, selfEditPermission,
   unsignedStaff,
@@ -13,6 +14,7 @@ import { rosterChanges } from '@/lib/rosterAudit.js';
 import { recordRosterChange } from '@/lib/rosterAuditLog.js';
 import { resolveBirthDateColumn } from '@/lib/birthDate.js';
 import { codeMatcher, sameCode, codeCollisions, collisionMessage } from '@/src/lib/employeeCode.js';
+import { buildDepartmentIndex, departmentMatchError, matchDepartment } from '@/src/lib/departmentMatch.js';
 
 // ── [OPEN 11] roster import ─────────────────────────────────────────────────
 // Built regardless of HR's answer: if they hand over a file, use the upload;
@@ -24,10 +26,32 @@ export const POST = route(async (req) => {
   const may = rosterPermission(actor);
   if (!may.ok) return fail(may.error, may.status);
 
-  const text = await uploadText(req, 2 * 1024 * 1024);
-  if (!text.trim()) return fail('ไม่พบไฟล์หรือข้อมูล CSV', 400);
+  /**
+   * THE BYTES FIRST, so a .xlsx can be recognised as one.
+   *
+   * `uploadText` decodes to a string, and a workbook decoded as UTF-8 is
+   * mojibake with no way back. The multipart upload — which is what the screen
+   * sends — goes through `uploadFile` and keeps its bytes; the JSON `{ csv }`
+   * shape stays for anything that posts text directly, and is CSV by
+   * construction. `readUploadedTable` sniffs and returns the same rows either
+   * way, so nothing below this line knows which arrived.
+   */
+  const upload = await uploadFile(req, 5 * 1024 * 1024);
+  const source = upload ? upload.bytes : await uploadText(req, 5 * 1024 * 1024);
+  if (!source || (typeof source === 'string' && !source.trim()) || !source.length) {
+    return fail(NO_TABLE_UPLOADED, 400);
+  }
 
-  const rows = parseCsv(text);
+  let table;
+  try {
+    table = readUploadedTable(source);
+  } catch (err) {
+    // A workbook this cannot read fails as ITSELF rather than as a CSV full of
+    // binary — the message from src/lib/xlsx.js names what was wrong with it.
+    return fail(err.message, 400);
+  }
+  const rows = table.rows;
+  if (!rows.length) return fail(NO_TABLE_UPLOADED, 400);
 
   /**
    * The วันเกิด column, read STRICTLY วัน/เดือน/ปี — no options, and no place
@@ -71,7 +95,13 @@ export const POST = route(async (req) => {
   }
 
   const departments = await Department.find().lean();
-  const byCode = new Map(departments.map((d) => [d.code.toUpperCase(), d]));
+  /**
+   * รหัสแผนก, ชื่อไทย or ชื่ออังกฤษ — all three reach the same row, because the
+   * roster HR actually types writes the Thai name and the file is not wrong for
+   * doing so. See src/lib/departmentMatch.js for what is matched and what is
+   * refused rather than guessed.
+   */
+  const deptIndex = buildDepartmentIndex(departments);
   const deptName = new Map(departments.map((d) => [String(d._id), d.code]));
 
   /**
@@ -111,8 +141,17 @@ export const POST = route(async (req) => {
      * nothing wrong would be the one carrying the warning.
      */
     const signers = all.filter((p) => isSigner(p.role));
+    /**
+     * The department DOCUMENT rather than the id the roster was grouped under,
+     * so `unsignedStaff` can read `signedByHr` — a แผนก headed by ฝ่ายบุคคล
+     * strands nobody and must not be reported as though a CSV had done it.
+     * `departments` is the list already read above for the name matcher; a
+     * department that has since been deleted falls back to the bare id, which
+     * is the old reading.
+     */
+    const deptById = new Map(departments.map((d) => [String(d._id), d]));
     return [...byDept.entries()]
-      .flatMap(([dept, roster]) => unsignedStaff(roster, dept, signers));
+      .flatMap(([dept, roster]) => unsignedStaff(roster, deptById.get(dept) ?? dept, signers));
   };
   const strandedBefore = new Set((await coverageGaps()).map((p) => String(p._id)));
 
@@ -167,7 +206,7 @@ export const POST = route(async (req) => {
     try {
       const code = pick(row, 'code', 'รหัสพนักงาน', 'employee_code').toUpperCase();
       const name = pick(row, 'name', 'ชื่อ-สกุล', 'ชื่อ');
-      const deptCode = pick(row, 'department', 'แผนก', 'dept').toUpperCase();
+      const deptCell = pick(row, 'department', 'แผนก', 'dept');
       if (!code || !name) { errors.push({ line, error: 'ต้องมี code และ name' }); continue; }
       // A cell of nothing but punctuation passes the emptiness check above and
       // still names nobody — refused here rather than turned into a filter that
@@ -175,11 +214,23 @@ export const POST = route(async (req) => {
       const matcher = codeMatcher(code);
       if (!matcher) { errors.push({ line, error: `รหัสพนักงานไม่ถูกต้อง "${code}"` }); continue; }
 
-      const department = byCode.get(deptCode);
-      if (!department) { errors.push({ line, error: `ไม่พบแผนกรหัส "${deptCode}"` }); continue; }
+      const { department, reason } = matchDepartment(deptIndex, deptCell);
+      if (!department) { errors.push({ line, error: departmentMatchError(reason, deptCell) }); continue; }
 
-      const role = (pick(row, 'role', 'บทบาท') || 'employee').toLowerCase();
-      if (!ROLES.includes(role)) { errors.push({ line, error: `บทบาทไม่ถูกต้อง "${role}"` }); continue; }
+      /**
+       * บทบาท, read through the SAME table the screens print it from.
+       *
+       * `roleFromLabel` takes 'พนักงาน' and 'employee' alike, which matters
+       * because the roster is typed in Thai: this route used to test the cell
+       * against `ROLES` directly, so a file spelling the roles the way every
+       * screen in the system spells them failed 162 of its 163 rows. The
+       * function had existed, with tests, since the labels did — nothing called
+       * it. Blank is still 'employee'; a word the table does not know is still
+       * the row's own error.
+       */
+      const roleCell = pick(row, 'role', 'บทบาท');
+      const role = roleCell ? roleFromLabel(roleCell) : 'employee';
+      if (!role) { errors.push({ line, error: `บทบาทไม่ถูกต้อง "${roleCell}"` }); continue; }
 
       // Optional, and rejected loudly rather than silently dropped — a cell no
       // reading of the file could save is a mistake worth showing HR, not worth
@@ -371,6 +422,17 @@ export const POST = route(async (req) => {
     updated: updated.length,
     errors,
     warnings,
+    /**
+     * WHICH FILE THIS WAS READ AS, and for a workbook which of its tabs.
+     *
+     * Reported rather than assumed on the screen, because both facts are ones
+     * the reader cannot check any other way: a `.csv` that is really a workbook
+     * imports correctly here and would otherwise be described wrongly, and a
+     * workbook with five tabs has four this did not look at. A confirmation
+     * that says "163 rows imported" without saying from where is a
+     * confirmation nobody can act on when the number is wrong.
+     */
+    source: { kind: table.kind, sheet: table.sheet },
     /**
      * People this file left with no eligible หัวหน้า — empty on every ordinary
      * import. Separate from `warnings`, which is per-row and about the file;

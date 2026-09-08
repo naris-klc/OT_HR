@@ -65,7 +65,7 @@ export const PATCH = route(async (req, { params }) => {
   if (!department) return fail('ไม่พบแผนก', 404);
 
   const {
-    code, name, nameTh, manager, monthlyCapHours, weeklyCapHours, active, otMode,
+    code, name, nameTh, manager, monthlyCapHours, weeklyCapHours, active, otMode, signedByHr,
   } = await body(req);
 
   /**
@@ -114,6 +114,19 @@ export const PATCH = route(async (req, { params }) => {
   if (nameTh != null) department.nameTh = nameTh;
   if (active != null) department.active = Boolean(active);
   if (manager !== undefined) department.manager = manager || null;
+  /**
+   * ฝ่ายบุคคลเป็นหัวหน้างานของแผนกนี้ — the one field here that changes where a
+   * NEW request starts, so the same `undefined` rule as the ceilings applies
+   * and for a sharper reason: a PATCH that only renames the department must not
+   * carry a missing checkbox in as `false` and hand แผนกจัดซื้อ back to a
+   * signature nobody appointed.
+   *
+   * Entries already filed do not move. Their status was decided when they were
+   * submitted and stays where it is — a request sitting at รอหัวหน้า when this
+   * is switched on still needs that หัวหน้า, which is the honest reading: the
+   * step it is waiting at was real when it was routed there.
+   */
+  if (signedByHr !== undefined) department.signedByHr = Boolean(signedByHr);
   // `undefined` is "not mentioned in this PATCH"; '' is "cleared". Only the
   // second one writes, and it writes null — no ceiling, not a ceiling of zero.
   if (monthlyCapHours !== undefined) department.monthlyCapHours = capHoursFrom(monthlyCapHours);

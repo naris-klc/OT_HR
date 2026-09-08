@@ -9,7 +9,7 @@ import { capChips, capFigure } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
 import {
   ENTERED_FIELDS, filingOf, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled, isSystemFiled,
-  lastAction, sameSession, sameValue,
+  isSystemLog, lastAction, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import {
@@ -481,6 +481,21 @@ export function ProxyMark({ entry }) {
  * on that row says an approval a reader would assume happened did not, which is
  * something to notice. This says the company granted somebody a day. Nothing is
  * wrong and nothing needs doing.
+ *
+ * ── THE TOOLTIP NO LONGER SAYS ฝ่ายบุคคล FILED IT — 2026-09-07 ─────────────
+ *
+ * It ended "ฝ่ายบุคคลเป็นผู้บันทึกและอนุมัติรายการนี้ให้", which was true of the
+ * arrangement this chip was written under and was withdrawn on 2026-09-03 with
+ * the วันเกิดที่ยังไม่มีใบ queue: a birthday request is now filed by the person
+ * whose birthday it is and takes both signatures like any other. The sentence
+ * survived because nothing drew the chip on a screen where it was obviously
+ * wrong — and รออนุมัติ OT is that screen. A หัวหน้า about to sign, told on
+ * hover that ฝ่ายบุคคล has already recorded and approved this, is being told the
+ * opposite of what the button under their finger is for.
+ *
+ * WHO filed a row is `ProxyMark`'s question and it is answered from the row's
+ * own history, which is right on every row including the ones filed under the
+ * old arrangement. This chip says what the DAY is and stops there.
  */
 export function BirthdayWelfareMark({ entry }) {
   if (!isBirthdayWelfare(entry)) return null;
@@ -488,8 +503,7 @@ export function BirthdayWelfareMark({ entry }) {
     <span
       className="chip birthday"
       title={'วันเกิดของพนักงานนับเป็นวันหยุดของคนนั้นคนเดียว — ชั่วโมงที่มาทำงานในวันนั้น '
-        + 'จึงเข้าช่อง OT วันหยุด (08:00–17:00 ×1.5 · นอกเวลา ×3) ทั้งวัน '
-        + 'ฝ่ายบุคคลเป็นผู้บันทึกและอนุมัติรายการนี้ให้'}
+        + 'จึงเข้าช่อง OT วันหยุด (08:00–17:00 ×1.5 · นอกเวลา ×3) ทั้งวัน'}
     >
       OT สวัสดิการวันเกิด
     </span>
@@ -714,6 +728,13 @@ export function ScanMismatchMark({ entry }) {
  * วันหยุดก็ใส่ 8 ชั่วโมงวันปกติ แต่แค่เป็นแบบเหมา*), so there is no nought left
  * to explain and the sentence that explained it would now be false.
  *
+ * FOR PART OF 2026-09-07 THERE WERE TWO OF THEM AGAIN, and the pair is gone
+ * rather than kept: the working-day half was read back to *ไม่คิดชั่วโมง OT*
+ * for an afternoon, which needed a second sentence and a chooser to pick
+ * between them, and HR reversed it the same day — *ไม่ต้องมีช่องเหมารายวัน …
+ * เหมารายวันคือใส่ชั่วโมงในช่องเริ่ม 17.01-07.59 (วันจ.-ศ.)*. One rule, one
+ * sentence. See the flat branch in src/lib/otEngine.js for the whole sequence.
+ *
  * WHAT IT SAYS INSTEAD IS THE PART A READER CANNOT WORK OUT FROM THE ROW: that
  * the eight is the DAY'S OWN LENGTH and not a measurement of the times printed
  * beside it. The column is on the row already; "why does a 12-hour shift read
@@ -815,16 +836,32 @@ const currentOf = (entry) => ({
 /**
  * ประวัติรายการ — every action on an entry, and for the ones that rewrote it,
  * what it used to say.
+ *
+ * `hideSystem` drops the rows nobody wrote — `SYSTEM_LOG_ACTIONS` in
+ * lib/entries.js, which is ระบบคำนวณใหม่ตามนโยบาย and nothing else today. It
+ * is off by default and stays off everywhere the question is "what has
+ * happened to this entry": ประวัติ OT ของฉัน has to be able to show its owner
+ * that the hours moved without anybody touching the request, and ฝ่ายบุคคล's
+ * month table is where a replay is checked. The reviewer's pop-up on
+ * รออนุมัติ OT turns it on, because there the question is only who filed,
+ * who signed and who changed it — see the note over the constant.
+ *
+ * Nothing is dropped from the WALK, only from the drawing. `editsOf()` reads
+ * the full history and pairs each snapshot with the values it produced by the
+ * row's place in that list, so a replay that moved the hours still hands the
+ * edit under it the right "before" — hidden or not.
  */
-export function EntryHistory({ entry }) {
+export function EntryHistory({ entry, hideSystem = false }) {
   const items = entry?.history || [];
   if (!items.length) return null;
+  if (hideSystem && !items.some((h) => !isSystemLog(h))) return null;
 
   const afters = new Map(editsOf(entry).map((e) => [e.index, e.after]));
 
   return (
     <ol className="entry-history">
       {items.map((h, i) => {
+        if (hideSystem && isSystemLog(h)) return null;
         const meta = ACTION_META[h.action] || { label: h.action, tone: 'off' };
         // The status the entry was in, and the one this action put it in. Both
         // have been stored since the first version and neither was ever shown;
@@ -992,7 +1029,7 @@ export function RefiledNote({ parent, onOpenTrail }) {
  * and not what the hours say. Grouping keeps the order chronological while the
  * boundary stays visible: this ended, that began.
  */
-export function RequestTrail({ requests, liveStatus }) {
+export function RequestTrail({ requests, liveStatus, hideSystem = false }) {
   if (!requests?.length) return null;
   return (
     <div className="req-trail">
@@ -1038,7 +1075,7 @@ export function RequestTrail({ requests, liveStatus }) {
               </div>
             )}
 
-            <EntryHistory entry={r} />
+            <EntryHistory entry={r} hideSystem={hideSystem} />
           </section>
         );
       })}
@@ -1667,8 +1704,16 @@ export function ReasonCard({ description }) {
           thing in a card whose point is the words under it. Sans, one size down
           from them, and grey. */}
       <div className="reason-label">รายละเอียดงานที่ขอ OT</div>
+      {/* FOUR LINES, THEN อ่านต่อ. The field takes 500 characters (`description`
+          on the model) into a textarea somebody may type three paragraphs into,
+          and this card sits above ผู้อนุมัติ and ประวัติรายการ in a pop-up on a
+          phone. Four rather than the two a policy hint keeps, because this is
+          not a gloss on a control: it is the thing being decided about, and a
+          reviewer reading two lines of it would be pressing อนุมัติ on a
+          sentence they have not finished. Almost every real description is one
+          line and draws no button at all — see `Disclosure`. */}
       {description
-        ? <p className="reason-text">{description}</p>
+        ? <Disclosure className="reason-text" lines={4} of="รายละเอียดงานที่ขอ OT">{description}</Disclosure>
         : <p className="reason-text none">ไม่ได้ระบุรายละเอียดงาน</p>}
     </div>
   );
@@ -2019,6 +2064,128 @@ export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
     >
       {glyph}
     </button>
+  );
+}
+
+/**
+ * อ่านต่อ — สองบรรทัดแรก แล้วที่เหลือพับไว้.
+ *
+ * ── THE RULE, SETTLED 2026-09-07 AFTER THREE SHAPES IN ONE DAY ─────────────
+ *
+ * Text that explains a screen is not all one kind of text, and the standard is
+ * about which kind gets a control at all.
+ *
+ *   A CARD'S SUBTITLE — the grey line under นโยบายการคำนวณ or วันหยุดบริษัท —
+ *   is short and folds nothing. It is drawn in full, as an ordinary `.hint`,
+ *   with no `Disclosure` around it.
+ *
+ *   AN ALERT is read at the moment it is drawn or it is not read. Nothing in a
+ *   `ConfirmDialog` or an `Alert` is folded, and `LivePolicy` — folded for an
+ *   hour on 2026-09-07 — is the case that proves it rather than the exception.
+ *
+ *   THE TEXT UNDER ONE SETTING is what this is for. นโยบายการคำนวณ asks
+ *   nineteen questions and explains twelve of them under the question; the
+ *   longest is 671 characters, a dozen lines on a 360px phone, and the twelve
+ *   together were most of the page's height on a screen somebody opens to
+ *   change ONE dropdown.
+ *
+ * FEWER THAN TWO LINES DRAWS NO CONTROL, which is the same rule as "shorter
+ * than about 150 characters" and is measured rather than counted — the count
+ * that matters is lines on the reader's screen, and the same string is two
+ * lines on a laptop and five on a phone.
+ *
+ * ── WHERE THE CONTROL SITS ─────────────────────────────────────────────────
+ *
+ * Closed, at the END of the second line, over the ellipsis the clamp draws:
+ * …อ่านต่อ, which reads as the sentence continuing. It used to sit adrift on a
+ * line of its own. Open, it is ย่อข้อความ at the foot of the block, because
+ * that is where the reader's eye is when they finish.
+ *
+ * ── THE CUT IS CSS, THE BUTTON IS JAVASCRIPT ───────────────────────────────
+ *
+ * `-webkit-line-clamp` cuts in the stylesheet, so the first paint is already
+ * folded. Text drawn in full and collapsed a frame later is a page that jumps
+ * under the thumb on its way to the control.
+ *
+ * What JavaScript decides is only whether there IS a button, by measuring:
+ * `scrollHeight` is the whole paragraph, `clientHeight` is what the clamp left
+ * standing. (Not `> 0`, for the reason `useScrollEdge` gives two screens down:
+ * a fractional line height leaves a pixel behind at most zoom levels.) Nothing
+ * is measured while it is OPEN — the clamp is off there and the two heights
+ * agree, so measuring would answer "nothing is hidden" and take ย่อข้อความ away
+ * from the reader mid-use.
+ *
+ * ── `lines={0}` — ซ่อนทั้งหมด, FOR LISTS AND ONLY LISTS ────────────────────
+ *
+ * Two cards explain themselves in bullets: ทะเบียนพนักงาน (six of them, a
+ * manual for a CSV built in Excel before the screen is ever opened) and
+ * ไฟล์สแกนนิ้วมือ. A `-webkit-box` cut through a `<ul>` takes the markers with
+ * it, and two bullets of six is not a preview of anything — so those fold
+ * whole, on the same word, and `as` draws them as the `<ul>` they are.
+ *
+ * ── `of` IS NOT DECORATION ─────────────────────────────────────────────────
+ *
+ * A dozen buttons on one page all reading อ่านต่อ are a dozen identical links
+ * to somebody moving by keyboard or reading by ear. `of` is what the fold
+ * belongs to and is what the button is NAMED after; the word on screen stays
+ * อ่านต่อ, because beside the thing it opens it explains itself.
+ */
+export function Disclosure({
+  children, of = '', lines = 2, className = '', as: Tag = 'p', style,
+  more = 'อ่านต่อ', less = 'ย่อข้อความ',
+}) {
+  const id = React.useId();
+  const [open, setOpen] = React.useState(false);
+  /* ซ่อนทั้งหมด — no first line to measure against, so the control is
+     unconditional, and it has to be or the text has no way in at all. */
+  const whole = !(lines > 0);
+  const [over, setOver] = React.useState(whole);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (whole || !el || open) return undefined;
+    const read = () => setOver(el.scrollHeight - el.clientHeight > 2);
+    read();
+    // The paragraph is not the only thing that changes its own height. It sits
+    // in the left column of a `.policy-row`, which is a fraction of the window
+    // and rewraps with it — and on a phone that column is the width of the
+    // screen, where two lines hold a third of what they hold on a laptop.
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [children, open, lines, whole]);
+
+  /* …อ่านต่อ rides the end of the last visible line. Only when something is
+     actually clamped: with nothing above it there is no line to ride, and an
+     absolutely placed control in an empty box has nowhere to be. */
+  const tail = over && !open && !whole;
+
+  return (
+    /* The caller's spacing goes on the WRAPPER, not on the body: folded whole,
+       the body is not drawn and a margin it carries is a margin nothing has. */
+    <div className={`disclosure${tail ? ' at-tail' : ''}`} style={style}>
+      <Tag
+        id={id}
+        ref={ref}
+        className={`${className} disclosure-body${open ? '' : ` clamp${whole ? ' clamp-whole' : ''}`}`.trim()}
+        style={open || whole ? undefined : { '--disclosure-lines': lines }}
+      >
+        {children}
+      </Tag>
+      {(over || open) && (
+        <button
+          type="button"
+          className="link disclosure-more"
+          aria-expanded={open}
+          aria-controls={id}
+          aria-label={of ? `${open ? less : more} — ${of}` : undefined}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? less : more}
+        </button>
+      )}
+    </div>
   );
 }
 

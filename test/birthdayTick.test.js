@@ -364,3 +364,48 @@ test('หน้ารออนุมัติ — ช่องติ๊กวั
   assert.match(edit, /const refused = Boolean\(birthdayRefusal \|\| weekdayRefusal\);/);
   assert.match(edit, /!note\.trim\(\) \|\| refused\}/);
 });
+
+/**
+ * …และก่อนจะไปถึงช่องติ๊กนั้น แถวต้องบอกก่อนว่าเป็นวันเกิด — 2026-09-07, asked
+ * for in the same sentence as the เหมารายวัน chip: *ถ้าพนักงานติ๊กช่องเหมา
+ * รายวันหรือวันเกิด ให้ขึ้นแท็กในรายละเอียดหน้ารออนุมัติ OT ด้วย เพื่อให้ผู้
+ * อนุมัติรู้*.
+ *
+ * The chip existed and was drawn on every screen that READS a decided request —
+ * and on none of the ones where it is decided. What the reviewer sees without it
+ * is hours in the OT วันหยุด columns on a date the วัน column calls a Tuesday,
+ * with nothing on the row connecting the two.
+ *
+ * IT IS STILL NOT THE TICK BEING READ BACK. `isBirthdayWelfare` asks the
+ * segments the engine wrote, so a row whose owner's วันเกิด was corrected after
+ * filing says what the hours ARE rather than what was claimed — the same reason
+ * the employee's own screens ask it and not `description`.
+ */
+test('หน้ารออนุมัติ — ป้าย OT สวัสดิการวันเกิด ขึ้นทั้งในแถวและในป๊อปอัปรายละเอียด', () => {
+  const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+  const row = queue.slice(queue.indexOf('<td className="why-col">'), queue.indexOf('<td className="act-col">'));
+  const detail = queue.slice(queue.indexOf('<Section title="คำขอ">'), queue.indexOf('<ReasonCard'));
+
+  for (const [where, code] of [['แถวในคิว', row], ['ป๊อปอัปรายละเอียด', detail]]) {
+    assert.match(code, /<BirthdayWelfareMark entry=\{e\} \/>/, `ป้ายวันเกิดหายจาก${where}`);
+  }
+
+  /*
+   * AND THE TOOLTIP NO LONGER NAMES ฝ่ายบุคคล AS THE FILER. It ended
+   * "ฝ่ายบุคคลเป็นผู้บันทึกและอนุมัติรายการนี้ให้", which was true only of the
+   * arrangement withdrawn on 2026-09-03 — a birthday request is now filed by the
+   * person whose birthday it is and takes both signatures. On this screen that
+   * sentence would tell a หัวหน้า, mid-decision, that the request they are about
+   * to sign has already been recorded and approved by somebody else.
+   *
+   * WHO filed a row is `ProxyMark`'s question, answered from the row's own
+   * history, which stays right on the rows filed under the old arrangement too.
+   */
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
+  const mark = common.slice(common.indexOf('export function BirthdayWelfareMark'));
+  const body = mark.slice(0, mark.indexOf('\n}'));
+  assert.ok(
+    !/ฝ่ายบุคคล/.test(body),
+    'ป้ายวันเกิดกลับไปบอกว่าฝ่ายบุคคลเป็นผู้บันทึกและอนุมัติให้',
+  );
+});
