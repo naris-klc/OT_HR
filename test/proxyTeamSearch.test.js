@@ -499,6 +499,12 @@ test('ชื่อแผนกใต้หัวข้อไม่ตกไป�
  * own บันทึก OT is where somebody learns what counts as OT here, and the
  * birthday wording is a correction of a sentence that was false on that row.
  *
+ * WITHHOLDING IT ALSO WITHHOLDS THE BIRTHDAY HALF, and that stopped being a
+ * side effect on 2026-09-08. The wording used to be chosen by a tick a หัวหน้า
+ * was never offered; it is chosen by the preview now, and a preview on a team
+ * member's birthday would tell their หัวหน้า when they were born. The hours are
+ * unaffected — the server reads the stored วันเกิด whoever files.
+ *
  * DELETED: "เลือกได้เฉพาะพนักงานในแผนกของคุณ", which described the box directly
  * above it — the list IS the department and nothing else can be ticked.
  *
@@ -512,9 +518,13 @@ test('หัวข้อฟอร์มบันทึกแทนไม่ม�
   assert.match(code, /\{!proxy && \(\s*\n\s*<div className="hint">/);
   assert.ok(code.includes('เวลาทำงานปกติ จันทร์–ศุกร์'), 'บรรทัดนี้หายไปจากฟอร์มของพนักงานเองด้วย');
   assert.ok(
-    code.includes('สวัสดิการวันเกิดเป็นวันหยุดทั้งวัน'),
+    code.includes('วันที่เลือกเป็นวันเกิดของคุณ'),
     'คำอธิบายของแถววันเกิดหายไป — ประโยคนั้นเป็นการแก้ประโยคที่ผิดบนแถวนั้น',
   );
+  // …and it is chosen by the ANSWER, not by a claim. A tick would be a control
+  // this screen does not draw, so the sentence would be unreachable here for a
+  // second reason and the guard above would stop meaning anything.
+  assert.ok(code.includes('{isOwnBirthday(preview)'));
 
   // The three-clause note under the picker is gone outright.
   assert.ok(!code.includes('เลือกได้เฉพาะพนักงานในแผนกของคุณ'), 'บรรทัดใต้กล่องเลือกชื่อกลับมาแล้ว');

@@ -304,9 +304,12 @@ test('เปิดกฎวันเกิด — ใบ pending ถูก repla
 
   const [a, b, c] = month;
 
-  // The pending entry belonging to the birthday employee moved columns.
+  // The pending entry belonging to the birthday employee moved columns. It
+  // lands in ot15_holiday rather than ot3_holiday since 2026-09-08: a Tuesday
+  // evening is the first three hours worked on that birthday, and the first
+  // eight are ×1.5 whatever the clock says.
   assert.equal(a.policyVersionId, 'v4');
-  assert.equal(a.buckets.ot3_holiday, 3);
+  assert.equal(a.buckets.ot15_holiday, 3);
   assert.equal(a.buckets.ot15_weekday, 0);
 
   // Their colleague, same date, same hours, same replay — unchanged. This is

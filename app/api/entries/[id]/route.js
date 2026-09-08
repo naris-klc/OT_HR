@@ -6,7 +6,7 @@ import {
 } from '@/src/services/otService.js';
 import {
   POPULATE, pickSession, stampCap, editPermission, sameSession,
-  descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal, birthdayTickRefusal,
+  descriptionUnchanged, noOtHoursMessage, submissionWindowRefusal,
   zeroOtHoursAllowed,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
@@ -123,22 +123,17 @@ export const PATCH = route(async (req, { params }) => {
   }
 
   /**
-   * And the same birthday rule, for the reason the department one is applied
-   * again below: an edit is a filing. The commonest correction there is moves
-   * `workDate`, and without this a request ticked วันเกิด could be filed on the
-   * one day the tick is true and then dragged onto any other.
+   * THE BIRTHDAY CHECK THIS PATH ALSO MADE WENT WITH THE BOX — 2026-09-08. See
+   * the note in POST /api/entries, and `birthdayTickRefusal`'s own headstone in
+   * lib/entries.js.
    *
-   * The tick comes off the payload, like every other entered field on this
-   * path. An edit that does not send it is an edit that is taking it OFF, which
-   * is a correction anybody may make: an untick simply files the day as
-   * ordinary OT, and the hours do not move — `resolveDayTypes` decides those,
-   * and it has never read this box.
+   * The correction it existed for is still made, by the engine rather than by a
+   * refusal: the commonest edit here moves `workDate`, and `ctx.dayTypes` is
+   * re-resolved for the new date on every one of them. A request dragged OFF a
+   * birthday loses the birthday rates in the same save that moved it, and one
+   * dragged ONTO somebody's birthday gains them. Nothing has to be re-ticked and
+   * nothing can be left ticked on the wrong day.
    */
-  const birthdayRefusal = birthdayTickRefusal({
-    ticked: payload.birthdayWelfare, dayTypes: ctx.dayTypes, workDate: session.workDate,
-  });
-  if (birthdayRefusal) return fail(birthdayRefusal, 409, { warnings: result.warnings });
-
   // The same department rule the submit path applies, and for the reason the
   // ceiling is measured again on an edit: an entry moved onto an ordinary
   // Tuesday is a weekday OT request however it was filed. The department is the

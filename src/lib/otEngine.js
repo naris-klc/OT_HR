@@ -44,14 +44,20 @@ export const DAY_TYPES = Object.freeze({ WORKDAY: 'workday', HOLIDAY: 'holiday' 
 /**
  * WHY a date is what it is — carried alongside `dayType`, never instead of it.
  *
- * The engine does nothing with this: two segments with the same `dayType` land
- * in the same bucket whatever the reason. It exists because the reason is not
- * recoverable afterwards and somebody always asks. An overnight session that
- * starts on an employee's birthday Friday and runs into Saturday produces two
- * ot3_holiday segments that are identical on the sheet and arrived there by
- * different rules — one because HR turned the birthday rule on, one because
- * Saturday has always been a holiday. Only the first moves if the rule is
- * turned off again.
+ * IT IS READ BY THE ARITHMETIC SINCE 2026-09-08, and only 'birthday' is. It
+ * read *"The engine does nothing with this: two segments with the same
+ * `dayType` land in the same bucket whatever the reason"* until then, and that
+ * was true for as long as a birthday was simply somebody's private วันหยุด —
+ * same two buckets, decided off the clock, as a Saturday. HR's new rule splits
+ * a birthday by HOW LONG the person worked rather than by WHEN (see
+ * `applyBirthdayTiers`), so 'birthday' is now the one reason that changes a
+ * figure, and the field it lives in stopped being decoration.
+ *
+ * The other two remain exactly that. An overnight session that starts on an
+ * employee's birthday Friday and runs into Saturday still produces segments
+ * that arrived at the same bucket by different rules — one because HR turned
+ * the birthday rule on, one because Saturday has always been a holiday — and
+ * only the first moves if the rule is turned off again.
  */
 export const DAY_REASONS = Object.freeze({
   WEEKEND: 'weekend',
@@ -91,6 +97,29 @@ export function flatDailyMinutes(policy = DEFAULT_POLICY) {
   const span = policy.coreEndMinute - policy.coreStartMinute;
   const lunch = policy.breakMode === 'none' ? 0 : (policy.breakMinutes || 0);
   return Math.max(0, span - lunch);
+}
+
+/**
+ * สวัสดิการวันเกิด — how much of the day is worth ×1.5 before ×3 starts.
+ *
+ * HR's rule, 2026-09-08: *เมื่อพนักงานขอ OT ตรงกับวันเกิดของตัวเอง 8 ชม. แรก
+ * rate ×1.5 หลังจากนั้นเป็น rate ×3*. Eight hours OF WORK, not the hours
+ * between eight and five — see `applyBirthdayTiers`, which is where that
+ * distinction is spent.
+ *
+ * THE SAME EIGHT HOURS THE FLAT DAY IS, and delegated rather than re-derived
+ * for the reason `flatDailyMinutes` refuses to be the constant 480: it is the
+ * standard day — core hours less the break — so a company that moves its core
+ * hours moves this with them, and two derivations would be two ways for one
+ * office day to disagree with itself.
+ *
+ * A SEPARATE NAME BECAUSE IT IS A SEPARATE RULE. เหมารายวัน buys a day whole
+ * and this splits a day in two; they agree on a figure today and nothing says
+ * they must tomorrow. When they part, this is the line that changes, and
+ * `flatDailyMinutes` stays what เหมารายวัน means.
+ */
+export function birthdayFirstTierMinutes(policy = DEFAULT_POLICY) {
+  return flatDailyMinutes(policy);
 }
 
 export class OtValidationError extends Error {
@@ -252,10 +281,23 @@ export function birthdayInYear(birthDate, year, policy = DEFAULT_POLICY) {
  * the holiday calendar and the employee's birthDate, resolves the handful of
  * dates the session touches, and hands over the answer.
  *
- * Order matters: a birthday that already falls on a Saturday, a Sunday or a
- * company holiday adds nothing. The day was already a holiday, the hours were
- * already in the holiday buckets, and reporting the reason as 'birthday' would
- * claim the new rule moved figures it did not.
+ * ORDER MATTERS, AND IT REVERSED ON 2026-09-08. The birthday is asked FIRST
+ * now and wins over a Saturday, a Sunday and the company calendar alike — HR,
+ * asked directly, *ใช้กฎวันเกิดแทน*.
+ *
+ * It ran the other way round for as long as the two answers were the same
+ * answer: *"a birthday that already falls on a Saturday, a Sunday or a company
+ * holiday adds nothing"*, which it did not, because both readings put the whole
+ * day in the holiday buckets on the same clock boundary. Reporting the reason
+ * as 'birthday' there would have claimed the rule moved figures it did not, so
+ * it did not claim it.
+ *
+ * That stopped being true the moment `applyBirthdayTiers` existed. A birthday
+ * is now split by hours worked and an ordinary holiday by the clock, so the two
+ * give DIFFERENT figures for the same shift — 20:00–23:00 is ×3 as a Saturday
+ * and ×1.5 as a birthday — and "adds nothing" would now be a decision to pay
+ * one of them, taken silently, on the ground that there was nothing to decide.
+ * There is: HR decided it, and this is where the decision is kept.
  *
  * Values come out in the `{ type, reason }` form. `computeSession` also accepts
  * a bare 'workday' / 'holiday' string per date, which is what a hand-written
@@ -281,6 +323,14 @@ export function resolveDayTypes(dates = [], options = {}) {
   for (const date of dates) {
     parseDate(date);
 
+    const birthday = policy.birthdayHolidayEnabled && birthDate
+      && birthdayFor(Number(date.slice(0, 4))) === date;
+
+    if (birthday) {
+      out[date] = { type: DAY_TYPES.HOLIDAY, reason: DAY_REASONS.BIRTHDAY };
+      continue;
+    }
+
     if (isHoliday(date)) {
       out[date] = {
         type: DAY_TYPES.HOLIDAY,
@@ -289,12 +339,7 @@ export function resolveDayTypes(dates = [], options = {}) {
       continue;
     }
 
-    const birthday = policy.birthdayHolidayEnabled && birthDate
-      && birthdayFor(Number(date.slice(0, 4))) === date;
-
-    out[date] = birthday
-      ? { type: DAY_TYPES.HOLIDAY, reason: DAY_REASONS.BIRTHDAY }
-      : { type: DAY_TYPES.WORKDAY, reason: null };
+    out[date] = { type: DAY_TYPES.WORKDAY, reason: null };
   }
   return out;
 }
@@ -444,6 +489,90 @@ function boundaryCuts(startAbs, endAbs, policy) {
     }
   }
   return [...cuts].sort((a, b) => a - b);
+}
+
+/**
+ * สวัสดิการวันเกิด — the ONE place a `dayReason` changes a figure.
+ *
+ * ── THE RULE ─────────────────────────────────────────────────────────────────
+ *
+ * On the filer's own birthday the first `birthdayFirstTierMinutes` of OT are
+ * ×1.5 and everything past them is ×3, **counted in hours worked and not read
+ * off the clock** — HR, 2026-09-08, asked which of the two it was and answering
+ * *นับตามชั่วโมงที่ทำจริง (ไม่ดูนาฬิกา)*.
+ *
+ * WHAT THAT CHANGES, since the old reading agreed with it more often than not.
+ * A birthday was an ordinary วันหยุด: ×1.5 inside 08:00–17:00, ×3 outside it.
+ * Somebody working the standard day and staying on gets the same answer either
+ * way — 08:00–20:00 is eight hours ×1.5 and three ×3 under both. The two part
+ * company when the work does not start in the morning: 17:00–20:00 on one's own
+ * birthday was three hours ×3 and is now three hours ×1.5, because it is the
+ * first three hours of the day and the day had not been worked yet.
+ *
+ * ── WHY IT IS A PASS OVER THE SEGMENTS AND NOT A BRANCH IN `bucketFor` ───────
+ *
+ * `bucketFor` is given one minute and asked what it is worth. That is answerable
+ * from the clock and unanswerable from a running total, which is the whole
+ * difference between the two rules. So the clock decides first, as it always
+ * did, and this walks what it produced.
+ *
+ * PER DATE, and the accumulator is keyed on the date for that reason. A shift
+ * that begins on the birthday and runs past midnight puts the far side in an
+ * ordinary day, which has its own rules and is not part of this count; a shift
+ * that runs INTO a birthday starts that birthday's count at nought at midnight,
+ * which is the same sentence read from the other end. `หนึ่งวัน หนึ่งใบ`
+ * (lib/overlap.js) is what makes one session's count the whole day's — two
+ * requests cannot share a date, so there is no second entry for the first eight
+ * hours to have been spent by.
+ *
+ * MEASURED ON THE MINUTES AS SEGMENTED — after the lunch hole, before the flat
+ * break deduction and before rounding. The hole is the right subtraction: an
+ * 08:00–17:00 birthday is eight hours of work and lands wholly in ×1.5, which
+ * is what it read before this rule existed and what HR expects to keep reading.
+ * Running after the flat deduction instead would mean splitting a segment whose
+ * `minutes` no longer match its own clock times, and the row on F-HR-027 would
+ * carry a boundary that is not where the figures change.
+ *
+ * SPLITS RATHER THAN ROUNDS TO A WHOLE SEGMENT. The eighth hour can end in the
+ * middle of a stretch, and moving the boundary to the nearest edge would pay
+ * somebody by where a break happened to fall. `mergeSegments` runs afterwards
+ * and will not glue the two halves back together — they are different buckets —
+ * while the pieces on either side of the cut that DO share a bucket merge as
+ * usual, so the printed row is one line per rate per day as it has always been.
+ */
+function applyBirthdayTiers(segments, policy) {
+  const tier = birthdayFirstTierMinutes(policy);
+  const spentByDate = new Map();
+  const out = [];
+
+  const at = (seg, bucket, patch) => ({
+    ...seg, ...patch, bucket, multiplier: BUCKET_MULTIPLIER[bucket],
+  });
+
+  for (const seg of segments) {
+    if (seg.dayReason !== DAY_REASONS.BIRTHDAY) { out.push(seg); continue; }
+
+    const spent = spentByDate.get(seg.date) || 0;
+    spentByDate.set(seg.date, spent + seg.minutes);
+    const firstTierLeft = Math.max(0, tier - spent);
+
+    if (firstTierLeft >= seg.minutes) {
+      out.push(at(seg, BUCKETS.OT15_HOLIDAY));
+    } else if (firstTierLeft <= 0) {
+      out.push(at(seg, BUCKETS.OT3_HOLIDAY));
+    } else {
+      // The cut is strictly inside the segment, so it is strictly before its
+      // end — which is what keeps `formatTime` off the 24:00 case that only an
+      // end may be. The end itself rides along on the second piece unchanged.
+      const cut = formatTime(parseTime(seg.start) + firstTierLeft);
+      out.push(at(seg, BUCKETS.OT15_HOLIDAY, { end: cut, minutes: firstTierLeft }));
+      out.push(at(seg, BUCKETS.OT3_HOLIDAY, {
+        start: cut, minutes: seg.minutes - firstTierLeft,
+      }));
+    }
+  }
+
+  return out;
 }
 
 function bucketFor(isHolidayDay, minuteOfDay, policy) {
@@ -624,7 +753,10 @@ export function computeSession(session, options = {}) {
         // first night of an overnight session, or the row is unreadable.
         end: b % MINUTES_PER_DAY === 0 ? '24:00' : formatTime(b),
         dayType: type,
-        /** Why it was that kind of day. Never read by the arithmetic. */
+        /**
+         * Why it was that kind of day. Read by `applyBirthdayTiers` below and
+         * by nothing else in here — see DAY_REASONS.
+         */
         dayReason: reason,
         bucket,
         multiplier: BUCKET_MULTIPLIER[bucket],
@@ -632,6 +764,11 @@ export function computeSession(session, options = {}) {
       });
     }
   }
+
+  // สวัสดิการวันเกิด — ×1.5 for the first eight hours WORKED, ×3 after them.
+  // Here rather than in the loop above because it needs a running total of a
+  // whole day, which one cut point cannot see. See `applyBirthdayTiers`.
+  segments = applyBirthdayTiers(segments, policy);
 
   const clockMinutes = endAbs - startAbs;
   const otMinutesBeforeBreak = segments.reduce((s, x) => s + x.minutes, 0)

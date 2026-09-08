@@ -3,7 +3,7 @@ import { SIGNER_ROLES, filesStraightToHr } from '@/lib/roles.js';
 import { route, body, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { compute, checkCap, loadContext } from '@/src/services/otService.js';
-import { pickSession, isDepartmentManager, birthdayTickRefusal } from '@/lib/entries.js';
+import { pickSession, isDepartmentManager } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { initialStatus } from '@/lib/proxyFiling.js';
 import { weekdayOtRefusal } from '@/lib/otMode.js';
@@ -124,24 +124,16 @@ export const POST = route(async (req) => {
   const weekdayRefusal = employee ? weekdayOtRefusal(employee.department, result) : null;
 
   /**
-   * และช่อง “วันเกิด” ที่ติ๊กไว้ — said in the same breath and for the same
-   * reason.
+   * `birthdayRefusal` WAS ANSWERED HERE AND IS NOT ANY MORE — 2026-09-08, with
+   * the ช่อง “วันเกิด” it was the verdict on. It is not replaced by a quieter
+   * field: the form has no claim to have checked.
    *
-   * From `birthdayTickRefusal`, the function both write paths refuse with, over
-   * `ctx.dayTypes` — the same map, resolved from the same stored วันเกิด under
-   * the same policy. The form greys บันทึก on this sentence rather than working
-   * out whose birthday the date is, which it could not do without being sent a
-   * birth date it is not allowed to hold (`publicEmployee`).
-   *
-   * Null when the box is not ticked, which is most requests: the tick is a
-   * claim, and there is nothing to check until somebody makes it.
+   * WHAT THE FORM READS INSTEAD IS ALREADY IN `result`. Every segment carries
+   * `dayReason`, so a preview computed on somebody's birthday says so in the
+   * hours themselves, and the form draws its notice off that — see
+   * `isOwnBirthday` in components/OtForm.jsx. That is the same fact the refusal
+   * was derived from, minus the round trip through a box that could be wrong.
    */
-  const birthdayRefusal = employee
-    ? birthdayTickRefusal({
-      ticked: payload.birthdayWelfare, dayTypes: ctx.dayTypes, workDate: session.workDate,
-    })
-    : null;
-
   /**
    * หนึ่งวัน หนึ่งใบ, and เวลาทับซ้อน behind it — asked WHILE the date and the
    * times are being typed, not only when they are sent.
@@ -182,6 +174,6 @@ export const POST = route(async (req) => {
     : null;
 
   return json({
-    result, cap, routing, weekdayRefusal, birthdayRefusal, conflict,
+    result, cap, routing, weekdayRefusal, conflict,
   });
 });

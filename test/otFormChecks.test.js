@@ -9,11 +9,14 @@ import {
 } from '../lib/entries.js';
 
 /**
- * แถบช่องติ๊กบนฟอร์มบันทึก OT — สามช่อง เรียง วันเกิด → เหมารายวัน → ไม่พักเที่ยง.
+ * แถบช่องติ๊กบนฟอร์มบันทึก OT — สองช่อง เรียง เหมารายวัน → ไม่พักเที่ยง.
  *
- * HR, 2026-09-08, in two sentences: *ช่องติ๊กเรียงจากวันเกิด >> เหมารายวัน >>
- * ไม่พักเที่ยง ตัดช่องติ๊กข้ามคืนออก* and *ช่องติ๊กเหมารายวันแสดงเฉพาะ
- * เจ้าหน้าที่บริการ*.
+ * HR, 2026-09-08, in three sentences across one day: *ช่องติ๊กเรียงจากวันเกิด >>
+ * เหมารายวัน >> ไม่พักเที่ยง ตัดช่องติ๊กข้ามคืนออก*, then *ช่องติ๊กเหมารายวัน
+ * แสดงเฉพาะเจ้าหน้าที่บริการ*, and then *เอาตัวเลือก “วันเกิด (สวัสดิการวันเกิด
+ * ของตัวเอง)” ออก แต่ให้ระบบรู้อัตโนมัติ* — which took the head of that order
+ * off the form the same morning it was put there. What the box did is
+ * test/birthdayTick.test.js's subject; what is left in the row is this one's.
  *
  * WHY A TEST AND NOT JUST AN EDIT. Two of the three things asserted here are
  * invisible on the screen when they are wrong:
@@ -45,30 +48,28 @@ const block = checks.slice(0, checks.indexOf('</div>'));
 // The bound field is the anchor, not the label — a label moves within its own
 // <label> when the wording changes, the binding does not. The wording is
 // asserted separately just below.
-const BIRTHDAY = 'checked={form.birthdayWelfare}';
 const FLAT = 'checked={form.flatDaily}';
 const NO_BREAK = 'checked={form.noBreakTaken}';
 
-// ── the order, and the three that are left ──────────────────────────────────
+// ── the order, and the two that are left ────────────────────────────────────
 
-test('สามช่อง เรียง วันเกิด → เหมารายวัน → ไม่พักเที่ยง', () => {
-  const birthday = block.indexOf(BIRTHDAY);
+test('สองช่อง เรียง เหมารายวัน → ไม่พักเที่ยง', () => {
   const flat = block.indexOf(FLAT);
   const noBreak = block.indexOf(NO_BREAK);
 
-  for (const [label, at] of [['วันเกิด', birthday], ['เหมารายวัน', flat], ['ไม่พักเที่ยง', noBreak]]) {
+  for (const [label, at] of [['เหมารายวัน', flat], ['ไม่พักเที่ยง', noBreak]]) {
     assert.ok(at > -1, `ไม่พบช่องติ๊ก ${label} ในแถบ`);
   }
-  // และป้ายทั้งสามยังเป็นคำเดิม.
-  assert.ok(block.includes('วันเกิด (สวัสดิการวันเกิดของตัวเอง)'));
+  // และป้ายทั้งสองยังเป็นคำเดิม.
   assert.ok(block.includes('เหมารายวัน (นับ 8 ชม. ต่อวัน)'));
   assert.ok(block.includes('ไม่พักเที่ยง'));
-  assert.ok(birthday < flat, 'วันเกิดต้องอยู่ก่อนเหมารายวัน');
   assert.ok(flat < noBreak, 'เหมารายวันต้องอยู่ก่อนไม่พักเที่ยง');
 
-  // THREE `<label className="check">` AND NO MORE. The count is what catches a
-  // fourth box arriving without a decision about where it sits in the order.
-  assert.equal((block.match(/<label className="check">/g) || []).length, 3);
+  // TWO `<label className="check">` AND NO MORE. The count is what catches a
+  // third box arriving without a decision about where it sits in the order —
+  // and it is what catches วันเกิด coming back as a control instead of as the
+  // answer the server now works out on its own.
+  assert.equal((block.match(/<label className="check">/g) || []).length, 2);
 });
 
 /**
@@ -188,10 +189,9 @@ test('ใบที่ติ๊กเหมาไว้แล้ว เปิด�
   assert.match(read('src/models/OtEntry.js'), /flatDaily: \{ type: Boolean, default: false \}/);
 });
 
-// ── the two ticks that fill the times in still do ───────────────────────────
+// ── the tick that fills the times in still does ─────────────────────────────
 
-test('วันเกิดและเหมารายวันยังเติมเวลา 08:00–17:00 ให้เหมือนเดิม', () => {
-  assert.match(form, /onChange=\{\(e\) => tickDay\('birthdayWelfare', e\.target\.checked\)\}/);
+test('เหมารายวันยังเติมเวลา 08:00–17:00 ให้เหมือนเดิม', () => {
   assert.match(form, /onChange=\{\(e\) => tickDay\('flatDaily', e\.target\.checked\)\}/);
   assert.match(form, /const STANDARD_DAY = Object\.freeze\(\{ startTime: '08:00', endTime: '17:00' \}\)/);
   assert.equal(endsNextDayFor('08:00', '17:00'), false);

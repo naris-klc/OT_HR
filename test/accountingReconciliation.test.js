@@ -450,16 +450,24 @@ test('เดือนเดียวมีทั้งวันเกิดแ�
   assert.equal(before.ot15Hours, 8);
 });
 
-test('วันเกิดที่ทำนอกเวลา ก็ยังนับเป็นชั่วโมงวันเกิด แม้จะอยู่คอลัมน์ ×3', () => {
+test('วันเกิดที่ล้นแปดชั่วโมง ก็ยังนับเป็นชั่วโมงวันเกิด แม้ส่วนที่ล้นจะอยู่คอลัมน์ ×3', () => {
   // The remark is about WHY the day was a holiday, not about which column the
-  // hours landed in — an evening on your birthday is ×3, and accounting reading
-  // a ×3 figure for a Tuesday asks the same question.
-  const evening = filed(
-    { workDate: '2026-08-04', startTime: '18:00', endTime: '21:00' },
+  // hours landed in, and accounting reading a ×3 figure for a Tuesday asks the
+  // same question.
+  //
+  // IT TAKES A LONG DAY TO REACH ×3 NOW. This case was an 18:00–21:00 evening
+  // until 2026-09-08, when a birthday was an ordinary วันหยุด split on the
+  // clock; three hours after five was ×3 and is now the first three hours of the
+  // day, at ×1.5. Thirteen hours is what it takes to land in both columns —
+  // eight at ×1.5 and the rest at ×3 — which is the shape of the row this
+  // remark exists for.
+  const long = filed(
+    { workDate: '2026-08-04', startTime: '07:00', endTime: '21:00' },
     { birthDate: '1977-08-04' },
   );
-  assert.equal(evening.buckets.ot3_holiday, 3);
-  assert.equal(birthdayHoursOf([evening]), 3);
+  assert.equal(long.buckets.ot15_holiday, 8);
+  assert.equal(long.buckets.ot3_holiday, 5);
+  assert.equal(birthdayHoursOf([long]), 13);
 });
 
 test('คนที่ไม่มีชั่วโมงวันเกิด — ไม่มีหมายเหตุ และไม่มีอะไรบนใบเปลี่ยน', () => {

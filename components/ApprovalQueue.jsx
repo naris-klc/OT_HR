@@ -15,7 +15,7 @@ import {
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
   maySignFirstStep, isOwnRequest, flatDayEnd, FLAT_DAY_SPAN_MINUTES, isBirthdayWelfare,
-  mayCorrectEntries, humanHistory,
+  humanHistory,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
@@ -1896,9 +1896,11 @@ export default function ApprovalQueue({
           // reads — a pop-up that explained the silence differently from the
           // row it was opened off would be two answers to one question.
           watchNote={watchingNote(detail, stage, isHr, user)}
-          // The บทบาท rule, not the stage: `isHr` above says which STEP this
-          // queue is showing, and a correction is answered on who is asking.
-          mayCorrect={mayCorrectEntries(user)}
+          // `mayCorrect` WAS PASSED HERE UNTIL 2026-09-08 — the บทบาท rule,
+          // not the stage, from `mayCorrectEntries`. It decided one control:
+          // the วันเกิด tick inside แก้ไขชั่วโมง, which HR removed. Whether
+          // this reader may save a correction at all is still answered, by
+          // `editPermission` on the server, on the press.
           onClose={() => setDetail(null)}
           /**
            * THE ONE PATH THAT COULD REACH THE SERVER WITHOUT A REASON.
@@ -2292,14 +2294,16 @@ function RejectFields({ value, onChange, many }) {
  * offer a button the server answers 403 to.
  */
 /**
- * `mayCorrect` — whether this reader is one of the two บทบาท `editPermission`
- * accepts a correction from. Handed down rather than worked out here, from the
- * same `mayCorrectEntries` the server refuses on, so the box this screen draws
- * and the one the write path accepts cannot drift apart. It decides only the
- * วันเกิด tick inside แก้ไขชั่วโมง — see the note beside it.
+ * `mayCorrect` LEFT THIS COMPONENT ON 2026-09-08. It said whether the reader
+ * was one of the two บทบาท `editPermission` accepts a correction from, handed
+ * down from `mayCorrectEntries` so that the box this screen draws and the one
+ * the write path accepts could not drift apart — and it decided exactly one
+ * control, the วันเกิด tick inside แก้ไขชั่วโมง. HR removed that tick, and a
+ * prop threaded through two components for a control that is not drawn is a
+ * rule with nowhere left to be read.
  */
 function DetailModal({
-  entry: e, isHr, busy, mine = false, watching = false, watchNote = null, mayCorrect = false,
+  entry: e, isHr, busy, mine = false, watching = false, watchNote = null,
   onClose, onApprove, onReject, onEntryChanged,
 }) {
   const [mode, setMode] = useState('view'); // 'view' | 'rejecting'
@@ -2569,7 +2573,6 @@ function DetailModal({
             {editing ? (
               <QuickEdit
                 entry={e}
-                mayCorrect={mayCorrect}
                 onDirty={setEditDirty}
                 onCancel={() => { setEditing(false); setEditDirty(false); }}
                 onSaved={(updated) => {
@@ -2667,7 +2670,7 @@ function DetailModal({
  * clock says. Re-picking เวลาเริ่ม is what re-derives the end, exactly as it
  * does on a stored flat row opened in the filing form.
  */
-function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
+function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
   const [form, setForm] = useState(() => ({
     startTime: entry.startTime,
     endTime: entry.endTime,
@@ -2676,13 +2679,13 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
     /** เหมารายวัน — an entered field, stored on the entry. */
     flatDaily: Boolean(entry.flatDaily),
     /**
-     * วันเกิด — READ BACK OFF THE HOURS, because there is no field to read.
-     * The tick is a claim the server checks and then has no further use for;
-     * what makes a day สวัสดิการวันเกิด is the stored วันเกิด, and
-     * `isBirthdayWelfare` asks the engine's own `dayReason` about it. Same
-     * function, same reasoning as OtForm's own edit case — see `blank()` there.
+     * `birthdayWelfare` WAS READ BACK OFF THE HOURS HERE UNTIL 2026-09-08, via
+     * `isBirthdayWelfare`, because there was no field to read: the tick was a
+     * claim the server checked and then had no further use for. The claim went;
+     * what makes a day สวัสดิการวันเกิด — the stored วันเกิด, resolved on the
+     * server — never depended on it, and the row's own chip still reads it off
+     * `dayReason` exactly as it did.
      */
-    birthdayWelfare: isBirthdayWelfare(entry),
   }));
   const [note, setNote] = useState('');
   const [preview, setPreview] = useState(null);
@@ -2693,11 +2696,10 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
     || form.endTime !== entry.endTime
     || form.endsNextDay !== Boolean(entry.endsNextDay)
     || form.noBreakTaken !== Boolean(entry.noBreakTaken)
-    // Both ticks move an ANSWER and not only a label: เหมารายวัน rewrites what
-    // the day is worth, and วันเกิด is a claim the server either accepts or
-    // refuses. A tick alone is a saveable correction, so it counts as movement.
-    || form.flatDaily !== Boolean(entry.flatDaily)
-    || form.birthdayWelfare !== isBirthdayWelfare(entry);
+    // เหมารายวัน moves an ANSWER and not only a label — it rewrites what the day
+    // is worth — so a tick alone is a saveable correction and counts as
+    // movement. วันเกิด sat beside it on this list until 2026-09-08.
+    || form.flatDaily !== Boolean(entry.flatDaily);
 
   useEffect(() => { onDirty?.(moved || note.trim().length > 0); }, [moved, note]);
 
@@ -2769,25 +2771,26 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
   const nextHours = preview?.result?.totals?.otHours;
 
   /**
-   * The two sentences the server would refuse this correction with, said while
-   * it is still being made.
+   * The sentence the server would refuse this correction with, said while it is
+   * still being made.
    *
-   * Both come off the preview — `birthdayTickRefusal` and `weekdayOtRefusal`,
-   * the very functions PATCH /api/entries/[id] answers 409 with — so the line
-   * on the screen and the line in the refusal are one line, and this panel
-   * cannot offer a save the write path is about to reject.
+   * It comes off the preview — `weekdayOtRefusal`, the very function PATCH
+   * /api/entries/[id] answers 409 with — so the line on the screen and the line
+   * in the refusal are one line, and this panel cannot offer a save the write
+   * path is about to reject. It is needed because UNTICKING เหมารายวัน is
+   * possible here: a flat row in a แผนก that does not do weekday OT becomes
+   * ordinary weekday hours the moment the tick comes off, which is the one
+   * refusal `รูปแบบโอที` exists to make.
    *
-   * วันเกิด is the claim: the box says "this date is this person's สวัสดิการ
-   * วันเกิด", and only the server can check it, because no screen may hold a
-   * `birthDate` (`publicEmployee`). เหมารายวัน needs the second one because
-   * UNTICKING it is now possible here: a flat row in a แผนก that does not do
-   * weekday OT becomes ordinary weekday hours the moment the tick comes off,
-   * which is the one refusal `รูปแบบโอที` exists to make.
+   * `birthdayRefusal` STOOD BESIDE IT UNTIL 2026-09-08 and was the same shape:
+   * the วันเกิด box claimed "this date is this person's สวัสดิการวันเกิด" and
+   * only the server could check it, because no screen may hold a `birthDate`
+   * (`publicEmployee`). The box is gone and the preview no longer answers the
+   * field.
    */
-  const birthdayRefusal = preview?.birthdayRefusal || null;
   const weekdayRefusal = preview?.weekdayRefusal || null;
-  /** Either of them is a 409 waiting to happen, so บันทึก goes quiet on it. */
-  const refused = Boolean(birthdayRefusal || weekdayRefusal);
+  /** A 409 waiting to happen, so บันทึก goes quiet on it. */
+  const refused = Boolean(weekdayRefusal);
 
   /*
    * ONE PLACE THAT SAYS WHAT IS WRONG.
@@ -2808,7 +2811,6 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
    */
   const problems = [
     err || null,
-    birthdayRefusal,
     weekdayRefusal,
     !note.trim() ? 'กรุณาระบุเหตุผลการแก้ไข' : null,
   ].filter(Boolean);
@@ -2888,33 +2890,21 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
           />
           เหมารายวัน <span className="check-note">(นับ 8 ชม. ต่อวัน)</span>
         </label>
-        {/* WHO MAY MAKE THE CLAIM, and it is the same rule OtForm draws when it
-            withholds this box from บันทึก OT แทนพนักงาน — turned around, because
-            here the box is offered to ฝ่ายบุคคล and withheld from everybody
-            else. A หัวหน้า is not told when their team member was born
-            (`publicEmployee` keeps `birthDate` off the roster they hold), so a
-            box they could only tick by guessing is a box that teaches them the
-            answer through its refusal. ฝ่ายบุคคล and ผู้ดูแลระบบ hold the
-            วันเกิด already, and they are also the only two `editPermission`
-            lets save a correction here at all — see `mayCorrectEntries`. */}
-        {mayCorrect && (
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={form.birthdayWelfare}
-              onChange={(ev) => set({ birthdayWelfare: ev.target.checked })}
-            />
-            วันเกิด <span className="check-note">(สวัสดิการวันเกิดของคนนี้)</span>
-          </label>
-        )}
+        {/* A วันเกิด TICK STOOD HERE AND IS GONE — 2026-09-08. It was offered to
+            ฝ่ายบุคคล and withheld from everybody else (`mayCorrect`), the mirror
+            of the rule OtForm drew when it withheld the same box from บันทึก OT
+            แทนพนักงาน: a หัวหน้า is not told when their team member was born
+            (`publicEmployee` keeps `birthDate` off the roster they hold).
+            Nobody is asked now. The date decides, and moving the date is what
+            moves the answer — see the note in PATCH /api/entries/[id]. */}
         {/* Once, for the box, rather than beside the mark: a disabled control
             with no reason given is the thing somebody presses twice and then
-            reports as broken. The second sentence answers the question the two
-            new ticks raise straight away — "did ticking that just move the
-            times?" — because on the filing form it would have. */}
+            reports as broken. The second sentence answers the question the tick
+            raises straight away — "did ticking that just move the times?" —
+            because on the filing form it would have. */}
         <div className="checks-note">
           “ข้ามคืน” คำนวณจากเวลาที่กรอก จึงติ๊กเองไม่ได้
-          {(form.flatDaily || form.birthdayWelfare) && (
+          {form.flatDaily && (
             <>
               {' · '}
               ติ๊กแล้วเวลาที่กรอกไว้ไม่ถูกแก้ — เป็นเวลาที่พิมพ์บนใบและเซ็นไปแล้ว

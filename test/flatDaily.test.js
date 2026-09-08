@@ -450,7 +450,9 @@ test('ติ๊กแล้วเติมเวลางานปกติใ�
   const form = readFileSync(join(ROOT, 'components/OtForm.jsx'), 'utf8');
 
   assert.match(form, /const STANDARD_DAY = Object\.freeze\(\{ startTime: '08:00', endTime: '17:00' \}\)/);
-  // One handler for both ticks, so the two cannot come to fill in different days.
+  // The handler still takes a `k`. It served both ticks until 2026-09-08, so
+  // that the two could not come to fill in different days; วันเกิด went and the
+  // shape stayed, which is the note over `tickDay` in the form.
   assert.match(form, /const tickDay = \(k, on\) => setForm/);
   assert.match(form, /\[k\]: true,\s*\r?\n\s*\.\.\.STANDARD_DAY,/);
   assert.match(form, /: \{ \.\.\.f, \[k\]: false \}/);
@@ -465,7 +467,6 @@ test('ติ๊กแล้วเติมเวลางานปกติใ�
   );
   assert.equal(endsNextDayFor('08:00', '17:00'), false);
   assert.match(form, /onChange=\{\(e\) => tickDay\('flatDaily', e\.target\.checked\)\}/);
-  assert.match(form, /onChange=\{\(e\) => tickDay\('birthdayWelfare', e\.target\.checked\)\}/);
 
   // เวลาเริ่ม takes no `disabled` of any kind. This is the half of "แก้ได้"
   // that HR kept, and the box that carries the whole of a flat day now.
@@ -707,16 +708,22 @@ test('เหมารายวันที่ตรงวันเกิด — 
 });
 
 /**
- * THE CARVE-OUT IS GONE — *ไม่ต้องยกเว้นวันเสาร์อาทิตย์ หรือวันหยุดแล้ว*. A
- * birthday that lands on a Saturday or on วันแม่ reads `weekend` /
- * `companyHoliday` rather than `birthday`, because the day was already วันหยุด
- * for everybody and the benefit added nothing — and that changes the LABEL on
- * the row, not the figure: eight hours in the same วันหยุด column either way.
+ * THE CARVE-OUT IS GONE — *ไม่ต้องยกเว้นวันเสาร์อาทิตย์ หรือวันหยุดแล้ว*. A flat
+ * day takes the column its own day type decides, and a birthday on a Saturday is
+ * the same eight hours in the same วันหยุด column as a Saturday that is nobody's
+ * birthday.
+ *
+ * ONLY THE REASON MOVED, AND IT MOVED AGAIN ON 2026-09-08. It read `weekend` /
+ * `companyHoliday` until then, on the ground that the day was already วันหยุด
+ * for everybody and the benefit added nothing; HR reversed that when the
+ * birthday stopped being an ordinary holiday (*ใช้กฎวันเกิดแทน*). The FIGURE is
+ * untouched by either reversal, which is the point of the case: a flat day is
+ * eight hours at ×1.5 and never asks why the day was a holiday.
  */
 test('วันเกิดที่ตรงเสาร์หรือวันหยุดบริษัท — ตัวเลขเท่ากัน เปลี่ยนแค่เหตุผลของวัน', () => {
   for (const [date, born, reason] of [
-    ['2026-08-08', '1990-08-08', 'weekend'],
-    ['2026-08-12', '1990-08-12', 'companyHoliday'],
+    ['2026-08-08', '1990-08-08', 'birthday'],
+    ['2026-08-12', '1990-08-12', 'birthday'],
   ]) {
     const flat = runBirthday(
       { workDate: date, startTime: '08:00', endTime: '17:00', flatDaily: true },
@@ -730,13 +737,17 @@ test('วันเกิดที่ตรงเสาร์หรือวั�
 });
 
 /**
- * IT IS THE RESOLVED DAY THAT DECIDES, NEVER THE TICK — the invariant
- * test/birthdayTick.test.js holds, read from this side. The ช่องวันเกิด says what
- * is being CLAIMED and `birthdayTickRefusal` is the verdict on the claim; the
- * column comes from the stored วันเกิด through `resolveDayTypes`.
+ * IT IS THE RESOLVED DAY THAT DECIDES, AND NOW THERE IS NOTHING ELSE IT COULD BE
+ * — the invariant test/birthdayTick.test.js holds, read from this side.
  *
- * `computeSession` never sees `birthdayWelfare` at all, which is what makes that
- * unforgeable — asserted here so nobody adds it as a convenience.
+ * The ช่องวันเกิด said what was being CLAIMED and a refusal was the verdict on
+ * the claim; HR removed both on 2026-09-08 and the column comes from the stored
+ * วันเกิด through `resolveDayTypes`, as it always did.
+ *
+ * `birthdayWelfare` IS PASSED IN HERE ANYWAY, on purpose. It is not a field any
+ * screen sends any more, which is exactly why a stray property named that must
+ * still change nothing: `computeSession` never saw it, and the assertion below
+ * is what stops it being added back as a convenience.
  */
 test('ช่องติ๊กวันเกิดไม่ได้เลือกคอลัมน์ — วันเกิดที่เก็บไว้ต่างหากที่เลือก', () => {
   const ticked = runBirthday({
