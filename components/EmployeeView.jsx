@@ -141,10 +141,16 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
         <HolidayBanner />
         {error && <Alert kind="error">{error}</Alert>}
         {/* `editing` corrects the stored row in place; `template` files a new
-            request from an old one. Same fields, different write. */}
+            request from an old one. Same fields, different write.
+
+            `position` IS READ BY ONE CONTROL — the เหมารายวัน tick, offered to
+            เจ้าหน้าที่บริการ and to nobody else (2026-09-08). It is passed in
+            rather than fetched inside the form: this screen already holds the
+            signed-in person, and `publicUser` carries their ตำแหน่ง. */}
         <OtForm
           entry={editing}
           template={reusing}
+          position={user.position}
           onSaved={() => { setShowForm(false); setReusing(null); setEditing(null); load(); onChanged?.(); }}
           onCancel={() => { setShowForm(false); setReusing(null); setEditing(null); }}
         />

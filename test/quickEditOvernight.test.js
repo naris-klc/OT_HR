@@ -96,16 +96,19 @@ test('ฟอร์มแก้ไขชั่วโมงคิดข้าม�
  * mean and the other changes what is deducted from them, so they are a strip
  * under the time fields rather than two more questions loose in the form.
  *
- * The words come from the filing form: OtForm says "ทำงานข้ามคืน (สิ้นสุด
- * วันถัดไป)" and "ไม่พักเที่ยง", and this is the same two switches on the same
- * entry. A reviewer correcting a filing should not have to work out that two
- * differently-worded boxes are the ones they already know — so the filing form
- * is asserted here too, and changing it alone fails this.
+ * THE FILING FORM NO LONGER HAS THE ข้ามคืน HALF TO AGREE WITH — 2026-09-08,
+ * when that box came off OtForm altogether and the wrap moved to a line beside
+ * เวลาสิ้นสุด (test/otFormChecks.test.js owns that). The two screens have not
+ * drifted; the filing form went one step further down the road this panel took
+ * on 2026-09-07, from a box that reports the answer to no box at all. What is
+ * still asserted across both is ไม่พักเที่ยง, which is a real choice on either
+ * screen and has to read the same on both.
  */
 test('สวิตช์สองตัวอยู่ในแถบเดียวกัน ใต้ช่องเวลา และใช้คำเดียวกับฟอร์มยื่น', () => {
   const form = readFileSync(join(ROOT, 'components/OtForm.jsx'), 'utf8');
-  assert.ok(form.includes('ทำงานข้ามคืน (สิ้นสุดวันถัดไป)'),
-    'ฟอร์มยื่นเปลี่ยนคำแล้ว — สองหน้าจะไม่ตรงกัน');
+  assert.ok(form.includes('ไม่พักเที่ยง'), 'ฟอร์มยื่นเปลี่ยนคำแล้ว — สองหน้าจะไม่ตรงกัน');
+  assert.ok(!form.includes('ทำงานข้ามคืน (สิ้นสุดวันถัดไป)'),
+    'ช่องติ๊กข้ามคืนกลับมาอยู่บนฟอร์มยื่นแล้ว');
   assert.ok(edit.includes('ข้ามคืน <span className="check-note">(สิ้นสุดวันถัดไป)</span>'));
   assert.ok(edit.includes('ไม่พักเที่ยง <span className="check-note">(ไม่หักเวลาพัก)</span>'));
   // A row that wraps, in a box of its own — not two controls stacked loose.

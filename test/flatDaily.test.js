@@ -452,7 +452,18 @@ test('ติ๊กแล้วเติมเวลางานปกติใ�
   assert.match(form, /const STANDARD_DAY = Object\.freeze\(\{ startTime: '08:00', endTime: '17:00' \}\)/);
   // One handler for both ticks, so the two cannot come to fill in different days.
   assert.match(form, /const tickDay = \(k, on\) => setForm/);
-  assert.match(form, /on \? \{ \.\.\.f, \[k\]: true, \.\.\.STANDARD_DAY \} : \{ \.\.\.f, \[k\]: false \}/);
+  assert.match(form, /\[k\]: true,\s*\r?\n\s*\.\.\.STANDARD_DAY,/);
+  assert.match(form, /: \{ \.\.\.f, \[k\]: false \}/);
+  // AND THE FILL ANSWERS ข้ามคืน — 2026-09-08, when the tick for it came off
+  // this form. Ticking เหมารายวัน over a 22:00–02:00 shift replaces the times
+  // with a pair that does not wrap; a `true` left standing beside them is
+  // `TOO_LONG` out of the engine, on a state nobody can now correct by hand.
+  assert.match(
+    form,
+    /endsNextDay: endsNextDayFor\(STANDARD_DAY\.startTime, STANDARD_DAY\.endTime\)/,
+    'ติ๊กแล้วเติมเวลาให้ แต่ธงข้ามคืนไม่ได้ถูกคิดใหม่',
+  );
+  assert.equal(endsNextDayFor('08:00', '17:00'), false);
   assert.match(form, /onChange=\{\(e\) => tickDay\('flatDaily', e\.target\.checked\)\}/);
   assert.match(form, /onChange=\{\(e\) => tickDay\('birthdayWelfare', e\.target\.checked\)\}/);
 
@@ -504,12 +515,15 @@ test('ใบเหมา — เวลาจบเป็นเวลาเริ
   assert.match(form, /endTime: flatDayEnd\(v\), endsNextDay: endsNextDayFor\(v, flatDayEnd\(v\)\)/);
   assert.match(form, /onChange=\{setStart\}/);
 
-  // …and the end box is shut, with the ข้ามคืน tick that now describes it.
-  // Both are `form.flatDaily` and neither is `form.birthdayWelfare`: a birthday
-  // is an ordinary shift on a holiday and its length is still whatever it was.
+  // …and the end box is shut. `form.flatDaily` and not `form.birthdayWelfare`:
+  // a birthday is an ordinary shift on a holiday and its length is still
+  // whatever it was.
+  //
+  // THE ข้ามคืน TICK THAT USED TO BE GREYED OUT BESIDE IT IS GONE — 2026-09-08,
+  // off the whole form rather than off flat days; see test/otFormChecks.test.js.
+  // What the reader gets instead is the amber line in this same box.
   const end = form.slice(form.indexOf('<label>เวลาสิ้นสุด (ถึง)</label>'));
   assert.match(end.slice(0, end.indexOf('</div>')), /disabled=\{form\.flatDaily\}/);
-  assert.match(form, /checked=\{form\.endsNextDay\}\s*\r?\n\s*disabled=\{form\.flatDaily\}/);
   assert.ok(
     !/disabled=\{form\.birthdayWelfare\}/.test(form),
     'the วันเกิด tick locked a time — only เหมารายวัน does',

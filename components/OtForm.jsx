@@ -5,7 +5,7 @@ import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import {
   submissionWindow, isBirthdayWelfare, zeroOtHoursAllowed,
-  flatDayEnd, endsNextDayFor, FLAT_DAY_SPAN_MINUTES,
+  flatDayEnd, endsNextDayFor, isFlatDailyPosition, FLAT_DAY_SPAN_MINUTES,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import {
@@ -122,9 +122,16 @@ const STANDARD_DAY = Object.freeze({ startTime: '08:00', endTime: '17:00' });
  *     them, before anybody presses บันทึก. It is the one request this system
  *     stores with no OT hours on it; see `zeroOtHoursAllowed` in lib/entries.js
  *     for why that is an answer and not the blank row the write paths refuse.
+ *
+ * `position` IS THE ตำแหน่ง OF THE PERSON THE REQUEST IS FOR, and it decides one
+ * thing only: whether the เหมารายวัน tick is drawn (`isFlatDailyPosition`). It
+ * comes from the caller because this form does not fetch the person — the
+ * employee's own screen holds `user`, ฝ่ายบุคคล's holds the roster row it opened.
+ * In `mode="proxy"` it is ignored and the ticked ลูกทีม answer instead; see
+ * `mayTickFlatDaily` below.
  */
 export default function OtForm({
-  entry, template, onSaved, onCancel, mode = 'employee', employeeId,
+  entry, template, onSaved, onCancel, mode = 'employee', employeeId, position = '',
 }) {
   const hrEdit = mode === 'hr';
   const proxy = mode === 'proxy';
@@ -398,7 +405,22 @@ export default function OtForm({
    * to protect: the form is in front of the person who just pressed it.
    */
   const tickDay = (k, on) => setForm((f) => (
-    on ? { ...f, [k]: true, ...STANDARD_DAY } : { ...f, [k]: false }
+    on
+      ? {
+        ...f,
+        [k]: true,
+        ...STANDARD_DAY,
+        /**
+         * AND THE FILL ANSWERS ข้ามคืน TOO, since the tick for it came off this
+         * form on 2026-09-08. 08:00–17:00 is not an overnight, but the pair it
+         * REPLACES may have been: tick เหมารายวัน over a 22:00–02:00 shift and
+         * the flag would otherwise be left reading `true` against two times
+         * that no longer wrap, which is `TOO_LONG` out of the engine on a state
+         * nobody can now correct by hand.
+         */
+        endsNextDay: endsNextDayFor(STANDARD_DAY.startTime, STANDARD_DAY.endTime),
+      }
+      : { ...f, [k]: false }
   ));
 
   /**
@@ -418,14 +440,56 @@ export default function OtForm({
    * computes whether it crossed midnight, from `endsNextDayFor`, which is this
    * app's one answer to that question.
    *
-   * OFF A FLAT DAY THIS WRITES THE START AND NOTHING ELSE, which is what it has
-   * always done.
+   * OFF A FLAT DAY IT WRITES THE START AND THE SAME DERIVED FLAG — 2026-09-08,
+   * when ทำงานข้ามคืน stopped being a tick anywhere on this form and became what
+   * the two times already say, the way it has been in `แก้ไขชั่วโมง` on
+   * รออนุมัติ OT since 2026-09-07. This used to write the start and nothing
+   * else. `setEnd` below is the other half; between them there is no press on
+   * this form that moves a time and leaves the flag behind.
    */
   const setStart = (v) => setForm((f) => (
     f.flatDaily
       ? { ...f, startTime: v, endTime: flatDayEnd(v), endsNextDay: endsNextDayFor(v, flatDayEnd(v)) }
-      : { ...f, startTime: v }
+      : { ...f, startTime: v, endsNextDay: endsNextDayFor(v, f.endTime) }
   ));
+
+  /**
+   * เวลาสิ้นสุด — the free half of an ordinary shift, and ข้ามคืน with it.
+   *
+   * Shut on a เหมารายวัน day, where `setStart` owns both figures. Everywhere
+   * else this is the second of the two presses that can make a shift wrap, and
+   * it asks the same `endsNextDayFor` the start box does rather than repeating
+   * the comparison.
+   */
+  const setEnd = (v) => setForm((f) => (
+    { ...f, endTime: v, endsNextDay: endsNextDayFor(f.startTime, v) }
+  ));
+
+  /**
+   * ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ — HR, 2026-09-08.
+   *
+   * WHOSE ตำแหน่ง IS ASKED depends on who the request is for, which is the same
+   * question `forWhom` answers for the preview: this person's own on their form
+   * and on ฝ่ายบุคคล's correction of their row (`position`), and the ticked
+   * ลูกทีม on บันทึก OT แทนพนักงาน.
+   *
+   * `every` AND NOT `some`, and a ticked list is required. A batch is filed as
+   * one set of times and one set of ticks for everybody in it — so a box shown
+   * because one name in eight is a เจ้าหน้าที่บริการ is a box that writes
+   * เหมารายวัน onto the other seven. Nothing ticked shows nothing, which is the
+   * same state the preview and the ceiling are already in.
+   *
+   * AND IT IS SHOWN REGARDLESS WHEN IT IS ALREADY TICKED. A request filed
+   * before this rule, or one ฝ่ายบุคคล ticked from รออนุมัติ OT, opens on this
+   * form with `flatDaily` true; hiding the box there would leave a flag priced
+   * at eight hours with no control on the screen able to take it off. The rule
+   * withholds a NEW claim, it does not swallow a stored one.
+   */
+  const flatDailyPositions = proxy
+    ? targets.map((id) => team.find((e) => String(e._id) === String(id))?.position)
+    : [position];
+  const mayTickFlatDaily = form.flatDaily
+    || (flatDailyPositions.length > 0 && flatDailyPositions.every(isFlatDailyPosition));
 
   // Debounced live preview. Every keystroke in a time field would otherwise
   // hit the engine.
@@ -986,10 +1050,17 @@ export default function OtForm({
             label="เวลาสิ้นสุด"
             value={form.endTime}
             disabled={form.flatDaily}
-            onChange={(v) => set('endTime', v)}
+            onChange={setEnd}
           />
+          {/* THE ONLY PLACE THE WRAP IS ANNOUNCED, since ทำงานข้ามคืน stopped
+              being a tick on 2026-09-08 — so it says the word as well as the
+              day. `overnight` is `form.endsNextDay`, which `setStart`/`setEnd`
+              derive from these two times, so this cannot disagree with what is
+              posted. */}
           {overnight && (
-            <span style={{ fontSize: 12, color: 'var(--amber)' }}>วัน{dayName(endDateLabel)}ถัดไป</span>
+            <span style={{ fontSize: 12, color: 'var(--amber)' }}>
+              ข้ามคืน · สิ้นสุดวัน{dayName(endDateLabel)}ถัดไป
+            </span>
           )}
           {form.flatDaily && (
             <span className="field-note">
@@ -1002,46 +1073,30 @@ export default function OtForm({
       {/* One per line on a phone — see .form-checks. Side by side they were two
           17px boxes about 6px apart with wrapped labels between them.
 
-          FOUR NOW, AND THE ORDER IS NOT ALPHABETICAL. The two that were here
-          describe the SHIFT (did it cross midnight, was there a break); the two
-          added on 2026-09-03 describe the DAY (was it hired whole, was it this
-          person's birthday holiday), and only those two write into the boxes
-          above them. Shift first, day second, so the pair that reaches back up
-          the form sits together and closest to what it changes. */}
+          THREE NOW, AND THE ORDER IS วันเกิด → เหมารายวัน → ไม่พักเที่ยง — HR,
+          2026-09-08. It read ข้ามคืน → ไม่พักเที่ยง → เหมารายวัน → วันเกิด until
+          then, grouped shift-first and day-second, which was a true description
+          of four boxes that no longer exist in that shape.
+
+          WHAT THE NEW ORDER SAYS is how far each tick reaches. วันเกิด and
+          เหมารายวัน both answer *what kind of day was this* and both write into
+          the time boxes above them, so they sit at the top, closest to what they
+          change; ไม่พักเที่ยง is about one hour inside the shift and is last.
+
+          ทำงานข้ามคืน IS NOT HERE ANY MORE — removed 2026-09-08. It was never a
+          question the person could answer differently from the two times above
+          it: the engine accepts exactly one value of `endsNextDay` per pair and
+          throws on the other, so every tick of it was either redundant or a
+          server error reading "A single session cannot exceed 24 hours". It is
+          computed now, on every press that moves a time, from `endsNextDayFor`
+          — the same treatment `แก้ไขชั่วโมง` on รออนุมัติ OT gave it on
+          2026-09-07, except that panel keeps a greyed box to report the answer
+          and this form says it beside เวลาสิ้นสุด instead, where the times are.
+
+          The one thing it cost: a 17:00 → next-day 20:00 shift, twenty-seven
+          hours, can no longer be filed. The engine refused it as `TOO_LONG`
+          before this, so nothing that used to save has stopped saving. */}
       <div className="row form-checks" style={{ marginTop: 14 }}>
-        {/* SHUT ON A เหมารายวัน DAY, with the end box it describes. It is not a
-            claim there any more — it is whether the derived nine hours crossed
-            midnight, which `setStart` has already worked out. Left open, it
-            would be the one control able to put the form into a state the
-            engine refuses (`END_BEFORE_START`) over a time nobody typed. */}
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={form.endsNextDay}
-            disabled={form.flatDaily}
-            onChange={(e) => set('endsNextDay', e.target.checked)}
-          />
-          ทำงานข้ามคืน (สิ้นสุดวันถัดไป)
-        </label>
-        <label className="check">
-          <input type="checkbox" checked={form.noBreakTaken} onChange={(e) => set('noBreakTaken', e.target.checked)} />
-          ไม่พักเที่ยง
-        </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={form.flatDaily}
-            onChange={(e) => tickDay('flatDaily', e.target.checked)}
-          />
-          {/* “ไม่คิด OT” CAME OFF THE LABEL ON 2026-09-07, with the rule that
-              made it false: a flat day is eight hours of OT ×1.5 now, in the
-              column its day type decides. The box says the LENGTH, which is the
-              part that is true of every flat day and the part somebody is
-              choosing when they tick it; which column it lands in is the day's
-              answer, not the tick's, and it is on the row and in the preview a
-              moment later. */}
-          เหมารายวัน (นับ 8 ชม. ต่อวัน)
-        </label>
         {/* NOT ON บันทึก OT แทนพนักงาน, and this is a rule rather than tidying.
             The claim is "this is MY สวัสดิการวันเกิด" — HR's whole reason for
             moving it off ฝ่ายบุคคล's desk is that the person whose day it is
@@ -1064,6 +1119,33 @@ export default function OtForm({
             วันเกิด (สวัสดิการวันเกิดของตัวเอง)
           </label>
         )}
+        {/* ONLY เจ้าหน้าที่บริการ ARE ASKED THIS — HR, 2026-09-08. They are the
+            ตำแหน่ง sold by the day; for everybody else the box was a control
+            with no correct use sitting beside two that have one. The list is
+            `FLAT_DAILY_POSITIONS` in lib/entries.js and `mayTickFlatDaily`
+            above says whose ตำแหน่ง is read in each of the three modes — and why
+            an already-ticked box is drawn whatever the ตำแหน่ง says. */}
+        {mayTickFlatDaily && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={form.flatDaily}
+              onChange={(e) => tickDay('flatDaily', e.target.checked)}
+            />
+            {/* “ไม่คิด OT” CAME OFF THE LABEL ON 2026-09-07, with the rule that
+                made it false: a flat day is eight hours of OT ×1.5 now, in the
+                column its day type decides. The box says the LENGTH, which is
+                the part that is true of every flat day and the part somebody is
+                choosing when they tick it; which column it lands in is the day's
+                answer, not the tick's, and it is on the row and in the preview a
+                moment later. */}
+            เหมารายวัน (นับ 8 ชม. ต่อวัน)
+          </label>
+        )}
+        <label className="check">
+          <input type="checkbox" checked={form.noBreakTaken} onChange={(e) => set('noBreakTaken', e.target.checked)} />
+          ไม่พักเที่ยง
+        </label>
       </div>
 
       {/* WHAT THE TWO NEW TICKS DO TO THE TIMES, said once under them rather

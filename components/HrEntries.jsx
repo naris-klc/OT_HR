@@ -159,11 +159,17 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
   }
 
   if (editing) {
+    /* `position` decides one control — the เหมารายวัน tick, which is drawn
+       for เจ้าหน้าที่บริการ only (2026-09-08). It is the ตำแหน่ง of the
+       person whose row this is and not ฝ่ายบุคคล's own: the box says what
+       kind of day was sold to THEM. An already-ticked box is drawn whatever
+       it says, so a correction can always take the flag back off. */
     return (
       <OtForm
         entry={editing}
         mode="hr"
         employeeId={employee._id}
+        position={employee.position}
         onSaved={() => { setEditing(null); load(); onChanged?.(); }}
         onCancel={() => setEditing(null)}
       />
