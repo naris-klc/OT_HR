@@ -96,8 +96,9 @@ export const DEFAULT_POLICY = Object.freeze({
    *
    * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ตั้งตามพฤติกรรมเดิม. 30 is what the
    * requirements doc says and what every figure in the database was computed
-   * with; it is NOT an answer anybody in HR has given. See HR_UNCONFIRMED
-   * below: until they answer, this is a reading of the old paper, not a rule.
+   * with; it is NOT an answer anybody in HR has given — and since 2026-09-08
+   * no screen says so either, because the list that tracked it was withdrawn.
+   * See the note where HR_UNCONFIRMED used to be, further down this file.
    */
   roundingIncrementMinutes: 30,
   /**
@@ -119,8 +120,8 @@ export const DEFAULT_POLICY = Object.freeze({
    * words "บวกลบ 5 หรือ 10 และ 15 นาที", with 29 → 0.5 ชม. and 55 → 1 ชม. as
    * the worked examples. The ลบ half of that is what 'floor' already does: a
    * session that has not reached the window keeps rounding down. This key only
-   * ever adds, and it is not confirmed policy — see HR_UNCONFIRMED below, where
-   * it carries a badge of its own. It shared the increment's for the morning of
+   * ever adds, and it is not confirmed policy — it carried a badge of its own
+   * until the list was withdrawn on 2026-09-08. It shared the increment's for the morning of
    * 2026-09-02, on the reasoning that the block and the grace are one answer,
    * and was split back out the same afternoon when ฝ่ายบุคคล answered the block
    * and said nothing about the grace.
@@ -215,10 +216,11 @@ export const DEFAULT_POLICY = Object.freeze({
    * 'accept' — keep the hours actually worked and flag the entry (DEFAULT).
    * 'raise'  — pad up to minimumHours. 'reject' — refuse the entry outright.
    *
-   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — HR ยังไม่ตอบ [OPEN 4] ดู HR_UNCONFIRMED
-   * ข้างล่าง. The flag stays unconfirmed: changing which reading we run on is
-   * not the same act as HR answering the question, and the badge comes off when
-   * somebody in HR presses ยืนยัน, not when a default moves.
+   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — HR ยังไม่ตอบ [OPEN 4]. Changing which
+   * reading we run on is not the same act as HR answering the question, and
+   * from 2026-09-08 nothing on any screen keeps those two apart: the badge and
+   * the sign-off that recorded the difference were withdrawn, so this comment
+   * is now the only place it is written down.
    *
    * The default was 'reject' — the behaviour read off the live database, where a
    * 'reject' override had sat for months against a file that said 'raise'. What
@@ -266,9 +268,9 @@ export const DEFAULT_POLICY = Object.freeze({
    * 'bucket' the same work is short more often, and more often is not more
    * correct while the question is open.
    *
-   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — ดู HR_UNCONFIRMED (`minimumScope`) below.
-   * Until this existed the other reading was not a value but a rewrite of the
-   * engine, which is why the badge for it had no dropdown to sit on.
+   * ยังไม่ยืนยันกับ HR ณ 2026-08-07 — it was `minimumScope` on the withdrawn
+   * list. Until this existed the other reading was not a value but a rewrite of
+   * the engine, which is why the badge for it had no dropdown to sit on.
    *
    * ARITHMETIC (see ARITHMETIC_KEYS in lib/policyVersion.js). Under 'accept' it
    * moves no hour and only flags more entries — but under 'raise' it pads
@@ -617,270 +619,37 @@ export const DEFAULT_POLICY = Object.freeze({
 });
 
 /**
- * The rules the system is running on that NOBODY IN HR HAS AGREED TO.
+ * HR_UNCONFIRMED LIVED HERE UNTIL 2026-09-08, AND WHAT IT DID IS WORTH KNOWING
+ * BEFORE ANYBODY BUILDS IT AGAIN.
  *
  * Every value in DEFAULT_POLICY is a default, and saying so on the settings
- * page — as its subtitle already does — tells a reader nothing, because it is
- * equally true of the twenty flags HR has no opinion about. The items below are
- * different in kind: they were reverse-engineered from how the old paper
- * appears to have been filled in, or invented outright, and they each move
- * hours. A default nobody chose and a default somebody read off a stack of 2025
- * timesheets both print as "ค่าเริ่มต้น" and only one of them is a liability.
+ * page tells a reader nothing, because it is equally true of the twenty flags
+ * nobody in HR has an opinion about. Six of them were different in kind: they
+ * were reverse-engineered from how the old paper appears to have been filled
+ * in, or invented outright, and they each move hours — เศษที่ไม่ครบบล็อก
+ * ปัดขึ้นหรือปัดลง · ปัดเศษทีละกี่นาที · เกือบครบบล็อกแล้ว ปัดขึ้นให้กี่นาที ·
+ * ต่ำกว่าขั้นต่ำ 1 ชม. ให้รับ ปัดขึ้น หรือไม่รับ · ขั้นต่ำ 1 ชม. นับต่อใบหรือ
+ * ต่อช่อง · ต้องทำเกินกี่นาที จึงเริ่มนับเป็น OT.
  *
- * It read "These three" until 2026-09-02 and there have been more than three
- * since `startBuffer` arrived on 2026-08-13. A count belongs in the list, which
- * can be counted, and not in a sentence, which cannot.
+ * A default nobody chose and a default somebody read off a stack of 2025
+ * timesheets both print as "ค่าเริ่มต้น", and only one of them is a liability.
+ * This list was the difference, an amber badge said which rows were in it, and
+ * a ยืนยัน button wrote down who answered one and when.
  *
- * NOT "unanswered" — UNRECORDED. ฝ่ายบุคคล answered `roundingIncrement` on
- * 2026-09-02, out loud, and the badge stayed up because nobody had pressed
- * anything. That is the design working rather than failing: what this list
- * tracks is whose answer is on the record, and a rule somebody agreed to in a
- * corridor is exactly as unrecorded as one nobody has considered. Do not
- * shorten an item out of this file because the answer is known — press ยืนยัน,
- * which is the one act that writes down who said it and when.
+ * WITHDRAWN 2026-09-08, ASKED FOR AND CONFIRMED: the sign-off form sat open on
+ * every unanswered row — a labelled text box, a button and a grey sentence,
+ * four to six of them at once — and the page was wanted clear. The whole
+ * mechanism went with it: this list, `readUnconfirmed`, the badge, the two
+ * endpoints, `Setting.policyConfirmations` and lib/policyConfirmations.js.
  *
- * So the state is recorded rather than described in prose: the badge on the
- * settings page is generated from this list, and pressing ยืนยัน on an item
- * writes who confirmed it and when.
- *
- * COSMETIC, and structurally so — nothing here is a policy key. The
- * confirmations are stored on the Setting document OUTSIDE `policy` (see
- * src/models/Setting.js), so they never reach `canonicalPolicy`, never mint a
- * version, and can never replay an entry. Confirming an item changes no value:
- * it records that the value it already had is now somebody's answer rather
- * than our guess.
- *
- * `keys` places the badge — a settings row wearing it is a row this question is
- * about. It may be empty, and `reading` is what makes that survivable: an item
- * with no dropdown to sit on still states the rule the system is running on, in
- * words, on the settings page. `minimumScope` was that case until 2026-08-13 —
- * the minimum's scope was a rule the engine had and the policy had no flag for
- * — and it is not any more, because `minimumHoursScope` is now the flag. The
- * question is no less unanswered for having a dropdown; the badge stayed and
- * only moved onto it.
+ * WHAT WENT WITH IT, so nobody has to rediscover it: no screen can now tell a
+ * rule ฝ่ายบุคคล actually answered from a rule this system read off the old
+ * paper. They print identically, and the questions themselves are still open —
+ * the buffer still ships at a figure nobody named, and ต่ำกว่าขั้นต่ำ 1 ชม.
+ * still runs on a reading rather than an answer. The record of the four
+ * signed on 2026-08-14 is still in the database and is not ours to delete; see
+ * the note where the field used to be in src/models/Setting.js.
  */
-export const HR_UNCONFIRMED_SINCE = '2026-08-07';
-
-export const HR_UNCONFIRMED = Object.freeze([
-  Object.freeze({
-    /**
-     * ปัดขึ้นหรือปัดลง — the half of [OPEN 3] that has never been put to
-     * anybody, and the one that moves the most hours of any item in this list.
-     *
-     * IT USED TO BE MISSING, and the way it went missing is the reason it is
-     * first now. The badge originally sat on `roundingMode` as a stand-in,
-     * because the increment was a number in this file with no row of its own to
-     * wear it. When the increment got its dropdown on 2026-09-02 the badge
-     * moved onto it — correctly, the increment IS a question — and this file
-     * wrote down that `roundingMode` "is not unconfirmed: 'floor' is the
-     * requirements doc's own recommendation." A stand-in was retired and the
-     * rule it had been standing in for was recorded as answered on its way out.
-     *
-     * A recommendation in the requirements doc is exactly what every other item
-     * here is: reverse-engineered from how the old paper appears to have been
-     * filled in. `belowMinimumAction` and `minimumScope` are on this list on
-     * those same grounds. Nothing distinguished `roundingMode` except that it
-     * had once carried somebody else's badge.
-     *
-     * ฝ่ายบุคคล ANSWERED "ปัดเศษทีละ 30 นาที" on 2026-09-02, and that is the
-     * increment — it says how big the block is and not which way a part-block
-     * goes. Under this file's own rule (a badge covers exactly as much as one
-     * answer covers) it cannot reach `roundingMode`, and the two readings of
-     * their sentence are 29 นาที → 0 ชม. and 29 นาที → 0.5 ชม.
-     *
-     * `roundingDirection`, not `roundingMode`: an id that collides with a policy
-     * key makes `{ [id]: {...} }` read as a policy override to anything scanning
-     * the settings document loosely — the trap `belowMinimumAction` and
-     * `startBuffer` were both named out of.
-     */
-    id: 'roundingDirection',
-    since: '2026-09-03',
-    label: 'เศษที่ไม่ครบบล็อก ปัดขึ้นหรือปัดลง',
-    keys: Object.freeze(['roundingMode']),
-    reading: (policy) => {
-      if (policy.roundingMode === 'exact') return 'ไม่ปัดเศษ — คิดตามจริงเป็นทศนิยม';
-      if (policy.roundingMode === 'ceil') return 'ปัดขึ้นทั้งหมด';
-      if (policy.roundingMode === 'nearest') return 'ปัดเข้าหาค่าใกล้ที่สุด';
-      return 'ปัดลงทั้งหมด — เศษที่ไม่ครบบล็อกถูกตัดทิ้ง';
-    },
-    note: 'ข้อนี้ถามคนละอย่างกับ “ปัดเศษทีละกี่นาที” ข้างล่าง ที่ฝ่ายบุคคลตอบมาแล้วว่า 30 นาที '
-      + '— คำตอบนั้นบอกว่าบล็อกใหญ่เท่าไร ไม่ได้บอกว่าเศษที่ไม่ครบบล็อกไปทางไหน '
-      + '· “ปัดลงทั้งหมด” เป็นข้อแนะนำในเอกสารข้อกำหนด ไม่ใช่คำตอบที่ใครในฝ่ายบุคคลเคยให้ไว้ '
-      + 'และเป็นค่าที่ทุกใบในระบบถูกคำนวณมา '
-      + '· ⚠ เป็นข้อที่ขยับชั่วโมงมากที่สุดในรายการนี้ — ปัดลงกับปัดเข้าหาค่าใกล้ที่สุด '
-      + 'ต่างกันได้ถึงเกือบครึ่งชั่วโมงต่อใบ และการปัดลงอย่างเดียวคือการไม่จ่ายเวลาที่ทำไปแล้ว '
-      + '· ถ้าตอบว่า “ปัดลง แต่ขาดอีกไม่กี่นาทีให้ครบ” นั่นคือแถวผ่อนปรนข้างล่าง ไม่ใช่แถวนี้ '
-      + '· เปลี่ยนข้อนี้แล้วชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม',
-  }),
-  Object.freeze({
-    id: 'roundingIncrement',
-    /**
-     * `roundingGraceMinutes` SHARED THIS BADGE FOR ONE DAY, on the reasoning
-     * that "ปัดลงทีละ 30 นาที" and "และ 29 นาทีได้ศูนย์" are one answer and two
-     * badges would let HR sign off half of it. That was written on the morning
-     * of 2026-09-02 and was wrong by the afternoon of the same day, in the
-     * exact way it feared and from the other side: ฝ่ายบุคคล answered the
-     * increment — 30 นาที — and said nothing about the grace, which did not
-     * exist when they were asked. One badge over both would have made pressing
-     * ยืนยัน on their answer ALSO record them as having chosen ผ่อนปรน: ปิด,
-     * which is a value nobody has ever put to them.
-     *
-     * The rule the two cases share, and the one to keep: a badge covers exactly
-     * as much as one answer covers. Splitting a question HR answers in one
-     * breath makes them press twice; merging two they answer separately puts
-     * their name on something they never said. Only the second is a lie, so
-     * when the shape is unclear the item splits.
-     *
-     * See `roundingGrace` below, which is where it went.
-     */
-    keys: Object.freeze(['roundingIncrementMinutes']),
-    reading: (policy) => (policy.roundingMode === 'exact'
-      ? 'ไม่ปัดเศษ — คิดตามจริงเป็นทศนิยม'
-      : `ทีละ ${policy.roundingIncrementMinutes} นาที`),
-    /**
-     * `note` says what the question is and what answering it costs. It must NOT
-     * restate the value — `reading` does that, off the live policy, and a note
-     * that names a value too is a second source of truth that goes stale the
-     * first time somebody changes the dropdown. All three notes here did exactly
-     * that until 2026-08-13, and minimumScope's was already wrong: it read
-     * "ค่าที่ใช้อยู่คือ ต่อใบ" on a database that had been running ต่อช่อง for
-     * as long as anybody could tell, because a stored override shadows this file
-     * silently (see `npm run whatif -- --show`).
-     */
-    note: '30 นาที (ครึ่งชั่วโมง) มาจากเอกสารข้อกำหนด และเป็นค่าที่ทุกใบในระบบถูกคำนวณมา '
-      + '· ฝ่ายบุคคลตอบมาแล้วเมื่อ 2 ก.ย. 2569 ว่าปัดเศษทีละ 30 นาที ตรงกับค่าที่ใช้อยู่ '
-      + '— กด ยืนยัน เพื่อบันทึกว่าใครรับคำตอบนี้และเมื่อไร ป้ายจะได้เลิกเป็นการเดา '
-      + '· ข้อนี้ไม่ได้ตอบเรื่องการผ่อนปรนปัดขึ้นข้างล่าง ซึ่งยังไม่มีใครถูกถาม '
-      + '· เปลี่ยนข้อนี้แล้วชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม',
-  }),
-  Object.freeze({
-    /**
-     * ผ่อนปรนการปัดขึ้น — the half of [OPEN 3] that ฝ่ายบุคคล have not been
-     * asked. Its own item since 2026-09-02; see the note on `roundingIncrement`
-     * above for why it is not on that badge.
-     *
-     * `since` is its own date and not HR_UNCONFIRMED_SINCE. The question was
-     * put to nobody before the key existed, and printing 7 ส.ค. beside it would
-     * age it by four weeks it did not exist for — the same reason `startBuffer`
-     * carries its own date.
-     */
-    id: 'roundingGrace',
-    label: 'เกือบครบบล็อกแล้ว ปัดขึ้นให้กี่นาที',
-    since: '2026-09-02',
-    keys: Object.freeze(['roundingGraceMinutes']),
-    reading: (policy) => {
-      if (policy.roundingMode === 'exact') return 'ไม่ปัดเศษ จึงไม่มีอะไรให้ผ่อนปรน';
-      /**
-       * Read through the same test the engine uses, not off the stored number.
-       * Under 'ceil' and 'nearest' the key is not read at all, and a grace the
-       * size of the block or larger falls back to plain floor — a row printing
-       * "ผ่อนปรน 15 นาที" over an engine that forgives nothing would be the one
-       * thing `reading` exists to prevent, which is why the line above it says
-       * ไม่ปัดเศษ under 'exact'.
-       */
-      const grace = Number(policy.roundingGraceMinutes) || 0;
-      const live = policy.roundingMode === 'floor'
-        && grace > 0 && grace < Number(policy.roundingIncrementMinutes);
-      if (live) return `ปัดขึ้นให้เมื่อเหลืออีกไม่เกิน ${grace} นาที`;
-      if (grace > 0) return 'ไม่ผ่อนปรน — ค่าที่ตั้งไว้ไม่ถูกอ่านกับการปัดเศษแบบนี้';
-      /**
-       * A grace of nought under a mode that never reads it is not the same
-       * sentence as a grace of nought under 'floor'. "ปัดลงอย่างเดียว" is a
-       * claim about the ROUNDING, and printing it beside ปัดเข้าหาค่าใกล้ที่สุด
-       * would describe an engine that is not running — the row above says
-       * nearest and this one would say floor.
-       */
-      if (policy.roundingMode !== 'floor') return 'ไม่ผ่อนปรน — การปัดเศษแบบนี้ไม่ได้อ่านค่านี้';
-      return 'ไม่ผ่อนปรน — ปัดลงอย่างเดียว';
-    },
-    note: 'ปิดไว้ *ใต้การปัดลง* แปลว่าทำ 29 นาทีได้ 0 ชม. และงานนั้นถูกปฏิเสธไม่บันทึกอะไรเลย '
-      + 'ซึ่งเป็นการอ่านจากวิธีกรอกกระดาษเดิม ไม่ใช่คำตอบที่ใครในฝ่ายบุคคลเคยให้ไว้ '
-      + '· ใต้การปัดแบบอื่นค่านี้ไม่ถูกอ่านเลย แถวข้างบนเป็นตัวตัดสิน '
-      + '· ตั้งได้ 5, 10 หรือ 15 นาที — ตัวอย่างที่ 5: ทำ 29 นาทีได้ 0.5 ชม. และ 55 นาทีได้ 1 ชม. '
-      + '· เป็นคนละข้อกับ “ปัดเศษทีละกี่นาที” ข้างบน ที่ฝ่ายบุคคลตอบแล้ว '
-      + '· เปลี่ยนข้อนี้แล้วชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม และเส้นที่ระบบปฏิเสธงานสั้น ๆ จะขยับตามไปด้วย',
-  }),
-  Object.freeze({
-    /**
-     * Not 'belowMinimum'. An id that collides with a policy key makes
-     * `{ [id]: {...} }` read as a policy override to anything scanning the
-     * settings document loosely — see test/policyConfirmation.test.js, which
-     * is what caught it.
-     */
-    id: 'belowMinimumAction',
-    label: 'ต่ำกว่าขั้นต่ำ 1 ชม. ให้รับ ปัดขึ้น หรือไม่รับ',
-    keys: Object.freeze(['belowMinimum']),
-    reading: (policy) => {
-      if (policy.belowMinimum === 'reject') return 'ไม่รับรายการ';
-      if (policy.belowMinimum === 'raise') return 'ปัดขึ้นเป็น 1 ชม.';
-      return 'รับตามชั่วโมงจริง และติดธงให้ HR ตรวจ';
-    },
-    note: '“รับตามชั่วโมงจริง” บันทึกชั่วโมงที่คำนวณได้ ไม่ปัดขึ้นและไม่ปฏิเสธ '
-      + 'แต่ติดธงไว้ให้ฝ่ายบุคคลตัดสินรายใบ '
-      + '· ระบบเคยตั้งไว้ที่ “ไม่รับรายการ” ซึ่งเท่ากับไม่บันทึกชั่วโมงที่พนักงานทำไปแล้ว '
-      + '· เปลี่ยนเป็นปัดขึ้นหรือไม่รับ ชั่วโมงของใบที่ยังไม่อนุมัติจะเปลี่ยนตาม',
-  }),
-  Object.freeze({
-    id: 'minimumScope',
-    label: 'ขั้นต่ำ 1 ชม. นับต่อใบหรือต่อช่อง',
-    keys: Object.freeze(['minimumHoursScope']),
-    reading: (policy) => (policy.minimumHoursScope === 'bucket'
-      ? 'ต่อช่อง (เทียบขั้นต่ำแยกทีละช่องอัตรา)'
-      : 'ต่อใบ (รวมทุกช่องก่อนเทียบกับขั้นต่ำ)'),
-    note: '“ต่อใบ” รวมชั่วโมงทุกช่องก่อนแล้วจึงเทียบกับ 1 ชม. · “ต่อช่อง” เทียบทีละช่อง '
-      + 'ใบที่คาบเกี่ยวสองช่อง เช่น ศุกร์ดึกข้ามไปเสาร์ จึงถูกวัดสองครั้งและติดธงได้ทั้งสองช่อง '
-      + '· ขณะที่ “ต่ำกว่าขั้นต่ำ” ตั้งไว้ที่ “รับตามชั่วโมงจริง” ข้อนี้เปลี่ยนแค่จำนวนธงที่ฝ่ายบุคคลต้องตรวจ '
-      + 'ไม่ขยับชั่วโมง — จะขยับก็ต่อเมื่อข้อนั้นถูกเปลี่ยนเป็นปัดขึ้นหรือไม่รับ',
-  }),
-  Object.freeze({
-    /**
-     * Added 2026-08-13. The buffer had been the odd one out: a value that moves
-     * hours, shipped at a figure nobody in HR chose, and the only one of the
-     * four with nothing on the page saying so. It was not an oversight in the
-     * catalogue so much as an artefact of when the flag arrived — it was built
-     * after the other three were written down, and a question that nobody wrote
-     * down is a question that stops being asked.
-     *
-     * `startBuffer`, not `minimumBuffer...`: an id that collides with a policy
-     * key makes `{ [id]: {...} }` read as a policy override to anything scanning
-     * the settings document loosely, which is the trap `belowMinimumAction`
-     * was renamed out of.
-     */
-    id: 'startBuffer',
-    since: '2026-08-13',
-    label: 'ต้องทำเกินกี่นาที จึงเริ่มนับเป็น OT',
-    keys: Object.freeze(['minimumBufferMinutes']),
-    reading: (policy) => (Number(policy.minimumBufferMinutes) > 0
-      ? `ต้องทำอย่างน้อย ${policy.minimumBufferMinutes} นาที`
-      : 'ไม่มีเกณฑ์ — ทุกนาทีที่ทำนับเป็น OT'),
-    note: 'ถามคนละเรื่องกับขั้นต่ำ 1 ชม. ข้อนี้ถามว่า “นับเป็น OT หรือเปล่า” '
-      + 'วัดจากนาทีที่ทำจริงทั้งใบ ก่อนปัดเศษ · ใบที่ไม่ผ่านเกณฑ์นี้จะถูกปฏิเสธตั้งแต่หน้ากรอก '
-      + 'ไม่ใช่บันทึกเป็น 0 · ระบบส่งมาที่ “ไม่มีเกณฑ์” เพราะยังไม่เคยมีใครในฝ่ายบุคคลระบุตัวเลขมา '
-      + 'ไม่ใช่เพราะตอบแล้วว่าไม่ต้องมี '
-      + '· ⚠ การปัดเศษตอบคำถามเดียวกันนี้ก่อน และตอบไปแล้วบางส่วนเสมอ — งานที่สั้นกว่า '
-      + '“บล็อก ลบ ผ่อนปรน” ถูกปัดเหลือ 0 และถูกปฏิเสธอยู่แล้ว ข้อนี้จึงเริ่มมีผลจริงเหนือเส้นนั้นขึ้นไป '
-      + '· เส้นนั้นขยับได้สามทาง คือเปลี่ยนวิธีปัด เปลี่ยนขนาดบล็อก หรือเปิดผ่อนปรน '
-      + 'ประโยคใต้ช่องนี้บนหน้าตั้งค่าคำนวณเส้นใหม่ทุกครั้ง (`roundingZeroesUnder` ใน lib/policyInert.js) '
-      + 'จึงอ่านที่นั่น อย่าอ่านตัวเลขจากประโยคนี้ '
-      + '· ⚠ และข้อนี้ทำงานก่อนผ่อนปรน วัดจากนาทีที่ทำจริง — ตั้งข้อนี้ไว้สูงกว่าเส้นข้างบน '
-      + 'จะบังผ่อนปรนทิ้งทั้งช่วง: ผ่อนปรน 5 เปิดไว้ให้ 25–29 นาทีได้ 0.5 ชม. แต่ถ้าข้อนี้เป็น 30 '
-      + 'คนกลุ่มนั้นยังถูกปฏิเสธเหมือนเดิม ตอบสองข้อนี้พร้อมกันเสมอ',
-  }),
-]);
-
-/** One item's current answer, read off the live policy rather than restated. */
-export function readUnconfirmed(item, policy = DEFAULT_POLICY) {
-  return typeof item.reading === 'function' ? item.reading(policy) : String(item.reading ?? '');
-}
-
-/* `unconfirmedKeys` used to sit here. It moved to lib/policyConfirmations.js on
-   2026-08-24, when "confirmed" stopped meaning "a record exists": a sign-off now
-   names the value it was given for and stands only while that value does, so the
-   question "does this key still wear the badge" cannot be answered from the
-   confirmations alone — it needs the live policy, and the comparison that reads
-   both lives beside the records. Left as a note rather than as a re-export,
-   because two names for one rule is how the two definitions drifted apart in
-   the first place. */
 
 /**
  * รายละเอียดงานที่ทำ — how much text may be entered, in characters.

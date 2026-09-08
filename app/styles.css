@@ -5367,7 +5367,7 @@ td > .approver-line { margin-top: 5px; }
    and answer before the month can be closed. Sitting in a column of grey and
    green chips, a flat amber panel was a colour among colours; the ring is what
    makes it read as a state that is asking rather than reporting — the same
-   move `.chip.unconfirmed` makes for the same reason, and the same
+   move the withdrawn `.chip.unconfirmed` made for the same reason, and the same
    `--amber-line` the warning alerts are bordered in.
 
    THE PADDING COMES DOWN BY THE BORDER IT GAINS. A chip a pixel taller than
@@ -5456,15 +5456,12 @@ td > .approver-line { margin-top: 5px; }
   color: var(--bday-settled-ink) !important;
   border-color: var(--bday-settled-line) !important;
 }
-/* รอ HR ยืนยัน on ตั้งค่าระบบ — an [OPEN] item HR has not answered yet.
-   Smaller and ringed rather than plain, because unlike the chips above it is not
-   reporting a state, it is asking somebody to go and press something. The
-   geometry is what it carried inline; only the colours moved, and they moved
-   because one of them was reading a token that does not exist. */
-.chip.unconfirmed {
-  padding: 1px 7px; border-radius: 999px; font: 700 11px/1.5 var(--sans);
-  background: var(--amber-bg); color: var(--amber-ink); border: 1px solid var(--amber);
-}
+/* `.chip.unconfirmed` — รอ HR ยืนยัน on ตั้งค่าระบบ — stood here until
+   2026-09-08. It was the amber pill on an [OPEN] item nobody in HR had answered
+   yet, ringed rather than filled because it was not reporting a state, it was
+   asking somebody to go and press something. The whole mechanism behind it was
+   withdrawn; see the note where HR_UNCONFIRMED used to be in
+   src/config/policy.js. */
 /**
  * สถานะของใบ — the five, as classes.
  *
@@ -7485,13 +7482,7 @@ tbody tr:hover { background: var(--green-wash); }
   min-width: 0;
   display: flex; flex-direction: column; align-items: stretch; gap: 7px;
 }
-.policy-row-a .chip.policy-status,
 .policy-row-a .policy-override { align-self: flex-end; }
-/* On top of the column's own gap. The pill was sitting against the bottom edge
-   of the control, close enough to read as part of it — it is a statement about
-   the value rather than a second row of the field, and a few pixels is the
-   whole difference between those two things. */
-.policy-row-a .chip.policy-status { margin-top: 6px; }
 
 /* The question — the one thing in the row set at full weight and full colour.
    Everything under it is explanation and is a size and a shade down, which is
@@ -7504,22 +7495,12 @@ tbody tr:hover { background: var(--green-wash); }
   white-space: nowrap;
 }
 
-/* What the rule does today, for the one item that has no control to say it. */
-.policy-reading { font: 500 14px/1.4 var(--sans); color: var(--ink); }
-
 /* Where the value came from, under the value it is about. */
 .policy-override { font: 400 11.5px/1.5 var(--sans); color: var(--muted); }
 
 /* The explanation, under the question rather than beside the control: it
    explains what is being asked, and the answer to it is opposite. */
 .policy-help { margin-top: 5px; }
-
-/* ที่มาของค่าที่ใช้อยู่ — the note under a รอ HR ยืนยัน row, folded at four
-   lines by `Disclosure`. It was an inline `margin-top: 2` on a `<div>` inside
-   the `.hint`; the fold renders a `<p>`, so the gap is named here rather than
-   passed through the component as a style. Everything else it wears — 12.5px,
-   `--muted-2` — it still inherits from the `.hint` it sits in. */
-.policy-open-note { margin-top: 2px; }
 
 /* ── ค่าที่ต่างจากค่าตั้งต้น, as chips ─────────────────────────────────────
 
@@ -7562,7 +7543,7 @@ tbody tr:hover { background: var(--green-wash); }
    Shown only while the option it is about is the one selected — see `warn` on
    POLICY_FIELDS. Amber and boxed rather than grey like `.field-note`: the notes
    on this page explain a rule, and this one says the answer just chosen has a
-   cost, which is the distinction `.chip.unconfirmed` draws below it. Same three
+   cost, which is the distinction the withdrawn `.chip.unconfirmed` drew. Same three
    colours, for the same reason.
 
    As wide as the control it sits under and no wider — it is the column, so it
@@ -7596,16 +7577,9 @@ tbody tr:hover { background: var(--green-wash); }
   font: 400 12px/1.55 var(--sans);
 }
 
-/* The pill, sized against `.chip.unconfirmed` beside it — see PolicyStatus in
-   components/AdminView.jsx for why only four rules may wear the green one.
-   Ringed rather than filled like `.chip.green`, because the two are read
-   against each other and a filled pill beside a ringed one reads as louder
-   rather than as different. */
-.chip.policy-status { flex: none; }
-.chip.policy-status.confirmed {
-  padding: 1px 7px; border-radius: 999px; font: 700 11px/1.5 var(--sans);
-  background: var(--green-bg); color: var(--green-dark); border: 1px solid var(--ok-line);
-}
+/* `.chip.policy-status` and its green `.confirmed` went the same way on
+   2026-09-08 — the pill that said a rule had been signed off, ringed rather than
+   filled so it read as different from `.chip.green` rather than as louder. */
 
 /* The answer dropdown. The box itself is declared with .field's up at the top
    of this file; these two lines are everything about it that is NOT the same as
@@ -11548,7 +11522,6 @@ table.mini tbody tr:hover { background: none; }
   /* The control is as wide as the screen, and 44px tall because it is touched
      rather than clicked. */
   .policy-row-a { align-items: stretch; }
-  .policy-row-a .chip.policy-status,
   .policy-row-a .policy-override { align-self: flex-start; }
   .policy-row select { min-height: 44px; }
 

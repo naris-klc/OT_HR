@@ -30,16 +30,16 @@ test('พนักงานที่ไม่ได้มาจาก seed ห�
 
 /**
  * Each of these alone is enough. A database can hold real work without holding
- * a single foreign employee — HR answering an [OPEN] item, one OT request filed
- * and approved against the seeded roster, one delegation set up. Any one of
- * them means somebody has used this system.
+ * a single foreign employee — one OT request filed and approved against the
+ * seeded roster, one policy version, one delegation set up. Any one of them
+ * means somebody has used this system.
  */
 test('ร่องรอยการใช้งานจริงอย่างใดอย่างหนึ่ง ก็พอที่จะหยุด', () => {
   for (const key of [
-    'filedEntries', 'rosterAudits', 'policyVersions',
-    'policyConfirmations', 'delegations',
+    'filedEntries', 'rosterAudits', 'policyVersions', 'delegations',
     // `periodLocks` was the sixth until 2026-08-31. ปิดงวด was withdrawn and
-    // the collection with it — see lib/periodStatus.js.
+    // the collection with it — see lib/periodStatus.js. `policyConfirmations`
+    // was the fifth until 2026-09-08, withdrawn the same way.
   ]) {
     assert.equal(seedSafety({ [key]: 1 }).ok, false, `${key} ไม่ได้ถูกนับ`);
   }

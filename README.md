@@ -1735,18 +1735,12 @@ lib/policyVersion.js      what a rule set is, whether two of them compute the
                           same, and who a replay may touch — pure
 lib/policySave.js         record the rules, then replay against them; shared by
                           both servers' settings routes
-lib/policyConfirmations.js
-                          the four rules HR has never agreed to, what a
-                          sign-off is allowed to change (nothing), and whether
-                          one still covers today's value — pure
-lib/policyConfirmSave.js  the one mongoose call behind a sign-off, kept apart so
-                          the rule above can be tested without a database
 lib/proxyFiling.js        who may file OT on somebody's behalf, and where that
                           request starts — pure
 lib/delegation.js         windows, the no-chains rules, who may approve and on
                           whose authority — pure
 lib/delegationQuery.js    the reads and the clock behind it, kept apart for the
-                          reason policyConfirmSave.js is
+                          reason policySave.js is
 lib/accounting.js         สรุป OT ส่งบัญชี, shared by its report and its CSV
 lib/accountingRows.js     entries → rows, the hours that reach no row, and the
                           sheet's own reconciliation — pure
@@ -1754,7 +1748,7 @@ lib/accessLog.js          what a traffic record may say and may never say, how
                           an address and a request are read — pure
                           (พ.ร.บ. คอมพิวเตอร์ มาตรา ๒๖)
 lib/accessLogWrite.js     the one mongoose call behind it, kept apart for the
-                          reason policyConfirmSave.js is
+                          reason policySave.js is
 lib/requestContext.js     an AsyncLocalStorage scratchpad one request long — how
                           requireAuth puts a name on a log row without every
                           handler having to pass one
@@ -1767,8 +1761,8 @@ lib/complianceExport.js   which five events count as the exercise of a
                           privileged exception, and the row shape three
                           collections are normalised to — pure
 lib/complianceQuery.js    the three reads behind it, kept apart for the reason
-                          policyConfirmSave.js is; one loader for the screen
-                          and the CSV so they cannot disagree
+                          policySave.js is; one loader for the screen and the
+                          CSV so they cannot disagree
 lib/pdfExport.js          a print view as a PDF file: the standalone document,
                           the lock on markup that arrived from a browser, and
                           the headless Edge/Chrome already on the machine — no
@@ -1824,8 +1818,8 @@ budget rather than an observation. (It read "410 tests, under 400 ms" until
 2026-08-25 — the budget is per test, and four times the tests for five times
 the time is the budget holding, not slipping.) A test file that reaches for a
 model drags mongoose into a suite that never opens a connection and costs a
-third of a second on its own — which is exactly why `lib/policyConfirmSave.js`
-is a separate file from `lib/policyConfirmations.js`.
+third of a second on its own — which is exactly why the mongoose call behind a
+write lives in its own file, `lib/policySave.js` beside the pure rules it uses.
 
 `legacy/server.js` and `legacy/routes/` are the retired Express implementation.
 **There is no npm script that starts it any more** — this paragraph said
@@ -1982,26 +1976,35 @@ and when. The fifth item arrived the same day, and the sixth on 2026-09-03.
 | What the minimum applies to | The **whole entry** — every bucket summed, then compared to 1 h (`minimumHoursScope: 'sheet'`) | `computeSession` has only ever done it this way, and it is the reading that refuses least. The per-column reading is `'bucket'`: the same rule asked of each rate column, so a Friday-night shift running into Saturday is measured twice. Having a flag is not an answer. It read "HR still has not given one, and the badge now sits on the dropdown" until 2026-09-03 — this was also signed on 2026-09-02 at 16:09, six seconds after the row above it |
 | Start buffer — เวลาขั้นต่ำในการเริ่มนับ OT | **30 minutes** on this machine (`minimumBufferMinutes`); it ships at 0, and this column read "**No threshold — 0**" until 2026-09-03 | Added 2026-08-13 on HR's request, with 30 นาที used only as the worked example in the ask, never as an instruction. It ships at 0 because any other value would have restated hours for a rule nobody had switched on — and 0 is the *absence* of a guess rather than a guess, which is why it carried no badge until one was added. ⚠ It is **inert** only while rounding already refuses everything it would refuse: floor/30 with no grace zeroes every session under a block, so a buffer up to 30 changes nothing but the wording of the refusal. A grace lowers that line to `30 − grace` and the buffer starts biting from there — which is why the settings row derives its note rather than stating a number. ⚠ **It runs *before* the grace, on the minutes as worked**, so a buffer set above that line cancels the grace over exactly the range the grace was turned on for. That is the state this machine has been in since 2026-09-02: grace 5 opens 25–29 minutes, buffer 30 refuses them anyway. The two are one question and have to be answered together |
 
-These carry a **รอ HR ยืนยัน** badge on ตั้งค่าระบบ → นโยบายการคำนวณ. Pressing
-ยืนยัน records who signed it off and when — it changes no value, appends no
-policy version and replays nothing, which is enforced structurally: the
-confirmations live on `Setting.policyConfirmations`, a *sibling* of
-`Setting.policy`, so they cannot reach `canonicalPolicy`, a `policyHash` or the
-engine. See [`src/config/policy.js`](src/config/policy.js) (`HR_UNCONFIRMED`),
-[`lib/policyConfirmations.js`](lib/policyConfirmations.js) and
-`test/policyConfirmation.test.js`.
+These carried a **รอ HR ยืนยัน** badge on ตั้งค่าระบบ → นโยบายการคำนวณ, and
+pressing ยืนยัน recorded who signed one off and when — it changed no value,
+appended no policy version and replayed nothing, which was enforced
+structurally: the records lived on `Setting.policyConfirmations`, a *sibling* of
+`Setting.policy`, so they could not reach `canonicalPolicy`, a `policyHash` or
+the engine. Six items, an amber pill per row, and a sign-off form under each one.
 
-All five sit on a dropdown now. Two of them did not: the minimum's scope was a
-rule the engine had and the policy had no key for, and the rounding increment
-was a number in `src/config/policy.js` with no row on the page. Both borrowed a
-neighbouring row, or none at all, until the flag they are about existed. Having
-a dropdown is not an answer, and neither is having been told one in a meeting —
-the badge moved onto the control rather than off the page, and it comes off on
-a signature.
+⚠️ **THE WHOLE MECHANISM WAS WITHDRAWN ON 2026-09-08, ASKED FOR AND CONFIRMED**
+— the list, the badge, the form, both endpoints, the two lib files that held the
+rules and the one mongoose call behind them, and the field. The reason given was screen clutter,
+and it was real: the form was a labelled text box, a button and a grey sentence
+drawn open on every unanswered row at once, four to six of them on one page.
 
-An item with **no** `keys` remains a supported shape, and the read-only row it
-gets is the reason: a rule with nothing on the settings page is the one nobody
-can find by reading the settings.
+**What it cost is this table.** Nothing on any screen now separates a rule
+ฝ่ายบุคคล actually answered from a rule this system read off the old paper —
+they print identically, as "ค่าเริ่มต้น", which is the exact confusion the list
+existed to undo. The questions themselves did not close: the rows below are
+still the six, they still move hours, and this README is now the only place that
+says so. The records already written are still in the database and are not ours
+to delete — see the note where the field used to be in
+[`src/models/Setting.js`](src/models/Setting.js), and the longer one where the
+list used to be in [`src/config/policy.js`](src/config/policy.js).
+
+All six sat on a dropdown by the end. Two of them did not at first: the
+minimum's scope was a rule the engine had and the policy had no key for, and the
+rounding increment was a number in `src/config/policy.js` with no row on the
+page. Both borrowed a neighbouring row, or none at all, until the flag they are
+about existed. Having a dropdown was not an answer, and neither is having been
+told one in a meeting.
 
 **Two of the five are the same question.** The start buffer asks "was this OT at
 all"; the rounding increment answers it as a side effect, because a session
@@ -4944,8 +4947,8 @@ something about a row filed by the wrong person.
 A หัวหน้า who is away can let somebody else sign their approval queue, between
 two dates. The rules are pure and live in
 [`lib/delegation.js`](lib/delegation.js); the reads and the clock are in
-`lib/delegationQuery.js`, split for the reason `policyConfirmSave.js` is split
-from `policyConfirmations.js` — the suite tests the rules without opening a
+`lib/delegationQuery.js`, split for the reason the mongoose call behind a
+policy save is split from the rules — the suite tests the rules without opening a
 connection.
 
 **A window, never a switch.** There is no `enabled` field, and that is the

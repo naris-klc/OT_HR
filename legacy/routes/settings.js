@@ -5,8 +5,6 @@ import { requireAuth, requireRole, wrap } from '../middleware/auth.js';
 import { recomputeEntries } from '../../src/services/otService.js';
 import { savePolicy } from '../../lib/policySave.js';
 import { authorizeReplay } from '../../lib/policyVersion.js';
-import { unconfirmedState, normaliseConfirmNote } from '../../lib/policyConfirmations.js';
-import { confirmPolicyItem } from '../../lib/policyConfirmSave.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -24,24 +22,16 @@ router.get('/', wrap(async (req, res) => {
     defaults: DEFAULT_POLICY,
     /** Which keys have been overridden away from the shipped defaults. */
     overrides: Object.keys(doc.policy || {}),
-    /** Which rules HR has still not agreed to — see lib/policyConfirmations.js. */
-    unconfirmed: unconfirmedState(policy, doc.policyConfirmations || {}),
+    /* `unconfirmed` rode this payload until 2026-09-08 — the six HR_UNCONFIRMED
+       items and whether anybody in HR had signed each one off. Withdrawn with
+       the rest of that mechanism; see the note in src/config/policy.js. */
   });
 }));
 
-/**
- * HR signing off a rule the system was already running on. Changes no value and
- * replays nothing — the whole sequence is in lib/policyConfirmations.js, shared
- * with the App Router so this server cannot be the lenient way in.
- */
-router.post('/policy-confirmations', requireRole('admin', 'hr'), wrap(async (req, res) => {
-  // Same refusal as the App Router: too long is answered, never trimmed.
-  const note = normaliseConfirmNote(req.body?.note);
-  if (note.error) return res.status(400).json({ error: note.error });
-  const result = await confirmPolicyItem({ id: req.body?.id, actor: req.user, note: note.value });
-  if (result.error) return res.status(result.status).json({ error: result.error });
-  return res.json(result);
-}));
+/* POST /policy-confirmations stood here until 2026-09-08 — HR signing off a
+   rule the system was already running on, refusing a note past a character
+   cap. Withdrawn with lib/policyConfirmations.js and lib/policyConfirmSave.js,
+   so this server keeps no lenient way in to a mechanism that no longer exists. */
 
 /**
  * Answering an [OPEN] item at runtime.

@@ -15,21 +15,21 @@ const settingSchema = new mongoose.Schema(
     /** Sparse overrides on DEFAULT_POLICY. Unset keys fall back to the file. */
     policy: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
     /**
-     * Which of the HR_UNCONFIRMED items somebody in HR has now signed off, as
-     * `{ [id]: { by, byName, at } }`.
+     * `policyConfirmations` LIVED HERE UNTIL 2026-09-08 — `{ [id]: { by,
+     * byName, at, values } }`, one record per HR_UNCONFIRMED item, written by a
+     * ยืนยันว่าเป็นคำตอบของ HR button on ตั้งค่าระบบ.
      *
-     * A SIBLING of `policy`, never a member of it, and that placement is the
-     * whole guarantee. `Setting.effectivePolicy()` spreads `policy` and nothing
-     * else, so a confirmation cannot reach `canonicalPolicy`, cannot change a
-     * `policyHash`, cannot mint a version and cannot make `sameArithmetic`
-     * false — which is what "COSMETIC" has to mean here to be worth anything.
-     * Put inside `policy` it would also be an unclassified key and fail the
-     * ARITHMETIC/COSMETIC completeness test in test/policyVersion.test.js.
+     * Withdrawn whole on the grounds that the form was clutter: the six items,
+     * the badge beside each rule, both endpoints and this field are all gone.
+     * What it bought was the one thing on that page that could tell a rule HR
+     * had actually answered from a rule read off the old paper — see the note
+     * where HR_UNCONFIRMED used to be in src/config/policy.js.
      *
-     * Keyed by the item id rather than by policy key: one question can cover
-     * more than one flag, and one of them covers no flag at all.
+     * Documents written before that date still carry the key. Nothing reads it,
+     * and it is left alone rather than migrated away: a signature is not ours
+     * to delete, and the day somebody wants the question back it is the only
+     * record of who answered what.
      */
-    policyConfirmations: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
     /**
      * `csvDateOrder` LIVED HERE FOR ONE DAY — 2026-09-04 — and is gone.
      *

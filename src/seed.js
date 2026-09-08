@@ -189,7 +189,6 @@ async function guard(force) {
     filedEntries: await count('otentries', { filedBy: { $ne: null } }),
     rosterAudits: await count('otEmployeeAudits'),
     policyVersions: await count('otPolicyVersions'),
-    policyConfirmations: Object.keys(settings?.policyConfirmations || {}).length,
     delegations: await count('approvaldelegations'),
   });
 

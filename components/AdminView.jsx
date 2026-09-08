@@ -31,9 +31,6 @@ import { ARITHMETIC_KEYS, diffPolicy } from '@/lib/policyVersion.js';
 // derived from the whole policy rather than from the row it is printed on, so
 // the sentence under one dropdown is computed from the values in the others.
 import { inertReason, INERT_KEYS } from '@/lib/policyInert.js';
-// The cap the sign-off note is refused at, so the box on screen stops where the
-// route does rather than letting somebody type past a limit they cannot see.
-import { CONFIRM_NOTE_MAX_CHARS } from '@/lib/policyConfirmations.js';
 import { resolveBirthDateColumn, birthDatePreview, ORDER_LABEL } from '@/lib/birthDate.js';
 import { searchPeople, personMatches } from '@/lib/personSearch.js';
 // The refusal sentence itself, so the dialog that opens when ลบแผนก is pressed
@@ -6220,59 +6217,6 @@ const OPEN_LABEL = (() => {
   });
 })();
 
-/**
- * The pill beside a question — the one thing on this page that can be read
- * without being read.
- *
- * Placed under the control it is about, against the right edge of the answer
- * column — see `.policy-row-a`.
- *
- * GREEN ONLY WHERE SOMEBODY SIGNED. It says HR ยืนยันแล้ว, and the only rules
- * entitled to wear it are the HR_UNCONFIRMED items carrying a name and a date
- * (ConfirmedBy prints them underneath). Every other row on this page holds a
- * default — the requirements doc's recommendation, or a reading off the old
- * paper — and painting those green would be the page asserting an approval
- * nobody gave, on thirteen rules at once, in the same green as the four that
- * were actually answered. That is the exact confusion HR_UNCONFIRMED exists to
- * undo: see the note over it in src/config/policy.js, about a default nobody
- * chose and a default somebody read off a stack of 2025 timesheets printing
- * identically.
- *
- * So a rule that was never one of the open questions wears no pill at all. The
- * absence is the honest state, and amber is what the eye is sweeping for — one
- * pill per rule, all of them on one edge, so sweeping is all it takes.
- *
- * Amber from `.chip.unconfirmed`, which is where its colours went when they
- * stopped being inline — one of them was reading `--amber-dark`, a token no
- * `:root` block defines, so what drew was a hard-coded brown chosen against a
- * white page: 2.53 against the dark card, on the badge that says a rule is
- * unanswered. It reads `--amber-ink` now, 5.46 light and 8.77 dark.
- */
-function PolicyStatus({ items }) {
-  if (!items?.length) return null;
-  /**
-   * THREE STATES, NOT TWO, and the third is the one worth having.
-   *
-   * `waiting` — nobody has answered, or somebody answered and the value has
-   *   been changed since. The badge coming back on its own is the whole point
-   *   of recording what was signed: a sign-off from August does not cover a
-   *   value chosen in September, and until 2026-08-24 it silently did.
-   * `review` — signed on 2026-08-14, before records carried values. Not
-   *   waiting, because somebody genuinely pressed it; not settled either,
-   *   because what they were looking at was never written down.
-   */
-  const waiting = items.some((u) => u.state === 'never' || u.state === 'moved');
-  const review = !waiting && items.some((u) => u.state === 'unrecorded');
-  const settled = !waiting && !review;
-
-  return (
-    <span className={`chip policy-status ${settled ? 'confirmed' : 'unconfirmed'}`}>
-      {waiting && '⚠️ รอ HR ยืนยัน'}
-      {review && '⚠️ ยืนยันแล้ว — ทวนอีกครั้ง'}
-      {settled && '✓ HR ยืนยันแล้ว'}
-    </span>
-  );
-}
 
 /** One policy value as its dropdown words it — 'accept' → 'รับตามชั่วโมงจริง…'. */
 function valueLabel(key, value) {
@@ -6309,164 +6253,26 @@ function coerce(field, raw) {
 /**
  * ค่าที่ใช้อยู่ — the one line of ANSWER a row shows without being asked.
  *
- * THE CUT ON THIS PAGE IS MADE BY CONTENT, NOT BY LINES — 2026-09-07, and it
- * is the third rule this page has had in a day. A row now stands at its
- * question and this sentence: what the rule is set to, in the words the
+ * THE CUT ON THIS PAGE IS MADE BY CONTENT, NOT BY LINES. A row stands at its
+ * question and at this sentence: what the rule is set to, in the words the
  * dropdown uses. Everything behind it — what the question means, what each
- * option is for, where the current value came from — is one fold, opened once,
- * by whoever came to change that row.
+ * option is for — is one fold, opened once, by whoever came to change that row.
  *
- * It used to be the other way round: the explanation stood between the question
- * and this line, with a fold of its own, so a reader met two อ่านต่อ per row
- * before reaching the only sentence most visits are for.
+ * IT READ ITS VALUE OFF AN HR_UNCONFIRMED ITEM UNTIL 2026-09-08, which meant it
+ * appeared only on the six rows that list covered. The list is gone and the
+ * line stays, because the line was never about the sign-off: it now reads the
+ * live policy through `optionLabel`, so every row that has a dropdown has one.
  *
- * Nothing here for a rule whose sign-off still stands — `ConfirmedBy` says
- * more, and two blocks narrating one sign-off is the page arguing with itself.
+ * The same words as the control in the opposite column, on purpose. They are
+ * the same answer, and a reader coming down the left column should not have to
+ * cross to find out what it currently is.
  */
-function PolicyReading({ item }) {
-  if (!item || item.stands) return null;
+function PolicyReading({ field, value }) {
+  const said = optionLabel(field, value);
+  if (!said) return null;
   return (
     <div className="hint" style={{ marginTop: 5 }}>
-      ค่าที่ใช้อยู่: <strong>{item.reading}</strong>
-      {item.state === 'never' && <> · ยังไม่มีใครใน HR ตอบข้อนี้ ตั้งแต่ {item.since}</>}
-    </div>
-  );
-}
-
-/**
- * ที่มาของค่าที่ใช้อยู่ — the longest strings on any screen in this app.
- *
- * Six notes running to 891 characters, and on a 360px phone the longest of them
- * was fifteen lines standing between the question and the button that signs it.
- * They are the evidence somebody is being asked to put their name to, so they
- * are not deleted and not summarised — they go inside the row's fold, under the
- * paragraph explaining the question, and the value being confirmed stays on the
- * line above it where a signature can see it.
- */
-function PolicySource({ item }) {
-  const note = item?.stands ? item.confirmed?.note : item?.note;
-  if (!note) return null;
-  return (
-    <div className="hint policy-open-note">
-      {item.stands ? 'ที่มาของคำตอบที่ยืนยันไว้' : 'ที่มาของค่าที่ใช้อยู่'}: {note}
-    </div>
-  );
-}
-
-/**
- * What an unanswered rule says, and the one button that removes it.
- *
- * The pill itself is drawn beside the question by `PolicyStatus`, so that a
- * reader sweeping the column meets one mark per row rather than a mark buried
- * in the paragraph explaining it. What is left here is the paragraph: where the
- * value came from, and what pressing ยืนยัน does.
- *
- * Amber rather than red: nothing is broken, and the hours on every screen in
- * the system are as correct as they were a minute ago. What it says is that the
- * rule producing them was our reading of the old paper and not anybody's
- * answer — a different claim from ค่าเริ่มต้น, which every row on this page
- * could wear.
- *
- * ยืนยัน writes a name and a date beside the item and does nothing else. It is
- * spelled out under the button because "confirm" beside a rule that moves hours
- * reads, reasonably, as though it might apply something.
- */
-function Unconfirmed({ item, canEdit, busy, onConfirm }) {
-  /**
-   * ที่มาของคำตอบ, held here rather than beside the page's other draft state.
-   *
-   * One box per item and never more than one item being signed at a time, so
-   * lifting it into `Policy` would buy a keyed map and the bug where two rows
-   * share a draft. It is cleared by the row disappearing when the sign-off
-   * lands, which is the only exit this box has.
-   */
-  const [why, setWhy] = useState('');
-
-  if (!item || item.stands) return null;
-
-  const moved = item.state === 'moved';
-  const unrecorded = item.state === 'unrecorded';
-  const signedOn = item.confirmed?.at ? thaiDate(String(item.confirmed.at).slice(0, 10)) : '';
-
-  return (
-    <div style={{ marginTop: 4 }}>
-      {/* A sign-off that no longer covers the value under it. The row says what
-          was agreed and what it is now, because "ยืนยันใหม่" with neither on
-          screen is a button asking somebody to re-agree to something they
-          cannot see. */}
-      {moved && (
-        <div className="policy-inert" style={{ marginTop: 4 }}>
-          เคยยืนยันไว้{item.confirmed?.byName ? ` โดย ${item.confirmed.byName}` : ''}
-          {signedOn ? ` เมื่อ ${signedOn}` : ''} ที่ค่า{' '}
-          <strong>{item.confirmed?.reading || '—'}</strong> · ค่าถูกแก้หลังจากนั้น
-          {item.changes?.map((c) => (
-            <div key={c.key} style={{ marginTop: 2 }}>
-              {valueLabel(c.key, c.was)} → <strong>{valueLabel(c.key, c.now)}</strong>
-            </div>
-          ))}
-          <div style={{ marginTop: 2 }}>
-            คำตอบเดิมไม่ครอบคลุมค่าใหม่ — ต้องให้ฝ่ายบุคคลยืนยันอีกครั้ง · ลายเซ็นเดิมไม่ได้ถูกลบ
-          </div>
-        </div>
-      )}
-
-      {/* The four of 2026-08-14. Kept, dated, named, and honest about what it
-          cannot tell you — see lib/policyConfirmations.js. */}
-      {unrecorded && (
-        <div className="policy-inert" style={{ marginTop: 4 }}>
-          ยืนยันแล้ว{item.confirmed?.byName ? ` โดย ${item.confirmed.byName}` : ''}
-          {signedOn ? ` เมื่อ ${signedOn}` : ''} — แต่ตอนนั้นระบบยังไม่ได้เก็บว่ายืนยันที่ค่าใด
-          จึงบอกไม่ได้ว่าคำตอบนั้นครอบคลุมค่าที่ใช้อยู่ตอนนี้หรือไม่ · ควรทวนกับฝ่ายบุคคลอีกครั้ง
-          แล้วกดยืนยันใหม่ ลายเซ็นเดิมจะถูกเก็บไว้ทั้งใบ
-        </div>
-      )}
-
-      {canEdit && (
-        <div style={{ marginTop: 6 }}>
-          {/* `.field` rather than a bare input: it is what styles every text box
-              in this app, and the one on this page a few rows down — เหตุผลของ
-              การเปลี่ยนแปลง — is written exactly this way. */}
-          <div className="field" style={{ maxWidth: 520 }}>
-            <label>ที่มาของคำตอบ (ไม่บังคับ) — ถามใคร เมื่อไหร่ ด้วยหลักฐานอะไร</label>
-            <input
-              value={why}
-              disabled={busy}
-              maxLength={CONFIRM_NOTE_MAX_CHARS}
-              placeholder="เช่น คุณสมศรีตอบทางโทรศัพท์ 24 ส.ค. หลังดูใบ มิ.ย."
-              onChange={(e) => setWhy(e.target.value)}
-            />
-          </div>
-          <div style={{ marginTop: 4 }}>
-            <button className="btn ghost sm" disabled={busy} onClick={() => onConfirm(item.id, why)}>
-              {moved || unrecorded ? 'ยืนยันใหม่ที่ค่าปัจจุบัน' : 'ยืนยันว่าเป็นคำตอบของ HR'}
-            </button>
-            <span className="hint" style={{ marginLeft: 8 }}>
-              บันทึกชื่อผู้ยืนยัน วันที่ และค่าที่ยืนยัน · ไม่เปลี่ยนค่า และไม่คำนวณใบใดใหม่
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Who signed an item off, while the signature still covers the value under it.
- *
- * Nothing here when it does not — `Unconfirmed` above takes the row over in
- * that case and says considerably more. Two blocks both narrating one sign-off
- * would be the page arguing with itself.
- */
-function ConfirmedBy({ item }) {
-  if (!item?.stands) return null;
-  const { byName, at, reading } = item.confirmed || {};
-  return (
-    <div className="hint" style={{ marginTop: 4, color: 'var(--green-dark)' }}>
-      ยืนยันแล้ว{byName ? ` โดย ${byName}` : ''}
-      {at ? ` · ${thaiDate(String(at).slice(0, 10))}` : ''}
-      {reading ? ` · ที่ค่า “${reading}”` : ''}
-      {/* ที่มา moved into the row's fold on 2026-09-07 — see `PolicySource`.
-          What stays here is the signature: who, when, and at which value. */}
+      ค่าที่ใช้อยู่: <strong>{said}</strong>
     </div>
   );
 }
@@ -6480,8 +6286,6 @@ function Policy({ user }) {
    */
   const [defaults, setDefaults] = useState(null);
   const [overrides, setOverrides] = useState([]);
-  /** The rules HR has not agreed to — see lib/policyConfirmations.js. */
-  const [unconfirmed, setUnconfirmed] = useState([]);
   const [versions, setVersions] = useState(null);
   const [unversioned, setUnversioned] = useState(0);
   /** Whether the rules in force are ones the system has on record — see below. */
@@ -6533,7 +6337,6 @@ function Policy({ user }) {
       setPolicy(res.policy);
       setDefaults(res.defaults);
       setOverrides(res.overrides);
-      setUnconfirmed(res.unconfirmed || []);
       setVersions(history.versions);
       setUnversioned(history.unversionedEntryCount || 0);
       setLive(history.live || null);
@@ -6567,18 +6370,6 @@ function Policy({ user }) {
    * policy value, which records a version and replays every entry in flight.
    * A sign-off must reach neither, so it does not go through it.
    */
-  async function confirm(id, confirmNote) {
-    setBusy(true);
-    setError('');
-    try {
-      const res = await api.post('/settings/policy-confirmations', { id, note: confirmNote || '' });
-      setUnconfirmed(res.items || []);
-      setMsg('บันทึกการยืนยันของ HR แล้ว พร้อมค่าที่ยืนยัน '
-        + '· ไม่มีค่าใดเปลี่ยน และไม่มีใบใดถูกคำนวณใหม่ '
-        + '· ถ้าค่านี้ถูกแก้ภายหลัง ป้ายจะกลับมาขึ้นเอง');
-    } catch (err) { setError(err.message); } finally { setBusy(false); }
-  }
-
   async function save(key, value) {
     setBusy(true);
     setError('');
@@ -6751,17 +6542,12 @@ function Policy({ user }) {
              other rows, read off `proposed` so the note and every dropdown on
              the page are describing one policy. Null on a row that works. */
           const inert = inertReason(f.key, proposed);
-          /* One question can cover more than one flag, so a row can carry more
-             than one of these. */
-          const items = unconfirmed.filter((u) => u.keys.includes(f.key));
           /* Whether this row has anything BEHIND its answer line. A fold that
              opens onto nothing is a press that appears to do nothing, and four
-             of the nineteen rules explain neither themselves nor their options
-             and have never been asked about. */
-          const detail = Boolean(
-            f.hint || f.optionHints
-            || items.some((u) => (u.stands ? u.confirmed?.note : u.note)),
-          );
+             of the nineteen rules explain neither themselves nor their options.
+             It counted a third thing — ที่มาของค่าที่ใช้อยู่, off the withdrawn
+             HR_UNCONFIRMED list — until 2026-09-08. */
+          const detail = Boolean(f.hint || f.optionHints);
 
           return (
             <React.Fragment key={f.key}>
@@ -6779,13 +6565,16 @@ function Policy({ user }) {
                       page settled on after three in a day.
 
                       A row stands at its question and at ค่าที่ใช้อยู่, and
-                      everything else about it — what the question means, what
-                      each option is for, where the value came from — is behind
-                      one อ่านต่อ under that line. It had TWO folds before, one
-                      over this line and one under it, so a reader met two
-                      buttons per row before reaching the sentence most visits
-                      to this page are for. */}
-                  {items.map((u) => <PolicyReading key={u.id} item={u} />)}
+                      everything else about it — what the question means and
+                      what each option is for — is behind one อ่านต่อ under that
+                      line. It had TWO folds before, one over this line and one
+                      under it, so a reader met two buttons per row before
+                      reaching the sentence most visits to this page are for.
+
+                      `shown` and not `policy[f.key]`: while a change is in its
+                      confirm dialog this line says what is about to be, which
+                      is the value the dialog is asking about. */}
+                  <PolicyReading field={f} value={shown} />
                   {detail && (
                     <Disclosure as="div" lines={0} className="policy-detail" of={f.label}>
                       {/* What the rule does. Twelve of the nineteen explain
@@ -6807,15 +6596,8 @@ function Policy({ user }) {
                             ))}
                         </dl>
                       )}
-                      {items.map((u) => <PolicySource key={u.id} item={u} />)}
                     </Disclosure>
                   )}
-                  {items.map((u) => (
-                    <React.Fragment key={u.id}>
-                      <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />
-                      <ConfirmedBy item={u} />
-                    </React.Fragment>
-                  ))}
                 </div>
                 <div className="policy-row-a">
                   {/* `PickOne` AND NOT A `<select>`, SINCE 2026-09-04 — the last
@@ -6865,17 +6647,16 @@ function Policy({ user }) {
                       whether or not it is running, and the cost is the thing to
                       read first. */}
                   {inert && <div className="policy-inert">{inert.text}</div>}
-                  <PolicyStatus items={items} />
                   {/* This is about one FLAG — whether the value above is stored
                       rather than taken from the file — so it sits under the value
                       and not under the question.
 
                       It read "HR ตอบแล้ว" until 2026-08-13, which an override is
-                      not evidence of: it says a value is stored, not who chose it
-                      or whether anybody did. `minimumHoursScope` wore that and the
-                      รอ HR ยืนยัน badge at once, flatly contradicting itself.
-                      Whether HR has actually answered is what the pill above and
-                      ConfirmedBy opposite are for, and they know. */}
+                      not evidence of: it says a value is stored, not who chose
+                      it or whether anybody did. An amber รอ HR ยืนยัน pill sat
+                      above it and answered that second question until
+                      2026-09-08; with the pill withdrawn, nothing on this page
+                      does, and this line means what it says and no more. */}
                   {overrides.includes(f.key) && (
                     <div className="policy-override">ตั้งทับค่าตั้งต้น</div>
                   )}
@@ -6885,30 +6666,13 @@ function Policy({ user }) {
           );
         })}
 
-        {/* A question about a rule the engine has but the policy has no flag
-            for. It gets a row of its own rather than being left off the page:
-            the pill is a record of what has not been agreed, and an item with
-            no dropdown is if anything the one most worth showing — nobody can
-            find it by reading the settings. Where the control would be, the row
-            states what the code does today, in words, because there is no
-            control whose value could state it. */}
-        {unconfirmed.filter((u) => u.keys.length === 0).map((u) => (
-          <div className="policy-row" key={u.id}>
-            <div className="policy-row-q">
-              <span className="policy-num" />
-              <div className="policy-label">{u.label}</div>
-              <div className="hint policy-help">
-                ไม่มีค่าตั้งให้เลือก — เปลี่ยนคำตอบข้อนี้ต้องแก้ตัวคำนวณ
-              </div>
-              <Unconfirmed item={u} canEdit={canEdit} busy={busy} onConfirm={confirm} />
-              <ConfirmedBy item={u} />
-            </div>
-            <div className="policy-row-a">
-              <div className="policy-reading">{u.reading}</div>
-              <PolicyStatus items={[u]} />
-            </div>
-          </div>
-        ))}
+        {/* A ROW FOR A QUESTION WITH NO DROPDOWN stood here until 2026-09-08 —
+            an HR_UNCONFIRMED item whose `keys` were empty, drawn so that a rule
+            the engine has and the policy has no flag for could still be seen.
+            It was rendering nothing by then: all six items had grown a flag, so
+            the filter matched none. It goes with the rest of that list, and the
+            case it was for comes back the day another rule outgrows its
+            dropdown — not before. */}
       </div>
 
       <div className="hint" style={{ marginTop: 14 }}>

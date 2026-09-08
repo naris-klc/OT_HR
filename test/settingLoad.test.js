@@ -77,7 +77,9 @@ test('nothing else upserts the singleton behind load()', () => {
    * Setting anywhere would carry the same silent `updatedAt` write, and would
    * be exactly as hard to notice as the first one was.
    */
-  for (const file of ['lib/policySave.js', 'lib/policyConfirmSave.js', 'app/api/settings/route.js']) {
+  // `lib/policyConfirmSave.js` was the third until 2026-09-08 — ยืนยันคำตอบ
+  // ของ HR was withdrawn and the file went with it.
+  for (const file of ['lib/policySave.js', 'app/api/settings/route.js']) {
     assert.doesNotMatch(
       read(file),
       /Setting\.findOneAndUpdate|Setting\.updateOne/,
@@ -90,7 +92,7 @@ test('a real change still moves updatedAt', () => {
   // The write paths load the document and `save()` it, which is what makes
   // `updatedAt` mean something again. If one of them ever switches to an
   // update-in-place, the field goes back to being a date nobody can read.
-  for (const file of ['lib/policySave.js', 'lib/policyConfirmSave.js']) {
+  for (const file of ['lib/policySave.js']) {
     assert.match(read(file), /await doc\.save\(\)/, `${file} no longer saves the document it loaded`);
   }
 });
