@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api, thaiStamp } from '@/lib/api.js';
 import { PickDate } from './PickDate.jsx';
 import {
   EVENT_LABEL, FAILED_LOGIN_ALERT, STATUS_CLASS_LABEL,
 } from '@/lib/accessLog.js';
 import {
-  Alert, Empty, Field, Modal, PickOne, ClearButton, useScrollEdge,
+  Alert, Empty, Field, Modal, PickOne, ClearButton, TablePager, TipButton, useScrollEdge,
+  useKeptFetch, usePageReset,
 } from './common.jsx';
 
 /**
@@ -359,90 +360,53 @@ function Tile({ label, value, unit, note, tone, onClick }) {
 }
 
 /**
- * How many rows each of the four cards opens with — THE SAME NUMBER ON ALL FOUR.
+ * ภาพรวม's four counted lists — each one three rows tall, and it scrolls.
  *
- * The endpoint does not return the same number of rows to each of them: 3
+ * The endpoint does not send the same number of rows to each of them: 3
  * accounts, 15 addresses, 10 of each of the other two. Those are sensible caps
  * for what each list is worth fetching and they were four different card
  * heights on the screen — and the four sit in a grid, where a row is as tall as
  * its tallest cell, so the fifteen-row card left the three-row one beside it
  * under a hand's width of empty card. What each list is worth FETCHING and what
- * a card opens SHOWING turn out to be two different questions.
+ * a card shows AT ONCE turn out to be two different questions.
  *
- * Three, not ten: it is the smallest of the four caps, so it is the only figure
- * every card can actually meet. บัญชีที่ใช้งานมากที่สุด has no fourth row to
- * offer — `TOP_ACCOUNTS` in app/api/logs/summary/route.js, deliberate and for
- * its own reasons — and a standard one of the four cannot keep is not one.
+ * THE ANSWER IS A HEIGHT, AND IT IS IN THE STYLESHEET — `.log-tally` caps the
+ * list at three rows on all four cards, with no condition and no state. It was
+ * a `ดูทั้งหมด` button, a three-row slice of the list and a max-height measured
+ * off the collapsed list the instant before it opened; asked for on 2026-09-08,
+ * all three are gone. Every row the endpoint sent is in the list from the first
+ * paint and the rest are one scroll away — which is the state pressing the
+ * button used to reach, minus the control and minus a card that can be left
+ * folded shut.
+ *
+ * The fade stays, and it is now the only thing that says the list runs on: an
+ * overlay scrollbar does not paint until the pointer is over the box, so
+ * without it a card with twelve more rows looks exactly like a card with none.
+ * `useScrollEdge` is the answer this app already gives to "is there more this
+ * way" in two other places, on the other axis; this caller is what put an
+ * `axis` on it.
  */
-const PANEL_ROWS = 3;
-
-/** One of the four counted lists under the chart. */
 function Panel({ title, note, rows, empty, render }) {
-  /**
-   * ดูทั้งหมด opens the rest INSIDE the card, not underneath it.
-   *
-   * Growing the card is what this whole change is undoing: the four are one
-   * grid row, so a card that grows by twelve rows drags the three beside it
-   * along and hands each of them twelve rows of whitespace. Opened, the list
-   * scrolls within the height it already had — the card changes what it shows
-   * and not how tall it is, and nothing beside it moves.
-   */
-  const [all, setAll] = useState(false);
-  /**
-   * The collapsed list's own height, measured the moment before it opens.
-   *
-   * A number in the stylesheet would be three rows of arithmetic — 9px of
-   * padding twice, a 13.5px line and an 11.5px line 2px apart — and wrong on
-   * exactly the cards where it matters, the ones where a long account name or a
-   * Thai action wraps to a second line. Too small and pressing ดูทั้งหมด makes
-   * the card SHORTER, which is a worse surprise than the growth it was written
-   * to prevent. So it is measured rather than predicted.
-   */
-  const [cap, setCap] = useState(0);
-  /**
-   * And the fade that says the rest is down there.
-   *
-   * A card that does not change height when you press ดูทั้งหมด is a card that
-   * looks like it did nothing: the fourth row is real, the list scrolls to it,
-   * and none of that is visible from where somebody is sitting — walked on the
-   * verify build and the button read as inert. `useScrollEdge` is the answer
-   * this app already gives to "is there more this way" in two other places, on
-   * the other axis; the third caller is what put an `axis` on it.
-   */
-  const [listRef, edge] = useScrollEdge(all, 'y');
-  const toggle = () => {
-    if (!all) setCap(listRef.current?.offsetHeight || 0);
-    setAll((v) => !v);
-  };
-
   const list = rows || [];
-  const shown = all ? list : list.slice(0, PANEL_ROWS);
-  const hidden = list.length - PANEL_ROWS;
+  /**
+   * The rows are what the measurement waits for — they land one fetch after the
+   * card is drawn, and until they do the list is empty and fits. The
+   * ResizeObserver inside the hook catches the rest: a wrapped name, a rotated
+   * phone, a column that came out narrower than the one beside it.
+   */
+  const [listRef, edge] = useScrollEdge(list, 'y');
 
   return (
     <div className="card">
-      {/* The heading and its control on one line, so the head costs no more
-          height than the `h2` alone did — see `.log-panel-head`. */}
-      <div className="log-panel-head">
-        <h2>{title}</h2>
-        {hidden > 0 && (
-          <button type="button" className="btn quiet sm log-more" onClick={toggle}>
-            {all ? 'ย่อ' : `ดูทั้งหมด (${list.length.toLocaleString('th-TH')})`}
-          </button>
-        )}
-      </div>
+      <h2>{title}</h2>
       <div className="hint">{note}</div>
       {!list.length && <Empty>{empty}</Empty>}
       {list.length > 0 && (
         // The fade hangs on the wrapper, not the list: anything painted inside
         // a scroll container is content and scrolls away with it.
-        <div className="log-tally-view" data-edge={all ? edge : 'none'}>
-          <ul
-            ref={listRef}
-            className={`log-tally${all ? ' all' : ''}`}
-            style={all && cap ? { maxHeight: cap } : undefined}
-          >
-            {shown.map((raw) => {
+        <div className="log-tally-view" data-edge={edge}>
+          <ul ref={listRef} className="log-tally">
+            {list.map((raw) => {
               const r = render(raw);
               const inner = (
                 <>
@@ -610,7 +574,7 @@ function Compliance() {
               of the six kinds cannot be performed without a reason, so this is
               normally zero. */}
           {data.withoutReason > 0 && (
-            <Alert kind="warn">
+            <Alert kind="warn" tight>
               {data.withoutReason} รายการไม่มีเหตุผลบันทึกไว้
               {' — '}อาจเป็นรายการที่เกิดก่อนระบบจะบังคับให้ระบุเหตุผล
               หรือเป็นประเภทที่ไม่ได้บังคับ (ตั้งรหัสผ่านใหม่ · เซ็นแทนหัวหน้าจากสคริปต์)
@@ -621,7 +585,7 @@ function Compliance() {
               table pushed sideways. Six columns, two of them whole sentences,
               do not go on a 360px screen in any arrangement — see `.cmp-table`
               in styles for what the card keeps and in what order. */}
-          <div className="table-wrap card-list">
+          <div className="table-wrap card-list is-paged" data-busy={busy ? '1' : undefined} aria-busy={busy}>
             <table className="log-table cmp-table">
               <thead>
                 <tr>
@@ -634,7 +598,7 @@ function Compliance() {
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((r, i) => (
+                {shown.map((r, i) => (
                   <tr key={`${r.at}-${r.kind}-${i}`}>
                     <td data-label="วันเวลา" className="nb cmp-when">{at(r.at)}</td>
                     <td data-label="ประเภท" className="cmp-kind">
@@ -667,9 +631,31 @@ function Compliance() {
             </table>
           </div>
 
+          <TablePager
+            label="การใช้สิทธิ์พิเศษ"
+            page={page}
+            pageSize={pageSize}
+            total={data.total}
+            onPage={setPage}
+            onPageSize={setPageSize}
+          />
+
+          {/* THE SENTENCE SURVIVED THE PAGER, AND THE WORD IN IT IS THE REASON.
+              It read "หน้านี้แสดงครบทุกรายการในช่วงที่เลือก ไม่มีการตัดท้าย"
+              until 2026-09-08, when the table began paging — the first half of
+              that stopped being true of the SCREEN the moment it did, and the
+              second half never stopped being true of the REPORT. Those are two
+              different claims and only one of them was about the layout.
+
+              `ไม่มีการตัดท้าย` is what the route's own header promises and what
+              test/complianceExport.test.js reads this file for: the loader is
+              uncapped, no row is dropped for being late in the period, and a
+              quarter too long to read is still a quarter delivered whole. A
+              pager moves rows between pages; it does not remove any, and every
+              row is on one of them. */}
           <div className="hint" style={{ marginTop: 10 }}>
             ทั้งหมด {data.total.toLocaleString('th-TH')} รายการ
-            {' · '}หน้านี้แสดงครบทุกรายการในช่วงที่เลือก ไม่มีการตัดท้าย
+            {' · '}แบ่งหน้าเพื่ออ่าน ทุกรายการในช่วงที่เลือกอยู่ในหน้าใดหน้าหนึ่ง ไม่มีการตัดท้าย
           </div>
         </>
       )}
@@ -682,10 +668,50 @@ function Compliance() {
 function LogList({
   tab, filters, setFilter, onClearFilters,
 }) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-  const [limit, setLimit] = useState(100);
   const [open, setOpen] = useState(null);
+
+  /**
+   * WHERE THE READER IS IN THE LOG — and the server is the one that cuts it.
+   *
+   * IT WAS A WINDOW THAT GREW UNTIL IT STOPPED, until 2026-09-08: `limit`
+   * started at 100, ดูย้อนหลังเพิ่ม added 200 at a time up to 500, and at 500
+   * an amber panel said `แสดงได้สูงสุด 500 รายการต่อครั้ง — จำกัดช่วงวันที่ให้
+   * แคบลง หรือดาวน์โหลด CSV เพื่อดูทั้งช่วง`. Three things were wrong with it
+   * and only the third is about the number. It could not say how much more
+   * there was, so "ดูย้อนหลังเพิ่ม" was a press into the dark. It could not go
+   * BACK — the window only ever grew, so the way to un-see 500 rows was to
+   * change a filter. And past the five hundredth row the answer to "what did
+   * this account open on Tuesday" was to download a file and open Excel, on the
+   * one screen in this app whose whole job is being read.
+   *
+   * A PAGE IS `skip` ROWS IN. The endpoint counts the filter as well as reading
+   * it (see `total` there), so `หน้า 3 / 47` is a fact and not an estimate, and
+   * the last page is reachable. `MAX_LIMIT` is still 500 on the route and now
+   * caps a page rather than the whole visit; the largest this screen asks for
+   * is 100.
+   *
+   * THE TOTAL MOVES WHILE YOU PAGE, AND THAT IS THIS SCREEN AND NOT A BUG.
+   * Reading the log is itself logged — `route()` writes a row for `GET /logs`
+   * like any other request, which is the property that makes the collection
+   * worth anything (see the route's header). So every press of › adds a row,
+   * the list is newest-first, and the new row lands at the FRONT: `ทั้งหมด`
+   * climbed 95 → 96 → 97 across three presses when this was walked on a clone
+   * on 2026-09-08. Everything after it shifts one place later, so the last row
+   * of page 1 can appear again at the top of page 2.
+   *
+   * THE OLD BUTTON HAD THE SAME PROPERTY and could not show it: a window that
+   * only grows re-reads from the front every time, so the row it duplicated was
+   * one already on the screen rather than one on the page before. What is new
+   * is that the count is now printed, so the drift is visible instead of
+   * silent — which is the right way round for an audit screen.
+   *
+   * A FIX EXISTS AND IS NOT TAKEN HERE: pin the first read's newest `at` and
+   * send it as an upper bound on every later page, so a visit pages through one
+   * snapshot. It is a change to what the ENDPOINT is being asked for, not to
+   * this band, and it wants its own decision — ask before building it.
+   */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const narrowed = useMemo(
     () => Object.entries(filters).some(([, v]) => v),
@@ -699,8 +725,10 @@ function LogList({
    * การเข้าใช้งาน can be narrowed to just the failures without a second tab
    * for it. Everything is sent to the server; nothing is narrowed in the
    * browser, for the reason ประวัติการแก้ทะเบียน spells out — the endpoint
-   * answers with the newest `limit` rows, so filtering those here would search
-   * the last hundred records and report "never happened" for anything older.
+   * answers with one page of the rows that MATCH, so filtering a page here
+   * would search ten records and report "never happened" for anything older.
+   * That was true when the page was the newest hundred and it is more true now
+   * that it can be the newest ten.
    */
   const params = useMemo(() => {
     const p = new URLSearchParams();
@@ -714,22 +742,30 @@ function LogList({
     if (filters.ip) p.set('ip', filters.ip);
     if (filters.from) p.set('from', filters.from);
     if (filters.to) p.set('to', filters.to);
-    p.set('limit', String(limit));
+    p.set('limit', String(pageSize));
+    /* Omitted on page 1 rather than sent as `skip=0`, so the request the screen
+       makes on arrival is byte-for-byte the one it made before this existed —
+       and so the URL in บันทึกระบบ's own record of itself does not gain a
+       parameter that says nothing. */
+    if (page > 1) p.set('skip', String((page - 1) * pageSize));
     return p.toString();
-  }, [tab, filters, limit]);
+  }, [tab, filters, page, pageSize]);
 
-  const load = useCallback(() => {
-    setData(null);
-    api.get(`/logs?${params}`)
-      .then((res) => { setData(res); setError(''); })
-      .catch((err) => setError(err.message));
-  }, [params]);
+  /* THE ROWS STAY UNTIL THE NEXT PAGE REPLACES THEM — see `useKeptFetch`.
+     This used to be `setData(null)` before the request, which took the table,
+     the pager and the button that had just been pressed off the page for as
+     long as the fetch took. The document collapsed to a viewport, the browser
+     clamped `scrollY` to 0, and the rows came back under a reader who was now
+     at the top of the screen. Measured at 418 → 0 on the built app. */
+  const {
+    data, error, busy, setError,
+  } = useKeptFetch(() => api.get(`/logs?${params}`), [params]);
 
-  useEffect(load, [load]);
-
-  // Paging by growing the window rather than by a cursor: the log is read
-  // newest-first and "ดูเพิ่ม" means "go further back", which is one number.
-  useEffect(() => { setLimit(100); }, [tab, filters]);
+  /* Back to page 1 when the list underneath is a different list — the tab, the
+     filters, or the length of a page. NOT on `data`: the fetch that arrives IS
+     the page press, and resetting on it would make › a button that goes to
+     page 2 and comes straight back. See `usePageReset`. */
+  usePageReset(setPage, [tab, filters, pageSize]);
 
   const download = () => {
     const p = new URLSearchParams();
@@ -851,7 +887,14 @@ function LogList({
 
       {data && data.records.length > 0 && (
         <>
-          <div className="table-wrap">
+          {/* `is-busy` IS WHAT THE RETAINED ROWS COST, AND IT IS CHEAP.
+              Between the press and the answer these are the PREVIOUS page's
+              rows under a pager that already reads `หน้า 3 / 11`. A fade and
+              `aria-busy` are how that half-second reads as "fetching" rather
+              than as a count disagreeing with the rows under it. On the pager
+              itself: nothing — `‹` and `›` stay live, because pressing twice in
+              a row is the thing this whole round was reported over. */}
+          <div className="table-wrap is-paged" data-busy={busy ? '1' : undefined} aria-busy={busy}>
             <table className="stack-table log-table">
               <thead>
                 <tr>
@@ -947,19 +990,19 @@ function LogList({
             </table>
           </div>
 
-          {data.hasMore && (
-            <div className="row" style={{ marginTop: 12, justifyContent: 'center' }}>
-              <button className="btn ghost" onClick={() => setLimit((n) => Math.min(n + 200, 500))}>
-                ดูย้อนหลังเพิ่ม
-              </button>
-            </div>
-          )}
-          {data.hasMore && limit >= 500 && (
-            <Alert kind="warn">
-              แสดงได้สูงสุด 500 รายการต่อครั้ง — จำกัดช่วงวันที่ให้แคบลง
-              {' '}หรือดาวน์โหลด CSV เพื่อดูทั้งช่วง
-            </Alert>
-          )}
+          {/* WHERE ดูย้อนหลังเพิ่ม AND ITS AMBER PANEL BOTH STOOD. The two of
+              them are the paragraph over `page` above; what replaced them is
+              one band that can go both ways and knows how long the list is.
+              `total` comes off the same request as the rows, so the count
+              under the table and the rows in it are one read. */}
+          <TablePager
+            label="บันทึกระบบ"
+            page={page}
+            pageSize={pageSize}
+            total={data.total}
+            onPage={setPage}
+            onPageSize={setPageSize}
+          />
         </>
       )}
 

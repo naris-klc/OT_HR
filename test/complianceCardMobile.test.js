@@ -88,7 +88,13 @@ test('the wrap says what it holds at phone width', () => {
   // is what takes the hint off — there is no more table to the right — and
   // puts the cards on the page colour, so 12px between two of them reads as
   // 12px of something else rather than 12px of the same white.
-  assert.match(jsx, /<div className="table-wrap card-list">/);
+  //
+  // IT PINNED THE WHOLE TAG UNTIL 2026-09-08 — `<div className="table-wrap
+  // card-list">` and nothing after it — which failed the day the wrap gained
+  // `is-paged` and `aria-busy`, neither of which this file has an opinion
+  // about. What it is here to hold is that BOTH classes are on the wrap, in
+  // that order; anything else the element carries is somebody else's subject.
+  assert.match(jsx, /<div className="table-wrap card-list\b/);
 });
 
 test('the arrow between ผู้กระทำ and เป้าหมาย is drawn, not printed', () => {

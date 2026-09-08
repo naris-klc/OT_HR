@@ -150,13 +150,48 @@ export const GET = route(async (req) => {
 
   const limit = Math.min(Number(q.limit) || DEFAULT_LIMIT, MAX_LIMIT);
 
-  // One more than asked for, so the screen can say the list is cut off rather
-  // than presenting a truncated log as the whole of it — same as the roster
-  // trail in app/api/employees/audit/route.js.
-  const found = await AccessLog.find(filter)
-    .sort({ createdAt: -1 })
-    .limit(limit + 1)
-    .lean();
+  /**
+   * WHERE IN THE LIST — the page, expressed as rows already passed.
+   *
+   * IT USED TO BE A WINDOW THAT GREW. `limit` was the whole of the paging:
+   * the screen asked for the newest hundred, and ดูย้อนหลังเพิ่ม asked for
+   * three hundred, then five, then said "แสดงได้สูงสุด 500 รายการต่อครั้ง" and
+   * stopped. Anything older than the five hundredth row was reachable only by
+   * narrowing the dates or downloading the CSV — which is a log that answers
+   * "what happened on Tuesday" with "download the file and look".
+   *
+   * A page is `skip` rows in and `limit` rows long, so the end of the
+   * collection is reachable by pressing › enough times and nothing is behind a
+   * ceiling. `MAX_LIMIT` stays as the guard it always was: it now caps a PAGE,
+   * and the screen's largest page is 100.
+   *
+   * `Number('abc')` is NaN and `NaN || 0` is 0, so a junk `skip` reads as the
+   * first page rather than failing the request — the same shape `limit` above
+   * has always had. Negatives are clamped for Mongo's sake, which throws on
+   * them.
+   */
+  const skip = Math.max(0, Math.trunc(Number(q.skip) || 0));
+
+  /**
+   * `_id` IS THE TIEBREAKER, AND SKIP-BASED PAGING IS WHY IT HAD TO BE ADDED.
+   *
+   * `createdAt` is written per request and this app can serve several inside
+   * one millisecond — a page's worth of preview calls from one form, say. On a
+   * single unbounded read a tie is drawn in whatever order the index hands it
+   * back and nobody can tell; across two reads that each skip a different
+   * number of rows, an unstable tie is a record that appears on page 2 and
+   * again on page 3, while another appears on neither. `_id` is monotonic
+   * within a second and unique, so the order is total and a row has exactly
+   * one page.
+   */
+  const [total, found] = await Promise.all([
+    AccessLog.countDocuments(filter),
+    AccessLog.find(filter)
+      .sort({ createdAt: -1, _id: -1 })
+      .skip(skip)
+      .limit(limit + 1)
+      .lean(),
+  ]);
 
   const records = found.slice(0, limit);
 
@@ -189,7 +224,22 @@ export const GET = route(async (req) => {
   }));
 
   return json({
+    // KEPT, THOUGH `total` NOW ANSWERS THE SAME QUESTION BETTER. It costs one
+    // extra document to read and it is the only figure that is true even if
+    // `countDocuments` and the `find` disagree — which they can, a millisecond
+    // apart, on a collection every request writes to.
     hasMore: found.length > limit,
+    /**
+     * How many rows the filter matches, not how many this page holds.
+     *
+     * WITHOUT IT THE PAGER CANNOT SPEAK. "แสดง 1–10 จากทั้งหมด 120 รายการ" and
+     * "หน้า 1 / 12" are both this number; a screen with only `hasMore` can say
+     * there is more and never how much, which is the difference between a list
+     * somebody can plan to read and one they page through hoping to reach the
+     * end.
+     */
+    total,
+    skip,
     retention: RETENTION,
     actors,
     records: records.map((r) => ({

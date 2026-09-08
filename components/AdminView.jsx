@@ -72,7 +72,7 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // the printed sheets use it.
 import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne,
-  ClearButton,
+  ClearButton, SHORT_PAGE_SIZES, TablePager, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
@@ -6511,6 +6511,9 @@ function Policy({ user }) {
   const [defaults, setDefaults] = useState(null);
   const [overrides, setOverrides] = useState([]);
   const [versions, setVersions] = useState(null);
+  /** How many versions exist, which is not how many `versions` holds — the
+      route caps its list at fifty. The pair is what says the table is cut. */
+  const [total, setTotal] = useState(null);
   const [unversioned, setUnversioned] = useState(0);
   /** Whether the rules in force are ones the system has on record — see below. */
   const [live, setLive] = useState(null);
@@ -6562,6 +6565,9 @@ function Policy({ user }) {
       setDefaults(res.defaults);
       setOverrides(res.overrides);
       setVersions(history.versions);
+      /* How many versions EXIST, against how many the route sent — the pair the
+         line under the table needs to say the list is cut. See `total` there. */
+      setTotal(history.total ?? null);
       setUnversioned(history.unversionedEntryCount || 0);
       setLive(history.live || null);
     } catch (err) { setError(err.message); }
@@ -6904,7 +6910,7 @@ function Policy({ user }) {
         ไม่ใช่แค่ปรับค่า · ข้อ 10 และ 11 รองรับทั้งไฟล์และการกรอกเองอยู่แล้ว
       </div>
 
-      <PolicyHistory versions={versions} unversioned={unversioned} live={live} />
+      <PolicyHistory versions={versions} unversioned={unversioned} live={live} total={total} />
 
       {pending && (
         <ConfirmPolicyChange
@@ -7285,6 +7291,22 @@ function LivePolicy({ policy, defaults, overrides }) {
 function PolicyHistory({ versions, unversioned, live }) {
   if (!versions) return null;
 
+  /* CLAMPED BEFORE SLICING, not only for display. `TablePager` clamps what it
+     PRINTS, which keeps the sentence honest; if the list gets shorter under a
+     reader on the last page — `recordLive()` cannot do that, but a future
+     filter could — an unclamped slice is an empty table under a pager saying
+     `หน้า 4 / 2`. The same two lines HrView's own pager settled on. */
+  const pageCount = Math.max(1, Math.ceil(versions.length / pageSize));
+  const at = Math.min(Math.max(page, 1), pageCount);
+  const shown = versions.slice((at - 1) * pageSize, at * pageSize);
+  /**
+   * The route stops at fifty. `total` is how many exist, so the two together
+   * are what lets the line under the table say the list is cut instead of
+   * ending silently — which is what it did until 2026-09-08, when there was no
+   * pager under it claiming `หน้า 5 / 5`.
+   */
+  const capped = typeof total === 'number' && total > versions.length;
+
   return (
     <div style={{ marginTop: 22 }}>
       <h3>ประวัติเวอร์ชันนโยบาย</h3>
@@ -7322,7 +7344,7 @@ function PolicyHistory({ versions, unversioned, live }) {
               </tr>
             </thead>
             <tbody>
-              {versions.map((v) => (
+              {shown.map((v) => (
                 <tr key={v._id}>
                   <td className="seq-col"><strong>{v.seq}</strong></td>
                   <td className="when-col" style={{ whiteSpace: 'nowrap' }}>
@@ -7340,6 +7362,40 @@ function PolicyHistory({ versions, unversioned, live }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* DRAWN ON A SINGLE PAGE TOO, like the two on บันทึกประวัติระบบ. Both
+          chevrons dead under `แสดง 1–7 จากทั้งหมด 7 เวอร์ชัน` is a statement
+          about the list — a reader knows they are looking at all of it. A band
+          that appeared only once a list got long would leave "is this
+          everything?" unanswered on exactly the lists where the answer is yes.
+          Not drawn on a list of NONE, where the `Empty` above has already said
+          there is nothing and a pager would be chrome around a sentence. */}
+      {versions.length > 0 && (
+        <TablePager
+          className="roomy"
+          label="ประวัติเวอร์ชันนโยบาย"
+          unit="เวอร์ชัน"
+          sizes={SHORT_PAGE_SIZES}
+          page={at}
+          pageSize={pageSize}
+          total={versions.length}
+          onPage={setPage}
+          onPageSize={setPageSize}
+        />
+      )}
+
+      {/* THE END OF THE PAGES IS NOT ALWAYS THE END OF THE VERSIONS, and until
+          the pager went in nothing said so: the table simply stopped, and its
+          oldest row said `ไม่ได้โหลดเวอร์ชันก่อนหน้ามาเทียบ`, which reads as one
+          row that could not be compared rather than as a list that was cut.
+          `หน้า 5 / 5` is a claim about a whole list, so where the route's cap
+          has bitten, this says which claim is being made. */}
+      {capped && (
+        <div className="hint" style={{ marginTop: 10 }}>
+          แสดง {versions.length} เวอร์ชันล่าสุดจากทั้งหมด {total} เวอร์ชัน ·
+          {' '}เวอร์ชันที่เก่ากว่านี้ยังไม่ได้โหลดมา จึงยังไม่อยู่ในหน้าใดของตารางนี้
         </div>
       )}
     </div>

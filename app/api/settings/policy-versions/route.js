@@ -34,6 +34,26 @@ export const GET = route(async (req) => {
   const byId = new Map(counts.map((c) => [String(c._id), c.count]));
 
   return json({
+    /**
+     * HOW MANY THERE ARE, AGAINST HOW MANY WERE SENT.
+     *
+     * The list above stops at `limit`, and until 2026-09-08 nothing on the
+     * screen said so — the table simply ended, and the oldest version on it
+     * carried `changes: null` (see below), which reads as "we could not compare
+     * this one" rather than as "the list is cut here". With a pager under the
+     * table the difference stopped being cosmetic: `หน้า 5 / 5` is a claim about
+     * a whole list, and a reader who has paged to the end is entitled to know
+     * whether the end of the pages is the end of the versions.
+     *
+     * `countDocuments` AND NOT `estimatedDocumentCount`, though the collection
+     * has no filter on it and the estimate would be free. The number is put
+     * beside `versions.length` to decide whether to say the list is cut — two
+     * figures compared, one of them approximate, is a screen that says "50 จาก
+     * 50 · เก่ากว่านี้ยังไม่ได้โหลด" on a database holding exactly fifty. Cheap
+     * either way: `otPolicyVersions` gains a row when somebody changes a rule,
+     * and this database holds twenty-four of them.
+     */
+    total: await PolicyVersion.countDocuments(),
     // versions[0] is the newest — the list is sorted seq descending.
     live: await liveState(versions[0] || null),
     versions: versions.map((v, i) => ({

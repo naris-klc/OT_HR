@@ -2570,6 +2570,279 @@ export function PeriodPicker({ value, onChange }) {
 }
 
 /**
+ * How many rows a page holds, offered in one place for every table that pages.
+ *
+ * Four figures and not a box to type one in: the choice is "a screenful", "a
+ * scroll", "a long scroll" or "the whole afternoon", and the difference between
+ * 20 and 23 is not a question anybody has. `10` first because it is the one a
+ * reader arriving at a table they have never seen wants — see `TablePager`.
+ */
+export const PAGE_SIZES = [10, 20, 50, 100];
+
+/**
+ * The same four questions on a list that will never be long.
+ *
+ * ประวัติเวอร์ชันนโยบาย gains a row when somebody changes a rule — twenty-four
+ * of them on this database after a year, and the endpoint stops at fifty. `50`
+ * and `100` on a list of that size are two rows that both mean "all of it", and
+ * a dropdown whose bottom half does nothing is a control that has to be tried
+ * to be understood. `5` is here in their place, because a list this short is
+ * one somebody pages through to READ rather than to get past.
+ */
+export const SHORT_PAGE_SIZES = [5, 10, 20];
+
+/**
+ * ── THE FOOT OF A TABLE THAT PAGES ─────────────────────────────────────────
+ *
+ * ONE COMPONENT, BECAUSE THE SECOND COPY IS WHERE THE TWO STOP AGREEING.
+ * บันทึกประวัติระบบ has two tables on one screen — the traffic list under three
+ * of its tabs, and การใช้สิทธิ์พิเศษ under the fifth — and they are read by the
+ * same person in the same sitting. Two pagers built separately are two answers
+ * to "what does › do at the end", two default page sizes, and two ways of
+ * counting from 1. `HrView`'s own `.pager-row` is the third and is NOT this: it
+ * is drawn inside a `<tbody>` on phones only, stacked into two grid rows to fit
+ * a 280px card, and folding it in here would make one component whose layout is
+ * decided by which of three screens is asking. What they share is the VOICE —
+ * the chevrons, `หน้า A / B`, `แสดง n–m จาก T รายการ`, and the class names — and
+ * that is shared by naming the same classes, not by one component drawing both.
+ *
+ * TWO SIDES, AND WHICH FACT GOES ON WHICH.
+ * Left is the one setting: how long a page is. Right is where the reader is and
+ * the two presses that move them. The order is the order somebody uses them —
+ * the size is chosen once on arrival and the arrows every few seconds after —
+ * and putting the arrows at the right edge is what keeps them under the thumb
+ * that has just finished scrolling the table above.
+ *
+ * THE RULE ABOVE IT IS THE POINT OF THE WHOLE BAND. Without a `border-top` this
+ * is a row of controls floating under a table, and the last data row and the
+ * first control read as the same list. One hairline in `--line` and 12px of air
+ * says the table ended here.
+ *
+ * `disabled`, NOT HIDDEN, AT THE ENDS — the reason is written out at
+ * `.hr-table tbody tr.pager-row .pager-controls .btn.pager-step:disabled` in the
+ * stylesheet and is the same here: a control that vanishes at an end moves the
+ * one beside it, so the second press of a thumb already travelling lands on the
+ * button that goes the other way. And it goes quiet rather than faded — a ghost
+ * button at `opacity: .4` is illegible on ธีมมืด, which is a thing this app
+ * found out on the deployed page and not in a stylesheet.
+ *
+ * IT DRAWS ON A SINGLE PAGE TOO. `pageCount` of 1 leaves both chevrons dead and
+ * the sentence reading "แสดง 1–7 จากทั้งหมด 7 รายการ", which is a statement
+ * about the list — the reader knows they are looking at all of it. A band that
+ * appeared only when a list got long would leave "is this everything?"
+ * unanswered on exactly the lists where the answer is yes.
+ *
+ * WHAT IT DOES NOT DO: clamp `page`. The caller owns that state and is the only
+ * one that knows what invalidates it — a filter changing, a tab changing, a
+ * fetch coming back shorter — so this draws what it is handed and the callers
+ * reset. See `usePageReset`.
+ */
+export function TablePager({
+  page,
+  pageSize,
+  total,
+  onPage,
+  onPageSize,
+  sizes = PAGE_SIZES,
+  /** Names the control for a screen reader when a screen carries two of them. */
+  label = 'ตาราง',
+  /**
+   * WHAT THE ROWS ARE CALLED — "รายการ" on a log, "เวอร์ชัน" on
+   * ประวัติเวอร์ชันนโยบาย, where a row is a rule set somebody can name and go
+   * and look at rather than an item in a list.
+   *
+   * A word and not a `render` hook, because the sentence it lands in is fixed:
+   * `แสดง 1–10 จากทั้งหมด 24 <unit>`. A caller that needed a different SENTENCE
+   * would be a caller this component is the wrong shape for, and the way to
+   * find that out is for the prop to be too small to fake it with.
+   */
+  unit = 'รายการ',
+  /**
+   * `roomy` where the band closes a section rather than a card — 16px of air
+   * over the rule instead of 8. The two log tables sit inside a `.card` whose
+   * own padding is already under them; ประวัติเวอร์ชันนโยบาย is an `<h3>` and a
+   * table loose in a tab, with the next heading close behind, so its rule needs
+   * to belong to the table above more visibly than a card's does.
+   */
+  className = '',
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const at = Math.min(Math.max(page, 1), pageCount);
+  // 1-based and inclusive, the way the sentence reads it. An empty list would
+  // otherwise say "แสดง 1–0", so `from` gives way to 0 when there is nothing.
+  const from = total === 0 ? 0 : (at - 1) * pageSize + 1;
+  const to = Math.min(at * pageSize, total);
+
+  return (
+    <div className={`table-pager${className ? ` ${className}` : ''}`}>
+      {/* แสดง [ 10 ▾ ] รายการต่อหน้า — the words are OUTSIDE the control on
+          purpose. `PickOne` puts its question above the box; here the question
+          is the sentence the box sits inside, so the label is clipped out of
+          the picture (`hideLabel`) and kept in the document, which is what
+          `aria-labelledby` on the combobox points at. See `.field.label-off`.
+
+          `PickOne` AND NOT A `<select>`: the app took the operating system's
+          own menus off every screen on 2026-09-04, and this bar is drawn under
+          a table on a page whose filters are all `PickOne`. One kind of
+          dropdown per screen. */}
+      <div className="pager-size">
+        <span className="pager-word">แสดง</span>
+        <PickOne
+          label={`จำนวน${unit}ต่อหน้า — ${label}`}
+          hideLabel
+          className="pager-size-pick"
+          value={String(pageSize)}
+          onChange={(v) => onPageSize(Number(v))}
+          options={sizes.map((n) => ({ value: String(n), label: String(n) }))}
+        />
+        <span className="pager-word">{unit}ต่อหน้า</span>
+      </div>
+
+      {/* `aria-live` on the sentences and not on the buttons: pressing › moves
+          the reader, and what a screen reader has to say afterwards is where
+          they now are, not that a button was pressed. */}
+      <div className="pager-controls">
+        <div className="pager-say" aria-live="polite">
+          <span className="pager-range">
+            แสดง <strong>{from}–{to}</strong> จากทั้งหมด <strong>{total.toLocaleString('th-TH')}</strong> {unit}
+          </span>
+          <span className="pager-at">
+            หน้า <strong>{at}</strong> / <strong>{pageCount}</strong>
+          </span>
+        </div>
+        <button
+          type="button"
+          className="btn ghost sm pager-step pager-prev"
+          onClick={() => onPage(at - 1)}
+          disabled={at <= 1}
+          aria-label={`ก่อนหน้า — ${label}`}
+          title="ก่อนหน้า"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          className="btn ghost sm pager-step pager-next"
+          onClick={() => onPage(at + 1)}
+          disabled={at >= pageCount}
+          aria-label={`ถัดไป — ${label}`}
+          title="ถัดไป"
+        >
+          ›
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Page 1, again, whenever the list underneath is no longer the same list.
+ *
+ * THE BUG THIS EXISTS TO PREVENT is a reader on page 9 typing into the search
+ * box and being shown an empty table — the filter now matches four rows, page 9
+ * of four rows is nothing, and the screen reports "ไม่มีรายการ" about a search
+ * that found four. Every table that pages needs this and every one of them
+ * would otherwise write it out, which is how one of them comes to forget a
+ * filter.
+ *
+ * `deps` IS THE FILTERS AND NOT THE DATA. Resetting when the rows change would
+ * reset on the fetch that ARRIVES for page 9 — the page press itself would
+ * bounce back to 1.
+ */
+export function usePageReset(setPage, deps) {
+  React.useEffect(() => { setPage(1); },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    deps);
+}
+
+/**
+ * ── A FETCH THAT DOES NOT EMPTY THE SCREEN WHILE IT RUNS ────────────────────
+ *
+ * THE BUG THIS EXISTS TO FIX, AND IT IS NOT A `scrollTo` ANYWHERE.
+ *
+ * Reported on 2026-09-08 as "หน้าจอเด้งขึ้นด้านบนเวลากดปุ่มเปลี่ยนหน้า", and the
+ * obvious cause is absent: there is no `window.scrollTo` and no
+ * `scrollIntoView` on บันทึกประวัติระบบ or in `TablePager`. What happened is
+ * that the loader cleared its own data first —
+ *
+ *     setData(null); api.get(...).then(setData)
+ *
+ * — so between the press and the answer the table, the pager and everything
+ * under them were REPLACED by the one line `กำลังโหลด…`. The document collapsed
+ * from 1318px to a viewport, `maxScroll` went to 0, and the browser clamped
+ * `scrollY` — which is a lossy operation. When the rows came back a moment
+ * later the page was 1337px tall again and the reader was at the top of it,
+ * with no way to get the old position back because nothing had kept it.
+ *
+ * Measured on the built app against a clone on 2026-09-08: `scrollY` 418 before
+ * the press (the pager was on screen, at the bottom of the page), 0 at 120ms
+ * after it, and 0 for every sample thereafter.
+ *
+ * SO THE FIX IS NOT TO RESTORE THE SCROLL — it is to never take the page's
+ * height away. Restoring is the wrong shape twice over: it fights the browser
+ * for a value the browser has already discarded, and it would still show the
+ * reader one frame of the page jumping. Rows stay on screen until the next page
+ * replaces them, the pager is never unmounted, and there is nothing to restore
+ * because nothing moved.
+ *
+ * THE BUTTON KEEPS FOCUS FOR THE SAME REASON. `document.activeElement` was
+ * `BODY` after a press, because `.pager-next` was inside the subtree that got
+ * replaced — so a reader pressing › three times in a row had to find the button
+ * with the pointer each time, and a reader on the keyboard lost their place
+ * entirely. An element that is never unmounted keeps focus without anybody
+ * restoring that either.
+ *
+ * `busy` IS FOR SAYING SO, and it is what the retained rows cost: for a moment
+ * the screen shows the PREVIOUS page under a pager that already says
+ * `หน้า 3 / 11`. `aria-busy` on the region and a slight fade over the table are
+ * how that moment reads as "fetching" rather than as a count that disagrees
+ * with the rows beneath it.
+ *
+ * `seq` IS NOT DEFENSIVE PADDING. Two presses of › a few hundred milliseconds
+ * apart are two requests in flight, and nothing orders the answers: page 2's
+ * reply landing after page 3's leaves the table showing page 2 under a pager
+ * reading `หน้า 3`. The old code had the same race and could not exhibit it,
+ * because clearing the data made the second press impossible — the button was
+ * not on the screen to press. Keeping the button is what makes the guard
+ * necessary; only the newest request may write.
+ */
+export function useKeptFetch(get, deps) {
+  const [data, setData] = React.useState(null);
+  const [error, setError] = React.useState('');
+  const [busy, setBusy] = React.useState(true);
+  /* Which request is allowed to write. Bumped on every send, so an older
+     answer arriving later finds its number stale and returns without touching
+     anything — including `busy`, which otherwise would be switched off by a
+     reply the screen is no longer waiting for. */
+  const seq = React.useRef(0);
+
+  const reload = React.useCallback(() => {
+    const mine = seq.current + 1;
+    seq.current = mine;
+    setBusy(true);
+    get()
+      .then((res) => {
+        if (seq.current !== mine) return;
+        setData(res);
+        setError('');
+        setBusy(false);
+      })
+      .catch((err) => {
+        if (seq.current !== mine) return;
+        setError(err.message);
+        setBusy(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  React.useEffect(() => { reload(); }, [reload]);
+
+  return {
+    data, error, busy, setError, reload,
+  };
+}
+
+/**
  * The ✕ that empties a search box.
  *
  * Shared by the two controls that search the roster because it is the one part

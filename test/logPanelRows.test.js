@@ -5,24 +5,27 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 /**
- * ภาพรวม บนบันทึกระบบ — the four counted lists, all the same height.
+ * ภาพรวม บนบันทึกประวัติระบบ — the four counted lists, all the same height.
  *
  * They sit in one `.log-columns` grid, and a grid row is as tall as its tallest
  * cell. The endpoint hands each list a different cap — 3 accounts, 15
  * addresses, 10 of each of the other two — so the addresses card set the height
  * of the row and the accounts card beside it stood under twelve rows of empty
- * card. What each list is worth FETCHING and what a card opens SHOWING are two
+ * card. What each list is worth FETCHING and what a card shows AT ONCE are two
  * different questions, and the screen was only answering the first.
  *
- * What is pinned here is the shape of the answer, in three parts:
+ * It answered the second with a `ดูทั้งหมด` button for a while: three rows
+ * shown, "PANEL_ROWS = 3" cutting the list, and a max-height measured off the
+ * collapsed list the instant before it opened. Asked for on 2026-09-08, all
+ * three are gone — every row is in the list from the first paint, and the card
+ * is a fixed box you scroll. What is pinned here is what is left of the answer:
  *
- *   ONE NUMBER FOR ALL FOUR — `PANEL_ROWS`, used both to cut the list and to
- *   decide whether anything is hidden, so a card can never open with a count
- *   the button is not counting against.
- *   NO LARGER THAN THE SMALLEST CAP — a standard บัญชีที่ใช้งานมากที่สุด cannot
- *   meet is not a standard, and its cap is the one that would break it.
- *   OPENING SCROLLS, IT DOES NOT GROW — otherwise ดูทั้งหมด on one card drags
- *   the three beside it taller and hands each of them the whitespace back.
+ *   ONE HEIGHT, IN THE STYLESHEET, ON ALL FOUR — three rows' worth, with no
+ *   condition and no state, so no card can be taller or shorter than another
+ *   and none can be left folded shut.
+ *   NOTHING TO PRESS — no button, no slice, no collapsed state to restore.
+ *   AND SOMETHING SAYS THE LIST RUNS ON — the fade, because an overlay
+ *   scrollbar does not paint until the pointer is over the box.
  *
  * Run with: npm test
  */
@@ -32,30 +35,55 @@ const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
 const jsx = readFileSync(join(ROOT, 'components/LogSystem.jsx'), 'utf8');
 const route = readFileSync(join(ROOT, 'app/api/logs/summary/route.js'), 'utf8');
 
-const panelRows = Number(jsx.match(/^const PANEL_ROWS = (\d+);/m)?.[1]);
+/** The `.log-tally { … }` block itself, without the `::-webkit-` ones after it. */
+const tally = css.slice(css.indexOf('.log-tally {'), css.indexOf('.log-tally-view {'));
 
-// ── one number, on all four cards ───────────────────────────────────────────
+/**
+ * The same two files with every comment taken out.
+ *
+ * What was removed here is remembered in both files, by name — the button, the
+ * head that held it, the state behind it — because a rule with no record of
+ * what it replaced is a rule somebody rebuilds. So the assertions that say a
+ * thing is GONE have to read the code and not the prose about it, or the note
+ * explaining the removal fails the test that checks it.
+ */
+const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const jsxCode = strip(jsx);
+const cssCode = strip(css);
 
-test('every card opens on the same number of rows, and it is a constant', () => {
-  assert.ok(panelRows > 0, 'PANEL_ROWS is gone — each card is back to opening on whatever it was sent');
-  // The cut and the "is there more" question read the same constant. Two
-  // literals here is how a card comes to show four rows under a button that
-  // says there are three.
-  assert.match(jsx, /const shown = all \? list : list\.slice\(0, PANEL_ROWS\);/);
-  assert.match(jsx, /const hidden = list\.length - PANEL_ROWS;/);
-  // And there is one Panel, so there is no second place for a fifth number.
+// ── one height, for all four cards ──────────────────────────────────────────
+
+test('the list is capped in the stylesheet, not by a slice in the component', () => {
+  assert.match(tally, /max-height: \d+px/, 'the cap is gone — each card is back to standing as tall as the list it was sent');
+  assert.match(tally, /overflow-y: auto/, 'a capped list with no scroll is rows nobody can reach');
+  // Contained, or the page behind it scrolls on at the end of a card's list.
+  assert.match(tally, /overscroll-behavior: contain/);
+  // And there is one Panel, so there is no second place for a second height.
   assert.equal(jsx.match(/^function Panel\(/gm)?.length, 1);
 });
 
-test('the standard is one the shortest list can actually meet', () => {
+test('the cap is three rows, and a row is what the rules above it say it is', () => {
+  const cap = Number(tally.match(/max-height: (\d+)px/)?.[1]);
+  // 9px of padding twice over a 13.5px line and an 11.5px line 2px apart is 55,
+  // and three of them have two 1px rules between. Read from the same stylesheet
+  // rather than written down here, so a change to the row's padding or type
+  // fails this instead of quietly showing two and a half rows.
+  const pad = Number(css.match(/\.log-tally li > button, \.log-tally li > \.static \{[^}]*padding: (\d+)px/)?.[1]);
+  const main = Number(css.match(/\.log-tally \.main \{ font: 500 ([\d.]+)px\/1\.4/)?.[1]);
+  const sub = Number(css.match(/\.log-tally \.sub \{ font: 400 ([\d.]+)px\/1\.4/)?.[1]);
+  const gap = Number(css.match(/\.log-tally \.t \{[^}]*gap: (\d+)px/)?.[1]);
+  const row = pad * 2 + Math.round(main * 1.4) + gap + Math.round(sub * 1.4);
+  assert.equal(cap, row * 3 + 2, `three rows is ${row * 3 + 2}px and the stylesheet caps at ${cap}px`);
+});
+
+test('three is a number the shortest list can actually fill', () => {
   // บัญชีที่ใช้งานมากที่สุด is capped at three by the endpoint, for its own
-  // reasons — the question is settled at the top of that list. A card that
-  // opens on more rows than it will ever be sent is a card that can never show
-  // its standard, and the row would go crooked again from the other side.
+  // reasons — the question is settled at the top of that list. A box built for
+  // more rows than that card will ever be sent is empty space inside it, and
+  // the row goes crooked again from the other side.
   const smallest = Number(route.match(/^const TOP_ACCOUNTS = (\d+);/m)?.[1]);
   assert.ok(smallest > 0, 'TOP_ACCOUNTS is gone from app/api/logs/summary/route.js');
-  assert.ok(panelRows <= smallest,
-    `PANEL_ROWS is ${panelRows} and the endpoint sends at most ${smallest} accounts`);
+  assert.ok(smallest >= 3, `the endpoint sends at most ${smallest} accounts and the card is built for three`);
 });
 
 // ── the grid ────────────────────────────────────────────────────────────────
@@ -66,56 +94,44 @@ test('the cards in a row share one height', () => {
     'the cards each end where their own list does again');
 });
 
-// ── ดูทั้งหมด ───────────────────────────────────────────────────────────────
+// ── nothing to press ────────────────────────────────────────────────────────
 
-test('the control sits in the top right of the card, and only when there is more', () => {
-  assert.match(css, /\.log-panel-head \{[^}]*justify-content: space-between/);
-  assert.match(jsx, /\{hidden > 0 && \(/,
-    'the button is drawn on cards with nothing hidden — three cards would offer to show a fourth row that does not exist');
-  // It says how many, because "ดูทั้งหมด" on its own does not tell somebody
-  // whether the rest is one more row or twelve.
-  assert.match(jsx, /ดูทั้งหมด \(\$\{list\.length\.toLocaleString\('th-TH'\)\}\)/);
+test('there is no ย่อ / ดูทั้งหมด control, in the component or the stylesheet', () => {
+  assert.ok(!/ดูทั้งหมด|log-more|log-panel-head/.test(jsxCode),
+    'the fold is back on the card — a list that can be shut is a card that can be left shut');
+  assert.ok(!/log-more|log-panel-head/.test(cssCode),
+    'the stylesheet still dresses a control the component no longer draws');
+  // No collapsed state means no measurement of it, and no inline height to
+  // fight the stylesheet's.
+  assert.ok(!/maxHeight/.test(jsxCode),
+    'a measured max-height is back in the component — it will fight the one in the stylesheet');
+  assert.ok(!/const \[all, setAll\]|list\.slice\(/.test(jsxCode),
+    'the list is being cut again — the rows below the cut are then reachable by nothing');
 });
 
-test('the control is styled by a selector that can beat .btn.sm', () => {
-  // The button is `btn quiet sm log-more`, so a bare `.log-more` is one class
-  // against `.btn.sm`'s two and LOSES — the padding and the size were in the
-  // bundle, were correct, and were overruled, and the control measured 33px
-  // with `.btn.sm`'s 9px/13px on it. Nothing about that is visible in the
-  // source; it is only visible in a measurement of the running app.
-  assert.match(css, /\.btn\.sm\.log-more \{[^}]*font-size: 12px/);
-  assert.ok(!/^\.log-more \{/m.test(css),
-    'the one-class selector is back — it loses to .btn.sm and the size silently reverts');
-  // And it is 44px to a thumb, bought back out of the layout with the negative
-  // margins, the same way `.announce-fold` does it.
-  const phone = css.slice(css.lastIndexOf('@media (max-width: 860px) {'));
-  assert.match(phone, /\.btn\.sm\.log-more \{[^}]*min-height: 44px/);
-  assert.match(phone, /\.btn\.sm\.log-more \{[^}]*margin: -11px -4px -11px 0/);
-});
-
-test('opening scrolls inside the card rather than making it taller', () => {
-  assert.match(css, /\.log-tally\.all \{[^}]*overflow-y: auto/);
-  // The cap is the collapsed list's own measured height, not a number in the
-  // stylesheet. Three rows of arithmetic is wrong on exactly the cards where it
-  // matters — the ones where a long name wraps — and too small a number makes
-  // ดูทั้งหมด shrink the card, which is worse than the growth it prevents.
-  assert.match(jsx, /setCap\(listRef\.current\?\.offsetHeight \|\| 0\)/);
-  assert.match(jsx, /style=\{all && cap \? \{ maxHeight: cap \} : undefined\}/);
-  assert.ok(!/\.log-tally\.all \{[^}]*max-height: \d/.test(css),
-    'a fixed max-height is back in the stylesheet — it will fight the measured one');
+test('the scrollbar is the app\'s own, thinned', () => {
+  // The app has ONE scrollbar geometry (`::-webkit-scrollbar-thumb` at the top
+  // of the sheet, 10px with a 3px border of the page's colour). `.pick-list`
+  // established how to make it thin inside a panel without inventing a second
+  // one: keep the width, drop the border to transparent so no groove is painted
+  // down the card, and give Firefox the same bar with `scrollbar-width`.
+  assert.match(css, /\.log-tally \{ scrollbar-width: thin; scrollbar-color: var\(--scroll-thumb\) transparent; \}/);
+  assert.match(css, /\.log-tally::-webkit-scrollbar \{ width: 10px; \}/);
+  assert.match(css, /\.log-tally::-webkit-scrollbar-track \{ background: transparent; \}/);
+  assert.match(css, /\.log-tally::-webkit-scrollbar-thumb \{ border-color: transparent; \}/);
 });
 
 test('and something says the rest is down there', () => {
-  // A card that does not change height is a card that looks like the button did
-  // nothing. Walked on the verify build: the fourth row was in the DOM, the
-  // list scrolled to it, and the scrollbar did not paint until the pointer was
-  // over it — so ดูทั้งหมด read as inert. The fade is the app's existing answer
-  // to "is there more this way", turned ninety degrees.
-  assert.match(jsx, /<div className="log-tally-view" data-edge=\{all \? edge : 'none'\}>/);
-  assert.match(jsx, /useScrollEdge\(all, 'y'\)/);
+  // A scrollbar does not paint until the pointer is over the box, so a card
+  // with twelve more rows in it looks exactly like a card with none. The fade
+  // is the app's existing answer to "is there more this way", turned ninety
+  // degrees — and now the only answer, since there is no longer a button whose
+  // absence says the list is complete.
+  assert.match(jsx, /<div className="log-tally-view" data-edge=\{edge\}>/);
+  assert.match(jsx, /useScrollEdge\(list, 'y'\)/);
   const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
   assert.match(common, /export function useScrollEdge\(watch, axis = 'x'\)/,
-    'the vertical axis is gone from useScrollEdge — the opened list has no reading to draw');
+    'the vertical axis is gone from useScrollEdge — the capped list has no reading to draw');
   // On the wrapper, never on the scroller: a fade painted inside a scroll
   // container is content and scrolls away with the row it was drawn over.
   assert.match(css, /\.log-tally-view \{ position: relative; \}/);

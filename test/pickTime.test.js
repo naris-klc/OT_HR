@@ -361,7 +361,8 @@ test('ไม่วาดแถบเลื่อนของวงล้อ — 
     const sel = m[1].trim();
     assert.ok(
       sel.startsWith('::-webkit-scrollbar') || sel.includes('.pick-list')
-        || sel.includes('.time-pop') || sel.includes('.time-wheel') || sel.includes('.section-tabs'),
+        || sel.includes('.time-pop') || sel.includes('.time-wheel') || sel.includes('.section-tabs')
+        || sel.includes('.log-tally'),
       `กฎ ${sel} เอื้อมไปไกลกว่ากล่องของตัวเอง`,
     );
   }
