@@ -266,7 +266,13 @@ test('the route pages, counts, and orders totally', () => {
    */
   assert.match(route, /\.sort\(\{ createdAt: -1, _id: -1 \}\)/,
     'the order is not total — a tie in createdAt can hide a row between two pages');
-  assert.match(route, /\n    total,\n/, 'the response no longer carries the count the pager reads');
+  // `\r?\n` AND NOT `\n`. `core.autocrlf` is true here, so a file this suite
+  // reads off disk is CRLF wherever git has checked it out and LF only where
+  // one has been written by a tool that did not put the carriage return back.
+  // This route is LF in the working copy it was written against and CRLF in a
+  // fresh clone; a bare `\n` between two lines therefore passes on one machine
+  // and fails on the next, which is what it did.
+  assert.match(route, /\r?\n {4}total,\r?\n/, 'the response no longer carries the count the pager reads');
 });
 
 test('the 500-row ceiling caps a page now, not a visit', () => {
