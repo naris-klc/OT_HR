@@ -35,8 +35,16 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
-const jsx = readFileSync(join(ROOT, 'components/WithdrawalRequests.jsx'), 'utf8');
+/** Line endings normalised before anything below reads a character of this.
+    The machine this is developed on checks the repo out CRLF (see the note in
+    `.gitattributes`); the Linux box that serves it checks the same commit out
+    LF. An assertion written with `\n` misses every multi-line match on the
+    first, one written with `\r\n` misses them on the second, and in both
+    cases the file under test is correct to the character. Normalising is what
+    makes the assertion about the CSS instead of about the checkout — the same
+    thing test/adminApproval.test.js and test/modalScrollFrame.test.js do. */
+const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8').replace(/\r\n/g, '\n');
+const jsx = readFileSync(join(ROOT, 'components/WithdrawalRequests.jsx'), 'utf8').replace(/\r\n/g, '\n');
 
 /** Everything above the phone block, and everything inside it. */
 const PHONE_AT = css.indexOf('@media screen and (max-width: 860px) {');
@@ -147,9 +155,9 @@ test('single facts are unbreakable — code, clock, figure, both labels', () => 
   // clock span and WHAT IT COMES TO are one fact — the figure is what a grant
   // takes off the books, and it may not be wrapped away from its own clock.
   assert.match(row, /<span className="nb">\{e\.employee\?\.code\}<\/span>/);
-  const clock = row.slice(row.indexOf('<span className="nb">\r\n'));
+  const clock = row.slice(row.indexOf('<span className="nb">\n'));
   assert.match(clock, /thaiDate\(e\.workDate\)\} · \{e\.startTime\}–\{e\.endTime\}/);
-  assert.match(clock.slice(0, clock.indexOf('</span>\r\n')), /withdraw-hrs">\{hours\(e\.totals\?\.otHours\)\} ชม\./);
+  assert.match(clock.slice(0, clock.indexOf('</span>\n')), /withdraw-hrs">\{hours\(e\.totals\?\.otHours\)\} ชม\./);
 });
 
 test('and the prose is NOT — keep-all on a Thai sentence overflows the card', () => {

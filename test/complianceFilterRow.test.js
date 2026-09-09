@@ -38,7 +38,15 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (f) => readFileSync(join(ROOT, f), 'utf8');
+/** Line endings normalised before anything below reads a character of this.
+    The machine this is developed on checks the repo out CRLF (see the note in
+    `.gitattributes`); the Linux box that serves it checks the same commit out
+    LF. An assertion written with `\n` misses every multi-line match on the
+    first, one written with `\r\n` misses them on the second, and in both
+    cases the file under test is correct to the character. Normalising is what
+    makes the assertion about the CSS instead of about the checkout — the same
+    thing test/adminApproval.test.js and test/modalScrollFrame.test.js do. */
+const read = (f) => readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 /* Comments in this repo quote the markup they explain, so an assertion about
    what a screen DRAWS has to read the code with the prose taken out. */
 const sourceOf = (f) => read(f)
@@ -126,7 +134,7 @@ test('under 560 the row stacks and the buttons are a thumb tall', () => {
   // 560 is `.form-grid`'s own breakpoint, and these three fields were in a
   // `.form-grid` until this row was written.
   const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.compliance-filters {')));
-  const block = narrow.slice(0, narrow.indexOf('\r\n}\r\n'));
+  const block = narrow.slice(0, narrow.indexOf('\n}\n'));
   assert.match(block, /\.compliance-filters > \.field \{ flex-basis: 100%; \}/);
   assert.match(block, /\.compliance-filters \.compliance-actions \{[^}]*padding-top: 0/);
   assert.match(block, /\.compliance-filters \.compliance-actions \.btn \{[^}]*min-height: 44px/);

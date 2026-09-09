@@ -23,8 +23,16 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
-const jsx = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
+/** Line endings normalised before anything below reads a character of this.
+    The machine this is developed on checks the repo out CRLF (see the note in
+    `.gitattributes`); the Linux box that serves it checks the same commit out
+    LF. An assertion written with `\n` misses every multi-line match on the
+    first, one written with `\r\n` misses them on the second, and in both
+    cases the file under test is correct to the character. Normalising is what
+    makes the assertion about the CSS instead of about the checkout — the same
+    thing test/adminApproval.test.js and test/modalScrollFrame.test.js do. */
+const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8').replace(/\r\n/g, '\n');
+const jsx = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8').replace(/\r\n/g, '\n');
 
 /** The phone block only — the desktop rules above it are a different design. */
 const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
@@ -57,7 +65,7 @@ test('the two decisions are short, counted and the same width', () => {
   assert.ok(!code.includes('pileLabel') && !code.includes('รายการ'),
     'ปุ่มบนแถบยาวเท่ากับปุ่มในกล่องยืนยันอีกแล้ว');
   // Equal halves: same basis, and neither may grow past the other.
-  has(phone, '.picked-actions .btn {\r\n    flex: 1 1 0; min-height: 44px;');
+  has(phone, '.picked-actions .btn {\n    flex: 1 1 0; min-height: 44px;');
 });
 
 /**
@@ -94,13 +102,13 @@ test('only the approval is drawn as a filled control', () => {
   // nothing is ticked, and without them after.
   has(rules, '.queue-mobile-bar .check {');
   has(rules, 'background: none; border: 0;');
-  assert.ok(!rules.includes('border: 1px solid var(--line); border-radius: var(--radius-sm);\r\n    background: var(--card);'),
+  assert.ok(!rules.includes('border: 1px solid var(--line); border-radius: var(--radius-sm);\n    background: var(--card);'),
     'ช่องติ๊กกลับไปเป็นการ์ดขาวอีกแล้ว');
   // The ✕: a plain grey mark, tinted only while it is being pressed.
   has(rules, 'border: 0; border-radius: var(--radius-sm);');
   has(rules, 'background: transparent; color: var(--muted);');
   // The refusal: flat red, no white block bidding against the green button.
-  has(rules, '.picked-actions .btn.ghost.danger {\r\n    background: transparent; border-color: transparent;');
+  has(rules, '.picked-actions .btn.ghost.danger {\n    background: transparent; border-color: transparent;');
   // ...including while a batch is running, when the app-wide rule would
   // otherwise draw back the grey card this one just took off.
   has(rules, '.picked-actions .btn.ghost.danger:disabled {');
@@ -128,12 +136,12 @@ test('it summarises what is ticked — count and hours', () => {
 test('the bar is one row, and only the decisions keep the 44px floor', () => {
   const rules = phone.slice(phone.indexOf('.queue-mobile-bar {'), phone.indexOf('/* ── the row as a card'));
   // No second row, ever, once something is ticked.
-  has(rules, '.queue-mobile-bar.picking {\r\n    flex-wrap: nowrap;');
+  has(rules, '.queue-mobile-bar.picking {\n    flex-wrap: nowrap;');
   // The tally is the one that gives; the controls beside it do not.
-  has(rules, '.picked-sum {\r\n    flex: 0 1 auto; min-width: 0;');
+  has(rules, '.picked-sum {\n    flex: 0 1 auto; min-width: 0;');
   has(rules, 'text-overflow: ellipsis;');
-  has(rules, '.picked-actions {\r\n    flex: 0 0 auto; margin-left: auto;');
-  has(rules, '.picked-actions .btn {\r\n    flex: 1 1 0; min-height: 44px;');
+  has(rules, '.picked-actions {\n    flex: 0 0 auto; margin-left: auto;');
+  has(rules, '.picked-actions .btn {\n    flex: 1 1 0; min-height: 44px;');
   // The undo is smaller ON PURPOSE — it is the one control here that can be
   // taken back, and at the size of the two beside it, in the same group, it
   // would read as a third decision.
@@ -185,7 +193,7 @@ test('the bar stays under the app bar while the list scrolls', () => {
   has(rule, 'background: var(--green-bg);');
   has(rule, 'box-shadow: 0 6px 14px -8px var(--shadow-3);');
   // Under the nav (30) and the modals (80) it shares the screen with.
-  has(css, '.mobile-nav {\r\n    position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;');
+  has(css, '.mobile-nav {\n    position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;');
 });
 
 /**
