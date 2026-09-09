@@ -105,13 +105,26 @@ it keeps both the collection and the rows, and neither is read any more.
 no version is left unmatched and no month is restated — every row written before
 2026-09-03 was filed under no such rule, and `false` is exactly what that was.
 
+**Deploying the 08:00–17:00 lock (2026-09-09)?** Nothing to do either, and
+nothing is re-timed on deploy: it changes what two forms WRITE, never what is
+stored. A flat row filed with other times keeps them until somebody opens it in
+a form and saves an edit — and its figures are eight hours before and after in
+any case. Counted on this database on 2026-09-09: **two** `flatDaily` rows,
+`2026-07-01` (approved) and `2026-09-08` (`pending_mgr`), **both already
+08:00–17:00**, so there is nothing here for the rule to correct.
+
 **Rows filed WITH it ticked before 2026-09-07 were computed under one of two
 withdrawn readings**, and neither is what the engine says now. Nothing rewrites
 them on deploy — the figures on a stored entry move only when something
 recomputes it — so **look before deploying**, one query:
 `db.otentries.find({ flatDaily: true })`. Run against this database on
-2026-09-07 it returns **three rows, all of them the July scan demo seed's**
+2026-09-07 it returned **three rows, all of them the July scan demo seed's**
 (`src/seed-scan-people.js`), nothing anybody filed:
+
+> **The same query answers differently since the seed was rebuilt on the two
+> real roster rows (2026-09-08)** — two rows on 2026-09-09, neither of them the
+> three below. The table is kept as the reading it was: it is the check to
+> repeat, on whatever the query returns on the day somebody deploys.
 
 | row | as stored | what a replay gives now |
 |---|---|---|
@@ -3659,62 +3672,90 @@ which day was sold that way, which is why `flatDaily` is an entered field on the
 entry, is in `ENTERED_FIELDS`, and makes an edit that toggles it a real edit with
 a `before` on it.
 
-Ticking it fills 08:00–17:00 in, like the **วันเกิด** box beside it and through
-the same one handler, so the two cannot come to fill in different days. **เวลาเริ่ม
-stays editable** — that was asked for in the same breath, because somebody who
-came in at 07:30 files 07:30 — and on a flat day the times then change **nothing
-at all** in the figures.
+**ติ๊กแล้วล็อกเวลาไว้ที่ 08:00–17:00 — ไม่มีการปรับเวลา.** HR, 2026-09-09, in
+these words: *เมื่อพนักงานกดติ๊กช่องเหมารายวันให้ล็อกเวลาไว้ที่ 08:00น.-17:00น.
+ไม่มีการปรับเวลาแล้วล็อกได้เลย*. Ticking writes that pair into both time boxes
+and greys them; unticking hands them back holding it. A day hired whole is the
+office day, one shape, and **neither half of it is typed on any screen** —
+the filing form and `แก้ไขชั่วโมง` on รออนุมัติ OT draw the same two shut boxes.
+The pair is `FLAT_DAY_TIMES` in [`lib/entries.js`](lib/entries.js), one constant
+for both screens, because a copy in each is how two screens come to disagree
+about a rule.
 
-**เวลาสิ้นสุด is not typed; it is เวลาเริ่ม plus nine hours.** HR, 2026-09-07:
-*เปลี่ยนเวลาเริ่มได้ แต่เวลาจบไม่สามารถปรับได้ ให้บวกจากเวลาเริ่ม 9 ชั่วโมงอัตโนมัติ
-… คือ บวกเวลาพักด้วย*. Start at 07:00 and the box reads 16:00; the box is greyed
-out and moves only when the start does. A flat day is a **fixed length** — the
-office day bought whole — so its finish is an answer to where it began rather
-than a second thing to be typed, and 07:00–18:00 was a row that read as eleven
-hours, paid eight, and carried nothing explaining the gap.
-
-> This section read “**The times stay editable**” until 2026-09-07, of both
-> boxes. Only the start half of that survives. The วันเกิด tick beside it is
-> **unchanged** and both of its times are still free: a birthday is an ordinary
-> shift on a day that happens to be a holiday, and its length is whatever it was.
+> **It took three rounds to get here and the two withdrawn readings are worth
+> keeping**, because each was asked for and each has a paragraph elsewhere that
+> may still be read.
+>
+> - Until 2026-09-07 this section read “**The times stay editable**”, of both
+>   boxes. 08:00–17:00 was a FILL, and *เวลาเริ่ม stays editable* was asked for
+>   in the same breath as the fill — somebody who came in at 07:30 filed 07:30.
+> - From 2026-09-07 it read “**เวลาสิ้นสุด is not typed; it is เวลาเริ่ม plus
+>   nine hours**” — *เปลี่ยนเวลาเริ่มได้ แต่เวลาจบไม่สามารถปรับได้ ให้บวกจากเวลา
+>   เริ่ม 9 ชั่วโมงอัตโนมัติ*. `flatDayEnd('07:00')` was `'16:00'`; it **wrapped**
+>   (16:00 → 01:00), so every press of the start box re-derived ข้ามคืน off a
+>   time nobody had typed.
+> - Since 2026-09-09 the start does not move either, so there is nothing left to
+>   derive: **`flatDayEnd` is deleted**, and the wrap and its ข้ามคืน consequence
+>   with it. `endsNextDayFor('08:00', '17:00')` is false and cannot become
+>   anything else.
+>
+> **No round changed a figure.** A flat day is eight hours whatever the clock
+> reads, on every one of the three rules.
 
 **Nine on the clock, eight on the pay, and both are true.** The span is
 `FLAT_DAY_SPAN_MINUTES` in [`lib/entries.js`](lib/entries.js) — eight hours of
-work with the hour at noon in the middle of them — and it decides only what the
-two boxes read. The figure stays `flatDailyMinutes()`, derived from the policy
-below, so **ใบขออนุมัติทำงานล่วงเวลา counts eight hours, break excluded**, on a
-07:00–16:00 day exactly as on an 08:00–17:00 one. `flatDayEnd('08:00')` is
-`'17:00'`, which is what keeps the fill and the rule from drifting apart;
-test/flatDaily.test.js holds them to it.
+work with the hour at noon in the middle of them — and it is what says why the
+locked pair ends at 17:00 and not at 16:00. The figure stays
+`flatDailyMinutes()`, derived from the policy below, so **ใบขออนุมัติทำงานล่วงเวลา
+counts eight hours, break excluded**. test/flatDaily.test.js holds the pair and
+the span to each other, so neither can be "fixed" into the other.
 
-The derived end **wraps**: a flat day begun at 16:00 finishes at 01:00, and an
-end before its start with `endsNextDay` false is `END_BEFORE_START` out of the
-engine, on a time nobody typed. The same press that computes the end computes
-whether it crossed midnight.
+**The locked pair is written out, not derived from `coreStartMinute` /
+`coreEndMinute`.** Move the office day on ตั้งค่าระบบ and a flat day is still
+filed 08:00–17:00, while the FIGURE — `flatDailyMinutes()`, which does read the
+policy — follows the new core day less lunch. That is deliberate: a pair of
+times that quietly moves under stored requests the day somebody edits a setting
+is worse than a constant a commit has to change. It is also the paragraph to
+re-read if the office day is ever actually moved.
 
 > This paragraph read "**ทำงานข้ามคืน is greyed out with it**" until 2026-09-08.
 > There is no such box on this form any more — it was removed for every kind of
-> day, not only for flat ones, and the wrap is now announced by the amber
-> `ข้ามคืน · สิ้นสุดวัน…ถัดไป` line beside เวลาสิ้นสุด. See
-> §ทำงานข้ามคืนไม่ใช่คำถามอีกต่อไป below.
+> day, not only for flat ones, and a wrap is now announced by the amber
+> `ข้ามคืน · สิ้นสุดวัน…ถัดไป` line beside เวลาสิ้นสุด. A flat day cannot wrap at
+> all since 2026-09-09. See §ทำงานข้ามคืนไม่ใช่คำถามอีกต่อไป below.
 
-**A flat
-row already stored keeps its own times** and is not re-derived when the form
-opens it — 08:00–20:00 was a legal flat day before this rule, its end is the
-record of when somebody was on the premises, and the figures are eight either
-way. Re-picking เวลาเริ่ม is what re-derives it.
+**A flat row already stored is put back to 08:00–17:00 when a form opens it.**
 
-**The tick is also in `แก้ไขชั่วโมง` on รออนุมัติ OT — 2026-09-07 — and there it
-fills in nothing at all.** A request filed without it reads as an ordinary
-twelve-hour shift and pays like one, with nothing on the row saying a tick is
-missing; before this, putting that right meant refusing the request and having
-it filed again. What does NOT come across from the filing form is the
-08:00–17:00 fill: on that form those two times are a default nobody has typed
-over yet, and in the review panel they are the times printed on F-HR-027 and
-signed. Overwriting them would falsify the sheet to move a figure the sheet does
-not carry — eight hours whatever the clock says. The rest is the same rule from
-the same `flatDayEnd`: the end box is greyed, and re-picking เวลาเริ่ม is what
-moves it. See `QuickEdit` in [`components/ApprovalQueue.jsx`](components/ApprovalQueue.jsx).
+> This read “**A flat row already stored keeps its own times**” until
+> 2026-09-09, and the reason it did was good while the boxes were open:
+> 08:00–20:00 was a legal flat day before the rules above, and its end is the
+> record of when somebody was on the premises. That does not survive a locked
+> pair — left alone, an old row would open on two greyed times **no control on
+> the screen can move**, which is a figure shown to somebody who cannot correct
+> it. The figures are eight hours either way, so what the rewrite costs is
+> nothing and what it buys is that every flat row reads the same.
+
+The correction goes through the ordinary write path, so it lands in the entry's
+history with a `before` on it like any other edit (`ENTERED_FIELDS`). In
+`แก้ไขชั่วโมง` it is deliberately **not** a change on its own: the panel opens on
+the locked pair, `moved` is measured against that (`asOpened`), and a row nobody
+edits keeps its stored times rather than arming an "unsaved changes" prompt on a
+pop-up somebody opened to read. While the two disagree, the line under the ticks
+names the stored pair — *ใบนี้บันทึกไว้ 08:00–20:00 น. ถ้ากดบันทึกจะแก้เวลาให้ด้วย*.
+
+**The tick is also in `แก้ไขชั่วโมง` on รออนุมัติ OT — 2026-09-07.** A request
+filed without it reads as an ordinary twelve-hour shift and pays like one, with
+nothing on the row saying a tick is missing; before this, putting that right
+meant refusing the request and having it filed again.
+
+> **That panel used to fill in nothing at all**, and the difference ended on
+> 2026-09-09 when the lock ended the default it was defined against. The
+> reasoning was: on the filing form the two times are a default nobody has typed
+> over yet, and in the review panel they are the times printed on F-HR-027 and
+> signed, so overwriting them would falsify the sheet to move a figure the sheet
+> does not carry. What answers that now is the sentence above — the reviewer is
+> told which times the row still carries, and nothing is written unless they
+> save. See `QuickEdit` in [`components/ApprovalQueue.jsx`](components/ApprovalQueue.jsx).
 
 #### ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ
 
@@ -4613,8 +4654,10 @@ Reported alongside the sentence above — *ช่วง 08:00–17:00 ในว�
 ควรถูกนำมาคำนวณเป็นรายการ OT* — and the row it names (22/07/2569, PM00112) is
 `flatDaily: true`, `totals.otHours` **0**, `totals.normalHours` **8**. It is not
 being counted as OT: every rate column on it is nought, which is the rule since
-2026-09-04. The 17:00 is the form's own arithmetic — a เหมารายวัน filed at 08:00
-gets a nine-hour span (8 + lunch) and the end box is not typed.
+2026-09-04. The 08:00–17:00 is the form's own rule — a เหมารายวัน day is locked
+at that pair (nine hours: 8 + lunch) and neither box is typed. It read “**the
+form's own arithmetic … the end box is not typed**” until 2026-09-09, when the
+start box was shut too and the arithmetic became a constant.
 
 **No OTHER row can be in that state.** `zeroOtHoursAllowed` in lib/entries.js
 returns `flatDaily` and nothing else, so every write path — submit, the employee
@@ -9959,7 +10002,8 @@ build แล้ว
   ไม่ถูกนับ” ของใบวันทำงาน · **ตารางกลับเป็นเก้าคอลัมน์** สามช่อง OT กลับไป 22mm
   และ รายละเอียดงานที่ทำ กลับไป 51mm.
   **สิ่งที่ยังอยู่** — ใบเหมาบนวันหยุดยังเป็น `ot15_holiday` 8 · `ot3_holiday` ยังเป็น
-  ศูนย์บนใบเหมาทุกใบ · เวลาจบยังบวกให้เอง 9 ชม. · ป้ายบนคิวรออนุมัติ · และค่า
+  ศูนย์บนใบเหมาทุกใบ · เวลาจบยังบวกให้เอง 9 ชม. *(ถอนแล้ว 2026-09-09 — ล็อก
+  ทั้งสองช่องที่ 08:00–17:00)* · ป้ายบนคิวรออนุมัติ · และค่า
   `formPrintScope` บนฐานจริงของรอบก่อนหน้า · `totals.normalHours` กลับไปเป็นศูนย์
   ทุกใบที่ engine คำนวณ แต่ยังอยู่บนโมเดล เพราะแถวที่เขียนไว้ระหว่าง 4–7 ก.ย. ยังถืออยู่.
   **สองแถวบนฐานจริงที่เก็บ `ot15_weekday` 8 ไว้** (`PM00112 22/07` `รอ HR` และ

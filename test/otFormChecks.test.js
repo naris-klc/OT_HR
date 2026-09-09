@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 
 import {
   isFlatDailyPosition, FLAT_DAILY_POSITIONS, endsNextDayFor, isCompanyOffDay,
+  FLAT_DAY_TIMES,
 } from '../lib/entries.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
 
@@ -90,10 +91,11 @@ test('ไม่มีช่องติ๊กข้ามคืนบนฟอ�
 });
 
 test('ทุกการกดที่ขยับเวลา คิดข้ามคืนใหม่จาก endsNextDayFor', () => {
-  // เวลาเริ่ม — both branches. The flat one derives the end and asks about the
-  // pair it just made; the ordinary one asks about the end already in the box.
+  // เวลาเริ่ม — ONE BRANCH SINCE 2026-09-09. It had two: the flat one derived
+  // the end from the start and asked about the pair it had just made. A flat
+  // day's times are locked now, so the only press that reaches this handler is
+  // an ordinary day's, and it asks about the end already in the box.
   assert.match(form, /const setStart = \(v\) => setForm/);
-  assert.match(form, /endTime: flatDayEnd\(v\), endsNextDay: endsNextDayFor\(v, flatDayEnd\(v\)\)/);
   assert.match(form, /startTime: v, endsNextDay: endsNextDayFor\(v, f\.endTime\)/);
 
   // เวลาสิ้นสุด — the other half, and the box is wired to it rather than to the
@@ -103,9 +105,9 @@ test('ทุกการกดที่ขยับเวลา คิดข้�
   assert.match(form, /onChange=\{setEnd\}/);
   assert.ok(!/set\('endTime'/.test(form), 'ช่องเวลาสิ้นสุดยังเขียนผ่าน set() ธรรมดา');
 
-  // ติ๊กวันเกิด / เหมารายวัน เติมเวลาให้ — และคิดข้ามคืนใหม่ด้วย. 08:00–17:00
-  // does not wrap, but the pair it REPLACES may have.
-  assert.match(form, /endsNextDay: endsNextDayFor\(STANDARD_DAY\.startTime, STANDARD_DAY\.endTime\)/);
+  // ติ๊กเหมารายวัน เขียนเวลาให้ — และคิดข้ามคืนใหม่ด้วย. 08:00–17:00 does not
+  // wrap, but the pair it REPLACES may have.
+  assert.match(form, /endsNextDay: endsNextDayFor\(FLAT_DAY_TIMES\.startTime, FLAT_DAY_TIMES\.endTime\)/);
 
   // AND THE COMPARISON IS NOT COPIED INTO THE COMPONENT. `endsNextDayFor` is
   // this app's one answer to the question; a second reading of it in the form
@@ -190,11 +192,19 @@ test('ใบที่ติ๊กเหมาไว้แล้ว เปิด�
   assert.match(read('src/models/OtEntry.js'), /flatDaily: \{ type: Boolean, default: false \}/);
 });
 
-// ── the tick that fills the times in still does ─────────────────────────────
+// ── the tick that used to fill the times in now locks them ──────────────────
 
-test('เหมารายวันยังเติมเวลา 08:00–17:00 ให้เหมือนเดิม', () => {
+/**
+ * IT WAS *เหมารายวันยังเติมเวลา 08:00–17:00 ให้เหมือนเดิม* until 2026-09-09 —
+ * a guard that the fill survived the วันเกิด box being taken off the strip
+ * beside it. The pair survived; what it is changed. See test/flatDaily.test.js
+ * for the lock itself; this checks only that the strip's own tick is still
+ * wired to the handler that writes it.
+ */
+test('เหมารายวันเขียนเวลา 08:00–17:00 แล้วล็อกไว้', () => {
   assert.match(form, /onChange=\{\(e\) => tickDay\('flatDaily', e\.target\.checked\)\}/);
-  assert.match(form, /const STANDARD_DAY = Object\.freeze\(\{ startTime: '08:00', endTime: '17:00' \}\)/);
+  assert.match(form, /\.\.\.FLAT_DAY_TIMES,/);
+  assert.deepEqual({ ...FLAT_DAY_TIMES }, { startTime: '08:00', endTime: '17:00' });
   assert.equal(endsNextDayFor('08:00', '17:00'), false);
 });
 

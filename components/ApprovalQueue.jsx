@@ -14,7 +14,7 @@ import {
 } from '@/lib/caps.js';
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
-  maySignFirstStep, isOwnRequest, flatDayEnd, FLAT_DAY_SPAN_MINUTES, isBirthdayWelfare,
+  maySignFirstStep, isOwnRequest, FLAT_DAY_TIMES, FLAT_DAY_SPAN_MINUTES, isBirthdayWelfare,
   humanHistory,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
@@ -2786,6 +2786,43 @@ function DetailModal({
 // ── quick edit ──────────────────────────────────────────────────────────────
 
 /**
+ * THE ENTRY AS THIS PANEL OPENS IT — the five fields it may move, with a
+ * เหมารายวัน row put back to `FLAT_DAY_TIMES`.
+ *
+ * A flat day is 08:00–17:00 and nothing else (HR, 2026-09-09). Rows filed
+ * before that rule carry whatever was typed — 08:00–20:00 was legal while both
+ * boxes were free — and they open here on the locked pair rather than on their
+ * own times, because two greyed boxes showing a pair this app will not let
+ * anybody type is a figure nobody can correct.
+ *
+ * IT IS ALSO THE BASELINE `moved` IS MEASURED AGAINST, which is the whole
+ * reason it is a function rather than four lines inside `useState`. Compare the
+ * form against the raw entry instead and every legacy flat row opens DIRTY:
+ * the preview fires, `onDirty` arms the "unsaved changes" prompt, and a
+ * reviewer who opened a pop-up to read it is asked whether they meant to
+ * discard something they never typed. Measured against this, opening is quiet
+ * and the corrected times ride along with whatever the reviewer actually came
+ * to change. A row nobody edits keeps its stored times; the line under the
+ * ticks says so while they differ.
+ *
+ * `birthdayWelfare` WAS READ BACK OFF THE HOURS HERE UNTIL 2026-09-08, via
+ * `isBirthdayWelfare`, because there was no field to read: the tick was a claim
+ * the server checked and then had no further use for. The claim went; what
+ * makes a day สวัสดิการวันเกิด — the stored วันเกิด, resolved on the server —
+ * never depended on it, and the row's own chip still reads it off `dayReason`
+ * exactly as it did.
+ */
+const asOpened = (entry) => ({
+  startTime: entry.startTime,
+  endTime: entry.endTime,
+  endsNextDay: Boolean(entry.endsNextDay),
+  noBreakTaken: Boolean(entry.noBreakTaken),
+  /** เหมารายวัน — an entered field, stored on the entry. */
+  flatDaily: Boolean(entry.flatDaily),
+  ...(entry.flatDaily ? { ...FLAT_DAY_TIMES, endsNextDay: false } : null),
+});
+
+/**
  * แก้ไขชั่วโมง — the correction HR would otherwise have to refuse the request
  * to get.
  *
@@ -2808,45 +2845,47 @@ function DetailModal({
  * long it was, and neither is visible on the request as filed. A flat day filed
  * without the tick reads as an ordinary twelve-hour shift and pays like one.
  *
- * WHAT IS DIFFERENT HERE FROM OtForm, and it is the same difference twice:
- * ticking a box does NOT fill 08:00–17:00 in. On the filing form those times
- * are a default nobody has typed over yet; here they are the record of when a
- * person was on the premises, printed on F-HR-027 and signed. Overwriting that
- * because a reviewer ticked เหมารายวัน would falsify the sheet to change a
- * figure the sheet does not carry — a flat day is eight hours whatever the
- * clock says. Re-picking เวลาเริ่ม is what re-derives the end, exactly as it
- * does on a stored flat row opened in the filing form.
+ * THIS PANEL USED TO LEAVE THE TIMES ALONE — until 2026-09-09, and the reason
+ * it did is worth keeping: on the filing form 08:00–17:00 was a default nobody
+ * had typed over yet, while here the two times are the record of when a person
+ * was on the premises, printed on F-HR-027 and signed. HR ended the difference
+ * that day by ending the default — *ให้ล็อกเวลาไว้ที่ 08:00–17:00 ไม่มีการปรับ
+ * เวลา* — so a flat day now has ONE pair of times on every screen, and this one
+ * writes it like the other. What that costs is written out at `asOpened` below.
  */
 function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
-  const [form, setForm] = useState(() => ({
-    startTime: entry.startTime,
-    endTime: entry.endTime,
-    endsNextDay: Boolean(entry.endsNextDay),
-    noBreakTaken: Boolean(entry.noBreakTaken),
-    /** เหมารายวัน — an entered field, stored on the entry. */
-    flatDaily: Boolean(entry.flatDaily),
-    /**
-     * `birthdayWelfare` WAS READ BACK OFF THE HOURS HERE UNTIL 2026-09-08, via
-     * `isBirthdayWelfare`, because there was no field to read: the tick was a
-     * claim the server checked and then had no further use for. The claim went;
-     * what makes a day สวัสดิการวันเกิด — the stored วันเกิด, resolved on the
-     * server — never depended on it, and the row's own chip still reads it off
-     * `dayReason` exactly as it did.
-     */
-  }));
+  const [form, setForm] = useState(() => asOpened(entry));
   const [note, setNote] = useState('');
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const moved = form.startTime !== entry.startTime
-    || form.endTime !== entry.endTime
-    || form.endsNextDay !== Boolean(entry.endsNextDay)
-    || form.noBreakTaken !== Boolean(entry.noBreakTaken)
+  /**
+   * AGAINST WHAT THE PANEL OPENED ON, not against the stored row — see
+   * `asOpened`. The two differ only on a เหมารายวัน row filed before the times
+   * were locked, and on that row the difference is a correction nobody has
+   * asked for yet.
+   */
+  const opened = asOpened(entry);
+  const moved = form.startTime !== opened.startTime
+    || form.endTime !== opened.endTime
+    || form.endsNextDay !== opened.endsNextDay
+    || form.noBreakTaken !== opened.noBreakTaken
     // เหมารายวัน moves an ANSWER and not only a label — it rewrites what the day
     // is worth — so a tick alone is a saveable correction and counts as
     // movement. วันเกิด sat beside it on this list until 2026-09-08.
-    || form.flatDaily !== Boolean(entry.flatDaily);
+    || form.flatDaily !== opened.flatDaily;
+
+  /**
+   * The panel is showing a flat day's locked times and the stored row is not.
+   *
+   * Two ways in, and the note under the ticks says the same thing for both: a
+   * row filed before 2026-09-09 keeps whatever was typed then, and a row the
+   * reviewer has just ticked was an ordinary shift a moment ago. Either way the
+   * stored times are corrected only if this correction is saved.
+   */
+  const relockedTimes = form.flatDaily
+    && (form.startTime !== entry.startTime || form.endTime !== entry.endTime);
 
   useEffect(() => { onDirty?.(moved || note.trim().length > 0); }, [moved, note]);
 
@@ -2896,23 +2935,24 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
    * Derived on CHANGE, not on render, so opening the pop-up on a stored entry
    * does not mark the form dirty before anybody has touched it.
    *
-   * ── AND ON A เหมารายวัน DAY THE END IS DERIVED TOO ─────────────────────────
+   * ── AND TICKING เหมารายวัน WRITES BOTH TIMES ───────────────────────────────
    *
-   * A flat day is a fixed length — `FLAT_DAY_SPAN_MINUTES`, nine on the clock
-   * for the eight it pays — so once the box is ticked the end is an answer to
-   * เวลาเริ่ม rather than a second thing to type, exactly as it is on the
-   * filing form (`setStart` in OtForm, and `flatDayEnd` in lib/entries.js is
-   * the one place either screen computes it). ข้ามคืน falls out of the same
-   * press, because a flat day begun at 16:00 finishes at 01:00 and an end
-   * before its start is `END_BEFORE_START` out of the engine.
+   * `FLAT_DAY_TIMES`, and then both boxes are shut — 2026-09-09, the same rule
+   * the filing form draws (`tickDay` in OtForm). A flat day is the office day
+   * bought whole and there is one pair of times it can have.
    *
-   * ONLY ON A PRESS OF THE START BOX. Ticking เหมารายวัน leaves both times
-   * alone — see the note over this component: they are the record of when
-   * somebody was here, and the tick is not a statement about the clock.
+   * IT USED TO WRITE NOTHING, and to derive the END from a free start on every
+   * press of เวลาเริ่ม. Both are gone with the lock: there is no press left
+   * that moves a time on a flat day, so there is nothing for the derivation to
+   * answer.
+   *
+   * UNTICKING LEAVES THE PAIR WHERE IT IS, as it does on the filing form. The
+   * boxes open again, so a reviewer who ticked by mistake types the real times
+   * back rather than being handed a guess at them.
    */
   const set = (patch) => setForm((f) => {
     const next = { ...f, ...patch };
-    if (patch.startTime !== undefined && next.flatDaily) next.endTime = flatDayEnd(patch.startTime);
+    if (patch.flatDaily === true) Object.assign(next, FLAT_DAY_TIMES);
     return { ...next, endsNextDay: endsNextDayFor(next.startTime, next.endTime) };
   });
   const nextHours = preview?.result?.totals?.otHours;
@@ -2967,16 +3007,20 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
       <div className="row">
         <div className="field">
           <label>เวลาเริ่ม</label>
-          <PickTime label="เวลาเริ่ม" value={form.startTime} onChange={(v) => set({ startTime: v })} />
+          {/* BOTH BOXES ARE SHUT ON A เหมารายวัน DAY — 2026-09-09, the same
+              pair the filing form shuts and for the same reason: a day hired
+              whole has one shape, and neither half of it is typed. Disabled
+              rather than hidden — the times print on the row and on F-HR-027,
+              and a reviewer who cannot see them cannot check them. */}
+          <PickTime
+            label="เวลาเริ่ม"
+            value={form.startTime}
+            disabled={form.flatDaily}
+            onChange={(v) => set({ startTime: v })}
+          />
         </div>
         <div className="field">
           <label>เวลาสิ้นสุด</label>
-          {/* SHUT ON A เหมารายวัน DAY, the same box the filing form shuts and
-              for the same reason: the figure is an answer to เวลาเริ่ม, not a
-              second thing to type. Disabled rather than hidden — the time is
-              the record of when the person was here and it prints on the row.
-              An already-flat entry opens on its OWN end and is not re-derived
-              on the way in; re-picking the start is what moves it. */}
           <PickTime
             label="เวลาสิ้นสุด"
             value={form.endTime}
@@ -2985,7 +3029,7 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
           />
           {form.flatDaily && (
             <span className="field-note">
-              บวกจากเวลาเริ่ม {FLAT_DAY_SPAN_MINUTES / 60} ชม. ให้อัตโนมัติ
+              ล็อก {FLAT_DAY_TIMES.startTime}–{FLAT_DAY_TIMES.endTime} น. แก้เวลาไม่ได้
             </span>
           )}
         </div>
@@ -3048,14 +3092,24 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
             with no reason given is the thing somebody presses twice and then
             reports as broken. The second sentence answers the question the tick
             raises straight away — "did ticking that just move the times?" —
-            because on the filing form it would have. */}
+            which since 2026-09-09 is answered YES, and the third says which
+            times were moved, because they are the ones on the signed sheet.
+
+            THE THIRD IS THE ONE THAT EARNS ITS PLACE. The row behind this
+            pop-up still reads 08:00–20:00 while the boxes above read
+            08:00–17:00, and a reviewer who cannot see why would report the
+            panel as showing the wrong request. It is drawn on a row filed
+            before the lock and on one the reviewer has just ticked, which are
+            the same case: times the stored entry does not agree with yet. */}
         <div className="checks-note">
           “ข้ามคืน” คำนวณจากเวลาที่กรอก จึงติ๊กเองไม่ได้
           {form.flatDaily && (
             <>
               {' · '}
-              ติ๊กแล้วเวลาที่กรอกไว้ไม่ถูกแก้ — เป็นเวลาที่พิมพ์บนใบและเซ็นไปแล้ว
-              {form.flatDaily && ` · แก้ “เวลาเริ่ม” แล้วเวลาสิ้นสุดจะบวกให้เอง ${FLAT_DAY_SPAN_MINUTES / 60} ชม.`}
+              {`เหมารายวันล็อกเวลาไว้ที่ ${FLAT_DAY_TIMES.startTime}–${FLAT_DAY_TIMES.endTime} น. `}
+              {`(อยู่ที่ทำงาน ${FLAT_DAY_SPAN_MINUTES / 60} ชม. รวมพักเที่ยง 1 ชม.) แก้เวลาเองไม่ได้`}
+              {relockedTimes
+                && ` · ใบนี้บันทึกไว้ ${entry.startTime}–${entry.endTime} น. ถ้ากดบันทึกจะแก้เวลาให้ด้วย`}
             </>
           )}
         </div>
