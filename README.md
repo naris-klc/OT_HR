@@ -4750,8 +4750,12 @@ after the first REAL month was walked. Every row with any punches now carries
 
 ```
 17:00–19:30
-สแกน 07:21, 19:30
+เข้างาน 07:21 · สแกน 19:30
 ```
+
+> It read `สแกน 07:21, 19:30`, one unnamed list, until 2026-09-09 — see
+> **เวลาเข้างาน** below, which pulled the day's first punch from 04:00 on out of
+> the list and gave it a name. Every other time of the day is still on the line.
 
 > The separator lost its leading space on 2026-09-07 — asked for in the shape
 > *แสดงเวลาสแกนนิ้วทั้งหมดของวันนั้นเสมอ เช่น "สแกน 07:34, 19:30"*. It reads as
@@ -4776,17 +4780,51 @@ a bug but from how the door is actually used.
 **A system that cannot know which punch was meant to be which can still print
 what the machine said.** It costs nothing, assumes nothing, and hands the
 comparison to the person holding the sheet — who can see at a glance that
-`ใบ 17:00–19:30` against `สแกน 07:21, 19:30` is an ordinary day.
+`ใบ 17:00–19:30` against `เข้างาน 07:21 · สแกน 19:30` is an ordinary day.
 
 **Drawn on every row that has scans, matching or not.** Times that appeared only
 where something was wrong would be read AS a warning, which is the thing they
 were added to replace.
 
-**A list of times, never `เข้า` / `ออก`.** The machines carry no in/out flag; a
-reader can see what a morning-and-evening pair means and the system is not in a
-position to assert it. A punch on the following morning is marked `(+1)` — on an
-overnight row it belongs to the row but not to the date, and a bare `02:04`
-among evening times reads as the wrong morning.
+**A list of times, never `เข้า` / `ออก` — with one named exception since
+2026-09-09.** The machines carry no in/out flag, so the times after the arrival
+are a list and nothing more: a reader can see what an evening time on an OT row
+means and the system is not in a position to assert it. The arrival itself IS
+named now, and only it — see **เวลาเข้างาน** below. A punch on the following
+morning is marked `(+1)` — on an overnight row it belongs to the row but not to
+the date, and a bare `02:04` among evening times reads as the wrong morning.
+
+##### เวลาเข้างาน — the day's first punch from 04:00 on, under its own name
+
+*"เวลาที่จากเครื่องสแกนที่แสดง ให้แสดงเฉพาะเวลาแรกหลัง 04.00 น. เป็นต้นไปนับเป็น
+เวลาเข้างาน"* (HR, 2026-09-09). The row that provoked it carried a doubled
+morning scan and read `สแกน 07:55, 07:56, 22:56`: three times, and the reader had
+to work out which of them was the arrival before anything else on the row could
+be read. It reads `เข้างาน 07:55 · สแกน 07:56, 22:56` now.
+
+**Both halves, always, and from one component.** `ScanDayPunches` draws the
+label and the remaining times together — `scanCheckInTime` and `dayPunchLine`
+off the same `dayPunches` array, where the chosen punch carries `checkIn: true`.
+Naming a punch is only safe while the evidence it was named from is on the same
+line: a screen that printed `เข้างาน 07:55` alone would be asserting a reading
+nobody could check. The 07:56 that was scanned a minute later is still there.
+
+**04:00 and not midnight**, because a punch in the small hours is somebody
+LEAVING the previous evening's OT — naming it เข้างาน would date the arrival
+hours before the person walked in. There is no night shift here (*ไม่มีกะดึก*,
+2026-09-04, the same answer `alreadyInside` rests on), so nothing legitimate
+starts between midnight and 04:00. `SCAN_CHECK_IN_FLOOR_MINUTES` is the floor;
+a punch at exactly 04:00 is an arrival, one at 03:59 is not and stays in the
+list. On an overnight row the punches past midnight wear `(+1)` and belong to
+the morning AFTER the row, so the first of THEM is never taken as the arrival —
+a day whose punches are all before 04:00 has no เวลาเข้างาน at all and prints
+its times exactly as it did before.
+
+**Nothing downstream reads it.** No verdict, hour, bucket, ceiling, badge or
+count moves; the start side still decides ก่อน/หลัง on distance alone. It is the
+only naming this module does, and it is one word on one punch — the boundary in
+`src/models/ScanPunch.js` is about restating a signed sheet, and a label the
+reader can check against the times beside it restates nothing.
 
 > This block read "**The amber chip was left exactly as it was**, so on a month
 > like July it still marks those 25 rows … narrowing the chip to the END side is
@@ -4893,8 +4931,9 @@ MISSING_OT_START, the gate showsMissingOtStart, the component
 ScanMissingOtStartMark and the class `.chip.scan-noin` — the field fed that chip
 and nothing else read it. **No verdict, sentence, count or figure moved.** The
 silence `startFinding` builds is untouched, and the day's scan line under the
-times still prints `สแกน 07:34, 19:30` on every row that has punches, so a reader
-who wants to know whether anybody touched the door at 17:00 can see it.
+times still prints on every row that has punches — `สแกน 07:34, 19:30` then,
+`เข้างาน 07:34 · สแกน 19:30` since 2026-09-09 — so a reader who wants to know
+whether anybody touched the door at 17:00 can see it.
 
 **The tolerance is still read off the request's own start, not off a fixed
 17:00–17:30 window.** That was written as part of the chip and outlived it,

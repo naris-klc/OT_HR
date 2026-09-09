@@ -14,7 +14,8 @@ import {
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import {
-  SCAN_MATCH, dayPunchLine, scanBadgeLabel, scanMismatchDetail, scanMismatchNote,
+  SCAN_MATCH, dayPunchLine, scanCheckInTime, scanBadgeLabel, scanMismatchDetail,
+  scanMismatchNote,
 } from '@/lib/scanMatch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
@@ -684,13 +685,36 @@ export function BirthdayWelfareMark({ entry }) {
  * and must not appear only where something is wrong: a reader who sees them on
  * three rows out of thirty learns to read them AS a warning, which is the thing
  * they were added to replace.
+ *
+ * ── ONE OF THE TIMES IS NAMED NOW: เข้างาน (2026-09-09) ────────────────────
+ *
+ * *เวลาที่จากเครื่องสแกนที่แสดง ให้แสดงเฉพาะเวลาแรกหลัง 04.00 น. เป็นต้นไปนับเป็น
+ * เวลาเข้างาน.* The line reads `เข้างาน 07:55 · สแกน 07:56, 22:56` — the day's
+ * first punch from 04:00 on, under its name, and every other time of the day
+ * still beside it in clock order. The row that provoked it carried a doubled
+ * morning scan (07:55, 07:56) and a reader had to work out which of three times
+ * was the arrival before anything else on the row could be read.
+ *
+ * BOTH HALVES ALWAYS, and this component draws them from one pair of functions
+ * so they cannot come apart: naming the arrival is only safe while the evidence
+ * it was named from is on the same line. The rule and the reason 04:00 is the
+ * floor live in `lib/scanMatch.js` (`SCAN_CHECK_IN_FLOOR_MINUTES`) — with the
+ * rest of the wording of this feature — and no verdict on the row reads it.
  */
 export function ScanDayPunches({ entry }) {
-  const line = dayPunchLine(entry?.scanCheck);
-  if (!line) return null;
+  const check = entry?.scanCheck;
+  const checkIn = scanCheckInTime(check);
+  const line = dayPunchLine(check);
+  if (!checkIn && !line) return null;
   return (
-    <div className="cell-sub th" title="เวลาที่เครื่องสแกนบันทึกไว้ทั้งวัน — เครื่องไม่ได้บอกว่าครั้งไหนเข้าครั้งไหนออก">
-      สแกน {line}
+    <div
+      className="cell-sub th"
+      title={'เวลาที่เครื่องสแกนบันทึกไว้ทั้งวัน — เวลาแรกตั้งแต่ 04:00 น. เป็นต้นไปนับเป็นเวลาเข้างาน '
+        + 'เวลาที่เหลือเครื่องไม่ได้บอกว่าครั้งไหนเข้าครั้งไหนออก'}
+    >
+      {checkIn ? `เข้างาน ${checkIn}` : null}
+      {checkIn && line ? ' · ' : null}
+      {line ? `สแกน ${line}` : null}
     </div>
   );
 }
