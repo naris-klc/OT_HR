@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { managerSignature, approvalSteps } from '../lib/approverLine.js';
 import { firstName, NAME_TITLES } from '../lib/api.js';
+import { SKIP_NOTE } from '../lib/proxyFiling.js';
 
 /**
  * ลงชื่อพนักงาน and ลงชื่อหัวหน้างาน are typed onto F-HR-027 — asked for on
@@ -18,7 +19,8 @@ import { firstName, NAME_TITLES } from '../lib/api.js';
  * There are two ways in this database for a row to have no signature to print,
  * and both exist on prod today:
  *
- *   - a request nobody has approved yet — still at รอหัวหน้า or รอ HR;
+ *   - a request nobody has signed — still at รอหัวหน้า, or at รอ HR having got
+ *     there by a route that passed nobody's desk;
  *   - an entry old enough that its history carries no `byName`.
  *
  * THERE WERE THREE UNTIL 2026-09-07. The third was the row ฝ่ายบุคคล approved
@@ -109,6 +111,88 @@ test('an entry ฝ่ายบุคคล filed off the scanner names the ฝ�
   // …and it IS an approval, so the two readings must not have merged.
   assert.equal(approvalSteps(entry).length, 1);
   assert.equal(approvalSteps(entry)[0].approved, true);
+});
+
+// ── the หัวหน้า who typed the form in ───────────────────────────────────────
+
+/**
+ * บันทึก OT แทนพนักงาน — asked for on 2026-09-09: ให้ขึ้นชื่อคนที่กดบันทึก OT
+ * แทนด้วย เหมือนหัวหน้ากดอนุมัติแล้วปกติ.
+ *
+ * A proxy filing by the หัวหน้า is created at รอ HR with no approval row on it,
+ * BECAUSE the person who typed it is the person who would have signed the first
+ * step — `initialStatus` skips a signature that would be the same person twice,
+ * and writes `SKIP_NOTE` onto the filing row saying so. Both screens already
+ * read it that way. The paper did not: it dropped to the ฝ่ายบุคคล step and
+ * printed their name over a step they never took, or printed nothing while the
+ * row waited.
+ */
+const proxy = (byName, { skipped = true, ...extra } = {}) => h(
+  'submit_proxy', byName, { note: skipped ? SKIP_NOTE : null, ...extra },
+);
+
+test('a filing that skipped the หัวหน้า step names the หัวหน้า who filed it', () => {
+  // Still at รอ HR — no approval row of any kind, and the box is not blank:
+  // the หัวหน้า step is done and this is who did it.
+  assert.equal(managerSignature({ history: [proxy('วิชัย ศรีสุข')] }).name, 'วิชัย ศรีสุข');
+});
+
+test('ฝ่ายบุคคล confirming a skipped filing does not take the filer’s place', () => {
+  // The same rule as the ordinary sheet one step down: the หัวหน้า step is
+  // read before the ฝ่ายบุคคล one, so the confirmation underneath does not
+  // rewrite the column.
+  const entry = { history: [proxy('วิชัย ศรีสุข'), h('approve_hr', 'ยิ่งยง')] };
+  assert.equal(managerSignature(entry).name, 'วิชัย ศรีสุข');
+});
+
+test('a proxy filing that skipped nothing is not a signature', () => {
+  /**
+   * THE NOTE IS THE DISCRIMINATOR, NOT THE ACTION. แผนกจัดซื้อ and
+   * แผนกทรัพยากรมนุษย์ have ฝ่ายบุคคล as their หัวหน้างาน by rule, so a filing
+   * there goes to รอ HR having passed nobody — `initialStatus` returns
+   * `skipped: false` and writes no note. Read off `submit_proxy` alone the box
+   * would name a person who signed nothing, on the one form where a printed
+   * name IS the signature.
+   */
+  const waiting = { history: [proxy('ปรเมษฐ์', { skipped: false })] };
+  assert.equal(managerSignature(waiting), null);
+  // …and when ฝ่ายบุคคล do sign it, the column names them and not the filer.
+  const signed = { history: [proxy('ปรเมษฐ์', { skipped: false }), h('approve_hr', 'ยิ่งยง')] };
+  assert.equal(managerSignature(signed).name, 'ยิ่งยง');
+});
+
+test('with proxySkipsOwnApproval off, the filing waits for a real signature', () => {
+  // Nothing is skipped, so no note is written and the request sits at
+  // รอหัวหน้า for the press HR asked to have on the record. Blank until it is
+  // made, and then the ordinary rule prints it.
+  const waiting = { history: [proxy('วิชัย ศรีสุข', { skipped: false })] };
+  assert.equal(managerSignature(waiting), null);
+  const entry = { history: [...waiting.history, h('approve_mgr', 'วิชัย ศรีสุข')] };
+  assert.equal(managerSignature(entry).name, 'วิชัย ศรีสุข');
+});
+
+test('a real signature outranks the filing that stood in for one', () => {
+  // The order is the rule, not an accident of which rows a live entry can
+  // carry: a pressed button is read before a filing that stood in for one.
+  const entry = { history: [proxy('วิชัย ศรีสุข'), h('approve_mgr', 'ประสิทธิ์ มั่นคง')] };
+  assert.equal(managerSignature(entry).name, 'ประสิทธิ์ มั่นคง');
+});
+
+test('a skipped filing older than byName prints blank, not a guess', () => {
+  // Off the ROW and not off the name, the same way step 1 is: an entry with
+  // no recorded filer does not fall through to the desk underneath it.
+  const entry = {
+    history: [{ action: 'submit_proxy', note: SKIP_NOTE }, h('approve_hr', 'ยิ่งยง')],
+  };
+  assert.equal(managerSignature(entry).name, null);
+});
+
+test('the skip note is read from the one module that writes it', () => {
+  // Retyped here, the sentence would go on matching after somebody reworded
+  // it over there — and the column would quietly stop naming anybody.
+  const code = jsxOf('lib/approverLine.js');
+  assert.match(code, /import \{ SKIP_NOTE \} from '\.\/proxyFiling\.js'/);
+  assert.doesNotMatch(code, /หัวหน้างานเป็นผู้บันทึกแทน/);
 });
 
 test('a request nobody has approved yet prints blank at either step', () => {

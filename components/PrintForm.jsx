@@ -539,15 +539,18 @@ export function F027Sheet({ form, sheet = null }) {
                   </td>
                 )}
                 {/* WHOEVER PRESSED อนุมัติ — the หัวหน้า who signed the first
-                    step, and on a row that never had one (ฝ่ายบุคคล's own OT,
-                    the other บทบาท that file straight to them, a row filed and
-                    approved off the fingerprint scanner) the ฝ่ายบุคคล who
-                    approved it. Asked for in those words on 2026-09-07; see
-                    `managerSignature`, which is where the order is written.
+                    step; the หัวหน้า who typed the row in, on a filing that
+                    skipped that step because they were the one who would have
+                    signed it (2026-09-09); and on a row that never had the
+                    step at all (ฝ่ายบุคคล's own OT, the other บทบาท that file
+                    straight to them, a row filed and approved off the
+                    fingerprint scanner) the ฝ่ายบุคคล who approved it. Asked
+                    for in those words on 2026-09-07; see `managerSignature`,
+                    which is where the order is written.
 
-                    Blank on a row nobody has approved yet, and on one whose
-                    approval predates `byName`. An unsigned box is what an
-                    unsigned form looks like. */}
+                    Blank on a row nobody has signed by any of those routes,
+                    and on one whose approval predates `byName`. An unsigned
+                    box is what an unsigned form looks like. */}
                 {(i === 0 || !oneApprover) && (
                   <td className="sig" rowSpan={oneApprover ? sessions.length : 1}>
                     <Signed name={s?.approverName} />

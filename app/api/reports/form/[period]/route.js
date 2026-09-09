@@ -228,14 +228,18 @@ export const GET = route(async (req, { params }) => {
            * of them.
            *
            * `managerSignature` decides which history row that is (lib/
-           * approverLine.js) — the same module the pop-up's การอนุมัติ list
-           * reads, so the paper and the screen cannot come to disagree about
-           * who signed. The หัวหน้า's signature wins wherever there is one; on
-           * a row that never had that step — a บทบาท that files straight to
-           * ฝ่ายบุคคล, or one ฝ่ายบุคคล filed and approved off the fingerprint
-           * scanner — it is the name of whoever pressed อนุมัติ (2026-09-07).
-           * A row nobody has approved yet still answers null, and a blank box
-           * is what an unsigned form looks like.
+           * approverLine.js) — one module, read by the paper and by the
+           * pop-up's การอนุมัติ list alike, so the two cannot come to name
+           * different people. The หัวหน้า's signature wins wherever there is
+           * one. Where the หัวหน้า typed the form in themselves and the
+           * request skipped their step because of it, the column names them
+           * anyway — asked for on 2026-09-09, and the skip is the system
+           * saying that filing WAS their signature. On a row that never had
+           * that step at all — a บทบาท that files straight to ฝ่ายบุคคล, or
+           * one ฝ่ายบุคคล filed and approved off the fingerprint scanner — it
+           * is the name of whoever pressed อนุมัติ (2026-09-07). A row nobody
+           * has signed by either route still answers null, and a blank box is
+           * what an unsigned form looks like.
            */
           approverName: managerSignature(entry)?.name || null,
           [BUCKETS.OT15_WEEKDAY]: 0,
