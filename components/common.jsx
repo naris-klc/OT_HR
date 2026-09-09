@@ -13,8 +13,7 @@ import {
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import {
-  MISSING_OT_START, SCAN_MATCH, dayPunchLine, scanBadgeLabel, scanMismatchDetail, scanMismatchNote,
-  showsMissingOtStart,
+  SCAN_MATCH, dayPunchLine, scanBadgeLabel, scanMismatchDetail, scanMismatchNote,
 } from '@/lib/scanMatch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
@@ -577,45 +576,26 @@ export function ScanDayPunches({ entry }) {
 }
 
 /**
- * ไม่ได้สแกนเข้า OT — the start of this OT has no witness at the door.
+ * ไม่ได้สแกนเข้า OT — WITHDRAWN 2026-09-09, and this note is what is left.
  *
- * ── A THIRD MARK, AND IT IS NOT A THIRD WARNING ────────────────────────────
+ * A grey chip stood here from 2026-09-04, asked for hours after the amber
+ * verdict had been taken off the same rows: *"แสดง Badge/Flag Warning …
+ * ไม่ได้สแกนเข้า OT"*. ฝ่ายบุคคล withdrew it on 2026-09-09 —
+ * *ไม่ต้องแจ้งเตือนเพราะปกติพนักงานก็ไม่สแกนกันอยู่แล้ว* — which is the reason the
+ * chip's own tooltip had been carrying all along: the start of an OT here has
+ * no door event because the person never left, so the mark landed on 25 rows of
+ * 27 and said the same thing about all of them.
  *
- * Asked for on 2026-09-04 (*"แสดง Badge/Flag Warning … ไม่ได้สแกนเข้า OT"*),
- * after the verdict had stopped counting that start against the row. Both are
- * right, and they are answers to different questions: the VERDICT decides
- * whether somebody has to go and look at this row, and the answer there is no;
- * the MARK says what the machine did and did not witness, and that is worth
- * printing on a row nobody has to act on.
+ * Grey was the attempt to make a near-universal mark cheap enough to keep. It
+ * is not: a column of identical labels is read once and then skipped, and it
+ * cost this cell the room the marks that ARE about one row need. The flag
+ * behind it went too — `ScanDayPunches` still prints the day's scans under the
+ * times, so a reader who wants to know whether anybody touched the door at
+ * 17:00 can see it for themselves.
  *
- * ── SO IT IS GREY, AND THE GREY IS THE POINT ───────────────────────────────
- *
- * It lands on most rows of most months — 25 of 27 on the first real one — which
- * is precisely the count that made this amber unbearable. A grey chip on
- * twenty-five rows reads as a column of labels; an amber one on twenty-five
- * rows teaches a reader to stop opening amber. `.chip.scan-noin` is its own
- * class rather than `.chip.scan-none`'s, though the two declarations match
- * today: "no scan at all" and "no scan at the start" are different statements
- * and the one that changes should not drag the other with it.
- *
- * THE SENTENCE CARRIES THE SECOND HALF. `ไม่ได้สแกนเข้า OT` alone reads as a
- * problem; the `title` says why it is the ordinary shape of a day here and
- * which scan the comparison is actually resting on. Both strings come from
- * `MISSING_OT_START` in lib/scanMatch.js, beside the flag they describe.
- *
- * `showsMissingOtStart` holds the three gates — flat days and `no_scan` rows
- * draw nothing — so this component and the counting cannot come to different
- * answers about one row.
+ * Do not rebuild it without asking. These rows have now been marked twice and
+ * unmarked twice, in two colours, for the same reason both times.
  */
-export function ScanMissingOtStartMark({ entry }) {
-  if (!showsMissingOtStart(entry?.scanCheck)) return null;
-  return (
-    <span className="chip scan-noin" title={MISSING_OT_START.SAY}>
-      {MISSING_OT_START.LABEL}
-    </span>
-  );
-}
-
 export function ScanMismatchMark({ entry }) {
   const check = entry?.scanCheck;
   /**
@@ -651,7 +631,7 @@ export function ScanMismatchMark({ entry }) {
    * `scan-off` is the amber one and it means *go and look at this row*: ไม่ครบ,
    * or a start the machine disagrees with. `scan-none` (ไม่ตรง) and `scan-over`
    * (เกินเวลา) are grey, and grey is the tone this table already uses for a
-   * fact nobody has to act on — see `.chip.scan-noin`.
+   * fact nobody has to act on.
    *
    * เกินเวลา is grey by HR's own answer on 2026-09-07: *ข้อเท็จจริง ป้ายเทา
    * ไม่นับกองที่ต้องตรวจ*. The person worked longer than they claimed, which
@@ -659,10 +639,9 @@ export function ScanMismatchMark({ entry }) {
    * would be this screen marking somebody for under-claiming, which is the
    * mistake the end-side rule was rewritten earlier the same day to avoid.
    *
-   * `scan-over` is its own class rather than `scan-none`'s, on the same
-   * reasoning `.chip.scan-noin` is: "no scan at all" and "stayed past the end"
-   * are different statements, and the one that changes should not drag the
-   * other with it.
+   * `scan-over` is its own class rather than `scan-none`'s: "no scan at all"
+   * and "stayed past the end" are different statements, and the one that
+   * changes should not drag the other with it.
    */
   const tone = missing ? 'scan-none' : (check.overTime ? 'scan-over' : 'scan-off');
   return (

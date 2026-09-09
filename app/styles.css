@@ -5598,22 +5598,18 @@ td > .approver-line { margin-top: 5px; }
    takes the quiet tone. A month whose file was never imported must not look
    like a month full of bad requests. */
 .chip.scan-none { background: var(--neutral-wash); color: var(--muted); }
-/* ไม่ได้สแกนเข้า OT — the start of an OT that no door event witnessed, which at
-   this company is what MOST rows look like: people scan before 08:00, work the
-   shift, and scan once more when the OT is over, so 17:00 passes with them
-   already inside. Asked for on 2026-09-04, after the verdict had stopped
-   counting that start against the row.
+/* `.chip.scan-noin` (ไม่ได้สแกนเข้า OT) STOOD HERE FROM 2026-09-04 TO
+   2026-09-09, and was withdrawn by ฝ่ายบุคคล: *ไม่ต้องแจ้งเตือนเพราะปกติพนักงาน
+   ก็ไม่สแกนกันอยู่แล้ว.* It marked the start of an OT that no door event
+   witnessed — which at this company is what MOST rows look like, 25 of 27 on a
+   real month, because people scan before 08:00 and 17:00 passes with them
+   already inside.
 
-   QUIET, AND FOR THE REASON THE COUNT GIVES. It lands on 25 rows of 27 on a
-   real month — the same count that made the amber version unreadable. A grey
-   chip on twenty-five rows is a column of labels; an amber one is twenty-five
-   errands that turn out to be none, which is what teaches a reader to stop
-   opening the amber chips that are not.
-
-   ITS OWN CLASS, though it matches `.chip.scan-none` today. "No scan at all"
-   and "no scan at the start" are different statements about a day, and the one
-   that moves must not drag the other with it. */
-.chip.scan-noin { background: var(--neutral-wash); color: var(--muted); }
+   THE COUNT IS WHY IT IS GONE, AND GREY DID NOT SAVE IT. Grey was chosen so a
+   near-universal mark would at least not read as 25 errands. What the month
+   showed is that a mark true of nearly every row is not evidence about any row:
+   it becomes a column of identical labels that the eye stops at once and then
+   skips, while taking up the width the marks that ARE about one row need. */
 /* เกินเวลา — สแกนออกหลังเวลาที่ขอ OT มา ตั้งแต่หนึ่งบล็อก OT ขึ้นไป.
 
    GREY BECAUSE HR SAID GREY, and their reason is the right one: *ข้อเท็จจริง
@@ -5626,9 +5622,9 @@ td > .approver-line { margin-top: 5px; }
    the exact reading the end-side rule was rewritten earlier the same day to
    stop making (`metEnd` is `>=`, and an overrun is still ครบตามขอ).
 
-   ITS OWN CLASS, matching `.chip.scan-none` and `.chip.scan-noin` today — three
-   different statements about a day that happen to share a colour, and the one
-   that moves must not drag the other two with it. */
+   ITS OWN CLASS, matching `.chip.scan-none` today — two different statements
+   about a day that happen to share a colour, and the one that moves must not
+   drag the other with it. */
 .chip.scan-over { background: var(--neutral-wash); color: var(--muted); }
 /* เหมารายวัน — THE SAME GREEN `OT สวัสดิการวันเกิด` wears, and deliberately so:
    both are facts about how a request was FILED that change how its hours were

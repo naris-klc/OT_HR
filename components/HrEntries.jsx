@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
   Alert, Empty, EditedMark, EntryHistory, FlatDailyMark, ProxyMark, RateHead,
-  RequestTrail, ScanDayPunches, ScanMismatchMark, ScanMissingOtStartMark,
+  RequestTrail, ScanDayPunches, ScanMismatchMark,
   StatusChip, editsOf, trailOf,
 } from './common.jsx';
 import { hasAuditTrail, isProxyFiled, isUntouchedSystemFiling } from '@/lib/entries.js';
@@ -343,8 +343,8 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                     now carries the times, up to two chips, the day's scan line
                     and the mismatch detail. Measured on the built app at
                     1440px before this class existed, against the real July
-                    file: the column was **79px**, the `ไม่ได้สแกนเข้า OT` pill
-                    came out **55×60** — three lines of text inside one pill —
+                    file: the column was **79px**, the then-`ไม่ได้สแกนเข้า OT`
+                    pill came out **55×60** — three lines inside one pill —
                     `สแกน 07:34 , 19:30` wrapped to three, and the row stood
                     187px tall over a one-line description.
 
@@ -431,17 +431,18 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
                           day, because there the difference is expected and the
                           green chip is the answer.
 
-                          THREE SINCE 2026-09-04, AND THE THIRD IS NOT A THIRD
-                          WARNING. `ไม่ได้สแกนเข้า OT` is grey and says what the
-                          machine did not witness; it can sit beside a row whose
-                          verdict is fine, which is most of them, and that is
-                          why it is not `ScanMismatchMark`'s business. It stands
-                          down on flat days and on `no_scan` rows — both gates
-                          are `showsMissingOtStart`'s, not this file's. */}
+                          IT WAS THREE FROM 2026-09-04 TO 2026-09-09. The grey
+                          `ไม่ได้สแกนเข้า OT` said what the machine did not
+                          witness at the start, on a row whose verdict was fine
+                          — which was most of them, 25 of 27 on a real month.
+                          ฝ่ายบุคคล withdrew it: *ปกติพนักงานก็ไม่สแกนกันอยู่แล้ว*,
+                          so the mark was true of nearly every row and told a
+                          reader nothing about the one in front of them. The
+                          day's scan line under these chips still shows whoever
+                          wants to know. */}
                       {(e.flatDaily || (scanChecked && e.scanCheck)) && (
                         <div className="entry-mark">
                           <FlatDailyMark entry={e} />
-                          {scanChecked && <ScanMissingOtStartMark entry={e} />}
                           {scanChecked && <ScanMismatchMark entry={e} />}
                         </div>
                       )}
