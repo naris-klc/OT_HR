@@ -41,12 +41,30 @@ import { useToast } from './Toast.jsx';
  * and the only screen that could answer was ตรวจสอบประจำเดือน, which is a
  * report of a month and not a picture of what is in flight.
  *
- * THE SAME THING WAS ASKED FOR THE OTHER FOUR บทบาท THE NEXT DAY, from the
- * other end of the flow: a ผู้จัดการฝ่าย wanted to see their departments' OT
- * the way ฝ่ายบุคคล see it — from filing until it is confirmed — and their
- * queue instead dropped every row the moment a หัวหน้า signed it, which is the
- * moment somebody rings up to ask what happened to it. So both statuses are the
- * list on EVERY ordinary queue now, narrowed by `scopeFor` on the server:
+ * IT IS ฝ่ายบุคคล'S QUEUE AND NOBODY ELSE'S — AGAIN, SINCE 2026-09-09.
+ *
+ * The same view was asked for by the other four บทบาท on 2026-09-04, from the
+ * other end of the flow: a ผู้จัดการฝ่าย wanted to watch their departments' OT
+ * the way ฝ่ายบุคคล do, from filing until it is confirmed, and both statuses
+ * became the list on every ordinary queue. Five days of reading it said the
+ * opposite, in these words: *ถ้ามีคนกดอนุมัติคำขอของพนักงานแล้วก็คือไม่ต้องโชว์
+ * แล้ว โชว์แค่ใบที่ยังไม่ได้อนุมัติ แต่ของ HR คงไว้เหมือนเดิม*.
+ *
+ * WHAT THE TWO SCREENS ARE FOR IS WHY ONE KEPT IT AND THE OTHER DID NOT. The
+ * watched rows on ฝ่ายบุคคล's queue are the ones COMING — a request at the
+ * หัวหน้า step will land on that very screen to be confirmed, so it is the
+ * front half of their own pile. On a signer's queue they are the ones GONE:
+ * signed, never coming back, and sitting in the list they are working through
+ * wearing a sentence where the buttons would be. A pile of work that keeps
+ * what has been finished is a pile somebody has to sort before every decision.
+ *
+ * WHERE "WHERE DID MY ใบ GO" IS ANSWERED FOR A SIGNER NOW — รายงาน OT ประจำทีม,
+ * which all four of them hold (`isSigner`), reports a month rather than a
+ * queue, is scoped to the same แผนก by the same `scopeFor`, and whose widest
+ * สถานะที่นับ is every status a live request can be at. A signed ใบ is on that
+ * screen the moment it leaves this one.
+ *
+ * `scopeFor` NARROWS THE ROWS EITHER WAY, and none of this touches it:
  * ฝ่ายบุคคล read the company, the four signers read the แผนก they hold.
  *
  * IN FLOW ORDER, and the order is what the dropdown is built from. `รอหัวหน้า`
@@ -54,13 +72,20 @@ import { useToast } from './Toast.jsx';
  * status filter sorted alphabetically would put the second step first — the one
  * arrangement of two rows that has to be read to be understood.
  *
- * THE ROWS ARE NOT THE SAME KIND OF ROW, and that is the whole of the care this
- * change needs. A row at a step this reader does not hold is being WATCHED, not
- * decided — `approvalPermission` gives ฝ่ายบุคคล nothing at the หัวหน้า step
- * (only ผู้ดูแลระบบ may override it, with a reason, and from their own tab),
- * and it gives a หัวหน้า nothing at the ฝ่ายบุคคล step. Every button that would
- * 403 is withheld and the tick-box is refused — see `signableHere`, which asks
- * one question for both directions.
+ * THE ROWS ARE NOT THE SAME KIND OF ROW, and that is the care ฝ่ายบุคคล's
+ * screen needs and a signer's no longer does. A row at a step its reader does
+ * not hold is being WATCHED, not decided — `approvalPermission` gives ฝ่ายบุคคล
+ * nothing at the หัวหน้า step (only ผู้ดูแลระบบ may override it, with a reason,
+ * and from their own tab). Every button that would 403 is withheld and the
+ * tick-box is refused.
+ *
+ * THE WATCHED PILE DOES NOT EMPTY ON A SIGNER'S QUEUE, IT ONLY LOSES ONE OF ITS
+ * TWO KINDS. A แผนก can hold four หัวหน้างาน, each filing their own OT, and none
+ * of the four may sign another's (`maySignFirstStep`) — those rows are at this
+ * step, are not approved, and stay listed. What has gone is the OTHER kind: the
+ * row that has already been signed. So `signableHere` is asked at every gate
+ * exactly as before, written against `stage` rather than against a status, and
+ * stays true of every queue this component draws.
  */
 const FLOW_STATUSES = Object.freeze(['pending_mgr', 'pending_hr']);
 
@@ -91,12 +116,11 @@ const OPENS_ON = Object.freeze({ division_manager: 'dept_manager' });
  * long for the pop-up, from ONE place so the two cannot say different things.
  *
  * `signableHere` decides THAT a row is only being watched; this says WHY, and
- * there are four answers rather than the one this screen had until 2026-09-04:
+ * there are three answers rather than the one this screen had until 2026-09-04:
  *
  *   · ฝ่ายบุคคล looking at a row that has not reached them — it is coming, and
- *     the sentence says to wait for it;
- *   · a signer looking at a row that has gone PAST them — it is with ฝ่ายบุคคล
- *     now and will not come back, which is the opposite instruction;
+ *     the sentence says to wait for it. Theirs is the only queue that lists a
+ *     step it does not sign, so this is the only reader who sees it;
  *   · either of them looking at a row at their own step that the routing matrix
  *     does not give them (`maySignFirstStep`) — four หัวหน้างาน in one แผนก
  *     each see the other three's requests;
@@ -115,8 +139,14 @@ const OPENS_ON = Object.freeze({ division_manager: 'dept_manager' });
  * Told apart by comparing the ROW's step with the QUEUE's rather than by naming
  * a status: this component runs at both steps, and a rule written as
  * `pending_hr` would be right on one screen and silently wrong on the other.
+ *
+ * A FOURTH ANSWER STOOD HERE UNTIL 2026-09-09 — *ผ่านขั้นของคุณแล้ว — รอฝ่าย
+ * บุคคลยืนยัน*, for a signer looking at a row that had gone PAST them. It was
+ * the opposite instruction to the first one and it was written for rows that a
+ * first-step queue does not list any more (`wholeFlow`), so it went with them
+ * rather than sitting here as a branch nothing can reach.
  */
-function watchingNote(entry, stage, isHr, user) {
+function watchingNote(entry, stage, user) {
   if (entry?.status === stage) {
     return isOwnRequest(entry, user)
       ? {
@@ -130,17 +160,11 @@ function watchingNote(entry, stage, isHr, user) {
         body: 'ตามลำดับการอนุมัติ ใบของบทบาทนี้ต้องให้ผู้อื่นเป็นผู้เซ็นขั้นแรก — เปิดดูได้ แต่อนุมัติจากที่นี่ไม่ได้',
       };
   }
-  return isHr
-    ? {
-      short: 'ยังไม่ถึงขั้นยืนยัน — รอหัวหน้าแผนกเซ็นก่อน',
-      head: 'ใบนี้ยังอยู่ที่ขั้นหัวหน้าแผนก',
-      body: 'เปิดดูได้ แต่ยังยืนยันหรือไม่อนุมัติจากที่นี่ไม่ได้ เมื่อหัวหน้าเซ็นแล้ว ใบจะเข้าคิวนี้ให้ยืนยันเอง',
-    }
-    : {
-      short: 'ผ่านขั้นของคุณแล้ว — รอฝ่ายบุคคลยืนยัน',
-      head: 'ใบนี้ผ่านขั้นหัวหน้าไปแล้ว',
-      body: 'อยู่ที่ฝ่ายบุคคลเพื่อยืนยันขั้นสุดท้าย — เปิดดูความคืบหน้าได้ แต่จะไม่กลับมาที่คิวนี้อีก',
-    };
+  return {
+    short: 'ยังไม่ถึงขั้นยืนยัน — รอหัวหน้าแผนกเซ็นก่อน',
+    head: 'ใบนี้ยังอยู่ที่ขั้นหัวหน้าแผนก',
+    body: 'เปิดดูได้ แต่ยังยืนยันหรือไม่อนุมัติจากที่นี่ไม่ได้ เมื่อหัวหน้าเซ็นแล้ว ใบจะเข้าคิวนี้ให้ยืนยันเอง',
+  };
 }
 
 /**
@@ -166,19 +190,23 @@ export default function ApprovalQueue({
    * WHICH STATUSES THIS SCREEN ASKS THE SERVER FOR — one place, read by the
    * fetch, by the สถานะ dropdown and by the empty states.
    *
-   * THE ORDINARY QUEUES SEE THE WHOLE FLOW, and the two special modes do not.
-   * `delegatedOnly` is a queue somebody was HANDED — the rows they are covering
-   * a หัวหน้า for, which is the first step and nothing else — and `unsignedOnly`
-   * is the rows at that step that nobody on the roster can sign. Widening
-   * either would pull in `pending_hr` rows that are not what the tab is for:
-   * on the first, requests the stand-in has already finished with; on the
-   * second, rows that are by definition not stuck.
+   * ONE QUEUE SEES THE WHOLE FLOW AND IT IS ฝ่ายบุคคล'S — see the block over
+   * `FLOW_STATUSES` for what was asked and when. Every first-step queue asks
+   * for its own step and nothing else, so a request leaves it the moment
+   * somebody signs it.
    *
-   * It is written as "not one of those two" rather than as `isHr` (which is
-   * what it was until 2026-09-04, when only ฝ่ายบุคคล read the whole flow) so
-   * that the two readings that stay narrow are the ones naming themselves.
+   * THE TWO GUARDS AFTER `isHr` ARE NOT DECORATION, even though no call site
+   * pairs `stage="pending_hr"` with either flag today (see components/App.jsx —
+   * both special tabs mount at the first step). They say what the modes ARE:
+   * `delegatedOnly` is a queue somebody was HANDED, the first step of the teams
+   * they cover and nothing else, and `unsignedOnly` is the rows at that step
+   * that nobody on the roster can sign. Neither is a picture of a flow, and a
+   * later reading of this line should not have to work that out from `isHr`.
+   *
+   * It read `!delegatedOnly && !unsignedOnly` between 2026-09-04 and
+   * 2026-09-09, which is what put signed rows on a หัวหน้า's queue.
    */
-  const wholeFlow = !delegatedOnly && !unsignedOnly;
+  const wholeFlow = isHr && !delegatedOnly && !unsignedOnly;
   const listed = wholeFlow ? FLOW_STATUSES : [stage];
   /**
    * Is this a row THIS queue signs, or one it is only showing?
@@ -1404,12 +1432,13 @@ export default function ApprovalQueue({
         <div style={{ padding: '0 18px' }}>
           <Alert kind="ok">
             <strong>{verb}ครบทุกใบที่ถึงคิวแล้ว</strong>
-            {/* WHAT THE REMAINING ROWS ARE DEPENDS ON WHICH END OF THE FLOW THE
-                READER IS AT. ฝ่ายบุคคล are left with requests that have not
-                reached them yet and will; a หัวหน้า is left with ones that have
-                gone past and will not come back. One sentence for both would be
-                wrong for one of them, and it is the sentence that says whether
-                to wait. */}
+            {/* WHAT THE REMAINING ROWS ARE IS A DIFFERENT FACT ON THE TWO
+                SCREENS. ฝ่ายบุคคล are left with requests that have not reached
+                them yet and will — the sentence says to wait. A signer is left
+                with rows at their own step that the routing matrix does not
+                give them: their own ใบ, and the other หัวหน้างาน's in the same
+                แผนก. Nobody is left holding a row they have already signed —
+                since 2026-09-09 those leave the queue (`wholeFlow`). */}
             {isHr ? (
               <>
                 {' — '}ที่เหลือ {watching} ใบยังรอหัวหน้าแผนกอนุมัติ
@@ -1715,7 +1744,7 @@ export default function ApprovalQueue({
                             here to be read, and one of them is the opposite
                             instruction to another. */}
                         <span className="cell-sub own-note">
-                          {watchingNote(e, stage, isHr, user).short}
+                          {watchingNote(e, stage, user).short}
                         </span>
                         <button className="btn ghost sm" onClick={() => setDetail(e)}>
                           รายละเอียด
@@ -1902,7 +1931,7 @@ export default function ApprovalQueue({
           // And the reason with it, from the same function the row's own cell
           // reads — a pop-up that explained the silence differently from the
           // row it was opened off would be two answers to one question.
-          watchNote={watchingNote(detail, stage, isHr, user)}
+          watchNote={watchingNote(detail, stage, user)}
           // The บทบาท rule, not the stage: `isHr` above says which STEP this
           // queue is showing, and a correction is answered on who is asking.
           mayCorrect={mayCorrectEntries(user)}
@@ -3229,7 +3258,10 @@ function QueueCleared({ cleared, isHr, mode = 'signer', covers = 0, scope = '' }
       hr: 'ใบจะขึ้นที่นี่ตั้งแต่ตอนที่พนักงานยื่น ทั้งใบที่ยังรอหัวหน้าเซ็นและใบที่ถึงคิวคุณแล้ว',
       delegated: 'ใบจะขึ้นที่นี่เมื่อมีคนในทีมที่คุณรับช่วงยื่น และหายไปเองเมื่อหมดช่วงที่รับมา',
       unsigned: 'ทุกแผนกที่มีใบค้างอยู่ตอนนี้ มีคนเซ็นได้ครบ — ไม่มีอะไรค้างให้ผู้ดูแลระบบเซ็นแทน',
-      signer: 'ใบจะขึ้นที่นี่ทันทีที่มีคนในแผนกยื่น และจะอยู่ต่อจนฝ่ายบุคคลยืนยัน',
+      // 2026-09-09: it read `และจะอยู่ต่อจนฝ่ายบุคคลยืนยัน` while a signed row
+      // stayed on this queue. It does not any more — see `wholeFlow` — so the
+      // sentence says where it goes instead of claiming it stays.
+      signer: 'ใบจะขึ้นที่นี่ทันทีที่มีคนในแผนกยื่น และจะหายไปเมื่อคุณอนุมัติแล้ว — ใบที่เซ็นไปแล้วดูได้ที่รายงาน OT ประจำทีม',
     }[mode];
     return (
       <div className="empty">

@@ -378,19 +378,26 @@ test('หัวข้อบอกขอบเขตให้ตรง — ชื
 // ── 5. the three reasons a row carries no buttons ───────────────────────────
 
 /**
- * ONE FUNCTION, THREE SENTENCES, AND TWO OF THEM ARE OPPOSITE INSTRUCTIONS.
+ * ONE FUNCTION, THREE SENTENCES.
  *
- * ฝ่ายบุคคล looking at a `pending_mgr` row are told to wait — it is coming. A
- * signer looking at a `pending_hr` row must be told the reverse: it has gone
- * past them and will not come back. And either of them can be looking at a row
- * AT their own step that the routing matrix does not give them — four
- * หัวหน้างาน in one แผนก each see the other three's requests.
+ * ฝ่ายบุคคล looking at a `pending_mgr` row are told to wait — it is coming, and
+ * theirs is the only queue that lists a step it does not sign. Either reader
+ * can be looking at a row AT their own step that the routing matrix does not
+ * give them — four หัวหน้างาน in one แผนก each see the other three's requests —
+ * and the reader's OWN request is the third.
+ *
+ * A FOURTH ONE WAS DELETED ON 2026-09-09 WITH THE ROWS IT DESCRIBED: *ผ่านขั้น
+ * ของคุณแล้ว — รอฝ่ายบุคคลยืนยัน*, for a signer looking at a row that had gone
+ * past them. A first-step queue drops a request the moment somebody signs it
+ * (`wholeFlow` in the component, and test/queueStatusColumn.test.js), so the
+ * branch could not be reached; the ban below is what keeps it from coming back
+ * without the list that would justify it.
  *
  * Told apart by comparing the ROW's step with the QUEUE's rather than by naming
  * a status: this component runs at both steps, and a rule written as
  * `pending_hr` would be right on one screen and silently wrong on the other.
  */
-test('เหตุผลที่แถวไม่มีปุ่ม มีสี่แบบ และแยกด้วย stage ไม่ใช่ด้วยชื่อสถานะ', () => {
+test('เหตุผลที่แถวไม่มีปุ่ม มีสามแบบ และแยกด้วย stage ไม่ใช่ด้วยชื่อสถานะ', () => {
   const at = code.indexOf('function watchingNote(');
   assert.ok(at > 0, 'watchingNote หายไป');
   const fn = code.slice(at, code.indexOf('\n}', at));
@@ -406,7 +413,19 @@ test('เหตุผลที่แถวไม่มีปุ่ม มีส�
   assert.ok(fn.includes('isOwnRequest(entry, user)'), 'ใบของตัวเองไม่ได้ถูกแยกออกมา');
   assert.ok(fn.includes('คุณเป็นผู้บันทึกรายการนี้'), 'ประโยคของใบที่ตัวเองบันทึกหายไป');
   assert.ok(fn.includes('รอหัวหน้าแผนกเซ็นก่อน'), 'ประโยคของ ฝ่ายบุคคล หายไป');
-  assert.ok(fn.includes('รอฝ่ายบุคคลยืนยัน'), 'ประโยคของผู้เซ็นขั้นแรกหายไป');
+  /**
+   * AND NO SENTENCE ABOUT A ROW THAT HAS GONE PAST THE READER. Writing one
+   * again would mean a first-step queue is listing signed rows again — the
+   * thing that was asked to stop on 2026-09-09 — and it would be written for a
+   * branch nothing reaches, which is worse than being wrong out loud.
+   */
+  assert.ok(
+    !fn.includes('รอฝ่ายบุคคลยืนยัน') && !fn.includes('ผ่านขั้นของคุณแล้ว'),
+    'ประโยค “ผ่านขั้นของคุณแล้ว” กลับมา — คิวขั้นแรกไม่ลิสต์ใบที่เซ็นแล้วอีกต่อไป',
+  );
+  // …and the branch that used to pick between the two is gone with it: the
+  // function is handed the QUEUE's step and the reader, and nothing else.
+  assert.match(code, /function watchingNote\(entry, stage, user\) \{/);
   assert.ok(
     !/'pending_hr'|'pending_mgr'/.test(fn),
     'เขียนชื่อสถานะลงไปตรง ๆ — จอหนึ่งจะถูก อีกจอหนึ่งจะผิดเงียบ ๆ',
