@@ -30,8 +30,16 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const src = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+/** Line endings normalised before anything below reads a character of this.
+    The machine this is developed on checks the repo out CRLF (see the note in
+    `.gitattributes`); the Linux box that serves it checks the same commit out
+    LF. An assertion written with `\n` misses every multi-line match on the
+    first, one written with `\r\n` misses them on the second, and in both
+    cases the file under test is correct to the character. Normalising is what
+    makes the assertion about the CSS instead of about the checkout — the same
+    thing test/adminApproval.test.js and test/modalScrollFrame.test.js do. */
+const src = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8').replace(/\r\n/g, '\n');
+const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8').replace(/\r\n/g, '\n');
 
 /** The pop-up only — the modals above it have their own buttons. */
 const modal = src.slice(src.indexOf('function DetailModal'));
@@ -53,7 +61,7 @@ test('the approval names the slip for ฝ่ายบุคคล and stays อ�
 });
 
 test('the refusal is the same word the rest of the app uses', () => {
-  has(code, '>\r\n        ไม่อนุมัติ\r\n      </button>');
+  has(code, '>\n        ไม่อนุมัติ\n      </button>');
   // The second step, over the top of the same header — a reason gets typed
   // before anything moves.
   has(code, 'ยืนยันไม่อนุมัติ');
@@ -70,7 +78,7 @@ test('nothing in the foot merely closes the pop-up', () => {
   // meaning the same thing since 2026-08-20: closed, in one action. See the note
   // over `requestClose` in components/common.jsx for what that traded away, and
   // test/modalCloseButton.test.js for the one dialog that still asks.
-  const modalSrc = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
+  const modalSrc = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8').replace(/\r\n/g, '\n');
   has(modalSrc, 'className="modal-x" onClick={requestClose} aria-label="ปิด"');
   has(modalSrc, '<div className="modal-backdrop" onClick={requestClose}>');
   has(modalSrc, "if (e.key === 'Escape' && !e.defaultPrevented) requestClose();");
@@ -170,7 +178,7 @@ test('the pair splits the foot evenly', () => {
  * the foot's fill or the button's height, not this.
  */
 test('the foot clears every edge of the sheet, in one declaration', () => {
-  const start = css.indexOf('  .modal-foot {\r\n    border-radius: 0;');
+  const start = css.indexOf('  .modal-foot {\n    border-radius: 0;');
   assert.ok(start > 0, 'the phone rule for the modal foot was renamed');
   const rule = css.slice(start, css.indexOf('}', start));
   has(rule, 'max(16px, env(safe-area-inset-right))');
@@ -297,7 +305,7 @@ test('the decisions are on screen at every scroll position', () => {
   has(foot, 'flex: none;');
   // And the markup keeps them siblings — a foot rendered inside the body would
   // scroll away with it and every rule above would still pass.
-  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8');
+  const common = readFileSync(join(ROOT, 'components/common.jsx'), 'utf8').replace(/\r\n/g, '\n');
   assert.ok(
     common.indexOf('className="modal-body"') < common.indexOf('className="modal-foot"'),
     'ท้ายกล่องย้ายเข้าไปอยู่ในส่วนที่เลื่อนได้',

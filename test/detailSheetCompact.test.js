@@ -19,7 +19,15 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+/** Line endings normalised before anything below reads a character of this.
+    The machine this is developed on checks the repo out CRLF (see the note in
+    `.gitattributes`); the Linux box that serves it checks the same commit out
+    LF. An assertion written with `\n` misses every multi-line match on the
+    first, one written with `\r\n` misses them on the second, and in both
+    cases the file under test is correct to the character. Normalising is what
+    makes the assertion about the CSS instead of about the checkout — the same
+    thing test/adminApproval.test.js and test/modalScrollFrame.test.js do. */
+const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8').replace(/\r\n/g, '\n');
 
 /** Where the file's one phone block opens. Everything here is relative to it. */
 function sheetBlock() {
@@ -27,7 +35,7 @@ function sheetBlock() {
   assert.ok(outer > 0, 'the file lost its one phone block');
   /* It closes at column 0, which is the only brace in the file that can end it
      — every rule inside is indented by at least two. */
-  const end = css.indexOf('\r\n}\r\n', outer);
+  const end = css.indexOf('\n}\n', outer);
   assert.ok(end > outer, 'the phone block no longer closes at column 0');
   return { outer, end, text: css.slice(outer, end) };
 }

@@ -41,7 +41,15 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (p) => readFileSync(join(ROOT, p), 'utf8');
+/** Line endings normalised before anything below reads a character of this.
+    The machine this is developed on checks the repo out CRLF (see the note in
+    `.gitattributes`); the Linux box that serves it checks the same commit out
+    LF. An assertion written with `\n` misses every multi-line match on the
+    first, one written with `\r\n` misses them on the second, and in both
+    cases the file under test is correct to the character. Normalising is what
+    makes the assertion about the CSS instead of about the checkout — the same
+    thing test/adminApproval.test.js and test/modalScrollFrame.test.js do. */
+const read = (p) => readFileSync(join(ROOT, p), 'utf8').replace(/\r\n/g, '\n');
 
 const common = read('components/common.jsx');
 const logs = read('components/LogSystem.jsx');
@@ -314,7 +322,7 @@ test('a filter change puts the reader back on page 1', () => {
 // ── 7. the phone ────────────────────────────────────────────────────────────
 
 test('below 560px the halves stack and the arrows grow to 44px', () => {
-  const phone = css.slice(css.indexOf('@media (max-width: 560px) {\r\n  .table-pager {'));
+  const phone = css.slice(css.indexOf('@media (max-width: 560px) {\n  .table-pager {'));
   const block = phone.slice(0, phone.indexOf('\n}'));
   assert.match(block, /\.table-pager \{[^}]*flex-direction: column/);
   // The arrows stay at the right edge: they are pressed repeatedly and belong

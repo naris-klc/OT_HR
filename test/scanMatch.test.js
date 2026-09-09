@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   SCAN_BADGE, SCAN_MATCH, SCAN_MATCH_TOLERANCE_MINUTES, checkEntryAgainstScans,
   scanBadgeLabel, scanMismatchDetail, scanMismatchNote, summariseScanChecks,
-  groupScanChecksByPerson, dayPunchLine,
+  groupScanChecksByPerson, dayPunchLine, scanCheckInTime, SCAN_CHECK_IN_FLOOR_MINUTES,
 } from '../lib/scanMatch.js';
 
 /**
@@ -351,7 +351,8 @@ test('แบบสองรอบ (เช้า + ตอนเลิกโอท
   assert.equal(check.end.matched, true, 'ฝั่งที่เครื่องบันทึกได้จริงคือฝั่งเลิกโอที');
   assert.equal(scanMismatchNote(check), null);
   assert.equal(scanBadgeLabel(check), null, 'ไม่มีป้ายเวลาขาดบนแถวที่สแกนออกหลังเวลาเลิก');
-  assert.equal(dayPunchLine(check), '07:42, 19:33', 'เวลายังโชว์ครบเหมือนเดิม');
+  assert.equal(scanCheckInTime(check), '07:42', 'เวลาแรกตั้งแต่ 04:00 คือเวลาเข้างาน');
+  assert.equal(dayPunchLine(check), '19:33', 'ที่เหลือยังโชว์ครบเหมือนเดิม');
 });
 
 test('แบบสองรอบที่ขอมา: สแกนเข้าก่อน 08:00 แล้วสแกนอีกทีตอนเลิก OT', () => {
@@ -369,7 +370,8 @@ test('แบบสองรอบที่ขอมา: สแกนเข้า
   assert.equal(check.state, SCAN_MATCH.OK, 'ถึงเวลาที่ขอพอดี = ครบ');
   assert.equal(scanBadgeLabel(check), null, 'ไม่มีป้ายส้ม');
   assert.equal(check.startFinding, false, 'และฝั่งเริ่มไม่มีอะไรจะพูด');
-  assert.equal(dayPunchLine(check), '07:34, 19:30');
+  assert.equal(scanCheckInTime(check), '07:34');
+  assert.equal(dayPunchLine(check), '19:30');
 });
 
 test('แบบสี่รอบ (สแกน 17:00 และตอนเข้าโอทีด้วย) ก็ตรงตามปกติ', () => {
@@ -559,7 +561,8 @@ test('ไม่มีป้ายฝั่งเวลาเริ่มเห�
   assert.equal(scanBadgeLabel(check), null, 'ไม่มีป้ายใดเหลือบนแถวนี้');
   assert.equal('missingOtStart' in check, false, 'ธงที่เลี้ยงป้ายเทาถูกถอนไปพร้อมป้าย');
   // สิ่งที่เหลือให้คนอ่านตัดสินเอง คือเวลาสแกนดิบของวันนั้น
-  assert.equal(dayPunchLine(check), '07:42, 19:33');
+  assert.equal(scanCheckInTime(check), '07:42');
+  assert.equal(dayPunchLine(check), '19:33');
 });
 
 // ── 1ค. เกินเวลา — ขอโอทีมาน้อยกว่าที่ทำจริง ────────────────────────────────
@@ -752,8 +755,10 @@ test('ใบเหมาทั้งสามแบบที่ฝ่ายบ�
   }
 
   // สิ่งที่ยังเหลืออยู่บนแถวคือเวลาสแกนดิบ ๆ ของวันนั้น ให้คนอ่านตรวจเอง
-  assert.equal(dayPunchLine(cases['สแกนออกก่อนเวลา']), '07:58, 15:40');
+  assert.equal(scanCheckInTime(cases['สแกนออกก่อนเวลา']), '07:58');
+  assert.equal(dayPunchLine(cases['สแกนออกก่อนเวลา']), '15:40');
   assert.equal(dayPunchLine(cases['ไม่ได้สแกนนิ้วเลย']), null, 'วันที่ไม่มีสแกน ก็ไม่มีอะไรให้พิมพ์');
+  assert.equal(scanCheckInTime(cases['ไม่ได้สแกนนิ้วเลย']), null);
 });
 
 test('บอกว่าสแกนอยู่ "ก่อนเวลา" หรือ "หลังเวลา" — แต่ไม่พูดว่าเข้าหรือออก', () => {
@@ -882,10 +887,11 @@ test('แถวหนึ่งพกเวลาสแกนของทั้�
     punch('2026-09-01', '07:21:27'), // ส่งมาสลับลำดับ — ต้องออกมาเรียงตามนาฬิกา
   ]);
   assert.deepEqual(check.dayPunches, [
-    { time: '07:21', next: false },
-    { time: '19:30', next: false },
+    { time: '07:21', next: false, checkIn: true },
+    { time: '19:30', next: false, checkIn: false },
   ]);
-  assert.equal(dayPunchLine(check), '07:21, 19:30');
+  assert.equal(scanCheckInTime(check), '07:21');
+  assert.equal(dayPunchLine(check), '19:30');
 });
 
 test('เวลาสแกนโชว์ทุกแถวที่มีสแกน แม้แถวนั้นจะตรงกันดีอยู่แล้ว', () => {
@@ -897,7 +903,8 @@ test('เวลาสแกนโชว์ทุกแถวที่มีส�
     punch('2026-09-01', '17:28:10'), punch('2026-09-01', '20:04:55'),
   ]);
   assert.equal(ok.state, SCAN_MATCH.OK);
-  assert.equal(dayPunchLine(ok), '17:28, 20:04');
+  assert.equal(scanCheckInTime(ok), '17:28', 'เวลาแรกของวันนี้อยู่หลัง 04:00 อยู่แล้ว');
+  assert.equal(dayPunchLine(ok), '20:04');
 });
 
 test('ใบข้ามคืน: สแกนของเช้าวันรุ่งขึ้นติด (+1) ไว้', () => {
@@ -907,10 +914,11 @@ test('ใบข้ามคืน: สแกนของเช้าวันร
     [punch('2026-09-01', '21:55:00'), punch('2026-09-02', '02:04:00')],
   );
   assert.deepEqual(check.dayPunches, [
-    { time: '21:55', next: false },
-    { time: '02:04', next: true },
+    { time: '21:55', next: false, checkIn: true },
+    { time: '02:04', next: true, checkIn: false },
   ]);
-  assert.equal(dayPunchLine(check), '21:55, 02:04 (+1)');
+  assert.equal(scanCheckInTime(check), '21:55', '02:04 เป็นเช้าวันรุ่งขึ้น ไม่ใช่เวลาเข้างานของแถวนี้');
+  assert.equal(dayPunchLine(check), '02:04 (+1)');
 });
 
 test('วันที่ไม่มีสแกนเลย ไม่มีบรรทัดเวลาให้โชว์', () => {
@@ -918,6 +926,55 @@ test('วันที่ไม่มีสแกนเลย ไม่มีบ�
   assert.deepEqual(none.dayPunches, []);
   assert.equal(dayPunchLine(none), null);
   assert.equal(dayPunchLine(null), null);
+});
+
+// ── เวลาเข้างาน — เวลาแรกตั้งแต่ 04:00 น. เป็นต้นไป (9 ก.ย. 2569) ────────────
+//
+// *"เวลาที่จากเครื่องสแกนที่แสดง ให้แสดงเฉพาะเวลาแรกหลัง 04.00 น. เป็นต้นไปนับเป็น
+// เวลาเข้างาน"* — แถวที่ทำให้ขอมามีสแกนเช้าซ้ำสองครั้ง (07:55, 07:56) คนอ่านต้อง
+// นั่งแยกเองว่าในสามเวลานั้นอันไหนคือเวลามาถึง
+//
+// นี่คือ **ครั้งเดียว** ที่โมดูลนี้ยอมเรียกชื่อการสแกน — และไม่มีคำตัดสิน ชั่วโมง
+// หรือป้ายใดอ่านค่านี้ · เวลาที่เหลือของวันยังพิมพ์อยู่ข้าง ๆ ตามเดิม เพื่อให้คนที่
+// คิดว่าป้ายอ่านวันผิด เห็นเวลาดิบทั้งหมดบนแถวเดียวกันแล้วเถียงได้
+
+test('สแกนเช้าซ้ำสองครั้ง — ครั้งแรกคือเวลาเข้างาน ที่เหลือยังโชว์ครบ', () => {
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '17:00', endTime: '22:55' }),
+    [punch('2026-09-01', '07:55:12'), punch('2026-09-01', '07:56:03'),
+      punch('2026-09-01', '22:56:40')],
+  );
+  assert.equal(scanCheckInTime(check), '07:55');
+  assert.equal(dayPunchLine(check), '07:56, 22:56', 'ครั้งที่ซ้ำและเวลาเย็นไม่ได้หายไปไหน');
+});
+
+test('สแกนก่อน 04:00 น. ไม่ใช่เวลาเข้างาน — แต่ยังอยู่ในบรรทัด', () => {
+  // เช้ามืดคือคนกำลัง *ออก* จากโอทีของเย็นวันก่อน · ที่นี่ไม่มีกะดึก (4 ก.ย. 2569)
+  const check = checkEntryAgainstScans(entry({ startTime: '17:00', endTime: '22:55' }), [
+    punch('2026-09-01', '01:12:00'), punch('2026-09-01', '07:55:00'),
+    punch('2026-09-01', '22:56:00'),
+  ]);
+  assert.equal(scanCheckInTime(check), '07:55', 'ข้าม 01:12 ไปหาเวลาแรกตั้งแต่ 04:00');
+  assert.equal(dayPunchLine(check), '01:12, 22:56', 'เวลาที่ไม่ได้ถูกเรียกชื่อ ยังเรียงตามนาฬิกา');
+});
+
+test('วันที่มีแต่สแกนก่อน 04:00 น. ไม่มีเวลาเข้างานให้พิมพ์', () => {
+  const check = checkEntryAgainstScans(
+    entry({ startTime: '22:00', endTime: '02:00', endsNextDay: true }),
+    [punch('2026-09-01', '01:12:00'), punch('2026-09-01', '03:40:00')],
+  );
+  assert.equal(scanCheckInTime(check), null);
+  assert.equal(dayPunchLine(check), '01:12, 03:40', 'ไม่มีชื่อให้ใคร ก็พิมพ์เวลาทั้งหมดเหมือนเดิม');
+});
+
+test('04:00 น. พอดี นับเป็นเวลาเข้างาน — เส้นแบ่งอยู่ที่ 4 ชั่วโมงจากเที่ยงคืน', () => {
+  assert.equal(SCAN_CHECK_IN_FLOOR_MINUTES, 4 * 60);
+  const check = checkEntryAgainstScans(entry({ startTime: '05:00', endTime: '08:00' }), [
+    punch('2026-09-01', '03:59:00'), punch('2026-09-01', '04:00:00'),
+    punch('2026-09-01', '08:05:00'),
+  ]);
+  assert.equal(scanCheckInTime(check), '04:00');
+  assert.equal(dayPunchLine(check), '03:59, 08:05');
 });
 
 test('บรรทัดเวลาไม่บอกว่าครั้งไหนเข้าครั้งไหนออก', () => {

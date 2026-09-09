@@ -1,5 +1,27 @@
 node_modules/
 .env
+# …and every other name Next loads. `.env` is the only one this machine has
+# today, which is exactly why the line above looked complete. `next dev`, `next
+# build` and `next start` also read `.env.local`, `.env.production`,
+# `.env.development` and `.env.*.local` — so the first person to create one for
+# a local override has a live secrets file that nothing here matches.
+#
+# `.dockerignore` has said `.env.*` since the container went up on 2026-09-09,
+# and the reasoning is written out at length there: a secret copied into a build
+# context is baked into an image layer and stays readable from the old layer
+# even after a later commit deletes it. Git is the same shape of mistake with a
+# longer memory. The two files disagreeing WAS the gap — what may not go into
+# an image may not go into the history either.
+#
+# What is in these files on this machine: `MONGODB_URI`, `JWT_SECRET`, and
+# `TUNNEL_TOKEN`, which is the credential the public Cloudflare URL runs on and
+# lives nowhere else (docs/docker.md). A leaked one is rotated at the dashboard,
+# not deleted from a commit.
+#
+# `.env.example` is tracked on purpose — it is the documentation of which keys
+# exist — and the negation below is what keeps it that way.
+.env.*
+!.env.example
 *.log
 
 # `npm run backup` output. A complete copy of the database, which means
@@ -8,6 +30,20 @@ node_modules/
 # goes. Keep backups off this disk entirely; ./backups is only the default
 # landing spot, and `--out` is there to move them.
 backups/
+# …and wherever else a backup is told to land. The line above matches a NAME,
+# but the destination is a SETTING: `--out` on `npm run backup`, or `BACKUP_DIR`
+# read by `backupDestination()` in lib/backupStatusQuery.js. Both are resolved
+# against the process's working directory, which for anybody running npm here is
+# this folder — so `npm run backup -- --out ot-backups` writes the whole roster
+# into the repo under a name the line above does not match, and the comment
+# above says to use `--out` in the same breath.
+#
+# Anchored to the root because that is the only place a relative `--out` or
+# `BACKUP_DIR` can land, and unanchored it would silently swallow a future
+# `lib/backup/`. A glob rather than the names somebody might pick, for the same
+# reason `.next-*/` below is one: the next name is covered before it is used,
+# not after 1185 files are already staged.
+/*backup*/
 
 .next/
 # …and every scratch build beside it. `next.config.js` commits

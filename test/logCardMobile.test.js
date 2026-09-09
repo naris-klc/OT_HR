@@ -28,14 +28,22 @@ import { dirname, join } from 'node:path';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
-const jsx = readFileSync(join(ROOT, 'components/LogSystem.jsx'), 'utf8');
+/** Line endings normalised before anything below reads a character of this.
+    The machine this is developed on checks the repo out CRLF (see the note in
+    `.gitattributes`); the Linux box that serves it checks the same commit out
+    LF. An assertion written with `\n` misses every multi-line match on the
+    first, one written with `\r\n` misses them on the second, and in both
+    cases the file under test is correct to the character. Normalising is what
+    makes the assertion about the CSS instead of about the checkout — the same
+    thing test/adminApproval.test.js and test/modalScrollFrame.test.js do. */
+const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8').replace(/\r\n/g, '\n');
+const jsx = readFileSync(join(ROOT, 'components/LogSystem.jsx'), 'utf8').replace(/\r\n/g, '\n');
 
 /** The log's own phone block — the last `@media (max-width: 860px)` in the file. */
 function phoneBlock() {
   const start = css.lastIndexOf('@media (max-width: 860px) {');
   assert.ok(start > 0, 'บันทึกระบบ lost its phone block');
-  const end = css.indexOf('\r\n}\r\n', start);
+  const end = css.indexOf('\n}\n', start);
   assert.ok(end > start, 'the phone block no longer closes at column 0');
   const text = css.slice(start, end);
   assert.ok(text.includes('.stack-table.log-table'), 'this is not the log table\'s phone block');

@@ -65,6 +65,12 @@ named tunnel ของ Cloudflare ซึ่งเป็น profile ที่ต�
 [docs/network.md](docs/network.md) บรรยายไว้ ตอนนี้จึงมีสองการติดตั้ง และสองไฟล์นั้น
 ยังพูดถึงเครื่องเดิม
 
+**กำลังจะพัฒนาต่อบนเครื่องที่ deploy อยู่แล้ว?** อ่าน
+[docs/testing-safely.md](docs/testing-safely.md) — วิธีแยก **ฐานข้อมูล พอร์ต และ
+อิมเมจ**ของฝั่งทดสอบออกจากตัวที่ HR ใช้อยู่ บนเครื่องคอนเทนเนอร์กับดักคนละตัวกับ
+ที่ §Status เตือนไว้: build ไม่ทำให้แอปล่มแล้ว แต่ `.env` ที่รากของ repo ยังชี้ไป
+ที่ฐานข้อมูลจริง และ dev server ที่รันเฉย ๆ ก็อ่านไฟล์นั้น
+
 Locked out of the only ผู้ดูแลระบบ account? `npm run reset-admin -- ADMIN` —
 see [ใครทำอะไรได้](#ใครทำอะไรได้--ฝ่ายบุคคล-กับ-ผู้ดูแลระบบ).
 
@@ -678,6 +684,14 @@ index ถูกเก็บและสร้างคืน การลบ col
 `backups/` อยู่ใน `.gitignore` ชุดสำรองหนึ่งชุดคือสำเนาทะเบียนพนักงานทั้งชุด —
 `passwordHash` ของทุกบัญชี และ `birthDate` ที่ `publicEmployee()` กรองออกจากสายตา
 หัวหน้างานโดยตั้งใจ เก็บมันไว้นอกดิสก์ลูกนี้ `--out` มีไว้เพื่อการนั้น
+
+**ตั้งแต่ 2026-09-09 ปลายทางที่ไม่ใช่ชื่อ default ก็ถูก ignore ด้วย** — `.gitignore`
+มี `/*backup*/` เพิ่มเข้ามา เพราะ `backups/` คลุมแค่*ชื่อ* แต่ปลายทางจริงเป็น
+ค่าที่ตั้งได้ ทั้ง `--out` และ `BACKUP_DIR` และทั้งสองตัวถูก resolve เทียบกับ
+โฟลเดอร์ที่รันอยู่ ซึ่งคือ repo นี้ — `npm run backup -- --out ot-backups` จึงเคยเขียน
+ทะเบียนทั้งชุดลงในโฟลเดอร์โค้ดได้ โดยไม่มีอะไรค้านเลย **การ ignore ไม่ได้ทำให้การเก็บ
+ชุดสำรองไว้ใน repo เป็นเรื่องที่ถูก** — มันยังอยู่บนดิสก์ลูกเดียวกับฐานข้อมูลอยู่ดี
+สิ่งที่มันกันคือการที่สำเนานั้นจะกลายเป็นสิ่งที่**ถาวร**และออกจากดิสก์ลูกนี้ไปทุกที่ที่ repo ไปถึง
 
 ### ตั้งเวลาสำรองอัตโนมัติ
 
@@ -2610,16 +2624,59 @@ SECOND `<nav>` because `test/navActiveTab.test.js` counts the sources of
 `'active'` inside the first one, which is how the two bars are held to one
 state. See `components/ManualView.jsx` and `test/manualScreen.test.js`.
 
+**The SCREEN was a menu of topics for one day.** It read *"eleven หัวข้อ, opened
+one at a time over an index, the same manual for every บทบาท"* until
+**2026-09-09**, when it became one scrolling page of **eighteen sections cut to
+what the reader's บทบาท can actually open** — asked for as *แยกเป็นคู่มือหน้าเดียว
+แบบเลื่อนเป็น section · แสดงเฉพาะวิธีใช้งานที่ใช้งานได้ตามสิทธิ์*. The three
+changes are one change: **the cut is what makes the page short enough to
+scroll**, which was the whole objection to a scrolling page when the menu was
+chosen. A พนักงาน is shown **8 sections**, a ผู้เซ็น 12, การเงิน 13, ฝ่ายบุคคล 15
+and ผู้ดูแลระบบ 16 — and ผู้ดูแลระบบ is **not** shown all eighteen, because
+`isSigner` is false for them and the two sections about the ผู้เซ็นขั้นแรก queue
+describe screens they do not have.
+
+**The gate is on the SECTIONS and never on the menu row**, and the two are
+different promises that a single rule cannot serve. The row is the DOOR and
+stays ungated — *"ให้ทุกสิทธิ์ดูได้"* — so nobody is told the manual is not for
+them; the sections are the CONTENTS. Gate the row instead and a บทบาท with one
+readable section loses the manual entirely, with nothing on their screen saying
+one exists. **Not one predicate is written fresh in that file**: `isSigner`,
+`readsCompanyReports` and `approverRolesFor` come from `lib/roles.js` and
+`mayCorrectEntries` from `lib/entries.js`, `permissionsOf` is the only reader of
+them, and `test/manualScreen.test.js` refuses a gate that names a บทบาท. That
+test also EXECUTES the gates — they are one-line arrows over one object, so it
+pulls each out of the source and asks it, per บทบาท, using the real predicates.
+
+**Every illustration of a screen is drawn twice**, asked for the same day
+(*ภาพประกอบต้องมี ui ทั้งแบบหน้าจอ มือถือ และ pc*) and not the same picture at
+two widths: a desktop has a sidebar of named rows, a phone has at most four
+glyphs across the bottom and a round + in the corner, and a reader following a
+step is on exactly one of them. `Shot` takes `desk` and `phone`; `Diagram` — the
+approval route and the way a night shift is cut into rate columns — takes
+neither, because those are facts about the system and drawing them twice would
+say there are two of them. **They are drawn, not photographed**: this app
+renamed three of its own tabs in one fortnight, and a screenshot would have gone
+on saying the old name with nothing failing. The mocks are `.mk-*` elements
+taking the app's own tokens, so ธีมมืด needs no rule and paper needs no asset.
+**เมนูของคุณ draws the reader's OWN menu** — `navGroups` and `barSlots` go down
+as props from `Shell` rather than being rebuilt, so the picture cannot show a
+row they do not have.
+
 **And it is the sixth print view**, added the same day it was asked for: the
-manual saves as a PDF, and the reader ticks which topics go in it. The picker
+manual saves as a PDF, and the reader ticks which หัวข้อ go in it. The picker
 sits on the print view rather than in a dialog in front of it, because the
-sheets under it ARE the file — tick a topic and the page it will occupy
+sheets under it ARE the file — tick a หัวข้อ and the page it will occupy
 appears. It goes out through `PrintChrome` and `savePdf` like the other five,
 so there is no second path that builds a document; the pages are
-`TOPICS.filter(…)` and never `picked.map(…)`, so the order is the menu's rather
+`visible.filter(…)` and never `picked.map(…)`, so the order is the page's rather
 than the order somebody happened to click; and the file is named
 `คู่มือการใช้งาน-<n>หัวข้อ` — the count, never "ทั้งหมด", which is `formBatch`'s
-rule read one step along, since here a subset is the ordinary case.
+rule read one step along, since here a subset is the ordinary case. **The list
+offered is the GATED list**, which is what the cut buys on paper: ฝ่ายบุคคล
+printing the manual for a production line get the eight หัวข้อ a พนักงาน has,
+with no ตั้งค่าระบบ page in a stack handed out at a training session. It read
+`TOPICS.filter(…)` here until 2026-09-09.
 
 **การตั้งค่าระบบ was asked for as "ผู้ดูแลระบบ", and that is the one thing here
 that did not ship as requested.** ฝ่ายบุคคล reach ตั้งค่าระบบ — they maintain
@@ -4798,8 +4855,12 @@ after the first REAL month was walked. Every row with any punches now carries
 
 ```
 17:00–19:30
-สแกน 07:21, 19:30
+เข้างาน 07:21 · สแกน 19:30
 ```
+
+> It read `สแกน 07:21, 19:30`, one unnamed list, until 2026-09-09 — see
+> **เวลาเข้างาน** below, which pulled the day's first punch from 04:00 on out of
+> the list and gave it a name. Every other time of the day is still on the line.
 
 > The separator lost its leading space on 2026-09-07 — asked for in the shape
 > *แสดงเวลาสแกนนิ้วทั้งหมดของวันนั้นเสมอ เช่น "สแกน 07:34, 19:30"*. It reads as
@@ -4824,17 +4885,51 @@ a bug but from how the door is actually used.
 **A system that cannot know which punch was meant to be which can still print
 what the machine said.** It costs nothing, assumes nothing, and hands the
 comparison to the person holding the sheet — who can see at a glance that
-`ใบ 17:00–19:30` against `สแกน 07:21, 19:30` is an ordinary day.
+`ใบ 17:00–19:30` against `เข้างาน 07:21 · สแกน 19:30` is an ordinary day.
 
 **Drawn on every row that has scans, matching or not.** Times that appeared only
 where something was wrong would be read AS a warning, which is the thing they
 were added to replace.
 
-**A list of times, never `เข้า` / `ออก`.** The machines carry no in/out flag; a
-reader can see what a morning-and-evening pair means and the system is not in a
-position to assert it. A punch on the following morning is marked `(+1)` — on an
-overnight row it belongs to the row but not to the date, and a bare `02:04`
-among evening times reads as the wrong morning.
+**A list of times, never `เข้า` / `ออก` — with one named exception since
+2026-09-09.** The machines carry no in/out flag, so the times after the arrival
+are a list and nothing more: a reader can see what an evening time on an OT row
+means and the system is not in a position to assert it. The arrival itself IS
+named now, and only it — see **เวลาเข้างาน** below. A punch on the following
+morning is marked `(+1)` — on an overnight row it belongs to the row but not to
+the date, and a bare `02:04` among evening times reads as the wrong morning.
+
+##### เวลาเข้างาน — the day's first punch from 04:00 on, under its own name
+
+*"เวลาที่จากเครื่องสแกนที่แสดง ให้แสดงเฉพาะเวลาแรกหลัง 04.00 น. เป็นต้นไปนับเป็น
+เวลาเข้างาน"* (HR, 2026-09-09). The row that provoked it carried a doubled
+morning scan and read `สแกน 07:55, 07:56, 22:56`: three times, and the reader had
+to work out which of them was the arrival before anything else on the row could
+be read. It reads `เข้างาน 07:55 · สแกน 07:56, 22:56` now.
+
+**Both halves, always, and from one component.** `ScanDayPunches` draws the
+label and the remaining times together — `scanCheckInTime` and `dayPunchLine`
+off the same `dayPunches` array, where the chosen punch carries `checkIn: true`.
+Naming a punch is only safe while the evidence it was named from is on the same
+line: a screen that printed `เข้างาน 07:55` alone would be asserting a reading
+nobody could check. The 07:56 that was scanned a minute later is still there.
+
+**04:00 and not midnight**, because a punch in the small hours is somebody
+LEAVING the previous evening's OT — naming it เข้างาน would date the arrival
+hours before the person walked in. There is no night shift here (*ไม่มีกะดึก*,
+2026-09-04, the same answer `alreadyInside` rests on), so nothing legitimate
+starts between midnight and 04:00. `SCAN_CHECK_IN_FLOOR_MINUTES` is the floor;
+a punch at exactly 04:00 is an arrival, one at 03:59 is not and stays in the
+list. On an overnight row the punches past midnight wear `(+1)` and belong to
+the morning AFTER the row, so the first of THEM is never taken as the arrival —
+a day whose punches are all before 04:00 has no เวลาเข้างาน at all and prints
+its times exactly as it did before.
+
+**Nothing downstream reads it.** No verdict, hour, bucket, ceiling, badge or
+count moves; the start side still decides ก่อน/หลัง on distance alone. It is the
+only naming this module does, and it is one word on one punch — the boundary in
+`src/models/ScanPunch.js` is about restating a signed sheet, and a label the
+reader can check against the times beside it restates nothing.
 
 > This block read "**The amber chip was left exactly as it was**, so on a month
 > like July it still marks those 25 rows … narrowing the chip to the END side is
@@ -4941,8 +5036,9 @@ MISSING_OT_START, the gate showsMissingOtStart, the component
 ScanMissingOtStartMark and the class `.chip.scan-noin` — the field fed that chip
 and nothing else read it. **No verdict, sentence, count or figure moved.** The
 silence `startFinding` builds is untouched, and the day's scan line under the
-times still prints `สแกน 07:34, 19:30` on every row that has punches, so a reader
-who wants to know whether anybody touched the door at 17:00 can see it.
+times still prints on every row that has punches — `สแกน 07:34, 19:30` then,
+`เข้างาน 07:34 · สแกน 19:30` since 2026-09-09 — so a reader who wants to know
+whether anybody touched the door at 17:00 can see it.
 
 **The tolerance is still read off the request's own start, not off a fixed
 17:00–17:30 window.** That was written as part of the chip and outlived it,
@@ -11758,7 +11854,10 @@ build แล้ว
   `BUILD_ID` it booted with, so a plain rebuild under it makes every loaded
   page ask for chunks that no longer exist and every screen 500s until a
   restart. `next.config.js` is already wired for the scratch directory; delete
-  it afterwards, because it is not in `.gitignore`.
+  it afterwards to keep the tree small, but nothing will stage it if you forget.
+  The reason here read "because it is not in `.gitignore`" until 2026-09-09, and
+  had been wrong since `.next-*/` was added on 2026-08-26 — after a `git add -A`
+  staged 1185 files out of two scratch directories into a commit about CSS.
   The run cleared everything since `38353a8` — the eight commits of 2026-08-20
   and 2026-08-21 were cleared by the 2026-08-24 pass before it.
   **A green test suite is still not a working build**, which is why this line

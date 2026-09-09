@@ -15204,43 +15204,336 @@ table.mini tbody tr:hover { background: none; }
    phone keeps 18px — there the card IS the screen. */
 .manual-page .card { padding: 24px; }
 
-.manual-menu {
-  display: grid; gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+/* ══ คู่มือการใช้งาน — หน้าเดียว ═══════════════════════
+ *
+ * IT WAS A GRID OF PRESSABLE CARDS UNTIL 2026-09-09. `.manual-menu`,
+ * `.manual-item`, the four `.mi-*` and `.manual-back` were the index screen and
+ * the way back out of a หัวข้อ opened over it; the screen has no index screen
+ * and no overlay any more, so they are gone rather than left unused. The
+ * reasoning that put them there is kept where reasoning belongs — the header of
+ * components/ManualView.jsx — because a dead ruleset is not a record of
+ * anything, it is a thing the next person greps and believes is live.
+ *
+ * WHAT REPLACES THEM IS A TWO-COLUMN READING LAYOUT: the หัวข้อ list pinned
+ * beside the text, and the text as one column of sections. On a phone the two
+ * stack and the list becomes a strip of chips, which is the same pair of shapes
+ * the app's own menu takes at the same breakpoint.
+ */
+
+.manual-layout {
+  display: grid; gap: 18px;
+  /* The rail is a fixed measure and the prose takes the rest. `minmax(0, 1fr)`
+     rather than `1fr` because a grid item's automatic minimum is its content,
+     and one `.manual-table-wrap` wide enough to need scrolling would otherwise
+     push the whole column past the card instead of scrolling inside it. */
+  grid-template-columns: 232px minmax(0, 1fr);
+  align-items: start;
 }
-.manual-item {
+
+/* ── THE RAIL ────────────────────────────────────────────────────────────
+   Sticky under the app bar, which is 62px and `position: sticky` itself. The
+   offset is written as the sum rather than as a magic 74 so that moving the bar
+   moves this with it. */
+.manual-rail {
+  position: sticky; top: calc(62px + 12px);
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 14px 10px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  /* A บทบาท with every section is sixteen rows plus five headings; on a short
+     window the rail scrolls inside itself rather than growing past the fold and
+     taking its last rows somewhere unreachable. */
+  max-height: calc(100vh - 62px - 32px); overflow-y: auto; overscroll-behavior: contain;
+}
+.manual-rail-h {
+  font: 600 10.5px/1.5 var(--sans); letter-spacing: .06em;
+  color: var(--muted-3); padding: 10px 10px 4px;
+}
+.manual-rail-h:first-child { padding-top: 2px; }
+.manual-rail-a {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  font: 400 12.5px/1.45 var(--sans); color: var(--muted);
+  text-decoration: none; border-left: 2px solid transparent;
+}
+.manual-rail-a:hover { background: var(--green-wash); color: var(--ink-2); }
+.manual-rail-i { width: 15px; height: 15px; flex: none; }
+
+/* ── THE SECTIONS ───────────────────────────────────────────────────────
+   `:target` and not a scroll observer — the mark answers "which one did I jump
+   to", which is a question with an exact answer, rather than "which one is most
+   on screen", which needs a threshold and still has to invent an answer for the
+   last section when it is shorter than the window. See `Rail` in ManualView. */
+.manual-sec:target { border-color: var(--green); }
+.manual-sec:target .manual-sec-icon { background: var(--green); color: var(--on-fill); }
+
+/* `scroll-margin-top` clears the sticky app bar. Without it every jump lands
+   with the section's heading UNDER the bar — the one thing the reader pressed
+   the link to see. */
+.manual-sec { scroll-margin-top: calc(62px + 14px); }
+
+.manual-sec-head {
   display: flex; align-items: flex-start; gap: 12px;
-  padding: 16px; text-align: left; cursor: pointer;
-  background: var(--card); border: 1px solid var(--line);
-  border-radius: var(--radius); color: inherit; font: inherit;
-  transition: background .16s, border-color .16s, transform .16s;
+  padding-bottom: 14px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--line-soft);
 }
-.manual-item:hover { background: var(--green-wash); border-color: var(--green); }
-.manual-item:active { transform: translateY(1px); }
-/* The glyph sits on the app's own green wash rather than loose on white — at
-   20px in a row this wide it needs something to hold its place, and the tint is
-   what every other quiet green mark in this app is drawn on. */
-.mi-icon {
-  width: 38px; height: 38px; flex: none; border-radius: var(--radius-sm);
+.manual-sec-icon {
+  width: 34px; height: 34px; flex: none; border-radius: var(--radius-sm);
   display: grid; place-items: center;
   background: var(--green-bg); color: var(--green-dark);
 }
-.mi-icon svg { width: 20px; height: 20px; display: block; }
-.mi-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.mi-title { font: 600 14.5px/1.35 var(--sans); color: var(--ink); }
-.mi-blurb { font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); }
-.mi-chev { flex: none; color: var(--muted-3); font-size: 18px; line-height: 1.6; }
-.manual-item:hover .mi-chev { color: var(--green-dark); }
-
-/* ‹ ทุกหัวข้อ — above the heading, because it is the way back out of a screen
-   that opened over another one. The appbar's own ‹ does the same thing (the
-   topic registers with the shell's back stack); this is the one on the page,
-   for a reader who is looking at the page. */
-.manual-back {
-  display: inline-block; margin-bottom: 10px;
-  background: none; border: none; padding: 0; cursor: pointer;
-  font: 500 13px/1.4 var(--sans);
+.manual-sec-icon svg { width: 18px; height: 18px; display: block; }
+.manual-sec-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.manual-sec-t h3 { font: 600 16px/1.35 var(--sans); color: var(--ink); margin: 0; }
+.manual-sec-blurb { font: 400 12.5px/1.5 var(--sans); color: var(--muted-2); }
+/* WHO THE SECTION IS FOR, said on the section itself. A reader comparing notes
+   with somebody whose manual is longer needs one sentence to know why, and the
+   sentence has to be on the part that differs. */
+.manual-sec-gate {
+  flex: none; align-self: flex-start;
+  font: 500 10.5px/1.5 var(--sans);
+  padding: 4px 9px; border-radius: 999px;
+  background: var(--green-tint); color: var(--green-dark);
+  border: 1px solid var(--green-bg);
 }
+
+/* ── ขั้นตอน ──────────────────────────────────────────────────────────
+   Numbered by a CSS counter and never in the markup: a step whose picture is
+   labelled ② and whose number in the list is 3 is worse than an unnumbered
+   list, and hand-written numbers drift the first time a step is inserted. */
+.manual-steps { counter-reset: mstep; list-style: none; margin: 0; padding: 0; }
+.manual-step { counter-increment: mstep; position: relative; padding-left: 34px; }
+.manual-step + .manual-step { margin-top: 20px; }
+.manual-step::before {
+  content: counter(mstep);
+  position: absolute; left: 0; top: 1px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--green); color: var(--on-fill);
+  font: 600 12px/24px var(--mono); text-align: center;
+}
+.manual-step > p:first-child { margin-top: 2px; }
+.manual-step > ul { margin-top: 6px; }
+
+/* ── ภาพประกอบ: THE PAIR ─────────────────────────────────────────────────
+   Two drawings of one step, side by side where there is room and stacked where
+   there is not. `minmax(0, 1fr)` for the same reason the page grid uses it —
+   a mock is a box of text and would otherwise set the column's minimum. */
+.mshot { margin: 12px 0 0; }
+.mshot-pair {
+  display: grid; gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+.mshot-one { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mshot-tag {
+  font: 600 10px/1.5 var(--sans); letter-spacing: .06em; color: var(--muted-3);
+}
+.mshot figcaption, .mdiag figcaption {
+  margin-top: 8px; font: 400 11.5px/1.6 var(--sans); color: var(--muted-3);
+}
+.mdiag { margin: 12px 0 0; }
+
+/* ── ภาพประกอบ: THE MOCK ITSELF ─────────────────────────────────────────
+ *
+ * Every one of these is a `<span>` with its `display` set here, so that a mock
+ * can be dropped anywhere a step's prose can go — including inside a `<p>`,
+ * where a `<div>` is invalid markup that React will not warn about and a
+ * browser will silently restructure around. The classes carry the layout; the
+ * elements carry nothing, which is what makes that true of all of them at once.
+ *
+ * They take the app's own tokens throughout, so ธีมมืด needs no rule of its own
+ * and paper needs no rule beyond the one that pins the scheme to light.
+ */
+.mk {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line-lift); border-radius: var(--radius-sm);
+  background: var(--card); overflow: hidden;
+}
+.mk-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 9px; background: var(--green); color: var(--on-fill);
+}
+.mk-bar-t { font: 600 9.5px/1.4 var(--sans); }
+.mk-desk-body { display: flex; align-items: stretch; min-height: 0; }
+/* The sidebar is a real proportion of the window and not a token width: the
+   whole point of the desktop drawing is that the menu is BESIDE the page. */
+.mk-side {
+  flex: none; width: 42%; display: flex; flex-direction: column; gap: 3px;
+  padding: 7px 6px; background: var(--green-wash);
+  border-right: 1px solid var(--line-soft);
+}
+.mk-side-h {
+  font: 600 8.5px/1.5 var(--sans); color: var(--muted-3); padding: 5px 5px 1px;
+}
+.mk-canvas {
+  position: relative; flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 6px; padding: 9px;
+}
+/* The bar is the phone's whole menu, and four is its cap — see the note over
+   the slot table in components/App.jsx. */
+.mk-bottom {
+  display: flex; border-top: 1px solid var(--line); background: var(--card-lift);
+}
+.mk-slot {
+  position: relative; flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px; color: var(--muted-2);
+}
+.mk-slot.on { color: var(--green-text); }
+.mk-slot-i { width: 14px; height: 14px; }
+.mk-slot-t {
+  font: 500 8px/1.3 var(--sans); text-align: center;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mk-fab {
+  position: absolute; right: 8px; bottom: 8px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--green); color: var(--on-fill);
+  font: 400 16px/26px var(--sans); text-align: center;
+}
+
+.mk-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 7px; border-radius: var(--radius-xs);
+  background: var(--card-lift); border: 1px solid var(--line-soft);
+  font: 400 9.5px/1.45 var(--sans); color: var(--ink-2);
+}
+.mk-row.on { background: var(--green-bg); border-color: var(--green); color: var(--green-dark); font-weight: 600; }
+.mk-row-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-badge {
+  flex: none; padding: 1px 6px; border-radius: 999px;
+  background: var(--amber-bg); color: var(--amber-ink);
+  border: 1px solid var(--amber-line);
+  font: 600 8.5px/1.5 var(--mono);
+}
+/* The numbered dot inside a drawing, and it counts WITHIN the drawing — the
+   caption says what each one points at. It deliberately does not follow the
+   step numbers: a picture that has to agree with a list two elements up is a
+   picture that goes wrong the first time a step is inserted. */
+.mk-pin {
+  flex: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--green-dark); color: var(--on-fill);
+  font: 600 8.5px/14px var(--mono); text-align: center;
+}
+
+.mk-field { display: flex; flex-direction: column; gap: 2px; }
+.mk-lab { font: 500 8.5px/1.4 var(--sans); color: var(--muted-2); }
+.mk-in {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 7px; border-radius: var(--radius-xs);
+  border: 1px solid var(--input-line); background: var(--card-lift);
+}
+.mk-in.on { border-color: var(--green); background: var(--green-tint); }
+.mk-in-t {
+  flex: 1; min-width: 0; font: 400 9.5px/1.4 var(--mono); color: var(--ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mk-in.on .mk-in-t { color: var(--green-dark); font-weight: 500; }
+
+.mk-btn {
+  align-self: flex-start; padding: 5px 11px; border-radius: var(--radius-xs);
+  background: var(--green); color: var(--on-fill); font: 500 9.5px/1.4 var(--sans);
+}
+.mk-btn.ghost { background: transparent; color: var(--green-text); border: 1px solid var(--green); }
+
+.mk-chip {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font: 500 9px/1.5 var(--sans); border: 1px solid transparent; white-space: nowrap;
+}
+.mk-chip.wait { background: var(--amber-bg); color: var(--amber-ink); border-color: var(--amber-line); }
+.mk-chip.ok { background: var(--green-bg); color: var(--green-dark); border-color: var(--green); }
+.mk-chip.no { background: var(--danger-bg); color: var(--danger-ink); border-color: var(--danger-line); }
+.mk-chip.off { background: var(--neutral-wash); color: var(--muted); border-color: var(--line); }
+
+.mk-note { font: 400 8.5px/1.55 var(--sans); color: var(--muted-3); }
+.mk-note.ok { color: var(--green-text); }
+
+.mk-alert {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: var(--radius-xs);
+  background: var(--amber-bg); border: 1px solid var(--amber-line);
+}
+/* The phone's version of the same bar — the button drops to its own line,
+   which is the difference the step's caption points at. */
+.mk-alert.col { flex-direction: column; align-items: flex-start; }
+.mk-alert-t { flex: 1; min-width: 0; font: 600 9.5px/1.45 var(--sans); color: var(--amber-ink); }
+
+.mk-headrow { display: flex; align-items: center; gap: 8px; }
+.mk-headrow > .mk-row { flex: 1; min-width: 0; }
+.mk-acts { display: flex; align-items: center; gap: 5px; flex: none; }
+/* What a phone shows instead of a row of controls: the sheet a press opens. */
+.mk-sheet {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  padding: 7px; border-radius: var(--radius-xs);
+  background: var(--green-wash); border: 1px dashed var(--line-lift);
+}
+
+.mk-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mk-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.mk-cell {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 5px 7px; border-radius: var(--radius-xs);
+  border: 1px solid var(--line); background: var(--card-lift);
+}
+.mk-cell-k { font: 500 8px/1.4 var(--mono); color: var(--muted-3); }
+.mk-cell-v { font: 600 11px/1.4 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.mk-cell-v.warn { color: var(--amber-ink); }
+
+.mk-paper {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-xs);
+  background: var(--card-lift);
+}
+.mk-paper.narrow { width: 130%; }
+.mk-paper-h {
+  font: 600 9px/1.4 var(--sans); color: var(--ink);
+  padding-bottom: 5px; border-bottom: 1px solid var(--line-soft);
+}
+.mk-sign {
+  padding: 14px 4px 5px; border: 1px solid var(--line); border-radius: var(--radius-xs);
+  font: 500 8px/1.4 var(--mono); color: var(--muted-3); text-align: center;
+}
+
+/* ── แผนภาพ: เส้นทางอนุมัติ ────────────────────────────────────────────
+   Boxes and arrows, laid out by the grid rather than drawn — so it wraps on a
+   phone, reads to a screen reader through the figure's label, and needs no
+   viewBox arithmetic to stay inside its own bounds. */
+.mflow { display: flex; align-items: stretch; flex-wrap: wrap; gap: 8px; }
+.mflow-node {
+  flex: 1 1 128px; display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 11px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-lift); background: var(--card-lift);
+}
+.mflow-node.acc { border-color: var(--green); background: var(--green-bg); }
+.mflow-node.done { border-color: var(--green); }
+/* The step that is not there for this บทบาท — drawn, and drawn as absent. A
+   picture with the box left out looks like a picture missing a box. */
+.mflow-node.gone { border-style: dashed; background: none; opacity: .75; }
+.mflow-k { font: 600 8.5px/1.5 var(--mono); letter-spacing: .06em; color: var(--muted-3); }
+.mflow-n { font: 600 11.5px/1.45 var(--sans); color: var(--ink); }
+.mflow-node.acc .mflow-n { color: var(--green-dark); }
+.mflow-s { font: 400 10px/1.5 var(--sans); color: var(--muted-2); }
+.mflow-arrow { align-self: center; flex: none; color: var(--muted-3); font-size: 14px; }
+
+/* ── แผนภาพ: การตัดเข้าช่องอัตรา ─────────────────────────────────────
+   NOT A TIMELINE, and that is the constraint that shaped it: an axis wants
+   hours on it and every hour it could carry is a value ฝ่ายบุคคล owns. So it
+   draws the CUT — one span in, three named columns out. */
+.mrate { display: flex; flex-direction: column; gap: 8px; }
+.mrate-in {
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--green); background: var(--green-bg);
+  font: 600 11.5px/1.5 var(--sans); color: var(--green-dark); text-align: center;
+}
+.mrate-arrow { font: 400 10.5px/1.5 var(--sans); color: var(--muted-3); text-align: center; }
+.mrate-out { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mrate-col {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 9px 11px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-lift); background: var(--card-lift);
+}
+.mrate-k { font: 600 11.5px/1.4 var(--sans); color: var(--ink); }
+.mrate-v { font: 400 10px/1.5 var(--sans); color: var(--muted-2); }
+
 .manual-lead { font: 400 13.5px/1.7 var(--sans); color: var(--ink-2); margin-bottom: 10px; }
 
 /* THE PROSE, AND THE ONE MEASURE IT IS SET TO. A manual is read a paragraph at
@@ -15248,11 +15541,6 @@ table.mini tbody tr:hover { background: none; }
    which is past the width an eye tracks back from reliably. 74ch caps the text
    without capping the card, so tables and the menu grid still use the room. */
 .manual-body { font: 400 13.5px/1.75 var(--sans); color: var(--ink-2); max-width: 74ch; }
-.manual-body h3 {
-  font: 600 14px/1.4 var(--sans); color: var(--ink);
-  margin: 22px 0 8px;
-}
-.manual-body h3:first-child { margin-top: 4px; }
 .manual-body p { margin: 0 0 10px; }
 .manual-body b { color: var(--ink); font-weight: 600; }
 .manual-body ul { margin: 0 0 10px; padding-left: 20px; }
@@ -15264,7 +15552,6 @@ table.mini tbody tr:hover { background: none; }
   border-radius: var(--radius-xs); padding: 1px 5px;
 }
 .manual-body .hint { margin: 12px 0 0; }
-.manual-body .hint + h3 { margin-top: 22px; }
 
 /* Two-column reference tables — บทบาท against what it may do, สถานะ against
    what it means. They scroll inside their own wrapper rather than widening the
@@ -15298,10 +15585,41 @@ table.mini tbody tr:hover { background: none; }
 }
 .manual-sheet-title { font: 600 17px/1.35 var(--sans); color: var(--ink); margin-bottom: 12px; }
 
+/* ── ON A PHONE, THE MANUAL ───────────────────────────────────────────────
+ *
+ * 900px and not 640px, and the two are different questions. 640 is where this
+ * app's cards stop having room for padding; this one is where a 232px column
+ * beside the prose leaves the prose too narrow to read, which happens first.
+ * The rail becomes a strip of chips above the text — the same shape the app's
+ * own menu takes on a phone, for the same reason.
+ */
+@media (max-width: 900px) {
+  .manual-layout { grid-template-columns: minmax(0, 1fr); }
+  .manual-rail {
+    position: sticky; top: 62px; z-index: 3;
+    flex-direction: row; flex-wrap: nowrap; gap: 6px;
+    max-height: none; overflow-x: auto; overflow-y: hidden;
+    padding: 10px; border-radius: var(--radius-lg);
+  }
+  /* The headings are a column's furniture. In a row they would be chips that
+     look pressable and are not. */
+  .manual-rail-h { display: none; }
+  .manual-rail-a {
+    flex: none; white-space: nowrap; border-left: 0;
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px;
+  }
+  /* Both drawings still appear — that is the whole point of the pair — but
+     stacked, because two mocks side by side inside a phone's own width is two
+     unreadable mocks. */
+  .mshot-pair { grid-template-columns: minmax(0, 1fr); }
+  .mrate-out { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 640px) {
   .manual-page .card { padding: 18px; }
-  .manual-menu { grid-template-columns: 1fr; }
-  .manual-item { padding: 14px; }
+  .manual-sec-head { gap: 9px; flex-wrap: wrap; }
+  .manual-sec-gate { order: 3; }
+  .manual-step { padding-left: 30px; }
   .manual-sheet { padding: 18px; }
 }
 

@@ -1,8 +1,29 @@
 # scripts/backup.sh must keep LF endings wherever it is checked out.
 #
 # `core.autocrlf` is true on the machine this is developed on, so the working
-# copy of every text file is CRLF locally. That is harmless for JavaScript and
-# fatal for a shell script: `#!/bin/sh\r` is read by the kernel as an
+# copy of every text file is CRLF locally — and LF on the Linux box that serves
+# the app, which checks the same commits out with autocrlf unset. One repository,
+# two shapes of every text file, and nothing in a diff shows it.
+#
+# THIS BLOCK READ "That is harmless for JavaScript and fatal for a shell script"
+# UNTIL 2026-09-09. The first half was false and had been for weeks: eight test
+# files searched `app/styles.css` and the JSX for text spelled with `\r\n`, so
+# 31 assertions passed on the CRLF checkout and failed on the LF one, against a
+# tree with nothing wrong in it — a suite that reports the checkout it ran on
+# rather than the code. They normalise line endings before matching now, which
+# is where the fix belongs; the sentence claiming it could not happen belongs
+# here. See the header of `test/adminApproval.test.js`, which had it right first.
+#
+# A NINTH FILE WAS WRITTEN THE SAME DAY AND MISSED THE FIX — and it failed the
+# other way round, which is worth knowing before the next one is written.
+# `test/manualScreen.test.js` matches multi-line regexes against the JSX and
+# `app/print.css`; it went green on the tree it was written on and failed five
+# assertions on the next CRLF checkout of that same tree. Whichever shape the
+# file is in when a suite is first run is the shape it silently depends on, so
+# the rule is not "normalise when you notice" but "normalise in the `read`
+# helper, before anything reads a character".
+#
+# It is fatal for a shell script: `#!/bin/sh\r` is read by the kernel as an
 # interpreter literally named "sh\r", and the whole file fails with
 # "bad interpreter: No such file or directory" — a message that names the shebang
 # and says nothing about the invisible character in it.
