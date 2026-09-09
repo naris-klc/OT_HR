@@ -666,6 +666,14 @@ index ถูกเก็บและสร้างคืน การลบ col
 `passwordHash` ของทุกบัญชี และ `birthDate` ที่ `publicEmployee()` กรองออกจากสายตา
 หัวหน้างานโดยตั้งใจ เก็บมันไว้นอกดิสก์ลูกนี้ `--out` มีไว้เพื่อการนั้น
 
+**ตั้งแต่ 2026-09-09 ปลายทางที่ไม่ใช่ชื่อ default ก็ถูก ignore ด้วย** — `.gitignore`
+มี `/*backup*/` เพิ่มเข้ามา เพราะ `backups/` คลุมแค่*ชื่อ* แต่ปลายทางจริงเป็น
+ค่าที่ตั้งได้ ทั้ง `--out` และ `BACKUP_DIR` และทั้งสองตัวถูก resolve เทียบกับ
+โฟลเดอร์ที่รันอยู่ ซึ่งคือ repo นี้ — `npm run backup -- --out ot-backups` จึงเคยเขียน
+ทะเบียนทั้งชุดลงในโฟลเดอร์โค้ดได้ โดยไม่มีอะไรค้านเลย **การ ignore ไม่ได้ทำให้การเก็บ
+ชุดสำรองไว้ใน repo เป็นเรื่องที่ถูก** — มันยังอยู่บนดิสก์ลูกเดียวกับฐานข้อมูลอยู่ดี
+สิ่งที่มันกันคือการที่สำเนานั้นจะกลายเป็นสิ่งที่**ถาวร**และออกจากดิสก์ลูกนี้ไปทุกที่ที่ repo ไปถึง
+
 ### ตั้งเวลาสำรองอัตโนมัติ
 
 **บนเครื่องนี้ — Windows, Task Scheduler** นี่คือตัวที่ทำงานอยู่จริงวันนี้:
@@ -11530,7 +11538,10 @@ build แล้ว
   `BUILD_ID` it booted with, so a plain rebuild under it makes every loaded
   page ask for chunks that no longer exist and every screen 500s until a
   restart. `next.config.js` is already wired for the scratch directory; delete
-  it afterwards, because it is not in `.gitignore`.
+  it afterwards to keep the tree small, but nothing will stage it if you forget.
+  The reason here read "because it is not in `.gitignore`" until 2026-09-09, and
+  had been wrong since `.next-*/` was added on 2026-08-26 — after a `git add -A`
+  staged 1185 files out of two scratch directories into a commit about CSS.
   The run cleared everything since `38353a8` — the eight commits of 2026-08-20
   and 2026-08-21 were cleared by the 2026-08-24 pass before it.
   **A green test suite is still not a working build**, which is why this line
