@@ -258,23 +258,45 @@ test('ใบพิมพ์ส่งบัญชีเขียนแค่ค�
   );
 });
 
-test('CSV มีคอลัมน์ birthday_hours ต่อท้ายเท่านั้น และเว้นว่างเมื่อไม่มี', () => {
+test('CSV เขียนแค่คำว่าวันเกิดในช่องหมายเหตุ และไม่มีคอลัมน์ birthday_hours แล้ว', () => {
   const src = read('app/api/exports/accounting.csv/route.js');
 
-  // Appended, never inserted: accounting's own sheets count columns from the
-  // left, and a column in the middle shifts every one after it silently.
-  assert.match(src, /'รวมชั่วโมง', 'หมายเหตุ',\s*\n\s*'birthday_hours',\s*\n\s*\];/);
-  // `cell`, not `fmt` — blank rather than 0.00 for somebody with none, the rule
-  // every other hour column in this file already follows. `cell` is where that
-  // rule lives, so the check is on both the call and the definition.
-  assert.match(src, /cell\(row\.birthdayHours\)/);
-  assert.match(src, /cell\(totals\.birthdayHours\)/, 'บรรทัดรวมต้องมีผลรวมของคอลัมน์นี้ด้วย');
-  assert.match(src, /const cell = \(n\) => \(n \? fmt\(n\) : ''\);/, 'เว้นว่างเมื่อเป็นศูนย์');
+  /**
+   * ── ข้อนี้กลับด้านทั้งข้อเมื่อ 2026-09-09 ────────────────────────────────────
+   *
+   * เดิมชื่อ *CSV มีคอลัมน์ birthday_hours ต่อท้ายเท่านั้น และเว้นว่างเมื่อไม่มี*
+   * และบังคับสองอย่างที่ตอนนี้ไม่จริงทั้งคู่ คือหัวตาราง
+   * `'รวมชั่วโมง', 'หมายเหตุ', 'birthday_hours'` กับประโยค
+   * *วันเกิด n ชม.* ในช่องหมายเหตุ
+   *
+   * ฝ่ายบุคคลส่งรูปไฟล์ที่เปิดค้างไว้มาพร้อมประโยคเดียว —
+   * *ช่องหมายเหตุแสดงแค่วันเกิดเท่านั้น* — และท้ายไฟล์ในรูปคือ
+   * `รวม 1.5 · รวม 3 · หมายเหตุ` ทั้งคอลัมน์ที่แยกชั่วโมงวันเกิดออกมาและตัวเลข
+   * ที่ต่อท้ายคำจึงหายไปพร้อมกัน
+   *
+   * **สิ่งที่แลกไป และควรรู้ว่าแลกไปแล้ว** ก่อนหน้านี้ไฟล์คือที่เดียวที่ตอบได้ว่า
+   * *ในช่อง ×1.5 วันหยุด ก้อนนี้ เป็นชั่วโมงวันเกิดกี่ชั่วโมง* — บัญชี pivot
+   * คอลัมน์นั้นได้ ตอนนี้ไฟล์บอกได้แค่ว่าแถวนี้มีชั่วโมงวันเกิดอยู่ ส่วนจำนวนต้อง
+   * ไปอ่านบนจอ สรุป OT ส่งบัญชี ซึ่งยังพิมพ์ *วันเกิด · 8.00 ชม. อยู่ในช่องวันหยุด*
+   * ไว้เหมือนเดิม
+   */
+  assert.match(src, /'OT x3', 'รวม 1\.5', 'รวม 3', 'หมายเหตุ',\s*\n\s*\];/);
+  // Comments out: the block above the header row NAMES the column it replaced,
+  // which is the whole point of that block.
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.doesNotMatch(code, /birthday_hours/, 'คอลัมน์นี้ถูกถอดออกแล้ว');
 
-  // The หมายเหตุ sentence stays as well, and is not the same thing: it is the
-  // remark the PAPER carries, so a person holding both reads the same words on
-  // each. The column beside it is what their spreadsheet sums.
-  assert.match(src, /\$\{BIRTHDAY_REMARK\} \$\{fmt\(row\.birthdayHours\)\} ชม\./);
+  // The word alone, exactly as the printed sheet writes it — one constant, one
+  // spelling, no hours after it on either document.
+  assert.match(src, /return row\.birthdayHours > 0 \? BIRTHDAY_REMARK : '';/);
+  assert.ok(
+    !/BIRTHDAY_REMARK\}? \$?\{?[^}]*ชม\./.test(src),
+    'ไฟล์ต้องไม่มีจำนวนชั่วโมงต่อท้ายคำว่าวันเกิดอีก',
+  );
+
+  // Still driven by the row's own birthday hours, which is what keeps the file
+  // and the paper saying the word about the same rows.
+  assert.match(src, /row\.birthdayHours > 0/);
 });
 
 test('ไฟล์ CSV แยกแผนก ยังไม่รู้เรื่องวันเกิด — และการรวมยอดก็ไม่รู้', () => {

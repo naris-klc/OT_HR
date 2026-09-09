@@ -18,6 +18,10 @@ import { zeroRowReason } from '../lib/otMode.js';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
+/** Source with its comments taken out — a name that is only EXPLAINED there is
+ *  not a caller, and this file now asserts the absence of one. */
+const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 test('an ordinary department explains nothing — its nought is about the month', () => {
   assert.equal(zeroRowReason({ otMode: 'normal' }), '');
   assert.equal(zeroRowReason({}), '');
@@ -42,9 +46,22 @@ test('the sheet carries the field the answer is read from', () => {
   assert.equal([...accounting.matchAll(/'code name nameTh otMode'/g)].length, 3);
 });
 
-test('screen and CSV say it, the printed sheet does not', () => {
+test('the screen says it; neither the CSV nor the printed sheet does', () => {
   assert.match(read('components/AccountingView.jsx'), /zeroRowReason\(row\.department\)/);
-  assert.match(read('app/api/exports/accounting.csv/route.js'), /zeroRowReason\(row\.department\)/);
+
+  // ── IT READ "screen and CSV say it" UNTIL 2026-09-09 ──────────────────────
+  //
+  // On that day HR asked for the file's หมายเหตุ column to carry the word
+  // วันเกิด and nothing else, which took ไม่มี OT — and the department mode
+  // behind it — out of the CSV with the rest of the prose. What the file says
+  // instead is what the paper sheet has always said about such a person: every
+  // hour column on their row is blank.
+  //
+  // The mode is still on the screen this file is exported from, which is where
+  // "why has ผลิต 2 got nothing at all this month" is asked and answered — and
+  // the route's own comments say so, which is why this reads the CODE.
+  assert.doesNotMatch(strip(read('app/api/exports/accounting.csv/route.js')), /zeroRowReason/);
+
   // The paper's หมายเหตุ strip carries only remarks about figures it asserts —
   // it already keeps ไม่มี OT off for that reason, and a department mode is an
   // explanation for the ABSENCE of a figure.
@@ -53,9 +70,8 @@ test('screen and CSV say it, the printed sheet does not', () => {
 
 test('it is said only on a row that has no hours', () => {
   // On a row with hours the mode explains nothing, and a mark on every row of a
-  // เหมารายวัน department is a mark nobody reads.
+  // เหมารายวัน department is a mark nobody reads. One caller left — see above.
   assert.match(read('components/AccountingView.jsx'), /row\.entryCount === 0 && zeroRowReason/);
-  assert.match(read('app/api/exports/accounting.csv/route.js'), /if \(row\.entryCount === 0\) \{/);
 });
 
 test('the department column itself is left alone', () => {

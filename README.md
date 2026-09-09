@@ -3364,25 +3364,31 @@ the remark — no heading, no rules, no tint, empty on every row with nothing to
 explain, and **no change to `ROWS_PER_PAGE`**: it is a cell in an existing row,
 which is the same trick the ไม่ถูกนับ flag uses in the thead margin band.
 
-**The word alone on the paper; the hours where they are summed.** The strip used
-to read “วันเกิด 8.00 ชม.” — HR asked on **2026-08-11** for the hours off it, so
-the printed sheet matches the handwriting it replaces. The split is still a
-SPLIT rather than a new figure, and it is still carried: `birthday_hours` in the
-CSV and the หมายเหตุ sentence beside it, which is the file accounting keys from
-when the 1.50 column covers both a Saturday and a birthday. On screen,
-ตรวจสอบ/ส่งบัญชี still shows *“วันเกิด · 8.00 ชม. อยู่ในช่องวันหยุด”* — that is
-the screen the figure is checked on. `ot15Hours` is unchanged by the split's
+**The word alone on the paper — and since 2026-09-09, the word alone in the file
+too.** The strip used to read “วันเกิด 8.00 ชม.”; HR asked on **2026-08-11** for
+the hours off it, so the printed sheet matches the handwriting it replaces. The
+split is still a SPLIT rather than a new figure: `ot15Hours` is unchanged by its
 existence, nothing sums the two together, and `reconcile()` still balances
-`filed = reported + unaccounted`.
+`filed = reported + unaccounted`. On screen, ตรวจสอบ/ส่งบัญชี still shows
+*“วันเกิด · 8.00 ชม. อยู่ในช่องวันหยุด”* — that is the screen the figure is
+checked on, and since the change below it is the **only** place the number is
+readable.
 
-**In the CSV as `birthday_hours`, appended last.** After หมายเหตุ, never inserted
-— accounting's sheets count columns from the left and a column in the middle
-shifts every one after it with no error anywhere. Blank rather than `0.00` for
-somebody with none, like every other hour column in that file, and subtotalled on
-the รวมแผนก / รวมทั้งหมด lines so the column adds up down the page. ASCII and
-unlocalised for the reason `company_code` is: it is the column their system sums.
-The Thai sentence stays in หมายเหตุ as well — that is the remark the *paper*
-carries, so a person holding both reads the same words on each.
+**It read “In the CSV as `birthday_hours`, appended last” until 2026-09-09.**
+That paragraph described a column ASCII-named for accounting's own spreadsheets,
+blank rather than `0.00`, subtotalled on the รวมแผนก / รวมทั้งหมด lines, with the
+Thai sentence *วันเกิด 8 ชม.* beside it in หมายเหตุ. Both are gone. ฝ่ายบุคคล
+sent the layout they wanted as a picture of the opened file, and its last three
+columns are `รวม 1.5 · รวม 3 · หมายเหตุ`, with one sentence: *ช่องหมายเหตุแสดง
+แค่วันเกิดเท่านั้น*.
+
+So the file now says **วันเกิด, the word alone**, exactly as the paper does — one
+`BIRTHDAY_REMARK`, one spelling, on both documents. **What that costs is a
+question the file used to answer and no longer can:** *of the hours in this ×1.5
+วันหยุด cell, how many are birthday hours?* The column that could be summed and
+pivoted is withdrawn; the remark says only that some of them are. Asked for with
+the old shape in front of the person asking, and the number is still on the
+screen the sheet is closed from.
 
 **Read off the segment, never off the roster.** `birthdayHoursOf()` in
 `lib/accountingRows.js` sums the segments whose `dayReason` is `birthday` — a
@@ -8985,8 +8991,36 @@ still splits correctly instead of filing everybody under one entity.
 screen is ตรวจสอบรายเดือน's table — พนักงาน | แผนก | ×1.5 ปกติ | ×1.5 วันหยุด |
 ×3 | รวม ชม. | หมายเหตุ — because it is read by the same person on the same
 day as that screen, and two review tables with different column sets is how a
-month goes wrong. `/api/exports/accounting.csv` follows the screen column for
-column, in the same order.
+month goes wrong.
+
+**The CSV is a third document, and it stopped being the screen's twin on
+2026-09-09.** It read *“`/api/exports/accounting.csv` follows the screen column
+for column, in the same order”* until that day. The order is still the screen's;
+the columns are not. ฝ่ายบุคคล asked for the layout in a picture of the opened
+file, and the file now ends the way the **paper** does:
+
+```
+บริษัท · company_code · รหัสพนักงาน · ชื่อ-สกุล · แผนก ·
+OT x1.5 วันปกติ · OT x1.5 วันหยุด · OT x3 · รวม 1.5 · รวม 3 · หมายเหตุ
+```
+
+`รวม 1.5` is the two ×1.5 columns **added**, and `รวม 3` repeats the ×3 column —
+the deliberate repetition that makes the file line up with F-HR-027's two rate
+columns, 1.50 and 3.00, which is what a person reconciling the two actually
+compares. Adding the two ×1.5 buckets by hand every month was the step going
+wrong. The split stays to their left because it is what the screen shows and
+what a query about one figure is answered from.
+
+**Three things left the file in that change, and it is worth knowing which.**
+`รวมชั่วโมง` (a consumer counting columns from the left now reads `รวม 1.5`
+there — a *different* number on any row with ×3 hours), `birthday_hours` (see
+§วันเกิด), and every sentence in `หมายเหตุ` but one: that column carries
+**วันเกิด and nothing else** now. `ไม่มี OT` and its department reason went with
+it — the row is blank across every hour column, which is what a blank line on
+the paper has always meant — and so did the company line's *ประจำเดือน … · n
+คนมี OT · n รายการ*. **The one that is not merely tidier: the file no longer
+says anywhere that a figure it prints is short because something is still
+unsigned.** `ค้างอนุมัติ n รายการ` is on the screen and in the queue only.
 
 **ช่องค้นหาพนักงานถูกถอดออกจากหน้านี้แล้ว — 2026-08-27.** This screen carried
 the same ค้นหาชื่อ หรือ รหัสพนักงาน box as ตรวจสอบรายเดือน from 2026-08-26, with a
@@ -9153,6 +9187,19 @@ last, after the grand total. It is built by `unaccountedCsvRow(headers, …)`,
 which sizes the row from the caller's own header array and places values **by
 column name**: a row one cell short of its header opens with every column after
 it shifted, which is a worse outcome than the missing hours it is reporting.
+
+**`accounting.csv` passes `fold: true` since 2026-09-09**, and the reason is a
+failure that placing-by-name does not protect against on its own. That file lost
+both of the columns this line writes into on that day — `รวมชั่วโมง` was replaced
+by the `รวม 1.5` / `รวม 3` pair, which these hours cannot be put into because an
+entry whose employee no longer resolves was never split by any row, and
+`หมายเหตุ` became the วันเกิด column. Placing by name does not throw when a
+column is missing; it writes nothing. The file would have printed a bare
+`ไม่ถูกนับ` beside ten blank cells — the warning with its warning removed, which
+reads as a stray row rather than as hours the sheet could not account for. So
+`fold` puts the label, the hours and the sentence into the one cell that already
+held the label. `departments.csv` still has both columns and still spreads the
+line across them.
 
 **What HR can actually do about it: nothing, in the UI.** `entry.employee` is
 written once, at submission, and no route touches it afterwards — re-pointing an
