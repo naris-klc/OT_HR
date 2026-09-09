@@ -76,3 +76,72 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+
+  # ── อุโมงค์ออกอินเทอร์เน็ต — ต้องสั่งเปิดเองเท่านั้น ────────────────────────
+  #
+  #   docker compose --profile public up -d      # เปิด
+  #   docker compose logs tunnel | grep trycloudflare   # อ่าน URL
+  #   docker compose --profile public down       # ปิดทั้งแอปและอุโมงค์
+  #   docker compose stop tunnel                 # ปิดเฉพาะอุโมงค์ แอปยังเสิร์ฟ LAN
+  #
+  # อยู่ใต้ profile เพราะ `docker compose up -d` เปล่า ๆ **ต้องไม่** เอาระบบ HR
+  # ออกอินเทอร์เน็ตโดยที่ไม่มีใครสั่ง ค่าเริ่มต้นของ deploy คือ LAN เท่านั้น
+  #
+  # 🔴 URL ที่ได้เป็นแบบชั่วคราว (trycloudflare.com) และ **เปลี่ยนทุกครั้งที่
+  # คอนเทนเนอร์นี้รีสตาร์ท** — รวมถึงตอนเครื่องรีบูต บุ๊กมาร์กของทุกคนจะพังพร้อมกัน
+  # แบบเดียวกับที่ docs/network.md บันทึกไว้ว่าเคยเกิดกับ DHCP lease มาแล้ว
+  # ถ้าจะให้อยู่ถาวรต้องเป็น named tunnel ที่ผูกกับบัญชี Cloudflare และชื่อโดเมนจริง
+  # (แบบเดียวกับคอนเทนเนอร์ `cf-tunnel` ของโปรเจคอื่นบนเครื่องนี้ ซึ่งรันด้วย
+  # --token และตั้ง hostname ที่หน้า dashboard) — ดู docs/docker.md
+  #
+  # --protocol http2 ไม่ใช่ของประดับ: เครือข่ายนี้บล็อก QUIC ขาออก (UDP 7844)
+  # ถ้าไม่ใส่ อุโมงค์จะได้ URL มาแต่ต่อ edge ไม่ติด แล้วทุกคำขอจะเจอ error 1033
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: primus-ot-tunnel
+    profiles: ["public"]
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - app
+    command: tunnel --no-autoupdate --protocol http2 --url http://127.0.0.1:3000
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── อุโมงค์ถาวร: named tunnel ผูกกับบัญชี Cloudflare ─────────────────────────
+  #
+  #   docker compose --profile public-named up -d
+  #
+  # **นี่คือตัวที่ควรใช้จริง** ส่วนบริการ `tunnel` ข้างบนเป็นของชั่วคราวสำหรับให้
+  # คนนอกเข้ามาดูเป็นครั้งคราว ใช้ทีละตัวเท่านั้น — สองตัวชี้พอร์ตเดียวกันได้ก็จริง
+  # แต่ไม่มีเหตุผลให้ทำ และทำให้ตอบไม่ได้ว่าคนเข้ามาทางไหน
+  #
+  # ต่างกันตรงไหน: ตัวนี้ไม่ได้ขอ URL แจกฟรีมาใหม่ทุกครั้ง มันเข้าไปเป็น "อุโมงค์
+  # ที่มีชื่อ" ในบัญชี Cloudflare ปลายทางว่าจะออกที่ hostname ไหนตั้งไว้ที่หน้า
+  # dashboard ไม่ใช่ที่ไฟล์นี้ **ชื่อจึงไม่เปลี่ยนตอนรีสตาร์ท ตอนรีบูต หรือตอน
+  # ย้ายเครื่อง** ซึ่งเป็นข้อเดียวที่ทำให้บุ๊กมาร์กของพนักงานปลอดภัยพอจะแจกได้
+  #
+  # ไม่มีบรรทัด command --token เพราะ cloudflared อ่าน TUNNEL_TOKEN จาก
+  # environment เอง โทเคนจึงอยู่ใน .env ที่เดียว ไม่โผล่ใน `docker inspect`
+  # หรือใน `ps` แบบที่ตัว cf-tunnel ของอีกโปรเจคบนเครื่องนี้เป็นอยู่
+  #
+  # --protocol http2 ด้วยเหตุผลเดียวกับข้างบน: เครือข่ายนี้บล็อก QUIC ขาออก
+  tunnel-named:
+    image: cloudflare/cloudflared:latest
+    container_name: primus-ot-tunnel-named
+    profiles: ["public-named"]
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - app
+    env_file:
+      - .env
+    command: tunnel --no-autoupdate --protocol http2 run
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

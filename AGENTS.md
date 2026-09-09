@@ -16,8 +16,20 @@ rewritten by `next dev`; nothing here depends on it.
 ## What serves this app, and why you cannot check a change by looking at :3000
 
 **The production server is `next start` on 127.0.0.1:3000, serving `.next`.**
-There is no other machine — "prod" is this laptop ([README §Status](README.md#status)) —
-so a build is a deploy and the two are the same act.
+This sentence, and everything under it in this section, is about the **Windows
+laptop** — the machine docs/network.md gives an address for.
+
+> **It read "There is no other machine — 'prod' is this laptop" until
+> 2026-09-09.** On that day a second installation went up: a Linux box running
+> the app as a Docker container against its own `mongod`, with a Cloudflare
+> tunnel giving it a public URL. It is documented in
+> [docs/docker.md](docs/docker.md), which is the file that describes THAT
+> machine. **Work out which box you are on before you use anything below.**
+> On the container box a build is not a deploy — it happens inside an image
+> while the running container keeps serving — so the `VERIFY_DIST_DIR` rule
+> below is the laptop's rule, not a universal one.
+
+On the laptop a build is a deploy and the two are the same act.
 
 Three facts about this box that decide how a change gets verified, all
 established on 2026-08-27:
