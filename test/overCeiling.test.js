@@ -334,16 +334,65 @@ test('ปุ่ม อนุมัติเกินเพดาน ไม่เ
   assert.doesNotMatch(queue, /อนุมัติเกินเพดาน/, 'ปุ่มถูกถอดออกจากทุกจอและทุกกล่อง');
   assert.doesNotMatch(queue, /OverrideModal|setOverriding|cap-override/, 'กล่องกับสายไฟของมันไปด้วย');
 
-  // การ์ดที่ตัดสินได้ เหลือสามปุ่มมาตรฐานเท่ากันทุกใบ — กล่องสุดท้ายในสามกล่อง
-  // (อีกสองกล่องคือใบที่ถอนได้ กับใบที่คนอ่านเป็นคนยื่นเอง)
+  /*
+   * การ์ดที่ตัดสินได้ เหลือ **สองปุ่ม** เท่ากันทุกใบ — เดิมสาม
+   *
+   * 2026-09-09: ปุ่ม `รายละเอียด` ถูกถอดออกจากทุกแถว และตัวแถวเองเป็นสิ่งที่กด
+   * เพื่อเปิดป๊อปอัปแทน (ดู `.row-open` และ `setDetail(e)` บน <tr>) ส่วนอีกสอง
+   * ปุ่มเปลี่ยนเป็นไอคอน — คำยังอยู่ใน `.btn-word` ซึ่งถูกซ่อนเฉพาะจอตั้งแต่
+   * 861px ขึ้นไป การ์ดบนมือถือจึงยังอ่านว่า อนุมัติ / ไม่อนุมัติ เป็นตัวหนังสือ
+   *
+   * ที่ยังต้องจริงเหมือนเดิมคือ *ทุกใบมีทางออกชุดเดียวกัน* ซึ่งเป็นหัวใจของเทสต์นี้
+   * ไม่ใช่จำนวนปุ่ม
+   */
   const decide = queue.slice(queue.lastIndexOf('<div className="row-actions">'));
   const cell = decide.slice(0, decide.indexOf('</div>'));
-  assert.equal((cell.match(/<button/g) || []).length, 3, 'ยืนยัน · ไม่อนุมัติ · รายละเอียด');
+  assert.equal((cell.match(/<button/g) || []).length, 2, 'อนุมัติ · ไม่อนุมัติ');
   assert.match(cell, /\{verb\}/);
   assert.match(cell, /ไม่อนุมัติ/);
-  assert.match(cell, /รายละเอียด/);
+  assert.doesNotMatch(cell, /รายละเอียด/, 'ปุ่มรายละเอียดกลับมาอยู่บนแถวอีกแล้ว');
   // และปุ่มยืนยันบนแถวเปิดกล่องเสมอ ไม่เคยยิงตรง — กล่องคือที่ที่เหตุผลถูกขอ
   assert.match(cell, /onClick=\{\(\) => setConfirming\(\[e\]\)\}/);
+});
+
+/**
+ * ── ทางเข้าหน้ารายละเอียดมีทางเดียว และเป็นตัวแถวเอง — 2026-09-09 ────────────
+ *
+ * *เอาปุ่มรายละเอียดออกและให้สามารถคลิกหรือกดที่แถวพนักงานแล้วโชว์เป็นหน้า
+ * รายละเอียดที่เหมือนกับการกดหรือคลิกปุ่ม* — คำขอเมื่อ 2026-09-09
+ *
+ * เหมือนกันจริงเพราะเป็น `setDetail(e)` ตัวเดียวกับที่ปุ่มเคยเรียก ไม่ใช่ทาง
+ * ที่สองที่บังเอิญเปิดกล่องคล้ายกัน
+ *
+ * และตัวกันคือหัวใจ: ในแถวเดียวกันมีทั้งช่องติ๊ก ปุ่มอนุมัติ ปุ่มไม่อนุมัติ และ
+ * ปุ่มถอนใบวันเกิด — ถ้าไม่กัน การกด `ยืนยัน` หนึ่งครั้งจะเปิดป๊อปอัปตามมาด้วย
+ * ทุกครั้ง `closest` ถามจาก element ที่ถูกกด จึงครอบถึง <svg> ที่อยู่ในปุ่มด้วย
+ * ซึ่ง `ev.target.tagName` ทำไม่ได้
+ */
+test('กดที่แถวเปิดรายละเอียด แต่กดที่ปุ่มหรือช่องติ๊กในแถวไม่เปิด', () => {
+  const queue = read('components/ApprovalQueue.jsx');
+  assert.match(queue, /className=\{`row-open\$\{selected\.has\(e\._id\) \? ' picked' : ''\}`\}/);
+  assert.match(queue, /tabIndex=\{0\}/, 'แถวไม่มี tab stop — คีย์บอร์ดเข้าไม่ถึงรายละเอียด');
+  assert.match(
+    queue,
+    /if \(ev\.target\.closest\?\.\('button, input, a, label, select, textarea'\)\) return;/,
+    'ไม่มีตัวกัน — กดปุ่มในแถวแล้วป๊อปอัปจะเด้งตามมาด้วย',
+  );
+  // Enter และ Space เปิดได้เท่ากับเมาส์ และ Space ต้องไม่เลื่อนหน้าจอ
+  assert.match(queue, /if \(ev\.key !== 'Enter' && ev\.key !== ' '\) return;/);
+  assert.match(queue, /ev\.preventDefault\(\);\r?\n\s*setDetail\(e\);/);
+  // ไม่ประกาศตัวเองเป็นปุ่ม — <tr role="button"> ทำให้เซลล์ทั้งสิบเอ็ดหายไปจาก
+  // การอ่านด้วยโปรแกรมช่วยอ่าน ซึ่งแพงกว่าที่ได้มา
+  const bare = strip(queue);
+  const row = bare.slice(bare.indexOf('{shown.map(('), bare.indexOf('<td className="check">'));
+  assert.ok(row.length > 0 && row.length < 1200, 'สไลซ์ของแถวเลื่อนไปแล้ว');
+  assert.doesNotMatch(row, /role="button"/, 'แถวประกาศตัวเป็นปุ่ม ตารางจึงหายไปทั้งตาราง');
+  // และมีสิ่งที่บอกว่ากดได้ ไม่ใช่แถวที่กดได้แบบเงียบ ๆ
+  const css = read('app/styles.css');
+  assert.match(css, /\.queue-table tbody tr\.row-open \{ cursor: pointer; \}/);
+  // วงแหวน focus เป็นของพื้นฐาน แถวขยับแค่ระยะ — สีถูกประกาศซ้ำไม่ได้ ดู
+  // test/pressChrome.test.js
+  assert.match(css, /\.queue-table tbody tr\.row-open:focus-visible \{ outline-offset: -2px; \}/);
 });
 
 test('ตัวมาร์กอยู่ที่เดียว — สองจอเรียกใช้ตัวเดียวกัน ไม่ได้เขียนคนละชุด', () => {

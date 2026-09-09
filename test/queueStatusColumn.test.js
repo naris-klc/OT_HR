@@ -366,8 +366,11 @@ test('เคลียร์คิวแล้ว วัดจากกองข�
  * failure the `isOwnFiling` branch beside it was written to end, and the reason
  * that branch carries a sentence rather than an empty cell.
  *
- * รายละเอียด STAYS, and it is the point of the row: the whole reason this list
- * widened was somebody ringing up to ask where their ใบ had got to.
+ * READING IT IS STILL ONE PRESS, and since 2026-09-09 it is not a button: the
+ * whole ROW opens the pop-up. That is the point of the row — the reason this
+ * list widened was somebody ringing up to ask where their ใบ had got to — so
+ * what is asserted here moved from "this branch draws รายละเอียด" to "every row
+ * this component draws opens it, this one included".
  */
 test('แถวที่ยังไม่ถึงคิว มีประโยคบอกเหตุ และยังเปิดรายละเอียดได้', () => {
   const at = code.indexOf('{!signableHere(e) ? (');
@@ -381,7 +384,20 @@ test('แถวที่ยังไม่ถึงคิว มีประโ�
   // the rows themselves on 2026-09-09 — see `wholeFlow`.)
   assert.ok(branch.includes('{watchingNote(e, stage, user).short}'), 'แถวไม่ได้บอกว่าทำไมไม่มีปุ่ม');
   assert.ok(branch.includes('className="cell-sub own-note"'), 'ประโยคต้องอยู่ในกล่องที่มีความกว้างจำกัด');
-  assert.ok(branch.includes('setDetail(e)'), 'รายละเอียด หายไปจากแถวที่มีไว้ให้อ่าน');
+  /*
+   * และประโยคเดียวกันนั้นเป็นทูลทิปของขีดที่ยืนแทนปุ่ม — เพราะบนจอตั้งแต่ 861px
+   * ขึ้นไป `.own-note` ถูกซ่อน (คอลัมน์เหลือ 96px) เหลือ `WatchMark` ให้อ่าน
+   * ด้วยเมาส์และด้วยโปรแกรมช่วยอ่าน ส่วนการ์ดบนมือถือได้ประโยคเต็มเหมือนเดิม
+   */
+  assert.ok(
+    branch.includes('<WatchMark note={watchingNote(e, stage, user).short} />'),
+    'จอตั้งโต๊ะไม่เหลืออะไรเลยในเซลล์ที่ไม่มีปุ่ม',
+  );
+  assert.match(css, /\.queue-table td\.act-col \.btn-word,\s*\r?\n\s*\.queue-table td\.act-col \.own-note \{ display: none; \}/);
+  assert.match(css, /\.queue-table td\.act-col \.act-none \{ display: none; \}/, 'ขีดกับประโยคขึ้นพร้อมกันบนการ์ด');
+  // เปิดรายละเอียดได้ — จากตัวแถว ไม่ใช่จากปุ่มในเซลล์นี้อีกต่อไป
+  assert.ok(!branch.includes('setDetail(e)'), 'ปุ่มรายละเอียดกลับมาอยู่ในเซลล์ ทั้งที่แถวเปิดเองได้แล้ว');
+  assert.match(code, /onClick=\{\(ev\) => \{[\s\S]{0,200}?setDetail\(e\);/, 'แถวไม่เปิดรายละเอียดแล้ว');
   assert.ok(!branch.includes('setConfirming'), 'ยังเสนอปุ่มยืนยันบนใบที่เซิร์ฟเวอร์จะตอบ 403');
   assert.ok(!branch.includes('setRejecting'), 'ยังเสนอปุ่มไม่อนุมัติบนใบที่เซิร์ฟเวอร์จะตอบ 403');
 });
@@ -456,6 +472,18 @@ test('พื้นของความกว้างเท่ากับผ�
     assert.ok(m, `ไม่พบความกว้างของ ${selector}`);
     return Number(m[1]);
   };
+  /*
+   * TWO OF THE ELEVEN ARE READ FROM A `.queue-table`-SCOPED RULE, and that is
+   * the 2026-09-09 change stated where it can be checked. `cap-col` and
+   * `act-col` are ตรวจสอบประจำเดือน's columns as well as this one's, and the
+   * bare `th.cap-col` / `th.act-col` rules are what size THAT table — 224 and
+   * 258, the widths this queue used to share. Narrowing them here for the
+   * queue's sake would have taken 262px off a screen nobody asked about, so the
+   * queue took an override instead and this sum has to follow it.
+   *
+   * If a later change unscopes either one, this test finds a rule at the wrong
+   * width rather than quietly summing the other table's geometry.
+   */
   const eleven = width('th\\.check, td\\.check')       // 42
     + width('th\\.who-col')                            // 168
     + width('th\\.when-col')                           // 136 — the tag's column
@@ -463,9 +491,9 @@ test('พื้นของความกว้างเท่ากับผ�
     + width('th\\.rate-col')                           // 52  ×1.5 ปกติ
     + width('th\\.rate-col\\.wide') * 2                // 58  ×1.5 / ×3 วันหยุด
     + width('th\\.rate-col')                           // 52  รวม, on `.total-col`
-    + width('th\\.cap-col')                            // 224
+    + width('\\.queue-table th\\.cap-col')             // 124 — 224 on .hr-table
     + width('th\\.why-col')                            // 150
-    + width('th\\.act-col');                           // 258
+    + width('\\.queue-table th\\.act-col');            // 96  — 258 on .hr-table
 
   assert.equal(Number(floor[1]), eleven, 'พื้นความกว้างไม่เท่ากับผลรวมของสิบเอ็ดคอลัมน์');
   // And สถานะ is outside it — the whole point of the sum.

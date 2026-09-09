@@ -152,7 +152,13 @@ test('the ✕ is reachable without a pointer', () => {
  * top. A direction that names the wrong end of the screen is worse than none.
  */
 test('a ticked card does not send anybody to where the bar used to be', () => {
-  has(jsx, '✓ เลือกอยู่');
+  /* The tick and the word are two spans since 2026-09-09: `.btn-word` is what
+     the 861px block hides on this cell, so a desktop row shows "✓" in a 96px
+     column and the phone card — which has the width and no heading row to lean
+     on — still reads "✓ เลือกอยู่". Same two characters and the same word, in
+     the order they were always in. */
+  has(jsx, '<span aria-hidden="true">✓</span>');
+  has(jsx, "<span className=\"btn-word\">{' เลือกอยู่'}</span>");
   const code = jsx.replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!code.includes('ใช้แถบด้านล่าง'), 'การ์ดยังชี้ไปที่แถบด้านล่างที่ย้ายไปแล้ว');
 });

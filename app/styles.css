@@ -8147,16 +8147,69 @@ tfoot tr.grand td {
    block is making. Every width is measured — the longest name on the roster,
    the widest heading, the compound figure — not estimated.
 
-   THE FLOOR IS THE SUM OF THE ELEVEN COLUMNS A หัวหน้า SEES, and it moved on
-   2026-09-09: it read 1262px from the day it was written until `th.when-col`
-   went from 92 to 136 to hold ขอย้อนหลัง … วัน. 42 + 168 + 136 + 108 + 52 + 58
-   + 58 + 52 + 224 + 150 + 258 = 1306. ฝ่ายบุคคล's twelfth column (สถานะ, 84px)
-   still is NOT in the figure — with `fixed` and every column given a width,
-   their table simply comes out wider than the floor and scrolls, and putting it
-   in here would push the manager's table sideways for a column they do not
-   have. That reasoning is unchanged; only the third line in the date cell
-   is new. */
-.queue-table { table-layout: fixed; min-width: 1306px; }
+   THE FLOOR IS THE SUM OF THE ELEVEN COLUMNS A หัวหน้า SEES, and it has moved
+   twice in one day. It read "1262px" from the day it was written until
+   `th.when-col` went from 92 to 136 to hold ขอย้อนหลัง … วัน, and "1306px" for
+   the few hours after that. 42 + 168 + 136 + 108 + 52 + 58 + 58 + 52 + 112 +
+   150 + 96 = 1032.
+
+   THE 274px CAME OFF THE LAST TWO COLUMNS AND OUT OF NO OTHER, which is the
+   part worth reading. Asked for on 2026-09-09, in one breath and for one
+   reason: *เอาเพดานนับ … ออก และลดขนาดคอลัมน์สะสม / เพดาน · เอาปุ่มรายละเอียด
+   ออก … ปุ่มอนุมัติหรือไม่อนุมัติเปลี่ยนเป็นไอคอนก็ได้เพื่อให้มันไม่ต้องมี
+   สก็อลบาร์เลื่อนๆ*.
+
+     · `cap-col` 224 → 112. The 224 was never the figure's width — measured in
+       the built app the widest figure this cell can hold is 84px, 108 with its
+       gutters — it was the width of the SENTENCE under it, and the sentence is
+       gone (see `CapUsage`).
+     · `act-col` 258 → 96. Three labelled buttons became two 32px icons; the
+       widest of the three, รายละเอียด, went altogether, because the row itself
+       now opens the pop-up.
+
+   Nothing above them was touched. Each of those widths is measured against real
+   content — the longest name on the roster, the widest heading, the tag under
+   the date — and taking pixels back from any of them re-breaks something this
+   block was written to stop. The two that gave were the two that were paying
+   for something they no longer hold.
+
+   AND THAT IS THE END OF THE SIDEWAYS SCROLL ON AN ORDINARY SCREEN, which
+   every note in this block has been apologising for since it was written.
+   Measured in the built app on 2026-09-09, both queues, both widths:
+
+     1920 — card 1178. หัวหน้า 1032 (146 clear) · ฝ่ายบุคคล 1116 (62 clear).
+     1440 — card 1124. หัวหน้า 1032 (92 clear)  · ฝ่ายบุคคล 1116 (8 clear).
+
+   ฝ่ายบุคคล AT 1440 IS THE TIGHT ONE and it is what the ceiling column's last
+   12px were bought for: at 124 their table came out 1128 against a 1124 card
+   and scrolled by four pixels. Below 1440 it scrolls again — twelve columns do
+   not fit a laptop — and that is what the pinned action column below is still
+   here for.
+
+   ฝ่ายบุคคล's twelfth column (สถานะ, 84px) still is NOT in the figure — with
+   `fixed` and every column given a width, their table simply comes out wider
+   than the floor, and putting it in here would push the manager's table
+   sideways for a column they do not have. That reasoning is unchanged. */
+.queue-table { table-layout: fixed; min-width: 1032px; }
+
+/* ── THE ROW IS THE WAY INTO รายละเอียด — 2026-09-09 ──────────────────────
+   The button that opened the pop-up was on every row, was the widest of the
+   three controls, and was the only one on the five-in-nine rows that carry no
+   decision. It is gone and the <tr> carries a `tabIndex` and a press handler
+   instead (see `ApprovalQueue`), so this rule is the only thing left saying
+   the row can be pressed.
+
+   `cursor` on the row, NOT on the cells: a press on a button inside it is
+   guarded out in the handler, and the buttons carry their own pointer anyway.
+
+   THE RING IS THE APP'S OWN AND ONLY THE OFFSET IS RESTATED. `:focus-visible`
+   at the top of this file already draws 2px of `--green`; a row that named the
+   colour again would be the ninth control to carry a copy of it, which is the
+   whole subject of test/pressChrome.js. What has to change is where it sits: a
+   ring OUTSIDE a `<tr>` is clipped by the rows above and below and comes out as
+   two hairlines, which reads as a rendering fault rather than as focus. */
+.queue-table tbody tr.row-open { cursor: pointer; }
+.queue-table tbody tr.row-open:focus-visible { outline-offset: -2px; }
 
 /* A row is as tall as its tallest cell, so these are what kept every row two
    lines taller than its content. */
@@ -8195,16 +8248,48 @@ th.when-col { width: 136px; }
 /* "17:00–21:00" is 108, and ไม่พักเที่ยง under it is 79. */
 th.span-col { width: 108px; }
 
-/* สะสมทั้งเดือน carries a compound figure ("16.5 / 40 ชม.", 137px), a breach
-   line (162px) and, where a department sets a weekly ceiling, a date range
-   (190px). None of the three may break, so the column is the widest of them.
+/* ── 124px, AND IT WAS 224 UNTIL 2026-09-09 ──────────────────────────────
+   It read: *"สะสมทั้งเดือน carries a compound figure ("16.5 / 40 ชม.", 137px),
+   a breach line (162px) and, where a department sets a weekly ceiling, a date
+   range (190px). None of the three may break, so the column is the widest of
+   them."* Two of those three are already history — the weekly block went on
+   2026-08-13 — and the third, the breach line, is now allowed to wrap.
 
-   The qualifier after the figure is NOT in that budget: "(อนุมัติแล้วเท่านั้น)"
-   is 106px more, and pinning the whole headline on one line would have made
-   this column 283px — wider than any other in the table, to repeat on forty
-   rows a label that describes the column. It drops to the second line instead,
-   at every width, so the figure stays whole and the rows stay level. */
+   WHAT THE COLUMN IS SIZED TO NOW IS THE FIGURE, which is the only thing in it
+   that may not break. MEASURED IN THE BUILT APP at 1440 on 2026-09-09, in the
+   cell's own 14px bold IBM Plex Mono: "16.5 / 40" is 75.6px, "16.5 / —" is
+   67.2, and the widest a month can be — "125.5 / 40" — is 84.0. Plus `td`'s two
+   12px gutters that is 108, and 112 is that rounded to the 4px this block is
+   measured on. The figure fits on one line at every value the cell can hold.
+
+   THE OLD 137px FIGURE IN THE PARAGRAPH ABOVE INCLUDED " ชม.", which this cell
+   has not printed since the two screens were settled on `capPair`. Measuring it
+   again rather than subtracting from a stale number is what took this column
+   from 124 to 112 — and those 12px are what put ฝ่ายบุคคล's twelve columns
+   inside the card at 1440 instead of 4px outside it.
+
+   THE HEADING IS THE ONE THING THAT NOW WRAPS, deliberately: "สะสม / เพดาน"
+   measures 93.4px in its own face, so over 112 it breaks at its slash into two
+   lines — and this row of headings is already two lines deep for the three rate
+   columns beside it (see `RateHead`), so it costs the table no height at all.
+   `th`'s own `nowrap` would instead run the label out of its cell and under the
+   next one.
+
+   AND THE BREACH LINE WRAPS WITH IT. "อนุมัติครบจะเกิน 11 ชม." is prose rather
+   than a figure, so at this width it takes two lines on the rows that have one —
+   which is a two-line warning, still red, still on the row. Held to one line it
+   would be a warning printed underneath the description in the next column.
+
+   ── SCOPED TO `.queue-table`, AND THAT IS NOT TIDINESS ────────────────────
+   `cap-col` is ตรวจสอบประจำเดือน's column too (`.hr-table`), and that screen
+   STILL PRINTS THE SENTENCE — it is the one this queue stopped printing, in the
+   same 162px of nowrap prose, from the same `pendingCapNote`. The bare
+   `th.cap-col` therefore keeps its 224 for the table that still needs it, and
+   the queue takes an override. Written the other way round — one bare rule
+   narrowed to 124 — this change would have broken a screen nobody asked about
+   by squeezing a line that is still there. */
 th.cap-col { width: 224px; }
+.queue-table th.cap-col { width: 112px; white-space: normal; }
 
 /* ── AND ON THE QUEUE IT READS FROM THE LEFT, WHICH IS A BUG FIX ──────────
    คิวรออนุมัติ is the only screen that gives this cell `num`, so it was the
@@ -8405,8 +8490,26 @@ thead th.check { vertical-align: middle; }
 
 /* Three buttons that must not break mid-label, measured as a set: 58 + 73 + 91,
    two 6px gaps, and the cell's own padding. It was 246 and the third button was
-   clipped by twelve pixels — a control half off the edge of a row. */
+   clipped by twelve pixels — a control half off the edge of a row.
+
+   THIS IS ตรวจสอบประจำเดือน'S COLUMN NOW AND NOT คิวรออนุมัติ'S. The queue's own
+   is the rule under it; the measurement above was taken on the queue's three
+   buttons, which is why it reads as it does, and `.hr-table` has been sized by
+   it all along. Narrowing THIS rule for the queue's sake would have taken 162px
+   off a screen that never asked. */
 th.act-col { width: 258px; }
+
+/* ── 96px ON THE QUEUE, AND IT WAS THE 258 ABOVE UNTIL 2026-09-09 ───────────
+   TWO SQUARES AND ONE GAP: 32 + 6 + 32 is 70, plus `td`'s two 12px gutters is
+   94, rounded to 96. The 91px button was รายละเอียด, which is gone entirely —
+   the row itself opens the pop-up — and the other two dropped their labels for
+   a tick and a cross (`.act-icon` below, `.btn-word` for where the words went).
+
+   IT IS THE WIDTH OF THE WIDEST STATE, not of the commonest one. A row with a
+   decision holds two squares; a row without one holds a single `.act-none`
+   dash, and the ถอนใบวันเกิด branch holds one square. Sizing to the two is
+   what keeps the buttons on the same left edge down the column. */
+.queue-table th.act-col { width: 96px; }
 
 /* AND IT STAYS ON SCREEN.
 
@@ -8427,6 +8530,12 @@ th.act-col { width: 258px; }
    (.row-actions in the breakpoint below) and a 258px column pinned to a 375px
    screen would be most of it.
 
+   AND SINCE 2026-09-09 IT IS A BELT ON A TABLE THAT NO LONGER OVERFLOWS at the
+   width it was written for — the floor is 1044 against a 1178 card. It stays
+   because a narrow window, a wide zoom or a twelfth column can each bring the
+   overflow back, and when they do this is the difference between pushing the
+   table sideways to reach ยืนยัน and not having to.
+
    The background has to be opaque or the scrolling rows show through it, and it
    has to answer to the row's own state — hence the three lines repeating the
    hover and selection colours. `th` already carries a background of its own. */
@@ -8438,6 +8547,51 @@ th.act-col { width: 258px; }
   .queue-table tbody tr:hover td.act-col { background: var(--green-wash); }
   .queue-table tbody tr.picked td.act-col { background: var(--green-tint); }
   .queue-table tbody tr.picked:hover td.act-col { background: var(--green-bg); }
+
+  /* ── THE WORDS, FOLDED AWAY — 2026-09-09 ──────────────────────────────────
+     `.btn-word` is the label inside each of the queue's action buttons and
+     `.own-note` is the sentence that stands where a row has no buttons. Both
+     are in the DOM on every row; this is the half of the trade that hides them.
+
+     WHY HIDDEN AND NOT DELETED. Below 860px the row is a card, the action cell
+     is a full-width strip under a thumb, and there is no heading row anywhere
+     on the screen to say what a bare tick means. The card gets the words and
+     the desktop gets the column back; one branch in the JSX, two rules here.
+
+     The desktop is not left with a picture and nothing else: every one of these
+     buttons carries `title` and an `aria-label` naming the employee, and
+     `.act-none` below carries the whole sentence as its tooltip. */
+  .queue-table td.act-col .btn-word,
+  .queue-table td.act-col .own-note { display: none; }
+}
+
+/* ── A DECISION AS A 32px SQUARE ────────────────────────────────────────────
+   `.btn.sm` is 13px type in 9px 13px of padding — a box sized by a label. With
+   the label folded away it would collapse to the width of a 15px icon plus its
+   gutters, and the two buttons would be two different sizes on the two rows
+   where only one of them is drawn (ถอนใบวันเกิด).
+
+   So the square is stated: 32 × 32, which is `.btn.sm`'s own height to within a
+   pixel, so a card that shows the words and a row that shows the icon are the
+   same control at the same weight. `padding: 0` because a fixed box with
+   padding inside it is two measurements arguing.
+
+   NOT 44px. That is the phone's tap target and it is set in the 860px block
+   below, where these are full-width buttons with their words back. A mouse
+   pointer does not need 44px and a queue of forty rows cannot spare it. */
+.queue-table .act-icon { width: 32px; height: 32px; padding: 0; flex: none; }
+.queue-table .act-icon .btn-icon { width: 16px; height: 16px; }
+
+/* The dash where a decision cannot be offered — see `WatchMark`. Sized and
+   centred like the buttons it stands in for, so the column does not go ragged
+   down a queue where five rows in nine carry one.
+
+   `help` rather than `default`: the whole of this element is its tooltip, and
+   the cursor is the only thing that says so before the pointer has rested. */
+.act-none {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; flex: none;
+  color: var(--muted-2); cursor: help;
 }
 
 /* Prose, and the only cell in the row that is meant to wrap. Given a width
@@ -11298,9 +11452,15 @@ table.mini tbody tr:hover { background: none; }
     content: 'สะสม / เพดาน';
     font: 600 11px/1.5 var(--mono); letter-spacing: .05em; color: var(--muted-2);
   }
-  /* "เพดานนับ 38.5 / 40 · รวมใบที่รออนุมัติ" — a sentence with two figures in
-     it, on its own line and a step quieter than the figure it qualifies. At the
-     desktop's 11.5px it was crowding the line above on a narrow card. */
+  /* The breach line, on its own line under the figure rather than beside it.
+
+     `.cap-sub` is in the selector and NOTHING IN THIS CELL WEARS IT ANY MORE —
+     "เพดานนับ 38.5 / 40 · รวมใบที่รออนุมัติ" was the class's one appearance
+     here and it went on 2026-09-09 (see `CapUsage`). It is kept in the pair
+     because the class is shared with ตรวจสอบประจำเดือน, which still prints that
+     sentence, and because a queue row that ever gets a second qualifying line
+     should land on the same line-break rule the first one had rather than on
+     whatever the flex row does with it. */
   .queue-table td.cap-col .cap-sub,
   .queue-table td.cap-col .cell-sub { flex: 1 1 100%; }
   .queue-table td.cap-col .cap-sub { font-size: 11px; color: var(--muted-2); }
@@ -11310,15 +11470,33 @@ table.mini tbody tr:hover { background: none; }
   .queue-table td.why-col { grid-area: why; margin-top: 6px; font: 400 13px/1.5 var(--sans); }
 
   /* The two decisions, at the foot of the card where the thumb is. `1 1 40%`
-     rather than `auto` so อนุมัติ and ไม่อนุมัติ take a half each and
-     รายละเอียด drops to its own full-width line beneath them — the two
-     consequential presses are never side by side with a third that only looks. */
+     rather than `auto` so อนุมัติ and ไม่อนุมัติ take a half each.
+
+     It read "…and รายละเอียด drops to its own full-width line beneath them —
+     the two consequential presses are never side by side with a third that only
+     looks" until 2026-09-09. There is no third button now: the card ITSELF
+     opens the pop-up, which is the same press with a much bigger target, and
+     the row of buttons is exactly the two that decide. */
   .queue-table td.act-col {
     grid-area: act; margin-top: 10px; padding-top: 10px;
     border-top: 1px solid var(--line-softer);
   }
   .queue-table td.act-col .row-actions { gap: 8px; }
   .queue-table td.act-col .row-actions .btn { flex: 1 1 40%; min-height: 44px; }
+  /* ── AND THEY ARE LABELLED BUTTONS AGAIN, NOT ICONS ────────────────────────
+     `.act-icon` pins a 32px square on the desktop, where the label is folded
+     away and the column is 96px wide. Here the label is back (`.btn-word` is
+     only hidden above 861px) and the button is a half-width tap target, so the
+     square has to be undone in all three of its parts — the two dimensions and
+     the padding that was zeroed to state them.
+
+     `padding` is `.btn.sm`'s own, so a card's button is the box every other
+     small button in the app is. */
+  .queue-table td.act-col .act-icon {
+    width: auto; height: auto; padding: 9px 13px;
+  }
+  /* And the dash goes: the sentence it stood in for is on the card in full. */
+  .queue-table td.act-col .act-none { display: none; }
   /* The two are already the same box — 44px, and `box-sizing: border-box` at
      the top of this file means the outlined one's border is inside that height
      rather than added to it. What made อนุมัติ look the taller of the pair is

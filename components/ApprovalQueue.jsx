@@ -9,7 +9,7 @@ import {
 } from '@/lib/api.js';
 import {
   capPair, describeBreaches, overCapLine,
-  pendingCapNote, needsOverCeilingReason, overCeilingApproveHead,
+  needsOverCeilingReason, overCeilingApproveHead,
   OVER_CEILING_REASON_REQUIRED,
 } from '@/lib/caps.js';
 import {
@@ -26,6 +26,7 @@ import {
   RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, StatusChip,
   TeamMark, editsOf,
 } from './common.jsx';
+import Icon from './icons.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
 import WithdrawalRequests from './WithdrawalRequests.jsx';
 import { PickTime } from './PickTime.jsx';
@@ -1545,7 +1546,57 @@ export default function ApprovalQueue({
             </thead>
             <tbody>
               {shown.map((e) => (
-                <tr key={e._id} className={selected.has(e._id) ? 'picked' : ''}>
+                /**
+                 * ── THE ROW IS THE BUTTON — 2026-09-09 ─────────────────────
+                 *
+                 * Asked for in those words: *เอาปุ่มรายละเอียดออกและให้สามารถ
+                 * คลิกหรือกดที่แถวพนักงานแล้วโชว์เป็นหน้ารายละเอียดที่เหมือนกับ
+                 * การกดหรือคลิกปุ่ม*. It is the same `setDetail(e)` the button
+                 * called, so there is one way in and it cannot drift from the
+                 * one the pop-up was built for.
+                 *
+                 * WHAT IT BUYS IS THE COLUMN THE BUTTON STOOD IN. รายละเอียด
+                 * was the widest of the three controls (91px of the 258 this
+                 * cell was measured for) and it was on EVERY row — including
+                 * the five-in-nine that carry a sentence instead of a decision,
+                 * where it was the only button at all. Gone, and with the other
+                 * two down to icons, the action column is 96px and the table's
+                 * floor drops 1306 → 1044: the sideways scroll every note in
+                 * this file has been apologising for since it was written.
+                 *
+                 * IT IS NOT A `role="button"`. A <tr> that claims to be a
+                 * button stops being a row to a screen reader, and the eleven
+                 * cells in it stop being cells — the price of an affordance
+                 * paid by the readers who need the affordance most. What it
+                 * gets instead is what a link-shaped row gets everywhere else
+                 * in this app: a tab stop, Enter and Space, a title, and the
+                 * pointer + `.row-open` hover that says it is pressable.
+                 *
+                 * THE GUARD IS THE POINT OF THE HANDLER. A tick-box, the two
+                 * decision buttons and ถอนใบวันเกิด all live inside the row,
+                 * and every one of them would otherwise open the pop-up on its
+                 * way to doing its own job — a ยืนยัน that also opens a sheet
+                 * is a ยืนยัน somebody presses twice. `closest` asks the
+                 * pressed element, so a press on the <svg> INSIDE a button is
+                 * caught too, which a check on `ev.target.tagName` is not.
+                 */
+                <tr
+                  key={e._id}
+                  className={`row-open${selected.has(e._id) ? ' picked' : ''}`}
+                  tabIndex={0}
+                  title="กดที่แถวเพื่อดูรายละเอียด"
+                  onClick={(ev) => {
+                    if (ev.target.closest?.('button, input, a, label, select, textarea')) return;
+                    setDetail(e);
+                  }}
+                  onKeyDown={(ev) => {
+                    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                    if (ev.target !== ev.currentTarget) return;
+                    // Space scrolls the page when it is not claimed.
+                    ev.preventDefault();
+                    setDetail(e);
+                  }}
+                >
                   <td className="check">
                     {/* Not tickable when this reviewer cannot decide it: a batch
                         of three that fails on one row is three presses to work
@@ -1736,30 +1787,29 @@ export default function ApprovalQueue({
                         A รอหัวหน้า row on ฝ่ายบุคคล's queue is here to be
                         watched: `approvalPermission` gives them nothing at that
                         step, so ยืนยัน and ไม่อนุมัติ would both be a 403 and
-                        the row gets the sentence saying so instead. รายละเอียด
-                        stays, and it is the point of the row — the whole reason
-                        this list widened was somebody ringing up to ask where
-                        their ใบ had got to. */}
+                        the row gets the sentence saying so instead. Reading it
+                        is still one press — the whole ROW opens the pop-up
+                        since 2026-09-09 — and that is the point of the row: the
+                        reason this list widened was somebody ringing up to ask
+                        where their ใบ had got to. */}
                     {!signableHere(e) ? (
                       <div className="row-actions">
-                        {/* SHORT, because the chip in the สถานะ column has
-                            already said which step this is and the cell is
-                            190px wide. What is left for it to say is the thing
-                            the chip does not: why there are no buttons here.
-                            The whole sentence is in the รายละเอียด pop-up,
-                            which is one press away and is where somebody who
-                            wants the detail is going anyway.
-
-                            THE WORDS COME FROM `watchingNote`, which the pop-up
+                        {/* THE WORDS COME FROM `watchingNote`, which the pop-up
                             reads too — three different reasons a row can be
                             here to be read, and one of them is the opposite
-                            instruction to another. */}
+                            instruction to another.
+
+                            ON A PHONE IT IS THE SENTENCE; ON A DESKTOP IT IS
+                            THE TOOLTIP ON `WatchMark`. Both are rendered, and
+                            the 861px block hides whichever does not belong —
+                            see `.queue-table td.act-col .own-note`. The column
+                            is 96px now, which is a place for a mark and not for
+                            a sentence, and the card below 860px is where a
+                            sentence has always had the width to be read. */}
                         <span className="cell-sub own-note">
                           {watchingNote(e, stage, user).short}
                         </span>
-                        <button className="btn ghost sm" onClick={() => setDetail(e)}>
-                          รายละเอียด
-                        </button>
+                        <WatchMark note={watchingNote(e, stage, user).short} />
                       </div>
                     ) : !isOwnFiling(e, user) && signedManagerStep(e, user) ? (
                       <div className="row-actions">
@@ -1767,9 +1817,7 @@ export default function ApprovalQueue({
                           คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว
                           {' — '}ใบหนึ่งต้องผ่านผู้เซ็นสองคน ให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ
                         </span>
-                        <button className="btn ghost sm" onClick={() => setDetail(e)}>
-                          รายละเอียด
-                        </button>
+                        <WatchMark note="คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว — ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ" />
                       </div>
                     ) : isOwnFiling(e, user) ? (
                       <div className="row-actions">
@@ -1783,19 +1831,24 @@ export default function ApprovalQueue({
                             ? ' — ถอนใบได้ หรือให้ผู้ดูแลระบบยืนยันแทน'
                             : ' — ต้องให้คนอื่นเป็นผู้อนุมัติ'}
                         </span>
-                        {isUntouchedSystemFiling(e) && (
+                        {/* THE ONE ACTION IN THIS BRANCH THAT WORKS, so it keeps
+                            a real button — as an icon on the desktop and with
+                            its word back on the card, the same `.btn-word`
+                            trade ยืนยัน and ไม่อนุมัติ make below. */}
+                        {isUntouchedSystemFiling(e) ? (
                           <button
-                            className="btn ghost sm"
+                            className="btn ghost sm with-icon act-icon"
                             disabled={busy}
                             onClick={() => voidEntry(e)}
+                            aria-label={`ถอนใบวันเกิดของ ${e.employee?.name}`}
                             title="ถอนใบที่ระบบสร้าง — ชั่วโมงนี้จะไม่ถูกนับที่ใด และหัวหน้าแผนกยังบันทึกแทนใหม่ได้"
                           >
-                            ถอนใบวันเกิด
+                            <Icon name="trash" className="btn-icon" />
+                            <span className="btn-word">ถอนใบวันเกิด</span>
                           </button>
+                        ) : (
+                          <WatchMark note="คุณเป็นผู้บันทึกรายการนี้ — ต้องให้คนอื่นเป็นผู้อนุมัติ" />
                         )}
-                        <button className="btn ghost sm" onClick={() => setDetail(e)}>
-                          รายละเอียด
-                        </button>
                       </div>
                     ) : (
                       <div className="row-actions">
@@ -1810,14 +1863,15 @@ export default function ApprovalQueue({
 
                             The buttons are replaced rather than merely hidden, so
                             a card that loses its actions says where they went.
-                            รายละเอียด stays — reading a row is not deciding it,
-                            and it is how somebody checks a row before confirming
-                            the pile — and since 2026-09-02 it is the only
-                            thing left beside the tick, because อนุมัติเกินเพดาน
-                            was withdrawn from every card and every dialog. A
-                            row over its ceiling is signed with the same ยืนยัน
-                            as every other row; the sentence it costs is
-                            collected by the dialog that button opens. */}
+                            READING the row is not deciding it, and since
+                            2026-09-09 that no longer costs a button: pressing
+                            anywhere on the row opens the pop-up, ticked or not,
+                            which is how somebody checks a row before confirming
+                            the pile. อนุมัติเกินเพดาน went from every card and
+                            every dialog on 2026-09-02, so a row over its ceiling
+                            is signed with the same ยืนยัน as every other row and
+                            the sentence it costs is collected by the dialog that
+                            button opens. */}
                         {/* It read "✓ เลือกไว้แล้ว · ใช้แถบด้านล่าง" until the bar
                             moved to the top of the list, at which point the card
                             was pointing at a place with nothing in it. The
@@ -1826,24 +1880,66 @@ export default function ApprovalQueue({
                             thing on it that could act on a selection, so naming
                             where it is says less than the tick already does. */}
                         {selected.has(e._id) ? (
-                          <span className="cell-sub picked-note">✓ เลือกอยู่</span>
+                          <span className="cell-sub picked-note">
+                            <span aria-hidden="true">✓</span>
+                            <span className="btn-word">{' เลือกอยู่'}</span>
+                          </span>
                         ) : (
+                          /**
+                           * ── TWO ICONS, AND THE WORD BEHIND EACH OF THEM ────
+                           *
+                           * Asked for on 2026-09-09, and the reason given was
+                           * the sideways scroll: *ปุ่มอนุมัติหรือไม่อนุมัติ
+                           * เปลี่ยนเป็นไอคอนก็ได้เพื่อให้มันไม่ต้องมีสก็อลบาร์
+                           * เลื่อนๆ*. ยืนยัน (58px) + ไม่อนุมัติ (73) +
+                           * รายละเอียด (91) with two gaps was the 258px column;
+                           * two 32px squares and one gap is 96, and that plus
+                           * the ceiling column's 100 is the whole of the 262
+                           * this table's floor came down by.
+                           *
+                           * THE LABEL IS NOT DELETED, IT IS FOLDED. `.btn-word`
+                           * is in the DOM on every one of these buttons and the
+                           * 861px block hides it — so the phone card, where the
+                           * action row is two full-width targets under a thumb
+                           * and there is no heading anywhere to name them,
+                           * still reads อนุมัติ and ไม่อนุมัติ in words.
+                           *
+                           * A TICK AND A CROSS, `stroke` like every other icon
+                           * in this app, and NOT the circled `check` the
+                           * sidebar uses: a ring inside a 32px square button
+                           * reads as a second border. The colours are the same
+                           * two the buttons already were — filled green and a
+                           * red-outlined ghost — so nothing about which is
+                           * which is now carried by the glyph alone.
+                           *
+                           * `aria-label` names the EMPLOYEE, because an icon
+                           * button read out of a table row is otherwise forty
+                           * identical "อนุมัติ"s, and `title` is what a mouse
+                           * gets. The row's own press guard skips both.
+                           */
                           <>
-                            <button className="btn sm" disabled={busy} onClick={() => setConfirming([e])}>
-                              {verb}
+                            <button
+                              className="btn sm with-icon act-icon"
+                              disabled={busy}
+                              onClick={() => setConfirming([e])}
+                              aria-label={`${verb} — ${e.employee?.name}`}
+                              title={verb}
+                            >
+                              <Icon name="tick" className="btn-icon" />
+                              <span className="btn-word">{verb}</span>
                             </button>
                             <button
-                              className="btn ghost danger sm"
+                              className="btn ghost danger sm with-icon act-icon"
                               disabled={busy}
                               onClick={() => setRejecting([e])}
+                              aria-label={`ไม่อนุมัติ — ${e.employee?.name}`}
+                              title="ไม่อนุมัติ"
                             >
-                              ไม่อนุมัติ
+                              <Icon name="cross" className="btn-icon" />
+                              <span className="btn-word">ไม่อนุมัติ</span>
                             </button>
                           </>
                         )}
-                        <button className="btn ghost sm" onClick={() => setDetail(e)}>
-                          รายละเอียด
-                        </button>
                       </div>
                     )}
                   </td>
@@ -3054,6 +3150,34 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
 }
 
 // ── small parts ─────────────────────────────────────────────────────────────
+
+/**
+ * WHAT STANDS IN A 96px ACTION CELL WHERE A DECISION CANNOT BE OFFERED.
+ *
+ * Five rows in nine on ฝ่ายบุคคล's queue carry no buttons, and the reason is
+ * never "nothing here" — it is one of four sentences (`watchingNote`, plus the
+ * two written out at their branches) saying who has to act instead. A cell that
+ * simply went blank would be the failure those sentences exist to end.
+ *
+ * THE SENTENCE IS STILL RENDERED BESIDE THIS, in `.own-note`, and the two never
+ * appear together: above 861px the sentence is hidden and this mark is shown;
+ * on the phone card the card has the width, so the sentence is shown and this
+ * is hidden. One branch in the JSX, one rule in the stylesheet, no prop.
+ *
+ * A DASH RATHER THAN A LOCK OR A BAN. Both of those read as a refusal aimed at
+ * the person looking — "you may not" — and three of the four cases are not
+ * that: the row is simply somebody else's to sign, or has not arrived yet. `—`
+ * is what "nothing on record" already looks like everywhere else in this app.
+ *
+ * `title` is the same short sentence, so a mouse gets the words back; the whole
+ * of it — head and body — is in the pop-up the row itself opens.
+ */
+function WatchMark({ note }) {
+  return (
+    <span className="act-none" title={note} aria-label={note} role="note">—</span>
+  );
+}
+
 /**
  * What this person has already run up in the month THIS ROW belongs to.
  *
@@ -3064,36 +3188,34 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved, mayCorrect = false }) {
  * ตรวจสอบรายเดือน; this is the same figure, from the same function
  * (`usageInMonth`), beside the row being decided.
  *
- * TWO THINGS HAVE TO BE SAID OUT LOUD, and both are said here rather than left
- * to be inferred:
+ * ONE FIGURE, AND WHAT IT IS NOT — 2026-09-09.
  *
  *   The total ALREADY CONTAINS this request. `pending_mgr` counts against a
  *   ceiling from the moment it is filed (see CAP_STATUSES), so a reviewer
  *   reading "16.5 / 40" beside a 3-hour request and adding them would be
- *   double-counting their way to 19.5. `pendingCapNote` below says what the
- *   ceiling counts, and the pop-up's รออนุมัติ chip names those hours outright.
- *   (A "รวมใบนี้ … แล้ว" line said it in words in the pop-up until the chips
- *   made it a number; the row itself has never carried it.)
+ *   double-counting their way to 19.5.
+ *
+ *   AND THE FIGURE PRINTED HERE IS `approvedHours`, WHICH IS NOT THE ONE THE
+ *   CEILING COUNTS. The line that said so — "เพดานนับ 35.5 / 40 ·
+ *   รวมใบที่รออนุมัติ", from `pendingCapNote` — was taken off this cell on
+ *   2026-09-09 when the column was narrowed; the block inside the component
+ *   below has the request and what it costs. The counted total is in the
+ *   pop-up, as the รออนุมัติ chip, which the row opens on a press.
  *
  *   WHICH MONTH. The เดือน filter above can be ทุกเดือน, which mixes periods in
- *   one queue, so the month is named on every row and comes from the row rather
- *   than from the filter.
+ *   one queue. The month is not on the row at all — the cell is a figure and a
+ *   breach line — and it is named on the pop-up's ceiling card, off the row's
+ *   own `usage` rather than off the filter.
  *
- * THE SAME TWO LINES ตรวจสอบรายเดือน PRINTS, and that is the point of this
- * shape rather than any other.
- *
- * The two screens quote the same person's same month at each other, and until
- * now they did it in different words: this column said "16.5 / 40 ชม." with
+ * IT READ "THE SAME TWO LINES ตรวจสอบรายเดือน PRINTS" UNTIL 2026-09-09, and
+ * that had been the point of the shape: this column said "16.5 / 40 ชม." with
  * "(อนุมัติแล้วเท่านั้น)" under it and "+ รออนุมัติ 19" under that, while the
- * review screen said "16.5 / 40" with "เพดานนับ 35.5 / 40 · รวมใบที่รออนุมัติ".
- * Both were true and a reviewer holding the two had to work out that they were
- * the same fact. Now there is one sentence, from `pendingCapNote` in
- * lib/caps.js, and neither screen spells it out for itself.
- *
- * It also replaces three lines with two. The label is gone because the note
- * says what the figure counts; the (?) is gone with it, and what was behind it
- * — which month, whether this row is already inside the figure, the room left
- * over — was already in the รายละเอียด pop-up, in the same words, and still is.
+ * review screen said the same thing in different words, and a reviewer holding
+ * both had to work out they were one fact. The two screens were settled on one
+ * sentence from `pendingCapNote`, and now the QUEUE prints one line where the
+ * review screen prints two. The wording is still shared; what differs is how
+ * many of the lines each screen has room for, which is a question about a
+ * column and not about the arithmetic.
  *
  * WHAT DID NOT MOVE. A ceiling being past is on the row, always, in one of two
  * sentences (`overCapLine`): already past on approved hours alone, or past only
@@ -3124,15 +3246,39 @@ function CapUsage({ usage }) {
         <strong>{capPair(month.approvedHours, month.capHours)}</strong>
       </div>
 
-      {/* What the ceiling counts, when that is not what the line above shows.
-          Absent entirely on a month with nothing pending — then the figure is
-          the whole story and the row is one line. */}
-      {capNote(month) && <div className="cap-sub">{capNote(month)}</div>}
+      {/* ── "เพดานนับ 28 / 40 · รวมใบที่รออนุมัติ" STOOD HERE UNTIL 2026-09-09 ──
+          Asked for by name — *เอาเพดานนับ 28 / 40 · รวมใบที่รออนุมัติ ออก และ
+          ลดขนาดคอลัมน์สะสม / เพดาน* — and the two halves of that are one act:
+          the sentence is 162px of nowrap prose and it was the ONLY thing in
+          this cell that needed a 224px column. Without it the column is the
+          width of its figure, 124, and the table's floor falls with it.
 
-      {/* A breached ceiling is the one thing on this row that changes what the
-          reviewer should do, so it is never folded away. */}
+          WHAT IS LOST, SAID PLAINLY. The figure above is `approvedHours` and
+          the ceiling counts more than that — every request still alive,
+          `pending_mgr` included from the moment it is filed (CAP_STATUSES). A
+          reviewer reading "0 / 40" beside a 2-hour request no longer has the
+          counted total on the row, so a month that is one request away from its
+          ceiling looks like a month with the whole ceiling free.
+
+          WHERE IT STILL IS, IN NUMBERS RATHER THAN IN A SENTENCE: the
+          รายละเอียด pop-up, one press away and now reachable by pressing the row
+          itself. `CapCard` draws `capChips` — อนุมัติแล้ว, รออนุมัติ and
+          เหลือ/เกิน side by side, which is every figure that sentence carried
+          and one it did not. ตรวจสอบประจำเดือน still prints the sentence itself,
+          in its own column, from `pendingCapNote`; nothing in lib/caps.js
+          changed and no other screen lost a line.
+
+          `capNote`, the local wrapper this cell called it through, went with
+          the line: it had exactly one caller, and a helper kept for nobody is a
+          helper the next reader has to prove is dead.
+
+          AND THE ONE LINE THAT DID NOT GO IS THE BREACH, below: a ceiling
+          already past, or one this queue would push past, is the single fact in
+          this cell that changes what the reviewer should DO. It wraps now
+          instead of holding one line — a two-line warning in a narrow column is
+          still a warning, while a warning shoved under the next cell is not. */}
       {breachLine(month) && (
-        <div className="cell-sub" style={{ ...OVER_CAP, whiteSpace: 'nowrap' }}>
+        <div className="cell-sub" style={OVER_CAP}>
           {breachLine(month)}
         </div>
       )}
@@ -3160,17 +3306,15 @@ function CapUsage({ usage }) {
   );
 }
 
-/**
- * The note under the figure, for a month or for a week.
+/*
+ * `capNote` STOOD HERE — `(w) => pendingCapNote(w.approvedHours, w.usedHours,
+ * w.capHours)`, the local wrapper this screen read the shared sentence through.
  *
- * `pendingCapNote` takes the figure being SHOWN and the figure the ceiling
- * COUNTS, in that order. Here the shown one is the approved hours and the
- * counted one is every request still alive; on ตรวจสอบรายเดือน the shown one is
- * whatever สถานะที่นับ selected. Different screens, different first argument,
- * one sentence — and it returns null when the two are equal, which is what
- * makes a settled month a single line on both.
+ * It went with its one caller on 2026-09-09 (see the block in `CapUsage`
+ * above). `pendingCapNote` in lib/caps.js is untouched and is still what
+ * ตรวจสอบประจำเดือน prints — the sentence was never this component's, which is
+ * why removing it from one screen takes nothing from the other.
  */
-const capNote = (w) => pendingCapNote(w.approvedHours, w.usedHours, w.capHours);
 
 /**
  * The two breach sentences come from lib/caps.js — see `overCapLine`.
