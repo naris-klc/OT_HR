@@ -781,9 +781,24 @@ export default function OtForm({
     `${targets.length > 1 ? 'แต่ละใบ' : 'รายการนี้'}จะเป็นของพนักงาน ไม่ใช่ของคุณ`
       + ' — พนักงานจะเห็นในหน้า “บันทึกและประวัติ OT” และแก้ไขเองได้ตราบใดที่ยังไม่มีผู้อนุมัติ',
     'ระบบจะบันทึกว่าคุณเป็นผู้บันทึกแทน ทั้งบนหน้าจอและในใบพิมพ์',
+    /* THREE ANSWERS, NOT TWO, SINCE 2026-09-09 — and the third is the ordinary
+       one now. `proxySkipsOwnApproval` defaults to `false`, so a filing waits at
+       รอหัวหน้า for the person typing it, and telling them merely that it "จะรอ
+       หัวหน้าอนุมัติตามปกติ" leaves out the part that is theirs to do: the ใบ
+       does not move until they open รออนุมัติ and press the button on it.
+
+       `status` and not `skipped` for the middle branch, because a filing can
+       reach รอ HR without anything having been skipped — a แผนก whose หัวหน้างาน
+       is ฝ่ายบุคคล by rule, one with no living signer, or a บทบาท with no first
+       step at all. See `initialStatus`. */
     routing?.skipped
       ? 'และจะข้ามขั้นรอหัวหน้าไปยังรอ HR โดยตรง เพราะการที่คุณอนุมัติใบที่คุณกรอกเองไม่ได้เพิ่มการตรวจสอบใด ๆ'
-      : routing ? 'ตามนโยบายปัจจุบัน รายการนี้จะรอหัวหน้าอนุมัติตามปกติ' : null,
+      : routing?.status === 'pending_hr'
+        ? 'และจะไปรอฝ่ายบุคคลโดยตรง เพราะใบของพนักงานคนนี้ไม่ได้ผ่านขั้นรอหัวหน้า'
+        : routing
+          ? 'และจะไปรออยู่ที่ขั้น “รอหัวหน้าอนุมัติ”'
+            + ' — คุณต้องเปิดหน้ารออนุมัติแล้วกดอนุมัติอีกครั้ง ใบจึงจะส่งต่อไปยัง HR'
+          : null,
     'เลือกหลายคนได้เมื่อทำ OT กะเดียวกัน วันเดียวกัน เวลาเดียวกัน'
       + ' — ระบบจะแยกบันทึกเป็นคนละใบ และคิดชั่วโมง เพดาน วันหยุด ของแต่ละคนแยกกัน',
   ].filter(Boolean).join(' · ');
@@ -1509,7 +1524,9 @@ export default function OtForm({
             // The count is on the button because it is the last thing read
             // before eight requests are filed, and "8 คน" is the fact most
             // worth being sure of at that moment.
-            : `${routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
+            // `status`, not `skipped`: a filing reaches รอ HR by four routes and
+            // only one of them is the skip. See `proxyNote` above.
+            : `${routing?.status === 'pending_hr' ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
               + (targets.length > 1 ? ` · ${targets.length} คน` : ''))
             : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
       </button>

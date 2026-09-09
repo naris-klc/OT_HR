@@ -2039,8 +2039,9 @@ signed-off number is worse than an inconsistency.
 | 12 | HR boxes: raw or multiplied? | Raw hours | `hrSummaryBasis: 'raw'` |
 
 Two later flags sit beside them, both COSMETIC and neither an [OPEN] item:
-`proxySkipsOwnApproval` (default `true`) and `proxyNoteOnForm` (default
-`false`) — see [หัวหน้าบันทึก OT แทนลูกทีม](#หัวหน้าบันทึก-ot-แทนลูกทีม).
+`proxySkipsOwnApproval` (default `false`; it read "default `true`" until
+2026-09-09) and `proxyNoteOnForm` (default `false`) — see
+[หัวหน้าบันทึก OT แทนลูกทีม](#หัวหน้าบันทึก-ot-แทนลูกทีม).
 
 ### What HR sets about the arithmetic itself
 
@@ -5458,29 +5459,58 @@ has a known meaning.
 change to `scopeFor` — the entry is theirs — and they may correct or withdraw it
 on the same terms as anything they filed themselves.
 
-### It skips the step its author would have signed
+### It waits for the หัวหน้า who wrote it
 
-A หัวหน้า who fills the form in and then presses อนุมัติ on it has checked
-nothing. The signature is real in the sense that somebody made it and worthless
-in the sense that it is the same person twice — and **the audit trail cannot
-tell those apart afterwards**. It records ยื่นคำขอ → หัวหน้างานอนุมัติ →
-ฝ่ายบุคคลยืนยัน and reads, correctly as far as anything on the page can show, as
-two independent people agreeing. That is the lie. So the request is created at
-`pending_hr`, having been approved by nobody, and the history says so.
+> **This section read "It skips the step its author would have signed" until
+> 2026-09-09.** HR asked for the other answer that day, in those words:
+> *บันทึกแทนให้รอหัวหน้าอนุมัติด้วย*. A proxy filing now lands at `pending_mgr`
+> like every other request, and the หัวหน้า who typed it opens **รออนุมัติ** and
+> presses อนุมัติ on it there. `proxySkipsOwnApproval` ships `false`.
 
-`proxySkipsOwnApproval` (default `true`) turns it off, because "we want both
-presses on the record whatever they are worth" is an answer HR is entitled to
-give. The condition is deliberately **"could this filer sign the step"** and not
-"was this a proxy filing": under the rules above the two pick out the same
-entries, and only the first stays true if who may file is ever widened.
+The argument the old default was built on is not withdrawn, and anybody about to
+change this back should read it first. A หัวหน้า who fills the form in and then
+presses อนุมัติ on it has checked nothing new. The signature is real in the sense
+that somebody made it and worthless in the sense that it is the same person twice
+— and **the audit trail cannot tell those apart afterwards**. It records ยื่นคำขอ
+→ หัวหน้างานอนุมัติ → ฝ่ายบุคคลยืนยัน and reads, correctly as far as anything on
+the page can show, as two independent people agreeing.
 
-Nobody approves their own filing, and that is checked **again**, independently,
-in `approvalPermission` — not left to the routing above having handled it. The
-routing is a different rule in a different file behind a config flag, and a
-request can reach `pending_mgr` carrying its author's name by more than one
-route: the flag turned off, or a stand-in reaching a department whose entries
-never passed their own step. A rule that depends on another rule breaks silently
-the day somebody edits the other one.
+**What answers that now is not the skip but the two names.** `filedBy` and
+`managerDecision.by` are both on the entry, and where they are the same person the
+pop-up says so: the หัวหน้างานอนุมัติ box carries *ผู้บันทึกแทนอนุมัติเอง* under
+the name. A reader can tell one press from two without being asked to compare
+names and notice.
+
+**And the press is not nothing.** ไม่อนุมัติ is on the same row, so a filing typed
+in error is refused on the screen it was typed from instead of travelling to
+ฝ่ายบุคคล as an approved request.
+
+**The other half of the change is a permission, and the two must be read
+together.** `barredAsOwnFiling` in [`lib/delegation.js`](lib/delegation.js) lets
+the filer sign **the step their own filing is waiting at, and nothing else** —
+they are still never the second signature on it, which is what §6 is about.
+Without that half the feature would have been a hole rather than a queue: **13 of
+the 18 แผนก on the roster have exactly one person who can sign the first step**,
+and on those teams the filer is the only living exit.
+
+The refusal is written against the entry's **step** and not against
+`proxySkipsOwnApproval`, deliberately. The browser asks the same question and has
+never been given the policy — and a rule in this file that read a flag in that one
+would be the coupling the paragraph below warns about, wearing a different hat.
+
+`proxySkipsOwnApproval: true` puts the skip back: the request is created at
+`pending_hr`, having been approved by nobody, with `SKIP_NOTE` on the filing row
+saying why. The condition for it is deliberately **"could this filer sign the
+step"** and not "was this a proxy filing": under the rules above the two pick out
+the same entries, and only the first stays true if who may file is ever widened.
+Two entries filed while that was the default are on prod and still read this way.
+
+Nobody is both signatures on their own filing, and that is checked **again**,
+independently, in `approvalPermission` — not left to the routing above having
+handled it. The routing is a different rule in a different file behind a config
+flag, and a request can reach a step carrying its author's name by more than one
+route. A rule that depends on another rule breaks silently the day somebody edits
+the other one.
 
 ### Before the first signature, not "while pending_mgr"
 
@@ -6131,25 +6161,37 @@ it keeps its rule to sign on, and a name in the column does not fill it in.
 
 **A row the หัวหน้า typed in themselves names the หัวหน้า** — asked for on
 2026-09-09, in these words: *ถ้าหัวหน้ากดบันทึก OT แทนพนักงาน ช่องลงชื่อหัวหน้างาน
-ให้ขึ้นชื่อคนที่กดบันทึก OT แทนด้วย เหมือนหัวหน้ากดอนุมัติแล้วปกติ*. A proxy filing
-goes straight past รอหัวหน้า to รอ HR **because** the person who typed it is the
-person who would have signed that step — see §It skips the step its author would
-have signed — and the filing row carries the sentence saying so. Both screens
-have read it that way since the feature shipped: the review pop-up says *เพราะ
-ผู้บันทึกคือผู้ที่จะอนุมัติเอง ระบบจึงข้ามขั้นนั้นมา*, and the entry pop-up's
-หัวหน้างานอนุมัติ cell reads *ข้ามขั้นหัวหน้า — ผู้บันทึกคือผู้อนุมัติเอง*. The
-paper was the one document that did not: it dropped to the ฝ่ายบุคคล step and
-printed **their** name in the หัวหน้างาน column, or printed nothing at all while
-the row waited at รอ HR. Both of those exist on prod — the two `submit_proxy`
-rows in the database on the day this landed are exactly one of each.
+ให้ขึ้นชื่อคนที่กดบันทึก OT แทนด้วย เหมือนหัวหน้ากดอนุมัติแล้วปกติ*.
+
+> **A SECOND INSTRUCTION LATER THE SAME DAY MADE THIS RULE HISTORICAL, AND IT IS
+> KEPT RATHER THAN DELETED.** `proxySkipsOwnApproval` ships `false` now — see
+> §It waits for the หัวหน้า who wrote it — so a proxy filing waits at รอหัวหน้า,
+> a real `approve_mgr` is pressed on it, and the column prints that signature by
+> the ordinary rule. **What is described below is how the two rows already on
+> prod print**, and how every row prints if the flag is ever turned back on.
+> Nothing here is dead code and nothing here happens to a filing made today.
+
+A proxy filing under that flag went straight past รอหัวหน้า to รอ HR **because**
+the person who typed it is the person who would have signed that step, and the
+filing row carries the sentence saying so. Both screens read it that way from the
+day the feature shipped: the review pop-up says *เพราะผู้บันทึกคือผู้ที่จะอนุมัติ
+เอง ระบบจึงข้ามขั้นนั้นมา*, and the entry pop-up's หัวหน้างานอนุมัติ cell reads
+*ข้ามขั้นหัวหน้า — ผู้บันทึกคือผู้อนุมัติเอง*. The paper was the one document that
+did not: it dropped to the ฝ่ายบุคคล step and printed **their** name in the
+หัวหน้างาน column, or printed nothing at all while the row waited at รอ HR. Both
+of those exist on prod — the two `submit_proxy` rows in the database on the day
+this landed are exactly one of each.
 
 The name is read off the **note on the filing row**, not off `submit_proxy`
 alone, because a proxy filing does not always stand in for that step: แผนกจัดซื้อ
 and แผนกทรัพยากรมนุษย์ have ฝ่ายบุคคล as their หัวหน้างาน *by rule*, so a filing
 there reaches รอ HR having passed nobody, and the box must stay blank until
-somebody signs. Those branches write no note, deliberately. With
-`proxySkipsOwnApproval` off nothing is skipped at all: the filing waits at
-รอหัวหน้า and the column prints the signature that is actually made.
+somebody signs. Those branches write no note, deliberately — `skippedOwnApproval`
+in [`lib/approverLine.js`](lib/approverLine.js) is that reading, and since
+2026-09-09 **both pop-ups ask it too**, where they used to reason from `pending_hr`
+with no approval on it and tell a จัดซื้อ request that a step had been skipped for
+it. With the flag off nothing is skipped at all: the filing waits at รอหัวหน้า and
+the column prints the signature that is actually made.
 
 **The given name alone, in bold, with no คำนำหน้า, no surname and no
 punctuation** — the box carries a name and nothing else. `นางสาวปิยะนุช
@@ -9668,6 +9710,51 @@ build แล้ว
 
 **Verified**
 
+- **บันทึกแทนให้รอหัวหน้าอนุมัติด้วย — ใบไม่ข้ามขั้นอีกแล้ว** — 2026-09-09,
+  *ปุ่มบันทึกแทนพนักงาน เวลาที่ผู้อนุมัติบันทึกแทนพนักงาน ให้เปลี่ยนจากหัวหน้าอนุมัติ
+  อัตโนมัติ เป็นการให้หัวหน้าต้องกดอนุมัติในหน้ารออีกรอบนึง*.
+  **สวิตช์มีอยู่แล้ว แต่ปิดมันเฉย ๆ จะได้หลุมไม่ใช่ฟีเจอร์** — `proxySkipsOwnApproval`
+  ชิป `false` แล้ว ใบจึงไปนั่งที่ `pending_mgr` เหมือนใบอื่น · แต่ `approvalPermission`
+  ห้าม *ผู้บันทึกแทน* ตัดสินใบของตัวเองทุกขั้นมาตลอด และ **13 จาก 18 แผนกบนทะเบียน
+  มีคนเซ็นขั้นแรกอยู่คนเดียว** (นับจากฐานจริงวันนี้: 3 แผนกไม่มีเลย · 13 แผนกมีคนเดียว ·
+  แผนกวิศวกรรม 2 คน · แผนกผลิต2 4 คน) — ปิดสวิตช์อย่างเดียวแล้วใบที่หัวหน้าคีย์แทนจะ
+  ค้างตลอดกาลใน 13 แผนกนั้น.
+  **กฎถูกทำให้แคบลงตามขั้น ไม่ได้ถูกถอด** — `barredAsOwnFiling` แทน `isOwnFiling`
+  ใน `approvalPermission`: ผู้บันทึกเซ็น**ขั้นที่ใบของตัวเองรออยู่**ได้ ขั้นอื่นไม่ได้
+  ครึ่งที่ §6 พูดถึงจริง ๆ — *คนเดียวเป็นลายเซ็นทั้งสองอันของใบเดียวกันไม่ได้* — ยังอยู่ครบ
+  · เขียนเทียบกับ**สถานะของใบ** ไม่ใช่เทียบกับแฟล็ก เพราะเบราว์เซอร์ต้องถามคำถาม
+  เดียวกันและมันไม่เคยได้รับนโยบาย.
+  **ประวัติไม่ต้องพึ่งการข้ามขั้นเพื่อจะไม่โกหก** — `SignatureFacts` ขึ้น
+  *ผู้บันทึกแทนอนุมัติเอง* ใต้ช่อง หัวหน้างานอนุมัติ เมื่อ `managerDecision.by` กับ
+  `filedBy` เป็นคนเดียวกัน (เทียบ id ไม่ใช่ชื่อ — ทะเบียน 164 คนมีชื่อซ้ำกันได้) ·
+  ไม่มีฟิลด์ใหม่ ไม่มีอะไรเขียนลงฐานเพิ่ม.
+  **⚠ ตัวจริงที่ทำให้ของไม่ทำงาน ไม่ใช่ค่าดีฟอลต์ แต่เป็นคนถาม** — `initialStatus`
+  ถูกป้อน `ctx.policy` ซึ่งคือ `policyFor(workDate)` = **เวอร์ชันนโยบายที่บันทึกไว้**
+  ไม่ใช่ค่าที่ใช้อยู่ · เวอร์ชัน 31 ถูกบันทึกไว้ตั้งแต่ 2026-09-08 ตอนดีฟอลต์ยังเป็น
+  `true` ใบจึงยัง**ข้ามขั้นเหมือนเดิมทุกใบ**หลังแก้ดีฟอลต์ และไม่มีอะไรบอกสักที่ ·
+  เทสต์ทุกตัวในไฟล์นั้นป้อน policy ให้ `initialStatus` ตรง ๆ จึงมองไม่เห็น — **เจอจาก
+  การเดินแอปที่ build แล้วบนคลนของโปรด** · แก้โดยเพิ่ม `ctx.livePolicy` แล้วให้เส้นทาง
+  (กับ `submissionWindowRefusal` ที่คอมเมนต์ของมันอ้างว่าอ่านค่าที่ใช้อยู่อยู่แล้ว
+  แต่ไม่ได้อ่าน) ใช้ตัวนั้น · **จึงไม่ต้องไปกด “บันทึกกฎที่ใช้อยู่เป็นเวอร์ชัน” เพื่อให้
+  ฟีเจอร์นี้ทำงาน** — แต่ยัง**ควรกด**หลัง deploy เพราะดีฟอลต์ที่เปลี่ยนทำให้ค่าที่ใช้อยู่
+  ต่างจากเวอร์ชัน 31 และใบที่ยื่นหลังจากนั้นจะไม่มี `policyVersionId` ติดไป
+  · ✅ `npm test` **2411/2411** ผ่าน 2026-09-09 (เดิม 2406 · ไม่มีไฟล์เทสต์ใหม่)
+  · ✅ **เดินบนแอปที่ build แล้วที่ :3007** บนคลนของโปรด (`primus_ot_walk` ·
+  `VERIFY_DIST_DIR=.next-verify-proxy` · :3000 ตรวจก่อน ระหว่าง และหลัง ยังตอบ 200
+  ไม่ถูกแตะ · ปิดเซิร์ฟเวอร์ ลบ distDir และ drop ฐานคลนแล้ว) — `PM00044 นายปรเมษฐ์
+  อินทร์แก้ว` (ผู้จัดการแผนก แผนกการตลาดฯ ซึ่งเป็นคนเซ็นคนเดียวของแผนก) บันทึกแทน
+  `PM00002` → **`pending_mgr` ไม่มีโน้ตข้ามขั้น** → คนเดิมกดอนุมัติ → **200 ·
+  `pending_hr` · `managerDecision.by === filedBy`** → กดซ้ำที่ขั้น HR → **403**
+  · ✅ **เห็นบนจอจริง** — คิว รายการรออนุมัติ ของหัวหน้าคนนั้นขึ้นแถวที่ตัวเองคีย์
+  พร้อมติ๊กบ็อกซ์และปุ่ม ✓/✕ ที่กดได้ (เดิมตรงนั้นเป็นประโยค *คุณเป็นผู้บันทึกรายการนี้
+  จึงอนุมัติหรือไม่อนุมัติเองไม่ได้*) และป็อปอัพหลังอนุมัติอ่านว่า *ยื่นคำขอโดย
+  นายปรเมษฐ์ อินทร์แก้ว · บันทึกแทน นางสาวปิยะนุช* เหนือ *หัวหน้างานอนุมัติ
+  นายปรเมษฐ์ อินทร์แก้ว · **ผู้บันทึกแทนอนุมัติเอง***
+  · ✅ **สองใบเก่าที่ข้ามขั้นไปแล้วไม่ถูกแตะ** และยังอ่านด้วยกฎเดิม — `skippedOwnApproval`
+  อ่านที่โน้ตบนแถวการยื่น แทนเลขคณิต `pending_hr && !managerDecision.at` ที่เดิมไปบอก
+  ใบของแผนกจัดซื้อ/ทรัพยากรมนุษย์ว่ามีขั้นถูกข้ามให้ทั้งที่ไม่มี
+  · ❓ **ยังไม่ได้ deploy** — บนโปรดตอนนี้ยังข้ามขั้นอยู่จนกว่าจะรัน `deploy-ot.ps1`
+
 - **ใบขึ้นตั้งแต่ตอนที่ยื่น ไม่ต้องรอใครกดอนุมัติ — สิ่งเดียวที่รอคือชื่อในช่อง
   ลงชื่อหัวหน้างาน** — 2026-09-09, สั่งมาพร้อมภาพหน้า พิมพ์ใบขออนุมัติ OT ที่ว่างทั้งใบ:
   *ให้ขึ้นรายการที่รออนุมัติไว้เลย ให้รอแค่ชื่อผู้อนุมัติเมื่ออนุมัติจริง*.
@@ -9701,7 +9788,14 @@ build แล้ว
 
 - **ช่องลงชื่อหัวหน้างานบน F-HR-027 ขึ้นชื่อหัวหน้าที่กดบันทึกแทน** — 2026-09-09,
   *ถ้าหัวหน้ากดบันทึก OT แทนพนักงาน ช่องลงชื่อหัวหน้างานให้ขึ้นชื่อคนที่กดบันทึก OT
-  แทนด้วย เหมือนหัวหน้ากดอนุมัติแล้วปกติ*. **การยื่นแทนคือลายเซ็นอยู่แล้ว ตามกติกา
+  แทนด้วย เหมือนหัวหน้ากดอนุมัติแล้วปกติ*.
+  **⚠ ข้อสั่งอีกข้อในวันเดียวกันทำให้ข้อนี้กลายเป็นประวัติ ไม่ใช่พฤติกรรมวันนี้** —
+  `proxySkipsOwnApproval` ชิป `false` แล้ว (ดูข้อ *บันทึกแทนให้รอหัวหน้าอนุมัติด้วย*
+  ข้างบน) ใบยื่นแทนจึงรอที่รอหัวหน้าและมี `approve_mgr` จริงให้พิมพ์ตามกฎข้อ 1
+  ที่ทุกใบใช้อยู่แล้ว · ทุกอย่างที่เขียนไว้ข้างล่างนี้ยังจริงกับ**สองใบที่อยู่บนโปรด**
+  และจริงอีกครั้งถ้าเปิดแฟล็กกลับ — ไม่มีบรรทัดไหนตายและไม่มีบรรทัดไหนเกิดกับใบที่
+  ยื่นวันนี้.
+  **การยื่นแทนคือลายเซ็นอยู่แล้ว ตามกติกา
   ของระบบเอง** — `initialStatus` ข้ามขั้นรอหัวหน้าไปรอ HR *เพราะ*คนกรอกคือคนที่จะ
   เซ็นขั้นนั้น และเขียนเหตุผลลงบนแถวการยื่น (`SKIP_NOTE`) ไว้ตั้งแต่แรก
   · **หน้าจออ่านแบบนี้มาตลอด กระดาษเป็นเอกสารเดียวที่ไม่** — ป็อปอัพรีวิวขึ้น
@@ -9825,6 +9919,9 @@ build แล้ว
   ส่งไป `รอ HR` ไม่ใช่ `รอหัวหน้า`) · ลายเซ็นขั้น HR (เกิดทีหลังขั้นหัวหน้าเสมอ)
   ไม่มีทางไหนไปถึงแถว `รอหัวหน้า` ได้ · ปิด `proxySkipsOwnApproval` แล้วใบยื่นแทน
   ค้างที่ `รอหัวหน้า` และสาขานั้น**ไม่เขียนโน้ต**โดยตั้งใจ กล่องจึงยังว่าง
+  · **และนั่นคือสิ่งที่ชิปตั้งแต่บ่ายวันเดียวกัน** — แฟล็กเป็น `false` แล้ว ใบยื่นแทน
+  ทุกใบจึงรอที่ `รอหัวหน้า` โดยกล่องว่าง จนกว่าหัวหน้าคนที่บันทึกจะกดอนุมัติเอง
+  แล้วชื่อจึงมาจากทางแรก ไม่ใช่ทางที่สอง
   · ที่ตรึงไว้: `test/formSignatures.test.js` กับ `test/formPrintScope.test.js`
   ผ่านพร้อมกันบนทรีที่รวมแล้ว · ❓ ยังไม่ได้เดินด้วยตาบนใบจริงของสองกฎพร้อมกัน
 

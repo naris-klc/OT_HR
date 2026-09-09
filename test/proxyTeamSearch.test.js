@@ -564,9 +564,18 @@ test('ⓘ ข้างหัวข้อยังพูดครบ และป
   assert.ok(code.includes('จะเป็นของพนักงาน ไม่ใช่ของคุณ'));
   // Who is recorded as having filed it.
   assert.ok(code.includes('ระบบจะบันทึกว่าคุณเป็นผู้บันทึกแทน'));
-  // Both answers to the routing question, and neither written unconditionally.
+  /**
+   * THREE ANSWERS SINCE 2026-09-09, none written unconditionally.
+   *
+   * `proxySkipsOwnApproval` ships off, so the ordinary one is now the third:
+   * the ใบ waits at รอหัวหน้า and the person typing it has a button of their
+   * own to press. Saying only "จะรอหัวหน้าอนุมัติตามปกติ" would leave out the
+   * half that is theirs to do, which is the half they will otherwise wait for
+   * somebody else to.
+   */
   assert.match(code, /routing\?\.skipped\s*\n?\s*\?\s*'และจะข้ามขั้นรอหัวหน้าไปยังรอ HR โดยตรง/);
-  assert.match(code, /:\s*routing \? 'ตามนโยบายปัจจุบัน รายการนี้จะรอหัวหน้าอนุมัติตามปกติ' : null/);
+  assert.match(code, /routing\?\.status === 'pending_hr'\s*\n?\s*\?\s*'และจะไปรอฝ่ายบุคคลโดยตรง/);
+  assert.match(code, /คุณต้องเปิดหน้ารออนุมัติแล้วกดอนุมัติอีกครั้ง/);
   // Until the server has answered, it says nothing about routing at all.
   assert.ok(code.includes('.filter(Boolean).join'), 'ประโยคที่ยังไม่มีคำตอบจะไม่ถูกกรองออก');
 

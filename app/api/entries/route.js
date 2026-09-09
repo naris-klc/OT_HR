@@ -366,12 +366,20 @@ export const POST = route(async (req) => {
    * date they may not file is told so, rather than shown their hours worked out
    * and then turned away.
    *
-   * `ctx.policy` is the LIVE policy, deliberately, where the engine below is
-   * handed `policyFor(date)` — the rules in force on the work date. That is
-   * right for arithmetic and wrong here: this asks whether the request may be
-   * filed today, and the answer belongs to today's rules.
+   * `ctx.livePolicy` and not `ctx.policy`: this asks whether the request may be
+   * filed TODAY, and the answer belongs to today's rules, where the engine below
+   * is handed the rules in force on the work date.
+   *
+   * IT READ `ctx.policy` UNTIL 2026-09-09 AND SAID, IN THIS COMMENT, THAT
+   * `ctx.policy` WAS THE LIVE ONE. It has not been since versioning landed —
+   * `loadContext` spreads `policyFor(workDate)` over the calendar and the live
+   * policy is overwritten in the process, so this line has been reading the
+   * recorded version all along under a comment asserting the opposite. It moved
+   * nothing, because every recorded version's window matches the live one on
+   * this database; it was found from the other end, when a routing rule read the
+   * same field and got an answer from before HR changed their mind.
    */
-  const outsideWindow = submissionWindowRefusal(session.workDate, today(), ctx.policy);
+  const outsideWindow = submissionWindowRefusal(session.workDate, today(), ctx.livePolicy);
   if (outsideWindow) return fail(outsideWindow.error, outsideWindow.status);
 
   const result = await compute(session, ctx);
@@ -540,7 +548,21 @@ export const POST = route(async (req) => {
     filer: user,
     employee,
     department: employee.department,
-    policy: ctx.policy,
+    /**
+     * `livePolicy`, NOT `ctx.policy`. Which desk a request lands on is a
+     * question about today's rules and not about the rules in force on the day
+     * the work was done — a filing made this afternoon for last Friday goes
+     * where HR says filings go this afternoon.
+     *
+     * IT READ `ctx.policy` UNTIL 2026-09-09, which is `policyFor(workDate)`, so
+     * `proxySkipsOwnApproval` was answered by the newest RECORDED version rather
+     * than by the setting. Changing the shipped default moved nothing at all —
+     * version 31 had been recorded with the old value, so every filing kept
+     * skipping, and nothing anywhere said why. Caught by walking the built app
+     * against a clone of prod; the unit tests could not see it, because they
+     * hand `initialStatus` a policy directly.
+     */
+    policy: ctx.livePolicy,
     signers,
   });
 

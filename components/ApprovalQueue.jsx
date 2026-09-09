@@ -19,7 +19,8 @@ import {
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
-import { isOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
+import { barredAsOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
+import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
@@ -660,7 +661,12 @@ export default function ApprovalQueue({
    * THREE EXCLUSIONS, and they are the same kind of thing: a row no button of
    * theirs can move.
    *
-   *   · the ones they FILED themselves (`isOwnFiling`);
+   *   · the ones they FILED themselves that are not at the step their filing is
+   *     waiting at (`barredAsOwnFiling`). SINCE 2026-09-09 THAT IS A NARROWER
+   *     LIST THAN "the ones they filed": a proxy filing waits at รอหัวหน้า for
+   *     its filer to press อนุมัติ, and that row is theirs to decide — see
+   *     `proxySkipsOwnApproval`. What stays excluded is the same row once it
+   *     reaches ฝ่ายบุคคล, which is the §6 rule below wearing a different name;
    *   · the ones they SIGNED at the หัวหน้า step (`signedManagerStep`), which
    *     they may not also sign at the ฝ่ายบุคคล step — §6 wants two people and
    *     this is where that is made to mean two people. Only ever true on รอ HR
@@ -677,7 +683,7 @@ export default function ApprovalQueue({
    */
   const actionable = useMemo(
     () => shown.filter(
-      (e) => signableHere(e) && !isOwnFiling(e, user) && !signedManagerStep(e, user),
+      (e) => signableHere(e) && !barredAsOwnFiling(e, user) && !signedManagerStep(e, user),
     ),
     [shown, user, stage],
   );
@@ -1605,7 +1611,7 @@ export default function ApprovalQueue({
                       type="checkbox"
                       checked={selected.has(e._id)}
                       disabled={!signableHere(e)
-                        || isOwnFiling(e, user) || signedManagerStep(e, user)}
+                        || barredAsOwnFiling(e, user) || signedManagerStep(e, user)}
                       onChange={() => toggle(e._id)}
                       aria-label={`เลือกรายการของ ${e.employee?.name}`}
                     />
@@ -1766,12 +1772,16 @@ export default function ApprovalQueue({
                       and the action column has been scrolling away with the
                       rest all along. */}
                   <td className="act-col">
-                    {/* A row this reviewer wrote themselves cannot be signed OR
-                        refused by them — one rule governs both, so offering
+                    {/* A row this reviewer wrote themselves, at a step that is
+                        not the one their filing is waiting at, cannot be signed
+                        OR refused by them — one rule governs both, so offering
                         either button is offering a 403. What goes here instead is
                         the reason and, when the row is one the system generated
                         and nobody has touched, the only action that does work.
-                        See `isOwnFiling` in lib/delegation.js. */}
+                        See `barredAsOwnFiling` in lib/delegation.js — and note
+                        that the ordinary case is no longer here: since
+                        2026-09-09 a proxy filing waits at รอหัวหน้า for its own
+                        filer, who gets the two real buttons below. */}
                     {/* The same shape as `isOwnFiling` below, for the same
                         reason and with a different sentence: a row this
                         reviewer already signed at the หัวหน้า step is one they
@@ -1811,7 +1821,7 @@ export default function ApprovalQueue({
                         </span>
                         <WatchMark note={watchingNote(e, stage, user).short} />
                       </div>
-                    ) : !isOwnFiling(e, user) && signedManagerStep(e, user) ? (
+                    ) : !barredAsOwnFiling(e, user) && signedManagerStep(e, user) ? (
                       <div className="row-actions">
                         <span className="cell-sub own-note">
                           คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว
@@ -1819,17 +1829,17 @@ export default function ApprovalQueue({
                         </span>
                         <WatchMark note="คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว — ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ" />
                       </div>
-                    ) : isOwnFiling(e, user) ? (
+                    ) : barredAsOwnFiling(e, user) ? (
                       <div className="row-actions">
                         {/* A class rather than the inline `maxWidth: 190` it
                             used to carry: the card layout needs this sentence
                             to run the full width of the card, and an inline
                             style is the one thing a media query cannot answer. */}
                         <span className="cell-sub own-note">
-                          คุณเป็นผู้บันทึกรายการนี้ จึงอนุมัติหรือไม่อนุมัติเองไม่ได้
+                          คุณเป็นผู้บันทึกรายการนี้ จึงตรวจในขั้นนี้เองไม่ได้
                           {isUntouchedSystemFiling(e)
                             ? ' — ถอนใบได้ หรือให้ผู้ดูแลระบบยืนยันแทน'
-                            : ' — ต้องให้คนอื่นเป็นผู้อนุมัติ'}
+                            : ' — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้คนอื่นเป็นผู้ตรวจ'}
                         </span>
                         {/* THE ONE ACTION IN THIS BRANCH THAT WORKS, so it keeps
                             a real button — as an icon on the desktop and with
@@ -1847,7 +1857,7 @@ export default function ApprovalQueue({
                             <span className="btn-word">ถอนใบวันเกิด</span>
                           </button>
                         ) : (
-                          <WatchMark note="คุณเป็นผู้บันทึกรายการนี้ — ต้องให้คนอื่นเป็นผู้อนุมัติ" />
+                          <WatchMark note="คุณเป็นผู้บันทึกรายการนี้ — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้คนอื่นเป็นผู้ตรวจ" />
                         )}
                       </div>
                     ) : (
@@ -2032,7 +2042,7 @@ export default function ApprovalQueue({
           entry={detail}
           isHr={isHr}
           busy={busy}
-          mine={isOwnFiling(detail, user)}
+          mine={barredAsOwnFiling(detail, user)}
           // The row's own rule, handed down rather than asked again inside.
           watching={!signableHere(detail)}
           // And the reason with it, from the same function the row's own cell
@@ -2619,19 +2629,36 @@ function DetailModal({
                   : 'รายการนี้มีผู้อื่นเป็นผู้บันทึกแทนพนักงาน'}
               </strong>
               {e.filedBy?.name && <> — ผู้บันทึก: {e.filedBy.name}</>}
-              {e.status === 'pending_hr' && !e.managerDecision?.at && (
+              {/* READ OFF THE ROW'S OWN NOTE, NOT OFF ITS STATUS. This said
+                  `pending_hr && !managerDecision?.at`, which is true of a row
+                  that skipped the step AND of one from a แผนก whose หัวหน้างาน
+                  is ฝ่ายบุคคล by rule — on the second it told the reader the
+                  system had skipped something for them, which it had not.
+                  `skippedOwnApproval` matches the note that only the skipping
+                  branch writes. See lib/approverLine.js.
+
+                  NOTHING FILED SINCE 2026-09-09 CAN REACH THIS: a proxy filing
+                  waits at รอหัวหน้า for its filer to press อนุมัติ. It is here
+                  for the rows filed while `proxySkipsOwnApproval` defaulted to
+                  `true`, which are still in the database and still say this. */}
+              {skippedOwnApproval(e) && !e.managerDecision?.at && (
                 <> · รายการนี้<strong>ยังไม่ผ่านการอนุมัติจากหัวหน้า</strong>
                   {' '}เพราะผู้บันทึกคือผู้ที่จะอนุมัติเอง ระบบจึงข้ามขั้นนั้นมา
                 </>
               )}
               {/* The sentence that was missing when this row could not be moved:
                   it names the rule and the two ways forward. */}
+              {/* `mine` IS NARROWER THAN "you filed this" SINCE 2026-09-09 — it
+                  is `barredAsOwnFiling`, so a row waiting at รอหัวหน้า for the
+                  person reading it does not draw this sentence at all: they have
+                  the two buttons. What is left is the ฝ่ายบุคคล step of a row
+                  they filed, which is the §6 rule. */}
               {mine && (
                 <div style={{ marginTop: 4 }}>
-                  คุณเป็นผู้บันทึกรายการนี้เอง จึงอนุมัติหรือไม่อนุมัติเองไม่ได้ —
+                  คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ —
                   {isUntouchedSystemFiling(e)
                     ? ' กด “ถอนใบวันเกิด” ที่แถวในคิว หรือให้ผู้ดูแลระบบยืนยันแทน'
-                    : ' ต้องให้ผู้อื่นเป็นผู้อนุมัติ'}
+                    : ' ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ'}
                 </div>
               )}
             </Alert>

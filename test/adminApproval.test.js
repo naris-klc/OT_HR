@@ -127,12 +127,36 @@ test('the real หัวหน้า is still asked first — the override is ne
   assert.ok(claim < override, 'the override is consulted before the real manager’s claim');
 });
 
-test('an administrator still cannot approve a request they filed themselves', () => {
-  // `isOwnFiling` is the first clause and outranks everything, override included.
+test('an administrator may not be the SECOND signature on a request they filed', () => {
+  /**
+   * IT USED TO BE "cannot approve it at all", and that is not what the rule
+   * says since 2026-09-09 — `barredAsOwnFiling` refuses a filer the steps their
+   * filing is not waiting at, and the หัวหน้า step of a `pending_mgr` row is
+   * exactly the step it IS waiting at. See lib/delegation.js.
+   *
+   * The override still costs a reason, and the entry still collects two people:
+   * whoever signs the ฝ่ายบุคคล step cannot be this administrator, both because
+   * of this rule and because `signedManagerStep` refuses them separately.
+   *
+   * NO ROUTE MAKES THIS ROW. `proxyPermission` refuses ผู้ดูแลระบบ outright, so
+   * an administrator is never `filedBy` on anybody else's request; the fixture
+   * is here to pin the rule rather than to describe traffic.
+   */
   const own = stuck({ filedBy: ADMIN });
-  const may = approvalPermission({ user: ADMIN, entry: own, today: '2026-08-24', note: WHY });
-  assert.equal(may.ok, false);
-  assert.equal(may.status, 403);
+  const atMgrStep = approvalPermission({
+    user: ADMIN, entry: own, today: '2026-08-24', note: WHY,
+  });
+  assert.equal(atMgrStep.ok, true, 'the step the filing is waiting at');
+  assert.equal(atMgrStep.adminOverride, true);
+
+  const atHrStep = approvalPermission({
+    user: ADMIN,
+    entry: stuck({ filedBy: ADMIN, status: 'pending_hr' }),
+    today: '2026-08-24',
+    note: WHY,
+  });
+  assert.equal(atHrStep.ok, false, 'and never the one after it');
+  assert.equal(atHrStep.status, 403);
 });
 
 // ════════════════════════════════════════════════════════════════════════════

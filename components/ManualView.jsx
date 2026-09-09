@@ -270,6 +270,18 @@ const TOPICS = [
           ในฟอร์มบันทึก OT เลือกชื่อลูกทีมได้ทีละหลายคนพร้อมกัน ระบบจะสร้างใบแยกให้คนละใบ
           ทุกใบจะติดป้าย <b>บันทึกแทน</b> ไว้ว่าใครเป็นคนกด
         </p>
+        {/* ADDED 2026-09-09 WITH `proxySkipsOwnApproval: false`. Until that day
+            a filing typed by the หัวหน้า went straight to รอ HR and there was no
+            second press to describe — the manual would have been wrong to
+            mention one. It is the only step on this page a reader can miss
+            entirely and never find out about, because a ใบ that is waiting
+            looks exactly like a ใบ that is done from the form they typed it
+            in. */}
+        <p>
+          ใบที่คุณบันทึกแทนจะไป<b>รออยู่ในคิว รายการรออนุมัติ ของคุณเอง</b> ต้องเปิดแล้ว
+          กด <b>อนุมัติ</b> อีกครั้ง ใบจึงจะไปถึงฝ่ายบุคคล — กรอกใบกับรับรองตัวเลขเป็นคนละเรื่อง
+          และตรงนั้นกด <b>ไม่อนุมัติ</b> ได้ถ้าคีย์ผิด
+        </p>
         <h3>เวลาที่คุณไม่อยู่</h3>
         <p>
           เปิด <b>ข้อมูลส่วนตัว</b> → ผู้รับช่วงอนุมัติแทน แล้วตั้งคนเซ็นแทนพร้อมช่วงวันที่
