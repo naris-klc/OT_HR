@@ -5,7 +5,8 @@ import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import {
   submissionWindow, zeroOtHoursAllowed,
-  flatDayEnd, endsNextDayFor, isFlatDailyPosition, FLAT_DAY_SPAN_MINUTES,
+  flatDayEnd, endsNextDayFor, isFlatDailyPosition, isCompanyOffDay,
+  FLAT_DAY_SPAN_MINUTES,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import {
@@ -252,6 +253,20 @@ export default function OtForm({
    */
   const [noteOpen, setNoteOpen] = useState(false);
 
+  /**
+   * ปฏิทินวันหยุดบริษัทของปีที่เลือกอยู่ — read by ONE control, the ไม่พักเที่ยง
+   * box, through `isCompanyOffDay` (lib/entries.js). Fetched below, once the
+   * form state that names the year exists.
+   *
+   * `null` WHILE LOADING AND AFTER A FAILURE, and the box is then drawn as
+   * though the day did not qualify. That is the safe way to be wrong: a control
+   * HR asked to keep off ordinary days stays off, rather than appearing on one.
+   * Nothing here decides a figure — `noBreakTaken` is still an entered field
+   * and the engine still deducts the lunch hour from it — so a failed fetch
+   * costs a question, not an answer.
+   */
+  const [holidays, setHolidays] = useState(null);
+
   useEffect(() => {
     if (!proxy) return;
     api.get('/employees')
@@ -475,6 +490,52 @@ export default function OtForm({
     : [position];
   const mayTickFlatDaily = form.flatDaily
     || (flatDailyPositions.length > 0 && flatDailyPositions.every(isFlatDailyPosition));
+
+  /**
+   * ปฏิทินของปีที่ วันที่ทำงาน อยู่ — one request per YEAR, not per date.
+   *
+   * The same choice HolidayBanner made and for the same reason: paging a
+   * calendar through twelve months of one year must not be twelve requests, and
+   * every request in this app writes a row to บันทึกระบบ (`lib/accessLog.js`
+   * records reads too, by design). The banner above this form on the employee's
+   * screen fetches the same year — two reads on one screen, which is the price
+   * of the form being opened from three places and holding no calendar of its
+   * own.
+   */
+  const holidayYear = Number(String(form.workDate || today()).slice(0, 4));
+
+  useEffect(() => {
+    let live = true;
+    api.get(`/holidays?year=${holidayYear}`)
+      .then((res) => { if (live) setHolidays(res.holidays || []); })
+      .catch(() => { if (live) setHolidays(null); });
+    return () => { live = false; };
+  }, [holidayYear]);
+
+  /**
+   * ช่องติ๊กไม่พักเที่ยง โชว์เฉพาะวันหยุดเสาร์อาทิตย์และวันหยุดของบริษัท
+   * ไม่รวมวันเกิด — HR, 2026-09-08.
+   *
+   * WHY THE ANSWER IS THE WORKDATE'S AND NOT THE SHIFT'S. The box is about the
+   * hour at noon, and the noon it is about belongs to the day the request is
+   * filed under. An overnight shift crosses a second date, and that date's kind
+   * is not what HR named: they named *the day*, which on this form is
+   * วันที่ทำงาน. `endDateLabel` is a caption, not a second question.
+   *
+   * THE EXCLUSION IS STRUCTURAL, NOT AN `if`. `isCompanyOffDay` is handed the
+   * company calendar and `weekendDays` and nothing else — no birth date reaches
+   * this screen (`publicEmployee`), so a birthday holiday cannot register as
+   * one here even by accident. See the function's own note in lib/entries.js.
+   *
+   * AND IT IS SHOWN REGARDLESS WHEN IT IS ALREADY TICKED, exactly as
+   * `mayTickFlatDaily` above is. A row filed before this rule — or one filed on
+   * a Saturday and then moved to a Tuesday in the same sitting — would
+   * otherwise sit there with an hour not deducted and no control on the screen
+   * able to put it back. The rule withholds a NEW claim; it never swallows one
+   * that is already made.
+   */
+  const mayTickNoBreak = form.noBreakTaken
+    || isCompanyOffDay(form.workDate, { holidays: holidays || [], weekendDays: policy.weekendDays });
 
   // Debounced live preview. Every keystroke in a time field would otherwise
   // hit the engine.
@@ -1093,6 +1154,20 @@ export default function OtForm({
           The one thing it cost: a 17:00 → next-day 20:00 shift, twenty-seven
           hours, can no longer be filed. The engine refused it as `TOO_LONG`
           before this, so nothing that used to save has stopped saving. */}
+      {/* AND THE STRIP ITSELF GOES WHEN BOTH ARE WITHHELD, which any ordinary
+          Tuesday reaches: no เหมารายวัน (not a เจ้าหน้าที่บริการ ตำแหน่ง) and no
+          ไม่พักเที่ยง (a working day). An empty 14px band under the time boxes
+          is a gap the reader has to account for.
+
+          THE `!proxy` TERM CAME OFF ON 2026-09-09, IN THE MERGE THAT BROUGHT
+          THIS GUARD ONTO main. It was written when a third box — วันเกิด — was
+          drawn on exactly the `!proxy` branch, so `!proxy` meant "the strip has
+          something in it". `5d8821e` took that box out and no path draws it
+          now, which turned the term into a guarantee of the empty band on the
+          form MOST people file on: an employee filing for themselves on a
+          Tuesday. The two remaining conditions are the two remaining boxes,
+          which is the invariant this guard actually wants. */}
+      {(mayTickFlatDaily || mayTickNoBreak) && (
       <div className="row form-checks" style={{ marginTop: 14 }}>
         {/* ONLY เจ้าหน้าที่บริการ ARE ASKED THIS — HR, 2026-09-08. They are the
             ตำแหน่ง sold by the day; for everybody else the box was a control
@@ -1117,11 +1192,19 @@ export default function OtForm({
             เหมารายวัน (นับ 8 ชม. ต่อวัน)
           </label>
         )}
-        <label className="check">
-          <input type="checkbox" checked={form.noBreakTaken} onChange={(e) => set('noBreakTaken', e.target.checked)} />
-          ไม่พักเที่ยง
-        </label>
+        {/* ONLY ON A DAY THE WHOLE COMPANY HAS OFF — เสาร์อาทิตย์ หรือวันหยุด
+            ตามประกาศ — and deliberately NOT on a สวัสดิการวันเกิด, which is a
+            holiday for one person. HR, 2026-09-08. `mayTickNoBreak` above says
+            why the answer comes off the calendar rather than off the preview,
+            and why an already-ticked box is drawn whatever the date says. */}
+        {mayTickNoBreak && (
+          <label className="check">
+            <input type="checkbox" checked={form.noBreakTaken} onChange={(e) => set('noBreakTaken', e.target.checked)} />
+            ไม่พักเที่ยง
+          </label>
+        )}
       </div>
+      )}
 
       {/* WHAT THE TICK DOES TO THE TIMES, said once under it rather than twice
           inside `onChange`.

@@ -5,8 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  isFlatDailyPosition, FLAT_DAILY_POSITIONS, endsNextDayFor,
+  isFlatDailyPosition, FLAT_DAILY_POSITIONS, endsNextDayFor, isCompanyOffDay,
 } from '../lib/entries.js';
+import { DEFAULT_POLICY } from '../src/config/policy.js';
 
 /**
  * แถบช่องติ๊กบนฟอร์มบันทึก OT — สองช่อง เรียง เหมารายวัน → ไม่พักเที่ยง.
@@ -195,4 +196,100 @@ test('เหมารายวันยังเติมเวลา 08:00–17
   assert.match(form, /onChange=\{\(e\) => tickDay\('flatDaily', e\.target\.checked\)\}/);
   assert.match(form, /const STANDARD_DAY = Object\.freeze\(\{ startTime: '08:00', endTime: '17:00' \}\)/);
   assert.equal(endsNextDayFor('08:00', '17:00'), false);
+});
+
+// ── ไม่พักเที่ยง แสดงเฉพาะวันหยุดของบริษัท ──────────────────────────────────
+
+/**
+ * HR, 2026-09-08: *ช่องติ๊กไม่พักเที่ยง โชว์เฉพาะวันหยุดเสาร์อาทิตย์และวันหยุด
+ * ของบริษัท ไม่รวมวันเกิด*.
+ *
+ * THE EXCLUSION IS THE INTERESTING HALF and it is structural rather than an
+ * `if`: `isCompanyOffDay` is handed the company calendar and `weekendDays` and
+ * nothing else. A สวัสดิการวันเกิด is a holiday for one person, resolved from a
+ * stored วันเกิด this screen is not allowed to hold (`publicEmployee`) — so it
+ * cannot register here even by accident. What is pinned below is that the
+ * function takes no third argument through which it ever could.
+ */
+test('isCompanyOffDay — เสาร์อาทิตย์และวันหยุดประกาศ เท่านั้น', () => {
+  const weekendDays = DEFAULT_POLICY.weekendDays;
+  assert.deepEqual(weekendDays, [0, 6], "วันหยุดสุดสัปดาห์ในนโยบายไม่ใช่อาทิตย์กับเสาร์แล้ว");
+  const holidays = [{ date: '2026-08-12', name: 'วันแม่แห่งชาติ' }];
+  const on = (date) => isCompanyOffDay(date, { holidays, weekendDays });
+
+  // 2026-08-08 เสาร์ · 2026-08-09 อาทิตย์ · 2026-08-10 จันทร์
+  assert.equal(on('2026-08-08'), true, 'เสาร์');
+  assert.equal(on('2026-08-09'), true, 'อาทิตย์');
+  assert.equal(on('2026-08-10'), false, 'จันทร์');
+  assert.equal(on('2026-08-12'), true, 'วันหยุดบริษัท (พุธ)');
+
+  // วันเกิดไม่ได้อยู่ในนี้ และไม่มีทางอยู่ — ฟังก์ชันไม่เคยเห็นวันเกิดของใคร.
+  const src = read('lib/entries.js');
+  const body = src.slice(src.indexOf('export function isCompanyOffDay'));
+  assert.ok(!/birth/i.test(body.slice(0, 400)), 'isCompanyOffDay อ่านวันเกิด');
+});
+
+test('isCompanyOffDay — ค่าที่อ่านไม่ได้ ตอบ false ไม่เดา', () => {
+  const weekendDays = [0, 6];
+  assert.equal(isCompanyOffDay('', { weekendDays }), false);
+  assert.equal(isCompanyOffDay(null, { weekendDays }), false);
+  assert.equal(isCompanyOffDay('2026-8-8', { weekendDays }), false, 'ต้องเป็น YYYY-MM-DD เท่านั้น');
+  assert.equal(isCompanyOffDay(undefined), false);
+  // ไม่มีรายการวันหยุดสุดสัปดาห์ = ไม่มีวันไหนเป็นเสาร์อาทิตย์ — พลาดไปทางที่ช่องหาย
+  // ไม่ใช่ทางที่ช่องโผล่บนวันที่ฝ่ายบุคคลสั่งไม่ให้โผล่.
+  assert.equal(isCompanyOffDay('2026-08-08', {}), false);
+  assert.equal(isCompanyOffDay('2026-08-08'), false);
+});
+
+test('ฟอร์มวาดช่องไม่พักเที่ยงจากปฏิทิน ไม่ได้ถามจาก preview', () => {
+  assert.ok(form.includes('const mayTickNoBreak = form.noBreakTaken'));
+  assert.ok(form.includes(
+    'isCompanyOffDay(form.workDate, { holidays: holidays || [], weekendDays: policy.weekendDays })',
+  ));
+  assert.match(block, /\{mayTickNoBreak && \(\s*<label className="check">/);
+
+  // อ่านจากปฏิทิน ไม่ใช่จาก preview — preview ต้องมีคน และหน้าบันทึกแทนยังไม่มี
+  // คนติ๊กจนกว่าจะติ๊ก ส่วนวันเสาร์เป็นวันเสาร์ไม่ว่าใครยื่น.
+  const decl = form.slice(form.indexOf('const mayTickNoBreak'));
+  assert.ok(!/preview/.test(decl.slice(0, decl.indexOf(';'))), 'ช่องไม่พักเที่ยงไปผูกกับ preview แล้ว');
+  // ปฏิทินถูกดึงปีละครั้ง ไม่ใช่ทุกครั้งที่วันที่เปลี่ยน.
+  assert.ok(form.includes("const holidayYear = Number(String(form.workDate || today()).slice(0, 4))"));
+  assert.ok(form.includes('api.get(`/holidays?year=${holidayYear}`)'));
+  assert.ok(form.includes('}, [holidayYear]);'));
+
+  // และ weekendDays ต้องถูกส่งมาให้เบราว์เซอร์จริง ๆ ไม่งั้นกฎนี้เงียบ ๆ ตอบ false เสมอ.
+  assert.ok(read('app/api/auth/me/route.js').includes('weekendDays: policy.weekendDays'));
+});
+
+/**
+ * ช่องที่ติ๊กไว้แล้วต้องเห็นเสมอ — the same exception `mayTickFlatDaily` carries,
+ * and reachable in one sitting here rather than only across a policy change:
+ * tick ไม่พักเที่ยง on a Saturday, then move วันที่ทำงาน to the Tuesday. Without
+ * the guard the box vanishes with the flag still true, and an hour goes
+ * undeducted with no control on the screen able to put it back.
+ */
+test('ติ๊กไม่พักเที่ยงไว้แล้วย้ายวันที่ ช่องต้องไม่หาย', () => {
+  const decl = form.slice(form.indexOf('const mayTickNoBreak'));
+  const head = decl.slice(0, decl.indexOf(';'));
+  assert.ok(head.startsWith('const mayTickNoBreak = form.noBreakTaken'), head.slice(0, 80));
+  assert.ok(head.includes('||'), 'ไม่มีข้อยกเว้นสำหรับช่องที่ติ๊กไว้แล้ว');
+});
+
+/**
+ * THE GUARD IS THE TWO BOXES AND NOTHING ELSE — 2026-09-09.
+ *
+ * It was written as `!proxy || mayTickFlatDaily || mayTickNoBreak` when a THIRD
+ * box, วันเกิด, was drawn on exactly the `!proxy` branch: `!proxy` was then a
+ * true statement that the strip had something in it. `5d8821e` removed that box
+ * on main, which left the term asserting a box that no path draws — and turned
+ * it into a guarantee of the empty band on the commonest form of all, an
+ * employee filing for themselves on an ordinary Tuesday.
+ *
+ * So the assertion is that NO term survives which is not one of the two
+ * remaining boxes; `!proxy` coming back would mean the strip can be drawn empty
+ * again.
+ */
+test('แถบหายทั้งแถบเมื่อไม่เหลือช่องไหนเลย', () => {
+  assert.ok(form.includes('{(mayTickFlatDaily || mayTickNoBreak) && ('));
+  assert.ok(!form.includes('!proxy || mayTickFlatDaily'), 'ไม่มีช่องวันเกิดแล้ว แถบจึงว่างได้ถ้ายัง !proxy');
 });

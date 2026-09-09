@@ -449,7 +449,18 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
                       <td data-label="เวลา">
                         {e.startTime}–{e.endTime}
                         {e.endsNextDay && <div style={{ fontSize: 12, color: 'var(--amber)' }}>ข้ามคืน</div>}
-                        {e.noBreakTaken && <div className="hint">ไม่พักเที่ยง</div>}
+                        {/* THE SAME CELL, THE SAME FLAG, THE SAME MARK as
+                            รออนุมัติ OT draws — `.cell-flag`, 2026-09-08. The
+                            red was asked for on the reviewer's queue, and it
+                            comes here because this is the same square of the
+                            same table about the same request: an employee
+                            reading their own month and the ฝ่ายบุคคล reading it
+                            beside them must not be looking at two different
+                            marks for one fact. What it says is not "this row is
+                            wrong" — it is that the lunch hour was not deducted,
+                            which is the one thing in this cell that moved the
+                            figure two columns along. */}
+                        {e.noBreakTaken && <div className="cell-flag">ไม่พักเที่ยง</div>}
                       </td>
                       <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_WEEKDAY])}</td>
                       <td className="num rate-col">{hours(e.buckets?.[BUCKETS.OT15_HOLIDAY])}</td>
