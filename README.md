@@ -1918,7 +1918,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     131 files, run by `npm test`. Six named below as a
+test/                     132 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -1931,8 +1931,8 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2378 tests
-across 131 files**, measured 2026-09-08 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2397 tests
+across 132 files**, measured 2026-09-08 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read "2374 tests across 131 files … measured 2026-09-08" until **สวัสดิการวันเกิดคิดเอง 8 ชม. แรก ×1.5 หลังจากนั้น ×3** — and this is the one round where the figure went DOWN while cases were added, which is worth the line rather than a silent edit. `birthdayTick` was rewritten whole: nine cases about a ช่องติ๊ก that no longer exists came out, five about the removal and the automatic answer went in, and `otBirthday` gained three for the tier rule. NO new file — the questions are the same file's third, and its own header records all three. **The count in this sentence was also measured against `node --test` for the first time in this round**; the figure it replaces did not match what the runner prints, and the difference was there before this change touched anything. Nothing here re-measures the past, so the quoted figures below stay as they were written — and it read "2344 tests across 129 files … measured 2026-09-08" until **ประวัติเวอร์ชันนโยบาย ได้แถบเปลี่ยนหน้าแบบเดียวกัน** — fourteen more cases in `tablePager` and NO new file, because it is the same component under a third table. Two props were added for it. `unit` names what a row is called — "เวอร์ชัน" here against "รายการ" on the log — because the sentence is fixed (`แสดง 1–10 จากทั้งหมด 24 <unit>`) and a caller needing a different SENTENCE would be a caller this component is the wrong shape for. `SHORT_PAGE_SIZES` is 5 · 10 · 20, because a list that gains a row when somebody changes a rule — twenty-four of them here after a year, and the route stops at fifty — would offer `50` and `100` as two choices that both mean "all of it". **The cut is in the browser and the diff column is why**: the route computes each version's `changes` against `versions[i + 1]`, so a page fetched with `skip` would leave every page's oldest version without a predecessor in its own result, printing `ไม่ได้โหลดเวอร์ชันก่อนหน้ามาเทียบ` on nine rows out of ten that have one sitting a page away. A version means nothing except against the one before it, so the chain is loaded whole. The round also closed something the pager exposed rather than caused: the route has always stopped at fifty and nothing said so — the table simply ended, and its oldest row printed that same sentence, which reads as one row that could not be compared rather than as a list that was cut. `หน้า 3 / 3` is a claim about a whole list, so the route now sends `total` and the screen says which claim it is making — and "2313 tests across 128 files … measured 2026-09-08" until **ตารางทั้งสองบนบันทึกประวัติระบบ แบ่งหน้าแทนปุ่ม ดูย้อนหลังเพิ่ม** — `tablePager` is the 129th file, nineteen cases, and NO new component file: `TablePager` sits in `components/common.jsx` beside everything else both pop-ups and every screen share. Two tables on one screen are the reason it is one component — the traffic list under three of the tabs and การใช้สิทธิ์พิเศษ under the fifth, read by the same person in the same sitting, so two pagers built separately would be two answers to "what does › do at the end" and two ways of counting from 1. `HrView`'s own `.pager-row` is deliberately NOT folded in: it is a `<td colSpan={10}>` inside a `<tbody>`, `display: none` above 860px, laid out as a two-row grid for a 280px card, and one component whose layout is decided by which of three screens is asking is a component neither can be changed in. What they share is the VOICE — `‹`, `หน้า A / B`, `แสดง n–m จาก T รายการ`, a 38px square — shared by naming the same classes. **What was removed is a ceiling, not a button.** `limit` began at 100, ดูย้อนหลังเพิ่ม added 200 at a time to 500, and at 500 an amber panel said `แสดงได้สูงสุด 500 รายการต่อครั้ง` and offered the CSV: `hasMore` is a boolean, so the press was into the dark; the window only ever grew, so the way back was to change a filter; and past row 500 the answer to "what did this account open on Tuesday" was to download a file and open Excel, on the one screen in this app whose whole job is being read. `GET /api/logs` gained `skip` and a `countDocuments`, so `หน้า 3 / 47` is a fact and the last page is reachable — `MAX_LIMIT` is still 500 and now caps a PAGE, of which the largest this screen asks for is 100. The case that earns its place is the sort: `createdAt: -1` alone is not a total order, this app serves several requests inside one millisecond, and across two reads that skip different numbers of rows an unstable tie is a record that appears on page 2 and again on page 3 while another appears on neither — which on an audit log is a row that was never shown to the person auditing. `_id` is the tiebreaker. The specification asked for `disabled:opacity-40` on the chevrons and it is the one line of it that was not built: `.btn:disabled` declares `opacity: 1` on purpose, because a ghost faded to .4 is illegible on ธีมมืด, so a disabled end keeps its transparent ground and goes one step quieter instead — the same three properties the phone pager settled on in 2026-08-28. การใช้สิทธิ์พิเศษ cuts its page in the BROWSER and its route stays uncapped, because that loader is shared with the CSV and teaching it to skip would be the second way of reading one period; `ไม่มีการตัดท้าย` survives in the sentence under the table, because it was always a claim about the report and never about the layout — and "2306 tests across 128 files … measured 2026-09-08" until **ใบ F-HR-027 เป็น 1–31 ทุกเดือน และช่องลงชื่อตัดคำนำหน้าออก** — seven cases and NO new file, because neither half is a new subject: the grid is `oneRowPerDate`, which already owns which lines the sheet has, and the คำนำหน้า is `formSignatures`, which already owns what goes in the box. Four of the seven are the grid, and three of those are about the rows February gains rather than the count itself — that they carry a day number and `date: null`, that `byDate` is built from the dated rows alone so no segment can reach them, and that the sheet keys its rows by day number, since three rows with a null date would share one React key. The other three are the title: that นางสาว is tested before นาง, or `นางสาวปิยะนุช` signs as `สาวปิยะนุช`; that a name which is nothing but a title falls through to the next word rather than emptying a signature box; and that a title the list does not know prints as part of the name, where somebody can see it. — and "2319 tests across 128 files … measured 2026-09-07" until **การพับข้อความได้มาตรฐานเดียว หลังลองสามรูปในวันเดียว** — the case count came back to where it started, which is the honest record of a round that ended by putting two of its own answers back. The rule that survived is about WHICH text gets a control at all, and it has three parts. **A card's subtitle is drawn in full**: the grey line under นโยบายการคำนวณ or วันหยุดบริษัท is two or three lines and folds nothing worth a press. It was folded across nine components for an hour that afternoon, and what that bought was a screen opening on a heading and the word อ่านต่อ. **An alert's alarm is never folded**: it is read at the moment it is drawn or it is not read. That is why the long warning on that page was answered by making it SHORT rather than by hiding it — the heading became a count (`มีการปรับแต่งค่าจากโปรแกรมเดิม 3 รายการ`), the paragraph became one line pointing at the column the current values are in, and the three overrides became three chips. They are all amber: the chip carried the arithmetic flag in its COLOUR for a day, which put a grey chip in the banner's top half indistinguishable from the grey chips of ตรึงไว้เท่ากับค่าตั้งต้น in its folded half — two meanings in one shade — so every chip above the fold is now the one colour that means "this installation changed it", and whether it moves hours is said in the words inside it. What folds behind `ดูรายละเอียด` is the other half, the values stored at the figure the program ships today: nothing is wrong about those and nothing is being asked, and they matter on the day a release moves a default and this installation does not follow it. `LivePolicy` is named in `ALERTS_THAT_MAY_FOLD` as the only place a fold may appear inside an `Alert`, with a case pinning that its count, its sentence and its chips all stand outside — `UnrecordedPolicy` beside it stays whole, because it has a button in it and the paragraph a fold would hide is the reason that button exists. **The text under one setting is what the control is for**: นโยบายการคำนวณ asks nineteen questions and explains twelve of them under the question, the longest 671 characters, which is a dozen lines on a 360px phone. Two lines stay and the qualification folds. "Fewer than two lines" and "under about 150 characters" are the same rule, and only the first survives a 360px screen, so the button is still drawn from a MEASUREMENT of what the clamp hid. What moved in the markup is where the control sits: closed it rides the END of the second line, over the ellipsis the clamp draws, so `…อ่านต่อ` reads as the sentence continuing — a `--card-fade` gradient under an absolutely placed button, on the one background everything folded sits on. Open it is `ย่อข้อความ` at the foot of the block, where the eye is when the reading finishes. It was a link adrift on a line of its own before, which is what the round that showed nothing at all made obvious. The word grew its direction for the same reason: `ย่อ` alone is what บันทึกระบบ's cards say when they close a LIST of rows, and the two controls can be a thumb's width apart. `lines={0}` survives in three places. Two are the cards whose whole explanation IS bullets — ทะเบียนพนักงาน and ไฟล์สแกนนิ้วมือ — because a `-webkit-box` cut through a `<ul>` takes the markers with it and two bullets of six preview nothing. The third is นโยบายการคำนวณ, where the last change of the day moved the cut from a COUNT OF LINES to a POINT IN THE CONTENT: a row stands at its question and at `ค่าที่ใช้อยู่: …` — what the rule is set to, in the dropdown's own words — and what the question means, what each option is for and where the value came from are one fold under that line. It had two folds before, one either side of that sentence, so a reader met two อ่านต่อ per row before reaching the line most visits are for; a row with nothing behind its answer now draws no control at all, and the answer line itself is never folded, because a screen that asks for a signature and hides what is being signed for is the failure that whole row exists to prevent. What still cuts at two lines with `…อ่านต่อ` riding the end of the second is รายละเอียดงานที่ขอ OT on the approval card — and it read "2312 tests across 128 files … measured 2026-09-07" until **คู่มือเตรียมไฟล์บนการ์ดพนักงานถูกพับไว้หลังปุ่ม** (the shape above replaced this one the same day) — two cases in `birthDateImport` and NO new file, because folding a warning is not a new subject: the file that already pins the วัน/เดือน warning to that card is the file with a stake in where the warning went. Six bullets stood between the card's heading and its first control, which on a phone is a screen and a half of grey in front of ค้นหาพนักงาน — the reason for most visits to the card. Five of the six are a manual for a FILE, read once by whoever prepares the roster in Excel, and they went behind วิธีเตรียมไฟล์นำเข้า in the row beside นำเข้ารายชื่อจาก CSV. The sixth stayed, because it is a fact about the SCREEN rather than about the file: every change is recorded, including the ones typed into the dialog by hand and never near a CSV. The two cases are the pair that can go wrong on their own — the list unmounted rather than hidden in CSS, so nothing folded is read out, focused or measured; and the audit line standing above the fold rather than swept into it. It was not `Disclosure` at the time — that control clamped a PARAGRAPH and measured what the clamp hid — so this was a list folded whole, the way `ScanImport` then folded its รายละเอียด. Both of those sentences stopped being true within the day: `Disclosure` learnt to hide a whole body and to draw itself as a `<ul>`, and both ghost buttons went — and it read "2294 tests across 127 files … measured 2026-09-07" until **ไฟล์ Excel อัปโหลดได้ตรง ๆ ไม่ต้อง Save As เป็น CSV** — `xlsxImport` is the 128th file, eighteen cases, and the round is one dependency-free module: a .xlsx is a ZIP of XML, `node:zlib` inflates it, and `src/lib/xlsx.js` reads the two files inside that matter. The reason is not convenience. **`05/03/1998` is 5 March or 3 May and nothing in a CSV can settle it** — that sentence is why lib/birthDate.js exists, why the download template's sample day is 25, and why the import screen asks a person to read a list of spelled-out months before pressing the green button. It is a property of CSV, not of Excel: the workbook that CSV was saved FROM holds the date as a NUMBER, the same number on every machine on earth, with the display format kept separately. A roster imported as .xlsx cannot have its birthdays transposed at all, so the preview it would be checked with is not drawn and the panel says why rather than leaving a blank where a list should be. Six of the eighteen cases are dates — the 1900 leap-year bug Excel keeps for compatibility with a spreadsheet from 1983 (serial 60 is "29 February 1900", a day that did not happen, and is refused), the 1904 epoch Excel for Mac used, and a time of day dropped rather than rounded. The case that earns its place ahead of all of them is `a blank cell shifts nothing`: an empty cell is written `<c r="B2" s="1"/>`, and the first pattern this module used matched that self-closing tag and then ran on to the NEXT cell's closing tag hunting for a body, so every value after a blank landed one column left — which on the real department table read a shared-string INDEX out as a ceiling in hours. A number, in a column of numbers, that nothing downstream would have questioned. Two more pin that both importers go through one door and that the sniff is on the file's first four bytes rather than on its name, because `roster.csv` that is really a workbook is what "Save As" with the wrong type selected produces — and "2278 tests across 126 files … measured 2026-09-07" until **ไฟล์ทะเบียนพนักงานจริงนำเข้าได้** — `departmentMatch` is the 127th file, sixteen cases, and the round is the one that let the actual company in. `POST /api/employees/import` keyed a single map on `code.toUpperCase()` and tested บทบาท against `ROLES` directly, so the real roster — 163 people, PM and THT together, the file this system was built to hold — failed EVERY row on แผนก and 162 of them on บทบาท, because it is typed in Thai, which is the language every screen in the system prints those two columns in. `roleFromLabel` had existed with full tests since the labels did and nothing called it. Only four of the sixteen cases are about the generosity that repairs it — รหัส, ชื่อไทย and ชื่ออังกฤษ all reaching the row, with the unit word แผนก / ฝ่าย / สาขา optional, which is what the seven rows writing `ประสานงานขาย` for `แผนกประสานงานขาย` needed. The rest are the guard that makes generosity safe to have: an exact name always beats a prefix-stripped one, so a department really called `ขาย` keeps it from `ฝ่ายขาย`; and a key two departments would answer to answers for NEITHER, refused by name rather than resolved, because a matcher that guesses puts somebody's hours under another team's ceiling with nothing on any screen saying a choice was made. Two more are the template HR downloads to type into, whose own two sample rows named `ENG` and `PROD` — departments this roster does not have, so the file handed out to prevent errors contained two of them — and "2259 tests across 125 files … measured 2026-09-07" until **ข้อความอธิบายที่ยาวเกินหน้าจอ เริ่มพับเก็บได้** — `disclosure` is the 126th file, fourteen cases, and only three of them are about the control. The rest are about the ways a fold hides text for good: the cut is made in the STYLESHEET, so a folded paragraph is folded in the first paint rather than drawn in full and collapsed a frame later under somebody's thumb; and the button is drawn from a MEASUREMENT of what the clamp actually hid, never from the length of the string — an อ่านต่อ that reveals nothing is a press that appears to do nothing, and it would sit under half the rows on นโยบายการคำนวณ. Two more are the pair that cannot be got back by pressing anything: nothing is measured while the fold is OPEN, or ย่อ would disappear from under the reader when the clamp came off and the two heights agreed; and `@media print` unfolds every paragraph and drops the control, because paper has no button and a printed page carrying two lines of a rule would be reporting the screen rather than the text. One is the leading, which the walk on the built app turned up and which is part of the cut rather than a style choice: `.hint` gives 12.5px text an 18.75px line box and a line of Thai in it is 21px of ink, so a two-line clamp was showing the tops of the third line as a dotted row under the ellipsis. The last is the ban that keeps this one control the only one — a second line-clamp anywhere in the stylesheet, or one set inline by a component, is a clamp with no way to reach what it hid. It read "2282" for the afternoon the fourth F-HR-027 column existed; withdrawing that round took its cases with it — and "2240 tests across 124 files … measured 2026-09-07" until **ประวัติรายการ ในป๊อปอัปของผู้ตรวจ เลิกลิสต์แถวที่ระบบเขียนเอง** — `queueHistoryFilter` is the 125th file, thirteen cases, and only four of them are about the switch itself. Five are about the LIST it reads: that `recompute` is the whole of it today, that neither generated filing goes in (`submit_birthday` IS the request that put the entry in the queue, and hiding it leaves a reader looking for a filing that never comes; `submit_hr_verified` is a person reading a clock record and putting their name to two times), and that an entry which is nothing but replays draws no heading rather than a heading over nothing. Two are the regression the round could have shipped — `editsOf()` pairs each snapshot with the values it produced by reading the row BELOW it, so the walk still reads the full history and only the drawing is filtered; a filtered walk would hand an edit the "before" of the replay above it and print a change nobody made. The last two are where the switch is deliberately NOT thrown: ประวัติ OT ของฉัน and ฝ่ายบุคคล's month table, the two screens whose question is what has happened to this entry rather than who is being asked to sign it — and "2195 tests across 124 files … measured 2026-09-04" until **เรียงใบตามรหัสพนักงาน reached every list of ใบ rather than the two report screens alone** — six cases and NO new file, because the comparator is one function in `lib/entries.js` and the endpoint that reads it is one endpoint: five of the six are in `entryListCap`, beside the cap they have to be read with, since the query still orders by date and what a full list drops is still the OLDEST and not whoever falls past the middle of the register. — and "2165" until **a month of scanner files became FOUR files rather than two** — six more cases in `scanFile` and NO new file, because the reading did not change: what arrived is the other half of a file's identity. Two of the six are the machine numbering, which is a LABEL nobody can check against the bytes and is therefore pinned here; two are the company, decided from the roster and never from the `PM` / `THT` prefix, with a disagreement REPORTED rather than resolved; and two are the grid — that four is `SCAN_FORMATS.length × companies.length` and never a literal, and that a file which fits no slot is not quietly counted into one. — and "2157 across 121 files" until **the last twenty `<select>`s in the app became `PickOne`** — `noNativeSelect` is the 122nd file, four cases, and it is one rule over the whole tree rather than the per-screen bans that preceded it: no component draws a `<select>`, a `type="date"`, a `type="month"` or a `type="time"`, and every list that opens is `.pick-menu`. The fifth case is in `queueDropdown` and is the thing that had to exist before ทะเบียนพนักงาน could drop its tag — a row that is ON the list and is not this person's to take, refused to the pointer, to Enter, to ↑/↓, to Home/End and to the letter somebody types out of habit, because `<option disabled>` did all five for free and an `<li>` has none of them — and "2139 across 120 files" until **ไฟล์ .txt จากเครื่องสแกนนิ้วมือ became something ฝ่ายบุคคล can import from ตรวจสอบประจำเดือน** — `scanFile` is the 121st file, eighteen cases, and the samples in it are the two real files byte for byte rather than tidied-up ones: the TIS-620 header, the UTF-8 byte-order mark and the space padding are the whole of what the module has to survive. Only five of the eighteen are about reading a good line. The rest are the silent failures available to a file that arrives once a month from a machine nobody here configured — a header counted as a scan, `07/25` read as 7 January, a TIS-620 byte becoming `�` in the copy of the file the system keeps, and the same person at the same second stored twice — plus the one property that makes the preview checkable instead of believable: every line of the file lands in exactly one of four piles and the four add up. **Nothing in the app reads what it stores**, which is the state on purpose and is written into the model — and "2123" until **the question got a standing answer** — sixteen more cases in `birthDateImport`, for ตั้งค่าระบบ → รูปแบบวันที่ใน CSV and the decision that an unsettleable file is now READ under it rather than refused. Nine of the sixteen are the boundary rather than the feature: the interpreter called with no options still refusing, evidence still beating the setting and not being REPORTED as the setting, a month-first file still refused whatever is set, a self-contradicting file still refused, a per-file answer still outranking the company's, and a bad setting throwing instead of going quiet. The rest are the setting itself — it cannot hold a value the interpreter would throw on, it is not inside `policy` where it could mint a version, the screen previewing a file reads the same value the route will, and the panel says out loud which rows it read that way — and "2110" until **the ambiguous วันเกิด column started being a QUESTION** — thirteen more cases in `birthDateImport` and one rewritten in `smartDate`, for the round that let HR say "this file is วัน/เดือน/ปี" instead of being sent back to Excel to retype a column by hand. Eight of the thirteen are refusals that must SURVIVE the feature: a declaration the file contradicts, in both directions; a file that contradicts itself, under every declaration and none; an unrecognised order that has to throw rather than quietly become "nobody answered"; and the plain ambiguous file with nobody answering, which must be refused exactly as it always was. The other five are the promise the feature rests on — the answer comes from a person, the rows are read back before anything is written, and what travels with the upload is the answer rather than the dates the screen computed from it — and "2088" until **a refused roster CSV started naming every line it was refused over, `01/01/2540` stopped being called ambiguous, and the picker moved to the sentence telling HR to use it** — eleven cases in `birthDateImport` and NO new file, because the interpretation rule did not change then: the three refusals are the same three, and what they now carry is `blocking`, the whole of the evidence rather than the first line of it. Four are about that list — every ambiguous row, both sides of an inconsistent file in line order, the ambiguous rows that ride along with a month-first one because they are wrong too, and the empty list a file that IMPORTS has to keep. Four are the case that had no business being refused at all: a cell whose day and month are the SAME NUMBER reads identically either way, and it was being listed as `เป็นได้ทั้ง 1 มกราคม 1997 และ 1 มกราคม 1997` and helping refuse whole files over a doubt with no consequence — with one of the four on the template, which wrote `1989-05-12` and so could not survive being opened and saved in the Excel it is handed to somebody to type into. The other three are about the screen: the panel that lists the lines, the server refusal that used to arrive as one sentence with its payload dropped, and the error message that had no way off the card. The rest of the move to 2108 landed in the same tree from the queue and roster work, not from this round — and "2074 across 119 files" until **the queues of the four who sign the first step started listing a request until it is confirmed** — `queueRoleFilter` is the 120th file, and the fourteen cases in it are mostly not about the `บทบาท` dropdown that was asked for: they are about the two silent failures the round could have shipped, a queue offering a decision on a row its reader may not sign, and a filter the SCREEN sets that empties the table without saying it did — and "2071" until **ตั้งรหัสผ่านของคุณ was deleted** — the screen an account with `mustChangePassword` used to meet before anything else. One case in `tempPassword` and NO new file: the case that used to say the flag reaches a gate now says it reaches a strip on the landing tab, and bans the gate coming back under any name. The count moved by one because the sentence naming the character set went from being asked for on two screens to being banned everywhere but the form — and "2000 across 118 files" until **บันทึกเป็น PDF started producing a file** rather than naming a destination in the browser's own print dialog — `printPdf` is the 119th file, twenty-six cases, and eleven of them are one table: every way a script, a frame or a fetch can be spelled in markup that arrives from a browser, each its own case, because the failure that matters is ONE of them starting to get through while the rest still do not. The cases that are not about that lock are about the promise the feature rests on — that the file is the DOM the printer would have been given, never a second rendering of the month — and the one print view that refuses to make a file at all, which is the password slips — and "1983 across 117 files" until **บทบาท went from four to seven** — `roles` is the 118th file, seventeen cases, and only the first handful are about the seven themselves: the rest are about the rename underneath them, because the retired `manager` used to BE a role and used to mean หัวหน้างาน. The two that earn the file are the ban on that spelling returning to `app/`, `lib/`, `src/`, `components/` or `legacy/` — with `hrRejectReturnsTo` and `Department.manager` named as the only lines allowed to keep it — and the case that fails if `ROLES` is ever tidied into alphabetical order, which would silently make ผู้ดูแลระบบ the lowest rung because `outranks` reads its answer off that array's index — and "2096 across 122 files" until สวัสดิการวันเกิด went back to being filed by the person whose birthday it is and ฝ่ายบุคคล’s birthday work was withdrawn — the only round in this history where the file count went DOWN: seven files left (absentCallout, birthdayCardUi, birthdayCheck, birthdayDirectApproval, birthdayFileSheet, birthdayQueue, birthdaySelfFiling) and two arrived, `birthdayTick` for the claim the tick makes and `flatDaily` for the eight-hour day — and "2070 across 121 files" until ฝ่ายบุคคล's queue started listing a request from the moment it was filed — `queueStatusColumn` is the 122nd file, twenty-one cases, and only four of them are about the สถานะ column that was asked for: the rest are about what a queue has to stop offering once it holds a row its reader cannot sign, and about the two things the twelfth column pushed out of shape — the sentence that stands in place of a row's buttons, and the ceiling figure that went under them — and "2060 across 120 files" until Ctrl+P on รายงาน OT ฝ่ายบัญชี stopped dropping the last three columns — `screenTablePrint` is the 121st file, seven cases, and two of them pin rules that go AGAINST a browser default rather than with it: `@page` stays at margin 0, and `tfoot` is forced back to a row group so รวมทั้งหมด cannot reprint at the foot of every page — and "2033 across 119 files" until หนึ่งวัน หนึ่งใบ reached the printed sheet as well as the filing form — `oneRowPerDate` is the 120th file, fifteen cases, and the ones that matter are about the hours the sheet now drops rather than the rows it no longer draws — and "2025" until หน้ารายละเอียด on รายการ OT ของฉัน started drawing the reviewer's three cards — eight new cases in `approverLine`, and NO new file, which is the point of that round: `ReasonCard`, `CapCard` and `SignatureFacts` moved into `components/common.jsx` and both pop-ups read them, so what would have been a second file of assertions about a second copy is two blocks added to the files `description` and `queueCapUsage` already had — and "2006 across 118 files" until the two ลงชื่อ columns on F-HR-027 started printing the names — `formSignatures` is the 119th file, nineteen cases, and most of them are about the rows where a name may NOT be printed — and "1996 across 117 files" until the hour figures on F-HR-027 and the `รวม ชม.` beside them stopped sitting against their right edge — `hoursColumnCentred` is the 118th file, ten cases, and six of the ten pin things that did NOT change: the sheet's headings, the blank an hour cell keeps when the day has no OT, and the 52px the screen's columns are still measured at — and "1977" until signing an entry over a department ceiling started costing a sentence — `overCeiling` is the 117th file, nineteen cases across the rule, the two routes that enforce it, the sheet that prints it and a ban on a second `isOverCeiling` boolean — and "1940" until the era rule stopped being written in four places — `smartDate` is the 116th file and nineteen of the cases added since that figure are its: the rule itself, the 2400 line from both sides, the calendar judged in ค.ศ., the MM/DD refusal that names the swap, and the two bans that are the point of the file — no other file in `app/`, `lib/`, `src/`, `components/` or `legacy/` may subtract 543 or compare a year to 2400 — and "1932" until the roster CSV started converting พ.ศ. years instead of refusing them — `birthDateImport` traded three cases that pinned the refusal for eleven about the conversion, the 2400 floor, both separators, the calendar being checked in ค.ศ., and the count the preview has to show — and "1931" until the สถานะ paragraph in แก้ไขแผนก went behind a (?), and "1915" before that, until คำขอถอนใบที่อนุมัติแล้ว learnt to answer several at once — nine new cases in `withdrawalRowLayout`, covering the heading's count, the 400px ceiling on the stack, and the shape of อนุมัติให้ถอนทั้งหมด — with seven more landing in the same tree from the roster work, and "1912" until the same row lost the green `อนุมัติ` pill that was being read as a third button, and "1901 across 114 files" before that, until the row on คำขอถอนใบที่อนุมัติแล้ว stopped being a flex line with one shrinkable item in it — `withdrawalRowLayout` is the 115th file — and "1894" and "1896" until เวลาเริ่ม / เวลาสิ้นสุด became a header you can type in over two snapping wheels — six new cases in `pickTime`, and the two figures either side of it are one round of the same control and one round of doc-and-script work landing between them — and "1896" before that, until `PickOne`'s panel was portaled — four cases about placing itself in the page became two about not having to — and "1894" before that, until the minute column started stepping by five, and "1891" until บันทึก OT แทนพนักงาน lost its sub-header and its two panels of prose, and "1889" until the sentence under วันที่เริ่ม was rewritten and then withdrawn — submissionWindowForm gained a comment-stripper self-test and split one assertion in two, and the pair that pinned the new wording became the pair that bans both wordings — and "1888" until the panel's own width was pinned, and "1887" before that, until สถานะที่นับ on ตรวจสอบรายเดือน stopped being a `<select>` too — the twenty-first and twenty-second cases in queueDropdown, and no new file — and "1820 across 110 files" until the queue's two filters stopped being `<select>`s — queueDropdown is the 111th file — and "1805 across 109 files" until the ค้นหา box went over บันทึก OT แทนพนักงาน's name list — and "1814", "1816" and "1818" as the tick box, the button and the queue's head each got their own — and "1797 across 108 files" until the menu was reorganised one block per role and roleNavTabs went in to hold it there, and "1792 across 107 files" until the fourteen-day chart on ภาพรวม was given a height to draw its bars in, and "1785 across 106 files" until the four counted lists on ภาพรวม stopped each opening on however many rows the endpoint had sent them, and "1776 across 105 files" until the ลบ button on วันหยุดบริษัท stopped asking its question in the browser's own box, and "1763 across 104 files" until สวัสดิการวันเกิด stopped being something a person could file for themselves — birthdaySelfFiling is the 105th file — and "1757" until หนึ่งวัน หนึ่งใบ, and "1753" until เวลาทับซ้อน reached the form later the same day, and "1780 across 106 files" until the withdrawal of ปิดงวด later the same day took two whole files with it — periodLockRoutes and replayPeriodLock — and rewrote a third, and "1767", "1766", "1764", "1757", "1752 across 105 files", "1751", "1750", "1748", "1745", "1729 across 104 files", "1728", "1727", "1722 across 103 files" and "1723" earlier the same day — two cases about `backdrop-filter` became one when the filter itself went — and "1722", "1721" and "1720" before that, and "1719", "1718", "1717", "1715" and "1713" on 2026-08-27, "1707 across 102 files" on 2026-08-26, and
 "1706", "1701", "1700", "1699", "1697", "1694", "1689", "1687", "1678" and "1672" earlier the same day and "1654 … 2026-08-25" before that, and
 was already five behind when the "1701" was re-checked. The file count read
@@ -2281,14 +2281,46 @@ going stale.
   day disagree with nobody able to say which is right. `test/overCeiling.test.js`
   fails the build if one appears.
 
-**And the sheet says it.** On สรุป OT ส่งบัญชี the row's `รวม ชม.` is drawn in
-`--danger-ink` when any entry behind it went over a ceiling — the same red the
-queue uses for the same fact — with the account in the หมายเหตุ column and a
-hover tooltip reading `รายการเกินเพดาน | เหตุผลผู้อนุมัติ: …`. It is **not a
-warning**: the hours are approved, correct and being paid, and the colour says
-this figure was a decision somebody had to justify. A tint or an amber would
-make an ordinary signed month look like a problem, which is how a mark stops
-being read.
+**And the sheets say it.** On สรุป OT ส่งบัญชี **and, since 2026-09-09, on สรุป
+OT แยกแผนก** the row's `รวม ชม.` is drawn in `--danger-ink` when any entry
+behind it went over a ceiling — the same red the queue uses for the same fact —
+with the account beside it and a hover tooltip reading `รายการเกินเพดาน |
+เหตุผลผู้อนุมัติ: …`. It is **not a warning**: the hours are approved, correct
+and being paid, and the colour says this figure was a decision somebody had to
+justify. A tint or an amber would make an ordinary signed month look like a
+problem, which is how a mark stops being read.
+
+It read *“And the sheet says it. On สรุป OT ส่งบัญชี …”* until 2026-09-09, when
+ฝ่ายบุคคล asked for the same red and the same remark on the departmental count
+— *หน้ารายงาน OT แยกแผนก เพิ่มตัวอักษรแดงชั่วโมงเกินเพดาน และวันเกิด เหมือนกับ
+ฟอร์มของการเงิน*. A ceiling is a **department's** ceiling, so that sheet is where
+the difference between 12 hours inside one and 12 hours past it is most worth
+seeing. The figure, the colour, the tooltip and the sentences are one
+implementation, not two: `OverCeilingFigure` and `OverCeilingNote` moved from
+`components/AccountingView.jsx` into `components/common.jsx` on the same day, for
+the reason `BIRTHDAY_REMARK` is a constant — two copies of a remark become two
+remarks the day somebody rewords one. Where the marks GO is still each screen's:
+ส่งบัญชี has a หมายเหตุ column and puts them in it; แยกแผนก has six columns adding
+up to 312px so that a 375px phone need not scroll, none of which can hold prose,
+and gives them a row of their own under the row they explain.
+
+**Both PRINTED sheets are coloured too, and the department one only after a
+second ask.** `figureClass` in `components/AccountingPrint.jsx` has reddened
+that paper's two rate cells since 2026-09-02; the department bundle was still
+black when the marks landed on its screen, and ฝ่ายบุคคล sent back a printed
+แผนกสาขาชลบุรี with its 45.00 unmarked — *หมายถึงเกินเพดาน ตัวเลขในฟอร์ม*. It is
+the right way round to want: the screen is read by the person who already knows
+what they signed, the sheet by the department who does not. Both papers now use
+`#c00` with `print-color-adjust: exact`, on BOTH rate cells — `overCeiling`
+counts entries and hours and does not split them by rate column, so colouring
+one would put a decision on the paper that the data has not made. Department
+TOTALS stay black: a `รวมชั่วโมงทำOT` in red would say the department was over
+its own ceiling, which is a different claim. `departments.csv` carries no
+colour, having nowhere to put one.
+
+⚠ **Red ink survives a printer and not a photocopier.** A black-and-white copy
+of a signed sheet carries no mark at all. The fix, if that ever matters, is a
+word in the strip beside the grid, and it is HR's and accounting's to ask for.
 
 Three things about that figure are worth stating because each was a wrong first
 guess:
@@ -3298,10 +3330,33 @@ a birthday — enough to reconcile the figure beside it — and never which day.
 older rule and its test are gone; `test/birthdayOnPaper.test.js` pins the new one,
 including that no `birthdayDate`-shaped field exists anywhere on the path.
 
-**Not on สรุป OT แยกแผนก.** That sheet goes to management, not to accounting, and
-it has no figure that reads as an error without the remark — so adding it there
-would disclose something for no reason. It is HR's call to make, not a
-consistency argument, and it is pinned as absent.
+**On สรุป OT แยกแผนก's SCREEN since 2026-09-09, and on nothing it prints or
+exports.** This read *“Not on สรุป OT แยกแผนก. That sheet goes to management, not
+to accounting, and it has no figure that reads as an error without the remark —
+so adding it there would disclose something for no reason. It is HR's call to
+make, not a consistency argument, and it is pinned as absent.”* until ฝ่ายบุคคล
+made that call: *หน้ารายงาน OT แยกแผนก เพิ่ม … วันเกิด เหมือนกับฟอร์มของการเงิน*.
+
+**And on its printed bundle since the same afternoon**, asked for in the same
+conversation and answered in one line: *ให้มี — แบบเดียวกับใบส่งบัญชี*. So the
+old paragraph's stated reason — *“that sheet goes to management”* — is not the
+line any more, because management now gets the word. What IS the line, and was
+the line all along, is **THE MONTH MAY BE DISCLOSED; THE DATE MAY NOT**: the
+strip carries the word วันเกิด alone, no hours and no date, exactly as the
+accounting paper's does, and neither `DepartmentPrint.jsx` nor
+`DepartmentView.jsx` reads a `birthDate` or a `dayReason` to draw it — only the
+hours the report already counted. `test/birthdayOnPaper.test.js` pins that.
+
+The screen phrases it for its own columns — `วันเกิด · 8.00 ชม. คิดอัตราวันหยุด`,
+since it rules 1.50 and 3.00 where ส่งบัญชี rules a วันหยุด column. The paper
+says the word and nothing else, because that is what HR wrote there by hand.
+
+**`departments.csv` and `lib/departmentSummary.js` still say nothing at all**, and
+`test/birthdayOnPaper.test.js` still fails the build if either does. A CSV is
+sorted, filtered and pasted into somebody else's workbook rather than read a row
+at a time, so a remark in it is a column that travels; and the grouping module is
+not a document. Nobody has asked for either — which is now the whole of the
+reason, and it is a smaller reason than the one it replaced.
 
 `birthDate` itself remains not colleague-visible: `publicEmployee()` filters it out
 of the roster for everyone except the person, HR and admin — managers included.
@@ -4378,7 +4433,8 @@ than degrees of one thing. `SCAN_BADGE` in `lib/scanMatch.js` holds the words.
 one this feature keeps arriving at: the **verdict** answers *does somebody have
 to look at this row* and the answer is no, while the **mark** says what the
 machine witnessed. `metEnd` stays `>=` and the earlier decision of the same day
-stands; `overTime` is a flag beside it, built exactly as `missingOtStart` is.
+stands; `overTime` is a flag beside it, built exactly as missingOtStart was
+until that one was withdrawn on 2026-09-09 (see below).
 
 **The threshold is one OT block — `SCAN_OVER_MINUTES`, 30 นาที**, asked for as
 *เกิน 30 นาที (เท่าบล็อก OT)*. Two reasons and both matter. The engine floors OT
@@ -4398,14 +4454,12 @@ as an amount owed. Nothing here has ever moved a figure and this does not either
 there is nothing for a scan to exceed; `overTime` carries `!flatDaily` so the
 new sentence cannot appear under the green chip.
 
-**And one MARK that is not a verdict**, drawn beside any of them:
-`ไม่ได้สแกนเข้า OT` (`missingOtStart`, quiet, `.chip.scan-noin`) — the start of
-this OT had no door event to witness it. It sits on rows whose verdict is `ok`,
-which at this company is most of them. See §…but not a finding is not the same
-as not worth saying.
+**There was a second MARK beside them and it is gone.** ไม่ได้สแกนเข้า OT — the
+start of an OT that no door event witnessed — was drawn quiet from 2026-09-04
+until ฝ่ายบุคคล withdrew it on 2026-09-09. See §ไม่ได้สแกนเข้า OT was withdrawn.
 
-**On a `flatDaily` row none of the three verdicts draws**, and neither does the
-mark — the green เหมารายวัน chip does instead, whatever the verdict. See below.
+**On a `flatDaily` row none of the three verdicts draws** — the green
+เหมารายวัน chip does instead, whatever the verdict. See below.
 
 The last two must never be printed as one sentence. A row whose day has punches
 but none near the request may be a wrong request; a row with no punches at all
@@ -4600,7 +4654,7 @@ folded into this one.
 existed: there the far punch is the 07:26 morning arrival, on nearly every row
 of the month, and quoting it as the scan nearest a 17:30 start is the noise this
 feature nearly died of. Past that window the start has no witness at all, which
-is what `ไม่ได้สแกนเข้า OT` below is the answer to. The end is safe unbounded
+is what the direction test below is the answer to. The end is safe unbounded
 because it is the one event of an OT day the machine is in a position to record,
 so a far punch there is a finding rather than a coincidence — `07:42` alone
 against a 19:30 end is HR's own third shape, สแกนเข้าแต่ไม่ได้สแกนออก.
@@ -4712,20 +4766,21 @@ onward exactly as the two-punch person is inside from 07:42 onward. Presence
 cannot tell those apart; which side of the claimed start the punch fell on can.
 
 `startFinding` on the check carries the verdict and the sentence both, and
-`missingOtStart` is what is LEFT when there is no finding — never both on one
-row.
+since 2026-09-09 it is the whole of what the start side says. What used to be
+LEFT over when it is false — a start with no witness — was the field
+missingOtStart and a grey chip, and is now nothing at all.
 
 | the day's punches, against a request `17:00–19:30` | before | now |
 |---|---|---|
-| `07:34, 19:30` — two punches, the common shape (**Case A**) | ⚠️ `เวลาเริ่ม ไม่มีสแกนใกล้เคียง` | ⬜ `ไม่ได้สแกนเข้า OT` only — the scan-out reached 19:30 |
+| `07:34, 19:30` — two punches, the common shape (**Case A**) | ⚠️ `เวลาเริ่ม ไม่มีสแกนใกล้เคียง` | ✅ no chip — the scan-out reached 19:30 · it read "⬜ ไม่ได้สแกนเข้า OT only" until 2026-09-09 |
 | `07:42, 17:02, 17:28, 19:31` — four punches (**Case B**) | ✅ no chip | ✅ no chip |
 | `07:42, 17:22, 17:40, 19:33` — left the shift 22 นาที late | ⚠️ | ⚠️ `เวลาเริ่มไม่ตรงกับสแกน` · `เวลาเริ่ม สแกน 17:22 หลังเวลา 22 นาที` |
 | `19:33` alone — nothing before the OT began | ⚠️ | ⚠️ `เวลาเริ่ม ไม่มีสแกนใกล้เคียง` |
-| `07:42` alone — forgot to scan out | ⚠️ both sides | ⬜ + ⚠️ `ไม่ครบ · ขาด 11 ชม. 48 นาที` · `เวลาสิ้นสุด สแกน 07:42 · ขาดอีก 11 ชม. 48 นาที — อาจลืมสแกนออก` |
-| `07:42, 12:10` — went home at lunch | ⚠️ both sides | ⬜ + ⚠️ `ไม่ครบ · ขาด 7 ชม. 20 นาที` |
-| `07:42, 19:20` — left 10 นาที early | ✅ no chip (inside the 15-นาที tolerance) | ⬜ + ⚠️ `ไม่ครบ · ขาด 10 นาที` — no grace on this side since 2026-09-07 |
-| `07:30, 22:15` against **`17:00–20:00`** — stayed past the claim | ⚠️ `เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง` | ⬜ + ⬜ `เกินเวลา · เกิน 2 ชม. 15 นาที` — **no longer a warning** |
-| `07:21, 17:02, 17:35, 20:05` against **`18:00–20:00`** | ⚠️ `เวลาเริ่ม สแกน 17:35 ก่อนเวลา 25 นาที` | ⬜ `ไม่ได้สแกนเข้า OT` only (20:05 is 5 นาที over — under the 30-นาที block) |
+| `07:42` alone — forgot to scan out | ⚠️ both sides | ⚠️ `ไม่ครบ · ขาด 11 ชม. 48 นาที` · `เวลาสิ้นสุด สแกน 07:42 · ขาดอีก 11 ชม. 48 นาที — อาจลืมสแกนออก` |
+| `07:42, 12:10` — went home at lunch | ⚠️ both sides | ⚠️ `ไม่ครบ · ขาด 7 ชม. 20 นาที` |
+| `07:42, 19:20` — left 10 นาที early | ✅ no chip (inside the 15-นาที tolerance) | ⚠️ `ไม่ครบ · ขาด 10 นาที` — no grace on this side since 2026-09-07 |
+| `07:30, 22:15` against **`17:00–20:00`** — stayed past the claim | ⚠️ `เวลาสิ้นสุด ไม่มีสแกนใกล้เคียง` | ⬜ `เกินเวลา · เกิน 2 ชม. 15 นาที` — **no longer a warning** |
+| `07:21, 17:02, 17:35, 20:05` against **`18:00–20:00`** | ⚠️ `เวลาเริ่ม สแกน 17:35 ก่อนเวลา 25 นาที` | ✅ no chip (20:05 is 5 นาที over — under the 30-นาที block) |
 | any of these, filed **เหมารายวัน** | 🟩 green only | 🟩 green only |
 
 **What still warns was asked for in that shape.** A punch AFTER the claimed
@@ -4735,46 +4790,52 @@ this company the morning scan is the reliable one. A punch BEFORE the claimed
 start is neither, **however far before**: the tolerance no longer decides that
 side at all.
 
-##### …but not a finding is not the same as not worth saying: `ไม่ได้สแกนเข้า OT`
+##### ไม่ได้สแกนเข้า OT was withdrawn — 2026-09-09
 
-Asked for later the same day, once the silence existed: *"แสดง Badge/Flag
-Warning … `ไม่ได้สแกนเข้า OT` เพื่อเตือนว่าไม่มีสแกนเข้าช่วง 17:00 น."* Both
-halves are right, and they answer different questions:
+There was a grey chip on those Case A rows, and it is gone. It was asked for on
+2026-09-04, hours after the silence above was built: *"แสดง Badge/Flag Warning …
+ไม่ได้สแกนเข้า OT เพื่อเตือนว่าไม่มีสแกนเข้าช่วง 17:00 น."* — on the reading that
+the **verdict** answers *does somebody have to look at this row* (no) while a
+**mark** says what the machine witnessed, and that the second is worth printing
+even where the first is silent.
 
-| | question it answers | on Case A |
-|---|---|---|
-| the VERDICT (`ไม่ครบ` / `เวลาเริ่มไม่ตรงกับสแกน`, amber) | does somebody have to go and look at this row? | **no** — silent |
-| the MARK (`ไม่ได้สแกนเข้า OT`, grey) | what did the machine witness, and what did it not? | **the start had no witness** — said |
+ฝ่ายบุคคล withdrew it on 2026-09-09: **ไม่ต้องแจ้งเตือนเพราะปกติพนักงานก็ไม่สแกน
+กันอยู่แล้ว** — which is the same sentence the chip's own tooltip had been
+carrying since the day it shipped. At 17:00 the person is already inside and
+never touches the door, so the chip landed on **25 rows of 27** and said the
+same thing about all of them.
 
-**So it is grey, and the grey is the argument.** It lands on 25 rows of 27 —
-the same count that made the amber unreadable. A grey chip on twenty-five rows
-is a column of labels; an amber one is twenty-five errands that turn out to be
-none, which is what teaches a reader to stop opening the amber chips that are
-not. `.chip.scan-noin` is its own class rather than `.chip.scan-none`'s, though
-the declarations match today: "no scan at all" and "no scan at the start" are
-different statements about a day.
+**Grey did not save it, and that is the lesson worth keeping.** Grey was chosen
+precisely because the count was known: a grey chip on twenty-five rows is a
+column of labels rather than twenty-five errands. What a real month showed is
+that a column of identical labels is read once and then skipped for good, while
+still taking the width in จาก–ถึง that the marks which ARE about one row need.
+**A mark true of nearly every row is not evidence about any row, whatever colour
+it is drawn in.** These rows have now been marked twice — amber, then grey — and
+unmarked twice, for the same reason both times. It read:
 
-**The `title` carries the second half.** `ไม่ได้สแกนเข้า OT` alone reads as a
-problem, so the tooltip says why it is the ordinary shape of a day here and
-which scan the comparison is actually resting on. Both strings are
-`MISSING_OT_START` in `lib/scanMatch.js`, beside the flag, so the chip and the
-sentence cannot drift.
+> **So it is grey, and the grey is the argument.** It lands on 25 rows of 27 —
+> the same count that made the amber unreadable. `.chip.scan-noin` is its own
+> class rather than `.chip.scan-none`'s … **The `title` carries the second
+> half** … **It draws on neither a flat day nor a `no_scan` row.**
 
-**It draws on neither a flat day nor a `no_scan` row.** On a flat day nobody is
-asking whether the door events are complete and the green chip is the row's
-answer already — marking it grey would be the amber mistake repeated in another
-colour. On a day with no punches at all, `ไม่มีข้อมูลสแกน` says the whole of it,
-and two grey chips would be one statement cut in half. `showsMissingOtStart`
-holds both gates so no component decides them again.
+**What went with it**: the field missingOtStart on the check, the two strings
+MISSING_OT_START, the gate showsMissingOtStart, the component
+ScanMissingOtStartMark and the class `.chip.scan-noin` — the field fed that chip
+and nothing else read it. **No verdict, sentence, count or figure moved.** The
+silence `startFinding` builds is untouched, and the day's scan line under the
+times still prints `สแกน 07:34, 19:30` on every row that has punches, so a reader
+who wants to know whether anybody touched the door at 17:00 can see it.
 
-**It is read off the request's own start, not off a fixed 17:00–17:30 window.**
-The helper this was asked for in names those clock times because that is what
-the shift is, and for a request beginning at 17:00 the two agree exactly. They
-part on two requests the window cannot see: one filed `18:00–20:00`, where
-17:00–17:30 is not where its start is at all, and one whose OT-in scan is at
-17:40 — where the window reports "no scan" while a scan sits right there
-disagreeing by 40 นาที. The tolerance answers both, and it is the number
-ฝ่ายบุคคล can still move.
+**The tolerance is still read off the request's own start, not off a fixed
+17:00–17:30 window.** That was written as part of the chip and outlived it,
+because it is really about `SCAN_MATCH_TOLERANCE_MINUTES`. The helper this was
+asked for in names those clock times because that is what the shift is, and for
+a request beginning at 17:00 the two agree exactly. They part on two requests
+the window cannot see: one filed `18:00–20:00`, where 17:00–17:30 is not where
+its start is at all, and one whose OT-in scan is at 17:40 — where the window
+reports "no scan" while a scan sits right there disagreeing by 40 นาที. The
+tolerance answers both, and it is the number ฝ่ายบุคคล can still move.
 
 **And the END keeps the punch it used.** A request `17:00–18:30` whose last scan
 is `18:25` has an end 5 นาที out — and `18:25` also sits inside the START's
@@ -4871,8 +4932,10 @@ grey under a pill. The explanation now takes 11.5px and `--muted-2` — a step
 quieter than the punches line, which keeps `.cell-sub`'s 12px and `--muted` —
 and the three gaps are 8 / 4 / 6px. **The order of loudness is the point**: what
 the machine recorded outranks what this system says about it. **A row can carry
-two badges** — `ไม่ได้สแกนเข้า OT` beside `ไม่ครบ · ขาด 47 นาที` — and at 191px
-of content they do not fit on one line. They wrapped flush against each other, a
+two badges** — เหมารายวัน beside a scan badge — and at 191px of content they do
+not fit on one line. The pair that was measured in 2026-09-07 was
+ไม่ได้สแกนเข้า OT beside `ไม่ครบ · ขาด 47 นาที`; the first of those was withdrawn
+on 2026-09-09 and the wrapping rules stand, because two chips still meet here. They wrapped flush against each other, a
 measured 0px, an amber border sitting on a grey one; and the second was indented
 6px, because the gap that separates them side by side lived on its left. The gap
 is on the first chip's right now and stacked pills clear each other by 4px —
@@ -5332,6 +5395,14 @@ been formed yet, together with the fact that nobody approved it and why.
 that form carrying per-row remarks and the one HR reads today. Not a column and
 not a row: the sheet is a fixed month of 31 rows with columns measured in
 millimetres.
+
+**And since 2026-09-09 the ลงชื่อหัวหน้างาน column names the หัวหน้า who typed
+it in.** The step was skipped because they were the person who would have signed
+it, so the column says who that was instead of dropping to the ฝ่ายบุคคล
+confirmation underneath — or printing nothing while the row waits at รอ HR. The
+rule is `managerSignature` in [`lib/approverLine.js`](lib/approverLine.js) and it
+reads the skip note this section describes, so a filing that skipped nothing
+still prints blank. See §Outputs.
 
 The block under the grid naming who filed and who signed on whose behalf is
 behind **`proxyNoteOnForm`, default `false`**. F-HR-027 Rev.4 is a controlled
@@ -5942,6 +6013,28 @@ fingerprint scanner. The เฉพาะฝ่ายบุคคล box at the f
 untouched by any of this: it is the second signature on a two-signature entry,
 it keeps its rule to sign on, and a name in the column does not fill it in.
 
+**A row the หัวหน้า typed in themselves names the หัวหน้า** — asked for on
+2026-09-09, in these words: *ถ้าหัวหน้ากดบันทึก OT แทนพนักงาน ช่องลงชื่อหัวหน้างาน
+ให้ขึ้นชื่อคนที่กดบันทึก OT แทนด้วย เหมือนหัวหน้ากดอนุมัติแล้วปกติ*. A proxy filing
+goes straight past รอหัวหน้า to รอ HR **because** the person who typed it is the
+person who would have signed that step — see §It skips the step its author would
+have signed — and the filing row carries the sentence saying so. Both screens
+have read it that way since the feature shipped: the review pop-up says *เพราะ
+ผู้บันทึกคือผู้ที่จะอนุมัติเอง ระบบจึงข้ามขั้นนั้นมา*, and the entry pop-up's
+หัวหน้างานอนุมัติ cell reads *ข้ามขั้นหัวหน้า — ผู้บันทึกคือผู้อนุมัติเอง*. The
+paper was the one document that did not: it dropped to the ฝ่ายบุคคล step and
+printed **their** name in the หัวหน้างาน column, or printed nothing at all while
+the row waited at รอ HR. Both of those exist on prod — the two `submit_proxy`
+rows in the database on the day this landed are exactly one of each.
+
+The name is read off the **note on the filing row**, not off `submit_proxy`
+alone, because a proxy filing does not always stand in for that step: แผนกจัดซื้อ
+and แผนกทรัพยากรมนุษย์ have ฝ่ายบุคคล as their หัวหน้างาน *by rule*, so a filing
+there reaches รอ HR having passed nobody, and the box must stay blank until
+somebody signs. Those branches write no note, deliberately. With
+`proxySkipsOwnApproval` off nothing is skipped at all: the filing waits at
+รอหัวหน้า and the column prints the signature that is actually made.
+
 **The given name alone, in bold, with no คำนำหน้า, no surname and no
 punctuation** — the box carries a name and nothing else. `นางสาวปิยะนุช
 พรมประชุม` signs as `ปิยะนุช`. No date beside it either, because the column is
@@ -6104,6 +6197,30 @@ same sheet — marking one queue and not the other would read as "these are the
 unapproved rows" on a sheet carrying both. So `signed` prints an unmarked sheet
 and `draft` marks both queues, from one rule. What the screen above the sheet
 says, with dates, is which rows those are.
+
+**And since 2026-09-09 that screen OPENS on the statuses the sheet prints.**
+ตรวจสอบประจำเดือน's สถานะที่นับ starts at **อนุมัติแล้ว + รอ HR**. Asked for in
+those words: *ถ้าหัวหน้าอนุมัติแล้วให้ขึ้นที่หน้านี้ด้วย ใบที่มีสถานะรอ HR*. It
+opened on **อนุมัติแล้วเท่านั้น** until then, for a reason that was true of a
+system whose sheet also stopped at `approved` — *this screen is what HR signs
+off, and a total that moves when somebody withdraws a request is not a total to
+sign* — and that stopped being true two days earlier, above. So HR read a month
+on a screen one step behind the paper printed from it: on สิงหาคม 2569 — counted
+on this database 2026-09-09, **225 รอ HR and 73 รอหัวหน้า, and not one
+`approved`** — the table said **ไม่มีรายการในเดือนนี้** while the card two
+inches above it said `มีใบรออนุมัติค้างอยู่ 298 ใบ` and พิมพ์ใบขออนุมัติ OT
+ทุกคน would have printed the 225. อนุมัติแล้วเท่านั้น is still the first row of
+สถานะที่นับ and still means exactly what it meant; what moved is which of the
+three the screen holds when it opens.
+
+**The price is that ตรวจสอบประจำเดือน and คิวรออนุมัติ no longer lead with the
+same figure at their defaults**, which they were deliberately made to do on
+2026-09-04. The queue's headline is approved hours — a หัวหน้า has not yet
+decided the rest — and this screen now counts the step *after* theirs, which is
+the step it exists to carry out. Put สถานะที่นับ back to อนุมัติแล้วเท่านั้น and
+the two agree again, which is what `test/queueCapUsage.test.js` compares them at.
+The เพดาน column is unaffected either way: it has been coloured from every
+request still alive, at every filter, since the same day.
 
 **THE SHIPPED DEFAULT IS NOT WHAT RUNS UNTIL SOMEBODY SETS IT**, and on this
 installation nobody had. `Setting.policy` shadows `src/config/policy.js`
@@ -9236,6 +9353,49 @@ check it against. บริษัท is a column on the screen only — the read
 which payroll a name belongs to — and is not on the paper, which has no such
 column.
 
+**Two marks on the rows, added 2026-09-09 at ฝ่ายบุคคล's request** — *เหมือนกับ
+ฟอร์มของการเงิน*, and they are literally the accounting screen's: `รวม ชม.` goes
+`--danger-ink` on a row any of whose entries was signed past its department's
+ceiling, carrying the approvers' own sentences in a `title`; the same account is
+written out in full below, together with `วันเกิด · N ชม. คิดอัตราวันหยุด` where
+the month holds วันหยุดวันเกิด hours — `คิดอัตราวันหยุด` and not ส่งบัญชี's
+`อยู่ในช่องวันหยุด`, because this table has no วันหยุด column and a birthday's
+hours land in 1.50 and 3.00 by the ordinary holiday rule.
+
+**The marks are a ROW, not a cell, and that is the one thing this screen does
+differently.** They went in บริษัท first, which is where ค้างอนุมัติ has always
+lived. Below 860px that column is 64px — the six columns add up to 312px so that
+a 375px phone need not scroll at all, and every one of those widths is measured
+against a figure or a word. Walked at 375px on 2026-09-09 against a clone of the
+live database, a row carrying three over-ceiling reasons came to about 800px
+tall with its sentences set three characters to the line. Moved to `tr.row-notes`
+under the row it explains, the same block is 211px wide and 199px tall on a phone
+and 776px wide on a desktop. `ลำดับที่` and `ชื่อ-นามสกุล` stay real (empty)
+cells in that row and the span covers only the four columns after them — the name
+is frozen below 860px, and a frozen column with a hole in it would let a remark
+travel under the names when the sheet is scrolled sideways. The row is drawn only
+when there is something to say, so an ordinary month is the table it always was.
+
+`OverCeilingFigure`, `OverCeilingNote` and `BirthdayNote` all live in
+`components/common.jsx` and both screens call them — see §เกินเพดานแล้วยังเซ็น
+for why the marks are one implementation and where each screen still decides for
+itself.
+
+**And on the paper, after a second ask the same afternoon.** The marks went to
+the screen first and ฝ่ายบุคคล sent back a printed สาขาชลบุรี whose 45.00 was
+still black — *หมายถึงเกินเพดาน ตัวเลขในฟอร์ม* — then asked for วันเกิด on it as
+well. `components/DepartmentPrint.jsx` now reddens both rate cells of a marked
+row and carries the word วันเกิด in a white strip right of the yellow total.
+**Nothing ruled moved**: the strip is 26mm of the 32mm of blank paper the sheet
+already left to the right of its grid, the table went from 152mm to 178mm, and
+the four columns and the yellow cell keep the millimetres they had — a printout
+still lies on the paper it copies rule for rule. `ROWS_PER_PAGE` is unmoved
+because the strip inherits the row's height and its nowrap.
+
+**`departments.csv` carries neither**, and `lib/departmentSummary.js` still knows
+nothing about a birthday — see the วันเกิด section above for what that line is
+now that it is no longer “this sheet goes to management”.
+
 ### The file
 
 **ส่งออกไฟล์แยกแผนก (CSV/Excel)** → `/api/exports/departments.csv`. The same
@@ -9353,6 +9513,136 @@ build แล้ว
   `test/formPrintScope.test.js` และ `test/periodStatus.test.js` · `:3000` บนเครื่องนี้
   เป็น `next dev` (pid 3063548 · แม่คือ `next dev -p 3000`) จึงคอมไพล์ทรีที่กำลังแก้อยู่
   โดยตรง — ค่าที่ชิปใหม่ live แล้วบนพอร์ตนั้น แต่ค่าที่เก็บไว้ยังชนะอยู่.
+
+- **ช่องลงชื่อหัวหน้างานบน F-HR-027 ขึ้นชื่อหัวหน้าที่กดบันทึกแทน** — 2026-09-09,
+  *ถ้าหัวหน้ากดบันทึก OT แทนพนักงาน ช่องลงชื่อหัวหน้างานให้ขึ้นชื่อคนที่กดบันทึก OT
+  แทนด้วย เหมือนหัวหน้ากดอนุมัติแล้วปกติ*. **การยื่นแทนคือลายเซ็นอยู่แล้ว ตามกติกา
+  ของระบบเอง** — `initialStatus` ข้ามขั้นรอหัวหน้าไปรอ HR *เพราะ*คนกรอกคือคนที่จะ
+  เซ็นขั้นนั้น และเขียนเหตุผลลงบนแถวการยื่น (`SKIP_NOTE`) ไว้ตั้งแต่แรก
+  · **หน้าจออ่านแบบนี้มาตลอด กระดาษเป็นเอกสารเดียวที่ไม่** — ป็อปอัพรีวิวขึ้น
+  *เพราะผู้บันทึกคือผู้ที่จะอนุมัติเอง ระบบจึงข้ามขั้นนั้นมา* และช่อง หัวหน้างานอนุมัติ
+  ขึ้น *ข้ามขั้นหัวหน้า — ผู้บันทึกคือผู้อนุมัติเอง* ส่วนใบพิมพ์ตกไปหยิบชื่อ**ฝ่ายบุคคล**
+  มาใส่ในช่องหัวหน้างาน หรือพิมพ์ว่างไว้ตอนใบยังรอ HR
+  · **อ่านที่โน้ตบนแถวการยื่น ไม่ใช่ที่ `submit_proxy` เฉย ๆ** — แผนกจัดซื้อกับ
+  แผนกทรัพยากรมนุษย์มีฝ่ายบุคคลเป็นหัวหน้างาน*ตามกติกา* ใบที่ยื่นแทนในสองแผนกนั้น
+  ไปถึงรอ HR โดยไม่ผ่านโต๊ะใครเลย และต้องเว้นว่างต่อไปจนกว่าจะมีคนเซ็น · สาขานั้น
+  ไม่เขียนโน้ตโดยตั้งใจ (`skipped` เป็น false) โน้ตจึงเป็นสิ่งเดียวบนแถวที่แยก
+  *ผู้บันทึกเซ็นด้วยการบันทึก* ออกจาก *ไม่มีใครถูกข้าม* · ถ้าปิด
+  `proxySkipsOwnApproval` ก็ไม่มีอะไรถูกข้าม ใบรออยู่ที่รอหัวหน้า และช่องพิมพ์
+  ลายเซ็นที่เกิดขึ้นจริง
+  · **การอนุมัติ ในป็อปอัพไม่ได้เพิ่มแถว และนั่นไม่ใช่กระดาษกับจอไม่ตรงกัน** —
+  `approvalSteps` แสดง*การกดปุ่ม* และใบที่ข้ามขั้นไม่มีใครกดอนุมัติเลย การเพิ่มแถว
+  ตรงนั้นคือระบบอ้างว่ามีการอนุมัติที่ไม่เคยเกิด ซึ่งเป็นคำโกหกที่
+  `proxySkipsOwnApproval` มีไว้ปฏิเสธพอดี
+  · ✅ `npm test` **2398/2398** ผ่าน 2026-09-09 (เดิม 2391 · เจ็ดเคสใหม่ ไม่มีไฟล์ใหม่ ·
+  ทรีตอนวัดได้ 2392 เพราะมีงานอีกรอบหนึ่งค้างอยู่ในไดเรกทอรี จึงเก็บงานนั้นเข้า stash
+  แล้ววัดใหม่บนทรีที่จะ commit จริง)
+  · ✅ **เดินบนแอปที่ build แล้วที่ :3004** (`VERIFY_DIST_DIR=.next-verify-sig` ·
+  :3000 กับ :3001 มีคนใช้อยู่ ตรวจก่อนแล้วและไม่ถูกแตะ · ปิดเซิร์ฟเวอร์และลบ distDir
+  แล้ว) — **ทั้งฐาน 340 ใบมี `submit_proxy` อยู่สองใบ และเปลี่ยนทั้งสองใบ**:
+  `15/07/2569` ของ `PM00112 นางสาวรณพร สอนฤทธิ์` จาก `"นางสาวนันทิตา ธรรมนู"`
+  (ชื่อฝ่ายบุคคลที่กดยืนยันทีหลัง) เป็น `"นายรุ่งโรจน์ ขำคำ"` และ `09/09/2569`
+  ใบที่ยังรอ HR จาก `null` เป็น `"นายรุ่งโรจน์ ขำคำ"` — สองใบนี้คือสองอาการที่
+  อธิบายไว้ข้างบน ใบละอาการพอดี
+  · ✅ **ใบธรรมดาไม่ขยับ** อีกหกแถวของเดือน ก.ค. ที่หัวหน้าเซ็นตามปกติยังอ่านชื่อ
+  เดิมทุกแถว
+  · ❓ ยังไม่ได้พิมพ์ลงกระดาษ A4 จริง (ความกว้างช่องไม่ขยับ)
+  · ❓ ยังไม่ได้ deploy
+
+- **แท็ก ขอล่วงหน้า / ขอย้อนหลัง ใต้วันที่บนคิวรออนุมัติ** — 2026-09-09,
+  *หน้ารออนุมัติเพิ่มแท็กแจ้งเตือน ใต้วันที่ ต่อวัน จ. อ. พ. พฤ. ศ. ส. อา.
+  ในกรณีที่พนักงานยื่นขอโอทีล่วงหน้าหรือย้อนหลัง*. **สิ่งที่คอลัมน์วันที่พูดไม่ได้** —
+  `12/09/2569 · ส.` อ่านออกมาเหมือนกันทุกประการไม่ว่าใบนั้นจะยื่นเย็นวันนั้นเอง
+  หรือยื่นทีหลังห้าสัปดาห์ และสองแถวนั้นไม่ใช่ของอย่างเดียวกันสำหรับคนที่กำลังจะเซ็น
+  · **แถวที่สามใต้ตัวย่อวัน ไม่ใช่ในคอลัมน์รายละเอียด** เพราะสามบรรทัดนี้อ่านต่อกันเป็นเรื่องเดียว
+  — วันไหน วันอะไร แล้วใบมาห่างจากวันนั้นเท่าไร
+  · **สองสี** `ขอย้อนหลัง` ได้เหลืองแบบ `แก้ไขแล้ว` ซึ่งในแอปนี้แปลว่า *อ่านแถวนี้อีกที*
+  ไม่ได้แปลว่าใบผิด ส่วน `ขอล่วงหน้า` ได้ `--info` ฟ้าเงียบแบบ `รอ HR` เพราะยื่นก่อนวันทำงาน
+  คือทางที่ถูกอยู่แล้ว ทาเหลืองทั้งคู่คือเผาสัญญาณเตือนไปกับครึ่งที่ไม่ต้องเตือน
+  · **นับเป็นวันตามเวลาไทยก่อนลบกัน** ไทยเป็น UTC+7 การยื่นระหว่างเที่ยงคืนถึงเจ็ดโมงจึงตกวันก่อนหน้า
+  ถ้าอ่านจากสแตมป์ดิบ — คนทำกะดึกที่คีย์งานวันพุธตอนตีหนึ่งของวันพฤหัสจะกลายเป็น
+  *วันเดียวกัน* และไม่ขึ้นแท็กเลย ซึ่งคือแถวที่ตัวเลขนี้มีไว้เพื่อ · `today()` คือที่เดียวในระบบที่แปลง
+  instant เป็นวันของบริษัท
+  · **อ่านจากประวัติของใบ** `filingOf()` หาแถวการยื่นทั้งห้าแบบ (รวม `submit_proxy` และ
+  `submit_birthday`) ส่วน `createdAt` เป็นตัวสำรองของใบที่ไม่มีแถวนั้น
+  · ⚠ **ราคาที่จ่ายคือความกว้าง** `th.when-col` 92 → 136px และพื้นความกว้างของตาราง
+  1262 → 1306 (= ผลรวมสิบเอ็ดคอลัมน์ของหัวหน้า คอลัมน์ `สถานะ` ของฝ่ายบุคคลยังไม่ถูกนับ
+  เหมือนเดิม) — **ราคานี้ถูกคืนทั้งหมดในวันเดียวกัน และคืนมาเกินด้วย: พื้นนั้นคือ 1032
+  ตั้งแต่บ่ายวันที่ 2026-09-09** เมื่อ `cap-col` 224 → 112 กับ `act-col` 258 → 96 ตามคำขอ
+  *ไม่ต้องมีสก็อลบาร์เลื่อนๆ* คอลัมน์วันที่ไม่ได้ถูกแตะเลยในรอบนั้น ที่ให้คือคอลัมน์ที่กำลัง
+  จ่ายค่าให้ของที่มันไม่ได้ถืออีกแล้ว — ประโยค `เพดานนับ …` กับปุ่ม `รายละเอียด`
+  · `ขอย้อนหลัง 365 วัน` วัดบนแอปที่ build แล้วได้ 111.3px และแท็กที่ตกบรรทัด
+  คือกล่องสีที่ดูเหมือนพัง ไม่ใช่ประโยคที่ขึ้นบรรทัดใหม่ · `test/queueStatusColumn.test.js`
+  เลิกตรึงตัวเลข 1262 แล้วหันไปตรึง*ผลรวม*แทน ซึ่งคือข้อที่มันตั้งใจจะปกป้องมาตลอด
+  · **เดินด้วยตาบนแอปที่ build แล้ว** — distDir แยก เสิร์ฟ :3003 (`:3000` กับ `:3001`
+  มีคนใช้อยู่ ตรวจก่อนแล้วและไม่ถูกแตะ) · ฐานจริงวันนี้: `12/09/2569` ได้ `ขอล่วงหน้า 4 วัน`
+  ฟ้า · `24/08/2569` ได้ `ขอย้อนหลัง 15 วัน` เหลือง · `07/09/2569` ที่ยื่นวันเดียวกัน**ไม่มีแท็ก**
+  · แท็กกว้าง 105.2px ในเซลล์ 136px ไม่ล้น ทั้งธีมสว่างและธีมมืด และบนการ์ด 360px
+  แท็กยังเป็นบล็อกใต้วันที่ ไม่ใช่ต่อบรรทัดอย่าง `ข้ามคืน`
+  · **มันไม่ได้ห้ามอะไร** `maxPastSubmissionDays` ยัง `null` และปิดงวดถูกถอนไปแล้ว —
+  ข้อ *ยื่นย้อนหลังได้ถึงกี่วัน* ใน docs/hr-briefing.md ยังเปิดอยู่เหมือนเดิม เห็นกับห้ามเป็นคนละเรื่อง
+
+- **`สถานะที่นับ` บน ตรวจสอบประจำเดือน เปิดมาที่ `อนุมัติแล้ว + รอ HR`** —
+  2026-09-09 · ขอมาว่า *ถ้าหัวหน้าอนุมัติแล้วให้ขึ้นที่หน้านี้ด้วย
+  ใบที่มีสถานะรอ HR* · **หนึ่งบรรทัด และไม่ใช่ฟีเจอร์ใหม่** — แถว
+  `อนุมัติแล้ว + รอ HR` อยู่บนตัวควบคุมมาตลอดและเราต์ก็รับค่านี้อยู่แล้ว
+  ที่ผิดคือ*จอเปิดมาที่ค่าไหน*
+  · **เหตุผลเดิมเลิกจริงไปเมื่อ 2026-09-07** ตอนที่ `formPrintScope` ชิปเป็น
+  `ตั้งแต่หัวหน้าอนุมัติ` — กระดาษพิมพ์ `อนุมัติแล้ว + รอ HR` ส่วนจอที่อยู่
+  เหนือกระดาษยังอ่านช้ากว่าอยู่หนึ่งขั้น ซึ่งคือความผิดพลาดที่
+  `test/formPrintScope.test.js` เขียนไว้ในหัวไฟล์ตัวเอง แค่สลับข้างกัน
+  · **นับจากฐานจริงวันนี้: สิงหาคม 2569 คือ `pending_hr` 225 · `pending_mgr` 73
+  · `approved` ศูนย์ใบ** ตารางจึงเขียน `ไม่มีรายการในเดือนนี้` ใต้การ์ดที่เขียน
+  `มีใบรออนุมัติค้างอยู่ 298 ใบ` และปุ่มพิมพ์ข้าง ๆ กันก็พิมพ์ 225 ใบนั้นได้
+  · **แถว `อนุมัติแล้วเท่านั้น` ยังอยู่ครบและยังแปลว่าเดิม** เราต์ · CSV ทั้งสองใบ
+  · ปุ่มพิมพ์ · คอลัมน์ `สะสม / เพดาน` ไม่ถูกแตะเลยสักที่
+  · ⚠️ **ราคาที่จ่าย** — ตรวจสอบประจำเดือน กับ คิวรออนุมัติ เลิกขึ้นต้นด้วย
+  ตัวเลขเดียวกันที่ค่าเริ่มต้นของแต่ละจอ ซึ่งเป็นสิ่งที่ตั้งใจทำให้ตรงกันเมื่อ
+  2026-09-04 · หัวแถวของคิวคือชั่วโมงที่อนุมัติแล้ว จอนี้นับขั้นถัดจากนั้น ·
+  เลื่อนกลับไป `อนุมัติแล้วเท่านั้น` แล้วสองจอตรงกันอีกครั้ง และนั่นคือจุดที่
+  `queueCapUsage` เทียบ — เทสต์นั้นแยกค่าคงที่ออกเป็นสองตัวแล้ว
+  · **เทสต์ผ่านทั้งหมด** (อ่านว่า "2380 เทสต์ผ่านทั้งหมด" จนถึง 9 ก.ย. 2569 ที่ป้ายเทาถูกถอน) · build ผ่านบน `distDir` แยก (`.next-verify`
+  เสิร์ฟที่ :3001 ตอบ 200 แล้ว kill ทิ้ง · `:3000` ไม่ถูกแตะ) · ในบันเดิลอ่านได้ว่า
+  `useState)("approved,pending_hr")`
+  · ⚠ **ยังไม่ได้เดินด้วยตาบนหน้าจอ** — การมินต์ JWT ถูกปฏิเสธในรอบนี้
+  ที่ตรึงไว้คือเทสต์ที่อ่านซอร์ส บันเดิลที่ build แล้ว และยอดที่นับจากฐานจริง
+
+- **คิวขั้นแรกโชว์เฉพาะใบที่ยังไม่ได้อนุมัติ — จอ ฝ่ายบุคคล ไม่ขยับ** — 2026-09-09 ·
+  ขอมาว่า *หน้ารออนุมัติ OT ถ้ามีคนกดอนุมัติคำขอของพนักงานแล้วก็คือไม่ต้องโชว์แล้ว
+  โชว์แค่ใบที่ยังไม่ได้อนุมัติ แต่ของ HR คงไว้เหมือนเดิม* · **ถอนครึ่งหนึ่งของรอบ
+  2026-09-04 ข้างล่าง** ซึ่งให้คิวของผู้เซ็นขั้นแรกเห็นทั้งสายเหมือนที่ ฝ่ายบุคคล เห็น
+  · `wholeFlow` กลับไปเป็น `isHr && !delegatedOnly && !unsignedOnly` — คิวขั้นแรกทั้งสามจอ
+  (`รายการรออนุมัติ` · `รออนุมัติแทน` · `ใบที่ไม่มีหัวหน้าเซ็นได้`) ยิง `status=pending_mgr`
+  อย่างเดียว ใบจึงหลุดจากคิวทันทีที่มีคนเซ็น · **จอ ฝ่ายบุคคล ยังลิสต์ทั้งสาย** พร้อม
+  คอลัมน์และช่องกรอง `สถานะ` เหมือนเดิม เพราะแถวที่มันเฝ้าดูคือใบที่*กำลังจะมา*
+  ไม่ใช่ใบที่*ไปแล้ว*
+  · **ไม่มีอะไรฝั่งเซิร์ฟเวอร์เปลี่ยน** — `scopeFor`, `approvalPermission`,
+  `maySignFirstStep` และ `signableHere` ไม่ถูกแตะ ที่เปลี่ยนคือ query string ที่จอยิงออกไป
+  · **กองที่ดูอย่างเดียวบนจอหัวหน้าไม่ได้หายไป เหลือแบบเดียว** — ใบขั้นเดียวกันที่
+  routing matrix ไม่ได้ให้เซ็น (แผนกที่มีหัวหน้างานสี่คน) และใบของตัวเอง
+  · ประโยคที่สี่ของ `watchingNote` (`ผ่านขั้นของคุณแล้ว — รอฝ่ายบุคคลยืนยัน`) ถูกลบพร้อม
+  แถวที่มันอธิบาย และ `isHr` ออกจากพารามิเตอร์ของฟังก์ชันไปด้วย · ประโยคใต้ตารางของ
+  คิวว่างเคยอ่านว่า "`และจะอยู่ต่อจนฝ่ายบุคคลยืนยัน`" ตอนนี้บอกว่าใบจะหายไปเมื่อ
+  อนุมัติแล้ว และชี้ไป `รายงาน OT ประจำทีม`
+  · **เทสต์ผ่านทั้งหมด** (อ่านว่า "2380 เทสต์ผ่านทั้งหมด" จนถึง 9 ก.ย. 2569 ที่ป้ายเทาถูกถอน) และ build ผ่านบน `distDir` แยก (`VERIFY_DIST_DIR=
+  .next-verify-queue`, เสิร์ฟที่ :3005 ตอบ 200 แล้ว kill ทิ้ง · :3000 ไม่ถูกแตะ ตรวจแล้ว
+  ยังตอบ 200) · ในบันเดิลที่ build แล้วอ่านได้ว่า `j=u&&!o&&!d` และ `g=j?no:[n]` — คือ
+  `wholeFlow` กับ `listed` ตัวจริงที่คอมไพล์ออกมา
+  · ⚠ **ยังไม่ได้เดินด้วยตาบนหน้าจอ** — ไม่ได้ mint JWT ของผู้เซ็นแล้วเปิดคิวจริง
+  ที่ตรึงไว้คือเทสต์ที่อ่านซอร์สกับบันเดิล
+
+- **ช่องลงชื่อหัวหน้างานว่างบนแถว `รอหัวหน้า` — ตรวจซ้ำตอน merge 2026-09-09**
+  รายการข้างบนสองรายการมาจากคนละสาย และรายการแรกพิงข้อเท็จจริงที่รายการที่สอง
+  แก้พอดี: *`managerSignature` ตอบ `null` บนแถวที่ยังไม่มีใครกดอนุมัติ* — ซึ่งเป็น
+  เหตุผลทั้งหมดที่ `draft` ปลอดภัย เพราะกล่องเปล่าคือหน้าตาของบรรทัดที่ยังไม่เซ็น
+  · **ยังจริงหลังรวม** — `managerSignature` เติมชื่อจากสามทางเท่านั้น: `approve_mgr`
+  (มีคนกดอนุมัติจริง) · `isOwnApprovalFiling` (ยื่นแทนแล้วข้ามขั้น ซึ่ง `initialStatus`
+  ส่งไป `รอ HR` ไม่ใช่ `รอหัวหน้า`) · ลายเซ็นขั้น HR (เกิดทีหลังขั้นหัวหน้าเสมอ)
+  ไม่มีทางไหนไปถึงแถว `รอหัวหน้า` ได้ · ปิด `proxySkipsOwnApproval` แล้วใบยื่นแทน
+  ค้างที่ `รอหัวหน้า` และสาขานั้น**ไม่เขียนโน้ต**โดยตั้งใจ กล่องจึงยังว่าง
+  · ที่ตรึงไว้: `test/formSignatures.test.js` กับ `test/formPrintScope.test.js`
+  ผ่านพร้อมกันบนทรีที่รวมแล้ว · ❓ ยังไม่ได้เดินด้วยตาบนใบจริงของสองกฎพร้อมกัน
+
 
 - **ไม่พักเที่ยง บนแถวรายการ เป็นไฮไลท์สีแดง** — 2026-09-08, สั่งมาระหว่างอ่านหน้า
   รออนุมัติ OT: *ตรงไม่พักเที่ยงขอเป็นไฮไลท์สีแดง*.
@@ -9889,6 +10179,11 @@ build แล้ว
   shows through. The control was rewritten, the label map was not.
 
 - **คิวของผู้เซ็นขั้นแรกเห็นใบทั้งสาย และช่อง บทบาท มาแทนช่องสถานะบนจอนั้น** — 2026-09-04 ·
+  ⚠️ **ครึ่งแรกของหัวข้อนี้ถูกถอนเมื่อ 2026-09-09** — คิวขั้นแรกกลับไปโชว์เฉพาะใบที่ยัง
+  ไม่ได้อนุมัติ ทุกอย่างที่บันทึกไว้ข้างล่างเกี่ยวกับแถว `รอ HR` บนจอผู้เซ็น (คอลัมน์ที่ 12,
+  ประโยค `ผ่านขั้นของคุณแล้ว`, `รอ HR 2` ในหัวการ์ด และประโยค `และจะอยู่ต่อจนฝ่ายบุคคล
+  ยืนยัน` ใต้ตาราง) จึงเป็น**บันทึกของวันนั้น ไม่ใช่จอวันนี้** · ช่อง บทบาท, `OPENS_ON`,
+  แถบตัวกรองบนคิวว่าง และขอบเขตหลายแผนก **ยังอยู่ครบทุกข้อ** — ที่ถอนคือ*ใบที่ลิสต์*
   เดินบนแอปที่ build แล้วที่ :3001 (`VERIFY_DIST_DIR=.next-verify`) กับ**สำเนาฐานจริง**
   (`npm run backup` → `restore --to …primus_ot_walk`) โดยตั้ง `approvesDepartments` ของ
   PM-0147 (ผู้จัดการฝ่าย) เป็น RND + PROD2 และเลื่อน PM-0388 เป็น ผู้จัดการแผนก เพื่อให้มีใบ
@@ -10152,12 +10447,19 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2378 tests**, about 7 s, measured 2026-09-09 across 131
-  files. It read **"2372 tests … measured 2026-09-08"** until ot-hardening-and-slips
-  was merged; the two sides were measured apart and neither figure survived the
-  join — main's **2372** never saw the ไม่พักเที่ยง cases and the branch's
-  **"2380, all green"** never saw `birthdayTick` rewritten. Six cases came in
-  with the branch. Before that it read **"2374 tests, all green … about 3.4 s"**
+- `npm test` — **2397 tests**, about 7 s, measured 2026-09-09 across 132
+  files. It read **"2378 tests … across 131"** until ot-hardening-and-slips was
+  merged a SECOND time the same day — seven more commits and one new file,
+  `filingLead`. The branch's own **"2399, all green"** was measured with another
+  round's work stashed out of the way and never saw ใบขึ้นตั้งแต่ตอนที่ยื่น beside
+  it; main's **2378** never saw any of the seven. **Neither side's figure has
+  survived either join, which is now twice, and the reason is the same both
+  times**: two people measuring different trees on the same afternoon. The figure
+  on this line is the one measured after the merge, and it is the only one that
+  was. Before that it read **"2372 tests … measured 2026-09-08"** until the FIRST
+  merge of this same branch, where main's **2372** never saw the ไม่พักเที่ยง
+  cases and the branch's **"2380, all green"** never saw `birthdayTick`
+  rewritten. Before that it read **"2374 tests, all green … about 3.4 s"**
   until สวัสดิการวันเกิด began working itself out; `birthdayTick` was rewritten
   whole, which is a file that lost more cases than it gained, and no file was
   added or removed.
@@ -10173,7 +10475,36 @@ build แล้ว
   `docsMatchCode`"** until this merge: that thirty-second failure was AGENTS.md's
   own `node_modules/next/dist/` references going unresolved in a checkout with no
   dependencies installed, not a document disagreeing with the tree, and it does
-  not fail where `npm install` has run. It read **"2379 … across 131"** until ไม่พักเที่ยง became a red highlight —
+  not fail where `npm install` has run. It read **"2398 … across 132"** until คิวรออนุมัติ was made กระชับ —
+  `เพดานนับ` off the ceiling column, the `รายละเอียด` button off every row, and
+  the row itself made the thing you press. ONE new case for the last of those,
+  because the other three changes each had an existing test saying the opposite,
+  and rewriting those to say the new thing (and to ban the old shape) is the
+  work — not a count that goes up. It read **"2391 … across 132"** until ช่องลงชื่อหัวหน้างาน started naming the
+  หัวหน้า who filed a row on somebody's behalf — seven cases, no new file, all in
+  `test/formSignatures.test.js`, because the change is one more step in one pure
+  function. **THE WORKING DIRECTORY READ 2392 AND THAT FIGURE IS NOT THIS TREE'S**:
+  another round's edits were sitting uncommitted beside these, so the count was
+  taken again with them stashed and the sum is 2391 + 7.
+  It read **"2387 … across 132"** until the เกินเพดาน red and the วันเกิด strip
+  reached the PRINTED department sheet — the screen had had both since that morning,
+  and the sheet is the one read by somebody who does not already know.
+  It read **"2377 … across 131"** until the date cell on คิวรออนุมัติ gained
+  ขอล่วงหน้า / ขอย้อนหลัง — twelve cases and one new file,
+  `test/filingLead.test.js`, because `filingLead()` is two dates in and a
+  direction out and the Bangkok midnight boundary is the case that matters.
+  **THE "2377" IT REPLACES WAS TWO HIGH** — the commit before this one actually
+  ran 2375, measured in a throwaway worktree at that commit — so the sum is
+  2375 + 12 and not 2377 + 12. **Measure the tree you are committing, not the
+  tree you are sitting in**: this working copy also held unrelated uncommitted
+  work whose two extra cases are not in this commit and are not in this figure.
+  It read **"2375 … across 131"** until รายงาน OT แยกแผนก gained the เกินเพดาน
+  and วันเกิด marks — two more cases in `overCeiling` and NO new file, because the
+  marks themselves moved into a component both report screens call. It read
+  **"2380 … across 131"** until the grey `ไม่ได้สแกนเข้า OT` chip was
+  withdrawn — the count went DOWN by five, which is what taking a feature out looks
+  like: หมวด `1ข` of `scanMatch` was six cases guarding a chip and is now one
+  guarding its absence. It read **"2379 … across 131"** until ไม่พักเที่ยง became a red highlight —
   one more case in `entryRowChrome`, the file that already holds the row’s chrome.
   It read **"2374 … across 131"** until ไม่พักเที่ยง was put behind the
   company calendar — five more cases in `otFormChecks` and NO new file, because it

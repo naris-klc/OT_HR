@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   SCAN_BADGE, SCAN_MATCH, SCAN_MATCH_TOLERANCE_MINUTES, checkEntryAgainstScans,
   scanBadgeLabel, scanMismatchDetail, scanMismatchNote, summariseScanChecks,
-  groupScanChecksByPerson, dayPunchLine, showsMissingOtStart, MISSING_OT_START,
+  groupScanChecksByPerson, dayPunchLine,
 } from '../lib/scanMatch.js';
 
 /**
@@ -270,7 +270,7 @@ test('สแกนที่ใกล้ที่สุดของฝั่ง�
   ]);
   assert.equal(far.end.time.slice(0, 5), '22:15', 'ไม่ใช่ 07:30 และไม่ใช่ "ไม่มีสแกนใกล้เคียง"');
   assert.equal(far.state, SCAN_MATCH.OK, 'และตั้งแต่ 7 ก.ย. 2569 มันแปลว่าอยู่ครบ ไม่ใช่ไม่ตรง');
-  assert.equal(far.missingOtStart, true, 'ฝั่งเริ่มยังเงียบเหมือนเดิม — คนอยู่ข้างในอยู่แล้ว');
+  assert.equal(far.startFinding, false, 'ฝั่งเริ่มยังเงียบเหมือนเดิม — คนอยู่ข้างในอยู่แล้ว');
 
   // ฝั่งที่ยังเตือน: ไกลเท่ากันแต่อยู่*ก่อน*เวลาเลิก — ระยะเขียนเป็น ชม./นาที
   const short = checkEntryAgainstScans(entry({ startTime: '17:00', endTime: '23:00' }), [
@@ -346,7 +346,7 @@ test('แบบสองรอบ (เช้า + ตอนเลิกโอท
     [punch('2026-09-01', '07:42:10'), punch('2026-09-01', '19:33:05')],
   );
   assert.equal(check.state, SCAN_MATCH.OK);
-  assert.equal(check.missingOtStart, true, 'เวลาเริ่มไม่มีทางมีสแกน จึงไม่ถูกนับ');
+  assert.equal(check.startFinding, false, 'เวลาเริ่มไม่มีทางมีสแกน จึงไม่ถูกนับ');
   assert.equal(check.start, null);
   assert.equal(check.end.matched, true, 'ฝั่งที่เครื่องบันทึกได้จริงคือฝั่งเลิกโอที');
   assert.equal(scanMismatchNote(check), null);
@@ -357,8 +357,9 @@ test('แบบสองรอบ (เช้า + ตอนเลิกโอท
 test('แบบสองรอบที่ขอมา: สแกนเข้าก่อน 08:00 แล้วสแกนอีกทีตอนเลิก OT', () => {
   /**
    * รูปที่ขอมาเมื่อ 7 ก.ย. 2569 · *"สแกนเข้า < 08:00 น. และสแกนถัดไปเป็นเวลาออก
-   * OT (โดยไม่มีสแกนตอน 17:00 น.)"* — ต้องจับคู่ฝั่งจบให้ถูกตัว ขึ้นป้ายเทา
-   * `ไม่ได้สแกนเข้า OT` และโชว์เวลาสแกนทั้งวันเสมอ เช่น "สแกน 07:34, 19:30"
+   * OT (โดยไม่มีสแกนตอน 17:00 น.)"* — ต้องจับคู่ฝั่งจบให้ถูกตัว และโชว์เวลาสแกน
+   * ทั้งวันเสมอ เช่น "สแกน 07:34, 19:30" · เคยขึ้นป้ายเทา ไม่ได้สแกนเข้า OT
+   * ด้วย จนถูกถอนออกเมื่อ 9 ก.ย. 2569 — ดูหมวด 1ข
    */
   const check = checkEntryAgainstScans(
     entry({ startTime: '17:00', endTime: '19:30' }),
@@ -367,7 +368,7 @@ test('แบบสองรอบที่ขอมา: สแกนเข้า
   assert.equal(check.end.time.slice(0, 5), '19:30', 'สแกนถัดจากเช้าคือเวลาออก OT');
   assert.equal(check.state, SCAN_MATCH.OK, 'ถึงเวลาที่ขอพอดี = ครบ');
   assert.equal(scanBadgeLabel(check), null, 'ไม่มีป้ายส้ม');
-  assert.equal(showsMissingOtStart(check), true, 'แต่มีป้ายเทา ไม่ได้สแกนเข้า OT');
+  assert.equal(check.startFinding, false, 'และฝั่งเริ่มไม่มีอะไรจะพูด');
   assert.equal(dayPunchLine(check), '07:34, 19:30');
 });
 
@@ -378,7 +379,7 @@ test('แบบสี่รอบ (สแกน 17:00 และตอนเข�
       punch('2026-09-01', '17:28:03'), punch('2026-09-01', '19:31:55')],
   );
   assert.equal(check.state, SCAN_MATCH.OK);
-  assert.equal(check.missingOtStart, false, 'วันนี้มีสแกนใกล้เวลาเริ่มจริง จึงเทียบได้');
+  assert.equal(check.start.matched, true, 'วันนี้มีสแกนใกล้เวลาเริ่มจริง จึงเทียบได้');
   assert.equal(check.start.time.slice(0, 5), '17:02');
 });
 
@@ -393,7 +394,7 @@ test('มีสแกนใกล้เวลาเริ่มแต่ห่�
       punch('2026-09-01', '17:40:00'), punch('2026-09-01', '19:33:00')],
   );
   assert.equal(check.state, SCAN_MATCH.MISMATCH);
-  assert.equal(check.missingOtStart, false);
+  assert.equal(check.startFinding, true);
   assert.match(scanMismatchNote(check), /เวลาเริ่ม สแกน 17:22 หลังเวลา 22 นาที/);
 });
 
@@ -404,7 +405,7 @@ test('ไม่มีสแกนก่อนเวลาเริ่มเล�
     [punch('2026-09-01', '19:33:00')],
   );
   assert.equal(check.state, SCAN_MATCH.MISMATCH);
-  assert.equal(check.missingOtStart, false);
+  assert.equal(check.startFinding, true);
   assert.match(scanMismatchNote(check), /เวลาเริ่ม ไม่มีสแกนใกล้เคียง/);
 });
 
@@ -485,14 +486,14 @@ test('ใบ 18:00 บนวันสแกนสี่รอบ: 17:35 อย�
   assert.equal(scanMismatchNote(check), null);
 });
 
-test('แถวนั้นยังได้ป้ายเทา — เงียบไม่ได้แปลว่าไม่มีอะไรจะบอก', () => {
+test('แถวนั้นเงียบทั้งแถว — ป้ายเทาที่เคยยืนตรงนี้ถูกถอนเมื่อ 9 ก.ย. 2569', () => {
   const check = checkEntryAgainstScans(
     entry({ startTime: '18:00', endTime: '20:00' }),
     [punch('2026-09-01', '07:21:00'), punch('2026-09-01', '17:35:00'),
       punch('2026-09-01', '20:05:00')],
   );
-  assert.equal(check.missingOtStart, true, 'ตอน 18:00 ไม่มีใครแตะประตูจริง ๆ');
-  assert.equal(showsMissingOtStart(check), true);
+  assert.equal(check.startFinding, false, 'ตอน 18:00 ไม่มีใครแตะประตู และนั่นคือเรื่องปกติ');
+  assert.equal(scanBadgeLabel(check), null, 'จึงไม่มีป้ายไหนเหลืออยู่บนแถวนี้');
 });
 
 test('ไกลแค่ไหนไม่สำคัญ — สแกน 07:21 กับใบที่เริ่ม 21:00 ก็ยังคือคนอยู่ข้างใน', () => {
@@ -504,7 +505,6 @@ test('ไกลแค่ไหนไม่สำคัญ — สแกน 07:21
   );
   assert.equal(check.state, SCAN_MATCH.OK);
   assert.equal(check.startFinding, false);
-  assert.equal(check.missingOtStart, true);
 });
 
 test('แต่สแกนหลังเวลาเริ่มยังเตือน แม้วันนั้นจะมีสแกนก่อนหน้าด้วย', () => {
@@ -516,7 +516,6 @@ test('แต่สแกนหลังเวลาเริ่มยังเ�
   );
   assert.equal(check.state, SCAN_MATCH.MISMATCH);
   assert.equal(check.startFinding, true);
-  assert.equal(check.missingOtStart, false, 'ป้ายเทากับป้ายส้มไม่ขึ้นพร้อมกัน');
   assert.match(scanMismatchNote(check), /เวลาเริ่ม สแกน 17:40 หลังเวลา 40 นาที/);
 });
 
@@ -533,70 +532,34 @@ test('กลับบ้านตอนเที่ยง ไม่ได้อ�
   assert.equal(check.missingScanOut, true, 'ประตูไม่ขยับอีกเลยหลัง 17:00 — คือรูปลืมสแกนออก');
 });
 
-// ── 1ข. ไม่ใช่ข้อผิดพลาด แต่ยังต้องพูด — ป้าย `ไม่ได้สแกนเข้า OT` ──────────
+// ── 1ข. ป้าย `ไม่ได้สแกนเข้า OT` ถูกถอนออก — 9 ก.ย. 2569 ──────────────────
 //
-// ขอมาในวันเดียวกัน หลังจากที่คำตัดสินเงียบไปแล้ว: *"แสดง Badge/Flag Warning …
-// ไม่ได้สแกนเข้า OT เพื่อเตือนว่าไม่มีสแกนเข้าช่วง 17:00 น."*
+// หมวดนี้เคยมีเทสต์หกตัวคุมป้ายเทาที่ขอมาเมื่อ 4 ก.ย. 2569 ตอนบ่าย หลังจากที่
+// คำตัดสินเงียบไปแล้ว: *"แสดง Badge/Flag Warning … ไม่ได้สแกนเข้า OT"* — ฝ่าย
+// บุคคลถอนออกเมื่อ 9 ก.ย. 2569 ด้วยเหตุผลเดียวกับที่ tooltip ของป้ายเขียนไว้เอง
+// ตั้งแต่วันแรก: **ปกติพนักงานก็ไม่สแกนกันอยู่แล้ว** ป้ายจึงขึ้น 25 จาก 27 แถว
+// และไม่ได้บอกอะไรเกี่ยวกับแถวที่คนกำลังอ่านอยู่
 //
-// สองอย่างนี้ตอบคนละคำถาม — **คำตัดสิน** บอกว่าต้องไปดูแถวนี้ไหม (ไม่ต้อง)
-// **ป้าย** บอกว่าเครื่องเห็นอะไรและไม่เห็นอะไร ซึ่งพิมพ์ไว้บนแถวที่ไม่ต้องทำอะไร
-// ก็ยังมีประโยชน์ · ป้ายจึงเป็น**สีเทา** ไม่ใช่สีส้ม เพราะมันขึ้น 25 จาก 27 แถว
-// ซึ่งเป็นตัวเลขเดียวกับที่ทำให้สีส้มอ่านไม่ได้
+// สีเทาคือความพยายามทำให้ป้ายที่ขึ้นเกือบทุกแถวราคาถูกพอจะเก็บไว้ได้ ซึ่งไม่พอ —
+// คอลัมน์ป้ายชื่อที่เหมือนกันทุกแถวถูกอ่านครั้งเดียวแล้วข้ามตลอดไป
+//
+// `missingOtStart` ก็หายไปด้วย เพราะมันมีไว้เลี้ยงป้ายนั้นอย่างเดียว · สิ่งที่
+// **ไม่**ขยับคือคำตัดสิน ประโยค และตัวเลขทุกตัว: ความเงียบฝั่งเวลาเริ่มที่สร้างไว้
+// ในหมวด 1ก ยังอยู่ครบ และเทสต์ในหมวดนั้นคือสิ่งที่คุ้มกันมันอยู่ตอนนี้
+//
+// อย่าสร้างใหม่โดยไม่ถาม — แถวกลุ่มนี้ถูกติดป้ายมาสองครั้งและถอดออกสองครั้งแล้ว
 
-test('แบบสองรอบได้ป้าย ไม่ได้สแกนเข้า OT ทั้งที่คำตัดสินว่าไม่มีอะไรผิด', () => {
+test('ไม่มีป้ายฝั่งเวลาเริ่มเหลือบนแถวสองรอบ — ผลเทียบไม่มีธงให้วาดแล้ว', () => {
   const check = checkEntryAgainstScans(
     entry({ startTime: '17:00', endTime: '19:30' }),
     [punch('2026-09-01', '07:42:10'), punch('2026-09-01', '19:33:05')],
   );
   assert.equal(check.state, SCAN_MATCH.OK, 'ยังไม่ใช่แถวที่ต้องไปตรวจ');
-  assert.equal(showsMissingOtStart(check), true, 'แต่ยังต้องบอกว่าไม่มีสแกนตอนเริ่ม');
-  assert.equal(MISSING_OT_START.LABEL, 'ไม่ได้สแกนเข้า OT');
-  assert.match(MISSING_OT_START.SAY, /ปกติของที่นี่/, 'ป้ายเทาต้องบอกด้วยว่านี่คือเรื่องปกติ');
-  assert.match(MISSING_OT_START.SAY, /สแกนตอนเลิก OT/, 'และบอกว่าเทียบจากอะไรแทน');
-});
-
-test('แบบสี่รอบไม่ได้ป้ายนี้ — มันสแกนเข้า OT ไว้จริง', () => {
-  const check = checkEntryAgainstScans(
-    entry({ startTime: '17:00', endTime: '19:30' }),
-    [punch('2026-09-01', '07:42:10'), punch('2026-09-01', '17:02:41'),
-      punch('2026-09-01', '17:28:03'), punch('2026-09-01', '19:31:55')],
-  );
-  assert.equal(showsMissingOtStart(check), false);
-});
-
-test('ใบเหมารายวันไม่ได้ป้ายนี้ — ป้ายเขียวคือคำตอบของแถวนั้นแล้ว', () => {
-  /**
-   * เป็นความผิดพลาดเดียวกับป้ายส้มเมื่อ 4 ก.ย. 2569 ถ้าทำซ้ำเป็นสีเทา — วันที่ถูก
-   * เหมาไปทั้งวันแล้ว ไม่มีใครถามว่ามันมีเหตุการณ์ที่ประตูครบไหม
-   */
-  const check = checkEntryAgainstScans(
-    entry({ startTime: '17:00', endTime: '19:30', flatDaily: true }),
-    [punch('2026-09-01', '07:42:10'), punch('2026-09-01', '19:33:05')],
-  );
-  assert.equal(check.missingOtStart, true, 'ข้อเท็จจริงยังเป็นจริงอยู่');
-  assert.equal(showsMissingOtStart(check), false, 'แต่ไม่วาดบนแถวเหมา');
-});
-
-test('วันที่ไม่มีสแกนเลย ไม่ได้ป้ายนี้ — ป้าย ไม่มีข้อมูลสแกน พูดครบแล้ว', () => {
-  // สองป้ายเทาบนแถวเดียวคือประโยคเดียวถูกผ่าครึ่ง
-  const check = checkEntryAgainstScans(entry({ startTime: '17:00' }), []);
-  assert.equal(check.state, SCAN_MATCH.NO_SCAN);
-  assert.equal(showsMissingOtStart(check), false);
-});
-
-test('แถวที่ลืมสแกนออก ได้ทั้งป้ายเทาและป้ายส้ม — คนละเรื่องกัน', () => {
-  const check = checkEntryAgainstScans(
-    entry({ startTime: '17:00', endTime: '19:30' }),
-    [punch('2026-09-01', '07:42:10')],
-  );
-  assert.equal(showsMissingOtStart(check), true, 'ไม่มีสแกนตอนเริ่ม');
-  assert.equal(check.state, SCAN_MATCH.MISMATCH, 'และไม่มีสแกนตอนเลิกด้วย ซึ่งต้องไปดู');
-});
-
-test('ผลเทียบที่ยังไม่ได้เทียบ ไม่หลอกให้ขึ้นป้าย', () => {
-  assert.equal(showsMissingOtStart(null), false);
-  assert.equal(showsMissingOtStart(undefined), false);
-  assert.equal(showsMissingOtStart({}), false);
+  assert.equal(check.startFinding, false, 'และฝั่งเริ่มก็ยังไม่ใช่ข้อค้นพบ');
+  assert.equal(scanBadgeLabel(check), null, 'ไม่มีป้ายใดเหลือบนแถวนี้');
+  assert.equal('missingOtStart' in check, false, 'ธงที่เลี้ยงป้ายเทาถูกถอนไปพร้อมป้าย');
+  // สิ่งที่เหลือให้คนอ่านตัดสินเอง คือเวลาสแกนดิบของวันนั้น
+  assert.equal(dayPunchLine(check), '07:42, 19:33');
 });
 
 // ── 1ค. เกินเวลา — ขอโอทีมาน้อยกว่าที่ทำจริง ────────────────────────────────
@@ -637,8 +600,7 @@ test('เส้นแบ่งเกินเวลาอยู่ที่ห�
 });
 
 test('เกินเวลาไม่ขึ้นบนแถวที่มีข้อค้นพบฝั่งเวลาเริ่มอยู่แล้ว', () => {
-  // กฎเดียวกับป้ายเทา `ไม่ได้สแกนเข้า OT` — แถวที่กำลังขอให้ไปดูอยู่แล้ว ไม่ต้อง
-  // มีป้ายที่สองมาบอกว่าการดูเป็นทางเลือก
+  // แถวที่กำลังขอให้ไปดูอยู่แล้ว ไม่ต้องมีป้ายที่สองมาบอกว่าการดูเป็นทางเลือก
   const check = checkEntryAgainstScans(
     entry({ startTime: '17:00', endTime: '19:30' }),
     [punch('2026-09-01', '07:21:00'), punch('2026-09-01', '17:40:00'),
@@ -787,7 +749,6 @@ test('ใบเหมาทั้งสามแบบที่ฝ่ายบ�
     assert.equal(scanMismatchNote(check), null, `${name}: ต้องไม่มีประโยคเตือนเลย`);
     assert.equal(scanMismatchDetail(check), null, `${name}: และไม่มีบรรทัดตัวเลขด้วย`);
     assert.equal(scanBadgeLabel(check), null, `${name}: และไม่มีป้าย`);
-    assert.equal(showsMissingOtStart(check), false, `${name}: ป้ายเทาก็ไม่ขึ้นบนใบเหมา`);
   }
 
   // สิ่งที่ยังเหลืออยู่บนแถวคือเวลาสแกนดิบ ๆ ของวันนั้น ให้คนอ่านตรวจเอง
@@ -1053,7 +1014,7 @@ test('ผลลัพธ์ไม่มีชั่วโมง ไม่มี�
   assert.deepEqual(
     Object.keys(check).sort(),
     ['dayPunches', 'end', 'endOverMinutes', 'endShortMinutes', 'flatDaily',
-      'missingOtStart', 'missingScanOut', 'overThreshold', 'overTime', 'punchCount',
+      'missingScanOut', 'overThreshold', 'overTime', 'punchCount',
       'start', 'startFinding', 'state', 'tolerance'],
   );
 });

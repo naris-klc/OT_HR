@@ -5,16 +5,16 @@ import { createPortal } from 'react-dom';
 import {
   STATUS, BUCKETS, BUCKET_LABEL, hours, periodLabel, thaiDate, thaiDateTime, thaiStamp,
 } from '@/lib/api.js';
+import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { capChips, capFigure } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
 import {
-  ENTERED_FIELDS, filingOf, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled, isSystemFiled,
-  isSystemLog, lastAction, sameSession, sameValue,
+  ENTERED_FIELDS, filingLead, filingOf, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled,
+  isSystemFiled, isSystemLog, lastAction, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import {
-  MISSING_OT_START, SCAN_MATCH, dayPunchLine, scanBadgeLabel, scanMismatchDetail, scanMismatchNote,
-  showsMissingOtStart,
+  SCAN_MATCH, dayPunchLine, scanBadgeLabel, scanMismatchDetail, scanMismatchNote,
 } from '@/lib/scanMatch.js';
 import { approvalSteps, approverLine } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
@@ -204,6 +204,125 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
       )}
     </div>
   );
+}
+
+/* ── หมายเหตุของแถวรายงาน — the two marks a month's own figures cannot explain ──
+
+   Both were written into components/AccountingView.jsx on 2026-09-02 and lived
+   there alone until 2026-09-09, when ฝ่ายบุคคล asked for the same two on
+   รายงาน OT แยกแผนก. They are here rather than exported from that screen
+   because a second copy of a remark is a second remark the day somebody rewords
+   one of them — the argument `BIRTHDAY_REMARK` in lib/accountingRows.js already
+   makes about the word itself, applied to the sentences around it.
+
+   WHAT IS SHARED IS THE MARK, NOT THE SHEET. Each screen still decides where
+   its own marks go and what a blank cell means: ส่งบัญชี has a หมายเหตุ column,
+   แยกแผนก has no column to spare and gives them a row of their own under the one
+   they explain, and the two PRINTED forms take neither — they carry the word
+   วันเกิด alone in a white strip beside the grid, and red ink on the figures,
+   because a sheet somebody signs is not a screen (see `remark` and
+   `figureClass` in AccountingPrint.jsx and DepartmentPrint.jsx). What still
+   says nothing at all is departments.csv — a file is sorted and filtered rather
+   than read a row at a time; test/birthdayOnPaper.test.js pins that. */
+
+const OVER_CEILING_MARK = 'รายการเกินเพดาน';
+
+/** One entry's line — "05/08/2569 · 4.50 ชม." — shared by the tooltip and the note. */
+const noteLine = (n) => `${n.workDate ? thaiDate(n.workDate) : '—'} · ${hours(n.hours)} ชม.`;
+
+/**
+ * What a hover says, as one string, because `title` is one string.
+ *
+ * The shape asked for — `รายการเกินเพดาน | เหตุผลผู้อนุมัติ: …` — with the
+ * waived rows named separately: a ceiling ฝ่ายบุคคล waived and a ceiling a
+ * หัวหน้า signed past are two different decisions by two different people, and
+ * running them together would put HR's sentence under the หัวหน้า's name.
+ */
+export function tipTextOf(over) {
+  const parts = [`${OVER_CEILING_MARK} ${over.count} รายการ · ${hours(over.hours)} ชม.`];
+  for (const n of over.notes) {
+    if (n.reason) parts.push(`${noteLine(n)} | เหตุผลผู้อนุมัติ: ${n.reason}`);
+    if (n.waivedReason) parts.push(`${noteLine(n)} | ยกเว้นเพดานโดยฝ่ายบุคคล: ${n.waivedReason}`);
+    if (!n.reason && !n.waivedReason) parts.push(`${noteLine(n)} | ไม่ได้บันทึกเหตุผลไว้`);
+  }
+  return parts.join('\n');
+}
+
+/**
+ * A row's total — red when any of it went past a ceiling.
+ *
+ * A `<strong>` with a `title`, and NOT a portal-backed popover, which is what
+ * this reached for first. The tables it sits in are horizontal scrollers
+ * (`overflow-x: auto`), so anything positioned inside a cell is clipped by them
+ * — the problem components/popover.jsx exists to solve, at the cost of a portal,
+ * a placement pass and a dismiss listener. None of that is worth it here,
+ * because the same words are on the row already: `OverCeilingNote` below prints
+ * them beside the figure, where they survive a phone, a print preview and a
+ * second reading. The tooltip is the shortcut, not the record.
+ *
+ * NOT A WARNING COLOUR, deliberately. These hours are approved, correct and
+ * being paid; the red says this figure was a decision somebody had to justify,
+ * and the justification is one hover or one glance away.
+ *
+ * THE FIGURE IS THE CALLER'S. ส่งบัญชี and แยกแผนก both leave a nought blank and
+ * each states that rule for itself; this component only says whether the number
+ * handed to it was signed past a ceiling.
+ */
+export function OverCeilingFigure({ over, children }) {
+  if (!over?.count) return <strong>{children}</strong>;
+  return <strong className="fig-over" title={tipTextOf(over)}>{children}</strong>;
+}
+
+/** The same account, written into the row rather than hovered for. */
+export function OverCeilingNote({ over }) {
+  if (!over?.count) return null;
+  return (
+    <div className="note-mark over-cap">
+      <strong>{OVER_CEILING_MARK}</strong> · {over.count} รายการ · {hours(over.hours)} ชม.
+      <ul className="over-cap-why">
+        {over.notes.map((n, i) => (
+          // Index: two entries can share a date (a split shift), and nothing
+          // else on this row identifies one — `entries` never leaves the
+          // server, so there is no id here to key on.
+          <li key={`${n.workDate}-${i}`}>
+            {noteLine(n)}
+            {n.reason && <> · เหตุผลผู้อนุมัติ: {n.reason}</>}
+            {n.waivedReason && <> · ยกเว้นเพดานโดยฝ่ายบุคคล: {n.waivedReason}</>}
+            {!n.reason && !n.waivedReason && (
+              /* Approved before 2026-09-02, when nobody was asked for one. Said
+                 out loud rather than left blank: an empty space after a colon
+                 reads as a reason that failed to load. */
+              <> · <span className="muted">ไม่ได้บันทึกเหตุผลไว้ (อนุมัติก่อนเริ่มใช้กฎนี้)</span></>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * วันหยุดวันเกิด hours, and where on THIS sheet they ended up.
+ *
+ * The one figure on a report a reader cannot account for from the calendar:
+ * holiday hours against somebody who worked an ordinary Tuesday. The paper this
+ * replaces carries the word in HR's handwriting, and a sheet without it comes
+ * back to be explained.
+ *
+ * `where` IS THE CALLER'S BECAUSE THE COLUMNS ARE. ส่งบัญชี rules a วันหยุด
+ * column and the hours are all in it; แยกแผนก rules 1.50 and 3.00, and a
+ * birthday worked past core hours is split across both — a holiday hour is
+ * ot15_holiday inside core and ot3_holiday outside it (see `bucketOf` in
+ * src/lib/otEngine.js), and those are that sheet's two columns. Naming a column
+ * a sheet does not have would be a remark telling its reader to go and look at
+ * nothing.
+ *
+ * WITH THE HOURS, which the printed forms leave out for want of room — these are
+ * the screens the figure is checked on. See `remark` in AccountingPrint.jsx.
+ */
+export function BirthdayNote({ hours: h, where }) {
+  if (!(h > 0)) return null;
+  return <div className="note-mark">{BIRTHDAY_REMARK} · {hours(h)} ชม. {where}</div>;
 }
 
 /** The three form columns, side by side. */
@@ -577,45 +696,26 @@ export function ScanDayPunches({ entry }) {
 }
 
 /**
- * ไม่ได้สแกนเข้า OT — the start of this OT has no witness at the door.
+ * ไม่ได้สแกนเข้า OT — WITHDRAWN 2026-09-09, and this note is what is left.
  *
- * ── A THIRD MARK, AND IT IS NOT A THIRD WARNING ────────────────────────────
+ * A grey chip stood here from 2026-09-04, asked for hours after the amber
+ * verdict had been taken off the same rows: *"แสดง Badge/Flag Warning …
+ * ไม่ได้สแกนเข้า OT"*. ฝ่ายบุคคล withdrew it on 2026-09-09 —
+ * *ไม่ต้องแจ้งเตือนเพราะปกติพนักงานก็ไม่สแกนกันอยู่แล้ว* — which is the reason the
+ * chip's own tooltip had been carrying all along: the start of an OT here has
+ * no door event because the person never left, so the mark landed on 25 rows of
+ * 27 and said the same thing about all of them.
  *
- * Asked for on 2026-09-04 (*"แสดง Badge/Flag Warning … ไม่ได้สแกนเข้า OT"*),
- * after the verdict had stopped counting that start against the row. Both are
- * right, and they are answers to different questions: the VERDICT decides
- * whether somebody has to go and look at this row, and the answer there is no;
- * the MARK says what the machine did and did not witness, and that is worth
- * printing on a row nobody has to act on.
+ * Grey was the attempt to make a near-universal mark cheap enough to keep. It
+ * is not: a column of identical labels is read once and then skipped, and it
+ * cost this cell the room the marks that ARE about one row need. The flag
+ * behind it went too — `ScanDayPunches` still prints the day's scans under the
+ * times, so a reader who wants to know whether anybody touched the door at
+ * 17:00 can see it for themselves.
  *
- * ── SO IT IS GREY, AND THE GREY IS THE POINT ───────────────────────────────
- *
- * It lands on most rows of most months — 25 of 27 on the first real one — which
- * is precisely the count that made this amber unbearable. A grey chip on
- * twenty-five rows reads as a column of labels; an amber one on twenty-five
- * rows teaches a reader to stop opening amber. `.chip.scan-noin` is its own
- * class rather than `.chip.scan-none`'s, though the two declarations match
- * today: "no scan at all" and "no scan at the start" are different statements
- * and the one that changes should not drag the other with it.
- *
- * THE SENTENCE CARRIES THE SECOND HALF. `ไม่ได้สแกนเข้า OT` alone reads as a
- * problem; the `title` says why it is the ordinary shape of a day here and
- * which scan the comparison is actually resting on. Both strings come from
- * `MISSING_OT_START` in lib/scanMatch.js, beside the flag they describe.
- *
- * `showsMissingOtStart` holds the three gates — flat days and `no_scan` rows
- * draw nothing — so this component and the counting cannot come to different
- * answers about one row.
+ * Do not rebuild it without asking. These rows have now been marked twice and
+ * unmarked twice, in two colours, for the same reason both times.
  */
-export function ScanMissingOtStartMark({ entry }) {
-  if (!showsMissingOtStart(entry?.scanCheck)) return null;
-  return (
-    <span className="chip scan-noin" title={MISSING_OT_START.SAY}>
-      {MISSING_OT_START.LABEL}
-    </span>
-  );
-}
-
 export function ScanMismatchMark({ entry }) {
   const check = entry?.scanCheck;
   /**
@@ -651,7 +751,7 @@ export function ScanMismatchMark({ entry }) {
    * `scan-off` is the amber one and it means *go and look at this row*: ไม่ครบ,
    * or a start the machine disagrees with. `scan-none` (ไม่ตรง) and `scan-over`
    * (เกินเวลา) are grey, and grey is the tone this table already uses for a
-   * fact nobody has to act on — see `.chip.scan-noin`.
+   * fact nobody has to act on.
    *
    * เกินเวลา is grey by HR's own answer on 2026-09-07: *ข้อเท็จจริง ป้ายเทา
    * ไม่นับกองที่ต้องตรวจ*. The person worked longer than they claimed, which
@@ -659,10 +759,9 @@ export function ScanMismatchMark({ entry }) {
    * would be this screen marking somebody for under-claiming, which is the
    * mistake the end-side rule was rewritten earlier the same day to avoid.
    *
-   * `scan-over` is its own class rather than `scan-none`'s, on the same
-   * reasoning `.chip.scan-noin` is: "no scan at all" and "stayed past the end"
-   * are different statements, and the one that changes should not drag the
-   * other with it.
+   * `scan-over` is its own class rather than `scan-none`'s: "no scan at all"
+   * and "stayed past the end" are different statements, and the one that
+   * changes should not drag the other with it.
    */
   const tone = missing ? 'scan-none' : (check.overTime ? 'scan-over' : 'scan-off');
   return (
@@ -806,6 +905,57 @@ export function TeamMark({ entry, coveredDepartments }) {
     <span className="chip delegated" title="รายการจากทีมที่คุณรับช่วงอนุมัติแทน">
       รับช่วง · {entry.department?.nameTh || entry.department?.name || 'ทีมที่รับช่วง'}
     </span>
+  );
+}
+
+/**
+ * ขอล่วงหน้า 3 วัน / ขอย้อนหลัง 12 วัน — under the date, under the weekday.
+ *
+ * ── WHAT THE DATE COLUMN COULD NOT SAY ─────────────────────────────────────
+ * Asked for on 2026-09-09, and it fills a real hole rather than decorating the
+ * cell. `12/09/2569 · ส.` reads identically whether the request was typed that
+ * Saturday evening or five weeks afterwards, and those two rows are not the
+ * same thing to the person signing: one is a note of work just done, the other
+ * is a claim about a day nobody remembers, filed after the month it belongs to
+ * was reported. Nothing in the system draws that line for them — ปิดงวด was
+ * withdrawn on 2026-08-31 and `maxPastSubmissionDays` ships as `null`, so a
+ * request may be filed today for any day in the past at all
+ * ([README §Status](../README.md)). Until HR names a number, seeing it IS the
+ * control.
+ *
+ * THE EXACT WORDS ARE HR's — *ขอล่วงหน้า … วัน* and *ขอย้อนหลัง … วัน* — and
+ * they are the same two words the server's own refusals use when a limit is
+ * set (`advanceSubmissionRefusal`, `pastSubmissionRefusal` in lib/entries.js).
+ * One vocabulary, so the tag on the row and the sentence that would one day
+ * stop it being filed at all cannot come to say it two ways.
+ *
+ * TWO TONES, BECAUSE THEY ARE NOT THE SAME NEWS. ขอย้อนหลัง takes the amber
+ * this app spends on "look at this row again" (แก้ไขแล้ว, เวลาไม่ตรงกับไฟล์สแกน);
+ * ขอล่วงหน้า takes `--info`, the quiet blue รอ HR wears, because filing before
+ * the shift is the ORDERLY case — it is worth stating and it is not a warning,
+ * and painting both amber would spend the alarm on the good half.
+ *
+ * NOT A `.chip`. A chip is a pill and every pill on this row is a status; this
+ * is a fact about when a form arrived. It takes `.cell-flag`'s smaller shape
+ * for the same reason ไม่พักเที่ยง does — see `.filed-lead` in app/styles.css,
+ * where the 44px this cost the table's width is written down.
+ *
+ * The day count is `filingLead`'s, computed off the history rather than off
+ * `createdAt` where there is one; the `title` prints the stamp it was worked
+ * out from, so a reader who doubts the figure can see the filing time itself.
+ */
+export function FilingLeadMark({ entry }) {
+  const lead = filingLead(entry);
+  if (!lead) return null;
+  const ahead = lead.direction === 'ahead';
+  const at = filingOf(entry)?.at || entry?.createdAt;
+  return (
+    <div
+      className={`filed-lead ${ahead ? 'ahead' : 'back'}`}
+      title={at ? `ยื่นคำขอเมื่อ ${thaiStamp(at, { seconds: false })}` : undefined}
+    >
+      {ahead ? 'ขอล่วงหน้า' : 'ขอย้อนหลัง'} {lead.days} วัน
+    </div>
   );
 }
 

@@ -68,14 +68,24 @@ test('the stripper actually strips — the bans below prove nothing otherwise', 
  * read that one place. Two lists — one in the query string and one in the
  * filter — is how a screen comes to offer a สถานะ row that filters to nothing.
  */
-test('คิวปกติขอสองสถานะ · สองโหมดพิเศษขอสถานะเดียว', () => {
+test('คิว ฝ่ายบุคคล ขอสองสถานะ · คิวขั้นแรกทุกแบบขอสถานะเดียว', () => {
   assert.match(code, /const FLOW_STATUSES = Object\.freeze\(\['pending_mgr', 'pending_hr'\]\)/);
-  // BOTH ENDS OF THE FLOW SINCE 2026-09-04. It read `isHr ? … : [stage]` while
-  // ฝ่ายบุคคล were the only ones reading the whole thing; ผู้จัดการฝ่าย asked
-  // for the same view of their own แผนก — from filing until it is confirmed —
-  // and a queue that dropped every row the moment a หัวหน้า signed it was the
-  // screen that could not answer "what happened to my ใบ".
-  assert.match(code, /const wholeFlow = !delegatedOnly && !unsignedOnly;/);
+  /**
+   * ฝ่ายบุคคล'S QUEUE AND NOBODY ELSE'S — AGAIN, SINCE 2026-09-09.
+   *
+   * It read `!delegatedOnly && !unsignedOnly` from 2026-09-04, when the whole
+   * flow was given to every ordinary queue so that a ผู้จัดการฝ่าย could watch
+   * their แผนก from filing until it was confirmed. Asked back in these words:
+   * *ถ้ามีคนกดอนุมัติคำขอของพนักงานแล้วก็คือไม่ต้องโชว์แล้ว โชว์แค่ใบที่ยังไม่
+   * ได้อนุมัติ แต่ของ HR คงไว้เหมือนเดิม* — a first-step queue is a pile of
+   * work, and a row somebody has already signed is not work.
+   *
+   * THE TWO GUARDS STAY even though no call site pairs `pending_hr` with
+   * either flag: they say what those modes ARE, and this assertion is what
+   * keeps the line from being quietly shortened to `isHr` by somebody who has
+   * only read components/App.jsx.
+   */
+  assert.match(code, /const wholeFlow = isHr && !delegatedOnly && !unsignedOnly;/);
   assert.match(code, /const listed = wholeFlow \? FLOW_STATUSES : \[stage\];/);
   // The query string is built from `listed` and from nothing else — a literal
   // `status=pending_hr` here would be a third copy of the same decision.
@@ -87,23 +97,33 @@ test('คิวปกติขอสองสถานะ · สองโหม�
 });
 
 /**
- * THE TWO SPECIAL MODES STAY NARROW, and now they are the ONLY narrow ones — so
- * the flag that keeps them so is named after them rather than after ฝ่ายบุคคล.
+ * A SIGNED ROW LEAVES THE QUEUE IT WAS SIGNED ON, and this is the assertion
+ * that says so rather than restating the line above: the three first-step
+ * screens — รายการรออนุมัติ, รออนุมัติแทน and ใบที่ไม่มีหัวหน้าเซ็นได้ — all
+ * ask for `[stage]`, which is `pending_mgr` at every one of their call sites.
  *
- * `delegatedOnly` is a queue somebody was handed: the first step of the teams
- * they are covering, and nothing else. `unsignedOnly` is the rows at that step
- * that nobody on the roster can sign. Widening either would pull in
- * `pending_hr` rows that are not what the tab is for — on the first, requests
- * the stand-in has already finished with; on the second, rows that are by
- * definition not stuck.
+ * `delegatedOnly` and `unsignedOnly` were already narrow before 2026-09-09 and
+ * are narrow for reasons of their own: a queue somebody was HANDED holds the
+ * first step of the teams they cover and nothing else, and `unsignedOnly` holds
+ * the rows at that step that nobody on the roster can sign — rows that are by
+ * definition not stuck have no business in it.
  */
-test('โหมดรับช่วงและโหมดใบที่ไม่มีใครเซ็น ไม่ได้กว้างขึ้นตามไปด้วย', () => {
+test('ทุกคิวขั้นแรกขอสถานะเดียว — ใบที่เซ็นแล้วหลุดจากคิวที่เซ็นมัน', () => {
   assert.match(code, /const isHr = stage === 'pending_hr';/);
-  assert.match(code, /const wholeFlow = !delegatedOnly && !unsignedOnly;/);
+  // The one branch that widens is `isHr`'s, and it is the only one.
+  assert.match(code, /const wholeFlow = isHr && /);
   assert.ok(
     !/delegatedOnly[^\n]*FLOW_STATUSES|unsignedOnly[^\n]*FLOW_STATUSES/.test(code),
     'สองโหมดนั้นเป็นคิว pending_mgr อยู่แล้ว การกว้างขึ้นจะพาใบของคนอื่นเข้ามา',
   );
+  // Every first-step mount, so `[stage]` really is `pending_mgr` for all three.
+  const app = read('components/App.jsx');
+  for (const mode of ['delegatedOnly', 'unsignedOnly', 'plain']) {
+    const line = mode === 'plain'
+      ? /<ApprovalQueue\s+user=\{user\}\s+stage="pending_mgr"/
+      : new RegExp(`stage="pending_mgr" ${mode === 'delegatedOnly' ? 'delegatedOnly' : 'unsignedOnly'}`);
+    assert.match(app, line, `แท็บ ${mode} ไม่ได้ mount ที่ขั้นแรกแล้ว`);
+  }
 });
 
 // ── 2. one predicate, asked at every gate ───────────────────────────────────
@@ -346,20 +366,38 @@ test('เคลียร์คิวแล้ว วัดจากกองข�
  * failure the `isOwnFiling` branch beside it was written to end, and the reason
  * that branch carries a sentence rather than an empty cell.
  *
- * รายละเอียด STAYS, and it is the point of the row: the whole reason this list
- * widened was somebody ringing up to ask where their ใบ had got to.
+ * READING IT IS STILL ONE PRESS, and since 2026-09-09 it is not a button: the
+ * whole ROW opens the pop-up. That is the point of the row — the reason this
+ * list widened was somebody ringing up to ask where their ใบ had got to — so
+ * what is asserted here moved from "this branch draws รายละเอียด" to "every row
+ * this component draws opens it, this one included".
  */
 test('แถวที่ยังไม่ถึงคิว มีประโยคบอกเหตุ และยังเปิดรายละเอียดได้', () => {
   const at = code.indexOf('{!signableHere(e) ? (');
   assert.ok(at > 0, 'สาขาของแถวที่ยังไม่ถึงคิวหายไป');
   const branch = code.slice(at, code.indexOf('signedManagerStep(e, user) ? (', at));
-  // THE SENTENCE COMES FROM `watchingNote` SINCE 2026-09-04, because there are
-  // three of them now and the row must not pick one by writing it out: a signer
-  // reading a รอ HR row is told the opposite of what ฝ่ายบุคคล are told about a
-  // รอหัวหน้า one — theirs has gone past and is not coming back.
-  assert.ok(branch.includes('{watchingNote(e, stage, isHr, user).short}'), 'แถวไม่ได้บอกว่าทำไมไม่มีปุ่ม');
+  // THE SENTENCE COMES FROM `watchingNote` SINCE 2026-09-04, because there is
+  // more than one of them and the row must not pick one by writing it out:
+  // ฝ่ายบุคคล reading a รอหัวหน้า row are told to wait for it, and either
+  // reader can be looking at a row at their own step that is not theirs to
+  // sign. (A fourth sentence for a row that had gone PAST a signer went with
+  // the rows themselves on 2026-09-09 — see `wholeFlow`.)
+  assert.ok(branch.includes('{watchingNote(e, stage, user).short}'), 'แถวไม่ได้บอกว่าทำไมไม่มีปุ่ม');
   assert.ok(branch.includes('className="cell-sub own-note"'), 'ประโยคต้องอยู่ในกล่องที่มีความกว้างจำกัด');
-  assert.ok(branch.includes('setDetail(e)'), 'รายละเอียด หายไปจากแถวที่มีไว้ให้อ่าน');
+  /*
+   * และประโยคเดียวกันนั้นเป็นทูลทิปของขีดที่ยืนแทนปุ่ม — เพราะบนจอตั้งแต่ 861px
+   * ขึ้นไป `.own-note` ถูกซ่อน (คอลัมน์เหลือ 96px) เหลือ `WatchMark` ให้อ่าน
+   * ด้วยเมาส์และด้วยโปรแกรมช่วยอ่าน ส่วนการ์ดบนมือถือได้ประโยคเต็มเหมือนเดิม
+   */
+  assert.ok(
+    branch.includes('<WatchMark note={watchingNote(e, stage, user).short} />'),
+    'จอตั้งโต๊ะไม่เหลืออะไรเลยในเซลล์ที่ไม่มีปุ่ม',
+  );
+  assert.match(css, /\.queue-table td\.act-col \.btn-word,\s*\r?\n\s*\.queue-table td\.act-col \.own-note \{ display: none; \}/);
+  assert.match(css, /\.queue-table td\.act-col \.act-none \{ display: none; \}/, 'ขีดกับประโยคขึ้นพร้อมกันบนการ์ด');
+  // เปิดรายละเอียดได้ — จากตัวแถว ไม่ใช่จากปุ่มในเซลล์นี้อีกต่อไป
+  assert.ok(!branch.includes('setDetail(e)'), 'ปุ่มรายละเอียดกลับมาอยู่ในเซลล์ ทั้งที่แถวเปิดเองได้แล้ว');
+  assert.match(code, /onClick=\{\(ev\) => \{[\s\S]{0,200}?setDetail\(e\);/, 'แถวไม่เปิดรายละเอียดแล้ว');
   assert.ok(!branch.includes('setConfirming'), 'ยังเสนอปุ่มยืนยันบนใบที่เซิร์ฟเวอร์จะตอบ 403');
   assert.ok(!branch.includes('setRejecting'), 'ยังเสนอปุ่มไม่อนุมัติบนใบที่เซิร์ฟเวอร์จะตอบ 403');
 });
@@ -373,7 +411,7 @@ test('รายละเอียด บอกตั้งแต่บรรท�
   // second time here — see `watchNote` at the call site.
   assert.ok(modal.slice(at, at + 400).includes('{watchNote.head}'));
   assert.ok(modal.slice(at, at + 400).includes('{watchNote.body}'));
-  assert.match(code, /watchNote=\{watchingNote\(detail, stage, isHr, user\)\}/);
+  assert.match(code, /watchNote=\{watchingNote\(detail, stage, user\)\}/);
   // Above the request, not under it: a reader who finds out at the foot has
   // already read the whole thing as though about to answer it.
   assert.ok(at < modal.indexOf('<RefiledNote'), 'ประโยคนี้ต้องอยู่เหนือคำขอ');
@@ -402,15 +440,67 @@ test('คอลัมน์กว้าง 84px ช่องไฟ 8px และ
 });
 
 /**
- * THE `min-width` DOES NOT MOVE, and that is a claim worth pinning.
+ * THE `min-width` IS THE SUM OF THE ELEVEN COLUMNS A หัวหน้า SEES — that is the
+ * claim, and it is the one that was worth pinning all along.
  *
- * 1262px is the หัวหน้า's eleven columns, which still draw exactly eleven. With
- * `table-layout: fixed` and every column given a width, ฝ่ายบุคคล's twelfth
- * simply makes their table wider than the floor and scrolls; raising the floor
- * would push the manager's table sideways for a column it does not have.
+ * It read "1262px, and it DOES NOT MOVE" until 2026-09-09, when `th.when-col`
+ * went from 92px to 136 to hold ขอย้อนหลัง … วัน under the date. The figure was
+ * never the point: what this test defends is that ฝ่ายบุคคล's TWELFTH column
+ * (สถานะ, 84px) is not in the sum. With `table-layout: fixed` and every column
+ * given a width, their table simply comes out wider than the floor and scrolls;
+ * folding it in here would push the manager's table sideways for a column they
+ * do not have.
+ *
+ * So the sum is asserted rather than a number typed twice — a column that grows
+ * has to be added to the floor, and one that is only on HR's table still cannot
+ * be.
  */
-test('พื้นของความกว้างยังเป็น 1262px — คิวหัวหน้ายังสิบเอ็ดคอลัมน์', () => {
-  assert.match(css, /\.queue-table \{ table-layout: fixed; min-width: 1262px; \}/);
+test('พื้นของความกว้างเท่ากับผลรวมสิบเอ็ดคอลัมน์ของหัวหน้า — ไม่รวมคอลัมน์สถานะ', () => {
+  const floor = /\.queue-table \{ table-layout: fixed; min-width: (\d+)px; \}/.exec(css);
+  assert.ok(floor, 'ไม่พบ min-width ของ .queue-table');
+
+  /**
+   * Each column's own rule, read out of the stylesheet rather than restated.
+   *
+   * ANCHORED AT THE START OF A LINE, which is the whole of the care this needs:
+   * unanchored, `th.when-col` finds `.stack-table th.when-col` — a different
+   * table's date column, 204px — and the sum comes out 68px too big while
+   * looking entirely reasonable. It did, on the first run.
+   */
+  const width = (selector) => {
+    const m = new RegExp(`^${selector} \\{[^}]*width: (\\d+)px`, 'm').exec(css);
+    assert.ok(m, `ไม่พบความกว้างของ ${selector}`);
+    return Number(m[1]);
+  };
+  /*
+   * TWO OF THE ELEVEN ARE READ FROM A `.queue-table`-SCOPED RULE, and that is
+   * the 2026-09-09 change stated where it can be checked. `cap-col` and
+   * `act-col` are ตรวจสอบประจำเดือน's columns as well as this one's, and the
+   * bare `th.cap-col` / `th.act-col` rules are what size THAT table — 224 and
+   * 258, the widths this queue used to share. Narrowing them here for the
+   * queue's sake would have taken 262px off a screen nobody asked about, so the
+   * queue took an override instead and this sum has to follow it.
+   *
+   * If a later change unscopes either one, this test finds a rule at the wrong
+   * width rather than quietly summing the other table's geometry.
+   */
+  const eleven = width('th\\.check, td\\.check')       // 42
+    + width('th\\.who-col')                            // 168
+    + width('th\\.when-col')                           // 136 — the tag's column
+    + width('th\\.span-col')                           // 108
+    + width('th\\.rate-col')                           // 52  ×1.5 ปกติ
+    + width('th\\.rate-col\\.wide') * 2                // 58  ×1.5 / ×3 วันหยุด
+    + width('th\\.rate-col')                           // 52  รวม, on `.total-col`
+    + width('\\.queue-table th\\.cap-col')             // 124 — 224 on .hr-table
+    + width('th\\.why-col')                            // 150
+    + width('\\.queue-table th\\.act-col');            // 96  — 258 on .hr-table
+
+  assert.equal(Number(floor[1]), eleven, 'พื้นความกว้างไม่เท่ากับผลรวมของสิบเอ็ดคอลัมน์');
+  // And สถานะ is outside it — the whole point of the sum.
+  assert.ok(
+    !new RegExp(`min-width: ${eleven + width('th\\.status-col')}px`).test(css),
+    'คอลัมน์สถานะของฝ่ายบุคคลถูกนับรวมเข้าไปในพื้นความกว้างของหัวหน้า',
+  );
 });
 
 /**

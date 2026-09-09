@@ -125,6 +125,25 @@ const ICONS = {
     </>
   ),
 
+  /**
+   * ── THE TWO DECISIONS ON A QUEUE ROW — 2026-09-09 ─────────────────────────
+   *
+   * อนุมัติ and ไม่อนุมัติ became icon buttons so the action column could go
+   * from 258px to 96 and the table stop scrolling sideways. These are the
+   * glyphs in them.
+   *
+   * BARE, NOT RINGED, and that is the whole reason `check` above could not be
+   * reused: it is the sidebar's tab icon and it carries a circle, which inside
+   * a 32px button with a border of its own reads as a second border round the
+   * same shape. A tick drawn to the edges of the box is one object; a tick in a
+   * ring inside a button is three.
+   *
+   * They are the same weight and the same 24-unit box as every other icon here,
+   * so a tick beside a trash can on the same row is visibly the same set.
+   */
+  tick: <path d="M5 12.5l4.75 4.75L19 6.75" />,
+  cross: <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />,
+
   /** ตรวจสอบรายเดือน — a month at a time. */
   calendar: (
     <>

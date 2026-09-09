@@ -313,7 +313,10 @@ test('the four things in จาก–ถึง are spaced and voiced as four thi
  * Reported on 2026-09-07 as "แท็กมันซ้อน ๆ กัน" and measured on the built app:
  * a row carrying `ไม่ได้สแกนเข้า OT` (104px) and `ไม่ครบ · ขาด 47 นาที` (120px)
  * wants 230px against the cell's 191, so the second wraps — and wrapping broke
- * it twice.
+ * it twice. (The first of those two pills was withdrawn on 2026-09-09; the
+ * cell can still hold two — เหมารายวัน beside a scan badge — so the rules below
+ * are measured against a row that no longer occurs and still guard one that
+ * does.)
  *
  * ONE, the pills TOUCHED: a measured 0px between them. `.chip` is
  * `inline-block`, so two on consecutive line boxes stack margin box against
@@ -681,8 +684,8 @@ test('the two columns that hold prose are the two that were widened', () => {
  * got a width. It now carries the times, up to two chips, the day's scan line
  * and the mismatch detail. MEASURED on the built app at 1440px against a clone
  * of the real July scan file, with `desc-col` and `status-col` already in
- * place: the column came out **79px**, the `ไม่ได้สแกนเข้า OT` pill rendered
- * **55×60** — three lines of text inside one pill — `สแกน 07:34 , 19:30`
+ * place: the column came out **79px**, the then-`ไม่ได้สแกนเข้า OT` pill
+ * (withdrawn 2026-09-09) rendered **55×60** — three lines inside one pill — `สแกน 07:34 , 19:30`
  * wrapped to three lines, and a row whose description is ONE line stood 187px
  * tall. With the rule as it then was: 172px, the pill 104×25, the scan line one
  * line, the row 97px.

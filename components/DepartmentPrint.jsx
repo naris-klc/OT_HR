@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
+// The word itself, from the one place that owns it — the same constant the
+// accounting paper, both report screens and accounting.csv print.
+import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
 import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
 
@@ -21,6 +24,33 @@ import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from
  * signature block — the paper has none, and this sheet is meant to be laid
  * beside it. The month is named on the screen above, and on nothing that
  * prints.
+ *
+ * ── AND SINCE 2026-09-09 IT MARKS TWO THINGS THE FIGURES CANNOT EXPLAIN ────
+ *
+ * ฝ่ายบุคคล asked for both, in the accounting sheet's words —
+ * *เหมือนกับฟอร์มของการเงิน* — and then pointed at this printed form when the
+ * marks landed on the screen alone: *หมายถึงเกินเพดาน ตัวเลขในฟอร์ม*.
+ *
+ * **1.50 AND 3.00 GO RED** on a row any of whose entries was signed past its
+ * department's ceiling — `figureClass`, the same predicate and the same #c00
+ * as `components/AccountingPrint.jsx`. BOTH cells, not one: `overCeiling`
+ * counts entries and hours and does not split them by rate column, so
+ * colouring one would put a decision on the paper that the data has not made.
+ *
+ * **A WHITE STRIP RIGHT OF THE YELLOW CELL** carries the word วันเกิด, exactly
+ * as the accounting paper's does: the word alone, no hours, no date. It is
+ * paper and not a column — no rule, no fill, no heading — so the ruled form is
+ * the form it always was and `ROWS_PER_PAGE` below is unmoved. It fits in the
+ * 32mm of open paper this sheet already had to the right of the grid.
+ *
+ * ⚠ WHAT THIS SHEET NOW DISCLOSES, AND TO WHOM. The screen it prints from is
+ * ฝ่ายบุคคล's and ผู้ดูแลระบบ's; this bundle goes to the departments and to
+ * ผู้บริหาร, who are colleagues, and it now tells them that somebody's birthday
+ * fell in the month on a day they worked. THE MONTH MAY BE DISCLOSED; THE DATE
+ * MAY NOT — the same rule the accounting paper follows, and the reason the
+ * strip carries no hours and no date. Asked for and granted on 2026-09-09;
+ * `app/api/exports/departments.csv` still says nothing, because a file is
+ * sorted and filtered rather than read as a sheet.
  *
  * This is a different document from AccountingPrint.jsx, not a variant of it:
  * that sheet is the flat roster HR hands to accounting, keyed by รหัสพนักงาน,
@@ -254,6 +284,11 @@ function Sheet({
           <col style={{ width: '24mm' }} />
           <col style={{ width: '24mm' }} />
           <col style={{ width: '28mm' }} />
+          {/* The strip. Not a column of the form — see `.otdept td.note` in
+              app/print.css: no rule, no fill, no heading. 26mm of the 32mm
+              this sheet already left open to the right of its grid, so the
+              ruled part of the paper is where it has always been. */}
+          <col style={{ width: '26mm' }} />
         </colgroup>
         {/* The blank first row is the top page margin and the tfoot pad is the
             bottom one. Both are re-rendered on every side rather than left to
@@ -262,10 +297,11 @@ function Sheet({
             so a page that has come loose from the bundle still says which
             department it belongs to and what its columns are. */}
         <thead>
-          <tr className="pad" aria-hidden="true"><td colSpan={5} /></tr>
+          <tr className="pad" aria-hidden="true"><td colSpan={6} /></tr>
           <tr>
             <th colSpan={4} className="banner">{title}</th>
             <td className="gap" />
+            <td className="note" />
           </tr>
           <tr>
             <th className="seq">ลำดับที่</th>
@@ -273,6 +309,9 @@ function Sheet({
             <th className="rate">1.50</th>
             <th className="rate">3.00</th>
             <td className="gap" />
+            {/* Unheaded on purpose, as on the accounting paper: naming the
+                strip would put a heading on a form that has never had one. */}
+            <td className="note" />
           </tr>
         </thead>
         <tbody>
@@ -283,9 +322,10 @@ function Sheet({
             <tr key={line.key}>
               <td className="seq">{page.offset + n + 1}</td>
               <td>{line.label}</td>
-              <Amount value={line.ot15Hours} />
-              <Amount value={line.ot3Hours} />
+              <Amount value={line.ot15Hours} over={overOf(line)} />
+              <Amount value={line.ot3Hours} over={overOf(line)} />
               <td className="gap" />
+              <td className="note">{remark(line)}</td>
             </tr>
           ))}
           {/* The closing block, on the last side only — a total at the foot of
@@ -303,6 +343,7 @@ function Sheet({
                   <td className="n" />
                   <td className="n" />
                   <td className="gap" />
+                  <td className="note" />
                 </tr>
               ))}
               <tr className="total">
@@ -310,6 +351,12 @@ function Sheet({
                 <td className="n">{totals.ot15Hours.toFixed(2)}</td>
                 <td className="n">{totals.ot3Hours.toFixed(2)}</td>
                 <td className="grand">{totals.otHours.toFixed(2)}</td>
+                {/* BLACK, and the strip beside it empty. The marks are about
+                    one person's row; a department total that went red because
+                    one of its people did would say the department was over its
+                    own ceiling, which is a different claim and not one this
+                    sheet is in a position to make. */}
+                <td className="note" />
               </tr>
               {/* One line under the total, and only when there is something to
                   say — in an ordinary month this renders nothing at all and the
@@ -329,13 +376,14 @@ function Sheet({
                     {namesOf(unaccounted) && ` (${namesOf(unaccounted)})`}
                   </td>
                   <td className="gap" />
+                  <td className="note" />
                 </tr>
               )}
             </>
           )}
         </tbody>
         <tfoot>
-          <tr className="pad" aria-hidden="true"><td colSpan={5} /></tr>
+          <tr className="pad" aria-hidden="true"><td colSpan={6} /></tr>
         </tfoot>
       </table>
     </div>
@@ -363,6 +411,35 @@ function PageTag({ no, of, title }) {
 }
 
 /**
+ * What the strip beside a line says — “วันเกิด”, or nothing.
+ *
+ * THE WORD ALONE, no hours and no date, which is what the accounting paper
+ * carries and what HR wrote there by hand before either sheet existed (see
+ * `remark` in components/AccountingPrint.jsx). The hours are quantified where
+ * they are checked rather than where they are signed: `วันเกิด · N ชม.
+ * คิดอัตราวันหยุด` on รายงาน OT แยกแผนก, and `birthday_hours` in accounting.csv.
+ *
+ * รวมทุกแผนก GETS NOTHING FROM THIS, and needs no test to say so: that sheet's
+ * lines are `sumRows()` totals, which carry no `birthdayHours` at all, so the
+ * `> 0` is false and a department is never marked as having a birthday.
+ */
+function remark(line) {
+  return line.birthdayHours > 0 ? BIRTHDAY_REMARK : '';
+}
+
+/**
+ * Was any entry behind this line signed past its department's ceiling?
+ *
+ * `wasOverCeiling` is already applied — `overCeilingOf` in
+ * lib/accountingRows.js counts an entry whose ceiling was later WAIVED, which
+ * is exactly the row a reader most needs to see and the one the live
+ * `capExceeded` flag has stopped naming.
+ *
+ * False on the รวมทุกแผนก sheet for the same reason `remark` is empty there.
+ */
+const overOf = (line) => Boolean(line.overCeiling?.count);
+
+/**
  * A figure, or the same cell with nothing in it.
  *
  * Both carry the tint (see `.otdept td.n` in print.css): the fill belongs to
@@ -370,7 +447,14 @@ function PageTag({ no, of, title }) {
  * band rather than as a cell of a different colour. A zero is left blank
  * rather than printed as 0.00 — reading down a column of blanks is how a
  * department spots who to ask about.
+ *
+ * `over` PAINTS THE CELL, NOT THE NUMBER, and it paints both rate cells of the
+ * row — see the docstring at the top of this file. A blank cell on a marked
+ * row takes the class too and shows nothing, which is right: the class says
+ * something about the row, and there is no figure there to colour.
  */
-function Amount({ value }) {
-  return <td className="n">{value ? Number(value).toFixed(2) : ''}</td>;
+function Amount({ value, over = false }) {
+  return (
+    <td className={over ? 'n over' : 'n'}>{value ? Number(value).toFixed(2) : ''}</td>
+  );
 }

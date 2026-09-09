@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, withHours, currentPeriod, periodLabel } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
-import { Alert, Empty, PickOne, UnaccountedHours } from './common.jsx';
+import {
+  Alert, BirthdayNote, Empty, OverCeilingFigure, OverCeilingNote, PickOne, UnaccountedHours,
+} from './common.jsx';
 import DepartmentPrint from './DepartmentPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
 import { useBackHandler } from './nav.jsx';
@@ -24,6 +26,26 @@ import { useBackHandler } from './nav.jsx';
  * rate buckets ตรวจสอบรายเดือน shows. This screen exists to be checked against
  * the paper it prints, and a column here that is not on the paper is a figure
  * with nothing to check it against.
+ *
+ * ── AND SINCE 2026-09-09 IT CARRIES THE SAME TWO MARKS AS ส่งบัญชี ──────────
+ *
+ * รายการเกินเพดาน in red, and วันเกิด. Asked for by ฝ่ายบุคคล in those words —
+ * *เหมือนกับฟอร์มของการเงิน* — and the reason is the reason that sheet has them:
+ * every figure here is hours somebody signed for, and until now 12 hours inside
+ * a department's ceiling and 12 that went past it were the same number in the
+ * same colour. A แผนก total is exactly where that difference is worth seeing,
+ * because a ceiling is a DEPARTMENT's ceiling.
+ *
+ * THE PRINTED SHEET CARRIES BOTH AS WELL, since the same afternoon: ฝ่ายบุคคล
+ * pointed at a printed แผนกสาขาชลบุรี whose 45.00 was still black —
+ * *หมายถึงเกินเพดาน ตัวเลขในฟอร์ม* — and then asked for วันเกิด on it too, in
+ * the accounting paper's shape. See components/DepartmentPrint.jsx, which is
+ * where that disclosure is argued out: the bundle leaves ฝ่ายบุคคล's room.
+ *
+ * `app/api/exports/departments.csv` STILL SAYS NOTHING, and neither does
+ * lib/departmentSummary.js — a file is sorted, filtered and pasted rather than
+ * read a row at a time, and nobody has asked. Pinned by
+ * test/birthdayOnPaper.test.js.
  */
 export default function DepartmentView() {
   const [period, setPeriod] = useState(currentPeriod());
@@ -263,24 +285,75 @@ function DepartmentCard({ dept, period, index }) {
           </thead>
           <tbody>
             {dept.rows.map((row, i) => (
-              <tr key={row.employee.id}>
-                <td className="seq">{i + 1}</td>
-                <td className="who-col">
-                  {row.employee.name}
-                  <div className="cell-sub">{row.employee.code}</div>
-                </td>
-                <td className="co-col">
-                  <span className="co">{row.companyLabel}</span>
-                  {row.pendingCount > 0 && (
-                    <div className="cell-note">
-                      ค้างอนุมัติ {row.pendingCount} รายการ · ไม่นับรวม
-                    </div>
-                  )}
-                </td>
-                <td className="num b-15">{cell(row.ot15Hours)}</td>
-                <td className="num b-3">{cell(row.ot3Hours)}</td>
-                <td className="num total-col"><strong>{cell(row.otHours)}</strong></td>
-              </tr>
+              <React.Fragment key={row.employee.id}>
+                <tr>
+                  <td className="seq">{i + 1}</td>
+                  <td className="who-col">
+                    {row.employee.name}
+                    <div className="cell-sub">{row.employee.code}</div>
+                  </td>
+                  <td className="co-col">
+                    <span className="co">{row.companyLabel}</span>
+                    {row.pendingCount > 0 && (
+                      <div className="cell-note">
+                        ค้างอนุมัติ {row.pendingCount} รายการ · ไม่นับรวม
+                      </div>
+                    )}
+                  </td>
+                  <td className="num b-15">{cell(row.ot15Hours)}</td>
+                  <td className="num b-3">{cell(row.ot3Hours)}</td>
+                  {/* Red when any of this row was signed past its department's
+                      ceiling, with the approver's own sentences in the tooltip —
+                      the same figure, the same colour and the same words as on
+                      รายงาน OT ฝ่ายบัญชี. Not a warning: the hours are approved,
+                      correct and being paid. See `OverCeilingFigure` in
+                      components/common.jsx. */}
+                  <td className="num total-col">
+                    <OverCeilingFigure over={row.overCeiling}>{cell(row.otHours)}</OverCeilingFigure>
+                  </td>
+                </tr>
+              {/* ── THE MARKS GET A ROW, NOT A CELL ─────────────────────────
+
+                  ส่งบัญชี puts these in its หมายเหตุ column because it HAS one.
+                  This table's six columns add up to 312px so that a 375px phone
+                  need not scroll at all, and the only one of them that could
+                  hold prose is บริษัท at 64px. They were put there first and
+                  measured at 375px on 2026-09-09: a row carrying three
+                  over-ceiling reasons grew to about 800px tall and set them
+                  three characters to the line.
+
+                  So the sentences sit under the row instead of inside it, and
+                  get the width of the sheet on both a desktop and a phone.
+
+                  `ลำดับที่` AND `ชื่อ-นามสกุล` ARE REAL CELLS HERE, empty, and
+                  the span covers only the four columns after them. Below 860px
+                  the name column is frozen, and a frozen column has to exist in
+                  every row of the table or the note would travel underneath the
+                  names when the sheet is scrolled sideways — the same argument
+                  the รวมชั่วโมงทำOT foot makes a few lines down.
+
+                  DRAWN ONLY WHEN THERE IS SOMETHING TO SAY. An ordinary month is
+                  exactly the table it was before this: no extra row, no extra
+                  rule, nothing to read past. */}
+              {(row.birthdayHours > 0 || row.overCeiling?.count > 0) && (
+                <tr className="row-notes">
+                  <td className="seq" />
+                  <td className="who-col" />
+                  <td className="note-cell" colSpan={4}>
+                    {/* คิดอัตราวันหยุด, not ส่งบัญชี's อยู่ในช่องวันหยุด: this
+                        table has no วันหยุด column. A birthday is a holiday, so
+                        its hours split between 1.50 and 3.00 by the same rule as
+                        any other holiday — which is what naming the RATE says and
+                        naming a column would get wrong. */}
+                    <BirthdayNote hours={row.birthdayHours} where="คิดอัตราวันหยุด" />
+                    {/* The same fact the red figure carries, written out. A
+                        `title` answers a hover, which a phone does not have and a
+                        second reading does not survive; this is the record. */}
+                    <OverCeilingNote over={row.overCeiling} />
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
           </tbody>
           {/* The row the paper closes with, in the foot of the same table so a

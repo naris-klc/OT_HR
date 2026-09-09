@@ -128,11 +128,21 @@ function monthlyReviewFigure(dataset, employee, period, statusQuery) {
 }
 
 /**
- * The two filters that matter, quoted from components/HrView.jsx and pinned to
- * it by the test below. `HR_DEFAULT_FILTER` is what the screen opens on and
- * therefore what almost every reader of it has ever seen.
+ * The three filters that matter, quoted from components/HrView.jsx and pinned
+ * to it by the test below.
+ *
+ * `HR_DEFAULT_FILTER` is what the screen OPENS on, and it moved on 2026-09-09
+ * from `'approved'` to `'approved,pending_hr'` — ตรวจสอบรายเดือน now opens on
+ * the statuses F-HR-027 prints under the shipped `formPrintScope`. See the note
+ * over `statusFilter` in components/HrView.jsx.
+ *
+ * `HR_APPROVED_ONLY` is that old default, which is STILL A ROW on the control
+ * (อนุมัติแล้วเท่านั้น) and still the only filter whose arithmetic matches the
+ * queue's headline. The tests below that are about approved-only hours name it
+ * rather than the default, because it stopped being the same string.
  */
-const HR_DEFAULT_FILTER = 'approved';
+const HR_APPROVED_ONLY = 'approved';
+const HR_DEFAULT_FILTER = 'approved,pending_hr';
 const HR_ALL_LIVE_FILTER = 'approved,pending_hr,pending_mgr';
 
 /**
@@ -181,13 +191,20 @@ const augustMonth = () => {
  * old assertion is preserved one line down: `usedHours` is still 35.5, still
  * carried, still what the colour and the pending line are worked out from.
  * Nothing was recomputed to make this pass.
+ *
+ * THE FILTER IT COMPARES AT IS NAMED, AND SINCE 2026-09-09 IT IS NOT THE
+ * DEFAULT. This test used to read `HR_DEFAULT_FILTER` and its title said "the
+ * figure ตรวจสอบรายเดือน opens on"; that screen now opens on อนุมัติแล้ว + รอ
+ * HR, so the two lead with the same number at อนุมัติแล้วเท่านั้น and nowhere
+ * else. The arithmetic below is unchanged and so is every figure in it — what
+ * changed is which of the three rows of สถานะที่นับ this sentence is about.
  */
-test('the queue leads with the same figure ตรวจสอบรายเดือน opens on', async () => {
+test('the queue leads with the figure ตรวจสอบรายเดือน prints at อนุมัติแล้วเท่านั้น', async () => {
   const { row, all } = augustMonth();
   const { find } = reader(all);
   const usage = (await queueCapUsage([row], { policy: POLICY, find })).get('live');
 
-  const review = monthlyReviewFigure(all, 'emp1', '2026-08', HR_DEFAULT_FILTER);
+  const review = monthlyReviewFigure(all, 'emp1', '2026-08', HR_APPROVED_ONLY);
 
   // The headline, on both screens.
   assert.equal(usage.month.approvedHours, 16.5);
@@ -300,7 +317,10 @@ function capColumnAt(dataset, statusQuery, capHours, policy = POLICY) {
  */
 test('a cap breached only by pending requests still colours the cell', () => {
   const { all } = augustMonth();
-  const cap = capColumnAt(all, HR_DEFAULT_FILTER, 30);
+  // อนุมัติแล้วเท่านั้น by name — the case is about a screen printing 16.5 over
+  // a ceiling that 35.5 hours are committed against, and 16.5 is what that row
+  // of สถานะที่นับ prints. It is no longer the row the screen opens on.
+  const cap = capColumnAt(all, HR_APPROVED_ONLY, 30);
 
   assert.equal(cap.usedHours, 16.5, 'the printed figure followed the filter — it must not move');
   assert.equal(overCap(cap.usedHours, cap.capHours), false, 'the printed figure is inside the ceiling');
@@ -323,7 +343,7 @@ test('a cap breached only by pending requests still colours the cell', () => {
 test('the colour is decided by the ceiling total whatever the filter is set to', () => {
   const { all } = augustMonth();
 
-  for (const filter of [HR_DEFAULT_FILTER, 'approved,pending_hr', HR_ALL_LIVE_FILTER]) {
+  for (const filter of [HR_APPROVED_ONLY, HR_DEFAULT_FILTER, HR_ALL_LIVE_FILTER]) {
     const cap = capColumnAt(all, filter, 30);
     assert.equal(cap.capUsedHours, 35.5, filter);
     assert.equal(cap.exceeded, true, `the warning depends on the filter at "${filter}"`);
@@ -457,13 +477,20 @@ test('neither the screen nor the CSV queries per employee', () => {
  * read out of the component rather than assumed, and the widest option is
  * checked to still be the queue's own list.
  */
-test('ตรวจสอบรายเดือน still opens on อนุมัติแล้วเท่านั้น', () => {
+test('ตรวจสอบรายเดือน still opens on อนุมัติแล้ว + รอ HR', () => {
   const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
 
   assert.match(
     view,
     new RegExp(`useState\\('${HR_DEFAULT_FILTER}'\\)`),
     'the review screen no longer opens on the filter these tests compare against',
+  );
+  // And อนุมัติแล้วเท่านั้น is still one of the three rows, because the tests
+  // above compare the queue against it and a reader can still ask for it.
+  assert.match(
+    view,
+    new RegExp(`value: '${HR_APPROVED_ONLY}', label: 'อนุมัติแล้วเท่านั้น'`),
+    'the approved-only row these tests compare against is gone from สถานะที่นับ',
   );
   assert.match(
     view,
@@ -497,23 +524,32 @@ test('ตรวจสอบรายเดือน still opens on อนุม�
  * hours in two lines and different words. Two screens, one fact, two phrasings,
  * and a reviewer holding both had to work out they were the same.
  *
- * The queue now prints exactly what the review screen prints. The label went
- * because the note under the figure says what it counts; the (?) went with it,
- * and what it held was already in the รายละเอียด pop-up, unchanged.
+ * The queue printed exactly what the review screen printed until 2026-09-09,
+ * when the second of the two lines was taken off THIS screen by name:
+ * *เอาเพดานนับ 28 / 40 · รวมใบที่รออนุมัติ ออก และลดขนาดคอลัมน์สะสม / เพดาน*.
+ * The two halves of that are one act — the sentence is the only thing in the
+ * cell that ever needed a 224px column — and the column is 124 now.
+ *
+ * THE WORDING IS STILL SHARED; IT IS THE LINE COUNT THAT DIFFERS. `pendingCapNote`
+ * in lib/caps.js is untouched, ตรวจสอบรายเดือน still prints it, and neither
+ * screen spells it out for itself. What the queue row lost, the pop-up's
+ * `capChips` carry as numbers — see 'the รายละเอียด pop-up still shows the
+ * whole story' below, which is now the only place the counted total is asserted
+ * to be reachable from a queue row.
  */
-test('the queue column prints the same two lines ตรวจสอบรายเดือน prints', () => {
+test('the queue column prints one line — the figure — and the review screen keeps its two', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
   /**
-   * Ends at `capNote`, the first thing declared after the component.
+   * Ends at `const breachLine`, the first thing declared after the component.
    *
-   * It used to end at `function WeekUsage`, which no longer exists — and an
-   * `indexOf` that misses returns -1, so the slice quietly became "everything
-   * but the last character of the file" and every assertion below started
-   * reading the whole module. The suite stayed green while checking something
-   * else entirely, which is the failure mode a source-reading test has and a
-   * DOM test does not.
+   * It ended at `const capNote =` until 2026-09-09 and at `function WeekUsage`
+   * before that — and an `indexOf` that misses returns -1, so the slice quietly
+   * becomes "everything but the last character of the file" and every assertion
+   * below starts reading the whole module. The suite stays green while checking
+   * something else entirely, which is the failure mode a source-reading test
+   * has and a DOM test does not. Hence the `end > 0` below, every time.
    */
-  const end = queue.indexOf('const capNote =');
+  const end = queue.indexOf('const breachLine =');
   assert.ok(end > 0, 'the cell can no longer be sliced out of the file');
   const cell = queue.slice(queue.indexOf('function CapUsage'), end);
 
@@ -531,12 +567,38 @@ test('the queue column prints the same two lines ตรวจสอบราย�
   // same month is the disagreement this whole file exists to prevent.
   assert.doesNotMatch(cell, /capFigure\(/, 'the queue headline went back to the sentence form');
 
-  // The second line is the shared sentence, not a locally assembled one.
-  assert.match(cell, /capNote\(month\) && <div className="cap-sub">\{capNote\(month\)\}<\/div>/, 'the note line is gone');
-  assert.match(queue, /pendingCapNote\(w\.approvedHours, w\.usedHours, w\.capHours\)/, 'the note is no longer the shared one');
+  /*
+   * AND THERE IS NO SECOND LINE. The sentence went, and so did `capNote` — the
+   * local wrapper that had exactly one caller. Asserting the WRAPPER is gone as
+   * well as the line matters: a helper left behind for nobody is the thing a
+   * later reader puts back to work.
+   */
+  assert.doesNotMatch(cell, /capNote\(/, 'the ceiling-total sentence is back on the row');
+  assert.doesNotMatch(queue, /const capNote =/, 'the local wrapper outlived its one caller');
+  /* Comments stripped: the component is free to SAY where the sentence went
+     (and it does, at length, in the block that replaced it) — what it may not
+     do is import or call it. */
+  assert.doesNotMatch(
+    stripComments(queue),
+    /pendingCapNote/,
+    'the queue still reaches for the sentence it stopped printing',
+  );
+  // …and the screen that DOES print it is untouched. Both halves in one place,
+  // because "removed from the queue" and "removed from the app" are one edit
+  // apart and only the first was asked for.
+  const review = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
+  assert.match(review, /pendingCapNote\(/, 'ตรวจสอบรายเดือน lost the line the queue gave up');
 
-  // The breach stays on the row.
+  // The breach stays on the row, and it is the ONE line left under the figure.
   assert.match(cell, /breachLine\(month\) && \(/, 'the breach warning no longer renders on the row');
+  /*
+   * AND IT WRAPS. `whiteSpace: 'nowrap'` held it to one line, which was free in
+   * a 224px column and is not in a 124px one: held, it would run out of the
+   * cell and print underneath the description in the next column. Two lines of
+   * red in the cap column is a warning; one line of red in the wrong column is
+   * not.
+   */
+  assert.match(cell, /<div className="cell-sub" style=\{OVER_CAP\}>/, 'the breach line is pinned to one line again');
 
   // And the three things this pass removed are gone from the cell.
   assert.doesNotMatch(cell, /รออนุมัติ \{hours/, 'the separate "+ รออนุมัติ" line is back');
@@ -549,8 +611,10 @@ test('the queue column prints the same two lines ตรวจสอบราย�
    * It printed four more lines — the week's figure, its pending note, its
    * breach and the span of dates — which made this cell six lines deep against
    * the two ตรวจสอบรายเดือน prints, on any department with a weekly ceiling.
-   * "The same two lines" in this test's name was true only of departments that
-   * had none, and it is the whole of the spec now.
+   * This test was called 'the queue column prints the same two lines
+   * ตรวจสอบรายเดือน prints' when that was written, and even then it was true
+   * only of departments with no weekly ceiling. Since 2026-09-09 the queue
+   * prints ONE line, so the name has gone with the second of them.
    *
    * The cost was stated and accepted: the weekly ceiling has no live warning
    * left in the queue. This asserts the display only — `weeksOfEntry`,
@@ -667,17 +731,50 @@ test('everything the (?) held is still in the รายละเอียด pop
 /**
  * The figure and its ceiling are one thing and must break as one: "16.5 /"
  * above "40" is not a figure, it is two.
+ *
+ * IT WAS TWO GUARDS UNTIL 2026-09-09 AND IS ONE NOW, and the difference is the
+ * whole of what a narrowed column costs. The second sat on the breach line —
+ * prose, 130px of it, which at 124px would have run out of the cell and printed
+ * under the next column's description. Prose wraps; a figure does not. So the
+ * guard is asserted where it still belongs and its absence is asserted where it
+ * would now do harm.
  */
-test('nothing in the cap cell may wrap between a number and its ceiling', () => {
+test('the figure may not wrap between a number and its ceiling — and the breach line must', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  const cell = queue.slice(queue.indexOf('function CapUsage'), queue.indexOf('const capNote'));
+  const end = queue.indexOf('const breachLine =');
+  assert.ok(end > 0, 'the cell can no longer be sliced out of the file');
+  const cell = queue.slice(queue.indexOf('function CapUsage'), end);
   const styles = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
 
   const nowraps = [...cell.matchAll(/whiteSpace: 'nowrap'/g)].length;
-  assert.ok(nowraps >= 2, `${nowraps} nowrap guards in the cap cell`);
+  assert.equal(nowraps, 1, `${nowraps} nowrap guards in the cap cell — the figure takes exactly one`);
+  assert.match(
+    cell,
+    /style=\{\{ \.\.\.\(month\.exceeded \? OVER_CAP : undefined\), whiteSpace: 'nowrap' \}\}/,
+    'the guard came off the figure itself',
+  );
 
   // And the column keeps a measured width, paid for out of the rate columns.
   assert.match(styles, /th\.cap-col \{ width: \d+px; \}/, 'the cap column lost its width');
+  /* The heading is what wraps in its place: "สะสม / เพดาน" at 124px takes two
+     lines, which this row of headings is already two lines deep for anyway
+     (`RateHead`), and `th`'s own `nowrap` would run it under the next cell. */
+  assert.match(
+    styles,
+    /\.queue-table th\.cap-col \{ width: \d+px; white-space: normal; \}/,
+    'the heading is pinned to one line in a column too narrow for it',
+  );
+  /* AND THE QUEUE'S WIDTH IS AN OVERRIDE, not the bare rule narrowed.
+     ตรวจสอบประจำเดือน shares this class and still prints the sentence this
+     queue dropped, in the same 162px of nowrap prose — so the bare rule keeps
+     the wider figure and only `.queue-table` comes down. */
+  const bare = /^th\.cap-col \{ width: (\d+)px; \}/m.exec(styles);
+  const queueCol = /^\.queue-table th\.cap-col \{ width: (\d+)px;/m.exec(styles);
+  assert.ok(bare && queueCol, 'one of the two ceiling-column widths is gone');
+  assert.ok(
+    Number(queueCol[1]) < Number(bare[1]),
+    'the queue is no longer the narrower of the two — or ตรวจสอบประจำเดือน was narrowed with it',
+  );
   assert.match(styles, /th\.rate-col \{ width: \d+px; \}/, 'the rate columns were not narrowed to pay for it');
 });
 
@@ -867,16 +964,28 @@ test('the รายละเอียด pop-up still shows the whole story', ()
    * THE CEILING TOTAL IS STILL HERE — IT IS JUST NOT A SENTENCE ANY MORE.
    *
    * `capNote` stood under the figure and read "เพดานนับ 11 / 40 · รวมใบที่รอ
-   * อนุมัติ". Every number in it is on this pop-up twice over now: 40 is in the
+   * อนุมัติ". Every number in it is on this pop-up twice over: 40 is in the
    * headline the line sat under, 11 is อนุมัติแล้ว and รออนุมัติ side by side,
    * and "รวมใบที่รออนุมัติ" is what having a รออนุมัติ chip at all says.
    *
-   * It still earns its line on the QUEUE ROW, where there are no chips and the
-   * figure stands alone — so it is asserted there instead, and a change that
-   * removed it from both would still fail.
+   * ── AND THIS CARD IS NOW THE ONLY PLACE A REVIEWER CAN READ IT ────────────
+   *
+   * This paragraph read "it still earns its line on the QUEUE ROW, where there
+   * are no chips and the figure stands alone — so it is asserted there
+   * instead". That was true until 2026-09-09, when the line was taken off the
+   * row by name and the column narrowed with it. So the assertion below flips:
+   * the row must NOT carry it, and this card must, because the fact itself was
+   * never withdrawn — only the second place it was printed.
+   *
+   * WHICH IS WHY THE PRESS MATTERS. It is one press from the row, and since the
+   * same change the press is the ROW — no button to find, ticked or not. If the
+   * pop-up ever stops drawing `CapCard`, a reviewer has no way at all to learn
+   * that a "0 / 40" month has 28 hours pending against it, so that assertion is
+   * a few lines above this one and stays.
    */
   assert.doesNotMatch(card, /capNote\(/, 'the sentence is back under the chips');
-  assert.match(queue, /\{capNote\(month\) && <div className="cap-sub">/, 'the row lost the ceiling total');
+  assert.doesNotMatch(queue, /capNote\(month\)/, 'the ceiling-total sentence is back on the queue row');
+  assert.match(card, /capChips\(month\)/, 'the pop-up lost the numbers the row stopped printing');
   /*
    * THE SPLIT AND THE ROOM ARE CHIPS NOW, NOT SENTENCES.
    *

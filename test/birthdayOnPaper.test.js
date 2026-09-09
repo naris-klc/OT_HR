@@ -277,29 +277,118 @@ test('CSV มีคอลัมน์ birthday_hours ต่อท้ายเท
   assert.match(src, /\$\{BIRTHDAY_REMARK\} \$\{fmt\(row\.birthdayHours\)\} ชม\./);
 });
 
-test('รายงานแยกแผนกยังไม่รู้เรื่องวันเกิด — ใบนั้นส่งผู้บริหาร ไม่ใช่บัญชี', () => {
-  // Untouched by this change, and deliberately: the reason the remark exists is
-  // that a figure on the ACCOUNTING sheet reads as an error without it. That
-  // sheet has no such figure to explain, so adding it there would disclose
-  // something for no reason — and would be HR's decision to make, not ours.
+test('ไฟล์ CSV แยกแผนก ยังไม่รู้เรื่องวันเกิด — และการรวมยอดก็ไม่รู้', () => {
+  /**
+   * ── ข้อนี้หดสองครั้งในวันเดียว และทั้งสองครั้งคือฝ่ายบุคคลเป็นคนสั่ง ──────────
+   *
+   * เดิมชื่อ *รายงานแยกแผนกยังไม่รู้เรื่องวันเกิด* คลุมทั้ง `lib/departmentSummary.js`
+   * `components/DepartmentPrint.jsx` และ CSV เหตุผลที่เขียนไว้คือ *“ใบนั้นส่ง
+   * ผู้บริหาร ไม่ใช่บัญชี — จะเพิ่มก็เป็นเรื่องที่ฝ่ายบุคคลต้องขอ ไม่ใช่เรื่องที่เรา
+   * ตัดสินเอง”*
+   *
+   * 2026-09-09 รอบแรก: *หน้ารายงาน OT แยกแผนก เพิ่ม … วันเกิด เหมือนกับฟอร์มของ
+   * การเงิน* — พูดถึงหน้าจอ ข้อนี้จึงเหลือแค่กระดาษกับไฟล์
+   * 2026-09-09 รอบสอง: ถามกลับตรง ๆ ว่าใบที่พิมพ์ควรมีคำว่าวันเกิดกำกับแถวไหม
+   * คำตอบคือ **ให้มี แบบเดียวกับใบส่งบัญชี** กระดาษจึงออกจากข้อนี้ไปด้วย
+   *
+   * ── สิ่งที่เหลือ และเหลือเพราะอะไร ────────────────────────────────────────
+   *
+   * **CSV** ไม่ใช่เอกสารที่คนอ่านทีละแถว มันถูกเรียง กรอง และแปะต่อ — คำว่าวันเกิด
+   * ในไฟล์คือคอลัมน์ที่ pivot ได้ ไม่ใช่หมายเหตุข้างแถวเดียว และไม่มีใครขอ
+   *
+   * **`lib/departmentSummary.js`** คือการจัดกลุ่ม ไม่ใช่เอกสาร มันไม่ควรรู้ว่าชั่วโมง
+   * ก้อนไหนมาจากวันอะไร — `sumRows()` ไม่มี `birthdayHours` ด้วยซ้ำ ซึ่งเป็นเหตุผล
+   * ที่ใบ รวมทุกแผนก ไม่เคยติดคำว่าวันเกิดโดยไม่ต้องเขียนกฎอะไรกันมันเลย
+   *
+   * สิ่งที่ **ไม่** ใช่เหตุผลอีกต่อไปคือ “ใบนี้ส่งผู้บริหาร” — ใบที่พิมพ์ก็ส่งผู้บริหาร
+   * และตอนนี้มันติดคำนั้นแล้ว โดยฝ่ายบุคคลเป็นคนตัดสิน ดู DepartmentPrint.jsx
+   */
   for (const file of [
     'lib/departmentSummary.js',
-    'components/DepartmentPrint.jsx',
     'app/api/exports/departments.csv/route.js',
   ]) {
     const src = read(file);
     const hit = /birthday|dayreason|วันเกิด/i.exec(src);
     assert.equal(hit, null, `${file} เอ่ยถึงวันเกิด ("${hit?.[0]}")`);
   }
+
+  // และทั้งจอและกระดาษที่รับคำขอไป ไม่ได้อ่าน `birthDate` เอง — อ่านแต่จำนวนชั่วโมง
+  // ที่ payload ส่งมาให้ **เดือนบอกได้ วันบอกไม่ได้** คือกฎเดียวกับใบส่งบัญชี
+  for (const file of ['components/DepartmentView.jsx', 'components/DepartmentPrint.jsx']) {
+    const src = read(file);
+    assert.ok(!/birthDate/.test(src), `${file} ไม่ต้องรู้วันที่ รู้แค่จำนวนชั่วโมง`);
+    assert.ok(!/dayReason/.test(src), `${file} ไม่ต้องรู้เหตุผลของวันด้วย`);
+  }
+  assert.match(read('components/DepartmentView.jsx'), /<BirthdayNote hours=\{row\.birthdayHours\} where="[^"]+" \/>/);
+});
+
+test('แถบวันเกิดบนใบแยกแผนกที่พิมพ์ — คำเดียว ไม่มีชั่วโมง ไม่มีวันที่ และไม่ใช่คอลัมน์', () => {
+  /**
+   * *ให้มี — แบบเดียวกับใบส่งบัญชี* (ฝ่ายบุคคล 2026-09-09) และ “แบบเดียวกัน”
+   * หมายถึงทั้งรูปแบบด้วย: คำเดียวในแถบขาวข้างกริด ไม่ใช่คอลัมน์ที่ห้าของฟอร์ม
+   */
+  const sheet = read('components/DepartmentPrint.jsx');
+
+  // มาจากค่ากลาง ไม่ได้พิมพ์คำซ้ำ
+  assert.match(sheet, /BIRTHDAY_REMARK/);
+  assert.ok(
+    !/['\"`]วันเกิด['\"`]/.test(sheet),
+    'ใบนี้เขียนคำว่าวันเกิดซ้ำเป็น literal',
+  );
+
+  // คำเดียว — ไม่มีชั่วโมงต่อท้าย เหมือนที่ใบส่งบัญชีถูกตรึงไว้ข้างบน
+  assert.match(sheet, /return line\.birthdayHours > 0 \? BIRTHDAY_REMARK : '';/);
+  assert.ok(
+    !/BIRTHDAY_REMARK\}? \$?\{?[^}]*ชม\./.test(sheet),
+    'ใบพิมพ์ต้องไม่มีจำนวนชั่วโมงต่อท้ายคำว่าวันเกิด',
+  );
+
+  // ข้างกริด ไม่ใช่คอลัมน์ของฟอร์ม — ไม่มีเส้น ไม่มีพื้น ไม่มีหัวคอลัมน์
+  assert.match(sheet, /<td className="note">\{remark\(line\)\}<\/td>/);
+  const css = read('app/print.css');
+  assert.match(
+    css,
+    /\.otdept th\.note, \.otdept td\.note \{[\s\S]*?border: 0;/,
+    'แถบหมายเหตุต้องไม่มีเส้นตาราง',
+  );
+  assert.match(
+    css,
+    /\.otdept table tbody tr:last-child td:not\(\.note\) \{ border-bottom/,
+    'เส้นปิดกริดต้องไม่ลากผ่านแถบ',
+  );
+
+  // และกริดเองไม่ขยับ: สี่คอลัมน์กับช่องเหลืองกว้างเท่าเดิม ตารางกว้างขึ้นไปกินกระดาษ
+  // ที่มันเว้นว่างอยู่แล้ว (194 − 10 − 152 = 32mm ใช้ไป 26)
+  assert.match(css, /\.otdept table \{[\s\S]*?width: 178mm;/);
+  for (const w of ['18mm', '58mm', '24mm', '28mm']) {
+    assert.ok(sheet.includes(`width: '${w}'`), `คอลัมน์ ${w} หายไปจาก colgroup`);
+  }
+  assert.ok(sheet.includes("width: '26mm'"), 'แถบต้องมีความกว้างของตัวเอง');
+
+  // ใบ รวมทุกแผนก ไม่มีทางติดคำนี้ เพราะแถวของมันคือ sumRows() ซึ่งไม่มี
+  // birthdayHours อยู่เลย — ไม่ต้องมีกฎมากันไว้ต่างหาก
+  assert.ok(
+    !/birthdayHours/.test(read('lib/departmentSummary.js')),
+    'ถ้าวันหนึ่ง sumRows() แบก birthdayHours ขึ้นมา ใบรวมทุกแผนกจะติดคำนี้เงียบ ๆ',
+  );
 });
 
 test('คำว่าวันเกิดบนกระดาษ หน้าจอ และไฟล์ CSV เป็นคำเดียวกัน', () => {
   // One constant, because three copies of a remark become three remarks the day
   // somebody rewords one of them.
   assert.equal(BIRTHDAY_REMARK, 'วันเกิด');
+  // `BirthdayNote` in components/common.jsx is where the two SCREENS get both
+  // the word and the sentence round it since 2026-09-09 — ส่งบัญชี and แยกแผนก
+  // pass only the phrase naming their own columns. The file is not in the list
+  // below because it also carries `DAY_REASON_LABEL`, which is a different
+  // label on a different screen and has spelled the word out since long before.
+  assert.match(
+    read('components/common.jsx'),
+    /\{BIRTHDAY_REMARK\} · \{hours\(h\)\} ชม\. \{where\}/,
+    'ประโยควันเกิดของทั้งสองจอต้องมาจากตัวกลางตัวเดียว',
+  );
   for (const file of [
     'components/AccountingPrint.jsx',
-    'components/AccountingView.jsx',
     'app/api/exports/accounting.csv/route.js',
   ]) {
     const src = read(file);

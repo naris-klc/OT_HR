@@ -76,13 +76,25 @@ test('a ticked row offers no decision of its own', () => {
   has(bar, 'picked-note');
 });
 
+/**
+ * IT WAS "รายละเอียด IS OUTSIDE THE CONDITIONAL" UNTIL 2026-09-09.
+ *
+ * The button was placed after the ticked/unticked branch closed, so a ticked row
+ * kept it while losing its two decisions — checking a row before confirming the
+ * pile is the whole reason somebody would look at it now. The button is gone
+ * from every row; the ROW opens the pop-up instead, ticked or not, and a
+ * conditional cannot take that away because it is not in the cell at all.
+ *
+ * So the claim is asserted where it now lives — on the <tr> — and the old shape
+ * is asserted absent, because a รายละเอียด button reappearing inside the ticked
+ * branch is exactly the regression this test was written for.
+ */
 test('reading a row is still allowed while it is ticked', () => {
-  // รายละเอียด is outside the conditional — checking a row before confirming the
-  // pile is the whole reason somebody would look at it now.
   const cell = bar.slice(bar.indexOf("selected.has(e._id) ? ("));
-  const detailAt = cell.indexOf('รายละเอียด');
-  const closesAt = cell.indexOf(')}');
-  assert.ok(detailAt > closesAt, 'ปุ่มรายละเอียดถูกซ่อนไปพร้อมปุ่มตัดสินใจ');
+  assert.ok(!cell.includes('รายละเอียด'), 'ปุ่มรายละเอียดกลับมาอยู่ในเซลล์ปุ่มอีกแล้ว');
+  // The row's handler is above the branch and outside every cell.
+  const row = bar.slice(bar.indexOf('{shown.map(('), bar.indexOf("selected.has(e._id) ? ("));
+  assert.ok(row.includes('setDetail(e);'), 'แถวไม่ได้เปิดรายละเอียดแล้ว — ติ๊กแล้วอ่านใบไม่ได้เลย');
 });
 
 // ── the confirm dialog ──────────────────────────────────────────────────────
