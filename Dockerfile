@@ -76,11 +76,47 @@ ENV NODE_ENV=production \
     TZ=Asia/Bangkok \
     OT_TIMEZONE=Asia/Bangkok
 
+# ── สิ่งที่ปุ่ม บันทึกเป็น PDF ต้องใช้ · เพิ่ม 2026-09-09 ────────────────────
+#
+# `/api/print/pdf` ไม่ได้เรนเดอร์ PDF เอง — มัน spawn เบราว์เซอร์ headless แล้วสั่ง
+# `--print-to-pdf` (lib/pdfExport.js) ซึ่งบนแล็ปท็อปคือ Edge ที่ติดมากับ Windows
+# อยู่แล้ว base image นี้ไม่มีเบราว์เซอร์สักตัว `findBrowser()` จึงคืน null และ
+# ปุ่มนั้นตอบ "ไม่พบเบราว์เซอร์สำหรับสร้างไฟล์ PDF บนเครื่องนี้" ทุกครั้ง
+#
+# ไม่ต้องตั้ง `PDF_BROWSER` — `/usr/bin/chromium` อยู่ในรายการที่ `browserCandidates()`
+# ไล่หาบน POSIX อยู่แล้ว ตัวแปรนั้นมีไว้สำหรับเครื่องที่เก็บเบราว์เซอร์ไว้ที่อื่น
+#
+# ⚠ ฟอนต์ไม่ได้ใส่ไว้เผื่อสวยงาม แต่เผื่อ "เน็ตล่ม" — เอกสารที่ส่งให้เบราว์เซอร์
+# `<link>` ฟอนต์ IBM Plex Sans Thai Looped จาก Google Fonts และมี CSP ที่ยอมให้
+# โหลดได้เฉพาะจากที่นั่น วันที่ออกอินเทอร์เน็ตไม่ได้ ตัวอักษรจะตกไปที่ `sans-serif`
+# ของเครื่อง ซึ่งใน base image เปล่า ๆ ไม่มีตัวไหนวาดภาษาไทยได้เลย — ใบ F-HR-027
+# จะออกมาเป็นกล่องสี่เหลี่ยมทั้งใบ แทนที่จะเป็นใบที่หน้าตาต่างไปนิดหน่อย
+# `fonts-thai-tlwg` คือตัวที่ทำให้ fontconfig มีคำตอบสำหรับภาษาไทย และ
+# `fonts-liberation` คือชุดละตินที่ Chrome คาดว่าจะเจอ (ปกติมาทาง Recommends
+# ซึ่ง --no-install-recommends ตัดทิ้ง)
+#
+# ⚠ ราคาคืออิมเมจโตขึ้นมาก — chromium พร้อม dependency กินหลายร้อย MB
+#   ตัวเลขล่าสุดบันทึกไว้ที่ docs/docker.md §เรื่องที่ยังไม่แก้
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends chromium fonts-thai-tlwg fonts-liberation \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/.next ./.next
 COPY --chown=node:node public ./public
 COPY --chown=node:node package.json next.config.js jsconfig.json ./
 COPY --chown=node:node instrumentation.js instrumentation-node.js ./
+
+# สองไฟล์นี้ถูกอ่านตอนรันไทม์ ไม่ใช่ตอน build — `sheetStyles()` ใน lib/pdfExport.js
+# อ่าน `app/styles.css` กับ `app/print.css` จาก `process.cwd()` แล้วฝังลงในเอกสาร
+# ที่ส่งให้เบราว์เซอร์ เพราะการ `import` ไฟล์ .css ใน route handler จะได้ URL ของ
+# chunk ที่มีแฮช ซึ่งเป็นสิ่งเดียวที่หน้า `file://` โหลดไม่ได้
+#
+# เอามาแค่สองไฟล์ ไม่ใช่ทั้ง `app/` — ที่เหลือในนั้นเป็น route กับ layout ซึ่ง
+# `next start` ไม่ได้อ่านจากซอร์ส มันอ่านจาก `.next` ที่ build ไว้แล้ว
+# ถ้าวันหนึ่ง `sheetStyles()` อ่านไฟล์ที่สาม บรรทัดนี้ต้องตามไปด้วย และอาการคือ
+# throw พร้อมบอก path ที่หาไม่เจอ ไม่ใช่ PDF ที่ไม่มีสไตล์
+COPY --chown=node:node app/styles.css app/print.css ./app/
 
 # src/ กับ lib/ ไม่ได้ถูกใช้ตอนเสิร์ฟ — .next มีทุกอย่างที่ next start ต้องใช้แล้ว
 # ที่ใส่มาเพราะสคริปต์ดูแลระบบทั้งชุดอยู่ในนั้น และมันต้องรันได้จากในคอนเทนเนอร์:

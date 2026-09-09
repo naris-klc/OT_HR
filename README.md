@@ -1909,7 +1909,14 @@ lib/complianceQuery.js    the three reads behind it, kept apart for the reason
 lib/pdfExport.js          a print view as a PDF file: the standalone document,
                           the lock on markup that arrived from a browser, and
                           the headless Edge/Chrome already on the machine — no
-                          dependency, and no second statement of the A4 layout
+                          dependency, and no second statement of the A4 layout.
+                          "Already on the machine" is the LAPTOP's answer and
+                          stayed the only one until 2026-09-09: the Docker image
+                          on the Linux box has no browser at all, so it now
+                          installs chromium and the Thai fonts, and carries the
+                          two stylesheets this file reads at run time. The code
+                          is unchanged — `/usr/bin/chromium` was already in
+                          `browserCandidates()`. See docs/docker.md
 lib/printFile.js          what a saved sheet is called, and the DOM the file is
                           made from; one name for the print dialog and the
                           download, so one document cannot arrive twice
