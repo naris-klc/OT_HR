@@ -146,16 +146,12 @@ export const GET = route(async (req) => {
    * row that is absent in every normal month cannot break a lookup built on the
    * ones above it.
    *
-   * `fold` since 2026-09-09, and it is this file's shape that forces it: the
-   * line used to put its hours under รวมชั่วโมง and its sentence in หมายเหตุ,
-   * and this file now has neither — หมายเหตุ carries the word วันเกิด and
-   * nothing else, and the total was replaced by a 1.50/3.00 split that these
-   * hours cannot be put into, because an entry whose employee no longer
-   * resolves was never split by any row. So the whole line is one sentence in
-   * the ชื่อ-สกุล cell that already held its label. It still cannot be lost.
+   * The whole line lands in the ชื่อ-สกุล cell — see `unaccountedCsvRow`. It
+   * used to spread across รวมชั่วโมง and หมายเหตุ; this file has had neither
+   * since 2026-09-09.
    */
   if (report.unaccounted?.count > 0) {
-    rows.push(unaccountedCsvRow(headers, report.unaccounted, { fold: true }));
+    rows.push(unaccountedCsvRow(headers, report.unaccounted));
   }
 
   const suffix = report.company === 'all' ? 'all' : report.company;

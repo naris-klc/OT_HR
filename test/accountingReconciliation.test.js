@@ -548,7 +548,7 @@ const ACCOUNTING_HEADERS = [
 ];
 const DEPARTMENT_HEADERS = [
   'แผนก', 'ลำดับที่', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'บริษัท',
-  'OT x1.5', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ',
+  'OT x1.5', 'OT x3', 'รวม 1.5', 'รวม 3', 'หมายเหตุ',
 ];
 
 const UNACCOUNTED = { count: 2, hours: 3.5, entries: [] };
@@ -561,40 +561,34 @@ test('the ไม่ถูกนับ line has exactly as many cells as the file
   }
 });
 
-test('the hours land under รวมชั่วโมง wherever that column is', () => {
-  // Placed by header NAME, not by counting cells — a column added to an export
-  // moves the line with it rather than shifting it.
-  const headers = DEPARTMENT_HEADERS;
-  const row = unaccountedCsvRow(headers, UNACCOUNTED);
-  assert.equal(row[headers.indexOf('รวมชั่วโมง')], '3.5');
-  assert.equal(row[headers.indexOf('ชื่อ-สกุล')], 'ไม่ถูกนับ');
-  assert.match(row[headers.indexOf('หมายเหตุ')], /^2 รายการ/);
-});
-
-test('folded, the whole warning is in ชื่อ-สกุล — hours, count and sentence', () => {
+test('the whole warning is in ชื่อ-สกุล — label, hours, count and sentence', () => {
   /**
-   * accounting.csv has neither column to write into since 2026-09-09:
-   * รวมชั่วโมง was replaced by รวม 1.5 / รวม 3, and หมายเหตุ carries the word
-   * วันเกิด and nothing else.
+   * ── IT USED TO SPREAD ACROSS ชื่อ-สกุล, รวมชั่วโมง AND หมายเหตุ ────────────
    *
-   * The failure this guards against is not a crash — `put` finds no column and
-   * writes nothing, quite happily. It is a file that prints a bare "ไม่ถูกนับ"
-   * beside eleven blank cells: the warning with its warning removed, which
-   * reads as a stray row rather than as hours the sheet could not account for.
+   * Neither export has either of the last two since 2026-09-09: `รวมชั่วโมง`
+   * was replaced by the printed forms' `รวม 1.5` / `รวม 3` pair, and `หมายเหตุ`
+   * carries the word วันเกิด and nothing else.
+   *
+   * The failure this guards against is not a crash — placing by NAME finds no
+   * column and writes nothing, quite happily. It is a file that prints a bare
+   * "ไม่ถูกนับ" beside ten blank cells: the warning with its warning removed,
+   * which reads as a stray row rather than as hours the sheet could not account
+   * for.
    */
-  const headers = ACCOUNTING_HEADERS;
-  const row = unaccountedCsvRow(headers, UNACCOUNTED, { fold: true });
+  for (const headers of [ACCOUNTING_HEADERS, DEPARTMENT_HEADERS]) {
+    const row = unaccountedCsvRow(headers, UNACCOUNTED);
 
-  const name = row[headers.indexOf('ชื่อ-สกุล')];
-  assert.match(name, /^ไม่ถูกนับ/);
-  assert.match(name, /3\.5 ชม\./, 'จำนวนชั่วโมงที่หายต้องอยู่ในบรรทัด');
-  assert.match(name, /2 รายการอ้างถึงพนักงานที่หาไม่พบ/);
+    const name = row[headers.indexOf('ชื่อ-สกุล')];
+    assert.match(name, /^ไม่ถูกนับ/);
+    assert.match(name, /3\.5 ชม\./, 'จำนวนชั่วโมงที่หายต้องอยู่ในบรรทัด');
+    assert.match(name, /2 รายการอ้างถึงพนักงานที่หาไม่พบ/);
 
-  // And nothing leaks into the columns this file keeps for figures.
-  for (const column of ['รวม 1.5', 'รวม 3', 'หมายเหตุ', 'รหัสพนักงาน']) {
-    assert.equal(row[headers.indexOf(column)], '', `${column} ต้องว่าง`);
+    // And nothing leaks into the columns these files keep for figures.
+    for (const column of ['รวม 1.5', 'รวม 3', 'หมายเหตุ', 'รหัสพนักงาน']) {
+      assert.equal(row[headers.indexOf(column)], '', `${column} ต้องว่าง`);
+    }
+    assert.equal(row.length, headers.length);
   }
-  assert.equal(row.length, headers.length);
 });
 
 test('it carries no รหัสพนักงาน, so the filter that isolates people still works', () => {
@@ -609,11 +603,13 @@ test('it carries no รหัสพนักงาน, so the filter that isolat
 });
 
 test('a column added to an export moves the line with it', () => {
-  const headers = [...DEPARTMENT_HEADERS, 'คอลัมน์ใหม่'];
+  // The cell is still found by NAME, not by counting — which is what keeps this
+  // line correct when a column is added anywhere to its left.
+  const headers = ['คอลัมน์ใหม่', ...DEPARTMENT_HEADERS];
   const row = unaccountedCsvRow(headers, UNACCOUNTED);
   assert.equal(row.length, headers.length);
-  assert.equal(row[headers.indexOf('รวมชั่วโมง')], '3.5');
-  assert.equal(row.at(-1), '', 'the new column is left blank, not overwritten');
+  assert.match(row[headers.indexOf('ชื่อ-สกุล')], /^ไม่ถูกนับ/);
+  assert.equal(row[0], '', 'the new column is left blank, not overwritten');
 });
 
 test('the line survives the round trip through the CSV writer and parser', () => {

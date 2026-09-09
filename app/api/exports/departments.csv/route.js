@@ -2,9 +2,9 @@ import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { accountingReport } from '@/lib/accounting.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
-import { unaccountedCsvRow } from '@/lib/accountingRows.js';
+import { unaccountedCsvRow, BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { toCsv } from '@/src/lib/csv.js';
-import { PERIOD_RE, thaiMonth } from '@/lib/reports.js';
+import { PERIOD_RE } from '@/lib/reports.js';
 
 /**
  * สรุป OT แยกแผนก as a file.
@@ -42,9 +42,30 @@ export const GET = route(async (req) => {
   });
   const departments = groupByDepartment(report.companies);
 
+  /**
+   * ── THE TAIL OF THIS FILE FOLLOWED accounting.csv ON 2026-09-09 ────────────
+   *
+   * It read `'OT x1.5', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ'` until that day, when
+   * ฝ่ายบุคคล asked for this file to be made like the other one:
+   * *ไฟล์ OT-departments ทำเหมือนกับส่งออกไฟล์บัญชี (CSV/Excel)*.
+   *
+   * **`รวม 1.5` and `รวม 3` repeat `OT x1.5` and `OT x3` exactly, and that is
+   * what was asked for.** On accounting.csv the same two columns add up a split
+   * that sits to their left; here there is no split to add up — this file's
+   * `OT x1.5` has always BEEN the printed form's combined 1.50 column, because
+   * the department screen and the department sheet both rule 1.50 and 3.00 and
+   * nothing finer. So the two files now end with the same four cells, one of
+   * them by summing and one by repeating.
+   *
+   * **`รวมชั่วโมง` is gone**, as it is from accounting.csv. A consumer that
+   * counted columns from the left now finds `รวม 1.5` in the eighth column
+   * where the row's whole total used to be — a different number on any row with
+   * ×3 hours in it. The total is still on the paper, in `รวมชั่วโมงทำOT`, and
+   * on the screen.
+   */
   const headers = [
     'แผนก', 'ลำดับที่', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'บริษัท',
-    'OT x1.5', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ',
+    'OT x1.5', 'OT x3', 'รวม 1.5', 'รวม 3', 'หมายเหตุ',
   ];
 
   const rows = [];
@@ -61,22 +82,18 @@ export const GET = route(async (req) => {
         row.companyLabel,
         cell(row.ot15Hours),
         cell(row.ot3Hours),
-        cell(row.otHours),
+        cell(row.ot15Hours),
+        cell(row.ot3Hours),
         note(row),
       ]);
     });
-    rows.push(summaryRow(
-      dept.name,
-      'รวมชั่วโมงทำOT',
-      dept.totals,
-      `${dept.totals.headcount} คนมี OT · ${dept.totals.rowCount} คนในแผนก`,
-    ));
+    rows.push(summaryRow(dept.name, 'รวมชั่วโมงทำOT', dept.totals));
   }
 
   // Always written, even for a single department: it is the line the month is
   // signed off against, and the printed bundle always ends with its sheet.
   const total = sumRows(departments.flatMap((d) => d.rows));
-  rows.push(summaryRow('', 'รวมทุกแผนก', total, tail(total, report.pending, period, departments)));
+  rows.push(summaryRow('', 'รวมทุกแผนก', total));
 
   /**
    * Hours no department could claim — an entry whose employee no longer
@@ -86,6 +103,10 @@ export const GET = route(async (req) => {
    * same reason as in accounting.csv: a spreadsheet carries only what is in it,
    * and a file whose totals are short while every figure in it still adds up is
    * a file nobody can check.
+   *
+   * The whole line lands in the ชื่อ-สกุล cell — see `unaccountedCsvRow`. It
+   * used to spread across รวมชั่วโมง and หมายเหตุ; this file has had neither
+   * since 2026-09-09.
    */
   if (report.unaccounted?.count > 0) {
     rows.push(unaccountedCsvRow(headers, report.unaccounted));
@@ -102,36 +123,54 @@ export const GET = route(async (req) => {
  *
  * Totals always print a figure, including zero: a blank where the total that
  * gets signed for belongs reads as "not filled in".
+ *
+ * **No หมายเหตุ on a รวม line since 2026-09-09.** The department line carried
+ * `n คนมี OT · n คนในแผนก` and the รวมทุกแผนก line carried
+ * `ประจำเดือน … · n แผนก · n คนมี OT` and the backlog sentence with it. That
+ * column says วันเกิด and nothing else now, on every row of the file — the same
+ * rule accounting.csv took the same day. See `note()`.
  */
-function summaryRow(department, label, totals, remark) {
+function summaryRow(department, label, totals) {
   return [
     department, '', '', label, '',
     fmt(totals.ot15Hours),
     fmt(totals.ot3Hours),
-    fmt(totals.otHours),
-    remark,
+    fmt(totals.ot15Hours),
+    fmt(totals.ot3Hours),
+    '',
   ];
 }
 
-/** The หมายเหตุ on the รวมทุกแผนก line. */
-function tail(totals, pending, period, departments) {
-  const parts = [
-    `ประจำเดือน ${thaiMonth(period)}`,
-    `${departments.length} แผนก`,
-    `${totals.headcount} คนมี OT`,
-  ];
-  if (pending.count > 0) {
-    parts.push(`ยังค้างอนุมัติ ${pending.count} รายการ (${fmt(pending.hours)} ชม. ไม่นับรวม)`);
-  }
-  return parts.join(' · ');
-}
-
-/** Why a row reads the way it does — the column HR gets asked about. */
+/**
+ * Why a row reads the way it does — “วันเกิด”, the word alone, or nothing.
+ *
+ * ── THIS FILE KNEW NOTHING ABOUT A BIRTHDAY UNTIL 2026-09-09 ───────────────
+ *
+ * `test/birthdayOnPaper.test.js` pinned that ignorance, and the reason it gave
+ * was *“a CSV is sorted, filtered and pasted, not read a row at a time — the
+ * word in a file wants to be a column you can pivot, and nobody asked”*. The
+ * department SCREEN and the department PRINTED SHEET both got the remark
+ * earlier the same day, each after its own ask; this file was left out because
+ * the ask had not come. It came: *ไฟล์ OT-departments ทำเหมือนกับส่งออกไฟล์
+ * บัญชี*.
+ *
+ * So it says exactly what the other three documents say — one
+ * `BIRTHDAY_REMARK`, one spelling, no hours after it, no date anywhere near it.
+ * `lib/departmentSummary.js` is still silent and still has no `birthdayHours`
+ * in `sumRows()`: this reads the figure off the ROW, which is the same object
+ * `accountingReport()` already put it on, so the grouping stays a regrouping
+ * and the รวมทุกแผนก line cannot acquire a birthday of its own.
+ *
+ * ── WHAT LEFT THIS CELL ────────────────────────────────────────────────────
+ *
+ * `ไม่มี OT` → the row is blank across both hour columns, which is what a blank
+ *   line on the department sheet has always meant.
+ * `ค้างอนุมัติ n รายการ` → the queue and the screen. **The file no longer says
+ *   anywhere that a figure it prints is short because something is unsigned**,
+ *   which is the same thing accounting.csv gave up on the same day.
+ */
 function note(row) {
-  const parts = [];
-  if (row.entryCount === 0) parts.push('ไม่มี OT');
-  if (row.pendingCount > 0) parts.push(`ค้างอนุมัติ ${row.pendingCount} รายการ (${fmt(row.pendingHours)} ชม. ไม่นับรวม)`);
-  return parts.join(' · ');
+  return row.birthdayHours > 0 ? BIRTHDAY_REMARK : '';
 }
 
 const fmt = (n) => (n == null ? '' : String(Math.round(Number(n) * 100) / 100));

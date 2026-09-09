@@ -3425,12 +3425,24 @@ The screen phrases it for its own columns — `วันเกิด · 8.00 ช
 since it rules 1.50 and 3.00 where ส่งบัญชี rules a วันหยุด column. The paper
 says the word and nothing else, because that is what HR wrote there by hand.
 
-**`departments.csv` and `lib/departmentSummary.js` still say nothing at all**, and
-`test/birthdayOnPaper.test.js` still fails the build if either does. A CSV is
-sorted, filtered and pasted into somebody else's workbook rather than read a row
-at a time, so a remark in it is a column that travels; and the grouping module is
-not a document. Nobody has asked for either — which is now the whole of the
-reason, and it is a smaller reason than the one it replaced.
+**It read “`departments.csv` and `lib/departmentSummary.js` still say nothing at
+all” until later the same day.** The reason given was that a CSV is sorted,
+filtered and pasted into somebody else's workbook rather than read a row at a
+time, so a remark in it wants to be a column that travels — and that **nobody
+had asked**. The ask came, in the third message of that afternoon:
+*ไฟล์ OT-departments ทำเหมือนกับส่งออกไฟล์บัญชี (CSV/Excel)*. All three
+documents of the แยกแผนก report now carry the word — the screen, the paper and
+the file — and the file says it exactly as the paper does, one
+`BIRTHDAY_REMARK`, no hours after it.
+
+**`lib/departmentSummary.js` is still silent, and that is not an oversight.** It
+is a regrouping, not a document; `sumRows()` has no `birthdayHours` in it, which
+is why the รวมทุกแผนก line cannot acquire a birthday of its own without anybody
+writing a rule to stop it. The file reads the figure off the ROW —
+the same object `accountingReport()` already put it on.
+`test/birthdayOnPaper.test.js` fails the build if that module learns about a
+birthday, and now also if the file stops reading `row.birthdayHours` or starts
+reading a `birthDate`.
 
 `birthDate` itself remains not colleague-visible: `publicEmployee()` filters it out
 of the roster for everyone except the person, HR and admin — managers included.
@@ -9188,18 +9200,18 @@ which sizes the row from the caller's own header array and places values **by
 column name**: a row one cell short of its header opens with every column after
 it shifted, which is a worse outcome than the missing hours it is reporting.
 
-**`accounting.csv` passes `fold: true` since 2026-09-09**, and the reason is a
-failure that placing-by-name does not protect against on its own. That file lost
-both of the columns this line writes into on that day — `รวมชั่วโมง` was replaced
-by the `รวม 1.5` / `รวม 3` pair, which these hours cannot be put into because an
-entry whose employee no longer resolves was never split by any row, and
-`หมายเหตุ` became the วันเกิด column. Placing by name does not throw when a
-column is missing; it writes nothing. The file would have printed a bare
-`ไม่ถูกนับ` beside ten blank cells — the warning with its warning removed, which
+**The line used to spread across three cells and is now one, in both files.**
+The label went in ชื่อ-สกุล, the hours under `รวมชั่วโมง` and the sentence in
+`หมายเหตุ`. On 2026-09-09 both exports lost both of those columns —
+`รวมชั่วโมง` was replaced by the `รวม 1.5` / `รวม 3` pair, which these hours
+cannot be put into because an entry whose employee no longer resolves was never
+split by any row, and `หมายเหตุ` became the วันเกิด column. Placing by name does
+not throw when a column is missing; **it writes nothing.** Left as it was, this
+would have gone on returning a row of the right width with a bare `ไม่ถูกนับ` in
+it and every other cell blank — the warning with its warning removed, which
 reads as a stray row rather than as hours the sheet could not account for. So
-`fold` puts the label, the hours and the sentence into the one cell that already
-held the label. `departments.csv` still has both columns and still spreads the
-line across them.
+the label, the hours and the sentence share the one cell that already held the
+label. There is no second form.
 
 **What HR can actually do about it: nothing, in the UI.** `entry.employee` is
 written once, at submission, and no route touches it afterwards — re-pointing an
@@ -9537,9 +9549,10 @@ the four columns and the yellow cell keep the millimetres they had — a printou
 still lies on the paper it copies rule for rule. `ROWS_PER_PAGE` is unmoved
 because the strip inherits the row's height and its nowrap.
 
-**`departments.csv` carries neither**, and `lib/departmentSummary.js` still knows
-nothing about a birthday — see the วันเกิด section above for what that line is
-now that it is no longer “this sheet goes to management”.
+**`departments.csv` carries the วันเกิด remark and no colour** — the word since
+2026-09-09 (see §The file below and the วันเกิด section above), the colour never,
+having nowhere to put one. `lib/departmentSummary.js` still knows nothing about
+a birthday.
 
 ### The file
 
@@ -9557,6 +9570,33 @@ Two columns exist here that are not on the paper: **แผนก**, because a ro
 file has to say which department it belongs to once the banner above it is
 gone, and **บริษัท**, because a department holds both payrolls and payroll is
 who gets asked about a figure.
+
+**It ended `OT x1.5 · OT x3 · รวมชั่วโมง · หมายเหตุ` until 2026-09-09**, when HR
+asked for this file to be made like the other one —
+*ไฟล์ OT-departments ทำเหมือนกับส่งออกไฟล์บัญชี (CSV/Excel)*:
+
+```
+แผนก · ลำดับที่ · รหัสพนักงาน · ชื่อ-สกุล · บริษัท ·
+OT x1.5 · OT x3 · รวม 1.5 · รวม 3 · หมายเหตุ
+```
+
+**`รวม 1.5` and `รวม 3` repeat `OT x1.5` and `OT x3` exactly, and that was the
+ask.** On `accounting.csv` the same two columns add up a ×1.5 split that sits to
+their left; here there is no split to add up — this file's `OT x1.5` has always
+BEEN the printed form's combined 1.50 column, because the department screen and
+the department sheet both rule 1.50 and 3.00 and nothing finer. So the two files
+now end in the same four cells, one of them by summing and one by repeating.
+
+Everything the accounting file gave up on that day, this one gave up with it:
+**`รวมชั่วโมง`** (a consumer counting from the left now finds `รวม 1.5` in the
+eighth column where the row's whole total used to be — a different number on any
+row with ×3 hours; the total is still on the paper as `รวมชั่วโมงทำOT` and on the
+screen), **`ไม่มี OT`** (the row is blank across both hour columns, which is what
+a blank line on the department sheet has always meant), the department line's
+`n คนมี OT · n คนในแผนก`, the รวมทุกแผนก line's `ประจำเดือน … · n แผนก`, and
+**`ค้างอนุมัติ n รายการ` — which is the one that is not merely tidier: neither
+file says anywhere any more that a figure it prints is short because something is
+still unsigned.**
 
 Like the printed bundle, the file always covers **every** department whatever
 the dropdown says — it is the month's file, and a department missing from it is

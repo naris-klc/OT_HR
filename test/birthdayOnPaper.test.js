@@ -299,9 +299,9 @@ test('CSV เขียนแค่คำว่าวันเกิดในช�
   assert.match(src, /row\.birthdayHours > 0/);
 });
 
-test('ไฟล์ CSV แยกแผนก ยังไม่รู้เรื่องวันเกิด — และการรวมยอดก็ไม่รู้', () => {
+test('การรวมยอดแยกแผนกยังไม่รู้เรื่องวันเกิด — แต่ไฟล์ CSV รู้แล้ว', () => {
   /**
-   * ── ข้อนี้หดสองครั้งในวันเดียว และทั้งสองครั้งคือฝ่ายบุคคลเป็นคนสั่ง ──────────
+   * ── ข้อนี้หดสามครั้งในวันเดียว และทั้งสามครั้งคือฝ่ายบุคคลเป็นคนสั่ง ──────────
    *
    * เดิมชื่อ *รายงานแยกแผนกยังไม่รู้เรื่องวันเกิด* คลุมทั้ง `lib/departmentSummary.js`
    * `components/DepartmentPrint.jsx` และ CSV เหตุผลที่เขียนไว้คือ *“ใบนั้นส่ง
@@ -312,26 +312,35 @@ test('ไฟล์ CSV แยกแผนก ยังไม่รู้เร�
    * การเงิน* — พูดถึงหน้าจอ ข้อนี้จึงเหลือแค่กระดาษกับไฟล์
    * 2026-09-09 รอบสอง: ถามกลับตรง ๆ ว่าใบที่พิมพ์ควรมีคำว่าวันเกิดกำกับแถวไหม
    * คำตอบคือ **ให้มี แบบเดียวกับใบส่งบัญชี** กระดาษจึงออกจากข้อนี้ไปด้วย
+   * 2026-09-09 รอบสาม: *ไฟล์ OT-departments ทำเหมือนกับส่งออกไฟล์บัญชี* — ไฟล์
+   * ออกไปเป็นชิ้นสุดท้าย เอกสารทั้งสามของรายงานแยกแผนกจึงติดคำนั้นครบแล้ว
    *
-   * ── สิ่งที่เหลือ และเหลือเพราะอะไร ────────────────────────────────────────
+   * เหตุผลที่เคยเขียนกันไฟล์ไว้คือ *“CSV ถูกเรียง กรอง และแปะต่อ คำว่าวันเกิดในไฟล์
+   * ควรเป็นคอลัมน์ที่ pivot ได้ ไม่ใช่หมายเหตุข้างแถวเดียว — และไม่มีใครขอ”*
+   * ครึ่งหลังหมดอายุไปแล้ว ส่วนครึ่งแรกฝ่ายบุคคลตอบไปแล้วเช่นกันตอนที่สั่งให้ไฟล์
+   * ส่งบัญชีถอดคอลัมน์ `birthday_hours` ทิ้ง แล้วเหลือแค่คำในช่องหมายเหตุ
    *
-   * **CSV** ไม่ใช่เอกสารที่คนอ่านทีละแถว มันถูกเรียง กรอง และแปะต่อ — คำว่าวันเกิด
-   * ในไฟล์คือคอลัมน์ที่ pivot ได้ ไม่ใช่หมายเหตุข้างแถวเดียว และไม่มีใครขอ
+   * ── สิ่งที่ยังเหลือ และเหลือเพราะอะไร ──────────────────────────────────────
    *
    * **`lib/departmentSummary.js`** คือการจัดกลุ่ม ไม่ใช่เอกสาร มันไม่ควรรู้ว่าชั่วโมง
    * ก้อนไหนมาจากวันอะไร — `sumRows()` ไม่มี `birthdayHours` ด้วยซ้ำ ซึ่งเป็นเหตุผล
-   * ที่ใบ รวมทุกแผนก ไม่เคยติดคำว่าวันเกิดโดยไม่ต้องเขียนกฎอะไรกันมันเลย
-   *
-   * สิ่งที่ **ไม่** ใช่เหตุผลอีกต่อไปคือ “ใบนี้ส่งผู้บริหาร” — ใบที่พิมพ์ก็ส่งผู้บริหาร
-   * และตอนนี้มันติดคำนั้นแล้ว โดยฝ่ายบุคคลเป็นคนตัดสิน ดู DepartmentPrint.jsx
+   * ที่บรรทัด รวมทุกแผนก ไม่เคยติดคำว่าวันเกิดโดยไม่ต้องเขียนกฎอะไรกันมันเลย
+   * ไฟล์ CSV อ่านค่านั้นจาก **แถว** ที่ `accountingReport()` ใส่ไว้ให้แล้ว การจัดกลุ่ม
+   * จึงยังเป็นการจัดกลุ่มเฉย ๆ
    */
-  for (const file of [
-    'lib/departmentSummary.js',
-    'app/api/exports/departments.csv/route.js',
-  ]) {
+  {
+    const file = 'lib/departmentSummary.js';
     const src = read(file);
     const hit = /birthday|dayreason|วันเกิด/i.exec(src);
     assert.equal(hit, null, `${file} เอ่ยถึงวันเกิด ("${hit?.[0]}")`);
+  }
+
+  // และไฟล์ก็ไม่ได้รู้มากไปกว่าจำนวนชั่วโมงบนแถว — ไม่มีวันที่ ไม่มีปฏิทิน
+  {
+    const src = read('app/api/exports/departments.csv/route.js');
+    assert.match(src, /row\.birthdayHours > 0 \? BIRTHDAY_REMARK : ''/);
+    assert.ok(!/birthDate/.test(src), 'ไฟล์ไม่ต้องรู้วันที่ รู้แค่จำนวนชั่วโมง');
+    assert.ok(!/dayReason/.test(src), 'และไม่ต้องรู้เหตุผลของวันด้วย');
   }
 
   // และทั้งจอและกระดาษที่รับคำขอไป ไม่ได้อ่าน `birthDate` เอง — อ่านแต่จำนวนชั่วโมง
@@ -412,6 +421,8 @@ test('คำว่าวันเกิดบนกระดาษ หน้า�
   for (const file of [
     'components/AccountingPrint.jsx',
     'app/api/exports/accounting.csv/route.js',
+    // เข้ามาร่วมรายการนี้ 2026-09-09 — ดูข้อถัดไป
+    'app/api/exports/departments.csv/route.js',
   ]) {
     const src = read(file);
     assert.match(src, /BIRTHDAY_REMARK/, `${file} ไม่ได้ใช้ค่ากลาง`);
@@ -424,9 +435,18 @@ test('คำว่าวันเกิดบนกระดาษ หน้า�
 
 // ── every other document about more than one person ──────────────────────────
 
-/** Documents that carry more than one person's hours, plus the shared calendar. */
+/**
+ * Documents that carry more than one person's hours, plus the shared calendar.
+ *
+ * `app/api/exports/departments.csv/route.js` left this list on **2026-09-09**
+ * — the day ฝ่ายบุคคล asked for that file to be made like the accounting one.
+ * The three documents of the แยกแผนก report all carry the word now: the screen,
+ * the printed sheet and the file. What still holds for every name below is the
+ * rule that never moved — **the month may be disclosed, the date may not** —
+ * and the file obeys it the same way the other two do: it reads the row's
+ * `birthdayHours`, which is a number, and loads no `birthDate` and no calendar.
+ */
 const NOT_THE_SUBMISSION_SHEET = [
-  'app/api/exports/departments.csv/route.js',
   'app/api/exports/monthly.csv/route.js',
   'app/api/exports/entries.csv/route.js',
   'app/api/holidays/route.js',

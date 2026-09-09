@@ -148,11 +148,11 @@ test('the builder still sizes its row correctly when handed nothing', () => {
   // Defensive rather than reachable: the guard above means it is not called on
   // an empty month. If that guard is ever lost, this must still not corrupt
   // the file by writing a short row.
-  const headers = ['แผนก', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'รวมชั่วโมง', 'หมายเหตุ'];
+  const headers = ['แผนก', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'รวม 1.5', 'หมายเหตุ'];
   const row = unaccountedCsvRow(headers, { count: 0, hours: 0, entries: [] });
 
   assert.equal(row.length, headers.length);
-  assert.equal(row[headers.indexOf('รวมชั่วโมง')], '0');
+  assert.match(row[headers.indexOf('ชื่อ-สกุล')], /^ไม่ถูกนับ · 0 ชม\./);
   assert.equal(unaccountedCsvRow(headers, undefined).length, headers.length);
   assert.equal(unaccountedCsvRow([], { count: 0, hours: 0 }).length, 0);
 });
