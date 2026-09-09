@@ -104,7 +104,7 @@ test('all four แผนก signers get both the queue and the team report', () 
    * รายงานทีม, worn by the phone bar's `reports` slot while this screen is the
    * only thing in it — which is every ผู้เซ็น but การเงิน. The slot's own name
    * is รายงาน and that is what ฝ่ายบุคคล and การเงิน keep, because theirs holds
-   * ตรวจสอบประจำเดือน and รายงาน OT ฝ่ายบัญชี as well: one แผนก against every
+   * ตรวจสอบประจำเดือน and รายงาน OT การเงิน as well: one แผนก against every
    * แผนก. See `BAR_SLOTS` for the rule and the case below for the cap on it.
    */
   assert.match(block, /tabs\.push\(\{ key: 'team', label: 'รายงาน OT ประจำทีม', short: 'รายงานทีม', icon: 'chart', group: 'work', bar: 'reports' \}\);/);
@@ -133,7 +133,7 @@ test('the two readings of one month are two keys, and one component draws both',
 
 // ── การเงิน · ฝ่ายบุคคล's two screens, read-only ───────────────────────────
 
-test('การเงิน add ตรวจสอบประจำเดือน and รายงาน OT ฝ่ายบัญชี, under ฝ่ายบุคคล\'s own names', () => {
+test('การเงิน add ตรวจสอบประจำเดือน and รายงาน OT การเงิน, under ฝ่ายบุคคล\'s own names', () => {
   const open = builder.indexOf("if (user.role === 'finance') {");
   const block = builder.slice(open, builder.indexOf('// ── ฝ่ายบุคคล'));
   const pushes = block.match(/tabs\.push\(\{/g) || [];
@@ -149,7 +149,7 @@ test('การเงิน add ตรวจสอบประจำเดือ
    * won three lines below, applied in the other direction.
    */
   assert.match(block, /tabs\.push\(\{ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar', group: 'work', bar: 'reports' \}\);/);
-  assert.match(block, /tabs\.push\(\{ key: 'accounting', label: 'รายงาน OT ฝ่ายบัญชี', icon: 'banknote', group: 'work', bar: 'reports' \}\);/);
+  assert.match(block, /tabs\.push\(\{ key: 'accounting', label: 'รายงาน OT การเงิน', icon: 'banknote', group: 'work', bar: 'reports' \}\);/);
   const hrBlock = builder.slice(builder.indexOf("if (['hr', 'admin'].includes(user.role)) {"));
   for (const line of block.match(/tabs\.push\(\{ key: '(?:monthly|accounting)'[^\n]*/g) || []) {
     const [, label, icon] = /label: '([^']+)', icon: '([^']+)'/.exec(line);

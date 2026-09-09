@@ -459,6 +459,16 @@ function Login({ onLogin }) {
  *   สรุป OT แยกแผนก     → รายงาน OT แยกแผนก     (`departments`)
  *   บันทึกระบบ          → บันทึกประวัติระบบ      (`logs`)
  *
+ * AND ONE OF THEM WAS RENAMED AGAIN ON 2026-09-08:
+ *
+ *   รายงาน OT ฝ่ายบัญชี  → รายงาน OT การเงิน     (`accounting`)
+ *
+ * so `accounting` has now worn three names, and the two older ones are both
+ * still in the source under the rule spelled out below. ฝ่ายบัญชี was never a
+ * บทบาท in this app; การเงิน is, and it is the บทบาท that reads this sheet
+ * beside ฝ่ายบุคคล — the tab is now named after who opens it. The KEY is
+ * still `accounting`, and so are the route, the CSV and the print sheet.
+ *
  * TWO MORE ROUNDS THE SAME DAY, taking the other two bars. The หัวหน้างาน's:
  *
  *   รออนุมัติ           → รายการรออนุมัติ        (`approve`)
@@ -527,7 +537,7 @@ const PAGE = {
    */
   team: ['รายงาน OT ประจำทีม', 'TEAM SUMMARY'],
   monthly: ['ตรวจสอบประจำเดือน', 'MONTHLY REVIEW'],
-  accounting: ['รายงาน OT ฝ่ายบัญชี', 'PAYROLL SUBMISSION'],
+  accounting: ['รายงาน OT การเงิน', 'PAYROLL SUBMISSION'],
   departments: ['รายงาน OT แยกแผนก', 'DEPARTMENT SUMMARY'],
   form: ['พิมพ์ใบขออนุมัติ OT', 'PRINTABLE FORM'],
   admin: ['ตั้งค่าระบบ', 'SETTINGS & POLICY'],
@@ -1404,7 +1414,7 @@ function Shell({ session, onRefresh, onLogout }) {
    */
   if (user.role === 'finance') {
     tabs.push({ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar', group: 'work', bar: 'reports' });
-    tabs.push({ key: 'accounting', label: 'รายงาน OT ฝ่ายบัญชี', icon: 'banknote', group: 'work', bar: 'reports' });
+    tabs.push({ key: 'accounting', label: 'รายงาน OT การเงิน', icon: 'banknote', group: 'work', bar: 'reports' });
   }
 
   // ── ฝ่ายบุคคล / ผู้ดูแลระบบ ──────────────────────────────────────────────
@@ -1473,7 +1483,7 @@ function Shell({ session, onRefresh, onLogout }) {
     tabs.push({ key: 'monthly', label: 'ตรวจสอบประจำเดือน', icon: 'calendar', group: 'work', bar: 'reports' });
     // Closing the month, not checking it — hence its own tab next to the
     // review rather than a mode inside it.
-    tabs.push({ key: 'accounting', label: 'รายงาน OT ฝ่ายบัญชี', icon: 'banknote', group: 'work', bar: 'reports' });
+    tabs.push({ key: 'accounting', label: 'รายงาน OT การเงิน', icon: 'banknote', group: 'work', bar: 'reports' });
     // The other question the same month answers — how many hours each แผนก
     // worked, both payrolls counted together. Its own tab rather than a mode
     // inside สรุป OT ส่งบัญชี, because it is a different sheet for different
