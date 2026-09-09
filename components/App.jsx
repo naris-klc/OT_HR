@@ -23,6 +23,7 @@ import AdminView from './AdminView.jsx';
 import LogSystem from './LogSystem.jsx';
 import ProfileView from './ProfileView.jsx';
 import PrintForm from './PrintForm.jsx';
+import ManualView from './ManualView.jsx';
 // `ROLES` and `readsOwnTeamOnly` were imported here for `PAGE_BY_ROLE`, which
 // went on 2026-09-03 — see the note where it stood. `readsOwnTeamOnly` is still
 // the rule, on the server, where the scoping it decides actually happens.
@@ -549,6 +550,20 @@ const PAGE = {
     + ' · รวมอยู่ในไฟล์สำรองข้อมูลรายวัน',
   ],
   profile: ['ข้อมูลส่วนตัว', 'MY PROFILE'],
+  /**
+   * A SCREEN WITH NO `tabs.push` BEHIND IT — the second one, and `profile` is
+   * the first. Both are reached from the foot of the two menus rather than from
+   * the menu itself, and both are named here because a heading is a property of
+   * the SCREEN: `PAGE[tab]` is what the appbar reads, and a key missing from it
+   * draws a page with no title rather than failing.
+   *
+   * WHY IT IS NOT A TAB. The phone bar is four columns and a ผู้เซ็น fills all
+   * four with one screen apiece — see `BAR_SLOTS`. A twelfth tab for every
+   * บทบาท makes that bar five wide, or turns one of its presses into a sheet.
+   * The manual is read once and referred to rarely; the queue is read every
+   * day. See components/ManualView.jsx.
+   */
+  manual: ['คู่มือการใช้งาน', 'USER GUIDE'],
 };
 
 /**
@@ -983,6 +998,22 @@ function NavDrawer({ groups, tab, user, initials, onGo, onLogout }) {
                 ))}
               </React.Fragment>
             ))}
+            {/* คู่มือการใช้งาน — under its own heading and not under บัญชี,
+                because it is neither: it is not one of the OT screens above and
+                it is not something you do to the account. Every บทบาท gets this
+                row, which is the whole of what "ให้ทุกสิทธิ์ดูได้" needs — there
+                is no condition on it to get wrong. */}
+            <div className="drawer-group foot" role="presentation">ช่วยเหลือ</div>
+            <button
+              type="button"
+              role="menuitem"
+              className={tab === 'manual' ? 'active' : ''}
+              aria-current={tab === 'manual' ? 'page' : undefined}
+              onClick={() => { setOpen(false); onGo('manual'); }}
+            >
+              <span className="icon"><Icon name="document" /></span>
+              <span className="label">คู่มือการใช้งาน</span>
+            </button>
             {/* บัญชีของฉัน — the pair the sidebar's foot carries, in its order.
                 Separated by a rule rather than a heading: they are not a fourth
                 block of the menu, they are what you do with the account rather
@@ -1747,6 +1778,42 @@ function Shell({ session, onRefresh, onLogout }) {
           ))}
         </nav>
 
+        {/* ── คู่มือการใช้งาน — A ROW IN THE MENU THAT IS NOT A TAB ──────────
+            WHY IT IS NOT ONE. `tabs` carries two partitions with it, and the
+            phone's is capped: four columns, and a ผู้เซ็น already fills all
+            four with one screen apiece (see `BAR_SLOTS`). A twelfth push for
+            every บทบาท makes that bar five wide, or turns one of its presses
+            into a sheet — paid every day, to reach a page somebody opens twice.
+            So this is `PAGE.manual` reached from the foot of both menus, the
+            way ข้อมูลส่วนตัว has always been.
+
+            NO บทบาท CONDITION ON IT, HERE OR IN THE DRAWER. That is the whole
+            of "ให้ทุกสิทธิ์ดูได้" — there is no gate to get wrong, and the
+            screen itself says which of the pages it describes a reader may not
+            have.
+
+            A SECOND `.nav` RATHER THAN A ROW INSIDE THE FIRST. The block above
+            maps `navGroups` and nothing else, and that is a property worth
+            keeping — test/navActiveTab.test.js reads that `<nav>` and counts
+            the sources of `'active'` in it, which is how the two bars are held
+            to one state. Wearing the same class, this row is the same object as
+            the rows above it: same height, same glyph slot, same green when it
+            is the page, same tooltip when the rail is collapsed, and none of it
+            written twice. It sits under the last group rather than on the floor
+            because `.sidebar-foot`'s auto margin owns the floor; the space
+            between them is the seam that says the foot is about the person. */}
+        <nav className="nav nav-help" aria-label="ช่วยเหลือ">
+          <button
+            className={tab === 'manual' ? 'active' : ''}
+            aria-current={tab === 'manual' ? 'page' : undefined}
+            onClick={() => goTab('manual')}
+          >
+            <span className="icon"><Icon name="document" /></span>
+            <span className="label">คู่มือการใช้งาน</span>
+            <span className="nav-tip">คู่มือการใช้งาน</span>
+          </button>
+        </nav>
+
         <div className="sidebar-foot">
           {/* The whoami block is the way into ข้อมูลส่วนตัว — no nav entry of
               its own, since it is where a person already looks for themselves. */}
@@ -1975,6 +2042,7 @@ function Shell({ session, onRefresh, onLogout }) {
             {tab === 'profile' && (
               <ProfileView user={user} onPasswordChanged={onRefresh} onLogout={logout} />
             )}
+            {tab === 'manual' && <ManualView />}
           </div>
         </main>
 
