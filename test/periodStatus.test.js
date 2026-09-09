@@ -64,7 +64,7 @@ test('only the two waiting statuses count as waiting', () => {
 
 // ── ตกค้าง and ควรตรวจ are two groups, and the line between them is the paper ─
 
-test('a request nobody has signed is ตกค้าง — it is not on the sheet', () => {
+test('a request nobody has signed is ตกค้าง — its signature box is empty', () => {
   const { outstanding, review } = periodItems({ pending: 4 });
   assert.equal(outstanding.length, 1);
   assert.equal(outstanding[0].kind, 'pending');
@@ -268,7 +268,11 @@ test('an item carries the count and the consequence separately', () => {
    */
   const [item] = periodItems({ pending: 4 }).outstanding;
   assert.equal(item.short, 'มีใบรออนุมัติค้างอยู่ 4 ใบ');
-  assert.equal(item.why, 'ยังไม่ขึ้นในใบ OT ที่พิมพ์ออกมา');
+  // It read "ยังไม่ขึ้นในใบ OT ที่พิมพ์ออกมา" until 2026-09-09, when the shipped
+  // `formPrintScope` became ตั้งแต่ยื่นขอ and both queues started reaching the
+  // paper. The missing SIGNATURE is what is true of a รออนุมัติ row under every
+  // answer to that setting — including the two where the row does not print.
+  assert.equal(item.why, 'ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา');
   assert.equal(item.text, `${item.short} — ${item.why}`);
   // The count belongs to `short` alone — a `why` carrying it would put the
   // number back on both lines by another route.

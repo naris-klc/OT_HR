@@ -5669,19 +5669,24 @@ lists, and what separates them is **what printing the month does to them**:
 > **ตกค้าง** is a thing nobody has answered. **ควรตรวจ** is a thing that is
 > finished and worth a second look.
 
-**ตกค้าง** — a request at `pending_mgr` is not on F-HR-027 at all, and an open
-withdrawal means a row that *is* on the sheet may be about to come off it. Print
-now and the paper is wrong, or goes stale the same week. Each is its own count
-with its own sentence, never added together: they are cleared by different people
-doing different things, and a single number would match neither screen.
+**ตกค้าง** — a request in either queue prints with an **empty
+ลงชื่อหัวหน้างาน box**, and an open withdrawal means a row that *is* on the sheet
+may be about to come off it. Print now and the paper is unsigned, or goes stale
+the same week. Each is its own count with its own sentence, never added together:
+they are cleared by different people doing different things, and a single number
+would match neither screen.
 
 > This read "**a request at `pending_mgr` or `pending_hr` is not on F-HR-027 at
-> all**" until 2026-09-07. Half of it stopped being true when the shipped
-> `formPrintScope` became ตั้งแต่หัวหน้าอนุมัติ: a `pending_hr` row IS on the
-> sheet now, and unmarked — see §นโยบายการพิมพ์ใบขออนุมัติ OT below. It is still
-> ตกค้าง, and for the reason that list exists: nobody has answered it. What
-> changed is what printing the month does to it, which is what separates the two
-> lists — printing a `pending_hr` row is now the ordinary way it gets answered.
+> all**" until 2026-09-07, and "**a request at `pending_mgr` is not on F-HR-027
+> at all**" until 2026-09-09. Both halves are gone: the shipped `formPrintScope`
+> is ตั้งแต่ยื่นขอ and every live status reaches the sheet — see
+> §นโยบายการพิมพ์ใบขออนุมัติ OT below. They are still ตกค้าง, for the reason
+> that list exists: nobody has answered them. What changed is what printing the
+> month does to them, which is what separates the two lists — printing the sheet
+> is now the ordinary way an unanswered row gets carried to whoever answers it.
+> `periodItems`' own sentence moved with it, from *ยังไม่ขึ้นในใบ OT ที่พิมพ์
+> ออกมา* to **ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา**, which is true under
+> all four answers to that setting.
 
 **ควรตรวจ** — an entry flagged `capExceeded` or `belowMinimumFlagged` is
 approved. Its hours are real, its status is final, and it prints correctly. It
@@ -6036,17 +6041,33 @@ stack rather than silently missing from it.
 
 ### นโยบายการพิมพ์ใบขออนุมัติ OT — which rows reach the paper
 
-**`formPrintScope`, four answers, and the shipped one is ตั้งแต่หัวหน้าอนุมัติ.**
-HR, 2026-09-07: *ข้อมูลที่พนักงานยื่นขอโอที **ต้องขึ้นในใบขออนุมัติทำงานล่วงเวลา
-ตั้งแต่ตอนที่มีคนกดอนุมัติ***. The table is `formPrintStatuses` in
-[`lib/reports.js`](lib/reports.js), applied by the ROUTE and never by the screen.
+**`formPrintScope`, four answers, and the shipped one is ตั้งแต่ยื่นขอ.**
+HR, 2026-09-09, with an empty กันยายน sheet on the screen: *ให้ขึ้นรายการที่
+รออนุมัติไว้เลย **ให้รอแค่ชื่อผู้อนุมัติเมื่ออนุมัติจริง***. The table is
+`formPrintStatuses` in [`lib/reports.js`](lib/reports.js), applied by the ROUTE
+and never by the screen.
 
 | answer | the sheet carries | `?status=` |
 |---|---|---|
-| `signed` — ตั้งแต่หัวหน้าอนุมัติ (**shipped**) | อนุมัติแล้ว + รอ HR | ignored |
+| `draft` — ตั้งแต่ยื่นขอ (**shipped**) | all three live statuses | ignored |
+| `signed` — ตั้งแต่หัวหน้าอนุมัติ | อนุมัติแล้ว + รอ HR | ignored |
 | `approved` — เฉพาะที่ฝ่ายบุคคลยืนยันแล้ว | อนุมัติแล้ว | ignored |
 | `screen` — ตาม สถานะที่นับ | whatever the filter says | followed |
-| `draft` — ใบร่างเดินเรื่อง | all three live statuses | ignored |
+
+> The heading read "**the shipped one is ตั้งแต่หัวหน้าอนุมัติ**" from
+> 2026-09-07 to 2026-09-09, and "**เฉพาะรายการที่อนุมัติแล้ว**" before that. The
+> line has moved in one direction each time and it has now left the approvals
+> altogether: the sheet carries what was FILED, and the ลงชื่อหัวหน้างาน column
+> carries what was APPROVED.
+
+**What the 2026-09-09 move actually changes is one column's worth of paper.**
+A `pending_mgr` row now prints — with `(รออนุมัติ)` in the รายละเอียดงานที่ทำ
+cell and an **empty ลงชื่อหัวหน้างาน box** beside it, because `managerSignature`
+answers null for a row nobody has approved and `Signed` renders nothing at all
+for null. That empty box is the whole of the answer to the fear the flag was
+written for: the sheet may now be carried to the person who signs it, which is
+what the form is called and what it is for, and it cannot claim a signature it
+does not have.
 
 **The default was `approved` until 2026-09-07, and it was the LAST signature
 rather than the first.** A request the หัวหน้า had approved was off the sheet
@@ -6065,14 +6086,24 @@ is worth keeping: *กลับเป็นค่าเริ่มต้น —
 is still there for the other, and is the right answer for a month printed to file
 after it is settled.
 
-**The failure the flag exists for is untouched.** A `pending_mgr` row — the one
-NOBODY has approved — is as far off this sheet as it ever was, and reaches paper
-only under `screen` and `draft`, where it prints `(รออนุมัติ)` in the
-รายละเอียดงานที่ทำ cell and where ตั้งค่าระบบ carries a warning. A `pending_hr`
-row carries **no mark and never did** — `formPendingStatuses` has said since it
-was written that รอ HR is settled *on the paper* while no รอหัวหน้า row can reach
-the same sheet, because the only step left is the box at the foot. What the
-screen above the sheet does say, with dates, is which rows those are.
+**The failure the flag exists for is now answered per ROW rather than per
+SHEET.** That failure is a สรุปรวม somebody signs for while the app still has
+rows waiting for their decision, and until 2026-09-09 the answer was to keep the
+row off the paper. It is now on the paper, saying so twice: `(รออนุมัติ)` in the
+รายละเอียดงานที่ทำ cell, and the empty signature box. `approved` and `signed`
+are both still there for the reader who wants the narrower document.
+
+> This paragraph read "**A `pending_mgr` row — the one NOBODY has approved — is
+> as far off this sheet as it ever was, and reaches paper only under `screen`
+> and `draft`**" until 2026-09-09. Under the shipped answer it now reaches the
+> paper on every sheet.
+
+**Both queues are marked again, and that is `formPendingStatuses` unchanged.** It
+drops the mark from a `pending_hr` row only while no รอหัวหน้า row can reach the
+same sheet — marking one queue and not the other would read as "these are the
+unapproved rows" on a sheet carrying both. So `signed` prints an unmarked sheet
+and `draft` marks both queues, from one rule. What the screen above the sheet
+says, with dates, is which rows those are.
 
 **THE SHIPPED DEFAULT IS NOT WHAT RUNS UNTIL SOMEBODY SETS IT**, and on this
 installation nobody had. `Setting.policy` shadows `src/config/policy.js`
@@ -6089,7 +6120,16 @@ before any of the sheet was built.
 recomputed and no stored figure moved — `formPrintScope` is cosmetic, see
 [`lib/policyVersion.js`](lib/policyVersion.js), and `savePolicy` replays only on
 arithmetic keys. **This is a stored value, so it does not travel**: a fresh
-database gets the file's `signed` and this one had to be told.
+database gets the file's default and this one had to be told.
+
+**⚠ AND IT HAS TO BE TOLD AGAIN.** The file ships `draft` as of 2026-09-09; the
+stored answer on this database is still `signed`, so **the sheet keeps hiding
+รอหัวหน้า rows until somebody chooses ตั้งแต่ยื่นขอ under ตั้งค่าระบบ →
+นโยบายการคำนวณ → นโยบายการพิมพ์ใบขออนุมัติ OT**. This is the same trap as
+2026-09-07, one deploy later, and it is the reason that paragraph is kept: the
+walk that found it was somebody printing a real month and getting a blank
+sheet — นายณัฐพล ปิจดี PM00305, กันยายน 2569, one `pending_mgr` row on the 9th
+and thirty-one empty lines.
 
 **รายละเอียดงานที่ทำ is capped at 22 characters** — `DESCRIPTION_MAX_CHARS` in
 [`src/config/policy.js`](src/config/policy.js), enforced by
@@ -9282,6 +9322,37 @@ role UIs. *(It read "the four role UIs" until 2026-09-03 — there are seven
 build แล้ว
 
 **Verified**
+
+- **ใบขึ้นตั้งแต่ตอนที่ยื่น ไม่ต้องรอใครกดอนุมัติ — สิ่งเดียวที่รอคือชื่อในช่อง
+  ลงชื่อหัวหน้างาน** — 2026-09-09, สั่งมาพร้อมภาพหน้า พิมพ์ใบขออนุมัติ OT ที่ว่างทั้งใบ:
+  *ให้ขึ้นรายการที่รออนุมัติไว้เลย ให้รอแค่ชื่อผู้อนุมัติเมื่ออนุมัติจริง*.
+  **ใบที่ว่างในภาพเป็นของจริงและอธิบายได้ทั้งใบ** — นายณัฐพล ปิจดี PM00305
+  แผนกออกแบบและวิจัยผลิตภัณฑ์ กันยายน 2569 มีใบเดียว วันที่ 9 ก.ย. สถานะ `รอหัวหน้า`
+  ซึ่งเป็นสถานะเดียวที่ `formPrintScope: 'signed'` กรองออกก่อนสร้างใบ กระดาษจึงได้
+  31 บรรทัดเปล่า.
+  **ค่าที่ชิปย้ายเป็น `draft` (ตั้งแต่ยื่นขอ)** — `src/config/policy.js` · ตัวเลือกบน
+  ตั้งค่าระบบ สลับให้ ตั้งแต่ยื่นขอ ขึ้นก่อนและติดป้าย (ค่าเริ่มต้น) · fallback ของ
+  `screen` ย้ายตามค่าที่ชิปเหมือนทั้งสองครั้งก่อน (พนักงานที่พิมพ์ใบของตัวเองไม่ส่ง
+  ฟิลเตอร์มา) · ค่าที่ระบบไม่รู้จักก็ตกลงมาที่ค่าที่ชิป.
+  **ไม่มีอะไรใหม่ต้องเขียนเพื่อ “รอแค่ชื่อผู้อนุมัติ”** — `managerSignature` ตอบ
+  `null` บนแถวที่ยังไม่มีใครกดอนุมัติอยู่แล้ว และ `Signed` ไม่เรนเดอร์อะไรเลยเมื่อ
+  ไม่มีชื่อ ช่อง ลงชื่อหัวหน้างาน จึงว่างเป็นกล่องเปล่าตามที่สั่ง · แถวนั้นได้ป้าย
+  `(รออนุมัติ)` ในช่องรายละเอียดงานด้วย และแถว `รอ HR` กลับมามีป้ายอีกครั้งโดย
+  `formPendingStatuses` ตัวเดิม เพราะกฎของมันคือ "ไม่ติดป้ายให้ รอ HR เฉพาะตอนที่
+  แถว รอหัวหน้า ขึ้นใบเดียวกันไม่ได้".
+  **คำเตือนบนหน้าตั้งค่าแยกเป็นสองแบบ** — ⚠️ เหลือไว้ให้ `screen` ซึ่งเป็นคำตอบเดียวที่
+  ตัดสินจากหน้าจออื่น ส่วน ตั้งแต่ยื่นขอ เป็น ℹ️ ที่บอกสิ่งที่อ่านจากหน้านั้นไม่ได้ —
+  ช่องลงชื่อเว้นว่าง และถ้ารายการถูกปฏิเสธทีหลัง กระดาษที่พิมพ์ไปแล้วจะไม่ตรงกับระบบ
+  · ⚠️ บนคำตอบที่ HR เพิ่งเลือกเองคือหน้าจอที่ดุคนอ่านที่ทำตามมัน.
+  **⚠ ค่าบนฐานนี้ยังเป็น `signed` — ใบยังไม่เปลี่ยนจนกว่าจะไปเลือกใหม่** ที่
+  ตั้งค่าระบบ → นโยบายการคำนวณ → นโยบายการพิมพ์ใบขออนุมัติ OT → **ตั้งแต่ยื่นขอ**
+  · `Setting.policy` บังเงาไฟล์เงียบ ๆ เหมือนที่เคยเกิดเมื่อ 2026-09-07 (ดู
+  §นโยบายการพิมพ์ใบขออนุมัติ OT) · การเขียนค่านี้ผ่าน `savePolicy` จากสคริปต์ถูก
+  ปฏิเสธสิทธิ์ในรอบนี้ จึงยังไม่ได้ตั้งให้.
+  **⚠ ยังไม่ได้เดินด้วยตาบนใบจริง** ด้วยเหตุผลเดียวกัน — ที่ตรึงไว้คือกฎล้วน ๆ ใน
+  `test/formPrintScope.test.js` และ `test/periodStatus.test.js` · `:3000` บนเครื่องนี้
+  เป็น `next dev` (pid 3063548 · แม่คือ `next dev -p 3000`) จึงคอมไพล์ทรีที่กำลังแก้อยู่
+  โดยตรง — ค่าที่ชิปใหม่ live แล้วบนพอร์ตนั้น แต่ค่าที่เก็บไว้ยังชนะอยู่.
 
 - **ไม่พักเที่ยง บนแถวรายการ เป็นไฮไลท์สีแดง** — 2026-09-08, สั่งมาระหว่างอ่านหน้า
   รออนุมัติ OT: *ตรงไม่พักเที่ยงขอเป็นไฮไลท์สีแดง*.

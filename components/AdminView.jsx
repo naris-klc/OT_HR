@@ -6180,23 +6180,25 @@ const POLICY_FIELDS = [
     section: 4,
     key: 'formPrintScope', label: 'นโยบายการพิมพ์ใบขออนุมัติ OT',
     /**
-     * THE SHIPPED ANSWER IS FIRST, and it changed on 2026-09-07. The first
-     * option in a list reads as the recommended one, and it now names the FIRST
-     * signature rather than the last: *ข้อมูลที่พนักงานยื่นขอโอที ต้องขึ้นใน
-     * ใบขออนุมัติทำงานล่วงเวลา ตั้งแต่ตอนที่มีคนกดอนุมัติ*.
+     * THE SHIPPED ANSWER IS FIRST, and it changed again on 2026-09-09. The
+     * first option in a list reads as the recommended one, and it now names no
+     * signature at all: *ให้ขึ้นรายการที่รออนุมัติไว้เลย ให้รอแค่ชื่อผู้อนุมัติ
+     * เมื่ออนุมัติจริง*. The sheet is what goes to the person who approves it,
+     * so it carries what was filed and the ลงชื่อหัวหน้างาน column carries what
+     * was approved.
      *
-     * The failure the setting exists to stop is unchanged and is still stopped
-     * by the top two answers: a row NOBODY has approved sitting in a total
-     * somebody is about to sign for. รอหัวหน้า is that row, and it reaches the
-     * paper under the bottom two only. The old strict answer keeps its place
-     * directly below, because a month printed to file after ฝ่ายบุคคล have
-     * confirmed it is a real document and somebody may still want it.
+     * The failure the setting exists to stop — a row NOBODY has approved
+     * sitting in a total somebody is about to sign for — is answered on the
+     * paper now rather than by the query: that row prints with (รออนุมัติ)
+     * beside the work and an EMPTY signature box next to it. The two narrower
+     * answers keep their places below, because a month printed to file after it
+     * is settled is a real document and somebody may still want it.
      */
     options: [
-      ['signed', 'ตั้งแต่หัวหน้าอนุมัติ — อนุมัติแล้ว + รอ HR (ค่าเริ่มต้น)'],
+      ['draft', 'ตั้งแต่ยื่นขอ — รวมรายการที่ยังรออนุมัติด้วย (ค่าเริ่มต้น)'],
+      ['signed', 'ตั้งแต่หัวหน้าอนุมัติ — อนุมัติแล้ว + รอ HR'],
       ['approved', 'เฉพาะรายการที่ฝ่ายบุคคลยืนยันแล้ว'],
       ['screen', 'ตาม “สถานะที่นับ” ที่เลือกบนหน้าตรวจสอบประจำเดือน'],
-      ['draft', 'รวมรายการที่รออนุมัติด้วยเสมอ (ใบร่างไว้ตรวจ)'],
     ],
     /**
      * ONE SENTENCE SAYING WHAT IS BEING ASKED, and the three answers explain
@@ -6206,7 +6208,7 @@ const POLICY_FIELDS = [
      * strict answer overrides สถานะที่นับ, where the (รออนุมัติ) mark prints,
      * that the line under the grid is conditional, and that nothing recomputes.
      * All true, and none of it is what somebody opening this page is deciding —
-     * they are choosing between three answers, and the paragraph described the
+     * they are choosing between four answers, and the paragraph described the
      * answers without naming which was which. The same trade `maxAdvance-
      * SubmissionDays` made on 2026-08-19: a paragraph nobody finishes explains
      * less than a line everybody reads.
@@ -6219,7 +6221,7 @@ const POLICY_FIELDS = [
      */
     hint: 'กำหนดข้อมูลที่จะนำมาแสดงในใบขออนุมัติ OT (F-HR-027) เมื่อสั่งพิมพ์เอกสาร',
     /**
-     * WHAT EACH ANSWER IS FOR, all three at once, because this row is a choice
+     * WHAT EACH ANSWER IS FOR, all four at once, because this row is a choice
      * between them rather than a switch. A note that appeared only under the
      * selected option would explain the answer already given and say nothing
      * about the two being weighed against it.
@@ -6229,32 +6231,45 @@ const POLICY_FIELDS = [
      * choosing; the statuses are how it is done.
      */
     optionHints: {
+      draft: 'ใบขึ้นทันทีที่พนักงานยื่น — เอาไปให้หัวหน้าเซ็นได้เลย · รายการที่ยังไม่มีใครกดอนุมัติ '
+        + 'จะมีแท็ก “(รออนุมัติ)” ในช่องรายละเอียดงาน และช่อง “ลงชื่อหัวหน้างาน” ของแถวนั้นเว้นว่างไว้ '
+        + 'จนกว่าจะมีคนกดอนุมัติจริง',
       signed: 'ใบขึ้นทันทีที่หัวหน้ากดอนุมัติ — รายการ “รอ HR” จึงอยู่บนใบที่ฝ่ายบุคคลถือไว้ยืนยัน '
         + 'ซึ่งคือช่อง “เฉพาะฝ่ายบุคคล” ที่ท้ายใบนั้นเอง · รายการ “รอหัวหน้า” ยังไม่ขึ้น',
       approved: 'พิมพ์เฉพาะรายการที่ฝ่ายบุคคลยืนยันครบแล้ว เหมาะกับการพิมพ์เก็บเข้าแฟ้มหลังปิดเดือน '
         + '— ระหว่างเดือนใบจะยังไม่มีรายการที่หัวหน้าเพิ่งเซ็น',
       screen: 'ยึดข้อมูลตามฟิลเตอร์บนหน้าจอขณะสั่งพิมพ์ (ยืดหยุ่นตามการใช้งาน)',
-      draft: 'ดึงทุกรายการรวมถึงรายการค้างอนุมัติ โดยจะแสดงแท็ก “(รออนุมัติ)” '
-        + 'ในช่องรายละเอียดงาน เหมาะสำหรับพิมพ์เป็นใบร่างเดินเรื่อง',
     },
     /**
-     * On the two answers that can put a รอหัวหน้า row onto a document with
-     * signature columns — the row NOBODY has approved. What the warning names
-     * is the consequence that is not visible from this page: the sheet is
-     * signed and filed, and the row it carried can still be refused afterwards.
+     * ON THE ANSWERS THAT CAN PUT A รอหัวหน้า ROW ONTO A DOCUMENT WITH
+     * SIGNATURE COLUMNS — the row NOBODY has approved. What is said about it
+     * splits in two on 2026-09-09, because one of those answers is now the one
+     * HR chose and a ⚠️ on the shipped answer is a page telling its reader off
+     * for taking its advice.
      *
-     * NOT ON `signed`, and that is the whole distinction the answer is for. A
-     * รอ HR row has the หัวหน้า's approval already; the step it is waiting on is
-     * the เฉพาะฝ่ายบุคคล box at the foot of this very sheet, so the paper is not
-     * getting ahead of anybody's decision — it is carrying it. See
-     * `formPendingStatuses` in lib/reports.js, which has said so since before
-     * this was the default.
+     * `draft` — what HR asked for, so it is told rather than warned about, and
+     *   what it is told is the half that is not visible from this page: the row
+     *   goes on the paper WITH ITS SIGNATURE BOX EMPTY, and a sheet signed
+     *   before the row is answered can still be contradicted afterwards. The
+     *   sentence names both, in that order.
+     * `screen` — still a ⚠️. It is the one answer whose sheet is decided
+     *   somewhere else entirely (สถานะที่นับ on ตรวจสอบรายเดือน), so what the
+     *   paper will hold cannot be read off this page at all.
+     *
+     * NOT ON `signed` OR `approved`, unchanged: no รอหัวหน้า row reaches either
+     * sheet. See `formPendingStatuses` in lib/reports.js.
      */
-    warn: (value) => (['signed', 'approved'].includes(value)
-      ? ''
-      : '⚠️ คำเตือน: เอกสารที่พิมพ์จะรวมรายการที่ยังไม่มีใครอนุมัติเข้ามาด้วย '
+    warn: (value) => {
+      if (['signed', 'approved'].includes(value)) return '';
+      if (value === 'draft') {
+        return 'ℹ️ ใบที่พิมพ์จะมีรายการที่ยังไม่มีใครอนุมัติอยู่ด้วย โดยช่อง “ลงชื่อหัวหน้างาน” '
+          + 'ของแถวนั้นจะเว้นว่างไว้จนกว่าจะมีคนกดอนุมัติจริง — หากรายการนั้นถูกปฏิเสธในภายหลัง '
+          + 'ยอดบนกระดาษที่พิมพ์ไปแล้วจะไม่ตรงกับยอดจ่ายจริงในระบบ';
+      }
+      return '⚠️ คำเตือน: เอกสารที่พิมพ์จะรวมรายการที่ยังไม่มีใครอนุมัติเข้ามาด้วย '
         + 'หากนำไปลงลายเซ็นอาจทำให้ยอดในกระดาษไม่ตรงกับยอดจ่ายจริงในระบบ '
-        + 'หากรายการนั้นถูกปฏิเสธในภายหลัง'),
+        + 'หากรายการนั้นถูกปฏิเสธในภายหลัง';
+    },
   },
   {
     section: 5,

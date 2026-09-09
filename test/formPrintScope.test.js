@@ -46,28 +46,30 @@ const ALL_LIVE = 'approved,pending_hr,pending_mgr';
 // ── the shipped answer ───────────────────────────────────────────────────────
 
 /**
- * ตั้งแต่ตอนที่มีคนกดอนุมัติ — HR, 2026-09-07, in these words: *ข้อมูลที่
- * พนักงานยื่นขอโอที ต้องขึ้นในใบขออนุมัติทำงานล่วงเวลา ตั้งแต่ตอนที่มีคนกด
- * อนุมัติเลย*.
+ * ตั้งแต่ยื่นขอ — HR, 2026-09-09, in these words: *ให้ขึ้นรายการที่รออนุมัติไว้
+ * เลย ให้รอแค่ชื่อผู้อนุมัติเมื่ออนุมัติจริง*.
  *
- * The shipped answer was `approved` until then, which is the LAST signature and
- * not the first: a request the หัวหน้า had approved stayed off the sheet until
- * ฝ่ายบุคคล confirmed it — on the very sheet ฝ่ายบุคคล confirm FROM, whose foot
- * carries the เฉพาะฝ่ายบุคคล box that IS that confirmation. So the paper could
- * not be printed for the step it exists to carry out.
+ * The sheet is called ใบขออนุมัติทำงานล่วงเวลา and is the paper carried to the
+ * person who approves it, so a sheet that waits for the approval before it will
+ * print the row cannot be used for the errand it is named after. What waits for
+ * a real approval is the NAME in the ลงชื่อหัวหน้างาน column — see
+ * test/formSignatures.test.js, and `Signed` in components/PrintForm.jsx, which
+ * renders nothing at all for a row nobody has approved.
  *
- * `approved` is still an answer and still means exactly what it meant; what
- * moved is which answer ships.
+ * The shipped answer has been each of the other two before this: `approved`
+ * until 2026-09-07 (the LAST signature) and `signed` until 2026-09-09 (the
+ * FIRST). Both still mean exactly what they meant; what moved is which answer
+ * ships.
  */
-test('the form prints from the first approval, not from the last', () => {
-  assert.equal(DEFAULT_POLICY.formPrintScope, 'signed');
+test('the form prints from the filing, not from an approval', () => {
+  assert.equal(DEFAULT_POLICY.formPrintScope, 'draft');
   const { scope, statuses } = formPrintStatuses(DEFAULT_POLICY);
-  assert.equal(scope, 'signed');
-  assert.deepEqual(statuses, ['approved', 'pending_hr']);
+  assert.equal(scope, 'draft');
+  assert.deepEqual(statuses, ['approved', 'pending_hr', 'pending_mgr']);
 });
 
 test('the four answers are the four the settings page offers, and no more', () => {
-  assert.deepEqual([...FORM_PRINT_SCOPES], ['signed', 'approved', 'screen', 'draft']);
+  assert.deepEqual([...FORM_PRINT_SCOPES], ['draft', 'signed', 'approved', 'screen']);
 });
 
 // ── [a] ตั้งแต่หัวหน้าอนุมัติ ────────────────────────────────────────────────
@@ -133,18 +135,18 @@ test('screen still refuses the two statuses no report may print', () => {
   for (const s of statuses) assert.ok(REPORTABLE_STATUSES.includes(s));
 });
 
-test('screen with nothing to follow falls back to the shipped answer, not the wide list', () => {
+test('screen with nothing to follow falls back to the shipped answer', () => {
   // A พนักงาน printing their own month sends no filter, and neither would a
-  // screen added later that forgot. The safe reading of "follow the screen"
-  // when there is no screen is the one that keeps รอหัวหน้า rows off the paper.
+  // screen added later that forgot. The answer a caller who said nothing should
+  // get is the answer the company chose.
   //
-  // It was `['approved']` until 2026-09-07 and moved with the default: the
-  // fallback is what a caller who said nothing should get, and that is whatever
-  // ships. Left behind, a พนักงาน's own print would be the one path in the app
-  // still hiding a request their หัวหน้า had approved.
+  // It has moved with the default both times — `['approved']` until 2026-09-07,
+  // อนุมัติแล้ว + รอ HR until 2026-09-09. Left behind, a พนักงาน's own print
+  // would be the one path in the app still hiding a row they had filed.
   const scoped = { formPrintScope: 'screen' };
-  assert.deepEqual(formPrintStatuses(scoped).statuses, ['approved', 'pending_hr']);
-  assert.deepEqual(formPrintStatuses(scoped, '').statuses, ['approved', 'pending_hr']);
+  const shipped = ['approved', 'pending_hr', 'pending_mgr'];
+  assert.deepEqual(formPrintStatuses(scoped).statuses, shipped);
+  assert.deepEqual(formPrintStatuses(scoped, '').statuses, shipped);
 });
 
 test('screen asked for closed statuses alone prints an empty sheet, not a full one', () => {
@@ -177,15 +179,16 @@ test('draft ignores the screen in the other direction — one document, one mean
 test('a missing or unrecognised answer reads as the shipped one', () => {
   // Setting.policy can hold a value from a retired option, a seed can be old,
   // and `policy` is undefined in any caller that forgot it. Every one of those
-  // must fail towards the sheet that is safe to sign — which is still a sheet
-  // with no รอหัวหน้า row on it, one step wider than it used to be.
+  // must land on the answer the company chose rather than on a fourth answer
+  // nobody picked — and under ตั้งแต่ยื่นขอ what keeps the sheet honest is on
+  // the sheet: a row nobody approved prints (รออนุมัติ) with an empty
+  // ลงชื่อหัวหน้างาน box beside it.
   const bad = [undefined, null, {}, { formPrintScope: '' },
     { formPrintScope: 'all' }, { formPrintScope: true }];
   for (const policy of bad) {
     const { scope, statuses } = formPrintStatuses(policy, ALL_LIVE);
-    assert.equal(scope, 'signed', `${JSON.stringify(policy)} did not fall back to the shipped answer`);
-    assert.deepEqual(statuses, ['approved', 'pending_hr']);
-    assert.ok(!statuses.includes('pending_mgr'));
+    assert.equal(scope, 'draft', `${JSON.stringify(policy)} did not fall back to the shipped answer`);
+    assert.deepEqual(statuses, ['approved', 'pending_hr', 'pending_mgr']);
   }
 });
 
@@ -482,33 +485,43 @@ test('HR can set the answer from ตั้งค่าระบบ, and the loos
     assert.match(field, new RegExp(`\\['${value}',`), `ไม่มีตัวเลือก ${value} บนหน้าตั้งค่า`);
   }
   // The shipped answer first: the first option in a list reads as the
-  // recommended one, and since 2026-09-07 that is ตั้งแต่หัวหน้าอนุมัติ.
-  assert.match(field, /options: \[\s*\['signed',/);
+  // recommended one, and since 2026-09-09 that is ตั้งแต่ยื่นขอ.
+  assert.match(field, /options: \[\s*\['draft',/);
   // And the two that can put a row NOBODY approved under a signature say what
   // that costs. Both halves, because either alone is the half that raises the
   // question rather than answering it: what the sheet will carry, and what goes
   // wrong when it is signed and the row is refused afterwards.
-  assert.match(field, /warn: \(value\) => \(\['signed', 'approved'\]\.includes\(value\)/);
-  assert.match(field, /รวมรายการที่ยังไม่มีใครอนุมัติ/);
+  assert.match(field, /if \(\['signed', 'approved'\]\.includes\(value\)\) return '';/);
+  assert.match(field, /รายการที่ยังไม่มีใครอนุมัติ/);
   assert.match(field, /ไม่ตรงกับยอดจ่ายจริง/);
 });
 
 /**
- * AND THE SHIPPED ANSWER DOES NOT WARN, which is the distinction the answer is
- * for. A รอ HR row has the หัวหน้า's approval already and the step it waits on
- * is the เฉพาะฝ่ายบุคคล box at the foot of the sheet being printed — the paper
- * is carrying that decision, not getting ahead of it.
+ * AND THE SHIPPED ANSWER IS NOT SCOLDED FOR BEING CHOSEN.
+ *
+ * The two narrow answers say nothing at all: no รอหัวหน้า row reaches either
+ * sheet. ตั้งแต่ยื่นขอ — what HR asked for — says what the reader cannot see
+ * from this page (the signature box is left empty, and a sheet signed before
+ * the row is answered can be contradicted afterwards) and says it as a note.
+ * The ⚠️ is left to ตาม “สถานะที่นับ”, the one answer whose sheet is decided on
+ * a different screen entirely.
  */
-test('ตั้งแต่หัวหน้าอนุมัติ raises no warning, and neither does the strict answer', () => {
+test('the shipped answer informs, the narrow ones are silent, and screen warns', () => {
   const code = sourceOf(SETTINGS);
   const row = code.slice(code.indexOf("key: 'formPrintScope'"));
   const field = row.slice(0, row.indexOf('\n  },'));
   const warn = field.slice(field.indexOf('warn: '));
 
-  // The quiet branch names both, and it is the branch that yields ''.
-  assert.match(warn, /\['signed', 'approved'\]\.includes\(value\)\s*\?\s*''/);
-  // …so the ⚠️ belongs to whatever is left, which is screen and draft.
-  assert.match(warn, /:\s*'⚠️ คำเตือน/);
+  // Silent on both narrow answers, and it is the branch that yields ''.
+  assert.match(warn, /if \(\['signed', 'approved'\]\.includes\(value\)\) return '';/);
+  // The shipped answer's own branch, and what it must not be: a ⚠️.
+  assert.match(warn, /if \(value === 'draft'\)/);
+  const draft = warn.slice(warn.indexOf("value === 'draft'"), warn.indexOf('return \'⚠️'));
+  assert.match(draft, /ℹ️/);
+  assert.ok(!draft.includes('⚠️'), 'the answer HR chose warns about itself');
+  assert.match(draft, /“ลงชื่อหัวหน้างาน”/, 'the note must name what stays blank');
+  // …so the ⚠️ belongs to whatever is left, which is ตาม “สถานะที่นับ”.
+  assert.match(warn, /return '⚠️ คำเตือน/);
   // The old spelling tested one value against one string and would go on
   // passing while quietly warning on the answer that ships.
   assert.ok(!warn.includes("value === 'approved'"), 'the warning still tests a single answer');
@@ -531,10 +544,12 @@ test('the row says what is being asked once, and what each answer is for', () =>
     assert.ok(field.includes(`${value}: '`), `ไม่มีคำอธิบายของตัวเลือก ${value}`);
   }
   assert.match(field, /เหมาะกับการพิมพ์เก็บเข้าแฟ้มหลังปิดเดือน/);
-  assert.match(field, /เหมาะสำหรับพิมพ์เป็นใบร่างเดินเรื่อง/);
-  // The shipped answer's gloss has to say the part a reader cannot infer from
-  // its label: which queue it lets through, and which it still does not.
   assert.match(field, /รายการ “รอหัวหน้า” ยังไม่ขึ้น/);
+  // The shipped answer's gloss has to say the part a reader cannot infer from
+  // its label: the row goes on the paper, and what is held back is the name in
+  // the signature column beside it.
+  assert.match(field, /“\(รออนุมัติ\)”/);
+  assert.match(field, /เว้นว่างไว้/);
 });
 
 test('the glosses are drawn from the same strings the dropdown shows', () => {
