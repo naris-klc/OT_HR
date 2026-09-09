@@ -962,6 +962,58 @@
   .otdept tfoot { display: table-footer-group; }
 }
 
+/* ══ คู่มือการใช้งาน ═════════════════════════════════════════════════════════
+ *
+ * The one document in this file that is PROSE rather than a form. There is no
+ * F-HR-027 to reproduce, no column that has to land where accounting expects
+ * it, and no signature block — so what these rules are for is the opposite job:
+ * keeping paragraphs, lists and headings from being cut in places that make
+ * them harder to read than they were on the screen.
+ *
+ * The reader chooses which topics go in (components/ManualView.jsx), so the
+ * document's length is not knowable here and every rule below has to hold for
+ * one page and for eleven.
+ */
+
+/* ONE TOPIC PER PAGE, and `break-before` on every sheet after the first rather
+   than `break-after: always` on each — the spelling `.f027`, `.acct` and
+   `.otdept` all use, and for the reason written over the first of them:
+   break-after fires on the LAST one too and leaves a blank final side. The
+   `page-break-*` alias is what older print engines read. */
+.manual-sheet + .manual-sheet { break-before: page; page-break-before: always; }
+
+@media print {
+  /* On paper the sheet is the page. The card it wears on the screen — a border,
+     a radius, a white ground — is what makes it look like paper THERE; printed,
+     it would be a box drawn 5mm inside the paper's own edge. */
+  .manual-sheet { border: none; border-radius: 0; padding: 0; background: none; }
+
+  /* A heading at the foot of a page with its first paragraph over the fold is
+     the one break this document can make that actively misleads: the reader
+     turns over and finds text with no heading on it. `break-after: avoid` is a
+     request rather than a guarantee, which is why the pair is stated on both
+     the topic title and the section headings inside it. */
+  .manual-sheet-title { break-after: avoid; page-break-after: avoid; }
+  .manual-body h3 { break-after: avoid; page-break-after: avoid; }
+
+  /* Keep a bullet, a paragraph and a table row whole. Thai has no hyphenation
+     to fall back on, so half a line across a fold is half a sentence. */
+  .manual-body li,
+  .manual-body p,
+  .manual-table tr { break-inside: avoid; page-break-inside: avoid; }
+
+  /* The running head repeats the manual's name on every topic — see the note
+     beside it in ManualView.jsx. It is the one thing on these pages that is
+     furniture rather than content, so it is drawn quietly. */
+  .manual-sheet-head { border-bottom: 1px solid #ddd; }
+
+  /* The prose measure is a SCREEN rule: 74ch stops a 1180px window from setting
+     a 150-character line. An A4 text column is already about that wide, and
+     leaving the cap on would print every page with an empty right margin twice
+     the size of the left one. */
+  .manual-body { max-width: none; }
+}
+
 /* ══ ป้ายบอกหน้ากระดาษ — บนจอเท่านั้น ═════════════════════════════════════════
  *
  * "หน้า 3 / 5 (PM · ไพรมัส)", "หน้า 7 / 19 (แผนกผลิต 1)", "ใบที่ 12 / 40

@@ -15266,10 +15266,30 @@ table.mini tbody tr:hover { background: none; }
 .manual-table tr:last-child td { border-bottom: none; }
 .manual-table td.nowrap { white-space: nowrap; padding-right: 16px; }
 
+/* ── THE MANUAL AS PAPER, ON THE SCREEN ────────────────────────────────────
+   The preview the other four print views get from `.sheet-view` — a white card
+   on the app's grey ground, one per page. It is NOT that class: `.sheet-view`
+   carries an A4 width, a fade and a swipe hint, all of which exist because a
+   table of figures has a geometry that cannot reflow on a phone. This document
+   is prose and reflows, so it takes the look and not the ruler. */
+.manual-print { display: flex; flex-direction: column; gap: 18px; }
+.manual-sheet {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); padding: 28px;
+}
+.manual-sheet-head {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-bottom: 8px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--line-soft);
+  font: 500 11px/1.5 var(--sans); color: var(--muted-2);
+}
+.manual-sheet-title { font: 600 17px/1.35 var(--sans); color: var(--ink); margin-bottom: 12px; }
+
 @media (max-width: 640px) {
   .manual-page .card { padding: 18px; }
   .manual-menu { grid-template-columns: 1fr; }
   .manual-item { padding: 14px; }
+  .manual-sheet { padding: 18px; }
 }
 
 @media print {

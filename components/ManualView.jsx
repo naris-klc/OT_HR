@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { ROLE_LABEL_TH } from '@/lib/roles.js';
-import { StatusChip } from './common.jsx';
+import { printName } from '@/lib/printFile.js';
+import { Empty, PrintChrome, StatusChip } from './common.jsx';
 import Icon from './icons.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -444,13 +445,159 @@ const TOPICS = [
   },
 ];
 
+/**
+ * ── คู่มือเป็นไฟล์ PDF, หัวข้อไหนบ้างก็ได้ ─────────────────────────────────
+ *
+ * IT IS THE APP'S ONE PRINT PATH, NOT A SECOND ONE. `PrintChrome` draws the bar
+ * and `savePdf` sends `printableBody()` — the DOM with everything `no-print`
+ * taken out of it — to `/api/print/pdf`, exactly as F-HR-027, ใบบัญชี and
+ * ใบสรุปแผนก do. So there is nothing here that assembles a document: what the
+ * server turns into a PDF is the sheets below, as they stand on the screen, and
+ * the ticks decide which of them are on the screen at all.
+ *
+ * That is the reason the picker sits ON the print view rather than being a
+ * dialog in front of it. The sheets under it are the file — tick a topic and
+ * the page it will occupy appears, untick it and the page goes. Nobody has to
+ * be told what they are about to get.
+ *
+ * THE ORDER IS `TOPICS`, NEVER THE ORDER THE TICKS WERE MADE. `picked` is a
+ * set of keys and the sheets are `TOPICS.filter(…)`, so a reader who ticks
+ * ปัญหาที่พบบ่อย first and เริ่มต้นใช้งาน second still gets the manual in the
+ * order the menu lists it. A file whose pages are in the order somebody
+ * happened to click is a file that reads differently every time it is made.
+ *
+ * ONE TOPIC PER PAGE — `.manual-sheet + .manual-sheet { break-before: page }`
+ * in app/print.css, the same rule and the same spelling `.f027`, `.acct` and
+ * `.otdept` use. A topic longer than one side flows onto the next, which is
+ * what a manual should do; what it must not do is start halfway down the page
+ * the previous topic ended on.
+ */
+function ManualPrint({ picked, onPick, onClose }) {
+  /* The file, in menu order. `picked` decides membership and nothing else. */
+  const sheets = TOPICS.filter((t) => picked.includes(t.key));
+
+  const toggle = (key) => onPick(
+    picked.includes(key) ? picked.filter((k) => k !== key) : [...picked, key],
+  );
+
+  return (
+    <div className="stack manual-page">
+      <div className="card no-print">
+        <h2>บันทึกคู่มือเป็นไฟล์ PDF</h2>
+        <div className="hint">
+          ติ๊กหัวข้อที่ต้องการ แล้วกดปุ่มด้านล่าง — หน้ากระดาษที่จะได้คือสิ่งที่เห็นอยู่ใต้ปุ่มนั้น
+        </div>
+        <div className="field">
+          {/* THE COUNT IS DRAWN AT NOUGHT TOO, for the reason the same line on
+              บันทึกแทนพนักงาน gives: it is the plainest statement of why the
+              two buttons below are shut, and a counter that appears only once
+              something is ticked is one a reader has to catch ARRIVING. */}
+          <label>หัวข้อที่จะพิมพ์ (เลือกแล้ว {sheets.length} จาก {TOPICS.length} หัวข้อ)</label>
+          <div className="pick-list">
+            {TOPICS.map((t) => (
+              <label key={t.key} className="check">
+                <input
+                  type="checkbox"
+                  checked={picked.includes(t.key)}
+                  onChange={() => toggle(t.key)}
+                />
+                {/* One element, not two text nodes — `.check` is a flex row and
+                    bare siblings become separate flex items 9px apart. */}
+                <span>{t.title}</span>
+              </label>
+            ))}
+          </div>
+          <div className="row" style={{ marginTop: 8, gap: 12 }}>
+            {/* Adds rather than replaces, the shape `เลือกทั้งหมด` on the OT
+                form takes: it cannot lose a tick, and it stays correct on the
+                day this list is narrowed by anything. */}
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => onPick([
+                ...picked,
+                ...TOPICS.map((t) => t.key).filter((k) => !picked.includes(k)),
+              ])}
+              disabled={sheets.length === TOPICS.length}
+            >
+              เลือกทั้งหมด ({TOPICS.length})
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => onPick([])}
+              disabled={sheets.length === 0}
+            >
+              ล้างที่เลือก
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* `graphics={false}` — the hint about ticking กราฟิกพื้นหลัง is for the
+          sheets whose meaning is carried by a coloured band behind a table
+          heading. Nothing on these pages is: the tables are hairlines and the
+          one tinted thing, `<code>`, keeps its border either way. A setup line
+          telling somebody to change a setting that changes nothing is a line
+          that costs trust in the other three. */}
+      <PrintChrome
+        onClose={onClose}
+        disabled={sheets.length === 0}
+        graphics={false}
+        filename={printName.manual({ count: sheets.length })}
+        hints={[{
+          label: 'หมายเหตุ',
+          text: '1 หัวข้อต่อ 1 หน้า · หัวข้อที่ยาวกว่าหนึ่งหน้าจะไหลต่อในหน้าถัดไป',
+        }]}
+      />
+
+      {sheets.length === 0 ? (
+        /* `no-print` — with nothing ticked both buttons are shut, so this can
+           only be reached by a browser's own Ctrl+P, and a sheet of paper
+           reading "ยังไม่ได้เลือกหัวข้อ" is not a document. */
+        <div className="no-print">
+          <Empty>ยังไม่ได้เลือกหัวข้อ — ติ๊กอย่างน้อยหนึ่งหัวข้อจึงจะพิมพ์ได้</Empty>
+        </div>
+      ) : (
+        <div className="manual-print">
+          {sheets.map((t) => (
+            <article key={t.key} className="manual-sheet">
+              {/* The running head. Every page of a manual that leaves the
+                  building on paper has to say which manual it is — a topic
+                  photocopied on its own is otherwise four pages of unattributed
+                  instructions about somebody's overtime. */}
+              <header className="manual-sheet-head">
+                <span>คู่มือการใช้งาน · ระบบขออนุมัติทำงานล่วงเวลา</span>
+                <span>Primus Instrument Co., Ltd.</span>
+              </header>
+              <h2 className="manual-sheet-title">{t.title}</h2>
+              <div className="manual-body">{t.body}</div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ManualView() {
   const [openKey, setOpenKey] = useState(null);
+  const [printing, setPrinting] = useState(false);
+  /* Everything, until somebody says otherwise — the common case is the whole
+     manual, and an empty list would make the first press of บันทึกเป็น PDF a
+     shut button with no explanation of what to do about it. */
+  const [picked, setPicked] = useState(() => TOPICS.map((t) => t.key));
   const topic = TOPICS.find((t) => t.key === openKey) || null;
 
-  /* An open topic joins the shell's back stack, so ‹ closes the topic before it
-     leaves the screen — the same registration the OT form makes. */
+  /* Both join the shell's back stack, so ‹ closes what is open before it leaves
+     the screen — the same registration the OT form makes. The two states are
+     never both set: `printing` returns before the topic branch is reached. */
+  useBackHandler(printing, () => setPrinting(false));
   useBackHandler(Boolean(topic), () => setOpenKey(null));
+
+  if (printing) {
+    return <ManualPrint picked={picked} onPick={setPicked} onClose={() => setPrinting(false)} />;
+  }
 
   if (topic) {
     return (
@@ -479,6 +626,13 @@ export default function ManualView() {
           เลือกหัวข้อที่ต้องการอ่าน · คู่มือหน้านี้เหมือนกันทุกบทบาท
           บางหน้าจอที่คู่มือพูดถึงอาจไม่มีในเมนูของคุณ ขึ้นกับสิทธิ์ที่ฝ่ายบุคคลตั้งไว้
         </p>
+        {/* The way to paper, on the card that introduces the manual rather than
+            on a topic: what gets printed is a CHOICE OF topics, so the control
+            belongs where all of them are in view. */}
+        <button type="button" className="btn ghost with-icon" onClick={() => setPrinting(true)}>
+          <Icon name="document" className="btn-icon" />
+          บันทึกเป็น PDF / พิมพ์
+        </button>
       </div>
 
       <nav className="manual-menu" aria-label="หัวข้อคู่มือ">

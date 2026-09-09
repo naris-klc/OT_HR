@@ -132,6 +132,8 @@ test('every document names itself, and sorts by month', () => {
   assert.equal(printName.formBatch({ count: 40, period: '2026-08' }), 'F-HR-027-รวม40คน-2026-08');
   assert.equal(printName.accounting({ period: '2026-08', company: 'all' }), 'OT-accounting-2026-08-all');
   assert.equal(printName.department({ period: '2026-08' }), 'OT-departments-2026-08');
+  // The one document with no month in it — nothing to sort, so nothing ISO.
+  assert.equal(printName.manual({ count: 11 }), 'คู่มือการใช้งาน-11หัวข้อ');
   // The period stays ISO for the reason the CSVs do — twelve of these sort.
   for (const name of Object.values(printName)) {
     assert.ok(!/๒๕|2569/.test(name({ code: 'x', period: '2026-08', count: 1 })), 'ปี พ.ศ. ในชื่อไฟล์จะทำให้เรียงเดือนไม่ได้');
@@ -150,6 +152,12 @@ test('the bundle carries its own size in its name', () => {
     printName.formBatch({ count: 4, period: '2026-08' }),
     printName.formBatch({ count: 40, period: '2026-08' }),
   );
+  /* คู่มือ takes the same rule one step further along, because a subset is the
+     ORDINARY case there: the reader ticks the topics. Three of eleven under a
+     name that says nothing about the eight left out is the same lie, told to
+     somebody who has no month to check it against. */
+  assert.equal(printName.manual({ count: 3 }), 'คู่มือการใช้งาน-3หัวข้อ');
+  assert.notEqual(printName.manual({ count: 3 }), printName.manual({ count: 11 }));
 });
 
 test('a name that Windows would refuse, or silently trim, is fixed first', () => {
@@ -164,13 +172,21 @@ test('a name that Windows would refuse, or silently trim, is fixed first', () =>
 
 // ── every print view, and the one that says no ──────────────────────────────
 
-/** The five print views, and the file each one's bar is configured in. */
+/**
+ * The print views, and the file each one's bar is configured in.
+ *
+ * It read "The five" until 2026-09-09, when คู่มือการใช้งาน became the sixth —
+ * and the only one whose document is prose rather than a form, and the only one
+ * whose reader chooses what goes in it. Neither of those changes what this list
+ * is for: every view names its own file, from `printName`, in one place.
+ */
 const PRINT_VIEWS = [
   'components/PrintForm.jsx',
   'components/PrintFormBatch.jsx',
   'components/AccountingPrint.jsx',
   'components/DepartmentPrint.jsx',
   'components/PasswordSlips.jsx',
+  'components/ManualView.jsx',
 ];
 
 test('every print view names its own document', () => {
