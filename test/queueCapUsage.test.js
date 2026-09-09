@@ -128,11 +128,21 @@ function monthlyReviewFigure(dataset, employee, period, statusQuery) {
 }
 
 /**
- * The two filters that matter, quoted from components/HrView.jsx and pinned to
- * it by the test below. `HR_DEFAULT_FILTER` is what the screen opens on and
- * therefore what almost every reader of it has ever seen.
+ * The three filters that matter, quoted from components/HrView.jsx and pinned
+ * to it by the test below.
+ *
+ * `HR_DEFAULT_FILTER` is what the screen OPENS on, and it moved on 2026-09-09
+ * from `'approved'` to `'approved,pending_hr'` — ตรวจสอบรายเดือน now opens on
+ * the statuses F-HR-027 prints under the shipped `formPrintScope`. See the note
+ * over `statusFilter` in components/HrView.jsx.
+ *
+ * `HR_APPROVED_ONLY` is that old default, which is STILL A ROW on the control
+ * (อนุมัติแล้วเท่านั้น) and still the only filter whose arithmetic matches the
+ * queue's headline. The tests below that are about approved-only hours name it
+ * rather than the default, because it stopped being the same string.
  */
-const HR_DEFAULT_FILTER = 'approved';
+const HR_APPROVED_ONLY = 'approved';
+const HR_DEFAULT_FILTER = 'approved,pending_hr';
 const HR_ALL_LIVE_FILTER = 'approved,pending_hr,pending_mgr';
 
 /**
@@ -181,13 +191,20 @@ const augustMonth = () => {
  * old assertion is preserved one line down: `usedHours` is still 35.5, still
  * carried, still what the colour and the pending line are worked out from.
  * Nothing was recomputed to make this pass.
+ *
+ * THE FILTER IT COMPARES AT IS NAMED, AND SINCE 2026-09-09 IT IS NOT THE
+ * DEFAULT. This test used to read `HR_DEFAULT_FILTER` and its title said "the
+ * figure ตรวจสอบรายเดือน opens on"; that screen now opens on อนุมัติแล้ว + รอ
+ * HR, so the two lead with the same number at อนุมัติแล้วเท่านั้น and nowhere
+ * else. The arithmetic below is unchanged and so is every figure in it — what
+ * changed is which of the three rows of สถานะที่นับ this sentence is about.
  */
-test('the queue leads with the same figure ตรวจสอบรายเดือน opens on', async () => {
+test('the queue leads with the figure ตรวจสอบรายเดือน prints at อนุมัติแล้วเท่านั้น', async () => {
   const { row, all } = augustMonth();
   const { find } = reader(all);
   const usage = (await queueCapUsage([row], { policy: POLICY, find })).get('live');
 
-  const review = monthlyReviewFigure(all, 'emp1', '2026-08', HR_DEFAULT_FILTER);
+  const review = monthlyReviewFigure(all, 'emp1', '2026-08', HR_APPROVED_ONLY);
 
   // The headline, on both screens.
   assert.equal(usage.month.approvedHours, 16.5);
@@ -300,7 +317,10 @@ function capColumnAt(dataset, statusQuery, capHours, policy = POLICY) {
  */
 test('a cap breached only by pending requests still colours the cell', () => {
   const { all } = augustMonth();
-  const cap = capColumnAt(all, HR_DEFAULT_FILTER, 30);
+  // อนุมัติแล้วเท่านั้น by name — the case is about a screen printing 16.5 over
+  // a ceiling that 35.5 hours are committed against, and 16.5 is what that row
+  // of สถานะที่นับ prints. It is no longer the row the screen opens on.
+  const cap = capColumnAt(all, HR_APPROVED_ONLY, 30);
 
   assert.equal(cap.usedHours, 16.5, 'the printed figure followed the filter — it must not move');
   assert.equal(overCap(cap.usedHours, cap.capHours), false, 'the printed figure is inside the ceiling');
@@ -323,7 +343,7 @@ test('a cap breached only by pending requests still colours the cell', () => {
 test('the colour is decided by the ceiling total whatever the filter is set to', () => {
   const { all } = augustMonth();
 
-  for (const filter of [HR_DEFAULT_FILTER, 'approved,pending_hr', HR_ALL_LIVE_FILTER]) {
+  for (const filter of [HR_APPROVED_ONLY, HR_DEFAULT_FILTER, HR_ALL_LIVE_FILTER]) {
     const cap = capColumnAt(all, filter, 30);
     assert.equal(cap.capUsedHours, 35.5, filter);
     assert.equal(cap.exceeded, true, `the warning depends on the filter at "${filter}"`);
@@ -457,13 +477,20 @@ test('neither the screen nor the CSV queries per employee', () => {
  * read out of the component rather than assumed, and the widest option is
  * checked to still be the queue's own list.
  */
-test('ตรวจสอบรายเดือน still opens on อนุมัติแล้วเท่านั้น', () => {
+test('ตรวจสอบรายเดือน still opens on อนุมัติแล้ว + รอ HR', () => {
   const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
 
   assert.match(
     view,
     new RegExp(`useState\\('${HR_DEFAULT_FILTER}'\\)`),
     'the review screen no longer opens on the filter these tests compare against',
+  );
+  // And อนุมัติแล้วเท่านั้น is still one of the three rows, because the tests
+  // above compare the queue against it and a reader can still ask for it.
+  assert.match(
+    view,
+    new RegExp(`value: '${HR_APPROVED_ONLY}', label: 'อนุมัติแล้วเท่านั้น'`),
+    'the approved-only row these tests compare against is gone from สถานะที่นับ',
   );
   assert.match(
     view,

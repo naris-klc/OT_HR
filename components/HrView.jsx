@@ -204,16 +204,36 @@ export default function HrView({
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
   /**
-   * อนุมัติแล้วเท่านั้น, because this screen is what HR signs off — a total
-   * that moves when somebody withdraws a request is not a total to sign.
+   * อนุมัติแล้ว + รอ HR — THIS SCREEN OPENS ON WHAT THE SHEET PRINTS.
    *
-   * It is also the reason this screen and คิวรออนุมัติ quote different numbers
-   * for the same person's month: the queue counts every request still alive
-   * (CAP_STATUSES), because a หัวหน้า deciding one needs to know what the month
-   * becomes if they say yes. Both are right, and each screen now says which it
-   * is showing — see the เพดาน column below, and `CapUsage` in ApprovalQueue.
+   * It was `'approved'` until 2026-09-09, for this reason: "อนุมัติแล้วเท่านั้น,
+   * because this screen is what HR signs off — a total that moves when somebody
+   * withdraws a request is not a total to sign." That was true of a system whose
+   * F-HR-027 also stopped at `approved`, and it stopped being true on 2026-09-07
+   * when `formPrintScope` shipped as ตั้งแต่หัวหน้าอนุมัติ: a `pending_hr` row
+   * is ON the paper, unmarked, and ฝ่ายบุคคล confirm FROM that paper. A screen
+   * that opened one step behind the sheet it prints is the failure
+   * test/formPrintScope.test.js names in its own header — read a total here,
+   * press พิมพ์, be handed a bigger one — with the two halves swapped over.
+   *
+   * ASKED FOR IN THOSE WORDS, 2026-09-09: "ถ้าหัวหน้าอนุมัติแล้วให้ขึ้นที่หน้านี้
+   * ด้วย ใบที่มีสถานะรอ HR". สิงหาคม 2569 on this database is 225 รอ HR, 73
+   * รอหัวหน้า and NOT ONE `approved`, so the old default drew
+   * ไม่มีรายการในเดือนนี้ under a card reading มีใบรออนุมัติค้างอยู่ 298 ใบ.
+   *
+   * NOTHING ELSE MOVED. อนุมัติแล้วเท่านั้น is still the first row of
+   * `STATUS_FILTERS` and still means exactly what it meant; what changed is
+   * which of the three the screen is holding when it opens.
+   *
+   * WHAT IT COSTS is the sentence that used to be true at the default: this
+   * screen and คิวรออนุมัติ no longer lead with the same figure unless
+   * สถานะที่นับ is put back to อนุมัติแล้วเท่านั้น. The queue's headline is
+   * approved hours because a หัวหน้า has not yet decided the rest; this screen
+   * counts the step AFTER theirs, which is the step it exists to carry out.
+   * Both are right, and each says which it is showing — see the เพดาน column
+   * below, and `CapUsage` in ApprovalQueue.
    */
-  const [statusFilter, setStatusFilter] = useState('approved');
+  const [statusFilter, setStatusFilter] = useState('approved,pending_hr');
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(null);
   const [opened, setOpened] = useState(null); // employee whose entries HR is in

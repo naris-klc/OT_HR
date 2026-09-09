@@ -5976,6 +5976,30 @@ was written that รอ HR is settled *on the paper* while no รอหัวห
 the same sheet, because the only step left is the box at the foot. What the
 screen above the sheet does say, with dates, is which rows those are.
 
+**And since 2026-09-09 that screen OPENS on the statuses the sheet prints.**
+ตรวจสอบประจำเดือน's สถานะที่นับ starts at **อนุมัติแล้ว + รอ HR**. Asked for in
+those words: *ถ้าหัวหน้าอนุมัติแล้วให้ขึ้นที่หน้านี้ด้วย ใบที่มีสถานะรอ HR*. It
+opened on **อนุมัติแล้วเท่านั้น** until then, for a reason that was true of a
+system whose sheet also stopped at `approved` — *this screen is what HR signs
+off, and a total that moves when somebody withdraws a request is not a total to
+sign* — and that stopped being true two days earlier, above. So HR read a month
+on a screen one step behind the paper printed from it: on สิงหาคม 2569 — counted
+on this database 2026-09-09, **225 รอ HR and 73 รอหัวหน้า, and not one
+`approved`** — the table said **ไม่มีรายการในเดือนนี้** while the card two
+inches above it said `มีใบรออนุมัติค้างอยู่ 298 ใบ` and พิมพ์ใบขออนุมัติ OT
+ทุกคน would have printed the 225. อนุมัติแล้วเท่านั้น is still the first row of
+สถานะที่นับ and still means exactly what it meant; what moved is which of the
+three the screen holds when it opens.
+
+**The price is that ตรวจสอบประจำเดือน and คิวรออนุมัติ no longer lead with the
+same figure at their defaults**, which they were deliberately made to do on
+2026-09-04. The queue's headline is approved hours — a หัวหน้า has not yet
+decided the rest — and this screen now counts the step *after* theirs, which is
+the step it exists to carry out. Put สถานะที่นับ back to อนุมัติแล้วเท่านั้น and
+the two agree again, which is what `test/queueCapUsage.test.js` compares them at.
+The เพดาน column is unaffected either way: it has been coloured from every
+request still alive, at every filter, since the same day.
+
 **THE SHIPPED DEFAULT IS NOT WHAT RUNS UNTIL SOMEBODY SETS IT**, and on this
 installation nobody had. `Setting.policy` shadows `src/config/policy.js`
 silently, and the stored answer here was still `approved` — so a สิงหาคม or
@@ -9180,6 +9204,31 @@ role UIs. *(It read "the four role UIs" until 2026-09-03 — there are seven
 build แล้ว
 
 **Verified**
+
+- **`สถานะที่นับ` บน ตรวจสอบประจำเดือน เปิดมาที่ `อนุมัติแล้ว + รอ HR`** —
+  2026-09-09 · ขอมาว่า *ถ้าหัวหน้าอนุมัติแล้วให้ขึ้นที่หน้านี้ด้วย
+  ใบที่มีสถานะรอ HR* · **หนึ่งบรรทัด และไม่ใช่ฟีเจอร์ใหม่** — แถว
+  `อนุมัติแล้ว + รอ HR` อยู่บนตัวควบคุมมาตลอดและเราต์ก็รับค่านี้อยู่แล้ว
+  ที่ผิดคือ*จอเปิดมาที่ค่าไหน*
+  · **เหตุผลเดิมเลิกจริงไปเมื่อ 2026-09-07** ตอนที่ `formPrintScope` ชิปเป็น
+  `ตั้งแต่หัวหน้าอนุมัติ` — กระดาษพิมพ์ `อนุมัติแล้ว + รอ HR` ส่วนจอที่อยู่
+  เหนือกระดาษยังอ่านช้ากว่าอยู่หนึ่งขั้น ซึ่งคือความผิดพลาดที่
+  `test/formPrintScope.test.js` เขียนไว้ในหัวไฟล์ตัวเอง แค่สลับข้างกัน
+  · **นับจากฐานจริงวันนี้: สิงหาคม 2569 คือ `pending_hr` 225 · `pending_mgr` 73
+  · `approved` ศูนย์ใบ** ตารางจึงเขียน `ไม่มีรายการในเดือนนี้` ใต้การ์ดที่เขียน
+  `มีใบรออนุมัติค้างอยู่ 298 ใบ` และปุ่มพิมพ์ข้าง ๆ กันก็พิมพ์ 225 ใบนั้นได้
+  · **แถว `อนุมัติแล้วเท่านั้น` ยังอยู่ครบและยังแปลว่าเดิม** เราต์ · CSV ทั้งสองใบ
+  · ปุ่มพิมพ์ · คอลัมน์ `สะสม / เพดาน` ไม่ถูกแตะเลยสักที่
+  · ⚠️ **ราคาที่จ่าย** — ตรวจสอบประจำเดือน กับ คิวรออนุมัติ เลิกขึ้นต้นด้วย
+  ตัวเลขเดียวกันที่ค่าเริ่มต้นของแต่ละจอ ซึ่งเป็นสิ่งที่ตั้งใจทำให้ตรงกันเมื่อ
+  2026-09-04 · หัวแถวของคิวคือชั่วโมงที่อนุมัติแล้ว จอนี้นับขั้นถัดจากนั้น ·
+  เลื่อนกลับไป `อนุมัติแล้วเท่านั้น` แล้วสองจอตรงกันอีกครั้ง และนั่นคือจุดที่
+  `queueCapUsage` เทียบ — เทสต์นั้นแยกค่าคงที่ออกเป็นสองตัวแล้ว
+  · **2380 เทสต์ผ่านทั้งหมด** · build ผ่านบน `distDir` แยก (`.next-verify`
+  เสิร์ฟที่ :3001 ตอบ 200 แล้ว kill ทิ้ง · `:3000` ไม่ถูกแตะ) · ในบันเดิลอ่านได้ว่า
+  `useState)("approved,pending_hr")`
+  · ⚠ **ยังไม่ได้เดินด้วยตาบนหน้าจอ** — การมินต์ JWT ถูกปฏิเสธในรอบนี้
+  ที่ตรึงไว้คือเทสต์ที่อ่านซอร์ส บันเดิลที่ build แล้ว และยอดที่นับจากฐานจริง
 
 - **คิวขั้นแรกโชว์เฉพาะใบที่ยังไม่ได้อนุมัติ — จอ ฝ่ายบุคคล ไม่ขยับ** — 2026-09-09 ·
   ขอมาว่า *หน้ารออนุมัติ OT ถ้ามีคนกดอนุมัติคำขอของพนักงานแล้วก็คือไม่ต้องโชว์แล้ว
