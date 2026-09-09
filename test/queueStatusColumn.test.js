@@ -424,15 +424,55 @@ test('คอลัมน์กว้าง 84px ช่องไฟ 8px และ
 });
 
 /**
- * THE `min-width` DOES NOT MOVE, and that is a claim worth pinning.
+ * THE `min-width` IS THE SUM OF THE ELEVEN COLUMNS A หัวหน้า SEES — that is the
+ * claim, and it is the one that was worth pinning all along.
  *
- * 1262px is the หัวหน้า's eleven columns, which still draw exactly eleven. With
- * `table-layout: fixed` and every column given a width, ฝ่ายบุคคล's twelfth
- * simply makes their table wider than the floor and scrolls; raising the floor
- * would push the manager's table sideways for a column it does not have.
+ * It read "1262px, and it DOES NOT MOVE" until 2026-09-09, when `th.when-col`
+ * went from 92px to 136 to hold ขอย้อนหลัง … วัน under the date. The figure was
+ * never the point: what this test defends is that ฝ่ายบุคคล's TWELFTH column
+ * (สถานะ, 84px) is not in the sum. With `table-layout: fixed` and every column
+ * given a width, their table simply comes out wider than the floor and scrolls;
+ * folding it in here would push the manager's table sideways for a column they
+ * do not have.
+ *
+ * So the sum is asserted rather than a number typed twice — a column that grows
+ * has to be added to the floor, and one that is only on HR's table still cannot
+ * be.
  */
-test('พื้นของความกว้างยังเป็น 1262px — คิวหัวหน้ายังสิบเอ็ดคอลัมน์', () => {
-  assert.match(css, /\.queue-table \{ table-layout: fixed; min-width: 1262px; \}/);
+test('พื้นของความกว้างเท่ากับผลรวมสิบเอ็ดคอลัมน์ของหัวหน้า — ไม่รวมคอลัมน์สถานะ', () => {
+  const floor = /\.queue-table \{ table-layout: fixed; min-width: (\d+)px; \}/.exec(css);
+  assert.ok(floor, 'ไม่พบ min-width ของ .queue-table');
+
+  /**
+   * Each column's own rule, read out of the stylesheet rather than restated.
+   *
+   * ANCHORED AT THE START OF A LINE, which is the whole of the care this needs:
+   * unanchored, `th.when-col` finds `.stack-table th.when-col` — a different
+   * table's date column, 204px — and the sum comes out 68px too big while
+   * looking entirely reasonable. It did, on the first run.
+   */
+  const width = (selector) => {
+    const m = new RegExp(`^${selector} \\{[^}]*width: (\\d+)px`, 'm').exec(css);
+    assert.ok(m, `ไม่พบความกว้างของ ${selector}`);
+    return Number(m[1]);
+  };
+  const eleven = width('th\\.check, td\\.check')       // 42
+    + width('th\\.who-col')                            // 168
+    + width('th\\.when-col')                           // 136 — the tag's column
+    + width('th\\.span-col')                           // 108
+    + width('th\\.rate-col')                           // 52  ×1.5 ปกติ
+    + width('th\\.rate-col\\.wide') * 2                // 58  ×1.5 / ×3 วันหยุด
+    + width('th\\.rate-col')                           // 52  รวม, on `.total-col`
+    + width('th\\.cap-col')                            // 224
+    + width('th\\.why-col')                            // 150
+    + width('th\\.act-col');                           // 258
+
+  assert.equal(Number(floor[1]), eleven, 'พื้นความกว้างไม่เท่ากับผลรวมของสิบเอ็ดคอลัมน์');
+  // And สถานะ is outside it — the whole point of the sum.
+  assert.ok(
+    !new RegExp(`min-width: ${eleven + width('th\\.status-col')}px`).test(css),
+    'คอลัมน์สถานะของฝ่ายบุคคลถูกนับรวมเข้าไปในพื้นความกว้างของหัวหน้า',
+  );
 });
 
 /**

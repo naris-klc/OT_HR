@@ -7765,6 +7765,48 @@ tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
      rectangles. The same reason `.chip` has carried it since it existed. */
   white-space: nowrap;
 }
+
+/* ขอล่วงหน้า 3 วัน / ขอย้อนหลัง 12 วัน — the third line of the date cell on
+   คิวรออนุมัติ (`FilingLeadMark` in components/common.jsx).
+
+   `.cell-flag`'s GEOMETRY AND NOT ITS COLOUR, written out rather than borrowed:
+   the two are the same four declarations today and they answer to different
+   people. That one is fixed at the app's one red because ไม่พักเที่ยง is always
+   the same claim; this one has two tones, and a class that carried a red it
+   then overrode twice would be a class whose name promises the wrong thing —
+   the `.box` mistake in another form.
+
+   THE FILL EARNS ITS LINE — asked for as a แท็กแจ้งเตือน, and it is under two
+   quiet grey lines in a 136px column. Plain amber text there would read as a
+   third piece of metadata about the date rather than as a mark on the row.
+
+   `nowrap` for `.cell-flag`'s reason, and the column above is sized so it never
+   has to break: 111.3px is `ขอย้อนหลัง 365 วัน`, measured in the built app's own
+   IBM Plex Sans Thai Looped rather than estimated, and three digits is not a
+   theoretical width while nothing at all limits how far back a request may be
+   filed. */
+.filed-lead {
+  display: block; width: fit-content;
+  margin-top: 3px; padding: 1px 6px; border-radius: 4px;
+  font: 600 11.5px/1.45 var(--sans);
+  white-space: nowrap;
+}
+/* ── ย้อนหลัง IS THE ONE THAT ASKS FOR A SECOND LOOK ────────────────────────
+   Amber, the same "read this row again" tone แก้ไขแล้ว and เวลาไม่ตรงกับไฟล์สแกน
+   carry, and for the same reason: it does not say the request is wrong. It says
+   the day it is about has already gone by, which is the fact the signer would
+   otherwise have to work out by subtracting two dates they cannot both see.
+   `--amber-ink` rather than `--amber`, which measures 3.46 on `--amber-bg` in
+   ธีมสว่าง — see the token block. */
+.filed-lead.back { background: var(--amber-bg); color: var(--amber-ink); }
+/* ── ล่วงหน้า IS NOT A WARNING ──────────────────────────────────────────────
+   Filing before the shift is the orderly way round; it is stated because the
+   date cell cannot state it, not because anything is off. `--info` on
+   `--info-bg` is the pair รอ HR already wears — the app's quiet blue, which is
+   what "worth knowing, nothing to do" looks like everywhere else here. Painting
+   both directions amber would spend the alarm on the half that deserves none,
+   and forty amber rows are forty rows nobody reads. */
+.filed-lead.ahead { background: var(--info-bg); color: var(--info); }
 tbody tr:hover { background: var(--green-wash); }
 
 /* ══ นโยบายการคำนวณ — one ruled row per rule ═══════════════════════════════
@@ -8103,8 +8145,18 @@ tfoot tr.grand td {
    column asking for 190px got 89px and the name in it broke in two. Fixed says
    the widths and lets the table exceed the card, which is the trade this whole
    block is making. Every width is measured — the longest name on the roster,
-   the widest heading, the compound figure — not estimated. */
-.queue-table { table-layout: fixed; min-width: 1262px; }
+   the widest heading, the compound figure — not estimated.
+
+   THE FLOOR IS THE SUM OF THE ELEVEN COLUMNS A หัวหน้า SEES, and it moved on
+   2026-09-09: it read 1262px from the day it was written until `th.when-col`
+   went from 92 to 136 to hold ขอย้อนหลัง … วัน. 42 + 168 + 136 + 108 + 52 + 58
+   + 58 + 52 + 224 + 150 + 258 = 1306. ฝ่ายบุคคล's twelfth column (สถานะ, 84px)
+   still is NOT in the figure — with `fixed` and every column given a width,
+   their table simply comes out wider than the floor and scrolls, and putting it
+   in here would push the manager's table sideways for a column they do not
+   have. That reasoning is unchanged; only the third line in the date cell
+   is new. */
+.queue-table { table-layout: fixed; min-width: 1306px; }
 
 /* A row is as tall as its tallest cell, so these are what kept every row two
    lines taller than its content. */
@@ -8121,9 +8173,24 @@ tfoot tr.grand td {
    the queue today. */
 th.who-col { width: 168px; }
 
-/* "16 ส.ค. 69" is 90px; the long form it replaced was 130 and the heading is
-   49. */
-th.when-col { width: 92px; }
+/* IT IS NO LONGER THE DATE THAT SIZES THIS COLUMN — it read "16 ส.ค. 69 is
+   90px; the long form it replaced was 130 and the heading is 49" while the cell
+   held two lines, and 92px was the answer to those.
+
+   Since 2026-09-09 the cell carries a third line, `.filed-lead`, and the widest
+   thing it can say is `ขอย้อนหลัง 365 วัน` — 111.3px measured in the built app,
+   plus the 12px gutters this column keeps, is 135.3. A tag that has to break is
+   two stacked coloured rectangles (see `.cell-flag`), so the column is sized to
+   the tag and the date sits inside it with room to spare.
+
+   THE 44px IS PAID BY THE TABLE'S FLOOR, deliberately and with the trade said
+   out loud. `.queue-table` is `fixed` and already scrolls sideways inside a
+   card measured at 1178 on a 1920 screen, so this is more scrolling on a table
+   that had some. It buys the one thing on the row that nothing else can say:
+   how long after the work the form arrived. `maxPastSubmissionDays` is `null`
+   and ปิดงวด was withdrawn, so today a request can be filed for any past day at
+   all and a reviewer's eye is the only thing between that and a signature. */
+th.when-col { width: 136px; }
 
 /* "17:00–21:00" is 108, and ไม่พักเที่ยง under it is 79. */
 th.span-col { width: 108px; }
@@ -11111,6 +11178,16 @@ table.mini tbody tr:hover { background: none; }
   /* "อา." beside the date rather than under it. As a block it took a whole line
      of the card to carry two characters. */
   .queue-table td.when-col .cell-sub { display: inline; margin: 0 0 0 5px; }
+  /* ── AND `.filed-lead` STAYS A BLOCK, which is not an oversight ────────────
+     ข้ามคืน and "อา." were pulled inline because a block child of `span-col`
+     begins a third of the way into the card and lines up with nothing — the
+     note under `.queue-table td.span-col .cell-note` has the measurement. This
+     cell is the opposite case: `when` is the card's second grid column and its
+     content box starts AT the date, so a block under it shares the date's own
+     left edge and adds no new one. Inline it would instead put a filled tag in
+     the middle of "12/09/2569 ส. · 08:00–17:00", between two facts it is not
+     about. No rule is needed to keep it a block — this note is here so the next
+     person to sweep this file does not "finish the job". */
   .queue-table td.span-col {
     grid-area: span; text-align: left; white-space: nowrap;
     font: 400 13px/1.45 var(--mono); color: var(--muted);

@@ -21,8 +21,8 @@ import {
 // offers and the ones the server accepts cannot drift apart.
 import { isOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
 import {
-  Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FlatDailyMark,
-  FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
+  Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
+  FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
   RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, StatusChip,
   TeamMark, editsOf,
 } from './common.jsx';
@@ -1581,6 +1581,17 @@ export default function ApprovalQueue({
                   <td className="when-col">
                     {thaiDate(e.workDate)}
                     <div className="cell-sub">{dayAbbr(e.workDate)}</div>
+                    {/* UNDER THE WEEKDAY, WHICH IS WHERE IT WAS ASKED FOR —
+                        2026-09-09. The three lines are one reading: which day
+                        the work was, what kind of day that was, and how far
+                        from it the form arrived. Nothing above it can carry the
+                        third: a date is silent about when it was written down.
+
+                        Drawn on the rows where the two dates differ and on no
+                        others, so an ordinary same-day filing stays two lines.
+                        See `FilingLeadMark` for the two tones and why ล่วงหน้า
+                        is not painted as a warning. */}
+                    <FilingLeadMark entry={e} />
                   </td>
                   <td className="span-col">
                     {e.startTime}–{e.endTime}

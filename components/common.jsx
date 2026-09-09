@@ -8,8 +8,8 @@ import {
 import { capChips, capFigure } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
 import {
-  ENTERED_FIELDS, filingOf, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled, isSystemFiled,
-  isSystemLog, lastAction, sameSession, sameValue,
+  ENTERED_FIELDS, filingLead, filingOf, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled,
+  isSystemFiled, isSystemLog, lastAction, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import {
@@ -785,6 +785,57 @@ export function TeamMark({ entry, coveredDepartments }) {
     <span className="chip delegated" title="รายการจากทีมที่คุณรับช่วงอนุมัติแทน">
       รับช่วง · {entry.department?.nameTh || entry.department?.name || 'ทีมที่รับช่วง'}
     </span>
+  );
+}
+
+/**
+ * ขอล่วงหน้า 3 วัน / ขอย้อนหลัง 12 วัน — under the date, under the weekday.
+ *
+ * ── WHAT THE DATE COLUMN COULD NOT SAY ─────────────────────────────────────
+ * Asked for on 2026-09-09, and it fills a real hole rather than decorating the
+ * cell. `12/09/2569 · ส.` reads identically whether the request was typed that
+ * Saturday evening or five weeks afterwards, and those two rows are not the
+ * same thing to the person signing: one is a note of work just done, the other
+ * is a claim about a day nobody remembers, filed after the month it belongs to
+ * was reported. Nothing in the system draws that line for them — ปิดงวด was
+ * withdrawn on 2026-08-31 and `maxPastSubmissionDays` ships as `null`, so a
+ * request may be filed today for any day in the past at all
+ * ([README §Status](../README.md)). Until HR names a number, seeing it IS the
+ * control.
+ *
+ * THE EXACT WORDS ARE HR's — *ขอล่วงหน้า … วัน* and *ขอย้อนหลัง … วัน* — and
+ * they are the same two words the server's own refusals use when a limit is
+ * set (`advanceSubmissionRefusal`, `pastSubmissionRefusal` in lib/entries.js).
+ * One vocabulary, so the tag on the row and the sentence that would one day
+ * stop it being filed at all cannot come to say it two ways.
+ *
+ * TWO TONES, BECAUSE THEY ARE NOT THE SAME NEWS. ขอย้อนหลัง takes the amber
+ * this app spends on "look at this row again" (แก้ไขแล้ว, เวลาไม่ตรงกับไฟล์สแกน);
+ * ขอล่วงหน้า takes `--info`, the quiet blue รอ HR wears, because filing before
+ * the shift is the ORDERLY case — it is worth stating and it is not a warning,
+ * and painting both amber would spend the alarm on the good half.
+ *
+ * NOT A `.chip`. A chip is a pill and every pill on this row is a status; this
+ * is a fact about when a form arrived. It takes `.cell-flag`'s smaller shape
+ * for the same reason ไม่พักเที่ยง does — see `.filed-lead` in app/styles.css,
+ * where the 44px this cost the table's width is written down.
+ *
+ * The day count is `filingLead`'s, computed off the history rather than off
+ * `createdAt` where there is one; the `title` prints the stamp it was worked
+ * out from, so a reader who doubts the figure can see the filing time itself.
+ */
+export function FilingLeadMark({ entry }) {
+  const lead = filingLead(entry);
+  if (!lead) return null;
+  const ahead = lead.direction === 'ahead';
+  const at = filingOf(entry)?.at || entry?.createdAt;
+  return (
+    <div
+      className={`filed-lead ${ahead ? 'ahead' : 'back'}`}
+      title={at ? `ยื่นคำขอเมื่อ ${thaiStamp(at, { seconds: false })}` : undefined}
+    >
+      {ahead ? 'ขอล่วงหน้า' : 'ขอย้อนหลัง'} {lead.days} วัน
+    </div>
   );
 }
 
