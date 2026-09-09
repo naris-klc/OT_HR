@@ -550,13 +550,36 @@ test('ใบเหมา — ล็อกทั้งสองช่อง แ�
     'the วันเกิด tick locked a time — only เหมารายวัน does',
   );
 
-  // The person is told, in the two places they are looking: beside the greyed
-  // boxes, and in the line under the ticks. Both quote the pair rather than
-  // spelling it out, so a screen cannot come to disagree with the rule.
+  // The person is told once, beside the greyed boxes, and the sentence quotes
+  // the pair rather than spelling it out, so a screen cannot come to disagree
+  // with the rule.
+  //
+  // IT WAS TOLD TWICE UNTIL 2026-09-09 — this line and a five-line paragraph
+  // under the tick, which said the lock, the nine-hour span, the eight on the
+  // form and `FLAT_DAILY_SAY` over again. The paragraph is deleted: the lock is
+  // under the boxes it greys, and the eight hours are the green Alert beside
+  // the figure they explain (pinned in the test below this one). What is
+  // asserted here is that the removal did not take the remaining line with it.
   assert.match(form, /ล็อก \{FLAT_DAY_TIMES\.startTime\}–\{FLAT_DAY_TIMES\.endTime\} น\. แก้เวลาไม่ได้/);
-  assert.match(form, /ล็อกเวลาไว้ที่ \$\{FLAT_DAY_TIMES\.startTime\}–\$\{FLAT_DAY_TIMES\.endTime\} น\./);
-  assert.match(form, /ทำงาน 8 ชม\. \+ พักเที่ยง 1 ชม\./);
-  assert.match(form, /บนใบขออนุมัติยังนับ 8 ชั่วโมง ไม่รวมเวลาพัก/);
+  assert.ok(
+    !/ล็อกเวลาไว้ที่ \$\{FLAT_DAY_TIMES/.test(form),
+    'ย่อหน้าใต้ช่องติ๊กกลับมาแล้ว — บอกกฎเดียวกันซ้ำเป็นครั้งที่สอง',
+  );
+
+  // …and that it went out of the imports with it, rather than being left as a
+  // name the next reader has to account for. The span itself is untouched —
+  // the assertion at the head of this test still holds it to nine hours.
+  assert.ok(
+    !/FLAT_DAY_SPAN_MINUTES/.test(form.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'FLAT_DAY_SPAN_MINUTES ยังถูก import อยู่ ทั้งที่ฟอร์มไม่ได้วาดมันแล้ว',
+  );
+
+  // ONE LINE, NOT TWO. It sat inside the เวลาสิ้นสุด field and wrapped after
+  // `แก้`, because `.field.time` is 130px wide. It is a line under the row now,
+  // right-aligned so it still lands beneath the boxes it is about.
+  assert.match(form, /<div className="field-note lock-note">/);
+  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+  assert.match(css, /\.field-note\.lock-note \{[^}]*white-space: nowrap;/);
 });
 
 /**

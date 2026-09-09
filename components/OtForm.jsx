@@ -6,7 +6,7 @@ import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import {
   submissionWindow, zeroOtHoursAllowed,
   endsNextDayFor, isFlatDailyPosition, isCompanyOffDay,
-  FLAT_DAY_SPAN_MINUTES, FLAT_DAY_TIMES,
+  FLAT_DAY_TIMES,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import {
@@ -1130,18 +1130,24 @@ export default function OtForm({
               ข้ามคืน · สิ้นสุดวัน{dayName(endDateLabel)}ถัดไป
             </span>
           )}
-          {/* WHY THE BOXES ARE GREY, said beside them rather than only in the
-              line under the ticks. A disabled control with no reason given is
-              the thing somebody presses twice and then reports as broken — and
-              this one is greyed by a tick three lines further down the form,
-              which is not where the eye goes. */}
-          {form.flatDaily && (
-            <span className="field-note">
-              ล็อก {FLAT_DAY_TIMES.startTime}–{FLAT_DAY_TIMES.endTime} น. แก้เวลาไม่ได้
-            </span>
-          )}
         </div>
       </div>
+
+      {/* WHY THE BOXES ARE GREY. A disabled control with no reason given is the
+          thing somebody presses twice and then reports as broken — and these
+          two are greyed by a tick further down the form, which is not where the
+          eye goes.
+
+          IT SAT INSIDE THE เวลาสิ้นสุด FIELD UNTIL 2026-09-09 and broke over two
+          lines there: the column is 130px, which is a width for five characters
+          and a clock glyph, not for a sentence. It is a line of its own under
+          the row now, right-aligned so it still lands beneath the two boxes it
+          is about, and `.lock-note` in app/styles.css keeps it on one line. */}
+      {form.flatDaily && (
+        <div className="field-note lock-note">
+          ล็อก {FLAT_DAY_TIMES.startTime}–{FLAT_DAY_TIMES.endTime} น. แก้เวลาไม่ได้
+        </div>
+      )}
 
       {/* One per line on a phone — see .form-checks. Side by side they were two
           17px boxes about 6px apart with wrapped labels between them.
@@ -1228,38 +1234,24 @@ export default function OtForm({
       </div>
       )}
 
-      {/* WHAT THE TICK DOES TO THE TIMES, said once under it rather than twice
-          inside `onChange`.
+      {/* THE PARAGRAPH UNDER THE TICK IS GONE — 2026-09-09, and this note is
+          what is left in its place, because nothing it said is lost.
 
-          IT LOCKS THEM AT 08:00–17:00 — HR, 2026-09-09. A day hired whole is
-          the office day, one shape, and both boxes above go grey holding it.
+          IT SAID FOUR THINGS AND EVERY ONE OF THEM IS STILL ON THIS SCREEN:
+          the lock is announced under the two grey boxes it greys, a line above;
+          `FLAT_DAILY_SAY` — eight hours of OT ×1.5 however long the person
+          stayed — is the green Alert further down, in the green a fact wears
+          and beside the figure it explains; the nine-hour span and the eight on
+          the form are the two numbers that Alert and the preview print. What
+          the paragraph added was a third telling of one rule on one screen —
+          five lines of grey between a tick and the box the person is on their
+          way to.
 
-          THIS SENTENCE SAID THE OPPOSITE UNTIL THAT DAY, in two rounds: the
-          pair was a FILL that both boxes could be typed over (until
-          2026-09-07), then a fill whose start stayed free and whose end
-          followed it nine hours on. Somebody who came in at 07:30 filed 07:30.
-          They no longer can, and the sentence has to say so plainly rather than
-          leave a person hunting for the box that used to move.
-
-          THE LOCK DOES NOT SURVIVE AN UNTICK — the boxes open again and keep
-          08:00–17:00, which is a pair somebody can then type over. Putting
-          17:00–20:00 back instead would throw away times on a press that says
-          nothing about the clock.
-
-          THE NINE AND THE EIGHT ARE BOTH SAID, in that order, because the
-          person is looking at a pair of times that span nine hours and a
-          preview about to print 8.00. `FLAT_DAY_SPAN_MINUTES` is the span the
-          clock shows; the figure is the engine's, less the lunch hour. */}
-      {form.flatDaily && (
-        <div className="hint" style={{ marginTop: 8 }}>
-          {`ล็อกเวลาไว้ที่ ${FLAT_DAY_TIMES.startTime}–${FLAT_DAY_TIMES.endTime} น. ตามเวลางานปกติ`
-            + ' — แก้เวลาเองไม่ได้ ถ้าไม่ใช่วันเหมา ให้เอาเครื่องหมายถูกออกก่อน'
-            + ` (อยู่ที่ทำงาน ${FLAT_DAY_SPAN_MINUTES / 60} ชม. = ทำงาน 8 ชม. + พักเที่ยง 1 ชม.)`
-            + ` · ${FLAT_DAILY_SAY}`
-            + ' — บนใบขออนุมัติยังนับ 8 ชั่วโมง ไม่รวมเวลาพัก'}
-        </div>
-      )}
-
+          `FLAT_DAY_SPAN_MINUTES` LEFT THE IMPORTS WITH IT. The span is still
+          the reason the pair ends at 17:00 and it is still held to
+          `FLAT_DAY_TIMES` by test/flatDaily.test.js — this form just does not
+          spell it out any more. คู่มือการใช้งาน (components/ManualView.jsx)
+          keeps the long form of the sentence for whoever wants it. */}
       <div className="field" style={{ marginTop: 14 }}>
         <label>
           รายละเอียดงานที่ทำ

@@ -5165,6 +5165,19 @@ td > .approver-line { margin-top: 5px; }
    which speaks for the whole card. */
 .field-note { font: 400 12.5px/1.4 var(--sans); color: var(--muted); }
 .field-note.error { color: var(--danger-ink); }
+
+/* ONE LINE, UNDER THE ROW RATHER THAN INSIDE A COLUMN OF IT — 2026-09-09.
+   `ล็อก 08:00–17:00 น. แก้เวลาไม่ได้` on บันทึก OT, which is the only thing
+   wearing this class. It lived inside the เวลาสิ้นสุด field until then and wrapped
+   after `แก้`, because `.field.time` is 130px — a width for five characters and
+   a clock glyph. A sentence does not fit in a column sized for a time, so it
+   comes out of the column instead of the column being widened for it.
+
+   RIGHT-ALIGNED so it still lands under the two boxes it is about: the row is
+   วันที่เริ่ม + เวลาเริ่ม + เวลาสิ้นสุด, and a grey line at the LEFT edge under that
+   row reads as a note about the date. `nowrap` is the promise the class makes;
+   at the narrowest phone width the sentence is still shorter than the row. */
+.field-note.lock-note { margin-top: 7px; text-align: right; white-space: nowrap; }
 /* `.field-note.rule-note` STOOD HERE FOR PART OF 2026-09-01 and is deleted
    rather than left, because a class nothing wears is a rule the next person has
    to check before touching anything near it.
