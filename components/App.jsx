@@ -2042,7 +2042,13 @@ function Shell({ session, onRefresh, onLogout }) {
             {tab === 'profile' && (
               <ProfileView user={user} onPasswordChanged={onRefresh} onLogout={logout} />
             )}
-            {tab === 'manual' && <ManualView />}
+            {/* `navGroups` and `barSlots` go down with the user because the
+                manual DRAWS THE READER'S OWN MENU — see the note in
+                ManualView.jsx. Rebuilt inside that file they would be a fourth
+                copy of the menu and the one nobody keeps in step. */}
+            {tab === 'manual' && (
+              <ManualView user={user} navGroups={navGroups} barSlots={barSlots} />
+            )}
           </div>
         </main>
 

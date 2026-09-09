@@ -3,26 +3,42 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import {
+  ROLES, approverRolesFor, isSigner, readsCompanyReports,
+} from '../lib/roles.js';
+import { mayCorrectEntries } from '../lib/entries.js';
 
 /**
- * คู่มือการใช้งาน — the screen every บทบาท can open, and the one screen that is
- * reached from the foot of the menu rather than from the menu itself.
+ * คู่มือการใช้งาน — the screen every บทบาท can OPEN, showing only what their
+ * บทบาท can DO.
  *
- * WHAT THIS FILE IS FOR. The request was one sentence — a manual, as a menu
- * page, ให้ทุกสิทธิ์ดูได้ — and both halves of it are properties that a later
- * edit can quietly take away. The "ทุกสิทธิ์" half is the one worth pinning: a
- * row with no condition on it is one `&&` away from having one, and the edit
- * that adds it will look exactly like every other role rule in this builder.
+ * WHAT THIS FILE IS FOR. Two requests built this screen and they pull in
+ * opposite directions, which is the whole reason both halves need pinning:
  *
- * AND THE OTHER HALF IS AN ARITHMETIC. `test/roleNavTabs.test.js` caps the
- * phone bar at four columns per บทบาท, and a ผู้เซ็น fills all four with one
- * screen apiece; a `tabs.push` for this screen makes that bar five wide or
- * turns one of its presses into a sheet. That test would catch it — this one
- * says WHY the push is not there, next to the thing it protects, so the next
- * person to want a twelfth tab reads the reason before the failure.
+ *   2026-09-09, morning — *a manual, as a menu page, ให้ทุกสิทธิ์ดูได้*. That
+ *   is a promise about the DOOR, and a row with no condition on it is one `&&`
+ *   away from having one.
+ *
+ *   2026-09-09, later — *แยกเป็นคู่มือหน้าเดียว แบบเลื่อนเป็น section · แสดง
+ *   เฉพาะวิธีใช้งานที่ใช้งานได้ตามสิทธิ์*. That is a promise about the
+ *   CONTENTS, and it is the one that makes the first easy to break by accident:
+ *   the obvious way to hide ตั้งค่าระบบ from a พนักงาน is a condition on the
+ *   menu row, and that hides the whole manual from them with nothing on screen
+ *   saying one exists.
+ *
+ * So the two are tested apart. `both menus reach it` below is the door and has
+ * not changed since it was written; everything under ── สิทธิ์ ── is the
+ * contents and is new.
+ *
+ * AND A THIRD PROMISE, ASKED FOR IN THE SAME BREATH AS THE REWRITE:
+ * *ภาพประกอบต้องมี ui ทั้งแบบหน้าจอ มือถือ และ pc*. A `Shot` with only a
+ * `desk` renders perfectly and looks finished — the failure is invisible on the
+ * machine of whoever writes it, because that machine is a PC.
  *
  * Source-shape assertions, for the reason test/roleNavTabs.test.js gives:
- * `components/App.jsx` is a client component with no export worth calling.
+ * `components/App.jsx` is a client component with no export worth calling. The
+ * ONE thing here that is not source-shape is the gate evaluation, which runs
+ * the real expressions against the real predicates — see it below.
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -31,14 +47,48 @@ const jsx = read('components/App.jsx');
 const manual = read('components/ManualView.jsx');
 const icons = read('components/icons.jsx');
 
+/**
+ * The source with its comments taken out.
+ *
+ * NEEDED BECAUSE THIS REPOSITORY'S COMMENTS NAME WHAT THEY REJECTED. The header
+ * of ManualView says why the screen is not a `tabs.push` and why the rail is
+ * not a button calling `scrollIntoView` — both are the reasoning worth keeping,
+ * and both would fail a check that greps the whole file for the thing it wants
+ * absent. Stripping comments first is what makes "this must not appear" mean
+ * "this must not RUN".
+ */
+const codeOnly = (src) => src
+  .replace(/\/\*[\s\S]*?\*\//g, ' ')
+  .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+const manualCode = codeOnly(manual);
+
 /** The builder alone — the same cut test/roleNavTabs.test.js makes. */
 const builder = jsx.slice(jsx.indexOf('const tabs = ['), jsx.indexOf('async function logout()'));
 
 test('the manual is a screen with a heading, drawn from the same tab state as the rest', () => {
   assert.match(jsx, /manual: \['คู่มือการใช้งาน', 'USER GUIDE'\],/,
     'the screen lost its entry in PAGE — the app bar would draw no title over it');
-  assert.match(jsx, /\{tab === 'manual' && <ManualView \/>\}/, 'nothing renders the screen');
+  assert.match(jsx, /tab === 'manual' && \(\s*<ManualView/,
+    'nothing renders the screen');
   assert.match(jsx, /import ManualView from '\.\/ManualView\.jsx';/);
+});
+
+/**
+ * THE MENU GOES DOWN AS A PROP, and this is the assertion that keeps the
+ * picture in เมนูของคุณ from becoming a fourth hand-written copy of the menu.
+ *
+ * `navGroups` and `barSlots` are the arrays the real sidebar and the real phone
+ * bar are drawn from. Rebuilt inside ManualView — which is the shape somebody
+ * reaches for when the prop is missing — the manual would show a row the reader
+ * does not have on the first day a tab moves, and nothing would fail.
+ */
+test('the reader’s own menu is handed to the manual rather than rebuilt in it', () => {
+  assert.match(jsx, /<ManualView user=\{user\} navGroups=\{navGroups\} barSlots=\{barSlots\} \/>/);
+  assert.match(manual, /export default function ManualView\(\{ user, navGroups = \[\], barSlots = \[\] \}\)/);
+  for (const forbidden of ['NAV_GROUPS', 'BAR_SLOTS', 'tabs.push', 'tabs.filter']) {
+    assert.ok(!manualCode.includes(forbidden),
+      `the manual is building the menu itself (${forbidden}) instead of drawing the one it was given`);
+  }
 });
 
 test('it is not a tab, so no บทบาท gains a fifth column on the phone bar', () => {
@@ -47,8 +97,13 @@ test('it is not a tab, so no บทบาท gains a fifth column on the phone b
 });
 
 /**
- * THE ONE THIS FILE EXISTS FOR. Two rows, one per bar, and neither may grow a
- * condition: not a บทบาท, not a flag on the session, not a count.
+ * THE ONE THIS FILE WAS WRITTEN FOR, AND IT IS UNCHANGED BY THE GATING.
+ *
+ * Two rows, one per bar, and neither may grow a condition: not a บทบาท, not a
+ * flag on the session, not a count. What is inside the screen is now cut to the
+ * reader — see ── สิทธิ์ ── below — and that makes this MORE important rather
+ * than less: the cut has to happen on the far side of this door, or a บทบาท
+ * with one readable section loses the manual entirely.
  *
  * The rows are found by the handler they carry rather than by their label, so
  * renaming the button does not quietly stop this from checking anything.
@@ -80,24 +135,335 @@ test('the sidebar row is a second .nav, so the collapsed rail already knows it',
     'the help row lost the gap that separates it from the last menu block');
 });
 
-test('every topic draws an icon that exists', () => {
-  const declared = new Set(
-    [...icons.slice(icons.indexOf('const ICONS = {')).matchAll(/^ {2}([a-zA-Z]+):/gm)].map((m) => m[1]),
-  );
-  const used = [...manual.matchAll(/^ {4}icon: '([a-zA-Z]+)',$/gm)].map((m) => m[1]);
-  assert.ok(used.length >= 8, `only ${used.length} topics carry an icon — the menu lost most of itself`);
-  for (const name of used) {
-    // `Icon` draws NOTHING for a name it does not know, and says nothing about
-    // it — so a typo here is an empty green tile, on every reader's screen.
-    assert.ok(declared.has(name), `a topic asks for the icon '${name}', which components/icons.jsx does not have`);
-  }
-  const keys = [...manual.matchAll(/^ {4}key: '([a-z]+)',$/gm)].map((m) => m[1]);
-  assert.equal(new Set(keys).size, keys.length, 'two topics share a key — one of them cannot be opened');
-  assert.equal(keys.length, used.length, 'a topic is missing its key or its icon');
+/* ══ สิทธิ์ — what each บทบาท is shown ═══════════════════════════════════════
+ *
+ * The gates are one-line arrow functions over the object `permissionsOf`
+ * returns, which makes them the one part of a `.jsx` file this runner can
+ * actually EXECUTE: pull each expression out of the source, build `p` here from
+ * the real predicates in lib/roles.js and lib/entries.js, and ask it.
+ *
+ * That is worth the small parser. A source-shape test would say the word
+ * `p.correct` appears next to ตั้งค่าระบบ; this says a พนักงาน does not get
+ * that section, which is the thing anybody actually cares about.
+ */
+
+const SECTION_RE = /^  \{\n    key: '([a-z]+)',\n    group: '([^']+)',\n    icon: '([a-zA-Z]+)',\n    title: '([^']+)',/gm;
+const sections = [...manual.matchAll(SECTION_RE)]
+  .map(([, key, group, icon, title]) => ({ key, group, icon, title }));
+
+const gates = [...manual.matchAll(/^    gate: (\([^)]*\) => [^\n]+),$/gm)].map((m) => m[1]);
+
+/** The same object ManualView builds, from the same four predicates. */
+const permissionsFor = (role) => ({
+  role,
+  submit: ROLES.includes(role),
+  sign: isSigner(role),
+  company: readsCompanyReports(role),
+  correct: mayCorrectEntries({ role }),
+  logs: role === 'admin',
+  readOnly: readsCompanyReports(role) && !mayCorrectEntries({ role }),
+  firstStep: approverRolesFor(role),
+});
+
+const visibleFor = (role) => {
+  const p = permissionsFor(role);
+  // eslint-disable-next-line no-new-func
+  return sections.filter((_, i) => new Function('p', `return (${gates[i]})(p);`)(p));
+};
+
+test('every section is found, and every one of them carries a gate', () => {
+  assert.ok(sections.length >= 15,
+    `only ${sections.length} sections were parsed — the shape of SECTIONS changed and this file is now checking nothing`);
+  assert.equal(gates.length, sections.length,
+    'a section is missing its `gate`, or a gate was written across more than one line');
+  const keys = sections.map((s) => s.key);
+  assert.equal(new Set(keys).size, keys.length, 'two sections share a key — one of them cannot be linked to');
 });
 
 /**
- * THE MANUAL MAY NOT PRINT A POLICY FIGURE.
+ * A GATE MAY READ THE PERMISSION OBJECT AND NOTHING ELSE.
+ *
+ * `gate: (p) => p.role === 'hr'` would pass every other test in this file and
+ * would be the fifth place this app decides who may correct an entry. The four
+ * that already do are imported at the top of ManualView; a บทบาท name inside a
+ * gate means one of them was reached past.
+ *
+ * The flags are listed rather than pattern-matched so that adding one is a
+ * deliberate edit here as well — a new flag is a new permission, and this file
+ * is where somebody notices it needs `permissionsOf` to derive it from a real
+ * predicate rather than from a role literal.
+ */
+test('no gate names a บทบาท — they read only the flags permissionsOf derives', () => {
+  const FLAGS = ['submit', 'sign', 'company', 'correct', 'logs', 'readOnly', 'firstStep'];
+  for (const gate of gates) {
+    for (const role of ROLES) {
+      assert.ok(!gate.includes(`'${role}'`),
+        `a gate tests for the บทบาท ${role} directly: ${gate}`);
+    }
+    const reads = [...gate.matchAll(/\bp\.([a-zA-Z]+)/g)].map((m) => m[1]);
+    for (const flag of reads) {
+      assert.ok(FLAGS.includes(flag),
+        `a gate reads p.${flag}, which permissionsOf does not derive: ${gate}`);
+    }
+  }
+});
+
+test('permissionsOf is built from the predicates that already decide these things', () => {
+  assert.match(manual, /import \{\n  ROLE_LABEL_TH, approverRolesFor, isSigner, readsCompanyReports, roleLabel,\n\} from '@\/lib\/roles\.js';/);
+  assert.match(manual, /import \{ mayCorrectEntries \} from '@\/lib\/entries\.js';/);
+  const fn = manual.slice(manual.indexOf('export function permissionsOf'), manual.indexOf('/* ── the mock'));
+  for (const call of ['readsCompanyReports(role)', 'mayCorrectEntries(user)', 'isSigner(role)', 'approverRolesFor(role)']) {
+    assert.ok(fn.includes(call), `permissionsOf stopped asking ${call}`);
+  }
+  /* การเงิน's read-only reports are DERIVED — company minus correct — and not a
+     บทบาท test, so a second บทบาท given the same reading right gets the same
+     wording without anybody remembering this line. */
+  assert.match(fn, /readOnly: company && !correct,/);
+});
+
+/**
+ * NOBODY OPENS THE MANUAL AND FINDS NOTHING, and the gating makes that possible
+ * for the first time: every section carrying a `gate` means every section can
+ * be absent, and a บทบาท the gates all happen to miss gets a card, a rail with
+ * no rows and a page with no text. It would be reported as "the manual is
+ * broken", which is a report nobody can act on.
+ */
+test('every บทบาท is shown a manual, and สิทธิ์ only ever adds to it', () => {
+  const counts = new Map(ROLES.map((role) => [role, visibleFor(role).length]));
+
+  for (const role of ROLES) {
+    assert.ok(counts.get(role) >= 6,
+      `บทบาท ${role} is shown only ${counts.get(role)} sections — that is not a manual`);
+  }
+
+  /* พนักงาน is the floor: the roster's 143 พนักงาน must not be reading about
+     ตั้งค่าระบบ. */
+  assert.equal(counts.get('employee'), Math.min(...counts.values()),
+    'พนักงาน is no longer the shortest manual');
+  assert.ok(counts.get('admin') > counts.get('employee'),
+    'every บทบาท sees the same manual — the สิทธิ์ cut has stopped cutting');
+
+  /**
+   * ผู้ดูแลระบบ IS NOT THE CEILING, AND THAT IS NOT A BUG.
+   *
+   * `isSigner` is false for them — they sign the SECOND step, like ฝ่ายบุคคล —
+   * so รายการรออนุมัติ and รายงาน OT ประจำทีม are screens they do not have, and
+   * the sections about those two are correctly absent. Asserting they see all
+   * eighteen would be asserting the manual describes screens the app does not
+   * give them, which is the failure this whole cut exists to end.
+   *
+   * What IS true of them: everything ฝ่ายบุคคล has plus บันทึกประวัติระบบ, and
+   * that difference is exactly one section.
+   */
+  assert.equal(counts.get('admin'), counts.get('hr') + 1,
+    'ผู้ดูแลระบบ and ฝ่ายบุคคล differ by something other than บันทึกประวัติระบบ');
+
+  /* AND NO SECTION IS WRITTEN FOR NOBODY. A gate that no บทบาท satisfies is a
+     หัวข้อ that exists in the source, is maintained, and is read by no one —
+     which is invisible from every direction except this one. */
+  const everSeen = new Set(ROLES.flatMap((role) => visibleFor(role).map((s) => s.key)));
+  for (const s of sections) {
+    assert.ok(everSeen.has(s.key), `no บทบาท is ever shown ${s.key} — its gate cannot be satisfied`);
+  }
+});
+
+/**
+ * THE SECTIONS THAT MUST NOT REACH A พนักงาน, named one at a time.
+ *
+ * A count says the cut happened; this says it cut in the right place. Both are
+ * needed and the count is the one that would survive a gate accidentally
+ * inverted — eighteen becomes eight either way round.
+ */
+test('the four screens a พนักงาน cannot open have no วิธีใช้ in their manual', () => {
+  const employee = visibleFor('employee').map((s) => s.key);
+  for (const key of ['settings', 'logs', 'confirm', 'correct', 'approve', 'company']) {
+    assert.ok(!employee.includes(key),
+      `a พนักงาน is being told how to use ${key}, which is not in their menu`);
+  }
+  for (const key of ['start', 'menu', 'file', 'flow', 'fix', 'print', 'rules', 'help']) {
+    assert.ok(employee.includes(key), `a พนักงาน lost ${key}, which is theirs`);
+  }
+
+  /* การเงิน is the บทบาท this cut is most likely to get wrong, because they are
+     a ผู้เซ็น AND read the whole company's month AND may write to none of it.
+     All three have to be true of their manual at once. */
+  const finance = visibleFor('finance').map((s) => s.key);
+  assert.ok(finance.includes('approve'), 'การเงิน lost the queue they sign');
+  assert.ok(finance.includes('company'), 'การเงิน lost the month they read');
+  assert.ok(!finance.includes('correct') && !finance.includes('settings'),
+    'การเงิน is being shown how to edit — they read those screens and write to none of them');
+
+  /* ฝ่ายบุคคล sign the second step, not the first — no คิวรออนุมัติ of their
+     own, and the section about it is not theirs. */
+  assert.ok(!visibleFor('hr').map((s) => s.key).includes('approve'),
+    'ฝ่ายบุคคล is being shown the ผู้เซ็นขั้นแรก queue, which is not a screen they have');
+});
+
+/**
+ * THE READ-ONLY SENTENCE IS ON THE SCREEN, not only in the gate.
+ *
+ * HR asked for การเงิน's shape in exactly these words on 2026-09-03 —
+ * *เห็นเมนู … แต่ไม่สามารถแก้ไขข้อมูลได้* — and a manual that shows somebody a
+ * screen without saying they cannot write to it has described a different
+ * screen from the one they will open.
+ */
+test('a บทบาท that reads without writing is told so, in the section itself', () => {
+  assert.match(manual, /p\.readOnly[\s\S]{0,80}คุณเปิดอ่านได้ แต่แก้ไขข้อมูลไม่ได้/,
+    'the read-only label came off the section header');
+  assert.match(manual, /คุณเปิดสองหน้านี้ได้ แต่แก้ไขอะไรไม่ได้/,
+    'the sentence saying nothing on those two screens writes is gone');
+});
+
+/* ══ ภาพประกอบ ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * EVERY UI ILLUSTRATION IS DRAWN FOR BOTH DEVICES.
+ *
+ * Asked for on 2026-09-09 — *ภาพประกอบต้องมี ui ทั้งแบบหน้าจอ มือถือ และ pc* —
+ * and this is the promise that breaks silently. A `Shot` given only `desk`
+ * renders, looks finished, and is missing exactly the half that the reader
+ * holding a phone needs; the person who wrote it is sitting at the other one.
+ *
+ * Counted rather than parsed, because a `Shot`'s two props each contain nested
+ * self-closing JSX and matching the closing tag would be a small parser for no
+ * more certainty: three counts that must agree cannot be satisfied by a Shot
+ * with a prop missing.
+ */
+test('every ภาพประกอบ of a screen is drawn for both คอมพิวเตอร์ and มือถือ', () => {
+  const shots = (manual.match(/<Shot\b/g) || []).length;
+  const desks = (manual.match(/desk=\{\(/g) || []).length;
+  const phones = (manual.match(/phone=\{\(/g) || []).length;
+  assert.ok(shots >= 8, `only ${shots} ภาพประกอบ — the steps lost most of their pictures`);
+  assert.equal(desks, shots, 'a Shot is missing its `desk` — one device is undrawn');
+  assert.equal(phones, shots, 'a Shot is missing its `phone` — the reader on a phone gets a picture of a desktop');
+
+  /* Both drawings survive the phone breakpoint. Hiding one at a narrow width is
+     the obvious way to make the pair fit and it defeats the whole point: the
+     device you are reading ON is not the device the step is about. */
+  const css = read('app/styles.css');
+  const at900 = css.indexOf('@media (max-width: 900px)');
+  assert.ok(at900 > 0, 'the manual lost its phone breakpoint');
+  const narrow = css.slice(at900, css.indexOf('@media (max-width: 640px)', at900));
+  assert.match(narrow, /\.mshot-pair \{ grid-template-columns: minmax\(0, 1fr\); \}/,
+    'the pair no longer stacks on a phone');
+  assert.ok(!/\.mshot-one[^{]*\{[^}]*display: none/.test(css),
+    'one of the two drawings is being hidden rather than stacked');
+});
+
+/**
+ * A DRAWING MADE OF TEXT NEEDS A LABEL, and these are made entirely of text —
+ * an unlabelled one is read aloud as a wireframe's worth of loose words between
+ * two paragraphs that already said the same thing. `Shot` and `Diagram` both
+ * take `alt` and put it on `role="img"`, with the drawing itself `aria-hidden`.
+ */
+test('every ภาพประกอบ carries one sentence saying what it shows', () => {
+  const pictures = (manual.match(/<Shot\b/g) || []).length + (manual.match(/<Diagram\b/g) || []).length;
+  const alts = (manual.match(/\balt=/g) || []).length;
+  assert.equal(alts, pictures, 'a ภาพประกอบ has no `alt`');
+  assert.match(manual, /<figure className="mshot" role="img" aria-label=\{alt\}>/);
+  assert.match(manual, /<div className="mshot-pair" aria-hidden="true">/);
+});
+
+/**
+ * THE TWO KINDS ARE KEPT APART ON PURPOSE.
+ *
+ * `Diagram` takes no device at all, and it must stay that way: a route through
+ * two signatures and the way a night shift is cut into rate columns are facts
+ * about the SYSTEM. Drawn twice under บนคอมพิวเตอร์ / บนมือถือ they would say
+ * there are two of them, which is the one thing a manual about an approval
+ * chain must not say.
+ */
+test('a diagram of the system is drawn once, and takes no device', () => {
+  const diag = manual.slice(manual.indexOf('function Diagram('), manual.indexOf('function FlowDiagram('));
+  for (const forbidden of ['desk', 'phone', 'มือถือ', 'คอมพิวเตอร์']) {
+    assert.ok(!diag.includes(forbidden), `Diagram grew a device (${forbidden}) — it describes the system, not a screen`);
+  }
+});
+
+test('every section draws an icon that exists', () => {
+  const declared = new Set(
+    [...icons.slice(icons.indexOf('const ICONS = {')).matchAll(/^ {2}([a-zA-Z]+):/gm)].map((m) => m[1]),
+  );
+  for (const s of sections) {
+    // `Icon` draws NOTHING for a name it does not know, and says nothing about
+    // it — so a typo here is an empty green tile, on every reader's screen.
+    assert.ok(declared.has(s.icon), `${s.key} asks for the icon '${s.icon}', which components/icons.jsx does not have`);
+  }
+  /* The rail groups by these and draws no heading for an empty one, so a name
+     that is not in GROUPS is a section nobody can reach from the rail. */
+  const groups = manual.slice(manual.indexOf('const GROUPS = Object.freeze(['), manual.indexOf('const SECTIONS = ['));
+  for (const s of sections) {
+    assert.ok(groups.includes(`'${s.group}'`),
+      `${s.key} is in the group ${s.group}, which the rail does not draw`);
+  }
+});
+
+/* ══ หน้าเดียว ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * IT READ "the screen is itself a menu" UNTIL 2026-09-09.
+ *
+ * The หัวข้อ used to open OVER the index, on the shell's back stack, and the
+ * index was the screen. Asked to be one scrolling page instead. What is checked
+ * here is the state that went away: `openKey` was the whole of it, and a
+ * reader-visible half-rewrite — sections rendered inline but the old overlay
+ * still reachable — is the shape a partial revert takes.
+ */
+test('the หัวข้อ overlay is gone, and the sections are the page', () => {
+  for (const gone of ['openKey', 'setOpenKey', 'manual-item', 'manual-menu', 'manual-back']) {
+    assert.ok(!manualCode.includes(gone), `the หัวข้อ overlay is still half here: ${gone}`);
+  }
+  /* Rules and not mentions: the block that replaced them opens by naming all
+     five, which is the record AGENTS.md asks for and would fail a plain grep. */
+  const css = codeOnly(read('app/styles.css'));
+  for (const gone of ['.manual-item', '.manual-menu {', '.mi-icon', '.mi-chev', '.manual-back']) {
+    assert.ok(!css.includes(gone),
+      `${gone} is still in the stylesheet with nothing drawing it — a dead ruleset is one somebody greps and believes`);
+  }
+  assert.match(manual, /<section key=\{s\.key\} id=\{`sec-\$\{s\.key\}`\}/,
+    'the sections lost the ids the rail links to');
+});
+
+/**
+ * THE RAIL IS PLAIN ANCHORS.
+ *
+ * `#sec-approve` survives a reload, can be sent to somebody, and moves the page
+ * with the browser's own scrolling — which honours `prefers-reduced-motion`
+ * without being told. A button calling `scrollIntoView` is a hand-built copy of
+ * all three and takes the หัวข้อ off the back stack.
+ *
+ * And `scroll-margin-top` is not decoration: the app bar is `position: sticky`,
+ * so without it every jump lands with the heading the reader pressed for
+ * underneath the bar.
+ */
+test('the rail links, and a link lands below the app bar rather than under it', () => {
+  assert.match(manual, /<a key=\{s\.key\} className="manual-rail-a" href=\{`#sec-\$\{s\.key\}`\}>/);
+  assert.ok(!manualCode.includes('scrollIntoView'), 'the rail is scrolling the page by hand');
+  const css = read('app/styles.css');
+  assert.match(css, /\.manual-sec \{ scroll-margin-top: calc\(62px \+ 14px\); \}/,
+    'a jump now lands with the section heading under the sticky app bar');
+  assert.match(css, /\.manual-rail \{[\s\S]{0,200}position: sticky; top: calc\(62px \+ 12px\);/,
+    'the rail no longer follows the reader down the page');
+});
+
+/**
+ * THE STEP NUMBERS ARE A CSS COUNTER.
+ *
+ * Written into the markup they drift the first time a step is inserted in the
+ * middle, and the drift is silent: the list still counts 1 2 3 4 on screen
+ * because a reader reads the numbers, not the source. The pins inside a drawing
+ * are deliberately NOT these numbers — they count within their own picture and
+ * the caption says what they point at, so the two can never disagree.
+ */
+test('the steps are numbered by the stylesheet, never by hand', () => {
+  const css = read('app/styles.css');
+  assert.match(css, /\.manual-steps \{ counter-reset: mstep;/);
+  assert.match(css, /\.manual-step \{ counter-increment: mstep;/);
+  assert.match(css, /content: counter\(mstep\);/);
+});
+
+/**
+ * THE MANUAL MAY NOT PRINT A POLICY FIGURE — AND THAT NOW COVERS THE PICTURES.
  *
  * เพดาน, the rounding block, เวลางานปกติ, the minimum, how many days ahead a
  * request may be filed — every one of those is a value ฝ่ายบุคคล change on
@@ -107,7 +473,10 @@ test('every topic draws an icon that exists', () => {
  * to have to be worth anything; a copy in the app with no date on it would be
  * the version people believe.
  *
- * So the screen says WHERE the number is. This checks the sentence that does.
+ * THE DRAWINGS ARE THE NEW RISK. A mock of a form wants to be filled in, and
+ * the natural thing to fill เวลางานปกติ with is the real one. `RateDiagram`
+ * draws the CUT rather than a timeline for exactly this reason — an axis wants
+ * hours on it and every hour it could carry belongs to ตั้งค่าระบบ.
  */
 test('it points at ตั้งค่าระบบ for the numbers rather than restating them', () => {
   assert.match(manual, /ฝ่ายบุคคลตั้งเองได้ที่หน้า <b>ตั้งค่าระบบ<\/b>/,
@@ -116,46 +485,75 @@ test('it points at ตั้งค่าระบบ for the numbers rather than
     assert.ok(!manual.includes(figure),
       `the manual states ${figure} — a policy value it cannot keep true; name the screen instead`);
   }
+  /* An example that could be mistaken for a setting is labelled on the face of
+     the picture, not only in the prose above it — a printed page is read one
+     figure at a time. */
+  assert.match(manual, /ตัวเลขในภาพเป็นตัวอย่าง/);
 });
 
-/**
- * ── บันทึกเป็น PDF, หัวข้อไหนบ้างก็ได้ ─────────────────────────────────────
+/* ══ บันทึกเป็น PDF ══════════════════════════════════════════════════════════
  *
  * Asked for on 2026-09-09: "ทำให้คู่มือการใช้งานบันทึกเป็น pdf ได้ แบบเลือกได้
- * หลายหน้า". Two promises in one sentence, and they fail in different ways.
- *
- * The FILE half is covered by test/printPdf.test.js, which now lists this view
- * beside the other five and holds it to naming its own document. What is left
- * here is the half that is this screen's own: that the ticks decide what is in
- * the file, and that the file does not depend on the order they were made in.
+ * หลายหน้า". The FILE half is covered by test/printPdf.test.js, which lists
+ * this view beside the other five and holds it to naming its own document. What
+ * is left here is the half that is this screen's own.
  */
+
+/**
+ * THE PICKER OFFERS THE GATED LIST, which is what the สิทธิ์ cut buys on paper.
+ *
+ * ฝ่ายบุคคล printing the manual for a production line gets the eight หัวข้อ a
+ * พนักงาน has, with no ตั้งค่าระบบ page in a stack being handed out at a
+ * training session. It is also why `picked` is seeded from the visible list:
+ * seeded from every section, a พนักงาน's first press of บันทึกเป็น PDF would
+ * silently drop ten ticks they were never shown.
+ */
+test('the picker offers what this reader can see, and nothing else', () => {
+  assert.match(manual, /const sheets = visible\.filter\(\(s\) => picked\.includes\(s\.key\)\);/,
+    'the file is being assembled from something other than the gated list');
+  assert.match(manual, /useState\(\(\) => sectionsFor\(permissionsOf\(user\)\)\.map\(\(s\) => s\.key\)\)/,
+    'the initial ticks are no longer the sections this reader has');
+  assert.match(manual, /เลือกทั้งหมด \(\{visible\.length\}\)/);
+  assert.match(manual, /เลือกแล้ว \{sheets\.length\} จาก \{visible\.length\} หัวข้อ/);
+});
 
 /**
  * THE ONE THAT WOULD BE FOUND BY A READER RATHER THAN BY A TEST.
  *
- * `picked` is a set of keys; the sheets are `TOPICS.filter(…)`. Build the
- * sheets by mapping `picked` instead and the document comes out in the order
- * somebody happened to click — so the same eleven topics make a different
- * manual every time, and the one printed for HR reads in an order nobody chose.
+ * `picked` is a set of keys; the sheets are a filter over the section list.
+ * Build them by mapping `picked` instead and the document comes out in the
+ * order somebody happened to click — so the same หัวข้อ make a different manual
+ * every time, and the one printed for HR reads in an order nobody chose.
  * Nothing on the screen looks wrong while it happens.
  */
-test('the pages are in menu order, never in the order the ticks were made', () => {
-  assert.match(manual, /const sheets = TOPICS\.filter\(\(t\) => picked\.includes\(t\.key\)\);/,
-    'the file is being assembled from `picked` — its pages now follow the clicks');
+test('the pages are in page order, never in the order the ticks were made', () => {
   assert.ok(!/picked\.map\(/.test(manual), 'a list is being built by walking `picked`');
 });
 
-test('the ticks are the document — every topic is offered, and both bulk controls are there', () => {
-  assert.match(manual, /type="checkbox"[\s\S]{0,200}checked=\{picked\.includes\(t\.key\)\}/,
-    'the picker no longer draws a box per topic');
-  assert.match(manual, /เลือกทั้งหมด \(\{TOPICS\.length\}\)/);
+test('the ticks are the document — every หัวข้อ is offered, and both bulk controls are there', () => {
+  assert.match(manual, /type="checkbox"[\s\S]{0,200}checked=\{picked\.includes\(s\.key\)\}/,
+    'the picker no longer draws a box per หัวข้อ');
   assert.match(manual, /ล้างที่เลือก/);
   // Adds rather than replaces — the shape เลือกทั้งหมด on the OT form takes, so
-  // it cannot lose a tick the day this list is narrowed by anything.
-  assert.match(manual, /\.\.\.picked,\s*\r?\n\s*\.\.\.TOPICS\.map\(\(t\) => t\.key\)\.filter\(/,
+  // it cannot lose a tick, and it stays correct now that the list IS narrowed.
+  assert.match(manual, /\.\.\.picked,\s*\r?\n\s*\.\.\.visible\.map\(\(s\) => s\.key\)\.filter\(/,
     'เลือกทั้งหมด replaces the selection instead of adding to it');
   // Nothing ticked is a shut bar, not a blank sheet of paper.
   assert.match(manual, /disabled=\{sheets\.length === 0\}/);
+});
+
+/**
+ * THE RUNNING HEAD SAYS WHOSE MANUAL THIS IS.
+ *
+ * It named the system and the company and that was enough while the stack was
+ * the same stack for everybody. It is not any more: a page about ตั้งค่าระบบ
+ * and a page about บันทึกใบขอ OT can now come from two different printings, and
+ * a photocopied หัวข้อ with no บทบาท on it is instructions somebody may not
+ * have the screens to follow.
+ */
+test('a printed page names the บทบาท it was printed for', () => {
+  assert.match(manual, /ฉบับของ \{ctx\.p\.label\}/,
+    'the running head no longer says whose manual the page came from');
 });
 
 /**
@@ -174,15 +572,21 @@ test('it prints through PrintChrome, not through a path of its own', () => {
   }
 });
 
-test('one topic per page, spelt the way every other sheet in this app spells it', () => {
+test('one หัวข้อ per page, spelt the way every other sheet in this app spells it', () => {
   const print = read('app/print.css');
   assert.match(print, /\.manual-sheet \+ \.manual-sheet \{ break-before: page; page-break-before: always; \}/,
-    'topics no longer start on a page of their own');
+    'หัวข้อ no longer start on a page of their own');
   // A heading stranded at the foot of a page sends the reader over the fold to
   // text with no heading on it — the one break this document can make that
   // actively misleads.
   assert.match(print, /\.manual-sheet-title \{ break-after: avoid/);
-  assert.match(print, /\.manual-body h3 \{ break-after: avoid/);
+  // A step and the picture its sentence points at are one thing on paper: split
+  // across a fold, the picture lands on the page after the instruction, and
+  // paper cannot be scrolled back.
+  assert.match(print, /\.manual-step,\n {2}\.mshot,\n {2}\.mdiag \{ break-inside: avoid/);
+  // Paper is narrower than 900px in CSS pixels, so without this every printed
+  // manual would take the phone's stacked shape and run to twice the pages.
+  assert.match(print, /\.mshot-pair \{ grid-template-columns: 1fr 1fr !important; \}/);
   // The 74ch measure is a screen rule; left on, every printed page would carry
   // a right margin twice the size of its left one.
   assert.match(print, /\.manual-body \{ max-width: none; \}/);

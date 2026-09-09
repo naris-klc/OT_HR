@@ -2610,16 +2610,59 @@ SECOND `<nav>` because `test/navActiveTab.test.js` counts the sources of
 `'active'` inside the first one, which is how the two bars are held to one
 state. See `components/ManualView.jsx` and `test/manualScreen.test.js`.
 
+**The SCREEN was a menu of topics for one day.** It read *"eleven หัวข้อ, opened
+one at a time over an index, the same manual for every บทบาท"* until
+**2026-09-09**, when it became one scrolling page of **eighteen sections cut to
+what the reader's บทบาท can actually open** — asked for as *แยกเป็นคู่มือหน้าเดียว
+แบบเลื่อนเป็น section · แสดงเฉพาะวิธีใช้งานที่ใช้งานได้ตามสิทธิ์*. The three
+changes are one change: **the cut is what makes the page short enough to
+scroll**, which was the whole objection to a scrolling page when the menu was
+chosen. A พนักงาน is shown **8 sections**, a ผู้เซ็น 12, การเงิน 13, ฝ่ายบุคคล 15
+and ผู้ดูแลระบบ 16 — and ผู้ดูแลระบบ is **not** shown all eighteen, because
+`isSigner` is false for them and the two sections about the ผู้เซ็นขั้นแรก queue
+describe screens they do not have.
+
+**The gate is on the SECTIONS and never on the menu row**, and the two are
+different promises that a single rule cannot serve. The row is the DOOR and
+stays ungated — *"ให้ทุกสิทธิ์ดูได้"* — so nobody is told the manual is not for
+them; the sections are the CONTENTS. Gate the row instead and a บทบาท with one
+readable section loses the manual entirely, with nothing on their screen saying
+one exists. **Not one predicate is written fresh in that file**: `isSigner`,
+`readsCompanyReports` and `approverRolesFor` come from `lib/roles.js` and
+`mayCorrectEntries` from `lib/entries.js`, `permissionsOf` is the only reader of
+them, and `test/manualScreen.test.js` refuses a gate that names a บทบาท. That
+test also EXECUTES the gates — they are one-line arrows over one object, so it
+pulls each out of the source and asks it, per บทบาท, using the real predicates.
+
+**Every illustration of a screen is drawn twice**, asked for the same day
+(*ภาพประกอบต้องมี ui ทั้งแบบหน้าจอ มือถือ และ pc*) and not the same picture at
+two widths: a desktop has a sidebar of named rows, a phone has at most four
+glyphs across the bottom and a round + in the corner, and a reader following a
+step is on exactly one of them. `Shot` takes `desk` and `phone`; `Diagram` — the
+approval route and the way a night shift is cut into rate columns — takes
+neither, because those are facts about the system and drawing them twice would
+say there are two of them. **They are drawn, not photographed**: this app
+renamed three of its own tabs in one fortnight, and a screenshot would have gone
+on saying the old name with nothing failing. The mocks are `.mk-*` elements
+taking the app's own tokens, so ธีมมืด needs no rule and paper needs no asset.
+**เมนูของคุณ draws the reader's OWN menu** — `navGroups` and `barSlots` go down
+as props from `Shell` rather than being rebuilt, so the picture cannot show a
+row they do not have.
+
 **And it is the sixth print view**, added the same day it was asked for: the
-manual saves as a PDF, and the reader ticks which topics go in it. The picker
+manual saves as a PDF, and the reader ticks which หัวข้อ go in it. The picker
 sits on the print view rather than in a dialog in front of it, because the
-sheets under it ARE the file — tick a topic and the page it will occupy
+sheets under it ARE the file — tick a หัวข้อ and the page it will occupy
 appears. It goes out through `PrintChrome` and `savePdf` like the other five,
 so there is no second path that builds a document; the pages are
-`TOPICS.filter(…)` and never `picked.map(…)`, so the order is the menu's rather
+`visible.filter(…)` and never `picked.map(…)`, so the order is the page's rather
 than the order somebody happened to click; and the file is named
 `คู่มือการใช้งาน-<n>หัวข้อ` — the count, never "ทั้งหมด", which is `formBatch`'s
-rule read one step along, since here a subset is the ordinary case.
+rule read one step along, since here a subset is the ordinary case. **The list
+offered is the GATED list**, which is what the cut buys on paper: ฝ่ายบุคคล
+printing the manual for a production line get the eight หัวข้อ a พนักงาน has,
+with no ตั้งค่าระบบ page in a stack handed out at a training session. It read
+`TOPICS.filter(…)` here until 2026-09-09.
 
 **การตั้งค่าระบบ was asked for as "ผู้ดูแลระบบ", and that is the one thing here
 that did not ship as requested.** ฝ่ายบุคคล reach ตั้งค่าระบบ — they maintain

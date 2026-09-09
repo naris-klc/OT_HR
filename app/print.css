@@ -991,16 +991,43 @@
   /* A heading at the foot of a page with its first paragraph over the fold is
      the one break this document can make that actively misleads: the reader
      turns over and finds text with no heading on it. `break-after: avoid` is a
-     request rather than a guarantee, which is why the pair is stated on both
-     the topic title and the section headings inside it. */
+     request rather than a guarantee, and the หัวข้อ's own title is the only
+     heading left to make it of — it read `.manual-body h3` beside this line
+     until 2026-09-09, when the prose inside a หัวข้อ became numbered steps and
+     stopped having headings of its own. */
   .manual-sheet-title { break-after: avoid; page-break-after: avoid; }
-  .manual-body h3 { break-after: avoid; page-break-after: avoid; }
 
   /* Keep a bullet, a paragraph and a table row whole. Thai has no hyphenation
      to fall back on, so half a line across a fold is half a sentence. */
   .manual-body li,
   .manual-body p,
   .manual-table tr { break-inside: avoid; page-break-inside: avoid; }
+
+  /* ── A STEP AND ITS PICTURE ARE ONE THING ────────────────────────────────
+     The step is the unit a reader follows, and its ภาพประกอบ is what the
+     sentence points at. Split across a fold, the picture arrives on the page
+     after the instruction that explains it — which on paper cannot be scrolled
+     back to. `.manual-step` carries the whole of it; `.mshot` is stated as well
+     because a step long enough to break anyway must at least keep its pair of
+     drawings together. */
+  .manual-step,
+  .mshot,
+  .mdiag { break-inside: avoid; page-break-inside: avoid; }
+
+  /* BOTH DEVICES PRINT, SIDE BY SIDE, WHATEVER THE PAPER IS.
+     `.mshot-pair` is a 900px media query on the screen and paper is narrower
+     than that in CSS pixels, so without this line every printed manual would
+     stack the two drawings and run to twice the pages. A4's text column has
+     room for the pair; the stacked shape exists for a phone, which is not a
+     thing anybody prints on. */
+  .mshot-pair { grid-template-columns: 1fr 1fr !important; }
+  .mrate-out { grid-template-columns: repeat(3, 1fr) !important; }
+
+  /* The mocks are hairline boxes and tinted chips, and `graphics={false}` on
+     PrintChrome says the reader need not turn background graphics on. That is
+     only true while every border here is a BORDER — a fill carrying meaning
+     would vanish on a default print setup and take the meaning with it. */
+  .mk { break-inside: avoid; page-break-inside: avoid; }
 
   /* The running head repeats the manual's name on every topic — see the note
      beside it in ManualView.jsx. It is the one thing on these pages that is
