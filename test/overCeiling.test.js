@@ -171,7 +171,7 @@ test('ใบเก่าที่อนุมัติไปก่อนมี�
   assert.equal(note.waivedReason, null);
   assert.equal(note.waived, false);
   assert.match(
-    read('components/AccountingView.jsx'),
+    read('components/common.jsx'),
     /ไม่ได้บันทึกเหตุผลไว้/,
     'ช่องว่างหลังเครื่องหมายทวิภาคอ่านเหมือนเหตุผลที่โหลดไม่ขึ้น',
   );
@@ -346,12 +346,25 @@ test('ปุ่ม อนุมัติเกินเพดาน ไม่เ
   assert.match(cell, /onClick=\{\(\) => setConfirming\(\[e\]\)\}/);
 });
 
-test('ใบรายงานบัญชี — ตัวเลขแดง มีทูลทิป และมีข้อความเต็มในช่องหมายเหตุ', () => {
-  const view = strip(read('components/AccountingView.jsx'));
-  assert.match(view, /<OverCeilingFigure row=\{row\} \/>/);
-  assert.match(view, /<OverCeilingNote over=\{row\.overCeiling\} \/>/);
+test('ตัวมาร์กอยู่ที่เดียว — สองจอเรียกใช้ตัวเดียวกัน ไม่ได้เขียนคนละชุด', () => {
+  /**
+   * ย้ายเข้า components/common.jsx เมื่อ 2026-09-09 ตอนที่ฝ่ายบุคคลขอมาร์กชุดเดียวกัน
+   * บน รายงาน OT แยกแผนก — ด้วยเหตุผลเดียวกับที่ `BIRTHDAY_REMARK` เป็นค่าคงที่:
+   * ประโยคที่ถูกก๊อปไว้สองที่ คือสองประโยคในวันที่มีคนแก้ที่เดียว
+   */
+  const view = strip(read('components/common.jsx'));
   assert.match(view, /className="fig-over" title=\{tipTextOf\(over\)\}/);
   assert.match(view, /เหตุผลผู้อนุมัติ: \$\{n\.reason\}/, 'ทูลทิปต้องพูดตามรูปที่ขอไว้');
+  // และไม่มีสำเนาที่สองหลงเหลืออยู่บนจอไหน
+  for (const f of ['components/AccountingView.jsx', 'components/DepartmentView.jsx']) {
+    assert.doesNotMatch(strip(read(f)), /function (tipTextOf|OverCeiling\w+)/, `${f} เขียนซ้ำเอง`);
+  }
+});
+
+test('ใบรายงานบัญชี — ตัวเลขแดง มีทูลทิป และมีข้อความเต็มในช่องหมายเหตุ', () => {
+  const view = strip(read('components/AccountingView.jsx'));
+  assert.match(view, /<OverCeilingFigure over=\{row\.overCeiling\}>\{cell\(row\.otHours\)\}<\/OverCeilingFigure>/);
+  assert.match(view, /<OverCeilingNote over=\{row\.overCeiling\} \/>/);
   // แดงเดียวกับที่คิวใช้ — ข้อเท็จจริงเดียวกันต้องใส่สีเดียวกันทั้งจอที่ตัดสิน
   // และจอที่รายงาน
   const css = read('app/styles.css');
@@ -359,9 +372,39 @@ test('ใบรายงานบัญชี — ตัวเลขแดง �
   assert.match(read('components/ApprovalQueue.jsx'), /OVER_CAP = \{ color: 'var\(--danger-ink\)'/);
 });
 
+test('รายงานแยกแผนก — ตัวเลขแดงตัวเดียวกัน และเหตุผลได้แถวของตัวเอง', () => {
+  /**
+   * *หน้ารายงาน OT แยกแผนก เพิ่มตัวอักษรแดงชั่วโมงเกินเพดาน และวันเกิด เหมือนกับ
+   * ฟอร์มของการเงิน* — ฝ่ายบุคคล 2026-09-09 · เพดานเป็นเพดานของ *แผนก* ใบนี้จึงเป็น
+   * ที่ที่ความต่างนั้นควรถูกเห็นที่สุด
+   *
+   * ประโยคอยู่ใน `tr.row-notes` ใต้แถวที่มันอธิบาย ไม่ได้อยู่ในช่องไหน — ต่ำกว่า 860px
+   * หกคอลัมน์ของตารางนี้รวมกัน 312px เพื่อให้จอ 375px ไม่ต้องเลื่อนแนวนอน ช่องที่
+   * กว้างที่สุดที่พอจะใส่ประโยคได้คือ บริษัท ที่ 64px — วัดจริงที่ 375px แล้วแถวที่มี
+   * เหตุผลสามอันสูงราว 800px และตัดคำเหลือบรรทัดละสามตัวอักษร
+   *
+   * `ลำดับที่` กับ `ชื่อ-นามสกุล` ยังเป็นเซลล์จริง (ว่าง) ในแถวนั้น เพราะช่องชื่อถูก
+   * ตรึงไว้ที่ความกว้างนี้ และคอลัมน์ที่ตรึงแล้วมีรูไม่ได้
+   */
+  const view = strip(read('components/DepartmentView.jsx'));
+  assert.match(view, /<tr className="row-notes">/);
+  assert.match(view, /<td className="who-col" \/>[\s\S]{0,80}<td className="note-cell" colSpan=\{4\}>/,
+    'คอลัมน์ที่ตรึงต้องยังเป็นเซลล์จริงในแถวนี้ และสแปนต้องคลุมเฉพาะสี่ช่องหลังมัน');
+  assert.match(view, /\{\(row\.birthdayHours > 0 \|\| row\.overCeiling\?\.count > 0\) && \(/,
+    'เดือนที่ไม่มีอะไรต้องอธิบาย ต้องเป็นตารางเดิมทุกประการ');
+  assert.match(view, /<OverCeilingFigure over=\{row\.overCeiling\}>\{cell\(row\.otHours\)\}<\/OverCeilingFigure>/);
+  assert.match(view, /<OverCeilingNote over=\{row\.overCeiling\} \/>/);
+  // แถวรวมของแผนกไม่แดง: `overCeiling` เป็นของแถวคน ไม่ใช่ของยอดรวม
+  assert.doesNotMatch(
+    view.slice(view.indexOf('function AllDepartments')),
+    /OverCeiling/,
+    'ใบรวมทุกแผนกไม่มีข้อมูลเกินเพดานรายคนให้ระบาย',
+  );
+});
+
 test('แถวปกติไม่มีสีและไม่มีทูลทิป — เดือนที่ถูกต้องต้องอ่านเหมือนเดิมทุกประการ', () => {
-  const view = strip(read('components/AccountingView.jsx'));
-  assert.match(view, /if \(!over\?\.count\) return <strong>\{cell\(row\.otHours\)\}<\/strong>;/);
+  const view = strip(read('components/common.jsx'));
+  assert.match(view, /if \(!over\?\.count\) return <strong>\{children\}<\/strong>;/);
   assert.match(view, /if \(!over\?\.count\) return null;/);
 });
 
@@ -375,6 +418,7 @@ test('ไม่มี isOverCeiling ที่ไหนในซอร์ส — 
   const files = [
     'src/models/OtEntry.js', 'lib/caps.js', 'lib/accounting.js', 'lib/accountingRows.js',
     'components/ApprovalQueue.jsx', 'components/AccountingView.jsx',
+    'components/DepartmentView.jsx', 'components/common.jsx',
     'app/api/entries/[id]/approve/route.js', 'app/api/entries/[id]/reject/route.js',
   ];
   const offenders = files.filter((f) => /isOverCeiling/.test(strip(read(f))));
@@ -408,15 +452,47 @@ test('ตัวเลขที่เซ็นเกินเพดาน ขึ�
   assert.doesNotMatch(filler.slice(0, 400), /figureClass/, 'แถวเติมไม่มีสถานะให้ระบาย');
 });
 
+test('ใบแยกแผนกที่พิมพ์ก็ขึ้นแดงเหมือนกัน — และมันคือคำขอรอบที่สองของวันเดียวกัน', () => {
+  /**
+   * มาร์กลงจอตอนเช้า แล้วฝ่ายบุคคลชี้กลับมาที่ใบที่พิมพ์: *หมายถึงเกินเพดาน
+   * ตัวเลขในฟอร์ม* พร้อมภาพใบ สาขาชลบุรี ที่ 45.00 ยังเป็นสีดำ
+   *
+   * กลับด้านเหมือนที่ใบส่งบัญชีเคยกลับด้าน: จอถูกอ่านโดยฝ่ายบุคคลที่รู้อยู่แล้วว่า
+   * เซ็นอะไรไป ส่วนใบที่พิมพ์ถูกอ่านโดยแผนกที่ไม่รู้
+   */
+  const sheet = strip(read('components/DepartmentPrint.jsx'));
+
+  // ทั้งสองช่องอัตรา ไม่ใช่ช่องเดียว — เหตุผลเดียวกับใบส่งบัญชี
+  assert.equal(
+    (sheet.match(/over=\{overOf\(line\)\}/g) || []).length,
+    2,
+    'ต้องเป็นทั้ง 1.50 และ 3.00',
+  );
+  assert.ok(sheet.includes("const overOf = (line) => Boolean(line.overCeiling?.count);"));
+  assert.ok(sheet.includes("over ? 'n over' : 'n'"));
+
+  // แถวเติมกับแถวรวมยังเป็น n เปล่า — เส้นว่างเป็นส่วนหนึ่งของกริด ไม่ใช่ข้อมูล
+  // และยอดรวมของแผนกไม่ใช่ข้อความว่าแผนกนั้นเกินเพดานของตัวเอง
+  // ปิดหัวปิดท้ายให้ตรงบล็อก — `overOf` ถูกประกาศไว้ท้ายไฟล์ ถ้าไม่ตัดที่ </tbody>
+  // สไลซ์จะกินนิยามของมันเองเข้ามาแล้วเทสต์นี้จะไม่มีวันผ่าน
+  const from = sheet.indexOf('{page.last && (');
+  const closing = sheet.slice(from, sheet.indexOf('</tbody>', from));
+  assert.doesNotMatch(closing, /overOf/, 'แถวเติมและแถวรวมไม่มีสถานะให้ระบาย');
+});
+
 test('สีแดงบนใบพิมพ์ถูกสั่งให้รอดจากเครื่องพิมพ์', () => {
   const css = read('app/print.css');
-  const rule = css.slice(css.indexOf('.acct td.n.over'));
-  const body = rule.slice(0, rule.indexOf('}'));
-  assert.ok(body.length > 10, 'ไม่พบกฎ .acct td.n.over ใน app/print.css');
-  assert.match(body, /color:\s*#c00/, 'แดงตัวเดียวกับธง ไม่ถูกนับ ในแถบด้านบน');
-  assert.match(body, /font-weight:\s*700/);
-  assert.match(body, /print-color-adjust:\s*exact/);
-  assert.match(body, /-webkit-print-color-adjust:\s*exact/);
+  // ทั้งสองใบ กฎเดียวกัน แดงเดียวกัน — ใบส่งบัญชีตั้งแต่ 2026-09-02 ใบแยกแผนก
+  // ตั้งแต่ 2026-09-09
+  for (const selector of ['.acct td.n.over', '.otdept td.n.over']) {
+    const rule = css.slice(css.indexOf(selector));
+    const body = rule.slice(0, rule.indexOf('}'));
+    assert.ok(body.length > 10, `ไม่พบกฎ ${selector} ใน app/print.css`);
+    assert.match(body, /color:\s*#c00/, 'แดงตัวเดียวกับธง ไม่ถูกนับ ในแถบด้านบน');
+    assert.match(body, /font-weight:\s*700/);
+    assert.match(body, /print-color-adjust:\s*exact/);
+    assert.match(body, /-webkit-print-color-adjust:\s*exact/);
+  }
 });
 
 test('ช่องหมายเหตุบนใบพิมพ์ยังเป็นของ วันเกิด อย่างเดียว', () => {

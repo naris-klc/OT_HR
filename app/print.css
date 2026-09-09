@@ -776,11 +776,19 @@
 }
 .otdept + .otdept { break-before: page; page-break-before: always; }
 
-/* 18 + 58 + 24 + 24mm of grid, then the 28mm the yellow total hangs in. The
-   10mm indent is the paper's: the grid starts in from the left edge, not at
-   it, and the block itself is already 8mm in (194mm centred on 210mm). */
+/* 18 + 58 + 24 + 24mm of grid, then the 28mm the yellow total hangs in, then
+   the 26mm วันเกิด strip. The 10mm indent is the paper's: the grid starts in
+   from the left edge, not at it, and the block itself is already 8mm in (194mm
+   centred on 210mm).
+
+   178mm AND NOT 152, SINCE 2026-09-09, AND NOTHING RULED MOVED. The four grid
+   columns and the yellow cell keep the millimetres they had; what the table
+   grew into is paper it was already leaving blank — 194 − 10 − 152 = 32mm to
+   the right of the yellow cell, of which the strip takes 26 and 6 are left
+   before the block's own edge. A sheet laid beside the paper it copies still
+   lines up rule for rule. */
 .otdept table {
-  width: 152mm;
+  width: 178mm;
   margin-left: 10mm;
   border-collapse: collapse;
   table-layout: fixed;
@@ -806,8 +814,12 @@
 }
 .otdept th { text-align: center; font-weight: 600; }
 /* …including `tbody tr:last-child td { border-bottom: none }`, which would rub
-   out the rule under รวมชั่วโมงทำOT, and the screen row-hover tint. */
-.otdept table tbody tr:last-child td { border-bottom: 0.25mm solid #000; }
+   out the rule under รวมชั่วโมงทำOT, and the screen row-hover tint.
+
+   `:not(.note)`, as on `.acct`: the rule that closes the grid is the grid's,
+   and drawing it across the strip would make the strip the sixth column of a
+   form that has four. */
+.otdept table tbody tr:last-child td:not(.note) { border-bottom: 0.25mm solid #000; }
 .otdept table tbody tr:hover { background: none; }
 
 .otdept th.banner { height: 9mm; font-size: 11pt; font-weight: 700; background: #a9d08e; }
@@ -835,6 +847,49 @@
    hangs OUTSIDE the grid, so the column it hangs in has no rule and no fill
    above it. */
 .otdept td.gap { border: 0; background: none; }
+
+/* ── รายการเกินเพดาน ON THE DEPARTMENT PAPER, 2026-09-09 ────────────────────
+   The screen had done this since the morning and the paper had not, which is
+   the wrong way round: the screen is read by ฝ่ายบุคคล, who already know what
+   they signed, and the sheet is read by the department, who do not. Asked for
+   in those words — *หมายถึงเกินเพดาน ตัวเลขในฟอร์ม* — with the screenshot of
+   สาขาชลบุรี's 45.00 attached.
+
+   #c00, THE SAME RED AS `.acct td.n.over` AND AS THE ไม่ถูกนับ LINE BELOW.
+   There is one red on the printed sheets in this file and it means "read this
+   figure again", never "this figure is wrong": these hours are approved,
+   correct and being paid.
+
+   THE COLOUR ADJUST IS THE RULE THAT MATTERS, exactly as it is on `.acct`:
+   `color` survives printing on its own, but `.otdept td.n` carries a #d6dce4
+   fill, and a printer set to drop backgrounds would leave red on white rather
+   than red on tint. The pair travels together.
+
+   ⚠ IT SURVIVES A PRINTER AND NOT A PHOTOCOPIER — the same price `figureClass`
+   in components/AccountingPrint.jsx names. A black-and-white copy of a signed
+   sheet carries no mark. The fix, if it ever matters, is a word in the strip,
+   and it is HR's to ask for. */
+.otdept td.n.over {
+  color: #c00;
+  font-weight: 700;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* The white strip: paper, not a column — the same six declarations `.acct`
+   gives its own, for the same reason. No rules on any side, no fill and no
+   heading, so the ruled form is the four columns it has always been. It
+   inherits the row height and the nowrap from the rules above, so a remark
+   cannot turn one line into two and cannot move ROWS_PER_PAGE.
+
+   Padded off the yellow cell rather than butted against it: on the paper the
+   handwriting starts a few millimetres clear of the grid. */
+.otdept th.note, .otdept td.note {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding-left: 3mm;
+}
 
 /* The one line under รวมชั่วโมงทำOT, present only when hours went missing.
 

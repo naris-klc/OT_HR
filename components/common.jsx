@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import {
   STATUS, BUCKETS, BUCKET_LABEL, hours, periodLabel, thaiDate, thaiDateTime, thaiStamp,
 } from '@/lib/api.js';
+import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { capChips, capFigure } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
 import {
@@ -203,6 +204,125 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
       )}
     </div>
   );
+}
+
+/* ── หมายเหตุของแถวรายงาน — the two marks a month's own figures cannot explain ──
+
+   Both were written into components/AccountingView.jsx on 2026-09-02 and lived
+   there alone until 2026-09-09, when ฝ่ายบุคคล asked for the same two on
+   รายงาน OT แยกแผนก. They are here rather than exported from that screen
+   because a second copy of a remark is a second remark the day somebody rewords
+   one of them — the argument `BIRTHDAY_REMARK` in lib/accountingRows.js already
+   makes about the word itself, applied to the sentences around it.
+
+   WHAT IS SHARED IS THE MARK, NOT THE SHEET. Each screen still decides where
+   its own marks go and what a blank cell means: ส่งบัญชี has a หมายเหตุ column,
+   แยกแผนก has no column to spare and gives them a row of their own under the one
+   they explain, and the two PRINTED forms take neither — they carry the word
+   วันเกิด alone in a white strip beside the grid, and red ink on the figures,
+   because a sheet somebody signs is not a screen (see `remark` and
+   `figureClass` in AccountingPrint.jsx and DepartmentPrint.jsx). What still
+   says nothing at all is departments.csv — a file is sorted and filtered rather
+   than read a row at a time; test/birthdayOnPaper.test.js pins that. */
+
+const OVER_CEILING_MARK = 'รายการเกินเพดาน';
+
+/** One entry's line — "05/08/2569 · 4.50 ชม." — shared by the tooltip and the note. */
+const noteLine = (n) => `${n.workDate ? thaiDate(n.workDate) : '—'} · ${hours(n.hours)} ชม.`;
+
+/**
+ * What a hover says, as one string, because `title` is one string.
+ *
+ * The shape asked for — `รายการเกินเพดาน | เหตุผลผู้อนุมัติ: …` — with the
+ * waived rows named separately: a ceiling ฝ่ายบุคคล waived and a ceiling a
+ * หัวหน้า signed past are two different decisions by two different people, and
+ * running them together would put HR's sentence under the หัวหน้า's name.
+ */
+export function tipTextOf(over) {
+  const parts = [`${OVER_CEILING_MARK} ${over.count} รายการ · ${hours(over.hours)} ชม.`];
+  for (const n of over.notes) {
+    if (n.reason) parts.push(`${noteLine(n)} | เหตุผลผู้อนุมัติ: ${n.reason}`);
+    if (n.waivedReason) parts.push(`${noteLine(n)} | ยกเว้นเพดานโดยฝ่ายบุคคล: ${n.waivedReason}`);
+    if (!n.reason && !n.waivedReason) parts.push(`${noteLine(n)} | ไม่ได้บันทึกเหตุผลไว้`);
+  }
+  return parts.join('\n');
+}
+
+/**
+ * A row's total — red when any of it went past a ceiling.
+ *
+ * A `<strong>` with a `title`, and NOT a portal-backed popover, which is what
+ * this reached for first. The tables it sits in are horizontal scrollers
+ * (`overflow-x: auto`), so anything positioned inside a cell is clipped by them
+ * — the problem components/popover.jsx exists to solve, at the cost of a portal,
+ * a placement pass and a dismiss listener. None of that is worth it here,
+ * because the same words are on the row already: `OverCeilingNote` below prints
+ * them beside the figure, where they survive a phone, a print preview and a
+ * second reading. The tooltip is the shortcut, not the record.
+ *
+ * NOT A WARNING COLOUR, deliberately. These hours are approved, correct and
+ * being paid; the red says this figure was a decision somebody had to justify,
+ * and the justification is one hover or one glance away.
+ *
+ * THE FIGURE IS THE CALLER'S. ส่งบัญชี and แยกแผนก both leave a nought blank and
+ * each states that rule for itself; this component only says whether the number
+ * handed to it was signed past a ceiling.
+ */
+export function OverCeilingFigure({ over, children }) {
+  if (!over?.count) return <strong>{children}</strong>;
+  return <strong className="fig-over" title={tipTextOf(over)}>{children}</strong>;
+}
+
+/** The same account, written into the row rather than hovered for. */
+export function OverCeilingNote({ over }) {
+  if (!over?.count) return null;
+  return (
+    <div className="note-mark over-cap">
+      <strong>{OVER_CEILING_MARK}</strong> · {over.count} รายการ · {hours(over.hours)} ชม.
+      <ul className="over-cap-why">
+        {over.notes.map((n, i) => (
+          // Index: two entries can share a date (a split shift), and nothing
+          // else on this row identifies one — `entries` never leaves the
+          // server, so there is no id here to key on.
+          <li key={`${n.workDate}-${i}`}>
+            {noteLine(n)}
+            {n.reason && <> · เหตุผลผู้อนุมัติ: {n.reason}</>}
+            {n.waivedReason && <> · ยกเว้นเพดานโดยฝ่ายบุคคล: {n.waivedReason}</>}
+            {!n.reason && !n.waivedReason && (
+              /* Approved before 2026-09-02, when nobody was asked for one. Said
+                 out loud rather than left blank: an empty space after a colon
+                 reads as a reason that failed to load. */
+              <> · <span className="muted">ไม่ได้บันทึกเหตุผลไว้ (อนุมัติก่อนเริ่มใช้กฎนี้)</span></>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * วันหยุดวันเกิด hours, and where on THIS sheet they ended up.
+ *
+ * The one figure on a report a reader cannot account for from the calendar:
+ * holiday hours against somebody who worked an ordinary Tuesday. The paper this
+ * replaces carries the word in HR's handwriting, and a sheet without it comes
+ * back to be explained.
+ *
+ * `where` IS THE CALLER'S BECAUSE THE COLUMNS ARE. ส่งบัญชี rules a วันหยุด
+ * column and the hours are all in it; แยกแผนก rules 1.50 and 3.00, and a
+ * birthday worked past core hours is split across both — a holiday hour is
+ * ot15_holiday inside core and ot3_holiday outside it (see `bucketOf` in
+ * src/lib/otEngine.js), and those are that sheet's two columns. Naming a column
+ * a sheet does not have would be a remark telling its reader to go and look at
+ * nothing.
+ *
+ * WITH THE HOURS, which the printed forms leave out for want of room — these are
+ * the screens the figure is checked on. See `remark` in AccountingPrint.jsx.
+ */
+export function BirthdayNote({ hours: h, where }) {
+  if (!(h > 0)) return null;
+  return <div className="note-mark">{BIRTHDAY_REMARK} · {hours(h)} ชม. {where}</div>;
 }
 
 /** The three form columns, side by side. */

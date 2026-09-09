@@ -8621,6 +8621,38 @@ tbody tr.picked:hover { background: var(--green-bg); }
 .note-mark.over-cap .over-cap-why li { margin-top: 2px; }
 .note-mark.over-cap .over-cap-why .muted { color: var(--muted-2); }
 
+/* ── AND THE SAME TWO MARKS ON สรุป OT แยกแผนก, 2026-09-09 ──────────────────
+   Asked for as *เหมือนกับฟอร์มของการเงิน*. Nothing above this line changed:
+   `.fig-over` and `.note-mark` are worn by both sheets now, which is the point
+   of their being classes. What that screen needs of its own is a PLACE.
+
+   ส่งบัญชี has a หมายเหตุ column 140px wide on a phone and a card layout under
+   it; แยกแผนก has six columns that add up to 312px so a 375px phone need not
+   scroll at all, and the widest thing in the row that could hold prose is
+   บริษัท at 64px. THE FIRST ATTEMPT PUT THE MARKS THERE and it was measured on
+   2026-09-09 at 375px: a row with three over-ceiling reasons on it grew to
+   about 800px tall and set its sentences three characters to the line. That is
+   not a tight column, it is prose that cannot be read.
+
+   SO THE MARKS GET A ROW OF THEIR OWN, under the row they explain and spanning
+   everything except the two columns that identify it. `td.who-col` is still a
+   real cell in that row — empty, and that is the point: it is the frozen column
+   and a frozen column with a hole in it is not a column (see the summary-row
+   note further down this file). The `colSpan` is over the four that are NOT
+   pinned, so nothing can travel underneath the name.
+
+   IT IS THE SAME ROW, NOT THE NEXT ONE: the rule under the row above is taken
+   off so the pair reads as one, and the hover follows both. */
+.dept-table tbody tr:has(+ tr.row-notes) > td { border-bottom: 0; padding-bottom: 4px; }
+.dept-table tbody tr.row-notes > td { padding-top: 0; }
+.dept-table tbody tr:hover + tr.row-notes > td,
+.dept-table tbody tr.row-notes:hover > td { background: var(--green-wash); }
+/* The frozen cell repaints its own hover for the same reason every other
+   pinned cell in this file does — it leaves the row's painted box behind. */
+.dept-table tbody tr:hover + tr.row-notes > td.who-col,
+.dept-table tbody tr.row-notes:hover > td.who-col { background: var(--green-wash); }
+.dept-table td.note-cell .note-mark + .note-mark { margin-top: 3px; }
+
 /* Three buttons in one cell have to say three different things at a glance.
    Filled green commits, a red outline refuses, a plain outline only looks —
    weight carries the consequence, so the irreversible one is never the one
@@ -12352,6 +12384,15 @@ table.mini tbody tr:hover { background: none; }
      the width of exactly one. Exempted here so that if it ever does not fit,
      the code overflows visibly rather than splitting silently. */
   .dept-table td.who-col .cell-sub { white-space: nowrap; overflow-wrap: normal; }
+
+  /* NOTHING HERE FOR `.row-notes`, AND THAT IS THE RESULT, NOT AN OMISSION.
+     The marks were in บริษัท first and this block held two rules trying to make
+     a bulleted list fit 64px. Measured at 375px on 2026-09-09 the cell is 211px
+     wide once the row spans, the worst row on this database (three reasons) is
+     199px tall against about 800px before, and the `padding: 8px 7px` a few
+     rules up is already the right indent. The bullets stay for the same reason:
+     `disc` outside the text is what keeps a wrapped reason under itself rather
+     than under its own date, and at 211px there is room for it. */
 
   /* รวมทุกแผนก has จำนวนคน where the cards have บริษัท — a count, not a label,
      so it takes a figure's width and the whole table comes to 294px. A 375px
