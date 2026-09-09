@@ -1,0 +1,28 @@
+# สิ่งที่ไม่ต้องส่งเข้า build context — และสองบรรทัดในนี้เป็นเรื่องความปลอดภัย ไม่ใช่ขนาด
+#
+# `.env` — ถ้าไม่กันไว้ ความลับจะถูกอบเข้าไปในเลเยอร์ของอิมเมจ และอยู่ในนั้นถาวร
+#   แม้จะลบทีหลังก็ยังอ่านย้อนได้จากเลเยอร์เก่า ค่าพวกนี้เข้าคอนเทนเนอร์ตอน "รัน"
+#   ผ่าน `env_file:` ใน docker-compose.yml ไม่ใช่ตอน build
+# `backups/` — สำเนาฐานข้อมูลทั้งก้อน มี passwordHash ของทุกบัญชีและ birthDate
+#   ของพนักงานทุกคน (ดูเหตุผลเต็มใน .gitignore) อิมเมจที่ push ขึ้น registry
+#   ได้ ต้องไม่มีสิ่งนี้อยู่ข้างใน
+# `.tmp-edits/` — มี tokens.json ซึ่งเป็น JWT ที่เซ็นแล้วของบัญชีจริง = credential
+.env
+.env.*
+backups/
+.tmp-edits/
+
+# ของหนักที่ build ใหม่อยู่แล้ว หรือไม่เกี่ยวกับ build
+node_modules/
+.next/
+.next-*/
+.git/
+.claude/
+.vscode/
+*.log
+
+# ไฟล์ของ docker เอง — ไม่มีอะไรใน build อ่านมัน และการใส่ไว้ทำให้ทุกครั้งที่แก้
+# compose แล้ว layer cache ของ `COPY . .` พังโดยไม่จำเป็น
+Dockerfile
+.dockerignore
+docker-compose.yml

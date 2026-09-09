@@ -1,0 +1,78 @@
+# การ deploy ทั้งหมดของแอปนี้บน Docker อยู่ในไฟล์เดียวนี้
+#
+#   docker compose up -d --build     # build + สลับตัวใหม่เข้าไป
+#   docker compose logs -f app       # ดู log
+#   docker compose down              # หยุด
+#
+# ก่อนรันครั้งแรก อ่าน docs/docker.md — มีสองอย่างบนเครื่องที่ต้องจริงก่อน
+# ไฟล์นี้จึงจะทำงาน: mongod ต้องกำลังรันอยู่บน host และต้องไม่มีอะไรถือ :3000 อยู่
+
+services:
+  app:
+    build:
+      context: .
+    image: primus-ot:latest
+    container_name: primus-ot
+
+    # ── บรรทัดที่สำคัญที่สุดในไฟล์นี้ ──────────────────────────────────────────
+    #
+    # คอนเทนเนอร์ใช้ network stack ของเครื่องโดยตรง ผลคือ:
+    #
+    #   * `mongodb://127.0.0.1:27017` ใน .env ใช้ได้ตามที่เขียน — ไม่ต้องแก้เป็น
+    #     ชื่อ service ไม่ต้องใช้ host.docker.internal และ **ไม่ต้องแก้ bindIp
+    #     ของ mongod** ซึ่งเป็นข้อได้เปรียบจริง ๆ ของวิธีนี้: ฐานข้อมูลตัวนี้ไม่มี
+    #     รหัสผ่านใน URI การที่มันฟังแค่ loopback คือสิ่งที่ทำหน้าที่แทนรหัสผ่านอยู่
+    #   * แอปเปิดพอร์ต 3000 บนเครื่องตรง ๆ `ports:` จึงไม่มีผลและไม่ได้ใส่ไว้
+    #     ถ้ามีอะไรถือ :3000 อยู่แล้ว (`next start` หรือ `next dev` ที่ยังไม่ตาย)
+    #     คอนเทนเนอร์จะ EADDRINUSE แล้ววนรีสตาร์ท — หยุดตัวเก่าก่อน
+    #   * เป็นฟีเจอร์ของ Docker บน Linux เท่านั้น บน Docker Desktop (Windows/macOS)
+    #     ไฟล์นี้ใช้ไม่ได้ตามที่เขียน ต้องเปลี่ยนไปเป็น bridge + ports + แก้ bindIp
+    #     ของ mongod ซึ่งเป็นคนละเรื่องกัน — ดู docs/docker.md
+    network_mode: host
+
+    # .env เป็นแหล่งเดียวของ MONGODB_URI และ JWT_SECRET เหมือนตอนรันนอกคอนเทนเนอร์
+    # ถ้าขาดสองค่านี้ instrumentation-node.js จะ process.exit(1) ทันทีที่ start
+    # พร้อมบอกว่าขาดอะไร — คอนเทนเนอร์จะตายเลย ไม่ใช่ขึ้นมาแล้วพังตอนคนกดเข้าสู่ระบบ
+    env_file:
+      - .env
+
+    # ทับค่าจาก .env — ค่าใน `environment:` ชนะ `env_file:` เสมอ
+    # NODE_ENV ใน .env ของเครื่องนี้เป็น `development` ซึ่งถูกสำหรับ `npm run dev`
+    # และผิดสำหรับอิมเมจนี้
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Bangkok
+      OT_TIMEZONE: Asia/Bangkok
+
+    # ── ชุดสำรอง ──────────────────────────────────────────────────────────────
+    #
+    # BACKUP_DIR ไม่ได้ตั้งไว้ที่ไหนเลย ทั้งใน .env ของเครื่องนี้และในไฟล์นี้ แปลว่า
+    # แอปมองหาชุดสำรองที่ ./backups ของตัวเอง = /app/backups ในคอนเทนเนอร์ ซึ่ง
+    # map ออกมาที่ ./backups ของ repo — พฤติกรรมเดียวกับที่เป็นอยู่ตอนนี้เป๊ะ
+    # (สถานะ "sameDisk" ไม่ขึ้นแบนเนอร์ รอดิสก์นอก)
+    #
+    # 🔴 วันที่ย้ายชุดสำรองไปดิสก์อื่นจริง ต้องแก้ **สองที่ให้ตรงกัน** และไม่มีอะไร
+    # บังคับให้มันตรง: path ที่ cron/`scripts/backup.sh` เขียนลงไป กับ BACKUP_DIR
+    # ที่แอปอ่าน ถ้าไม่ตรง แอปจะรายงานโฟลเดอร์ว่างขณะที่ dump กองอยู่อีกที่ ตัวอย่าง:
+    #
+    #   volumes:
+    #     - /mnt/backups:/backups:ro
+    #   environment:
+    #     BACKUP_DIR: /backups
+    #
+    # โดยที่ cron บน host รัน `scripts/backup.sh /mnt/backups 30`
+    volumes:
+      - ./backups:/app/backups
+
+    # เครื่องนี้ไม่เคยมีอะไรปลุกแอปกลับมาเลย — README §Status เขียนไว้ว่า scheduled
+    # task ชื่อ "OT server" ไม่เคยถูกลงทะเบียนจริง มีแต่ "OT backup" บรรทัดเดียวนี้
+    # คือสิ่งที่แก้ปัญหานั้น ทั้งกรณีแอปตายเองและกรณีเครื่องรีบูต — โดยมีเงื่อนไขว่า
+    # docker daemon ต้องถูกเปิดให้ start ตอนบูตด้วย (`systemctl enable docker`)
+    restart: unless-stopped
+
+    # log ของคอนเทนเนอร์ที่รันยาวเป็นเดือนโตได้ไม่จำกัดถ้าไม่ใส่บรรทัดพวกนี้
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
