@@ -155,23 +155,34 @@ compose ผูก `./backups` ของ repo เข้ากับ `/app/backups
 
 ## ออกอินเทอร์เน็ต
 
-เปิดครั้งแรกเมื่อ **2026-09-09 11:17 น.** ตามที่สั่ง — คอนเทนเนอร์ `primus-ot-tunnel`
-รัน `cloudflared` พาแอปที่ `127.0.0.1:3000` ออกไปเป็น URL สาธารณะ
+**ที่อยู่จริงคือ https://primus-ot.primus-iot.com — เดินอยู่ตั้งแต่ 2026-09-09
+11:58 น.** ผ่าน named tunnel ชื่อ `primus-ot` (คอนเทนเนอร์ `primus-ot-tunnel-named`)
+ต่อ edge อยู่สี่เส้น bkk09 ×2, sin12, sin13 ด้วย `protocol=http2`
 
 ```bash
-docker compose --profile public up -d              # เปิด
-docker compose logs tunnel | grep trycloudflare    # อ่าน URL ปัจจุบัน
-docker compose stop tunnel                         # ปิดอุโมงค์ แอปยังเสิร์ฟ LAN ต่อ
-docker compose --profile public down               # ปิดทั้งคู่
+docker compose --profile public-named up -d tunnel-named   # เปิดอุโมงค์ถาวร
+docker compose logs --tail=20 tunnel-named                 # ต้องเห็น Registered tunnel connection
+docker compose stop tunnel-named                           # ปิด แอปยังเสิร์ฟ LAN ต่อ
 ```
+
+*(อุโมงค์ตัวแรกที่เปิดเมื่อ 11:17 น. วันเดียวกันเป็นแบบชั่วคราว `trycloudflare.com`
+หยุดไปแล้วตอน 11:53 น. — บริการ `tunnel` ใต้ profile `public` ยังอยู่ในไฟล์
+สำหรับกรณีที่ต้องเปิดให้คนนอกดูชั่วคราวโดยไม่แตะ DNS ดู
+[อุโมงค์ชั่วคราว](#อุโมงค์ชั่วคราว--url-เปลี่ยนทุกครั้งที่รีสตาร์ท))*
 
 **อยู่ใต้ profile `public` เสมอ** — `docker compose up -d` เปล่า ๆ จะไม่เอาระบบออก
 อินเทอร์เน็ต ค่าเริ่มต้นของ deploy คือ LAN เท่านั้น และการออกสู่สาธารณะต้องเป็น
 คำสั่งที่มีคนพิมพ์
 
-### 🔴 URL เปลี่ยนทุกครั้งที่อุโมงค์รีสตาร์ท
+### อุโมงค์ชั่วคราว — URL เปลี่ยนทุกครั้งที่รีสตาร์ท
 
-URL แบบ `trycloudflare.com` เป็นของแจกฟรีแบบไม่ต้องมีบัญชี Cloudflare และ
+```bash
+docker compose --profile public up -d              # เปิด
+docker compose logs tunnel | grep trycloudflare    # อ่าน URL ปัจจุบัน
+docker compose stop tunnel                         # ปิด
+```
+
+🔴 URL แบบ `trycloudflare.com` เป็นของแจกฟรีแบบไม่ต้องมีบัญชี Cloudflare และ
 **ไม่ผูกกับใครเลย** — คอนเทนเนอร์รีสตาร์ทเมื่อไหร่ (เครื่องรีบูต, `docker restart`,
 เน็ตหลุดจนโปรเซสตาย) จะได้ URL ใหม่ทันที ของเก่าตาย
 
@@ -181,13 +192,14 @@ URL แบบ `trycloudflare.com` เป็นของแจกฟรีแบ�
 
 **ทางที่อยู่ถาวรคือ named tunnel** — อ่านหัวข้อถัดไป
 
-### ทำให้ชื่ออยู่ถาวร — named tunnel
+### ทำให้ชื่ออยู่ถาวร — named tunnel (ทำไปแล้ว 2026-09-09)
 
-ฝั่งเซิร์ฟเวอร์พร้อมแล้วตั้งแต่ 2026-09-09: บริการ `tunnel-named` ใน
-`docker-compose.yml` อยู่ใต้ profile `public-named` รออยู่ ที่เหลือคือของที่ทำได้
-เฉพาะบนบัญชี Cloudflare เท่านั้น
+เก็บไว้เป็นวิธีทำ เพราะวันที่ต้องย้ายเครื่องหรือสร้างใหม่ ทุกขั้นเหมือนเดิม
 
-**บน dashboard** (Zero Trust → Networks → Tunnels):
+**บน dashboard** — เมนูอยู่ที่ **https://one.dash.cloudflare.com** ไม่ใช่หน้า
+dashboard ของโดเมน · ระดับ account → **Networking → Tunnels** (บาง UI เรียก
+Zero Trust → Networks → Tunnels) เสียเวลาหาตรงนี้ไปรอบหนึ่งแล้ว เพราะหน้า
+จัดการโดเมนไม่มีเมนูนี้เลย:
 
 1. **Create a tunnel** → เลือก **Cloudflared** → ตั้งชื่อ เช่น `primus-ot` → Save
 2. หน้าที่ขึ้นมาจะโชว์คำสั่งติดตั้งพร้อม**โทเคนยาว ๆ ที่ขึ้นต้นด้วย `eyJ`** —
@@ -204,11 +216,27 @@ URL แบบ `trycloudflare.com` เป็นของแจกฟรีแบ�
 **บนเซิร์ฟเวอร์** — เติมโทเคนลงท้าย `.env` (ไฟล์นี้ไม่เข้า git):
 
 ```bash
-echo 'TUNNEL_TOKEN=eyJ...ที่ก๊อปมา...' >> .env
-docker compose stop tunnel                       # ปิดอุโมงค์ชั่วคราวก่อน
-docker compose --profile public-named up -d      # เปิดอุโมงค์ถาวร
-docker compose logs --tail=20 tunnel-named       # ต้องเห็น Registered tunnel connection
+printf '\nTUNNEL_TOKEN=eyJ...ที่ก๊อปมา...\n' >> .env
+docker compose stop tunnel                                 # ปิดอุโมงค์ชั่วคราวก่อน
+docker compose --profile public-named up -d tunnel-named   # เปิดอุโมงค์ถาวร
+docker compose logs --tail=20 tunnel-named                 # ต้องเห็น Registered tunnel connection
 ```
+
+> 🔴 **`printf` ที่ขึ้นต้นด้วย `\n` ไม่ใช่ของประดับ — `echo >> .env` ทำพังมาแล้ว
+> 2026-09-09** ไฟล์ `.env` บนเครื่องนี้ไม่มีบรรทัดว่างปิดท้าย โทเคนที่ต่อท้ายจึงไป
+> เกาะอยู่บนบรรทัดเดียวกับ `SEED_PASSWORD=` **เสียทั้งสองค่าพร้อมกัน** —
+> `TUNNEL_TOKEN` ไม่ถูกอ่านเลยเพราะไม่ได้อยู่ต้นบรรทัด และรหัสผ่าน seed กลายเป็น
+> สตริงยาว 193 ตัว อาการที่เห็นคืออุโมงค์ไม่ขึ้น โดยไม่มีอะไรบอกว่าเพราะอะไร
+>
+> ตรวจว่ารอดด้วยการนับ ไม่ใช่ด้วยการเปิดไฟล์อ่าน (มันมีความลับอยู่):
+>
+> ```bash
+> grep -c '^TUNNEL_TOKEN=' .env    # ต้องได้ 1
+> grep -oE '^[A-Za-z_]+=' .env | tr -d '='   # รายชื่อคีย์ ไม่มีค่า
+> ```
+
+ระบุชื่อ service ท้ายคำสั่ง `up` ด้วย ไม่งั้น compose จะสร้างคอนเทนเนอร์ `app`
+ใหม่ไปด้วยเพราะ `.env` เปลี่ยน แล้วแอปดับไปสองสามวินาทีโดยไม่จำเป็น
 
 TLS ของ hostname นั้น Cloudflare ออกให้เองเมื่อโดเมนอยู่ในบัญชี ไม่ต้องทำใบรับรอง
 
@@ -289,8 +317,9 @@ AGENTS.md เตือนเรื่อง `npm run build` ทับ `.next` �
 | เขตเวลา | `GMT+0700 (Indochina Time)`, `NODE_ENV=production` |
 | สคริปต์ดูแลระบบ | `npm run whatif -- --show` อ่านนโยบายจากฐานจริงได้ |
 | ด่านค่าสภาพแวดล้อมที่ขาด | รันโดยไม่ส่ง env → exit **1** พร้อมข้อความบอกว่าขาดตัวไหน |
-| **(deploy จริง)** API ที่ต้องล็อกอิน ผ่าน URL สาธารณะ | `/api/entries`, `/api/employees`, `/api/exports/logs.csv` → **401** ทุกตัว |
+| **(deploy จริง)** API ที่ต้องล็อกอิน ผ่าน URL สาธารณะ | `/api/entries`, `/api/employees`, `/api/exports/logs.csv`, `/api/settings/backup-status` → **401** ทุกตัว |
 | **(deploy จริง)** ล็อกอินผิด ผ่าน URL สาธารณะ | **401** ข้อความเดียวกันไม่ว่ารหัสพนักงานจะมีจริงหรือไม่ · ยิงซ้ำแล้ว `loginThrottle` เริ่มหน่วง |
+| **(deploy จริง)** โดเมนจริง `primus-ot.primus-iot.com` | DNS ชี้ IP ของ Cloudflare (proxied — เลข IP ของเครื่องไม่ออกไปข้างนอก) · ใบรับรอง TLS ผ่านการตรวจ · หน้าล็อกอิน 200 ใน 0.15 วิ · `/api/health` 200 · ตอบจาก edge BKK |
 
 ที่**ยังไม่ได้**ทดสอบ และควรเป็นสิ่งแรกที่คนมีบัญชีลองทำ:
 
