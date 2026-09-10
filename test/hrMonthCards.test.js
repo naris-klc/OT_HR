@@ -794,8 +794,12 @@ test('the panel is above the marks it explains, which one of them once only clai
     'the panel is under the controls card',
   );
   assert.ok(strip < hrView.indexOf('<PickMonth'), 'the panel is under the period box');
-  assert.ok(strip < hrView.indexOf('className="row export-row"'), 'the panel is under the export buttons');
-  assert.ok(strip < hrView.indexOf('<div className="row month-find">'), 'the panel split the search box from its list');
+  // `<ExportMenu` and `.queue-tools` since 2026-09-10: the row of export buttons
+  // is one button in `.card-head`, and the three filter rows are one bar under
+  // it. What is being measured is unchanged — the strip is above everything
+  // this screen offers to do with the month.
+  assert.ok(strip < hrView.indexOf('<ExportMenu'), 'the panel is under the export button');
+  assert.ok(strip < hrView.indexOf('<div className="queue-tools">'), 'the panel split the search box from its list');
   assert.ok(strip < hrView.indexOf('<table className="hr-table">'), 'the panel is still under the table');
   // …and it can only be up there because it names the month itself; the assert
   // for that is in the first test in this group.
@@ -860,25 +864,27 @@ test('.fold-pill is a class, and the digest it shares a screen with is untouched
   // The panel gives back its own padding too — and only this panel:
   // `.alert.tight` is worn all over the app.
   assert.match(phone, /\.month-card > \.alert\.tight \{ padding: 8px 12px; \}/);
-  // And the export buttons come up to the selects they act on: 8px at this
-  // width, the same as the gap between the buttons themselves, which is what
-  // makes them one block rather than a section break. Stated in the stylesheet
-  // — an inline `marginTop` is the one thing the 860px block cannot reach.
-  assert.match(css, /\.export-row \{ margin-top: 12px; \}/);
-  assert.match(phone, /\.export-row \{\s*margin-top: 8px;/);
-  assert.ok(!/export-row" style=/.test(hrView), 'the export row went back to an inline margin');
-  /**
-   * AND THE TWO CSVs ARE THE SAME HEIGHT, which is not free here.
+  /* ── AND `.export-row` IS GONE ENTIRELY — 2026-09-10 ──────────────────
    *
-   * `.export-row` also carries `.row`, whose `align-items: flex-end` is right
-   * for the flex line it is above 860px and wrong for the grid it becomes
-   * below. The grid inherits it, so the two buttons hung from the bottom of
-   * their row instead of filling it — invisible for as long as both labels
-   * took the same number of lines, and visible the moment one did not.
-   * Measured on the built app before the fix, at 320 and 360px: 67.5px beside
-   * 53px, the short one floating with a 14px gap over it.
-   */
-  assert.match(phone, /\.export-row \{[\s\S]*?align-items: stretch;[\s\S]*?\}/);
+   * It held three buttons, then one, then none: พิมพ์ / ส่งออก is in the card
+   * head now, which is where every other card in this app puts its action. Both
+   * of its rules went with it — the 12px desktop gap and the 8px phone one —
+   * and so did the two-column grid, the `align-items: stretch` that undid
+   * `.row`'s `flex-end` for it, and the 44px touch floor on its children.
+   *
+   * WHAT THE STRETCH WAS FOR, kept as a note because the trap is still real
+   * wherever a `.row` becomes a grid: a grid inherits `align-items` from the
+   * class beside it, so the two CSVs hung from the bottom of their row instead
+   * of filling it — 67.5px beside 53px at 320–360px, the short one floating
+   * with a 14px gap over it, invisible until one label took a second line.
+   *
+   * THE 44px FLOOR IS NOT LOST WITH IT. `.btn` states it at this width, and
+   * `.card-head .btn.sm` restates it for the head the button now sits in — with
+   * `.card-head:has(> .row .btn)` making that button full width, which is what
+   * the grid was doing by hand. */
+  assert.ok(!css.includes('.export-row {'), '.export-row came back — the button left the card head');
+  assert.match(phone, /\.card-head:has\(> \.row \.btn\) \{ flex-direction: column; align-items: stretch; gap: 10px; \}/);
+  assert.match(phone, /\.card-head \.btn\.sm,[\s\S]{0,400}?min-height: 44px;/);
   // PrintFormBatch's digest is the other `.notice-fold` in the app: plain-text
   // summary, no pill, and no rule here reaches it.
   const digest = read('components/PrintFormBatch.jsx');
@@ -895,7 +901,10 @@ test('the footnotes close the card, and their gap is stated once', () => {
   // row and the rows it filters stop being separated by a gap and two unrelated
   // cards. The section is still the stylesheet's handle on the order of what is
   // inside it; what it stopped being is a card of its own.
-  assert.match(hrView, /<div className="month-panel">/);
+  // `card flush month-panel` since the round of 2026-09-10 that made the four
+  // report screens one shape: the panel is `.card.flush` — the queue's own card
+  // — and `.month-panel` is what is left for the 860px block to hold on to.
+  assert.match(hrView, /<div className="card flush month-panel">/);
   assert.match(hrView, /className="month-card"/);
   assert.match(hrView, /<div className="month-notes">/);
   /**
@@ -1044,7 +1053,16 @@ test('there is no card round the list, so there is nothing to pull out through',
   // the table as two sections of it. The phone block hands that card back to
   // `.month-head` alone and leaves the panel transparent, so what ships down
   // here is the shape that shipped before the merge.
-  assert.match(css, /\.month-panel \{\s*background: var\(--card\); border: 1px solid var\(--line\);/);
+  // THE FILL, THE BORDER AND THE RADIUS ARE `.card.flush`'S NOW — the panel
+  // declared its own three until 2026-09-10, beside a queue that took the same
+  // three from the shared class. What the panel still declares is only what
+  // differs: it must not clip, because ค้นหาพนักงาน's suggestion list is an
+  // absolutely-positioned `.pick-menu` and not a portal.
+  assert.match(css, /\.card\.flush \{ padding: 0; overflow: hidden; \}/);
+  assert.match(css, /\.card\.flush\.month-panel \{ overflow: visible; \}/);
+  const deskOnly = css.slice(0, css.indexOf('@media screen and (max-width: 860px)')).replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/\.month-panel \{\s*background:/.test(deskOnly),
+    'the panel is drawing its own card again instead of taking .card.flush');
   assert.match(phone, /\.month-panel \{\s*background: none; border: none;/);
   assert.match(phone, /\.month-panel > \.month-head \{\s*background: var\(--card\);/);
   layoutIsTheStylesheets();

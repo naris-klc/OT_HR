@@ -2182,13 +2182,35 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    `.month-head` alone and leaves this transparent — because down there the
    table is one card per person on the page's own ground, and a card holding
    forty cards is a forty-first boundary the eye has to account for before it
-   can read any of them (asked for 2026-08-27, and not undone by this). */
-.month-panel {
-  background: var(--card); border: 1px solid var(--line);
-  border-radius: var(--radius-lg); margin-bottom: 16px;
-}
-.month-panel > .month-head { padding: 18px; border-bottom: 1px solid var(--line); }
+   can read any of them (asked for 2026-08-27, and not undone by this).
+
+   ⚠ AND IT IS `.card.flush` SINCE 2026-09-10, so what is left in this rule is
+   only what differs from every other card in the app. It carried its own fill,
+   border, radius and margin — three declarations that said "card" in a second
+   voice, beside a queue whose card said it in `.card.flush`. That is the drift
+   the report of that afternoon named (*"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่สม่ำเสมอ
+   กันเลย"*), and a duplicated declaration is where it starts. The head band and
+   its rule are `.card.flush > .card-head`'s now, one selector below. */
 .month-panel > .month-card { padding: 14px 18px 18px; }
+/* ⚠ `overflow` BACK TO VISIBLE, AND IT IS THE ONE THING THIS CARD CANNOT TAKE
+   FROM `.card.flush`. That rule clips to the radius so a table can run to the
+   card's own edges; this card holds ค้นหาพนักงาน, whose suggestion list is a
+   `position: absolute` `.pick-menu` inside `.searchbox` and NOT a portal — see
+   components/HrView.jsx. Clipped to the card, the list is cut off at the card's
+   bottom edge, which on a month with two rows in it is after the first
+   suggestion. The queue's own search box has no list under it, which is why
+   `.card.flush` could hold `hidden` for a year without anybody finding this.
+
+   NOTHING IS LOST BY IT: `.month-card` keeps 18px of side padding, so no table
+   in here ever reaches the corner the radius rounds. */
+.card.flush.month-panel { overflow: visible; }
+/* The panel's own head band. `.card.flush > .card-head` cannot reach it because
+   `.month-head` stands between the two — and that wrapper is not removable: it
+   is what the 860px block turns into the card when the panel goes transparent.
+   One extra selector, the same two declarations. */
+.card.flush > .month-head > .card-head {
+  padding: 16px 18px; border-bottom: 1px solid var(--line-soft); margin: 0;
+}
 
 .card.flush { padding: 0; overflow: hidden; }
 .card.flush > h2, .card.flush > .card-head { padding: 16px 18px; border-bottom: 1px solid var(--line-soft); margin: 0; }
@@ -2755,14 +2777,21 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    here rather than as an inline `marginTop` on the element, because an inline
    style is the one thing the 860px block below cannot reach — and this is the
    gap a phone has least room for. */
-/* THE ROW HOLDS ONE BUTTON SINCE 2026-09-10 — it held three until then, and
-   the gap is the only thing left of it. See `ExportMenu` in HrView. */
-.export-row { margin-top: 12px; }
+/* `.export-row` STOOD HERE UNTIL 2026-09-10 and is deleted rather than left.
+   It held three buttons, then one, then none: พิมพ์ / ส่งออก is in the card head
+   now, beside the count, where every other card in this app puts its action.
+   A rule nothing wears is a rule the next person has to check before touching
+   anything near it. */
 
-/* พิมพ์ / ส่งออก ▾ — the button that replaced the three.
-   The count rides on it because that is the figure a reader came for, and it
-   is mono and tabular like every other number in the app so it does not shift
-   the caret about as the month changes. */
+/* พิมพ์ / ส่งออก ▾ — the button that replaced the three, on ตรวจสอบประจำเดือน,
+   รายงาน OT การเงิน and รายงาน OT แยกแผนก.
+
+   `.export-count` IS NO LONGER WORN BY ANY OF THEM. The count rode on the
+   button while the button stood on a row of its own; in the card head the chip
+   beside it carries the figure, which is what รออนุมัติ OT has always done, and
+   two renderings of one number ten pixels apart is worse than either. The rule
+   stays because `ExportMenu` still takes a `count` and a fourth caller may want
+   it on a screen with no chip. */
 .export-btn { display: inline-flex; align-items: center; gap: 8px; }
 .export-btn .export-count {
   font: 500 12px/1 var(--mono); font-variant-numeric: tabular-nums;
@@ -3824,175 +3853,64 @@ td > .approver-line { margin-top: 5px; }
 .roster-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
 
 /* ── ค้นหาบนตรวจสอบรายเดือน ────────────────────────────────────────────────
-   The same box as ทะเบียนพนักงาน's, in a row with its own count beside it
-   rather than under it: this one sits directly above the list it filters, and
-   a count on its own line would push the first card down by a line of type
-   that is blank most of the time.
+   The same box as ทะเบียนพนักงาน's, and since 2026-09-10 it is the first field
+   of a `.queue-tools` bar rather than a row of its own.
 
-   `align-items: flex-end` — `.row`'s own value, and this rule no longer
-   overrides it. IT READ `center` UNTIL 2026-08-28, and that is what put the
-   search box nine pixels too high on a desktop: ประจำเดือน is a `.field` WITH
-   a label (12px of type, a 7px gap, then the 46px box — 65 in all) and ค้นหา is
-   a `.field` with none, so centring the two in a 65px line hung the shorter one
-   in the middle of it. Its bottom edge landed level with nothing, ten pixels
-   above the bottom of the month picker beside it, and its top edge level with
-   ประจำเดือน's label — which reads as the box belonging to that label rather
-   than standing beside it. Aligning the bottoms is what makes two boxes of
-   different total height read as one line of controls.
+   `.month-find`, `.month-find .month-pick`, `.month-find .dept-pick`,
+   `.head-split` and `.head-split .status-pick` ALL STOOD HERE AND ARE DELETED.
+   Between them they said: this row is `flex-end` with a 10/14 gap and 12px of
+   air above it; ประจำเดือน is 170px; แผนก is 190px; the heading row hangs from a
+   baseline; สถานะที่นับ is 220px. Five rules, four widths, two containers — for
+   the four controls that filter one screen, next to a queue that filters its own
+   with `.queue-tools` and one width for everything on the bar.
 
-   THE COUNT KEEPS `center`, AS ITS OWN `align-self` — which is the whole of
-   what the row-wide `center` was ever wanted for. It is one line of type:
-   `baseline` would hang it off the bottom of a 46px box, and `flex-end` now
-   would sit it on the row's floor with its descenders below the boxes'. Centred
-   in the 65px line it crosses the middle of the two boxes it describes.
+   THE REPORT THAT ENDED THEM, 2026-09-10: *"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่
+   สม่ำเสมอกันเลย"*. What is worth writing down is that none of the five was
+   WRONG — each was measured, and the reasoning for `flex-end` over `center` (a
+   labelled field is 65px and an unlabelled one is 46, so centring hangs the
+   short one in the middle of the tall one) is exactly why `.queue-tools` is
+   `align-items: flex-end` too. The defect was that they were a SECOND answer.
+   Every control on this bar carries a `.field-head` now, so all four are 65px
+   and the alignment question does not arise at all.
 
-   It wraps below the count's own width, which is what puts the count under the
-   box on a narrow phone instead of squeezing the field to half a name.
+   WHAT IS LEFT OF THE OLD BLOCK IS THE COUNT — "แสดง 3 จาก 24 คน" — which no
+   other filter bar has, because no other one narrows a list this long from a
+   box with a suggestion menu under it. It keeps `center`: the bar hangs its
+   fields from their bottom edge, and a line of text with no box round it hung
+   from that edge sits below the writing in the boxes beside it. */
+.queue-tools .found {
+  align-self: center; font: 400 12.5px/1.4 var(--sans);
+  color: var(--muted); white-space: nowrap;
+}
+.queue-tools .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
 
-   ── WHERE IT SITS, AND THE TWO MOVES IT TOOK TO GET THERE ─────────────────
-   Until the morning of 2026-08-27 this row was the first child of
-   `.month-card`, so the month picker and the search box were in a card that
-   then went on to hold the whole list — a card inside a card, which is a border
-   and two paddings claiming a boundary that is not there. It came out onto the
-   page's own ground, between งวด…ยังเปิดอยู่ and the list.
+/* ── แสดงพนักงานที่ไม่มี OT, ON THE BAR ──────────────────────────────────────
+   The tick-box on รายงาน OT การเงิน and รายงาน OT แยกแผนก. It stood in
+   `.action-row` beside the two export buttons until 2026-09-10; it is a FILTER
+   — it decides which people get a row — so it belongs with the two dropdowns
+   that decide the same thing, and the buttons it used to stand beside are a
+   menu in the card head now.
 
-   AND THE SAME AFTERNOON IT WENT INTO `.month-head`, the controls card, under
-   the heading and สถานะที่นับ and ABOVE `.export-row`. Asked for as setting the
-   งวด before the buttons that print it: ประจำเดือน and สถานะที่นับ decide which
-   figures exist and ค้นหา decides which are drawn, so all three belong above the
-   three buttons that turn them into a document. That is not a card inside a
-   card — it is a third row of the card every other control on this screen is
-   already in, beside the two rows it now sits between.
+   IT KEEPS THE BOX IT WAS GIVEN ON 2026-08-28, and the argument for it is the
+   argument for putting it here. That round asked four times why the buttons did
+   not line up with this tick and the answer each time was that they did — centre
+   0.00px, baselines 0.45px — and what the eye was reading was the AIR beside a
+   bare 17px tick standing next to two filled slabs. A box the height of its
+   neighbours is what stopped that being the thing in the frame, and on this bar
+   its neighbours are four boxes of one height. A bare tick here would be the
+   1728px-wide version of the same report.
 
-   THE MARGIN IS A TOP MARGIN NOW, AND IT IS `.export-row`'S OWN NUMBER. The
-   card's three rows are separated by one gap, 12px wide and 8 on a phone, and
-   this row takes it from the row above exactly as the buttons take it from
-   this one. It was `margin-bottom: 12px` while the row stood between two cards
-   on the page ground; a bottom margin here would be the gap under the row and
-   the gap over the buttons, both, and the two would collapse to whichever was
-   larger — a number no reader could predict from either rule. */
-.month-find { align-items: flex-end; gap: 10px 14px; margin-top: 12px; }
+   `--radius-sm` and `--line` are `.btn.ghost`'s own two values, not a second
+   pair that happens to match.
 
-/* ── A CARD'S HEADING ROW, SPLIT BETWEEN A TITLE AND ITS CONTROLS ─────────
-   THREE SCREENS USE IT AND THE SECOND ONE IS WHY IT IS NOT CALLED
-   `.month-head-top` ANY MORE — it was, for one commit on 2026-08-28, until
-   ส่งบัญชี was reported with the identical row and the identical gap. Naming a
-   shared rule after the first card that needed it is how the second card ends
-   up with a copy of the declaration instead of a reference to it. The THIRD
-   caller arrived the same day and cost one class name and not one line of CSS,
-   which is the whole of what the rename bought.
+   `margin-left: auto` IS GONE WITH `.action-row`. It pushed the tick to the far
+   end of a row of ACTIONS, where it was the one thing on the row that was not
+   one. On a bar of filters it is the fifth filter and sits where it falls. */
+.queue-tools .check {
+  align-self: stretch; padding: 0 14px; min-height: 46px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
 
-   ตรวจสอบรายเดือน: `ตรวจสอบรายเดือน` + the month on the left, `สถานะที่นับ` on
-   the right. ส่งบัญชี: `สรุป OT ส่งบัญชี` + the month on the left, `บริษัท` and
-   `ประจำเดือน` on the right. แยกแผนก: `สรุป OT แยกแผนก` + the month on the
-   left, `แผนก` and `ประจำเดือน` on the right. The first two measured 23.75px
-   out, which is not a coincidence — it is the same two boxes:
-
-   A heading block on the left — a title with a line of hint under it — and
-   labelled fields on the right, and the two are not the same height:
-   19.5 + 4 + 18.75 = 42.25px of heading against 12 + 7 + 47 = 66px of field.
-   Whatever ends up level, something does not, and this rule is the choice of
-   WHICH.
-
-   THE TOPS. Reported on 2026-08-28 as สถานะที่นับ floating above the heading,
-   and measured on the running app at 1280px before anything was changed: the
-   right column started at y=202.5 and the left at y=226.25 — **23.75px** apart,
-   with the label sitting level with nothing and the heading level with the
-   middle of the <select> beside it.
-
-   AND 5.5px ON แยกแผนก, WHICH IS THE SAME DEFECT WITH SHORTER ARITHMETIC.
-   Reported on 2026-08-28 in the same words as the other two; measured at 1280px
-   before anything was changed, the heading block started at y=114.5 and the
-   fields at y=109. It is a smaller number because that card's hint runs to two
-   lines — 61px of heading block against 66.5px of field, rather than 42.25
-   against 66 — so ending them level left less over. A rule that is about WHICH
-   edge lines up does not care how far apart the other edges are.
-
-   `flex-end` IS WHAT IT WAS, AND IT WAS NOT ARBITRARY — it is `.row`'s own
-   value, which is right for a line of controls (`.month-find` directly below
-   this one is exactly that case and keeps it). It is wrong here because the
-   left side is not a control. Two boxes end level because a reader compares
-   their bottom edges; a heading and a caption are compared at the TOP, where
-   the eye enters the card.
-
-   ALL FOUR WERE RENDERED AND MEASURED RATHER THAN ARGUED — the numbers are the
-   gap between the two columns' tops, then between the two texts' baselines:
-
-       flex-end     +23.75   +32.75    card 235px   ← what was reported
-       center       +11.88   +20.88    card 235px
-       flex-start     0.00    +9.00    card 235px   ← what three rounds shipped
-       baseline      −4.00     0.00    card 239px   ← this
-
-   THE TOP EDGES WERE THE WRONG THING TO MEASURE, AND IT TOOK FOUR ROUNDS OF
-   THE SAME REPORT TO SEE IT. `flex-start` was shipped three times — for
-   ตรวจสอบรายเดือน, then ส่งบัญชี, then แยกแผนก — and each round closed by
-   measuring the two columns' tops at 0.00px apart and calling the row level.
-   It came back in the same words every time, because a box top is not where
-   anybody looks. The heading is 15px on a 19.5px line and the label is 12px on
-   a 12px line, so with the two BOXES flush the two lines of WRITING are 4px
-   apart: rulers drawn across the running app at 1440px on 2026-08-28 put the
-   heading's baseline at y=123 and บริษัท's at y=119, and the label's line runs
-   straight through the middle of the heading's letters. Two texts, two lines.
-
-   `baseline` IS THAT SAME 4px SPENT THE OTHER WAY. It aligns the first
-   baseline of each column — the h2's on the left, the label's on the right,
-   because a `.field` is a column flex container and its first baseline comes
-   from its first item, which is the <label> in all three of these rows. The
-   right column drops 4px, the card grows 4px, and the two texts sit on ONE
-   line: measured after, +0.00.
-
-   It costs the top edges — the labelled field now starts 4px below the heading
-   block, which is what the note above (written when `flex-start` went in) held
-   against it. That trade is settled now and it is settled by the eye: the ink
-   is what a reader sees, the box is what devtools shows, and the report was
-   always about the ink. Do not swap it back on the strength of a top-edge
-   measurement.
-
-   NOT A HAND-WRITTEN NUDGE, WHICH WAS THE OTHER WAY TO GET +0.00. A
-   `margin-top: 4px` on the fields measures identically today and is stale the
-   moment either font size moves; `baseline` re-derives it from whatever the
-   two texts turn out to be.
-
-   A CLASS AND NOT THE INLINE `alignItems: 'flex-end'` IT REPLACED. Same reason
-   `.export-row` and `.deleg-head-text` are classes: an inline style is the one
-   thing the 860px block cannot reach. Nothing needs to reach it today — below
-   860px `.field` is `min-width: 100%` and the two sides stack, which makes
-   `align-items` inert — but the next rule that needs to would have had to
-   rewrite the JSX to get at it. */
-.head-split { align-items: baseline; }
-/* สถานะที่นับ — the field beside ตรวจสอบประจำเดือน's heading, and 220px is the
-   number it carried as an inline `maxWidth` from the day it was a `<select>`.
-   It became a class on 2026-09-01 with the control itself: `PickOne` renders
-   its own `.field`, so there is no longer a `<div>` in components/HrView.jsx to
-   hang a style on — and the rule the paragraph above wanted is exactly this
-   one, a width that the 860px block could reach if it ever had to.
-
-   IT IS NOT REACHED THERE TODAY, and that is unchanged behaviour rather than an
-   omission: below 860px `.field` takes `min-width: 100%`, and `min-width` beats
-   `max-width` in the cascade whichever way round they are written — so the box
-   ran the full width of the stacked card under the inline style too. */
-.head-split .status-pick { max-width: 220px; }
-/* ประจำเดือน JOINED THIS ROW ON 2026-08-27, from the card above it.
-   A fixed basis and not `.field`'s `flex: 1`, which is a basis of nothing: two
-   fields both grasping at nothing split the line in half, and half a line is
-   both too much for a month and too little for a name. 170px is what the
-   picker had in the card it came from and is what it needs to print
-   "August 2026" beside its own calendar button. The search box keeps the rest.
-   Below 860px `.field`'s `min-width: 100%` overrides this and the two stack,
-   which is the order the comment in components/HrView.jsx describes. */
-.month-find .month-pick { flex: 0 0 170px; }
-/* แผนก JOINED THIS ROW ON 2026-09-10, between ประจำเดือน and ค้นหา.
-   A fixed basis for the same reason ประจำเดือน has one — `.field`'s `flex: 1` is
-   a basis of nothing and three fields grasping at nothing split the line in
-   thirds, which is too little for a name and far too much for a month. 190px is
-   what the longest department on this roster needs (แผนกบัญชีและการเงิน) beside
-   its own caret; the search box still keeps whatever is left, which is the one
-   field on this line that grows.
-   Below 860px `.field`'s `min-width: 100%` overrides this and all three stack,
-   in the order the note in components/HrView.jsx describes. */
-.month-find .dept-pick { flex: 0 0 190px; }
-.month-find .found { align-self: center; font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
-.month-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
 /* ── THE PART THAT MATCHED ───────────────────────────────────────────────
    `<mark class="hit">`, from the `Highlight` component in components/common.jsx.
 
@@ -5308,72 +5226,23 @@ td > .approver-line { margin-top: 5px; }
   overflow-wrap: anywhere;
 }
 
-/* A row of buttons that ends with a checkbox — ส่งออก/พิมพ์ then
-   แสดงพนักงานที่ไม่มี OT, on สรุป OT ส่งบัญชี and สรุป OT แยกแผนก.
+/* `.action-row` AND `.action-row .check` STOOD HERE UNTIL 2026-09-10.
 
-   The checkbox is a setting rather than an action, so while all three fit on
-   one line it is pushed to the far end, away from the two buttons. Once they
-   no longer fit, `.row` wraps and the checkbox takes a line of its own — and
-   the push, which only ever meant "the other end of the row I share", left it
-   hugging the right edge alone while every other thing on the card sits
-   flush left. On a phone that reads as something that came loose.
+   A row of two export buttons ending in a tick-box, on รายงาน OT การเงิน and
+   รายงาน OT แยกแผนก. Both screens carry `ExportMenu` in the card head now and
+   the tick-box is on their filter bar — see `.queue-tools .check`, which keeps
+   the box this rule gave it and the reason for it.
 
-   A CONTAINER query and not a viewport one: what decides whether this wraps is
-   the width of the card, and the card runs ~310px narrower than the viewport
-   for as long as the sidebar is up, so the wrap happens at two quite different
-   viewport widths depending on which side of the 860px breakpoint we are on.
-   The row itself is the container, so the question asked is the exact one that
-   matters. The threshold sits a little above where the three actually stop
-   fitting: erring that way puts the checkbox beside the buttons for a narrow
-   band of widths, which looks like nothing at all, rather than leaving it
-   stranded on the right for that band.
+   FOUR ROUNDS OF 2026-08-28 ARE IN THAT ONE SENTENCE, and they are worth
+   keeping a note of rather than a rule: the row was reported four times as
+   crooked and was level every time (centre 0.00px, baselines 0.45px, 1024 to
+   1920). What was being seen was the AIR — row one's left column is a heading
+   at 42.25px and its right is a labelled control at 66, and two boxes of
+   different height hanging from one line differ above by exactly that. One
+   23.75px, spendable once: even the air and the controls go out of level, level
+   the columns and the heading loses its baseline. The round of 2026-09-10 spent
+   it a third way, by not putting a heading and a control on one line at all. */
 
-   The push lives here rather than inline on the label, because an inline style
-   wins over any selector and the query below could not take it back.
-
-   THE GAP TO THE ROW ABOVE LIVES HERE TOO, AND IT WAS TWO DIFFERENT NUMBERS.
-   ส่งบัญชี carried `style={{ marginTop: 12 }}` and แยกแผนก `14` — hand-set on
-   two cards that are meant to be card-for-card the same, which is how one ends
-   up 2px lower than the other with nothing saying why. 12 is `.row`'s own gap,
-   so the two rows of the header are now spaced the way the controls inside
-   each row are. Both inline styles are gone; this is the only number. */
-.action-row { container-type: inline-size; align-items: center; margin-top: 12px; }
-/* THE TICK BOX TAKES THE BUTTONS' HEIGHT AND A RULE OF ITS OWN, so the row has
-   ONE top edge and ONE bottom edge across its whole width.
-
-   WHY, WHEN THE ROW WAS ALREADY LEVEL TO THE PIXEL. Reported four times over
-   2026-08-28 as the buttons not lining up with แสดงพนักงานที่ไม่มี OT, and it
-   never was the level: centre 0.00px, text baselines 0.45px, at every desktop
-   width from 1024 to 1920. What the eye was reading was the AIR. Row 1's left
-   column (heading + hint, 42.25px) is 23.75px shorter than its right (label +
-   control, 66px), so with the two sides of this row hanging from one row
-   bottom, the gap above the buttons measured 40.25px against the tick's 22.75.
-
-   THAT DIFFERENCE CANNOT BE PAID OFF HERE, and the arithmetic is worth writing
-   down because it is what four rounds kept re-deriving: level means both sides
-   hang from the same line, so the air above them differs by exactly the amount
-   the two columns above them differ. Setting a margin over each side to even
-   the air pulls the buttons and the tick box 23.75px out of level — the two
-   requests are one 23.75px, spendable once. Ending row 1's columns level pays
-   it the other way and costs the heading its baseline, which is the report of
-   the round before this one. Measured, rendered and looked at, 2026-08-28.
-
-   SO THE ANSWER IS TO CHANGE WHAT THE EYE COMPARES. Two filled buttons beside
-   a bare 17px tick invite a reading of "one band, and something floating near
-   it"; three boxes of one height read as one row, and the leftover air on the
-   left stops being the thing in the frame. The text does not move a pixel —
-   `.check` is already a flex container that centres its own contents, so
-   stretching its box leaves the tick and the words exactly where they were.
-
-   `--radius-sm` and `--line` are `.btn.ghost`'s own two values, not a second
-   pair that happens to match: this box stands next to that one. */
-.action-row .check {
-  margin-left: auto; align-self: stretch; padding: 0 14px;
-  border: 1px solid var(--line); border-radius: var(--radius-sm);
-}
-@container (max-width: 660px) {
-  .action-row .check { margin-left: 0; }
-}
 
 /* Per-field validation, under the input it belongs to. Narrower than .alert,
    which speaks for the whole card. */
@@ -12809,9 +12678,16 @@ table.mini tbody tr:hover { background: none; }
      card in the app 1100 lines above, so `.acct-controls > .row` re-stating it
      changed no height at all — and, being one specificity step heavier, it took
      `.action-row`'s tuned 8px grid gap with it and made the buttons 2px
-     taller. It is not here any more. The only rule this screen needs is the
-     one below. */
-  .acct-controls > .hint:last-child { margin-bottom: 0; }
+     taller. It is not here any more.
+
+     ⚠ AND NEITHER IS THE LAST RULE — `.acct-controls > .hint:last-child`, gone
+     2026-09-10 with the class itself. That hint was ไม่มีการคำนวณเป็นเงิน,
+     standing under the two export buttons as the card's last child; there is no
+     such element now (the sentence is a `note` inside `ExportMenu`), and with
+     it went the only reason this screen had a class of its own. The ledger above
+     is kept because it is the arithmetic behind ค้นหาพนักงาน not being on this
+     screen and behind บริษัท and ประจำเดือน not sharing a line at 360px, both of
+     which are still true and both of which the round of 2026-09-10 preserved. */
 
   /* COMPACT. 12px of padding on each side of every cell is 24px per column, and
      at eleven columns that is a quarter of the table's width spent on air. The
@@ -13106,7 +12982,6 @@ table.mini tbody tr:hover { background: none; }
     background: var(--card); border: 1px solid var(--line);
     border-radius: var(--radius-lg); border-bottom: 1px solid var(--line);
   }
-  .month-head { padding: 12px; }
   /* ── AND THE STATUS CARD GETS 18, WHICH IS 5px BACK OUT OF THE 9 ABOVE ──
 
      Asked for on 2026-08-27: "เพิ่ม Margin-bottom ให้การ์ด งวด…ยังเปิดอยู่
@@ -13210,24 +13085,37 @@ table.mini tbody tr:hover { background: none; }
      was asked about and the vertical is what moved. */
   .month-card .empty { padding-top: 56px; padding-bottom: 56px; }
 
-  /* ONE DECLARATION, AND IT IS THE GAP OVER THE ROW — 8, which is what
-     `.export-row` takes at this width and therefore what one row of this card
-     is from the next. It read `margin-bottom: 10px` for the few hours the row
-     stood between two cards on the page ground.
+  /* ══ THE HEAD AND THE BAR ARE ONE CARD DOWN HERE ════════════════════════
 
-     Everything else that used to be here was chrome for being inside
-     `.month-card`; the block headed ค้นหา IS A STRIP above is the ledger of
-     what went and why.
+     Above 860px `.card-head` and `.queue-tools` are two banded sections with
+     18px of side padding and a rule between them; the CARD at this width is
+     `.month-head`, which already pays 12px on every side (see the note over
+     `.month-panel` in this block). Left alone the two would pay it twice and
+     draw a wash-filled strip inset inside a card.
 
-     THE SIDE MARGINS ARE THE ONE WORTH NAMING AGAIN: they were the card’s
-     padding negated — the `--month-pad` token, since deleted, multiplied by −1
-     — and before that a literal -15px against a literal 15, two numbers in two
-     rules that had to agree with nothing saying so, which is what broke the
-     moment the padding came down to 12. In `.month-head` the row is bounded by the card's own padding,
-     the same padding `.export-row` and the heading are bounded by, and there is
-     nothing to negate. */
-  .month-find {
-    margin-top: 8px;
+     SO THE PADDING MOVES INWARD RATHER THAN COMING OFF. `.month-head` pays
+     nothing and its two children pay 12 each — the same 12 the head paid as one
+     box, so the writing sits exactly where it did, and the wash bar now runs to
+     the card's own edges instead of floating 12px inside it. That is what
+     รายงาน OT การเงิน and รายงาน OT แยกแผนก look like at this width, and it is
+     what รออนุมัติ OT has always looked like: a head band, a rule, a bar.
+
+     IT WAS `padding: 0; background: none` ON BOTH FOR AN HOUR, which drew the
+     head as one plain 12px box with the controls stacked under the title — the
+     shape that shipped before this round. Measured against the other two
+     screens side by side it was the odd one out again, one round after a report
+     about exactly that.
+
+     ⚠ NO `overflow: hidden` TO ROUND THE BAR'S BOTTOM CORNERS. That is the
+     obvious way to make a full-bleed fill respect a radius and it is the one
+     thing this card cannot have: ค้นหาพนักงาน's suggestion list is an
+     absolutely-positioned `.pick-menu`, and a phone is where it has least room
+     to be clipped. The bar states the two corners itself instead. */
+  .month-head { padding: 0; }
+  .card.flush.month-panel > .month-head > .card-head { padding: 12px; }
+  .card.flush.month-panel > .month-head > .queue-tools {
+    padding: 12px; border-bottom: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   }
 
   /* ══ ตรวจสอบรายเดือน IS A CARD LIST BELOW 860px ════════════════════════
@@ -14028,45 +13916,23 @@ table.mini tbody tr:hover { background: none; }
 
   /* ══ the export buttons ════════════════════════════════════════════════ */
 
-  /* Two CSVs share a line; พิมพ์ใบขออนุมัติ OT ทุกคน (3 คน) keeps its own,
-     because its label is the one that cannot fit in half a phone — and it got
-     longer on 2026-08-31, not shorter, so the full-width line it already had is
-     the reason the rename cost this stylesheet nothing. The note under them
-     spans both. */
-  /* 8px above, not 12. The row over it has already stacked into three
-     full-width controls at this width, so 12px more before the button reads as
-     a section break between the controls and the button that acts on what they
-     set.
+  /* NOTHING IS LEFT OF THIS BLOCK, AND THAT IS THE POINT OF IT — 2026-09-10.
 
-     ⚠ IT WAS A TWO-COLUMN GRID UNTIL 2026-09-10, and everything that made it
-     one is gone with the two buttons it was pairing. The rules that went, and
-     what each was for, because each was earned:
+     It held `.export-row` and `.action-row`: a two-column grid pairing two CSV
+     buttons with พิมพ์ใบขออนุมัติ OT ทุกคน on a full-width line of its own, an
+     `align-items: stretch` undoing `.row`'s `flex-end` (measured at 320–360px:
+     two buttons at 67.5 and 53px, the short one hanging with 14px over it), a
+     44px touch floor on each, and a third rule putting แสดงพนักงานที่ไม่มี OT
+     across both columns.
 
-       `display: grid; grid-template-columns: 1fr 1fr`
-            paired the two CSV buttons and gave พิมพ์ its own full-width line,
-            because its label is the one that will not fit in half.
-       `align-items: stretch`
-            undid `.row`'s `align-items: flex-end`, which a grid inherits and
-            which is wrong for one: measured at 320–360px on 2026-08-31 the two
-            CSVs were 67.5px and 53px, and the short one hung from the bottom of
-            its row with a 14px gap over it. **`.action-row` below carries the
-            same `.row` and sets `align-items: center`, and is the next place
-            this bites** — that warning is why the paragraph is kept.
-       `> .btn { min-height: 44px }`
-            the touch floor. Still owed, and `.btn` states it for this width
-            anyway; the single button here is not exempt from it.
+     Every one of those was earned, and every one of them was about laying out a
+     ROW OF BUTTONS in a card at 360px. There is no such row on any of the three
+     screens now: `ExportMenu` is one button in `.card-head`, which this block
+     already makes full width and 44px tall — see `.card-head:has(> .row .btn)`
+     — and the tick-box is on the filter bar with the dropdowns.
 
-     One button needs none of that: `.row`'s own flex line lays it out. */
-  .export-row { margin-top: 8px; }
-
-  /* สรุป OT ส่งบัญชี's two, paired. Both labels are long enough to take two
-     lines at half width, which still costs less height than two full-width
-     buttons — and pairing them says what they are: the two ways to take this
-     month off the screen. แสดงพนักงานที่ไม่มี OT is not one of those, so it
-     keeps its own line under them rather than being dressed as a third. */
-  .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .action-row > .btn { min-height: 44px; }
-  .action-row > .check { grid-column: 1 / -1; min-height: 44px; }
+     THE 44px FLOOR IS NOT LOST WITH THEM. `.btn` states it for this width, and
+     `.card-head .btn.sm` restates it for the head; both are above. */
 
   /* ══ the OT form on a phone ════════════════════════════════════════════ */
 

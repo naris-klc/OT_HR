@@ -49,65 +49,77 @@ test('padding ชดเชยเส้นขอบพอดี กล่อง�
     'ความสูงตัวอักษรเปลี่ยน เลข 38.5 ในคอมเมนต์ข้างบนไม่จริงแล้ว');
 });
 
-test('สองจอที่ถูกแจ้งใช้แถวเดียวกันและปุ่มคู่เดียวกัน — บรรทัดล่างจึงถูกอยู่แล้ว', () => {
-  // WHAT THE REPORT SAID AND WHAT WAS ACTUALLY CROOKED. ส่งบัญชี on 2026-08-28
-  // and แยกแผนก the same day were both reported as "the buttons do not line up
-  // with แสดงพนักงานที่ไม่มี OT beside them", and on both the row was already
-  // right: `.action-row` is `align-items: center` and the tick box's centre
-  // measured 0.00px from the buttons'. What was crooked was the two buttons
-  // against EACH OTHER, which the base rule above fixes for both at once.
+test('สองจอที่ถูกแจ้งใช้แถวเดียวกัน — และตอนนี้เป็นเมนูปุ่มเดียวที่ใช้ร่วมกันสามจอ', () => {
+  // WHAT THE REPORT OF 2026-08-28 SAID AND WHAT WAS ACTUALLY CROOKED. ส่งบัญชี
+  // and แยกแผนก were both reported as "the buttons do not line up with
+  // แสดงพนักงานที่ไม่มี OT beside them", and on both the row was already right:
+  // `.action-row` was `align-items: center` and the tick box's centre measured
+  // 0.00px from the buttons'. What was crooked was the two buttons against EACH
+  // OTHER, which the base rule above fixes for both at once.
   //
-  // So what is worth pinning here is that neither screen answers the question
-  // locally: one shared row class, and the plain/ghost pair that the base rule
-  // is about. A hand-rolled row on either would put the two screens back on
+  // ⚠ AND THE ROW IS GONE SINCE 2026-09-10. Reported as
+  // *"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่สม่ำเสมอกันเลย"*: the two screens carried a
+  // row of two full-width buttons and a tick-box where รออนุมัติ OT carries one
+  // compact action in its card head. Both now use `ExportMenu` — the control
+  // ตรวจสอบประจำเดือน got in the declutter earlier the same day — and the
+  // tick-box is a filter on `.queue-tools` with the dropdowns.
+  //
+  // SO WHAT IS PINNED HERE IS THE SAME PROPERTY, ONE LAYER UP: neither screen
+  // answers the question locally. One shared component, from `common.jsx`, and
+  // no hand-rolled row of `btn`s on either. A second `<button className="btn">`
+  // appearing on one of these cards is how the two screens go back to being
   // separate answers to one question.
   for (const file of ['components/AccountingView.jsx', 'components/DepartmentView.jsx']) {
     const jsx = readFileSync(join(ROOT, file), 'utf8');
-    const at = jsx.indexOf('className="row action-row"');
-    assert.ok(at > 0, `${file} เลิกใช้ .action-row ที่ใช้ร่วมกัน`);
-    const row = jsx.slice(at, jsx.indexOf('</div>', at));
-    assert.ok(row.includes('className="btn"'), `${file} ไม่มีปุ่มพื้นฐานในแถวนั้นแล้ว`);
-    assert.ok(row.includes('className="btn ghost"'), `${file} ไม่มีปุ่ม ghost คู่กับปุ่มพื้นฐานแล้ว`);
-    assert.ok(!/alignItems|align-items/.test(row), `${file} ไปตอบเรื่องการจัดแนวเองในแถวนั้น`);
-    // AND NOT THE GAP ABOVE IT EITHER. ส่งบัญชี carried `marginTop: 12` and
-    // แยกแผนก `14` — two hand-set numbers for one distance, on two cards that
-    // are card-for-card the same, which is exactly how the second one ends up
-    // 2px lower than the first with nothing on the page saying why. The number
-    // is `.action-row`'s now, and it is 12: `.row`'s own gap, so the two rows
-    // of the header are spaced the way the controls inside each row are.
-    assert.ok(!/marginTop/.test(row), `${file} ตั้งระยะห่างบนแถวนั้นเอง แทนที่จะรับจาก .action-row`);
+    assert.match(jsx, /import \{[\s\S]*?ExportMenu[\s\S]*?\} from '\.\/common\.jsx'/,
+      `${file} ไม่ได้ใช้ ExportMenu ที่ใช้ร่วมกัน`);
+    const at = jsx.indexOf('<ExportMenu');
+    assert.ok(at > 0, `${file} เลิกเรียก ExportMenu แล้ว`);
+    // The menu holds both verbs — the file and the form — so neither has been
+    // quietly promoted back out onto a button of its own.
+    const menu = jsx.slice(at, jsx.indexOf('/>', at));
+    assert.ok(/\(CSV\/Excel\)/.test(menu), `${file} เอาแถวส่งออกไฟล์ออกจากเมนู`);
+    assert.ok(/พิมพ์แบบฟอร์ม \/ บันทึกเป็น PDF/.test(menu), `${file} เอาแถวพิมพ์แบบฟอร์มออกจากเมนู`);
+    // AND NO ROW OF BUTTONS ANYWHERE ON THE CARD. `.action-row` is deleted from
+    // the stylesheet; a screen re-creating the pair by hand would be the first
+    // of the two to drift.
+    assert.ok(!/className="row action-row"/.test(jsx), `${file} เอา .action-row กลับมา`);
+    assert.ok(!/<button className="btn"/.test(jsx), `${file} มีปุ่มพื้นฐานหลุดออกมานอกเมนู`);
   }
-  assert.match(css, /\.action-row \{[^}]*margin-top: 12px;/, '.action-row ไม่ได้ถือระยะห่างด้านบนไว้แล้ว');
+  assert.ok(!/^\.action-row/m.test(css), '.action-row ยังอยู่ในสไตล์ชีต ทั้งที่ไม่มีจอไหนใส่แล้ว');
 });
 
-test('ช่องติ๊กเป็นกล่องสูงเท่าปุ่ม — แถวล่างจึงมีขอบบนและขอบล่างเส้นเดียว', () => {
-  // THE FOURTH REPORT OF THIS ROW, AND THE FIRST ONE THAT CHANGED IT. The
+test('ช่องติ๊กบนแถบตัวกรองยังเป็นกล่องสูงเท่าช่องข้าง ๆ', () => {
+  // THE FOURTH REPORT OF THE OLD ROW, AND THE FIRST ONE THAT CHANGED IT. The
   // three before were answered by measuring: centre 0.00px, text baselines
   // 0.45px, at every desktop width from 1024 to 1920. All true, and none of it
   // was what was being seen. What was being seen was the AIR — row 1's left
   // column (heading + hint, 42.25px) is 23.75px shorter than its right (label +
-  // control, 66px), so with both sides of this row hanging from one row bottom
+  // control, 66px), so with both sides of that row hanging from one row bottom
   // the gap above the buttons measured 40.25px against the tick box's 22.75.
   //
-  // AND THAT DIFFERENCE CANNOT BE PAID OFF IN THIS ROW. Level means both sides
-  // hang from the same line, so the air above them differs by exactly what the
-  // two columns above them differ by. A margin over each side to even the air
-  // pulls the buttons and the tick 23.75px out of level; ending row 1's columns
-  // level instead costs the heading its baseline, which is the report of the
-  // round before. One 23.75px, spendable once.
+  // The answer was to change what the eye compares: a bare 17px tick beside two
+  // filled slabs reads as a band with something floating near it; three boxes
+  // of one height read as one row.
   //
-  // SO THE ROW CHANGES WHAT THE EYE COMPARES INSTEAD. Two filled buttons beside
-  // a bare 17px tick read as a band with something floating near it; three
-  // boxes of one height read as one row. `align-self: stretch` costs no
-  // movement at all — `.check` is already a flex container that centres its own
-  // contents, so the tick and the words stay where they were (202.25px, both
-  // before and after, measured at 1440px on 2026-08-28).
-  const rule = css.slice(css.indexOf('.action-row .check {'),
-    css.indexOf('}', css.indexOf('.action-row .check {')));
-  assert.match(rule, /align-self: stretch;/, 'ช่องติ๊กไม่ได้สูงเท่าแถวแล้ว ขอบบน-ล่างจะไม่ตรงกับปุ่ม');
+  // ⚠ THE ROW IT WAS ON IS GONE (2026-09-10) AND THE BOX IS NOT. The tick-box
+  // is a FILTER — it decides who gets a row — so it moved to `.queue-tools`
+  // with the two dropdowns, where its neighbours are four fields of one height.
+  // A bare tick there would be the same report at a different width, which is
+  // why `.queue-tools .check` inherits this rule's body rather than starting
+  // over: `align-self: stretch`, a rule, and `.btn.ghost`'s own radius.
+  //
+  // `margin-left: auto` DID NOT COME WITH IT, and that is the one deliberate
+  // difference: it pushed the tick to the far end of a row of ACTIONS, where it
+  // was the one thing on the row that was not one. On a bar of filters it is
+  // the fifth filter and sits where it falls.
+  const rule = css.slice(css.indexOf('.queue-tools .check {'),
+    css.indexOf('}', css.indexOf('.queue-tools .check {')));
+  assert.match(rule, /align-self: stretch;/, 'ช่องติ๊กไม่ได้สูงเท่าแถวแล้ว ขอบบน-ล่างจะไม่ตรงกับช่องข้าง ๆ');
   assert.match(rule, /border: 1px solid var\(--line\);/, 'ช่องติ๊กไม่มีเส้นขอบแล้ว — กล่องที่มองไม่เห็นไม่ได้ตอบรายงานนี้');
+  assert.ok(!/margin-left: auto/.test(rule), 'ช่องติ๊กถูกดันไปสุดแถวอีกแล้ว ทั้งที่แถวนี้เป็นตัวกรอง ไม่ใช่ปุ่ม');
   // `.btn.ghost`'s own two values, not a second pair that happens to match:
-  // this box stands next to that one and has to keep standing next to it.
+  // this box stands next to a row of fields and beside that button on a phone.
   assert.match(rule, /border-radius: var\(--radius-sm\);/, 'ช่องติ๊กเลิกใช้มุมเดียวกับปุ่มข้าง ๆ');
   const ghost = css.slice(css.indexOf('.btn.ghost {'), css.indexOf('}', css.indexOf('.btn.ghost {')));
   assert.match(ghost, /border: 1px solid var\(--line\)/, 'ปุ่ม ghost เปลี่ยนเส้นขอบ ช่องติ๊กข้าง ๆ ยังลอกค่าเดิมอยู่');

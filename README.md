@@ -6814,8 +6814,14 @@ much room they take while the answer is *nothing*, which is most months.
 
 **2 — `.month-panel` is the card; `.month-head` and `.month-card` are its two
 sections.** That is the *ต่อเนื่อง* the report asked for, and it is the
-arrangement the card was already describing in words: `.export-row` acts on what
+arrangement the card was already describing in words: the export row acts on what
 ประจำเดือน · แผนก · ค้นหา settled, and the table is what all four produce.
+
+> It read "`.month-panel` declares its own fill, border and radius" and
+> "`.month-head` holds three rows — the heading and สถานะที่นับ, then
+> ประจำเดือน · แผนก · ค้นหา, then `.export-row`" until later the same day. The
+> panel is `card flush month-panel` now and the three rows are `.card-head` and
+> one `.queue-tools` bar — see §สี่จอรายงานเป็นการ์ดใบเดียวกัน below.
 
 > ⚠ **Above 860px only.** Below it the table is one card per person on the
 > page's own ground, and *a card holding forty cards is a forty-first boundary
@@ -6830,7 +6836,9 @@ ghosts precisely to say so — and it is a menu row now. **That is a real loss a
 it was chosen with the trade in view.** Two things soften it: it is the first
 row and the only one that keeps the filled voice, and the count that made the
 old label long (*24 คน*) is on the button, so the figure a reader came for is on
-screen without opening anything. The menu is `Popover` — the same panel every
+screen without opening anything. (It read "on the button" until later the same
+day: the figure is a `.chip.muted` in the card head, ten pixels from the button,
+which is what รออนุมัติ OT has always done with its own count.) The menu is `Popover` — the same panel every
 other dropdown in this app opens — wearing `role="menu"` rather than `listbox`,
 because its rows are verbs and not a setting.
 
@@ -6850,6 +6858,92 @@ route answers 403 to.
 theme, กันยายน 2569): desktop at 1400px and phone at 390px both drawn, the menu
 opened and its three rows read, and the phone card confirmed to sit on the page
 ground with its two buttons worded and 44px.
+
+### สี่จอรายงานเป็นการ์ดใบเดียวกัน — 2026-09-10
+
+**Reported the same afternoon as the declutter above, in one sentence:**
+*"ต้องการให้ design หน้า ตรวจสอบประจำเดือน รายงาน OT การเงิน รายงาน OT แยกแผนก
+… ใช้ design และ component สไตล์เดียวกันกับ หน้า รออนุมัติ OT — ตอนนี้แต่ละหน้า
+ใช้ ui สไตล์ไม่สม่ำเสมอกันเลย"*.
+
+**Four screens are the same document** — a month, narrowed by a few controls,
+read as a table — and all four drew it differently:
+
+| | รออนุมัติ OT | the other three |
+|---|---|---|
+| the card | `card flush` | a plain `.card`, or `.month-panel` declaring its own fill, border and radius |
+| the title | `.card-head` — `.t` · hint · chip · one action | an `<h2>` sharing a line with a dropdown (`.head-split`) |
+| the filters | `.queue-tools`, one bar on the wash | one hanging off the heading, the rest on a row or two of their own |
+| the actions | one compact button in the head | two full-width `btn`s and a tick-box on `.action-row` |
+
+**All three moved to the queue's shape. Nothing on รออนุมัติ OT changed.**
+
+**1 — `card flush` + `.card-head` + `.queue-tools`, on every one of them.**
+ตรวจสอบประจำเดือน keeps `.month-panel` as a second class, because the 860px
+block still needs a handle to hand the card back to `.month-head`; what it no
+longer keeps is three declarations that said *card* in a second voice. The
+per-company and per-department sheets are `card flush` too, so a stack of them is
+ruled the way the queue is instead of each table starting 18px inside a card
+whose head starts at 0.
+
+> ⚠ **One declaration cannot come from the shared class**:
+> `.card.flush.month-panel { overflow: visible; }`. `.card.flush` clips to its
+> radius so a table can run to the card's edges — and this card holds
+> ค้นหาพนักงาน, whose suggestion list is an absolutely-positioned `.pick-menu`
+> inside `.searchbox`, **not** a portal. Clipped, the list is cut at the card's
+> bottom edge, which on a two-row month is after the first suggestion. The
+> queue's own search box has no list under it, which is why `.card.flush` could
+> carry `hidden` for a year without anybody finding this. Nothing is lost:
+> `.month-card` keeps 18px of side padding, so no table reaches the corner.
+
+**2 — `.head-split` and `.action-row` are deleted, not balanced again.** Between
+them they cost four rounds of 2026-08-28. `.head-split` put an `<h2>` and a
+labelled dropdown on one line, and `flex-start` was shipped and signed off
+**twice** on a top-edge measurement of 0.00px while the same report came back in
+the same words — because the top edge is not where anybody looks; `baseline`
+was the third answer. `.action-row` was reported four times as crooked and was
+level every time (centre 0.00px, baselines 0.45px, 1024→1920): what was being
+seen was the **air**, row 1's left column at 42.25px against its right at 66,
+one 23.75px spendable once. **This round spent it a third way — by not putting a
+heading and a control on one line at all.** The tick-box keeps the box that
+round gave it; it is `.queue-tools .check` now, without the `margin-left: auto`
+that pushed it to the end of a row of *actions*, because on a bar of filters it
+is the fifth filter.
+
+**3 — `ExportMenu` moved to `components/common.jsx` and all three press it.**
+It was ตรวจสอบประจำเดือน's own module-level component for the few hours between
+the two reports. What each screen puts *in* the menu is still its own — three
+rows there, two on the report screens, with the CSV leading on both because it
+kept the filled voice in the row it replaces.
+
+> ⚠ **Two sentences moved from under the buttons into the menu**, and the second
+> one matters: ส่งบัญชี's *ไม่มีการคำนวณเป็นเงิน*, and แยกแผนก's
+> **ไฟล์และแบบฟอร์มออกครบทุกแผนก ไม่ขึ้นกับแผนกที่เลือกไว้ด้านบน** — the one
+> thing on that screen a reader can get wrong. They are `note`s on the menu
+> rows now, which puts them **behind a press** instead of always on screen.
+> That is a real move and it was chosen: a note on the row you are about to
+> press is read at the moment it matters, and under the buttons it was read
+> afterwards. On แยกแผนก it is on **both** rows, because both exports ignore the
+> dropdown. It read "a `.hint` under the buttons" until this round.
+
+**4 — the bar reads in the queue's order: ค้นหา · สถานะ · แผนก · เดือน.** This
+screen argued the reverse — name the month, then narrow it — and the argument
+was sound. It was simply not the other screen's, and one reader reads both. Four
+widths became one: `.month-find .month-pick` at 170, `.month-find .dept-pick` at
+190 and `.head-split .status-pick` at 220 are gone, and `.queue-tools .field`
+sizes every control on both bars, with `.field.search` the one field that grows.
+ค้นหาพนักงาน gained a visible `<label>` in a `.field-head` — every other control
+on the bar reserves that 18px first row, and a box without one sits 18px proud
+of the four beside it — replacing the `aria-label` that was standing in for it.
+**ล้างตัวกรอง** joins it, the queue's own escape hatch; ประจำเดือน is not one of
+the things it clears, because a month is always chosen here and สถานะที่นับ goes
+back to `DEFAULT_STATUS` rather than to empty.
+
+**What this bought on a phone, without a line of CSS being written for it.**
+`.card-head` already has the 860px rules the old markup did not: the count chip
+swaps for `.t-count` inside the title, the head becomes a column, and the one
+action goes full width at 44px. Three screens that each had to state that for
+themselves now state none of it.
 
 ### นโยบายการพิมพ์ใบขออนุมัติ OT — which rows reach the paper
 
@@ -7601,6 +7695,13 @@ about 60px more. Not done: it is a title, not spacing.
 
 ### ประจำเดือน ย้ายลงมาอยู่กับช่องค้นหา — 2026-08-27
 
+> ⚠ **`.month-find` no longer exists.** Everything below is the reasoning that
+> put ประจำเดือน beside ค้นหา and ended their two boxes level, and it is kept
+> because the measurements in it are still the measurements. The row itself was
+> folded into `.queue-tools` on 2026-09-10, together with `.head-split` and
+> `.export-row` — see §สี่จอรายงานเป็นการ์ดใบเดียวกัน. Read the widths and the
+> alignment arithmetic here; read where the controls are there.
+
 **Asked for as "the screen does not say which month it is showing", and that was
 right about the symptom and wrong about the cause.** The picker was on the
 screen the whole time, in the card at the top beside สถานะที่นับ. Measured on the
@@ -7848,6 +7949,11 @@ day — see the section below, which took the band out of the card altogether an
 left it with no margins to negate.
 
 ### ถอดกล่องการ์ดที่ครอบ ประจำเดือน กับช่องค้นหา — 2026-08-27
+
+> ⚠ Same note as the section above: the row this is about is `.queue-tools`
+> since 2026-09-10, and the phone rule described here is
+> `.card.flush.month-panel > .month-head > .queue-tools`. What it says about
+> what a strip over a card list costs is unchanged.
 
 **Asked for as "take the card off the month picker and the search box and let
 them sit on the page".** They were the first thing inside `.month-card`, which
@@ -9678,8 +9784,11 @@ the sheets against the paper, not by looking one person up.
 **And the card gave back 95px in all.** 488 → 393, so รวมทุกบริษัท’s own card now
 starts at 596 instead of 691 on a 360px phone. The other 14 are the last hint no
 longer reserving `.card .hint`’s 14px under itself when nothing follows it, and
-2 are the gap over the buttons coming down to the 12 `.export-row` already
-states. **บริษัท and ประจำเดือน were tried side by side for another 63 and put
+2 are the gap over the buttons coming down to the 12 the export row already
+states. (Both the row and the hint are gone as of 2026-09-10 — the export
+buttons are one `ExportMenu` in the card head and the sentence is a `note` on
+its CSV row — so the 14 and the 2 are history rather than live figures. The 95px
+and the บริษัท/ประจำเดือน dead end still stand.) **บริษัท and ประจำเดือน were tried side by side for another 63 and put
 back**: 304px inside the card leaves ~146 a column, and at that width บริษัท read
 `ทุกบริษัท · 3` and ประจำเดือน read `August 202`. The ledger and that dead end
 are written over `.acct-controls` in the stylesheet.

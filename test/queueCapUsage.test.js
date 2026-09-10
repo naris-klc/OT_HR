@@ -480,10 +480,21 @@ test('neither the screen nor the CSV queries per employee', () => {
 test('ตรวจสอบรายเดือน still opens on อนุมัติแล้ว + รอ HR', () => {
   const view = readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8');
 
+  // THROUGH `DEFAULT_STATUS` SINCE 2026-09-10, and read in two steps rather
+  // than one: the string moved into a named constant when ล้างตัวกรอง joined the
+  // filter bar and needed something to put สถานะที่นับ back to. Both halves are
+  // checked — that the constant still holds the filter these tests compare
+  // against, and that `useState` still opens with the constant — because either
+  // one alone would pass while the screen opened on something else.
   assert.match(
     view,
-    new RegExp(`useState\\('${HR_DEFAULT_FILTER}'\\)`),
+    new RegExp(`const DEFAULT_STATUS = '${HR_DEFAULT_FILTER}';`),
     'the review screen no longer opens on the filter these tests compare against',
+  );
+  assert.match(
+    view,
+    /useState\(DEFAULT_STATUS\)/,
+    'สถานะที่นับ no longer opens on DEFAULT_STATUS',
   );
   // And อนุมัติแล้วเท่านั้น is still one of the three rows, because the tests
   // above compare the queue against it and a reader can still ask for it.

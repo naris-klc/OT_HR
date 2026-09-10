@@ -143,10 +143,19 @@ test('the box is the same box as every other field on the screen', () => {
   // ทะเบียนพนักงาน's search shipped bare once and drew at the browser's default
   // width, with the browser's border and no fill. `.field` is the fix and the
   // stylesheet must not be re-stating any of it.
-  const row = hrView.slice(hrView.indexOf('className="row month-find"'), hrView.indexOf('className="found"'));
-  assert.match(row, /<div className="field">\s*<div className="searchbox">/);
-  const rule = css.slice(css.indexOf('.month-find {'), css.indexOf('.month-find {') + 900);
-  assert.ok(!/\.month-find .*input \{/.test(rule), 'the stylesheet is restyling the input');
+  const row = hrView.slice(hrView.indexOf('<div className="queue-tools">'), hrView.indexOf('className="found"'));
+  // `.field.search` SINCE 2026-09-10 — the same first field รออนุมัติ OT's bar
+  // opens with, and `.queue-tools .field.search` is what gives it the room the
+  // dropdowns beside it do not need.
+  assert.match(row, /<div className="field search">/);
+  assert.match(row, /<div className="searchbox">/);
+  // AND IT HAS A VISIBLE `<label>` NOW, in a `.field-head`, which is the other
+  // half of being the same box: every control on this bar reserves that 18px
+  // first row, and a box without one sits 18px proud of the four beside it. It
+  // replaces the `aria-label` that was standing in for it.
+  assert.match(row, /<div className="field-head"><label htmlFor=\{findId\}>ค้นหาพนักงาน<\/label><\/div>/);
+  const rule = css.slice(css.indexOf('.queue-tools {'), css.indexOf('.queue-tools {') + 900);
+  assert.ok(!/\.queue-tools .*input \{/.test(rule), 'the stylesheet is restyling the input');
 });
 
 test('no result is an answer, with a way out of it', () => {
@@ -205,20 +214,26 @@ test('a month with no rows at all still says that, not “not found”', () => {
  */
 
 test('ประจำเดือน and ค้นหา are one row, above the buttons that act on them', () => {
-  /* ⚠ THE END OF THE SLICE IS SEARCHED FROM THE START OF IT, not from position
-     0. `hrView.indexOf('</ul>')` finds the FIRST list in the file, and on
-     2026-09-10 that stopped being the suggestion menu: `ExportMenu` is declared
-     at module scope, above the component, and closes a `</ul>` of its own. The
-     slice went backwards and every assertion under it failed on an empty
-     string — a test reporting on the wrong region of the file, which is worse
-     than one that simply breaks.
+  /* ⚠ THE SLICE IS BOUNDED AT BOTH ENDS, AND BOTH ENDS HAVE MOVED ONCE.
 
-     This is the same lesson as the commit that made these tests normalise their
-     own line endings: a test that greps source has to say WHERE it is looking,
-     or it is one refactor away from looking somewhere else and saying nothing
-     about it. */
-  const from = hrView.indexOf('className="row month-find"');
-  const row = hrView.slice(from, hrView.indexOf('</ul>', from));
+     It ran to `hrView.indexOf('</ul>')` — searched from position 0 — until
+     2026-09-10, when `ExportMenu` was declared at module scope above the
+     component and closed a `</ul>` of its own. The slice went BACKWARDS and
+     every assertion under it passed on an empty string: a test reporting on the
+     wrong region of the file, which is worse than one that simply breaks.
+
+     Searching from `from` fixed that and then stopped working the same
+     afternoon, when the bar was reordered into รออนุมัติ OT's order: ค้นหา is
+     the first field now, so its suggestion `</ul>` closes BEFORE ประจำเดือน
+     rather than after it, and the slice ended halfway along the bar.
+
+     So it is bounded by the next SECTION instead — `.month-card`, the rows the
+     bar filters — which is a landmark that cannot move inside the thing being
+     measured. That is the lesson twice over: a test that greps source has to
+     say where it is looking, and say it in terms of something outside the
+     region it is looking at. */
+  const from = hrView.indexOf('<div className="queue-tools">');
+  const row = hrView.slice(from, hrView.indexOf('<div className="month-card">', from));
   // `PickMonth` since 2026-09-01 — the app's own calendar, in place of the
   // `<input type="month">` whose popup was the browser's and could not be
   // reached by anything in this repo. Same value, same state, same row.
@@ -228,8 +243,10 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   // a reader has to notice agree.
   assert.equal((hrView.match(/<PickMonth/g) || []).length, 1,
     'there is more than one month picker on this screen');
-  // สถานะที่นับ stays on the heading line, one row up. It is the third thing
-  // that decides which figures exist, and all three are above the buttons.
+  // สถานะที่นับ IS ON THIS BAR TOO SINCE 2026-09-10 — it hung off the heading
+  // line until then, which is where a heading and a labelled control were being
+  // asked to share a baseline. All four filters are on one bar now, in
+  // รออนุมัติ OT's own order: ค้นหา, สถานะ, แผนก, เดือน.
   //
   // `PickOne` SINCE 2026-09-01, so the label is a prop and not a `<label>` in
   // this file — the component renders its own, with an `id` for
@@ -238,15 +255,27 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   // tag: what it is here to hold down is that the words are on this screen and
   // on the heading row, not which element carries them.
   assert.match(hrView, /<PickOne\s+label="สถานะที่นับ"/);
-  // THE ROW IS IN THE CARD, AND ABOVE THE BUTTONS. Both halves: inside
-  // `.month-head` says the controls are together, before `.export-row` says the
-  // งวด is settled before anything offers to print it.
+  // THE BAR IS IN THE CARD, AND THE ACTION IS ABOVE IT. `.export-row` is gone:
+  // พิมพ์ / ส่งออก sits in `.card-head` beside the count, which is where every
+  // other card in this app puts its one action, and the bar of filters is the
+  // section under it. So the order the old assertion held down — settle the
+  // งวด before anything offers to print it — is now read the other way round on
+  // the screen and is unchanged in substance: the head is a title and a verb,
+  // the bar is what the verb will act on, and the rows are underneath both.
   const head = hrView.indexOf('<div className="month-head">');
-  const find = hrView.indexOf('<div className="row month-find">');
-  const exports = hrView.indexOf('className="row export-row"');
+  const find = hrView.indexOf('<div className="queue-tools">');
+  const cardHead = hrView.indexOf('<div className="card-head">');
+  const exports = hrView.indexOf('<ExportMenu');
   const status = hrView.indexOf('<PeriodStatus');
-  assert.ok(head > 0 && find > head, 'the search row left the controls card');
-  assert.ok(find < exports, 'the export buttons are back above the month and the search box');
+  assert.ok(head > 0 && find > head, 'the filter bar left the controls card');
+  assert.ok(cardHead > head && cardHead < find, 'the card head is no longer the first section of the panel');
+  assert.ok(exports > cardHead && exports < find, 'พิมพ์ / ส่งออก left the card head');
+  // THE CLASS ATTRIBUTE, NOT THE BARE WORD. `.export-row` is named in prose in
+  // this file and in the stylesheet — it is a rule that was deleted and the
+  // note saying so is the point of it — and a test matching the word alone
+  // catches the explanation instead of the code. That has now happened five
+  // times in this repo; see AGENTS.md.
+  assert.ok(!/className="row export-row"/.test(hrView), 'the row of export buttons came back');
   /* ⚠ สรุปสถานะงวด IS ABOVE THE WHOLE CARD NOW, AND IT USED TO BE BELOW IT.
      This read `assert.ok(exports < status)` until 2026-09-10 — the card sat
      UNDER the buttons that print and export, because it is the check somebody
@@ -271,24 +300,59 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   assert.match(hrView, /<PeriodStatus period=\{period\} compact \/>/);
   // And nothing stands between the controls and the rows they decide any more:
   // the two are sections of one card.
-  const panel = hrView.indexOf('<div className="month-panel">');
+  const panel = hrView.indexOf('<div className="card flush month-panel">');
   const list = hrView.indexOf('<div className="month-card">');
   assert.ok(panel > 0 && panel < head && head < list, 'the controls and the table are not one card');
 });
 
-test('the month comes first in the row, because it decides what the search searches', () => {
-  const row = hrView.slice(hrView.indexOf('className="row month-find"'));
+test('ค้นหา comes first on the bar, in the order รออนุมัติ OT reads in', () => {
+  /* ⚠ THIS IS THE OPPOSITE OF WHAT IT HELD UNTIL 2026-09-10, and the reversal
+     is the point of the round rather than a casualty of it.
+
+     It read: ประจำเดือน first, "because it decides what the search searches".
+     That argument was sound — the month decides WHAT is in the list and ค้นหา
+     only decides which of it is drawn — and it was this screen's own. Next to
+     it, รออนุมัติ OT put ค้นหา at the front of its bar and the month at the
+     back, with an argument just as sound (the box that reads across every
+     filter goes first). Two sound arguments, two bars, one reader — who was
+     reported as finding exactly that: *"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่สม่ำเสมอ
+     กันเลย"*.
+
+     A reader changing tab should not have to relearn which end of the bar the
+     month is at. The queue's order won because three screens moved to it and
+     one did not have to. */
+  const row = hrView.slice(hrView.indexOf('<div className="queue-tools">'));
   assert.ok(
-    row.indexOf('<label>ประจำเดือน</label>') < row.indexOf('className="searchbox"'),
-    'the search box moved above the month it is searching',
+    row.indexOf('className="searchbox"') < row.indexOf('<label>ประจำเดือน</label>'),
+    'the month moved above the search box again',
+  );
+  // …and สถานะ then แผนก between them, which is the queue's own three.
+  assert.ok(
+    row.indexOf('label="สถานะที่นับ"') < row.indexOf('label="แผนก"'),
+    'สถานะ and แผนก swapped places on the bar',
+  );
+  assert.ok(
+    row.indexOf('label="แผนก"') < row.indexOf('<label>ประจำเดือน</label>'),
+    'แผนก fell past the month on the bar',
   );
 });
 
-test('the month box has a width of its own, or it takes half the line', () => {
-  // `.field` is `flex: 1`, which is `flex: 1 1 0%` — a basis of nothing. Two
-  // fields both grasping at nothing split the row in half, and half a row is too
-  // much for a month and too little for a name.
-  assert.match(css, /\.month-find \.month-pick \{ flex: 0 0 170px; \}/);
+test('every field on the bar is one width, stated once for both screens', () => {
+  /* `.field` is `flex: 1`, which is `flex: 1 1 0%` — a basis of nothing, and
+     fields all grasping at nothing split the row evenly, which is too little
+     for a name and far too much for a month. Every bar needs an answer.
+
+     WHAT IS PINNED IS THAT THERE IS ONE. `.month-find .month-pick` at 170px,
+     `.month-find .dept-pick` at 190 and `.head-split .status-pick` at 220 were
+     this screen's three, beside `.queue-tools .field` at 200 for the queue's
+     four — four numbers where the two bars now share one, with `.field.search`
+     the single exception because it is the one field that should take what is
+     left. */
+  assert.match(css, /\.queue-tools \.field \{ flex: 0 1 200px; min-width: 150px; \}/);
+  assert.match(css, /\.queue-tools \.field\.search \{ flex: 2 1 300px; \}/);
+  for (const dead of ['.month-find .month-pick', '.month-find .dept-pick', '.head-split .status-pick']) {
+    assert.ok(!css.includes(`${dead} {`), `${dead} came back — the bar has a second width again`);
+  }
 });
 
 test('the UTF-8 BOM line is gone from under the export buttons', () => {
@@ -338,28 +402,34 @@ test('the UTF-8 BOM line is gone from under the export buttons', () => {
  * WHAT THIS PINS is that none of them comes back — and neither does the sticky,
  * the layer or the `!important` under it.
  */
-test('the box is a row of the controls card, not a strip stuck over the list', () => {
+test('the bar is a section of the controls card, not a strip stuck over the list', () => {
+  /* WHAT THIS GUARDED, AND STILL DOES. The search box spent a morning as a
+     sticky strip over the card list, with a forced fill, a z-index, and the
+     card's padding negated on both sides so it could run full-bleed. All of it
+     came out when the box went back into the controls card, and this test is
+     what stops it being re-invented.
+
+     THE RULE IT READ IS GONE (`.month-find`, 2026-09-10) AND THE PROPERTY IS
+     NOT. The bar is `.queue-tools` now, scoped inside the panel at this width —
+     see the block by that name in the phone section — so the same seven
+     declarations are checked against the rule that replaced it. */
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  const at = phone.indexOf('.month-find {');
-  const rule = phone.slice(at, phone.indexOf('\n  }', at)).replace(/\/\*[\s\S]*?\*\//g, '');
+  const at = phone.indexOf('.month-head { padding: 0; }');
+  assert.ok(at > 0, 'the phone rules for the panel’s two sections are gone');
+  const rule = phone.slice(at, phone.indexOf('/* ══ ตรวจสอบรายเดือน IS A CARD LIST', at)).replace(/\/\*[\s\S]*?\*\//g, '');
 
   assert.ok(!/position:\s*sticky/.test(rule), 'the search box went back to being stuck over the cards');
   assert.ok(!/z-index/.test(rule), 'the search box is stacking against something again');
   assert.ok(!/!important/.test(rule), 'the forced fill came back without the sticky that needed it');
-
-  // The four that were the card's, and are nobody's now.
   assert.ok(!/margin-left|margin-right/.test(rule), 'the full-bleed margins came back without the card that needed them');
-  assert.ok(!/padding/.test(rule), 'the row is giving back padding it is not being charged');
-  assert.ok(!/background/.test(rule), 'the row is painting the page its own colour');
-  assert.ok(!/border/.test(rule), 'the hairline came back over a gap that is already a gap');
 
   // AND THE MARKUP IS THE OTHER HALF OF IT. A stylesheet cannot say which
   // element is somebody's parent, so the rules above are only true while this
-  // is: the row is inside `.month-head` and nowhere near the list.
+  // is: the bar is inside `.month-head` and nowhere near the list.
   const head = hrView.indexOf('<div className="month-head">');
-  const find = hrView.indexOf('<div className="row month-find">');
+  const find = hrView.indexOf('<div className="queue-tools">');
   const list = hrView.indexOf('<div className="month-card">');
-  assert.ok(head < find && find < list, 'the search row is back inside the month card');
+  assert.ok(head < find && find < list, 'the filter bar is back inside the month card');
 
   // คิวรออนุมัติ's bar IS still stuck, at the same 62 this one used to take —
   // that screen is a queue worked through top to bottom, not a five-card page.
@@ -367,7 +437,7 @@ test('the box is a row of the controls card, not a strip stuck over the list', (
 
   // Desktop never had any of it.
   const desktop = css.slice(0, css.indexOf('@media screen and (max-width: 860px)'));
-  assert.ok(!/\.month-find \{[^}]*sticky/.test(desktop), 'the box went sticky on the desktop too');
+  assert.ok(!/\.queue-tools \{[^}]*sticky/.test(desktop), 'the bar went sticky on the desktop too');
 });
 
 /**
@@ -386,7 +456,7 @@ test('the month picker is drawn on a month with no entries in it', () => {
   // matching them found the explanation — the fifth assertion in this codebase
   // to catch a comment instead of the code it describes, and it took two
   // minutes rather than eleven days because it was written and run here.
-  const row = hrView.indexOf('<div className="row month-find">');
+  const row = hrView.indexOf('<div className="queue-tools">');
   const empty = hrView.indexOf('<Empty>ไม่มีรายการในเดือนนี้</Empty>');
   assert.ok(row > 0 && empty > 0, 'the row or the empty state was not found');
   assert.ok(row < empty, 'the search row is drawn after the empty-month branch decides');
@@ -423,34 +493,52 @@ test('nothing new is stacked between the phone bars and the dialogs', () => {
   assert.match(css.slice(own, css.indexOf('}', own)), /z-index: 50;/, 'the exemption above is stale');
 });
 
-test('the space over the box is the space between two rows of one card', () => {
-  // A TOP MARGIN, AND IT IS `.export-row`'S OWN NUMBER — 12px, the gap this
-  // card puts between the heading row and this one and between this one and the
-  // buttons. It was `margin-bottom: 12px` for the few hours the row stood on the
-  // page ground between two cards, where 12 was the gap two cards keep.
+test('the space between the head and the bar is one number, and the phone has its own', () => {
+  /* THE GAP LIVED ON `.month-find` AS A TOP MARGIN UNTIL 2026-09-10 — 12px on
+     a desktop, 8 on a phone, taken from the row above rather than given to the
+     row below, because `.export-row` declared its own 12 and two adjacent
+     margins asking for one gap collapse to whichever is larger.
+
+     THERE IS NO MARGIN AT ALL NOW, and that is the change worth pinning. The
+     head and the bar are two banded sections of one card: what separates them
+     is `.card-head`'s bottom rule and the padding on either side of it, which
+     is the same thing that separates them on รออนุมัติ OT. Nothing here can
+     collapse against anything.
+
+     THE 8 SURVIVES, ON THE PHONE ONLY, and it is the one place a margin is
+     still right: down there both sections give their padding and their rule
+     back (the card at that width is `.month-head` itself, paying 12px once),
+     so without it the bar would sit against the title. */
+  const flush = css.slice(css.indexOf('.card.flush > .month-head > .card-head {'));
+  assert.match(flush.slice(0, flush.indexOf('}')),
+    /padding: 16px 18px; border-bottom: 1px solid var\(--line-soft\);/,
+    'the panel’s head band lost its padding or its rule');
+  // COMMENTS STRIPPED FIRST. `.month-find` is named in the note that explains
+  // why it was deleted, and a bare match finds the explanation — see the same
+  // trap sprung four lines down over `<h2>`, and AGENTS.md, which names it.
+  const desk = css.slice(0, css.indexOf('@media screen and (max-width: 860px)')).replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/\.month-find/.test(desk), '.month-find came back — the bar has a second container again');
+
+  // ⚠ AND ON A PHONE THE 12px MOVES INWARD RATHER THAN COMING OFF. The card at
+  // that width is `.month-head`, which paid 12 on every side as one box; its two
+  // children pay it now, so the writing sits exactly where it did and the wash
+  // bar runs to the card's own edges instead of floating 12px inside it — which
+  // is what the other three screens look like down there.
   //
-  // WHY THE SIDE IT IS ON MATTERS. `.export-row` declares its own 12px top
-  // margin, so a bottom margin here would be two adjacent margins asking for the
-  // same gap; they collapse to the larger, and the number a reader gets is not
-  // the number either rule states.
-  //
-  // The selector carried `.acct-find` beside this one from 2026-08-26 until
-  // 2026-08-27, when ส่งบัญชี's box was taken out. One caller again.
-  assert.match(css, /\.month-find \{ align-items: flex-end; gap: 10px 14px; margin-top: 12px; \}/);
-  // …AND ON A PHONE IT IS 8, which is what `.export-row` takes at that width for
-  // the reason stated there: at 12 the gap reads as a section break between
-  // controls that belong to each other.
-  //
-  // IT IS ALSO THE ONLY THING THE PHONE RULE SAYS. The padding it used to carry
-  // — `8px var(--month-pad) 10px` — was the other half of the full-bleed
-  // margins, and both went out with the card; the test above pins that none of
-  // them comes back.
+  // THE BAR ROUNDS ITS OWN BOTTOM CORNERS rather than the head clipping them.
+  // `overflow: hidden` is the obvious way to make a full-bleed fill respect a
+  // radius and it is the one thing this card cannot have: ค้นหาพนักงาน's
+  // suggestion list is an absolutely-positioned `.pick-menu`, and a phone is
+  // where it has least room to be clipped.
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(phone, /\.month-find \{[\s\S]*?margin-top: 8px;/);
-  assert.match(phone, /\.export-row \{\s*margin-top: 8px;/);
+  assert.match(phone, /\.month-head \{ padding: 0; \}/);
+  assert.match(phone, /\.card\.flush\.month-panel > \.month-head > \.card-head \{ padding: 12px; \}/);
+  assert.match(phone, /\.card\.flush\.month-panel > \.month-head > \.queue-tools \{\s*padding: 12px; border-bottom: none;\s*border-radius: 0 0 var\(--radius-lg\) var\(--radius-lg\);/);
+  assert.ok(!/\.month-head > \.queue-tools \{[^}]*overflow/.test(phone) && !/\.month-panel > \.month-head \{[^}]*overflow: hidden/.test(phone),
+    'the head is clipping again — the suggestion list is cut off on a phone');
 });
 
-test('the two boxes in that row end on the same line', () => {
+test('the fields on that bar end on the same line, and the count does not', () => {
   // WHAT WAS REPORTED, on 2026-08-28: on a desktop the search box sat high
   // beside ประจำเดือน — its bottom edge level with nothing, its top edge level
   // with that field's LABEL — so it read as belonging to the label rather than
@@ -458,82 +546,78 @@ test('the two boxes in that row end on the same line', () => {
   //
   // THE CAUSE WAS ONE WORD. `.row` is `align-items: flex-end` precisely so that
   // fields of different total height end on one line; `.month-find` overrode it
-  // with `center`. ประจำเดือน is a `.field` WITH a label — 12px of type, a 7px
-  // gap, a 46px box, 65 in all — and ค้นหา is a `.field` with none, so centring
+  // with `center`. ประจำเดือน was a `.field` WITH a label — 12px of type, a 7px
+  // gap, a 46px box, 65 in all — and ค้นหา was a `.field` with none, so centring
   // the two in the taller one's line hung the shorter one nine pixels up.
   //
-  // Pinned as the base rule's own value and not as a literal: if `.row` ever
-  // ends its children differently, this row is not the place that should be
-  // the one disagreeing with it.
-  const base = css.slice(css.indexOf('.row { display: flex;'));
-  assert.match(base.slice(0, base.indexOf('}')), /align-items: flex-end/, 'the base row rule moved');
-  assert.ok(!/\.month-find \{[^}]*align-items: center/.test(css), 'the row is centring its fields again');
+  // ⚠ THAT CANNOT HAPPEN ON THIS BAR AT ALL, which is the better answer and
+  // came free with the move: `.queue-tools` is `align-items: flex-end` like the
+  // row it replaces, AND every control on it now carries a `.field-head` —
+  // ค้นหาพนักงาน included, which is what its new visible `<label>` is for. Five
+  // fields of one height cannot be hung wrong. The alignment is still pinned
+  // because the day one of them loses its label is the day this returns.
+  const tools = css.slice(css.indexOf('.queue-tools {'), css.indexOf('}', css.indexOf('.queue-tools {')));
+  assert.match(tools, /align-items: flex-end/, 'the filter bar stopped ending its fields on one line');
+  assert.match(css, /\.field-head \{ display: flex; align-items: center; gap: 6px; min-height: 18px; \}/,
+    'the 18px first row every control on the bar reserves is gone');
 
-  // AND THE COUNT KEEPS `center`, WHICH IS THE WHOLE OF WHAT THE ROW-WIDE
-  // `center` WAS EVER WANTED FOR. แสดง n จาก n คน is one line of type beside two
-  // 46px boxes: stood on the row's floor its descenders would hang below
+  // AND THE COUNT KEEPS `center`, WHICH IS THE WHOLE OF WHAT A ROW-WIDE
+  // `center` WAS EVER WANTED FOR. แสดง n จาก n คน is one line of type beside
+  // 46px boxes: stood on the bar's floor its descenders would hang below
   // theirs, so it is centred on its own.
-  assert.match(css, /\.month-find \.found \{ align-self: center;/);
+  assert.match(css, /\.queue-tools \.found \{\s*align-self: center;/);
 });
 
-test('the heading and สถานะที่นับ start on the same line, and it is a class that says so', () => {
-  // THE ROW ABOVE `.month-find`, AND THE OPPOSITE ANSWER — deliberately.
-  // Reported on 2026-08-28, the same round as the search box below it: สถานะที่นับ
-  // floated above ตรวจสอบรายเดือน. Measured on the running app at 1280px, the
-  // right column started 23.75px above the left (y=202.5 against y=226.25),
-  // because the heading block is 42.25px tall (19.5 + 4 + 18.75) and the
-  // labelled field is 66 (12 + 7 + 47), and the row was ending them level.
-  //
-  // `.month-find` KEEPS `flex-end` AND THIS ROW DOES NOT, which is the pair
-  // worth holding down together: two boxes end level because a reader compares
-  // their bottom edges, and a heading against a caption is compared by the line
-  // its writing sits on. A rule that made both rows agree would be wrong on one
-  // of them.
-  //
-  // AND IT IS `baseline`, WHICH THIS ASSERTION READ AS `flex-start` FOR THREE
-  // ROUNDS. `flex-start` was shipped to all three cards and each round signed
-  // off on it by measuring the two columns' top EDGES at 0.00px apart — and the
-  // same report came back in the same words each time, because the top edge is
-  // not where anybody looks. At 15px on a 19.5px line against 12px on a 12px
-  // line, boxes flush leaves the two lines of writing 4px apart: rulers drawn
-  // across the running app at 1440px on 2026-08-28 put the heading's baseline
-  // at y=123 and บริษัท's at y=119, with the label's line running through the
-  // middle of the heading's letters. `baseline` spends that 4px the other way —
-  // the field drops, the card grows 4px, the texts share one line.
-  //
-  // A `margin-top: 4px` on the fields measures the same today. It is not what
-  // is here because it is a number copied out of two font sizes, and stale the
-  // moment either moves; `baseline` re-derives it. Do not put the top-edge
-  // measurement back on the strength of devtools — the eye reads the ink.
-  assert.match(css, /\.head-split \{ align-items: baseline; \}/);
-  assert.ok(hrView.includes('<div className="row head-split">'), 'the heading row lost its class');
+test('no heading on any of the four screens shares a line with a control', () => {
+  /* ⚠ THIS TEST HELD THE OPPOSITE UNTIL 2026-09-10, and what replaced it is
+     worth reading against what it said.
 
-  // AND IT IS `.head-split`, NOT `.month-head-top`, WHICH IT WAS FOR ONE
-  // COMMIT. ส่งบัญชี was reported with the identical row and the identical
-  // 23.75px the same day; a rule named after the first card that needed it is
-  // how the second card ends up with a copy of the declaration rather than a
-  // reference to it. All three callers are pinned so none can quietly drop out
-  // and leave a shared rule with one user and a misleading name.
-  const acct = readFileSync(join(ROOT, 'components/AccountingView.jsx'), 'utf8');
-  assert.ok(acct.includes('<div className="row head-split">'), 'ส่งบัญชี stopped sharing the rule');
+     It pinned `.head-split { align-items: baseline; }` and its three callers —
+     ตรวจสอบรายเดือน, สรุป OT ส่งบัญชี and สรุป OT แยกแผนก — each of which put an
+     `<h2>` and a labelled dropdown on one line. That rule took THREE ROUNDS to
+     get right: `flex-start` was shipped and signed off twice by measuring the
+     two columns' top edges at 0.00px, and the same report came back in the same
+     words each time, because the top edge is not where anybody looks. At 15px
+     on a 19.5px line against 12px on a 12px line, boxes flush leaves the two
+     lines of writing 4px apart — measured on the running app at 1440px on
+     2026-08-28, heading baseline y=123, บริษัท's y=119. `baseline` spent that
+     4px the other way and the texts shared one line.
 
-  // THE THIRD IS สรุป OT แยกแผนก, reported on 2026-08-28 in the same words as
-  // the other two and answered by adding the class and nothing else — no line
-  // of CSS was written for it, which is what a shared rule is FOR. Its number
-  // was 5.5px and not 23.75 (heading block y=114.5, fields y=109, measured on
-  // the running app at 1280px): that card's hint runs to two lines, so the left
-  // side is 61px against the field's 66.5 rather than 42.25 against 66. Ending
-  // them level simply had less to give away. Which edge lines up is the
-  // question this rule answers, and the answer does not depend on the gap.
-  const dept = readFileSync(join(ROOT, 'components/DepartmentView.jsx'), 'utf8');
-  assert.ok(dept.includes('<div className="row head-split">'), 'แยกแผนก stopped sharing the rule');
+     ALL OF THAT WAS TRUE AND IT IS NOT NEEDED ANY MORE, because the arrangement
+     it was rescuing is gone from every screen: a heading and a control no
+     longer share a line anywhere. `.card-head` holds a title, a hint and one
+     action; `.queue-tools` holds the controls. That is รออนุมัติ OT's shape and
+     it never had this problem — which is the whole of what the report of
+     2026-09-10 was pointing at.
 
-  // AND IT IS A CLASS, NOT THE INLINE `alignItems` IT REPLACED. Same reason
-  // `.export-row` and `.deleg-head-text` are classes: the 860px block cannot
-  // reach an inline style, so a rule that needs to would have to rewrite the
-  // JSX first. Nothing needs to today — `.field` is `min-width: 100%` down
-  // there and the two sides stack — which is exactly when it is cheap to move.
-  assert.ok(!/alignItems/.test(hrView), 'a layout decision went back inline');
+     WHAT IS PINNED IS THE ABSENCE. `.head-split` must not come back, because it
+     coming back means a heading is being asked to hang from a dropdown again;
+     and all four screens must be using the same head. */
+  assert.ok(!/\.head-split/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')),
+    '.head-split came back — a heading is hanging from a control again');
+
+  const files = [
+    'components/HrView.jsx',
+    'components/AccountingView.jsx',
+    'components/DepartmentView.jsx',
+    'components/ApprovalQueue.jsx',
+  ];
+  for (const f of files) {
+    const jsx = readFileSync(join(ROOT, f), 'utf8');
+    assert.ok(jsx.includes('<div className="card-head">'), `${f} is not using the shared card head`);
+    assert.ok(!/className="row head-split"/.test(jsx), `${f} put its heading back on a line with a control`);
+    // AND NOT AN `<h2>` EITHER — `.t` is what a card's title is, on all four.
+    // ⚠ LINE-LEADING ONLY. `<h2>` is written inside three comments across these
+    // files, all of them explaining that it is no longer used; a bare match
+    // catches the explanation. This assertion caught exactly that on the day it
+    // was written, which is the sixth time in this repo — AGENTS.md names it.
+    assert.ok(!/^\s+<h2>/m.test(jsx), `${f} went back to an <h2> for its card title`);
+  }
+
+  // AND IT IS A CLASS, NOT AN INLINE `alignItems` — the reason `.export-row`
+  // and `.deleg-head-text` were classes: the 860px block cannot reach an inline
+  // style, so a rule that needs to would have to rewrite the JSX first.
+  assert.ok(!/alignItems: 'flex-(end|start)'/.test(hrView), 'a layout decision went back inline');
 });
 
 /**
@@ -553,9 +637,16 @@ test('the heading and สถานะที่นับ start on the same line, 
  * cards. See test/hrMonthCards.test.js for the rule and the reasoning.
  */
 test('the one card above the list is 12px, and the list itself is nobody’s card', () => {
+  // 12px, AND SINCE 2026-09-10 IT IS PAID BY THE TWO SECTIONS INSIDE THE CARD
+  // RATHER THAN BY THE CARD. `.month-head` is the card at this width and holds
+  // `.card-head` and `.queue-tools`; the bar carries a wash, so a padding on the
+  // outer box would draw it as a strip floating 12px inside a card instead of a
+  // section running to its edges. Same number, same ink position, one level in.
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
-  assert.match(phone, /\.month-head \{ padding: 12px; \}/,
+  assert.match(phone, /\.card\.flush\.month-panel > \.month-head > \.card-head \{ padding: 12px; \}/,
     'the controls card stopped stating its own padding');
+  assert.match(phone, /\.card\.flush\.month-panel > \.month-head > \.queue-tools \{\s*padding: 12px;/,
+    'the filter bar stopped stating the same padding as the head above it');
   // A LITERAL AGAIN, AND THAT IS THE POINT OF THE PAIR. It was `--month-pad`
   // while two rules had to agree — this padding, and the negative margins that
   // pulled the list back out through it. The list is not inside anything now, so

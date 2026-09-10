@@ -246,7 +246,12 @@ test('ทุกแผนก is a row of the list, because "" is a setting this s
   const end = control.indexOf('/>');
   assert.match(control.slice(0, end), /allLabel="ทุกแผนก"/);
   assert.match(control.slice(0, end), /options=\{departments\}/);
-  assert.match(control.slice(0, end), /className="dept-pick"/);
+  // `className="dept-pick"` WAS ASSERTED HERE UNTIL 2026-09-10 and is not any
+  // more: the control took a 190px basis of its own beside a month at 170 and a
+  // สถานะ at 220, three numbers on one screen. Every field on `.queue-tools` is
+  // one width now — `.queue-tools .field`, shared with รออนุมัติ OT — and
+  // test/monthSearch.test.js is where that is pinned, including that the three
+  // dead rules stay dead.
   // NOT ASSERTED HERE: that this is a `PickOne` rather than a `<select>`. The
   // first draft of this test did — `assert.ok(!/<select/.test(hrView))` — and it
   // went red on the four COMMENTS in that file explaining why the last native
@@ -255,30 +260,32 @@ test('ทุกแผนก is a row of the list, because "" is a setting this s
   // test/noNativeSelect.test.js.
 });
 
-test('it sits in the row of controls, not on the heading line', () => {
-  // ประจำเดือน, แผนก, ค้นหา — which month, whose month, then find one person in
-  // it, each acting on what the one before it settled. The heading line already
-  // holds a heading and สถานะที่นับ, and a third control there is three widths
-  // on a desktop and a stack of three on a phone (the note over ประจำเดือน in
-  // components/HrView.jsx, which is why that control moved down here in the
-  // first place).
-  const row = hrView.slice(
-    hrView.indexOf('className="row month-find"'),
-    hrView.indexOf('className="found"'),
-  );
-  assert.ok(row.includes('label="แผนก"'), 'แผนก is not in the controls row');
+test('it sits on the filter bar, third, where รออนุมัติ OT puts its own', () => {
+  /* ค้นหา · สถานะ · แผนก · เดือน — the queue's order, and this screen's since
+     2026-09-10. It sat between ประจำเดือน and ค้นหา for one afternoon on an
+     argument of this screen's own ("which month, whose month, then find one
+     person in it") which was sound and was simply not the other screen's. See
+     test/monthSearch.test.js, where that reversal is written out.
+
+     WHAT HAS NOT CHANGED is that it is on the BAR and not on the heading line.
+     สถานะที่นับ hung off the heading until the same afternoon; both are filters,
+     both are on the bar, and no heading in this app shares a line with a
+     control any more. */
+  const from = hrView.indexOf('<div className="queue-tools">');
+  const row = hrView.slice(from, hrView.indexOf('<div className="month-card">', from));
+  assert.ok(row.includes('label="แผนก"'), 'แผนก is not on the filter bar');
   assert.ok(
-    row.indexOf('<PickMonth') < row.indexOf('label="แผนก"'),
-    'แผนก is drawn above ประจำเดือน',
+    row.indexOf('className="searchbox"') < row.indexOf('label="แผนก"'),
+    'แผนก is drawn above the search box',
   );
   assert.ok(
-    row.indexOf('label="แผนก"') < row.indexOf('className="searchbox"'),
-    'the search box is drawn above แผนก',
+    row.indexOf('label="สถานะที่นับ"') < row.indexOf('label="แผนก"'),
+    'แผนก overtook สถานะที่นับ on the bar',
   );
-  // A fixed basis, for the reason ประจำเดือน has one: `.field`'s `flex: 1` is a
-  // basis of nothing, and three fields grasping at nothing split the line in
-  // thirds. The search box is the one field on the line that grows.
-  assert.match(css, /\.month-find \.dept-pick \{ flex: 0 0 190px; \}/);
+  assert.ok(
+    row.indexOf('label="แผนก"') < row.indexOf('<PickMonth'),
+    'ประจำเดือน is drawn above แผนก',
+  );
 });
 
 // ── and the screen says which แผนก it is showing ────────────────────────────

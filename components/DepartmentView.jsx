@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { api, hours, withHours, currentPeriod, periodLabel } from '@/lib/api.js';
 import { groupByDepartment, sumRows } from '@/lib/departmentSummary.js';
 import {
-  Alert, BirthdayNote, Empty, OverCeilingFigure, OverCeilingNote, PickOne, UnaccountedHours,
+  Alert, BirthdayNote, Empty, ExportMenu, OverCeilingFigure, OverCeilingNote, PickOne,
+  UnaccountedHours,
 } from './common.jsx';
 import DepartmentPrint from './DepartmentPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -100,26 +101,63 @@ export default function DepartmentView() {
 
   return (
     <>
-      <div className="card no-print">
-        {/* `.head-split`, the third card to use it after ตรวจสอบรายเดือน and
-            สรุป OT ส่งบัญชี, and the same two boxes again: a heading with its
-            hint on the left, labelled fields on the right, and one baseline
-            under both. `.row`'s own `flex-end` is right for a line of controls
-            and wrong here — a heading against a caption is compared by the line
-            the writing sits on. It was an inline `alignItems: 'flex-end'` and
-            the right side floated 5.5px high, less than ส่งบัญชี's 23.75 for one
-            reason: this card's hint runs to two lines, so the heading block is
-            61px against the field's 66.5 instead of 42.25. Same defect, shorter
-            arithmetic — and the `flex-start` that answered it left the same 4px
-            between the two texts that ส่งบัญชี had. */}
-        <div className="row head-split">
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <h2>รายงาน OT แยกแผนก</h2>
+      {/* THE SAME CARD รออนุมัติ OT IS, and card for card the same as รายงาน
+          OT การเงิน — which is what it has always claimed to be, and now is at
+          the level of the classes rather than only in the comments. See the
+          note at the head of components/AccountingView.jsx for the report
+          (*"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่สม่ำเสมอกันเลย"*, 2026-09-10) and for
+          why `.head-split` and `.action-row` left the app rather than being
+          balanced one more time. */}
+      <div className="card flush no-print">
+        <div className="card-head">
+          <div style={{ minWidth: 0 }}>
+            <div className="t">
+              <span className="t-name">รายงาน OT แยกแผนก</span>
+              {data && <span className="t-count">{' · '}{hours(total.otHours)} ชม.</span>}
+            </div>
             <div className="hint" style={{ margin: 0 }}>
               {periodLabel(period)} · นับเฉพาะรายการที่อนุมัติครบและ HR ยืนยันแล้ว ·
               {' '}นับพนักงานทั้งสองบริษัทรวมอยู่ในแผนกเดียวกัน
             </div>
           </div>
+          <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+            {data && <span className="chip muted">รวม {hours(total.otHours)} ชม.</span>}
+            {/* ── TWO BUTTONS BECAME ONE MENU ─────────────────────────────
+
+                The same control and the same two rows as สรุป OT ส่งบัญชี, in
+                the same order — the file leads, the form follows.
+
+                ⚠ WHERE ไฟล์และแบบฟอร์มออกครบทุกแผนก WENT, AND WHY IT MATTERS
+                MORE HERE. On ส่งบัญชี the hint under the buttons said only that
+                the file carries hours and not money; on this screen it said
+                something a reader can get WRONG — that both exports ignore the
+                แผนก dropdown two inches to the left of them and always cover
+                every department. That sentence is now the `note` on BOTH rows,
+                which is the one place it is certain to be read: beside the row
+                being pressed, at the moment of pressing. Under the buttons it
+                was read afterwards, if at all. */}
+            <ExportMenu
+              disabled={!data}
+              items={[
+                {
+                  key: 'csv',
+                  label: 'ส่งออกไฟล์แยกแผนก (CSV/Excel)',
+                  note: 'ครบทุกแผนก ไม่ขึ้นกับแผนกที่เลือก · เป็นชั่วโมง ไม่ใช่เงิน',
+                  primary: true,
+                  onSelect: exportCsv,
+                },
+                {
+                  key: 'print',
+                  label: 'พิมพ์แบบฟอร์ม / บันทึกเป็น PDF',
+                  note: 'ครบทุกแผนก ไม่ขึ้นกับแผนกที่เลือก · หนึ่งแผนกต่อหนึ่งชุด',
+                  onSelect: () => setPrinting(true),
+                },
+              ]}
+            />
+          </div>
+        </div>
+
+        <div className="queue-tools">
           {/* แผนก then ประจำเดือน, in that order and in one place, the way
               บริษัท then ประจำเดือน sit on สรุป OT ส่งบัญชี: the two things that
               decide what the screen shows, with the narrower question first. A
@@ -138,7 +176,6 @@ export default function DepartmentView() {
               while it is shut, and `.ct` is drawn in the open list only. */}
           <PickOne
             label="แผนก"
-            style={{ maxWidth: 260, flex: 'none' }}
             value={selected}
             onChange={setOnly}
             disabled={!data}
@@ -147,22 +184,10 @@ export default function DepartmentView() {
               ...departments.map((d) => ({ value: d.id, label: withHours(d.name, d.totals.otHours) })),
             ]}
           />
-          <div className="field" style={{ maxWidth: 170, flex: 'none' }}>
+          <div className="field">
             <div className="field-head"><label>ประจำเดือน</label></div>
             <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
-        </div>
-
-        {/* Same action row as สรุป OT ส่งบัญชี, `.action-row` and all — the two
-            screens are card for card the same, so they wrap the same way, and
-            now they are spaced the same way too: the gap above this row was
-            `marginTop: 14` here against ส่งบัญชี's 12 and is one number in the
-            class. */}
-        <div className="row action-row">
-          <button className="btn" onClick={exportCsv}>ส่งออกไฟล์แยกแผนก (CSV/Excel)</button>
-          <button className="btn ghost" onClick={() => setPrinting(true)}>
-            พิมพ์แบบฟอร์ม / บันทึกเป็น PDF
-          </button>
           <label className="check">
             <input
               type="checkbox"
@@ -171,20 +196,6 @@ export default function DepartmentView() {
             />
             แสดงพนักงานที่ไม่มี OT
           </label>
-        </div>
-
-        {/* Two lines down to one. Gone: the UTF-8 BOM note, which is a fact
-            about file encoding that reads as reassurance the first time and as
-            noise every time after; and the sentence describing what the printed
-            form looks like, which the print preview shows.
-
-            KEPT, and it is the reason this hint exists at all: the export
-            ignores the department picker above it. A control that does not
-            govern the button beside it is the one thing here somebody can get
-            wrong, and nothing on screen says so. */}
-        <div className="hint" style={{ marginTop: 10 }}>
-          ไฟล์และแบบฟอร์มออกครบทุกแผนก <strong>ไม่ขึ้นกับแผนกที่เลือกไว้ด้านบน</strong> ·
-          {' '}ไม่มีการคำนวณเป็นเงิน
         </div>
       </div>
 
@@ -240,8 +251,10 @@ export default function DepartmentView() {
 function DepartmentCard({ dept, period, index }) {
   const t = dept.totals;
   return (
-    <div className="card" style={{ marginTop: 18 }}>
-      <div className="card-head" style={{ marginBottom: 14 }}>
+    /* `card flush` — see the note on `CompanySheet` in AccountingView.jsx. The
+       two screens are card for card the same and are now ruled the same way. */
+    <div className="card flush" style={{ marginTop: 18 }}>
+      <div className="card-head">
         <div>
           <div className="kicker-sm">แผนกที่ {index}</div>
           <div className="t">{dept.name}</div>
@@ -396,11 +409,11 @@ function DepartmentCard({ dept, period, index }) {
 /** The last sheet of the bundle: every department on one line, both companies in it. */
 function AllDepartments({ departments, total }) {
   return (
-    <div className="card" style={{ marginTop: 18 }}>
+    <div className="card flush" style={{ marginTop: 18 }}>
       {/* The same head the department cards carry — kicker, title, one line of
           context, figures on the right. It is the last sheet of the same
           bundle, so it should not announce itself in a different shape. */}
-      <div className="card-head" style={{ marginBottom: 14 }}>
+      <div className="card-head">
         <div>
           <div className="kicker-sm">สรุปรวม</div>
           <div className="t">รวมทุกแผนก</div>

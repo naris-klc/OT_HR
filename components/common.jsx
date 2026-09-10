@@ -3760,3 +3760,166 @@ export function PickOne({
     </Field>
   );
 }
+
+/**
+ * พิมพ์ / ส่งออก — ONE BUTTON WHERE THERE WERE THREE, 2026-09-10.
+ *
+ * Asked for with the rest of the declutter: *"หน้านี้ดูยากและรกมาก"*. The row
+ * this replaces held พิมพ์ใบขออนุมัติ OT ทุกคน (24 คน), ส่งออกรายการ OT (CSV)
+ * and ส่งออกรายงานสรุปประจำเดือน (CSV) — three long Thai labels, a full row of
+ * a desktop card and three stacked full-width slabs on a phone, for controls
+ * pressed once a month. That row is now one button and a menu.
+ *
+ * ── IT LIVES HERE, AND NOT IN HrView.jsx, SINCE 2026-09-10 ──────────────────
+ *
+ * It was that screen's own module-level component for the few hours between the
+ * declutter and the report that followed it: *"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่
+ * สม่ำเสมอกันเลย"*. รายงาน OT การเงิน and รายงาน OT แยกแผนก were carrying
+ * `.action-row` — two full-width `btn`s and a tick-box — for the same job on
+ * the same kind of screen, so a reader who changed tab changed control. Three
+ * screens, one button. What each of them puts IN the menu is still their own:
+ * ตรวจสอบประจำเดือน has three rows, the two report screens two.
+ *
+ * ── WHAT IT COSTS, SAID PLAINLY ─────────────────────────────────────────────
+ *
+ * พิมพ์ใบขออนุมัติ OT ทุกคน is what ตรวจสอบประจำเดือน is FOR — it was the one
+ * filled button among three ghosts precisely to say so — and it is now two presses
+ * rather than one. That is a real loss and it was chosen with the trade in
+ * view. Two things soften it: it is the FIRST row of the menu and the only one
+ * that keeps the filled voice, and the count that made the old label long
+ * (`(24 คน)`) is on the BUTTON, so the number a reader came for is on screen
+ * without opening anything.
+ *
+ * ── NOT A `PickOne` ─────────────────────────────────────────────────────────
+ *
+ * That control answers "which of these is the setting", holds a value and
+ * reports a selection. This one has no value: three rows, three verbs, nothing
+ * chosen afterwards. Wearing a listbox's clothes would put `aria-selected` on
+ * rows that are not selections and leave a dropdown showing the last thing
+ * pressed as though it were a state. `role="menu"` is the one that means "press
+ * one of these and something happens".
+ *
+ * It opens the SAME panel every other popup in this app opens (`Popover`, and
+ * `.pick-menu` for the list itself), so the placement, the flip, the phone
+ * sheet and the three ways out are not re-implemented here — see
+ * components/popover.jsx.
+ */
+export function ExportMenu({ items, disabled = false, label = 'พิมพ์ / ส่งออก', count = null }) {
+  const [open, setOpen] = React.useState(false);
+  const [active, setActive] = React.useState(0);
+  const btnRef = React.useRef(null);
+  const listRef = React.useRef(null);
+  const sheet = useSheet();
+  const id = React.useId();
+
+  const live = items.filter((it) => !it.disabled);
+  const close = React.useCallback(() => {
+    setOpen(false);
+    btnRef.current?.focus();
+  }, []);
+
+  // Clamped rather than trusted: the print row disables itself on an empty
+  // search, so the number of rows a keyboard may land on changes underneath.
+  const at = Math.min(Math.max(active, 0), Math.max(items.length - 1, 0));
+
+  React.useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelector('[data-active="1"]')?.scrollIntoView({ block: 'nearest' });
+  }, [open, at]);
+
+  /** Skip the rows that cannot be pressed, in whichever direction. */
+  function step(from, dir) {
+    for (let i = 1; i <= items.length; i += 1) {
+      const n = (from + dir * i + items.length * 2) % items.length;
+      if (!items[n].disabled) return n;
+    }
+    return from;
+  }
+
+  function run(i) {
+    const item = items[i];
+    if (!item || item.disabled) return;
+    close();
+    item.onSelect();
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { setOpen(true); setActive(items.findIndex((it) => !it.disabled)); return; }
+      setActive((i) => step(i, e.key === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (open) run(at); else { setOpen(true); setActive(items.findIndex((it) => !it.disabled)); }
+      return;
+    }
+    if (e.key === 'Escape') { if (open) { e.stopPropagation(); close(); } return; }
+    if (e.key === 'Tab' && open) setOpen(false);
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className={`btn export-btn${open ? ' open' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={`${id}-menu`}
+        disabled={disabled || !live.length}
+        onClick={() => (open ? setOpen(false) : (setOpen(true), setActive(items.findIndex((it) => !it.disabled))))}
+        onKeyDown={onKeyDown}
+        onBlur={() => setOpen(false)}
+      >
+        <span className="val">{label}</span>
+        {/* The count that used to make the print label two lines long. It is
+            the month's head count — what the bundle would print — and it is
+            here rather than in the menu because it is the figure a reader wants
+            without opening anything. */}
+        {count != null && <span className="export-count">{count} คน</span>}
+        <span className="caret" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <Popover
+          anchorRef={btnRef}
+          sheet={sheet}
+          shape={items.length}
+          label={label}
+          onClose={close}
+          className="one-pop"
+        >
+          <ul
+            id={`${id}-menu`}
+            role="menu"
+            className="pick-menu one-menu export-menu"
+            ref={listRef}
+            aria-label={label}
+            // mousedown's default action moves focus, which blurs the button
+            // and unmounts this list before the click can land.
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {items.map((item, i) => (
+              <li
+                key={item.key}
+                role="menuitem"
+                tabIndex={-1}
+                aria-disabled={item.disabled ? true : undefined}
+                data-active={i === at ? '1' : undefined}
+                className={[item.primary ? 'lead' : '', item.disabled ? 'off' : ''].filter(Boolean).join(' ') || undefined}
+                onClick={() => run(i)}
+                onMouseMove={() => { if (!item.disabled) setActive(i); }}
+              >
+                <span className="nm">
+                  {item.label}
+                  {item.note && <span className="mi-note">{item.note}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Popover>
+      )}
+    </>
+  );
+}

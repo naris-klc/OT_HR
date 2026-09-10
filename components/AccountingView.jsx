@@ -9,8 +9,8 @@ import {
 // file cannot come to describe one nought two different ways.
 import { zeroRowReason } from '@/lib/otMode.js';
 import {
-  Alert, BirthdayNote, Empty, OverCeilingFigure, OverCeilingNote, PickOne, RateHead,
-  UnaccountedHours,
+  Alert, BirthdayNote, Empty, ExportMenu, OverCeilingFigure, OverCeilingNote, PickOne,
+  RateHead, UnaccountedHours,
 } from './common.jsx';
 import AccountingPrint from './AccountingPrint.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -61,6 +61,13 @@ export default function AccountingView() {
     ? data.companies.filter((c) => company === 'all' || c.key === company)
     : [];
 
+  /* The figure on the chip in the head, and it follows บริษัท rather than being
+     the month's grand total: the head describes what is on the screen under it,
+     and on a single-company tab that is one payroll. Summed from the same
+     `totals` the dropdown's own rows carry, so the box and the chip cannot
+     quote a company two different ways. */
+  const shownTotal = shown.reduce((n, c) => n + c.totals.otHours, 0);
+
   // Scoped to the tab, and read from the queue rather than from the rows —
   // somebody with nothing approved yet has no row to carry their backlog.
   const pending = company === 'all'
@@ -77,28 +84,100 @@ export default function AccountingView() {
 
   return (
     <>
-      {/* `acct-controls` is what the phone block tightens: the two selects pair
-          up on one line, the row gap comes down to the 10px this app uses
-          between fields, and the last hint gives back the 14px `.card .hint`
-          leaves under it. The card is the only thing between the tab bar and
-          the figures, so every one of those is a line of table brought up the
-          screen. */}
-      <div className="card no-print acct-controls">
-        {/* `.head-split`, which is ตรวจสอบรายเดือน’s heading row as well: a title
-            with its hint on the left, labelled controls on the right, and the two
-            sides sharing ONE baseline. `.row`’s own `flex-end` is for a line of
-            controls; this is a heading against a caption, and what a reader
-            compares is the line the writing sits on. It was an inline
-            `alignItems: 'flex-end'` here and the right side floated 23.75px high;
-            `flex-start` took that to 0 between the two BOXES and left 4px between
-            the two TEXTS, which is the report that kept coming back. */}
-        <div className="row head-split">
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <h2>รายงาน OT การเงิน</h2>
+      {/* ── THE SAME CARD รออนุมัติ OT IS ─────────────────────────────────
+
+          Reported 2026-09-10: *"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่สม่ำเสมอกันเลย"*,
+          naming this screen, รายงาน OT แยกแผนก and ตรวจสอบประจำเดือน against
+          รออนุมัติ OT. All four are the same document — a month, narrowed by a
+          few controls, read as a table — and all four drew that differently: an
+          `<h2>` here against a `.card-head` there, controls hanging off the
+          heading row here against a `.queue-tools` bar there, two full-width
+          buttons and a tick-box here against one compact action there.
+
+          `card flush` + `.card-head` + `.queue-tools` is the queue's shape, and
+          it is now this one. `.head-split` and `.action-row` are gone from the
+          app entirely — they existed to hold a heading level with a dropdown and
+          two buttons level with a tick-box, and neither arrangement is on any
+          screen any more. What made those two rows hard was that the LEFT column
+          of row one is a heading and the RIGHT column is a labelled control:
+          two boxes of different heights hanging from one line, which is 23.75px
+          of air that cannot be paid off (see docs/features.md, 2026-08-28 รอบ
+          สิบเอ็ด). Splitting them into a head and a bar of controls does not
+          balance that column — it removes it.
+
+          `acct-controls` IS GONE WITH THE ROW. Its one remaining rule was the
+          margin under ไม่มีการคำนวณเป็นเงิน, the card's last child, and that
+          sentence is a `note` inside the menu now — see `app/styles.css`, where
+          the phone block's ledger for this screen is kept without it. */}
+      <div className="card flush no-print">
+        <div className="card-head">
+          <div style={{ minWidth: 0 }}>
+            <div className="t">
+              <span className="t-name">รายงาน OT การเงิน</span>
+              {/* The month total, folded into the title on a phone — where the
+                  chip below is hidden and the head is a column. Same pair of
+                  rules as the queue's count; see `.card-head .t-count`. */}
+              {data && <span className="t-count">{' · '}{hours(shownTotal)} ชม.</span>}
+            </div>
             <div className="hint" style={{ margin: 0 }}>
               {periodLabel(period)} · นับเฉพาะรายการที่อนุมัติครบและ HR ยืนยันแล้ว
             </div>
           </div>
+          {/* Count and action as one right-hand group, the shape every card head
+              in this app uses. The chip is the figure this screen exists to
+              produce — the month's hours for whichever บริษัท is showing — and
+              the button beside it is what takes them away. */}
+          <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+            {data && (
+              <span className="chip muted">
+                รวม {hours(shownTotal)} ชม.
+              </span>
+            )}
+            {/* ── TWO BUTTONS BECAME ONE MENU ─────────────────────────────
+
+                `ExportMenu` — ตรวจสอบประจำเดือน's control since the declutter of
+                2026-09-10, and every report screen's the same afternoon. It was
+                `.action-row`: ส่งออกไฟล์บัญชี (CSV/Excel) filled, พิมพ์แบบฟอร์ม /
+                บันทึกเป็น PDF ghost, and แสดงพนักงานที่ไม่มี OT beside them —
+                a full row of the card for two things pressed once a month.
+
+                THE CSV KEEPS THE LEAD, because it kept the filled voice in the
+                row this replaces: this screen closes a month by handing
+                accounting a file. `primary` is that voice, and the form is the
+                second row rather than the missing one.
+
+                ⚠ WHERE ไม่มีการคำนวณเป็นเงิน WENT. It was a `.hint` under the
+                buttons; it is the CSV row's `note` now. That is a real move and
+                not a free one — the sentence is behind a press instead of always
+                on screen — and it is the better place for it: a note on the row
+                you are about to press is read at the moment it matters, and
+                under the buttons it was read after. */}
+            <ExportMenu
+              disabled={!data}
+              items={[
+                {
+                  key: 'csv',
+                  label: 'ส่งออกไฟล์บัญชี (CSV/Excel)',
+                  note: 'หนึ่งบรรทัดต่อหนึ่งคน · เป็นชั่วโมง ไม่มีการคำนวณเป็นเงิน',
+                  primary: true,
+                  onSelect: exportCsv,
+                },
+                {
+                  key: 'print',
+                  label: 'พิมพ์แบบฟอร์ม / บันทึกเป็น PDF',
+                  note: 'ใบสรุปส่งบัญชี · ตามบริษัทที่เลือกไว้',
+                  onSelect: () => setPrinting(true),
+                },
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* The filter bar — บริษัท, ประจำเดือน and the tick-box, on the wash,
+            in the queue's own container. The tick-box is a filter and belongs
+            here: it decides which people have a row, which is the same kind of
+            question the two dropdowns ask. */}
+        <div className="queue-tools">
           {/* บริษัท and ประจำเดือน are the two things that decide what this
               screen shows, so they sit together. The dropdown carries each
               company's month total in its own row — that is what the
@@ -127,7 +206,6 @@ export default function AccountingView() {
               บริษัท this screen has no reading for. */}
           <PickOne
             label="บริษัท"
-            style={{ maxWidth: 260, flex: 'none' }}
             value={company}
             onChange={setCompany}
             options={[
@@ -140,24 +218,10 @@ export default function AccountingView() {
               })),
             ]}
           />
-          <div className="field" style={{ maxWidth: 170, flex: 'none' }}>
+          <div className="field">
             <div className="field-head"><label>ประจำเดือน</label></div>
             <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
-        </div>
-
-        {/* The checkbox joins the actions rather than sitting on a row of its
-            own now that the segmented buttons are gone. `.action-row` is what
-            holds it at the far end of the row while there is room, and lets it
-            fall back into line with the buttons on a card too narrow to keep
-            all three side by side. It carries the gap to the row above as well
-            — this had `marginTop: 12` inline and แยกแผนก had 14, two numbers
-            for one distance on two cards that are otherwise identical. */}
-        <div className="row action-row">
-          <button className="btn" onClick={exportCsv}>ส่งออกไฟล์บัญชี (CSV/Excel)</button>
-          <button className="btn ghost" onClick={() => setPrinting(true)}>
-            พิมพ์แบบฟอร์ม / บันทึกเป็น PDF
-          </button>
           <label className="check">
             <input
               type="checkbox"
@@ -166,13 +230,6 @@ export default function AccountingView() {
             />
             แสดงพนักงานที่ไม่มี OT
           </label>
-        </div>
-
-        {/* The UTF-8 BOM half is gone — an encoding detail that reassures once
-            and is noise thereafter. What accounting actually needs to know
-            about this file is that it carries hours, not money. */}
-        <div className="hint" style={{ marginTop: 10 }}>
-          ไม่มีการคำนวณเป็นเงิน — ไฟล์นี้เป็นชั่วโมง
         </div>
       </div>
 
@@ -249,8 +306,15 @@ export default function AccountingView() {
 function CompanySheet({ company, period, index }) {
   const t = company.totals;
   return (
-    <div className="card" style={{ marginTop: 18 }}>
-      <div className="card-head" style={{ marginBottom: 14 }}>
+    /* `card flush` — one sheet, one card, drawn the way รออนุมัติ OT draws its
+       queue: a bordered head band, then the table against the card's own edges.
+       It was a plain `.card` with 18px all round and a `marginBottom: 14` under
+       the head, which put the table's left rule 18px inside a card whose head
+       started at 0 — two edges for one column. Since 2026-09-10; the padding and
+       the rule are `.card.flush > .card-head`'s now, so a stack of company
+       sheets is ruled the same way the queue is. */
+    <div className="card flush" style={{ marginTop: 18 }}>
+      <div className="card-head">
         {/* The code leads the heading because this is the sheet accounting
             reconciles against, and PM / THT is what their own records are keyed
             on. The full legal name stays underneath it — the figures are still
@@ -267,13 +331,14 @@ function CompanySheet({ company, period, index }) {
             {company.nameTh} · {company.nameEn} · {periodLabel(period)}
           </div>
         </div>
+        {/* `.chip.muted` and `.chip.green` — the two named chips, not two
+            hand-mixed pairs of colours. They were inline `background`/`color`
+            here and the classes on รายงาน OT แยกแผนก, which is the same head on
+            the same kind of card: one of them would have kept its old green the
+            day the token moved. Named 2026-09-10 with the rest of the round. */}
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-          <span className="chip" style={{ background: 'var(--neutral-wash)', color: 'var(--muted)' }}>
-            {t.headcount} คนมี OT
-          </span>
-          <span className="chip" style={{ background: 'var(--green-bg)', color: 'var(--green-dark)' }}>
-            รวม {hours(t.otHours)} ชม.
-          </span>
+          <span className="chip muted">{t.headcount} คนมี OT</span>
+          <span className="chip green">รวม {hours(t.otHours)} ชม.</span>
         </div>
       </div>
 
@@ -401,9 +466,21 @@ function CompanySheet({ company, period, index }) {
 function AllCompanies({ data }) {
   const g = data.grandTotal;
   return (
-    <div className="card" style={{ marginTop: 18 }}>
-      <h2>รวมทุกบริษัท</h2>
-      <div className="hint">ยอดรวมของทั้งสองบริษัท ใช้แนบหน้าปกเมื่อส่งพร้อมกัน</div>
+    <div className="card flush" style={{ marginTop: 18 }}>
+      {/* `.card-head` and not `<h2>` + `.hint`, so this card is ruled the same
+          way the company sheets under it are — see the note on `CompanySheet`. */}
+      <div className="card-head">
+        <div>
+          <div className="t"><span className="t-name">รวมทุกบริษัท</span></div>
+          <div className="hint" style={{ margin: 0 }}>
+            ยอดรวมของทั้งสองบริษัท ใช้แนบหน้าปกเมื่อส่งพร้อมกัน
+          </div>
+        </div>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="chip muted">{g.headcount} คนมี OT</span>
+          <span className="chip green">รวม {hours(g.otHours)} ชม.</span>
+        </div>
+      </div>
       <div className="table-wrap">
         {/* Two rows and a total, but the same six columns as the sheets above —
             so it scrolled sideways on a phone for the same reason they did. */}

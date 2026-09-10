@@ -76,16 +76,30 @@ test('มีแผงเดียว และทั้งสามตัวเ�
    */
   const users = files.filter((f) => /<Popover\b/.test(strip(read(`components/${f}`))));
   /**
-   * `HrView.jsx` JOINED ON 2026-09-10, and it is the paragraph above again
-   * rather than a fifth panel. ตรวจสอบประจำเดือน's three export buttons
-   * collapsed into one พิมพ์ / ส่งออก ▾ (`ExportMenu`), and a menu needs
-   * everything a dropdown needs: placement off its trigger, a flip when it
-   * meets the floor, a bottom sheet below 860px, and the three ways out. Built
-   * in that file it would have been this one retyped for a control whose only
-   * difference from `PickOne` is its ROLE — `menu` rather than `listbox`,
-   * because its rows are verbs and not a setting. Different roles, same panel.
+   * `HrView.jsx` JOINED ON 2026-09-10 AND LEFT THE SAME DAY, and both halves
+   * are the paragraph above rather than exceptions to it.
+   *
+   * ตรวจสอบประจำเดือน's three export buttons collapsed into one
+   * พิมพ์ / ส่งออก ▾ (`ExportMenu`), and a menu needs everything a dropdown
+   * needs: placement off its trigger, a flip when it meets the floor, a bottom
+   * sheet below 860px, and the three ways out. Built in that file it would have
+   * been this one retyped for a control whose only difference from `PickOne` is
+   * its ROLE — `menu` rather than `listbox`, because its rows are verbs and not
+   * a setting. Different roles, same panel.
+   *
+   * IT MOVED TO `common.jsx` THAT AFTERNOON, when รายงาน OT การเงิน and
+   * รายงาน OT แยกแผนก were reported as carrying two full-width buttons for the
+   * same job — *"ตอนนี้แต่ละหน้าใช้ ui สไตล์ไม่สม่ำเสมอกันเลย"*. A control that
+   * three screens press belongs beside `PickOne`, which is the other control
+   * all of them press. So the list is back to four: a component that OPENS a
+   * panel is on it, and `ExportMenu` is not in `HrView.jsx` to open one from.
    */
-  assert.deepEqual(users.sort(), ['App.jsx', 'HrView.jsx', 'PickDate.jsx', 'PickTime.jsx', 'common.jsx']);
+  assert.deepEqual(users.sort(), ['App.jsx', 'PickDate.jsx', 'PickTime.jsx', 'common.jsx']);
+  // AND THE MENU IS STILL SOMEBODY'S — three screens import it from one file,
+  // so "HrView stopped opening a panel" cannot also mean the menu was deleted.
+  for (const f of ['HrView.jsx', 'AccountingView.jsx', 'DepartmentView.jsx']) {
+    assert.match(read(`components/${f}`), /ExportMenu/, `${f} เลิกใช้เมนูส่งออกที่ใช้ร่วมกัน`);
+  }
   for (const f of users) {
     assert.match(read(`components/${f}`), /from '\.\/popover\.jsx'/, `${f} ไม่ได้เอาแผงมาจาก popover.jsx`);
   }

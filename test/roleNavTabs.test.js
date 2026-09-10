@@ -200,9 +200,14 @@ test('each screen carries its own heading, and no heading is decided by บท�
   // bar. It was the literal ตรวจสอบประจำเดือน for every reader until
   // 2026-09-03 — half a rename, and the half that was missed is the one at the
   // top of what somebody is actually reading.
+  //
+  // `.t-name` INSIDE `.card-head` SINCE 2026-09-10, where it was an `<h2>`
+  // before: the four report screens were reported as drawing one kind of card
+  // four ways, and the card title is `.t` on all of them now. The words and the
+  // ternary are untouched — this assertion is about the WORDS.
   assert.match(
     readFileSync(join(ROOT, 'components/HrView.jsx'), 'utf8'),
-    /<h2>\{scope === 'team' \? 'รายงาน OT ประจำทีม' : 'ตรวจสอบประจำเดือน'\}<\/h2>/,
+    /<span className="t-name">\{scope === 'team' \? 'รายงาน OT ประจำทีม' : 'ตรวจสอบประจำเดือน'\}<\/span>/,
   );
 });
 
