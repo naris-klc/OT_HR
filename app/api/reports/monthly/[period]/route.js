@@ -90,6 +90,83 @@ export const GET = route(async (req, { params }) => {
     ? found.filter((e) => signsForCompany(user, companyOf(e.employee)))
     : found;
 
+  /**
+   * กี่คนอยู่ในแต่ละแผนก — the figures beside the names in the แผนก dropdown, and
+   * the one thing in this response deliberately NOT narrowed by `?department=`.
+   *
+   * Asked for on 2026-09-11: *"แก้ไข dropdown เลือกแผนก ให้แสดงจำนวน เหมือนหน้า
+   * รออนุมัติ ot ด้วย"*.
+   *
+   * ── WHY IT IS COUNTED HERE AND NOT IN THE BROWSER ──────────────────────────
+   *
+   * คิวรออนุมัติ prints "ผลิต1 · 12" beside its own department names off the rows
+   * it is already holding, and it can: its แผนก filter is a SCREEN filter, so the
+   * rows it counts are every row either way. THIS ONE IS A REQUEST. The moment
+   * ผลิต1 is picked the server sends ผลิต1's people and nobody else's, so
+   * seventeen of the eighteen figures would have nothing left to count — the list
+   * would empty of numbers on first use, which is exactly when they are read.
+   *
+   * That objection is why the dropdown was built without counts on 2026-09-10.
+   * It is answered by moving the count to the side that can still see the whole
+   * month, not by dropping it.
+   *
+   * ── WHAT IT COUNTS ─────────────────────────────────────────────────────────
+   *
+   * PEOPLE, because a row of this table is a person: the figure beside ผลิต1 is
+   * the number of rows picking ผลิต1 would draw. It honours สถานะที่นับ — the
+   * other control that decides what is on the table — and ignores ค้นหา and
+   * ดูเฉพาะคนที่ต้องตรวจ, which narrow what is drawn out of a month already
+   * fetched. คิวรออนุมัติ leaves its own search out of its counts for the same
+   * reason.
+   *
+   * `latestPerSession` is NOT run over this and does not need to be: its key
+   * carries the employee (see `sessionKey`), so a superseded filing can only ever
+   * be hidden behind another filing OF THE SAME PERSON — and the set of people is
+   * what is being counted. Which matters, because the cheap re-read below selects
+   * two fields and could not deduplicate anything if it wanted to.
+   *
+   * ── AND IT IS THIS READER'S OWN READING, NEVER WIDER ───────────────────────
+   *
+   * `departmentScope` asked a second time with the department cleared, so a
+   * หัวหน้า counts the แผนก they sign for and nobody else's, and the payroll half
+   * of the same scope is applied below exactly as it is to `all`. The figures can
+   * never total more than the month this account is allowed to open.
+   *
+   * The re-read happens only when `?department=` was actually sent; unnarrowed,
+   * the rows are already in hand and this costs nothing.
+   *
+   * ⚠ `q.department` AND NOT `all.length` DECIDES IT. A malformed id narrows to
+   * `{ $in: [] }` (lib/reports.js, and it is what stops a 500) — so `all` is
+   * empty, and counting it would answer a full list of noughts for a month that
+   * is not empty at all.
+   */
+  const wholeReading = departmentScope(user, { ...q, department: '' }).department;
+  const forCounting = q.department
+    ? await OtEntry.find({
+      period,
+      status: filter.status,
+      ...(wholeReading ? { department: wholeReading } : {}),
+    })
+      .select('department employee')
+      .populate('employee', 'code company')
+      .lean()
+    : all;
+  const peopleInDepartment = new Map();
+  for (const entry of forCounting) {
+    if (teamOnly && user.approvesCompany && !signsForCompany(user, companyOf(entry.employee))) {
+      continue;
+    }
+    // Populated on `all` and a bare id on the re-read — one line reads both.
+    const deptId = entry.department && String(entry.department._id || entry.department);
+    const who = entry.employee && String(entry.employee._id || entry.employee);
+    if (!deptId || !who) continue;
+    if (!peopleInDepartment.has(deptId)) peopleInDepartment.set(deptId, new Set());
+    peopleInDepartment.get(deptId).add(who);
+  }
+  const departmentCounts = Object.fromEntries(
+    [...peopleInDepartment].map(([id, people]) => [id, people.size]),
+  );
+
   // A session filed twice is one session. Only the latest filing counts, here
   // and on the printed form, so a total on this screen can be checked against
   // the sheet it prints without the two ever disagreeing.
@@ -370,6 +447,12 @@ export const GET = route(async (req, { params }) => {
     hrSection: hrSummary(grand, policy),
     /** Superseded filings left out of every figure above — reported, not silent. */
     supersededCount: hidden.length,
+    /**
+     * `{ '<department id>': จำนวนคน }` — the figures beside the names in the
+     * แผนก dropdown, over the whole reading rather than the narrowed month. See
+     * `peopleInDepartment` above for why the browser cannot work them out.
+     */
+    departmentCounts,
     /**
      * The same count for the whole month, so the screen can explain the marks
      * once above the table rather than repeating the sentence on every row that

@@ -35,6 +35,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 const hrView = read('components/HrView.jsx');
 const css = read('app/styles.css');
+const monthRoute = read('app/api/reports/monthly/[period]/route.js');
 
 /**
  * REAL-SHAPED IDS, because one of the rules under test is about their shape:
@@ -237,6 +238,99 @@ test('the options come from the roster, not from the rows', () => {
   // server will honour and nothing wider.
   assert.match(hrView, /const mine = \(user\?\.coversDepartments \|\| \[\]\)\.map\(String\);/);
   assert.match(hrView, /\.filter\(\(d\) => !mine\.length \|\| mine\.includes\(String\(d\._id\)\)\)/);
+});
+
+// ── the figures beside the names ────────────────────────────────────────────
+
+/*
+ * "แก้ไข dropdown เลือกแผนก ให้แสดงจำนวน เหมือนหน้า รออนุมัติ ot ด้วย" —
+ * 2026-09-11. The list read as bare names for one day, on an objection that is
+ * still true of the obvious implementation and is what these three pin the way
+ * round: คิวรออนุมัติ counts off the rows in hand because its filter is a screen
+ * filter; this one is a REQUEST, so the rows in hand are ONE department's the
+ * moment the control is used, and a count taken from them would empty out on
+ * first press.
+ */
+
+test('the count is the server’s, over a month the pick has not narrowed', () => {
+  // Asked a second time with the department cleared. `?department=` is what
+  // makes `all` one department's; the tally may not be built from it.
+  assert.match(
+    monthRoute,
+    /const wholeReading = departmentScope\(user, \{ \.\.\.q, department: '' \}\)\.department;/,
+  );
+  // ⚠ `q.department` AND NOT `all.length` decides the re-read: a malformed id
+  // narrows to `{ $in: [] }` — the branch two tests above that stops a 500 —
+  // so `all` is empty, and counting it would answer a full list of noughts for
+  // a month that is not empty at all.
+  assert.match(monthRoute, /const forCounting = q\.department$/m);
+  assert.match(monthRoute, /: all;/);
+  // …and it is sent, beside the other whole-month figures.
+  assert.match(monthRoute, /^    departmentCounts,$/m);
+});
+
+test('the re-ask can only ever return the reader’s own reading', () => {
+  // RUN, not read — this is the property the figures rest on. A หัวหน้า narrowed
+  // to one of their departments still counts every แผนก they sign for, and the
+  // clearing of `department` cannot hand them anybody else's.
+  assert.equal(
+    departmentScope(supervisor, { scope: 'team', department: PROD3 }).department,
+    PROD3,
+  );
+  assert.deepEqual(
+    departmentScope(supervisor, { scope: 'team', department: '' }).department,
+    { $in: [PROD1, PROD3] },
+  );
+  // ฝ่ายบุคคล read the company, so the cleared ask is no clause at all — and the
+  // route writes none, which is why it is guarded rather than spread blindly.
+  assert.equal(departmentScope(hr, { department: PROD1 }).department, PROD1);
+  assert.equal(departmentScope(hr, { department: '' }).department, null);
+  assert.match(monthRoute, /\.\.\.\(wholeReading \? \{ department: wholeReading \} : \{\}\),/);
+  // The payroll half of the same scope is applied to the tally exactly as it is
+  // to `all` — a การเงิน on their team tab counts one payroll, not two.
+  assert.match(
+    monthRoute,
+    /if \(teamOnly && user\.approvesCompany && !signsForCompany\(user, companyOf\(entry\.employee\)\)\) \{/,
+  );
+});
+
+test('it counts PEOPLE, because a row of this table is a person', () => {
+  // A `Set` per department and its `size`, not a running total: the figure the
+  // list quotes has to be the number of rows picking that department draws, and
+  // one person's month is one row however many ใบ are in it.
+  assert.match(monthRoute, /peopleInDepartment\.get\(deptId\)\.add\(who\);/);
+  assert.match(
+    monthRoute,
+    /\[\.\.\.peopleInDepartment\]\.map\(\(\[id, people\]\) => \[id, people\.size\]\),/,
+  );
+  // สถานะที่นับ is in it — the other control that decides what is on the table.
+  assert.match(monthRoute, /status: filter\.status,/);
+  // `latestPerSession` is NOT, and does not need to be: its key carries the
+  // employee, so a superseded filing is only ever hidden behind another filing
+  // of the SAME person and the set of people is unchanged by it.
+  const tally = monthRoute.slice(
+    monthRoute.indexOf('const wholeReading ='),
+    monthRoute.indexOf('const peopleInDepartment'),
+  );
+  assert.ok(!tally.includes('latestPerSession'), 'the tally is deduplicating people out of itself');
+});
+
+test('the dropdown prints them, and prints nothing while the month is loading', () => {
+  assert.match(hrView, /const counts = data\?\.departmentCounts \|\| \{\};/);
+  assert.match(hrView, /count: counts\[String\(d\._id\)\],/);
+  // `data` is in the deps, or the numbers would be one month behind the table.
+  assert.match(hrView, /\}, \[roster, user\?\.coversDepartments, data\?\.departmentCounts\]\);/);
+  // ⚠ NOT held across a reload. `load()` clears `data`, so the names stand alone
+  // for as long as the table under them is loading — the same beat, and never a
+  // figure belonging to a month that has left the screen.
+  assert.match(hrView, /setData\(null\);/);
+  // The search box is not in the count, and neither is ดูเฉพาะคนที่ต้องตรวจ:
+  // both narrow what is DRAWN out of a month already fetched, and the figure has
+  // to be what picking the department would draw.
+  assert.ok(
+    !/departmentCounts[\s\S]{0,200}(query|onlyFlagged)/.test(hrView),
+    'a screen filter has been folded into the department counts',
+  );
 });
 
 test('ทุกแผนก is a row of the list, because "" is a setting this screen can hold', () => {

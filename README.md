@@ -6917,10 +6917,31 @@ toolbar that is a different shape for every บทบาท.
 from the rows in hand empties on first use — pick ผลิต3, get ผลิต3's month, and
 the dropdown offers one department, its own choice, with no way back to ผลิต1
 except ทุกแผนก first. คิวรออนุมัติ found that on 2026-09-04 and this screen was
-built with it already known. There is **no count beside each name**, which is the
-one place it parts company with that screen's แผนก filter: the queue's is a
-screen filter and can count every row either way, and a figure here would be
-right until the moment the control was used.
+built with it already known.
+
+**It read "There is no count beside each name" until 2026-09-11**, when HR asked
+for one: *แก้ไข dropdown เลือกแผนก ให้แสดงจำนวน เหมือนหน้า รออนุมัติ ot ด้วย*.
+The objection that had kept the figures off is still true of the obvious way to
+put them on — คิวรออนุมัติ counts its own department names off the rows in hand
+and this screen cannot, because the moment ผลิต1 is picked the rows in hand are
+ผลิต1's and seventeen of the eighteen figures have nothing left to count. So the
+count is **the server's**: `departmentCounts` on the monthly report is a tally
+over the reader's whole reading, unnarrowed by the pick, and
+
+- it counts **people**, matching the rows — pick ผลิต1 and the table draws
+  exactly the figure the list quoted;
+- it follows **สถานะที่นับ**, the other control that decides what is on the
+  table, and not **ค้นหา** or **ดูเฉพาะคนที่ต้องตรวจ**, which narrow what is
+  drawn out of a month already fetched (the queue leaves its own search out of
+  its counts for the same reason);
+- it is the reader's own reading and never wider — `departmentScope` asked a
+  second time with the department cleared, with the payroll half of the scope
+  applied exactly as it is to the table;
+- a แผนก that filed nothing reads as a **name with no figure** rather than as a
+  name and a nought, and is still on the list, because *"ผลิต2 filed nothing in
+  August"* is an answer this screen can only give if ผลิต2 can be picked;
+- and the figures **go blank while a month loads** rather than standing at the
+  previous month's — the same beat as the table under them.
 
 **Three sentences on the screen now say which แผนก, because a total whose owner
 is unnamed is the figure this screen exists to get right.** The hint under the

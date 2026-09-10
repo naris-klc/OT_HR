@@ -847,31 +847,52 @@ export default function HrView({
     return () => { live = false; };
   }, []);
   /**
-   * The rows of the dropdown: names, sorted in Thai, and nothing else.
+   * The rows of the dropdown: names, sorted in Thai, with กี่คน beside each.
    *
-   * NO COUNT BESIDE THEM, WHICH IS THE ONE PLACE THIS PARTS COMPANY WITH
-   * คิวรออนุมัติ's แผนก filter — that one prints "ผลิต1 · 12" from the rows it
-   * is holding, and it can, because its filter is a screen filter and the rows
-   * it counts are every row either way.
+   * ── IT READ "NO COUNT BESIDE THEM" UNTIL 2026-09-11 ────────────────────────
    *
-   * This one is a REQUEST. The moment ผลิต1 is picked the server sends ผลิต1's
-   * employees and nobody else's, so seventeen of the eighteen counts have no
-   * figure to quote and the list would either empty out on first use or start
-   * quoting a month that is no longer on screen. Both are worse than a plain
-   * name — a number that is right until you use the control is a number that is
-   * wrong exactly when it is being read.
+   * *"แก้ไข dropdown เลือกแผนก ให้แสดงจำนวน เหมือนหน้า รออนุมัติ ot ด้วย"*. The
+   * objection that kept them off for a day was real and is still true of the
+   * obvious implementation: คิวรออนุมัติ counts its own department names off the
+   * rows in hand, and this screen cannot, because its แผนก filter is a REQUEST.
+   * The moment ผลิต1 is picked the server sends ผลิต1's employees and nobody
+   * else's, so seventeen of the eighteen counts would have nothing left to quote
+   * — the list would empty of numbers on first use, which is exactly when they
+   * are being read.
    *
-   * A แผนก that filed nothing this month is still on the list. "ผลิต2 filed
-   * nothing in August" is an answer, and it is one this screen can only give if
-   * the แผนก can be picked in the first place.
+   * So the count is not taken from `data.employees`. `departmentCounts` is the
+   * server's own tally over the reader's WHOLE reading, unnarrowed by the pick,
+   * and the route is where the reasoning lives.
+   *
+   * THEY GO BLANK WHILE A MONTH LOADS, and that is not a gap to be papered over
+   * with the previous month's figures. `load()` clears `data`, so during a change
+   * of ประจำเดือน or สถานะที่นับ the names stand alone for as long as the table
+   * below them is loading — the same beat, and never a number belonging to a
+   * month that has left the screen.
+   *
+   * ⚠ THE COUNT IS PEOPLE, matching the rows: pick ผลิต1 and the table draws
+   * exactly the figure the list quoted. `ค้นหา` and `ดูเฉพาะคนที่ต้องตรวจ` are
+   * not in it — both narrow what is drawn out of a month already fetched, and
+   * คิวรออนุมัติ leaves its own search out of its counts for the same reason.
+   *
+   * A แผนก that filed nothing this month is still on the list, now reading as a
+   * name with no figure. "ผลิต2 filed nothing in August" is an answer, and it is
+   * one this screen can only give if the แผนก can be picked in the first place.
    */
   const departments = React.useMemo(() => {
+    const counts = data?.departmentCounts || {};
     const mine = (user?.coversDepartments || []).map(String);
     return (roster || [])
       .filter((d) => !mine.length || mine.includes(String(d._id)))
-      .map((d) => ({ value: String(d._id), label: d.nameTh || d.name }))
+      .map((d) => ({
+        value: String(d._id),
+        label: d.nameTh || d.name,
+        // `undefined` and not `0` where a department filed nothing: `PickOne`
+        // draws the row as a bare name rather than as a name and a nought.
+        count: counts[String(d._id)],
+      }))
       .sort((a, b) => a.label.localeCompare(b.label, 'th'));
-  }, [roster, user?.coversDepartments]);
+  }, [roster, user?.coversDepartments, data?.departmentCounts]);
   /** The chosen แผนก's name, for the sentences that have to say which one. */
   const deptName = departments.find((d) => d.value === dept)?.label || '';
 
