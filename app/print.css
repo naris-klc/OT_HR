@@ -982,11 +982,60 @@
    `page-break-*` alias is what older print engines read. */
 .manual-sheet + .manual-sheet { break-before: page; page-break-before: always; }
 
+/* ── THE ONE DOCUMENT HERE THAT NEEDS A MARGIN, AND CANNOT TAKE @page's ──────
+ *
+ * `@page` is `margin: 0` at the head of this file, and the ⚠ over it is not
+ * negotiable: F-HR-027, ใบบัญชี and ใบสรุปแผนก carry their own 8mm bands INSIDE
+ * a full-bleed page box, measured against the paper, and a margin there costs a
+ * second sheet per person. So the three forms print correctly at margin nought.
+ *
+ * ⚠ THE MANUAL DID NOT, AND FROM 2026-09-09 TO 2026-09-10 IT PRINTED OFF THE
+ * EDGE OF THE PAPER. It is prose: no band of its own, no declared width, and
+ * nothing left between `.manual-body` and the page box once `main { padding:
+ * 0 }` (styles.css) and `.manual-sheet { padding: 0 }` below have both run.
+ * Measured out of the PDF on 2026-09-10 — ink from 0.0mm to 210.1mm across
+ * 209.9mm of paper, with 2.9mm of clear at the top. Every printer has an
+ * unprintable border of about 5mm, so the first and last characters of every
+ * line came off the sheet, which is what ไม่พอดีกับความกว้าง A4 was.
+ *
+ * TWO SPELLINGS, BECAUSE THEY BUY DIFFERENT HALVES AND FAIL DIFFERENTLY.
+ *
+ *   THE SIDES are the sheet's own box: 180mm centred on 210mm is 15mm either
+ *   side, and a horizontal margin applies to EVERY fragment of a block that
+ *   breaks across pages. A หัวข้อ four pages long gets the band on all four, in
+ *   every print engine there is.
+ *
+ *   TOP AND BOTTOM are a named page, which is the only thing that can put a
+ *   band on a page this stylesheet never sees: vertical margins apply to the
+ *   first and last fragment only, so a box cannot give itself one. `page:
+ *   manual` moves THIS document onto `@page manual` and leaves the three forms
+ *   on the zero-margin `@page` above — which is the whole reason to reach for a
+ *   name rather than to edit the margin they share.
+ *
+ * ⚠ NAMED PAGES ARE CHROMIUM AND SAFARI; FIREFOX IGNORES `page:` (checked
+ * 2026-09-10). There it falls back to what `@page` says — nought — so a manual
+ * printed from Firefox keeps the top and bottom edges it has today and still
+ * gains the 15mm sides from the box. The บันทึกเป็น PDF button is Chromium
+ * whatever the reader is using (lib/pdfExport.js drives Edge or Chrome), so the
+ * FILE is always the measured one.
+ */
+@page manual { margin: 15mm 0; }
+
 @media print {
   /* On paper the sheet is the page. The card it wears on the screen — a border,
      a radius, a white ground — is what makes it look like paper THERE; printed,
      it would be a box drawn 5mm inside the paper's own edge. */
   .manual-sheet { border: none; border-radius: 0; padding: 0; background: none; }
+
+  /* …and the paper it is printed on, per the note above this block.
+     `content-box` against `* { box-sizing: border-box }` in styles.css, so the
+     180mm stays 180mm of text on the day somebody gives this padding back. */
+  .manual-sheet {
+    page: manual;
+    box-sizing: content-box;
+    width: 180mm;
+    margin: 0 auto;
+  }
 
   /* A heading at the foot of a page with its first paragraph over the fold is
      the one break this document can make that actively misleads: the reader

@@ -74,24 +74,54 @@ test('the scroll container stops scrolling, and its fade is taken off', () => {
   assert.match(BLOCK, /\.table-wrap::after\s*\{[^}]*display:\s*none\s*!important/);
 });
 
-test('the margin is padding on the card, and @page is left at 0', () => {
+test('the margin is padding on the card, and the @page every sheet shares is left at 0', () => {
   /**
-   * The single most costly edit this file can take. `@page` is not scopable to
-   * one screen, and giving it a margin makes every F-HR-027 spill its last band
-   * onto a second side — forty forms print eighty pages. The note above the
-   * `@page` rule says so; this makes the cost of ignoring it a failing test
-   * rather than a ream of paper.
+   * The single most costly edit this file can take. Giving the shared `@page` a
+   * margin makes every F-HR-027 spill its last band onto a second side — forty
+   * forms print eighty pages. The note above the rule says so; this makes the
+   * cost of ignoring it a failing test rather than a ream of paper.
+   *
+   * ⚠ IT READ "`@page` is not scopable to one screen … exactly one @page" UNTIL
+   * 2026-09-10, and that sentence was half true in a way that mattered. A page
+   * can be NAMED (`@page manual`) and reached with `page: manual` on a box, and
+   * on that day the manual needed one: it is the only document here that is
+   * prose, so it has no band of its own and was printing off the edge of the
+   * paper — measured, ink from 0.0mm to 210.1mm across 209.9mm. A named page is
+   * exactly the tool for "this document and not the other five", and refusing
+   * it wholesale had pushed the last change toward the one edit that would have
+   * cost the paper: a margin on the shared rule.
+   *
+   * So what is pinned is the shape rather than the count. The UNNAMED `@page`
+   * is still one and still `margin: 0`; a named one is allowed, and only if
+   * something in this file actually stands on it — a name nothing uses is a
+   * margin waiting to be given to the wrong document by whoever tidies it up.
    */
-  // Read as a list rather than matched with a clever regex: a SECOND @page
-  // added anywhere in the file is as costly as a margin on the first, and a
-  // list catches both without either of them having to be predicted.
-  const margins = [...CSS.matchAll(/@page[^{]*\{([^}]*)\}/g)]
-    .map((m) => (m[1].match(/margin:\s*([^;]+);/) || [, '(none)'])[1].trim());
+  const pages = [...CSS.matchAll(/@page([^{]*)\{([^}]*)\}/g)].map((m) => ({
+    name: m[1].trim(),
+    margin: (m[2].match(/margin:\s*([^;]+);/) || [, '(none)'])[1].trim(),
+  }));
+
+  const shared = pages.filter((p) => !p.name);
   assert.deepEqual(
-    margins, ['0'],
-    'app/print.css must hold exactly one @page and it must stay at margin: 0 — '
+    shared.map((p) => p.margin), ['0'],
+    'app/print.css must hold exactly one unnamed @page and it must stay at margin: 0 — '
       + 'read the note above it, the cost is a second sheet of paper per F-HR-027',
   );
+
+  for (const page of pages.filter((p) => p.name)) {
+    assert.match(page.name, /^[a-z][a-z-]*$/,
+      `@page ${page.name} is not a plain name — a pseudo-class here reaches pages this test cannot see`);
+    assert.match(CSS, new RegExp(`page:\\s*${page.name}\\s*;`),
+      `@page ${page.name} exists and nothing stands on it — an unused named page is a margin waiting for the wrong document`);
+  }
+
+  // The three forms are measured against a full-bleed page and must stay on it.
+  for (const sheet of ['.f027', '.acct', '.otdept']) {
+    const at = CSS.indexOf(`${sheet} {`);
+    assert.ok(at > 0, `${sheet} is gone from app/print.css`);
+    assert.ok(!/page:\s*[a-z]/.test(CSS.slice(at, CSS.indexOf('}', at))),
+      `${sheet} was moved onto a named page — it carries its own bands and needs the whole sheet`);
+  }
 
   // …and the margin asked for lives on the card that holds a report table.
   assert.match(BLOCK, /\.card:has\(\.acct-table\)/);

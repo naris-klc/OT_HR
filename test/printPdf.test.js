@@ -1,10 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { sanitise, printDocument, browserCandidates } from '../lib/pdfExport.js';
+import {
+  sanitise, printDocument, browserCandidates, finishedPdf, PdfError,
+} from '../lib/pdfExport.js';
 import { printName, safeFilename } from '../lib/printFile.js';
 
 /**
@@ -265,6 +268,102 @@ test('making a PDF added nothing to package.json', () => {
     assert.ok(!pkg.dependencies[name], `${name} ถูกเพิ่มเข้ามาแล้ว`);
   }
   assert.equal(Object.keys(pkg.dependencies).length, 7);
+});
+
+/**
+ * ── ⚠ THE PROCESS EXITING IS NOT THE FILE BEING WRITTEN ─────────────────────
+ *
+ * บันทึกเป็น PDF was broken on the laptop for all five sheets at once, and it
+ * broke without anybody touching this app: Edge 152 hands the run to a browser
+ * of its own, so the process `htmlToPdf` starts returns 0 IMMEDIATELY and with
+ * nothing on stderr, while the real browser writes the PDF about 1.2 seconds
+ * later. `htmlToPdf` waited on `close`, read the file and got ENOENT — which
+ * `translate()` in lib/http.js answers with เกิดข้อผิดพลาดภายในระบบ, so what
+ * was reported was an internal error and not a browser.
+ *
+ * WHAT IS PINNED HERE IS THE RULE, NOT THE BROWSER. No test can install
+ * Edge 152, and "waits at least N ms" would pin the symptom. The rule is that a
+ * PDF is finished when its trailer is on disk and not before, and that needs
+ * nothing but a file to check: `%%EOF` closes a PDF after its cross-reference
+ * table. The control flow above it — the polling, the deadline, the exit code
+ * as a reason to stop early rather than as the answer — is read off the source,
+ * which is the only way to check a loop that needs a browser to run.
+ */
+test('a PDF is finished when its trailer is there, not when the file is', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ot-pdf-test-'));
+  try {
+    const path = join(dir, 'sheet.pdf');
+    assert.equal(await finishedPdf(path), null, 'a file that is not there yet read as finished');
+
+    writeFileSync(path, '');
+    assert.equal(await finishedPdf(path), null, 'an empty file read as finished');
+
+    // What the browser has on disk a moment before it is done: a real document
+    // as far as its header goes, and a damaged one to whoever opens it.
+    writeFileSync(path, '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n');
+    assert.equal(await finishedPdf(path), null, 'a half-written PDF read as finished');
+
+    writeFileSync(path, '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n%%EOF\n');
+    const bytes = await finishedPdf(path);
+    assert.ok(bytes?.length, 'a complete PDF did not read as finished');
+    assert.ok(bytes.toString('latin1').startsWith('%PDF-'), 'the bytes came back changed');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the file is what is waited for, and the exit code only ends the wait early', () => {
+  const src = read('lib/pdfExport.js');
+  assert.ok(src.includes('await finishedPdf(out)'), 'htmlToPdf ไม่ได้รอไฟล์อีกแล้ว');
+  // The shape that broke: resolve on close, then read the path.
+  assert.ok(!/if \(code === 0\) resolve\(\)/.test(src),
+    'exit code กลับมาเป็นคำตอบอีกครั้ง — Edge ออกด้วย 0 ตั้งแต่ยังไม่มีไฟล์');
+  assert.ok(src.includes('TIMEOUT_MS'), 'การรอไฟล์ไม่มีเพดานเวลา');
+  // A browser that has given up must not cost the person the rest of the minute.
+  assert.ok(src.includes('code !== null && code !== 0'),
+    'เบราว์เซอร์ที่ล้มเหลวแล้วยังถูกรอจนครบเวลา');
+  // …and the temp dir has to survive a profile that is still open on Windows.
+  assert.ok(src.includes('maxRetries'),
+    'ลบโปรไฟล์โดยไม่ลองซ้ำ — %TEMP% จะเหลือโปรไฟล์ค้างใบละชุด');
+});
+
+/**
+ * THE FAILURES SOMEBODY CAN ACT ON, AND WHETHER THE SENTENCE REACHES THEM.
+ *
+ * `ไม่พบเบราว์เซอร์ … ปุ่มพิมพ์ยังใช้ได้ตามปกติ` is the answer to the commonest
+ * failure there is, and the only place this app says the OTHER button still
+ * works. It was written on 2026-09-03 and never once reached a screen: every
+ * message in lib/pdfExport.js was a plain `Error`, and `translate()` in
+ * lib/http.js answers those with เกิดข้อผิดพลาดภายในระบบ.
+ *
+ * `หาไฟล์สไตล์ไม่พบ` is deliberately NOT one of them and is not listed below —
+ * a missing stylesheet is a broken deployment, its message carries a path on
+ * the server, and the generic sentence is the right answer to a bug.
+ */
+test('a failure a person can act on reaches them in words', () => {
+  const lib = read('lib/pdfExport.js');
+  assert.ok(lib.includes('export class PdfError'), 'ไม่มีชนิดข้อผิดพลาดที่ตั้งใจให้คนอ่าน');
+
+  /** Which `throw new X(` a message is sitting inside. */
+  const thrownAs = (needle) => {
+    const at = lib.indexOf(needle);
+    assert.ok(at > 0, `ข้อความหายไปจาก lib/pdfExport.js: ${needle}`);
+    return [...lib.slice(0, at).matchAll(/throw new (\w+)\(/g)].pop()?.[1];
+  };
+  for (const needle of [
+    'ไม่พบเบราว์เซอร์สำหรับสร้างไฟล์ PDF',
+    'เบราว์เซอร์ใช้เวลานานเกินไป',
+    'เบราว์เซอร์ปิดไปโดยไม่ได้เขียนไฟล์',
+    'เรียกเบราว์เซอร์สำหรับสร้างไฟล์ PDF ไม่สำเร็จ',
+  ]) {
+    assert.equal(thrownAs(needle), 'PdfError', `ข้อความนี้จะถึงผู้ใช้เป็น 500 เปล่า ๆ: ${needle}`);
+  }
+
+  const route = read('app/api/print/pdf/route.js');
+  assert.ok(route.includes('err instanceof PdfError'), 'route ไม่ได้ส่งข้อความนั้นต่อ');
+  // 503 and not 500: the request was fine, the machine could not answer it.
+  assert.ok(route.includes('fail(err.message, 503)'), 'ข้อความถูกกลืนกลับไปเป็น 500');
+  assert.ok(new PdfError('x') instanceof Error);
 });
 
 test('the browser is looked for where one already is, and PDF_BROWSER wins', () => {

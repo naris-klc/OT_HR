@@ -691,3 +691,42 @@ test('one หัวข้อ per page, spelt the way every other sheet in this a
   // a right margin twice the size of its left one.
   assert.match(print, /\.manual-body \{ max-width: none; \}/);
 });
+
+/**
+ * ── ⚠ IT PRINTED OFF THE EDGE OF THE PAPER ──────────────────────────────────
+ *
+ * `@page` is `margin: 0` for the whole app, and rightly so: the three forms
+ * carry their own 8mm bands inside a full-bleed page box, and a margin there
+ * costs a second sheet of paper per person. The manual has no band of its own —
+ * it is prose — so once `main { padding: 0 }` (styles.css) and `.manual-sheet
+ * { padding: 0 }` have both run there is nothing left between the text and the
+ * page box.
+ *
+ * Measured out of the PDF on 2026-09-10, before: ink from 0.0mm to 210.1mm
+ * across 209.9mm of paper, with 2.9mm of clear at the top. A printer cannot put
+ * ink within about 5mm of the edge, so the first and last characters of every
+ * line came off the sheet. After: 15.0mm and 15.2mm at the sides and 18.0mm at
+ * the top, on all four pages of a หัวข้อ that runs to four.
+ *
+ * BOTH HALVES ARE PINNED, BECAUSE THEY FAIL DIFFERENTLY. The sides are the
+ * sheet's own box, which every engine honours on every fragment of a block that
+ * breaks across pages; top and bottom are a named page, the only thing that can
+ * reach a page this stylesheet never sees — and the thing Firefox ignores.
+ * Losing either is a document that prints wrong in a way nobody sees until it
+ * is on paper.
+ */
+test('the manual is printed on A4 and not over the edge of it', () => {
+  const print = read('app/print.css');
+  assert.match(print, /@page manual \{ margin: 15mm 0; \}/,
+    'the manual lost the page it stands on — top and bottom go back to nought');
+  assert.match(print, /\.manual-sheet \{\n {4}page: manual;/,
+    'nothing points the manual at its own @page any more');
+  // 180mm centred on 210mm is the 15mm band either side, on every page.
+  assert.match(print, /width: 180mm;/, 'the manual lost its measured text column');
+  // …and that band is 15mm only while the width is the TEXT and not the box.
+  assert.match(print, /box-sizing: content-box;\n {4}width: 180mm;/,
+    'the column is border-box, so padding would come out of the text rather than the margin');
+  // The three forms keep the full-bleed page they are measured against.
+  assert.match(print, /@page \{\n {2}size: A4 portrait;\n {2}margin: 0;\n\}/,
+    'the shared @page grew a margin — F-HR-027 now spills onto a second side');
+});

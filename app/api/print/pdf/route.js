@@ -1,6 +1,6 @@
 import { route, body, fail, fileResponse } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
-import { htmlToPdf, printDocument, sanitise } from '@/lib/pdfExport.js';
+import { htmlToPdf, printDocument, sanitise, PdfError } from '@/lib/pdfExport.js';
 import { safeFilename } from '@/lib/printFile.js';
 
 /**
@@ -67,6 +67,28 @@ export const POST = route(async (req) => {
   }
 
   const name = safeFilename(title || 'document');
-  const pdf = await htmlToPdf(printDocument(sanitise(html), name));
-  return fileResponse(`${name}.pdf`, 'application/pdf', pdf);
+
+  /**
+   * ── THE SENTENCE THE BROWSER WROTE IS THE SENTENCE THE PERSON GETS ────────
+   *
+   * `translate()` in lib/http.js turns any other throw into 500 and
+   * เกิดข้อผิดพลาดภายในระบบ, which is right for a bug and wrong for the three
+   * things that actually go wrong here — no Chromium on the box, a browser that
+   * took longer than a minute, a browser that gave up. `PdfError` is how
+   * lib/pdfExport.js marks a message as one written FOR a reader, and this is
+   * the only place that can hand it over.
+   *
+   * ⚠ FOR A DAY IT COULD NOT. Every message in that file was a plain `Error`,
+   * so `ไม่พบเบราว์เซอร์ … ปุ่มพิมพ์ยังใช้ได้ตามปกติ` — the answer to the
+   * commonest failure of all, and the one that tells somebody the other button
+   * still works — reached the screen as เกิดข้อผิดพลาดภายในระบบ. 503 rather
+   * than 500: the request was fine, the machine could not answer it.
+   */
+  try {
+    const pdf = await htmlToPdf(printDocument(sanitise(html), name));
+    return fileResponse(`${name}.pdf`, 'application/pdf', pdf);
+  } catch (err) {
+    if (err instanceof PdfError) return fail(err.message, 503);
+    throw err;
+  }
 });
