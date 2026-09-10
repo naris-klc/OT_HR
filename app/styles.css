@@ -6203,6 +6203,23 @@ td > .approver-line { margin-top: 5px; }
 .alert.ok .alert-x { color: var(--alert-ok-x); opacity: 1; }
 .alert.ok .alert-x:hover { color: var(--alert-ok-x-lift); }
 
+/* ย่อ/กาง ON A NOTICE THAT IS READ ONCE — ผู้รับช่วงอนุมัติแทน's, in
+   components/Delegation.jsx. The arrow of `.announce-fold`, sized to sit on the
+   first line of alert text (13.5px at 1.75 is a 23-24px line; 11px + 12px of
+   padding matches it) and pulled into the corner the ✕ of `.alert-x` would
+   take. */
+.alert-fold-row { display: flex; align-items: flex-start; gap: 8px; }
+.alert-fold-text { flex: 1; min-width: 0; }
+.alert-fold {
+  flex: none; border: none; background: none; cursor: pointer;
+  color: inherit; opacity: .65;
+  padding: 6px 4px; margin: 0 -6px 0 0;
+  border-radius: 6px;
+  font: 400 11px/1 var(--sans);
+}
+.alert-fold:hover { opacity: 1; }
+.alert-fold:focus-visible { outline-offset: 1px; }
+
 /* THE SAME NOTICE, ONE SIZE DOWN — for a dialog, where height is the scarce
    thing.
 
@@ -6630,6 +6647,13 @@ td > .approver-line { margin-top: 5px; }
     min-width: 44px; min-height: 44px;
     display: flex; align-items: flex-start; justify-content: flex-end;
     padding: 2px 4px; margin: -2px -8px -20px 0;
+  }
+  /* The same thumb's worth for the notice arrow, held out of the layout the
+     same way: 44px of target, 23px of row. */
+  .alert-fold {
+    min-width: 44px; min-height: 44px;
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    margin: 0 -10px -21px 0;
   }
 }
 

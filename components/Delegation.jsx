@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
 import { Alert, Empty, Field, Modal, PickOne } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
@@ -18,6 +18,20 @@ import { PickDate } from './PickDate.jsx';
  * versions of the same form, and the one used less often is the one that would
  * end up missing the rule that matters.
  */
+/**
+ * ย่อ/กาง for the notice under the heading, remembered in this browser only —
+ * the arrangement `ot-holiday-fold` in components/HolidayBanner.jsx already
+ * has, and for the same reason: it is read once and then only takes height
+ * above the table somebody came to look at. ONE key for both placements, since
+ * a person who has folded it on ข้อมูลส่วนตัว has read the same sentences that
+ * ตั้งค่าระบบ would show them.
+ *
+ * FOLDED IS NOT GONE. The first clause stays on screen — the window closing on
+ * its own is the one thing a reader must not forget — and ▲/▼ rather than ✕,
+ * because the press folds and a ✕ would promise a notice that does not return.
+ */
+const NOTE_FOLD_KEY = 'ot-deleg-note-fold';
+
 export default function Delegation({ user, scope = 'mine' }) {
   const all = scope === 'all';
   const toast = useToast();
@@ -28,6 +42,28 @@ export default function Delegation({ user, scope = 'mine' }) {
   const [busy, setBusy] = useState(false);
   /** Whether มอบหมายผู้รับช่วง is open — the only way this screen creates one. */
   const [adding, setAdding] = useState(false);
+  const [noteFolded, setNoteFolded] = useState(false);
+  const noteId = useId();
+
+  // Read on mount, never during render: the server has no localStorage, and a
+  // first render that read it would hydrate against markup that disagrees.
+  useEffect(() => {
+    try {
+      setNoteFolded(localStorage.getItem(NOTE_FOLD_KEY) === '1');
+    } catch { /* storage blocked: the notice opens, which is the safe way to be wrong */ }
+  }, []);
+
+  // "Folded or nothing" — the absent key is the default, as `ot-holiday-fold`.
+  function toggleNote() {
+    setNoteFolded((was) => {
+      const next = !was;
+      try {
+        if (next) localStorage.setItem(NOTE_FOLD_KEY, '1');
+        else localStorage.removeItem(NOTE_FOLD_KEY);
+      } catch { /* the fold still applies to this tab */ }
+      return next;
+    });
+  }
 
   async function load() {
     try {
@@ -97,10 +133,28 @@ export default function Delegation({ user, scope = 'mine' }) {
         looking at the table, with no form open.
       */}
       <Alert kind="info">
-        การมอบหมาย<strong>หมดอายุเองตามวันที่กำหนด</strong> ไม่มีสวิตช์เปิด/ปิดที่ต้องกลับมาปิด ·
-        {' '}และเป็นการ<strong>เพิ่ม</strong>สิทธิ์ ไม่ใช่ย้าย —
-        {' '}หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด ถ้ากลับมาก่อนกำหนดก็ไม่ต้องทำอะไร
-        <div style={{ fontSize: 12.5, marginTop: 4 }}>
+        <div className="alert-fold-row">
+          <div className="alert-fold-text">
+            การมอบหมาย<strong>หมดอายุเองตามวันที่กำหนด</strong>
+            <span id={`${noteId}-a`} hidden={noteFolded}>
+              {' '}ไม่มีสวิตช์เปิด/ปิดที่ต้องกลับมาปิด ·
+              {' '}และเป็นการ<strong>เพิ่ม</strong>สิทธิ์ ไม่ใช่ย้าย —
+              {' '}หัวหน้างานเจ้าของคิวยังอนุมัติเองได้ตลอด ถ้ากลับมาก่อนกำหนดก็ไม่ต้องทำอะไร
+            </span>
+          </div>
+          <button
+            type="button"
+            className="alert-fold"
+            aria-expanded={!noteFolded}
+            aria-controls={`${noteId}-a ${noteId}-b`}
+            aria-label={noteFolded ? 'กางคำอธิบายการมอบหมาย' : 'ย่อคำอธิบายการมอบหมาย'}
+            title={noteFolded ? 'กางคำอธิบาย' : 'ย่อคำอธิบาย'}
+            onClick={toggleNote}
+          >
+            {noteFolded ? '▼' : '▲'}
+          </button>
+        </div>
+        <div id={`${noteId}-b`} hidden={noteFolded} style={{ fontSize: 12.5, marginTop: 4 }}>
           ทุกการอนุมัติของผู้รับช่วงจะถูกบันทึกว่า “<strong>ทำแทน</strong>” พร้อมชื่อหัวหน้างานเจ้าของคิว
           {' '}ทั้งในประวัติรายการและบนใบพิมพ์ · ผู้รับช่วง<strong>มอบหมายต่อเป็นทอดไม่ได้</strong>
         </div>
