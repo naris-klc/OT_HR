@@ -3975,7 +3975,9 @@ It was never a question anybody could answer two ways. The engine accepts exactl
 one value of `endsNextDay` per pair of times and throws on the other, so every tick
 of that box was either redundant or a server error — and the error came back as
 **"A single session cannot exceed 24 hours"**, a sentence about a limit for what
-was really a tick-box in the wrong state.
+was really a tick-box in the wrong state. (**Thai since 2026-09-10** — the same
+sentence now reads *ช่วงเวลาเดียวต้องไม่เกิน 24 ชั่วโมง*; what it says about the
+tick-box is unchanged, and `TOO_LONG` is still the code behind it.)
 
 `endsNextDayFor(startTime, endTime)` in [`lib/entries.js`](lib/entries.js) is this
 app’s one answer to the question, and it is now asked on **every press that moves
@@ -10188,7 +10190,8 @@ build แล้ว
   ซึ่งเป็นคำอธิบายที่จริงของสี่ช่องที่ไม่มีอยู่แล้ว.
   **ข้ามคืนไม่เคยเป็นคำถามที่ตอบได้สองแบบ** เอนจินรับค่า `endsNextDay` ได้ค่าเดียว
   ต่อคู่เวลาหนึ่งคู่ และ throw ใส่อีกค่า — ทุกการติ๊กจึงไม่ซ้ำซ้อนก็เป็น error จากเซิร์ฟเวอร์
-  ที่อ่านว่า *A single session cannot exceed 24 hours* ซึ่งเป็นประโยคเรื่องเพดาน
+  ที่ตอนนั้นอ่านว่า *A single session cannot exceed 24 hours* (เป็นภาษาไทยตั้งแต่
+  2026-09-10 — *ช่วงเวลาเดียวต้องไม่เกิน 24 ชั่วโมง*) ซึ่งเป็นประโยคเรื่องเพดาน
   สำหรับสิ่งที่จริง ๆ แล้วคือช่องติ๊กที่อยู่ผิดสถานะ · ตอนนี้คิดจาก `endsNextDayFor`
   ทุกครั้งที่เวลาขยับ (`setStart` / `setEnd`) และ **ฟิลด์ไม่ได้หายไปไหน** ยังถูกส่ง
   ยังถูกเก็บ ยังเป็นตัวที่เอนจินกับใบ F-HR-027 อ่าน — เปลี่ยนแค่ว่าใครเป็นคนตอบ.

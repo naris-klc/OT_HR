@@ -14,8 +14,9 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
  * The engine permits exactly one value of `endsNextDay` per pair of times and
  * throws on the other. A form that offered the tick-box as a free choice was
  * therefore offering one right answer and one server error — and the error came
- * back as "A single session cannot exceed 24 hours", which is a sentence about
- * a limit for what is really a box in the wrong state.
+ * back as "A single session cannot exceed 24 hours" (Thai since 2026-09-10:
+ * ช่วงเวลาเดียวต้องไม่เกิน 24 ชั่วโมง), which is a sentence about a limit for
+ * what is really a box in the wrong state.
  *
  * What is pinned here is that `endsNextDayFor` IS the inverse of those two
  * throws — asserted against the engine itself, not against a remembered rule,
@@ -70,8 +71,11 @@ test('ค่าที่ helper ตอบ คือค่าเดียวท�
 });
 
 test('17:00–20:00 ที่ติ๊กข้ามคืน คือกะ 27 ชั่วโมง', () => {
-  // The mistake this closes off, named by the error it used to produce.
-  assert.throws(() => compute('17:00', '20:00', true), /TOO_LONG|24 hours/);
+  // The mistake this closes off, named by the error it used to produce. Pinned
+  // on `code`, not on the sentence: the sentence became Thai on 2026-09-10 and
+  // a regex over the message would have to be rewritten every time the wording
+  // is. `TOO_LONG` is the part the app branches on.
+  assert.throws(() => compute('17:00', '20:00', true), (e) => e.code === 'TOO_LONG');
 });
 
 // ── the form reads the rule rather than repeating it ────────────────────────
