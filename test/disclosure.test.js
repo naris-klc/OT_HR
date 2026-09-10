@@ -304,29 +304,41 @@ test('what somebody is DECIDING on keeps four lines, not two', () => {
   assert.ok(!admin.includes('PolicySource'), 'PolicySource ยังไม่ถูกถอนออก');
 });
 
-test('ซ่อนทั้งหมด is for the two cards that explain themselves in bullets', () => {
+test('ซ่อนทั้งหมด is for the folds a preview cannot preview', () => {
   /*
    * A `-webkit-box` cut through a `<ul>` takes the markers with it, and two
-   * bullets of six preview nothing. Both of these are a manual for a FILE
+   * bullets of six preview nothing. Both of the lists are a manual for a FILE
    * prepared somewhere else — a roster in Excel, a .txt off the scanner — read
    * once by whoever prepares it and furniture on every visit after.
+   *
+   * IT READ "for the two cards that explain themselves in bullets" until
+   * 2026-09-10, when คู่มือการใช้งาน's own intro became the fifth. The heading
+   * was already narrower than the test under it — two of the four had never
+   * been bullets — and the thing the four have in common is the one worth
+   * naming: none of them has a first line that previews the rest.
    */
   const zeros = components
     .flatMap((n) => [...sourceOf(`components/${n}`).matchAll(/<Disclosure([^>]*)lines=\{0\}([^>]*)>/g)]
       .map((m) => `${n}${m[1]}${m[2]}`.replace(/\s+/g, ' ')));
-  assert.equal(zeros.length, 4, `มี lines={0} อยู่ ${zeros.length} ที่`);
+  assert.equal(zeros.length, 5, `มี lines={0} อยู่ ${zeros.length} ที่`);
   const lists = zeros.filter((z) => /as="ul"/.test(z));
   assert.equal(lists.length, 2, 'ลิสต์บุลเล็ตที่พับทั้งก้อนต้องมีสองที่');
   /*
-   * The other two are both on นโยบายการคำนวณ and both hide something a preview
-   * cannot preview. One is a policy ROW, which shows its question and
+   * Two of the other three are on นโยบายการคำนวณ and both hide something a
+   * preview cannot preview. One is a policy ROW, which shows its question and
    * ค่าที่ใช้อยู่ and folds everything it is not answering. The other is the
    * banner's ตรึงไว้เท่ากับค่าตั้งต้น list, which is a row of chips — two lines
    * of chips is not a summary of five, it is four of them and a cut edge.
+   *
+   * The third is คู่มือการใช้งานเบื้องต้น, and it is the same shape read from
+   * the other side: what a two-line preview of it would show is the sentence
+   * about F-HR-027, which is the part the reader is least likely to want a
+   * second time. The line they DO want — which edition, how many หัวข้อ — is
+   * not in the fold at all; see the subtitle test below.
    */
   assert.deepEqual(
-    zeros.filter((z) => !/as="ul"/.test(z)).map((z) => z.split(' ')[0]),
-    ['AdminView.jsx', 'AdminView.jsx'],
+    zeros.filter((z) => !/as="ul"/.test(z)).map((z) => z.split(' ')[0]).sort(),
+    ['AdminView.jsx', 'AdminView.jsx', 'ManualView.jsx'],
   );
 });
 
@@ -383,9 +395,38 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
    * a press; what it bought was a screen that opened on a heading and the word
    * อ่านต่อ. The list is by NAME rather than a count, so a subtitle that grows
    * a fold again fails here saying which screen did it.
+   *
+   * ── ManualView.jsx JOINED THE LIST ON 2026-09-10, ASKED FOR ─────────────
+   *
+   * *เปลี่ยนคำอธิบายส่วนนี้ให้กดซ่อน/แสดงได้*, about คู่มือการใช้งานเบื้องต้น —
+   * which is the shape this test was written against, so it is worth being
+   * exact about what is folded there and what is not.
+   *
+   * WHAT IS NOT: the subtitle. `คุณกำลังอ่านฉบับของ <บทบาท> — ทั้งหมด N หัวข้อ`
+   * is one line and is drawn in full, and it is the line that had to survive:
+   * the manual is CUT to the reader, so two people comparing screens see
+   * different counts, and the sentence that answers why is no use behind a
+   * control neither of them pressed.
+   *
+   * WHAT IS: two paragraphs under it — what F-HR-027 was and how to move around
+   * this page. That is not a subtitle by length or by job; it is the นโยบาย-
+   * การคำนวณ case one screen along, background above a page somebody re-opens
+   * to reach ONE หัวข้อ, and on a phone it filled the first screen before a
+   * single หัวข้อ showed.
    */
   const users = components.filter((n) => /<Disclosure\b/.test(sourceOf(`components/${n}`))).sort();
-  assert.deepEqual(users, ['AdminView.jsx', 'ScanImport.jsx', 'common.jsx']);
+  assert.deepEqual(users, ['AdminView.jsx', 'ManualView.jsx', 'ScanImport.jsx', 'common.jsx']);
+
+  /* …and the line above the fold is still above it. A later tidy-up that swept
+     the subtitle in with the rest would pass the list check and lose the only
+     sentence on the screen that explains a reader's own หัวข้อ count. */
+  const manual = sourceOf('components/ManualView.jsx');
+  /* The card itself and not the file: the same sentence is drawn a second time
+     inside one of the manual's own ภาพประกอบ, and a search over the whole file
+     would find that one and call the subtitle present after it had gone. */
+  const card = manual.slice(manual.indexOf('manual-intro-card'), manual.indexOf('<Disclosure'));
+  assert.ok(card.includes('คุณกำลังอ่านฉบับของ') && card.includes('{visible.length} หัวข้อ'),
+    'บรรทัดที่บอกว่าใครกำลังอ่านฉบับไหน และมีกี่หัวข้อ หายไปจากหัวการ์ด หรือถูกพับเข้าไปในของที่ซ่อน');
 });
 
 /*

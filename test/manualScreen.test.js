@@ -547,6 +547,49 @@ test('the rail links, and a link lands below the app bar rather than under it', 
 });
 
 /**
+ * ── THE CARD THAT INTRODUCES THE MANUAL IS THREE ROWS, AND ONE OF THEM ACTS ─
+ *
+ * Asked for in two goes on 2026-09-10 — *เปลี่ยนคำอธิบายส่วนนี้ให้กดซ่อน/แสดงได้*,
+ * then *กระชับความสูงของการ์ด ย้ายปุ่มบันทึก/พิมพ์ไปอยู่มุมขวาบนแถวแรกของการ์ด
+ * และใช้ไอคอนแทนข้อความ* — and both are about the same thing: this card is read
+ * once and got past on every visit after, so its height is distance between the
+ * reader and the หัวข้อ they opened the page for. Measured on a 390px phone:
+ * **314px of card, first หัวข้อ at y=500** before, **131px and y=317** after.
+ *
+ * THE PART THAT NEEDS A TEST IS THE BUTTON'S NAME. It has no words on it now,
+ * so it is named three times over — `aria-label`, `title`, and an `.act-label`
+ * that is CLIPPED rather than `display: none`. That last one is the whole rule
+ * (see `.icon-btn` in app/styles.css): `display: none` takes the label out of
+ * the accessibility tree and leaves the button standing on its `aria-label`
+ * alone, which is true today and one tidy-up away from being nothing at all.
+ *
+ * `test/disclosure.test.js` holds the other half — what folds and what does
+ * not, and that the subtitle stays above the fold.
+ */
+test('the manual opens on a heading, one line, and one control', () => {
+  assert.match(manual, /<div className="manual-intro-head">\n {10}<h2>คู่มือการใช้งานเบื้องต้น<\/h2>/,
+    'the print control left the heading row, so the card grew a row back');
+
+  // Named three ways, and the three have to agree.
+  assert.match(manual, /className="btn sm icon-btn manual-intro-print"/);
+  assert.match(manual, /aria-label="บันทึกคู่มือเป็นไฟล์ PDF หรือพิมพ์"/);
+  assert.match(manual, /title="บันทึกเป็น PDF \/ พิมพ์"/);
+  assert.match(manual, /<span className="act-label">บันทึกเป็น PDF \/ พิมพ์<\/span>/,
+    'the icon is the only name the button has left');
+
+  // …and it is the primary voice, asked for as ให้ใช้สีหลัก: it is the one
+  // thing on this card that does anything, so a ghost had nothing to be quiet
+  // beside.
+  const opener = manual.slice(manual.indexOf('manual-intro-head'), manual.indexOf('</button>', manual.indexOf('manual-intro-head')));
+  assert.ok(opener.includes('onClick={() => setPrinting(true)}'), 'the heading row lost the print control');
+  assert.ok(!/className="btn [^"]*ghost/.test(opener), 'the card\'s one action went back to a ghost');
+
+  const css = read('app/styles.css');
+  assert.match(css, /\.manual-intro-print \.act-label \{\n {2}position: absolute; width: 1px; height: 1px; overflow: hidden;\n {2}clip-path: inset\(50%\); white-space: nowrap;\n\}/,
+    'the hidden label is not clipped any more — display: none would take it out of the accessibility tree');
+});
+
+/**
  * ── ⚠ ON A PHONE THE RAIL OPENS DOWNWARDS, AND MUST NOT GO BACK SIDEWAYS ────
  *
  * Reported on 2026-09-10 as *แถบเลือกหัวข้อ ค่อนข้างใช้งานยาก*. The rail wore

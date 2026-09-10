@@ -6,7 +6,7 @@ import {
 } from '@/lib/roles.js';
 import { mayCorrectEntries } from '@/lib/entries.js';
 import { printName } from '@/lib/printFile.js';
-import { Empty, PrintChrome } from './common.jsx';
+import { Disclosure, Empty, PrintChrome } from './common.jsx';
 import Icon from './icons.jsx';
 import { useBackHandler } from './nav.jsx';
 
@@ -3399,26 +3399,78 @@ export default function ManualView({ user, navGroups = [], barSlots = [] }) {
 
   return (
     <div className="stack manual-page">
-      <div className="card">
-        <h2>คู่มือการใช้งานเบื้องต้น</h2>
-        <p className="manual-lead">
-          ระบบนี้ใช้แทนใบขออนุมัติทำงานล่วงเวลา <b>F-HR-027</b> ที่เคยกรอกด้วยมือ
-          ขั้นตอนยังเป็น พนักงาน → หัวหน้า → ฝ่ายบุคคล เหมือนเดิม และยังพิมพ์ใบหน้าตาเดิมออกมาเซ็นเก็บเข้าแฟ้มได้
-          สิ่งที่เปลี่ยนคือ <b>ไม่ต้องคิดชั่วโมงเอง</b> — ระบบคิดให้ตั้งแต่ตอนกรอก
-        </p>
+      <div className="card manual-intro-card">
+        {/* ── THE HEADING ROW CARRIES THE ONE CONTROL ON THIS CARD ───────
+            Asked for on 2026-09-10: *ย้ายปุ่มบันทึก/พิมพ์ไปอยู่มุมขวาบนแถวแรก
+            ของการ์ด และใช้ไอคอนแทนข้อความ* — the shape a card's own action
+            takes everywhere else in this app, and the reason it fits here is
+            that there is exactly one. On its own line under the text it was a
+            fourth row on a card whose whole job is to be got past. */}
+        <div className="manual-intro-head">
+          <h2>คู่มือการใช้งานเบื้องต้น</h2>
+          {/* The way to paper, on the card that introduces the manual rather
+              than on a หัวข้อ: what gets printed is a CHOICE OF หัวข้อ, so the
+              control belongs where all of them are in view.
+
+              THE WORD IS STILL IN THE DOCUMENT. `.act-label` is clipped rather
+              than `display: none`, which is the rule written over `.icon-btn`
+              in app/styles.css: hidden from sight, kept in the accessibility
+              tree, so `aria-label`, `title` and the visible text all say the
+              same thing and none of them is the only one.
+
+              `printer` and not `document`: the glyph is now the whole of the
+              label, and this button's own screen is the print view. */}
+          <button
+            type="button"
+            className="btn sm icon-btn manual-intro-print"
+            onClick={() => setPrinting(true)}
+            aria-label="บันทึกคู่มือเป็นไฟล์ PDF หรือพิมพ์"
+            title="บันทึกเป็น PDF / พิมพ์"
+          >
+            <Icon name="printer" />
+            <span className="act-label">บันทึกเป็น PDF / พิมพ์</span>
+          </button>
+        </div>
+        {/* ── THE ONE LINE THAT DOES NOT FOLD ────────────────────────────
+            Which edition this is, and how many หัวข้อ are in it. It is the
+            card's subtitle, and `Disclosure`'s own rule says a subtitle folds
+            nothing — but the reason is specific here rather than stylistic:
+            this manual is CUT to the reader, so two people comparing screens
+            see different numbers of หัวข้อ, and the sentence that explains why
+            is no use behind a control neither of them pressed. */}
         <p className="hint">
-          คู่มือหน้านี้เปิดได้ทุกบทบาท และ<b>แสดงเฉพาะวิธีใช้งานที่บทบาทของคุณใช้ได้จริง</b> —
-          คุณกำลังอ่านฉบับของ <b>{p.label}</b> ทั้งหมด {visible.length} หัวข้อ
-          เลื่อนอ่านต่อกันได้ทั้งหน้า หรือกระโดดไปทีละหัวข้อจากรายการหัวข้อ —
-          อยู่ข้าง ๆ บนคอมพิวเตอร์ และอยู่ใต้ปุ่ม <b>ไปที่หัวข้อ</b> บนมือถือ
+          คุณกำลังอ่านฉบับของ <b>{p.label}</b> — ทั้งหมด {visible.length} หัวข้อ
         </p>
-        {/* The way to paper, on the card that introduces the manual rather than
-            on a หัวข้อ: what gets printed is a CHOICE OF หัวข้อ, so the control
-            belongs where all of them are in view. */}
-        <button type="button" className="btn ghost with-icon" onClick={() => setPrinting(true)}>
-          <Icon name="document" className="btn-icon" />
-          บันทึกเป็น PDF / พิมพ์
-        </button>
+        {/* ── AND THE REST OF IT FOLDS, ASKED FOR ON 2026-09-10 ──────────
+            *เปลี่ยนคำอธิบายส่วนนี้ให้กดซ่อน/แสดงได้*. Two paragraphs of
+            background above a page somebody re-opens to jump to one หัวข้อ:
+            read once, in the way every time after that, and on a phone they
+            are most of the first screen before a single หัวข้อ shows.
+
+            `lines={0}` and not a two-line clamp, because the ask is ซ่อน and
+            because there is no sentence here that a preview of it would
+            answer — the หัวข้อ below are what the reader came for. The words
+            are ดูคำอธิบาย / ซ่อนคำอธิบาย rather than the default อ่านต่อ for
+            the reason `Disclosure` writes down: nothing is CONTINUING behind a
+            control with no first line above it. */}
+        <Disclosure
+          as="div"
+          lines={0}
+          of="คำอธิบายคู่มือ"
+          more="ดูคำอธิบาย"
+          less="ซ่อนคำอธิบาย"
+        >
+          <p className="manual-lead">
+            ระบบนี้ใช้แทนใบขออนุมัติทำงานล่วงเวลา <b>F-HR-027</b> ที่เคยกรอกด้วยมือ
+            ขั้นตอนยังเป็น พนักงาน → หัวหน้า → ฝ่ายบุคคล เหมือนเดิม และยังพิมพ์ใบหน้าตาเดิมออกมาเซ็นเก็บเข้าแฟ้มได้
+            สิ่งที่เปลี่ยนคือ <b>ไม่ต้องคิดชั่วโมงเอง</b> — ระบบคิดให้ตั้งแต่ตอนกรอก
+          </p>
+          <p className="hint">
+            คู่มือหน้านี้เปิดได้ทุกบทบาท และ<b>แสดงเฉพาะวิธีใช้งานที่บทบาทของคุณใช้ได้จริง</b>
+            เลื่อนอ่านต่อกันได้ทั้งหน้า หรือกระโดดไปทีละหัวข้อจากรายการหัวข้อ —
+            อยู่ข้าง ๆ บนคอมพิวเตอร์ และอยู่ใต้ปุ่ม <b>ไปที่หัวข้อ</b> บนมือถือ
+          </p>
+        </Disclosure>
       </div>
 
       <div className="manual-layout">
