@@ -392,7 +392,41 @@ export default function EmployeeView({ user, onChanged, openSignal = 0 }) {
         <div className="card">
           <div className="row" style={{ alignItems: 'center', marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <h2>ประวัติการขอ OT · {periodLabel(period)}</h2>
+              {/* THE WAY BACK, WHERE THE WAY IN WAS.
+
+                  ทั้งหมด is pressed in a card head — รายการล่าสุด's, a few
+                  pixels from here — and until this button existed the only
+                  thing that undid it was ย่อประวัติ up on the hero, which on a
+                  phone is the whole page away: open the full history, read to
+                  the bottom, and there is no route back to the short list
+                  except scrolling past everything you just read. The bottom bar
+                  does not help either — ประวัติ OT is the tab you are already
+                  on, so nothing remounts and `showAll` stays true — and neither
+                  does the browser's back, which is not a route into this at all
+                  and leaves the app.
+
+                  The word is the one that answers the heading, the same rule
+                  ทั้งหมด is named by: this card is ประวัติการขอ OT, the other
+                  one is รายการล่าสุด. `.btn.ghost.sm` for the same reason it
+                  wears it over there — a control with a frame, not a caption.
+
+                  NEXT TO THE TITLE, NOT AT THE FAR RIGHT OF THE ROW. `flex: 1`
+                  on the heading was the first shape and it put the button a
+                  finger's width from the ประจำเดือน picker on a desktop,
+                  hanging at the height of that picker's LABEL — two controls
+                  that have nothing to do with each other, drawn as a pair.
+                  Shrink-wrapped, it reads as what it is: a word attached to the
+                  heading it undoes. */}
+              <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 4 }}>
+                <h2 style={{ margin: 0 }}>ประวัติการขอ OT · {periodLabel(period)}</h2>
+                <button
+                  className="btn ghost sm"
+                  style={{ flex: 'none' }}
+                  onClick={() => setShowAll(false)}
+                >
+                  ล่าสุด
+                </button>
+              </div>
               {/* Five clauses down to two — this is every employee's own
                   screen, read on a phone, and it was five lines of rules above
                   the first row.
