@@ -50,6 +50,21 @@ export default function PeriodStatus({
    * this repo names by its cost. `detail` below is built once and drawn by both.
    */
   compact = false,
+  /**
+   * OTHER TOGGLES FOR THE SAME ROW — compact mode only. 2026-09-10, second round.
+   *
+   * ไฟล์สแกนนิ้วมือ used to sit BESIDE this component in `.month-strip`, pushed
+   * to the right edge. On a 390px phone that took half the width from the
+   * headline, so "…ค้างอยู่ 13 ใบ" broke across two lines with ซ่อน hanging off
+   * the end, and the detail box opened in a narrow column next to a link that
+   * belonged to something else. Reported as *"จัดเรียงข้อความใหม่หน่อย"*.
+   *
+   * So the headline gets the whole width, and every control is drawn on ONE row
+   * under it, ours first. The row sits ABOVE the detail rather than under it, so
+   * the button you just pressed stays where it was instead of being pushed
+   * down by what it opened.
+   */
+  actions = null,
 }) {
   const [state, setState] = useState(null);
   /** Whether the WHY under the headline is open — compact mode only. */
@@ -80,7 +95,19 @@ export default function PeriodStatus({
   // Nothing at all until the counts are known: a card that says "ไม่มีเอกสาร
   // ตกค้าง" for half a second on a month with four pending requests is worse
   // than no card.
-  if (!state) return err ? <Alert kind="error">{err}</Alert> : null;
+  //
+  // The other toggles are not ours to hold back, though: ไฟล์สแกนนิ้วมือ does not
+  // depend on these counts, and it must not vanish because they failed to load.
+  if (!state) {
+    const failure = err ? <Alert kind="error">{err}</Alert> : null;
+    if (!compact || !actions) return failure;
+    return (
+      <div className="period-strip">
+        {failure}
+        <div className="strip-actions">{actions}</div>
+      </div>
+    );
+  }
 
   const lastMonth = previousMonthOutstanding(previous);
 
@@ -121,12 +148,19 @@ export default function PeriodStatus({
       )}
 
       {/* Only when last month still has something unanswered in it. A quiet
-          finished month is silent — see previousMonthOutstanding. */}
+          finished month is silent — see previousMonthOutstanding.
+
+          TWO LINES, WHAT AND THEN WHAT TO DO — 2026-09-10. This read
+          "สิงหาคม 2569 ยังมีของค้างอยู่ — มีใบรออนุมัติค้างอยู่ 298 ใบ ·
+          เลือกเดือนนั้นด้านบนเพื่อตรวจก่อนพิมพ์" as one run: ค้างอยู่ twice in
+          one sentence, and "ด้านบน" pointing at a ประจำเดือน box that has been
+          BELOW this line since the strip moved over the controls card. It names
+          the box now, not a direction, so it stays true wherever the box goes. */}
       {lastMonth && (
-        <div className="hint" style={{ margin: '4px 0 0' }}>
-          <strong>{periodLabel(previousPeriod(period))} ยังมีของค้างอยู่</strong>
+        <div className="hint" style={{ margin: '6px 0 0' }}>
+          <strong>เดือนก่อน · {periodLabel(previousPeriod(period))}</strong>
           {' '}— {lastMonth.outstanding.map((i) => i.short).join(' และ ')}
-          {' '}· เลือกเดือนนั้นด้านบนเพื่อตรวจก่อนพิมพ์
+          <div>เลือกเดือนนั้นในช่อง ประจำเดือน เพื่อตรวจก่อนพิมพ์</div>
         </div>
       )}
     </>
@@ -148,17 +182,25 @@ export default function PeriodStatus({
               both miss; here it is the third telling, not the first. */}
           <span className="strip-mark" aria-hidden="true">{state.clear ? '✓' : '⚠'}</span>
           <strong className="strip-head">{state.headline}</strong>
-          {hasDetail && (
-            <button
-              type="button"
-              className="strip-more"
-              onClick={() => setOpen((v) => !v)}
-              aria-expanded={open}
-            >
-              {open ? 'ซ่อน' : 'รายละเอียด'}
-            </button>
-          )}
         </div>
+        {/* ซ่อนรายละเอียด and not a bare ซ่อน: with two toggles on the row, a
+            bare verb does not say which of the two it hides. */}
+        {(hasDetail || actions) && (
+          <div className="strip-actions">
+            {hasDetail && (
+              <button
+                type="button"
+                className="strip-more"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+              >
+                {open ? 'ซ่อนรายละเอียด' : 'รายละเอียด'}
+                <span aria-hidden="true">{open ? ' ▲' : ' ▼'}</span>
+              </button>
+            )}
+            {actions}
+          </div>
+        )}
         {/* Opened in place, under its own line and still above the controls
             card — so what a reader unfolds does not push the table off the
             screen the way a third card between them did. */}

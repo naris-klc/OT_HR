@@ -268,7 +268,8 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   const strip = hrView.indexOf('<div className="month-strip no-print">');
   assert.ok(strip > 0 && strip < head, 'สรุปสถานะงวด is no longer above the controls card');
   assert.ok(status > strip && status < head, 'สรุปสถานะงวด left the strip');
-  assert.match(hrView, /<PeriodStatus period=\{period\} compact \/>/);
+  // `actions` since 2026-09-10: the scan toggle rides on the strip's own row.
+  assert.match(hrView, /<PeriodStatus\s+period=\{period\}\s+compact\s+actions=/);
   // And nothing stands between the controls and the rows they decide any more:
   // the two are sections of one card.
   const panel = hrView.indexOf('<div className="month-panel">');

@@ -2121,14 +2121,17 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    and the headline — which is enough for a line and would not be enough for a
    block.
 
-   `align-items: baseline` so the ⚠, the headline and รายละเอียด sit on one
-   written line rather than on one box edge. The 4px column gap is what a
-   sentence has; the row gap is for the phone, where รายละเอียด wraps under. */
-.month-strip {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: 6px 14px; flex-wrap: wrap; margin: 0 0 10px;
-}
-.period-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+   Three rows since 2026-09-10, not one: the headline alone at full width, the
+   toggles (รายละเอียด · ไฟล์สแกนนิ้วมือ) under it, and the detail under them.
+   It read "`align-items: baseline` so the ⚠, the headline and รายละเอียด sit on
+   one written line" until then — which on a phone meant the headline wrapped
+   around two links that were not part of it. */
+/* It read `display: flex; justify-content: space-between` until 2026-09-10,
+   with ไฟล์สแกนนิ้วมือ as a sibling on the right. On a phone that took half the
+   width from the headline — see `actions` in components/PeriodStatus.jsx. The
+   toggle lives inside `.period-strip` now, so the strip is a plain block. */
+.month-strip { margin: 0 0 10px; }
+.period-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* ⚠ TEXT FLOW, NOT A FLEX LINE — and the phone is what settled it. As three
    flex items (mark · headline · รายละเอียด) at 390px the row broke between the
    ITEMS rather than inside the sentence: the ⚠ took a line to itself, the
@@ -2141,7 +2144,9 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* Non-breaking space either side of the glyph, in CSS rather than in the JSX:
    the mark and the first word are one unit and must not be split. */
 .period-strip .strip-mark { font-size: 13px; margin-right: 4px; }
-.period-strip .strip-more { margin-left: 8px; }
+/* รายละเอียด and ไฟล์สแกนนิ้วมือ, one row under the headline, lined up under
+   its first word (the ⚠ is 13px + 4px). Wraps to two lines before it squeezes. */
+.period-strip .strip-actions { display: flex; flex-wrap: wrap; gap: 2px 18px; padding-left: 17px; }
 .period-strip.outstanding .strip-mark,
 .period-strip.outstanding .strip-head { color: var(--amber-ink); }
 .period-strip.clear .strip-mark { color: var(--green); }
