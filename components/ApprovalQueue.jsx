@@ -25,7 +25,7 @@ import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
   RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, ShowMore, SignatureFacts,
-  StatusChip, TeamMark, editsOf,
+  StatusChip, TeamMark, editsOf, shownWarnings,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
@@ -1778,7 +1778,7 @@ export default function ApprovalQueue({
                     ))}
                     {/* code + column: a bucket-scoped minimum can leave two
                         warnings on one entry sharing a code. */}
-                    {e.warnings?.map((w) => (
+                    {shownWarnings(e.warnings).map((w) => (
                       <div key={w.code + (w.bucket || '')} className="cell-sub">{w.message}</div>
                     ))}
                   </td>
@@ -2790,7 +2790,7 @@ function DetailModal({
             ) : (
               <>
                 <SegmentList segments={e.segments} />
-                {e.warnings?.map((w) => <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>)}
+                {shownWarnings(e.warnings).map((w) => <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>)}
               </>
             )}
           </Section>
@@ -3317,7 +3317,7 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
                 <span className="now">{hours(nextHours)} ชม.</span>
               </div>
               <SegmentList segments={preview.result?.segments} />
-              {preview.result?.warnings?.map((w) => (
+              {shownWarnings(preview.result?.warnings).map((w) => (
                 <div key={w.code + (w.bucket || '')} className="hint">{w.message}</div>
               ))}
               {preview.cap?.exceeded && (

@@ -509,6 +509,22 @@ export function SegmentList({ segments }) {
   );
 }
 
+/**
+ * The engine warnings a screen shows — every one but `NORMAL_HOURS_IGNORED`.
+ *
+ * Asked for on 2026-09-10, the same day it was translated: "8 ชม. ของรายการนี้
+ * อยู่ในเวลาทำงานปกติ จึงไม่นับเป็น OT" sat in the เหตุผล column of รออนุมัติ OT
+ * as a paragraph telling a reviewer something every one of them already knows,
+ * and the segment list above it already shows which hours were counted.
+ *
+ * FILTERED HERE, NOT IN THE ENGINE. Warnings are stored on the entry when it is
+ * filed, so rows filed before `ab0631b` still carry the English sentence — only a
+ * filter on the way out reaches them. The engine keeps writing the code: the
+ * tests read it, and it is still the record of where the minutes went.
+ */
+const HIDDEN_WARNINGS = new Set(['NORMAL_HOURS_IGNORED']);
+export const shownWarnings = (warnings) => (warnings || []).filter((w) => !HIDDEN_WARNINGS.has(w.code));
+
 // ── history ─────────────────────────────────────────────────────────────────
 
 /**

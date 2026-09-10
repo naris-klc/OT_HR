@@ -382,7 +382,9 @@ const otEntrySchema = new mongoose.Schema(
       normalHours: { type: Number, default: 0 },
     },
     /**
-     * e.g. NORMAL_HOURS_IGNORED, RAISED_TO_MINIMUM — shown to reviewers.
+     * e.g. NORMAL_HOURS_IGNORED, RAISED_TO_MINIMUM — shown to reviewers, all
+     * but NORMAL_HOURS_IGNORED since 2026-09-10 (`shownWarnings` in
+     * components/common.jsx). It is still stored.
      *
      * `bucket` is set only where a warning is about ONE rate column rather than
      * the entry: the minimum under `minimumHoursScope: 'bucket'` produces one

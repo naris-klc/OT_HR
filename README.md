@@ -3900,6 +3900,11 @@ reads it any more, and nothing deletes it.
 
 08:00–17:00 on an ordinary Wednesday is entirely normal working time, so the
 engine keeps none of it (`NORMAL_HOURS_IGNORED`) and the session totals zero.
+(**That warning is stored but shown nowhere since 2026-09-10** — it read as a
+paragraph in the เหตุผล column of รออนุมัติ OT on any session that began inside
+08:00–17:00, telling reviewers what they already know. `shownWarnings` in
+`components/common.jsx` drops it on every screen, rows filed in English
+included; the engine still writes the code.)
 **All four write paths refuse it** rather than storing the nought: a 0-hour
 request is a row in a queue, a line on F-HR-027 and a name in a monthly total, all
 saying somebody worked no overtime, and none of them can be told apart from a
