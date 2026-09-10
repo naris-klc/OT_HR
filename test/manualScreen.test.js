@@ -42,7 +42,20 @@ import { mayCorrectEntries } from '../lib/entries.js';
  */
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
+/**
+ * Line endings normalised BEFORE anything is matched, for the reason
+ * `.gitattributes` gives: this repository is checked out CRLF on the machine
+ * it is developed on and LF on the Linux box that serves the app, so an
+ * assertion spelling a multi-line shape with `\n` reports which
+ * CHECKOUT it ran on rather than what the code says. Five assertions in this
+ * file did exactly that — `SECTIONS` parsed as nought sections and the
+ * break-inside rule matched nothing, against a tree with nothing wrong in it,
+ * and the whole suite passed on the machine they were written on.
+ *
+ * See the header of test/adminApproval.test.js, which had it right first.
+ */
+const read = (rel) => readFileSync(join(ROOT, rel), 'utf8')
+  .replace(/\r\n/g, '\n');
 const jsx = read('components/App.jsx');
 const manual = read('components/ManualView.jsx');
 const icons = read('components/icons.jsx');

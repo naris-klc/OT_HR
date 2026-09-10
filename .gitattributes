@@ -14,6 +14,16 @@
 # is where the fix belongs; the sentence claiming it could not happen belongs
 # here. See the header of `test/adminApproval.test.js`, which had it right first.
 #
+# AND IT CAME STRAIGHT BACK, from the other side, on the evening of the same
+# day. `test/manualScreen.test.js` arrived with คู่มือหน้าเดียว reading source
+# through a plain `readFileSync`, and its assertions spell `\n`: five of them
+# failed on the CRLF checkout — `SECTIONS` parsed as nought sections, so the
+# file was checking nothing — while passing on the LF one. That is the mirror
+# of the paragraph above, and it means the rule is not closed by having been
+# applied once: a test written after the fix is a test written before it.
+# Every test that greps source normalises on the day it is written, or it
+# reports its own checkout. Fixed in that file’s own `read` on 2026-09-10.
+#
 # It is fatal for a shell script: `#!/bin/sh\r` is read by the kernel as an
 # interpreter literally named "sh\r", and the whole file fails with
 # "bad interpreter: No such file or directory" — a message that names the shebang
