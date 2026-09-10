@@ -1098,6 +1098,15 @@ function Shell({ session, onRefresh, onLogout }) {
    * for and the next plain click on the nav lands where it always does.
    */
   const [adminSection, setAdminSection] = useState(null);
+  /**
+   * Which card on ข้อมูลส่วนตัว an arrival was for — the same shape as
+   * `adminSection` above, cleared the same way, and there for the same
+   * reason: somebody pressed a button that named ONE thing, and the screen it
+   * opens has five cards on it.
+   *
+   * One value, `'password'`, set by the reminder strip below.
+   */
+  const [profileJump, setProfileJump] = useState(null);
   // Bumped by the mobile FAB; EmployeeView opens its form when it changes.
   const [formSignal, setFormSignal] = useState(0);
 
@@ -1146,6 +1155,7 @@ function Shell({ session, onRefresh, onLogout }) {
   }
   useEffect(() => { refreshCounts(); }, [tab]);
   useEffect(() => { if (tab !== 'admin') setAdminSection(null); }, [tab]);
+  useEffect(() => { if (tab !== 'profile') setProfileJump(null); }, [tab]);
 
   /**
    * Rows just left a queue. Take them off the badge now and ask the server
@@ -1218,6 +1228,23 @@ function Shell({ session, onRefresh, onLogout }) {
     if (!mayOpenRoster) return;
     setAdminSection('employees');
     goTab('admin');
+  }
+
+  /**
+   * Where เปลี่ยนรหัสผ่าน on the reminder strip points.
+   *
+   * NOT THE TAB ON ITS OWN. ข้อมูลส่วนตัว opens at ข้อมูลของคุณ, and
+   * เปลี่ยนรหัสผ่าน is the fourth card down it — on a phone that is a screen
+   * and a half of scrolling past a name, a แผนก, ธีมสีหน้าจอ and, for a
+   * หัวหน้า, ผู้รักษาการแทน as well. A button that names one form and lands
+   * somewhere that form is not on screen asks the reader to go looking for
+   * the thing they just pressed.
+   *
+   * The scroll itself is ProfileView's, on arrival — see `jumpTo` there.
+   */
+  function openPasswordChange() {
+    setProfileJump('password');
+    goTab('profile');
   }
 
   const canGoBack = subDepth > 0 || trail.length > 0;
@@ -1968,7 +1995,7 @@ function Shell({ session, onRefresh, onLogout }) {
             */}
             {tab === home && user.mustChangePassword && (
               <div style={{ padding: '0 18px' }}>
-                <PasswordReminder onOpenProfile={() => goTab('profile')} />
+                <PasswordReminder onOpenProfile={openPasswordChange} />
               </div>
             )}
             {/*
@@ -2061,7 +2088,12 @@ function Shell({ session, onRefresh, onLogout }) {
             {tab === 'admin' && <AdminView user={user} initialSection={adminSection} />}
             {tab === 'logs' && <LogSystem />}
             {tab === 'profile' && (
-              <ProfileView user={user} onPasswordChanged={onRefresh} onLogout={logout} />
+              <ProfileView
+                user={user}
+                jumpTo={profileJump}
+                onPasswordChanged={onRefresh}
+                onLogout={logout}
+              />
             )}
             {/* `navGroups` and `barSlots` go down with the user because the
                 manual DRAWS THE READER'S OWN MENU — see the note in

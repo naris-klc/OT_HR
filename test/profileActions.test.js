@@ -256,6 +256,66 @@ test('ข้อมูลส่วนตัว carries its own class, and its car
   assert.match(css, /@media \(max-width: 640px\) \{\n  \.profile-page \.card \{ padding: 18px; \}\n\}/);
 });
 
+// ── where เปลี่ยนรหัสผ่าน lands ─────────────────────────────────────────────
+
+/**
+ * THE STRIP NAMES ONE FORM AND THE PAGE IT OPENS HAS FIVE CARDS ON IT.
+ *
+ * เปลี่ยนรหัสผ่าน on the reminder strip did `goTab('profile')` and nothing
+ * else, which lands at the top of ข้อมูลส่วนตัว — a name, a แผนก, a
+ * ธีมสีหน้าจอ and, for a หัวหน้า, ผู้รักษาการแทน above the form somebody
+ * pressed a button to reach. On a phone that is a screen and a half of
+ * scrolling to find the thing they just asked for.
+ *
+ * Three parts, and each is useless without the other two: the press has to
+ * carry WHICH card it meant, the card has to scroll itself there, and the
+ * landing has to clear the app bar stuck over the top 62px of the scrollport.
+ */
+
+test('the press carries which card it meant, and stops carrying it on the way out', () => {
+  const code = sourceOf(APP);
+  assert.match(code, /const \[profileJump, setProfileJump\] = useState\(null\);/);
+  assert.match(
+    code,
+    /useEffect\(\(\) => \{ if \(tab !== 'profile'\) setProfileJump\(null\); \}, \[tab\]\);/,
+    'the jump outlives its arrival — the next plain visit to ข้อมูลส่วนตัว would scroll too',
+  );
+  assert.match(code, /<ProfileView[^>]*jumpTo=\{profileJump\}/);
+});
+
+test('the card scrolls itself into view, and only when it was asked for', () => {
+  const code = sourceOf(PROFILE);
+  assert.match(code, /jump=\{jumpTo === 'password'\}/);
+  assert.match(code, /export function ChangePassword\(\{ onDone, pending = false, jump = false \}\)/);
+  // The guard is the whole of "only when asked": this component is mounted by
+  // every visit to the page, including the ones nothing sent.
+  assert.match(code, /if \(!jump\) return;/);
+  assert.match(code, /cardRef\.current\?\.scrollIntoView\(\{/);
+  assert.match(code, /block: 'start',/);
+  // On the frame after mount — the cards above this one have not been laid
+  // out when the effect runs, and a scroll measured then lands short.
+  assert.match(code, /window\.requestAnimationFrame\(\(\) => \{/);
+  // …and it honours a reader who has asked for less motion, which an
+  // imperative scroll has no CSS to do for it.
+  assert.match(code, /matchMedia\?\.\('\(prefers-reduced-motion: reduce\)'\)\.matches/);
+  assert.match(code, /behavior: still \? 'auto' : 'smooth',/);
+});
+
+test('and it lands clear of the app bar, not underneath it', () => {
+  assert.match(sourceOf(PROFILE), /<div className="card profile-password" ref=\{cardRef\}>/);
+  const css = styles();
+  assert.match(
+    css,
+    /\.profile-password \{ scroll-margin-top: calc\(62px \+ 14px\); \}/,
+    'the heading somebody pressed a button to see arrives under the app bar',
+  );
+  // 62 is the bar's own height, read from the rule that sets it: a landing
+  // measured against a number that has since moved is what this catches.
+  const bar = css.indexOf('.appbar {');
+  const barRule = css.slice(bar, css.indexOf('\n}', bar));
+  assert.match(barRule, /height: 62px;/, 'the bar changed height and the landing above did not');
+});
+
 // ── autofill ────────────────────────────────────────────────────────────────
 
 test('all three boxes refuse the browser and the extensions alike', () => {

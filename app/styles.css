@@ -5441,6 +5441,25 @@ td > .approver-line { margin-top: 5px; }
   .profile-page .card { padding: 18px; }
 }
 
+/* ── WHERE เปลี่ยนรหัสผ่าน LANDS ────────────────────────────────────────
+   The reminder strip on the landing tab opens this page AND scrolls to the
+   password card — see `ChangePassword` in components/ProfileView.jsx.
+   `scrollIntoView({ block: 'start' })` puts the card's top edge at the top
+   of the SCROLLPORT, and the app bar is stuck over the first 62px of it, so
+   without this the heading somebody pressed a button to reach arrives
+   underneath the bar. 62 + 14 is the same landing `.manual-sec` takes for the
+   same bar, and the number lives in the stylesheet that owns the bar rather
+   than in the component.
+
+   MEASURED, IT ARRIVES 6px UNDER THE BAR AND NOT 14, and that is worth writing
+   down rather than rounding off: the scroll is aimed on the frame after the
+   page mounts and the cards above this one settle about 8px shorter just after
+   it, so the card ends 8px higher than the aim. 6px of air still reads as the
+   card starting below the bar — walked at 360px on 2026-09-10, scrollY 888,
+   card top 68, bar bottom 62, stable from 600ms onward — which is why the aim
+   is left where it is instead of being padded to hit 14 exactly. */
+.profile-password { scroll-margin-top: calc(62px + 14px); }
+
 /* Stacked, not the app's usual side-by-side .row: the three password boxes are
    a sequence to work down, and side by side they invite typing into the wrong
    one. Capped so the fields do not stretch across a desktop card. */
