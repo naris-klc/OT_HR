@@ -104,9 +104,16 @@ test('รวมทั้งหมด stays the month’s figure, and says which 
 });
 
 test('and the exports say they did not follow it', () => {
-  // They are built by the server from the month and สถานะที่นับ. A file longer
-  // than the screen is a surprise somebody finds after opening it.
-  assert.match(hrView, /ไฟล์ CSV และยอด “รวมทั้งหมด” ยังเป็นของทั้งเดือน ไม่ใช่เฉพาะผลการค้นหา/);
+  // They are built by the server from the month, สถานะที่นับ and — since
+  // 2026-09-10 — แผนก. A file longer than the screen is a surprise somebody
+  // finds after opening it.
+  assert.match(hrView, /ไฟล์ CSV และยอด “รวมทั้งหมด” ยังเป็นของ/);
+  assert.match(hrView, /ไม่ใช่เฉพาะผลการค้นหา/);
+  // "ทั้งเดือน" ON ITS OWN IS ONLY TRUE AT ทุกแผนก, which is the one thing the
+  // department filter changed about this sentence: with ผลิต1 chosen the file
+  // holds ผลิต1's month, and a reader told "ทั้งเดือน" over a table of four
+  // people has been promised twenty-four. Both readings are written out.
+  assert.match(hrView, /dept \? `ทั้งเดือนเฉพาะแผนก “\$\{deptName\}”` : 'ทั้งเดือน'/);
 });
 
 // ── the box itself ───────────────────────────────────────────────────────────

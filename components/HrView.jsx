@@ -204,6 +204,42 @@ export default function HrView({
   const [period, setPeriod] = useState(currentPeriod());
   const [data, setData] = useState(null);
   /**
+   * แผนก — WHICH DEPARTMENT'S MONTH IS ON SCREEN, or `''` for every one of them.
+   *
+   * ASKED FOR ON 2026-09-10, in those words: "หน้า ตรวจสอบประจำเดือน
+   * เพิ่มตัวกรองให้กรองเป็นแผนกได้". The table is one row per employee across the
+   * whole company — 24 rows on this database, more on a busy month — and every
+   * question HR actually asks of it ("has ผลิต1 gone over?", "print ผลิต3's
+   * sheets") is a question about one แผนก out of the eighteen.
+   *
+   * ── IT IS A REQUEST TO THE SERVER, NOT A SCREEN FILTER, AND THAT IS THE
+   *    WHOLE DIFFERENCE BETWEEN IT AND ค้นหา ──────────────────────────────────
+   *
+   * ค้นหา narrows what is DRAWN out of a month already fetched: it cannot move
+   * a total, so รวมทั้งหมด and both CSVs stay the month's and the screen says so
+   * in a hint. This goes in the URL, so the month comes back already cut —
+   * which means every figure on the screen is the แผนก's:
+   *
+   *   · รวมทั้งหมด is that แผนก's total, not the company's.
+   *   · Both CSVs carry `&department=`, so the file holds the rows the table
+   *     holds — see `departmentScope` in lib/reports.js, which is the one place
+   *     the report route and the two export routes ask the question.
+   *   · The birthday list, the policy-version banner and ยืนยันโดย HR n ใบ are
+   *     all counted over the same narrowed set.
+   *
+   * A screen filter could not have done any of that, and a เพดาน column that
+   * had been narrowed by one control and not the other is exactly the false
+   * negative the cap column was repaired for once already.
+   *
+   * `''` IS A VALUE THIS SCREEN CAN HOLD — ทุกแผนก, `PickOne`'s `allLabel` row —
+   * which is what makes it unlike สถานะที่นับ two lines up, where the widest
+   * setting is a real value and there is no `allLabel`. See the note over
+   * `STATUS_FILTERS`.
+   */
+  const [dept, setDept] = useState('');
+  /** Beside `scopeParam` because the two go on the same three URLs together. */
+  const deptParam = dept ? `&department=${encodeURIComponent(dept)}` : '';
+  /**
    * อนุมัติแล้ว + รอ HR — THIS SCREEN OPENS ON WHAT THE SHEET PRINTS.
    *
    * It was `'approved'` until 2026-09-09, for this reason: "อนุมัติแล้วเท่านั้น,
@@ -253,7 +289,9 @@ export default function HrView({
   async function load() {
     try {
       setData(null);
-      const res = await api.get(`/reports/monthly/${period}?status=${statusFilter}${scopeParam}`);
+      const res = await api.get(
+        `/reports/monthly/${period}?status=${statusFilter}${scopeParam}${deptParam}`,
+      );
       setData(res);
       setError('');
     } catch (err) { setError(err.message); }
@@ -263,7 +301,7 @@ export default function HrView({
   // component and a remount runs the effect anyway — but a prop the request is
   // built from and the effect does not watch is a bug waiting for the day
   // somebody drops the `key` in components/App.jsx.
-  useEffect(() => { load(); }, [period, statusFilter, scope]);
+  useEffect(() => { load(); }, [period, statusFilter, scope, dept]);
 
   // Three sub-views, all reached from this table and all closed the same
   // way. Mutually exclusive by the early returns below, so registering each
@@ -334,7 +372,73 @@ export default function HrView({
   const [page, setPage] = useState(1);
   /** The fold under the third card — see `CARD_FOLD` and `folding` below. */
   const [showAllCards, setShowAllCards] = useState(false);
-  useEffect(() => { setPage(1); setShowAllCards(false); }, [period, statusFilter, query]);
+  useEffect(() => { setPage(1); setShowAllCards(false); }, [period, statusFilter, dept, query]);
+
+  /**
+   * EVERY ACTIVE แผนก, for the dropdown's list — fetched once per mount.
+   *
+   * `GET /api/departments` has been open to any signed-in account since it was
+   * written, and this asks nothing more of it than คิวรออนุมัติ already does
+   * from the same endpoint for the same control.
+   *
+   * ── NOT BUILT FROM THE ROWS, AND THAT IS THE POINT ─────────────────────────
+   *
+   * The rows in hand are the obvious source and they are the wrong one, for a
+   * reason คิวรออนุมัติ found on 2026-09-04 and wrote down: a list built from
+   * the rows is a list that EMPTIES exactly when it is most needed. Pick ผลิต3,
+   * get ผลิต3's month, and the dropdown that was offering eighteen departments
+   * is now offering one — its own choice, the only แผนก left in the rows. There
+   * would be no way back to ผลิต1 except ทุกแผนก first. A control whose options
+   * are decided by what it just did is not a filter.
+   *
+   * `null` until it lands, `[]` if it is refused. Both draw the control with
+   * ทุกแผนก and nothing under it, which is honest — a screen that cannot list
+   * the departments cannot filter by them either — and the table is untouched.
+   *
+   * NARROWED TO WHAT THIS READER MAY SEE. `coversDepartments` is every แผนก
+   * this account signs for and is `[]` for ฝ่ายบุคคล, ผู้ดูแลระบบ and การเงิน on
+   * ตรวจสอบประจำเดือน, who read the company — so an empty list means "no
+   * narrowing", the same reading `approvalDepartments` has everywhere else. On
+   * รายงาน OT ประจำทีม the same list is what the server will honour and nothing
+   * else (`departmentScope` in lib/reports.js), so offering a หัวหน้า a แผนก
+   * they do not sign for would be offering a press that changes nothing.
+   */
+  const [roster, setRoster] = useState(null);
+  useEffect(() => {
+    let live = true;
+    api.get('/departments')
+      .then((res) => { if (live) setRoster(res.departments || []); })
+      .catch(() => { if (live) setRoster([]); }); // not fatal — see `departments`
+    return () => { live = false; };
+  }, []);
+  /**
+   * The rows of the dropdown: names, sorted in Thai, and nothing else.
+   *
+   * NO COUNT BESIDE THEM, WHICH IS THE ONE PLACE THIS PARTS COMPANY WITH
+   * คิวรออนุมัติ's แผนก filter — that one prints "ผลิต1 · 12" from the rows it
+   * is holding, and it can, because its filter is a screen filter and the rows
+   * it counts are every row either way.
+   *
+   * This one is a REQUEST. The moment ผลิต1 is picked the server sends ผลิต1's
+   * employees and nobody else's, so seventeen of the eighteen counts have no
+   * figure to quote and the list would either empty out on first use or start
+   * quoting a month that is no longer on screen. Both are worse than a plain
+   * name — a number that is right until you use the control is a number that is
+   * wrong exactly when it is being read.
+   *
+   * A แผนก that filed nothing this month is still on the list. "ผลิต2 filed
+   * nothing in August" is an answer, and it is one this screen can only give if
+   * the แผนก can be picked in the first place.
+   */
+  const departments = React.useMemo(() => {
+    const mine = (user?.coversDepartments || []).map(String);
+    return (roster || [])
+      .filter((d) => !mine.length || mine.includes(String(d._id)))
+      .map((d) => ({ value: String(d._id), label: d.nameTh || d.name }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'th'));
+  }, [roster, user?.coversDepartments]);
+  /** The chosen แผนก's name, for the sentences that have to say which one. */
+  const deptName = departments.find((d) => d.value === dept)?.label || '';
 
   /**
    * The page count, and the page actually drawn — which is NOT always `page`.
@@ -648,15 +752,21 @@ export default function HrView({
 
           `key` REMOUNTS IT WHEN THE MONTH DOES. Both the open flag and the list
           under it describe the notices of one particular month at one particular
-          สถานะที่นับ; letting them survive a change of either is how an open list
-          ends up describing a month that is no longer on screen. Written as a key
-          rather than an effect because there is nothing to carry across — the
-          dismissal is deliberately not in that component's state (see
-          `alertsDismissed` by MonthAlerts) and is the one thing that does
-          survive. */}
+          สถานะที่นับ in one particular แผนก; letting them survive a change of any
+          of the three is how an open list ends up describing a month that is no
+          longer on screen. Written as a key rather than an effect because there
+          is nothing to carry across — the dismissal is deliberately not in that
+          component's state (see `alertsDismissed` by MonthAlerts) and is the one
+          thing that does survive.
+
+          `dept` JOINED IT ON 2026-09-10 with the แผนก filter, and it is not
+          decoration: every count this card draws — the missing วันเกิด list, the
+          policy spread, ยืนยันโดย HR n ใบ — is counted by the server over the
+          narrowed month, so all three describe the department that is on screen
+          and none of them may outlive it. */}
       {data && (
         <MonthAlerts
-          key={`${period}|${statusFilter}`}
+          key={`${period}|${statusFilter}|${dept}`}
           periodName={periodLabel(period)}
           policy={data.policy}
           hrVerifiedCount={data.hrVerifiedCount}
@@ -689,6 +799,16 @@ export default function HrView({
                   whole company — the wide screen needs no qualifier, and a
                   reader who has both tabs needs to know which one is open. */}
               {scope === 'team' && ' · เฉพาะแผนกที่คุณเซ็นอนุมัติ'}
+              {/* AND WHICH แผนก, when one is chosen — 2026-09-10.
+
+                  The same rule as the line above it: said only where it is not
+                  everything. It reads as part of the same sentence because it
+                  is the same fact — this line is what the screen is a report OF,
+                  and once the month has been cut by department that is half of
+                  the answer. The dropdown itself is two rows down and scrolls
+                  away; the heading does not, and a total read without knowing
+                  whose it is is the figure this screen exists to get right. */}
+              {deptName && ` · ${deptName}`}
             </div>
           </div>
           {/* ประจำเดือน USED TO SIT HERE, on this line beside สถานะที่นับ. It
@@ -780,6 +900,38 @@ export default function HrView({
             <label>ประจำเดือน</label>
             <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
+          {/* แผนก — 2026-09-10, and it sits HERE for the reason this row is
+              ordered the way it is. ประจำเดือน and แผนก both decide WHAT the
+              month contains and both go to the server; ค้นหา decides which of
+              what came back is drawn. Read left to right the row is now: which
+              month, whose month, then find one person in it — each control
+              acting on what the one before it settled, which is the same
+              argument the card as a whole is built on (`.export-row` below acts
+              on all three).
+
+              NOT ON THE HEADING LINE BESIDE สถานะที่นับ, and the note over
+              ประจำเดือน above is why: that line already holds a heading, and a
+              third control on it is three widths on a desktop and a stack of
+              three on a phone. This row is a row of controls and takes a third
+              without changing shape.
+
+              WHY IT IS DRAWN ON รายงาน OT ประจำทีม TOO, rather than hidden
+              outside `scope === 'company'`. A ผู้จัดการฝ่าย signs for eight
+              แผนก and reads all eight on that tab; they are the reader with the
+              MOST use for this control, not the least. `departments` above is
+              already narrowed to what they sign for, and `departmentScope` on
+              the server honours nothing wider — so on a หัวหน้างาน holding one
+              แผนก the list is ทุกแผนก and their own, which narrows nothing and
+              is the same one-row list คิวรออนุมัติ decided was a smaller cost
+              than a toolbar that is a different shape for every บทบาท. */}
+          <PickOne
+            label="แผนก"
+            value={dept}
+            onChange={setDept}
+            options={departments}
+            allLabel="ทุกแผนก"
+            className="dept-pick"
+          />
           {/* `.field` around it, and that is the whole of the styling:
               `.field input` is what every box in this app is, and a search
               field that is a different height or a different grey from the
@@ -970,7 +1122,7 @@ export default function HrView({
                the whole company from a table showing one แผนก — the export
                button's one promise is that it is the table it sits under. */
             onClick={() => api.download(
-              `/exports/entries.csv?period=${period}&status=${statusFilter}${scopeParam}`,
+              `/exports/entries.csv?period=${period}&status=${statusFilter}${scopeParam}${deptParam}`,
               `OT-${period}.csv`,
             )}
           >
@@ -987,7 +1139,7 @@ export default function HrView({
           <button
             className="btn ghost"
             onClick={() => api.download(
-              `/exports/monthly.csv?period=${period}&status=${statusFilter}${scopeParam}`,
+              `/exports/monthly.csv?period=${period}&status=${statusFilter}${scopeParam}${deptParam}`,
               `OT-monthly-${period}.csv`,
             )}
           >
@@ -1061,17 +1213,49 @@ export default function HrView({
         {!data ? (
           <Empty>กำลังโหลด…</Empty>
         ) : data.employees.length === 0 ? (
-          <Empty>ไม่มีรายการในเดือนนี้</Empty>
+          /* ไม่มีรายการในเดือนนี้ WAS THE WHOLE OF THIS UNTIL 2026-09-10, and
+             with a แผนก chosen it is a sentence that is very nearly a lie: the
+             month may be full, and this is one department out of eighteen that
+             filed nothing. A reader who has forgotten which แผนก is set — the
+             dropdown is four rows up, above the export buttons and งวด…ยังเปิดอยู่
+             — reads it as "August is empty" and goes looking for the entries.
+
+             So the narrowed case says which แผนก it is talking about and puts
+             the way out directly under it, which is the same shape the search's
+             own empty state has had since it was written a few lines below. */
+          dept ? (
+            <div className="empty">
+              <div>ไม่มีรายการของ “{deptName}” ในเดือนนี้</div>
+              <button
+                className="btn ghost sm"
+                style={{ marginTop: 10 }}
+                onClick={() => setDept('')}
+              >
+                ดูทุกแผนก
+              </button>
+            </div>
+          ) : <Empty>ไม่มีรายการในเดือนนี้</Empty>
         ) : (
           <>
-            {/* The CSVs are built by the server from the month and สถานะที่นับ;
-                they have never known about this box and cannot. Said here, and
-                only while the box is narrowing something, because a file that
-                comes out longer than the screen is a surprise somebody finds
-                after opening it. */}
+            {/* The CSVs are built by the server from the month, สถานะที่นับ and
+                — since 2026-09-10 — แผนก; they have never known about this box
+                and cannot. Said here, and only while the box is narrowing
+                something, because a file that comes out longer than the screen
+                is a surprise somebody finds after opening it.
+
+                "ของทั้งเดือน" WOULD BE FALSE WITH A แผนก CHOSEN, which is the
+                one thing the department filter changed about this sentence.
+                Both halves of the row are now the same month CUT THE SAME WAY —
+                the file holds ผลิต1's month and so does รวมทั้งหมด — and what
+                the search alone is still not in is what the sentence has to keep
+                saying. Naming the แผนก is what makes it true rather than merely
+                narrower: a reader who reads "ทั้งเดือน" over a table of four
+                people has been told the file will hold twenty-four. */}
             {searching && shown.length > 0 && (
               <div className="hint" style={{ marginTop: -4, marginBottom: 10 }}>
-                ไฟล์ CSV และยอด “รวมทั้งหมด” ยังเป็นของทั้งเดือน ไม่ใช่เฉพาะผลการค้นหา ·
+                ไฟล์ CSV และยอด “รวมทั้งหมด” ยังเป็นของ
+                {dept ? `ทั้งเดือนเฉพาะแผนก “${deptName}”` : 'ทั้งเดือน'}
+                {' '}ไม่ใช่เฉพาะผลการค้นหา ·
                 ปุ่มพิมพ์รวมจะพิมพ์เฉพาะ {shown.length} คนที่ค้นเจอ
               </div>
             )}
@@ -1513,7 +1697,18 @@ export default function HrView({
                         <div className="cap-sub">ไม่ใช่ยอดของผลการค้นหา</div>
                       )}
                     </td>
-                    <td className="dept-col" />
+                    {/* THE ONE CELL OF THIS ROW THAT IS NOT BLANK ANY MORE, and
+                        only when แผนก is narrowing the month — 2026-09-10.
+
+                        It is the แผนก column, on the row that totals the แผนก
+                        column, so there is nowhere better and nothing to move
+                        aside: the cell was empty because there was nothing true
+                        to put in it while the total was every department's.
+                        Now there sometimes is. `รวมทั้งหมด` above it keeps its
+                        wording — it IS the whole of what the server sent — and
+                        this is what says whose whole it is, on the line that
+                        gets read against the CSV and against the paper. */}
+                    <td className="dept-col">{deptName || ''}</td>
                     <td className="num rate-col b-15w"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_WEEKDAY])}</strong></td>
                     <td className="num rate-col b-15h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT15_HOLIDAY])}</strong></td>
                     <td className="num rate-col b-3h"><strong>{hours(data.grandTotal.buckets[BUCKETS.OT3_HOLIDAY])}</strong></td>

@@ -5,11 +5,11 @@ import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS, summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
-import { latestPerSession, reportStatuses, teamScoped } from '@/lib/reports.js';
+import { latestPerSession, reportStatuses, departmentScope } from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { companyOf } from '@/src/config/companies.js';
-import { approvalDepartments, signsForCompany } from '@/lib/entries.js';
+import { signsForCompany } from '@/lib/entries.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
 
 /** One row per employee per month — the shape HR actually reviews. */
@@ -24,17 +24,17 @@ export const GET = route(async (req) => {
 
   const policy = await Setting.effectivePolicy();
   const filter = { period, status: { $in: reportStatuses(q.status, 'approved') } };
-  // Every department this หัวหน้า signs for, not only their own — the same list
-  // `isDepartmentManager` decides each row from. A report narrower than the
-  // approve rule hides hours its reader is responsible for.
+  // WHICH แผนก — `departmentScope` in lib/reports.js, the same call the report
+  // route and ส่งออกรายการ OT make, since 2026-09-10. It answers `?scope=` (the
+  // บทบาท's reading) and `?department=` (the แผนก dropdown) together, and can
+  // only ever narrow.
   //
-  // The same `teamScoped` the report route asks, `?scope=` and all: this file
-  // is the export button under that table, and a CSV that did not answer the
-  // scope its own screen was showing would be a discrepancy discovered in a
-  // spreadsheet — either way round, and only by whoever is reconciling it.
-  const teamOnly = teamScoped(user.role, q.scope);
-  if (teamOnly) filter.department = { $in: approvalDepartments(user) };
-  else if (q.department) filter.department = q.department;
+  // This file is the export button under that table, and a CSV that did not
+  // answer BOTH controls its own screen was set to would be a discrepancy
+  // discovered in a spreadsheet — either way round, and only by whoever is
+  // reconciling it.
+  const { teamOnly, department } = departmentScope(user, q);
+  if (department) filter.department = department;
 
   const found = await OtEntry.find(filter)
     .populate('employee', 'code name position company')

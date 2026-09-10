@@ -6,11 +6,11 @@ import { route, query, json, fail } from '@/lib/http.js';
 import { requireAuth } from '@/lib/session.js';
 import { summariseEntries, hrSummary } from '@/src/lib/otEngine.js';
 import {
-  PERIOD_RE, latestPerSession, editTally, reportStatuses, teamScoped,
+  PERIOD_RE, latestPerSession, editTally, reportStatuses, departmentScope,
 } from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
-import { approvalDepartments, isHrVerifiedBirthday, signsForCompany } from '@/lib/entries.js';
+import { isHrVerifiedBirthday, signsForCompany } from '@/lib/entries.js';
 import { companyOf } from '@/src/config/companies.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
@@ -28,24 +28,30 @@ export const GET = route(async (req, { params }) => {
   const policy = await Setting.effectivePolicy();
   const filter = { period };
   /**
-   * Every department this หัวหน้า signs for, not only their own — the same list
-   * `isDepartmentManager` decides each row from. A report narrower than the
-   * approve rule hides hours its reader is responsible for.
+   * WHICH แผนก THIS MONTH COVERS — two questions answered together, and neither
+   * of them here: `departmentScope` in lib/reports.js is where both live, and
+   * where the two CSVs exported from under this table ask them as well.
    *
-   * `teamScoped` AND NOT `isSigner` SINCE 2026-09-03, in two steps the same
-   * day. First: การเงิน is a signer who reads the whole company — they hold
-   * แผนกบัญชีและการเงิน's signature and reconcile every แผนก's hours against
-   * payroll, two facts `lib/roles.js` keeps apart — so narrowed by บทบาท alone
-   * they got one แผนก here and every แผนก on รายงาน OT ฝ่ายบัญชี, for the same
-   * month. Then: they were given the team report as a tab of its own, so the
-   * request has to be able to say which of the two readings it wants.
+   *   `?scope=team`     — which READING the reader asked for. Every department
+   *                       this หัวหน้า signs for, not only their own, because a
+   *                       report narrower than the approve rule hides hours its
+   *                       reader is responsible for. It exists because การเงิน
+   *                       is a signer who reads the whole company (they hold
+   *                       แผนกบัญชีและการเงิน's signature AND reconcile every
+   *                       แผนก against payroll — two facts lib/roles.js keeps
+   *                       apart), so from 2026-09-03 they hold both tabs and the
+   *                       request has to say which one it is.
+   *   `?department=`    — which แผนก out of that reading, from the dropdown this
+   *                       screen grew on 2026-09-10.
    *
-   * `?scope=team` is that request, and it can only ever narrow — see
-   * `teamScoped` in lib/reports.js.
+   * Both can only ever NARROW, which is the direction that matters and is the
+   * property stated in full over that function.
+   *
+   * `teamOnly` is still needed below: it decides whether the payroll half of the
+   * same scope applies to `all`.
    */
-  const teamOnly = teamScoped(user.role, q.scope);
-  if (teamOnly) filter.department = { $in: approvalDepartments(user) };
-  else if (q.department) filter.department = q.department;
+  const { teamOnly, department } = departmentScope(user, q);
+  if (department) filter.department = department;
   // Withdrawn and refused requests are not on any report, whatever the URL asks
   // for — see `reportStatuses`.
   filter.status = { $in: reportStatuses(q.status) };

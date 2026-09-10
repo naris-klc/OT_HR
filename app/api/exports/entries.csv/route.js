@@ -4,9 +4,9 @@ import { route, query, csvResponse } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
-import { latestPerSession, reportStatuses, teamScoped } from '@/lib/reports.js';
+import { latestPerSession, reportStatuses, departmentScope } from '@/lib/reports.js';
 import { companyOf } from '@/src/config/companies.js';
-import { approvalDepartments, signsForCompany } from '@/lib/entries.js';
+import { signsForCompany } from '@/lib/entries.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
 
 /**
@@ -32,17 +32,19 @@ export const GET = route(async (req) => {
   // Default to approved only: the export feeds payroll, and an unapproved
   // request is not yet a fact.
   filter.status = { $in: reportStatuses(q.status, 'approved') };
-  // Every department this หัวหน้า signs for, not only their own — the same list
-  // `isDepartmentManager` decides each row from. A report narrower than the
-  // approve rule hides hours its reader is responsible for.
+  // WHICH แผนก — the same three lines the report route and the other CSV ran,
+  // and since 2026-09-10 the same FUNCTION: `departmentScope` in lib/reports.js,
+  // which is where the reasoning that used to be copied here now lives. It
+  // answers both `?scope=` (the บทบาท's reading — one team or the company) and
+  // `?department=` (the แผนก dropdown on ตรวจสอบประจำเดือน), and neither can
+  // widen this file past what the บทบาท alone allows.
   //
-  // `teamScoped` rather than `isSigner`: การเงิน is a signer who reads the
-  // whole company — see lib/roles.js — and who since 2026-09-03 has a tab for
-  // each reading. This is the other export button under both of them, so it
-  // takes the same `?scope=` the table did.
-  const teamOnly = teamScoped(user.role, q.scope);
-  if (teamOnly) filter.department = { $in: approvalDepartments(user) };
-  else if (q.department) filter.department = q.department;
+  // This is an export button UNDER that table, so it takes both parameters the
+  // table did — a CSV that ignored the dropdown its own screen was set to would
+  // be a file that is longer than the rows it was asked for, discovered in a
+  // spreadsheet by whoever is reconciling it.
+  const { teamOnly, department } = departmentScope(user, q);
+  if (department) filter.department = department;
 
   /**
    * `.sort({ 'employee.code': 1, workDate: 1 })` STOOD HERE and sorted by

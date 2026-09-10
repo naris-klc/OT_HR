@@ -594,6 +594,17 @@ test('the three monthly documents narrow through teamScoped, and none on isSigne
    * `teamScoped` takes the `?scope=` with it, because since การเงิน hold BOTH
    * readings the request has to be able to say which one it is. It can only
    * narrow — see lib/reports.js.
+   *
+   * ⚠ IT READ "assert.match(text, /const teamOnly = teamScoped(user.role,
+   * q.scope);/)" AT EACH OF THE THREE UNTIL 2026-09-10 — three routes pinned to
+   * three copies of one line. The แผนก dropdown added a second question to that
+   * same spot (`?department=`), which would have made it three copies of a
+   * longer rule, so the whole of it moved into `departmentScope` and the three
+   * now CALL it. That is the property this test was always about, reached at
+   * last: they cannot drift apart, because there is nothing left to drift.
+   *
+   * So the shape pinned at each route is the call, and `teamScoped` itself is
+   * pinned once, inside the function all three reach it through.
    */
   for (const file of [
     'app/api/reports/monthly/[period]/route.js',
@@ -601,9 +612,20 @@ test('the three monthly documents narrow through teamScoped, and none on isSigne
     'app/api/exports/entries.csv/route.js',
   ]) {
     const text = src(file);
-    assert.match(text, /const teamOnly = teamScoped\(user\.role, q\.scope\);/, file);
+    assert.match(text, /const \{ teamOnly, department \} = departmentScope\(user, q\);/, file);
+    assert.match(text, /if \(department\) filter\.department = department;/, file);
     assert.ok(!/isSigner\(user\.role\)/.test(text), `${file} still narrows on isSigner`);
+    // …and none of them kept a private copy of the rule they now share.
+    assert.ok(!/teamScoped\(/.test(text), `${file} is asking teamScoped behind departmentScope`);
+    assert.ok(
+      !/approvalDepartments\(/.test(text),
+      `${file} is building its own department list again`,
+    );
   }
+  // The one place the predicate is now spelt, and it is still `teamScoped`.
+  const reports = src('lib/reports.js');
+  assert.match(reports, /const teamOnly = teamScoped\(user\.role, q\.scope\);/);
+  assert.ok(!/isSigner\(user\.role\)/.test(reports), 'departmentScope narrows on isSigner');
   // The printable sheet takes no `?scope=`: it is one employee, and whether
   // this reader may print THAT employee is a question about the person, not
   // about how wide a table they were looking at.
@@ -652,7 +674,7 @@ test('a การเงิน scoped to one payroll still reads BOTH companies o
     'app/api/exports/entries.csv/route.js',
   ]) {
     const text = src(file);
-    assert.match(text, /const teamOnly = teamScoped\(user\.role, q\.scope\);/, file);
+    assert.match(text, /const \{ teamOnly, department \} = departmentScope\(user, q\);/, file);
     assert.match(text, /teamOnly && user\.approvesCompany/, file);
     // …and never the old spelling, which would have narrowed them by payroll.
     assert.ok(!/isSigner\(user\.role\) && user\.approvesCompany/.test(text), file);

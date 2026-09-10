@@ -3839,6 +3839,16 @@ td > .approver-line { margin-top: 5px; }
    Below 860px `.field`'s `min-width: 100%` overrides this and the two stack,
    which is the order the comment in components/HrView.jsx describes. */
 .month-find .month-pick { flex: 0 0 170px; }
+/* แผนก JOINED THIS ROW ON 2026-09-10, between ประจำเดือน and ค้นหา.
+   A fixed basis for the same reason ประจำเดือน has one — `.field`'s `flex: 1` is
+   a basis of nothing and three fields grasping at nothing split the line in
+   thirds, which is too little for a name and far too much for a month. 190px is
+   what the longest department on this roster needs (แผนกบัญชีและการเงิน) beside
+   its own caret; the search box still keeps whatever is left, which is the one
+   field on this line that grows.
+   Below 860px `.field`'s `min-width: 100%` overrides this and all three stack,
+   in the order the note in components/HrView.jsx describes. */
+.month-find .dept-pick { flex: 0 0 190px; }
 .month-find .found { align-self: center; font: 400 12.5px/1.4 var(--sans); color: var(--muted); white-space: nowrap; }
 .month-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
 /* ── THE PART THAT MATCHED ───────────────────────────────────────────────

@@ -616,7 +616,11 @@ test('neither the box nor the page is a filter', () => {
   // pager back to 1 three hundred milliseconds before the list under it moved.
   // The fold under the third card resets with it and for the same reason —
   // neither is a state the reader carried into the new list.
-  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); setShowAllCards\(false\); \}, \[period, statusFilter, query\]\);/);
+  //
+  // `dept` IS THE FOURTH, SINCE 2026-09-10. It is the one of the four that
+  // refetches, so it is the one that can replace the list wholesale — page 8 of
+  // ทุกแผนก left where it was, and then ผลิต2 loaded with four people in it.
+  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); setShowAllCards\(false\); \}, \[period, statusFilter, dept, query\]\);/);
   // Picking somebody from the dropdown moves the page too, and that is NOT this
   // reset: it is the page that HOLDS them, so the card exists to be scrolled to
   // at all below 860px. Pinned in test/monthSearch.test.js beside `goToRow`.
@@ -788,8 +792,12 @@ test('the panel is above the marks it explains, which one of them once only clai
 
 test('an open list cannot outlive its month, and the ✕ lasts until a reload', () => {
   // Remounted by key: both the open flag and the list under it describe the
-  // notices of ONE month at ONE สถานะที่นับ.
-  assert.match(hrView, /key=\{`\$\{period\}\|\$\{statusFilter\}`\}/);
+  // notices of ONE month at ONE สถานะที่นับ in ONE แผนก. The third joined on
+  // 2026-09-10 with the department filter, and it had to: every count the panel
+  // draws — the missing วันเกิด list, the policy spread, ยืนยันโดย HR n ใบ — is
+  // counted by the server over the narrowed month, so none of them may outlive
+  // the department they describe.
+  assert.match(hrView, /key=\{`\$\{period\}\|\$\{statusFilter\}\|\$\{dept\}`\}/);
   // …which is exactly why the dismissal is NOT in that component's state — the
   // same remount would clear it, and the ✕ would last until the next press of
   // the period box. Module scope outlives the remount and dies with the
