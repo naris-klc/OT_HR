@@ -8978,6 +8978,19 @@ table.mini tbody tr:hover { background: none; }
   background: var(--green-tint);
   animation: otfade .16s ease both;
 }
+/* THE TWO TIME BOXES SIT ON ONE LINE, WHATEVER HANGS UNDER THEM.
+
+   `.row` is `align-items: flex-end` everywhere else in the app, which is right
+   where a row pairs a field with a button: the button lines up with the box, not
+   with the label above it. Here the two items are two FIELDS, and one of them
+   grows a `.field-note` on a เหมารายวัน row — *ล็อก 08:00–17:00 น. แก้เวลาไม่ได้*.
+   Aligned by their bottoms, that note pushed เวลาสิ้นสุด and its label a line
+   higher than เวลาเริ่ม, so the panel read as two staggered questions rather than
+   one pair of times: reported from the screen on 2026-09-10.
+
+   Aligned by their TOPS the labels meet, the boxes meet, and the note hangs off
+   the bottom of the taller one where it belongs — under the box it is about. */
+.quick-edit .row { align-items: flex-start; }
 /* A strip under the two time fields, not two controls loose in the form. Both
    switches are about the times above them, and the fill says so — one step off
    the panel's own `--green-tint`, which is enough to group without drawing a

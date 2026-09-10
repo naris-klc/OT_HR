@@ -145,6 +145,32 @@ test('สวิตช์สองตัวอยู่ในแถบเดี�
 });
 
 /**
+ * ช่องเวลาสองช่องต้องอยู่บรรทัดเดียวกัน แม้ช่องหนึ่งจะมีบรรทัดห้อยอยู่ใต้มัน.
+ *
+ * `.row` is `align-items: flex-end` everywhere else in the app, which is right
+ * where a row pairs a field with a BUTTON — the button lines up with the box
+ * rather than with the label above it. Both items here are FIELDS, and on a
+ * เหมารายวัน row เวลาสิ้นสุด grows a `.field-note` saying the pair is locked.
+ * Aligned by their bottoms, that note lifted เวลาสิ้นสุด and its label a line
+ * above เวลาเริ่ม — reported off the screen on 2026-09-10, and it read as two
+ * staggered questions instead of one pair of times.
+ *
+ * The two halves are asserted together on purpose: the override is only
+ * meaningful while the shared rule disagrees with it, and the note is the only
+ * reason the two fields are ever different heights. Lose either and this test
+ * should be read again rather than deleted.
+ */
+test('ช่องเวลาเริ่มกับเวลาสิ้นสุดอยู่บรรทัดเดียวกัน', () => {
+  assert.ok(css.includes('.quick-edit .row { align-items: flex-start; }'),
+    'สองช่องเวลากลับไปเรียงตามขอบล่าง — ใบเหมาจะเหลื่อมกันหนึ่งบรรทัด');
+  assert.ok(css.includes('.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }'),
+    'กฎ .row ที่ร่วมกันเปลี่ยนไปแล้ว — ตรวจว่ายังต้องมีข้อยกเว้นของแผงนี้อยู่ไหม');
+  // และบรรทัดที่ทำให้สองช่องสูงไม่เท่ากัน ยังอยู่ใต้ช่องเวลาสิ้นสุด
+  const end = edit.slice(edit.indexOf('<label>เวลาสิ้นสุด</label>'));
+  assert.match(end.slice(0, end.indexOf('</div>')), /<span className="field-note">/);
+});
+
+/**
  * ONE BANNER. A reviewer who mistyped a time AND had not written a reason yet
  * was told off in two places at once — a permanent red line under the เหตุผล
  * box and an alert at the foot — neither mentioning the other, with a disabled
