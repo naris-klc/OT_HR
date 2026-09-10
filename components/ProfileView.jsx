@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { isSigner } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
@@ -199,6 +199,9 @@ function Details({ user }) {
 
 const MIN_LENGTH = PASSWORD_MIN_LENGTH; // one number, shared with the server
 
+/** Folded or nothing, as `ot-deleg-note-fold` — see `warnFolded` below. */
+const WARN_FOLD_KEY = 'ot-pw-warn-fold';
+
 /**
  * The sentence under the box, and the whole of what somebody needs before
  * typing.
@@ -322,6 +325,37 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
   const [showNext, setShowNext] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  /**
+   * ย่อ/กาง for the amber warning, asked for on 2026-09-10 — the ▲/▼ of
+   * ผู้รับช่วงอนุมัติแทน's notice in components/Delegation.jsx, remembered in
+   * this browser the same way and read on mount for the same reason.
+   *
+   * FOLDED IS NOT GONE. What stays is the fact: the password in use is the
+   * รหัสพนักงาน. That is the sentence the folded subtitle above leans on this
+   * Alert to repeat (see `Disclosure` above and test/disclosure.test.js), so
+   * only the "why change it" half goes behind the arrow. The Alert itself
+   * still goes the moment the password is changed; the key outlives it
+   * harmlessly, since `pending` never comes back for somebody who changed it
+   * short of an HR reset.
+   */
+  const [warnFolded, setWarnFolded] = useState(false);
+  const warnId = useId();
+  useEffect(() => {
+    try {
+      setWarnFolded(localStorage.getItem(WARN_FOLD_KEY) === '1');
+    } catch { /* storage blocked: the warning opens, which is the safe way to be wrong */ }
+  }, []);
+  function toggleWarn() {
+    setWarnFolded((was) => {
+      const next = !was;
+      try {
+        if (next) localStorage.setItem(WARN_FOLD_KEY, '1');
+        else localStorage.removeItem(WARN_FOLD_KEY);
+      } catch { /* the fold still applies to this tab */ }
+      return next;
+    });
+  }
+
   // Checked here as well as on the server: the server never sees `confirm`,
   // so a typo in it is only catchable on this side.
   const mismatch = confirm.length > 0 && next !== confirm;
@@ -374,7 +408,7 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
 
           Nothing is lost behind it. The fact that matters to that reader —
           รหัสผ่านเดิม is their รหัสพนักงาน — is said again in the amber Alert
-          below, which never folds. On a laptop the plain sentence fits in two
+          below, and stays on screen when that Alert is folded too. On a laptop the plain sentence fits in two
           lines, and `Disclosure` measures that and draws no control at all.
 
           The 14px under it moves from the paragraph to the fold's wrapper, in
@@ -397,8 +431,25 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
 
       {pending && !ok && (
         <Alert kind="warn">
-          คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ ซึ่งคือรหัสพนักงานของคุณ — มีคนอื่นทราบด้วย
-          {' '}จึงควรเปลี่ยนเป็นรหัสผ่านของคุณเองที่ฟอร์มนี้
+          <div className="alert-fold-row">
+            <div className="alert-fold-text">
+              คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ ซึ่งคือรหัสพนักงานของคุณ
+              <span id={warnId} hidden={warnFolded}>
+                {' '}— มีคนอื่นทราบด้วย จึงควรเปลี่ยนเป็นรหัสผ่านของคุณเองที่ฟอร์มนี้
+              </span>
+            </div>
+            <button
+              type="button"
+              className="alert-fold"
+              aria-expanded={!warnFolded}
+              aria-controls={warnId}
+              aria-label={warnFolded ? 'กางคำเตือนรหัสผ่าน' : 'ย่อคำเตือนรหัสผ่าน'}
+              title={warnFolded ? 'กางคำเตือน' : 'ย่อคำเตือน'}
+              onClick={toggleWarn}
+            >
+              {warnFolded ? '▼' : '▲'}
+            </button>
+          </div>
         </Alert>
       )}
       {error && <Alert kind="error">{error}</Alert>}
