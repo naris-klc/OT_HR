@@ -2295,8 +2295,11 @@ export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
  *   than two or three — see test/disclosure.test.js.
  *
  *   AN ALERT is read at the moment it is drawn or it is not read. Nothing in a
- *   `ConfirmDialog` or an `Alert` is folded, and `LivePolicy` — folded for an
- *   hour on 2026-09-07 — is the case that proves it rather than the exception.
+ *   `ConfirmDialog` is folded, and an `Alert`'s alarm never is. Two alerts, by
+ *   name, fold the half that is NOT the alarm: `LivePolicy` (the values still
+ *   at the shipped figure) and, since 2026-09-10, `PolicyVersionBanner` (the
+ *   list of versions, cut to one line under a heading and an instruction that
+ *   both stand) — see `ALERTS_THAT_MAY_FOLD` in test/disclosure.test.js.
  *
  *   THE TEXT UNDER ONE SETTING is what this is for. นโยบายการคำนวณ asks
  *   nineteen questions and explains twelve of them under the question; the

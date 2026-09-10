@@ -2725,6 +2725,17 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   background: linear-gradient(to right, var(--card-fade), var(--card) 22px);
 }
 .disclosure.at-tail .disclosure-more::before { content: '… '; color: var(--muted-2); }
+/* INSIDE AN ALERT the ground is the alert's, not `--card` — the version list in
+   `PolicyVersionBanner` is the one clamped fold that sits on one (amber, or
+   green when the versions differ and the arithmetic does not). A `--card` fade
+   there is a white patch over the end of the line. `color-mix` to zero alpha is
+   the same "the colour, transparent" `--card-fade` spells by hand. */
+.alert.warn .disclosure.at-tail .disclosure-more {
+  background: linear-gradient(to right, color-mix(in srgb, var(--amber-bg), transparent 100%), var(--amber-bg) 22px);
+}
+.alert.ok .disclosure.at-tail .disclosure-more {
+  background: linear-gradient(to right, color-mix(in srgb, var(--alert-ok-bg), transparent 100%), var(--alert-ok-bg) 22px);
+}
 
 /* THE APP'S RING WAS DECLARED HERE, and the sidebar is why a rule is still here.
 

@@ -22,7 +22,8 @@ import { dirname, join } from 'node:path';
  *   AN ALERT'S ALARM IS NEVER FOLDED. It is read at the moment it is drawn or
  *   it is not read, so nothing a press is about — and nothing that says
  *   something is wrong now — goes behind one. `LivePolicy` on นโยบายการคำนวณ
- *   is the single named exception and the shape of it is the rule: the count,
+ *   was the single named exception until 2026-09-10, when `PolicyVersionBanner`
+ *   joined it on the same terms, and the shape of it is the rule: the count,
  *   the sentence and a chip per changed value all stand; what folds is the
  *   half that is NOT a warning, the values stored at the figure the program
  *   ships today. `ALERTS_THAT_MAY_FOLD` is that list, and adding to it is a
@@ -389,9 +390,19 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
    * password, not two or three, and its one fact that matters to that reader
    * is repeated in the amber Alert under it. Adding a name here is a decision,
    * the same as `ALERTS_THAT_MAY_FOLD`.
+   *
+   * HrEntries.jsx AND PolicyVersion.jsx JOINED ON 2026-09-10, and neither is a
+   * subtitle: one is the three scan-matching rules over the month's table, the
+   * other the version list inside an alert (see `ALERTS_THAT_MAY_FOLD`). Each
+   * is pinned to exactly one fold below.
    */
   const users = components.filter((n) => /<Disclosure\b/.test(sourceOf(`components/${n}`))).sort();
-  assert.deepEqual(users, ['AdminView.jsx', 'ProfileView.jsx', 'ScanImport.jsx', 'common.jsx']);
+  assert.deepEqual(users, [
+    'AdminView.jsx', 'HrEntries.jsx', 'PolicyVersion.jsx', 'ProfileView.jsx', 'ScanImport.jsx', 'common.jsx',
+  ]);
+  for (const f of ['HrEntries.jsx', 'PolicyVersion.jsx']) {
+    assert.equal((sourceOf(`components/${f}`).match(/<Disclosure\b/g) || []).length, 1, `${f} พับได้ที่เดียว`);
+  }
   const profile = sourceOf('components/ProfileView.jsx');
   assert.equal((profile.match(/<Disclosure\b/g) || []).length, 1, 'ข้อมูลส่วนตัวพับได้ที่เดียว คือคำอธิบายของ เปลี่ยนรหัสผ่าน');
   assert.match(profile, /<h2>เปลี่ยนรหัสผ่าน<\/h2>[^]*?<Disclosure as="div" className="hint"/);
@@ -413,11 +424,16 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
  * they matter on the day a release moves a default and this installation does
  * not follow it.
  *
+ * `PolicyVersionBanner` IS THE SECOND, asked for on 2026-09-10 and on the same
+ * terms. Its heading (the month mixes rule sets) and its instruction (where to
+ * check or recompute) stand; what folds to one line is the list of versions
+ * and their counts, which on a phone ran to three lines of ไม่ทราบเวอร์ชัน.
+ *
  * A name added to this list is a decision, not a fix for a failing case.
  */
-const ALERTS_THAT_MAY_FOLD = ['LivePolicy'];
+const ALERTS_THAT_MAY_FOLD = ['LivePolicy', 'PolicyVersionBanner'];
 
-test('nothing inside a ConfirmDialog is folded, and only one Alert is', () => {
+test('nothing inside a ConfirmDialog is folded, and only the named Alerts are', () => {
   /*
    * The scan is crude on purpose: any `<Disclosure` between an opening tag and
    * its closing one counts, whatever the nesting in between.
@@ -432,7 +448,8 @@ test('nothing inside a ConfirmDialog is folded, and only one Alert is', () => {
         const close = src.indexOf(`</${tag}>`, open);
         at = open + 1;
         if (close < 0 || !src.slice(open, close).includes('<Disclosure')) continue;
-        const owner = [...src.slice(0, open).matchAll(/\nfunction (\w+)\(/g)].pop()?.[1];
+        // `export function` too — PolicyVersionBanner is exported.
+        const owner = [...src.slice(0, open).matchAll(/\n(?:export )?function (\w+)\(/g)].pop()?.[1];
         assert.ok(
           tag === 'Alert' && ALERTS_THAT_MAY_FOLD.includes(owner),
           `components/${f}: ${owner} พับข้อความที่อยู่ใน <${tag}> ไว้หลัง อ่านต่อ`,
@@ -457,6 +474,16 @@ test('the alert that folds keeps its alarm outside the fold', () => {
   const unrecorded = admin.slice(admin.indexOf('function UnrecordedPolicy(')).split(/\r?\nfunction /)[0];
   assert.match(unrecorded, /บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่/);
   assert.ok(!unrecorded.includes('<Disclosure'), 'คำเตือนที่มีปุ่มอยู่ในนั้น ไม่ควรถูกพับ');
+
+  // The second named alert, on the same terms: heading above the fold, the
+  // instruction below it, and only the version list inside — cut to one line.
+  const pv = sourceOf('components/PolicyVersion.jsx');
+  const banner = pv.slice(pv.indexOf('export function PolicyVersionBanner('));
+  const pvFold = banner.indexOf('<Disclosure');
+  const pvEnd = banner.indexOf('</Disclosure>');
+  assert.ok(banner.indexOf('{notice.heading}') < pvFold, 'หัวข้อของคำเตือนเวอร์ชันถูกพับลงไปด้วย');
+  assert.ok(banner.indexOf('{notice.say}') > pvEnd, 'บรรทัดที่บอกให้ทำอะไรถูกพับลงไปด้วย');
+  assert.match(banner.slice(pvFold, pvEnd), /<Disclosure as="div" lines=\{1\}[^>]*>\s*\{notice\.figures\}\s*$/);
 });
 
 test('an override is a chip, and the ones that move hours say so in words', () => {
@@ -501,6 +528,14 @@ test('a live figure is not an explanation, and is left on the screen', () => {
     sourceOf('components/HrEntries.jsx'),
     /<div className="hint" style=\{\{ marginTop: 6 \}\}>\r?\n\s*ซ่อน \{replacedCount\}/,
   );
+  // The scan note folds its three RULES (2026-09-10) and not the month's count
+  // under them: `เดือนนี้:` comes after the fold closes.
+  const entries = sourceOf('components/HrEntries.jsx');
+  const scanFold = entries.indexOf('<Disclosure as="div" of="วิธีเทียบเวลากับไฟล์สแกนนิ้ว">');
+  assert.ok(scanFold > 0, 'กฎการเทียบสแกนไม่ได้พับแล้ว');
+  const scanEnd = entries.indexOf('</Disclosure>', scanFold);
+  assert.match(entries.slice(scanFold, scanEnd), /ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน/);
+  assert.ok(entries.indexOf('เดือนนี้:', scanFold) > scanEnd, 'ตัวเลขประจำเดือนถูกพับไปกับกฎ');
 });
 
 // ── one clamp, in one place ─────────────────────────────────────────────────
