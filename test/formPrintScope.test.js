@@ -466,13 +466,28 @@ test('forty sheets raise one notice box, not forty — and it names its counts f
   assert.match(bundle, /groups\.some\(\(\{ kind \}\) => kind\.level === 'warn'\) \? 'warn' : 'info'/);
 });
 
-test('the notice box is capped so it cannot push the sheets off the screen', () => {
-  // The preview below it is what somebody came to this screen to look at.
+test('the notice box grows with its list — no cap, no scroller inside the page', () => {
+  // It was capped at 120px and scrolled inside itself until 2026-09-10: the
+  // counts scrolled out of view, the names were cut mid-line, and a second
+  // scrollbar sat inside a page that already scrolls. The fold keeps it small.
   const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
   const rule = css.slice(css.indexOf('.notice-digest {'), css.indexOf('.notice-digest > .alert'));
-  assert.match(rule, /max-height: 120px/);
-  assert.match(rule, /overflow-y: auto/);
+  const body = rule.slice(0, rule.indexOf('}'));
+  assert.ok(!/max-height/.test(body), 'the digest is capped again');
+  assert.ok(!/overflow/.test(body), 'the digest scrolls inside itself again');
   assert.match(sourceOf(BUNDLE), /className="no-print notice-digest"/);
+});
+
+test('an opened digest shows a few names per group and more on request', () => {
+  // Twenty-one people with twenty dates each opened into several screens of
+  // amber (2026-09-10). A group starts at its first few and grows by a step.
+  // It is the app's shared `ShowMore` now — see test/disclosure.test.js.
+  const bundle = sourceOf(BUNDLE);
+  const group = bundle.slice(bundle.indexOf('function FoldGroup('), bundle.indexOf('function NoticeDigest('));
+  assert.match(group, /<ShowMore[\s\S]*?items=\{sheets\}/);
+  // How far it is open resets with the list — a new month is a new `forms`,
+  // and it can come back the same length, so the length is not enough.
+  assert.match(group, /resetOn=\{forms\}/);
 });
 
 test('HR can set the answer from ตั้งค่าระบบ, and the loose ones warn', () => {

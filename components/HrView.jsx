@@ -7,7 +7,7 @@ import {
 } from '@/lib/api.js';
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
-  Alert, ClearButton, Empty, AddBirthDateHint, Highlight, PickOne, RateHead,
+  Alert, ClearButton, Empty, AddBirthDateHint, Highlight, PickOne, RateHead, ShowMore,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -2029,9 +2029,13 @@ export default function HrView({
                   {data.birthDates.ruleEnabled
                     ? ' — คนเหล่านี้ติ๊กช่อง “วันเกิด” ในใบขอ OT ไม่ได้ จนกว่าจะกรอกวันเกิดให้'
                     : ' — กรอกให้ครบก่อนเปิดกฎสวัสดิการวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง'}
-                  <div style={{ marginTop: 4 }}>
-                    {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
-                  </div>
+                  <ShowMore
+                    style={{ marginTop: 4 }}
+                    items={data.birthDates.missingFor}
+                    unit="คน"
+                    join=" · "
+                    render={(e) => `${e.code} ${e.name}`}
+                  />
                   <div style={{ marginTop: 4, fontSize: 11.5 }}>
                     <AddBirthDateHint onOpen={onOpenRoster} />
                   </div>

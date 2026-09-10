@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { api, periodLabel, companyLabel } from '@/lib/api.js';
-import { Alert, Disclosure, stamp } from './common.jsx';
+import { Alert, Disclosure, ShowMore, stamp } from './common.jsx';
 import {
   SCAN_FORMATS, SCAN_MAX_BYTES, MIXED_COMPANY, decodeScanText, parseScanFile,
   scanSummary, scanDateRange, periodMismatchNote, formatLabel, machineLabel,
@@ -316,11 +316,13 @@ export default function ScanImport({ period, status = 'approved' }) {
               </div>
             )}
             {pending.parsed.errors.length > 0 && (
-              <ul style={{ marginTop: 6, marginLeft: 18 }}>
-                {pending.parsed.errors.slice(0, 5).map((e) => (
-                  <li key={e.line}>บรรทัด {e.line}: “{e.text}” — {e.error}</li>
-                ))}
-              </ul>
+              <ShowMore
+                as="ul"
+                style={{ marginTop: 6, marginLeft: 18 }}
+                items={pending.parsed.errors}
+                unit="บรรทัด"
+                render={(e) => <li key={e.line}>บรรทัด {e.line}: “{e.text}” — {e.error}</li>}
+              />
             )}
 
             <div className="row" style={{ marginTop: 10, gap: 8 }}>
@@ -416,10 +418,18 @@ export default function ScanImport({ period, status = 'approved' }) {
                 มี {result.unknownCodes.length} รหัสในไฟล์ที่ไม่ตรงกับใครในทะเบียนพนักงาน —
                 {' '}เก็บไว้แล้วตามที่เครื่องบันทึกมา แต่ควรตรวจว่าเป็นคนที่ลาออกไปแล้ว
                 {' '}หรือเป็นคนที่ยังไม่ได้เพิ่มเข้าทะเบียน
-                <div className="hint" style={{ margin: '4px 0 0' }}>
-                  {result.unknownCodes.slice(0, 12).join(' · ')}
-                  {result.unknownCodes.length > 12 && ` … และอีก ${result.unknownCodes.length - 12} รหัส`}
-                </div>
+                {/* Twelve before anything is held back, as it always was —
+                    a row of codes is short — and the rest on request since
+                    2026-09-10 rather than a "…และอีก N รหัส" nobody could open. */}
+                <ShowMore
+                  className="hint"
+                  style={{ margin: '4px 0 0' }}
+                  items={result.unknownCodes}
+                  first={12}
+                  unit="รหัส"
+                  join=" · "
+                  render={(c) => c}
+                />
               </div>
             )}
           </Alert>
@@ -461,23 +471,30 @@ export default function ScanImport({ period, status = 'approved' }) {
             {compare.people.length > 0 ? (
               <>
                 {/* NAMES, NOT A NUMBER — this is the line that turns "this month
-                    has three mismatches" into somewhere to go. Capped at twelve
-                    because a card is not a report; past that the count above is
-                    the honest summary and the table below is the way through. */}
+                    has three mismatches" into somewhere to go. Twelve first,
+                    because a card is not a report; the rest are one press away
+                    since 2026-09-10 (it read "Capped at twelve" and ended in
+                    "…และอีก N คน" until then), and the table below is still the
+                    way into any one of them. */}
                 <div style={{ marginTop: 6 }}>
                   ดูได้ที่ปุ่ม <strong>ดู / แก้ไขรายการ</strong> ของคนเหล่านี้ในตารางด้านล่าง —
                   {' '}แถวที่ไม่ตรงจะมีป้ายกำกับไว้ในช่อง จาก–ถึง
                 </div>
-                <div className="hint" style={{ margin: '4px 0 0' }}>
-                  {compare.people.slice(0, 12).map((p) => (
+                <ShowMore
+                  className="hint"
+                  style={{ margin: '4px 0 0' }}
+                  items={compare.people}
+                  first={12}
+                  unit="คน"
+                  join="  ·  "
+                  render={(p) => (
                     `${p.name || p.code}${p.code ? ` (${p.code})` : ''}`
                     + ` — ${[
                       p.mismatch ? `เวลาไม่ตรง ${p.mismatch}` : null,
                       p.noScan ? `ไม่มีสแกน ${p.noScan}` : null,
                     ].filter(Boolean).join(' · ')}`
-                  )).join('  ·  ')}
-                  {compare.people.length > 12 && `  …และอีก ${compare.people.length - 12} คน`}
-                </div>
+                  )}
+                />
               </>
             ) : (
               <div className="hint" style={{ margin: '6px 0 0' }}>

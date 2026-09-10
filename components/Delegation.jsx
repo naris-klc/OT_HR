@@ -2,7 +2,7 @@
 
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
-import { Alert, Empty, Field, Modal, PickOne } from './common.jsx';
+import { Alert, Empty, Field, Modal, PickOne, foldClick } from './common.jsx';
 import { companyLabel } from '@/src/config/companies.js';
 import { useToast } from './Toast.jsx';
 import { PickDate } from './PickDate.jsx';
@@ -132,7 +132,7 @@ export default function Delegation({ user, scope = 'mine' }) {
         still approve things myself" (yes, always). Both are asked by somebody
         looking at the table, with no form open.
       */}
-      <Alert kind="info">
+      <Alert kind="info" onClick={foldClick(noteFolded, toggleNote)}>
         <div className="alert-fold-row">
           <div className="alert-fold-text">
             การมอบหมาย<strong>หมดอายุเองตามวันที่กำหนด</strong>
@@ -149,7 +149,6 @@ export default function Delegation({ user, scope = 'mine' }) {
             aria-controls={`${noteId}-a ${noteId}-b`}
             aria-label={noteFolded ? 'กางคำอธิบายการมอบหมาย' : 'ย่อคำอธิบายการมอบหมาย'}
             title={noteFolded ? 'กางคำอธิบาย' : 'ย่อคำอธิบาย'}
-            onClick={toggleNote}
           >
             {noteFolded ? '▼' : '▲'}
           </button>

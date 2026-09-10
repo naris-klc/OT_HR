@@ -6224,7 +6224,16 @@ td > .approver-line { margin-top: 5px; }
    first line of alert text (13.5px at 1.75 is a 23-24px line; 11px + 12px of
    padding matches it) and pulled into the corner the ✕ of `.alert-x` would
    take. */
-.alert-fold-row { display: flex; align-items: flex-start; gap: 8px; }
+/* THE BOX IS THE PRESS TARGET since 2026-09-10 (`foldClick` in common.jsx).
+   Folded, the whole alert opens it — so the whole alert wears the pointer,
+   found by the arrow's own `aria-expanded` rather than by a class the four
+   callers would each have to remember. Open, only the top line folds it, so
+   only the top line keeps the pointer. Hovering either lights the arrow: the
+   one mark on the box that says which way a press will go. */
+.alert-fold-row { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.alert:has(.alert-fold[aria-expanded="false"]) { cursor: pointer; }
+.alert-fold-row:hover .alert-fold,
+.alert:has(.alert-fold[aria-expanded="false"]):hover .alert-fold { opacity: 1; }
 .alert-fold-text { flex: 1; min-width: 0; }
 .alert-fold {
   flex: none; border: none; background: none; cursor: pointer;
@@ -6357,25 +6366,20 @@ td > .approver-line { margin-top: 5px; }
 
 /* พรีวิวชุด F-HR-027 — every notice the bundle has, in one box above the stack.
 
-   THE CAP IS THE POINT. This box sits between the print button and the preview
-   of forty sheets, and the preview is what somebody came to this screen to
-   look at. Unbounded, four summary lines plus an opened list of forty names
-   pushes the first sheet off the bottom of the screen — so the notice grows to
-   120px and then scrolls inside itself, and the paper below it never moves.
+   NO HEIGHT CAP, AND NO SCROLLER OF ITS OWN. It read "max-height: 120px;
+   overflow-y: auto" until 2026-09-10, on the argument that an opened list of
+   forty names would push the first sheet off the screen. What it did instead
+   was cut the box mid-line — the counts scrolled out of view, the names sat
+   clipped at the bottom edge, and a second scrollbar appeared inside a page
+   that already scrolls. HR asked for it gone.
 
-   `overflow-y: auto` and not `scroll`: the ordinary case is one or two lines
-   with the list folded away, and a scrollbar track drawn permanently beside a
-   two-line notice reads as though something is being hidden. */
-.notice-digest {
-  max-height: 120px; overflow-y: auto;
-  margin-bottom: 12px;
-  /* The wheel stops here rather than carrying on into the sheet preview once
-     the list has been read to its end. */
-  overscroll-behavior: contain;
-}
-/* The alert carries its own 12px top and bottom; inside a scroller those are
-   dead space at both ends of the scroll range, so the wrapper holds the
-   spacing and the box sits flush against it. */
+   The fold is what keeps the box small: folded, it is the count lines and
+   ดูรายละเอียด, nothing more. Opened, it is as tall as the list, because
+   somebody pressed a button asking to read the list, and the page scrolls to
+   the sheets the way it scrolls everywhere else. */
+.notice-digest { margin-bottom: 12px; }
+/* The wrapper holds the spacing; the alert's own 12px top and bottom would
+   add to it. */
 .notice-digest > .alert { margin: 0; }
 
 /* AND THE SAME RESET FOR A NOTICE THAT IS A ROW OF THE PAGE ITSELF.
@@ -6556,6 +6560,13 @@ td > .approver-line { margin-top: 5px; }
 /* The heading's own bottom margin is the gap to the list. Folded there is no
    list, and 6px of it would hang under the last thing on the panel. */
 .announce.is-folded .announce-head { margin-bottom: 0; }
+/* The same press target as a ▲/▼ alert (`foldClick`, 2026-09-10): folded, the
+   whole frame opens it; open, only the heading line folds it. The pointer and
+   the lit arrow follow exactly where a press would land. */
+.announce.is-folded,
+.announce-top { cursor: pointer; }
+.announce.is-folded:hover .announce-fold,
+.announce-top:hover .announce-fold { opacity: 1; }
 /* An <h3> by markup and 14px by eye. It is a heading — a screen reader should
    find it as one — and it is not a card title: `.card h2` is 15px and this sits
    INSIDE the page above one, so matching it would put two titles on the screen
@@ -6723,6 +6734,21 @@ td > .approver-line { margin-top: 5px; }
   font: 600 11.5px/1.5 var(--sans); letter-spacing: .04em; opacity: .8;
 }
 .notice-fold-group > .l { font-size: 12.5px; }
+/* แสดงเพิ่ม / แสดงทั้งหมด / ย่อกลับ — `ShowMore` in common.jsx, under the first
+   few names of every long list in a notice across the app. Plain underlined
+   text in the notice's own ink rather than `.btn`: it has to read as part of
+   the amber, red or blue box it sits in without knowing which one, and a row of
+   bordered buttons would compete with the box's real action (พิมพ์, ยืนยัน
+   นำเข้า) for the eye. */
+.show-more { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+.show-more > button {
+  all: unset; cursor: pointer;
+  font: 600 12px/1.6 var(--sans); letter-spacing: .02em;
+  text-decoration: underline; text-underline-offset: 2px;
+  opacity: .85;
+}
+.show-more > button:hover { opacity: 1; }
+.show-more > button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 2px; }
 
 /* How the engine cut a session up — one line per segment, times and hours, so
    it is mono throughout. The green stub on the left ties each line back to the

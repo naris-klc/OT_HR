@@ -24,8 +24,8 @@ import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
-  RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, SignatureFacts, StatusChip,
-  TeamMark, editsOf,
+  RateHead, ReasonCard, RefiledNote, RequestTrail, Section, SegmentList, ShowMore, SignatureFacts,
+  StatusChip, TeamMark, editsOf,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
@@ -825,8 +825,15 @@ export default function ApprovalQueue({
       toast(done(ok, list));
     }
     if (failed.length) {
-      const msg = `ทำรายการไม่สำเร็จ ${failed.length} รายการ · ${failed.join(' · ')}`;
-      setError(msg);
+      // The count as a headline and the rows under it, first few and more on
+      // request — it was one run-on sentence of every failed row until
+      // 2026-09-10, which on a batch of forty was a paragraph nobody parsed.
+      setError(
+        <>
+          <strong>ทำรายการไม่สำเร็จ {failed.length} รายการ</strong>
+          <ShowMore items={failed} render={(f, i) => <div key={i}>{f}</div>} />
+        </>,
+      );
       toast(`ทำรายการไม่สำเร็จ ${failed.length} รายการ — ดูรายละเอียดด้านบนตาราง`, 'error');
     }
   }
@@ -2243,14 +2250,17 @@ function ConfirmModal({
               the same wording the row underneath and the pop-up already use —
               a reason is being demanded for exactly this, so the sheet has to
               carry enough to write one from: which limit, and what it was. */}
-          <ul className="alert-list">
-            {capped.map((e) => (
+          <ShowMore
+            as="ul"
+            className="alert-list"
+            items={capped}
+            render={(e) => (
               <li key={e._id}>
                 {e.employee?.name} · {thaiDate(e.workDate)} ·
                 {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก'}
               </li>
-            ))}
-          </ul>
+            )}
+          />
           {/* WHERE THE SENTENCE IS READ, which is the part a reviewer cannot
               guess: not only this entry's history but สรุป OT ส่งบัญชี, beside
               this person's hours, months later. `.say` is the grey step off the
@@ -2362,14 +2372,17 @@ function RejectModal({ entries, busy, onClose, onReject }) {
               ? `${capped.length} รายการที่เลือกไว้เกินเพดาน OT ที่กำหนด`
               : OVER_CEILING_REASON_REQUIRED}
           </strong>
-          <ul style={{ marginTop: 6, marginLeft: 18 }}>
-            {capped.map((e) => (
+          <ShowMore
+            as="ul"
+            style={{ marginTop: 6, marginLeft: 18 }}
+            items={capped}
+            render={(e) => (
               <li key={e._id}>
                 {e.employee?.name} · {thaiDate(e.workDate)} ·
                 {' '}{describeBreaches(e).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก'}
               </li>
-            ))}
-          </ul>
+            )}
+          />
           <div style={{ marginTop: 6 }}>
             เหตุผลที่กรอกด้านล่างจะถูกบันทึกไว้ในประวัติของใบ และแสดงบนสรุป OT ส่งบัญชี
             {' '}ตรงตัวเลขชั่วโมงของคนนี้ด้วย

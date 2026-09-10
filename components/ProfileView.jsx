@@ -4,7 +4,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { isSigner } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
-import { Alert, Disclosure, PasswordInput } from './common.jsx';
+import { Alert, Disclosure, PasswordInput, foldClick } from './common.jsx';
 import Delegation from './Delegation.jsx';
 
 const ROLE_LABEL = {
@@ -430,7 +430,7 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
       </Disclosure>
 
       {pending && !ok && (
-        <Alert kind="warn">
+        <Alert kind="warn" onClick={foldClick(warnFolded, toggleWarn)}>
           <div className="alert-fold-row">
             <div className="alert-fold-text">
               คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ ซึ่งคือรหัสพนักงานของคุณ
@@ -445,7 +445,6 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
               aria-controls={warnId}
               aria-label={warnFolded ? 'กางคำเตือนรหัสผ่าน' : 'ย่อคำเตือนรหัสผ่าน'}
               title={warnFolded ? 'กางคำเตือน' : 'ย่อคำเตือน'}
-              onClick={toggleWarn}
             >
               {warnFolded ? '▼' : '▲'}
             </button>

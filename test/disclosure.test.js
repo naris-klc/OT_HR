@@ -486,6 +486,101 @@ test('the alert that folds keeps its alarm outside the fold', () => {
   assert.match(banner.slice(pvFold, pvEnd), /<Disclosure as="div" lines=\{1\}[^>]*>\s*\{notice\.figures\}\s*$/);
 });
 
+/*
+ * แสดงเพิ่ม — A LONG LIST IN A NOTICE, 2026-09-10.
+ *
+ * Not a fold, which is why it is allowed where `Disclosure` is not: the
+ * headline and the first names always stand, and what waits for a press is
+ * only the tail of a list whose length the headline has already said. Asked
+ * for app-wide after พรีวิวชุด F-HR-027 opened twenty-one people into several
+ * screens of amber.
+ */
+test('a long list in a notice shows five, then ten more a press, and can be put back', () => {
+  const fn = common.slice(common.indexOf('export function useShowMore('), common.indexOf('export function ShowMore('));
+  assert.match(common, /export const SHOW_MORE_FIRST = 5;/);
+  assert.match(common, /export const SHOW_MORE_STEP = 10;/);
+  assert.match(fn, /list\.slice\(0, shown\)/);
+  assert.match(fn, /แสดงเพิ่มอีก \{Math\.min\(step, left\)\} \{unit\} \(เหลือ \{left\} \{unit\}\)/);
+  assert.match(fn, /แสดงทั้งหมด/);
+  assert.match(fn, /ย่อกลับ/);
+  // How far it is open is state, so it goes back to the first few when the
+  // list is replaced — never a count describing a list that is gone.
+  assert.match(fn, /React\.useEffect\(\(\) => \{ setShown\(first\); \}, \[reset, first\]\)/);
+  assert.match(css, /\.show-more > button \{/);
+  assert.ok(!css.includes('.notice-more'), 'the digest-only rule outlived the shared one');
+});
+
+test('every unbounded list in a notice goes through ShowMore', () => {
+  const uses = {
+    'components/ApprovalQueue.jsx': ['items={capped}', 'items={failed}'],
+    'components/HrView.jsx': ['items={data.birthDates.missingFor}'],
+    'components/PrintForm.jsx': [
+      'items={form.pending}', 'items={form.notPrinted}', 'items={form.acting}', 'items={form.hidden}',
+    ],
+    'components/PrintFormBatch.jsx': ['items={failed}', 'items={sheets}'],
+    'components/ScanImport.jsx': [
+      'items={pending.parsed.errors}', 'items={result.unknownCodes}', 'items={compare.people}',
+    ],
+    'components/AdminView.jsx': [
+      'items={importError.lines}', 'items={pending.dates.rowErrors}', 'items={result.unsignable}',
+      'items={result.errors}', 'items={result.warnings}',
+    ],
+  };
+  for (const [file, lists] of Object.entries(uses)) {
+    const src = sourceOf(file);
+    for (const l of lists) assert.ok(src.includes(l), `${file}: ${l} ไม่ได้ผ่าน ShowMore`);
+  }
+  // The two approval dialogs both list what is over the ceiling.
+  assert.equal((sourceOf('components/ApprovalQueue.jsx').match(/items=\{capped\}/g) || []).length, 2);
+  // The table of hours with no owner uses the hook, above its early return.
+  const unacc = common.slice(common.indexOf('export function UnaccountedHours('));
+  assert.ok(
+    unacc.indexOf('useShowMore(unaccounted?.entries)') < unacc.indexOf('return null'),
+    'a hook after an early return is a hook on some renders and not others',
+  );
+  assert.match(unacc, /more\.visible\.map\(/);
+  // The hard caps that dropped the rest with no way to them are gone.
+  const scan = sourceOf('components/ScanImport.jsx');
+  assert.ok(!/\.slice\(0, (5|12)\)/.test(scan), 'ScanImport still cuts a list with no way to the rest');
+  assert.ok(!scan.includes('และอีก'), 'a "…และอีก N" nobody can open is back');
+});
+
+test('a ▲/▼ notice opens from anywhere in its frame, and folds from its heading', () => {
+  // 2026-09-10, asked twice: "press the notice, not the triangle", then "press
+  // anywhere inside the frame". Folded, the whole box opens it; open, only the
+  // heading folds it, so the body can be read and its own buttons pressed.
+  const fn = common.slice(common.indexOf('export const foldClick'));
+  assert.match(fn, /^export const foldClick = \(folded, toggle, head = '\.alert-fold-row'\) => \(e\) => \{/);
+  assert.match(fn, /window\.getSelection\?\.\(\)\.toString\(\)\) return;/, 'selecting text folds the notice');
+  assert.match(fn, /if \(!folded && !e\.target\.closest\?\.\(head\)\) return;/, 'a tap on an open body folds it');
+  assert.match(common, /onClose = null, onClick, children,/);
+
+  for (const [file, box, button, state, fn2] of [
+    ['components/PrintForm.jsx', '<Alert kind={kind} onClick=', 'className="alert-fold"', 'folded', 'toggle'],
+    ['components/Delegation.jsx', '<Alert kind="info" onClick=', 'className="alert-fold"', 'noteFolded', 'toggleNote'],
+    ['components/ProfileView.jsx', '<Alert kind="warn" onClick=', 'className="alert-fold"', 'warnFolded', 'toggleWarn'],
+    ['components/HolidayBanner.jsx', 'onClick=', 'className="announce-fold"', 'collapsed', 'toggleFold'],
+  ]) {
+    const src = sourceOf(file);
+    assert.ok(src.includes(`${box}{foldClick(${state}, ${fn2}`), `${file}: กดในกรอบแล้วไม่กาง`);
+    // Enter on the button is a click that bubbles to the box; a handler on the
+    // button too would toggle twice and appear to do nothing.
+    const at = src.indexOf(button);
+    assert.ok(!src.slice(at, src.indexOf('</button>', at)).includes('onClick'), `${file}: ปุ่ม ▲/▼ มี onClick ของตัวเอง`);
+  }
+  // The banner's heading line is `.announce-top`, not the alerts' row.
+  assert.match(sourceOf('components/HolidayBanner.jsx'), /foldClick\(collapsed, toggleFold, '\.announce-top'\)/);
+  assert.ok(!common.includes('foldRowClick'), 'the row-only helper outlived the box one');
+});
+
+test('the new-password table is deliberately NOT shortened', () => {
+  // Every row there is a password to hand over; a row behind a press is one
+  // somebody does not get.
+  const issued = admin.slice(admin.indexOf('function IssuedPasswords(')).split(/\r?\nfunction /)[0];
+  assert.ok(issued.length > 0);
+  assert.ok(!issued.includes('ShowMore') && !issued.includes('useShowMore'));
+});
+
 test('an override is a chip, and the ones that move hours say so in words', () => {
   /*
    * ONE COLOUR ABOVE THE FOLD, AND IT IS AMBER. The chip's colour carried the

@@ -4,7 +4,7 @@ import React, { useEffect, useId, useState } from 'react';
 import { api, hours, thaiDate, firstName, BUCKETS } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { formPrintStatuses, FORM_PRINT_SCOPE_SAY } from '@/lib/reports.js';
-import { Alert, PrintChrome, SheetScroll } from './common.jsx';
+import { Alert, PrintChrome, SheetScroll, ShowMore, foldClick } from './common.jsx';
 
 /**
  * The query string one sheet is asked for with — whose month, and สถานะที่นับ
@@ -192,7 +192,7 @@ function FoldAlert({ kind, fold, head, bold = true, children }) {
   }
 
   return (
-    <Alert kind={kind}>
+    <Alert kind={kind} onClick={foldClick(folded, toggle)}>
       <div className="alert-fold-row">
         <div className="alert-fold-text" style={bold ? { fontWeight: 600 } : undefined}>{head}</div>
         <button
@@ -202,7 +202,6 @@ function FoldAlert({ kind, fold, head, bold = true, children }) {
           aria-controls={bodyId}
           aria-label={folded ? 'กางรายละเอียด' : 'ย่อรายละเอียด'}
           title={folded ? 'กางรายละเอียด' : 'ย่อรายละเอียด'}
-          onClick={toggle}
         >
           {folded ? '▼' : '▲'}
         </button>
@@ -260,12 +259,15 @@ export function FormNotices({ form, who = null, asked = '' }) {
             fold="pending"
             head={<>{of}ใบนี้มี {form.pending.length} รายการที่ยังไม่อนุมัติ และถูกนับรวมใน สรุปรวม แล้ว</>}
           >
-            {form.pending.map((p) => (
-              <div key={p.id} style={{ fontSize: 12.5 }}>
-                {thaiDate(p.workDate)} {p.from}–{p.to} · {hours(p.otHours)} ชม. ·
-                {' '}{p.statusLabel} · {p.description}
-              </div>
-            ))}
+            <ShowMore
+              items={form.pending}
+              render={(p) => (
+                <div key={p.id} style={{ fontSize: 12.5 }}>
+                  {thaiDate(p.workDate)} {p.from}–{p.to} · {hours(p.otHours)} ชม. ·
+                  {' '}{p.statusLabel} · {p.description}
+                </div>
+              )}
+            />
             <div style={{ fontSize: 12, marginTop: 4 }}>
               รายการเหล่านี้พิมพ์ลงใบพร้อมเครื่องหมาย (รออนุมัติ) ในช่องรายละเอียดงาน ·
               ยอดบนใบจึงยังไม่ใช่ยอดที่จะส่งบัญชี — หากต้องการใบสำหรับลงลายเซ็น
@@ -298,12 +300,16 @@ export function FormNotices({ form, who = null, asked = '' }) {
               {' '}จาก {form.notPrinted.length} ช่วง — ยอดบนใบจึงน้อยกว่ายอดจริงเท่ากับจำนวนนี้
             </>}
           >
-            {form.notPrinted.map((n, i) => (
-              <div key={`${n.id}-${i}`} style={{ fontSize: 12.5 }}>
-                คืนวันที่ {thaiDate(n.workDate)} · ต่อเข้า {thaiDate(n.onDate)}
-                {' '}{n.from}–{n.to} · {hours(n.hours)} ชม. · {n.statusLabel} · {n.description}
-              </div>
-            ))}
+            <ShowMore
+              items={form.notPrinted}
+              unit="ช่วง"
+              render={(n, i) => (
+                <div key={`${n.id}-${i}`} style={{ fontSize: 12.5 }}>
+                  คืนวันที่ {thaiDate(n.workDate)} · ต่อเข้า {thaiDate(n.onDate)}
+                  {' '}{n.from}–{n.to} · {hours(n.hours)} ชม. · {n.statusLabel} · {n.description}
+                </div>
+              )}
+            />
             <div style={{ fontSize: 12, marginTop: 4 }}>
               ใบ F-HR-027 ให้หนึ่งวันหนึ่งบรรทัด ชั่วโมงที่ข้ามเที่ยงคืนไปวันถัดไปจึงไม่มีบรรทัดจะลง ·
               {' '}ชั่วโมงเหล่านี้ยังอยู่ครบในระบบ และยังถูกนับใน ตรวจสอบประจำเดือน ·
@@ -368,9 +374,10 @@ export function FormNotices({ form, who = null, asked = '' }) {
             fold="acting"
             head={<>{of}เดือนนี้มี {form.acting.length} รายการที่บันทึกหรืออนุมัติโดยผู้ทำแทน</>}
           >
-            {form.acting.map((a, i) => (
-              <div key={i} style={{ fontSize: 12.5 }}>{actingLine(a)}</div>
-            ))}
+            <ShowMore
+              items={form.acting}
+              render={(a, i) => <div key={i} style={{ fontSize: 12.5 }}>{actingLine(a)}</div>}
+            />
             <div style={{ fontSize: 12, marginTop: 4 }}>
               {form.actingOnPaper
                 ? 'ข้อความนี้พิมพ์ลงในใบด้วย (ตั้งค่า proxyNoteOnForm เปิดอยู่)'
@@ -392,12 +399,15 @@ export function FormNotices({ form, who = null, asked = '' }) {
             fold="hidden"
             head={<>{of}ซ่อน {form.hidden.length} รายการที่ซ้ำช่วงเวลาเดิม — ใบฟอร์มแสดงเฉพาะรายการที่กรอกล่าสุดของแต่ละช่วงเวลา</>}
           >
-            {form.hidden.map((h) => (
-              <div key={h.id} style={{ fontSize: 12.5 }}>
-                {thaiDate(h.workDate)} {h.from}–{h.to} · {hours(h.otHours)} ชม. ·
-                {' '}{h.statusLabel} · {h.description}
-              </div>
-            ))}
+            <ShowMore
+              items={form.hidden}
+              render={(h) => (
+                <div key={h.id} style={{ fontSize: 12.5 }}>
+                  {thaiDate(h.workDate)} {h.from}–{h.to} · {hours(h.otHours)} ชม. ·
+                  {' '}{h.statusLabel} · {h.description}
+                </div>
+              )}
+            />
             <div style={{ fontSize: 12, marginTop: 4 }}>
               ชั่วโมงเหล่านี้ไม่ถูกนับใน สรุปรวม ของใบนี้ แต่ยังคงอยู่ในรายงานรายเดือนและไฟล์ส่งบัญชี ·
               หากเป็นรายการที่กรอกผิด ให้ยกเลิกรายการนั้นเพื่อให้ยอดทั้งสองฝั่งตรงกัน

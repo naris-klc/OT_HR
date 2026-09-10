@@ -99,11 +99,12 @@ export function RateHead({ rate, of = null }) {
  * makes knowingly, never a default.
  */
 export function Alert({
-  kind = 'warn', tight = false, mark = true, onClose = null, children,
+  kind = 'warn', tight = false, mark = true, onClose = null, onClick, children,
 }) {
   if (!children) return null;
   return (
-    <div className={`alert ${kind}${tight ? ' tight' : ''}${mark ? '' : ' no-mark'}`}>
+    // `onClick` is for a ▲/▼ notice that folds from its box — see `foldClick`.
+    <div className={`alert ${kind}${tight ? ' tight' : ''}${mark ? '' : ' no-mark'}`} onClick={onClick}>
       <div className="alert-body">{children}</div>
       {onClose && (
         <button type="button" className="alert-x" onClick={onClose} aria-label="ปิดข้อความ">
@@ -113,6 +114,109 @@ export function Alert({
     </div>
   );
 }
+
+/**
+ * A long list inside a notice — the first few, and more on request.
+ *
+ * ONE RULE FOR THE WHOLE APP, asked for on 2026-09-10 after พรีวิวชุด F-HR-027
+ * opened twenty-one people with twenty dates each into several screens of amber.
+ * Every notice that names things one per person, per entry or per line of a
+ * file draws its first `first` of them and a control that adds `step` more:
+ * แสดงเพิ่มอีก N · แสดงทั้งหมด · ย่อกลับ.
+ *
+ * NOT A FOLD, and that is why it may sit inside an `Alert` where `Disclosure`
+ * may not. The headline — the count, the sentence saying what is wrong — is
+ * never inside it, and the first names are always drawn: what is held back is
+ * only the tail of a list whose length the headline has already said.
+ *
+ * Lists bounded by the program (a policy's fields, four kinds of notice, the
+ * clash list of one filing) do not use it. A table of new passwords
+ * (`IssuedPasswords`) does not either: every row there is something to hand
+ * over, and a row behind a button is a password somebody does not get.
+ *
+ * How far it is open is state, so it resets when the list is replaced — by
+ * default when its length changes, or on `resetOn` when the caller knows
+ * better (a reloaded bundle can come back the same length).
+ */
+export const SHOW_MORE_FIRST = 5;
+export const SHOW_MORE_STEP = 10;
+
+export function useShowMore(items, {
+  first = SHOW_MORE_FIRST, step = SHOW_MORE_STEP, unit = 'รายการ', resetOn,
+} = {}) {
+  const list = items || [];
+  const [shown, setShown] = React.useState(first);
+  const reset = resetOn === undefined ? list.length : resetOn;
+  React.useEffect(() => { setShown(first); }, [reset, first]);
+
+  const left = list.length - shown;
+  const controls = (left > 0 || shown > first) ? (
+    <div className="show-more">
+      {left > 0 && (
+        <button type="button" onClick={() => setShown((n) => n + step)}>
+          แสดงเพิ่มอีก {Math.min(step, left)} {unit} (เหลือ {left} {unit})
+        </button>
+      )}
+      {left > step && (
+        <button type="button" onClick={() => setShown(list.length)}>แสดงทั้งหมด</button>
+      )}
+      {shown > first && (
+        <button type="button" onClick={() => setShown(first)}>ย่อกลับ</button>
+      )}
+    </div>
+  ) : null;
+
+  return { visible: list.slice(0, shown), controls };
+}
+
+/**
+ * `useShowMore` for the ordinary case. `render` draws one item; with `join`
+ * the items are strings run together on one line (a list of codes), without it
+ * each is an element and `as` is what holds them — a `ul` stays a `ul`, and
+ * the controls sit after it rather than inside it.
+ */
+export function ShowMore({
+  items, render, join = null, as: Tag = 'div', className, style, ...opts
+}) {
+  const { visible, controls } = useShowMore(items, opts);
+  if (!visible.length) return null;
+  const body = join != null ? visible.map(render).join(join) : visible.map(render);
+  return (
+    <>
+      {/* A Fragment takes no className — the caller that passes one is
+          putting the items straight into a parent that already styles them. */}
+      {Tag === React.Fragment ? body : <Tag className={className} style={style}>{body}</Tag>}
+      {controls}
+    </>
+  );
+}
+
+/**
+ * ย่อ/กาง for a ▲/▼ notice, from the box rather than only from the arrow.
+ *
+ * Asked for twice on 2026-09-10 — first "press the notice, not the triangle",
+ * then, of ประกาศวันหยุด, "press anywhere inside the frame". The arrow is an
+ * 11px glyph in a corner; what people reach for is the box. So the handler
+ * goes on the WHOLE box, and it answers two states differently:
+ *
+ *   FOLDED, anywhere in the frame opens it. There is nothing else in a folded
+ *   box to press — the heading and a count — so no press can mean anything else.
+ *
+ *   OPEN, only the heading line (`head`) folds it. The body is being read, has
+ *   dates to copy and buttons of its own (ดูปฏิทินวันหยุด, แสดงเพิ่ม); a notice
+ *   that shut under a stray tap on the list would be one people learn to fear.
+ *
+ * The ▲/▼ button stays for the keyboard and carries NO onClick of its own:
+ * Enter or Space on it is a click that bubbles up to this handler, and a
+ * handler in both places would toggle twice and appear to do nothing.
+ *
+ * A click that ends a text selection is not a request to fold, in either state.
+ */
+export const foldClick = (folded, toggle, head = '.alert-fold-row') => (e) => {
+  if (typeof window !== 'undefined' && window.getSelection?.().toString()) return;
+  if (!folded && !e.target.closest?.(head)) return;
+  toggle();
+};
 
 /**
  * Approved hours that reached no row on the sheet.
@@ -135,6 +239,8 @@ export function Alert({
  * printed while this is showing is a sheet that should not be filed at all.
  */
 export function UnaccountedHours({ unaccounted, hint = true }) {
+  // Above the early return: a hook is called on every render or on none.
+  const more = useShowMore(unaccounted?.entries);
   if (!unaccounted?.count) return null;
 
   return (
@@ -180,7 +286,7 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
                 </tr>
               </thead>
               <tbody>
-                {unaccounted.entries.map((e) => (
+                {more.visible.map((e) => (
                   <tr key={e.id}>
                     {/* First, because it is the only cell somebody can act on
                         without opening the database. The name is a copy taken
@@ -201,6 +307,7 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
               </tbody>
             </table>
           )}
+          {more.controls}
         </div>
       )}
     </div>

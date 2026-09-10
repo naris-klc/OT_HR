@@ -3476,6 +3476,17 @@ it away"* — a promise this control cannot keep, because the banner is back on
 the next screen either way, and a reader who pressed ✕ and saw it again reads
 that as a bug rather than as a fold.
 
+**The frame is the press target, not only the arrow — since 2026-09-10**, asked
+for as *"แค่กดที่พื้นในกรอบการแจ้งเตือน ข้อมูลก็ขยายให้อ่านได้"*. Folded, a
+press anywhere inside the banner opens it; open, only the heading line folds it,
+so reading the list or pressing ดูปฏิทินวันหยุด never shuts it by accident, and
+a press that ends a text selection does nothing. The ▲/▼ is still there and
+still the keyboard's way in, but carries no handler of its own — Enter on it is
+a click that bubbles to the frame. The same `foldClick` (components/common.jsx)
+drives the three ▲/▼ alerts: the notices above an F-HR-027, ผู้รับช่วงอนุมัติ
+แทน's explanation, and the password warning on ข้อมูลส่วนตัว. None of the
+figures in the table above moved.
+
 **The state is a browser preference, not an account setting.** `ot-holiday-fold`
 in localStorage, `ot-` prefixed like `ot-theme`, stored as *"folded, or nothing
 at all"* so an absent key IS the default — a cleared browser and a browser that
