@@ -75,7 +75,17 @@ test('มีแผงเดียว และทั้งสามตัวเ�
    * `BarSlot`.
    */
   const users = files.filter((f) => /<Popover\b/.test(strip(read(`components/${f}`))));
-  assert.deepEqual(users.sort(), ['App.jsx', 'PickDate.jsx', 'PickTime.jsx', 'common.jsx']);
+  /**
+   * `HrView.jsx` JOINED ON 2026-09-10, and it is the paragraph above again
+   * rather than a fifth panel. ตรวจสอบประจำเดือน's three export buttons
+   * collapsed into one พิมพ์ / ส่งออก ▾ (`ExportMenu`), and a menu needs
+   * everything a dropdown needs: placement off its trigger, a flip when it
+   * meets the floor, a bottom sheet below 860px, and the three ways out. Built
+   * in that file it would have been this one retyped for a control whose only
+   * difference from `PickOne` is its ROLE — `menu` rather than `listbox`,
+   * because its rows are verbs and not a setting. Different roles, same panel.
+   */
+  assert.deepEqual(users.sort(), ['App.jsx', 'HrView.jsx', 'PickDate.jsx', 'PickTime.jsx', 'common.jsx']);
   for (const f of users) {
     assert.match(read(`components/${f}`), /from '\.\/popover\.jsx'/, `${f} ไม่ได้เอาแผงมาจาก popover.jsx`);
   }

@@ -290,6 +290,29 @@ const ICONS = {
    * The handle is a shallow arc rather than a rectangle — a second box on top
    * of a box goes muddy at this size, and the arc survives being drawn at 13.
    */
+  /**
+   * พิมพ์ใบขออนุมัติ OT — the per-row button on ตรวจสอบประจำเดือน, since the
+   * two worded buttons on every row became two icons on 2026-09-10.
+   *
+   * THREE PARTS, WHICH IS THE FEWEST A PRINTER READS AS: the sheet going in at
+   * the top, the machine's body, and the sheet coming out at the bottom. Drop
+   * either sheet and it is a radio at 15px — the body alone is a rounded
+   * rectangle, and nothing about a rounded rectangle says paper.
+   *
+   * The paper-out rectangle is drawn AFTER the body and is filled with the
+   * page's own ground (`fill="var(--card)"`), because the body's outline runs
+   * behind it: two overlapping outlines at this size read as a smudge, and the
+   * fill is what keeps the sheet in front. It is the one icon in this set that
+   * fills anything, and `--card` rather than white so it survives ธีมมืด.
+   */
+  printer: (
+    <>
+      <path d="M7.25 9V4.75h9.5V9" />
+      <path d="M7.25 17.5H5.5A1.75 1.75 0 0 1 3.75 15.75v-4A1.75 1.75 0 0 1 5.5 10h13a1.75 1.75 0 0 1 1.75 1.75v4a1.75 1.75 0 0 1-1.75 1.75h-1.75" />
+      <path d="M7.25 14.25h9.5v5H7.25Z" fill="var(--card)" />
+    </>
+  ),
+
   trash: (
     <>
       <path d="M4.5 6.75h15" />

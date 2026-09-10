@@ -81,8 +81,13 @@ test('both spellings of a code find the person, and word order does not matter',
 // ── what follows the filter, and what must not ───────────────────────────────
 
 test('the printed bundle is the rows on screen, however few', () => {
-  assert.match(hrView, /onClick=\{\(\) => setPrinting\(\{ employees: shown\.map\(\(r\) => r\.employee\) \}\)\}/);
-  assert.match(hrView, /disabled=\{!shown\.length\}/);
+  /* `onClick={…}` on a button of its own until 2026-09-10, when the three
+     export buttons collapsed into one menu — so it is `onSelect` on the menu's
+     first row now. What is pinned here is the part that matters and has not
+     moved: the document is built from `shown`, the rows the search left on the
+     screen, and not from `data.employees`. */
+  assert.match(hrView, /onSelect: \(\) => setPrinting\(\{ employees: shown\.map\(\(r\) => r\.employee\) \}\)/);
+  assert.match(hrView, /disabled: !shown\.length,/);
   // `shown`, and not `data.employees`. The second argument is the row's place
   // in the list, which is what the phone's page window compares against — see
   // `CARD_PAGE` and `test/hrMonthCards.test.js`. Whatever else this grows, the
@@ -200,7 +205,20 @@ test('a month with no rows at all still says that, not “not found”', () => {
  */
 
 test('ประจำเดือน and ค้นหา are one row, above the buttons that act on them', () => {
-  const row = hrView.slice(hrView.indexOf('className="row month-find"'), hrView.indexOf('</ul>'));
+  /* ⚠ THE END OF THE SLICE IS SEARCHED FROM THE START OF IT, not from position
+     0. `hrView.indexOf('</ul>')` finds the FIRST list in the file, and on
+     2026-09-10 that stopped being the suggestion menu: `ExportMenu` is declared
+     at module scope, above the component, and closes a `</ul>` of its own. The
+     slice went backwards and every assertion under it failed on an empty
+     string — a test reporting on the wrong region of the file, which is worse
+     than one that simply breaks.
+
+     This is the same lesson as the commit that made these tests normalise their
+     own line endings: a test that greps source has to say WHERE it is looking,
+     or it is one refactor away from looking somewhere else and saying nothing
+     about it. */
+  const from = hrView.indexOf('className="row month-find"');
+  const row = hrView.slice(from, hrView.indexOf('</ul>', from));
   // `PickMonth` since 2026-09-01 — the app's own calendar, in place of the
   // `<input type="month">` whose popup was the browser's and could not be
   // reached by anything in this repo. Same value, same state, same row.
@@ -223,16 +241,39 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   // THE ROW IS IN THE CARD, AND ABOVE THE BUTTONS. Both halves: inside
   // `.month-head` says the controls are together, before `.export-row` says the
   // งวด is settled before anything offers to print it.
-  const head = hrView.indexOf('<div className="card month-head">');
+  const head = hrView.indexOf('<div className="month-head">');
   const find = hrView.indexOf('<div className="row month-find">');
   const exports = hrView.indexOf('className="row export-row"');
   const status = hrView.indexOf('<PeriodStatus');
   assert.ok(head > 0 && find > head, 'the search row left the controls card');
   assert.ok(find < exports, 'the export buttons are back above the month and the search box');
-  // สรุปสถานะงวด sits UNDER the buttons that print and export, because it is
-  // the check somebody makes on the way to pressing them. It was PeriodLockBar
-  // and the ordering argument was the same one; see lib/periodStatus.js.
-  assert.ok(exports < status, 'สรุปสถานะงวด moved into the controls card');
+  /* ⚠ สรุปสถานะงวด IS ABOVE THE WHOLE CARD NOW, AND IT USED TO BE BELOW IT.
+     This read `assert.ok(exports < status)` until 2026-09-10 — the card sat
+     UNDER the buttons that print and export, because it is the check somebody
+     makes on the way to pressing them.
+
+     WHAT OVERTURNED IT was not a better reading of that argument but the report
+     the whole round answers: *"ส่วนกรองข้อมูลควรต่อเนื่องกับส่วนตาราง"*. This
+     card and ไฟล์สแกนนิ้วมือ were the two blocks standing between the controls
+     and the rows those controls decide, and no arrangement that keeps a card
+     there can also make those two continuous. So it is a LINE now
+     (`compact` in components/PeriodStatus.jsx), above the card rather than
+     inside the gap it used to widen.
+
+     THE OLD ARGUMENT SURVIVES THE MOVE. "Read this before you press print" is
+     still true of a line one row higher up the same screen — it is read on the
+     way IN now instead of on the way past — and it is still above the table,
+     which is the direction that was ever load-bearing. What it stopped being is
+     a block between two things that belong together. */
+  const strip = hrView.indexOf('<div className="month-strip no-print">');
+  assert.ok(strip > 0 && strip < head, 'สรุปสถานะงวด is no longer above the controls card');
+  assert.ok(status > strip && status < head, 'สรุปสถานะงวด left the strip');
+  assert.match(hrView, /<PeriodStatus period=\{period\} compact \/>/);
+  // And nothing stands between the controls and the rows they decide any more:
+  // the two are sections of one card.
+  const panel = hrView.indexOf('<div className="month-panel">');
+  const list = hrView.indexOf('<div className="month-card">');
+  assert.ok(panel > 0 && panel < head && head < list, 'the controls and the table are not one card');
 });
 
 test('the month comes first in the row, because it decides what the search searches', () => {
@@ -315,9 +356,9 @@ test('the box is a row of the controls card, not a strip stuck over the list', (
   // AND THE MARKUP IS THE OTHER HALF OF IT. A stylesheet cannot say which
   // element is somebody's parent, so the rules above are only true while this
   // is: the row is inside `.month-head` and nowhere near the list.
-  const head = hrView.indexOf('<div className="card month-head">');
+  const head = hrView.indexOf('<div className="month-head">');
   const find = hrView.indexOf('<div className="row month-find">');
-  const list = hrView.indexOf('<div className="card month-card">');
+  const list = hrView.indexOf('<div className="month-card">');
   assert.ok(head < find && find < list, 'the search row is back inside the month card');
 
   // คิวรออนุมัติ's bar IS still stuck, at the same 62 this one used to take —
@@ -722,7 +763,9 @@ test('ตรวจสอบรายเดือน’s box is the same combobox
 });
 
 test('a suggestion says who, which code, which department and how far into the ceiling', () => {
-  const item = hrView.slice(hrView.indexOf('<span className="s-who">'), hrView.indexOf('</ul>'));
+  // Searched from the start of the slice — see the note in the ประจำเดือน test.
+  const who = hrView.indexOf('<span className="s-who">');
+  const item = hrView.slice(who, hrView.indexOf('</ul>', who));
   assert.match(item, /<Highlight text=\{row\.employee\.name\} query=\{query\} kind="name" \/>/);
   assert.match(item, /<Highlight text=\{row\.employee\.code\} query=\{query\} kind="code" \/>/);
   assert.match(item, /\{row\.department\?\.nameTh \|\| row\.department\?\.name \|\| '—'\}/);

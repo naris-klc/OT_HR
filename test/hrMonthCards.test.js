@@ -158,7 +158,27 @@ test('both buttons are on every card, side by side, at a thumb-sized target', ()
 test('the two buttons are not two equal offers', () => {
   // ดู / แก้ไขรายการ is what somebody opened the month to do; พิมพ์ is what
   // they do afterwards, sometimes. Two ghosts side by side say neither.
-  assert.match(hrView, /className="btn ghost sm act-open"/);
+  //
+  // ⚠ THEY BECAME ICONS ABOVE 860px ON 2026-09-10 — `icon-btn`, a glyph each,
+  // because twenty-nine rows of the same two Thai labels down the right of a
+  // table was the loudest thing on a screen reported as ดูยากและรก. The class
+  // that carries the argument below is unchanged and so is the argument: the
+  // FIRST of the two is not the equal of the second, and `act-open` is still
+  // what says so.
+  assert.match(hrView, /className="btn ghost sm icon-btn act-open"/);
+  // The word did not leave the document, only the screen — and only up there.
+  // `aria-label` and `title` carry it for a screen reader and a pointer, and
+  // the phone card draws it again (below).
+  assert.match(hrView, /<span className="act-label">\{openRowLabel\(mayCorrect\)\}<\/span>/);
+  assert.match(hrView, /title=\{openRowLabel\(mayCorrect\)\}/);
+  assert.match(hrView, /<Icon name=\{mayCorrect \? 'pencil' : 'eye'\} \/>/);
+  assert.match(hrView, /<Icon name="printer" \/>/);
+  // ⚠ HIDDEN, NOT REMOVED. `display: none` would take the label out of the
+  // accessibility tree and leave `aria-label` as the button's only name.
+  assert.match(css, /\.hr-table \.icon-btn \.act-label \{[\s\S]*?clip-path: inset\(50%\);/);
+  // …and the phone card puts the words back, because down there this cell is
+  // the foot of a person's card rather than a column of a table.
+  assert.match(phone, /\.hr-table tbody td\.act-col \.row-actions \.btn \.act-label \{/);
   assert.match(
     phone,
     /\.btn\.act-open \{\s*background: var\(--green-tint\); color: var\(--green-accent\);\s*border-color: var\(--green\)/,
@@ -765,10 +785,12 @@ test('the panel is above the marks it explains, which one of them once only clai
   // above the search box and the list. The person it warns is the one about to
   // sign the figures, and a warning read after พิมพ์ has been pressed is a
   // warning that arrived late.
-  // `card month-head` since 2026-08-27 — the class is the phone block's handle
-  // on this container's padding, see the ledger over `.month-head`.
+  // `card month-head` from 2026-08-27 until 2026-09-10, when the card moved out
+  // to `.month-panel` and this became its top section. The class is still the
+  // phone block's handle on the container's padding — see the ledger over
+  // `.month-head` — and is still what this ordering is measured against.
   assert.ok(
-    strip < hrView.indexOf('<div className="card month-head">'),
+    strip < hrView.indexOf('<div className="month-head">'),
     'the panel is under the controls card',
   );
   assert.ok(strip < hrView.indexOf('<PickMonth'), 'the panel is under the period box');
@@ -868,7 +890,13 @@ test('.fold-pill is a class, and the digest it shares a screen with is untouched
 });
 
 test('the footnotes close the card, and their gap is stated once', () => {
-  assert.match(hrView, /className="card month-card"/);
+  // `className="card month-card"` until 2026-09-10, when the controls and the
+  // table became two sections of ONE card — `.month-panel` — so that the filter
+  // row and the rows it filters stop being separated by a gap and two unrelated
+  // cards. The section is still the stylesheet's handle on the order of what is
+  // inside it; what it stopped being is a card of its own.
+  assert.match(hrView, /<div className="month-panel">/);
+  assert.match(hrView, /className="month-card"/);
   assert.match(hrView, /<div className="month-notes">/);
   /**
    * IT WAS AN `order` SWAP UNTIL 2026-09-03. วันเกิดของเดือนนี้ sat under these
@@ -906,10 +934,26 @@ test('the footnotes close the card, and their gap is stated once', () => {
   // fourth assertion in this codebase to catch a comment instead of the code it
   // describes. Half this stylesheet is prose about which rule sits where; a
   // paragraph that names a selector is not a rule that carries one.
-  assert.ok(
-    !desktop.replace(/\/\*[\s\S]*?\*\//g, '').includes('.month-card'),
-    'the phone order leaked onto the desktop',
-  );
+  //
+  // ⚠ IT BANNED THE NAME UNTIL 2026-09-10 — `!desktop.includes('.month-card')`
+  // — and that was the same shape of mistake one level down. What must not leak
+  // is the phone's READING ORDER: `display: flex`, `flex-direction` and the
+  // `order` that lifts วันเกิดของเดือนนี้ above the footnotes, none of which
+  // means anything to a table drawn as a table. The NAME became legitimate up
+  // here the day `.month-card` stopped being a card and became the lower
+  // section of `.month-panel`, which owes it a padding and nothing else.
+  const deskRules = desktop.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const [prop, why] of [
+    ['display:\s*flex', 'the card list’s flex column'],
+    ['flex-direction', 'the card list’s stacking direction'],
+    ['order:', 'the phone’s reading order'],
+  ]) {
+    const leak = new RegExp(`\.month-card[^{]*\{[^}]*${prop}`);
+    assert.ok(!leak.test(deskRules), `${why} leaked onto the desktop`);
+  }
+  // And what it IS allowed to say up here is the section's own padding, which
+  // is what makes the controls and the table one card rather than two.
+  assert.match(deskRules, /\.month-panel > \.month-card \{ padding: [^}]*\}/);
 });
 
 /**
@@ -995,9 +1039,14 @@ test('there is no card round the list, so there is nothing to pull out through',
   assert.match(phone, /\.hr-table tbody \{\s*display: flex; flex-direction: column; gap: 12px;/,
     'the employee list’s gap moved — the two columns no longer share a rhythm');
 
-  // ABOVE 860px NONE OF IT APPLIES: the desktop still gets `.card` whole, and
-  // the markup still asks for it.
-  assert.match(hrView, /className="card month-card"/);
+  // ABOVE 860px NONE OF IT APPLIES: the desktop still gets a card whole — it is
+  // `.month-panel` since 2026-09-10, one container out, holding the controls and
+  // the table as two sections of it. The phone block hands that card back to
+  // `.month-head` alone and leaves the panel transparent, so what ships down
+  // here is the shape that shipped before the merge.
+  assert.match(css, /\.month-panel \{\s*background: var\(--card\); border: 1px solid var\(--line\);/);
+  assert.match(phone, /\.month-panel \{\s*background: none; border: none;/);
+  assert.match(phone, /\.month-panel > \.month-head \{\s*background: var\(--card\);/);
   layoutIsTheStylesheets();
 });
 

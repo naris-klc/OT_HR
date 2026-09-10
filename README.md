@@ -6724,6 +6724,74 @@ The two answers differ for exactly one person: somebody whose แผนก was m
 is not created by it** — it is written down here because this is now the screen a
 reader will be standing on when they meet it.
 
+### ตรวจสอบประจำเดือน — ตัวกรองต่อกับตาราง
+
+**Reported on 2026-09-10, in one sentence:** *"หน้านี้ดูยากและรกมากและส่วนกรอง
+ข้อมูลควรต่อเนื่องกับส่วนตาราง"*. The screen was **five stacked cards** — the
+alert panel, the controls, งวด…ยังเปิดอยู่, ไฟล์สแกนนิ้วมือ, and the table — and
+the two in the middle belonged to neither half. A reader set ประจำเดือน, แผนก and
+ค้นหา and then travelled past two unrelated panels to reach the rows those
+controls decide.
+
+**Four changes, and the first is the one that was asked for by name.**
+
+| | was | is |
+|---|---|---|
+| งวด…ยังเปิดอยู่ · ไฟล์สแกนนิ้วมือ | two cards **between** the controls and the table | **one line above** the controls |
+| the controls and the table | two cards, 16px of page between them | **two sections of one card**, divided by a rule |
+| the export row | three long buttons | **พิมพ์ / ส่งออก ▾**, one button and a menu |
+| every row's two buttons | `ดู / แก้ไขรายการ` · `พิมพ์ F-HR-027` spelled out | **two icons** (a word again on a phone) |
+
+**1 — the two cards became one line, and neither lost anything.** The งวด
+headline is the line it always led with; its *why* is one press away behind
+**รายละเอียด** (`compact` in `components/PeriodStatus.jsx` — one component with
+two shapes, because two components answering "what is outstanding this month"
+is the failure this repo names by its cost). ไฟล์สแกนนิ้วมือ opens the same card
+it always was, in place, under the strip. **Above and not below the table**,
+because both are things a reader checks *before* they trust a total — "is
+anything still waiting?" and "is this month's scan file in?" — and an answer
+that arrives after the sheet is printed arrived too late. What changed is how
+much room they take while the answer is *nothing*, which is most months.
+
+**2 — `.month-panel` is the card; `.month-head` and `.month-card` are its two
+sections.** That is the *ต่อเนื่อง* the report asked for, and it is the
+arrangement the card was already describing in words: `.export-row` acts on what
+ประจำเดือน · แผนก · ค้นหา settled, and the table is what all four produce.
+
+> ⚠ **Above 860px only.** Below it the table is one card per person on the
+> page's own ground, and *a card holding forty cards is a forty-first boundary
+> the eye has to account for before it can read any of them* — asked for on
+> 2026-08-27 and **not undone here**. The phone block hands the card back to
+> `.month-head` and leaves the panel transparent, which is exactly the shape
+> that shipped before this round.
+
+**3 — one export button, and the primary press now costs two.** พิมพ์ใบขออนุมัติ
+OT ทุกคน is what this screen is *for* — it was the one filled button among three
+ghosts precisely to say so — and it is a menu row now. **That is a real loss and
+it was chosen with the trade in view.** Two things soften it: it is the first
+row and the only one that keeps the filled voice, and the count that made the
+old label long (*24 คน*) is on the button, so the figure a reader came for is on
+screen without opening anything. The menu is `Popover` — the same panel every
+other dropdown in this app opens — wearing `role="menu"` rather than `listbox`,
+because its rows are verbs and not a setting.
+
+**4 — the row buttons are glyphs above 860px and words below it.** On a month of
+twenty-nine, `ดู / แก้ไขรายการ` and `พิมพ์ F-HR-027` were **fifty-eight labels**
+down the right of the table, the same two phrases repeating, none of them a fact
+about the person on the row. The word did not leave the document: `aria-label`
+carries it for a screen reader, `title` for a pointer, and the visible
+`.act-label` is hidden with `clip-path` — **never `display: none`**, which would
+take it out of the accessibility tree and leave `aria-label` as the button's
+only name. The glyph follows the permission the label already followed: a
+**pencil** for the two บทบาท that may correct a row, an **eye** for the four that
+may only read one, because a pencil offered to a หัวหน้างาน is a promise the
+route answers 403 to.
+
+**Measured on the running app** (2026-09-10, `.next-verify` on :3001, light
+theme, กันยายน 2569): desktop at 1400px and phone at 390px both drawn, the menu
+opened and its three rows read, and the phone card confirmed to sit on the page
+ground with its two buttons worded and 44px.
+
 ### นโยบายการพิมพ์ใบขออนุมัติ OT — which rows reach the paper
 
 **`formPrintScope`, four answers, and the shipped one is ตั้งแต่ยื่นขอ.**
@@ -7698,6 +7766,12 @@ card the band was in, and `.month-card` stopped being a card at all — it has n
 padding to trim now, so the first row is `.month-head` alone. The 12px is still
 12px where it survives.
 
+> And on 2026-09-10 `.month-head` stopped being a card of its own **above** 860px
+> as well: it and `.month-card` are two sections of `.month-panel` up there. At
+> this width nothing moved — the phone block hands the card straight back to
+> `.month-head` and leaves the panel transparent, so the 12px in the table above
+> is still what ships on a phone.
+
 **Only this screen.** `.card` is worn by every screen in the app and 15px is
 still its phone padding everywhere else; what is different here is the three
 containers. **And the breakpoint is 860, not the 768 that was asked for** —
@@ -8034,7 +8108,10 @@ about — which is a forty-page document offered before its period has been name
 **What is given up, said plainly: ค้นหา is no longer the last thing before the
 first card.** That was the rule the morning's move was made under, and
 `.export-row` and งวด…ยังเปิดอยู่ now stand between the box and the list it
-narrows. Two things pay for it. The count — *"แสดง 3 จาก 24 คน"* — is inside
+narrows. *(งวด…ยังเปิดอยู่ stopped standing there on 2026-09-10 — it is a line
+above the whole card now, and `.export-row` is one button rather than three. See
+§ตรวจสอบประจำเดือน — ตัวกรองต่อกับตาราง below, which is the round that answered
+this paragraph's own complaint.)* Two things pay for it. The count — *"แสดง 3 จาก 24 คน"* — is inside
 that row, beside the box, so a narrowed list says so where the narrowing was
 done and not only where it landed. And the suggestion list is untouched: picking
 a name still jumps straight to that person's row, which is the path that never

@@ -2106,6 +2106,90 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .period-status.outstanding { background: var(--amber-bg); border-color: var(--amber-line); }
 .period-status .hint { margin-bottom: 0; }
 
+/* ══ ONE LINE ABOVE THE CONTROLS — งวด…ยังเปิดอยู่ AND ไฟล์สแกนนิ้วมือ ═══════
+
+   Reported 2026-09-10: *"หน้านี้ดูยากและรกมากและส่วนกรองข้อมูลควรต่อเนื่องกับ
+   ส่วนตาราง"*. These two were CARDS, and they were the two blocks standing
+   between the controls card and the table it filters — so `.month-panel` below
+   could not exist and the page read as five stacked panels.
+
+   IT IS NOT A CARD, AND THAT IS THE WHOLE MECHANISM. No fill, no border, no
+   radius, no padding of its own: a line of text on the page's own ground, the
+   way a caption is. A card here would be the third card in a row again, one
+   size smaller. What tells the two states apart is the INK — `.outstanding`
+   takes the same amber the card took as a background, as a colour on the mark
+   and the headline — which is enough for a line and would not be enough for a
+   block.
+
+   `align-items: baseline` so the ⚠, the headline and รายละเอียด sit on one
+   written line rather than on one box edge. The 4px column gap is what a
+   sentence has; the row gap is for the phone, where รายละเอียด wraps under. */
+.month-strip {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 6px 14px; flex-wrap: wrap; margin: 0 0 10px;
+}
+.period-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+/* ⚠ TEXT FLOW, NOT A FLEX LINE — and the phone is what settled it. As three
+   flex items (mark · headline · รายละเอียด) at 390px the row broke between the
+   ITEMS rather than inside the sentence: the ⚠ took a line to itself, the
+   headline wrapped across two more, and รายละเอียด landed on a fourth. It is a
+   sentence with a glyph at the front and a link at the end, so it wraps the way
+   a sentence does — the mark stays with the first word and the link follows the
+   last one. */
+.period-strip .strip-line { font: 400 13px/1.5 var(--sans); color: var(--muted); }
+.period-strip .strip-head { font: 600 13px/1.5 var(--sans); color: var(--ink); }
+/* Non-breaking space either side of the glyph, in CSS rather than in the JSX:
+   the mark and the first word are one unit and must not be split. */
+.period-strip .strip-mark { font-size: 13px; margin-right: 4px; }
+.period-strip .strip-more { margin-left: 8px; }
+.period-strip.outstanding .strip-mark,
+.period-strip.outstanding .strip-head { color: var(--amber-ink); }
+.period-strip.clear .strip-mark { color: var(--green); }
+/* The detail, and the scan panel's toggle, are the same control twice — a
+   quiet inline verb, not a button. `.btn.ghost` here would put two more
+   bordered slabs on the line this round exists to empty. */
+.strip-more {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: 500 12.5px/1.5 var(--sans); color: var(--green-dark);
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.strip-more:hover { color: var(--green); }
+/* NO `:focus-visible` RULE HERE. The base ring in the pressed-state section is
+   already `outline: 2px solid var(--green); outline-offset: 2px` on everything,
+   and test/pressChrome.test.js fails the build for restating it — a copy is not
+   wrong the day it is written, it is wrong the day the base ring changes and
+   nine controls do not. Only the radius the ring rounds to is this rule's
+   business, and a text button has none to declare. */
+.period-strip .strip-detail {
+  padding: 8px 12px; border-left: 2px solid var(--line);
+  background: var(--neutral-wash); border-radius: 0 var(--radius) var(--radius) 0;
+}
+.period-strip .strip-detail .hint { margin-bottom: 0; }
+.period-strip.outstanding .strip-detail { border-left-color: var(--amber-line); }
+
+/* ══ THE CONTROLS AND THE ROWS THEY DECIDE, IN ONE CARD ═════════════════════
+
+   The other half of the same report — *ส่วนกรองข้อมูลควรต่อเนื่องกับส่วนตาราง*.
+   `.month-head` and `.month-card` were two cards with 16px of page between
+   them; they are two SECTIONS of one card now, divided by a rule.
+
+   THE PANEL IS THE CARD AND ITS CHILDREN ARE NOT, which is why `.card` moved
+   off both of them in the markup. `.month-head` keeps the card's own 18px so
+   the controls sit where they always did; `.month-card` gets the same at the
+   sides and none at the top, because the divider above it is already the gap.
+
+   ⚠ ABOVE 860px ONLY. The phone block below hands the card BACK to
+   `.month-head` alone and leaves this transparent — because down there the
+   table is one card per person on the page's own ground, and a card holding
+   forty cards is a forty-first boundary the eye has to account for before it
+   can read any of them (asked for 2026-08-27, and not undone by this). */
+.month-panel {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); margin-bottom: 16px;
+}
+.month-panel > .month-head { padding: 18px; border-bottom: 1px solid var(--line); }
+.month-panel > .month-card { padding: 14px 18px 18px; }
+
 .card.flush { padding: 0; overflow: hidden; }
 .card.flush > h2, .card.flush > .card-head { padding: 16px 18px; border-bottom: 1px solid var(--line-soft); margin: 0; }
 
@@ -2671,7 +2755,56 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    here rather than as an inline `marginTop` on the element, because an inline
    style is the one thing the 860px block below cannot reach — and this is the
    gap a phone has least room for. */
+/* THE ROW HOLDS ONE BUTTON SINCE 2026-09-10 — it held three until then, and
+   the gap is the only thing left of it. See `ExportMenu` in HrView. */
 .export-row { margin-top: 12px; }
+
+/* พิมพ์ / ส่งออก ▾ — the button that replaced the three.
+   The count rides on it because that is the figure a reader came for, and it
+   is mono and tabular like every other number in the app so it does not shift
+   the caret about as the month changes. */
+.export-btn { display: inline-flex; align-items: center; gap: 8px; }
+.export-btn .export-count {
+  font: 500 12px/1 var(--mono); font-variant-numeric: tabular-nums;
+  opacity: .8;
+}
+.export-btn .caret { font-size: 10px; opacity: .85; }
+/* The menu is `PickOne`'s list wearing a menu's roles — same panel, same rows,
+   same phone sheet. What differs is that a menu row has a second line under it
+   and no count against the right edge. */
+.pick-menu.one-menu.export-menu li { align-items: flex-start; }
+.pick-menu.one-menu.export-menu li .nm { display: flex; flex-direction: column; gap: 2px; }
+.pick-menu.one-menu.export-menu li .mi-note {
+  font: 400 11.5px/1.4 var(--sans); color: var(--muted-2);
+}
+/* The one row that is what the month is FOR — it was the single filled button
+   among three ghosts, and this is that distinction surviving the collapse. */
+.pick-menu.one-menu.export-menu li.lead .nm { font-weight: 700; }
+.pick-menu.one-menu.export-menu li.lead .mi-note { color: var(--muted); }
+.pick-menu.one-menu.export-menu li.off .mi-note { opacity: .75; }
+
+/* ── A BUTTON THAT IS A GLYPH ABOVE 860px AND A WORD BELOW IT ───────────────
+
+   ตรวจสอบประจำเดือน's two per-row buttons, 2026-09-10. On a month of
+   twenty-nine the words `ดู / แก้ไขรายการ` and `พิมพ์ F-HR-027` were fifty-eight
+   labels down the right of the table, none of them a fact about the person on
+   the row. The word is still in the document — `.act-label` — and is taken off
+   the screen the way a caption is hidden from sight but not from a screen
+   reader, so `aria-label`, `title` and the visible text all agree.
+
+   ⚠ `clip-path: inset(50%)` AND NOT `display: none`. The label has to stay
+   readable to assistive technology; `display: none` takes it out of the
+   accessibility tree, which would leave two buttons whose only name is the
+   `aria-label` — true today and one edit away from being nothing at all. */
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.icon-btn svg { width: 16px; height: 16px; flex: none; }
+@media (min-width: 861px) {
+  .hr-table .icon-btn { padding-left: 9px; padding-right: 9px; }
+  .hr-table .icon-btn .act-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+}
 /* ผู้รับช่วงอนุมัติแทน's heading block — the title and its two-line explanation,
    taking whatever the button beside it leaves. It was an inline `flex: 1`; it is
    a class so the phone layout can widen it, which an inline style forbids. */
@@ -12824,6 +12957,24 @@ table.mini tbody tr:hover { background: none; }
      standing in front of a number for no reason. It was declared on its own
      line because test/theme.test.js reads a token as DEFINED only where the
      declaration opens a line; there is nothing left to declare. */
+  /* ⚠ AND THE CARD IS `.month-head`'S AGAIN DOWN HERE, NOT `.month-panel`'S.
+
+     Above 860px the controls and the table are two sections of one card — see
+     `.month-panel`, and the 2026-09-10 report that asked for it. That merge is
+     a DESKTOP answer to a desktop complaint. At this width the table is one
+     card per person standing on the page's own ground, and a card holding forty
+     cards is a forty-first boundary the eye has to account for before it can
+     read any of them — asked for on 2026-08-27, and the panel must not quietly
+     put it back. So the panel goes transparent and the head takes the card, in
+     the shape that shipped before today. */
+  .month-panel {
+    background: none; border: none; border-radius: 0; margin-bottom: 0;
+  }
+  .month-panel > .month-card { padding: 0; }
+  .month-panel > .month-head {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius-lg); border-bottom: 1px solid var(--line);
+  }
   .month-head { padding: 12px; }
   /* ── AND THE STATUS CARD GETS 18, WHICH IS 5px BACK OUT OF THE 9 ABOVE ──
 
@@ -13215,6 +13366,25 @@ table.mini tbody tr:hover { background: none; }
   .hr-table tbody td.act-col .row-actions .btn {
     flex: 1 1 0; min-width: 0; min-height: 44px;
     padding: 10px 8px; font-size: 13px; text-align: center;
+  }
+  /* ⚠ THE WORDS COME BACK HERE — this is the half of the 2026-09-10 icon change
+     that is NOT a declutter. Up there the two buttons are a glyph each, because
+     twenty-nine rows of `ดู / แก้ไขรายการ` and `พิมพ์ F-HR-027` down the right
+     of a table is the same two words fifty-eight times and none of them a fact
+     about the person on the row. Down here the same cell is the FOOT OF A
+     PERSON'S CARD — two buttons, full width, 44px, the only two things a reader
+     can do with the person they are looking at. A card whose actions are two
+     bare glyphs is a card that has to be learnt.
+
+     So `.act-label` is simply not hidden at this width (the rule that hides it
+     is `min-width: 861px`), and the icon stays beside it: a word with a glyph in
+     front of it is what the rest of this app's buttons look like.
+
+     `min-width: 0` on the label so a long Thai label still wraps inside its own
+     button — the one place it has room to, and what the note above is about. */
+  .hr-table tbody td.act-col .row-actions .btn.icon-btn { gap: 6px; }
+  .hr-table tbody td.act-col .row-actions .btn .act-label {
+    min-width: 0; white-space: normal;
   }
 
   /* TWO GHOSTS SIDE BY SIDE ARE TWO EQUAL OFFERS, and these are not equal:
@@ -13733,44 +13903,30 @@ table.mini tbody tr:hover { background: none; }
      the reason the rename cost this stylesheet nothing. The note under them
      spans both. */
   /* 8px above, not 12. The row over it has already stacked into three
-     full-width controls at this width, so 12px more before the first button
-     reads as a section break between the selects and the buttons that act on
-     what they set. Same 8px as the gap between the buttons themselves, which is
-     what makes them one block instead of two. */
-  .export-row {
-    margin-top: 8px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    /* `.row` IS ALSO ON THIS ELEMENT, and it says `align-items: flex-end` —
-       correct for the flex row it is above 860px, wrong for the grid it
-       becomes here. A grid inherits it, so the two CSV buttons stopped
-       stretching to their row and hung from its bottom edge instead.
+     full-width controls at this width, so 12px more before the button reads as
+     a section break between the controls and the button that acts on what they
+     set.
 
-       INVISIBLE UNTIL 2026-08-31, because it only shows when the two are
-       different heights, and they were the same height for as long as their
-       labels took the same number of lines. ส่งออกรายงานสรุปประจำเดือน (CSV)
-       takes three lines at 320–360px where ส่งออกรายการ OT (CSV) takes two,
-       and measured before this line went in they were 67.5px and 53px, the
-       short one floating with a 14px gap above it beside its pair.
+     ⚠ IT WAS A TWO-COLUMN GRID UNTIL 2026-09-10, and everything that made it
+     one is gone with the two buttons it was pairing. The rules that went, and
+     what each was for, because each was earned:
 
-       `stretch` is the grid default this is restoring, not a new idea. Both
-       buttons now take the row, which is what makes them read as one pair of
-       equals rather than a tall one and a short one.
+       `display: grid; grid-template-columns: 1fr 1fr`
+            paired the two CSV buttons and gave พิมพ์ its own full-width line,
+            because its label is the one that will not fit in half.
+       `align-items: stretch`
+            undid `.row`'s `align-items: flex-end`, which a grid inherits and
+            which is wrong for one: measured at 320–360px on 2026-08-31 the two
+            CSVs were 67.5px and 53px, and the short one hung from the bottom of
+            its row with a 14px gap over it. **`.action-row` below carries the
+            same `.row` and sets `align-items: center`, and is the next place
+            this bites** — that warning is why the paragraph is kept.
+       `> .btn { min-height: 44px }`
+            the touch floor. Still owed, and `.btn` states it for this width
+            anyway; the single button here is not exempt from it.
 
-       `.action-row` BELOW IS THE SAME SHAPE AND IS NOT FIXED HERE. It also
-       carries `.row`, and its own rule sets `align-items: center`, so its two
-       buttons are centred rather than stretched for exactly the same reason.
-       Nothing shows there today — its note says both labels take two lines at
-       half width, and two equal heights hide the difference — so it is left
-       alone rather than changed on a screen nobody reported. It is the next
-       place this bites. */
-    align-items: stretch;
-  }
-  .export-row > .btn { min-height: 44px; }
-  .export-row > .btn:first-child,
-  .export-row > div { grid-column: 1 / -1; }
-  /* And the CSV footnote is a footnote: 12.5px of grey does not need the same
-     8px of air a 44px button does. */
-  .export-row > div { margin-top: -2px; }
+     One button needs none of that: `.row`'s own flex line lays it out. */
+  .export-row { margin-top: 8px; }
 
   /* สรุป OT ส่งบัญชี's two, paired. Both labels are long enough to take two
      lines at half width, which still costs less height than two full-width

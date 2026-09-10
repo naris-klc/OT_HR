@@ -26,6 +26,7 @@ import PrintFormBatch from './PrintFormBatch.jsx';
 import HrEntries from './HrEntries.jsx';
 import HrEdits from './HrEdits.jsx';
 import { useBackHandler } from './nav.jsx';
+import { Popover, useSheet } from './popover.jsx';
 import { mayCorrectEntries } from '@/lib/entries.js';
 
 /**
@@ -172,6 +173,159 @@ const rowDomId = (employeeId) => `hr-row-${employeeId}`;
  */
 const openRowLabel = (mayCorrect) => (mayCorrect ? 'ดู / แก้ไขรายการ' : 'ดูรายการ');
 
+/**
+ * พิมพ์ / ส่งออก — ONE BUTTON WHERE THERE WERE THREE, 2026-09-10.
+ *
+ * Asked for with the rest of the declutter: *"หน้านี้ดูยากและรกมาก"*. The row
+ * this replaces held พิมพ์ใบขออนุมัติ OT ทุกคน (24 คน), ส่งออกรายการ OT (CSV)
+ * and ส่งออกรายงานสรุปประจำเดือน (CSV) — three long Thai labels, a full row of
+ * a desktop card and three stacked full-width slabs on a phone, for controls
+ * pressed once a month. That row is now one button and a menu.
+ *
+ * ── WHAT IT COSTS, SAID PLAINLY ─────────────────────────────────────────────
+ *
+ * พิมพ์ใบขออนุมัติ OT ทุกคน is what this screen is FOR — it was the one filled
+ * button among three ghosts precisely to say so — and it is now two presses
+ * rather than one. That is a real loss and it was chosen with the trade in
+ * view. Two things soften it: it is the FIRST row of the menu and the only one
+ * that keeps the filled voice, and the count that made the old label long
+ * (`(24 คน)`) is on the BUTTON, so the number a reader came for is on screen
+ * without opening anything.
+ *
+ * ── NOT A `PickOne` ─────────────────────────────────────────────────────────
+ *
+ * That control answers "which of these is the setting", holds a value and
+ * reports a selection. This one has no value: three rows, three verbs, nothing
+ * chosen afterwards. Wearing a listbox's clothes would put `aria-selected` on
+ * rows that are not selections and leave a dropdown showing the last thing
+ * pressed as though it were a state. `role="menu"` is the one that means "press
+ * one of these and something happens".
+ *
+ * It opens the SAME panel every other popup in this app opens (`Popover`, and
+ * `.pick-menu` for the list itself), so the placement, the flip, the phone
+ * sheet and the three ways out are not re-implemented here — see
+ * components/popover.jsx.
+ */
+function ExportMenu({ items, disabled = false, label = 'พิมพ์ / ส่งออก', count = null }) {
+  const [open, setOpen] = React.useState(false);
+  const [active, setActive] = React.useState(0);
+  const btnRef = React.useRef(null);
+  const listRef = React.useRef(null);
+  const sheet = useSheet();
+  const id = React.useId();
+
+  const live = items.filter((it) => !it.disabled);
+  const close = React.useCallback(() => {
+    setOpen(false);
+    btnRef.current?.focus();
+  }, []);
+
+  // Clamped rather than trusted: the print row disables itself on an empty
+  // search, so the number of rows a keyboard may land on changes underneath.
+  const at = Math.min(Math.max(active, 0), Math.max(items.length - 1, 0));
+
+  React.useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelector('[data-active="1"]')?.scrollIntoView({ block: 'nearest' });
+  }, [open, at]);
+
+  /** Skip the rows that cannot be pressed, in whichever direction. */
+  function step(from, dir) {
+    for (let i = 1; i <= items.length; i += 1) {
+      const n = (from + dir * i + items.length * 2) % items.length;
+      if (!items[n].disabled) return n;
+    }
+    return from;
+  }
+
+  function run(i) {
+    const item = items[i];
+    if (!item || item.disabled) return;
+    close();
+    item.onSelect();
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { setOpen(true); setActive(items.findIndex((it) => !it.disabled)); return; }
+      setActive((i) => step(i, e.key === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (open) run(at); else { setOpen(true); setActive(items.findIndex((it) => !it.disabled)); }
+      return;
+    }
+    if (e.key === 'Escape') { if (open) { e.stopPropagation(); close(); } return; }
+    if (e.key === 'Tab' && open) setOpen(false);
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className={`btn export-btn${open ? ' open' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={`${id}-menu`}
+        disabled={disabled || !live.length}
+        onClick={() => (open ? setOpen(false) : (setOpen(true), setActive(items.findIndex((it) => !it.disabled))))}
+        onKeyDown={onKeyDown}
+        onBlur={() => setOpen(false)}
+      >
+        <span className="val">{label}</span>
+        {/* The count that used to make the print label two lines long. It is
+            the month's head count — what the bundle would print — and it is
+            here rather than in the menu because it is the figure a reader wants
+            without opening anything. */}
+        {count != null && <span className="export-count">{count} คน</span>}
+        <span className="caret" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <Popover
+          anchorRef={btnRef}
+          sheet={sheet}
+          shape={items.length}
+          label={label}
+          onClose={close}
+          className="one-pop"
+        >
+          <ul
+            id={`${id}-menu`}
+            role="menu"
+            className="pick-menu one-menu export-menu"
+            ref={listRef}
+            aria-label={label}
+            // mousedown's default action moves focus, which blurs the button
+            // and unmounts this list before the click can land.
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {items.map((item, i) => (
+              <li
+                key={item.key}
+                role="menuitem"
+                tabIndex={-1}
+                aria-disabled={item.disabled ? true : undefined}
+                data-active={i === at ? '1' : undefined}
+                className={[item.primary ? 'lead' : '', item.disabled ? 'off' : ''].filter(Boolean).join(' ') || undefined}
+                onClick={() => run(i)}
+                onMouseMove={() => { if (!item.disabled) setActive(i); }}
+              >
+                <span className="nm">
+                  {item.label}
+                  {item.note && <span className="mi-note">{item.note}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Popover>
+      )}
+    </>
+  );
+}
+
 /** HR's monthly review (§2): one row per employee, then correct, export or print. */
 export default function HrView({
   // `onOpenBirthdayQueue` and `onSettled` went with วันเกิดของเดือนนี้ on
@@ -272,6 +426,15 @@ export default function HrView({
   const [statusFilter, setStatusFilter] = useState('approved,pending_hr');
   const [error, setError] = useState('');
   const [printing, setPrinting] = useState(null);
+  /**
+   * Is ไฟล์สแกนนิ้วมือ unfolded? — 2026-09-10, when that card stopped standing
+   * open between the controls and the table.
+   *
+   * SHUT ON EVERY VISIT, and not remembered. It is a once-a-month act; a panel
+   * that is open because it was open last time is the clutter this round was
+   * asked to remove, arriving one visit later.
+   */
+  const [scanOpen, setScanOpen] = useState(false);
   const [opened, setOpened] = useState(null); // employee whose entries HR is in
   const [auditing, setAuditing] = useState(null); // employee whose edits HR is reading
 
@@ -774,14 +937,83 @@ export default function HrView({
         />
       )}
 
-      {/* `month-head` — a handle for the phone block, and nothing else. It is
-          the ONE container between the tab bar and the first employee card that
-          is still a card below 860px, which is what makes its padding worth a
-          rule of its own: `.month-card` was the other, and it stopped being a
-          card on 2026-08-27. Three rows in here now — the heading and
-          สถานะที่นับ, ประจำเดือน and ค้นหา, then the three export buttons — read
-          in that order because each one settles what the next acts on. */}
-      <div className="card month-head">
+      {/* ── ONE LINE, AND IT USED TO BE TWO CARDS ─────────────────────────
+
+          Reported on 2026-09-10: *"หน้านี้ดูยากและรกมากและส่วนกรองข้อมูลควร
+          ต่อเนื่องกับส่วนตาราง"*. งวด…ยังเปิดอยู่ and ไฟล์สแกนนิ้วมือ were the
+          two blocks STANDING BETWEEN the controls card and the table — so a
+          reader set ประจำเดือน, แผนก and ค้นหา, and then had to travel past two
+          unrelated panels to reach the rows those controls decide. The screen
+          was five stacked cards and the two in the middle belonged to neither
+          half.
+
+          BOTH SURVIVE AS ONE ROW ABOVE THE CONTROLS, which is what was asked
+          for. Neither is deleted and neither loses anything: the งวด headline
+          is the line it always led with and its WHY is one press away
+          (`compact` in components/PeriodStatus.jsx), and นำเข้าไฟล์สแกน opens
+          the same card it always was, in place, under the strip.
+
+          ABOVE AND NOT BELOW THE TABLE. Both are things a reader checks BEFORE
+          they trust a total — "is anything still waiting?" and "is this month's
+          scan file in?" — and an answer that arrives after the sheet is printed
+          is an answer that arrived too late. What changed is how much room they
+          take while the answer is "nothing", which is most months.
+
+          `no-print` because neither is part of any sheet. */}
+      <div className="month-strip no-print">
+        <PeriodStatus period={period} compact />
+        {/* `mayCorrect && scope !== 'team'` — the same pair the route enforces
+            (`requireRole(…, 'hr', 'admin')` on app/api/scans/route.js), and the
+            reason is not that the punch log is secret from a การเงิน: a record
+            of when people were at the door is a different fact about a person
+            from the OT they filed, and it is ฝ่ายบุคคล's to hold. A หัวหน้า
+            reading รายงาน OT ประจำทีม is looking at their own team's hours and
+            is never offered this, whatever their บทบาท. */}
+        {mayCorrect && scope !== 'team' && (
+          <button
+            type="button"
+            className="strip-more scan-toggle"
+            onClick={() => setScanOpen((v) => !v)}
+            aria-expanded={scanOpen}
+          >
+            {scanOpen ? 'ซ่อนไฟล์สแกนนิ้วมือ' : 'ไฟล์สแกนนิ้วมือ'}
+          </button>
+        )}
+      </div>
+
+      {/* Opened in place, still above the controls — it is a monthly act on the
+          monthly screen (the card's own header says why it is not in ตั้งค่าระบบ)
+          and it checks the file against the ประจำเดือน box below it.
+
+          IT CHANGES NO FIGURE ON THIS SCREEN, so there is no `onChanged` and
+          nothing below it is reloaded when a file is imported. */}
+      {scanOpen && mayCorrect && scope !== 'team' && (
+        <ScanImport period={period} status={statusFilter} />
+      )}
+
+      {error && <Alert kind="error">{error}</Alert>}
+
+      {/* ── THE CONTROLS AND THE ROWS THEY DECIDE, IN ONE CARD ────────────
+
+          `month-panel` is the card now; `.month-head` and `.month-card` are two
+          sections inside it, divided by a rule rather than by a gap. That is the
+          other half of the 2026-09-10 report — *ส่วนกรองข้อมูลควรต่อเนื่องกับ
+          ส่วนตาราง* — and it is the arrangement the card was already describing
+          in words: `.export-row` acts on what ประจำเดือน · แผนก · ค้นหา settled,
+          and the table is what all four produce.
+
+          ONLY ABOVE 860px. Below it the table is one card per person on the
+          page's own ground, and a card holding forty cards is a forty-first
+          boundary the eye has to account for before it can read any of them —
+          asked for on 2026-08-27 and not undone here. So the phone block hands
+          the card back to `.month-head` alone and leaves `.month-panel`
+          transparent, which is exactly the shape that shipped before today. */}
+      <div className="month-panel">
+      {/* `month-head` — a handle for the phone block, and the top section of the
+          panel above 860px. Three rows in here — the heading and สถานะที่นับ,
+          ประจำเดือน · แผนก · ค้นหา, then พิมพ์ / ส่งออก — read in that order
+          because each one settles what the next acts on. */}
+      <div className="month-head">
         <div className="row head-split">
           <div style={{ flex: 1 }}>
             {/* THE CARD SAYS WHAT THE TAB SAID, which it did not until
@@ -1059,136 +1291,95 @@ export default function HrView({
           )}
         </div>
 
-        {/* `export-row` — a flex row of three long labels stacks one per line on
-            a phone, which is three quarters of the screen above the table spent
-            on buttons pressed once a month. The stylesheet pairs the two CSVs
-            below 860px and leaves the print button its own full-width line,
-            because its label is the one that will not fit in half. */}
-        {/* The 12px above this used to be an inline `marginTop`, which no media
-            query can reach. On a phone the row above it has already stacked into
-            three full-width controls, and 12px more between the last of those
-            and the first button is a gap the eye reads as a section break where
-            there is none — the buttons act on what those controls just set.
-            Stated in the stylesheet now, 12px wide and 8px narrow.
-            ("what the selects just set" until 2026-09-01, when the last
-            `<select>` on this screen became `PickOne`.) */}
-        <div className="row export-row">
-          {/* The month as one document instead of one press per person. Whose
-              sheets are in it is exactly the table below — same order, same
-              สถานะที่นับ — so the bundle can be checked against the screen it
-              was printed from. Each sheet is fetched the way the per-row button
-              fetches it, so a page in the bundle and a page printed on its own
-              are the same page. */}
-          {/* THE ONE FILLED BUTTON ON THE SCREEN. All three of these were ghosts,
-              which made the row read as three equal offers — and they are not:
-              this is what the month is for. The two CSVs are what somebody takes
-              away afterwards.
+        {/* ── ONE BUTTON, AND IT WAS A ROW OF THREE ────────────────────────
 
-              THE FILL IS WHAT SEPARATES THEM, and it is enough on its own. The
-              two exports were green outlines for a while — `.btn.outline`, the
-              middle voice — which said "same family as the filled one, one step
-              down". True, and it made this the only screen in the app where a
-              secondary button is green: สรุป OT ส่งบัญชี has exactly this shape,
-              one filled export beside พิมพ์แบบฟอร์ม / บันทึกเป็น PDF, and draws
-              its second button as a plain ghost. Two screens doing the same job
-              in two voices is a difference a reader has to account for, and
-              there is nothing here to account for. */}
-          <button
-            className="btn"
-            disabled={!shown.length}
-            /* `shown`, not `data.employees`: the bundle's own note says it
-               is "exactly the rows of ตรวจสอบรายเดือน as they stand", and a
-               search that narrowed the screen without narrowing the document
-               would make that false in the direction nobody checks — forty
-               sheets when three were asked for. */
-            onClick={() => setPrinting({ employees: shown.map((r) => r.employee) })}
-            title="รวมใบ F-HR-027 ของทุกคนในตารางไว้ในเอกสารเดียว หนึ่งคนต่อหนึ่งหน้า"
-          >
-            {/* THE LABEL NAMES THE DOCUMENT, NOT ITS FORM CODE — asked for on
-                2026-08-31. "F-HR-027" is what the controlled form is called in
-                the filing cabinet and on the sheet itself; it is not what
-                anybody standing at this screen calls the thing they are about
-                to print. The code did not go anywhere: the `title` above still
-                says รวมใบ F-HR-027 …, and the sheet that comes out is stamped
-                with it, so the one reader who needs the code to match a form in
-                a cabinet still finds it. */}
-            พิมพ์ใบขออนุมัติ OT ทุกคน
-            {data?.employees?.length ? ` (${data.employees.length} คน)` : ''}
-          </button>
-          <button
-            className="btn ghost"
-            /* `scopeParam` on both files, so what is exported is what is on
-               screen. Without it a การเงิน on รายงาน OT ประจำทีม would download
-               the whole company from a table showing one แผนก — the export
-               button's one promise is that it is the table it sits under. */
-            onClick={() => api.download(
-              `/exports/entries.csv?period=${period}&status=${statusFilter}${scopeParam}${deptParam}`,
-              `OT-${period}.csv`,
-            )}
-          >
-            {/* THE PAIR SAYS WHAT IS IN THE FILE, not how finely it is cut.
-                "รายรายการ" / "สรุปรายเดือน" was a distinction between two
-                GRAINS of the same thing and read as one word split in half;
-                these two name the documents — one row per OT entry, one sheet
-                summarising the month. Renamed 2026-08-31 with the tab above
-                them. The endpoints and the downloaded filenames did not move:
-                `OT-2026-08.csv` and `OT-monthly-2026-08.csv` are what HR has
-                been filing all along. */}
-            ส่งออกรายการ OT (CSV)
-          </button>
-          <button
-            className="btn ghost"
-            onClick={() => api.download(
-              `/exports/monthly.csv?period=${period}&status=${statusFilter}${scopeParam}${deptParam}`,
-              `OT-monthly-${period}.csv`,
-            )}
-          >
-            ส่งออกรายงานสรุปประจำเดือน (CSV)
-          </button>
-          {/* THE UTF-8 BOM LINE IS GONE — 2026-08-27, and it is the same call
-              สรุป OT ส่งบัญชี made for the same sentence: an encoding detail
-              reassures once and is noise every month after. It was 46px of the
-              150 this row costs on a 360px phone, sitting between the buttons
-              and the list. The files still carry the BOM; nothing about them
-              changed. */}
+            Three long Thai labels — พิมพ์ใบขออนุมัติ OT ทุกคน (24 คน) ·
+            ส่งออกรายการ OT (CSV) · ส่งออกรายงานสรุปประจำเดือน (CSV) — took a
+            whole row of this card on a desktop and stacked into three
+            full-width slabs on a phone, for three controls pressed once a
+            month. Reported 2026-09-10 as part of *"หน้านี้ดูยากและรกมาก"*.
+
+            WHAT THE ROW USED TO ARGUE, kept here because the argument is still
+            true and now has a different answer. The print button was the one
+            FILLED button among three ghosts, because *this is what the month is
+            for* and the two CSVs are what somebody takes away afterwards. In
+            the menu that distinction is the first row and the `lead` class on
+            it; the count that made its label long is on the button itself.
+
+            AND WHAT IT COSTS: the primary press is two presses now. See the
+            note over `ExportMenu`, which is where that trade is written down.
+
+            IT KEEPS ITS OWN LINE rather than joining ค้นหา above or the
+            heading beside สถานะที่นับ. The card is read top to bottom as a
+            sentence — name the month, narrow it, then take it away — and that
+            order is the whole argument for where every row in here sits (see
+            the note over `.month-find`). One button on the last line is that
+            sentence with a shorter last word; folded up into either of the
+            other two it would be an action sitting among the filters. What was
+            costing the room was three slabs, not the line they were on.
+
+            `.export-row` KEEPS ITS NAME AND LOSES ITS JOB: there is no longer a
+            row of three to pair, wrap or stack, so the phone rules that did
+            that are gone and what is left is the gap above the button. */}
+        <div className="row export-row">
+          <ExportMenu
+          count={data?.employees?.length ?? null}
+          items={[
+            {
+              key: 'bundle',
+              label: 'พิมพ์ใบขออนุมัติ OT ทุกคน',
+              /* THE NOTE NAMES THE DOCUMENT'S FORM CODE, which the label
+                 deliberately does not — asked for on 2026-08-31. "F-HR-027" is
+                 what the controlled form is called in the filing cabinet and on
+                 the sheet itself; it is not what anybody standing at this
+                 screen calls the thing they are about to print. In the old row
+                 the code lived in a `title` nobody on a touch screen could
+                 reach; a menu row has space to simply say it. */
+              note: 'รวมทุกคนในตาราง หนึ่งคนต่อหนึ่งหน้า · F-HR-027',
+              primary: true,
+              /* `shown`, not `data.employees`: the bundle's own note says it is
+                 "exactly the rows of ตรวจสอบรายเดือน as they stand", and a
+                 search that narrowed the screen without narrowing the document
+                 would make that false in the direction nobody checks — forty
+                 sheets when three were asked for. */
+              disabled: !shown.length,
+              onSelect: () => setPrinting({ employees: shown.map((r) => r.employee) }),
+            },
+            {
+              key: 'entries',
+              /* THE PAIR SAYS WHAT IS IN THE FILE, not how finely it is cut.
+                 "รายรายการ" / "สรุปรายเดือน" was a distinction between two
+                 GRAINS of the same thing and read as one word split in half;
+                 these two name the documents — one row per OT entry, one sheet
+                 summarising the month. Renamed 2026-08-31 with the tab above
+                 them. The endpoints and the downloaded filenames did not move:
+                 `OT-2026-08.csv` and `OT-monthly-2026-08.csv` are what HR has
+                 been filing all along. */
+              label: 'ส่งออกรายการ OT (CSV)',
+              note: 'หนึ่งบรรทัดต่อหนึ่งใบ',
+              /* `scopeParam` and `deptParam` on both files, so what is exported
+                 is what is on screen. Without them a การเงิน on รายงาน OT
+                 ประจำทีม would download the whole company from a table showing
+                 one แผนก — the export button's one promise is that it is the
+                 table it sits under. */
+              onSelect: () => api.download(
+                `/exports/entries.csv?period=${period}&status=${statusFilter}${scopeParam}${deptParam}`,
+                `OT-${period}.csv`,
+              ),
+            },
+            {
+              key: 'monthly',
+              label: 'ส่งออกรายงานสรุปประจำเดือน (CSV)',
+              note: 'หนึ่งบรรทัดต่อหนึ่งคน',
+              onSelect: () => api.download(
+                `/exports/monthly.csv?period=${period}&status=${statusFilter}${scopeParam}${deptParam}`,
+                `OT-monthly-${period}.csv`,
+              ),
+            },
+          ]}
+        />
         </div>
       </div>
-
-      {/* What this month still has unanswered, directly under the buttons that
-          print and export it. Reading the totals, printing the sheets and
-          exporting the file is one sitting, and "is anything still waiting for
-          somebody?" is the question asked in the middle of it — a request nobody
-          has signed is simply absent from the paper that goes into the file.
-
-          NO `onChanged` AND NO `user`. This card changed both until 2026-08-31,
-          when it carried ปิดงวด: closing a month altered what every row on the
-          table below could do, so the table was reloaded, and the buttons it
-          drew depended on who was looking. It is a notice now. It changes
-          nothing, so nothing below it needs re-reading, and everybody who can
-          reach this screen reads the same counts. */}
-      <PeriodStatus period={period} />
-
-      {/* ไฟล์สแกนนิ้วมือ — a monthly act, on the monthly screen.
-
-          UNDER THE MONTH'S STATUS AND ABOVE THE TABLE. The order of this screen
-          is "what month, what is still open, then the rows"; a file that
-          describes the month belongs in the second part, not among the buttons
-          that print and export the first.
-
-          `mayCorrect && scope !== 'team'` — the same pair the route enforces
-          (`requireRole(…, 'hr', 'admin')` on app/api/scans/route.js), and the
-          reason is not that the punch log is secret from a การเงิน: it is that
-          a record of when people were at the door is a different fact about a
-          person from the OT they filed, and it is ฝ่ายบุคคล's to hold. A
-          หัวหน้า reading รายงาน OT ประจำทีม is looking at their own team's
-          hours and is never offered this, whatever their บทบาท.
-
-          IT CHANGES NO FIGURE ON THIS SCREEN, so there is no `onChanged` and
-          nothing below it is reloaded when a file is imported — see the card's
-          own header, which says the same thing to the person pressing it. */}
-      {mayCorrect && scope !== 'team' && <ScanImport period={period} status={statusFilter} />}
-
-      {error && <Alert kind="error">{error}</Alert>}
 
       {/* `month-card` — the stylesheet's handle on the ORDER of what is in
           here, and only below 860px. On a desktop this is a table with its
@@ -1198,18 +1389,17 @@ export default function HrView({
           WORK rather than a figure — was at the bottom of the last of them.
           See the block by this name in app/styles.css.
 
-          AND `card` IS A DESKTOP CLASS NOW. Above 860px this is a table of
-          ten columns read down its own header row, and a table needs a
-          ground of its own to be read against, so the fill and the border stay.
-          Below it the same markup is drawn as one card per person on `--bg` —
-          and a card holding forty cards is a forty-first boundary the eye has
-          to account for before it can read any of them, with its own border
-          between the last row and the edge of the screen at exactly the point
-          somebody is looking for รวมทั้งหมด. Asked for on 2026-08-27; the phone
-          block takes the fill, the border, the radius and the padding off. One
-          markup, two layouts — the same rule `.hr-table` itself follows, one
-          container out. */}
-      <div className="card month-card">
+          IT STOPPED CARRYING `card` ON 2026-09-10 — the card is `.month-panel`
+          one container out, and this is its lower section. The reasoning that
+          put a card here is unchanged and is now served by the panel: above
+          860px a table of ten columns read down its own header row needs a
+          ground of its own, and it has one. Below 860px the same markup is one
+          card per person on `--bg`, because a card holding forty cards is a
+          forty-first boundary the eye has to account for before it can read any
+          of them — asked for on 2026-08-27, and the phone block still takes the
+          fill, the border, the radius and the padding off the panel rather than
+          off this. One markup, two layouts. */}
+      <div className="month-card">
         {!data ? (
           <Empty>กำลังโหลด…</Empty>
         ) : data.employees.length === 0 ? (
@@ -1471,24 +1661,63 @@ export default function HrView({
                           rather than off the right edge of a sideways scroll.
                           See `.hr-table tbody td.act-col` in app/styles.css. */}
                       <td className="act-col">
-                        <div className="row row-actions" style={{ gap: 6 }}>
-                          {/* `act-open` names the primary action rather than
-                              leaving the phone card's accent on :first-child,
-                              which would follow whichever button somebody moves
-                              here next. It draws nothing on a desktop: the two
-                              are equal ghosts in a table cell, which is what
-                              they were before the card existed. */}
+                        {/* ── TWO ICONS, AND THEY WERE TWO WORDED BUTTONS ──
+
+                            Reported 2026-09-10: *"หน้านี้ดูยากและรกมาก"*. Every
+                            row carried `ดู / แก้ไขรายการ` and `พิมพ์ F-HR-027`
+                            spelled out — on a month of twenty-nine that is
+                            fifty-eight button labels down the right of the
+                            table, the same two words repeating, and it was the
+                            noisiest thing on the screen by a distance. Twenty
+                            of those characters are identical from row to row;
+                            none of them is a fact about the person on the row.
+
+                            THE LABEL IS NOT LOST, IT MOVED OFF THE SCREEN AND
+                            INTO THE PLACES A LABEL IS ASKED FOR. `aria-label`
+                            carries the full wording for a screen reader, and
+                            `title` puts it back under a desktop pointer. That
+                            is the same trade the pager's chevrons made on
+                            2026-08-26, on this screen, for the same reason.
+
+                            ⚠ AND IT IS THE PHONE CARD THAT PAYS. Below 860px
+                            this cell is the foot of a person's card and had two
+                            wide, worded, 44px buttons on it — which is what a
+                            card wants and what a table does not. So the phone
+                            block puts the words BACK: `.act-col .row-actions
+                            .btn` keeps its 44px there and `.act-label` is drawn
+                            again below 860px. One markup, two readings, which
+                            is what this table has done since the card list was
+                            written.
+
+                            `act-open` still names the primary action rather
+                            than leaving the phone card's accent on
+                            `:first-child`, which would follow whichever button
+                            somebody moves here next. */}
+                        <div className="row row-actions">
                           <button
-                            className="btn ghost sm act-open"
+                            className="btn ghost sm icon-btn act-open"
                             onClick={() => setOpened(row.employee)}
+                            aria-label={`${openRowLabel(mayCorrect)} — ${row.employee.name}`}
+                            title={openRowLabel(mayCorrect)}
                           >
-                            {openRowLabel(mayCorrect)}
+                            {/* THE GLYPH SAYS WHICH OF THE TWO THIS READER GETS.
+                                `mayCorrect` already decides the wording — see
+                                `openRowLabel` — and a pencil offered to a
+                                หัวหน้างาน or a การเงิน would be a promise the
+                                route answers 403 to, which README §สิทธิ์ names
+                                as the one thing a screen may not do. An eye is
+                                what ดูรายการ looks like. */}
+                            <Icon name={mayCorrect ? 'pencil' : 'eye'} />
+                            <span className="act-label">{openRowLabel(mayCorrect)}</span>
                           </button>
                           <button
-                            className="btn ghost sm"
+                            className="btn ghost sm icon-btn"
                             onClick={() => setPrinting({ employeeId: row.employee._id })}
+                            aria-label={`พิมพ์ใบขออนุมัติ OT (F-HR-027) — ${row.employee.name}`}
+                            title="พิมพ์ใบขออนุมัติ OT (F-HR-027)"
                           >
-                            พิมพ์ F-HR-027
+                            <Icon name="printer" />
+                            <span className="act-label">พิมพ์ F-HR-027</span>
                           </button>
                         </div>
                       </td>
@@ -1821,6 +2050,7 @@ export default function HrView({
 
             That is no longer a thing this screen can know. See the note at the
             foot of this file for what the table did and what its removal cost. */}
+      </div>
       </div>
     </>
   );
