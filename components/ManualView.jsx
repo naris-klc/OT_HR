@@ -215,35 +215,98 @@ const MkSlot = ({ icon, label, on = false, badge = null }) => (
   </span>
 );
 
+/** A tick or a cross on a queue row — two squares since 2026-09-09. */
+const MkIconBtn = ({ icon, tone = 'ok', children }) => (
+  <span className={`mk-ibtn ${tone}`}>
+    <Icon name={icon} className="mk-ibtn-i" />
+    {children ? <span className="mk-ibtn-t">{children}</span> : null}
+  </span>
+);
+
+/** A tick box — the column a queue is worked in batches from. */
+const MkTick = ({ children, on = false }) => (
+  <span className="mk-tick">
+    <span className={on ? 'mk-box on' : 'mk-box'} aria-hidden="true">{on ? '✓' : ''}</span>
+    <span className="mk-tick-t">{children}</span>
+  </span>
+);
+
+/** The strip of section buttons a settings-shaped screen wears on a desktop. */
+const MkTabs = ({ items, on = null }) => (
+  <span className="mk-tabs">
+    {items.map((t) => <span key={t} className={t === on ? 'mk-tab on' : 'mk-tab'}>{t}</span>)}
+  </span>
+);
+
+/** A table's heading strip — the column names, in the table's own order. */
+const MkCols = ({ children }) => <span className="mk-cols">{children}</span>;
+
 /**
- * The desktop window — appbar, the sidebar down the left, the page beside it.
+ * The desktop window — the sidebar down the left, and the app bar over the PAGE
+ * rather than over the whole window.
  *
- * `nav={false}` drops the sidebar, for the one screen in this app that has no
- * menu at all: เข้าสู่ระบบ, which is drawn before anybody has a บทบาท.
+ * THE BAR WAS DRAWN ACROSS BOTH UNTIL 2026-09-10, and that is a window this app
+ * has never drawn: `.shell` is `aside.sidebar` BESIDE `.body`, and `.appbar`
+ * lives inside `.body` — so the bar starts where the menu ends, and what stands
+ * above the menu is the menu's own head, the PRIMUS lockup with the button that
+ * collapses the rail beside it.
+ *
+ * `title` IS THE PAGE'S OWN NAME AND NOT THE NAME OF THE SYSTEM, because that
+ * is what the real bar reads: `PAGE[tab]` in components/App.jsx, one entry per
+ * screen. `title={null}` drops the bar along with the sidebar, for the one
+ * screen that has neither — เข้าสู่ระบบ, drawn before anybody has a บทบาท.
  */
-function Desk({ nav = null, children }) {
+function Desk({ title = null, nav = null, children }) {
   return (
     <span className="mk mk-desk">
-      <span className="mk-bar"><span className="mk-bar-t">ระบบขออนุมัติทำงานล่วงเวลา</span></span>
       <span className="mk-desk-body">
-        {nav === false ? null : <span className="mk-side">{nav}</span>}
-        <span className="mk-canvas">{children}</span>
+        {nav === false ? null : (
+          <span className="mk-side">
+            <span className="mk-brand">
+              <span className="mk-brand-n">PRIMUS</span>
+              <span className="mk-brand-k">OT SYSTEM</span>
+              <span className="mk-fold" aria-hidden="true">‹</span>
+            </span>
+            {nav}
+          </span>
+        )}
+        <span className="mk-main">
+          {title ? (
+            <span className="mk-bar">
+              <span className="mk-mark" aria-hidden="true" />
+              <span className="mk-bar-t">{title}</span>
+            </span>
+          ) : null}
+          <span className="mk-canvas">{children}</span>
+        </span>
       </span>
     </span>
   );
 }
 
 /**
- * The phone — appbar, the page, and the bar of at most four slots under it.
+ * The phone — app bar, the page, and the bar of at most four slots under it.
  *
- * `fab` is the round + on หน้าบันทึกและประวัติ OT and nowhere else, which is
- * the difference this app's phone layout actually has and the reason a step
- * about filing needs its own picture here.
+ * THE APP BAR CARRIES THE TWO CONTROLS A PHONE HAS AND A DESKTOP DOES NOT: the
+ * mark at the left, which is ย้อนกลับ, and the round button at the right, which
+ * holds the whole of the menu that does not fit on the bar below. Both are
+ * drawn, because a step that says กดปุ่มมุมบนขวา is describing something that
+ * has to be in the picture.
+ *
+ * `fab` is the round + on บันทึกและประวัติ OT and nowhere else — `showFab` in
+ * components/App.jsx is `maySubmitOt && tab === 'mine'` — and it is the one
+ * difference this app's phone layout actually has.
  */
-function Phone({ bar = null, fab = false, children }) {
+function Phone({ title = null, bar = null, fab = false, children }) {
   return (
     <span className="mk mk-phone">
-      <span className="mk-bar"><span className="mk-bar-t">OT</span></span>
+      {title ? (
+        <span className="mk-bar">
+          <span className="mk-mark" aria-hidden="true" />
+          <span className="mk-bar-t">{title}</span>
+          <span className="mk-av" aria-hidden="true" />
+        </span>
+      ) : null}
       <span className="mk-canvas">
         {children}
         {fab ? <span className="mk-fab" aria-hidden="true">+</span> : null}
@@ -331,7 +394,10 @@ function FlowDiagram({ p }) {
         <div className="mflow-node">
           <span className="mflow-k">ขั้นที่ {has ? 2 : 1}</span>
           <span className="mflow-n">ฝ่ายบุคคล</span>
-          <span className="mflow-s">รอฝ่ายบุคคล</span>
+          {/* The word the CHIP wears, which is `STATUS.pending_hr.label` in
+              lib/api.js and reads รอ HR — not the name of the step above it.
+              The two are different things and the row shows the chip. */}
+          <span className="mflow-s">รอ HR</span>
         </div>
         <span className="mflow-arrow" aria-hidden="true">→</span>
         <div className="mflow-node done">
@@ -364,15 +430,15 @@ function RateDiagram() {
         <div className="mrate-arrow" aria-hidden="true">ระบบตัดเองว่าส่วนไหนตกวันไหน</div>
         <div className="mrate-out">
           <div className="mrate-col">
-            <span className="mrate-k">×1.5 วันปกติ</span>
+            <span className="mrate-k">OT วันปกติ ×1.5</span>
             <span className="mrate-v">ชั่วโมงนอกเวลางาน ในวันทำงานปกติ</span>
           </div>
           <div className="mrate-col">
-            <span className="mrate-k">×1.5 วันหยุด</span>
+            <span className="mrate-k">OT วันหยุด ×1.5</span>
             <span className="mrate-v">ชั่วโมงในวันหยุด ที่ตรงกับช่วงเวลางานปกติ</span>
           </div>
           <div className="mrate-col">
-            <span className="mrate-k">×3 วันหยุด</span>
+            <span className="mrate-k">OT วันหยุด ×3</span>
             <span className="mrate-v">ชั่วโมงในวันหยุด ที่อยู่นอกช่วงเวลางานปกติ</span>
           </div>
         </div>
@@ -384,7 +450,7 @@ function RateDiagram() {
 /** สถานะของใบ — the five `OtEntry.status` values, in the order a ใบ meets them. */
 const STATUS_ROWS = [
   ['รอหัวหน้า', 'wait', 'ยื่นแล้ว รอผู้เซ็นขั้นแรก (หัวหน้างาน / ผู้จัดการ / การเงิน) กดอนุมัติ'],
-  ['รอฝ่ายบุคคล', 'wait', 'ผ่านขั้นแรกแล้ว รอฝ่ายบุคคลยืนยันเป็นขั้นสุดท้าย'],
+  ['รอ HR', 'wait', 'ผ่านขั้นแรกแล้ว รอฝ่ายบุคคลยืนยันเป็นขั้นสุดท้าย'],
   ['อนุมัติ', 'ok', 'อนุมัติครบทุกขั้นแล้ว — ชั่วโมงเข้าไปอยู่ในรายงานประจำเดือน'],
   ['ไม่อนุมัติ', 'no', 'มีผู้ไม่อนุมัติ พร้อมเหตุผล — แก้ไม่ได้ ต้องกด ส่งใหม่ เพื่อยื่นใบใหม่'],
   ['ยกเลิก', 'off', 'เจ้าของใบยกเลิกเอง หรือคำขอถอนได้รับอนุมัติ — ไม่ถูกนับในรายงาน'],
@@ -443,29 +509,59 @@ const SECTIONS = [
     Body: ({ p }) => (
       <ol className="manual-steps">
         <li className="manual-step">
-          <p>พิมพ์ <b>รหัสพนักงาน</b> ให้ตรงตัว รวมทั้งขีดกลาง</p>
+          <p>
+            กรอก <b>รหัสพนักงาน · EMPLOYEE ID</b> และ <b>รหัสผ่าน · PASSWORD</b> แล้วกด
+            {' '}<b>เข้าสู่ระบบ</b>
+          </p>
           <ul>
-            <li><b>PM-0620</b> ไม่ใช่ PM0620 — ขีดกลางเป็นส่วนหนึ่งของรหัส</li>
-            <li><b>รหัสผ่านครั้งแรกคือรหัสพนักงานของตัวเอง</b> ค่าเดียวกันนี้คือค่าที่ได้กลับมาหลังฝ่ายบุคคลกดรีเซ็ตรหัสผ่านให้</li>
-            <li>กรอกผิดติดกันหลายครั้ง ระบบจะให้รอสักครู่ก่อนลองใหม่ ข้อความใต้ช่องกรอกจะบอกว่าติดตรงไหน</li>
-            <li>เข้าไม่ได้จริง ๆ ให้ติดต่อฝ่ายบุคคล ไม่มีปุ่มลืมรหัสผ่านในระบบ</li>
+            <li>
+              <b>ขีดกลางในรหัสพนักงานไม่มีผลตอนเข้าสู่ระบบ</b> — พิมพ์ PM-0620 หรือ PM0620
+              ระบบก็อ่านเป็นรหัสเดียวกัน และตัวพิมพ์เล็กพิมพ์ใหญ่ก็ไม่ต่างกัน
+              ตัวอย่างที่จาง ๆ อยู่ในช่องคือรูปแบบของสองบริษัท
+            </li>
+            <li>
+              <b>รหัสผ่านครั้งแรกคือรหัสพนักงานของตัวเอง</b> — แต่ช่องนี้ตรงตัวทุกอักขระ
+              ให้พิมพ์เป็น<b>ตัวพิมพ์ใหญ่ตามที่อยู่บนบัตร</b> ถ้ารหัสบนบัตรมีขีดกลาง รหัสผ่านก็ต้องมีขีดกลางด้วย
+              {' '}· ค่าเดียวกันนี้คือค่าที่ได้กลับมาหลังฝ่ายบุคคลกดรีเซ็ตรหัสผ่านให้ · บรรทัดนี้เขียนอยู่ใต้ช่องรหัสผ่านแล้ว
+            </li>
+            <li>กดรูป<b>ตา</b>ท้ายช่องรหัสผ่านเพื่อดูสิ่งที่พิมพ์ไป</li>
+            <li>กรอกผิดติดกันหลายครั้ง ระบบจะให้รอสักครู่ก่อนลองใหม่ ข้อความสีแดงใต้ช่องกรอกจะบอกว่าติดตรงไหน</li>
+            <li>เข้าไม่ได้จริง ๆ ให้ติดต่อฝ่ายบุคคล ตามบรรทัดท้ายการ์ด — <b>ไม่มีปุ่มลืมรหัสผ่านในระบบ</b></li>
           </ul>
           <Shot
-            alt="หน้าเข้าสู่ระบบ มีสองช่องคือรหัสพนักงานและรหัสผ่าน บนคอมพิวเตอร์เป็นการ์ดกลางจอ บนมือถือเต็มความกว้าง"
-            caption="หน้าเดียวกัน — บนคอมพิวเตอร์เป็นการ์ดกลางจอ บนมือถือเต็มความกว้าง ยังไม่มีเมนูทั้งสองเครื่อง"
+            alt="หน้าเข้าสู่ระบบ ช่องรหัสพนักงานและช่องรหัสผ่านพร้อมปุ่มรูปตา บนคอมพิวเตอร์แบ่งจอสองฝั่ง ฝั่งซ้ายเป็นแถบชื่อระบบ ฝั่งขวาเป็นฟอร์ม บนมือถือแถบชื่อระบบย่อขึ้นไปอยู่ด้านบนแล้วฟอร์มอยู่ใต้ลงมา"
+            caption="ฟอร์มเดียวกัน — บนคอมพิวเตอร์แถบชื่อระบบกินครึ่งจอซ้าย บนมือถือย่อเหลือแถบบนสุด ยังไม่มีเมนูทั้งสองเครื่อง"
             desk={(
               <Desk nav={false}>
-                <MkRow>เข้าสู่ระบบ</MkRow>
-                <MkField label="รหัสพนักงาน" on pin="1">PM-0620</MkField>
-                <MkField label="รหัสผ่าน" pin="2">••••••••</MkField>
-                <MkBtn>เข้าสู่ระบบ</MkBtn>
+                <span className="mk-split">
+                  <span className="mk-pane">
+                    <span className="mk-pane-k">PRIMUS · OVERTIME SYSTEM</span>
+                    <span className="mk-pane-h">ระบบบันทึกและอนุมัติค่าล่วงเวลา</span>
+                  </span>
+                  <span className="mk-col">
+                    <MkRow>เข้าสู่ระบบ</MkRow>
+                    <MkField label="รหัสพนักงาน · EMPLOYEE ID" on>PM00111 / THT1111</MkField>
+                    <MkField label="รหัสผ่าน · PASSWORD">
+                      ••••••••<Icon name="eye" className="mk-ibtn-i" />
+                    </MkField>
+                    <MkNote>เข้าใช้งานครั้งแรก · รหัสผ่านคือรหัสพนักงานของคุณ</MkNote>
+                    <MkBtn>เข้าสู่ระบบ</MkBtn>
+                  </span>
+                </span>
               </Desk>
             )}
             phone={(
               <Phone bar={false}>
+                <span className="mk-pane">
+                  <span className="mk-pane-k">PRIMUS · OVERTIME SYSTEM</span>
+                  <span className="mk-pane-h">ระบบบันทึกและอนุมัติค่าล่วงเวลา</span>
+                </span>
                 <MkRow>เข้าสู่ระบบ</MkRow>
-                <MkField label="รหัสพนักงาน" on pin="1">PM-0620</MkField>
-                <MkField label="รหัสผ่าน" pin="2">••••••••</MkField>
+                <MkField label="รหัสพนักงาน · EMPLOYEE ID" on>PM00111 / THT1111</MkField>
+                <MkField label="รหัสผ่าน · PASSWORD">
+                  ••••••••<Icon name="eye" className="mk-ibtn-i" />
+                </MkField>
+                <MkNote>เข้าใช้งานครั้งแรก · รหัสผ่านคือรหัสพนักงานของคุณ</MkNote>
                 <MkBtn>เข้าสู่ระบบ</MkBtn>
               </Phone>
             )}
@@ -474,26 +570,30 @@ const SECTIONS = [
 
         <li className="manual-step">
           <p>
-            ตราบใดที่ยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ จะมี<b>แถบเตือนสีเหลือง</b>อยู่บนหน้าแรก
+            ตราบใดที่ยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้ จะมี<b>แถบเตือนสีเหลือง</b>ขึ้นบน
+            {' '}<b>หน้าแรกของบทบาทคุณ</b> — หน้าแรกหน้าเดียว ไม่ได้ตามไปทุกหน้า
             เพราะรหัสนั้นคือรหัสพนักงานซึ่งพิมพ์อยู่บนใบ OT ทุกใบและคนอื่นทราบด้วย
-            กดปุ่มในแถบนั้นแล้วตั้งรหัสใหม่ แถบจะหายไปเอง
+            กดปุ่ม <b>เปลี่ยนรหัสผ่าน</b> ในแถบนั้น ระบบจะพาไปที่หน้า <b>ข้อมูลส่วนตัว</b>
+            {' '}ตั้งรหัสใหม่เสร็จแล้วแถบจะหายไปเอง
           </p>
           <Shot
-            alt="แถบเตือนสีเหลืองบนหน้าแรก พร้อมปุ่มตั้งรหัสใหม่ บนคอมพิวเตอร์ปุ่มอยู่ท้ายแถบ บนมือถือปุ่มลงมาอยู่บรรทัดล่าง"
-            caption="ข้อความเดียวกัน — บนมือถือปุ่มตกลงมาอยู่บรรทัดของตัวเอง ไม่ได้หายไปไหน"
+            alt="แถบเตือนสีเหลืองบนหน้าแรก เขียนว่าคุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ และมีปุ่มเปลี่ยนรหัสผ่านอยู่ใต้ข้อความ"
+            caption="ข้อความและปุ่มวางเหมือนกันทั้งสองเครื่อง — ปุ่มอยู่ใต้ข้อความเสมอ ไม่ได้อยู่ท้ายบรรทัด"
             desk={(
-              <Desk nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
-                <span className="mk-alert">
-                  <span className="mk-alert-t">ยังใช้รหัสผ่านที่ตั้งให้ตอนแรก</span>
-                  <MkBtn>ตั้งรหัสใหม่</MkBtn>
+              <Desk title="บันทึกและประวัติ OT" nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
+                <span className="mk-alert col">
+                  <span className="mk-alert-t">คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่</span>
+                  <MkNote>— รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย</MkNote>
+                  <MkBtn ghost>เปลี่ยนรหัสผ่าน</MkBtn>
                 </span>
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
                 <span className="mk-alert col">
-                  <span className="mk-alert-t">ยังใช้รหัสผ่านที่ตั้งให้ตอนแรก</span>
-                  <MkBtn>ตั้งรหัสใหม่</MkBtn>
+                  <span className="mk-alert-t">คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่</span>
+                  <MkNote>— รหัสนี้คือรหัสพนักงานของคุณ ซึ่งมีคนอื่นทราบด้วย</MkNote>
+                  <MkBtn ghost>เปลี่ยนรหัสผ่าน</MkBtn>
                 </span>
               </Phone>
             )}
@@ -501,17 +601,24 @@ const SECTIONS = [
         </li>
 
         <li className="manual-step">
-          <p>สิ่งอื่นที่อยู่ในเมนู <b>ข้อมูลส่วนตัว</b></p>
+          <p>
+            หน้า <b>ข้อมูลส่วนตัว</b> เข้าจาก<b>ชื่อตัวเองมุมล่างซ้ายของเมนู</b>
+            {' '}(บนมือถือคือปุ่มตัวอักษรย่อมุมบนขวา แล้วเลือกในกลุ่ม <b>บัญชี</b>) — ในนั้นมีสี่การ์ดเรียงลงมา
+          </p>
           <ul>
-            <li><b>ธีมสีหน้าจอ</b> — สว่าง มืด หรือตามเครื่อง ตั้งแยกกันในแต่ละเบราว์เซอร์ ไม่ผูกกับบัญชี</li>
-            <li><b>ออกจากระบบ</b> — มีที่นี่ด้วย นอกเหนือจากที่มุมล่างซ้ายของเมนู</li>
-            <li>ชื่อ-สกุล วันเกิด แผนก และบทบาท เป็นข้อมูลของฝ่ายบุคคล แก้เองไม่ได้ — ถ้าผิดให้แจ้งฝ่ายบุคคล</li>
+            <li>
+              <b>ข้อมูลส่วนตัว</b> — รหัสพนักงาน ชื่อ-สกุล ตำแหน่ง วันเกิด แผนก บทบาท และบริษัท
+              เป็นข้อมูลของฝ่ายบุคคล อ่านได้อย่างเดียว แก้เองไม่ได้ ถ้าผิดให้แจ้งฝ่ายบุคคล
+            </li>
             {p.sign ? (
               <li>
-                <b>ผู้รับช่วงอนุมัติแทน</b> — คุณมีหัวข้อนี้เพราะคุณเซ็นขั้นแรก ดูหัวข้อ
+                <b>ผู้รับช่วงอนุมัติแทน</b> — การ์ดนี้ขึ้นเพราะคุณเซ็นขั้นแรก ดูหัวข้อ
                 {' '}<b>ตั้งผู้รับช่วงอนุมัติแทน</b> ด้านล่าง
               </li>
             ) : null}
+            <li><b>ธีมสีหน้าจอ</b> — <b>ตามเครื่อง · สว่าง · มืด</b> จำไว้เฉพาะในเบราว์เซอร์นี้ ไม่ผูกกับบัญชี และใบที่พิมพ์ออกกระดาษเป็นพื้นขาวเสมอ</li>
+            <li><b>เปลี่ยนรหัสผ่าน</b> — กรอกรหัสผ่านเดิม รหัสผ่านใหม่ และยืนยันรหัสผ่านใหม่</li>
+            <li><b>ออกจากระบบ</b> — ปุ่มขอบแดงท้ายหน้า มีที่นี่ด้วย นอกเหนือจากที่มุมล่างซ้ายของเมนู</li>
           </ul>
         </li>
       </ol>
@@ -538,18 +645,31 @@ const SECTIONS = [
             caption="แถบซ้ายลิสต์ทุกหน้าเป็นชื่อเต็ม · แถบล่างมีได้สูงสุดสี่ปุ่ม ปุ่มที่มีหลายหน้าอยู่ข้างในจะเปิดเป็นรายการขึ้นมา"
             desk={(
               <Desk
+                title="คู่มือการใช้งาน"
                 nav={(
                   <>
                     {navGroups.map((g) => (
                       <React.Fragment key={g.key}>
                         <span className="mk-side-h">{g.label}</span>
+                        {/* The fold, on the one block that has it — ข้อมูลส่วนตัว
+                            collapses behind a row reading OT ส่วนตัว. `parent`
+                            comes down with the group, so a block that stops
+                            folding stops being drawn folded. */}
+                        {g.parent ? <MkRow pin="›">{g.parent.label}</MkRow> : null}
                         {g.items.map((t) => (
                           <MkRow key={t.key} badge={t.badge || null}>{t.label}</MkRow>
                         ))}
                       </React.Fragment>
                     ))}
-                    <span className="mk-side-h">ช่วยเหลือ</span>
+                    {/* No heading over it on a desktop — the row sits in a
+                        second `<nav>` of its own with the name only where a
+                        screen reader can hear it. The phone's drawer is where
+                        ช่วยเหลือ is written out. */}
                     <MkRow on>คู่มือการใช้งาน</MkRow>
+                    <span className="mk-side-foot">
+                      <MkRow pin="›">ชื่อของคุณ · {p.label}</MkRow>
+                      <MkRow>ออกจากระบบ</MkRow>
+                    </span>
                   </>
                 )}
               >
@@ -558,11 +678,16 @@ const SECTIONS = [
             )}
             phone={(
               <Phone
+                title="คู่มือการใช้งาน"
                 bar={barSlots.map((s) => (
                   <MkSlot key={s.key} icon={s.icon} label={s.label} badge={s.badge || null} />
                 ))}
               >
-                <MkNote>ปุ่มรูปตัวอักษรย่อมุมบนขวาเปิดรายการที่มี คู่มือการใช้งาน อยู่ในกลุ่ม ช่วยเหลือ</MkNote>
+                <MkNote>
+                  ปุ่มวงกลม<b>ตัวอักษรย่อของคุณ</b>มุมบนขวา เปิดเมนูทั้งชุดเป็นแผ่นซ้อน —
+                  บล็อกเดียวกับแถบซ้าย แล้วต่อด้วยกลุ่ม ช่วยเหลือ (คู่มือการใช้งาน) และกลุ่ม บัญชี
+                  (ข้อมูลส่วนตัว · ออกจากระบบ)
+                </MkNote>
               </Phone>
             )}
           />
@@ -573,7 +698,9 @@ const SECTIONS = [
           <ul>
             <li><b>ตัวเลขสีเหลือง</b>บนปุ่มคือจำนวนใบที่รอคุณอยู่ ถ้าไม่มีก็ไม่มีตัวเลข</li>
             <li><b>โลโก้มุมบนซ้ายคือปุ่มย้อนกลับ</b> — ปิดฟอร์มหรือหน้าซ้อนทีละชั้น จนกลับถึงหน้าแรกของบทบาทตัวเอง</li>
-            <li>บนคอมพิวเตอร์ ปุ่มบนสุดของแถบซ้ายย่อแถบให้เหลือเฉพาะไอคอนได้</li>
+            <li>บนคอมพิวเตอร์ <b>ลูกศรข้าง PRIMUS หัวแถบซ้าย</b>ย่อแถบให้เหลือเฉพาะไอคอน · ชี้ค้างที่ไอคอนแล้วชื่อเต็มจะขึ้นมา</li>
+            <li>บนคอมพิวเตอร์ แถวแรกของบล็อก <b>ข้อมูลส่วนตัว</b> คือ <b>OT ส่วนตัว</b> ซึ่งเป็นตัวพับ ไม่ใช่หน้าจอ — กดแล้วสองหน้าข้างในย่อเก็บหรือกางออก</li>
+            <li>บนมือถือ ปุ่มที่มีหลายหน้าอยู่ข้างในจะเปิดเป็น<b>แผ่นรายการ</b>ขึ้นมาก่อน แล้วจึงเลือกหน้า</li>
           </ul>
         </li>
 
@@ -599,25 +726,35 @@ const SECTIONS = [
       <ol className="manual-steps">
         <li className="manual-step">
           <p>
-            เปิดเมนู <b>บันทึกและประวัติ OT</b> แล้วกดปุ่มเพิ่มรายการ —
-            ปุ่มอยู่คนละที่บนสองเครื่อง
+            เปิดเมนู <b>บันทึกและประวัติ OT</b> หน้าแรกคือยอดของเดือนที่เลือกอยู่ —
+            <b>ชั่วโมง OT</b> ของเดือนนั้น ยอด<b>อนุมัติแล้ว</b>กับที่ยัง<b>รออนุมัติ</b>
+            {' '}และการ์ดสามใบแยกตามช่องอัตรา แล้วจึงกดปุ่มเพิ่มรายการ — ปุ่มอยู่คนละที่บนสองเครื่อง
           </p>
           <Shot
-            alt="ปุ่มเพิ่มรายการ บนคอมพิวเตอร์เป็นปุ่มบันทึก OT ใหม่บนการ์ด บนมือถือเป็นปุ่มกลมมุมขวาล่าง"
-            caption="บนคอมพิวเตอร์เป็นปุ่มบนการ์ด · บนมือถือเป็นปุ่มกลมมุมขวาล่าง ลอยอยู่เหนือแถบล่าง"
+            alt="หน้าบันทึกและประวัติ OT บนคอมพิวเตอร์มีปุ่ม + บันทึก OT ใหม่ อยู่ท้ายแถบยอดชั่วโมง บนมือถือเป็นปุ่มกลมมุมขวาล่าง"
+            caption="ตัวเลขในภาพเป็นตัวอย่าง — บนคอมพิวเตอร์ปุ่มอยู่บนแถบยอดชั่วโมง บนมือถือเป็นปุ่มกลม + มุมขวาล่าง ลอยอยู่เหนือแถบล่าง"
             desk={(
-              <Desk nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
+              <Desk title="บันทึกและประวัติ OT" nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
                 <span className="mk-headrow">
-                  <MkRow>ชั่วโมงเดือนนี้</MkRow>
-                  <MkBtn>+ บันทึก OT ใหม่</MkBtn>
+                  <MkRow>ชั่วโมง OT · กันยายน 2569</MkRow>
+                  <span className="mk-acts">
+                    <MkBtn>+ บันทึก OT ใหม่</MkBtn>
+                    <MkBtn ghost>ดูประวัติทั้งหมด</MkBtn>
+                  </span>
                 </span>
-                <MkNote>ใต้ปุ่มคือประวัติการขอ OT ของคุณเอง</MkNote>
+                <span className="mk-three">
+                  <span className="mk-cell"><span className="mk-cell-k">OT วันปกติ ×1.5</span><span className="mk-cell-v">6.0</span></span>
+                  <span className="mk-cell"><span className="mk-cell-k">OT วันหยุด ×1.5</span><span className="mk-cell-v">0.0</span></span>
+                  <span className="mk-cell"><span className="mk-cell-k">OT วันหยุด ×3</span><span className="mk-cell-v">2.5</span></span>
+                </span>
+                <MkNote>ใต้ลงมาคือ รายการล่าสุด · เลือกเดือนได้ที่ช่อง ประจำเดือน บนหัวการ์ด</MkNote>
               </Desk>
             )}
             phone={(
-              <Phone fab bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
-                <MkRow>ชั่วโมงเดือนนี้</MkRow>
-                <MkNote>ปุ่มกลม + มุมขวาล่างคือปุ่มเดียวกัน</MkNote>
+              <Phone title="บันทึกและประวัติ OT" fab bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+                <MkRow>ชั่วโมง OT · กันยายน 2569</MkRow>
+                <span className="mk-cell"><span className="mk-cell-k">OT วันปกติ ×1.5</span><span className="mk-cell-v">6.0</span></span>
+                <MkNote>ปุ่มกลม + มุมขวาล่างคือปุ่มเดียวกับ + บันทึก OT ใหม่</MkNote>
               </Phone>
             )}
           />
@@ -626,81 +763,105 @@ const SECTIONS = [
         <li className="manual-step">
           <p>กรอกวันที่และเวลา — <b>ใบที่ทำข้ามคืนไม่ต้องติ๊กอะไร</b></p>
           <ul>
-            <li><b>วันที่เริ่ม</b> — วันที่ลงมือทำงาน ใบที่ทำข้ามคืนให้ใส่วันที่ของตอนเริ่ม</li>
-            <li><b>เวลาเริ่ม</b> และ <b>เวลาสิ้นสุด</b> — ถ้าเวลาสิ้นสุดน้อยกว่าเวลาเริ่ม ระบบเข้าใจเองว่าข้ามคืน และบอกไว้ข้างช่องเวลา</li>
-            <li><b>รายละเอียดงานที่ทำ</b> — จำกัดความยาว เพราะช่องบนใบที่พิมพ์ออกมามีบรรทัดเดียว ตัวนับอยู่มุมขวาของหัวช่อง</li>
+            <li><b>วันที่เริ่ม</b> — วันที่ลงมือทำงาน ใบที่ทำข้ามคืนให้ใส่วันที่ของตอนเริ่ม · กดที่ช่องแล้วปฏิทินของระบบจะเปิดขึ้นมา วันที่นอกช่วงที่ยื่นได้จะเป็นสีจางกดไม่ได้</li>
+            <li><b>เวลาเริ่ม (จาก)</b> และ <b>เวลาสิ้นสุด (ถึง)</b> — ถ้าเวลาสิ้นสุดน้อยกว่าเวลาเริ่ม ระบบเข้าใจเองว่าข้ามคืน แล้วขึ้นบรรทัดสีเหลืองใต้ช่องเวลาสิ้นสุดว่า <b>ข้ามคืน · สิ้นสุดวัน…ถัดไป</b></li>
+            <li><b>รายละเอียดงานที่ทำ</b> — จำกัดความยาว เพราะช่องบนใบที่พิมพ์ออกมามีบรรทัดเดียว ตัวนับจำนวนตัวอักษรอยู่มุมขวาของหัวช่อง</li>
           </ul>
           <Shot
-            alt="ฟอร์มบันทึก OT บนคอมพิวเตอร์ช่องเวลาเริ่มและเวลาสิ้นสุดอยู่บรรทัดเดียวกัน บนมือถือเรียงลงมาทีละช่อง"
-            caption="ช่องเหมือนกันทั้งสองเครื่อง — บนมือถือเรียงลงมาทีละช่องแทนที่จะอยู่บรรทัดเดียวกัน"
+            alt="ฟอร์มบันทึก OT บนคอมพิวเตอร์ช่องวันที่เริ่ม เวลาเริ่ม และเวลาสิ้นสุดอยู่บรรทัดเดียวกัน บนมือถือเรียงลงมาทีละช่อง"
+            caption="ช่องเหมือนกันทั้งสองเครื่อง — บนคอมพิวเตอร์สามช่องแรกอยู่บรรทัดเดียวกัน บนมือถือเรียงลงมาทีละช่อง · วันและเวลาในภาพเป็นตัวอย่าง"
             desk={(
-              <Desk nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
-                <MkField label="วันที่เริ่ม" on>พฤ. 10 ก.ย. 2569</MkField>
+              <Desk title="บันทึกและประวัติ OT" nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
                 <span className="mk-two">
-                  <MkField label="เวลาเริ่ม" on>21:00</MkField>
-                  <MkField label="เวลาสิ้นสุด" on>02:00</MkField>
+                  <MkField label="วันที่เริ่ม" on>10/09/2569</MkField>
+                  <span className="mk-two">
+                    <MkField label="เวลาเริ่ม (จาก)" on>21:00</MkField>
+                    <MkField label="เวลาสิ้นสุด (ถึง)" on>02:00</MkField>
+                  </span>
                 </span>
-                <MkNote tone="ok">ระบบอ่านว่าข้ามคืน ไปสิ้นสุดวันศุกร์ที่ 11 — ไม่ต้องติ๊กอะไร</MkNote>
+                <MkNote>ข้ามคืน · สิ้นสุดวันศุกร์ถัดไป</MkNote>
                 <MkField label="รายละเอียดงานที่ทำ">ตรวจสอบสายการผลิต 3</MkField>
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
-                <MkField label="วันที่เริ่ม" on>พฤ. 10 ก.ย. 2569</MkField>
-                <MkField label="เวลาเริ่ม" on>21:00</MkField>
-                <MkField label="เวลาสิ้นสุด" on>02:00</MkField>
-                <MkNote tone="ok">ระบบอ่านว่าข้ามคืน ไปสิ้นสุดวันศุกร์ที่ 11</MkNote>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+                <MkField label="วันที่เริ่ม" on>10/09/2569</MkField>
+                <MkField label="เวลาเริ่ม (จาก)" on>21:00</MkField>
+                <MkField label="เวลาสิ้นสุด (ถึง)" on>02:00</MkField>
+                <MkNote>ข้ามคืน · สิ้นสุดวันศุกร์ถัดไป</MkNote>
               </Phone>
             )}
           />
-          <p className="hint">
-            ตัวอย่างวันและเวลาในภาพเป็นตัวอย่างประกอบเท่านั้น ไม่ใช่ค่าที่ระบบตั้งไว้
-          </p>
         </li>
 
         <li className="manual-step">
           <p>
-            อ่าน <b>ตัวอย่างชั่วโมง</b> ที่ระบบคิดให้ ก่อนกดบันทึก —
-            แยกให้เห็นทีละช่องอัตรา ไม่ต้องคิดชั่วโมงเอง
+            อ่านช่อง <b>ระบบคำนวณได้</b> ที่ขึ้นมาเองใต้ฟอร์ม ก่อนกด <b>ส่งขออนุมัติ</b> —
+            แยกให้เห็นทีละช่องอัตราพร้อมยอดรวม ไม่ต้องคิดชั่วโมงเอง
           </p>
           <Shot
-            alt="ตัวอย่างชั่วโมงแยกสามช่องอัตรา บนคอมพิวเตอร์เรียงสามช่องในบรรทัดเดียว บนมือถือเรียงลงมา"
-            caption="ตัวเลขในภาพเป็นตัวอย่าง — ยอดจริงขึ้นกับเวลาที่กรอกและค่าที่ฝ่ายบุคคลตั้งไว้"
+            alt="ช่องระบบคำนวณได้ แยกสามช่องอัตราและช่องรวมชั่วโมง OT บนคอมพิวเตอร์เรียงในบรรทัดเดียว บนมือถือเรียงลงมา"
+            caption="ตัวเลขในภาพเป็นตัวอย่าง — ยอดจริงขึ้นกับเวลาที่กรอกและค่าที่ฝ่ายบุคคลตั้งไว้ · บนหน้าจอจริง ชื่อช่องวันหยุดสองช่องมีช่วงเวลางานปกติกำกับไว้ด้วย"
             desk={(
-              <Desk nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
-                <span className="mk-lab">ตัวอย่างชั่วโมงที่จะได้</span>
-                <span className="mk-three">
-                  <span className="mk-cell"><span className="mk-cell-k">×1.5 วันปกติ</span><span className="mk-cell-v">2.0</span></span>
-                  <span className="mk-cell"><span className="mk-cell-k">×1.5 วันหยุด</span><span className="mk-cell-v">0.0</span></span>
-                  <span className="mk-cell"><span className="mk-cell-k">×3 วันหยุด</span><span className="mk-cell-v">2.5</span></span>
+              <Desk title="บันทึกและประวัติ OT" nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
+                <span className="mk-lab">ระบบคำนวณได้</span>
+                <MkNote>เวลาทั้งหมด 5.0 ชม. · หักพัก 0.0 ชม.</MkNote>
+                <span className="mk-four">
+                  <span className="mk-cell"><span className="mk-cell-k">OT วันปกติ ×1.5</span><span className="mk-cell-v">2.0</span></span>
+                  <span className="mk-cell"><span className="mk-cell-k">OT วันหยุด ×1.5</span><span className="mk-cell-v">0.0</span></span>
+                  <span className="mk-cell"><span className="mk-cell-k">OT วันหยุด ×3</span><span className="mk-cell-v">2.5</span></span>
+                  <span className="mk-cell"><span className="mk-cell-k">รวมชั่วโมง OT</span><span className="mk-cell-v">4.5</span></span>
                 </span>
+                <MkNote>ใต้ลงมาเป็นรายการช่วงที่ระบบตัดให้ทีละวัน แล้วจึงถึงปุ่ม ส่งขออนุมัติ</MkNote>
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
-                <span className="mk-lab">ตัวอย่างชั่วโมงที่จะได้</span>
-                <span className="mk-cell"><span className="mk-cell-k">×1.5 วันปกติ</span><span className="mk-cell-v">2.0</span></span>
-                <span className="mk-cell"><span className="mk-cell-k">×3 วันหยุด</span><span className="mk-cell-v">2.5</span></span>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+                <span className="mk-lab">ระบบคำนวณได้</span>
+                <span className="mk-cell"><span className="mk-cell-k">OT วันปกติ ×1.5</span><span className="mk-cell-v">2.0</span></span>
+                <span className="mk-cell"><span className="mk-cell-k">OT วันหยุด ×3</span><span className="mk-cell-v">2.5</span></span>
+                <span className="mk-cell"><span className="mk-cell-k">รวมชั่วโมง OT</span><span className="mk-cell-v">4.5</span></span>
               </Phone>
             )}
           />
         </li>
 
         <li className="manual-step">
-          <p>ดูคำเตือนที่อาจขึ้น — สามอันแรกเตือนแล้วยังบันทึกได้ อันสุดท้ายคือระบบไม่รับใบ</p>
+          <p>
+            อ่านแถบข้อความที่ขึ้นรอบ ๆ ตัวเลข — <b>สีฟ้าคือบอกให้ทราบ สีเหลืองคือเตือนแล้วยังบันทึกได้
+            {' '}สีแดงคือระบบไม่รับใบ</b>
+          </p>
           <ul>
-            <li>บอกถ้าวันนั้นเป็น <b>วันหยุด</b> หรือเป็น <b>วันเกิดของคุณเอง</b> พร้อมบอกว่าจะคิดอัตราอย่างไร</li>
-            <li>เตือนถ้าเวลาที่กรอก <b>ทับกับใบอื่น</b> ของคนเดียวกัน</li>
-            <li>บอกถ้ายอดของเดือนหรือสัปดาห์นั้น <b>เกินเพดานของแผนก</b> — เกินแล้วยังบันทึกได้ แต่ติดธงไว้ให้ฝ่ายบุคคลเห็น</li>
-            <li><b>ทำไม่ถึงเวลาขั้นต่ำ</b> — อันนี้ระบบไม่รับใบ และบอกเหตุผล</li>
+            <li><b>วันเกิดของคุณเอง</b> — บอกว่าวันนั้นนับเป็นวันหยุดของคุณคนเดียว คิดให้อัตโนมัติ ไม่ต้องติ๊กอะไรเพิ่ม</li>
+            <li>
+              <b>วันนั้นมีใบอยู่แล้ว</b> หรือ <b>เวลาทับกับใบอื่น</b> — ระบบยกใบที่ชนขึ้นมาเป็นแถวพร้อมป้ายสถานะให้ดู
+              และ<b>ไม่รับใบใหม่</b> ให้กลับไปแก้เวลาในใบเดิมแทน เพราะใบ F-HR-027 มีบรรทัดเดียวต่อหนึ่งวัน
+            </li>
+            <li>
+              <b>เพดานของแผนก</b> — บอกเพดาน ยอดที่ใช้ไปแล้ว และยอดรวมถ้านับใบนี้ด้วย ·
+              ตามค่าปกติ เกินแล้วยังบันทึกได้แล้วส่งให้ฝ่ายบุคคลพิจารณา แต่ถ้าฝ่ายบุคคลตั้งไว้ให้ปิดกั้น ระบบจะไม่รับใบ
+            </li>
+            <li>
+              <b>ต่ำกว่าเวลาขั้นต่ำ</b> — ทำอย่างไรขึ้นกับค่าที่ฝ่ายบุคคลตั้งไว้ที่ <b>ตั้งค่าระบบ</b>:
+              รับตามชั่วโมงจริงแล้วติดธงไว้ · ปัดขึ้นเป็นขั้นต่ำ · หรือไม่รับรายการ
+            </li>
+            <li><b>แผนกนี้ไม่คิดโอที</b> — ยังคำนวณให้ดู แต่ปุ่มบันทึกจะกดไม่ได้</li>
           </ul>
+          <p className="hint">
+            ปุ่ม <b>ส่งขออนุมัติ</b> ท้ายฟอร์มจะจางและกดไม่ได้ตราบใดที่ยังมีข้อที่ระบบไม่รับ ·
+            ใบที่เปิดมาแก้ ปุ่มจะเป็น <b>บันทึกการแก้ไข</b> และใบที่กด ส่งใหม่ จะเป็น <b>ส่งคำขอใหม่</b>
+          </p>
         </li>
 
         <li className="manual-step">
           <p>ช่องติ๊กที่<b>อาจขึ้นหรือไม่ขึ้น</b> ขึ้นกับตำแหน่งและวันที่</p>
           <ul>
-            <li><b>เหมารายวัน</b> — ขึ้นเฉพาะบางตำแหน่งที่ฝ่ายบุคคลกำหนด ติ๊กแล้วระบบเติมเวลาให้ตามเวลางานปกติ และแก้เวลาเริ่มเองได้</li>
-            <li><b>ไม่พักเที่ยง</b> — ขึ้นเฉพาะวันที่ทั้งบริษัทหยุด (เสาร์-อาทิตย์ หรือวันหยุดตามประกาศ)</li>
+            <li>
+              <b>เหมารายวัน (นับ 8 ชม. ต่อวัน)</b> — ขึ้นเฉพาะบางตำแหน่งที่ฝ่ายบุคคลกำหนด
+              ติ๊กแล้วระบบเติมเวลาให้ตามเวลางานปกติ แก้เวลาเริ่มเองได้ ส่วนเวลาสิ้นสุดระบบบวกตามให้เอง
+              และช่องเวลาสิ้นสุดจะถูกปิดไว้
+            </li>
+            <li><b>ไม่พักเที่ยง</b> — ขึ้นเฉพาะวันที่ทั้งบริษัทหยุด (เสาร์-อาทิตย์ หรือวันหยุดตามประกาศ) ไม่ขึ้นในวันเกิดของตัวเอง</li>
             <li>ไม่มีช่องติ๊กวันเกิดและไม่มีช่องติ๊กข้ามคืน ทั้งสองอย่างระบบตอบเองจากวันที่และเวลาที่กรอก</li>
           </ul>
         </li>
@@ -786,11 +947,11 @@ const SECTIONS = [
                 </tr>
                 <tr>
                   <td className="nowrap"><MkChip tone="ok">เซ็นไปแล้ว</MkChip></td>
-                  <td>กด <b>ขอถอนใบ</b> — ต้องมีเหตุผล และต้องได้รับอนุมัติ ถอนผ่านแล้วใบกลายเป็น ยกเลิก จึงยื่นใหม่ได้</td>
+                  <td>กด <b>ขอถอนใบ</b> — ต้องกรอกเหตุผล และต้องได้รับอนุมัติ ถอนผ่านแล้วใบกลายเป็น ยกเลิก จึงยื่นใหม่ได้ · ระหว่างรอ แถวจะขึ้นว่า ขอถอนใบแล้ว · รอพิจารณา</td>
                 </tr>
                 <tr>
                   <td className="nowrap"><MkChip tone="no">ไม่อนุมัติ</MkChip></td>
-                  <td>กด <b>ส่งใหม่</b> — ใบเดิมแก้ไม่ได้ ระบบเปิดใบใหม่ให้โดยเก็บสายของเดิมไว้</td>
+                  <td>กด <b>ส่งใหม่</b> — ใบเดิมแก้ไม่ได้ ระบบเปิดใบใหม่ให้โดยเก็บสายของเดิมไว้ · ใบหนึ่งใบกด ส่งใหม่ ได้ <b>1 ครั้ง</b> ใช้ไปแล้วปุ่มจะเปลี่ยนเป็น ส่งใหม่แล้ว</td>
                 </tr>
               </tbody>
             </table>
@@ -798,14 +959,17 @@ const SECTIONS = [
         </li>
 
         <li className="manual-step">
-          <p>ปุ่มพวกนี้อยู่บนแถวของใบ และวางไว้คนละแบบบนสองเครื่อง</p>
+          <p>
+            ปุ่มพวกนี้อยู่สองที่ — บน<b>ตารางประวัติทั้งหมด</b>ปุ่มอยู่ท้ายแถว
+            ส่วนในรายการล่าสุดและบนมือถือ ให้<b>กดที่แถว</b>แล้วปุ่มจะอยู่ท้ายแผ่นรายละเอียดที่เปิดขึ้นมา
+          </p>
           <Shot
-            alt="ปุ่มจัดการใบบนแถว บนคอมพิวเตอร์อยู่ท้ายแถวเดียวกัน บนมือถือกดที่แถวแล้วเปิดเป็นแผ่นซ้อนขึ้นมา"
-            caption="บนมือถือแถวแคบเกินกว่าจะวางปุ่มไว้ท้ายแถว — กดที่แถวแล้วปุ่มจะอยู่ในแผ่นที่เปิดขึ้นมา"
+            alt="ปุ่มจัดการใบ บนคอมพิวเตอร์ในตารางประวัติทั้งหมดปุ่มอยู่ท้ายแถว บนมือถือกดที่แถวแล้วปุ่มอยู่ในแผ่นรายละเอียดที่เปิดขึ้นมา"
+            caption="ชื่อปุ่มในแผ่นรายละเอียดยาวกว่าบนแถวเล็กน้อย — ยกเลิกคำขอ และ ยื่นขอถอนใบ OT คือปุ่มเดียวกับ ยกเลิก และ ขอถอนใบ ท้ายแถว"
             desk={(
-              <Desk nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
+              <Desk title="บันทึกและประวัติ OT" nav={<MkRow on>บันทึกและประวัติ OT</MkRow>}>
                 <span className="mk-headrow">
-                  <MkRow>พฤ. 10 ก.ย. · 21:00–02:00</MkRow>
+                  <MkRow>10/09/2569 · 21:00–02:00</MkRow>
                   <span className="mk-acts">
                     <MkChip tone="wait">รอหัวหน้า</MkChip>
                     <MkBtn ghost>แก้ไข</MkBtn>
@@ -815,13 +979,13 @@ const SECTIONS = [
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
-                <MkRow badge="›">พฤ. 10 ก.ย. · 21:00–02:00</MkRow>
-                <MkNote>กดที่แถว → เปิดแผ่นรายละเอียด</MkNote>
+              <Phone title="บันทึกและประวัติ OT" bar={<MkSlot icon="clock" label="ประวัติ OT" on />}>
+                <MkRow badge="›">10/09/2569 · 21:00–02:00</MkRow>
+                <MkNote>กดที่แถว → เปิดแผ่นรายละเอียด ปุ่มอยู่ท้ายแผ่น</MkNote>
                 <span className="mk-sheet">
-                  <MkChip tone="wait">รอหัวหน้า</MkChip>
-                  <MkBtn ghost>แก้ไข</MkBtn>
-                  <MkBtn ghost>ยกเลิก</MkBtn>
+                  <MkBtn ghost>ปิดหน้าต่าง</MkBtn>
+                  <MkBtn ghost>ยกเลิกคำขอ</MkBtn>
+                  <MkBtn>แก้ไข</MkBtn>
                 </span>
               </Phone>
             )}
@@ -829,9 +993,18 @@ const SECTIONS = [
         </li>
 
         <li className="manual-step">
+          <p>สองปุ่มนี้ถามไม่เหมือนกัน และถามคนละแบบ</p>
+          <ul>
+            <li><b>ยกเลิก</b> — ช่อง <b>เหตุผลที่ยกเลิก</b> ไม่บังคับ กรอกแล้วจะถูกเก็บไว้ในประวัติรายการ · ยกเลิกแล้ว<b>แก้กลับไม่ได้</b> แถวยังอยู่ในตารางโดยขึ้นสถานะ ยกเลิก ไม่ได้ถูกลบทิ้ง</li>
+            <li><b>ขอถอนใบ</b> — ช่อง <b>เหตุผลที่ขอถอน</b> <b>บังคับกรอก</b> ผู้พิจารณาจะเห็นข้อความนี้ · นี่คือคำขอ ไม่ใช่การยกเลิก ใบยังมีสถานะเดิมจนกว่าจะมีคนตอบ</li>
+          </ul>
+        </li>
+
+        <li className="manual-step">
           <p>
             ทุกการแก้และทุกคำขอถอน<b>ขึ้นในประวัติของใบ</b> พร้อมชื่อคนทำและเวลา
-            ประวัตินั้นอยู่ในหน้ารายละเอียดของใบใบนั้น
+            ประวัตินั้นอยู่ในแผ่นรายละเอียดของใบใบนั้น หัวข้อ <b>ประวัติการแก้ไข</b>
+            {' '}ซึ่งเก็บข้อมูลเดิมก่อนการแก้แต่ละครั้งไว้ด้วย
           </p>
         </li>
       </ol>
@@ -850,49 +1023,68 @@ const SECTIONS = [
       <ol className="manual-steps">
         <li className="manual-step">
           <p>
-            เปิดเมนู <b>พิมพ์ใบขออนุมัติ OT</b> แล้วเลือกเดือน
-            หน้านี้<b>ไม่ได้ใช้ยื่นใบ</b> — เป็นที่พิมพ์ใบที่ยื่นไปแล้วเท่านั้น
-            การยื่นอยู่ที่ บันทึกและประวัติ OT
+            เปิดเมนู <b>พิมพ์ใบขออนุมัติ OT</b> แล้วเลือกเดือนที่ช่อง <b>ประจำเดือน · PERIOD</b>
+            {' '}— ใบจะรวมรายการที่อนุมัติแล้วและที่ยังรออนุมัติของเดือนนั้นให้เอง
+            หน้านี้<b>ไม่ได้ใช้ยื่นใบ</b> เป็นที่พิมพ์ใบที่ยื่นไปแล้วเท่านั้น การยื่นอยู่ที่ บันทึกและประวัติ OT
           </p>
           <Shot
-            alt="หน้าพิมพ์ใบ F-HR-027 บนคอมพิวเตอร์เห็นทั้งแผ่นกว้างเต็มหน้ากระดาษ บนมือถือแผ่นเลื่อนซ้ายขวาได้"
-            caption="แผ่นเดียวกัน — บนมือถือกระดาษกว้างกว่าจอ จึงเลื่อนซ้ายขวาได้ และมีคำใบ้บอกไว้"
+            alt="หน้าพิมพ์ใบ F-HR-027 มีปุ่มพิมพ์และปุ่มบันทึกเป็น PDF เหนือกระดาษ บนคอมพิวเตอร์เห็นทั้งแผ่น บนมือถือแผ่นกว้างกว่าจอจึงปัดซ้ายขวาได้"
+            caption="แผ่นเดียวกัน — บนมือถือกระดาษกว้างกว่าจอ จึงปัดซ้าย-ขวาได้ และมีคำใบ้บอกไว้ใต้แผ่น"
             desk={(
-              <Desk nav={<MkRow on>พิมพ์ใบขออนุมัติ OT</MkRow>}>
+              <Desk title="พิมพ์ใบขออนุมัติ OT" nav={<MkRow on>พิมพ์ใบขออนุมัติ OT</MkRow>}>
+                <span className="mk-headrow">
+                  <MkRow>ใบขออนุมัติทำงานล่วงเวลา · กันยายน 2569</MkRow>
+                  <MkField label="ประจำเดือน · PERIOD">กันยายน 2569</MkField>
+                </span>
+                <span className="mk-acts">
+                  <MkBtn>พิมพ์</MkBtn>
+                  <MkBtn>บันทึกเป็น PDF</MkBtn>
+                </span>
                 <span className="mk-paper">
                   <span className="mk-paper-h">ใบขออนุมัติทำงานล่วงเวลา · F-HR-027</span>
-                  <MkNote>ชื่อ · รหัสพนักงาน · แผนก · วันที่ · เวลา · ชั่วโมงแยกช่องอัตรา</MkNote>
-                  <span className="mk-three">
-                    <span className="mk-sign">ผู้ขอ</span>
-                    <span className="mk-sign">ผู้อนุมัติ</span>
-                    <span className="mk-sign">ฝ่ายบุคคล</span>
+                  <MkCols>วันที่ · เวลาทำ OT · จำนวนชั่วโมง 3 ช่อง · รายละเอียดงานที่ทำ · ลงชื่อพนักงาน · ลงชื่อหัวหน้างาน</MkCols>
+                  <span className="mk-two">
+                    <span className="mk-sign">เฉพาะฝ่ายบุคคล</span>
+                    <span className="mk-sign">ฝ่ายบุคคล · ผู้ตรวจสอบ</span>
                   </span>
                 </span>
-                <MkBtn>บันทึกเป็น PDF / พิมพ์</MkBtn>
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="document" label="พิมพ์ใบ OT" on />}>
+              <Phone title="พิมพ์ใบขออนุมัติ OT" bar={<MkSlot icon="document" label="พิมพ์ใบ OT" on />}>
+                <MkField label="ประจำเดือน · PERIOD">กันยายน 2569</MkField>
+                <span className="mk-acts">
+                  <MkBtn>พิมพ์</MkBtn>
+                  <MkBtn>บันทึกเป็น PDF</MkBtn>
+                </span>
                 <span className="mk-paper narrow">
                   <span className="mk-paper-h">F-HR-027</span>
-                  <span className="mk-three">
-                    <span className="mk-sign">ผู้ขอ</span>
-                    <span className="mk-sign">ผู้อนุมัติ</span>
-                    <span className="mk-sign">ฝ่ายบุคคล</span>
-                  </span>
+                  <MkCols>วันที่ · เวลาทำ OT · จำนวนชั่วโมง · ลงชื่อ</MkCols>
                 </span>
-                <MkNote>เลื่อนซ้ายขวาเพื่อดูทั้งแผ่น</MkNote>
-                <MkBtn>บันทึกเป็น PDF / พิมพ์</MkBtn>
+                <MkNote>← ปัดซ้าย-ขวาเพื่อดูทั้งใบ →</MkNote>
               </Phone>
             )}
           />
         </li>
 
         <li className="manual-step">
+          <p>สองปุ่มเหนือกระดาษทำคนละอย่าง และบรรทัดใต้ปุ่มบอกวิธีตั้งหน้ากระดาษไว้แล้ว</p>
+          <ul>
+            <li><b>พิมพ์</b> — เปิดกล่องพิมพ์ของเบราว์เซอร์ (เลือกบันทึกเป็น PDF ในนั้นได้)</li>
+            <li><b>บันทึกเป็น PDF</b> — ได้ไฟล์ทันที ไม่ต้องผ่านกล่องพิมพ์</li>
+            <li>ตั้งค่าพิมพ์เป็น <b>A4 แนวตั้ง</b> ขอบกระดาษ “เริ่มต้น” · และ<b>ติ๊กเปิด “กราฟิกพื้นหลัง”</b> เพื่อให้แถบสีเหลืองบนใบติดไปด้วย</li>
+          </ul>
+        </li>
+
+        <li className="manual-step">
           <p>
-            <b>ยังไม่อนุมัติก็พิมพ์ได้</b> ช่องลงชื่อจะยังว่างไว้ให้เซ็นด้วยมือ
-            ขั้นที่อนุมัติผ่านแล้วจะมีชื่อและวันที่พิมพ์อยู่ในช่องให้เอง
+            <b>ยังไม่อนุมัติก็พิมพ์ได้</b> — แถวที่ยังไม่ผ่านฝ่ายบุคคลจะมีคำว่า <b>(รออนุมัติ)</b>
+            {' '}ต่อท้ายช่องรายละเอียดงาน และมีข้อความบอกไว้เหนือกระดาษด้วยว่ามีกี่รายการ วันไหนบ้าง
           </p>
+          <ul>
+            <li><b>ลงชื่อพนักงาน</b> และ <b>ลงชื่อหัวหน้างาน</b> เป็นสองคอลัมน์ท้ายตาราง ขั้นที่อนุมัติผ่านแล้วระบบพิมพ์ชื่อผู้เซ็นลงไปให้เอง</li>
+            <li>ช่อง <b>เฉพาะฝ่ายบุคคล</b> ท้ายใบเป็นของฝ่ายบุคคล กรอกและเซ็นด้วยมือตามเดิม</li>
+          </ul>
           <p className="hint">กระดาษที่เซ็นแล้วยังเป็นตัวจริงของเรื่องนี้ ระบบไม่ได้มาแทนแฟ้ม</p>
         </li>
       </ol>
@@ -915,34 +1107,48 @@ const SECTIONS = [
             เห็นเฉพาะแผนกที่คุณถืออยู่ รวมแผนกที่ถูกติ๊กเพิ่มให้คุณ
           </p>
           <ul>
-            <li>ใบที่คุณรับช่วงมาจากคนอื่นจะติดป้าย <b>รับช่วง</b> ไว้บนแถว</li>
+            <li>ใบที่คุณรับช่วงมาจากคนอื่นจะติดป้าย <b>รับช่วง</b> ไว้บนแถว และมีแถบบอกไว้เหนือคิวว่ากำลังรับช่วงของใครถึงวันไหน</li>
+            <li>ถ้ามีคนขอถอนใบที่เซ็นไปแล้ว การ์ด <b>คำขอถอนใบที่อนุมัติแล้ว</b> จะขึ้นเหนือคิว พร้อมปุ่ม <b>อนุมัติให้ถอน</b> และ <b>ไม่อนุมัติการถอน</b></li>
+            <li>ปุ่ม <b>+ บันทึก OT แทนพนักงาน</b> อยู่มุมขวาบนของการ์ดคิวนี้ — ดูหัวข้อถัดไป</li>
           </ul>
         </li>
 
         <li className="manual-step">
-          <p><b>กดที่แถว</b>เพื่อเปิดรายละเอียด แล้วตัดสินด้วยปุ่มบนแถวนั้น</p>
+          <p>
+            แถวหนึ่งแถวคือใบหนึ่งใบ — ชื่อ วันที่ เวลา ชั่วโมงแยกสามช่องอัตราและยอดรวม
+            {' '}ช่อง <b>สะสม / เพดาน</b> ของคนนั้นในเดือนนั้น และ <b>รายละเอียด</b>งานที่ทำ
+            {' '}· <b>กดที่แถว</b>เพื่อเปิดแผ่นรายละเอียดทั้งใบ รวมประวัติของใบ
+          </p>
           <Shot
-            alt="แถวในคิวรออนุมัติ บนคอมพิวเตอร์เห็นชื่อ ยอดสะสมและปุ่มอนุมัติในแถวเดียว บนมือถือแถวย่อและปุ่มอยู่ในแผ่นที่เปิดขึ้นมา"
-            caption="ตัวเลขสะสมในภาพเป็นตัวอย่าง — บนมือถือแถวย่อลงและปุ่มย้ายไปอยู่ในแผ่นรายละเอียด"
+            alt="แถวในคิวรออนุมัติ บนคอมพิวเตอร์เป็นตารางกว้าง ปุ่มอนุมัติและไม่อนุมัติย่อเหลือไอคอนถูกกับผิดท้ายแถว บนมือถือแถวกลายเป็นการ์ดและปุ่มมีคำกำกับเต็ม"
+            caption="ตัวเลขในภาพเป็นตัวอย่าง — บนคอมพิวเตอร์ปุ่มสองปุ่มย่อเหลือไอคอนเพื่อไม่ให้ตารางต้องเลื่อนซ้ายขวา บนมือถือแถวเป็นการ์ดและปุ่มกลับมามีคำ"
             desk={(
-              <Desk nav={<MkRow on badge="3">รายการรออนุมัติ</MkRow>}>
+              <Desk title="รายการรออนุมัติ" nav={<MkRow on badge="3">รายการรออนุมัติ</MkRow>}>
                 <span className="mk-headrow">
-                  <MkRow>สมชาย ใจดี · PM-0620 · 21:00–02:00</MkRow>
+                  <MkRow>รออนุมัติ</MkRow>
                   <span className="mk-acts">
-                    <span className="mk-cell"><span className="mk-cell-k">สะสม / เพดาน</span><span className="mk-cell-v">28 / 40</span></span>
-                    <MkChip tone="ok">อนุมัติ</MkChip>
-                    <MkChip tone="no">ไม่อนุมัติ</MkChip>
+                    <MkChip>3 รายการ</MkChip>
+                    <MkBtn ghost>+ บันทึก OT แทนพนักงาน</MkBtn>
+                  </span>
+                </span>
+                <MkCols>พนักงาน · วันที่ · เวลา · ×1.5 ปกติ · ×1.5 วันหยุด · ×3 วันหยุด · รวม · สะสม / เพดาน · รายละเอียด</MkCols>
+                <span className="mk-headrow">
+                  <MkTick>สมชาย ใจดี · PM-0620 · 21:00–02:00</MkTick>
+                  <span className="mk-acts">
+                    <span className="mk-cell"><span className="mk-cell-k">สะสม / เพดาน</span><span className="mk-cell-v">28 / 36</span></span>
+                    <MkIconBtn icon="tick" tone="ok" />
+                    <MkIconBtn icon="cross" tone="no" />
                   </span>
                 </span>
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="inbox" label="รออนุมัติ" on badge="3" />}>
-                <MkRow badge="›">สมชาย ใจดี · PM-0620</MkRow>
-                <MkNote>กดที่แถว → เปิดแผ่นรายละเอียดพร้อมยอดสะสม</MkNote>
-                <span className="mk-sheet">
-                  <MkChip tone="ok">อนุมัติ</MkChip>
-                  <MkChip tone="no">ไม่อนุมัติ</MkChip>
+              <Phone title="รายการรออนุมัติ" bar={<MkSlot icon="inbox" label="รออนุมัติ" on badge="3" />}>
+                <MkTick>สมชาย ใจดี · PM-0620</MkTick>
+                <MkRow badge="›">10/09/2569 · 21:00–02:00 · รวม 4.5 ชม.</MkRow>
+                <span className="mk-acts">
+                  <MkIconBtn icon="tick" tone="ok">อนุมัติ</MkIconBtn>
+                  <MkIconBtn icon="cross" tone="no">ไม่อนุมัติ</MkIconBtn>
                 </span>
               </Phone>
             )}
@@ -950,10 +1156,12 @@ const SECTIONS = [
         </li>
 
         <li className="manual-step">
-          <p>
-            <b>ไม่อนุมัติต้องใส่เหตุผล</b> เหตุผลนั้นไปขึ้นบนใบที่ผู้ยื่นเห็น
-            ผู้ยื่นแก้ใบที่ถูกปฏิเสธไม่ได้ ต้องกด ส่งใหม่ — เหตุผลจึงเป็นสิ่งเดียวที่บอกเขาว่าต้องแก้อะไร
-          </p>
+          <p>ตัดสินได้<b>ทีละใบ หรือทีละหลายใบ</b></p>
+          <ul>
+            <li><b>ทีละใบ</b> — กดปุ่มถูกเพื่ออนุมัติ หรือปุ่มกากบาทเพื่อไม่อนุมัติ ที่ท้ายแถวนั้น</li>
+            <li><b>ทีละหลายใบ</b> — ติ๊กช่องหน้าแถว (หรือ <b>เลือกทั้งหมด</b> ที่หัวตาราง) แล้วใช้แถบที่ขึ้นมา · บนมือถือแถบนี้ยึดอยู่เหนือแถบเมนูล่าง</li>
+            <li><b>ไม่อนุมัติต้องใส่เหตุผล</b> เหตุผลนั้นไปขึ้นบนใบที่ผู้ยื่นเห็น ผู้ยื่นแก้ใบที่ถูกปฏิเสธไม่ได้ ต้องกด ส่งใหม่ — เหตุผลจึงเป็นสิ่งเดียวที่บอกเขาว่าต้องแก้อะไร</li>
+          </ul>
         </li>
 
         <li className="manual-step">
@@ -975,24 +1183,47 @@ const SECTIONS = [
     group: 'งานอนุมัติ',
     icon: 'users',
     title: 'บันทึก OT แทนคนอื่น',
-    blurb: (p) => (p.correct ? 'ฝ่ายบุคคลบันทึกแทนใครก็ได้' : 'บันทึกแทนลูกทีมที่เข้าระบบไม่ได้'),
-    gate: (p) => p.sign || p.correct,
-    gateLabel: (p) => (p.correct
-      ? 'ฝ่ายบุคคลและผู้ดูแลระบบ'
-      : 'คุณเห็นหัวข้อนี้เพราะคุณเซ็นขั้นแรกให้แผนกหนึ่ง'),
-    Body: ({ p }) => (
+    blurb: () => 'บันทึกแทนลูกทีมที่เข้าระบบไม่ได้ — จากปุ่มบนคิวของคุณเอง',
+    /**
+     * ผู้เซ็นขั้นแรก AND NOBODY ELSE — narrowed on 2026-09-10, when the section
+     * was walked against the screen it describes.
+     *
+     * It read `p.sign || p.correct` and told ฝ่ายบุคคล they could file for
+     * anybody on the roster. There is no such button and no such route: the
+     * only way into `mode="proxy"` is `+ บันทึก OT แทนพนักงาน` on the queue
+     * card, which is drawn `!isHr && !delegatedOnly && isSigner(user.role)`,
+     * and `proxyPermission` in lib/proxyFiling.js refuses ฝ่ายบุคคล and
+     * ผู้ดูแลระบบ at the route as well — "both would be filing for people they
+     * do not work beside". A section describing a button its reader does not
+     * have is the exact failure the สิทธิ์ cut exists to end.
+     */
+    gate: (p) => p.sign,
+    gateLabel: () => 'คุณเห็นหัวข้อนี้เพราะคุณเซ็นขั้นแรกให้แผนกหนึ่ง',
+    Body: () => (
       <ol className="manual-steps">
         <li className="manual-step">
-          <p>เลือก<b>คนที่จะบันทึกแทน</b>ก่อน แล้วฟอร์มจึงเปิด</p>
+          <p>
+            กด <b>+ บันทึก OT แทนพนักงาน</b> ที่มุมขวาบนของการ์ด <b>รายการรออนุมัติ</b>
+            {' '}— ทางเข้าอยู่ที่นั่นทางเดียว เพราะเป็นหน้าที่คุณอยู่ตอนที่เห็นว่าใบขาด
+          </p>
+        </li>
+        <li className="manual-step">
+          <p>ติ๊ก<b>คนที่จะบันทึกแทน</b>ในช่อง <b>บันทึกแทนพนักงาน</b> ก่อน แล้วจึงกรอกวันเวลาตามปกติ</p>
           <ul>
-            <li>{p.correct ? 'เลือกได้ทุกคนในทะเบียนพนักงาน' : 'เลือกได้เฉพาะคนในแผนกที่คุณถืออยู่'}</li>
+            <li>รายชื่อที่ขึ้นคือคนในแผนกที่คุณเซ็นให้ · ติ๊กได้<b>หลายคนพร้อมกัน</b> หัวข้อช่องบอกจำนวนที่เลือกไว้ และมีปุ่ม เลือกทั้งหมด อยู่ใต้รายการ</li>
             <li>ฟอร์มที่เปิดมาเป็นฟอร์มเดียวกับที่เจ้าตัวใช้ กฎการตรวจเหมือนกันทุกข้อ</li>
+            <li>ติ๊กหลายคน ตัวอย่างชั่วโมงจะคิดจาก<b>คนแรกในรายการ</b>เป็นตัวอย่าง และช่องเพดานจะไม่แสดง เพราะเพดานเป็นของแต่ละคน ระบบตรวจให้ทีละคนตอนบันทึก</li>
+            <li>ปุ่มบันทึกจะบอกจำนวนใบที่กำลังจะยื่นไว้บนปุ่มด้วย</li>
           </ul>
         </li>
         <li className="manual-step">
           <p>
             ใบที่บันทึกแทน<b>ติดป้ายไว้ว่าใครเป็นคนคีย์</b> และเจ้าของใบยังเป็นเจ้าตัว
             ทั้งสองชื่อขึ้นในประวัติของใบ ไม่ถูกยุบเป็นชื่อเดียว
+          </p>
+          <p className="hint">
+            คุณเซ็นใบที่ตัวเองคีย์ไม่ได้ ใบที่คุณบันทึกแทนจึงข้ามขั้นหัวหน้าไปรอฝ่ายบุคคลทันที
+            และประวัติของใบเขียนเหตุผลนั้นไว้
           </p>
         </li>
       </ol>
@@ -1006,7 +1237,7 @@ const SECTIONS = [
     title: 'ตั้งผู้รับช่วงอนุมัติแทน',
     blurb: (p) => (p.sign
       ? 'ตอนที่คุณจะไม่อยู่ — เป็นช่วงเวลา ไม่ใช่สวิตช์'
-      : 'คิวใบที่หัวหน้ามอบให้คุณเซ็นแทน'),
+      : 'ตั้งผู้รับช่วงให้หัวหน้าที่ไม่อยู่ และคิวใบที่รับช่วงมา'),
     gate: (p) => p.sign || p.correct,
     gateLabel: (p) => (p.sign
       ? 'คุณเห็นหัวข้อนี้เพราะคุณเซ็นขั้นแรกให้แผนกหนึ่ง'
@@ -1015,32 +1246,39 @@ const SECTIONS = [
       <ol className="manual-steps">
         <li className="manual-step">
           <p>
-            เปิด <b>ข้อมูลส่วนตัว</b> แล้วหาหัวข้อ <b>ผู้รับช่วงอนุมัติแทน</b>
-            เลือกคนและ<b>ช่วงวันที่</b>
+            เปิด <b>ข้อมูลส่วนตัว</b> แล้วหาการ์ด <b>ผู้รับช่วงอนุมัติแทน</b> กดปุ่ม
+            {' '}<b>มอบหมายผู้รับช่วง</b> กล่องจะเปิดขึ้นมาให้กรอกสี่ช่อง
           </p>
           <ul>
+            <li><b>ผู้รับช่วง</b> · <b>ตั้งแต่วันที่</b> · <b>ถึงวันที่</b> (นับรวมวันสุดท้าย) · <b>เหตุผล</b> ซึ่งไม่บังคับ แต่จะขึ้นในตารางให้คนอื่นเห็นว่ามาจากอะไร</li>
             <li><b>เป็นหน้าต่างเวลา ไม่ใช่สวิตช์</b> — หมดเองเมื่อพ้นวันที่ตั้งไว้ ไม่ต้องกลับมาปิด</li>
-            <li><b>เพิ่มลายเซ็น ไม่ได้ย้าย</b> — คุณยังเซ็นเองได้ตลอด กลับมาก่อนกำหนดไม่ต้องยกเลิกอะไร</li>
+            <li><b>เพิ่มลายเซ็น ไม่ได้ย้าย</b> — คุณยังเซ็นเองได้ตลอด กลับมาก่อนกำหนดไม่ต้องยกเลิกอะไร ถ้าจะปิดก่อนมีปุ่ม <b>ถอน</b> อยู่ท้ายแถวในตาราง</li>
             <li>ระบบบันทึกว่า<b>ใครกด</b>และ<b>ใช้สิทธิ์ของใคร</b> แยกกันเสมอ</li>
           </ul>
           <Shot
-            alt="ช่องตั้งผู้รับช่วงอนุมัติแทน มีชื่อคนและช่วงวันที่ บนคอมพิวเตอร์วันที่สองช่องอยู่บรรทัดเดียวกัน บนมือถือเรียงลงมา"
-            caption="วันที่ในภาพเป็นตัวอย่าง — สิ่งที่ต้องกรอกคือคนหนึ่งคนกับช่วงวันที่หนึ่งช่วง"
+            alt="กล่องมอบหมายผู้รับช่วง มีช่องผู้รับช่วง ตั้งแต่วันที่ ถึงวันที่ และเหตุผล บนคอมพิวเตอร์วันที่สองช่องอยู่บรรทัดเดียวกัน บนมือถือกล่องกลายเป็นแผ่นเลื่อนขึ้นจากขอบล่างและเรียงช่องลงมา"
+            caption="วันที่ในภาพเป็นตัวอย่าง — บนมือถือกล่องเดียวกันนี้เปิดเป็นแผ่นจากขอบล่างจอ ปุ่มบันทึกอยู่ท้ายแผ่น"
             desk={(
-              <Desk nav={<MkRow on>ข้อมูลส่วนตัว</MkRow>}>
-                <MkField label="ผู้รับช่วงอนุมัติแทน" on>วิภา สุขใจ · หัวหน้างาน</MkField>
+              <Desk title="ข้อมูลส่วนตัว" nav={<MkRow on>ข้อมูลส่วนตัว</MkRow>}>
+                <MkRow>ผู้รับช่วงอนุมัติแทน</MkRow>
+                <MkField label="ผู้รับช่วง" on>วิภา สุขใจ · หัวหน้างาน</MkField>
                 <span className="mk-two">
-                  <MkField label="ตั้งแต่">10 ก.ย. 2569</MkField>
-                  <MkField label="ถึง">17 ก.ย. 2569</MkField>
+                  <MkField label="ตั้งแต่วันที่">10/09/2569</MkField>
+                  <MkField label="ถึงวันที่">17/09/2569</MkField>
                 </span>
-                <MkNote>พ้นวันสุดท้ายแล้วสิทธิ์นี้หายไปเอง</MkNote>
+                <MkField label="เหตุผล">ลาป่วย</MkField>
+                <span className="mk-acts">
+                  <MkBtn ghost>ยกเลิก</MkBtn>
+                  <MkBtn>บันทึกการมอบหมาย</MkBtn>
+                </span>
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="inbox" label="รออนุมัติ" on />}>
-                <MkField label="ผู้รับช่วงอนุมัติแทน" on>วิภา สุขใจ</MkField>
-                <MkField label="ตั้งแต่">10 ก.ย. 2569</MkField>
-                <MkField label="ถึง">17 ก.ย. 2569</MkField>
+              <Phone title="ข้อมูลส่วนตัว" bar={<MkSlot icon="inbox" label="รออนุมัติ" />}>
+                <MkField label="ผู้รับช่วง" on>วิภา สุขใจ</MkField>
+                <MkField label="ตั้งแต่วันที่">10/09/2569</MkField>
+                <MkField label="ถึงวันที่">17/09/2569</MkField>
+                <MkBtn>บันทึกการมอบหมาย</MkBtn>
               </Phone>
             )}
           />
@@ -1053,7 +1291,14 @@ const SECTIONS = [
       <ol className="manual-steps">
         <li className="manual-step">
           <p>
-            เมนู <b>รออนุมัติแทน</b> จะขึ้นเมื่อมีหัวหน้ามอบสิทธิ์ให้คุณ
+            <b>คุณตั้งผู้รับช่วงให้หัวหน้าคนอื่นได้</b> — ที่ <b>ตั้งค่าระบบ</b> หัวข้อ
+            {' '}<b>ผู้รับช่วงอนุมัติ</b> ช่องแรกคือ <b>คิวของหัวหน้างาน</b> ให้เลือกว่ากำลังมอบคิวของใคร
+            {' '}ที่เหลือเหมือนกับที่หัวหน้าตั้งเอง — เผื่อกรณีที่หัวหน้าล้มป่วยกะทันหันจนเข้าระบบมาตั้งเองไม่ได้
+          </p>
+        </li>
+        <li className="manual-step">
+          <p>
+            เมนู <b>รออนุมัติแทน</b> จะขึ้นเมื่อคุณกำลังรับช่วงคิวของหัวหน้าอยู่
             เป็นคิวแยกจาก รออนุมัติ OT ของคุณเอง เพราะเป็นคนละความรับผิดชอบ
           </p>
           <ul>
@@ -1082,8 +1327,10 @@ const SECTIONS = [
       <ol className="manual-steps">
         <li className="manual-step">
           <p>
-            เลือกเดือน แล้วอ่านยอดรายคนของ<b>แผนกที่คุณถืออยู่</b> —
-            ขอบเขตคือแผนกที่ลายเซ็นขั้นแรกเป็นของคุณ
+            เลือกเดือนที่ช่อง <b>ประจำเดือน</b> แล้วอ่านยอดรายคนของ<b>แผนกที่คุณถืออยู่</b> —
+            ขอบเขตคือแผนกที่ลายเซ็นขั้นแรกเป็นของคุณ · ช่อง <b>สถานะที่นับ</b> ข้าง ๆ กันคือตัวตัดสินว่า
+            ตัวเลขทั้งตารางนับเฉพาะใบที่อนุมัติแล้ว หรือรวมใบที่ยังรออยู่ด้วย · ช่อง <b>ค้นหาพนักงาน</b>
+            {' '}กรองเฉพาะหน้าจอ และเอกสารที่สั่งพิมพ์จะได้เท่าที่กรองไว้
           </p>
           {p.company ? (
             <p className="hint">
@@ -1133,29 +1380,42 @@ const SECTIONS = [
         <li className="manual-step">
           <p>ก่อนพิมพ์ทั้งเดือน อ่าน <b>สรุปสถานะงวด</b> ว่ายังมีใบค้างใครอยู่หรือเปล่า</p>
           <Shot
-            alt="สรุปสถานะงวด นับใบที่ยังค้างแต่ละขั้น บนคอมพิวเตอร์เรียงสามช่องในบรรทัดเดียว บนมือถือเรียงลงมา"
-            caption="ตัวเลขในภาพเป็นตัวอย่าง — หน้านี้ถามอย่างเดียว ไม่ได้ปิดกั้นอะไร ระบบนี้ไม่มีการปิดงวด"
+            alt="การ์ดสรุปสถานะงวด เป็นข้อความบรรทัดเดียวบอกว่าเดือนนี้มีอะไรค้างอยู่กี่ใบ พร้อมบรรทัดเล็กใต้ลงมาบอกว่าค้างแล้วเป็นอย่างไร"
+            caption="ตัวเลขในภาพเป็นตัวอย่าง — เป็นประโยคเดียว ไม่ใช่ช่องตัวเลขหลายช่อง · เดือนที่ไม่มีอะไรค้างการ์ดจะขึ้นเครื่องหมายถูกแทน · หน้านี้ถามอย่างเดียว ไม่ได้ปิดกั้นอะไร ระบบนี้ไม่มีการปิดงวด"
             desk={(
-              <Desk nav={<MkRow on>ตรวจสอบประจำเดือน</MkRow>}>
-                <span className="mk-lab">สรุปสถานะงวด · ก.ย. 2569</span>
-                <span className="mk-three">
-                  <span className="mk-cell"><span className="mk-cell-k">รอหัวหน้า</span><span className="mk-cell-v warn">4</span></span>
-                  <span className="mk-cell"><span className="mk-cell-k">รอฝ่ายบุคคล</span><span className="mk-cell-v warn">2</span></span>
-                  <span className="mk-cell"><span className="mk-cell-k">คำขอถอนค้าง</span><span className="mk-cell-v">0</span></span>
+              <Desk title="ตรวจสอบประจำเดือน" nav={<MkRow on>ตรวจสอบประจำเดือน</MkRow>}>
+                <span className="mk-alert col">
+                  <span className="mk-alert-t">⚠ งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ</span>
+                  <MkNote>ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา</MkNote>
                 </span>
+                <MkNote>สิงหาคม 2569 ยังมีของค้างอยู่ · เลือกเดือนนั้นด้านบนเพื่อตรวจก่อนพิมพ์</MkNote>
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="chart" label="รายงาน" on />}>
-                <span className="mk-lab">สรุปสถานะงวด · ก.ย. 2569</span>
-                <span className="mk-cell"><span className="mk-cell-k">รอหัวหน้า</span><span className="mk-cell-v warn">4</span></span>
-                <span className="mk-cell"><span className="mk-cell-k">รอฝ่ายบุคคล</span><span className="mk-cell-v warn">2</span></span>
+              <Phone title="ตรวจสอบประจำเดือน" bar={<MkSlot icon="chart" label="รายงาน" on />}>
+                <span className="mk-alert col">
+                  <span className="mk-alert-t">⚠ งวด กันยายน 2569 — มีใบรออนุมัติค้างอยู่ 4 ใบ</span>
+                  <MkNote>ยังไม่มีชื่อผู้อนุมัติในใบ OT ที่พิมพ์ออกมา</MkNote>
+                </span>
               </Phone>
             )}
           />
+          <ul>
+            <li>ที่ค้างมีได้สี่แบบ — <b>ใบรออนุมัติ</b> · <b>คำขอถอนใบค้างพิจารณา</b> · <b>ใบที่เกินเพดานของแผนก</b> · <b>ใบที่ต่ำกว่าเกณฑ์ขั้นต่ำ</b> แต่ละแบบมีบรรทัดบอกว่าค้างแล้วมีผลอย่างไร</li>
+            <li>ถ้า<b>เดือนก่อนหน้า</b>ยังมีของค้าง การ์ดนี้จะเตือนไว้ด้วย พร้อมบอกให้ย้อนไปเลือกเดือนนั้น</li>
+          </ul>
           <p className="hint">
             ใบที่ยังไม่อนุมัติจะไม่ขึ้นบนแผ่นที่พิมพ์ — แผ่นที่เข้าแฟ้มโดยขาดแถวคือความผิดพลาดที่หาทีหลังยาก
           </p>
+        </li>
+
+        <li className="manual-step">
+          <p>ปุ่มเอกสารของเดือนอยู่เป็นแถวเดียวกันใต้ช่องค้นหา และทุกปุ่มทำงานกับ<b>สิ่งที่อยู่บนตารางตอนนั้น</b></p>
+          <ul>
+            <li><b>พิมพ์ใบขออนุมัติ OT ทุกคน</b> — รวมใบของทุกคนในตารางเป็นเอกสารเดียว หนึ่งคนต่อหนึ่งหน้า</li>
+            <li><b>ส่งออกรายการ OT (CSV)</b> — ทีละใบ</li>
+            <li><b>ส่งออกรายงานสรุปประจำเดือน (CSV)</b> — ยอดรวมรายคน</li>
+          </ul>
         </li>
 
         <li className="manual-step">
@@ -1201,6 +1461,10 @@ const SECTIONS = [
             ทุกใบในบริษัทผ่านคิวนี้ ไม่ว่าจะเริ่มจากแผนกไหน
             ใบที่ยื่นโดยการเงิน ผู้จัดการฝ่าย ฝ่ายบุคคล หรือผู้ดูแลระบบ มาถึงคิวนี้ตั้งแต่แรก ไม่ผ่านขั้นหัวหน้า
           </p>
+          <ul>
+            <li>หน้าตาและวิธีใช้เหมือนคิวของหัวหน้าทุกอย่าง ต่างกันที่<b>คำบนปุ่มเป็น ยืนยัน</b> แทน อนุมัติ เพราะเป็นลายเซ็นขั้นสุดท้าย</li>
+            <li>ติ๊กหลายแถวแล้วยืนยันทีเดียวได้เหมือนกัน</li>
+          </ul>
         </li>
         <li className="manual-step">
           <p>ตัวเลขบนปุ่มรวม<b>คำขอถอนที่ยังไม่ตอบ</b>ของใบที่รออยู่ในคิวนี้ด้วย</p>
@@ -1233,8 +1497,19 @@ const SECTIONS = [
         </li>
         <li className="manual-step">
           <p>
-            ทุกการแก้<b>ขึ้นในประวัติของใบ</b> พร้อมชื่อและเวลา และเข้าบันทึกประวัติระบบด้วย
-            แก้แล้วระบบคิดชั่วโมงใหม่ให้ทันที ไม่ต้องสั่งคำนวณใหม่
+            ทางเข้าอยู่ที่ <b>ตรวจสอบประจำเดือน</b> — หาคนที่ต้องการแล้วกด
+            {' '}<b>ดู / แก้ไขรายการ</b> ท้ายแถว หน้าที่เปิดมาชื่อ <b>รายการ OT — ชื่อคนนั้น</b>
+            {' '}แล้วจึงกด <b>แก้ไข</b> ที่ใบที่ต้องการ
+          </p>
+          <ul>
+            <li>ฟอร์มที่เปิดมามีช่อง <b>เหตุผลการแก้ไข *</b> เพิ่มมาหนึ่งช่อง และ<b>บังคับกรอก</b> ปุ่มบันทึกจะกดไม่ได้จนกว่าจะกรอก</li>
+            <li>แก้แล้วระบบคิดชั่วโมงใหม่ให้ทันที <b>โดยคงสถานะอนุมัติเดิมไว้</b> — ไม่ต้องสั่งคำนวณใหม่ และไม่ต้องให้ใครเซ็นซ้ำ</li>
+          </ul>
+        </li>
+        <li className="manual-step">
+          <p>
+            ทุกการแก้<b>ขึ้นในประวัติของใบ</b> พร้อมชื่อและเวลา เก็บทั้งค่าเดิมและค่าใหม่
+            และเข้า<b>บันทึกประวัติระบบ</b>ด้วย
           </p>
         </li>
         <li className="manual-step">
@@ -1257,33 +1532,48 @@ const SECTIONS = [
     Body: () => (
       <ol className="manual-steps">
         <li className="manual-step">
-          <p><b>ตัวเลขจริงทั้งหมดอยู่ที่หน้านี้ ไม่ได้อยู่ในคู่มือ</b></p>
+          <p>
+            <b>ตัวเลขจริงทั้งหมดอยู่ที่หน้านี้ ไม่ได้อยู่ในคู่มือ</b> — หน้านี้แบ่งเป็น
+            {' '}<b>เจ็ดหัวข้อ</b> เปลี่ยนหัวข้อแล้วเนื้อข้างใต้เปลี่ยนตาม
+          </p>
           <Shot
-            alt="หน้าตั้งค่าระบบ มีสี่ส่วน บนคอมพิวเตอร์เห็นทั้งสี่ส่วนเรียงในหน้าเดียว บนมือถือเรียงลงมาทีละส่วน"
-            caption="สี่ส่วนเดียวกันทั้งสองเครื่อง — บนมือถืออยู่ในปุ่ม เพิ่มเติม ของแถบล่าง"
+            alt="หน้าตั้งค่าระบบ บนคอมพิวเตอร์หัวข้อทั้งเจ็ดเป็นแถบปุ่มเรียงอยู่บนสุด บนมือถือหัวข้อเดียวกันกลายเป็นช่องเลือกชื่อ หน้าตั้งค่า"
+            caption="เจ็ดหัวข้อเดียวกันทั้งสองเครื่อง — บนคอมพิวเตอร์เป็นแถบปุ่ม บนมือถือเป็นช่องเลือกที่กดแล้วเปิดเป็นแผ่นรายการ · เข้าถึงได้จากปุ่ม เพิ่มเติม ของแถบล่าง"
             desk={(
-              <Desk nav={<MkRow on>ตั้งค่าระบบ</MkRow>}>
-                <MkRow>นโยบายการคำนวณ — เวลางานปกติ · การปัดเศษ · เวลาขั้นต่ำ · จำนวนวันที่ยื่นล่วงหน้าได้</MkRow>
-                <MkRow>ทะเบียนพนักงาน — เพิ่มคน แก้บทบาท ย้ายแผนก รีเซ็ตรหัสผ่าน</MkRow>
-                <MkRow>ปฏิทินวันหยุด — วันหยุดตามประกาศของทั้งบริษัท</MkRow>
-                <MkRow>แผนก — เพดานต่อเดือนและต่อสัปดาห์ · รูปแบบโอที · ผู้ถือลายเซ็น</MkRow>
+              <Desk title="ตั้งค่าระบบ" nav={<MkRow on>ตั้งค่าระบบ</MkRow>}>
+                <MkTabs
+                  on="แผนกและเพดาน"
+                  items={['แผนกและเพดาน', 'พนักงาน', 'วันหยุดบริษัท', 'นโยบายการคำนวณ', 'ผู้รับช่วงอนุมัติ', 'ประวัติการแก้ทะเบียน', 'รหัสเอกสาร OT']}
+                />
+                <MkNote>หัวข้อที่เปิดอยู่เป็นปุ่มทึบ ที่เหลือเป็นปุ่มโปร่ง</MkNote>
               </Desk>
             )}
             phone={(
-              <Phone bar={<MkSlot icon="sliders" label="เพิ่มเติม" on />}>
-                <MkRow>นโยบายการคำนวณ</MkRow>
-                <MkRow>ทะเบียนพนักงาน</MkRow>
-                <MkRow>ปฏิทินวันหยุด</MkRow>
-                <MkRow>แผนก</MkRow>
+              <Phone title="ตั้งค่าระบบ" bar={<MkSlot icon="sliders" label="เพิ่มเติม" on />}>
+                <MkField label="หน้าตั้งค่า" on>แผนกและเพดาน</MkField>
+                <MkNote>กดที่ช่องแล้วหัวข้อทั้งเจ็ดเปิดขึ้นมาเป็นแผ่นรายการ</MkNote>
               </Phone>
             )}
           />
+          <ul>
+            <li><b>แผนกและเพดาน</b> — เพดานต่อเดือนและต่อสัปดาห์ · รูปแบบโอที · ผู้ถือลายเซ็นของแต่ละแผนก · มีตัวเลขเตือนบนหัวข้อนี้ถ้ามีแผนกที่ยังไม่มีหัวหน้าเซ็น</li>
+            <li><b>พนักงาน</b> — ทะเบียนพนักงาน เพิ่มคน แก้บทบาท ย้ายแผนก รีเซ็ตรหัสผ่าน และนำเข้าจากไฟล์ CSV หรือ Excel</li>
+            <li><b>วันหยุดบริษัท</b> — ปฏิทินวันหยุดตามประกาศของทั้งบริษัท</li>
+            <li><b>นโยบายการคำนวณ</b> — เวลางานปกติ · การปัดเศษ · เวลาขั้นต่ำ · จำนวนวันที่ยื่นล่วงหน้าได้ · ปลายทางของใบที่ฝ่ายบุคคลตีกลับ</li>
+            <li><b>ผู้รับช่วงอนุมัติ</b> — ตั้งผู้รับช่วงให้หัวหน้าที่ไม่อยู่</li>
+            <li><b>ประวัติการแก้ทะเบียน</b> — ใครแก้ทะเบียนพนักงานไปบ้าง</li>
+            <li><b>รหัสเอกสาร OT</b> — เลขคุมเอกสารที่พิมพ์อยู่บนใบ</li>
+          </ul>
         </li>
         <li className="manual-step">
-          <p>แก้<b>นโยบาย</b>แล้ว ใบเก่าไม่เปลี่ยนเอง</p>
+          <p>
+            แก้<b>นโยบาย</b>ที่มีผลต่อการคำนวณแล้ว ระบบ<b>คำนวณใบที่ยังไม่อนุมัติใหม่ให้ทันที</b>
+            {' '}ส่วน<b>ใบที่อนุมัติแล้วไม่ขยับ</b>
+          </p>
           <ul>
-            <li>ระบบเก็บเวอร์ชันของนโยบายไว้ และมีประวัติว่าใครแก้อะไรเมื่อไร</li>
-            <li>ถ้าต้องการให้ใบเก่าคิดตามค่าที่แก้ใหม่ ต้องสั่งคำนวณใหม่ ซึ่งเป็นงานของผู้ดูแลระบบ</li>
+            <li>ข้อความหลังบันทึกจะบอกว่าคำนวณใหม่ไปกี่รายการ และข้ามไปกี่รายการเพราะคำนวณใหม่ไม่ได้</li>
+            <li>ระบบเก็บ<b>เวอร์ชันของนโยบาย</b>ไว้ พร้อมประวัติว่าใครแก้อะไรเมื่อไร และใบแต่ละใบจำได้ว่าคิดด้วยกฎเวอร์ชันไหน</li>
+            <li>ข้อที่ไม่กระทบชั่วโมง หน้านั้นเขียนบอกไว้เองว่าไม่มีการคำนวณใหม่</li>
           </ul>
         </li>
       </ol>
@@ -1294,8 +1584,8 @@ const SECTIONS = [
     key: 'logs',
     group: 'งานฝ่ายบุคคลและผู้ดูแลระบบ',
     icon: 'shield',
-    title: 'บันทึกประวัติระบบ และคำนวณใหม่',
-    blurb: () => 'สองอย่างที่ฝ่ายบุคคลไม่มี',
+    title: 'บันทึกประวัติระบบ',
+    blurb: () => 'หน้าจอเดียวที่ฝ่ายบุคคลเปิดไม่ได้',
     gate: (p) => p.logs,
     gateLabel: () => 'ผู้ดูแลระบบเท่านั้น',
     Body: () => (
@@ -1303,15 +1593,25 @@ const SECTIONS = [
         <li className="manual-step">
           <p>
             <b>บันทึกประวัติระบบ</b> — ใครทำอะไรกับใบไหนและเมื่อไร
-            ฝ่ายบุคคลเปิดหน้านี้ไม่ได้ เพราะบัญชีฝ่ายบุคคลใช้ร่วมกันหลายคน
+            ฝ่ายบุคคลเปิดหน้านี้ไม่ได้ เพราะบัญชีฝ่ายบุคคลใช้ร่วมกันหลายคน และชื่อฝ่ายบุคคลเองก็อยู่ในบันทึกนี้
           </p>
         </li>
         <li className="manual-step">
-          <p><b>คำนวณใหม่</b> — สั่งให้ระบบคิดชั่วโมงของใบเก่าใหม่ตามนโยบายปัจจุบัน</p>
+          <p>หน้านี้มี<b>ห้าหัวข้อ</b> เรียงตามลำดับที่คนเดินมาถึงมัน</p>
           <ul>
-            <li>สั่งแล้วมีบันทึกไว้ว่าใครสั่ง และแตะใบไปกี่ใบ</li>
-            <li>ใช้เมื่อแก้นโยบายแล้วต้องการให้ย้อนไปมีผลกับใบที่ยื่นไปแล้ว</li>
+            <li><b>ภาพรวม</b> — มีอะไรที่ควรดูไหม ถามก่อนที่จะรู้ว่ากำลังหาอะไร กดที่ตัวเลขแล้วกระโดดไปที่รายการที่กรองไว้ให้แล้ว</li>
+            <li><b>การเข้าใช้งาน</b> — เข้าระบบ เข้าไม่สำเร็จ และออกจากระบบ</li>
+            <li><b>การแก้ไขข้อมูล</b> — ทุกคำขอที่ตั้งใจจะเปลี่ยนอะไรสักอย่าง</li>
+            <li><b>ทั้งหมด</b> — รวมการเปิดอ่านด้วย ใช้ตอบว่าบัญชีนี้เปิดดูอะไรไปบ้าง</li>
+            <li><b>การใช้สิทธิ์พิเศษ</b> — สิ่งที่ตามกฎแล้วจะถูกปฏิเสธ แต่ถูกอนุญาตไว้พร้อมเหตุผล</li>
           </ul>
+        </li>
+        <li className="manual-step">
+          <p>
+            <b>ลบหรือแก้บันทึกไม่ได้ และไม่มีปุ่มให้กด</b> — บันทึกนี้เพิ่มได้อย่างเดียว
+            เก็บตาม พ.ร.บ. คอมพิวเตอร์ ไม่น้อยกว่า 90 วัน ไม่เก็บเนื้อหาที่ส่งเข้ามารวมทั้งรหัสผ่าน
+            และรวมอยู่ในไฟล์สำรองข้อมูลรายวัน — ข้อความนี้เขียนอยู่ใต้ชื่อหน้าแล้ว
+          </p>
         </li>
       </ol>
     ),
@@ -1337,7 +1637,7 @@ const SECTIONS = [
           <ul>
             <li><b>หักพักเที่ยง</b> เฉพาะใบที่คร่อมช่วงพักกลางวัน ใบที่ไม่แตะช่วงนั้นไม่ถูกหัก</li>
             <li><b>ปัดเศษ</b> เป็นบล็อกเท่า ๆ กัน และปัดแยกทีละช่องอัตรา ยอดสามช่องจึงบวกกันได้เท่ากับยอดรวมพอดี</li>
-            <li><b>เวลาขั้นต่ำ</b> ทำไม่ถึงเกณฑ์ ระบบไม่รับใบ และบอกเหตุผล</li>
+            <li><b>เวลาขั้นต่ำ</b> ทำไม่ถึงเกณฑ์แล้วจะเป็นอย่างไร ฝ่ายบุคคลเป็นคนเลือก — รับตามจริงแล้วติดธง ปัดขึ้นเป็นขั้นต่ำ หรือไม่รับรายการ</li>
             <li><b>เสาร์-อาทิตย์และวันหยุดตามประกาศ</b> คิดเป็นวันหยุด ปฏิทินวันหยุดฝ่ายบุคคลเป็นคนตั้ง</li>
           </ul>
         </li>
@@ -1345,7 +1645,10 @@ const SECTIONS = [
           <p><b>เพดาน OT</b> ตั้งไว้ที่ระดับแผนก ทั้งต่อเดือนและต่อสัปดาห์ แต่ <b>วัดรายคน</b></p>
           <ul>
             <li>นับชั่วโมงจริงไม่ใช่ชั่วโมงคูณอัตรา และนับรวมใบที่ยังรออนุมัติด้วย</li>
-            <li><b>ชนเพดานแล้วระบบยังรับใบ แต่ติดธงไว้ให้ฝ่ายบุคคลเห็น</b> ไม่ได้ปฏิเสธทิ้ง</li>
+            <li>
+              <b>ตามค่าปกติ ชนเพดานแล้วระบบยังรับใบ แต่ติดธงไว้ให้ฝ่ายบุคคลเห็น</b> ไม่ได้ปฏิเสธทิ้ง ·
+              ฝ่ายบุคคลเปลี่ยนเป็นให้ปิดกั้นไม่รับใบที่เกินได้ที่ <b>ตั้งค่าระบบ</b>
+            </li>
           </ul>
         </li>
         <li className="manual-step">
@@ -1378,8 +1681,8 @@ const SECTIONS = [
         <li className="manual-step">
           <p><b>เข้าระบบไม่ได้</b></p>
           <ul>
-            <li>ตรวจขีดกลางในรหัสพนักงาน · รหัสผ่านครั้งแรกคือรหัสพนักงาน</li>
-            <li>กรอกผิดหลายครั้งต้องรอสักครู่ · ยังไม่ได้ให้ติดต่อฝ่ายบุคคล</li>
+            <li>ขีดกลางในรหัสพนักงานไม่มีผล · แต่<b>รหัสผ่าน</b>ต้องตรงตัว เป็นตัวพิมพ์ใหญ่ตามที่อยู่บนบัตร รวมขีดกลางถ้ามี</li>
+            <li>รหัสผ่านครั้งแรกคือรหัสพนักงานของตัวเอง · กรอกผิดหลายครั้งต้องรอสักครู่ · ยังไม่ได้ให้ติดต่อฝ่ายบุคคล</li>
           </ul>
         </li>
         <li className="manual-step">

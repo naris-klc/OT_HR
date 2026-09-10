@@ -2617,10 +2617,20 @@ what the reader's บทบาท can actually open** — asked for as *แย�
 แบบเลื่อนเป็น section · แสดงเฉพาะวิธีใช้งานที่ใช้งานได้ตามสิทธิ์*. The three
 changes are one change: **the cut is what makes the page short enough to
 scroll**, which was the whole objection to a scrolling page when the menu was
-chosen. A พนักงาน is shown **8 sections**, a ผู้เซ็น 12, การเงิน 13, ฝ่ายบุคคล 15
-and ผู้ดูแลระบบ 16 — and ผู้ดูแลระบบ is **not** shown all eighteen, because
+chosen. A พนักงาน is shown **8 sections**, a ผู้เซ็น 12, การเงิน 13, ฝ่ายบุคคล 14
+and ผู้ดูแลระบบ 15 — and ผู้ดูแลระบบ is **not** shown all eighteen, because
 `isSigner` is false for them and the two sections about the ผู้เซ็นขั้นแรก queue
 describe screens they do not have.
+
+**It read "ฝ่ายบุคคล 15 and ผู้ดูแลระบบ 16" until 2026-09-10**, when the manual
+was walked page by page against the screens it describes and บันทึก OT แทนคนอื่น
+was cut from both of them. Its gate had been `p.sign || p.correct`, and there is
+no such screen for ฝ่ายบุคคล: the only door into the proxy form is
+`+ บันทึก OT แทนพนักงาน` on the queue card, drawn only for a ผู้เซ็น, and
+`proxyPermission` refuses ฝ่ายบุคคล and ผู้ดูแลระบบ at the route as well —
+*"both would be filing for people they do not work beside"*. **A section
+describing a control its reader does not have is the failure the cut exists to
+end**, and it was in the cut itself.
 
 **The gate is on the SECTIONS and never on the menu row**, and the two are
 different promises that a single rule cannot serve. The row is the DOOR and
