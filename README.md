@@ -2010,7 +2010,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     142 files, run by `npm test`. Six named below as a
+test/                     143 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2023,9 +2023,16 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2549 tests
-across 142 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2562 tests
+across 143 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2549 tests across 142 files … measured 2026-09-10" until **ตรวจสอบประจำเดือน
+ยืนยันได้เองทีละหลายคน** — `monthBatchApprove` and thirteen cases, plus eight
+rewritten across `hrMonthCards`, `monthScanColumn` and `monthApprovable`. Every
+one of those eight replaced an assertion about a shape that round changed on
+purpose — a card grid that gained a third track, a `colCount` that stopped
+being a ternary, a ceiling field that stopped being a count — so the file count
+moved by one and the case count by thirteen. And it read
 "2541 tests across 142 files" until ot-hardening-and-slips was merged a FOURTH
 time the same evening — ten more commits, NO new test file, and eight cases
 spread over five that already existed. The branch measured itself at
@@ -6866,6 +6873,118 @@ The two answers differ for exactly one person: somebody whose แผนก was m
 ทะเบียนพนักงาน after they filed. **That divergence is older than this filter and
 is not created by it** — it is written down here because this is now the screen a
 reader will be standing on when they meet it.
+
+### ตรวจสอบประจำเดือน เซ็นชื่อได้ — ติ๊กหลายคน ยืนยันทีเดียว
+
+**2026-09-10, and this is the round where the screen changed KIND.** Until this
+day ตรวจสอบประจำเดือน was a report: it read a month and printed it. It signs
+now, and every rule below exists because a screen that signs has §6 hanging off
+it in a way a screen that reads does not.
+
+Asked for in one sentence: *"เพิ่มปุ่มให้สามารถกดอนุมัติสำหรับคนที่ผลเทียบไม่ติด
+ปัญหาได้เลย และสามารถเลือกอนุมัติได้หลายคนหลายรายการ … เพื่อไม่ให้เสียเวลาสลับ
+หน้าไปมา"*.
+
+#### ⚠ ONE TICK IS A PERSON'S WHOLE MONTH, and that is the whole design
+
+คิวรออนุมัติ ticks one **ใบ**. This screen is one row per **person**, and the
+ask named the unit — *เลือกอนุมัติได้หลายคนหลายรายการ*. So a tick here is six
+signatures on a normal month, and it is paid for in three places:
+
+  · **Every count says both units.** `เลือกไว้ 3 คน · 17 รายการ · 45.5 ชม.` on
+    the bar, all three again in the dialog, and the green button counts **ใบ**
+    rather than people, because that is the unit that reaches payroll and the
+    button is the last thing read before it does.
+  · **There is no single-row fast path.** That queue approves a clean single row
+    with no dialog at all; here the dialog is unskippable even for one person,
+    because "one person" is a month.
+  · **The preview lists people, one line each, with their own count and hours** —
+    `สมชาย ใจดี · 6 ใบ · 18.0 ชม.` — so a reader who ticked four names can see
+    before pressing which of the four is carrying most of the month.
+
+#### The row the scan comparison flagged CANNOT be ticked
+
+`disabled`, not warned, with a `title` that names the way forward. It is
+`actionable`'s rule from คิวรออนุมัติ — *a row that breaks when pressed should
+not be tickable in the first place* — turned to a new purpose: here "breaks"
+does not mean the server refuses it, because it would take it. **It means
+nobody has looked yet**, which is the one thing this screen was asked to stop.
+
+That is also why the pencil had to go first: the only way through such a row is
+to open the person, and since earlier the same day the row itself is what opens.
+
+> **A month with no scan file at all is NOT blocked** — decided the same day.
+> The comparison points at rows; it does not hold a gate, and a month whose
+> file arrives late is not a month that cannot be closed. The card at the top
+> of the screen says `ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ` in the largest type on
+> the page instead, because from a table with no marks on it that state and
+> "every row agrees" are indistinguishable.
+
+#### เลือกทั้งหมด crosses the pager, and on คิวรออนุมัติ it does not
+
+That queue's rule is *ติ๊กอยู่ได้เท่าที่แถวยังอยู่บนจอ*, because its pager is a
+real filter. Here the pager is a **phone-only CSS window** (`off-page`) over a
+list the desktop draws whole — `CARD_PAGE` says so about itself in capitals,
+**A PAGE IS NOT A FILTER** — so one button on two screen sizes has to mean one
+thing. It takes every row the FILTERS left and writes the count on its own label
+(`เลือกทั้งหมด (24 คน)`), so a phone reader seeing five knows they are ticking
+twenty-four. A tick does not survive ประจำเดือน, สถานะที่นับ, แผนก, ค้นหา or
+ดูเฉพาะคนที่ต้องตรวจ changing — those five rebuild the list; the pager does not.
+
+#### What decides whether a box is offered is the SERVER's answer
+
+`GET /api/reports/monthly/[period]` sends `approvable` per person — the `_id`s
+this particular reader may confirm — and it is computed with
+**`approvalPermission`, the same decider the approve route itself asks**, not
+with a `status === 'pending_hr'` test in the browser. Two reasons, and the
+second is the one that cannot be worked around:
+
+  · `pendingCount` counts `status !== 'approved'`, which sweeps in `pending_mgr`
+    — rows waiting on a หัวหน้า that ฝ่ายบุคคล may not sign at all. A tick-box
+    built on it answers *ต้องผ่านการอนุมัติจากหัวหน้าก่อน*.
+  · **§6 is not a rule about statuses.** Whoever signed the หัวหน้า step is out
+    of the ฝ่ายบุคคล step of that same request — same ใบ, same month, and one
+    reader may sign it while another may not. No filter over a status field can
+    see that.
+
+การเงิน and the three signers get `approvable: null` and no tick column: their
+step is `pending_mgr`, which belongs to รออนุมัติ OT.
+
+#### The batch is one request per ใบ, and a failure is named by person
+
+There is no bulk endpoint, and inventing one that half-succeeds is worse than a
+progress counter — คิวรออนุมัติ's own conclusion, reused. What differs is the
+failure line: **that queue names the row** (*สมชาย · 3 ส.ค. · …*) because it is
+holding it; this screen has an id and the person it belongs to and nothing else,
+so it says `สมชาย ใจดี — ไม่สำเร็จ 2 จาก 6 รายการ` and the way to the detail is
+the row, which opens. Afterwards **both** readings of the month are re-asked:
+`load()` for the totals and a fresh `approvable`, and `loadScan()` because the
+comparison is counted over สถานะที่นับ and just moved.
+
+#### The confirm dialog is its own, and the plan said it should not be
+
+docs/plan-monthly-review-approve-inline.md §5.5 decided to lift `ConfirmModal`
+out of components/ApprovalQueue.jsx and share it. **That was reversed during
+implementation** — see the header of `components/MonthConfirm.jsx` — for a
+reason that only appears once both shapes are side by side: *the two dialogs are
+about different nouns*. ใบ there, PEOPLE here, and this screen has never held an
+entry to preview. A shared component would have taken either entries or a
+summary and drawn a different body for each, which is two dialogs wearing one
+name.
+
+**What §5.5 was protecting is the ceiling WORDING, and that is held more tightly
+than sharing a component would have held it.** Every ceiling sentence on the new
+sheet is imported from `lib/caps.js` — the same module the queue's dialog and
+both approve routes use — and `test/monthBatchApprove.test.js` pins that *both*
+dialogs call `overCeilingApproveHead` rather than keeping copies. That survives
+either dialog being restyled, which a shared component with two branches would
+not have.
+
+The rows over a ceiling are **named**, not counted: a reason is being demanded
+for exactly them, and *เมื่อบังคับให้เขียนเหตุผล ก็ต้องให้ข้อมูลพอที่จะเขียนได้*
+is the rule that follows. The queue builds those lines in the browser with
+`describeBreaches`; this screen gets them from the route, which calls the same
+function — asked on whichever side is holding the entry.
 
 ### ตรวจสอบประจำเดือน — ตัวกรองต่อกับตาราง
 
@@ -11782,8 +11901,12 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2549 tests**, about 4 s, measured 2026-09-10 across 142
-  files, all green. It read **"2541 tests … across 142"** until
+- `npm test` — **2562 tests**, about 4 s, measured 2026-09-10 across 143
+  files, all green. It read **"2549 tests … across 142"** until
+  ตรวจสอบประจำเดือน learned to confirm several people at once — one new file
+  (`monthBatchApprove`, thirteen cases) and eight assertions rewritten
+  elsewhere, none of them a new question. Before that it read
+  **"2541 tests … across 142"** until
   ot-hardening-and-slips was merged a FOURTH time the same evening — ten more
   commits, NO new test file, and eight cases spread over five that already
   existed. The branch's own **"2487 tests … across 137"** was five files behind

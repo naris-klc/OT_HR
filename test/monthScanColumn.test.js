@@ -180,8 +180,11 @@ test('คอลัมน์สแกน is drawn only on a month that has a file
   assert.match(hrView, /\{showScanCol && <th className="scan-col">สแกน<\/th>\}/);
   assert.match(hrView, /\{showScanCol && \(\s*<td className="scan-col">/);
 
-  // Eleven columns or ten, and every full-width row asks rather than assumes.
-  assert.match(hrView, /const colCount = showScanCol \? 11 : 10;/);
+  // ⚠ TWO OPTIONAL COLUMNS SINCE THE TICK-BOXES LANDED, so the count is a sum
+  // rather than a ternary — ten, eleven or twelve. `padCols` deliberately does
+  // NOT follow it: รวมทั้งหมด draws its own empty `.check` cell, so the pad
+  // covers only the tail after รวม ชม. and `colCount - 6` would double-count.
+  assert.match(hrView, /const colCount = 10 \+ \(showScanCol \? 1 : 0\) \+ \(showPickCol \? 1 : 0\);/);
   assert.match(hrView, /const padCols = showScanCol \? 5 : 4;/);
   assert.ok(!hrView.includes('colSpan={10}'), 'a full-width row still assumes ten columns');
 });
@@ -214,7 +217,9 @@ test('the phone card shows the warning too, and the paper shows none of it', () 
   // never see.
   const hidden = phone.slice(phone.indexOf('.hr-table tbody td.dept-col,'));
   assert.ok(!hidden.slice(0, 400).includes('td.scan-col'), 'the warning is hidden on a phone');
-  assert.match(phone, /grid-template-areas:\s*\n\s*'who cap'\s*\n\s*'scan scan'\s*\n\s*'act act';/);
+  // The tick sits BESIDE the name — it is a handle on the person, not a fourth
+  // fact about them — and `scan` still takes a full row of its own.
+  assert.match(phone, /grid-template-areas:\s+'check who cap'\s+'scan {2}scan scan'\s+'act {3}act {2}act';/);
   assert.match(phone, /\.hr-table tbody td\.scan-col \{\s*grid-area: scan;/);
 
   // ON PAPER IT IS GONE. Nothing in that column moves an hour, a bucket or a

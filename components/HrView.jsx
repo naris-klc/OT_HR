@@ -23,6 +23,7 @@ import { policyVersionNotice } from './PolicyVersion.jsx';
 import PeriodStatus from './PeriodStatus.jsx';
 import ScanImport from './ScanImport.jsx';
 import ScanCompareCard from './ScanCompareCard.jsx';
+import MonthConfirm from './MonthConfirm.jsx';
 import PrintForm from './PrintForm.jsx';
 import PrintFormBatch from './PrintFormBatch.jsx';
 import HrEntries from './HrEntries.jsx';
@@ -458,6 +459,27 @@ export default function HrView({
    * The hint under the table that explains that about ค้นหา covers this too.
    */
   const [onlyFlagged, setOnlyFlagged] = useState(false);
+
+  /**
+   * ── ใครถูกติ๊กไว้ — a Set of EMPLOYEE ids, not entry ids ──────────────────
+   *
+   * §5.1, decided 2026-09-10: **one tick is that person's whole month.** The
+   * ask named the unit — *"เลือกอนุมัติได้หลายคนหลายรายการ"* — and this screen
+   * is one row per person, so a tick-box on a row can only mean the person.
+   *
+   * ⚠ THAT IS A HARDER PRESS THAN คิวรออนุมัติ'S AND IT IS PAID FOR TWICE:
+   * the bar under the ticks says both units out loud (`3 คน · 17 ใบ`), and the
+   * confirm dialog is NOT skippable here even for one person — there is no
+   * single-row fast path, because "one person" is still six signatures.
+   *
+   * A SCREEN SELECTION over a month already fetched, so it survives no reload:
+   * `load()` replaces the rows and the ids in here would be claims about a list
+   * that no longer exists. Everything that refetches clears it — see below.
+   */
+  const [picked, setPicked] = useState(() => new Set());
+  const [confirming, setConfirming] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [progress, setProgress] = useState(null);
   useEffect(() => {
     if (find === '') { setQuery(''); return undefined; }
     const timer = setTimeout(() => setQuery(find), FIND_DEBOUNCE_MS);
@@ -483,6 +505,58 @@ export default function HrView({
   }, [scan]);
 
   /**
+   * ── ใครติ๊กได้ — the rule, in one place ──────────────────────────────────
+   *
+   * THREE THINGS HAVE TO BE TRUE, and only the first is about permission:
+   *
+   *   1. **The route says so.** `approvable.count > 0` — rows this reader may
+   *      actually confirm, decided by `approvalPermission` on the server, not
+   *      by a status test in the browser. §6 lives inside that answer and no
+   *      filter here could reproduce it. `approvable` is `null` for การเงิน and
+   *      the three signers, so this is `false` for them without a second rule.
+   *   2. **The scan comparison found nothing on them** — §5.2, decided
+   *      2026-09-10: *"แถวที่ผลเทียบมีปัญหา — ห้ามติ๊ก"*. Not a warning, a
+   *      `disabled`, which is คิวรออนุมัติ's own `actionable` rule turned to a
+   *      new purpose: *a row that breaks when pressed should not be tickable in
+   *      the first place*. Here "breaks" does not mean 403 — the server would
+   *      accept it — it means NOBODY HAS LOOKED YET, and that is the one thing
+   *      this screen was asked to stop.
+   *   3. Nothing about the month having a scan file at all. §5.3: a month with
+   *      no import ticks normally, and the card at the top says so in the
+   *      largest voice on the screen. The comparison points at rows; it does
+   *      not hold a gate.
+   *
+   * ONE FUNCTION AND NOT A CONDITION AT EACH SITE, because it is asked in four
+   * places — the row's own box, `เลือกทั้งหมด`, the count on that label, and
+   * the `title` that says WHY a box is disabled — and a rule that disagrees
+   * with itself between the box and the label is a box nobody trusts.
+   */
+  const pickable = (row) => Boolean(row.approvable?.count)
+    && !flaggedBy.has(String(row.employee?._id));
+
+  /**
+   * Why THIS box is disabled, in words, on the box itself.
+   *
+   * A greyed tick-box with no explanation is the failure `actionable` was
+   * written to avoid one layer up: the reviewer presses, nothing happens, and
+   * they have no idea what they are meant to do instead. Each answer names the
+   * way forward, and for the scan case the way forward is the row itself —
+   * which is now pressable, which is why §5.2 and ก้อน B had to ship together.
+   */
+  const whyNotPickable = (row) => {
+    if (flaggedBy.has(String(row.employee?._id))) {
+      return 'ผลเทียบกับไฟล์สแกนของคนนี้ยังมีรายการที่ต้องตรวจ — กดที่แถวเพื่อเปิดดูรายละเอียดและยืนยันทีละใบ';
+    }
+    if (!row.approvable) return 'บทบาทของคุณไม่ได้เซ็นในขั้นนี้';
+    if (!row.approvable.count) {
+      return row.pendingHrCount
+        ? 'รายการที่รอ HR ของคนนี้ คุณเป็นผู้เซ็นขั้นหัวหน้าไปแล้ว ต้องให้อีกคนเป็นผู้ตรวจ'
+        : 'ไม่มีรายการที่รอยืนยันในเดือนนี้';
+    }
+    return '';
+  };
+
+  /**
    * IS THERE A คอลัมน์สแกน AT ALL — and the answer is about the MONTH, not the
    * reader.
    *
@@ -499,8 +573,26 @@ export default function HrView({
    * pager sits under the wrong edge of the table.
    */
   const showScanCol = readsScans && Boolean(scan?.punchCount);
-  const colCount = showScanCol ? 11 : 10;
-  /** The blank tail of รวมทั้งหมด — every column after รวม ชม. */
+  /**
+   * IS THERE A TICK COLUMN — about the reader AND about what the month holds.
+   *
+   * `mayCorrect` is who; `canPick.length` is whether there is anything at all
+   * to tick. At สถานะที่นับ = อนุมัติแล้วเท่านั้น there is no `pending_hr` row in
+   * the month, so every `approvable` is empty and the column is not drawn — a
+   * column of permanently disabled boxes is an offer with nothing behind it,
+   * and this screen's default filter is the one where the offer is real.
+   */
+  const showPickCol = mayCorrect && canPick.length > 0;
+  const colCount = 10 + (showScanCol ? 1 : 0) + (showPickCol ? 1 : 0);
+  /**
+   * The blank tail of รวมทั้งหมด — every column after รวม ชม.
+   *
+   * ⚠ THE TICK COLUMN IS NOT IN THIS NUMBER, because the total row draws its
+   * own empty `.check` cell before the name. `colCount - 6` was the tempting
+   * arithmetic and it double-counts: that cell is already on the row, so a pad
+   * one wider than the tail pushes a phantom cell past the right edge of the
+   * table on every month with tick-boxes.
+   */
   const padCols = showScanCol ? 5 : 4;
 
   /**
@@ -519,6 +611,136 @@ export default function HrView({
     return matched.filter((row) => flaggedBy.has(String(row.employee?._id)));
   }, [data, query, onlyFlagged, flaggedBy]);
   const searching = query.trim() !== '';
+
+  /**
+   * ── THE THREE LISTS THE BAR AND THE TICK-BOXES ARE BUILT FROM ────────────
+   *
+   * `canPick` is every row on screen that may be ticked, and `chosen` is the
+   * ones that are. Both read `shown`, which is the month AFTER ค้นหา and
+   * ดูเฉพาะคนที่ต้องตรวจ — the rows a reader can actually see.
+   *
+   * ⚠ `shown` AND NOT `pageRows` — §5.4, and this is where this screen
+   * DELIBERATELY DIFFERS FROM คิวรออนุมัติ. That queue's rule is *"ติ๊กอยู่ได้
+   * เท่าที่แถวยังอยู่บนจอ"* because its pager is a real filter. Here the pager
+   * is a phone-only CSS window (`off-page`) over a list the desktop draws
+   * whole, and `CARD_PAGE` says so about itself in capitals: **A PAGE IS NOT A
+   * FILTER**. One button on two screen sizes has to mean one thing, so
+   * เลือกทั้งหมด takes every row the FILTERS left, and writes the count on its
+   * own label so a phone reader seeing five knows they are ticking twenty-four.
+   */
+  const canPick = React.useMemo(() => shown.filter(pickable), [shown, flaggedBy]);
+  const chosen = React.useMemo(
+    () => canPick.filter((row) => picked.has(String(row.employee._id))),
+    [canPick, picked],
+  );
+
+  /**
+   * BOTH UNITS AND THE CEILING, counted once for the bar and the dialog.
+   *
+   * The bar says `3 คน · 17 ใบ · 45.5 ชม.` and the dialog repeats all three,
+   * which is not redundancy: the bar is what somebody reads while ticking and
+   * the dialog is what they read before pressing. §5.1's whole price is that
+   * these two numbers differ, so neither may ever appear without the other.
+   *
+   * `capped` is concatenated rather than counted, because the dialog names the
+   * rows — a reason is being demanded for exactly them.
+   */
+  const tally = React.useMemo(() => chosen.reduce((acc, row) => {
+    const a = row.approvable;
+    return {
+      persons: acc.persons + 1,
+      entries: acc.entries + a.count,
+      hours: Math.round((acc.hours + a.hours) * 100) / 100,
+      capOver: acc.capOver + (a.capOver || 0),
+      capped: a.capped?.length ? acc.capped.concat(a.capped) : acc.capped,
+    };
+  }, {
+    persons: 0, entries: 0, hours: 0, capOver: 0, capped: [],
+  }), [chosen]);
+
+  const togglePick = (id) => setPicked((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  /** All or nothing, over `canPick` — see the §5.4 note above. */
+  const toggleAllPicks = () => setPicked(
+    chosen.length === canPick.length && canPick.length > 0
+      ? new Set()
+      : new Set(canPick.map((row) => String(row.employee._id))),
+  );
+
+  /**
+   * ── ONE REQUEST PER ใบ, IN ORDER, AND A ROW THAT FAILS IS NAMED ──────────
+   *
+   * `POST /entries/:id/approve` is what exists; there is no bulk endpoint, and
+   * คิวรออนุมัติ's own note on this says why inventing one is worse — *a bulk
+   * call that half-succeeds is worse than a progress counter*. So this is that
+   * queue's `run()`, over ids that came from `approvable` instead of from rows
+   * in hand.
+   *
+   * ⚠ A FAILURE IS NAMED BY PERSON, NOT BY ใบ. The queue names the row —
+   * *สมชาย 3 ส.ค. — …* — because it is holding it. This screen is not: it has
+   * an id and the person it belongs to and nothing else, and inventing a date
+   * for the message would mean fetching the entries this screen was built not
+   * to fetch. So the failure says who and how many, and the way to the detail
+   * is the row, which opens.
+   *
+   * `note` IS THE SAME STRING FOR EVERY ใบ of the batch — one decision, one
+   * reason, which is the rule the dialog's single textarea already states.
+   */
+  async function signPicked(note) {
+    const batch = chosen;
+    const total = batch.reduce((n, row) => n + row.approvable.count, 0);
+    setSigning(true);
+    setConfirming(false);
+    setProgress({ done: 0, total });
+    const failed = [];
+    let badTotal = 0;
+    for (const row of batch) {
+      let bad = 0;
+      for (const id of row.approvable.ids) {
+        try {
+          await api.post(`/entries/${id}/approve`, note ? { note } : undefined);
+        } catch { bad += 1; }
+        setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+      }
+      if (bad) {
+        badTotal += bad;
+        failed.push(`${row.employee.name || '—'} — ไม่สำเร็จ ${bad} จาก ${row.approvable.count} รายการ`);
+      }
+    }
+    setProgress(null);
+    setPicked(new Set());
+    /**
+     * BOTH READINGS OF THE MONTH ARE RE-ASKED, and they are two requests
+     * because they are two routes. `load()` brings back the totals, the
+     * statuses and a fresh `approvable`; `loadScan()` brings back the
+     * comparison, whose `entryCount` is counted over สถานะที่นับ and therefore
+     * moved when these rows changed status. Leaving the second stale would put
+     * a card reading `7 ใบ` over a table that now holds a different seven.
+     */
+    await load();
+    await loadScan();
+    setSigning(false);
+
+    const ok = total - badTotal;
+    if (ok > 0) {
+      toast(batch.length === 1
+        ? `ยืนยันรายการ OT ของ ${batch[0].employee.name} เรียบร้อยแล้ว (${ok} รายการ)`
+        : `ยืนยัน ${ok} รายการของ ${batch.length} คน เรียบร้อยแล้ว — เข้าสู่รายงานส่งออกแล้ว`);
+    }
+    if (failed.length) {
+      setError(
+        <>
+          <strong>ยืนยันไม่สำเร็จบางรายการ</strong>
+          <ShowMore items={failed} render={(f, i) => <div key={i}>{f}</div>} />
+        </>,
+      );
+      toast('ยืนยันไม่สำเร็จบางรายการ — ดูรายละเอียดด้านบนตาราง', 'error');
+    }
+  }
 
   /**
    * WHICH PAGE OF THE CARD LIST IS ON SCREEN — 1-based, because that is what
@@ -557,6 +779,22 @@ export default function HrView({
    * was about the findings that were on screen when it was made.
    */
   useEffect(() => { setOnlyFlagged(false); }, [period, statusFilter, dept]);
+
+  /**
+   * A TICK IS A CLAIM ABOUT A ROW THAT IS ON SCREEN, so it does not survive the
+   * row being replaced.
+   *
+   * All four of these rebuild `shown`: the first three refetch the month, and
+   * `query` and `onlyFlagged` narrow it. Left alone, `picked` would keep ids
+   * that are no longer drawn anywhere — and `chosen` intersects with `canPick`,
+   * so the bar would say `2 คน` while two fewer rows are ticked than the reader
+   * can see, or worse, quietly un-tick somebody who is still on screen when the
+   * filter comes back off.
+   *
+   * ⚠ `query` IS IN THIS LIST AND THE PAGER IS NOT, and that is §5.4 stated as
+   * code: a search narrows the month, a page is a window onto it.
+   */
+  useEffect(() => { setPicked(new Set()); }, [period, statusFilter, dept, query, onlyFlagged]);
 
   /**
    * EVERY ACTIVE แผนก, for the dropdown's list — fetched once per mount.
@@ -1511,6 +1749,84 @@ export default function HrView({
               </div>
             ) : (
             <>
+            {/* ── แถบเลือก — DRAWN WHENEVER THERE IS ANYTHING TO CONFIRM ─────
+
+                NOT ONLY WHILE SOMETHING IS TICKED, which is what คิวรออนุมัติ's
+                `.batch-bar` does, and the difference is deliberate. There, the
+                bar appears in answer to a tick and the tick-boxes are the whole
+                point of the screen. HERE the screen is a report and confirming
+                is new to it: a reader who does not know the tick-boxes exist
+                has no reason to look for them. The bar in its resting state IS
+                that reason — `ยืนยันได้ 24 คน · 61 รายการ` is a fact about the
+                month worth reading even by somebody who is not going to press
+                anything, and it disappears completely on a month with nothing
+                outstanding.
+
+                IT IS ALSO THE PHONE'S เลือกทั้งหมด. Below 860px `thead` is
+                `display: none`, so the header tick-box is gone; the queue
+                answers that with a second toolbar of its own
+                (`.queue-mobile-bar`) and this screen does not need one, because
+                the bar is here at both widths and already carries the count.
+                One control, one place, one meaning — which is also §5.4's
+                requirement of เลือกทั้งหมด.
+
+                `no-print`: none of it is part of any document. */}
+            {showPickCol && (
+              <div className={`batch-bar no-print${chosen.length ? ' picking' : ''}`}>
+                <div className="count-label">
+                  {chosen.length === 0 ? (
+                    <>
+                      ยืนยันได้ <strong>{canPick.length}</strong> คน
+                      {' · '}<strong>{canPick.reduce((n, r) => n + r.approvable.count, 0)}</strong> รายการ
+                      <span className="sub">ติ๊กหนึ่งช่อง = ยืนยันรายการทั้งเดือนของคนนั้น</span>
+                    </>
+                  ) : (
+                    <>
+                      {/* ⚠ BOTH UNITS, ALWAYS — §5.1's price, paid on every
+                          draw. One tick is a month, so a bar that said only
+                          `3 คน` would be hiding the number that reaches
+                          payroll. */}
+                      เลือกไว้ <strong>{tally.persons}</strong> คน
+                      {' · '}<strong>{tally.entries}</strong> รายการ
+                      {' · '}<strong>{hours(tally.hours)}</strong> ชม.
+                      {tally.capOver > 0 && (
+                        <span className="sub">⚠️ {tally.capOver} รายการเกินเพดาน — ต้องระบุเหตุผล</span>
+                      )}
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={toggleAllPicks}
+                  disabled={signing}
+                >
+                  {chosen.length === canPick.length
+                    ? 'ล้างที่เลือก'
+                    : `เลือกทั้งหมด (${canPick.length} คน)`}
+                </button>
+                {/* NO FAST PATH, not even for one person — §5.1. The dialog is
+                    where the number of ใบ is said out loud, and "one person" on
+                    this screen is a whole month. */}
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={signing || chosen.length === 0}
+                  onClick={() => setConfirming(true)}
+                >
+                  ยืนยันรายการที่เลือก
+                </button>
+              </div>
+            )}
+
+            {/* A batch is one request per ใบ, so it takes visible time. Said as
+                a count, because seventeen requests is not a spinner. */}
+            {progress && (
+              <div className="batch-progress no-print">
+                กำลังยืนยัน {progress.done} / {progress.total} รายการ
+              </div>
+            )}
+
             {/* `card-list` says what this wrap holds below 860px: cards, not a
                 table that scrolls. The stylesheet uses it to take the ground a
                 step back and to drop the sideways scroll shadows, which are a
@@ -1529,6 +1845,32 @@ export default function HrView({
               <table className="hr-table">
                 <thead>
                   <tr>
+                    {/* ── เลือกทั้งหมด — THE COUNT IS ON THE LABEL, NOT ONLY
+                           IN THE BAR ──────────────────────────────────────
+
+                        `indeterminate` is set through a ref callback because
+                        React has no attribute for it: a half-filled box is the
+                        only honest drawing of "some of them", and a box that
+                        showed empty while three rows were ticked would be the
+                        control lying about the state it controls.
+
+                        The heading is `.check-col` on both layouts, but on a
+                        phone `thead` is `display: none` — so the phone reaches
+                        this same act through the batch bar's own เลือกทั้งหมด,
+                        which is drawn at BOTH widths for that reason. */}
+                    {showPickCol && (
+                      <th className="check">
+                        <input
+                          type="checkbox"
+                          aria-label={`เลือกทั้งหมด (${canPick.length} คน)`}
+                          checked={canPick.length > 0 && chosen.length === canPick.length}
+                          ref={(el) => {
+                            if (el) el.indeterminate = chosen.length > 0 && chosen.length < canPick.length;
+                          }}
+                          onChange={toggleAllPicks}
+                        />
+                      </th>
+                    )}
                     <th className="who-col">พนักงาน</th>
                     <th className="dept-col">แผนก</th>
                     {/* Broken where RateHead says, not where the width falls
@@ -1666,6 +2008,47 @@ export default function HrView({
                         setOpened(row.employee);
                       }}
                     >
+                      {/* ── ติ๊กเพื่อยืนยันทั้งเดือนของคนนี้ ─────────────────
+
+                          `disabled` and never merely warned — §5.2, and the
+                          reason is `actionable`'s on คิวรออนุมัติ: a row that
+                          breaks when pressed should not be tickable in the
+                          first place. What "breaks" means here is not a 403;
+                          the server would take it. It means the scan
+                          comparison found something on this person and NOBODY
+                          HAS LOOKED YET.
+
+                          THE `title` IS NOT A COURTESY. A greyed box with no
+                          explanation is the exact failure that rule was
+                          written to fix — press, nothing happens, no idea what
+                          to do instead — so every disabled state here names
+                          the way forward, and for the scan case the way
+                          forward is this row, which opens.
+
+                          ⚠ `stopPropagation` OR THE ROW SWALLOWS THE TICK. The
+                          `<tr>` opens the person on click and its guard
+                          (`closest('button, input, …')`) already spares this
+                          box — but `onChange` fires after the click has
+                          bubbled, and without the explicit stop on the wrapper
+                          a tap on the CELL beside the box would open the
+                          person instead of ticking. */}
+                      {showPickCol && (
+                        <td
+                          className="check"
+                          onClick={(ev) => ev.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={picked.has(String(row.employee._id))}
+                            disabled={!pickable(row)}
+                            title={pickable(row)
+                              ? `ยืนยันรายการทั้งเดือนของ ${row.employee.name || '—'} (${row.approvable.count} รายการ)`
+                              : whyNotPickable(row)}
+                            aria-label={`เลือก ${row.employee.name || '—'}`}
+                            onChange={() => togglePick(String(row.employee._id))}
+                          />
+                        </td>
+                      )}
                       <td className="who-col">
                         {/* `|| '—'` — the same stand-in every other name in
                             this app takes when the roster has none. A card
@@ -2038,6 +2421,10 @@ export default function HrView({
                       header, which is `colCount` and not always ten since the
                       คอลัมน์สแกน arrived. */}
                   <tr className="total-row">
+                    {/* รวมทั้งหมด is not a person and is not tickable, but the
+                        cell has to EXIST or every figure on this row sits one
+                        column left of the heading it belongs under. */}
+                    {showPickCol && <td className="check" />}
                     {/* THE FIGURES BELOW ARE THE MONTH'S, ALWAYS. They come from
                         `data.grandTotal`, which the server computed over every
                         row it sent — the search box narrowed what is drawn above
@@ -2183,6 +2570,28 @@ export default function HrView({
             foot of this file for what the table did and what its removal cost. */}
       </div>
       </div>
+
+      {/* ── THE STOP BETWEEN A TICK AND PAYROLL ──────────────────────────────
+
+          Mounted here, outside `.month-panel`, because a dialog is not part of
+          the card it was opened from — and because it must survive the row it
+          was opened from scrolling, paging or being filtered away underneath
+          it. `chosen` is recomputed on every draw, so the sheet is always
+          describing the ticks as they stand.
+
+          `chosen.length > 0` GUARDS THE MOUNT and not just the button: the
+          batch runner clears `picked` before the refetch, and a dialog left
+          mounted over an empty selection would spend that moment saying
+          `ยืนยัน 0 รายการ`. */}
+      {confirming && chosen.length > 0 && (
+        <MonthConfirm
+          people={chosen}
+          tally={tally}
+          busy={signing}
+          onClose={() => setConfirming(false)}
+          onConfirm={signPicked}
+        />
+      )}
     </>
   );
 }

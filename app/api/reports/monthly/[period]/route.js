@@ -12,7 +12,7 @@ import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
 import { isHrVerifiedBirthday, signsForCompany, mayCorrectEntries } from '@/lib/entries.js';
 import { approvalPermission } from '@/lib/delegation.js';
-import { needsOverCeilingReason } from '@/lib/caps.js';
+import { needsOverCeilingReason, describeBreaches } from '@/lib/caps.js';
 import { companyOf } from '@/src/config/companies.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
@@ -203,6 +203,7 @@ export const GET = route(async (req, { params }) => {
   const approvableOf = (rows) => {
     if (!maySign) return null;
     const ids = [];
+    const capped = [];
     let hours = 0;
     let capOver = 0;
     for (const entry of rows) {
@@ -211,7 +212,30 @@ export const GET = route(async (req, { params }) => {
       if (!may.ok) continue;
       ids.push(String(entry._id));
       hours += entry.totals?.otHours || 0;
-      if (needsOverCeilingReason(entry)) capOver += 1;
+      if (needsOverCeilingReason(entry)) {
+        /**
+         * ── WHICH CEILING, AND WHAT IT WAS — not just "somebody is over" ────
+         *
+         * A count would be cheaper and it is not enough. The dialog this feeds
+         * DEMANDS A SENTENCE for these rows, and คิวรออนุมัติ's own confirm box
+         * settled the rule that follows from that: *"เมื่อบังคับให้เขียนเหตุผล
+         * ก็ต้องให้ข้อมูลพอที่จะเขียนได้"* — which limit, and what it was.
+         *
+         * IT HAS TO COME FROM HERE BECAUSE THE ENTRIES DO NOT TRAVEL. This
+         * screen is a month of totals per person; it has never held an ใบ. On
+         * คิวรออนุมัติ the browser has the rows in hand and calls
+         * `describeBreaches` itself — same function, same wording, asked on
+         * whichever side is holding the entry.
+         *
+         * Only the breached rows are built, so a clean month sends nothing.
+         */
+        capOver += 1;
+        capped.push({
+          name: entry.employee?.name || '',
+          date: entry.workDate,
+          text: describeBreaches(entry).map((b) => b.text).join(' · ') || 'เกินเพดานแผนก',
+        });
+      }
     }
     return {
       ids,
@@ -227,6 +251,8 @@ export const GET = route(async (req, { params }) => {
        * `capExceeded` is a field on the entry and the entries do not travel.
        */
       capOver,
+      /** `[{ name, date, text }]` for those rows — see above. Empty when none. */
+      capped,
     };
   };
 

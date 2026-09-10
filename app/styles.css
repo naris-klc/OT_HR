@@ -8768,6 +8768,29 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
    once instead. */
 .hr-table th.scan-col, .hr-table td.scan-col { text-align: center; white-space: nowrap; }
 
+/* ── แถบเลือก ON ตรวจสอบประจำเดือน — the same `.batch-bar`, one addition ────
+
+   The bar itself is shared with คิวรออนุมัติ and unchanged. What is different
+   here is that it is drawn in its RESTING state too — `ยืนยันได้ 24 คน` with
+   nothing ticked — because on that screen the tick-boxes are the point and on
+   this one they are new to a report somebody has been reading for months. A
+   bar that only appears in answer to a tick cannot tell anybody the ticks are
+   there.
+
+   `.picking` is what says something IS ticked. The green ground is already the
+   bar's; this is one step firmer, so the two states are told apart by weight
+   rather than by reading the sentence. */
+.month-panel .batch-bar { border-radius: var(--radius) var(--radius) 0 0; }
+.month-panel .batch-bar.picking { background: var(--green-tint); }
+.month-panel .batch-bar .count-label .sub { color: var(--muted); }
+.month-panel .batch-bar.picking .count-label .sub { color: var(--amber-ink); }
+
+/* The tick column is the narrowest thing in the table and must not be the
+   thing that decides where the name starts. `th.check` already carries the
+   42px and the centring for every table in the app; this only stops the
+   heading box from being read as a column heading in its own right. */
+.hr-table th.check { padding-top: 10px; }
+
 /* ตรง — A ROW THE MACHINE AGREES WITH, SAID AS QUIETLY AS IT DESERVES.
    It has to be SAID: a blank cell on a month that WAS compared is
    indistinguishable from a blank cell on a month that was not, and those are
@@ -13615,16 +13638,27 @@ table.mini tbody tr:hover { background: none; }
      the same rather than merely similar: see `td.cap-col .cap-sub` below. */
   .hr-table tbody tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 108px;
+    /* ⚠ THREE COLUMNS, AND THE FIRST IS `auto` — 2026-09-10.
+       `auto` and not a fixed 28px because the tick column is not always there:
+       `showPickCol` takes it off a month with nothing to confirm, and an empty
+       fixed column would leave the name of every card indented past a box that
+       is not drawn. With `auto` the track collapses to nothing and the card is
+       exactly what it was before ticks existed. */
+    grid-template-columns: auto minmax(0, 1fr) 108px;
     /* `scan` BETWEEN THE NAME AND THE BUTTON, full width — 2026-09-10.
        It is read after "who and how many hours" and before "what do I do about
        it", which is the order the row is read in on a desktop too. A card with
        nothing to report draws the row at its content height, which for the
-       quiet `ตรง` line is about sixteen pixels. */
+       quiet `ตรง` line is about sixteen pixels.
+
+       THE TICK SITS BESIDE THE NAME AND SPANS NOTHING ELSE. It is a statement
+       about the person, and the person is the first line of the card; put on a
+       row of its own it would read as a fourth fact rather than as a handle on
+       the first one. */
     grid-template-areas:
-      'who cap'
-      'scan scan'
-      'act act';
+      'check who cap'
+      'scan  scan scan'
+      'act   act  act';
     align-items: start; gap: 10px 12px;
     /* 15px, the same padding `.card` takes at this width — see `.stack-table`,
        which is the card every other list on a phone is already drawn as. */
@@ -13671,6 +13705,41 @@ table.mini tbody tr:hover { background: none; }
   .hr-table tbody td.scan-col {
     grid-area: scan; text-align: left; white-space: normal;
   }
+
+  /* `display: block` and `width: auto` override the table-cell rule set for
+     every `.check` further up the file, which a card has no use for — the same
+     two overrides `.queue-table td.check` takes, for the same reason.
+     22px because a tick-box is a target for a thumb here, not for a pointer. */
+  .hr-table tbody td.check {
+    grid-area: check; display: block; width: auto; padding: 2px 0 0;
+  }
+  .hr-table tbody td.check input { width: 22px; height: 22px; }
+  /* รวมทั้งหมด draws an EMPTY `.check` cell so the desktop columns line up, and
+     on a phone that row is a two-area grid with no `check` in it — an unplaced
+     cell would open an implicit row above the total. It has nothing in it, so
+     it is simply not drawn down here. */
+  .hr-table tbody tr.total-row td.check { display: none; }
+
+  /* ── THE BATCH BAR IS DRAWN ON A PHONE HERE, AND IT IS NOT ON คิวรออนุมัติ
+
+     `.batch-bar { display: none }` in this same block is that queue's rule and
+     it is right there: below 860px the queue puts its controls in
+     `.queue-mobile-bar` instead, and drawing both would be two identical pairs
+     of buttons on one short screen.
+
+     ตรวจสอบประจำเดือน HAS NO SECOND TOOLBAR, so this bar is the only place the
+     phone can reach เลือกทั้งหมด at all — `thead` is `display: none` down here,
+     which takes the header tick-box with it. One control at both widths was
+     also §5.4's requirement of that button, so this is the arrangement that
+     needed no phone-only copy in the first place.
+
+     It gives back the sticky offset: two sticky bars (the app bar and ค้นหา)
+     are already stacked above this list, and a third would leave about a card
+     and a half of readable screen. */
+  .month-panel .batch-bar {
+    display: flex; position: static; padding: 10px 12px; gap: 8px;
+  }
+  .month-panel .batch-bar .count-label { flex-basis: 100%; }
   .hr-table tbody td.scan-col .scan-flag { flex-direction: row; gap: 10px; }
 
   .hr-table tbody td.cap-col {

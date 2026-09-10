@@ -258,7 +258,12 @@ test('every card is the same height — the ceiling column is a fixed track with
   // the two things that must not wrap — and is deliberately too narrow for the
   // sentence, which is what makes the sentence two lines on EVERY card.
   const cardRule = phone.slice(phone.indexOf('.hr-table tbody tr {'));
-  assert.match(cardRule, /^\.hr-table tbody tr \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) 108px;/);
+  // ⚠ A THIRD TRACK LEADS IT SINCE 2026-09-10 — `auto`, for the tick-box, and
+  // `auto` precisely so it can COLLAPSE: `showPickCol` takes the column off a
+  // month with nothing to confirm, and a fixed first track would indent every
+  // name on the card past a box that is not drawn. The 108px it is measured
+  // against is untouched, which is the claim this test is really making.
+  assert.match(cardRule, /^\.hr-table tbody tr \{\s*display: grid;[\s\S]{0,600}?grid-template-columns: auto minmax\(0, 1fr\) 108px;/);
   // Scoped to this rule: `.bmonth-table` next door is a card with an `auto`
   // second track and has every right to be.
   assert.doesNotMatch(cardRule.slice(0, 400), /grid-template-columns: minmax\(0, 1fr\) auto;/);
@@ -354,7 +359,9 @@ test('the fold under the third card exists only where the pager does not', () =>
   // a month that has a scan file, so this table is eleven columns wide or ten
   // and every full-width row in it has to ask rather than assume.
   assert.match(hrCode, /<td className="pager-col" colSpan=\{colCount\}>/);
-  assert.match(hrCode, /const colCount = showScanCol \? 11 : 10;/);
+  // Two OPTIONAL columns now — สแกน and the tick-box — so the width is a sum
+  // rather than a ternary, and no full-width row writes a number of its own.
+  assert.match(hrCode, /const colCount = 10 \+ \(showScanCol \? 1 : 0\) \+ \(showPickCol \? 1 : 0\);/);
   // The count is on the button in BOTH states, like the birthday fold below it.
   assert.match(hrView, /ดูพนักงานทั้งหมด \(\$\{shown\.length\} ราย\)/);
   assert.match(hrView, /ย่อรายการ — แสดง \$\{CARD_FOLD\} รายแรก/);

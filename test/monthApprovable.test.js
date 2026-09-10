@@ -145,11 +145,18 @@ test('the two counts are kept apart, and neither is pendingCount', () => {
 test('the payload carries what a batch needs and nothing it does not', () => {
   // ids to POST, a count and hours to say out loud before anybody presses, and
   // the number of rows that will make the dialog demand a sentence.
-  for (const field of ['ids', 'count:', 'hours:', 'capOver']) {
+  for (const field of ['ids', 'count:', 'hours:', 'capOver', 'capped']) {
     assert.ok(route.includes(field), `approvable lost ${field}`);
   }
   assert.match(route, /hours \+= entry\.totals\?\.otHours \|\| 0;/);
-  assert.match(route, /if \(needsOverCeilingReason\(entry\)\) capOver \+= 1;/);
+  // ⚠ NOT A COUNT ANY MORE. The dialog it feeds demands a SENTENCE for these
+  // rows, and คิวรออนุมัติ's confirm box settled what follows from that:
+  // *เมื่อบังคับให้เขียนเหตุผล ก็ต้องให้ข้อมูลพอที่จะเขียนได้*. So the route
+  // names them — with `describeBreaches`, the same function the queue calls in
+  // the browser, asked on whichever side is holding the entry.
+  assert.match(route, /if \(needsOverCeilingReason\(entry\)\) \{/);
+  assert.match(route, /capOver \+= 1;/);
+  assert.match(route, /text: describeBreaches\(entry\)\.map\(\(b\) => b\.text\)\.join\(' · '\) \|\| 'เกินเพดานแผนก',/);
   // Rounded where every other figure in this app is.
   assert.match(route, /hours: Math\.round\(hours \* 100\) \/ 100,/);
 });
