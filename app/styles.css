@@ -2192,12 +2192,32 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    `.month-notices > *` zeroes this from above. The declaration is left off
    rather than restated so there is only ever one number to change. */
 
-/* THE ONE SENTENCE ON THIS SCREEN DRAWN LARGER THAN A HEADING, and it is the
-   state nobody could see before: a month with no scan file at all. It is
-   deliberately louder than the ⚠ pile beneath it, because a wrong reading of
-   this line ("no marks, so everything agrees") is worse than a wrong reading of
-   any figure — it is a month signed off against a comparison that never ran. */
-.scan-none { font: 600 16px/1.35 var(--sans); color: var(--ink); }
+/* ── ยังไม่ได้เทียบ — ONE ROW, AND IT WAS FOUR ─────────────────────────────
+
+   ⚠ THIS RULE WAS `.scan-none { font: 600 16px/1.35 … }` UNTIL 2026-09-11, with
+   a comment calling it *"the one sentence on this screen drawn larger than a
+   heading"*. Asked to shorten: *"ปรับอีกครับ กระชับให้เป็นแถวเดียว"*.
+
+   The reason for the 16px was sound and is unchanged as a REQUIREMENT: from a
+   table with no marks on it, "nobody imported the file" and "every row agrees"
+   are indistinguishable, and one of them is a month signed off against a
+   comparison that never ran. What changed is what satisfies it. The size was
+   chosen while this card floated on the page as a block of its own; inside
+   `.month-notices` it is one line among งวด…ยังเปิดอยู่ and MonthAlerts, where a
+   16px shout is not louder than its neighbours — it is a different size from
+   them, which reads as the thing that does not belong. The separation is done by
+   the sentence being THERE, in bold, beside the button that fixes it.
+
+   ⚠ AND THE BARE `.scan-none` WAS ONE REORDER FROM BEING A BUG. `.chip.scan-none`
+   (the row's own ไม่ตรง chip, further down this file) matches it — same
+   specificity, one class each — and only won because it is declared later. A
+   16px chip was one cut-and-paste of a block away at any time. */
+.scan-line {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+/* The sentence takes the room; the button never shrinks under its own label. */
+.scan-line .btn { flex: none; }
 
 .scan-head { margin: 6px 0 0; }
 .scan-big { font: 600 15px/1.4 var(--sans); }
@@ -2225,7 +2245,12 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .scan-tally .quiet strong { color: var(--muted); }
 
 @media (max-width: 640px) {
-  .scan-none { font-size: 15px; }
+  /* `.scan-none { font-size: 15px }` stood here until 2026-09-11 — that line is
+     body text now and needs no phone size of its own. What the row does need is
+     for the button to stop being a 32px target squeezed beside a wrapped
+     sentence: below 640px it takes the second line whole. */
+  .scan-line { align-items: stretch; }
+  .scan-line .btn { flex: 1 1 100%; min-height: 44px; }
   .scan-tally { gap: 4px 12px; font-size: 12.5px; }
 }
 
@@ -8528,6 +8553,33 @@ tfoot tr.grand td {
 .queue-table td.when-col,
 .queue-table td.span-col { white-space: nowrap; }
 
+/* ── ส. AND THE DATE ON ONE LINE, IN THAT ORDER — 2026-09-11 ────────────────
+   Reported as *ความกว้างไม่สมดุล ตรงคอลัมน์ วันที่ ต้องการให้แสดง ส.12/09/2569
+   ไม่ให้ตกไปคนละบรรทัด*, and the imbalance was never the date's doing:
+   `th.when-col` below is 136px because of the TAG (`ย้อนหลัง 365 วัน`), while
+   the date spent 68 of it on a line to itself and the weekday spent a whole
+   second line carrying two characters. Pulling them together fills the line the
+   column was already paying for and takes a line off every row in the table.
+
+   ONE RULE FOR BOTH WIDTHS, WHICH IS WHY THE PHONE BLOCK LOST ITS COPY. The
+   card below 861px has run these two inline since it existed — it had its own
+   `display: inline` with a 5px LEFT margin, written when "อา." came AFTER the
+   date. With the weekday leading, that margin would indent the whole line away
+   from the card's own edge, so the phone rule is gone rather than mirrored: the
+   two widths now differ in nothing but `td`'s font, which is what they should
+   have differed in all along.
+
+   THE MARGIN IS ON THE RIGHT AND IT IS 2px, not the 5 the phone rule had. "ส."
+   ends in a full stop, so the separating is already done; 2px is there to keep
+   that dot off the leading digit and nothing more.
+
+   `display: inline` IS THE WHOLE OF THE OVERRIDE. `.cell-sub`'s `margin-top`
+   does not apply to an inline box, its 12px and `--muted` are exactly what was
+   asked for (*`ส.` ยังจางและเล็กกว่า วันที่ยังเด่น*), and the baseline the two
+   sit on is the browser's own — a 12px sans box and a 14px sans box share it
+   without anything here saying so. */
+.queue-table td.when-col .when-day { display: inline; margin: 0 2px 0 0; }
+
 /* ── THE NAME MAY TAKE A SECOND LINE, AND UNTIL 2026-09-10 IT MAY NOT ─────
    Reported as "ชื่อของพนักงานที่ยาว ๆ มันจะทับกับวันที่" with the side bar open,
    and it is exactly that: a `nowrap` cell DOES NOT CLIP. It paints its text
@@ -12139,9 +12191,17 @@ table.mini tbody tr:hover { background: none; }
   .queue-table td.who-col .who-name { font: 600 15px/1.35 var(--sans); }
 
   .queue-table td.when-col { grid-area: when; white-space: nowrap; font: 400 13px/1.45 var(--sans); }
-  /* "อา." beside the date rather than under it. As a block it took a whole line
-     of the card to carry two characters. */
-  .queue-table td.when-col .cell-sub { display: inline; margin: 0 0 0 5px; }
+  /* ⚠ A COPY OF THE INLINE RULE STOOD HERE UNTIL 2026-09-11. It read
+     `.queue-table td.when-col .cell-sub { display: inline; margin: 0 0 0 5px; }`
+     and its note said *"อา." beside the date rather than under it. As a block it
+     took a whole line of the card to carry two characters* — which was true of
+     the card alone, because the wide table still stacked them.
+
+     THE WIDE TABLE DOES NOT STACK THEM ANY MORE, so the rule moved up beside
+     `.queue-table td.when-col`'s `nowrap` and this copy went rather than being
+     mirrored. Two reasons, and the second is the one that would have bitten:
+     the weekday LEADS now, so a 5px LEFT margin would indent the whole line
+     away from the card's own edge — the margin is on the right up there. */
   /* ── AND `.filed-lead` STAYS A BLOCK, which is not an oversight ────────────
      the second line and "อา." were pulled inline because a block child of `span-col`
      begins a third of the way into the card and lines up with nothing — the

@@ -37,18 +37,21 @@ import { SCAN_BADGE } from '@/lib/scanMatch.js';
  *
  * ── THE THREE STATES, AND THE ONE THAT USED TO BE INVISIBLE ────────────────
  *
- *   1. **ยังไม่ได้เทียบ** — no punches imported for this month at all. Said
- *      LOUDLY (`.scan-none`), because the state it is most often mistaken for
- *      is state 3, and from a table with no marks on it the two look identical.
- *      A month nobody has checked and a month that came back clean are opposite
- *      answers and this card is the only thing that distinguishes them.
+ *   1. **ยังไม่ได้เทียบ** — no punches imported for this month at all. ONE ROW
+ *      since 2026-09-11 (`.scan-line`); it read "said LOUDLY (`.scan-none`)"
+ *      until then, and the reason it was said loudly is unchanged: the state it
+ *      is most often mistaken for is state 3, and from a table with no marks on
+ *      it the two look identical. A month nobody has checked and a month that
+ *      came back clean are opposite answers and this card is the only thing that
+ *      distinguishes them — which it does by SAYING SO, not by the size it says
+ *      it in. See the block over the branch below.
  *   2. **มีคนต้องตรวจ** — the amber pile, with the way to it.
  *   3. **ทุกแถวตรง** — quiet, green, one sentence.
  *
  * Decided 2026-09-10 (docs/plan-monthly-review-approve-inline.md §5.3): state 1
  * does NOT disable approving. The comparison points at rows; it does not hold a
  * gate, and a month whose file arrives late is not a month that may not be
- * signed. What it does instead is say so in the largest voice on the card.
+ * signed. The card says so on the same row — `ยืนยันได้ตามปกติ`.
  */
 export default function ScanCompareCard({
   period,
@@ -77,28 +80,50 @@ export default function ScanCompareCard({
   const counts = compare?.counts;
 
   // ── 1. ยังไม่ได้เทียบ ─────────────────────────────────────────────────────
+  /*
+   * ⚠ ONE ROW SINCE 2026-09-11, AND IT WAS FOUR — a 16px headline, two hint
+   * lines and a button on a line of its own. Asked for in three words:
+   * *"ปรับอีกครับ กระชับให้เป็นแถวเดียว"*.
+   *
+   * WHAT THE 16px WAS FOR IS NOT WHAT IT DOES HERE ANY MORE. `.scan-none` was
+   * written when this card floated on the page as a block of its own, where
+   * being the loudest thing on the screen is what separated *"nobody imported
+   * the file"* from *"every row agrees"* — two states that look identical from a
+   * table with no marks on it. That separation is still the card's whole job and
+   * is untouched: what distinguishes the two is that THIS SENTENCE EXISTS, not
+   * that it is drawn large. Inside `.month-notices`, one line among งวด…ยังเปิด
+   * อยู่ and MonthAlerts, a 16px shout is not louder than its neighbours — it is
+   * simply a different size from them, which reads as the thing not belonging.
+   *
+   * THREE OF THE FOUR LINES WERE ANSWERED ELSEWHERE ON THE SCREEN:
+   *   · the month — the card head one row up prints it, so `เดือนนี้` is not a
+   *     question here the way it is at the top of a page;
+   *   · *ตารางข้างล่างจึงไม่มีคอลัมน์ สแกน* — the reader can see that there is no
+   *     such column;
+   *   · *การเทียบสแกนเป็นการชี้ให้ดู ไม่ใช่เงื่อนไขการอนุมัติ* — the RULE stays
+   *     (§5.3: this state does not gate approving) and is said as
+   *     `ยืนยันได้ตามปกติ`, because what a reader needs from it is permission,
+   *     not the doctrine behind the permission.
+   *
+   * WHAT COULD NOT BE CUT is `ไม่ได้แปลว่าทุกแถวตรง`. It is the misreading the
+   * card exists to prevent, and it is the only clause here that carries new
+   * information rather than restating the headline.
+   */
   if (!punchCount) {
     return (
       <div className="scan-compare no-print">
         <Alert kind="info" mark={false}>
-          <div className="scan-none">ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ</div>
-          <div className="hint" style={{ margin: '4px 0 0' }}>
-            {periodLabel(period)} ยังไม่มีข้อมูลสแกนในระบบ — ตารางข้างล่างจึงไม่มีคอลัมน์
-            {' '}<strong>สแกน</strong> และ <strong>ไม่ได้แปลว่าทุกแถวตรง</strong>
+          <div className="scan-line">
+            <span>
+              <strong>ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ</strong>
+              {' — '}<strong>ไม่ได้แปลว่าทุกแถวตรง</strong> · ยืนยันได้ตามปกติ
+            </span>
+            {onOpenImport && (
+              <button type="button" className="btn ghost sm" onClick={onOpenImport}>
+                นำเข้าไฟล์สแกน
+              </button>
+            )}
           </div>
-          <div className="hint" style={{ margin: '4px 0 0' }}>
-            ยืนยันรายการจากหน้านี้ได้ตามปกติ · การเทียบสแกนเป็นการชี้ให้ดู ไม่ใช่เงื่อนไขการอนุมัติ
-          </div>
-          {onOpenImport && (
-            <button
-              type="button"
-              className="btn ghost sm"
-              style={{ marginTop: 8 }}
-              onClick={onOpenImport}
-            >
-              นำเข้าไฟล์สแกนนิ้วมือ
-            </button>
-          )}
         </Alert>
       </div>
     );

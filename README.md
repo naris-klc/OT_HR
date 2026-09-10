@@ -5534,13 +5534,26 @@ press — and the pile has three ways out of it instead of a list of names:
     a filter has no cap, which is what the list of twelve could not manage;
   · and the row marks themselves, one press away, unchanged.
 
-**A THIRD STATE EXISTS AND IT IS THE LOUDEST THING ON THE SCREEN.** A month with
-no scan file at all now says `ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ` in 16px — because
-from a table with no marks on it, "nobody has imported the file" and "every row
-agrees" are indistinguishable, and one of them is a month nobody has checked.
-It does **not** stop anybody approving: the comparison points at rows, it does
-not hold a gate (decided 2026-09-10, docs/plan-monthly-review-approve-inline.md
-§5.3).
+**A THIRD STATE EXISTS, AND IT IS THE ONE NOTHING ELSE ON THE SCREEN CAN SAY.**
+A month with no scan file at all says `ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ` —
+because from a table with no marks on it, "nobody has imported the file" and
+"every row agrees" are indistinguishable, and one of them is a month nobody has
+checked. It does **not** stop anybody approving: the comparison points at rows,
+it does not hold a gate (decided 2026-09-10,
+docs/plan-monthly-review-approve-inline.md §5.3), and the row says so —
+**ยืนยันได้ตามปกติ**.
+
+> **It read "AND IT IS THE LOUDEST THING ON THE SCREEN … in 16px" until
+> 2026-09-11**, when it became **one row** — *"ปรับอีกครับ กระชับให้เป็นแถวเดียว"*.
+> The requirement above did not change; what satisfies it did. The 16px was
+> chosen while this card floated on the page as a block of its own, and inside
+> `.month-notices` it is one line among งวด…ยังเปิดอยู่ and `MonthAlerts` — where a
+> 16px shout is not louder than its neighbours, only a different size from them.
+> Three of the four lines were answered elsewhere on the same card (the month, by
+> the head one row up; *ตารางข้างล่างจึงไม่มีคอลัมน์ สแกน*, by the table itself; and the
+> §5.3 rule, which is now four words instead of a sentence). **ไม่ได้แปลว่าทุกแถวตรง**
+> could not be cut: it is the misreading the card exists to prevent, and the only
+> clause that is not a restatement of the headline.
 
 **เกินเวลา is on the count line and NOT in the list of names.** The names answer
 *who do I have to go and look at*, and nobody has to look at a row where the
@@ -7007,10 +7020,11 @@ to open the person, and since earlier the same day the row itself is what opens.
 
 > **A month with no scan file at all is NOT blocked** — decided the same day.
 > The comparison points at rows; it does not hold a gate, and a month whose
-> file arrives late is not a month that cannot be closed. The card at the top
-> of the screen says `ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ` in the largest type on
-> the page instead, because from a table with no marks on it that state and
-> "every row agrees" are indistinguishable.
+> file arrives late is not a month that cannot be closed. The notice in the card
+> says `ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ — ไม่ได้แปลว่าทุกแถวตรง · ยืนยันได้ตามปกติ`
+> instead, because from a table with no marks on it that state and "every row
+> agrees" are indistinguishable. *(It read "in the largest type on the page"
+> until 2026-09-11 — it is one row now; see §คอลัมน์สแกน above.)*
 
 #### เลือกทั้งหมด crosses the pager, and on คิวรออนุมัติ it does not
 
@@ -11349,6 +11363,14 @@ build แล้ว
   หรือยื่นทีหลังห้าสัปดาห์ และสองแถวนั้นไม่ใช่ของอย่างเดียวกันสำหรับคนที่กำลังจะเซ็น
   · **แถวที่สามใต้ตัวย่อวัน ไม่ใช่ในคอลัมน์รายละเอียด** เพราะสามบรรทัดนี้อ่านต่อกันเป็นเรื่องเดียว
   — วันไหน วันอะไร แล้วใบมาห่างจากวันนั้นเท่าไร
+  · **⚠ เหลือสองบรรทัดตั้งแต่ 2026-09-11** ทักมาว่า *ความกว้างไม่สมดุล ตรงคอลัมน์ วันที่
+  ต้องการให้แสดง ส.12/09/2569 ไม่ให้ตกไปคนละบรรทัด* — ตัวย่อวันขึ้นมาอยู่**หน้า**วันที่
+  บรรทัดเดียวกัน (`ส.12/09/2569`) แท็กจึงเป็นบรรทัดที่**สอง** ไม่ใช่ที่สาม · **ความไม่สมดุล
+  ไม่เคยเป็นความผิดของวันที่** 136px ข้างล่างนี้วัดจากแท็ก ส่วนวันที่กินแค่ราว 68px แล้วทิ้ง
+  ให้ตัวย่อวันกินอีกบรรทัดเต็มเพื่อพิมพ์สองตัวอักษร · **ลำดับเป็น ส. มาก่อน** ไม่ใช่ตามหลัง
+  อย่างที่การ์ดมือถือทำมาตลอด เพราะสิ่งที่เปลี่ยนอัตราค่าแรงควรอยู่ต้นบรรทัดที่สายตาลงพอดี
+  และจุดท้าย `ส.` คั่นให้เองอยู่แล้ว · **ความกว้างไม่ขยับ** ตามที่ตกลง — ที่ได้คืนคือ
+  ความสูงหนึ่งบรรทัดของทุกแถวในตาราง
   · **คำบนแท็กอ่านว่า `ล่วงหน้า 4 วัน` / `ย้อนหลัง 15 วัน` ตั้งแต่ 2026-09-10**
   เคยอ่านว่า "`ขอล่วงหน้า … วัน` และ `ขอย้อนหลัง … วัน`" ตามคำที่ฝ่ายบุคคลสั่งไว้ตอนแรก
   จนวันนั้นสั่งให้ตัด `ขอ` ออกทั้งแอป — แท็กนี้บอกว่าใบมาถึงห่างจากวันทำงานเท่าไร
