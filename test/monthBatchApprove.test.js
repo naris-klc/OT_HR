@@ -65,6 +65,62 @@ const css = read('app/styles.css');
 const printCss = read('app/print.css');
 const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
 
+// ── 0. the order of declarations, which is not a style question ─────────────
+
+test('every derived value is declared after the one it reads', () => {
+  /**
+   * ── ⚠ THIS FILE'S ONLY TEST THAT IS ABOUT JAVASCRIPT AND NOT ABOUT OT ────
+   *
+   * It exists because the first draft of this round shipped a
+   * `ReferenceError` to the browser — *Cannot access 'canPick' before
+   * initialization* — and every other test in this suite passed.
+   *
+   * `showPickCol` was written beside `showScanCol`, which is where it belongs
+   * BY SUBJECT: they are the two questions "is this column drawn". But it
+   * reads `canPick`, `canPick` filters `shown`, and `shown` is built a hundred
+   * lines further down. `const` is not hoisted the way a file's paragraph
+   * headings read, so the component threw on its first paint.
+   *
+   * ── WHY NOTHING CAUGHT IT ────────────────────────────────────────────────
+   *
+   * Every assertion in this suite reads the SOURCE as text. That is the right
+   * tool for "does this screen state the rule it is supposed to state", and it
+   * is blind by construction to "does this file run". Nothing in this repo
+   * renders a component, so a TDZ error is invisible to all 2569 of them.
+   *
+   * This is the cheapest guard that is not blind to it: the chain is short,
+   * every link is named, and a link added in the wrong place fails here rather
+   * than in front of HR. It is not a substitute for opening the app, and it
+   * does not pretend to be — it is a substitute for opening the app TWICE.
+   */
+  const at = (decl) => {
+    const i = hrView.indexOf(decl);
+    assert.notEqual(i, -1, `HrView no longer declares: ${decl}`);
+    return i;
+  };
+
+  // Each pair is [declared first, reads it]. Read down: the month's rows, then
+  // who may be ticked out of them, then how wide that makes the table.
+  const chain = [
+    ['const flaggedBy = React.useMemo', 'const pickable = (row) =>'],
+    ['const pickable = (row) =>', 'const shown = React.useMemo'],
+    ['const shown = React.useMemo', 'const canPick = React.useMemo'],
+    ['const canPick = React.useMemo', 'const chosen = React.useMemo'],
+    ['const chosen = React.useMemo', 'const tally = React.useMemo'],
+    // ⚠ THE ONE THAT ACTUALLY BROKE. `showPickCol` sits below `canPick` and
+    // above nothing that would rather have it higher; the comment over it in
+    // components/HrView.jsx says why it is not beside `showScanCol`.
+    ['const canPick = React.useMemo', 'const showPickCol = mayCorrect'],
+    ['const showPickCol = mayCorrect', 'const colCount = 10 +'],
+  ];
+  for (const [first, second] of chain) {
+    assert.ok(
+      at(first) < at(second),
+      `\`${second}…\` reads something declared below it — that is a ReferenceError on first paint, not a style nit`,
+    );
+  }
+});
+
 // ── 1. who may be ticked ────────────────────────────────────────────────────
 
 test('the tick rule is one function, and it asks the server’s answer first', () => {

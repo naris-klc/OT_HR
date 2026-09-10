@@ -2023,9 +2023,13 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2569 tests
+and the engine know nothing about Next.js, so the whole suite — **2570 tests
 across 144 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2569 tests across 144 files" for as long as it took to open the app — the
+2570th is `monthBatchApprove`'s declaration-order guard, added after
+ตรวจสอบประจำเดือน threw *Cannot access 'canPick' before initialization* on
+first paint with all 2569 of the others green. And it read
 "2562 tests across 143 files … measured 2026-09-10" until **ยืนยันทีละใบจากใน
 หน้ารายคน**, which added `monthRowConfirm` and seven cases and no component at
 all — one query parameter on a route that already existed. And it read
@@ -6963,6 +6967,36 @@ so it says `สมชาย ใจดี — ไม่สำเร็จ 2 จ�
 the row, which opens. Afterwards **both** readings of the month are re-asked:
 `load()` for the totals and a fresh `approvable`, and `loadScan()` because the
 comparison is counted over สถานะที่นับ and just moved.
+
+#### ⚠ IT SHIPPED BROKEN FOR ONE COMMIT, AND WHY NOTHING CAUGHT IT
+
+`showPickCol` — *is there a tick column* — was written beside `showScanCol`,
+which is where it belongs **by subject**: they are the same question about two
+columns. But it reads `canPick`, `canPick` filters `shown`, and `shown` is built
+a hundred lines further down. `const` is not hoisted the way a file's paragraph
+headings read, so the screen threw on first paint:
+
+```
+Runtime ReferenceError
+Cannot access 'canPick' before initialization
+components/HrView.jsx (585:37) @ HrView
+```
+
+**Every one of the 2569 checks then on disk was green, and `npm run build`
+compiled it.** Every assertion
+in this repo reads the source as TEXT — the right tool for *does this screen
+state the rule it is supposed to state*, and blind by construction to *does this
+file run*. Nothing here renders a component, so a temporal-dead-zone error is
+invisible to the whole suite; a build is a bundler, and a bundler has no opinion
+about the order two `const`s execute in.
+
+The fix is one paragraph moved below `canPick`, with a note at its new home
+saying why it is not beside its subject. The guard is
+`test/monthBatchApprove.test.js`'s first case: **the dependency chain, named
+link by link, asserted in declaration order.** It is crude and it is honest
+about being crude — it is not a substitute for opening the app, it is a
+substitute for opening the app *twice*. It was checked by putting the bug back
+and watching it fail.
 
 #### ยืนยันทีละใบ จากในหน้ารายคน — the half that makes §5.2 honest
 
@@ -11936,8 +11970,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2569 tests**, about 4 s, measured 2026-09-10 across 144
-  files, all green. It read **"2562 tests … across 143"** until a row could be
+- `npm test` — **2570 tests**, about 4 s, measured 2026-09-10 across 144
+  files, all green. The 2570th is a guard against a `ReferenceError` this round
+  shipped and every other test missed — see §ตรวจสอบประจำเดือน เซ็นชื่อได้.
+  It read **"2562 tests … across 143"** until a row could be
   confirmed from inside ตรวจสอบใบของพนักงาน (`monthRowConfirm`, seven cases, no
   new component). Before that it read **"2549 tests … across 142"** until
   ตรวจสอบประจำเดือน learned to confirm several people at once — one new file

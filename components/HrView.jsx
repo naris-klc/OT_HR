@@ -574,28 +574,6 @@ export default function HrView({
    */
   const showScanCol = readsScans && Boolean(scan?.punchCount);
   /**
-   * IS THERE A TICK COLUMN — about the reader AND about what the month holds.
-   *
-   * `mayCorrect` is who; `canPick.length` is whether there is anything at all
-   * to tick. At สถานะที่นับ = อนุมัติแล้วเท่านั้น there is no `pending_hr` row in
-   * the month, so every `approvable` is empty and the column is not drawn — a
-   * column of permanently disabled boxes is an offer with nothing behind it,
-   * and this screen's default filter is the one where the offer is real.
-   */
-  const showPickCol = mayCorrect && canPick.length > 0;
-  const colCount = 10 + (showScanCol ? 1 : 0) + (showPickCol ? 1 : 0);
-  /**
-   * The blank tail of รวมทั้งหมด — every column after รวม ชม.
-   *
-   * ⚠ THE TICK COLUMN IS NOT IN THIS NUMBER, because the total row draws its
-   * own empty `.check` cell before the name. `colCount - 6` was the tempting
-   * arithmetic and it double-counts: that cell is already on the row, so a pad
-   * one wider than the tail pushes a phantom cell past the right edge of the
-   * table on every month with tick-boxes.
-   */
-  const padCols = showScanCol ? 5 : 4;
-
-  /**
    * `onlyFlagged` NARROWS THE SAME LIST ค้นหา NARROWS, and after it.
    *
    * Both are screen filters over a month already fetched, so the order they are
@@ -657,6 +635,41 @@ export default function HrView({
   }, {
     persons: 0, entries: 0, hours: 0, capOver: 0, capped: [],
   }), [chosen]);
+
+  /**
+   * ── IS THERE A TICK COLUMN, AND HOW WIDE IS THE TABLE ────────────────────
+   *
+   * ⚠ THESE THREE LIVE HERE, BELOW `canPick`, AND NOT BESIDE `showScanCol`
+   * WHERE THEY BELONG BY SUBJECT. They were written up there and it was a
+   * `ReferenceError` on first paint — *Cannot access 'canPick' before
+   * initialization*. `const` is not hoisted the way the surrounding narrative
+   * reads: `showPickCol` asks `canPick`, `canPick` filters `shown`, and `shown`
+   * is declared further down still. The chain decides the order, not the
+   * paragraph headings.
+   *
+   * `mayCorrect` is WHO; `canPick.length` is WHETHER THERE IS ANYTHING to tick.
+   * At สถานะที่นับ = อนุมัติแล้วเท่านั้น the month holds no `pending_hr` row, so
+   * every `approvable` is empty and the column is not drawn — a column of
+   * permanently disabled boxes is an offer with nothing behind it, and this
+   * screen's default filter is the one where the offer is real.
+   *
+   * TWO OPTIONAL COLUMNS MAKE THE TABLE TEN, ELEVEN OR TWELVE WIDE, and every
+   * full-width row in it has to know. `colCount` is that number in one place;
+   * writing `11` at four call sites is how a `colSpan` ends up one short of the
+   * header and the pager sits under the wrong edge of the table.
+   */
+  const showPickCol = mayCorrect && canPick.length > 0;
+  const colCount = 10 + (showScanCol ? 1 : 0) + (showPickCol ? 1 : 0);
+  /**
+   * The blank tail of รวมทั้งหมด — every column after รวม ชม.
+   *
+   * ⚠ THE TICK COLUMN IS NOT IN THIS NUMBER, because the total row draws its
+   * own empty `.check` cell before the name. `colCount - 6` was the tempting
+   * arithmetic and it double-counts: that cell is already on the row, so a pad
+   * one wider than the tail pushes a phantom cell past the right edge of the
+   * table on every month with tick-boxes.
+   */
+  const padCols = showScanCol ? 5 : 4;
 
   const togglePick = (id) => setPicked((prev) => {
     const next = new Set(prev);
