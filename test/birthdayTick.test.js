@@ -126,6 +126,13 @@ test('ฟอร์มยื่นไม่มีช่องติ๊กวั�
  * `mayCorrect` still being computed and passed would be a บทบาท rule with
  * nowhere left to be read — the shape somebody re-uses for a different control
  * six months later without noticing it answers a different question.
+ *
+ * `mayCorrectEntries` ITSELF IS BACK IN THAT FILE SINCE 2026-09-10, and this
+ * test says so rather than banning the import: HR gave the เหมารายวัน tick a
+ * บทบาท rule of its own that day — ฝ่ายบุคคล and ผู้ดูแลระบบ only — and it is
+ * read inside QuickEdit, where the control is, instead of being threaded down
+ * as a boolean prop. That is the shape the deletion below was arguing for. The
+ * วันเกิด box is what must not come back, and the `mayCorrect` PROP with it.
  */
 test('หน้ารออนุมัติ — ช่องติ๊กวันเกิดและ mayCorrect ออกไปด้วยกัน', () => {
   const queue = read('components/ApprovalQueue.jsx');
@@ -134,11 +141,16 @@ test('หน้ารออนุมัติ — ช่องติ๊กวั
   assert.ok(!edit.includes('checked={form.birthdayWelfare}'));
   assert.ok(!/\{mayCorrect && \(/.test(edit), 'ช่องติ๊กที่ซ่อนไว้หลัง mayCorrect ยังอยู่');
   assert.ok(!/mayCorrect=\{mayCorrectEntries\(user\)\}/.test(queue), 'prop ยังถูกส่งลงมา');
-  assert.ok(!/mayCorrectEntries/.test(queue.split('\n').slice(0, 30).join('\n')), 'ยัง import อยู่');
+  // The comments here quote the prop they are recording the death of, so the
+  // question is asked of the CODE: no `mayCorrect` identifier left in the panel.
+  const code = edit.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/mayCorrect\b(?!Entries)/.test(code), 'ยังมี mayCorrect ค้างอยู่ในแผงแก้ไขชั่วโมง');
 
-  // เหมารายวัน stays, and stays visible to every reader of the queue: whether a
-  // day was hired whole is not a private fact about the person.
+  // เหมารายวัน stays — and since 2026-09-10 it is the tick that reads the บทบาท,
+  // beside the ตำแหน่ง rule the filing form already drew. Whether a day was hired
+  // whole is not a private fact about the person; who may CLAIM it is a rule.
   assert.match(edit, /checked=\{form\.flatDaily\}/);
+  assert.match(edit, /mayCorrectEntries\(user\) && isFlatDailyPosition\(entry\.employee\?\.position\)/);
 });
 
 // ── what decides instead ────────────────────────────────────────────────────

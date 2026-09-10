@@ -8994,21 +8994,21 @@ table.mini tbody tr:hover { background: none; }
 }
 /* `flex-wrap` because a label and its bracket are two flex items, not one run
    of text — an anonymous item cannot break across a line boundary, so without
-   this the longest of the four (วันเกิด, whose bracket names the benefit) runs
-   out of the strip on a phone instead of folding under itself. */
+   this the longer of the two (เหมารายวัน, whose bracket names the eight hours)
+   runs out of the strip on a phone instead of folding under itself. */
 .quick-edit .checks .check { font: 400 14px/1.4 var(--sans); color: var(--ink-2); flex-wrap: wrap; }
 /* What the switch DOES, in the filing form's own bracket convention. A step
    down and a step quieter, so the label is still the thing being read. */
 .quick-edit .check-note { font: 400 11.5px/1.4 var(--sans); color: var(--muted-2); }
-/* ข้ามคืน reports the two times rather than asking about them, so it is drawn as
-   a read-out: the mark stays (it is the fastest way to see which way round the
-   session runs) and the label stops looking pressable. Not `opacity` — a faded
-   control reads as one that is temporarily off, and this one is never on. */
-.quick-edit .check.derived, .quick-edit .checks .check.derived { color: var(--muted); cursor: default; }
-.quick-edit .check.derived input { cursor: default; }
-/* Its own line, under both. Said once for the box rather than beside the mark:
-   a disabled control with no reason given is the one somebody presses twice and
-   then reports as broken. */
+/* `.check.derived` STOOD HERE UNTIL 2026-09-10 and is deleted with the box it
+   drew. It greyed the ข้ามคืน read-out — the one tick in this strip that
+   reported the two times instead of asking about them — and HR took that box
+   off the panel; a rule for a class no component writes is the shape somebody
+   re-uses for a control it was never reasoned about. `endsNextDay` is still
+   derived and still saved; it is simply not drawn here any more. */
+/* Its own line, under the ticks. Said once for the box rather than beside the
+   mark: a disabled control with no reason given is the one somebody presses
+   twice and then reports as broken. */
 .quick-edit .checks-note {
   flex: 1 1 100%;
   font: 400 11.5px/1.45 var(--sans); color: var(--muted-2);

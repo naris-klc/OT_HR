@@ -89,10 +89,18 @@ test('ฟอร์มแก้ไขชั่วโมงคิดข้าม�
   // No second copy of the comparison in the component.
   const code = edit.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.ok(!/endTime <= .*startTime/.test(code), 'คอมโพเนนต์เขียนกฎเองซ้ำ');
-  // And the box reports it instead of asking for it.
-  assert.match(edit, /<input type="checkbox" checked=\{form\.endsNextDay\} disabled readOnly \/>/);
+  // AND NO BOX AT ALL — HR, 2026-09-10. It reported the answer from 2026-09-07
+  // as a greyed read-out; what HR asked for is that แก้ไขชั่วโมง stop drawing it,
+  // which is the step the filing form took on 2026-09-08. The FLAG is untouched:
+  // derived above, sent with the correction, and read by the engine. What must
+  // not come back is a control — greyed or live — that puts it to the reviewer.
+  assert.ok(!/checked=\{form\.endsNextDay\}/.test(edit), 'ช่องติ๊กข้ามคืนกลับมาอยู่ในแผงแก้ไขชั่วโมงแล้ว');
   assert.ok(!/onChange=\{\(ev\) => set\(\{ endsNextDay/.test(edit), 'ยังติ๊กข้ามคืนเองได้');
-  assert.ok(css.includes('.quick-edit .check.derived,'), 'ช่องติ๊กข้ามคืนไม่ได้ถูกวาดเป็นค่าที่อ่านอย่างเดียวแล้ว');
+  assert.ok(!css.includes('.quick-edit .check.derived'), 'กฎ CSS ของช่องติ๊กที่ถูกลบไปแล้วยังค้างอยู่');
+  // The two places a reviewer still reads the fact, neither of them a tick-box:
+  // the row in the queue, and เวลาที่ขอ in the pop-up this panel opens inside.
+  assert.ok(queue.includes('<div className="cell-note">ข้ามคืน</div>'), 'แถวในคิวไม่บอกว่าข้ามคืนแล้ว');
+  assert.ok(queue.includes("e.endsNextDay ? ' (ข้ามคืน)' : ''"), 'เวลาที่ขอ ในป๊อปอัปไม่บอกว่าข้ามคืนแล้ว');
 });
 
 /**
@@ -107,21 +115,33 @@ test('ฟอร์มแก้ไขชั่วโมงคิดข้าม�
  * on 2026-09-07, from a box that reports the answer to no box at all. What is
  * still asserted across both is ไม่พักเที่ยง, which is a real choice on either
  * screen and has to read the same on both.
+ *
+ * AND THE PANEL CAUGHT THE FORM UP ON 2026-09-10, in both directions: ข้ามคืน
+ * left it too, and the two boxes that remain are drawn behind the same two
+ * rules the filing form draws them behind — the ตำแหน่ง one and the calendar
+ * one (test/quickEditChecks.test.js owns those). What is pinned here is the
+ * strip: two switches, in a box under the times, in the filing form’s words.
  */
 test('สวิตช์สองตัวอยู่ในแถบเดียวกัน ใต้ช่องเวลา และใช้คำเดียวกับฟอร์มยื่น', () => {
   const form = readFileSync(join(ROOT, 'components/OtForm.jsx'), 'utf8');
   assert.ok(form.includes('ไม่พักเที่ยง'), 'ฟอร์มยื่นเปลี่ยนคำแล้ว — สองหน้าจะไม่ตรงกัน');
   assert.ok(!form.includes('ทำงานข้ามคืน (สิ้นสุดวันถัดไป)'),
     'ช่องติ๊กข้ามคืนกลับมาอยู่บนฟอร์มยื่นแล้ว');
-  assert.ok(edit.includes('ข้ามคืน <span className="check-note">(สิ้นสุดวันถัดไป)</span>'));
+  assert.ok(!edit.includes('ข้ามคืน <span className="check-note">(สิ้นสุดวันถัดไป)</span>'),
+    'ช่องติ๊กข้ามคืนกลับมาอยู่ในแผงแก้ไขชั่วโมงแล้ว');
   assert.ok(edit.includes('ไม่พักเที่ยง <span className="check-note">(ไม่หักเวลาพัก)</span>'));
+  assert.ok(edit.includes('เหมารายวัน <span className="check-note">(นับ 8 ชม. ต่อวัน)</span>'));
   // A row that wraps, in a box of its own — not two controls stacked loose.
   assert.ok(css.includes('display: flex; flex-direction: row; flex-wrap: wrap;'),
     'แถบสวิตช์ไม่ได้เรียงเป็นแถวแล้ว');
   assert.ok(!css.includes('.quick-edit .checks { gap: 14px; flex-direction: column; }'),
     'กฎเก่าที่วางซ้อนกันบนมือถือยังอยู่');
-  // And the disabled box says why it is disabled, once, for the whole strip.
-  assert.ok(edit.includes('className="checks-note"'), 'ไม่มีบรรทัดบอกว่าทำไมติ๊กข้ามคืนเองไม่ได้');
+  // And the locked เหมารายวัน times say why they are locked, once, under the
+  // two ticks rather than beside the mark. It is drawn only on a flat row now:
+  // its first line used to be the ข้ามคืน sentence, which stood on every
+  // correction, and an empty grey line under two ticks is not a note.
+  assert.ok(edit.includes('className="checks-note"'), 'ไม่มีบรรทัดบอกว่าทำไมแก้เวลาเหมารายวันเองไม่ได้');
+  assert.ok(edit.includes('{form.flatDaily && ('), 'บรรทัดใต้ช่องติ๊กไม่ได้ผูกกับเหมารายวัน');
 });
 
 /**
