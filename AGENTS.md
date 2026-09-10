@@ -62,7 +62,39 @@ yours.
   for exactly this reason.
 - A dirty tree is the normal state here, and tidying it is not a favour.
 
-### For work bigger than a couple of files: take a worktree of your own
+### Take a worktree of your own — before the first edit, not only for big work
+
+**Default to a worktree.** This heading read *"For work bigger than a couple of
+files"* until 2026-09-11, and on that day the exception ate the rule twice
+inside one afternoon. A session working on คิวรออนุมัติ OT had its own edits
+committed by somebody else, in two separate rounds:
+
+- `54434d4` (*ตรวจสอบประจำเดือน เหลือการ์ดใบเดียว*) carried three `app/styles.css`
+  rules belonging to a different task.
+- `74e66fb` (*กล่อง ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ เหลือแถวเดียว*) carried that
+  same task's `app/styles.css`, `README.md` and `docs/features.md` changes.
+
+Nothing was lost either time and both trees were correct afterwards — which is
+exactly why it keeps happening and why nobody stops it. **The damage is to the
+record, and it is the one kind that cannot be repaired later**: the commit that
+says WHY a rule exists is now a commit about something else, and the next reader
+who runs `git log -S` on that CSS lands on a message that never mentions it. The
+documentation rule at the bottom of this file assumes a commit and its reason
+are the same object; a swept hunk breaks that assumption silently.
+
+**Neither session did anything forbidden.** `git add <path>` on a file you
+edited yourself is the rule, and it is a rule about YOUR intent — it cannot see
+that another session touched the same file an hour ago, and `git add -p` is not
+a thing an agent can drive. Isolation is the only mechanism here that actually
+works; every other rule in this section is a mitigation.
+
+**So the sizing question was the wrong question.** If your task will touch a
+file another session might also touch — which is `app/styles.css`,
+`components/common.jsx`, `README.md`, `docs/features.md` and most of
+`components/` — take the worktree BEFORE the first edit. It costs the three
+commands below. The only work that does not need one is a change small enough
+to commit within a minute or two of making it, and a change you are still
+holding after two test runs was never that.
 
 `git worktree` gives you a checkout that no other session can write into, on a
 branch that no other session commits to. The recipe below was walked end to end
