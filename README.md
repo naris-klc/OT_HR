@@ -7031,9 +7031,13 @@ on two. `.card > .queue-tools { margin: 0 -18px }` negates the card's own
 padding (`-15px` in the 860px block, where `.card` pays 15), and the bar's own
 `padding: 14px 18px` puts the fields back where they were.
 
-**Two search boxes gained the magnifier the other two always had** — two of the
-app's four had one, which is the kind of difference nobody reports and everybody
-feels.
+**All four search boxes have the magnifier now.** It read *"two search boxes
+gained the magnifier the other two always had"* for one commit, and that was
+wrong by one: only ตรวจสอบประจำเดือน had it. บันทึกประวัติระบบ and ทะเบียนพนักงาน
+were given one with the bar, and **รออนุมัติ OT was missed because it is the
+screen this round was copying FROM rather than one it was changing** — found by
+looking at a capture of it afterwards. The kind of difference nobody reports and
+everybody feels.
 
 > ⚠ **Scope: `เฉพาะแถบตัวกรอง`, asked and answered in as many words.** A form is
 > not a filter bar. On บันทึก OT a label is a question asked of somebody with an

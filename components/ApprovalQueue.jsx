@@ -1115,19 +1115,31 @@ export default function ApprovalQueue({
         <>
         <div className="queue-tools">
           <div className="field search">
-            {/* `.field-head` around a label with no (?) beside it, and that is
-                the point of the rule: it reserves the same 18px first row as a
-                field that has one. The four dropdowns on this bar are `PickOne`
-                and `PickOne` is a `Field` since 2026-09-04, so without this the
-                search box would sit 6px above the four controls it shares a line
-                with. */}
+            {/* `.field-head` around a label with no (?) beside it. It read *"the
+                point of the rule is that it reserves the same 18px first row as
+                a field that has one"* until 2026-09-10 — there is no first row
+                on this bar any more. The label is drawn INSIDE the box, over the
+                value, and this element is what carries it there: see
+                `.queue-tools .field > .field-head` in app/styles.css. It is
+                still the same `.field-head` the four `PickOne`s render, which is
+                why one rule reaches all five. */}
             <div className="field-head"><label>ค้นหา</label></div>
+            {/* ⚠ `.searchbox` AND THE MAGNIFIER, 2026-09-10. This was the LAST of
+                the app's four search boxes without one — ตรวจสอบประจำเดือน always
+                had it, บันทึกประวัติระบบ and ทะเบียนพนักงาน were given it earlier
+                the same afternoon, and this one was missed because it is the
+                screen the round was copying FROM rather than one it was
+                changing. Found by looking at the capture. */}
+            <div className="searchbox">
+            <Icon name="search" className="searchbox-icon" />
             <input
               type="search"
+              className="has-icon"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="ชื่อพนักงาน · รหัสพนักงาน · รายละเอียดงาน"
             />
+            </div>
           </div>
           {/*
             `PickOne` AND NOT A `<select>`, on both of these, since 2026-09-01.
