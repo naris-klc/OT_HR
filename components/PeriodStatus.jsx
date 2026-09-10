@@ -50,21 +50,25 @@ export default function PeriodStatus({
    * this repo names by its cost. `detail` below is built once and drawn by both.
    */
   compact = false,
-  /**
-   * OTHER TOGGLES FOR THE SAME ROW — compact mode only. 2026-09-10, second round.
+  /*
+   * ── `actions` WAS HERE AND IS NOT ANY MORE — 2026-09-11 ────────────────────
    *
-   * ไฟล์สแกนนิ้วมือ used to sit BESIDE this component in `.month-strip`, pushed
-   * to the right edge. On a 390px phone that took half the width from the
-   * headline, so "…ค้างอยู่ 13 ใบ" broke across two lines with ซ่อน hanging off
-   * the end, and the detail box opened in a narrow column next to a link that
-   * belonged to something else. Reported as *"จัดเรียงข้อความใหม่หน่อย"*.
+   * It existed for one caller and one control: ไฟล์สแกนนิ้วมือ, handed IN so it
+   * would land on this component's own row of toggles instead of beside the
+   * headline. That was the 2026-09-10 repair for a 390px phone where a sibling
+   * on the right took half the width from "…ค้างอยู่ 13 ใบ".
    *
-   * So the headline gets the whole width, and every control is drawn on ONE row
-   * under it, ours first. The row sits ABOVE the detail rather than under it, so
-   * the button you just pressed stays where it was instead of being pushed
-   * down by what it opened.
+   * The button is on ตรวจสอบประจำเดือน's `.card-head` now, with the card's other
+   * actions, and this component went inside the card with the rest of the
+   * notices — so nothing is left to hand in. The phone problem it solved cannot
+   * come back by this route either: the headline has the full width of the
+   * notices band and no sibling on its right at any size.
+   *
+   * ⚠ WHAT IS KEPT is `.strip-actions` and the row it draws — รายละเอียด still
+   * lives on it. A row built for two controls holding one is not a reason to
+   * flatten it into the headline; the fold is what the whole `compact` shape
+   * exists to offer.
    */
-  actions = null,
 }) {
   const [state, setState] = useState(null);
   /** Whether the WHY under the headline is open — compact mode only. */
@@ -96,18 +100,13 @@ export default function PeriodStatus({
   // ตกค้าง" for half a second on a month with four pending requests is worse
   // than no card.
   //
-  // The other toggles are not ours to hold back, though: ไฟล์สแกนนิ้วมือ does not
-  // depend on these counts, and it must not vanish because they failed to load.
-  if (!state) {
-    const failure = err ? <Alert kind="error">{err}</Alert> : null;
-    if (!compact || !actions) return failure;
-    return (
-      <div className="period-strip">
-        {failure}
-        <div className="strip-actions">{actions}</div>
-      </div>
-    );
-  }
+  // ⚠ AND NOTHING IS DRAWN AROUND THE FAILURE EITHER, since 2026-09-11. This
+  // used to return an empty `.period-strip` carrying the handed-in toggles, so
+  // that ไฟล์สแกนนิ้วมือ did not vanish because a count failed to load. That
+  // button is on the card head now and never passed through here, so the wrapper
+  // held nothing — and an empty strip is the one thing `.month-notices:empty`
+  // cannot take off the page.
+  if (!state) return err ? <Alert kind="error">{err}</Alert> : null;
 
   const lastMonth = previousMonthOutstanding(previous);
 
@@ -183,22 +182,23 @@ export default function PeriodStatus({
           <span className="strip-mark" aria-hidden="true">{state.clear ? '✓' : '⚠'}</span>
           <strong className="strip-head">{state.headline}</strong>
         </div>
-        {/* ซ่อนรายละเอียด and not a bare ซ่อน: with two toggles on the row, a
-            bare verb does not say which of the two it hides. */}
-        {(hasDetail || actions) && (
+        {/* ซ่อนรายละเอียด and not a bare ซ่อน. It read "with two toggles on the
+            row, a bare verb does not say which of the two it hides" until
+            2026-09-11, when ไฟล์สแกนนิ้วมือ left this row for the card head. The
+            wording stays: this notice sits in a band with ผลเทียบสแกน and
+            MonthAlerts under it, all of which can be opened or closed, and a
+            bare ซ่อน names none of them. */}
+        {hasDetail && (
           <div className="strip-actions">
-            {hasDetail && (
-              <button
-                type="button"
-                className="strip-more"
-                onClick={() => setOpen((v) => !v)}
-                aria-expanded={open}
-              >
-                {open ? 'ซ่อนรายละเอียด' : 'รายละเอียด'}
-                <span aria-hidden="true">{open ? ' ▲' : ' ▼'}</span>
-              </button>
-            )}
-            {actions}
+            <button
+              type="button"
+              className="strip-more"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+            >
+              {open ? 'ซ่อนรายละเอียด' : 'รายละเอียด'}
+              <span aria-hidden="true">{open ? ' ▲' : ' ▼'}</span>
+            </button>
           </div>
         )}
         {/* Opened in place, under its own line and still above the controls

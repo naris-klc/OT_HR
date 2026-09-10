@@ -2113,31 +2113,69 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 .period-status.outstanding { background: var(--amber-bg); border-color: var(--amber-line); }
 .period-status .hint { margin-bottom: 0; }
 
-/* ══ ONE LINE ABOVE THE CONTROLS — งวด…ยังเปิดอยู่ AND ไฟล์สแกนนิ้วมือ ═══════
+/* ══ อ่านก่อนเชื่อยอด — THE NOTICES BAND INSIDE ตรวจสอบประจำเดือน'S CARD ═════
 
-   Reported 2026-09-10: *"หน้านี้ดูยากและรกมากและส่วนกรองข้อมูลควรต่อเนื่องกับ
-   ส่วนตาราง"*. These two were CARDS, and they were the two blocks standing
-   between the controls card and the table it filters — so `.month-panel` below
-   could not exist and the page read as five stacked panels.
+   ⚠ THIS RULE WAS `.month-strip { margin: 0 0 10px; }` UNTIL 2026-09-11, and
+   that element is gone. Its history is worth one paragraph because both rounds
+   answered the same complaint and only the second one finished it:
 
-   IT IS NOT A CARD, AND THAT IS THE WHOLE MECHANISM. No fill, no border, no
-   radius, no padding of its own: a line of text on the page's own ground, the
-   way a caption is. A card here would be the third card in a row again, one
-   size smaller. What tells the two states apart is the INK — `.outstanding`
-   takes the same amber the card took as a background, as a colour on the mark
-   and the headline — which is enough for a line and would not be enough for a
-   block.
+   On 2026-09-10, งวด…ยังเปิดอยู่ and ไฟล์สแกนนิ้วมือ stopped being CARDS —
+   *"หน้านี้ดูยากและรกมากและส่วนกรองข้อมูลควรต่อเนื่องกับส่วนตาราง"* — and became
+   a line of text on the page's own ground above the panel. That removed two
+   card boundaries and left four blocks stacked above a fifth.
 
-   Three rows since 2026-09-10, not one: the headline alone at full width, the
-   toggles (รายละเอียด · ไฟล์สแกนนิ้วมือ) under it, and the detail under them.
-   It read "`align-items: baseline` so the ⚠, the headline and รายละเอียด sit on
-   one written line" until then — which on a phone meant the headline wrapped
-   around two links that were not part of it. */
-/* It read `display: flex; justify-content: space-between` until 2026-09-10,
-   with ไฟล์สแกนนิ้วมือ as a sibling on the right. On a phone that took half the
-   width from the headline — see `actions` in components/PeriodStatus.jsx. The
-   toggle lives inside `.period-strip` now, so the strip is a plain block. */
-.month-strip { margin: 0 0 10px; }
+   On 2026-09-11 the screenshot came back: *"ส่วนนี้รวมเข้ากับส่วนหลัก … เพราะมัน
+   ดูแปลกแยกไม่กลมกลืน อยากให้กลมกลืนเป็นส่วนเดียวกันเหมือนส่วนหัวของหน้า
+   รออนุมัติ ot"*. A line on the page's ground beside a card is still a thing
+   OUTSIDE the card; รออนุมัติ OT has one block and this had five. So the
+   notices came INSIDE, as a band between `.card-head` and `.queue-tools` — the
+   same construction as the bar itself, which is what makes it read as a section
+   rather than as a visitor.
+
+   WHITE AND NOT WASHED, unlike `.queue-tools` under it. The band holds `.alert`
+   children that carry their own amber and green fills, and a tinted ground
+   behind a tinted notice is two washes arguing. The hairline underneath is what
+   separates it from the bar.
+
+   `gap` AND NOT MARGINS ON THE CHILDREN. Three of the four (`.alert`,
+   `.alerts-recall`, `.scan-compare`) carry vertical margins for the days they
+   floated on the page; inside a flex column those would stack with the gap and
+   with each other, so they are zeroed here and the column owns the rhythm.
+
+   ⚠ `:empty` IS WHAT TAKES THE BAND OFF THE PAGE, and it is load-bearing. All
+   four children render `null` when they have nothing to say and JSX leaves no
+   whitespace between expressions, so a settled month that has been compared
+   leaves this element with no child nodes — and without this rule it would draw
+   as 25px of white and a stray hairline between the head and the bar. See the
+   comment over `.month-notices` in components/HrView.jsx for why the condition
+   is here and not in the JSX. */
+.month-notices {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 18px; border-bottom: 1px solid var(--line-soft);
+}
+.month-notices:empty { display: none; }
+.month-notices > * { margin: 0; }
+
+/* ── ลิ้นชักนำเข้าไฟล์สแกน — components/ScanImport.jsx ──────────────────────
+
+   IT WAS `.card` UNTIL 2026-09-11 — a second white slab with its own border and
+   shadow, standing between this screen's one card and the page, which is the
+   block the screenshot of that morning was pointing at.
+
+   THE WASH IS THE WHOLE MECHANISM, and it is `.queue-tools`'s: a drawer pulled
+   out of a card is a recessed section of it, not a smaller card sitting on top.
+   No radius and no border — the hairline top and bottom is what a band in this
+   card is edged with, and the panel's own radius rounds the outside.
+
+   Nothing inside that component knows about this: it kept every class it had. */
+.scan-drawer {
+  padding: 14px 18px; background: var(--neutral-wash);
+  border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft);
+}
+/* The card's own head band already draws a hairline; a drawer opening directly
+   under it would put two on one seam. */
+.month-notices:empty + .scan-drawer { border-top: 0; }
+
 .period-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
 /* ── ผลเทียบกับไฟล์สแกนนิ้วมือ — the summary card above the strip ──────────
@@ -2147,10 +2185,12 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    an alert does not know how to say — a headline figure, a tally read across,
    and one sentence that has to be bigger than the rest of the card.
 
-   `margin-bottom` matches `.month-strip`'s, so the four blocks above the table
-   (MonthAlerts · this · the strip · the panel) sit on one rhythm rather than
-   four. */
-.scan-compare { margin: 0 0 10px; }
+   ⚠ NO MARGIN OF ITS OWN SINCE 2026-09-11. It read `margin: 0 0 10px` — a
+   rhythm shared with `.month-strip` so that the four blocks stacked above the
+   table sat on one spacing rather than four. There is no stack any more: this
+   is one child of `.month-notices`, whose `gap` is what spaces the band, and
+   `.month-notices > *` zeroes this from above. The declaration is left off
+   rather than restated so there is only ever one number to change. */
 
 /* THE ONE SENTENCE ON THIS SCREEN DRAWN LARGER THAN A HEADING, and it is the
    state nobody could see before: a month with no scan file at all. It is
@@ -9089,6 +9129,21 @@ th.act-col { width: 258px; }
   color: var(--muted-2); cursor: help;
 }
 
+/* ── AND WHERE THAT DASH IS TWO GREYED DECISIONS INSTEAD — 2026-09-11 ───────
+   `WatchActions`, on the รอหัวหน้า rows of ฝ่ายบุคคล's queue: the buttons that
+   row is going to get, drawn now and refused. Two `.act-icon` squares and the
+   6px `.row-actions` gap — 70px, the same 70 the column's 96 was measured
+   against — so a watched row and a decidable one put their controls on the same
+   left edge.
+
+   IT IS A WRAPPER BECAUSE THE TOOLTIP NEEDS SOMETHING THAT IS NOT DISABLED to
+   hang on; a disabled button never opens its own `title`. See the component.
+
+   NO STATE OF ITS OWN, deliberately: the grey, the `not-allowed` cursor and the
+   square are all rules this file already carries for every disabled button and
+   every queue icon. This is the box that holds them and nothing more. */
+.act-watch { display: inline-flex; gap: 6px; flex: none; }
+
 /* Prose, and the only cell in the row that is meant to wrap. Given a width
    rather than the leftover: under `table-layout: fixed` the leftover is
    whatever the other ten columns did not take, which on a narrow card was
@@ -9454,6 +9509,34 @@ tbody tr.picked:hover { background: var(--green-bg); }
 }
 .btn.ghost.danger:hover:not(:disabled) {
   background: var(--danger-bg); border-color: var(--danger); color: var(--danger-ink);
+}
+/* ── AND GREY WHEN IT IS SWITCHED OFF, LIKE THE BUTTON BESIDE IT — 2026-09-11 ─
+   Reported of the pair on คิวรออนุมัติ: *ทุกไม่อนุมัติเวลา disable ให้เป็นสีเทา
+   เหมือนปุ่มอนุมัติตอน disable ด้วย*.
+
+   THE RULE THAT SAYS THAT ALREADY EXISTS AND WAS NOT REACHING THIS BUTTON.
+   `.btn.ghost:disabled` and `.btn.danger:disabled` at the top of this file are
+   two classes and a pseudo-class each — three units — and so is `.btn.ghost.danger`
+   three rules up. Equal weight is settled by ORDER, and that rule is six
+   thousand lines later, so it won: a refused ไม่อนุมัติ kept the white card and
+   the red ink and read as pressable, sitting next to an อนุมัติ that had
+   correctly gone grey. Two buttons, both dead, one of them still advertising.
+
+   FIXED HERE RATHER THAN BY MOVING THE BLOCK AT THE TOP. That block's own note
+   says it is placed after every variant so it wins on order; this is simply a
+   variant that arrived after it, and repeating the declarations beside the rule
+   that overrode them is what makes the next `.btn.ghost.*` obvious.
+
+   The four values are `.btn:disabled`'s, not softened ones — "the same grey as
+   อนุมัติ" is the whole of what was asked for, so anything of its own here
+   would be a third appearance.
+
+   ⚠ `.btn.ghost.warn` below has the identical shape and the identical hole.
+   Left alone because nothing disables it today; when something does, this is
+   the rule to copy. */
+.btn.ghost.danger:disabled {
+  background: var(--neutral-wash); color: var(--muted);
+  border-color: var(--line); box-shadow: none; cursor: not-allowed;
 }
 .btn.ghost.warn {
   background: var(--card); color: var(--amber); border-color: var(--amber-line); box-shadow: none;
@@ -10414,6 +10497,25 @@ table.mini tbody tr:hover { background: none; }
 .foot-split .btn.ghost.danger:active:not(:disabled) { box-shadow: none; }
 .foot-split .btn.ghost.danger:hover:not(:disabled) {
   background: var(--reject-bg); color: var(--reject-ink); border-color: var(--reject-ink);
+}
+/* ── THE SECOND PLACE ไม่อนุมัติ STAYED COLOURED WHILE SWITCHED OFF — 2026-09-11
+   The pop-up's footer, and it is the same defect as `.btn.ghost.danger:disabled`
+   six thousand lines up rather than a new one: the rule above is FOUR units of
+   specificity, which beats both the app-wide `.btn.ghost:disabled` and the
+   dialog's own `.modal-foot .btn:disabled`. So ไม่อนุมัติ kept the reject-light
+   fill through `disabled={busy || editing}` — which is exactly the moment a
+   reviewer is mid-edit and most likely to reach for it.
+
+   IT MATCHES THE BUTTON BESIDE IT, NOT THE ONE IN THE TABLE. อนุมัติใบ OT in
+   this footer is greyed by `.modal-foot .btn:disabled`, whose disabled look is
+   a `--muted-2` label over the wash with an INSET hairline rather than a real
+   border — so the button does not change size when it comes alive. Copying the
+   table's `.btn:disabled` here would put a genuinely different grey next to it,
+   which is the thing being complained about, one shade over. */
+.foot-split .btn.ghost.danger:disabled {
+  background: var(--neutral-wash); color: var(--muted-2);
+  border-color: transparent; box-shadow: inset 0 0 0 1px var(--line);
+  cursor: not-allowed;
 }
 
 /* ── the temporary password, on the one screen that will ever show it ──────
@@ -12173,6 +12275,15 @@ table.mini tbody tr:hover { background: none; }
   }
   /* And the dash goes: the sentence it stood in for is on the card in full. */
   .queue-table td.act-col .act-none { display: none; }
+  /* THE GREYED PAIR DOES NOT GO, and it is not the same case as the dash: a
+     dash is a stand-in for a sentence the card already prints, whereas these
+     are the two decisions themselves. They get their words back like every
+     other button on a card (`.btn-word` is only folded above 861px) and the
+     wrapper stops being a fixed 70px pair, so a watched card and a decidable
+     one are the same shape — two half-width targets under a thumb, one of them
+     simply refusing. The buttons inside take the `flex: 1 1 40%` and the 44px
+     from the `.row-actions .btn` rule above, which reaches them as descendants. */
+  .queue-table td.act-col .act-watch { display: flex; flex: 1 1 100%; gap: 8px; }
   /* The two are already the same box — 44px, and `box-sizing: border-box` at
      the top of this file means the outlined one's border is inside that height
      rather than added to it. What made อนุมัติ look the taller of the pair is
@@ -13535,6 +13646,11 @@ table.mini tbody tr:hover { background: none; }
      to be clipped. The bar states the two corners itself instead. */
   .month-head { padding: 0; }
   .card.flush.month-panel > .month-head > .card-head { padding: 12px; }
+  /* The two bands that came inside the card on 2026-09-11 pay the same 12px as
+     everything else in here, for the reason written over `.month-head` above:
+     the wrapper pays nothing and each section pays its own. */
+  .card.flush.month-panel > .month-head > .month-notices,
+  .card.flush.month-panel > .month-head > .scan-drawer { padding: 12px; }
   .card.flush.month-panel > .month-head > .queue-tools {
     padding: 12px; border-bottom: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);

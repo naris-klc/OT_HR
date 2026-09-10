@@ -1194,154 +1194,6 @@ export default function HrView({
 
   return (
     <>
-      {/* FIRST OF EVERYTHING, above the month picker and above the export
-          buttons. What this warns about is the figures on this screen, and the
-          person it warns is the one about to sign them — so it is read before
-          the controls rather than after somebody has already pressed พิมพ์.
-
-          IT NAMES THE MONTH BECAUSE IT IS NOW ABOVE THE THING THAT SETS IT. In
-          its old place, directly over the list, "เดือนนี้" was answered by the
-          period box two inches above it. Here there is nothing above it but the
-          app's own header, and a warning about a month a reader has to scroll
-          DOWN to identify is a warning they have to check twice.
-
-          `data &&` because a month still loading has no notices to count, and
-          `MonthAlerts` returns null when it finds none — including on a month
-          with no entries at all, where `policy.mixed` is false and
-          `hrVerifiedCount` is 0.
-
-          `key` REMOUNTS IT WHEN THE MONTH DOES. Both the open flag and the list
-          under it describe the notices of one particular month at one particular
-          สถานะที่นับ in one particular แผนก; letting them survive a change of any
-          of the three is how an open list ends up describing a month that is no
-          longer on screen. Written as a key rather than an effect because there
-          is nothing to carry across — the dismissal is deliberately not in that
-          component's state (see `alertsDismissed` by MonthAlerts) and is the one
-          thing that does survive.
-
-          `dept` JOINED IT ON 2026-09-10 with the แผนก filter, and it is not
-          decoration: every count this card draws — the missing วันเกิด list, the
-          policy spread, ยืนยันโดย HR n ใบ — is counted by the server over the
-          narrowed month, so all three describe the department that is on screen
-          and none of them may outlive it. */}
-      {data && (
-        <MonthAlerts
-          key={`${period}|${statusFilter}|${dept}`}
-          periodName={periodLabel(period)}
-          policy={data.policy}
-          hrVerifiedCount={data.hrVerifiedCount}
-          rowAction={openRowLabel(mayCorrect)}
-        />
-      )}
-
-      {/* ── ผลเทียบกับไฟล์สแกนนิ้วมือ — ABOVE EVERYTHING PRESSABLE ────────
-
-          Directly under `MonthAlerts` and above the strip, for that card's own
-          reason word for word: what it warns about is the figures on this
-          screen, and the person it warns is the one about to sign them. A
-          reader reaches it before the month picker, before ส่งออก and before
-          พิมพ์ — not after.
-
-          IT WAS INSIDE ไฟล์สแกนนิ้วมือ UNTIL TODAY, which was the right place
-          for exactly as long as that panel could not fold. It folds now, shut
-          on every visit; the comparison went down with it and became a fact the
-          screen no longer stated. Importing is a deed and folds; the answer to
-          "is this month safe to sign" is a fact and does not.
-
-          NOT KEYED ON THE MONTH like `MonthAlerts` is, because it holds no
-          state of its own to go stale — every word it draws comes from `scan`,
-          which this screen empties and re-asks whenever any of the three
-          narrowings move. */}
-      {readsScans && (
-        <ScanCompareCard
-          period={period}
-          compare={scan?.compare || null}
-          punchCount={scan?.punchCount ?? null}
-          loading={scanLoading}
-          onlyFlagged={onlyFlagged}
-          onToggleFlagged={() => setOnlyFlagged((v) => !v)}
-          /* One press from "ยังไม่ได้เทียบ" to the thing that fixes it. It
-             OPENS the fold rather than toggling it: this button is only ever
-             drawn while the panel is shut, and a control that could also close
-             it would be a second answer to a question `scan-toggle` already
-             owns. */
-          onOpenImport={() => setScanOpen(true)}
-        />
-      )}
-
-      {/* ── ONE LINE, AND IT USED TO BE TWO CARDS ─────────────────────────
-
-          Reported on 2026-09-10: *"หน้านี้ดูยากและรกมากและส่วนกรองข้อมูลควร
-          ต่อเนื่องกับส่วนตาราง"*. งวด…ยังเปิดอยู่ and ไฟล์สแกนนิ้วมือ were the
-          two blocks STANDING BETWEEN the controls card and the table — so a
-          reader set ประจำเดือน, แผนก and ค้นหา, and then had to travel past two
-          unrelated panels to reach the rows those controls decide. The screen
-          was five stacked cards and the two in the middle belonged to neither
-          half.
-
-          BOTH SURVIVE AS ONE ROW ABOVE THE CONTROLS, which is what was asked
-          for. Neither is deleted and neither loses anything: the งวด headline
-          is the line it always led with and its WHY is one press away
-          (`compact` in components/PeriodStatus.jsx), and นำเข้าไฟล์สแกน opens
-          the same card it always was, in place, under the strip.
-
-          ABOVE AND NOT BELOW THE TABLE. Both are things a reader checks BEFORE
-          they trust a total — "is anything still waiting?" and "is this month's
-          scan file in?" — and an answer that arrives after the sheet is printed
-          is an answer that arrived too late. What changed is how much room they
-          take while the answer is "nothing", which is most months.
-
-          `no-print` because neither is part of any sheet. */}
-      <div className="month-strip no-print">
-        {/* The scan toggle is handed IN, not drawn beside — so it lands on the
-            row of controls under the งวด headline instead of taking half the
-            headline's width at the right edge. See `actions` in
-            components/PeriodStatus.jsx for the phone this was on.
-
-            `mayCorrect && scope !== 'team'` — the same pair the route enforces
-            (`requireRole(…, 'hr', 'admin')` on app/api/scans/route.js), and the
-            reason is not that the punch log is secret from a การเงิน: a record
-            of when people were at the door is a different fact about a person
-            from the OT they filed, and it is ฝ่ายบุคคล's to hold. A หัวหน้า
-            reading รายงาน OT ประจำทีม is looking at their own team's hours and
-            is never offered this, whatever their บทบาท. */}
-        <PeriodStatus
-          period={period}
-          compact
-          actions={mayCorrect && scope !== 'team' && (
-            <button
-              type="button"
-              className="strip-more scan-toggle"
-              onClick={() => setScanOpen((v) => !v)}
-              aria-expanded={scanOpen}
-            >
-              {scanOpen ? 'ซ่อนไฟล์สแกนนิ้วมือ' : 'ไฟล์สแกนนิ้วมือ'}
-              <span aria-hidden="true">{scanOpen ? ' ▲' : ' ▼'}</span>
-            </button>
-          )}
-        />
-      </div>
-
-      {/* Opened in place, still above the controls — it is a monthly act on the
-          monthly screen (the card's own header says why it is not in ตั้งค่าระบบ)
-          and it checks the file against the ประจำเดือน box below it.
-
-          IT STILL CHANGES NO FIGURE IN THE TABLE — a punch is not an hour and
-          nothing in lib/scanMatch.js may restate a sheet two people signed — so
-          `load()` is not called and the month is untouched by an import.
-
-          WHAT AN IMPORT DOES MOVE, SINCE 2026-09-10, IS THE COMPARISON, and
-          `onImported` is that and only that: the summary card above and the
-          คอลัมน์สแกน in the table are both drawn from `scan`, which is a
-          reading of the very file that just landed. Without it a reader would
-          import August's second machine and watch the card go on reporting the
-          month as it stood before they pressed the button. */}
-      {scanOpen && readsScans && (
-        <ScanImport period={period} scan={scan} onImported={loadScan} />
-      )}
-
-      {error && <Alert kind="error">{error}</Alert>}
-
       {/* ── THE CONTROLS AND THE ROWS THEY DECIDE, IN ONE CARD ────────────
 
           `card flush` — the same card รออนุมัติ OT is, since 2026-09-10 and the
@@ -1358,6 +1210,15 @@ export default function HrView({
           wash), then the rows. That was already the arrangement this card
           described in words — each row settling what the next acts on — and it is
           now the arrangement three screens share rather than one screen's own.
+
+          ⚠ AND SINCE 2026-09-11 THERE ARE FIVE OF THEM, because the four blocks
+          that used to float ABOVE this card came inside it. Reported with a
+          screenshot: *"ส่วนนี้รวมเข้ากับส่วนหลักที่เป็นส่วนหัวที่อยู่บนส่วนกรอง
+          ข้อมูลได้หรือไม่ เพราะมันดูแปลกแยกไม่กลมกลืน อยากให้กลมกลืนเป็นส่วน
+          เดียวกันเหมือนส่วนหัวของหน้า รออนุมัติ ot"*, and the count is what made
+          it true: this screen was FIVE stacked blocks (MonthAlerts ·
+          ScanCompareCard · `.month-strip` · the ScanImport card · this panel)
+          next to a queue that is one. See `.month-notices` below.
 
           ONLY ABOVE 860px. Below it the table is one card per person on the
           page's own ground, and a card holding forty cards is a forty-first
@@ -1423,6 +1284,40 @@ export default function HrView({
               anything. */}
           <div className="row" style={{ gap: 10, alignItems: 'center' }}>
             {data && <span className="chip muted">{data.employees.length} คน</span>}
+            {/* ── ไฟล์สแกน — THE DRAWER'S HANDLE, ON THE HEAD SINCE 2026-09-11 ──
+
+                It was `.strip-more` on `.month-strip`, an underlined verb on a
+                line of its own above the card. `.card-head` is where every card
+                in this app keeps its actions, and this is one — so it is a
+                `.btn.ghost.sm` beside พิมพ์ / ส่งออก rather than a sixth voice
+                on a row that no longer exists.
+
+                `readsScans` AND NOT A FRESH PAIR OF TESTS: it is
+                `mayCorrect && scope !== 'team'`, the same pair the route enforces
+                (`requireRole(…, 'hr', 'admin')` on app/api/scans/route.js) and
+                the same one that decides the คอลัมน์สแกน and the summary. The
+                reason is not that the punch log is secret from a การเงิน — a
+                record of when people were at the door is a different fact about a
+                person from the OT they filed, and it is ฝ่ายบุคคล's to hold. A
+                หัวหน้า reading รายงาน OT ประจำทีม is never offered it, whatever
+                their บทบาท.
+
+                THE LABEL DOES NOT CHANGE WITH THE STATE and it used to
+                (`ซ่อนไฟล์สแกนนิ้วมือ`). A button that grows by five characters
+                when pressed re-wraps the head it sits in, and on a 360px screen
+                this row already carries a chip and a menu. The caret says which
+                way it goes; `aria-expanded` says it to a screen reader. */}
+            {readsScans && (
+              <button
+                type="button"
+                className="btn ghost sm scan-toggle"
+                onClick={() => setScanOpen((v) => !v)}
+                aria-expanded={scanOpen}
+              >
+                ไฟล์สแกน
+                <span aria-hidden="true">{scanOpen ? ' ▲' : ' ▾'}</span>
+              </button>
+            )}
             <ExportMenu
             items={[
               {
@@ -1480,6 +1375,126 @@ export default function HrView({
           />
           </div>
         </div>
+
+        {/* ── อ่านก่อนเชื่อยอด — ONE BLOCK, INSIDE THE CARD IT IS ABOUT ────
+
+            Four notices that were four separate blocks floating above this card
+            until 2026-09-11, in the order a reader needs them:
+
+              1. งวด…ยังเปิดอยู่   — is this month even settled?
+              2. ผลเทียบสแกน       — can the figures on it be trusted?
+              3. MonthAlerts       — the month's digest (policy spread, missing
+                                     วันเกิด, ยืนยันโดย HR n ใบ)
+              4. error             — the request failed
+
+            ⚠ MonthAlerts MOVED DOWN, and it is the one reordering in the round.
+            It was first, above everything, and the argument for that (*what it
+            warns about is the figures on this screen, and the person it warns is
+            the one about to sign them*) is satisfied by any position above the
+            table — which this is. What decides the order among the three is that
+            งวด and ผลเทียบ answer *may this month be signed at all*, while the
+            digest is a list of things to know while signing it. AND IT IS THE
+            ONLY ONE A READER CAN CLOSE (`alertsDismissed`), so it goes last:
+            dismissing the first of three leaves a hole between two that stay.
+
+            ABOVE `.queue-tools` AND NOT UNDER THE TABLE. Both of the first two
+            are checks a reader makes BEFORE they trust a total — *is anything
+            still waiting? is this month's scan file in?* — and an answer that
+            arrives under the sheet is an answer that arrived after the decision.
+            What changed is not the reading order; it is that they are now inside
+            the card they are about, instead of stacked on the page above it.
+
+            `:empty` IS WHAT MAKES THE BLOCK DISAPPEAR, not a count in here. All
+            four children render `null` when they have nothing to say, and JSX
+            leaves no whitespace between expressions — so a settled, compared
+            month with no notices leaves this `<div>` with no child nodes at all
+            and the stylesheet takes it off the page, band, hairline and all. A
+            condition here would be this screen's second opinion about when
+            `MonthAlerts` has something to say, and the day the two disagree is
+            the day a notice exists that nobody draws.
+
+            `no-print` because none of it is part of any sheet. */}
+        <div className="month-notices no-print">
+          {/* THE งวด HEADLINE, WITHOUT THE `actions` IT USED TO CARRY. The scan
+              toggle rode on this component's own row while the row was the only
+              thing on the page that could hold it; it is on `.card-head` now,
+              and `actions` went with it — see components/PeriodStatus.jsx. */}
+          <PeriodStatus period={period} compact />
+
+          {/* NOT KEYED ON THE MONTH like `MonthAlerts` is, because it holds no
+              state of its own to go stale — every word it draws comes from
+              `scan`, which this screen empties and re-asks whenever any of the
+              three narrowings move. */}
+          {readsScans && (
+            <ScanCompareCard
+              period={period}
+              compare={scan?.compare || null}
+              punchCount={scan?.punchCount ?? null}
+              loading={scanLoading}
+              onlyFlagged={onlyFlagged}
+              onToggleFlagged={() => setOnlyFlagged((v) => !v)}
+              /* One press from "ยังไม่ได้เทียบ" to the thing that fixes it. It
+                 OPENS the drawer rather than toggling it: this button is only
+                 ever drawn while the drawer is shut, and a control that could
+                 also close it would be a second answer to a question the head's
+                 own `scan-toggle` already owns. */
+              onOpenImport={() => setScanOpen(true)}
+            />
+          )}
+
+          {/* KEYED ON ALL THREE NARROWINGS, so nothing it counted can outlive
+              the month, the สถานะที่นับ or the แผนก it was counted over. The
+              key is what re-mounts it; `MonthAlerts` returns null when it finds
+              nothing, and the dismissal is deliberately NOT in its state (see
+              `alertsDismissed`) so a reader who closed it stays closed across
+              the remount.
+
+              `dept` is not decoration in that list: every count this draws — the
+              missing วันเกิด, the policy spread, ยืนยันโดย HR n ใบ — is the
+              server's over the NARROWED month. */}
+          {data && (
+            <MonthAlerts
+              key={`${period}|${statusFilter}|${dept}`}
+              periodName={periodLabel(period)}
+              policy={data.policy}
+              hrVerifiedCount={data.hrVerifiedCount}
+              rowAction={openRowLabel(mayCorrect)}
+            />
+          )}
+
+          {error && <Alert kind="error">{error}</Alert>}
+        </div>
+
+        {/* ── ลิ้นชักนำเข้าไฟล์สแกน — IN THE CARD, BETWEEN THE NOTICES AND THE
+               BAR ────────────────────────────────────────────────────────────
+
+            It was a white card of its own standing between this panel and the
+            page, which is the block the 2026-09-11 screenshot was pointing at.
+            `ScanImport` stopped carrying `.card` for it; nothing inside that
+            component moved.
+
+            WHY IT OPENS HERE AND NOT SOMEWHERE QUIETER: it is a monthly act on
+            the monthly screen (that component's own header says why it is not in
+            ตั้งค่าระบบ) and it checks the file against the ประจำเดือน box
+            immediately below it.
+
+            IT STILL CHANGES NO FIGURE IN THE TABLE — a punch is not an hour and
+            nothing in lib/scanMatch.js may restate a sheet two people signed — so
+            `load()` is not called and the month is untouched by an import.
+
+            WHAT AN IMPORT DOES MOVE IS THE COMPARISON, and `onImported` is that
+            and only that: the notice above and the คอลัมน์สแกน in the table are
+            both drawn from `scan`, which is a reading of the very file that just
+            landed. Without it a reader would import August's second machine and
+            watch the notice go on reporting the month as it stood before they
+            pressed the button.
+
+            ⚠ THE CARD IS TALL WHILE THIS IS OPEN — about 420px on top of a table
+            that is already long. It is a deliberate press, once a month, and
+            `scanOpen` opens `false` on every visit. */}
+        {scanOpen && readsScans && (
+          <ScanImport period={period} scan={scan} onImported={loadScan} />
+        )}
 
         {/* ── ONE BAR, AND IT WAS THREE ROWS ────────────────────────
 

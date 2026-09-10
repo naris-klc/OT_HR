@@ -872,26 +872,45 @@ test('the panel is above the marks it explains, which one of them once only clai
   // has finished the rows has finished asking.
   const strip = hrView.indexOf(STRIP);
   assert.ok(strip > 0, 'the panel was not found');
-  // FIRST OF EVERYTHING now — above the period box, above the export buttons,
-  // above the search box and the list. The person it warns is the one about to
-  // sign the figures, and a warning read after พิมพ์ has been pressed is a
-  // warning that arrived late.
-  // `card month-head` from 2026-08-27 until 2026-09-10, when the card moved out
-  // to `.month-panel` and this became its top section. The class is still the
-  // phone block's handle on the container's padding — see the ledger over
-  // `.month-head` — and is still what this ordering is measured against.
+  /* ⚠ IT READ "FIRST OF EVERYTHING" UNTIL 2026-09-11 — above the card, above
+     the export button, above every control on the screen. What is load-bearing
+     in that sentence is the SECOND half of it: the person it warns is the one
+     about to sign the figures, and a warning read after พิมพ์ has been pressed
+     is a warning that arrived late. Everything above `.queue-tools` satisfies
+     it; being first did not add anything the reader could use.
+
+     WHAT MOVED IT was the round that took the four floating blocks into the
+     card (*"อยากให้กลมกลืนเป็นส่วนเดียวกันเหมือนส่วนหัวของหน้า รออนุมัติ ot"*).
+     Inside `.month-notices` the three notices had to be put in SOME order, and
+     งวด…ยังเปิดอยู่ and ผลเทียบสแกน answer *may this month be signed at all*
+     while this one is a digest of things to know while signing it. It is also
+     THE ONLY ONE A READER CAN CLOSE — dismissing the first of three leaves a
+     hole between two that stay.
+
+     So what is measured here now is the property, not the position: above the
+     bar, above the month box, above the table. */
   assert.ok(
-    strip < hrView.indexOf('<div className="month-head">'),
-    'the panel is under the controls card',
+    strip > hrView.indexOf('<div className="month-notices no-print">'),
+    'the panel left the notices band',
   );
   assert.ok(strip < hrView.indexOf('<PickMonth'), 'the panel is under the period box');
-  // `<ExportMenu` and `.queue-tools` since 2026-09-10: the row of export buttons
-  // is one button in `.card-head`, and the three filter rows are one bar under
-  // it. What is being measured is unchanged — the strip is above everything
-  // this screen offers to do with the month.
-  assert.ok(strip < hrView.indexOf('<ExportMenu'), 'the panel is under the export button');
-  assert.ok(strip < hrView.indexOf('<div className="queue-tools">'), 'the panel split the search box from its list');
+  assert.ok(
+    strip < hrView.indexOf('<div className="queue-tools">'),
+    'the panel is under the filter bar',
+  );
   assert.ok(strip < hrView.indexOf('<table className="hr-table">'), 'the panel is still under the table');
+  // AND IT IS INSIDE THE CARD, which is the whole point of the move — the four
+  // notices are a section of the panel now, not four blocks stacked on top of
+  // it. `.month-head` is still the phone block's handle on the padding; see the
+  // ledger over `.month-head` in app/styles.css.
+  assert.ok(
+    strip > hrView.indexOf('<div className="month-head">'),
+    'the panel floated back out above the card',
+  );
+  // ⚠ AND `<ExportMenu` IS NOW ABOVE IT, which this asserted the reverse of.
+  // The head is a title and the card's verbs; the band under it is what a reader
+  // checks before pressing one. Reading order down the card is unchanged.
+  assert.ok(strip > hrView.indexOf('<ExportMenu'), 'the head and the notices swapped back');
   // …and it can only be up there because it names the month itself; the assert
   // for that is in the first test in this group.
   assert.match(hrView, /\{data && \(\s*<MonthAlerts/);

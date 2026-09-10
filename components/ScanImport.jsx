@@ -171,7 +171,23 @@ export default function ScanImport({
   const readable = pending?.summary.punchCount > 0;
 
   return (
-    <div className="card no-print">
+    /* ── A DRAWER IN ตรวจสอบประจำเดือน'S CARD, NOT A CARD OF ITS OWN ─────────
+       The root here was a `card no-print` div until 2026-09-11 (written without
+       its angle brackets on purpose — a test asserting that markup is gone must
+       not find it in the sentence saying so; AGENTS.md counts five of those).
+       What changed it is the screenshot HR sent with the words
+       *"มันดูแปลกแยกไม่กลมกลืน"* — a second white slab, with its own border and
+       its own shadow, parked in the middle of a screen that has one card on it.
+
+       NOTHING INSIDE HERE MOVED. What is gone is the fill, the border, the
+       shadow and the radius; `.scan-drawer` puts the same content on
+       `--neutral-wash` between two hairlines, which is what a drawer pulled out
+       of a card looks like in this app.
+
+       ONE CALLER — components/HrView.jsx, and it renders this INSIDE the panel
+       now, between the notices and the filter bar. A drawer with a `.card` root
+       nested in a card is the shape this element can no longer be in. */
+    <section className="scan-drawer no-print">
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <h3 style={{ margin: 0 }}>ไฟล์สแกนนิ้วมือ</h3>
@@ -549,6 +565,6 @@ export default function ScanImport({
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

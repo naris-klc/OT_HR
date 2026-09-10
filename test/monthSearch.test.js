@@ -276,34 +276,137 @@ test('ประจำเดือน and ค้นหา are one row, above the 
   // catches the explanation instead of the code. That has now happened five
   // times in this repo; see AGENTS.md.
   assert.ok(!/className="row export-row"/.test(hrView), 'the row of export buttons came back');
-  /* ⚠ สรุปสถานะงวด IS ABOVE THE WHOLE CARD NOW, AND IT USED TO BE BELOW IT.
-     This read `assert.ok(exports < status)` until 2026-09-10 — the card sat
-     UNDER the buttons that print and export, because it is the check somebody
-     makes on the way to pressing them.
+  /* ⚠ สรุปสถานะงวด IS INSIDE THE CARD NOW, AND IT HAS MOVED TWICE.
+     · It read `assert.ok(exports < status)` until 2026-09-10 — a CARD under the
+       buttons that print and export, because it is the check somebody makes on
+       the way to pressing them.
+     · Then `.month-strip`, a line on the page ABOVE the whole card: *"ส่วนกรอง
+       ข้อมูลควรต่อเนื่องกับส่วนตาราง"* could not be answered while this stood
+       between the controls and the rows those controls decide.
+     · Since 2026-09-11 it is a child of `.month-notices`, a band between
+       `.card-head` and `.queue-tools`. `.month-strip` no longer exists.
 
-     WHAT OVERTURNED IT was not a better reading of that argument but the report
-     the whole round answers: *"ส่วนกรองข้อมูลควรต่อเนื่องกับส่วนตาราง"*. This
-     card and ไฟล์สแกนนิ้วมือ were the two blocks standing between the controls
-     and the rows those controls decide, and no arrangement that keeps a card
-     there can also make those two continuous. So it is a LINE now
-     (`compact` in components/PeriodStatus.jsx), above the card rather than
-     inside the gap it used to widen.
+     WHAT OVERTURNED THE SECOND ARRANGEMENT was the screenshot that followed it:
+     *"มันดูแปลกแยกไม่กลมกลืน อยากให้กลมกลืนเป็นส่วนเดียวกันเหมือนส่วนหัวของหน้า
+     รออนุมัติ ot"*. A line on the page's own ground beside a card is still a
+     thing outside the card; the queue is ONE block and this screen was five.
 
-     THE OLD ARGUMENT SURVIVES THE MOVE. "Read this before you press print" is
-     still true of a line one row higher up the same screen — it is read on the
-     way IN now instead of on the way past — and it is still above the table,
-     which is the direction that was ever load-bearing. What it stopped being is
-     a block between two things that belong together. */
-  const strip = hrView.indexOf('<div className="month-strip no-print">');
-  assert.ok(strip > 0 && strip < head, 'สรุปสถานะงวด is no longer above the controls card');
-  assert.ok(status > strip && status < head, 'สรุปสถานะงวด left the strip');
-  // `actions` since 2026-09-10: the scan toggle rides on the strip's own row.
-  assert.match(hrView, /<PeriodStatus\s+period=\{period\}\s+compact\s+actions=/);
+     THE ORIGINAL ARGUMENT SURVIVES BOTH MOVES, which is why neither is a
+     reversal. "Read this before you press print" is true of anything above the
+     table, and it is still above the table — it is read on the way in rather
+     than on the way past. What it stopped being is a block between two things
+     that belong together. */
+  const notices = hrView.indexOf('<div className="month-notices no-print">');
+  assert.ok(notices > cardHead && notices < find, 'สรุปสถานะงวด is not a band between the head and the bar');
+  assert.ok(status > notices && status < find, 'สรุปสถานะงวด left the notices band');
+  assert.ok(!/className="month-strip/.test(hrView), 'the strip above the card came back');
+  /* ⚠ `actions` IS GONE FROM `PeriodStatus`, and this asserted it was there
+     until 2026-09-11. It existed for one caller and one control — ไฟล์สแกนนิ้วมือ
+     handed IN so it would land on this component's row instead of beside its
+     headline — and that button is on `.card-head` now with the card's other
+     actions. A prop with no caller is a thing the next reader has to work out
+     the fate of, so it was deleted rather than left. */
+  assert.match(hrView, /<PeriodStatus period=\{period\} compact \/>/);
+  assert.ok(!/actions=/.test(read('components/PeriodStatus.jsx')), 'PeriodStatus grew `actions` back');
   // And nothing stands between the controls and the rows they decide any more:
   // the two are sections of one card.
   const panel = hrView.indexOf('<div className="card flush month-panel">');
   const list = hrView.indexOf('<div className="month-card">');
   assert.ok(panel > 0 && panel < head && head < list, 'the controls and the table are not one card');
+});
+
+/**
+ * ── ONE CARD, AND IT WAS FIVE BLOCKS — 2026-09-11 ───────────────────────────
+ *
+ * Reported with a screenshot: *"ส่วนนี้รวมเข้ากับส่วนหลักที่เป็นส่วนหัวที่อยู่บน
+ * ส่วนกรองข้อมูลได้หรือไม่ เพราะมันดูแปลกแยกไม่กลมกลืน อยากให้กลมกลืนเป็นส่วน
+ * เดียวกันเหมือนส่วนหัวของหน้า รออนุมัติ ot"*.
+ *
+ * It was five: `MonthAlerts` · `ScanCompareCard` · `.month-strip` · the
+ * `ScanImport` CARD · `.month-panel`. รออนุมัติ OT is one. The count is what
+ * made *"ดูแปลกแยก"* true — the two rounds before this had removed card
+ * boundaries one at a time and left the blocks themselves stacked above it.
+ */
+
+test('every block on this screen is a section of one card', () => {
+  const panel = hrView.indexOf('<div className="card flush month-panel">');
+  const head = hrView.indexOf('<div className="card-head">');
+  const notices = hrView.indexOf('<div className="month-notices no-print">');
+  const drawer = hrView.indexOf('<ScanImport period={period}');
+  const bar = hrView.indexOf('<div className="queue-tools">');
+  const list = hrView.indexOf('<div className="month-card">');
+  // หัว → แจ้งเตือน → ลิ้นชัก → ตัวกรอง → ตาราง, every one of them inside it.
+  for (const [name, at] of [['card-head', head], ['month-notices', notices],
+    ['ScanImport', drawer], ['queue-tools', bar], ['month-card', list]]) {
+    assert.ok(at > panel, `${name} is outside the card`);
+  }
+  assert.ok(head < notices && notices < drawer && drawer < bar && bar < list,
+    'the five sections are not in reading order');
+  // AND NOTHING IS LEFT ABOVE IT — the fragment opens onto a comment and then
+  // straight onto the card. Measured as "no element between the two" rather than
+  // as a distance, so the header comment stays free to be rewritten.
+  // `lastIndexOf` FROM THE PANEL, not the first `return (` in the file — this
+  // component has an early return above it, and the fragment that matters is the
+  // one the card is inside of.
+  const opens = hrView.lastIndexOf('\n    <>', panel);
+  assert.ok(opens > 0, 'the card is not inside the returned fragment');
+  assert.ok(!/<[A-Za-z]/.test(hrView.slice(opens, panel)), 'something is drawn above the card again');
+});
+
+test('ScanImport is a drawer in that card and not a card of its own', () => {
+  const scan = read('components/ScanImport.jsx');
+  assert.match(scan, /<section className="scan-drawer no-print">/);
+  // THE CLASS ATTRIBUTE, NOT THE BARE WORD. `card` is all over this file's prose
+  // and its children; what may not come back is the ROOT.
+  assert.ok(!scan.includes('<div className="card no-print">'), 'the import panel is a card again');
+  // The wash and the hairlines are what make it read as a recess in the card
+  // rather than as a smaller card sitting on top of it.
+  assert.match(css, /\.scan-drawer \{\r?\n  padding: 14px 18px; background: var\(--neutral-wash\);/);
+  const drawer = css.slice(css.indexOf('.scan-drawer {'));
+  assert.ok(!/border-radius/.test(drawer.slice(0, drawer.indexOf('}'))), 'the drawer took a radius');
+});
+
+test('the notices band takes itself off the page when there is nothing to say', () => {
+  // ⚠ `:empty` AND NOT A CONDITION IN THE JSX. All four children render `null`
+  // when they have nothing to say and JSX leaves no whitespace between
+  // expressions, so a settled, compared month leaves the element childless. A
+  // condition in the component would be this screen's SECOND opinion about when
+  // `MonthAlerts` has something to say, and the day the two disagree is the day
+  // a notice exists that nobody draws. `.month-notes:empty` in the phone block
+  // is the same mechanism and predates this.
+  assert.match(css, /\.month-notices:empty \{ display: none; \}/);
+  // The children's own stacking margins are zeroed — three of the four carry
+  // them from the days they floated on the page, and in a flex column those
+  // would stack with the gap AND with each other.
+  assert.match(css, /\.month-notices > \* \{ margin: 0; \}/);
+  assert.match(css, /\.month-notices \{\r?\n  display: flex; flex-direction: column; gap: 10px;/);
+  // WHITE, not washed like `.queue-tools` under it: the band holds `.alert`
+  // children carrying their own amber and green, and a tint behind a tint is two
+  // washes arguing.
+  const band = css.slice(css.indexOf('.month-notices {'));
+  assert.ok(!/background/.test(band.slice(0, band.indexOf('}'))), 'the notices band took a fill');
+  // …and `.scan-compare` gave up the margin it carried for the days it floated.
+  assert.ok(!css.includes('.scan-compare { margin: 0 0 10px; }'), 'the compare card is spacing itself again');
+});
+
+test('the scan drawer is opened from the card head, with the card’s other verbs', () => {
+  const from = hrView.indexOf('{data && <span className="chip muted">');
+  const block = hrView.slice(from, hrView.indexOf('<div className="month-notices', from));
+  assert.ok(block.includes('className="btn ghost sm scan-toggle"'), 'ไฟล์สแกน is not on the card head');
+  assert.ok(block.indexOf('scan-toggle') < block.indexOf('<ExportMenu'), 'ไฟล์สแกน is under พิมพ์ / ส่งออก');
+  // `readsScans` — the pair the route enforces and the same one that decides the
+  // คอลัมน์สแกน and the summary. Not a fresh test written at the button.
+  assert.match(block, /\{readsScans && \(/);
+  assert.match(hrView, /const readsScans = mayCorrect && scope !== 'team';/);
+  // ⚠ THE LABEL DOES NOT CHANGE WITH THE STATE, and the old one did
+  // (`ซ่อนไฟล์สแกนนิ้วมือ`). A button that grows by five characters when pressed
+  // re-wraps the head it sits in, and at 360px that head already carries a chip
+  // and a menu. The caret says which way it goes; `aria-expanded` says it aloud.
+  assert.match(block, /\{scanOpen \? ' ▲' : ' ▾'\}/);
+  assert.match(block, /aria-expanded=\{scanOpen\}/);
+  // The old wording is quoted in the comment above, so what is asserted gone is
+  // the JSX that drew it — the ternary, not the word.
+  assert.ok(!/\? 'ซ่อนไฟล์สแกนนิ้วมือ'/.test(hrView), 'the label still changes width when pressed');
 });
 
 test('ค้นหา comes first on the bar, in the order รออนุมัติ OT reads in', () => {

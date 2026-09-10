@@ -7227,7 +7227,7 @@ controls decide.
 
 | | was | is |
 |---|---|---|
-| งวด…ยังเปิดอยู่ · ไฟล์สแกนนิ้วมือ | two cards **between** the controls and the table | **one line above** the controls |
+| งวด…ยังเปิดอยู่ · ไฟล์สแกนนิ้วมือ | two cards **between** the controls and the table | **one line above** the controls — *and this read* "one line above" *only until 2026-09-11; both are inside the card now, see the next section* |
 | the controls and the table | two cards, 16px of page between them | **two sections of one card**, divided by a rule |
 | the export row | three long buttons | **พิมพ์ / ส่งออก ▾**, one button and a menu |
 | every row's two buttons | `ดู / แก้ไขรายการ` · `พิมพ์ F-HR-027` spelled out | **two icons** (a word again on a phone) — *and see §4, where the first of the two stopped being a button at all later the same day* |
@@ -7237,7 +7237,9 @@ headline is the line it always led with; its *why* is one press away behind
 **รายละเอียด** (`compact` in `components/PeriodStatus.jsx` — one component with
 two shapes, because two components answering "what is outstanding this month"
 is the failure this repo names by its cost). ไฟล์สแกนนิ้วมือ opens the same card
-it always was, in place, under the strip. **Above and not below the table**,
+it always was, in place, under the strip. *(Both sentences describe a `.month-strip`
+that no longer exists — the line and the import card went inside the panel on
+2026-09-11. What is unchanged is everything after this one:)* **Above and not below the table**,
 because both are things a reader checks *before* they trust a total — "is
 anything still waiting?" and "is this month's scan file in?" — and an answer
 that arrives after the sheet is printed arrived too late. What changed is how
@@ -7303,6 +7305,95 @@ only name.
 theme, กันยายน 2569): desktop at 1400px and phone at 390px both drawn, the menu
 opened and its three rows read, and the phone card confirmed to sit on the page
 ground with its two buttons worded and 44px.
+
+### ตรวจสอบประจำเดือน — การ์ดใบเดียว
+
+**Reported on 2026-09-11 with a screenshot:** *"ส่วนนี้รวมเข้ากับส่วนหลักที่เป็น
+ส่วนหัวที่อยู่บนส่วนกรองข้อมูลได้หรือไม่ เพราะมันดูแปลกแยกไม่กลมกลืน อยากให้กลมกลืน
+เป็นส่วนเดียวกันเหมือนส่วนหัวของหน้า รออนุมัติ ot"*.
+
+**This is the third round on the same complaint, and the count is why the first
+two did not finish it.** Both earlier rounds removed card *boundaries*:
+2026-09-10 turned งวด…ยังเปิดอยู่ and ไฟล์สแกนนิ้วมือ from cards into a line, and
+merged the controls with the table. What neither did was reduce the number of
+**blocks stacked on the page**, and that is what the screenshot was pointing at:
+
+| | ตรวจสอบประจำเดือน, 10 ก.ย. | รออนุมัติ OT |
+|---|---|---|
+| blocks on the page | **five** — `MonthAlerts` · `ScanCompareCard` · `.month-strip` · the `ScanImport` card · `.month-panel` | **one** |
+
+A line on the page's own ground beside a card is still a thing *outside* the
+card. So the four that were above went inside it, and the panel now has five
+sections instead of three:
+
+```
+┌ .card.flush.month-panel ──────────────────────────────────┐
+│ .card-head    ตรวจสอบประจำเดือน · 24 คน   [ไฟล์สแกน ▾] [พิมพ์/ส่งออก ▾] │
+├───────────────────────────────────────────────────────────┤
+│ .month-notices   งวด · ผลเทียบสแกน · MonthAlerts · error   │
+├───────────────────────────────────────────────────────────┤
+│ .scan-drawer     ลิ้นชักนำเข้าไฟล์สแกน (พับอยู่)             │
+├───────────────────────────────────────────────────────────┤
+│ .queue-tools     ค้นหา · สถานะที่นับ · แผนก · ประจำเดือน      │
+├───────────────────────────────────────────────────────────┤
+│ ตาราง                                                      │
+└───────────────────────────────────────────────────────────┘
+```
+
+**No permission rule, route, query or figure moved in this round.** `readsScans`,
+`mayCorrect` and `approvable` are the same tests they were; every change is where
+an element sits and what it is painted with.
+
+**1 — `.month-strip` was deleted rather than moved, because the two things on it
+went to different places.** The **ไฟล์สแกน** toggle went up to `.card-head`, which
+is where every card in this app keeps its actions — it is a `.btn.ghost.sm` there
+rather than the underlined `.strip-more` it was. **งวด…ยังเปิดอยู่** went down
+into `.month-notices`, because it is a *notice* and not a *verb*: it has its own
+⚠ and its own **รายละเอียด** fold.
+
+That left `PeriodStatus`'s `actions` prop with no caller, and it is **deleted**.
+It existed for one control and the 390px problem it solved (a sibling on the
+right taking half the width from *"…ค้างอยู่ 13 ใบ"*) cannot return by this
+route: the headline has the full width of the band and no sibling at any size.
+
+**2 — the four notices are one band, in the order a reader needs them.**
+งวด → ผลเทียบสแกน → MonthAlerts → error.
+
+**⚠ `MonthAlerts` moved down, and it is the one reordering.** It was first, above
+everything on the screen. The argument for that — *what it warns about is the
+figures on this screen, and the person it warns is the one about to sign them* —
+is satisfied by any position above the table, which this is. What decides the
+order among the three is that งวด and ผลเทียบ answer *may this month be signed at
+all*, while the digest is a list of things to know while signing it. And it is
+the only one of the three a reader can close, so it goes last: dismissing the
+first of three leaves a hole between two that stay.
+
+**The band takes itself off the page when there is nothing in it,** and the
+mechanism is `.month-notices:empty`, not a condition in the component. All four
+children return `null` when they have nothing to say and JSX leaves no whitespace
+between expressions, so a settled, compared month leaves the element with no
+child nodes at all. A condition in the JSX would be this screen's *second*
+opinion about when `MonthAlerts` has something to say, and the day the two
+disagree is the day a notice exists that nobody draws. (`.month-notes:empty` in
+the phone block is the same mechanism and predates it.)
+
+**3 — `ScanImport` stopped being a card.** Its root is
+`<section className="scan-drawer no-print">`, and **nothing inside that component
+changed**. What is gone is the fill, the border, the shadow and the radius — which
+is the whole of what made it *"แปลกแยก"* in the screenshot. `.scan-drawer` puts
+the same content on `--neutral-wash` between two hairlines, which is what a drawer
+pulled out of a card looks like here; `.queue-tools` under it uses the same wash.
+It has one caller.
+
+**⚠ The card is tall while the drawer is open** — about 420px on top of a table
+that is already long. It is a deliberate press, once a month, and `scanOpen`
+opens `false` on every visit.
+
+**4 — the band is white, and the drawer is washed.** `.month-notices` holds
+`.alert` children that carry their own amber and green fills, and a tint behind a
+tint is two washes arguing. The children's own vertical margins are zeroed
+(`.month-notices > *`) so the column's `gap` is the only rhythm — three of the
+four carried margins from the days they floated on the page.
 
 ### สี่จอรายงานเป็นการ์ดใบเดียวกัน — 2026-09-10
 
