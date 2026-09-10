@@ -618,15 +618,27 @@ const PAGE = {
  * `test/roleNavTabs.test.js` holds that, because it is the property that keeps
  * "the two bars cannot disagree" true.
  *
- * `parent` IS ON ONE GROUP AND ONE ONLY. ข้อมูลส่วนตัว collapses behind a
- * single row reading OT ส่วนตัว; the other two are flat lists under their
- * heading. Asked for that way — the personal pair is what every account
- * carries and what most accounts use least, so it is the pair worth folding.
- * A collapsible การอนุมัติ & รายงาน would be hiding the work somebody signed in
- * to do.
+ * NO GROUP FOLDS, AND ONE DID UNTIL 2026-09-10. This paragraph read *"`parent`
+ * IS ON ONE GROUP AND ONE ONLY — ข้อมูลส่วนตัว collapses behind a single row
+ * reading OT ส่วนตัว"*, and the `parent` field it describes is gone with it:
+ * all three blocks are now flat lists of rows under their heading, which is
+ * what the other two always were.
+ *
+ * WHAT WENT AND WHAT STAYED. The HEADING stayed — ข้อมูลส่วนตัว is still the
+ * first thing in the column and still says whose work the rows under it are.
+ * What went is the row BETWEEN the heading and the screens: a control that had
+ * to be pressed to reach บันทึกและประวัติ OT, plus the indent and the guide
+ * line that said those two rows were inside something. Asked for that way, and
+ * the reason the fold was worth having is the reason it was worth losing: the
+ * personal pair is what every account carries, so on the account that uses it
+ * most it was a press in front of the screen they came for.
+ *
+ * THE WIDTH IS WHAT SHORTENS THE COLUMN NOW, not a fold — see `RAIL_QUERY`.
+ * A narrow window collapses the whole rail to 68px of glyphs, which takes the
+ * same height out of every block instead of two rows out of one.
  */
 const NAV_GROUPS = Object.freeze([
-  { key: 'personal', label: 'ข้อมูลส่วนตัว', parent: { label: 'OT ส่วนตัว', icon: 'user' } },
+  { key: 'personal', label: 'ข้อมูลส่วนตัว' },
   { key: 'work', label: 'การอนุมัติ & รายงาน' },
   /**
    * ASKED FOR AS ผู้ดูแลระบบ AND SHIPPED AS การตั้งค่าระบบ, which is the one
@@ -661,6 +673,27 @@ const NAV_GROUPS = Object.freeze([
  * is what says the push should have been explicit.
  */
 const DEFAULT_NAV_GROUP = 'work';
+
+/**
+ * ── THE WIDTH AT WHICH THE SIDEBAR BECOMES A RAIL ─────────────────────────
+ *
+ * 1180px, and the number is the sidebar's own arithmetic: the column is 248px
+ * wide, so at 1280 — the narrowest desktop this app is used on — it is a fifth
+ * of the window, and below that it is taking width off tables that are already
+ * scrolling sideways. Collapsed it is 68px, and the 180px of difference is a
+ * column of ตรวจสอบประจำเดือน.
+ *
+ * IT IS ABOVE 860, WHICH IS WHERE THE SIDEBAR STOPS EXISTING. Under that width
+ * the rail is `display: none` and the phone's bottom bar and drawer are the
+ * menu, so the three states in width order are: bar+drawer, rail, column.
+ *
+ * WRITTEN IN JS AND NOT AS AN `@media` RULE, because it is not only a width:
+ * a press overrides it (see `railPinned`), and a rule in the stylesheet would
+ * be a second thing deciding the same class with no way for the press to win.
+ * `.sidebar.collapsed` is still the whole of what the collapsed rail LOOKS
+ * like; this only decides when it is worn.
+ */
+const RAIL_QUERY = '(max-width: 1180px)';
 
 /**
  * ── THE PHONE BAR'S SLOTS — FIVE DECLARED, NEVER MORE THAN FOUR DRAWN ──────
@@ -1594,45 +1627,48 @@ function Shell({ session, onRefresh, onLogout }) {
     }));
 
   /**
-   * Whether OT ส่วนตัว is folded open — and `null` until somebody has said.
+   * ── THE RAIL FOLLOWS THE WINDOW, AND A PRESS OVERRIDES IT UNTIL IT MOVES ──
    *
-   * THE THIRD STATE IS THE POINT. With a plain boolean the initial value would
-   * have to be one answer for everybody, and the right answer differs by who
-   * signed in: a พนักงาน lands ON one of these two screens and would meet a
-   * closed fold hiding the page they are looking at, while ฝ่ายบุคคล land on
-   * รออนุมัติ OT and want the column short. `null` means "nobody has pressed
-   * it", and the fold then follows the tab — open exactly when the current
-   * screen is inside it.
+   * Asked for on 2026-09-10 in the same breath as the fold's removal, and the
+   * two are one change: what shortens the sidebar is the WIDTH of the window
+   * now, not a group hidden behind a row.
    *
-   * A PRESS PINS IT AND KEEPS IT PINNED, in both directions, for the rest of the
-   * session. That is the difference between a control and a suggestion: a fold
-   * that re-opened itself the next time navigation happened to land inside it
-   * would be undoing the press that closed it, which is the one thing a person
-   * who pressed it is sure they did.
+   * `null` IS "NOBODY HAS PRESSED IT", the same third state the fold carried
+   * and for the same reason — there is no one right initial value. Above
+   * `RAIL_QUERY` the column is worth its 248px; below it the app is down to a
+   * laptop's screen and the 180px the rail gives back is a column of a table.
+   * So the screen answers until somebody says otherwise.
+   *
+   * A PRESS OVERRIDES, AND THE NEXT CROSSING TAKES THE OVERRIDE BACK. That is
+   * the difference from the fold, which pinned for the session: this control
+   * answers a question about the WINDOW, so when the window stops being the one
+   * that was answered — dragged wide, rotated, docked — the answer is stale and
+   * the screen decides again. A press that outlived every resize would leave a
+   * 68px rail on a 27-inch monitor with nothing on screen explaining why.
+   *
+   * IT WAS `localStorage` UNTIL 2026-09-10 (`primus_sidebar_collapsed`), which
+   * is the opposite arrangement: one pinned answer, carried across sessions and
+   * across every screen the account is ever opened on.
+   *
+   * THE FIRST PAINT IS ALWAYS WIDE, and one frame later this effect narrows it
+   * if the window is small. `matchMedia` cannot be read while rendering — the
+   * server has no window, and a `useState` initialiser that reads one produces
+   * markup the client then disagrees with.
    */
-  const [personalToggled, setPersonalToggled] = useState(null);
-  const personalItems = navGroups.find((g) => g.parent)?.items || [];
-  const personalOpen = personalToggled ?? personalItems.some((t) => t.key === tab);
-
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [railPinned, setRailPinned] = useState(null);
+  const [screenNarrow, setScreenNarrow] = useState(false);
   useEffect(() => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        setSidebarCollapsed(localStorage.getItem('primus_sidebar_collapsed') === 'true');
-      }
-    } catch {}
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia(RAIL_QUERY);
+    setScreenNarrow(mq.matches);
+    /* The crossing is what clears the press — not every resize, since a
+       `change` only fires when the answer to the query itself flips. */
+    const onCross = () => { setScreenNarrow(mq.matches); setRailPinned(null); };
+    mq.addEventListener('change', onCross);
+    return () => mq.removeEventListener('change', onCross);
   }, []);
-  const toggleSidebar = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('primus_sidebar_collapsed', String(next));
-        }
-      } catch {}
-      return next;
-    });
-  };
+  const sidebarCollapsed = railPinned ?? screenNarrow;
+  const toggleSidebar = () => setRailPinned(!sidebarCollapsed);
 
   // Read twice — by the FAB itself and by the spacer that has to keep the last
   // row out from under it.
@@ -1713,11 +1749,12 @@ function Shell({ session, onRefresh, onLogout }) {
         {/* Three blocks with a heading each, and the rows inside them are the
             same rows the phone bar draws flat — see `navGroups` and NAV_GROUPS.
 
-            ONE BUTTON IS WRITTEN HERE, ONCE. The fold does not get a copy of
-            the row markup for its children: it decides whether the list is
-            rendered, not what a row looks like. Two copies of this button is
-            how one of them keeps an `active` rule the other loses, which is
-            the failure test/navActiveTab.test.js counts occurrences to catch. */}
+            ONE BUTTON IS WRITTEN HERE, ONCE, and that survived the fold's
+            removal on 2026-09-10 rather than being a consequence of it: the
+            fold decided whether a list was RENDERED, never what a row looked
+            like. Two copies of this button is how one of them keeps an `active`
+            rule the other loses, which is the failure
+            test/navActiveTab.test.js counts occurrences to catch. */}
         <nav className="nav">
           {navGroups.map((g) => (
             <div className="nav-group" key={g.key}>
@@ -1725,55 +1762,39 @@ function Shell({ session, onRefresh, onLogout }) {
                   <nav> that already has one; an <h3> here would put a level
                   into the document outline for something that is a divider. */}
               <div className="nav-group-label">{g.label}</div>
-              {g.parent && (
-                <button
-                  type="button"
-                  /* `current` and deliberately NOT `active`. This row is not a
-                     screen — pressing it folds a list — so it must never wear
-                     the mark that means "the page you are on". What it says,
-                     and only while the fold is shut, is that the page you are
-                     on is behind it. */
-                  className={`nav-parent${!personalOpen && personalItems.some((t) => t.key === tab) ? ' current' : ''}`}
-                  aria-expanded={personalOpen}
-                  aria-controls={`nav-${g.key}`}
-                  onClick={() => setPersonalToggled(!personalOpen)}
-                >
-                  <span className="icon"><Icon name={g.parent.icon} /></span>
-                  <span className="label">{g.parent.label}</span>
-                  <span className="chev" aria-hidden="true">›</span>
-                  <span className="nav-tip">{g.parent.label}</span>
-                </button>
-              )}
-              {(!g.parent || personalOpen) && (
-                <div className={`nav-items${g.parent ? ' sub' : ''}`} id={`nav-${g.key}`}>
-                  {g.items.map((t) => (
-                    <button
-                      key={t.key}
-                      className={tab === t.key ? 'active' : ''}
-                      /* `aria-current` says what the colour says.
+              {/* Every block is a flat list of its rows, and one of them was
+                  not until 2026-09-10: ข้อมูลส่วนตัว was drawn behind a fold
+                  with a button of its own over it, and the list was rendered
+                  only while that button said so. The heading above stayed; the
+                  control between it and the screens went. See NAV_GROUPS. */}
+              <div className="nav-items" id={`nav-${g.key}`}>
+                {g.items.map((t) => (
+                  <button
+                    key={t.key}
+                    className={tab === t.key ? 'active' : ''}
+                    /* `aria-current` says what the colour says.
 
-                         The open tab is marked by a fill here and by green type
-                         on the phone bar, and neither of those reaches somebody
-                         who is not looking at the screen — so the one button
-                         that is the page they are on was, to a screen reader,
-                         the fourth button in a row of eight. Read off the same
-                         `tab === t.key` as the class, so the two can never come
-                         apart. */
-                      aria-current={tab === t.key ? 'page' : undefined}
-                      onClick={() => goTab(t.key)}
-                    >
-                      <span className="icon"><Icon name={t.icon} /></span>
-                      <span className="label">{t.label}</span>
-                      {/* Keyed on the number: React remounts the span when the
-                          count moves, which replays the CSS pop. The queue
-                          emptying is the one change worth noticing out of the
-                          corner of an eye, and at 0 the badge leaves instead. */}
-                      {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
-                      <span className="nav-tip">{t.label}{t.badge > 0 ? ` (${t.badge})` : ''}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                       The open tab is marked by a fill here and by green type
+                       on the phone bar, and neither of those reaches somebody
+                       who is not looking at the screen — so the one button
+                       that is the page they are on was, to a screen reader,
+                       the fourth button in a row of eight. Read off the same
+                       `tab === t.key` as the class, so the two can never come
+                       apart. */
+                    aria-current={tab === t.key ? 'page' : undefined}
+                    onClick={() => goTab(t.key)}
+                  >
+                    <span className="icon"><Icon name={t.icon} /></span>
+                    <span className="label">{t.label}</span>
+                    {/* Keyed on the number: React remounts the span when the
+                        count moves, which replays the CSS pop. The queue
+                        emptying is the one change worth noticing out of the
+                        corner of an eye, and at 0 the badge leaves instead. */}
+                    {t.badge > 0 && <span className="count" key={t.badge}>{t.badge}</span>}
+                    <span className="nav-tip">{t.label}{t.badge > 0 ? ` (${t.badge})` : ''}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           ))}
         </nav>

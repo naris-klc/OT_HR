@@ -321,16 +321,21 @@ test('the three blocks are declared once, in the order the sidebar draws them', 
    */
   assert.ok(!/label: 'ผู้ดูแลระบบ'/.test(jsx),
     'a sidebar heading names a บทบาท that not everyone reading it holds');
-  // ONE GROUP FOLDS, and it is the personal pair. Every account carries those
-  // two and most accounts use them least, so they are the pair worth folding; a
-  // collapsible การอนุมัติ & รายงาน would be hiding the work somebody signed in
-  // to do.
+  // ── NO BLOCK FOLDS, AND ONE DID UNTIL 2026-09-10 ────────────────────────
+  //
+  // This test read *"ONE GROUP FOLDS, and it is the personal pair"* and pinned
+  // `parent: { label: 'OT ส่วนตัว', icon: 'user' }` on the personal block. The
+  // field is gone: ข้อมูลส่วนตัว keeps its HEADING and its rows are a flat list
+  // under it, which is what the other two blocks always were.
+  //
+  // The assertion is inverted rather than deleted, because the shape it forbids
+  // is one somebody would reach for again — a `parent` on a block is how the
+  // sidebar grows a row that is not a screen, and that row is what was asked to
+  // go. What shortens the column now is the WIDTH of the window: see
+  // `RAIL_QUERY` and the test below it.
   const table = jsx.slice(jsx.indexOf('const NAV_GROUPS'), jsx.indexOf('const DEFAULT_NAV_GROUP'));
-  assert.equal((table.match(/parent: \{/g) || []).length, 1, 'more than one block folds');
-  assert.match(table, /key: 'personal'[^\n]*parent: \{ label: 'OT ส่วนตัว', icon: 'user' \}/);
-  // Not `clock`, which is worn by `mine` — the first screen inside this very
-  // fold. A parent row wearing its own child's glyph says the two are one thing.
-  assert.ok(!/parent: \{[^}]*icon: 'clock'/.test(table), 'the fold took its own child\'s icon');
+  assert.equal((table.match(/parent: \{/g) || []).length, 0,
+    'a sidebar block folds behind a row of its own again');
 });
 
 test('no tab names a block that does not exist', () => {
@@ -372,42 +377,72 @@ test('the builder emits its blocks in order, so cutting the menu up cannot reord
 });
 
 /**
- * The fold itself: what it may say, and what it may not.
+ * ── EVERY BLOCK IS A HEADING AND A FLAT LIST OF SCREENS ───────────────────
  *
- * `.active` IS THE PAGE YOU ARE ON, and OT ส่วนตัว is not a page — pressing it
- * opens a list. It takes `.current` instead, and only while it is shut over the
- * open screen. Two rows wearing the same mark is how a person stops trusting
- * the mark; it is also, mechanically, the second source of `'active'` that
- * test/navActiveTab.test.js counts in this same block of markup.
+ * IT HELD THE FOLD UNTIL 2026-09-10 — *"`.active` IS THE PAGE YOU ARE ON, and
+ * OT ส่วนตัว is not a page: it takes `.current` instead, and only while it is
+ * shut over the open screen"*. There is no such row in this markup now, so what
+ * is left to hold is the property that made the rule necessary: EVERY BUTTON IN
+ * THIS `<nav>` IS A SCREEN. Nothing in the sidebar opens a list, nothing wears a
+ * chevron, and `.current` — the mark for a control that holds the open page
+ * without being it — belongs to the phone bar alone.
+ *
+ * The count of `'active'` is the same assertion it always was, and is also the
+ * one test/navActiveTab.test.js makes on this same block of markup: one source
+ * for the green pill, so no second row can light beside the page you are on.
  */
-test('the fold marks itself with current, never with active', () => {
+test('the sidebar draws screens and nothing else — no row that opens a list', () => {
   const from = jsx.indexOf('<nav className="nav">');
   const sidebar = jsx.slice(from, jsx.indexOf('</nav>', from));
-  assert.match(sidebar, /className=\{`nav-parent\$\{!personalOpen && personalItems\.some/);
-  assert.match(sidebar, /aria-expanded=\{personalOpen\}/);
+  for (const gone of ['nav-parent', 'personalOpen', 'personalItems', 'aria-expanded', 'nav-items sub']) {
+    assert.ok(!sidebar.includes(gone), `the sidebar grew a row that is not a screen: ${gone}`);
+  }
+  // One list per block, drawn from the block's own items and nothing else.
+  assert.match(sidebar, /<div className="nav-items" id=\{`nav-\$\{g\.key\}`\}>/);
+  assert.match(sidebar, /\{g\.items\.map\(\(t\) => \(/);
   // The green pill, once, on the row that is a screen. navActiveTab counts it.
   assert.equal(sidebar.split("'active'").length - 1, 1);
 });
 
 /**
- * ── AND IT OPENS OR SHUTS BY ITSELF UNTIL SOMEBODY PRESSES IT ──────────────
+ * ── THE RAIL FOLLOWS THE WINDOW, AND A PRESS OVERRIDES IT UNTIL IT MOVES ──
  *
- * `personalToggled` starts `null`, which is neither open nor shut, and the fold
- * then follows the tab: open exactly when the screen you are on is inside it.
- * That is the only initial value that is right for everybody — a พนักงาน lands
- * ON one of these two screens and a shut fold would be hiding the page in front
- * of them, while ฝ่ายบุคคล land on รออนุมัติ OT and asked for a shorter column.
+ * THE THIRD STATE MOVED HERE ON 2026-09-10. It was the fold's — `personalToggled`
+ * started `null` and the fold then followed the TAB — and it is the rail's now:
+ * `railPinned` starts `null` and the rail follows the WIDTH. Same reasoning,
+ * different question. There is no one right initial answer, so the screen gives
+ * one until somebody says otherwise.
  *
- * A PRESS PINS IT, in both directions, for the rest of the session. A fold that
- * re-opened itself the next time navigation happened to land inside it would be
- * undoing the one thing the person who pressed it is sure they did.
+ * WHAT IS NOT THE SAME IS HOW LONG A PRESS LASTS. The fold pinned for the
+ * session, because it answered a question about the PERSON. This answers one
+ * about the WINDOW, so a crossing of the query clears the press: dragged wide,
+ * rotated or docked, the window is no longer the one that was answered. A press
+ * that outlived every resize would leave a 68px rail on a 27-inch monitor.
+ *
+ * AND IT WAS `localStorage` UNTIL THE SAME DAY — one pinned answer carried
+ * across sessions and across every screen the account is ever opened on, which
+ * is the arrangement "ย่อขยายตามขนาดหน้าจอ" asked to be rid of.
  */
-test('the fold has three states, and the third is what makes one default fit every role', () => {
-  assert.match(jsx, /const \[personalToggled, setPersonalToggled\] = useState\(null\);/);
-  assert.match(jsx, /const personalOpen = personalToggled \?\? personalItems\.some\(\(t\) => t\.key === tab\);/);
-  // `??` and not `||`: with `||` a pinned `false` would read as "nobody has
-  // said" and the fold would spring open again on the next visit.
-  assert.ok(!/personalToggled \|\|/.test(jsx), 'the pinned-shut state is being thrown away by ||');
+test('the rail has three states, and the third is the screen size answering', () => {
+  assert.match(jsx, /const \[railPinned, setRailPinned\] = useState\(null\);/);
+  assert.match(jsx, /const sidebarCollapsed = railPinned \?\? screenNarrow;/);
+  // `??` and not `||`: with `||` a press that OPENED the rail on a narrow window
+  // would read as "nobody has said" and the window would shut it again at once.
+  assert.ok(!/railPinned \|\|/.test(jsx), 'a pinned-open rail is being thrown away by ||');
+  // The width is asked as a media query, so the answer arrives by event rather
+  // than by polling a resize — and the query is declared once, beside the menu.
+  assert.match(jsx, /const RAIL_QUERY = '\(max-width: 1180px\)';/);
+  assert.match(jsx, /window\.matchMedia\(RAIL_QUERY\)/);
+  // A crossing clears the press. This is the whole of "ตามขนาดหน้าจอ": without
+  // it the first press would be the last word for the rest of the session.
+  assert.match(jsx, /const onCross = \(\) => \{ setScreenNarrow\(mq\.matches\); setRailPinned\(null\); \};/);
+  assert.match(jsx, /mq\.addEventListener\('change', onCross\)/);
+  // …and the stored preference it replaced is gone, not merely unread.
+  const rail = jsx.slice(jsx.indexOf('const [railPinned'), jsx.indexOf('const showFab'));
+  assert.ok(!/localStorage/.test(rail), 'the rail is still keeping a stored preference');
+  // The rail is narrower than the sidebar and wider than the phone: 1180 sits
+  // above the 860 at which the column stops being drawn at all.
+  assert.match(css, /@media screen and \(max-width: 860px\)/);
 });
 
 /**
@@ -430,7 +465,7 @@ test('the phone bar draws slots built from the same array, and neither bar reads
   // round — see the test below, which is now the record of why they went.
   assert.match(mobile, /\{barSlots\.map\(\(s\) => \(/);
   assert.match(mobile, /<BarSlot key=\{s\.key\} slot=\{s\} tab=\{tab\} onGo=\{goTab\} \/>/);
-  for (const word of ['nav-group', 'navGroups', 'personalOpen']) {
+  for (const word of ['nav-group', 'navGroups', 'sidebarCollapsed']) {
     assert.ok(!mobile.includes(word), `the bottom bar grew a rule of its own: ${word}`);
   }
   // The slots are `tabs` filtered by `bar` and nothing else — no second list of
@@ -441,7 +476,7 @@ test('the phone bar draws slots built from the same array, and neither bar reads
   // been written: the request of 2026-09-04 named ผู้เซ็นทุกบทบาท, and the code
   // arrives at exactly those roles by asking whether the team half has anything
   // in it. `isSigner` here would be that answer decided twice.
-  const slots = jsx.slice(jsx.indexOf('const barSlots = BAR_SLOTS'), jsx.indexOf('const [personalToggled'));
+  const slots = jsx.slice(jsx.indexOf('const barSlots = BAR_SLOTS'), jsx.indexOf('const [railPinned'));
   assert.ok(!/user\.role|isSigner|maySubmitOt/.test(slots), 'the phone bar grew a role rule of its own');
   // And the sidebar's cut may not read `bar` either.
   const groups = jsx.slice(jsx.indexOf('const navGroups = NAV_GROUPS'), jsx.indexOf('const barSlots'));

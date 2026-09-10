@@ -39,7 +39,8 @@ import { dirname, join } from 'node:path';
  *   writes, one variable further in.
  *
  *   A SLOT WITH MORE OPENS A LIST, so it may not claim to be a page. It takes
- *   `.current` — the sidebar's own mark for exactly this, see `.nav-parent` —
+ *   `.current` — the sidebar's own mark for exactly this until 2026-09-10,
+ *   when the one row it had of that kind was removed with the OT ส่วนตัว fold —
  *   and the row INSIDE the sheet is what carries `aria-current`. Two controls
  *   wearing `.active` at once is how a person stops trusting the mark.
  *

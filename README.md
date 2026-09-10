@@ -2593,11 +2593,17 @@ undivided column, and the first two are a different job from the rest.
 
 `NAV_GROUPS` in `components/App.jsx` is the table, and it has three rows:
 
-| Heading | What is under it | Folds |
-|---|---|---|
-| **ข้อมูลส่วนตัว** | บันทึกและประวัติ OT · พิมพ์ใบขออนุมัติ OT | **yes**, behind one row reading **OT ส่วนตัว** |
-| **การอนุมัติ & รายงาน** | รายการรออนุมัติ · รออนุมัติแทน · ไม่มีหัวหน้าเซ็น · รออนุมัติ OT · ตรวจสอบประจำเดือน · รายงาน OT ประจำทีม · รายงาน OT การเงิน · รายงาน OT แยกแผนก | no |
-| **การตั้งค่าระบบ** | ตั้งค่าระบบ · บันทึกประวัติระบบ | no |
+| Heading | What is under it |
+|---|---|
+| **ข้อมูลส่วนตัว** | บันทึกและประวัติ OT · พิมพ์ใบขออนุมัติ OT |
+| **การอนุมัติ & รายงาน** | รายการรออนุมัติ · รออนุมัติแทน · ไม่มีหัวหน้าเซ็น · รออนุมัติ OT · ตรวจสอบประจำเดือน · รายงาน OT ประจำทีม · รายงาน OT การเงิน · รายงาน OT แยกแผนก |
+| **การตั้งค่าระบบ** | ตั้งค่าระบบ · บันทึกประวัติระบบ |
+
+**The table had a third column reading `Folds` until 2026-09-10**, and the
+first row answered **yes**, behind one row reading **OT ส่วนตัว**. No block
+folds now — every heading is followed by its screens, flat — so the column had
+one answer for all three and is gone with the row it described. See
+**ไม่พับแล้ว** below for what went and what stayed.
 
 **A block with no rows is not drawn, heading included** — a พนักงาน sees
 ข้อมูลส่วนตัว and nothing else, and การเงิน see the first two and no third.
@@ -2706,29 +2712,81 @@ it to the top while `.mobile-nav` left it where it was written, and one menu
 would be in two orders on two devices. `test/roleNavTabs.test.js` still asserts
 that ordering property, because the sidebar's own cut depends on nothing else.
 
-**The fold has three states and the third is the useful one.**
-`personalToggled` starts `null` — neither open nor shut — and until somebody
-presses it the fold follows the tab: open exactly when the screen you are on is
-inside it. No single boolean default is right for everybody, because a พนักงาน
-**lands on** one of those two screens and would meet a fold hiding the page in
-front of them, while ฝ่ายบุคคล land on รออนุมัติ OT and asked for a shorter
-column. A press then pins it, in both directions, for the rest of the session:
-a fold that re-opened itself the next time navigation happened to land inside it
-would be undoing the one thing the person who pressed it is sure they did.
+#### ไม่พับแล้ว — the fold was removed on 2026-09-10
 
-**OT ส่วนตัว never wears `.active`.** That mark means *this is the page you are
-on*, and pressing this row opens a list rather than a screen. Shut over the
-open page it takes `.current` instead — a white overlay wash and a 2px
-`--green-lift` bar down its left edge — which says the page is behind this row
-without claiming to be it. Two rows wearing one mark is how a person stops
-trusting the mark; mechanically it is also the second source of `'active'` that
-`test/navActiveTab.test.js` counts occurrences of in that block of markup.
+**Asked for as** *"เปลี่ยนจาก OT ส่วนตัว ที่ย่อขยายเมนูออก ไม่ต้องย่อขยายแล้ว ให้เมนู
+เรียงกันปกติ ยังคงหัวข้อ ข้อมูลส่วนตัว ไว้เหมือนเดิม"*. The **heading** stayed and
+the **row between the heading and the screens** went, with the `parent` field on
+`NAV_GROUPS` that put it there. ข้อมูลส่วนตัว is now what the other two blocks
+always were: a label over a flat list.
 
-**The `user` glyph is new** and sits beside `users` in `components/icons.jsx` —
-one figure against two, which is the whole distinction: two people means a queue
-whose rows belong to somebody else. Not `clock`, which is worn by `mine`, the
-first screen inside the fold; a parent row wearing its own child's glyph says
-the two are the same thing.
+**Why the fold is worth having is why it was worth losing.** It was put on the
+personal pair because that is what every account carries and what most accounts
+use least — but on the account that uses it MOST, a พนักงาน, it was a press in
+front of the screen they signed in for. **What shortens the column now is the
+width of the window** and not a group hidden behind a row; see
+แถบข้างย่อขยายตามความกว้างหน้าจอ below.
+
+**Three paragraphs stood here and are worth keeping in quotation marks**, since
+each says what a row of that kind costs and every one of them would be true
+again of the next one:
+
+- *"The fold has three states and the third is the useful one."* `personalToggled`
+  started `null` — neither open nor shut — and until somebody pressed it the fold
+  followed the tab: open exactly when the open screen was inside it. No single
+  boolean default is right for everybody. A press then pinned it, in both
+  directions, for the rest of the session. **That third state was not deleted, it
+  moved**: `railPinned` is the same idea about the window instead of the tab.
+- *"OT ส่วนตัว never wears `.active`."* That mark means *this is the page you are
+  on*, and pressing that row opened a list rather than a screen; shut over the
+  open page it took `.current` instead. Every button in the sidebar is a screen
+  now, so the sidebar has no use for `.current` — **the phone bar still does**,
+  on a slot whose sheet holds the open page, and the reasoning there is this
+  paragraph word for word.
+- *"Not `clock`, which is worn by `mine`, the first screen inside the fold."* The
+  `user` glyph the fold wore is still in `components/icons.jsx` beside `users` —
+  one figure against two — and is still drawn: it is ข้อมูลส่วนตัว's row in the
+  phone's drawer.
+
+### แถบข้างย่อขยายตามความกว้างหน้าจอ — 2026-09-10
+
+**Asked for in the same breath as the fold's removal** (*"แถบบาร์ด้านข้างให้มัน
+ย่อขยายตามขนาดหน้าจอ"*), and the two are one change: what shortens the sidebar is
+the width of the window now.
+
+**Three states in width order.** Under **860px** there is no sidebar at all —
+the phone's bottom bar and its drawer are the menu. From 860 to **1180px** the
+column is drawn as a **68px rail**: glyphs only, headings and labels hidden, and
+the label arriving as a tooltip on hover (`.nav-tip`). Above 1180px it is the
+full **248px** column. `RAIL_QUERY` in `components/App.jsx` is the one place the
+number is written.
+
+**1180 is the sidebar's own arithmetic.** At 1280 — the narrowest desktop this
+app is used on — 248px is a fifth of the window, and the 180px between the two
+widths is a column of ตรวจสอบประจำเดือน.
+
+**A press overrides the window, and the next crossing takes the override back.**
+`railPinned` starts `null`, which means *nobody has said*, and the screen
+answers. The button in the sidebar's brand row pins the other answer — but only
+until the query flips, because the question it answers is about the WINDOW: once
+the window has been dragged wide, rotated or docked it is no longer the window
+that was answered. A press that outlived every resize would leave a 68px rail on
+a 27-inch monitor with nothing on screen to explain it.
+
+**It was a stored preference until this change** — `primus_sidebar_collapsed` in
+`localStorage`, one pinned answer carried across sessions and across every
+screen the account was ever opened on. That is the arrangement the request
+replaced, so the key is gone rather than merely unread.
+
+**The first paint is always the full column**, and one frame later the effect
+narrows it if the window is small. `matchMedia` cannot be read while rendering:
+the server has no window, and a `useState` initialiser that reads one produces
+markup the client then disagrees with.
+
+**Written in JS and not as an `@media` rule**, because it is not only a width —
+a press has to be able to win. `.sidebar.collapsed` in `app/styles.css` is still
+the whole of what the rail LOOKS like; `RAIL_QUERY` only decides when it is
+worn.
 
 **การเงินได้สองเมนูของฝ่ายบุคคล ชื่อเดิม อ่านได้อย่างเดียว** — ขอมาเมื่อ
 2026-09-03 · ทั้งสองจอเป็น**ทั้งบริษัท ทุกแผนก** ไม่ใช่ทีมของตัวเอง เพราะ
@@ -2795,8 +2853,9 @@ What each role sees:
 | ผู้ดูแลระบบ | 8 | 4 | the same, with **เพิ่มเติม ▾** three |
 
 **ฝ่ายบุคคล and ผู้ดูแลระบบ keep พิมพ์ใบขออนุมัติ OT in เพิ่มเติม, and that is
-the one place the two cuts disagree.** On the sidebar both personal screens fold
-under OT ส่วนตัว; on their phone bar the queues and the reports already hold a
+the one place the two cuts disagree.** On the sidebar both personal screens sit
+together under ข้อมูลส่วนตัว (they folded under a row reading OT ส่วนตัว until
+2026-09-10, and the pairing is what mattered here either way); on their phone bar the queues and the reports already hold a
 slot each and ตั้งค่าระบบ has to go somewhere, so a slot for `form` would be a
 **fifth** column. `mine` is where filing happens and is opened every day; `form`
 prints a sheet that is already filed and is opened at the end of a month, so it
@@ -2808,7 +2867,9 @@ for a third reason: the bar was being split into ส่วนตัว and จ�
 which needed the personal pair adjacent.)*
 
 **`.active` is still only ever the page you are on.** A slot with a menu behind
-it takes `.current` — the sidebar's own mark for the OT ส่วนตัว fold — and the
+it takes `.current` — the sidebar's own mark for the OT ส่วนตัว fold until that
+fold was removed on 2026-09-10, and this bar is where the mark now lives — and
+the
 row inside the sheet is what carries `aria-current="page"`. Both marks are the
 same green, deliberately: what a reader needs from the colour is *you are here*,
 and a third shade would be a state to learn on a bar of four. What a press

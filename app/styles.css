@@ -1417,8 +1417,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sidebar.collapsed .nav-group-label {
   display: none;
 }
-.sidebar.collapsed .nav button,
-.sidebar.collapsed .nav-parent {
+.sidebar.collapsed .nav button {
   justify-content: center;
   width: 44px; height: 44px;
   padding: 0;
@@ -1426,16 +1425,7 @@ html { -webkit-tap-highlight-color: transparent; }
   border-radius: 10px;
   position: relative;
 }
-.sidebar.collapsed .nav .label,
-.sidebar.collapsed .nav-parent .chev {
-  display: none;
-}
-.sidebar.collapsed .nav-items.sub {
-  margin-left: 0;
-  padding-left: 0;
-  border-left: none;
-}
-.sidebar.collapsed .nav-items.sub button.active::before {
+.sidebar.collapsed .nav .label {
   display: none;
 }
 .sidebar.collapsed .nav button.active {
@@ -1445,9 +1435,6 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 .sidebar.collapsed .nav button.active .icon {
   opacity: 1;
-}
-.sidebar.collapsed .nav-parent.current {
-  box-shadow: 0 0 0 2px var(--green-lift);
 }
 .sidebar.collapsed .nav span[class~="count"] {
   position: absolute;
@@ -1488,7 +1475,6 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 
 .sidebar.collapsed .nav button:hover .nav-tip,
-.sidebar.collapsed .nav-parent:hover .nav-tip,
 .sidebar.collapsed .whoami:hover .nav-tip {
   display: flex;
   align-items: center;
@@ -1510,7 +1496,6 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 
 .sidebar.collapsed .nav button:hover .nav-tip::before,
-.sidebar.collapsed .nav-parent:hover .nav-tip::before,
 .sidebar.collapsed .whoami:hover .nav-tip::before {
   content: '';
   position: absolute;
@@ -1558,57 +1543,31 @@ html { -webkit-tap-highlight-color: transparent; }
   color: var(--on-panel-2);
 }
 
-/* ── OT ส่วนตัว, the one row that folds ────────────────────────────────────
+/* ── THE FOLD THAT STOOD HERE, AND WHAT ITS RULES WERE FOR ───────────────
 
-   It is shaped exactly like a nav row and is not one: `.nav button` above gives
-   it its box, its type and its hover, and everything here is about the two ways
-   it must differ from the rows it sits over.
+   `.nav-parent` AND `.nav-items.sub` WERE REMOVED ON 2026-09-10, with the row
+   they dressed. One block of the sidebar — ข้อมูลส่วนตัว — collapsed behind a
+   single row reading OT ส่วนตัว, and this is what the two rules said:
 
-   IT NEVER TAKES `.active`. That mark means "this is the page you are on", and
-   pressing this opens a list instead of a screen. When the fold is SHUT over
-   the current page it takes `.current` — a white overlay wash and a green bar
-   down its left edge — which says the page is behind this row without claiming
-   to be it. `--green-lift` and not `--green`: this is a 2px marker on a
-   near-black ground rather than a fill with white type on it, and the lifted
-   green clears 3:1 against the sidebar in both themes where the fill does not.
+     `.nav-parent` was shaped exactly like a nav row and was not one. It never
+     took `.active`, because that mark means *this is the page you are on* and
+     pressing it opened a list; shut over the open screen it took `.current`
+     instead — a wash and a 2px `--green-lift` bar down its left edge.
 
-   The bar is an inset shadow rather than a `::before`, so it follows the
-   button's own `border-radius` and needs no second box to position. */
-.nav-parent .chev {
-  flex: none; color: var(--on-panel-2); font-size: 17px; line-height: 1;
-  transition: transform .16s;
-}
-.nav-parent[aria-expanded='true'] .chev { transform: rotate(90deg); }
-.nav-parent.current {
-  background: var(--on-panel-active); color: var(--on-panel);
-  box-shadow: inset 2px 0 0 var(--green-lift);
-}
-.nav-parent.current .chev { color: var(--on-panel); }
+     `.nav-items.sub` indented its two rows against a guide line, since an
+     indent alone stops reading as containment the moment the parent is gone,
+     and the open row coloured its own segment of that line.
 
-/* ── the rows inside the fold ──────────────────────────────────────────────
+   THE HEADING IS WHAT IS LEFT, and it was always the other half: `.nav-group`
+   and `.nav-group-label` above draw ข้อมูลส่วนตัว over a flat list now, the
+   way การอนุมัติ & รายงาน and การตั้งค่าระบบ always have been.
 
-   INDENTED AGAINST A GUIDE LINE, because indentation alone stops reading as
-   containment the moment the fold is shut and the parent is gone: what is left
-   is two rows that start 15px further right than the ones above them, for no
-   visible reason. The line is the reason, and it is the same `--on-panel-line`
-   as the one rule in the sidebar's foot.
-
-   AND THE ACTIVE ROW COLOURS ITS OWN SEGMENT OF THAT LINE. The row itself is
-   the ordinary green pill — one mark for "the page you are on", everywhere in
-   this app — but the pill sits inside the indent, so at a glance the fold shows
-   which of its two children is open only by reading the labels. The segment is
-   the glance. It is drawn OUTSIDE the pill, on the sidebar's own ground, which
-   is why it can be green next to a green fill and still be seen. */
+   `.current` IS STILL A MARK IN THIS APP — the phone bar wears it on a slot
+   holding the open screen behind a sheet (see `.mobile-nav button.current`),
+   which is the same reasoning: a control that opens a list may not claim to
+   be a page. This is the sidebar giving up the only row it had of that kind,
+   not the app giving up the distinction. */
 .nav-items { display: flex; flex-direction: column; gap: 2px; }
-.nav-items.sub {
-  margin-left: 15px; padding-left: 10px;
-  border-left: 1px solid var(--on-panel-line);
-}
-.nav-items.sub button { position: relative; }
-.nav-items.sub button.active::before {
-  content: ''; position: absolute; left: -11px; top: 7px; bottom: 7px;
-  width: 2px; border-radius: 1px; background: var(--green-lift);
-}
 
 /* Count badges are alarms, not decoration — one colour, used only here.
    IT IS AMBER, AND IT WAS `--danger` UNTIL 2026-08-31. Asked for on the
@@ -10166,8 +10125,9 @@ table.mini tbody tr:hover { background: none; }
   /* ── AND THE SLOT THAT HOLDS THE OPEN SCREEN WITHOUT BEING IT ────────────
      `.active` means *this is the page you are on*; a slot with a menu behind it
      is not a page, and pressing it opens a list. It takes `.current`, the same
-     mark and the same reasoning as the sidebar's OT ส่วนตัว fold — see
-     `.nav-parent.current`.
+     mark and the same reasoning as the sidebar's OT ส่วนตัว fold carried until
+     2026-09-10 — see the note where `.nav-parent` was, above. This bar is
+     where the mark still lives.
 
      THE SAME GREEN, DELIBERATELY, and the caret is what tells the two apart. A
      dimmer green for "the page is behind this" would be a third state to learn
