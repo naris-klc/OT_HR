@@ -116,6 +116,15 @@ administrator:
 New-Item -ItemType Junction -Path node_modules -Target ..\OT_HR\node_modules
 ```
 
+**`npm test` runs in that worktree. `next build` does not**, and the failure
+is not obviously about the junction when you meet it — Turbopack walks the
+module graph itself and stops with `Symlink [project]/node_modules is invalid,
+it points out of the filesystem root`, under a stack of `Execution of ...
+failed` lines. Walked on 2026-09-11. So a change that has to be SEEN on the
+built app is verified in the tree that owns a real `node_modules`, after the
+merge — which means a merge the main tree refuses (below) postpones the walk,
+not only the landing.
+
 Commit onto `dev-<task>` as often as you like. When the task is done, merge in
 the tree that has `dev` checked out — git will not let you move `dev` from
 anywhere else:
