@@ -444,7 +444,8 @@ test('คอลัมน์กว้าง 84px ช่องไฟ 8px และ
  * claim, and it is the one that was worth pinning all along.
  *
  * It read "1262px, and it DOES NOT MOVE" until 2026-09-09, when `th.when-col`
- * went from 92px to 136 to hold ขอย้อนหลัง … วัน under the date. The figure was
+ * went from 92px to 136 to hold ย้อนหลัง … วัน under the date (ขอย้อนหลัง then;
+ * the ขอ came off on 2026-09-10 and the width stayed). The figure was
  * never the point: what this test defends is that ฝ่ายบุคคล's TWELFTH column
  * (สถานะ, 84px) is not in the sum. With `table-layout: fixed` and every column
  * given a width, their table simply comes out wider than the floor and scrolls;

@@ -2045,7 +2045,7 @@ export default function ApprovalQueue({
           // this reader may save a correction at all is still answered, by
           // `editPermission` on the server, on the press.
           // `isHr` CAME OFF THE `watchingNote` CALL in the 2026-09-09 merge:
-          // the branch that renamed the ขอล่วงหน้า / ขอย้อนหลัง tags took the
+          // the branch that renamed the ล่วงหน้า / ย้อนหลัง tags took the
           // parameter off the function itself, and this was the one caller
           // still handing it a fourth argument.
           onClose={() => setDetail(null)}

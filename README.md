@@ -4803,12 +4803,20 @@ after the first REAL month was walked. Every row with any punches now carries
 
 ```
 17:00–19:30
-เข้างาน 07:21 · สแกน 19:30
+เริ่ม 07:21 - 19:30
 ```
 
 > It read `สแกน 07:21, 19:30`, one unnamed list, until 2026-09-09 — see
-> **เวลาเข้างาน** below, which pulled the day's first punch from 04:00 on out of
-> the list and gave it a name. Every other time of the day is still on the line.
+> **เวลาเริ่ม** below, which pulled the day's first punch from 04:00 on out of
+> the list and gave it a name. Every other time of the WORKING DAY is still on
+> the line.
+
+> It read `เข้างาน 07:21 · สแกน 19:30` until 2026-09-10, when HR asked for the
+> line in a shorter shape: `เข้างาน 07:23 · สแกน 00:59, 07:55, 17:37, 18:24,
+> 20:11` was to become **`เริ่ม 07:23 - 07:55, 17:37, 18:24, 20:11`**. The label
+> is one word, the two halves are joined by ` - `, and the small-hours punch is
+> off the line — see **เวลาเริ่ม** below for that last one, which is a rule and
+> not a wording.
 
 > The separator lost its leading space on 2026-09-07 — asked for in the shape
 > *แสดงเวลาสแกนนิ้วทั้งหมดของวันนั้นเสมอ เช่น "สแกน 07:34, 19:30"*. It reads as
@@ -4833,7 +4841,7 @@ a bug but from how the door is actually used.
 **A system that cannot know which punch was meant to be which can still print
 what the machine said.** It costs nothing, assumes nothing, and hands the
 comparison to the person holding the sheet — who can see at a glance that
-`ใบ 17:00–19:30` against `เข้างาน 07:21 · สแกน 19:30` is an ordinary day.
+`ใบ 17:00–19:30` against `เริ่ม 07:21 - 19:30` is an ordinary day.
 
 **Drawn on every row that has scans, matching or not.** Times that appeared only
 where something was wrong would be read AS a warning, which is the thing they
@@ -4843,35 +4851,54 @@ were added to replace.
 2026-09-09.** The machines carry no in/out flag, so the times after the arrival
 are a list and nothing more: a reader can see what an evening time on an OT row
 means and the system is not in a position to assert it. The arrival itself IS
-named now, and only it — see **เวลาเข้างาน** below. A punch on the following
+named now, and only it — see **เวลาเริ่ม** below. A punch on the following
 morning is marked `(+1)` — on an overnight row it belongs to the row but not to
 the date, and a bare `02:04` among evening times reads as the wrong morning.
 
-##### เวลาเข้างาน — the day's first punch from 04:00 on, under its own name
+##### เวลาเริ่ม — the day's first punch from 04:00 on, under its own name
 
 *"เวลาที่จากเครื่องสแกนที่แสดง ให้แสดงเฉพาะเวลาแรกหลัง 04.00 น. เป็นต้นไปนับเป็น
 เวลาเข้างาน"* (HR, 2026-09-09). The row that provoked it carried a doubled
 morning scan and read `สแกน 07:55, 07:56, 22:56`: three times, and the reader had
 to work out which of them was the arrival before anything else on the row could
-be read. It reads `เข้างาน 07:55 · สแกน 07:56, 22:56` now.
+be read. It reads `เริ่ม 07:55 - 07:56, 22:56` now.
+
+> The label read `เข้างาน` from 2026-09-09 until 2026-09-10, when the line was
+> asked for in the shorter shape above. The same word — `เริ่ม` — names the OT
+> start on the row it sits under; that is deliberate, and the two are told apart
+> by the times themselves rather than by the labels.
 
 **Both halves, always, and from one component.** `ScanDayPunches` draws the
 label and the remaining times together — `scanCheckInTime` and `dayPunchLine`
 off the same `dayPunches` array, where the chosen punch carries `checkIn: true`.
 Naming a punch is only safe while the evidence it was named from is on the same
-line: a screen that printed `เข้างาน 07:55` alone would be asserting a reading
+line: a screen that printed `เริ่ม 07:55` alone would be asserting a reading
 nobody could check. The 07:56 that was scanned a minute later is still there.
 
 **04:00 and not midnight**, because a punch in the small hours is somebody
-LEAVING the previous evening's OT — naming it เข้างาน would date the arrival
+LEAVING the previous evening's OT — naming it เวลาเริ่ม would date the arrival
 hours before the person walked in. There is no night shift here (*ไม่มีกะดึก*,
 2026-09-04, the same answer `alreadyInside` rests on), so nothing legitimate
 starts between midnight and 04:00. `SCAN_CHECK_IN_FLOOR_MINUTES` is the floor;
-a punch at exactly 04:00 is an arrival, one at 03:59 is not and stays in the
-list. On an overnight row the punches past midnight wear `(+1)` and belong to
-the morning AFTER the row, so the first of THEM is never taken as the arrival —
-a day whose punches are all before 04:00 has no เวลาเข้างาน at all and prints
-its times exactly as it did before.
+a punch at exactly 04:00 is an arrival, one at 03:59 is not. On an overnight row
+the punches past midnight wear `(+1)` and belong to the morning AFTER the row,
+so the first of THEM is never taken as the arrival.
+
+**And since 2026-09-10 the floor is where the LINE starts too.** It read
+"a punch at 03:59 … stays in the list" and "a day whose punches are all before
+04:00 … prints its times exactly as it did before" until then. A punch below the
+floor on the row's own date is now off the line altogether (`early`): the 00:59
+on a row whose OT ran that evening is the previous night's departure, so it is
+the row above's evidence printed on this row, and it pushed the times this row
+IS about off to the right.
+
+**Unless this row quoted it.** A sentence may only quote a time the reader can
+see on the same row, and a request filed in the small hours — 00:20–03:00, the
+case the quote window exists for — is answered by exactly these punches. So a
+punch the start or end side took its number from stays on the line however early
+it is. Hiding it would leave the row reading `เวลาเริ่ม สแกน 00:59 ก่อนเวลา 39
+นาที` above a list with no 00:59 in it: the wrong-evidence failure of 2026-09-04
+in a fresh disguise, which is the one thing this whole line exists to prevent.
 
 **Nothing downstream reads it.** No verdict, hour, bucket, ceiling, badge or
 count moves; the start side still decides ก่อน/หลัง on distance alone. It is the
@@ -4985,8 +5012,9 @@ ScanMissingOtStartMark and the class `.chip.scan-noin` — the field fed that ch
 and nothing else read it. **No verdict, sentence, count or figure moved.** The
 silence `startFinding` builds is untouched, and the day's scan line under the
 times still prints on every row that has punches — `สแกน 07:34, 19:30` then,
-`เข้างาน 07:34 · สแกน 19:30` since 2026-09-09 — so a reader who wants to know
-whether anybody touched the door at 17:00 can see it.
+`เข้างาน 07:34 · สแกน 19:30` from 2026-09-09 and `เริ่ม 07:34 - 19:30` since
+2026-09-10 — so a reader who wants to know whether anybody touched the door at
+17:00 can see it.
 
 **The tolerance is still read off the request's own start, not off a fixed
 17:00–17:30 window.** That was written as part of the chip and outlived it,
@@ -9710,15 +9738,19 @@ build แล้ว
   · ❓ ยังไม่ได้พิมพ์ลงกระดาษ A4 จริง (ความกว้างช่องไม่ขยับ)
   · ❓ ยังไม่ได้ deploy
 
-- **แท็ก ขอล่วงหน้า / ขอย้อนหลัง ใต้วันที่บนคิวรออนุมัติ** — 2026-09-09,
+- **แท็ก ล่วงหน้า / ย้อนหลัง ใต้วันที่บนคิวรออนุมัติ** — 2026-09-09,
   *หน้ารออนุมัติเพิ่มแท็กแจ้งเตือน ใต้วันที่ ต่อวัน จ. อ. พ. พฤ. ศ. ส. อา.
   ในกรณีที่พนักงานยื่นขอโอทีล่วงหน้าหรือย้อนหลัง*. **สิ่งที่คอลัมน์วันที่พูดไม่ได้** —
   `12/09/2569 · ส.` อ่านออกมาเหมือนกันทุกประการไม่ว่าใบนั้นจะยื่นเย็นวันนั้นเอง
   หรือยื่นทีหลังห้าสัปดาห์ และสองแถวนั้นไม่ใช่ของอย่างเดียวกันสำหรับคนที่กำลังจะเซ็น
   · **แถวที่สามใต้ตัวย่อวัน ไม่ใช่ในคอลัมน์รายละเอียด** เพราะสามบรรทัดนี้อ่านต่อกันเป็นเรื่องเดียว
   — วันไหน วันอะไร แล้วใบมาห่างจากวันนั้นเท่าไร
-  · **สองสี** `ขอย้อนหลัง` ได้เหลืองแบบ `แก้ไขแล้ว` ซึ่งในแอปนี้แปลว่า *อ่านแถวนี้อีกที*
-  ไม่ได้แปลว่าใบผิด ส่วน `ขอล่วงหน้า` ได้ `--info` ฟ้าเงียบแบบ `รอ HR` เพราะยื่นก่อนวันทำงาน
+  · **คำบนแท็กอ่านว่า `ล่วงหน้า 4 วัน` / `ย้อนหลัง 15 วัน` ตั้งแต่ 2026-09-10**
+  เคยอ่านว่า "`ขอล่วงหน้า … วัน` และ `ขอย้อนหลัง … วัน`" ตามคำที่ฝ่ายบุคคลสั่งไว้ตอนแรก
+  จนวันนั้นสั่งให้ตัด `ขอ` ออกทั้งแอป — แท็กนี้บอกว่าใบมาถึงห่างจากวันทำงานเท่าไร
+  ไม่ได้กำลังขออะไร ความกว้างคอลัมน์ไม่ได้ขยับตาม (ดูข้อความกว้างข้างล่าง)
+  · **สองสี** `ย้อนหลัง` ได้เหลืองแบบ `แก้ไขแล้ว` ซึ่งในแอปนี้แปลว่า *อ่านแถวนี้อีกที*
+  ไม่ได้แปลว่าใบผิด ส่วน `ล่วงหน้า` ได้ `--info` ฟ้าเงียบแบบ `รอ HR` เพราะยื่นก่อนวันทำงาน
   คือทางที่ถูกอยู่แล้ว ทาเหลืองทั้งคู่คือเผาสัญญาณเตือนไปกับครึ่งที่ไม่ต้องเตือน
   · **นับเป็นวันตามเวลาไทยก่อนลบกัน** ไทยเป็น UTC+7 การยื่นระหว่างเที่ยงคืนถึงเจ็ดโมงจึงตกวันก่อนหน้า
   ถ้าอ่านจากสแตมป์ดิบ — คนทำกะดึกที่คีย์งานวันพุธตอนตีหนึ่งของวันพฤหัสจะกลายเป็น
@@ -9732,12 +9764,15 @@ build แล้ว
   ตั้งแต่บ่ายวันที่ 2026-09-09** เมื่อ `cap-col` 224 → 112 กับ `act-col` 258 → 96 ตามคำขอ
   *ไม่ต้องมีสก็อลบาร์เลื่อนๆ* คอลัมน์วันที่ไม่ได้ถูกแตะเลยในรอบนั้น ที่ให้คือคอลัมน์ที่กำลัง
   จ่ายค่าให้ของที่มันไม่ได้ถืออีกแล้ว — ประโยค `เพดานนับ …` กับปุ่ม `รายละเอียด`
-  · `ขอย้อนหลัง 365 วัน` วัดบนแอปที่ build แล้วได้ 111.3px และแท็กที่ตกบรรทัด
+  · `ขอย้อนหลัง 365 วัน` วัดบนแอปที่ build แล้วได้ 111.3px — คำที่ยาวที่สุดตอนนี้คือ
+  `ย้อนหลัง 365 วัน` ซึ่งสั้นกว่านั้นและยังไม่ได้วัดใหม่ 136px จึงอยู่ที่เดิม · แท็กที่ตกบรรทัด
   คือกล่องสีที่ดูเหมือนพัง ไม่ใช่ประโยคที่ขึ้นบรรทัดใหม่ · `test/queueStatusColumn.test.js`
   เลิกตรึงตัวเลข 1262 แล้วหันไปตรึง*ผลรวม*แทน ซึ่งคือข้อที่มันตั้งใจจะปกป้องมาตลอด
   · **เดินด้วยตาบนแอปที่ build แล้ว** — distDir แยก เสิร์ฟ :3003 (`:3000` กับ `:3001`
   มีคนใช้อยู่ ตรวจก่อนแล้วและไม่ถูกแตะ) · ฐานจริงวันนี้: `12/09/2569` ได้ `ขอล่วงหน้า 4 วัน`
   ฟ้า · `24/08/2569` ได้ `ขอย้อนหลัง 15 วัน` เหลือง · `07/09/2569` ที่ยื่นวันเดียวกัน**ไม่มีแท็ก**
+  (การเดินรอบนั้นเป็นของวันที่ 9 คำบนแท็กจึงยังมี `ขอ` อยู่ · **การตัด `ขอ` เมื่อ 2026-09-10
+  ยังไม่ได้เดินด้วยตาบนแอปที่ build แล้ว** ตรึงไว้ด้วย `test/filingLead.test.js` เท่านั้น)
   · แท็กกว้าง 105.2px ในเซลล์ 136px ไม่ล้น ทั้งธีมสว่างและธีมมืด และบนการ์ด 360px
   แท็กยังเป็นบล็อกใต้วันที่ ไม่ใช่ต่อบรรทัดอย่าง `ข้ามคืน`
   · **มันไม่ได้ห้ามอะไร** `maxPastSubmissionDays` ยัง `null` และปิดงวดถูกถอนไปแล้ว —
@@ -10651,7 +10686,8 @@ build แล้ว
   reached the PRINTED department sheet — the screen had had both since that morning,
   and the sheet is the one read by somebody who does not already know.
   It read **"2377 … across 131"** until the date cell on คิวรออนุมัติ gained
-  ขอล่วงหน้า / ขอย้อนหลัง — twelve cases and one new file,
+  ล่วงหน้า / ย้อนหลัง (ขอล่วงหน้า / ขอย้อนหลัง as it shipped; the ขอ came off on
+  2026-09-10) — twelve cases and one new file,
   `test/filingLead.test.js`, because `filingLead()` is two dates in and a
   direction out and the Bangkok midnight boundary is the case that matters.
   **THE "2377" IT REPLACES WAS TWO HIGH** — the commit before this one actually

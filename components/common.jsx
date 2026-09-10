@@ -686,20 +686,32 @@ export function BirthdayWelfareMark({ entry }) {
  * three rows out of thirty learns to read them AS a warning, which is the thing
  * they were added to replace.
  *
- * ── ONE OF THE TIMES IS NAMED NOW: เข้างาน (2026-09-09) ────────────────────
+ * ── ONE OF THE TIMES IS NAMED NOW: เริ่ม (2026-09-09, renamed 2026-09-10) ──
  *
  * *เวลาที่จากเครื่องสแกนที่แสดง ให้แสดงเฉพาะเวลาแรกหลัง 04.00 น. เป็นต้นไปนับเป็น
- * เวลาเข้างาน.* The line reads `เข้างาน 07:55 · สแกน 07:56, 22:56` — the day's
- * first punch from 04:00 on, under its name, and every other time of the day
- * still beside it in clock order. The row that provoked it carried a doubled
- * morning scan (07:55, 07:56) and a reader had to work out which of three times
- * was the arrival before anything else on the row could be read.
+ * เวลาเข้างาน.* The line reads `เริ่ม 07:55 - 07:56, 22:56` — the day's first
+ * punch from 04:00 on, under its name, and the rest of the working day's times
+ * beside it in clock order. The row that provoked it carried a doubled morning
+ * scan (07:55, 07:56) and a reader had to work out which of three times was the
+ * arrival before anything else on the row could be read.
  *
  * BOTH HALVES ALWAYS, and this component draws them from one pair of functions
  * so they cannot come apart: naming the arrival is only safe while the evidence
  * it was named from is on the same line. The rule and the reason 04:00 is the
  * floor live in `lib/scanMatch.js` (`SCAN_CHECK_IN_FLOOR_MINUTES`) — with the
  * rest of the wording of this feature — and no verdict on the row reads it.
+ *
+ * ── THE SHAPE OF THE LINE, ASKED FOR ON 2026-09-10 ────────────────────────
+ *
+ * It read `เข้างาน 07:23 · สแกน 00:59, 07:55, 17:37, 18:24, 20:11` and was
+ * asked for as `เริ่ม 07:23 - 07:55, 17:37, 18:24, 20:11`. Three changes in one
+ * sentence: the label is `เริ่ม`, the two halves are joined by ` - ` instead of
+ * `· สแกน`, and the small-hours punch is gone — that last one is a rule and it
+ * lives in `lib/scanMatch.js` (`early`), not here.
+ *
+ * The word `สแกน` survives in exactly one place: a day with no punch from 04:00
+ * on has no เริ่ม to lead with, and a bare list of times with no label at all
+ * would sit under the hours reading like part of them.
  */
 export function ScanDayPunches({ entry }) {
   const check = entry?.scanCheck;
@@ -709,12 +721,14 @@ export function ScanDayPunches({ entry }) {
   return (
     <div
       className="cell-sub th"
-      title={'เวลาที่เครื่องสแกนบันทึกไว้ทั้งวัน — เวลาแรกตั้งแต่ 04:00 น. เป็นต้นไปนับเป็นเวลาเข้างาน '
-        + 'เวลาที่เหลือเครื่องไม่ได้บอกว่าครั้งไหนเข้าครั้งไหนออก'}
+      title={'เวลาที่เครื่องสแกนบันทึกไว้ทั้งวัน — เวลาแรกตั้งแต่ 04:00 น. เป็นต้นไปคือเวลาเริ่ม '
+        + 'เวลาที่เหลือเครื่องไม่ได้บอกว่าครั้งไหนเข้าครั้งไหนออก '
+        + 'เวลาก่อน 04:00 น. เป็นการสแกนของคืนก่อน จึงไม่แสดงในบรรทัดนี้'}
     >
-      {checkIn ? `เข้างาน ${checkIn}` : null}
-      {checkIn && line ? ' · ' : null}
-      {line ? `สแกน ${line}` : null}
+      {checkIn ? `เริ่ม ${checkIn}` : null}
+      {checkIn && line ? ' - ' : null}
+      {!checkIn && line ? 'สแกน ' : null}
+      {line || null}
     </div>
   );
 }
@@ -933,7 +947,7 @@ export function TeamMark({ entry, coveredDepartments }) {
 }
 
 /**
- * ขอล่วงหน้า 3 วัน / ขอย้อนหลัง 12 วัน — under the date, under the weekday.
+ * ล่วงหน้า 3 วัน / ย้อนหลัง 12 วัน — under the date, under the weekday.
  *
  * ── WHAT THE DATE COLUMN COULD NOT SAY ─────────────────────────────────────
  * Asked for on 2026-09-09, and it fills a real hole rather than decorating the
@@ -947,15 +961,18 @@ export function TeamMark({ entry, coveredDepartments }) {
  * ([README §Status](../README.md)). Until HR names a number, seeing it IS the
  * control.
  *
- * THE EXACT WORDS ARE HR's — *ขอล่วงหน้า … วัน* and *ขอย้อนหลัง … วัน* — and
- * they are the same two words the server's own refusals use when a limit is
- * set (`advanceSubmissionRefusal`, `pastSubmissionRefusal` in lib/entries.js).
- * One vocabulary, so the tag on the row and the sentence that would one day
+ * THE EXACT WORDS ARE HR's. They read *ขอล่วงหน้า … วัน* and *ขอย้อนหลัง … วัน*
+ * from the day the tag shipped until 2026-09-10, when HR dropped the ขอ from
+ * both: the row is a statement about when the form arrived, not a request being
+ * made, and the verb was doing no work in a cell three lines deep. The
+ * direction words are still the ones the server's own refusals use when a limit
+ * is set (`advanceSubmissionRefusal`, `pastSubmissionRefusal` in lib/entries.js)
+ * — one vocabulary, so the tag on the row and the sentence that would one day
  * stop it being filed at all cannot come to say it two ways.
  *
- * TWO TONES, BECAUSE THEY ARE NOT THE SAME NEWS. ขอย้อนหลัง takes the amber
+ * TWO TONES, BECAUSE THEY ARE NOT THE SAME NEWS. ย้อนหลัง takes the amber
  * this app spends on "look at this row again" (แก้ไขแล้ว, เวลาไม่ตรงกับไฟล์สแกน);
- * ขอล่วงหน้า takes `--info`, the quiet blue รอ HR wears, because filing before
+ * ล่วงหน้า takes `--info`, the quiet blue รอ HR wears, because filing before
  * the shift is the ORDERLY case — it is worth stating and it is not a warning,
  * and painting both amber would spend the alarm on the good half.
  *
@@ -978,7 +995,7 @@ export function FilingLeadMark({ entry }) {
       className={`filed-lead ${ahead ? 'ahead' : 'back'}`}
       title={at ? `ยื่นคำขอเมื่อ ${thaiStamp(at, { seconds: false })}` : undefined}
     >
-      {ahead ? 'ขอล่วงหน้า' : 'ขอย้อนหลัง'} {lead.days} วัน
+      {ahead ? 'ล่วงหน้า' : 'ย้อนหลัง'} {lead.days} วัน
     </div>
   );
 }

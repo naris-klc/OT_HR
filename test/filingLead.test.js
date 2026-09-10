@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { filingLead } from '../lib/entries.js';
 
 /**
- * ขอล่วงหน้า … วัน / ขอย้อนหลัง … วัน — how far the form is from the day it is
+ * ล่วงหน้า … วัน / ย้อนหลัง … วัน — how far the form is from the day it is
  * about, drawn under the date on คิวรออนุมัติ.
  *
  * ── WHY THE ROW NEEDED IT ──────────────────────────────────────────────────
@@ -19,9 +19,11 @@ import { filingLead } from '../lib/entries.js';
  * (README §Status). Until HR names a number, the signer's eye is the control,
  * and it cannot see what the screen does not print.
  *
- * The words are HR's own and are the same two the server's refusals already use
- * where a limit IS set (`advanceSubmissionRefusal`, `pastSubmissionRefusal`) —
- * see test/advanceSubmission.test.js.
+ * The words are HR's own. They read *ขอล่วงหน้า … วัน* and *ขอย้อนหลัง … วัน*
+ * until 2026-09-10, when HR dropped the ขอ from both; the direction words are
+ * still the two the server's refusals already use where a limit IS set
+ * (`advanceSubmissionRefusal`, `pastSubmissionRefusal`) — see
+ * test/advanceSubmission.test.js.
  *
  * Every case here passes both dates in. Nothing reads the clock, which is what
  * lets the boundary cases below be written at all.
@@ -49,7 +51,7 @@ test('a form filed on the day it is about carries no tag at all', () => {
   assert.equal(filingLead(filed('2026-09-09', '2026-09-09T23:59:00+07:00')), null);
 });
 
-test('filed after the day — ขอย้อนหลัง, counted in whole days', () => {
+test('filed after the day — ย้อนหลัง, counted in whole days', () => {
   assert.deepEqual(
     filingLead(filed('2026-09-09', '2026-09-10T09:00:00+07:00')),
     { direction: 'back', days: 1 },
@@ -60,11 +62,11 @@ test('filed after the day — ขอย้อนหลัง, counted in whole d
   );
 });
 
-test('filed before the day — ขอล่วงหน้า, and the count is never negative', () => {
+test('filed before the day — ล่วงหน้า, and the count is never negative', () => {
   const lead = filingLead(filed('2026-09-12', '2026-09-09T09:00:00+07:00'));
   assert.deepEqual(lead, { direction: 'ahead', days: 3 });
   // The sign lives in the direction. If it ever leaked into the figure the
-  // screen would print `ขอล่วงหน้า -3 วัน`, which is a sentence nobody can read.
+  // screen would print `ล่วงหน้า -3 วัน`, which is a sentence nobody can read.
   assert.ok(lead.days > 0);
 });
 
@@ -73,7 +75,7 @@ test('filed before the day — ขอล่วงหน้า, and the count is 
  *
  * Bangkok is UTC+7, so every filing between midnight and 07:00 sits on the
  * PREVIOUS UTC day. A night-shift worker typing up Wednesday's overtime at
- * 01:00 on Thursday is `ขอย้อนหลัง 1 วัน`; read off the raw stamp it is
+ * 01:00 on Thursday is `ย้อนหลัง 1 วัน`; read off the raw stamp it is
  * same-day and draws nothing — silent on exactly the rows this count is for.
  */
 test('a filing after midnight is counted on the day the office was on', () => {
@@ -150,8 +152,12 @@ const queue = read('components/ApprovalQueue.jsx');
 const css = read('app/styles.css');
 
 test('the two phrases are HR\'s exact words, in one place', () => {
-  assert.match(common, /ahead \? 'ขอล่วงหน้า' : 'ขอย้อนหลัง'/);
-  assert.match(common, /\{ahead \? 'ขอล่วงหน้า' : 'ขอย้อนหลัง'\} \{lead\.days\} วัน/);
+  // ขอ came off both words on 2026-09-10 — the tag states when the form
+  // arrived, it does not repeat that a request is being made. The absence is
+  // asserted too, because a wording that grows back does so one word at a time.
+  assert.match(common, /ahead \? 'ล่วงหน้า' : 'ย้อนหลัง'/);
+  assert.match(common, /\{ahead \? 'ล่วงหน้า' : 'ย้อนหลัง'\} \{lead\.days\} วัน/);
+  assert.doesNotMatch(common, /'ขอล่วงหน้า'|'ขอย้อนหลัง'/);
 });
 
 test('the tag sits under the weekday in the date cell, and only there', () => {
@@ -170,7 +176,7 @@ test('the tag sits under the weekday in the date cell, and only there', () => {
  * TWO TONES, AND THE QUIET ONE IS ล่วงหน้า.
  *
  * Filing before the shift is the orderly way round. Painting it the same amber
- * as ขอย้อนหลัง would spend the alarm on the half that deserves none, and a
+ * as ย้อนหลัง would spend the alarm on the half that deserves none, and a
  * queue of forty amber rows is a queue nobody reads.
  */
 test('ย้อนหลัง takes the amber, ล่วงหน้า takes the quiet blue', () => {
@@ -186,13 +192,17 @@ test('the tag never breaks, and its column is wide enough that it need not', () 
   const rule = /\.filed-lead \{[\s\S]*?\}/.exec(css);
   assert.ok(rule, 'ไม่พบกฎ .filed-lead');
   assert.match(rule[0], /white-space: nowrap;/);
-  // 111.3px is `ขอย้อนหลัง 365 วัน` measured in the built app, and the column
-  // keeps `td`'s 12px gutters — so anything under 136 puts a filled tag on two
-  // lines, which reads as a broken box (see `.cell-flag`).
+  // "111.3px is `ขอย้อนหลัง 365 วัน` measured in the built app" until
+  // 2026-09-10, when HR dropped the ขอ from both words. The widest thing the
+  // tag can say is now `ย้อนหลัง 365 วัน`, which is shorter by two characters
+  // and has not been re-measured in a browser — so the floor stays where the
+  // measured figure put it rather than moving on an estimate. It is a floor,
+  // not the width: the column keeps `td`'s 12px gutters, and a tag that has to
+  // break reads as a broken box (see `.cell-flag`).
   const when = /^th\.when-col \{ width: (\d+)px; \}/m.exec(css);
   assert.ok(when, 'ไม่พบความกว้างของคอลัมน์วันที่');
   assert.ok(
     Number(when[1]) >= 136,
-    `คอลัมน์วันที่กว้าง ${when[1]}px — แท็กยาว 111.3px บวกช่องไฟ 24px ไม่พอ`,
+    `คอลัมน์วันที่กว้าง ${when[1]}px — แท็กที่วัดได้ 111.3px บวกช่องไฟ 24px ไม่พอ`,
   );
 });

@@ -7783,7 +7783,7 @@ tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
   white-space: nowrap;
 }
 
-/* ขอล่วงหน้า 3 วัน / ขอย้อนหลัง 12 วัน — the third line of the date cell on
+/* ล่วงหน้า 3 วัน / ย้อนหลัง 12 วัน — the third line of the date cell on
    คิวรออนุมัติ (`FilingLeadMark` in components/common.jsx).
 
    `.cell-flag`'s GEOMETRY AND NOT ITS COLOUR, written out rather than borrowed:
@@ -7798,8 +7798,11 @@ tbody + tbody .cal-month th { border-top: 1px solid var(--line); }
    third piece of metadata about the date rather than as a mark on the row.
 
    `nowrap` for `.cell-flag`'s reason, and the column above is sized so it never
-   has to break: 111.3px is `ขอย้อนหลัง 365 วัน`, measured in the built app's own
-   IBM Plex Sans Thai Looped rather than estimated, and three digits is not a
+   has to break. It read "111.3px is `ขอย้อนหลัง 365 วัน`, measured in the built
+   app's own IBM Plex Sans Thai Looped rather than estimated" until 2026-09-10,
+   when HR dropped the ขอ from both words; the widest thing the tag can say is
+   now `ย้อนหลัง 365 วัน`, two characters shorter and not re-measured, so the
+   column keeps the width the measured one bought. Three digits is not a
    theoretical width while nothing at all limits how far back a request may be
    filed. */
 .filed-lead {
@@ -8166,7 +8169,7 @@ tfoot tr.grand td {
 
    THE FLOOR IS THE SUM OF THE ELEVEN COLUMNS A หัวหน้า SEES, and it has moved
    twice in one day. It read "1262px" from the day it was written until
-   `th.when-col` went from 92 to 136 to hold ขอย้อนหลัง … วัน, and "1306px" for
+   `th.when-col` went from 92 to 136 to hold ย้อนหลัง … วัน, and "1306px" for
    the few hours after that. 42 + 168 + 136 + 108 + 52 + 58 + 58 + 52 + 112 +
    150 + 96 = 1032.
 
@@ -8248,10 +8251,15 @@ th.who-col { width: 168px; }
    held two lines, and 92px was the answer to those.
 
    Since 2026-09-09 the cell carries a third line, `.filed-lead`, and the widest
-   thing it can say is `ขอย้อนหลัง 365 วัน` — 111.3px measured in the built app,
-   plus the 12px gutters this column keeps, is 135.3. A tag that has to break is
-   two stacked coloured rectangles (see `.cell-flag`), so the column is sized to
-   the tag and the date sits inside it with room to spare.
+   thing it can say was `ขอย้อนหลัง 365 วัน` — 111.3px measured in the built app,
+   plus the 12px gutters this column keeps, is 135.3, which is where 136 comes
+   from. On 2026-09-10 HR dropped the ขอ, so that line now reads
+   `ย้อนหลัง 365 วัน` and is shorter than the figure this width was cut to; the
+   width did not follow it down, because narrowing on an estimate is how a tag
+   ends up on two lines and 44px is not worth a second measuring session. A tag
+   that has to break is two stacked coloured rectangles (see `.cell-flag`), so
+   the column is sized to the tag and the date sits inside it with room to
+   spare.
 
    THE 44px IS PAID BY THE TABLE'S FLOOR, deliberately and with the trade said
    out loud. `.queue-table` is `fixed` and already scrolls sideways inside a
