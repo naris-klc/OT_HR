@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { periodLabel } from '@/lib/api.js';
+import { periodLabel, companyLabel } from '@/lib/api.js';
 import { Alert } from './common.jsx';
 import { SCAN_BADGE } from '@/lib/scanMatch.js';
 
@@ -48,6 +48,11 @@ import { SCAN_BADGE } from '@/lib/scanMatch.js';
  *   2. **มีคนต้องตรวจ** — the amber pile, with the way to it.
  *   3. **ทุกแถวตรง** — quiet, green, one sentence.
  *
+ * States 2 and 3 CAN BE ABOUT HALF A MONTH. Since 2026-09-11 a company with no
+ * file of its own is left out of the comparison entirely rather than counted as
+ * `ไม่มีสแกน`, so both states carry a line naming what they do not cover — see
+ * the block over it, and docs/plan-monthly-partial-scan-import.md.
+ *
  * Decided 2026-09-10 (docs/plan-monthly-review-approve-inline.md §5.3): state 1
  * does NOT disable approving. The comparison points at rows; it does not hold a
  * gate, and a month whose file arrives late is not a month that may not be
@@ -55,7 +60,11 @@ import { SCAN_BADGE } from '@/lib/scanMatch.js';
  */
 export default function ScanCompareCard({
   period,
-  /** `{ counts, people, entryCount }` from `compareMonthAgainstScans`, or null. */
+  /**
+   * `{ counts, people, entryCount, notImported }` from
+   * `compareMonthAgainstScans`, or null. `notImported` is the company keys this
+   * งวด holds no file for — the rows those numbers deliberately exclude.
+   */
   compare = null,
   /** How many punches this month holds. `0`/`null` is state 1 above. */
   punchCount = null,
@@ -78,6 +87,13 @@ export default function ScanCompareCard({
 
   const flagged = compare?.people?.length || 0;
   const counts = compare?.counts;
+  /**
+   * บริษัทที่ยังไม่มีไฟล์ของเขาในงวดนี้ — the half of the month these numbers
+   * are NOT about. Straight off the comparison, which is where the cut was made
+   * (`compareMonthAgainstScans`), so this card and the คอลัมน์ สแกน under it
+   * are quoting one answer rather than two readings of `slots`.
+   */
+  const notImported = compare?.notImported || [];
 
   // ── 1. ยังไม่ได้เทียบ ─────────────────────────────────────────────────────
   /*
@@ -159,6 +175,36 @@ export default function ScanCompareCard({
             <span className="scan-big ok">✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน</span>
           )}
         </div>
+
+        {/* ── ⚠ WHAT THESE NUMBERS ARE NOT ABOUT — 2026-09-11 ──────────────
+            A month can arrive half-imported: ไพรมัส's file in and เดมเทค's
+            still on somebody's desktop. Since this round those rows are dropped
+            before the comparison instead of coming back as `ไม่มีสแกน` (see
+            `compareMonthAgainstScans`), which is right for the table — but it
+            leaves this card describing HALF A MONTH in a voice that sounds like
+            all of it. `✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน` over an unread payroll
+            is precisely the misreading this card was built to prevent, one
+            company wide instead of one month wide.
+
+            SO IT IS SAID HERE, ABOVE THE BREAKDOWN, in both states — the green
+            one needs it more than the amber one. `ยืนยันได้ตามปกติ` is §5.3
+            again and carries the same weight it carries in state 1: this is not
+            a gate, it is a thing left to do. */}
+        {notImported.length > 0 && (
+          <div className="scan-line" style={{ margin: '6px 0 0' }}>
+            <span>
+              ⚠ งวดนี้<strong>ยังไม่ได้นำเข้าไฟล์สแกนของ
+                {' '}{notImported.map(companyLabel).join(' และ ')}</strong>
+              {' — '}แถวของบริษัทนั้นยังไม่ได้ถูกเทียบกับอะไร และไม่ได้นับอยู่ในตัวเลขข้างล่าง
+              {' · '}ยืนยันได้ตามปกติ
+            </span>
+            {onOpenImport && (
+              <button type="button" className="btn ghost sm" onClick={onOpenImport}>
+                นำเข้าไฟล์สแกน
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="scan-tally">
           <span><strong>{counts.short}</strong> {SCAN_BADGE.SHORT}</span>

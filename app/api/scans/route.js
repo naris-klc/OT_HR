@@ -113,6 +113,14 @@ export const GET = route(async (req) => {
        * ผู้ดูแลระบบ's only (see the guard above), and neither is team-scoped.
        */
       department: departmentScope(user, q).department,
+      /**
+       * บริษัทที่งวดนี้ยังไม่มีไฟล์ของเขาเลย — from the grid five lines up, so
+       * the comparison and the slot list are answering out of ONE reading of
+       * the month's batches. Re-deriving it inside the compare would be a
+       * second query and a second chance to disagree with the card that draws
+       * the four slots. See `buildScanSlots`.
+       */
+      notImported: grid?.notImported || [],
     })
     : null;
 

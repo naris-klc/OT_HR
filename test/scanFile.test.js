@@ -352,6 +352,53 @@ test('ไฟล์ที่ปน หรือที่ตัดสินบร�
   assert.deepEqual(unplaced.map((b) => b._id).sort(), ['m1', 'u1', 'x1']);
 });
 
+/**
+ * ── notImported — คนละคำถามกับ missing และมีผลคนละอย่าง ─────────────────────
+ *
+ * `missing` เป็นระดับ **ช่อง** และเป็นคำถามของการ์ดนำเข้า: *ยังขาดไฟล์ใบไหน*
+ * `notImported` เป็นระดับ **บริษัท** และเป็นคำถามของผลเทียบ: *แถวของใครยังไม่ได้
+ * ถูกเทียบกับอะไรเลย* — คนที่บริษัทของเขาไม่มีไฟล์สักใบ ไม่ใช่คนที่เครื่องไม่เห็น
+ * ด้วย และการติดป้าย `ไม่มีสแกน` ให้เขาคือการบอกว่าเขาไม่ได้สแกน ทั้งที่ความจริง
+ * คือไม่มีใครนำเข้าเครื่องของเขา (11 ก.ย. 2569 ·
+ * docs/plan-monthly-partial-scan-import.md)
+ */
+test('บริษัทที่ยังไม่มีไฟล์ของเขาสักเครื่อง ถูกเรียกชื่อออกมาต่างหากจากช่องที่ว่าง', () => {
+  const empty = buildScanSlots(COMPANIES, []);
+  assert.deepEqual(empty.notImported, ['primus', 'themtech'], 'เดือนที่ว่างเปล่า = ทุกบริษัท');
+
+  const half = buildScanSlots(COMPANIES, [
+    { _id: 'p1', format: 'spaced', company: 'primus', createdAt: '2026-08-01T00:00:00Z' },
+  ]);
+  assert.deepEqual(half.notImported, ['themtech'], 'ไพรมัสเข้าแล้ว เดมเทคยังไม่เข้า');
+  assert.equal(half.missing.length, 3, 'แต่ช่องยังขาดสามช่อง — คนละคำถาม');
+
+  /**
+   * ⚠ เข้ามาเครื่องเดียวจากสองเครื่อง = **นำเข้าแล้ว** ไม่มีอะไรบนใบ OT บอกว่าคน
+   * คนนั้นสแกนเครื่องไหน การเดาว่าเขาอยู่เครื่องที่หายไปจะเปลี่ยนแถวที่*ควร*แดง
+   * ให้เป็นเทา ซึ่งเป็นความผิดพลาดด้านตรงข้ามและอันตรายกว่า · ช่องที่ว่างยังถูก
+   * เอ่ยชื่ออยู่ใน `missing` ซึ่งเป็นที่ของมัน
+   */
+  const oneMachine = buildScanSlots(COMPANIES, [
+    { _id: 'p1', format: 'spaced', company: 'primus', createdAt: '2026-08-01T00:00:00Z' },
+    { _id: 't1', format: 'spaced', company: 'themtech', createdAt: '2026-08-01T00:00:00Z' },
+  ]);
+  assert.deepEqual(oneMachine.notImported, [], 'มาเครื่องเดียวก็นับว่ามาแล้ว');
+  assert.equal(oneMachine.missing.length, 2, 'ช่องของเครื่องที่สองยังว่างอยู่ และยังถูกบอก');
+});
+
+test('ไฟล์ที่แยกบริษัทไม่ออกใบเดียว ทำให้ห้ามอ้างว่าบริษัทไหนยังไม่นำเข้า', () => {
+  /**
+   * punch ของไฟล์แบบนั้นอยู่ในฐานข้อมูลและ**ถูกเทียบจริง** และมันอาจเป็นของใครก็ได้
+   * การพูดว่า "เดมเทคยังไม่นำเข้า" จึงเป็นคำที่พิสูจน์ไม่ได้ · คำตอบที่ซื่อสัตย์คือ
+   * ไม่อ้างอะไรเลย แล้วปล่อยให้จอทำงานเหมือนก่อนมีลิสต์นี้ทุกประการ
+   */
+  const { notImported, unplaced } = buildScanSlots(COMPANIES, [
+    { _id: 'm1', format: 'spaced', company: MIXED_COMPANY, createdAt: '2026-08-01T00:00:00Z' },
+  ]);
+  assert.equal(unplaced.length, 1);
+  assert.deepEqual(notImported, [], 'มีไฟล์ที่แยกไม่ออกอยู่ = ไม่ชี้นิ้วใส่ใคร');
+});
+
 test('ไฟล์ที่ไม่มีการสแกนเลย สรุปออกมาเป็นศูนย์ ไม่ใช่พัง', () => {
   const summary = scanSummary(parseScanFile('ไม่ใช่ไฟล์สแกน\n'));
   assert.equal(summary.punchCount, 0);

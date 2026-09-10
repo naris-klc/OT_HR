@@ -99,7 +99,9 @@ test('the comparison is counted over the month the table is showing', () => {
   // string does not.
   assert.match(scansRoute, /import \{ reportStatuses, departmentScope \} from '@\/lib\/reports\.js';/);
   assert.match(scansRoute, /department: departmentScope\(user, q\)\.department,/);
-  assert.match(matchQuery, /export async function compareMonthAgainstScans\(\{ period, statuses, department = null \}\)/);
+  // The signature gained `notImported` on 2026-09-11 and wrapped onto two lines
+  // with it; `department` is still the argument this test is about.
+  assert.match(matchQuery, /export async function compareMonthAgainstScans\(\{\s+period, statuses, department = null, notImported = \[\],\s+\}\)/);
   assert.match(matchQuery, /if \(department\) filter\.department = department;/);
 });
 
@@ -262,6 +264,91 @@ test('a month with no file says ยังไม่นำเข้า on every ro
   // before the branch existed, and §5.3 still holds: this month ticks normally.
   assert.match(hrView, /const full = first\.punchCount\s+\? await api\.get\(`\$\{base\}&compare=1/);
   assert.match(hrView, /const pickable = \(row\) => Boolean\(row\.approvable\?\.count\)\s+&& !flaggedBy\.has\(String\(row\.employee\?\._id\)\);/);
+});
+
+/**
+ * ── เดือนที่นำเข้าบางส่วน — 11 ก.ย. 2569 ────────────────────────────────────
+ *
+ * งวดหนึ่งต้องมีสี่ไฟล์ และมันมาไม่พร้อมกัน วันที่ไฟล์ ไพรมัส เข้าแต่ เดมเทค ยังไม่เข้า
+ * เดือนนั้นมี punch แล้ว ผลเทียบจึงเดิน — และแถวของ เดมเทค ทุกแถวถูกเทียบกับ
+ * "ไม่มีอะไรเลย" แล้วกลับมาเป็น `ไม่มีสแกน` สีแดง ซึ่งอ่านออกมาว่า *คนนี้ไม่ได้
+ * สแกนนิ้ว* ทั้งที่ความจริงคือ *ไม่มีใครนำเข้าเครื่องของเขา* — พนักงานทั้งบริษัท
+ * ถูกทำเครื่องหมายว่าขาดงาน และถูกห้ามติ๊กยืนยันเพราะเรื่องนั้น
+ *
+ * สั่งแก้ด้วยประโยคเดียว: *"ทำให้แถวคนเดมเทคขึ้นเทา ยังไม่นำเข้า และติ๊กได้ตามปกติ
+ * เหมือนกรณีไม่มีไฟล์เลย"* — คือยก §5.3 จากระดับเดือนลงมาเป็นระดับบริษัท
+ * (docs/plan-monthly-partial-scan-import.md)
+ */
+test('บริษัทที่ไฟล์ยังไม่มา ถูกตัดออกก่อนเทียบ ไม่ใช่เทียบแล้วค่อยเปลี่ยนป้าย', () => {
+  // ตัดที่ต้นทาง เพราะทุกผลที่ตามมาหล่นออกมาเองโดยไม่ต้องเขียนกฎเพิ่ม: คนเหล่านั้น
+  // ไม่โผล่ใน `people` → ไม่อยู่ใน `flaggedBy` → §5.2 ปล่อยให้ติ๊กได้เอง
+  assert.match(matchQuery, /const skip = new Set\(notImported\);/);
+  assert.match(matchQuery, /skip\.has\(e\.employee\.company\)/);
+  // และ `company` ต้องถูกดึงมาด้วย ไม่งั้นการตัดจะเงียบและไม่ตัดอะไรเลย
+  assert.match(matchQuery, /select: 'code name company'/);
+
+  // ⚠ ต้องตัด **ก่อน** `scanChecksFor` ไม่ใช่หลัง — ถ้าตัดหลัง `counts` จะยังนับ
+  // กอง `ไม่มีสแกน` ที่ไม่มีใครทำอะไรกับมันได้ เข้าเป็นกองที่ต้องตรวจของเดือน
+  assert.ok(
+    matchQuery.indexOf('const skip = new Set(notImported);')
+      < matchQuery.indexOf('await scanChecksFor(entries)'),
+    'ตัดหลังเทียบ = ตัวเลขบนการ์ดยังโกหกอยู่',
+  );
+
+  // เราต์ส่งลิสต์เดียวกับที่การ์ดสี่ช่องใช้ ไม่ใช่คำนวณใหม่รอบสอง
+  assert.match(scansRoute, /notImported: grid\?\.notImported \|\| \[\],/);
+});
+
+test('แถวของบริษัทนั้นขึ้นเทา ยังไม่นำเข้า — และคำตัดสินมาจากเซิร์ฟเวอร์ที่เดียว', () => {
+  /* ⚠ อ่านจากผลเทียบ ไม่ใช่คำนวณเองจาก `slots` ที่อยู่ในมือ
+     เซิร์ฟเวอร์ใช้ลิสต์เดียวกันนี้ตัดสินไปแล้วว่าใครติดธง วันที่สองฝั่งไม่ตรงกันคือ
+     วันที่แถวหนึ่งขึ้น `ยังไม่นำเข้า` พร้อมกับถูกห้ามติ๊กเพราะติดธง — ขัดกันเอง
+     บนแถวเดียว */
+  assert.match(hrView, /new Set\(scan\?\.compare\?\.notImported \|\| \[\]\)/);
+  // ⚠ ตัดเอาเฉพาะ **ตัวโค้ด** ของ memo มาดู คอมเมนต์เหนือมันพูดถึง `scan.slots`
+  // อยู่เต็ม ๆ เพราะนั่นคือทางที่จงใจไม่เดิน — เทสต์ที่กวาดทั้งย่อหน้าจะไปเจอ
+  // คำอธิบายแทนที่จะเจอโค้ด
+  const memo = hrView.slice(hrView.indexOf('const notImported = React.useMemo('));
+  assert.ok(
+    !memo.slice(0, memo.indexOf('[scan],')).includes('slots'),
+    'จอคำนวณเองจาก slots = ความเห็นที่สองเรื่องเดียวกัน',
+  );
+
+  // ป้ายเดียวกับกรณีไม่มีไฟล์ทั้งเดือน — เป็นประโยคเดียวกันคนละมาตราส่วน
+  assert.match(hrView, /if \(notImported\.has\(row\.employee\?\.company\)\) \{/);
+  // และบอกชื่อบริษัทใน title เพราะบนจอมีทั้งสองบริษัทปนกันอยู่ในตารางเดียว
+  assert.match(hrView, /ยังไม่ได้นำเข้าไฟล์สแกนนิ้วมือของ \$\{companyLabel\(row\.employee\.company\)\}/);
+
+  // ลำดับของกิ่งคือคำพูด: ทั้งเดือน → ทั้งบริษัท → คำตัดสินรายคน
+  const whole = hrView.indexOf('if (!scan.punchCount) {');
+  const company = hrView.indexOf('if (notImported.has(row.employee?.company)) {');
+  const verdict = hrView.indexOf('const flag = flaggedBy.get(');
+  assert.ok(whole < company && company < verdict, 'กิ่งเรียงผิด — แถวจะได้คำตัดสินก่อนถูกถามว่ามีไฟล์ไหม');
+
+  // ⚠ กฎติ๊กไม่ได้ถูกแตะเลย และนั่นคือหลักฐานว่าการตัดอยู่ถูกที่: §5.2 ไม่รู้จัก
+  // คำว่าบริษัท และไม่ต้องรู้จัก
+  assert.match(hrView, /const pickable = \(row\) => Boolean\(row\.approvable\?\.count\)\s+&& !flaggedBy\.has\(String\(row\.employee\?\._id\)\);/);
+  assert.ok(!/pickable[\s\S]{0,200}notImported/.test(hrView), 'กฎติ๊กไปรู้เรื่องบริษัทเข้าแล้ว');
+});
+
+test('การ์ดผลเทียบต้องบอกว่าตัวเลขของมันไม่ได้พูดถึงใคร', () => {
+  /* ราคาของการตัดคือการ์ดต้องพูดว่ามันตัดอะไรไป · `✓ ทุกแถวที่เทียบได้ตรงกับ
+     ไฟล์สแกน` ทับอยู่บนเดือนที่อีกบริษัทไม่ได้ถูกอ่านเลย คือการอ่านผิดแบบเดียวกับ
+     ที่การ์ดใบนี้มีไว้กันตั้งแต่แรก เพียงแต่กว้างเท่าบริษัทแทนที่จะเท่าเดือน */
+  assert.match(card, /const notImported = compare\?\.notImported \|\| \[\];/);
+  assert.match(card, /notImported\.map\(companyLabel\)\.join\(' และ '\)/);
+  assert.match(card, /ยังไม่ได้นำเข้าไฟล์สแกนของ/);
+  assert.match(card, /ไม่ได้นับอยู่ในตัวเลขข้างล่าง/);
+
+  // §5.3 พูดด้วยคำเดิมที่สถานะ 1 ใช้ — ไม่ใช่ประตู แต่เป็นงานที่ยังไม่เสร็จ
+  const line = card.slice(card.indexOf('notImported.length > 0 &&'));
+  assert.match(line.slice(0, line.indexOf('</div>')), /ยืนยันได้ตามปกติ/);
+
+  // เหนือรายการตัวเลข ไม่ใช่ใต้ — คนอ่านต้องรู้ขอบเขตก่อนอ่านตัวเลข
+  assert.ok(
+    card.indexOf('notImported.length > 0 &&') < card.indexOf('<div className="scan-tally">'),
+    'คำเตือนอยู่ใต้ตัวเลขที่มันกำกับ',
+  );
 });
 
 test('a row the machine agrees with says so — green, and never left blank', () => {

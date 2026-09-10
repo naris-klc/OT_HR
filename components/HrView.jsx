@@ -505,6 +505,25 @@ export default function HrView({
   }, [scan]);
 
   /**
+   * บริษัทที่งวดนี้ยังไม่มีไฟล์สแกนของเขาเลย — READ, NEVER DERIVED.
+   *
+   * `scan.slots` is right here and this set could be worked out from it in two
+   * lines. It is taken off the comparison instead, because the server has
+   * already used the same list to decide who is in `flaggedBy` above: a browser
+   * that reached its own conclusion would, on the day the two disagreed, draw a
+   * row saying `ยังไม่นำเข้า` and refuse its tick-box for carrying a flag —
+   * one row making two contradictory claims. One decider, and this is the
+   * reader of it. See `compareMonthAgainstScans`.
+   *
+   * Empty on every ordinary month, and empty by design on a month holding a
+   * file whose company never resolved — see `buildScanSlots`.
+   */
+  const notImported = React.useMemo(
+    () => new Set(scan?.compare?.notImported || []),
+    [scan],
+  );
+
+  /**
    * ── ใครติ๊กได้ — the rule, in one place ──────────────────────────────────
    *
    * THREE THINGS HAVE TO BE TRUE, and only the first is about permission:
@@ -2200,20 +2219,50 @@ export default function HrView({
                                exactly as it did before this line existed, and
                                §5.3 still holds: this month ticks normally.
 
-                               ⚠ WHAT IT DOES NOT YET COVER is the PARTIAL month
-                               — ไพรมัส's file in and เดมเทค's missing. Those rows
-                               are compared against nothing and come back marked
-                               `ไม่มีสแกน`, which reads as "this person did not
-                               scan" when the truth is "nobody imported their
-                               machine". Telling the two apart needs the row's
-                               company beside `slots`, and it changes who may be
-                               ticked — a bigger change than this one, deliberately
-                               not smuggled in with it. */
+                               ⚠ IT DID NOT COVER THE PARTIAL MONTH UNTIL
+                               2026-09-11, and the note here read: *"telling the
+                               two apart needs the row's company beside `slots`,
+                               and it changes who may be ticked — a bigger change
+                               than this one"*. It was asked for the next message
+                               in: *"ทำให้แถวคนเดมเทคขึ้นเทา ยังไม่นำเข้า และติ๊ก
+                               ได้ตามปกติ เหมือนกรณีไม่มีไฟล์เลย"*. The branch
+                               below is that answer, and the two are ONE
+                               SENTENCE at two scales: a whole month with no
+                               file is every company at once. */
                             if (!scan.punchCount) {
                               return (
                                 <span
                                   className="scan-wait"
                                   title="ยังไม่ได้นำเข้าไฟล์สแกนนิ้วมือของเดือนนี้ — ไม่ได้แปลว่าทุกแถวตรง"
+                                >
+                                  ยังไม่นำเข้า
+                                </span>
+                              );
+                            }
+                            /* ── ...AND THE SAME THING FOR ONE COMPANY ────────
+                               ไพรมัส's file in, เดมเทค's missing. The month has
+                               punches, so the comparison ran — and every เดมเทค
+                               row was read against a machine nobody imported.
+
+                               ⚠ WITHOUT THIS BRANCH THEY CAME BACK RED
+                               `ไม่มีสแกน`, which reads as *this person did not
+                               scan* when the truth is *nobody imported their
+                               terminal*: an entire payroll marked absent for a
+                               month they clocked in full, and barred from the
+                               tick-box for it.
+
+                               THE TICK IS ALREADY FIXED BY THE TIME THIS DRAWS.
+                               `compareMonthAgainstScans` drops these people
+                               before comparing, so they are not in `flaggedBy`
+                               and `pickable` lets them through with no rule
+                               about companies in it — §5.3, one level down. All
+                               that is left here is to say WHY the cell is not
+                               green, which `ตรง` would otherwise claim. */
+                            if (notImported.has(row.employee?.company)) {
+                              return (
+                                <span
+                                  className="scan-wait"
+                                  title={`ยังไม่ได้นำเข้าไฟล์สแกนนิ้วมือของ ${companyLabel(row.employee.company)} ในเดือนนี้ — แถวนี้ยังไม่ได้ถูกเทียบกับอะไร`}
                                 >
                                   ยังไม่นำเข้า
                                 </span>

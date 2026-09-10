@@ -5541,7 +5541,10 @@ because from a table with no marks on it, "nobody has imported the file" and
 checked. It does **not** stop anybody approving: the comparison points at rows,
 it does not hold a gate (decided 2026-09-10,
 docs/plan-monthly-review-approve-inline.md §5.3), and the row says so —
-**ยืนยันได้ตามปกติ**.
+**ยืนยันได้ตามปกติ**. Since 2026-09-11 that whole paragraph holds **per company**
+as well as per month — a payroll whose file has not arrived is left out of the
+comparison and ticks normally, and the card names it. See
+[เดือนที่นำเข้าบางส่วน](#เดือนที่นำเข้าบางส่วน--บริษัทที่ไฟล์ยังไม่มา).
 
 > **It read "AND IT IS THE LOUDEST THING ON THE SCREEN … in 16px" until
 > 2026-09-11**, when it became **one row** — *"ปรับอีกครับ กระชับให้เป็นแถวเดียว"*.
@@ -7158,14 +7161,61 @@ the comparison at all without punches, so on exactly the month this branch draws
 notice's counts all behave as they did before it existed, and §5.3 still holds:
 **a month with no import ticks normally.**
 
-> **⚠ WHAT IT DOES NOT YET COVER IS THE PARTIAL MONTH.** ไพรมัส's file in and
-> เดมเทค's missing is a month with punches, so the comparison runs — and every
-> เดมเทค row comes back marked **`ไม่มีสแกน`** in red, which reads as *this
-> person did not scan* when the truth is *nobody imported their machine*. Telling
-> the two apart needs the row's company beside `slots`, and it changes **who may
-> be ticked** (a row compared against nothing is not a row anybody failed to look
-> at — §5.3 applied per company instead of per month). That is a bigger change
-> than this one and was deliberately not smuggled in with it.
+> **It read "⚠ WHAT IT DOES NOT YET COVER IS THE PARTIAL MONTH … that is a
+> bigger change than this one and was deliberately not smuggled in with it"
+> until 2026-09-11.** It was asked for the next message in and is the section
+> below.
+
+#### เดือนที่นำเข้าบางส่วน — บริษัทที่ไฟล์ยังไม่มา
+
+**2026-09-11:** *"ทำให้แถวคนเดมเทคขึ้นเทา ยังไม่นำเข้า และติ๊กได้ตามปกติ เหมือน
+กรณีไม่มีไฟล์เลย"*.
+
+**A งวด takes four files** — two terminals × two companies (`buildScanSlots`,
+and the four is `SCAN_FORMATS.length × companies.length`, never a literal). They
+do not arrive together. With ไพรมัส's file in and เดมเทค's still on somebody's
+desktop, the month has punches, so the comparison runs — and every เดมเทค row was
+read against nothing at all and came back **`ไม่มีสแกน`** in red, which says *this
+person did not scan* when the truth is *nobody imported their terminal*. An
+entire payroll marked absent for a month they clocked in full, and barred from
+the tick-box for it.
+
+**A company with no file of its own is now left out of the comparison entirely**
+— `buildScanSlots` returns `notImported`, the route hands it to
+`compareMonthAgainstScans`, and those rows are dropped **before** the comparison
+rather than re-labelled after it. That single cut is what makes the rest fall out
+with no rule of its own: those people never reach `people`, so they are never in
+`flaggedBy`, so §5.2 lets them be ticked. **That is §5.3 one level down** — *a
+month with no import ticks normally* becomes *a company with no import ticks
+normally*, and a month with no file at all is simply every company at once, not a
+second rule. `counts` then describes only the half that was genuinely read.
+
+**The cell says `ยังไม่นำเข้า` in the same grey**, with the company named in its
+`title` because both payrolls share one table. **The screen reads that list off
+the comparison and never derives it from `slots`**, which it holds: the server
+used the same list to decide who is flagged, and the day two derivations
+disagreed a row would read `ยังไม่นำเข้า` while its tick-box stayed disabled for
+carrying a flag — one row making two contradictory claims.
+
+**⚠ The price is that ผลเทียบ must say what it left out.** `✓ ทุกแถวที่เทียบได้
+ตรงกับไฟล์สแกน` over a month whose other company was never read is the same
+misreading that card exists to prevent, one company wide instead of one month
+wide. It carries a line naming the company, above the breakdown, in both the
+amber and the green state — and `ยืนยันได้ตามปกติ` with it.
+
+> **⚠ A COMPANY WITH ONE OF ITS TWO TERMINALS IN COUNTS AS IMPORTED.** Nothing on
+> an ใบ OT says which terminal a person uses, so calling that company un-compared
+> would turn rows that *should* be red grey — the opposite mistake and the more
+> dangerous one. The empty slot is still named, in ไฟล์สแกนนิ้วมือ, out of
+> `missing`. **A file whose company never resolved empties the list altogether**:
+> its punches are in the database and are compared, it could hold anybody's rows,
+> and no company can be called un-imported while one exists.
+
+**`ดู / แก้ไขรายการ` needed nothing.** `scanChecksFor` answers `hasScans` from
+the punches of **the people in the list it was given**, and a เดมเทค person's
+list has none — so that screen already said *ยังไม่ได้เทียบกับไฟล์สแกนนิ้ว —
+เดือนนี้ยังไม่มีข้อมูลสแกนของพนักงานคนนี้*. The month-wide comparison, which is
+the one list that mixes both payrolls, was the only place the lie could live.
 
 #### ⚠ ตรง IS GREEN AND ต้องตรวจ IS RED, and they were grey and amber for a few hours
 
