@@ -366,24 +366,40 @@ export const DEFAULT_POLICY = Object.freeze({
    * When the person who filled the form in is also the person who would sign
    * the manager's step, does the request skip that step?
    *
-   * true  — it goes straight to `pending_hr` (DEFAULT), with the reason written
-   *         into its history.
-   * false — it waits at `pending_mgr` like any other, for the หัวหน้า who wrote
-   *         it to approve their own filing.
+   * false — it waits at `pending_mgr` like every other request (DEFAULT), for
+   *         the หัวหน้า who wrote it to open รออนุมัติ and press อนุมัติ on it.
+   * true  — it goes straight to `pending_hr`, with the reason written into its
+   *         history (`SKIP_NOTE`).
    *
-   * The default is the honest reading rather than the flattering one. A หัวหน้า
-   * pressing อนุมัติ on a form they typed has checked nothing — but the trail
-   * that comes out of it reads ยื่นคำขอ → หัวหน้างานอนุมัติ → ฝ่ายบุคคลยืนยัน,
-   * which is indistinguishable on the page from two people agreeing, and there
-   * is no way to tell them apart afterwards. Skipping openly looks worse and
-   * says something true: this reached HR approved by nobody.
+   * ─────────────────────────────────────────────────────────────────────────
+   * IT DEFAULTED TO `true` UNTIL 2026-09-09, AND THE ARGUMENT THAT PUT IT
+   * THERE IS STILL A TRUE SENTENCE — it is no longer the one that decides.
    *
-   * A flag rather than an assumption because "we want both presses on the
-   * record whatever they are worth" is a defensible answer that HR is entitled
-   * to give. COSMETIC — it moves no hour, only which desk the request is on.
-   * The rule itself is `initialStatus` in lib/proxyFiling.js.
+   * That argument: a หัวหน้า pressing อนุมัติ on a form they typed has checked
+   * nothing, while the trail it leaves reads ยื่นคำขอ → หัวหน้างานอนุมัติ →
+   * ฝ่ายบุคคลยืนยัน, which is indistinguishable on the page from two people
+   * agreeing. Skipping openly looked worse and said something true: this
+   * reached HR approved by nobody.
+   *
+   * HR asked for the other answer on 2026-09-09, in those words — บันทึกแทน
+   * ให้รอหัวหน้าอนุมัติด้วย. A filing is a claim about somebody ELSE'S hours,
+   * and the press afterwards is the moment the หัวหน้า takes responsibility
+   * for the figures on it. It is a press that can be declined: ไม่อนุมัติ sits
+   * on the same row, and a filing typed in error is now refused on the screen
+   * it was typed from instead of travelling to HR as an approved request.
+   *
+   * WHAT KEEPS THE TRAIL HONEST NOW THAT NOTHING IS SKIPPED. The screens do
+   * not have to be believed about how many people looked: both names are on
+   * the entry and both are printed. `SignatureFacts` writes ผู้บันทึกแทน
+   * อนุมัติเอง under the หัวหน้างานอนุมัติ box whenever the approver IS the
+   * filer, so no sheet claims two people where there was one.
+   *
+   * COSMETIC — it moves no hour, only which desk the request is on. The rule
+   * itself is `initialStatus` in lib/proxyFiling.js; the permission that lets
+   * the filer press their own button is `approvalPermission` in
+   * lib/delegation.js, and the two must be read together.
    */
-  proxySkipsOwnApproval: true,
+  proxySkipsOwnApproval: false,
   /**
    * Does F-HR-027 carry a line under the table naming who filed and who signed
    * on somebody else's behalf?

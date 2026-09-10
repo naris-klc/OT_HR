@@ -55,7 +55,8 @@ test('the approval names the slip for ฝ่ายบุคคล and stays อ�
   // not. A template over `verb` cannot say that.
   // The signature wrapped onto its own line when `watching` joined it on
   // 2026-09-03; what is pinned is the flag being a PROP, not where the brace is.
-  has(src, 'entry: e, isHr, busy, mine = false, watching = false,');
+  // `user` joined it on 2026-09-10, for the เหมารายวัน tick inside แก้ไขชั่วโมง.
+  has(src, 'entry: e, user, isHr, busy, mine = false, watching = false,');
   has(src, '          isHr={isHr}');
   assert.ok(!code.includes('{verb}'), 'ปุ่มยังประกอบจาก verb — สองบทบาทใช้รูปประโยคต่างกัน');
 });

@@ -1,9 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { proxyPermission, initialStatus, SKIP_NOTE } from '../lib/proxyFiling.js';
 import { isProxyFiled, filedByOf } from '../lib/entries.js';
 import { DEFAULT_POLICY } from '../src/config/policy.js';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = (file) => readFileSync(join(ROOT, file), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
 
 /**
  * หัวหน้าบันทึก OT แทนลูกทีม — whose request it becomes, who may do it, and
@@ -124,13 +132,70 @@ const filing = (over = {}) => ({
   ...over,
 });
 
+/**
+ * The policy that turns the skip back ON — every test below about skipping
+ * passes this, because since 2026-09-09 it is not what ships.
+ */
+const SKIPPING = { ...DEFAULT_POLICY, proxySkipsOwnApproval: true };
+
 test('an ordinary request waits for the manager, as it always has', () => {
   const start = initialStatus(filing({ filer: MEMBER }));
   assert.deepEqual(start, { status: 'pending_mgr', skipped: false, note: null });
 });
 
-test('a manager filing for their own team skips the step they would have signed', () => {
+test('a manager filing for their own team waits for their own อนุมัติ', () => {
+  // HR's instruction of 2026-09-09: บันทึกแทนให้รอหัวหน้าอนุมัติด้วย. The row
+  // lands where every other request lands, and the หัวหน้า who typed it presses
+  // the button on it in รออนุมัติ — see `barredAsOwnFiling` in lib/delegation.js
+  // for the permission that lets them.
   const start = initialStatus(filing());
+  assert.deepEqual(start, { status: 'pending_mgr', skipped: false, note: null });
+});
+
+test('the flag ships OFF, so nothing skips unless somebody turns it on', () => {
+  assert.equal(DEFAULT_POLICY.proxySkipsOwnApproval, false);
+});
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AND THE ROUTES ASK IT OF THE LIVE POLICY, WHICH NO TEST ABOVE CAN SEE.
+ *
+ * Every case in this file hands `initialStatus` a policy object directly, so
+ * all of them passed on 2026-09-09 while the built application went on skipping
+ * every filing: `ctx.policy` is `policyFor(workDate)` — the newest RECORDED
+ * version — and version 31 was recorded while the default was still `true`.
+ * Changing the shipped default moved nothing, and nothing said so.
+ *
+ * Found by walking the built app against a clone of prod. Pinned here by
+ * reading the two routes, because that is the shape of the bug: a pure rule
+ * that is right, asked the wrong question by its caller.
+ */
+test('the write path and the preview both route off the LIVE policy', () => {
+  for (const file of ['app/api/entries/route.js', 'app/api/entries/preview/route.js']) {
+    const src = read(file);
+    const call = src.slice(src.indexOf('initialStatus({'));
+    assert.match(
+      call.slice(0, 400), /policy: ctx\.livePolicy/,
+      `${file} — routing must not be answered by the version in force on the work date`,
+    );
+  }
+});
+
+test('the context still carries the live policy under a name that says so', () => {
+  // `loadContext` spreads `policyFor(workDate)` over the calendar, which
+  // overwrites `policy`. Without this field there is nothing left to read.
+  assert.match(read('src/services/otService.js'), /livePolicy: calendar\.policy/);
+});
+
+test('an absent key reads as the default, not as the old behaviour', () => {
+  // A `Setting.policy` stored before 2026-09-09 carries no such key at all.
+  // Read as `=== false` this would have skipped; read as `!== true` it waits.
+  const start = initialStatus(filing({ policy: {} }));
+  assert.deepEqual(start, { status: 'pending_mgr', skipped: false, note: null });
+});
+
+test('proxySkipsOwnApproval: true is still the old behaviour, in full', () => {
+  const start = initialStatus(filing({ policy: SKIPPING }));
   assert.equal(start.status, 'pending_hr');
   assert.equal(start.skipped, true);
   assert.equal(start.note, SKIP_NOTE);
@@ -139,18 +204,8 @@ test('a manager filing for their own team skips the step they would have signed'
 test('the history is told why, so pending_hr with no approval is not a mystery', () => {
   // An entry sitting at รอ HR that nobody approved is the one shape in this
   // system that looks like a bug. The note is what makes it read as a decision.
-  assert.match(initialStatus(filing()).note, /ข้ามขั้นรอหัวหน้า/);
-});
-
-test('proxySkipsOwnApproval: false puts it back in the manager’s queue', () => {
-  const start = initialStatus(filing({
-    policy: { ...DEFAULT_POLICY, proxySkipsOwnApproval: false },
-  }));
-  assert.deepEqual(start, { status: 'pending_mgr', skipped: false, note: null });
-});
-
-test('the flag ships on, because the skip is the honest reading', () => {
-  assert.equal(DEFAULT_POLICY.proxySkipsOwnApproval, true);
+  // Two such rows are on prod, filed while the skip was the default.
+  assert.match(initialStatus(filing({ policy: SKIPPING })).note, /ข้ามขั้นรอหัวหน้า/);
 });
 
 /**
@@ -161,17 +216,21 @@ test('the flag ships on, because the skip is the honest reading', () => {
  * one is written down.
  */
 test('somebody who could not sign the step does not skip it', () => {
-  const start = initialStatus(filing({ filer: { _id: 'hr-1', role: 'hr', department: ENG } }));
+  const start = initialStatus(filing({
+    filer: { _id: 'hr-1', role: 'hr', department: ENG }, policy: SKIPPING,
+  }));
   assert.equal(start.status, 'pending_mgr');
   assert.equal(start.skipped, false);
 });
 
 test('a manager filing into a department that is not theirs does not skip', () => {
   const start = initialStatus(filing({
-    filer: OTHER_MANAGER, employee: OUTSIDER, department: QA,
+    filer: OTHER_MANAGER, employee: OUTSIDER, department: QA, policy: SKIPPING,
   }));
   assert.equal(start.status, 'pending_hr', 'their own department — this one does skip');
 
-  const across = initialStatus(filing({ filer: OTHER_MANAGER, employee: MEMBER, department: ENG }));
+  const across = initialStatus(filing({
+    filer: OTHER_MANAGER, employee: MEMBER, department: ENG, policy: SKIPPING,
+  }));
   assert.equal(across.status, 'pending_mgr', 'a step they could not sign is a step they must not skip');
 });

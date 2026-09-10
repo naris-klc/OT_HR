@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  approvalPermission, approvalRecord, delegationPermission, historyExtra, isOwnFiling,
-  delegatedClaims, delegatedDepartments, isLive, overlaps, publicDelegation, receivedOn,
+  approvalPermission, approvalRecord, barredAsOwnFiling, delegationPermission, historyExtra,
+  isOwnFiling, delegatedClaims, delegatedDepartments, isLive, overlaps, publicDelegation, receivedOn,
   scopeWidening, wouldCycle,
 } from '../lib/delegation.js';
 import { scopeFor } from '../lib/entries.js';
@@ -165,14 +165,65 @@ test('a delegation covers the manager’s step only — never the HR one', () =>
  * name on it by more than one route: the flag turned off, or a stand-in
  * reaching a department whose entries never went past their own step.
  */
-test('nobody approves a request they filed themselves, by any route', () => {
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE RULE CHANGED SHAPE ON 2026-09-09 AND KEPT THE HALF THAT MATTERS.
+ *
+ * It was "nobody decides a request they filed, at any step". HR asked for the
+ * two presses (`proxySkipsOwnApproval`), so a proxy filing now waits at
+ * `pending_mgr` for the หัวหน้า who typed it — and in 13 of 18 แผนก that person
+ * is the only one who could ever sign it, so the old rule kept as it was would
+ * have parked the whole feature in a queue with no exit.
+ *
+ * What is still refused is the thing §6 is about: ONE PERSON, BOTH SIGNATURES.
+ */
+test('the filer signs the step their own filing is waiting at, and nothing else', () => {
   const own = engEntry({ filedBy: A, employee: WORKER });
 
-  const asManager = approvalPermission({ user: A, entry: own, delegations: [], today: '2026-08-06' });
-  assert.equal(asManager.ok, false, 'not as the department’s own manager');
-  assert.equal(asManager.status, 403);
+  const atTheirStep = approvalPermission({
+    user: A, entry: own, delegations: [], today: '2026-08-06',
+  });
+  assert.equal(atTheirStep.ok, true, 'รอหัวหน้า — this is the press HR asked for');
+  assert.equal(atTheirStep.stage, 'mgr');
 
-  // C filed into their own team; A is standing in for C that week.
+  // The same row one step further on. Somebody else signed the หัวหน้า step;
+  // the filer is still not the second pair of eyes on their own filing.
+  const atHr = approvalPermission({
+    user: A,
+    entry: engEntry({ ...own, status: 'pending_hr' }),
+    delegations: [],
+    today: '2026-08-06',
+  });
+  assert.equal(atHr.ok, false, 'and not the ฝ่ายบุคคล step of it');
+  assert.equal(atHr.status, 403);
+  assert.match(atHr.error, /ผู้เซ็นสองคน/);
+});
+
+test('having filed it, they may not sign it twice either', () => {
+  // The หัวหน้า step is theirs to press once. `signedManagerStep` is what stops
+  // the same press being counted as the ฝ่ายบุคคล one, and it is asked of the
+  // person who PRESSED — see its own note.
+  const signed = engEntry({
+    filedBy: A, employee: WORKER, status: 'pending_hr',
+    managerDecision: { by: A._id, at: new Date() },
+  });
+  const may = approvalPermission({ user: A, entry: signed, delegations: [], today: '2026-08-06' });
+  assert.equal(may.ok, false);
+});
+
+test('a stand-in signs a filing of their own at that step too — one rule, not two', () => {
+  /**
+   * C filed into their own team; A is standing in for C that week. Refused
+   * outright before 2026-09-09, allowed now, and the widening is deliberate
+   * rather than accidental: the refusal is written against the ENTRY'S STEP and
+   * not against how the reviewer's claim was come by, so that the browser —
+   * which is never told about delegations — can ask the identical question.
+   *
+   * No route creates this row. `proxyPermission` lets a หัวหน้า file only for
+   * their own แผนก, so every filing that exists is one its filer could sign in
+   * their own right, exactly as `initialStatus` assumes. The two readings pick
+   * out the same entries; only this one can be asked from a screen.
+   */
   const CtoA = { _id: 'del-9', from: C, to: A, fromDate: '2026-08-05', toDate: '2026-08-12' };
   const viaDelegation = approvalPermission({
     user: A,
@@ -180,8 +231,8 @@ test('nobody approves a request they filed themselves, by any route', () => {
     delegations: [CtoA],
     today: '2026-08-06',
   });
-  assert.equal(viaDelegation.ok, false, 'and not as somebody else’s stand-in either');
-  assert.equal(viaDelegation.status, 403);
+  assert.equal(viaDelegation.ok, true);
+  assert.equal(viaDelegation.stage, 'mgr');
 });
 
 test('a colleague may still approve what somebody else filed', () => {
@@ -223,27 +274,38 @@ test('isOwnFiling works on the shape the BROWSER holds, not only the server one'
   assert.equal(isOwnFiling(entry, { id: String(C._id), role: C.role }), false);
 });
 
-test('isOwnFiling is exactly the refusal approvalPermission gives', () => {
+test('barredAsOwnFiling is exactly the refusal approvalPermission gives', () => {
+  /**
+   * `isOwnFiling` ANSWERS "did you write it" AND IS NO LONGER THE REFUSAL — the
+   * queue asks the second question, so the second question is what has to match
+   * the server. Every row here is at `pending_hr`, which is where the two
+   * questions part company: at `pending_mgr` the filer decides their own row.
+   */
+  const hr = (over) => engEntry({ status: 'pending_hr', ...over });
   const cases = [
-    ['filed by the reviewer', engEntry({ filedBy: A, employee: WORKER }), A, true],
-    ['filed by somebody else', engEntry({ filedBy: C, employee: WORKER }), A, false],
-    ['self-filed by the employee', engEntry({ filedBy: WORKER, employee: WORKER }), A, false],
-    ['no filedBy recorded at all', engEntry({ employee: WORKER }), A, false],
+    ['filed by the reviewer', hr({ filedBy: A, employee: WORKER }), A, true],
+    ['filed by somebody else', hr({ filedBy: C, employee: WORKER }), A, false],
+    ['self-filed by the employee', hr({ filedBy: WORKER, employee: WORKER }), A, false],
+    ['no filedBy recorded at all', hr({ employee: WORKER }), A, false],
   ];
 
   for (const [why, entry, user, expected] of cases) {
-    assert.equal(isOwnFiling(entry, user), expected, why);
+    assert.equal(barredAsOwnFiling(entry, user), expected, why);
 
-    // And the server's answer, for the rows where the reviewer would otherwise
-    // have been allowed through.
     const decision = approvalPermission({ user, entry, delegations: [], today: '2026-08-06' });
-    if (expected) {
-      assert.equal(decision.ok, false, `${why} — ต้องถูกปฏิเสธที่เซิร์ฟเวอร์ด้วย`);
-      assert.match(decision.error, /ผู้บันทึกรายการแทนไม่สามารถอนุมัติ/);
-    } else {
-      assert.equal(decision.ok, true, `${why} — ต้องอนุมัติได้ตามปกติ`);
-    }
+    assert.equal(decision.ok, false, `${why} — a หัวหน้า signs no ฝ่ายบุคคล step`);
+    // The rows the reviewer wrote are refused for THIS reason and not for the
+    // ordinary "wrong step" one, which is the whole point of the predicate.
+    if (expected) assert.match(decision.error, /ผู้เซ็นสองคน/, why);
+    else assert.equal(decision.status, 409, why);
   }
+
+  // And the same four rows at the step a filing actually waits at: only the
+  // reviewer's own is theirs to press, and it is not refused.
+  assert.equal(
+    barredAsOwnFiling(engEntry({ filedBy: A, employee: WORKER }), A), false,
+    'รอหัวหน้า — the filer is the one being waited for',
+  );
 });
 
 // ── the rules that stop a chain forming ─────────────────────────────────────

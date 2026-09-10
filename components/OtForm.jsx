@@ -5,8 +5,8 @@ import { api, dayName, thaiDate, hours } from '@/lib/api.js';
 import { DESCRIPTION_MAX_CHARS } from '@/src/config/policy.js';
 import {
   submissionWindow, zeroOtHoursAllowed,
-  flatDayEnd, endsNextDayFor, isFlatDailyPosition, isCompanyOffDay,
-  FLAT_DAY_SPAN_MINUTES,
+  endsNextDayFor, isFlatDailyPosition, isCompanyOffDay,
+  FLAT_DAY_TIMES,
 } from '@/lib/entries.js';
 import { today } from '@/lib/today.js';
 import {
@@ -65,24 +65,23 @@ const blank = () => ({
 });
 
 /**
- * เวลาทำงานปกติ — what both boxes fill in, and one constant so they cannot come
- * to fill in two different days.
+ * `STANDARD_DAY` STOOD HERE AND IS GONE — 2026-09-09. It was this file's own
+ * copy of 08:00–17:00, and it was named for what the pair used to be: a DEFAULT
+ * two ticks filled in and anybody could type over.
  *
- * The office day, and the same pair `coreStartMinute`/`coreEndMinute` give the
- * engine. Written out rather than computed from the policy because this is a
- * DEFAULT somebody may type over, not a rule: a form that opened on times
- * derived from the live policy would silently change what it suggests the day a
- * setting moved, with nothing on screen saying so.
+ * It is a RULE now, and a rule belongs where the rule is checked. HR asked on
+ * 2026-09-09 for the เหมารายวัน tick to lock the clock — *ให้ล็อกเวลาไว้ที่
+ * 08:00–17:00 ไม่มีการปรับเวลา* — and the same pair is written and shut by
+ * `แก้ไขชั่วโมง` on รออนุมัติ OT as well as by this form. Two components that
+ * must agree about a pair of strings is exactly the drift `FLAT_DAY_TIMES` in
+ * lib/entries.js exists to prevent, and `npm test` can read it there (no JSX
+ * transform — see README §Status).
  *
- * ON A เหมารายวัน DAY THE END HALF IS NO LONGER A DEFAULT — see `flatDayEnd` in
- * lib/entries.js. This pair is still what both ticks FILL IN, and it has to be
- * a pair the flat rule would also produce, or ticking เหมารายวัน would fill in
- * one day and the first touch of the start box would jump to another.
- * `flatDayEnd('08:00') === '17:00'` is the whole of that agreement and
- * test/flatDaily.test.js is where it is held, so this stays two plain strings a
- * reader can see rather than a call nobody can read the answer of.
+ * Nothing else on this form fills in the office day any more. วันเกิด, which
+ * filled in the same pair and then left both boxes free, came off on
+ * 2026-09-08; the default an ordinary shift opens on is 17:00–20:00 in
+ * `blank()` above and is unrelated to this.
  */
-const STANDARD_DAY = Object.freeze({ startTime: '08:00', endTime: '17:00' });
 
 /**
  * The submit form — and, with `mode="hr"`, the form HR corrects an entry in.
@@ -300,14 +299,35 @@ export default function OtForm({
   const [form, setForm] = useState(() => {
     const from = entry || template;
     if (from) {
+      const flatDaily = Boolean(from.flatDaily);
       return {
         workDate: from.workDate,
         startTime: from.startTime,
         endTime: from.endTime,
         endsNextDay: from.endsNextDay,
         noBreakTaken: from.noBreakTaken,
-        flatDaily: Boolean(from.flatDaily),
+        flatDaily,
         description: from.description,
+        /**
+         * A STORED FLAT ROW OPENS ON 08:00–17:00, whatever it was filed with —
+         * 2026-09-09, with the lock.
+         *
+         * It read the row's own times until that day, on purpose: 08:00–20:00
+         * was a legal flat day while both boxes were free, and its end was the
+         * record of when somebody was on the premises. That reasoning does not
+         * survive a locked pair. Left alone, an old row would open on two times
+         * with no control on the screen able to move them — a form that shows a
+         * figure it will not let anybody correct — and the whole point of the
+         * lock is that one flat day is not a different shape from the next. The
+         * figures do not move either way: a flat day is eight hours whatever
+         * the clock says, so what is being rewritten costs nothing and what it
+         * buys is that every flat row reads the same.
+         *
+         * The times still go through the ordinary write path when this form is
+         * saved, so the change lands in the entry's history with a `before` on
+         * it like any other correction — see `ENTERED_FIELDS` in lib/entries.js.
+         */
+        ...(flatDaily ? { ...FLAT_DAY_TIMES, endsNextDay: false } : null),
       };
     }
     return blank();
@@ -395,68 +415,66 @@ export default function OtForm({
    * standard day" — and one function was what kept the office day from drifting
    * between two copies of the fill.
    *
-   * TICKING FILLS IN; UNTICKING LEAVES THE CLOCK ALONE. Restoring 17:00–20:00
-   * on an untick would throw away times somebody had typed over, on a press that
-   * is not about the clock at all.
+   * TICKING WRITES THE TIMES; UNTICKING LEAVES THE CLOCK ALONE. Restoring
+   * 17:00–20:00 on an untick would throw away times somebody had typed over, on
+   * a press that is not about the clock at all — and after an untick the boxes
+   * are open again, so whatever the lock left behind can be corrected by hand.
    *
-   * `f.startTime`/`f.endTime` are written unconditionally on a tick rather than
-   * only when they are still at the default. "I ticked it and the times did not
-   * change" is the report that follows the careful version, and there is nothing
-   * to protect: the form is in front of the person who just pressed it.
+   * IT IS NO LONGER A FILL — 2026-09-09. `f.startTime`/`f.endTime` were always
+   * written unconditionally on a tick, because "I ticked it and the times did
+   * not change" is the report the careful version earns; now they are written
+   * and then SHUT (`disabled={form.flatDaily}` on both boxes below), which is
+   * HR's rule of that day: *ให้ล็อกเวลาไว้ที่ 08:00–17:00 ไม่มีการปรับเวลา*.
    */
   const tickDay = (k, on) => setForm((f) => (
     on
       ? {
         ...f,
         [k]: true,
-        ...STANDARD_DAY,
+        ...FLAT_DAY_TIMES,
         /**
-         * AND THE FILL ANSWERS ข้ามคืน TOO, since the tick for it came off this
+         * AND THE PAIR ANSWERS ข้ามคืน TOO, since the tick for it came off this
          * form on 2026-09-08. 08:00–17:00 is not an overnight, but the pair it
          * REPLACES may have been: tick เหมารายวัน over a 22:00–02:00 shift and
          * the flag would otherwise be left reading `true` against two times
          * that no longer wrap, which is `TOO_LONG` out of the engine on a state
          * nobody can now correct by hand.
+         *
+         * Asked rather than written as `false`, because this is the one place
+         * the flag is set from the locked pair and the answer should come from
+         * the same helper every other press on this form asks.
          */
-        endsNextDay: endsNextDayFor(STANDARD_DAY.startTime, STANDARD_DAY.endTime),
+        endsNextDay: endsNextDayFor(FLAT_DAY_TIMES.startTime, FLAT_DAY_TIMES.endTime),
       }
       : { ...f, [k]: false }
   ));
 
   /**
-   * เวลาเริ่ม — and on a เหมารายวัน day, everything the clock then follows from.
+   * เวลาเริ่ม — and ข้ามคืน with it.
    *
-   * A flat day is a fixed length (`FLAT_DAY_SPAN_MINUTES`, nine on the clock for
-   * the eight it pays), so the end is not a second thing to type: it is an
-   * answer to where the day began, and it moves the moment the start does. HR
-   * asked for this on 2026-09-07 — *เปลี่ยนเวลาเริ่มได้ เวลาจบบวกให้เอง* — and
-   * it narrows rather than reverses what came before, which was that BOTH times
-   * were free. The start still is.
+   * IT HAD A เหมารายวัน BRANCH UNTIL 2026-09-09, and losing it is the whole of
+   * what HR asked for that day. The branch derived the end from the start
+   * (`flatDayEnd`, nine hours on) and was itself the narrowing of an earlier
+   * rule under which both times were free; what is left after the lock is no
+   * rule at all, because on a flat day this box does not open. Both boxes are
+   * shut and hold `FLAT_DAY_TIMES` — see `tickDay` above.
    *
-   * ข้ามคืน IS PART OF THE ANSWER AND NOT A SEPARATE TICK. The derived end wraps
-   * — a flat day begun at 16:00 finishes at 01:00 — and an end before its start
-   * with the box unticked is `END_BEFORE_START` out of the engine, on a time
-   * nobody typed and cannot correct. So the same press that computes the end
-   * computes whether it crossed midnight, from `endsNextDayFor`, which is this
-   * app's one answer to that question.
-   *
-   * OFF A FLAT DAY IT WRITES THE START AND THE SAME DERIVED FLAG — 2026-09-08,
-   * when ทำงานข้ามคืน stopped being a tick anywhere on this form and became what
+   * So this handler is now the ORDINARY day's, and it is the one press it has
+   * always been: the start, and whether the pair it makes crosses midnight.
+   * ทำงานข้ามคืน stopped being a tick on this form on 2026-09-08 and became what
    * the two times already say, the way it has been in `แก้ไขชั่วโมง` on
-   * รออนุมัติ OT since 2026-09-07. This used to write the start and nothing
-   * else. `setEnd` below is the other half; between them there is no press on
-   * this form that moves a time and leaves the flag behind.
+   * รออนุมัติ OT since 2026-09-07. `setEnd` below is the other half; between
+   * them there is no press on this form that moves a time and leaves the flag
+   * behind.
    */
   const setStart = (v) => setForm((f) => (
-    f.flatDaily
-      ? { ...f, startTime: v, endTime: flatDayEnd(v), endsNextDay: endsNextDayFor(v, flatDayEnd(v)) }
-      : { ...f, startTime: v, endsNextDay: endsNextDayFor(v, f.endTime) }
+    { ...f, startTime: v, endsNextDay: endsNextDayFor(v, f.endTime) }
   ));
 
   /**
-   * เวลาสิ้นสุด — the free half of an ordinary shift, and ข้ามคืน with it.
+   * เวลาสิ้นสุด — the second half of an ordinary shift, and ข้ามคืน with it.
    *
-   * Shut on a เหมารายวัน day, where `setStart` owns both figures. Everywhere
+   * Shut on a เหมารายวัน day, where the pair is not typed at all. Everywhere
    * else this is the second of the two presses that can make a shift wrap, and
    * it asks the same `endsNextDayFor` the start box does rather than repeating
    * the comparison.
@@ -763,9 +781,24 @@ export default function OtForm({
     `${targets.length > 1 ? 'แต่ละใบ' : 'รายการนี้'}จะเป็นของพนักงาน ไม่ใช่ของคุณ`
       + ' — พนักงานจะเห็นในหน้า “บันทึกและประวัติ OT” และแก้ไขเองได้ตราบใดที่ยังไม่มีผู้อนุมัติ',
     'ระบบจะบันทึกว่าคุณเป็นผู้บันทึกแทน ทั้งบนหน้าจอและในใบพิมพ์',
+    /* THREE ANSWERS, NOT TWO, SINCE 2026-09-09 — and the third is the ordinary
+       one now. `proxySkipsOwnApproval` defaults to `false`, so a filing waits at
+       รอหัวหน้า for the person typing it, and telling them merely that it "จะรอ
+       หัวหน้าอนุมัติตามปกติ" leaves out the part that is theirs to do: the ใบ
+       does not move until they open รออนุมัติ and press the button on it.
+
+       `status` and not `skipped` for the middle branch, because a filing can
+       reach รอ HR without anything having been skipped — a แผนก whose หัวหน้างาน
+       is ฝ่ายบุคคล by rule, one with no living signer, or a บทบาท with no first
+       step at all. See `initialStatus`. */
     routing?.skipped
       ? 'และจะข้ามขั้นรอหัวหน้าไปยังรอ HR โดยตรง เพราะการที่คุณอนุมัติใบที่คุณกรอกเองไม่ได้เพิ่มการตรวจสอบใด ๆ'
-      : routing ? 'ตามนโยบายปัจจุบัน รายการนี้จะรอหัวหน้าอนุมัติตามปกติ' : null,
+      : routing?.status === 'pending_hr'
+        ? 'และจะไปรอฝ่ายบุคคลโดยตรง เพราะใบของพนักงานคนนี้ไม่ได้ผ่านขั้นรอหัวหน้า'
+        : routing
+          ? 'และจะไปรออยู่ที่ขั้น “รอหัวหน้าอนุมัติ”'
+            + ' — คุณต้องเปิดหน้ารออนุมัติแล้วกดอนุมัติอีกครั้ง ใบจึงจะส่งต่อไปยัง HR'
+          : null,
     'เลือกหลายคนได้เมื่อทำ OT กะเดียวกัน วันเดียวกัน เวลาเดียวกัน'
       + ' — ระบบจะแยกบันทึกเป็นคนละใบ และคิดชั่วโมง เพดาน วันหยุด ของแต่ละคนแยกกัน',
   ].filter(Boolean).join(' · ');
@@ -1073,30 +1106,29 @@ export default function OtForm({
               header answers that now — a minute is typed rather than reached —
               so the step is gone and there is no exception left to make. See
               `MINUTES` in components/PickTime.jsx. */}
+          {/* SHUT ON A เหมารายวัน DAY — 2026-09-09, and this box is the half
+              that changed. It was free until then, deliberately and twice over:
+              *เปลี่ยนเวลาเริ่มได้* (HR, 2026-09-07) kept it when the end went,
+              because somebody who came in at 07:30 files 07:30. HR withdrew
+              that on 2026-09-09 — *ให้ล็อกเวลาไว้ที่ 08:00–17:00 ไม่มีการปรับ
+              เวลา* — so a flat day is one shape and neither box is typed. */}
           <PickTime
             label="เวลาเริ่ม"
             value={form.startTime}
+            disabled={form.flatDaily}
             onChange={setStart}
           />
         </div>
         <div className="field time">
           <label>เวลาสิ้นสุด (ถึง)</label>
-          {/* SHUT ON A เหมารายวัน DAY, and it is the only time box in this app
-              that is ever shut. The day is a fixed length, so this figure is an
-              answer to เวลาเริ่ม rather than a second thing to be typed — see
-              `setStart` above and `flatDayEnd` in lib/entries.js. Disabled
-              rather than hidden: the time is the record of when the person was
-              here, it prints on the row and it belongs on screen beside the
-              start it came from.
+          {/* SHUT WITH IT, and these two are the only time boxes in this app
+              that are ever shut. Disabled rather than hidden: the pair is what
+              prints on the row and on F-HR-027, and a reader who cannot see it
+              cannot check it.
 
-              AN ALREADY-STORED FLAT ROW OPENS ON ITS OWN TIMES and is NOT
-              re-derived on the way in, which matters for the rows filed while
-              both boxes were free — 08:00–20:00 was a legal flat day then. Its
-              end is a record of when somebody was on the premises, and quietly
-              moving it to 17:00 because a form was opened to fix a typo would
-              falsify that record for no change in the figures (a flat day is
-              eight hours either way). Re-picking เวลาเริ่ม is what re-derives
-              it, on a press that says the times are being revised. */}
+              AN ALREADY-STORED FLAT ROW IS PUT BACK TO 08:00–17:00 ON THE WAY
+              IN — see the note in `useState` above, which is where the rows
+              filed while these boxes were free are dealt with. */}
           <PickTime
             label="เวลาสิ้นสุด"
             value={form.endTime}
@@ -1113,13 +1145,24 @@ export default function OtForm({
               ข้ามคืน · สิ้นสุดวัน{dayName(endDateLabel)}ถัดไป
             </span>
           )}
-          {form.flatDaily && (
-            <span className="field-note">
-              บวกจากเวลาเริ่ม {FLAT_DAY_SPAN_MINUTES / 60} ชม. ให้อัตโนมัติ
-            </span>
-          )}
         </div>
       </div>
+
+      {/* WHY THE BOXES ARE GREY. A disabled control with no reason given is the
+          thing somebody presses twice and then reports as broken — and these
+          two are greyed by a tick further down the form, which is not where the
+          eye goes.
+
+          IT SAT INSIDE THE เวลาสิ้นสุด FIELD UNTIL 2026-09-09 and broke over two
+          lines there: the column is 130px, which is a width for five characters
+          and a clock glyph, not for a sentence. It is a line of its own under
+          the row now, right-aligned so it still lands beneath the two boxes it
+          is about, and `.lock-note` in app/styles.css keeps it on one line. */}
+      {form.flatDaily && (
+        <div className="field-note lock-note">
+          ล็อก {FLAT_DAY_TIMES.startTime}–{FLAT_DAY_TIMES.endTime} น. แก้เวลาไม่ได้
+        </div>
+      )}
 
       {/* One per line on a phone — see .form-checks. Side by side they were two
           17px boxes about 6px apart with wrapped labels between them.
@@ -1206,37 +1249,24 @@ export default function OtForm({
       </div>
       )}
 
-      {/* WHAT THE TICK DOES TO THE TIMES, said once under it rather than twice
-          inside `onChange`.
+      {/* THE PARAGRAPH UNDER THE TICK IS GONE — 2026-09-09, and this note is
+          what is left in its place, because nothing it said is lost.
 
-          It fills in 08:00–17:00. HR asked for the fill because a flat day is
-          the standard day, typed the same way every time; they asked for it to
-          stay editable in the same breath, because somebody who came in at 07:30
-          should file 07:30.
+          IT SAID FOUR THINGS AND EVERY ONE OF THEM IS STILL ON THIS SCREEN:
+          the lock is announced under the two grey boxes it greys, a line above;
+          `FLAT_DAILY_SAY` — eight hours of OT ×1.5 however long the person
+          stayed — is the green Alert further down, in the green a fact wears
+          and beside the figure it explains; the nine-hour span and the eight on
+          the form are the two numbers that Alert and the preview print. What
+          the paragraph added was a third telling of one rule on one screen —
+          five lines of grey between a tick and the box the person is on their
+          way to.
 
-          IT WAS TWO TICKS AND ONE SENTENCE UNTIL 2026-09-08. วันเกิด filled in
-          the same pair and then left both boxes free — it was an ordinary shift
-          on a day that happened to be a holiday, and its length was whatever it
-          was — while a เหมารายวัน day has its END FOLLOW the start, nine hours
-          on, because a day bought whole is bought at a fixed length (see
-          `setStart`). The branch that carried that difference went with the box;
-          the flat day's own half is unchanged.
-
-          IT ONLY EVER FILLS IN — untick and the times STAY. Putting 17:00–20:00
-          back would throw away a pair somebody had just typed over, on a press
-          that says nothing about the clock; and a person who ticks the wrong box
-          by accident has lost nothing but a tick. Unticking เหมารายวัน hands the
-          end box back unchanged, holding the last figure the rule computed. */}
-      {form.flatDaily && (
-        <div className="hint" style={{ marginTop: 8 }}>
-          เติมเวลาให้เป็น 08:00–17:00 น. ตามเวลางานปกติแล้ว
-          {` — แก้เวลาเริ่มได้ ส่วนเวลาสิ้นสุดบวกให้เอง ${FLAT_DAY_SPAN_MINUTES / 60} ชม.`
-            + ' (ทำงาน 8 ชม. + พักเที่ยง 1 ชม.) เช่น เริ่ม 07:00 น. จะได้ 16:00 น.'
-            + ` · ${FLAT_DAILY_SAY}`
-            + ' — บนใบขออนุมัติยังนับ 8 ชั่วโมง ไม่รวมเวลาพัก'}
-        </div>
-      )}
-
+          `FLAT_DAY_SPAN_MINUTES` LEFT THE IMPORTS WITH IT. The span is still
+          the reason the pair ends at 17:00 and it is still held to
+          `FLAT_DAY_TIMES` by test/flatDaily.test.js — this form just does not
+          spell it out any more. คู่มือการใช้งาน (components/ManualView.jsx)
+          keeps the long form of the sentence for whoever wants it. */}
       <div className="field" style={{ marginTop: 14 }}>
         <label>
           รายละเอียดงานที่ทำ
@@ -1494,7 +1524,9 @@ export default function OtForm({
             // The count is on the button because it is the last thing read
             // before eight requests are filed, and "8 คน" is the fact most
             // worth being sure of at that moment.
-            : `${routing?.skipped ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
+            // `status`, not `skipped`: a filing reaches รอ HR by four routes and
+            // only one of them is the skip. See `proxyNote` above.
+            : `${routing?.status === 'pending_hr' ? 'บันทึกแทนและส่งให้ HR' : 'บันทึกแทนและส่งให้หัวหน้า'}`
               + (targets.length > 1 ? ` · ${targets.length} คน` : ''))
             : template ? 'ส่งคำขอใหม่' : 'ส่งขออนุมัติ'}
       </button>

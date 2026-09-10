@@ -93,7 +93,11 @@ export const POST = route(async (req) => {
       filer: user,
       employee,
       department: employee.department,
-      policy: ctx.policy,
+      // The same field the write path reads, which is the whole point of this
+      // endpoint: a preview answered from a different policy than the one that
+      // will route the request is wrong in the one sentence anybody reads
+      // twice. See the note beside `initialStatus` in app/api/entries/route.js.
+      policy: ctx.livePolicy,
       signers,
     })
     : null;

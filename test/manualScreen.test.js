@@ -43,19 +43,25 @@ import { mayCorrectEntries } from '../lib/entries.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 /**
- * Line endings normalised BEFORE anything is matched, for the reason
- * `.gitattributes` gives: this repository is checked out CRLF on the machine
- * it is developed on and LF on the Linux box that serves the app, so an
- * assertion spelling a multi-line shape with `\n` reports which
- * CHECKOUT it ran on rather than what the code says. Five assertions in this
- * file did exactly that — `SECTIONS` parsed as nought sections and the
- * break-inside rule matched nothing, against a tree with nothing wrong in it,
- * and the whole suite passed on the machine they were written on.
+ * LINE ENDINGS NORMALISED BEFORE ANYTHING BELOW READS A CHARACTER, for the
+ * reason `.gitattributes` gives: this repository is checked out CRLF on the
+ * machine it is developed on and LF on the Linux box that serves the app, so
+ * an assertion spelling a multi-line shape with `\n` reports which CHECKOUT
+ * it ran on rather than what the code says.
  *
- * See the header of test/adminApproval.test.js, which had it right first.
+ * Every assertion here is a regex with `\n` in it, matched against a file
+ * read off disk, and the suite ran green on the machine this was written on —
+ * the first run happened before the file had been checked out again. All five
+ * multi-line assertions then missed on the next CRLF checkout, against a tree
+ * with nothing wrong in it: the break-inside rule matched nothing, and
+ * `SECTION_RE` parsed 0 sections and SAID so, which is the only reason this
+ * was noticed rather than passing vacuously.
+ *
+ * The fix belongs in the `read` helper, before anything reads a character —
+ * not "normalise when you notice". See the header of
+ * test/adminApproval.test.js, which had it right first.
  */
-const read = (rel) => readFileSync(join(ROOT, rel), 'utf8')
-  .replace(/\r\n/g, '\n');
+const read = (rel) => readFileSync(join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n');
 const jsx = read('components/App.jsx');
 const manual = read('components/ManualView.jsx');
 const icons = read('components/icons.jsx');

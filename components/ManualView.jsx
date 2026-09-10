@@ -1226,6 +1226,31 @@ const SECTIONS = [
             และประวัติของใบเขียนเหตุผลนั้นไว้
           </p>
         </li>
+        {/* ADDED 2026-09-09 WITH `proxySkipsOwnApproval: false`. Until that day
+            a filing typed by the หัวหน้า went straight to รอ HR and there was no
+            second press to describe — the manual would have been wrong to
+            mention one. It is the only step on this page a reader can miss
+            entirely and never find out about, because a ใบ that is waiting
+            looks exactly like a ใบ that is done from the form they typed it in.
+
+            SPLIT ON `p.correct` BECAUSE THE SECOND PRESS IS NOT HR'S. The skip
+            only ever applied to a filer who could sign the step themselves; a
+            ฝ่ายบุคคล filing for somebody waits for that person's own หัวหน้า,
+            which is the ordinary route and needs no instruction here. */}
+        <li className="manual-step">
+          {p.correct ? (
+            <p>
+              ใบที่คุณบันทึกแทนจะไป<b>รอหัวหน้าของพนักงานคนนั้นอนุมัติตามปกติ</b>
+              แล้วจึงกลับมาที่คิวของฝ่ายบุคคล
+            </p>
+          ) : (
+            <p>
+              ใบที่คุณบันทึกแทนจะไป<b>รออยู่ในคิว รายการรออนุมัติ ของคุณเอง</b> ต้องเปิดแล้ว
+              กด <b>อนุมัติ</b> อีกครั้ง ใบจึงจะไปถึงฝ่ายบุคคล — กรอกใบกับรับรองตัวเลขเป็นคนละเรื่อง
+              และตรงนั้นกด <b>ไม่อนุมัติ</b> ได้ถ้าคีย์ผิด
+            </p>
+          )}
+        </li>
       </ol>
     ),
   },

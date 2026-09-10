@@ -77,7 +77,10 @@ export const PATCH = route(async (req, { params }) => {
    * what replaces it.
    */
   if (session.workDate !== entry.workDate) {
-    const outsideWindow = submissionWindowRefusal(session.workDate, today(), ctx.policy);
+    // `livePolicy`, as on the submit path and for the same reason: the window is
+    // a question about today, not about the rules in force on the work date.
+    // See the note over the same call in app/api/entries/route.js.
+    const outsideWindow = submissionWindowRefusal(session.workDate, today(), ctx.livePolicy);
     if (outsideWindow) return fail(outsideWindow.error, outsideWindow.status);
   }
 

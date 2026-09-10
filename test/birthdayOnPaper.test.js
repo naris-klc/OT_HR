@@ -258,28 +258,50 @@ test('ใบพิมพ์ส่งบัญชีเขียนแค่ค�
   );
 });
 
-test('CSV มีคอลัมน์ birthday_hours ต่อท้ายเท่านั้น และเว้นว่างเมื่อไม่มี', () => {
+test('CSV เขียนแค่คำว่าวันเกิดในช่องหมายเหตุ และไม่มีคอลัมน์ birthday_hours แล้ว', () => {
   const src = read('app/api/exports/accounting.csv/route.js');
 
-  // Appended, never inserted: accounting's own sheets count columns from the
-  // left, and a column in the middle shifts every one after it silently.
-  assert.match(src, /'รวมชั่วโมง', 'หมายเหตุ',\s*\n\s*'birthday_hours',\s*\n\s*\];/);
-  // `cell`, not `fmt` — blank rather than 0.00 for somebody with none, the rule
-  // every other hour column in this file already follows. `cell` is where that
-  // rule lives, so the check is on both the call and the definition.
-  assert.match(src, /cell\(row\.birthdayHours\)/);
-  assert.match(src, /cell\(totals\.birthdayHours\)/, 'บรรทัดรวมต้องมีผลรวมของคอลัมน์นี้ด้วย');
-  assert.match(src, /const cell = \(n\) => \(n \? fmt\(n\) : ''\);/, 'เว้นว่างเมื่อเป็นศูนย์');
+  /**
+   * ── ข้อนี้กลับด้านทั้งข้อเมื่อ 2026-09-09 ────────────────────────────────────
+   *
+   * เดิมชื่อ *CSV มีคอลัมน์ birthday_hours ต่อท้ายเท่านั้น และเว้นว่างเมื่อไม่มี*
+   * และบังคับสองอย่างที่ตอนนี้ไม่จริงทั้งคู่ คือหัวตาราง
+   * `'รวมชั่วโมง', 'หมายเหตุ', 'birthday_hours'` กับประโยค
+   * *วันเกิด n ชม.* ในช่องหมายเหตุ
+   *
+   * ฝ่ายบุคคลส่งรูปไฟล์ที่เปิดค้างไว้มาพร้อมประโยคเดียว —
+   * *ช่องหมายเหตุแสดงแค่วันเกิดเท่านั้น* — และท้ายไฟล์ในรูปคือ
+   * `รวม 1.5 · รวม 3 · หมายเหตุ` ทั้งคอลัมน์ที่แยกชั่วโมงวันเกิดออกมาและตัวเลข
+   * ที่ต่อท้ายคำจึงหายไปพร้อมกัน
+   *
+   * **สิ่งที่แลกไป และควรรู้ว่าแลกไปแล้ว** ก่อนหน้านี้ไฟล์คือที่เดียวที่ตอบได้ว่า
+   * *ในช่อง ×1.5 วันหยุด ก้อนนี้ เป็นชั่วโมงวันเกิดกี่ชั่วโมง* — บัญชี pivot
+   * คอลัมน์นั้นได้ ตอนนี้ไฟล์บอกได้แค่ว่าแถวนี้มีชั่วโมงวันเกิดอยู่ ส่วนจำนวนต้อง
+   * ไปอ่านบนจอ สรุป OT ส่งบัญชี ซึ่งยังพิมพ์ *วันเกิด · 8.00 ชม. อยู่ในช่องวันหยุด*
+   * ไว้เหมือนเดิม
+   */
+  assert.match(src, /'OT x3', 'รวม 1\.5', 'รวม 3', 'หมายเหตุ',\s*\n\s*\];/);
+  // Comments out: the block above the header row NAMES the column it replaced,
+  // which is the whole point of that block.
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.doesNotMatch(code, /birthday_hours/, 'คอลัมน์นี้ถูกถอดออกแล้ว');
 
-  // The หมายเหตุ sentence stays as well, and is not the same thing: it is the
-  // remark the PAPER carries, so a person holding both reads the same words on
-  // each. The column beside it is what their spreadsheet sums.
-  assert.match(src, /\$\{BIRTHDAY_REMARK\} \$\{fmt\(row\.birthdayHours\)\} ชม\./);
+  // The word alone, exactly as the printed sheet writes it — one constant, one
+  // spelling, no hours after it on either document.
+  assert.match(src, /return row\.birthdayHours > 0 \? BIRTHDAY_REMARK : '';/);
+  assert.ok(
+    !/BIRTHDAY_REMARK\}? \$?\{?[^}]*ชม\./.test(src),
+    'ไฟล์ต้องไม่มีจำนวนชั่วโมงต่อท้ายคำว่าวันเกิดอีก',
+  );
+
+  // Still driven by the row's own birthday hours, which is what keeps the file
+  // and the paper saying the word about the same rows.
+  assert.match(src, /row\.birthdayHours > 0/);
 });
 
-test('ไฟล์ CSV แยกแผนก ยังไม่รู้เรื่องวันเกิด — และการรวมยอดก็ไม่รู้', () => {
+test('การรวมยอดแยกแผนกยังไม่รู้เรื่องวันเกิด — แต่ไฟล์ CSV รู้แล้ว', () => {
   /**
-   * ── ข้อนี้หดสองครั้งในวันเดียว และทั้งสองครั้งคือฝ่ายบุคคลเป็นคนสั่ง ──────────
+   * ── ข้อนี้หดสามครั้งในวันเดียว และทั้งสามครั้งคือฝ่ายบุคคลเป็นคนสั่ง ──────────
    *
    * เดิมชื่อ *รายงานแยกแผนกยังไม่รู้เรื่องวันเกิด* คลุมทั้ง `lib/departmentSummary.js`
    * `components/DepartmentPrint.jsx` และ CSV เหตุผลที่เขียนไว้คือ *“ใบนั้นส่ง
@@ -290,26 +312,35 @@ test('ไฟล์ CSV แยกแผนก ยังไม่รู้เร�
    * การเงิน* — พูดถึงหน้าจอ ข้อนี้จึงเหลือแค่กระดาษกับไฟล์
    * 2026-09-09 รอบสอง: ถามกลับตรง ๆ ว่าใบที่พิมพ์ควรมีคำว่าวันเกิดกำกับแถวไหม
    * คำตอบคือ **ให้มี แบบเดียวกับใบส่งบัญชี** กระดาษจึงออกจากข้อนี้ไปด้วย
+   * 2026-09-09 รอบสาม: *ไฟล์ OT-departments ทำเหมือนกับส่งออกไฟล์บัญชี* — ไฟล์
+   * ออกไปเป็นชิ้นสุดท้าย เอกสารทั้งสามของรายงานแยกแผนกจึงติดคำนั้นครบแล้ว
    *
-   * ── สิ่งที่เหลือ และเหลือเพราะอะไร ────────────────────────────────────────
+   * เหตุผลที่เคยเขียนกันไฟล์ไว้คือ *“CSV ถูกเรียง กรอง และแปะต่อ คำว่าวันเกิดในไฟล์
+   * ควรเป็นคอลัมน์ที่ pivot ได้ ไม่ใช่หมายเหตุข้างแถวเดียว — และไม่มีใครขอ”*
+   * ครึ่งหลังหมดอายุไปแล้ว ส่วนครึ่งแรกฝ่ายบุคคลตอบไปแล้วเช่นกันตอนที่สั่งให้ไฟล์
+   * ส่งบัญชีถอดคอลัมน์ `birthday_hours` ทิ้ง แล้วเหลือแค่คำในช่องหมายเหตุ
    *
-   * **CSV** ไม่ใช่เอกสารที่คนอ่านทีละแถว มันถูกเรียง กรอง และแปะต่อ — คำว่าวันเกิด
-   * ในไฟล์คือคอลัมน์ที่ pivot ได้ ไม่ใช่หมายเหตุข้างแถวเดียว และไม่มีใครขอ
+   * ── สิ่งที่ยังเหลือ และเหลือเพราะอะไร ──────────────────────────────────────
    *
    * **`lib/departmentSummary.js`** คือการจัดกลุ่ม ไม่ใช่เอกสาร มันไม่ควรรู้ว่าชั่วโมง
    * ก้อนไหนมาจากวันอะไร — `sumRows()` ไม่มี `birthdayHours` ด้วยซ้ำ ซึ่งเป็นเหตุผล
-   * ที่ใบ รวมทุกแผนก ไม่เคยติดคำว่าวันเกิดโดยไม่ต้องเขียนกฎอะไรกันมันเลย
-   *
-   * สิ่งที่ **ไม่** ใช่เหตุผลอีกต่อไปคือ “ใบนี้ส่งผู้บริหาร” — ใบที่พิมพ์ก็ส่งผู้บริหาร
-   * และตอนนี้มันติดคำนั้นแล้ว โดยฝ่ายบุคคลเป็นคนตัดสิน ดู DepartmentPrint.jsx
+   * ที่บรรทัด รวมทุกแผนก ไม่เคยติดคำว่าวันเกิดโดยไม่ต้องเขียนกฎอะไรกันมันเลย
+   * ไฟล์ CSV อ่านค่านั้นจาก **แถว** ที่ `accountingReport()` ใส่ไว้ให้แล้ว การจัดกลุ่ม
+   * จึงยังเป็นการจัดกลุ่มเฉย ๆ
    */
-  for (const file of [
-    'lib/departmentSummary.js',
-    'app/api/exports/departments.csv/route.js',
-  ]) {
+  {
+    const file = 'lib/departmentSummary.js';
     const src = read(file);
     const hit = /birthday|dayreason|วันเกิด/i.exec(src);
     assert.equal(hit, null, `${file} เอ่ยถึงวันเกิด ("${hit?.[0]}")`);
+  }
+
+  // และไฟล์ก็ไม่ได้รู้มากไปกว่าจำนวนชั่วโมงบนแถว — ไม่มีวันที่ ไม่มีปฏิทิน
+  {
+    const src = read('app/api/exports/departments.csv/route.js');
+    assert.match(src, /row\.birthdayHours > 0 \? BIRTHDAY_REMARK : ''/);
+    assert.ok(!/birthDate/.test(src), 'ไฟล์ไม่ต้องรู้วันที่ รู้แค่จำนวนชั่วโมง');
+    assert.ok(!/dayReason/.test(src), 'และไม่ต้องรู้เหตุผลของวันด้วย');
   }
 
   // และทั้งจอและกระดาษที่รับคำขอไป ไม่ได้อ่าน `birthDate` เอง — อ่านแต่จำนวนชั่วโมง
@@ -390,6 +421,8 @@ test('คำว่าวันเกิดบนกระดาษ หน้า�
   for (const file of [
     'components/AccountingPrint.jsx',
     'app/api/exports/accounting.csv/route.js',
+    // เข้ามาร่วมรายการนี้ 2026-09-09 — ดูข้อถัดไป
+    'app/api/exports/departments.csv/route.js',
   ]) {
     const src = read(file);
     assert.match(src, /BIRTHDAY_REMARK/, `${file} ไม่ได้ใช้ค่ากลาง`);
@@ -402,9 +435,18 @@ test('คำว่าวันเกิดบนกระดาษ หน้า�
 
 // ── every other document about more than one person ──────────────────────────
 
-/** Documents that carry more than one person's hours, plus the shared calendar. */
+/**
+ * Documents that carry more than one person's hours, plus the shared calendar.
+ *
+ * `app/api/exports/departments.csv/route.js` left this list on **2026-09-09**
+ * — the day ฝ่ายบุคคล asked for that file to be made like the accounting one.
+ * The three documents of the แยกแผนก report all carry the word now: the screen,
+ * the printed sheet and the file. What still holds for every name below is the
+ * rule that never moved — **the month may be disclosed, the date may not** —
+ * and the file obeys it the same way the other two do: it reads the row's
+ * `birthdayHours`, which is a number, and loads no `birthDate` and no calendar.
+ */
 const NOT_THE_SUBMISSION_SHEET = [
-  'app/api/exports/departments.csv/route.js',
   'app/api/exports/monthly.csv/route.js',
   'app/api/exports/entries.csv/route.js',
   'app/api/holidays/route.js',

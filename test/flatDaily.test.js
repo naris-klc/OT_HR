@@ -10,7 +10,7 @@ import {
 import { DEFAULT_POLICY } from '../src/config/policy.js';
 import {
   ENTERED_FIELDS, pickSession, sameSession, zeroOtHoursAllowed,
-  flatDayEnd, endsNextDayFor, FLAT_DAY_SPAN_MINUTES,
+  endsNextDayFor, FLAT_DAY_SPAN_MINUTES, FLAT_DAY_TIMES,
 } from '../lib/entries.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -438,91 +438,111 @@ test('ช่องติ๊กถูกอ่านที่เดียว แ�
 // ── and the form ────────────────────────────────────────────────────────────
 
 /**
- * เมื่อติ๊กแล้วเวลาเริ่มต้นให้เป็น 08:00–17:00 — the fill, which is what HR
- * asked for first. It is a DEFAULT and not a lock: the same request said the
- * times must stay editable, because somebody who came in at 07:30 files 07:30
- * and the day is still the eight hours it was hired for.
+ * เมื่อติ๊กแล้วให้ล็อกเวลาไว้ที่ 08:00–17:00 — HR, 2026-09-09, in these words:
+ * *เมื่อพนักงานกดติ๊กช่องเหมารายวันให้ล็อกเวลาไว้ที่ 08:00น.-17:00น. ไม่มีการ
+ * ปรับเวลาแล้วล็อกได้เลย*.
  *
- * THE END HALF OF THAT WAS WITHDRAWN ON 2026-09-07 — see the test below. This
- * one holds what survives: the fill, and the start staying free.
+ * IT WAS A FILL AND IS NOW A LOCK, and the two rounds it took to get here are
+ * why the pair lives in lib/entries.js rather than in a component: 08:00–17:00
+ * was a DEFAULT both boxes could be typed over, then (2026-09-07) a default
+ * whose start stayed free while the end followed it nine hours on, and now
+ * neither box is typed at all. `FLAT_DAY_TIMES` is the one place either screen
+ * reads it from.
  */
-test('ติ๊กแล้วเติมเวลางานปกติให้ และเวลาเริ่มยังแก้ได้', () => {
+test('ติ๊กแล้วล็อกเวลา 08:00–17:00 น. และแก้เวลาไม่ได้', () => {
   const form = readFileSync(join(ROOT, 'components/OtForm.jsx'), 'utf8');
 
-  assert.match(form, /const STANDARD_DAY = Object\.freeze\(\{ startTime: '08:00', endTime: '17:00' \}\)/);
+  // The pair itself, and the office day it has to agree with: nine hours on the
+  // clock for the eight it pays.
+  assert.deepEqual({ ...FLAT_DAY_TIMES }, { startTime: '08:00', endTime: '17:00' });
+  assert.equal(Object.isFrozen(FLAT_DAY_TIMES), true);
+  const minutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+  assert.equal(
+    minutes(FLAT_DAY_TIMES.endTime) - minutes(FLAT_DAY_TIMES.startTime),
+    FLAT_DAY_SPAN_MINUTES,
+    'the locked pair and the span it is supposed to be have drifted apart',
+  );
   // The handler still takes a `k`. It served both ticks until 2026-09-08, so
   // that the two could not come to fill in different days; วันเกิด went and the
   // shape stayed, which is the note over `tickDay` in the form.
   assert.match(form, /const tickDay = \(k, on\) => setForm/);
-  assert.match(form, /\[k\]: true,\s*\r?\n\s*\.\.\.STANDARD_DAY,/);
+  assert.match(form, /\[k\]: true,\s*\r?\n\s*\.\.\.FLAT_DAY_TIMES,/);
   assert.match(form, /: \{ \.\.\.f, \[k\]: false \}/);
-  // AND THE FILL ANSWERS ข้ามคืน — 2026-09-08, when the tick for it came off
+  // AND THE PAIR ANSWERS ข้ามคืน — 2026-09-08, when the tick for it came off
   // this form. Ticking เหมารายวัน over a 22:00–02:00 shift replaces the times
   // with a pair that does not wrap; a `true` left standing beside them is
   // `TOO_LONG` out of the engine, on a state nobody can now correct by hand.
   assert.match(
     form,
-    /endsNextDay: endsNextDayFor\(STANDARD_DAY\.startTime, STANDARD_DAY\.endTime\)/,
-    'ติ๊กแล้วเติมเวลาให้ แต่ธงข้ามคืนไม่ได้ถูกคิดใหม่',
+    /endsNextDay: endsNextDayFor\(FLAT_DAY_TIMES\.startTime, FLAT_DAY_TIMES\.endTime\)/,
+    'ติ๊กแล้วเขียนเวลาให้ แต่ธงข้ามคืนไม่ได้ถูกคิดใหม่',
   );
   assert.equal(endsNextDayFor('08:00', '17:00'), false);
   assert.match(form, /onChange=\{\(e\) => tickDay\('flatDaily', e\.target\.checked\)\}/);
 
-  // เวลาเริ่ม takes no `disabled` of any kind. This is the half of "แก้ได้"
-  // that HR kept, and the box that carries the whole of a flat day now.
+  // เวลาเริ่ม IS SHUT TOO. It was the half HR kept on 2026-09-07 — *เปลี่ยน
+  // เวลาเริ่มได้* — and withdrew on 2026-09-09; if this assertion is ever
+  // relaxed again, the note over `setStart` in the form is the history to read
+  // before relaxing it.
   const start = form.slice(form.indexOf('<label>เวลาเริ่ม (จาก)</label>'));
-  assert.ok(
-    !/disabled/.test(start.slice(0, start.indexOf('<label>เวลาสิ้นสุด (ถึง)</label>'))),
-    'the start box was locked — that is the half HR asked to keep',
+  assert.match(
+    start.slice(0, start.indexOf('<label>เวลาสิ้นสุด (ถึง)</label>')),
+    /disabled=\{form\.flatDaily\}/,
+    'ช่องเวลาเริ่มยังแก้ได้ทั้งที่ติ๊กเหมารายวัน',
   );
+
+  // A STORED FLAT ROW IS PUT BACK TO THE PAIR ON THE WAY IN — otherwise a row
+  // filed while the boxes were free (08:00–20:00 was legal then) would open on
+  // two greyed times no control on the screen can move.
+  assert.match(form, /\.\.\.\(flatDaily \? \{ \.\.\.FLAT_DAY_TIMES, endsNextDay: false \} : null\)/);
 });
 
 /**
- * เวลาจบบวกให้เอง 9 ชั่วโมง — HR, 2026-09-07, in these words: the tick may go on
- * showing 08:00–17:00 and the START may be changed, *แต่เวลาจบไม่สามารถปรับได้
- * ให้บวกจากเวลาเริ่ม 9 ชั่วโมงอัตโนมัติ … คือ บวกเวลาพัก 1 ชั่วโมงด้วย*.
+ * ทั้งสองช่องถูกล็อก และไม่มีการคำนวณเวลาจบจากเวลาเริ่มอีกแล้ว — 2026-09-09.
  *
- * NINE ON THE CLOCK AND EIGHT ON THE PAY is the whole of it, and the two numbers
- * have to be held apart or one of them gets "fixed" into the other. The span is
- * `FLAT_DAY_SPAN_MINUTES` in lib/entries.js and decides only what the boxes
- * read; the figure is `flatDailyMinutes()` in the engine, derived from the
- * policy less the lunch hour, and it is the only thing any money is worked out
- * from. The หัวข้อ *ในใบขออนุมัติทำงานล่วงเวลา โชว์ 8 ชั่วโมงไม่รวมเวลาพัก* is
- * that second number, and it was already what the engine answered — see the
- * `computeSession` cases at the top of this file.
+ * THIS TEST HELD THE OPPOSITE UNTIL THAT DAY. It read *ใบเหมา — เวลาจบเป็นเวลา
+ * เริ่ม + 9 ชม. และช่องนั้นแก้เองไม่ได้*, and it exercised `flatDayEnd`: 07:00 →
+ * 16:00, 16:00 → 01:00 with the wrap, `''` for a time it could not read. That
+ * was HR's rule of 2026-09-07 — *เปลี่ยนเวลาเริ่มได้ แต่เวลาจบไม่สามารถปรับได้
+ * ให้บวกจากเวลาเริ่ม 9 ชั่วโมงอัตโนมัติ* — and it is withdrawn: the start does
+ * not move either, so there is nothing left to derive and the helper is gone.
+ *
+ * NINE ON THE CLOCK AND EIGHT ON THE PAY SURVIVES ALL OF IT, and the two
+ * numbers still have to be held apart or one gets "fixed" into the other. The
+ * span is `FLAT_DAY_SPAN_MINUTES` and decides only what the boxes read; the
+ * figure is `flatDailyMinutes()` in the engine, derived from the policy less
+ * the lunch hour, and it is the only thing any money is worked out from. The
+ * หัวข้อ *ในใบขออนุมัติทำงานล่วงเวลา โชว์ 8 ชั่วโมงไม่รวมเวลาพัก* is that second
+ * number — see the `computeSession` cases at the top of this file.
  */
-test('ใบเหมา — เวลาจบเป็นเวลาเริ่ม + 9 ชม. และช่องนั้นแก้เองไม่ได้', () => {
-  // The rule itself, exercised rather than read: 07:00 → 16:00, and the fill
-  // the tick writes is a pair this rule would also produce, which is what stops
-  // ticking the box and then touching the start from jumping to another day.
+test('ใบเหมา — ล็อกทั้งสองช่อง และไม่มีการคำนวณเวลาจบอีกแล้ว', () => {
   assert.equal(FLAT_DAY_SPAN_MINUTES, 9 * 60);
-  assert.equal(flatDayEnd('07:00'), '16:00');
-  assert.equal(flatDayEnd('08:00'), '17:00');
-  assert.equal(flatDayEnd('08:30'), '17:30');
-  // It wraps, and the form has to notice — see `endsNextDayFor` below.
-  assert.equal(flatDayEnd('16:00'), '01:00');
-  assert.equal(flatDayEnd('15:00'), '00:00');
-  assert.equal(endsNextDayFor('16:00', flatDayEnd('16:00')), true);
-  assert.equal(endsNextDayFor('07:00', flatDayEnd('07:00')), false);
-  // A blank box is a blank answer rather than a guess.
-  assert.equal(flatDayEnd(''), '');
-  assert.equal(flatDayEnd('24:00'), '');
+
+  const entries = readFileSync(join(ROOT, 'lib/entries.js'), 'utf8');
+  // The helper is gone from the module, not merely unused by the form.
+  assert.ok(
+    !/export function flatDayEnd/.test(entries),
+    'flatDayEnd ยังอยู่ ทั้งที่ไม่มีหน้าจอไหนคำนวณเวลาจบแล้ว',
+  );
 
   const form = readFileSync(join(ROOT, 'components/OtForm.jsx'), 'utf8');
 
-  // ONE PLACE COMPUTES IT, and it is the start box's own handler — so there is
-  // no path through this form that moves the start and leaves the end behind.
+  // เวลาเริ่ม is the ordinary day's handler now — the start, and whether the
+  // pair it makes crosses midnight. No flat branch.
   assert.match(form, /const setStart = \(v\) => setForm/);
-  assert.match(form, /endTime: flatDayEnd\(v\), endsNextDay: endsNextDayFor\(v, flatDayEnd\(v\)\)/);
   assert.match(form, /onChange=\{setStart\}/);
+  assert.ok(
+    !/flatDayEnd/.test(form.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'ยังมีโค้ดคำนวณเวลาจบจากเวลาเริ่มอยู่ในฟอร์ม',
+  );
 
-  // …and the end box is shut. `form.flatDaily` and not `form.birthdayWelfare`:
-  // a birthday is an ordinary shift on a holiday and its length is still
-  // whatever it was.
+  // BOTH BOXES SHUT. `form.flatDaily` and not `form.birthdayWelfare`: a
+  // birthday is an ordinary shift on a holiday and its length is still whatever
+  // it was.
   //
-  // THE ข้ามคืน TICK THAT USED TO BE GREYED OUT BESIDE IT IS GONE — 2026-09-08,
-  // off the whole form rather than off flat days; see test/otFormChecks.test.js.
-  // What the reader gets instead is the amber line in this same box.
+  // THE ข้ามคืน TICK THAT USED TO BE GREYED OUT BESIDE THEM IS GONE —
+  // 2026-09-08, off the whole form rather than off flat days; see
+  // test/otFormChecks.test.js. What the reader gets instead is the amber line.
   const end = form.slice(form.indexOf('<label>เวลาสิ้นสุด (ถึง)</label>'));
   assert.match(end.slice(0, end.indexOf('</div>')), /disabled=\{form\.flatDaily\}/);
   assert.ok(
@@ -530,11 +550,36 @@ test('ใบเหมา — เวลาจบเป็นเวลาเริ
     'the วันเกิด tick locked a time — only เหมารายวัน does',
   );
 
-  // The person is told, in the two places they are looking: beside the greyed
-  // box, and in the line under the ticks.
-  assert.match(form, /บวกจากเวลาเริ่ม \{FLAT_DAY_SPAN_MINUTES \/ 60\} ชม\. ให้อัตโนมัติ/);
-  assert.match(form, /ทำงาน 8 ชม\. \+ พักเที่ยง 1 ชม\./);
-  assert.match(form, /บนใบขออนุมัติยังนับ 8 ชั่วโมง ไม่รวมเวลาพัก/);
+  // The person is told once, beside the greyed boxes, and the sentence quotes
+  // the pair rather than spelling it out, so a screen cannot come to disagree
+  // with the rule.
+  //
+  // IT WAS TOLD TWICE UNTIL 2026-09-09 — this line and a five-line paragraph
+  // under the tick, which said the lock, the nine-hour span, the eight on the
+  // form and `FLAT_DAILY_SAY` over again. The paragraph is deleted: the lock is
+  // under the boxes it greys, and the eight hours are the green Alert beside
+  // the figure they explain (pinned in the test below this one). What is
+  // asserted here is that the removal did not take the remaining line with it.
+  assert.match(form, /ล็อก \{FLAT_DAY_TIMES\.startTime\}–\{FLAT_DAY_TIMES\.endTime\} น\. แก้เวลาไม่ได้/);
+  assert.ok(
+    !/ล็อกเวลาไว้ที่ \$\{FLAT_DAY_TIMES/.test(form),
+    'ย่อหน้าใต้ช่องติ๊กกลับมาแล้ว — บอกกฎเดียวกันซ้ำเป็นครั้งที่สอง',
+  );
+
+  // …and that it went out of the imports with it, rather than being left as a
+  // name the next reader has to account for. The span itself is untouched —
+  // the assertion at the head of this test still holds it to nine hours.
+  assert.ok(
+    !/FLAT_DAY_SPAN_MINUTES/.test(form.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'FLAT_DAY_SPAN_MINUTES ยังถูก import อยู่ ทั้งที่ฟอร์มไม่ได้วาดมันแล้ว',
+  );
+
+  // ONE LINE, NOT TWO. It sat inside the เวลาสิ้นสุด field and wrapped after
+  // `แก้`, because `.field.time` is 130px wide. It is a line under the row now,
+  // right-aligned so it still lands beneath the boxes it is about.
+  assert.match(form, /<div className="field-note lock-note">/);
+  const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8');
+  assert.match(css, /\.field-note\.lock-note \{[^}]*white-space: nowrap;/);
 });
 
 /**
@@ -809,16 +854,23 @@ test('ปิดสวัสดิการวันเกิดไว้ — ใ
  * missing: a flat day filed untricked reads as an ordinary twelve-hour shift
  * and pays like one.
  *
- * THE ONE THING THIS PANEL DOES DIFFERENTLY FROM OtForm, and it is deliberate:
- * ticking does NOT fill 08:00–17:00 in. On the filing form those times are a
- * default nobody has typed over; here they are the record of when a person was
- * on the premises, printed on F-HR-027 and signed. The end still FOLLOWS the
- * start once the box is ticked — same `flatDayEnd`, on a press of เวลาเริ่ม —
- * which is exactly how the filing form treats a stored flat row it re-opens.
+ * IT USED TO DO ONE THING DIFFERENTLY FROM OtForm, and that difference ended on
+ * 2026-09-09: ticking did NOT fill 08:00–17:00 in, because on the filing form
+ * those times were a default nobody had typed over while here they are the
+ * record of when a person was on the premises, printed on F-HR-027 and signed.
+ * The lock ended the default, so there is no longer a default to withhold — one
+ * pair of times, written and shut on every screen. What the panel does with a
+ * row that disagrees with it is `asOpened`'s note in the component: the boxes
+ * show the locked pair, the line under the ticks names the stored one, and the
+ * correction is written only if the reviewer saves something.
  */
-test('หน้ารออนุมัติ — แก้ไขชั่วโมงติ๊กเหมารายวันได้ และเวลาจบยังบวกจากเวลาเริ่ม', () => {
+test('หน้ารออนุมัติ — แก้ไขชั่วโมงติ๊กเหมารายวันได้ และล็อกเวลา 08:00–17:00', () => {
   const queue = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8');
-  const edit = queue.slice(queue.indexOf('function QuickEdit'), queue.indexOf('const OVER_CAP'));
+  // FROM `asOpened` RATHER THAN FROM `function QuickEdit` — the panel's opening
+  // state moved out of the component on 2026-09-09 so that `moved` could be
+  // measured against it. The other two slices in this suite still start at the
+  // function and are about what happens inside it.
+  const edit = queue.slice(queue.indexOf('const asOpened ='), queue.indexOf('const OVER_CAP'));
 
   // The box is there, and it opens on what the entry says.
   assert.match(edit, /flatDaily: Boolean\(entry\.flatDaily\)/);
@@ -827,16 +879,26 @@ test('หน้ารออนุมัติ — แก้ไขชั่วโ
 
   // A tick alone is a saveable correction — without this the panel would draw
   // the box, refuse to send it, and grey บันทึก over a change somebody made.
-  assert.match(edit, /form\.flatDaily !== Boolean\(entry\.flatDaily\)/);
+  assert.match(edit, /form\.flatDaily !== opened\.flatDaily/);
 
-  // The rule is `flatDayEnd`'s, on the start box's own press, and the end box
-  // is shut behind it — the same pair the filing form draws.
-  assert.match(edit, /if \(patch\.startTime !== undefined && next\.flatDaily\) next\.endTime = flatDayEnd\(patch\.startTime\)/);
-  assert.match(edit, /disabled=\{form\.flatDaily\}/);
+  // Ticking writes the locked pair, and BOTH boxes are shut behind it — the
+  // same two the filing form shuts.
+  assert.match(edit, /if \(patch\.flatDaily === true\) Object\.assign\(next, FLAT_DAY_TIMES\)/);
+  assert.equal((edit.match(/disabled=\{form\.flatDaily\}/g) || []).length, 2);
+  assert.ok(
+    !/flatDayEnd/.test(edit),
+    'ยังมีโค้ดคำนวณเวลาจบจากเวลาเริ่มอยู่ในแผงแก้ไขชั่วโมง',
+  );
 
-  // AND THE TICK ITSELF MOVES NO TIME. `STANDARD_DAY` is OtForm's fill and it
-  // must not reach a stored entry — see the note over `QuickEdit`.
-  assert.ok(!/STANDARD_DAY|'08:00'/.test(edit), 'ติ๊กแล้วเวลาบนใบที่เซ็นไปแล้วถูกเขียนทับ');
+  // A ROW FILED BEFORE THE LOCK OPENS ON THE LOCKED PAIR, and `moved` is
+  // measured against that rather than against the stored row — otherwise every
+  // such row opens dirty and arms the "unsaved changes" prompt on a pop-up
+  // somebody opened to read.
+  assert.match(edit, /\.\.\.\(entry\.flatDaily \? \{ \.\.\.FLAT_DAY_TIMES, endsNextDay: false \} : null\)/);
+  assert.match(edit, /const opened = asOpened\(entry\)/);
+  assert.match(edit, /const moved = form\.startTime !== opened\.startTime/);
+  // …and the reviewer is told which times the stored row still carries.
+  assert.match(edit, /ใบนี้บันทึกไว้ \$\{entry\.startTime\}–\$\{entry\.endTime\} น\./);
 
   // One sentence for the figure, and it is the row chip's own — the delta is
   // about to read 8.00 against times that may say twelve hours.

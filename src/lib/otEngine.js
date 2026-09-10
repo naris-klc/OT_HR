@@ -137,12 +137,12 @@ const TIME_RE = /^(\d{1,2}):(\d{2})$/;
 
 export function parseDate(dateStr) {
   const m = DATE_RE.exec(String(dateStr ?? ''));
-  if (!m) throw new OtValidationError('BAD_DATE', `Invalid date: ${dateStr}`);
+  if (!m) throw new OtValidationError('BAD_DATE', `วันที่ไม่ถูกต้อง: ${dateStr}`);
   const [, y, mo, d] = m;
   const ms = Date.UTC(Number(y), Number(mo) - 1, Number(d));
   const back = new Date(ms);
   if (back.getUTCFullYear() !== Number(y) || back.getUTCMonth() !== Number(mo) - 1 || back.getUTCDate() !== Number(d)) {
-    throw new OtValidationError('BAD_DATE', `Invalid date: ${dateStr}`);
+    throw new OtValidationError('BAD_DATE', `วันที่ไม่ถูกต้อง: ${dateStr}`);
   }
   return ms;
 }
@@ -164,11 +164,11 @@ export function dayOfWeek(dateStr) {
 
 export function parseTime(timeStr) {
   const m = TIME_RE.exec(String(timeStr ?? '').trim());
-  if (!m) throw new OtValidationError('BAD_TIME', `Invalid time: ${timeStr}`);
+  if (!m) throw new OtValidationError('BAD_TIME', `เวลาไม่ถูกต้อง: ${timeStr}`);
   const h = Number(m[1]);
   const mi = Number(m[2]);
   if (h > 24 || mi > 59 || (h === 24 && mi !== 0)) {
-    throw new OtValidationError('BAD_TIME', `Invalid time: ${timeStr}`);
+    throw new OtValidationError('BAD_TIME', `เวลาไม่ถูกต้อง: ${timeStr}`);
   }
   return h * 60 + mi;
 }
@@ -714,11 +714,16 @@ export function computeSession(session, options = {}) {
   } else if (endMin <= startMin) {
     throw new OtValidationError(
       'END_BEFORE_START',
-      'End time is not after start time. Tick "ends next day" for an overnight session.',
+      // "Tick \"ends next day\"" until 2026-09-10: the box it named came off the
+      // form on 2026-09-08 and off แก้ไขชั่วโมง on 2026-09-10, so the sentence
+      // sent whoever hit it looking for a control that is not on any screen.
+      // `endsNextDay` is derived from the two times now (`endsNextDayFor`), and
+      // what is left of this error is the API-level refusal.
+      'เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม — ถ้าเป็นกะข้ามคืน ต้องระบุว่าสิ้นสุดวันถัดไป',
     );
   }
   if (endMin - startMin > MINUTES_PER_DAY) {
-    throw new OtValidationError('TOO_LONG', 'A single session cannot exceed 24 hours.');
+    throw new OtValidationError('TOO_LONG', 'ช่วงเวลาเดียวต้องไม่เกิน 24 ชั่วโมง');
   }
 
   // Day 0 of the absolute timeline is workDate itself.
@@ -905,9 +910,9 @@ export function computeSession(session, options = {}) {
       flatWarnings.push({
         code: 'FLAT_DAILY_CAPPED',
         minutes: trimmedMinutes,
-        message: `${minutesToHours(trimmedMinutes)} h beyond the flat day (เหมารายวัน) `
-          + `is not counted; the day is ${minutesToHours(flatMinutes)} h of OT ×1.5 `
-          + `in the ${BUCKET_LABEL_TH[bucket]} column.`,
+        message: `เวลาส่วนที่เกินเหมารายวันอีก ${minutesToHours(trimmedMinutes)} ชม. ไม่ถูกนับ `
+          + `— วันนี้คิดเป็น OT ×1.5 จำนวน ${minutesToHours(flatMinutes)} ชม. `
+          + `ในคอลัมน์ ${BUCKET_LABEL_TH[bucket]}`,
       });
     }
 
@@ -980,9 +985,9 @@ export function computeSession(session, options = {}) {
       // under [OPEN 5]'s other answer this warning is the only thing that
       // explains where the odd minute of a 17:00 start went — and naming
       // 08:00–17:00 while the boundary is at 17:01 would explain it wrongly.
-      message: `${minutesToHours(nonOtMinutes)} h of this session fall inside normal working hours `
-        + `(Mon–Fri ${formatTime(policy.coreStartMinute)}–${formatTime(otStartMinute(policy))}) `
-        + 'and are not counted as OT.',
+      message: `เวลา ${minutesToHours(nonOtMinutes)} ชม. ของรายการนี้อยู่ในเวลาทำงานปกติ `
+        + `(จันทร์–ศุกร์ ${formatTime(policy.coreStartMinute)}–${formatTime(otStartMinute(policy))} น.) `
+        + 'จึงไม่นับเป็น OT',
     });
   }
 
@@ -1011,8 +1016,8 @@ export function computeSession(session, options = {}) {
       code: 'BELOW_BUFFER_ZEROED',
       minutes: workedMinutes,
       bufferMinutes,
-      message: `${workedMinutes} min of OT is under the ${bufferMinutes}-minute buffer `
-        + 'and is not counted as OT.',
+      message: `OT ${workedMinutes} นาที ต่ำกว่าเวลาขั้นต่ำในการเริ่มนับ OT ที่ ${bufferMinutes} นาที `
+        + 'จึงไม่นับเป็น OT',
     });
   }
 
@@ -1062,7 +1067,7 @@ export function computeSession(session, options = {}) {
     // Named by the column HR reads on the form, not by the bucket key. Empty
     // under sheet scope, where the pile IS the entry and there is nothing to
     // distinguish it from.
-    const where = pile.bucket ? ` in ${BUCKET_LABEL_TH[pile.bucket]}` : '';
+    const where = pile.bucket ? ` ในคอลัมน์ ${BUCKET_LABEL_TH[pile.bucket]}` : '';
     // Present only when it means something, so a sheet-scoped warning is the
     // same object it has always been rather than one carrying `bucket: null`.
     const column = pile.bucket ? { bucket: pile.bucket } : {};
@@ -1070,7 +1075,7 @@ export function computeSession(session, options = {}) {
     if (policy.belowMinimum === 'reject') {
       throw new OtValidationError(
         'BELOW_MINIMUM',
-        `OT sessions must be at least ${policy.minimumHours} hour(s); this one is ${minutesToHours(worked)} h${where}.`,
+        `OT ต้องมีอย่างน้อย ${policy.minimumHours} ชม. แต่รายการนี้มี ${minutesToHours(worked)} ชม.${where}`,
       );
     }
 
@@ -1091,8 +1096,8 @@ export function computeSession(session, options = {}) {
         code: 'BELOW_MINIMUM_ACCEPTED',
         minutes: counted,
         ...column,
-        message: `${minutesToHours(counted)} h${where} is under the ${policy.minimumHours}-hour minimum. `
-          + 'Recorded as worked and flagged for HR.',
+        message: `${minutesToHours(counted)} ชม.${where} ต่ำกว่าขั้นต่ำ ${policy.minimumHours} ชม. `
+          + 'บันทึกตามที่ทำจริงและส่งให้ฝ่ายบุคคลพิจารณา',
       });
       continue;
     }
@@ -1115,7 +1120,7 @@ export function computeSession(session, options = {}) {
     warnings.push({
       code: 'RAISED_TO_MINIMUM',
       ...column,
-      message: `Raised to the ${policy.minimumHours}-hour minimum${where}.`,
+      message: `ปรับขึ้นเป็นขั้นต่ำ ${policy.minimumHours} ชม.${where}`,
     });
   }
 

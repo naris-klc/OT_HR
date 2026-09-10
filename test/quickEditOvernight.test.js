@@ -14,8 +14,9 @@ import { DEFAULT_POLICY } from '../src/config/policy.js';
  * The engine permits exactly one value of `endsNextDay` per pair of times and
  * throws on the other. A form that offered the tick-box as a free choice was
  * therefore offering one right answer and one server error — and the error came
- * back as "A single session cannot exceed 24 hours", which is a sentence about
- * a limit for what is really a box in the wrong state.
+ * back as "A single session cannot exceed 24 hours" (Thai since 2026-09-10:
+ * ช่วงเวลาเดียวต้องไม่เกิน 24 ชั่วโมง), which is a sentence about a limit for
+ * what is really a box in the wrong state.
  *
  * What is pinned here is that `endsNextDayFor` IS the inverse of those two
  * throws — asserted against the engine itself, not against a remembered rule,
@@ -70,8 +71,11 @@ test('ค่าที่ helper ตอบ คือค่าเดียวท�
 });
 
 test('17:00–20:00 ที่ติ๊กข้ามคืน คือกะ 27 ชั่วโมง', () => {
-  // The mistake this closes off, named by the error it used to produce.
-  assert.throws(() => compute('17:00', '20:00', true), /TOO_LONG|24 hours/);
+  // The mistake this closes off, named by the error it used to produce. Pinned
+  // on `code`, not on the sentence: the sentence became Thai on 2026-09-10 and
+  // a regex over the message would have to be rewritten every time the wording
+  // is. `TOO_LONG` is the part the app branches on.
+  assert.throws(() => compute('17:00', '20:00', true), (e) => e.code === 'TOO_LONG');
 });
 
 // ── the form reads the rule rather than repeating it ────────────────────────
@@ -85,10 +89,18 @@ test('ฟอร์มแก้ไขชั่วโมงคิดข้าม�
   // No second copy of the comparison in the component.
   const code = edit.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.ok(!/endTime <= .*startTime/.test(code), 'คอมโพเนนต์เขียนกฎเองซ้ำ');
-  // And the box reports it instead of asking for it.
-  assert.match(edit, /<input type="checkbox" checked=\{form\.endsNextDay\} disabled readOnly \/>/);
+  // AND NO BOX AT ALL — HR, 2026-09-10. It reported the answer from 2026-09-07
+  // as a greyed read-out; what HR asked for is that แก้ไขชั่วโมง stop drawing it,
+  // which is the step the filing form took on 2026-09-08. The FLAG is untouched:
+  // derived above, sent with the correction, and read by the engine. What must
+  // not come back is a control — greyed or live — that puts it to the reviewer.
+  assert.ok(!/checked=\{form\.endsNextDay\}/.test(edit), 'ช่องติ๊กข้ามคืนกลับมาอยู่ในแผงแก้ไขชั่วโมงแล้ว');
   assert.ok(!/onChange=\{\(ev\) => set\(\{ endsNextDay/.test(edit), 'ยังติ๊กข้ามคืนเองได้');
-  assert.ok(css.includes('.quick-edit .check.derived,'), 'ช่องติ๊กข้ามคืนไม่ได้ถูกวาดเป็นค่าที่อ่านอย่างเดียวแล้ว');
+  assert.ok(!css.includes('.quick-edit .check.derived'), 'กฎ CSS ของช่องติ๊กที่ถูกลบไปแล้วยังค้างอยู่');
+  // The two places a reviewer still reads the fact, neither of them a tick-box:
+  // the row in the queue, and เวลาที่ขอ in the pop-up this panel opens inside.
+  assert.ok(queue.includes('<div className="cell-note">ข้ามคืน</div>'), 'แถวในคิวไม่บอกว่าข้ามคืนแล้ว');
+  assert.ok(queue.includes("e.endsNextDay ? ' (ข้ามคืน)' : ''"), 'เวลาที่ขอ ในป๊อปอัปไม่บอกว่าข้ามคืนแล้ว');
 });
 
 /**
@@ -103,21 +115,75 @@ test('ฟอร์มแก้ไขชั่วโมงคิดข้าม�
  * on 2026-09-07, from a box that reports the answer to no box at all. What is
  * still asserted across both is ไม่พักเที่ยง, which is a real choice on either
  * screen and has to read the same on both.
+ *
+ * AND THE PANEL CAUGHT THE FORM UP ON 2026-09-10, in both directions: ข้ามคืน
+ * left it too, and the two boxes that remain are drawn behind the same two
+ * rules the filing form draws them behind — the ตำแหน่ง one and the calendar
+ * one (test/quickEditChecks.test.js owns those). What is pinned here is the
+ * strip: two switches, in a box under the times, in the filing form’s words.
  */
 test('สวิตช์สองตัวอยู่ในแถบเดียวกัน ใต้ช่องเวลา และใช้คำเดียวกับฟอร์มยื่น', () => {
   const form = readFileSync(join(ROOT, 'components/OtForm.jsx'), 'utf8');
   assert.ok(form.includes('ไม่พักเที่ยง'), 'ฟอร์มยื่นเปลี่ยนคำแล้ว — สองหน้าจะไม่ตรงกัน');
   assert.ok(!form.includes('ทำงานข้ามคืน (สิ้นสุดวันถัดไป)'),
     'ช่องติ๊กข้ามคืนกลับมาอยู่บนฟอร์มยื่นแล้ว');
-  assert.ok(edit.includes('ข้ามคืน <span className="check-note">(สิ้นสุดวันถัดไป)</span>'));
+  assert.ok(!edit.includes('ข้ามคืน <span className="check-note">(สิ้นสุดวันถัดไป)</span>'),
+    'ช่องติ๊กข้ามคืนกลับมาอยู่ในแผงแก้ไขชั่วโมงแล้ว');
   assert.ok(edit.includes('ไม่พักเที่ยง <span className="check-note">(ไม่หักเวลาพัก)</span>'));
+  assert.ok(edit.includes('เหมารายวัน <span className="check-note">(นับ 8 ชม. ต่อวัน)</span>'));
   // A row that wraps, in a box of its own — not two controls stacked loose.
   assert.ok(css.includes('display: flex; flex-direction: row; flex-wrap: wrap;'),
     'แถบสวิตช์ไม่ได้เรียงเป็นแถวแล้ว');
   assert.ok(!css.includes('.quick-edit .checks { gap: 14px; flex-direction: column; }'),
     'กฎเก่าที่วางซ้อนกันบนมือถือยังอยู่');
-  // And the disabled box says why it is disabled, once, for the whole strip.
-  assert.ok(edit.includes('className="checks-note"'), 'ไม่มีบรรทัดบอกว่าทำไมติ๊กข้ามคืนเองไม่ได้');
+  // And the line under the ticks is still a line under the ticks — what it says
+  // now, and why only one sentence is left of it, is test/quickEditChecks.test.js.
+  assert.ok(edit.includes('className="checks-note"'), 'บรรทัดใต้ช่องติ๊กหายไปทั้งบรรทัด');
+  assert.ok(edit.includes('{relockedTimes && ('), 'บรรทัดใต้ช่องติ๊กไม่ได้ผูกกับเวลาที่ยังไม่ตรงกัน');
+});
+
+/**
+ * ช่องเวลาสองช่องอยู่บรรทัดเดียวกัน และบรรทัด “ล็อก…” เป็นบรรทัดของทั้งแถว.
+ *
+ * TWO PRESSES ON ONE AFTERNOON, 2026-09-10, both reported off the screen.
+ *
+ * FIRST, THE STAGGER. `.row` is `align-items: flex-end` everywhere else in the
+ * app, which is right where a row pairs a field with a BUTTON — the button lines
+ * up with the box rather than with the label above it. Both items here are
+ * FIELDS, and on a เหมารายวัน row a grey line saying the pair is locked hung
+ * inside the เวลาสิ้นสุด one. Aligned by their bottoms, that line lifted
+ * เวลาสิ้นสุด and its label a line above เวลาเริ่ม: two staggered questions
+ * instead of one pair of times.
+ *
+ * THEN THE LINE ITSELF CAME OUT OF THE COLUMN — *ให้มันตรงกับช่องเวลาเริ่ม*. It is
+ * about BOTH boxes (one tick shut the pair), so it is a line of the ROW: full
+ * width, starting where เวลาเริ่ม starts, rather than halfway across the panel
+ * under the box it is not about. The filing form took the same sentence out of
+ * the same column on 2026-09-09 and landed it on the right, because that row
+ * carries วันที่เริ่ม ahead of the two times — one rule, two answers, and
+ * test/otFormChecks.test.js owns that side of it.
+ *
+ * BOTH HALVES STAY ASSERTED. With the line out of the column the two fields are
+ * the same shape, so `flex-start` changes nothing to look at today — it is what
+ * makes the NEXT note under one field a note rather than a stagger, and the
+ * shared `.row` rule is asserted beside it because the override is only
+ * meaningful while the two disagree.
+ */
+test('ช่องเวลาเริ่มกับเวลาสิ้นสุดอยู่บรรทัดเดียวกัน และบรรทัดล็อกอยู่ชิดซ้ายใต้ทั้งคู่', () => {
+  assert.ok(css.includes('.quick-edit .row { align-items: flex-start; }'),
+    'สองช่องเวลากลับไปเรียงตามขอบล่าง — บรรทัดใต้ช่องไหนก็ทำให้เหลื่อมได้อีก');
+  assert.ok(css.includes('.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }'),
+    'กฎ .row ที่ร่วมกันเปลี่ยนไปแล้ว — ตรวจว่ายังต้องมีข้อยกเว้นของแผงนี้อยู่ไหม');
+  assert.ok(css.includes('.quick-edit .row > .field-note { flex: 1 1 100%; }'),
+    'บรรทัดล็อกไม่ได้กินเต็มแถวแล้ว — จะไปยืนเป็นคอลัมน์ที่สามข้างช่องเวลา');
+
+  // และมันไม่ได้อยู่ในคอลัมน์ของช่องใดช่องหนึ่ง แต่เป็นลูกของแถว
+  const row = edit.slice(edit.indexOf('<div className="row">'));
+  const times = row.slice(0, row.indexOf('{(mayTickNoBreak'));
+  const end = times.slice(times.indexOf('<label>เวลาสิ้นสุด</label>'));
+  assert.ok(!end.slice(0, end.indexOf('</div>')).includes('field-note'),
+    'บรรทัดล็อกกลับเข้าไปอยู่ในคอลัมน์ของช่องเวลาสิ้นสุดอีกแล้ว');
+  assert.match(times, /\{form\.flatDaily && \(\s*\r?\n\s*<span className="field-note">/);
 });
 
 /**

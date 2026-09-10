@@ -536,18 +536,19 @@ test('รายงานส่งบัญชีบอกได้แค่จ�
 /**
  * The two exports' real header rows, copied so a drift shows up as a failure.
  *
- * `birthday_hours` is last in the accounting file and must stay last: everything
- * accounting has built on this export counts columns from the left, so a column
- * inserted before it shifts their sheet without any error anywhere.
+ * The accounting file ended `'รวมชั่วโมง', 'หมายเหตุ', 'birthday_hours'` until
+ * **2026-09-09**, when HR asked for the layout it has now: the printed form's
+ * two rate totals, then a หมายเหตุ that says วันเกิด and nothing else. Both of
+ * the columns this line used to write into went in that change, which is what
+ * `fold` below exists for.
  */
 const ACCOUNTING_HEADERS = [
   'บริษัท', 'company_code', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก',
-  'OT x1.5 วันปกติ', 'OT x1.5 วันหยุด', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ',
-  'birthday_hours',
+  'OT x1.5 วันปกติ', 'OT x1.5 วันหยุด', 'OT x3', 'รวม 1.5', 'รวม 3', 'หมายเหตุ',
 ];
 const DEPARTMENT_HEADERS = [
   'แผนก', 'ลำดับที่', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'บริษัท',
-  'OT x1.5', 'OT x3', 'รวมชั่วโมง', 'หมายเหตุ',
+  'OT x1.5', 'OT x3', 'รวม 1.5', 'รวม 3', 'หมายเหตุ',
 ];
 
 const UNACCOUNTED = { count: 2, hours: 3.5, entries: [] };
@@ -560,14 +561,33 @@ test('the ไม่ถูกนับ line has exactly as many cells as the file
   }
 });
 
-test('the hours land under รวมชั่วโมง in both files, wherever that column is', () => {
-  // Placed by header NAME, not by counting cells — the two exports have
-  // different column counts and รวมชั่วโมง sits at a different index in each.
+test('the whole warning is in ชื่อ-สกุล — label, hours, count and sentence', () => {
+  /**
+   * ── IT USED TO SPREAD ACROSS ชื่อ-สกุล, รวมชั่วโมง AND หมายเหตุ ────────────
+   *
+   * Neither export has either of the last two since 2026-09-09: `รวมชั่วโมง`
+   * was replaced by the printed forms' `รวม 1.5` / `รวม 3` pair, and `หมายเหตุ`
+   * carries the word วันเกิด and nothing else.
+   *
+   * The failure this guards against is not a crash — placing by NAME finds no
+   * column and writes nothing, quite happily. It is a file that prints a bare
+   * "ไม่ถูกนับ" beside ten blank cells: the warning with its warning removed,
+   * which reads as a stray row rather than as hours the sheet could not account
+   * for.
+   */
   for (const headers of [ACCOUNTING_HEADERS, DEPARTMENT_HEADERS]) {
     const row = unaccountedCsvRow(headers, UNACCOUNTED);
-    assert.equal(row[headers.indexOf('รวมชั่วโมง')], '3.5');
-    assert.equal(row[headers.indexOf('ชื่อ-สกุล')], 'ไม่ถูกนับ');
-    assert.match(row[headers.indexOf('หมายเหตุ')], /^2 รายการ/);
+
+    const name = row[headers.indexOf('ชื่อ-สกุล')];
+    assert.match(name, /^ไม่ถูกนับ/);
+    assert.match(name, /3\.5 ชม\./, 'จำนวนชั่วโมงที่หายต้องอยู่ในบรรทัด');
+    assert.match(name, /2 รายการอ้างถึงพนักงานที่หาไม่พบ/);
+
+    // And nothing leaks into the columns these files keep for figures.
+    for (const column of ['รวม 1.5', 'รวม 3', 'หมายเหตุ', 'รหัสพนักงาน']) {
+      assert.equal(row[headers.indexOf(column)], '', `${column} ต้องว่าง`);
+    }
+    assert.equal(row.length, headers.length);
   }
 });
 
@@ -583,22 +603,24 @@ test('it carries no รหัสพนักงาน, so the filter that isolat
 });
 
 test('a column added to an export moves the line with it', () => {
-  const headers = [...ACCOUNTING_HEADERS, 'คอลัมน์ใหม่'];
+  // The cell is still found by NAME, not by counting — which is what keeps this
+  // line correct when a column is added anywhere to its left.
+  const headers = ['คอลัมน์ใหม่', ...DEPARTMENT_HEADERS];
   const row = unaccountedCsvRow(headers, UNACCOUNTED);
   assert.equal(row.length, headers.length);
-  assert.equal(row[headers.indexOf('รวมชั่วโมง')], '3.5');
-  assert.equal(row.at(-1), '', 'the new column is left blank, not overwritten');
+  assert.match(row[headers.indexOf('ชื่อ-สกุล')], /^ไม่ถูกนับ/);
+  assert.equal(row[0], '', 'the new column is left blank, not overwritten');
 });
 
 test('the line survives the round trip through the CSV writer and parser', () => {
   // Quoting, the BOM and CRLF all applied by the same toCsv the exports use.
-  // The employee row carries every column the file has, `birthday_hours`
-  // included — a fixture one cell short would parse without complaint and hide
-  // exactly the shift this file is afraid of.
+  // The employee row carries every column the file has — a fixture one cell
+  // short would parse without complaint and hide exactly the shift this file
+  // is afraid of.
   const employee = [
-    'ไพรมัส', 'PM', 'PM-0412', 'สมชาย ใจดี', 'ผลิต 1', '8', '8', '', '16', 'วันเกิด 8 ชม.', '8',
+    'ไพรมัส', 'PM', 'PM-0412', 'สมชาย ใจดี', 'ผลิต 1', '8', '8', '4', '16', '4', 'วันเกิด',
   ];
-  const rows = [employee, unaccountedCsvRow(ACCOUNTING_HEADERS, UNACCOUNTED)];
+  const rows = [employee, unaccountedCsvRow(ACCOUNTING_HEADERS, UNACCOUNTED, { fold: true })];
 
   for (const row of rows) {
     assert.equal(row.length, ACCOUNTING_HEADERS.length, 'every row is as wide as the header');
@@ -607,37 +629,39 @@ test('the line survives the round trip through the CSV writer and parser', () =>
   const parsed = parseCsv(toCsv(ACCOUNTING_HEADERS, rows));
 
   assert.equal(parsed.length, 2);
-  assert.equal(parsed[1]['ชื่อ-สกุล'], 'ไม่ถูกนับ');
-  assert.equal(parsed[1]['รวมชั่วโมง'], '3.5');
+  assert.match(parsed[1]['ชื่อ-สกุล'], /^ไม่ถูกนับ/);
   assert.equal(parsed[1]['รหัสพนักงาน'], '');
   assert.equal(parsed[0]['รหัสพนักงาน'], 'PM-0412', 'the employee rows above are untouched');
 
-  // The split reads back as its own number, and the total it is part of is
-  // unchanged by it: 16.00 in the 1.50 column, 8 of which are the birthday.
-  assert.equal(parsed[0].birthday_hours, '8');
-  assert.equal(parsed[0]['รวมชั่วโมง'], '16');
-  assert.equal(parsed[1].birthday_hours, '', 'the ไม่ถูกนับ line belongs to nobody, so it has none');
+  // The two rate totals read back as the paper's two columns: the ×1.5 pair
+  // added, and the ×3 column repeated. They are what a person reconciling this
+  // file against F-HR-027 compares, and the split to their left is unchanged
+  // by their existence.
+  assert.equal(parsed[0]['รวม 1.5'], '16');
+  assert.equal(parsed[0]['รวม 3'], '4');
+  assert.equal(parsed[0]['OT x3'], '4');
+  assert.equal(parsed[0]['หมายเหตุ'], 'วันเกิด', 'คำเดียว ไม่มีจำนวนชั่วโมงต่อท้าย');
+  assert.equal(parsed[1]['หมายเหตุ'], '', 'บรรทัดไม่ถูกนับไม่ใช่ของใคร จึงไม่มีวันเกิด');
 });
 
 test('nothing in the line can be read as a spreadsheet formula', () => {
   // escapeCell guards every cell, but the guard only helps if this row goes
   // through it — a row assembled and joined by hand somewhere else would not.
-  const row = unaccountedCsvRow(ACCOUNTING_HEADERS, { count: 1, hours: 3.5 });
+  const row = unaccountedCsvRow(ACCOUNTING_HEADERS, { count: 1, hours: 3.5 }, { fold: true });
   for (const cell of row) {
     assert.doesNotMatch(String(cell), /^[=+\-@]/, `cell would be read as a formula: ${cell}`);
   }
 
-  // Nor can a name, and the birthday remark rides in the same cell as the rest
-  // of the หมายเหตุ prose — so the whole employee row goes through the writer
-  // with a hostile name in it.
+  // Nor can a name — so the whole employee row goes through the writer with a
+  // hostile one in it.
   const hostile = [
-    '=cmd|calc', 'PM', 'PM-0001', '@somchai', '-ผลิต', '8', '8', '', '16', '+วันเกิด 8 ชม.', '8',
+    '=cmd|calc', 'PM', 'PM-0001', '@somchai', '-ผลิต', '8', '8', '4', '16', '4', '+วันเกิด',
   ];
   const parsed = parseCsv(toCsv(ACCOUNTING_HEADERS, [hostile]));
   for (const value of Object.values(parsed[0])) {
     assert.doesNotMatch(String(value), /^[=+\-@]/, `cell survived unquoted: ${value}`);
   }
-  assert.equal(parsed[0].birthday_hours, '8', 'and the numeric column is untouched by the guard');
+  assert.equal(parsed[0]['รวม 1.5'], '16', 'and the numeric columns are untouched by the guard');
 
   // And the guard itself still fires for anything that could.
   const line = toCsv(['a'], [['=1+1']]).split('\r\n')[1];
@@ -650,6 +674,13 @@ test('the exports write the line through the shared builder, and only when there
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
     assert.match(code, /if \(report\.unaccounted\?\.count > 0\)/, `${file} writes the line unconditionally`);
-    assert.match(code, /rows\.push\(unaccountedCsvRow\(headers, report\.unaccounted\)\)/, `${file} builds the row by hand`);
+    // accounting.csv passes `{ fold: true }` — it is still the shared builder,
+    // and the option is why its warning did not quietly empty itself when the
+    // two columns it wrote into were replaced on 2026-09-09.
+    assert.match(
+      code,
+      /rows\.push\(unaccountedCsvRow\(headers, report\.unaccounted(, \{ fold: true \})?\)\)/,
+      `${file} builds the row by hand`,
+    );
   }
 });

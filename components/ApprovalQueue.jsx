@@ -14,12 +14,13 @@ import {
 } from '@/lib/caps.js';
 import {
   MAX_LIST_LIMIT, endsNextDayFor, isProxyFiled, isSystemFiled, isUntouchedSystemFiling,
-  maySignFirstStep, isOwnRequest, flatDayEnd, FLAT_DAY_SPAN_MINUTES, isBirthdayWelfare,
-  humanHistory,
+  maySignFirstStep, isOwnRequest, FLAT_DAY_TIMES, isBirthdayWelfare,
+  humanHistory, isFlatDailyPosition, isCompanyOffDay, mayCorrectEntries,
 } from '@/lib/entries.js';
 // The same predicate `approvalPermission` refuses on, so the buttons this screen
 // offers and the ones the server accepts cannot drift apart.
-import { isOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
+import { barredAsOwnFiling, signedManagerStep, OVERRIDE_NOTE_REQUIRED } from '@/lib/delegation.js';
+import { skippedOwnApproval } from '@/lib/approverLine.js';
 import {
   Alert, BirthdayWelfareMark, CapCard, Empty, EditedMark, EntryHistory, Fact, FilingLeadMark,
   FlatDailyMark, FLAT_DAILY_SAY, Modal, PickOne, ProxyMark,
@@ -30,6 +31,7 @@ import Icon from './icons.jsx';
 import { PolicyDriftBanner } from './PolicyVersion.jsx';
 import WithdrawalRequests from './WithdrawalRequests.jsx';
 import { PickTime } from './PickTime.jsx';
+import { usePolicy } from './policyContext.jsx';
 import OtForm from './OtForm.jsx';
 import { useToast } from './Toast.jsx';
 
@@ -660,7 +662,12 @@ export default function ApprovalQueue({
    * THREE EXCLUSIONS, and they are the same kind of thing: a row no button of
    * theirs can move.
    *
-   *   · the ones they FILED themselves (`isOwnFiling`);
+   *   · the ones they FILED themselves that are not at the step their filing is
+   *     waiting at (`barredAsOwnFiling`). SINCE 2026-09-09 THAT IS A NARROWER
+   *     LIST THAN "the ones they filed": a proxy filing waits at รอหัวหน้า for
+   *     its filer to press อนุมัติ, and that row is theirs to decide — see
+   *     `proxySkipsOwnApproval`. What stays excluded is the same row once it
+   *     reaches ฝ่ายบุคคล, which is the §6 rule below wearing a different name;
    *   · the ones they SIGNED at the หัวหน้า step (`signedManagerStep`), which
    *     they may not also sign at the ฝ่ายบุคคล step — §6 wants two people and
    *     this is where that is made to mean two people. Only ever true on รอ HR
@@ -677,7 +684,7 @@ export default function ApprovalQueue({
    */
   const actionable = useMemo(
     () => shown.filter(
-      (e) => signableHere(e) && !isOwnFiling(e, user) && !signedManagerStep(e, user),
+      (e) => signableHere(e) && !barredAsOwnFiling(e, user) && !signedManagerStep(e, user),
     ),
     [shown, user, stage],
   );
@@ -1605,17 +1612,27 @@ export default function ApprovalQueue({
                       type="checkbox"
                       checked={selected.has(e._id)}
                       disabled={!signableHere(e)
-                        || isOwnFiling(e, user) || signedManagerStep(e, user)}
+                        || barredAsOwnFiling(e, user) || signedManagerStep(e, user)}
                       onChange={() => toggle(e._id)}
                       aria-label={`เลือกรายการของ ${e.employee?.name}`}
                     />
                   </td>
-                  {/* A name is one thing and a code is one thing; both broke
-                      mid-word when the column was squeezed. The department is
-                      the only part of this cell that may wrap, because it is
-                      the only part that is prose. */}
+                  {/* A code is one thing and breaks nowhere; the department is
+                      prose and wraps freely.
+
+                      THE NAME IS BETWEEN THE TWO and, since 2026-09-10, may
+                      take a second line — at the space before the นามสกุล and
+                      nowhere else, which is what `WhoName` is for: the words
+                      are `.nb` and the spaces between them are the only break
+                      opportunities the cell has left. It
+                      read "A name is one thing and a code is one thing; both
+                      broke mid-word when the column was squeezed" until then:
+                      the fix for that was `nowrap`, and `nowrap` does not clip,
+                      it draws the surname over the วันที่ column. Every name on
+                      the live roster carries a คำนำหน้า, so that was a third of
+                      the rows. */}
                   <td className="who-col">
-                    <div className="who-name">{e.employee?.name}</div>
+                    <div className="who-name"><WhoName name={e.employee?.name} /></div>
                     <div className="cell-sub">
                       <span className="nb">{e.employee?.code}</span>
                       {' · '}
@@ -1766,12 +1783,16 @@ export default function ApprovalQueue({
                       and the action column has been scrolling away with the
                       rest all along. */}
                   <td className="act-col">
-                    {/* A row this reviewer wrote themselves cannot be signed OR
-                        refused by them — one rule governs both, so offering
+                    {/* A row this reviewer wrote themselves, at a step that is
+                        not the one their filing is waiting at, cannot be signed
+                        OR refused by them — one rule governs both, so offering
                         either button is offering a 403. What goes here instead is
                         the reason and, when the row is one the system generated
                         and nobody has touched, the only action that does work.
-                        See `isOwnFiling` in lib/delegation.js. */}
+                        See `barredAsOwnFiling` in lib/delegation.js — and note
+                        that the ordinary case is no longer here: since
+                        2026-09-09 a proxy filing waits at รอหัวหน้า for its own
+                        filer, who gets the two real buttons below. */}
                     {/* The same shape as `isOwnFiling` below, for the same
                         reason and with a different sentence: a row this
                         reviewer already signed at the หัวหน้า step is one they
@@ -1811,7 +1832,7 @@ export default function ApprovalQueue({
                         </span>
                         <WatchMark note={watchingNote(e, stage, user).short} />
                       </div>
-                    ) : !isOwnFiling(e, user) && signedManagerStep(e, user) ? (
+                    ) : !barredAsOwnFiling(e, user) && signedManagerStep(e, user) ? (
                       <div className="row-actions">
                         <span className="cell-sub own-note">
                           คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว
@@ -1819,17 +1840,17 @@ export default function ApprovalQueue({
                         </span>
                         <WatchMark note="คุณเป็นผู้เซ็นในขั้นหัวหน้าของใบนี้ไปแล้ว — ต้องให้ฝ่ายบุคคลหรือผู้ดูแลระบบอีกคนเป็นผู้ตรวจ" />
                       </div>
-                    ) : isOwnFiling(e, user) ? (
+                    ) : barredAsOwnFiling(e, user) ? (
                       <div className="row-actions">
                         {/* A class rather than the inline `maxWidth: 190` it
                             used to carry: the card layout needs this sentence
                             to run the full width of the card, and an inline
                             style is the one thing a media query cannot answer. */}
                         <span className="cell-sub own-note">
-                          คุณเป็นผู้บันทึกรายการนี้ จึงอนุมัติหรือไม่อนุมัติเองไม่ได้
+                          คุณเป็นผู้บันทึกรายการนี้ จึงตรวจในขั้นนี้เองไม่ได้
                           {isUntouchedSystemFiling(e)
                             ? ' — ถอนใบได้ หรือให้ผู้ดูแลระบบยืนยันแทน'
-                            : ' — ต้องให้คนอื่นเป็นผู้อนุมัติ'}
+                            : ' — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้คนอื่นเป็นผู้ตรวจ'}
                         </span>
                         {/* THE ONE ACTION IN THIS BRANCH THAT WORKS, so it keeps
                             a real button — as an icon on the desktop and with
@@ -1847,7 +1868,7 @@ export default function ApprovalQueue({
                             <span className="btn-word">ถอนใบวันเกิด</span>
                           </button>
                         ) : (
-                          <WatchMark note="คุณเป็นผู้บันทึกรายการนี้ — ต้องให้คนอื่นเป็นผู้อนุมัติ" />
+                          <WatchMark note="คุณเป็นผู้บันทึกรายการนี้ — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้คนอื่นเป็นผู้ตรวจ" />
                         )}
                       </div>
                     ) : (
@@ -2031,8 +2052,15 @@ export default function ApprovalQueue({
         <DetailModal
           entry={detail}
           isHr={isHr}
+          // WHO IS READING, for the one control that asks — the เหมารายวัน tick
+          // inside แก้ไขชั่วโมง, which only ฝ่ายบุคคล and ผู้ดูแลระบบ are offered
+          // (HR, 2026-09-10). It is the same บทบาท rule `editPermission` answers
+          // the save with, so the box and the refusal cannot drift apart; see
+          // `mayTickFlatDaily` in QuickEdit for the other half of it, the
+          // ตำแหน่ง of the person the row is FOR.
+          user={user}
           busy={busy}
-          mine={isOwnFiling(detail, user)}
+          mine={barredAsOwnFiling(detail, user)}
           // The row's own rule, handed down rather than asked again inside.
           watching={!signableHere(detail)}
           // And the reason with it, from the same function the row's own cell
@@ -2450,7 +2478,7 @@ function RejectFields({ value, onChange, many }) {
  * rule with nowhere left to be read.
  */
 function DetailModal({
-  entry: e, isHr, busy, mine = false, watching = false, watchNote = null,
+  entry: e, user, isHr, busy, mine = false, watching = false, watchNote = null,
   onClose, onApprove, onReject, onEntryChanged,
 }) {
   const [mode, setMode] = useState('view'); // 'view' | 'rejecting'
@@ -2619,19 +2647,36 @@ function DetailModal({
                   : 'รายการนี้มีผู้อื่นเป็นผู้บันทึกแทนพนักงาน'}
               </strong>
               {e.filedBy?.name && <> — ผู้บันทึก: {e.filedBy.name}</>}
-              {e.status === 'pending_hr' && !e.managerDecision?.at && (
+              {/* READ OFF THE ROW'S OWN NOTE, NOT OFF ITS STATUS. This said
+                  `pending_hr && !managerDecision?.at`, which is true of a row
+                  that skipped the step AND of one from a แผนก whose หัวหน้างาน
+                  is ฝ่ายบุคคล by rule — on the second it told the reader the
+                  system had skipped something for them, which it had not.
+                  `skippedOwnApproval` matches the note that only the skipping
+                  branch writes. See lib/approverLine.js.
+
+                  NOTHING FILED SINCE 2026-09-09 CAN REACH THIS: a proxy filing
+                  waits at รอหัวหน้า for its filer to press อนุมัติ. It is here
+                  for the rows filed while `proxySkipsOwnApproval` defaulted to
+                  `true`, which are still in the database and still say this. */}
+              {skippedOwnApproval(e) && !e.managerDecision?.at && (
                 <> · รายการนี้<strong>ยังไม่ผ่านการอนุมัติจากหัวหน้า</strong>
                   {' '}เพราะผู้บันทึกคือผู้ที่จะอนุมัติเอง ระบบจึงข้ามขั้นนั้นมา
                 </>
               )}
               {/* The sentence that was missing when this row could not be moved:
                   it names the rule and the two ways forward. */}
+              {/* `mine` IS NARROWER THAN "you filed this" SINCE 2026-09-09 — it
+                  is `barredAsOwnFiling`, so a row waiting at รอหัวหน้า for the
+                  person reading it does not draw this sentence at all: they have
+                  the two buttons. What is left is the ฝ่ายบุคคล step of a row
+                  they filed, which is the §6 rule. */}
               {mine && (
                 <div style={{ marginTop: 4 }}>
-                  คุณเป็นผู้บันทึกรายการนี้เอง จึงอนุมัติหรือไม่อนุมัติเองไม่ได้ —
+                  คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ —
                   {isUntouchedSystemFiling(e)
                     ? ' กด “ถอนใบวันเกิด” ที่แถวในคิว หรือให้ผู้ดูแลระบบยืนยันแทน'
-                    : ' ต้องให้ผู้อื่นเป็นผู้อนุมัติ'}
+                    : ' ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ'}
                 </div>
               )}
             </Alert>
@@ -2720,6 +2765,7 @@ function DetailModal({
             {editing ? (
               <QuickEdit
                 entry={e}
+                user={user}
                 onDirty={setEditDirty}
                 onCancel={() => { setEditing(false); setEditDirty(false); }}
                 onSaved={(updated) => {
@@ -2786,6 +2832,43 @@ function DetailModal({
 // ── quick edit ──────────────────────────────────────────────────────────────
 
 /**
+ * THE ENTRY AS THIS PANEL OPENS IT — the five fields it may move, with a
+ * เหมารายวัน row put back to `FLAT_DAY_TIMES`.
+ *
+ * A flat day is 08:00–17:00 and nothing else (HR, 2026-09-09). Rows filed
+ * before that rule carry whatever was typed — 08:00–20:00 was legal while both
+ * boxes were free — and they open here on the locked pair rather than on their
+ * own times, because two greyed boxes showing a pair this app will not let
+ * anybody type is a figure nobody can correct.
+ *
+ * IT IS ALSO THE BASELINE `moved` IS MEASURED AGAINST, which is the whole
+ * reason it is a function rather than four lines inside `useState`. Compare the
+ * form against the raw entry instead and every legacy flat row opens DIRTY:
+ * the preview fires, `onDirty` arms the "unsaved changes" prompt, and a
+ * reviewer who opened a pop-up to read it is asked whether they meant to
+ * discard something they never typed. Measured against this, opening is quiet
+ * and the corrected times ride along with whatever the reviewer actually came
+ * to change. A row nobody edits keeps its stored times; the line under the
+ * ticks says so while they differ.
+ *
+ * `birthdayWelfare` WAS READ BACK OFF THE HOURS HERE UNTIL 2026-09-08, via
+ * `isBirthdayWelfare`, because there was no field to read: the tick was a claim
+ * the server checked and then had no further use for. The claim went; what
+ * makes a day สวัสดิการวันเกิด — the stored วันเกิด, resolved on the server —
+ * never depended on it, and the row's own chip still reads it off `dayReason`
+ * exactly as it did.
+ */
+const asOpened = (entry) => ({
+  startTime: entry.startTime,
+  endTime: entry.endTime,
+  endsNextDay: Boolean(entry.endsNextDay),
+  noBreakTaken: Boolean(entry.noBreakTaken),
+  /** เหมารายวัน — an entered field, stored on the entry. */
+  flatDaily: Boolean(entry.flatDaily),
+  ...(entry.flatDaily ? { ...FLAT_DAY_TIMES, endsNextDay: false } : null),
+});
+
+/**
  * แก้ไขชั่วโมง — the correction HR would otherwise have to refuse the request
  * to get.
  *
@@ -2808,45 +2891,117 @@ function DetailModal({
  * long it was, and neither is visible on the request as filed. A flat day filed
  * without the tick reads as an ordinary twelve-hour shift and pays like one.
  *
- * WHAT IS DIFFERENT HERE FROM OtForm, and it is the same difference twice:
- * ticking a box does NOT fill 08:00–17:00 in. On the filing form those times
- * are a default nobody has typed over yet; here they are the record of when a
- * person was on the premises, printed on F-HR-027 and signed. Overwriting that
- * because a reviewer ticked เหมารายวัน would falsify the sheet to change a
- * figure the sheet does not carry — a flat day is eight hours whatever the
- * clock says. Re-picking เวลาเริ่ม is what re-derives the end, exactly as it
- * does on a stored flat row opened in the filing form.
+ * THIS PANEL USED TO LEAVE THE TIMES ALONE — until 2026-09-09, and the reason
+ * it did is worth keeping: on the filing form 08:00–17:00 was a default nobody
+ * had typed over yet, while here the two times are the record of when a person
+ * was on the premises, printed on F-HR-027 and signed. HR ended the difference
+ * that day by ending the default — *ให้ล็อกเวลาไว้ที่ 08:00–17:00 ไม่มีการปรับ
+ * เวลา* — so a flat day now has ONE pair of times on every screen, and this one
+ * writes it like the other. What that costs is written out at `asOpened` below.
  */
-function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
-  const [form, setForm] = useState(() => ({
-    startTime: entry.startTime,
-    endTime: entry.endTime,
-    endsNextDay: Boolean(entry.endsNextDay),
-    noBreakTaken: Boolean(entry.noBreakTaken),
-    /** เหมารายวัน — an entered field, stored on the entry. */
-    flatDaily: Boolean(entry.flatDaily),
-    /**
-     * `birthdayWelfare` WAS READ BACK OFF THE HOURS HERE UNTIL 2026-09-08, via
-     * `isBirthdayWelfare`, because there was no field to read: the tick was a
-     * claim the server checked and then had no further use for. The claim went;
-     * what makes a day สวัสดิการวันเกิด — the stored วันเกิด, resolved on the
-     * server — never depended on it, and the row's own chip still reads it off
-     * `dayReason` exactly as it did.
-     */
-  }));
+function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
+  const policy = usePolicy();
+  const [holidays, setHolidays] = useState(null);
+  const [form, setForm] = useState(() => asOpened(entry));
   const [note, setNote] = useState('');
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const moved = form.startTime !== entry.startTime
-    || form.endTime !== entry.endTime
-    || form.endsNextDay !== Boolean(entry.endsNextDay)
-    || form.noBreakTaken !== Boolean(entry.noBreakTaken)
+  /**
+   * AGAINST WHAT THE PANEL OPENED ON, not against the stored row — see
+   * `asOpened`. The two differ only on a เหมารายวัน row filed before the times
+   * were locked, and on that row the difference is a correction nobody has
+   * asked for yet.
+   */
+  const opened = asOpened(entry);
+  const moved = form.startTime !== opened.startTime
+    || form.endTime !== opened.endTime
+    || form.endsNextDay !== opened.endsNextDay
+    || form.noBreakTaken !== opened.noBreakTaken
     // เหมารายวัน moves an ANSWER and not only a label — it rewrites what the day
     // is worth — so a tick alone is a saveable correction and counts as
     // movement. วันเกิด sat beside it on this list until 2026-09-08.
-    || form.flatDaily !== Boolean(entry.flatDaily);
+    || form.flatDaily !== opened.flatDaily;
+
+  /**
+   * The panel is showing a flat day's locked times and the stored row is not.
+   *
+   * Two ways in, and the note under the ticks says the same thing for both: a
+   * row filed before 2026-09-09 keeps whatever was typed then, and a row the
+   * reviewer has just ticked was an ordinary shift a moment ago. Either way the
+   * stored times are corrected only if this correction is saved.
+   */
+  const relockedTimes = form.flatDaily
+    && (form.startTime !== entry.startTime || form.endTime !== entry.endTime);
+
+  /**
+   * ปฏิทินของปีที่ วันที่ทำงาน อยู่ — for the ไม่พักเที่ยง rule below, and for
+   * nothing else on this panel.
+   *
+   * Fetched here rather than in the pop-up around it because แก้ไขชั่วโมง is
+   * a button somebody presses on a few rows out of a queue of two hundred: a
+   * calendar loaded with every รายละเอียด would be a request per row read.
+   * A year at a time, the same as OtForm and HolidayBanner — วันที่ทำงาน
+   * cannot be moved from this panel, so this fires once per correction.
+   *
+   * A FAILED FETCH LEAVES THE BOX UNDRAWN ON A ประกาศ HOLIDAY and still
+   * draws it on a Saturday, because `weekendDays` needs no calendar. That is
+   * the safe direction: a question missing from the screen for a moment,
+   * never an hour quietly not deducted. Nothing here moves a figure.
+   */
+  const holidayYear = Number(String(entry.workDate || '').slice(0, 4));
+  useEffect(() => {
+    let live = true;
+    api.get(`/holidays?year=${holidayYear}`)
+      .then((res) => { if (live) setHolidays(res.holidays || []); })
+      .catch(() => { if (live) setHolidays(null); });
+    return () => { live = false; };
+  }, [holidayYear]);
+
+  /**
+   * ช่องติ๊กเหมารายวันแสดงเฉพาะเจ้าหน้าที่บริการ — HR, 2026-09-08 — และเห็นได้
+   * เฉพาะฝ่ายบุคคลกับผู้ดูแลระบบ — HR, 2026-09-10.
+   *
+   * TWO CONDITIONS, AND THEY ANSWER TWO DIFFERENT QUESTIONS. The ตำแหน่ง is
+   * the one the filing form already asks (`isFlatDailyPosition`, whose list
+   * lives in lib/entries.js) and it is asked of THE PERSON THE ROW IS FOR:
+   * only a เจ้าหน้าที่บริการ is sold by the day, and that is a fact about the
+   * request, not about who opened it. The บทบาท is asked of THE READER, and
+   * it is `mayCorrectEntries` — the same predicate `editPermission` refuses
+   * the save with, so a หัวหน้า is not shown a tick the server answers 403 to.
+   *
+   * AND IT IS SHOWN REGARDLESS WHEN IT IS ALREADY TICKED, exactly as the
+   * filing form shows it (`mayTickFlatDaily` in OtForm). A row filed before
+   * these rules — or one filed for somebody whose ตำแหน่ง has since changed —
+   * carries a flag priced at eight hours, and hiding the box would leave that
+   * flag with no control on any screen able to take it off. The rule withholds
+   * a NEW claim; it never swallows one already made.
+   */
+  const mayTickFlatDaily = form.flatDaily
+    || (mayCorrectEntries(user) && isFlatDailyPosition(entry.employee?.position));
+
+  /**
+   * ช่องติ๊กไม่พักเที่ยง โชว์เฉพาะวันหยุดเสาร์อาทิตย์และวันหยุดของบริษัท
+   * ไม่รวมวันเกิด — HR, 2026-09-08, now on this panel as well as on the form.
+   *
+   * `entry.workDate` AND NOT THE SHIFT'S SECOND DATE. The box is about the
+   * hour at noon and that noon belongs to the day the request is filed under;
+   * an overnight shift crosses a second date whose kind HR did not name.
+   *
+   * THE วันเกิด EXCLUSION IS STRUCTURAL. `isCompanyOffDay` is handed the
+   * company calendar and `weekendDays` and nothing else — no birth date
+   * reaches this screen (`publicEmployee`), so a สวัสดิการวันเกิด cannot
+   * register as a company holiday here even by accident.
+   *
+   * ALREADY TICKED SHOWS THE BOX, for the reason above it: a row filed on a
+   * Saturday and since corrected onto a Tuesday would otherwise sit here with
+   * an hour not deducted and nothing on the screen able to put it back.
+   */
+  const mayTickNoBreak = form.noBreakTaken
+    || isCompanyOffDay(entry.workDate, {
+      holidays: holidays || [], weekendDays: policy.weekendDays,
+    });
 
   useEffect(() => { onDirty?.(moved || note.trim().length > 0); }, [moved, note]);
 
@@ -2896,23 +3051,31 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
    * Derived on CHANGE, not on render, so opening the pop-up on a stored entry
    * does not mark the form dirty before anybody has touched it.
    *
-   * ── AND ON A เหมารายวัน DAY THE END IS DERIVED TOO ─────────────────────────
+   * THE GREYED BOX THAT REPORTED IT CAME OFF THIS PANEL ON 2026-09-10 — HR —
+   * and this derivation is untouched by that. What was withdrawn is the
+   * REPORTING of the flag, not the flag: it is still computed on every press
+   * that moves a time, still sent with the correction, and still what the
+   * engine splits the night on. Where a reviewer reads it now is written out
+   * over the tick strip below.
    *
-   * A flat day is a fixed length — `FLAT_DAY_SPAN_MINUTES`, nine on the clock
-   * for the eight it pays — so once the box is ticked the end is an answer to
-   * เวลาเริ่ม rather than a second thing to type, exactly as it is on the
-   * filing form (`setStart` in OtForm, and `flatDayEnd` in lib/entries.js is
-   * the one place either screen computes it). ข้ามคืน falls out of the same
-   * press, because a flat day begun at 16:00 finishes at 01:00 and an end
-   * before its start is `END_BEFORE_START` out of the engine.
+   * ── AND TICKING เหมารายวัน WRITES BOTH TIMES ───────────────────────────────
    *
-   * ONLY ON A PRESS OF THE START BOX. Ticking เหมารายวัน leaves both times
-   * alone — see the note over this component: they are the record of when
-   * somebody was here, and the tick is not a statement about the clock.
+   * `FLAT_DAY_TIMES`, and then both boxes are shut — 2026-09-09, the same rule
+   * the filing form draws (`tickDay` in OtForm). A flat day is the office day
+   * bought whole and there is one pair of times it can have.
+   *
+   * IT USED TO WRITE NOTHING, and to derive the END from a free start on every
+   * press of เวลาเริ่ม. Both are gone with the lock: there is no press left
+   * that moves a time on a flat day, so there is nothing for the derivation to
+   * answer.
+   *
+   * UNTICKING LEAVES THE PAIR WHERE IT IS, as it does on the filing form. The
+   * boxes open again, so a reviewer who ticked by mistake types the real times
+   * back rather than being handed a guess at them.
    */
   const set = (patch) => setForm((f) => {
     const next = { ...f, ...patch };
-    if (patch.startTime !== undefined && next.flatDaily) next.endTime = flatDayEnd(patch.startTime);
+    if (patch.flatDaily === true) Object.assign(next, FLAT_DAY_TIMES);
     return { ...next, endsNextDay: endsNextDayFor(next.startTime, next.endTime) };
   });
   const nextHours = preview?.result?.totals?.otHours;
@@ -2967,76 +3130,119 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
       <div className="row">
         <div className="field">
           <label>เวลาเริ่ม</label>
-          <PickTime label="เวลาเริ่ม" value={form.startTime} onChange={(v) => set({ startTime: v })} />
+          {/* BOTH BOXES ARE SHUT ON A เหมารายวัน DAY — 2026-09-09, the same
+              pair the filing form shuts and for the same reason: a day hired
+              whole has one shape, and neither half of it is typed. Disabled
+              rather than hidden — the times print on the row and on F-HR-027,
+              and a reviewer who cannot see them cannot check them. */}
+          <PickTime
+            label="เวลาเริ่ม"
+            value={form.startTime}
+            disabled={form.flatDaily}
+            onChange={(v) => set({ startTime: v })}
+          />
         </div>
         <div className="field">
           <label>เวลาสิ้นสุด</label>
-          {/* SHUT ON A เหมารายวัน DAY, the same box the filing form shuts and
-              for the same reason: the figure is an answer to เวลาเริ่ม, not a
-              second thing to type. Disabled rather than hidden — the time is
-              the record of when the person was here and it prints on the row.
-              An already-flat entry opens on its OWN end and is not re-derived
-              on the way in; re-picking the start is what moves it. */}
           <PickTime
             label="เวลาสิ้นสุด"
             value={form.endTime}
             disabled={form.flatDaily}
             onChange={(v) => set({ endTime: v })}
           />
-          {form.flatDaily && (
-            <span className="field-note">
-              บวกจากเวลาเริ่ม {FLAT_DAY_SPAN_MINUTES / 60} ชม. ให้อัตโนมัติ
-            </span>
-          )}
         </div>
+        {/* WHY THE BOXES ARE GREY — A LINE OF ITS OWN, UNDER THE PAIR, AT THE
+            LEFT EDGE. 2026-09-10, asked for from the screen: *ให้มันตรงกับ
+            ช่องเวลาเริ่ม*.
+
+            IT SAT INSIDE THE เวลาสิ้นสุด FIELD UNTIL THEN, which put it under
+            the right-hand box and left of nothing — a grey sentence starting
+            halfway across the panel, reading as a note about เวลาสิ้นสุด. It is
+            about BOTH boxes: one tick shut the pair, and the pair is what it
+            names. So it comes out of the column, the way the filing form took
+            the same sentence out of its own on 2026-09-09 (`lock-note` in
+            app/styles.css, and the note over it).
+
+            LEFT HERE AND RIGHT THERE, FROM ONE RULE. The sentence sits under
+            the boxes it is about. On บันทึก OT that row is วันที่เริ่ม +
+            เวลาเริ่ม + เวลาสิ้นสุด, so the left edge would put it under the DATE;
+            here the row is the two times and nothing else, so the left edge is
+            exactly where เวลาเริ่ม starts. */}
+        {form.flatDaily && (
+          <span className="field-note">
+            ล็อก {FLAT_DAY_TIMES.startTime}–{FLAT_DAY_TIMES.endTime} น. แก้เวลาไม่ได้
+          </span>
+        )}
       </div>
 
       {/*
         THE SWITCHES, IN A BOX OF THEIR OWN, ON THE LINE UNDER THE TIMES.
 
-        They belong to the times above them — one reports what those times mean,
-        the other changes what is deducted from them — and standing loose in the
-        middle of the form they read as two more questions at the same level as
-        เวลาเริ่ม and เหตุผลการแก้ไข. A tinted strip under the two time fields
-        says "these are about what you just typed" without a heading to say it.
+        They belong to the times above them — one changes what is deducted from
+        them, the other changes what the day was bought as — and standing loose
+        in the middle of the form they read as two more questions at the same
+        level as เวลาเริ่ม and เหตุผลการแก้ไข. A tinted strip under the two time
+        fields says "these are about what you just typed" without a heading to
+        say it.
 
         THE WORDS COME FROM THE FILING FORM, not from here. OtForm says
-        "ทำงานข้ามคืน (สิ้นสุดวันถัดไป)", "ไม่พักเที่ยง", "เหมารายวัน (นับ 8 ชม.
-        ต่อวัน)" and "วันเกิด", and this is the same entry's own switches — a
-        reviewer correcting a filing should not have to work out that two
-        differently-worded boxes are the box they already know. The clarifier in
-        brackets is that form's convention too; ไม่พักเที่ยง gets one here
-        because what it actually does — stop the break being deducted — is the
-        part a reviewer is deciding about.
+        "ไม่พักเที่ยง" and "เหมารายวัน (นับ 8 ชม. ต่อวัน)", and this is the same
+        entry’s own switches — a reviewer correcting a filing should not have to
+        work out that two differently-worded boxes are the box they already know.
+        The clarifier in brackets is that form’s convention too; ไม่พักเที่ยง
+        gets one here because what it actually does — stop the break being
+        deducted — is the part a reviewer is deciding about.
 
-        FOUR NOW, AND THE ORDER IS THE FILING FORM'S. The first two describe the
-        SHIFT (did it cross midnight, was there a break); the two added on
-        2026-09-07 describe the DAY (was it hired whole, was it this person's
-        birthday holiday). Shift first, day second, in the order somebody who
-        files OT has already learnt them.
+        TWO NOW, AND EACH IS DRAWN BEHIND A RULE OF ITS OWN — see
+        `mayTickNoBreak` and `mayTickFlatDaily` above, which are the filing
+        form’s two rules asked again here, of the same request.
+
+        ข้ามคืน WAS THE THIRD AND IS GONE — HR, 2026-09-10. It had been a greyed
+        box reporting what the two times above it already said, kept so the
+        answer was visible somewhere; the filing form dropped its own tick on
+        2026-09-08 and says the fact beside เวลาสิ้นสุด instead. A disabled
+        control nobody may touch, in a panel that exists to change things, is a
+        question a reviewer keeps trying to answer. `endsNextDay` IS STILL
+        DERIVED AND STILL SAVED — every press that moves a time asks
+        `endsNextDayFor` in `set` above, exactly as before — and the fact is
+        still reported twice on the way in: on the row (`cell-note`) and on
+        เวลาที่ขอ in the pop-up over this panel.
+
+        AND THE STRIP ITSELF GOES WHEN BOTH ARE WITHHELD, which any ordinary
+        Tuesday on an ordinary ตำแหน่ง reaches. An empty tinted band under the
+        time boxes is a gap the reader has to account for. The same guard, for
+        the same reason, as the one over `form-checks` in OtForm.
       */}
+      {(mayTickNoBreak || mayTickFlatDaily) && (
       <div className="checks">
-        {/* Read-only: it reports what the two times above add up to. See `set`. */}
-        <label className="check derived">
-          <input type="checkbox" checked={form.endsNextDay} disabled readOnly />
-          ข้ามคืน <span className="check-note">(สิ้นสุดวันถัดไป)</span>
-        </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={form.noBreakTaken}
-            onChange={(ev) => set({ noBreakTaken: ev.target.checked })}
-          />
-          ไม่พักเที่ยง <span className="check-note">(ไม่หักเวลาพัก)</span>
-        </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={form.flatDaily}
-            onChange={(ev) => set({ flatDaily: ev.target.checked })}
-          />
-          เหมารายวัน <span className="check-note">(นับ 8 ชม. ต่อวัน)</span>
-        </label>
+        {/* ONLY ON A DAY THE WHOLE COMPANY HAS OFF — เสาร์อาทิตย์ หรือวันหยุด
+            ตามประกาศ — and deliberately NOT on a สวัสดิการวันเกิด, which is a
+            holiday for one person. HR, 2026-09-08. */}
+        {mayTickNoBreak && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={form.noBreakTaken}
+              onChange={(ev) => set({ noBreakTaken: ev.target.checked })}
+            />
+            ไม่พักเที่ยง <span className="check-note">(ไม่หักเวลาพัก)</span>
+          </label>
+        )}
+        {/* ONLY ฝ่ายบุคคล AND ผู้ดูแลระบบ, AND ONLY ON A เจ้าหน้าที่บริการ ROW.
+            The ตำแหน่ง half is HR’s rule of 2026-09-08 — they are the people
+            sold by the day — and the บทบาท half is theirs of 2026-09-10; both
+            are read out at `mayTickFlatDaily` above, with why an already-ticked
+            box is drawn whatever either says. */}
+        {mayTickFlatDaily && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={form.flatDaily}
+              onChange={(ev) => set({ flatDaily: ev.target.checked })}
+            />
+            เหมารายวัน <span className="check-note">(นับ 8 ชม. ต่อวัน)</span>
+          </label>
+        )}
         {/* A วันเกิด TICK STOOD HERE AND IS GONE — 2026-09-08. It was offered to
             ฝ่ายบุคคล and withheld from everybody else (`mayCorrect`), the mirror
             of the rule OtForm drew when it withheld the same box from บันทึก OT
@@ -3044,22 +3250,39 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
             (`publicEmployee` keeps `birthDate` off the roster they hold).
             Nobody is asked now. The date decides, and moving the date is what
             moves the answer — see the note in PATCH /api/entries/[id]. */}
-        {/* Once, for the box, rather than beside the mark: a disabled control
-            with no reason given is the thing somebody presses twice and then
-            reports as broken. The second sentence answers the question the tick
-            raises straight away — "did ticking that just move the times?" —
-            because on the filing form it would have. */}
-        <div className="checks-note">
-          “ข้ามคืน” คำนวณจากเวลาที่กรอก จึงติ๊กเองไม่ได้
-          {form.flatDaily && (
-            <>
-              {' · '}
-              ติ๊กแล้วเวลาที่กรอกไว้ไม่ถูกแก้ — เป็นเวลาที่พิมพ์บนใบและเซ็นไปแล้ว
-              {form.flatDaily && ` · แก้ “เวลาเริ่ม” แล้วเวลาสิ้นสุดจะบวกให้เอง ${FLAT_DAY_SPAN_MINUTES / 60} ชม.`}
-            </>
-          )}
-        </div>
+        {/* WHAT NOTHING ELSE ON THE SCREEN SAYS — AND ONLY THAT, SINCE
+            2026-09-10.
+
+            The line opened with *เหมารายวันล็อกเวลาไว้ที่ 08:00–17:00 น. (อยู่ที่
+            ทำงาน 9 ชม. รวมพักเที่ยง 1 ชม.) แก้เวลาเองไม่ได้* until HR asked for
+            it to go, and every clause of it was already on this panel: the lock
+            is said under the two boxes it greys, a line above and left-aligned
+            with เวลาเริ่ม; the eight hours are the green `FLAT_DAILY_SAY` Alert
+            beside the figure it explains; nine-on-the-clock against
+            eight-on-the-form is that Alert and the preview's own arithmetic.
+            The filing form deleted the same paragraph on 2026-09-09 for the
+            same reason (see the note over `lock-note` in app/styles.css) — this
+            panel is two days behind it, as it was on the tick rules.
+
+            WHAT IS LEFT IS THE ONE CLAUSE WITH NOWHERE ELSE TO BE. The row
+            behind this pop-up still reads 08:00–20:00 while the boxes above
+            read 08:00–17:00, and a reviewer who cannot see why would report the
+            panel as showing the wrong request. It is drawn on a row filed
+            before the lock and on one the reviewer has just ticked, which are
+            the same case: times the stored entry does not agree with yet.
+
+            SO THE CONDITION IS `relockedTimes` AND NOT `form.flatDaily`. It was
+            the flag while the line led with the lock, which is true of every
+            flat row; what is left is true of some of them, and a grey line
+            saying nothing under a row where the times already agree is the
+            paragraph again in miniature. */}
+        {relockedTimes && (
+          <div className="checks-note">
+            {`ใบนี้บันทึกไว้ ${entry.startTime}–${entry.endTime} น. ถ้ากดบันทึกจะแก้เวลาให้ด้วย`}
+          </div>
+        )}
       </div>
+      )}
 
       {moved && (
         <div className="edit-preview">
@@ -3166,6 +3389,50 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
  * `title` is the same short sentence, so a mouse gets the words back; the whole
  * of it — head and body — is in the pop-up the row itself opens.
  */
+/**
+ * A name that may take a second line, but only at the space before the นามสกุล.
+ *
+ * WHY IT IS NOT LEFT TO THE BROWSER. `white-space: normal` alone stops the
+ * overlap this cell was reported for on 2026-09-10, and then breaks the name
+ * in the wrong place: Chrome fills the line greedily and Thai carries a break
+ * opportunity between EVERY pair of words, spaces or no spaces — so
+ * "นางสาวพรพรรณ บุญเรือง" came out as "นางสาวพรพรรณ บุญ" over "เรือง", with the
+ * surname cut in half and the space left sitting in the middle of line one.
+ * Measured in the built app at 1440: six of the six wrapped names broke inside
+ * the surname, not one at the space.
+ *
+ * NEITHER `word-break: keep-all` NOR `line-break: strict` MOVES IT. Both were
+ * tried against the same rows in the same run; the break points did not
+ * change by one character. They speak for CJK, and Thai is not in the classes
+ * they name — a CSS-only answer to this does not exist today.
+ *
+ * SO THE TOKENS ARE MADE UNBREAKABLE AND THE SPACES ARE LEFT ALONE. Each word
+ * goes in `.nb`, which is the class the employee code beside it already uses
+ * for the same reason, and the plain spaces between them are the only break
+ * opportunities left in the cell. A name with two spaces — a นามสกุล like
+ * "ณ อยุธยา" — therefore keeps both of them as places it may break.
+ *
+ * THE ONE THING THIS CAN STILL DO IS OVERFLOW, and the width is chosen so it
+ * cannot: no token on the roster is wider than the cell (the widest is
+ * "นางสาวฟ้าประทาน", 115.4px against 144 at the table's floor). A single word
+ * a quarter longer than any name on this roster today would paint over วันที่
+ * again — see the block in app/styles.css, which is where that budget is kept.
+ */
+function WhoName({ name }) {
+  const words = String(name || '').split(' ').filter(Boolean);
+  /* THE SPACES ARE OUTSIDE THE SPANS, which is the whole mechanism. A space
+     inside an `.nb` span is a space that may not be broken at, and the cell
+     would be back to one unbreakable line. They are plain text nodes of the
+     `.who-name` block, whose `white-space` is `normal`.
+
+     The index is the only key these have, and it is a stable one: the array is
+     rebuilt whenever the name changes, and is never sorted or spliced. */
+  return words.flatMap((word, i) => [
+    ...(i ? [' '] : []),
+    <span key={i} className="nb">{word}</span>,
+  ]);
+}
+
 function WatchMark({ note }) {
   return (
     <span className="act-none" title={note} aria-label={note} role="note">—</span>

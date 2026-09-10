@@ -194,6 +194,25 @@ export function contextFor(calendar, session, employee = null) {
   return {
     ...calendar,
     ...resolved,
+    /**
+     * TODAY'S RULES, KEPT UNDER A NAME THAT SAYS SO — because the line above
+     * takes them off the object.
+     *
+     * `...resolved` overwrites `policy` with the version in force on the work
+     * DATE, which is right for the engine and wrong for every question that is
+     * about now. Until 2026-09-09 the live policy simply stopped existing at
+     * this line and a caller wanting it had `ctx.policy`, which had quietly
+     * become something else — see the note over `submissionWindowRefusal` in
+     * app/api/entries/route.js, which asserted it was live and was reading the
+     * versioned one.
+     *
+     * Two questions read this rather than `policy`: whether a request may be
+     * filed for that date at all, and which desk it lands on
+     * (`proxySkipsOwnApproval`). Neither is arithmetic. A หัวหน้า filing today
+     * for last Friday must be routed by the rule HR has set today, not by the
+     * one that was recorded before they changed their mind.
+     */
+    livePolicy: calendar.policy,
     dayTypes: resolveDayTypes(sessionDates(session), {
       isHoliday: resolved.isHoliday,
       birthDate: employee?.birthDate || null,
@@ -236,6 +255,8 @@ export async function loadContext(workDates = [], { employee = null } = {}) {
   return {
     ...calendar,
     ...resolved,
+    /** Today's rules, under a name that says so — see `contextFor` above. */
+    livePolicy: calendar.policy,
     dayTypes: resolveDayTypes(dates, {
       isHoliday: resolved.isHoliday,
       birthDate: employee?.birthDate || null,

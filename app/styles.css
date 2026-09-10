@@ -1417,8 +1417,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sidebar.collapsed .nav-group-label {
   display: none;
 }
-.sidebar.collapsed .nav button,
-.sidebar.collapsed .nav-parent {
+.sidebar.collapsed .nav button {
   justify-content: center;
   width: 44px; height: 44px;
   padding: 0;
@@ -1426,16 +1425,7 @@ html { -webkit-tap-highlight-color: transparent; }
   border-radius: 10px;
   position: relative;
 }
-.sidebar.collapsed .nav .label,
-.sidebar.collapsed .nav-parent .chev {
-  display: none;
-}
-.sidebar.collapsed .nav-items.sub {
-  margin-left: 0;
-  padding-left: 0;
-  border-left: none;
-}
-.sidebar.collapsed .nav-items.sub button.active::before {
+.sidebar.collapsed .nav .label {
   display: none;
 }
 .sidebar.collapsed .nav button.active {
@@ -1445,9 +1435,6 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 .sidebar.collapsed .nav button.active .icon {
   opacity: 1;
-}
-.sidebar.collapsed .nav-parent.current {
-  box-shadow: 0 0 0 2px var(--green-lift);
 }
 .sidebar.collapsed .nav span[class~="count"] {
   position: absolute;
@@ -1488,7 +1475,6 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 
 .sidebar.collapsed .nav button:hover .nav-tip,
-.sidebar.collapsed .nav-parent:hover .nav-tip,
 .sidebar.collapsed .whoami:hover .nav-tip {
   display: flex;
   align-items: center;
@@ -1510,7 +1496,6 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 
 .sidebar.collapsed .nav button:hover .nav-tip::before,
-.sidebar.collapsed .nav-parent:hover .nav-tip::before,
 .sidebar.collapsed .whoami:hover .nav-tip::before {
   content: '';
   position: absolute;
@@ -1558,57 +1543,31 @@ html { -webkit-tap-highlight-color: transparent; }
   color: var(--on-panel-2);
 }
 
-/* ── OT ส่วนตัว, the one row that folds ────────────────────────────────────
+/* ── THE FOLD THAT STOOD HERE, AND WHAT ITS RULES WERE FOR ───────────────
 
-   It is shaped exactly like a nav row and is not one: `.nav button` above gives
-   it its box, its type and its hover, and everything here is about the two ways
-   it must differ from the rows it sits over.
+   `.nav-parent` AND `.nav-items.sub` WERE REMOVED ON 2026-09-10, with the row
+   they dressed. One block of the sidebar — ข้อมูลส่วนตัว — collapsed behind a
+   single row reading OT ส่วนตัว, and this is what the two rules said:
 
-   IT NEVER TAKES `.active`. That mark means "this is the page you are on", and
-   pressing this opens a list instead of a screen. When the fold is SHUT over
-   the current page it takes `.current` — a white overlay wash and a green bar
-   down its left edge — which says the page is behind this row without claiming
-   to be it. `--green-lift` and not `--green`: this is a 2px marker on a
-   near-black ground rather than a fill with white type on it, and the lifted
-   green clears 3:1 against the sidebar in both themes where the fill does not.
+     `.nav-parent` was shaped exactly like a nav row and was not one. It never
+     took `.active`, because that mark means *this is the page you are on* and
+     pressing it opened a list; shut over the open screen it took `.current`
+     instead — a wash and a 2px `--green-lift` bar down its left edge.
 
-   The bar is an inset shadow rather than a `::before`, so it follows the
-   button's own `border-radius` and needs no second box to position. */
-.nav-parent .chev {
-  flex: none; color: var(--on-panel-2); font-size: 17px; line-height: 1;
-  transition: transform .16s;
-}
-.nav-parent[aria-expanded='true'] .chev { transform: rotate(90deg); }
-.nav-parent.current {
-  background: var(--on-panel-active); color: var(--on-panel);
-  box-shadow: inset 2px 0 0 var(--green-lift);
-}
-.nav-parent.current .chev { color: var(--on-panel); }
+     `.nav-items.sub` indented its two rows against a guide line, since an
+     indent alone stops reading as containment the moment the parent is gone,
+     and the open row coloured its own segment of that line.
 
-/* ── the rows inside the fold ──────────────────────────────────────────────
+   THE HEADING IS WHAT IS LEFT, and it was always the other half: `.nav-group`
+   and `.nav-group-label` above draw ข้อมูลส่วนตัว over a flat list now, the
+   way การอนุมัติ & รายงาน and การตั้งค่าระบบ always have been.
 
-   INDENTED AGAINST A GUIDE LINE, because indentation alone stops reading as
-   containment the moment the fold is shut and the parent is gone: what is left
-   is two rows that start 15px further right than the ones above them, for no
-   visible reason. The line is the reason, and it is the same `--on-panel-line`
-   as the one rule in the sidebar's foot.
-
-   AND THE ACTIVE ROW COLOURS ITS OWN SEGMENT OF THAT LINE. The row itself is
-   the ordinary green pill — one mark for "the page you are on", everywhere in
-   this app — but the pill sits inside the indent, so at a glance the fold shows
-   which of its two children is open only by reading the labels. The segment is
-   the glance. It is drawn OUTSIDE the pill, on the sidebar's own ground, which
-   is why it can be green next to a green fill and still be seen. */
+   `.current` IS STILL A MARK IN THIS APP — the phone bar wears it on a slot
+   holding the open screen behind a sheet (see `.mobile-nav button.current`),
+   which is the same reasoning: a control that opens a list may not claim to
+   be a page. This is the sidebar giving up the only row it had of that kind,
+   not the app giving up the distinction. */
 .nav-items { display: flex; flex-direction: column; gap: 2px; }
-.nav-items.sub {
-  margin-left: 15px; padding-left: 10px;
-  border-left: 1px solid var(--on-panel-line);
-}
-.nav-items.sub button { position: relative; }
-.nav-items.sub button.active::before {
-  content: ''; position: absolute; left: -11px; top: 7px; bottom: 7px;
-  width: 2px; border-radius: 1px; background: var(--green-lift);
-}
 
 /* Count badges are alarms, not decoration — one colour, used only here.
    IT IS AMBER, AND IT WAS `--danger` UNTIL 2026-08-31. Asked for on the
@@ -5165,6 +5124,19 @@ td > .approver-line { margin-top: 5px; }
    which speaks for the whole card. */
 .field-note { font: 400 12.5px/1.4 var(--sans); color: var(--muted); }
 .field-note.error { color: var(--danger-ink); }
+
+/* ONE LINE, UNDER THE ROW RATHER THAN INSIDE A COLUMN OF IT — 2026-09-09.
+   `ล็อก 08:00–17:00 น. แก้เวลาไม่ได้` on บันทึก OT, which is the only thing
+   wearing this class. It lived inside the เวลาสิ้นสุด field until then and wrapped
+   after `แก้`, because `.field.time` is 130px — a width for five characters and
+   a clock glyph. A sentence does not fit in a column sized for a time, so it
+   comes out of the column instead of the column being widened for it.
+
+   RIGHT-ALIGNED so it still lands under the two boxes it is about: the row is
+   วันที่เริ่ม + เวลาเริ่ม + เวลาสิ้นสุด, and a grey line at the LEFT edge under that
+   row reads as a note about the date. `nowrap` is the promise the class makes;
+   at the narrowest phone width the sentence is still shorter than the row. */
+.field-note.lock-note { margin-top: 7px; text-align: right; white-space: nowrap; }
 /* `.field-note.rule-note` STOOD HERE FOR PART OF 2026-09-01 and is deleted
    rather than left, because a class nothing wears is a rule the next person has
    to check before touching anything near it.
@@ -8232,18 +8204,98 @@ tfoot tr.grand td {
 .queue-table tbody tr.row-open:focus-visible { outline-offset: -2px; }
 
 /* A row is as tall as its tallest cell, so these are what kept every row two
-   lines taller than its content. */
-.queue-table td.who-col .who-name,
+   lines taller than its content.
+
+   IT READ ".queue-table td.who-col .who-name," ON ITS FIRST LINE UNTIL
+   2026-09-10 — see the rule below for what taking the name out of this list
+   was for. */
 .queue-table td.when-col,
 .queue-table td.span-col { white-space: nowrap; }
+
+/* ── THE NAME MAY TAKE A SECOND LINE, AND UNTIL 2026-09-10 IT MAY NOT ─────
+   Reported as "ชื่อของพนักงานที่ยาว ๆ มันจะทับกับวันที่" with the side bar open,
+   and it is exactly that: a `nowrap` cell DOES NOT CLIP. It paints its text
+   over the column beside it, so a long surname was drawn across 21/08/2569 and
+   the two read as one line of nonsense.
+
+   WHAT MOVED IS THE ROSTER, NOT THE COLUMN. 168px was measured against
+   "จรรยา ประสิทธิ์เกษมกัน" — 21 characters, NO คำนำหน้า, because the demo roster
+   carried none. The real one arrived on 2026-09-08 (164 people) with the title
+   joined to the given name — its own จรรยา is "นางสาวจรรยา ประสิทธิ์เกษกัน" and
+   its longest is "นางสาวจุฬาลักษณ์ ทรัพย์ประเสริฐ", 31 characters. Every name on
+   the queue got six or seven characters longer on that day and nothing about
+   the column moved with them. Measured in the running app on 2026-09-10
+   against the live queue: 87 of 313 rows overflowed their cell at 1920, 116 at
+   1440 and 132 at 1280 — the worst by 42px, which is three characters of
+   somebody's surname sitting on the date.
+
+   NOT SOLVED BY WIDENING THE COLUMN. Measured in the cell's own face on
+   2026-09-10, the longest name on the roster — "นางสาวจุฬาลักษณ์ ทรัพย์ประเสริฐ"
+   — is 209.6px of text, so a column that held it on one line would be 234 with
+   this cell's two 12px gutters: 66 more than it has. ฝ่ายบุคคล's twelve columns
+   have 62px of slack on a 1178 card at 1920 and 8px on a 1124 card at 1440
+   (the figures are in the block above), so buying that one line would put the
+   table into sideways scrolling on every laptop in the office, on every row,
+   including the majority that are short enough to fit as they are.
+
+   NOT SOLVED BY AN ELLIPSIS EITHER: the name is the one thing on the row that
+   says WHOSE hours these are, and 48 of the 164 names on the roster are wider
+   than this cell — a cut name is a row that has to be opened before it can be
+   read, on nearly a third of the queue.
+
+   WHERE IT BREAKS IS THE SPACE, AND THIS RULE IS ONLY HALF OF WHY. Left to
+   itself the browser breaks a Thai name in the wrong place: Chrome fills the
+   line greedily and Thai carries a break opportunity between every pair of
+   words, space or no space, so "นางสาวพรพรรณ บุญเรือง" came out as
+   "นางสาวพรพรรณ บุญ" over "เรือง" — the surname cut in half and the space idling
+   at the end of line one. Walked in the built app at 1440: six of the six
+   wrapped names broke inside the นามสกุล and not one at the space, and neither
+   `word-break: keep-all` nor `line-break: strict` moved a single break by a
+   character (both tried on the same rows in the same run — they speak for CJK,
+   and Thai is not in the classes they name). The other half is `WhoName` in
+   ApprovalQueue.jsx, which puts each word in `.nb` and leaves the spaces
+   between them as plain text: the tokens cannot break, the spaces can, and
+   that is the only break this cell has.
+
+   WHICH LEAVES ONE WAY FOR IT TO OVERFLOW AGAIN — a single word wider than the
+   cell — and the width is what forbids it: NOT ONE TOKEN ON THE ROSTER IS
+   WIDER THAN THIS CELL. The widest is "นางสาวฟ้าประทาน" at 115.4px against the
+   145.2 of text the column has at 1440 with the side bar open, and 144 at the
+   table's floor. So nothing here asks a Thai word to be broken in half — that
+   was the complaint `nowrap` was reached for in the first place — and a name
+   would have to arrive a quarter longer than any on the roster today before
+   this cell could paint over วันที่ again.
+
+   AND THE SECOND LINE IS VERY NEARLY FREE, which is the part worth measuring
+   rather than assuming. A row is as tall as its tallest cell, and since
+   2026-09-09 the วันที่ cell carries three lines of its own. Walked at 1440
+   against the live queue, with the rule on and then off: 116 of 313 names take
+   a second line, and the whole table grows 27675.9px → 27859.8, which is 184px
+   over 313 rows. The median row is 87.1px tall either way and the tallest is
+   187.1 either way.
+
+   THE PHONE ALREADY DREW IT THIS WAY. The 860px block set `white-space: normal`
+   on this element from the day the rows became cards; that declaration is now
+   the same as this one and has been taken out of it, so the two can never
+   disagree. */
+.queue-table td.who-col .who-name { white-space: normal; }
 
 /* …except the department, which is the one genuinely prose-shaped thing in the
    employee cell and the only part of it that may take a second line. */
 .queue-table td.who-col .cell-sub { white-space: normal; }
 
-/* Measured against the longest name on the roster (จรรยา ประสิทธิ์เกษมกัน,
-   160px with its padding) rather than against the names that happen to be in
-   the queue today. */
+/* IT READ "Measured against the longest name on the roster (จรรยา
+   ประสิทธิ์เกษมกัน, 160px with its padding) rather than against the names that
+   happen to be in the queue today" UNTIL 2026-09-10 — and that was true of the
+   roster it was measured on. The live one prefixes every name with a คำนำหน้า
+   and its longest is 31 characters, which no width this table can afford will
+   hold on one line.
+
+   SO IT IS NOT SIZED TO A WHOLE NAME ANY MORE. It is sized so the WIDEST
+   SINGLE TOKEN never has to break — "นางสาวฟ้าประทาน", 115.4px — and the name
+   wraps at its space instead (see `.queue-table td.who-col .who-name`). 168px
+   leaves 144 of text after the cell's two 12px gutters, which holds that token
+   at the table's floor with 28px over, and more at every width above it. */
 th.who-col { width: 168px; }
 
 /* IT IS NO LONGER THE DATE THAT SIZES THIS COLUMN — it read "16 ส.ค. 69 is
@@ -8934,6 +8986,32 @@ table.mini tbody tr:hover { background: none; }
   background: var(--green-tint);
   animation: otfade .16s ease both;
 }
+/* THE TWO TIME BOXES SIT ON ONE LINE, WHATEVER HANGS UNDER THEM.
+
+   `.row` is `align-items: flex-end` everywhere else in the app, which is right
+   where a row pairs a field with a button: the button lines up with the box, not
+   with the label above it. Here both items are FIELDS, and on a เหมารายวัน row a
+   grey line — *ล็อก 08:00–17:00 น. แก้เวลาไม่ได้* — used to hang inside the
+   เวลาสิ้นสุด one. Aligned by their bottoms, that line pushed เวลาสิ้นสุด and its
+   label a line higher than เวลาเริ่ม, so the panel read as two staggered questions
+   rather than one pair of times: reported from the screen on 2026-09-10.
+
+   THE LINE CAME OUT OF THE COLUMN LATER THE SAME DAY (the rule below), so today
+   the two fields are the same shape and this changes nothing to look at. It is
+   kept because it is the true statement about a row of two FIELDS, and it is what
+   makes the next note under one of them a note rather than a stagger. */
+.quick-edit .row { align-items: flex-start; }
+/* AND THE NOTE IS A LINE OF THE ROW, NOT OF A COLUMN — 2026-09-10, asked for
+   from the screen: *ให้มันตรงกับช่องเวลาเริ่ม*. It is about BOTH boxes — one tick
+   shut the pair — so it takes the whole width and starts where เวลาเริ่ม starts,
+   rather than beginning halfway across the panel under the box it is not about.
+   The row's own 12px `gap` is the space above it; no margin of its own.
+
+   The filing form took the same sentence out of the same column on 2026-09-09
+   and landed it on the RIGHT (`.field-note.lock-note`) — one rule, two answers:
+   the line sits under the boxes it is about, and that row carries วันที่เริ่ม
+   ahead of the two times while this one carries nothing else at all. */
+.quick-edit .row > .field-note { flex: 1 1 100%; }
 /* A strip under the two time fields, not two controls loose in the form. Both
    switches are about the times above them, and the fill says so — one step off
    the panel's own `--green-tint`, which is enough to group without drawing a
@@ -8950,21 +9028,26 @@ table.mini tbody tr:hover { background: none; }
 }
 /* `flex-wrap` because a label and its bracket are two flex items, not one run
    of text — an anonymous item cannot break across a line boundary, so without
-   this the longest of the four (วันเกิด, whose bracket names the benefit) runs
-   out of the strip on a phone instead of folding under itself. */
+   this the longer of the two (เหมารายวัน, whose bracket names the eight hours)
+   runs out of the strip on a phone instead of folding under itself. */
 .quick-edit .checks .check { font: 400 14px/1.4 var(--sans); color: var(--ink-2); flex-wrap: wrap; }
 /* What the switch DOES, in the filing form's own bracket convention. A step
    down and a step quieter, so the label is still the thing being read. */
 .quick-edit .check-note { font: 400 11.5px/1.4 var(--sans); color: var(--muted-2); }
-/* ข้ามคืน reports the two times rather than asking about them, so it is drawn as
-   a read-out: the mark stays (it is the fastest way to see which way round the
-   session runs) and the label stops looking pressable. Not `opacity` — a faded
-   control reads as one that is temporarily off, and this one is never on. */
-.quick-edit .check.derived, .quick-edit .checks .check.derived { color: var(--muted); cursor: default; }
-.quick-edit .check.derived input { cursor: default; }
-/* Its own line, under both. Said once for the box rather than beside the mark:
-   a disabled control with no reason given is the one somebody presses twice and
-   then reports as broken. */
+/* `.check.derived` STOOD HERE UNTIL 2026-09-10 and is deleted with the box it
+   drew. It greyed the ข้ามคืน read-out — the one tick in this strip that
+   reported the two times instead of asking about them — and HR took that box
+   off the panel; a rule for a class no component writes is the shape somebody
+   re-uses for a control it was never reasoned about. `endsNextDay` is still
+   derived and still saved; it is simply not drawn here any more. */
+/* Its own line, under the ticks — and since 2026-09-10 it carries ONE sentence,
+   drawn on some flat rows and not all of them: *ใบนี้บันทึกไว้ 08:00–20:00 น.
+   ถ้ากดบันทึกจะแก้เวลาให้ด้วย*. The paragraph that opened it said the lock, the
+   nine-hour span and the eight on the form over again, all three of which are
+   already elsewhere on this panel; HR had it removed, as they had the same
+   paragraph removed from the filing form on 2026-09-09. `flex-basis: 100%` is
+   what keeps it on a line of its own under the two ticks rather than beside
+   them. */
 .quick-edit .checks-note {
   flex: 1 1 100%;
   font: 400 11.5px/1.45 var(--sans); color: var(--muted-2);
@@ -10161,8 +10244,9 @@ table.mini tbody tr:hover { background: none; }
   /* ── AND THE SLOT THAT HOLDS THE OPEN SCREEN WITHOUT BEING IT ────────────
      `.active` means *this is the page you are on*; a slot with a menu behind it
      is not a page, and pressing it opens a list. It takes `.current`, the same
-     mark and the same reasoning as the sidebar's OT ส่วนตัว fold — see
-     `.nav-parent.current`.
+     mark and the same reasoning as the sidebar's OT ส่วนตัว fold carried until
+     2026-09-10 — see the note where `.nav-parent` was, above. This bar is
+     where the mark still lives.
 
      THE SAME GREEN, DELIBERATELY, and the caret is what tells the two apart. A
      dimmer green for "the page is behind this" would be a third state to learn
@@ -11383,7 +11467,9 @@ table.mini tbody tr:hover { background: none; }
   .queue-table td.check input { width: 22px; height: 22px; }
 
   .queue-table td.who-col { grid-area: who; }
-  .queue-table td.who-col .who-name { font: 600 15px/1.35 var(--sans); white-space: normal; }
+  /* `white-space` is NOT restated here: the wide rule has said `normal` since
+     2026-09-10, and a second copy is one more place for the two to disagree. */
+  .queue-table td.who-col .who-name { font: 600 15px/1.35 var(--sans); }
 
   .queue-table td.when-col { grid-area: when; white-space: nowrap; font: 400 13px/1.45 var(--sans); }
   /* "อา." beside the date rather than under it. As a block it took a whole line

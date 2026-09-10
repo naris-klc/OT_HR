@@ -14,15 +14,21 @@
 # is where the fix belongs; the sentence claiming it could not happen belongs
 # here. See the header of `test/adminApproval.test.js`, which had it right first.
 #
-# AND IT CAME STRAIGHT BACK, from the other side, on the evening of the same
-# day. `test/manualScreen.test.js` arrived with คู่มือหน้าเดียว reading source
-# through a plain `readFileSync`, and its assertions spell `\n`: five of them
-# failed on the CRLF checkout — `SECTIONS` parsed as nought sections, so the
-# file was checking nothing — while passing on the LF one. That is the mirror
-# of the paragraph above, and it means the rule is not closed by having been
-# applied once: a test written after the fix is a test written before it.
-# Every test that greps source normalises on the day it is written, or it
-# reports its own checkout. Fixed in that file’s own `read` on 2026-09-10.
+# AND IT CAME STRAIGHT BACK THE SAME DAY, from the other side — a NINTH file,
+# written after the fix and missing it. `test/manualScreen.test.js` matches
+# multi-line regexes against the JSX and `app/print.css`, and it went green on
+# the tree it was written on, because the first run happened before that tree
+# had been checked out again. Five assertions then missed on the next CRLF
+# checkout, against a tree with nothing wrong in it: `SECTION_RE` parsed nought
+# sections — so the file was checking nothing — and SAID so, which is the only
+# reason this was noticed rather than passing vacuously.
+#
+# So the rule is not closed by having been applied once: a test written after
+# the fix is a test written before it, and whichever shape the file is in when
+# a suite is FIRST run is the shape it silently depends on. The rule is not
+# "normalise when you notice" but "normalise in the `read` helper, before
+# anything reads a character" — which is where that file's own `read` got it
+# on 2026-09-10.
 #
 # It is fatal for a shell script: `#!/bin/sh\r` is read by the kernel as an
 # interpreter literally named "sh\r", and the whole file fails with

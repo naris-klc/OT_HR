@@ -9,15 +9,15 @@ import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { capChips, capFigure } from '@/lib/caps.js';
 import { savePdf } from '@/lib/printFile.js';
 import {
-  ENTERED_FIELDS, filingLead, filingOf, isBirthdayWelfare, isHrVerifiedBirthday, isProxyFiled,
-  isSystemFiled, isSystemLog, lastAction, sameSession, sameValue,
+  ENTERED_FIELDS, filingLead, filingOf, idOf, isBirthdayWelfare, isHrVerifiedBirthday,
+  isProxyFiled, isSystemFiled, isSystemLog, lastAction, sameSession, sameValue,
 } from '@/lib/entries.js';
 import { highlightParts, searchPeople } from '@/lib/personSearch.js';
 import {
   SCAN_MATCH, dayPunchLine, scanCheckInTime, scanBadgeLabel, scanMismatchDetail,
   scanMismatchNote,
 } from '@/lib/scanMatch.js';
-import { approvalSteps, approverLine } from '@/lib/approverLine.js';
+import { approvalSteps, approverLine, skippedOwnApproval } from '@/lib/approverLine.js';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
 /* `PickOne` opens the panel the three pickers already share — see the note at
@@ -2037,15 +2037,37 @@ export function SignatureFacts({ entry: e }) {
         />
         <Fact
           k="หัวหน้างานอนุมัติ"
-          v={mgr?.byName || (e.status === 'pending_hr' && !e.managerDecision?.at
+          /* `skippedOwnApproval` AND NOT `pending_hr && !managerDecision?.at`,
+             which was true of three different rows and said the words of one —
+             a request from a แผนก ฝ่ายบุคคล heads skipped nothing and was being
+             told it had. Nothing filed since 2026-09-09 skips at all; the rows
+             that did are still here and still say so. See lib/approverLine.js. */
+          v={mgr?.byName || (skippedOwnApproval(e) && !e.managerDecision?.at
             ? 'ข้ามขั้นหัวหน้า — ผู้บันทึกคือผู้อนุมัติเอง'
             : 'ยังไม่ผ่านหัวหน้างาน')}
           /* Who signed, and whose authority they signed under. Left as one
              name, a reader cannot tell an approval made by the department's own
              หัวหน้า from one made by a stand-in — and the second is the one with
-             a window on it that either covered the day or did not. */
+             a window on it that either covered the day or did not.
+
+             AND WHETHER THAT NAME IS THE SAME PERSON AS THE ONE IN THE BOX
+             ABOVE. This is what pays for the skip being gone: since 2026-09-09
+             a หัวหน้า who files for their team presses อนุมัติ on their own
+             filing, and the trail that comes out of it — ยื่นคำขอ →
+             หัวหน้างานอนุมัติ → ฝ่ายบุคคลยืนยัน — would otherwise read exactly
+             like two independent people agreeing. It is one person, the entry
+             knows it (`filedBy` and `managerDecision.by`), and so the page says
+             it rather than leaving a reader to compare two names and notice. */
           sub={[
             mgr?.onBehalfOfName ? `ทำแทน ${mgr.onBehalfOfName}` : null,
+            /* THE IDS AND NOT THE TWO NAMES. A roster of 164 people holds
+               repeated names, and this claim — one person stood at both ends of
+               the row — is the kind that must not rest on a string comparison.
+               `managerDecision.by` is the record of who pressed the button;
+               `idOf` reads it whether it arrived as an id or as a document. */
+            !mgr?.onBehalfOfName && mgr && isProxyFiled(e)
+              && idOf(e.managerDecision?.by) === idOf(e.filedBy)
+              ? 'ผู้บันทึกแทนอนุมัติเอง' : null,
             mgr ? stamp(mgr.at) : undefined,
           ].filter(Boolean).join(' · ') || undefined}
         />
