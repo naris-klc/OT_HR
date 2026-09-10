@@ -164,10 +164,31 @@ function watchingNote(entry, stage, user) {
       };
   }
   return {
-    short: 'ยังไม่ถึงขั้นยืนยัน — รอหัวหน้าแผนกเซ็นก่อน',
+    short: 'ยังไม่ถึงขั้นของคุณ — รอหัวหน้าแผนกเซ็นก่อน',
     head: 'ใบนี้ยังอยู่ที่ขั้นหัวหน้าแผนก',
-    body: 'เปิดดูได้ แต่ยังยืนยันหรือไม่อนุมัติจากที่นี่ไม่ได้ เมื่อหัวหน้าเซ็นแล้ว ใบจะเข้าคิวนี้ให้ยืนยันเอง',
+    body: 'เปิดดูได้ แต่ยังอนุมัติหรือไม่อนุมัติจากที่นี่ไม่ได้ เมื่อหัวหน้าเซ็นแล้ว ใบจะเข้าคิวนี้ให้อนุมัติเอง',
   };
+}
+
+/**
+ * WHICH OF THE WATCHED ROWS IS STILL ON ITS WAY HERE — the รอหัวหน้า row on
+ * ฝ่ายบุคคล's queue, and it is the third branch of `watchingNote` said as a
+ * predicate rather than as a sentence.
+ *
+ * The other two watched rows sit at THIS queue's own step and are refused to
+ * this reader by the routing matrix; no signature anywhere turns them into
+ * their decision. This one is refused only by the clock: it is one หัวหน้า's
+ * press away from being a row with buttons on it, on this very screen.
+ *
+ * Written from beside `watchingNote`, off the same `status === stage`
+ * comparison, so the cell that draws the difference and the sentence that
+ * explains it cannot come to disagree about which row is which. And written as
+ * a comparison rather than as `pending_mgr`: this component runs at both steps,
+ * and a rule naming a status would be right on one screen and quietly wrong on
+ * the other.
+ */
+function awaitingEarlierStep(entry, stage) {
+  return entry?.status !== stage;
 }
 
 /**
@@ -188,7 +209,33 @@ export default function ApprovalQueue({
   user, stage, onChanged, onOpenPolicy, delegatedOnly = false, unsignedOnly = false,
 }) {
   const isHr = stage === 'pending_hr';
-  const verb = isHr ? 'ยืนยัน' : 'อนุมัติ';
+  /**
+   * ── ONE VERB ON BOTH QUEUES, AND IT IS อนุมัติ — 2026-09-11 ────────────────
+   *
+   * It read `isHr ? 'ยืนยัน' : 'อนุมัติ'` until then, and the split was not an
+   * accident: ฝ่ายบุคคล's is the SECOND signature on a ใบ a หัวหน้า has already
+   * approved, and calling it ยืนยัน said which of the two rungs the reader was
+   * standing on without naming it. Asked for in one line — *เปลี่ยน wording ของ
+   * ข้อความ และปุ่ม ในบริบท อนุมัติ ot ทั้งหมด จากคำว่า "ยืนยัน" เป็น "อนุมัติ"*.
+   *
+   * WHAT THE SPLIT COST is that one act had two names. A row read `รอ HR` on
+   * this screen and `รอการยืนยัน` on the printed slip, the refusal sentence had
+   * to be written twice, and every label built from `verb` needed a second
+   * reading before it shipped — `"ยืนยันการ" + verb` is beautiful for a
+   * หัวหน้า and reads ยืนยันการยืนยัน for ฝ่ายบุคคล, which is why `pileLabel`
+   * below was a table per role and is not one any more.
+   *
+   * `isHr` IS STILL LIVE, and still worth having: it decides which rows this
+   * queue asks for, which filters it draws, and which OBJECT the buttons name —
+   * อนุมัติใบ OT in the pop-up, where the หัวหน้า's bare อนุมัติ would be the
+   * app repeating the employee's name back at a reader already looking at it.
+   * What it no longer decides is the verb.
+   *
+   * ยืนยัน HAS NOT LEFT THE SCREEN, and must not: every confirm dialog in this
+   * app is a ยืนยัน — ยืนยันการอนุมัติ, ยืนยันไม่อนุมัติ — and that is the word
+   * doing its ordinary job of asking "are you sure", not the name of a step.
+   */
+  const verb = 'อนุมัติ';
   /**
    * WHICH STATUSES THIS SCREEN ASKS THE SERVER FOR — one place, read by the
    * fetch, by the สถานะ dropdown and by the empty states.
@@ -953,7 +1000,7 @@ export default function ApprovalQueue({
             {delegatedOnly
               ? 'คิวของหัวหน้างานที่คุณรับช่วงมา · การอนุมัติจะบันทึกว่าทำแทนเจ้าของคิว'
               : isHr
-                ? 'ตรวจสอบรายเดือน · รายการที่ยืนยันแล้วจะเข้าสู่รายงานส่งออก'
+                ? 'ตรวจสอบรายเดือน · รายการที่อนุมัติแล้วจะเข้าสู่รายงานส่งออก'
                 : (
                   <>
                     {'ตรวจสอบรายวัน · '}
@@ -1601,8 +1648,8 @@ export default function ApprovalQueue({
                  * THE GUARD IS THE POINT OF THE HANDLER. A tick-box, the two
                  * decision buttons and ถอนใบวันเกิด all live inside the row,
                  * and every one of them would otherwise open the pop-up on its
-                 * way to doing its own job — a ยืนยัน that also opens a sheet
-                 * is a ยืนยัน somebody presses twice. `closest` asks the
+                 * way to doing its own job — an อนุมัติ that also opens a sheet
+                 * is an อนุมัติ somebody presses twice. `closest` asks the
                  * pressed element, so a press on the <svg> INSIDE a button is
                  * caught too, which a check on `ev.target.tagName` is not.
                  */
@@ -1826,7 +1873,7 @@ export default function ApprovalQueue({
 
                         A รอหัวหน้า row on ฝ่ายบุคคล's queue is here to be
                         watched: `approvalPermission` gives them nothing at that
-                        step, so ยืนยัน and ไม่อนุมัติ would both be a 403 and
+                        step, so อนุมัติ and ไม่อนุมัติ would both be a 403 and
                         the row gets the sentence saying so instead. Reading it
                         is still one press — the whole ROW opens the pop-up
                         since 2026-09-09 — and that is the point of the row: the
@@ -1849,7 +1896,19 @@ export default function ApprovalQueue({
                         <span className="cell-sub own-note">
                           {watchingNote(e, stage, user).short}
                         </span>
-                        <WatchMark note={watchingNote(e, stage, user).short} />
+                        {/* ── A DASH, OR THE TWO DECISIONS DRAWN AND REFUSED ──
+                            `awaitingEarlierStep` picks between them and the
+                            reasoning is written over `WatchActions`: a row
+                            still at the หัวหน้า step is on its way to these
+                            exact two buttons on this exact screen, so it wears
+                            them greyed; a row at this step that is not this
+                            reader's to sign never will, so it keeps the dash
+                            rather than a promise the screen cannot keep. */}
+                        {awaitingEarlierStep(e, stage) ? (
+                          <WatchActions note={watchingNote(e, stage, user).short} verb={verb} />
+                        ) : (
+                          <WatchMark note={watchingNote(e, stage, user).short} />
+                        )}
                       </div>
                     ) : !barredAsOwnFiling(e, user) && signedManagerStep(e, user) ? (
                       <div className="row-actions">
@@ -1868,13 +1927,13 @@ export default function ApprovalQueue({
                         <span className="cell-sub own-note">
                           คุณเป็นผู้บันทึกรายการนี้ จึงตรวจในขั้นนี้เองไม่ได้
                           {isUntouchedSystemFiling(e)
-                            ? ' — ถอนใบได้ หรือให้ผู้ดูแลระบบยืนยันแทน'
+                            ? ' — ถอนใบได้ หรือให้ผู้ดูแลระบบอนุมัติแทน'
                             : ' — ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้คนอื่นเป็นผู้ตรวจ'}
                         </span>
                         {/* THE ONE ACTION IN THIS BRANCH THAT WORKS, so it keeps
                             a real button — as an icon on the desktop and with
                             its word back on the card, the same `.btn-word`
-                            trade ยืนยัน and ไม่อนุมัติ make below. */}
+                            trade อนุมัติ and ไม่อนุมัติ make below. */}
                         {isUntouchedSystemFiling(e) ? (
                           <button
                             className="btn ghost sm with-icon act-icon"
@@ -1909,7 +1968,7 @@ export default function ApprovalQueue({
                             which is how somebody checks a row before confirming
                             the pile. อนุมัติเกินเพดาน went from every card and
                             every dialog on 2026-09-02, so a row over its ceiling
-                            is signed with the same ยืนยัน as every other row and
+                            is signed with the same อนุมัติ as every other row and
                             the sentence it costs is collected by the dialog that
                             button opens. */}
                         {/* It read "✓ เลือกไว้แล้ว · ใช้แถบด้านล่าง" until the bar
@@ -2123,28 +2182,35 @@ export default function ApprovalQueue({
 }
 
 /**
- * ปุ่มที่ตัดสินทั้งกอง — เขียนแยกตามบทบาท ไม่ได้ประกอบจาก verb.
+ * ปุ่มที่ตัดสินทั้งกอง — เขียนออกมาตรง ๆ ไม่ได้ประกอบจาก verb.
  *
- * A หัวหน้า sees อนุมัติ and ฝ่ายบุคคล see ยืนยัน. "ยืนยันการ" + verb reads
- * beautifully for the first — ยืนยันการอนุมัติ — and produces ยืนยันการยืนยัน
- * for the second, which is the kind of thing that ships because whoever wrote it
- * only ever had one of the two accounts open. So the confirming half of the
- * sentence is dropped where the verb already IS "confirm".
+ * ⚠ IT TOOK `isHr` AND ANSWERED TWICE UNTIL 2026-09-11. It read
+ * `ยืนยันทั้งหมด (3 รายการ)` / `ยืนยัน 1 รายการ` for ฝ่ายบุคคล and the pair
+ * below for a หัวหน้า, because `verb` was ยืนยัน on one queue and อนุมัติ on the
+ * other: `"ยืนยันการ" + verb` reads beautifully for the second — ยืนยันการอนุมัติ
+ * — and produces ยืนยันการยืนยัน for the first, which is the kind of thing that
+ * ships because whoever wrote it only ever had one of the two accounts open.
+ * One verb on both queues took the second answer away, and the parameter with
+ * it. See `verb` at the top of this file for what was asked and why.
+ *
+ * STILL NOT A TEMPLATE STRING, and that is the assertion most likely to be
+ * undone by somebody tidying this back into one line. `ยืนยันการ${verb}` is
+ * correct today and is one word-change away from doubling a word again; the
+ * label is written out because the sentence is not a function of the verb.
  *
  * The DIALOG's button, and only it. The bar that opens the dialog says the same
  * verb with the same count — อนุมัติ (3) — and nothing else: a bar button is
  * pressed to reach this sheet, while this one is the last thing read before the
  * hours move, and it is the one with a sheet's width to spell it out in.
  */
-function pileLabel(isHr, count) {
-  if (isHr) return count > 1 ? `ยืนยันทั้งหมด (${count} รายการ)` : 'ยืนยัน 1 รายการ';
+function pileLabel(count) {
   return count > 1 ? `ยืนยันอนุมัติทั้งหมด (${count} รายการ)` : 'ยืนยันการอนุมัติ';
 }
 
 // ── batch modals ────────────────────────────────────────────────────────────
 
 /**
- * ยืนยัน is one click away from payroll, so it gets a stop — but a short one.
+ * อนุมัติ is one click away from payroll, so it gets a stop — but a short one.
  * A batch shows what it is about to move; a single row shows the row.
  */
 function ConfirmModal({
@@ -2188,7 +2254,7 @@ function ConfirmModal({
   const ready = !mustExplain || why.trim().length > 0;
 
   // Same verb and same count as the button that opened this — see `pileLabel`.
-  const confirmLabel = pileLabel(isHr, entries.length);
+  const confirmLabel = pileLabel(entries.length);
 
   return (
     <Modal
@@ -2207,12 +2273,18 @@ function ConfirmModal({
        * "รายการนี้" when one. It also stops the single case printing the same
        * sentence twice, once at each end of a short sheet.
        *
-       * `verb` is อนุมัติ for a หัวหน้า and ยืนยัน for ฝ่ายบุคคล, so every string
-       * here has to survive both. "ยืนยันการยืนยัน" is why the button is not
-       * phrased as a confirmation of the verb.
+       * `verb` was อนุมัติ for a หัวหน้า and ยืนยัน for ฝ่ายบุคคล until
+       * 2026-09-11, so every string here had to survive both; it is อนุมัติ on
+       * either queue now. The button is still not phrased as a confirmation of
+       * the verb — see `pileLabel`.
+       *
+       * THE SUBTITLE STILL SPLITS ON `isHr` AND ALWAYS WILL: what happens after
+       * the press is genuinely two different things. ฝ่ายบุคคล's signature is
+       * the last one and the hours leave for payroll; a หัวหน้า's hands the ใบ
+       * to the next desk.
        */
       title={many ? `${verb} ${entries.length} รายการ` : `${verb}รายการนี้`}
-      subtitle={isHr ? 'รายการที่ยืนยันแล้วจะเข้าสู่รายงานส่งออกทันที' : 'ส่งต่อให้ฝ่ายบุคคลยืนยัน'}
+      subtitle={isHr ? 'รายการที่อนุมัติแล้วจะเข้าสู่รายงานส่งออกทันที' : 'ส่งต่อให้ฝ่ายบุคคลอนุมัติ'}
       onClose={onClose}
       footer={(
         <>
@@ -2410,7 +2482,7 @@ function RejectModal({ entries, busy, onClose, onReject }) {
 /* §7 — ยกเว้นเพดานให้ใบหนึ่ง (`OverrideModal`) stood here until 2026-09-02.
 
    It went with the อนุมัติเกินเพดาน button that opened it, on the card and in
-   the dialogs. A row over its ceiling is now decided with the same ยืนยัน or
+   the dialogs. A row over its ceiling is now decided with the same อนุมัติ or
    ไม่อนุมัติ as every other row: the reason goes onto the entry as
    `overCeilingReason` and the flag is LEFT STANDING, which is the difference —
    a waiver cleared `capExceeded`, and สรุป OT ส่งบัญชี draws the figure red off
@@ -2489,7 +2561,7 @@ function RejectFields({ value, onChange, many }) {
  * True only of the รอหัวหน้า rows ฝ่ายบุคคล's queue started listing on
  * 2026-09-03. It is the same fact `signableHere` decides in the table, passed
  * down rather than worked out again here: the pop-up is reached from a row, and
- * a pop-up that offered ยืนยัน on a row whose own action cell refuses it would
+ * a pop-up that offered อนุมัติ on a row whose own action cell refuses it would
  * be the second reading of one rule — which is exactly how a screen comes to
  * offer a button the server answers 403 to.
  */
@@ -2576,18 +2648,25 @@ function DetailModal({
         THE BUTTON NAMES WHAT IT SIGNS, because here it is on its own.
 
         Everywhere else the decision comes with its pile: อนุมัติ (3) on the bar,
-        ยืนยันทั้งหมด (3 รายการ) in the dialog — the count says what is being
-        acted on. This one decides the entry the pop-up is already showing, so
-        there is no count, and bare "ยืนยัน" is the word every OK button in the
-        app uses. ฝ่ายบุคคล get ยืนยันใบ OT: the same act, with its object said
-        out loud.
+        ยืนยันอนุมัติทั้งหมด (3 รายการ) in the dialog — the count says what is
+        being acted on. This one decides the entry the pop-up is already showing,
+        so there is no count.
 
-        A หัวหน้า keeps อนุมัติ. It is already a verb that only means one thing,
-        and "อนุมัติใบ OT" beside a pop-up titled with the employee's name and
-        the date is the app repeating what the reader is looking at.
+        ⚠ THE SPLIT SURVIVED THE VERB CHANGE, AND IT IS NOT THE SAME SPLIT.
+        It read `isHr ? 'ยืนยันใบ OT' : 'อนุมัติ'` until 2026-09-11, and the
+        reason given was that bare "ยืนยัน" is the word every OK button in the
+        app uses, so ฝ่ายบุคคล's needed its object said out loud. That reason is
+        gone with the verb — อนุมัติ has never been an OK button anywhere.
+
+        WHAT KEEPS THE OBJECT ON ฝ่ายบุคคล'S BUTTON IS THE PILE BEHIND IT. Their
+        pop-up is opened out of a month's worth of rows, most of them already
+        signed once, and อนุมัติใบ OT names WHICH of the two signatures is about
+        to be added. A หัวหน้า opens one day's queue and is the first signature
+        on it; "อนุมัติใบ OT" beside a pop-up already titled with the employee's
+        name and the date is the app repeating what the reader is looking at.
       */}
       <button className="btn" disabled={busy || editing} onClick={onApprove}>
-        {isHr ? 'ยืนยันใบ OT' : 'อนุมัติ'}
+        {isHr ? 'อนุมัติใบ OT' : 'อนุมัติ'}
       </button>
     </div>
   );
@@ -2700,7 +2779,7 @@ function DetailModal({
                 <div style={{ marginTop: 4 }}>
                   คุณเป็นผู้บันทึกรายการนี้เอง จึงตรวจในขั้นนี้เองไม่ได้ —
                   {isUntouchedSystemFiling(e)
-                    ? ' กด “ถอนใบวันเกิด” ที่แถวในคิว หรือให้ผู้ดูแลระบบยืนยันแทน'
+                    ? ' กด “ถอนใบวันเกิด” ที่แถวในคิว หรือให้ผู้ดูแลระบบอนุมัติแทน'
                     : ' ใบหนึ่งต้องผ่านผู้เซ็นสองคน ต้องให้ผู้อื่นเป็นผู้ตรวจ'}
                 </div>
               )}
@@ -3378,7 +3457,7 @@ function QuickEdit({ entry, user, onDirty, onCancel, onSaved }) {
         </button>
       </div>
       <div className="hint">
-        การแก้ไขจะคำนวณชั่วโมงใหม่ทันทีและคงสถานะการอนุมัติเดิมไว้ · ยังต้องกด “{'ยืนยัน'}” อีกครั้งเพื่อรับรองรายการ
+        การแก้ไขจะคำนวณชั่วโมงใหม่ทันทีและคงสถานะการอนุมัติเดิมไว้ · ยังต้องกด “{'อนุมัติ'}” อีกครั้งเพื่อรับรองรายการ
       </div>
     </div>
   );
@@ -3454,6 +3533,52 @@ function WhoName({ name }) {
 function WatchMark({ note }) {
   return (
     <span className="act-none" title={note} aria-label={note} role="note">—</span>
+  );
+}
+
+/**
+ * ── THE TWO DECISIONS, DRAWN AND REFUSED — 2026-09-11 ──────────────────────
+ *
+ * Asked for of รออนุมัติ OT in these words: *ถ้ารายการไหน รอหัวหน้าให้แสดง icon
+ * ปุ่ม อนุมัติ/ไม่อนุมัติ แต่ให้ disable ไว้*.
+ *
+ * IT REPLACES `WatchMark`'S DASH ON ONE ROW ONLY — see `awaitingEarlierStep`.
+ * A row waiting on its own หัวหน้า is COMING to this queue and will wear these
+ * very two buttons, live, the moment somebody signs the first step. A greyed
+ * pair says both halves of that at once, where the dash could only say the
+ * first: there is nothing to press yet, AND this is what will be there. The
+ * other two watched rows sit at this queue's own step and are refused by the
+ * routing matrix rather than by the clock; they keep the dash, because a button
+ * drawn on them would be a promise the screen can never keep.
+ *
+ * DISABLED FOR REAL, AND WITH NO HANDLER BEHIND EITHER. `approvalPermission`
+ * answers 403 at that step, so what matters is that the refusal belongs to the
+ * ELEMENT and not to a class that merely looks like one. Nothing here draws the
+ * grey: `.btn:disabled` is already grey-on-grey with `cursor: not-allowed`
+ * app-wide, and the 32px square is already `.act-icon`'s.
+ *
+ * THE SENTENCE HANGS ON THE WRAPPER, NOT ON THE BUTTONS. A disabled button
+ * dispatches no pointer events, so its own `title` never opens — the hover
+ * lands on the ancestor instead. That is why the span carries the tooltip, and
+ * why it also carries the `role="note"` + `aria-label` pair `WatchMark` had:
+ * above 861px `.own-note` is hidden and this is the only reading of the reason
+ * a mouse or a screen reader gets. The buttons are `aria-hidden` — two dimmed
+ * controls announced one after the other say less than the sentence does, and a
+ * disabled button is out of the tab order to begin with, so nothing focusable
+ * is being hidden.
+ */
+function WatchActions({ note, verb }) {
+  return (
+    <span className="act-watch" title={note} aria-label={note} role="note">
+      <button className="btn sm with-icon act-icon" disabled aria-hidden="true">
+        <Icon name="tick" className="btn-icon" />
+        <span className="btn-word">{verb}</span>
+      </button>
+      <button className="btn ghost danger sm with-icon act-icon" disabled aria-hidden="true">
+        <Icon name="cross" className="btn-icon" />
+        <span className="btn-word">ไม่อนุมัติ</span>
+      </button>
+    </span>
   );
 }
 
@@ -3718,7 +3843,7 @@ function QueueCleared({ cleared, isHr, mode = 'signer', covers = 0, scope = '' }
       <strong>เคลียร์คิวครบทุกรายการแล้ว</strong>
       <div className="hint" style={{ marginTop: 4 }}>
         {isHr
-          ? 'รายการที่ยืนยันไปแล้วอยู่ในตรวจสอบประจำเดือนและรายงานส่งออก'
+          ? 'รายการที่อนุมัติไปแล้วอยู่ในตรวจสอบประจำเดือนและรายงานส่งออก'
           : 'รายการที่อนุมัติแล้วส่งต่อให้ฝ่ายบุคคลเรียบร้อย'}
       </div>
     </div>

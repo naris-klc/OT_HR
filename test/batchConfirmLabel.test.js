@@ -16,11 +16,19 @@ import { dirname, join } from 'node:path';
  * its own, a thumb apart on a phone. They are not two ways to do one thing: the
  * row's decides ONE entry and silently drops the other ticks.
  *
- * The third is the verb. `verb` is อนุมัติ for a หัวหน้า and ยืนยัน for
- * ฝ่ายบุคคล, so a label that reads well for one — "ยืนยันการอนุมัติ" — becomes
- * "ยืนยันการยืนยัน" for the other. That is why the confirm label is a table per
- * role rather than a template string, and it is the assertion most likely to be
- * undone by somebody tidying it back into one line.
+ * The third is the verb. `verb` WAS อนุมัติ for a หัวหน้า and ยืนยัน for
+ * ฝ่ายบุคคล until 2026-09-11, so a label that read well for one —
+ * "ยืนยันการอนุมัติ" — became "ยืนยันการยืนยัน" for the other. That is why the
+ * confirm label was a table per role rather than a template string.
+ *
+ * ONE VERB ON BOTH QUEUES SINCE THEN, and it is อนุมัติ — asked for as *เปลี่ยน
+ * wording … ในบริบท อนุมัติ ot ทั้งหมด จากคำว่า "ยืนยัน" เป็น "อนุมัติ"*. The
+ * table lost its second row and `pileLabel` lost its `isHr`.
+ *
+ * WHAT IS STILL PINNED IS THAT IT IS NOT A TEMPLATE. `ยืนยันการ${verb}` is
+ * correct today and is one word-change away from doubling a word again, so the
+ * label stays written out — and that is the assertion most likely to be undone
+ * by somebody tidying it into one line, which is why it is here.
  *
  * Read as source text for the reason test/passwordReveal.test.js is.
  */
@@ -103,7 +111,7 @@ test('the dialog says ทั้งหมด only when there is more than one', (
   // The words moved into `pileLabel`, shared with the bar that opens this
   // dialog — a button whose label changes on the way to the dialog repeating it
   // is a second thing to read.
-  has(code, 'const confirmLabel = pileLabel(isHr, entries.length);');
+  has(code, 'const confirmLabel = pileLabel(entries.length);');
   has(strip(src), 'ยืนยันอนุมัติทั้งหมด (${count} รายการ)');
   has(strip(src), "'ยืนยันการอนุมัติ'");
 });
@@ -115,13 +123,23 @@ test('the title matches RejectModal — count when many, รายการน�
 });
 
 /**
- * ฝ่ายบุคคล see ยืนยัน where a หัวหน้า sees อนุมัติ. Any label of the form
- * "ยืนยันการ${verb}" therefore reads as ยืนยันการยืนยัน for half the people who
- * use this screen — which is why the confirm label is written out per role.
+ * ⚠ IT READ "the confirm label is per role" UNTIL 2026-09-11, and asserted the
+ * `if (isHr)` line that made it one. ฝ่ายบุคคล saw ยืนยัน where a หัวหน้า saw
+ * อนุมัติ, so any label of the form "ยืนยันการ${verb}" read as ยืนยันการยืนยัน
+ * for half the people who use this screen.
+ *
+ * BOTH QUEUES SAY อนุมัติ NOW, so there is one label and no role to pick it by
+ * — and `pileLabel` takes only a count. THE BAN IS WHAT MATTERS AND IT STAYS:
+ * the moment somebody rebuilds this out of `verb`, the next verb change brings
+ * the doubled word back, and the sentence explaining why would be the only
+ * thing standing in the way.
  */
-test('the confirm label is per role, and neither half doubles a word', () => {
+test('the confirm label is written out, not built from the verb', () => {
   const helper = strip(src.slice(src.indexOf('function pileLabel')));
-  has(helper, 'if (isHr) return count > 1');
+  // One answer, and the role is gone from the signature with the second one.
+  has(helper, 'function pileLabel(count) {');
+  assert.ok(!helper.slice(0, helper.indexOf('}')).includes('isHr'),
+    'ป้ายปุ่มกลับไปแยกตามบทบาทอีกแล้ว ทั้งที่ทั้งสองคิวใช้คำว่า อนุมัติ เหมือนกัน');
   const code_ = helper.slice(0, helper.indexOf('}'));
   assert.ok(!code_.includes('ยืนยันการ${verb}'), 'ป้ายปุ่มพังเมื่อ verb เป็น “ยืนยัน”');
   assert.ok(!code_.includes('ยืนยันยืนยัน'), 'ป้ายปุ่มของฝ่ายบุคคลพูดคำเดิมสองครั้ง');

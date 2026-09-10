@@ -16,9 +16,17 @@ import { dirname, join } from 'node:path';
  * Two decisions are pinned here.
  *
  * ONE, the approval names what it signs. Elsewhere the pile says it: อนุมัติ (3)
- * on the bar, ยืนยันทั้งหมด (3 รายการ) in the confirm dialog. Alone, ฝ่ายบุคคล's
- * bare "ยืนยัน" is the same word every OK button in the app uses, so it becomes
- * ยืนยันใบ OT. A หัวหน้า keeps อนุมัติ, which already means one thing.
+ * on the bar, ยืนยันอนุมัติทั้งหมด (3 รายการ) in the confirm dialog. Alone,
+ * ฝ่ายบุคคล's names its object — อนุมัติใบ OT — and a หัวหน้า's does not.
+ *
+ * ⚠ THE REASON FOR THAT SPLIT CHANGED ON 2026-09-11 AND THE SPLIT DID NOT. It
+ * read `isHr ? 'ยืนยันใบ OT' : 'อนุมัติ'` until then, because ฝ่ายบุคคล's verb
+ * was ยืนยัน — the same word every OK button in the app uses — and bare, it said
+ * nothing about what was being confirmed. Both queues say อนุมัติ now, which was
+ * never an OK button anywhere, so that reason is spent. What keeps the object on
+ * ฝ่ายบุคคล's button is the pile behind it: their pop-up opens out of a month of
+ * rows already signed once, and the label says WHICH of the two signatures is
+ * about to be added. A หัวหน้า is the first signature on one day's queue.
  *
  * TWO, there are exactly two buttons and they are the two answers. ปิด was the
  * third, at the left, changing nothing — and this dialog already closes by ✕, by
@@ -42,14 +50,22 @@ const src = readFileSync(join(ROOT, 'components/ApprovalQueue.jsx'), 'utf8').rep
 const css = readFileSync(join(ROOT, 'app/styles.css'), 'utf8').replace(/\r\n/g, '\n');
 
 /** The pop-up only — the modals above it have their own buttons. */
-const modal = src.slice(src.indexOf('function DetailModal'));
+/* ⚠ IT RAN TO THE END OF THE FILE UNTIL 2026-09-11, which was fine for as long
+   as nothing below DetailModal drew a button. `WatchActions` — the greyed
+   อนุมัติ / ไม่อนุมัติ pair on a รอหัวหน้า row — does, and it is built from
+   `verb`, which is exactly what the ban below forbids OF THIS POP-UP. The slice
+   is bounded at the next section marker so the ban means what it says. */
+const modal = src.slice(src.indexOf('function DetailModal'), src.indexOf('// ── quick edit'));
 /* The notes here quote the shapes they replaced, which is the point of them. */
 const code = modal.replace(/\/\*[\s\S]*?\*\//g, '');
 
 const has = (src_, text, why) => assert.ok(src_.includes(text), why || `หาไม่เจอ: ${text}`);
 
 test('the approval names the slip for ฝ่ายบุคคล and stays อนุมัติ for a หัวหน้า', () => {
-  has(code, "{isHr ? 'ยืนยันใบ OT' : 'อนุมัติ'}");
+  has(code, "{isHr ? 'อนุมัติใบ OT' : 'อนุมัติ'}");
+  // And the word it replaced is gone from the button rather than moved: ยืนยัน
+  // is still on this footer, but only as the confirm step of a refusal.
+  assert.ok(!code.includes("'ยืนยันใบ OT'"), 'ปุ่มอนุมัติของฝ่ายบุคคลยังอ่านว่า ยืนยัน อยู่');
   // Not `verb`: this pop-up is handed the flag, not the word, because the two
   // roles do not take the same shape here — one names its object and one does
   // not. A template over `verb` cannot say that.

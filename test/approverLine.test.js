@@ -468,7 +468,7 @@ test('the owner’s history section draws on any request that has one', () => {
 /**
  * THE FOOT IS THE WHOLE OF THE DIFFERENCE BETWEEN THE TWO POP-UPS.
  *
- * ไม่อนุมัติ and ยืนยันใบ OT decide somebody else's request. แก้ไขชั่วโมง is
+ * ไม่อนุมัติ and อนุมัติใบ OT decide somebody else's request. แก้ไขชั่วโมง is
  * ฝ่ายบุคคล correcting a figure against a scan record — on the owner's screen it
  * would let an employee rewrite hours their หัวหน้า has already signed for,
  * which is exactly the rule `editPermission` refuses.
@@ -476,7 +476,9 @@ test('the owner’s history section draws on any request that has one', () => {
 test('none of the reviewer’s three decisions is on the owner’s pop-up', () => {
   const mine = readFileSync(join(ROOT, 'components/EmployeeView.jsx'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  for (const word of ['ยืนยันใบ OT', 'แก้ไขชั่วโมง', '>ไม่อนุมัติ</button>']) {
+  // `อนุมัติใบ OT` read `ยืนยันใบ OT` until 2026-09-11 — the label moved, and a
+  // ban naming the old one would guard a button that no longer exists.
+  for (const word of ['อนุมัติใบ OT', 'แก้ไขชั่วโมง', '>ไม่อนุมัติ</button>']) {
     assert.ok(!mine.includes(word), `ปุ่มของฝ่ายบุคคลโผล่บนจอพนักงาน: ${word}`);
   }
   /* The WORDS are still allowed here: "เหตุผลที่ไม่อนุมัติ" heads the panel that

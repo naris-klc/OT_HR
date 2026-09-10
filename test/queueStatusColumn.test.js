@@ -385,9 +385,12 @@ test('แถวที่ยังไม่ถึงคิว มีประโ�
   assert.ok(branch.includes('{watchingNote(e, stage, user).short}'), 'แถวไม่ได้บอกว่าทำไมไม่มีปุ่ม');
   assert.ok(branch.includes('className="cell-sub own-note"'), 'ประโยคต้องอยู่ในกล่องที่มีความกว้างจำกัด');
   /*
-   * และประโยคเดียวกันนั้นเป็นทูลทิปของขีดที่ยืนแทนปุ่ม — เพราะบนจอตั้งแต่ 861px
-   * ขึ้นไป `.own-note` ถูกซ่อน (คอลัมน์เหลือ 96px) เหลือ `WatchMark` ให้อ่าน
-   * ด้วยเมาส์และด้วยโปรแกรมช่วยอ่าน ส่วนการ์ดบนมือถือได้ประโยคเต็มเหมือนเดิม
+   * และประโยคเดียวกันนั้นเป็นทูลทิปของสิ่งที่ยืนแทนปุ่ม — เพราะบนจอตั้งแต่ 861px
+   * ขึ้นไป `.own-note` ถูกซ่อน (คอลัมน์เหลือ 96px) เหลือมาร์กให้อ่านด้วยเมาส์และ
+   * ด้วยโปรแกรมช่วยอ่าน ส่วนการ์ดบนมือถือได้ประโยคเต็มเหมือนเดิม
+   *
+   * ⚠ มาร์กนั้นเป็น `WatchMark` ตัวเดียวจนถึง 2026-09-11 — ตอนนี้มีสองแบบ และ
+   * `awaitingEarlierStep` เป็นตัวเลือก ดูเคสถัดไป
    */
   assert.ok(
     branch.includes('<WatchMark note={watchingNote(e, stage, user).short} />'),
@@ -400,6 +403,94 @@ test('แถวที่ยังไม่ถึงคิว มีประโ�
   assert.match(code, /onClick=\{\(ev\) => \{[\s\S]{0,200}?setDetail\(e\);/, 'แถวไม่เปิดรายละเอียดแล้ว');
   assert.ok(!branch.includes('setConfirming'), 'ยังเสนอปุ่มยืนยันบนใบที่เซิร์ฟเวอร์จะตอบ 403');
   assert.ok(!branch.includes('setRejecting'), 'ยังเสนอปุ่มไม่อนุมัติบนใบที่เซิร์ฟเวอร์จะตอบ 403');
+});
+
+/**
+ * ── แถวที่ "รอหัวหน้า" ได้ปุ่มสองปุ่มแบบปิดไว้ แทนขีด — 2026-09-11 ────────────
+ *
+ * ขอมาว่า *ถ้ารายการไหน รอหัวหน้าให้แสดง icon ปุ่ม อนุมัติ/ไม่อนุมัติ แต่ให้
+ * disable ไว้* บนหน้า รออนุมัติ OT.
+ *
+ * เฉพาะแถวเดียวเท่านั้น และนั่นคือทั้งหมดของเคสนี้ แถวที่ดูอย่างเดียวมีสามแบบ
+ * (`watchingNote`) แต่มีแบบเดียวที่ *กำลังจะ* ได้ปุ่มคู่นี้จริง ๆ คือใบที่ยังอยู่
+ * ขั้นหัวหน้าบนคิวของ ฝ่ายบุคคล — อีกสองแบบอยู่ขั้นเดียวกับคนอ่านแล้วและถูก
+ * ปฏิเสธด้วยสายอนุมัติ ไม่ใช่ด้วยเวลา ลายเซ็นของใครก็ไม่ทำให้มันกลายเป็นใบของ
+ * คนนี้ ปุ่มบนแถวพวกนั้นจึงเป็นคำสัญญาที่จอทำตามไม่ได้ และยังเป็นขีดเหมือนเดิม
+ *
+ * และปุ่มต้องปิดจริง ๆ ที่ตัว element ไม่ใช่แค่คลาสที่ดูเหมือนปิด — `approvalPermission`
+ * ตอบ 403 ที่ขั้นนั้น ปุ่มที่กดได้จึงเป็นการเดินทางไปหาคำปฏิเสธ
+ */
+test('แถวที่ยังรอหัวหน้า โชว์ปุ่ม อนุมัติ/ไม่อนุมัติ แบบกดไม่ได้ ส่วนแถวอื่นยังเป็นขีด', () => {
+  const at = code.indexOf('{!signableHere(e) ? (');
+  const branch = code.slice(at, code.indexOf('signedManagerStep(e, user) ? (', at));
+  // ตัวเลือกมาจากที่เดียวกับที่ `watchingNote` แยกประโยค — เทียบขั้น ไม่ใช่ชื่อสถานะ
+  assert.ok(branch.includes('{awaitingEarlierStep(e, stage) ? ('), 'แถวไม่ได้แยกว่าใบไหนกำลังจะมาถึงคิวนี้');
+  assert.ok(branch.includes('<WatchActions note={watchingNote(e, stage, user).short} verb={verb} />'),
+    'แถวที่รอหัวหน้าไม่ได้ปุ่มคู่ที่ปิดไว้');
+  assert.match(code, /function awaitingEarlierStep\(entry, stage\) \{\s*\r?\n\s*return entry\?\.status !== stage;/,
+    'กฎนี้ต้องเทียบขั้น ไม่ใช่เขียนชื่อสถานะไว้ตรง ๆ — คอมโพเนนต์นี้ทำงานสองขั้น');
+
+  // ปุ่มทั้งสองปิดที่ตัว element และไม่มี handler อยู่ข้างหลังเลย
+  const acts = code.slice(code.indexOf('function WatchActions'));
+  const body = acts.slice(0, acts.indexOf('\n}'));
+  assert.equal((body.match(/ disabled\b/g) || []).length, 2, 'ปุ่มใดปุ่มหนึ่งยังกดได้อยู่');
+  assert.ok(!/onClick/.test(body), 'ปุ่มที่ปิดไว้ยังมี handler ผูกอยู่');
+  // ไอคอนคู่เดียวกับปุ่มจริงบนแถวที่ตัดสินได้ ไม่ใช่ภาพชุดใหม่
+  assert.ok(body.includes('<Icon name="tick"') && body.includes('<Icon name="cross"'), 'ไอคอนไม่ตรงกับปุ่มจริง');
+  // คำยังอยู่ใน `.btn-word` เพื่อให้การ์ดบนมือถืออ่านออก เหมือนปุ่มจริงทุกใบ
+  assert.ok(body.includes('<span className="btn-word">{verb}</span>'), 'การ์ดบนมือถือจะเหลือแต่ไอคอนเปล่า');
+  assert.ok(body.includes('<span className="btn-word">ไม่อนุมัติ</span>'));
+
+  /* ประโยคแขวนอยู่ที่ตัวห่อ ไม่ใช่ที่ปุ่ม — ปุ่มที่ disabled ไม่ส่ง pointer event
+     ทูลทิปของตัวมันเองจึงไม่เคยเปิด ตัวห่อจึงรับทั้ง `title` และคู่ `role="note"`
+     + `aria-label` ที่ `WatchMark` เคยถือไว้ */
+  assert.ok(body.includes('<span className="act-watch" title={note} aria-label={note} role="note">'),
+    'ประโยคบอกเหตุอ่านไม่ได้บนจอตั้งโต๊ะ ที่ `.own-note` ถูกซ่อน');
+  assert.equal((body.match(/aria-hidden="true"/g) || []).length, 2, 'ปุ่มที่ตายแล้วยังถูกอ่านออกเสียงทีละใบ');
+
+  // และกล่องนั้นมีที่ทางของมันจริงในสองความกว้าง
+  assert.match(css, /\.act-watch \{ display: inline-flex; gap: 6px; flex: none; \}/);
+  assert.match(css, /\.queue-table td\.act-col \.act-watch \{ display: flex; flex: 1 1 100%; gap: 8px; \}/,
+    'บนการ์ด ปุ่มคู่นี้ต้องกางเต็มความกว้างเหมือนปุ่มจริง');
+  // ไม่ถูกซ่อนไปพร้อมขีด — ขีดเป็นตัวแทนของประโยค ส่วนนี่คือตัวการตัดสินเอง
+  assert.ok(!/\.queue-table td\.act-col \.act-watch \{ display: none/.test(css), 'ปุ่มคู่นี้หายไปจากการ์ด');
+});
+
+/**
+ * และปุ่ม ไม่อนุมัติ ที่ปิดไว้ต้องเป็นสีเทาชุดเดียวกับปุ่ม อนุมัติ ที่ปิดไว้.
+ *
+ * ขอมาวันเดียวกัน: *ทุกไม่อนุมัติเวลา disable ใหเป็นสีเทาเหมือนปุ่มอนุมัติตอน
+ * disable ด้วย* — และมันไม่ใช่เรื่องของคลาสที่ลืมใส่ `.btn.ghost:disabled` กับ
+ * `.btn.danger:disabled` ที่หัวไฟล์พูดเรื่องนี้ไว้แล้วทั้งคู่ แต่ `.btn.ghost.danger`
+ * ที่มาทีหลังมีน้ำหนักเท่ากันเป๊ะ (สองคลาส + pseudo) เมื่อเท่ากันจึงตัดสินด้วย
+ * ลำดับ และมันอยู่หลังกว่าหกพันบรรทัด ปุ่มที่ตายแล้วจึงยังขาวขอบแดงอยู่ข้าง ๆ
+ * ปุ่มเขียวที่เทาไปเรียบร้อย
+ */
+test('ปุ่ม ไม่อนุมัติ ที่ปิดไว้เป็นสีเทาชุดเดียวกับปุ่มอนุมัติ ทั้งบนแถวและในกล่อง', () => {
+  // บนแถว/บนการ์ด — ชุดเดียวกับ `.btn:disabled`
+  assert.match(
+    css,
+    /\.btn\.ghost\.danger:disabled \{\s*\r?\n\s*background: var\(--neutral-wash\); color: var\(--muted\);\s*\r?\n\s*border-color: var\(--line\); box-shadow: none; cursor: not-allowed;/,
+    'ไม่อนุมัติ ที่ปิดไว้ยังไม่เป็นสีเทาชุดเดียวกับ อนุมัติ',
+  );
+  // และต้องอยู่ "หลัง" กฎที่มันมาแก้ ไม่งั้นน้ำหนักเท่ากันก็แพ้ลำดับอีกรอบ
+  assert.ok(
+    css.indexOf('.btn.ghost.danger:disabled') > css.indexOf('.btn.ghost.danger {'),
+    'กฎที่ปิดไว้ถูกวางไว้ก่อนกฎที่มันมาทับ — น้ำหนักเท่ากันจึงยังแพ้',
+  );
+  /* ในท้ายกล่องรายละเอียด ปุ่มคู่นั้นมีสีเทาคนละชุด และตั้งใจ:
+     `.modal-foot .btn:disabled` วาด อนุมัติใบ OT ด้วย `--muted-2` บนวงแหวน
+     inset แทนขอบจริง ปุ่มจะได้ไม่เปลี่ยนขนาดตอนกลับมามีชีวิต — ลอกชุดของตาราง
+     มาวางตรงนี้คือเอาเทาคนละเฉดมาวางข้างกัน ซึ่งคือเรื่องที่ถูกทักมาตั้งแต่แรก */
+  assert.match(
+    css,
+    /\.foot-split \.btn\.ghost\.danger:disabled \{\s*\r?\n\s*background: var\(--neutral-wash\); color: var\(--muted-2\);\s*\r?\n\s*border-color: transparent; box-shadow: inset 0 0 0 1px var\(--line\);/,
+    'ไม่อนุมัติ ท้ายกล่องรายละเอียดยังคงสีแดงตอนถูกปิด',
+  );
+  assert.ok(
+    css.indexOf('.foot-split .btn.ghost.danger:disabled') > css.indexOf('.foot-split .btn.ghost.danger {'),
+    'กฎท้ายกล่องถูกวางไว้ก่อนกฎที่มันมาทับ',
+  );
 });
 
 /** And the pop-up says it at the TOP, before the request has been read. */
