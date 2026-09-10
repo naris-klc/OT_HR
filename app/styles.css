@@ -9190,6 +9190,23 @@ tbody tr.picked:hover { background: var(--green-bg); }
   list-style: disc; color: var(--ink);
 }
 .note-mark.over-cap .over-cap-why li { margin-top: 2px; }
+/* ย่อ/กาง, 2026-09-10 — `OverCeilingNote` in common.jsx. The arrow sits
+   against the heading rather than at the far edge of a note cell that can be
+   a desktop wide: pushed to the corner it would belong to nothing. Pointer
+   rules follow `.alert-fold-row`: open, the heading folds it; folded, the
+   whole note opens it. */
+.note-mark.over-cap .over-cap-head { display: inline-flex; align-items: baseline; gap: 6px; cursor: pointer; }
+.note-mark.over-cap:has(.over-cap-fold[aria-expanded="false"]) { cursor: pointer; }
+.over-cap-fold {
+  border: none; background: none; cursor: pointer;
+  color: inherit; opacity: .65;
+  padding: 2px 4px; border-radius: 6px;
+  font: 400 11px/1 var(--sans);
+}
+.over-cap-head:hover .over-cap-fold,
+.note-mark.over-cap:has(.over-cap-fold[aria-expanded="false"]):hover .over-cap-fold,
+.over-cap-fold:hover { opacity: 1; }
+.over-cap-fold:focus-visible { outline-offset: 1px; }
 .note-mark.over-cap .over-cap-why .muted { color: var(--muted-2); }
 
 /* ── AND THE SAME TWO MARKS ON สรุป OT แยกแผนก, 2026-09-09 ──────────────────

@@ -2410,6 +2410,16 @@ remarks the day somebody rewords one. Where the marks GO is still each screen's:
 up to 312px so that a 375px phone need not scroll, none of which can hold prose,
 and gives them a row of their own under the row they explain.
 
+**The reasons fold, the heading does not** (2026-09-10, asked of แยกแผนก, where
+one person's three reasons filled the screen). `OverCeilingNote` carries a ▲/▼:
+folded, `รายการเกินเพดาน · 3 รายการ · 12 ชม.` stays and only the list of dated
+reasons goes behind the arrow — the red figure and its tooltip are untouched.
+Since the note is shared, ส่งบัญชี's หมายเหตุ folds the same way. It opens by
+default and is not remembered, per note: this is the record, and a report that
+came back folded would be one read without its reasons. The press follows
+`foldClick` — folded, anywhere on the note opens it; open, only the heading
+folds it.
+
 **Both PRINTED sheets are coloured too, and the department one only after a
 second ask.** `figureClass` in `components/AccountingPrint.jsx` has reddened
 that paper's two rate cells since 2026-09-02; the department bundle was still

@@ -381,13 +381,42 @@ export function OverCeilingFigure({ over, children }) {
   return <strong className="fig-over" title={tipTextOf(over)}>{children}</strong>;
 }
 
-/** The same account, written into the row rather than hovered for. */
+/**
+ * The same account, written into the row rather than hovered for.
+ *
+ * ย่อ/กาง with ▲/▼, asked for on 2026-09-10 of รายงาน OT แยกแผนก, where one
+ * person's reasons ran to a screen of their own. FOLDED IS NOT GONE: the
+ * heading — the word, the count and the hours — stays, and so does the red
+ * figure with its tooltip; only the one-line-per-entry reasons go behind the
+ * arrow. Opens by default and is not remembered: this is the record, and a
+ * report that came back folded would be a report read without its reasons.
+ * The press follows `foldClick` — folded, anywhere on the note opens it; open,
+ * only the heading folds it — and the button has no onClick of its own.
+ */
 export function OverCeilingNote({ over }) {
+  // Above the early return: a hook is called on every render or on none.
+  const [folded, setFolded] = React.useState(false);
+  const whyId = React.useId();
   if (!over?.count) return null;
+  const toggle = () => setFolded((was) => !was);
   return (
-    <div className="note-mark over-cap">
-      <strong>{OVER_CEILING_MARK}</strong> · {over.count} รายการ · {hours(over.hours)} ชม.
-      <ul className="over-cap-why">
+    <div className="note-mark over-cap" onClick={foldClick(folded, toggle, '.over-cap-head')}>
+      <div className="over-cap-head">
+        <span>
+          <strong>{OVER_CEILING_MARK}</strong> · {over.count} รายการ · {hours(over.hours)} ชม.
+        </span>
+        <button
+          type="button"
+          className="over-cap-fold"
+          aria-expanded={!folded}
+          aria-controls={whyId}
+          aria-label={folded ? 'กางเหตุผลรายการเกินเพดาน' : 'ย่อเหตุผลรายการเกินเพดาน'}
+          title={folded ? 'กางเหตุผล' : 'ย่อเหตุผล'}
+        >
+          {folded ? '▼' : '▲'}
+        </button>
+      </div>
+      <ul id={whyId} className="over-cap-why" hidden={folded}>
         {over.notes.map((n, i) => (
           // Index: two entries can share a date (a split shift), and nothing
           // else on this row identifies one — `entries` never leaves the
