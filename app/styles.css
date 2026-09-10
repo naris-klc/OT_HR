@@ -8872,11 +8872,21 @@ th.why-col { width: 150px; }
    fill. `-18px` is `.card`'s own padding and `-15px` is what the 860px block
    sets; the bar's own `padding: 14px 18px` puts the fields back where they
    were. The rule above the band is what makes it a section rather than a stripe
-   — `.card.flush` gets that from the head band's `border-bottom`. */
-.card > .queue-tools { margin: 0 -18px; border-top: 1px solid var(--line-soft); }
+   — `.card.flush` gets that from the head band's `border-bottom`.
+
+   ⚠ `:not(.flush)` IS THE WHOLE RULE, AND IT WAS MISSING FOR AN HOUR. Written
+   as a bare `.card > .queue-tools` it also matched the three cards that had
+   nothing to negate, and “-18px of a padding that is 0” is just “-18px”: on
+   รออนุมัติ OT, การเงิน and แยกแผนก the bar hung 18px past the card at both
+   ends, `overflow: hidden` cut the overhang off, and what was left was a first
+   field standing 1px from the card's edge — 18px to the LEFT of the heading
+   directly above it. Reported the same evening, with a picture: *"ช่องตกขอบ
+   ครับ"*. A negative margin is only ever the size of the padding it is cancelling,
+   so it has to be written against the cards that HAVE that padding. */
+.card:not(.flush) > .queue-tools { margin: 0 -18px; border-top: 1px solid var(--line-soft); }
 /* First child of the card: there is nothing above it to be ruled off from, and
    the band takes the card's own top corners. */
-.card > .queue-tools:first-child {
+.card:not(.flush) > .queue-tools:first-child {
   margin-top: -18px; border-top: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
@@ -8946,9 +8956,15 @@ th.why-col { width: 150px; }
    while the field held one line, and 8px high the moment the label moved in
    above it. The magnifier now sits on the writing it belongs to, and so does
    the ✕. (`.pick-mark` needs nothing: it is a flex item inside the box and
-   rides the same padding as the value beside it.) */
+   rides the same padding as the value beside it.)
+
+   6px AND NOT THE 7 THE VALUE'S OWN CENTRE ASKS FOR, because the ✕ is 34px
+   tall in a 47.5px box and there is only 6.75px of travel before its bottom
+   edge leaves the box — a hairline of hover wash under the border on ถึงเดือน
+   (ไม่บังคับ), the one clearable box on any bar in the app. 1px off the writing
+   beats 1px outside the box. */
 .queue-tools .searchbox .searchbox-icon,
-.queue-tools .searchbox-clear { transform: translateY(calc(-50% + 8px)); }
+.queue-tools .searchbox-clear { transform: translateY(calc(-50% + 6px)); }
 
 /* The phone's own toolbar — กรองข้อมูล and เลือกทั้งหมด. Drawn only inside the
    860px block; on a desktop the filters are already on screen and the heading
@@ -11317,8 +11333,8 @@ table.mini tbody tr:hover { background: none; }
   .queue-tools { padding: 12px 12px 10px; }
   /* `.card`'s padding is 15 at this width, not 18 — see the rule by that name
      in this block. Same negation, one number along. */
-  .card > .queue-tools { margin: 0 -15px; }
-  .card > .queue-tools:first-child { margin-top: -15px; border-radius: var(--radius) var(--radius) 0 0; }
+  .card:not(.flush) > .queue-tools { margin: 0 -15px; }
+  .card:not(.flush) > .queue-tools:first-child { margin-top: -15px; border-radius: var(--radius) var(--radius) 0 0; }
   .queue-tools:has(+ .queue-mobile-bar) { border-bottom: 0; }
   .queue-tools .field, .queue-tools .field.search { flex: 1 1 100%; }
   .batch-progress { padding: 10px 12px; }

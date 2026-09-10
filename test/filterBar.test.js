@@ -182,21 +182,44 @@ test('the leading and trailing glyphs follow the value, not the box', () => {
   // box — right while it held one line, and 8px high the moment a label moved
   // in above it.
   const nudge = rule('.queue-tools .searchbox .searchbox-icon,\n.queue-tools .searchbox-clear');
-  assert.match(nudge, /transform: translateY\(calc\(-50% \+ 8px\)\)/);
+  assert.match(nudge, /transform: translateY\(calc\(-50% \+ 6px\)\)/);
 });
 
 test('the bar runs to the edges of whichever card it is in', () => {
   // On `.card.flush` it always did — that card has no padding. On a plain
   // `.card` the same wash drew as a grey slab floating inside 18px of white,
   // which is one shape on four screens and another on two.
-  assert.match(rule('.card > .queue-tools'), /margin: 0 -18px/);
-  assert.match(rule('.card > .queue-tools'), /border-top: 1px solid var\(--line-soft\)/);
+  assert.match(rule('.card:not(.flush) > .queue-tools'), /margin: 0 -18px/);
+  assert.match(rule('.card:not(.flush) > .queue-tools'), /border-top: 1px solid var\(--line-soft\)/);
   assert.match(rule('.card'), /padding: 18px;/,
     'ระยะขอบของ .card เปลี่ยน แต่ margin ที่หักล้างมันยังเป็น -18px');
   const phone = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
   assert.match(phone.slice(0, phone.indexOf('\n}\n\n')), /\.card \{ padding: 15px;/);
-  assert.match(phone, /\.card > \.queue-tools \{ margin: 0 -15px; \}/,
+  assert.match(phone, /\.card:not\(\.flush\) > \.queue-tools \{ margin: 0 -15px; \}/,
     'บนมือถือ .card ใช้ padding 15 แต่แถบยังหักล้าง 18 อยู่');
+});
+
+test('a card with no padding gets no negative margin — reported 2026-09-10', () => {
+  /* ⚠ THIS IS THE BUG THE `:not(.flush)` IS. A negative margin is exactly the
+     size of the padding it cancels, and `.card.flush` has none — so a bare
+     `.card > .queue-tools` hung the bar 18px past the card at both ends on
+     รออนุมัติ OT, การเงิน and แยกแผนก. `overflow: hidden` cut the overhang off
+     rather than showing it, which is why it read as a first field standing 1px
+     from the card's edge — 18px LEFT of the heading right above it — and not as
+     a bar that was too wide. Reported with a picture: *"ช่องตกขอบครับ"*. */
+  for (const m of rules.matchAll(/^[ \t]*(\.card[^{\n]*>[^{\n]*\.queue-tools[^{\n]*)\{([^}]*)\}/gm)) {
+    const [, selector, body] = m;
+    if (!/margin/.test(body)) continue;
+    assert.match(selector, /:not\(\.flush\)/,
+      `${selector.trim()} หักล้าง padding ที่การ์ดชนิดนี้ไม่มี — แถบจะตกขอบการ์ด`);
+  }
+  // And the three screens whose bar sits straight in a `.card.flush`, so the
+  // rule above has something to be about.
+  for (const f of ['components/ApprovalQueue.jsx', 'components/AccountingView.jsx',
+    'components/DepartmentView.jsx']) {
+    assert.match(noProse(read(f)), /className="card flush/,
+      `${f} เลิกใช้ .card.flush — กฎ :not(.flush) อาจไม่มีจอไหนเหลือให้คุ้มครองแล้ว`);
+  }
 });
 
 // ── and a form keeps its labels ─────────────────────────────────────────────

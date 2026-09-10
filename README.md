@@ -2023,7 +2023,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2496 tests
+and the engine know nothing about Next.js, so the whole suite — **2497 tests
 across 138 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "2470 tests across 136 files" until ot-hardening-and-slips was merged a THIRD
@@ -7027,9 +7027,33 @@ filter bar in the app:
 `.card.flush` it always did. บันทึกประวัติระบบ and ทะเบียนพนักงาน are plain
 `.card`s — heading, bar, table — and inside 18px of padding the same wash drew
 as a grey slab floating in a white card, one shape on four screens and another
-on two. `.card > .queue-tools { margin: 0 -18px }` negates the card's own
-padding (`-15px` in the 860px block, where `.card` pays 15), and the bar's own
-`padding: 14px 18px` puts the fields back where they were.
+on two. `.card:not(.flush) > .queue-tools { margin: 0 -18px }` negates the
+card's own padding (`-15px` in the 860px block, where `.card` pays 15), and the
+bar's own `padding: 14px 18px` puts the fields back where they were.
+
+> ⚠ **The `:not(.flush)` was missing for an hour, and the four screens that
+> already had a bar were the ones it broke.** It read *"`.card > .queue-tools
+> { margin: 0 -18px }` negates the card's own padding"* until the same evening —
+> true of the two cards it was written for and false of the four with no padding
+> to negate, where "-18px of 0" is just -18px. On รออนุมัติ OT, ตรวจสอบประจำเดือน,
+> การเงิน and แยกแผนก the bar hung 18px past the card at both ends; `.card.flush`
+> carries `overflow: hidden`, so the overhang was cut off rather than shown, and
+> what was left on screen was a first field standing 1px from the card's edge —
+> **18px to the LEFT of the heading directly above it.** Reported with a picture
+> of the การเงิน bar: *"ช่องตกขอบครับ"*. Measured after the fix at 1400px: the
+> bar is 277..1335 inside a card of 276..1336, and the first field and the
+> heading both start at 295. A negative margin is only ever the size of the
+> padding it cancels, so it has to be written against the cards that have it.
+> `test/filterBar.test.js` now walks every margin-bearing `.card … .queue-tools`
+> rule in the sheet and fails any that is not scoped away from `.flush`.
+
+**The magnifier and the ✕ ride 6px down with the value, not 7.** The label
+pushed the writing to the bottom of the box, so both glyphs — still `top: 50%`
+of a 47.5px field — follow it. 7px is where the value's own centre is, and 6 is
+as far as a 34px button can go before its bottom edge leaves a 47.5px box: a
+hairline of hover wash under the border on ถึงเดือน (ไม่บังคับ), the one
+clearable box on any bar in the app. 1px off the writing beats 1px outside the
+box.
 
 **All four search boxes have the magnifier now.** It read *"two search boxes
 gained the magnifier the other two always had"* for one commit, and that was
@@ -11604,7 +11628,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2496 tests**, about 3 s, measured 2026-09-10 across 138
+- `npm test` — **2497 tests**, about 3 s, measured 2026-09-10 across 138
   files, all green. It read **"2470 tests … across 136"** until
   ot-hardening-and-slips was merged a THIRD time the same day — five more
   commits, one new file (`otFormBlankDescription`) and sixteen cases across
