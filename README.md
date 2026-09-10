@@ -2010,7 +2010,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     137 files, run by `npm test`. Six named below as a
+test/                     138 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2023,8 +2023,8 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2488 tests
-across 137 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2496 tests
+across 138 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "2470 tests across 136 files" until ot-hardening-and-slips was merged a THIRD
 time later the same day — five more commits, one new file
@@ -6932,9 +6932,11 @@ was sound. It was simply not the other screen's, and one reader reads both. Four
 widths became one: `.month-find .month-pick` at 170, `.month-find .dept-pick` at
 190 and `.head-split .status-pick` at 220 are gone, and `.queue-tools .field`
 sizes every control on both bars, with `.field.search` the one field that grows.
-ค้นหาพนักงาน gained a visible `<label>` in a `.field-head` — every other control
-on the bar reserves that 18px first row, and a box without one sits 18px proud
-of the four beside it — replacing the `aria-label` that was standing in for it.
+ค้นหาพนักงาน gained a visible `<label>` in a `.field-head`, replacing the
+`aria-label` that was standing in for it. It read *"every other control on the
+bar reserves that 18px first row, and a box without one sits 18px proud of the
+four beside it"* until later the same day — there is no first row on a bar any
+more, and the section below is why.
 **ล้างตัวกรอง** joins it, the queue's own escape hatch; ประจำเดือน is not one of
 the things it clears, because a month is always chosen here and สถานะที่นับ goes
 back to `DEFAULT_STATUS` rather than to empty.
@@ -6944,6 +6946,101 @@ back to `DEFAULT_STATUS` rather than to empty.
 swaps for `.t-count` inside the title, the head becomes a column, and the one
 action goes full width at 44px. Three screens that each had to state that for
 themselves now state none of it.
+
+### แถบตัวกรองเดียวทั้งแอป — label ย้ายเข้าไปในกล่อง — 2026-09-10
+
+**Reported minutes after the round above, with a screenshot of แยกแผนก's new
+bar:** *"กระชับความสูงของ ส่วนตัวกรองหน่อยครับ ตามรูป · ลบ label ช่อง input /
+dropdown ออก · ปรับให้เป็นรูปแบบเดียวกันทั้ง app"*.
+
+**The 25px is real and it is on every bar.** `.field-head`'s `min-height: 18px`
+plus `.field`'s `gap: 7px` is a row above every control in the app — and a
+filter bar is a row of them, so it is 25px of chrome above the thing being
+filtered on six screens. On a phone the fields stack and it is 25px **each**.
+
+> ⚠ **A bare box was the obvious way to spend it and is not what was built.**
+> Half these controls cannot say what they are: `อนุมัติแล้ว + รอ HR` does not
+> say it is **สถานะที่นับ**, and `01/09/2569` does not say **ตั้งแต่** or
+> **ถึง**. Dropping the words would have bought the 25px by making four
+> controls on บันทึกประวัติระบบ unreadable. Put to HR with the three shapes
+> drawn out; the answer was *"มีแนวทางอื่นอีกมั้ย ที่ ux/ui กระชับขึ้นแต่ไม่
+> เสียรายละเอียด"*, then *"ช่วยออกแบบตาม ux/ui ที่นิยมใช้กัน เพื่อให้ผู้ใช้
+> คุ้นเคยเข้าใจง่ายใช้งานง่ายที่สุด"*.
+
+**So the label moved INTO the box and sits over the value** — a filled text
+field, the shape Material has drawn since 2018 and every booking site's date
+picker uses. The box keeps `--field-h`; the row above it goes. The arithmetic
+that makes it fit, which is what has to be redone if any of the three moves:
+
+```
+label   10px × 1.2   = 12.0
+gap                  =  2.0
+value   15px × 1.3   = 19.5     --field-size, unchanged
+                       ─────
+                        33.5   + 6 top + 7 bottom = 46.5   →  --field-h is 46
+```
+
+Measured on the built app at 1400px: the bar on ตรวจสอบประจำเดือน went **99px →
+76.5**, and every field is 47.5 (46 plus two borders) whether it holds an
+`<input>`, a `PickOne` or a `PickMonth`.
+
+**`pointer-events: none` on the label is what makes it a control and not a
+picture.** The words sit *on top of* a `<button>` (`PickOne`, `PickDate`) or an
+`<input>`, so without it the top third of every box swallows the press meant to
+open it. The `<label>` stays in the document with its `id`, which is what
+`aria-labelledby` on those boxes points at.
+
+**Six containers deleted, and a seventh vacated.** `.queue-tools` is now every
+filter bar in the app:
+
+| screen | was | now |
+|---|---|---|
+| รออนุมัติ OT | `.queue-tools` | unchanged |
+| ตรวจสอบประจำเดือน · การเงิน · แยกแผนก | `.queue-tools` (an hour old) | label inside the box |
+| การใช้สิทธิ์พิเศษ | `.compliance-filters` | `.queue-tools` |
+| บันทึกประวัติระบบ (3 tabs) | `.form-grid` + `.log-actions` | `.queue-tools`, buttons on the bar |
+| ทะเบียนพนักงาน | `.roster-find` | `.queue-tools` |
+
+> **One deleted rule is worth a line, because it was arithmetic rather than a
+> number.** `.compliance-actions` carried `padding-top: 25px` so its two buttons
+> stood on the line of the *boxes* rather than of the *labels* — `.field-head`'s
+> 18 plus `.field`'s 7, two figures from two other rules that had to agree with
+> this one and with nothing saying so. There is no label line to miss any more,
+> so the pair simply ends where the boxes end. `test/complianceFilterRow.test.js`
+> read all three numbers and now asserts the opposite: that no such padding
+> exists.
+
+**Three things moved off individual fields so the bar is one height.** A
+`.field-note` under one box is the one field taller than the rest:
+
+- *"รวมวันที่เลือกด้วย"* → into the label: **ถึงวันที่ (รวมวันนั้น)**. One
+  question, not a question and a footnote.
+- *"เว้นว่าง = ทุกประเภท"* → **deleted**, not moved. The closed box says
+  `ทุกประเภท` when nothing is chosen, so the note was the control read out loud
+  underneath itself.
+- *"รายชื่อมาจากบันทึกเอง — ไม่ใช่ทะเบียนวันนี้"* → into the card's `.hint`.
+  True, non-obvious and about the **screen** rather than the one control.
+- ทะเบียนพนักงาน's **แสดง n จาก m คน** → a sibling on the bar wearing
+  `.queue-tools .found`, which ตรวจสอบประจำเดือน already had.
+
+**The bar runs to the card's edges whatever kind of card it is in.** On
+`.card.flush` it always did. บันทึกประวัติระบบ and ทะเบียนพนักงาน are plain
+`.card`s — heading, bar, table — and inside 18px of padding the same wash drew
+as a grey slab floating in a white card, one shape on four screens and another
+on two. `.card > .queue-tools { margin: 0 -18px }` negates the card's own
+padding (`-15px` in the 860px block, where `.card` pays 15), and the bar's own
+`padding: 14px 18px` puts the fields back where they were.
+
+**Two search boxes gained the magnifier the other two always had** — two of the
+app's four had one, which is the kind of difference nobody reports and everybody
+feels.
+
+> ⚠ **Scope: `เฉพาะแถบตัวกรอง`, asked and answered in as many words.** A form is
+> not a filter bar. On บันทึก OT a label is a question asked of somebody with an
+> empty box under it, and a question printed inside the box it asks about is a
+> **placeholder** — the one thing a form label must not be, because it leaves the
+> moment the box is answered. The inset rule is scoped to `.queue-tools` and
+> `test/filterBar.test.js` fails if it ever reaches `.form-grid`.
 
 ### นโยบายการพิมพ์ใบขออนุมัติ OT — which rows reach the paper
 
@@ -11503,7 +11600,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2488 tests**, about 3 s, measured 2026-09-10 across 137
+- `npm test` — **2496 tests**, about 3 s, measured 2026-09-10 across 138
   files, all green. It read **"2470 tests … across 136"** until
   ot-hardening-and-slips was merged a THIRD time the same day — five more
   commits, one new file (`otFormBlankDescription`) and sixteen cases across

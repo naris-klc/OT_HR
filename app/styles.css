@@ -3845,12 +3845,16 @@ td > .approver-line { margin-top: 5px; }
 
    Full width, deliberately: the table under it is the whole register, and a
    filter for it that stops a third of the way across reads as a form field
-   somebody forgot to finish. */
-.roster-find { margin-bottom: 14px; }
-/* The count, under the box as a `.field` note. Mono on the figures only —
-   they are the two numbers being compared and the words around them are
-   Thai, which mono carries nothing of. */
-.roster-find .found strong { font: 600 12.5px/1.4 var(--mono); color: var(--ink); }
+   somebody forgot to finish.
+
+   ⚠ AND THERE IS NOTHING HERE AT ALL SINCE 2026-09-10. `.roster-find` and
+   `.roster-find .found` are deleted: this is `.queue-tools` now, the one filter
+   bar in the app, so the box takes its width from `.queue-tools .field.search`
+   and the count under it — which was the field's `note` — is a sibling on the
+   bar wearing `.queue-tools .found`, the rule ตรวจสอบประจำเดือน already had.
+   Two rules for one bar with one field on it was the shape the report of that
+   day was about. The paragraph above is kept because it is the account of how
+   this box came to be a `<Field>`, which is still what it is. */
 
 /* ── ค้นหาบนตรวจสอบรายเดือน ────────────────────────────────────────────────
    The same box as ทะเบียนพนักงาน's, and since 2026-09-10 it is the first field
@@ -8846,9 +8850,105 @@ th.why-col { width: 150px; }
   padding: 14px 18px; background: var(--neutral-wash);
   border-bottom: 1px solid var(--line-soft);
 }
-.queue-tools .field { flex: 0 1 200px; min-width: 150px; }
+/* `position: relative` is the label's business — it is what the inset
+   `.field-head` below is positioned against — and it is declared here rather
+   than in that block so `.queue-tools .field` is one rule to read. */
+.queue-tools .field { flex: 0 1 200px; min-width: 150px; position: relative; gap: 0; }
 .queue-tools .field.search { flex: 2 1 300px; }
 .queue-tools .btn { flex: none; }
+
+/* ── THE BAR RUNS TO THE CARD'S EDGES, WHATEVER KIND OF CARD IT IS ─────────
+   On `.card.flush` it always did: that card has no padding, so the wash is a
+   band with a rule under it, the way รออนุมัติ OT has drawn it since it was
+   written. บันทึกประวัติระบบ and ทะเบียนพนักงาน are PLAIN `.card`s — they carry
+   a heading, a bar and a table — and inside 18px of padding the same wash drew
+   as a grey slab floating in the middle of a white card, one shape on four
+   screens and another on two. Reported 2026-09-10 as *"ปรับให้เป็นรูปแบบ
+   เดียวกันทั้ง app"*.
+
+   THE MARGIN NEGATES THE CARD'S PADDING RATHER THAN THE MARKUP MOVING. Both of
+   those cards have a heading above the bar and a table under it, so the bar
+   cannot become a `.card.flush` section without restructuring two screens for a
+   fill. `-18px` is `.card`'s own padding and `-15px` is what the 860px block
+   sets; the bar's own `padding: 14px 18px` puts the fields back where they
+   were. The rule above the band is what makes it a section rather than a stripe
+   — `.card.flush` gets that from the head band's `border-bottom`. */
+.card > .queue-tools { margin: 0 -18px; border-top: 1px solid var(--line-soft); }
+/* First child of the card: there is nothing above it to be ruled off from, and
+   the band takes the card's own top corners. */
+.card > .queue-tools:first-child {
+  margin-top: -18px; border-top: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* ══ THE LABEL LIVES INSIDE THE BOX — 2026-09-10 ════════════════════════════
+
+   Asked for in three lines, with a screenshot of the bar on รายงาน OT แยกแผนก:
+   *"กระชับความสูงของ ส่วนตัวกรองหน่อยครับ · ลบ label ช่อง input / dropdown ออก ·
+   ปรับให้เป็นรูปแบบเดียวกันทั้ง app"*, and then — after being shown what a bare
+   box costs — *"ช่วยออกแบบตาม ux/ui ที่นิยมใช้กัน"*.
+
+   WHAT THE LABEL ROW COST, MEASURED: `.field-head`'s `min-height: 18px` plus
+   `.field`'s 7px `gap` — 25px above every control, and the bar is one row of
+   them, so it is 25px of every filter bar in the app. On a phone the fields
+   stack, so it is 25px × the number of them.
+
+   ⚠ AND A BARE BOX IS NOT WHAT WAS BUILT, because half these controls cannot
+   say what they are: `อนุมัติแล้ว + รอ HR` does not say it is สถานะที่นับ, and
+   `01/09/2569` does not say whether it is ตั้งแต่ or ถึง. Dropping the words
+   would have saved the 25px by making four controls on บันทึกประวัติระบบ
+   unreadable. So the label moves INTO the box and sits above the value — the
+   shape a filled text field has had since Material 2 and the one every date
+   picker on a booking site uses. The box keeps `--field-h`; the row above it
+   goes; nothing is lost.
+
+   THE ARITHMETIC THAT MAKES IT FIT IN 46px: label 10px at 1.2 (12) + 2px gap +
+   value 15px at 1.3 (19.5) = 33.5, and 6px + 7px of padding = 46.5, which the
+   `min-height` already declares. The value keeps `--field-size`; only the label
+   is smaller than it was, and it was 12px.
+
+   `pointer-events: none` ON THE LABEL, and it is what makes this a control
+   rather than a picture: the words sit ON TOP of a `<button>` (`PickOne`,
+   `PickDate`) or an `<input>`, so without it the top third of every box would
+   swallow the press that was meant to open it. The `<label>` is still in the
+   document and still carries `id`/`for`, which is what `aria-labelledby` on
+   those boxes points at.
+
+   SCOPED TO `.queue-tools`, WHICH IS EVERY FILTER BAR IN THE APP and nothing
+   else. A form is not a filter bar: on บันทึก OT the label is a question being
+   asked of somebody with an empty box under it, and a question printed inside
+   the box it is asking about is a placeholder — which is the one thing a form
+   label must not be, because it leaves when you answer it. Asked and answered
+   in as many words on 2026-09-10: *เฉพาะแถบตัวกรอง*. */
+.queue-tools .field > .field-head {
+  position: absolute; top: 7px; left: 15px; right: 15px; z-index: 1;
+  min-height: 0; pointer-events: none;
+}
+/* Same voice as `.field label`, two sizes down: mono, tracked, muted. It is the
+   `.kicker-sm` register — a small word naming the thing under it — which is
+   what this now is. `nowrap` + ellipsis because `กรองตามเหตุการณ์` in a 150px
+   box would otherwise wrap onto the value. */
+.queue-tools .field > .field-head label {
+  display: block; max-width: 100%;
+  font: 600 10px/1.2 var(--mono); letter-spacing: .1em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* A `?` on a filter bar keeps its press — it is the one thing in the head that
+   is a control rather than a caption. */
+.queue-tools .field > .field-head .tip-btn { pointer-events: auto; }
+.queue-tools .field input:not(:where([type='checkbox'], [type='radio'])),
+.queue-tools .field .pick-one,
+.queue-tools .field .pick-box {
+  padding-top: 21px; padding-bottom: 5px;
+}
+/* THE LEADING AND TRAILING GLYPHS FOLLOW THE VALUE, NOT THE BOX. Both are
+   `top: 50%` against a 46px box, which centred them on the whole field — right
+   while the field held one line, and 8px high the moment the label moved in
+   above it. The magnifier now sits on the writing it belongs to, and so does
+   the ✕. (`.pick-mark` needs nothing: it is a flex item inside the box and
+   rides the same padding as the value beside it.) */
+.queue-tools .searchbox .searchbox-icon,
+.queue-tools .searchbox-clear { transform: translateY(calc(-50% + 8px)); }
 
 /* The phone's own toolbar — กรองข้อมูล and เลือกทั้งหมด. Drawn only inside the
    860px block; on a desktop the filters are already on screen and the heading
@@ -11215,6 +11315,10 @@ table.mini tbody tr:hover { background: none; }
      one follows" rather than the reverse so a browser without `:has` errs
      towards one hairline too many rather than none. */
   .queue-tools { padding: 12px 12px 10px; }
+  /* `.card`'s padding is 15 at this width, not 18 — see the rule by that name
+     in this block. Same negation, one number along. */
+  .card > .queue-tools { margin: 0 -15px; }
+  .card > .queue-tools:first-child { margin-top: -15px; border-radius: var(--radius) var(--radius) 0 0; }
   .queue-tools:has(+ .queue-mobile-bar) { border-bottom: 0; }
   .queue-tools .field, .queue-tools .field.search { flex: 1 1 100%; }
   .batch-progress { padding: 10px 12px; }
@@ -14897,42 +15001,47 @@ table.mini tbody tr:hover { background: none; }
    `align-items: start`, the same reason `.form-grid` gives: two of the three
    fields carry a note under them, and pinning the row by its bottom edge would
    stand the third box a line higher than the two beside it. */
-.compliance-filters { display: flex; flex-wrap: wrap; align-items: start; gap: 18px 16px; }
-.compliance-filters > .field { flex: 1 1 190px; }
-/* THE PADDING IS THE LABEL LINE. A `.field` is a `.field-head` (18px) over its
-   control with a 7px gap between, so 25px is where the three boxes start —
-   without it the buttons sit level with the LABELS, a line above every control
-   on the row. Two numbers from two rules, and if either moves this is wrong by
-   the difference: test/complianceFilterRow.test.js reads all three.
+/* `.compliance-filters` STOOD HERE UNTIL 2026-09-10 and is deleted: การใช้งาน
+   ตามกฎ uses `.queue-tools`, the app's one filter bar.
 
-   `margin-left: auto` for the case the flex line has room to spare, which is
-   most desktop widths: the pair is held against the right edge of the card
-   rather than drifting up against เฉพาะประเภท. */
-.compliance-filters .compliance-actions {
+   THE RULE IT TOOK WITH IT IS WORTH A LINE, because it was arithmetic rather
+   than a number: `.compliance-actions` carried `padding-top: 25px` so the two
+   buttons sat on the line of the three BOXES rather than of the three LABELS —
+   `.field-head`'s 18 plus `.field`'s 7, two figures from two other rules that
+   had to agree with this one and with nothing saying so. There is no label line
+   any more (the label is inside the box), so the pair simply ends where the
+   boxes end. One less number that could go stale.
+
+   `margin-left: auto` SURVIVES, for the case the flex line has room to spare,
+   which is most desktop widths: the pair is held against the right edge of the
+   card rather than drifting up against เฉพาะประเภท. */
+.queue-tools .compliance-actions {
   flex: none; display: flex; gap: 8px; align-items: center;
-  margin-left: auto; padding-top: 25px;
+  margin-left: auto;
 }
 /* The paragraph the ⓘ opens, under the one line that is always drawn. Held to
    the reading measure the rest of the app's prose uses — a 1200px card would
    otherwise give this one sentence a 150-character line. */
 .compliance-about { margin: -6px 0 14px; max-width: 80ch; }
 
-/* One box per line before they get too narrow to read what is in them — 560
-   is `.form-grid`'s own breakpoint, which is where these three fields were
-   until this row was written, and flex-wrap covers everything above it without
-   a second guess about where the buttons go. On their own line the right-hand
-   pull and the label-line padding both come off, and the pair takes the width
-   at the 44px every other phone target in this app measures. */
+/* The two buttons take their own line before they get too narrow to read —
+   560 is `.form-grid`'s own breakpoint, which is where these fields were before
+   they were a row at all. The fields themselves need nothing here any more:
+   `.queue-tools .field` goes full width in the 860px block, which is above this
+   one. On their own line the right-hand pull comes off and the pair takes the
+   44px every other phone target in this app measures. */
 @media (max-width: 560px) {
-  .compliance-filters > .field { flex-basis: 100%; }
-  .compliance-filters .compliance-actions { margin-left: 0; padding-top: 0; width: 100%; }
-  .compliance-filters .compliance-actions .btn { flex: 1; min-height: 44px; }
+  .queue-tools .compliance-actions { margin-left: 0; width: 100%; }
+  .queue-tools .compliance-actions .btn { flex: 1; min-height: 44px; }
 }
 
 /* ล้างตัวกรอง and ดาวน์โหลด CSV. On a wide screen this is an ordinary `.row`;
    what it needs from a class is the margin, which the phone block below
    changes rather than restating an inline style in two places. */
-.log-actions { margin-bottom: 12px; }
+/* `.log-actions` STOOD HERE UNTIL 2026-09-10 — a 12px gap under the row of two
+   buttons that sat below the filter grid. Both buttons are on the bar now
+   wearing `.compliance-actions`, which is การใช้สิทธิ์พิเศษ's class and was
+   already doing this job on the fifth tab of the same screen. */
 
 /* ── A TABLE WAITING FOR ITS NEXT PAGE ─────────────────────────────────────
    `data-busy="1"` while a request for the next page is in flight, on a wrap
@@ -15249,8 +15358,6 @@ table.mini tbody tr:hover { background: none; }
      20 below, 10 between: the gap to the list under them has to be larger
      than the gap between them, or the second button reads as the first row
      of the log. */
-  .log-actions { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 20px; }
-  .log-actions .btn { width: 100%; min-height: 44px; }
 
   /* THE CARDS LINE UP WITH THE FIELDS ABOVE THEM. `.stack-table tbody` insets
      its cards by 12px, which is right where a table is the whole card — here

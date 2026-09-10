@@ -3190,26 +3190,34 @@ function Employees({ user }) {
         is the entire register. Narrowing it here can hide a name that is
         present, never miss one that is absent.
       */}
-      <div className="roster-find">
-        <Field
-          label="ค้นหาพนักงาน"
-          /*
-            The count, and it is not decoration. A filtered table is a table
-            that is lying by omission — nine rows where the register holds two
-            hundred — and the box above it is one line that is easy to scroll
-            past and easier to forget. This is the sentence that says the short
-            list is a filter and not the roster.
-          */
-          note={find ? (
-            <span className="found">
-              แสดง <strong>{shown.length}</strong> จาก <strong>{rows.length}</strong> คน
-            </span>
-          ) : null}
-        >
+      {/* `queue-tools` SINCE 2026-09-10 — the app's one filter bar. This was
+          `.roster-find`, a rule of its own for a bar with one field on it, and
+          the label sat above the box the way it did on four other screens that
+          have since stopped doing that. Asked for as *"ปรับให้เป็นรูปแบบเดียวกัน
+          ทั้ง app"*. */}
+      <div className="queue-tools">
+        {/*
+          THE COUNT LEFT THE FIELD'S `note` AND IS A SIBLING ON THE BAR, which
+          is where ตรวจสอบประจำเดือน has kept its own since that screen's bar was
+          built — `.queue-tools .found`, one rule for both.
+
+          It is not decoration. A filtered table is a table that is lying by
+          omission — nine rows where the register holds two hundred — and the
+          box above it is one line that is easy to scroll past and easier to
+          forget. This is the sentence that says the short list is a filter and
+          not the roster.
+        */}
+        <Field label="ค้นหาพนักงาน" className="search">
           <div className="searchbox">
+            {/* THE MAGNIFIER, ADDED 2026-09-10 WITH THE SHARED BAR. Two of the
+                app's four search boxes had one and two did not, which is the
+                kind of difference nobody reports and everybody feels. `has-icon`
+                is the 40px of left padding it needs; the glyph is
+                `pointer-events: none`, so the whole box is still one click. */}
+            <Icon name="search" className="searchbox-icon" />
             <input
               type="text"
-              className={find ? 'has-clear' : undefined}
+              className={`has-icon${find ? ' has-clear' : ''}`}
               value={find}
               onChange={(e) => setFind(e.target.value)}
               placeholder="พิมพ์ชื่อ หรือ รหัสพนักงาน…"
@@ -3225,6 +3233,11 @@ function Employees({ user }) {
             {find && <ClearButton onClear={() => setFind('')} />}
           </div>
         </Field>
+        {find && (
+          <div className="found">
+            แสดง <strong>{shown.length}</strong> จาก <strong>{rows.length}</strong> คน
+          </div>
+        )}
       </div>
 
       {/*

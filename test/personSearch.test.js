@@ -369,9 +369,13 @@ test('a new row is never hidden behind a filter that was already on', () => {
   assert.match(employees, /if \(find && !personMatches\(who, find\)\) setFind\(''\)/);
 });
 
-/** The whole search box, from its wrapper to the table it sits over. */
+/** The whole search box, from its wrapper to the table it sits over.
+    `.roster-find` UNTIL 2026-09-10, when this bar became `.queue-tools` — the
+    app's one filter bar — with its label inside the box. The slice is anchored
+    on the label instead, which is what this file is actually about and is the
+    one string in here that did not move. */
 const findBox = employees.slice(
-  employees.indexOf('className="roster-find"'),
+  employees.indexOf('<Field label="ค้นหาพนักงาน"'),
   employees.indexOf('An empty table after a search'),
 );
 

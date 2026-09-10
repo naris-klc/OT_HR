@@ -348,7 +348,11 @@ test('every field on the bar is one width, stated once for both screens', () => 
      four — four numbers where the two bars now share one, with `.field.search`
      the single exception because it is the one field that should take what is
      left. */
-  assert.match(css, /\.queue-tools \.field \{ flex: 0 1 200px; min-width: 150px; \}/);
+  /* `position: relative; gap: 0` joined the same rule on 2026-09-10, when the
+     label moved inside the box — see test/filterBar.test.js. The width is what
+     this test is about, so it is read out of the declaration rather than the
+     whole line being quoted. */
+  assert.match(css, /\.queue-tools \.field \{[^}]*flex: 0 1 200px; min-width: 150px;/);
   assert.match(css, /\.queue-tools \.field\.search \{ flex: 2 1 300px; \}/);
   for (const dead of ['.month-find .month-pick', '.month-find .dept-pick', '.head-split .status-pick']) {
     assert.ok(!css.includes(`${dead} {`), `${dead} came back — the bar has a second width again`);

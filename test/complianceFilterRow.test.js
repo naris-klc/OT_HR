@@ -100,44 +100,70 @@ test('what it used to say is behind the app\'s own ⓘ', () => {
 
 // ── three filters and two buttons, one line ─────────────────────────────────
 
-test('the filters and the buttons are in one row, not three', () => {
-  assert.match(card, /<div className="compliance-filters">/);
-  // The pair is INSIDE that row now; a `.row` of its own under the grid is the
+test('the filters and the buttons are one row, and it is the app’s own bar', () => {
+  /* `.queue-tools` SINCE 2026-09-10 — `.compliance-filters` is deleted. This
+     row was this screen's own flex line with its own gap and its own field
+     basis, beside four report screens using `.queue-tools` for the same job;
+     reported as *"ปรับให้เป็นรูปแบบเดียวกันทั้ง app"*. Nothing about what this
+     test guards changed: three filters and two buttons, one line, wrapping
+     rather than breaking at a guessed width. */
+  assert.match(card, /<div className="queue-tools">/);
+  assert.ok(!card.includes('compliance-filters'), 'แถวตัวกรองของจอนี้กลับมาเป็นคลาสของตัวเอง');
+  // The pair is INSIDE that row; a `.row` of its own under the grid is the
   // third line this change removed.
-  const row = card.slice(card.indexOf('<div className="compliance-filters">'));
+  const row = card.slice(card.indexOf('<div className="queue-tools">'));
   assert.ok(row.indexOf('compliance-actions') < row.indexOf('{error &&'), 'ปุ่มหลุดออกไปนอกแถวตัวกรองแล้ว');
   assert.match(row, /ดาวน์โหลด CSV ตามตัวกรอง/);
   assert.match(row, /ล้างตัวกรองทั้งหมด/);
   // Wrapping, so the pair drops to a line of its own when the window cannot
   // hold five things — no breakpoint is asked to guess where that is.
-  assert.match(rule('.compliance-filters'), /display: flex; flex-wrap: wrap;/);
-  assert.match(rule('.compliance-filters'), /align-items: start/);
-  assert.match(rule('.compliance-filters > .field'), /flex: 1 1 190px/);
+  assert.match(rule('.queue-tools'), /display: flex; gap: 12px; flex-wrap: wrap;/);
+  assert.match(rule('.queue-tools'), /align-items: flex-end/);
+  assert.match(rule('.queue-tools .field'), /flex: 0 1 200px/);
 });
 
-test('the buttons stand on the line of the boxes, not of the labels', () => {
-  /*
-   * A `.field` is a `.field-head` over its control with a gap between, so the
-   * top of every box on the row is those two numbers below the top of the row.
-   * The actions cell has no label, so it pays the same distance in padding.
-   */
-  const head = Number(rule('.field-head').match(/min-height: (\d+)px/)?.[1]);
-  const gap = Number(rule('.field').match(/gap: (\d+)px/)?.[1]);
-  const pad = Number(rule('.compliance-filters .compliance-actions').match(/padding-top: (\d+)px/)?.[1]);
-  assert.ok(head > 0 && gap > 0, 'อ่านความสูงของหัวฟิลด์หรือช่องไฟไม่ได้');
-  assert.equal(pad, head + gap, `ปุ่มเยื้องจากแถว ${pad}px แต่กล่องเริ่มที่ ${head + gap}px`);
+test('there is no label line left for the buttons to miss', () => {
+  /* ⚠ THIS TEST HELD THE OPPOSITE ARITHMETIC UNTIL 2026-09-10, and what
+     replaced it is the point of the round.
+
+     It read: `.compliance-actions` carries `padding-top: 25px` so the pair
+     stands on the line of the three BOXES rather than of the three LABELS, and
+     25 is `.field-head`'s `min-height` (18) plus `.field`'s `gap` (7) — two
+     figures from two other rules, read out of the stylesheet here so that
+     moving either failed this rather than dropping the buttons a few pixels out
+     of line on a screen nobody rebuilds for a week.
+
+     THE LABEL LINE IS GONE. Asked for with a screenshot: *"กระชับความสูงของ
+     ส่วนตัวกรอง · ลบ label ช่อง input / dropdown ออก"*. The label is inside the
+     box now (`.queue-tools .field > .field-head`, absolutely positioned over
+     the control), so the boxes start at the top of the row and the pair needs
+     no padding at all. One number that could go stale, deleted rather than
+     re-derived — which is the better answer to the report that produced it. */
+  assert.ok(!css.includes('.compliance-actions {\n  flex: none; display: flex; gap: 8px; align-items: center;\n  margin-left: auto; padding-top:'),
+    'ปุ่มกลับไปเยื้องตามบรรทัด label อีกแล้ว');
+  const actions = rule('.queue-tools .compliance-actions');
+  assert.ok(!/padding-top/.test(actions), 'ปุ่มยังเยื้องเองอยู่ ทั้งที่ไม่มีบรรทัด label ให้เยื้องแล้ว');
   // Held against the right edge of the card when the line has room to spare.
-  assert.match(rule('.compliance-filters .compliance-actions'), /margin-left: auto/);
+  assert.match(actions, /margin-left: auto/);
+  // AND THE LABEL IS REALLY INSIDE THE BOX — the half that makes the sentence
+  // above true rather than merely tidy.
+  const inset = rule('.queue-tools .field > .field-head');
+  assert.match(inset, /position: absolute/);
+  assert.match(inset, /pointer-events: none/);
+  assert.match(css, /\.queue-tools \.field input:not\(:where\(\[type='checkbox'\], \[type='radio'\]\)\),\s*\.queue-tools \.field \.pick-one,\s*\.queue-tools \.field \.pick-box \{\s*padding-top: 21px; padding-bottom: 5px;\s*\}/);
 });
 
-test('under 560 the row stacks and the buttons are a thumb tall', () => {
+test('under 560 the buttons are a thumb tall and take the line', () => {
   // 560 is `.form-grid`'s own breakpoint, and these three fields were in a
-  // `.form-grid` until this row was written.
-  const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.compliance-filters {')));
+  // `.form-grid` until this row was written. The FIELDS need nothing here any
+  // more — `.queue-tools .field` goes full width in the 860px block, which is
+  // above this one — so what is left is the pair.
+  const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.queue-tools .compliance-actions {')));
   const block = narrow.slice(0, narrow.indexOf('\n}\n'));
-  assert.match(block, /\.compliance-filters > \.field \{ flex-basis: 100%; \}/);
-  assert.match(block, /\.compliance-filters \.compliance-actions \{[^}]*padding-top: 0/);
-  assert.match(block, /\.compliance-filters \.compliance-actions \.btn \{[^}]*min-height: 44px/);
+  assert.match(block, /\.queue-tools \.compliance-actions \{[^}]*margin-left: 0/);
+  assert.match(block, /\.queue-tools \.compliance-actions \.btn \{[^}]*min-height: 44px/);
+  const wide = css.slice(css.indexOf('@media screen and (max-width: 860px)'));
+  assert.match(wide, /\.queue-tools \.field, \.queue-tools \.field\.search \{ flex: 1 1 100%; \}/);
 });
 
 // ── the amber count ─────────────────────────────────────────────────────────

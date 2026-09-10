@@ -117,17 +117,40 @@ test('the two cells that lead the card print no label and read from the left', (
 
 // ── the screen around the card ──────────────────────────────────────────────
 
-test('the two buttons stack, full width, and stand off the list below', () => {
-  const block = phoneBlock();
-  // Side by side at `.sm` they were two 13px labels sharing 340px, and one of
-  // them is ดาวน์โหลด CSV ตามตัวกรอง.
-  assert.match(block, /\.log-actions \{ flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 20px; \}/);
-  assert.match(block, /\.log-actions \.btn \{ width: 100%; min-height: 44px; \}/);
-  // The gap under them is bigger than the gap between them, or the second
-  // button reads as the first row of the log.
-  const gap = Number(block.match(/\.log-actions \{[^}]*gap: (\d+)px/)[1]);
-  const below = Number(block.match(/\.log-actions \{[^}]*margin-bottom: (\d+)px/)[1]);
-  assert.ok(below > gap, `${below} under, ${gap} between — the pair no longer reads as a pair`);
+test('the two buttons are on the filter bar, and take a thumb-sized line', () => {
+  /* ⚠ `.log-actions` IS DELETED — 2026-09-10.
+
+     It was a `.row` UNDER the filters, and at this width it stacked its two
+     buttons full width with 10px between them and 20 under, so the pair did not
+     read as the first row of the log. All of that was right while the filters
+     were a `.form-grid`.
+
+     The filters are `.queue-tools` now — the app's one filter bar, asked for as
+     *"ปรับให้เป็นรูปแบบเดียวกันทั้ง app"* — and the pair is INSIDE it wearing
+     `.compliance-actions`, which is what การใช้สิทธิ์พิเศษ (the fifth tab of
+     this same screen) had been using for the same two buttons all along. Two
+     tabs of one screen answering one question two ways is what that round was
+     reported over.
+
+     SO WHAT IS PINNED IS THE SAME PROPERTY THROUGH THE SHARED CLASS: the pair
+     takes the width and a 44px target, and it is not a row of its own hanging
+     over the table. The gap under them is the bar's own bottom padding now —
+     what separates every filter bar in this app from what it filters. */
+  /* READ WITH THE PROSE TAKEN OUT. The stylesheet still SAYS `.log-actions` —
+     the deleted rule left a note where it stood, which is how this repo records
+     a removal — and a bare `includes` here would match that note and fail on
+     the very sentence explaining why the rule is gone. AGENTS.md names this
+     exact trap; it has caught assertions in this suite three times. */
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/\.log-actions\s*[,{]/.test(rules), '.log-actions กลับมาแล้ว — ปุ่มหลุดออกจากแถบตัวกรอง');
+  const narrow = css.slice(css.indexOf('@media (max-width: 560px) {', css.indexOf('.queue-tools .compliance-actions {')));
+  const block560 = narrow.slice(0, narrow.indexOf('\n}\n'));
+  assert.match(block560, /\.queue-tools \.compliance-actions \{[^}]*width: 100%/);
+  assert.match(block560, /\.queue-tools \.compliance-actions \.btn \{[^}]*min-height: 44px/);
+  const bar = jsx.slice(jsx.indexOf('<div className="queue-tools" style={{ marginBottom: 12 }}>'));
+  const upToTable = bar.slice(0, bar.indexOf('{error &&'));
+  assert.ok(upToTable.includes('ดาวน์โหลด CSV ตามตัวกรอง'), 'ปุ่มดาวน์โหลดไม่ได้อยู่ในแถบตัวกรอง');
+  assert.ok(upToTable.includes('ล้างตัวกรองทั้งหมด'), 'ปุ่มล้างตัวกรองไม่ได้อยู่ในแถบตัวกรอง');
 });
 
 test('the export is the one button on the screen that does something', () => {

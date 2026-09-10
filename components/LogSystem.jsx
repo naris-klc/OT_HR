@@ -10,6 +10,7 @@ import {
   Alert, Empty, Field, Modal, PickOne, ClearButton, TablePager, TipButton, useScrollEdge,
   useKeptFetch, usePageReset,
 } from './common.jsx';
+import Icon from './icons.jsx';
 
 /**
  * บันทึกระบบ — who has been in this system, from where, and what they touched.
@@ -584,17 +585,28 @@ function Compliance() {
       <div className="hint">บันทึกทุกครั้งที่มีการใช้สิทธิ์ระดับสูง หรือสิทธิ์ที่ระบบปกติจะปฏิเสธ</div>
       {aboutOpen && <div className="field-note compliance-about">{ABOUT}</div>}
 
-      {/* THREE FILTERS AND THE TWO BUTTONS ON ONE LINE — see `.compliance-filters`.
+      {/* THREE FILTERS AND THE TWO BUTTONS ON ONE LINE — see `.queue-tools`.
           The pair used to be a `.row` under the grid, which on a two-column
           grid put ตั้งแต่วันที่/ถึงวันที่ on one line, เฉพาะประเภท alone on the
           next and the buttons on a third: three rows of chrome over a table
           that is the reason for the screen. */}
-      <div className="compliance-filters">
+      {/* `queue-tools` SINCE 2026-09-10 — the app's one filter bar, in place of
+          this screen's own `.compliance-filters`. Asked for as
+          *"ปรับให้เป็นรูปแบบเดียวกันทั้ง app"* with the label moving inside the
+          box; a second flex row with its own gap and its own idea of where a
+          control starts is what that report was about. */}
+      <div className="queue-tools">
         <Field label="ตั้งแต่วันที่">
           <PickDate label="ตั้งแต่วันที่" max={today} value={range.from} clearable
             onChange={(v) => setRange((r) => ({ ...r, from: v }))} />
         </Field>
-        <Field label="ถึงวันที่" note="รวมวันที่เลือกด้วย">
+        {/* THE NOTE IS IN THE LABEL NOW, and it is a smaller change than it
+            looks: `note="รวมวันที่เลือกด้วย"` drew a second line UNDER this one
+            box, which on a bar of equal-height controls is the one field that
+            is taller than the rest. Inside the label it is read where the
+            question is asked — and "ถึงวันที่" and "รวมวันนั้น" are one
+            question, not a question and a footnote. */}
+        <Field label="ถึงวันที่ (รวมวันนั้น)">
           <PickDate label="ถึงวันที่" max={today} value={range.to} clearable
             onChange={(v) => setRange((r) => ({ ...r, to: v }))} />
         </Field>
@@ -609,9 +621,11 @@ function Compliance() {
             filters: `(3)` had to be inside the string because an `<option>` can
             hold nothing else, and it is the `.ct` column now — mono, tabular,
             against the right edge where the figures line up. */}
+        {/* `note="เว้นว่าง = ทุกประเภท"` STOOD HERE AND IS DELETED, not moved:
+            the box says `ทุกประเภท` when nothing is chosen — `allLabel` below —
+            so the note was the closed control read out loud underneath itself. */}
         <PickOne
           label="เฉพาะประเภท"
-          note="เว้นว่าง = ทุกประเภท"
           value={only}
           onChange={setOnly}
           allLabel="ทุกประเภท"
@@ -619,12 +633,16 @@ function Compliance() {
             value: k, label: v, count: data?.counts?.[k],
           }))}
         />
-        {/* Last cell of the row, and the padding is what puts the buttons on
-            the line of the three boxes rather than of the three labels — see
-            `.compliance-filters .compliance-actions`. ล้างตัวกรองทั้งหมด keeps its place to
-            the left of ดาวน์โหลด: it appears only when something is filtering,
-            and a button that comes and goes must not be the one whose position
-            the other is found by. */}
+        {/* Last cell of the row. ล้างตัวกรองทั้งหมด keeps its place to the left
+            of ดาวน์โหลด: it appears only when something is filtering, and a
+            button that comes and goes must not be the one whose position the
+            other is found by.
+
+            THE 25px OF PADDING THAT PUT THESE ON THE LINE OF THE BOXES RATHER
+            THAN OF THE LABELS IS GONE, and so is the arithmetic behind it —
+            `.field-head`'s 18 plus `.field`'s 7, two numbers from two rules
+            that had to agree with nothing saying so. There is no label line to
+            miss any more; `.queue-tools` ends its children on one edge. */}
         <div className="compliance-actions">
           {(range.from || range.to || only) && (
             <button className="btn ghost sm" onClick={() => { setRange({ from: '', to: '' }); setOnly(''); }}>
@@ -871,16 +889,38 @@ function LogList({
         {tab === 'auth' && 'ทุกครั้งที่มีการเข้าสู่ระบบ ออกจากระบบ และทุกครั้งที่กรอกรหัสผ่านไม่ถูกต้อง เรียงจากใหม่ไปเก่า'}
         {tab === 'edits' && 'ทุกคำสั่งที่ตั้งใจแก้ไขข้อมูล รวมทั้งคำสั่งที่ระบบปฏิเสธ · หน้านี้บอกว่าใครสั่งอะไรเมื่อไหร่ ส่วนค่าที่เปลี่ยนไปดูได้ที่ประวัติของใบนั้นหรือประวัติการแก้ทะเบียน'}
         {tab === 'all' && 'ทุกการเรียกใช้ API รวมทั้งการเปิดดูข้อมูลที่ไม่ได้แก้อะไร — ใช้ตอบคำถามว่าบัญชีไหนเปิดดูอะไรเมื่อไหร่'}
+        {' · '}
+        {/* Was a `note` under กรองตามบัญชี until 2026-09-10 — see the note over
+            that control for why a sentence this long is the screen's and not
+            the field's. */}
+        รายชื่อในช่อง <strong>กรองตามบัญชี</strong> มาจากบันทึกเอง ไม่ใช่ทะเบียนวันนี้
       </div>
 
-      <div className="form-grid" style={{ marginBottom: 12 }}>
-        <Field label="ค้นหา" note="ค้นได้จากเส้นทาง ชื่อ รหัสพนักงาน และหมายเลขไอพี">
+      {/* `queue-tools` SINCE 2026-09-10, in place of `.form-grid` — see the note
+          on การใช้งานตามกฎ above. A form grid is for a form: equal columns, a
+          label over every box, and room for a note under each one. These six
+          are filters, and the bar is what filters look like in this app now.
+
+          `search` ON THE FIRST FIELD is what gives it twice the basis of the
+          five dropdowns beside it — `.queue-tools .field.search`. */}
+      <div className="queue-tools" style={{ marginBottom: 12 }}>
+        {/* THE NOTE MOVED INTO THE PLACEHOLDER, which is where an example of
+            what to type belongs: `ค้นได้จากเส้นทาง ชื่อ รหัสพนักงาน และหมายเลข
+            ไอพี` was a line under the box saying in words what the box was
+            already showing by example. */}
+        <Field label="ค้นหา" className="search">
           <div className="searchbox">
+            {/* THE MAGNIFIER, ADDED 2026-09-10 WITH THE SHARED BAR. Two of the
+                app's four search boxes had one and two did not, which is the
+                kind of difference nobody reports and everybody feels. `has-icon`
+                is the 40px of left padding it needs; the glyph is
+                `pointer-events: none`, so the whole box is still one click. */}
+            <Icon name="search" className="searchbox-icon" />
             <input
               type="text"
-              className={filters.q ? 'has-clear' : undefined}
+              className={`has-icon${filters.q ? ' has-clear' : ''}`}
               value={filters.q}
-              placeholder="เช่น PM-0620 หรือ 192.168.109."
+              placeholder="เส้นทาง · ชื่อ · รหัสพนักงาน · ไอพี — เช่น PM-0620"
               aria-label="ค้นหาในบันทึกประวัติระบบ"
               autoComplete="off"
               spellCheck={false}
@@ -893,9 +933,14 @@ function LogList({
             เฉพาะประเภท on the tab above, which is the same argument and the same
             round. A filter bar has ONE kind of dropdown on it: one control drawn
             any other way is the OS menu back on one field. */}
+        {/* `รายชื่อมาจากบันทึกเอง — ไม่ใช่ทะเบียนวันนี้` WAS A `note` UNDER THIS
+            BOX AND IS IN THE CARD'S HINT NOW. It is a true and non-obvious fact
+            — the list is built from what the log recorded, so somebody deleted
+            from the roster is still in it — and it is about the SCREEN rather
+            than about this one control, which is where a sentence that long
+            belongs on a bar of equal-height boxes. */}
         <PickOne
           label="กรองตามบัญชี"
-          note="รายชื่อมาจากบันทึกเอง — ไม่ใช่ทะเบียนวันนี้"
           value={filters.actor}
           onChange={(v) => setFilter('actor', v)}
           allLabel="— ทุกบัญชี —"
@@ -935,18 +980,24 @@ function LogList({
         <Field label="ตั้งแต่วันที่">
           <PickDate label="ตั้งแต่วันที่" max={today} value={filters.from} clearable onChange={(v) => setFilter('from', v)} />
         </Field>
-        <Field label="ถึงวันที่" note="รวมวันที่เลือกด้วย">
+        <Field label="ถึงวันที่ (รวมวันนั้น)">
           <PickDate label="ถึงวันที่" max={today} value={filters.to} clearable onChange={(v) => setFilter('to', v)} />
         </Field>
-      </div>
+        {/* ── THE TWO BUTTONS ARE ON THE BAR, NOT UNDER IT — 2026-09-10 ──────
+            They were a `.row.log-actions` below the filters, which was right
+            while the filters were a `.form-grid`; on a bar it left a lone button
+            sitting on white directly under a wash band, and การใช้สิทธิ์พิเศษ —
+            the fifth tab of this same screen — already had its pair inside the
+            bar. Two tabs of one screen answering the same question two ways is
+            what the round of 2026-09-10 was reported over.
 
-      {/* The spacing is in `.log-actions` rather than inline, because it is not
-          one number: on a phone these stack and the gap to the list below has
-          to be bigger than the gap between the two buttons. */}
-      <div className="row log-actions">
-        {narrowed && (
-          <button className="btn ghost sm" onClick={onClearFilters}>ล้างตัวกรองทั้งหมด</button>
-        )}
+            `compliance-actions` IS THE CLASS, and it keeps that name rather than
+            gaining a second: `margin-left: auto` and the phone rules are one
+            declaration, and a `.log-actions` beside it would be a copy of it. */}
+        <div className="compliance-actions">
+          {narrowed && (
+            <button className="btn ghost sm" onClick={onClearFilters}>ล้างตัวกรองทั้งหมด</button>
+          )}
         {/* The reason this screen has an export at all: the request comes from
             somebody who will never be given a login. See the route.
 
@@ -955,7 +1006,8 @@ function LogList({
             grey cards side by side say neither. Not the filled green either:
             that voice belongs to the action a screen is for, and this screen is
             for reading. See the note at `.btn.outline`. */}
-        <button className="btn outline sm" onClick={download}>ดาวน์โหลด CSV ตามตัวกรอง</button>
+          <button className="btn outline sm" onClick={download}>ดาวน์โหลด CSV ตามตัวกรอง</button>
+        </div>
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}
