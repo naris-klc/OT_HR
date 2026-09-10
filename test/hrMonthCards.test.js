@@ -194,6 +194,46 @@ test('the whole row opens the person, and it is the same press คิวรอ�
   assert.ok(!totalRow.slice(0, totalRow.indexOf('</tr>')).includes('row-open'));
 });
 
+test('the action column was resized when it lost a button, and แผนก got the room', () => {
+  /**
+   * ── ⚠ A MEASUREMENT THAT OUTLIVED WHAT IT MEASURED ────────────────────────
+   *
+   * `th.act-col { width: 258px }` was cut against TWO WORDED BUTTONS. On
+   * 2026-09-10 the first of them stopped being a button — the row itself opens
+   * the person now — and the width stayed behind for a commit. Reported as
+   * *"ตารางไม่สวยเลย ความกว้างของแต่ละคอลัมน์ไม่สมดุล"*.
+   *
+   * ON `table-layout: auto` A RESERVED WIDTH IS NOT EMPTY SPACE. It is taken
+   * from the columns that have to wrap — so this table spent a quarter of
+   * itself on one 32px icon while แผนก, which has no width of its own and holds
+   * Thai (no spaces, broken by the browser's dictionary), came out as
+   * `แผนก / บัญชี / และ / การ / เงิน`, five lines deep, beside 200px of nothing.
+   *
+   * The lesson is not the number. It is that a width and the thing it was
+   * measured against have to move together, so this pins the pair.
+   */
+  // The shared 258 stays for whoever still holds worded buttons.
+  assert.match(css, /th\.act-col \{ width: 258px; \}/);
+  // …and this screen, which holds one icon, takes an override rather than
+  // narrowing that rule out from under คิวรออนุมัติ.
+  assert.match(css, /\.hr-table th\.act-col \{ width: 64px; \}/);
+  // The cell it is sized for: exactly one button.
+  const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
+  assert.equal((cell.match(/<button/g) || []).length, 1, 'act-col holds a different number of buttons than 64px was cut for');
+
+  // Where the room went. `dept-col` had NO width on this screen before — it was
+  // whatever `auto` left over, and what `auto` left over was nothing.
+  assert.match(css, /\.hr-table th\.who-col \{ width: 196px; \}/);
+  assert.match(css, /\.hr-table th\.dept-col \{ width: 132px; \}/);
+  // Thai wraps by dictionary, so the cell needs `normal` or the shared `th`
+  // nowrap holds the heading while the cell still breaks — a column sized by
+  // neither of the two things in it.
+  assert.match(css, /\.hr-table td\.dept-col \{ white-space: normal; \}/);
+  // Both scoped: the queue's own crowd of columns is measured against the
+  // shared rules and is not touched.
+  assert.match(css, /th\.who-col \{ width: 168px; \}/);
+});
+
 test('พิมพ์ F-HR-027 stayed, because it is the one act that is not "open this person"', () => {
   const cell = hrView.slice(hrView.indexOf('<td className="act-col">'), hrView.indexOf('</tr>', hrView.indexOf('<td className="act-col">')));
   // It is not a duplicate of the row press: it prints one employee's sheet

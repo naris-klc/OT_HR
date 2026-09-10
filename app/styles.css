@@ -8791,11 +8791,25 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
    heading box from being read as a column heading in its own right. */
 .hr-table th.check { padding-top: 10px; }
 
-/* ตรง — A ROW THE MACHINE AGREES WITH, SAID AS QUIETLY AS IT DESERVES.
-   It has to be SAID: a blank cell on a month that WAS compared is
-   indistinguishable from a blank cell on a month that was not, and those are
-   opposite answers. Grey and small is how a fact that needs no action looks. */
-.hr-table td.scan-col .scan-ok { font: 400 12px/1.4 var(--sans); color: var(--muted-2); }
+/* ── ตรง IS GREEN AND ต้องตรวจ IS RED — 2026-09-10, second look ────────────
+
+   Both were quieter for a few hours: `ตรง` in `--muted-2` and the flag in
+   `--amber-ink`, on the argument that the comparison is a WARNING rather than
+   an arithmetic and should not shout. Reported the same day, and the report is
+   right: *"สีข้อความแจ้งเตือน ที่ติดปัญหาควรเป็นสีแดง ที่ไม่ผ่าน ควรเป็นสีเขียว"*.
+
+   THE ARGUMENT WAS ABOUT THE WRONG THING. What the comparison may not do is
+   move an hour — and it still does not; nothing about a colour restates a sheet
+   two people signed. What this column IS, is a verdict per row, and a verdict
+   read down sixty rows has exactly two useful states. Amber-against-grey makes
+   the reader compare two dim inks to find out which is which; red-against-green
+   is answered from the corner of the eye, which is the whole reason the column
+   was put beside the person instead of left in a card at the top.
+
+   `--green-dark` and `--reject-ink` are the app's own pair — the same two the
+   approve and refuse controls wear everywhere else — rather than a green and a
+   red chosen here. */
+.hr-table td.scan-col .scan-ok { font: 500 12px/1.4 var(--sans); color: var(--green-dark); }
 
 /* THE PILE THAT NEEDS A PERSON. Amber, and stacked when a row carries both
    counts — `เวลาไม่ตรง 2` over `ไม่มีสแกน 1` is two facts about one month, and
@@ -8804,7 +8818,7 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
   display: inline-flex; flex-direction: column; gap: 1px; align-items: center;
 }
 .hr-table td.scan-col .scan-flag .n {
-  font: 600 12px/1.4 var(--sans); color: var(--amber-ink);
+  font: 600 12px/1.4 var(--sans); color: var(--reject-ink);
 }
 
 /* ── ทั้งแถวกดได้ — 2026-09-10 ─────────────────────────────────────────────
@@ -8938,6 +8952,51 @@ th.act-col { width: 258px; }
    dash, and the ถอนใบวันเกิด branch holds one square. Sizing to the two is
    what keeps the buttons on the same left edge down the column. */
 .queue-table th.act-col { width: 96px; }
+
+/* ── 64px ON ตรวจสอบประจำเดือน, AND IT WAS INHERITING THE 258 ABOVE ────────
+
+   ⚠ A LEFTOVER, AND IT IS WHAT UNBALANCED THE WHOLE TABLE. The 258 was
+   measured against TWO worded buttons — `ดู / แก้ไขรายการ` and `พิมพ์ F-HR-027`
+   — and on 2026-09-10 the first of them stopped being a button at all: the row
+   itself opens the person now. The measurement stayed. So this table went on
+   reserving a quarter of its width for one 32px icon, and under
+   `table-layout: auto` that width is not free space — it is taken from the
+   columns that have to wrap, which is why แผนก came out as
+   `แผนก / บัญชี / และ / การ / เงิน`, five lines deep, next to 200px of nothing.
+
+   ONE 32px SQUARE PLUS THE CELL'S TWO 12px GUTTERS IS 56, rounded to 64 for the
+   focus ring. The 194px that gives back is spent below, on the two columns that
+   were paying for it.
+
+   Scoped rather than narrowing the bare rule: `th.act-col`'s 258 is still the
+   right answer for whoever holds three worded buttons, and this screen no
+   longer does. */
+.hr-table th.act-col { width: 64px; }
+
+/* ── AND THE 194px GOES BACK TO THE TWO COLUMNS THAT WERE STARVED ─────────
+
+   `who-col` 168 → 196. The shared 168 is sized so the widest single TOKEN
+   never breaks (`นางสาวฟ้าประทาน`, 115.4px) and lets the name wrap at its
+   space — which is the right trade on คิวรออนุมัติ, where the column competes
+   with eleven others. Here it does not have to any more: 196 holds
+   `นางสาวสสุคนธ์ ข่าค่ำ` on one line, and a name that still wraps wraps at its
+   space as before rather than being helped by a narrower cell.
+
+   `dept-col` gets a width AT ALL, which it never had on this screen — it was
+   whatever `auto` left over, and what `auto` left over was nothing. Thai has no
+   spaces, so a starved cell is broken by the browser's dictionary at every
+   syllable it knows; the fix is room, not a `white-space` rule. 132px holds
+   `แผนกบัญชีและการเงิน` — the longest on the roster — on one line, and every
+   `แผนกผลิตN` with most of it to spare.
+
+   BOTH ARE `.hr-table`-SCOPED. The two shared rules are measured against the
+   queue's own crowd of columns and stay exactly as they are. */
+.hr-table th.who-col { width: 196px; }
+.hr-table th.dept-col { width: 132px; }
+/* The heading is one short word and the cells are one short phrase; without
+   this the shared `th` nowrap holds the heading while the CELL still wraps,
+   which is how a column ends up sized by neither. */
+.hr-table td.dept-col { white-space: normal; }
 
 /* AND IT STAYS ON SCREEN.
 

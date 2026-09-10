@@ -2023,7 +2023,7 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2570 tests
+and the engine know nothing about Next.js, so the whole suite — **2571 tests
 across 144 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "2569 tests across 144 files" for as long as it took to open the app — the
@@ -6967,6 +6967,47 @@ so it says `สมชาย ใจดี — ไม่สำเร็จ 2 จ�
 the row, which opens. Afterwards **both** readings of the month are re-asked:
 `load()` for the totals and a fresh `approvable`, and `loadScan()` because the
 comparison is counted over สถานะที่นับ and just moved.
+
+#### The table was ugly for a commit, and the cause was a leftover measurement
+
+Reported the same day: *"ตารางไม่สวยเลย ความกว้างของแต่ละคอลัมน์ไม่สมดุล"* —
+with แผนก drawn as `แผนก / บัญชี / และ / การ / เงิน`, five lines deep, beside two
+hundred pixels of nothing.
+
+**`th.act-col { width: 258px }` was cut against two worded buttons, and one of
+them had just stopped being a button.** The row opens the person now; the
+measurement stayed behind. On `table-layout: auto` a reserved width is not empty
+space — it is taken from the columns that have to wrap, so a quarter of this
+table was held for one 32px icon while แผนก, which had no width of its own and
+holds Thai (no spaces, broken by the browser's dictionary), was starved into
+syllables.
+
+| | was | is |
+|---|---|---|
+| `.hr-table th.act-col` | 258px, inherited from the two-button era | **64px** — one 32px square plus the cell's two 12px gutters |
+| `.hr-table th.who-col` | 168px shared, sized so the widest *token* does not break | **196px** — holds `นางสาวสสุคนธ์ ข่าค่ำ` whole |
+| `.hr-table th.dept-col` | no width at all; whatever `auto` left over | **132px** — holds `แผนกบัญชีและการเงิน` on one line |
+
+All three are `.hr-table`-scoped: the shared rules are measured against
+คิวรออนุมัติ's own crowd of columns and are not touched. **The lesson is not the
+number** — it is that a width and the thing it was measured against have to move
+together, which is what `test/hrMonthCards.test.js` now pins as a pair: the 64px
+and the fact that the cell holds exactly one button.
+
+#### ⚠ ตรง IS GREEN AND ต้องตรวจ IS RED, and they were grey and amber for a few hours
+
+*"สีข้อความแจ้งเตือน ที่ติดปัญหาควรเป็นสีแดง ที่ไม่ผ่าน ควรเป็นสีเขียว"*, and the
+report is right. The first version argued that the comparison is a WARNING
+rather than an arithmetic and should not shout — **and that argument was about
+the wrong thing.** What the comparison may not do is move an hour, and it still
+does not; a colour restates no sheet. What the column *is* is a verdict per row,
+and a verdict read down sixty rows has exactly two useful states. Two dim inks
+make the reader compare them to work out which is which, which is the opposite
+of why the column was put beside the person instead of left in a card at the top.
+
+They take `--green-dark` and `--reject-ink` — the app's own pair, the two the
+approve and refuse controls wear everywhere else — rather than a green and a red
+chosen for this column.
 
 #### ⚠ IT SHIPPED BROKEN FOR ONE COMMIT, AND WHY NOTHING CAUGHT IT
 
@@ -11970,7 +12011,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2570 tests**, about 4 s, measured 2026-09-10 across 144
+- `npm test` — **2571 tests**, about 4 s, measured 2026-09-10 across 144
   files, all green. The 2570th is a guard against a `ReferenceError` this round
   shipped and every other test missed — see §ตรวจสอบประจำเดือน เซ็นชื่อได้.
   It read **"2562 tests … across 143"** until a row could be

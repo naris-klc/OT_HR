@@ -189,19 +189,32 @@ test('คอลัมน์สแกน is drawn only on a month that has a file
   assert.ok(!hrView.includes('colSpan={10}'), 'a full-width row still assumes ten columns');
 });
 
-test('a row the machine agrees with says so, quietly — it is not left blank', () => {
+test('a row the machine agrees with says so — green, and never left blank', () => {
   // `flaggedBy` holds ONLY the people with something to look at, so absence has
   // to be spoken. On a month that WAS compared, a blank cell is
   // indistinguishable from a month that was not — and those are opposite
   // answers, which is the same trap the card's own first state is about.
   assert.match(hrView, /return <span className="scan-ok">ตรง<\/span>;/);
-  assert.match(css, /\.hr-table td\.scan-col \.scan-ok \{ font: 400 12px\/1\.4 var\(--sans\); color: var\(--muted-2\); \}/);
+
+  // ── ⚠ RED AND GREEN, AND IT WAS AMBER AND GREY FOR A FEW HOURS ──────────
+  //
+  // The first version drew `ตรง` in `--muted-2` and the flag in `--amber-ink`,
+  // arguing that the comparison is a WARNING and should not shout. Reported
+  // the same day — *"ที่ติดปัญหาควรเป็นสีแดง ที่ไม่ผ่านควรเป็นสีเขียว"* — and
+  // the argument was about the wrong thing: what the comparison may not do is
+  // move an hour, and a colour does not. What this column IS, is a verdict per
+  // row, and a verdict read down sixty rows has two useful states. Two dim inks
+  // make the reader compare them to find out which is which.
+  //
+  // The app's OWN pair, the two the approve and refuse controls wear
+  // everywhere else — not a red and a green chosen for this column.
+  assert.match(css, /\.hr-table td\.scan-col \.scan-ok \{[^}]*color: var\(--green-dark\); \}/);
+  assert.match(css, /\.hr-table td\.scan-col \.scan-flag \.n \{[\s\S]{0,80}?color: var\(--reject-ink\);/);
 
   // The flagged cell carries the two counts `groupScanChecksByPerson` keeps,
   // in the words the card used before it became a filter.
   assert.match(hrView, /เวลาไม่ตรง \{flag\.mismatch\}/);
   assert.match(hrView, /ไม่มีสแกน \{flag\.noScan\}/);
-  assert.match(css, /\.hr-table td\.scan-col \.scan-flag \.n \{\s*font: 600 12px\/1\.4 var\(--sans\); color: var\(--amber-ink\);/);
 
   // ใบเหมารายวัน is NOT on this cell: `groupScanChecksByPerson` has already
   // dropped the people whose only marked rows are flat days. A flat day is a
