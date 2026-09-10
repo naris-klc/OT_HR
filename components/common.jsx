@@ -935,12 +935,20 @@ export function ScanMismatchMark({ entry }) {
 
   const missing = check.state === SCAN_MATCH.NO_SCAN;
   /**
-   * ── THREE TONES, AND ONLY ONE OF THEM IS AN ERRAND ────────────────────────
+   * ── THREE TONES, AND THEY ARE THREE DIFFERENT QUESTIONS ───────────────────
    *
    * `scan-off` is the amber one and it means *go and look at this row*: ไม่ครบ,
-   * or a start the machine disagrees with. `scan-none` (ไม่ตรง) and `scan-over`
-   * (เกินเวลา) are grey, and grey is the tone this table already uses for a
+   * or a start the machine disagrees with. `scan-none` (ไม่ได้สแกน) is RED
+   * since 2026-09-11 — the day left no evidence at all and the request stands
+   * on nothing. `scan-over` (เกินเวลา) is grey, the tone this table uses for a
    * fact nobody has to act on.
+   *
+   * ⚠ `scan-none` WAS GREY TOO UNTIL 2026-09-11, alongside `scan-over`, and the
+   * paragraph here read "grey is the tone this table already uses for a fact
+   * nobody has to act on" of both of them. Red was asked for in as many words;
+   * amber deliberately did NOT move with it, so the screen still separates *the
+   * hours are arguable* from *there is nothing under this row*. The reasoning
+   * for the colour itself lives at `.chip.scan-none` in app/styles.css.
    *
    * เกินเวลา is grey by HR's own answer on 2026-09-07: *ข้อเท็จจริง ป้ายเทา
    * ไม่นับกองที่ต้องตรวจ*. The person worked longer than they claimed, which
@@ -971,7 +979,7 @@ export function ScanMismatchMark({ entry }) {
           ("อีก 40 นาที" rather than "ไม่ครบ") is printed as well.
           `cell-sub th` is the same quiet second line วัน… and the
           editor's name already use in this table, so it is not a new voice.
-          Not on ไม่ตรง: `ไม่มีข้อมูลสแกน` says the whole of itself. เกินเวลา
+          Not on ไม่ได้สแกน: the badge says the whole of itself. เกินเวลา
           DOES get the line, because the one thing a reader wants next — were
           those minutes paid — is in it and is not in the chip. */}
       {!missing && (

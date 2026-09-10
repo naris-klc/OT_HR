@@ -246,10 +246,25 @@ test('a month with no file says ยังไม่นำเข้า on every ro
   // ⚠ GREY IS THE STATEMENT, NOT THE STYLING. `ตรง` is green because the machine
   // agreed and `เวลาไม่ตรง` is red because it did not; this row has had no
   // verdict at all, and a third colour ON that scale would place it between
-  // agreeing and disagreeing — the one thing it is not. `--muted` is the same
-  // grey `.chip.scan-none` wears for a day with no punches, one level down.
+  // agreeing and disagreeing — the one thing it is not.
   assert.match(css, /\.hr-table td\.scan-col \.scan-wait \{ font: 400 12px\/1\.4 var\(--sans\); color: var\(--muted\); \}/);
-  const chip = css.slice(css.indexOf('.chip.scan-none {'));
+  /**
+   * ⚠ THE THING IT WAS COMPARED WITH MOVED, ONE DAY AFTER IT WAS WRITTEN.
+   *
+   * This asserted that `.chip.scan-none` also carried `color: var(--muted)` —
+   * "the same grey `.chip.scan-none` wears for a day with no punches, one level
+   * down", which was the shape the ask took: *ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า
+   * ไม่ตรง* (2026-09-11). The next instruction the same day turned that chip red
+   * and renamed it ไม่ได้สแกน, so the two are no longer the same colour and the
+   * old assertion could only fail.
+   *
+   * WHAT THE ASK ACTUALLY WANTED SURVIVES INTACT, and is the line above: this
+   * cell is grey, quiet, and outside the green/red verdict scale. The anchor is
+   * `--muted` itself, which is the token that means *a fact nobody has to act
+   * on* — a chip that changes its mind about being one is not evidence about
+   * this cell. `.chip.scan-over` is the mark still wearing that grey today.
+   */
+  const chip = css.slice(css.indexOf('.chip.scan-over {'));
   assert.match(chip.slice(0, chip.indexOf('}')), /color: var\(--muted\)/);
   // Regular weight, not the 600 the red carries: a fact about the month, not an
   // errand for a person.

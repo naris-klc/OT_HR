@@ -163,7 +163,12 @@ export default function ScanCompareCard({
         <div className="scan-tally">
           <span><strong>{counts.short}</strong> {SCAN_BADGE.SHORT}</span>
           <span><strong>{counts.startOff}</strong> {SCAN_BADGE.START_OFF}</span>
-          <span><strong>{counts.noScan}</strong> {SCAN_BADGE.NO_SCAN} (ไม่มีสแกนนิ้ว)</span>
+          {/* THE GLOSS CAME OFF WITH THE REWORD. It read `{SCAN_BADGE.NO_SCAN}
+              (ไม่มีสแกนนิ้ว)` until 2026-09-11, because `ไม่ตรง` on its own did
+              not say WHICH thing failed to agree and the parenthesis was
+              carrying the whole meaning. `ไม่ได้สแกน` is the gloss, so keeping
+              it would print the same sentence twice. */}
+          <span><strong>{counts.noScan}</strong> {SCAN_BADGE.NO_SCAN}</span>
           <span className="quiet"><strong>{counts.overTime}</strong> {SCAN_BADGE.OVER}</span>
           <span className="quiet"><strong>{counts.flatDaily}</strong> เหมารายวัน</span>
           <span className="quiet"><strong>{agreed}</strong> ตรง</span>
