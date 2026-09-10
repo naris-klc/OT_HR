@@ -1295,15 +1295,22 @@ html { -webkit-tap-highlight-color: transparent; }
 .brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 22px 8px; }
 .brand-main { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .brand-text { display: flex; flex-direction: column; overflow: hidden; }
+/* NO BORDER, AND THE ICON IS THE REASON. It carried a 1px
+   `--on-panel-line` box until 2026-09-11, when the glyph inside stopped being
+   a bare chevron and became the panel mark — a rounded rectangle of its own.
+   A framed rectangle inside a framed rectangle at 28px is two nested boxes
+   1px apart, which reads as a rendering fault rather than a button. The hover
+   ground and the base `:focus-visible` ring are what say it is pressable, and
+   both are the ones every other control on the rail uses. */
 .sidebar-toggle {
   display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; flex: none;
-  border: 1px solid var(--on-panel-line); background: transparent;
-  color: var(--on-panel-2); border-radius: 6px; cursor: pointer;
-  transition: background .16s, color .16s, border-color .16s;
+  width: 30px; height: 30px; flex: none;
+  border: 0; background: transparent;
+  color: var(--on-panel-2); border-radius: 8px; cursor: pointer;
+  transition: background .16s, color .16s;
 }
 .sidebar-toggle:hover {
-  background: var(--on-panel-hover); color: var(--on-panel); border-color: var(--on-panel);
+  background: var(--on-panel-hover); color: var(--on-panel);
 }
 .brand .mark {
   width: 34px; height: 34px; flex: none; border-radius: 8px;
@@ -1412,7 +1419,7 @@ html { -webkit-tap-highlight-color: transparent; }
   display: none;
 }
 .sidebar.collapsed .sidebar-toggle {
-  width: 26px; height: 26px;
+  width: 28px; height: 28px;
 }
 .sidebar.collapsed .nav-group-label {
   display: none;

@@ -1767,8 +1767,24 @@ function Shell({ session, onRefresh, onLogout }) {
             aria-label={sidebarCollapsed ? 'ขยายแถบเมนู' : 'พับเก็บแถบเมนู'}
             title={sidebarCollapsed ? 'ขยายแถบเมนู' : 'พับเก็บแถบเมนู'}
           >
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              {sidebarCollapsed ? <path d="m9 18 6-6-6-6" /> : <path d="m15 18-6-6 6-6" />}
+            {/* Lucide's panel-left-close / panel-left-open, drawn verbatim
+                (lucide.dev, ISC): a rounded frame with the rail standing inside
+                it, and a chevron saying which way the press moves that rail.
+                THE BARE CHEVRON THAT STOOD HERE UNTIL 2026-09-11 said only
+                "left" — which is what a back button says. Nothing in it was
+                about the menu column, so the only thing that told a first-time
+                reader what the button did was the tooltip.
+
+                Stroke at 1.75 in a 24-unit box is the rule the rest of the set
+                follows, and the reasoning for it is written once in
+                components/icons.jsx. It is drawn inline here rather than added
+                to that file's ICONS map because those are the nav's icons —
+                one per screen, picked by name — and this is a control's own
+                artwork, which changes shape with the state it reports. */}
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="1.75" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M9 3v18" />
+              {sidebarCollapsed ? <path d="m14 9 3 3-3 3" /> : <path d="m16 15-3-3 3-3" />}
             </svg>
           </button>
         </div>
