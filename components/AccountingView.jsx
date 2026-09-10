@@ -8,6 +8,7 @@ import {
 // Pure — the same function the CSV phrases its row with, so the screen and the
 // file cannot come to describe one nought two different ways.
 import { zeroRowReason } from '@/lib/otMode.js';
+import { cyclePeriods, cycleTag, shortMonth } from '@/lib/accountingCycle.js';
 import {
   Alert, BirthdayNote, Empty, ExportMenu, OverCeilingFigure, OverCeilingNote, PickOne,
   RateHead, UnaccountedHours,
@@ -31,6 +32,16 @@ import { useBackHandler } from './nav.jsx';
  */
 export default function AccountingView() {
   const [period, setPeriod] = useState(currentPeriod());
+  /**
+   * เดือนที่สองของงวดจ่าย — ว่างเปล่าเกือบทั้งปี.
+   *
+   * ค่าจ้าง OT ของพฤศจิกายนกับธันวาคมถูกรวบจ่ายทีเดียวในเดือนมกราคมทุกปี ใบที่
+   * ส่งบัญชีตอนนั้นจึงต้องมีสองเดือนอยู่ในใบเดียว **แต่กฎปฏิทินนั้นไม่ได้อยู่ใน
+   * โค้ด** — ฝ่ายบุคคลเลือกเดือนที่สองเอง (ตัดสินใจ 2026-09-10) จอนี้จึงรู้แค่ว่า
+   * "งวดหนึ่งมีได้ถึงสองเดือน" ซึ่งเป็นเรื่องจริงที่ไม่ต้องดูแลตามปีปฏิทิน และ
+   * ตอบเรื่องที่ยังไม่ถูกถามด้วย เช่นปีที่เลื่อนงวด
+   */
+  const [period2, setPeriod2] = useState('');
   const [company, setCompany] = useState('all');
   const [includeZero, setIncludeZero] = useState(false);
   const [data, setData] = useState(null);
@@ -40,21 +51,34 @@ export default function AccountingView() {
   // The header mark leaves the print sheet before it leaves the tab.
   useBackHandler(printing, () => setPrinting(false));
 
+  /** เดือนของงวด เรียงปฏิทิน — ลำดับนี้คือลำดับคอลัมน์ทุกที่ที่ตามมา */
+  const periods = cyclePeriods(period, period2);
+  const cycleKey = periods.join(',');
+  const cycleQuery = periods[1] ? `&with=${periods[1]}` : '';
+
   useEffect(() => {
     let live = true;
     setData(null);
-    api.get(`/reports/accounting/${period}?includeZero=${includeZero ? 1 : 0}`)
+    const [first, second] = cycleKey.split(',');
+    api.get(`/reports/accounting/${first}?includeZero=${includeZero ? 1 : 0}${second ? `&with=${second}` : ''}`)
       .then((res) => { if (live) { setData(res); setError(''); } })
       .catch((err) => { if (live) setError(err.message); });
     return () => { live = false; };
-  }, [period, includeZero]);
+  }, [cycleKey, includeZero]);
 
   // The sheet replaces the screen while it is up, the way PrintForm does on
   // ตรวจสอบรายเดือน — printing a page that still had filters and buttons on it
   // is what @media print is for, but the paper form is a different document,
   // not a stripped-down version of this one.
   if (printing) {
-    return <AccountingPrint period={period} company={company} onClose={() => setPrinting(false)} />;
+    return (
+      <AccountingPrint
+        period={period}
+        period2={period2}
+        company={company}
+        onClose={() => setPrinting(false)}
+      />
+    );
   }
 
   const shown = data
@@ -77,8 +101,10 @@ export default function AccountingView() {
   function exportCsv() {
     const suffix = company === 'all' ? 'all' : company;
     api.download(
-      `/exports/accounting.csv?period=${period}&company=${company}&includeZero=${includeZero ? 1 : 0}`,
-      `OT-accounting-${period}-${suffix}.csv`,
+      `/exports/accounting.csv?period=${periods[0]}&company=${company}&includeZero=${includeZero ? 1 : 0}${cycleQuery}`,
+      // ชื่อไฟล์เดียวกับที่เราต์ตั้งให้ — `cycleTag` ตัวเดียวกัน ไฟล์ CSV กับไฟล์
+      // PDF ของงวดเดียวกันจึงลงมาอยู่ติดกันในโฟลเดอร์ที่เรียงตามชื่อ
+      `OT-accounting-${cycleTag(periods)}-${suffix}.csv`,
     ).catch((err) => setError(err.message));
   }
 
@@ -120,7 +146,12 @@ export default function AccountingView() {
               {data && <span className="t-count">{' · '}{hours(shownTotal)} ชม.</span>}
             </div>
             <div className="hint" style={{ margin: 0 }}>
-              {periodLabel(period)} · นับเฉพาะรายการที่อนุมัติครบและ HR ยืนยันแล้ว
+              {/* ชื่อเดือนเต็มทั้งสองเดือน ไม่ใช่ตัวย่อ — ตัวย่ออยู่บนกระดาษที่
+                  มีแค่ 24mm ให้ใช้ บรรทัดนี้มีที่พอและเป็นบรรทัดที่บอกว่ากำลัง
+                  ปิดงวดไหนอยู่ */}
+              {periods.map(periodLabel).join(' + ')}
+              {periods.length > 1 && ' · จ่ายรวมงวดเดียว'}
+              {' · นับเฉพาะรายการที่อนุมัติครบและ HR ยืนยันแล้ว'}
             </div>
           </div>
           {/* Count and action as one right-hand group, the shape every card head
@@ -222,6 +253,26 @@ export default function AccountingView() {
             <div className="field-head"><label>ประจำเดือน</label></div>
             <PickMonth label="ประจำเดือน" value={period} onChange={setPeriod} />
           </div>
+          {/* ── งวดจ่ายที่กินสองเดือน (2026-09-10) ────────────────────────────
+
+              พฤศจิกายนกับธันวาคมถูกรวบจ่ายทีเดียวในเดือนมกราคมทุกปี ใบที่ส่ง
+              บัญชีตอนนั้นมีสองเดือนอยู่ในใบเดียว ช่องนี้คือสิ่งที่ทำให้มันเป็นไป
+              ได้ และเป็น **ตัวกรองอีกตัวหนึ่ง** เหมือน บริษัท กับ ประจำเดือน
+              ข้าง ๆ ไม่ใช่โหมดของหน้าจอ — ทั้งจอ ไฟล์ CSV และใบพิมพ์อ่านค่าเดียว
+              กันนี้พร้อมกัน
+
+              `clearable` คือทางกลับ: งวดเดือนเดียวคือสิบเอ็ดเดือนใน
+              สิบสองเดือน ปุ่มล้างจึงต้องอยู่ในช่องนี้เอง ไม่ใช่ให้ไปเลือกเดือน
+              เดียวกับเดือนแรก (ซึ่งเราต์ปฏิเสธด้วย 400 อยู่แล้ว) */}
+          <div className="field">
+            <div className="field-head"><label>ถึงเดือน (ไม่บังคับ)</label></div>
+            <PickMonth
+              label="ถึงเดือน"
+              value={period2}
+              onChange={setPeriod2}
+              clearable
+            />
+          </div>
           <label className="check">
             <input
               type="checkbox"
@@ -242,9 +293,20 @@ export default function AccountingView() {
 
       {pending?.count > 0 && (
         <div className="box warn no-print">
-          เดือนนี้ยังมีรายการค้างอนุมัติ {pending.count} รายการ ของพนักงาน {pending.employees} คน
+          {periods.length > 1 ? 'งวดนี้' : 'เดือนนี้'}ยังมีรายการค้างอนุมัติ {pending.count} รายการ
+          {' '}ของพนักงาน {pending.employees} คน
           {' '}({hours(pending.hours)} ชม.) ซึ่ง<strong>ไม่ถูกนับ</strong>ในสรุปนี้ —
           {' '}ปิดคิวที่หน้า “รออนุมัติ OT” ก่อนส่งบัญชี
+          {/* ── แยกเดือนเมื่อเป็นงวดสองเดือน ────────────────────────────────
+              ยอดรวมอย่างเดียวส่งคนไปเปิดคิวผิดเดือนได้ครึ่งหนึ่งของเวลา และคิว
+              เป็นของ *เดือน* เสมอ ไม่มีหน้าไหนเปิดคิวสองเดือนพร้อมกัน · จำนวนคน
+              ไม่ถูกพูดถึงตรงนี้โดยตั้งใจ: คนที่ค้างทั้งสองเดือนคือคนเดียว และ
+              ยอดข้างบนนับจากยูเนียนแล้ว ส่วนบรรทัดนี้เป็นเรื่องของ *ใบ* */}
+          {periods.length > 1 && (
+            <div style={{ marginTop: 4 }}>
+              {pending.months.map((m) => `${periodLabel(m.period)} ${m.count} รายการ`).join(' · ')}
+            </div>
+          )}
         </div>
       )}
 
@@ -277,7 +339,7 @@ export default function AccountingView() {
             <CompanySheet
               key={c.key}
               company={c}
-              period={period}
+              periods={periods}
               // Numbered against the full list, not the one บริษัท leaves on
               // screen, so เดมเทค is "บริษัทที่ 2" on its own tab as well.
               index={data.companies.findIndex((x) => x.key === c.key) + 1}
@@ -303,8 +365,15 @@ export default function AccountingView() {
  * in a second table beside it, so a figure is always read down the column it
  * belongs to.
  */
-function CompanySheet({ company, period, index }) {
+function CompanySheet({ company, periods, index }) {
   const t = company.totals;
+  /**
+   * งวดสองเดือน — คู่ 1.50/3.00 ต่อเดือน มาก่อนสามช่องถัง แล้วจึง รวม ชม.
+   *
+   * ลำดับและหัวสองชั้นอธิบายไว้ที่ `monthBandHeads` ท้ายไฟล์นี้
+   */
+  const many = periods.length > 1;
+  const span = many ? 2 : 1;
   return (
     /* `card flush` — one sheet, one card, drawn the way รออนุมัติ OT draws its
        queue: a bordered head band, then the table against the card's own edges.
@@ -328,7 +397,7 @@ function CompanySheet({ company, period, index }) {
             {company.shortTh}
           </div>
           <div className="hint" style={{ margin: 0 }}>
-            {company.nameTh} · {company.nameEn} · {periodLabel(period)}
+            {company.nameTh} · {company.nameEn} · {periods.map(periodLabel).join(' + ')}
           </div>
         </div>
         {/* `.chip.muted` and `.chip.green` — the two named chips, not two
@@ -353,16 +422,20 @@ function CompanySheet({ company, period, index }) {
                 says a figure is not final — was the least reachable thing on
                 it. */}
             <table className="acct-table">
+              {/* สองชั้นเมื่อเป็นงวดสองเดือน แถวเดียวเหมือนเดิมเมื่อเดือนเดียว
+                  — `span` เป็น 1 ตอนนั้น หัวทุกช่องจึงกลับไปเป็นเซลล์ธรรมดา */}
               <thead>
                 <tr>
-                  <th className="who-col">พนักงาน</th>
-                  <th className="dept-col">แผนก</th>
-                  <th className="num rate-col b-15w"><RateHead rate="×1.5" of="ปกติ" /></th>
-                  <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
-                  <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
-                  <th className="num total-col">รวม ชม.</th>
-                  <th className="note-col">หมายเหตุ / บริษัท</th>
+                  <th className="who-col" rowSpan={span}>พนักงาน</th>
+                  <th className="dept-col" rowSpan={span}>แผนก</th>
+                  {many && monthBandHeads(periods)}
+                  <th className="num rate-col b-15w" rowSpan={span}><RateHead rate="×1.5" of="ปกติ" /></th>
+                  <th className="num rate-col wide b-15h" rowSpan={span}><RateHead rate="×1.5" of="วันหยุด" /></th>
+                  <th className="num rate-col wide b-3h" rowSpan={span}><RateHead rate="×3" of="วันหยุด" /></th>
+                  <th className="num total-col" rowSpan={span}>รวม ชม.</th>
+                  <th className="note-col" rowSpan={span}>หมายเหตุ / บริษัท</th>
                 </tr>
+                {many && <tr>{monthRateHeads(periods)}</tr>}
               </thead>
               <tbody>
                 {company.rows.map((row) => (
@@ -374,6 +447,7 @@ function CompanySheet({ company, period, index }) {
                       </div>
                     </td>
                     <td className="dept-col">{row.department?.name || '—'}</td>
+                    {many && monthFigures(row.months, cell)}
                     <td className="num rate-col b-15w">{cell(row.buckets[BUCKETS.OT15_WEEKDAY])}</td>
                     <td className="num rate-col b-15h">{cell(row.buckets[BUCKETS.OT15_HOLIDAY])}</td>
                     <td className="num rate-col b-3h">{cell(row.buckets[BUCKETS.OT3_HOLIDAY])}</td>
@@ -437,6 +511,7 @@ function CompanySheet({ company, period, index }) {
                   <tr key={d.department?.id || 'none'}>
                     <td className="sum-k">รวมแผนก</td>
                     <td className="who-col">{d.department?.name || '—'}</td>
+                    {many && monthFigures(d.totals.months, cell)}
                     <td className="num rate-col b-15w">{cell(d.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
                     <td className="num rate-col b-15h">{cell(d.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
                     <td className="num rate-col b-3h">{cell(d.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
@@ -447,6 +522,7 @@ function CompanySheet({ company, period, index }) {
                 <tr className="grand">
                   <td className="sum-k">รวมทั้งหมด</td>
                   <td className="who-col">{company.accountingCode ? `${company.accountingCode} · ${company.shortTh}` : company.shortTh}</td>
+                  {many && monthFigures(t.months, hours)}
                   <td className="num rate-col b-15w">{hours(t.buckets[BUCKETS.OT15_WEEKDAY])}</td>
                   <td className="num rate-col b-15h">{hours(t.buckets[BUCKETS.OT15_HOLIDAY])}</td>
                   <td className="num rate-col b-3h">{hours(t.buckets[BUCKETS.OT3_HOLIDAY])}</td>
@@ -465,6 +541,8 @@ function CompanySheet({ company, period, index }) {
 /** The figure that goes on the covering note when both payrolls are submitted together. */
 function AllCompanies({ data }) {
   const g = data.grandTotal;
+  const many = data.periods.length > 1;
+  const span = many ? 2 : 1;
   return (
     <div className="card flush" style={{ marginTop: 18 }}>
       {/* `.card-head` and not `<h2>` + `.hint`, so this card is ruled the same
@@ -485,15 +563,20 @@ function AllCompanies({ data }) {
         {/* Two rows and a total, but the same six columns as the sheets above —
             so it scrolled sideways on a phone for the same reason they did. */}
         <table className="allco-table">
+          {/* หน้าปกก็ต้องแยกเดือนได้ — ตัวเลขที่แนบไปกับใบสองเดือนคือยอดของงวด
+              และคำถามแรกที่ตามมาเสมอคือ "เดือนไหนเท่าไร" หัวเรียงเหมือนใบพิมพ์
+              และเหมือนตารางบริษัทข้างบน */}
           <thead>
             <tr>
-              <th className="who-col">บริษัท</th>
-              <th className="num head-col">จำนวนคน</th>
-              <th className="num rate-col b-15w"><RateHead rate="×1.5" of="ปกติ" /></th>
-              <th className="num rate-col wide b-15h"><RateHead rate="×1.5" of="วันหยุด" /></th>
-              <th className="num rate-col wide b-3h"><RateHead rate="×3" of="วันหยุด" /></th>
-              <th className="num total-col">รวม ชม.</th>
+              <th className="who-col" rowSpan={span}>บริษัท</th>
+              <th className="num head-col" rowSpan={span}>จำนวนคน</th>
+              {many && monthBandHeads(data.periods)}
+              <th className="num rate-col b-15w" rowSpan={span}><RateHead rate="×1.5" of="ปกติ" /></th>
+              <th className="num rate-col wide b-15h" rowSpan={span}><RateHead rate="×1.5" of="วันหยุด" /></th>
+              <th className="num rate-col wide b-3h" rowSpan={span}><RateHead rate="×3" of="วันหยุด" /></th>
+              <th className="num total-col" rowSpan={span}>รวม ชม.</th>
             </tr>
+            {many && <tr>{monthRateHeads(data.periods)}</tr>}
           </thead>
           <tbody>
             {data.companies.map((c, i) => (
@@ -505,6 +588,7 @@ function AllCompanies({ data }) {
                   </div>
                 </td>
                 <td className="num head-col">{c.totals.headcount}</td>
+                {many && monthFigures(c.totals.months, cell)}
                 <td className="num rate-col b-15w">{cell(c.totals.buckets[BUCKETS.OT15_WEEKDAY])}</td>
                 <td className="num rate-col b-15h">{cell(c.totals.buckets[BUCKETS.OT15_HOLIDAY])}</td>
                 <td className="num rate-col b-3h">{cell(c.totals.buckets[BUCKETS.OT3_HOLIDAY])}</td>
@@ -516,6 +600,7 @@ function AllCompanies({ data }) {
             <tr className="grand">
               <td className="who-col">รวมทั้งหมด</td>
               <td className="num head-col">{g.headcount}</td>
+              {many && monthFigures(g.months, hours)}
               <td className="num rate-col b-15w">{hours(g.buckets[BUCKETS.OT15_WEEKDAY])}</td>
               <td className="num rate-col b-15h">{hours(g.buckets[BUCKETS.OT15_HOLIDAY])}</td>
               <td className="num rate-col b-3h">{hours(g.buckets[BUCKETS.OT3_HOLIDAY])}</td>
@@ -534,6 +619,44 @@ function AllCompanies({ data }) {
  * blanks is how accounting spots who to ask about.
  */
 const cell = (n) => (n ? hours(n) : '');
+
+/* ── คู่ 1.50 / 3.00 ของแต่ละเดือน — หัวสองชั้น เรียงแบบใบพิมพ์ ──────────────
+   ลำดับคอลัมน์บนจอนี้ตามใบพิมพ์: เดือนมาก่อน แล้วสามช่องถังของทั้งงวด แล้ว
+   รวม ชม. เพราะจอนี้ถูกอ่านคู่กับกระดาษที่ส่งบัญชี — หัวตารางที่เรียงคนละทาง
+   คือหัวที่ต้องแปลตำแหน่งใหม่ทุกครั้งที่กระทบยอด สั่งโดยผู้ใช้ 2026-09-10
+   ("เรียงคอลัมน์แบบฟอร์มกระดาษ"); ก่อนหน้านั้นคู่รายเดือนต่อท้ายสามถัง
+
+   สามช่องถังยังอยู่ตรงนั้นและยังเป็นของ *ทั้งงวด* — ถังบอกว่าชั่วโมงเกิดขึ้น
+   แบบไหน (วันปกติ วันหยุด ×3) คู่รายเดือนบอกว่าใบที่บัญชีถืออยู่พิมพ์อะไรไว้
+   ช่องไหน จอนี้คือที่ที่ทั้งสองถูกกระทบยอดกันก่อนขึ้นกระดาษ */
+const monthBandHeads = (periods) => periods.map((p) => (
+  /* ชื่อเดือนย่อตัวเดียวกับที่พิมพ์บนกระดาษและอยู่ในหัวคอลัมน์ CSV — คนที่ถือ
+     ทั้งสามอย่างอ่านคำเดียวกัน (`shortMonth` ใน lib/accountingCycle.js) */
+  <th key={p} className="num month-band" colSpan={2}>{shortMonth(p)}</th>
+));
+
+/* `month-edge` — เส้นคั่นเดือน ลงที่ช่องแรกของทุกเดือนยกเว้นเดือนแรก ซึ่งมี
+   ขอบของตารางอยู่แล้ว ดูเหตุผลที่ `th.month-band` ใน app/styles.css */
+const monthRateHeads = (periods) => periods.flatMap((p, i) => [
+  <th key={`${p}-15`} className={`num rate-col${i ? ' month-edge' : ''}`}>1.50</th>,
+  <th key={`${p}-3`} className="num rate-col">3.00</th>,
+]);
+
+/**
+ * เซลล์ตัวเลขของคู่รายเดือน.
+ *
+ * ย้อมแดงเฉพาะเมื่อเดือนนั้นมี `overCeiling` ของตัวเอง ซึ่งมีแต่ในแถวของคน —
+ * แถวรวมแผนก/รวมบริษัทไม่มี เพราะเพดานเป็นของคนต่อเดือน ไม่ใช่ของยอดรวม
+ * (`totalsFromRows` ใน lib/accountingCycle.js ไม่ได้รวมมันไว้ด้วยเหตุผลนั้น)
+ */
+const monthFigures = (months = [], format) => months.flatMap((m, i) => [
+  <td key={`${m.period}-15`} className={`num rate-col${i ? ' month-edge' : ''}`}>
+    {m.overCeiling
+      ? <OverCeilingFigure over={m.overCeiling}>{format(m.ot15Hours)}</OverCeilingFigure>
+      : format(m.ot15Hours)}
+  </td>,
+  <td key={`${m.period}-3`} className="num rate-col">{format(m.ot3Hours)}</td>,
+]);
 
 /* ── รายการเกินเพดาน on the sheet ───────────────────────────────────────────
    Added 2026-09-02. Every figure on this sheet is hours somebody signed for,

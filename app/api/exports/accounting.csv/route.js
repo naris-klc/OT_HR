@@ -1,6 +1,9 @@
 import { route, query, csvResponse, fail } from '@/lib/http.js';
 import { requireAuth, requireRole } from '@/lib/session.js';
 import { accountingReport } from '@/lib/accounting.js';
+import {
+  cyclePeriods, cycleTag, mergeAccountingReports, shortMonth,
+} from '@/lib/accountingCycle.js';
 import { unaccountedCsvRow, BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
 import { BUCKETS } from '@/src/lib/otEngine.js';
 import { toCsv } from '@/src/lib/csv.js';
@@ -46,10 +49,24 @@ export const GET = route(async (req) => {
     return fail('บริษัทไม่ถูกต้อง', 400);
   }
 
-  const report = await accountingReport(period, {
+  /**
+   * `?with=YYYY-MM` — งวดจ่ายสองเดือน ไฟล์เดียว (ดูเราต์ของหน้าจอเดียวกัน).
+   *
+   * ไฟล์นี้ถูกอ่านคู่กับกระดาษ ถ้าใบเป็นสองเดือนแล้วไฟล์ยังเป็นเดือนเดียว คนที่
+   * กระทบยอดต้องเปิดสองไฟล์แล้วบวกเอง ซึ่งคือขั้นตอนที่คอลัมน์ `รวม 1.5` ถูก
+   * เพิ่มเข้ามาเมื่อ 2026-09-09 เพื่อกำจัดทิ้ง
+   */
+  const second = String(q.with || '').trim();
+  if (second) {
+    if (!PERIOD_RE.test(second)) return fail('เดือนที่สองต้องเป็นรูปแบบ YYYY-MM', 400);
+    if (second === period) return fail('เดือนที่สองต้องไม่ใช่เดือนเดียวกับเดือนแรก', 400);
+  }
+
+  const periods = cyclePeriods(period, second);
+  const report = mergeAccountingReports(await Promise.all(periods.map((p) => accountingReport(p, {
     company: q.company,
     includeZero: q.includeZero === '1' || q.includeZero === 'true',
-  });
+  }))));
 
   // The ×1.5 split is what the screen shows, because that screen is
   // ตรวจสอบรายเดือน's table. The two columns after it are what the PAPER shows,
@@ -90,9 +107,25 @@ export const GET = route(async (req) => {
    * hours are readable only as the word in หมายเหตุ now. Both were asked for
    * with the old shape in front of the person asking.
    */
+  /**
+   * ── งวดสองเดือนแตกสามคอลัมน์เป็นเดือนละชุด ─────────────────────────────────
+   *
+   * **ไฟล์เดือนเดียวไม่ขยับแม้แต่ช่องเดียว** และนั่นคือกฎ ไม่ใช่ความบังเอิญ:
+   * ย่อหน้าข้างบนเล่าไว้เองว่าผู้บริโภคที่นับคอลัมน์จากซ้ายเจ็บไปแล้วหนึ่งรอบ
+   * เมื่อ 2026-09-09 `periods.length === 1` จึงได้หัวเดิมเป๊ะทุกตัวอักษร
+   *
+   * งวดสองเดือนได้ `พ.ย. 69 OT x1.5 วันปกติ` เรียงเป็นชุดต่อกันไปตามเดือน แล้ว
+   * ปิดท้ายด้วย `รวม 1.5` / `รวม 3` ที่ตอนนี้หมายถึง **ทั้งงวด** — ตรงกับสอง
+   * คอลัมน์รวมบนกระดาษพอดี ไฟล์กับใบจึงยังอ่านคู่กันได้ทีละคอลัมน์
+   */
+  const many = report.periods.length > 1;
+  const rateHeads = report.periods.flatMap((p) => (many
+    ? [`${shortMonth(p)} OT x1.5 วันปกติ`, `${shortMonth(p)} OT x1.5 วันหยุด`, `${shortMonth(p)} OT x3`]
+    : ['OT x1.5 วันปกติ', 'OT x1.5 วันหยุด', 'OT x3']));
+
   const headers = [
     'บริษัท', 'company_code', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'แผนก',
-    'OT x1.5 วันปกติ', 'OT x1.5 วันหยุด', 'OT x3', 'รวม 1.5', 'รวม 3', 'หมายเหตุ',
+    ...rateHeads, 'รวม 1.5', 'รวม 3', 'หมายเหตุ',
   ];
 
   const rows = [];
@@ -104,9 +137,7 @@ export const GET = route(async (req) => {
         row.employee.code,
         row.employee.name,
         row.department?.name || '',
-        cell(row.buckets[BUCKETS.OT15_WEEKDAY]),
-        cell(row.buckets[BUCKETS.OT15_HOLIDAY]),
-        cell(row.buckets[BUCKETS.OT3_HOLIDAY]),
+        ...rateCells(row.months, cell),
         cell(ot15(row.buckets)),
         cell(row.buckets[BUCKETS.OT3_HOLIDAY]),
         note(row),
@@ -156,10 +187,27 @@ export const GET = route(async (req) => {
 
   const suffix = report.company === 'all' ? 'all' : report.company;
   return csvResponse(
-    `OT-accounting-${period}-${suffix}.csv`,
+    // `OT-accounting-2026-11+2026-12-all.csv` เมื่อเป็นงวดสองเดือน · เดือนเดียว
+    // ได้ชื่อเดิมทุกตัวอักษร เพราะ `cycleTag` ของเดือนเดียวคือเดือนนั้นเอง
+    `OT-accounting-${cycleTag(report.periods)}-${suffix}.csv`,
     toCsv(headers, rows),
   );
 });
+
+/**
+ * สามช่องอัตราของเดือนหนึ่ง เรียงต่อกันไปตามเดือนของงวด.
+ *
+ * ใช้ทั้งกับแถวคนและกับบรรทัดรวม เพราะทั้งสองต้องลงคอลัมน์เดียวกันเป๊ะ — บรรทัด
+ * รวมที่นับคนละชุดกับแถวเหนือมันคือไฟล์ที่ไม่ตรงกันตามแนวตั้ง
+ *
+ * งวดเดือนเดียวอ่าน `months[0]` ซึ่งเป็นตัวเดียวกับยอดของทั้งแถว จึงได้ตัวเลข
+ * ชุดเดิมโดยไม่มีสาขาแยก
+ */
+const rateCells = (months = [], format) => months.flatMap((m) => [
+  format(m.buckets[BUCKETS.OT15_WEEKDAY]),
+  format(m.buckets[BUCKETS.OT15_HOLIDAY]),
+  format(m.buckets[BUCKETS.OT3_HOLIDAY]),
+]);
 
 /**
  * A รวม line, mirroring the screen's foot rows: `label` goes where the name
@@ -185,9 +233,7 @@ export const GET = route(async (req) => {
 function summaryRow(company, label, subject, totals, format = fmt) {
   return [
     company?.shortTh || '', company?.accountingCode || '', '', label, subject,
-    format(totals.buckets[BUCKETS.OT15_WEEKDAY]),
-    format(totals.buckets[BUCKETS.OT15_HOLIDAY]),
-    format(totals.buckets[BUCKETS.OT3_HOLIDAY]),
+    ...rateCells(totals.months, format),
     format(ot15(totals.buckets)),
     format(totals.buckets[BUCKETS.OT3_HOLIDAY]),
     '',

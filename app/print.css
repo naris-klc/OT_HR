@@ -496,7 +496,14 @@
 .acct + .acct { break-before: page; page-break-before: always; }
 
 /* 24 + 54 + 17 + 17 = 112mm of ruled grid, then 82mm of white strip: the table
-   spans the page but the FORM still stops after 3.00. On the paper the remarks
+   spans the page but the FORM still stops after the last rate column.
+
+   งวดสองเดือนบีบคอลัมน์ ไม่ขยายกระดาษ — 22 + 50 + หกช่องที่ 12mm + แถบขาว 50mm
+   ก็ได้ 194mm เท่ากันพอดี ความกว้างทั้งสองชุดประกาศอยู่ใน `colgroup` ของ
+   components/AccountingPrint.jsx เพราะมันขึ้นกับจำนวนเดือน ส่วนบรรทัดข้างล่างนี้
+   คือความกว้างของตารางซึ่งไม่เคยขยับ
+
+   On the paper the remarks
    ("วันเกิด") were written by hand in that white, so it is reproduced as a
    column with no rules and no fill (see td.note below) rather than left out of
    the table — a note printed in a real cell lands on its own row's baseline,
@@ -540,6 +547,21 @@
 }
 .acct th.hl { background: #5b9bd5; }
 .acct th.rate, .acct td.n { background: #deeaf6; }
+
+/* ── คู่ `รวม` ของใบสองเดือน (2026-09-10) ───────────────────────────────────
+   งวดจ่าย พ.ย. + ธ.ค. พิมพ์คู่ 1.50/3.00 ของแต่ละเดือน แล้วปิดท้ายด้วยคู่รวม
+   ซึ่งเป็นตัวเลขที่บัญชีคีย์เข้าระบบจริง ๆ มันจึงต้องแยกออกจากคู่รายเดือนได้
+   ด้วยตาเดียว โดยไม่ต้องอ่านหัวคอลัมน์
+
+   เข้มขึ้นหนึ่งขั้นจากเฉดเดียวกัน ไม่ใช่สีใหม่ — #bdd7ee คือ #deeaf6 ที่เข้มขึ้น
+   หนึ่งระดับในชุดสีเดียวกันของแบบฟอร์มนี้ ส่วนแบนเนอร์ใช้ #41719c ซึ่งเป็น
+   #5b9bd5 ที่เข้มขึ้น ใบยังเป็นเอกสารสีเดียวเหมือนเดิม ไม่ได้กลายเป็นใบสองสี
+
+   ⚠ สีไม่ใช่ตัวเล่าโครงสร้าง เครื่องพิมพ์ที่ตัดพื้นหลังทิ้งยังได้ใบที่อ่านถูก
+   เพราะหัว `รวม` กับเส้นตารางบอกอยู่แล้วว่าคู่ไหนคือผลบวก — เหตุผลเดียวกับ
+   ย่อหน้าข้างบน สีจัดกลุ่ม ไม่ได้ให้ข้อมูล */
+.acct th.hl.sum { background: #41719c; }
+.acct th.rate.sum, .acct td.n.sum { background: #bdd7ee; }
 
 /* Codes read down the left edge like the names beside them; only the figures
    are centred in their column. */

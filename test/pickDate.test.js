@@ -51,16 +51,20 @@ test('ไม่มี <input type="date"> หรือ type="month" เหลื
   assert.deepEqual(left, [], `ยังมีตัวเลือกวันที่ของเบราว์เซอร์เหลืออยู่: ${left.join(', ')}`);
 });
 
-test('ทั้งสิบแปดกล่องใช้คอมโพเนนต์เดียวกัน', () => {
+test('ทั้งสิบเก้ากล่องใช้คอมโพเนนต์เดียวกัน', () => {
   /**
-   * ELEVEN DAYS AND SEVEN MONTHS, and the count is here so that a nineteenth
+   * ELEVEN DAYS AND EIGHT MONTHS, and the count is here so that a twentieth
    * box added with an `<input>` is a failing test rather than the one control
    * in the app whose popup nobody can style.
+   *
+   * It read "ELEVEN DAYS AND SEVEN MONTHS" until 2026-09-10, when รายงาน OT
+   * การเงิน gained ถึงเดือน (ไม่บังคับ) — the second month of a งวดจ่าย, which
+   * is what lets พ.ย. + ธ.ค. print as the one sheet they are paid on.
    */
   const uses = components.reduce((n, [, body]) => (
     n + (body.match(/<Pick(Date|Month)\b/g) || []).length
   ), 0);
-  assert.equal(uses, 18, `มี ${uses} กล่อง — คาดว่า 18`);
+  assert.equal(uses, 19, `มี ${uses} กล่อง — คาดว่า 19`);
   // Every file that draws one imports it from the one place.
   for (const [f, body] of components) {
     if (!/<Pick(Date|Month)\b/.test(body) || f === 'PickDate.jsx') continue;

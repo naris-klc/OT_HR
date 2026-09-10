@@ -4,17 +4,32 @@ import React, { useEffect, useState } from 'react';
 import { accountingLabel, api, THAI_MONTHS } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { BIRTHDAY_REMARK } from '@/lib/accountingRows.js';
+import { cyclePeriods, shortMonth } from '@/lib/accountingCycle.js';
 import { Alert, PendingNotice, PrintChrome, SheetScroll, UnaccountedHours } from './common.jsx';
 
 /**
  * สรุป OT ส่งบัญชี rendered for print — one element per SIDE of A4 portrait,
  * cut by `paginate` below, a new company always starting a new side.
  *
- * The sheet is the table and nothing else: รหัส, ชื่อ-นามสกุล and the two rate
- * columns headed 1.50 and 3.00 under one ประจำเดือน banner. No company
+ * The sheet is the table and nothing else: รหัส, ชื่อ-นามสกุล and a pair of rate
+ * columns headed 1.50 and 3.00 under each ประจำเดือน banner. No company
  * heading, no subtitle, no subtotal or total rows, no signature block — the
  * paper accounting receives carries none of them, and anything extra is one
  * more thing to reconcile against a sheet that does not have it.
+ *
+ * ── ONE BANNER, OR TWO AND A รวม — SINCE 2026-09-10 ─────────────────────────
+ *
+ * ค่าจ้าง OT ของพฤศจิกายนกับธันวาคมถูกรวบจ่ายทีเดียวในเดือนมกราคมทุกปี ใบที่ส่ง
+ * บัญชีตอนนั้นจึงมีสองเดือนอยู่ในใบเดียว: คู่ 1.50/3.00 ต่อเดือน แล้วปิดท้ายด้วย
+ * คู่ `รวม` ซึ่งเป็นตัวเลขที่บัญชีคีย์เข้าระบบจริง ๆ — การให้บัญชีบวกสองใบเองคือ
+ * ขั้นตอนที่พลาด และเป็นเหตุผลเดียวกับที่ `รวม 1.5` เข้าไปอยู่ท้ายไฟล์ CSV เมื่อ
+ * 2026-09-09
+ *
+ * **ใบเดือนเดียวไม่ขยับสักมิลลิเมตร** — คอลัมน์เท่าเดิม หัวเต็มเหมือนเดิม ไม่มี
+ * คู่ `รวม` (คู่เดียวที่มีอยู่ *คือ* ยอดรวม การพิมพ์เลขซ้ำข้างตัวเองบนใบที่มีคน
+ * เซ็นทุกเดือนคือการเปลี่ยนแบบฟอร์มโดยไม่มีใครขอ) ส่วนที่เหมือนกันทั้งสองโหมดคือ
+ * ทุกอย่างที่เหลือ: 194mm, `ROWS_PER_PAGE` 37, หัวสองแถว, แถบขอบ 10/12mm และห้า
+ * บรรทัดว่างใต้ชื่อสุดท้าย
  *
  * The one thing beside the grid is the remark strip: “วันเกิด” in the white to
  * the right of a row, where HR wrote it by hand on the paper this replaces. It
@@ -66,17 +81,29 @@ function PaperFlag({ unaccounted }) {
   );
 }
 
-export default function AccountingPrint({ period, company = 'all', onClose }) {
+export default function AccountingPrint({
+  period, period2 = '', company = 'all', onClose,
+}) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
+  /**
+   * เดือนของงวด — เรียงปฏิทินตั้งแต่ตรงนี้ เพราะลำดับคอลัมน์บนกระดาษคือลำดับนี้
+   * `useMemo` ไม่จำเป็น มันเป็นอาร์เรย์สองตัว แต่ `join` ที่ใส่ใน deps ของ effect
+   * ต้องเป็นสตริงไม่ใช่อาร์เรย์ ไม่งั้น effect ยิงซ้ำทุกครั้งที่ประกอบใหม่
+   */
+  const periods = cyclePeriods(period, period2);
+  const key = periods.join(',');
+
   useEffect(() => {
     let live = true;
-    api.get(`/reports/accounting/${period}?includeZero=1&company=${company}`)
+    const [first, second] = key.split(',');
+    const cycle = second ? `&with=${second}` : '';
+    api.get(`/reports/accounting/${first}?includeZero=1&company=${company}${cycle}`)
       .then((res) => { if (live) setData(res); })
       .catch((err) => { if (live) setError(err.message); });
     return () => { live = false; };
-  }, [period, company]);
+  }, [key, company]);
 
   if (error) return <Alert kind="error">{error}</Alert>;
   if (!data) return <div className="empty">กำลังโหลด…</div>;
@@ -85,8 +112,18 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
     <>
       <PrintChrome
         onClose={onClose}
-        filename={printName.accounting({ period, company })}
-        hints={[{ label: 'หมายเหตุ', text: '1 บริษัทต่อ 1 หน้า' }]}
+        filename={printName.accounting({ periods, company })}
+        hints={[
+          { label: 'หมายเหตุ', text: '1 บริษัทต่อ 1 หน้า' },
+          /**
+           * งวดจ่ายเขียนไว้บนจอ ไม่ใช่บนกระดาษ — บนกระดาษเดือนอยู่บนแบนเนอร์
+           * เหนือคู่อัตราของมันเองอยู่แล้ว ซึ่งเป็นที่ที่บัญชีอ่าน ส่วนบรรทัดนี้
+           * ตอบคำถามของคนที่กำลังจะกดพิมพ์ว่ากำลังจะได้ใบของงวดไหน
+           */
+          ...(periods.length > 1
+            ? [{ label: 'งวดจ่าย', text: `${periods.map(shortMonth).join(' + ')} — รวมจ่ายงวดเดียว` }]
+            : []),
+        ]}
         footer="ช่อง 1.50 และ 3.00 เป็นชั่วโมงดิบ ยังไม่คูณอัตรา"
       />
 
@@ -107,7 +144,7 @@ export default function AccountingPrint({ period, company = 'all', onClose }) {
             company={sheet.company}
             rows={sheet.rows}
             filler={sheet.filler}
-            period={period}
+            periods={data.periods}
             unaccounted={data.unaccounted}
             page={sheet.page}
           />
@@ -177,25 +214,63 @@ const SPARE_LINES = 5;
  * the screen exactly as it does on the paper, which is what makes the preview a
  * stack of sheets rather than a scroll with rules drawn across it.
  */
-function Sheet({ company, rows, filler, period, unaccounted, page }) {
+function Sheet({ company, rows, filler, periods, unaccounted, page }) {
+  /**
+   * งวดสองเดือน — คู่อัตราต่อเดือน แล้วปิดท้ายด้วยคู่ `รวม`.
+   *
+   * งวดเดือนเดียวไม่มีคู่รวม เพราะคู่เดียวที่มีอยู่ *คือ* ยอดรวมอยู่แล้ว การเติม
+   * คอลัมน์ที่พิมพ์เลขซ้ำกับคอลัมน์ข้าง ๆ ลงบนใบที่บัญชีเซ็นทุกเดือน คือการ
+   * เปลี่ยนแบบฟอร์มโดยไม่มีใครขอ
+   */
+  const many = periods.length > 1;
+  /** ช่องตัวเลขทั้งหมด: คู่ละเดือน บวกคู่รวมเมื่อมีมากกว่าหนึ่งเดือน */
+  const rateCols = periods.length * 2 + (many ? 2 : 0);
+  /** ทั้งแถว: รหัส + ชื่อ + ช่องตัวเลข + แถบหมายเหตุ — `colSpan` ของแถบขอบบนล่าง */
+  const cols = rateCols + 3;
+
   return (
     <div className="acct">
       <PageTag page={page} company={company} />
       {/* Four ruled columns, and the white strip beside them.
 
-          The grid still stops after 3.00 — that is the form accounting knows,
-          and the remarks were always written by hand in the white to the right
-          of it. The fifth column IS that white: 82mm, no rules, no tint, and
-          empty on all but the few rows that have something to say. So the note
-          prints where HR used to write it, the paper still has room to write
-          another one, and no figure moves a millimetre. */}
+          The grid still stops after the last rate column — that is the form
+          accounting knows, and the remarks were always written by hand in the
+          white to the right of it. The last column IS that white: no rules, no
+          tint, and empty on all but the few rows that have something to say. So
+          the note prints where HR used to write it, the paper still has room to
+          write another one, and no figure moves a millimetre.
+
+          ── สองเดือนบีบคอลัมน์ ไม่ขยายกระดาษ ────────────────────────────────
+          194mm เท่าเดิมทั้งสองโหมด: 22 + 50 + หกช่องอัตราที่ 12mm + แถบขาว 50mm
+          ตัวเลข `8.00` ที่ 9pt กว้างราว 6.3mm บวก padding 3mm จึงยังอยู่ในช่อง
+          12mm สบาย ๆ และแบนเนอร์เดือนที่คร่อมสองช่องได้ 24mm ซึ่งเป็นเหตุผลที่
+          หัวเดือนของใบสองเดือนถูกย่อ (ดู `monthHead`)
+
+          ใบเดือนเดียวคง 24/54/17/17/82 ไว้ไม่ขยับสักมิลลิเมตร — มันคือใบที่ออก
+          ทุกเดือนและไม่มีใครขอให้เปลี่ยน */}
       <table>
         <colgroup>
-          <col style={{ width: '24mm' }} />
-          <col style={{ width: '54mm' }} />
-          <col style={{ width: '17mm' }} />
-          <col style={{ width: '17mm' }} />
-          <col style={{ width: '82mm' }} />
+          {many ? (
+            <>
+              <col style={{ width: '22mm' }} />
+              <col style={{ width: '50mm' }} />
+              {periods.flatMap((p) => [
+                <col key={`${p}-15`} style={{ width: '12mm' }} />,
+                <col key={`${p}-3`} style={{ width: '12mm' }} />,
+              ])}
+              <col style={{ width: '12mm' }} />
+              <col style={{ width: '12mm' }} />
+              <col style={{ width: '50mm' }} />
+            </>
+          ) : (
+            <>
+              <col style={{ width: '24mm' }} />
+              <col style={{ width: '54mm' }} />
+              <col style={{ width: '17mm' }} />
+              <col style={{ width: '17mm' }} />
+              <col style={{ width: '82mm' }} />
+            </>
+          )}
         </colgroup>
         {/* The first row is the top margin, and the tfoot is the bottom one.
             Page margins have to come from somewhere the browser repeats, and
@@ -211,22 +286,31 @@ function Sheet({ company, rows, filler, period, unaccounted, page }) {
             that does not have it. */}
         <thead>
           <tr className="pad">
-            <td className="co" colSpan={5}>
+            <td className="co" colSpan={cols}>
               <PaperFlag unaccounted={unaccounted} />
             </td>
           </tr>
           <tr>
             <th rowSpan={2}>รหัส</th>
             <th rowSpan={2}>ชื่อ-นามสกุล</th>
-            <th colSpan={2} className="hl">{monthHead(period)}</th>
+            {periods.map((p) => (
+              <th key={p} colSpan={2} className="hl">{monthHead(p, many)}</th>
+            ))}
+            {/* `รวม` โดยไม่มีคำว่าเดือน — มันไม่ใช่เดือน มันคือสองเดือนที่จ่าย
+                พร้อมกัน และเป็นตัวเลขที่บัญชีคีย์เข้าระบบจริง ๆ */}
+            {many && <th colSpan={2} className="hl sum">รวม</th>}
             {/* Unheaded on purpose: the strip is not a column of the form, so
                 naming it would put a heading on the paper that the sheet
                 accounting signs has never had. */}
             <th rowSpan={2} className="note" />
           </tr>
           <tr>
-            <th className="rate">1.50</th>
-            <th className="rate">3.00</th>
+            {periods.flatMap((p) => [
+              <th key={`${p}-15`} className="rate">1.50</th>,
+              <th key={`${p}-3`} className="rate">3.00</th>,
+            ])}
+            {many && <th className="rate sum">1.50</th>}
+            {many && <th className="rate sum">3.00</th>}
           </tr>
         </thead>
         <tbody>
@@ -234,8 +318,15 @@ function Sheet({ company, rows, filler, period, unaccounted, page }) {
             <tr key={row.employee.id}>
               <td className="code">{row.employee.code}</td>
               <td>{row.employee.name}</td>
-              <td className={figureClass(row)}>{amount(row.ot15Hours)}</td>
-              <td className={figureClass(row)}>{amount(row.ot3Hours)}</td>
+              {/* งวดเดือนเดียวอ่าน `months[0]` ซึ่งเป็นตัวเดียวกับยอดของทั้งแถว
+                  ใบที่ออกทุกเดือนจึงพิมพ์ตัวเลขชุดเดิมผ่านทางเดินเดียวกับใบสอง
+                  เดือน — ไม่มีสาขาที่ทดสอบไม่ถึง */}
+              {row.months.map((m) => [
+                <td key={`${m.period}-15`} className={figureClass(m)}>{amount(m.ot15Hours)}</td>,
+                <td key={`${m.period}-3`} className={figureClass(m)}>{amount(m.ot3Hours)}</td>,
+              ])}
+              {many && <td className={`${figureClass(row)} sum`}>{amount(row.ot15Hours)}</td>}
+              {many && <td className={`${figureClass(row)} sum`}>{amount(row.ot3Hours)}</td>}
               <td className="note">{remark(row)}</td>
             </tr>
           ))}
@@ -245,14 +336,17 @@ function Sheet({ company, rows, filler, period, unaccounted, page }) {
             <tr key={`fill-${i}`} aria-hidden="true">
               <td className="code" />
               <td />
-              <td className="n" />
-              <td className="n" />
+              {/* ช่องอัตราของแถวเปล่า ยังลงสีพื้นเหมือนแถวจริงทุกช่อง รวมทั้ง
+                  คู่ `รวม` — แถวว่างเป็นส่วนหนึ่งของตาราง ไม่ใช่จุดจบของมัน */}
+              {Array.from({ length: rateCols }, (_, c) => (
+                <td key={`fill-${i}-${c}`} className={many && c >= rateCols - 2 ? 'n sum' : 'n'} />
+              ))}
               <td className="note" />
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr className="pad" aria-hidden="true"><td colSpan={5} /></tr>
+          <tr className="pad" aria-hidden="true"><td colSpan={cols} /></tr>
         </tfoot>
       </table>
     </div>
@@ -365,8 +459,20 @@ function PageTag({ page, company }) {
   );
 }
 
-/** "เดือนมิถุนายน 69" — the banner over the two rate columns on the paper sheet. */
-function monthHead(period) {
+/**
+ * "เดือนมิถุนายน 69" — the banner over a month's two rate columns.
+ *
+ * ⚠ ย่อเมื่อใบมีสองเดือน และไม่ใช่เรื่องความสวยงาม: แบนเนอร์ของใบสองเดือนคร่อม
+ * สองช่องที่ 12mm คือ 24mm ส่วน `เดือนพฤศจิกายน 69` ที่ 9pt กว้างราว 30mm มันจะ
+ * ตกบรรทัด แถวหัวสูงขึ้น และ `ROWS_PER_PAGE` ข้างบน — ที่นับจากหน้าซึ่งมีหัวสอง
+ * แถวพอดี — ก็ผิดทั้งใบ ทุกหน้าหลังหน้าแรกจะจบผิดที่
+ *
+ * ใบเดือนเดียวยังพาดหัวเต็มเหมือนเดิมทุกตัวอักษร มันมี 34mm ให้ใช้และเป็นใบที่
+ * ออกทุกเดือน · `shortMonth` อยู่ใน lib/accountingCycle.js ที่เดียวกับที่หัว
+ * คอลัมน์ CSV ของงวดสองเดือนอ่าน เพื่อให้ไฟล์กับกระดาษสะกดเดือนเหมือนกัน
+ */
+function monthHead(period, short = false) {
+  if (short) return shortMonth(period);
   const [y, m] = period.split('-').map(Number);
   return `เดือน${THAI_MONTHS[m - 1]} ${String(y + 543).slice(-2)}`;
 }
@@ -430,6 +536,12 @@ function remark(row) {
  * that turns out to matter, the fix is a word in the strip and it is HR's and
  * accounting's to ask for, not this component's to take.
  */
-function figureClass(row) {
-  return row.overCeiling?.count ? 'n over' : 'n';
+/**
+ * รับได้ทั้ง "ทั้งแถว" และ "เดือนหนึ่งของแถว" เพราะทั้งสองมี `overCeiling` รูป
+ * เดียวกัน — คู่รายเดือนถามเดือนของตัวเอง คู่ `รวม` ถามทั้งงวด ผลคือคนที่เซ็น
+ * เกินเพดานเฉพาะพฤศจิกายนได้ตัวแดงเฉพาะช่องพฤศจิกายนกับช่องรวม ส่วนธันวาคมเป็น
+ * ตัวเลขธรรมดา ซึ่งเป็นการชี้ว่า "ไปถามเดือนไหน" ที่ใบเดือนเดียวชี้ไม่ได้
+ */
+function figureClass(scope) {
+  return scope.overCeiling?.count ? 'n over' : 'n';
 }

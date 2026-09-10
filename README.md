@@ -2010,7 +2010,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     138 files, run by `npm test`. Six named below as a
+test/                     140 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2023,8 +2023,8 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2497 tests
-across 138 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2521 tests
+across 140 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
 "2470 tests across 136 files" until ot-hardening-and-slips was merged a THIRD
 time later the same day — five more commits, one new file
@@ -9857,6 +9857,24 @@ screen is ตรวจสอบรายเดือน's table — พนัก
 day as that screen, and two review tables with different column sets is how a
 month goes wrong.
 
+**A two-month งวดจ่าย follows the PAPER for the columns it adds, and that was
+asked for on 2026-09-10** — *"เรียงคอลัมน์แบบฟอร์มกระดาษ"*. The three bucket
+columns above are untouched and still in that order; what the cycle adds is the
+per-month 1.50 / 3.00 pairs, and those go **in front of them**, under a two-row
+head whose banner spans each month's pair:
+
+```
+พนักงาน | แผนก | พ.ย. 69 (1.50 · 3.00) | ธ.ค. 69 (1.50 · 3.00) |
+×1.5 ปกติ | ×1.5 วันหยุด | ×3 | รวม ชม. | หมายเหตุ
+```
+
+which is the sheet's own shape. It does not contradict the paragraph above so
+much as narrow it: during a two-month cycle the screen and the sheet are held
+side by side while the figures are reconciled, and a pair that reads left of the
+buckets on one and right of them on the other has to be counted from the edge
+every time the eye moves between the two. **A single-month cycle draws no month
+columns at all and keeps the one-row head** — that table is unchanged.
+
 **The CSV is a third document, and it stopped being the screen's twin on
 2026-09-09.** It read *“`/api/exports/accounting.csv` follows the screen column
 for column, in the same order”* until that day. The order is still the screen's;
@@ -9874,6 +9892,33 @@ columns, 1.50 and 3.00, which is what a person reconciling the two actually
 compares. Adding the two ×1.5 buckets by hand every month was the step going
 wrong. The split stays to their left because it is what the screen shows and
 what a query about one figure is answered from.
+
+**A งวดจ่าย can be two months — 2026-09-10.** OT for **พฤศจิกายน and ธันวาคม is
+paid together in มกราคม**, every year, so the sheet handed to accounting then
+has to be one sheet with both months on it and a total of the pair. HR names the
+second month themselves — `ถึงเดือน (ไม่บังคับ)` beside ประจำเดือน — and that
+calendar rule is deliberately **not** in the code: the app knows only that a pay
+cycle may run to two months, which needs no maintenance in January and answers a
+year whose cycle moves.
+
+One parameter carries it on both routes, `?with=YYYY-MM`, and the report is
+still built **one month at a time** — every rule inside `accountingReport` is a
+rule *of a month* (`latestPerSession`, the `includeZero` roster pass, the
+per-month ceiling), so `lib/accountingCycle.js` merges two finished reports
+rather than teaching one to span them. The merged row keeps its cycle totals in
+the fields they were always in and adds `months[]` beside them, which is why the
+screen's own columns, the CSV's รวม lines and the reconciliation banner needed
+no arithmetic of their own.
+
+What each document shows: the **paper** gets a 1.50/3.00 pair per month and a
+`รวม` pair after them, still A4 portrait, still 194mm, still 37 rows to a page —
+the columns are squeezed (22 + 50 + six at 12mm + a 50mm remark strip), never
+the page. The **file** splits its three rate columns per month —
+`พ.ย. 69 OT x1.5 วันปกติ …` — and still ends `รวม 1.5 · รวม 3 · หมายเหตุ`, those
+two now meaning the whole cycle. **A single month's file and sheet are unchanged
+to the character**, which is the property that mattered: eleven months in twelve
+are still one month, and the consumer that counts columns from the left has
+already been hurt once by this file.
 
 **Three things left the file in that change, and it is worth knowing which.**
 `รวมชั่วโมง` (a consumer counting columns from the left now reads `รวม 1.5`
@@ -9932,7 +9977,9 @@ card is 304px and the seven columns come to 560px — พนักงาน 112 
 ×1.5 ปกติ 52 · ×1.5 วันหยุด 58 · ×3 วันหยุด 58 · รวม ชม. 60 · หมายเหตุ 140 —
 so three of the seven are on screen and **รวม ชม. and the whole หมายเหตุ column,
 where *ค้างอนุมัติ n รายการ · ไม่นับรวม* is said, are reached by pushing the
-table sideways.**
+table sideways.** A two-month งวดจ่าย puts four more figure columns into the
+same scroll box, ahead of the three above; nothing else about this changes,
+because the answer here was already "it scrolls".
 
 **ขอบขวาบอกว่ายังมีต่อ — และบอกเฉพาะตอนที่ยังมีจริง.** Below 860px the scroll box
 draws a fade in the card’s own colour down its right edge, **in front of the
@@ -11628,7 +11675,7 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2497 tests**, about 3 s, measured 2026-09-10 across 138
+- `npm test` — **2521 tests**, about 3 s, measured 2026-09-10 across 140
   files, all green. It read **"2470 tests … across 136"** until
   ot-hardening-and-slips was merged a THIRD time the same day — five more
   commits, one new file (`otFormBlankDescription`) and sixteen cases across
