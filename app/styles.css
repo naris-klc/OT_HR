@@ -15656,12 +15656,26 @@ table.mini tbody tr:hover { background: none; }
   font: 500 8px/1.4 var(--sans); color: var(--green-text);
 }
 .mk-tab.on { background: var(--green); border-color: var(--green); color: var(--on-fill); }
-/* The other two voices `Alert` takes, so a green strip in a drawing is a green
-   strip on the screen. */
+/* The other three voices `Alert` takes, so a green strip in a drawing is a
+   green strip on the screen. `.no` is the one that means the form will not
+   save — the manual draws all three together where it explains the colours. */
 .mk-alert.ok { background: var(--green-bg); border-color: var(--green); }
 .mk-alert.ok .mk-alert-t { color: var(--green-dark); }
 .mk-alert.info { background: var(--info-bg); border-color: var(--info-line); }
 .mk-alert.info .mk-alert-t { color: var(--info); }
+.mk-alert.no { background: var(--danger-bg); border-color: var(--danger-line); }
+.mk-alert.no .mk-alert-t { color: var(--danger-ink); }
+/* A BOX WITH A HEADING — a dialog on a desktop and a sheet from the bottom edge
+   on a phone, and the drawing is the same either way: what a step needs to show
+   about one is its title, its fields and its buttons, not which edge it flew in
+   from. Also does duty for the panels that read as a box inside a page — the
+   withdrawal card over a queue, ประวัติการแก้ไข under a row. */
+.mk-dlg {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 8px; border-radius: var(--radius-xs);
+  background: var(--card-lift); border: 1px solid var(--line-lift);
+}
+.mk-dlg-h { font: 600 9.5px/1.4 var(--sans); color: var(--ink); }
 .mk-four { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 
 /* ── แผนภาพ: เส้นทางอนุมัติ ────────────────────────────────────────────

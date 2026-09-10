@@ -2703,6 +2703,29 @@ taking the app's own tokens, so ธีมมืด needs no rule and paper needs
 as props from `Shell` rather than being rebuilt, so the picture cannot show a
 row they do not have.
 
+**Every หัวข้อ and every ขั้นตอน inside it carries one, since 2026-09-10** —
+*เพิ่มเติมภาพ ui ประกอบให้ครบทุกหัวข้อและทุกขั้นตอน*. It had been claimed before
+it was true: `docs/hr-briefing.md` told ฝ่ายบุคคล *ทุกหัวข้อมีภาพประกอบเป็น
+ขั้นตอนแล้ว* while **seven หัวข้อ had no drawing at all** — บันทึก OT แทนคนอื่น,
+รายงาน OT ประจำทีม, รายงาน OT แยกแผนก, ยืนยันขั้นที่สอง, แก้ใบย้อนหลัง,
+บันทึกประวัติระบบ and ปัญหาที่พบบ่อย — and 45 of the 63 ขั้นตอน were prose
+alone. **The ขั้นตอน is the unit, not the section**: a section illustrated on
+its first step and nowhere else looks illustrated in a table of contents and is
+not illustrated where it is read. `test/manualScreen.test.js` now fails a step
+with no `Shot` or `Diagram` in it, so the claim cannot go back to being a habit.
+
+**Walking every step also found a crash, not a wrong sentence.** บันทึก OT
+แทนคนอื่น carried a `p.correct` ternary for ฝ่ายบุคคล; when its gate narrowed to
+`p.sign` the branch became unreachable and `{ p }` came off the `Body`
+signature, leaving `Body: () =>` reading `p.correct` — a ReferenceError for every
+ผู้เซ็น who opened the manual, on a page whose gates are executed by the test
+suite and whose bodies were not. Both are checked now: `no Body reads a prop it
+did not destructure`. The same walk retired the mock's `g.parent` row, following
+the fold that left `NAV_GROUPS` that morning, and corrected where a ใบ's history
+is read — the row's own ปุ่ม ข้อมูลเดิม opens **ประวัติการแก้ไข**, while the
+detail sheet's section is **ประวัติรายการ**, and the manual had named only the
+first and put it in the second's place.
+
 **And it is the sixth print view**, added the same day it was asked for: the
 manual saves as a PDF, and the reader ticks which หัวข้อ go in it. The picker
 sits on the print view rather than in a dialog in front of it, because the

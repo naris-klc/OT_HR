@@ -399,6 +399,87 @@ test('a diagram of the system is drawn once, and takes no device', () => {
   }
 });
 
+/**
+ * ── ONE PICTURE PER ขั้นตอน, NOT ONE PER หัวข้อ ────────────────────────────
+ *
+ * Asked for on 2026-09-10: *เพิ่มเติมภาพ ui ประกอบให้ครบทุกหัวข้อและทุกขั้นตอน*.
+ *
+ * IT WAS ALREADY WRITTEN DOWN AS DONE BEFORE IT WAS TRUE, which is why it is a
+ * test now and not a habit: docs/hr-briefing.md told ฝ่ายบุคคล *ทุกหัวข้อมี
+ * ภาพประกอบเป็นขั้นตอนแล้ว* while SEVEN หัวข้อ had no drawing at all — บันทึก
+ * OT แทนคนอื่น, รายงาน OT ประจำทีม, รายงาน OT แยกแผนก, ยืนยันขั้นที่สอง,
+ * แก้ใบย้อนหลัง, บันทึกประวัติระบบ and ปัญหาที่พบบ่อย — and 45 of the 63
+ * ขั้นตอน were prose alone.
+ *
+ * A ขั้นตอน is the unit and not the section, because the picture is what the
+ * reader checks their own screen against while doing that one step. A section
+ * with a picture on its first step and none on the four below it looks
+ * illustrated in a table of contents and is not illustrated where it is read.
+ *
+ * `<FlowDiagram` and `<RateDiagram` count: they are `Diagram`s under a name,
+ * and the two steps that use them are drawings of the system rather than of a
+ * screen. What does not count is prose, a table of สถานะ chips, or a `hint`.
+ */
+const stepFigures = () => {
+  const body = manual.slice(manual.indexOf('const SECTIONS = ['), manual.indexOf('export const sectionsFor'));
+  const heads = [...body.matchAll(/^  \{\n    key: '([a-z]+)',/gm)];
+  return heads.map((h, i) => {
+    const slice = body.slice(h.index, i + 1 < heads.length ? heads[i + 1].index : body.length);
+    const steps = slice.split('<li className="manual-step">').slice(1);
+    return {
+      key: h[1],
+      steps: steps.map((s) => (/<(Shot|Diagram|FlowDiagram|RateDiagram)\b/.test(s) ? 1 : 0)),
+    };
+  });
+};
+
+test('every หัวข้อ and every ขั้นตอน inside it carries a ภาพประกอบ', () => {
+  const found = stepFigures();
+  assert.equal(found.length, sections.length,
+    'the ขั้นตอน parser and the section parser disagree — one of them is reading a shape that changed');
+  for (const s of found) {
+    assert.ok(s.steps.length > 0, `หัวข้อ ${s.key} has no ขั้นตอน at all`);
+    const blank = s.steps.reduce((n, f) => n + (f ? 0 : 1), 0);
+    assert.equal(blank, 0,
+      `หัวข้อ ${s.key} has ${blank} ขั้นตอน with no ภาพประกอบ — a step is what a reader follows with the screen in front of them`);
+  }
+});
+
+/**
+ * ── A `Body` MAY READ ONLY WHAT IT WAS HANDED ─────────────────────────────
+ *
+ * `<s.Body {...ctx} />` passes `p`, `navGroups` and `barSlots`. A `Body` that
+ * says `Body: () => (` and then reads `p.correct` inside its JSX is a
+ * ReferenceError — not a wrong sentence, a WHITE SCREEN for whichever บทบาท
+ * the gate lets in — and nothing else in this file would have caught it: the
+ * gates are executed here, the bodies are not.
+ *
+ * IT HAPPENED, on 2026-09-10. บันทึก OT แทนคนอื่น had a `p.correct` ternary
+ * carrying a second paragraph for ฝ่ายบุคคล; the gate was narrowed to `p.sign`
+ * the same day, which left the branch unreachable, and the `{ p }` came off the
+ * signature with it while the reference stayed. Every ผู้เซ็น opening the
+ * manual would have hit it.
+ */
+test('no Body reads a prop it did not destructure', () => {
+  const body = manual.slice(manual.indexOf('const SECTIONS = ['), manual.indexOf('export const sectionsFor'));
+  const heads = [...body.matchAll(/^  \{\n    key: '([a-z]+)',/gm)];
+  assert.ok(heads.length >= 15, 'the SECTIONS shape changed — this test is reading nothing');
+  for (const [i, h] of heads.entries()) {
+    const slice = body.slice(h.index, i + 1 < heads.length ? heads[i + 1].index : body.length);
+    const sig = slice.match(/\n {4}Body: (\([^)]*\)) =>/);
+    assert.ok(sig, `หัวข้อ ${h[1]} has no Body, or its signature spans more than one line`);
+    const code = codeOnly(slice.slice(slice.indexOf(sig[0])));
+    for (const prop of ['p', 'navGroups', 'barSlots']) {
+      const used = prop === 'p'
+        ? /[^a-zA-Z0-9_.]p\./.test(code)
+        : new RegExp(`[^a-zA-Z0-9_.]${prop}[^a-zA-Z0-9_]`).test(code);
+      if (!used) continue;
+      assert.ok(new RegExp(`[{,]\\s*${prop}\\s*[,}]`).test(sig[1]),
+        `หัวข้อ ${h[1]} reads \`${prop}\` but its Body signature is \`${sig[1]}\` — that is a ReferenceError on the screen, not a missing sentence`);
+    }
+  }
+});
+
 test('every section draws an icon that exists', () => {
   const declared = new Set(
     [...icons.slice(icons.indexOf('const ICONS = {')).matchAll(/^ {2}([a-zA-Z]+):/gm)].map((m) => m[1]),
