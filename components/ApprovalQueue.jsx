@@ -1616,12 +1616,22 @@ export default function ApprovalQueue({
                       aria-label={`เลือกรายการของ ${e.employee?.name}`}
                     />
                   </td>
-                  {/* A name is one thing and a code is one thing; both broke
-                      mid-word when the column was squeezed. The department is
-                      the only part of this cell that may wrap, because it is
-                      the only part that is prose. */}
+                  {/* A code is one thing and breaks nowhere; the department is
+                      prose and wraps freely.
+
+                      THE NAME IS BETWEEN THE TWO and, since 2026-09-10, may
+                      take a second line — at the space before the นามสกุล and
+                      nowhere else, which is what `WhoName` is for: the words
+                      are `.nb` and the spaces between them are the only break
+                      opportunities the cell has left. It
+                      read "A name is one thing and a code is one thing; both
+                      broke mid-word when the column was squeezed" until then:
+                      the fix for that was `nowrap`, and `nowrap` does not clip,
+                      it draws the surname over the วันที่ column. Every name on
+                      the live roster carries a คำนำหน้า, so that was a third of
+                      the rows. */}
                   <td className="who-col">
-                    <div className="who-name">{e.employee?.name}</div>
+                    <div className="who-name"><WhoName name={e.employee?.name} /></div>
                     <div className="cell-sub">
                       <span className="nb">{e.employee?.code}</span>
                       {' · '}
@@ -3247,6 +3257,50 @@ function QuickEdit({ entry, onDirty, onCancel, onSaved }) {
  * `title` is the same short sentence, so a mouse gets the words back; the whole
  * of it — head and body — is in the pop-up the row itself opens.
  */
+/**
+ * A name that may take a second line, but only at the space before the นามสกุล.
+ *
+ * WHY IT IS NOT LEFT TO THE BROWSER. `white-space: normal` alone stops the
+ * overlap this cell was reported for on 2026-09-10, and then breaks the name
+ * in the wrong place: Chrome fills the line greedily and Thai carries a break
+ * opportunity between EVERY pair of words, spaces or no spaces — so
+ * "นางสาวพรพรรณ บุญเรือง" came out as "นางสาวพรพรรณ บุญ" over "เรือง", with the
+ * surname cut in half and the space left sitting in the middle of line one.
+ * Measured in the built app at 1440: six of the six wrapped names broke inside
+ * the surname, not one at the space.
+ *
+ * NEITHER `word-break: keep-all` NOR `line-break: strict` MOVES IT. Both were
+ * tried against the same rows in the same run; the break points did not
+ * change by one character. They speak for CJK, and Thai is not in the classes
+ * they name — a CSS-only answer to this does not exist today.
+ *
+ * SO THE TOKENS ARE MADE UNBREAKABLE AND THE SPACES ARE LEFT ALONE. Each word
+ * goes in `.nb`, which is the class the employee code beside it already uses
+ * for the same reason, and the plain spaces between them are the only break
+ * opportunities left in the cell. A name with two spaces — a นามสกุล like
+ * "ณ อยุธยา" — therefore keeps both of them as places it may break.
+ *
+ * THE ONE THING THIS CAN STILL DO IS OVERFLOW, and the width is chosen so it
+ * cannot: no token on the roster is wider than the cell (the widest is
+ * "นางสาวฟ้าประทาน", 115.4px against 144 at the table's floor). A single word
+ * a quarter longer than any name on this roster today would paint over วันที่
+ * again — see the block in app/styles.css, which is where that budget is kept.
+ */
+function WhoName({ name }) {
+  const words = String(name || '').split(' ').filter(Boolean);
+  /* THE SPACES ARE OUTSIDE THE SPANS, which is the whole mechanism. A space
+     inside an `.nb` span is a space that may not be broken at, and the cell
+     would be back to one unbreakable line. They are plain text nodes of the
+     `.who-name` block, whose `white-space` is `normal`.
+
+     The index is the only key these have, and it is a stable one: the array is
+     rebuilt whenever the name changes, and is never sorted or spliced. */
+  return words.flatMap((word, i) => [
+    ...(i ? [' '] : []),
+    <span key={i} className="nb">{word}</span>,
+  ]);
+}
+
 function WatchMark({ note }) {
   return (
     <span className="act-none" title={note} aria-label={note} role="note">—</span>
