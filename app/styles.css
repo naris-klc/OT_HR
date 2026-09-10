@@ -4764,19 +4764,67 @@ td > .approver-line { margin-top: 5px; }
     margin-top: 8px;
   }
   .pop.sheet .pop-foot .btn { min-height: 44px; }
-  /* A STOP IS 44px ON A SHEET — the touch floor, and the whole of whether a
-     thumb lands on 30 or on 29. One number moves the wheel, the padding under
+  /* A STOP IS 56px ON A SHEET, AND 44 IS THE FLOOR IT CLEARS RATHER THAN THE
+     NUMBER IT AIMS AT. It read "44px" until 2026-09-10, chosen as the touch
+     minimum and defended as one — the whole of whether a thumb lands on 30 or
+     on 29. That argument is untouched and 56 keeps it; what 44 never answered
+     is what was asked this round, which is PROPORTION. A sheet gives this panel
+     340px of width, and the figures inside it were 16px under a header of 30px
+     — so the wheel read as a footnote to the two boxes rather than as the other
+     half of the control.
+
+     THE FIGURE GOES UP WITH THE STOP, which is the half worth saying out loud:
+     a taller stop holding the same small number is not a bigger option, it is a
+     bigger gap. 22px is the wheel answering the header instead of whispering
+     under it.
+
+     ONE NUMBER STILL MOVES THREE THINGS — the wheel's height, the padding under
      the stops and the band across them, because all three are `--slot`; the
      component measures a real stop rather than carrying a copy. */
   .pop.sheet .time-wheels {
-    --slot: 44px;
+    --slot: 56px;
   }
-  .pop.sheet .time-slot { font-size: 16px; }
-  .pop.sheet .time-wheels { max-width: 340px; margin: 0 auto; }
-  .pop.sheet .time-heads { max-width: 340px; margin: 0 auto; }
+  .pop.sheet .time-slot { font-size: 22px; }
+  /* ── `width: 100%` IS NOT BELT AND BRACES, IT IS THE WHOLE BUG ─────────────
+     THE PANEL WAS NOT MERELY SMALL ON A PHONE, IT WAS THREE COLUMNS WIDE OF A
+     SHEET THAT IS TEN. Measured on the real app at 360px on 2026-09-10: each
+     wheel **26.4px**, the pair plus the gap 63, centred in a 340px row — so the
+     band was a small box drawn round `20 00` rather than a line across the
+     panel, and the hour sat against the minute with the rest of the sheet empty
+     on both sides. That is what was reported, and no font size answers it.
+
+     WHY IT HAPPENED, BECAUSE IT WILL HAPPEN AGAIN. These rules were written on
+     2026-09-02, when `.pop.sheet` was an ordinary block: a block child with
+     `max-width` and `margin: 0 auto` fills its parent up to the cap and centres.
+     On 2026-09-04 the drawer round gave `.pop.sheet` `display: flex;
+     flex-direction: column` (for `.nav-sheet`, three lines up) — and in a flex
+     container an AUTO CROSS-AXIS MARGIN SUPPRESSES THE STRETCH. The item stops
+     being as wide as the sheet and becomes as wide as its content, then centres
+     in the space it did not take. Nothing in this block changed; the meaning of
+     `margin: 0 auto` did, silently, in a round about a different sheet.
+
+     `width: 100%` IS WHAT PUTS THE INTENTION BACK: a definite width, so the cap
+     and the centring are what they read as. It is on all three rows for the same
+     reason — the wheels, the two words over them and the เวลาด่วน chips — since
+     all three carried an auto margin and all three had collapsed. */
+  .pop.sheet .time-wheels { width: 100%; max-width: 340px; margin: 0 auto; }
+  .pop.sheet .time-heads { width: 100%; max-width: 340px; margin: 0 auto; }
+  /* The two words go up with the figures under them. 11px over a 22px stop is a
+     caption written on a heading, and ชั่วโมง / นาที are neither — they are
+     what says which column a thumb is in. */
+  .pop.sheet .time-heads span { font-size: 13px; }
   /* The same 340px the wheels are held to, so the chips are a row under them
      rather than a row across the whole sheet. */
-  .pop.sheet .time-quick { max-width: 340px; margin-left: auto; margin-right: auto; }
+  .pop.sheet .time-quick { width: 100%; max-width: 340px; margin-left: auto; margin-right: auto; }
+  /* THE CHIPS ARE THE OTHER ตัวเลือกเวลา ON THIS PANEL, and they were the
+     smallest object on it: 12px of figure in 4px of padding is a 26px target —
+     the one thing here that never cleared the app's 44px floor while the foot,
+     the header and the stops all did. 15px in 11px of padding is 45px with the
+     border, over the floor rather than exactly on it. Four still fit the row:
+     `.time-quick` is a four-column grid, so a chip is a quarter of the row
+     whatever it holds, which is why this cannot bring back the wrap that made
+     it a grid in the first place. */
+  .pop.sheet .time-chip { padding: 11px 0; font-size: 15px; }
   /* The header is what a thumb aims at first on a phone and it is also the
      keypad's target, so it gets the touch floor and the larger figures. */
   .pop.sheet .time-num { min-height: 52px; width: 92px; font-size: 30px; }

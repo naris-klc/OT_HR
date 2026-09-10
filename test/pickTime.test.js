@@ -488,12 +488,56 @@ test('สองรูปทรงก่อนหน้าไม่เหลื�
   assert.ok(!/role="grid"|role="gridcell"/.test(code), 'ตารางยังไม่ถูกถอดออกจนหมด');
 });
 
-test('บนมือถือจุดหยุดสูง 44px และหัวแผงโตขึ้น', () => {
+test('บนมือถือจุดหยุดสูง 56px และตัวเลขในวงล้อโตตามช่อง', () => {
   const phone = rules.slice(rules.indexOf('@media (max-width: 860px)'));
+  /**
+   * IT READ 44px AND 16px UNTIL 2026-09-10 and the reason for the change is
+   * proportion, not the touch floor: a sheet is 340px wide and a 16px figure
+   * under a 30px header reads as a footnote to it. 44 is still cleared —
+   * nothing on this panel goes under it.
+   *
+   * THE TWO ARE ASSERTED TOGETHER ON PURPOSE. A stop that grows without its
+   * figure growing is a bigger gap rather than a bigger option, which is the
+   * one way this change could be half-made.
+   */
   // One number moves the stop, the padding under it and the band across it.
-  assert.match(phone, /\.pop\.sheet \.time-wheels \{\s*\n\s*--slot: 44px;\s*\n\s*\}/);
-  assert.match(phone, /\.pop\.sheet \.time-slot \{ font-size: 16px; \}/);
+  assert.match(phone, /\.pop\.sheet \.time-wheels \{\s*\n\s*--slot: 56px;\s*\n\s*\}/);
+  assert.match(phone, /\.pop\.sheet \.time-slot \{ font-size: 22px; \}/);
+  assert.match(phone, /\.pop\.sheet \.time-heads span \{ font-size: 13px; \}/);
   assert.match(phone, /\.pop\.sheet \.time-num \{ min-height: 52px; width: 92px; font-size: 30px; \}/);
+  /* เวลาด่วน was the one target on this panel under the app's 44px floor —
+     26px — and it is the four-column grid that lets it grow without the wrap
+     that made it a grid coming back. */
+  assert.match(phone, /\.pop\.sheet \.time-chip \{ padding: 11px 0; font-size: 15px; \}/);
+});
+
+test('ทุกแถวที่จัดกึ่งกลางบนชีตมีความกว้างที่แน่นอน ไม่ใช่แค่ margin auto', () => {
+  /**
+   * THE REGRESSION THIS PINS IS NOT A SIZE, IT IS A COLLAPSE. Measured on the
+   * built app at 360px on 2026-09-10: each wheel **26.4px** — the two columns
+   * and their gap came to 63px in the middle of a 340px row, so the band was a
+   * box round `20 00` instead of a line across the panel.
+   *
+   * `max-width` + `margin: 0 auto` said "fill the sheet, cap at 340, centre"
+   * while `.pop.sheet` was a block. It became "shrink to your content and
+   * centre" on 2026-09-04, when the drawer round made `.pop.sheet` a flex
+   * column: an AUTO CROSS-AXIS MARGIN SUPPRESSES A FLEX ITEM'S STRETCH. Neither
+   * rule was touched and neither one is wrong to read — which is exactly why
+   * this is worth a test rather than a comment.
+   *
+   * SO WHAT IS ASSERTED IS THE DEFINITE WIDTH, on every centred row of this
+   * panel. A row that comes back with an auto margin and no width is the same
+   * bug again, whatever the numbers next to it say.
+   */
+  const phone = rules.slice(rules.indexOf('@media (max-width: 860px)'));
+  for (const row of ['\\.time-wheels', '\\.time-heads', '\\.time-quick']) {
+    const rule = new RegExp(`\\.pop\\.sheet ${row} \\{([^}]*margin[^}]*)\\}`).exec(phone);
+    assert.ok(rule, `ไม่พบกฎ ${row} ที่มี margin บนชีต`);
+    assert.match(rule[1], /width: 100%/, `${row} จัดกึ่งกลางด้วย margin auto โดยไม่มีความกว้างที่แน่นอน`);
+  }
+  // And the sheet is still the flex column that makes the auto margin mean
+  // that — if this line goes, the three above are belt and braces again.
+  assert.match(phone, /\.pop\.sheet \{ max-height: 88dvh; display: flex; flex-direction: column; \}/);
 });
 
 test('แผงกว้างเท่าหัวของมัน และมีเพดานกันไม่ให้ล้นจอเตี้ย', () => {
