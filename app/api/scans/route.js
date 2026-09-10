@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from '@/lib/session.js';
 import { COMPANIES } from '@/src/config/companies.js';
 import { buildScanSlots } from '@/lib/scanFile.js';
 import { compareMonthAgainstScans } from '@/lib/scanMatchQuery.js';
-import { reportStatuses } from '@/lib/reports.js';
+import { reportStatuses, departmentScope } from '@/lib/reports.js';
 
 /**
  * ไฟล์สแกนนิ้วที่นำเข้าไว้แล้ว — what this month already holds.
@@ -30,8 +30,10 @@ import { reportStatuses } from '@/lib/reports.js';
  * guard is what makes that a rule rather than a hidden button.
  */
 export const GET = route(async (req) => {
-  requireRole(await requireAuth(req), 'admin', 'hr');
-  const { period, compare, status } = query(req);
+  const user = await requireAuth(req);
+  requireRole(user, 'admin', 'hr');
+  const q = query(req);
+  const { period, compare, status } = q;
 
   const filter = period ? { periods: period } : {};
   /**
@@ -92,7 +94,26 @@ export const GET = route(async (req) => {
    * difference nobody can account for and everybody notices.
    */
   const comparison = period && compare === '1'
-    ? await compareMonthAgainstScans({ period, statuses: reportStatuses(status, 'approved') })
+    ? await compareMonthAgainstScans({
+      period,
+      statuses: reportStatuses(status, 'approved'),
+      /**
+       * `?department=` — THE SAME แผนก THE TABLE UNDER THIS CARD IS SHOWING.
+       *
+       * Forwarded for the reason `status` above it is, and it became load-
+       * bearing on 2026-09-10 when the comparison stopped living inside the
+       * folded import card and became a card of its own directly above the
+       * table. Narrowed table + company-wide summary is two questions answered
+       * in one place with nothing saying so.
+       *
+       * `departmentScope` rather than `q.department` raw: it is the one
+       * function that decides this, it refuses a แผนก that cannot exist, and
+       * ตรวจสอบประจำเดือน's report route and both its CSVs already ask it. The
+       * `teamOnly` half never fires here — this route is ฝ่ายบุคคล's and
+       * ผู้ดูแลระบบ's only (see the guard above), and neither is team-scoped.
+       */
+      department: departmentScope(user, q).department,
+    })
     : null;
 
   return json({

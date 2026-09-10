@@ -319,6 +319,14 @@ test('the notices cannot outlive the department they were counted over', () => {
   // The page and the fold are claims about a list this replaces wholesale.
   assert.match(
     hrView,
-    /setPage\(1\); setShowAllCards\(false\); \}, \[period, statusFilter, dept, query\]\);/,
+    /setPage\(1\);\s*setShowAllCards\(false\);\s*\}, \[period, statusFilter, dept, query, onlyFlagged\]\);/,
+  );
+  // AND SO IS ดูเฉพาะคนที่ต้องตรวจ, which is why it is released by the same
+  // three. It narrows by `compare.people` — a list the server rebuilds for
+  // every one of them — so a press made against สิงหาคม's findings, still held
+  // while กันยายน loads, empties a table the card above has just called clean.
+  assert.match(
+    hrView,
+    /useEffect\(\(\) => \{ setOnlyFlagged\(false\); \}, \[period, statusFilter, dept\]\);/,
   );
 });

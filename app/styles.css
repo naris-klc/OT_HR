@@ -2128,6 +2128,55 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 6px 14px; flex-wrap: wrap; margin: 0 0 10px;
 }
+
+/* ── ผลเทียบกับไฟล์สแกนนิ้วมือ — the summary card above the strip ──────────
+
+   components/ScanCompareCard.jsx. It IS an `.alert`, so the fill, the border
+   and the four kinds are already decided; everything below is the three things
+   an alert does not know how to say — a headline figure, a tally read across,
+   and one sentence that has to be bigger than the rest of the card.
+
+   `margin-bottom` matches `.month-strip`'s, so the four blocks above the table
+   (MonthAlerts · this · the strip · the panel) sit on one rhythm rather than
+   four. */
+.scan-compare { margin: 0 0 10px; }
+
+/* THE ONE SENTENCE ON THIS SCREEN DRAWN LARGER THAN A HEADING, and it is the
+   state nobody could see before: a month with no scan file at all. It is
+   deliberately louder than the ⚠ pile beneath it, because a wrong reading of
+   this line ("no marks, so everything agrees") is worse than a wrong reading of
+   any figure — it is a month signed off against a comparison that never ran. */
+.scan-none { font: 600 16px/1.35 var(--sans); color: var(--ink); }
+
+.scan-head { margin: 6px 0 0; }
+.scan-big { font: 600 15px/1.4 var(--sans); }
+.scan-big.warn { color: var(--amber-ink); }
+.scan-big.ok { color: var(--green-dark); }
+
+/* ── THE TALLY READS ACROSS AND WRAPS AS A LIST, NOT AS A SENTENCE ─────────
+
+   It was a sentence joined by `·` inside the import card and it wrapped mid-
+   clause, so `5 แถวไม่ตรง (ไม่มี` ended one line and `สแกนนิ้ว)` began the
+   next. A flex row with a gap breaks BETWEEN the figures and never inside one,
+   which is what a tally is: six independent facts, not one sentence about six
+   things.
+
+   `column-gap` is wider than `row-gap` on purpose — across, the eye needs the
+   figures held apart; down, they are a block. */
+.scan-tally {
+  display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 0;
+  font: 400 13px/1.5 var(--sans); color: var(--ink);
+}
+.scan-tally strong { font: 600 13.5px/1.5 var(--mono); }
+/* เกินเวลา · เหมารายวัน · ตรง — facts, counted outside the pile that needs a
+   person (see `summariseScanChecks`). Grey says so before the words do. */
+.scan-tally .quiet { color: var(--muted); }
+.scan-tally .quiet strong { color: var(--muted); }
+
+@media (max-width: 640px) {
+  .scan-none { font-size: 15px; }
+  .scan-tally { gap: 4px 12px; font-size: 12.5px; }
+}
 .period-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
 /* ⚠ TEXT FLOW, NOT A FLEX LINE — and the phone is what settled it. As three
    flex items (mark · headline · รายละเอียด) at 390px the row broke between the

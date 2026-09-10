@@ -21,6 +21,7 @@ import { personMatches } from '@/lib/personSearch.js';
 import { policyVersionNotice } from './PolicyVersion.jsx';
 import PeriodStatus from './PeriodStatus.jsx';
 import ScanImport from './ScanImport.jsx';
+import ScanCompareCard from './ScanCompareCard.jsx';
 import PrintForm from './PrintForm.jsx';
 import PrintFormBatch from './PrintFormBatch.jsx';
 import HrEntries from './HrEntries.jsx';
@@ -320,6 +321,80 @@ export default function HrView({
   // somebody drops the `key` in components/App.jsx.
   useEffect(() => { load(); }, [period, statusFilter, scope, dept]);
 
+  /**
+   * ── ไฟล์สแกนนิ้วมือ AND THE MONTH READ AGAINST IT — THIS SCREEN'S, SINCE
+   *    2026-09-10 ──────────────────────────────────────────────────────────
+   *
+   * `components/ScanImport.jsx` fetched this for itself until today. It stopped
+   * because the answer now has TWO readers on one screen: the summary card
+   * above the table (`ScanCompareCard`) and the panel behind the fold. Two
+   * fetches would be two answers, seconds apart, over a collection an import is
+   * writing to — and a card saying `17 แถวต้องตรวจ` above a panel saying
+   * something else is a screen a reader cannot trust about either figure.
+   *
+   * ── IT IS ASKED WITH THE SAME THREE NARROWINGS THE TABLE IS ──────────────
+   *
+   * `period`, `statusFilter` and `dept` — all three, in the URL. The first two
+   * were always there; `department` arrived with this round and closes the last
+   * gap in the rule the แผนก filter states about itself: EVERY figure on this
+   * screen is that department's. A company-wide comparison drawn directly over
+   * a table narrowed to ผลิต3 is two questions answered in one place with
+   * nothing on screen to say they are different questions.
+   *
+   * ── AND ONLY FOR THE PEOPLE WHOSE IT IS ──────────────────────────────────
+   *
+   * `mayCorrect && scope !== 'team'` — the same pair that draws the import
+   * button, and the same pair `requireRole(…, 'hr', 'admin')` enforces on the
+   * route. A punch log is a record of when people were at the door, which is a
+   * different fact about a person from the OT they filed; it is ฝ่ายบุคคล's to
+   * hold. A การเงิน reading every แผนก and a หัวหน้า reading their own team are
+   * never offered it, and this effect does not even ask.
+   *
+   * `compare=1` ONLY WHEN THE MONTH HAS PUNCHES — the cheap half answers
+   * `punchCount`, and paying for the expensive half to be told all zeroes is
+   * what the two-step ask avoids. The reasoning is `ScanImport`'s own, moved
+   * here with the request.
+   */
+  const [scan, setScan] = useState(null);
+  const [scanLoading, setScanLoading] = useState(false);
+  const readsScans = mayCorrect && scope !== 'team';
+
+  async function loadScan() {
+    if (!readsScans) return;
+    setScanLoading(true);
+    try {
+      const base = `/scans?period=${period}${deptParam}`;
+      const first = await api.get(base);
+      const full = first.punchCount
+        ? await api.get(`${base}&compare=1&status=${encodeURIComponent(statusFilter)}`)
+        : first;
+      setScan(full);
+    } catch {
+      /**
+       * A comparison that will not load is not an error this screen shows.
+       *
+       * The month itself is fine — it came from a different route — and the
+       * import button still works. `null` draws no summary card at all, which
+       * is the honest reading: this screen has nothing to say about the scans.
+       * Saying it in `error` would put a red box over a table that is correct.
+       */
+      setScan(null);
+    } finally { setScanLoading(false); }
+  }
+
+  /**
+   * `setScan(null)` FIRST, and it is the whole reason this is not one line.
+   *
+   * August's comparison left on screen under a heading that says September is
+   * the same mistake the import card's own month-change effect was written to
+   * prevent, arriving through a different door. The card draws nothing while
+   * `scanLoading`, so the gap is not a flash of "ยังไม่ได้เทียบ" either.
+   */
+  useEffect(() => {
+    setScan(null);
+    loadScan();
+  }, [period, statusFilter, dept, scope, readsScans]);
+
   // Three sub-views, all reached from this table and all closed the same
   // way. Mutually exclusive by the early returns below, so registering each
   // separately cannot stack them.
@@ -357,15 +432,70 @@ export default function HrView({
    */
   const [find, setFind] = useState('');
   const [query, setQuery] = useState('');
+  /**
+   * ดูเฉพาะคนที่ต้องตรวจ — the summary card's own press, and the fifth filter
+   * on a screen whose filter bar holds four.
+   *
+   * ── IT IS ON THE CARD AND NOT IN `.queue-tools`, ON PURPOSE ───────────────
+   *
+   * It belongs to the finding, not to the month: what it narrows by is
+   * `compare.people`, which exists only while a comparison does, and a control
+   * that vanishes out of a bar of four is a bar that changes shape by itself.
+   * On the card it is the obvious next move after reading `ต้องตรวจ 17 แถว`,
+   * and it is the only place a reader is looking when they want it.
+   *
+   * ── BUT ล้างตัวกรอง RELEASES IT ANYWAY, AND THAT IS NOT OPTIONAL ─────────
+   *
+   * A filter that hides rows while the filter bar shows nothing amiss is how
+   * somebody comes to believe this month has eleven employees in it. It is the
+   * one thing about living outside the bar that had to be paid for, and it is
+   * paid here — see the button below, which clears this along with the other
+   * three. Decided 2026-09-10, docs/plan-monthly-review-approve-inline.md §5.7.
+   *
+   * A SCREEN FILTER, like `query` and unlike `dept`: it narrows what is DRAWN
+   * out of a month already fetched, so it moves no total and costs no request.
+   * The hint under the table that explains that about ค้นหา covers this too.
+   */
+  const [onlyFlagged, setOnlyFlagged] = useState(false);
   useEffect(() => {
     if (find === '') { setQuery(''); return undefined; }
     const timer = setTimeout(() => setQuery(find), FIND_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [find]);
-  const shown = React.useMemo(
-    () => (data?.employees || []).filter((row) => personMatches(row.employee, query)),
-    [data, query],
-  );
+  /**
+   * WHO HAS SOMETHING TO LOOK AT — employee id → their row of `compare.people`.
+   *
+   * A Map rather than a repeated `find`, because it is asked once per row of
+   * the table and a month is sixty rows. Keyed on the STRING id both sides
+   * already carry (`groupScanChecksByPerson` stringifies; the report's employee
+   * `_id` arrives as one over JSON), so no id is compared to an object.
+   *
+   * ONLY THE PEOPLE WITH A FINDING ARE IN IT — that is what the server sends.
+   * Absence therefore means one of two opposite things, and which one is
+   * decided by `punchCount`, never by this Map: no finding, or no file. See
+   * `ScanCompareCard`, which is the one place that difference is spoken.
+   */
+  const flaggedBy = React.useMemo(() => {
+    const map = new Map();
+    for (const person of scan?.compare?.people || []) map.set(String(person.id), person);
+    return map;
+  }, [scan]);
+
+  /**
+   * `onlyFlagged` NARROWS THE SAME LIST ค้นหา NARROWS, and after it.
+   *
+   * Both are screen filters over a month already fetched, so the order they are
+   * applied in cannot change the answer — but it can change what the empty
+   * state should say, which is why they are two `filter` calls and not one
+   * predicate. A reader who has searched for "สมชาย" while ดูเฉพาะคนที่ต้องตรวจ
+   * is on and sees nothing has two reasons for it, and the table below tells
+   * them so rather than blaming the search.
+   */
+  const shown = React.useMemo(() => {
+    const matched = (data?.employees || []).filter((row) => personMatches(row.employee, query));
+    if (!onlyFlagged) return matched;
+    return matched.filter((row) => flaggedBy.has(String(row.employee?._id)));
+  }, [data, query, onlyFlagged, flaggedBy]);
   const searching = query.trim() !== '';
 
   /**
@@ -389,7 +519,22 @@ export default function HrView({
   const [page, setPage] = useState(1);
   /** The fold under the third card — see `CARD_FOLD` and `folding` below. */
   const [showAllCards, setShowAllCards] = useState(false);
-  useEffect(() => { setPage(1); setShowAllCards(false); }, [period, statusFilter, dept, query]);
+  useEffect(() => {
+    setPage(1);
+    setShowAllCards(false);
+  }, [period, statusFilter, dept, query, onlyFlagged]);
+
+  /**
+   * A NARROWING TO A PILE THAT NO LONGER EXISTS RELEASES ITSELF.
+   *
+   * `onlyFlagged` is a claim about `compare.people`, and every one of the three
+   * things above rebuilds that list from the server. Left on across a change of
+   * month it would empty the table of a month that is perfectly fine, under a
+   * card that has just finished saying so — a filter still holding a shape from
+   * the month before. It is dropped rather than re-applied because the press
+   * was about the findings that were on screen when it was made.
+   */
+  useEffect(() => { setOnlyFlagged(false); }, [period, statusFilter, dept]);
 
   /**
    * EVERY ACTIVE แผนก, for the dropdown's list — fetched once per mount.
@@ -795,6 +940,41 @@ export default function HrView({
         />
       )}
 
+      {/* ── ผลเทียบกับไฟล์สแกนนิ้วมือ — ABOVE EVERYTHING PRESSABLE ────────
+
+          Directly under `MonthAlerts` and above the strip, for that card's own
+          reason word for word: what it warns about is the figures on this
+          screen, and the person it warns is the one about to sign them. A
+          reader reaches it before the month picker, before ส่งออก and before
+          พิมพ์ — not after.
+
+          IT WAS INSIDE ไฟล์สแกนนิ้วมือ UNTIL TODAY, which was the right place
+          for exactly as long as that panel could not fold. It folds now, shut
+          on every visit; the comparison went down with it and became a fact the
+          screen no longer stated. Importing is a deed and folds; the answer to
+          "is this month safe to sign" is a fact and does not.
+
+          NOT KEYED ON THE MONTH like `MonthAlerts` is, because it holds no
+          state of its own to go stale — every word it draws comes from `scan`,
+          which this screen empties and re-asks whenever any of the three
+          narrowings move. */}
+      {readsScans && (
+        <ScanCompareCard
+          period={period}
+          compare={scan?.compare || null}
+          punchCount={scan?.punchCount ?? null}
+          loading={scanLoading}
+          onlyFlagged={onlyFlagged}
+          onToggleFlagged={() => setOnlyFlagged((v) => !v)}
+          /* One press from "ยังไม่ได้เทียบ" to the thing that fixes it. It
+             OPENS the fold rather than toggling it: this button is only ever
+             drawn while the panel is shut, and a control that could also close
+             it would be a second answer to a question `scan-toggle` already
+             owns. */
+          onOpenImport={() => setScanOpen(true)}
+        />
+      )}
+
       {/* ── ONE LINE, AND IT USED TO BE TWO CARDS ─────────────────────────
 
           Reported on 2026-09-10: *"หน้านี้ดูยากและรกมากและส่วนกรองข้อมูลควร
@@ -843,10 +1023,18 @@ export default function HrView({
           monthly screen (the card's own header says why it is not in ตั้งค่าระบบ)
           and it checks the file against the ประจำเดือน box below it.
 
-          IT CHANGES NO FIGURE ON THIS SCREEN, so there is no `onChanged` and
-          nothing below it is reloaded when a file is imported. */}
-      {scanOpen && mayCorrect && scope !== 'team' && (
-        <ScanImport period={period} status={statusFilter} />
+          IT STILL CHANGES NO FIGURE IN THE TABLE — a punch is not an hour and
+          nothing in lib/scanMatch.js may restate a sheet two people signed — so
+          `load()` is not called and the month is untouched by an import.
+
+          WHAT AN IMPORT DOES MOVE, SINCE 2026-09-10, IS THE COMPARISON, and
+          `onImported` is that and only that: the summary card above and the
+          คอลัมน์สแกน in the table are both drawn from `scan`, which is a
+          reading of the very file that just landed. Without it a reader would
+          import August's second machine and watch the card go on reporting the
+          month as it stood before they pressed the button. */}
+      {scanOpen && readsScans && (
+        <ScanImport period={period} scan={scan} onImported={loadScan} />
       )}
 
       {error && <Alert kind="error">{error}</Alert>}
@@ -1177,7 +1365,7 @@ export default function HrView({
               would mean picking a different one, which is not what the word says.
               สถานะที่นับ goes back to `DEFAULT_STATUS` rather than to empty, for
               the same reason — there is no such thing as no status here. */}
-          {(find || dept || statusFilter !== DEFAULT_STATUS) && (
+          {(find || dept || onlyFlagged || statusFilter !== DEFAULT_STATUS) && (
             <button
               type="button"
               className="btn ghost sm"
@@ -1186,6 +1374,10 @@ export default function HrView({
                 setOpen(false);
                 setDept('');
                 setStatusFilter(DEFAULT_STATUS);
+                // The one filter that is not on this bar — see `onlyFlagged`.
+                // Left out, it would go on hiding rows with nothing anywhere
+                // near the table to say a filter was still on.
+                setOnlyFlagged(false);
               }}
             >
               ล้างตัวกรอง

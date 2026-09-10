@@ -640,7 +640,15 @@ test('neither the box nor the page is a filter', () => {
   // `dept` IS THE FOURTH, SINCE 2026-09-10. It is the one of the four that
   // refetches, so it is the one that can replace the list wholesale — page 8 of
   // ทุกแผนก left where it was, and then ผลิต2 loaded with four people in it.
-  assert.match(hrView, /useEffect\(\(\) => \{ setPage\(1\); setShowAllCards\(false\); \}, \[period, statusFilter, dept, query\]\);/);
+  //
+  // `onlyFlagged` IS THE FIFTH, the same day and one round later: the summary
+  // card's ดูเฉพาะคนที่ต้องตรวจ takes a month of sixty down to eleven, which is
+  // a shorter list than page 8 has any claim on. It is a screen filter like
+  // `query` and belongs in this list for `query`'s reason, not `dept`'s.
+  assert.match(
+    hrView,
+    /setPage\(1\);\s*setShowAllCards\(false\);\s*\}, \[period, statusFilter, dept, query, onlyFlagged\]\);/,
+  );
   // Picking somebody from the dropdown moves the page too, and that is NOT this
   // reset: it is the page that HOLDS them, so the card exists to be scrolled to
   // at all below 860px. Pinned in test/monthSearch.test.js beside `goToRow`.

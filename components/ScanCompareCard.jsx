@@ -1,0 +1,185 @@
+'use client';
+
+import React from 'react';
+import { periodLabel } from '@/lib/api.js';
+import { Alert } from './common.jsx';
+import { SCAN_BADGE } from '@/lib/scanMatch.js';
+
+/**
+ * ผลเทียบกับไฟล์สแกนนิ้วมือ — the month's reconciliation, as a card of its own.
+ *
+ * ── WHY THIS IS NOT PART OF ไฟล์สแกนนิ้วมือ ANY MORE ────────────────────────
+ *
+ * It was, until 2026-09-10, and the day it stopped being enough is the day the
+ * import card learned to fold. `scanOpen` opens `false` on every visit — a
+ * deliberate declutter, and the right call for the IMPORT, which is a
+ * once-a-month act — but the comparison went down with it, and the comparison
+ * is not an act. It is the answer to *"is this month safe to sign"*, which is
+ * the question the whole screen exists to ask.
+ *
+ * So the two were split along the line that was always there:
+ *
+ *   · **นำเข้าไฟล์สแกน is a DEED** — done once, by one person, on one day.
+ *     It folds, and components/ScanImport.jsx is still where it lives.
+ *   · **ผลเทียบ is a FACT about the month on screen** — read by everybody who
+ *     opens this tab, every time, before they trust a total. Facts do not fold.
+ *
+ * That is the same line `MonthAlerts` sits on, which is why this card sits
+ * directly under it and above everything a reader can press.
+ *
+ * ── AND IT DOES NOT REPLACE THE ROW MARKS ──────────────────────────────────
+ *
+ * lib/scanMatch.js is a WARNING, not an arithmetic: no hour, bucket, ceiling or
+ * status moves because of anything counted here. This card says how big the
+ * pile is and offers one press to stand in front of it (`ดูเฉพาะคนที่ต้องตรวจ`);
+ * the verdict on any single row is still one click deep, on that person's own
+ * list, where the punch times are printed beside the request that claimed them.
+ *
+ * ── THE THREE STATES, AND THE ONE THAT USED TO BE INVISIBLE ────────────────
+ *
+ *   1. **ยังไม่ได้เทียบ** — no punches imported for this month at all. Said
+ *      LOUDLY (`.scan-none`), because the state it is most often mistaken for
+ *      is state 3, and from a table with no marks on it the two look identical.
+ *      A month nobody has checked and a month that came back clean are opposite
+ *      answers and this card is the only thing that distinguishes them.
+ *   2. **มีคนต้องตรวจ** — the amber pile, with the way to it.
+ *   3. **ทุกแถวตรง** — quiet, green, one sentence.
+ *
+ * Decided 2026-09-10 (docs/plan-monthly-review-approve-inline.md §5.3): state 1
+ * does NOT disable approving. The comparison points at rows; it does not hold a
+ * gate, and a month whose file arrives late is not a month that may not be
+ * signed. What it does instead is say so in the largest voice on the card.
+ */
+export default function ScanCompareCard({
+  period,
+  /** `{ counts, people, entryCount }` from `compareMonthAgainstScans`, or null. */
+  compare = null,
+  /** How many punches this month holds. `0`/`null` is state 1 above. */
+  punchCount = null,
+  /** Still fetching — draws nothing rather than claiming a month has no scans. */
+  loading = false,
+  /** Is the table currently narrowed to the flagged people? */
+  onlyFlagged = false,
+  /** Toggle that narrowing. Null hides the button (a reader who cannot filter). */
+  onToggleFlagged = null,
+  /** Open the import card — the one thing to do about state 1. */
+  onOpenImport = null,
+}) {
+  /**
+   * A month still loading claims nothing. The state this card exists to name is
+   * "nobody has imported the file", and an unfinished request looks exactly
+   * like it — which would put the loudest sentence on this screen in front of
+   * a reader for the length of a round trip, on a month that is fine.
+   */
+  if (loading) return null;
+
+  const flagged = compare?.people?.length || 0;
+  const counts = compare?.counts;
+
+  // ── 1. ยังไม่ได้เทียบ ─────────────────────────────────────────────────────
+  if (!punchCount) {
+    return (
+      <div className="scan-compare no-print">
+        <Alert kind="info" mark={false}>
+          <div className="scan-none">ยังไม่ได้เทียบกับไฟล์สแกนนิ้วมือ</div>
+          <div className="hint" style={{ margin: '4px 0 0' }}>
+            {periodLabel(period)} ยังไม่มีข้อมูลสแกนในระบบ — ตารางข้างล่างจึงไม่มีคอลัมน์
+            {' '}<strong>สแกน</strong> และ <strong>ไม่ได้แปลว่าทุกแถวตรง</strong>
+          </div>
+          <div className="hint" style={{ margin: '4px 0 0' }}>
+            ยืนยันรายการจากหน้านี้ได้ตามปกติ · การเทียบสแกนเป็นการชี้ให้ดู ไม่ใช่เงื่อนไขการอนุมัติ
+          </div>
+          {onOpenImport && (
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ marginTop: 8 }}
+              onClick={onOpenImport}
+            >
+              นำเข้าไฟล์สแกนนิ้วมือ
+            </button>
+          )}
+        </Alert>
+      </div>
+    );
+  }
+
+  // Punches are in but the comparison has not been asked for or came back
+  // empty-handed. Nothing honest to say, so nothing is said.
+  if (!counts) return null;
+
+  const checked = counts.checked || 0;
+  const agreed = Math.max(0, checked - (counts.mismatch || 0));
+
+  return (
+    <div className="scan-compare no-print">
+      <Alert kind={counts.mismatch ? 'warn' : 'ok'} mark={false}>
+        <div className="row" style={{ justifyContent: 'space-between', gap: 10 }}>
+          <strong>ผลเทียบกับไฟล์สแกนนิ้วมือ — {periodLabel(period)}</strong>
+        </div>
+
+        {/* THE HEADLINE IS THE PILE THAT NEEDS A PERSON, and it is the only
+            figure here drawn large. Everything under it is the breakdown, in
+            HR's own four words and in the order they gave them — see
+            `SCAN_BADGE`. Naming the pile after half of itself is a mistake this
+            comparison has already made once (see `summariseScanChecks`), which
+            is why ไม่ครบ and เวลาเริ่มไม่ตรง are printed apart. */}
+        <div className="scan-head">
+          {counts.mismatch > 0 ? (
+            <>
+              <span className="scan-big warn">⚠ ต้องตรวจ {counts.mismatch} แถว</span>
+              <span className="hint">{' '}({flagged} คน จาก {compare.entryCount} ใบ)</span>
+            </>
+          ) : (
+            <span className="scan-big ok">✓ ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน</span>
+          )}
+        </div>
+
+        <div className="scan-tally">
+          <span><strong>{counts.short}</strong> {SCAN_BADGE.SHORT}</span>
+          <span><strong>{counts.startOff}</strong> {SCAN_BADGE.START_OFF}</span>
+          <span><strong>{counts.noScan}</strong> {SCAN_BADGE.NO_SCAN} (ไม่มีสแกนนิ้ว)</span>
+          <span className="quiet"><strong>{counts.overTime}</strong> {SCAN_BADGE.OVER}</span>
+          <span className="quiet"><strong>{counts.flatDaily}</strong> เหมารายวัน</span>
+          <span className="quiet"><strong>{agreed}</strong> ตรง</span>
+        </div>
+
+        {/* เกินเวลา และ เหมารายวัน ARE FACTS, NOT ERRANDS — *ข้อเท็จจริง ป้ายเทา
+            ไม่นับกองที่ต้องตรวจ* (2026-09-07). They are drawn `.quiet` for the
+            same reason they are counted outside `mismatch`: a screen that folds
+            facts into the errand count is a screen whose errand count nobody
+            trusts. Said in words as well as in colour, because colour alone is
+            not a sentence. */}
+        <div className="hint" style={{ margin: '6px 0 0' }}>
+          <strong>{SCAN_BADGE.OVER}</strong> และ <strong>เหมารายวัน</strong> เป็นข้อเท็จจริง
+          {' '}ไม่นับเป็นกองที่ต้องตรวจ · <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
+          {' '}— นี่เป็นการชี้ให้ดู ไม่ใช่การคิดใหม่
+        </div>
+
+        {/* THE PRESS THAT TURNS A NUMBER INTO A PLACE TO STAND. It narrows the
+            table below rather than listing names here: the list of names was
+            what this card printed until today and it capped at twelve, which
+            on a month with thirty flagged people is a card that names less than
+            half of them and no way to reach the rest.
+
+            A TOGGLE AND NOT A ONE-WAY TRIP — pressing it again is the way back,
+            and ล้างตัวกรอง releases it too, because a filter the filter bar does
+            not know about is how somebody comes to believe this month has
+            eleven employees in it. */}
+        {onToggleFlagged && flagged > 0 && (
+          <button
+            type="button"
+            className={onlyFlagged ? 'btn ghost sm on' : 'btn ghost sm'}
+            style={{ marginTop: 8 }}
+            onClick={onToggleFlagged}
+            aria-pressed={onlyFlagged}
+          >
+            {onlyFlagged
+              ? 'แสดงทุกคนในเดือนนี้'
+              : `ดูเฉพาะคนที่ต้องตรวจ (${flagged} คน)`}
+          </button>
+        )}
+      </Alert>
+    </div>
+  );
+}

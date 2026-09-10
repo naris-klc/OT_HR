@@ -52,75 +52,71 @@ function slotName(batch) {
  * English, is caught by the person holding it rather than by whoever queries
  * the collection in six months' time.
  */
-export default function ScanImport({ period, status = 'approved' }) {
+export default function ScanImport({
+  period,
+  /**
+   * ── THE MONTH'S SCAN RECORD, HANDED DOWN — 2026-09-10 ────────────────────
+   *
+   * `{ batches, punchCount, slots, missing, unplaced, compare }`, exactly as
+   * app/api/scans/route.js answers it. THIS CARD USED TO FETCH IT ITSELF and
+   * stopped on the day the comparison was lifted out of it and onto the screen
+   * as a card of its own (components/ScanCompareCard.jsx).
+   *
+   * TWO CARDS, ONE REQUEST, AND THAT IS THE WHOLE REASON. Left as it was, the
+   * screen would ask the same route the same question twice — once for the
+   * summary at the top and once again the moment somebody unfolded this panel —
+   * and the two answers would be seconds apart, over a collection an import is
+   * actively writing to. A card that says `17 แถวต้องตรวจ` above a panel that
+   * says a different number is not a rounding error to a reader; it is a screen
+   * that cannot be trusted about either.
+   *
+   * `null` while it is still in flight. Every figure below already had a
+   * not-yet-loaded reading (`batches !== null`, `grid &&`), because this card
+   * has always drawn before its own request landed.
+   */
+  scan = null,
+  /**
+   * นำเข้าสำเร็จแล้ว — ask for the month again.
+   *
+   * Called rather than reloading here, because what has to be re-read is the
+   * whole screen's copy: the summary card above, the คอลัมน์สแกน in the table,
+   * and this panel's own checklist are three readings of one import.
+   */
+  onImported = null,
+}) {
   const fileRef = useRef(null);
   /** The chosen file and what this module read in it — never uploaded as-is. */
   const [pending, setPending] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
-  const [batches, setBatches] = useState(null);
-  const [punchCount, setPunchCount] = useState(null);
+  const batches = scan?.batches ?? null;
+  const punchCount = scan?.punchCount ?? null;
   /**
    * The month's four expected files and what has filled each — built by the
    * server (see app/api/scans/route.js), never assembled here: the list of
    * payroll entities is the server's, and a grid put together in the browser
    * would be a third statement of who they are.
    */
-  const [grid, setGrid] = useState(null);
+  const grid = scan?.slots ? { slots: scan.slots, missing: scan.missing, unplaced: scan.unplaced } : null;
   /**
-   * The month's ใบ OT read against the punches — counts, and the people who
-   * have something to look at.
-   *
-   * THE ANSWER TO "แล้วจะดูการเปรียบเทียบตรงไหน". The marks are on the rows,
-   * which are one click deep inside ดู / แก้ไขรายการ for one person; nothing on
-   * this screen moved when a file was imported, so without this the comparison
-   * was a feature that could only be found by somebody who already knew it was
-   * there. The card names the people; the table below is how you reach them.
-   */
-  const [compare, setCompare] = useState(null);
-
-  async function load() {
-    try {
-      /**
-       * `compare=1` only when this month HAS scans. On a month with no import
-       * there is nothing to compare against and the expensive half of the route
-       * would be paid for an answer of all zeroes — and `punchCount` is on the
-       * cheap half, so the first load of an empty month asks for neither.
-       */
-      const first = await api.get(`/scans?period=${period}`);
-      const data = first.punchCount
-        ? await api.get(`/scans?period=${period}&compare=1&status=${encodeURIComponent(status)}`)
-        : first;
-      setBatches(data.batches || []);
-      setPunchCount(data.punchCount ?? null);
-      setCompare(data.compare || null);
-      setGrid(data.slots ? { slots: data.slots, missing: data.missing, unplaced: data.unplaced } : null);
-    } catch (e) {
-      // A list that will not load is not a reason to hide the button: importing
-      // still works, and the refusal is shown where it happened.
-      setBatches([]);
-      setError(e.message);
-    }
-  }
-
-  /**
-   * The month changing empties everything, and that is not tidiness.
+   * The month changing empties this card's OWN state, and that is not tidiness.
    *
    * A preview computed from June's file, still on screen under a heading that
    * now says July, is the exact mistake this card is here to prevent — and the
    * same goes for a result panel reporting an import into a month nobody is
    * looking at any more.
+   *
+   * IT NO LONGER CLEARS `batches`/`grid`/`compare`, because it no longer owns
+   * them: they arrive as `scan` and the screen above replaces them wholesale
+   * when the month changes. What is left here is what only this card knows —
+   * the file somebody picked and the panel reporting what happened to it.
    */
   useEffect(() => {
     setPending(null);
     setResult(null);
     setError('');
-    setBatches(null);
-    setGrid(null);
-    setCompare(null);
-    load();
-  }, [period, status]);
+  }, [period]);
 
   /** Read the file, show what it says. Nothing leaves the browser here. */
   async function choose(event) {
@@ -162,7 +158,10 @@ export default function ScanImport({ period, status = 'approved' }) {
       const res = await api.upload('/scans/import', pending.file);
       setResult(res);
       setPending(null);
-      load();
+      // The whole screen re-reads the month: this panel's checklist, the
+      // summary card above it, and the คอลัมน์สแกน in the table are three
+      // readings of the file that just landed.
+      onImported?.();
     } catch (e) {
       setError(e.message);
     } finally { setSending(false); }
@@ -426,74 +425,28 @@ export default function ScanImport({ period, status = 'approved' }) {
         </div>
       )}
 
-      {/* ── ผลเทียบกับใบ OT ของเดือนนี้ — the answer to "ดูตรงไหน" ─────────── */}
-      {/*
-        WITHOUT THIS BLOCK THE COMPARISON IS INVISIBLE. The marks are on the
-        rows, and the rows are one click deep — inside ดู / แก้ไขรายการ for ONE
-        person. HR import a file here and nothing on this screen moves, so the
-        only way to reach a warning was to already know it was there and open
-        people one at a time. On a roster of a hundred and sixty that is not a
-        thing anybody does, and the feature would have been built and unread.
+      {/* ── ผลเทียบ MOVED OUT OF THIS CARD ON 2026-09-10 ──────────────────
 
-        So: the counts for the month, and THE PEOPLE NAMED. The card says who;
-        the table below this card is how you get to them. That pair is the whole
-        design — this block deliberately does not link anywhere, because the
-        control that opens a person is the one already on their row and a second
-        way in would be two controls for one act.
-      */}
-      {compare && (
-        <div style={{ marginTop: 10 }}>
-          <Alert kind={compare.counts.mismatch ? 'warn' : 'ok'} mark={false}>
-            <strong>ผลเทียบกับใบ OT ของเดือนนี้</strong>
-            <span className="hint">{' '}({compare.entryCount} ใบ · ตาม “สถานะที่นับ” ที่เลือกไว้ด้านบน)</span>
-            {/* THE SAME FOUR WORDS AS ตรวจสอบรายเดือน, in the same order —
-                HR's own vocabulary of 2026-09-07. Two screens naming one
-                comparison differently is how a reader ends up believing they
-                are two comparisons. */}
-            <div style={{ marginTop: 6 }}>
-              <strong>{compare.counts.short}</strong> แถวไม่ครบ ·
-              {' '}<strong>{compare.counts.startOff}</strong> แถวเวลาเริ่มไม่ตรง ·
-              {' '}<strong>{compare.counts.noScan}</strong> แถวไม่ตรง (ไม่มีสแกนนิ้ว) ·
-              {' '}<strong>{compare.counts.overTime}</strong> แถวเกินเวลา ·
-              {' '}<strong>{compare.counts.flatDaily}</strong> แถวเป็นใบเหมารายวัน
-            </div>
+          It stood here — the month's counts and the flagged people named, up to
+          twelve of them — from the day the comparison shipped. It was in the
+          right place for exactly as long as this card could not fold.
 
-            {compare.people.length > 0 ? (
-              <>
-                {/* NAMES, NOT A NUMBER — this is the line that turns "this month
-                    has three mismatches" into somewhere to go. Capped at twelve
-                    because a card is not a report; past that the count above is
-                    the honest summary and the table below is the way through. */}
-                <div style={{ marginTop: 6 }}>
-                  ดูได้ที่ปุ่ม <strong>ดู / แก้ไขรายการ</strong> ของคนเหล่านี้ในตารางด้านล่าง —
-                  {' '}แถวที่ไม่ตรงจะมีป้ายกำกับไว้ในช่อง จาก–ถึง
-                </div>
-                <div className="hint" style={{ margin: '4px 0 0' }}>
-                  {compare.people.slice(0, 12).map((p) => (
-                    `${p.name || p.code}${p.code ? ` (${p.code})` : ''}`
-                    + ` — ${[
-                      p.mismatch ? `เวลาไม่ตรง ${p.mismatch}` : null,
-                      p.noScan ? `ไม่มีสแกน ${p.noScan}` : null,
-                    ].filter(Boolean).join(' · ')}`
-                  )).join('  ·  ')}
-                  {compare.people.length > 12 && `  …และอีก ${compare.people.length - 12} คน`}
-                </div>
-              </>
-            ) : (
-              <div className="hint" style={{ margin: '6px 0 0' }}>
-                ทุกแถวที่เทียบได้ตรงกับไฟล์สแกน — ไม่มีใครต้องตรวจเพิ่ม
-              </div>
-            )}
+          WHAT BROKE IT WAS THE FOLD, NOT THE CONTENT. `scanOpen` opens `false`
+          on every visit now, which is right for นำเข้าไฟล์ — a once-a-month
+          deed — and wrong for the answer to *"is this month safe to sign"*,
+          which every reader of this tab needs before they trust a total. A fact
+          that is two presses away is a fact the screen does not state.
 
-            {/* Said on the card as well as on the row, because this is the
-                sentence somebody might otherwise take the numbers above to mean. */}
-            <div className="hint" style={{ margin: '6px 0 0' }}>
-              <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong> — นี่เป็นการชี้ให้ดู
-              {' '}ไม่ใช่การคิดใหม่ · ใบเหมารายวันไม่นับเป็นเวลาไม่ตรง
-            </div>
-          </Alert>
-        </div>
-      )}
+          So the two were split along the line between a DEED and a FACT, and
+          the fact went up to components/ScanCompareCard.jsx, above everything
+          pressable, beside `MonthAlerts`. THE COMPARISON IS NOT DIMINISHED BY
+          THE MOVE — it gained the คอลัมน์สแกน on every row of the table and a
+          filter that stands the reader in front of the pile, neither of which a
+          twelve-name list inside a folded panel could do.
+
+          THE REQUEST IS STILL ONE REQUEST. `compare` arrives in `scan` with
+          everything else this card draws; nothing was added to pay for the move
+          — see the note over the prop. */}
 
       {/* ── the month's four, and which are still missing ──────────────────── */}
       {/*
