@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { api, periodLabel, companyLabel } from '@/lib/api.js';
-import { Alert, Disclosure, stamp } from './common.jsx';
+import { Alert, Disclosure, ShowMore, stamp } from './common.jsx';
 import {
   SCAN_FORMATS, SCAN_MAX_BYTES, MIXED_COMPANY, decodeScanText, parseScanFile,
   scanSummary, scanDateRange, periodMismatchNote, formatLabel, machineLabel,
@@ -315,11 +315,13 @@ export default function ScanImport({
               </div>
             )}
             {pending.parsed.errors.length > 0 && (
-              <ul style={{ marginTop: 6, marginLeft: 18 }}>
-                {pending.parsed.errors.slice(0, 5).map((e) => (
-                  <li key={e.line}>บรรทัด {e.line}: “{e.text}” — {e.error}</li>
-                ))}
-              </ul>
+              <ShowMore
+                as="ul"
+                style={{ marginTop: 6, marginLeft: 18 }}
+                items={pending.parsed.errors}
+                unit="บรรทัด"
+                render={(e) => <li key={e.line}>บรรทัด {e.line}: “{e.text}” — {e.error}</li>}
+              />
             )}
 
             <div className="row" style={{ marginTop: 10, gap: 8 }}>
@@ -415,10 +417,18 @@ export default function ScanImport({
                 มี {result.unknownCodes.length} รหัสในไฟล์ที่ไม่ตรงกับใครในทะเบียนพนักงาน —
                 {' '}เก็บไว้แล้วตามที่เครื่องบันทึกมา แต่ควรตรวจว่าเป็นคนที่ลาออกไปแล้ว
                 {' '}หรือเป็นคนที่ยังไม่ได้เพิ่มเข้าทะเบียน
-                <div className="hint" style={{ margin: '4px 0 0' }}>
-                  {result.unknownCodes.slice(0, 12).join(' · ')}
-                  {result.unknownCodes.length > 12 && ` … และอีก ${result.unknownCodes.length - 12} รหัส`}
-                </div>
+                {/* Twelve before anything is held back, as it always was —
+                    a row of codes is short — and the rest on request since
+                    2026-09-10 rather than a "…และอีก N รหัส" nobody could open. */}
+                <ShowMore
+                  className="hint"
+                  style={{ margin: '4px 0 0' }}
+                  items={result.unknownCodes}
+                  first={12}
+                  unit="รหัส"
+                  join=" · "
+                  render={(c) => c}
+                />
               </div>
             )}
           </Alert>
@@ -436,6 +446,15 @@ export default function ScanImport({
           deed — and wrong for the answer to *"is this month safe to sign"*,
           which every reader of this tab needs before they trust a total. A fact
           that is two presses away is a fact the screen does not state.
+
+          ot-hardening-and-slips CAME AT THE SAME LIST FROM THE OTHER SIDE, and
+          the two met here the same evening: it gave the twelve names a
+          `ShowMore`, so the rest were one press away instead of a "…และอีก N คน"
+          nobody could open. That is a better list — and a list is the thing the
+          move decided against. คอลัมน์สแกน on every row and ดูเฉพาะคนที่ต้องตรวจ
+          answer the same need without asking a reader to match names off a card
+          by eye. Its `ShowMore` over `result.unknownCodes` above IS kept: a row
+          of codes has nowhere else to be.
 
           So the two were split along the line between a DEED and a FACT, and
           the fact went up to components/ScanCompareCard.jsx, above everything

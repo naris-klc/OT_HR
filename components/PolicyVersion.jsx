@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api.js';
-import { Alert } from './common.jsx';
+import { Alert, Disclosure } from './common.jsx';
 
 /**
  * How a rule set appears on a screen HR is closing a month on.
@@ -302,7 +302,17 @@ export function PolicyVersionBanner({ spread, onGoMonthly }) {
     // different colours — or two different sentences — about one month.
     <Alert kind={notice.kind}>
       <strong>{notice.heading}</strong>
-      <div style={{ marginTop: 4 }}>{notice.figures}</div>
+      {/* THE VERSION LIST FOLDS TO ONE LINE, asked for on 2026-09-10 — and it
+          is the only part of this notice that does. On a phone it ran to three
+          lines of `ไม่ทราบเวอร์ชัน (N ใบ)` before the reader reached the line
+          that says what to do. The heading (what is wrong) and `say` (where to
+          go about it) stand outside the fold; what is behind it is the
+          breakdown, which is evidence for the heading rather than the alarm.
+          Named in `ALERTS_THAT_MAY_FOLD` in test/disclosure.test.js on those
+          terms. On a laptop the list fits one line and no control is drawn. */}
+      <Disclosure as="div" lines={1} of="รายชื่อเวอร์ชันของกฎในเดือนนี้" style={{ marginTop: 4 }}>
+        {notice.figures}
+      </Disclosure>
       {/* THE INSTRUCTION, ONE STEP QUIETER — and by the same class ตรวจสอบ
           รายเดือน already prints this exact sentence with. It carried its own
           inline `fontSize` until 2026-08-26, which is how one line of one

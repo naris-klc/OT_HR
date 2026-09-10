@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api, thaiDate } from '@/lib/api.js';
 import { printName } from '@/lib/printFile.js';
 import { FORM_PRINT_SCOPE_SAY } from '@/lib/reports.js';
-import { Alert, Empty, PrintChrome, SheetScroll } from './common.jsx';
+import { Alert, Empty, PrintChrome, SheetScroll, ShowMore } from './common.jsx';
 import { f027Chrome, F027Sheet, narrowedByPolicy, sheetQuery } from './PrintForm.jsx';
 
 /**
@@ -143,11 +143,15 @@ export default function PrintFormBatch({ employees, period, status = '', onClose
             <div style={{ fontWeight: 600, marginBottom: 4 }}>
               เตรียมใบไม่สำเร็จ {failed.length} คน — ไม่มีใบของคนเหล่านี้ในชุดที่พิมพ์
             </div>
-            {failed.map((f) => (
-              <div key={f.employee._id} style={{ fontSize: 12.5 }}>
-                {f.employee.code} · {f.employee.name} — {f.message}
-              </div>
-            ))}
+            <ShowMore
+              items={failed}
+              unit="คน"
+              render={(f) => (
+                <div key={f.employee._id} style={{ fontSize: 12.5 }}>
+                  {f.employee.code} · {f.employee.name} — {f.message}
+                </div>
+              )}
+            />
             <div style={{ fontSize: 12, marginTop: 4 }}>
               ให้พิมพ์ทีละคนจากปุ่ม “พิมพ์ F-HR-027” ในแถวของพนักงาน หรือลองใหม่อีกครั้ง
             </div>
@@ -265,6 +269,41 @@ const datesOf = (rows) => [...new Set(rows.map((r) => r.workDate))]
   .map(thaiDate)
   .join(' · ');
 
+/**
+ * One kind's names under ดูรายละเอียด — the first few, and more on request.
+ *
+ * A department of twenty-one with everything still in the queue opened into a
+ * wall: twenty-one people, each with up to twenty dates, several screens of
+ * amber before the first sheet (2026-09-10). This is where `ShowMore` in
+ * common.jsx started; it is now the app's one rule for a long list in a notice.
+ *
+ * It resets on `forms`, not on the list's length — the digest's own comment
+ * warns about a flag outliving the list it described, and a new month can
+ * come back with the same number of people in it.
+ */
+function FoldGroup({ kind, sheets, forms }) {
+  return (
+    <div className="notice-fold-group">
+      <div className="k">{kind.label} · {sheets.length} คน</div>
+      <ShowMore
+        as={React.Fragment}
+        items={sheets}
+        unit="คน"
+        resetOn={forms}
+        render={({ form, rows }, i) => (
+          // Keyed by position: two people can share a name, and a roster
+          // with two shapes of employee code (PM-0620 / PM00511) is not
+          // something to build a react key out of.
+          <div key={`${kind.key}-${i}`} className="l">
+            {form.employee.code} · {form.employee.name} — {rows.length} รายการ
+            {' · '}{datesOf(rows)}
+          </div>
+        )}
+      />
+    </div>
+  );
+}
+
 function NoticeDigest({ forms, asked = '' }) {
   const groups = DIGEST_KINDS
     .map((kind) => ({
@@ -310,18 +349,7 @@ function NoticeDigest({ forms, asked = '' }) {
           <details className="notice-fold">
             <summary>ดูรายละเอียด</summary>
             {groups.map(({ kind, sheets }) => (
-              <div key={kind.key} className="notice-fold-group">
-                <div className="k">{kind.label}</div>
-                {sheets.map(({ form, rows }, i) => (
-                  // Keyed by position: two people can share a name, and a roster
-                  // with two shapes of employee code (PM-0620 / PM00511) is not
-                  // something to build a react key out of.
-                  <div key={`${kind.key}-${i}`} className="l">
-                    {form.employee.code} · {form.employee.name} — {rows.length} รายการ
-                    {' · '}{datesOf(rows)}
-                  </div>
-                ))}
-              </div>
+              <FoldGroup key={kind.key} kind={kind} sheets={sheets} forms={forms} />
             ))}
           </details>
         )}

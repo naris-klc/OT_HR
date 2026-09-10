@@ -651,6 +651,23 @@ test('[OPEN 4] no screen keys a warnings list on the code alone', () => {
   }
 });
 
+/**
+ * "8 ชม. ของรายการนี้อยู่ในเวลาทำงานปกติ จึงไม่นับเป็น OT" is not shown — asked
+ * for on 2026-09-10 off the เหตุผล column of รออนุมัติ OT. The engine still writes
+ * it (the tests above read it), so the rule lives at the screen: no warnings list
+ * is drawn except through `shownWarnings`, and that one leaves this code out.
+ */
+test('NORMAL_HOURS_IGNORED is stored but drawn on no screen', () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const common = readFileSync(join(root, 'components/common.jsx'), 'utf8');
+  assert.match(common, /HIDDEN_WARNINGS = new Set\(\['NORMAL_HOURS_IGNORED'\]\)/);
+  for (const file of ['components/OtForm.jsx', 'components/ApprovalQueue.jsx']) {
+    const src = readFileSync(join(root, file), 'utf8');
+    assert.ok(!/warnings\?\.map\(/.test(src), `${file} — วาดคำเตือนโดยไม่ผ่าน shownWarnings`);
+    assert.ok(src.includes('shownWarnings('), file);
+  }
+});
+
 test('[OPEN 4] the two scopes agree on every session that lands in one column', () => {
   // Which is most of them. The flag can only ever change an entry that spans a
   // rate boundary — worth pinning, because a scope that quietly re-measured a

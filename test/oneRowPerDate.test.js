@@ -206,7 +206,8 @@ test('the screen warns, names the nights, and says which reports disagree', () =
   );
   const block = notices.slice(notices.indexOf('form.notPrinted?.length > 0'));
   assert.match(block.slice(0, 200), /Alert kind="warn"/, 'a short sheet is a warning, not a note');
-  assert.match(block, /form\.notPrinted\.map\(/, 'the total alone does not say which night');
+  // Through `ShowMore` since 2026-09-10 — the first few nights, more on request.
+  assert.match(block, /items=\{form\.notPrinted\}/, 'the total alone does not say which night');
   // The whole reason this block exists: the paper and every other document for
   // the month now differ, and the reader is about to reconcile them.
   assert.match(block, /ตรวจสอบประจำเดือน/);

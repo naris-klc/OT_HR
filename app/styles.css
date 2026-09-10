@@ -2121,13 +2121,17 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
    and the headline — which is enough for a line and would not be enough for a
    block.
 
-   `align-items: baseline` so the ⚠, the headline and รายละเอียด sit on one
-   written line rather than on one box edge. The 4px column gap is what a
-   sentence has; the row gap is for the phone, where รายละเอียด wraps under. */
-.month-strip {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: 6px 14px; flex-wrap: wrap; margin: 0 0 10px;
-}
+   Three rows since 2026-09-10, not one: the headline alone at full width, the
+   toggles (รายละเอียด · ไฟล์สแกนนิ้วมือ) under it, and the detail under them.
+   It read "`align-items: baseline` so the ⚠, the headline and รายละเอียด sit on
+   one written line" until then — which on a phone meant the headline wrapped
+   around two links that were not part of it. */
+/* It read `display: flex; justify-content: space-between` until 2026-09-10,
+   with ไฟล์สแกนนิ้วมือ as a sibling on the right. On a phone that took half the
+   width from the headline — see `actions` in components/PeriodStatus.jsx. The
+   toggle lives inside `.period-strip` now, so the strip is a plain block. */
+.month-strip { margin: 0 0 10px; }
+.period-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
 /* ── ผลเทียบกับไฟล์สแกนนิ้วมือ — the summary card above the strip ──────────
 
@@ -2177,7 +2181,7 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   .scan-none { font-size: 15px; }
   .scan-tally { gap: 4px 12px; font-size: 12.5px; }
 }
-.period-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+
 /* ⚠ TEXT FLOW, NOT A FLEX LINE — and the phone is what settled it. As three
    flex items (mark · headline · รายละเอียด) at 390px the row broke between the
    ITEMS rather than inside the sentence: the ⚠ took a line to itself, the
@@ -2190,7 +2194,9 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
 /* Non-breaking space either side of the glyph, in CSS rather than in the JSX:
    the mark and the first word are one unit and must not be split. */
 .period-strip .strip-mark { font-size: 13px; margin-right: 4px; }
-.period-strip .strip-more { margin-left: 8px; }
+/* รายละเอียด and ไฟล์สแกนนิ้วมือ, one row under the headline, lined up under
+   its first word (the ⚠ is 13px + 4px). Wraps to two lines before it squeezes. */
+.period-strip .strip-actions { display: flex; flex-wrap: wrap; gap: 2px 18px; padding-left: 17px; }
 .period-strip.outstanding .strip-mark,
 .period-strip.outstanding .strip-head { color: var(--amber-ink); }
 .period-strip.clear .strip-mark { color: var(--green); }
@@ -2796,6 +2802,17 @@ main { padding: clamp(16px, 3vw, 28px); flex: 1; min-width: 0; }
   background: linear-gradient(to right, var(--card-fade), var(--card) 22px);
 }
 .disclosure.at-tail .disclosure-more::before { content: '… '; color: var(--muted-2); }
+/* INSIDE AN ALERT the ground is the alert's, not `--card` — the version list in
+   `PolicyVersionBanner` is the one clamped fold that sits on one (amber, or
+   green when the versions differ and the arithmetic does not). A `--card` fade
+   there is a white patch over the end of the line. `color-mix` to zero alpha is
+   the same "the colour, transparent" `--card-fade` spells by hand. */
+.alert.warn .disclosure.at-tail .disclosure-more {
+  background: linear-gradient(to right, color-mix(in srgb, var(--amber-bg), transparent 100%), var(--amber-bg) 22px);
+}
+.alert.ok .disclosure.at-tail .disclosure-more {
+  background: linear-gradient(to right, color-mix(in srgb, var(--alert-ok-bg), transparent 100%), var(--alert-ok-bg) 22px);
+}
 
 /* THE APP'S RING WAS DECLARED HERE, and the sidebar is why a rule is still here.
 
@@ -5524,6 +5541,11 @@ td > .approver-line { margin-top: 5px; }
    card top 68, bar bottom 62, stable from 600ms onward — which is why the aim
    is left where it is instead of being padded to hit 14 exactly. */
 .profile-password { scroll-margin-top: calc(62px + 14px); }
+/* The card's explanation folds (components/ProfileView.jsx), so `.card .hint`'s
+   14px has to move to the fold's wrapper: on the paragraph it would sit between
+   the text and ย่อข้อความ, and the button would read as the form's first line. */
+.profile-password > .disclosure { margin-bottom: 14px; }
+.profile-password > .disclosure > .hint { margin-bottom: 0; }
 
 /* Stacked, not the app's usual side-by-side .row: the three password boxes are
    a sequence to work down, and side by side they invite typing into the wrong
@@ -6125,6 +6147,32 @@ td > .approver-line { margin-top: 5px; }
 .alert.ok .alert-x { color: var(--alert-ok-x); opacity: 1; }
 .alert.ok .alert-x:hover { color: var(--alert-ok-x-lift); }
 
+/* ย่อ/กาง ON A NOTICE THAT IS READ ONCE — ผู้รับช่วงอนุมัติแทน's, in
+   components/Delegation.jsx. The arrow of `.announce-fold`, sized to sit on the
+   first line of alert text (13.5px at 1.75 is a 23-24px line; 11px + 12px of
+   padding matches it) and pulled into the corner the ✕ of `.alert-x` would
+   take. */
+/* THE BOX IS THE PRESS TARGET since 2026-09-10 (`foldClick` in common.jsx).
+   Folded, the whole alert opens it — so the whole alert wears the pointer,
+   found by the arrow's own `aria-expanded` rather than by a class the four
+   callers would each have to remember. Open, only the top line folds it, so
+   only the top line keeps the pointer. Hovering either lights the arrow: the
+   one mark on the box that says which way a press will go. */
+.alert-fold-row { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.alert:has(.alert-fold[aria-expanded="false"]) { cursor: pointer; }
+.alert-fold-row:hover .alert-fold,
+.alert:has(.alert-fold[aria-expanded="false"]):hover .alert-fold { opacity: 1; }
+.alert-fold-text { flex: 1; min-width: 0; }
+.alert-fold {
+  flex: none; border: none; background: none; cursor: pointer;
+  color: inherit; opacity: .65;
+  padding: 6px 4px; margin: 0 -6px 0 0;
+  border-radius: 6px;
+  font: 400 11px/1 var(--sans);
+}
+.alert-fold:hover { opacity: 1; }
+.alert-fold:focus-visible { outline-offset: 1px; }
+
 /* THE SAME NOTICE, ONE SIZE DOWN — for a dialog, where height is the scarce
    thing.
 
@@ -6246,25 +6294,20 @@ td > .approver-line { margin-top: 5px; }
 
 /* พรีวิวชุด F-HR-027 — every notice the bundle has, in one box above the stack.
 
-   THE CAP IS THE POINT. This box sits between the print button and the preview
-   of forty sheets, and the preview is what somebody came to this screen to
-   look at. Unbounded, four summary lines plus an opened list of forty names
-   pushes the first sheet off the bottom of the screen — so the notice grows to
-   120px and then scrolls inside itself, and the paper below it never moves.
+   NO HEIGHT CAP, AND NO SCROLLER OF ITS OWN. It read "max-height: 120px;
+   overflow-y: auto" until 2026-09-10, on the argument that an opened list of
+   forty names would push the first sheet off the screen. What it did instead
+   was cut the box mid-line — the counts scrolled out of view, the names sat
+   clipped at the bottom edge, and a second scrollbar appeared inside a page
+   that already scrolls. HR asked for it gone.
 
-   `overflow-y: auto` and not `scroll`: the ordinary case is one or two lines
-   with the list folded away, and a scrollbar track drawn permanently beside a
-   two-line notice reads as though something is being hidden. */
-.notice-digest {
-  max-height: 120px; overflow-y: auto;
-  margin-bottom: 12px;
-  /* The wheel stops here rather than carrying on into the sheet preview once
-     the list has been read to its end. */
-  overscroll-behavior: contain;
-}
-/* The alert carries its own 12px top and bottom; inside a scroller those are
-   dead space at both ends of the scroll range, so the wrapper holds the
-   spacing and the box sits flush against it. */
+   The fold is what keeps the box small: folded, it is the count lines and
+   ดูรายละเอียด, nothing more. Opened, it is as tall as the list, because
+   somebody pressed a button asking to read the list, and the page scrolls to
+   the sheets the way it scrolls everywhere else. */
+.notice-digest { margin-bottom: 12px; }
+/* The wrapper holds the spacing; the alert's own 12px top and bottom would
+   add to it. */
 .notice-digest > .alert { margin: 0; }
 
 /* AND THE SAME RESET FOR A NOTICE THAT IS A ROW OF THE PAGE ITSELF.
@@ -6445,6 +6488,13 @@ td > .approver-line { margin-top: 5px; }
 /* The heading's own bottom margin is the gap to the list. Folded there is no
    list, and 6px of it would hang under the last thing on the panel. */
 .announce.is-folded .announce-head { margin-bottom: 0; }
+/* The same press target as a ▲/▼ alert (`foldClick`, 2026-09-10): folded, the
+   whole frame opens it; open, only the heading line folds it. The pointer and
+   the lit arrow follow exactly where a press would land. */
+.announce.is-folded,
+.announce-top { cursor: pointer; }
+.announce.is-folded:hover .announce-fold,
+.announce-top:hover .announce-fold { opacity: 1; }
 /* An <h3> by markup and 14px by eye. It is a heading — a screen reader should
    find it as one — and it is not a card title: `.card h2` is 15px and this sits
    INSIDE the page above one, so matching it would put two titles on the screen
@@ -6553,6 +6603,13 @@ td > .approver-line { margin-top: 5px; }
     display: flex; align-items: flex-start; justify-content: flex-end;
     padding: 2px 4px; margin: -2px -8px -20px 0;
   }
+  /* The same thumb's worth for the notice arrow, held out of the layout the
+     same way: 44px of target, 23px of row. */
+  .alert-fold {
+    min-width: 44px; min-height: 44px;
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    margin: 0 -10px -21px 0;
+  }
 }
 
 /* "กฎการคำนวณคนละชุด · HR อนุมัติชั้นเดียว 1 รายการ" — which notices are in the
@@ -6605,6 +6662,21 @@ td > .approver-line { margin-top: 5px; }
   font: 600 11.5px/1.5 var(--sans); letter-spacing: .04em; opacity: .8;
 }
 .notice-fold-group > .l { font-size: 12.5px; }
+/* แสดงเพิ่ม / แสดงทั้งหมด / ย่อกลับ — `ShowMore` in common.jsx, under the first
+   few names of every long list in a notice across the app. Plain underlined
+   text in the notice's own ink rather than `.btn`: it has to read as part of
+   the amber, red or blue box it sits in without knowing which one, and a row of
+   bordered buttons would compete with the box's real action (พิมพ์, ยืนยัน
+   นำเข้า) for the eye. */
+.show-more { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+.show-more > button {
+  all: unset; cursor: pointer;
+  font: 600 12px/1.6 var(--sans); letter-spacing: .02em;
+  text-decoration: underline; text-underline-offset: 2px;
+  opacity: .85;
+}
+.show-more > button:hover { opacity: 1; }
+.show-more > button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 2px; }
 
 /* How the engine cut a session up — one line per segment, times and hours, so
    it is mono throughout. The green stub on the left ties each line back to the
@@ -9218,6 +9290,23 @@ tbody tr.picked:hover { background: var(--green-bg); }
   list-style: disc; color: var(--ink);
 }
 .note-mark.over-cap .over-cap-why li { margin-top: 2px; }
+/* ย่อ/กาง, 2026-09-10 — `OverCeilingNote` in common.jsx. The arrow sits
+   against the heading rather than at the far edge of a note cell that can be
+   a desktop wide: pushed to the corner it would belong to nothing. Pointer
+   rules follow `.alert-fold-row`: open, the heading folds it; folded, the
+   whole note opens it. */
+.note-mark.over-cap .over-cap-head { display: inline-flex; align-items: baseline; gap: 6px; cursor: pointer; }
+.note-mark.over-cap:has(.over-cap-fold[aria-expanded="false"]) { cursor: pointer; }
+.over-cap-fold {
+  border: none; background: none; cursor: pointer;
+  color: inherit; opacity: .65;
+  padding: 2px 4px; border-radius: 6px;
+  font: 400 11px/1 var(--sans);
+}
+.over-cap-head:hover .over-cap-fold,
+.note-mark.over-cap:has(.over-cap-fold[aria-expanded="false"]):hover .over-cap-fold,
+.over-cap-fold:hover { opacity: 1; }
+.over-cap-fold:focus-visible { outline-offset: 1px; }
 .note-mark.over-cap .over-cap-why .muted { color: var(--muted-2); }
 
 /* ── AND THE SAME TWO MARKS ON สรุป OT แยกแผนก, 2026-09-09 ──────────────────
@@ -14417,6 +14506,15 @@ table.mini tbody tr:hover { background: none; }
      column beside eight others, and a line-height set for a wrapped card value
      would loosen every row of every table in the app. */
   .stack-table tbody td.entry-desc { line-height: 1.75; padding-bottom: 4px; }
+
+  /* ITS CHIPS START AT THE LEFT, where the card's other chips do. The cell
+     right-aligns its value like every labelled field, and `บันทึกแทน · ชื่อ`
+     rode along to the right edge while `รอ HR` one field down sat at the left —
+     two pills on one card at opposite ends, asked about 2026-09-10. The chip is
+     on its own line under the description, not the value beside the label, so
+     it follows the chips rather than the text. `clear` keeps it off the floated
+     label's line when the description is empty. */
+  .stack-table tbody td.entry-desc .entry-mark { clear: left; text-align: left; }
 
   /* THE SENTENCE BECOMES THE CHECKBOX'S DESCRIPTION HERE, AND SO IT STACKS.
 

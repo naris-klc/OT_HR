@@ -574,6 +574,13 @@ test('signing in reaches the app, and the flag is said in ink instead', () => {
   assert.match(profile, /<ChangePassword\s+pending=\{user\.mustChangePassword\}/);
   assert.match(profile, /\{pending && <>[^]*ซึ่งคือรหัสพนักงานของคุณ/);
   assert.match(profile, /\{pending && !ok && \(/);
+  // The amber Alert folds (▲/▼, 2026-09-10), but never the fact: the password
+  // in use is the รหัสพนักงาน stays OUTSIDE the hidden half.
+  assert.match(
+    profile,
+    /<div className="alert-fold-text">\s*คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ ซึ่งคือรหัสพนักงานของคุณ\s*<span id=\{warnId\} hidden=\{warnFolded\}>/,
+    'the warning folds away the one fact it exists to say',
+  );
 });
 
 // ── the screen may say the value; it may never send one ─────────────────────

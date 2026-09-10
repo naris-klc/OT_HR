@@ -451,6 +451,27 @@ test('รายงานแยกแผนก — ตัวเลขแดงต
   );
 });
 
+test('เหตุผลเกินเพดานย่อได้ แต่หัวที่บอกจำนวนกับชั่วโมงไม่ย่อ', () => {
+  /**
+   * ขอมาบน รายงาน OT แยกแผนก 2026-09-10 · ที่ซ่อนคือรายการเหตุผลทีละวันเท่านั้น —
+   * คำว่า รายการเกินเพดาน จำนวน และชั่วโมง ต้องอยู่นอกส่วนที่ซ่อนเสมอ
+   */
+  const common = read('components/common.jsx');
+  const note = strip(common.slice(common.indexOf('export function OverCeilingNote(')));
+  // Hooks above the early return, or they run on some renders and not others.
+  assert.ok(note.indexOf('React.useState(false)') < note.indexOf('if (!over?.count) return null;'),
+    'hook อยู่หลัง early return');
+  assert.match(note, /onClick=\{foldClick\(folded, toggle, '\.over-cap-head'\)\}/);
+  const head = note.slice(note.indexOf('className="over-cap-head"'), note.indexOf('<ul '));
+  assert.match(head, /\{OVER_CEILING_MARK\}<\/strong> · \{over\.count\} รายการ · \{hours\(over\.hours\)\} ชม\./,
+    'หัวที่บอกจำนวนหลุดเข้าไปในส่วนที่ย่อ');
+  assert.match(note, /<ul id=\{whyId\} className="over-cap-why" hidden=\{folded\}>/);
+  // Enter on the button bubbles to the note; an onClick here too toggles twice.
+  const btn = note.slice(note.indexOf('className="over-cap-fold"'), note.indexOf('</button>'));
+  assert.ok(!btn.includes('onClick'), 'ปุ่ม ▲/▼ มี onClick ของตัวเอง');
+  assert.match(btn, /aria-expanded=\{!folded\}/);
+});
+
 test('แถวปกติไม่มีสีและไม่มีทูลทิป — เดือนที่ถูกต้องต้องอ่านเหมือนเดิมทุกประการ', () => {
   const view = strip(read('components/common.jsx'));
   assert.match(view, /if \(!over\?\.count\) return <strong>\{children\}<\/strong>;/);

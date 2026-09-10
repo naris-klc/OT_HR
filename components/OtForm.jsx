@@ -13,7 +13,7 @@ import {
   // `Modal` left with the birthday pop-up on 2026-09-03 — see the note where
   // that shape used to be chosen, near the foot of this file. A dead import is
   // not a broken build here, which is exactly why it goes out by hand.
-  Alert, BucketSplit, SegmentList, StatusChip, TipButton, FLAT_DAILY_SAY,
+  Alert, BucketSplit, SegmentList, StatusChip, TipButton, FLAT_DAILY_SAY, shownWarnings,
 } from './common.jsx';
 import { PickDate } from './PickDate.jsx';
 import { PickTime } from './PickTime.jsx';
@@ -1525,7 +1525,7 @@ export default function OtForm({
           {/* Keyed by code AND column: under `minimumHoursScope: 'bucket'` the
               minimum is measured per rate column, so one preview can carry two
               BELOW_MINIMUM_ACCEPTED warnings that differ only in `bucket`. */}
-          {preview.warnings?.map((w) => (
+          {shownWarnings(preview.warnings).map((w) => (
             <Alert key={w.code + (w.bucket || '')} kind="warn">{w.message}</Alert>
           ))}
           {/* The ceiling is WITHHELD on a multi-person batch rather than shown

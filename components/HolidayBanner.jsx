@@ -4,7 +4,7 @@ import React, { useEffect, useId, useState } from 'react';
 import { api, currentPeriod, periodLabel, thaiDate, dayName } from '@/lib/api.js';
 import { today } from '@/lib/today.js';
 import { holidayCalendarByMonth, holidaysInMonth, nextHoliday } from '@/lib/holidayNotice.js';
-import { Empty, Modal } from './common.jsx';
+import { Empty, Modal, foldClick } from './common.jsx';
 import { useBackHandler } from './nav.jsx';
 
 /**
@@ -149,9 +149,14 @@ export default function HolidayBanner({ period = currentPeriod() }) {
 
   return (
     <>
+      {/* THE FRAME IS THE PRESS TARGET, 2026-09-10 — "แค่กดที่พื้นในกรอบ".
+          Folded, anywhere inside it opens it; open, only the heading line
+          folds it, so reading the list or pressing ดูปฏิทินวันหยุด never shuts
+          it by accident. See `foldClick` in common.jsx. */}
       <section
         className={`announce no-print${collapsed ? ' is-folded' : ''}`}
         aria-label="ประกาศวันหยุดบริษัท"
+        onClick={foldClick(collapsed, toggleFold, '.announce-top')}
       >
         <span className="announce-mark" aria-hidden="true">📢</span>
         <div className="announce-body">
@@ -177,7 +182,6 @@ export default function HolidayBanner({ period = currentPeriod() }) {
               aria-expanded={!collapsed}
               aria-controls={panelId}
               aria-label={collapsed ? 'กางประกาศวันหยุด' : 'ย่อประกาศวันหยุด'}
-              onClick={toggleFold}
             >
               {collapsed ? '▼' : '▲'}
             </button>

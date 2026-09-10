@@ -72,7 +72,7 @@ const isWorkbook = (file) => /\.xlsx$/i.test(file?.name ?? '');
 // the printed sheets use it.
 import {
   Alert, ConfirmDialog, Disclosure, Empty, Fact, Modal, Field, TipButton, PickPerson, PickOne,
-  ClearButton, SHORT_PAGE_SIZES, TablePager, usePageReset,
+  ClearButton, SHORT_PAGE_SIZES, ShowMore, TablePager, usePageReset,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import Delegation from './Delegation.jsx';
@@ -2798,13 +2798,17 @@ function Employees({ user }) {
           </div>
           <div style={{ marginTop: 6 }}>{importError.message}</div>
           {importError.lines.length > 0 && (
-            <ul style={{ marginTop: 6, marginLeft: 18 }}>
-              {importError.lines.map((l, i) => (
+            <ShowMore
+              as="ul"
+              style={{ marginTop: 6, marginLeft: 18 }}
+              items={importError.lines}
+              unit="บรรทัด"
+              render={(l, i) => (
                 <li key={`${l.line}-${i}`}>
                   บรรทัด {l.line}{l.raw ? ` (“${l.raw}”)` : ''}: {l.reason}
                 </li>
-              ))}
-            </ul>
+              )}
+            />
           )}
           <div style={{ marginTop: 6, fontSize: 12.5 }}>
             แก้ตามบรรทัดข้างบนใน Excel · บันทึกเป็น .csv (คอลัมน์วันเกิดควรเป็น YYYY-MM-DD)
@@ -3034,9 +3038,13 @@ function Employees({ user }) {
               {pending.dates.rowErrors.length > 0 && (
                 <div style={{ marginTop: 6, fontSize: 12.5 }}>
                   {pending.dates.rowErrors.length} แถวมีวันเกิดที่ใช้ไม่ได้ และจะถูกข้ามไปทั้งแถว:
-                  <ul style={{ marginTop: 4, marginLeft: 18 }}>
-                    {pending.dates.rowErrors.map((r) => <li key={r.line}>บรรทัด {r.line}: {r.error}</li>)}
-                  </ul>
+                  <ShowMore
+                    as="ul"
+                    style={{ marginTop: 4, marginLeft: 18 }}
+                    items={pending.dates.rowErrors}
+                    unit="แถว"
+                    render={(r) => <li key={r.line}>บรรทัด {r.line}: {r.error}</li>}
+                  />
                 </div>
               )}
             </>
@@ -3095,14 +3103,18 @@ function Employees({ user }) {
                 {result.unsignable.length} คนไม่มีหัวหน้าคนใดเซ็นอนุมัติ OT ให้ได้
               </strong>
               {' '}— บัญชีถูกสร้างแล้วและใช้งานได้ แต่ใบ OT ที่ยื่นจะค้างที่ “รอหัวหน้า” โดยไม่มีใครกดได้
-              <ul style={{ marginTop: 4, marginLeft: 18 }}>
-                {result.unsignable.map((p) => (
+              <ShowMore
+                as="ul"
+                style={{ marginTop: 4, marginLeft: 18 }}
+                items={result.unsignable}
+                unit="คน"
+                render={(p) => (
                   <li key={p.code}>
                     {p.code} · {p.name} — แผนก {p.department}
                     {p.company && ` · ${companyLabel(p.company)}`}
                   </li>
-                ))}
-              </ul>
+                )}
+              />
               <div style={{ marginTop: 4 }}>
                 ตั้งหัวหน้าให้แผนกนั้น หรือแก้ “เซ็นให้บริษัท” ของหัวหน้าที่มีอยู่ให้ครอบคลุมบริษัทของพวกเขา
               </div>
@@ -3132,16 +3144,24 @@ function Employees({ user }) {
             </div>
           )}
           {result.errors?.length > 0 && (
-            <ul style={{ marginTop: 6, marginLeft: 18 }}>
-              {result.errors.map((er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>)}
-            </ul>
+            <ShowMore
+              as="ul"
+              style={{ marginTop: 6, marginLeft: 18 }}
+              items={result.errors}
+              unit="บรรทัด"
+              render={(er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>}
+            />
           )}
           {result.warnings?.length > 0 && (
-            <ul style={{ marginTop: 6, marginLeft: 18 }}>
-              {result.warnings.map((w, i) => (
+            <ShowMore
+              as="ul"
+              style={{ marginTop: 6, marginLeft: 18 }}
+              items={result.warnings}
+              unit="บรรทัด"
+              render={(w, i) => (
                 <li key={i}>บรรทัด {w.line} ({w.code}): {w.warning} — โปรดตรวจสอบช่องบริษัทด้านล่าง</li>
-              ))}
-            </ul>
+              )}
+            />
           )}
         </Alert>
       )}
@@ -5686,9 +5706,13 @@ function Holidays() {
         <Alert kind={result.errors?.length ? 'warn' : 'ok'}>
           {result.msg}
           {result.errors?.length > 0 && (
-            <ul style={{ marginTop: 6, marginLeft: 18 }}>
-              {result.errors.map((er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>)}
-            </ul>
+            <ShowMore
+              as="ul"
+              style={{ marginTop: 6, marginLeft: 18 }}
+              items={result.errors}
+              unit="บรรทัด"
+              render={(er, i) => <li key={i}>บรรทัด {er.line}: {er.error}</li>}
+            />
           )}
         </Alert>
       )}

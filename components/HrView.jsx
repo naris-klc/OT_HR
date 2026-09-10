@@ -8,6 +8,7 @@ import {
 import { capFigure, capPair, overCap, pendingCapNote } from '@/lib/caps.js';
 import {
   Alert, ClearButton, Empty, AddBirthDateHint, ExportMenu, Highlight, PickOne, RateHead,
+  ShowMore,
 } from './common.jsx';
 import Icon from './icons.jsx';
 import { PickMonth } from './PickDate.jsx';
@@ -1020,24 +1021,33 @@ export default function HrView({
 
           `no-print` because neither is part of any sheet. */}
       <div className="month-strip no-print">
-        <PeriodStatus period={period} compact />
-        {/* `mayCorrect && scope !== 'team'` — the same pair the route enforces
+        {/* The scan toggle is handed IN, not drawn beside — so it lands on the
+            row of controls under the งวด headline instead of taking half the
+            headline's width at the right edge. See `actions` in
+            components/PeriodStatus.jsx for the phone this was on.
+
+            `mayCorrect && scope !== 'team'` — the same pair the route enforces
             (`requireRole(…, 'hr', 'admin')` on app/api/scans/route.js), and the
             reason is not that the punch log is secret from a การเงิน: a record
             of when people were at the door is a different fact about a person
             from the OT they filed, and it is ฝ่ายบุคคล's to hold. A หัวหน้า
             reading รายงาน OT ประจำทีม is looking at their own team's hours and
             is never offered this, whatever their บทบาท. */}
-        {mayCorrect && scope !== 'team' && (
-          <button
-            type="button"
-            className="strip-more scan-toggle"
-            onClick={() => setScanOpen((v) => !v)}
-            aria-expanded={scanOpen}
-          >
-            {scanOpen ? 'ซ่อนไฟล์สแกนนิ้วมือ' : 'ไฟล์สแกนนิ้วมือ'}
-          </button>
-        )}
+        <PeriodStatus
+          period={period}
+          compact
+          actions={mayCorrect && scope !== 'team' && (
+            <button
+              type="button"
+              className="strip-more scan-toggle"
+              onClick={() => setScanOpen((v) => !v)}
+              aria-expanded={scanOpen}
+            >
+              {scanOpen ? 'ซ่อนไฟล์สแกนนิ้วมือ' : 'ไฟล์สแกนนิ้วมือ'}
+              <span aria-hidden="true">{scanOpen ? ' ▲' : ' ▼'}</span>
+            </button>
+          )}
+        />
       </div>
 
       {/* Opened in place, still above the controls — it is a monthly act on the
@@ -2146,9 +2156,13 @@ export default function HrView({
                   {data.birthDates.ruleEnabled
                     ? ' — คนเหล่านี้ติ๊กช่อง “วันเกิด” ในใบขอ OT ไม่ได้ จนกว่าจะกรอกวันเกิดให้'
                     : ' — กรอกให้ครบก่อนเปิดกฎสวัสดิการวันเกิด จะได้ไม่ต้องคำนวณย้อนหลัง'}
-                  <div style={{ marginTop: 4 }}>
-                    {data.birthDates.missingFor.map((e) => `${e.code} ${e.name}`).join(' · ')}
-                  </div>
+                  <ShowMore
+                    style={{ marginTop: 4 }}
+                    items={data.birthDates.missingFor}
+                    unit="คน"
+                    join=" · "
+                    render={(e) => `${e.code} ${e.name}`}
+                  />
                   <div style={{ marginTop: 4, fontSize: 11.5 }}>
                     <AddBirthDateHint onOpen={onOpenRoster} />
                   </div>

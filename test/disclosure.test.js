@@ -22,7 +22,8 @@ import { dirname, join } from 'node:path';
  *   AN ALERT'S ALARM IS NEVER FOLDED. It is read at the moment it is drawn or
  *   it is not read, so nothing a press is about — and nothing that says
  *   something is wrong now — goes behind one. `LivePolicy` on นโยบายการคำนวณ
- *   is the single named exception and the shape of it is the rule: the count,
+ *   was the single named exception until 2026-09-10, when `PolicyVersionBanner`
+ *   joined it on the same terms, and the shape of it is the rule: the count,
  *   the sentence and a chip per changed value all stand; what folds is the
  *   half that is NOT a warning, the values stored at the figure the program
  *   ships today. `ALERTS_THAT_MAY_FOLD` is that list, and adding to it is a
@@ -413,9 +414,35 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
    * การคำนวณ case one screen along, background above a page somebody re-opens
    * to reach ONE หัวข้อ, and on a phone it filled the first screen before a
    * single หัวข้อ showed.
+   *
+   * ProfileView.jsx, HrEntries.jsx AND PolicyVersion.jsx JOINED THE SAME DAY,
+   * on ot-hardening-and-slips, and the two lists met here when that branch came
+   * into dev that evening. The meeting is what a list by NAME is for: each round
+   * grew folds the other never saw, and a merge that took a side would have
+   * deleted somebody else's decision without failing anything.
+   *
+   * ProfileView.jsx IS THE ONE SUBTITLE THAT FOLDS, asked for on 2026-09-10:
+   * เปลี่ยนรหัสผ่าน's is five lines on a phone for somebody on the issued
+   * password, not two or three, and its one fact that matters to that reader
+   * is repeated in the amber Alert under it. Adding a name here is a decision,
+   * the same as `ALERTS_THAT_MAY_FOLD`.
+   *
+   * HrEntries.jsx AND PolicyVersion.jsx JOINED ON 2026-09-10, and neither is a
+   * subtitle: one is the three scan-matching rules over the month's table, the
+   * other the version list inside an alert (see `ALERTS_THAT_MAY_FOLD`). Each
+   * is pinned to exactly one fold below.
    */
   const users = components.filter((n) => /<Disclosure\b/.test(sourceOf(`components/${n}`))).sort();
-  assert.deepEqual(users, ['AdminView.jsx', 'ManualView.jsx', 'ScanImport.jsx', 'common.jsx']);
+  assert.deepEqual(users, [
+    'AdminView.jsx', 'HrEntries.jsx', 'ManualView.jsx', 'PolicyVersion.jsx',
+    'ProfileView.jsx', 'ScanImport.jsx', 'common.jsx',
+  ]);
+  for (const f of ['HrEntries.jsx', 'PolicyVersion.jsx']) {
+    assert.equal((sourceOf(`components/${f}`).match(/<Disclosure\b/g) || []).length, 1, `${f} พับได้ที่เดียว`);
+  }
+  const profile = sourceOf('components/ProfileView.jsx');
+  assert.equal((profile.match(/<Disclosure\b/g) || []).length, 1, 'ข้อมูลส่วนตัวพับได้ที่เดียว คือคำอธิบายของ เปลี่ยนรหัสผ่าน');
+  assert.match(profile, /<h2>เปลี่ยนรหัสผ่าน<\/h2>[^]*?<Disclosure as="div" className="hint"/);
 
   /* …and the line above the fold is still above it. A later tidy-up that swept
      the subtitle in with the rest would pass the list check and lose the only
@@ -445,11 +472,16 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
  * they matter on the day a release moves a default and this installation does
  * not follow it.
  *
+ * `PolicyVersionBanner` IS THE SECOND, asked for on 2026-09-10 and on the same
+ * terms. Its heading (the month mixes rule sets) and its instruction (where to
+ * check or recompute) stand; what folds to one line is the list of versions
+ * and their counts, which on a phone ran to three lines of ไม่ทราบเวอร์ชัน.
+ *
  * A name added to this list is a decision, not a fix for a failing case.
  */
-const ALERTS_THAT_MAY_FOLD = ['LivePolicy'];
+const ALERTS_THAT_MAY_FOLD = ['LivePolicy', 'PolicyVersionBanner'];
 
-test('nothing inside a ConfirmDialog is folded, and only one Alert is', () => {
+test('nothing inside a ConfirmDialog is folded, and only the named Alerts are', () => {
   /*
    * The scan is crude on purpose: any `<Disclosure` between an opening tag and
    * its closing one counts, whatever the nesting in between.
@@ -464,7 +496,8 @@ test('nothing inside a ConfirmDialog is folded, and only one Alert is', () => {
         const close = src.indexOf(`</${tag}>`, open);
         at = open + 1;
         if (close < 0 || !src.slice(open, close).includes('<Disclosure')) continue;
-        const owner = [...src.slice(0, open).matchAll(/\nfunction (\w+)\(/g)].pop()?.[1];
+        // `export function` too — PolicyVersionBanner is exported.
+        const owner = [...src.slice(0, open).matchAll(/\n(?:export )?function (\w+)\(/g)].pop()?.[1];
         assert.ok(
           tag === 'Alert' && ALERTS_THAT_MAY_FOLD.includes(owner),
           `components/${f}: ${owner} พับข้อความที่อยู่ใน <${tag}> ไว้หลัง อ่านต่อ`,
@@ -489,6 +522,117 @@ test('the alert that folds keeps its alarm outside the fold', () => {
   const unrecorded = admin.slice(admin.indexOf('function UnrecordedPolicy(')).split(/\r?\nfunction /)[0];
   assert.match(unrecorded, /บันทึกกฎปัจจุบันเป็นเวอร์ชันใหม่/);
   assert.ok(!unrecorded.includes('<Disclosure'), 'คำเตือนที่มีปุ่มอยู่ในนั้น ไม่ควรถูกพับ');
+
+  // The second named alert, on the same terms: heading above the fold, the
+  // instruction below it, and only the version list inside — cut to one line.
+  const pv = sourceOf('components/PolicyVersion.jsx');
+  const banner = pv.slice(pv.indexOf('export function PolicyVersionBanner('));
+  const pvFold = banner.indexOf('<Disclosure');
+  const pvEnd = banner.indexOf('</Disclosure>');
+  assert.ok(banner.indexOf('{notice.heading}') < pvFold, 'หัวข้อของคำเตือนเวอร์ชันถูกพับลงไปด้วย');
+  assert.ok(banner.indexOf('{notice.say}') > pvEnd, 'บรรทัดที่บอกให้ทำอะไรถูกพับลงไปด้วย');
+  assert.match(banner.slice(pvFold, pvEnd), /<Disclosure as="div" lines=\{1\}[^>]*>\s*\{notice\.figures\}\s*$/);
+});
+
+/*
+ * แสดงเพิ่ม — A LONG LIST IN A NOTICE, 2026-09-10.
+ *
+ * Not a fold, which is why it is allowed where `Disclosure` is not: the
+ * headline and the first names always stand, and what waits for a press is
+ * only the tail of a list whose length the headline has already said. Asked
+ * for app-wide after พรีวิวชุด F-HR-027 opened twenty-one people into several
+ * screens of amber.
+ */
+test('a long list in a notice shows five, then ten more a press, and can be put back', () => {
+  const fn = common.slice(common.indexOf('export function useShowMore('), common.indexOf('export function ShowMore('));
+  assert.match(common, /export const SHOW_MORE_FIRST = 5;/);
+  assert.match(common, /export const SHOW_MORE_STEP = 10;/);
+  assert.match(fn, /list\.slice\(0, shown\)/);
+  assert.match(fn, /แสดงเพิ่มอีก \{Math\.min\(step, left\)\} \{unit\} \(เหลือ \{left\} \{unit\}\)/);
+  assert.match(fn, /แสดงทั้งหมด/);
+  assert.match(fn, /ย่อกลับ/);
+  // How far it is open is state, so it goes back to the first few when the
+  // list is replaced — never a count describing a list that is gone.
+  assert.match(fn, /React\.useEffect\(\(\) => \{ setShown\(first\); \}, \[reset, first\]\)/);
+  assert.match(css, /\.show-more > button \{/);
+  assert.ok(!css.includes('.notice-more'), 'the digest-only rule outlived the shared one');
+});
+
+test('every unbounded list in a notice goes through ShowMore', () => {
+  const uses = {
+    'components/ApprovalQueue.jsx': ['items={capped}', 'items={failed}'],
+    'components/HrView.jsx': ['items={data.birthDates.missingFor}'],
+    'components/PrintForm.jsx': [
+      'items={form.pending}', 'items={form.notPrinted}', 'items={form.acting}', 'items={form.hidden}',
+    ],
+    'components/PrintFormBatch.jsx': ['items={failed}', 'items={sheets}'],
+    'components/ScanImport.jsx': [
+      // `items={compare.people}` STOOD HERE UNTIL 2026-09-10 and was withdrawn by
+      // a merge, not by a change of mind: ot-hardening-and-slips gave that list a
+      // ShowMore on the same day dev moved the whole ผลเทียบ block out of this card
+      // into components/ScanCompareCard.jsx, where it is a filter over the table
+      // and not a list of names at all. Both rounds were right about the twelve-
+      // name cap; only one of them still has a list to fix.
+      'items={pending.parsed.errors}', 'items={result.unknownCodes}',
+    ],
+    'components/AdminView.jsx': [
+      'items={importError.lines}', 'items={pending.dates.rowErrors}', 'items={result.unsignable}',
+      'items={result.errors}', 'items={result.warnings}',
+    ],
+  };
+  for (const [file, lists] of Object.entries(uses)) {
+    const src = sourceOf(file);
+    for (const l of lists) assert.ok(src.includes(l), `${file}: ${l} ไม่ได้ผ่าน ShowMore`);
+  }
+  // The two approval dialogs both list what is over the ceiling.
+  assert.equal((sourceOf('components/ApprovalQueue.jsx').match(/items=\{capped\}/g) || []).length, 2);
+  // The table of hours with no owner uses the hook, above its early return.
+  const unacc = common.slice(common.indexOf('export function UnaccountedHours('));
+  assert.ok(
+    unacc.indexOf('useShowMore(unaccounted?.entries)') < unacc.indexOf('return null'),
+    'a hook after an early return is a hook on some renders and not others',
+  );
+  assert.match(unacc, /more\.visible\.map\(/);
+  // The hard caps that dropped the rest with no way to them are gone.
+  const scan = sourceOf('components/ScanImport.jsx');
+  assert.ok(!/\.slice\(0, (5|12)\)/.test(scan), 'ScanImport still cuts a list with no way to the rest');
+  assert.ok(!scan.includes('และอีก'), 'a "…และอีก N" nobody can open is back');
+});
+
+test('a ▲/▼ notice opens from anywhere in its frame, and folds from its heading', () => {
+  // 2026-09-10, asked twice: "press the notice, not the triangle", then "press
+  // anywhere inside the frame". Folded, the whole box opens it; open, only the
+  // heading folds it, so the body can be read and its own buttons pressed.
+  const fn = common.slice(common.indexOf('export const foldClick'));
+  assert.match(fn, /^export const foldClick = \(folded, toggle, head = '\.alert-fold-row'\) => \(e\) => \{/);
+  assert.match(fn, /window\.getSelection\?\.\(\)\.toString\(\)\) return;/, 'selecting text folds the notice');
+  assert.match(fn, /if \(!folded && !e\.target\.closest\?\.\(head\)\) return;/, 'a tap on an open body folds it');
+  assert.match(common, /onClose = null, onClick, children,/);
+
+  for (const [file, box, button, state, fn2] of [
+    ['components/PrintForm.jsx', '<Alert kind={kind} onClick=', 'className="alert-fold"', 'folded', 'toggle'],
+    ['components/Delegation.jsx', '<Alert kind="info" onClick=', 'className="alert-fold"', 'noteFolded', 'toggleNote'],
+    ['components/ProfileView.jsx', '<Alert kind="warn" onClick=', 'className="alert-fold"', 'warnFolded', 'toggleWarn'],
+    ['components/HolidayBanner.jsx', 'onClick=', 'className="announce-fold"', 'collapsed', 'toggleFold'],
+  ]) {
+    const src = sourceOf(file);
+    assert.ok(src.includes(`${box}{foldClick(${state}, ${fn2}`), `${file}: กดในกรอบแล้วไม่กาง`);
+    // Enter on the button is a click that bubbles to the box; a handler on the
+    // button too would toggle twice and appear to do nothing.
+    const at = src.indexOf(button);
+    assert.ok(!src.slice(at, src.indexOf('</button>', at)).includes('onClick'), `${file}: ปุ่ม ▲/▼ มี onClick ของตัวเอง`);
+  }
+  // The banner's heading line is `.announce-top`, not the alerts' row.
+  assert.match(sourceOf('components/HolidayBanner.jsx'), /foldClick\(collapsed, toggleFold, '\.announce-top'\)/);
+  assert.ok(!common.includes('foldRowClick'), 'the row-only helper outlived the box one');
+});
+
+test('the new-password table is deliberately NOT shortened', () => {
+  // Every row there is a password to hand over; a row behind a press is one
+  // somebody does not get.
+  const issued = admin.slice(admin.indexOf('function IssuedPasswords(')).split(/\r?\nfunction /)[0];
+  assert.ok(issued.length > 0);
+  assert.ok(!issued.includes('ShowMore') && !issued.includes('useShowMore'));
 });
 
 test('an override is a chip, and the ones that move hours say so in words', () => {
@@ -533,6 +677,14 @@ test('a live figure is not an explanation, and is left on the screen', () => {
     sourceOf('components/HrEntries.jsx'),
     /<div className="hint" style=\{\{ marginTop: 6 \}\}>\r?\n\s*ซ่อน \{replacedCount\}/,
   );
+  // The scan note folds its three RULES (2026-09-10) and not the month's count
+  // under them: `เดือนนี้:` comes after the fold closes.
+  const entries = sourceOf('components/HrEntries.jsx');
+  const scanFold = entries.indexOf('<Disclosure as="div" of="วิธีเทียบเวลากับไฟล์สแกนนิ้ว">');
+  assert.ok(scanFold > 0, 'กฎการเทียบสแกนไม่ได้พับแล้ว');
+  const scanEnd = entries.indexOf('</Disclosure>', scanFold);
+  assert.match(entries.slice(scanFold, scanEnd), /ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน/);
+  assert.ok(entries.indexOf('เดือนนี้:', scanFold) > scanEnd, 'ตัวเลขประจำเดือนถูกพับไปกับกฎ');
 });
 
 // ── one clamp, in one place ─────────────────────────────────────────────────

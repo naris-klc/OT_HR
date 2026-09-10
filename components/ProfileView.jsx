@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { isSigner } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
-import { Alert, PasswordInput } from './common.jsx';
+import { Alert, Disclosure, PasswordInput, foldClick } from './common.jsx';
 import Delegation from './Delegation.jsx';
 
 const ROLE_LABEL = {
@@ -199,6 +199,9 @@ function Details({ user }) {
 
 const MIN_LENGTH = PASSWORD_MIN_LENGTH; // one number, shared with the server
 
+/** Folded or nothing, as `ot-deleg-note-fold` — see `warnFolded` below. */
+const WARN_FOLD_KEY = 'ot-pw-warn-fold';
+
 /**
  * The sentence under the box, and the whole of what somebody needs before
  * typing.
@@ -322,6 +325,37 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
   const [showNext, setShowNext] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  /**
+   * ย่อ/กาง for the amber warning, asked for on 2026-09-10 — the ▲/▼ of
+   * ผู้รับช่วงอนุมัติแทน's notice in components/Delegation.jsx, remembered in
+   * this browser the same way and read on mount for the same reason.
+   *
+   * FOLDED IS NOT GONE. What stays is the fact: the password in use is the
+   * รหัสพนักงาน. That is the sentence the folded subtitle above leans on this
+   * Alert to repeat (see `Disclosure` above and test/disclosure.test.js), so
+   * only the "why change it" half goes behind the arrow. The Alert itself
+   * still goes the moment the password is changed; the key outlives it
+   * harmlessly, since `pending` never comes back for somebody who changed it
+   * short of an HR reset.
+   */
+  const [warnFolded, setWarnFolded] = useState(false);
+  const warnId = useId();
+  useEffect(() => {
+    try {
+      setWarnFolded(localStorage.getItem(WARN_FOLD_KEY) === '1');
+    } catch { /* storage blocked: the warning opens, which is the safe way to be wrong */ }
+  }, []);
+  function toggleWarn() {
+    setWarnFolded((was) => {
+      const next = !was;
+      try {
+        if (next) localStorage.setItem(WARN_FOLD_KEY, '1');
+        else localStorage.removeItem(WARN_FOLD_KEY);
+      } catch { /* the fold still applies to this tab */ }
+      return next;
+    });
+  }
+
   // Checked here as well as on the server: the server never sees `confirm`,
   // so a typo in it is only catchable on this side.
   const mismatch = confirm.length > 0 && next !== confirm;
@@ -365,7 +399,22 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
   return (
     <div className="card profile-password" ref={cardRef}>
       <h2>เปลี่ยนรหัสผ่าน</h2>
-      <div className="hint">
+      {/* FOLDED TO TWO LINES WITH …อ่านต่อ — asked for on 2026-09-10, and the
+          one card subtitle in the app that folds (see "a card's subtitle is
+          drawn in full" in test/disclosure.test.js, which names it). It is not
+          two or three lines: for somebody still on the issued password it is
+          five on a 360px phone, standing between the heading and the three
+          boxes they came to fill in.
+
+          Nothing is lost behind it. The fact that matters to that reader —
+          รหัสผ่านเดิม is their รหัสพนักงาน — is said again in the amber Alert
+          below, and stays on screen when that Alert is folded too. On a laptop the plain sentence fits in two
+          lines, and `Disclosure` measures that and draws no control at all.
+
+          The 14px under it moves from the paragraph to the fold's wrapper, in
+          the rule beside `.profile-password`; left on the paragraph it would
+          sit between the text and ย่อข้อความ. */}
+      <Disclosure as="div" className="hint" of="คำอธิบายการเปลี่ยนรหัสผ่าน">
         {/* The line the deleted first-login screen used to carry, drawn for the
             people it was written for: whoever has never changed their password
             does not know what to type in รหัสผ่านเดิม, and "รหัสที่ฝ่ายบุคคล
@@ -378,12 +427,28 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
         </>}
         {PASSWORD_HELP}
         {' '}· เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
-      </div>
+      </Disclosure>
 
       {pending && !ok && (
-        <Alert kind="warn">
-          คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ ซึ่งคือรหัสพนักงานของคุณ — มีคนอื่นทราบด้วย
-          {' '}จึงควรเปลี่ยนเป็นรหัสผ่านของคุณเองที่ฟอร์มนี้
+        <Alert kind="warn" onClick={foldClick(warnFolded, toggleWarn)}>
+          <div className="alert-fold-row">
+            <div className="alert-fold-text">
+              คุณยังใช้รหัสผ่านที่ฝ่ายบุคคลตั้งให้อยู่ ซึ่งคือรหัสพนักงานของคุณ
+              <span id={warnId} hidden={warnFolded}>
+                {' '}— มีคนอื่นทราบด้วย จึงควรเปลี่ยนเป็นรหัสผ่านของคุณเองที่ฟอร์มนี้
+              </span>
+            </div>
+            <button
+              type="button"
+              className="alert-fold"
+              aria-expanded={!warnFolded}
+              aria-controls={warnId}
+              aria-label={warnFolded ? 'กางคำเตือนรหัสผ่าน' : 'ย่อคำเตือนรหัสผ่าน'}
+              title={warnFolded ? 'กางคำเตือน' : 'ย่อคำเตือน'}
+            >
+              {warnFolded ? '▼' : '▲'}
+            </button>
+          </div>
         </Alert>
       )}
       {error && <Alert kind="error">{error}</Alert>}

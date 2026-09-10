@@ -99,11 +99,12 @@ export function RateHead({ rate, of = null }) {
  * makes knowingly, never a default.
  */
 export function Alert({
-  kind = 'warn', tight = false, mark = true, onClose = null, children,
+  kind = 'warn', tight = false, mark = true, onClose = null, onClick, children,
 }) {
   if (!children) return null;
   return (
-    <div className={`alert ${kind}${tight ? ' tight' : ''}${mark ? '' : ' no-mark'}`}>
+    // `onClick` is for a ▲/▼ notice that folds from its box — see `foldClick`.
+    <div className={`alert ${kind}${tight ? ' tight' : ''}${mark ? '' : ' no-mark'}`} onClick={onClick}>
       <div className="alert-body">{children}</div>
       {onClose && (
         <button type="button" className="alert-x" onClick={onClose} aria-label="ปิดข้อความ">
@@ -113,6 +114,109 @@ export function Alert({
     </div>
   );
 }
+
+/**
+ * A long list inside a notice — the first few, and more on request.
+ *
+ * ONE RULE FOR THE WHOLE APP, asked for on 2026-09-10 after พรีวิวชุด F-HR-027
+ * opened twenty-one people with twenty dates each into several screens of amber.
+ * Every notice that names things one per person, per entry or per line of a
+ * file draws its first `first` of them and a control that adds `step` more:
+ * แสดงเพิ่มอีก N · แสดงทั้งหมด · ย่อกลับ.
+ *
+ * NOT A FOLD, and that is why it may sit inside an `Alert` where `Disclosure`
+ * may not. The headline — the count, the sentence saying what is wrong — is
+ * never inside it, and the first names are always drawn: what is held back is
+ * only the tail of a list whose length the headline has already said.
+ *
+ * Lists bounded by the program (a policy's fields, four kinds of notice, the
+ * clash list of one filing) do not use it. A table of new passwords
+ * (`IssuedPasswords`) does not either: every row there is something to hand
+ * over, and a row behind a button is a password somebody does not get.
+ *
+ * How far it is open is state, so it resets when the list is replaced — by
+ * default when its length changes, or on `resetOn` when the caller knows
+ * better (a reloaded bundle can come back the same length).
+ */
+export const SHOW_MORE_FIRST = 5;
+export const SHOW_MORE_STEP = 10;
+
+export function useShowMore(items, {
+  first = SHOW_MORE_FIRST, step = SHOW_MORE_STEP, unit = 'รายการ', resetOn,
+} = {}) {
+  const list = items || [];
+  const [shown, setShown] = React.useState(first);
+  const reset = resetOn === undefined ? list.length : resetOn;
+  React.useEffect(() => { setShown(first); }, [reset, first]);
+
+  const left = list.length - shown;
+  const controls = (left > 0 || shown > first) ? (
+    <div className="show-more">
+      {left > 0 && (
+        <button type="button" onClick={() => setShown((n) => n + step)}>
+          แสดงเพิ่มอีก {Math.min(step, left)} {unit} (เหลือ {left} {unit})
+        </button>
+      )}
+      {left > step && (
+        <button type="button" onClick={() => setShown(list.length)}>แสดงทั้งหมด</button>
+      )}
+      {shown > first && (
+        <button type="button" onClick={() => setShown(first)}>ย่อกลับ</button>
+      )}
+    </div>
+  ) : null;
+
+  return { visible: list.slice(0, shown), controls };
+}
+
+/**
+ * `useShowMore` for the ordinary case. `render` draws one item; with `join`
+ * the items are strings run together on one line (a list of codes), without it
+ * each is an element and `as` is what holds them — a `ul` stays a `ul`, and
+ * the controls sit after it rather than inside it.
+ */
+export function ShowMore({
+  items, render, join = null, as: Tag = 'div', className, style, ...opts
+}) {
+  const { visible, controls } = useShowMore(items, opts);
+  if (!visible.length) return null;
+  const body = join != null ? visible.map(render).join(join) : visible.map(render);
+  return (
+    <>
+      {/* A Fragment takes no className — the caller that passes one is
+          putting the items straight into a parent that already styles them. */}
+      {Tag === React.Fragment ? body : <Tag className={className} style={style}>{body}</Tag>}
+      {controls}
+    </>
+  );
+}
+
+/**
+ * ย่อ/กาง for a ▲/▼ notice, from the box rather than only from the arrow.
+ *
+ * Asked for twice on 2026-09-10 — first "press the notice, not the triangle",
+ * then, of ประกาศวันหยุด, "press anywhere inside the frame". The arrow is an
+ * 11px glyph in a corner; what people reach for is the box. So the handler
+ * goes on the WHOLE box, and it answers two states differently:
+ *
+ *   FOLDED, anywhere in the frame opens it. There is nothing else in a folded
+ *   box to press — the heading and a count — so no press can mean anything else.
+ *
+ *   OPEN, only the heading line (`head`) folds it. The body is being read, has
+ *   dates to copy and buttons of its own (ดูปฏิทินวันหยุด, แสดงเพิ่ม); a notice
+ *   that shut under a stray tap on the list would be one people learn to fear.
+ *
+ * The ▲/▼ button stays for the keyboard and carries NO onClick of its own:
+ * Enter or Space on it is a click that bubbles up to this handler, and a
+ * handler in both places would toggle twice and appear to do nothing.
+ *
+ * A click that ends a text selection is not a request to fold, in either state.
+ */
+export const foldClick = (folded, toggle, head = '.alert-fold-row') => (e) => {
+  if (typeof window !== 'undefined' && window.getSelection?.().toString()) return;
+  if (!folded && !e.target.closest?.(head)) return;
+  toggle();
+};
 
 /**
  * Approved hours that reached no row on the sheet.
@@ -135,6 +239,8 @@ export function Alert({
  * printed while this is showing is a sheet that should not be filed at all.
  */
 export function UnaccountedHours({ unaccounted, hint = true }) {
+  // Above the early return: a hook is called on every render or on none.
+  const more = useShowMore(unaccounted?.entries);
   if (!unaccounted?.count) return null;
 
   return (
@@ -180,7 +286,7 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
                 </tr>
               </thead>
               <tbody>
-                {unaccounted.entries.map((e) => (
+                {more.visible.map((e) => (
                   <tr key={e.id}>
                     {/* First, because it is the only cell somebody can act on
                         without opening the database. The name is a copy taken
@@ -201,6 +307,7 @@ export function UnaccountedHours({ unaccounted, hint = true }) {
               </tbody>
             </table>
           )}
+          {more.controls}
         </div>
       )}
     </div>
@@ -274,13 +381,42 @@ export function OverCeilingFigure({ over, children }) {
   return <strong className="fig-over" title={tipTextOf(over)}>{children}</strong>;
 }
 
-/** The same account, written into the row rather than hovered for. */
+/**
+ * The same account, written into the row rather than hovered for.
+ *
+ * ย่อ/กาง with ▲/▼, asked for on 2026-09-10 of รายงาน OT แยกแผนก, where one
+ * person's reasons ran to a screen of their own. FOLDED IS NOT GONE: the
+ * heading — the word, the count and the hours — stays, and so does the red
+ * figure with its tooltip; only the one-line-per-entry reasons go behind the
+ * arrow. Opens by default and is not remembered: this is the record, and a
+ * report that came back folded would be a report read without its reasons.
+ * The press follows `foldClick` — folded, anywhere on the note opens it; open,
+ * only the heading folds it — and the button has no onClick of its own.
+ */
 export function OverCeilingNote({ over }) {
+  // Above the early return: a hook is called on every render or on none.
+  const [folded, setFolded] = React.useState(false);
+  const whyId = React.useId();
   if (!over?.count) return null;
+  const toggle = () => setFolded((was) => !was);
   return (
-    <div className="note-mark over-cap">
-      <strong>{OVER_CEILING_MARK}</strong> · {over.count} รายการ · {hours(over.hours)} ชม.
-      <ul className="over-cap-why">
+    <div className="note-mark over-cap" onClick={foldClick(folded, toggle, '.over-cap-head')}>
+      <div className="over-cap-head">
+        <span>
+          <strong>{OVER_CEILING_MARK}</strong> · {over.count} รายการ · {hours(over.hours)} ชม.
+        </span>
+        <button
+          type="button"
+          className="over-cap-fold"
+          aria-expanded={!folded}
+          aria-controls={whyId}
+          aria-label={folded ? 'กางเหตุผลรายการเกินเพดาน' : 'ย่อเหตุผลรายการเกินเพดาน'}
+          title={folded ? 'กางเหตุผล' : 'ย่อเหตุผล'}
+        >
+          {folded ? '▼' : '▲'}
+        </button>
+      </div>
+      <ul id={whyId} className="over-cap-why" hidden={folded}>
         {over.notes.map((n, i) => (
           // Index: two entries can share a date (a split shift), and nothing
           // else on this row identifies one — `entries` never leaves the
@@ -372,6 +508,22 @@ export function SegmentList({ segments }) {
     </ul>
   );
 }
+
+/**
+ * The engine warnings a screen shows — every one but `NORMAL_HOURS_IGNORED`.
+ *
+ * Asked for on 2026-09-10, the same day it was translated: "8 ชม. ของรายการนี้
+ * อยู่ในเวลาทำงานปกติ จึงไม่นับเป็น OT" sat in the เหตุผล column of รออนุมัติ OT
+ * as a paragraph telling a reviewer something every one of them already knows,
+ * and the segment list above it already shows which hours were counted.
+ *
+ * FILTERED HERE, NOT IN THE ENGINE. Warnings are stored on the entry when it is
+ * filed, so rows filed before `ab0631b` still carry the English sentence — only a
+ * filter on the way out reaches them. The engine keeps writing the code: the
+ * tests read it, and it is still the record of where the minutes went.
+ */
+const HIDDEN_WARNINGS = new Set(['NORMAL_HOURS_IGNORED']);
+export const shownWarnings = (warnings) => (warnings || []).filter((w) => !HIDDEN_WARNINGS.has(w.code));
 
 // ── history ─────────────────────────────────────────────────────────────────
 
@@ -2290,11 +2442,16 @@ export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
  *
  *   A CARD'S SUBTITLE — the grey line under นโยบายการคำนวณ or วันหยุดบริษัท —
  *   is short and folds nothing. It is drawn in full, as an ordinary `.hint`,
- *   with no `Disclosure` around it.
+ *   with no `Disclosure` around it. ONE EXCEPTION, BY NAME, since 2026-09-10:
+ *   เปลี่ยนรหัสผ่าน on ข้อมูลส่วนตัว, which is five lines on a phone rather
+ *   than two or three — see test/disclosure.test.js.
  *
  *   AN ALERT is read at the moment it is drawn or it is not read. Nothing in a
- *   `ConfirmDialog` or an `Alert` is folded, and `LivePolicy` — folded for an
- *   hour on 2026-09-07 — is the case that proves it rather than the exception.
+ *   `ConfirmDialog` is folded, and an `Alert`'s alarm never is. Two alerts, by
+ *   name, fold the half that is NOT the alarm: `LivePolicy` (the values still
+ *   at the shipped figure) and, since 2026-09-10, `PolicyVersionBanner` (the
+ *   list of versions, cut to one line under a heading and an instruction that
+ *   both stand) — see `ALERTS_THAT_MAY_FOLD` in test/disclosure.test.js.
  *
  *   THE TEXT UNDER ONE SETTING is what this is for. นโยบายการคำนวณ asks
  *   nineteen questions and explains twelve of them under the question; the

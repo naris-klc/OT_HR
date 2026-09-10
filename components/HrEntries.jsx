@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, hours, thaiDate, dayName, periodLabel, BUCKETS } from '@/lib/api.js';
 import {
-  Alert, Empty, EditedMark, EntryHistory, FlatDailyMark, ProxyMark, RateHead,
+  Alert, Disclosure, Empty, EditedMark, EntryHistory, FlatDailyMark, ProxyMark, RateHead,
   RequestTrail, ScanDayPunches, ScanMismatchMark,
   StatusChip, editsOf, trailOf,
 } from './common.jsx';
@@ -277,9 +277,17 @@ export default function HrEntries({ employee, period, mayEdit = false, onClose, 
         <div className="hint" style={{ marginTop: 6 }}>
           {scanChecked ? (
             <>
-              เทียบเวลากับไฟล์สแกนนิ้วแล้ว — สแกนออกไม่ก่อนเวลาสิ้นสุด OT ถือว่าทำครบตามที่ขอ
-              {' '}· เวลาเริ่มถือว่าตรงกันเมื่อห่างกันไม่เกิน {SCAN_MATCH_TOLERANCE_MINUTES} นาที
-              {' '}· <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
+              {/* THE THREE RULES FOLD TO TWO LINES WITH …อ่านต่อ, asked for on
+                  2026-09-10: on a phone they were four lines above the first
+                  card. Only the rules — `เดือนนี้:` below is this month's live
+                  count and stands outside the fold, because a live figure is not
+                  an explanation (test/disclosure.test.js). On a laptop the rules
+                  fit and no control is drawn. */}
+              <Disclosure as="div" of="วิธีเทียบเวลากับไฟล์สแกนนิ้ว">
+                เทียบเวลากับไฟล์สแกนนิ้วแล้ว — สแกนออกไม่ก่อนเวลาสิ้นสุด OT ถือว่าทำครบตามที่ขอ
+                {' '}· เวลาเริ่มถือว่าตรงกันเมื่อห่างกันไม่เกิน {SCAN_MATCH_TOLERANCE_MINUTES} นาที
+                {' '}· <strong>ตัวเลขชั่วโมงไม่ได้ถูกแก้จากไฟล์สแกน</strong>
+              </Disclosure>
               {/* THE TWO PILES, AS A NUMBER, FOR THE WHOLE MONTH.
                   The chips separate flat days from real mismatches row by row,
                   in colour; this separates them for the month, which is the
