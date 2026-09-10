@@ -239,10 +239,33 @@ export function policyVersionNotice(spread, { onGoMonthly } = {}) {
    * migration command is the whole reason the third does. A version of this
    * that kept only the figures would be a tidier panel that had stopped saying
    * the thing it is for.
+   *
+   * AND THE FIRST ONE SENT PEOPLE SOMEWHERE THAT COULD NOT HELP. It read
+   * "ตรวจก่อนเซ็นรับรอง หรือสั่งคำนวณใหม่ทั้งเดือนที่ ตั้งค่าระบบ → นโยบายการคำนวณ"
+   * until 2026-09-10, and the second half of that was an offer this system
+   * cannot make. A replay stamps each entry with the version in force ON ITS
+   * WORK DATE (`versionForDate`) — so a month whose rules changed on the 5th,
+   * the 13th, the 19th and the 24th comes out of a replay holding those same
+   * four rule sets, and the banner is still there afterwards, correctly.
+   *
+   * IT WAS WALKED, NOT REASONED ABOUT. สิงหาคม 2569 on this database: 298
+   * entries, five versions, `POST /api/settings/recompute` run over the whole
+   * month — `replayed 298, changed 0`. Not one figure moved, the banner did not
+   * shift, and the run left a `recompute` row in the history of all 298 entries
+   * that had nothing to record. A sentence that asks for that is worse than a
+   * sentence that asks for nothing.
+   *
+   * SO IT NAMES THE CAUSE INSTEAD, because the cause is the only thing anybody
+   * can act on: the rules moved mid-month, the figures are therefore not one
+   * arithmetic, and that is a thing to READ the month for rather than to fix.
+   * ประวัติเวอร์ชันนโยบาย is where the changes are dated — it does not print
+   * `effectiveFrom` per version, so this line promises what that table has (when
+   * the rules changed and what changed) and not what it does not.
    */
   let say;
   if (spread.arithmeticMixed === true) {
-    say = 'ตรวจก่อนเซ็นรับรอง หรือสั่งคำนวณใหม่ทั้งเดือนที่ ตั้งค่าระบบ → นโยบายการคำนวณ';
+    say = 'ตรวจยอดก่อนเซ็นรับรอง — ใบคิดด้วยกฎที่มีผลในวันที่ทำงาน '
+      + 'คำนวณใหม่ไม่ทำให้เหลือกฎชุดเดียว · กฎเปลี่ยนเมื่อไรดูที่ ประวัติเวอร์ชันนโยบาย';
   } else if (spread.arithmeticMixed === false) {
     say = 'ต่างกันที่ข้อกำหนดเชิงสิทธิ์ ไม่ใช่การคิดชั่วโมง — ตัวเลขเทียบกันได้ตามปกติ';
   } else if (spread.unversioned > 0) {

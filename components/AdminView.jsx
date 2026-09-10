@@ -7084,10 +7084,34 @@ function ConfirmPolicyChange({
               ? 'ประกาศล่วงหน้า — งานที่ทำก่อนวันนั้นยังคิดด้วยกฎเดิมตลอดไป ไม่ว่าใบจะยื่นเข้ามาช้าแค่ไหน'
               : 'งานที่ทำก่อนวันนี้ยังคิดด้วยกฎเดิมตลอดไป ไม่ว่าใบจะยื่นเข้ามาช้าแค่ไหน'}
           </div>
+          {/* IT NAMED TWO GUARDS AND ONLY ONE OF THEM EXISTED.
+
+              This line read "ใบที่อนุมัติแล้วและงวดที่ปิดแล้วไม่ถูกแตะต้อง" until
+              2026-09-10, ten days after ปิดงวด was withdrawn (lib/periodStatus.js).
+              It is the last screen anybody sees before a rule change replays a
+              queue, and it promised a boundary that had been taken out: a reader
+              would have understood a change made today to stop at the edge of the
+              months HR had finished with, when a replay has reached every month
+              since 2026-08-31.
+
+              `save()` further up this file lost its own third clause the day the
+              feature went; this one was written into the dialog and was missed.
+              What stands now is what actually protects a signed figure — the
+              approved check and nothing else — so the line says that, and says
+              that it is the only thing standing there.
+
+              WHY "ไม่ถูกคิดใหม่" AND NOT "ไม่ถูกแตะต้อง": test/birthDateReplay.test.js
+              refuses the shorter of the two sentences above — the one without
+              และงวดที่ปิดแล้ว in the middle of it — anywhere in
+              this file, because ONE screen here — the roster save, which replays
+              a corrected birth date through approved rows — would be lying if it
+              said it. This dialog would not be; but a promise that reads the same
+              on two screens where it is true on one is worth spelling differently,
+              and คิดใหม่ is the more exact word for what a policy replay does. */}
           <div style={{ marginTop: 6, fontSize: 12.5 }}>
             {arithmetic
               ? 'ข้อนี้เปลี่ยนจำนวนชั่วโมง — ระบบจะคำนวณใบที่ยังไม่อนุมัติใหม่ทันทีหลังบันทึก '
-                + '· ใบที่อนุมัติแล้วและงวดที่ปิดแล้วไม่ถูกแตะต้อง'
+                + '· ใบที่อนุมัติแล้วไม่ถูกคิดใหม่ ไม่ว่าจะเป็นเดือนไหนหรือเก่าแค่ไหน'
               : 'ข้อนี้ไม่เปลี่ยนจำนวนชั่วโมงของใบใดเลย ไม่มีการคำนวณใหม่ '
                 + '· เปลี่ยนเฉพาะสิทธิ์หรือวิธีแสดงผล'}
           </div>
