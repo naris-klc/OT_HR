@@ -383,9 +383,18 @@ test("a card's subtitle is drawn in full, on every screen in the app", () => {
    * a press; what it bought was a screen that opened on a heading and the word
    * อ่านต่อ. The list is by NAME rather than a count, so a subtitle that grows
    * a fold again fails here saying which screen did it.
+   *
+   * ProfileView.jsx IS THE ONE SUBTITLE THAT FOLDS, asked for on 2026-09-10:
+   * เปลี่ยนรหัสผ่าน's is five lines on a phone for somebody on the issued
+   * password, not two or three, and its one fact that matters to that reader
+   * is repeated in the amber Alert under it. Adding a name here is a decision,
+   * the same as `ALERTS_THAT_MAY_FOLD`.
    */
   const users = components.filter((n) => /<Disclosure\b/.test(sourceOf(`components/${n}`))).sort();
-  assert.deepEqual(users, ['AdminView.jsx', 'ScanImport.jsx', 'common.jsx']);
+  assert.deepEqual(users, ['AdminView.jsx', 'ProfileView.jsx', 'ScanImport.jsx', 'common.jsx']);
+  const profile = sourceOf('components/ProfileView.jsx');
+  assert.equal((profile.match(/<Disclosure\b/g) || []).length, 1, 'ข้อมูลส่วนตัวพับได้ที่เดียว คือคำอธิบายของ เปลี่ยนรหัสผ่าน');
+  assert.match(profile, /<h2>เปลี่ยนรหัสผ่าน<\/h2>[^]*?<Disclosure as="div" className="hint"/);
 });
 
 /*

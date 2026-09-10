@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { isSigner } from '@/lib/roles.js';
 import { api, thaiDate, COMPANIES } from '@/lib/api.js';
 import { PASSWORD_MIN_LENGTH, passwordShapePermission } from '@/lib/employees.js';
-import { Alert, PasswordInput } from './common.jsx';
+import { Alert, Disclosure, PasswordInput } from './common.jsx';
 import Delegation from './Delegation.jsx';
 
 const ROLE_LABEL = {
@@ -365,7 +365,22 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
   return (
     <div className="card profile-password" ref={cardRef}>
       <h2>เปลี่ยนรหัสผ่าน</h2>
-      <div className="hint">
+      {/* FOLDED TO TWO LINES WITH …อ่านต่อ — asked for on 2026-09-10, and the
+          one card subtitle in the app that folds (see "a card's subtitle is
+          drawn in full" in test/disclosure.test.js, which names it). It is not
+          two or three lines: for somebody still on the issued password it is
+          five on a 360px phone, standing between the heading and the three
+          boxes they came to fill in.
+
+          Nothing is lost behind it. The fact that matters to that reader —
+          รหัสผ่านเดิม is their รหัสพนักงาน — is said again in the amber Alert
+          below, which never folds. On a laptop the plain sentence fits in two
+          lines, and `Disclosure` measures that and draws no control at all.
+
+          The 14px under it moves from the paragraph to the fold's wrapper, in
+          the rule beside `.profile-password`; left on the paragraph it would
+          sit between the text and ย่อข้อความ. */}
+      <Disclosure as="div" className="hint" of="คำอธิบายการเปลี่ยนรหัสผ่าน">
         {/* The line the deleted first-login screen used to carry, drawn for the
             people it was written for: whoever has never changed their password
             does not know what to type in รหัสผ่านเดิม, and "รหัสที่ฝ่ายบุคคล
@@ -378,7 +393,7 @@ export function ChangePassword({ onDone, pending = false, jump = false }) {
         </>}
         {PASSWORD_HELP}
         {' '}· เซสชันที่เปิดค้างอยู่บนเครื่องอื่นจะยังใช้ได้จนหมดอายุ
-      </div>
+      </Disclosure>
 
       {pending && !ok && (
         <Alert kind="warn">

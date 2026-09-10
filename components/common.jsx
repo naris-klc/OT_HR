@@ -2290,7 +2290,9 @@ export function TipButton({ text, of, open, onToggle, glyph = '?' }) {
  *
  *   A CARD'S SUBTITLE — the grey line under นโยบายการคำนวณ or วันหยุดบริษัท —
  *   is short and folds nothing. It is drawn in full, as an ordinary `.hint`,
- *   with no `Disclosure` around it.
+ *   with no `Disclosure` around it. ONE EXCEPTION, BY NAME, since 2026-09-10:
+ *   เปลี่ยนรหัสผ่าน on ข้อมูลส่วนตัว, which is five lines on a phone rather
+ *   than two or three — see test/disclosure.test.js.
  *
  *   AN ALERT is read at the moment it is drawn or it is not read. Nothing in a
  *   `ConfirmDialog` or an `Alert` is folded, and `LivePolicy` — folded for an

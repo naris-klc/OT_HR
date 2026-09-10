@@ -5602,6 +5602,11 @@ td > .approver-line { margin-top: 5px; }
    card top 68, bar bottom 62, stable from 600ms onward — which is why the aim
    is left where it is instead of being padded to hit 14 exactly. */
 .profile-password { scroll-margin-top: calc(62px + 14px); }
+/* The card's explanation folds (components/ProfileView.jsx), so `.card .hint`'s
+   14px has to move to the fold's wrapper: on the paragraph it would sit between
+   the text and ย่อข้อความ, and the button would read as the form's first line. */
+.profile-password > .disclosure { margin-bottom: 14px; }
+.profile-password > .disclosure > .hint { margin-bottom: 0; }
 
 /* Stacked, not the app's usual side-by-side .row: the three password boxes are
    a sequence to work down, and side by side they invite typing into the wrong
