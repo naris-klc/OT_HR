@@ -10,7 +10,9 @@ import {
 } from '@/lib/reports.js';
 import { capColumn } from '@/lib/caps.js';
 import { capEntriesByEmployee } from '@/src/services/otService.js';
-import { isHrVerifiedBirthday, signsForCompany } from '@/lib/entries.js';
+import { isHrVerifiedBirthday, signsForCompany, mayCorrectEntries } from '@/lib/entries.js';
+import { approvalPermission } from '@/lib/delegation.js';
+import { needsOverCeilingReason } from '@/lib/caps.js';
 import { companyOf } from '@/src/config/companies.js';
 import { versionIdOf, versionSpread } from '@/lib/policyVersion.js';
 import { compareCodes } from '@/src/lib/employeeCode.js';
@@ -152,6 +154,82 @@ export const GET = route(async (req, { params }) => {
    * roster endpoint (`publicEmployee` in lib/employees.js). What leaves here is
    * the boolean, never the date.
    */
+  /**
+   * ── ใบที่ผู้อ่านคนนี้กดยืนยันได้จริง — 2026-09-10 ──────────────────────────
+   *
+   * ตรวจสอบประจำเดือน stopped being a screen that only READS a month on this
+   * day: HR asked to be able to confirm from it rather than crossing to
+   * รออนุมัติ OT and back (*"เพื่อไม่ให้เสียเวลาสลับหน้าไปมา"*). A screen that
+   * signs needs the `_id`s of what it is signing, and this route sent totals.
+   *
+   * ── IT IS DECIDED BY `approvalPermission`, NOT BY `status === 'pending_hr'`
+   *
+   * The obvious version of this is a status test and it is wrong, because §6 is
+   * not a rule about statuses. **One request needs two people**, and whoever
+   * signed the หัวหน้า step is out of the ฝ่ายบุคคล step of that same request
+   * whatever their บทบาท (`signedManagerStep`). That is a fact about one entry
+   * and one reader together — no filter over `status` can see it — so the
+   * question is put to the one function that answers it everywhere else, and
+   * the row the screen offers is the row the route will accept.
+   *
+   * A ticked row that 403s costs a reviewer three presses to attribute to a
+   * person; inside a batch of twelve it costs them the batch.
+   *
+   * ── `delegations: []`, AND THAT IS NOT A SHORTCUT ─────────────────────────
+   *
+   * Read the ฝ่ายบุคคล branch of `approvalPermission`: `claim` is not consulted
+   * for an `isHr` reader at `pending_hr`. A delegation could not change one of
+   * these answers if it were fetched. It is the same fact components/
+   * ApprovalQueue.jsx states in four words — *the HR confirmation queue is
+   * nobody's to lend* — and skipping the lookup keeps a report route free of a
+   * query it would only ever discard.
+   *
+   * ── ONLY FOR THE บทบาท THAT MAY CORRECT A MONTH ──────────────────────────
+   *
+   * `null` for the three signers and for การเงิน, who read this screen and sign
+   * nothing on it: their step is `pending_mgr` and it is รออนุมัติ OT's, not
+   * this screen's. A field that named rows they cannot act on would be an offer
+   * with nothing behind it — README §สิทธิ์ names that as the one thing a screen
+   * may not do — and the screen draws no tick-box for them either.
+   *
+   * ── AND IT IS BOUND BY สถานะที่นับ, WHICH THE SCREEN HAS TO SAY OUT LOUD ──
+   *
+   * These rows come out of `group.entries`, which is the month `?status=`
+   * selected. At อนุมัติแล้วเท่านั้น there are no `pending_hr` rows in it at all,
+   * so every list here is empty and no tick-box is drawn anywhere — correctly,
+   * and invisibly. The screen carries the sentence that explains it.
+   */
+  const maySign = mayCorrectEntries(user);
+  const approvableOf = (rows) => {
+    if (!maySign) return null;
+    const ids = [];
+    let hours = 0;
+    let capOver = 0;
+    for (const entry of rows) {
+      if (entry.status !== 'pending_hr') continue;
+      const may = approvalPermission({ user, entry, delegations: [] });
+      if (!may.ok) continue;
+      ids.push(String(entry._id));
+      hours += entry.totals?.otHours || 0;
+      if (needsOverCeilingReason(entry)) capOver += 1;
+    }
+    return {
+      ids,
+      count: ids.length,
+      /** Rounded where every other figure in this app is — see `hours()`. */
+      hours: Math.round(hours * 100) / 100,
+      /**
+       * How many of them are over a department ceiling.
+       *
+       * The confirm dialog demands ONE sentence for the whole decision when
+       * this is non-zero, which is the rule `overCeilingRefusal` enforces on
+       * the route. Counted here rather than re-derived in the browser because
+       * `capExceeded` is a field on the entry and the entries do not travel.
+       */
+      capOver,
+    };
+  };
+
   const withoutBirthDate = (employee) => {
     if (!employee) return employee;
     const { birthDate, ...rest } = employee;
@@ -195,6 +273,24 @@ export const GET = route(async (req, { params }) => {
       department: group.department,
       entryCount: group.entries.length,
       pendingCount: group.entries.filter((e) => e.status !== 'approved').length,
+      /**
+       * Rows at the ฝ่ายบุคคล step, whoever is reading.
+       *
+       * NOT the same number as `approvable.count` and the difference is §6:
+       * a row this reader signed at the หัวหน้า step is at this step and is not
+       * theirs to sign. On nearly every month the two are equal; the screen
+       * says which it is quoting so that the day they differ, the gap has a
+       * name instead of looking like an arithmetic error.
+       *
+       * ⚠ NOT `pendingCount` EITHER, which counts `status !== 'approved'` and
+       * therefore includes `pending_mgr` — rows waiting on a หัวหน้า that
+       * ฝ่ายบุคคล may not sign at all (`approvalPermission` answers 409,
+       * *ต้องผ่านการอนุมัติจากหัวหน้าก่อน*). A tick-box built on that count is
+       * a tick-box that 409s.
+       */
+      pendingHrCount: group.entries.filter((e) => e.status === 'pending_hr').length,
+      /** ใบที่กดยืนยันได้จากหน้านี้ — `null` for a reader who signs nothing here. */
+      approvable: approvableOf(group.entries),
       /** { count, hrCount, lastAt } — corrections made after filing (§6). */
       edits: editTally(filedByEmployee.get(String(group.employee?._id)) || []),
       /**

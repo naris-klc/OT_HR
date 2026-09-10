@@ -2010,7 +2010,7 @@ lib/scanMatchQuery.js     the punches those rows need, in two queries whatever
                           the month's length — joined on `codeKey`, never on
                           `employee`, which is null for anybody the roster did
                           not hold on import day
-test/                     141 files, run by `npm test`. Six named below as a
+test/                     142 files, run by `npm test`. Six named below as a
                           sample; docs/features.md maps every feature to the
                           files that cover it
 test/proxyFiling.test.js    who may file for whom, and where it starts
@@ -2023,9 +2023,14 @@ test/emptyMonth.test.js     a month with no OT still produces every document
 ```
 
 The domain layer under `src/` is deliberately framework-free: models, services
-and the engine know nothing about Next.js, so the whole suite — **2532 tests
-across 141 files**, measured 2026-09-10 — runs with plain `node --test`, no
+and the engine know nothing about Next.js, so the whole suite — **2541 tests
+across 142 files**, measured 2026-09-10 — runs with plain `node --test`, no
 server and no database. Only `app/` and `lib/` touch the framework. (It read
+"2532 tests across 141 files … measured 2026-09-10" until **ตรวจสอบประจำเดือน
+ได้ `approvable` จากเราต์**, which added `monthApprovable` and nine cases —
+four of which RUN `approvalPermission` on real-shaped entries rather than
+reading the source, because the claim being made there is about behaviour and
+the §6 case is one no status filter can see. And it read
 "2521 tests across 140 files … measured 2026-09-10" until **ผลเทียบสแกน
 ขึ้นมาเป็นการ์ดของตัวเองบนหน้า ตรวจสอบประจำเดือน**, which added
 `monthScanColumn` and eleven cases. Two files that had pinned the OLD shape of
@@ -11745,8 +11750,10 @@ build แล้ว
   the danger-light the refusal in `.foot-split` already wears, measured as
   `rgb(51,23,23)` on `rgb(90,38,38)` with `rgb(252,165,165)` letters — and
   still `disabled` for HR without losing its colours.
-- `npm test` — **2532 tests**, about 3 s, measured 2026-09-10 across 141
-  files, all green. It read **"2521 tests … across 140"** until ผลเทียบสแกน
+- `npm test` — **2541 tests**, about 3 s, measured 2026-09-10 across 142
+  files, all green. It read **"2532 tests … across 141"** until the monthly
+  report learned to say which rows this reader may confirm (`monthApprovable`,
+  nine cases). Before that it read **"2521 tests … across 140"** until ผลเทียบสแกน
   became a card of its own on ตรวจสอบประจำเดือน — one new file
   (`monthScanColumn`, eleven cases) and two files rewritten in place rather
   than extended, `hrMonthCards` and `monthDepartmentFilter`, both of which had
