@@ -8921,6 +8921,22 @@ th.month-edge, td.month-edge { border-left: 1px solid var(--line); }
   font: 600 12px/1.4 var(--sans); color: var(--reject-ink);
 }
 
+/* ── ยังไม่นำเข้า — THE THIRD STATE, AND IT IS OFF THE SCALE ────────────────
+
+   2026-09-11: *"หากรายการไหนยังไม่ได้นำเข้าไฟล์สแกนเวลา ให้แสดงข้อความตรง
+   คอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า ไม่ตรง"*.
+
+   The two above are a verdict: green agreed, red did not, and the pair is read
+   from the corner of the eye down sixty rows. This row has had NO VERDICT — the
+   file is not in — and a third colour ON that scale would place it somewhere
+   between agreeing and disagreeing, which is the one thing it is not.
+
+   `--muted` is the same grey `.chip.scan-none` wears on the row marks for a day
+   with no punches, which is the same statement one level down: nothing was
+   compared here. Regular weight, not the 600 the red carries: a fact about the
+   month, not an errand for a person. */
+.hr-table td.scan-col .scan-wait { font: 400 12px/1.4 var(--sans); color: var(--muted); }
+
 /* ── ทั้งแถวกดได้ — 2026-09-10 ─────────────────────────────────────────────
 
    The pointer and the focus ring are the whole of what says this row is

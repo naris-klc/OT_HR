@@ -7127,6 +7127,46 @@ taking it past — `รวมรออนุมัติ 45 / 40` is **the only 
 knows**. The alarm colour was on the half that was fine and the footnote voice on
 the half that was not.
 
+#### ยังไม่นำเข้า — THE THIRD STATE, AND IT IS OFF THE GREEN–RED SCALE
+
+**2026-09-11:** *"หากรายการไหนยังไม่ได้นำเข้าไฟล์สแกนเวลา ให้แสดงข้อความตรงคอลัมน์
+สแกน ว่า ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า ไม่ตรง"*.
+
+**The column read `showScanCol = readsScans && Boolean(scan?.punchCount)` until
+that day**, so a month with no file simply had no สแกน column at all. The note
+under it said *sixty cells of `—` read as sixty people the machine disagrees with,
+or as sixty rows nobody checked, and a reader cannot tell which* — **which is
+still true of a column of `—`, and is exactly what the cell now answers instead
+of dodging.** `ยังไม่นำเข้า` is the sentence that resolves that ambiguity,
+printed where the reader is looking rather than only in the notice above the
+table. The guard is `scan?.slots` now — the four-slot grid the route builds for
+any named งวด — so the column is absent only while the request is in flight or
+after it failed, which are the two states where it would be a claim this screen
+cannot back.
+
+**Grey is the statement, not the styling.** ตรง is green because the machine
+agreed and เวลาไม่ตรง is red because it did not; this row has had **no verdict
+at all**, and a third colour *on* that scale would place it between agreeing and
+disagreeing — the one thing it is not. `--muted` is the same grey `.chip.scan-none`
+wears on the row marks for a day with no punches, which is the same statement one
+level down. Regular weight, not the 600 the red carries: a fact about the month,
+not an errand for a person.
+
+**It changes nothing downstream, by construction.** `loadScan` does not ask for
+the comparison at all without punches, so on exactly the month this branch draws,
+`flaggedBy` is empty — §5.2's tick rule, the ดูเฉพาะคนที่ต้องตรวจ filter and the
+notice's counts all behave as they did before it existed, and §5.3 still holds:
+**a month with no import ticks normally.**
+
+> **⚠ WHAT IT DOES NOT YET COVER IS THE PARTIAL MONTH.** ไพรมัส's file in and
+> เดมเทค's missing is a month with punches, so the comparison runs — and every
+> เดมเทค row comes back marked **`ไม่มีสแกน`** in red, which reads as *this
+> person did not scan* when the truth is *nobody imported their machine*. Telling
+> the two apart needs the row's company beside `slots`, and it changes **who may
+> be ticked** (a row compared against nothing is not a row anybody failed to look
+> at — §5.3 applied per company instead of per month). That is a bigger change
+> than this one and was deliberately not smuggled in with it.
+
 #### ⚠ ตรง IS GREEN AND ต้องตรวจ IS RED, and they were grey and amber for a few hours
 
 *"สีข้อความแจ้งเตือน ที่ติดปัญหาควรเป็นสีแดง ที่ไม่ผ่าน ควรเป็นสีเขียว"*, and the

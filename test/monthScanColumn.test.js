@@ -206,11 +206,24 @@ test('the tally is HR’s own words, and the facts are told apart from the erran
 
 // ── 5. the column on the row ────────────────────────────────────────────────
 
-test('คอลัมน์สแกน is drawn only on a month that has a file behind it', () => {
-  // Sixty cells of `—` read as sixty people the machine disagrees with, or as
-  // sixty rows nobody checked, and a reader cannot tell which. The card says
-  // the true thing once instead and the table stays out of it.
-  assert.match(hrView, /const showScanCol = readsScans && Boolean\(scan\?\.punchCount\);/);
+test('คอลัมน์สแกน is drawn as soon as this screen knows about the month’s files', () => {
+  /* ⚠ IT READ `Boolean(scan?.punchCount)` — "drawn only on a month that has a
+     file behind it" — UNTIL 2026-09-11, on this argument: *sixty cells of `—`
+     read as sixty people the machine disagrees with, or as sixty rows nobody
+     checked, and a reader cannot tell which; the card says the true thing once
+     instead and the table stays out of it.*
+
+     THAT ARGUMENT IS ABOUT A COLUMN OF `—` AND IT IS STILL RIGHT. What changed
+     is that the cell no longer draws one: *"หากรายการไหนยังไม่ได้นำเข้าไฟล์สแกน
+     เวลา ให้แสดงข้อความตรงคอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา"*. `ยังไม่นำเข้า`
+     IS the sentence that resolves the ambiguity the blank created, printed where
+     the reader is looking instead of only in the notice above the table.
+
+     `slots` AND NOT `punchCount`: the four-slot grid comes back for any named
+     งวด, so it is present the moment the first request lands and absent only
+     while it is in flight or after it failed — the two states where the column
+     would be a claim this screen cannot back. */
+  assert.match(hrView, /const showScanCol = readsScans && Boolean\(scan\?\.slots\);/);
   assert.match(hrView, /\{showScanCol && <th className="scan-col">สแกน<\/th>\}/);
   assert.match(hrView, /\{showScanCol && \(\s*<td className="scan-col">/);
 
@@ -221,6 +234,34 @@ test('คอลัมน์สแกน is drawn only on a month that has a file
   assert.match(hrView, /const colCount = 10 \+ \(showScanCol \? 1 : 0\) \+ \(showPickCol \? 1 : 0\);/);
   assert.match(hrView, /const padCols = showScanCol \? 5 : 4;/);
   assert.ok(!hrView.includes('colSpan={10}'), 'a full-width row still assumes ten columns');
+});
+
+test('a month with no file says ยังไม่นำเข้า on every row, in grey', () => {
+  // Asked for on 2026-09-11 with the table in the picture: *"…ให้แสดงข้อความ
+  // ตรงคอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา เหมือนคำว่า ไม่ตรง"*.
+  assert.match(hrView, /if \(!scan\.punchCount\) \{/);
+  assert.match(hrView, /<span\s+className="scan-wait"/);
+  assert.match(hrView, /ยังไม่นำเข้า/);
+
+  // ⚠ GREY IS THE STATEMENT, NOT THE STYLING. `ตรง` is green because the machine
+  // agreed and `เวลาไม่ตรง` is red because it did not; this row has had no
+  // verdict at all, and a third colour ON that scale would place it between
+  // agreeing and disagreeing — the one thing it is not. `--muted` is the same
+  // grey `.chip.scan-none` wears for a day with no punches, one level down.
+  assert.match(css, /\.hr-table td\.scan-col \.scan-wait \{ font: 400 12px\/1\.4 var\(--sans\); color: var\(--muted\); \}/);
+  const chip = css.slice(css.indexOf('.chip.scan-none {'));
+  assert.match(chip.slice(0, chip.indexOf('}')), /color: var\(--muted\)/);
+  // Regular weight, not the 600 the red carries: a fact about the month, not an
+  // errand for a person.
+  assert.ok(!/\.scan-wait \{ font: 600/.test(css), 'ยังไม่นำเข้า is shouting');
+
+  // ⚠ AND IT CHANGES NOTHING DOWNSTREAM. `loadScan` does not ask for the
+  // comparison at all without punches, so `flaggedBy` is empty by construction
+  // on exactly the month this branch draws — §5.2's tick rule, the
+  // ดูเฉพาะคนที่ต้องตรวจ filter and the card's counts all behave as they did
+  // before the branch existed, and §5.3 still holds: this month ticks normally.
+  assert.match(hrView, /const full = first\.punchCount\s+\? await api\.get\(`\$\{base\}&compare=1/);
+  assert.match(hrView, /const pickable = \(row\) => Boolean\(row\.approvable\?\.count\)\s+&& !flaggedBy\.has\(String\(row\.employee\?\._id\)\);/);
 });
 
 test('a row the machine agrees with says so — green, and never left blank', () => {

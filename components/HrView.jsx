@@ -561,18 +561,31 @@ export default function HrView({
    * reader.
    *
    * `readsScans` already settled who may see punch data. This is the second
-   * half: a month with no file imported has nothing to put in the column, and a
-   * column of `—` sixty rows deep is worse than no column — it reads as sixty
-   * people the machine disagrees with, or as sixty rows nobody checked, and a
-   * reader cannot tell which. The card above says the true thing once
-   * (`ยังไม่ได้เทียบ`) and the table stays out of it.
+   * half: does this screen know anything about the month's scan files yet.
+   * `scan?.slots` is the four-slot grid the route builds for any named งวด, so
+   * it is present the moment the first request lands and absent only while it is
+   * in flight or after it failed — which are the two states where the column
+   * would be a claim this screen cannot back.
+   *
+   * ⚠ IT READ `Boolean(scan?.punchCount)` UNTIL 2026-09-11, and the note under
+   * it said: *a month with no file imported has nothing to put in the column,
+   * and a column of `—` sixty rows deep is worse than no column — it reads as
+   * sixty people the machine disagrees with, or as sixty rows nobody checked,
+   * and a reader cannot tell which.*
+   *
+   * That is still true OF A COLUMN OF `—`, and it is what the cell now answers
+   * instead of dodging: asked for on 2026-09-11 — *"หากรายการไหนยังไม่ได้นำเข้า
+   * ไฟล์สแกนเวลา ให้แสดงข้อความตรงคอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา"*. A
+   * cell reading `ยังไม่นำเข้า` is not the ambiguous blank the old argument was
+   * about; it is precisely the sentence that resolves the ambiguity, printed
+   * where the reader is looking rather than only in the notice above the table.
    *
    * WHICH MAKES THE TABLE ELEVEN COLUMNS WIDE OR TEN, and every full-width row
    * in it has to know. `colCount` is that number in one place; writing `11` at
    * four call sites is how a `colSpan` ends up one short of the header and the
    * pager sits under the wrong edge of the table.
    */
-  const showScanCol = readsScans && Boolean(scan?.punchCount);
+  const showScanCol = readsScans && Boolean(scan?.slots);
   /**
    * `onlyFlagged` NARROWS THE SAME LIST ค้นหา NARROWS, and after it.
    *
@@ -2161,6 +2174,51 @@ export default function HrView({
                       {showScanCol && (
                         <td className="scan-col">
                           {(() => {
+                            /* ── ยังไม่นำเข้า — 2026-09-11 ─────────────────────
+                               *"หากรายการไหนยังไม่ได้นำเข้าไฟล์สแกนเวลา ให้แสดง
+                               ข้อความตรงคอลัมน์ สแกน ว่า ยังไม่นำเข้า เป็นสีเทา
+                               เหมือนคำว่า ไม่ตรง"*.
+
+                               ⚠ GREY IS THE STATEMENT, not the styling. `ตรง` is
+                               green because the machine agreed and `เวลาไม่ตรง`
+                               is red because it did not; this row has had NO
+                               VERDICT AT ALL, and a third colour on that scale
+                               would put it somewhere between the two. Grey is
+                               off the scale, which is where it belongs — the
+                               same grey `.chip.scan-none` uses on the row marks
+                               for a day with no punches.
+
+                               ASKED OF THE MONTH, not of the row, because that
+                               is the only thing this screen can be sure of: a
+                               file is imported for a งวด and a machine, and with
+                               `punchCount` at nought not one row of the month has
+                               been compared against anything. `flaggedBy` is
+                               empty here by construction — `loadScan` does not
+                               ask for the comparison at all without punches — so
+                               every rule downstream (§5.2's tick, the ดูเฉพาะคน
+                               ที่ต้องตรวจ filter, the card's counts) behaves
+                               exactly as it did before this line existed, and
+                               §5.3 still holds: this month ticks normally.
+
+                               ⚠ WHAT IT DOES NOT YET COVER is the PARTIAL month
+                               — ไพรมัส's file in and เดมเทค's missing. Those rows
+                               are compared against nothing and come back marked
+                               `ไม่มีสแกน`, which reads as "this person did not
+                               scan" when the truth is "nobody imported their
+                               machine". Telling the two apart needs the row's
+                               company beside `slots`, and it changes who may be
+                               ticked — a bigger change than this one, deliberately
+                               not smuggled in with it. */
+                            if (!scan.punchCount) {
+                              return (
+                                <span
+                                  className="scan-wait"
+                                  title="ยังไม่ได้นำเข้าไฟล์สแกนนิ้วมือของเดือนนี้ — ไม่ได้แปลว่าทุกแถวตรง"
+                                >
+                                  ยังไม่นำเข้า
+                                </span>
+                              );
+                            }
                             const flag = flaggedBy.get(String(row.employee._id));
                             if (!flag) return <span className="scan-ok">ตรง</span>;
                             return (
