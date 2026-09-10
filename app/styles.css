@@ -4699,6 +4699,61 @@ td > .approver-line { margin-top: 5px; }
   .pop.sheet > .nav-sheet { overflow-y: auto; overscroll-behavior: contain; }
   .pop.sheet > .drawer-who, .pop.sheet > .nav-sheet-head, .pop.sheet > .pop-foot { flex: none; }
 
+  /* ── AND ON A PHONE THE DROPDOWN IS THAT SAME SHEET — 2026-09-10 ─────────
+     Asked for as *"การเลือกดรอปดาวตัวเลือกในมือถือ อยากให้โชว์แบบการกดเมนู
+     ตัวเลือกในแถบบาร์"*, with the two screens side by side, and the report was
+     about a real difference rather than a preference.
+
+     WHAT IT LOOKED LIKE AND WHY. `.pop.one-pop` takes `.pop`'s skin OFF — the
+     note where it is written is the reason, and it is right on a computer: the
+     `<ul>` inside keeps `.pick-menu`, which already draws a fill, an edge, a
+     shadow and a corner, and leaving both on paints a second panel round the
+     first. Down here the same subtraction came out wrong, because
+     `.pop.sheet` is the thing that makes a sheet a sheet — full width, off the
+     bottom edge, square at the bottom, rounded at the top — and it was left
+     drawing nothing at all. What was on the screen at 360px was a rounded card
+     floating 14px in from both edges with its own bottom corners, the list's
+     own panel, and ปิด adrift below it over the นำทาง bar: a dropdown that had
+     been dropped at the bottom of the screen, next to a เพิ่มเติม menu that is
+     flush to the edge with a heading and 52px rows.
+
+     SO THE SKIN GOES BACK ON THE SHELL AND COMES OFF THE LIST. Three classes
+     beat `.pop.one-pop`'s two, and everything else about the shape — the
+     inset, the padding, the top corners, the rise, the 88dvh cap and the flex
+     column — is `.pop.sheet`'s already and is not restated here.
+
+     NOTHING IN THIS BLOCK NAMES `.one-menu`. That is not an accident and
+     test/queueDropdown.test.js is what makes it one: the list may not restate
+     its own fill, edge, shadow, corner or height, because those are
+     `.pick-menu`'s on both screens and a second copy is how ค้นหาพนักงาน's
+     panel and this one start looking different. The subject here is the SHELL
+     — `.pop.sheet.one-pop` — and what the list gives up inside it, which is a
+     fact about the container and not about the list. */
+  .pop.sheet.one-pop {
+    background: var(--card-lift);
+    border: 1px solid var(--line-lift); border-bottom: 0;
+    box-shadow: 0 2px 8px -2px var(--shadow-soft), 0 14px 34px var(--shadow-soft);
+  }
+  /* The list is the sheet's scroll area now, the way `.nav-sheet` is the
+     drawer's: no panel of its own, and no height of its own either — it grows
+     with its rows and the 88dvh cap above is what stops it, so ทุกแผนก with
+     eighteen departments under it fills the sheet instead of scrolling inside a
+     264px card inside a sheet. `min-height: 0` is what lets a flex child
+     shorter than its content scroll at all. */
+  .pop.sheet.one-pop .pick-menu {
+    flex: 1 1 auto; min-height: 0; max-height: none;
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none;
+  }
+  /* 52 AND NOT 44, which is the bar menu's own number and the reason its note
+     gives: this is a menu read with a thumb and the rows are the whole of what
+     the sheet is for. The app's floor is 44 and nothing here goes below it —
+     the floating panel and the two menus still in the flow keep it. */
+  .pop.sheet.one-pop .pick-menu li {
+    gap: 12px; min-height: 52px; padding: 0 12px;
+    border-radius: var(--radius-sm);
+  }
+
   .pop.sheet .cal-cell { min-height: 44px; font-size: 15px; }
   .pop.sheet .cal-nav { width: 44px; height: 44px; }
   .pop.sheet .cal-title { padding: 10px 8px; font-size: 15px; }
